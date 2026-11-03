@@ -1,0 +1,20 @@
+# Allowlist: SAEF project records, governance and work products only.
+# Raw assets, generated HTML, incoming files, code and backups remain outside Git.
+/*
+!/.gitignore
+!/engineering/
+/engineering/*
+!/engineering/control/
+!/engineering/work-products/
+__pycache__/
+*.pyc
+*.zip
+*.7z
+*.rar
+*.pdf
+*.log
+*.bin
+*.hex
+*.o
+*.obj
+*.pdb

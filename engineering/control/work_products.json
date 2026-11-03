@@ -1,0 +1,403 @@
+{
+  "P0-01": {
+    "path": "engineering/work-products/P0/P0-01/index.md",
+    "status": "ACCEPTED",
+    "revision": "AT-P0-01-R004-20261103",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": "AT-P0-01-ACCEPT-V004-20261103",
+    "review_sha256": "3f91b818619f97593e3c114393f856cb9091d67c9b4d3f206e7540b2a0daf671",
+    "accepted_sha256": "3f91b818619f97593e3c114393f856cb9091d67c9b4d3f206e7540b2a0daf671"
+  },
+  "P0-02": {
+    "path": "engineering/work-products/P0/P0-02/index.md",
+    "status": "ACCEPTED",
+    "revision": "AT-P0-02-R001-20261103",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": "AT-P0-02-ACCEPT-V001-20261103",
+    "review_sha256": "16d04d387de1e41889b8ce9efd1950bf127cc54346c03007acdac3b71675c7dd",
+    "accepted_sha256": "16d04d387de1e41889b8ce9efd1950bf127cc54346c03007acdac3b71675c7dd"
+  },
+  "P0-03": {
+    "path": "engineering/work-products/P0/P0-03/index.md",
+    "status": "ACCEPTED",
+    "revision": "AT-P0-03-R001-20261103",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": "AT-P0-03-ACCEPT-V001-20261103",
+    "review_sha256": "8660ae331e94beb633bcf26dd2015e21fdd4ba9b9249dcc5f7d1a6c2dff5549b",
+    "accepted_sha256": "8660ae331e94beb633bcf26dd2015e21fdd4ba9b9249dcc5f7d1a6c2dff5549b"
+  },
+  "P0-04": {
+    "path": "engineering/work-products/P0/P0-04/index.md",
+    "status": "ACCEPTED",
+    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": "AT-P0-04-ACCEPT-V001-20261103",
+    "review_sha256": "47055e8ec6b7f380c9c0eb9fe06e3eb12f7a075609da6193a914827200696997",
+    "accepted_sha256": "47055e8ec6b7f380c9c0eb9fe06e3eb12f7a075609da6193a914827200696997"
+  },
+  "P0-05": {
+    "path": "engineering/work-products/P0/P0-05/index.md",
+    "status": "ACCEPTED",
+    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": "AT-P0-05-ACCEPT-V001-20261103",
+    "review_sha256": "981811e3e1821af6b57aeb6140d849413cd05a7214d9c90e3397991b8edca487",
+    "accepted_sha256": "981811e3e1821af6b57aeb6140d849413cd05a7214d9c90e3397991b8edca487"
+  },
+  "P0-06": {
+    "path": "engineering/work-products/P0/P0-06/index.md",
+    "status": "ACCEPTED",
+    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": "AT-P0-06-ACCEPT-V001-20261103",
+    "review_sha256": "9e4d2f62fb6850a375dcc87b3fd2a9ef1b7d44e19c3faf65ecaf065371e91cec",
+    "accepted_sha256": "9e4d2f62fb6850a375dcc87b3fd2a9ef1b7d44e19c3faf65ecaf065371e91cec"
+  },
+  "P0-07": {
+    "path": "engineering/work-products/P0/P0-07/index.md",
+    "status": "ACCEPTED",
+    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": "AT-P0-07-ACCEPT-V001-20261103",
+    "review_sha256": "bd7c43a5daea0c85b903448efbee9f7c321fef25acab1e3bb6e54152dba8bca5",
+    "accepted_sha256": "bd7c43a5daea0c85b903448efbee9f7c321fef25acab1e3bb6e54152dba8bca5"
+  },
+  "P0-08": {
+    "path": "engineering/work-products/P0/P0-08/index.md",
+    "status": "ACCEPTED",
+    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": "AT-P0-08-ACCEPT-V001-20261103",
+    "review_sha256": "08ce820d4a6e6412241fe3e1dd674353d92897d6ab6d677208245afa0f2e5cde",
+    "accepted_sha256": "08ce820d4a6e6412241fe3e1dd674353d92897d6ab6d677208245afa0f2e5cde"
+  },
+  "G0-01": {
+    "path": "engineering/work-products/G0/G0-01/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G0-02": {
+    "path": "engineering/work-products/G0/G0-02/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G0-03": {
+    "path": "engineering/work-products/G0/G0-03/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G0-04": {
+    "path": "engineering/work-products/G0/G0-04/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G0-05": {
+    "path": "engineering/work-products/G0/G0-05/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G0-06": {
+    "path": "engineering/work-products/G0/G0-06/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G0-07": {
+    "path": "engineering/work-products/G0/G0-07/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G0-08": {
+    "path": "engineering/work-products/G0/G0-08/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G0-09": {
+    "path": "engineering/work-products/G0/G0-09/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G1-01": {
+    "path": "engineering/work-products/G1/G1-01/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G1-02": {
+    "path": "engineering/work-products/G1/G1-02/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G1-03": {
+    "path": "engineering/work-products/G1/G1-03/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G1-04": {
+    "path": "engineering/work-products/G1/G1-04/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G1-05": {
+    "path": "engineering/work-products/G1/G1-05/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G1-06": {
+    "path": "engineering/work-products/G1/G1-06/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G1-07": {
+    "path": "engineering/work-products/G1/G1-07/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G1-08": {
+    "path": "engineering/work-products/G1/G1-08/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G2-01": {
+    "path": "engineering/work-products/G2/G2-01/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G2-02": {
+    "path": "engineering/work-products/G2/G2-02/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G2-03": {
+    "path": "engineering/work-products/G2/G2-03/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G2-04": {
+    "path": "engineering/work-products/G2/G2-04/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G2-05": {
+    "path": "engineering/work-products/G2/G2-05/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G2-06": {
+    "path": "engineering/work-products/G2/G2-06/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G2-07": {
+    "path": "engineering/work-products/G2/G2-07/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G2-08": {
+    "path": "engineering/work-products/G2/G2-08/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G3-01": {
+    "path": "engineering/work-products/G3/G3-01/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G3-02": {
+    "path": "engineering/work-products/G3/G3-02/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G3-03": {
+    "path": "engineering/work-products/G3/G3-03/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G3-04": {
+    "path": "engineering/work-products/G3/G3-04/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G3-05": {
+    "path": "engineering/work-products/G3/G3-05/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G3-06": {
+    "path": "engineering/work-products/G3/G3-06/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G3-07": {
+    "path": "engineering/work-products/G3/G3-07/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G3-08": {
+    "path": "engineering/work-products/G3/G3-08/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G4-01": {
+    "path": "engineering/work-products/G4/G4-01/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G4-02": {
+    "path": "engineering/work-products/G4/G4-02/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G4-03": {
+    "path": "engineering/work-products/G4/G4-03/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G4-04": {
+    "path": "engineering/work-products/G4/G4-04/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G4-05": {
+    "path": "engineering/work-products/G4/G4-05/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G4-06": {
+    "path": "engineering/work-products/G4/G4-06/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G4-07": {
+    "path": "engineering/work-products/G4/G4-07/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G5-01": {
+    "path": "engineering/work-products/G5/G5-01/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G5-02": {
+    "path": "engineering/work-products/G5/G5-02/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G5-03": {
+    "path": "engineering/work-products/G5/G5-03/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G5-04": {
+    "path": "engineering/work-products/G5/G5-04/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G5-05": {
+    "path": "engineering/work-products/G5/G5-05/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G5-06": {
+    "path": "engineering/work-products/G5/G5-06/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  },
+  "G5-07": {
+    "path": "engineering/work-products/G5/G5-07/index.md",
+    "status": "NOT_STARTED",
+    "revision": "unassigned",
+    "owner_role": "ENGINEERING_AUTHOR",
+    "last_review": null
+  }
+}

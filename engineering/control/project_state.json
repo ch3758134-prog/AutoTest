@@ -1,0 +1,68 @@
+{
+  "schema": "SAEF-project-state/1",
+  "project_id": "AutoTest",
+  "framework_id": "SAEF",
+  "framework_version": "2.0.0",
+  "working_phase": "G0",
+  "source_repository": null,
+  "source_revision": null,
+  "gate_policy": "approval_required",
+  "gates": {
+    "P0": {
+      "status": "NOT_REVIEWED",
+      "approved_by": null,
+      "approved_at": null,
+      "configuration_id": null,
+      "git_commit": null,
+      "record_path": null
+    },
+    "G0": {
+      "status": "NOT_REVIEWED",
+      "approved_by": null,
+      "approved_at": null,
+      "configuration_id": null,
+      "git_commit": null,
+      "record_path": null
+    },
+    "G1": {
+      "status": "NOT_REVIEWED",
+      "approved_by": null,
+      "approved_at": null,
+      "configuration_id": null,
+      "git_commit": null,
+      "record_path": null
+    },
+    "G2": {
+      "status": "NOT_REVIEWED",
+      "approved_by": null,
+      "approved_at": null,
+      "configuration_id": null,
+      "git_commit": null,
+      "record_path": null
+    },
+    "G3": {
+      "status": "NOT_REVIEWED",
+      "approved_by": null,
+      "approved_at": null,
+      "configuration_id": null,
+      "git_commit": null,
+      "record_path": null
+    },
+    "G4": {
+      "status": "NOT_REVIEWED",
+      "approved_by": null,
+      "approved_at": null,
+      "configuration_id": null,
+      "git_commit": null,
+      "record_path": null
+    },
+    "G5": {
+      "status": "NOT_REVIEWED",
+      "approved_by": null,
+      "approved_at": null,
+      "configuration_id": null,
+      "git_commit": null,
+      "record_path": null
+    }
+  }
+}
