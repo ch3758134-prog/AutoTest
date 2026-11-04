@@ -1,0 +1,23 @@
+{
+  "schema": "SAEF-authority-decision/1",
+  "project_id": "AutoTest",
+  "decision_id": "AT-M2-20261103-P0-GATE",
+  "action": "approve-gate",
+  "phase": "P0",
+  "decision": "PASS",
+  "authorized_by": "AutoTest项目负责人（当前对话明确批准）",
+  "authorized_at": "2026-11-03",
+  "reason": "P0 八项 M2 治理工作产品经集中批准并完成受控应用；以 Git 已提交的工作产品和审批证据确认治理基线。",
+  "limitations": [],
+  "evidence_refs": [
+    "项目负责人在当前对话明确：“批准了，P0到G1都批准了”——批准 M2 P0/G0/G1 集中候审内容与所请求的 Git-only 受控落档；不包含 G2/G3/编码/实测授权。",
+    "M2 P0 内容包 SHA-256 15c8635c1bb9da6a7bf3e91a38a0135b258477eea708e2155f53f865052e918d",
+    "P0 所有工作产品已接受（本地执行后验证）",
+    "eng.py check PASS（本地执行后验证）",
+    "已落档的文档内容 Git commit: c0291f97d9d3783805f429d585033908c7615302",
+    "M2 P0 受控审查记录: 8 份 ACCEPTED"
+  ],
+  "configuration_id": "AT-M2-P0-20261103-c0291f97d9d3",
+  "git_commit": "c0291f97d9d3783805f429d585033908c7615302",
+  "attestation": "I AUTHORIZE AT-M2-20261103-P0-GATE"
+}

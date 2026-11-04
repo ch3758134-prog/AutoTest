@@ -9,12 +9,12 @@
   "gate_policy": "approval_required",
   "gates": {
     "P0": {
-      "status": "NOT_REVIEWED",
-      "approved_by": null,
-      "approved_at": null,
-      "configuration_id": null,
-      "git_commit": null,
-      "record_path": null
+      "status": "PASS",
+      "approved_by": "AutoTest项目负责人（当前对话明确批准）",
+      "approved_at": "2026-11-03",
+      "configuration_id": "AT-M2-P0-20261103-c0291f97d9d3",
+      "git_commit": "c0291f97d9d3783805f429d585033908c7615302",
+      "record_path": "engineering/control/approvals/AT-M2-20261103-P0-GATE.json"
     },
     "G0": {
       "status": "NOT_REVIEWED",
