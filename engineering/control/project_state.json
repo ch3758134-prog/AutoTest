@@ -33,12 +33,12 @@
       "record_path": "engineering/control/approvals/AT-M2-20261103-G1-GATE.json"
     },
     "G2": {
-      "status": "NOT_REVIEWED",
-      "approved_by": null,
-      "approved_at": null,
-      "configuration_id": null,
-      "git_commit": null,
-      "record_path": null
+      "status": "PASS_WITH_LIMITATIONS",
+      "approved_by": "AutoTest项目负责人（当前对话对 G2 v0.7 明确回复“批准了”）",
+      "approved_at": "2026-11-03",
+      "configuration_id": "AT-G2-V007-20261103-df6f885c8d99",
+      "git_commit": "df6f885c8d99a09ac9478cae35a15e1e4a103442",
+      "record_path": "engineering/control/approvals/AT-G2-V007-20261103-G2-GATE.json"
     },
     "G3": {
       "status": "NOT_REVIEWED",
