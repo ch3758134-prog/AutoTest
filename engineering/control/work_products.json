@@ -210,59 +210,75 @@
   },
   "G1-01": {
     "path": "engineering/work-products/G1/G1-01/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "ACCEPTED",
+    "revision": "AT-M2-G1-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": null
+    "last_review": "AT-M2-20261103-G1-01-ACCEPT",
+    "review_sha256": "246362bc4e579714d44566a9840ec82f908f3f1445fe584f7d37a8a93fb219df",
+    "accepted_sha256": "246362bc4e579714d44566a9840ec82f908f3f1445fe584f7d37a8a93fb219df"
   },
   "G1-02": {
     "path": "engineering/work-products/G1/G1-02/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "ACCEPTED",
+    "revision": "AT-M2-G1-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": null
+    "last_review": "AT-M2-20261103-G1-02-ACCEPT",
+    "review_sha256": "cc7be8d4109343f3a29dc773abe43783b940556e3600f6c512020627bf8d0c0d",
+    "accepted_sha256": "cc7be8d4109343f3a29dc773abe43783b940556e3600f6c512020627bf8d0c0d"
   },
   "G1-03": {
     "path": "engineering/work-products/G1/G1-03/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "ACCEPTED",
+    "revision": "AT-M2-G1-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": null
+    "last_review": "AT-M2-20261103-G1-03-ACCEPT",
+    "review_sha256": "32544156c8db54ee17d4c2c0a515a99c3632890a3c81e9ff1f09a339ce745b61",
+    "accepted_sha256": "32544156c8db54ee17d4c2c0a515a99c3632890a3c81e9ff1f09a339ce745b61"
   },
   "G1-04": {
     "path": "engineering/work-products/G1/G1-04/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "ACCEPTED",
+    "revision": "AT-M2-G1-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": null
+    "last_review": "AT-M2-20261103-G1-04-ACCEPT",
+    "review_sha256": "d06aa75240d0144e7e56eb7c041ff9fa5fb94f2d488dd06cab22b38a04bb083f",
+    "accepted_sha256": "d06aa75240d0144e7e56eb7c041ff9fa5fb94f2d488dd06cab22b38a04bb083f"
   },
   "G1-05": {
     "path": "engineering/work-products/G1/G1-05/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "ACCEPTED",
+    "revision": "AT-M2-G1-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": null
+    "last_review": "AT-M2-20261103-G1-05-ACCEPT",
+    "review_sha256": "a7e57625e2ea3730feaca36089dfc60a88d10a6b022c2f0aa980afa14a119f11",
+    "accepted_sha256": "a7e57625e2ea3730feaca36089dfc60a88d10a6b022c2f0aa980afa14a119f11"
   },
   "G1-06": {
     "path": "engineering/work-products/G1/G1-06/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "ACCEPTED",
+    "revision": "AT-M2-G1-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": null
+    "last_review": "AT-M2-20261103-G1-06-ACCEPT",
+    "review_sha256": "96b95bc992351866c807fc858a14ac50fdf358a3fd2315be3a6a5c06eec9731a",
+    "accepted_sha256": "96b95bc992351866c807fc858a14ac50fdf358a3fd2315be3a6a5c06eec9731a"
   },
   "G1-07": {
     "path": "engineering/work-products/G1/G1-07/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "ACCEPTED",
+    "revision": "AT-M2-G1-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": null
+    "last_review": "AT-M2-20261103-G1-07-ACCEPT",
+    "review_sha256": "d565b2e179d1df39ea6db41297f6728aeb0cae45b834bc45b9056c87f1c85f2f",
+    "accepted_sha256": "d565b2e179d1df39ea6db41297f6728aeb0cae45b834bc45b9056c87f1c85f2f"
   },
   "G1-08": {
     "path": "engineering/work-products/G1/G1-08/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "ACCEPTED",
+    "revision": "AT-M2-G1-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": null
+    "last_review": "AT-M2-20261103-G1-08-ACCEPT",
+    "review_sha256": "7730e28f33fb1e35ead99b594575648da8cc2ff6f512ba1cf6d72814223edbcc",
+    "accepted_sha256": "7730e28f33fb1e35ead99b594575648da8cc2ff6f512ba1cf6d72814223edbcc"
   },
   "G2-01": {
     "path": "engineering/work-products/G2/G2-01/index.md",
