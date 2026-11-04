@@ -17,12 +17,12 @@
       "record_path": "engineering/control/approvals/AT-M2-20261103-P0-GATE.json"
     },
     "G0": {
-      "status": "NOT_REVIEWED",
-      "approved_by": null,
-      "approved_at": null,
-      "configuration_id": null,
-      "git_commit": null,
-      "record_path": null
+      "status": "PASS_WITH_LIMITATIONS",
+      "approved_by": "AutoTest项目负责人（当前对话明确批准）",
+      "approved_at": "2026-11-03",
+      "configuration_id": "AT-M2-G0-20261103-5118c8148be2",
+      "git_commit": "5118c8148be201981770d4d2f5ea51b6311bbe91",
+      "record_path": "engineering/control/approvals/AT-M2-20261103-G0-GATE.json"
     },
     "G1": {
       "status": "NOT_REVIEWED",
