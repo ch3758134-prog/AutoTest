@@ -1,6 +1,6 @@
 # P0-07｜AutoTest 工具与开发环境配置
 
-> SAEF v2.0 工作产品 · v001 · 2026-11-03 · **候审 DRAFT**。本文只规定 P0 治理规则，不替代 G0–G5 的具体技术设计或实际验收；正式状态由 SAEF 登记表维护。
+> SAEF v2.0 / `P0-07` · **M2 修订候审，尚未替换本地 ACCEPTED 版本**。以本地已接受文档为父版本，旧哈希、审批记录及差异表见本包。
 
 ## 一、工具、平台和依赖版本
 
@@ -9,7 +9,7 @@
 | 工具/环境 | 版本或身份 | 证据等级 | 用途 |
 |---|---|---|---|
 | Windows 开发主机 | Windows，具体版本及架构未在当前回执记录 | 部分确认 | 本地工程、Codex、SAEF 工具 |
-| Python | **3.12.10**（P0-01 Codex 实际回执） | `SOURCE_VERIFIED`（执行方回报） | SAEF 脚本；标准库，无需 pip |
+| Python | **3.12.10**（历史 P0-01 Codex 回执，非本轮复验） | `SOURCE_VERIFIED`（执行方回报） | SAEF 脚本；标准库，无需 pip |
 | SAEF | `FRAMEWORK_VERSION.json` 与 `catalog.json` 记载 **v2.0.0** | 原件可核对 | 55 工作产品、工作区检查、交付、审批、站点生成 |
 | SAEF 工作根 | `D:\01_Projects\auto\AutoTest_SAEF_Local_Initialize_v1\AutoTest_SAEF_Local_Initialize_v1` | 执行方回报 | 当前本地 SAEF 运行位置 |
 | Git | 当前 **无仓库**（P0-01 回执） | 执行方回报 | P0-04 将规定项目文档本地版本管理 |
@@ -20,7 +20,7 @@
 
 - **P0 阶段仅要求**：已完整解压的 SAEF v2.0、`WORKSPACE/AutoTest`、Python 3.10+、能够读取本地文件。不得为了填充工具表而自动安装第三方依赖、SDK 或升级固件工具链。
 - 交付操作前确认当前目录为含 `TOOLS/eng.py`、`FRAMEWORK/catalog.json` 的 SAEF 根；确认四项资产在 `engineering/control/assets.json` 指定路径存在。
-- 项目 `.gitignore`、独立备份、Git 仓库按 **批准后的 P0-04** 执行；本工作产品不执行 `git init`、不规定开发 IDE 固定安装路径。
+- 项目 `.gitignore`、独立备份、Git 仓库按 **P0-04 的当前受控规则及后续批准变更** 执行；本工作产品不执行 `git init`、不规定开发 IDE 固定安装路径。
 - 涉及 WinUSB 驱动、主控连接和真实硬件动作的专用环境在后续 G0/G3 记录和审批，不能把“Python 脚本可运行”当成 HOST 已可操作硬件。
 
 ## 三、构建及运行命令
@@ -64,3 +64,10 @@ py -3 TOOLS/eng.py verify-backup "<上一步实际生成的ZIP绝对路径>"
 - Git 初始化、独立恢复演练、HOST/FW 工具清单均登记为 P0 Gate / 后续适用 Gate 的待关闭证据，不得无来源补全。
 
 **本项验收判断**：P0 管理环境的工具识别、实际命令及复现检查方法已明确；最终“在指定环境可复现”的充分性，还需要按此清单收到用户 Windows 复现回执，不能只靠本文件自审宣称已经验收通过。
+## 实际研发环境与双固件/新 HOST 工具链控制
+
+- 本机 SAEF 使用已上传归档提供的 `TOOLS/eng.py`、`FRAMEWORK/`、`WORKSPACE/AutoTest`；上传归档中 HEAD 为 `33a59d9…`，实际本机状态需再次核查。
+- 主控、按键两套 MCU 固件应分别保留准确编译工程/Target、Keil 版本、编译器、烧录器/步骤、映像 SHA、板卡身份及运行证据；目前仅收到压缩包，**不能宣称固件已经用当前环境重新编译**。
+- 新 Windows HOST 采用 WPF/C#，Prism 9 是已确认的框架方向，但依赖版本、工作台 Dock 选型、模块程序集拆分和项目源码组织仍由 G2/G3 设计。旧 `src` 工程目录只是研究资料，非强制重建方案。
+- 真实台架验证需要现场 PC、扫码枪、两路电源、主控与按键板、ECU、夹具和连接；B0 阶段核实具体可用设备及物理安全条件。虚拟协议/模拟设备用于提前单测和契约验证，不替代 B0～B6。
+- Codex 只执行明确提交的复制、`dotnet`/Keil 编译、本地 Git、测试和日志收集命令，不独立运行未经批准的试验操作。

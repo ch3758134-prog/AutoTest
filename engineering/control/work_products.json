@@ -2,74 +2,130 @@
   "P0-01": {
     "path": "engineering/work-products/P0/P0-01/index.md",
     "status": "ACCEPTED",
-    "revision": "AT-P0-01-R004-20261103",
+    "revision": "AT-M2-P0-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": "AT-P0-01-ACCEPT-V004-20261103",
-    "review_sha256": "3f91b818619f97593e3c114393f856cb9091d67c9b4d3f206e7540b2a0daf671",
-    "accepted_sha256": "3f91b818619f97593e3c114393f856cb9091d67c9b4d3f206e7540b2a0daf671"
+    "last_review": "AT-M2-20261103-P0-01-ACCEPT",
+    "revision_lineage": [
+      {
+        "change_id": "AT-M2-20261103-P0-REBASE",
+        "superseded_sha256": "3f91b818619f97593e3c114393f856cb9091d67c9b4d3f206e7540b2a0daf671",
+        "archive": "engineering/control/revisions/AT-M2-20261103-P0-REBASE/P0-01/original.md"
+      }
+    ],
+    "review_sha256": "025e8b17bb8a8a2ae9917c6c196c3c97b2d46f57293e07c904a5043fe0a89f5a",
+    "accepted_sha256": "025e8b17bb8a8a2ae9917c6c196c3c97b2d46f57293e07c904a5043fe0a89f5a"
   },
   "P0-02": {
     "path": "engineering/work-products/P0/P0-02/index.md",
     "status": "ACCEPTED",
-    "revision": "AT-P0-02-R001-20261103",
+    "revision": "AT-M2-P0-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": "AT-P0-02-ACCEPT-V001-20261103",
-    "review_sha256": "16d04d387de1e41889b8ce9efd1950bf127cc54346c03007acdac3b71675c7dd",
-    "accepted_sha256": "16d04d387de1e41889b8ce9efd1950bf127cc54346c03007acdac3b71675c7dd"
+    "last_review": "AT-M2-20261103-P0-02-ACCEPT",
+    "revision_lineage": [
+      {
+        "change_id": "AT-M2-20261103-P0-REBASE",
+        "superseded_sha256": "16d04d387de1e41889b8ce9efd1950bf127cc54346c03007acdac3b71675c7dd",
+        "archive": "engineering/control/revisions/AT-M2-20261103-P0-REBASE/P0-02/original.md"
+      }
+    ],
+    "review_sha256": "57ab46bc386a2f8d52d5786e69dc7f493b8b661769cf9c17c82e0e55097e1534",
+    "accepted_sha256": "57ab46bc386a2f8d52d5786e69dc7f493b8b661769cf9c17c82e0e55097e1534"
   },
   "P0-03": {
     "path": "engineering/work-products/P0/P0-03/index.md",
     "status": "ACCEPTED",
-    "revision": "AT-P0-03-R001-20261103",
+    "revision": "AT-M2-P0-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": "AT-P0-03-ACCEPT-V001-20261103",
-    "review_sha256": "8660ae331e94beb633bcf26dd2015e21fdd4ba9b9249dcc5f7d1a6c2dff5549b",
-    "accepted_sha256": "8660ae331e94beb633bcf26dd2015e21fdd4ba9b9249dcc5f7d1a6c2dff5549b"
+    "last_review": "AT-M2-20261103-P0-03-ACCEPT",
+    "revision_lineage": [
+      {
+        "change_id": "AT-M2-20261103-P0-REBASE",
+        "superseded_sha256": "8660ae331e94beb633bcf26dd2015e21fdd4ba9b9249dcc5f7d1a6c2dff5549b",
+        "archive": "engineering/control/revisions/AT-M2-20261103-P0-REBASE/P0-03/original.md"
+      }
+    ],
+    "review_sha256": "9f76ea4acef1a3b4c441182ab7ca943f94fe0b8007706550f378b31c7ef700f1",
+    "accepted_sha256": "9f76ea4acef1a3b4c441182ab7ca943f94fe0b8007706550f378b31c7ef700f1"
   },
   "P0-04": {
     "path": "engineering/work-products/P0/P0-04/index.md",
     "status": "ACCEPTED",
-    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "revision": "AT-M2-P0-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": "AT-P0-04-ACCEPT-V001-20261103",
-    "review_sha256": "47055e8ec6b7f380c9c0eb9fe06e3eb12f7a075609da6193a914827200696997",
-    "accepted_sha256": "47055e8ec6b7f380c9c0eb9fe06e3eb12f7a075609da6193a914827200696997"
+    "last_review": "AT-M2-20261103-P0-04-ACCEPT",
+    "revision_lineage": [
+      {
+        "change_id": "AT-M2-20261103-P0-REBASE",
+        "superseded_sha256": "47055e8ec6b7f380c9c0eb9fe06e3eb12f7a075609da6193a914827200696997",
+        "archive": "engineering/control/revisions/AT-M2-20261103-P0-REBASE/P0-04/original.md"
+      }
+    ],
+    "review_sha256": "bd613e6fd5b7bb0e2a5caea26bd70a1221cad20d2eb6df93ffad87435c20262f",
+    "accepted_sha256": "bd613e6fd5b7bb0e2a5caea26bd70a1221cad20d2eb6df93ffad87435c20262f"
   },
   "P0-05": {
     "path": "engineering/work-products/P0/P0-05/index.md",
     "status": "ACCEPTED",
-    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "revision": "AT-M2-P0-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": "AT-P0-05-ACCEPT-V001-20261103",
-    "review_sha256": "981811e3e1821af6b57aeb6140d849413cd05a7214d9c90e3397991b8edca487",
-    "accepted_sha256": "981811e3e1821af6b57aeb6140d849413cd05a7214d9c90e3397991b8edca487"
+    "last_review": "AT-M2-20261103-P0-05-ACCEPT",
+    "revision_lineage": [
+      {
+        "change_id": "AT-M2-20261103-P0-REBASE",
+        "superseded_sha256": "981811e3e1821af6b57aeb6140d849413cd05a7214d9c90e3397991b8edca487",
+        "archive": "engineering/control/revisions/AT-M2-20261103-P0-REBASE/P0-05/original.md"
+      }
+    ],
+    "review_sha256": "02a6f18b1ba31ec1f017edd7a331552bfa4a8d580987f6abdc84cd95e6fb80f9",
+    "accepted_sha256": "02a6f18b1ba31ec1f017edd7a331552bfa4a8d580987f6abdc84cd95e6fb80f9"
   },
   "P0-06": {
     "path": "engineering/work-products/P0/P0-06/index.md",
     "status": "ACCEPTED",
-    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "revision": "AT-M2-P0-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": "AT-P0-06-ACCEPT-V001-20261103",
-    "review_sha256": "9e4d2f62fb6850a375dcc87b3fd2a9ef1b7d44e19c3faf65ecaf065371e91cec",
-    "accepted_sha256": "9e4d2f62fb6850a375dcc87b3fd2a9ef1b7d44e19c3faf65ecaf065371e91cec"
+    "last_review": "AT-M2-20261103-P0-06-ACCEPT",
+    "revision_lineage": [
+      {
+        "change_id": "AT-M2-20261103-P0-REBASE",
+        "superseded_sha256": "9e4d2f62fb6850a375dcc87b3fd2a9ef1b7d44e19c3faf65ecaf065371e91cec",
+        "archive": "engineering/control/revisions/AT-M2-20261103-P0-REBASE/P0-06/original.md"
+      }
+    ],
+    "review_sha256": "6944991b55848e089d828f01298d0067d02ea6abf86e231fb405409f16a3b34b",
+    "accepted_sha256": "6944991b55848e089d828f01298d0067d02ea6abf86e231fb405409f16a3b34b"
   },
   "P0-07": {
     "path": "engineering/work-products/P0/P0-07/index.md",
     "status": "ACCEPTED",
-    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "revision": "AT-M2-P0-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": "AT-P0-07-ACCEPT-V001-20261103",
-    "review_sha256": "bd7c43a5daea0c85b903448efbee9f7c321fef25acab1e3bb6e54152dba8bca5",
-    "accepted_sha256": "bd7c43a5daea0c85b903448efbee9f7c321fef25acab1e3bb6e54152dba8bca5"
+    "last_review": "AT-M2-20261103-P0-07-ACCEPT",
+    "revision_lineage": [
+      {
+        "change_id": "AT-M2-20261103-P0-REBASE",
+        "superseded_sha256": "bd7c43a5daea0c85b903448efbee9f7c321fef25acab1e3bb6e54152dba8bca5",
+        "archive": "engineering/control/revisions/AT-M2-20261103-P0-REBASE/P0-07/original.md"
+      }
+    ],
+    "review_sha256": "aa8b31ef4c6d56eb1dfd9d7356a8252d6d040febd8a81bc3728146d6bfadc55c",
+    "accepted_sha256": "aa8b31ef4c6d56eb1dfd9d7356a8252d6d040febd8a81bc3728146d6bfadc55c"
   },
   "P0-08": {
     "path": "engineering/work-products/P0/P0-08/index.md",
     "status": "ACCEPTED",
-    "revision": "AT-P0-BATCH-004-008-R001-20261103",
+    "revision": "AT-M2-P0-CANDIDATE-20261103",
     "owner_role": "ENGINEERING_AUTHOR",
-    "last_review": "AT-P0-08-ACCEPT-V001-20261103",
-    "review_sha256": "08ce820d4a6e6412241fe3e1dd674353d92897d6ab6d677208245afa0f2e5cde",
-    "accepted_sha256": "08ce820d4a6e6412241fe3e1dd674353d92897d6ab6d677208245afa0f2e5cde"
+    "last_review": "AT-M2-20261103-P0-08-ACCEPT",
+    "revision_lineage": [
+      {
+        "change_id": "AT-M2-20261103-P0-REBASE",
+        "superseded_sha256": "08ce820d4a6e6412241fe3e1dd674353d92897d6ab6d677208245afa0f2e5cde",
+        "archive": "engineering/control/revisions/AT-M2-20261103-P0-REBASE/P0-08/original.md"
+      }
+    ],
+    "review_sha256": "53e2c78d7ed9f1810a2e275228758c10a827afbb5242d8dbccd1458b22799772",
+    "accepted_sha256": "53e2c78d7ed9f1810a2e275228758c10a827afbb5242d8dbccd1458b22799772"
   },
   "G0-01": {
     "path": "engineering/work-products/G0/G0-01/index.md",
