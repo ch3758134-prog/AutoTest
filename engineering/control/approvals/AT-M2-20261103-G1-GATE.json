@@ -1,0 +1,27 @@
+{
+  "schema": "SAEF-authority-decision/1",
+  "project_id": "AutoTest",
+  "decision_id": "AT-M2-20261103-G1-GATE",
+  "action": "approve-gate",
+  "phase": "G1",
+  "decision": "PASS_WITH_LIMITATIONS",
+  "authorized_by": "AutoTest项目负责人（当前对话明确批准）",
+  "authorized_at": "2026-11-03",
+  "reason": "G1 八项系统需求与阶段范围经负责人集中批准，未知项按受控迭代机制管理。",
+  "limitations": [
+    "46 条需求中部分为候选与待验证，未决事项在后续设计及实测中收口。",
+    "扫码、CAN 烧录、UDS、自动测试判定及 UI 仍需模块实施和真实使用验证。",
+    "本 Gate 仅确认系统需求及阶段范围，不代表批准 G2/G3 或代码实施。"
+  ],
+  "evidence_refs": [
+    "项目负责人在当前对话明确：“批准了，P0到G1都批准了”——批准 M2 P0/G0/G1 集中候审内容与所请求的 Git-only 受控落档；不包含 G2/G3/编码/实测授权。",
+    "M2 G1 内容包 SHA-256 fde727ebcf79aa945a5d947b887a0c7dc9d82601c35ee15c0241eefff0b4fbd5",
+    "G1 所有工作产品已接受（本地执行后验证）",
+    "eng.py check PASS（本地执行后验证）",
+    "已落档的文档内容 Git commit: 028b7e5dc8c5d1274a06574529c0c3bf5ba65386",
+    "M2 G1 受控审查记录: 8 份 ACCEPTED"
+  ],
+  "configuration_id": "AT-M2-G1-20261103-028b7e5dc8c5",
+  "git_commit": "028b7e5dc8c5d1274a06574529c0c3bf5ba65386",
+  "attestation": "I AUTHORIZE AT-M2-20261103-G1-GATE"
+}
