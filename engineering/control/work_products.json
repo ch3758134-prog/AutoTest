@@ -426,8 +426,8 @@
   },
   "G4-01": {
     "path": "engineering/work-products/G4/G4-01/index.md",
-    "status": "NOT_STARTED",
-    "revision": "unassigned",
+    "status": "DRAFT",
+    "revision": "AT-G4-V002-PLAN-APPROVED-20261104",
     "owner_role": "ENGINEERING_AUTHOR",
     "last_review": null
   },
