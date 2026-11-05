@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsTestProject>false</IsTestProject></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/AutoTest.Core/AutoTest.Core.csproj" />
+    <ProjectReference Include="../../src/AutoTest.Contracts/AutoTest.Contracts.csproj" />
+    <ProjectReference Include="../../src/AutoTest.Application/AutoTest.Application.csproj" />
+  </ItemGroup>
+</Project>

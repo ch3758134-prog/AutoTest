@@ -1,0 +1,392 @@
+{
+  "work_package": "WPB-G4-INIT",
+  "release": "V0-R2",
+  "sha256_algorithm": "SHA-256",
+  "manifest_self_excluded": true,
+  "authorized_file_count": 53,
+  "approved_extra_file_count": 11,
+  "scope_approval": "MAIN_CHAT_APPROVED_FOR_V0",
+  "candidate_public_api_hash": "0417108b292353b896b88f8170b129f1d63c4ef2dfcfbc3491990d2bd8dd7a6a",
+  "contract_revision": "UNSET_CANDIDATE",
+  "windows_verification": "NOT_RUN",
+  "files": [
+    {
+      "path": ".editorconfig",
+      "bytes": 262,
+      "sha256": "3488b80f6f4fd94b44ae9e4e6efdac875fe37422c5e09148b345526359903108",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 135,
+      "sha256": "8d386517e6e32ceacc012991da13aef6c1826d40c25b6ee8bb7f52fd417eeb51",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "AutoTest.sln",
+      "bytes": 7547,
+      "sha256": "e719d73edfb48e2f9c6b303e1c1617065fa47f4b675678f517b9afbfc30606a6",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "CODEX_EXECUTION.md",
+      "bytes": 12745,
+      "sha256": "15ab3e300ee421d2405545aa1cd830a223920b1454773ad2bc7fd871c4989b37",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "Directory.Build.props",
+      "bytes": 527,
+      "sha256": "b89b3a9955b7188d657a2819861566e7b8e10cd111d1eeaf5ac724daa4c10e58",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "Directory.Packages.props",
+      "bytes": 503,
+      "sha256": "9dba6da21b785c69b3f2ce07e391d5e8292a7457763f8e6136ac8b9d993307bb",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "FILE_TREE.txt",
+      "bytes": 2615,
+      "sha256": "6ddb484f99b8f253863fb7107f77b55d32e8b497d6948f1af7372a1030722ca9",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "MAIN_CHAT_RETURN.md",
+      "bytes": 1693,
+      "sha256": "cce13f9de902601ef33046b723103a12931a1c914f32f0ec876835ec94f91bab",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "NuGet.Config",
+      "bytes": 309,
+      "sha256": "cde6abad702d8dc287192161558ad1fd0dbbd2ef9c040190d2b9b360fabd6126",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "PROPOSED_ADDITIONAL_PATHS.csv",
+      "bytes": 1915,
+      "sha256": "b5304b97ef4987405324c3c019d92472d4a1ee3ecda5a1110b2214973ed01fca",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2837,
+      "sha256": "9d01254800b009f3481e171f3b0b6abd81b7a15069113d5061d48073a98da5de",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "V0_VERIFICATION_REPORT.md",
+      "bytes": 2461,
+      "sha256": "a6768ccce833639cc97b37fc24ff950bdb7bf04bf0cfe8816c642d540a5bf628",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "docs/engineering/BUILD_ENVIRONMENT.md",
+      "bytes": 1386,
+      "sha256": "6902ae25c672fd988fdc615a4036e04364fb52a2f30f76f4496b27a98fb6b8d3",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "docs/engineering/CONTRACT_REVISION.md",
+      "bytes": 5159,
+      "sha256": "fc9c9b34d4987ce88c1da509fd621ecc59ff569bad664cf798b098b1d6edb3e1",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "docs/engineering/G3_BASELINE.json",
+      "bytes": 602,
+      "sha256": "0b5aa8a3df1d24210c1188bcfcec23242c07e1d59c2b6df8c7f2287b39b33245",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "docs/engineering/INTEGRATION_LOG.md",
+      "bytes": 1093,
+      "sha256": "4b174db3c2adc6d386562e2f3ef0889fd22fcd1d434f15fddb6683c6536554e4",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "docs/engineering/KNOWN_LIMITATIONS.md",
+      "bytes": 1410,
+      "sha256": "021596498ecef8ebd159f7cc12bb30fbe41912a3f9847a7e933622649ffa6981",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "docs/engineering/SOURCE_REUSE_DECISIONS.md",
+      "bytes": 478,
+      "sha256": "bac1ca18267fedf5b94dfc40a4a59e04883ac253eebb8355a567bc8760bc03b4",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "docs/verification/TEST_MANIFEST.json",
+      "bytes": 6687,
+      "sha256": "3ea478ee8eab63c5ed59dd2a89679559441bbecfbf4fc20132e9a88c918c726b",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "global.json",
+      "bytes": 109,
+      "sha256": "b54f95ccc7a0a2199f7f2ce71cef88c853e633b5f6d0c492095cd16bbf4d8506",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Application/AutoTest.Application.csproj",
+      "bytes": 157,
+      "sha256": "4046a80c8cbe775b38d9bf5943829b5479d1b4cdd90d2a1f81fc6f8e6828c98d",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Application/Commands/ApplicationCommandRouter.cs",
+      "bytes": 8562,
+      "sha256": "141652fa16a2f2e706446148e70be8a6d303b7424f717dddf49ce1bc77cc1810",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Application/Composition/ApplicationComposition.cs",
+      "bytes": 8313,
+      "sha256": "cec25892d348901d69cfe3860fbfbded08cc2336d2e5d8f99ea7af55248fbf45",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Contracts/AutoTest.Contracts.csproj",
+      "bytes": 147,
+      "sha256": "76e1afea9ecf51774be13420a5750f2b23b1f702832d15c1ad2ba9fb00e76187",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Contracts/CanContracts.cs",
+      "bytes": 2209,
+      "sha256": "e6a1ef4c059641fb03680b30ecbaf945845313faa2824dd4d16330aaa7ab749a",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Contracts/DeviceContracts.cs",
+      "bytes": 2350,
+      "sha256": "741425cd13e8250371aeda1145a77a2b4cd7dc5fd8e775a19533ca4aa5bd4e8a",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Contracts/ProjectContracts.cs",
+      "bytes": 1303,
+      "sha256": "1a956b64f36cec145031a644f276433ac13502ebb830bba45d801ebc8ee2071e",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Contracts/RecordContracts.cs",
+      "bytes": 995,
+      "sha256": "003c0001738e14c61b1339121f502cb4bec226d95341e721d72e7eaa448e1282",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Contracts/SpecialistContracts.cs",
+      "bytes": 2979,
+      "sha256": "325ea62e8e99913a9389a84614bcb845648667e8de71c8317024688ed6d1941c",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Contracts/TestingContracts.cs",
+      "bytes": 1805,
+      "sha256": "9c1618e3fb6ef3696968fb33424930df21cb12ad86f547a963eda78fc8a3fb7b",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Contracts/UiContracts.cs",
+      "bytes": 1906,
+      "sha256": "16d134e25e24f97dc9bf99969d55ee6645c2a7e1b23498f6c717468bba136c33",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Core/AutoTest.Core.csproj",
+      "bytes": 45,
+      "sha256": "3702bcd64b09004893c0afdb530b6b91249de567d2b8708f8ac16dab0c9dd561",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Core/Ids.cs",
+      "bytes": 4549,
+      "sha256": "08b378978bcfb611fbccff32f1403fc16cc0263f5a51ee2aab8b3ece7e7580f7",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Core/OperationResult.cs",
+      "bytes": 2080,
+      "sha256": "3c5221178d89f7aff97ac920d380918c485d0d42a338571f208d3799626e6516",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Core/TimeEvidence.cs",
+      "bytes": 1046,
+      "sha256": "c2f1e15e6f9118126029be5ecab99c5459db55882a487eb7965a07148155503c",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Core/VersionFingerprint.cs",
+      "bytes": 1241,
+      "sha256": "29e6b50031a1ba61e34382ce9ca525c564117b01e0d013a8836c15c5371e9e0d",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Desktop/App.xaml",
+      "bytes": 284,
+      "sha256": "490710f905eb7ecabdb2b0c2dc50d771ac2248ddf13440078e4e8299a72ae5d3",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Desktop/App.xaml.cs",
+      "bytes": 548,
+      "sha256": "a9179e4c53c5cb63a1de0ec2a3d28b7b50a75ed831985bdd485f39568e341dce",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Desktop/AutoTest.Desktop.csproj",
+      "bytes": 449,
+      "sha256": "b1f6cb2913828452333b42236affe8fb84fad04853909897358ba8c3e9949446",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Desktop/Bootstrap/PrismRegistration.cs",
+      "bytes": 988,
+      "sha256": "9f997df9d146f4562c3d1db626db14e517b792d3718415b5c9f46c2d7906f099",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Desktop/Shell/MainWindow.xaml",
+      "bytes": 7172,
+      "sha256": "79986dfcee8a333cd67a9a42fbec8824cff8b0bebcc5fc556f35257895db7833",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Desktop/Shell/MainWindow.xaml.cs",
+      "bytes": 1356,
+      "sha256": "329c3497150c3c49e8306a2922f9105155edc567429be973eeea0a08ee072506",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Desktop/Shell/MainWindowViewModel.cs",
+      "bytes": 3872,
+      "sha256": "4ea0a9665b696f2ea0a716b58b92fb9651e4fc7da0a1a463cd877bc1c1f5d6b3",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Devices/AutoTest.Devices.csproj",
+      "bytes": 157,
+      "sha256": "4046a80c8cbe775b38d9bf5943829b5479d1b4cdd90d2a1f81fc6f8e6828c98d",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Projects/AutoTest.Projects.csproj",
+      "bytes": 157,
+      "sha256": "4046a80c8cbe775b38d9bf5943829b5479d1b4cdd90d2a1f81fc6f8e6828c98d",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Records/AutoTest.Records.csproj",
+      "bytes": 157,
+      "sha256": "4046a80c8cbe775b38d9bf5943829b5479d1b4cdd90d2a1f81fc6f8e6828c98d",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Specialists/AutoTest.Specialists.csproj",
+      "bytes": 157,
+      "sha256": "4046a80c8cbe775b38d9bf5943829b5479d1b4cdd90d2a1f81fc6f8e6828c98d",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "src/AutoTest.Testing/AutoTest.Testing.csproj",
+      "bytes": 157,
+      "sha256": "4046a80c8cbe775b38d9bf5943829b5479d1b4cdd90d2a1f81fc6f8e6828c98d",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.Contracts.Tests/AutoTest.Contracts.Tests.csproj",
+      "bytes": 705,
+      "sha256": "fbc4b58264296735c0736660a8781bf4b873454e2d591710e07ceebca93892fe",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.Contracts.Tests/CoreContractTests.cs",
+      "bytes": 8344,
+      "sha256": "3c91cc419bb0eee8278f852d89ccf097c1df1c6549c843288a3e19c069948ef6",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "tests/AutoTest.Desktop.Tests/AutoTest.Desktop.Tests.csproj",
+      "bytes": 723,
+      "sha256": "2f87669762245b6e3ec2de6634f9a036a997ae479b369d42914686d7d5b2cd1a",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.Desktop.Tests/WorkbenchViewModelTests.cs",
+      "bytes": 1452,
+      "sha256": "6f6dd0bb5e9fed7a07ba398ea693ef4acac40c164c8a2484959f995a9aa89feb",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj",
+      "bytes": 705,
+      "sha256": "fbc4b58264296735c0736660a8781bf4b873454e2d591710e07ceebca93892fe",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.Devices.Tests/MockTransportTests.cs",
+      "bytes": 1384,
+      "sha256": "20c2e4051f6d5dae88204965023f05c5deb9965b4f09000ba3d48a272aba0f47",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "tests/AutoTest.Integration.Tests/AutoTest.Integration.Tests.csproj",
+      "bytes": 705,
+      "sha256": "fbc4b58264296735c0736660a8781bf4b873454e2d591710e07ceebca93892fe",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.Integration.Tests/MockRunSmokeTests.cs",
+      "bytes": 3457,
+      "sha256": "38cd3721a4e02d5e50f8c7aefdeeaa6b6ec7a2e1f3dd20b723a5f58f1d0d2c67",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.TestFixtures/AutoTest.TestFixtures.csproj",
+      "bytes": 408,
+      "sha256": "7bdec5f6957b9d666877eedc3a2bfaf03942ed3ef9b19aa2d831e8338d7e3261",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.TestFixtures/FakeClock.cs",
+      "bytes": 845,
+      "sha256": "bd7c4b07786b78830ba835615ce0a3fbd5693cde4edf53516a05c9ef5fdda178",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.TestFixtures/FakeStation.cs",
+      "bytes": 1218,
+      "sha256": "4695ffbf9841ae1aa9d1f357ec75e8c6a037fd6121931f71eceb322971f7a682",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.TestFixtures/FakeUsbByteLink.cs",
+      "bytes": 1111,
+      "sha256": "f567f233bab3841857885a5b37581f88cd619fa826c4e122ca452e7b0cb552e7",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/AutoTest.TestFixtures/ReplayCanStream.cs",
+      "bytes": 660,
+      "sha256": "14de5e937ee4daec3ae8a64f044b76420411a78ca4b27d43267935008dc43f26",
+      "scope": "AUTHORIZED_53"
+    },
+    {
+      "path": "tests/negative/StrongIdMisuse/BadId.cs",
+      "bytes": 216,
+      "sha256": "ef3be6518dd202e42240accbb5eef087e5693e181046858970c0828698a23d6d",
+      "scope": "APPROVED_EXTRA_11"
+    },
+    {
+      "path": "tests/negative/StrongIdMisuse/StrongIdMisuse.csproj",
+      "bytes": 265,
+      "sha256": "1d746b74bcf3adb64211343727e3d592aa4aa4c9f6f5901ceb5ab5cab0d506d3",
+      "scope": "APPROVED_EXTRA_11"
+    }
+  ]
+}
