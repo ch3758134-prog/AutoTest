@@ -29,7 +29,7 @@ public sealed class CanFrameHub : ICanFrameHub, IDisposable
                 if(listener.Spec.Role!=observation.Frame.Role ||
                    (!listener.Spec.AllowedIds.IsDefaultOrEmpty && !listener.Spec.AllowedIds.Contains(observation.Frame.Id))) continue;
                 // Explicitly account for overflow before a replacement (no silent DropOldest).
-                if(!listener.Queue.Writer.TryWrite(observation with { LostFrames=listener.Dropped }))
+                if(!listener.Queue.Writer.TryWrite(observation with { LostFrames=observation.LostFrames+listener.Dropped }))
                 { listener.Dropped++; TotalDropped++; }
             }
         }
