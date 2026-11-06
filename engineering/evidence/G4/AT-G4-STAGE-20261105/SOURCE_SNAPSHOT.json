@@ -1,0 +1,170 @@
+{
+  "schema": "AutoTest-G4-stage-source-evidence/1",
+  "stage_id": "AT-G4-STAGE-20261105",
+  "as_of": "2026-11-05",
+  "evidence_class": "source-archive-inspection-plus-operator-reported-windows-results",
+  "source_host_zip_sha256": "abaa50be60647797c9eabe163bda0984dec500b70c359c30cc8055742bb38d9e",
+  "source_saef_zip_sha256": "616c0d1dd87883efb7e795166753c36c79c1fadc830b6b2ecfe1d75a3b89b012",
+  "saef_input_git_head": "15e2e62a1e5186879e451f7b17bf2c1804682326",
+  "host_repo_branch": "g4/v1-stage-4",
+  "host_committed_head": "1afd178c8c30234363bded731203bbd0556bd885",
+  "host_worktree_is_clean": false,
+  "host_worktree_modified_count": 7,
+  "host_worktree_untracked_count": 12,
+  "host_modified": [
+    {
+      "path": "AutoTest.sln",
+      "worktree_sha256": "b21b06c67c8da4ab6ce5b926f1611f31be675c1bcbc2a3c072dbb31dc883728f",
+      "commit_sha256": "dfdb0ef216aefb127a6d6896e7c5c6f390ce083d29a3636a8a7641532b578d69"
+    },
+    {
+      "path": "src/AutoTest.Application/V1/V1Workspace.cs",
+      "worktree_sha256": "62abb76f5761494563e0caee08da2880dcd2a373bc1e0b5737be2943c29e7e19",
+      "commit_sha256": "8a0ed153cc3f20f63bb717581be48dbe98e50d67074053be794321f84d48c019"
+    },
+    {
+      "path": "src/AutoTest.Devices/Can/CanFrameCodec.cs",
+      "worktree_sha256": "8aa0582420e18b7f724da401b6bc48814316b4feb0633f7cd8defb6c13adaa3f",
+      "commit_sha256": "c9cf6f69f0ef41808b4a2e10341f552fd3277705d3315a4b7cb340bd8d8a42dd"
+    },
+    {
+      "path": "src/AutoTest.Devices/Can/CanFrameHub.cs",
+      "worktree_sha256": "a34437b809ecf6f3324f752f59012531611215738c113fd9727e6e56c636444c",
+      "commit_sha256": "14d7f18058d6e5cba524efe8d26a4085ff8ae585815002984f0a82b6b0161428"
+    },
+    {
+      "path": "src/AutoTest.Devices/Usb/UsbSessionService.cs",
+      "worktree_sha256": "a750b24e08700f2b001f861fb91fe98e7e5c49791a8a0dcd66ab70e4ae043dd3",
+      "commit_sha256": "d3a5bd4ae158781d719483233283046dfa007755a451c411869600129c1e2efd"
+    },
+    {
+      "path": "src/AutoTest.Records/Storage/RecordDatabase.cs",
+      "worktree_sha256": "2c1cd68037f7464dc14db4fbe67595f6587fdde0e4d1acd76342152a6a229018",
+      "commit_sha256": "823b56a87f6c39b25f3faa24d1192168ca8381e2e132b6e90f05bb9a43d2fc33"
+    },
+    {
+      "path": "src/AutoTest.Specialists/Wave/WaveComparator.cs",
+      "worktree_sha256": "6676eb95c2568a84ab449b73a57d9005d78dc370a33f93b7b2014b403fb220da",
+      "commit_sha256": "d6c759f922cb98eea191d9bb055ec8cbf6ea5cf4f34382a5a88bdbe51b6749a9"
+    }
+  ],
+  "host_untracked": [
+    {
+      "path": "docs/verification/DEVICE_B0_B1_B2_现场USB_CAN只读验证.md",
+      "sha256": "7b544b932adc90f3dcd88263ae49a7aad6c046506813f869dfa7983c7a352c18",
+      "size": 9319
+    },
+    {
+      "path": "src/AutoTest.Devices/Can/HardwareCanReceiveBridge.cs",
+      "sha256": "5a1ed5bac54dbd9734ebf3c41f0ae93ae3eb27fa96abd2f89656f406b604c7cc",
+      "size": 5342
+    },
+    {
+      "path": "src/AutoTest.Devices/Diagnostics/HardwareBenchController.cs",
+      "sha256": "eccbe8e69c045a49b6620549140ae52dab4274f845aa7ecd1382c55f2c9f6eee",
+      "size": 6408
+    },
+    {
+      "path": "src/AutoTest.Devices/Diagnostics/HardwareTraceRecorder.cs",
+      "sha256": "e569a3090a827a39d9d1974f193f79c9c60f87dcb14e1518341cf1e6a8a95de3",
+      "size": 3273
+    },
+    {
+      "path": "src/AutoTest.Devices/Usb/FirmwareReadOnlyProtocol.cs",
+      "sha256": "58b062ad2112a274dddfa1184bc94d949c2a39f0e8cde7158ed8bf8960006297",
+      "size": 2315
+    },
+    {
+      "path": "src/AutoTest.Devices/Usb/PhysicalCommandFence.cs",
+      "sha256": "34ef954721328155214769a558f79dc52d646ee8044158be434c5cd97ad8a239",
+      "size": 2949
+    },
+    {
+      "path": "src/AutoTest.Devices/Usb/WinUsbByteLink.cs",
+      "sha256": "d6a7778f71a4417a800ea28d9dafe76ee17ad4f2e29f2f01c68d7a85e531c9cf",
+      "size": 11034
+    },
+    {
+      "path": "src/AutoTest.Devices/Usb/WinUsbDiscovery.cs",
+      "sha256": "9d5472acedcaa6f12e126846057adce5601dbabc2c99015c1dca0856c07cca72",
+      "size": 5700
+    },
+    {
+      "path": "src/AutoTest.Devices/Usb/WinUsbNative.cs",
+      "sha256": "11800e3b5e3d13ba38de274d19fcb74519165f4e09ba2c385733d1e107c4deca",
+      "size": 5499
+    },
+    {
+      "path": "tests/AutoTest.Devices.Tests/WinUsbHardwareLinkTests.cs",
+      "sha256": "39c980c34c8812412001ae33c67b0dbb74c188a797f49afc31b9a8122ad53761",
+      "size": 10175
+    },
+    {
+      "path": "tools/AutoTest.HardwareDebug/AutoTest.HardwareDebug.csproj",
+      "sha256": "4ff46d98afcf8fa061a7fc57c565ee3a39fe33fffa775cd9a3f78f40e88b971d",
+      "size": 522
+    },
+    {
+      "path": "tools/AutoTest.HardwareDebug/Program.cs",
+      "sha256": "55037ade4759a5003d1e8d25facf0faa88e52e403a76ce4ae0ff6facc55c6028",
+      "size": 7403
+    }
+  ],
+  "build_and_test_report": {
+    "source": "user-pasted Codex Windows report, not re-executed in current runtime",
+    "configuration": "Release .NET 10 Windows",
+    "build_errors": 0,
+    "build_warnings": 0,
+    "total_tests_passed": 145,
+    "total_tests": 145,
+    "test_failures": 0,
+    "skipped": 0,
+    "counts": {
+      "Devices.Tests": 24,
+      "Specialists.Tests": 41,
+      "Application.Tests": 16,
+      "Projects.Tests": 10,
+      "Records.Tests": 12,
+      "Testing.Tests": 15,
+      "Desktop.Tests": 6,
+      "Integration.Tests": 13,
+      "Contracts.Tests": 8
+    }
+  },
+  "physical_hardware_test": {
+    "USB_PING": "NOT_RUN",
+    "CAN_BOTH_PHYSICAL": "NOT_RUN",
+    "KEY_OUTPUT_VOLTAGE": "NOT_RUN",
+    "ECU_DIAGNOSTIC": "NOT_RUN",
+    "ECU_FLASH": "NOT_RUN"
+  },
+  "stage_result": "SOFTWARE_CANDIDATE_EVIDENCE_RECORDED_NOT_G4_GATE_PASS",
+  "local_archive_confirmation": {
+    "host_branch": "g4/v1-stage-4",
+    "host_device_checkpoint_head": "dd65cbdfbd849da98a4618bec8cb31923e695c95",
+    "host_final_head": "0098b9fcdc83db3331e661f76d1fc4375c4269c6",
+    "host_worktree_clean": true,
+    "restore_exit_code": 0,
+    "release_build_exit_code": 0,
+    "build_warnings": 0,
+    "build_errors": 0,
+    "solution_test_exit_code": 0,
+    "tests_total": 145,
+    "tests_passed": 145,
+    "tests_failed": 0,
+    "tests_skipped": 0,
+    "test_project_counts": {
+      "Devices.Tests": 24,
+      "Specialists.Tests": 41,
+      "Application.Tests": 16,
+      "Projects.Tests": 10,
+      "Records.Tests": 12,
+      "Testing.Tests": 15,
+      "Desktop.Tests": 6,
+      "Integration.Tests": 13,
+      "Contracts.Tests": 8
+    },
+    "physical_hardware_test": "NOT_RUN",
+    "evidence": "Fresh local Windows restore/build/test results and actual Git heads recorded during 2026-11-05 archive"
+  }
+}

@@ -3,9 +3,9 @@
   "project_id": "AutoTest",
   "framework_id": "SAEF",
   "framework_version": "2.0.0",
-  "working_phase": "G0",
-  "source_repository": null,
-  "source_revision": null,
+  "working_phase": "G4",
+  "source_repository": "D:\\01_Projects\\auto\\AutoTest_HOST",
+  "source_revision": "0098b9fcdc83db3331e661f76d1fc4375c4269c6",
   "gate_policy": "approval_required",
   "gates": {
     "P0": {
