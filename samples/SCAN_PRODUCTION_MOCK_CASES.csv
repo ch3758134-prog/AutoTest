@@ -1,0 +1,8 @@
+CaseId,RawInput,Rules,ExpectedStatus,Comment
+E1-T03-A,"",EPB_named_groups,SCAN_EMPTY,Blank input rejected
+E1-T03-B,EPB-1,EPB_named_groups,IDENTITY_NO_MATCH,Short input is not padded
+E1-T04,EPB-00001,EPB_named_groups,IDENTITY_MATCHED,Repeated raw input maps to the same DUT identity
+E1-T05,EPB-00001,Two_overlapping_published_rules,IDENTITY_AMBIGUOUS,Two rule matches block execution
+P1-T02,XXX-00001,EPB_named_groups,IDENTITY_NO_MATCH,Wrong product blocks recipe
+P1-T05,EPB-00001,Flash_requested_without_authorization,FLASH_AUTH_REQUIRED,Physical flashing not permitted
+E1-T06,EPB-99999,Station_already_running,STATION_BUSY,No queue and no change to locked identity

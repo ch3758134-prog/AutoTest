@@ -1,34 +1,19 @@
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-
+using AutoTest.Desktop.G4;
 namespace AutoTest.Desktop.Shell;
-
 public partial class MainWindow : Window
 {
     public MainWindow() => InitializeComponent();
-}
-
-// Temporary V0 region content. UI direction owns its later replacement.
-public sealed class V0RegionPlaceholder : UserControl
-{
-    public V0RegionPlaceholder()
+    private G4ToolsWindow? _tools;
+    private void G4Tools_Click(object sender, RoutedEventArgs e)
     {
-        Content = new StackPanel
+        if (DataContext is not MainWindowViewModel vm || vm.G4 is null)
         {
-            Children =
-            {
-                new TextBlock { Text = "INTEGRATION · V0", FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.DarkSlateGray, Margin = new Thickness(0, 0, 0, 12) },
-                new TextBlock { Text = "Project / DBC: NOT_IMPLEMENTED", TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 0, 0, 12) },
-                new TextBlock { Text = "Test editor: NOT_IMPLEMENTED", TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 0, 0, 12) },
-                new TextBlock { Text = "CAN / UDS / Wave / Flash: NOT_IMPLEMENTED",
-                    TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) },
-                new TextBlock { Text = "No USB or real station adapter is loaded.",
-                    TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DarkRed }
-            }
-        };
+            MessageBox.Show("G4 Application 协调服务未注册，禁止执行", "MOCK ONLY"); return;
+        }
+        if (_tools is { IsVisible: true }) { _tools.Activate(); return; }
+        _tools = new G4ToolsWindow(vm) { Owner = this };
+        _tools.Show();
     }
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

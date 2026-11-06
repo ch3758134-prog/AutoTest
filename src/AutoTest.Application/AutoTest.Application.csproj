@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../AutoTest.Contracts/AutoTest.Contracts.csproj" />
+    <ProjectReference Include="../AutoTest.Projects/AutoTest.Projects.csproj" />
+    <ProjectReference Include="../AutoTest.Testing/AutoTest.Testing.csproj" />
+    <ProjectReference Include="../AutoTest.Records/AutoTest.Records.csproj" />
+    <ProjectReference Include="../AutoTest.Specialists/AutoTest.Specialists.csproj" />
+    <ProjectReference Include="../AutoTest.Devices/AutoTest.Devices.csproj" />
   </ItemGroup>
 </Project>

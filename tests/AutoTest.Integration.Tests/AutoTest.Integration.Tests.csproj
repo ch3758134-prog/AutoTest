@@ -4,6 +4,8 @@
     <ProjectReference Include="../../src/AutoTest.Core/AutoTest.Core.csproj" />
     <ProjectReference Include="../../src/AutoTest.Contracts/AutoTest.Contracts.csproj" />
     <ProjectReference Include="../../src/AutoTest.Application/AutoTest.Application.csproj" />
+    <ProjectReference Include="../../src/AutoTest.Projects/AutoTest.Projects.csproj" />
+    <ProjectReference Include="../../src/AutoTest.Testing/AutoTest.Testing.csproj" />
     <ProjectReference Include="../AutoTest.TestFixtures/AutoTest.TestFixtures.csproj" />
   </ItemGroup>
   <ItemGroup>
