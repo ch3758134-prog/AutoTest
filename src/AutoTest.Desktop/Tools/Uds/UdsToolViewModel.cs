@@ -210,11 +210,18 @@ public sealed class UdsToolViewModel : BindableBase
         {
             var request=UdsHex.Parse(RequestHex);
             _lastRequestSensitive=UdsWorkbenchEvidence.RequiresRedaction(request);
+            if (source is not ("Mock" or "Replay"))
+            {
+                Append(source,"POLICY","REJECTED",_lastCorrelationId,"",
+                    "Physical UDS transport is not connected or authorized.",
+                    "PHYSICAL_UDS_NOT_AUTHORIZED");
+                throw new InvalidOperationException("Physical UDS Tx is not configured or authorized.");
+            }
             Append(source,"UDS","REQUEST",_lastCorrelationId,UdsHex.Format(request),
-                "Request queued for "+source+"; TxId="+TxId+" RxId="+RxId+
+                "Requested "+source+" operation; no physical Tx; TxId="+TxId+" RxId="+RxId+
                 " P2="+P2Ms+"ms P2*="+P2StarMs+"ms");
             UdsToolExchange exchange;
-            if (source=="Replay") exchange=_replay.Consume(RequestHex,ExpectedHex);
+            if (source=="Replay") exchange=_replay.Consume(RequestHex,ExpectedHex,_lastCorrelationId);
             else if (source=="Mock")
             {
                 _backend.SetNoResponse(NoResponse);
@@ -222,15 +229,27 @@ public sealed class UdsToolViewModel : BindableBase
                 if (InjectPending) _backend.InjectNextPending(request[0]);
                 if (InjectNrc) _backend.InjectNextNrc(checked((byte)CanId(FaultSid)),
                     checked((byte)CanId(FaultCode)));
-                exchange=await _backend.SendMockAsync(Profile(),RequestHex,ExpectedHex,linked.Token);
+                exchange=await _backend.SendMockAsync(Profile(),RequestHex,ExpectedHex,linked.Token,_lastCorrelationId);
             }
             else throw new InvalidOperationException("Physical UDS Tx is not configured or authorized.");
+            if (exchange.CorrelationId != _lastCorrelationId)
+                throw new InvalidOperationException("UDS_CORRELATION_ID_MISMATCH");
             ApplyExchange(exchange,request);
             TraceQuality=source=="Mock" ? "MOCK_GROUPED_FRAMES_NO_INTERLEAVED_TIMESTAMPS"
                 : "REPLAY_SOURCE_TIMING_NOT_VERIFIED";
+            foreach (string responseText in exchange.ResponseSequence)
+            {
+                byte[] pdu=UdsHex.Parse(responseText);
+                bool pending=pdu.Length==3 && pdu[0]==0x7F && pdu[1]==request[0] && pdu[2]==0x78;
+                string stage=pending ? "RESPONSE_PENDING" : (pdu[0]==0x7F ? "NEGATIVE" : "POSITIVE");
+                Append(source,"UDS",stage,_lastCorrelationId,responseText,
+                    pending ? "NRC=0x78; subsequent response uses configured P2*="+P2StarMs+
+                        "ms (actual ECU timing unavailable)"
+                        : "UDS response PDU from "+source);
+            }
             Append(source,"UDS","RESPONSE",_lastCorrelationId,exchange.ResponseHex,
                 "Outcome="+exchange.Outcome+" NRC="+exchange.Nrc+
-                " elapsed(host)="+watch.ElapsedMilliseconds+"ms; response timing is not ECU P2 evidence",
+                " elapsed(host)="+watch.ElapsedMilliseconds+"ms; this is not ECU P2 timing",
                 exchange.ErrorCode);
             foreach(var frame in exchange.Frames)
                 Append(source,"ISOTP",frame.Direction,_lastCorrelationId,frame.Hex,
