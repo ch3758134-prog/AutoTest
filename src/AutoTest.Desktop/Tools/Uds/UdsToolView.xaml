@@ -166,6 +166,7 @@
                                          Text="{Binding DiagnosticPath,UpdateSourceTrigger=PropertyChanged}"/>
                                 <Button Content="导出完整诊断包" Command="{Binding ExportDiagnosticCommand}"/>
                             </WrapPanel>
+                            <WrapPanel><TextBlock Text="UI Trace 丢弃数量: " Foreground="#8B4428"/><TextBlock Text="{Binding DroppedTraceEvents}" FontWeight="SemiBold"/></WrapPanel>
                             <TextBlock Text="帧时间为 UI 观察时间；Mock 双向帧按发送端分组，非真实 CAN 时序。"
                                        FontSize="11" Foreground="#8B4428" TextWrapping="Wrap"
                                        Margin="0,0,0,7"/>
