@@ -90,6 +90,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public string AcceptedFact { get => _acceptedFact; private set => SetProperty(ref _acceptedFact, value); }
     public string PhysicalFact { get => _physicalFact; private set => SetProperty(ref _physicalFact, value); }
     public string EcuFact { get => _ecuFact; private set => SetProperty(ref _ecuFact, value); }
+    private BenchEvidenceEntry? _selectedEvidence;
+    public BenchEvidenceEntry? SelectedEvidence { get => _selectedEvidence; set => SetProperty(ref _selectedEvidence, value); }
     public string ExportEvidenceJson() => BenchEvidenceExport.ToJson(Evidence.Reverse());
     public string ExportEvidenceTsv() => BenchEvidenceExport.ToTsv(Evidence.Reverse());
 
