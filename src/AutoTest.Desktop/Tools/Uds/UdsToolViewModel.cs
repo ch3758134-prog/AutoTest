@@ -67,6 +67,10 @@ public sealed class UdsToolViewModel : BindableBase
     public IReadOnlyList<string> SourceModes { get; } = ["Mock", "Replay"];
     public bool PhysicalTxEnabled => false;
     public string MockCaptureUsage => $"{_backend.CapturedExchanges}/{_backend.MaxCapturedExchanges}";
+    public bool MockResetRequired => _backend.RequiresReset;
+    public string MockChannelStatus => _backend.RequiresReset
+        ? "MOCK SESSION UNCERTAIN — RESET REQUIRED BEFORE NEXT REQUEST"
+        : "MOCK SESSION READY";
     public string SourceLabel => SourceMode=="Replay" ? "REPLAY / NO PHYSICAL CAN TX" : "MOCK / NO PHYSICAL CAN TX";
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))
@@ -230,6 +234,14 @@ public sealed class UdsToolViewModel : BindableBase
                     "PHYSICAL_UDS_NOT_AUTHORIZED");
                 throw new InvalidOperationException("Physical UDS Tx is not configured or authorized.");
             }
+            if (source=="Mock" && _backend.RequiresReset)
+            {
+                Append(source,"POLICY","REJECTED",_lastCorrelationId,"",
+                    "Prior Mock exchange was uncertain or cancelled; reset Mock session.",
+                    "MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED");
+                throw new InvalidOperationException(
+                    "MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED: reset Mock ECU before next request.");
+            }
             Append(source,"UDS","REQUEST",_lastCorrelationId,UdsHex.Format(request),
                 "Requested "+source+" operation; no physical Tx; TxId="+TxId+" RxId="+RxId+
                 " P2="+P2Ms+"ms P2*="+P2StarMs+"ms");
@@ -247,7 +259,12 @@ public sealed class UdsToolViewModel : BindableBase
                     exchange=await _backend.SendMockAsync(Profile(),RequestHex,ExpectedHex,
                         linked.Token,_lastCorrelationId);
                 }
-                finally { RaisePropertyChanged(nameof(MockCaptureUsage)); }
+                finally
+                {
+                    RaisePropertyChanged(nameof(MockCaptureUsage));
+                    RaisePropertyChanged(nameof(MockResetRequired));
+                    RaisePropertyChanged(nameof(MockChannelStatus));
+                }
             }
             else throw new InvalidOperationException("Physical UDS Tx is not configured or authorized.");
             if (exchange.CorrelationId != _lastCorrelationId)
@@ -294,6 +311,9 @@ public sealed class UdsToolViewModel : BindableBase
                 InvalidOperationException when ex.Message.StartsWith(
                     "MOCK_CAPTURE_CAPACITY_REACHED",StringComparison.Ordinal) =>
                     "MOCK_CAPTURE_LIMIT",
+                InvalidOperationException when ex.Message.StartsWith(
+                    "MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED",StringComparison.Ordinal) =>
+                    "MOCK_SESSION_REQUIRES_RESET",
                 InvalidOperationException when source=="Replay" => "REPLAY_REQUEST",
                 InvalidOperationException when source=="Physical" => "SAFETY_POLICY",
                 _ => "WORKBENCH_UNISOLATED"
@@ -355,7 +375,10 @@ public sealed class UdsToolViewModel : BindableBase
         if (IsBusy) return;
         IsBusy=true; Error="";
         try { await _backend.ResetMockAsync(MockIdentity); TraceRows.Clear();
-            RaisePropertyChanged(nameof(MockCaptureUsage)); Status="MOCK_RESET";
+            RaisePropertyChanged(nameof(MockCaptureUsage));
+            RaisePropertyChanged(nameof(MockResetRequired));
+            RaisePropertyChanged(nameof(MockChannelStatus));
+            Status="MOCK_RESET";
             ResponseHex="—"; Nrc="—"; ExpectedMatch="NOT_SPECIFIED"; Session="Default / Unknown"; }
         catch(Exception ex) { Status="MOCK_ERROR"; Error=ex.Message; }
         finally { IsBusy=false; }
