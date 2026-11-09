@@ -153,8 +153,8 @@ public sealed class UdsToolViewModel : BindableBase
     }
     public string TxId { get => _txId; set { if (SetProperty(ref _txId,value)) { RaisePropertyChanged(nameof(AddressingDescription)); RefreshPhysicalAvailability(); } } }
     public string RxId { get => _rxId; set { if (SetProperty(ref _rxId,value)) { RaisePropertyChanged(nameof(AddressingDescription)); RefreshPhysicalAvailability(); } } }
-    public string P2Ms { get => _p2Ms; set => SetProperty(ref _p2Ms,value); }
-    public string P2StarMs { get => _p2StarMs; set => SetProperty(ref _p2StarMs,value); }
+    public string P2Ms { get => _p2Ms; set { if(SetProperty(ref _p2Ms,value)) RefreshPhysicalAvailability(); } }
+    public string P2StarMs { get => _p2StarMs; set { if(SetProperty(ref _p2StarMs,value)) RefreshPhysicalAvailability(); } }
     public string RequestHex { get => _requestHex; set => SetProperty(ref _requestHex,value); }
     public string ExpectedHex { get => _expectedHex; set => SetProperty(ref _expectedHex,value); }
     public string ServiceName { get => _serviceName; set => SetProperty(ref _serviceName,value); }
@@ -489,9 +489,16 @@ public sealed class UdsToolViewModel : BindableBase
         foreach(var uds in physical.UdsTrace.Where(x=>
             x.CorrelationId==_lastCorrelationId))
         {
-            Append("Physical","UDS",uds.Direction.ToString().ToUpperInvariant(),
-                _lastCorrelationId,UdsHex.Format(uds.Data),
-                "UDS trace UTC="+uds.Utc.ToString("O")+"; "+uds.Note);
+            bool pending=uds.Direction==UdsTraceDirection.Response &&
+                uds.Data.Length==3 && uds.Data[0]==0x7F &&
+                uds.Data[1]==request[0] && uds.Data[2]==0x78;
+            string direction=pending ? "RESPONSE_PENDING" :
+                uds.Direction.ToString().ToUpperInvariant();
+            Append("Physical","UDS",direction,_lastCorrelationId,
+                UdsHex.Format(uds.Data),
+                (pending ? "NRC=0x78; P2*="+endpoint.P2Star.TotalMilliseconds+
+                    "ms; " : "")+
+                "UDS trace HOST UTC="+uds.Utc.ToString("O")+"; "+uds.Note);
         }
         foreach(var frame in physical.CanTrace)
             AppendPhysicalCanFrame(frame,physical.RawBusEvidenceVerified);
