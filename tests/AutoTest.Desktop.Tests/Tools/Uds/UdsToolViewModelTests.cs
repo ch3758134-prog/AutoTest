@@ -1,3 +1,8 @@
+using System.Collections.Immutable;
+using AutoTest.Contracts;
+using AutoTest.Core;
+using AutoTest.Specialists.Uds;
+using AutoTest.Specialists.Uds.Workbench;
 using AutoTest.Desktop.Tools.Uds;
 using Xunit;
 
@@ -183,4 +188,117 @@ public sealed class UdsToolViewModelTests
         await vm.SendAsync();
         Assert.Equal("MOCK_ACCEPTED",vm.Status);
     }
+    // Test-only provider. No real USB/CAN is opened by this xUnit fake.
+    private sealed class FakePhysicalProvider : IReadOnlyPhysicalUdsSessionProvider
+    {
+        public int Opens;
+        public ReadOnlyPhysicalConnection? Current {get;set;} = new(
+            "FAKE_P08_STATION",17,
+            new UdsEndpointProfile(BusRole.DutCan,0x7E0,0x7E8,
+                TimeSpan.FromMilliseconds(1000),TimeSpan.FromMilliseconds(5000),"Normal"),
+            true,true,DateTimeOffset.UtcNow.AddMinutes(5));
+        public ValueTask<IReadOnlyPhysicalUdsSession> OpenAsync(
+            ReadOnlyDiagnosticSessionSpec spec,CancellationToken ct)
+        {
+            Opens++;
+            if (Current is null) throw new InvalidOperationException("No fake station.");
+            return ValueTask.FromResult<IReadOnlyPhysicalUdsSession>(new FakeSession(Current));
+        }
+    }
+
+    private sealed class FakeChannel : IUdsMessageChannel
+    {
+        public ValueTask SendPduAsync(ReadOnlyMemory<byte> pdu,CancellationToken ct) =>
+            ValueTask.CompletedTask;
+        public ValueTask<byte[]> ReceivePduAsync(TimeSpan timeout,CancellationToken ct) =>
+            ValueTask.FromResult<byte[]>([0x62,0xF1,0x90,0x41]);
+    }
+    private sealed class FakeSession(ReadOnlyPhysicalConnection context)
+        : IReadOnlyPhysicalUdsSession
+    {
+        private readonly UdsClient _client=new(new FakeChannel());
+        public ReadOnlyPhysicalConnection Connection => context;
+        public IUdsClient Client => _client;
+        public IReadOnlyList<UdsTraceEntry> SnapshotUds(Guid id) =>
+            _client.Trace.Snapshot().Where(x=>x.CorrelationId==id).ToArray();
+        public IReadOnlyList<PhysicalUdsBusEvent> SnapshotCan(Guid id)
+        {
+            var time=DateTimeOffset.UtcNow;
+            return [
+                new(time,"TX","CAN",BusRole.DutCan,0x7E0,false,
+                    "03 22 F1 90","FAKE_USB_CAN_TX",context.SessionGeneration,0,true),
+                new(time,"RX","CAN",BusRole.DutCan,0x7E8,false,
+                    "04 62 F1 90 41","FAKE_USB_CAN_RX",context.SessionGeneration,0)
+            ];
+        }
+        public ValueTask DisposeAsync()=>ValueTask.CompletedTask;
+    }
+
+    [Fact]
+    public async Task AuthorizedFakePhysicalSessionShowsBoundStationRawCanAndExportProvenance()
+    {
+        var provider=new FakePhysicalProvider();
+        var vm=new UdsToolViewModel(new UdsDiagnosticWorkspace(),provider);
+        Assert.True(vm.PhysicalTxEnabled);
+        Assert.Contains("Physical",vm.SourceModes);
+        vm.SourceMode="Physical";
+        var output=Path.Combine(Path.GetTempPath(),
+            "fake_p1_uds_"+Guid.NewGuid().ToString("N")+".json");
+        vm.DiagnosticPath=output;
+        try
+        {
+            await vm.SendAsync();
+            Assert.Equal("PHYSICAL_ACCEPTED",vm.Status);
+            Assert.Contains("Generation=17",vm.PhysicalStationStatus);
+            Assert.Contains(vm.DiagnosticEvents,x=>x.Source=="Physical" &&
+                x.Layer=="CAN" && x.Direction=="TX" && x.PhysicalEvidenceVerified &&
+                x.CanId==0x7E0 && x.SessionGeneration==17);
+            Assert.Contains(vm.DiagnosticEvents,x=>x.Source=="Physical" &&
+                x.Layer=="CAN" && x.Direction=="RX" && x.TraceRef=="FAKE_USB_CAN_RX");
+            Assert.Equal(1,provider.Opens);
+            await vm.ExportDiagnosticAsync();
+            var json=await File.ReadAllTextAsync(output);
+            Assert.Contains("PhysicalTxVerified",json);
+            Assert.Contains("FAKE_USB_CAN_RX",json);
+            Assert.Contains("PHYSICAL_DEVICE_HOST_ARRIVAL_ONLY",json);
+            Assert.Contains("REDACTED",json); // 0x22 F190 VIN privacy.
+        }
+        finally { if(File.Exists(output)) File.Delete(output); }
+    }
+
+    [Fact]
+    public async Task PhysicalProgrammingSidDeniedBeforeProviderOpenAndBeforeTxClaim()
+    {
+        var provider=new FakePhysicalProvider();
+        var vm=new UdsToolViewModel(new UdsDiagnosticWorkspace(),provider)
+        {
+            SourceMode="Physical", RequestHex="34 00 44"
+        };
+        await vm.SendAsync();
+        Assert.Equal(0,provider.Opens);
+        Assert.Equal("PHYSICAL_READONLY_DENIED",vm.FailureLayer);
+        Assert.DoesNotContain(vm.DiagnosticEvents,x=>x.Layer=="UDS" &&
+            x.Direction=="REQUEST" && x.Source=="Physical");
+        Assert.False(vm.DiagnosticEvents.Any(x=>x.Layer=="CAN"));
+    }
+
+    [Fact]
+    public async Task NoProviderOrUnapprovedStationLeavesPhysicalUnavailable()
+    {
+        var defaultVm=new UdsToolViewModel();
+        Assert.DoesNotContain("Physical",defaultVm.SourceModes);
+        Assert.False(defaultVm.PhysicalTxEnabled);
+
+        var provider=new FakePhysicalProvider();
+        provider.Current=provider.Current! with { ReadOnlyTxAuthorized=false };
+        var vm=new UdsToolViewModel(new UdsDiagnosticWorkspace(),provider);
+        Assert.False(vm.PhysicalTxEnabled);
+        Assert.DoesNotContain("Physical",vm.SourceModes);
+        vm.SourceMode="Physical";
+        await vm.SendAsync();
+        Assert.Equal(0,provider.Opens);
+        Assert.Contains(vm.DiagnosticEvents,x=>x.Source=="Physical" &&
+            x.Layer=="POLICY");
+    }
+
 }
