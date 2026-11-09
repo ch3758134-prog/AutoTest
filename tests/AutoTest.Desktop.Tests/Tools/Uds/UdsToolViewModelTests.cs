@@ -235,7 +235,7 @@ public sealed class UdsToolViewModelTests
             _client=new UdsClient(new FakeChannel(pending));
         }
         public ReadOnlyPhysicalConnection Connection => _context;
-        public IUdsClient Client => _client;
+        public UdsClient Client => _client;
         public IReadOnlyList<UdsTraceEntry> SnapshotUds(Guid id) =>
             _client.Trace.Snapshot().Where(x=>x.CorrelationId==id).ToArray();
         public IReadOnlyList<PhysicalUdsBusEvent> SnapshotCan(Guid id)
