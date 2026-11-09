@@ -84,6 +84,7 @@ public sealed class RecordsViewModelTests
         Assert.Contains("2026-11 (UTC)", vm.Summary);
         Assert.Contains("重复检测记录 1", vm.Summary);
         Assert.Contains("历史重复不等于批准复检", vm.Summary);
+        Assert.Contains("不受编号或历史模式筛选影响", vm.Summary);
     }
 
     [Fact]

@@ -89,7 +89,7 @@ public sealed class RecordsViewModel : BindableBase
                 $"首次记录 {stats.FirstSeenAttempts} / 重复检测记录 {stats.RepeatAttempts} / " +
                 $"重复 ECU {stats.RepeatedDutCount} 台 / 已提交 {stats.CommittedRuns} / " +
                 $"历史 PASS {stats.PassedRuns} / FAIL {stats.FailedRuns} / 中断 {stats.InterruptedRuns}。" +
-                " 历史重复不等于批准复检；不是实物出厂放行数量。";
+                " 历史重复不等于批准复检；不是实物出厂放行数量。 Production 统计覆盖所有 ECU，不受编号或历史模式筛选影响。";
             Status = rows.Count == 0 ? "无匹配历史记录（不是 PASS）。" :
                 $"显示 {rows.Count} 条（最多 500，历史模式 {Mode}，统计仅 Production）";
         }
