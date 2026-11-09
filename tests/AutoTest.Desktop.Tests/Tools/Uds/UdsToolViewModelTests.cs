@@ -131,4 +131,35 @@ public sealed class UdsToolViewModelTests
         Assert.DoesNotContain(vm.DiagnosticEvents,x=>x.Layer=="UDS" &&
             x.Direction=="REQUEST");
     }
+
+    [Fact]
+    public async Task MockTimeoutShowsLayerAndUncertainStatusInConsole()
+    {
+        var vm=new UdsToolViewModel { NoResponse=true, P2Ms="25" };
+        await vm.SendAsync();
+        Assert.Equal("MOCK_UNCERTAIN",vm.Status);
+        Assert.Equal("ISOTP_TIMEOUT",vm.FailureLayer);
+        Assert.Contains("ISO-TP frame/flow-control timeout",vm.DiagnosticDetail);
+        Assert.False(vm.PhysicalTxEnabled);
+    }
+
+    [Fact]
+    public async Task VinResponseIsRedactedFromExportButRemainVisibleLocally()
+    {
+        var path=Path.Combine(Path.GetTempPath(),"r0_uds_vin_"+
+            Guid.NewGuid().ToString("N")+".json");
+        var vm=new UdsToolViewModel { DiagnosticPath=path };
+        try
+        {
+            await vm.SendAsync();
+            Assert.StartsWith("62 F1 90",vm.ResponseHex);
+            Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="UDS" &&
+                x.Direction=="POSITIVE" && x.Sensitive);
+            await vm.ExportDiagnosticAsync();
+            string json=await File.ReadAllTextAsync(path);
+            Assert.Contains("REDACTED",json);
+            Assert.DoesNotContain("4D 4F 43 4B 5F 45 43 55 5F 41",json);
+        }
+        finally { if(File.Exists(path)) File.Delete(path); }
+    }
 }
