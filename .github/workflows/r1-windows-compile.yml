@@ -1,0 +1,28 @@
+name: R1 Windows compile and Desktop tests
+
+on:
+  push:
+    branches:
+      - integration/r1-real-specialist-host-20261109
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-desktop:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+      - name: Install .NET SDK 10.0.400
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.400'
+      - name: Restore
+        run: dotnet restore AutoTest.sln
+      - name: Release build
+        run: dotnet build AutoTest.sln --configuration Release --no-restore
+      - name: Desktop tests
+        run: dotnet test tests/AutoTest.Desktop.Tests/AutoTest.Desktop.Tests.csproj --configuration Release --no-build --no-restore
