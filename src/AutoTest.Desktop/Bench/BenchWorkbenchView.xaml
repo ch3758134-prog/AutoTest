@@ -32,7 +32,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="190"/>
+            <RowDefinition Height="290"/>
         </Grid.RowDefinitions>
         <DockPanel Margin="0,0,0,14">
             <StackPanel DockPanel.Dock="Left">
@@ -118,6 +118,15 @@
                         <TextBlock FontWeight="SemiBold" FontSize="16" Text="操作结果与人工测量"/>
                         <TextBlock Text="{Binding LastOperation}" TextWrapping="Wrap" Margin="0,9,0,2"/>
                         <TextBlock Foreground="#54657B" Text="{Binding LastEvidence}" TextWrapping="Wrap"/>
+                        <Border BorderBrush="#DEE4EC" BorderThickness="0,1,0,0" Margin="0,9,0,0" Padding="0,6,0,0">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold" Text="操作事实（分阶段）"/>
+                                <TextBlock Text="{Binding RequestedFact}" TextWrapping="Wrap" FontSize="12"/>
+                                <TextBlock Text="{Binding AcceptedFact}" TextWrapping="Wrap" FontSize="12"/>
+                                <TextBlock Text="{Binding PhysicalFact}" TextWrapping="Wrap" FontSize="12"/>
+                                <TextBlock Text="{Binding EcuFact}" TextWrapping="Wrap" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="五路万用表读数（V） · 空白表示未测" Margin="0,14,0,5"/>
                     </StackPanel>
                     <Grid DockPanel.Dock="Top">
@@ -151,24 +160,67 @@
             </Border>
         </Grid>
         <Border Grid.Row="3" Style="{StaticResource Panel}">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,9">
-                    <TextBlock FontWeight="SemiBold" FontSize="15" Text="本页操作摘要"/>
-                    <TextBlock Style="{StaticResource FieldLabel}" Margin="12,3,0,0"
-                               Text="完整持久日志与原始 Trace 由 RECORD 专业视图提供"/>
-                </StackPanel>
-                <DataGrid ItemsSource="{Binding Messages}" IsReadOnly="True" AutoGenerateColumns="False"
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="82"/>
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                        <Button Content="复制全部证据" Click="OnCopyEvidence" Style="{StaticResource BenchButton}"/>
+                        <Button Content="导出 JSON / TSV" Click="OnExportEvidence" Style="{StaticResource BenchButton}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontWeight="SemiBold" FontSize="15" Text="操作证据"/>
+                        <ComboBox Width="96" Margin="12,0,7,0" ItemsSource="{Binding EvidencePhases}"
+                                  SelectedItem="{Binding EvidencePhaseFilter}"/>
+                        <TextBox Width="190" VerticalContentAlignment="Center"
+                                 ToolTip="过滤操作、错误码、设备和 Trace 标识"
+                                 Text="{Binding EvidenceSearch, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </DockPanel>
+                <DataGrid Grid.Row="1" ItemsSource="{Binding VisibleEvidence}"
+                          SelectedItem="{Binding SelectedEvidence, Mode=TwoWay}"
+                          IsReadOnly="True" AutoGenerateColumns="False"
+                          EnableRowVirtualization="True" EnableColumnVirtualization="True"
                           GridLinesVisibility="None" HeadersVisibility="Column" RowHeaderWidth="0"
                           Background="White" BorderThickness="0" SelectionMode="Single">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="时间" Binding="{Binding When, StringFormat={}{0:HH:mm:ss.fff}}" Width="115"/>
-                        <DataGridTextColumn Header="结果" Binding="{Binding Severity}" Width="85"/>
-                        <DataGridTextColumn Header="事件" Binding="{Binding Heading}" Width="190"/>
-                        <DataGridTextColumn Header="说明 / 请求响应 / 错误" Binding="{Binding Details}" Width="*"/>
-                        <DataGridTextColumn Header="TraceRef" Binding="{Binding TraceReference}" Width="130"/>
+                        <DataGridTextColumn Header="时间" Binding="{Binding TimestampDisplay}" Width="165"/>
+                        <DataGridTextColumn Header="阶段" Binding="{Binding PhaseDisplay}" Width="145"/>
+                        <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="74"/>
+                        <DataGridTextColumn Header="Session" Binding="{Binding SessionGeneration}" Width="75"/>
+                        <DataGridTextColumn Header="操作 / 错误 / 原始证据摘要" Binding="{Binding Summary}" Width="*"/>
+                        <DataGridTextColumn Header="TraceRef" Binding="{Binding TraceReference}" Width="120"/>
                     </DataGrid.Columns>
                 </DataGrid>
-            </DockPanel>
+                <Grid Grid.Row="2" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="原始请求 / Correlation"/>
+                        <TextBlock FontSize="11" Text="{Binding SelectedEvidence.CorrelationId}" />
+                        <TextBox IsReadOnly="True" FontFamily="Consolas" FontSize="11" Text="{Binding SelectedEvidence.RequestHex}"
+                                 VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="原始响应 / TraceRef"/>
+                        <TextBlock FontSize="11" Text="{Binding SelectedEvidence.TraceReference}"/>
+                        <TextBox IsReadOnly="True" FontFamily="Consolas" FontSize="11" Text="{Binding SelectedEvidence.ResponseHex}"
+                                 VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="失败阶段 / 错误码"/>
+                        <TextBlock FontSize="11" Text="{Binding SelectedEvidence.FailureStage}"/>
+                        <TextBox IsReadOnly="True" FontFamily="Consolas" FontSize="11" Text="{Binding SelectedEvidence.ErrorCode}"/>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="完整底层 Trace 请在 DEVICE / RECORD 专业视图查看"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>
