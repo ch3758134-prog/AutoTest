@@ -192,6 +192,8 @@ public sealed class UdsToolViewModelTests
     private sealed class FakePhysicalProvider : IReadOnlyPhysicalUdsSessionProvider
     {
         public int Opens;
+        public bool Pending;
+        public bool MissingRx;
         public ReadOnlyPhysicalConnection? Current {get;set;} = new(
             "FAKE_P08_STATION",17,
             new UdsEndpointProfile(BusRole.DutCan,0x7E0,0x7E8,
@@ -202,34 +204,49 @@ public sealed class UdsToolViewModelTests
         {
             Opens++;
             if (Current is null) throw new InvalidOperationException("No fake station.");
-            return ValueTask.FromResult<IReadOnlyPhysicalUdsSession>(new FakeSession(Current));
+            return ValueTask.FromResult<IReadOnlyPhysicalUdsSession>(
+                new FakeSession(Current,Pending,MissingRx));
         }
     }
 
-    private sealed class FakeChannel : IUdsMessageChannel
+    private sealed class FakeChannel(bool pending) : IUdsMessageChannel
     {
+        private int _received;
         public ValueTask SendPduAsync(ReadOnlyMemory<byte> pdu,CancellationToken ct) =>
             ValueTask.CompletedTask;
-        public ValueTask<byte[]> ReceivePduAsync(TimeSpan timeout,CancellationToken ct) =>
-            ValueTask.FromResult<byte[]>([0x62,0xF1,0x90,0x41]);
+        public ValueTask<byte[]> ReceivePduAsync(TimeSpan timeout,CancellationToken ct)
+        {
+            if (pending && _received++==0)
+                return ValueTask.FromResult<byte[]>([0x7F,0x22,0x78]);
+            return ValueTask.FromResult<byte[]>([0x62,0xF1,0x90,0x41]);
+        }
     }
-    private sealed class FakeSession(ReadOnlyPhysicalConnection context)
-        : IReadOnlyPhysicalUdsSession
+    private sealed class FakeSession : IReadOnlyPhysicalUdsSession
     {
-        private readonly UdsClient _client=new(new FakeChannel());
-        public ReadOnlyPhysicalConnection Connection => context;
+        private readonly UdsClient _client;
+        private readonly ReadOnlyPhysicalConnection _context;
+        private readonly bool _missingRx;
+        public FakeSession(ReadOnlyPhysicalConnection context,bool pending,bool missingRx)
+        {
+            _context=context;
+            _missingRx=missingRx;
+            _client=new UdsClient(new FakeChannel(pending));
+        }
+        public ReadOnlyPhysicalConnection Connection => _context;
         public IUdsClient Client => _client;
         public IReadOnlyList<UdsTraceEntry> SnapshotUds(Guid id) =>
             _client.Trace.Snapshot().Where(x=>x.CorrelationId==id).ToArray();
         public IReadOnlyList<PhysicalUdsBusEvent> SnapshotCan(Guid id)
         {
             var time=DateTimeOffset.UtcNow;
-            return [
+            var frames=new List<PhysicalUdsBusEvent> {
                 new(time,"TX","CAN",BusRole.DutCan,0x7E0,false,
-                    "03 22 F1 90","FAKE_USB_CAN_TX",context.SessionGeneration,0,true),
-                new(time,"RX","CAN",BusRole.DutCan,0x7E8,false,
-                    "04 62 F1 90 41","FAKE_USB_CAN_RX",context.SessionGeneration,0)
-            ];
+                    "03 22 F1 90","FAKE_USB_CAN_TX",_context.SessionGeneration,0,true)
+            };
+            if(!_missingRx)
+                frames.Add(new(time,"RX","CAN",BusRole.DutCan,0x7E8,false,
+                    "04 62 F1 90 41","FAKE_USB_CAN_RX",_context.SessionGeneration,0));
+            return frames;
         }
         public ValueTask DisposeAsync()=>ValueTask.CompletedTask;
     }
@@ -299,6 +316,37 @@ public sealed class UdsToolViewModelTests
         Assert.Equal(0,provider.Opens);
         Assert.Contains(vm.DiagnosticEvents,x=>x.Source=="Physical" &&
             x.Layer=="POLICY");
+    }
+
+    [Fact]
+    public async Task FakePhysicalPendingIsVisibleAsNrc78BeforeFinalResponse()
+    {
+        var provider=new FakePhysicalProvider { Pending=true };
+        var vm=new UdsToolViewModel(new UdsDiagnosticWorkspace(),provider)
+        {
+            SourceMode="Physical",P2StarMs="5000"
+        };
+        await vm.SendAsync();
+        Assert.Equal("PHYSICAL_ACCEPTED",vm.Status);
+        Assert.Contains(vm.DiagnosticEvents,e=>e.Source=="Physical" &&
+            e.Layer=="UDS" && e.Direction=="RESPONSE_PENDING" &&
+            e.DecodedSummary.Contains("P2*=5000"));
+        Assert.Contains(vm.DiagnosticEvents,e=>e.Source=="Physical" &&
+            e.Layer=="UDS" && e.Direction=="RESPONSE");
+    }
+
+    [Fact]
+    public async Task FakePhysicalWithoutObservedCanRxNeverDisplaysAcceptedStatus()
+    {
+        var provider=new FakePhysicalProvider { MissingRx=true };
+        var vm=new UdsToolViewModel(new UdsDiagnosticWorkspace(),provider)
+        {
+            SourceMode="Physical"
+        };
+        await vm.SendAsync();
+        Assert.Equal("PHYSICAL_UNCERTAIN",vm.Status);
+        Assert.Contains("INCOMPLETE",vm.TraceQuality);
+        Assert.Contains("PHYSICAL_RAW_CAN_EVIDENCE_INCOMPLETE",vm.Error);
     }
 
 }
