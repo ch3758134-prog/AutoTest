@@ -7,6 +7,7 @@ using AutoTest.Desktop.Shell;
 using AutoTest.Desktop.Tools.ControllerConfig;
 using AutoTest.Desktop.Tools.Dbc;
 using AutoTest.Desktop.Tools.Flash;
+using AutoTest.Desktop.Tools.Flash.Physical;
 using AutoTest.Desktop.Tools.Operations;
 using AutoTest.Desktop.Tools.Production;
 using AutoTest.Desktop.Tools.Records;
@@ -180,6 +181,12 @@ public partial class ModuleToolsWindow : Window
             AuditStatus.Text = "操作审计保存失败（未宣称已保存）· " + exception.Message;
             AuditStatus.Foreground = Brushes.OrangeRed;
         }
+    }
+
+    private void OpenPhysicalFlashLab_Click(object sender, RoutedEventArgs args)
+    {
+        var window = new FlashLabWindow { Owner = this };
+        window.Show();
     }
 
     private void OpenAudit_Click(object sender, RoutedEventArgs args)
