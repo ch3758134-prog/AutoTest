@@ -64,6 +64,23 @@ public static class TestDiagnosticArchive
     private static string ScrubContext(string value) => value is "UNBOUND" or "NOT_CONNECTED" or "NOT_SUPPLIED"
         ? value : "[REDACTED]";
 
+    // ErrorCode survives redacted exports, while the original input remains private.
+    // Only allow known TEST-owned diagnostic prefixes; never copy arbitrary log text
+    // into ErrorCode (which is retained when values are scrubbed).
+    private static string? ConditionErrorCode(string? detail)
+    {
+        if (detail is null) return null;
+        foreach (var code in new[]
+        {
+            "MOCK_CONDITION_INVALID_NUMBER", "MOCK_CONDITION_INVALID_BOOLEAN",
+            "MOCK_CONDITION_NO_VALUE", "MOCK_CONDITION_EXPECTED_MISSING",
+            "MOCK_ASSERT_NO_VALID_OBSERVATION"
+        })
+            if (detail.Equals(code, StringComparison.Ordinal) ||
+                detail.StartsWith(code + ":", StringComparison.Ordinal)) return code;
+        return null;
+    }
+
     public static TestDiagnosticEvent FromFact(string runId, string phase, StepFact fact,
         DateTimeOffset? timestamp = null, long? monotonicOffsetMs = null) => new(
             timestamp ?? DateTimeOffset.UtcNow,
@@ -73,7 +90,7 @@ public static class TestDiagnosticArchive
             {
                 MonotonicOffsetMs = monotonicOffsetMs,
                 Layer = fact.Type is "RuntimeError" or "CleanupError" ? "TEST.EXECUTION" : "TEST.JUDGEMENT",
-                ErrorCode = fact.Verdict switch
+                ErrorCode = ConditionErrorCode(fact.Detail) ?? (fact.Verdict switch
                 {
                     MockStepVerdict.Fail when fact.Type == "Assert" => "ASSERT_MISMATCH",
                     MockStepVerdict.Fail when fact.Type == "When" => "MOCK_WHEN_TIMEOUT",
@@ -85,7 +102,7 @@ public static class TestDiagnosticArchive
                     MockStepVerdict.Skipped => "STEP_SKIPPED",
                     MockStepVerdict.Error => "MOCK_RUNTIME_ERROR",
                     _ => ""
-                }
+                })
             };
 
     public static TestDiagnosticEvent Operation(string runId, string eventKind,

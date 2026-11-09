@@ -130,6 +130,8 @@
             <TextBlock Text="Property value" Foreground="#52647B"/>
             <TextBox Text="{Binding ParameterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
             <Button Content="Set property" Command="{Binding ApplyPropertyCommand}" HorizontalAlignment="Left"/>
+            <TextBlock Text="If / When / Assert: optional operator = ==, !=, &gt;, &gt;=, &lt;, &lt;= ; valueType = String, Number or Boolean. Default is String ==. Number uses a dot decimal separator; invalid observations are INCONCLUSIVE."
+                       TextWrapping="Wrap" Foreground="#52647B" FontSize="11" Margin="0,10,0,0"/>
             <TextBlock Text="Unsupported node types and unresolved asset references are blocked by formal PlanCompiler. Physical controller commands are never executed by this Mock runner."
                        TextWrapping="Wrap" Foreground="#65788A" FontSize="11" Margin="0,17,0,0"/>
           </StackPanel>

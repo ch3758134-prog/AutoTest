@@ -278,20 +278,34 @@ public sealed class RunCoordinator
                         actual = quality == MockQuality.Observed ? Get("value") : null;
                         break;
                     case "Assert":
-                        expected = Get("equals");
+                        expected = StepConditionEvaluator.Describe(node);
                         var observation = station.Observe(Get("variable"));
                         quality = observation.Quality;
                         actual = observation.Value;
-                        result = quality != MockQuality.Observed || actual is null
-                            ? MockStepVerdict.Inconclusive
-                            : actual == expected ? MockStepVerdict.Pass : MockStepVerdict.Fail;
+                        if (quality != MockQuality.Observed)
+                        {
+                            result = MockStepVerdict.Inconclusive;
+                            detail = "MOCK_ASSERT_NO_VALID_OBSERVATION: input quality is not Observed";
+                        }
+                        else
+                        {
+                            var judgement = StepConditionEvaluator.Evaluate(node, actual);
+                            result = !judgement.Comparable ? MockStepVerdict.Inconclusive
+                                : judgement.Matched ? MockStepVerdict.Pass : MockStepVerdict.Fail;
+                            detail = judgement.Diagnostic;
+                        }
                         if (result == MockStepVerdict.Pass) hasVerifiedAssertion = true;
                         break;
                     case "If":
-                        expected = Get("equals");
+                        expected = StepConditionEvaluator.Describe(node);
                         vars.TryGetValue(Get("variable"), out actual);
+                        var condition = StepConditionEvaluator.Evaluate(node, actual);
                         quality = actual is null ? MockQuality.Missing : MockQuality.Observed;
-                        if (actual is null) result = MockStepVerdict.Inconclusive;
+                        if (!condition.Comparable)
+                        {
+                            result = MockStepVerdict.Inconclusive;
+                            detail = condition.Diagnostic;
+                        }
                         break;
                     case "Switch":
                         expected = $"Case match for {Get("variable")}";
@@ -325,12 +339,15 @@ public sealed class RunCoordinator
                         var clock = Stopwatch.StartNew();
                         var timeout = int.Parse(Get("timeoutMs"));
                         MockEvidence sample;
+                        StepConditionEvaluator.Result whenEvaluation;
                         while (true)
                         {
                             stop.Token.ThrowIfCancellationRequested();
                             sample = station.Observe(Get("variable"));
-                            if (sample.Quality == MockQuality.Observed &&
-                                sample.Value is not null && sample.Value == expected)
+                            whenEvaluation = sample.Quality == MockQuality.Observed
+                                ? StepConditionEvaluator.Evaluate(node, sample.Value)
+                                : new(false, false, "MOCK_WHEN_NO_OBSERVATION: input quality is not Observed");
+                            if (whenEvaluation.Comparable && whenEvaluation.Matched)
                             {
                                 whenSatisfied = true;
                                 break;
@@ -339,15 +356,15 @@ public sealed class RunCoordinator
                             if (left <= 0) break;
                             await Task.Delay((int)Math.Min(10, left), stop.Token);
                         }
+                        expected = StepConditionEvaluator.Describe(node);
                         quality = sample.Quality;
                         actual = sample.Value;
                         if (!whenSatisfied)
                         {
-                            result = sample.Quality == MockQuality.Observed
-                                ? MockStepVerdict.Fail : MockStepVerdict.Inconclusive;
-                            detail = sample.Quality == MockQuality.Observed
-                                ? "MOCK_WHEN_TIMEOUT: observed value never matched"
-                                : "MOCK_WHEN_NO_OBSERVATION: timed out without valid evidence";
+                            result = whenEvaluation.Comparable ? MockStepVerdict.Fail : MockStepVerdict.Inconclusive;
+                            detail = !whenEvaluation.Comparable
+                                ? whenEvaluation.Diagnostic ?? "MOCK_WHEN_NO_OBSERVATION"
+                                : "MOCK_WHEN_TIMEOUT: observed value never matched";
                         }
                         else detail = $"Mock condition satisfied after {clock.ElapsedMilliseconds}ms";
                         break;
@@ -388,8 +405,9 @@ public sealed class RunCoordinator
                 if (node.Type == "Fail") throw new MockFlowFailureException(Get("message"));
                 if (node.Type == "If")
                 {
-                    if (actual is not null)
-                        await Execute(node.Slots[actual == expected ? "then" : "else"]);
+                    var decision = StepConditionEvaluator.Evaluate(node, actual);
+                    if (decision.Comparable)
+                        await Execute(node.Slots[decision.Matched ? "then" : "else"]);
                 }
                 else if (node.Type == "Loop")
                     for (int i = 0; i < int.Parse(expected); i++) await Execute(node.Slots["body"]);

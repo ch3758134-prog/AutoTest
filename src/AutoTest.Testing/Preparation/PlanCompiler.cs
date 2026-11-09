@@ -40,8 +40,12 @@ public sealed class PlanCompiler
         errors.AddRange(TestResourceBinding.Validate(document, assetResolver));
         errors.AddRange(SubroutineValidator.Validate(document));
         foreach (var node in document.Walk())
+        {
             if (_catalog.Lookup(node.Type) is { ExecutableV1: false })
                 errors.Add($"{node.Id}: {node.Type} not executable in V1");
+            if (StepConditionEvaluator.Validate(node) is string conditionError)
+                errors.Add($"{node.Id}: {conditionError}");
+        }
         // RunCoordinator cleanup supports only safe Mock SetVariable/Wait/Sequence/Log nodes.
         void CheckCleanup(IEnumerable<StepNode> nodes)
         {
