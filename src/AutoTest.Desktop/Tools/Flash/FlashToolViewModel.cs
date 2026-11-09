@@ -199,7 +199,10 @@ public sealed class FlashToolViewModel : BindableBase
                 LastAcknowledgedBlock=part;
             }
         }
-        long max=snapshot.Facts.Length==0?0:snapshot.Facts.Max(x=>x.ConfirmedBytes);
+        // Only an acknowledged TransferData block counts as transferred payload.
+        // Later verification/reset facts are NOT additional transfer acknowledgements.
+        long max=snapshot.Facts.Where(x=>x.Stage=="Transfer" && x.Status=="ACK")
+            .Select(x=>x.ConfirmedBytes).DefaultIfEmpty(0).Max();
         ConfirmedBytes=max.ToString(CultureInfo.InvariantCulture);
         TraceQuality="MOCK_UDS_PDU_STAGE_FACTS; NO PHYSICAL CAN FRAME TIMING";
         long total=_backend.Image?.Bytes??0;
