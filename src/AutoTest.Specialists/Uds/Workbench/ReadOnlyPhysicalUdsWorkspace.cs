@@ -133,6 +133,17 @@ public sealed class ReadOnlyPhysicalUdsWorkspace(IReadOnlyPhysicalUdsSessionProv
                     IsValidClassicFrame(x.RawHex));
             // Neither a positive ECU response nor an NRC is externally
             // confirmed without lossless physical Tx/Rx evidence.
+            // Every recorded UDS response (including NRC 0x78) needs at least
+            // one real CAN RX frame. A confirmed result also needs a matching
+            // final UDS trace; a device ACK alone is never ECU confirmation.
+            var responses=uds.Where(x=>x.Direction==UdsTraceDirection.Response).ToArray();
+            canVerified &= can.Count(x=>x.Direction=="RX") >= responses.Length;
+            if (result.Outcome != Outcome.Uncertain)
+            {
+                canVerified &= responses.Length>0 &&
+                    !result.ResponsePdu.IsDefaultOrEmpty &&
+                    responses[^1].Data.AsSpan().SequenceEqual(result.ResponsePdu.AsSpan());
+            }
             if (result.Outcome != Outcome.Uncertain && !canVerified)
                 result=result with { Outcome=Outcome.Uncertain };
             string code=canVerified ? "PHYSICAL_CAN_TRACE_BOUND" :
