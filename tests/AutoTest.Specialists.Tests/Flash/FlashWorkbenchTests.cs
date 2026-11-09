@@ -202,7 +202,7 @@ public sealed class FlashWorkbenchTests
     }
     // Two separated Intel HEX address ranges, both with valid checksums.
     private const string TwoSegmentHex =
-        ":0410000001020304E2\\n:0411000005060708D1\\n:00000001FF\\n";
+        ":0410000001020304E2\n:0411000005060708D1\n:00000001FF\n";
 
     [Fact]
     public async Task TwoSegmentImageProducesTwoIndependentVerifiedSegmentFacts()
