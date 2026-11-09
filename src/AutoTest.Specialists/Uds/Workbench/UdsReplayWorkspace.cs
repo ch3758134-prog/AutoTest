@@ -24,13 +24,30 @@ public sealed class UdsReplayWorkspace
                 exchange.Responses.Count > 256 || exchange.Frames.Count > 100000)
                 throw new InvalidDataException("Invalid replay exchange.");
             var request=UdsHex.Parse(exchange.RequestHex);
+            bool finalSeen=false;
+            int pendingCount=0;
             foreach (var responseText in exchange.Responses)
             {
                 var response=UdsHex.Parse(responseText);
-                if (response[0] == 0x7F && (response.Length != 3 || response[1] != request[0]))
-                    throw new InvalidDataException("Replay negative response SID mismatch.");
-                if (response[0] != 0x7F && response[0] != (byte)(request[0]+0x40))
-                    throw new InvalidDataException("Replay positive response SID mismatch.");
+                if (finalSeen)
+                    throw new InvalidDataException("Replay response exists after a final UDS response.");
+                if (response[0] == 0x7F)
+                {
+                    if (response.Length != 3 || response[1] != request[0])
+                        throw new InvalidDataException("Replay negative response SID mismatch.");
+                    if (response[2] == 0x78)
+                    {
+                        if (++pendingCount > 8)
+                            throw new InvalidDataException("Replay exceeds bounded NRC 0x78 pending limit.");
+                    }
+                    else finalSeen=true;
+                }
+                else
+                {
+                    if (response[0] != (byte)(request[0]+0x40))
+                        throw new InvalidDataException("Replay positive response SID mismatch.");
+                    finalSeen=true;
+                }
             }
             foreach(var frame in exchange.Frames)
             {
