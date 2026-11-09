@@ -59,7 +59,7 @@ public static class UdsWorkbenchEvidence
         var payload = new
         {
             Schema = "AutoTest.R0.UDS.DiagnosticExport/1",
-            Source = source,
+            Source = events.Select(e => e.Source).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1 ? "Mixed Mock/Replay" : source,
             Profile = profile,
             PhysicalTxVerified = false,
             TraceQuality = traceQuality,
