@@ -59,3 +59,25 @@ Files newly owned only within `src/AutoTest.Desktop/Shell/R1/Themes/`:
 
 ### Known issue / approval request
 View currently contains a non-operational central professional-document display placeholder, intentionally labeled unwired. INTEGRATION must replace this with the one actual authorized Region/Document host; do not claim completed docking/multi-document view rendering. Shell and Prism shared file ownership remains with INTEGRATION/main conversation. No third-party Dock dependency introduced.
+
+## U1 · Output / Trace / Problems 实际组件增量
+
+新增 `src/AutoTest.Desktop/Shell/R1/R1DiagnosticsPanel.cs` 及 `tests/AutoTest.Desktop.Tests/Shell/R1DiagnosticsPanelTests.cs`，并修改既有 View/VM 与 View code-behind。UI 内含三级窗口：Output、Trace、Problems；可筛选层级、来源、WorkspaceId、CorrelationId、TraceReference、错误码和 RawText；只复制选中事件。打开/关闭/拒绝等真实 UI 导航结果形成 UI 源操作事件，未接线的专业模块不会生成伪造 USB/CAN Trace。
+
+### 明确区分原始日志与 UI 投影
+
+- `R1WorkspaceViewModel.AcceptDiagnosticEvent(entry)` 是未来 INTEGRATION 注入原始专业消息**摘要投影**的入口；专业真实 Raw 数据内容仅在上游明确提供且获准显示时才可能存在。
+- `R1DiagnosticsPanel` 保持最新 2,000 条 UI 内存投影，超过后 `DroppedCount` 递增并明确提示窗口不完整。它**不是**审计持久化、RECORD 数据仓库或 DEVICE 原始 Trace Export。
+- 当前 UI 复制只复制一条选中事件。完整原始日志、脱敏导出及真实 Trace 持久化仍由 DEVICE/专业/RECORD 负责，经 INTEGRATION 共享入口接线。
+- 格式中的 `Source` 是事件上报来源字符串（如 DEVICE），并不构成已证实的物理输入；真实 Mock/Replay/Physical 由正式源端决定，UI 不可把导航事件伪装为实物通信。
+- 性能/线程要求：`AcceptDiagnosticEvent` 只可在 WPF UI Dispatcher 线程调用；由 INTEGRATION 负责把共享后台通知调度到 UI，不允许后台线程直接改 `ObservableCollection`。
+
+### U1 新增验证项
+
+6 项新 xUnit 源码：空窗口/复制、来源与页签筛选、只复制选中原始证据、过滤使失效选择清空、超过上限的显式丢弃告警、导航拒绝进入 Problems 不进入 Trace。与之前 11 项合计 17 个测试方法；全部 `NOT_RUN`（不具备 Windows Build 证据）。
+
+### 下一阶段共享申请
+
+1. INTEGRATION 映射专业消息到 `WorkspaceDiagnosticEvent`，保留真实 CorrelationId、TraceRef、Layer、ErrorCode、SessionGeneration 与权限。禁止重新定义正式全局 Trace。
+2. 单一正式 Shell 的 Output/Trace/Problems 容器与生命周期由 INTEGRATION 接线，UI 继续负责样式/过滤和交互；公共 `MainWindow.xaml` / Prism 仍未改动。
+3. 事件数过大时，产品级历史/完整导出必须查询正式 RECORD/Trace 服务；不能把 2000 条 UI 缓存输出宣称全量证据。
