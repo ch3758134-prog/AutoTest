@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Desktop.Shell.R1;
@@ -100,7 +101,7 @@ public sealed class R1SharedCanSourceTests
         public int DisposeCalls { get; private set; }
 
         public async IAsyncEnumerable<CanObservation> SubscribeAsync(
-            CanSubscriptionSpec spec, CancellationToken ct)
+            CanSubscriptionSpec spec, [EnumeratorCancellation] CancellationToken ct)
         {
             await Task.CompletedTask;
             yield break;
