@@ -84,9 +84,10 @@
                     <RowDefinition Height="5"/>
                     <RowDefinition Height="155"/>
                 </Grid.RowDefinitions>
-                <TabControl Grid.Row="0" ItemsSource="{Binding OpenTabs}"
+                <TabControl Grid.Row="0" Height="38" ItemsSource="{Binding OpenTabs}"
                             SelectedItem="{Binding ActiveTab, Mode=TwoWay}"
                             Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Line}">
+                    <TabControl.ContentTemplate><DataTemplate><Grid Height="0"/></DataTemplate></TabControl.ContentTemplate>
                     <TabControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type r1:WorkspaceTab}">
                             <StackPanel Orientation="Horizontal">
