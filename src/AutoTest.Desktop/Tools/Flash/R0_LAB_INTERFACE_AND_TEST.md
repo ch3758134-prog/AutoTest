@@ -42,3 +42,11 @@ dotnet test tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj -
 - Flash UI 在导出控制旁显示“上一次 Mock 作业”绑定的镜像文件及 SHA256，避免当前导入的镜像与待导出作业不一致时误判。
 - 新增 Workbench 和 UI 自动测试覆盖：先完成作业、再加载新镜像、导出旧 Job、原镜像和 ACK 保持不变。
 - Schema=2 在原字段上新增 `JobInputCapturedUtc` 和 `MockConfiguration`；仍为仅本专业的 Mock 证据格式，不是跨模块公共 Contracts。
+
+## 本轮增量：多地址段与终止证据一致性
+- MockProgrammingWorkflow 按镜像段记录 `Segment_0001` 等 BEGIN、TRANSFER_ACKED、VERIFIED 事实。已传输 ACK 不等于哈希验证。
+- Mock 审计 Schema 2 额外包含 `SegmentEvidence`（每段 Start、EndExclusive、Bytes、Started、TransferAcknowledged、MockHashVerified）；全作业 MockHashVerified 要求所有段完成验证，不用某一段 PASS 推断整体 PASS。
+- Job 终止状态与 Job PASS/FAIL/CANCELLED/UNCERTAIN 事实同一锁内写入；取消/失败/不确定态末尾事实保留最后一次 TransferData ACK 字节数。
+- Flash WPF 增加“地址段 / Mock 校验”Tab；未观察到 VERIFIED 的段只能显示开始或传输确认，不能冒充校验通过。
+- `JobInputCapturedUtc` 在 Mock Job 提交执行前采集，导出保持镜像/配置来源不可漂移。
+- 新增两段 Intel HEX 的完成、第二段掉线与 WPF 段状态回归；构建与自动测试源代码已提交，但尚未 Windows 运行。
