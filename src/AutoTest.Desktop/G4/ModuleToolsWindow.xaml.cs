@@ -29,7 +29,7 @@ public partial class ModuleToolsWindow : Window
     private string? _initialLoadKey;
     private Exception? _initialLoadError;
 
-    public ModuleToolsWindow(MainWindowViewModel main)
+    public ModuleToolsWindow(MainWindowViewModel main, string? initialToolKey = null)
     {
         ArgumentNullException.ThrowIfNull(main);
         var host = main.G4 ?? throw new InvalidOperationException("G4 services are not registered.");
@@ -61,6 +61,9 @@ public partial class ModuleToolsWindow : Window
             ["bench"] = () => { } // Explicit disabled page; no fake IBenchWorkbenchPort.
         };
 
+        if (initialToolKey is not null)
+            NavigateTo(initialToolKey);
+
         SpecialistTabs.SelectionChanged += SpecialistTabs_SelectionChanged;
         if (SpecialistTabs.SelectedItem is TabItem initial && initial.Tag is string initialKey &&
             !TryLoad(initialKey, out var initialFailure))
@@ -69,19 +72,42 @@ public partial class ModuleToolsWindow : Window
             _initialLoadError = initialFailure;
             AuditStatus.Text = "初始专业页加载失败（其余页面仍可单独打开）· " + initialFailure;
             AuditStatus.Foreground = Brushes.OrangeRed;
-            Loaded += InitialFailureLoaded;
         }
+        Loaded += InitialSelectionLoaded;
     }
 
-    private async void InitialFailureLoaded(object sender, RoutedEventArgs args)
+    /// <summary>Resolves an existing specialist page; never opens a parallel HOST.</summary>
+    public string? SelectedToolKey => (SpecialistTabs.SelectedItem as TabItem)?.Tag as string;
+
+    public void NavigateTo(string toolKey)
     {
-        Loaded -= InitialFailureLoaded;
-        if (_initialLoadKey is null || _initialLoadError is null) return;
-        try { await _audit.RecordToolActivationFailureAsync(_initialLoadKey, _initialLoadError); }
-        catch (Exception auditError)
+        if (string.IsNullOrWhiteSpace(toolKey) || !_pageFactories.ContainsKey(toolKey))
+            throw new ArgumentException("Unregistered specialist navigation key.", nameof(toolKey));
+        var tab = SpecialistTabs.Items.OfType<TabItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag as string, toolKey, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException("Registered specialist tool is absent from the window.");
+        SpecialistTabs.SelectedItem = tab;
+    }
+
+    private async void InitialSelectionLoaded(object sender, RoutedEventArgs args)
+    {
+        Loaded -= InitialSelectionLoaded;
+        if (SpecialistTabs.SelectedItem is not TabItem current || current.Tag is not string key)
+            return;
+
+        if (_initialLoadError is not null && _initialLoadKey == key)
         {
-            AuditStatus.Text += " | 同时，SQLite 审计写入失败: " + auditError.Message;
+            try { await _audit.RecordToolActivationFailureAsync(key, _initialLoadError); }
+            catch (Exception auditError)
+            {
+                AuditStatus.Text += " | 同时，SQLite 审计写入失败: " + auditError.Message;
+            }
+            return;
         }
+
+        // WPF selects the first tab during InitializeComponent, before SelectionChanged
+        // is subscribed. Record the first visible tool just like later tab changes.
+        await AuditToolNavigationAsync(key, current.Header?.ToString() ?? key);
     }
 
     private void LoadWave(G4IntegrationHost host, string appData)
@@ -135,11 +161,16 @@ public partial class ModuleToolsWindow : Window
             return;
         }
 
+        await AuditToolNavigationAsync(key, tab.Header?.ToString() ?? key);
+    }
+
+    private async Task AuditToolNavigationAsync(string key, string label)
+    {
         AuditStatus.Text = "正在记录 UI 导航（尚未确认 SQLite 持久化）…";
         AuditStatus.Foreground = Brushes.LightGoldenrodYellow;
         try
         {
-            var receipt = await _audit.RecordToolOpenedAsync(key, tab.Header?.ToString() ?? key);
+            var receipt = await _audit.RecordToolOpenedAsync(key, label);
             AuditStatus.Text = $"UI_NAVIGATION_ONLY · 已持久化 · EventId {receipt.EventId:D} · 不代表设备操作成功";
             AuditStatus.Foreground = Brushes.LightGreen;
             if (key == "operations") await _operationsModel.RefreshAsync();

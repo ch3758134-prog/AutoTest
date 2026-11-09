@@ -29,12 +29,22 @@ public sealed class ModuleToolsWindowCompositionTests
                     Path.Combine(Path.GetTempPath(), "AutoTest-ModuleTools-Smoke", Guid.NewGuid().ToString("N")));
                 var gateway = ApplicationComposition.RegisterMock().Gateway;
                 var viewModel = new MainWindowViewModel(gateway, workspace, host);
-                var window = new ModuleToolsWindow(viewModel);
+                var window = new ModuleToolsWindow(viewModel, "uds");
 
                 window.Show();
                 window.UpdateLayout();
                 var tabs = Assert.IsType<TabControl>(((DockPanel)window.Content).Children[1]);
                 Assert.Equal(10, tabs.Items.Count);
+                Assert.Equal("uds", window.SelectedToolKey);
+                window.NavigateTo("controller-config");
+                Assert.Equal("controller-config", window.SelectedToolKey);
+                window.NavigateTo("uds");
+                Assert.Equal("uds", window.SelectedToolKey);
+                window.NavigateTo("flash");
+                Assert.Equal("flash", window.SelectedToolKey);
+                window.NavigateTo("operations");
+                Assert.Equal("operations", window.SelectedToolKey);
+                Assert.Throws<ArgumentException>(() => window.NavigateTo("physical-can-tx"));
                 Assert.NotNull(window.FindName("ControllerConfigHost"));
                 Assert.NotNull(window.FindName("DbcHost"));
                 Assert.NotNull(window.FindName("TestHost"));
