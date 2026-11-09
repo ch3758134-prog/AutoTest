@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.Application.G4;
 using AutoTest.Contracts;
 using AutoTest.Core;
