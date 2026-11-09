@@ -160,4 +160,28 @@ public sealed class UdsWorkbenchTests
         Assert.DoesNotContain("11 22 33 44",error.Message);
         Assert.Equal(0,replay.Position);
     }
+
+    [Fact]
+    public async Task MockTimeoutProvidesTransportDiagnosticWithoutImpersonatingEcuReply()
+    {
+        await using var workspace=new UdsDiagnosticWorkspace();
+        workspace.SetNoResponse(true);
+        var exchange=await workspace.SendMockAsync(Profile(25),"22 F1 90");
+        Assert.Equal("Uncertain",exchange.Outcome);
+        Assert.Equal("ISOTP_TIMEOUT",exchange.FailureLayer);
+        Assert.Contains("ISO-TP frame/flow-control timeout",exchange.DiagnosticDetail);
+        Assert.Empty(exchange.ResponseSequence);
+    }
+
+    [Fact]
+    public void ReplayNoFinalResponseHasReplayOnlyFailureLayer()
+    {
+        var replay=new UdsReplayWorkspace();
+        replay.Load(new UdsReplayDocument(1,[
+            new UdsReplayRecord("22 F1 90",["7F 22 78"],[])]));
+        var result=replay.Consume("22 F1 90");
+        Assert.Equal("Uncertain",result.Outcome);
+        Assert.Equal("REPLAY_NO_FINAL_RESPONSE",result.FailureLayer);
+        Assert.Contains("not a live ECU timeout",result.DiagnosticDetail);
+    }
 }
