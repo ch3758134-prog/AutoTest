@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AutoTest.Desktop.Bench;
 
@@ -62,7 +63,7 @@ public static class BenchEvidenceExport
             disclaimer = "UI-local evidence projection. PhysicalObserved and EcuFeedback are UNKNOWN unless a separate authoritative source supplies them. Raw DEVICE/RECORD traces are not embedded.",
             exportedAtUtc = DateTimeOffset.UtcNow,
             entries = events.ToArray()
-        }, new JsonSerializerOptions { WriteIndented = true });
+        }, new JsonSerializerOptions { WriteIndented = true, Converters = { new JsonStringEnumConverter() } });
     }
 
     public static string ToTsv(IEnumerable<BenchEvidenceEntry> events)
