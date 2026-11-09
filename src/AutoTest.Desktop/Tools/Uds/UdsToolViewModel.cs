@@ -174,6 +174,8 @@ public sealed class UdsToolViewModel : BindableBase
         _lastCorrelationId=Guid.NewGuid();
         RaisePropertyChanged(nameof(LastCorrelationId));
         IsBusy=true; CancelRequestCommand.RaiseCanExecuteChanged();
+        _lastRequestSensitive=false;
+        TraceQuality="NOT_CAPTURED";
         Status="REQUESTING"; Error=""; Nrc="—"; ResponseHex="—";
         var watch=Stopwatch.StartNew();
         string source=SourceMode;
