@@ -30,6 +30,13 @@ public static class UdsWorkbenchEvidence
             if (frame.Length is < 1 or > 8) return "DLC_INVALID";
             return (frame[0] >> 4) switch
             {
+                0x0 when frame.Length >= 4 && frame[1] == 0x7F =>
+                    "SF NEGATIVE_RESPONSE SID=0x" + frame[2].ToString("X2") +
+                    " NRC=0x" + frame[3].ToString("X2") +
+                    (frame[3] == 0x78 ? " RESPONSE_PENDING; P2* waiting applies" : ""),
+                0x0 when frame.Length >= 2 && frame[1] >= 0x40 =>
+                    "SF POSITIVE_RESPONSE SID=0x" + frame[1].ToString("X2") +
+                    " length=" + (frame[0] & 0x0F),
                 0x0 => "SF length=" + (frame[0] & 0x0F),
                 0x1 when frame.Length >= 2 => "FF total=" +
                     (((frame[0] & 0x0F) << 8) | frame[1]),
@@ -56,6 +63,9 @@ public static class UdsWorkbenchEvidence
             Profile = profile,
             PhysicalTxVerified = false,
             TraceQuality = traceQuality,
+            BuildCommit = "NOT_EMBEDDED_BY_BUILD",
+            ResourceRevision = "NOT_REGISTERED",
+            SessionGeneration = "NOT_APPLICABLE_TO_MOCK_REPLAY",
             TimestampSemantic = "HOST_UI_OBSERVATION; NOT ECU CLOCK",
             RawFrameOrdering = "MOCK HOST/ECU FRAME GROUPS ARE NOT CHRONOLOGICAL",
             ExportedUtc = DateTimeOffset.UtcNow,
