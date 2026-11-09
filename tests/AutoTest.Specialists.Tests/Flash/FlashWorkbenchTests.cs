@@ -164,4 +164,40 @@ public sealed class FlashWorkbenchTests
         }
         finally { if(File.Exists(file)) File.Delete(file); }
     }
+
+    [Fact]
+    public async Task ReloadingImageDoesNotRewritePriorMockJobAudit()
+    {
+        var workspace=new FlashDryRunWorkspace();
+        var first=Enumerable.Range(0,120).Select(x=>(byte)x).ToArray();
+        workspace.LoadImage("first.bin",first,0x1000);
+        var id=await workspace.StartDryRunAsync(Config());
+        var completed=await workspace.WaitAsync(id);
+        Assert.Equal(ProgrammingJobState.Completed,completed.State);
+
+        // A completed job may be followed by another image import, but its
+        // exported evidence must still identify the image actually programmed.
+        workspace.LoadImage("second.bin",new byte[]{9,8,7,6},0x2000);
+        Assert.Equal("second.bin",workspace.Image?.FileName);
+        string path=Path.Combine(Path.GetTempPath(),"r0_job_frozen_"+
+            Guid.NewGuid().ToString("N")+".json");
+        try
+        {
+            await workspace.ExportMockAuditAsync(path);
+            using var json=System.Text.Json.JsonDocument.Parse(
+                await File.ReadAllTextAsync(path));
+            var root=json.RootElement;
+            Assert.Equal(id.Value,root.GetProperty("Job").GetGuid());
+            Assert.Equal("first.bin",root.GetProperty("Image")
+                .GetProperty("FileName").GetString());
+            Assert.Equal(120,root.GetProperty("Image")
+                .GetProperty("Bytes").GetInt64());
+            Assert.Equal(120,root.GetProperty("AcknowledgedTransferBytes").GetInt64());
+            Assert.Equal(1,root.GetProperty("ExpectedSegmentVerifications").GetInt32());
+            Assert.Equal("MOCK_ECU_A",root.GetProperty("MockConfiguration")
+                .GetProperty("ExpectedIdentity").GetString());
+            Assert.True(root.TryGetProperty("JobInputCapturedUtc",out _));
+        }
+        finally { if(File.Exists(path)) File.Delete(path); }
+    }
 }
