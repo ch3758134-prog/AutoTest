@@ -184,4 +184,23 @@ public sealed class UdsWorkbenchTests
         Assert.Equal("REPLAY_NO_FINAL_RESPONSE",result.FailureLayer);
         Assert.Contains("not a live ECU timeout",result.DiagnosticDetail);
     }
+
+    [Fact]
+    public async Task BoundedMockCaptureRejectsSafelyUntilExplicitReset()
+    {
+        await using var workspace=new UdsDiagnosticWorkspace("MOCK_ECU_A",
+            maxCapturedExchanges:2);
+        await workspace.SendMockAsync(Profile(),"3E 00");
+        await workspace.SendMockAsync(Profile(),"3E 00");
+        Assert.Equal(2,workspace.CapturedExchanges);
+        var ex=await Assert.ThrowsAsync<InvalidOperationException>(
+            async ()=>await workspace.SendMockAsync(Profile(),"3E 00"));
+        Assert.Contains("MOCK_CAPTURE_CAPACITY_REACHED",ex.Message);
+        Assert.Equal(2,workspace.CapturedExchanges);
+        await workspace.ResetMockAsync("MOCK_ECU_A");
+        Assert.Equal(0,workspace.CapturedExchanges);
+        var result=await workspace.SendMockAsync(Profile(),"3E 00");
+        Assert.Equal("Accepted",result.Outcome);
+        Assert.Equal(1,workspace.CapturedExchanges);
+    }
 }
