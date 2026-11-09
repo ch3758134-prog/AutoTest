@@ -1,7 +1,7 @@
-# SAEF lives inside the AutoTest GitHub monorepo.
-# Keep engineering governance, approved work products, ADR/CR and text evidence.
-# Original raw PDF/ZIP firmware/schematics are intentionally NOT committed to this public repository.
-# To make the entire SAEF recoverable, register and verify those assets in an approved protected store.
+# SAEF belongs to the single AutoTest GitHub repository.
+# Text engineering records, approved work products and evidence are versioned.
+# The user explicitly authorized adding the two exact original schematic PDFs.
+# Frozen firmware ZIP/source is managed separately after source/provenance review.
 /*
 !/.gitignore
 !/README.md
@@ -12,6 +12,9 @@
 !/engineering/decisions/
 !/engineering/change-requests/
 !/engineering/evidence/
+!/engineering/assets/
+/engineering/assets/*
+!/engineering/assets/hardware/
 __pycache__/
 *.pyc
 *.zip
@@ -24,3 +27,6 @@ __pycache__/
 *.o
 *.obj
 *.pdb
+# Exceptions only for the two approved original schematic assets.
+!/engineering/assets/hardware/HW-MAIN-TestCtr-V1.5.pdf
+!/engineering/assets/hardware/HW-KEY-EPB_ODD-V1.1.pdf
