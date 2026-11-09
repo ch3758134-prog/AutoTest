@@ -37,4 +37,50 @@ public sealed class UdsToolViewModelTests
         vm.DeleteService();
         Assert.Equal(before,vm.Services.Count);
     }
+
+    [Fact]
+    public async Task DiagnosticTimelineCanBeFilteredAndExportedAsMockOnly()
+    {
+        var vm=new UdsToolViewModel { DiagnosticPath=Path.Combine(Path.GetTempPath(),
+            "r0_uds_"+Guid.NewGuid().ToString("N")+".json") };
+        try
+        {
+            await vm.SendAsync();
+            Assert.NotEmpty(vm.DiagnosticEvents);
+            Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="ISOTP" && x.Direction=="HOST TX");
+            Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="UDS" && x.Direction=="RESPONSE");
+            Assert.Equal("MOCK_GROUPED_FRAMES_NO_INTERLEAVED_TIMESTAMPS",vm.TraceQuality);
+            vm.TraceFilter="ISOTP";
+            Assert.NotEmpty(vm.VisibleEvents);
+            Assert.All(vm.VisibleEvents,x=>Assert.Equal("ISOTP",x.Layer));
+            await vm.ExportDiagnosticAsync();
+            var json=await File.ReadAllTextAsync(vm.DiagnosticPath);
+            Assert.Contains("PhysicalTxVerified",json);
+            Assert.Contains("false",json);
+            Assert.Contains("CorrelationId",json);
+            Assert.Contains("HOST_UI_OBSERVATION",json);
+        }
+        finally { if(File.Exists(vm.DiagnosticPath)) File.Delete(vm.DiagnosticPath); }
+    }
+
+    [Fact]
+    public async Task SecurityAccessRawDataIsRedactedFromDiagnosticExport()
+    {
+        var vm=new UdsToolViewModel { RequestHex="27 01",
+            DiagnosticPath=Path.Combine(Path.GetTempPath(),
+                "r0_uds_sensitive_"+Guid.NewGuid().ToString("N")+".json") };
+        try
+        {
+            await vm.SendAsync();
+            Assert.Contains("REDACTED",vm.ResponseHex);
+            Assert.All(vm.DiagnosticEvents.Where(x=>x.Layer=="ISOTP"),
+                x=>Assert.Contains("REDACTED",x.RawHex));
+            await vm.ExportDiagnosticAsync();
+            string json=await File.ReadAllTextAsync(vm.DiagnosticPath);
+            Assert.Contains("REDACTED",json);
+            Assert.DoesNotContain("27 01",json);
+            Assert.DoesNotContain("67 01",json);
+        }
+        finally { if(File.Exists(vm.DiagnosticPath)) File.Delete(vm.DiagnosticPath); }
+    }
 }
