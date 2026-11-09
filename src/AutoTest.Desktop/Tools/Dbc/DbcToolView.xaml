@@ -1,0 +1,78 @@
+<UserControl x:Class="AutoTest.Desktop.Tools.Dbc.DbcToolView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" MinWidth="950" MinHeight="550">
+  <Grid Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+      <TextBlock Text="DBC 专业编辑 · P-DBC" FontSize="18" FontWeight="Bold" Margin="0,0,16,0"/>
+      <TextBox Width="470" Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}" ToolTip="DBC 绝对文件路径（UTF-8）"/>
+      <Button Content="打开" Command="{Binding OpenCommand}" Margin="8,0,0,0" Padding="12,4"/>
+      <Button Content="保存" Command="{Binding SaveCommand}" Margin="6,0,0,0" Padding="12,4"/>
+      <Button Content="重置" Command="{Binding ResetCommand}" Margin="6,0,0,0" Padding="12,4"/>
+    </StackPanel>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,9">
+      <TextBlock Text="DBC Revision " FontWeight="SemiBold"/><TextBlock Text="{Binding Revision}" FontWeight="SemiBold"/>
+      <TextBlock Text=" · " Margin="5,0"/><TextBlock Text="{Binding SupportSummary}" Foreground="DarkGoldenrod" TextWrapping="Wrap"/>
+    </StackPanel>
+    <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <GroupBox Header="报文树 (BO_)" Grid.Column="0" Margin="0,0,8,0"><DockPanel Margin="6">
+        <StackPanel DockPanel.Dock="Bottom"><TextBlock Text="ID（0x100）/ 名称 / DLC / TX节点" Foreground="Gray"/>
+          <TextBox Text="{Binding NewMessageId, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+          <TextBox Text="{Binding NewMessageName, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+          <TextBox Text="{Binding NewMessageDlc, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+          <TextBox Text="{Binding Transmitter, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+          <TextBlock Text="新增 Node"/><TextBox Text="{Binding NewNodeName, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+          <Button Content="添加节点" Command="{Binding AddNodeCommand}" Margin="0,2" Padding="8,3"/>
+          <WrapPanel Margin="0,4"><Button Content="新增报文" Command="{Binding AddMessageCommand}" Padding="9,3"/>
+            <Button Content="删除报文" Command="{Binding DeleteMessageCommand}" Margin="5,0" Padding="9,3"/>
+            <Button Content="更新报文" Command="{Binding UpdateMessageCommand}" Margin="5,0" Padding="9,3"/></WrapPanel>
+        </StackPanel><ListBox ItemsSource="{Binding Messages}" SelectedItem="{Binding SelectedMessage}" DisplayMemberPath="Name"/>
+      </DockPanel></GroupBox>
+      <GroupBox Grid.Column="1" Header="信号树 (SG_)" Margin="0,0,8,0"><DockPanel Margin="6">
+        <StackPanel DockPanel.Dock="Bottom"><TextBox Text="{Binding SignalName, UpdateSourceTrigger=PropertyChanged}" Margin="0,3"/>
+          <WrapPanel><Button Content="新增信号" Command="{Binding AddSignalCommand}" Padding="8,3"/>
+            <Button Content="删除信号" Command="{Binding DeleteSignalCommand}" Margin="4,0" Padding="8,3"/></WrapPanel>
+        </StackPanel><ListBox ItemsSource="{Binding Signals}" SelectedItem="{Binding SelectedSignal}" DisplayMemberPath="Name"/>
+      </DockPanel></GroupBox>
+      <GroupBox Grid.Column="2" Header="属性 / 值表 / Replay"><Grid Margin="8">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <UniformGrid Grid.Row="0" Columns="4">
+          <StackPanel Margin="3"><TextBlock Text="起始位"/><TextBox Text="{Binding StartBit, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="位长度"/><TextBox Text="{Binding BitLength, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="Factor"/><TextBox Text="{Binding Factor, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="Offset"/><TextBox Text="{Binding Offset, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="Minimum"/><TextBox Text="{Binding Minimum, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="Maximum"/><TextBox Text="{Binding Maximum, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="Unit"/><TextBox Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="Receiver"/><TextBox Text="{Binding Receiver, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><CheckBox Content="Intel little-endian" IsChecked="{Binding Intel}"/></StackPanel>
+          <StackPanel Margin="3"><CheckBox Content="Signed" IsChecked="{Binding Signed}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="Mux (M/mN)"/><TextBox Text="{Binding Mux, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <Button Content="更新信号属性" Command="{Binding UpdateSignalCommand}" Margin="3" Padding="8,4"/>
+        </UniformGrid>
+        <WrapPanel Grid.Row="1" Margin="0,8"><TextBlock Text="值表 RAW" VerticalAlignment="Center"/>
+          <TextBox Width="55" Text="{Binding LabelRaw, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,7,0"/>
+          <TextBlock Text="说明" VerticalAlignment="Center"/><TextBox Width="150" Text="{Binding ValueLabel, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,7,0"/>
+          <Button Content="设置值表" Command="{Binding LabelCommand}" Padding="8,3"/>
+        </WrapPanel>
+        <StackPanel Grid.Row="2" Margin="0,5,0,6">
+          <TextBlock Text="CAN Replay（只解码离线帧，不发送 CAN）" FontWeight="SemiBold"/>
+          <WrapPanel Margin="0,5"><TextBlock Text="Frame ID" VerticalAlignment="Center"/>
+            <TextBox Width="80" Text="{Binding ReplayFrameId, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,8,0"/>
+            <TextBox Width="240" Text="{Binding ReplayHex, UpdateSourceTrigger=PropertyChanged}"/>
+            <Button Content="解码" Command="{Binding ReplayCommand}" Margin="7,0" Padding="8,3"/></WrapPanel>
+          <TextBlock Text="{Binding DecodeSummary}"/>
+        </StackPanel>
+        <DataGrid Grid.Row="3" ItemsSource="{Binding Decoded}" IsReadOnly="True" AutoGenerateColumns="False">
+          <DataGrid.Columns><DataGridTextColumn Header="信号" Binding="{Binding SignalName}" Width="*"/>
+            <DataGridTextColumn Header="Raw" Binding="{Binding RawValue}"/>
+            <DataGridTextColumn Header="物理值" Binding="{Binding PhysicalValue}"/>
+            <DataGridTextColumn Header="单位" Binding="{Binding Unit}"/>
+            <DataGridTextColumn Header="值表" Binding="{Binding ValueDescription}" Width="*"/></DataGrid.Columns>
+        </DataGrid>
+      </Grid></GroupBox>
+    </Grid>
+    <StackPanel Grid.Row="3" Margin="0,8,0,0"><TextBlock Text="{Binding Status}"/>
+      <TextBlock Text="{Binding Error}" Foreground="Crimson" TextWrapping="Wrap"/>
+      <TextBlock Text="当前界面仅提供 Replay 解码；不执行真实 CAN 发送。复杂 DBC 语法采用只读保护，不自动删节。" Foreground="DarkGoldenrod"/></StackPanel>
+  </Grid>
+</UserControl>

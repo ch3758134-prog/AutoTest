@@ -1,0 +1,51 @@
+<Window x:Class="AutoTest.Desktop.G4.G4ToolsWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:tools="clr-namespace:AutoTest.Desktop.Tools"
+ Title="AutoTest G4 · 四专项 Mock 工作台" Width="1330" Height="870" MinWidth="1050" MinHeight="650"
+ WindowStartupLocation="CenterOwner" Background="#142131" Foreground="#E6EFFB" FontFamily="Segoe UI" FontSize="13">
+ <Window.Resources>
+  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#DCE7F4"/></Style>
+  <Style TargetType="TextBox"><Setter Property="Foreground" Value="#E8F2FD"/><Setter Property="Background" Value="#26374D"/><Setter Property="Padding" Value="8"/></Style>
+  <Style TargetType="Button"><Setter Property="Margin" Value="0,0,10,0"/><Setter Property="Padding" Value="12,8"/><Setter Property="Background" Value="#2A435F"/><Setter Property="Foreground" Value="#E9F3FF"/></Style>
+ </Window.Resources>
+ <DockPanel Margin="12">
+  <Border DockPanel.Dock="Top" Background="#513B19" Padding="10" Margin="0,0,0,8">
+   <TextBlock Text="仅本地 Mock / Replay · 非真实 ECU 测量或生产 PASS · 禁止真实 USB/CAN 输出/擦写" FontWeight="Bold"/>
+  </Border>
+  <TabControl Background="#1B2A40" Foreground="#EAF3FF">
+   <TabItem Header="扫码 / Production Mock">
+    <StackPanel Margin="18">
+     <TextBlock Text="通过正式扫描规则 → 唯一配方 → TEST PreparedPlan → RunCoordinator → SQLite" FontWeight="SemiBold"/>
+     <TextBlock Text="先在主工作台导入 DBC、建立含 Assert 的 TEST 文档；示例输入 EPB-00001" Margin="0,12,0,10"/>
+     <TextBox Text="{Binding ScanInput,UpdateSourceTrigger=PropertyChanged}" Width="320" HorizontalAlignment="Left"/>
+     <Button Content="模拟扫码并执行当前 TEST" Command="{Binding ScanCommand}" Width="260" HorizontalAlignment="Left" Margin="0,12"/>
+     <TextBlock Text="{Binding ScanResult}" TextWrapping="Wrap" FontSize="15" Margin="0,15,0,0"/>
+    </StackPanel>
+   </TabItem>
+   <TabItem Header="SQLite 运行记录">
+    <DockPanel Margin="18"><StackPanel DockPanel.Dock="Top">
+      <Button Content="从 SQLite 重新查询历史" Command="{Binding HistoryCommand}" Width="260" HorizontalAlignment="Left"/>
+      <TextBlock Text="{Binding HistoryResult}" Margin="0,10"/>
+    </StackPanel><ListBox ItemsSource="{Binding History}" Background="#162437" Foreground="#EDF4FF"/></DockPanel>
+   </TabItem>
+   <TabItem Header="Wave · CAN Hub / DBC">
+    <tools:WaveToolView x:Name="WavePanel"/>
+   </TabItem>
+   <TabItem Header="UDS · ISO-TP Mock">
+    <StackPanel Margin="18">
+     <TextBlock Text="统一 CAN Hub + CAN TX Lease + ISO-TP + UDS 0x19 ReadDTC · Mock-only" FontWeight="SemiBold"/>
+     <Button Content="执行 Mock 诊断会话（0x19）" Command="{Binding UdsCommand}" Width="280" HorizontalAlignment="Left" Margin="0,16"/>
+     <TextBlock Text="{Binding UdsResult}" TextWrapping="Wrap"/>
+    </StackPanel>
+   </TabItem>
+   <TabItem Header="Flash · Mock Bootloader">
+    <StackPanel Margin="18">
+     <TextBlock Text="在隔离的 MockBootloader 内执行固件预检、下载、校验和复位，不使用物理 CAN Hub" FontWeight="SemiBold"/>
+     <Button Content="执行固定样例 Mock BIN 烧录" Command="{Binding FlashCommand}" Width="270" HorizontalAlignment="Left" Margin="0,16"/>
+     <TextBlock Text="{Binding FlashResult}" TextWrapping="Wrap"/>
+    </StackPanel>
+   </TabItem>
+  </TabControl>
+ </DockPanel>
+</Window>

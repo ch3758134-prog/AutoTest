@@ -1,0 +1,12 @@
+path,kind,owner,why,approval_state
+CODEX_EXECUTION.md,DELIVERY_CONTROL_DOC,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+FILE_SHA256_MANIFEST.json,DELIVERY_CONTROL_DOC,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+FILE_TREE.txt,DELIVERY_CONTROL_DOC,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+MAIN_CHAT_RETURN.md,DELIVERY_CONTROL_DOC,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+PROPOSED_ADDITIONAL_PATHS.csv,DELIVERY_CONTROL_DOC,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+V0_VERIFICATION_REPORT.md,DELIVERY_CONTROL_DOC,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+tests/AutoTest.Contracts.Tests/CoreContractTests.cs,TEST_SOURCE,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+tests/AutoTest.Desktop.Tests/WorkbenchViewModelTests.cs,TEST_SOURCE,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+tests/AutoTest.Devices.Tests/MockTransportTests.cs,TEST_SOURCE,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+tests/negative/StrongIdMisuse/BadId.cs,TEST_SOURCE,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0
+tests/negative/StrongIdMisuse/StrongIdMisuse.csproj,TEST_SOURCE,INTEGRATION,Required to supply runnable V0 tests or mandatory delivery/verification controls,MAIN_CHAT_APPROVED_FOR_V0

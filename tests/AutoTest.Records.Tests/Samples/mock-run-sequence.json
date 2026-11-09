@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "description": "REPLAY_ONLY, not actual physical data",
+  "runs": [
+    { "dut": "ECU-A", "mode": "Production", "verdict": "Fail", "facts": ["MockObservation", "Judgement"] },
+    { "dut": "ECU-A", "mode": "Production", "verdict": "Pass", "facts": ["MockObservation", "Judgement"] },
+    { "dut": "ECU-B", "mode": "Production", "verdict": "Pass", "facts": ["MockObservation", "Judgement"] }
+  ],
+  "expectedStatistics": { "runCount": 3, "distinctDutCount": 2, "pass": 2, "fail": 1 },
+  "evidence": "No hardware physical measurements or production-release certification"
+}

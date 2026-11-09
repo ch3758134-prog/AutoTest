@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><UseWPF>true</UseWPF>
+    <AssemblyName>AutoTest.Desktop</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AutoTest.Application/AutoTest.Application.csproj" />
+    <ProjectReference Include="../AutoTest.Contracts/AutoTest.Contracts.csproj" />
+    <ProjectReference Include="../AutoTest.Testing/AutoTest.Testing.csproj" />
+    <ProjectReference Include="../AutoTest.Projects/AutoTest.Projects.csproj" />
+    <ProjectReference Include="../AutoTest.Specialists/AutoTest.Specialists.csproj" />
+    <ProjectReference Include="../AutoTest.DeviceLab/AutoTest.DeviceLab.csproj" />
+  </ItemGroup>
+  <ItemGroup><PackageReference Include="Prism.DryIoc" /></ItemGroup>
+</Project>
