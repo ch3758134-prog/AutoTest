@@ -68,6 +68,7 @@ public sealed partial class HardwareBenchController
                 if (session.State != UsbSessionState.Connected || session.Generation != generation ||
                     ack.Command != command || ack.Payload.Length != 0)
                     throw new IOException("Stale/malformed control ACK; output state UNKNOWN.");
+                ct.ThrowIfCancellationRequested();
                 RecordPhysical(generation, "STATION", "USB_ACK", command, value,
                     "TRANSPORT_ACCEPTED", "Controller accepted SET; external voltage/fixture position UNKNOWN.",
                     ack.Sequence, ack.Status);
@@ -79,11 +80,13 @@ public sealed partial class HardwareBenchController
                     readback.Command != getCommand ||
                     !FirmwareReadOnlyProtocol.ValidReadOnlyPayload(getCommand, readback.Payload))
                     throw new IOException("Readback invalid/stale; output state UNKNOWN.");
+                ct.ThrowIfCancellationRequested();
                 bool matches = readback.Payload[0] == value;
                 RecordPhysical(generation, "STATION", "FIRMWARE_READBACK", command, value,
                     matches ? "GPIO_MATCH" : "GPIO_MISMATCH",
                     "MCU GPIO readback only; measured voltage/position UNKNOWN.",
                     readback.Sequence, readback.Status, readback.Payload[0]);
+                ct.ThrowIfCancellationRequested();
                 return new StationOutputReceipt(DateTimeOffset.UtcNow, generation, command, value,
                     ack.Sequence, ack.Status, readback.Sequence, readback.Payload[0], matches);
             }
@@ -135,11 +138,13 @@ public sealed partial class HardwareBenchController
                 if (session.State != UsbSessionState.Connected || session.Generation != generation ||
                     ack.Command != FirmwareReadOnlyProtocol.CanTransmit || ack.Payload.Length != 0)
                     throw new IOException("Stale/malformed CAN-send ACK; KeySim state UNKNOWN.");
+                ct.ThrowIfCancellationRequested();
                 _keyEvidence.ControllerAccepted(completeMask, generation, ack.Sequence);
                 RecordPhysical(generation, "KEYSIM", "USB_CAN_SEND_ACK",
                     FirmwareReadOnlyProtocol.CanTransmit, null, "TRANSPORT_ACCEPTED",
                     $"MCU accepted CAN send, Mask 0x{completeMask:X5}; KEY_SIM has no ACK.",
                     ack.Sequence, ack.Status, rawCan: raw);
+                ct.ThrowIfCancellationRequested();
                 return new KeypadCommandReceipt(DateTimeOffset.UtcNow, generation,
                     completeMask, ack.Sequence, ack.Status, raw);
             }
@@ -162,8 +167,15 @@ public sealed partial class HardwareBenchController
         if (_session?.State != UsbSessionState.Connected || _log is null ||
             _log.FailureMessage is not null || _log.Dropped != 0)
             throw new IOException("A healthy connected trace session is required.");
+        var session = _session ?? throw new IOException("Missing active device session.");
+        var log = _log ?? throw new IOException("Missing active raw log.");
+        long generation = session.Generation;
         var evidence = _keyEvidence.RecordManual(_selectedInstanceId, input);
-        _log.Record(evidence);
+        if (!ReferenceEquals(session, _session) || session.State != UsbSessionState.Connected ||
+            generation != session.Generation || evidence.SessionGeneration != generation ||
+            !ReferenceEquals(log, _log))
+            throw new IOException("Connection changed during manual observation; refuse stale evidence.");
+        log.Record(evidence);
         return evidence;
     }
 }

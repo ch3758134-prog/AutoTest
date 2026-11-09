@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.Channels;
 using AutoTest.Devices.Diagnostics;
+using AutoTest.Devices.Station;
 using AutoTest.Devices.Usb;
 using Microsoft.Win32.SafeHandles;
 using Xunit;
@@ -199,6 +200,60 @@ public sealed class WinUsbConnectFailureRecoveryTests
         api.FailStage = null;
         await link.OpenAsync(default);
         Assert.Equal(WinUsbLinkState.Connected, link.State);
+        await link.CloseAsync(default);
+    }
+
+    [Fact]
+    public async Task DEVICE_REC_09_PhysicalStationAndKeyConsentsReachOnlyOneMockNativeWrite()
+    {
+        var api = new FakeWinUsbApi();
+        await using var link = NewLink(api);
+        await link.OpenAsync(default);
+        var powerOn = UsbWireCodec.EncodeRequest(31, 0x10, new byte[] { 1 });
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await link.WriteAsync(powerOn, default));
+        Assert.Equal(0, api.WriteCount);
+        link.AuthorizeOneStationCommand(0x10, 1, "AUTHORIZE ECU POWER ON");
+        await link.WriteAsync(powerOn, default);
+        Assert.Equal(1, api.WriteCount);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await link.WriteAsync(powerOn, default));
+        link.AuthorizeOneStationCommand(0x12, 1, "AUTHORIZE IGN ON");
+        link.RevokeStationCommand();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await link.WriteAsync(UsbWireCodec.EncodeRequest(32, 0x12, new byte[] { 1 }), default));
+        Assert.Equal(1, api.WriteCount);
+
+        var keyFrame = PhysicalKeypadProtocol.EncodeUsbCanPayload(0xA5001u);
+        var keyRequest = UsbWireCodec.EncodeRequest(33, 0x40, keyFrame);
+        link.AuthorizeOneKeyFrame(keyFrame, PhysicalKeypadProtocol.Confirmation(0xA5001u));
+        await link.WriteAsync(keyRequest, default);
+        Assert.Equal(2, api.WriteCount);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await link.WriteAsync(keyRequest, default));
+        await link.CloseAsync(default);
+    }
+
+    [Fact]
+    public async Task DEVICE_REC_10_DisconnectAndReconnectRevokePendingStationAndKeyAuthorization()
+    {
+        var api = new FakeWinUsbApi();
+        await using var link = NewLink(api);
+        await link.OpenAsync(default);
+        link.AuthorizeOneStationCommand(0x10, 1, "AUTHORIZE ECU POWER ON");
+        await link.CloseAsync(default);
+        await link.OpenAsync(default);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await link.WriteAsync(UsbWireCodec.EncodeRequest(10, 0x10, new byte[] { 1 }), default));
+
+        var keyFrame = PhysicalKeypadProtocol.EncodeUsbCanPayload(0x00A17u);
+        link.AuthorizeOneKeyFrame(keyFrame, PhysicalKeypadProtocol.Confirmation(0x00A17u));
+        await link.CloseAsync(default);
+        await link.OpenAsync(default);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await link.WriteAsync(UsbWireCodec.EncodeRequest(11, 0x40, keyFrame), default));
+        Assert.Equal(0, api.WriteCount);
+        Assert.Equal(3, link.ConnectionGeneration);
         await link.CloseAsync(default);
     }
 

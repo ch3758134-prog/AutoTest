@@ -27,7 +27,14 @@ public sealed class KeySimVoltageEvidenceTracker
     public void Pending(uint completeMask, long generation)
     {
         if (completeMask > 0xFFFFF || generation <= 0) throw new ArgumentOutOfRangeException(nameof(completeMask));
-        lock (_sync) { _mask = completeMask; _generation = generation; _sequence = null; _transport = "REQUESTED_UNCONFIRMED"; }
+        lock (_sync)
+        {
+            // A delayed caller from a previous connection must not replace newer evidence.
+            if (generation < _generation)
+                throw new InvalidOperationException("Stale KeySim operation generation.");
+            _mask = completeMask; _generation = generation; _sequence = null;
+            _transport = "REQUESTED_UNCONFIRMED";
+        }
     }
     public void ControllerAccepted(uint completeMask, long generation, ushort usbSequence)
     {
@@ -45,6 +52,9 @@ public sealed class KeySimVoltageEvidenceTracker
         if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("Reason required", nameof(reason));
         lock (_sync)
         {
+            // An old timed-out request can finish after reconnect. Never let its
+            // catch/finally invalidate the newer session or its accepted KeyMask.
+            if (newGeneration < _generation) return;
             _mask = null; _sequence = null; _generation = newGeneration;
             _transport = "UNKNOWN_" + reason.Trim().Replace(' ', '_').ToUpperInvariant();
         }

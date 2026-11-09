@@ -17,6 +17,15 @@ public sealed class PhysicalCommandFence
     private long _keyConnection;
     private DateTimeOffset _keyExpiry;
 
+    // Must be called only while _sync is held. Only ONE physical-command
+    // authorization (CAN, Station, or KeySim) may remain live at a time.
+    private void ClearAllGrantsUnderLock()
+    {
+        _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
+        _stationCommand = null; _stationValue = null; _stationConnection = 0; _stationExpiry = default;
+        _keyFrame = null; _keyConnection = 0; _keyExpiry = default;
+    }
+
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is 0xF0 or 0xF1 or 0x11 or 0x13 or 0x15 or 0x17 or 0x1F);
 
@@ -42,6 +51,7 @@ public sealed class PhysicalCommandFence
         if (generation <= 0) throw new InvalidOperationException("No active session.");
         lock (_sync)
         {
+            ClearAllGrantsUnderLock();
             _stationCommand = command; _stationValue = value;
             _stationConnection = generation; _stationExpiry = DateTimeOffset.UtcNow.AddSeconds(5);
         }
@@ -64,6 +74,7 @@ public sealed class PhysicalCommandFence
         if (generation <= 0) throw new InvalidOperationException("No active session.");
         lock (_sync)
         {
+            ClearAllGrantsUnderLock();
             _keyFrame = exact15Bytes.ToArray(); _keyConnection = generation;
             _keyExpiry = DateTimeOffset.UtcNow.AddSeconds(5);
         }
@@ -87,6 +98,7 @@ public sealed class PhysicalCommandFence
         if (connectionGeneration <= 0) throw new InvalidOperationException("No live connection.");
         lock (_sync)
         {
+            ClearAllGrantsUnderLock();
             _singleCanPayload = exact15Bytes.ToArray();
             _authorizedConnection = connectionGeneration;
             _canExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
@@ -129,11 +141,6 @@ public sealed class PhysicalCommandFence
 
     public void Reset()
     {
-        lock (_sync)
-        {
-            _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
-            _stationCommand = null; _stationValue = null; _stationConnection = 0; _stationExpiry = default;
-            _keyFrame = null; _keyConnection = 0; _keyExpiry = default;
-        }
+        lock (_sync) ClearAllGrantsUnderLock();
     }
 }

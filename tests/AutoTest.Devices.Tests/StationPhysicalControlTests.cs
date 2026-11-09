@@ -123,4 +123,68 @@ public sealed class StationPhysicalControlTests
         Assert.Contains("UNKNOWN", tracker.Status);
         Assert.DoesNotContain("0x12003", tracker.Status);
     }
+
+    [Fact]
+    public void NewPhysicalConsentRevokesOtherPendingPhysicalGrants()
+    {
+        var fence = new PhysicalCommandFence();
+        byte[] station = UsbWireCodec.EncodeRequest(10, 0x10, new byte[] { 1 });
+        byte[] key = PhysicalKeypadProtocol.EncodeUsbCanPayload(0x12A45u);
+        byte[] keyRequest = UsbWireCodec.EncodeRequest(11, 0x40, key);
+        byte[] dutCan = { 1, 0, 0x23, 0x01, 0, 0, 1, 0xA5, 0, 0, 0, 0, 0, 0, 0 };
+        byte[] dutRequest = UsbWireCodec.EncodeRequest(12, 0x40, dutCan);
+
+        fence.AuthorizeSingleStationCommand(0x10, 1, "AUTHORIZE ECU POWER ON", 5);
+        fence.AuthorizeSingleKeyFrame(key, PhysicalKeypadProtocol.Confirmation(0x12A45u), 5);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(station, 5));
+        fence.AuthorizeSingleCanFrame(dutCan, "AUTHORIZE CAN TX " + Convert.ToHexString(dutCan), 5);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(keyRequest, 5));
+        fence.AssertAllowedAndConsume(dutRequest, 5);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(dutRequest, 5));
+    }
+
+    [Fact]
+    public void NewerSessionKeyStateSurvivesLateFailureFromOldGeneration()
+    {
+        var tracker = new KeySimVoltageEvidenceTracker();
+        tracker.Pending(0x0000Fu, 8);
+        tracker.Invalidate("DISCONNECT", 9);
+        Assert.Throws<InvalidOperationException>(() => tracker.ControllerAccepted(0x0000Fu, 8, 17));
+        tracker.Pending(0xA0000u, 10);
+        tracker.ControllerAccepted(0xA0000u, 10, 23);
+        tracker.Invalidate("FAILED_OR_CANCELLED", 8); // old request finishes late
+        Assert.Contains("0xA0000", tracker.Status);
+        Assert.Contains("MAIN_CONTROLLER_CAN_SEND_ACCEPTED", tracker.Status);
+        Assert.Throws<InvalidOperationException>(() => tracker.Pending(0x0000Fu, 8));
+    }
+
+    [Fact]
+    public void ManualVoltageRejectsUnmeasuredAndDuplicatedChannels()
+    {
+        var tracker = new KeySimVoltageEvidenceTracker();
+        tracker.Pending(0x00003u, 4);
+        tracker.ControllerAccepted(0x00003u, 4, 17);
+        var unmeasured = Enumerable.Range(1, 5)
+            .Select(i => new KeySimChannelManualReading(i, null)).ToArray();
+        var input = new KeySimManualVoltageInput("ECU-X", "rev-2", "meter", "J1",
+            "12V", "load", "operator", unmeasured, "calibration");
+        Assert.Throws<ArgumentException>(() => tracker.RecordManual("device", input));
+        var duplicate = new[]
+        {
+            new KeySimChannelManualReading(1, 1.05m), new KeySimChannelManualReading(1, null),
+            new KeySimChannelManualReading(3, null), new KeySimChannelManualReading(4, null),
+            new KeySimChannelManualReading(5, null)
+        };
+        Assert.Throws<ArgumentException>(() => tracker.RecordManual("device",
+            input with { Channels = duplicate }));
+        var oneMeasured = new[]
+        {
+            new KeySimChannelManualReading(1, 1m), new KeySimChannelManualReading(2, null),
+            new KeySimChannelManualReading(3, null), new KeySimChannelManualReading(4, null),
+            new KeySimChannelManualReading(5, null)
+        };
+        Assert.Throws<ArgumentException>(() => tracker.RecordManual("device",
+            input with { EcuProfile = "", Channels = oneMeasured }));
+    }
+
 }

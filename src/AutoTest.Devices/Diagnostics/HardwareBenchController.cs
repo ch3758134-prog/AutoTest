@@ -64,6 +64,7 @@ public sealed partial class HardwareBenchController : IAsyncDisposable
             _canBridge.Trace += RelayCan;
             _log.RecordMessage("CONNECTION_ATTEMPT", selected.DisplayIdentity);
             await _session.ConnectAsync(ct).ConfigureAwait(false);
+            _keyEvidence.Invalidate("NEW_CONNECTION", _session.Generation);
         }
         catch (Exception original)
         {
