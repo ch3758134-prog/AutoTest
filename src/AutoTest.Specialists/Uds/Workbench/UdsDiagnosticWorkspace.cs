@@ -111,9 +111,16 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
     private MockUdsMessageChannel _channel;
     private UdsClient _client;
     private bool _disposed;
+    private readonly int _maxCapturedExchanges;
+    private int _capturedExchanges;
     public string MockIdentity { get; private set; }
-    public UdsDiagnosticWorkspace(string identity = "MOCK_ECU_A")
+    public int CapturedExchanges => _capturedExchanges;
+    public int MaxCapturedExchanges => _maxCapturedExchanges;
+    public UdsDiagnosticWorkspace(string identity = "MOCK_ECU_A", int maxCapturedExchanges = 512)
     {
+        if (maxCapturedExchanges is < 1 or > 10000)
+            throw new ArgumentOutOfRangeException(nameof(maxCapturedExchanges));
+        _maxCapturedExchanges = maxCapturedExchanges;
         MockIdentity = identity;
         _ecu = new MockBootloader(identity);
         _channel = new MockUdsMessageChannel(_ecu);
@@ -129,6 +136,7 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
             _ecu = new MockBootloader(identity);
             _channel = new MockUdsMessageChannel(_ecu);
             _client = new UdsClient(_channel);
+            _capturedExchanges = 0;
             MockIdentity = identity;
         }
         finally { _exclusive.Release(); }
@@ -150,6 +158,10 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
         await _exclusive.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            if (_capturedExchanges >= _maxCapturedExchanges)
+                throw new InvalidOperationException(
+                    "MOCK_CAPTURE_CAPACITY_REACHED: reset Mock ECU to release old frame history.");
+            _capturedExchanges++;
             int h = _channel.HostFrames().Length;
             int e = _channel.EcuFrames().Length;
             var id = correlationId ?? Guid.NewGuid();
