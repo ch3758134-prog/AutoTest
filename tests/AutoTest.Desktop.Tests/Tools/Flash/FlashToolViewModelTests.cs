@@ -62,7 +62,7 @@ public sealed class FlashToolViewModelTests
         var vm=new FlashToolViewModel { DropBlock="2" };
         vm.LoadBytes("test.bin",Enumerable.Range(0,180).Select(i=>(byte)i).ToArray(),0x1000);
         await vm.RunDryAsync();
-        Assert.NotEqual("MOCK_COMPLETED",vm.Status);
+        Assert.Equal("MOCK_UNCERTAIN",vm.Status);
         Assert.Equal("1",vm.LastAcknowledgedBlock);
         Assert.Equal("64",vm.ConfirmedBytes);
         Assert.Contains(vm.DiagnosticTrace,x=>x.Contains("Block=2"));
