@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:prism="http://prismlibrary.com/"
  prism:ViewModelLocator.AutoWireViewModel="True"
- Title="AutoTest · V1 工程工作台 · MOCK ONLY" Width="1440" Height="880"
+ Title="AutoTest · R1 ECU 联调工作台 · 按功能标注数据来源" Width="1440" Height="880"
  MinWidth="1030" MinHeight="650" WindowStartupLocation="CenterScreen"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
  FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True">
@@ -17,7 +17,9 @@
   <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
   <KeyBinding Key="F2" Command="{Binding FocusNameCommand}"/>
  </Window.InputBindings>
- <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+ <Grid>
+  <Grid Visibility="Collapsed">
+   <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
   <RowDefinition Height="*"/><RowDefinition Height="25"/></Grid.RowDefinitions>
  <Menu Grid.Row="0">
   <MenuItem Header="_文件"><MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
@@ -114,5 +116,9 @@
   <TextBlock Text="G4-V1  ·  SIMULATED ONLY" FontWeight="SemiBold"/>
   <TextBlock Text="{Binding Status}" DockPanel.Dock="Right" HorizontalAlignment="Right" Foreground="{StaticResource Ink}"/>
  </DockPanel></Border>
+   </Grid>
+  </Grid>
+  <ContentControl x:Name="R1WorkspaceHost" HorizontalContentAlignment="Stretch"
+                  VerticalContentAlignment="Stretch" />
  </Grid>
 </Window>
