@@ -20,6 +20,8 @@ public sealed record UdsToolExchange(string Source, string RequestHex, string Re
     // Ordered UDS response PDUs, including NRC 0x78, as actually observed
     // by this Mock request. These are not timestamped CAN-bus observations.
     public IReadOnlyList<string> ResponseSequence { get; init; } = [];
+    public string FailureLayer { get; init; } = "NONE";
+    public string DiagnosticDetail { get; init; } = "";
 }
 
 public static class UdsHex
@@ -155,10 +157,26 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
             var result = await _client.RequestAsync(new UdsRequest(request.ToImmutableArray(), id),
                 endpoint, ct).ConfigureAwait(false);
             byte[] response = result.ResponsePdu.ToArray();
-            var responseSequence = _client.Trace.Snapshot()
-                .Where(x => x.CorrelationId == id && x.Direction == UdsTraceDirection.Response)
+            var operationTrace = _client.Trace.Snapshot()
+                .Where(x => x.CorrelationId == id).ToArray();
+            var responseSequence = operationTrace
+                .Where(x => x.Direction == UdsTraceDirection.Response)
                 .Select(x => UdsHex.Format(x.Data))
                 .ToArray();
+            var errors = operationTrace.Where(x => x.Direction == UdsTraceDirection.Error)
+                .Select(x => x.Note).ToArray();
+            string diagnostic = string.Join("; ", errors);
+            string failureLayer = result.Outcome switch
+            {
+                AutoTest.Core.Outcome.Accepted => "NONE",
+                AutoTest.Core.Outcome.Rejected => result.NegativeResponseCode.HasValue
+                    ? "UDS_ECU_NEGATIVE_RESPONSE" : "UDS_POLICY_OR_BUSY",
+                _ when diagnostic.Contains("ISO-TP frame/flow-control timeout",
+                    StringComparison.OrdinalIgnoreCase) => "ISOTP_TIMEOUT",
+                _ when diagnostic.Contains("Consecutive-frame",
+                    StringComparison.OrdinalIgnoreCase) => "ISOTP_SEQUENCE",
+                _ => "UDS_TRANSPORT_UNISOLATED"
+            };
             var trace = _channel.HostFrames().Skip(h)
                 .Select(x => new UdsCanTraceRow("HOST TX", UdsHex.Format(x)))
                 .Concat(_channel.EcuFrames().Skip(e)
@@ -168,7 +186,8 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
                 result.Outcome.ToString(), result.NegativeResponseCode is byte n ? $"0x{n:X2}" : "—",
                 expected is null ? null : response.SequenceEqual(expected), id, trace,
                 result.Outcome == AutoTest.Core.Outcome.Uncertain ? "NO_CONFIRMED_RESPONSE" : "")
-                { ResponseSequence = responseSequence };
+                { ResponseSequence = responseSequence,
+                  FailureLayer = failureLayer, DiagnosticDetail = diagnostic };
         }
         finally { _exclusive.Release(); }
     }
