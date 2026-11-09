@@ -134,6 +134,12 @@
                             <TextBlock Text="阶段/进度: " Foreground="#5F7084"/>
                             <TextBlock Text="{Binding Progress}" FontWeight="SemiBold"/>
                         </WrapPanel>
+                        <WrapPanel Margin="0,3,0,5">
+                            <TextBlock Text="已确认字节: " Foreground="#5F7084"/>
+                            <TextBlock Text="{Binding ConfirmedBytes}" FontWeight="SemiBold" Margin="0,0,20,0"/>
+                            <TextBlock Text="最后 ACK 块: " Foreground="#5F7084"/>
+                            <TextBlock Text="{Binding LastAcknowledgedBlock}" FontWeight="SemiBold"/>
+                        </WrapPanel>
                         <TextBlock Text="{Binding Failure}" TextWrapping="Wrap" Foreground="#AA422F"/>
                         <TextBlock Text="{Binding RecoveryAdvice}" TextWrapping="Wrap"
                                    Foreground="#667B8F" Margin="0,4,0,0"/>
@@ -147,12 +153,28 @@
                 <Border Grid.Row="2" Background="White" BorderBrush="#D7E0EA"
                         BorderThickness="1" CornerRadius="5" Padding="13">
                     <DockPanel>
-                        <TextBlock Text="Mock 作业阶段 / 审计事实（内存，非物理 ECU 证据）"
-                                   DockPanel.Dock="Top" Style="{StaticResource Heading}"/>
+                        <StackPanel DockPanel.Dock="Top">
+                            <TextBlock Text="Mock 作业阶段与 UDS 协议诊断证据"
+                                       Style="{StaticResource Heading}"/>
+                            <WrapPanel>
+                                <TextBlock Text="{Binding TraceQuality}" Foreground="#8B4428"
+                                           FontSize="11" VerticalAlignment="Center"/>
+                                <Button Content="复制 UDS 证据" Command="{Binding CopyTraceCommand}"
+                                        Margin="10,0,0,3"/>
+                            </WrapPanel>
+                        </StackPanel>
                         <TextBlock Text="{Binding Job}" DockPanel.Dock="Bottom"
                                    FontSize="11" FontFamily="Consolas" Foreground="#718195"/>
-                        <ListBox ItemsSource="{Binding Stages}" BorderThickness="0"
-                                 FontSize="12" FontFamily="Consolas"/>
+                        <TabControl>
+                            <TabItem Header="编程阶段 / 进度">
+                                <ListBox ItemsSource="{Binding Stages}" BorderThickness="0"
+                                         FontSize="12" FontFamily="Consolas"/>
+                            </TabItem>
+                            <TabItem Header="UDS TX/RX / Correlation">
+                                <ListBox ItemsSource="{Binding DiagnosticTrace}" BorderThickness="0"
+                                         FontSize="12" FontFamily="Consolas"/>
+                            </TabItem>
+                        </TabControl>
                     </DockPanel>
                 </Border>
             </Grid>
