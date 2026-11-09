@@ -200,7 +200,7 @@ public sealed class LabProductionToolViewModel : BindableBase
             var validationCount = LabCatalogValidator.Validate(draft, forPublication: true).Count;
             SampleReplayStatus = "草稿样本回放：" + report.Passed + "/" + report.ExaminedSamples +
                 " 通过；失败 " + report.Failed + "；总样本 " + report.TotalSamples +
-                (report.Truncated ? "；超过单批上限，结果不完整" : "") +
+                (report.Truncated ? "；容量或时间预算导致部分样本未检查，结果不完整" : "") +
                 "；发布校验问题 " + validationCount +
                 "；仅样本诊断，不能证明规则无冲突/生产可放行";
             Trace("SampleReplay", report.AllPassed && validationCount == 0 ? "Info" : "Warning",
