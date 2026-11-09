@@ -151,11 +151,27 @@ public sealed class FlashDryRunWorkspace
         var snapshot=Observe(id);
         if (snapshot.State is ProgrammingJobState.Running or ProgrammingJobState.Queued)
             throw new InvalidOperationException("Cannot export incomplete job as final evidence.");
+        var ackFacts=snapshot.Facts.Where(x=>x.Stage=="Transfer" && x.Status=="ACK")
+            .ToArray();
+        var lastAck=ackFacts.LastOrDefault();
+        var verifyCount=snapshot.Facts.Count(x=>x.Stage=="VerifyMock" && x.Status=="PASS");
+        var expectedVerifyCount=_image?.Segments.Length ?? 0;
+        bool mockVerified=snapshot.State==ProgrammingJobState.Completed &&
+            verifyCount==expectedVerifyCount && expectedVerifyCount>0;
         var payload=new
         {
-            Schema=1, Source="Mock", PhysicalProgrammingVerified=false,
+            Schema=2, Source="Mock", PhysicalProgrammingVerified=false,
+            RealEcuIdentityObserved=false, PhysicalTransportUsed=false,
             Job=snapshot.Job, State=snapshot.State.ToString(), SnapshotUtc=DateTimeOffset.UtcNow,
-            Image=Image, FailureCode=snapshot.FailureCode, Stages=snapshot.Facts
+            Image=Image, FailureCode=snapshot.FailureCode,
+            AcknowledgedTransferBytes=lastAck?.ConfirmedBytes??0,
+            LastAcknowledgedTransfer=lastAck is null ? null : new {
+                Utc=lastAck.Utc, Detail=lastAck.Detail, ConfirmedBytes=lastAck.ConfirmedBytes },
+            Verification="MOCK_ONLY",
+            MockHashVerified=mockVerified,
+            ExpectedSegmentVerifications=expectedVerifyCount,
+            ActualSegmentVerifications=verifyCount,
+            FullBackendFactsIncluded=true, Stages=snapshot.Facts
         };
         byte[] bytes=JsonSerializer.SerializeToUtf8Bytes(payload,
             new JsonSerializerOptions { WriteIndented=true });
