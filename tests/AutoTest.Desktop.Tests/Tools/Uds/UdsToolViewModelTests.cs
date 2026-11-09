@@ -83,4 +83,25 @@ public sealed class UdsToolViewModelTests
         }
         finally { if(File.Exists(vm.DiagnosticPath)) File.Delete(vm.DiagnosticPath); }
     }
+
+    [Fact]
+    public async Task PendingFrameIsDecodedAsNrc78WithoutClaimingPreciseBusTiming()
+    {
+        var vm = new UdsToolViewModel { InjectPending = true };
+        await vm.SendAsync();
+        Assert.Equal("MOCK_ACCEPTED",vm.Status);
+        Assert.Contains(vm.DiagnosticEvents, e=>e.Layer=="ISOTP" &&
+            e.DecodedSummary.Contains("RESPONSE_PENDING"));
+        Assert.Contains("NO_INTERLEAVED_TIMESTAMPS",vm.TraceQuality);
+    }
+
+    [Fact]
+    public async Task InvalidSourceNeverCreatesPhysicalTransmitEvidence()
+    {
+        var vm = new UdsToolViewModel { SourceMode = "Physical" };
+        await vm.SendAsync();
+        Assert.Equal("WORKBENCH_ERROR",vm.Status);
+        Assert.False(vm.PhysicalTxEnabled);
+        Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="ERROR");
+    }
 }
