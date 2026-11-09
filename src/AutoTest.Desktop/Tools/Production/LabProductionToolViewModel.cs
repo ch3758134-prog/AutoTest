@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,6 +76,10 @@ public sealed class LabProductionToolViewModel : BindableBase
     private bool _scannerOnly;
     private bool _includeRawBarcodeInLocalExport;
     private string _exportPath = "未导出（默认隐藏原始扫码）";
+    private string _sampleReplayAtUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+    private string _sampleReplayStatus = "未执行；只评估当前界面草稿，不修改生产配置";
+    private string _overlapStatus = "未检查；有限样本不能证明规则无交集";
+    private string _revisionCompareStatus = "未比较；当前编辑尚未发布";
 
     private LabCatalog _publishedCatalog;
     private CancellationTokenSource? _current;
@@ -123,6 +128,9 @@ public sealed class LabProductionToolViewModel : BindableBase
         RemoveRecipeCommand = new DelegateCommand(() => { if (SelectedRecipe is not null) Recipes.Remove(SelectedRecipe); }, () => !IsBusy);
         AddSampleCommand = new DelegateCommand(() => Samples.Add(new LabSampleRow()), () => !IsBusy);
         RemoveSampleCommand = new DelegateCommand(() => { if (SelectedSample is not null) Samples.Remove(SelectedSample); }, () => !IsBusy);
+        ReplaySamplesCommand = new DelegateCommand(ReplayDraftSamples, () => !IsBusy);
+        InspectOverlapCommand = new DelegateCommand(InspectDraftRuleOverlap, () => !IsBusy);
+        CompareDraftCommand = new DelegateCommand(CompareDraftWithPublished, () => !IsBusy);
     }
 
     public ObservableCollection<LabRuleRow> Rules { get; } = new();
@@ -131,6 +139,130 @@ public sealed class LabProductionToolViewModel : BindableBase
     public ObservableCollection<LabHistoryRow> History { get; } = new();
     public ObservableCollection<LabScanEventRow> ScanEvents { get; } = new();
     public ObservableCollection<ProductionDiagnosticEntry> DiagnosticEvents { get; } = new();
+    public ObservableCollection<LabSampleReplayRow> SampleReplayRows { get; } = new();
+    public ObservableCollection<LabRuleOverlapFinding> RuleOverlapRows { get; } = new();
+    public ObservableCollection<LabCatalogChange> RevisionChangeRows { get; } = new();
+    public string SampleReplayAtUtc
+    {
+        get => _sampleReplayAtUtc;
+        set => SetProperty(ref _sampleReplayAtUtc, value);
+    }
+    public string SampleReplayStatus
+    {
+        get => _sampleReplayStatus;
+        private set => SetProperty(ref _sampleReplayStatus, value);
+    }
+    public string OverlapStatus
+    {
+        get => _overlapStatus;
+        private set => SetProperty(ref _overlapStatus, value);
+    }
+    public string RevisionCompareStatus
+    {
+        get => _revisionCompareStatus;
+        private set => SetProperty(ref _revisionCompareStatus, value);
+    }
+
+    // Preview only: this never mutates the published production snapshot.
+    public void ReplayDraftSamples()
+    {
+        if (IsBusy) return;
+        SampleReplayRows.Clear();
+        if (!DateTimeOffset.TryParse(SampleReplayAtUtc, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal, out var observedAt))
+        {
+            SampleReplayStatus = "SAMPLE_DEFAULT_TIME_INVALID：请输入 UTC 时间，例如 2026-11-09T00:00:00Z";
+            Trace("SampleReplay", "Warning", "SAMPLE_DEFAULT_TIME_INVALID",
+                "样本回放未执行；默认 UTC 时间格式错误");
+            return;
+        }
+        try
+        {
+            var draft = BuildDraft();
+            var report = LabCatalogDiagnostics.ReplaySamples(draft, observedAt);
+            foreach (var row in report.Rows)
+            {
+                SampleReplayRows.Add(row);
+                Trace("SampleReplay", row.Passed ? "Info" : "Warning", row.Code,
+                    "DraftSample=" + row.RowNumber + "; ExpectedRule=" + row.ExpectedRuleId +
+                    "; ActualRule=" + row.ActualRuleId +
+                    "; ExpectedRecipe=" + row.ExpectedRecipeId +
+                    "; ActualRecipe=" + row.ActualRecipeId +
+                    "; Origin=DRAFT_SOFTWARE_ONLY",
+                    rawBarcode: row.RawBarcode);
+            }
+            var validationCount = LabCatalogValidator.Validate(draft, forPublication: true).Count;
+            SampleReplayStatus = "草稿样本回放：" + report.Passed + "/" + report.ExaminedSamples +
+                " 通过；失败 " + report.Failed + "；总样本 " + report.TotalSamples +
+                (report.Truncated ? "；超过单批上限，结果不完整" : "") +
+                "；发布校验问题 " + validationCount +
+                "；仅样本诊断，不能证明规则无冲突/生产可放行";
+            Trace("SampleReplay", report.AllPassed && validationCount == 0 ? "Info" : "Warning",
+                report.Truncated ? "SAMPLE_REPLAY_TRUNCATED" :
+                report.Failed > 0 ? "SAMPLE_REPLAY_FAILED" :
+                validationCount > 0 ? "CATALOG_VALIDATION_BLOCKED" : "SAMPLE_REPLAY_FINISHED",
+                "Examined=" + report.ExaminedSamples + "; Passed=" + report.Passed +
+                "; Failed=" + report.Failed + "; Total=" + report.TotalSamples +
+                "; PublicationBlockers=" + validationCount + "; FactoryReleased=false");
+        }
+        catch (Exception ex)
+        {
+            SampleReplayStatus = "样本回放异常：" + ex.GetType().Name;
+            Trace("SampleReplay", "Error", "SAMPLE_REPLAY_ERROR", ex.GetType().Name);
+        }
+    }
+
+    public void InspectDraftRuleOverlap()
+    {
+        if (IsBusy) return;
+        RuleOverlapRows.Clear();
+        try
+        {
+            var report = LabCatalogDiagnostics.InspectRuleOverlap(BuildDraft());
+            foreach (var row in report.Findings) RuleOverlapRows.Add(row);
+            var confirmed = report.Findings.Count(x =>
+                x.Classification is "IDENTICAL_REGEX" or "SAMPLE_COLLISION");
+            OverlapStatus = "检查规则 " + report.EnabledRules + "，样本 " +
+                report.ExaminedSamples + "/" + report.TotalSamples +
+                "；已证实冲突对 " + confirmed +
+                (report.Incomplete ? "；检查不完整" : "") +
+                "；其他规则对即使未发现冲突也不能认定无交集";
+            Trace("RuleOverlap", confirmed > 0 || report.Incomplete ? "Warning" : "Info",
+                report.Incomplete ? "OVERLAP_DIAG_INCOMPLETE" :
+                confirmed > 0 ? "CONFIRMED_RULE_OVERLAP" : "OVERLAP_UNPROVEN",
+                "RuleCount=" + report.EnabledRules + "; SampleCount=" +
+                report.ExaminedSamples + "; ConfirmedPairs=" + confirmed +
+                "; FullDisjointnessUnproven=true; Origin=DRAFT_SOFTWARE_ONLY");
+        }
+        catch (Exception ex)
+        {
+            OverlapStatus = "重叠诊断异常：" + ex.GetType().Name;
+            Trace("RuleOverlap", "Error", "RULE_OVERLAP_ERROR", ex.GetType().Name);
+        }
+    }
+
+    public void CompareDraftWithPublished()
+    {
+        if (IsBusy) return;
+        RevisionChangeRows.Clear();
+        try
+        {
+            var comparison = LabCatalogDiagnostics.Compare(_publishedCatalog, BuildDraft());
+            foreach (var change in comparison.Changes) RevisionChangeRows.Add(change);
+            RevisionCompareStatus = "已发布 " + comparison.PublishedRevision +
+                " ↔ 当前草稿（未发布）；差异项 " + comparison.Changes.Count +
+                "；不执行保存、发布或工位动作";
+            Trace("RevisionCompare", "Info", "CATALOG_DIFF_FINISHED",
+                "ChangedItems=" + comparison.Changes.Count +
+                "; PublishedRevision=" + comparison.PublishedRevision +
+                "; DraftNotPublished=true");
+        }
+        catch (Exception ex)
+        {
+            RevisionCompareStatus = "修订比较异常：" + ex.GetType().Name;
+            Trace("RevisionCompare", "Error", "CATALOG_DIFF_ERROR", ex.GetType().Name);
+        }
+    }
     public bool ErrorsOnly
     {
         get => _errorsOnly;
@@ -236,6 +368,9 @@ public sealed class LabProductionToolViewModel : BindableBase
     public DelegateCommand RemoveRecipeCommand { get; }
     public DelegateCommand AddSampleCommand { get; }
     public DelegateCommand RemoveSampleCommand { get; }
+    public DelegateCommand ReplaySamplesCommand { get; }
+    public DelegateCommand InspectOverlapCommand { get; }
+    public DelegateCommand CompareDraftCommand { get; }
 
     public string ScanInput { get => _scanInput; set => SetProperty(ref _scanInput, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
@@ -466,7 +601,8 @@ public sealed class LabProductionToolViewModel : BindableBase
 
     private IEnumerable<DelegateCommand> Commands() => new[] { PreviewCommand, RunMockCommand,
         AbortCommand, SaveDraftCommand, PublishCommand, LoadCommand, AddRuleCommand,
-        RemoveRuleCommand, AddRecipeCommand, RemoveRecipeCommand, AddSampleCommand, RemoveSampleCommand };
+        RemoveRuleCommand, AddRecipeCommand, RemoveRecipeCommand, AddSampleCommand,
+        RemoveSampleCommand, ReplaySamplesCommand, InspectOverlapCommand, CompareDraftCommand };
 
     private static LabCatalogStore CreateDefaultStore()
     {
