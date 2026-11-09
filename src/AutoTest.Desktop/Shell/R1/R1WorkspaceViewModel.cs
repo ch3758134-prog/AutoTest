@@ -21,6 +21,7 @@ public sealed class WorkspaceTab : BindableBase
     private bool _dirty;
     private bool _busy;
     private string _contextRevision = "UNKNOWN";
+    private bool _contextStale;
     public WorkspaceTab(WorkspaceDescriptor descriptor)
     {
         Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
@@ -29,9 +30,11 @@ public sealed class WorkspaceTab : BindableBase
     public string Id => Descriptor.Id;
     public string Header => Descriptor.Label;
     public string Owner => Descriptor.Owner;
-    public bool IsDirty { get => _dirty; set => SetProperty(ref _dirty, value); }
-    public bool IsBusy { get => _busy; set => SetProperty(ref _busy, value); }
+    public bool IsDirty { get => _dirty; set { if (SetProperty(ref _dirty, value)) RaisePropertyChanged(nameof(StateLabel)); } }
+    public bool IsBusy { get => _busy; set { if (SetProperty(ref _busy, value)) RaisePropertyChanged(nameof(StateLabel)); } }
     public string ContextRevision { get => _contextRevision; set => SetProperty(ref _contextRevision, value); }
+    public bool ContextStale { get => _contextStale; set { if (SetProperty(ref _contextStale, value)) RaisePropertyChanged(nameof(StateLabel)); } }
+    public string StateLabel => IsBusy ? "BUSY" : IsDirty ? "DIRTY" : ContextStale ? "STALE" : "READY";
 }
 
 public interface IWorkspaceDocumentHost
@@ -60,6 +63,9 @@ public sealed class R1WorkspaceViewModel : BindableBase
         OpenCommand = new DelegateCommand<WorkspaceDescriptor>(Open);
         CloseCommand = new DelegateCommand<WorkspaceTab>(Close);
         ReopenCommand = new DelegateCommand<WorkspaceDescriptor>(Open);
+        NextTabCommand = new DelegateCommand(() => CycleTabs(1));
+        PreviousTabCommand = new DelegateCommand(() => CycleTabs(-1));
+        CloseActiveTabCommand = new DelegateCommand(() => Close(ActiveTab));
         foreach (var descriptor in Catalogue)
         {
             Navigation.Add(descriptor);
@@ -93,6 +99,9 @@ public sealed class R1WorkspaceViewModel : BindableBase
     public DelegateCommand<WorkspaceDescriptor> OpenCommand { get; }
     public DelegateCommand<WorkspaceDescriptor> ReopenCommand { get; }
     public DelegateCommand<WorkspaceTab> CloseCommand { get; }
+    public DelegateCommand NextTabCommand { get; }
+    public DelegateCommand PreviousTabCommand { get; }
+    public DelegateCommand CloseActiveTabCommand { get; }
 
     public WorkspaceTab? ActiveTab
     {
@@ -128,7 +137,11 @@ public sealed class R1WorkspaceViewModel : BindableBase
         StationIdentity = string.IsNullOrWhiteSpace(station) ? "未连接" : station;
         SessionGeneration = generation?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "UNKNOWN";
         Origin = origin is "Mock" or "Replay" or "Physical" ? origin : "UNKNOWN";
-        // Existing tabs remain open; their version must not be silently rewritten.
+        // Existing tabs remain open. Mark stale instead of rewriting captured revision.
+        foreach (var tab in OpenTabs)
+            tab.ContextStale = !StringComparer.Ordinal.Equals(tab.ContextRevision, ResourceRevision);
+        if (OpenTabs.Any(x => x.ContextStale))
+            Notice = "工程 Revision 已改变，旧文档保持打开但标记 STALE；专业页须核验其引用有效性";
     }
 
     private void RefreshNavigation()
@@ -161,6 +174,14 @@ public sealed class R1WorkspaceViewModel : BindableBase
         OpenTabs.Add(tab);
         ActiveTab = tab;
         Notice = $"已激活 {descriptor.Label} · {descriptor.Owner}";
+    }
+
+    public void CycleTabs(int direction)
+    {
+        if (OpenTabs.Count == 0 || direction == 0) return;
+        var currentIndex = ActiveTab is null ? -1 : OpenTabs.IndexOf(ActiveTab);
+        var nextIndex = currentIndex < 0 ? 0 : ((currentIndex + (direction > 0 ? 1 : -1) + OpenTabs.Count) % OpenTabs.Count);
+        ActiveTab = OpenTabs[nextIndex];
     }
 
     public void Close(WorkspaceTab? tab)
