@@ -14,7 +14,9 @@
       <TextBlock Text="仅本地工程资源。无 USB/CAN 连接、无物理输出授权；修订与设备状态互不代表。" Foreground="DarkGoldenrod" Margin="0,3,0,9"/>
       <WrapPanel>
         <TextBlock Text="工程 manifest" VerticalAlignment="Center"/>
-        <TextBox Width="480" Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,8,0"/>
+        <TextBox x:Name="ProjectPathBox" Width="335" Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,5,0"/>
+        <Button Content="选择工程…" Click="BrowseProject_Click" Padding="8,4" Margin="0,0,6,0"/>
+        <Button Content="新建路径…" Click="ChooseNewProject_Click" Padding="8,4" Margin="0,0,6,0"/>
         <TextBlock Text="名称" VerticalAlignment="Center"/>
         <TextBox Width="145" Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,8,0"/>
         <Button Content="新建" Command="{Binding CreateProjectCommand}" Padding="10,4"/>
@@ -25,7 +27,8 @@
     </StackPanel>
     <WrapPanel Grid.Row="1" Margin="0,0,0,8">
       <TextBlock Text="导入源文件" VerticalAlignment="Center"/>
-      <TextBox Width="365" Text="{Binding ImportFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,8,0"/>
+      <TextBox x:Name="ImportPathBox" Width="270" Text="{Binding ImportFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,5,0"/>
+      <Button Content="选择资源…" Click="BrowseImport_Click" Margin="0,0,8,0" Padding="8,4"/>
       <ComboBox Width="110" ItemsSource="{Binding ResourceKinds}" SelectedItem="{Binding ResourceKind}" Margin="0,0,8,0"/>
       <TextBox Width="170" Text="{Binding ResourceName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0" ToolTip="资源显示名称"/>
       <Button Content="导入到工程" Command="{Binding ImportResourceCommand}" Padding="9,4"/>
