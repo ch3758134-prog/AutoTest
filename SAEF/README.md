@@ -13,7 +13,7 @@
 
 ## 不能宣称 GitHub 已完全恢复的内容
 
-`engineering/control/assets.json` 登记了四份原始资产及 SHA-256，但它们的**原始字节目前未在仓库内**：两份 PCB 原理图 PDF、两份签发固件 ZIP。公开 Git 当前的 `SAEF/.gitignore` 有意排除 `*.pdf`/`*.zip` 等二进制原件；登记哈希不等于已备份文件。
+`engineering/control/assets.json` 登记了四份原始资产及 SHA-256，但它们的**原始字节目前未在仓库内**：两份 PCB 原理图 PDF、两份签发固件 ZIP。用户已经明确同意将**两份原理图 PDF** 作为 Git 正式资产上传，`SAEF/.gitignore` 已为两个准确路径放行；PDF 原始文件入库和远端复验完成之前仍标为 `PENDING_UPLOAD`。固件原始 ZIP 和源码另走冻结版本管理方案；登记哈希不等于已备份文件。
 
 历史独立 SAEF 工具 `eng.py`、FRAMEWORK/catalog 和获批 HTML/原始 ZIP 的完整字节，**未在当前仓库树中查见**。故 GitHub 当前可恢复的是**已提交的正式文本记录 + HOST 源码和 Git 历史**，不能承诺“包含所有原始工程资产、SAEF 工具和现场日志的完整归档”。
 
