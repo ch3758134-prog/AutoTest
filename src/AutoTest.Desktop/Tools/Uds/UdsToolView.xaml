@@ -135,6 +135,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <TextBlock Text="响应 PDU" Margin="0,0,18,6" Foreground="#5F7084"/>
                         <TextBox Grid.Column="1" FontFamily="Consolas" IsReadOnly="True" Text="{Binding ResponseHex, Mode=OneWay}"/>
@@ -148,6 +149,10 @@
                         <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding LastCorrelationId}" FontFamily="Consolas" FontSize="11"/>
                         <TextBlock Grid.Row="5" Text="Trace 质量" Foreground="#5F7084"/>
                         <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding TraceQuality}" TextWrapping="Wrap" FontSize="11"/>
+                        <TextBlock Grid.Row="6" Text="失败层级" Foreground="#5F7084" Margin="0,2,12,4"/>
+                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding FailureLayer}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="7" Text="诊断原因" Foreground="#5F7084" Margin="0,2,12,4"/>
+                        <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding DiagnosticDetail}" TextWrapping="Wrap" FontSize="11"/>
                     </Grid>
                 </Border>
                 <Border Grid.Row="2" Background="White" BorderBrush="#D7E0EA"
