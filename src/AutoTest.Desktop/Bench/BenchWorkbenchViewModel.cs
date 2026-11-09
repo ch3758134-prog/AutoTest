@@ -226,6 +226,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 {
                     ConnectionStatus = "未找到设备";
                     ConnectionDetail = "DEVICE 未返回匹配主控板；未尝试建立 USB 会话";
+                    RecordEvidence(BenchEvidencePhase.Error, ConnectionDetail, failureStage: "DiscoverCompatibleDevices");
                     Append(WorkbenchSeverity.Warning, "未找到兼容设备", ConnectionDetail);
                     return;
                 }
@@ -233,6 +234,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 {
                     ConnectionStatus = "请选择主控板";
                     ConnectionDetail = $"找到 {Devices.Count} 个匹配设备，请选择后再次点击连接";
+                    RecordEvidence(BenchEvidencePhase.Connection, ConnectionDetail);
                     Append(WorkbenchSeverity.Warning, "检测到多个主控板", ConnectionDetail);
                     return;
                 }
@@ -290,9 +292,11 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             _lastOperationId = r.Accepted && contextValid ? r.OperationId : null;
             ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
             LastOperation = r.Accepted ? $"已接受 · {summary}" : $"已拒绝 · {summary}";
-            AcceptedFact = r.Accepted
-                ? $"ACCEPTED · {r.AckDescription ?? "后端确认；不代表物理动作"}"
-                : $"REJECTED · {r.ErrorCode ?? "未提供错误码"} {r.ErrorMessage ?? ""}";
+            AcceptedFact = !contextValid
+                ? "STALE · 后端结果属于已失效的工程或来源，不关联当前状态"
+                : r.Accepted
+                    ? $"ACCEPTED · {r.AckDescription ?? "后端确认；不代表物理动作"}"
+                    : $"REJECTED · {r.ErrorCode ?? "未提供错误码"} {r.ErrorMessage ?? ""}";
             RecordEvidence(r.Accepted ? BenchEvidencePhase.TransportAccepted : BenchEvidencePhase.Rejected,
                 $"{summary} · {r.AckDescription ?? r.ErrorMessage ?? (r.Accepted ? "后端已接受" : "后端拒绝")}",
                 item.Controller.ControllerId, item.State.StateId, r.OperationId, r.CorrelationId,
@@ -306,7 +310,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 $"REQ {r.RawRequest ?? "—"} | RESP {r.RawResponse ?? "—"} | " +
                 $"Error {r.ErrorCode ?? "—"} {r.ErrorMessage ?? ""}", r.OperationId, r.TraceReference);
         }
-        catch (Exception ex) { _lastState = null; _lastOperationId = null; Failure("切换控制状态", ex); }
+        catch (Exception ex) { _lastState = null; _lastOperationId = null;
+            AcceptedFact = $"ERROR · {ex.Message}"; Failure("切换控制状态", ex); }
         finally { Busy = false; }
     }
 
