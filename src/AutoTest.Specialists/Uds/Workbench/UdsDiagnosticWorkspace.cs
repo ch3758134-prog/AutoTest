@@ -15,7 +15,14 @@ public sealed record UdsToolDocument(int Schema, UdsToolProfile Profile,
 public sealed record UdsCanTraceRow(string Direction, string Hex);
 public sealed record UdsToolExchange(string Source, string RequestHex, string ResponseHex,
     string Outcome, string Nrc, bool? ExpectedMatched, Guid CorrelationId,
-    IReadOnlyList<UdsCanTraceRow> Frames, string ErrorCode);
+    IReadOnlyList<UdsCanTraceRow> Frames, string ErrorCode)
+{
+    // Ordered UDS response PDUs, including NRC 0x78, as actually observed
+    // by this Mock request. These are not timestamped CAN-bus observations.
+    public IReadOnlyList<string> ResponseSequence { get; init; } = [];
+    public string FailureLayer { get; init; } = "NONE";
+    public string DiagnosticDetail { get; init; } = "";
+}
 
 public static class UdsHex
 {
@@ -104,9 +111,18 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
     private MockUdsMessageChannel _channel;
     private UdsClient _client;
     private bool _disposed;
+    private readonly int _maxCapturedExchanges;
+    private int _capturedExchanges;
+    private bool _requiresReset;
+    public bool RequiresReset => _requiresReset;
     public string MockIdentity { get; private set; }
-    public UdsDiagnosticWorkspace(string identity = "MOCK_ECU_A")
+    public int CapturedExchanges => _capturedExchanges;
+    public int MaxCapturedExchanges => _maxCapturedExchanges;
+    public UdsDiagnosticWorkspace(string identity = "MOCK_ECU_A", int maxCapturedExchanges = 512)
     {
+        if (maxCapturedExchanges is < 1 or > 10000)
+            throw new ArgumentOutOfRangeException(nameof(maxCapturedExchanges));
+        _maxCapturedExchanges = maxCapturedExchanges;
         MockIdentity = identity;
         _ecu = new MockBootloader(identity);
         _channel = new MockUdsMessageChannel(_ecu);
@@ -122,6 +138,8 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
             _ecu = new MockBootloader(identity);
             _channel = new MockUdsMessageChannel(_ecu);
             _client = new UdsClient(_channel);
+            _capturedExchanges = 0;
+            _requiresReset = false;
             MockIdentity = identity;
         }
         finally { _exclusive.Release(); }
@@ -132,7 +150,7 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
     public void SimulateDisconnect() => _ecu.Disconnect();
 
     public async Task<UdsToolExchange> SendMockAsync(UdsToolProfile profile, string requestText,
-        string expectedHex = "", CancellationToken ct = default)
+        string expectedHex = "", CancellationToken ct = default, Guid? correlationId = null)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(UdsDiagnosticWorkspace));
         byte[] request = UdsHex.Parse(requestText);
@@ -143,12 +161,60 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
         await _exclusive.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            // A timed-out/cancelled exchange may have stale ECU frames in the
+            // receive queue. Only an explicit fresh Mock session may reuse it.
+            if (_requiresReset)
+                throw new InvalidOperationException(
+                    "MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED: reset Mock ECU before next request.");
+            if (_capturedExchanges >= _maxCapturedExchanges)
+                throw new InvalidOperationException(
+                    "MOCK_CAPTURE_CAPACITY_REACHED: reset Mock ECU to release old frame history.");
+            _capturedExchanges++;
             int h = _channel.HostFrames().Length;
             int e = _channel.EcuFrames().Length;
-            var id = Guid.NewGuid();
-            var result = await _client.RequestAsync(new UdsRequest(request.ToImmutableArray(), id),
-                endpoint, ct).ConfigureAwait(false);
+            var id = correlationId ?? Guid.NewGuid();
+            if (id == Guid.Empty) throw new ArgumentException("Correlation ID must be nonempty.");
+            UdsExchangeResult result;
+            try
+            {
+                result = await _client.RequestAsync(
+                    new UdsRequest(request.ToImmutableArray(), id),endpoint,ct)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                _requiresReset = true;
+                throw;
+            }
+            catch (Exception ex) when (ex is IOException or TimeoutException
+                or IsoTpProtocolException)
+            {
+                _requiresReset = true;
+                throw;
+            }
+            if (result.Outcome == AutoTest.Core.Outcome.Uncertain)
+                _requiresReset = true;
             byte[] response = result.ResponsePdu.ToArray();
+            var operationTrace = _client.Trace.Snapshot()
+                .Where(x => x.CorrelationId == id).ToArray();
+            var responseSequence = operationTrace
+                .Where(x => x.Direction == UdsTraceDirection.Response)
+                .Select(x => UdsHex.Format(x.Data))
+                .ToArray();
+            var errors = operationTrace.Where(x => x.Direction == UdsTraceDirection.Error)
+                .Select(x => x.Note).ToArray();
+            string diagnostic = string.Join("; ", errors);
+            string failureLayer = result.Outcome switch
+            {
+                AutoTest.Core.Outcome.Accepted => "NONE",
+                AutoTest.Core.Outcome.Rejected => result.NegativeResponseCode.HasValue
+                    ? "UDS_ECU_NEGATIVE_RESPONSE" : "UDS_POLICY_OR_BUSY",
+                _ when diagnostic.Contains("ISO-TP frame/flow-control timeout",
+                    StringComparison.OrdinalIgnoreCase) => "ISOTP_TIMEOUT",
+                _ when diagnostic.Contains("Consecutive-frame",
+                    StringComparison.OrdinalIgnoreCase) => "ISOTP_SEQUENCE",
+                _ => "UDS_TRANSPORT_UNISOLATED"
+            };
             var trace = _channel.HostFrames().Skip(h)
                 .Select(x => new UdsCanTraceRow("HOST TX", UdsHex.Format(x)))
                 .Concat(_channel.EcuFrames().Skip(e)
@@ -157,7 +223,9 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
             return new("Mock", UdsHex.Format(request), UdsHex.Format(response),
                 result.Outcome.ToString(), result.NegativeResponseCode is byte n ? $"0x{n:X2}" : "—",
                 expected is null ? null : response.SequenceEqual(expected), id, trace,
-                result.Outcome == AutoTest.Core.Outcome.Uncertain ? "NO_CONFIRMED_RESPONSE" : "");
+                result.Outcome == AutoTest.Core.Outcome.Uncertain ? "NO_CONFIRMED_RESPONSE" : "")
+                { ResponseSequence = responseSequence,
+                  FailureLayer = failureLayer, DiagnosticDetail = diagnostic };
         }
         finally { _exclusive.Release(); }
     }
