@@ -24,7 +24,7 @@ public sealed record PhysicalUdsBusEvent(
 public interface IReadOnlyPhysicalUdsSession : IAsyncDisposable
 {
     ReadOnlyPhysicalConnection Connection { get; }
-    IUdsClient Client { get; } // Existing UdsClient/IsoTpConversation, never a new stack.
+    UdsClient Client { get; } // Must be the existing protocol implementation, not a simulated IUdsClient.
     IReadOnlyList<PhysicalUdsBusEvent> SnapshotCan(Guid correlationId);
     IReadOnlyList<UdsTraceEntry> SnapshotUds(Guid correlationId);
 }
