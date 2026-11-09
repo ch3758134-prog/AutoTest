@@ -47,6 +47,9 @@ public sealed class FlashToolViewModel : BindableBase
     public DelegateCommand CopyTraceCommand { get; }
     public bool PhysicalProgrammingEnabled => false;
     public string SourceLabel => "MOCK DRY-RUN ONLY / PHYSICAL FLASH DISABLED";
+    public string AuditJobImage => _backend.LastJobImage is { } last
+        ? $"上一次 Mock 作业：{last.FileName} / SHA256 {last.Sha256}"
+        : "当前尚无可导出的 Mock 作业";
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))
           { LoadCommand.RaiseCanExecuteChanged(); PreflightCommand.RaiseCanExecuteChanged();
@@ -125,6 +128,7 @@ public sealed class FlashToolViewModel : BindableBase
         Bytes=detail.Bytes.ToString(CultureInfo.InvariantCulture);
         Preflight="NOT_RUN"; Status="IMAGE_LOADED"; Failure="";
         ResetVisibleFacts();
+        RaisePropertyChanged(nameof(AuditJobImage));
         Job="—"; Progress="0%"; ConfirmedBytes="0"; LastAcknowledgedBlock="NONE"; RecoveryAdvice="—";
     }
     public async Task PreflightAsync()
@@ -156,6 +160,7 @@ public sealed class FlashToolViewModel : BindableBase
             int drop=string.IsNullOrWhiteSpace(DropBlock)?-1:int.Parse(DropBlock,CultureInfo.InvariantCulture);
             var job=await _backend.StartDryRunAsync(Configuration(),sid,nrc,drop,ct);
             _runningJob=job; CancelCommand.RaiseCanExecuteChanged();
+            RaisePropertyChanged(nameof(AuditJobImage));
             Job=job.Value.ToString("D"); Status="MOCK_PROGRAMMING";
             while (true)
             {
