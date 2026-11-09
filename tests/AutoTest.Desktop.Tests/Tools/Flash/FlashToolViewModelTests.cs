@@ -68,4 +68,18 @@ public sealed class FlashToolViewModelTests
         Assert.Contains(vm.DiagnosticTrace,x=>x.Contains("Block=2"));
         Assert.Contains(vm.RecoveryAdvice,"不完整");
     }
+
+    [Fact]
+    public async Task UncertainStatePresentsExplicitRecoveryAndFailurePosition()
+    {
+        var vm=new FlashToolViewModel { DropBlock="2" };
+        vm.LoadBytes("firmware.bin",Enumerable.Range(0,180)
+            .Select(i=>(byte)i).ToArray(),0x1000);
+        await vm.RunDryAsync();
+        Assert.Equal("MOCK_UNCERTAIN",vm.Status);
+        Assert.Contains("UNCONFIRMED_UDS_RESPONSE",vm.Failure);
+        Assert.Contains("block 2",vm.Failure,StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("不得自动续写",vm.RecoveryAdvice);
+        Assert.Equal("64",vm.ConfirmedBytes);
+    }
 }
