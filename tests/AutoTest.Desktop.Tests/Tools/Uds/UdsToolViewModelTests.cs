@@ -104,4 +104,31 @@ public sealed class UdsToolViewModelTests
         Assert.False(vm.PhysicalTxEnabled);
         Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="ERROR");
     }
+
+    [Fact]
+    public async Task PendingResponseEventsHaveOneCorrelationIdAndP2StarDisclosure()
+    {
+        var vm=new UdsToolViewModel { InjectPending=true, P2StarMs="7500" };
+        await vm.SendAsync();
+        var correlation=vm.LastCorrelationId;
+        Assert.NotEqual("—",correlation);
+        Assert.All(vm.DiagnosticEvents,x=>Assert.Equal(correlation,x.CorrelationId));
+        Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="UDS" &&
+            x.Direction=="RESPONSE_PENDING" && x.RawHex=="7F 22 78" &&
+            x.DecodedSummary.Contains("7500"));
+        Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="UDS" &&
+            x.Direction=="POSITIVE");
+    }
+
+    [Fact]
+    public async Task PhysicalModeRejectedBeforeARequestIsReportedAsIssued()
+    {
+        var vm=new UdsToolViewModel { SourceMode="Physical" };
+        await vm.SendAsync();
+        Assert.False(vm.PhysicalTxEnabled);
+        Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="POLICY" &&
+            x.Direction=="REJECTED");
+        Assert.DoesNotContain(vm.DiagnosticEvents,x=>x.Layer=="UDS" &&
+            x.Direction=="REQUEST");
+    }
 }
