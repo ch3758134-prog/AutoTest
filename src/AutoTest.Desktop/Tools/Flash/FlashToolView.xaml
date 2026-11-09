@@ -178,6 +178,15 @@
                                 <ListBox ItemsSource="{Binding DiagnosticTrace}" BorderThickness="0"
                                          FontSize="12" FontFamily="Consolas"/>
                             </TabItem>
+                            <TabItem Header="地址段 / Mock 校验">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Top" Text="{Binding SegmentDisplayNotice}"
+                                               Foreground="#8B4428" TextWrapping="Wrap"
+                                               FontSize="11" Margin="8,6,8,8"/>
+                                    <ListBox ItemsSource="{Binding SegmentStatusRows}" BorderThickness="0"
+                                             FontSize="12" FontFamily="Consolas"/>
+                                </DockPanel>
+                            </TabItem>
                         </TabControl>
                     </DockPanel>
                 </Border>
