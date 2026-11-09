@@ -46,6 +46,12 @@ public sealed class LabRecipeRow : BindableBase
     public string EffectiveFromUtc { get => _fromUtc; set => SetProperty(ref _fromUtc, value); }
     public string EffectiveUntilUtc { get => _untilUtc; set => SetProperty(ref _untilUtc, value); }
     public bool Enabled { get => _enabled; set => SetProperty(ref _enabled, value); }
+    // Immutable reference metadata stays attached to a loaded recipe row until its key changes.
+    // Editing the Mock key must not silently rewrite an unchanged published resource revision.
+    public LabArtifact? TestProgramSnapshot { get; set; }
+    public LabArtifact? StationProfileSnapshot { get; set; }
+    public LabArtifact? FlashImageSnapshot { get; set; }
+    public bool RequiresFlashSnapshot { get; set; }
 }
 
 public sealed class LabSampleRow : BindableBase
@@ -566,14 +572,18 @@ public sealed class LabProductionToolViewModel : BindableBase
 
     private LabCatalog BuildDraft()
     {
-        static LabArtifact MockAsset(string key) => new(key, "mock-editor-v1", "MOCK_ONLY",
-            LabOrigin.Mock, !string.IsNullOrWhiteSpace(key));
+        static LabArtifact MockAsset(string key, LabArtifact? previous) =>
+            previous is not null && string.Equals(previous.Key, key, StringComparison.Ordinal)
+                ? previous
+                : new(key, "mock-editor-v1", "MOCK_ONLY",
+                    LabOrigin.Mock, !string.IsNullOrWhiteSpace(key));
         return new LabCatalog(_publishedCatalog.Revision, false,
             Rules.Select(x => new LabIdentityRule(x.RuleId, x.Pattern, x.IdentityFieldsCsv,
                 x.Enabled, x.OverlapReviewId)).ToArray(),
             Recipes.Select(x => new LabRecipe(x.RecipeId, x.Revision, x.ModelField,
-                x.CustomerField, MockAsset(x.MockTestProgramKey),
-                MockAsset(x.MockStationProfileKey), null, false, x.Enabled,
+                x.CustomerField, MockAsset(x.MockTestProgramKey, x.TestProgramSnapshot),
+                MockAsset(x.MockStationProfileKey, x.StationProfileSnapshot),
+                x.FlashImageSnapshot, x.RequiresFlashSnapshot, x.Enabled,
                 x.EffectiveFromUtc, x.EffectiveUntilUtc)).ToArray(),
             Samples.Select(x => new LabRuleSample(x.RawBarcode, x.ExpectedRuleId,
                 x.ExpectedRecipeId, x.ObservedAtUtc)).ToArray());
@@ -590,6 +600,8 @@ public sealed class LabProductionToolViewModel : BindableBase
             Recipes.Add(new LabRecipeRow { RecipeId = x.RecipeId, Revision = x.Revision,
                 ModelField = x.ModelField, CustomerField = x.CustomerField,
                 MockTestProgramKey = x.TestProgram.Key, MockStationProfileKey = x.StationProfile.Key,
+                TestProgramSnapshot = x.TestProgram, StationProfileSnapshot = x.StationProfile,
+                FlashImageSnapshot = x.FlashImage, RequiresFlashSnapshot = x.RequiresFlash,
                 EffectiveFromUtc = x.EffectiveFromUtc,
                 EffectiveUntilUtc = x.EffectiveUntilUtc,
                 Enabled = x.Enabled });
