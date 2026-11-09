@@ -58,7 +58,16 @@ public sealed class UdsReplayWorkspace
                     throw new InvalidDataException("Replay classical CAN frame DLC must be 1..8.");
             }
         }
-        _records=document.Exchanges.ToArray(); _index=0;
+        // Keep a private immutable-in-practice copy of validated replay data.
+        // Caller edits after Load must not rewrite expected UDS responses or
+        // let unvalidated frames enter a previously accepted replay session.
+        _records=document.Exchanges.Select(x=>new UdsReplayRecord(
+            UdsHex.Format(UdsHex.Parse(x.RequestHex)),
+            x.Responses.Select(y=>UdsHex.Format(UdsHex.Parse(y))).ToList(),
+            x.Frames.Select(y=>new UdsCanTraceRow(
+                y.Direction,UdsHex.Format(UdsHex.Parse(y.Hex)))).ToList()
+        )).ToArray();
+        _index=0;
     }
     public async Task LoadAsync(string path, CancellationToken ct = default)
     {
