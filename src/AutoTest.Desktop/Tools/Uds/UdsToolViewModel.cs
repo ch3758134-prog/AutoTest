@@ -66,6 +66,7 @@ public sealed class UdsToolViewModel : BindableBase
     public DelegateCommand CopyTraceCommand { get; }
     public IReadOnlyList<string> SourceModes { get; } = ["Mock", "Replay"];
     public bool PhysicalTxEnabled => false;
+    public string MockCaptureUsage => $"{_backend.CapturedExchanges}/{_backend.MaxCapturedExchanges}";
     public string SourceLabel => SourceMode=="Replay" ? "REPLAY / NO PHYSICAL CAN TX" : "MOCK / NO PHYSICAL CAN TX";
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))
@@ -241,7 +242,12 @@ public sealed class UdsToolViewModel : BindableBase
                 if (InjectPending) _backend.InjectNextPending(request[0]);
                 if (InjectNrc) _backend.InjectNextNrc(checked((byte)CanId(FaultSid)),
                     checked((byte)CanId(FaultCode)));
-                exchange=await _backend.SendMockAsync(Profile(),RequestHex,ExpectedHex,linked.Token,_lastCorrelationId);
+                try
+                {
+                    exchange=await _backend.SendMockAsync(Profile(),RequestHex,ExpectedHex,
+                        linked.Token,_lastCorrelationId);
+                }
+                finally { RaisePropertyChanged(nameof(MockCaptureUsage)); }
             }
             else throw new InvalidOperationException("Physical UDS Tx is not configured or authorized.");
             if (exchange.CorrelationId != _lastCorrelationId)
@@ -285,6 +291,9 @@ public sealed class UdsToolViewModel : BindableBase
                 FormatException or ArgumentException => "UI_INPUT",
                 EndOfStreamException => "REPLAY_EXHAUSTED",
                 InvalidDataException => "REPLAY_DOCUMENT",
+                InvalidOperationException when ex.Message.StartsWith(
+                    "MOCK_CAPTURE_CAPACITY_REACHED",StringComparison.Ordinal) =>
+                    "MOCK_CAPTURE_LIMIT",
                 InvalidOperationException when source=="Replay" => "REPLAY_REQUEST",
                 InvalidOperationException when source=="Physical" => "SAFETY_POLICY",
                 _ => "WORKBENCH_UNISOLATED"
@@ -345,7 +354,8 @@ public sealed class UdsToolViewModel : BindableBase
     {
         if (IsBusy) return;
         IsBusy=true; Error="";
-        try { await _backend.ResetMockAsync(MockIdentity); TraceRows.Clear(); Status="MOCK_RESET";
+        try { await _backend.ResetMockAsync(MockIdentity); TraceRows.Clear();
+            RaisePropertyChanged(nameof(MockCaptureUsage)); Status="MOCK_RESET";
             ResponseHex="—"; Nrc="—"; ExpectedMatch="NOT_SPECIFIED"; Session="Default / Unknown"; }
         catch(Exception ex) { Status="MOCK_ERROR"; Error=ex.Message; }
         finally { IsBusy=false; }
