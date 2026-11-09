@@ -19,6 +19,7 @@ public sealed class UdsToolViewModel : BindableBase
     private string _diagnosticPath="", _traceFilter="", _traceQuality="NOT_CAPTURED";
     private Guid _lastCorrelationId;
     private bool _lastRequestSensitive;
+    private bool _lastRequestVin;
     private int _droppedTraceEvents;
     private const int MaxUiDiagnosticEvents=10000;
     private string _profileName="Mock ECU", _mockIdentity="MOCK_ECU_A",
@@ -145,10 +146,13 @@ public sealed class UdsToolViewModel : BindableBase
             TraceQuality="INCOMPLETE_UI_TRACE_OVERFLOW";
             return;
         }
+        bool sensitive=_lastRequestSensitive ||
+            (_lastRequestVin && (layer=="ISOTP" ||
+                (layer=="UDS" && direction is "POSITIVE" or "RESPONSE")));
         var item = new UdsDiagnosticEvent(DateTimeOffset.UtcNow, source, layer, direction,
             correlation == Guid.Empty ? "" : correlation.ToString("D"),
             UdsWorkbenchEvidence.SafeHex(_lastRequestSensitive,rawHex), detail,error,
-            _lastRequestSensitive);
+            sensitive);
         DiagnosticEvents.Add(item);
         if (MatchesFilter(item)) VisibleEvents.Add(item);
         ExportDiagnosticCommand.RaiseCanExecuteChanged();
@@ -177,7 +181,8 @@ public sealed class UdsToolViewModel : BindableBase
         {
             if (DiagnosticEvents.Count == 0) return;
             Clipboard.SetText(string.Join(Environment.NewLine,VisibleEvents.Select(x =>
-                $"{x.TimestampUtc:O} | {x.CorrelationId} | {x.Layer} | {x.Direction} | {x.RawHex} | {x.DecodedSummary} | {x.ErrorCode}")));
+                $"{x.TimestampUtc:O} | {x.CorrelationId} | {x.Layer} | {x.Direction} | "+
+                $"{UdsWorkbenchEvidence.SafeHex(x.Sensitive,x.RawHex)} | {x.DecodedSummary} | {x.ErrorCode}")));
             Status = "TRACE_COPIED";
         }
         catch (Exception ex) { Status="COPY_ERROR"; Error=ex.Message; }
@@ -205,6 +210,7 @@ public sealed class UdsToolViewModel : BindableBase
         RaisePropertyChanged(nameof(LastCorrelationId));
         IsBusy=true; CancelRequestCommand.RaiseCanExecuteChanged();
         _lastRequestSensitive=false;
+        _lastRequestVin=false;
         TraceQuality=_droppedTraceEvents>0 ? "INCOMPLETE_UI_TRACE_OVERFLOW" : "NOT_CAPTURED";
         Status="REQUESTING"; Error=""; Nrc="—"; ResponseHex="—";
         FailureLayer="NONE"; DiagnosticDetail="";
@@ -214,6 +220,8 @@ public sealed class UdsToolViewModel : BindableBase
         {
             var request=UdsHex.Parse(RequestHex);
             _lastRequestSensitive=UdsWorkbenchEvidence.RequiresRedaction(request);
+            _lastRequestVin=request.Length>=3 && request[0]==0x22 &&
+                request[1]==0xF1 && request[2]==0x90;
             if (source is not ("Mock" or "Replay"))
             {
                 Append(source,"POLICY","REJECTED",_lastCorrelationId,"",
@@ -310,8 +318,19 @@ public sealed class UdsToolViewModel : BindableBase
                 0x02=>"Programming ("+exchange.Source+")",
                 _=>"Other ("+exchange.Source+")" };
         foreach(var frame in exchange.Frames)
+        {
+            // Legacy raw frame collection remains bounded too, even though the new
+            // UI uses DiagnosticEvents. Avoid silent unbounded memory growth.
+            if (TraceRows.Count >= MaxUiDiagnosticEvents)
+            {
+                TraceRows.RemoveAt(0);
+                _droppedTraceEvents++;
+                RaisePropertyChanged(nameof(DroppedTraceEvents));
+                TraceQuality="INCOMPLETE_UI_TRACE_OVERFLOW";
+            }
             TraceRows.Add(_lastRequestSensitive ?
                 frame with { Hex="[REDACTED: SENSITIVE UDS SERVICE]" } : frame);
+        }
     }
     public async Task LoadReplayAsync()
     {
