@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using AutoTest.Records.Operations;
@@ -17,6 +18,9 @@ public sealed class RecordsViewModel : BindableBase
     private string _error = "";
     private string _summary = "尚未加载生产统计";
     private string _snapshot = "选择一次执行，查看当次冻结快照";
+    private string _stepSearch = "";
+    private string _archiveIntegrity = "选择 Run 后执行归档检查；不会推定真实出厂放行。";
+    private string _stepFacts = "选择一次执行后点击「查看 StepFacts」；历史事实来自该 Run 的持久化报告。";
     private bool _busy;
     private RecordHistoryToolRow? _selected;
 
@@ -26,6 +30,8 @@ public sealed class RecordsViewModel : BindableBase
         RefreshCommand = new DelegateCommand(() => _ = RunSafelyAsync(() => RefreshAsync()));
         ExportJsonCommand = new DelegateCommand(() => _ = RunSafelyAsync(() => ExportReportAsync(false)));
         ExportHtmlCommand = new DelegateCommand(() => _ = RunSafelyAsync(() => ExportReportAsync(true)));
+        InspectStepsCommand = new DelegateCommand(() => _ = RunSafelyAsync(() => InspectStepFactsAsync()));
+        InspectArchiveCommand = new DelegateCommand(() => _ = RunSafelyAsync(() => InspectArchiveAsync()));
     }
 
     public ObservableCollection<RecordHistoryToolRow> Runs { get; } = new();
@@ -33,6 +39,8 @@ public sealed class RecordsViewModel : BindableBase
     public ICommand RefreshCommand { get; }
     public ICommand ExportJsonCommand { get; }
     public ICommand ExportHtmlCommand { get; }
+    public ICommand InspectStepsCommand { get; }
+    public ICommand InspectArchiveCommand { get; }
 
     public string DutId { get => _dutId; set => SetProperty(ref _dutId, value); }
     public string Mode { get => _mode; set => SetProperty(ref _mode, value); }
@@ -41,6 +49,9 @@ public sealed class RecordsViewModel : BindableBase
     public string Error { get => _error; private set => SetProperty(ref _error, value); }
     public string Summary { get => _summary; private set => SetProperty(ref _summary, value); }
     public string Snapshot { get => _snapshot; private set => SetProperty(ref _snapshot, value); }
+    public string StepSearch { get => _stepSearch; set => SetProperty(ref _stepSearch, value); }
+    public string StepFacts { get => _stepFacts; private set => SetProperty(ref _stepFacts, value); }
+    public string ArchiveIntegrity { get => _archiveIntegrity; private set => SetProperty(ref _archiveIntegrity, value); }
     public bool IsBusy { get => _busy; private set => SetProperty(ref _busy, value); }
     public RecordHistoryToolRow? Selected
     {
@@ -48,7 +59,11 @@ public sealed class RecordsViewModel : BindableBase
         set
         {
             if (SetProperty(ref _selected, value))
+            {
                 Snapshot = value?.SnapshotJson ?? "选择运行记录查看当次冻结快照。";
+                StepFacts = "选择 Run 后点击「查看 StepFacts」查询已归档事实；不根据当前工程推断。";
+                ArchiveIntegrity = "尚未对选中的 Run 执行归档校验；历史 PASS 不代表实际出厂放行。";
+            }
         }
     }
 
@@ -72,6 +87,56 @@ public sealed class RecordsViewModel : BindableBase
         }
         catch (Exception exception) { Error = "记录查询失败: " + exception.Message; Status = "读取失败"; }
         finally { IsBusy = false; }
+    }
+
+    public async Task InspectStepFactsAsync(CancellationToken ct = default)
+    {
+        if (Selected is null) { Error = "请先选择 RunId。"; return; }
+        try
+        {
+            Error = "";
+            var selectedRun = Selected.RunId;
+            using var report = JsonDocument.Parse(await _source.ExportFullReportJsonAsync(selectedRun, ct));
+            if (!report.RootElement.TryGetProperty("stepFacts", out var steps) ||
+                steps.ValueKind != JsonValueKind.Array)
+                throw new InvalidDataException("归档报告缺少 stepFacts 数组；不能显示模拟结果。");
+            var rows = steps.EnumerateArray().Where(step =>
+                string.IsNullOrWhiteSpace(StepSearch) ||
+                step.TryGetProperty("stepId", out var id) &&
+                id.ToString().Contains(StepSearch.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Select(step => step.Clone()).ToArray();
+            // A stale asynchronous response must never replace a newer selected RunId.
+            if (Selected?.RunId != selectedRun) return;
+            StepFacts = rows.Length == 0 ? "未找到已归档 StepFact（非测试通过）。" :
+                JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true });
+            Status = $"Run {selectedRun}: 已读取 {rows.Length} 条已归档 StepFacts（预期/实际/证据质量）。";
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            Error = "逐步事实读取失败: " + exception.Message;
+            StepFacts = "证据不可用；未补造当前工程的步骤结果。";
+        }
+    }
+
+    public async Task InspectArchiveAsync(CancellationToken ct = default)
+    {
+        if (Selected is null) { Error = "请先选择 RunId。"; return; }
+        var runId = Selected.RunId;
+        try
+        {
+            Error = "";
+            var result = await _source.InspectArchiveAsync(runId, ct);
+            // A selection change during disk IO must not display another Run's inspection.
+            if (Selected?.RunId != runId) return;
+            ArchiveIntegrity = result.ToManifestJson();
+            Status = $"Run {runId}: 归档检查 {result.Status}；实体出厂放行状态未评估";
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            if (Selected?.RunId != runId) return;
+            Error = "归档完整性检查失败: " + exception.Message;
+            ArchiveIntegrity = "无法证明归档完整性；不能据此认定历史结果可信。";
+        }
     }
 
     public async Task ExportReportAsync(bool html, CancellationToken ct = default)

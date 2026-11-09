@@ -39,16 +39,54 @@ public sealed class OperationsViewModelTests
         Assert.Contains(evt.EventId.ToString("D"), vm.TraceText);
     }
 
+    [Fact]
+    public async Task AuditQuerySupportsRunOperationAndDeviceFiltersWithoutHardware()
+    {
+        var store = new FakeStore();
+        var operationId = Guid.NewGuid();
+        var vm = new OperationsViewModel(store, new FakeTraceReader(), new FakeExporter())
+        {
+            RunFilter = "run-77", DeviceFilter = "main-board", OperationFilter = operationId.ToString("D"),
+            OriginFilter = "Replay", OnlyFailures = true
+        };
+        await vm.RefreshAsync();
+        Assert.Equal("run-77", store.LastQuery!.RunId);
+        Assert.Equal("main-board", store.LastQuery.DeviceId);
+        Assert.Equal(operationId, store.LastQuery.OperationId);
+        Assert.Equal(AuditOrigin.Replay, store.LastQuery.Origin);
+        Assert.True(store.LastQuery.FailuresOnly);
+    }
+
+    [Fact]
+    public async Task EmptyEvidenceBundleIsExplicitlySoftwareOnlyAndCreatesPortableZip()
+    {
+        var filename = Path.Combine(Path.GetTempPath(), "autotest-operations-" + Guid.NewGuid().ToString("N") + ".zip");
+        try
+        {
+            var vm = new OperationsViewModel(new FakeStore(), new FakeTraceReader(), new FakeExporter())
+            { ExportPath = filename };
+            await vm.ExportBundleAsync();
+            Assert.Equal("", vm.Error);
+            Assert.Contains("0 条事件", vm.State);
+            Assert.True(File.Exists(filename));
+        }
+        finally { if (File.Exists(filename)) File.Delete(filename); }
+    }
+
     private sealed class FakeStore : IOperationAuditStore
     {
         private readonly OperationAuditEvent[] _events;
+        public OperationAuditQuery? LastQuery { get; private set; }
         public FakeStore(params OperationAuditEvent[] events) => _events = events;
         public Task<AuditAppendReceipt> AppendAsync(OperationAuditEvent e, CancellationToken ct = default) =>
             Task.FromResult(new AuditAppendReceipt(e.EventId, true, false));
         public Task<OperationAuditEvent?> FindByIdAsync(Guid id, CancellationToken ct = default) =>
             Task.FromResult(_events.FirstOrDefault(e => e.EventId == id));
-        public Task<AuditPage> QueryAsync(OperationAuditQuery query, CancellationToken ct = default) =>
-            Task.FromResult(new AuditPage(_events, null));
+        public Task<AuditPage> QueryAsync(OperationAuditQuery query, CancellationToken ct = default)
+        {
+            LastQuery = query;
+            return Task.FromResult(new AuditPage(_events, null));
+        }
         public Task<IReadOnlyList<OperationAuditEvent>> FindByTraceAsync(AuditTraceReference reference,
             CancellationToken ct = default) => Task.FromResult<IReadOnlyList<OperationAuditEvent>>(_events);
     }

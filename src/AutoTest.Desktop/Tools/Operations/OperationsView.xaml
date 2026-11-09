@@ -7,6 +7,7 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="170"/>
       <RowDefinition Height="Auto"/>
@@ -25,7 +26,15 @@
       <Button Content="_查询" Command="{Binding RefreshCommand}" Padding="12,3" IsDefault="True" Margin="0,0,8,0"/>
       <Button Content="更多" Command="{Binding MoreCommand}" Padding="12,3"/>
     </WrapPanel>
-    <DataGrid Grid.Row="2" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+    <WrapPanel Grid.Row="2" Margin="0,0,0,8">
+      <TextBlock Text="设备" VerticalAlignment="Center" Margin="0,0,4,0"/>
+      <TextBox Width="170" Text="{Binding DeviceFilter, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
+      <TextBlock Text="RunId" VerticalAlignment="Center" Margin="0,0,4,0"/>
+      <TextBox Width="205" Text="{Binding RunFilter, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
+      <TextBlock Text="OperationId" VerticalAlignment="Center" Margin="0,0,4,0"/>
+      <TextBox Width="205" Text="{Binding OperationFilter, UpdateSourceTrigger=PropertyChanged}"/>
+    </WrapPanel>
+    <DataGrid Grid.Row="3" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
               AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
               CanUserAddRows="False" EnableRowVirtualization="True" EnableColumnVirtualization="True"
               HeadersVisibility="Column" GridLinesVisibility="Horizontal" Margin="0,0,0,6">
@@ -40,7 +49,7 @@
         <DataGridTextColumn Header="事件摘要" Binding="{Binding Summary}" Width="*" MinWidth="120"/>
       </DataGrid.Columns>
     </DataGrid>
-    <Grid Grid.Row="3" Margin="0,0,0,8">
+    <Grid Grid.Row="4" Margin="0,0,0,8">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <GroupBox Grid.Column="0" Header="操作事实 / 原生错误 / 会话世代">
         <TextBox IsReadOnly="True" Text="{Binding Detail, Mode=OneWay}" FontFamily="Consolas" FontSize="11"
@@ -57,12 +66,13 @@
         </DockPanel>
       </GroupBox>
     </Grid>
-    <StackPanel Grid.Row="4">
+    <StackPanel Grid.Row="5">
       <DockPanel Margin="0,0,0,5" LastChildFill="True">
         <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Text="导出到" Margin="0,0,6,0"/>
+        <Button DockPanel.Dock="Right" Content="诊断 ZIP（含 Trace）" Command="{Binding BundleCommand}" Padding="10,3" Margin="5,0,0,0"/>
         <Button DockPanel.Dock="Right" Content="JSONL 导出" Command="{Binding JsonlCommand}" Padding="10,3" Margin="5,0,0,0"/>
         <Button DockPanel.Dock="Right" Content="CSV 导出" Command="{Binding CsvCommand}" Padding="10,3" Margin="5,0,0,0"/>
-        <TextBox Text="{Binding ExportPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="输入一个尚不存在的绝对文件路径"/>
+        <TextBox Text="{Binding ExportPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="输入尚不存在的路径；诊断包必须使用 .zip 后缀"/>
       </DockPanel>
       <TextBlock Text="{Binding State}" Foreground="DimGray" TextTrimming="CharacterEllipsis"/>
       <TextBlock Text="{Binding Error}" Foreground="Firebrick" TextWrapping="Wrap"/>

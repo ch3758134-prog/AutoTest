@@ -15,6 +15,7 @@ public interface IRecordHistoryToolSource
     Task<IReadOnlyList<RecordHistoryToolRow>> QueryAsync(string? dutId, string? mode, int limit,
         CancellationToken ct = default);
     Task<RecordToolSummary> SummaryAsync(string mode, CancellationToken ct = default);
+    Task<RunArchiveIntegrityResult> InspectArchiveAsync(string runId, CancellationToken ct = default);
     Task<string> ExportFullReportJsonAsync(string runId, CancellationToken ct = default);
     Task<string> ExportFullReportHtmlAsync(string runId, CancellationToken ct = default);
     Task ExportReportAsync(string runId, string destination, bool html, CancellationToken ct = default);
@@ -44,6 +45,9 @@ public sealed class RecordHistoryToolSource : IRecordHistoryToolSource
             x.StartedUtc, x.Persistence.ToString(), x.Verdict?.ToString() ?? "Unknown", x.FactCount,
             x.StepFactCount, x.FailureReason, x.SnapshotJson)).ToArray();
     }
+
+    public Task<RunArchiveIntegrityResult> InspectArchiveAsync(string runId, CancellationToken ct = default) =>
+        new RunArchiveIntegrityInspector(_history, _reports).InspectAsync(ParseRun(runId), ct);
 
     public Task<string> ExportFullReportJsonAsync(string runId, CancellationToken ct = default) =>
         _reports.ExportJsonAsync(ParseRun(runId), ct);

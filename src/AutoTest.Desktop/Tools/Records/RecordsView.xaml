@@ -35,10 +35,33 @@
         <DataGridTextColumn Header="错误" Binding="{Binding FailureReason}" Width="130"/>
       </DataGrid.Columns>
     </DataGrid>
-    <GroupBox Grid.Row="4" Header="不可变执行快照（来自持久化记录，不依赖当前工程）" Margin="0,0,0,7">
-      <TextBox Text="{Binding Snapshot, Mode=OneWay}" FontFamily="Consolas" FontSize="11" IsReadOnly="True"
-               TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
-    </GroupBox>
+    <TabControl Grid.Row="4" Margin="0,0,0,7">
+      <TabItem Header="冻结快照">
+        <TextBox Text="{Binding Snapshot, Mode=OneWay}" FontFamily="Consolas" FontSize="11" IsReadOnly="True"
+                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+      </TabItem>
+      <TabItem Header="逐步骤 Expected / Actual">
+        <DockPanel LastChildFill="True">
+          <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="3,4,3,4">
+            <TextBlock Text="StepId 筛选" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBox Width="210" Text="{Binding StepSearch, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
+            <Button Content="查看 StepFacts" Command="{Binding InspectStepsCommand}" Padding="10,3"/>
+          </StackPanel>
+          <TextBox Text="{Binding StepFacts}" FontFamily="Consolas" FontSize="11" IsReadOnly="True"
+                   TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="归档完整性 / Evidence">
+        <DockPanel LastChildFill="True">
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="3,4,3,4">
+            <Button Content="校验当前 Run 存档" Command="{Binding InspectArchiveCommand}" Padding="10,3" Margin="0,0,8,0"/>
+            <TextBlock Text="仅检查存储和证据哈希，不代表实物出厂放行" Foreground="DimGray" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TextBox Text="{Binding ArchiveIntegrity}" FontFamily="Consolas" FontSize="11" IsReadOnly="True"
+                   TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
     <StackPanel Grid.Row="5">
       <DockPanel LastChildFill="True" Margin="0,0,0,4">
         <TextBlock DockPanel.Dock="Left" Text="报告另存为" VerticalAlignment="Center" Margin="0,0,5,0"/>

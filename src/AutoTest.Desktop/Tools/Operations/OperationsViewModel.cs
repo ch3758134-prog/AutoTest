@@ -13,9 +13,13 @@ public sealed class OperationsViewModel : BindableBase
     private readonly IOperationAuditStore _store;
     private readonly IOperationTraceReader _traces;
     private readonly IOperationAuditExporter _exports;
+    private readonly IOperationDiagnosticBundleExporter _bundles;
     private AuditCursor? _cursor;
     private bool _busy;
     private string _search = "";
+    private string _deviceFilter = "";
+    private string _runFilter = "";
+    private string _operationFilter = "";
     private string _originFilter = "All";
     private bool _onlyFailures;
     private bool _onlyWithTrace;
@@ -31,6 +35,7 @@ public sealed class OperationsViewModel : BindableBase
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _traces = traces ?? throw new ArgumentNullException(nameof(traces));
         _exports = exports ?? throw new ArgumentNullException(nameof(exports));
+        _bundles = new OperationDiagnosticBundleExporter(_store, _traces);
         RefreshCommand = new DelegateCommand(() => _ = ExecuteSafelyAsync(() => RefreshAsync()));
         MoreCommand = new DelegateCommand(() => _ = ExecuteSafelyAsync(() => LoadMoreAsync()), () => !IsBusy && _cursor != null);
         TraceCommand = new DelegateCommand(() => _ = ExecuteSafelyAsync(() => ShowSelectedTraceAsync()),
@@ -39,6 +44,7 @@ public sealed class OperationsViewModel : BindableBase
             () => !IsBusy && SelectedEvent?.Trace != null);
         CsvCommand = new DelegateCommand(() => _ = ExecuteSafelyAsync(() => ExportAsync(true)));
         JsonlCommand = new DelegateCommand(() => _ = ExecuteSafelyAsync(() => ExportAsync(false)));
+        BundleCommand = new DelegateCommand(() => _ = ExecuteSafelyAsync(() => ExportBundleAsync()));
     }
 
     public ObservableCollection<OperationAuditEvent> Entries { get; } = new();
@@ -49,9 +55,13 @@ public sealed class OperationsViewModel : BindableBase
     public ICommand ReverseTraceCommand { get; }
     public ICommand CsvCommand { get; }
     public ICommand JsonlCommand { get; }
+    public ICommand BundleCommand { get; }
 
     public bool IsBusy { get => _busy; private set { if (SetProperty(ref _busy, value)) UpdateCommandStates(); } }
     public string Search { get => _search; set => SetProperty(ref _search, value); }
+    public string DeviceFilter { get => _deviceFilter; set => SetProperty(ref _deviceFilter, value); }
+    public string RunFilter { get => _runFilter; set => SetProperty(ref _runFilter, value); }
+    public string OperationFilter { get => _operationFilter; set => SetProperty(ref _operationFilter, value); }
     public string OriginFilter { get => _originFilter; set => SetProperty(ref _originFilter, value); }
     public bool OnlyFailures { get => _onlyFailures; set => SetProperty(ref _onlyFailures, value); }
     public bool OnlyWithTrace { get => _onlyWithTrace; set => SetProperty(ref _onlyWithTrace, value); }
@@ -77,6 +87,11 @@ public sealed class OperationsViewModel : BindableBase
     private OperationAuditQuery BuildQuery(AuditCursor? before = null) => new()
     {
         Search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim(),
+        DeviceId = string.IsNullOrWhiteSpace(DeviceFilter) ? null : DeviceFilter.Trim(),
+        RunId = string.IsNullOrWhiteSpace(RunFilter) ? null : RunFilter.Trim(),
+        OperationId = string.IsNullOrWhiteSpace(OperationFilter) ? null :
+            Guid.TryParse(OperationFilter.Trim(), out var operation) ? operation :
+                throw new ArgumentException("操作 ID 必须是 GUID。"),
         Origin = OriginFilter == "All" ? null : Enum.Parse<AuditOrigin>(OriginFilter),
         FailuresOnly = OnlyFailures,
         WithTraceOnly = OnlyWithTrace,
@@ -156,6 +171,23 @@ public sealed class OperationsViewModel : BindableBase
             State = $"已导出 {count} 条到 {ExportPath}（不覆盖已有文件）";
         }
         catch (Exception exception) { Error = "导出失败: " + exception.Message; }
+    }
+
+    public async Task ExportBundleAsync(CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(ExportPath)) { Error = "请先输入 ZIP 导出文件完整路径。"; return; }
+        try
+        {
+            Error = "";
+            var result = await _bundles.ExportAsync(BuildQuery(), ExportPath, ct);
+            State = $"诊断包已生成：{result.EventCount} 条事件 / {result.VerifiedTraceCount} 条已验证 Trace / " +
+                $"{result.UnavailableTraceCount} 条缺失或损坏 Trace / " +
+                $"{result.EventsWithoutTrace} 条无原始 Trace 事件 · " +
+                (result.Complete ? "本筛选集原始证据覆盖完整（不代表实物 PASS）" :
+                    "证据覆盖不完整：检查 evidence-index.json 和 manifest.json") +
+                $" · {result.Destination}";
+        }
+        catch (Exception exception) { Error = "诊断包导出失败: " + exception.Message; }
     }
 
     private async Task ExecuteSafelyAsync(Func<Task> action)
