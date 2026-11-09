@@ -71,8 +71,24 @@ public sealed class UdsToolViewModel : BindableBase
         CancelRequestCommand, ExportDiagnosticCommand];
     public string ProfileName { get => _profileName; set => SetProperty(ref _profileName,value); }
     public string MockIdentity { get => _mockIdentity; set => SetProperty(ref _mockIdentity,value); }
-    public string TxId { get => _txId; set => SetProperty(ref _txId,value); }
-    public string RxId { get => _rxId; set => SetProperty(ref _rxId,value); }
+    public string AddressingDescription
+    {
+        get
+        {
+            try
+            {
+                uint tx=CanId(TxId), rx=CanId(RxId);
+                if (tx>0x1FFFFFFF || rx>0x1FFFFFFF) return "INVALID CAN ID";
+                if ((tx>0x7FF)!=(rx>0x7FF)) return "MIXED 11/29-BIT: NOT SUPPORTED";
+                return tx>0x7FF ? "ISO-TP NORMAL / 29-BIT CAN ID" :
+                    "ISO-TP NORMAL / 11-BIT CAN ID";
+            }
+            catch (FormatException) { return "INVALID CAN ID"; }
+            catch (OverflowException) { return "INVALID CAN ID"; }
+        }
+    }
+    public string TxId { get => _txId; set { if (SetProperty(ref _txId,value)) RaisePropertyChanged(nameof(AddressingDescription)); } }
+    public string RxId { get => _rxId; set { if (SetProperty(ref _rxId,value)) RaisePropertyChanged(nameof(AddressingDescription)); } }
     public string P2Ms { get => _p2Ms; set => SetProperty(ref _p2Ms,value); }
     public string P2StarMs { get => _p2StarMs; set => SetProperty(ref _p2StarMs,value); }
     public string RequestHex { get => _requestHex; set => SetProperty(ref _requestHex,value); }
