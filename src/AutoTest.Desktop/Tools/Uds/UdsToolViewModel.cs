@@ -2,6 +2,10 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Diagnostics;
 using System.Windows;
+using System.Collections.Immutable;
+using AutoTest.Contracts;
+using AutoTest.Core;
+using AutoTest.Specialists.Uds;
 using AutoTest.Specialists.Uds.Workbench;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -14,6 +18,7 @@ public sealed class UdsToolViewModel : BindableBase
 {
     private readonly UdsDiagnosticWorkspace _backend;
     private readonly UdsReplayWorkspace _replay = new();
+    private readonly ReadOnlyPhysicalUdsWorkspace? _physical;
     private bool _isBusy, _injectPending, _noResponse, _injectNrc;
     private CancellationTokenSource? _activeRequest;
     private string _diagnosticPath="", _traceFilter="", _traceQuality="NOT_CAPTURED";
@@ -31,10 +36,17 @@ public sealed class UdsToolViewModel : BindableBase
         _faultSid="22", _faultCode="31", _session="Default / Unknown",
         _sourceMode="Mock", _replayPath="";
     private UdsServiceDefinition? _selectedService;
-    public UdsToolViewModel() : this(new UdsDiagnosticWorkspace()) { }
+    public UdsToolViewModel() : this(new UdsDiagnosticWorkspace(),null) { }
     public UdsToolViewModel(UdsDiagnosticWorkspace backend)
+        : this(backend,null) { }
+    // INTEGRATION injects DEVICE-backed session provider from PR16 R1 Host.
+    // Ordinary construction stays Mock/Replay. No physical transport is created.
+    public UdsToolViewModel(UdsDiagnosticWorkspace backend,
+        IReadOnlyPhysicalUdsSessionProvider? physicalProvider)
     {
-        _backend = backend;
+        _backend = backend ?? throw new ArgumentNullException(nameof(backend));
+        _physical = physicalProvider is null ? null :
+            new ReadOnlyPhysicalUdsWorkspace(physicalProvider);
         Services.Add(new("Read VIN (Mock)","22 F1 90",""));
         Services.Add(new("Read DTC (Mock)","19 02 FF",""));
         Services.Add(new("Tester Present (Mock)","3E 00",""));
@@ -49,6 +61,8 @@ public sealed class UdsToolViewModel : BindableBase
         CancelRequestCommand = new DelegateCommand(CancelRequest, () => IsBusy && _activeRequest is not null);
         ExportDiagnosticCommand = new DelegateCommand(() => _ = ExportDiagnosticAsync(), () => !IsBusy && DiagnosticEvents.Count > 0);
         CopyTraceCommand = new DelegateCommand(CopyTrace, () => DiagnosticEvents.Count > 0);
+        RefreshPhysicalCommand = new DelegateCommand(RefreshPhysicalAvailability, () => !IsBusy);
+        RefreshPhysicalAvailability();
     }
     public ObservableCollection<UdsServiceDefinition> Services { get; } = new();
     public ObservableCollection<UdsCanTraceRow> TraceRows { get; } = new();
@@ -64,20 +78,60 @@ public sealed class UdsToolViewModel : BindableBase
     public DelegateCommand CancelRequestCommand { get; }
     public DelegateCommand ExportDiagnosticCommand { get; }
     public DelegateCommand CopyTraceCommand { get; }
-    public IReadOnlyList<string> SourceModes { get; } = ["Mock", "Replay"];
-    public bool PhysicalTxEnabled => false;
+    public DelegateCommand RefreshPhysicalCommand { get; }
+    public IReadOnlyList<string> SourceModes { get; private set; } = ["Mock", "Replay"];
+    public bool PhysicalTxEnabled
+    {
+        get
+        {
+            try { return _physical is not null && _physical.IsReady(PhysicalEndpoint()); }
+            catch (Exception ex) when (ex is FormatException or OverflowException
+                or ArgumentException or NotSupportedException) { return false; }
+        }
+    }
+    public string PhysicalStationStatus
+    {
+        get
+        {
+            var current=_physical?.Current;
+            return current is null ? "PHYSICAL NOT CONNECTED / NOT AUTHORIZED" :
+                "Station="+current.StationIdentity+
+                " Generation="+current.SessionGeneration+
+                " Role="+current.Endpoint.Role+
+                " Tx=0x"+current.Endpoint.RequestCanId.ToString("X")+
+                " Rx=0x"+current.Endpoint.ResponseCanId.ToString("X")+
+                " | "+(PhysicalTxEnabled ? "READONLY_TX_AUTHORIZED" :
+                    "TX_NOT_AUTHORIZED_OR_ENDPOINT_CHANGED");
+        }
+    }
+    public void RefreshPhysicalAvailability()
+    {
+        bool available=PhysicalTxEnabled;
+        SourceModes=available ? ["Mock","Replay","Physical"] : ["Mock","Replay"];
+        RaisePropertyChanged(nameof(SourceModes));
+        RaisePropertyChanged(nameof(PhysicalTxEnabled));
+        RaisePropertyChanged(nameof(PhysicalStationStatus));
+        RaisePropertyChanged(nameof(SourceLabel));
+    }
     public string MockCaptureUsage => $"{_backend.CapturedExchanges}/{_backend.MaxCapturedExchanges}";
     public bool MockResetRequired => _backend.RequiresReset;
     public string MockChannelStatus => _backend.RequiresReset
         ? "MOCK SESSION UNCERTAIN — RESET REQUIRED BEFORE NEXT REQUEST"
         : "MOCK SESSION READY";
-    public string SourceLabel => SourceMode=="Replay" ? "REPLAY / NO PHYSICAL CAN TX" : "MOCK / NO PHYSICAL CAN TX";
+    public string SourceLabel => SourceMode switch
+    {
+        "Replay" => "REPLAY / NO PHYSICAL CAN TX",
+        "Physical" => PhysicalTxEnabled ?
+            "PHYSICAL READONLY / DEVICE-BOUND DUT CAN1" :
+            "PHYSICAL DISABLED / NOT AUTHORIZED",
+        _ => "MOCK / NO PHYSICAL CAN TX"
+    };
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))
           foreach(var command in Commands()) command.RaiseCanExecuteChanged(); } }
     private IEnumerable<DelegateCommand> Commands() => [SendCommand, ResetCommand,
         SaveServiceCommand, DeleteServiceCommand, SaveDocumentCommand, LoadDocumentCommand, LoadReplayCommand,
-        CancelRequestCommand, ExportDiagnosticCommand];
+        CancelRequestCommand, ExportDiagnosticCommand, RefreshPhysicalCommand];
     public string ProfileName { get => _profileName; set => SetProperty(ref _profileName,value); }
     public string MockIdentity { get => _mockIdentity; set => SetProperty(ref _mockIdentity,value); }
     public string AddressingDescription
@@ -96,8 +150,8 @@ public sealed class UdsToolViewModel : BindableBase
             catch (OverflowException) { return "INVALID CAN ID"; }
         }
     }
-    public string TxId { get => _txId; set { if (SetProperty(ref _txId,value)) RaisePropertyChanged(nameof(AddressingDescription)); } }
-    public string RxId { get => _rxId; set { if (SetProperty(ref _rxId,value)) RaisePropertyChanged(nameof(AddressingDescription)); } }
+    public string TxId { get => _txId; set { if (SetProperty(ref _txId,value)) { RaisePropertyChanged(nameof(AddressingDescription)); RefreshPhysicalAvailability(); } } }
+    public string RxId { get => _rxId; set { if (SetProperty(ref _rxId,value)) { RaisePropertyChanged(nameof(AddressingDescription)); RefreshPhysicalAvailability(); } } }
     public string P2Ms { get => _p2Ms; set => SetProperty(ref _p2Ms,value); }
     public string P2StarMs { get => _p2StarMs; set => SetProperty(ref _p2StarMs,value); }
     public string RequestHex { get => _requestHex; set => SetProperty(ref _requestHex,value); }
@@ -140,6 +194,7 @@ public sealed class UdsToolViewModel : BindableBase
     private static int Ms(string value) => int.Parse(value,CultureInfo.InvariantCulture);
     private UdsToolProfile Profile() => new(ProfileName,MockIdentity,CanId(TxId),CanId(RxId),
         Ms(P2Ms),Ms(P2StarMs));
+    private UdsEndpointProfile PhysicalEndpoint() => UdsToolDocumentStore.ToEndpoint(Profile());
     private UdsToolDocument Document() => new(1,Profile(),Services.ToList());
     private void Append(string source, string layer, string direction, Guid correlation,
         string rawHex, string detail, string error = "")
@@ -227,6 +282,11 @@ public sealed class UdsToolViewModel : BindableBase
             _lastRequestSensitive=UdsWorkbenchEvidence.RequiresRedaction(request);
             _lastRequestVin=request.Length>=3 && request[0]==0x22 &&
                 request[1]==0xF1 && request[2]==0x90;
+            if (source=="Physical")
+            {
+                await SendPhysicalReadOnlyAsync(request,linked.Token,watch);
+                return;
+            }
             if (source is not ("Mock" or "Replay"))
             {
                 Append(source,"POLICY","REJECTED",_lastCorrelationId,"",
@@ -315,7 +375,9 @@ public sealed class UdsToolViewModel : BindableBase
                     "MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED",StringComparison.Ordinal) =>
                     "MOCK_SESSION_REQUIRES_RESET",
                 InvalidOperationException when source=="Replay" => "REPLAY_REQUEST",
-                InvalidOperationException when source=="Physical" => "SAFETY_POLICY",
+                UnauthorizedAccessException when source=="Physical" => "PHYSICAL_READONLY_DENIED",
+                IOException when source=="Physical" => "PHYSICAL_TRANSPORT_UNCERTAIN",
+                InvalidOperationException when source=="Physical" => "PHYSICAL_SESSION_ERROR",
                 _ => "WORKBENCH_UNISOLATED"
             };
             DiagnosticDetail=ex.Message;
@@ -327,7 +389,94 @@ public sealed class UdsToolViewModel : BindableBase
             _activeRequest=null;
             IsBusy=false;
             CancelRequestCommand.RaiseCanExecuteChanged();
+            RefreshPhysicalAvailability();
         }
+    }
+    private async Task SendPhysicalReadOnlyAsync(byte[] request,CancellationToken ct,
+        Stopwatch watch)
+    {
+        if (_physical is null || !PhysicalTxEnabled)
+        {
+            Append("Physical","POLICY","DENIED",_lastCorrelationId,"",
+                "No DEVICE-authorized read-only station/endpoint is bound.",
+                "P1_PHYSICAL_SESSION_NOT_AUTHORIZED");
+            throw new UnauthorizedAccessException("P1_PHYSICAL_SESSION_NOT_AUTHORIZED");
+        }
+        var endpoint=PhysicalEndpoint();
+        var udsRequest=new UdsRequest(request.ToImmutableArray(),_lastCorrelationId);
+        // Validate SID 0x19/0x22 and DID structure BEFORE recording a request as
+        // dispatched. A rejected UI command is not an actual CAN transmission.
+        ReadOnlyPhysicalUdsWorkspace.ValidateRequest(udsRequest,endpoint);
+        Append("Physical","POLICY","READONLY_VALIDATED",_lastCorrelationId,"",
+            "SID=0x"+request[0].ToString("X2")+
+            "; role=DutCan; Tx=0x"+endpoint.RequestCanId.ToString("X")+
+            "; Rx=0x"+endpoint.ResponseCanId.ToString("X")+
+            "; P2="+endpoint.P2.TotalMilliseconds+
+            "ms; P2*="+endpoint.P2Star.TotalMilliseconds+"ms");
+        // Provider is DEVICE/INTEGRATION-owned. This method never instantiates
+        // a CAN hub or creates any USB session.
+        var physical=await _physical.RequestAsync(udsRequest,endpoint,ct);
+        var response=physical.Result.ResponsePdu.IsDefaultOrEmpty ? [] :
+            physical.Result.ResponsePdu.ToArray();
+        var responseHex=UdsHex.Format(response);
+        var replies=physical.UdsTrace
+            .Where(x=>x.CorrelationId==_lastCorrelationId &&
+                x.Direction==UdsTraceDirection.Response)
+            .Select(x=>UdsHex.Format(x.Data)).ToArray();
+        bool? expected=string.IsNullOrWhiteSpace(ExpectedHex) ? null :
+            response.SequenceEqual(UdsHex.Parse(ExpectedHex));
+        var nrc=physical.Result.NegativeResponseCode;
+        var outcome=physical.Result.Outcome.ToString();
+        var code=physical.DiagnosticCode;
+        var failureLayer=physical.Result.Outcome switch
+        {
+            Outcome.Accepted => "NONE",
+            Outcome.Rejected when nrc.HasValue => "UDS_ECU_NEGATIVE_RESPONSE",
+            Outcome.Uncertain => "PHYSICAL_TRANSPORT_OR_TRACE_UNCERTAIN",
+            _ => "PHYSICAL_REQUEST_REJECTED"
+        };
+        var exchange=new UdsToolExchange("Physical",UdsHex.Format(request),
+            responseHex,outcome,nrc.HasValue ? "0x"+nrc.Value.ToString("X2") : "—",
+            expected,_lastCorrelationId,
+            physical.CanTrace.Select(x=>new UdsCanTraceRow(
+                x.Direction+" CAN 0x"+x.CanId.ToString("X"),x.RawHex)).ToArray(),
+            physical.Result.Outcome==Outcome.Uncertain ? code : "")
+        {
+            ResponseSequence=replies, FailureLayer=failureLayer,
+            DiagnosticDetail=code+"; Station="+physical.Connection.StationIdentity+
+                "; Generation="+physical.Connection.SessionGeneration
+        };
+        ApplyExchange(exchange,request);
+        TraceQuality=physical.RawBusEvidenceVerified ?
+            "PHYSICAL_DEVICE_HOST_ARRIVAL_ONLY" :
+            "PHYSICAL_CAN_EVIDENCE_INCOMPLETE_NOT_ACCEPTED";
+        foreach(var uds in physical.UdsTrace.Where(x=>
+            x.CorrelationId==_lastCorrelationId))
+        {
+            Append("Physical","UDS",uds.Direction.ToString().ToUpperInvariant(),
+                _lastCorrelationId,UdsHex.Format(uds.Data),
+                "UDS trace UTC="+uds.Utc.ToString("O")+"; "+uds.Note);
+        }
+        foreach(var frame in physical.CanTrace)
+        {
+            bool sensitive=_lastRequestVin || _lastRequestSensitive;
+            Append("Physical","CAN",frame.Direction,_lastCorrelationId,
+                UdsWorkbenchEvidence.SafeHex(sensitive,frame.RawHex),
+                "CAN 0x"+frame.CanId.ToString("X")+
+                " DLC="+(UdsHex.Parse(frame.RawHex).Length)+
+                " Role="+frame.Role+" Extended="+frame.ExtendedId+
+                " Generation="+frame.SessionGeneration+
+                " Lost="+frame.LostFrames+
+                " DeviceTxAck="+frame.TxAcknowledgedByDevice+
+                " HostArrivalUtc="+frame.Utc.ToString("O")+
+                " TraceRef="+frame.TraceRef,
+                frame.LostFrames==0 ? "" : "PHYSICAL_CAN_LOSS");
+        }
+        Append("Physical","UDS","FINAL",_lastCorrelationId,responseHex,
+            "Outcome="+outcome+" NRC="+exchange.Nrc+
+            " ObservedHostElapsedMs="+watch.ElapsedMilliseconds+
+            "; physical evidence="+TraceQuality,exchange.ErrorCode);
+        if (_droppedTraceEvents>0) TraceQuality="INCOMPLETE_UI_TRACE_OVERFLOW";
     }
     private void ApplyExchange(UdsToolExchange exchange,byte[] request)
     {
