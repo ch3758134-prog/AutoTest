@@ -22,6 +22,9 @@ public sealed class FlashToolViewModel : BindableBase
         _job="—",_progress="0%";
     private AutoTest.Contracts.ProgrammingJobId? _runningJob;
     private string _lastAcknowledgedBlock="NONE",_confirmedBytes="0",_traceQuality="MOCK_ONLY";
+    private int _renderedFacts, _omittedStageRows, _omittedTraceRows;
+    private long _confirmedAckBytes;
+    private const int MaxVisibleRows=3000;
     public FlashToolViewModel() : this(new FlashDryRunWorkspace()) { }
     public FlashToolViewModel(FlashDryRunWorkspace backend)
     {
@@ -76,6 +79,9 @@ public sealed class FlashToolViewModel : BindableBase
     public string LastAcknowledgedBlock { get => _lastAcknowledgedBlock; private set => SetProperty(ref _lastAcknowledgedBlock,value); }
     public string ConfirmedBytes { get => _confirmedBytes; private set => SetProperty(ref _confirmedBytes,value); }
     public string TraceQuality { get => _traceQuality; private set => SetProperty(ref _traceQuality,value); }
+    public string VisibleWindowNotice => (_omittedStageRows+_omittedTraceRows)==0
+        ? "完整 UI 历史（Mock）" :
+        $"UI 显示窗口截断：阶段 {_omittedStageRows} 行、UDS {_omittedTraceRows} 行未显示；完整后台事实可导出 Mock 审计。";
     public void CopyTrace()
     {
         try
@@ -118,7 +124,7 @@ public sealed class FlashToolViewModel : BindableBase
         Format=detail.Format; Hash=detail.Sha256;
         Bytes=detail.Bytes.ToString(CultureInfo.InvariantCulture);
         Preflight="NOT_RUN"; Status="IMAGE_LOADED"; Failure="";
-        Stages.Clear(); DiagnosticTrace.Clear(); CopyTraceCommand.RaiseCanExecuteChanged();
+        ResetVisibleFacts();
         Job="—"; Progress="0%"; ConfirmedBytes="0"; LastAcknowledgedBlock="NONE"; RecoveryAdvice="—";
     }
     public async Task PreflightAsync()
@@ -138,7 +144,7 @@ public sealed class FlashToolViewModel : BindableBase
     public async Task RunDryAsync(CancellationToken ct = default)
     {
         if (IsBusy) return;
-        IsBusy=true; Failure=""; Stages.Clear(); DiagnosticTrace.Clear(); Progress="0%";
+        IsBusy=true; Failure=""; ResetVisibleFacts(); Progress="0%";
         ConfirmedBytes="0"; LastAcknowledgedBlock="NONE";
         try
         {
@@ -166,6 +172,23 @@ public sealed class FlashToolViewModel : BindableBase
         catch(Exception ex) { Status="DRY_RUN_ERROR"; Failure=ex.GetType().Name+": "+ex.Message; }
         finally { _runningJob=null; IsBusy=false; }
     }
+    private void ResetVisibleFacts()
+    {
+        Stages.Clear(); DiagnosticTrace.Clear();
+        _renderedFacts=0; _omittedStageRows=0; _omittedTraceRows=0; _confirmedAckBytes=0;
+        TraceQuality="MOCK_ONLY";
+        RaisePropertyChanged(nameof(VisibleWindowNotice));
+        CopyTraceCommand.RaiseCanExecuteChanged();
+    }
+    private static void AddBounded(ObservableCollection<string> collection, string value, ref int omitted)
+    {
+        if (collection.Count >= MaxVisibleRows)
+        {
+            collection.RemoveAt(0);
+            omitted++;
+        }
+        collection.Add(value);
+    }
     private void Update(ProgrammingJobSnapshot snapshot)
     {
         Status="MOCK_"+snapshot.State.ToString().ToUpperInvariant();
@@ -177,34 +200,31 @@ public sealed class FlashToolViewModel : BindableBase
                 "模拟作业不完整。不得自动续写；重新检查镜像/配置及故障后启动新 Mock 作业。",
             _ => "Mock 正在执行；断连或取消可能留下部分模拟写入。"
         };
-        Stages.Clear(); DiagnosticTrace.Clear();
-        foreach(var fact in snapshot.Facts)
+        if (snapshot.Facts.Length < _renderedFacts) ResetVisibleFacts();
+        for (int i=_renderedFacts;i<snapshot.Facts.Length;i++)
         {
+            var fact=snapshot.Facts[i];
             string line=$"{fact.Utc:O}  {fact.Stage,-20} {fact.Status,-8} "+
                 $"{fact.ConfirmedBytes,8}B  {fact.Detail}";
-            Stages.Add(line);
-            if (fact.Stage=="UDS") DiagnosticTrace.Add(line);
-        }
-        CopyTraceCommand.RaiseCanExecuteChanged();
-        var lastAck=snapshot.Facts.LastOrDefault(x=>x.Stage=="Transfer" && x.Status=="ACK");
-        LastAcknowledgedBlock="NONE";
-        if (lastAck is not null)
-        {
-            var detail=lastAck.Detail;
-            var marker="Block=";
-            int offset=detail.IndexOf(marker,StringComparison.Ordinal);
-            if(offset>=0)
+            AddBounded(Stages,line,ref _omittedStageRows);
+            if (fact.Stage=="UDS") AddBounded(DiagnosticTrace,line,ref _omittedTraceRows);
+            if (fact.Stage=="Transfer" && fact.Status=="ACK")
             {
-                string part=detail[(offset+marker.Length)..].Split(';')[0].Trim();
-                LastAcknowledgedBlock=part;
+                _confirmedAckBytes=Math.Max(_confirmedAckBytes,fact.ConfirmedBytes);
+                const string marker="Block=";
+                int offset=fact.Detail.IndexOf(marker,StringComparison.Ordinal);
+                if(offset>=0)
+                    LastAcknowledgedBlock=fact.Detail[(offset+marker.Length)..].Split(';')[0].Trim();
             }
         }
-        // Only an acknowledged TransferData block counts as transferred payload.
-        // Later verification/reset facts are NOT additional transfer acknowledgements.
-        long max=snapshot.Facts.Where(x=>x.Stage=="Transfer" && x.Status=="ACK")
-            .Select(x=>x.ConfirmedBytes).DefaultIfEmpty(0).Max();
-        ConfirmedBytes=max.ToString(CultureInfo.InvariantCulture);
-        TraceQuality="MOCK_UDS_PDU_STAGE_FACTS; NO PHYSICAL CAN FRAME TIMING";
+        _renderedFacts=snapshot.Facts.Length;
+        CopyTraceCommand.RaiseCanExecuteChanged();
+        ConfirmedBytes=_confirmedAckBytes.ToString(CultureInfo.InvariantCulture);
+        TraceQuality=_omittedStageRows+_omittedTraceRows>0
+            ? "MOCK_STAGE_FACTS; UI WINDOW TRUNCATED; EXPORT FULL AUDIT"
+            : "MOCK_UDS_PDU_STAGE_FACTS; NO PHYSICAL CAN FRAME TIMING";
+        RaisePropertyChanged(nameof(VisibleWindowNotice));
+        long max=_confirmedAckBytes;
         long total=_backend.Image?.Bytes??0;
         Progress=total==0?"0%":$"{Math.Min(100,100.0*max/total):F1}% ({max}/{total} bytes, MOCK)";
     }
