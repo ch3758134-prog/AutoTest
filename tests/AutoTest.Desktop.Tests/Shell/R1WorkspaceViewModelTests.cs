@@ -156,6 +156,46 @@ public sealed class R1WorkspaceViewModelTests
         Assert.Null(vm.ActiveTab);
     }
 
+    [Fact]
+    public void ChangingThemeAndDensityDoesNotChangeAnyOpenedDocumentOrSession()
+    {
+        var host = new FakeHost();
+        var vm = new R1WorkspaceViewModel(host);
+        var wave = vm.Navigation.Single(x => x.Id == "P07");
+        vm.UpdateAvailability(wave.Id, WorkspaceAvailability.Available);
+        vm.AcceptContext("project", "rev-3", "station", 21, "Replay");
+        vm.Open(wave);
+        var tab = Assert.Single(vm.OpenTabs);
+        Assert.Equal(R1Theme.Dark, vm.Theme);
+        Assert.Equal(R1Density.Compact, vm.Density);
+        vm.ToggleThemeCommand.Execute();
+        vm.ToggleDensityCommand.Execute();
+        Assert.Equal(R1Theme.Light, vm.Theme);
+        Assert.Equal(R1Density.Comfortable, vm.Density);
+        Assert.Equal("浅色", vm.ThemeLabel);
+        Assert.Equal("舒适", vm.DensityLabel);
+        Assert.Same(tab, vm.ActiveTab);
+        Assert.Equal("rev-3", vm.ActiveTab!.ContextRevision);
+        Assert.Equal("Replay", vm.Origin);
+        Assert.Equal("21", vm.SessionGeneration);
+        Assert.Equal(1, host.Activations);
+        Assert.Equal(0, host.Closes);
+    }
+
+    [Fact]
+    public void ThemeAndDensityAreReversibleWithoutChangingOpenTabState()
+    {
+        var vm = new R1WorkspaceViewModel(new FakeHost());
+        vm.ToggleThemeCommand.Execute();
+        vm.ToggleThemeCommand.Execute();
+        vm.ToggleDensityCommand.Execute();
+        vm.ToggleDensityCommand.Execute();
+        Assert.Equal(R1Theme.Dark, vm.Theme);
+        Assert.Equal(R1Density.Compact, vm.Density);
+        Assert.Empty(vm.OpenTabs);
+        Assert.Equal("UNKNOWN", vm.ResourceRevision);
+    }
+
     private sealed class FakeHost : IWorkspaceDocumentHost
     {
         public bool AllowActivation { get; set; } = true;
