@@ -69,8 +69,25 @@ public sealed class FlashWorkbenchTests
         workspace.LoadImage("mock.bin",Enumerable.Range(0,150).Select(i=>(byte)i).ToArray(),0x1000);
         var job=await workspace.StartDryRunAsync(Config(),dropBeforeBlock:1);
         var evidence=await workspace.WaitAsync(job);
-        Assert.NotEqual(ProgrammingJobState.Completed,evidence.State);
-        Assert.NotNull(evidence.FailureCode);
+        Assert.Equal(ProgrammingJobState.Uncertain,evidence.State);
+        Assert.Equal("UNCONFIRMED_UDS_RESPONSE",evidence.FailureCode);
+        Assert.Contains(evidence.Facts,x=>x.Stage=="Job" && x.Status=="UNCERTAIN");
+        Assert.DoesNotContain(evidence.Facts,x=>x.Stage=="Job" && x.Status=="PASS");
+    }
+
+    [Fact]
+    public async Task LostSecondTransferAckDoesNotDiscardFirstConfirmedBlock()
+    {
+        var workspace=new FlashDryRunWorkspace();
+        workspace.LoadImage("mock.bin",Enumerable.Range(0,180)
+            .Select(x=>(byte)x).ToArray(),0x1000);
+        var job=await workspace.StartDryRunAsync(Config(),dropBeforeBlock:2);
+        var snapshot=await workspace.WaitAsync(job);
+        Assert.Equal(ProgrammingJobState.Uncertain,snapshot.State);
+        var acks=snapshot.Facts.Where(x=>x.Stage=="Transfer" && x.Status=="ACK").ToArray();
+        var first=Assert.Single(acks);
+        Assert.Equal(64,first.ConfirmedBytes);
+        Assert.DoesNotContain(snapshot.Facts,x=>x.Stage=="Job" && x.Status=="PASS");
     }
 
     [Fact]
