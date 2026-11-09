@@ -232,6 +232,77 @@
                     </DataGrid>
                 </DockPanel>
             </TabItem>
+            <TabItem Header="样本回放 / 规则诊断">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock FontSize="14" FontWeight="SemiBold"
+                                   Text="草稿规则诊断 · 不发布、不执行 Test、不放行 ECU" />
+                        <TextBlock Margin="0,5,0,9" TextWrapping="Wrap" Opacity="0.73"
+                                   Text="直接读取当前编辑中的规则、配方与样本。所有检查是软件预览，不能取代配置发布校验；样本无冲突也不等于所有编号都无冲突。" />
+                        <WrapPanel VerticalAlignment="Center">
+                            <TextBlock Text="默认回放时间（UTC）" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox MinWidth="205" Width="250" ToolTip="空样本时间使用此值；已填样本时间优先"
+                                     Text="{Binding SampleReplayAtUtc, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Margin="8,0,3,0" Content="批量回放样本" Command="{Binding ReplaySamplesCommand}" />
+                            <Button Content="检查规则重叠" Command="{Binding InspectOverlapCommand}" />
+                            <Button Content="对比已发布版本" Command="{Binding CompareDraftCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                    <GroupBox Grid.Row="1" Header="样本回放：预期 / 实际" Margin="0,10,0,0">
+                        <DockPanel Margin="8">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding SampleReplayStatus}"
+                                       TextWrapping="Wrap" Margin="0,0,0,5" />
+                            <DataGrid ItemsSource="{Binding SampleReplayRows}" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#" Width="48" Binding="{Binding RowNumber}" />
+                                    <DataGridTextColumn Header="样本原始编号（仅本地 UI）" Width="150" Binding="{Binding RawBarcode}" />
+                                    <DataGridTextColumn Header="预期规则" Width="130" Binding="{Binding ExpectedRuleId}" />
+                                    <DataGridTextColumn Header="实际规则" Width="130" Binding="{Binding ActualRuleId}" />
+                                    <DataGridTextColumn Header="预期配方" Width="140" Binding="{Binding ExpectedRecipeId}" />
+                                    <DataGridTextColumn Header="实际配方" Width="140" Binding="{Binding ActualRecipeId}" />
+                                    <DataGridTextColumn Header="诊断码" Width="200" Binding="{Binding Code}" />
+                                    <DataGridCheckBoxColumn Header="样本通过" Width="95" Binding="{Binding Passed}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </GroupBox>
+                    <GroupBox Grid.Row="2" Header="规则对重叠证据（有限样本，不作全域保证）" Margin="0,9,0,0">
+                        <DockPanel Margin="8">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding OverlapStatus}"
+                                       TextWrapping="Wrap" Margin="0,0,0,5" />
+                            <DataGrid ItemsSource="{Binding RuleOverlapRows}" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="规则 A" Width="140" Binding="{Binding FirstRuleId}" />
+                                    <DataGridTextColumn Header="规则 B" Width="140" Binding="{Binding SecondRuleId}" />
+                                    <DataGridTextColumn Header="分类" Width="200" Binding="{Binding Classification}" />
+                                    <DataGridTextColumn Header="证实重叠的样本数" Width="145" Binding="{Binding CollidingSamples}" />
+                                    <DataGridTextColumn Header="说明 / 确定性" Width="*" Binding="{Binding Evidence}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </GroupBox>
+                    <GroupBox Grid.Row="3" Header="当前草稿 ↔ 已发布修订差异" Margin="0,9,0,0">
+                        <DockPanel Margin="8">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding RevisionCompareStatus}"
+                                       TextWrapping="Wrap" Margin="0,0,0,5" />
+                            <DataGrid ItemsSource="{Binding RevisionChangeRows}" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="对象" Width="125" Binding="{Binding EntityType}" />
+                                    <DataGridTextColumn Header="ID / 修订" Width="225" Binding="{Binding EntityKey}" />
+                                    <DataGridTextColumn Header="变更" Width="100" Binding="{Binding Kind}" />
+                                    <DataGridTextColumn Header="变更字段（不显示样本原文）" Width="*" Binding="{Binding ChangedFields}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
             <TabItem Header="发布 / 本地配置">
                 <StackPanel Margin="12">
                     <TextBlock FontWeight="SemiBold" Text="保存草稿与发布是两个独立操作" FontSize="14" />
