@@ -162,4 +162,25 @@ public sealed class UdsToolViewModelTests
         }
         finally { if(File.Exists(path)) File.Delete(path); }
     }
+
+    [Fact]
+    public async Task MockTimeoutBlocksFurtherSendUntilResetAndDoesNotFabricateNewTx()
+    {
+        var vm=new UdsToolViewModel { NoResponse=true, P2Ms="25" };
+        await vm.SendAsync();
+        Assert.Equal("MOCK_UNCERTAIN",vm.Status);
+        Assert.True(vm.MockResetRequired);
+        int attempted=vm.DiagnosticEvents.Count(x=>x.Layer=="UDS" && x.Direction=="REQUEST");
+        vm.NoResponse=false;
+        await vm.SendAsync();
+        Assert.Equal("MOCK_SESSION_REQUIRES_RESET",vm.FailureLayer);
+        Assert.Equal(attempted,
+            vm.DiagnosticEvents.Count(x=>x.Layer=="UDS" && x.Direction=="REQUEST"));
+        Assert.Contains(vm.DiagnosticEvents,x=>x.Layer=="POLICY" &&
+            x.ErrorCode=="MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED");
+        await vm.ResetAsync();
+        Assert.False(vm.MockResetRequired);
+        await vm.SendAsync();
+        Assert.Equal("MOCK_ACCEPTED",vm.Status);
+    }
 }
