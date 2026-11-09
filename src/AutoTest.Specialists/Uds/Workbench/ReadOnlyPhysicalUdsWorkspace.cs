@@ -19,7 +19,7 @@ public sealed record ReadOnlyPhysicalConnection(
 public sealed record PhysicalUdsBusEvent(
     DateTimeOffset Utc, string Direction, string Layer, BusRole Role,
     uint CanId, bool ExtendedId, string RawHex, string TraceRef,
-    long SessionGeneration, long LostFrames);
+    long SessionGeneration, long LostFrames, bool TxAcknowledgedByDevice = false);
 
 public interface IReadOnlyPhysicalUdsSession : IAsyncDisposable
 {
@@ -111,7 +111,7 @@ public sealed class ReadOnlyPhysicalUdsWorkspace(IReadOnlyPhysicalUdsSessionProv
             var can=session.SnapshotCan(request.CorrelationId).ToArray();
             var uds=session.SnapshotUds(request.CorrelationId).ToArray();
             bool canVerified=can.Any(x=>x.Direction=="TX" &&
-                    x.CanId==endpoint.RequestCanId) &&
+                    x.TxAcknowledgedByDevice && x.CanId==endpoint.RequestCanId) &&
                 can.Any(x=>x.Direction=="RX" && x.CanId==endpoint.ResponseCanId) &&
                 can.All(x=>x.SessionGeneration==current.SessionGeneration &&
                     x.LostFrames==0 && x.Role==BusRole.DutCan &&
