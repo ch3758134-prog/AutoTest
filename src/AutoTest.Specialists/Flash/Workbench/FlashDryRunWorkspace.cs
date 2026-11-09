@@ -28,6 +28,9 @@ public sealed class FlashDryRunWorkspace
     private string _name = "";
     private ProgrammingJobCoordinator? _coordinator;
     private ProgrammingJobId? _jobId;
+    private FlashImageDetail? _jobImageSnapshot;
+    private FlashDryRunConfiguration? _jobConfigSnapshot;
+    private DateTimeOffset? _jobInputCapturedUtc;
     public FlashImageDetail? Image => _image is null ? null : Describe(_image, _name);
     public ProgrammingJobId? CurrentJob => _jobId;
 
@@ -111,7 +114,13 @@ public sealed class FlashDryRunWorkspace
         byte? faultNrcSid = null, byte? faultNrc = null, int dropBeforeBlock = -1,
         CancellationToken ct = default)
     {
-        var image = _image ?? throw new ProgrammingRejectedException("IMAGE_NOT_SELECTED");
+        FirmwareImage image;
+        string imageName;
+        lock (_sync)
+        {
+            image = _image ?? throw new ProgrammingRejectedException("IMAGE_NOT_SELECTED");
+            imageName = _name;
+        }
         if (image.ByteCount > MaxInteractiveMockBytes)
             throw new ProgrammingRejectedException("INTERACTIVE_MOCK_IMAGE_LIMIT_1MIB");
         if (_jobId is { } previous && _coordinator is not null &&
@@ -133,7 +142,16 @@ public sealed class FlashDryRunWorkspace
         var auth = new SafetyAuthorization(Authorization.MockOnly(session, DateTimeOffset.UtcNow),
             "MOCK_FLASH", "FLASH_WORKBENCH_MOCK_ONLY");
         var id = await coordinator.ExecuteAsync(plan, auth, ct).ConfigureAwait(false);
-        lock (_sync) { _coordinator = coordinator; _jobId = id; }
+        lock (_sync)
+        {
+            _coordinator = coordinator;
+            _jobId = id;
+            // Immutable job-input snapshot: later image import must never
+            // rewrite the evidence identity of an already executed job.
+            _jobImageSnapshot = Describe(image,imageName);
+            _jobConfigSnapshot = config;
+            _jobInputCapturedUtc = DateTimeOffset.UtcNow;
+        }
         return id;
     }
     public ProgrammingJobSnapshot Observe(ProgrammingJobId job)
@@ -155,7 +173,18 @@ public sealed class FlashDryRunWorkspace
             .ToArray();
         var lastAck=ackFacts.LastOrDefault();
         var verifyCount=snapshot.Facts.Count(x=>x.Stage=="VerifyMock" && x.Status=="PASS");
-        var expectedVerifyCount=_image?.Segments.Length ?? 0;
+        FlashImageDetail? jobImage;
+        FlashDryRunConfiguration? jobConfig;
+        DateTimeOffset? captured;
+        lock (_sync)
+        {
+            jobImage=_jobImageSnapshot;
+            jobConfig=_jobConfigSnapshot;
+            captured=_jobInputCapturedUtc;
+        }
+        if (jobImage is null || jobConfig is null || captured is null)
+            throw new InvalidOperationException("Job input evidence is unavailable.");
+        var expectedVerifyCount=jobImage.Segments.Count;
         bool mockVerified=snapshot.State==ProgrammingJobState.Completed &&
             verifyCount==expectedVerifyCount && expectedVerifyCount>0;
         var payload=new
@@ -163,7 +192,8 @@ public sealed class FlashDryRunWorkspace
             Schema=2, Source="Mock", PhysicalProgrammingVerified=false,
             RealEcuIdentityObserved=false, PhysicalTransportUsed=false,
             Job=snapshot.Job, State=snapshot.State.ToString(), SnapshotUtc=DateTimeOffset.UtcNow,
-            Image=Image, FailureCode=snapshot.FailureCode,
+            JobInputCapturedUtc=captured, Image=jobImage,
+            MockConfiguration=jobConfig, FailureCode=snapshot.FailureCode,
             AcknowledgedTransferBytes=lastAck?.ConfirmedBytes??0,
             LastAcknowledgedTransfer=lastAck is null ? null : new {
                 Utc=lastAck.Utc, Detail=lastAck.Detail, ConfirmedBytes=lastAck.ConfirmedBytes },
