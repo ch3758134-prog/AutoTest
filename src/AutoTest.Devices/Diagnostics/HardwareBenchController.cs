@@ -5,7 +5,7 @@ namespace AutoTest.Devices.Diagnostics;
 
 /// <summary>Concrete read-only hardware debug facade, suitable for independent CLI and WPF UI.
 /// B0/B1/B2 never expose state-changing physical operations.</summary>
-public sealed class HardwareBenchController : IAsyncDisposable
+public sealed partial class HardwareBenchController : IAsyncDisposable
 {
     private readonly IWinUsbDiscovery _discovery;
     private UsbSessionService? _session;
@@ -57,13 +57,16 @@ public sealed class HardwareBenchController : IAsyncDisposable
             _link.OperationRecorded += RelayNative;
             _session = new UsbSessionService(_link, _lastSessionGeneration);
             _versionVerified = false;
-            _hub = new CanFrameHub(); // no physical Tx delegate = transmit impossible
+            _physicalUdsLeases = new CanTransmitGate(_session.Generation);
+            _hub = new CanFrameHub(TransmitPhysicalReadOnlyUdsAsync); // guarded; default DENY
             _session.TraceRecorded += RelayUsb;
             _session.StateChanged += RelayState;
             _canBridge = new HardwareCanReceiveBridge(_session, _hub);
             _canBridge.Trace += RelayCan;
+            _canBridge.ObservationPublished += ObservePhysicalReadOnlyUdsRx;
             _log.RecordMessage("CONNECTION_ATTEMPT", selected.DisplayIdentity);
             await _session.ConnectAsync(ct).ConfigureAwait(false);
+            _physicalUdsLeases.Reset(_session.Generation);
         }
         catch (Exception original)
         {
@@ -118,11 +121,18 @@ public sealed class HardwareBenchController : IAsyncDisposable
     }
     private void RelayState(UsbSessionState state)
     {
+        if (state is UsbSessionState.Disconnected or UsbSessionState.Faulted)
+        {
+            _physicalUdsBoundary.Revoke();
+            _physicalUdsLeases?.Reset(0);
+        }
         _log?.RecordMessage("STATE", state.ToString());
         ConnectionChanged?.Invoke(state);
     }
     public async Task DisconnectAsync()
     {
+        _physicalUdsBoundary.Revoke();
+        _physicalUdsLeases?.Reset(0);
         var canPublished = CanPublished;
         var canDropped = CanDropped;
         var canMalformed = CanMalformed;
@@ -144,10 +154,12 @@ public sealed class HardwareBenchController : IAsyncDisposable
         if (_canBridge is not null)
         {
             _canBridge.Trace -= RelayCan;
+            _canBridge.ObservationPublished -= ObservePhysicalReadOnlyUdsRx;
             await _canBridge.DisposeAsync().ConfigureAwait(false);
             _canBridge = null;
         }
         _hub?.Dispose(); _hub = null;
+        _physicalUdsLeases = null;
         _versionVerified = false;
         if (_log is not null)
         {
