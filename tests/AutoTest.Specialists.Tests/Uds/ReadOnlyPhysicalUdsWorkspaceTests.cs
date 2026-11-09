@@ -67,7 +67,9 @@ public sealed class ReadOnlyPhysicalUdsWorkspaceTests
             Assert.Equal(BusRole.DutCan,spec.Endpoint.Role);
             Assert.Equal(Current!.SessionGeneration,spec.ExpectedSessionGeneration);
             Assert.Equal("FAKE_STATION",spec.StationIdentity);
-            Assert.True(spec.AllowedReadOnlySids.SetEquals([0x19,0x22]));
+            Assert.Equal(2,spec.AllowedReadOnlySids.Count);
+            Assert.True(spec.AllowedReadOnlySids.Contains(0x19));
+            Assert.True(spec.AllowedReadOnlySids.Contains(0x22));
             await Task.Yield();
             return new FakeSession(Current,Client,_ =>
             {
