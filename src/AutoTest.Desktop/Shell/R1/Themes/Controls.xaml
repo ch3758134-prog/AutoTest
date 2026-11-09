@@ -1,0 +1,65 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource R1Text}"/>
+    </Style>
+    <Style TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource R1Text}"/>
+        <Setter Property="Background" Value="{DynamicResource R1Input}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource R1Line}"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="MinHeight" Value="{DynamicResource R1ControlHeight}"/>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style TargetType="Control">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Control">
+                                <Rectangle Margin="1" Stroke="{DynamicResource R1Accent}" StrokeThickness="2" RadiusX="3" RadiusY="3"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource R1Hover}"/></Trigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.55"/></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource R1Text}"/>
+        <Setter Property="Background" Value="{DynamicResource R1Input}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource R1Line}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource R1Accent}"/>
+        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="MinHeight" Value="{DynamicResource R1ControlHeight}"/>
+        <Style.Triggers>
+            <Trigger Property="Validation.HasError" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource R1Error}"/>
+                <Setter Property="ToolTip" Value="输入值校验未通过"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="ListBox">
+        <Setter Property="Foreground" Value="{DynamicResource R1Text}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+    </Style>
+    <Style TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource R1Text}"/>
+        <Setter Property="Padding" Value="3"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource R1Selected}"/></Trigger>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource R1Hover}"/></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="TabControl">
+        <Setter Property="Foreground" Value="{DynamicResource R1Text}"/>
+        <Setter Property="Background" Value="{DynamicResource R1Panel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource R1Line}"/>
+    </Style>
+</ResourceDictionary>

@@ -1,0 +1,202 @@
+<UserControl x:Class="AutoTest.Desktop.Shell.R1.R1WorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:r1="clr-namespace:AutoTest.Desktop.Shell.R1"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             FontFamily="Segoe UI" FontSize="13" MinWidth="800" MinHeight="480">
+    <UserControl.InputBindings>
+        <KeyBinding Key="Tab" Modifiers="Control" Command="{Binding NextTabCommand}"/>
+        <KeyBinding Key="Tab" Modifiers="Control,Shift" Command="{Binding PreviousTabCommand}"/>
+        <KeyBinding Key="F4" Modifiers="Control" Command="{Binding CloseActiveTabCommand}"/>
+    </UserControl.InputBindings>
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Dark.xaml"/>
+                <ResourceDictionary Source="Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <sys:Double x:Key="R1ControlHeight">30</sys:Double>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid Background="{DynamicResource R1Background}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="29"/>
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="{DynamicResource R1Panel}"
+                BorderBrush="{DynamicResource R1Line}" BorderThickness="0,0,0,1">
+            <Grid Margin="12,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" FontSize="16"
+                           Text="AutoTest Studio · R1 Workspace"/>
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock Text="工程：" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding ProjectLabel}" Margin="0,0,12,0"/>
+                    <TextBlock Text="Revision：" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding ResourceRevision}" Margin="0,0,12,0"/>
+                    <TextBlock Text="来源：" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding Origin}"/>
+                    <Button Content="{Binding ThemeLabel, StringFormat='主题：{0}'}"
+                            Command="{Binding ToggleThemeCommand}" Margin="12,0,5,0"
+                            ToolTip="切换浅色/深色主题，不修改业务状态"/>
+                    <Button Content="{Binding DensityLabel, StringFormat='密度：{0}'}"
+                            Command="{Binding ToggleDensityCommand}"
+                            ToolTip="切换紧凑/舒适显示密度"/>
+
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="240" MinWidth="160"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*" MinWidth="350"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="240" MinWidth="160"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="{DynamicResource R1Panel}"
+                    BorderBrush="{DynamicResource R1Line}" BorderThickness="0,0,1,0">
+                <DockPanel Margin="10">
+                    <TextBox DockPanel.Dock="Top" Height="30" Margin="0,0,0,8"
+                             ToolTip="筛选 13 个工作区（名称、编号或所属专业）"
+                             Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock DockPanel.Dock="Top" Text="工作区导航"
+                               FontWeight="SemiBold" Margin="0,0,0,7"/>
+                    <ListBox ItemsSource="{Binding FilteredNavigation}" BorderThickness="0"
+                             Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type r1:WorkspaceDescriptor}">
+                                <Button Width="205" HorizontalContentAlignment="Left" Margin="0,2,0,2"
+                                        Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Id}" Width="37"/>
+                                        <TextBlock Text="{Binding Label}" Width="128"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+            <GridSplitter Grid.Column="1" Background="{DynamicResource R1Line}" HorizontalAlignment="Stretch"/>
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="5"/>
+                    <RowDefinition Height="230" MinHeight="130"/>
+                </Grid.RowDefinitions>
+                <TabControl Grid.Row="0" Height="38" ItemsSource="{Binding OpenTabs}"
+                            SelectedItem="{Binding ActiveTab, Mode=TwoWay}"
+                            Background="{DynamicResource R1Panel}" BorderBrush="{DynamicResource R1Line}">
+                    <TabControl.ContentTemplate><DataTemplate><Grid Height="0"/></DataTemplate></TabControl.ContentTemplate>
+                    <TabControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type r1:WorkspaceTab}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Header}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding StateLabel}" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource R1Warning}" FontSize="10" Margin="0,0,8,0"/>
+                                <Button Content="×" Padding="2,0"
+                                        ToolTip="关闭（未保存或忙时阻止）"
+                                        Command="{Binding DataContext.CloseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </TabControl.ItemTemplate>
+                </TabControl>
+                <Border Grid.Row="1" Background="{DynamicResource R1Background}" Padding="18">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="专业文档宿主 · 待 INTEGRATION 注册"
+                                   FontSize="17" FontWeight="SemiBold" TextAlignment="Center"/>
+                        <TextBlock Margin="0,9,0,0" TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="{DynamicResource R1Muted}"
+                                   Text="导航和标签由 R1 UI 管理，实际专业 View 必须由唯一 Prism/DI 宿主装入；这里不会伪造已实现的专业页面。"/>
+                    </StackPanel>
+                </Border>
+                <GridSplitter Grid.Row="2" Background="{DynamicResource R1Line}" HorizontalAlignment="Stretch"/>
+                <Border Grid.Row="3" Background="{DynamicResource R1Panel}" Padding="8"
+                        BorderBrush="{DynamicResource R1Line}" BorderThickness="0,1,0,0">
+                    <Grid DataContext="{Binding Diagnostics}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="58"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,5">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <TextBox Width="170" ToolTip="按来源、层级、CorrelationId、TraceRef、错误码或文本筛选"
+                                         Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,5,0"/>
+                                <Button Content="复制选中" Click="OnCopyDiagnostic"
+                                        ToolTip="仅复制当前选中事件，不包含其他原始日志"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding DataContext.ShowOutputCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="{Binding OutputCount, StringFormat='Output ({0})'}" Margin="0,0,5,0"/>
+                                <Button Command="{Binding DataContext.ShowTraceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="{Binding TraceCount, StringFormat='Trace ({0})'}" Margin="0,0,5,0"/>
+                                <Button Command="{Binding DataContext.ShowProblemsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="{Binding ProblemCount, StringFormat='Problems ({0})'}"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding VisibleEvents}" SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  GridLinesVisibility="None" HeadersVisibility="Column" RowHeaderWidth="0"
+                                  EnableRowVirtualization="True" EnableColumnVirtualization="True"
+                                  Background="{DynamicResource R1Panel}" Foreground="{DynamicResource R1Text}"
+                                  BorderBrush="{DynamicResource R1Line}" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="时间" Width="105" Binding="{Binding TimestampDisplay}"/>
+                                <DataGridTextColumn Header="级别" Width="70" Binding="{Binding Level}"/>
+                                <DataGridTextColumn Header="来源" Width="90" Binding="{Binding Source}"/>
+                                <DataGridTextColumn Header="层级" Width="95" Binding="{Binding Layer}"/>
+                                <DataGridTextColumn Header="说明" Width="*" Binding="{Binding Summary}"/>
+                                <DataGridTextColumn Header="Correlation" Width="135" Binding="{Binding CorrelationId}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Grid Grid.Row="2" Margin="0,4,0,0">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <TextBlock Text="{Binding IntegrityLabel}" Foreground="{DynamicResource R1Warning}"
+                                       FontSize="11" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Grid.Row="1" Orientation="Horizontal">
+                                <TextBlock Text="TraceRef: " Foreground="{DynamicResource R1Muted}"/>
+                                <TextBlock Text="{Binding SelectedEvent.TraceReference}" Margin="0,0,12,0"/>
+                                <TextBlock Text="Error: " Foreground="{DynamicResource R1Muted}"/>
+                                <TextBlock Text="{Binding SelectedEvent.ErrorCode}" Margin="0,0,12,0"/>
+                                <TextBlock Text="Raw: " Foreground="{DynamicResource R1Muted}"/>
+                                <TextBlock Text="{Binding SelectedEvent.RawText}" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+            <GridSplitter Grid.Column="3" Background="{DynamicResource R1Line}" HorizontalAlignment="Stretch"/>
+            <Border Grid.Column="4" Background="{DynamicResource R1Panel}"
+                    BorderBrush="{DynamicResource R1Line}" BorderThickness="1,0,0,0">
+                <StackPanel Margin="13">
+                    <TextBlock Text="上下文检查器" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock Text="激活页面" Margin="0,16,0,3" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding ActiveTab.Header}"/>
+                    <TextBlock Text="所属专业" Margin="0,12,0,3" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding ActiveTab.Owner}"/>
+                    <TextBlock Text="打开时 Revision（不随外部变化偷偷更新）"
+                               Margin="0,12,0,3" TextWrapping="Wrap" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding ActiveTab.ContextRevision}"/>
+                    <TextBlock Text="文档状态" Margin="0,12,0,3" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding ActiveTab.StateLabel}"/>
+                    <TextBlock Margin="0,5,0,0" TextWrapping="Wrap" Foreground="#FFD18A"
+                               Text="Revision 不同的已打开文档标记 STALE，不能据此认为其业务绑定仍有效。"/>
+                    <TextBlock Text="设备" Margin="0,12,0,3" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding StationIdentity}"/>
+                    <TextBlock Text="SessionGeneration" Margin="0,12,0,3" Foreground="{DynamicResource R1Muted}"/>
+                    <TextBlock Text="{Binding SessionGeneration}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+        <Border Grid.Row="2" Background="{DynamicResource R1Status}" Padding="10,4">
+            <TextBlock Text="{Binding Notice}" TextTrimming="CharacterEllipsis"/>
+        </Border>
+    </Grid>
+</UserControl>
