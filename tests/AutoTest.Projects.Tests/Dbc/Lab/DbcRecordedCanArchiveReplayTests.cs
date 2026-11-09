@@ -145,4 +145,29 @@ public sealed class DbcRecordedCanArchiveReplayTests
         }
         finally { File.Delete(path); }
     }
+    [Fact]
+    public async Task EvidenceExport_ContainsEveryRow_AndRefusesOverwrite()
+    {
+        var (doc, binding) = Pinned();
+        var path = await ArchiveFileAsync(binding);
+        var output = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".jsonl");
+        try
+        {
+            var result = await DbcRecordedCanArchiveReplay.ReadAsync(path, doc, binding);
+            var receipt = await DbcRecordedReplayEvidenceWriter.ExportAsync(output, result);
+            Assert.Equal(2, receipt.FrameCount);
+            Assert.False(receipt.RawHexIncluded);
+            var lines = await File.ReadAllLinesAsync(output);
+            Assert.Equal(3, lines.Length);
+            using var payload = JsonDocument.Parse(lines[1]);
+            Assert.Equal("[OMITTED]", payload.RootElement.GetProperty("PayloadHex").GetString());
+            using var summary = JsonDocument.Parse(lines[0]);
+            Assert.Equal(2, summary.RootElement.GetProperty("TotalFrames").GetInt32());
+            var error = await Assert.ThrowsAsync<ProjectDataException>(() =>
+                DbcRecordedReplayEvidenceWriter.ExportAsync(output, result));
+            Assert.Equal("DBC_ARCHIVE_EXPORT_EXISTS", error.Code);
+        }
+        finally { File.Delete(path); if (File.Exists(output)) File.Delete(output); }
+    }
+
 }

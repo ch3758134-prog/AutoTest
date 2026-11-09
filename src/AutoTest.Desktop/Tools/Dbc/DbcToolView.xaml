@@ -128,6 +128,12 @@
                   <TextBox Width="360" Text="{Binding ArchiveFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,8,0"/>
                   <Button Content="校验并 Replay" Command="{Binding ReplayArchiveCommand}" Padding="8,3"/>
                 </WrapPanel>
+                <WrapPanel Margin="0,4">
+                  <TextBlock Text="完整逐帧证据 JSONL" VerticalAlignment="Center"/>
+                  <TextBox Width="360" Text="{Binding ArchiveEvidencePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,8,0"/>
+                  <Button Content="完整导出（不覆盖）" Command="{Binding ExportArchiveEvidenceCommand}" Padding="8,3"/>
+                  <CheckBox Content="包含原始 CAN Hex（本地敏感数据）" IsChecked="{Binding IncludeArchivedRawHex}" Margin="8,0"/>
+                </WrapPanel>
                 <TextBlock Text="{Binding ArchiveSummary}" TextWrapping="Wrap" Margin="0,4"/>
               </StackPanel>
               <DataGrid ItemsSource="{Binding ArchiveRows}" IsReadOnly="True" AutoGenerateColumns="False"

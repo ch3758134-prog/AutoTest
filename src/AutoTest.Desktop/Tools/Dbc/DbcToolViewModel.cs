@@ -26,6 +26,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     private DbcWorkbenchDocument? _document;
+    private DbcRecordedReplayResult? _lastArchiveReplay;
     private string? _expectedHash;
     private DbcMessage? _message;
     private DbcSignal? _signal;
@@ -55,6 +56,8 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public string BoundAssetId { get; set; } = "";
     public string TraceFilePath { get; set; } = "";
     public string ArchiveFilePath { get; set; } = "";
+    public string ArchiveEvidencePath { get; set; } = "";
+    public bool IncludeArchivedRawHex { get; set; }
     public bool IncludeRawTraceHex { get; set; } = true;
     public string TraceFilter { get => _traceFilter; set { _traceFilter = value ?? ""; Changed(); Changed(nameof(VisibleTraceEvents)); } }
     public IEnumerable<R0ProjectDiagnosticEvent> VisibleTraceEvents => TraceEvents.Where(e =>
@@ -115,6 +118,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public ICommand ExportTraceCommand { get; }
     public ICommand DiagnoseSourceCommand { get; }
     public ICommand ReplayArchiveCommand { get; }
+    public ICommand ExportArchiveEvidenceCommand { get; }
     public ICommand ReplayCommand { get; }
     public ICommand ResetCommand { get; }
 
@@ -146,6 +150,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
         ExportTraceCommand = new DbcToolCommand(() => _ = ExportTraceSafeAsync());
         DiagnoseSourceCommand = new DbcToolCommand(() => _ = DiagnoseSourceSafeAsync());
         ReplayArchiveCommand = new DbcToolCommand(() => _ = ReplayArchiveSafeAsync());
+        ExportArchiveEvidenceCommand = new DbcToolCommand(() => _ = ExportArchiveEvidenceSafeAsync());
         ReplayCommand = new DbcToolCommand(() => _ = ReplaySafeAsync());
         ResetCommand = new DbcToolCommand(() => Safe(() => { Document.Reset(); Refresh(); }));
     }
@@ -220,6 +225,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
 
     private async Task ReplayArchiveSafeAsync()
     {
+        _lastArchiveReplay = null;
         ArchiveRows.Clear();
         ArchiveSummary = "归档校验中；未读取物理 ECU 数据";
         try
@@ -233,6 +239,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
             // Explicit bounded review: excessive archives are rejected, never silently truncated.
             var result = await DbcRecordedCanArchiveReplay.ReadAsync(
                 ArchiveFilePath, Document, binding, maxFrames: 10000);
+            _lastArchiveReplay = result;
             foreach (var frame in result.Frames)
             {
                 ArchiveRows.Add(frame);
@@ -264,6 +271,30 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
                 e is ProjectDataException x ? x.Code : e.GetType().Name,
                 expected: "verified archive + pinned DBC",
                 actual: "rejected", detail: e.Message);
+        }
+    }
+
+    private async Task ExportArchiveEvidenceSafeAsync()
+    {
+        try
+        {
+            Error = "";
+            if (_lastArchiveReplay is null)
+                throw new ProjectDataException("DBC_ARCHIVE_EXPORT_EMPTY",
+                    "请先成功校验并加载离线 CAN 归档。");
+            var receipt = await DbcRecordedReplayEvidenceWriter.ExportAsync(
+                ArchiveEvidencePath, _lastArchiveReplay, IncludeArchivedRawHex);
+            Status = $"离线 Replay 完整证据已导出：{receipt.FrameCount} 帧，SHA256 {receipt.Sha256[..12]}…";
+            Log("ARCHIVE_EVIDENCE_EXPORT", "COMPLETED",
+                expected: "all archive rows", actual: $"{receipt.FrameCount} frames",
+                detail: $"file={Path.GetFileName(receipt.Path)} sha256={receipt.Sha256}");
+        }
+        catch (Exception e)
+        {
+            Error = e is ProjectDataException p ? $"{p.Code}: {p.Message}" : e.Message;
+            Status = "归档证据导出失败（不会覆盖已有文件）";
+            Log("ARCHIVE_EVIDENCE_EXPORT", "REJECTED",
+                e is ProjectDataException x ? x.Code : e.GetType().Name, detail: e.Message);
         }
     }
 
