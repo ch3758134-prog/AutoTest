@@ -78,24 +78,27 @@ public sealed class ProgrammingJobCoordinator : IProgrammingService
                 try
                 {
                     await _workflow.ExecuteAsync(plan,assets,evidence,job.Stop.Token).ConfigureAwait(false);
-                    evidence.Finalize(ProgrammingJobState.Completed);
-                    evidence.RecordStage("Job","PASS",assets.Image.ByteCount,"MOCK_VERIFIED_ONLY");
+                    evidence.FinishWithFact(ProgrammingJobState.Completed,"PASS",
+                        assets.Image.ByteCount,"MOCK_VERIFIED_ONLY");
                 }
                 catch(OperationCanceledException) when(job.Stop.IsCancellationRequested)
                 {
-                    evidence.Finalize(ProgrammingJobState.Cancelled,"CANCELLED");
-                    evidence.RecordStage("Job","CANCELLED",0,"Partial mock writes may remain; no resume assumed.");
+                    evidence.FinishWithFact(ProgrammingJobState.Cancelled,"CANCELLED",
+                        LastTransferAcknowledgement(evidence),
+                        "Partial mock writes may remain; no resume assumed.","CANCELLED");
                 }
                 catch(ProgrammingUncertainException ex)
                 {
-                    evidence.Finalize(ProgrammingJobState.Uncertain,"UNCONFIRMED_UDS_RESPONSE");
-                    evidence.RecordStage("Job","UNCERTAIN",0,
-                        ex.Message+"; Mock contents may be partially written; no auto-resume.");
+                    evidence.FinishWithFact(ProgrammingJobState.Uncertain,"UNCERTAIN",
+                        LastTransferAcknowledgement(evidence),
+                        ex.Message+"; Mock contents may be partially written; no auto-resume.",
+                        "UNCONFIRMED_UDS_RESPONSE");
                 }
                 catch(Exception ex)
                 {
-                    evidence.Finalize(ProgrammingJobState.Failed,ex.GetType().Name);
-                    evidence.RecordStage("Job","FAIL",0,ex.GetType().Name+": "+ex.Message);
+                    evidence.FinishWithFact(ProgrammingJobState.Failed,"FAIL",
+                        LastTransferAcknowledgement(evidence),
+                        ex.GetType().Name+": "+ex.Message,ex.GetType().Name);
                 }
                 finally
                 {
@@ -105,6 +108,10 @@ public sealed class ProgrammingJobCoordinator : IProgrammingService
         }
         return new ProgrammingJobId(id);
     }
+    private static long LastTransferAcknowledgement(ProgrammingEvidence evidence) =>
+        evidence.Observe().Facts
+            .LastOrDefault(x=>x.Stage=="Transfer" && x.Status=="ACK")?.ConfirmedBytes ?? 0;
+
     public ProgrammingJobSnapshot Observe(ProgrammingJobId id) =>
         _jobs.TryGetValue(id.Value,out var job) ? job.Evidence.Observe()
         : throw new KeyNotFoundException("Programming job not found.");
