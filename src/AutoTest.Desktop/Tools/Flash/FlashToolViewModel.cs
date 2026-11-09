@@ -192,7 +192,11 @@ public sealed class FlashToolViewModel : BindableBase
     private void Update(ProgrammingJobSnapshot snapshot)
     {
         Status="MOCK_"+snapshot.State.ToString().ToUpperInvariant();
-        Failure=snapshot.FailureCode??"";
+        var finalFailure=snapshot.Facts.LastOrDefault(x=>x.Status=="FAIL");
+        Failure=snapshot.FailureCode is { Length: > 0 }
+            ? (finalFailure is null ? snapshot.FailureCode :
+                snapshot.FailureCode+": "+finalFailure.Detail)
+            : "";
         RecoveryAdvice=snapshot.State switch
         {
             ProgrammingJobState.Completed => "仅模拟验证完成；不能当作真实 ECU 编程证据。",
