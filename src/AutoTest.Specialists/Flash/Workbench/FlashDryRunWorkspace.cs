@@ -186,8 +186,25 @@ public sealed class FlashDryRunWorkspace
         if (jobImage is null || jobConfig is null || captured is null)
             throw new InvalidOperationException("Job input evidence is unavailable.");
         var expectedVerifyCount=jobImage.Segments.Count;
+        var segmentStates=snapshot.Facts
+            .Where(x=>x.Stage.StartsWith("Segment_",StringComparison.Ordinal))
+            .GroupBy(x=>x.Stage,StringComparer.Ordinal)
+            .ToDictionary(g=>g.Key,g=>g.Select(x=>x.Status).ToHashSet(StringComparer.Ordinal),
+                StringComparer.Ordinal);
+        var segmentEvidence=jobImage.Segments.Select((segment,index)=>
+        {
+            string name=$"Segment_{index+1:D4}";
+            segmentStates.TryGetValue(name,out var states);
+            return new {
+                Index=index+1, segment.Start, segment.EndExclusive, segment.Bytes,
+                Started=states?.Contains("BEGIN")==true,
+                TransferAcknowledged=states?.Contains("TRANSFER_ACKED")==true,
+                MockHashVerified=states?.Contains("VERIFIED")==true
+            };
+        }).ToArray();
         bool mockVerified=snapshot.State==ProgrammingJobState.Completed &&
-            verifyCount==expectedVerifyCount && expectedVerifyCount>0;
+            verifyCount==expectedVerifyCount && expectedVerifyCount>0 &&
+            segmentEvidence.All(x=>x.MockHashVerified);
         var payload=new
         {
             Schema=2, Source="Mock", PhysicalProgrammingVerified=false,
@@ -202,6 +219,7 @@ public sealed class FlashDryRunWorkspace
             MockHashVerified=mockVerified,
             ExpectedSegmentVerifications=expectedVerifyCount,
             ActualSegmentVerifications=verifyCount,
+            SegmentEvidence=segmentEvidence,
             FullBackendFactsIncluded=true, Stages=snapshot.Facts
         };
         byte[] bytes=JsonSerializer.SerializeToUtf8Bytes(payload,
