@@ -136,6 +136,12 @@ public sealed class ReadOnlyPhysicalUdsWorkspace(IReadOnlyPhysicalUdsSessionProv
                 "PHYSICAL_RAW_CAN_EVIDENCE_INCOMPLETE";
             return new(request.CorrelationId,result,current,can,uds,canVerified,code);
         }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // Deadline expired inside the borrowed DEVICE session. An ECU may
+            // have received part or all of the request; no automatic retry.
+            throw new IOException("P1_PHYSICAL_UDS_DEADLINE_EXCEEDED_OUTCOME_UNCERTAIN");
+        }
         finally { _singleOperation.Release(); }
     }
 }
