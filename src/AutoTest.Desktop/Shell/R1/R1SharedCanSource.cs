@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.CompilerServices;
 using AutoTest.Contracts;
 using AutoTest.Core;
