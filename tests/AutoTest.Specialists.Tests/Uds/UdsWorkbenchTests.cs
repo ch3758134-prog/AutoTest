@@ -119,4 +119,32 @@ public sealed class UdsWorkbenchTests
         Assert.Equal("Uncertain",result.Outcome);
         Assert.Equal("REPLAY_NO_FINAL_RESPONSE",result.ErrorCode);
     }
+
+    [Fact]
+    public async Task MockPendingPreservesCallerCorrelationAndOrderedResponseSequence()
+    {
+        await using var workspace=new UdsDiagnosticWorkspace();
+        var id=Guid.NewGuid();
+        workspace.InjectNextPending(0x22);
+        var exchange=await workspace.SendMockAsync(Profile(),"22 F1 90","",
+            CancellationToken.None,id);
+        Assert.Equal(id,exchange.CorrelationId);
+        Assert.Contains("7F 22 78",exchange.ResponseSequence);
+        Assert.StartsWith("62 F1 90",exchange.ResponseSequence.Last());
+        Assert.Equal("Accepted",exchange.Outcome);
+    }
+
+    [Fact]
+    public void ReplayPreservesCallerCorrelationAndPendingWithoutPhysicalTx()
+    {
+        var replay=new UdsReplayWorkspace();
+        replay.Load(new UdsReplayDocument(1,[
+            new UdsReplayRecord("22 F1 90",["7F 22 78","62 F1 90 4D 4F 43 4B"],
+                [new UdsCanTraceRow("RX","03 7F 22 78")])]));
+        var id=Guid.NewGuid();
+        var exchange=replay.Consume("22 F1 90","",id);
+        Assert.Equal(id,exchange.CorrelationId);
+        Assert.Equal(new[]{"7F 22 78","62 F1 90 4D 4F 43 4B"},exchange.ResponseSequence);
+        Assert.Equal("Replay",exchange.Source);
+    }
 }
