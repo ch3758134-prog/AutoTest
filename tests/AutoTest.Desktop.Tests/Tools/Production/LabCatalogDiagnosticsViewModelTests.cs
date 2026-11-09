@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using AutoTest.Desktop.Tools.Production;
 using AutoTest.Specialists.Scan.Lab;
 using Xunit;
@@ -71,6 +72,54 @@ public sealed class LabCatalogDiagnosticsViewModelTests
         Assert.Equal(revision, vm.RuleRevision);
         Assert.Contains("当前草稿", vm.RevisionCompareStatus);
         Assert.Equal(0, vm.MockRunCount);
+    }
+
+    [Fact]
+    public void UnchangedDraftDoesNotInventResourceRevisions()
+    {
+        var vm = NewVm();
+        vm.CompareDraftWithPublished();
+        Assert.Empty(vm.RevisionChangeRows);
+        Assert.Equal(0, vm.FactoryReleasedCount);
+        vm.Recipes[0].MockTestProgramKey = "mock://changed-program";
+        vm.CompareDraftWithPublished();
+        Assert.Contains(vm.RevisionChangeRows,
+            x => x.EntityType == "Recipe" && x.ChangedFields.Contains("TestProgram"));
+    }
+
+    [Fact]
+    public async Task LoadingFlashCapableRecipeDoesNotSilentlyEraseFlashAssetInDraft()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "catalog-keep-flash-" + Guid.NewGuid().ToString("N"));
+        var store = new LabCatalogStore(path);
+        try
+        {
+            var demo = LabDemoCatalog.Create();
+            var changed = demo with
+            {
+                Recipes = new[]
+                {
+                    demo.Recipes[0] with
+                    {
+                        RequiresFlash = true,
+                        FlashImage = new LabArtifact("mock://image", "rev-1",
+                            "mock-only-hash", LabOrigin.Mock, true)
+                    }
+                }
+            };
+            await store.PublishAsync(changed);
+            var vm = new LabProductionToolViewModel(store,
+                new LabProductionOrchestrator(new LabDeterministicMockRunner(), new LabMemoryLedger()));
+            await vm.LoadAsync();
+            vm.CompareDraftWithPublished();
+            Assert.Empty(vm.RevisionChangeRows);
+            Assert.Equal(0, vm.FactoryReleasedCount);
+        }
+        finally
+        {
+            foreach (var suffix in new[] { ".published.json", ".draft.json" })
+                if (File.Exists(path + suffix)) File.Delete(path + suffix);
+        }
     }
 
     [Fact]
