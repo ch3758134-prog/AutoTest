@@ -77,6 +77,14 @@ public static class DbcRecordedCanArchiveReplay
             !string.Equals(archive.DbcSha256, binding.Sha256, StringComparison.OrdinalIgnoreCase))
             throw new ProjectDataException("REFERENCE_STALE", "CAN archive and pinned DBC resource differ.");
 
+        // Freeze the authoring text before decoding. Editing during an asynchronous file read
+        // must not mix signal definitions from different in-memory document revisions.
+        var frozen = DbcWorkbenchDocument.Import("RecordedReplay", document.ExportText());
+        var frozenHash = frozen.SourceSha256;
+        if (!string.Equals(frozenHash, binding.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new ProjectDataException("REFERENCE_STALE",
+                "The active DBC document changed from its pinned resource hash.");
+
         var rows = ImmutableArray.CreateBuilder<DbcRecordedReplayRow>(archive.Frames.Length);
         var lastOffset = -1L;
         var decodedCount = 0;
@@ -115,7 +123,7 @@ public static class DbcRecordedCanArchiveReplay
                 status = "SKIPPED_KEYPAD";
                 skippedCount++;
             }
-            else if (!document.Model.Messages.Any(x => x.Id == frame.FrameId))
+            else if (!frozen.Model.Messages.Any(x => x.Id == frame.FrameId))
             {
                 status = "UNMAPPED";
                 errorCode = "DBC_MESSAGE_MISSING";
@@ -125,8 +133,8 @@ public static class DbcRecordedCanArchiveReplay
             {
                 try
                 {
-                    var result = DbcReplayDecoder.Decode(document, frame.FrameId, bytes, observed,
-                        frame.LostFrames, binding);
+                    var result = DbcReplayDecoder.DecodeWithVerifiedSourceHash(
+                        frozen, frame.FrameId, bytes, observed, frame.LostFrames, binding, frozenHash);
                     status = "DECODED";
                     summary = string.Join("; ", result.Signals.Select(s =>
                         s.SignalName + "=" + s.PhysicalValue.ToString("R", System.Globalization.CultureInfo.InvariantCulture)

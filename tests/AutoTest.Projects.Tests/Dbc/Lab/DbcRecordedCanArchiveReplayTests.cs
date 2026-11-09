@@ -170,4 +170,19 @@ public sealed class DbcRecordedCanArchiveReplayTests
         finally { File.Delete(path); if (File.Exists(output)) File.Delete(output); }
     }
 
+    [Fact]
+    public async Task PinnedArchive_RejectsChangedActiveDbcText()
+    {
+        var (doc, binding) = Pinned();
+        var path = await ArchiveFileAsync(binding);
+        try
+        {
+            var changed = DbcWorkbenchDocument.Import("different", Dbc.Replace("0.1,0", "0.2,0"));
+            var error = await Assert.ThrowsAsync<ProjectDataException>(() =>
+                DbcRecordedCanArchiveReplay.ReadAsync(path, changed, binding));
+            Assert.Equal("REFERENCE_STALE", error.Code);
+        }
+        finally { File.Delete(path); }
+    }
+
 }

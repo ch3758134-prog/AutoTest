@@ -20,8 +20,17 @@ public static class DbcReplayDecoder
     public static DbcReplayResult Decode(DbcWorkbenchDocument document, uint messageId,
         ReadOnlySpan<byte> bytes, DateTimeOffset timestamp, long lostFrames = 0, DbcRevisionBinding? revision = null)
     {
-        if (timestamp == default || lostFrames < 0) throw new ProjectDataException("DBC_REPLAY_TIME", "Invalid Replay time or loss count.");
         var contentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(document.ExportText()))).ToLowerInvariant();
+        return DecodeWithVerifiedSourceHash(document, messageId, bytes, timestamp, lostFrames, revision, contentHash);
+    }
+
+    // Internal fast path for a frozen document snapshot whose SHA was checked once before a bounded archive loop.
+    // Keeping this internal prevents a caller from supplying an arbitrary hash to the public Decode contract.
+    internal static DbcReplayResult DecodeWithVerifiedSourceHash(DbcWorkbenchDocument document, uint messageId,
+        ReadOnlySpan<byte> bytes, DateTimeOffset timestamp, long lostFrames,
+        DbcRevisionBinding? revision, string contentHash)
+    {
+        if (timestamp == default || lostFrames < 0) throw new ProjectDataException("DBC_REPLAY_TIME", "Invalid Replay time or loss count.");
         if (revision is not null && (revision.DbcAssetId == Guid.Empty || revision.Revision < 1 ||
             !string.Equals(contentHash, revision.Sha256, StringComparison.OrdinalIgnoreCase)))
             throw new ProjectDataException("REFERENCE_STALE", "DBC asset revision/fingerprint mismatch.");
