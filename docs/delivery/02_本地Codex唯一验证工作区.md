@@ -1,87 +1,63 @@
-# AutoTest｜Windows 本地仅作 GitHub 拉取和验证的最简工作区
+# AutoTest｜本地 Codex 唯一职责：拉取指定版本、编译、启动、供用户实测（v2）
 
-**适用于用户删除旧本地开发目录、以 GitHub 作为唯一源码主仓库的情形。** 此文档不会执行本地操作。Codex 只按主对话给出的 PR/SHA 机械拉取、编译、测试、启动和收集原始日志；不能自行修改业务代码、修复编译问题或推送合并。用户无需再下载或手动覆盖专业 ZIP。
+**用户已明确取消本地 Git/源码调查。** 本地 Codex 不是版本管理员、仓库审查者、研发工程师或审批人；GitHub 的主线、各专业分支、PR、变更、合并、代码责任及设计均由 AutoTest **主对话**统一掌握和裁决。本地只运行主对话指定的版本，提供可以实际操作的测试软件。
 
-## 0. 删除之前必须确认
+## 1. 固定职责
 
-如果旧目录还存在：先检查 `git status --short --branch`、`git log --branches --not --remotes --oneline`、`git remote -v`，保存尚未推送的独有代码及现场原始数据；不要仅凭 GitHub 已有 main 就假定每个旧本地分支已上云。**不执行 `git clean -fdx`、`git reset --hard`、`Remove-Item -Recurse -Force` 或格式化盘**。如果目录已删，不要再清空回收站；GitHub 上已提交的可以重新克隆，未提交/未推送的内容不保证可恢复。
+1. 接收主对话明确指定的 `GitHub 仓库 + 目标 main/PR + 精确 commit SHA + 启动项目/模式 + 允许的测试/物理边界`。
+2. 从 GitHub 拉取这个**精确版本**到一个本地运行工作目录。必要的 Git 操作只为取得正确源码，不分析本地历史、差异、文件责任或是否应合并。
+3. 用现有 Windows/.NET 环境执行 Release Build、主对话指定的自动测试，然后**真正启动**指定 WPF/独立设备诊断工具。按需记录编译、启动错误、进程状态、原始日志路径。
+4. 软件启动后将操作权交用户。**只有用户负责人工 UI 操作和真实台架实测**；Codex 不主动发送物理输出/烧录/夹具动作，也不把窗口显示、Mock、Build/Test PASS 冒充用户现场验收。
+5. 如果不能编译/启动/连接，立即回报完整原始错误及对应版本；**不自行改源码、研究根因、修复、rebase、merge、cherry-pick 或推送 Git**。主对话决定哪个专业负责修正并产生新 PR。
+6. 没有主对话发来新版本命令时，维持当前可运行版本，不自行切换到最新 main/PR HEAD；现场测试使用固定 SHA，保持复现性。
 
-## 1. 全新克隆（仅在目标目录不存在时执行一次）
+## 2. 明确取消的工作
 
-Windows PowerShell：
+- 不扫描 `D:\01_Projects` 里的历史 AutoTest/SAEF/HOST/V3/ZIP/解压目录，不核对本地旧 Git 提交、未推送分支、哈希或文件清单；
+- 不对 GitHub 代码差异、PR、架构、SAEF 归档、跨专业接口、交付包做任何审查；
+- 不重新搭建多份长期工程、整合 ZIP 或在本地合并九个专业候选；
+- 不执行旧规程里的「只读本地盘点报告」；对用户已经决定移除的旧目录不主动操作，也**不自动删除任何现存文件**。
+
+## 3. 首次在本地准备（主对话给出具体版本后）
+
+推荐单一运行目录：`D:\01_Projects\AutoTest`。如果此路径目前不存在，可以一次性：
 
 ```powershell
-$target = 'D:\01_Projects\AutoTest'
-if (Test-Path -LiteralPath $target) {
-    Write-Host "STOP：$target 已存在。先检查其内容与 Git 状态，不覆盖。"
-} else {
-    git clone https://github.com/ch3758134-prog/AutoTest.git $target
-    if ($LASTEXITCODE -ne 0) { throw 'git clone failed' }
-    git -C $target status --short --branch
-    git -C $target remote -v
-    git -C $target rev-parse HEAD
-}
+git clone https://github.com/ch3758134-prog/AutoTest.git D:\01_Projects\AutoTest
 ```
 
-目标目录应包含 `SAEF/`、`src/`、`tests/`、`docs/`、`AutoTest.sln`；只让 Codex 读 GitHub 上的当前 `main`。**如果旧目录名相同或用户已指定其他盘符，先停在目录检查步骤；不自行重命名、移动、删除任何旧目录**。
+如果路径已经存在，**直接用现有 Git 工作目录**；若它不是该仓库或无法安全切换，简单回报 `DIRECTORY_BLOCKED` 请主对话指定新运行位置，不调查或覆盖旧目录。一次性运行目录由主对话/用户决定，Codex 不自行批量创建。
 
-## 2. 平时同步 main
+之后主对话根据审批指定操作：
+- **运行当前 main**：在已有 `AutoTest` 工作目录拉取 `origin/main`，并只在能安全快进时更新。
+- **运行指定 PR 候选**：按主对话提供的 PR 编号获取对应 `refs/pull/N/head`，确认获取的 commit SHA 与主对话指定值**完全相等**后运行这个提交。确认 SHA 是防止误运行错误软件的最小机械校验，不是 Git 审查。
+- 切换时如工作树有未处理改动或 Git 拒绝切换：返回 `WORKTREE_BLOCKED`，不得清空、reset、强制覆盖。由主对话指定新的目录或安全处理方式。
 
-```powershell
-$repo='D:\01_Projects\AutoTest'
-git -C $repo status --short --branch
-git -C $repo fetch origin --prune
-git -C $repo pull --ff-only origin main
-git -C $repo rev-parse HEAD
-```
+拉取具体 Git 命令由主对话针对具体 PR/版本下发，不允许 Codex 自行挑选分支或版本。
 
-任何非干净工作区、无法快进或有冲突，立即停止并回报。绝不自动丢弃用户改动。不要在 main 工作树中对 PR 执行 checkout、ZIP 覆盖、cherry-pick 或编译后手工替换源码。
-
-## 3. 验证某一已指定 PR（示例 PR #4，不代表自动授权该 PR）
-
-在独立可删除的 worktree 上验证，不动 main 工作树。每个 PR 使用不同路径：
+## 4. 典型启动步骤（以实际项目入口为准）
 
 ```powershell
-$repo='D:\01_Projects\AutoTest'
-$number=4
-$work='D:\01_Projects\AutoTest_Verify\PR-4'
-git -C $repo fetch origin "refs/pull/$number/head:refs/remotes/origin/review/pr-$number"
-if ($LASTEXITCODE -ne 0) { throw 'fetch PR failed' }
-$sha=git -C $repo rev-parse "refs/remotes/origin/review/pr-$number"
-Write-Host "Candidate=$number Commit=$sha"
-if (Test-Path -LiteralPath $work) { throw '验证目录已存在；不要覆盖。请检查后使用另一个新目录' }
-git -C $repo worktree add --detach $work $sha
-if ($LASTEXITCODE -ne 0) { throw 'worktree failed' }
-git -C $work status --short --branch
-git -C $work rev-parse HEAD
-```
-
-**对比 $sha 与主对话发出的精确 Head SHA**，不一致立即停止。Codex 此后只在 `$work` 下按给定命令 Build/Test/执行受控操作。默认先：
-
-```powershell
-cd $work
+Set-Location 'D:\01_Projects\AutoTest'
 dotnet --version
 dotnet build .\AutoTest.sln -c Release
-# Build PASS 后按主对话指定范围执行 dotnet test。
+# Build 成功后，运行主对话指定的相关 dotnet test 命令。
+# 最后运行主对话指定的 WPF/DeviceLab 可执行入口，并保持窗口供用户操作。
 ```
 
-构建/测试命令、ExitCode、通过/失败/跳过数量、日志绝对路径、工具版本、Git SHA 必须回报。日志原始文件本地保存，涉及密钥/扫码身份/客户数据不得直接上传公开 GitHub。**不能以自动测试 PASS 替代 WPF 用户或真实物理测试**。
+失败时只报原始日志，不自主修源码。不能因为一个专项源文件还没集成进统一 HOST，就自行创建“能亮窗”的假入口；应如实报告 `ENTRY_NOT_WIRED`，由专业对话修正或提供独立可启动候选。
 
-## 4. 正式实测只对主对话指定的候选/已审核版本进行
-
-- 设备/UDS/Flash 等实测须按已有受控 Gate；使用主对话指定的 `PR号 + SHA + 启动入口 + 操作步骤 + 物理边界`，不在设备旁同时运行两个抢占 WinUSB Session 的软件。
-- 专业可以继续提交新版本，但不改变正在实测的 commit；新 SHA = 新候选，重新说明差异。
-- 默认用户把本地实测现象/截图/脱敏日志交**原专业对话**分析；可把 PR URL 发主对话要求统一审查审批。
-- 最终合并只允许经过主对话审批的 PR；本地 Codex 不推送、合并或单独改变主线。
-
-## 5. 本地目录只保留这两个概念
+## 5. 每次回报只需要
 
 ```text
-D:\01_Projects\
-  AutoTest\            # 一份 GitHub main 的干净只读式工作树
-  AutoTest_Verify\     # 按 PR 隔离的临时 worktree；Codex 机械验证
-    PR-4\
-    PR-5\
+Requested PR / Commit:
+Actually loaded SHA:
+Build: PASS / FAIL (+ raw log path)
+Tests: PASS / FAIL / NOT_RUN (+ counts and log path)
+App launch: STARTED / FAILED / ENTRY_NOT_WIRED (+ entrypoint and error)
+Ready for user operation: YES / NO
+Physical mode: NOT_REQUESTED / SAFELY_GATED / USER_TEST_ONLY
+Evidence location (LOCAL ONLY):
 ```
 
-不用另建 `AutoTest_HOST_V1`、`AutoTest_V3_FINAL`、`Wave_Apply`、`Device_Merged` 等长期目录。也不需要另建 SAEF 独立开发仓库（当前 `SAEF/` 已在统一 GitHub 仓库中）。
+本地敏感设备日志、条码、Seed/Key 不提交公开 GitHub。用户现场发现的问题反馈到对应专业对话；主对话负责 PR 审批和指定新版本。**本地 Codex 永远不管理代码交付，不要求用户重复解释 Git 状态。**
