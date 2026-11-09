@@ -11,6 +11,8 @@ namespace AutoTest.Desktop.Shell.R1;
 // An unavailable integration cannot be opened as a fake functioning document.
 public enum WorkspaceAvailability { Unwired, Available, Busy, Faulted }
 public enum WorkspaceSlot { Document, Tool }
+public enum R1Theme { Dark, Light }
+public enum R1Density { Compact, Comfortable }
 
 public sealed record WorkspaceDescriptor(
     string Id, string Label, string Owner, WorkspaceSlot Slot,
@@ -56,6 +58,8 @@ public sealed class R1WorkspaceViewModel : BindableBase
     private string _stationIdentity = "未连接";
     private string _sessionGeneration = "UNKNOWN";
     private string _origin = "UNKNOWN";
+    private R1Theme _theme = R1Theme.Dark;
+    private R1Density _density = R1Density.Compact;
 
     public R1WorkspaceViewModel(IWorkspaceDocumentHost host)
     {
@@ -66,6 +70,8 @@ public sealed class R1WorkspaceViewModel : BindableBase
         NextTabCommand = new DelegateCommand(() => CycleTabs(1));
         PreviousTabCommand = new DelegateCommand(() => CycleTabs(-1));
         CloseActiveTabCommand = new DelegateCommand(() => Close(ActiveTab));
+        ToggleThemeCommand = new DelegateCommand(() => Theme = Theme == R1Theme.Dark ? R1Theme.Light : R1Theme.Dark);
+        ToggleDensityCommand = new DelegateCommand(() => Density = Density == R1Density.Compact ? R1Density.Comfortable : R1Density.Compact);
         foreach (var descriptor in Catalogue)
         {
             Navigation.Add(descriptor);
@@ -102,6 +108,12 @@ public sealed class R1WorkspaceViewModel : BindableBase
     public DelegateCommand NextTabCommand { get; }
     public DelegateCommand PreviousTabCommand { get; }
     public DelegateCommand CloseActiveTabCommand { get; }
+    public DelegateCommand ToggleThemeCommand { get; }
+    public DelegateCommand ToggleDensityCommand { get; }
+    public R1Theme Theme { get => _theme; set { if (SetProperty(ref _theme, value)) RaisePropertyChanged(nameof(ThemeLabel)); } }
+    public R1Density Density { get => _density; set { if (SetProperty(ref _density, value)) RaisePropertyChanged(nameof(DensityLabel)); } }
+    public string ThemeLabel => Theme == R1Theme.Dark ? "深色" : "浅色";
+    public string DensityLabel => Density == R1Density.Compact ? "紧凑" : "舒适";
 
     public WorkspaceTab? ActiveTab
     {
