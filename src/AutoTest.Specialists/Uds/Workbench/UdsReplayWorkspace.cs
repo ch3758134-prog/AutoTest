@@ -24,13 +24,30 @@ public sealed class UdsReplayWorkspace
                 exchange.Responses.Count > 256 || exchange.Frames.Count > 100000)
                 throw new InvalidDataException("Invalid replay exchange.");
             var request=UdsHex.Parse(exchange.RequestHex);
+            bool finalSeen=false;
+            int pendingCount=0;
             foreach (var responseText in exchange.Responses)
             {
                 var response=UdsHex.Parse(responseText);
-                if (response[0] == 0x7F && (response.Length != 3 || response[1] != request[0]))
-                    throw new InvalidDataException("Replay negative response SID mismatch.");
-                if (response[0] != 0x7F && response[0] != (byte)(request[0]+0x40))
-                    throw new InvalidDataException("Replay positive response SID mismatch.");
+                if (finalSeen)
+                    throw new InvalidDataException("Replay response exists after a final UDS response.");
+                if (response[0] == 0x7F)
+                {
+                    if (response.Length != 3 || response[1] != request[0])
+                        throw new InvalidDataException("Replay negative response SID mismatch.");
+                    if (response[2] == 0x78)
+                    {
+                        if (++pendingCount > 8)
+                            throw new InvalidDataException("Replay exceeds bounded NRC 0x78 pending limit.");
+                    }
+                    else finalSeen=true;
+                }
+                else
+                {
+                    if (response[0] != (byte)(request[0]+0x40))
+                        throw new InvalidDataException("Replay positive response SID mismatch.");
+                    finalSeen=true;
+                }
             }
             foreach(var frame in exchange.Frames)
             {
@@ -41,7 +58,16 @@ public sealed class UdsReplayWorkspace
                     throw new InvalidDataException("Replay classical CAN frame DLC must be 1..8.");
             }
         }
-        _records=document.Exchanges.ToArray(); _index=0;
+        // Keep a private immutable-in-practice copy of validated replay data.
+        // Caller edits after Load must not rewrite expected UDS responses or
+        // let unvalidated frames enter a previously accepted replay session.
+        _records=document.Exchanges.Select(x=>new UdsReplayRecord(
+            UdsHex.Format(UdsHex.Parse(x.RequestHex)),
+            x.Responses.Select(y=>UdsHex.Format(UdsHex.Parse(y))).ToList(),
+            x.Frames.Select(y=>new UdsCanTraceRow(
+                y.Direction,UdsHex.Format(UdsHex.Parse(y.Hex)))).ToList()
+        )).ToArray();
+        _index=0;
     }
     public async Task LoadAsync(string path, CancellationToken ct = default)
     {
@@ -54,14 +80,23 @@ public sealed class UdsReplayWorkspace
             ?? throw new InvalidDataException("Invalid replay JSON.");
         Load(doc);
     }
-    public UdsToolExchange Consume(string requestText,string expectedText="")
+    public UdsToolExchange Consume(string requestText,string expectedText="", Guid? correlationId=null)
     {
         var request=UdsHex.Parse(requestText);
+        if (correlationId == Guid.Empty) throw new ArgumentException("Correlation ID must be nonempty.");
         if (_index>=_records.Count) throw new EndOfStreamException("REPLAY_EXHAUSTED");
         var record=_records[_index];
         byte[] stored=UdsHex.Parse(record.RequestHex);
-        if (!stored.SequenceEqual(request)) throw new InvalidOperationException(
-            "REPLAY_REQUEST_MISMATCH: expected " + UdsHex.Format(stored));
+        if (!stored.SequenceEqual(request))
+        {
+            // Replay files may contain SecurityAccess keys or firmware bytes.
+            // Never echo the expected sensitive request into UI errors/log export.
+            bool sensitive=stored[0] is 0x27 or 0x29 or 0x2E or 0x2F
+                or 0x34 or 0x35 or 0x36 or 0x37;
+            throw new InvalidOperationException(sensitive
+                ? "REPLAY_REQUEST_MISMATCH: sensitive expected PDU redacted"
+                : "REPLAY_REQUEST_MISMATCH: expected " + UdsHex.Format(stored));
+        }
         byte[]? expected=string.IsNullOrWhiteSpace(expectedText)?null:UdsHex.Parse(expectedText);
         _index++;
         var responses=record.Responses.Select(UdsHex.Parse).ToList();
@@ -71,7 +106,15 @@ public sealed class UdsReplayWorkspace
         byte? nrc=final.Length==3 && final[0]==0x7F? final[2]:null;
         return new("Replay",UdsHex.Format(request),UdsHex.Format(final),outcome,
             nrc.HasValue?$"0x{nrc.Value:X2}":"—",
-            expected is null?null:final.SequenceEqual(expected),Guid.NewGuid(),
-            record.Frames.ToArray(),final.Length==0?"REPLAY_NO_FINAL_RESPONSE":"");
+            expected is null?null:final.SequenceEqual(expected),correlationId ?? Guid.NewGuid(),
+            record.Frames.ToArray(),final.Length==0?"REPLAY_NO_FINAL_RESPONSE":"")
+            {
+                ResponseSequence = responses.Select(UdsHex.Format).ToArray(),
+                FailureLayer = final.Length == 0 ? "REPLAY_NO_FINAL_RESPONSE" :
+                    nrc.HasValue ? "UDS_ECU_NEGATIVE_RESPONSE" : "NONE",
+                DiagnosticDetail = final.Length == 0 ?
+                    "Replay ended without a final UDS response; not a live ECU timeout." :
+                    nrc.HasValue ? $"Replay negative response NRC=0x{nrc.Value:X2}" : ""
+            };
     }
 }
