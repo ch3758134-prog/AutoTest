@@ -29,7 +29,7 @@
             <TextBlock Margin="0,6,0,0" Foreground="#9B3D21" FontWeight="SemiBold"
                        Text="MOCK ONLY · 当前不是实物出厂检测 · 禁止真实放行及真实出厂数累计" />
             <TextBlock Margin="0,4,0,0" Opacity="0.75"
-                       Text="扫码直接输入本机专用框；键盘口设备与人工键入不能自动区分。不可截获其他编辑器的键盘输入。" />
+                       Text="扫码枪单独实测：聚焦专用框后扫码，以 Enter 终止；系统只记录焦点和输入变化，不能将人工键入当作已识别的硬件。" />
         </StackPanel>
         <Border DockPanel.Dock="Bottom" BorderThickness="1,0,0,0" BorderBrush="#D6D6D6"
                 Margin="0,12,0,0" Padding="0,10,0,0">
@@ -50,16 +50,22 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" FontSize="13" Text="扫描 ECU / 模拟输入" FontWeight="SemiBold" />
+                    <TextBlock Grid.Row="0" FontSize="13" Text="专用扫码输入（真实键盘口/人工均可；设备身份未验证）" FontWeight="SemiBold" />
                     <DockPanel Grid.Row="1" Margin="0,8,0,12" LastChildFill="True">
                         <Button DockPanel.Dock="Right" Content="解析并匹配" Command="{Binding PreviewCommand}" />
                         <TextBox x:Name="BarcodeInput" KeyDown="BarcodeInput_OnKeyDown"
+                                 TextChanged="BarcodeInput_OnTextChanged"
+                                 GotKeyboardFocus="BarcodeInput_OnGotFocus"
+                                 LostKeyboardFocus="BarcodeInput_OnLostFocus"
                                  Text="{Binding ScanInput, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="在此处聚焦扫码；扫码枪通常附带 Enter 结束符" />
                     </DockPanel>
-                    <Border Grid.Row="2" BorderBrush="#D6D6D6" BorderThickness="1" Padding="12" CornerRadius="4">
+                    <TextBlock Grid.Row="2" Margin="0,0,0,9" FontSize="11" TextWrapping="Wrap"
+                               Text="{Binding ScannerEvidence}" ToolTip="Enter 自动捕获需要本专用输入框获得焦点并发生新文本变更；不能鉴别真实扫码枪与人工输入。" />
+                    <Border Grid.Row="3" BorderBrush="#D6D6D6" BorderThickness="1" Padding="12" CornerRadius="4">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold" Text="匹配预览 / 不修改当前运行身份" />
                             <TextBlock Margin="0,5,0,0" TextWrapping="Wrap" Text="{Binding MatchDetail}" />
@@ -67,7 +73,7 @@
                             <TextBlock Margin="0,3,0,0" Opacity="0.75" Text="{Binding CatalogSource}" />
                         </StackPanel>
                     </Border>
-                    <StackPanel Grid.Row="3" Margin="0,14,0,6">
+                    <StackPanel Grid.Row="4" Margin="0,14,0,6">
                         <TextBlock Text="模拟 TEST 场景（不会发送 CAN、IGN、KEY 或 Flash 命令）"
                                    FontWeight="SemiBold" />
                         <WrapPanel Margin="0,7,0,0" VerticalAlignment="Center">
@@ -80,7 +86,7 @@
                             <Button Content="取消当前运行" Command="{Binding AbortCommand}" />
                         </WrapPanel>
                     </StackPanel>
-                    <StackPanel Grid.Row="4" Margin="0,10,0,0">
+                    <StackPanel Grid.Row="5" Margin="0,10,0,0">
                         <TextBlock FontSize="13" FontWeight="SemiBold" Text="最新运行 / RunId / 结果来源" />
                         <TextBox Margin="0,7,0,0" BorderThickness="1" IsReadOnly="True"
                                  Text="{Binding LastRun, Mode=OneWay}" TextWrapping="Wrap" />
@@ -189,6 +195,114 @@
                         </GroupBox>
                     </Grid>
                 </DockPanel>
+            </TabItem>
+            <TabItem Header="诊断 / 原始事件">
+                <DockPanel Margin="12">
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock FontWeight="SemiBold" FontSize="14" Text="生产流程诊断时间线 / R0-DIAG" />
+                        <TextBlock Margin="0,5,0,9" TextWrapping="Wrap" Opacity="0.76"
+                                   Text="UI 层原始事件，不是 USB/CAN 物理 Trace。JSONL 保存 UTC、阶段、错误码、来源、RunId、扫码 AttemptId 和版本；默认脱敏。" />
+                        <WrapPanel>
+                            <CheckBox Content="只看警告和错误" IsChecked="{Binding ErrorsOnly, Mode=TwoWay}"
+                                      VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <CheckBox Content="只看扫码枪采集" IsChecked="{Binding ScannerOnly, Mode=TwoWay}"
+                                      VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <Button Content="复制筛选结果（脱敏）" Click="CopyDiagnostics_OnClick" />
+                            <Button Content="导出 JSONL" Click="ExportDiagnostics_OnClick" />
+                            <CheckBox Margin="12,0,0,0" VerticalAlignment="Center"
+                                      Content="包含原始编号（仅本地敏感资料）"
+                                      IsChecked="{Binding IncludeRawBarcodeInLocalExport, Mode=TwoWay}" />
+                        </WrapPanel>
+                        <TextBlock Margin="0,9,0,0" Text="{Binding ExportPath}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0" Opacity="0.7"
+                                   Text="{Binding DroppedDiagnosticEvents, StringFormat=内存环形缓冲已丢弃事件：{0}}" />
+                    </StackPanel>
+                    <DataGrid ItemsSource="{Binding DiagnosticEvents}" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="UTC 时间" Width="185" Binding="{Binding TimestampUtc, StringFormat=yyyy-MM-dd HH:mm:ss.fff}" />
+                            <DataGridTextColumn Header="#" Width="65" Binding="{Binding Sequence}" />
+                            <DataGridTextColumn Header="阶段" Width="140" Binding="{Binding Stage}" />
+                            <DataGridTextColumn Header="级别" Width="78" Binding="{Binding Severity}" />
+                            <DataGridTextColumn Header="代码" Width="190" Binding="{Binding Code}" />
+                            <DataGridTextColumn Header="来源" Width="132" Binding="{Binding Source}" />
+                            <DataGridTextColumn Header="RunId" Width="220" Binding="{Binding RunId}" />
+                            <DataGridTextColumn Header="采集 AttemptId" Width="220" Binding="{Binding CaptureAttemptId}" />
+                            <DataGridTextColumn Header="说明" Width="*" Binding="{Binding Summary}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="样本回放 / 规则诊断">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock FontSize="14" FontWeight="SemiBold"
+                                   Text="草稿规则诊断 · 不发布、不执行 Test、不放行 ECU" />
+                        <TextBlock Margin="0,5,0,9" TextWrapping="Wrap" Opacity="0.73"
+                                   Text="直接读取当前编辑中的规则、配方与样本。所有检查是软件预览，不能取代配置发布校验；样本无冲突也不等于所有编号都无冲突。" />
+                        <WrapPanel VerticalAlignment="Center">
+                            <TextBlock Text="默认回放时间（UTC）" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox MinWidth="205" Width="250" ToolTip="空样本时间使用此值；已填样本时间优先"
+                                     Text="{Binding SampleReplayAtUtc, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Margin="8,0,3,0" Content="批量回放样本" Command="{Binding ReplaySamplesCommand}" />
+                            <Button Content="检查规则重叠" Command="{Binding InspectOverlapCommand}" />
+                            <Button Content="对比已发布版本" Command="{Binding CompareDraftCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                    <GroupBox Grid.Row="1" Header="样本回放：预期 / 实际" Margin="0,10,0,0">
+                        <DockPanel Margin="8">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding SampleReplayStatus}"
+                                       TextWrapping="Wrap" Margin="0,0,0,5" />
+                            <DataGrid ItemsSource="{Binding SampleReplayRows}" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#" Width="48" Binding="{Binding RowNumber}" />
+                                    <DataGridTextColumn Header="样本原始编号（仅本地 UI）" Width="150" Binding="{Binding RawBarcode}" />
+                                    <DataGridTextColumn Header="预期规则" Width="130" Binding="{Binding ExpectedRuleId}" />
+                                    <DataGridTextColumn Header="实际规则" Width="130" Binding="{Binding ActualRuleId}" />
+                                    <DataGridTextColumn Header="预期配方" Width="140" Binding="{Binding ExpectedRecipeId}" />
+                                    <DataGridTextColumn Header="实际配方" Width="140" Binding="{Binding ActualRecipeId}" />
+                                    <DataGridTextColumn Header="候选配方@Revision" Width="180" Binding="{Binding CandidateSummary}" />
+                                    <DataGridTextColumn Header="诊断码" Width="200" Binding="{Binding Code}" />
+                                    <DataGridCheckBoxColumn Header="样本通过" Width="95" Binding="{Binding Passed}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </GroupBox>
+                    <GroupBox Grid.Row="2" Header="规则对重叠证据（有限样本，不作全域保证）" Margin="0,9,0,0">
+                        <DockPanel Margin="8">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding OverlapStatus}"
+                                       TextWrapping="Wrap" Margin="0,0,0,5" />
+                            <DataGrid ItemsSource="{Binding RuleOverlapRows}" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="规则 A" Width="140" Binding="{Binding FirstRuleId}" />
+                                    <DataGridTextColumn Header="规则 B" Width="140" Binding="{Binding SecondRuleId}" />
+                                    <DataGridTextColumn Header="分类" Width="200" Binding="{Binding Classification}" />
+                                    <DataGridTextColumn Header="证实重叠的样本数" Width="145" Binding="{Binding CollidingSamples}" />
+                                    <DataGridTextColumn Header="说明 / 确定性" Width="*" Binding="{Binding Evidence}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </GroupBox>
+                    <GroupBox Grid.Row="3" Header="当前草稿 ↔ 已发布修订差异" Margin="0,9,0,0">
+                        <DockPanel Margin="8">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding RevisionCompareStatus}"
+                                       TextWrapping="Wrap" Margin="0,0,0,5" />
+                            <DataGrid ItemsSource="{Binding RevisionChangeRows}" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="对象" Width="125" Binding="{Binding EntityType}" />
+                                    <DataGridTextColumn Header="ID / 修订" Width="225" Binding="{Binding EntityKey}" />
+                                    <DataGridTextColumn Header="变更" Width="100" Binding="{Binding Kind}" />
+                                    <DataGridTextColumn Header="变更字段（不显示样本原文）" Width="*" Binding="{Binding ChangedFields}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </GroupBox>
+                </Grid>
             </TabItem>
             <TabItem Header="发布 / 本地配置">
                 <StackPanel Margin="12">

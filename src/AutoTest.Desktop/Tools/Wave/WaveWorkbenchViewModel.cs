@@ -35,6 +35,10 @@ public sealed record WaveDrawTrace(string Name, Brush Color, PointCollection Poi
     string ScaleLabel, bool Reference);
 public sealed record WaveResultRow(string Signal, string Verdict, string Detail,
     string Coverage, string EvidenceId);
+public sealed record WaveIssueMarker(PointCollection Points, string Code, Brush Color);
+public sealed record WaveSignalQualityRow(string Signal, string Unit, string InputKind,
+    int Samples, long Observed, int Rejected, bool Gap, string ValidationCode,
+    string TimeSource, string TimeQuality, string CaptureEvidenceId);
 
 /// <summary>
 /// The professional WAVE UI model. No USB/CAN receiver, no fake PONG and no production PASS.
@@ -47,6 +51,9 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
          Brushes.Coral, Brushes.LightSeaGreen, Brushes.Gold, Brushes.LightPink];
     private readonly Dictionary<SignalRef, WaveWorkbenchCapture> _captures = new();
     private readonly Dictionary<SignalRef, WaveReference> _references = new();
+    private readonly List<WaveDiagnosticIssue> _allIssues = new();
+    private WaveDiagnosticIssue? _selectedIssue;
+    private string _issueStatus = "无已分析的异常区间";
     private IWaveWorkbenchBackend? _backend;
     private CancellationTokenSource? _pending;
     private bool _busy;
@@ -57,12 +64,19 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
     private string _cursorInfo = "单击设置游标 A；Shift+单击设置游标 B";
     private string _viewRange = "—";
     private string _toleranceText = "0.1";
+    private string _replayFrameLimitText = "50000";
     private string _archivePath = string.Empty;
+    private string _traceFilter = string.Empty;
+    private string _rawTraceStatus = "尚未读取 CAN 原始档案 · 首先载入 *.json";
+    private string _exportPath = string.Empty;
+    private string _exportStatus = "未导出诊断证据";
+    private bool _includeRawEvidence = true;
     private double _cursorA = double.NaN, _cursorB = double.NaN;
     private double _start, _end = 1;
     private PointCollection _cursorLineA = new(), _cursorLineB = new();
     private readonly WaveCommand _reload, _replay, _mock, _openArchive, _live, _stop, _save, _load, _compare;
     private readonly WaveCommand _zoomIn, _zoomOut, _reset;
+    private readonly WaveCommand _refreshTrace, _export, _locateFrame, _focusIssue;
 
     public WaveWorkbenchViewModel()
     {
@@ -80,12 +94,26 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         _zoomIn = new WaveCommand(() => Zoom(0.5), () => _captures.Count != 0);
         _zoomOut = new WaveCommand(() => Zoom(2), () => _captures.Count != 0);
         _reset = new WaveCommand(ResetZoom, () => _captures.Count != 0);
+        _refreshTrace = new WaveCommand(() => RunAsync(RefreshRawAsync),
+            () => !_busy && ArchiveAvailable && _backend is IWaveArchiveDiagnosticSource);
+        _locateFrame = new WaveCommand(() => RunAsync(LocateCursorFrameAsync),
+            () => !_busy && double.IsFinite(_cursorA) && ArchiveAvailable && HasCapture &&
+                _backend is IWaveArchiveDiagnosticSource);
+        _focusIssue = new WaveCommand(() => RunAsync(FocusIssueAsync),
+            () => !_busy && SelectedIssue is not null);
+        _export = new WaveCommand(() => RunAsync(ExportDiagnosticsAsync),
+            () => !_busy && _backend is not null && !string.IsNullOrWhiteSpace(ExportPath));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<WaveSignalRow> Signals { get; } = new();
     public ObservableCollection<WaveDrawTrace> Traces { get; } = new();
     public ObservableCollection<WaveResultRow> Results { get; } = new();
+    public ObservableCollection<WaveRawFrameRow> RawFrames { get; } = new();
+    public ObservableCollection<WaveOperationLogRow> OperationLogs { get; } = new();
+    public ObservableCollection<WaveSignalQualityRow> CaptureQuality { get; } = new();
+    public ObservableCollection<WaveDiagnosticIssue> Issues { get; } = new();
+    public ObservableCollection<WaveIssueMarker> IssueMarkers { get; } = new();
     public ICommand ReloadCommand => _reload;
     public ICommand ReplayCommand => _replay;
     public ICommand MockCommand => _mock;
@@ -98,6 +126,10 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
     public ICommand ZoomInCommand => _zoomIn;
     public ICommand ZoomOutCommand => _zoomOut;
     public ICommand ResetZoomCommand => _reset;
+    public ICommand RefreshTraceCommand => _refreshTrace;
+    public ICommand LocateFrameCommand => _locateFrame;
+    public ICommand ExportDiagnosticCommand => _export;
+    public ICommand FocusIssueCommand => _focusIssue;
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string Quality { get => _quality; private set => Set(ref _quality, value); }
     public string Origin { get => _origin; private set => Set(ref _origin, value); }
@@ -106,11 +138,46 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
     public string ViewRange { get => _viewRange; private set => Set(ref _viewRange, value); }
     public PointCollection CursorLineA { get => _cursorLineA; private set => Set(ref _cursorLineA, value); }
     public PointCollection CursorLineB { get => _cursorLineB; private set => Set(ref _cursorLineB, value); }
-    public string ToleranceText { get => _toleranceText; set => Set(ref _toleranceText, value); }
+    public string ToleranceText
+    {
+        get => _toleranceText;
+        set
+        {
+            if (string.Equals(_toleranceText, value, StringComparison.Ordinal)) return;
+            Set(ref _toleranceText, value);
+            Results.Clear(); // no stale PASS after changing judgement criteria
+            RebuildGapIssues();
+            Render();
+            OnChanged(nameof(ComparisonRules));
+        }
+    }
+    public string ComparisonRules =>
+        $"绝对容差 {ToleranceText}（每信号单位） · 最低覆盖率 90% · 通过率 100% · " +
+        "时间对齐 ±0.050s · 最大采样间隔倍数 1.6 · 超差时长必须为 0";
+    public string ReplayFrameLimitText { get => _replayFrameLimitText; set => Set(ref _replayFrameLimitText, value); }
     public string ArchivePath
     {
         get => _archivePath;
         set { Set(ref _archivePath, value); RefreshCommands(); }
+    }
+    public string TraceFilter { get => _traceFilter; set => Set(ref _traceFilter, value); }
+    public string RawTraceStatus { get => _rawTraceStatus; private set => Set(ref _rawTraceStatus, value); }
+    public string ExportStatus { get => _exportStatus; private set => Set(ref _exportStatus, value); }
+    public string IssueStatus { get => _issueStatus; private set => Set(ref _issueStatus, value); }
+    public WaveDiagnosticIssue? SelectedIssue
+    {
+        get => _selectedIssue;
+        set { Set(ref _selectedIssue, value); _focusIssue.Raise(); }
+    }
+    public bool IncludeRawEvidence
+    {
+        get => _includeRawEvidence;
+        set => Set(ref _includeRawEvidence, value);
+    }
+    public string ExportPath
+    {
+        get => _exportPath;
+        set { Set(ref _exportPath, value); RefreshCommands(); }
     }
     public bool ArchiveAvailable => _backend is IWaveArchiveSource archived && archived.HasRecordedArchive;
     public bool Busy => _busy;
@@ -123,11 +190,26 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
     {
         ArgumentNullException.ThrowIfNull(backend);
         if (_busy) throw new InvalidOperationException("Cannot switch WAVE backend while capturing.");
+        // A newly-bound project/device backend cannot inherit an older session's observations.
+        if (!ReferenceEquals(_backend, backend))
+        {
+            _captures.Clear(); _references.Clear(); Results.Clear(); RawFrames.Clear();
+            CaptureQuality.Clear(); OperationLogs.Clear();
+            _allIssues.Clear(); Issues.Clear(); IssueMarkers.Clear(); SelectedIssue = null;
+            RawTraceStatus = "新会话尚无 CAN 档案";
+        }
         _backend = backend;
         LoadSignals();
     }
 
     public void RefreshSignals() => LoadSignals();
+
+    /// <summary>Record specialist-only external DBC/project loader actions in the same exportable timeline.</summary>
+    public void ReportExternalOperation(string operation, string state, string detail, string errorCode = "")
+    {
+        Log(operation, "Resource", state, detail, errorCode, "OfflineLab");
+        Status = string.IsNullOrEmpty(errorCode) ? detail : errorCode + ": " + detail;
+    }
 
     // Awaitable command entrypoints also make deterministic Desktop behavior tests possible.
     public Task ReplaySelectedAsync() => RunOperationAsync(ReplayAsync);
@@ -137,6 +219,10 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
     public Task SaveReferenceSelectedAsync() => RunOperationAsync(SaveAsync);
     public Task LoadReferenceSelectedAsync() => RunOperationAsync(LoadAsync);
     public Task CompareSelectedAsync() => RunOperationAsync(CompareAsync);
+    public Task ExportDiagnosticSelectedAsync() => RunOperationAsync(ExportDiagnosticsAsync);
+    public Task RefreshTraceSelectedAsync() => RunOperationAsync(RefreshRawAsync);
+    public Task LocateCursorFrameSelectedAsync() => RunOperationAsync(LocateCursorFrameAsync);
+    public Task FocusIssueSelectedAsync() => RunOperationAsync(FocusIssueAsync);
 
     private void LoadSignals()
     {
@@ -149,7 +235,17 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         foreach (var entry in available)
         {
             var row = new WaveSignalRow(entry);
-            row.PropertyChanged += (_, _) => { Render(); RefreshCommands(); };
+            row.PropertyChanged += (_, _) =>
+            {
+                Results.Clear(); // selected signal set changed: prior verdict is no longer applicable
+                RebuildGapIssues();
+                if (row.IsSelected && Signals.Count(x => x.IsSelected) > 8)
+                {
+                    row.IsSelected = false;
+                    Status = "WAVE_MAX_8: 同图最多选取 8 个信号，请取消部分信号后重试";
+                }
+                Render(); RefreshCommands();
+            };
             row.IsSelected = previous.Contains(entry.Signal);
             Signals.Add(row);
         }
@@ -157,6 +253,11 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         foreach (var key in _captures.Keys.Where(k => !newSet.Contains(k)).ToArray()) _captures.Remove(key);
         foreach (var key in _references.Keys.Where(k => !newSet.Contains(k)).ToArray()) _references.Remove(key);
         Results.Clear();
+        RebuildGapIssues();
+        // Existing raw-frame previews contain decoded physical values from a specific DBC.
+        // Never retain them after a signal/DBC refresh; the archive must be revalidated.
+        RawFrames.Clear();
+        RawTraceStatus = "DBC 信号已刷新；请重新筛选原始帧，确认 Revision 与当前工程匹配";
         Status = stale ? "DBC_REVISION_STALE：旧采集已移除，请重新采集、核对参考版本"
             : Signals.Count == 0 ? "DBC_REQUIRED：请在项目中导入 DBC 后刷新" : "就绪 · 请选择信号并执行 Replay";
         Render(); RefreshCommands();
@@ -169,8 +270,15 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         ct.ThrowIfCancellationRequested();
         if (_backend is not IWaveArchiveSource archive)
             throw new WaveCaptureException("CAN_REPLAY_NOT_CONFIGURED", "Shared replay publisher is missing.");
+        // An attempted source change invalidates previous judgements even if the new file fails validation.
+        InvalidatePreviousCapture();
+        RawFrames.Clear();
+        Origin = "Unknown"; Quality = "Unknown";
+        RawTraceStatus = "CAN 档案切换中：先前数据已失效";
+        ResetZoom();
         archive.OpenArchiveFile(ArchivePath);
-        Status = "已读取真实保存的 CAN RX 帧档案；Replay 输入已就绪";
+        RefreshRawTrace();
+        Status = "已校验并读取保存 CAN RX 帧档案；Replay 输入就绪（非 Physical）";
         RefreshCommands();
         return Task.CompletedTask;
     }
@@ -180,49 +288,70 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         if (_backend is not IWaveMockGenerator mock)
             throw new WaveCaptureException("MOCK_NOT_AVAILABLE", "Mock CAN generator not configured.");
         var selected = Selected();
+        InvalidatePreviousCapture();
+        var next = new Dictionary<SignalRef, WaveWorkbenchCapture>();
         foreach (var row in selected)
         {
             ct.ThrowIfCancellationRequested();
-            var captured = await mock.RunMockAsync(row.Choice.Signal, 80, ct);
-            _captures[row.Choice.Signal] = captured;
+            next[row.Choice.Signal] = await mock.RunMockAsync(row.Choice.Signal, 80, ct);
         }
+        foreach (var pair in next) _captures[pair.Key] = pair.Value;
         ResetZoom();
+        AddCaptureLog(selected, "Mock");
+        RebuildGapIssues();
+        Render();
         Status = $"Mock 完成：{selected.Length} 路合成 CAN 帧 · 仅用于 UI 和比较算法测试";
     }
 
     private async Task ReplayAsync(CancellationToken ct)
     {
+        if (!int.TryParse(ReplayFrameLimitText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var maxFrames) ||
+            maxFrames is < 2 or > 100000)
+            throw new WaveCaptureException("REPLAY_FRAME_BUDGET_INVALID", "每路 Replay 帧上限必须为 2～100000，超过时拒绝静默截断");
         var selected = Selected();
+        InvalidatePreviousCapture();
+        var next = new Dictionary<SignalRef, WaveWorkbenchCapture>();
         foreach (var row in selected)
         {
             ct.ThrowIfCancellationRequested();
-            var captured = await _backend!.ReplayAsync(row.Choice.Signal, 50000, ct);
-            _captures[row.Choice.Signal] = captured;
+            next[row.Choice.Signal] = await _backend!.ReplayAsync(row.Choice.Signal, maxFrames, ct);
         }
+        foreach (var pair in next) _captures[pair.Key] = pair.Value;
         ResetZoom();
+        AddCaptureLog(selected, "Replay");
+        RebuildGapIssues();
+        Render();
         Status = $"Replay 完成：{selected.Length} 路信号，来自保存 CAN RX 帧 / DBC；非实机出厂数据";
     }
 
     private async Task LiveAsync(CancellationToken ct)
     {
         var selected = Selected();
+        InvalidatePreviousCapture();
+        var next = new Dictionary<SignalRef, WaveWorkbenchCapture>();
         foreach (var row in selected)
         {
             ct.ThrowIfCancellationRequested();
-            var captured = await _backend!.CaptureLiveAsync(row.Choice.Signal,
+            next[row.Choice.Signal] = await _backend!.CaptureLiveAsync(row.Choice.Signal,
                 TimeSpan.FromSeconds(2), 5000, ct);
-            _captures[row.Choice.Signal] = captured;
         }
+        foreach (var pair in next) _captures[pair.Key] = pair.Value;
         ResetZoom();
+        AddCaptureLog(selected, "Live");
+        RebuildGapIssues();
+        Render();
         Status = "共享信号源采集完成（实际来源见上方标签）；非实机验收";
     }
 
     private Task SaveAsync(CancellationToken ct)
     {
+        Results.Clear();
+        RebuildGapIssues();
         foreach (var row in Selected())
         {
             ct.ThrowIfCancellationRequested();
             if (!_captures.TryGetValue(row.Choice.Signal, out var captured)) continue;
+            _references.Remove(row.Choice.Signal);
             var reference = _backend!.SaveReference(captured.Series,
                 row.Choice.Signal.SignalName + " / " + captured.Series.SourceRevision.Sha256[..8]);
             _references[row.Choice.Signal] = reference;
@@ -234,9 +363,12 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
 
     private Task LoadAsync(CancellationToken ct)
     {
+        Results.Clear();
+        RebuildGapIssues();
         foreach (var row in Selected())
         {
             ct.ThrowIfCancellationRequested();
+            _references.Remove(row.Choice.Signal);
             var reference = _backend!.ReadReference(row.Choice.Signal);
             if (reference is null) _references.Remove(row.Choice.Signal);
             else _references[row.Choice.Signal] = reference;
@@ -249,10 +381,11 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
 
     private async Task CompareAsync(CancellationToken ct)
     {
+        Results.Clear(); // failed/invalid new judgement cannot retain an old PASS
+        RebuildGapIssues();
         if (!double.TryParse(ToleranceText, NumberStyles.Float, CultureInfo.InvariantCulture, out var tolerance) ||
             !double.IsFinite(tolerance) || tolerance < 0)
             throw new ArgumentOutOfRangeException(nameof(ToleranceText), "容差必须是非负有限数字（使用 . 小数点）");
-        Results.Clear();
         var selected = Selected();
         foreach (var row in selected)
         {
@@ -265,16 +398,189 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
             }
             var profile = WaveComparisonConfig.FromContract(new CompareProfile(tolerance, .9));
             var result = await _backend!.CompareAsync(capture, reference, profile, ct);
+            if (result.Details.Verdict == Verdict.Fail)
+                _allIssues.AddRange(WaveIntervalDiagnostics.FindMismatches(
+                    capture.Series, reference.Series, profile, result.Details));
             Results.Add(new WaveResultRow(row.Name, result.Details.Verdict.ToString().ToUpperInvariant(),
-                result.Details.Code + " · " + result.Details.Reason,
+                result.Details.Code + " · " + result.Details.Reason +
+                string.Format(CultureInfo.InvariantCulture,
+                    " | 对齐 {0:0.000000}s | RMSE={1:0.######} | 最大误差={2:0.######} | 超差={3:0.######}s | 通过率={4:0.0}% | 对比点={5}",
+                    result.Details.ShiftSeconds, result.Details.Rmse,
+                    result.Details.MaximumAbsoluteError, result.Details.OutsideToleranceSeconds,
+                    result.Details.PassRatio * 100, result.Details.ComparedSampleCount),
                 (result.Details.Coverage * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%",
                 result.Evidence.Value.ToString("D")));
         }
+        PublishIssuePreview();
+        Render();
+        foreach (var result in Results)
+            Log("Compare", "Verdict", result.Verdict, result.Detail,
+                result.Verdict == "INCONCLUSIVE" ? "REFERENCE_MISSING" : string.Empty);
         Status = Results.Count == 0 ? "未选中具有采样的信号" :
             "比较结束；结果为离线开发判定，不代表真实出厂 PASS";
     }
 
     private WaveSignalRow[] Selected() => Signals.Where(x => x.IsSelected).Take(8).ToArray();
+
+    private void AddCaptureLog(IEnumerable<WaveSignalRow> selected, string command)
+    {
+        foreach (var row in selected)
+        {
+            if (!_captures.TryGetValue(row.Choice.Signal, out var captured)) continue;
+            var condition = WaveTimeQuality.Describe(captured.Series);
+            Log(command, "Capture", condition.CanJudge ? "Recorded" : "QualityBlocked",
+                $"{row.Name}; samples={captured.Series.Samples.Length}; observed={captured.Series.ObservedEvents}; " +
+                $"gaps={captured.Series.HasGap}; source={captured.Kind}; evidence={captured.Evidence.Evidence.Value:D}",
+                condition.CanJudge ? string.Empty : condition.Code, captured.Kind.ToString());
+        }
+    }
+
+
+    private void InvalidatePreviousCapture()
+    {
+        _captures.Clear();
+        Results.Clear();
+        CaptureQuality.Clear();
+        _allIssues.Clear();
+        PublishIssuePreview();
+        Origin = "Unknown";
+        Quality = "Unknown";
+        _cursorA = double.NaN;
+        _cursorB = double.NaN;
+        Render();
+    }
+
+    // Full issue collection remains available for export; only the UI projection is capped.
+    private void RebuildGapIssues()
+    {
+        _allIssues.Clear();
+        foreach (var row in Selected())
+        {
+            if (_captures.TryGetValue(row.Choice.Signal, out var capture))
+                _allIssues.AddRange(WaveIntervalDiagnostics.FindGaps(capture.Series, 1.6));
+        }
+        PublishIssuePreview();
+    }
+
+    private void PublishIssuePreview()
+    {
+        SelectedIssue = null;
+        Issues.Clear();
+        foreach (var issue in _allIssues.Take(1000)) Issues.Add(issue);
+        IssueStatus = $"问题区间/质量事实 {_allIssues.Count} 条；界面显示 {Issues.Count} 条" +
+            (_allIssues.Count > Issues.Count ? "（已截取预览，诊断 ZIP 保留全部）" : string.Empty) +
+            "。时间范围为已观测采样边界，非精确物理故障时刻；没有标记不等于已证明无缺样。";
+    }
+
+    private Task FocusIssueAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var issue = SelectedIssue ?? throw new WaveCaptureException("WAVE_ISSUE_REQUIRED", "请选择问题区间");
+        if (issue.StartSeconds is { } start && issue.EndSeconds is { } end)
+        {
+            var center = (start + end) / 2;
+            var half = Math.Max(.010, (end - start) * .75);
+            _start = center - half;
+            _end = center + half;
+            _cursorA = start;
+            _cursorB = end > start ? end : double.NaN;
+            Render();
+        }
+        else
+        {
+            Status = issue.Code + "：缺少可证明的时间定位；不设置虚构游标";
+        }
+        if (Guid.TryParse(issue.FirstSourceEvidenceId, out var frame) &&
+            frame != Guid.Empty && _backend is IWaveArchiveDiagnosticSource && ArchiveAvailable)
+        {
+            TraceFilter = frame.ToString("D");
+            RefreshRawTrace();
+            Status = RawFrames.Count > 0
+                ? "已定位异常采样对应 CAN RX 原始帧 " + frame.ToString("D")
+                : "FRAME_EVIDENCE_NOT_IN_ARCHIVE：源帧 Evidence 未在当前档案中找到";
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Locate the exact original CAN frame referenced by the nearest captured sample.</summary>
+    private Task LocateCursorFrameAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (_backend is not IWaveArchiveDiagnosticSource || !ArchiveAvailable)
+            throw new WaveCaptureException("RAW_CAN_ARCHIVE_REQUIRED", "Only recorded-CAN Replay can locate an original RX frame.");
+        if (!double.IsFinite(_cursorA))
+            throw new WaveCaptureException("WAVE_CURSOR_REQUIRED", "Set cursor A first.");
+        var row = Selected().FirstOrDefault(x => _captures.ContainsKey(x.Choice.Signal));
+        if (row is null) throw new WaveCaptureException("WAVE_SAMPLES_REQUIRED", "No selected signal has captured samples.");
+        var series = _captures[row.Choice.Signal].Series;
+        if (series.Samples.IsEmpty)
+            throw new WaveCaptureException("WAVE_SAMPLES_REQUIRED", "No samples available.");
+        var nearest = series.Samples.MinBy(x => Math.Abs(
+            (x.Sample.Time.Utc - series.Origin.Utc).TotalSeconds - _cursorA));
+        var id = nearest.SourceEvidence.Value;
+        if (id == Guid.Empty)
+            throw new WaveCaptureException("WAVE_SOURCE_EVIDENCE_MISSING", "Sample has no source-frame evidence.");
+        TraceFilter = id.ToString("D");
+        RefreshRawTrace();
+        Status = RawFrames.Count == 0
+            ? "SOURCE_FRAME_UNAVAILABLE：已设置源帧 Evidence 过滤，但当前档案中未找到对应 RX 帧"
+            : "已定位游标 A 的原始 CAN RX 帧：" + id.ToString("D");
+        return Task.CompletedTask;
+    }
+
+    private Task RefreshRawAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        RefreshRawTrace();
+        Status = "CAN Trace 筛选完成；完整原始档案可在诊断包导出";
+        return Task.CompletedTask;
+    }
+
+    private void RefreshRawTrace()
+    {
+        RawFrames.Clear();
+        if (_backend is not IWaveArchiveDiagnosticSource diagnostics || !ArchiveAvailable)
+        {
+            RawTraceStatus = "没有可检查的 CAN RX 档案，Mock 不构成真实帧回放";
+            return;
+        }
+        var report = diagnostics.ReadArchiveReport(2000, TraceFilter);
+        foreach (var item in report.Frames) RawFrames.Add(item);
+        RawTraceStatus = $"原始帧 {report.TotalFrames}; 显示 {report.DisplayedFrames}" +
+            (report.DisplayTruncated ? "（筛选结果超出 2000 行，导出不截断）" : string.Empty) +
+            $"; LostFrames(最大报告值)={report.MaximumReportedLostFrames}; DBC r{report.DbcRevision} / {report.DbcSha256[..8]}" +
+            $"; {report.ValidationCode}; 时间=ReplayDerived(微秒偏移，原始物理时钟质量未知)";
+        Log("CAN Archive", "Inspect", report.ValidationCode, RawTraceStatus,
+            report.ValidationCode == "OK" ? string.Empty : report.ValidationCode,
+            "Replay");
+    }
+
+    private Task ExportDiagnosticsAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        WaveArchiveReport? report = null;
+        byte[]? original = null;
+        if (_backend is IWaveArchiveDiagnosticSource archive && ArchiveAvailable)
+        {
+            // Exports ALL rows regardless of the current preview filter or display limit.
+            report = archive.ReadArchiveReport(200000);
+            original = archive.ReadVerifiedOriginalArchive();
+        }
+        WaveLabExportService.Export(ExportPath, report, original,
+            OperationLogs.ToArray(), _captures.Values.ToArray(), Results.ToArray(), Origin, Quality,
+            IncludeRawEvidence, issues: _allIssues);
+        ExportStatus = "诊断包已写入（" + (IncludeRawEvidence ? "完整原始数据，仅限本地受控分享" : "脱敏模式") + "）：" + ExportPath;
+        Status = ExportStatus;
+        return Task.CompletedTask;
+    }
+
+    private void Log(string operation, string stage, string state, string detail,
+        string errorCode = "", string? source = null, long duration = 0)
+    {
+        OperationLogs.Add(new WaveOperationLogRow(DateTimeOffset.UtcNow, operation, stage, state,
+            errorCode, detail, source ?? Origin, duration));
+        // Do not silently discard older diagnostic events: export must cover this workbench session.
+    }
 
     public void SetCursorFraction(double fraction, bool second)
     {
@@ -299,7 +605,7 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         var selected = Selected().Where(x => _captures.ContainsKey(x.Choice.Signal))
             .Select(x => _captures[x.Choice.Signal].Series).ToArray();
         if (selected.Length == 0) { _start = 0; _end = 1; Render(); return; }
-        var points = selected.SelectMany(series => WaveChartAnalysis.FromSeries(series)).ToArray();
+        var points = selected.SelectMany(WaveChartAnalysis.FromSeries).ToArray();
         if (points.Length == 0) { _start = 0; _end = 1; Render(); return; }
         _start = points.Min(p => p.Seconds);
         _end = Math.Max(_start + .001, points.Max(p => p.Seconds));
@@ -309,12 +615,22 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
     private void Render()
     {
         Traces.Clear();
+        IssueMarkers.Clear();
+        CaptureQuality.Clear();
         var selected = Selected().Where(x => _captures.ContainsKey(x.Choice.Signal)).ToArray();
         var n = selected.Length;
         for (var i = 0; i < n; i++)
         {
             var key = selected[i].Choice.Signal;
             var captured = _captures[key];
+            var timeDescription = WaveTimeQuality.Describe(captured.Series);
+            CaptureQuality.Add(new WaveSignalQualityRow(key.SignalName, key.Unit,
+                captured.Kind.ToString(), captured.Series.Samples.Length,
+                captured.Series.ObservedEvents, captured.Series.RejectedEvents,
+                captured.Series.HasGap, timeDescription.Code,
+                captured.Series.Origin.Source.ToString(),
+                captured.Series.Origin.Quality.ToString(),
+                captured.Evidence.Evidence.Value.ToString("D")));
             var data = WaveChartAnalysis.FromSeries(captured.Series);
             System.Collections.Immutable.ImmutableArray<WaveChartPoint> samples;
             try { samples = WaveChartAnalysis.InWindow(data, _start, _end, 900); }
@@ -343,6 +659,18 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
             if (reference is not null)
                 Traces.Add(new WaveDrawTrace(label + " / 参考", Brushes.Goldenrod,
                     Project(refPoints), label, true));
+        }
+        foreach (var issue in _allIssues.Where(x => x.StartSeconds.HasValue &&
+                     x.EndSeconds.HasValue && x.StartSeconds <= _end && x.EndSeconds >= _start).Take(128))
+        {
+            var left = 48 + (Math.Clamp(issue.StartSeconds!.Value, _start, _end) - _start) /
+                (_end - _start) * 852;
+            var right = 48 + (Math.Clamp(issue.EndSeconds!.Value, _start, _end) - _start) /
+                (_end - _start) * 852;
+            IssueMarkers.Add(new WaveIssueMarker(new PointCollection([
+                new Point(left, 13), new Point(left, 25), new Point(right, 25),
+                new Point(right, 13)]), issue.Code,
+                issue.Category == "MISMATCH" ? Brushes.OrangeRed : Brushes.Gold));
         }
         CursorLineA = CursorLine(_cursorA);
         CursorLineB = CursorLine(_cursorB);
@@ -387,13 +715,33 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
     private async Task RunOperationAsync(Func<CancellationToken, Task> action)
     {
         if (_busy) return;
+        var operationName = action.Method.Name;
+        var began = System.Diagnostics.Stopwatch.GetTimestamp();
+        Log(operationName, "Request", "Requested", "UI action accepted for processing");
         _busy = true;
         _pending = new CancellationTokenSource();
         Status = "正在执行 WAVE 操作… 可取消";
         OnChanged(nameof(Busy)); RefreshCommands();
-        try { await action(_pending.Token); }
-        catch (OperationCanceledException) { Status = "操作已取消，未宣称完成"; }
-        catch (Exception ex) { Status = "WAVE_ERROR：" + ex.GetType().Name + " / " + ex.Message; }
+        try
+        {
+            await action(_pending.Token);
+            Log(operationName, "Result", "Completed", Status,
+                duration: (long)System.Diagnostics.Stopwatch.GetElapsedTime(began).TotalMilliseconds);
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "操作已取消，未宣称完成";
+            Log(operationName, "Result", "Cancelled", Status, "CANCELLED",
+                duration: (long)System.Diagnostics.Stopwatch.GetElapsedTime(began).TotalMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            var code = ex is WaveCaptureException wave ? wave.Code : ex.GetType().Name;
+            Status = "WAVE_ERROR：" + code + " / " + ex.Message;
+            if (operationName == nameof(ExportDiagnosticsAsync)) ExportStatus = Status;
+            Log(operationName, "Result", "Failed", ex.Message, code,
+                duration: (long)System.Diagnostics.Stopwatch.GetElapsedTime(began).TotalMilliseconds);
+        }
         finally
         {
             _pending.Dispose(); _pending = null;
@@ -401,7 +749,11 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         }
     }
 
-    private void Stop() => _pending?.Cancel();
+    private void Stop()
+    {
+        Log("Stop", "Request", "Requested", "User requested cancellation", "CANCEL_REQUESTED");
+        _pending?.Cancel();
+    }
 
     private void RefreshCommands()
     {
@@ -410,6 +762,7 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         OnChanged(nameof(ArchiveAvailable));
         _reload.Raise(); _replay.Raise(); _mock.Raise(); _openArchive.Raise(); _live.Raise(); _stop.Raise(); _save.Raise();
         _load.Raise(); _compare.Raise(); _zoomIn.Raise(); _zoomOut.Raise(); _reset.Raise();
+        _refreshTrace.Raise(); _export.Raise(); _locateFrame.Raise(); _focusIssue.Raise();
     }
     private void Set<T>(ref T field, T next, [CallerMemberName] string? name = null)
     {

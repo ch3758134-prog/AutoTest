@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using AutoTest.Desktop.G4;
 namespace AutoTest.Desktop.Shell;
 public partial class MainWindow : Window
@@ -17,15 +18,39 @@ public partial class MainWindow : Window
         _tools = new G4ToolsWindow(vm) { Owner = this };
         _tools.Show();
     }
-    private void Modules_Click(object sender, RoutedEventArgs e)
+    private void Modules_Click(object sender, RoutedEventArgs e) => OpenModules(null);
+
+    private void SpecialistTool_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string key })
+        {
+            MessageBox.Show("无效的专业工具导航键，已拒绝打开。", "INTEGRATION");
+            return;
+        }
+        OpenModules(key);
+    }
+
+    private void OpenModules(string? toolKey)
     {
         if (DataContext is not MainWindowViewModel vm || vm.G4 is null)
         {
-            MessageBox.Show("G4 Application 协调服务未注册，禁止执行", "MOCK ONLY"); return;
+            MessageBox.Show("G4 Application 协调服务未注册，禁止执行", "MOCK ONLY");
+            return;
         }
-        if (_modules is { IsVisible: true }) { _modules.Activate(); return; }
-        _modules = new ModuleToolsWindow(vm) { Owner = this };
-        _modules.Show();
+
+        if (_modules is { IsVisible: true })
+        {
+            if (toolKey is not null)
+                _modules.NavigateTo(toolKey);
+        }
+        else
+        {
+            // The requested page is selected before Show/Loaded, so the first
+            // audit entry describes the user's actual tool, not the default tab.
+            _modules = new ModuleToolsWindow(vm, toolKey) { Owner = this };
+            _modules.Show();
+        }
+        _modules.Activate();
     }
     private void DeviceLab_Click(object sender, RoutedEventArgs e)
     {

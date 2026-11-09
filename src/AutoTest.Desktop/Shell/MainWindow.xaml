@@ -36,14 +36,25 @@
   <MenuItem Header="_运行"><MenuItem Header="校验 TEST 文档和工程资源" Command="{Binding ValidateCommand}"/>
    <MenuItem Header="运行实际步骤（Mock Only）" Command="{Binding RunCommand}" InputGestureText="F5"/>
    <MenuItem Header="停止并清理" Command="{Binding StopCommand}"/></MenuItem>
-  <MenuItem Header="_工具"><MenuItem Header="八方向 Mock 专项工作台（扫码 / 记录 / Wave / UDS / Flash）" Click="G4Tools_Click"/>
-   <MenuItem Header="G4-LAB 模块工作台（配置 / DBC / TEST / Records / Operations / UDS / Flash / Wave）" Click="Modules_Click"/>
+  <MenuItem Header="_工具">
+   <MenuItem Header="G4-LAB 模块工作台（全部专业入口）" Click="Modules_Click"/>
+   <Separator/>
+   <MenuItem Header="控制器配置（独立草稿）" Tag="controller-config" Click="SpecialistTool_Click"/>
+   <MenuItem Header="DBC 编辑 / Replay（独立草稿）" Tag="dbc" Click="SpecialistTool_Click"/>
+   <MenuItem Header="TEST 编辑 / Mock" Tag="test" Click="SpecialistTool_Click"/>
+   <MenuItem Header="SCAN / Production Mock" Tag="production" Click="SpecialistTool_Click"/>
+   <MenuItem Header="运行历史 / Records" Tag="records" Click="SpecialistTool_Click"/>
+   <MenuItem Header="操作审计 / Trace / 导出" Tag="operations" Click="SpecialistTool_Click"/>
+   <MenuItem Header="UDS · ISO-TP Mock 诊断" Tag="uds" Click="SpecialistTool_Click"/>
+   <MenuItem Header="Flash · Mock Bootloader Dry-run" Tag="flash" Click="SpecialistTool_Click"/>
+   <MenuItem Header="Wave · CAN/DBC Replay" Tag="wave" Click="SpecialistTool_Click"/>
+   <Separator/>
    <MenuItem Header="DEVICE B0/B1/B2 只读诊断（手动连接）" Click="DeviceLab_Click"/>
-   <Separator/><MenuItem Header="CAN（当前仅 Mock，未开放真实操作）" IsEnabled="False"/>
-   <MenuItem Header="DBC（仅基础导入与编辑）" Command="{Binding ImportDbcCommand}"/>
-   <MenuItem Header="UDS · ISO-TP Mock 诊断" Click="G4Tools_Click"/>
-   <MenuItem Header="Flash · Mock Bootloader" Click="G4Tools_Click"/>
-   <MenuItem Header="Wave · CAN/DBC 回放" Click="G4Tools_Click"/></MenuItem>
+   <MenuItem Header="U-BENCH 状态执行（等待受控适配）" IsEnabled="False"/>
+   <MenuItem Header="CAN Physical TX（未授权）" IsEnabled="False"/>
+   <Separator/>
+   <MenuItem Header="旧版四专项 Mock 演示（非正式专业入口）" Click="G4Tools_Click"/>
+  </MenuItem>
  </Menu>
  <Border Grid.Row="1" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}"
   BorderThickness="0,0,0,1" Padding="10,7">

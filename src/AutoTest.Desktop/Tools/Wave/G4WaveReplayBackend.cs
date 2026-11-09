@@ -1,4 +1,3 @@
-using System.IO;
 using AutoTest.Application.G4;
 using AutoTest.Contracts;
 using AutoTest.Core;
@@ -11,7 +10,7 @@ namespace AutoTest.Desktop.Tools.Wave;
 /// G4 example is exposed ONLY as Mock (never as an archived Replay). Live acquisition requires
 /// a shared decoded-signal capture provider after device/session validation.
 /// </summary>
-public sealed class G4WaveReplayBackend : IWaveWorkbenchBackend, IWaveArchiveSource, IWaveMockGenerator
+public sealed class G4WaveReplayBackend : IWaveWorkbenchBackend, IWaveArchiveSource, IWaveMockGenerator, IWaveArchiveDiagnosticSource
 {
     private readonly G4IntegrationHost _host;
     private readonly WaveReferenceCatalog _catalog;
@@ -33,6 +32,20 @@ public sealed class G4WaveReplayBackend : IWaveWorkbenchBackend, IWaveArchiveSou
     }
 
     public bool CanCaptureLive => _live is not null;
+    public WaveArchiveReport ReadArchiveReport(int maxRows, string? filter = null)
+    {
+        if (_recorded is null)
+            throw new WaveCaptureException("RECORDED_CAN_FEED_NOT_WIRED", "The shared archive reader is not connected.");
+        return _recorded.ReadArchiveReport(maxRows, filter);
+    }
+
+    public byte[] ReadVerifiedOriginalArchive()
+    {
+        if (_recorded is null)
+            throw new WaveCaptureException("RECORDED_CAN_FEED_NOT_WIRED", "The shared archive reader is not connected.");
+        return _recorded.ReadVerifiedOriginalArchive();
+    }
+
     public bool HasRecordedArchive => _recorded?.HasArchive == true;
     public void OpenArchiveFile(string path)
     {

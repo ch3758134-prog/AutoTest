@@ -71,6 +71,30 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    /// <summary>Station outputs: one command, exact operator consent, current USB connection only.</summary>
+    public void AuthorizeOneStationCommand(byte command, byte value, string phrase)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect before authorizing a physical output.");
+            _fence.AuthorizeSingleStationCommand(command, value, phrase, _epoch);
+        }
+    }
+    public void RevokeStationCommand() => _fence.RevokeStationCommand();
+
+    /// <summary>KeySim full-mask or explicit release, never arbitrary CAN Tx.</summary>
+    public void AuthorizeOneKeyFrame(ReadOnlySpan<byte> exact15Bytes, string phrase)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect before authorizing a physical key frame.");
+            _fence.AuthorizeSingleKeyFrame(exact15Bytes, phrase, _epoch);
+        }
+    }
+    public void RevokeKeyFrame() => _fence.RevokeKeyFrame();
+
     public ValueTask OpenAsync(CancellationToken ct)
         => new(Task.Run(() => OpenCore(ct), ct));
 

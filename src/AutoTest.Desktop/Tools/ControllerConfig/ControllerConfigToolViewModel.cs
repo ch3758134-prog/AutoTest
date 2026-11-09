@@ -4,6 +4,10 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using AutoTest.Projects.ControllerConfig;
+using AutoTest.Projects.Resources;
+using AutoTest.Projects.Project;
+using AutoTest.Core;
+using System.Windows;
 
 namespace AutoTest.Desktop.Tools.ControllerConfig;
 
@@ -25,12 +29,31 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
     private ControllerState? _selectedState;
     private string _status = "尚未打开配置 / Unknown";
     private string _lastError = "";
+    private R0ProjectAssetWorkspace? _boundWorkspace;
+    private AssetId _boundAssetId;
+    private int _boundRevision;
+    private string _boundSha = "";
+    private string _traceFilter = "";
+    private readonly R0ProjectDiagnosticJournal _journal = new();
 
     public ObservableCollection<ControllerDefinition> Controllers { get; } = [];
     public ObservableCollection<ControllerState> States { get; } = [];
     public ObservableCollection<VoltageWindow> VoltageWindows { get; } = [];
     public ObservableCollection<VoltageMeasurement> Measurements { get; } = [];
     public string FilePath { get; set; } = "";
+    public string ProjectFilePath { get; set; } = "";
+    public string BoundAssetId { get; set; } = "";
+    public string TraceFilePath { get; set; } = "";
+    public bool IncludeRawTraceHex { get; set; } = true;
+    public string TraceFilter { get => _traceFilter; set { _traceFilter = value ?? ""; Changed(); Changed(nameof(VisibleTraceEvents)); } }
+    public ObservableCollection<R0ProjectDiagnosticEvent> TraceEvents { get; } = [];
+    public IEnumerable<R0ProjectDiagnosticEvent> VisibleTraceEvents => TraceEvents.Where(e =>
+        string.IsNullOrWhiteSpace(TraceFilter) ||
+        (e.Stage + " " + e.ErrorCode + " " + e.Detail + " " + e.Actual).Contains(TraceFilter, StringComparison.OrdinalIgnoreCase));
+    public string TraceQuality => $"Trace {TraceEvents.Count} / Dropped {_journal.DroppedCount} / SOFTWARE_ONLY";
+    public string ProjectBindingSummary => _boundWorkspace is null ? "工程未绑定 / Revision UNKNOWN" :
+        $"Project {_boundWorkspace.Definition.Id.Value:D} / Asset {_boundAssetId.Value:D} / R{_boundRevision} / SHA256 {_boundSha} / SOFTWARE_ONLY";
+
     public string EcuName { get; set; } = "";
     public string BoardModel { get; set; } = "";
     public string HardwareProfileId { get; set; } = "";
@@ -63,6 +86,8 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
         set { _selectedState = value; Changed(); LoadState(); }
     }
 
+    public ICommand BindProjectCommand { get; }
+    public ICommand ExportTraceCommand { get; }
     public ICommand CreateCommand { get; }
     public ICommand OpenCommand { get; }
     public ICommand SaveCommand { get; }
@@ -79,6 +104,8 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
 
     public ControllerConfigToolViewModel()
     {
+        BindProjectCommand = new ToolCommand(() => _ = BindProjectSafeAsync());
+        ExportTraceCommand = new ToolCommand(() => _ = ExportTraceSafeAsync());
         CreateCommand = new ToolCommand(() => Guard(Create));
         OpenCommand = new ToolCommand(() => _ = OpenGuardedAsync());
         SaveCommand = new ToolCommand(() => _ = SaveGuardedAsync());
@@ -92,6 +119,69 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
         SetWindowCommand = new ToolCommand(() => Guard(SetVoltageWindow));
         RecordVoltageCommand = new ToolCommand(() => Guard(RecordVoltage));
         UndoCommand = new ToolCommand(() => Guard(() => { Session.Undo(); Refresh(); }));
+    }
+
+    private void Log(string stage, string outcome, string errorCode = "",
+        string expected = "", string actual = "", string detail = "")
+    {
+        var item = _journal.Record("PROJECT/CONTROLLER", stage, outcome, errorCode,
+            project: ProjectFilePath, assetId: _boundWorkspace is null ? "" : _boundAssetId.Value.ToString("D"),
+            revision: _boundRevision, sha256: _boundSha, expected: expected, actual: actual, detail: detail);
+        TraceEvents.Add(item);
+        if (TraceEvents.Count > 4096) TraceEvents.RemoveAt(0);
+        Changed(nameof(VisibleTraceEvents)); Changed(nameof(TraceQuality));
+    }
+
+    private async Task BindProjectSafeAsync()
+    {
+        try
+        {
+            Error = "";
+            var workspace = await R0ProjectAssetWorkspace.OpenAsync(ProjectFilePath);
+            if (!AssetId.TryParse(BoundAssetId, out var id))
+                throw new ProjectDataException("ASSET_ID", "请输入工程资源清单中的 Controller/Profile AssetId。");
+            var check = workspace.Find(id);
+            if (!(check.Asset.Kind.Equals("Controller", StringComparison.OrdinalIgnoreCase) ||
+                  check.Asset.Kind.Equals("Profile", StringComparison.OrdinalIgnoreCase)) || !check.IsValid)
+                throw new ProjectDataException("ASSET_STALE", "Controller/Profile 资源类型或哈希不匹配。");
+            var loaded = await ControllerRepository.OpenAsync(check.FullPath);
+            if (!string.Equals(loaded.Receipt.Sha256, check.Asset.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("ASSET_STALE", "Controller 源码文件与工程哈希不匹配。");
+            _boundWorkspace = workspace; _boundAssetId = id;
+            _boundRevision = check.Asset.Revision; _boundSha = check.Asset.Sha256;
+            _session = new ControllerEditSession(loaded.Profile);
+            _lastSha = loaded.Receipt.Sha256;
+            FilePath = check.FullPath; EcuName = loaded.Profile.EcuName;
+            BoardModel = loaded.Profile.HardwareModel;
+            HardwareProfileId = loaded.Profile.HardwareProfileId.ToString("D");
+            Changed(nameof(FilePath)); Changed(nameof(EcuName)); Changed(nameof(BoardModel));
+            Changed(nameof(HardwareProfileId)); Changed(nameof(ProjectBindingSummary));
+            Refresh();
+            Status = "已绑定工程控制器配置（只有配置事实，不代表硬件输出）";
+            Log("BIND", "ACCEPTED", expected: check.Asset.Sha256, actual: loaded.Receipt.Sha256);
+        }
+        catch (Exception e)
+        {
+            Error = e is ProjectDataException p ? $"{p.Code}: {p.Message}" : e.Message;
+            Status = "Controller 绑定失败";
+            Log("BIND", "REJECTED", e is ProjectDataException x ? x.Code : e.GetType().Name, detail: e.Message);
+        }
+    }
+
+    private async Task ExportTraceSafeAsync()
+    {
+        try
+        {
+            Error = "";
+            await _journal.ExportJsonLinesAsync(TraceFilePath, true, IncludeRawTraceHex);
+            Status = "Controller 诊断已导出到本地 JSONL";
+        }
+        catch (Exception e)
+        {
+            Error = e is ProjectDataException p ? $"{p.Code}: {p.Message}" : e.Message;
+            Status = "Trace 导出失败";
+            Log("TRACE_EXPORT", "REJECTED", e is ProjectDataException x ? x.Code : e.GetType().Name, detail: e.Message);
+        }
     }
 
     private ControllerEditSession Session => _session ?? throw new InvalidOperationException("请先创建或打开 ECU 配置。");
@@ -112,6 +202,8 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
         var profile = EcuControlProfile.Create(EcuName, BoardModel, Guid.Parse(HardwareProfileId));
         _session = new ControllerEditSession(profile);
         _lastSha = null;
+        _boundWorkspace = null; _boundRevision = 0; _boundSha = ""; _boundAssetId = default;
+        Changed(nameof(ProjectBindingSummary));
         Refresh();
     }
     private async Task OpenGuardedAsync()
@@ -121,6 +213,8 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
             Error = "";
             var loaded = await ControllerRepository.OpenAsync(FilePath);
             _session = new ControllerEditSession(loaded.Profile);
+            _boundWorkspace = null; _boundRevision = 0; _boundSha = ""; _boundAssetId = default;
+            Changed(nameof(ProjectBindingSummary));
             _lastSha = loaded.Receipt.Sha256;
             EcuName = loaded.Profile.EcuName;
             BoardModel = loaded.Profile.HardwareModel;
@@ -135,8 +229,30 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
         try
         {
             Error = "";
-            var receipt = await ControllerRepository.SaveAsync(Session.Current, FilePath, _lastSha);
+            ControllerFileReceipt receipt;
+            if (_boundWorkspace is null)
+            {
+                receipt = await ControllerRepository.SaveAsync(Session.Current, FilePath, _lastSha);
+            }
+            else
+            {
+                await _boundWorkspace.VerifyPinnedAssetAsync(_boundAssetId, _boundRevision, _boundSha);
+                var temp = Path.Combine(Path.GetTempPath(), "R0_CTRL_" + Guid.NewGuid().ToString("N") + ".json");
+                try
+                {
+                    await ControllerRepository.SaveAsync(Session.Current, temp);
+                    var published = await _boundWorkspace.PublishRevisionAsync(_boundAssetId,
+                        await File.ReadAllBytesAsync(temp));
+                    FilePath = published.FullPath;
+                    _boundRevision = published.Asset.Revision;
+                    _boundSha = published.Asset.Sha256;
+                    receipt = new ControllerFileReceipt(FilePath, _boundSha, _boundRevision);
+                    Changed(nameof(FilePath)); Changed(nameof(ProjectBindingSummary));
+                }
+                finally { if (File.Exists(temp)) File.Delete(temp); }
+            }
             _lastSha = receipt.Sha256;
+            Log("SAVE", "ACCEPTED", expected: "Validated controller revision", actual: receipt.Sha256);
             Status = $"已保存 Revision {receipt.Revision} / SHA256 {receipt.Sha256[..12]}…";
         }
         catch (Exception e) { Error = e.Message; Status = "保存失败（当前编辑未丢失）"; }
@@ -163,11 +279,13 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
             double.Parse(MeasuredVolts, CultureInfo.InvariantCulture), OperatorId, EvidenceRef, DateTimeOffset.UtcNow);
         Refresh();
         Status = $"人工录入 {fact.ValueVolts} V：{fact.Status}（不是硬件自动读数）";
+        Log("MANUAL_MEASUREMENT", "RECORDED", expected: "manual origin", actual: $"{fact.ValueVolts} V / {fact.Status}",
+            detail: "Measurement is a manually entered value; no physical sampling occurred.");
     }
     private void Guard(Action action)
     {
-        try { Error = ""; action(); }
-        catch (Exception e) { Error = e.Message; Status = "配置校验失败"; }
+        try { Error = ""; action(); Log("EDIT", "ACCEPTED", actual: $"Revision {CurrentRevision}"); }
+        catch (Exception e) { Error = e is ProjectDataException p ? $"{p.Code}: {p.Message}" : e.Message; Status = "配置校验失败"; Log("EDIT", "REJECTED", e is ProjectDataException x ? x.Code : e.GetType().Name, detail: e.Message); }
     }
     private void Refresh()
     {
