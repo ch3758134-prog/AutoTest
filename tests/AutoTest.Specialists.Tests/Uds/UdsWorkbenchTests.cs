@@ -203,4 +203,38 @@ public sealed class UdsWorkbenchTests
         Assert.Equal("Accepted",result.Outcome);
         Assert.Equal(1,workspace.CapturedExchanges);
     }
+
+    [Theory]
+    [InlineData("7F 22 31", "62 F1 90 41")]
+    [InlineData("62 F1 90 41", "7F 22 78")]
+    public void ReplayRejectsResponsesAfterTerminalUdsReply(string first, string second)
+    {
+        var replay = new UdsReplayWorkspace();
+        var doc = new UdsReplayDocument(1,[
+            new UdsReplayRecord("22 F1 90",[first,second],[])]);
+        Assert.Throws<InvalidDataException>(() => replay.Load(doc));
+        Assert.Equal(0,replay.Count);
+    }
+
+    [Fact]
+    public void ReplayRejectsMorePendingRepliesThanMockClientCanConsume()
+    {
+        var replay = new UdsReplayWorkspace();
+        var doc=new UdsReplayDocument(1,[
+            new UdsReplayRecord("22 F1 90",
+                Enumerable.Repeat("7F 22 78",9).Append("62 F1 90 41").ToList(),[])]);
+        var error=Assert.Throws<InvalidDataException>(()=>replay.Load(doc));
+        Assert.Contains("pending limit",error.Message);
+    }
+
+    [Fact]
+    public void ReplayStillAllowsNoReplyAsUncertain()
+    {
+        var replay = new UdsReplayWorkspace();
+        replay.Load(new UdsReplayDocument(1,[
+            new UdsReplayRecord("22 F1 90",[],[])]));
+        var exchange=replay.Consume("22 F1 90");
+        Assert.Equal("Uncertain",exchange.Outcome);
+        Assert.Equal("REPLAY_NO_FINAL_RESPONSE",exchange.FailureLayer);
+    }
 }
