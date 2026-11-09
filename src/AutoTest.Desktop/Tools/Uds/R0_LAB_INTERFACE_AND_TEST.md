@@ -36,3 +36,9 @@ dotnet test tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj -
 - Mock 单次异常根据 UdsTrace 分类：ISO-TP timeout、UDS NRC、Replay 输入不匹配及工作台错误；证据不充分时标为未隔离层级。
 - Mock 历史容量限制为 512 次交换（可配置），达到上限明确拒绝后续操作，须显式重置；不会覆盖已导出的原始记录。
 - 该轮增量已写入同一 Draft PR #5；Windows Build/Test 不因静态核查自动标为 PASS。
+
+## 本轮补充：Mock 通道污染防护
+- 一次 Mock UDS 请求因传输超时、取消或 ISO-TP/IO 错误而处于不确定状态后，Mock 通道进入 `RequiresReset`；后续 Mock 请求在入队前拒绝，记录 `MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED`，不产生虚假的 Tx。
+- 用户须明确选择“重置 Mock ECU / 会话”后才能继续诊断。Replay 与该 Mock 通道隔离，不受其传输重置门禁影响。
+- UI 提供 MockChannelStatus 与 MockResetRequired；新增回归：超时后拒绝、取消后拒绝、重置后恢复、错误分类和关联 ID。
+- 注意：此机制属于 Mock 工作区自有安全处理，没有变更共享 `UdsClient` 或 `IsoTpConversation`；真实物理重新同步/重连仍需 DEVICE+主对话设计。
