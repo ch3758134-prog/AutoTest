@@ -118,4 +118,50 @@ public sealed class FlashWorkbenchTests
         }
         finally { if(File.Exists(path)) File.Delete(path); }
     }
+
+    [Fact]
+    public async Task MockAuditExposesLastAckAndVerificationOnlyWhenAllSegmentsVerified()
+    {
+        var workspace=new FlashDryRunWorkspace();
+        workspace.LoadImage("mock.bin",Enumerable.Range(0,130).Select(i=>(byte)i).ToArray(),0x1000);
+        var id=await workspace.StartDryRunAsync(Config());
+        var result=await workspace.WaitAsync(id);
+        Assert.Equal(ProgrammingJobState.Completed,result.State);
+        string file=Path.Combine(Path.GetTempPath(),"r0_mock_audit_"+Guid.NewGuid().ToString("N")+".json");
+        try
+        {
+            await workspace.ExportMockAuditAsync(file);
+            using var doc=System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(file));
+            var root=doc.RootElement;
+            Assert.Equal(2,root.GetProperty("Schema").GetInt32());
+            Assert.Equal(130,root.GetProperty("AcknowledgedTransferBytes").GetInt64());
+            Assert.True(root.GetProperty("MockHashVerified").GetBoolean());
+            Assert.True(root.GetProperty("FullBackendFactsIncluded").GetBoolean());
+            Assert.False(root.GetProperty("PhysicalProgrammingVerified").GetBoolean());
+            Assert.Equal("Completed",root.GetProperty("State").GetString());
+        }
+        finally { if(File.Exists(file)) File.Delete(file); }
+    }
+
+    [Fact]
+    public async Task DisconnectedMockAuditNeverClaimsVerifiedProgramming()
+    {
+        var workspace=new FlashDryRunWorkspace();
+        workspace.LoadImage("mock.bin",Enumerable.Range(0,130).Select(i=>(byte)i).ToArray(),0x1000);
+        var id=await workspace.StartDryRunAsync(Config(),dropBeforeBlock:2);
+        var snapshot=await workspace.WaitAsync(id);
+        Assert.Equal(ProgrammingJobState.Uncertain,snapshot.State);
+        string file=Path.Combine(Path.GetTempPath(),"r0_mock_uncertain_"+Guid.NewGuid().ToString("N")+".json");
+        try
+        {
+            await workspace.ExportMockAuditAsync(file);
+            using var doc=System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(file));
+            var root=doc.RootElement;
+            Assert.Equal("Uncertain",root.GetProperty("State").GetString());
+            Assert.Equal(64,root.GetProperty("AcknowledgedTransferBytes").GetInt64());
+            Assert.False(root.GetProperty("MockHashVerified").GetBoolean());
+            Assert.False(root.GetProperty("PhysicalTransportUsed").GetBoolean());
+        }
+        finally { if(File.Exists(file)) File.Delete(file); }
+    }
 }
