@@ -35,6 +35,21 @@ public partial class R1WorkspaceView : UserControl
             ApplyVisualSettings();
     }
 
+    private void OnCopyDiagnostic(object sender, RoutedEventArgs e)
+    {
+        var text = _viewModel.Diagnostics.CopySelected();
+        if (string.IsNullOrEmpty(text)) return;
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"复制诊断事件失败：{ex.Message}", "AutoTest R1",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void ApplyVisualSettings()
     {
         var palette = _viewModel.Theme == R1Theme.Light ? "Light" : "Dark";
