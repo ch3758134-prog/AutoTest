@@ -13,12 +13,18 @@ public sealed class G4IntegrationHost : IDisposable
     public HubDbcWaveReplay Wave { get; }
     public MockHubDiagnosticWorkbench Diagnostics { get; }
     public MockFlashWorkbench Flash { get; }
+    public R0LabAuditRuntime OperationAudit { get; }
 
     public G4IntegrationHost(V1Workspace workspace) : this(workspace,
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AutoTest", "G4-MockOnly")) { }
+            "AutoTest", "G4-MockOnly"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AutoTest", "Operations")) { }
 
     public G4IntegrationHost(V1Workspace workspace, string storageRoot)
+        : this(workspace, storageRoot, Path.Combine(storageRoot, "operations")) { }
+
+    private G4IntegrationHost(V1Workspace workspace, string storageRoot, string operationsRoot)
     {
         Workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
         ArgumentException.ThrowIfNullOrWhiteSpace(storageRoot);
@@ -29,6 +35,7 @@ public sealed class G4IntegrationHost : IDisposable
         Wave = new HubDbcWaveReplay(workspace, _bus.Hub, Path.Combine(storageRoot, "wave"));
         Diagnostics = new MockHubDiagnosticWorkbench(_bus);
         Flash = new MockFlashWorkbench();
+        OperationAudit = new R0LabAuditRuntime(operationsRoot);
     }
     public void Dispose() => _bus.Dispose();
 }

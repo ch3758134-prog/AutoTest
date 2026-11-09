@@ -6,19 +6,28 @@
         Background="#142131" Foreground="#E6EFFB" FontFamily="Segoe UI" FontSize="13">
     <DockPanel Margin="12">
         <Border DockPanel.Dock="Top" Background="#513B19" Padding="10" Margin="0,0,0,8">
-            <TextBlock FontWeight="Bold" Text="软件 Mock / Replay 工作台 · 真实 B0/B1/B2 只读连接需从主窗口 DEVICE 菜单手动打开；本窗口不发送物理输出。"/>
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right" Content="查看审计 / 导出" Click="OpenAudit_Click"
+                        Padding="12,4" Margin="12,0,0,0"/>
+                <StackPanel>
+                    <TextBlock FontWeight="Bold" Text="R0-LAB 专项工作台 · Mock/Replay 与 Physical 分离 · 本窗口不发送物理输出"/>
+                    <TextBlock x:Name="AuditStatus" FontSize="11" TextTrimming="CharacterEllipsis"
+                               ToolTip="页面打开记录只表示 UI 导航，不能证明 USB/CAN/UDS 或真实输出。"
+                               Text="审计待命 · 当前仅记录 UI 导航，不代表通信成功"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
-        <TabControl Background="#1B2A40" Foreground="#EAF3FF">
-            <TabItem Header="控制器配置"><ContentControl x:Name="ControllerConfigHost"/></TabItem>
-            <TabItem Header="DBC 编辑 / Replay"><ContentControl x:Name="DbcHost"/></TabItem>
-            <TabItem Header="TEST 编辑 / Mock"><ContentControl x:Name="TestHost"/></TabItem>
-            <TabItem Header="SCAN / Production Mock"><ContentControl x:Name="ProductionHost"/></TabItem>
-            <TabItem Header="运行历史 / Records"><ContentControl x:Name="RecordsHost"/></TabItem>
-            <TabItem Header="操作审计 / Trace"><ContentControl x:Name="OperationsHost"/></TabItem>
-            <TabItem Header="UDS / ISO-TP Mock"><ContentControl x:Name="UdsHost"/></TabItem>
-            <TabItem Header="Flash / Dry-run"><ContentControl x:Name="FlashHost"/></TabItem>
-            <TabItem Header="Wave / CAN Hub Replay"><ContentControl x:Name="WaveHost"/></TabItem>
-            <TabItem Header="U-BENCH 状态控制">
+        <TabControl x:Name="SpecialistTabs" Background="#1B2A40" Foreground="#EAF3FF">
+            <TabItem Header="控制器配置" Tag="controller-config"><ContentControl x:Name="ControllerConfigHost"/></TabItem>
+            <TabItem Header="DBC 编辑 / Replay" Tag="dbc"><ContentControl x:Name="DbcHost"/></TabItem>
+            <TabItem Header="TEST 编辑 / Mock" Tag="test"><ContentControl x:Name="TestHost"/></TabItem>
+            <TabItem Header="SCAN / Production Mock" Tag="production"><ContentControl x:Name="ProductionHost"/></TabItem>
+            <TabItem Header="运行历史 / Records" Tag="records"><ContentControl x:Name="RecordsHost"/></TabItem>
+            <TabItem Header="操作审计 / Trace" Tag="operations" x:Name="OperationsTab"><ContentControl x:Name="OperationsHost"/></TabItem>
+            <TabItem Header="UDS / ISO-TP Mock" Tag="uds"><ContentControl x:Name="UdsHost"/></TabItem>
+            <TabItem Header="Flash / Dry-run" Tag="flash"><ContentControl x:Name="FlashHost"/></TabItem>
+            <TabItem Header="Wave / CAN Hub Replay" Tag="wave"><ContentControl x:Name="WaveHost"/></TabItem>
+            <TabItem Header="U-BENCH 状态控制" Tag="bench">
                 <Grid Margin="28">
                     <StackPanel VerticalAlignment="Top" MaxWidth="920">
                         <TextBlock Text="U-BENCH 控制适配器尚未接入" FontSize="22" FontWeight="Bold" Margin="0,0,0,14"/>
