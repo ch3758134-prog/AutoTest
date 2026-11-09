@@ -18,12 +18,16 @@
 - 不重新搭建多份长期工程、整合 ZIP 或在本地合并九个专业候选；
 - 不执行旧规程里的「只读本地盘点报告」；对用户已经决定移除的旧目录不主动操作，也**不自动删除任何现存文件**。
 
+## Git 传输规则（2026-11-09 用户指定）
+
+**本地 Codex 的 GitHub Clone/Fetch/Pull 全部使用 SSH：`git@github.com:ch3758134-prog/AutoTest.git`。** 先前 HTTPS 的 `Recv failure: Connection was reset` 已影响实测，而本次 SSH clone 有成功的原始日志。已 clone 的本地运行目录只需一次 `git remote set-url origin git@github.com:ch3758134-prog/AutoTest.git`，后续只执行 `git fetch origin`，**不重复 clone 或修改源码**。SSH 当前成功不保证未来所有网络请求永不失败，但不再主动回退 HTTPS。
+
 ## 3. 首次在本地准备（主对话给出具体版本后）
 
 推荐单一运行目录：`D:\01_Projects\AutoTest`。如果此路径目前不存在，可以一次性：
 
 ```powershell
-git clone https://github.com/ch3758134-prog/AutoTest.git D:\01_Projects\AutoTest
+git clone git@github.com:ch3758134-prog/AutoTest.git D:\01_Projects\AutoTest
 ```
 
 如果路径已经存在，**直接用现有 Git 工作目录**；若它不是该仓库或无法安全切换，简单回报 `DIRECTORY_BLOCKED` 请主对话指定新运行位置，不调查或覆盖旧目录。一次性运行目录由主对话/用户决定，Codex 不自行批量创建。
