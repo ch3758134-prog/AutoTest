@@ -55,4 +55,17 @@ public sealed class FlashToolViewModelTests
         Assert.Contains(vm.DiagnosticTrace,x=>x.Contains("NRC=72"));
         Assert.NotEqual("MOCK_COMPLETED",vm.Status);
     }
+
+    [Fact]
+    public async Task FailureAtSecondBlockRetainsFirstAckAndNeverClaimsFullProgress()
+    {
+        var vm=new FlashToolViewModel { DropBlock="2" };
+        vm.LoadBytes("test.bin",Enumerable.Range(0,180).Select(i=>(byte)i).ToArray(),0x1000);
+        await vm.RunDryAsync();
+        Assert.NotEqual("MOCK_COMPLETED",vm.Status);
+        Assert.Equal("1",vm.LastAcknowledgedBlock);
+        Assert.Equal("64",vm.ConfirmedBytes);
+        Assert.Contains(vm.DiagnosticTrace,x=>x.Contains("Block=2"));
+        Assert.Contains(vm.RecoveryAdvice,"不完整");
+    }
 }
