@@ -38,10 +38,10 @@
                     <TextBlock Text="{Binding ResourceRevision}" Margin="0,0,12,0"/>
                     <TextBlock Text="来源：" Foreground="{DynamicResource R1Muted}"/>
                     <TextBlock Text="{Binding Origin}"/>
-                    <Button Content="{Binding ThemeLabel, StringFormat=主题：{0}}"
+                    <Button Content="{Binding ThemeLabel, StringFormat='主题：{0}'}"
                             Command="{Binding ToggleThemeCommand}" Margin="12,0,5,0"
                             ToolTip="切换浅色/深色主题，不修改业务状态"/>
-                    <Button Content="{Binding DensityLabel, StringFormat=密度：{0}}"
+                    <Button Content="{Binding DensityLabel, StringFormat='密度：{0}'}"
                             Command="{Binding ToggleDensityCommand}"
                             ToolTip="切换紧凑/舒适显示密度"/>
 
