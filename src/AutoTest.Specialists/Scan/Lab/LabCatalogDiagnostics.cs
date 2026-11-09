@@ -12,7 +12,10 @@ namespace AutoTest.Specialists.Scan.Lab;
 public sealed record LabSampleReplayRow(
     int RowNumber, string RawBarcode, string ExpectedRuleId, string ActualRuleId,
     string ExpectedRecipeId, string ActualRecipeId, string Code, bool Passed,
-    IReadOnlyList<string> CandidateIds);
+    IReadOnlyList<string> CandidateIds)
+{
+    public string CandidateSummary => string.Join(", ", CandidateIds);
+}
 
 public sealed record LabSampleReplayReport(
     string CatalogRevision, DateTimeOffset DefaultObservedAtUtc,
