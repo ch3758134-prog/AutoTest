@@ -25,6 +25,9 @@ public sealed class ProgrammingStageHandlers(UdsClient uds,UdsEndpointProfile en
             $"CorrelationId={correlation:D}; Outcome={result.Outcome}; NRC="+
             (result.NegativeResponseCode?.ToString("X2") ?? "NONE")+
             "; ResponseHex="+responseHex+"; MOCK");
+        if (result.Outcome == Outcome.Uncertain)
+            throw new ProgrammingUncertainException(
+                $"UDS 0x{pdu[0]:X2} has no confirmed final response; Mock write state uncertain.");
         if (result.Outcome != Outcome.Accepted || result.ResponsePdu.IsDefaultOrEmpty
             || result.ResponsePdu[0] != expectedSid)
             throw new ProgrammingRejectedException($"UDS 0x{pdu[0]:X2} failed: "+
