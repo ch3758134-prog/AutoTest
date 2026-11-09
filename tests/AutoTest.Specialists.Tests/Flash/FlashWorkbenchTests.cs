@@ -200,4 +200,82 @@ public sealed class FlashWorkbenchTests
         }
         finally { if(File.Exists(path)) File.Delete(path); }
     }
+    // Two separated Intel HEX address ranges, both with valid checksums.
+    private const string TwoSegmentHex =
+        ":0410000001020304E2\\n:0411000005060708D1\\n:00000001FF\\n";
+
+    [Fact]
+    public async Task TwoSegmentImageProducesTwoIndependentVerifiedSegmentFacts()
+    {
+        var workspace=new FlashDryRunWorkspace();
+        var image=workspace.LoadImage("two.hex",
+            System.Text.Encoding.ASCII.GetBytes(TwoSegmentHex),0);
+        Assert.Equal(2,image.Segments.Count);
+        Assert.Equal(8,image.Bytes);
+        var id=await workspace.StartDryRunAsync(Config());
+        var result=await workspace.WaitAsync(id);
+        Assert.Equal(ProgrammingJobState.Completed,result.State);
+        Assert.Contains(result.Facts,f=>f.Stage=="Segment_0001" && f.Status=="VERIFIED");
+        Assert.Contains(result.Facts,f=>f.Stage=="Segment_0002" && f.Status=="VERIFIED");
+
+        string path=Path.Combine(Path.GetTempPath(),"r0_two_segments_"+
+            Guid.NewGuid().ToString("N")+".json");
+        try
+        {
+            await workspace.ExportMockAuditAsync(path);
+            using var audit=System.Text.Json.JsonDocument.Parse(
+                await File.ReadAllTextAsync(path));
+            var root=audit.RootElement;
+            Assert.Equal(8,root.GetProperty("AcknowledgedTransferBytes").GetInt64());
+            Assert.Equal(2,root.GetProperty("ExpectedSegmentVerifications").GetInt32());
+            Assert.Equal(2,root.GetProperty("ActualSegmentVerifications").GetInt32());
+            Assert.True(root.GetProperty("MockHashVerified").GetBoolean());
+            var segments=root.GetProperty("SegmentEvidence");
+            Assert.Equal(2,segments.GetArrayLength());
+            Assert.Equal("0x00001000",segments[0].GetProperty("Start").GetString());
+            Assert.Equal("0x00001100",segments[1].GetProperty("Start").GetString());
+            Assert.All(segments.EnumerateArray(),seg=>
+            {
+                Assert.True(seg.GetProperty("Started").GetBoolean());
+                Assert.True(seg.GetProperty("TransferAcknowledged").GetBoolean());
+                Assert.True(seg.GetProperty("MockHashVerified").GetBoolean());
+            });
+            Assert.False(root.GetProperty("PhysicalProgrammingVerified").GetBoolean());
+        }
+        finally { if(File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task SecondSegmentDisconnectPreservesFirstSegmentVerificationOnly()
+    {
+        var workspace=new FlashDryRunWorkspace();
+        workspace.LoadImage("two.hex",
+            System.Text.Encoding.ASCII.GetBytes(TwoSegmentHex),0);
+        var job=await workspace.StartDryRunAsync(Config(),dropBeforeBlock:2);
+        var result=await workspace.WaitAsync(job);
+        Assert.Equal(ProgrammingJobState.Uncertain,result.State);
+        Assert.Contains(result.Facts,f=>f.Stage=="Segment_0001" && f.Status=="VERIFIED");
+        Assert.Contains(result.Facts,f=>f.Stage=="Segment_0002" && f.Status=="BEGIN");
+        Assert.DoesNotContain(result.Facts,f=>f.Stage=="Segment_0002" && f.Status=="VERIFIED");
+
+        string path=Path.Combine(Path.GetTempPath(),"r0_partial_segments_"+
+            Guid.NewGuid().ToString("N")+".json");
+        try
+        {
+            await workspace.ExportMockAuditAsync(path);
+            using var audit=System.Text.Json.JsonDocument.Parse(
+                await File.ReadAllTextAsync(path));
+            var root=audit.RootElement;
+            Assert.Equal(4,root.GetProperty("AcknowledgedTransferBytes").GetInt64());
+            Assert.Equal(1,root.GetProperty("ActualSegmentVerifications").GetInt32());
+            Assert.False(root.GetProperty("MockHashVerified").GetBoolean());
+            var segments=root.GetProperty("SegmentEvidence");
+            Assert.True(segments[0].GetProperty("MockHashVerified").GetBoolean());
+            Assert.True(segments[1].GetProperty("Started").GetBoolean());
+            Assert.False(segments[1].GetProperty("TransferAcknowledged").GetBoolean());
+            Assert.False(segments[1].GetProperty("MockHashVerified").GetBoolean());
+        }
+        finally { if(File.Exists(path)) File.Delete(path); }
+    }
+
 }
