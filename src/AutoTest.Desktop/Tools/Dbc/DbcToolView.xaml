@@ -4,7 +4,8 @@
   <Grid Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
       <TextBlock Text="DBC 专业编辑 · P-DBC" FontSize="18" FontWeight="Bold" Margin="0,0,16,0"/>
-      <TextBox Width="470" Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}" ToolTip="DBC 绝对文件路径（UTF-8）"/>
+      <TextBox x:Name="DbcFilePathBox" Width="395" Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}" ToolTip="DBC 绝对文件路径（UTF-8）"/>
+      <Button Content="选择 DBC…" Click="BrowseDbc_Click" Margin="5,0,0,0" Padding="8,4"/>
       <Button Content="打开" Command="{Binding OpenCommand}" Margin="8,0,0,0" Padding="12,4"/>
       <Button Content="保存" Command="{Binding SaveCommand}" Margin="6,0,0,0" Padding="12,4"/>
       <Button Content="重置" Command="{Binding ResetCommand}" Margin="6,0,0,0" Padding="12,4"/>
@@ -13,7 +14,8 @@
     <StackPanel Grid.Row="1" Margin="0,0,0,9">
       <WrapPanel>
         <TextBlock Text="工程 manifest" VerticalAlignment="Center"/>
-        <TextBox Width="300" Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,10,0"/>
+        <TextBox x:Name="DbcProjectPathBox" Width="270" Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,4,0"/>
+        <Button Content="选择工程…" Click="BrowseProject_Click" Margin="0,0,8,0" Padding="8,4"/>
         <TextBlock Text="DBC AssetId" VerticalAlignment="Center"/>
         <TextBox Width="260" Text="{Binding BoundAssetId, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,10,0"/>
         <Button Content="绑定工程资源" Command="{Binding BindProjectCommand}" Padding="9,4"/>
