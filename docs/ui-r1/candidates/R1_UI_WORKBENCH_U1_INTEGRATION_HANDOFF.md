@@ -40,3 +40,22 @@ If any error appears, return the full source path, line, code and raw output. Co
 - UI: high-DPI/palette/keyboard access, multi-document visual behavior, actual visual quality and docking design, based on the 13-page prototype.
 - INTEGRATION: shared app Shell ownership, DI, region hosts, tool lifecycle, status/trace and layout persistence.
 - BENCH: remains an **independent** R0 specialist candidate at `r0/ui-bench-obs-01` (PR #2), not blocked by DEVICE physical troubleshooting.
+
+## U1 incremental theme & density candidate (2026-11-09)
+
+Files newly owned only within `src/AutoTest.Desktop/Shell/R1/Themes/`:
+- `Dark.xaml`, `Light.xaml`: same named R1 surface/text/status brushes. They are scoped to the R1 component; neither App.xaml nor old global `Themes/Tokens/*` is edited.
+- `Controls.xaml`: TextBlock/Button/TextBox/ListBox/TabControl visual and focus/error/disabled states. Font/density is view-scoped.
+- `R1WorkspaceView.xaml(.cs)`: view-resident theme/density controls; merged-dictionary palette swap, handler detach on unload.
+- `R1WorkspaceViewModel.cs`: two reversible commands without device/session/resource side effects.
+- `R1WorkspaceViewModelTests.cs`: 2 extra unit cases for isolation and reversal (11 authored test methods total).
+
+### Visual validation that needs Windows / authorized host
+1. Dark and Light legibility: text, selected, disabled, error, warning, focus outline.
+2. Compact/Comfortable density with Chinese long labels, 125%/150%/200% scale and 800px minimum viewport.
+3. Toggle while specialist document is open: tab identity, project Revision, SessionGeneration and operation origin must remain unchanged.
+4. Keyboard Ctrl+Tab / Ctrl+Shift+Tab / Ctrl+F4 must not interfere with professional editor shortcut ownership; INTEGRATION decides final command routing.
+5. WPF XAML compilation and visual loading require Windows Build/authorized R1 host. XML appearance or source commit is not PASS.
+
+### Known issue / approval request
+View currently contains a non-operational central professional-document display placeholder, intentionally labeled unwired. INTEGRATION must replace this with the one actual authorized Region/Document host; do not claim completed docking/multi-document view rendering. Shell and Prism shared file ownership remains with INTEGRATION/main conversation. No third-party Dock dependency introduced.
