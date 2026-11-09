@@ -19,42 +19,39 @@ public sealed class ReadOnlyPhysicalUdsWorkspaceTests
     private static UdsRequest Request(params byte[] pdu) =>
         new(ImmutableArray.CreateRange(pdu),Guid.NewGuid());
 
-    private sealed class ScriptedClient : IUdsClient
+    private sealed class ScriptedChannel : IUdsMessageChannel
     {
         public int Calls;
+        public byte[] LastRequest = [];
         public byte[] Response = [0x62,0xF1,0x90,0x41];
-        public Outcome Outcome = Outcome.Accepted;
         public Action? OnRequest;
-        public ValueTask<UdsExchangeResult> RequestAsync(UdsRequest request,
-            UdsEndpointProfile profile,CancellationToken ct)
+        public ValueTask SendPduAsync(ReadOnlyMemory<byte> request,CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             Calls++;
+            LastRequest=request.ToArray();
+            Response=LastRequest[0]==0x19 ? [0x59,0x02,0xFF] :
+                [0x62,0xF1,0x90,0x41];
             OnRequest?.Invoke();
-            byte? nrc=Response.Length==3 && Response[0]==0x7F ? Response[2] : null;
-            return ValueTask.FromResult(new UdsExchangeResult(
-                Outcome,request.Pdu,Response.ToImmutableArray(),nrc,
-                ImmutableArray<EvidenceRef>.Empty,
-                TimePoint.FromHostArrival(DateTimeOffset.UtcNow,0)));
+            return ValueTask.CompletedTask;
         }
+        public ValueTask<byte[]> ReceivePduAsync(TimeSpan timeout,CancellationToken ct)
+            => ValueTask.FromResult(Response.ToArray());
     }
-
-    private sealed class FakeSession(ReadOnlyPhysicalConnection context,ScriptedClient client,
+    private sealed class FakeSession(ReadOnlyPhysicalConnection context,UdsClient client,
         Func<Guid,IReadOnlyList<PhysicalUdsBusEvent>> frames) : IReadOnlyPhysicalUdsSession
     {
         public ReadOnlyPhysicalConnection Connection { get; } = context;
-        public IUdsClient Client => client;
+        public UdsClient Client { get; } = client;
         public IReadOnlyList<PhysicalUdsBusEvent> SnapshotCan(Guid id) => frames(id);
         public IReadOnlyList<UdsTraceEntry> SnapshotUds(Guid id) =>
-            [new(id,UdsTraceDirection.Response,DateTimeOffset.UtcNow,
-                client.Response.ToArray(),"FAKE_UDS_RESPONSE")];
+            client.Trace.Snapshot().Where(x=>x.CorrelationId==id).ToArray();
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
-
     private sealed class FakeProvider : IReadOnlyPhysicalUdsSessionProvider
     {
         public ReadOnlyPhysicalConnection? Current {get;set;}=Context();
-        public readonly ScriptedClient Client = new();
+        public readonly ScriptedChannel Channel=new();
         public int OpenCount;
         public bool MissingRx;
         public long LostFrames;
@@ -63,25 +60,29 @@ public sealed class ReadOnlyPhysicalUdsWorkspaceTests
             ReadOnlyDiagnosticSessionSpec spec,CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
+            var bound=Current ?? throw new InvalidOperationException("FAKE_STATION_DISCONNECTED");
             OpenCount++;
             Assert.Equal(BusRole.DutCan,spec.Endpoint.Role);
-            Assert.Equal(Current!.SessionGeneration,spec.ExpectedSessionGeneration);
+            Assert.Equal(bound.SessionGeneration,spec.ExpectedSessionGeneration);
             Assert.Equal("FAKE_STATION",spec.StationIdentity);
             Assert.Equal(2,spec.AllowedReadOnlySids.Count);
             Assert.True(spec.AllowedReadOnlySids.Contains(0x19));
             Assert.True(spec.AllowedReadOnlySids.Contains(0x22));
             await Task.Yield();
-            return new FakeSession(Current,Client,_ =>
+            return new FakeSession(bound,new UdsClient(Channel),_ =>
             {
                 var now=DateTimeOffset.UtcNow;
+                var request=IsoTpFrameCodec.EncodeSingle(Channel.LastRequest);
+                var response=IsoTpFrameCodec.EncodeSingle(Channel.Response);
                 var frames=new List<PhysicalUdsBusEvent> {
                     new(now,"TX","CAN",BusRole.DutCan,0x7E0,false,
-                        "03 22 F1 90","FAKE_DEVICE_TX",Current.SessionGeneration,LostFrames,TxAck)
+                        UdsHex.Format(request),"FAKE_DEVICE_TX",
+                        bound.SessionGeneration,LostFrames,TxAck)
                 };
                 if (!MissingRx)
                     frames.Add(new(now,"RX","CAN",BusRole.DutCan,0x7E8,false,
-                        "04 62 F1 90 41","FAKE_DEVICE_RX",
-                        Current.SessionGeneration,LostFrames));
+                        UdsHex.Format(response),"FAKE_DEVICE_RX",
+                        bound.SessionGeneration,LostFrames));
                 return frames;
             });
         }
@@ -105,7 +106,7 @@ public sealed class ReadOnlyPhysicalUdsWorkspaceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
             ()=>workspace.RequestAsync(Request(sid,0x01,0x00),Endpoint()));
         Assert.Equal(0,fake.OpenCount);
-        Assert.Equal(0,fake.Client.Calls);
+        Assert.Equal(0,fake.Channel.Calls);
     }
 
     [Fact]
@@ -120,7 +121,7 @@ public sealed class ReadOnlyPhysicalUdsWorkspaceTests
         Assert.True(result.RawBusEvidenceVerified);
         Assert.Equal("PHYSICAL_CAN_TRACE_BOUND",result.DiagnosticCode);
         Assert.Equal(1,fake.OpenCount);
-        Assert.Equal(1,fake.Client.Calls);
+        Assert.Equal(1,fake.Channel.Calls);
         Assert.Equal(2,result.CanTrace.Count);
     }
 
@@ -152,12 +153,12 @@ public sealed class ReadOnlyPhysicalUdsWorkspaceTests
         fake.Current=Context(authorized:false);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
             ()=>workspace.RequestAsync(Request(0x22,0xF1,0x90),Endpoint()));
-        Assert.Equal(0,fake.Client.Calls);
+        Assert.Equal(0,fake.Channel.Calls);
         fake.Current=Context(authorized:true,generation:9);
-        fake.Client.OnRequest=()=>fake.Current=Context(generation:10);
+        fake.Channel.OnRequest=()=>fake.Current=Context(generation:10);
         await Assert.ThrowsAsync<IOException>(
             ()=>workspace.RequestAsync(Request(0x22,0xF1,0x90),Endpoint()));
-        Assert.Equal(1,fake.Client.Calls);
+        Assert.Equal(1,fake.Channel.Calls);
     }
 
     [Fact]
@@ -170,7 +171,7 @@ public sealed class ReadOnlyPhysicalUdsWorkspaceTests
         Assert.Equal(0,fake.OpenCount);
         var result=await workspace.RequestAsync(Request(0x19,0x02,0xFF),Endpoint());
         Assert.Equal(Outcome.Accepted,result.Result.Outcome);
-        Assert.Equal(1,fake.Client.Calls);
+        Assert.Equal(1,fake.Channel.Calls);
     }
 
     private sealed class PendingChannel : IUdsMessageChannel
