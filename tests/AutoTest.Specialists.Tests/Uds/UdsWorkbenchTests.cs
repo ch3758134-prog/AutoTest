@@ -271,4 +271,25 @@ public sealed class UdsWorkbenchTests
         await workspace.ResetMockAsync("MOCK_ECU_A");
         Assert.False(workspace.RequiresReset);
     }
+    [Fact]
+    public void ReplayDoesNotTrustMutableDocumentAfterItHasBeenValidated()
+    {
+        var originalResponses=new List<string>{"62 F1 90 41"};
+        var originalFrames=new List<UdsCanTraceRow>{
+            new("RX","04 62 F1 90 41") };
+        var document=new UdsReplayDocument(1,[
+            new UdsReplayRecord("22 F1 90",originalResponses,originalFrames)]);
+        var replay=new UdsReplayWorkspace();
+        replay.Load(document);
+        originalResponses[0]="7F 22 31";
+        originalFrames[0]=new UdsCanTraceRow("RX","03 7F 22 31");
+        document.Exchanges[0]=new UdsReplayRecord("22 AA BB",[],[]);
+
+        var exchange=replay.Consume("22 F1 90");
+        Assert.Equal("Accepted",exchange.Outcome);
+        Assert.Equal("62 F1 90 41",exchange.ResponseHex);
+        Assert.Equal("04 62 F1 90 41",Assert.Single(exchange.Frames).Hex);
+        Assert.Equal(1,replay.Position);
+    }
+
 }
