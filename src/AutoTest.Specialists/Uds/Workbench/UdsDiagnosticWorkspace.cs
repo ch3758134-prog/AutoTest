@@ -113,6 +113,8 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
     private bool _disposed;
     private readonly int _maxCapturedExchanges;
     private int _capturedExchanges;
+    private bool _requiresReset;
+    public bool RequiresReset => _requiresReset;
     public string MockIdentity { get; private set; }
     public int CapturedExchanges => _capturedExchanges;
     public int MaxCapturedExchanges => _maxCapturedExchanges;
@@ -137,6 +139,7 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
             _channel = new MockUdsMessageChannel(_ecu);
             _client = new UdsClient(_channel);
             _capturedExchanges = 0;
+            _requiresReset = false;
             MockIdentity = identity;
         }
         finally { _exclusive.Release(); }
@@ -158,6 +161,11 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
         await _exclusive.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            // A timed-out/cancelled exchange may have stale ECU frames in the
+            // receive queue. Only an explicit fresh Mock session may reuse it.
+            if (_requiresReset)
+                throw new InvalidOperationException(
+                    "MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED: reset Mock ECU before next request.");
             if (_capturedExchanges >= _maxCapturedExchanges)
                 throw new InvalidOperationException(
                     "MOCK_CAPTURE_CAPACITY_REACHED: reset Mock ECU to release old frame history.");
@@ -166,8 +174,26 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
             int e = _channel.EcuFrames().Length;
             var id = correlationId ?? Guid.NewGuid();
             if (id == Guid.Empty) throw new ArgumentException("Correlation ID must be nonempty.");
-            var result = await _client.RequestAsync(new UdsRequest(request.ToImmutableArray(), id),
-                endpoint, ct).ConfigureAwait(false);
+            UdsExchangeResult result;
+            try
+            {
+                result = await _client.RequestAsync(
+                    new UdsRequest(request.ToImmutableArray(), id),endpoint,ct)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                _requiresReset = true;
+                throw;
+            }
+            catch (Exception ex) when (ex is IOException or TimeoutException
+                or IsoTpProtocolException)
+            {
+                _requiresReset = true;
+                throw;
+            }
+            if (result.Outcome == AutoTest.Core.Outcome.Uncertain)
+                _requiresReset = true;
             byte[] response = result.ResponsePdu.ToArray();
             var operationTrace = _client.Trace.Snapshot()
                 .Where(x => x.CorrelationId == id).ToArray();
