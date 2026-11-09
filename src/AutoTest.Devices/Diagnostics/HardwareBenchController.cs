@@ -3,9 +3,9 @@ using AutoTest.Devices.Usb;
 
 namespace AutoTest.Devices.Diagnostics;
 
-/// <summary>Concrete read-only hardware debug facade, suitable for independent CLI and WPF UI.
-/// B0/B1/B2 never expose state-changing physical operations.</summary>
-public sealed class HardwareBenchController : IAsyncDisposable
+/// <summary>WinUSB/CAN hardware facade with optional explicitly authorized single-action Station/KeySim control.
+/// Physical operations are never automatically triggered by connect, disconnect or reconnect.</summary>
+public sealed partial class HardwareBenchController : IAsyncDisposable
 {
     private readonly IWinUsbDiscovery _discovery;
     private UsbSessionService? _session;
@@ -123,6 +123,7 @@ public sealed class HardwareBenchController : IAsyncDisposable
     }
     public async Task DisconnectAsync()
     {
+        _keyEvidence.Invalidate("DISCONNECT", Generation);
         var canPublished = CanPublished;
         var canDropped = CanDropped;
         var canMalformed = CanMalformed;

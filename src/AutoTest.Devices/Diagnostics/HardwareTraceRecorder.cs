@@ -38,6 +38,8 @@ public sealed class HardwareTraceRecorder : IAsyncDisposable
     }
     public void Record(UsbTraceRecord evt) => Enqueue(evt);
     public void Record(WinUsbOperationEvent evt) => Enqueue(evt);
+    public void Record(HardwareControlTrace evt) => Enqueue(evt);
+    public void Record(KeySimManualVoltageFact evt) => Enqueue(evt);
     public void Record(HardwareCanTrace evt) => Enqueue(evt);
     public void RecordMessage(string kind, string message) => Enqueue(new { Time = DateTimeOffset.UtcNow, Kind = kind, Message = message });
     private void Enqueue(object item)
