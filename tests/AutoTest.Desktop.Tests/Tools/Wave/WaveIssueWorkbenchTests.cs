@@ -129,7 +129,16 @@ public sealed class WaveIssueWorkbenchTests
             else
             {
                 Assert.DoesNotContain("sensitive decoded value 123", csv);
-                Assert.DoesNotContain("1.23", csv);
+                // Time coordinates may legitimately equal 1.23 seconds. Verify that
+                // the actual measurement/error columns, not timestamps, are redacted.
+                Assert.All(csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1), row =>
+                {
+                    var columns = row.TrimEnd('\r').Split(',');
+                    Assert.Equal(12, columns.Length); // controlled fixture has no embedded commas
+                    Assert.Equal("\"[REDACTED]\"", columns[6]); // MaximumError
+                    Assert.Equal("\"[REDACTED]\"", columns[7]); // AllowedError
+                    Assert.Equal("\"[REDACTED]\"", columns[11]); // Free-form Detail
+                });
                 Assert.Contains("[REDACTED]", csv);
             }
         }
