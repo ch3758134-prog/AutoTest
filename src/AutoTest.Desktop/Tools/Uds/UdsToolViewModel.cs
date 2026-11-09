@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Diagnostics;
 using System.Windows;
 using AutoTest.Specialists.Uds.Workbench;
