@@ -126,11 +126,14 @@ public sealed class ReadOnlyPhysicalUdsWorkspace(IReadOnlyPhysicalUdsSessionProv
                 can.All(x=>x.SessionGeneration==current.SessionGeneration &&
                     x.LostFrames==0 && x.Role==BusRole.DutCan &&
                     x.ExtendedId==(x.CanId>0x7FFu) &&
+                    (x.Direction!="TX" || x.TxAcknowledgedByDevice) &&
                     ((x.Direction=="TX" && x.CanId==endpoint.RequestCanId) ||
                      (x.Direction=="RX" && x.CanId==endpoint.ResponseCanId)) &&
                     !string.IsNullOrWhiteSpace(x.TraceRef) &&
                     IsValidClassicFrame(x.RawHex));
-            if (result.Outcome == Outcome.Accepted && !canVerified)
+            // Neither a positive ECU response nor an NRC is externally
+            // confirmed without lossless physical Tx/Rx evidence.
+            if (result.Outcome != Outcome.Uncertain && !canVerified)
                 result=result with { Outcome=Outcome.Uncertain };
             string code=canVerified ? "PHYSICAL_CAN_TRACE_BOUND" :
                 "PHYSICAL_RAW_CAN_EVIDENCE_INCOMPLETE";
