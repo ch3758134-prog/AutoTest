@@ -29,4 +29,30 @@ public sealed class FlashToolViewModelTests
         Assert.Equal("PREFLIGHT_BLOCKED",vm.Status);
         Assert.Contains("ECU_IDENTITY_MISMATCH",vm.Failure);
     }
+
+    [Fact]
+    public async Task DryRunShowsCorrelatedUdsEventsAndLastConfirmedBlock()
+    {
+        var vm=new FlashToolViewModel();
+        vm.LoadBytes("test.bin",Enumerable.Range(0,180).Select(i=>(byte)i).ToArray(),0x1000);
+        await vm.RunDryAsync();
+        Assert.Equal("MOCK_COMPLETED",vm.Status);
+        Assert.Equal("180",vm.ConfirmedBytes);
+        Assert.NotEqual("NONE",vm.LastAcknowledgedBlock);
+        Assert.Contains(vm.DiagnosticTrace,x=>x.Contains("CorrelationId=") && x.Contains("SID=0x36"));
+        Assert.Contains(vm.DiagnosticTrace,x=>x.Contains("REDACTED_FIRMWARE"));
+        Assert.DoesNotContain(vm.DiagnosticTrace,x=>x.Contains("27 02"));
+    }
+
+    [Fact]
+    public async Task InjectedTransferNrcRetainsFailureAndPartialTrace()
+    {
+        var vm=new FlashToolViewModel { FaultSid="36", FaultNrc="72" };
+        vm.LoadBytes("test.bin",Enumerable.Range(0,180).Select(i=>(byte)i).ToArray(),0x1000);
+        await vm.RunDryAsync();
+        Assert.Equal("MOCK_FAILED",vm.Status);
+        Assert.NotEmpty(vm.DiagnosticTrace);
+        Assert.Contains(vm.DiagnosticTrace,x=>x.Contains("NRC=72"));
+        Assert.NotEqual("MOCK_COMPLETED",vm.Status);
+    }
 }
