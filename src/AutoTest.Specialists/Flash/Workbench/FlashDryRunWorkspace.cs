@@ -33,6 +33,7 @@ public sealed class FlashDryRunWorkspace
     private DateTimeOffset? _jobInputCapturedUtc;
     public FlashImageDetail? Image => _image is null ? null : Describe(_image, _name);
     public ProgrammingJobId? CurrentJob => _jobId;
+    public FlashImageDetail? LastJobImage => _jobImageSnapshot;
 
     public FlashImageDetail LoadImage(string fileName, ReadOnlySpan<byte> content, uint binAddress)
     {
