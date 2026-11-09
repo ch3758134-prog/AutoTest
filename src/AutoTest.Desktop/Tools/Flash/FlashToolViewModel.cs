@@ -22,7 +22,8 @@ public sealed class FlashToolViewModel : BindableBase
         _job="—",_progress="0%";
     private AutoTest.Contracts.ProgrammingJobId? _runningJob;
     private string _lastAcknowledgedBlock="NONE",_confirmedBytes="0",_traceQuality="MOCK_ONLY";
-    private int _renderedFacts, _omittedStageRows, _omittedTraceRows;
+    private int _renderedFacts, _omittedStageRows, _omittedTraceRows, _omittedSegmentRows;
+    private readonly Dictionary<string,int> _segmentRowIndex = new(StringComparer.Ordinal);
     private long _confirmedAckBytes;
     private const int MaxVisibleRows=3000;
     public FlashToolViewModel() : this(new FlashDryRunWorkspace()) { }
@@ -39,6 +40,10 @@ public sealed class FlashToolViewModel : BindableBase
     public ObservableCollection<FlashSegmentDetail> Segments { get; } = new();
     public ObservableCollection<string> Stages { get; } = new();
     public ObservableCollection<string> DiagnosticTrace { get; } = new();
+    public ObservableCollection<string> SegmentStatusRows { get; } = new();
+    public string SegmentDisplayNotice => _omittedSegmentRows==0 ?
+        "各地址段 Mock 传输与校验状态" :
+        $"界面仅显示前 {MaxVisibleRows} 段，另有 {_omittedSegmentRows} 段；完整结果见审计导出。";
     public DelegateCommand LoadCommand { get; }
     public DelegateCommand PreflightCommand { get; }
     public DelegateCommand StartCommand { get; }
@@ -179,10 +184,13 @@ public sealed class FlashToolViewModel : BindableBase
     }
     private void ResetVisibleFacts()
     {
-        Stages.Clear(); DiagnosticTrace.Clear();
-        _renderedFacts=0; _omittedStageRows=0; _omittedTraceRows=0; _confirmedAckBytes=0;
+        Stages.Clear(); DiagnosticTrace.Clear(); SegmentStatusRows.Clear();
+        _segmentRowIndex.Clear();
+        _renderedFacts=0; _omittedStageRows=0; _omittedTraceRows=0;
+        _omittedSegmentRows=0; _confirmedAckBytes=0;
         TraceQuality="MOCK_ONLY";
         RaisePropertyChanged(nameof(VisibleWindowNotice));
+        RaisePropertyChanged(nameof(SegmentDisplayNotice));
         CopyTraceCommand.RaiseCanExecuteChanged();
     }
     private static void AddBounded(ObservableCollection<string> collection, string value, ref int omitted)
@@ -218,6 +226,29 @@ public sealed class FlashToolViewModel : BindableBase
                 $"{fact.ConfirmedBytes,8}B  {fact.Detail}";
             AddBounded(Stages,line,ref _omittedStageRows);
             if (fact.Stage=="UDS") AddBounded(DiagnosticTrace,line,ref _omittedTraceRows);
+            if (fact.Stage.StartsWith("Segment_",StringComparison.Ordinal))
+            {
+                string state=fact.Status switch
+                {
+                    "BEGIN" => "STARTED / UNCONFIRMED",
+                    "TRANSFER_ACKED" => "TRANSFER ACK / HASH NOT YET VERIFIED",
+                    "VERIFIED" => "MOCK HASH VERIFIED",
+                    _ => fact.Status
+                };
+                string display=$"{fact.Stage}  {state}  {fact.Detail}  ACK={fact.ConfirmedBytes}B";
+                if (_segmentRowIndex.TryGetValue(fact.Stage,out int existing))
+                    SegmentStatusRows[existing]=display;
+                else if (SegmentStatusRows.Count < MaxVisibleRows)
+                {
+                    _segmentRowIndex[fact.Stage]=SegmentStatusRows.Count;
+                    SegmentStatusRows.Add(display);
+                }
+                else
+                {
+                    _omittedSegmentRows++;
+                    RaisePropertyChanged(nameof(SegmentDisplayNotice));
+                }
+            }
             if (fact.Stage=="Transfer" && fact.Status=="ACK")
             {
                 _confirmedAckBytes=Math.Max(_confirmedAckBytes,fact.ConfirmedBytes);
