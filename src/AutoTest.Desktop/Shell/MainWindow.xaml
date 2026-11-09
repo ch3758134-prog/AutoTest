@@ -7,16 +7,8 @@
  MinWidth="1030" MinHeight="650" WindowStartupLocation="CenterScreen"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
  FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True">
- <Window.InputBindings>
-  <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
-  <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenProjectCommand}"/>
-  <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewProjectCommand}"/>
-  <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
-  <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}"/>
-  <KeyBinding Key="F5" Command="{Binding RunCommand}"/>
-  <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
-  <KeyBinding Key="F2" Command="{Binding FocusNameCommand}"/>
- </Window.InputBindings>
+ <!-- R1 workspace owns its active-document keyboard routing;
+      hidden legacy TEST bindings must not run while R1 has focus. -->
  <Grid>
   <Grid Visibility="Collapsed">
    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
