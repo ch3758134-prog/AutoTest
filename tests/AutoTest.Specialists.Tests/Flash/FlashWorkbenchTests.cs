@@ -79,4 +79,26 @@ public sealed class FlashWorkbenchTests
         var workspace=new FlashDryRunWorkspace();
         Assert.Throws<FirmwareFormatException>(()=>workspace.LoadImage("mock.exe",new byte[]{1},0x1000));
     }
+
+    [Fact]
+    public async Task MockAuditHasCorrelatedUdsFactsWithoutRawSeedOrFirmwarePayload()
+    {
+        var workspace=new FlashDryRunWorkspace();
+        workspace.LoadImage("mock.bin",Enumerable.Range(0,120).Select(i=>(byte)i).ToArray(),0x1000);
+        var job=await workspace.StartDryRunAsync(Config());
+        var snapshot=await workspace.WaitAsync(job);
+        Assert.Equal(ProgrammingJobState.Completed,snapshot.State);
+        string path=Path.Combine(Path.GetTempPath(),"r0_flash_"+Guid.NewGuid().ToString("N")+".json");
+        try
+        {
+            await workspace.ExportMockAuditAsync(path);
+            var audit=await File.ReadAllTextAsync(path);
+            Assert.Contains("CorrelationId=",audit);
+            Assert.Contains("SID=0x36",audit);
+            Assert.Contains("REDACTED_FIRMWARE",audit);
+            Assert.Contains("PhysicalProgrammingVerified",audit);
+            Assert.Contains("false",audit);
+        }
+        finally { if(File.Exists(path)) File.Delete(path); }
+    }
 }
