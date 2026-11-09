@@ -30,3 +30,9 @@ dotnet test tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj -
 ```
 - Build/Test NOT_RUN；用户实测 USER_LAB_PENDING；既有 145/145 是历史基线，非本次候选测试证据。
 - Codex 仅机械执行并反馈原始输出；共享代码和物理授权不得由本分支修改。
+
+## 2026-11-09 继续研发补充
+- UDS 请求在分块传输或后续阶段无确认最终响应时改为 ProgrammingJobState.Uncertain，错误码 UNCONFIRMED_UDS_RESPONSE；已确认 ACK 保留，但不能假定继续传输或自动重试安全。
+- 明确 NRC 拒绝仍记录 Failed；显式取消仍记录 Cancelled，伴随“Mock 可能部分写入”警告。
+- Mock 审计 JSON Schema=2 新增 AcknowledgedTransferBytes、LastAcknowledgedTransfer、ExpectedSegmentVerifications、ActualSegmentVerifications、MockHashVerified、PhysicalTransportUsed=false；保留全部后台阶段事实。已有消费端需按版本识别，不视为公共合同变化。
+- 同一 Draft PR #5 持续更新，Build/Test 仍待主对话分配 Windows Codex 机械验证。
