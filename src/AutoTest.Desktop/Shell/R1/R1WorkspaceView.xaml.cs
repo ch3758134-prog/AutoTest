@@ -50,6 +50,18 @@ public partial class R1WorkspaceView : UserControl
         }
     }
 
+    /// <summary>Displays the real professional View registered by the one HOST adapter.</summary>
+    public void ShowProfessionalContent(FrameworkElement? content)
+    {
+        ProfessionalDocumentContent.Content = content ?? new TextBlock
+        {
+            Text = "选择左侧专业工具。当前未接线的工作区保持不可用。",
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Foreground = System.Windows.Media.Brushes.Gray
+        };
+    }
+
     private void ApplyVisualSettings()
     {
         var palette = _viewModel.Theme == R1Theme.Light ? "Light" : "Dark";
