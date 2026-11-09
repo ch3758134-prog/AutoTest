@@ -2,10 +2,28 @@ using System.Windows;
 using System.Windows.Controls;
 using AutoTest.Desktop.G4;
 using AutoTest.Desktop.Tools.Wave;
+using AutoTest.Desktop.Shell.R1;
 namespace AutoTest.Desktop.Shell;
 public partial class MainWindow : Window
 {
-    public MainWindow() => InitializeComponent();
+    public MainWindow()
+    {
+        InitializeComponent();
+        var documents = new R1SpecialistDocumentHost();
+        var workspace = new R1WorkspaceViewModel(documents);
+        foreach (var id in documents.AvailableWorkspaceIds)
+            workspace.UpdateAvailability(id, WorkspaceAvailability.Available);
+        var view = new R1WorkspaceView(workspace);
+        R1WorkspaceHost.Content = view;
+        workspace.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(R1WorkspaceViewModel.ActiveTab))
+                view.ShowProfessionalContent(workspace.ActiveTab is { } tab
+                    ? documents.GetDocument(tab.Id) : null);
+        };
+        view.ShowProfessionalContent(null);
+        Closed += (_, _) => documents.Dispose();
+    }
     private G4ToolsWindow? _tools;
     private ModuleToolsWindow? _modules;
     private AutoTest.DeviceLab.DeviceLabWindow? _deviceLab;
