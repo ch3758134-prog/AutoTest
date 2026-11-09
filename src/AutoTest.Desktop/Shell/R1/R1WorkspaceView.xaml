@@ -87,7 +87,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="5"/>
-                    <RowDefinition Height="155"/>
+                    <RowDefinition Height="230" MinHeight="130"/>
                 </Grid.RowDefinitions>
                 <TabControl Grid.Row="0" Height="38" ItemsSource="{Binding OpenTabs}"
                             SelectedItem="{Binding ActiveTab, Mode=TwoWay}"
@@ -117,12 +117,59 @@
                     </StackPanel>
                 </Border>
                 <GridSplitter Grid.Row="2" Background="{DynamicResource R1Line}" HorizontalAlignment="Stretch"/>
-                <Border Grid.Row="3" Background="{DynamicResource R1Panel}" Padding="12">
-                    <StackPanel>
-                        <TextBlock Text="Output / Trace / Problems · 正式日志由 INTEGRATION 接线"
-                                   FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Notice}" Margin="0,9,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
+                <Border Grid.Row="3" Background="{DynamicResource R1Panel}" Padding="8"
+                        BorderBrush="{DynamicResource R1Line}" BorderThickness="0,1,0,0">
+                    <Grid DataContext="{Binding Diagnostics}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="58"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,5">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <TextBox Width="170" ToolTip="按来源、层级、CorrelationId、TraceRef、错误码或文本筛选"
+                                         Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,5,0"/>
+                                <Button Content="复制选中" Click="OnCopyDiagnostic"
+                                        ToolTip="仅复制当前选中事件，不包含其他原始日志"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding DataContext.ShowOutputCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="{Binding OutputCount, StringFormat='Output ({0})'}" Margin="0,0,5,0"/>
+                                <Button Command="{Binding DataContext.ShowTraceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="{Binding TraceCount, StringFormat='Trace ({0})'}" Margin="0,0,5,0"/>
+                                <Button Command="{Binding DataContext.ShowProblemsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="{Binding ProblemCount, StringFormat='Problems ({0})'}"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding VisibleEvents}" SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  GridLinesVisibility="None" HeadersVisibility="Column" RowHeaderWidth="0"
+                                  EnableRowVirtualization="True" EnableColumnVirtualization="True"
+                                  Background="{DynamicResource R1Panel}" Foreground="{DynamicResource R1Text}"
+                                  BorderBrush="{DynamicResource R1Line}" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="时间" Width="105" Binding="{Binding TimestampDisplay}"/>
+                                <DataGridTextColumn Header="级别" Width="70" Binding="{Binding Level}"/>
+                                <DataGridTextColumn Header="来源" Width="90" Binding="{Binding Source}"/>
+                                <DataGridTextColumn Header="层级" Width="95" Binding="{Binding Layer}"/>
+                                <DataGridTextColumn Header="说明" Width="*" Binding="{Binding Summary}"/>
+                                <DataGridTextColumn Header="Correlation" Width="135" Binding="{Binding CorrelationId}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Grid Grid.Row="2" Margin="0,4,0,0">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <TextBlock Text="{Binding IntegrityLabel}" Foreground="{DynamicResource R1Warning}"
+                                       FontSize="11" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Grid.Row="1" Orientation="Horizontal">
+                                <TextBlock Text="TraceRef: " Foreground="{DynamicResource R1Muted}"/>
+                                <TextBlock Text="{Binding SelectedEvent.TraceReference}" Margin="0,0,12,0"/>
+                                <TextBlock Text="Error: " Foreground="{DynamicResource R1Muted}"/>
+                                <TextBlock Text="{Binding SelectedEvent.ErrorCode}" Margin="0,0,12,0"/>
+                                <TextBlock Text="Raw: " Foreground="{DynamicResource R1Muted}"/>
+                                <TextBlock Text="{Binding SelectedEvent.RawText}" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
                 </Border>
             </Grid>
             <GridSplitter Grid.Column="3" Background="{DynamicResource R1Line}" HorizontalAlignment="Stretch"/>
