@@ -118,7 +118,8 @@ public sealed class UdsToolViewModel : BindableBase
     {
         var item = new UdsDiagnosticEvent(DateTimeOffset.UtcNow, source, layer, direction,
             correlation == Guid.Empty ? "" : correlation.ToString("D"),
-            UdsWorkbenchEvidence.SafeHex(_lastRequestSensitive,rawHex), detail,error);
+            UdsWorkbenchEvidence.SafeHex(_lastRequestSensitive,rawHex), detail,error,
+            _lastRequestSensitive);
         DiagnosticEvents.Add(item);
         if (MatchesFilter(item)) VisibleEvents.Add(item);
         ExportDiagnosticCommand.RaiseCanExecuteChanged();
