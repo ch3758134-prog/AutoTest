@@ -1,15 +1,10 @@
 using System;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using AutoTest.Desktop.Tools.ControllerConfig;
 using AutoTest.Desktop.Tools.Dbc;
-using AutoTest.Desktop.Tools.Flash;
-using AutoTest.Desktop.Tools.Production;
 using AutoTest.Desktop.Tools.ProjectResource;
-using AutoTest.Desktop.Tools.Testing;
-using AutoTest.Desktop.Tools.Uds;
 using AutoTest.Desktop.Tools.Wave;
 
 namespace AutoTest.Desktop.Shell;
@@ -36,18 +31,16 @@ public static class SpecialistLabLauncher
     {
         if (name == "wave") return new WaveOfflineLabWindow();
         if (name == "device") return new AutoTest.DeviceLab.DeviceLabWindow();
+        if (name == "flash") return new RealFirmwareImageLabWindow();
+        if (name == "scan") return new RealBarcodeCaptureLabWindow();
 
         (FrameworkElement view, string caption, string mode) = name switch
         {
-            "project" => (new ProjectResourceToolView(), "工程与文件资源", "LOCAL FILES"),
-            "dbc" => (new DbcToolView(new DbcToolViewModel()), "DBC 编辑 / 导入 / 保存 / CAN Replay", "OFFLINE / NO CAN TX"),
-            "controller" => (new ControllerConfigToolView(new ControllerConfigToolViewModel()), "控制器及按键配置", "OFFLINE / NO PHYSICAL OUTPUT"),
-            "uds" => (new UdsToolView { DataContext = new UdsToolViewModel() }, "UDS / ISO-TP 诊断专项", "MOCK / REPLAY ONLY"),
-            "flash" => (new FlashToolView { DataContext = new FlashToolViewModel() }, "烧录镜像 / 预检 / 阶段专项", "MOCK DRY-RUN ONLY"),
-            "scan" => (new LabProductionToolView(), "扫码输入 / 规则专项", "KEYBOARD INPUT / NO PRODUCTION RELEASE"),
-            "test" => (new LabTestWorkspaceView(), "测试编辑及 Mock 执行专项", "MOCK / NO PHYSICAL OUTPUT"),
+            "project" => (new ProjectResourceToolView(), "工程文件与资源", "REAL FILES"),
+            "dbc" => (new DbcToolView(new DbcToolViewModel()), "DBC 文件编辑与 CAN 归档解码", "REAL FILES / OFFLINE"),
+            "controller" => (new ControllerConfigToolView(new ControllerConfigToolViewModel()), "控制器及按键文件配置", "REAL FILES / NO PHYSICAL OUTPUT"),
             _ => throw new ArgumentException(
-                "未知专项：请使用 --lab=project|dbc|controller|wave|uds|flash|scan|test|device", nameof(name))
+                "仅已接通的真实功能可独立打开：--lab=project|dbc|controller|wave|flash|scan|device。UDS 真实发送尚未接通，不能运行假诊断。", nameof(name))
         };
 
         var window = new Window
@@ -82,7 +75,7 @@ public static class SpecialistLabLauncher
         };
         var guide = new TextBlock
         {
-            Text = "独立专项：可使用专业页面已有的文件与 Mock/Replay 命令；物理操作须经独立硬件放行。",
+            Text = "使用实际文件或设备；没有执行的动作不会报告成功。UDS 实物发送和 ECU 烧录须先完成安全接线。",
             Foreground = new SolidColorBrush(Color.FromRgb(224, 234, 246)),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(6)
