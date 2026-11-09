@@ -52,7 +52,13 @@
                     <StackPanel>
                         <TextBlock Text="数据来源" Style="{StaticResource FieldLabel}"/>
                         <ComboBox ItemsSource="{Binding SourceModes}" SelectedItem="{Binding SourceMode,Mode=TwoWay}"
-                                  Margin="0,4,0,10" Padding="6,4"/>
+                                  Margin="0,4,0,4" Padding="6,4"/>
+                        <Button Content="刷新物理只读会话授权" Command="{Binding RefreshPhysicalCommand}"
+                                HorizontalAlignment="Left" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding PhysicalStationStatus}" TextWrapping="Wrap"
+                                   FontSize="11" Foreground="#8B4428" Margin="0,0,0,10"/>
+                        <TextBlock Text="Physical 仅允许 DEVICE 已授权的 DUT CAN1 只读 0x19/0x22；无授权不显示可选模式。"
+                                   FontSize="11" Foreground="#B24637" TextWrapping="Wrap" Margin="0,0,0,10"/>
                         <TextBlock Text="Replay 记录文件（仅回放保存数据）" Style="{StaticResource FieldLabel}"/>
                         <TextBox Text="{Binding ReplayPath,UpdateSourceTrigger=PropertyChanged}"/>
                         <Button Content="载入 Replay JSON" Command="{Binding LoadReplayCommand}" Margin="0,0,0,9"/>
@@ -175,7 +181,7 @@
                                 <Button Content="导出完整诊断包" Command="{Binding ExportDiagnosticCommand}"/>
                             </WrapPanel>
                             <WrapPanel><TextBlock Text="UI Trace 丢弃数量: " Foreground="#8B4428"/><TextBlock Text="{Binding DroppedTraceEvents}" FontWeight="SemiBold"/></WrapPanel>
-                            <TextBlock Text="帧时间为 UI 观察时间；Mock 双向帧按发送端分组，非真实 CAN 时序。"
+                            <TextBlock Text="Mock/Replay 帧时间仅为 UI 观察时间；Physical 帧另列 DEVICE HostArrival UTC / CAN ID / TraceRef，不能当作 ECU 采样时间。"
                                        FontSize="11" Foreground="#8B4428" TextWrapping="Wrap"
                                        Margin="0,0,0,7"/>
                         </StackPanel>
