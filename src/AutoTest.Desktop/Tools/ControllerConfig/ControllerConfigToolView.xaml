@@ -4,7 +4,7 @@
              MinWidth="900" MinHeight="550">
   <Grid Margin="12">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <RowDefinition Height="*"/><RowDefinition Height="260"/></Grid.RowDefinitions>
     <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
       <TextBlock Text="控制器配置 · P-CONTROLLER" FontWeight="Bold" FontSize="18" VerticalAlignment="Center" Margin="0,0,18,0"/>
       <TextBlock Text="ECU" VerticalAlignment="Center"/><TextBox Width="130" Margin="5,0,10,0" Text="{Binding EcuName, UpdateSourceTrigger=PropertyChanged}"/>
@@ -76,8 +76,42 @@
         </WrapPanel>
       </Grid></GroupBox>
     </Grid>
-    <StackPanel Grid.Row="3" Margin="0,8,0,0"><TextBlock Text="{Binding Status}"/>
-      <TextBlock Text="{Binding Error}" Foreground="Crimson" TextWrapping="Wrap"/>
-      <TextBlock Foreground="DarkGoldenrod" Text="配置数据不表示物理输出。真实 Key/IGN/CAN TX 默认禁止，台架操作须通过共享安全门禁。"/></StackPanel>
+    <DockPanel Grid.Row="3" Margin="0,8,0,0">
+      <StackPanel DockPanel.Dock="Top">
+        <WrapPanel>
+          <TextBlock Text="工程 manifest" VerticalAlignment="Center"/>
+          <TextBox Width="260" Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
+          <TextBlock Text="Controller AssetId" VerticalAlignment="Center"/>
+          <TextBox Width="260" Text="{Binding BoundAssetId, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
+          <Button Content="绑定工程资源" Command="{Binding BindProjectCommand}" Padding="8,3"/>
+        </WrapPanel>
+        <TextBlock Text="{Binding ProjectBindingSummary}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,4"/>
+        <WrapPanel Margin="0,4">
+          <TextBlock Text="导出 JSONL" VerticalAlignment="Center"/>
+          <TextBox Width="290" Text="{Binding TraceFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
+          <Button Content="导出完整日志" Command="{Binding ExportTraceCommand}" Padding="8,3"/>
+          <CheckBox Content="保留 RawHex" IsChecked="{Binding IncludeRawTraceHex}" Margin="8,0"/>
+          <TextBlock Text="过滤" VerticalAlignment="Center" Margin="8,0"/>
+          <TextBox Width="180" Text="{Binding TraceFilter, UpdateSourceTrigger=PropertyChanged}" Margin="4,0"/>
+          <TextBlock Text="{Binding TraceQuality}" Margin="8,0" VerticalAlignment="Center"/>
+        </WrapPanel>
+      </StackPanel>
+      <StackPanel DockPanel.Dock="Bottom">
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding Error}" Foreground="Crimson" TextWrapping="Wrap"/>
+        <TextBlock Foreground="DarkGoldenrod" Text="配置数据不表示物理输出；人工测量与设备反馈独立。真实 Key/IGN/CAN TX 默认禁止。"/>
+      </StackPanel>
+      <DataGrid ItemsSource="{Binding VisibleTraceEvents}" IsReadOnly="True" AutoGenerateColumns="False" EnableRowVirtualization="True">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="UTC" Binding="{Binding TimestampUtc}" Width="175"/>
+          <DataGridTextColumn Header="阶段" Binding="{Binding Stage}" Width="120"/>
+          <DataGridTextColumn Header="结果" Binding="{Binding Outcome}" Width="95"/>
+          <DataGridTextColumn Header="错误码" Binding="{Binding ErrorCode}" Width="135"/>
+          <DataGridTextColumn Header="预期" Binding="{Binding Expected}" Width="150"/>
+          <DataGridTextColumn Header="实际" Binding="{Binding Actual}" Width="190"/>
+          <DataGridTextColumn Header="详情" Binding="{Binding Detail}" Width="*"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DockPanel>
   </Grid>
 </UserControl>

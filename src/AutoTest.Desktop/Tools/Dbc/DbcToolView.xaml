@@ -9,9 +9,20 @@
       <Button Content="保存" Command="{Binding SaveCommand}" Margin="6,0,0,0" Padding="12,4"/>
       <Button Content="重置" Command="{Binding ResetCommand}" Margin="6,0,0,0" Padding="12,4"/>
     </StackPanel>
-    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,9">
+
+    <StackPanel Grid.Row="1" Margin="0,0,0,9">
+      <WrapPanel>
+        <TextBlock Text="工程 manifest" VerticalAlignment="Center"/>
+        <TextBox Width="300" Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,10,0"/>
+        <TextBlock Text="DBC AssetId" VerticalAlignment="Center"/>
+        <TextBox Width="260" Text="{Binding BoundAssetId, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,10,0"/>
+        <Button Content="绑定工程资源" Command="{Binding BindProjectCommand}" Padding="9,4"/>
+      </WrapPanel>
+      <TextBlock Text="{Binding ProjectBindingSummary}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,5"/>
+      <StackPanel Orientation="Horizontal">
       <TextBlock Text="DBC Revision " FontWeight="SemiBold"/><TextBlock Text="{Binding Revision}" FontWeight="SemiBold"/>
       <TextBlock Text=" · " Margin="5,0"/><TextBlock Text="{Binding SupportSummary}" Foreground="DarkGoldenrod" TextWrapping="Wrap"/>
+      </StackPanel>
     </StackPanel>
     <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <GroupBox Header="报文树 (BO_)" Grid.Column="0" Margin="0,0,8,0"><DockPanel Margin="6">
@@ -62,13 +73,60 @@
             <Button Content="解码" Command="{Binding ReplayCommand}" Margin="7,0" Padding="8,3"/></WrapPanel>
           <TextBlock Text="{Binding DecodeSummary}"/>
         </StackPanel>
-        <DataGrid Grid.Row="3" ItemsSource="{Binding Decoded}" IsReadOnly="True" AutoGenerateColumns="False">
+        <TabControl Grid.Row="3"><TabItem Header="解码值 / Physical"><DataGrid ItemsSource="{Binding Decoded}" IsReadOnly="True" AutoGenerateColumns="False">
           <DataGrid.Columns><DataGridTextColumn Header="信号" Binding="{Binding SignalName}" Width="*"/>
             <DataGridTextColumn Header="Raw" Binding="{Binding RawValue}"/>
             <DataGridTextColumn Header="物理值" Binding="{Binding PhysicalValue}"/>
             <DataGridTextColumn Header="单位" Binding="{Binding Unit}"/>
             <DataGridTextColumn Header="值表" Binding="{Binding ValueDescription}" Width="*"/></DataGrid.Columns>
-        </DataGrid>
+        </DataGrid></TabItem>
+          <TabItem Header="DBC 位布局 / 原始 bit">
+            <DataGrid ItemsSource="{Binding BitRows}" IsReadOnly="True" AutoGenerateColumns="False" EnableRowVirtualization="True">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Byte" Binding="{Binding ByteIndex}"/>
+                <DataGridTextColumn Header="Hex" Binding="{Binding RawHex}"/>
+                <DataGridTextColumn Header="bit7" Binding="{Binding Bit7}" Width="130"/>
+                <DataGridTextColumn Header="bit6" Binding="{Binding Bit6}" Width="130"/>
+                <DataGridTextColumn Header="bit5" Binding="{Binding Bit5}" Width="130"/>
+                <DataGridTextColumn Header="bit4" Binding="{Binding Bit4}" Width="130"/>
+                <DataGridTextColumn Header="bit3" Binding="{Binding Bit3}" Width="130"/>
+                <DataGridTextColumn Header="bit2" Binding="{Binding Bit2}" Width="130"/>
+                <DataGridTextColumn Header="bit1" Binding="{Binding Bit1}" Width="130"/>
+                <DataGridTextColumn Header="bit0" Binding="{Binding Bit0}" Width="130"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </TabItem>
+          <TabItem Header="信号位序">
+            <DataGrid ItemsSource="{Binding LayoutSignals}" AutoGenerateColumns="True" IsReadOnly="True"/>
+          </TabItem>
+          <TabItem Header="操作时间线 / 原始证据">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top">
+                <WrapPanel>
+                  <TextBlock Text="JSONL" VerticalAlignment="Center"/>
+                  <TextBox Width="320" Text="{Binding TraceFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
+                  <Button Content="导出" Command="{Binding ExportTraceCommand}" Padding="8,3"/>
+                  <CheckBox Content="保留 RawHex" IsChecked="{Binding IncludeRawTraceHex}" Margin="8,0"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,5">
+                  <TextBlock Text="过滤" VerticalAlignment="Center"/>
+                  <TextBox Width="180" Text="{Binding TraceFilter, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
+                  <TextBlock Text="{Binding TraceQuality}" VerticalAlignment="Center"/>
+                </WrapPanel>
+              </StackPanel>
+              <DataGrid ItemsSource="{Binding VisibleTraceEvents}" IsReadOnly="True" AutoGenerateColumns="False">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="UTC" Binding="{Binding TimestampUtc}" Width="170"/>
+                  <DataGridTextColumn Header="阶段" Binding="{Binding Stage}" Width="125"/>
+                  <DataGridTextColumn Header="结果" Binding="{Binding Outcome}" Width="95"/>
+                  <DataGridTextColumn Header="错误" Binding="{Binding ErrorCode}" Width="120"/>
+                  <DataGridTextColumn Header="RawHex" Binding="{Binding RawHex}" Width="145"/>
+                  <DataGridTextColumn Header="说明" Binding="{Binding Detail}" Width="*"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </DockPanel>
+          </TabItem>
+        </TabControl>
       </Grid></GroupBox>
     </Grid>
     <StackPanel Grid.Row="3" Margin="0,8,0,0"><TextBlock Text="{Binding Status}"/>
