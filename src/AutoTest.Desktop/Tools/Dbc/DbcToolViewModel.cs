@@ -239,6 +239,8 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
             // Explicit bounded review: excessive archives are rejected, never silently truncated.
             var result = await DbcRecordedCanArchiveReplay.ReadAsync(
                 ArchiveFilePath, Document, binding, maxFrames: 10000);
+            // Recheck after the potentially long read: changes during Replay must not become trusted UI evidence.
+            await _boundWorkspace.VerifyPinnedAssetAsync(_boundAssetId, _boundRevision, _boundSha);
             _lastArchiveReplay = result;
             foreach (var frame in result.Frames)
             {
