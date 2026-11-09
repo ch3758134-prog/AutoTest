@@ -15,7 +15,12 @@ public sealed record UdsToolDocument(int Schema, UdsToolProfile Profile,
 public sealed record UdsCanTraceRow(string Direction, string Hex);
 public sealed record UdsToolExchange(string Source, string RequestHex, string ResponseHex,
     string Outcome, string Nrc, bool? ExpectedMatched, Guid CorrelationId,
-    IReadOnlyList<UdsCanTraceRow> Frames, string ErrorCode);
+    IReadOnlyList<UdsCanTraceRow> Frames, string ErrorCode)
+{
+    // Ordered UDS response PDUs, including NRC 0x78, as actually observed
+    // by this Mock request. These are not timestamped CAN-bus observations.
+    public IReadOnlyList<string> ResponseSequence { get; init; } = [];
+}
 
 public static class UdsHex
 {
@@ -132,7 +137,7 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
     public void SimulateDisconnect() => _ecu.Disconnect();
 
     public async Task<UdsToolExchange> SendMockAsync(UdsToolProfile profile, string requestText,
-        string expectedHex = "", CancellationToken ct = default)
+        string expectedHex = "", CancellationToken ct = default, Guid? correlationId = null)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(UdsDiagnosticWorkspace));
         byte[] request = UdsHex.Parse(requestText);
@@ -145,10 +150,15 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
         {
             int h = _channel.HostFrames().Length;
             int e = _channel.EcuFrames().Length;
-            var id = Guid.NewGuid();
+            var id = correlationId ?? Guid.NewGuid();
+            if (id == Guid.Empty) throw new ArgumentException("Correlation ID must be nonempty.");
             var result = await _client.RequestAsync(new UdsRequest(request.ToImmutableArray(), id),
                 endpoint, ct).ConfigureAwait(false);
             byte[] response = result.ResponsePdu.ToArray();
+            var responseSequence = _client.Trace.Snapshot()
+                .Where(x => x.CorrelationId == id && x.Direction == UdsTraceDirection.Response)
+                .Select(x => UdsHex.Format(x.Data))
+                .ToArray();
             var trace = _channel.HostFrames().Skip(h)
                 .Select(x => new UdsCanTraceRow("HOST TX", UdsHex.Format(x)))
                 .Concat(_channel.EcuFrames().Skip(e)
@@ -157,7 +167,8 @@ public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
             return new("Mock", UdsHex.Format(request), UdsHex.Format(response),
                 result.Outcome.ToString(), result.NegativeResponseCode is byte n ? $"0x{n:X2}" : "—",
                 expected is null ? null : response.SequenceEqual(expected), id, trace,
-                result.Outcome == AutoTest.Core.Outcome.Uncertain ? "NO_CONFIRMED_RESPONSE" : "");
+                result.Outcome == AutoTest.Core.Outcome.Uncertain ? "NO_CONFIRMED_RESPONSE" : "")
+                { ResponseSequence = responseSequence };
         }
         finally { _exclusive.Release(); }
     }
