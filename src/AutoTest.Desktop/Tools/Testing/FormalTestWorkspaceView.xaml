@@ -1,0 +1,202 @@
+<UserControl x:Class="AutoTest.Desktop.Tools.Testing.FormalTestWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:AutoTest.Desktop.Tools.Testing"
+             Background="#F5F7FA" Foreground="#223448" MinWidth="900" MinHeight="560">
+  <UserControl.InputBindings>
+    <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
+    <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
+    <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}"/>
+    <KeyBinding Key="F5" Command="{Binding RunMockCommand}"/>
+    <KeyBinding Key="F10" Command="{Binding StepCommand}"/>
+  </UserControl.InputBindings>
+  <UserControl.Resources>
+    <HierarchicalDataTemplate DataType="{x:Type local:FormalTestTreeRow}" ItemsSource="{Binding Children}">
+      <TextBlock Text="{Binding Caption}" FontSize="12" Margin="4,4"/>
+    </HierarchicalDataTemplate>
+    <Style TargetType="Button">
+      <Setter Property="Foreground" Value="#213547"/>
+      <Setter Property="MinHeight" Value="28"/>
+      <Setter Property="Padding" Value="10,4"/>
+      <Setter Property="Margin" Value="2,2"/>
+    </Style>
+    <Style TargetType="TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+  </UserControl.Resources>
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="230"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <DockPanel Grid.Row="0" LastChildFill="True" Margin="3,0,3,7">
+      <Border DockPanel.Dock="Right" Background="#FFF0DD" BorderBrush="#DDB780"
+              BorderThickness="1" Padding="9,5" CornerRadius="3">
+        <TextBlock Text="{Binding ModeLabel}" Foreground="#855018" FontSize="11" FontWeight="Bold"/>
+      </Border>
+      <StackPanel>
+        <TextBlock Text="TEST · Formal Program Diagnostics" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock Text="{Binding DocumentName}" Foreground="#5C6C7A" FontSize="12"/>
+      </StackPanel>
+    </DockPanel>
+    <StackPanel Grid.Row="1" Margin="3,0,3,6">
+      <TextBlock Text="{Binding DocumentIdentity}" Foreground="#52647B" FontSize="11"/>
+      <TextBlock Text="{Binding ResourceStatus}" Foreground="#946A36" FontSize="11"/>
+    </StackPanel>
+    <WrapPanel Grid.Row="2" Margin="0,0,0,9">
+      <Button Content="New" Command="{Binding NewCommand}"/>
+      <Button Content="Open" Command="{Binding OpenCommand}"/>
+      <Button Content="Save" Command="{Binding SaveCommand}"/>
+      <Button Content="Undo" Command="{Binding UndoCommand}"/>
+      <Button Content="Redo" Command="{Binding RedoCommand}"/>
+      <Separator Width="13"/>
+      <Button Content="Preflight" Command="{Binding PreflightCommand}"/>
+      <Button Content="Run MOCK" Command="{Binding RunMockCommand}" FontWeight="Bold"/>
+      <Button Content="Pause" Command="{Binding PauseCommand}"/>
+      <Button Content="Continue" Command="{Binding ResumeCommand}"/>
+      <Button Content="Step" Command="{Binding StepCommand}"/>
+      <Button Content="Breakpoint" Command="{Binding ToggleBreakpointCommand}"/>
+      <Button Content="Run to" Command="{Binding RunToCommand}"/>
+      <Button Content="Skip" Command="{Binding SkipCommand}"/>
+      <Button Content="STOP" Command="{Binding StopCommand}" Foreground="#A01E25" FontWeight="Bold"/>
+      <Separator Width="10"/>
+      <CheckBox Content="Redact values on export" IsChecked="{Binding RedactValuesOnExport, Mode=TwoWay}"
+                VerticalAlignment="Center" Margin="6,0,4,0"/>
+      <Button Content="Export JSON" Command="{Binding ExportJsonCommand}"/>
+      <Button Content="Export CSV" Command="{Binding ExportCsvCommand}"/>
+      <Button Content="Copy visible" Command="{Binding CopyVisibleTraceCommand}"/>
+    </WrapPanel>
+    <Grid Grid.Row="3">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="3*"/>
+        <ColumnDefinition Width="5"/>
+        <ColumnDefinition Width="2*"/>
+      </Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Background="White" BorderBrush="#D7DEE6" BorderThickness="1">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Margin="9,7">
+            <TextBlock Text="Prepare / Test / Cleanup · official TestDocument" FontWeight="SemiBold"
+                       Margin="0,0,0,4"/>
+            <WrapPanel>
+              <ComboBox Width="155" Margin="2" ItemsSource="{Binding StepTypes}"
+                        SelectedItem="{Binding SelectedInsertType, Mode=TwoWay}"/>
+              <Button Content="Insert" Command="{Binding InsertCommand}"/>
+              <Button Content="Copy" Command="{Binding CopyCommand}"/>
+              <Button Content="Delete" Command="{Binding DeleteCommand}"/>
+              <Button Content="↑" Width="30" Command="{Binding UpCommand}"/>
+              <Button Content="↓" Width="30" Command="{Binding DownCommand}"/>
+            </WrapPanel>
+          </StackPanel>
+          <TreeView x:Name="ProgramTree" ItemsSource="{Binding Tree}"
+                    SelectedItemChanged="OnTreeSelectionChanged"
+                    BorderThickness="0" Padding="7,2">
+            <TreeView.ContextMenu>
+              <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                <MenuItem Header="Insert" Command="{Binding InsertCommand}"/>
+                <MenuItem Header="Copy subtree" Command="{Binding CopyCommand}"/>
+                <MenuItem Header="Delete" Command="{Binding DeleteCommand}"/>
+                <Separator/>
+                <MenuItem Header="Toggle breakpoint" Command="{Binding ToggleBreakpointCommand}"/>
+                <MenuItem Header="Run to selected step" Command="{Binding RunToCommand}"/>
+                <MenuItem Header="Skip selected step" Command="{Binding SkipCommand}"/>
+              </ContextMenu>
+            </TreeView.ContextMenu>
+          </TreeView>
+        </DockPanel>
+      </Border>
+      <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                    Background="Transparent"/>
+      <Border Grid.Column="2" Background="White" BorderBrush="#D7DEE6" BorderThickness="1" Padding="12">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="Step properties" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,11"/>
+            <TextBlock Text="Name" Foreground="#52647B"/>
+            <TextBox Text="{Binding SelectedName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
+            <Button Content="Apply name" Command="{Binding ApplyNameCommand}" HorizontalAlignment="Left"/>
+            <TextBlock Text="Properties" Foreground="#52647B" Margin="0,12,0,5"/>
+            <DataGrid ItemsSource="{Binding ParameterRows}" IsReadOnly="True" AutoGenerateColumns="False"
+                      Height="105" RowHeaderWidth="0" CanUserAddRows="False" HeadersVisibility="Column">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="*"/>
+                <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Text="Property key" Foreground="#52647B" Margin="0,11,0,0"/>
+            <TextBox Text="{Binding ParameterName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
+            <TextBlock Text="Property value" Foreground="#52647B"/>
+            <TextBox Text="{Binding ParameterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
+            <Button Content="Set property" Command="{Binding ApplyPropertyCommand}" HorizontalAlignment="Left"/>
+            <TextBlock Text="Unsupported node types and unresolved asset references are blocked by formal PlanCompiler. Physical controller commands are never executed by this Mock runner."
+                       TextWrapping="Wrap" Foreground="#65788A" FontSize="11" Margin="0,17,0,0"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+    <Border Grid.Row="4" Margin="0,9,0,0" Background="White" BorderBrush="#D7DEE6" BorderThickness="1">
+      <DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="9,6">
+          <TextBlock DockPanel.Dock="Left" Text="Mock facts / raw evidence / error diagnostics"
+                     FontWeight="SemiBold"/>
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}" FontWeight="Bold" Foreground="#204E77"/>
+        </DockPanel>
+        <TabControl BorderThickness="0">
+          <TabItem Header="Expected / Actual">
+            <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
+                      RowHeaderWidth="0" HeadersVisibility="Column" CanUserAddRows="False" FontSize="12">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="StepId" Binding="{Binding StepId}" Width="120"/>
+                <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="95"/>
+                <DataGridTextColumn Header="Expected" Binding="{Binding Expected}" Width="*"/>
+                <DataGridTextColumn Header="Actual" Binding="{Binding Actual}" Width="*"/>
+                <DataGridTextColumn Header="Quality" Binding="{Binding Quality}" Width="88"/>
+                <DataGridTextColumn Header="Verdict" Binding="{Binding Verdict}" Width="90"/>
+                <DataGridTextColumn Header="Diagnostic" Binding="{Binding Detail}" Width="2*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </TabItem>
+          <TabItem Header="Raw Mock timeline">
+            <DockPanel>
+              <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="8,5,8,4">
+                <TextBlock DockPanel.Dock="Left" Text="Filter event/step/diagnostic:" Margin="0,0,8,0"/>
+                <TextBox Text="{Binding TraceFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+              </DockPanel>
+              <DataGrid ItemsSource="{Binding FilteredTimeline}" AutoGenerateColumns="False" IsReadOnly="True"
+                      RowHeaderWidth="0" CanUserAddRows="False" FontSize="11">
+                <DataGrid.Columns>
+                <DataGridTextColumn Header="UTC" Binding="{Binding TimestampUtc}" Width="155"/>
+                <DataGridTextColumn Header="Elapsed ms" Binding="{Binding MonotonicOffsetMs}" Width="82"/>
+                <DataGridTextColumn Header="Event" Binding="{Binding EventKind}" Width="110"/>
+                <DataGridTextColumn Header="Layer" Binding="{Binding Layer}" Width="110"/>
+                <DataGridTextColumn Header="Error code" Binding="{Binding ErrorCode}" Width="145"/>
+                <DataGridTextColumn Header="Origin" Binding="{Binding Source}" Width="60"/>
+                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="65"/>
+                <DataGridTextColumn Header="Step" Binding="{Binding Type}" Width="90"/>
+                <DataGridTextColumn Header="OperationId" Binding="{Binding OperationId}" Width="155"/>
+                <DataGridTextColumn Header="Diagnostic" Binding="{Binding Diagnostic}" Width="*"/>
+                <DataGridTextColumn Header="Raw Mock Fact JSON" Binding="{Binding RawMockFactJson}" Width="2*"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </DockPanel>
+          </TabItem>
+          <TabItem Header="Preflight diagnostics">
+            <ListBox ItemsSource="{Binding Diagnostics}" FontSize="12"/>
+          </TabItem>
+        </TabControl>
+      </DockPanel>
+    </Border>
+    <Border Grid.Row="5" BorderBrush="#D7DEE6" BorderThickness="0,1,0,0"
+            Margin="0,8,0,0" Padding="3,6">
+      <StackPanel>
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#36526A"/>
+        <TextBlock Text="{Binding ActiveRunId, StringFormat='RunId: {0}'}" Foreground="#627A8B" FontSize="10"/>
+        <TextBlock Text="{Binding LastEvidencePath, StringFormat='Redacted auto-saved diagnostic: {0}'}"
+                   TextTrimming="CharacterEllipsis" Foreground="#627A8B" FontSize="10"
+                   ToolTip="TEST-only snapshot. Not a Records or production release artifact."/>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

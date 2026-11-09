@@ -23,21 +23,25 @@ public sealed class StepDescriptorCatalog
                 (props ?? []).ToImmutableArray(), executable));
         Add("Sequence", true, ["body"]);
         Add("If", true, ["then", "else"], ["variable", "equals"]);
-        Add("Switch", false, ["cases"], ["variable"]);
-        Add("Case", false, ["body"], ["equals"]);
-        Add("When", false, ["body"], ["variable", "equals", "timeoutMs"]);
+        Add("Switch", true, ["cases"], ["variable"]);
+        Add("Case", true, ["body"], ["equals"]);
+        Add("Default", true, ["body"]);
+        Add("When", true, ["body"], ["variable", "equals", "timeoutMs"]);
         Add("Loop", true, ["body"], ["count"]);
         Add("TryCatch", false, ["try", "catch", "finally"]);
-        Add("Subroutine", false, ["body"]);
+        Add("Subroutine", false, ["body"], ["name"]);
         Add("CallSubroutine", false, [], ["target"]);
         Add("Parallel", false, ["branches"]);
         Add("SetVariable", true, [], ["variable", "value"]);
         Add("MockObserve", true, [], ["variable", "value", "quality"]);
         Add("Assert", true, [], ["variable", "equals"]);
         Add("Wait", true, [], ["milliseconds"]);
-        // Explicitly modeled future capabilities; never claim V1 runtime support.
+        Add("Log", true, [], ["message"]);
+        Add("Fail", true, [], ["message"]);
+        // Explicitly modeled future capabilities; never claim physical runtime support.
         foreach (var name in new[] { "PowerSet", "KeySet", "CanSend", "CanWait", "UdsRequest",
-            "Flash", "WaveCapture", "WaveCompare", "Log", "Fail", "Skip" }) Add(name, false);
+            "Flash", "WaveCapture", "WaveCompare", "Skip" }) Add(name, false);
+        Add("ControllerState", false, [], ["controllerId", "stateId", "revision"]);
         return c;
     }
 }
