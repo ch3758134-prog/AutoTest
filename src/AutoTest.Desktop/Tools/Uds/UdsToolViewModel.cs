@@ -25,6 +25,7 @@ public sealed class UdsToolViewModel : BindableBase
         _txId="7E0", _rxId="7E8", _p2Ms="1000", _p2StarMs="5000",
         _requestHex="22 F1 90", _expectedHex="", _serviceName="Read VIN (Mock)",
         _documentPath="", _status="MOCK_READY", _responseHex="—",
+        _failureLayer="NONE", _diagnosticDetail="",
         _nrc="—", _expectedMatch="NOT_SPECIFIED", _error="",
         _faultSid="22", _faultCode="31", _session="Default / Unknown",
         _sourceMode="Mock", _replayPath="";
@@ -115,6 +116,8 @@ public sealed class UdsToolViewModel : BindableBase
     public string Nrc { get => _nrc; private set => SetProperty(ref _nrc,value); }
     public string ExpectedMatch { get => _expectedMatch; private set => SetProperty(ref _expectedMatch,value); }
     public string Error { get => _error; private set => SetProperty(ref _error,value); }
+    public string FailureLayer { get => _failureLayer; private set => SetProperty(ref _failureLayer,value); }
+    public string DiagnosticDetail { get => _diagnosticDetail; private set => SetProperty(ref _diagnosticDetail,value); }
     public UdsServiceDefinition? SelectedService
     {
         get => _selectedService;
@@ -204,6 +207,7 @@ public sealed class UdsToolViewModel : BindableBase
         _lastRequestSensitive=false;
         TraceQuality=_droppedTraceEvents>0 ? "INCOMPLETE_UI_TRACE_OVERFLOW" : "NOT_CAPTURED";
         Status="REQUESTING"; Error=""; Nrc="—"; ResponseHex="—";
+        FailureLayer="NONE"; DiagnosticDetail="";
         var watch=Stopwatch.StartNew();
         string source=SourceMode;
         try
@@ -249,6 +253,7 @@ public sealed class UdsToolViewModel : BindableBase
             }
             Append(source,"UDS","RESPONSE",_lastCorrelationId,exchange.ResponseHex,
                 "Outcome="+exchange.Outcome+" NRC="+exchange.Nrc+
+                " layer="+exchange.FailureLayer+
                 " elapsed(host)="+watch.ElapsedMilliseconds+"ms; this is not ECU P2 timing",
                 exchange.ErrorCode);
             foreach(var frame in exchange.Frames)
@@ -259,12 +264,24 @@ public sealed class UdsToolViewModel : BindableBase
         catch (OperationCanceledException) when (linked.IsCancellationRequested)
         {
             Status="CANCELLED"; Error="REQUEST_CANCELLED";
+            FailureLayer="UDS_REQUEST_CANCELLED";
+            DiagnosticDetail="Cancellation requested locally; remote effects unconfirmed.";
             Append(source,"CONTROL","CANCELLED",_lastCorrelationId,"",
                 "Request was cancelled; any remote effect is unconfirmed.",Error);
         }
         catch (Exception ex)
         {
             Status="WORKBENCH_ERROR"; Error=ex.GetType().Name+": "+ex.Message;
+            FailureLayer=ex switch
+            {
+                FormatException or ArgumentException => "UI_INPUT",
+                EndOfStreamException => "REPLAY_EXHAUSTED",
+                InvalidDataException => "REPLAY_DOCUMENT",
+                InvalidOperationException when source=="Replay" => "REPLAY_REQUEST",
+                InvalidOperationException when source=="Physical" => "SAFETY_POLICY",
+                _ => "WORKBENCH_UNISOLATED"
+            };
+            DiagnosticDetail=ex.Message;
             Append(source,"ERROR","FAILED",_lastCorrelationId,"",
                 "Exception at diagnostic workbench; elapsed="+watch.ElapsedMilliseconds+"ms",Error);
         }
@@ -285,6 +302,8 @@ public sealed class UdsToolViewModel : BindableBase
         ExpectedMatch=exchange.ExpectedMatched is null ? "NOT_SPECIFIED" :
             exchange.ExpectedMatched.Value ? "MATCH" : "MISMATCH";
         Error=exchange.ErrorCode;
+        FailureLayer=exchange.FailureLayer;
+        DiagnosticDetail=exchange.DiagnosticDetail;
         if (exchange.Outcome=="Accepted" && request.Length>=2 && request[0]==0x10)
             Session=request[1] switch {
                 0x01=>"Default ("+exchange.Source+")",
