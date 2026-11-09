@@ -36,3 +36,9 @@ dotnet test tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj -
 - 明确 NRC 拒绝仍记录 Failed；显式取消仍记录 Cancelled，伴随“Mock 可能部分写入”警告。
 - Mock 审计 JSON Schema=2 新增 AcknowledgedTransferBytes、LastAcknowledgedTransfer、ExpectedSegmentVerifications、ActualSegmentVerifications、MockHashVerified、PhysicalTransportUsed=false；保留全部后台阶段事实。已有消费端需按版本识别，不视为公共合同变化。
 - 同一 Draft PR #5 持续更新，Build/Test 仍待主对话分配 Windows Codex 机械验证。
+
+## 本轮补充：Job 输入证据不可漂移
+- `FlashDryRunWorkspace.StartDryRunAsync` 成功发布 Job 时冻结镜像信息、模拟 Profile/电压及输入快照时间。后续导入另一个镜像，不得改变先前 Job 的审计 `Image`、`MockConfiguration` 或 `ExpectedSegmentVerifications`。
+- Flash UI 在导出控制旁显示“上一次 Mock 作业”绑定的镜像文件及 SHA256，避免当前导入的镜像与待导出作业不一致时误判。
+- 新增 Workbench 和 UI 自动测试覆盖：先完成作业、再加载新镜像、导出旧 Job、原镜像和 ACK 保持不变。
+- Schema=2 在原字段上新增 `JobInputCapturedUtc` 和 `MockConfiguration`；仍为仅本专业的 Mock 证据格式，不是跨模块公共 Contracts。
