@@ -226,7 +226,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 {
                     ConnectionStatus = "未找到设备";
                     ConnectionDetail = "DEVICE 未返回匹配主控板；未尝试建立 USB 会话";
-                    RecordEvidence(BenchEvidencePhase.Error, ConnectionDetail, failureStage: "DiscoverCompatibleDevices");
+                    RecordEvidence(BenchEvidencePhase.Error, ConnectionDetail, failureStage: "DiscoverCompatibleDevices",
+                        source: BenchEvidenceSource.Unknown);
                     Append(WorkbenchSeverity.Warning, "未找到兼容设备", ConnectionDetail);
                     return;
                 }
@@ -234,7 +235,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 {
                     ConnectionStatus = "请选择主控板";
                     ConnectionDetail = $"找到 {Devices.Count} 个匹配设备，请选择后再次点击连接";
-                    RecordEvidence(BenchEvidencePhase.Connection, ConnectionDetail);
+                    RecordEvidence(BenchEvidencePhase.Connection, ConnectionDetail,
+                        source: BenchEvidenceSource.Unknown);
                     Append(WorkbenchSeverity.Warning, "检测到多个主控板", ConnectionDetail);
                     return;
                 }
@@ -345,7 +347,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             LastEvidence = $"命令记录：{_lastOperationId ?? "未提供"} · 人工测量：已保存，非自动采样";
             RecordEvidence(BenchEvidencePhase.ManualMeasurement,
                 "人工万用表记录（非自动采样）："+string.Join(", ", values.Where(v => v.Volts.HasValue)
-                    .Select(v => $"CH{v.Channel}={v.Volts}V")),
+                    .Select(v => $"CH{v.Channel}={v.Volts!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}V")),
                 measurement.ControllerId, measurement.StateId, measurement.OperationId);
             Append(WorkbenchSeverity.Success, "已保存人工万用表记录",
                 $"配置 {measurement.ProjectRevision} · {measurement.ControllerId}/{measurement.StateId} · " +
@@ -373,6 +375,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         RecordEvidence(state.State == BenchConnection.Faulted ? BenchEvidencePhase.Error : BenchEvidencePhase.Connection,
             $"{ConnectionStatus} · {ConnectionDetail}", failureStage: state.FailureStage,
             errorCode: state.NativeErrorCode.HasValue ? $"Win32:{state.NativeErrorCode.Value}" : null,
+            source: BenchEvidenceSource.Unknown,
             sessionGeneration: state.SessionGeneration, deviceIdentity: state.DeviceIdentity);
         Append(state.State == BenchConnection.Faulted ? WorkbenchSeverity.Error : WorkbenchSeverity.Neutral,
             "主控板连接状态", $"{ConnectionStatus} · {ConnectionDetail}");
@@ -389,7 +392,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     }
     private void Failure(string stage, Exception ex)
     {
-        ConnectionDetail = $"{stage}：{ex.Message}";
+        if (stage == "连接或断开主控板" || stage == "读取台架信息")
+            ConnectionDetail = $"{stage}：{ex.Message}";
         RecordEvidence(BenchEvidencePhase.Error, $"{stage}: {ex}", failureStage: stage,
             errorCode: ex.HResult != 0 ? $"HRESULT:0x{ex.HResult:X8}" : null);
         Append(WorkbenchSeverity.Error, $"{stage}失败", ex.ToString());
