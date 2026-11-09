@@ -208,8 +208,8 @@ public static class LabCatalogDiagnostics
         var changes = new List<LabCatalogChange>();
         if (!string.Equals(published.Revision, draft.Revision, StringComparison.Ordinal))
             changes.Add(new("Catalog", "Revision", "Changed", "Revision"));
-        if (published.Published != draft.Published)
-            changes.Add(new("Catalog", "Publication", "Changed", "Published"));
+        // Draft.Published is always false by workflow design. Comparing that field
+        // would produce a false business change for every untouched draft.
         CompareRules(published, draft, changes);
         CompareRecipes(published, draft, changes);
         if (!(published.Samples ?? Array.Empty<LabRuleSample>())
