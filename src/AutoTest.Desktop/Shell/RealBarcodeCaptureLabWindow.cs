@@ -70,12 +70,9 @@ public sealed class RealBarcodeCaptureLabWindow : Window
         Grid.SetRow(_summary, 1);
         grid.Children.Add(_summary);
 
-        var rows = new DataGrid
+        var rows = new ListBox
         {
             ItemsSource = _captures,
-            IsReadOnly = true,
-            AutoGenerateColumns = true,
-            CanUserAddRows = false,
             Margin = new Thickness(12)
         };
         Grid.SetRow(rows, 2);
