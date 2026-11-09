@@ -131,7 +131,7 @@
                         <WrapPanel Margin="0,5,0,4">
                             <TextBlock Text="预检: " Foreground="#5F7084"/>
                             <TextBlock Text="{Binding Preflight}" FontWeight="SemiBold" Margin="0,0,20,0"/>
-                            <TextBlock Text="阶段/进度: " Foreground="#5F7084"/>
+                            <TextBlock Text="传输块 ACK 进度（不代表 ECU 校验成功）: " Foreground="#5F7084"/>
                             <TextBlock Text="{Binding Progress}" FontWeight="SemiBold"/>
                         </WrapPanel>
                         <WrapPanel Margin="0,3,0,5">
