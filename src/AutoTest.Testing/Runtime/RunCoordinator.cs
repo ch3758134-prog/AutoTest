@@ -35,7 +35,12 @@ public sealed class MockStation
 /// </summary>
 public sealed class RunCoordinator
 {
+    private sealed class MockFlowFailureException : Exception
+    {
+        public MockFlowFailureException(string message) : base(message) { }
+    }
     private const int MaxMockStepOperations = 50_000;
+    private const int MaxSubroutineCallDepth = 32;
     private readonly object _gate = new();
     private readonly HashSet<StepId> _breakpoints = new();
     private CancellationTokenSource? _stop;
@@ -228,6 +233,10 @@ public sealed class RunCoordinator
         }
         var facts = ImmutableArray.CreateBuilder<StepFact>();
         var vars = new Dictionary<string, string>(StringComparer.Ordinal);
+        // Static declarations share a run-local, immutable reference map.
+        var subroutines = doc.Walk().Where(n => n.Type == "Subroutine")
+            .ToDictionary(n => n.Properties["name"], n => n, StringComparer.Ordinal);
+        var callStack = new Stack<string>();
         var stopped = false;
         var hasVerifiedAssertion = false;
         var executedOperations = 0;
@@ -342,6 +351,16 @@ public sealed class RunCoordinator
                         }
                         else detail = $"Mock condition satisfied after {clock.ElapsedMilliseconds}ms";
                         break;
+                    case "TryCatch":
+                        detail = "Mock exception boundary: try/catch/finally";
+                        break;
+                    case "Subroutine":
+                        detail = "Declaration only; body runs only when called";
+                        break;
+                    case "CallSubroutine":
+                        expected = Get("target");
+                        detail = "Mock subroutine call (statically preflighted)";
+                        break;
                     case "Log":
                         actual = Get("message");
                         detail = "Mock log annotation (no ECU observation)";
@@ -364,6 +383,9 @@ public sealed class RunCoordinator
                 if (result == MockStepVerdict.Fail) verdict = MockStepVerdict.Fail;
                 else if (result == MockStepVerdict.Inconclusive && verdict == MockStepVerdict.Pass)
                     verdict = MockStepVerdict.Inconclusive;
+                // A deliberate Fail terminates this control-flow path. TryCatch may
+                // handle it, but its FAIL fact is never rewritten into PASS.
+                if (node.Type == "Fail") throw new MockFlowFailureException(Get("message"));
                 if (node.Type == "If")
                 {
                     if (actual is not null)
@@ -378,6 +400,44 @@ public sealed class RunCoordinator
                     await Execute(node.Slots["body"]);
                 else if (node.Type == "When" && whenSatisfied)
                     await Execute(node.Slots["body"]);
+                else if (node.Type == "CallSubroutine")
+                {
+                    var target = Get("target");
+                    if (!subroutines.TryGetValue(target, out var definition))
+                        throw new InvalidOperationException($"SUBROUTINE_MISSING: {target}");
+                    if (callStack.Count >= MaxSubroutineCallDepth || callStack.Contains(target))
+                        throw new InvalidOperationException($"SUBROUTINE_RECURSION_GUARD: {target}");
+                    callStack.Push(target);
+                    try { await Execute(definition.Slots["body"]); }
+                    finally { callStack.Pop(); }
+                }
+                else if (node.Type == "TryCatch")
+                {
+                    try
+                    {
+                        try { await Execute(node.Slots["try"]); }
+                        catch (MockFlowFailureException)
+                        {
+                            await Execute(node.Slots["catch"]);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException || !stop.IsCancellationRequested)
+                        {
+                            // An unexpected software error remains ERROR even when a
+                            // scripted catch branch records a recovery attempt.
+                            verdict = MockStepVerdict.Error;
+                            Append(new StepFact(Guid.NewGuid(), node.Id, "TryCatchError", "",
+                                null, MockQuality.Invalid, MockStepVerdict.Error,
+                                $"MOCK_TRY_EXCEPTION: {ex.GetType().Name}: {ex.Message}"));
+                            await Execute(node.Slots["catch"]);
+                        }
+                    }
+                    finally
+                    {
+                        // Safe Mock-only finally must run after cancellation as well.
+                        // PlanCompiler blocks nodes with external side effects here.
+                        await ExecuteCleanup(node.Slots["finally"], Append, vars, "Finally");
+                    }
+                }
             }
         }
         try
@@ -410,6 +470,11 @@ public sealed class RunCoordinator
         {
             stopped = true;
             verdict = MockStepVerdict.Inconclusive;
+        }
+        catch (MockFlowFailureException)
+        {
+            // FAIL fact was already emitted at the responsible step.
+            verdict = MockStepVerdict.Fail;
         }
         catch (Exception ex)
         {
@@ -445,7 +510,7 @@ public sealed class RunCoordinator
         return new MockRunReport(run, facts.ToImmutable(), verdict, stopped, plan.Fingerprint);
     }
     private static async Task ExecuteCleanup(ImmutableArray<StepNode> nodes,
-        Action<StepFact> append, Dictionary<string, string> vars)
+        Action<StepFact> append, Dictionary<string, string> vars, string detail = "Cleanup")
     {
         foreach (var node in nodes)
         {
@@ -453,11 +518,11 @@ public sealed class RunCoordinator
             else if (node.Type == "Wait") await Task.Delay(int.Parse(node.Properties["milliseconds"]));
             else if (node.Type == "Log") { /* Mock cleanup annotation, no side effect. */ }
             else if (node.Type == "Sequence")
-                await ExecuteCleanup(node.Slots["body"], append, vars);
+                await ExecuteCleanup(node.Slots["body"], append, vars, detail);
             else throw new InvalidOperationException($"Cleanup node not supported: {node.Type}");
             append(new StepFact(Guid.NewGuid(), node.Id, node.Type, "",
                 node.Type == "Log" ? node.Properties["message"] : null,
-                MockQuality.Observed, MockStepVerdict.Pass, "Cleanup"));
+                MockQuality.Observed, MockStepVerdict.Pass, detail));
         }
     }
 }

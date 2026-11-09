@@ -38,6 +38,7 @@ public sealed class PlanCompiler
                             x.Contains("depth exceeds 32", StringComparison.Ordinal)))
             return new PreparedTestPlan("", "", errors.ToImmutable());
         errors.AddRange(TestResourceBinding.Validate(document, assetResolver));
+        errors.AddRange(SubroutineValidator.Validate(document));
         foreach (var node in document.Walk())
             if (_catalog.Lookup(node.Type) is { ExecutableV1: false })
                 errors.Add($"{node.Id}: {node.Type} not executable in V1");
@@ -52,6 +53,20 @@ public sealed class PlanCompiler
             }
         }
         CheckCleanup(document.Get(TestPhase.Cleanup));
+        foreach (var flow in document.Walk().Where(n => n.Type == "TryCatch"))
+        {
+            if (!flow.Slots.TryGetValue("finally", out var finallySteps)) continue;
+            void CheckFinally(IEnumerable<StepNode> steps)
+            {
+                foreach (var step in steps)
+                {
+                    if (step.Type is not ("SetVariable" or "Wait" or "Sequence" or "Log"))
+                        errors.Add($"{flow.Id}/finally/{step.Id}: {step.Type} is not safe for uncancellable Mock finally");
+                    foreach (var nested in step.Slots.Values) CheckFinally(nested);
+                }
+            }
+            CheckFinally(finallySteps);
+        }
         var json = TestDocumentCodec.Serialize(document);
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
         return new PreparedTestPlan(hash, json, errors.Distinct(StringComparer.Ordinal).ToImmutableArray());

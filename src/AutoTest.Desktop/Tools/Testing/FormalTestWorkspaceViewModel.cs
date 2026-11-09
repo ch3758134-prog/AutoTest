@@ -296,7 +296,7 @@ public sealed class FormalTestWorkspaceViewModel : INotifyPropertyChanged
             "When" => n.WithProperty("variable", "mode").WithProperty("equals", "run")
                 .WithProperty("timeoutMs", "1000").WithSlot("body"),
             "TryCatch" => n.WithSlot("try").WithSlot("catch").WithSlot("finally"),
-            "Subroutine" => n.WithSlot("body"),
+            "Subroutine" => n.WithProperty("name", "subroutine").WithSlot("body"),
             "Parallel" => n.WithSlot("branches"),
             "CallSubroutine" => n.WithProperty("target", ""),
             _ => n

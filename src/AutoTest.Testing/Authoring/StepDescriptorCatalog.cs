@@ -28,9 +28,9 @@ public sealed class StepDescriptorCatalog
         Add("Default", true, ["body"]);
         Add("When", true, ["body"], ["variable", "equals", "timeoutMs"]);
         Add("Loop", true, ["body"], ["count"]);
-        Add("TryCatch", false, ["try", "catch", "finally"]);
-        Add("Subroutine", false, ["body"], ["name"]);
-        Add("CallSubroutine", false, [], ["target"]);
+        Add("TryCatch", true, ["try", "catch", "finally"]);
+        Add("Subroutine", true, ["body"], ["name"]);
+        Add("CallSubroutine", true, [], ["target"]);
         Add("Parallel", false, ["branches"]);
         Add("SetVariable", true, [], ["variable", "value"]);
         Add("MockObserve", true, [], ["variable", "value", "quality"]);
