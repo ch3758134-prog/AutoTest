@@ -1,7 +1,7 @@
 # Issue #17 — UDS 专业 P1 ReadOnly CAN1 接线与最小依赖申请
 
 **CandidateId:** P1-UDS-READONLY-17  
-**Host integration target:** PR #16 `integration/r1-real-specialist-host-20261109` @ `5448bce69239efe51fb4c7a2b36b37449ae505f4`.  
+**Host integration target:** PR #16 `integration/r1-real-specialist-host-20261109` @ `886a6775dc6bf156229124fe2fa99b16a1d61ab0` (latest verified 2026-11-09).  
 **Source baseline:** `main@db2a980b0a37b7404b2a95c361cef3d506880bd5`.  
 **Safety:** DO NOT enable unrestricted physical CAN transmit, change firmware, or enable Flash/Seed-Key.
 
@@ -29,13 +29,14 @@ Provide `IReadOnlyPhysicalUdsSession.Client` as the **existing** `UdsClient` on 
 
 ### INTEGRATION — one P08 constructor injection, no second session
 
-In PR #16, `src/AutoTest.Desktop/Shell/R1/R1SpecialistDocumentHost.cs` currently constructs P08 as:
-
+The latest PR #16 HEAD `886a6775dc6bf156229124fe2fa99b16a1d61ab0` already exposes:
 ```csharp
-"P08" => new UdsToolView { DataContext = new UdsToolViewModel() },
+R1SpecialistDocumentHost(
+    R1SharedCanSource? sharedCan = null,
+    Func<R1SharedCanSource, UdsToolViewModel>? udsFactory = null,
+    Func<R1SharedCanSource, FrameworkElement>? waveFactory = null)
 ```
-
-After DEVICE provides the approved provider, construct the same `UdsToolViewModel(new UdsDiagnosticWorkspace(), deviceBoundProvider)` using the **one** Station/Hub already owned by the host. Do not open another physical session from the view, and do not Dispose the shared USB on P08 close. Until safety/physical permission is approved, keep the default constructor and Physical unavailable.
+The default factory deliberately returns `new UdsToolViewModel()` (Mock/Replay only). **Do not alter the R1 Shell in this UDS branch.** Once DEVICE provides the approved read-only provider and physical permission, INTEGRATION supplies an `udsFactory` that returns `new UdsToolViewModel(new UdsDiagnosticWorkspace(), deviceBoundProvider)` from the **same** `R1SharedCanSource` / Station / Hub. Closing P08 disposes neither the shared USB Session nor unrelated consumers. If the safety port is absent or fails validation, continue using the default factory; Physical remains unavailable.
 
 **No cross-owner code is changed in this specialist PR.**
 
