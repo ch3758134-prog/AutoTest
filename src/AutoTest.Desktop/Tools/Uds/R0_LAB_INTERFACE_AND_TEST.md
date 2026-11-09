@@ -30,3 +30,9 @@ dotnet test tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj -
 ```
 - 实测候选状态：DEVELOPMENT_IN_PROGRESS；Build/Test NOT_RUN；用户验收 USER_LAB_PENDING。
 - Codex 仅记录完整原始编译/测试错误；不得自行修复/扩张权限。
+
+## 2026-11-09 继续研发补充
+- Replay 载入时校验响应序列：同一请求最终正/负响应后不允许新回复，ResponsePending 0x78 最多 8 条；仅 Pending 或无响应的回放依旧是 Uncertain，非物理 ECU 超时。
+- Mock 单次异常根据 UdsTrace 分类：ISO-TP timeout、UDS NRC、Replay 输入不匹配及工作台错误；证据不充分时标为未隔离层级。
+- Mock 历史容量限制为 512 次交换（可配置），达到上限明确拒绝后续操作，须显式重置；不会覆盖已导出的原始记录。
+- 该轮增量已写入同一 Draft PR #5；Windows Build/Test 不因静态核查自动标为 PASS。
