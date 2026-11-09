@@ -1,11 +1,17 @@
-# Allowlist: SAEF project records, governance and work products only.
-# Raw assets, generated HTML, incoming files, code and backups remain outside Git.
+# SAEF lives inside the AutoTest GitHub monorepo.
+# Keep engineering governance, approved work products, ADR/CR and text evidence.
+# Original raw PDF/ZIP firmware/schematics are intentionally NOT committed to this public repository.
+# To make the entire SAEF recoverable, register and verify those assets in an approved protected store.
 /*
 !/.gitignore
+!/README.md
 !/engineering/
 /engineering/*
 !/engineering/control/
 !/engineering/work-products/
+!/engineering/decisions/
+!/engineering/change-requests/
+!/engineering/evidence/
 __pycache__/
 *.pyc
 *.zip
