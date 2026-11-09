@@ -237,4 +237,38 @@ public sealed class UdsWorkbenchTests
         Assert.Equal("Uncertain",exchange.Outcome);
         Assert.Equal("REPLAY_NO_FINAL_RESPONSE",exchange.FailureLayer);
     }
+
+    [Fact]
+    public async Task UncertainMockReplyQuarantinesChannelUntilExplicitReset()
+    {
+        await using var workspace=new UdsDiagnosticWorkspace();
+        workspace.SetNoResponse(true);
+        var timedOut=await workspace.SendMockAsync(Profile(25),"22 F1 90");
+        Assert.Equal("Uncertain",timedOut.Outcome);
+        Assert.True(workspace.RequiresReset);
+        var prior=workspace.CapturedExchanges;
+        var blocked=await Assert.ThrowsAsync<InvalidOperationException>(
+            async()=>await workspace.SendMockAsync(Profile(),"3E 00"));
+        Assert.Contains("MOCK_CHANNEL_UNCERTAIN_RESET_REQUIRED",blocked.Message);
+        Assert.Equal(prior,workspace.CapturedExchanges);
+        await workspace.ResetMockAsync("MOCK_ECU_A");
+        Assert.False(workspace.RequiresReset);
+        var accepted=await workspace.SendMockAsync(Profile(),"3E 00");
+        Assert.Equal("Accepted",accepted.Outcome);
+    }
+
+    [Fact]
+    public async Task CancelledMockRequestRequiresResetToAvoidStaleReplyCorrelation()
+    {
+        await using var workspace=new UdsDiagnosticWorkspace();
+        workspace.SetNoResponse(true);
+        using var cancel=new CancellationTokenSource();
+        cancel.CancelAfter(TimeSpan.FromMilliseconds(50));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            async()=>await workspace.SendMockAsync(Profile(p2:1500),"22 F1 90",
+                ct:cancel.Token));
+        Assert.True(workspace.RequiresReset);
+        await workspace.ResetMockAsync("MOCK_ECU_A");
+        Assert.False(workspace.RequiresReset);
+    }
 }
