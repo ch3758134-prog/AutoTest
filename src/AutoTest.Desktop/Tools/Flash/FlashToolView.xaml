@@ -143,6 +143,8 @@
                         <TextBlock Text="{Binding Failure}" TextWrapping="Wrap" Foreground="#AA422F"/>
                         <TextBlock Text="{Binding RecoveryAdvice}" TextWrapping="Wrap"
                                    Foreground="#667B8F" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding AuditJobImage}" FontSize="11" FontFamily="Consolas"
+                                   Foreground="#8B4428" TextWrapping="Wrap" Margin="0,6,0,2"/>
                         <WrapPanel Margin="0,7,0,0">
                             <TextBox Width="310" ToolTip="模拟作业审计 JSON 输出路径"
                                      Text="{Binding AuditPath,UpdateSourceTrigger=PropertyChanged}"/>
