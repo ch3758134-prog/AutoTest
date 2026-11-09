@@ -278,4 +278,27 @@ public sealed class FlashWorkbenchTests
         finally { if(File.Exists(path)) File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData(ProgrammingJobState.Failed,"FAIL")]
+    [InlineData(ProgrammingJobState.Cancelled,"CANCELLED")]
+    [InlineData(ProgrammingJobState.Uncertain,"UNCERTAIN")]
+    public void TerminalEvidenceIncludesReasonAndLastAckInSameSnapshot(
+        ProgrammingJobState state,string status)
+    {
+        var evidence=new ProgrammingEvidence(Guid.NewGuid());
+        evidence.Finalize(ProgrammingJobState.Running);
+        evidence.RecordStage("Transfer","ACK",64,"Block=1; MOCK");
+        evidence.FinishWithFact(state,status,64,"terminal reason","REASON_CODE");
+
+        var snapshot=evidence.Observe();
+        Assert.Equal(state,snapshot.State);
+        Assert.Equal("REASON_CODE",snapshot.FailureCode);
+        var terminal=Assert.Single(snapshot.Facts,
+            f=>f.Stage=="Job" && f.Status==status);
+        Assert.Equal(64,terminal.ConfirmedBytes);
+        Assert.Contains("terminal reason",terminal.Detail);
+        Assert.Throws<InvalidOperationException>(()=>
+            evidence.FinishWithFact(state,status,64,"duplicate"));
+    }
+
 }
