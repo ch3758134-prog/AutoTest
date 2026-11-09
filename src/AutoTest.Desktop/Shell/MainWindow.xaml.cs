@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using AutoTest.Desktop.G4;
+using AutoTest.Desktop.Tools.Wave;
 namespace AutoTest.Desktop.Shell;
 public partial class MainWindow : Window
 {
@@ -8,6 +9,7 @@ public partial class MainWindow : Window
     private G4ToolsWindow? _tools;
     private ModuleToolsWindow? _modules;
     private AutoTest.DeviceLab.DeviceLabWindow? _deviceLab;
+    private WaveOfflineLabWindow? _waveOfflineLab;
     private void G4Tools_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm || vm.G4 is null)
@@ -58,5 +60,24 @@ public partial class MainWindow : Window
         _deviceLab = new AutoTest.DeviceLab.DeviceLabWindow { Owner = this };
         _deviceLab.Show();
     }
+    private void WaveOffline_Click(object sender, RoutedEventArgs e)
+    {
+        if (_waveOfflineLab is { IsVisible: true })
+        {
+            _waveOfflineLab.Activate();
+            return;
+        }
+        try
+        {
+            _waveOfflineLab = new WaveOfflineLabWindow { Owner = this };
+            _waveOfflineLab.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "WAVE 离线窗口启动失败: " + ex.Message,
+                "AutoTest · WAVE", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }
