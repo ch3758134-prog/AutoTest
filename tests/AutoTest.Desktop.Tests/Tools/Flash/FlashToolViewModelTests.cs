@@ -78,7 +78,7 @@ public sealed class FlashToolViewModelTests
         await vm.RunDryAsync();
         Assert.Equal("MOCK_UNCERTAIN",vm.Status);
         Assert.Contains("UNCONFIRMED_UDS_RESPONSE",vm.Failure);
-        Assert.Contains("block 2",vm.Failure,StringComparison.OrdinalIgnoreCase);
+        Assert.True(vm.Failure.Contains("block 2",StringComparison.OrdinalIgnoreCase));
         Assert.Contains("不得自动续写",vm.RecoveryAdvice);
         Assert.Equal("64",vm.ConfirmedBytes);
     }
