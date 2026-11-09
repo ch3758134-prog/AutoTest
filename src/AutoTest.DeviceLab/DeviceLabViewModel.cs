@@ -1,8 +1,11 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using System.Windows;
+using System.Windows.Data;
 using System.Windows.Threading;
 using AutoTest.Devices.Can;
 using AutoTest.Devices.Diagnostics;
@@ -36,6 +39,16 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
     private string _driverService = "—";
     private int _timeoutMs = 1500;
     private long _can0Count, _can1Count, _uiLinesTrimmed;
+    private long _exportTransportLost, _exportCanLost, _exportMalformed, _exportHubLost;
+    private string? _exportDeviceInstanceId;
+    private string? _exportDriverService;
+    private long _exportGeneration;
+    private string _usbFilter = "";
+    private string _canFilter = "";
+    private string _exportPath = NewExportPath();
+    private string _exportResult = "请先断开 USB 会话，再导出原始诊断证据包。";
+    private DeviceLabTimelineLine? _selectedUsbLine;
+    private DeviceLabTimelineLine? _selectedCanLine;
     private string _ignReadback = "未读取 · 物理电压未知";
     private string _ecuPowerReadback = "未读取 · 物理电压未知";
     private string _keyPowerReadback = "未读取 · 物理电压未知";
@@ -47,7 +60,13 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
         _audit = new DeviceLabAuditJournal(); // fail closed if audit storage cannot be opened
-        _session = new DeviceLabSession(backend);
+        _session = new DeviceLabSession(backend, auditHealthy: () => _audit.FailureMessage is null);
+        UsbView = CollectionViewSource.GetDefaultView(Timeline);
+        CanView = CollectionViewSource.GetDefaultView(CanTimeline);
+        UsbView.Filter = item => item is DeviceLabTimelineLine line &&
+            DeviceEvidenceTextFilter.Matches(line.Source, line.Details, UsbFilter);
+        CanView.Filter = item => item is DeviceLabTimelineLine line &&
+            DeviceEvidenceTextFilter.Matches(line.Source, line.Details, CanFilter);
         _session.OperationRecorded += OnOperation;
         _session.NativeOperation += OnNative;
         _session.UsbTrace += OnUsbTrace;
@@ -62,6 +81,14 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
             _session.State != UsbSessionState.Disconnected, allowWhenAuditFailed: true);
         ReadCommand = Command(ReadAsync, () => !_busy && !_disposed &&
             _session.State == UsbSessionState.Connected && SelectedReadOnlyCommand is not null);
+        ExportCommand = Command(ExportAsync, () => !_busy && !_disposed &&
+            _session.State == UsbSessionState.Disconnected &&
+            !string.IsNullOrWhiteSpace(_session.TraceFile) &&
+            !string.IsNullOrWhiteSpace(ExportPath), allowWhenAuditFailed: true);
+        CopyUsbCommand = Command(() => CopyLineAsync(SelectedUsbLine),
+            () => !_busy && !_disposed && SelectedUsbLine is not null, allowWhenAuditFailed: true);
+        CopyCanCommand = Command(() => CopyLineAsync(SelectedCanLine),
+            () => !_busy && !_disposed && SelectedCanLine is not null, allowWhenAuditFailed: true);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -71,11 +98,34 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
     public ObservableCollection<WinUsbCandidate> Candidates { get; } = new();
     public ObservableCollection<DeviceLabTimelineLine> Timeline { get; } = new();
     public ObservableCollection<DeviceLabTimelineLine> CanTimeline { get; } = new();
+    public ICollectionView UsbView { get; }
+    public ICollectionView CanView { get; }
+    public string UsbFilter
+    {
+        get => _usbFilter;
+        set { _usbFilter = value ?? ""; Notify(); UsbView.Refresh(); }
+    }
+    public string CanFilter
+    {
+        get => _canFilter;
+        set { _canFilter = value ?? ""; Notify(); CanView.Refresh(); }
+    }
+    public DeviceLabTimelineLine? SelectedUsbLine
+    { get => _selectedUsbLine; set { _selectedUsbLine = value; Notify(); RefreshButtons(); } }
+    public DeviceLabTimelineLine? SelectedCanLine
+    { get => _selectedCanLine; set { _selectedCanLine = value; Notify(); RefreshButtons(); } }
+    public string ExportPath
+    { get => _exportPath; set { _exportPath = value ?? ""; Notify(); RefreshButtons(); } }
+    public string ExportResult
+    { get => _exportResult; private set { _exportResult = value; Notify(); } }
     public IReadOnlyList<DeviceLabCommand> ReadOnlyCommands { get; }
     public ICommand RefreshCommand { get; }
     public ICommand ConnectCommand { get; }
     public ICommand DisconnectCommand { get; }
     public ICommand ReadCommand { get; }
+    public ICommand ExportCommand { get; }
+    public ICommand CopyUsbCommand { get; }
+    public ICommand CopyCanCommand { get; }
 
     public WinUsbCandidate? SelectedCandidate
     {
@@ -250,19 +300,30 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
     private async Task ConnectAsync()
     {
         var selected = SelectedCandidate ?? throw new InvalidOperationException("请先选择主控板。");
+        // Preserve trace ownership even if the operator selects a different board after disconnect.
+        _exportDeviceInstanceId = selected.DeviceInstanceId;
+        _exportDriverService = selected.DriverService;
         StatusText = $"正在连接：{selected.DeviceInstanceId}";
         Interlocked.Exchange(ref _can0Count, 0); Interlocked.Exchange(ref _can1Count, 0);
+        _exportTransportLost = _exportCanLost = _exportMalformed = _exportHubLost = 0;
         ClearStationEvidence();
         Notify(nameof(CanStats));
         try { await _session.ConnectAsync(); }
         finally
         {
+            _exportGeneration = _session.Generation;
             _b0Acknowledged = false; Notify(nameof(B0Acknowledged));
         }
         ResultText = "WinUSB 会话已建立。只执行 PING/版本/只读 GPIO，CAN 仅被动接收。";
     }
     private async Task DisconnectAsync()
     {
+        // Retain counters before the underlying backend clears its connection-specific bridge.
+        _exportTransportLost = _session.TraceDropped;
+        _exportCanLost = _session.CanDropped;
+        _exportMalformed = _session.CanMalformed;
+        _exportHubLost = _session.HubDropped;
+        _exportGeneration = _session.Generation; // active generation, before disconnect invalidates it
         await _session.DisconnectAsync();
         StatusText = "已断开。再次连接需重新确认 B0 隔离。";
         ResultText = "断开完成；没有自动重连或 CAN 发送。";
@@ -284,6 +345,58 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
         }
         Notify(nameof(TraceStats));
     }
+    private static string NewExportPath()
+    {
+        var baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AutoTest", "DeviceLab", "Exports");
+        return Path.Combine(baseDir, $"device-r0-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmssfff}-{Guid.NewGuid():N}.zip");
+    }
+
+    private Task CopyLineAsync(DeviceLabTimelineLine? selected)
+    {
+        if (selected is null) throw new InvalidOperationException("请先选择一条日志。");
+        Clipboard.SetText($"{selected.Time}  {selected.Source}  {selected.Details}");
+        ResultText = "已复制选中行（界面行可能被裁剪，完整原始数据请导出 JSONL 证据包）。";
+        return Task.CompletedTask;
+    }
+
+    private async Task ExportAsync()
+    {
+        if (_session.State != UsbSessionState.Disconnected)
+            throw new InvalidOperationException("先断开主控 USB 后才能导出一致的原始证据。");
+        var source = _session.TraceFile ?? throw new IOException("尚未创建 USB 原始 Trace。请先进行一次连接。 ");
+        var output = ExportPath;
+        // The audit is application-lifetime; transport evidence is from the last selected connection.
+        OnOperation(new DeviceLabOperationEvent(DateTimeOffset.UtcNow, "EVIDENCE", "EXPORT", "ATTEMPT",
+            _exportDeviceInstanceId, _exportGeneration, source, output, null));
+        try
+        {
+            var ctx = new DeviceEvidenceContext(
+                "0c63b660896b1d287dfc3cfe24efa7b728e47767",
+                _exportDeviceInstanceId,
+                _exportDriverService,
+                _exportGeneration,
+                _exportTransportLost, _exportCanLost, _exportMalformed, _exportHubLost,
+                UiLinesTrimmed, _session.TraceError, _audit.FailureMessage, true);
+            var result = await DeviceEvidenceArchiveWriter.ExportAsync(
+                source, _audit.FilePath, output, ctx);
+            ExportResult = $"已导出：{result.ArchivePath}\nSHA-256: {result.Sha256}";
+            ResultText = ExportResult;
+            OnOperation(new DeviceLabOperationEvent(DateTimeOffset.UtcNow, "EVIDENCE", "EXPORT", "OK",
+                _exportDeviceInstanceId, _exportGeneration, source,
+                $"archive={result.ArchivePath} sha256={result.Sha256}", null));
+            // Every export uses a new name; never silently overwrite a previous evidence pack.
+            ExportPath = NewExportPath();
+        }
+        catch (Exception ex)
+        {
+            ExportResult = "导出失败：" + ex;
+            OnOperation(new DeviceLabOperationEvent(DateTimeOffset.UtcNow, "EVIDENCE", "EXPORT", "FAIL",
+                _exportDeviceInstanceId, _exportGeneration, source, ex.ToString(), ex.GetType().Name));
+            throw;
+        }
+    }
+
     private void ClearStationEvidence()
     {
         IgnReadback = "未读取 / 旧回读失效 · 物理电压未知";

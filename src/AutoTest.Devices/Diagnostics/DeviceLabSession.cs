@@ -99,6 +99,7 @@ public sealed class DeviceLabSession : IAsyncDisposable
     private readonly IDeviceLabBackend _backend;
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private readonly Func<string> _newTracePath;
+    private readonly Func<bool>? _auditHealthy;
     private WinUsbCandidate? _selected;
     private bool _b0Confirmed;
     private bool _disposed;
@@ -109,10 +110,12 @@ public sealed class DeviceLabSession : IAsyncDisposable
     public event Action<HardwareCanTrace>? CanTrace;
     public event Action<UsbSessionState>? ConnectionChanged;
 
-    public DeviceLabSession(IDeviceLabBackend backend, Func<string>? newTracePath = null)
+    public DeviceLabSession(IDeviceLabBackend backend, Func<string>? newTracePath = null,
+        Func<bool>? auditHealthy = null)
     {
         _backend = backend ?? throw new ArgumentNullException(nameof(backend));
         _newTracePath = newTracePath ?? NewTracePath;
+        _auditHealthy = auditHealthy;
         _backend.UsbTrace += RelayUsb;
         _backend.NativeOperation += RelayNative;
         _backend.CanTrace += RelayCan;
@@ -187,6 +190,7 @@ public sealed class DeviceLabSession : IAsyncDisposable
                 // Selection is by exact Windows instance ID; never by COM name, HID, or list index.
                 var path = _newTracePath();
                 Emit("USB", "CONNECT", "ATTEMPT", $"{candidate.DeviceInstanceId}; trace={path}");
+                EnsureAuditHealthy(); // mandatory durable event must succeed before opening WinUSB
                 await _backend.ConnectAsync(candidate.DeviceInstanceId, path, ct).ConfigureAwait(false);
                 Emit("USB", "CONNECT", "OK", $"trace={_backend.TraceFile}");
             }
@@ -214,6 +218,7 @@ public sealed class DeviceLabSession : IAsyncDisposable
             if (_backend.State != UsbSessionState.Connected)
                 throw new IOException("The main controller is not connected.");
             Emit("USB", $"READ_0x{command:X2}", "ATTEMPT", $"timeoutMs={timeout.TotalMilliseconds:0}");
+            EnsureAuditHealthy(); // deny even harmless GET when the operator audit failed
             try
             {
                 var response = await _backend.ReadOnlyCommandAsync(command, timeout, ct).ConfigureAwait(false);
@@ -272,6 +277,11 @@ public sealed class DeviceLabSession : IAsyncDisposable
         var evt = new DeviceLabOperationEvent(DateTimeOffset.UtcNow, category, action, outcome,
             _selected?.DeviceInstanceId, _backend.Generation, _backend.TraceFile, detail, exceptionType);
         InvokeObservers(OperationRecorded, evt);
+    }
+    private void EnsureAuditHealthy()
+    {
+        if (_auditHealthy is not null && !_auditHealthy())
+            throw new IOException("DEVICE operation audit failed to persist; refusing new USB I/O.");
     }
     private static string NewTracePath()
     {

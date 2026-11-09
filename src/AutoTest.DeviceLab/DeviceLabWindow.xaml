@@ -52,6 +52,8 @@
             <StackPanel DockPanel.Dock="Left">
                 <TextBlock Text="DEVICE  /  主控板通信诊断" FontSize="23" FontWeight="Bold"/>
                 <TextBlock Text="Windows WinUSB · 双路 CAN 被动监视 · 独立工作台" Foreground="{StaticResource Subtle}" Margin="0,5,0,0"/>
+                <TextBlock Text="来源：Physical（只读） · Project / DUT Profile / Resource Revision：未绑定 · 不提供 Mock/Replay 伪装"
+                           Foreground="{StaticResource Subtle}" Margin="0,4,0,0"/>
             </StackPanel>
         </DockPanel>
         <Border Grid.Row="1" Background="#FFF2DC" BorderBrush="#DFB96C" BorderThickness="1"
@@ -131,7 +133,7 @@
                         Padding="14" Margin="0,0,0,12">
                     <StackPanel>
                         <TextBlock Text="操作结果 / 连接诊断" FontWeight="Bold" FontSize="14" Margin="0,0,0,7"/>
-                        <TextBox Text="{Binding ResultText}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                        <TextBox Text="{Binding ResultText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
                                  Background="#F7F9FC" BorderThickness="0" MinHeight="65" MaxHeight="105"
                                  VerticalScrollBarVisibility="Auto"/>
                     </StackPanel>
@@ -139,17 +141,35 @@
                 <TabControl Grid.Row="1" BorderBrush="{StaticResource Outline}" Background="White">
                     <TabItem Header="USB 原始帧 / 结构化事件">
                         <Grid Margin="12">
-                            <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                            <ListBox ItemsSource="{Binding Timeline}" ItemTemplate="{StaticResource TimelineItem}"
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <DockPanel Grid.Row="0" Margin="0,0,0,9">
+                                <Button DockPanel.Dock="Right" Content="复制选中" Command="{Binding CopyUsbCommand}" Margin="10,0,0,0"/>
+                                <TextBox Text="{Binding UsbFilter,UpdateSourceTrigger=PropertyChanged}" Padding="7"
+                                         ToolTip="仅过滤当前窗口，原始 JSONL 不受影响"/>
+                            </DockPanel>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding UsbView}"
+                                     SelectedItem="{Binding SelectedUsbLine,Mode=TwoWay}"
+                                     ItemTemplate="{StaticResource TimelineItem}"
                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
-                            <TextBlock Grid.Row="1" Text="{Binding TraceStats}" Foreground="{StaticResource Subtle}" Margin="0,8,0,0"/>
+                            <TextBlock Grid.Row="2" Text="{Binding TraceStats}" Foreground="{StaticResource Subtle}" Margin="0,8,0,0"/>
                         </Grid>
                     </TabItem>
                     <TabItem Header="双路 CAN 被动接收">
                         <Grid Margin="12">
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
                             <TextBlock Text="{Binding CanStats}" FontWeight="SemiBold" Margin="0,0,0,9"/>
-                            <ListBox Grid.Row="1" ItemsSource="{Binding CanTimeline}" ItemTemplate="{StaticResource TimelineItem}"
+                            <DockPanel Grid.Row="1" Margin="0,0,0,9">
+                                <Button DockPanel.Dock="Right" Content="复制选中" Command="{Binding CopyCanCommand}" Margin="10,0,0,0"/>
+                                <TextBox Text="{Binding CanFilter,UpdateSourceTrigger=PropertyChanged}" Padding="7"
+                                         ToolTip="按 CAN 角色、port、HEX、GEN 筛选显示，不影响原始录制"/>
+                            </DockPanel>
+                            <ListBox Grid.Row="2" ItemsSource="{Binding CanView}"
+                                     SelectedItem="{Binding SelectedCanLine,Mode=TwoWay}"
+                                     ItemTemplate="{StaticResource TimelineItem}"
                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
                         </Grid>
                     </TabItem>
@@ -184,11 +204,20 @@
                     <TabItem Header="日志文件与证据边界">
                         <StackPanel Margin="20">
                             <TextBlock Text="主控原始 WinUSB / USB SEQ / CAN JSONL" FontWeight="Bold"/>
-                            <TextBox Text="{Binding TraceFile}" IsReadOnly="True" Margin="0,7,0,18" TextWrapping="Wrap"/>
+                            <TextBox Text="{Binding TraceFile, Mode=OneWay}" IsReadOnly="True" Margin="0,7,0,18" TextWrapping="Wrap"/>
                             <TextBlock Text="界面结构化操作 JSONL（包含预连接 B0 确认、设备选择、手动操作）" FontWeight="Bold"/>
-                            <TextBox Text="{Binding OperationLogFile}" IsReadOnly="True" Margin="0,7,0,18" TextWrapping="Wrap"/>
+                            <TextBox Text="{Binding OperationLogFile, Mode=OneWay}" IsReadOnly="True" Margin="0,7,0,18" TextWrapping="Wrap"/>
                             <TextBlock Text="两份 JSONL 可按 UTC / 设备实例 ID / 连接世代 / TraceFile 字段合并到统一日志。日志中的时间均为 Host 到达时间；主控不上报 CAN 硬件时间戳。"
                                        Foreground="{StaticResource Subtle}"/>
+                            <TextBlock Text="完整原始证据导出（必须先断开 USB）" FontWeight="Bold" Margin="0,18,0,5"/>
+                            <TextBox Text="{Binding ExportPath,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="7" TextWrapping="Wrap"/>
+                            <Button Content="导出 ZIP + SHA-256 完整诊断包" Command="{Binding ExportCommand}"
+                                    HorizontalAlignment="Left" Margin="0,9,0,8"/>
+                            <TextBox Text="{Binding ExportResult, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                     MinHeight="60" VerticalScrollBarVisibility="Auto"/>
+                            <TextBlock Margin="0,10,0,0" Foreground="{StaticResource Subtle}"
+                                       Text="ZIP 含未修改的 USB/CAN 与操作 JSONL、SHA-256 和来源/丢帧/时钟质量清单。原始报文可能含敏感 ECU 信息，仅保存本地，不自动上传；不代表真实硬件测试通过。"/>
                         </StackPanel>
                     </TabItem>
                 </TabControl>
