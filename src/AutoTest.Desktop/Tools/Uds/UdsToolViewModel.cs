@@ -392,6 +392,40 @@ public sealed class UdsToolViewModel : BindableBase
             RefreshPhysicalAvailability();
         }
     }
+    private void AppendPhysicalCanFrame(PhysicalUdsBusEvent frame,bool verified)
+    {
+        if (DiagnosticEvents.Count >= MaxUiDiagnosticEvents)
+        {
+            _droppedTraceEvents++;
+            RaisePropertyChanged(nameof(DroppedTraceEvents));
+            TraceQuality="INCOMPLETE_UI_TRACE_OVERFLOW";
+            return;
+        }
+        int dlc;
+        try { dlc=UdsHex.Parse(frame.RawHex).Length; }
+        catch (FormatException) { dlc=-1; }
+        bool sensitive=_lastRequestVin || _lastRequestSensitive;
+        var entry=new UdsDiagnosticEvent(
+            frame.Utc,"Physical","CAN",frame.Direction,
+            _lastCorrelationId.ToString("D"),
+            UdsWorkbenchEvidence.SafeHex(sensitive,frame.RawHex),
+            "CAN 0x"+frame.CanId.ToString("X")+
+            " DLC="+dlc+" Role="+frame.Role+" Extended="+frame.ExtendedId+
+            " SessionGeneration="+frame.SessionGeneration+
+            " TxDeviceAck="+frame.TxAcknowledgedByDevice+
+            " HostArrivalUtc="+frame.Utc.ToString("O")+
+            " TraceRef="+frame.TraceRef,
+            frame.LostFrames==0 ? "" : "PHYSICAL_CAN_LOSS",sensitive)
+        {
+            HostFrameUtc=frame.Utc,CanId=frame.CanId,
+            TraceRef=frame.TraceRef,SessionGeneration=frame.SessionGeneration,
+            LostFrames=frame.LostFrames,PhysicalEvidenceVerified=verified
+        };
+        DiagnosticEvents.Add(entry);
+        if (MatchesFilter(entry)) VisibleEvents.Add(entry);
+        ExportDiagnosticCommand.RaiseCanExecuteChanged();
+        CopyTraceCommand.RaiseCanExecuteChanged();
+    }
     private async Task SendPhysicalReadOnlyAsync(byte[] request,CancellationToken ct,
         Stopwatch watch)
     {
@@ -403,6 +437,8 @@ public sealed class UdsToolViewModel : BindableBase
             throw new UnauthorizedAccessException("P1_PHYSICAL_SESSION_NOT_AUTHORIZED");
         }
         var endpoint=PhysicalEndpoint();
+        byte[]? expectedPdu=string.IsNullOrWhiteSpace(ExpectedHex) ?
+            null : UdsHex.Parse(ExpectedHex); // Validate BEFORE physical send.
         var udsRequest=new UdsRequest(request.ToImmutableArray(),_lastCorrelationId);
         // Validate SID 0x19/0x22 and DID structure BEFORE recording a request as
         // dispatched. A rejected UI command is not an actual CAN transmission.
@@ -416,15 +452,14 @@ public sealed class UdsToolViewModel : BindableBase
         // Provider is DEVICE/INTEGRATION-owned. This method never instantiates
         // a CAN hub or creates any USB session.
         var physical=await _physical.RequestAsync(udsRequest,endpoint,ct);
-        var response=physical.Result.ResponsePdu.IsDefaultOrEmpty ? [] :
-            physical.Result.ResponsePdu.ToArray();
+        byte[] response=physical.Result.ResponsePdu.IsDefaultOrEmpty ?
+            Array.Empty<byte>() : physical.Result.ResponsePdu.ToArray();
         var responseHex=UdsHex.Format(response);
         var replies=physical.UdsTrace
             .Where(x=>x.CorrelationId==_lastCorrelationId &&
                 x.Direction==UdsTraceDirection.Response)
             .Select(x=>UdsHex.Format(x.Data)).ToArray();
-        bool? expected=string.IsNullOrWhiteSpace(ExpectedHex) ? null :
-            response.SequenceEqual(UdsHex.Parse(ExpectedHex));
+        bool? expected=expectedPdu is null ? null : response.SequenceEqual(expectedPdu);
         var nrc=physical.Result.NegativeResponseCode;
         var outcome=physical.Result.Outcome.ToString();
         var code=physical.DiagnosticCode;
@@ -458,20 +493,7 @@ public sealed class UdsToolViewModel : BindableBase
                 "UDS trace UTC="+uds.Utc.ToString("O")+"; "+uds.Note);
         }
         foreach(var frame in physical.CanTrace)
-        {
-            bool sensitive=_lastRequestVin || _lastRequestSensitive;
-            Append("Physical","CAN",frame.Direction,_lastCorrelationId,
-                UdsWorkbenchEvidence.SafeHex(sensitive,frame.RawHex),
-                "CAN 0x"+frame.CanId.ToString("X")+
-                " DLC="+(UdsHex.Parse(frame.RawHex).Length)+
-                " Role="+frame.Role+" Extended="+frame.ExtendedId+
-                " Generation="+frame.SessionGeneration+
-                " Lost="+frame.LostFrames+
-                " DeviceTxAck="+frame.TxAcknowledgedByDevice+
-                " HostArrivalUtc="+frame.Utc.ToString("O")+
-                " TraceRef="+frame.TraceRef,
-                frame.LostFrames==0 ? "" : "PHYSICAL_CAN_LOSS");
-        }
+            AppendPhysicalCanFrame(frame,physical.RawBusEvidenceVerified);
         Append("Physical","UDS","FINAL",_lastCorrelationId,responseHex,
             "Outcome="+outcome+" NRC="+exchange.Nrc+
             " ObservedHostElapsedMs="+watch.ElapsedMilliseconds+
@@ -506,8 +528,8 @@ public sealed class UdsToolViewModel : BindableBase
                 RaisePropertyChanged(nameof(DroppedTraceEvents));
                 TraceQuality="INCOMPLETE_UI_TRACE_OVERFLOW";
             }
-            TraceRows.Add(_lastRequestSensitive ?
-                frame with { Hex="[REDACTED: SENSITIVE UDS SERVICE]" } : frame);
+            TraceRows.Add(_lastRequestSensitive || _lastRequestVin ?
+                frame with { Hex="[REDACTED: SENSITIVE UDS RESPONSE]" } : frame);
         }
     }
     public async Task LoadReplayAsync()
