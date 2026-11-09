@@ -59,6 +59,7 @@ public sealed class BenchEvidenceExportTests
         Assert.Equal(BenchEvidenceSource.Mock, accepted.Source);
         Assert.Contains("UNKNOWN", vm.PhysicalFact);
         Assert.Contains("UNKNOWN", vm.EcuFact);
+        Assert.Contains("UNKNOWN", vm.VerifiedFact);
         Assert.Contains("corr-1", vm.ExportEvidenceJson());
     }
 
