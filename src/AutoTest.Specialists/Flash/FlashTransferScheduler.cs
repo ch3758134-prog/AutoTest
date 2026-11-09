@@ -31,6 +31,9 @@ public sealed class FlashTransferScheduler(UdsClient uds, UdsEndpointProfile end
                 "NRC="+(response.NegativeResponseCode?.ToString("X2") ?? "NONE")+
                 "; ResponseHex="+(response.ResponsePdu.IsDefaultOrEmpty ? "" :
                     Convert.ToHexString(response.ResponsePdu.ToArray()))+"; MOCK");
+            if (response.Outcome == Outcome.Uncertain)
+                throw new ProgrammingUncertainException(
+                    $"TransferData block {counter} has no confirmed ACK; partial Mock write may exist.");
             if (!accepted)
                 throw new ProgrammingRejectedException($"TransferData block {counter}: NRC="+
                     (response.NegativeResponseCode?.ToString("X2") ?? response.Outcome.ToString()));
