@@ -61,8 +61,16 @@ public sealed class UdsReplayWorkspace
         if (_index>=_records.Count) throw new EndOfStreamException("REPLAY_EXHAUSTED");
         var record=_records[_index];
         byte[] stored=UdsHex.Parse(record.RequestHex);
-        if (!stored.SequenceEqual(request)) throw new InvalidOperationException(
-            "REPLAY_REQUEST_MISMATCH: expected " + UdsHex.Format(stored));
+        if (!stored.SequenceEqual(request))
+        {
+            // Replay files may contain SecurityAccess keys or firmware bytes.
+            // Never echo the expected sensitive request into UI errors/log export.
+            bool sensitive=stored[0] is 0x27 or 0x29 or 0x2E or 0x2F
+                or 0x34 or 0x35 or 0x36 or 0x37;
+            throw new InvalidOperationException(sensitive
+                ? "REPLAY_REQUEST_MISMATCH: sensitive expected PDU redacted"
+                : "REPLAY_REQUEST_MISMATCH: expected " + UdsHex.Format(stored));
+        }
         byte[]? expected=string.IsNullOrWhiteSpace(expectedText)?null:UdsHex.Parse(expectedText);
         _index++;
         var responses=record.Responses.Select(UdsHex.Parse).ToList();
