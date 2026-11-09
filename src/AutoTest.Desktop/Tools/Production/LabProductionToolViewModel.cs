@@ -68,6 +68,14 @@ public sealed class LabProductionToolViewModel : BindableBase
 {
     private readonly LabCatalogStore _store;
     private readonly LabProductionOrchestrator _orchestrator;
+    private readonly ProductionDiagnosticJournal _diagnostics;
+    private readonly LabScannerCaptureProbe _scannerProbe = new();
+    private string _scannerEvidence = "输入方式：专用键盘口/人工，物理扫描器身份未验证";
+    private bool _errorsOnly;
+    private bool _scannerOnly;
+    private bool _includeRawBarcodeInLocalExport;
+    private string _exportPath = "未导出（默认隐藏原始扫码）";
+
     private LabCatalog _publishedCatalog;
     private CancellationTokenSource? _current;
     private string _scanInput = "M000001";
@@ -88,16 +96,24 @@ public sealed class LabProductionToolViewModel : BindableBase
     public LabProductionToolViewModel() : this(CreateDefaultStore(),
         new LabProductionOrchestrator(new LabDeterministicMockRunner(), new LabMemoryLedger())) { }
 
-    public LabProductionToolViewModel(LabCatalogStore store, LabProductionOrchestrator orchestrator)
+    public LabProductionToolViewModel(LabCatalogStore store, LabProductionOrchestrator orchestrator,
+        ProductionDiagnosticJournal? diagnostics = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
+        _diagnostics = diagnostics ?? new ProductionDiagnosticJournal();
         _publishedCatalog = LabDemoCatalog.Create();
         RuleRevision = _publishedCatalog.Revision;
         PopulateRows(_publishedCatalog);
         PreviewCommand = new DelegateCommand(PreviewScan, () => !IsBusy);
+        Trace("Startup", "Info", "PRODUCTION_MOCK_ONLY",
+            "生产 UI 已初始化；仅 MOCK，暂无正式 TEST/RECORD 与 Physical 授权");
         RunMockCommand = new DelegateCommand(() => _ = RunMockAsync(), () => !IsBusy);
-        AbortCommand = new DelegateCommand(() => _current?.Cancel(), () => IsBusy);
+        AbortCommand = new DelegateCommand(() =>
+        {
+            Trace("Run", "Warning", "ABORT_REQUESTED", "操作员请求取消当前 Mock 作业");
+            _current?.Cancel();
+        }, () => IsBusy);
         SaveDraftCommand = new DelegateCommand(() => _ = SaveDraftAsync(), () => !IsBusy);
         PublishCommand = new DelegateCommand(() => _ = PublishAsync(), () => !IsBusy);
         LoadCommand = new DelegateCommand(() => _ = LoadAsync(), () => !IsBusy);
@@ -114,6 +130,99 @@ public sealed class LabProductionToolViewModel : BindableBase
     public ObservableCollection<LabSampleRow> Samples { get; } = new();
     public ObservableCollection<LabHistoryRow> History { get; } = new();
     public ObservableCollection<LabScanEventRow> ScanEvents { get; } = new();
+    public ObservableCollection<ProductionDiagnosticEntry> DiagnosticEvents { get; } = new();
+    public bool ErrorsOnly
+    {
+        get => _errorsOnly;
+        set { if (SetProperty(ref _errorsOnly, value)) RefreshDiagnostics(); }
+    }
+    public bool ScannerOnly
+    {
+        get => _scannerOnly;
+        set { if (SetProperty(ref _scannerOnly, value)) RefreshDiagnostics(); }
+    }
+    public bool IncludeRawBarcodeInLocalExport
+    {
+        get => _includeRawBarcodeInLocalExport;
+        set => SetProperty(ref _includeRawBarcodeInLocalExport, value);
+    }
+    public string ExportPath { get => _exportPath; private set => SetProperty(ref _exportPath, value); }
+    public long DroppedDiagnosticEvents => _diagnostics.DroppedCount;
+    public string ScannerEvidence { get => _scannerEvidence; private set => SetProperty(ref _scannerEvidence, value); }
+
+    public void ScannerFieldFocused() => _scannerProbe.FocusAcquired();
+    public void ScannerFieldLostFocus() => _scannerProbe.FocusLost();
+    public void ScannerTextChanged(string text, bool focused) => _scannerProbe.TextChanged(text, focused);
+
+    // Enter in focused dedicated scanner field; input device identity remains UNVERIFIED.
+    public void PreviewScannerEnter(string text, bool focused)
+    {
+        ScanInput = text;
+        var capture = _scannerProbe.CompleteEnter(text, focused, IsBusy);
+        ScannerEvidence = $"Attempt={capture.AttemptId:N} · {capture.DecisionCode} · " +
+            $"字符={capture.CharacterCount} · 变更事件={capture.TextChangeEvents} · " +
+            $"耗时={capture.ElapsedMilliseconds:F0}ms · 键盘口/人工未区分";
+        Trace("ScannerAcquisition", capture.Accepted ? "Info" : "Warning",
+            capture.DecisionCode, $"Focusable={capture.DedicatedFieldFocused}; " +
+            $"Busy={capture.StationBusy}; Enter=true; " +
+            $"Length={capture.CharacterCount}; Changes={capture.TextChangeEvents}; " +
+            $"ElapsedMs={capture.ElapsedMilliseconds:F0}; " +
+            "DeviceIdentity=UNVERIFIED; Transport=FOCUSED_KEYBOARD_INPUT",
+            rawBarcode: capture.RawText, captureId: capture.AttemptId);
+        if (!capture.Accepted)
+        {
+            if (!IsBusy)
+            {
+                _preview = null;
+                MatchDetail = capture.DecisionCode;
+                Status = "扫码枪诊断拒绝：" + capture.DecisionCode;
+            }
+            return;
+        }
+        PreviewScan();
+    }
+    public string GetDiagnosticText() =>
+        _diagnostics.CopyText(ErrorsOnly, ScannerOnly ? "ScannerAcquisition" : null);
+
+    public async Task ExportDiagnosticsAsync(string filePath, CancellationToken ct = default)
+    {
+        Trace("Export", "Info", "EXPORT_REQUESTED",
+            IncludeRawBarcodeInLocalExport
+                ? "用户明确选择原始扫码本地导出；该文件可能包含敏感编号"
+                : "用户请求导出诊断 JSONL（原始扫码脱敏）");
+        try
+        {
+            await _diagnostics.ExportJsonLinesAsync(filePath,
+                includeRawBarcode: IncludeRawBarcodeInLocalExport, cancellationToken: ct);
+            ExportPath = Path.GetFullPath(filePath);
+            Trace("Export", "Info", "EXPORT_COMPLETED", "诊断文件已经写入指定位置");
+        }
+        catch (Exception ex)
+        {
+            ExportPath = "导出失败：" + ex.GetType().Name;
+            Trace("Export", "Error", "EXPORT_FAILED", ex.GetType().Name);
+        }
+    }
+
+    private void Trace(string stage, string severity, string code, string summary,
+        Guid? runId = null, string? rawBarcode = null, string recipeRevision = "",
+        Guid? captureId = null)
+    {
+        _diagnostics.Append(stage, severity, code, summary,
+            "Mock/ProductionUI", RuleRevision, recipeRevision, runId, rawBarcode, captureId);
+        RefreshDiagnostics();
+    }
+
+    private void RefreshDiagnostics()
+    {
+        // UI is bounded. Export contains all retained journal entries independent of filters.
+        var newest = _diagnostics.Snapshot(ErrorsOnly,
+            ScannerOnly ? "ScannerAcquisition" : null).TakeLast(500).Reverse().ToArray();
+        DiagnosticEvents.Clear();
+        foreach (var entry in newest) DiagnosticEvents.Add(entry);
+        RaisePropertyChanged(nameof(DroppedDiagnosticEvents));
+    }
+
     public IReadOnlyList<LabMockScenario> Scenarios { get; } = Enum.GetValues<LabMockScenario>();
     public DelegateCommand PreviewCommand { get; }
     public DelegateCommand RunMockCommand { get; }
@@ -161,8 +270,12 @@ public sealed class LabProductionToolViewModel : BindableBase
         {
             _preview = null; MatchDetail = input.Code; Status = input.Code;
             AddScanEvent(ScanInput, input.Code);
+            Trace("Scan", "Warning", input.Code, "扫码输入被拒绝", rawBarcode: ScanInput);
             return;
         }
+        Trace("ScanCapture", "Info", "SCAN_CAPTURED",
+            "专用输入框已捕获扫码文本；键盘模拟设备身份未独立验证，尚未创建 Run",
+            rawBarcode: input.NormalizedText);
         _preview = LabIdentityMatcher.Match(_publishedCatalog, input.NormalizedText,
             _publishedCatalog.Revision);
         MatchDetail = _preview.Accepted
@@ -170,11 +283,24 @@ public sealed class LabProductionToolViewModel : BindableBase
             : $"阻断：{_preview.Code} [{string.Join(",", _preview.CandidateIds)}]";
         Status = _preview.Accepted ? "匹配成功（仅 MOCK 演示，尚未运行）" : "扫码匹配未通过，禁止执行";
         AddScanEvent(input.NormalizedText, _preview.Code);
+        Trace("IdentityMatch", _preview.Accepted ? "Info" : "Warning", _preview.Code,
+            _preview.Accepted
+                ? "已唯一匹配 Rule=" + _preview.Identity!.RuleId +
+                  "; Recipe=" + _preview.Recipe!.RecipeId +
+                  "; RecipeRevision=" + _preview.Recipe.Revision + "; 尚未创建 Run"
+                : "身份或配方未通过唯一匹配；候选数=" + _preview.CandidateIds.Count,
+            rawBarcode: input.NormalizedText,
+            recipeRevision: _preview.Recipe?.Revision ?? "");
     }
 
     public async Task RunMockAsync()
     {
-        if (IsBusy) return;
+        if (IsBusy)
+        {
+            Trace("RunAdmission", "Warning", "STATION_BUSY_SCAN_REJECTED",
+                "运行期间拒绝第二次启动");
+            return;
+        }
         PreviewScan();
         if (_preview?.Accepted != true) return;
         var preflight = _orchestrator.Preflight(_publishedCatalog, _preview,
@@ -182,16 +308,33 @@ public sealed class LabProductionToolViewModel : BindableBase
         if (!preflight.Ready)
         {
             Status = "预检拒绝：" + string.Join(" / ", preflight.Blockers);
+            foreach (var blocker in preflight.Blockers)
+                Trace("Preflight", "Warning", blocker, "本轮未执行测试");
             return;
         }
         IsBusy = true;
         _current = new CancellationTokenSource();
         Status = "正在执行 TEST Mock（无物理输出）";
+        Trace("Run", "Info", "MOCK_RUN_REQUESTED",
+            "已获得模拟工位；Scenario=" + SelectedScenario +
+            "; Recipe=" + _preview.Recipe?.RecipeId +
+            "; 交由独立 Mock Runner（尚非正式 RunCoordinator）",
+            recipeRevision: _preview.Recipe?.Revision ?? "");
         try
         {
             var result = await _orchestrator.RunAsync(_publishedCatalog, _preview,
                 ScanInput, LabOrigin.Mock, SelectedScenario, AllowRetest, _current.Token);
             LastRun = $"{result.Request.RunId:N} | {result.Status} | {result.ResultCode}";
+            Trace("RunResult", result.Status == LabRunStatus.MockPass ? "Info" : "Warning",
+                result.ResultCode, "模拟结果=" + result.Status +
+                "; StepFact 条数=" + result.StepFacts.Count +
+                "; ElapsedMs=" + (result.FinishedUtc - result.Request.StartedUtc).TotalMilliseconds.ToString("F0") +
+                "; FactoryReleased=false",
+                result.Request.RunId, recipeRevision: result.Request.RecipeRevision);
+            for (var index = 0; index < result.StepFacts.Count; index++)
+                Trace("MockStepFact", "Info", "MOCK_STEP_" + (index + 1),
+                    "已接收模拟步骤事实（内容留在 RunRecord；诊断摘要不记录敏感数据）",
+                    result.Request.RunId, recipeRevision: result.Request.RecipeRevision);
             History.Insert(0, new LabHistoryRow(result.Request.RunId.ToString("N"),
                 result.FinishedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
                 result.Request.UnitKey, result.Request.RecipeId, result.Status.ToString(),
@@ -207,6 +350,8 @@ public sealed class LabProductionToolViewModel : BindableBase
         {
             Status = "执行/记录失败：" + ex.GetType().Name + " - " + ex.Message;
             LastRun = "UNKNOWN：未确认记录成功，不可放行";
+            Trace("RunOrLedger", "Error", "RUN_OR_RECORD_EXCEPTION",
+                "运行/落档抛出 " + ex.GetType().Name + "，未声明持久成功");
         }
         finally
         {
@@ -223,8 +368,13 @@ public sealed class LabProductionToolViewModel : BindableBase
             var saved = await _store.SaveDraftAsync(BuildDraft());
             DraftState = "草稿已保存 " + saved.Revision + "；生产仍使用已发布快照";
             Status = "草稿已保存（未经验证，不可投入真实生产）";
+            Trace("Catalog", "Info", "DRAFT_SAVED", "草稿已保存，已发布快照未变化");
         }
-        catch (Exception ex) { Status = "草稿保存失败：" + ex.Message; }
+        catch (Exception ex)
+        {
+            Status = "草稿保存失败：" + ex.Message;
+            Trace("Catalog", "Error", "DRAFT_SAVE_FAILED", ex.GetType().Name);
+        }
         finally { IsBusy = false; }
     }
 
@@ -241,8 +391,13 @@ public sealed class LabProductionToolViewModel : BindableBase
             DraftState = "发布成功：运行将锁定版本 " + next.Revision;
             _preview = null; MatchDetail = "版本已更新，请重新扫码";
             Status = "发布成功（仅允许 Mock 场景；未知正则交集需要人工审查）";
+            Trace("Catalog", "Info", "CATALOG_PUBLISHED", "新的本地 MOCK 修订已发布");
         }
-        catch (Exception ex) { Status = "发布阻断：" + ex.Message; }
+        catch (Exception ex)
+        {
+            Status = "发布阻断：" + ex.Message;
+            Trace("Catalog", "Warning", "PUBLICATION_BLOCKED", ex.GetType().Name);
+        }
         finally { IsBusy = false; }
     }
 
@@ -261,8 +416,13 @@ public sealed class LabProductionToolViewModel : BindableBase
             DraftState = draft is null ? "没有单独保存的草稿" : "已恢复草稿；未覆盖已发布版本";
             MatchDetail = "重新加载后请扫码预览"; _preview = null;
             Status = "配置已加载（Physical 始终禁止）";
+            Trace("Catalog", "Info", "CATALOG_LOADED", "本地草稿/已发布 MOCK 修订加载完成");
         }
-        catch (Exception ex) { Status = "配置加载失败：" + ex.Message; }
+        catch (Exception ex)
+        {
+            Status = "配置加载失败：" + ex.Message;
+            Trace("Catalog", "Error", "CATALOG_LOAD_FAILED", ex.GetType().Name);
+        }
         finally { IsBusy = false; }
     }
 
