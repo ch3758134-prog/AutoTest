@@ -147,4 +147,17 @@ public sealed class UdsWorkbenchTests
         Assert.Equal(new[]{"7F 22 78","62 F1 90 4D 4F 43 4B"},exchange.ResponseSequence);
         Assert.Equal("Replay",exchange.Source);
     }
+
+    [Fact]
+    public void SensitiveReplayMismatchNeverEchoesExpectedSeedOrKey()
+    {
+        var replay=new UdsReplayWorkspace();
+        replay.Load(new UdsReplayDocument(1,[
+            new UdsReplayRecord("27 02 11 22 33 44",["7F 27 35"],[])]));
+        var error=Assert.Throws<InvalidOperationException>(()=>replay.Consume("27 02 AA BB CC DD"));
+        Assert.Contains("REPLAY_REQUEST_MISMATCH",error.Message);
+        Assert.Contains("redacted",error.Message);
+        Assert.DoesNotContain("11 22 33 44",error.Message);
+        Assert.Equal(0,replay.Position);
+    }
 }
