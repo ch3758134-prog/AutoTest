@@ -192,7 +192,8 @@ public sealed class FlashToolViewModel : BindableBase
     private void Update(ProgrammingJobSnapshot snapshot)
     {
         Status="MOCK_"+snapshot.State.ToString().ToUpperInvariant();
-        var finalFailure=snapshot.Facts.LastOrDefault(x=>x.Status=="FAIL");
+        var finalFailure=snapshot.Facts.LastOrDefault(x=>x.Stage=="Job" &&
+            (x.Status=="FAIL" || x.Status=="UNCERTAIN"));
         Failure=snapshot.FailureCode is { Length: > 0 }
             ? (finalFailure is null ? snapshot.FailureCode :
                 snapshot.FailureCode+": "+finalFailure.Detail)
