@@ -42,3 +42,8 @@ dotnet test tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj -
 - 用户须明确选择“重置 Mock ECU / 会话”后才能继续诊断。Replay 与该 Mock 通道隔离，不受其传输重置门禁影响。
 - UI 提供 MockChannelStatus 与 MockResetRequired；新增回归：超时后拒绝、取消后拒绝、重置后恢复、错误分类和关联 ID。
 - 注意：此机制属于 Mock 工作区自有安全处理，没有变更共享 `UdsClient` 或 `IsoTpConversation`；真实物理重新同步/重连仍需 DEVICE+主对话设计。
+
+## 本轮增量：Replay 已验证数据冻结
+- Replay Load 先验证请求 SID、UDS 应答序列和 CAN DLC，再复制并规范化全部请求/响应/帧数据；外部 UdsReplayDocument 后续修改不能影响已加载记录。
+- 新增回归：调用方修改响应/NRC、帧和原始记录对象后，Replay 仍返回当时验证通过的结果及帧，避免重放证据漂移。
+- 继续保持 Mock/Replay/Physical 隔离，真实 UDS Tx 仍未授权；Windows Build/xUnit NOT_RUN。
