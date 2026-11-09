@@ -605,7 +605,7 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         var selected = Selected().Where(x => _captures.ContainsKey(x.Choice.Signal))
             .Select(x => _captures[x.Choice.Signal].Series).ToArray();
         if (selected.Length == 0) { _start = 0; _end = 1; Render(); return; }
-        var points = selected.SelectMany(WaveChartAnalysis.FromSeries).ToArray();
+        var points = selected.SelectMany(series => WaveChartAnalysis.FromSeries(series)).ToArray();
         if (points.Length == 0) { _start = 0; _end = 1; Render(); return; }
         _start = points.Min(p => p.Seconds);
         _end = Math.Max(_start + .001, points.Max(p => p.Seconds));
