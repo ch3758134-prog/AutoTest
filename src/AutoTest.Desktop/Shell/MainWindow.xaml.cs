@@ -6,10 +6,15 @@ using AutoTest.Desktop.Shell.R1;
 namespace AutoTest.Desktop.Shell;
 public partial class MainWindow : Window
 {
-    public MainWindow()
+    // Non-owning session binding for the single R1 document host. No USB/CAN is
+    // constructed here; DEVICE must explicitly provide the already-active Hub.
+    private readonly R1SharedCanSource _sharedCan;
+
+    public MainWindow(R1SharedCanSource sharedCan)
     {
+        _sharedCan = sharedCan ?? throw new ArgumentNullException(nameof(sharedCan));
         InitializeComponent();
-        var documents = new R1SpecialistDocumentHost();
+        var documents = new R1SpecialistDocumentHost(_sharedCan);
         var workspace = new R1WorkspaceViewModel(documents);
         foreach (var id in documents.AvailableWorkspaceIds)
             workspace.UpdateAvailability(id, WorkspaceAvailability.Available);

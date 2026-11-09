@@ -3,6 +3,7 @@ using AutoTest.Application.V1;
 using AutoTest.Application.G4;
 using AutoTest.Contracts;
 using AutoTest.Desktop.Shell;
+using AutoTest.Desktop.Shell.R1;
 using AutoTest.Desktop.Project;
 using AutoTest.Desktop.Testing;
 using Prism.Ioc;
@@ -17,6 +18,7 @@ public static class PrismRegistration
   registry.RegisterInstance<IApplicationCommandGateway>(mock.Gateway);
   registry.RegisterSingleton<V1Workspace>();
   registry.RegisterSingleton<G4IntegrationHost>();
+  registry.RegisterSingleton<R1SharedCanSource>();
   registry.RegisterSingleton<MainWindowViewModel>();
   registry.Register<MainWindow>();
   registry.Register<ProjectExplorerView>();

@@ -20,6 +20,24 @@ namespace AutoTest.Desktop.Shell.R1;
 public sealed class R1SpecialistDocumentHost : IWorkspaceDocumentHost, IDisposable
 {
     private readonly Dictionary<string, FrameworkElement> _open = new(StringComparer.Ordinal);
+    private readonly R1SharedCanSource _sharedCan;
+    private readonly Func<R1SharedCanSource, UdsToolViewModel> _udsFactory;
+    private readonly Func<R1SharedCanSource, FrameworkElement> _waveFactory;
+
+    // The UDS owner supplies a physical-capable VM only after DEVICE's authorized
+    // diagnostic transaction port and the matching UDS adapter have passed review.
+    // Until then the default factory creates the existing Mock/Replay-only VM.
+    public R1SpecialistDocumentHost(R1SharedCanSource? sharedCan = null,
+        Func<R1SharedCanSource, UdsToolViewModel>? udsFactory = null,
+        Func<R1SharedCanSource, FrameworkElement>? waveFactory = null)
+    {
+        _sharedCan = sharedCan ?? new R1SharedCanSource();
+        _udsFactory = udsFactory ?? (_ => new UdsToolViewModel());
+        _waveFactory = waveFactory ?? (_ => new R1WaveReplayDocument());
+    }
+
+    public R1SharedCanSource SharedCanSource => _sharedCan;
+
     private static readonly IReadOnlyList<string> Available =
         Array.AsReadOnly(new[] { "P04", "P07", "P08", "P09", "P12" });
 
@@ -37,8 +55,10 @@ public sealed class R1SpecialistDocumentHost : IWorkspaceDocumentHost, IDisposab
             FrameworkElement document = workspaceId switch
             {
                 "P04" => new DbcToolView(new DbcToolViewModel()),
-                "P07" => new R1WaveReplayDocument(),
-                "P08" => new UdsToolView { DataContext = new UdsToolViewModel() },
+                "P07" => _waveFactory(_sharedCan) ??
+                    throw new InvalidOperationException("R1_WAVE_FACTORY_RETURNED_NULL"),
+                "P08" => new UdsToolView { DataContext = _udsFactory(_sharedCan) ??
+                    throw new InvalidOperationException("R1_UDS_FACTORY_RETURNED_NULL") },
                 "P09" => new FlashToolView { DataContext = new FlashToolViewModel() },
                 "P12" => new LabProductionToolView(),
                 _ => throw new InvalidOperationException(
@@ -57,17 +77,24 @@ public sealed class R1SpecialistDocumentHost : IWorkspaceDocumentHost, IDisposab
     public bool TryClose(string workspaceId, out string failureReason)
     {
         failureReason = "";
-        if (_open.Remove(workspaceId, out var document) && document is IDisposable disposable)
-            disposable.Dispose();
-        // Closing a view never closes any shared physical Session.
+        if (_open.Remove(workspaceId, out var document))
+            ReleaseOwnedOfflineDocument(document);
+        // Do not dispose arbitrary injected specialist providers: these may reference
+        // DEVICE-owned USB/Hub. UI owner must explicitly define its own close contract.
         return true;
     }
 
     public void Dispose()
     {
         foreach (var item in _open.Values)
-            if (item is IDisposable disposable) disposable.Dispose();
+            ReleaseOwnedOfflineDocument(item);
         _open.Clear();
+    }
+
+    private static void ReleaseOwnedOfflineDocument(FrameworkElement document)
+    {
+        if (document is R1WaveReplayDocument offline)
+            offline.Dispose(); // only local Wave replay session, never shared USB/CAN
     }
 }
 
