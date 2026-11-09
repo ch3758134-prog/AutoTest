@@ -54,9 +54,10 @@ public sealed class UdsReplayWorkspace
             ?? throw new InvalidDataException("Invalid replay JSON.");
         Load(doc);
     }
-    public UdsToolExchange Consume(string requestText,string expectedText="")
+    public UdsToolExchange Consume(string requestText,string expectedText="", Guid? correlationId=null)
     {
         var request=UdsHex.Parse(requestText);
+        if (correlationId == Guid.Empty) throw new ArgumentException("Correlation ID must be nonempty.");
         if (_index>=_records.Count) throw new EndOfStreamException("REPLAY_EXHAUSTED");
         var record=_records[_index];
         byte[] stored=UdsHex.Parse(record.RequestHex);
@@ -71,7 +72,8 @@ public sealed class UdsReplayWorkspace
         byte? nrc=final.Length==3 && final[0]==0x7F? final[2]:null;
         return new("Replay",UdsHex.Format(request),UdsHex.Format(final),outcome,
             nrc.HasValue?$"0x{nrc.Value:X2}":"—",
-            expected is null?null:final.SequenceEqual(expected),Guid.NewGuid(),
-            record.Frames.ToArray(),final.Length==0?"REPLAY_NO_FINAL_RESPONSE":"");
+            expected is null?null:final.SequenceEqual(expected),correlationId ?? Guid.NewGuid(),
+            record.Frames.ToArray(),final.Length==0?"REPLAY_NO_FINAL_RESPONSE":"")
+            { ResponseSequence = responses.Select(UdsHex.Format).ToArray() };
     }
 }
