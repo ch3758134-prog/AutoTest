@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -110,10 +111,11 @@ public static class LabCatalogDiagnostics
         var limited = allRules.Take(MaxRulesPerOverlap).ToArray();
         var findings = new List<LabRuleOverlapFinding>();
         var validSampleTexts = samples.Take(maxSamples)
-            .Select(x => x.RawBarcode.TrimEnd('\r', '\n'))
+            .Select(x => (x.RawBarcode ?? "").TrimEnd('\r', '\n'))
             .Where(x => x.Length is > 0 and <= 4096 && x.IndexOf('\0') < 0)
             .ToArray();
         var compiled = new Regex?[limited.Length];
+        var regexFailed = new bool[limited.Length];
         for (var i = 0; i < limited.Length; i++)
         {
             try
@@ -123,41 +125,68 @@ public static class LabCatalogDiagnostics
             }
             catch (ArgumentException)
             {
-                // Existing publication validator will also report invalid regex.
+                regexFailed[i] = true;
             }
+        }
+
+        // Each sample is checked against each rule ONCE. Never rerun the regex for every
+        // rule pair. A wall-clock budget bounds adversarial regex sets in a WPF action.
+        var collisionCounts = new Dictionary<(int First, int Second), int>();
+        var stopwatch = Stopwatch.StartNew();
+        var budgetExceeded = false;
+        var examined = 0;
+        foreach (var raw in validSampleTexts)
+        {
+            if (stopwatch.Elapsed >= TimeSpan.FromSeconds(3))
+            {
+                budgetExceeded = true;
+                break;
+            }
+            var matchingRules = new List<int>();
+            for (var i = 0; i < limited.Length; i++)
+            {
+                if (stopwatch.Elapsed >= TimeSpan.FromSeconds(3))
+                {
+                    budgetExceeded = true;
+                    break;
+                }
+                if (regexFailed[i] || compiled[i] is null) continue;
+                try
+                {
+                    var match = compiled[i]!.Match(raw);
+                    if (match.Success && match.Index == 0 && match.Length == raw.Length)
+                        matchingRules.Add(i);
+                }
+                catch (RegexMatchTimeoutException)
+                {
+                    regexFailed[i] = true;
+                }
+            }
+            if (budgetExceeded) break;
+            examined++;
+            for (var i = 0; i < matchingRules.Count; i++)
+                for (var j = i + 1; j < matchingRules.Count; j++)
+                {
+                    var pair = (matchingRules[i], matchingRules[j]);
+                    collisionCounts[pair] = collisionCounts.TryGetValue(pair, out var count)
+                        ? count + 1 : 1;
+                }
         }
 
         for (var i = 0; i < limited.Length; i++)
         {
             for (var j = i + 1; j < limited.Length; j++)
             {
-                var count = 0;
-                var regexError = compiled[i] is null || compiled[j] is null;
-                if (!regexError)
-                {
-                    foreach (var raw in validSampleTexts)
-                    {
-                        try
-                        {
-                            var a = compiled[i]!.Match(raw);
-                            if (!a.Success || a.Index != 0 || a.Length != raw.Length) continue;
-                            var b = compiled[j]!.Match(raw);
-                            if (b.Success && b.Index == 0 && b.Length == raw.Length) count++;
-                        }
-                        catch (RegexMatchTimeoutException)
-                        {
-                            regexError = true;
-                            break;
-                        }
-                    }
-                }
+                var invalid = regexFailed[i] || regexFailed[j] ||
+                              compiled[i] is null || compiled[j] is null;
+                collisionCounts.TryGetValue((i, j), out var count);
                 var samePattern = string.Equals(limited[i].Pattern, limited[j].Pattern,
                     StringComparison.Ordinal);
-                var classification = regexError ? "REGEX_INVALID_OR_TIMEOUT"
+                var classification = invalid ? "REGEX_INVALID_OR_TIMEOUT"
                     : samePattern ? "IDENTICAL_REGEX"
                     : count > 0 ? "SAMPLE_COLLISION"
                     : "UNPROVEN_DISJOINTNESS";
-                var evidence = regexError ? "正则编译或限时匹配失败，不可证明安全"
+                var evidence = invalid ? "正则编译或限时匹配失败，不可证明安全"
                     : samePattern ? "相同表达式必然存在交集（即使当前样本为空）"
                     : count > 0 ? "已在当前样本中观察到双重匹配"
                     : "有限样本未发现双重匹配；不能据此证明规则不重叠";
@@ -165,9 +194,11 @@ public static class LabCatalogDiagnostics
                     classification, count, evidence));
             }
         }
-        return new(allRules.Length, validSampleTexts.Length, samples.Count,
-            allRules.Length > MaxRulesPerOverlap || samples.Count > maxSamples ||
-            validSampleTexts.Length < Math.Min(samples.Count, maxSamples), findings);
+        return new(allRules.Length, examined, samples.Count,
+            budgetExceeded || allRules.Length > MaxRulesPerOverlap ||
+            samples.Count > maxSamples ||
+            validSampleTexts.Length < Math.Min(samples.Count, maxSamples) ||
+            regexFailed.Any(x => x), findings);
     }
 
     public static LabCatalogComparison Compare(LabCatalog published, LabCatalog draft)
