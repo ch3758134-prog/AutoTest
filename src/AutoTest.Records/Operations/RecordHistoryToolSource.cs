@@ -15,6 +15,10 @@ public interface IRecordHistoryToolSource
     Task<IReadOnlyList<RecordHistoryToolRow>> QueryAsync(string? dutId, string? mode, int limit,
         CancellationToken ct = default);
     Task<RecordToolSummary> SummaryAsync(string mode, CancellationToken ct = default);
+    Task<IReadOnlyList<RecordHistoryToolRow>> QueryPeriodAsync(string? dutId, string? mode,
+        int limit, DateTimeOffset? fromUtc, DateTimeOffset? toUtc, CancellationToken ct = default);
+    Task<ProductionPeriodSummary> ProductionPeriodSummaryAsync(DateTimeOffset? fromUtc,
+        DateTimeOffset? toUtc, CancellationToken ct = default);
     Task<RunArchiveIntegrityResult> InspectArchiveAsync(string runId, CancellationToken ct = default);
     Task<string> ExportFullReportJsonAsync(string runId, CancellationToken ct = default);
     Task<string> ExportFullReportHtmlAsync(string runId, CancellationToken ct = default);
@@ -34,12 +38,21 @@ public sealed class RecordHistoryToolSource : IRecordHistoryToolSource
         _reports = reports ?? throw new ArgumentNullException(nameof(reports));
     }
 
-    public async Task<IReadOnlyList<RecordHistoryToolRow>> QueryAsync(string? dutId, string? mode, int limit,
-        CancellationToken ct = default)
+    public Task<IReadOnlyList<RecordHistoryToolRow>> QueryAsync(string? dutId, string? mode, int limit,
+        CancellationToken ct = default) =>
+        QueryPeriodAsync(dutId, mode, limit, null, null, ct);
+
+    public Task<ProductionPeriodSummary> ProductionPeriodSummaryAsync(DateTimeOffset? fromUtc,
+        DateTimeOffset? toUtc, CancellationToken ct = default) =>
+        _statistics.GetPeriodSummaryAsync(RecordRunMode.Production, fromUtc, toUtc, ct);
+
+    public async Task<IReadOnlyList<RecordHistoryToolRow>> QueryPeriodAsync(string? dutId, string? mode,
+        int limit, DateTimeOffset? fromUtc, DateTimeOffset? toUtc, CancellationToken ct = default)
     {
         RecordRunMode? runMode = string.IsNullOrWhiteSpace(mode) || mode == "All" ? null : Enum.Parse<RecordRunMode>(mode, true);
         var filtered = await _history.FilterAsync(new RunHistoryFilter(
             DutId: string.IsNullOrWhiteSpace(dutId) ? null : dutId.Trim(), Mode: runMode,
+            FromUtc: fromUtc, ToUtc: toUtc,
             Limit: Math.Clamp(limit, 1, 500)), ct).ConfigureAwait(false);
         return filtered.Select(x => new RecordHistoryToolRow(x.Run.ToString(), x.DutId, x.Mode.ToString(),
             x.StartedUtc, x.Persistence.ToString(), x.Verdict?.ToString() ?? "Unknown", x.FactCount,

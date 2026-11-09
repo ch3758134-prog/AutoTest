@@ -17,6 +17,9 @@
       <TextBox Width="180" Text="{Binding DutId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
       <TextBlock Text="执行模式" VerticalAlignment="Center" Margin="0,0,5,0"/>
       <ComboBox Width="128" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" Margin="0,0,8,0"/>
+      <TextBlock Text="月份 UTC" VerticalAlignment="Center" Margin="0,0,5,0"/>
+      <TextBox Width="92" Text="{Binding MonthUtc, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"
+               ToolTip="格式 YYYY-MM；留空则查询全部历史。生产统计按此月份独立统计。"/>
       <Button Content="_查询" Command="{Binding RefreshCommand}" Padding="12,3" IsDefault="True"/>
     </WrapPanel>
     <TextBlock Grid.Row="2" Text="{Binding Summary}" TextWrapping="Wrap" Foreground="DarkSlateGray" Margin="0,0,0,7"/>

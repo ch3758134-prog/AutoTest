@@ -1,6 +1,7 @@
 using AutoTest.Core;
 using AutoTest.Records.Model;
 using AutoTest.Records.Queries;
+using System.Globalization;
 using AutoTest.Desktop.Tools.Records;
 using AutoTest.Records.Operations;
 using Xunit;
@@ -70,8 +71,53 @@ public sealed class RecordsViewModelTests
         Assert.Contains("先选择 RunId", vm.Error);
     }
 
+
+    [Fact]
+    public async Task UtcMonthFilterAppliesToHistoryAndProductionStatistics()
+    {
+        var history = new FakeHistory();
+        var vm = new RecordsViewModel(history) { MonthUtc = "2026-11" };
+        await vm.RefreshAsync();
+        Assert.Equal(new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero), history.LastFromUtc);
+        Assert.Equal(new DateTimeOffset(2026, 11, 30, 23, 59, 59, TimeSpan.Zero)
+            .AddTicks(TimeSpan.TicksPerSecond - 1), history.LastToUtc);
+        Assert.Contains("2026-11 (UTC)", vm.Summary);
+        Assert.Contains("重复检测记录 1", vm.Summary);
+        Assert.Contains("历史重复不等于批准复检", vm.Summary);
+    }
+
+    [Fact]
+    public async Task InvalidMonthRefusesTheQueryInsteadOfShowingOldStatistics()
+    {
+        var history = new FakeHistory();
+        var vm = new RecordsViewModel(history) { MonthUtc = "2026-13" };
+        await vm.RefreshAsync();
+        Assert.Contains("YYYY-MM", vm.Error);
+        Assert.Equal("读取失败", vm.Status);
+        Assert.Null(history.LastFromUtc);
+        Assert.Equal(0, history.PeriodQueryCount);
+    }
+
     private sealed class FakeHistory : IRecordHistoryToolSource
     {
+        public DateTimeOffset? LastFromUtc { get; private set; }
+        public DateTimeOffset? LastToUtc { get; private set; }
+        public int PeriodQueryCount { get; private set; }
+
+        public Task<IReadOnlyList<RecordHistoryToolRow>> QueryPeriodAsync(string? dutId, string? mode,
+            int limit, DateTimeOffset? fromUtc, DateTimeOffset? toUtc, CancellationToken ct = default)
+        {
+            LastFromUtc = fromUtc;
+            LastToUtc = toUtc;
+            PeriodQueryCount++;
+            return QueryAsync(dutId, mode, limit, ct);
+        }
+
+        public Task<ProductionPeriodSummary> ProductionPeriodSummaryAsync(DateTimeOffset? fromUtc,
+            DateTimeOffset? toUtc, CancellationToken ct = default) =>
+            Task.FromResult(new ProductionPeriodSummary(RecordRunMode.Production, fromUtc, toUtc,
+                2, 1, 2, 1, 1, 0, 0, 0, 1, 1, 1));
+
         public Task<IReadOnlyList<RecordHistoryToolRow>> QueryAsync(string? dutId, string? mode,
             int limit, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<RecordHistoryToolRow>>(new[]

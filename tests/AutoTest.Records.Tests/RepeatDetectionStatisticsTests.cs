@@ -80,6 +80,62 @@ public sealed class RepeatDetectionStatisticsTests
             f.Statistics.GetRepeatDetectionSummaryAsync(fromUtc: UtcDay(5), toUtc: UtcDay(4)));
     }
 
+
+    [Fact]
+    public async Task MonthlySnapshotKeepsHistoryAndRepeatCountsInOneResult()
+    {
+        using var f = new TempFixture();
+        await SaveAtAsync(f, "ECU-A", 1);
+        await SaveAtAsync(f, "ECU-B", 2);
+        await SaveAtAsync(f, "ECU-A", 3);
+        var month = await f.Statistics.GetMonthlyPeriodSummaryAsync(2026, 11);
+        var baseline = await f.Statistics.GetSummaryAsync();
+        Assert.Equal(baseline.RunCount, month.RunCount);
+        Assert.Equal(baseline.DistinctDutCount, month.DistinctDutCount);
+        Assert.Equal(baseline.CommittedRuns, month.CommittedRuns);
+        Assert.Equal(baseline.PassedRuns, month.PassedRuns);
+        Assert.Equal(2, month.FirstSeenAttempts);
+        Assert.Equal(1, month.RepeatAttempts);
+        Assert.Equal(1, month.RepeatedDutCount);
+        Assert.Equal("NOT_EVALUATED_NO_RELEASE_CONTRACT", month.ReleaseAssessment);
+    }
+
+    [Fact]
+    public async Task MonthlyRepeatLooksBackBeforeTheFirstDayOfTheMonth()
+    {
+        using var f = new TempFixture();
+        var old = f.CreateRun("ECU-A") with
+        {
+            StartedUtc = new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero)
+        };
+        await f.Writer.BeginAsync(old);
+        await f.Writer.CompleteAsync(new RunCompletion(old.RunId, old.StartedUtc.AddMinutes(1),
+            RunState.Completed, Verdict.Pass, null));
+        await SaveAtAsync(f, "ECU-A", 1);
+        var nov = await f.Statistics.GetMonthlyPeriodSummaryAsync(2026, 11);
+        Assert.Equal(1, nov.RunCount);
+        Assert.Equal(0, nov.FirstSeenAttempts);
+        Assert.Equal(1, nov.RepeatAttempts);
+        Assert.Equal(1, nov.RepeatedDutCount);
+        var oct = await f.Statistics.GetMonthlyPeriodSummaryAsync(2026, 10);
+        Assert.Equal(1, oct.FirstSeenAttempts);
+        Assert.Equal(0, oct.RepeatAttempts);
+    }
+
+    [Fact]
+    public async Task PeriodSummaryRejectsNonUtcAndInvalidCalendarMonth()
+    {
+        using var f = new TempFixture();
+        await Assert.ThrowsAsync<ArgumentException>(() => f.Statistics.GetPeriodSummaryAsync(
+            fromUtc: new DateTimeOffset(2026, 11, 4, 8, 0, 0, TimeSpan.FromHours(8))));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            f.Statistics.GetMonthlyPeriodSummaryAsync(2026, 13));
+        var empty = await f.Statistics.GetMonthlyPeriodSummaryAsync(2026, 11);
+        Assert.Equal(0, empty.RunCount);
+        Assert.Equal(0, empty.RepeatAttempts);
+        Assert.Equal("NOT_EVALUATED_NO_RELEASE_CONTRACT", empty.ReleaseAssessment);
+    }
+
     private static DateTimeOffset UtcDay(int day) =>
         new(2026, 11, day, 12, 0, 0, TimeSpan.Zero);
 

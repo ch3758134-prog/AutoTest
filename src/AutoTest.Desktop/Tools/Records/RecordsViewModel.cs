@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using System.Text.Json;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
@@ -13,6 +14,7 @@ public sealed class RecordsViewModel : BindableBase
     private readonly IRecordHistoryToolSource _source;
     private string _dutId = "";
     private string _mode = "All";
+    private string _monthUtc = "";
     private string _reportPath = "";
     private string _status = "等待查询 · 不将 Mock 或 Replay 视为实际出厂记录";
     private string _error = "";
@@ -44,6 +46,7 @@ public sealed class RecordsViewModel : BindableBase
 
     public string DutId { get => _dutId; set => SetProperty(ref _dutId, value); }
     public string Mode { get => _mode; set => SetProperty(ref _mode, value); }
+    public string MonthUtc { get => _monthUtc; set => SetProperty(ref _monthUtc, value); }
     public string ReportPath { get => _reportPath; set => SetProperty(ref _reportPath, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string Error { get => _error; private set => SetProperty(ref _error, value); }
@@ -74,16 +77,21 @@ public sealed class RecordsViewModel : BindableBase
         try
         {
             Error = "";
-            var rows = await _source.QueryAsync(DutId, Mode, 500, ct);
+            var (fromUtc, toUtc) = ParseUtcMonth(MonthUtc);
+            var rows = await _source.QueryPeriodAsync(DutId, Mode, 500, fromUtc, toUtc, ct);
+            // This one-statement production statistics read is not a real-world release decision.
+            var stats = await _source.ProductionPeriodSummaryAsync(fromUtc, toUtc, ct);
             Selected = null;
             Runs.Clear();
             foreach (var row in rows) Runs.Add(row);
-            // This is production-mode history; "PassedRuns" does NOT prove Physical source or shipment.
-            var stats = await _source.SummaryAsync("Production", ct);
-            Summary = $"Production 历史：执行 {stats.RunCount} 次 / 不同 ECU {stats.DistinctDutCount} 台 / " +
-                $"已提交 {stats.CommittedRuns} / 历史 PASS {stats.PassedRuns} / FAIL {stats.FailedRuns} / " +
-                $"中断 {stats.InterruptedRuns} · 不是实物出厂放行数量";
-            Status = rows.Count == 0 ? "无历史记录（不是 PASS）。" : $"显示 {rows.Count} 条（上限 500）";
+            var window = fromUtc is null ? "全部历史" : MonthUtc.Trim() + " (UTC)";
+            Summary = $"Production {window}：执行 {stats.RunCount} 次 / 不同 ECU {stats.DistinctDutCount} 台 / " +
+                $"首次记录 {stats.FirstSeenAttempts} / 重复检测记录 {stats.RepeatAttempts} / " +
+                $"重复 ECU {stats.RepeatedDutCount} 台 / 已提交 {stats.CommittedRuns} / " +
+                $"历史 PASS {stats.PassedRuns} / FAIL {stats.FailedRuns} / 中断 {stats.InterruptedRuns}。" +
+                " 历史重复不等于批准复检；不是实物出厂放行数量。";
+            Status = rows.Count == 0 ? "无匹配历史记录（不是 PASS）。" :
+                $"显示 {rows.Count} 条（最多 500，历史模式 {Mode}，统计仅 Production）";
         }
         catch (Exception exception) { Error = "记录查询失败: " + exception.Message; Status = "读取失败"; }
         finally { IsBusy = false; }
@@ -151,6 +159,21 @@ public sealed class RecordsViewModel : BindableBase
             Status = "已导出报告（原记录未修改）: " + path;
         }
         catch (Exception exception) { Error = "报告导出失败: " + exception.Message; }
+    }
+
+
+    private static (DateTimeOffset? FromUtc, DateTimeOffset? ToUtc) ParseUtcMonth(string? month)
+    {
+        if (string.IsNullOrWhiteSpace(month)) return (null, null);
+        var text = month.Trim();
+        if (!DateOnly.TryParseExact(text + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var day) ||
+            text != day.ToString("yyyy-MM", CultureInfo.InvariantCulture))
+            throw new FormatException("月份必须为 YYYY-MM（UTC），例如 2026-11；留空代表全部历史。");
+        var first = new DateTimeOffset(day.Year, day.Month, 1, 0, 0, 0, TimeSpan.Zero);
+        var last = new DateTimeOffset(day.Year, day.Month, DateTime.DaysInMonth(day.Year, day.Month),
+            23, 59, 59, TimeSpan.Zero).AddTicks(TimeSpan.TicksPerSecond - 1);
+        return (first, last);
     }
 
     private async Task RunSafelyAsync(Func<Task> action)
