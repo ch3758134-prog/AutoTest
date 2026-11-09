@@ -19,6 +19,8 @@ public sealed class UdsToolViewModel : BindableBase
     private string _diagnosticPath="", _traceFilter="", _traceQuality="NOT_CAPTURED";
     private Guid _lastCorrelationId;
     private bool _lastRequestSensitive;
+    private int _droppedTraceEvents;
+    private const int MaxUiDiagnosticEvents=10000;
     private string _profileName="Mock ECU", _mockIdentity="MOCK_ECU_A",
         _txId="7E0", _rxId="7E8", _p2Ms="1000", _p2StarMs="5000",
         _requestHex="22 F1 90", _expectedHex="", _serviceName="Read VIN (Mock)",
@@ -99,6 +101,7 @@ public sealed class UdsToolViewModel : BindableBase
     public string ReplayPath { get => _replayPath; set => SetProperty(ref _replayPath,value); }
     public string DiagnosticPath { get => _diagnosticPath; set => SetProperty(ref _diagnosticPath,value); }
     public string TraceQuality { get => _traceQuality; private set => SetProperty(ref _traceQuality,value); }
+    public int DroppedTraceEvents => _droppedTraceEvents;
     public string LastCorrelationId => _lastCorrelationId == Guid.Empty ? "—" : _lastCorrelationId.ToString("D");
     public string TraceFilter { get => _traceFilter; set { if (SetProperty(ref _traceFilter,value)) RefreshFilter(); } }
     public string FaultSid { get => _faultSid; set => SetProperty(ref _faultSid,value); }
@@ -132,6 +135,13 @@ public sealed class UdsToolViewModel : BindableBase
     private void Append(string source, string layer, string direction, Guid correlation,
         string rawHex, string detail, string error = "")
     {
+        if (DiagnosticEvents.Count >= MaxUiDiagnosticEvents)
+        {
+            _droppedTraceEvents++;
+            RaisePropertyChanged(nameof(DroppedTraceEvents));
+            TraceQuality="INCOMPLETE_UI_TRACE_OVERFLOW";
+            return;
+        }
         var item = new UdsDiagnosticEvent(DateTimeOffset.UtcNow, source, layer, direction,
             correlation == Guid.Empty ? "" : correlation.ToString("D"),
             UdsWorkbenchEvidence.SafeHex(_lastRequestSensitive,rawHex), detail,error,
@@ -176,7 +186,8 @@ public sealed class UdsToolViewModel : BindableBase
         try
         {
             await UdsWorkbenchEvidence.ExportAsync(DiagnosticPath,SourceMode,ProfileName,
-                TraceQuality,DiagnosticEvents.ToArray());
+                _droppedTraceEvents>0 ? "INCOMPLETE_UI_TRACE_OVERFLOW; DROPPED="+
+                    _droppedTraceEvents : TraceQuality,DiagnosticEvents.ToArray());
             Status="DIAGNOSTIC_EXPORTED"; Error="";
         }
         catch (Exception ex) { Status="DIAGNOSTIC_EXPORT_ERROR"; Error=ex.Message; }
@@ -191,7 +202,7 @@ public sealed class UdsToolViewModel : BindableBase
         RaisePropertyChanged(nameof(LastCorrelationId));
         IsBusy=true; CancelRequestCommand.RaiseCanExecuteChanged();
         _lastRequestSensitive=false;
-        TraceQuality="NOT_CAPTURED";
+        TraceQuality=_droppedTraceEvents>0 ? "INCOMPLETE_UI_TRACE_OVERFLOW" : "NOT_CAPTURED";
         Status="REQUESTING"; Error=""; Nrc="—"; ResponseHex="—";
         var watch=Stopwatch.StartNew();
         string source=SourceMode;
@@ -224,6 +235,7 @@ public sealed class UdsToolViewModel : BindableBase
             foreach(var frame in exchange.Frames)
                 Append(source,"ISOTP",frame.Direction,_lastCorrelationId,frame.Hex,
                     UdsWorkbenchEvidence.DescribeFrame(frame.Hex));
+            if (_droppedTraceEvents>0) TraceQuality="INCOMPLETE_UI_TRACE_OVERFLOW";
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested)
         {
