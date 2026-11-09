@@ -1,4 +1,5 @@
-using System.IO;
+using System.Globalization;
+using AutoTest.Projects.Dbc;
 using System.Security.Cryptography;
 using System.Text.Json;
 using AutoTest.Application.G4;
@@ -30,6 +31,7 @@ public sealed class RecordedCanWaveReplayProvider
     private readonly WaveEvidenceStore _evidence;
     private readonly WaveReferenceRepository _references;
     private RecordedCanArchive? _archive;
+    private string? _archivePath;
     public string? ArchiveSha256 { get; private set; }
     public bool HasArchive => _archive is not null;
 
@@ -50,6 +52,7 @@ public sealed class RecordedCanWaveReplayProvider
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         _archive = null;
+        _archivePath = null;
         ArchiveSha256 = null;
         var info = new FileInfo(path);
         if (!info.Exists || info.Length is <= 0 or > 32_000_000)
@@ -82,7 +85,92 @@ public sealed class RecordedCanWaveReplayProvider
             previous = frame.OffsetMicroseconds;
         }
         _archive = archive;
+        _archivePath = Path.GetFullPath(path);
         ArchiveSha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    }
+
+    /// <summary>Read-only frame evidence for the WAVE diagnostic workbench. It does not publish CAN.</summary>
+    public WaveArchiveReport ReadArchiveReport(int maxRows, string? filter = null)
+    {
+        if (_archive is not { } archive || ArchiveSha256 is null)
+            throw new WaveCaptureException("CAN_REPLAY_ARCHIVE_REQUIRED", "Load a CAN RX archive before inspecting it.");
+        _ = ReadVerifiedOriginalArchive(); // refuse previews of an externally replaced source
+        if (maxRows is < 1 or > 200_000) throw new ArgumentOutOfRangeException(nameof(maxRows));
+        var dbAsset = _workspace.DbcAssetId is { } id
+            ? _workspace.Assets.SingleOrDefault(x => x.Id == id) : null;
+        var dbcMatches = dbAsset is not null && _workspace.Database is not null &&
+            archive.DbcId == dbAsset.Id.Value && archive.DbcRevision == dbAsset.Revision &&
+            string.Equals(archive.DbcSha256, dbAsset.Sha256, StringComparison.OrdinalIgnoreCase);
+        var rows = new List<WaveRawFrameRow>(Math.Min(maxRows, archive.Frames.Length));
+        var totalMatched = 0;
+        for (var i = 0; i < archive.Frames.Length; i++)
+        {
+            var frame = archive.Frames[i];
+            var message = dbcMatches
+                ? _workspace.Database!.Messages.FirstOrDefault(x => x.Id == frame.FrameId)
+                : null;
+            string decoded, error;
+            if (!dbcMatches) { decoded = "不可解码：当前工程 DBC 与帧档案版本不匹配"; error = "DBC_REVISION_STALE"; }
+            else if (message is null) { decoded = "DBC 未定义此帧"; error = "DBC_MESSAGE_MISSING"; }
+            else if (frame.LostFrames != 0) { decoded = "有丢帧报告，数据仅供观察"; error = "LOSS_REPORTED"; }
+            else
+            {
+                var values = new List<string>();
+                error = string.Empty;
+                var payload = Convert.FromHexString(frame.PayloadHex);
+                foreach (var signal in message.Signals)
+                {
+                    if (signal.Multiplexer is not null)
+                    {
+                        error = "MULTIPLEX_NOT_RESOLVED";
+                        continue;
+                    }
+                    try
+                    {
+                        var value = DbcSignalCodec.DecodePhysical(signal, payload);
+                        values.Add(signal.Name + "=" + value.ToString("G9", CultureInfo.InvariantCulture) + " " + signal.Unit);
+                    }
+                    catch (Exception ex) when (ex is AutoTest.Projects.Project.ProjectDataException or ArgumentException)
+                    {
+                        error = "DBC_DECODE_ERROR";
+                    }
+                }
+                decoded = values.Count == 0 ? "无可直接解码的非复用信号" : string.Join("; ", values);
+            }
+            if (!string.IsNullOrWhiteSpace(filter) && !(
+                frame.FrameId.ToString("X", CultureInfo.InvariantCulture).Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                frame.PayloadHex.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                frame.TraceEvidence.ToString("D").Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                decoded.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                error.Contains(filter, StringComparison.OrdinalIgnoreCase))) continue;
+            totalMatched++;
+            if (rows.Count < maxRows)
+                rows.Add(new WaveRawFrameRow(i + 1,
+                    archive.StartUtc.AddTicks(checked(frame.OffsetMicroseconds * 10)),
+                    frame.OffsetMicroseconds, frame.Role.ToString(),
+                    "0x" + frame.FrameId.ToString("X", CultureInfo.InvariantCulture),
+                    frame.Extended, frame.PayloadHex, frame.PayloadHex.Length / 2,
+                    frame.LostFrames, frame.TraceEvidence.ToString("D"), decoded, error));
+        }
+        return new WaveArchiveReport(archive.RecordId, ArchiveSha256, archive.DbcSha256,
+            archive.DbcRevision, archive.StartUtc, archive.Frames.Length,
+            archive.Frames.Max(x => x.LostFrames), rows.Count, totalMatched > rows.Count,
+            "ReplayDerived: archive offsets are microseconds; original device clock quality is not asserted",
+            dbcMatches ? "OK" : "DBC_REVISION_STALE", rows);
+    }
+
+    public byte[] ReadVerifiedOriginalArchive()
+    {
+        if (_archivePath is null || ArchiveSha256 is null || _archive is null)
+            throw new WaveCaptureException("CAN_REPLAY_ARCHIVE_REQUIRED", "No original CAN archive loaded.");
+        byte[] bytes;
+        try { bytes = File.ReadAllBytes(_archivePath); }
+        catch (IOException ex) { throw new WaveCaptureException("CAN_REPLAY_ARCHIVE_UNAVAILABLE",
+            "Original CAN RX archive is no longer readable: " + ex.Message); }
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        if (!string.Equals(hash, ArchiveSha256, StringComparison.OrdinalIgnoreCase))
+            throw new WaveCaptureException("CAN_REPLAY_ARCHIVE_CHANGED", "Original CAN RX archive changed after load.");
+        return bytes;
     }
 
     public async Task<WaveWorkbenchCapture> ReplayAsync(SignalRef signal, int maxFrames,
@@ -90,6 +178,7 @@ public sealed class RecordedCanWaveReplayProvider
     {
         if (_archive is not { } archive)
             throw new WaveCaptureException("CAN_REPLAY_ARCHIVE_REQUIRED", "Load a saved CAN RX frame archive first.");
+        _ = ReadVerifiedOriginalArchive(); // immutable source proof before any CAN publication
         if (!_replayModeOnly())
             throw new WaveCaptureException("CAN_REPLAY_MODE_BLOCKED", "Physical channel is not isolated from Replay.");
         WaveTimeQuality.ValidateSignal(signal);
@@ -143,6 +232,7 @@ public sealed class RecordedCanWaveReplayProvider
             }
             for (var n = 0; capture.Observe(id).ObservedEvents < matching.Length && n < 2000; n++)
                 await Task.Delay(1, ct).ConfigureAwait(false);
+            _ = ReadVerifiedOriginalArchive(); // fail if original changed during replay
             var evidence = await capture.StopAsync(id, ct).ConfigureAwait(false);
             var document = capture.ReadEvidence(evidence.Evidence);
             return new WaveWorkbenchCapture(evidence, document.Actual,

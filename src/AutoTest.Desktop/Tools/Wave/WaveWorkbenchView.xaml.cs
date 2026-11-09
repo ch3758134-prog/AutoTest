@@ -32,6 +32,19 @@ public partial class WaveWorkbenchView : UserControl
         }
     }
 
+    private void ChooseExport_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "AutoTest WAVE diagnostic ZIP (*.zip)|*.zip",
+            FileName = "AutoTest-Wave-Diagnostics-" + DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss") + ".zip",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog() == true)
+            Model.ExportPath = dialog.FileName;
+    }
+
     private void ChartCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var x = e.GetPosition(ChartCanvas).X;
