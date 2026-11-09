@@ -142,6 +142,10 @@ public sealed class FlashDryRunWorkspace
         var plan = await coordinator.BuildPlanAsync(request, ct).ConfigureAwait(false);
         var auth = new SafetyAuthorization(Authorization.MockOnly(session, DateTimeOffset.UtcNow),
             "MOCK_FLASH", "FLASH_WORKBENCH_MOCK_ONLY");
+        // Capture the input identity before the job is dispatched, not after
+        // an exceptionally fast Mock job has already finished.
+        var capturedUtc = DateTimeOffset.UtcNow;
+        var capturedImage = Describe(image,imageName);
         var id = await coordinator.ExecuteAsync(plan, auth, ct).ConfigureAwait(false);
         lock (_sync)
         {
@@ -149,9 +153,9 @@ public sealed class FlashDryRunWorkspace
             _jobId = id;
             // Immutable job-input snapshot: later image import must never
             // rewrite the evidence identity of an already executed job.
-            _jobImageSnapshot = Describe(image,imageName);
+            _jobImageSnapshot = capturedImage;
             _jobConfigSnapshot = config;
-            _jobInputCapturedUtc = DateTimeOffset.UtcNow;
+            _jobInputCapturedUtc = capturedUtc;
         }
         return id;
     }
