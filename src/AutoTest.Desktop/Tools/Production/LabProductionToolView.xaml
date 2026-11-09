@@ -266,6 +266,7 @@
                                     <DataGridTextColumn Header="实际规则" Width="130" Binding="{Binding ActualRuleId}" />
                                     <DataGridTextColumn Header="预期配方" Width="140" Binding="{Binding ExpectedRecipeId}" />
                                     <DataGridTextColumn Header="实际配方" Width="140" Binding="{Binding ActualRecipeId}" />
+                                    <DataGridTextColumn Header="候选配方@Revision" Width="180" Binding="{Binding CandidateSummary}" />
                                     <DataGridTextColumn Header="诊断码" Width="200" Binding="{Binding Code}" />
                                     <DataGridCheckBoxColumn Header="样本通过" Width="95" Binding="{Binding Passed}" />
                                 </DataGrid.Columns>
