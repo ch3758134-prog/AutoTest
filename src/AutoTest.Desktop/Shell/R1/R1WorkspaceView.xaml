@@ -107,14 +107,10 @@
                         </DataTemplate>
                     </TabControl.ItemTemplate>
                 </TabControl>
-                <Border Grid.Row="1" Background="{DynamicResource R1Background}" Padding="18">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="专业文档宿主 · 待 INTEGRATION 注册"
-                                   FontSize="17" FontWeight="SemiBold" TextAlignment="Center"/>
-                        <TextBlock Margin="0,9,0,0" TextWrapping="Wrap" TextAlignment="Center"
-                                   Foreground="{DynamicResource R1Muted}"
-                                   Text="导航和标签由 R1 UI 管理，实际专业 View 必须由唯一 Prism/DI 宿主装入；这里不会伪造已实现的专业页面。"/>
-                    </StackPanel>
+                <Border Grid.Row="1" Background="{DynamicResource R1Background}">
+                    <ContentControl x:Name="ProfessionalDocumentContent"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch"/>
                 </Border>
                 <GridSplitter Grid.Row="2" Background="{DynamicResource R1Line}" HorizontalAlignment="Stretch"/>
                 <Border Grid.Row="3" Background="{DynamicResource R1Panel}" Padding="8"
