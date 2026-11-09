@@ -159,6 +159,8 @@
                             <WrapPanel>
                                 <TextBlock Text="{Binding TraceQuality}" Foreground="#8B4428"
                                            FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding VisibleWindowNotice}" Foreground="#8B4428"
+                                           Margin="10,0,0,0" FontSize="11" VerticalAlignment="Center"/>
                                 <Button Content="复制 UDS 证据" Command="{Binding CopyTraceCommand}"
                                         Margin="10,0,0,3"/>
                             </WrapPanel>
