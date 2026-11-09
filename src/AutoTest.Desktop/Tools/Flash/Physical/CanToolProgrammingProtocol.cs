@@ -93,7 +93,7 @@ public static class CanToolProgrammingProtocol
         for(int offset=0;offset<image.Length;offset+=size)
         {
             int n=Math.Min(size,image.Length-offset);
-            yield return Transfer(counter,image.Span.Slice(offset,n));
+            yield return Transfer(counter,image.Slice(offset,n).ToArray());
             unchecked { counter++; }
         }
     }
