@@ -1,7 +1,7 @@
 # Issue #17 — UDS 专业 P1 ReadOnly CAN1 接线与最小依赖申请
 
 **CandidateId:** P1-UDS-READONLY-17  
-**Host integration target:** PR #16 `integration/r1-real-specialist-host-20261109` @ `886a6775dc6bf156229124fe2fa99b16a1d61ab0` (latest verified 2026-11-09).  
+**Host integration target:** PR #16 `integration/r1-real-specialist-host-20261109` @ `1302d69eaab0843e11a68f97c088656217de812b` (latest verified 2026-11-09).  
 **Source baseline:** `main@db2a980b0a37b7404b2a95c361cef3d506880bd5`.  
 **Safety:** DO NOT enable unrestricted physical CAN transmit, change firmware, or enable Flash/Seed-Key.
 
@@ -29,7 +29,7 @@ Provide `IReadOnlyPhysicalUdsSession.Client` as the **existing** `UdsClient` on 
 
 ### INTEGRATION — one P08 constructor injection, no second session
 
-The latest PR #16 HEAD `886a6775dc6bf156229124fe2fa99b16a1d61ab0` already exposes:
+The latest PR #16 HEAD `1302d69eaab0843e11a68f97c088656217de812b` already exposes:
 ```csharp
 R1SpecialistDocumentHost(
     R1SharedCanSource? sharedCan = null,
@@ -55,3 +55,7 @@ Check R1 P08 on PR16-host integration separately. Expected without DEVICE: Physi
 
 - Once DEVICE safely exposes its provider and Main/INTEGRATION approves one-line injection, run the exact joint candidate and collect true CAN/ISO-TP/UDS traces with a DUT-confirmed `0x22` DID or `0x19`. Verify 11/29-bit profile, NRC, disconnect/generation, FC and timeout.
 - Physical Flash, ProgrammingSession, 0x10/0x27/0x34/0x36/0x37 remain explicitly forbidden; user physical Flash authorization is separate.
+
+## PR #16 变化跟踪
+- 主对话持续更新 PR #16；上述 HEAD 为本专业核对时刻的参考，不锁死 INTEGRATION 的开发分支。PR #16 已提供 `udsFactory` 注入点，UDS 专业不修改 Shell。
+- 本 PR 只提供 UDS 私有注入端口；真正 DEV-backed `IReadOnlyPhysicalUdsSessionProvider` 及它与 `R1SharedCanSource` 的连接，仍由 DEVICE / INTEGRATION 按 Issue #17 受控完成。
