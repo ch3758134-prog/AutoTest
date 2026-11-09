@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using AutoTest.Contracts;
