@@ -86,6 +86,12 @@ public sealed class ProgrammingJobCoordinator : IProgrammingService
                     evidence.Finalize(ProgrammingJobState.Cancelled,"CANCELLED");
                     evidence.RecordStage("Job","CANCELLED",0,"Partial mock writes may remain; no resume assumed.");
                 }
+                catch(ProgrammingUncertainException ex)
+                {
+                    evidence.Finalize(ProgrammingJobState.Uncertain,"UNCONFIRMED_UDS_RESPONSE");
+                    evidence.RecordStage("Job","UNCERTAIN",0,
+                        ex.Message+"; Mock contents may be partially written; no auto-resume.");
+                }
                 catch(Exception ex)
                 {
                     evidence.Finalize(ProgrammingJobState.Failed,ex.GetType().Name);
