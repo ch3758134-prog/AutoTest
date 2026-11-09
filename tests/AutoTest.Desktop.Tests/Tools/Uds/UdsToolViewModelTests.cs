@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.Desktop.Tools.Uds;
 using Xunit;
 
