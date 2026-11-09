@@ -15,7 +15,11 @@ public partial class MainWindow : Window
         _sharedCan = sharedCan ?? throw new ArgumentNullException(nameof(sharedCan));
         InitializeComponent();
         var documents = new R1SpecialistDocumentHost(_sharedCan);
-        var workspace = new R1WorkspaceViewModel(documents);
+        var workspace = new R1WorkspaceViewModel(documents)
+        {
+            // The approved R1 interactive prototype defaults to a light IDE.
+            Theme = R1Theme.Light
+        };
         foreach (var id in documents.AvailableWorkspaceIds)
             workspace.UpdateAvailability(id, WorkspaceAvailability.Available);
         var view = new R1WorkspaceView(workspace);
