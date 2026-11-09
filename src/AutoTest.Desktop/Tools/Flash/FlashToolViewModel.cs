@@ -24,6 +24,7 @@ public sealed class FlashToolViewModel : BindableBase
     private string _lastAcknowledgedBlock="NONE",_confirmedBytes="0",_traceQuality="MOCK_ONLY";
     private int _renderedFacts, _omittedStageRows, _omittedTraceRows, _omittedSegmentRows;
     private readonly Dictionary<string,int> _segmentRowIndex = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _hiddenSegments = new(StringComparer.Ordinal);
     private long _confirmedAckBytes;
     private const int MaxVisibleRows=3000;
     public FlashToolViewModel() : this(new FlashDryRunWorkspace()) { }
@@ -185,7 +186,7 @@ public sealed class FlashToolViewModel : BindableBase
     private void ResetVisibleFacts()
     {
         Stages.Clear(); DiagnosticTrace.Clear(); SegmentStatusRows.Clear();
-        _segmentRowIndex.Clear();
+        _segmentRowIndex.Clear(); _hiddenSegments.Clear();
         _renderedFacts=0; _omittedStageRows=0; _omittedTraceRows=0;
         _omittedSegmentRows=0; _confirmedAckBytes=0;
         TraceQuality="MOCK_ONLY";
@@ -243,7 +244,7 @@ public sealed class FlashToolViewModel : BindableBase
                     _segmentRowIndex[fact.Stage]=SegmentStatusRows.Count;
                     SegmentStatusRows.Add(display);
                 }
-                else
+                else if (_hiddenSegments.Add(fact.Stage))
                 {
                     _omittedSegmentRows++;
                     RaisePropertyChanged(nameof(SegmentDisplayNotice));
