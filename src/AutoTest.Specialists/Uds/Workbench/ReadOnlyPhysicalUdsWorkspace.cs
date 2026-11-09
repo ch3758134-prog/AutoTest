@@ -47,7 +47,7 @@ public sealed record PhysicalReadOnlyUdsExchange(
 public sealed class ReadOnlyPhysicalUdsWorkspace(IReadOnlyPhysicalUdsSessionProvider provider)
 {
     private readonly SemaphoreSlim _singleOperation = new(1,1);
-    private static readonly HashSet<byte> AllowedSids = [0x19, 0x22];
+    private static readonly IReadOnlySet<byte> AllowedSids = ImmutableHashSet.Create<byte>(0x19,0x22);
 
     public ReadOnlyPhysicalConnection? Current => provider.Current;
 
@@ -65,6 +65,16 @@ public sealed class ReadOnlyPhysicalUdsWorkspace(IReadOnlyPhysicalUdsSessionProv
             (request.Pdu.Length-1)%2 != 0)) ||
             (sid == 0x19 && request.Pdu.Length < 2))
             throw new ArgumentException("P1_READONLY_PDU_MALFORMED");
+    }
+
+    private static bool IsValidClassicFrame(string hex)
+    {
+        try
+        {
+            var bytes=UdsHex.Parse(hex);
+            return bytes.Length is >=1 and <=8;
+        }
+        catch (FormatException) { return false; }
     }
 
     public bool IsReady(UdsEndpointProfile endpoint)
@@ -116,7 +126,10 @@ public sealed class ReadOnlyPhysicalUdsWorkspace(IReadOnlyPhysicalUdsSessionProv
                 can.All(x=>x.SessionGeneration==current.SessionGeneration &&
                     x.LostFrames==0 && x.Role==BusRole.DutCan &&
                     x.ExtendedId==(x.CanId>0x7FFu) &&
-                    !string.IsNullOrWhiteSpace(x.TraceRef));
+                    ((x.Direction=="TX" && x.CanId==endpoint.RequestCanId) ||
+                     (x.Direction=="RX" && x.CanId==endpoint.ResponseCanId)) &&
+                    !string.IsNullOrWhiteSpace(x.TraceRef) &&
+                    IsValidClassicFrame(x.RawHex));
             if (result.Outcome == Outcome.Accepted && !canVerified)
                 result=result with { Outcome=Outcome.Uncertain };
             string code=canVerified ? "PHYSICAL_CAN_TRACE_BOUND" :
