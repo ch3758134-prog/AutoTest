@@ -48,6 +48,7 @@
    <MenuItem Header="UDS · ISO-TP Mock 诊断" Tag="uds" Click="SpecialistTool_Click"/>
    <MenuItem Header="Flash · Mock Bootloader Dry-run" Tag="flash" Click="SpecialistTool_Click"/>
    <MenuItem Header="Wave · CAN/DBC Replay" Tag="wave" Click="SpecialistTool_Click"/>
+    <MenuItem Header="Wave · 本地 DBC + CAN 档案离线实测" Click="WaveOffline_Click"/>
    <Separator/>
    <MenuItem Header="DEVICE B0/B1/B2 只读诊断（手动连接）" Click="DeviceLab_Click"/>
    <MenuItem Header="U-BENCH 状态执行（等待受控适配）" IsEnabled="False"/>
