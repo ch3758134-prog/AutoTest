@@ -125,6 +125,7 @@
                                 <TextBlock Text="{Binding AcceptedFact}" TextWrapping="Wrap" FontSize="12"/>
                                 <TextBlock Text="{Binding PhysicalFact}" TextWrapping="Wrap" FontSize="12"/>
                                 <TextBlock Text="{Binding EcuFact}" TextWrapping="Wrap" FontSize="12"/>
+                                <TextBlock Text="{Binding VerifiedFact}" TextWrapping="Wrap" FontSize="12"/>
                             </StackPanel>
                         </Border>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="五路万用表读数（V） · 空白表示未测" Margin="0,14,0,5"/>
