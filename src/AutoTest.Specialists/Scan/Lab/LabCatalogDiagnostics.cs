@@ -61,8 +61,15 @@ public static class LabCatalogDiagnostics
         var samples = snapshot.Samples ?? Array.Empty<LabRuleSample>();
         var rows = new List<LabSampleReplayRow>();
         var defaultTime = defaultObservedAtUtc.ToUniversalTime();
+        var stopwatch = Stopwatch.StartNew();
+        var budgetExceeded = false;
         for (var i = 0; i < Math.Min(samples.Count, maxSamples); i++)
         {
+            if (stopwatch.Elapsed >= TimeSpan.FromSeconds(3))
+            {
+                budgetExceeded = true;
+                break;
+            }
             var sample = samples[i];
             if (!LabCatalogValidator.TryParseDate(sample.ObservedAtUtc, out var observedAt))
             {
@@ -95,7 +102,7 @@ public static class LabCatalogDiagnostics
                 candidates.Select(x => x.RecipeId + "@" + x.Revision).ToArray()));
         }
         return new(snapshot.Revision, defaultTime, samples.Count, rows.Count,
-            samples.Count > maxSamples, rows.Count(x => x.Passed),
+            samples.Count > maxSamples || budgetExceeded, rows.Count(x => x.Passed),
             rows.Count(x => !x.Passed), rows);
     }
 
