@@ -39,7 +39,8 @@ public static class WaveLabExportService
     public static void Export(string destination, WaveArchiveReport? archiveReport,
         byte[]? originalArchive, IEnumerable<WaveOperationLogRow> operations,
         IEnumerable<WaveWorkbenchCapture> captures, IEnumerable<WaveResultRow> comparisons,
-        string origin, string quality, bool includeRawEvidence = true)
+        string origin, string quality, bool includeRawEvidence = true,
+        IEnumerable<WaveDiagnosticIssue>? issues = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destination);
         var full = Path.GetFullPath(destination);
@@ -57,6 +58,7 @@ public static class WaveLabExportService
         var opRows = operations.ToArray();
         var captureRows = captures.ToArray();
         var comparisonRows = comparisons.ToArray();
+        var issueRows = issues?.ToArray() ?? Array.Empty<WaveDiagnosticIssue>();
         var temporary = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
@@ -84,6 +86,8 @@ public static class WaveLabExportService
                         archiveReport.MaximumReportedLostFrames, archiveReport.TimeSemantics,
                         archiveReport.ValidationCode
                     },
+                    IssueCount = issueRows.Length,
+                    IssueSemantics = "Observed sampling brackets, not exact physical fault onset/clearance",
                     Captures = captureRows.Select(c => new
                     {
                         EvidenceId = c.Evidence.Evidence.Value,
@@ -123,6 +127,21 @@ public static class WaveLabExportService
                             Invariant(x.Dlc), includeRawEvidence ? x.DataHex : "[REDACTED]",
                             Invariant(x.ReportedLostFrames), x.TraceEvidenceId,
                             includeRawEvidence ? x.DecodedSummary : "[REDACTED]", x.ErrorCode }));
+                WriteCsv(zip, "issues.csv",
+                    ["Signal", "Category", "Code", "StartSecondsActual", "EndSecondsActual", "AffectedSamples",
+                     "MaximumError", "AllowedError", "FirstSourceEvidence", "LastSourceEvidence",
+                     "ReferenceEvidence", "Detail"],
+                    issueRows.Select(x => new[]
+                    {
+                        x.Signal, x.Category, x.Code,
+                        x.StartSeconds?.ToString("R", CultureInfo.InvariantCulture) ?? "UNKNOWN",
+                        x.EndSeconds?.ToString("R", CultureInfo.InvariantCulture) ?? "UNKNOWN",
+                        Invariant(x.AffectedSamples),
+                        includeRawEvidence ? x.MaximumError?.ToString("R", CultureInfo.InvariantCulture) ?? "UNKNOWN" : "[REDACTED]",
+                        includeRawEvidence ? x.AllowedError?.ToString("R", CultureInfo.InvariantCulture) ?? "UNKNOWN" : "[REDACTED]",
+                        x.FirstSourceEvidenceId, x.LastSourceEvidenceId, x.ReferenceEvidenceId,
+                        includeRawEvidence ? x.Detail : "[REDACTED]"
+                    }));
                 WriteCsv(zip, "samples.csv",
                     ["CaptureEvidenceId", "InputKind", "Signal", "Unit", "Utc", "MonotonicRaw", "TimeSource", "TimeQuality", "Value", "Gap", "InputEvidenceId", "InputQuality"],
                     captureRows.SelectMany(c => c.Series.Samples.Select(x => new[]

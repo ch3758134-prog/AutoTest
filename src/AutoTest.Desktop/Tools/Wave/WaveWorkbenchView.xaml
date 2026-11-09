@@ -143,6 +143,14 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <ItemsControl ItemsSource="{Binding IssueMarkers}" Canvas.Left="0" Canvas.Top="0">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Polyline Points="{Binding Points}" Stroke="{Binding Color}" StrokeThickness="2.2" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <Polyline Points="{Binding CursorLineA}" Stroke="#F3E078" StrokeThickness="1.7" />
                             <Polyline Points="{Binding CursorLineB}" Stroke="#F8A578" StrokeThickness="1.7" />
                             <TextBlock Canvas.Left="52" Canvas.Top="336" FontSize="11"
@@ -268,6 +276,35 @@
                             <DataGridTextColumn Header="耗时 ms" Binding="{Binding DurationMilliseconds}" Width="90" />
                         </DataGrid.Columns>
                     </DataGrid>
+                </TabItem>
+                <TabItem Header="失配 / 缺样时窗 / 源帧">
+                    <DockPanel Background="#172335">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5,5,5,4">
+                            <Button Command="{Binding FocusIssueCommand}" Content="定位选中区间 / 源 CAN 帧"
+                                    ToolTip="选中有可定位时间或 Evidence 的异常行，聚焦曲线并筛选原始帧" />
+                            <TextBlock Text="{Binding IssueStatus}" Foreground="#9EBCD5"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <DataGrid ItemsSource="{Binding Issues}" SelectedItem="{Binding SelectedIssue, Mode=TwoWay}"
+                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  EnableRowVirtualization="True" EnableColumnVirtualization="True"
+                                  Background="#172335" Foreground="#DDE7F2"
+                                  RowBackground="#172335" AlternatingRowBackground="#1F3046"
+                                  ClipboardCopyMode="IncludeHeader" GridLinesVisibility="Horizontal">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="信号" Binding="{Binding Signal}" Width="110" />
+                                <DataGridTextColumn Header="类别" Binding="{Binding Category}" Width="85" />
+                                <DataGridTextColumn Header="原因码" Binding="{Binding Code}" Width="210" />
+                                <DataGridTextColumn Header="时间区间（实际采集）" Binding="{Binding Window}" Width="230" />
+                                <DataGridTextColumn Header="异常锚点" Binding="{Binding AffectedSamples}" Width="75" />
+                                <DataGridTextColumn Header="最大误差" Binding="{Binding MaximumError}" Width="80" />
+                                <DataGridTextColumn Header="允许误差" Binding="{Binding AllowedError}" Width="80" />
+                                <DataGridTextColumn Header="源帧 Evidence (首)" Binding="{Binding FirstSourceEvidenceId}" Width="245" />
+                                <DataGridTextColumn Header="源帧 Evidence (末)" Binding="{Binding LastSourceEvidenceId}" Width="245" />
+                                <DataGridTextColumn Header="说明" Binding="{Binding Detail}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
                 </TabItem>
                 <TabItem Header="逐信号证据/质量">
                     <DataGrid ItemsSource="{Binding CaptureQuality}" AutoGenerateColumns="False" IsReadOnly="True"
