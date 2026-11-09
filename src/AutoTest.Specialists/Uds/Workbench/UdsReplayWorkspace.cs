@@ -82,6 +82,13 @@ public sealed class UdsReplayWorkspace
             nrc.HasValue?$"0x{nrc.Value:X2}":"—",
             expected is null?null:final.SequenceEqual(expected),correlationId ?? Guid.NewGuid(),
             record.Frames.ToArray(),final.Length==0?"REPLAY_NO_FINAL_RESPONSE":"")
-            { ResponseSequence = responses.Select(UdsHex.Format).ToArray() };
+            {
+                ResponseSequence = responses.Select(UdsHex.Format).ToArray(),
+                FailureLayer = final.Length == 0 ? "REPLAY_NO_FINAL_RESPONSE" :
+                    nrc.HasValue ? "UDS_ECU_NEGATIVE_RESPONSE" : "NONE",
+                DiagnosticDetail = final.Length == 0 ?
+                    "Replay ended without a final UDS response; not a live ECU timeout." :
+                    nrc.HasValue ? $"Replay negative response NRC=0x{nrc.Value:X2}" : ""
+            };
     }
 }
