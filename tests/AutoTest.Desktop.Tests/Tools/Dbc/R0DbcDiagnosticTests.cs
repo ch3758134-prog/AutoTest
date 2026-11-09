@@ -22,4 +22,14 @@ public sealed class R0DbcDiagnosticTests
         vm.TraceFilter = "missing-no-such-entry";
         Assert.Empty(vm.VisibleTraceEvents);
     }
+    [Fact] public void ArchiveCommand_WithoutPinnedProject_IsRejectedAndLogged()
+    {
+        var vm = new DbcToolViewModel { ArchiveFilePath = "not-an-archive.json" };
+        vm.ReplayArchiveCommand.Execute(null);
+        Assert.Empty(vm.ArchiveRows);
+        Assert.Contains("DBC_ARCHIVE_BINDING", vm.Error);
+        Assert.Contains(vm.TraceEvents, e => e.Stage == "ARCHIVE_REPLAY" &&
+            e.Outcome == "REJECTED" && e.ErrorCode == "DBC_ARCHIVE_BINDING");
+    }
+
 }

@@ -44,10 +44,17 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public ObservableCollection<DbcByteLayoutRow> BitRows { get; } = [];
     public ObservableCollection<DbcSignalLayoutRow> LayoutSignals { get; } = [];
     public ObservableCollection<R0ProjectDiagnosticEvent> TraceEvents { get; } = [];
+    public ObservableCollection<DbcSourceIssue> SourceIssues { get; } = [];
+    public ObservableCollection<DbcRecordedReplayRow> ArchiveRows { get; } = [];
+    private string _sourceDiagnosticSummary = "尚未执行源码诊断";
+    private string _archiveSummary = "未载入离线 CAN RX 归档";
+    public string SourceDiagnosticSummary { get => _sourceDiagnosticSummary; private set { _sourceDiagnosticSummary = value; Changed(); } }
+    public string ArchiveSummary { get => _archiveSummary; private set { _archiveSummary = value; Changed(); } }
     public string FilePath { get; set; } = "";
     public string ProjectFilePath { get; set; } = "";
     public string BoundAssetId { get; set; } = "";
     public string TraceFilePath { get; set; } = "";
+    public string ArchiveFilePath { get; set; } = "";
     public bool IncludeRawTraceHex { get; set; } = true;
     public string TraceFilter { get => _traceFilter; set { _traceFilter = value ?? ""; Changed(); Changed(nameof(VisibleTraceEvents)); } }
     public IEnumerable<R0ProjectDiagnosticEvent> VisibleTraceEvents => TraceEvents.Where(e =>
@@ -106,6 +113,8 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public ICommand LabelCommand { get; }
     public ICommand BindProjectCommand { get; }
     public ICommand ExportTraceCommand { get; }
+    public ICommand DiagnoseSourceCommand { get; }
+    public ICommand ReplayArchiveCommand { get; }
     public ICommand ReplayCommand { get; }
     public ICommand ResetCommand { get; }
 
@@ -135,6 +144,8 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
             Refresh(); }));
         BindProjectCommand = new DbcToolCommand(() => _ = BindProjectSafeAsync());
         ExportTraceCommand = new DbcToolCommand(() => _ = ExportTraceSafeAsync());
+        DiagnoseSourceCommand = new DbcToolCommand(() => _ = DiagnoseSourceSafeAsync());
+        ReplayArchiveCommand = new DbcToolCommand(() => _ = ReplayArchiveSafeAsync());
         ReplayCommand = new DbcToolCommand(() => _ = ReplaySafeAsync());
         ResetCommand = new DbcToolCommand(() => Safe(() => { Document.Reset(); Refresh(); }));
     }
@@ -176,6 +187,86 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
         Changed(nameof(TraceQuality));
     }
 
+
+    private async Task DiagnoseSourceSafeAsync()
+    {
+        SourceIssues.Clear();
+        try
+        {
+            if (string.IsNullOrWhiteSpace(FilePath))
+                throw new ProjectDataException("DBC_SOURCE_PATH", "请先选择 DBC 文件路径。");
+            var info = new FileInfo(FilePath);
+            if (!info.Exists || info.Length is <= 0 or > 4 * 1024 * 1024)
+                throw new ProjectDataException("DBC_SOURCE_SIZE", "DBC 不存在、为空或超过大小限制。");
+            var bytes = await File.ReadAllBytesAsync(FilePath);
+            var source = DbcSource.Load(bytes);
+            foreach (var issue in DbcSourceDiagnosticScanner.Inspect(source.Text,
+                Path.GetFileNameWithoutExtension(FilePath))) SourceIssues.Add(issue);
+            var errors = SourceIssues.Count(x => x.Severity == "ERROR");
+            var warnings = SourceIssues.Count(x => x.Severity == "WARNING");
+            SourceDiagnosticSummary = $"文件源码诊断：错误 {errors} / 只读或扩展警告 {warnings}；行号为 1 起始，0 表示不能可靠定位";
+            Log("SOURCE_DIAGNOSIS", errors == 0 ? "COMPLETED" : "REJECTED",
+                errors == 0 ? "" : "DBC_SOURCE_DIAGNOSTIC",
+                expected: "parseable DBC source", actual: $"{errors} errors / {warnings} warnings",
+                detail: "仅诊断源文件；未知指令保留，不自动写回。");
+        }
+        catch (Exception e)
+        {
+            SourceDiagnosticSummary = "无法读取源文件以定位错误：" + e.Message;
+            Log("SOURCE_DIAGNOSIS", "REJECTED",
+                e is ProjectDataException p ? p.Code : e.GetType().Name, detail: e.Message);
+        }
+    }
+
+    private async Task ReplayArchiveSafeAsync()
+    {
+        ArchiveRows.Clear();
+        ArchiveSummary = "归档校验中；未读取物理 ECU 数据";
+        try
+        {
+            Error = "";
+            if (_boundWorkspace is null)
+                throw new ProjectDataException("DBC_ARCHIVE_BINDING",
+                    "归档 Replay 必须先绑定工程 DBC AssetId/Revision。");
+            await _boundWorkspace.VerifyPinnedAssetAsync(_boundAssetId, _boundRevision, _boundSha);
+            var binding = new DbcRevisionBinding(_boundAssetId.Value, _boundRevision, _boundSha);
+            // Explicit bounded review: excessive archives are rejected, never silently truncated.
+            var result = await DbcRecordedCanArchiveReplay.ReadAsync(
+                ArchiveFilePath, Document, binding, maxFrames: 10000);
+            foreach (var frame in result.Frames)
+            {
+                ArchiveRows.Add(frame);
+                Log("ARCHIVE_FRAME", frame.Status, frame.ErrorCode, frame.PayloadHex,
+                    expected: "pinned DBC + valid source CAN RX",
+                    actual: frame.DecodedSummary,
+                    detail: $"frame={frame.FrameIndex} utc={frame.ReconstructedUtc:O} offset_us={frame.OffsetMicroseconds} " +
+                        $"role={frame.BusRole} can=0x{frame.FrameId:X} trace={frame.TraceEvidence} lost={frame.LostFrames}");
+            }
+            ArchiveSummary = $"Replay archive SHA256 {result.ArchiveSha256} / DBC Revision {result.DbcRevision} / " +
+                $"总帧 {result.TotalFrames} 已解码 {result.DecodedFrames} 未映射 {result.UnmappedFrames} " +
+                $"拒绝 {result.RejectedFrames} 按键通道跳过 {result.SkippedKeypadFrames} / " +
+                $"ReportedLostMax {result.MaximumReportedLostFrames} / {result.ClockQuality}";
+            Status = result.RejectedFrames > 0 || result.UnmappedFrames > 0 ?
+                "离线 Replay 完成但存在未解码帧；请查看逐帧错误" : "离线 Replay 完成（非实时 CAN 采集）";
+            Log("ARCHIVE_REPLAY", result.RejectedFrames == 0 && result.UnmappedFrames == 0 ?
+                "COMPLETED" : "COMPLETED_WITH_ERRORS", rawHex: "",
+                expected: "recorded CAN RX and pinned DBC",
+                actual: $"{result.DecodedFrames}/{result.TotalFrames} decoded",
+                detail: ArchiveSummary);
+        }
+        catch (Exception e)
+        {
+            ArchiveRows.Clear();
+            ArchiveSummary = "归档 Replay 被拒绝；无可信新解码值";
+            Error = e is ProjectDataException p ? $"{p.Code}: {p.Message}" : e.Message;
+            Status = "离线 CAN 归档未通过验证";
+            Log("ARCHIVE_REPLAY", "REJECTED",
+                e is ProjectDataException x ? x.Code : e.GetType().Name,
+                expected: "verified archive + pinned DBC",
+                actual: "rejected", detail: e.Message);
+        }
+    }
+
     private async Task BindProjectSafeAsync()
     {
         try
@@ -200,6 +291,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
             Changed(nameof(FilePath));
             Changed(nameof(ProjectBindingSummary));
             Refresh();
+            await DiagnoseSourceSafeAsync();
             Log("BIND", "ACCEPTED", expected: check.Asset.Sha256, actual: loaded.Receipt.Sha256);
             Status = "已绑定工程 DBC；后续 Replay 前会再次校验磁盘版本。";
         }
@@ -274,9 +366,18 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
             _boundWorkspace = null; _boundRevision = 0; _boundSha = ""; _boundAssetId = default;
             Changed(nameof(ProjectBindingSummary));
             _document = loaded.Document; _expectedHash = loaded.Receipt.Sha256;
-            Refresh(); Status = "DBC 文件已加载（未连接硬件）";
+            Refresh();
+            await DiagnoseSourceSafeAsync();
+            Status = "DBC 文件已加载（未连接硬件）";
+            Log("OPEN", "ACCEPTED", expected: "valid DBC file", actual: loaded.Receipt.Sha256);
         }
-        catch (Exception e) { Error = e.Message; Status = "DBC 导入失败"; }
+        catch (Exception e)
+        {
+            Error = e is ProjectDataException p ? $"{p.Code}: {p.Message}" : e.Message;
+            Status = "DBC 导入失败";
+            Log("OPEN", "REJECTED", e is ProjectDataException x ? x.Code : e.GetType().Name, detail: e.Message);
+            await DiagnoseSourceSafeAsync();
+        }
     }
     private async Task SaveSafeAsync()
     {
@@ -304,9 +405,17 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
             Log("SAVE", "ACCEPTED", expected: "valid source + new revision", actual: receipt.Sha256);
 
             _document = DbcWorkbenchDocument.Import(Path.GetFileNameWithoutExtension(FilePath), Document.ExportText());
-            Refresh(); Status = $"DBC 已保存，SHA256 {receipt.Sha256[..12]}…";
+            Refresh();
+            await DiagnoseSourceSafeAsync();
+            Status = $"DBC 已保存，SHA256 {receipt.Sha256[..12]}…";
         }
-        catch (Exception e) { Error = e.Message; Status = "DBC 保存失败（编辑仍在内存）"; }
+        catch (Exception e)
+        {
+            Error = e is ProjectDataException p ? $"{p.Code}: {p.Message}" : e.Message;
+            Status = "DBC 保存失败（编辑仍在内存）";
+            Log("SAVE", "REJECTED", e is ProjectDataException x ? x.Code : e.GetType().Name,
+                expected: "atomic DBC write / pinned revision", actual: "not saved", detail: e.Message);
+        }
     }
     private void Safe(Action run)
     {

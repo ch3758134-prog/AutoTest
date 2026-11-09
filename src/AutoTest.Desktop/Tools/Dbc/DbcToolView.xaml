@@ -99,6 +99,53 @@
           <TabItem Header="信号位序">
             <DataGrid ItemsSource="{Binding LayoutSignals}" AutoGenerateColumns="True" IsReadOnly="True"/>
           </TabItem>
+          <TabItem Header="DBC 源码定位 / 只读语法">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Margin="4">
+                <Button Content="检查当前磁盘 DBC（不修改源文件）" Command="{Binding DiagnoseSourceCommand}"
+                        HorizontalAlignment="Left" Padding="8,3"/>
+                <TextBlock Text="{Binding SourceDiagnosticSummary}" TextWrapping="Wrap" Margin="0,5"/>
+              </StackPanel>
+              <DataGrid ItemsSource="{Binding SourceIssues}" IsReadOnly="True" AutoGenerateColumns="False"
+                        EnableRowVirtualization="True">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="行" Binding="{Binding Line}" Width="55"/>
+                  <DataGridTextColumn Header="级别" Binding="{Binding Severity}" Width="80"/>
+                  <DataGridTextColumn Header="代码" Binding="{Binding Code}" Width="170"/>
+                  <DataGridTextColumn Header="诊断说明" Binding="{Binding Message}" Width="280"/>
+                  <DataGridTextColumn Header="源行预览" Binding="{Binding Snippet}" Width="*"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </DockPanel>
+          </TabItem>
+          <TabItem Header="离线 CAN 归档 Replay">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Margin="4">
+                <TextBlock Text="兼容 WAVE RecordedCanArchive v1；必须先绑定工程 DBC。只读离线文件，严格核对 Revision/Hash。"
+                           TextWrapping="Wrap"/>
+                <WrapPanel Margin="0,4">
+                  <TextBlock Text="归档 JSON" VerticalAlignment="Center"/>
+                  <TextBox Width="360" Text="{Binding ArchiveFilePath, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,8,0"/>
+                  <Button Content="校验并 Replay" Command="{Binding ReplayArchiveCommand}" Padding="8,3"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding ArchiveSummary}" TextWrapping="Wrap" Margin="0,4"/>
+              </StackPanel>
+              <DataGrid ItemsSource="{Binding ArchiveRows}" IsReadOnly="True" AutoGenerateColumns="False"
+                        EnableRowVirtualization="True">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="#" Binding="{Binding FrameIndex}" Width="45"/>
+                  <DataGridTextColumn Header="重建 UTC（非硬件时钟）" Binding="{Binding ReconstructedUtc}" Width="185"/>
+                  <DataGridTextColumn Header="offset μs" Binding="{Binding OffsetMicroseconds}" Width="95"/>
+                  <DataGridTextColumn Header="Bus" Binding="{Binding BusRole}" Width="85"/>
+                  <DataGridTextColumn Header="CAN ID" Binding="{Binding FrameId}" Width="75"/>
+                  <DataGridTextColumn Header="HEX" Binding="{Binding PayloadHex}" Width="110"/>
+                  <DataGridTextColumn Header="结果" Binding="{Binding Status}" Width="115"/>
+                  <DataGridTextColumn Header="错误码" Binding="{Binding ErrorCode}" Width="130"/>
+                  <DataGridTextColumn Header="解码与失败明细" Binding="{Binding DecodedSummary}" Width="*"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </DockPanel>
+          </TabItem>
           <TabItem Header="操作时间线 / 原始证据">
             <DockPanel>
               <StackPanel DockPanel.Dock="Top">
