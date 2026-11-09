@@ -66,7 +66,7 @@ public sealed class FlashToolViewModelTests
         Assert.Equal("1",vm.LastAcknowledgedBlock);
         Assert.Equal("64",vm.ConfirmedBytes);
         Assert.Contains(vm.DiagnosticTrace,x=>x.Contains("Block=2"));
-        Assert.Contains(vm.RecoveryAdvice,"不完整");
+        Assert.Contains("不完整", vm.RecoveryAdvice);
     }
 
     [Fact]
