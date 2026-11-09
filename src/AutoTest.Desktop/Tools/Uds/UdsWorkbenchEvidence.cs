@@ -9,7 +9,17 @@ namespace AutoTest.Desktop.Tools.Uds;
 public sealed record UdsDiagnosticEvent(
     DateTimeOffset TimestampUtc, string Source, string Layer,
     string Direction, string CorrelationId, string RawHex,
-    string DecodedSummary, string ErrorCode, bool Sensitive = false);
+    string DecodedSummary, string ErrorCode, bool Sensitive = false)
+{
+    // For Physical only, these originate from DEVICE's bound session evidence.
+    // This timestamp is HostArrival/trace UTC, never an ECU sampling timestamp.
+    public DateTimeOffset? HostFrameUtc { get; init; }
+    public uint? CanId { get; init; }
+    public string? TraceRef { get; init; }
+    public long? SessionGeneration { get; init; }
+    public long LostFrames { get; init; }
+    public bool PhysicalEvidenceVerified { get; init; }
+}
 
 public static class UdsWorkbenchEvidence
 {
@@ -59,14 +69,22 @@ public static class UdsWorkbenchEvidence
         var payload = new
         {
             Schema = "AutoTest.R0.UDS.DiagnosticExport/1",
-            Source = events.Select(e => e.Source).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1 ? "Mixed Mock/Replay" : source,
+            Source = events.Select(e => e.Source).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1 ? "Mixed Sources" : source,
             Profile = profile,
-            PhysicalTxVerified = false,
+            PhysicalTxVerified = events.Any(e=>e.Source=="Physical" &&
+                e.Layer=="CAN" && e.Direction=="TX" && e.PhysicalEvidenceVerified),
+            PhysicalEcuResponseEvidenceAvailable = events.Any(e=>e.Source=="Physical" &&
+                e.Layer=="CAN" && e.Direction=="RX" && e.PhysicalEvidenceVerified),
             TraceQuality = traceQuality,
             BuildCommit = "NOT_EMBEDDED_BY_BUILD",
             ResourceRevision = "NOT_REGISTERED",
-            SessionGeneration = "NOT_APPLICABLE_TO_MOCK_REPLAY",
-            TimestampSemantic = "HOST_UI_OBSERVATION; NOT ECU CLOCK",
+            SessionGeneration = events.Where(e=>e.Source=="Physical" &&
+                e.SessionGeneration.HasValue).Select(e=>e.SessionGeneration!.Value)
+                .Distinct().Count() == 1
+                    ? events.First(e=>e.Source=="Physical" &&
+                        e.SessionGeneration.HasValue).SessionGeneration?.ToString()
+                    : "UNVERIFIED_OR_MIXED",
+            TimestampSemantic = "MOCK/REPLAY UI observation; PHYSICAL CAN HostArrivalUtc from DEVICE; NOT ECU clock",
             RawFrameOrdering = "MOCK HOST/ECU FRAME GROUPS ARE NOT CHRONOLOGICAL",
             ExportedUtc = DateTimeOffset.UtcNow,
             Events = events.Select(e => e.Sensitive ?
