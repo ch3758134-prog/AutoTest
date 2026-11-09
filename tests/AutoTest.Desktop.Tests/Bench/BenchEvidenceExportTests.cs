@@ -77,8 +77,40 @@ public sealed class BenchEvidenceExportTests
         Assert.Contains("corr-1", vm.ExportEvidenceTsv());
     }
 
+    [Fact]
+    public async Task NativeFailureKeepsStageAndDeviceIdentityInExport()
+    {
+        var vm = new BenchWorkbenchViewModel(new EvidencePort { ConnectFails = true });
+        await vm.ConnectOrDisconnectAsync();
+        Assert.Equal("连接失败", vm.ConnectionStatus);
+        var failure = Assert.Single(vm.Evidence.Where(e => e.FailureStage == "WinUsb_Initialize"));
+        Assert.Equal("Win32:31", failure.ErrorCode);
+        Assert.Equal("mainboard", failure.DeviceIdentity);
+        Assert.Contains("WinUsb_Initialize", vm.ExportEvidenceTsv());
+    }
+
+    [Fact]
+    public async Task ManualVoltageIsExplicitlySeparatedFromPhysicalObservation()
+    {
+        var port = new EvidencePort();
+        var vm = new BenchWorkbenchViewModel(port);
+        await vm.InitializeAsync();
+        await vm.ApplyAsync(vm.States.Single());
+        vm.OperatorName = "operator-local-only";
+        vm.Voltages[0].Value = "2.5";
+        await vm.SaveMeasurementAsync();
+        Assert.NotNull(port.Saved);
+        Assert.Equal(2.5m, port.Saved!.Voltages[0].Volts);
+        var saved = Assert.Single(vm.Evidence.Where(e => e.Phase == BenchEvidencePhase.ManualMeasurement));
+        Assert.Contains("CH1=2.5V", saved.Summary);
+        Assert.DoesNotContain("operator-local-only", vm.ExportEvidenceJson());
+        Assert.Contains("UNKNOWN", vm.PhysicalFact);
+    }
+
     private sealed class EvidencePort : IBenchWorkbenchPort
     {
+        public bool ConnectFails { get; init; }
+        public BenchManualMeasurement? Saved { get; private set; }
         public Task<BenchConfiguration?> LoadConfigurationAsync(CancellationToken cancellationToken) =>
             Task.FromResult<BenchConfiguration?>(new BenchConfiguration("Project", "ECU", "rev-1",
                 new[] { new BenchControllerDefinition("c", "Control",
@@ -86,16 +118,22 @@ public sealed class BenchEvidenceExportTests
         public Task<BenchConnectionSnapshot> GetConnectionAsync(CancellationToken cancellationToken) =>
             Task.FromResult(new BenchConnectionSnapshot(BenchConnection.Disconnected, null, null, null, null, null));
         public Task<IReadOnlyList<BenchDevice>> DiscoverCompatibleDevicesAsync(CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<BenchDevice>>(Array.Empty<BenchDevice>());
+            Task.FromResult<IReadOnlyList<BenchDevice>>(ConnectFails
+                ? new[] { new BenchDevice("mainboard", "Mainboard") }
+                : Array.Empty<BenchDevice>());
         public Task<BenchConnectionSnapshot> ConnectAsync(string identity, CancellationToken cancellationToken) =>
-            throw new InvalidOperationException("No hardware");
+            Task.FromResult(new BenchConnectionSnapshot(BenchConnection.Faulted, identity, 7,
+                "WinUsb_Initialize", 31, "Native interface init failed"));
         public Task<BenchConnectionSnapshot> DisconnectAsync(CancellationToken cancellationToken) =>
             throw new InvalidOperationException("No hardware");
         public Task<BenchOperationResult> ApplyStateAsync(string revision, string controllerId, string stateId,
             BenchEvidenceSource source, CancellationToken cancellationToken) =>
             Task.FromResult(new BenchOperationResult(true, "op-1", "corr-1", 2,
                 "01", "02", "trace-2", null, null, source, "Mock ACK"));
-        public Task SaveManualMeasurementAsync(BenchManualMeasurement measurement, CancellationToken cancellationToken) =>
-            Task.CompletedTask;
+        public Task SaveManualMeasurementAsync(BenchManualMeasurement measurement, CancellationToken cancellationToken)
+        {
+            Saved = measurement;
+            return Task.CompletedTask;
+        }
     }
 }
