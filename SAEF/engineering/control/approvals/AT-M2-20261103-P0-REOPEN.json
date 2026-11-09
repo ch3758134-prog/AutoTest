@@ -1,0 +1,51 @@
+{
+  "schema": "SAEF-revision-decision/1",
+  "project_id": "AutoTest",
+  "decision_id": "AT-M2-20261103-P0-REOPEN",
+  "change_id": "AT-M2-20261103-P0-REBASE",
+  "action": "reopen-accepted",
+  "authorized_by": "AutoTest项目负责人（当前对话明确批准）",
+  "authorized_at": "2026-11-03",
+  "reason": "基于负责人集中批准，受控开启 P0 八项已接受工作产品的新一轮 M2 内容修订，旧版本存于 Git 历史及 SAEF revisions/，禁止独立备份与非本范围改动。",
+  "evidence_refs": [
+    "项目负责人在当前对话明确：“批准了，P0到G1都批准了”——批准 M2 P0/G0/G1 集中候审内容与所请求的 Git-only 受控落档；不包含 G2/G3/编码/实测授权。",
+    "原本地 Git 基线 33a59d928dd37c44a2ff1e7d26a84b5a8d120efd",
+    "M2 P0 内容包 SHA-256 15c8635c1bb9da6a7bf3e91a38a0135b258477eea708e2155f53f865052e918d"
+  ],
+  "expected_git_head": "33a59d928dd37c44a2ff1e7d26a84b5a8d120efd",
+  "work_products": [
+    {
+      "id": "P0-01",
+      "accepted_sha256": "3f91b818619f97593e3c114393f856cb9091d67c9b4d3f206e7540b2a0daf671"
+    },
+    {
+      "id": "P0-02",
+      "accepted_sha256": "16d04d387de1e41889b8ce9efd1950bf127cc54346c03007acdac3b71675c7dd"
+    },
+    {
+      "id": "P0-03",
+      "accepted_sha256": "8660ae331e94beb633bcf26dd2015e21fdd4ba9b9249dcc5f7d1a6c2dff5549b"
+    },
+    {
+      "id": "P0-04",
+      "accepted_sha256": "47055e8ec6b7f380c9c0eb9fe06e3eb12f7a075609da6193a914827200696997"
+    },
+    {
+      "id": "P0-05",
+      "accepted_sha256": "981811e3e1821af6b57aeb6140d849413cd05a7214d9c90e3397991b8edca487"
+    },
+    {
+      "id": "P0-06",
+      "accepted_sha256": "9e4d2f62fb6850a375dcc87b3fd2a9ef1b7d44e19c3faf65ecaf065371e91cec"
+    },
+    {
+      "id": "P0-07",
+      "accepted_sha256": "bd7c43a5daea0c85b903448efbee9f7c321fef25acab1e3bb6e54152dba8bca5"
+    },
+    {
+      "id": "P0-08",
+      "accepted_sha256": "08ce820d4a6e6412241fe3e1dd674353d92897d6ab6d677208245afa0f2e5cde"
+    }
+  ],
+  "attestation": "I AUTHORIZE AT-M2-20261103-P0-REOPEN"
+}

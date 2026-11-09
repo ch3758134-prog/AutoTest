@@ -1,0 +1,11 @@
+{
+  "schema": "SAEF-authority-decision/1",
+  "project_id": "AutoTest",
+  "authorized_by": "AutoTest项目负责人（本对话批准）",
+  "authorized_at": "2026-11-03",
+  "reason": "负责人在当前对话明确回复“批准了”，其审批对象为 P0-01 v004 项目章程与范围；非 P0 Gate 批准、非任何技术开发或实机操作授权。",
+  "decision_id": "AT-P0-01-REVIEW-V004-20261103",
+  "action": "submit-review",
+  "work_product_id": "P0-01",
+  "attestation": "I AUTHORIZE AT-P0-01-REVIEW-V004-20261103"
+}

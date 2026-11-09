@@ -1,0 +1,15 @@
+{
+  "schema": "SAEF-authority-decision/1",
+  "project_id": "AutoTest",
+  "decision_id": "AT-P0-08-REVIEW-V001-20261103",
+  "authorized_by": "AutoTest项目负责人（本对话明确批准）",
+  "authorized_at": "2026-11-03",
+  "reason": "按 SAEF 受控流程将 P0-08 v001 提交审核登记；仅限提交与内容哈希锁定，不能替代负责人的批准。",
+  "action": "submit-review",
+  "work_product_id": "P0-08",
+  "evidence_refs": [
+    "SAEF-delivery/1: AT-P0-BATCH-004-008-R001-20261103",
+    "Work product SHA-256: 08ce820d4a6e6412241fe3e1dd674353d92897d6ab6d677208245afa0f2e5cde"
+  ],
+  "attestation": "I AUTHORIZE AT-P0-08-REVIEW-V001-20261103"
+}

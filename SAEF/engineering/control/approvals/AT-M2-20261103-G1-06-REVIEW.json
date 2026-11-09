@@ -1,0 +1,17 @@
+{
+  "schema": "SAEF-authority-decision/1",
+  "project_id": "AutoTest",
+  "decision_id": "AT-M2-20261103-G1-06-REVIEW",
+  "action": "submit-review",
+  "work_product_id": "G1-06",
+  "authorized_by": "AutoTest项目负责人（当前对话明确批准）",
+  "authorized_at": "2026-11-03",
+  "reason": "按照负责人在当前对话对 M2 P0~G1 的集中批准，登记 G1-06 M2 候审正文的 REVIEW 状态。",
+  "evidence_refs": [
+    "项目负责人在当前对话明确：“批准了，P0到G1都批准了”——批准 M2 P0/G0/G1 集中候审内容与所请求的 Git-only 受控落档；不包含 G2/G3/编码/实测授权。",
+    "M2 G1 包 SHA-256 fde727ebcf79aa945a5d947b887a0c7dc9d82601c35ee15c0241eefff0b4fbd5",
+    "G1-06 受控正文 SHA-256 96b95bc992351866c807fc858a14ac50fdf358a3fd2315be3a6a5c06eec9731a"
+  ],
+  "approved_document_sha256": "96b95bc992351866c807fc858a14ac50fdf358a3fd2315be3a6a5c06eec9731a",
+  "attestation": "I AUTHORIZE AT-M2-20261103-G1-06-REVIEW"
+}

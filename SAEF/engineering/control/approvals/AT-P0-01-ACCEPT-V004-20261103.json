@@ -1,0 +1,17 @@
+{
+  "schema": "SAEF-authority-decision/1",
+  "project_id": "AutoTest",
+  "authorized_by": "AutoTest项目负责人（本对话批准）",
+  "authorized_at": "2026-11-03",
+  "reason": "负责人在当前对话明确回复“批准了”，其审批对象为 P0-01 v004 项目章程与范围；非 P0 Gate 批准、非任何技术开发或实机操作授权。",
+  "decision_id": "AT-P0-01-ACCEPT-V004-20261103",
+  "action": "accept-work-product",
+  "work_product_id": "P0-01",
+  "evidence_refs": [
+    "AT-P0-01_v004_项目章程与范围_精简候审.md SHA256:3f91b818619f97593e3c114393f856cb9091d67c9b4d3f206e7540b2a0daf671",
+    "AT-P0-01_v004_范围收敛与内容审查报告.md SHA256:0160ca34462ade513ae1c97ca63bb883c6e6e31e28d7861d477a654dafaead35",
+    "项目负责人本对话在 P0-01 v004 正式提交后明确回复“批准了”（原始对话为授权依据）",
+    "SAEF标准增量交付包 AT-P0-01-R004-20261103; document path engineering/work-products/P0/P0-01/index.md"
+  ],
+  "attestation": "I AUTHORIZE AT-P0-01-ACCEPT-V004-20261103"
+}

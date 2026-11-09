@@ -1,0 +1,17 @@
+{
+  "schema": "SAEF-authority-decision/1",
+  "project_id": "AutoTest",
+  "decision_id": "AT-M2-20261103-P0-05-ACCEPT",
+  "action": "accept-work-product",
+  "work_product_id": "P0-05",
+  "authorized_by": "AutoTest项目负责人（当前对话明确批准）",
+  "authorized_at": "2026-11-03",
+  "reason": "按照负责人在当前对话对 M2 P0~G1 的集中批准，登记 P0-05 M2 候审正文的 ACCEPT 状态。",
+  "evidence_refs": [
+    "项目负责人在当前对话明确：“批准了，P0到G1都批准了”——批准 M2 P0/G0/G1 集中候审内容与所请求的 Git-only 受控落档；不包含 G2/G3/编码/实测授权。",
+    "M2 P0 包 SHA-256 15c8635c1bb9da6a7bf3e91a38a0135b258477eea708e2155f53f865052e918d",
+    "P0-05 受控正文 SHA-256 02a6f18b1ba31ec1f017edd7a331552bfa4a8d580987f6abdc84cd95e6fb80f9"
+  ],
+  "approved_document_sha256": "02a6f18b1ba31ec1f017edd7a331552bfa4a8d580987f6abdc84cd95e6fb80f9",
+  "attestation": "I AUTHORIZE AT-M2-20261103-P0-05-ACCEPT"
+}
