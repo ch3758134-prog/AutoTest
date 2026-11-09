@@ -51,6 +51,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private string _acceptedFact = "UNKNOWN · 尚无后端接受证据";
     private string _physicalFact = "UNKNOWN · 未采集物理观测";
     private string _ecuFact = "UNKNOWN · 尚无 ECU 反馈";
+    private string _verifiedFact = "UNKNOWN · 未进行业务判定";
     private BenchEvidenceSource _source = BenchEvidenceSource.Mock;
     private BenchConnectionSnapshot _connection = new(BenchConnection.Disconnected, null, null, null, null, null);
     private BenchConfiguration? _config;
@@ -90,6 +91,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public string AcceptedFact { get => _acceptedFact; private set => SetProperty(ref _acceptedFact, value); }
     public string PhysicalFact { get => _physicalFact; private set => SetProperty(ref _physicalFact, value); }
     public string EcuFact { get => _ecuFact; private set => SetProperty(ref _ecuFact, value); }
+    public string VerifiedFact { get => _verifiedFact; private set => SetProperty(ref _verifiedFact, value); }
     private BenchEvidenceEntry? _selectedEvidence;
     public BenchEvidenceEntry? SelectedEvidence { get => _selectedEvidence; set => SetProperty(ref _selectedEvidence, value); }
     public string ExportEvidenceJson() => BenchEvidenceExport.ToJson(Evidence.Reverse());
@@ -278,6 +280,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         AcceptedFact = "UNKNOWN · 等待后端结果";
         PhysicalFact = "UNKNOWN · 未采集物理观测";
         EcuFact = "UNKNOWN · 尚无 ECU 反馈";
+        VerifiedFact = "UNKNOWN · 未进行业务判定";
         RecordEvidence(BenchEvidencePhase.Requested, summary, item.Controller.ControllerId, item.State.StateId, source: requestedSource);
         Append(WorkbenchSeverity.Progress, "请求控制状态", summary);
         LastOperation = $"处理中：{summary}";
