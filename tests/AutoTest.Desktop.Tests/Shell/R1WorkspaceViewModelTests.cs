@@ -101,6 +101,61 @@ public sealed class R1WorkspaceViewModelTests
         Assert.Equal("11", vm.SessionGeneration);
     }
 
+    [Fact]
+    public void KeyboardNavigationCyclesTabsWithoutReactivatingProfessionalHost()
+    {
+        var host = new FakeHost();
+        var vm = new R1WorkspaceViewModel(host);
+        var a = vm.Navigation.Single(x => x.Id == "P01");
+        var b = vm.Navigation.Single(x => x.Id == "P07");
+        vm.UpdateAvailability(a.Id, WorkspaceAvailability.Available);
+        vm.UpdateAvailability(b.Id, WorkspaceAvailability.Available);
+        vm.Open(a);
+        vm.Open(b);
+        Assert.Equal("P07", vm.ActiveTab!.Id);
+        vm.NextTabCommand.Execute();
+        Assert.Equal("P01", vm.ActiveTab!.Id);
+        vm.PreviousTabCommand.Execute();
+        Assert.Equal("P07", vm.ActiveTab!.Id);
+        Assert.Equal(2, host.Activations);
+    }
+
+    [Fact]
+    public void RevisionChangeMarksOldDocumentStaleAndClosingUsesExistingGuard()
+    {
+        var host = new FakeHost();
+        var vm = new R1WorkspaceViewModel(host);
+        var project = vm.Navigation.Single(x => x.Id == "P01");
+        vm.UpdateAvailability(project.Id, WorkspaceAvailability.Available);
+        vm.AcceptContext("p", "rev-A", null, null, "Mock");
+        vm.Open(project);
+        var tab = Assert.Single(vm.OpenTabs);
+        Assert.Equal("READY", tab.StateLabel);
+        vm.AcceptContext("p", "rev-B", null, null, "Replay");
+        Assert.True(tab.ContextStale);
+        Assert.Equal("STALE", tab.StateLabel);
+        Assert.Equal("rev-A", tab.ContextRevision);
+        tab.IsDirty = true;
+        Assert.Equal("DIRTY", tab.StateLabel);
+        vm.CloseActiveTabCommand.Execute();
+        Assert.Single(vm.OpenTabs);
+        tab.IsDirty = false;
+        vm.CloseActiveTabCommand.Execute();
+        Assert.Empty(vm.OpenTabs);
+        Assert.Equal(1, host.Closes);
+    }
+
+    [Fact]
+    public void NoTabsKeyboardActionsAreSafe()
+    {
+        var vm = new R1WorkspaceViewModel(new FakeHost());
+        vm.NextTabCommand.Execute();
+        vm.PreviousTabCommand.Execute();
+        vm.CloseActiveTabCommand.Execute();
+        Assert.Empty(vm.OpenTabs);
+        Assert.Null(vm.ActiveTab);
+    }
+
     private sealed class FakeHost : IWorkspaceDocumentHost
     {
         public bool AllowActivation { get; set; } = true;
