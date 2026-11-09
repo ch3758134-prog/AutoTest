@@ -1,6 +1,7 @@
 using System.IO;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Windows;
 using AutoTest.Specialists.Flash;
 using AutoTest.Specialists.Flash.Workbench;
 using Prism.Commands;
@@ -20,6 +21,12 @@ public sealed class FlashToolViewModel : BindableBase
         _failure="",_format="—",_hash="—",_bytes="0",_preflight="NOT_RUN",
         _job="—",_progress="0%";
     private AutoTest.Contracts.ProgrammingJobId? _runningJob;
+    private string _lastAcknowledgedBlock="NONE",_confirmedBytes="0",_traceQuality="MOCK_ONLY";
+    private int _renderedFacts, _omittedStageRows, _omittedTraceRows, _omittedSegmentRows;
+    private readonly Dictionary<string,int> _segmentRowIndex = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _hiddenSegments = new(StringComparer.Ordinal);
+    private long _confirmedAckBytes;
+    private const int MaxVisibleRows=3000;
     public FlashToolViewModel() : this(new FlashDryRunWorkspace()) { }
     public FlashToolViewModel(FlashDryRunWorkspace backend)
     {
@@ -29,16 +36,26 @@ public sealed class FlashToolViewModel : BindableBase
         StartCommand = new DelegateCommand(() => _ = RunDryAsync(), () => !IsBusy);
         CancelCommand = new DelegateCommand(Cancel, () => IsBusy && _runningJob is not null);
         ExportAuditCommand = new DelegateCommand(() => _ = ExportAuditAsync(), () => !IsBusy && _backend.CurrentJob is not null);
+        CopyTraceCommand = new DelegateCommand(CopyTrace, () => DiagnosticTrace.Count > 0);
     }
     public ObservableCollection<FlashSegmentDetail> Segments { get; } = new();
     public ObservableCollection<string> Stages { get; } = new();
+    public ObservableCollection<string> DiagnosticTrace { get; } = new();
+    public ObservableCollection<string> SegmentStatusRows { get; } = new();
+    public string SegmentDisplayNotice => _omittedSegmentRows==0 ?
+        "各地址段 Mock 传输与校验状态" :
+        $"界面仅显示前 {MaxVisibleRows} 段，另有 {_omittedSegmentRows} 段；完整结果见审计导出。";
     public DelegateCommand LoadCommand { get; }
     public DelegateCommand PreflightCommand { get; }
     public DelegateCommand StartCommand { get; }
     public DelegateCommand CancelCommand { get; }
     public DelegateCommand ExportAuditCommand { get; }
+    public DelegateCommand CopyTraceCommand { get; }
     public bool PhysicalProgrammingEnabled => false;
     public string SourceLabel => "MOCK DRY-RUN ONLY / PHYSICAL FLASH DISABLED";
+    public string AuditJobImage => _backend.LastJobImage is { } last
+        ? $"上一次 Mock 作业：{last.FileName} / SHA256 {last.Sha256}"
+        : "当前尚无可导出的 Mock 作业";
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))
           { LoadCommand.RaiseCanExecuteChanged(); PreflightCommand.RaiseCanExecuteChanged();
@@ -68,6 +85,22 @@ public sealed class FlashToolViewModel : BindableBase
     public string Preflight { get => _preflight; private set => SetProperty(ref _preflight,value); }
     public string Job { get => _job; private set => SetProperty(ref _job,value); }
     public string Progress { get => _progress; private set => SetProperty(ref _progress,value); }
+    public string LastAcknowledgedBlock { get => _lastAcknowledgedBlock; private set => SetProperty(ref _lastAcknowledgedBlock,value); }
+    public string ConfirmedBytes { get => _confirmedBytes; private set => SetProperty(ref _confirmedBytes,value); }
+    public string TraceQuality { get => _traceQuality; private set => SetProperty(ref _traceQuality,value); }
+    public string VisibleWindowNotice => (_omittedStageRows+_omittedTraceRows)==0
+        ? "完整 UI 历史（Mock）" :
+        $"UI 显示窗口截断：阶段 {_omittedStageRows} 行、UDS {_omittedTraceRows} 行未显示；完整后台事实可导出 Mock 审计。";
+    public void CopyTrace()
+    {
+        try
+        {
+            if (DiagnosticTrace.Count == 0) return;
+            Clipboard.SetText(string.Join(Environment.NewLine,DiagnosticTrace));
+            Status="MOCK_TRACE_COPIED";
+        }
+        catch(Exception ex) { Failure=ex.Message; Status="MOCK_TRACE_COPY_ERROR"; }
+    }
     private static uint Hex(string value) => uint.Parse(value.Trim().Replace("0x","",StringComparison.OrdinalIgnoreCase),
         NumberStyles.HexNumber,CultureInfo.InvariantCulture);
     private static ulong HexLong(string value) => ulong.Parse(value.Trim().Replace("0x","",StringComparison.OrdinalIgnoreCase),
@@ -100,7 +133,9 @@ public sealed class FlashToolViewModel : BindableBase
         Format=detail.Format; Hash=detail.Sha256;
         Bytes=detail.Bytes.ToString(CultureInfo.InvariantCulture);
         Preflight="NOT_RUN"; Status="IMAGE_LOADED"; Failure="";
-        Stages.Clear(); Job="—"; Progress="0%"; RecoveryAdvice="—";
+        ResetVisibleFacts();
+        RaisePropertyChanged(nameof(AuditJobImage));
+        Job="—"; Progress="0%"; ConfirmedBytes="0"; LastAcknowledgedBlock="NONE"; RecoveryAdvice="—";
     }
     public async Task PreflightAsync()
     {
@@ -119,7 +154,8 @@ public sealed class FlashToolViewModel : BindableBase
     public async Task RunDryAsync(CancellationToken ct = default)
     {
         if (IsBusy) return;
-        IsBusy=true; Failure=""; Stages.Clear(); Progress="0%";
+        IsBusy=true; Failure=""; ResetVisibleFacts(); Progress="0%";
+        ConfirmedBytes="0"; LastAcknowledgedBlock="NONE";
         try
         {
             var report=await _backend.PreflightAsync(Configuration(),ct);
@@ -130,6 +166,7 @@ public sealed class FlashToolViewModel : BindableBase
             int drop=string.IsNullOrWhiteSpace(DropBlock)?-1:int.Parse(DropBlock,CultureInfo.InvariantCulture);
             var job=await _backend.StartDryRunAsync(Configuration(),sid,nrc,drop,ct);
             _runningJob=job; CancelCommand.RaiseCanExecuteChanged();
+            RaisePropertyChanged(nameof(AuditJobImage));
             Job=job.Value.ToString("D"); Status="MOCK_PROGRAMMING";
             while (true)
             {
@@ -146,10 +183,35 @@ public sealed class FlashToolViewModel : BindableBase
         catch(Exception ex) { Status="DRY_RUN_ERROR"; Failure=ex.GetType().Name+": "+ex.Message; }
         finally { _runningJob=null; IsBusy=false; }
     }
+    private void ResetVisibleFacts()
+    {
+        Stages.Clear(); DiagnosticTrace.Clear(); SegmentStatusRows.Clear();
+        _segmentRowIndex.Clear(); _hiddenSegments.Clear();
+        _renderedFacts=0; _omittedStageRows=0; _omittedTraceRows=0;
+        _omittedSegmentRows=0; _confirmedAckBytes=0;
+        TraceQuality="MOCK_ONLY";
+        RaisePropertyChanged(nameof(VisibleWindowNotice));
+        RaisePropertyChanged(nameof(SegmentDisplayNotice));
+        CopyTraceCommand.RaiseCanExecuteChanged();
+    }
+    private static void AddBounded(ObservableCollection<string> collection, string value, ref int omitted)
+    {
+        if (collection.Count >= MaxVisibleRows)
+        {
+            collection.RemoveAt(0);
+            omitted++;
+        }
+        collection.Add(value);
+    }
     private void Update(ProgrammingJobSnapshot snapshot)
     {
         Status="MOCK_"+snapshot.State.ToString().ToUpperInvariant();
-        Failure=snapshot.FailureCode??"";
+        var finalFailure=snapshot.Facts.LastOrDefault(x=>x.Stage=="Job" &&
+            (x.Status=="FAIL" || x.Status=="UNCERTAIN"));
+        Failure=snapshot.FailureCode is { Length: > 0 }
+            ? (finalFailure is null ? snapshot.FailureCode :
+                snapshot.FailureCode+": "+finalFailure.Detail)
+            : "";
         RecoveryAdvice=snapshot.State switch
         {
             ProgrammingJobState.Completed => "仅模拟验证完成；不能当作真实 ECU 编程证据。",
@@ -157,10 +219,54 @@ public sealed class FlashToolViewModel : BindableBase
                 "模拟作业不完整。不得自动续写；重新检查镜像/配置及故障后启动新 Mock 作业。",
             _ => "Mock 正在执行；断连或取消可能留下部分模拟写入。"
         };
-        Stages.Clear();
-        foreach(var f in snapshot.Facts)
-            Stages.Add($"{f.Utc:HH:mm:ss.fff}  {f.Stage,-20} {f.Status,-8} {f.ConfirmedBytes,8}B  {f.Detail}");
-        long max=snapshot.Facts.Length==0?0:snapshot.Facts.Max(x=>x.ConfirmedBytes);
+        if (snapshot.Facts.Length < _renderedFacts) ResetVisibleFacts();
+        for (int i=_renderedFacts;i<snapshot.Facts.Length;i++)
+        {
+            var fact=snapshot.Facts[i];
+            string line=$"{fact.Utc:O}  {fact.Stage,-20} {fact.Status,-8} "+
+                $"{fact.ConfirmedBytes,8}B  {fact.Detail}";
+            AddBounded(Stages,line,ref _omittedStageRows);
+            if (fact.Stage=="UDS") AddBounded(DiagnosticTrace,line,ref _omittedTraceRows);
+            if (fact.Stage.StartsWith("Segment_",StringComparison.Ordinal))
+            {
+                string state=fact.Status switch
+                {
+                    "BEGIN" => "STARTED / UNCONFIRMED",
+                    "TRANSFER_ACKED" => "TRANSFER ACK / HASH NOT YET VERIFIED",
+                    "VERIFIED" => "MOCK HASH VERIFIED",
+                    _ => fact.Status
+                };
+                string display=$"{fact.Stage}  {state}  {fact.Detail}  ACK={fact.ConfirmedBytes}B";
+                if (_segmentRowIndex.TryGetValue(fact.Stage,out int existing))
+                    SegmentStatusRows[existing]=display;
+                else if (SegmentStatusRows.Count < MaxVisibleRows)
+                {
+                    _segmentRowIndex[fact.Stage]=SegmentStatusRows.Count;
+                    SegmentStatusRows.Add(display);
+                }
+                else if (_hiddenSegments.Add(fact.Stage))
+                {
+                    _omittedSegmentRows++;
+                    RaisePropertyChanged(nameof(SegmentDisplayNotice));
+                }
+            }
+            if (fact.Stage=="Transfer" && fact.Status=="ACK")
+            {
+                _confirmedAckBytes=Math.Max(_confirmedAckBytes,fact.ConfirmedBytes);
+                const string marker="Block=";
+                int offset=fact.Detail.IndexOf(marker,StringComparison.Ordinal);
+                if(offset>=0)
+                    LastAcknowledgedBlock=fact.Detail[(offset+marker.Length)..].Split(';')[0].Trim();
+            }
+        }
+        _renderedFacts=snapshot.Facts.Length;
+        CopyTraceCommand.RaiseCanExecuteChanged();
+        ConfirmedBytes=_confirmedAckBytes.ToString(CultureInfo.InvariantCulture);
+        TraceQuality=_omittedStageRows+_omittedTraceRows>0
+            ? "MOCK_STAGE_FACTS; UI WINDOW TRUNCATED; EXPORT FULL AUDIT"
+            : "MOCK_UDS_PDU_STAGE_FACTS; NO PHYSICAL CAN FRAME TIMING";
+        RaisePropertyChanged(nameof(VisibleWindowNotice));
+        long max=_confirmedAckBytes;
         long total=_backend.Image?.Bytes??0;
         Progress=total==0?"0%":$"{Math.Min(100,100.0*max/total):F1}% ({max}/{total} bytes, MOCK)";
     }

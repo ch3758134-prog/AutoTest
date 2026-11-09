@@ -28,8 +28,12 @@ public sealed class FlashDryRunWorkspace
     private string _name = "";
     private ProgrammingJobCoordinator? _coordinator;
     private ProgrammingJobId? _jobId;
+    private FlashImageDetail? _jobImageSnapshot;
+    private FlashDryRunConfiguration? _jobConfigSnapshot;
+    private DateTimeOffset? _jobInputCapturedUtc;
     public FlashImageDetail? Image => _image is null ? null : Describe(_image, _name);
     public ProgrammingJobId? CurrentJob => _jobId;
+    public FlashImageDetail? LastJobImage => _jobImageSnapshot;
 
     public FlashImageDetail LoadImage(string fileName, ReadOnlySpan<byte> content, uint binAddress)
     {
@@ -111,7 +115,13 @@ public sealed class FlashDryRunWorkspace
         byte? faultNrcSid = null, byte? faultNrc = null, int dropBeforeBlock = -1,
         CancellationToken ct = default)
     {
-        var image = _image ?? throw new ProgrammingRejectedException("IMAGE_NOT_SELECTED");
+        FirmwareImage image;
+        string imageName;
+        lock (_sync)
+        {
+            image = _image ?? throw new ProgrammingRejectedException("IMAGE_NOT_SELECTED");
+            imageName = _name;
+        }
         if (image.ByteCount > MaxInteractiveMockBytes)
             throw new ProgrammingRejectedException("INTERACTIVE_MOCK_IMAGE_LIMIT_1MIB");
         if (_jobId is { } previous && _coordinator is not null &&
@@ -132,8 +142,21 @@ public sealed class FlashDryRunWorkspace
         var plan = await coordinator.BuildPlanAsync(request, ct).ConfigureAwait(false);
         var auth = new SafetyAuthorization(Authorization.MockOnly(session, DateTimeOffset.UtcNow),
             "MOCK_FLASH", "FLASH_WORKBENCH_MOCK_ONLY");
+        // Capture the input identity before the job is dispatched, not after
+        // an exceptionally fast Mock job has already finished.
+        var capturedUtc = DateTimeOffset.UtcNow;
+        var capturedImage = Describe(image,imageName);
         var id = await coordinator.ExecuteAsync(plan, auth, ct).ConfigureAwait(false);
-        lock (_sync) { _coordinator = coordinator; _jobId = id; }
+        lock (_sync)
+        {
+            _coordinator = coordinator;
+            _jobId = id;
+            // Immutable job-input snapshot: later image import must never
+            // rewrite the evidence identity of an already executed job.
+            _jobImageSnapshot = capturedImage;
+            _jobConfigSnapshot = config;
+            _jobInputCapturedUtc = capturedUtc;
+        }
         return id;
     }
     public ProgrammingJobSnapshot Observe(ProgrammingJobId job)
@@ -151,11 +174,57 @@ public sealed class FlashDryRunWorkspace
         var snapshot=Observe(id);
         if (snapshot.State is ProgrammingJobState.Running or ProgrammingJobState.Queued)
             throw new InvalidOperationException("Cannot export incomplete job as final evidence.");
+        var ackFacts=snapshot.Facts.Where(x=>x.Stage=="Transfer" && x.Status=="ACK")
+            .ToArray();
+        var lastAck=ackFacts.LastOrDefault();
+        var verifyCount=snapshot.Facts.Count(x=>x.Stage=="VerifyMock" && x.Status=="PASS");
+        FlashImageDetail? jobImage;
+        FlashDryRunConfiguration? jobConfig;
+        DateTimeOffset? captured;
+        lock (_sync)
+        {
+            jobImage=_jobImageSnapshot;
+            jobConfig=_jobConfigSnapshot;
+            captured=_jobInputCapturedUtc;
+        }
+        if (jobImage is null || jobConfig is null || captured is null)
+            throw new InvalidOperationException("Job input evidence is unavailable.");
+        var expectedVerifyCount=jobImage.Segments.Count;
+        var segmentStates=snapshot.Facts
+            .Where(x=>x.Stage.StartsWith("Segment_",StringComparison.Ordinal))
+            .GroupBy(x=>x.Stage,StringComparer.Ordinal)
+            .ToDictionary(g=>g.Key,g=>g.Select(x=>x.Status).ToHashSet(StringComparer.Ordinal),
+                StringComparer.Ordinal);
+        var segmentEvidence=jobImage.Segments.Select((segment,index)=>
+        {
+            string name=$"Segment_{index+1:D4}";
+            segmentStates.TryGetValue(name,out var states);
+            return new {
+                Index=index+1, segment.Start, segment.EndExclusive, segment.Bytes,
+                Started=states?.Contains("BEGIN")==true,
+                TransferAcknowledged=states?.Contains("TRANSFER_ACKED")==true,
+                MockHashVerified=states?.Contains("VERIFIED")==true
+            };
+        }).ToArray();
+        bool mockVerified=snapshot.State==ProgrammingJobState.Completed &&
+            verifyCount==expectedVerifyCount && expectedVerifyCount>0 &&
+            segmentEvidence.All(x=>x.MockHashVerified);
         var payload=new
         {
-            Schema=1, Source="Mock", PhysicalProgrammingVerified=false,
+            Schema=2, Source="Mock", PhysicalProgrammingVerified=false,
+            RealEcuIdentityObserved=false, PhysicalTransportUsed=false,
             Job=snapshot.Job, State=snapshot.State.ToString(), SnapshotUtc=DateTimeOffset.UtcNow,
-            Image=Image, FailureCode=snapshot.FailureCode, Stages=snapshot.Facts
+            JobInputCapturedUtc=captured, Image=jobImage,
+            MockConfiguration=jobConfig, FailureCode=snapshot.FailureCode,
+            AcknowledgedTransferBytes=lastAck?.ConfirmedBytes??0,
+            LastAcknowledgedTransfer=lastAck is null ? null : new {
+                Utc=lastAck.Utc, Detail=lastAck.Detail, ConfirmedBytes=lastAck.ConfirmedBytes },
+            Verification="MOCK_ONLY",
+            MockHashVerified=mockVerified,
+            ExpectedSegmentVerifications=expectedVerifyCount,
+            ActualSegmentVerifications=verifyCount,
+            SegmentEvidence=segmentEvidence,
+            FullBackendFactsIncluded=true, Stages=snapshot.Facts
         };
         byte[] bytes=JsonSerializer.SerializeToUtf8Bytes(payload,
             new JsonSerializerOptions { WriteIndented=true });

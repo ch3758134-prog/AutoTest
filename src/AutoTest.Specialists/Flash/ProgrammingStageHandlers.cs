@@ -13,7 +13,21 @@ public sealed class ProgrammingStageHandlers(UdsClient uds,UdsEndpointProfile en
 {
     private async ValueTask<byte[]> ExpectAsync(byte[] pdu,byte expectedSid,CancellationToken ct)
     {
-        var result=await uds.RequestAsync(new(pdu.ToImmutableArray(),Guid.NewGuid()),endpoint,ct).ConfigureAwait(false);
+        var correlation=Guid.NewGuid();
+        bool sensitive=pdu[0] is 0x27 or 0x29 or 0x36;
+        string rawRequest=sensitive ? "[REDACTED]" : Convert.ToHexString(pdu);
+        evidence.RecordStage("UDS","TX",0,
+            $"CorrelationId={correlation:D}; SID=0x{pdu[0]:X2}; RequestHex={rawRequest}; MOCK");
+        var result=await uds.RequestAsync(new(pdu.ToImmutableArray(),correlation),endpoint,ct).ConfigureAwait(false);
+        string responseHex=sensitive ? "[REDACTED]" :
+            (result.ResponsePdu.IsDefaultOrEmpty ? "" : Convert.ToHexString(result.ResponsePdu.ToArray()));
+        evidence.RecordStage("UDS","RX",0,
+            $"CorrelationId={correlation:D}; Outcome={result.Outcome}; NRC="+
+            (result.NegativeResponseCode?.ToString("X2") ?? "NONE")+
+            "; ResponseHex="+responseHex+"; MOCK");
+        if (result.Outcome == Outcome.Uncertain)
+            throw new ProgrammingUncertainException(
+                $"UDS 0x{pdu[0]:X2} has no confirmed final response; Mock write state uncertain.");
         if (result.Outcome != Outcome.Accepted || result.ResponsePdu.IsDefaultOrEmpty
             || result.ResponsePdu[0] != expectedSid)
             throw new ProgrammingRejectedException($"UDS 0x{pdu[0]:X2} failed: "+
