@@ -75,6 +75,7 @@
                             <StackPanel Grid.Column="2"><TextBlock Text="P2* (ms)" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding P2StarMs,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                         </Grid>
+                        <TextBlock Text="{Binding AddressingDescription}" Margin="0,0,0,9" Foreground="#8B4428" FontWeight="SemiBold"/>
                         <Button Content="重置 Mock ECU / 会话" Command="{Binding ResetCommand}"/>
                         <Separator Margin="0,13"/>
                         <TextBlock Text="诊断服务定义" Style="{StaticResource SectionHeading}"/>
