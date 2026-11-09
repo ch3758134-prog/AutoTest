@@ -14,10 +14,13 @@ public sealed class HardwareBenchController : IAsyncDisposable
     private CanFrameHub? _hub;
     private HardwareTraceRecorder? _log;
     private string? _selectedInstanceId;
+    private string? _lastTraceFile;
+    private string? _lastTraceFailure;
     private long _lastSessionGeneration;
     private bool _versionVerified;
 
     public event Action<UsbTraceRecord>? UsbTrace;
+    public event Action<WinUsbOperationEvent>? NativeOperation;
     public event Action<HardwareCanTrace>? CanTrace;
     public event Action<UsbSessionState>? ConnectionChanged;
 
@@ -30,9 +33,9 @@ public sealed class HardwareBenchController : IAsyncDisposable
     public long Generation => _session?.Generation ?? _lastSessionGeneration;
     public bool ProtocolVersionVerified => _versionVerified;
     public UsbSessionState State => _session?.State ?? UsbSessionState.Disconnected;
-    public string? TraceFile => _log?.FilePath;
+    public string? TraceFile => _log?.FilePath ?? _lastTraceFile;
     public long TraceDropped => _log?.Dropped ?? 0;
-    public string? TraceError => _log?.FailureMessage;
+    public string? TraceError => _log?.FailureMessage ?? _lastTraceFailure;
     public long CanPublished => _canBridge?.Published ?? 0;
     public long CanDropped => _canBridge?.DroppedBeforeDecode ?? 0;
     public long CanMalformed => _canBridge?.InvalidFrames ?? 0;
@@ -48,7 +51,10 @@ public sealed class HardwareBenchController : IAsyncDisposable
         try
         {
             _log = new HardwareTraceRecorder(traceFile);
+            _lastTraceFile = _log.FilePath;
+            _lastTraceFailure = null;
             _link = new WinUsbByteLink(selected.DeviceInstanceId, _discovery);
+            _link.OperationRecorded += RelayNative;
             _session = new UsbSessionService(_link, _lastSessionGeneration);
             _versionVerified = false;
             _hub = new CanFrameHub(); // no physical Tx delegate = transmit impossible
@@ -59,9 +65,11 @@ public sealed class HardwareBenchController : IAsyncDisposable
             _log.RecordMessage("CONNECTION_ATTEMPT", selected.DisplayIdentity);
             await _session.ConnectAsync(ct).ConfigureAwait(false);
         }
-        catch
+        catch (Exception original)
         {
-            await DisconnectAsync().ConfigureAwait(false);
+            // Preserve the native WinUSB stage/error even if later trace flush or cleanup fails.
+            try { await DisconnectAsync().ConfigureAwait(false); }
+            catch (Exception cleanup) { original.Data["DeviceCleanupError"] = cleanup.ToString(); }
             throw;
         }
     }
@@ -91,6 +99,13 @@ public sealed class HardwareBenchController : IAsyncDisposable
         return response;
     }
 
+    private void RelayNative(WinUsbOperationEvent record)
+    {
+        _log?.Record(record);
+        foreach (Action<WinUsbOperationEvent> handler in NativeOperation?.GetInvocationList()
+                     .Cast<Action<WinUsbOperationEvent>>() ?? Enumerable.Empty<Action<WinUsbOperationEvent>>())
+        { try { handler(record); } catch { } }
+    }
     private void RelayUsb(UsbTraceRecord record)
     {
         _log?.Record(record);
@@ -122,6 +137,7 @@ public sealed class HardwareBenchController : IAsyncDisposable
                 _lastSessionGeneration = session.Generation;
                 session.TraceRecorded -= RelayUsb;
                 session.StateChanged -= RelayState;
+                if (_link is not null) _link.OperationRecorded -= RelayNative;
                 _link = null; // owned and disposed by UsbSessionService
             }
         }
@@ -136,8 +152,13 @@ public sealed class HardwareBenchController : IAsyncDisposable
         if (_log is not null)
         {
             _log.RecordMessage("TRACE_FINAL", $"CAN published={canPublished}, dropped={canDropped}, malformed={canMalformed}, hubLost={hubDropped}, traceLost={TraceDropped}");
-            await _log.DisposeAsync().ConfigureAwait(false);
-            _log = null;
+            try { await _log.DisposeAsync().ConfigureAwait(false); }
+            finally
+            {
+                _lastTraceFailure = _log.FailureMessage;
+                _lastTraceFile = _log.FilePath;
+                _log = null;
+            }
         }
     }
     public ValueTask DisposeAsync() => new(DisconnectAsync());

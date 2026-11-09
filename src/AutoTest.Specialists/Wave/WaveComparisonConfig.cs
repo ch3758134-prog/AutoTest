@@ -13,6 +13,9 @@ public sealed record WaveComparisonConfig(
     double MaximumOutOfToleranceSeconds,
     double MinimumCoveredDurationSeconds)
 {
+    /// <summary>High-precision tests may only use a synchronized hardware clock, never host arrival.</summary>
+    public bool RequireSynchronizedHardwareTime { get; init; }
+
     public static WaveComparisonConfig FromContract(CompareProfile profile) =>
         new(profile.Tolerance, 0, profile.MinimumCoverage, 1, 0.050, 1.6, 0, 0);
 

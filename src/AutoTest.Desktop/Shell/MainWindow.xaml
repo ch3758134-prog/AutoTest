@@ -37,6 +37,8 @@
    <MenuItem Header="运行实际步骤（Mock Only）" Command="{Binding RunCommand}" InputGestureText="F5"/>
    <MenuItem Header="停止并清理" Command="{Binding StopCommand}"/></MenuItem>
   <MenuItem Header="_工具"><MenuItem Header="八方向 Mock 专项工作台（扫码 / 记录 / Wave / UDS / Flash）" Click="G4Tools_Click"/>
+   <MenuItem Header="G4-LAB 模块工作台（配置 / DBC / TEST / Records / Operations / UDS / Flash / Wave）" Click="Modules_Click"/>
+   <MenuItem Header="DEVICE B0/B1/B2 只读诊断（手动连接）" Click="DeviceLab_Click"/>
    <Separator/><MenuItem Header="CAN（当前仅 Mock，未开放真实操作）" IsEnabled="False"/>
    <MenuItem Header="DBC（仅基础导入与编辑）" Command="{Binding ImportDbcCommand}"/>
    <MenuItem Header="UDS · ISO-TP Mock 诊断" Click="G4Tools_Click"/>

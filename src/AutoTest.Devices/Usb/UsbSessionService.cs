@@ -59,7 +59,7 @@ public sealed class UsbSessionService : IAsyncDisposable
             try { await _link.OpenAsync(ct).ConfigureAwait(false); }
             catch (Exception ex)
             {
-                Trace("CONNECT_ERROR", Generation, detail: ex.Message);
+                Trace("CONNECT_ERROR", Generation, detail: ex.ToString());
                 throw;
             }
             var generation = Interlocked.Increment(ref _generation);

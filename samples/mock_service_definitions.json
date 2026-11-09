@@ -1,0 +1,29 @@
+{
+  "Schema": 1,
+  "Profile": {
+    "Name": "Mock ECU",
+    "MockIdentity": "MOCK_ECU_A",
+    "TxId": 2016,
+    "RxId": 2024,
+    "P2Ms": 1000,
+    "P2StarMs": 5000,
+    "Addressing": "Normal"
+  },
+  "Services": [
+    {
+      "Name": "Read VIN",
+      "RequestHex": "22 F1 90",
+      "ExpectedHex": ""
+    },
+    {
+      "Name": "Read DTC",
+      "RequestHex": "19 02 FF",
+      "ExpectedHex": ""
+    },
+    {
+      "Name": "Default session",
+      "RequestHex": "10 01",
+      "ExpectedHex": ""
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "Schema": 1,
+  "Exchanges": [
+    {
+      "RequestHex": "22 F1 90",
+      "Responses": [
+        "7F 22 78",
+        "62 F1 90 4D 4F 43 4B 5F 45 43 55 5F 41"
+      ],
+      "Frames": [
+        {
+          "Direction": "HOST TX",
+          "Hex": "03 22 F1 90"
+        },
+        {
+          "Direction": "MOCK ECU TX",
+          "Hex": "03 7F 22 78"
+        },
+        {
+          "Direction": "MOCK ECU TX",
+          "Hex": "10 0D 62 F1 90 4D 4F 43"
+        },
+        {
+          "Direction": "HOST TX",
+          "Hex": "30 04 00"
+        },
+        {
+          "Direction": "MOCK ECU TX",
+          "Hex": "21 4B 5F 45 43 55 5F 41"
+        }
+      ]
+    }
+  ]
+}

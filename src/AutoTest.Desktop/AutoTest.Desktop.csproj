@@ -7,6 +7,7 @@
     <ProjectReference Include="../AutoTest.Testing/AutoTest.Testing.csproj" />
     <ProjectReference Include="../AutoTest.Projects/AutoTest.Projects.csproj" />
     <ProjectReference Include="../AutoTest.Specialists/AutoTest.Specialists.csproj" />
+    <ProjectReference Include="../AutoTest.DeviceLab/AutoTest.DeviceLab.csproj" />
   </ItemGroup>
   <ItemGroup><PackageReference Include="Prism.DryIoc" /></ItemGroup>
 </Project>

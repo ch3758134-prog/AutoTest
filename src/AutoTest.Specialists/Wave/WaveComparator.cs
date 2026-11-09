@@ -33,6 +33,13 @@ public static class WaveComparator
             !actual.SourceRevision.Matches(reference.SourceRevision))
             return Reject(Verdict.Error, "SIGNAL_REVISION_MISMATCH",
                 "DBC signal identity, scaling revision or physical unit differs.");
+        if (config.RequireSynchronizedHardwareTime &&
+            (actual.Origin.Source != TimeSource.DeviceSample ||
+             actual.Origin.Quality != TimeQuality.SynchronizedHardware ||
+             reference.Origin.Source != TimeSource.DeviceSample ||
+             reference.Origin.Quality != TimeQuality.SynchronizedHardware))
+            return Reject(Verdict.Inconclusive, "HARDWARE_TIME_REQUIRED",
+                "Host arrival, replay and simulation clocks cannot certify high-precision timing.");
         var rq = WaveTimeQuality.ValidateForJudgement(reference);
         if (!rq.CanJudge) return Reject(Verdict.Inconclusive, "REFERENCE_" + rq.Code, rq.Reason);
         var aq = WaveTimeQuality.ValidateForJudgement(actual);

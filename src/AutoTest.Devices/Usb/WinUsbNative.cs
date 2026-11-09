@@ -10,9 +10,10 @@ internal static class WinUsbNative
     internal const uint DigcfPresent = 0x2, DigcfDeviceInterface = 0x10;
     internal const int ErrorNoMoreItems = 259;
     internal const uint GenericRead = 0x80000000, GenericWrite = 0x40000000;
-    internal const uint FileShareRead = 1, FileShareWrite = 2, OpenExisting = 3, FileAttributeNormal = 0x80;
+    internal const uint FileShareRead = 1, FileShareWrite = 2, OpenExisting = 3, FileAttributeNormal = 0x80, FileFlagOverlapped = 0x40000000;
     internal const uint PipeTransferTimeout = 0x03;
     internal const int PipeTypeBulk = 2;
+    internal const uint SpdrpService = 0x00000004;
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct SP_DEVICE_INTERFACE_DATA
@@ -64,6 +65,10 @@ internal static class WinUsbNative
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetupDiGetDeviceInstanceIdW(IntPtr set, ref SP_DEVINFO_DATA devInfo,
         StringBuilder id, int idSize, out int required);
+    [DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetupDiGetDeviceRegistryPropertyW(IntPtr set, ref SP_DEVINFO_DATA device,
+        uint property, out uint propertyType, [Out] byte[] buffer, uint bufferBytes, out uint requiredBytes);
     [DllImport("setupapi.dll", SetLastError = true, ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetupDiDestroyDeviceInfoList(IntPtr set);

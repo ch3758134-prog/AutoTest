@@ -1,0 +1,174 @@
+<UserControl x:Class="AutoTest.Desktop.Bench.BenchWorkbenchView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:bench="clr-namespace:AutoTest.Desktop.Bench"
+             xmlns:wb="clr-namespace:AutoTest.Desktop.Workbench"
+             MinWidth="800" MinHeight="540" Background="#F6F8FB"
+             FontFamily="Segoe UI" FontSize="13">
+    <UserControl.Resources>
+        <wb:BooleanToVisibilityConverter x:Key="VisibleWhenTrue" />
+        <Style TargetType="Button" x:Key="BenchButton">
+            <Setter Property="Padding" Value="14,9"/>
+            <Setter Property="MinHeight" Value="36"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Background" Value="#E9EEF6"/>
+            <Setter Property="BorderBrush" Value="#CED7E5"/>
+            <Setter Property="Foreground" Value="#20314A"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="FieldLabel">
+            <Setter Property="Foreground" Value="#54657B"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style TargetType="Border" x:Key="Panel">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#DEE4EC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
+    </UserControl.Resources>
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="190"/>
+        </Grid.RowDefinitions>
+        <DockPanel Margin="0,0,0,14">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock FontSize="22" FontWeight="SemiBold" Text="手动实测台架"/>
+                <TextBlock Style="{StaticResource FieldLabel}" Text="根据工程配置动态操作；命令 ACK 不等于物理电压"/>
+            </StackPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BenchButton}" HorizontalAlignment="Right"
+                    Content="刷新工程配置" Command="{Binding RefreshCommand}"/>
+        </DockPanel>
+        <Border Grid.Row="1" Style="{StaticResource Panel}" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold" Text="{Binding ProjectName}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="ECU："/>
+                        <TextBlock Text="{Binding EcuProfileName}" Margin="0,0,14,0"/>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="配置 Revision："/>
+                        <TextBlock Text="{Binding Revision}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding ConnectionStatus}" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding DeviceIdentity}"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding ConnectionDetail}" TextWrapping="Wrap" Margin="0,3,0,0"
+                               Foreground="#54657B"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Style="{StaticResource BenchButton}" Background="#2255A4" Foreground="White"
+                            Content="{Binding ConnectionButtonLabel}" Command="{Binding ConnectCommand}"/>
+                    <ComboBox Margin="0,8,8,0" MinWidth="210" ItemsSource="{Binding Devices}"
+                              SelectedItem="{Binding SelectedDevice}" DisplayMemberPath="DisplayName"
+                              Visibility="{Binding ShowDeviceChoice, Converter={StaticResource VisibleWhenTrue}}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="2" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.15*"/><ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource Panel}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+                        <TextBlock FontWeight="SemiBold" FontSize="16" Text="控制器与状态"/>
+                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,4,0,8"
+                                   Text="状态数量、名称、20 Key 映射全部来自当前工程"/>
+                        <ComboBox ItemsSource="{Binding Controllers}" DisplayMemberPath="Name"
+                                  SelectedItem="{Binding SelectedController}" Height="34"/>
+                        <TextBlock Margin="0,12,0,3" Style="{StaticResource FieldLabel}" Text="操作数据来源"/>
+                        <ComboBox SelectedValue="{Binding Source}" SelectedValuePath="Tag" Height="30">
+                            <ComboBoxItem Tag="{x:Static bench:BenchEvidenceSource.Mock}" Content="Mock（模拟）"/>
+                            <ComboBoxItem Tag="{x:Static bench:BenchEvidenceSource.Replay}" Content="Replay（回放）"/>
+                            <ComboBoxItem Tag="{x:Static bench:BenchEvidenceSource.Physical}" Content="Physical（受底层安全门禁控制）"/>
+                        </ComboBox>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding SourceDescription}"
+                                   TextWrapping="Wrap" Margin="0,5,0,0"/>
+                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding States}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type bench:BenchStateItem}">
+                                    <Border BorderBrush="#DCE3ED" BorderThickness="0,0,0,1" Padding="2,10">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource BenchButton}"
+                                                    Content="执行状态" Command="{Binding DataContext.ApplyStateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                            <StackPanel>
+                                                <TextBlock FontWeight="SemiBold" Text="{Binding Label}"/>
+                                                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding Subtitle}"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource Panel}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock FontWeight="SemiBold" FontSize="16" Text="操作结果与人工测量"/>
+                        <TextBlock Text="{Binding LastOperation}" TextWrapping="Wrap" Margin="0,9,0,2"/>
+                        <TextBlock Foreground="#54657B" Text="{Binding LastEvidence}" TextWrapping="Wrap"/>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="五路万用表读数（V） · 空白表示未测" Margin="0,14,0,5"/>
+                    </StackPanel>
+                    <Grid DockPanel.Dock="Top">
+                        <ItemsControl ItemsSource="{Binding Voltages}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,8,6" Width="75">
+                                        <TextBlock Text="{Binding Title}" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Height="29"
+                                                 ToolTip="万用表人工测量电压，留空表示未测"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,8,0,0">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="测量人员"/>
+                        <TextBox Height="29" Text="{Binding OperatorName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="备注" Margin="0,7,0,0"/>
+                        <TextBox Height="29" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Button Style="{StaticResource BenchButton}" Margin="0,12,0,0"
+                                Content="保存人工测量记录" HorizontalAlignment="Left"
+                                Command="{Binding SaveMeasurementCommand}"/>
+                        <TextBlock Style="{StaticResource FieldLabel}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="测量值由人工填写；不推断实测输出，也不产生 ECU PASS。"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+        <Border Grid.Row="3" Style="{StaticResource Panel}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,9">
+                    <TextBlock FontWeight="SemiBold" FontSize="15" Text="本页操作摘要"/>
+                    <TextBlock Style="{StaticResource FieldLabel}" Margin="12,3,0,0"
+                               Text="完整持久日志与原始 Trace 由 RECORD 专业视图提供"/>
+                </StackPanel>
+                <DataGrid ItemsSource="{Binding Messages}" IsReadOnly="True" AutoGenerateColumns="False"
+                          GridLinesVisibility="None" HeadersVisibility="Column" RowHeaderWidth="0"
+                          Background="White" BorderThickness="0" SelectionMode="Single">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="时间" Binding="{Binding When, StringFormat={}{0:HH:mm:ss.fff}}" Width="115"/>
+                        <DataGridTextColumn Header="结果" Binding="{Binding Severity}" Width="85"/>
+                        <DataGridTextColumn Header="事件" Binding="{Binding Heading}" Width="190"/>
+                        <DataGridTextColumn Header="说明 / 请求响应 / 错误" Binding="{Binding Details}" Width="*"/>
+                        <DataGridTextColumn Header="TraceRef" Binding="{Binding TraceReference}" Width="130"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

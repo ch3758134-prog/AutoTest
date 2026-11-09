@@ -24,7 +24,7 @@ public static class MainControllerUsbIdentity
     }
 }
 
-public sealed record WinUsbCandidate(string DevicePath, string DeviceInstanceId)
+public sealed record WinUsbCandidate(string DevicePath, string DeviceInstanceId, string? DriverService = null)
 {
     public string DisplayIdentity => $"VID_1183 PID_5850 · {DeviceInstanceId}";
 }
@@ -75,7 +75,17 @@ public sealed class WinUsbDiscovery : IWinUsbDiscovery
                             instance.Capacity, out _))
                         throw new Win32Exception(Marshal.GetLastWin32Error(), "USB instance identity failed.");
                     if (!string.IsNullOrWhiteSpace(path) && MainControllerUsbIdentity.IsControllerInstance(instance.ToString()))
-                        found.Add(new(path, instance.ToString()));
+                    {
+                        // Diagnostic evidence only: an absent/unreadable service is not
+                        // grounds to guess the installed driver or bind a different one.
+                        byte[] serviceBytes = new byte[512];
+                        string? service = null;
+                        if (WinUsbNative.SetupDiGetDeviceRegistryPropertyW(set, ref deviceData,
+                                WinUsbNative.SpdrpService, out _, serviceBytes, (uint)serviceBytes.Length, out uint serviceLength)
+                            && serviceLength >= 2 && serviceLength <= serviceBytes.Length)
+                            service = Encoding.Unicode.GetString(serviceBytes, 0, (int)serviceLength).TrimEnd('\0');
+                        found.Add(new(path, instance.ToString(), service));
+                    }
                 }
                 finally { Marshal.FreeHGlobal(detail); }
             }

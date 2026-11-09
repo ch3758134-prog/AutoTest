@@ -1,17 +1,17 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
+using System.Diagnostics;
 
 namespace AutoTest.Devices.Usb;
 
 public enum WinUsbLinkState { Disconnected, Opening, Connected, Closing, Faulted }
 
-/// <summary>Real Windows WinUSB bulk byte link for the frozen controller descriptor.
-/// It supplies bytes to the EXISTING UsbSessionService; does not encode another USB protocol.
-/// All writes are guarded against physical state changes by default.</summary>
+/// <summary>Windows WinUSB Bulk transport of the existing UsbSessionService.
+/// Native lifecycle events are separate from the session's full raw TX/RX/SEQ trace.
+/// PhysicalCommandFence is deliberately unchanged and checked before every OUT write.</summary>
 public sealed class WinUsbByteLink : IUsbByteLink
 {
     private readonly IWinUsbDiscovery _discovery;
+    private readonly IWinUsbTransportNative _native;
     private readonly string _chosenInstanceId;
     private readonly object _sync = new();
     private readonly SemaphoreSlim _readGate = new(1, 1), _writeGate = new(1, 1);
@@ -23,20 +23,44 @@ public sealed class WinUsbByteLink : IUsbByteLink
     private long _epoch;
     private string? _path;
 
+    // FILE_FLAG_OVERLAPPED is REQUIRED by WinUsb_Initialize, even though
+    // WinUsb_ReadPipe/WritePipe below deliberately pass NULL OVERLAPPED.
+    internal const uint OpenFileFlags = WinUsbNative.FileAttributeNormal | WinUsbNative.FileFlagOverlapped;
+
     public WinUsbByteLink(string selectedDeviceInstanceId, IWinUsbDiscovery? discovery = null)
+        : this(selectedDeviceInstanceId, discovery ?? new WinUsbDiscovery(), SystemWinUsbTransportNative.Instance) { }
+
+    // Injection is internal to the Devices test assembly; never a public way to bypass the safety fence.
+    internal WinUsbByteLink(string selectedDeviceInstanceId, IWinUsbDiscovery discovery, IWinUsbTransportNative native)
     {
         if (!MainControllerUsbIdentity.IsControllerInstance(selectedDeviceInstanceId))
             throw new ArgumentException("Device ID must be the verified main controller VID/PID.", nameof(selectedDeviceInstanceId));
         _chosenInstanceId = selectedDeviceInstanceId;
-        _discovery = discovery ?? new WinUsbDiscovery();
+        _discovery = discovery ?? throw new ArgumentNullException(nameof(discovery));
+        _native = native ?? throw new ArgumentNullException(nameof(native));
     }
+
+    public event Action<WinUsbOperationEvent>? OperationRecorded;
     public string DeviceInstanceId => _chosenInstanceId;
     public string? DevicePath { get { lock (_sync) return _path; } }
     public WinUsbLinkState State { get { lock (_sync) return _state; } }
     public long ConnectionGeneration => Interlocked.Read(ref _epoch);
 
-    /// <summary>CAN-only one-shot authorization. The debug console never calls this method;
-    /// integrating a physical CAN sender also requires its existing CanTransmitGate lease.</summary>
+    private void Operation(string operation, string stage, string outcome, string? path = null,
+        int? error = null, string? detail = null)
+    {
+        var record = new WinUsbOperationEvent(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp(),
+            operation, stage, outcome, _chosenInstanceId, path ?? DevicePath,
+            ConnectionGeneration, error,
+            error is int code ? $"0x{unchecked((uint)code):X8}" : null, detail);
+        foreach (Action<WinUsbOperationEvent> handler in OperationRecorded?.GetInvocationList()
+                     .Cast<Action<WinUsbOperationEvent>>() ?? Enumerable.Empty<Action<WinUsbOperationEvent>>())
+        { try { handler(record); } catch { /* observers cannot change native link behavior */ } }
+    }
+
+    private WinUsbStageException NativeError(string stage) => new(stage, _native.LastError);
+
+    /// <summary>CAN-only one-shot authorization. The B0/B1/B2 debugger never calls this.</summary>
     public void AuthorizeOneCanTransmission(ReadOnlySpan<byte> exact15Bytes, string typedConfirmation)
     {
         lock (_sync)
@@ -53,7 +77,7 @@ public sealed class WinUsbByteLink : IUsbByteLink
     private void OpenCore(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("WinUSB requires Windows.");
+        if (!_native.IsSupported) throw new PlatformNotSupportedException("WinUSB requires Windows.");
         lock (_sync)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(WinUsbByteLink));
@@ -61,72 +85,116 @@ public sealed class WinUsbByteLink : IUsbByteLink
                 throw new InvalidOperationException("Link must be closed before opening.");
             _state = WinUsbLinkState.Opening;
         }
+
         SafeFileHandle? openedFile = null;
         IntPtr openedInterface = IntPtr.Zero;
+        string stage = "SelectInterface";
+        string? selectedPath = null;
         try
         {
+            Operation("CONNECT", stage, "BEGIN");
             var selected = WinUsbSelection.Select(_discovery.ListCandidates(), _chosenInstanceId);
+            selectedPath = selected.DevicePath;
+            Operation("CONNECT", stage, "OK", selectedPath);
             ct.ThrowIfCancellationRequested();
-            openedFile = WinUsbNative.CreateFileW(selected.DevicePath,
-                WinUsbNative.GenericRead | WinUsbNative.GenericWrite,
-                WinUsbNative.FileShareRead | WinUsbNative.FileShareWrite,
-                IntPtr.Zero, WinUsbNative.OpenExisting, WinUsbNative.FileAttributeNormal, IntPtr.Zero);
-            if (openedFile.IsInvalid)
-                throw Error("Open USB interface (check WinUSB driver and device permissions)");
-            if (!WinUsbNative.WinUsb_Initialize(openedFile, out openedInterface))
-                throw Error("Initialize WinUSB interface");
-            if (!WinUsbNative.WinUsb_QueryInterfaceSettings(openedInterface, 0, out var iface))
-                throw Error("Query USB interface descriptor");
-            if (iface.bInterfaceNumber != 0 || iface.bInterfaceClass != 0xFF || iface.bNumEndpoints != 2)
-                throw new IOException("USB descriptor mismatch (expected vendor interface 0 and exactly 2 pipes).");
+
+            stage = "DriverBinding";
+            string binding = string.IsNullOrWhiteSpace(selected.DriverService) ? "UNKNOWN" : selected.DriverService;
+            Operation("CONNECT", stage,
+                string.Equals(binding, "WinUSB", StringComparison.OrdinalIgnoreCase) ? "OK" : "CHECK",
+                selectedPath, detail: $"SetupAPI SPDRP_SERVICE={binding}; expected WinUSB; read-only diagnostic, not automatic driver repair.");
+
+            stage = "CreateFileW";
+            Operation("CONNECT", stage, "BEGIN", selectedPath,
+                detail: $"access=GENERIC_READ|GENERIC_WRITE share=READ|WRITE disposition=OPEN_EXISTING flags=0x{OpenFileFlags:X8}");
+            openedFile = _native.Open(selectedPath, OpenFileFlags);
+            if (openedFile.IsInvalid) throw NativeError(stage);
+            Operation("CONNECT", stage, "OK", selectedPath);
+
+            stage = "WinUsb_Initialize";
+            Operation("CONNECT", stage, "BEGIN", selectedPath);
+            if (!_native.Initialize(openedFile, out openedInterface)) throw NativeError(stage);
+            if (openedInterface == IntPtr.Zero)
+                throw new WinUsbStageException(stage, null, "WinUsb_Initialize succeeded but returned a null interface handle.");
+            Operation("CONNECT", stage, "OK", selectedPath);
+
+            stage = "WinUsb_QueryInterfaceSettings";
+            if (!_native.QueryInterfaceSettings(openedInterface, out var iface)) throw NativeError(stage);
+            Operation("CONNECT", stage, "OK", selectedPath, detail:
+                $"interface={iface.bInterfaceNumber} alt={iface.bAlternateSetting} class=0x{iface.bInterfaceClass:X2} endpoints={iface.bNumEndpoints}");
+            stage = "ValidateInterface";
+            if (iface.bInterfaceNumber != 0 || iface.bAlternateSetting != 0 ||
+                iface.bInterfaceClass != 0xFF || iface.bNumEndpoints != 2)
+                throw new WinUsbStageException(stage, null,
+                    $"Unexpected interface={iface.bInterfaceNumber}, alt={iface.bAlternateSetting}, class=0x{iface.bInterfaceClass:X2}, endpoints={iface.bNumEndpoints}.");
+
             bool readFound = false, writeFound = false;
             for (byte i = 0; i < iface.bNumEndpoints; i++)
             {
-                if (!WinUsbNative.WinUsb_QueryPipe(openedInterface, 0, i, out var pipe))
-                    throw Error("Query USB bulk pipe");
+                stage = $"WinUsb_QueryPipe[{i}]";
+                if (!_native.QueryPipe(openedInterface, i, out var pipe)) throw NativeError(stage);
+                Operation("CONNECT", stage, "OK", selectedPath,
+                    detail: $"endpoint=0x{pipe.PipeId:X2} type={pipe.PipeType} packet={pipe.MaximumPacketSize}");
+                stage = $"ValidatePipe[{i}]";
                 if (pipe.PipeType != WinUsbNative.PipeTypeBulk || pipe.MaximumPacketSize != 64)
-                    throw new IOException("Controller USB interface has an unexpected pipe type or size.");
+                    throw new WinUsbStageException(stage, null, "Unexpected pipe type or packet size; expected Bulk/64.");
                 if (pipe.PipeId == MainControllerUsbIdentity.BulkIn) readFound = true;
                 else if (pipe.PipeId == MainControllerUsbIdentity.BulkOut) writeFound = true;
-                else throw new IOException($"Unexpected USB endpoint 0x{pipe.PipeId:X2}.");
+                else throw new WinUsbStageException(stage, null, $"Unexpected endpoint 0x{pipe.PipeId:X2}.");
             }
+            stage = "ValidateEndpoints";
             if (!readFound || !writeFound)
-                throw new IOException("Expected USB endpoints 0x82/0x03 not found.");
-            uint readTimeout = 250, writeTimeout = 1000;
-            if (!WinUsbNative.WinUsb_SetPipePolicy(openedInterface, MainControllerUsbIdentity.BulkIn,
-                    WinUsbNative.PipeTransferTimeout, sizeof(uint), ref readTimeout) ||
-                !WinUsbNative.WinUsb_SetPipePolicy(openedInterface, MainControllerUsbIdentity.BulkOut,
-                    WinUsbNative.PipeTransferTimeout, sizeof(uint), ref writeTimeout))
-                throw Error("Set finite WinUSB pipe timeouts");
+                throw new WinUsbStageException(stage, null, "Expected physical endpoints 0x82 IN and 0x03 OUT.");
+            Operation("CONNECT", stage, "OK", selectedPath, detail: "0x82 IN, 0x03 OUT");
+
+            uint readTimeout = 250;
+            stage = "WinUsb_SetPipePolicy[IN:0x82]";
+            if (!_native.SetPipeTimeout(openedInterface, MainControllerUsbIdentity.BulkIn, ref readTimeout))
+                throw NativeError(stage);
+            Operation("CONNECT", stage, "OK", selectedPath, detail: "PIPE_TRANSFER_TIMEOUT=250 ms");
+            uint writeTimeout = 1000;
+            stage = "WinUsb_SetPipePolicy[OUT:0x03]";
+            if (!_native.SetPipeTimeout(openedInterface, MainControllerUsbIdentity.BulkOut, ref writeTimeout))
+                throw NativeError(stage);
+            Operation("CONNECT", stage, "OK", selectedPath, detail: "PIPE_TRANSFER_TIMEOUT=1000 ms");
             ct.ThrowIfCancellationRequested();
+            stage = "CommitConnection";
             lock (_sync)
             {
-                if (_state != WinUsbLinkState.Opening) throw new IOException("Open interrupted by close.");
+                if (_state != WinUsbLinkState.Opening)
+                    throw new IOException("Open interrupted by close.");
                 _device = openedFile;
                 _interface = openedInterface;
-                _path = selected.DevicePath;
+                _path = selectedPath;
                 _state = WinUsbLinkState.Connected;
                 _fence.Reset();
                 Interlocked.Increment(ref _epoch);
                 openedFile = null;
                 openedInterface = IntPtr.Zero;
             }
+            Operation("CONNECT", stage, "OK", selectedPath,
+                detail: "No command sent; physical IGN/power state not inferred.");
         }
-        catch
+        catch (Exception ex)
         {
-            if (openedInterface != IntPtr.Zero) WinUsbNative.WinUsb_Free(openedInterface);
+            // Capture stage and error BEFORE cleanup can overwrite GetLastError.
+            int? code = (ex as WinUsbStageException)?.NativeErrorCode;
+            Operation("CONNECT", stage, ex is OperationCanceledException ? "CANCELLED" : "FAILED",
+                selectedPath, code, ex.ToString());
+            if (openedInterface != IntPtr.Zero) _native.Free(openedInterface);
             openedFile?.Dispose();
             lock (_sync)
             {
                 if (_state == WinUsbLinkState.Opening) _state = WinUsbLinkState.Faulted;
             }
-            throw;
+            if (ex is OperationCanceledException or WinUsbStageException) throw;
+            throw new WinUsbStageException(stage, null, ex.Message);
         }
     }
 
     public ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken ct)
     {
-        if (destination.Length < 64) throw new ArgumentException("USB buffer must be >= one 64-byte bulk packet.", nameof(destination));
+        if (destination.Length < 64) throw new ArgumentException("USB buffer must be >= 64 bytes.", nameof(destination));
         return new(Task.Run(() => ReadCore(destination, ct), ct));
     }
     private int ReadCore(Memory<byte> destination, CancellationToken ct)
@@ -140,18 +208,19 @@ public sealed class WinUsbByteLink : IUsbByteLink
                 ct.ThrowIfCancellationRequested();
                 IntPtr iface;
                 lock (_sync) iface = RequireConnected();
-                if (WinUsbNative.WinUsb_ReadPipe(iface, MainControllerUsbIdentity.BulkIn,
-                        bytes, (uint)bytes.Length, out uint n, IntPtr.Zero))
+                if (_native.Read(iface, bytes, out uint n))
                 {
-                    if (n == 0) continue; // zero-length transfer != disconnected link
-                    if (n > bytes.Length) throw new IOException("WinUSB returned an invalid read length.");
+                    if (n == 0) continue; // idle or zero-length transfer != disconnected link
+                    if (n > bytes.Length) throw new IOException("WinUSB returned invalid read length.");
                     bytes.AsSpan(0, (int)n).CopyTo(destination.Span);
                     return (int)n;
                 }
-                int error = Marshal.GetLastWin32Error();
-                if (error is 121 or 1460) continue; // bounded idle timeout; never report EOF
+                int error = _native.LastError;
+                if (error is 121 or 1460) continue; // finite idle timeout; not EOF
                 if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
-                throw NativeFailure("WinUSB IN read", error);
+                var failure = new WinUsbStageException("WinUsb_ReadPipe[IN:0x82]", error);
+                Operation("READ", failure.Stage, "FAILED", error: error, detail: failure.Message);
+                throw failure;
             }
         }
         finally { _readGate.Release(); }
@@ -159,7 +228,6 @@ public sealed class WinUsbByteLink : IUsbByteLink
 
     public ValueTask WriteAsync(ReadOnlyMemory<byte> source, CancellationToken ct)
         => new(Task.Run(() => WriteCore(source.ToArray(), ct), ct));
-
     private void WriteCore(byte[] bytes, CancellationToken ct)
     {
         _writeGate.Wait(ct);
@@ -170,20 +238,33 @@ public sealed class WinUsbByteLink : IUsbByteLink
             lock (_sync)
             {
                 iface = RequireConnected();
-                _fence.AssertAllowedAndConsume(bytes, _epoch);
+                try { _fence.AssertAllowedAndConsume(bytes, _epoch); }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Operation("WRITE", "PhysicalCommandFence", "BLOCKED", detail: ex.Message);
+                    throw;
+                }
             }
-            if (!WinUsbNative.WinUsb_WritePipe(iface, MainControllerUsbIdentity.BulkOut,
-                    bytes, (uint)bytes.Length, out uint transferred, IntPtr.Zero))
-                throw Error("WinUSB OUT write");
+            if (!_native.Write(iface, bytes, out uint transferred))
+            {
+                int code = _native.LastError;
+                var failure = new WinUsbStageException("WinUsb_WritePipe[OUT:0x03]", code);
+                Operation("WRITE", failure.Stage, "FAILED", error: code, detail: failure.Message);
+                throw failure;
+            }
             if (transferred != bytes.Length)
+            {
+                Operation("WRITE", "WinUsb_WritePipe[OUT:0x03]", "SHORT", detail: $"{transferred}/{bytes.Length}; physical effect UNKNOWN");
                 throw new IOException($"Short USB write {transferred}/{bytes.Length}; effect UNKNOWN.");
+            }
+            Operation("WRITE", "WinUsb_WritePipe[OUT:0x03]", "OK", detail: $"bytes={transferred}");
             ct.ThrowIfCancellationRequested();
         }
         finally { _writeGate.Release(); }
     }
 
     public ValueTask CloseAsync(CancellationToken ct)
-        => new(Task.Run(CloseCore)); // Never abandon cleanup after disconnect cancellation.
+        => new(Task.Run(CloseCore)); // canceled requests must not abandon native cleanup
 
     private void CloseCore()
     {
@@ -194,18 +275,25 @@ public sealed class WinUsbByteLink : IUsbByteLink
             _state = WinUsbLinkState.Closing;
             file = _device;
         }
+        Operation("DISCONNECT", "CancelIoEx", "BEGIN");
         if (file is { IsInvalid: false, IsClosed: false })
         {
-            try { WinUsbNative.CancelIoEx(file, IntPtr.Zero); } catch { /* finite per-pipe timeout */ }
+            try
+            {
+                if (!_native.Cancel(file))
+                    Operation("DISCONNECT", "CancelIoEx", "CHECK", error: _native.LastError,
+                        detail: "Cleanup continues: bounded pipe timeouts are still in effect.");
+            }
+            catch (Exception ex) { Operation("DISCONNECT", "CancelIoEx", "CHECK", detail: ex.Message); }
         }
-        // Each native call is bounded (250/1000ms); drain in-flight ops before WinUsb_Free.
+        // The existing synchronous native WinUSB pipe calls are bounded by 250/1000 ms.
         _readGate.Wait();
         _writeGate.Wait();
         try
         {
             lock (_sync)
             {
-                if (_interface != IntPtr.Zero) WinUsbNative.WinUsb_Free(_interface);
+                if (_interface != IntPtr.Zero) _native.Free(_interface);
                 _interface = IntPtr.Zero;
                 _device?.Dispose();
                 _device = null;
@@ -213,6 +301,7 @@ public sealed class WinUsbByteLink : IUsbByteLink
                 _fence.Reset();
                 _state = WinUsbLinkState.Disconnected;
             }
+            Operation("DISCONNECT", "ReleaseHandles", "OK");
         }
         finally { _writeGate.Release(); _readGate.Release(); }
     }
@@ -224,10 +313,6 @@ public sealed class WinUsbByteLink : IUsbByteLink
             throw new IOException("USB device is disconnected, closing, or faulted.");
         return _interface;
     }
-    private static Win32Exception Error(string action) => new(Marshal.GetLastWin32Error(), action);
-    private static IOException NativeFailure(string action, int code) =>
-        new($"{action} failed (Win32 {code}); disconnect/reconnect required. Physical state UNKNOWN.",
-            new Win32Exception(code));
 
     public async ValueTask DisposeAsync()
     {

@@ -1,0 +1,53 @@
+<UserControl x:Class="AutoTest.Desktop.Tools.Records.RecordsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="650" MinHeight="410">
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="160"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <TextBlock Grid.Row="0" Text="运行历史 / 报告 / 生产统计" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8"/>
+    <WrapPanel Grid.Row="1" Margin="0,0,0,8">
+      <TextBlock Text="ECU 编号" VerticalAlignment="Center" Margin="0,0,5,0"/>
+      <TextBox Width="180" Text="{Binding DutId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
+      <TextBlock Text="执行模式" VerticalAlignment="Center" Margin="0,0,5,0"/>
+      <ComboBox Width="128" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" Margin="0,0,8,0"/>
+      <Button Content="_查询" Command="{Binding RefreshCommand}" Padding="12,3" IsDefault="True"/>
+    </WrapPanel>
+    <TextBlock Grid.Row="2" Text="{Binding Summary}" TextWrapping="Wrap" Foreground="DarkSlateGray" Margin="0,0,0,7"/>
+    <DataGrid Grid.Row="3" ItemsSource="{Binding Runs}" SelectedItem="{Binding Selected, Mode=TwoWay}"
+              AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single"
+              EnableRowVirtualization="True" GridLinesVisibility="Horizontal" Margin="0,0,0,7">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="开始 UTC" Binding="{Binding StartedUtc, StringFormat={}{0:MM-dd HH:mm:ss}}" Width="140"/>
+        <DataGridTextColumn Header="DUT" Binding="{Binding DutId}" Width="115"/>
+        <DataGridTextColumn Header="RunId" Binding="{Binding RunId}" Width="*" MinWidth="120"/>
+        <DataGridTextColumn Header="模式" Binding="{Binding Mode}" Width="90"/>
+        <DataGridTextColumn Header="持久化" Binding="{Binding PersistenceState}" Width="92"/>
+        <DataGridTextColumn Header="Verdict" Binding="{Binding Verdict}" Width="85"/>
+        <DataGridTextColumn Header="事实" Binding="{Binding FactCount}" Width="60"/>
+        <DataGridTextColumn Header="步骤" Binding="{Binding StepFactCount}" Width="60"/>
+        <DataGridTextColumn Header="错误" Binding="{Binding FailureReason}" Width="130"/>
+      </DataGrid.Columns>
+    </DataGrid>
+    <GroupBox Grid.Row="4" Header="不可变执行快照（来自持久化记录，不依赖当前工程）" Margin="0,0,0,7">
+      <TextBox Text="{Binding Snapshot, Mode=OneWay}" FontFamily="Consolas" FontSize="11" IsReadOnly="True"
+               TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+    </GroupBox>
+    <StackPanel Grid.Row="5">
+      <DockPanel LastChildFill="True" Margin="0,0,0,4">
+        <TextBlock DockPanel.Dock="Left" Text="报告另存为" VerticalAlignment="Center" Margin="0,0,5,0"/>
+        <Button DockPanel.Dock="Right" Content="HTML" Command="{Binding ExportHtmlCommand}" Padding="8,2" Margin="5,0,0,0"/>
+        <Button DockPanel.Dock="Right" Content="JSON" Command="{Binding ExportJsonCommand}" Padding="8,2" Margin="5,0,0,0"/>
+        <TextBox Text="{Binding ReportPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="输入尚不存在的报告绝对路径"/>
+      </DockPanel>
+      <TextBlock Text="{Binding Status}" Foreground="DimGray"/>
+      <TextBlock Text="{Binding Error}" Foreground="Firebrick" TextWrapping="Wrap"/>
+    </StackPanel>
+  </Grid>
+</UserControl>
