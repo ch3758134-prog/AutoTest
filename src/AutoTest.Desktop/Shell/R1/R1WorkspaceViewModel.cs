@@ -72,6 +72,10 @@ public sealed class R1WorkspaceViewModel : BindableBase
         CloseActiveTabCommand = new DelegateCommand(() => Close(ActiveTab));
         ToggleThemeCommand = new DelegateCommand(() => Theme = Theme == R1Theme.Dark ? R1Theme.Light : R1Theme.Dark);
         ToggleDensityCommand = new DelegateCommand(() => Density = Density == R1Density.Compact ? R1Density.Comfortable : R1Density.Compact);
+        ShowOutputCommand = new DelegateCommand(() => Diagnostics.SetTab(WorkspaceEventKind.Output));
+        ShowTraceCommand = new DelegateCommand(() => Diagnostics.SetTab(WorkspaceEventKind.Trace));
+        ShowProblemsCommand = new DelegateCommand(() => Diagnostics.SetTab(WorkspaceEventKind.Problem));
+        ToggleDiagnosticsCommand = new DelegateCommand(Diagnostics.ToggleVisibility);
         foreach (var descriptor in Catalogue)
         {
             Navigation.Add(descriptor);
@@ -110,6 +114,12 @@ public sealed class R1WorkspaceViewModel : BindableBase
     public DelegateCommand CloseActiveTabCommand { get; }
     public DelegateCommand ToggleThemeCommand { get; }
     public DelegateCommand ToggleDensityCommand { get; }
+    public R1DiagnosticsPanel Diagnostics { get; } = new();
+    public DelegateCommand ShowOutputCommand { get; }
+    public DelegateCommand ShowTraceCommand { get; }
+    public DelegateCommand ShowProblemsCommand { get; }
+    public DelegateCommand ToggleDiagnosticsCommand { get; }
+    public void AcceptDiagnosticEvent(WorkspaceDiagnosticEvent entry) => Diagnostics.Accept(entry);
     public R1Theme Theme { get => _theme; set { if (SetProperty(ref _theme, value)) RaisePropertyChanged(nameof(ThemeLabel)); } }
     public R1Density Density { get => _density; set { if (SetProperty(ref _density, value)) RaisePropertyChanged(nameof(DensityLabel)); } }
     public string ThemeLabel => Theme == R1Theme.Dark ? "深色" : "浅色";
@@ -173,6 +183,9 @@ public sealed class R1WorkspaceViewModel : BindableBase
         if (AvailabilityOf(descriptor.Id) != WorkspaceAvailability.Available)
         {
             Notice = $"{descriptor.Id} {descriptor.Label}：尚未接入正式专业 View；不能打开演示占位作为实际工具";
+            Diagnostics.Accept(new WorkspaceDiagnosticEvent(DateTimeOffset.UtcNow,
+                WorkspaceEventKind.Problem, WorkspaceEventLevel.Warning, "R1 UI", "Navigation",
+                Notice, descriptor.Id));
             return;
         }
         var tab = OpenTabs.FirstOrDefault(x => x.Id == descriptor.Id);
@@ -180,12 +193,17 @@ public sealed class R1WorkspaceViewModel : BindableBase
         if (!_host.TryActivate(descriptor.Id, out var reason))
         {
             Notice = $"{descriptor.Label}：{reason}";
+            Diagnostics.Accept(new WorkspaceDiagnosticEvent(DateTimeOffset.UtcNow,
+                WorkspaceEventKind.Problem, WorkspaceEventLevel.Error, "R1 UI", "Navigation",
+                Notice, descriptor.Id));
             return;
         }
         tab = new WorkspaceTab(descriptor) { ContextRevision = ResourceRevision };
         OpenTabs.Add(tab);
         ActiveTab = tab;
         Notice = $"已激活 {descriptor.Label} · {descriptor.Owner}";
+        Diagnostics.Accept(new WorkspaceDiagnosticEvent(DateTimeOffset.UtcNow,
+            WorkspaceEventKind.Output, WorkspaceEventLevel.Info, "R1 UI", "Navigation", Notice, descriptor.Id));
     }
 
     public void CycleTabs(int direction)
@@ -202,16 +220,22 @@ public sealed class R1WorkspaceViewModel : BindableBase
         if (tab.IsBusy || tab.IsDirty)
         {
             Notice = tab.IsBusy ? "工具正忙：须由专业页处理取消/关闭" : "文档有未保存修改：须由专业页确认保存或放弃";
+            Diagnostics.Accept(new WorkspaceDiagnosticEvent(DateTimeOffset.UtcNow,
+                WorkspaceEventKind.Problem, WorkspaceEventLevel.Warning, "R1 UI", "Document", Notice, tab.Id));
             return;
         }
         if (!_host.TryClose(tab.Id, out var reason))
         {
             Notice = $"无法关闭 {tab.Header}：{reason}";
+            Diagnostics.Accept(new WorkspaceDiagnosticEvent(DateTimeOffset.UtcNow,
+                WorkspaceEventKind.Problem, WorkspaceEventLevel.Error, "R1 UI", "Document", Notice, tab.Id));
             return;
         }
         var wasActive = ReferenceEquals(ActiveTab, tab);
         OpenTabs.Remove(tab);
         if (wasActive) ActiveTab = OpenTabs.LastOrDefault();
         Notice = $"已关闭 {tab.Header}；未触碰共享 Station/USB/CAN 会话";
+        Diagnostics.Accept(new WorkspaceDiagnosticEvent(DateTimeOffset.UtcNow,
+            WorkspaceEventKind.Output, WorkspaceEventLevel.Info, "R1 UI", "Document", Notice, tab.Id));
     }
 }
