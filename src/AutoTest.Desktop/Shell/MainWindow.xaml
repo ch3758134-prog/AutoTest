@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:prism="http://prismlibrary.com/"
  prism:ViewModelLocator.AutoWireViewModel="True"
- Title="AutoTest · R1 ECU 联调工作台 · 按功能标注数据来源" Width="1440" Height="880"
+ Title="AutoTest · R1 ECU 联调工作台" Width="1440" Height="880" WindowState="Maximized"
  MinWidth="1030" MinHeight="650" WindowStartupLocation="CenterScreen"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
  FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True">
