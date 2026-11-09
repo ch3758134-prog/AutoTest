@@ -45,6 +45,12 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private string _lastEvidence = "ACK：未知 · 实际电压：未测量";
     private string _comment = "";
     private string _operatorName = "";
+    private string _evidenceSearch = "";
+    private string _evidencePhaseFilter = "全部";
+    private string _requestedFact = "UNKNOWN · 尚无请求";
+    private string _acceptedFact = "UNKNOWN · 尚无后端接受证据";
+    private string _physicalFact = "UNKNOWN · 未采集物理观测";
+    private string _ecuFact = "UNKNOWN · 尚无 ECU 反馈";
     private BenchEvidenceSource _source = BenchEvidenceSource.Mock;
     private BenchConnectionSnapshot _connection = new(BenchConnection.Disconnected, null, null, null, null, null);
     private BenchConfiguration? _config;
@@ -75,6 +81,17 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public ObservableCollection<BenchDevice> Devices { get; } = new();
     public ObservableCollection<ManualVoltageInput> Voltages { get; } = new();
     public ObservableCollection<WorkbenchMessage> Messages { get; } = new();
+    public ObservableCollection<BenchEvidenceEntry> Evidence { get; } = new();
+    public ObservableCollection<BenchEvidenceEntry> VisibleEvidence { get; } = new();
+    public IReadOnlyList<string> EvidencePhases { get; } = new[] { "全部", "请求", "接受", "拒绝", "连接", "测量", "错误" };
+    public string EvidenceSearch { get => _evidenceSearch; set { if (SetProperty(ref _evidenceSearch, value)) RefreshEvidenceFilter(); } }
+    public string EvidencePhaseFilter { get => _evidencePhaseFilter; set { if (SetProperty(ref _evidencePhaseFilter, value)) RefreshEvidenceFilter(); } }
+    public string RequestedFact { get => _requestedFact; private set => SetProperty(ref _requestedFact, value); }
+    public string AcceptedFact { get => _acceptedFact; private set => SetProperty(ref _acceptedFact, value); }
+    public string PhysicalFact { get => _physicalFact; private set => SetProperty(ref _physicalFact, value); }
+    public string EcuFact { get => _ecuFact; private set => SetProperty(ref _ecuFact, value); }
+    public string ExportEvidenceJson() => BenchEvidenceExport.ToJson(Evidence.Reverse());
+    public string ExportEvidenceTsv() => BenchEvidenceExport.ToTsv(Evidence.Reverse());
 
     public ICommand ConnectCommand { get; }
     public ICommand RefreshCommand { get; }
@@ -251,6 +268,11 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         var requestedSource = Source;
         var requestedRevision = _config.Revision;
         var summary = $"{item.Controller.Name} / {item.State.Name} · 0x{item.State.KeyMask:X5} · {requestedSource}";
+        RequestedFact = $"REQUESTED · {summary}";
+        AcceptedFact = "UNKNOWN · 等待后端结果";
+        PhysicalFact = "UNKNOWN · 未采集物理观测";
+        EcuFact = "UNKNOWN · 尚无 ECU 反馈";
+        RecordEvidence(BenchEvidencePhase.Requested, summary, item.Controller.ControllerId, item.State.StateId, source: requestedSource);
         Append(WorkbenchSeverity.Progress, "请求控制状态", summary);
         LastOperation = $"处理中：{summary}";
         LastEvidence = "ACK：等待后端返回 · 物理电压：未测量";
@@ -266,6 +288,14 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             _lastOperationId = r.Accepted && contextValid ? r.OperationId : null;
             ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
             LastOperation = r.Accepted ? $"已接受 · {summary}" : $"已拒绝 · {summary}";
+            AcceptedFact = r.Accepted
+                ? $"ACCEPTED · {r.AckDescription ?? "后端确认；不代表物理动作"}"
+                : $"REJECTED · {r.ErrorCode ?? "未提供错误码"} {r.ErrorMessage ?? ""}";
+            RecordEvidence(r.Accepted ? BenchEvidencePhase.TransportAccepted : BenchEvidencePhase.Rejected,
+                $"{summary} · {r.AckDescription ?? r.ErrorMessage ?? (r.Accepted ? "后端已接受" : "后端拒绝")}",
+                item.Controller.ControllerId, item.State.StateId, r.OperationId, r.CorrelationId,
+                r.RawRequest, r.RawResponse, r.TraceReference, errorCode: r.ErrorCode,
+                source: r.Source, sessionGeneration: r.SessionGeneration);
             LastEvidence = $"ACK：{r.AckDescription ?? "未提供"} · 实际电压：未测量";
             Append(r.Accepted ? WorkbenchSeverity.Success : WorkbenchSeverity.Error,
                 r.Accepted ? "命令接受（非电压测量）" : "命令拒绝/失败",
@@ -306,6 +336,10 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 values, string.IsNullOrWhiteSpace(Comment) ? null : Comment.Trim());
             await _port.SaveManualMeasurementAsync(measurement, CancellationToken.None);
             LastEvidence = $"命令记录：{_lastOperationId ?? "未提供"} · 人工测量：已保存，非自动采样";
+            RecordEvidence(BenchEvidencePhase.ManualMeasurement,
+                "人工万用表记录（非自动采样）："+string.Join(", ", values.Where(v => v.Volts.HasValue)
+                    .Select(v => $"CH{v.Channel}={v.Volts}V")),
+                measurement.ControllerId, measurement.StateId, measurement.OperationId);
             Append(WorkbenchSeverity.Success, "已保存人工万用表记录",
                 $"配置 {measurement.ProjectRevision} · {measurement.ControllerId}/{measurement.StateId} · " +
                 string.Join(", ", values.Where(v => v.Volts.HasValue).Select(v => $"CH{v.Channel}={v.Volts}V")),
@@ -329,6 +363,10 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             ? $"阶段：{state.FailureStage ?? "未知"}；Win32：{WorkbenchDisplay.Win32(state.NativeErrorCode)}；设备：{DeviceIdentity}；{state.Message}"
             : $"{state.Message ?? ""} · SessionGeneration {state.SessionGeneration?.ToString() ?? "—"}";
         RaisePropertyChanged(nameof(ConnectionButtonLabel));
+        RecordEvidence(state.State == BenchConnection.Faulted ? BenchEvidencePhase.Error : BenchEvidencePhase.Connection,
+            $"{ConnectionStatus} · {ConnectionDetail}", failureStage: state.FailureStage,
+            errorCode: state.NativeErrorCode.HasValue ? $"Win32:{state.NativeErrorCode.Value}" : null,
+            sessionGeneration: state.SessionGeneration, deviceIdentity: state.DeviceIdentity);
         Append(state.State == BenchConnection.Faulted ? WorkbenchSeverity.Error : WorkbenchSeverity.Neutral,
             "主控板连接状态", $"{ConnectionStatus} · {ConnectionDetail}");
         if (state.State != BenchConnection.Connected)
@@ -345,8 +383,50 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private void Failure(string stage, Exception ex)
     {
         ConnectionDetail = $"{stage}：{ex.Message}";
+        RecordEvidence(BenchEvidencePhase.Error, $"{stage}: {ex}", failureStage: stage,
+            errorCode: ex.HResult != 0 ? $"HRESULT:0x{ex.HResult:X8}" : null);
         Append(WorkbenchSeverity.Error, $"{stage}失败", ex.ToString());
     }
+    private void RecordEvidence(BenchEvidencePhase phase, string summary,
+        string? controllerId = null, string? stateId = null, string? operationId = null,
+        string? correlationId = null, string? requestHex = null, string? responseHex = null,
+        string? traceReference = null, string? failureStage = null, string? errorCode = null,
+        BenchEvidenceSource? source = null, long? sessionGeneration = null, string? deviceIdentity = null)
+    {
+        var entry = new BenchEvidenceEntry(DateTimeOffset.UtcNow, phase, source ?? Source,
+            _config?.Revision ?? "UNKNOWN", controllerId, stateId,
+            deviceIdentity ?? _connection.DeviceIdentity, sessionGeneration ?? _connection.SessionGeneration,
+            operationId, correlationId, requestHex, responseHex, traceReference,
+            failureStage, errorCode, summary);
+        Evidence.Insert(0, entry);
+        RefreshEvidenceFilter();
+    }
+
+    private void RefreshEvidenceFilter()
+    {
+        bool Matches(BenchEvidenceEntry e)
+        {
+            var phaseMatches = EvidencePhaseFilter switch
+            {
+                "请求" => e.Phase == BenchEvidencePhase.Requested,
+                "接受" => e.Phase == BenchEvidencePhase.TransportAccepted,
+                "拒绝" => e.Phase == BenchEvidencePhase.Rejected,
+                "连接" => e.Phase == BenchEvidencePhase.Connection,
+                "测量" => e.Phase == BenchEvidencePhase.ManualMeasurement,
+                "错误" => e.Phase == BenchEvidencePhase.Error,
+                _ => true
+            };
+            if (!phaseMatches) return false;
+            if (string.IsNullOrWhiteSpace(EvidenceSearch)) return true;
+            var q = EvidenceSearch.Trim();
+            return new[] { e.Summary, e.OperationId, e.CorrelationId, e.TraceReference,
+                e.RequestHex, e.ResponseHex, e.FailureStage, e.ErrorCode, e.DeviceIdentity,
+                e.ControllerId, e.StateId }.Any(x => x?.Contains(q, StringComparison.OrdinalIgnoreCase) == true);
+        }
+        VisibleEvidence.Clear();
+        foreach (var entry in Evidence.Where(Matches)) VisibleEvidence.Add(entry);
+    }
+
     private void Append(WorkbenchSeverity severity, string heading, string details,
         string? operationId = null, string? traceRef = null)
     {
