@@ -96,4 +96,37 @@ public sealed class FlashToolViewModelTests
         Assert.Contains("first.bin",vm.AuditJobImage);
         Assert.DoesNotContain("second.bin",vm.AuditJobImage);
     }
+    [Fact]
+    public async Task TwoSegmentUiShowsIndependentMockHashVerification()
+    {
+        const string hex=":0410000001020304E2\n:0411000005060708D1\n:00000001FF\n";
+        var vm=new FlashToolViewModel();
+        vm.LoadBytes("two.hex",System.Text.Encoding.ASCII.GetBytes(hex),0);
+        Assert.Equal(2,vm.Segments.Count);
+        await vm.RunDryAsync();
+        Assert.Equal("MOCK_COMPLETED",vm.Status);
+        Assert.Equal(2,vm.SegmentStatusRows.Count);
+        Assert.Contains(vm.SegmentStatusRows,x=>x.Contains("Segment_0001") &&
+            x.Contains("MOCK HASH VERIFIED"));
+        Assert.Contains(vm.SegmentStatusRows,x=>x.Contains("Segment_0002") &&
+            x.Contains("MOCK HASH VERIFIED"));
+    }
+
+    [Fact]
+    public async Task DisconnectInSecondSegmentNeverMarksItVerified()
+    {
+        const string hex=":0410000001020304E2\n:0411000005060708D1\n:00000001FF\n";
+        var vm=new FlashToolViewModel { DropBlock="2" };
+        vm.LoadBytes("two.hex",System.Text.Encoding.ASCII.GetBytes(hex),0);
+        await vm.RunDryAsync();
+        Assert.Equal("MOCK_UNCERTAIN",vm.Status);
+        Assert.Equal("4",vm.ConfirmedBytes);
+        Assert.Contains(vm.SegmentStatusRows,x=>x.Contains("Segment_0001") &&
+            x.Contains("MOCK HASH VERIFIED"));
+        Assert.Contains(vm.SegmentStatusRows,x=>x.Contains("Segment_0002") &&
+            x.Contains("STARTED / UNCONFIRMED"));
+        Assert.DoesNotContain(vm.SegmentStatusRows,x=>x.Contains("Segment_0002") &&
+            x.Contains("MOCK HASH VERIFIED"));
+    }
+
 }
