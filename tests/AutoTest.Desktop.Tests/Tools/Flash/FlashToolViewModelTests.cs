@@ -82,4 +82,18 @@ public sealed class FlashToolViewModelTests
         Assert.Contains("不得自动续写",vm.RecoveryAdvice);
         Assert.Equal("64",vm.ConfirmedBytes);
     }
+
+    [Fact]
+    public async Task AuditLabelRemainsPinnedToJobImageAfterAnotherImport()
+    {
+        var vm=new FlashToolViewModel();
+        vm.LoadBytes("first.bin",Enumerable.Range(0,120).Select(i=>(byte)i).ToArray(),0x1000);
+        await vm.RunDryAsync();
+        Assert.Equal("MOCK_COMPLETED",vm.Status);
+        Assert.Contains("first.bin",vm.AuditJobImage);
+        vm.LoadBytes("second.bin",new byte[]{1,2,3,4},0x1000);
+        Assert.Equal("IMAGE_LOADED",vm.Status);
+        Assert.Contains("first.bin",vm.AuditJobImage);
+        Assert.DoesNotContain("second.bin",vm.AuditJobImage);
+    }
 }
