@@ -49,14 +49,21 @@ public static class DbcSourceDiagnosticScanner
             }
             if (inNs) continue;
 
-            if (line.StartsWith("BO_", StringComparison.Ordinal))
+            if (line.StartsWith("BO_TX_BU_", StringComparison.Ordinal) ||
+                line.StartsWith("SG_MUL_VAL_", StringComparison.Ordinal))
+            {
+                Add("WARNING", "DBC_READONLY_DIRECTIVE", i, line,
+                    "Extended DBC directive is not editable; source is retained unchanged.");
+                continue;
+            }
+            if (line == "BO_" || line.StartsWith("BO_ ", StringComparison.Ordinal))
             {
                 haveMessage = true;
                 if (!MessageLine.IsMatch(line))
                     Add("ERROR", "DBC_BO_SYNTAX", i, line, "Unsupported or malformed BO_ header.");
                 continue;
             }
-            if (line.StartsWith("SG_", StringComparison.Ordinal))
+            if (line == "SG_" || line.StartsWith("SG_ ", StringComparison.Ordinal))
             {
                 if (!haveMessage)
                     Add("ERROR", "DBC_SG_ORPHAN", i, line, "SG_ appears before any BO_ message.");

@@ -39,7 +39,7 @@ public static class DbcRecordedReplayEvidenceWriter
             await using (var stream = new FileStream(temporary, FileMode.CreateNew,
                 FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.WriteThrough))
             {
-                await using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+                await using (var writer = new StreamWriter(stream, new UTF8Encoding(false), 81920, leaveOpen: true))
                 {
                     await writer.WriteLineAsync(JsonSerializer.Serialize(new
                     {

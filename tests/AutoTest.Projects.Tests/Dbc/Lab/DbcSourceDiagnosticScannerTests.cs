@@ -25,6 +25,16 @@ public sealed class DbcSourceDiagnosticScannerTests
     }
 
     [Fact]
+    public void DbcMultiplexExtensions_AreWarningsNotMalformedSignals()
+    {
+        var text = "VERSION \"\"\nBS_:\nBU_: ECU\nBO_ 1 Msg: 1 ECU\n SG_ Mux M : 0|8@1+ (1,0) [0|255] \"\" ECU\nSG_MUL_VAL_ 1 Other Mux 1-3;\nBO_TX_BU_ 1 : ECU;\n";
+        var issues = DbcSourceDiagnosticScanner.Inspect(text);
+        Assert.DoesNotContain(issues, i => i.Code == "DBC_SG_SYNTAX" || i.Code == "DBC_BO_SYNTAX");
+        Assert.Contains(issues, i => i.Line == 6 && i.Severity == "WARNING");
+        Assert.Contains(issues, i => i.Line == 7 && i.Severity == "WARNING");
+    }
+
+    [Fact]
     public void OrphanSignal_IsDiagnosedAtOriginalLine()
     {
         var text = "VERSION \"\"\nBS_:\nSG_ A : 0|8@1+ (1,0) [0|255] \"\" ECU\n";

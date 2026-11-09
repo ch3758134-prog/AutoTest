@@ -103,7 +103,7 @@ public static class DbcRecordedCanArchiveReplay
             {
                 throw new ProjectDataException("DBC_ARCHIVE_HEX", "Invalid payload Hex at frame " + i + ".");
             }
-            var observed = archive.StartUtc.AddTicks(checked(frame.OffsetMicroseconds * 10));
+            var observed = archive.StartUtc.ToUniversalTime().AddTicks(checked(frame.OffsetMicroseconds * 10));
             lastOffset = frame.OffsetMicroseconds;
             maxLoss = Math.Max(maxLoss, frame.LostFrames);
 
