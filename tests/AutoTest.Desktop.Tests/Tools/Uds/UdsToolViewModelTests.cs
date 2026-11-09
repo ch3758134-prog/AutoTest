@@ -226,10 +226,12 @@ public sealed class UdsToolViewModelTests
         private readonly UdsClient _client;
         private readonly ReadOnlyPhysicalConnection _context;
         private readonly bool _missingRx;
+        private readonly bool _pending;
         public FakeSession(ReadOnlyPhysicalConnection context,bool pending,bool missingRx)
         {
             _context=context;
             _missingRx=missingRx;
+            _pending=pending;
             _client=new UdsClient(new FakeChannel(pending));
         }
         public ReadOnlyPhysicalConnection Connection => _context;
@@ -244,8 +246,13 @@ public sealed class UdsToolViewModelTests
                     "03 22 F1 90","FAKE_USB_CAN_TX",_context.SessionGeneration,0,true)
             };
             if(!_missingRx)
+            {
+                if(_pending)
+                    frames.Add(new(time,"RX","CAN",BusRole.DutCan,0x7E8,false,
+                        "03 7F 22 78","FAKE_USB_CAN_PENDING",_context.SessionGeneration,0));
                 frames.Add(new(time,"RX","CAN",BusRole.DutCan,0x7E8,false,
                     "04 62 F1 90 41","FAKE_USB_CAN_RX",_context.SessionGeneration,0));
+            }
             return frames;
         }
         public ValueTask DisposeAsync()=>ValueTask.CompletedTask;
