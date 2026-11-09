@@ -9,7 +9,7 @@ namespace AutoTest.Desktop.Tools.Uds;
 public sealed record UdsDiagnosticEvent(
     DateTimeOffset TimestampUtc, string Source, string Layer,
     string Direction, string CorrelationId, string RawHex,
-    string DecodedSummary, string ErrorCode);
+    string DecodedSummary, string ErrorCode, bool Sensitive = false);
 
 public static class UdsWorkbenchEvidence
 {
@@ -59,7 +59,8 @@ public static class UdsWorkbenchEvidence
             TimestampSemantic = "HOST_UI_OBSERVATION; NOT ECU CLOCK",
             RawFrameOrdering = "MOCK HOST/ECU FRAME GROUPS ARE NOT CHRONOLOGICAL",
             ExportedUtc = DateTimeOffset.UtcNow,
-            Events = events
+            Events = events.Select(e => e.Sensitive ?
+                e with { RawHex = "[REDACTED: SENSITIVE UDS SERVICE]" } : e).ToArray()
         };
         var bytes = JsonSerializer.SerializeToUtf8Bytes(payload,
             new JsonSerializerOptions { WriteIndented = true });
