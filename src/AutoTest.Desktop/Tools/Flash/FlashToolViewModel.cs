@@ -1,6 +1,7 @@
 using System.IO;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Windows;
 using AutoTest.Specialists.Flash;
 using AutoTest.Specialists.Flash.Workbench;
 using Prism.Commands;
@@ -20,6 +21,7 @@ public sealed class FlashToolViewModel : BindableBase
         _failure="",_format="—",_hash="—",_bytes="0",_preflight="NOT_RUN",
         _job="—",_progress="0%";
     private AutoTest.Contracts.ProgrammingJobId? _runningJob;
+    private string _lastAcknowledgedBlock="NONE",_confirmedBytes="0",_traceQuality="MOCK_ONLY";
     public FlashToolViewModel() : this(new FlashDryRunWorkspace()) { }
     public FlashToolViewModel(FlashDryRunWorkspace backend)
     {
@@ -29,14 +31,17 @@ public sealed class FlashToolViewModel : BindableBase
         StartCommand = new DelegateCommand(() => _ = RunDryAsync(), () => !IsBusy);
         CancelCommand = new DelegateCommand(Cancel, () => IsBusy && _runningJob is not null);
         ExportAuditCommand = new DelegateCommand(() => _ = ExportAuditAsync(), () => !IsBusy && _backend.CurrentJob is not null);
+        CopyTraceCommand = new DelegateCommand(CopyTrace, () => DiagnosticTrace.Count > 0);
     }
     public ObservableCollection<FlashSegmentDetail> Segments { get; } = new();
     public ObservableCollection<string> Stages { get; } = new();
+    public ObservableCollection<string> DiagnosticTrace { get; } = new();
     public DelegateCommand LoadCommand { get; }
     public DelegateCommand PreflightCommand { get; }
     public DelegateCommand StartCommand { get; }
     public DelegateCommand CancelCommand { get; }
     public DelegateCommand ExportAuditCommand { get; }
+    public DelegateCommand CopyTraceCommand { get; }
     public bool PhysicalProgrammingEnabled => false;
     public string SourceLabel => "MOCK DRY-RUN ONLY / PHYSICAL FLASH DISABLED";
     public bool IsBusy { get => _isBusy; private set
@@ -68,6 +73,19 @@ public sealed class FlashToolViewModel : BindableBase
     public string Preflight { get => _preflight; private set => SetProperty(ref _preflight,value); }
     public string Job { get => _job; private set => SetProperty(ref _job,value); }
     public string Progress { get => _progress; private set => SetProperty(ref _progress,value); }
+    public string LastAcknowledgedBlock { get => _lastAcknowledgedBlock; private set => SetProperty(ref _lastAcknowledgedBlock,value); }
+    public string ConfirmedBytes { get => _confirmedBytes; private set => SetProperty(ref _confirmedBytes,value); }
+    public string TraceQuality { get => _traceQuality; private set => SetProperty(ref _traceQuality,value); }
+    public void CopyTrace()
+    {
+        try
+        {
+            if (DiagnosticTrace.Count == 0) return;
+            Clipboard.SetText(string.Join(Environment.NewLine,DiagnosticTrace));
+            Status="MOCK_TRACE_COPIED";
+        }
+        catch(Exception ex) { Failure=ex.Message; Status="MOCK_TRACE_COPY_ERROR"; }
+    }
     private static uint Hex(string value) => uint.Parse(value.Trim().Replace("0x","",StringComparison.OrdinalIgnoreCase),
         NumberStyles.HexNumber,CultureInfo.InvariantCulture);
     private static ulong HexLong(string value) => ulong.Parse(value.Trim().Replace("0x","",StringComparison.OrdinalIgnoreCase),
@@ -100,7 +118,8 @@ public sealed class FlashToolViewModel : BindableBase
         Format=detail.Format; Hash=detail.Sha256;
         Bytes=detail.Bytes.ToString(CultureInfo.InvariantCulture);
         Preflight="NOT_RUN"; Status="IMAGE_LOADED"; Failure="";
-        Stages.Clear(); Job="—"; Progress="0%"; RecoveryAdvice="—";
+        Stages.Clear(); DiagnosticTrace.Clear(); CopyTraceCommand.RaiseCanExecuteChanged();
+        Job="—"; Progress="0%"; ConfirmedBytes="0"; LastAcknowledgedBlock="NONE"; RecoveryAdvice="—";
     }
     public async Task PreflightAsync()
     {
@@ -119,7 +138,8 @@ public sealed class FlashToolViewModel : BindableBase
     public async Task RunDryAsync(CancellationToken ct = default)
     {
         if (IsBusy) return;
-        IsBusy=true; Failure=""; Stages.Clear(); Progress="0%";
+        IsBusy=true; Failure=""; Stages.Clear(); DiagnosticTrace.Clear(); Progress="0%";
+        ConfirmedBytes="0"; LastAcknowledgedBlock="NONE";
         try
         {
             var report=await _backend.PreflightAsync(Configuration(),ct);
@@ -157,10 +177,31 @@ public sealed class FlashToolViewModel : BindableBase
                 "模拟作业不完整。不得自动续写；重新检查镜像/配置及故障后启动新 Mock 作业。",
             _ => "Mock 正在执行；断连或取消可能留下部分模拟写入。"
         };
-        Stages.Clear();
-        foreach(var f in snapshot.Facts)
-            Stages.Add($"{f.Utc:HH:mm:ss.fff}  {f.Stage,-20} {f.Status,-8} {f.ConfirmedBytes,8}B  {f.Detail}");
+        Stages.Clear(); DiagnosticTrace.Clear();
+        foreach(var fact in snapshot.Facts)
+        {
+            string line=$"{fact.Utc:O}  {fact.Stage,-20} {fact.Status,-8} "+
+                $"{fact.ConfirmedBytes,8}B  {fact.Detail}";
+            Stages.Add(line);
+            if (fact.Stage=="UDS") DiagnosticTrace.Add(line);
+        }
+        CopyTraceCommand.RaiseCanExecuteChanged();
+        var lastAck=snapshot.Facts.LastOrDefault(x=>x.Stage=="Transfer" && x.Status=="ACK");
+        LastAcknowledgedBlock="NONE";
+        if (lastAck is not null)
+        {
+            var detail=lastAck.Detail;
+            var marker="Block=";
+            int offset=detail.IndexOf(marker,StringComparison.Ordinal);
+            if(offset>=0)
+            {
+                string part=detail[(offset+marker.Length)..].Split(';')[0].Trim();
+                LastAcknowledgedBlock=part;
+            }
+        }
         long max=snapshot.Facts.Length==0?0:snapshot.Facts.Max(x=>x.ConfirmedBytes);
+        ConfirmedBytes=max.ToString(CultureInfo.InvariantCulture);
+        TraceQuality="MOCK_UDS_PDU_STAGE_FACTS; NO PHYSICAL CAN FRAME TIMING";
         long total=_backend.Image?.Bytes??0;
         Progress=total==0?"0%":$"{Math.Min(100,100.0*max/total):F1}% ({max}/{total} bytes, MOCK)";
     }
