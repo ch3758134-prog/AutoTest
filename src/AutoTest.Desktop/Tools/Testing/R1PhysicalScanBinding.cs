@@ -14,7 +14,8 @@ public sealed record R1PhysicalScanBinding(
     string RawBarcode, string UnitKey, string RuleId, string CatalogRevision,
     string RecipeId, string RecipeRevision, string TestAssetId,
     int TestRevision, string TestSha256,
-    string StationProfilePath, string StationProfileRevision, string StationProfileSha256)
+    string StationProfilePath, string StationProfileRevision, string StationProfileSha256,
+    bool ProductionTestEnabled = false)
 {
     public static R1PhysicalScanBinding FromMatch(LabMatch match, V1Workspace project)
     {
@@ -46,7 +47,7 @@ public sealed record R1PhysicalScanBinding(
         return new(match.RawScan, match.Identity.UnitKey, match.Identity.RuleId,
             match.CatalogRevision, match.Recipe.RecipeId, match.Recipe.Revision,
             current.Id.Value.ToString("D"), current.Revision, current.Sha256,
-            file.FullName, station.Revision, hash);
+            file.FullName, station.Revision, hash, match.Recipe.ProductionTestEnabled);
     }
 
     public void Verify(V1Workspace project)
