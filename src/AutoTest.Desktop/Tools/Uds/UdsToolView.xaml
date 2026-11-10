@@ -3,167 +3,242 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:prism="http://prismlibrary.com/"
     prism:ViewModelLocator.AutoWireViewModel="True"
-    FontFamily="Segoe UI" FontSize="13" Background="#F2F5F9">
-    <UserControl.Resources>
-        <Style TargetType="TextBox">
-            <Setter Property="Margin" Value="0,4,0,8"/>
-            <Setter Property="Padding" Value="7,5"/>
-            <Setter Property="MinHeight" Value="29"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="11,7"/>
-            <Setter Property="Margin" Value="0,2,7,2"/>
-            <Setter Property="MinHeight" Value="31"/>
-        </Style>
-        <Style x:Key="SectionHeading" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="15"/>
-            <Setter Property="Foreground" Value="#18314B"/>
-            <Setter Property="Margin" Value="0,1,0,12"/>
-        </Style>
-        <Style x:Key="FieldLabel" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Foreground" Value="#5F7084"/>
-        </Style>
-    </UserControl.Resources>
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        <Border Background="#172C43" Padding="18,12">
-            <DockPanel>
-                <StackPanel>
-                    <TextBlock Text="UDS  /  诊断调试工作台" Foreground="White"
-                               FontWeight="Bold" FontSize="18"/>
-                    <TextBlock Text="MOCK 模式 · ISO-TP → UDS · 不连接物理 CAN · 不授权真实 ECU 发送"
-                               Foreground="#F8CB81" Margin="0,4,0,0"/>
-                </StackPanel>
-            </DockPanel>
-        </Border>
-        <Grid Grid.Row="1" Margin="14">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="290"/><ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1"
-                    CornerRadius="5" Padding="13">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <TextBlock Text="数据来源" Style="{StaticResource FieldLabel}"/>
-                        <ComboBox ItemsSource="{Binding SourceModes}" SelectedItem="{Binding SourceMode,Mode=TwoWay}"
-                                  Margin="0,4,0,10" Padding="6,4"/>
-                        <TextBlock Text="Replay 记录文件（仅回放保存数据）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding ReplayPath,UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Content="载入 Replay JSON" Command="{Binding LoadReplayCommand}" Margin="0,0,0,9"/>
-                        <TextBlock Text="ECU / ISO-TP Profile" Style="{StaticResource SectionHeading}"/>
-                        <TextBlock Text="配置名称" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding ProfileName,UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="Mock ECU 身份（需匹配）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MockIdentity,UpdateSourceTrigger=PropertyChanged}"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="9"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <StackPanel><TextBlock Text="TX CAN ID (HEX)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding TxId,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-                            <StackPanel Grid.Column="2"><TextBlock Text="RX CAN ID (HEX)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding RxId,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="9"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <StackPanel><TextBlock Text="P2 (ms)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding P2Ms,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-                            <StackPanel Grid.Column="2"><TextBlock Text="P2* (ms)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding P2StarMs,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-                        </Grid>
-                        <Button Content="重置 Mock ECU / 会话" Command="{Binding ResetCommand}"/>
-                        <Separator Margin="0,13"/>
-                        <TextBlock Text="诊断服务定义" Style="{StaticResource SectionHeading}"/>
-                        <ListBox ItemsSource="{Binding Services}" SelectedItem="{Binding SelectedService,Mode=TwoWay}"
-                                 DisplayMemberPath="Name" MinHeight="130" MaxHeight="230"/>
-                        <WrapPanel Margin="0,8,0,0">
-                            <Button Content="新增 / 更新定义" Command="{Binding SaveServiceCommand}"/>
-                            <Button Content="删除选中" Command="{Binding DeleteServiceCommand}"/>
-                        </WrapPanel>
-                        <Separator Margin="0,10"/>
-                        <TextBlock Text="服务文件（JSON）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding DocumentPath,UpdateSourceTrigger=PropertyChanged}" ToolTip="选择本地 .json 路径；非 DBC 资源"/>
-                        <WrapPanel>
-                            <Button Content="保存服务定义" Command="{Binding SaveDocumentCommand}"/>
-                            <Button Content="重开服务定义" Command="{Binding LoadDocumentCommand}"/>
-                        </WrapPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
-            <Grid Grid.Column="2">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1"
-                        CornerRadius="5" Padding="14">
-                    <StackPanel>
-                        <TextBlock Text="服务编辑 / 发送" Style="{StaticResource SectionHeading}"/>
-                        <TextBlock Text="服务名称" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding ServiceName,UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="请求 PDU（十六进制，不包含 ISO-TP PCI）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox FontFamily="Consolas" Text="{Binding RequestHex,UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="期望响应 PDU（可选；未填写不判 PASS）" Style="{StaticResource FieldLabel}"/>
-                        <TextBox FontFamily="Consolas" Text="{Binding ExpectedHex,UpdateSourceTrigger=PropertyChanged}"/>
-                        <WrapPanel>
-                            <CheckBox Content="下一次注入 NRC" IsChecked="{Binding InjectNrc}"
-                                      Margin="0,3,18,3" VerticalAlignment="Center"/>
-                            <CheckBox Content="下一次模拟 NRC 0x78 Pending" IsChecked="{Binding InjectPending}"
-                                      Margin="0,3,18,3" VerticalAlignment="Center"/>
-                            <CheckBox Content="模拟不响应（超时）" IsChecked="{Binding NoResponse}"
-                                      Margin="0,3,18,3" VerticalAlignment="Center"/>
-                        </WrapPanel>
-                        <WrapPanel Margin="0,5,0,3">
-                            <TextBlock Text="故障 SID / NRC (HEX): " VerticalAlignment="Center" Foreground="#667B8F"/>
-                            <TextBox Width="65" Margin="7,0,6,0" Text="{Binding FaultSid,UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Width="65" Margin="0,0,6,0" Text="{Binding FaultCode,UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Session: " VerticalAlignment="Center" Foreground="#667B8F"/>
-                            <TextBlock Text="{Binding Session}" VerticalAlignment="Center"/>
-                        </WrapPanel>
-                        <Button Content="▶ 发送 Mock UDS" Command="{Binding SendCommand}"
-                                HorizontalAlignment="Left" MinWidth="160"/>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Row="1" Margin="0,11,0,11" Background="White" BorderBrush="#D7E0EA"
-                        BorderThickness="1" CornerRadius="5" Padding="14">
-                    <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                        <TextBlock Text="响应 PDU" Margin="0,0,18,6" Foreground="#5F7084"/>
-                        <TextBox Grid.Column="1" FontFamily="Consolas" IsReadOnly="True" Text="{Binding ResponseHex, Mode=OneWay}"/>
-                        <TextBlock Grid.Row="1" Text="Negative Response" Foreground="#5F7084" Margin="0,0,18,4"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Nrc}" FontWeight="SemiBold"/>
-                        <TextBlock Grid.Row="2" Text="期望比对" Foreground="#5F7084" Margin="0,0,18,4"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ExpectedMatch}"/>
-                        <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{Binding Error}"
-                                   Foreground="#B24637" TextWrapping="Wrap"/>
-                    </Grid>
-                </Border>
-                <Border Grid.Row="2" Background="White" BorderBrush="#D7E0EA"
-                        BorderThickness="1" CornerRadius="5" Padding="12">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="ISO-TP 原始帧（Mock 双端）"
-                                   Style="{StaticResource SectionHeading}"/>
-                        <DataGrid ItemsSource="{Binding TraceRows}" IsReadOnly="True"
-                                  AutoGenerateColumns="False" HeadersVisibility="Column"
-                                  CanUserAddRows="False" RowHeaderWidth="0" BorderThickness="0">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="方向" Binding="{Binding Direction}" Width="140"/>
-                                <DataGridTextColumn Header="CAN DATA (HEX)" Binding="{Binding Hex}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </DockPanel>
-                </Border>
-            </Grid>
-        </Grid>
-        <Border Grid.Row="2" Background="#DEE7EF" Padding="14,9">
-            <DockPanel>
-                <TextBlock Text="{Binding Status}" FontWeight="SemiBold"/>
-                <TextBlock Text="{Binding SourceLabel}" DockPanel.Dock="Right" Foreground="#8B4428"/>
-            </DockPanel>
-        </Border>
-    </Grid>
+    Background="#101620" Foreground="#E2EDF7"
+    FontFamily="Segoe UI" FontSize="13">
+ <UserControl.Resources>
+  <SolidColorBrush x:Key="UdsPanel" Color="#192431"/>
+  <SolidColorBrush x:Key="UdsRaised" Color="#202D3B"/>
+  <SolidColorBrush x:Key="UdsBorder" Color="#314458"/>
+  <SolidColorBrush x:Key="UdsMuted" Color="#92A4B7"/>
+  <SolidColorBrush x:Key="UdsAccent" Color="#4FAAFB"/>
+  <Style x:Key="UdsCard" TargetType="Border">
+   <Setter Property="Background" Value="{StaticResource UdsPanel}"/>
+   <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
+   <Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="Padding" Value="13"/>
+   <Setter Property="CornerRadius" Value="5"/>
+  </Style>
+  <Style x:Key="UdsCaption" TargetType="TextBlock">
+   <Setter Property="Foreground" Value="{StaticResource UdsMuted}"/>
+   <Setter Property="FontSize" Value="11"/>
+   <Setter Property="Margin" Value="0,7,0,4"/>
+  </Style>
+  <Style x:Key="UdsSection" TargetType="TextBlock">
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="FontSize" Value="14"/>
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="Margin" Value="0,0,0,10"/>
+  </Style>
+  <Style TargetType="TextBlock">
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+  </Style>
+  <Style TargetType="TextBox">
+   <Setter Property="Background" Value="#101620"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
+   <Setter Property="Margin" Value="0,2,0,7"/>
+   <Setter Property="Padding" Value="8,5"/>
+   <Setter Property="MinHeight" Value="29"/>
+  </Style>
+  <Style TargetType="ComboBox">
+   <Setter Property="Background" Value="#202D3B"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
+   <Setter Property="Padding" Value="7,4"/>
+  </Style>
+  <Style TargetType="Button">
+   <Setter Property="Background" Value="#263748"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Padding" Value="10,6"/>
+   <Setter Property="MinHeight" Value="30"/>
+   <Setter Property="Margin" Value="0,0,7,5"/>
+  </Style>
+  <Style x:Key="UdsSendButton" TargetType="Button">
+   <Setter Property="Background" Value="#126BBB"/>
+   <Setter Property="Foreground" Value="White"/>
+   <Setter Property="BorderBrush" Value="#277ABD"/>
+   <Setter Property="Padding" Value="14,8"/>
+   <Setter Property="MinHeight" Value="34"/>
+   <Setter Property="Margin" Value="0,0,9,6"/>
+   <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style TargetType="ListBox">
+   <Setter Property="Background" Value="#101620"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
+  </Style>
+  <Style TargetType="DataGrid">
+   <Setter Property="Background" Value="#192431"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="RowBackground" Value="#192431"/>
+   <Setter Property="AlternatingRowBackground" Value="#202D3B"/>
+   <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
+   <Setter Property="HeadersVisibility" Value="Column"/>
+   <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+   <Setter Property="HorizontalGridLinesBrush" Value="#314458"/>
+  </Style>
+ </UserControl.Resources>
+ <Grid Margin="12">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*" MinHeight="200"/>
+   <RowDefinition Height="185" MinHeight="120"/>
+  </Grid.RowDefinitions>
+  <!-- R1 P08 title / service actions derived from the approved HTML -->
+  <DockPanel Margin="3,0,3,11">
+   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+    <TextBlock Text="EXECUTION SOURCE" Foreground="{StaticResource UdsMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+    <ComboBox Width="105" ItemsSource="{Binding SourceModes}" SelectedItem="{Binding SourceMode,Mode=TwoWay}" Margin="0,0,7,0"/>
+    <Button Content="发送请求" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
+    <Button Content="取消" Command="{Binding CancelCommand}"/>
+   </StackPanel>
+   <StackPanel>
+    <TextBlock Text="UDS Console" FontSize="21" FontWeight="SemiBold"/>
+    <TextBlock Text="DIAGNOSTICS / UDS  ·  Service Builder · ISO-TP · NRC · Response · Trace"
+               Foreground="{StaticResource UdsMuted}" FontSize="11" Margin="0,4,0,0"/>
+   </StackPanel>
+  </DockPanel>
+  <Border Grid.Row="1" Background="#493425" BorderBrush="#876038"
+          BorderThickness="1" CornerRadius="4" Padding="11,7" Margin="0,0,0,12">
+   <TextBlock Text="当前正式 R1 页面已按 HTML 设计开发；本分支诊断后端为 Mock / Replay。真实 CAN1 UDS 物理请求仍由 FieldStudio 实测，不会从此页面误发到 ECU。"
+              Foreground="#F5D7A2" TextWrapping="Wrap"/>
+  </Border>
+  <Grid Grid.Row="2">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="240" MinWidth="190"/>
+    <ColumnDefinition Width="10"/>
+    <ColumnDefinition Width="*" MinWidth="300"/>
+    <ColumnDefinition Width="10"/>
+    <ColumnDefinition Width="275" MinWidth="235"/>
+   </Grid.ColumnDefinitions>
+   <!-- Services / definitions -->
+   <Border Style="{StaticResource UdsCard}">
+    <DockPanel>
+     <StackPanel DockPanel.Dock="Top">
+      <TextBlock Text="服务目录 / UDS SERVICES" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="保存可复用诊断任务；选中后自动填入请求编辑器"
+                 Foreground="{StaticResource UdsMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,11"/>
+     </StackPanel>
+     <StackPanel DockPanel.Dock="Bottom">
+      <WrapPanel Margin="0,9,0,5">
+       <Button Content="保存服务" Command="{Binding SaveServiceCommand}"/>
+       <Button Content="删除服务" Command="{Binding DeleteServiceCommand}"/>
+      </WrapPanel>
+      <Separator Background="#314458" Margin="0,6"/>
+      <TextBlock Text="服务定义文档 / JSON" Style="{StaticResource UdsCaption}"/>
+      <TextBox Text="{Binding DocumentPath,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
+      <WrapPanel>
+       <Button Content="保存服务列表" Command="{Binding SaveDocumentCommand}"/>
+       <Button Content="重开" Command="{Binding LoadDocumentCommand}"/>
+      </WrapPanel>
+     </StackPanel>
+     <ListBox ItemsSource="{Binding Services}" SelectedItem="{Binding SelectedService,Mode=TwoWay}"
+              DisplayMemberPath="Name" BorderThickness="0" MinHeight="120"/>
+    </DockPanel>
+   </Border>
+   <!-- Request builder and response -->
+   <Grid Grid.Column="2">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="11"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Border Style="{StaticResource UdsCard}">
+     <StackPanel>
+      <TextBlock Text="请求编辑 / REQUEST BUILDER" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="服务名称" Style="{StaticResource UdsCaption}"/>
+      <TextBox Text="{Binding ServiceName,UpdateSourceTrigger=PropertyChanged}"/>
+      <TextBlock Text="UDS Request PDU · HEX（无需手工添加 ISO-TP PCI）" Style="{StaticResource UdsCaption}"/>
+      <TextBox Text="{Binding RequestHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" FontSize="14"
+               ToolTip="例如 22 F1 90，应用层 PDU；多帧分包由 ISO-TP 层处理"/>
+      <TextBlock Text="期望 ECU Response PDU · HEX（可选，用于严格比较）" Style="{StaticResource UdsCaption}"/>
+      <TextBox Text="{Binding ExpectedHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
+      <WrapPanel Margin="0,5,0,0">
+       <Button Content="发送一次 / MOCK" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
+       <Button Content="保存为服务" Command="{Binding SaveServiceCommand}"/>
+       <Button Content="取消" Command="{Binding CancelCommand}"/>
+      </WrapPanel>
+     </StackPanel>
+    </Border>
+    <Border Grid.Row="2" Style="{StaticResource UdsCard}">
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+       <TextBlock Text="ECU 响应 / RESPONSE" Style="{StaticResource UdsSection}"/>
+       <TextBlock Text="原始 UDS PDU" Style="{StaticResource UdsCaption}"/>
+       <TextBox Text="{Binding ResponseHex}" IsReadOnly="True" FontFamily="Consolas"/>
+       <TextBlock Text="诊断解释 / NRC" Style="{StaticResource UdsCaption}"/>
+       <TextBlock Text="{Binding ResponseSummary}" TextWrapping="Wrap" Margin="0,3,0,12" Foreground="#46D0DC"/>
+       <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBlock Text="结果：" Foreground="{StaticResource UdsMuted}" Margin="0,0,10,7"/>
+        <TextBlock Grid.Column="1" Text="{Binding Status}" FontWeight="SemiBold"/>
+        <TextBlock Grid.Row="1" Text="NRC：" Foreground="{StaticResource UdsMuted}" Margin="0,0,10,7"/>
+        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Nrc}"/>
+        <TextBlock Grid.Row="2" Text="预期比对：" Foreground="{StaticResource UdsMuted}"/>
+        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ExpectedMatch}"/>
+       </Grid>
+       <TextBlock Text="{Binding Error}" Foreground="#FF8994" TextWrapping="Wrap" Margin="0,11,0,0"/>
+      </StackPanel>
+     </ScrollViewer>
+    </Border>
+   </Grid>
+   <!-- Profile / inspector -->
+   <Border Grid.Column="4" Style="{StaticResource UdsCard}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+     <StackPanel>
+      <TextBlock Text="ECU PROFILE / INSPECTOR" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="通信来源由所选工作区决定，Mock/Replay 不连接真实 ECU。"
+                 Foreground="{StaticResource UdsMuted}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+      <TextBlock Text="Profile 名称" Style="{StaticResource UdsCaption}"/>
+      <TextBox Text="{Binding ProfileName,UpdateSourceTrigger=PropertyChanged}"/>
+      <TextBlock Text="测试用 ECU 身份" Style="{StaticResource UdsCaption}"/>
+      <TextBox Text="{Binding MockIdentity,UpdateSourceTrigger=PropertyChanged}"/>
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <StackPanel><TextBlock Text="TX CAN ID" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding TxId,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/></StackPanel>
+       <StackPanel Grid.Column="2"><TextBlock Text="RX CAN ID" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding RxId,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/></StackPanel>
+      </Grid>
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <StackPanel><TextBlock Text="P2 (ms)" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding P2Ms,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+       <StackPanel Grid.Column="2"><TextBlock Text="P2* (ms)" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding P2StarMs,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+      </Grid>
+      <TextBlock Text="会话状态" Style="{StaticResource UdsCaption}"/>
+      <TextBlock Text="{Binding Session}" FontWeight="SemiBold" Margin="0,0,0,9"/>
+      <Button Content="重置 Mock ECU" Command="{Binding ResetCommand}"/>
+      <Separator Margin="0,11" Background="#314458"/>
+      <TextBlock Text="诊断故障注入 / MOCK ONLY" Style="{StaticResource UdsSection}"/>
+      <CheckBox Content="下次 NRC 负响应" IsChecked="{Binding InjectNrc}" Margin="0,5"/>
+      <CheckBox Content="下次 NRC 0x78 Pending" IsChecked="{Binding InjectPending}" Margin="0,5"/>
+      <CheckBox Content="模拟 ECU 不响应" IsChecked="{Binding NoResponse}" Margin="0,5"/>
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <StackPanel><TextBlock Text="SID" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding FaultSid}"/></StackPanel>
+       <StackPanel Grid.Column="2"><TextBlock Text="NRC" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding FaultCode}"/></StackPanel>
+      </Grid>
+      <Separator Background="#314458" Margin="0,10"/>
+      <TextBlock Text="Replay 记录文件" Style="{StaticResource UdsCaption}"/>
+      <TextBox Text="{Binding ReplayPath,UpdateSourceTrigger=PropertyChanged}"/>
+      <Button Content="加载 Replay JSON" Command="{Binding LoadReplayCommand}"/>
+     </StackPanel>
+    </ScrollViewer>
+   </Border>
+  </Grid>
+  <Border Grid.Row="3" Style="{StaticResource UdsCard}" Margin="0,11,0,0" Padding="10">
+   <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+     <TextBlock Text="TRANSPORT / UDS TRACE" FontWeight="SemiBold"/>
+     <TextBlock Text="    ISO-TP · TX/RX · NRC · 时间线" Foreground="{StaticResource UdsMuted}"/>
+     <TextBlock Text="    源=" Foreground="{StaticResource UdsMuted}"/>
+     <TextBlock Text="{Binding SourceLabel}" Foreground="#E8B967"/>
+    </StackPanel>
+    <DataGrid ItemsSource="{Binding TraceRows}" IsReadOnly="True" AutoGenerateColumns="False"
+              HeadersVisibility="Column" CanUserAddRows="False" RowHeaderWidth="0">
+     <DataGrid.Columns>
+      <DataGridTextColumn Header="Direction" Binding="{Binding Direction}" Width="150"/>
+      <DataGridTextColumn Header="ISO-TP CAN DATA (HEX)" Binding="{Binding Hex}" Width="*"/>
+     </DataGrid.Columns>
+    </DataGrid>
+   </DockPanel>
+  </Border>
+ </Grid>
 </UserControl>
