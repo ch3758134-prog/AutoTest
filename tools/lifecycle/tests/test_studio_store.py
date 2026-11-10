@@ -3,7 +3,9 @@ from pathlib import Path
 import json
 import tempfile
 import unittest
+import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from studio_store import Store, RuleError
 
 
@@ -45,7 +47,7 @@ class EngineeringStoreTest(unittest.TestCase):
         b = self.store.project(self.p2["id"])
         self.assertEqual(len(a["objects"]), 1)
         self.assertEqual(len(b["objects"]), 1)
-        self.assertNotIn("ECU", b["project"]["body"])
+        self.assertIn("温室环境控制器", b["project"]["summary"])
         self.assertEqual(len(self.store.projects()), 2)
 
     def test_project_definitions_are_editable(self):
