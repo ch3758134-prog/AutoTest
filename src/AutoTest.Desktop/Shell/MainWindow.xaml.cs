@@ -205,7 +205,18 @@ public partial class MainWindow : Window
                 _controllerConfiguration ??= new ControllerConfigToolViewModel();
                 R1BenchHost.Content = new BenchWorkbenchView(new BenchWorkbenchViewModel(
                     new R1BenchWorkspacePort(() => _controllerConfiguration,
-                        () => _device?.Controller)));
+                        () => _device?.Controller, approveKeySim: (mask, generation) =>
+                            MessageBox.Show(this,
+                                $"真实按键板操作：CAN0 / KEY_SIM ID 0x730 / 20 Key 掩码 0x{mask:X5}\\n" +
+                                $"主控 USB Generation：{generation}\\n" +
+                                (mask == 0
+                                    ? "动作：释放全部 20 Key 电阻组合开关。\\n"
+                                    : "动作：按配置闭合并保持对应电阻网络开关。\\n") +
+                                "主控 CAN_SEND 回执只证明已接受发送请求，不代表 KEY_SIM 或 ECU 已响应。\\n" +
+                                "已确认当前台架及预期掩码，是否执行此次真实操作？",
+                                "确认真实 KEY_SIM 按键操作",
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                                MessageBoxResult.No) == MessageBoxResult.Yes)));
                 break;
             case 6 when R1WaveHost.Content is null:
             {
