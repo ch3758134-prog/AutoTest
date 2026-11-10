@@ -653,6 +653,16 @@ class Store:
                             (experiment["id"],)))
                     research["decisions"].extend(dict(r) for r in db.execute(
                         "SELECT * FROM study_decisions WHERE study_id=?",(study_id,)))
+            execution={"repository":None,"synced_at":None,"github_snapshot":None,"tasks":[]}
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='github_projects'").fetchone():
+                row=db.execute("SELECT * FROM github_projects WHERE project_id=?",(key,)).fetchone()
+                if row:
+                    execution["repository"]=row["repository"]
+                    execution["synced_at"]=row["fetched_at"]
+                    execution["github_snapshot"]=json.loads(row["snapshot"]) if row["snapshot"] else None
+                execution["tasks"]=[dict(r) for r in db.execute(
+                    "SELECT * FROM execution_tasks WHERE project_id=?",(key,))]
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
                     "objects":objects,"relations":links,"revisions":revisions,
-                    "events":events,"technical_research":research}
+                    "events":events,"technical_research":research,
+                    "execution":execution}
