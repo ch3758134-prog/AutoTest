@@ -1,16 +1,122 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AutoTest · 工程管理恢复总览</title><style>:root{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#e8edf4;background:#101923;font-size:14px}body{max-width:1200px;margin:auto;padding:28px 30px 70px;line-height:1.65}h1{font-size:26px}h2{font-size:18px;margin-top:36px;border-bottom:1px solid #344354;padding-bottom:8px}p{max-width:940px;color:#c5d0da}.subtitle,.muted{color:#a6b5c4}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.card{background:#1a2735;padding:17px;border:1px solid #344658;border-radius:8px}.card strong{display:block;font-size:17px}.label{font-size:12px;color:#aac1d1}.state{display:inline-block;border-radius:4px;background:#384351;padding:2px 7px;font-size:12px}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:10px;border-bottom:1px solid #344354;vertical-align:top}a{color:#99c7ff}.warn{border-left:3px solid #d7a867;padding:10px 17px;background:#202b36}.foot{margin-top:40px;color:#92a4b4;font-size:12px}</style></head><body>
-<header><span class="label">恢复提案 · 2026-11-09 · 已验证 GitHub 配置快照</span><h1>AutoTest · 产品与工程状态总览</h1><p class="subtitle">目的：为单人 + AI 协作开发提供连续可读、可增量更新的工程视图。此版本不是自动同步看板，不是 G3/G4 新批准状态，不代表现有主线已通过测试。</p></header>
-<section class="grid"><div class="card"><span class="label">产品定位</span><strong>通用 ECU 测试与研发</strong><span>Windows 离线 / 当前单 DUT</span></div><div class="card"><span class="label">代码主线（审查时）</span><strong>main @ 4530aba0</strong><span>全量 Windows Build 0 错误/警告 · 336/336 自动测试；旧 UI 未验收</span></div><div class="card"><span class="label">SAEF</span><strong>G4 实施中</strong><span>G3 PASS_WITH_LIMITATIONS / G4 NOT_REVIEWED</span></div><div class="card"><span class="label">旧交付库存</span><strong>3 活动分支 / 21 归档标签</strong><span>旧候选已归档退役；归档不代表功能验收</span></div></section>
-<h2>一、你正在开发的产品</h2><p>同一套项目、设备、运行和证据系统服务两类任务：研发人员配置工程、DBC、CAN、UDS、Flash、Wave、测试程序并进行真实设备调试；生产人员依据 DUT 身份、配置匹配、必要烧录、测试和历史追溯开展工作。EPB 是首个真实样本，不应固定在通用平台逻辑中。</p>
-<h2>二、真正需要恢复的管理关系</h2><div class="grid"><div class="card"><span class="label">SAEF</span><strong>决定、配置、证据</strong><p>批准状态、需求/设计变化、真实现场事实、原始资产和发布。</p></div><div class="card"><span class="label">GitHub</span><strong>代码、PR、CI</strong><p>唯一代码主线、模块独立开发、实际构建测试、集成差异。</p></div><div class="card"><span class="label">产品探索</span><strong>可持续调整</strong><p>UI、报告、生产流程与版本范围保持候选/实验/接受的分层。</p></div><div class="card"><span class="label">WPF UI</span><strong>以真实操作为准</strong><p>独立控件展示、真实截图、自动操作和用户试用，拒绝空页面冒充功能。</p></div></div>
-<h2>三、当前能力与未证事项</h2><table><tr><th>方向</th><th>确认事实</th><th>下一步验证</th></tr>
-<tr><td>设备 / CAN</td><td>WinUSB 与 CAN1 RX 曾有现场证据；精确 Git SHA 对应待核</td><td>Windows full Build/Test 已通过；实物身份与 CAN1 TX 仍待验</td></tr>
-<tr><td>UDS</td><td>有模拟和只读真实适配候选</td><td>同一 Hub、实际 ISO-TP/UDS ReadOnly</td></tr>
-<tr><td>Flash</td><td>镜像/Mock 候选与 CanTool 参考</td><td>ECU 真实 Bootloader/配置和安全前置；Physical 未放行</td></tr>
-<tr><td>PROJECT/TEST/WAVE/SCAN/RECORD</td><td>各有历史实现和自动测试候选</td><td>按独立使用场景逐项实测并分批回主线</td></tr>
-<tr><td>UI</td><td>旧 G4/R1 UI 未经用户验收，用户已拒绝</td><td>建立 DesignSystem + WPF Gallery + 真实截图与交互循环</td></tr>
-<tr><td>工程资产</td><td>SAEF 有正式工作产品、Gate 与部分哈希</td><td>补齐两板原理图、签发固件、原生 SAEF 工具等可恢复性</td></tr></table>
-<h2>四、SAEF 决策状态不能混淆</h2><div class="warn">FACT（来源已证实）/ CONFIRMED REQUIREMENT（用户确认的目标）/ DESIGN BASELINE（可修订的架构）/ HYPOTHESIS（AI 建议）/ EXPERIMENT（待实测）/ ACCEPTED CAPABILITY（指定配置验收）分别管理。R1 是可调整的初始愿景，不意味着所有功能/界面/报告都已确定。</div>
-<h2>五、恢复工作顺序</h2><p>保全 Git 精确 HEAD 和现场资产 → 验证现役 main → 旧跨专业 R1/G4 UI 候选退出活动交付 → 确立模块合同与独立 Lab → 先建可视化 WPF 验证工作流 → 逐项接入经过验证的专业功能 → 将可追溯状态增量反馈到 SAEF HTML。</p>
-<h2>六、详细材料</h2><p><a href="README.md">恢复总入口</a> · <a href="00_GIT_SNAPSHOT.md">Git 快照</a> · <a href="01_PRODUCT_AND_DECISION_MODEL.md">产品与决策等级</a> · <a href="02_GIT_AND_MODULE_WORKFLOW.md">模块与 Git</a> · <a href="03_UI_PRODUCT_WORKFLOW.md">前端 UI 研发流程</a></p>
-<footer class="foot">Snapshot/2026-11-09 · 已按主线验证和 SHA 归档结果更新的 HTML。后续应从单一结构化状态源生成，避免正文不断追加过时“最新状态”。</footer></body></html>
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoTest · 工程总览（状态驱动）</title>
+<style>
+
+:root{font:13px/1.65 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;color:#26333e;background:#f5f7fa}
+*{box-sizing:border-box}body{margin:0}a{color:#1766b1;text-decoration:none}a:hover{text-decoration:underline}
+header{background:#fff;border-bottom:1px solid #d7dfe7;position:sticky;top:0;z-index:1}
+.header{max-width:1200px;margin:auto;padding:10px 28px;display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.brand{font-size:18px;font-weight:700;color:#1f3244}.sub{font-size:12px;color:#667b8d}
+nav{margin-left:auto;display:flex;gap:14px;font-size:12px}
+main{max-width:1200px;margin:auto;padding:24px 28px 60px}
+h1{font-size:24px;line-height:1.3;margin:4px 0 10px}h2{font-size:18px;border-bottom:1px solid #d5dfe8;padding-bottom:8px;margin:34px 0 14px}
+h3{font-size:15px;margin:0 0 6px}p{margin:8px 0;color:#425367;max-width:950px}
+.small{color:#6b7b89;font-size:12px}.label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#667988}
+.strip{display:flex;gap:12px;flex-wrap:wrap;margin:22px 0}.metric{min-width:185px;flex:1;background:#fff;border:1px solid #d4dce4;border-radius:4px;padding:13px 15px}
+.metric b{display:block;font-size:20px;color:#1d344a;margin-top:3px}
+.ok{color:#19754c}.pending{color:#8b5b12}.unknown{color:#6a7784}
+.note{border-left:3px solid #276eaa;background:#edf4fa;padding:12px 16px;margin:14px 0}
+.warning{border-left:3px solid #c08327;background:#fcf8ef;padding:12px 16px;margin:14px 0}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:12px}th{text-align:left;background:#eef2f6;color:#495e70}
+th,td{padding:10px;border-bottom:1px solid #e0e6ec;vertical-align:top}
+.module{background:#fff;border:1px solid #d5dfe7;border-radius:4px;margin:9px 0;padding:14px 17px}
+.module .id{display:inline-block;color:#60768c;font-size:11px;background:#edf2f7;padding:1px 7px;margin-right:8px}
+.module dl{display:grid;grid-template-columns:84px 1fr;gap:4px 10px;margin:8px 0 0}
+.module dt{color:#627486}.module dd{margin:0;color:#394a5a}
+ul{padding-left:20px;color:#425367}li{margin:7px 0}
+footer{border-top:1px solid #dce4eb;margin-top:38px;padding-top:13px;color:#647888;font-size:11px}
+code{font-family:Consolas,monospace;color:#294766;overflow-wrap:anywhere}
+@media(max-width:700px){.header{padding:10px 14px}main{padding:16px 14px}.module dl{grid-template-columns:1fr;gap:1px}.module dt{font-weight:700}nav{margin:0}}
+
+</style></head><body>
+<header><div class="header"><div class="brand">AutoTest</div>
+<div class="sub">工程总控 · 本地 HTML · 数据驱动快照</div>
+<nav><a href="#summary">总览</a> <a href="#modules">模块</a> <a href="#gates">SAEF Gate</a> <a href="#source">配置</a> <a href="#next">下一步</a></nav>
+</div></header><main>
+<section id="summary"><div class="small">数据日期：2026-11-09 · 该页面只显示已登记证据，不自动推定实测通过</div>
+<h1>AutoTest 产品与研发状态</h1>
+<p>离线 Windows 通用 ECU 研发、集成测试与出厂检测平台。EPB 是首个 DUT 样本；R1 是可调整的首次交付愿景，不代表 UI、报告与全部流程已冻结。</p>
+<div class="strip">
+<div class="metric"><div class="label">main 源码身份</div><b><code>4530aba0079e</code></b><span class="small">精确 SHA 见下方</span></div>
+<div class="metric"><div class="label">Windows Release 构建</div><b class="ok">PASS</b><span class="small">0 错误 / 0 警告</span></div>
+<div class="metric"><div class="label">自动化测试（并非实机）</div><b class="ok">336 / 336</b><span class="small"><a href="https://github.com/ch3758134-prog/AutoTest/actions/runs/42736664152">查看 Actions 证据</a></span></div>
+<div class="metric"><div class="label">远端活动分支</div><b>3</b><span class="small">21 个已验证归档标签</span></div>
+</div>
+<div class="warning"><b>产品体验仍未通过验收。</b> 旧 G4/R1 前端未获用户操作验收，整体不作为新产品界面基线；必须重新做信息架构、Prism Shell、Design System、实用操作工作台。</div>
+<p>Windows full AutoTest.sln Release Build/Test；无 WPF 视觉/实际启动或 DUT 物理验收</p>
+</section>
+<section id="modules"><h2>一、当前模块能力（逐项，非“整体完成率”）</h2>
+<p>每项按实际代码、自动测试、物理使用证据和下一步区分；Mock/Replay 成功不能转写为 Physical PASS。</p>
+<article class="module"><h3><span class="id">DEVICE</span>USB / CAN / Station</h3>
+<dl><dt>源码现状</dt><dd>真实 WinUSB 接收及会话/日志代码存在；主线尚无受控 CAN1 TX</dd>
+<dt>软件测试</dt><dd>Devices 54/54 自动测试通过</dd>
+<dt>现场证据</dt><dd>历史现场已有 USB/CAN1 RX 证据，未与当前 SHA 重新绑定</dd>
+<dt>下一步</dt><dd>逐项复验设备身份、CAN1 TX 授权与原始 RX 日志</dd></dl></article>
+<article class="module"><h3><span class="id">PROJECT</span>工程、DBC、Profile</h3>
+<dl><dt>源码现状</dt><dd>工程资源、Revision、DBC 解析/编辑/信号解码核心已提交</dd>
+<dt>软件测试</dt><dd>Projects 33/33</dd>
+<dt>现场证据</dt><dd>真实工程文件往返与多 ECU Profile 仍需任务验收</dd>
+<dt>下一步</dt><dd>用真实 DBC/工程文件建立黄金样例</dd></dl></article>
+<article class="module"><h3><span class="id">TEST</span>测试编辑与运行</h3>
+<dl><dt>源码现状</dt><dd>Authoring/Compiler 有源码，RunCoordinator 仍为 Mock-only</dd>
+<dt>软件测试</dt><dd>Testing 34/34</dd>
+<dt>现场证据</dt><dd>真实 DUT 测试程序未验收</dd>
+<dt>下一步</dt><dd>保留 TestDocument/PreparedPlan，另接真 Station 执行器</dd></dl></article>
+<article class="module"><h3><span class="id">UDS</span>ISO-TP / UDS</h3>
+<dl><dt>源码现状</dt><dd>ISO-TP/UDS 协议核心存在，真实 CAN1 RX/TX 配接未进主线</dd>
+<dt>软件测试</dt><dd>Specialists 测试中的协议用例通过</dd>
+<dt>现场证据</dt><dd>真实 ECU ReadDID/DTC 事务 NOT_RUN</dd>
+<dt>下一步</dt><dd>以归档的 DEVICE/UDS 只读候选提取后端接线、审查授权并实测</dd></dl></article>
+<article class="module"><h3><span class="id">WAVE</span>波形与参考判定</h3>
+<dl><dt>源码现状</dt><dd>比较/参考/质量校验核心存在，在线采集没有经验证的共享物理源</dd>
+<dt>软件测试</dt><dd>Specialists 测试中的波形用例通过</dd>
+<dt>现场证据</dt><dd>实时 DUT 信号采集/参考判定 NOT_RUN</dd>
+<dt>下一步</dt><dd>CAN1 原始流 → DBC → 捕获/参考 → 比较及不确定质量</dd></dl></article>
+<article class="module"><h3><span class="id">SCAN</span>扫码枪与型号规则</h3>
+<dl><dt>源码现状</dt><dd>KeyboardWedge、扫码路由、身份规则、生产样本核心存在</dd>
+<dt>软件测试</dt><dd>Specialists 扫码/规则用例通过</dd>
+<dt>现场证据</dt><dd>实物扫码枪模式和端到端读取 NOT_RUN</dd>
+<dt>下一步</dt><dd>验证扫码枪输入、焦点/回车、复扫与型号匹配</dd></dl></article>
+<article class="module"><h3><span class="id">FLASH</span>固件文件与 ECU 烧录</h3>
+<dl><dt>源码现状</dt><dd>HEX/S19/BIN 解析存在，现有 JobCoordinator 强依赖 Mock Workflow</dd>
+<dt>软件测试</dt><dd>Specialists 固件解析与 Mock 用例通过</dd>
+<dt>现场证据</dt><dd>实体 ECU 编程 NOT_IMPLEMENTED / NOT_RUN</dd>
+<dt>下一步</dt><dd>依据 CanTool 配置核定 APP/Boot ID、Seed/Key ABI、镜像分段与安全恢复；先完成只读联调</dd></dl></article>
+<article class="module"><h3><span class="id">RECORD</span>SQLite/Run 记录与报告</h3>
+<dl><dt>源码现状</dt><dd>追加式 Run/StepFact、查询、统计与暂行 HTML/JSON 导出存在</dd>
+<dt>软件测试</dt><dd>Records 25/25</dd>
+<dt>现场证据</dt><dd>真实运行追溯与报告用户确认 NOT_RUN</dd>
+<dt>下一步</dt><dd>从真实运行证据定义报告字段和版式，不把旧模板视为冻结需求</dd></dl></article>
+</section>
+<section id="gates"><h2>二、SAEF 已登记 Gate 与工作产品</h2>
+<p>此处<strong>直接读取</strong> SAEF 原始控制登记，Gate 通过仅证明对应历史批准，不自动证明代码实现或产品验收。</p>
+<table><thead><tr><th>Gate</th><th>状态</th><th>批准日期</th><th>配置身份</th></tr></thead><tbody>
+<tr><td><b>P0</b></td><td>PASS</td><td>2026-11-03</td><td><code>AT-M2-P0-20261103-c0291f97d9d3</code></td></tr>
+<tr><td><b>G0</b></td><td>PASS_WITH_LIMITATIONS</td><td>2026-11-03</td><td><code>AT-M2-G0-20261103-5118c8148be2</code></td></tr>
+<tr><td><b>G1</b></td><td>PASS_WITH_LIMITATIONS</td><td>2026-11-03</td><td><code>AT-M2-G1-20261103-028b7e5dc8c5</code></td></tr>
+<tr><td><b>G2</b></td><td>PASS_WITH_LIMITATIONS</td><td>2026-11-03</td><td><code>AT-G2-V007-20261103-df6f885c8d99</code></td></tr>
+<tr><td><b>G3</b></td><td>PASS_WITH_LIMITATIONS</td><td>2026-11-04</td><td><code>AT-G3-V002-20261104-f9f3f6d648a8</code></td></tr>
+<tr><td><b>G4</b></td><td>NOT_REVIEWED</td><td>—</td><td><code>—</code></td></tr>
+<tr><td><b>G5</b></td><td>NOT_REVIEWED</td><td>—</td><td><code>—</code></td></tr>
+</tbody></table>
+<p class="small">登记工作产品 55 项：ACCEPTED 41 / DRAFT 7 / NOT_STARTED 7。历史正文保留原始语境，不作为新的现场通过证明。</p></section>
+<section id="source"><h2>三、代码、Git 与原始资产</h2>
+<p>当前 main SHA：<code>4530aba0079e8b2344e4ff5e706049450458a45b</code>。<a href="https://github.com/ch3758134-prog/AutoTest/actions/runs/42736664152">完整 Windows Run</a>。</p>
+<p>Git 已退役 21 条旧活动分支，每条有同一 SHA 的轻量归档标签；<a href="https://github.com/ch3758134-prog/AutoTest/actions/runs/42737412239">归档/Bundle 上传验证</a>，备份 Artifact ID 13727397720。</p>
+<p>活动分支：<code>main</code>，<code>recovery/product-led-baseline-20261109</code>，<code>maintenance/archive-retire-legacy-20261109</code>。</p>
+<div class="warning"><b>原始资产尚未全部恢复。</b><ul>
+<li>现役两块 PCB 原理图 PDF 原始字节</li>
+<li>现役主控与按键固件 ZIP/可验证构建源码</li>
+<li>独立 SAEF eng.py、原 FRAMEWORK/catalog 和部分已批准 HTML 原始归档</li>
+</ul>缺失只说明尚未取得原始字节，不得依据登记 SHA 自动宣布资产已备份。</div>
+</section>
+<section id="next"><h2>四、下一步实际工作</h2><ul>
+<li>恢复缺失的 SAEF 原始资产与原生工具，不伪造已恢复</li>
+<li>新前端从零建立 WPF Gallery / 设计系统，独立于旧 Desktop</li>
+<li>优先完成 UDS、WAVE、SCAN、FLASH 的真实任务实测；烧录在安全前置满足前禁止物理写入</li>
+<li>分批将通过验证的真实后端服务接入新 Prism Shell，不继承旧 UI 布局</li>
+</ul><div class="note">项目需求与 UI/报告格式允许受真实使用反馈修订。跨模块公共架构与真实设备副作用仍须审查；用户体验不以文档数量或 Build PASS 替代。</div>
+<p><a href="https://github.com/ch3758134-prog/AutoTest/pull/21">恢复方案 PR</a> · <a href="https://github.com/ch3758134-prog/AutoTest/issues/22">实际执行 Issue</a></p></section>
+<footer>AutoTest · SAEF 数据源 + 当前证据状态的离线投影。页面由 Python 生成；修改源数据再运行会替换当前视图，历史由 Git 保存。 不从网页回写 Gate 批准，也不把 UI 自动测试视为人工验收。</footer></main></body></html>
