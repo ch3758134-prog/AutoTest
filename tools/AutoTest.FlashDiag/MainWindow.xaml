@@ -1,59 +1,246 @@
 <Window x:Class="AutoTest.FlashDiag.MainWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:flash="clr-namespace:AutoTest.Desktop.Tools.Flash;assembly=AutoTest.Desktop"
- xmlns:uds="clr-namespace:AutoTest.Desktop.Tools.Uds;assembly=AutoTest.Desktop"
- Title="AutoTest · 独立 CAN Flash 联调与诊断" Width="1460" Height="940"
- MinWidth="1080" MinHeight="700" WindowStartupLocation="CenterScreen"
- Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13"
+ Title="CanTool · AutoTest CAN1 烧录实测" Width="1550" Height="980"
+ MinWidth="1200" MinHeight="720" WindowStartupLocation="CenterScreen"
+ Background="#111821" Foreground="#E5EDF6" FontFamily="Segoe UI" FontSize="13"
  Closing="Window_Closing">
- <Grid Margin="12">
+ <Window.Resources>
+  <SolidColorBrush x:Key="Panel" Color="#1A2634"/>
+  <SolidColorBrush x:Key="Edge" Color="#344A5F"/>
+  <Style TargetType="TextBlock">
+   <Setter Property="Foreground" Value="#E5EDF6"/>
+  </Style>
+  <Style TargetType="Button">
+   <Setter Property="Background" Value="#30485D"/>
+   <Setter Property="Foreground" Value="#E9F2FD"/>
+   <Setter Property="BorderBrush" Value="#536980"/>
+   <Setter Property="Padding" Value="12,6"/>
+   <Setter Property="Margin" Value="3"/>
+  </Style>
+  <Style TargetType="TextBox">
+   <Setter Property="Background" Value="#0F1B28"/>
+   <Setter Property="Foreground" Value="#E9F2FD"/>
+   <Setter Property="BorderBrush" Value="#43566B"/>
+   <Setter Property="Padding" Value="6,4"/>
+   <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style TargetType="CheckBox">
+   <Setter Property="Foreground" Value="#D7E6F4"/>
+   <Setter Property="Margin" Value="0,5,0,3"/>
+  </Style>
+  <Style TargetType="DataGrid">
+   <Setter Property="Background" Value="#192735"/>
+   <Setter Property="Foreground" Value="#E9F2FD"/>
+   <Setter Property="RowBackground" Value="#192735"/>
+   <Setter Property="AlternatingRowBackground" Value="#243444"/>
+   <Setter Property="BorderBrush" Value="#42586B"/>
+   <Setter Property="GridLinesVisibility" Value="None"/>
+   <Setter Property="AutoGenerateColumns" Value="False"/>
+   <Setter Property="IsReadOnly" Value="True"/>
+  </Style>
+ </Window.Resources>
+ <Grid Margin="14">
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="*"/>
-   <RowDefinition Height="160"/>
+   <RowDefinition Height="156"/>
   </Grid.RowDefinitions>
-  <StackPanel Grid.Row="0" Margin="6,4,6,12">
-   <TextBlock Text="CAN FLASH · 实际 ECU 独立排障" FontSize="24" FontWeight="SemiBold"/>
-   <TextBlock Text="独立进程 / 单设备 WinUSB / CAN1 / 固件与 CanTool XML / UDS 原始诊断 / 会话证据"
-              Foreground="#9AADC1" Margin="0,5,0,0"/>
-   <TextBlock Text="注意：当前软件只支持固件解析、配置核对、真实 CAN1 只读诊断。物理烧录序列（安全解锁、擦除、传输、校验、复位）尚未实现，不会发送写入命令。"
-              Foreground="#E8B967" TextWrapping="Wrap" Margin="0,6,0,0"/>
-  </StackPanel>
-  <Border Grid.Row="1" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="10" Margin="0,0,0,8">
+  <DockPanel Grid.Row="0" Margin="0,0,0,10">
+   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+    <Button Content="导出全部日志…" Click="Export_Click"/>
+    <Button Content="复制日志" Click="CopyLog_Click"/>
+   </StackPanel>
+   <StackPanel>
+    <TextBlock Text="CanTool · ECU 烧录实测" FontSize="25" FontWeight="SemiBold"/>
+    <TextBlock Text="原 CanTool APP/Boot/Seed-Key/Erase/Download/Verify/Reset 顺序 · 仅替换 CAN 设备为 AutoTest WinUSB → CAN1"
+               Foreground="#9FB4C8" Margin="0,4,0,0"/>
+   </StackPanel>
+  </DockPanel>
+  <Border Grid.Row="1" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
+          BorderThickness="1" Padding="12" Margin="0,0,0,10">
    <DockPanel>
-    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-     <Button Content="重新查找 USB" Click="Refresh_Click" Margin="3" Padding="10,6"/>
-     <Button x:Name="ConnectButton" Content="连接主控" Click="Connect_Click" Margin="3" Padding="10,6"/>
-     <Button x:Name="DisconnectButton" Content="断开" Click="Disconnect_Click" Margin="3" Padding="10,6" IsEnabled="False"/>
-     <Button Content="导出 USB/CAN 诊断日志…" Click="Export_Click" Margin="3" Padding="10,6"/>
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+     <Button Content="查找 USB" Click="Refresh_Click"/>
+     <Button x:Name="ConnectButton" Content="连接主控" Click="Connect_Click"/>
+     <Button x:Name="DisconnectButton" Content="断开" Click="Disconnect_Click" IsEnabled="False"/>
     </StackPanel>
     <StackPanel>
-     <TextBlock Text="真实设备 · Windows WinUSB 主控板" FontWeight="SemiBold"/>
-     <ComboBox x:Name="Devices" Width="485" HorizontalAlignment="Left" Margin="0,6,0,5"
-               DisplayMemberPath="DisplayIdentity" Background="#243343" Foreground="#E2EDF7"/>
-     <TextBlock x:Name="StatusLine" Text="未连接；连接设备后可进行 CAN1 实际只读诊断。" TextWrapping="Wrap" Foreground="#81C9BA"/>
-     <TextBlock x:Name="TracePathLine" Text="USB/CAN JSONL：未开始" Foreground="#9AADC1" TextWrapping="Wrap"/>
+     <TextBlock Text="AutoTest 主控 · 独占 WinUSB 会话 · DUT CAN1" FontWeight="SemiBold"/>
+     <ComboBox x:Name="Devices" Width="480" HorizontalAlignment="Left" Margin="0,6,0,4"
+               DisplayMemberPath="DisplayIdentity" Background="#243748" Foreground="#E9F2FD"/>
+     <TextBlock x:Name="StatusLine" Text="未连接主控" TextWrapping="Wrap" Foreground="#9FDACB"/>
+     <TextBlock x:Name="TracePathLine" Text="USB/CAN 原始证据：未开始" Foreground="#A8B6C7" TextWrapping="Wrap"/>
     </StackPanel>
    </DockPanel>
   </Border>
-  <TabControl Grid.Row="2" Background="#101620" Foreground="#E2EDF7">
-   <TabItem Header="① 固件 / CanTool 配置 / 地址 / 预检">
-    <flash:FlashToolView x:Name="FlashPanel"/>
+  <TabControl Grid.Row="2" Background="#111821" Foreground="#E5EDF6">
+   <TabItem Header="烧录操作">
+    <Grid Margin="9">
+     <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="440"/>
+      <ColumnDefinition Width="10"/>
+      <ColumnDefinition Width="*"/>
+     </Grid.ColumnDefinitions>
+     <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
+             BorderThickness="1" Grid.Column="0" Padding="12">
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+       <StackPanel>
+        <TextBlock Text="1. CanTool 配置 / Firmware" FontSize="17" FontWeight="SemiBold"/>
+        <TextBlock Text="Configuration.xml" Foreground="#9FB4C8" Margin="0,10,0,3"/>
+        <DockPanel>
+         <Button DockPanel.Dock="Right" Content="导入 XML…" Click="OpenConfig_Click"/>
+         <TextBox x:Name="ConfigPath" IsReadOnly="True"/>
+        </DockPanel>
+        <TextBlock x:Name="ConfigSummary" Text="未导入配置（APP/Boot ID 未确定）"
+                   TextWrapping="Wrap" Margin="0,7,0,0" Foreground="#9FDACB"/>
+        <TextBlock Text="固件 HEX / S19（扩展支持 BIN + 必填地址）"
+                   Foreground="#9FB4C8" Margin="0,12,0,3"/>
+        <DockPanel>
+         <Button DockPanel.Dock="Right" Content="选固件…" Click="OpenFirmware_Click"/>
+         <TextBox x:Name="ImagePath" IsReadOnly="True"/>
+        </DockPanel>
+        <DockPanel Margin="0,7,0,0">
+         <TextBlock DockPanel.Dock="Left" Text="BIN 起始地址 0x" VerticalAlignment="Center"/>
+         <TextBox x:Name="BinAddress" Width="155" HorizontalAlignment="Left" Text="0"/>
+        </DockPanel>
+        <TextBlock x:Name="ImageSummary" Text="尚未解析固件" TextWrapping="Wrap"
+                   Foreground="#9FDACB" Margin="0,7,0,0"/>
+        <TextBlock Text="Seed/Key DLL（必须真实 ZLGKey 原生导出）"
+                   Foreground="#9FB4C8" Margin="0,12,0,3"/>
+        <DockPanel>
+         <Button DockPanel.Dock="Right" Content="选择…" Click="OpenKeyDll_Click"/>
+         <TextBox x:Name="SecurityDllPath" IsReadOnly="True"/>
+        </DockPanel>
+        <TextBlock Text="2. CanTool 参数 · 实际生效值" FontSize="17"
+                   FontWeight="SemiBold" Margin="0,16,0,8"/>
+        <Grid>
+         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="112"/></Grid.ColumnDefinitions>
+         <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+         </Grid.RowDefinitions>
+         <TextBlock Text="BlockLength（HEX）" Grid.Row="0" Margin="0,5"/>
+         <TextBox x:Name="BlockLength" Grid.Row="0" Grid.Column="1" Text="200"/>
+         <TextBlock Text="P2 毫秒" Grid.Row="1" Margin="0,5"/>
+         <TextBox x:Name="P2Timeout" Grid.Row="1" Grid.Column="1" Text="1000"/>
+         <TextBlock Text="P2* 毫秒" Grid.Row="2" Margin="0,5"/>
+         <TextBox x:Name="P2StarTimeout" Grid.Row="2" Grid.Column="1" Text="5000"/>
+         <TextBlock Text="Erase 毫秒" Grid.Row="3" Margin="0,5"/>
+         <TextBox x:Name="EraseTimeout" Grid.Row="3" Grid.Column="1" Text="30000"/>
+         <TextBlock Text="ISO-TP FC 毫秒" Grid.Row="4" Margin="0,5"/>
+         <TextBox x:Name="FlowControlTimeout" Grid.Row="4" Grid.Column="1" Text="2000"/>
+        </Grid>
+        <CheckBox x:Name="InsertSignature" Content="按 CanTool 原流程写入末端 12 34 56 78 签名（OEM 专用；默认关闭）"
+                  TextWrapping="Wrap" Margin="0,12,0,6"/>
+        <Button Content="解析镜像 / 核对地址范围 / 生成预检清单" Click="Preflight_Click"
+                HorizontalAlignment="Stretch" Margin="0,6"/>
+        <TextBlock Text="3. 实机授权（非模拟）" FontSize="17" FontWeight="SemiBold" Margin="0,12,0,6"/>
+        <CheckBox x:Name="ConfirmPower" Content="已核实接线、目标 ECU 身份及实际供电状态" TextWrapping="Wrap"/>
+        <CheckBox x:Name="ConfirmBitrate" Content="已核实主控 CAN1 实际比特率与 XML 一致（导入 XML 不会改速率）" TextWrapping="Wrap"/>
+        <CheckBox x:Name="AuthorizeErase" Content="确认允许对该 ECU 执行真实擦除、下载和复位" TextWrapping="Wrap"/>
+        <Button Content="生成本次授权短语（无发送）" Click="PrepareAuthorization_Click" Margin="0,7"/>
+        <TextBox x:Name="AuthorizationExpected" MinHeight="46" IsReadOnly="True"
+                 TextWrapping="Wrap" Margin="0,3"/>
+        <TextBlock Text="核对 ECU / 地址 / 镜像 SHA 后，人工输入相同授权短语" Foreground="#9FB4C8" Margin="0,7,0,2"/>
+        <TextBox x:Name="AuthorizationEntered" MinHeight="44" TextWrapping="Wrap"/>
+       </StackPanel>
+      </ScrollViewer>
+     </Border>
+     <Grid Grid.Column="2">
+      <Grid.RowDefinitions>
+       <RowDefinition Height="Auto"/>
+       <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+      <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}"
+              BorderThickness="1" Padding="14">
+       <StackPanel>
+        <TextBlock Text="烧录控制" FontSize="17" FontWeight="SemiBold"/>
+        <WrapPanel Margin="0,9,0,0">
+         <Button x:Name="StartButton" Content="▶ 开始真实烧录" Click="StartFlash_Click"
+                 IsEnabled="False" Padding="24,9" Background="#27514A"/>
+         <Button x:Name="CancelButton" Content="停止 / 请求取消" Click="CancelFlash_Click"
+                 IsEnabled="False" Padding="20,9"/>
+         <Button Content="重新核对配置" Click="Preflight_Click" Padding="18,9"/>
+        </WrapPanel>
+        <ProgressBar x:Name="FlashProgress" Height="13" Margin="0,12,0,5" Minimum="0" Maximum="100"/>
+        <TextBlock x:Name="ProgressLine" Text="等待预检" Foreground="#9FDACB"/>
+        <TextBlock x:Name="FlashResultLine" Text="未执行" Margin="0,7,0,0"
+                   Foreground="#E6C18B" TextWrapping="Wrap"/>
+        <TextBlock Text="ECU 可能已擦除但没有最终响应时标为 UNCERTAIN；不会自动重擦、重传或宣称成功。"
+                   TextWrapping="Wrap" Foreground="#B7C4D2" Margin="0,9,0,0"/>
+       </StackPanel>
+      </Border>
+      <TabControl Grid.Row="1" Background="#111821" Margin="0,9,0,0" Foreground="#E5EDF6">
+       <TabItem Header="烧录阶段 / UDS">
+        <DataGrid x:Name="StagesGrid" ItemsSource="{Binding Stages}" Margin="4"
+                  HeadersVisibility="Column" SelectionMode="Single">
+         <DataGrid.Columns>
+          <DataGridTextColumn Header="时间" Binding="{Binding When}" Width="165"/>
+          <DataGridTextColumn Header="步骤" Binding="{Binding Stage}" Width="230"/>
+          <DataGridTextColumn Header="状态" Binding="{Binding Outcome}" Width="130"/>
+          <DataGridTextColumn Header="诊断信息" Binding="{Binding Detail}" Width="*"/>
+          <DataGridTextColumn Header="已确认字节" Binding="{Binding Confirmed}" Width="110"/>
+         </DataGrid.Columns>
+        </DataGrid>
+       </TabItem>
+       <TabItem Header="配置字段 / XML 来源">
+        <DataGrid x:Name="ConfigurationGrid" ItemsSource="{Binding ConfigurationFields}" Margin="4">
+         <DataGrid.Columns>
+          <DataGridTextColumn Header="XML 字段" Binding="{Binding Field}" Width="150"/>
+          <DataGridTextColumn Header="实际值" Binding="{Binding Value}" Width="175"/>
+          <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="130"/>
+          <DataGridTextColumn Header="参与流程" Binding="{Binding UsedBy}" Width="*"/>
+          <DataGridTextColumn Header="备注" Binding="{Binding Note}" Width="250"/>
+         </DataGrid.Columns>
+        </DataGrid>
+       </TabItem>
+       <TabItem Header="固件内存地址段">
+        <DataGrid x:Name="FirmwareGrid" ItemsSource="{Binding FirmwareSegments}" Margin="4">
+         <DataGrid.Columns>
+          <DataGridTextColumn Header="起点" Binding="{Binding Start}" Width="160"/>
+          <DataGridTextColumn Header="结束（不含）" Binding="{Binding End}" Width="160"/>
+          <DataGridTextColumn Header="字节" Binding="{Binding Bytes}" Width="130"/>
+         </DataGrid.Columns>
+        </DataGrid>
+       </TabItem>
+       <TabItem Header="CAN1 原始收发日志">
+        <ListBox x:Name="CanLogs" ItemsSource="{Binding CanEvents}" Margin="4"
+                 FontFamily="Consolas" FontSize="11" Background="#192735" Foreground="#DAEAF7"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
+       </TabItem>
+      </TabControl>
+     </Grid>
+    </Grid>
    </TabItem>
-   <TabItem Header="② 真实 CAN1 UDS 只读通信 / ISO-TP / NRC">
-    <uds:UdsToolView x:Name="UdsPanel"/>
+   <TabItem Header="诊断说明 / 实测结果">
+    <ScrollViewer Background="{StaticResource Panel}" Padding="18">
+     <StackPanel>
+      <TextBlock Text="CanTool 参考流程与现役 CAN 收发路径" FontSize="19" FontWeight="SemiBold"/>
+      <TextBlock TextWrapping="Wrap" Margin="0,12,0,0"
+                 Text="探测：Boot 10 03 → APP 10 03；进入编程：APP 11 01、Boot 10 02；Security：27 01/27 02；Erase：31 01 FF00；逐块 34/36/37/31 01 FF01；最终 11 01。除 CAN 设备底层以外，保留 CanTool 参考 PDU 形状。"/>
+      <TextBlock TextWrapping="Wrap" Margin="0,12,0,0"
+                 Text="CAN：AutoTest USB 0x40 / channel=1 → ECU；接收 0x41 / CAN1；主控 ACK 不代表 ECU 收到数据；UDS 0x74/76/71 响应单独检查。APP 与 Boot 各自 CAN ID 由 XML 提供。"/>
+      <TextBlock TextWrapping="Wrap" Margin="0,12,0,0"
+                 Text="原 CanTool 的低半字节 0x74 解析、缺失校验即成功、以及擦除/传输自动重试存在风险，实测程序使用严格解析并在不确定状态停止。原 CanTool 写末端签名为可选项，必须人工确认。"/>
+      <TextBlock TextWrapping="Wrap" Margin="0,12,0,0"
+                 Text="上传样例 SafetyFile.dll 是托管 .NET DLL，没有原生 ZLGKey 导出；不能按 CanTool 的 LoadLibrary/GetProcAddress 原生 ABI 使用。sa_demo.dll 是演示算法，不能默认视为真实 ECU 的 Key Provider。"/>
+      <TextBlock TextWrapping="Wrap" Margin="0,12,0,0"
+                 Text="实际 CAN1 波特率配置能力、当前 ECU 身份、授权烧录算法、复位后 APP 版本回读需要台架确认。这个窗口专用于可追溯排障，不属于 R1 产品发布内容。"/>
+     </StackPanel>
+    </ScrollViewer>
    </TabItem>
   </TabControl>
-  <Border Grid.Row="3" Margin="0,10,0,0" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="9">
+  <Border Grid.Row="3" Margin="0,10,0,0" Background="{StaticResource Panel}"
+          BorderBrush="{StaticResource Edge}" BorderThickness="1" Padding="10">
    <DockPanel>
     <DockPanel DockPanel.Dock="Top">
-     <Button DockPanel.Dock="Right" Content="复制日志" Click="CopyLog_Click" Padding="9,4"/>
-     <TextBlock Text="真实 WinUSB / CAN 操作时间线（最近 1000 条）" FontWeight="SemiBold"/>
+     <TextBlock Text="USB / CAN1 / 烧录全局事件" FontWeight="SemiBold"/>
     </DockPanel>
-    <ListBox x:Name="Logs" ItemsSource="{Binding}" Background="#192431"
-             Foreground="#E2EDF7" FontFamily="Consolas" FontSize="11"
+    <ListBox x:Name="Logs" ItemsSource="{Binding Events}" FontFamily="Consolas"
+             FontSize="11" Background="#192735" Foreground="#DFE9F2"
              BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
    </DockPanel>
   </Border>
