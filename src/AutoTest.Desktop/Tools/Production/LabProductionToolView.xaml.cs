@@ -17,14 +17,15 @@ public partial class LabProductionToolView : UserControl, IAsyncDisposable
     private long _totalRx;
     private bool _closed;
 
-    public LabProductionToolView() : this(new LabProductionToolViewModel()) { }
-    public LabProductionToolView(LabProductionToolViewModel vm)
+    public LabProductionToolView() : this(new R1ProductionScannerViewModel()) { }
+    public LabProductionToolView(R1ProductionScannerViewModel vm)
     {
         InitializeComponent();
         DataContext = vm;
         R1ScannerBaud.ItemsSource = new [] {9600,19200,38400,57600,115200,230400};
         R1ScannerBaud.SelectedItem = 9600;
         RefreshPorts();
+        _ = vm.LoadPublishedAsync();
         _serial.BytesReceived += data => Dispatcher.InvokeAsync(() =>
         {
             var n=Interlocked.Add(ref _totalRx,data.Length);
@@ -38,7 +39,7 @@ public partial class LabProductionToolView : UserControl, IAsyncDisposable
                 var text = new UTF8Encoding(false,true).GetString(packet.Data.AsSpan());
                 R1ScannerBarcode.Text="LAST BARCODE "+text;
                 R1ScannerBoundary.Text=$"完整条码 / {packet.Boundary}";
-                if (DataContext is LabProductionToolViewModel model)
+                if (DataContext is R1ProductionScannerViewModel model)
                     model.AcceptSerialBarcode(text, "USB COM · "+(_serial.PortName ?? "disconnected"));
             }
             catch(DecoderFallbackException ex)
@@ -114,7 +115,7 @@ public partial class LabProductionToolView : UserControl, IAsyncDisposable
     {
         if (e.Key!=Key.Enter) return;
         e.Handled=true;
-        if(DataContext is LabProductionToolViewModel vm) vm.PreviewScan();
+        if(DataContext is R1ProductionScannerViewModel vm) vm.PreviewScan();
     }
     public async ValueTask DisposeAsync()
     {
