@@ -55,7 +55,7 @@ def handler_factory(store, token, repo=None):
                 return self.write({"error": "Invalid host"}, 403)
             path, params = self.route()
             try:
-                if path in ("/", "/index.html"):
+                if path in ("/", "/index.html", "/**"):
                     return self.write(WEB.read_bytes(), content_type="text/html; charset=utf-8")
                 if path == "/api/studio/bootstrap":
                     return self.write({"schema": "engineering-workbench/1",
