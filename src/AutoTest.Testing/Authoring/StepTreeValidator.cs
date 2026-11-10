@@ -30,6 +30,15 @@ public static class StepTreeValidator
                         errors.Add($"{location}: missing property {key}");
             }
             if (n.Type == "Case" && parent != "Switch") errors.Add($"{location}: Case outside Switch");
+            if (n.Type == "Switch" && n.Slots.TryGetValue("cases", out var cases))
+            {
+                if (cases.Length == 0)
+                    errors.Add($"{location}: Switch requires at least one Case");
+                var values = cases.Where(x => x.Type == "Case")
+                    .Select(x => x.Properties.GetValueOrDefault("equals") ?? "").ToArray();
+                if (values.Distinct(StringComparer.Ordinal).Count() != values.Length)
+                    errors.Add($"{location}: duplicate Switch Case values");
+            }
             if (n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
                 !int.TryParse(count, out var loops) || loops < 0 || loops > 1000))
                 errors.Add($"{location}: Loop count outside 0..1000");
