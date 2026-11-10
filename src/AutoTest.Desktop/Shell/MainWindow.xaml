@@ -209,7 +209,7 @@
       </ScrollViewer>
      </TabItem>
      <TabItem Header="P02/P03 设备 + CAN">
-      <device:DeviceLabEmbeddedView x:Name="StationCanView"/>
+      <ContentControl x:Name="R1StationHost"/>
      </TabItem>
      <TabItem Header="P04 DBC">
       <ContentControl x:Name="R1DbcHost"/>
