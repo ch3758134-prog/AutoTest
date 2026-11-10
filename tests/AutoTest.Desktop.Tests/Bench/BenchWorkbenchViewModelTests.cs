@@ -28,7 +28,7 @@ public sealed class BenchWorkbenchViewModelTests
         Assert.Equal(7, vm.States.Count);
         Assert.Equal("rev-7", vm.Revision);
         Assert.Equal("状态6", vm.States.Last().Label);
-        Assert.False(vm.IsPhysical);
+        Assert.True(vm.IsPhysical);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public sealed class BenchWorkbenchViewModelTests
         vm.Voltages[0].Value = "2.5";
         await vm.SaveMeasurementAsync();
         Assert.NotNull(fake.Saved);
-        Assert.Equal(BenchEvidenceSource.Mock, fake.Saved!.Source);
+        Assert.Equal(BenchEvidenceSource.Physical, fake.Saved!.Source);
         Assert.Equal(2.5m, fake.Saved.Voltages[0].Volts);
         Assert.Null(fake.Saved.Voltages[1].Volts);
     }
@@ -228,7 +228,7 @@ public sealed class BenchWorkbenchViewModelTests
         {
             ApplyCount++;
             return Task.FromResult(new BenchOperationResult(true, "op-01", "cor-01", 2, "AA", "55", "trace-1",
-                null, null, source, "Mock ACK"));
+                null, null, source, "ACK from test port fixture"));
         }
         public Task SaveManualMeasurementAsync(BenchManualMeasurement value, CancellationToken ct)
         { Saved = value; return Task.CompletedTask; }
