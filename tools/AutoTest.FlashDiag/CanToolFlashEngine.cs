@@ -1,3 +1,4 @@
+using System.IO;
 using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Globalization;
@@ -285,7 +286,7 @@ public sealed class CanToolFlashEngine
             var leaseResult = await _device.PhysicalDutCanLeases.AcquireAsync(
                 BusRole.DutCan, "CanTool-Standalone-Flash-" + Guid.NewGuid().ToString("N"),
                 TimeSpan.FromMinutes(25), ct);
-            if (leaseResult.Outcome != Outcome.Accepted || leaseResult.Value is null)
+            if (leaseResult.Outcome != Outcome.Accepted || leaseResult.Value.Value == Guid.Empty)
                 throw new IOException("Cannot acquire exclusive physical CAN1 lease: " + leaseResult.FailureCode);
             lease = leaseResult.Value;
             hasLease = true;
