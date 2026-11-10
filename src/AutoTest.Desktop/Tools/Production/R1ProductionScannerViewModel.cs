@@ -182,7 +182,13 @@ public sealed class R1ProductionScannerViewModel : BindableBase
         LastRun = (runId?.ToString("D") ?? "无 RunId") + " · " + result +
             " · DUT=" + binding.UnitKey;
         LastEvidence = string.IsNullOrWhiteSpace(evidence) ? "无完整证据" : evidence;
-        Status = "扫码 TEST 已结束；判定为真实测试结果，尚未授权出厂放行。";
+        Status = result.Contains("SQLITE_NOT_DURABLE", StringComparison.Ordinal)
+            ? "真实运行已有本地证据，但数据库提交失败；不得计为已完成生产记录。"
+            : runId is null
+                ? "测试未启动或被拒绝；没有产生生产检测记录。"
+                : binding.ProductionTestEnabled
+                    ? "本次真实生产检测结果已记录；PASS/FAIL 按工程 TEST 实际结果，不等同于发货放行。"
+                    : "本次实际诊断测试结果已记录；不计入生产检测统计。";
     }
 
     private void Process(string raw, string origin, bool startPhysicalRun)
