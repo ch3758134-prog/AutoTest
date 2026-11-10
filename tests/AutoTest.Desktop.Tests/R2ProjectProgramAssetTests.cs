@@ -67,4 +67,34 @@ public sealed class R2ProjectProgramAssetTests
         Assert.Null(project.LabProgramAssetId);
         Assert.Empty(project.Assets);
     }
+    [Fact]
+    public async Task FreshRealProjectDoesNotProduceDuplicateLegacyTestAssetOnSaveOrReopen()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "AutoTest-single-TEST-" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(root, "project.autotest-project.json");
+        try
+        {
+            var project = new V1Workspace();
+            await project.SaveProjectAsync(path);
+            Assert.DoesNotContain(project.Assets, x => x.Kind == "test");
+            Assert.DoesNotContain(project.Assets, x => x.Kind == "test-program");
+
+            var opened = new V1Workspace();
+            await opened.OpenProjectAsync(path);
+            Assert.Null(opened.LabProgram);
+            Assert.DoesNotContain(opened.Assets, x => x.Kind == "test");
+            var program = LabDocument.New("唯一的真实工程 TEST");
+            var inserted = opened.ImportLabProgram(LabDocumentCodec.Save(program));
+            await opened.SaveProjectAsync(path);
+
+            var reopened = new V1Workspace();
+            await reopened.OpenProjectAsync(path);
+            Assert.Equal(inserted.Id, reopened.LabProgramAssetId);
+            Assert.Single(reopened.Assets.Where(x => x.Kind == "test-program"));
+            Assert.DoesNotContain(reopened.Assets, x => x.Kind == "test");
+            Assert.Equal(program.Id, reopened.LabProgram!.Id);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
 }
