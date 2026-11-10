@@ -287,7 +287,7 @@ public sealed class CanToolFlashEngine
                 TimeSpan.FromMinutes(25), ct);
             if (leaseResult.Outcome != Outcome.Accepted || leaseResult.Value is null)
                 throw new IOException("Cannot acquire exclusive physical CAN1 lease: " + leaseResult.FailureCode);
-            lease = leaseResult.Value.Value;
+            lease = leaseResult.Value;
             hasLease = true;
             authorization = _device.AuthorizePhysicalCanToolFlash(
                 lease, configuration.AppRequestId, configuration.BootRequestId,
@@ -361,7 +361,9 @@ public sealed class CanToolFlashEngine
             finally { CryptographicOperations.ZeroMemory(key); }
 
             var eraseLength = checked((uint)configuration.FlashLength);
-            var eraseRequest = new byte[12] { 0x31, 0x01, 0xFF, 0x00 };
+            var eraseRequest = new byte[12];
+            eraseRequest[0]=0x31; eraseRequest[1]=0x01;
+            eraseRequest[2]=0xFF; eraseRequest[3]=0x00;
             BinaryPrimitives.WriteUInt32BigEndian(eraseRequest.AsSpan(4, 4), configuration.FlashStart);
             BinaryPrimitives.WriteUInt32BigEndian(eraseRequest.AsSpan(8, 4), eraseLength);
             _eraseStarted = true;
@@ -377,7 +379,8 @@ public sealed class CanToolFlashEngine
                 ct.ThrowIfCancellationRequested();
                 var block = blocks[blockIndex];
                 int size = block.Data.Length;
-                var download = new byte[11] { 0x34, 0x00, 0x44 };
+                var download = new byte[11];
+                download[0]=0x34; download[1]=0; download[2]=0x44;
                 BinaryPrimitives.WriteUInt32BigEndian(download.AsSpan(3, 4), block.Address);
                 BinaryPrimitives.WriteUInt32BigEndian(download.AsSpan(7, 4), checked((uint)size));
                 var acceptDownload = await Exchange(boot, download,
@@ -408,7 +411,9 @@ public sealed class CanToolFlashEngine
                 var exit = await Exchange(boot, [0x37], $"BLOCK_{blockIndex+1}_TRANSFER_EXIT", ct);
                 if (exit.Length < 1 || exit[0] != 0x77)
                     throw new InvalidDataException("ECU RequestTransferExit acknowledgement missing.");
-                var verify = new byte[12] { 0x31, 0x01, 0xFF, 0x01 };
+                var verify = new byte[12];
+                verify[0]=0x31; verify[1]=0x01;
+                verify[2]=0xFF; verify[3]=0x01;
                 BinaryPrimitives.WriteUInt32BigEndian(verify.AsSpan(4, 4), block.Address);
                 BinaryPrimitives.WriteUInt32BigEndian(verify.AsSpan(8, 4), checked((uint)size));
                 var checkedBytes = await Exchange(boot, verify,
