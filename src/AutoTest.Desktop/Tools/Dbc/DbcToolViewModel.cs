@@ -25,6 +25,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     private readonly V1Workspace? _project;
+    public event EventHandler? ProjectDbcImported;
     private DbcWorkbenchDocument? _document;
     private string? _expectedHash;
     private DbcMessage? _message;
@@ -163,6 +164,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
             // unsupported vendor directives from a read-only DBC document.
             var original = await File.ReadAllTextAsync(FilePath, new UTF8Encoding(false, true));
             _project.ImportDbc(original, Path.GetFileName(FilePath));
+            ProjectDbcImported?.Invoke(this, EventArgs.Empty);
             Changed(nameof(Revision));
             Changed(nameof(ProjectStatus));
             Status = "DBC 已纳入当前工程资源库；Wave 可刷新信号。请保存工程以持久化 Revision。";
