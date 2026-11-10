@@ -47,15 +47,7 @@
    <Setter Property="FontSize" Value="12"/>
    <Setter Property="Foreground" Value="#E2EDF7"/>
   </Style>
-  <Style TargetType="TabControl">
-   <Setter Property="Background" Value="{StaticResource R1Panel}"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="{StaticResource R1Stroke}"/>
-  </Style>
-  <Style TargetType="TabItem">
-   <Setter Property="FontSize" Value="12"/>
-   <Setter Property="Padding" Value="15,8"/>
-  </Style>
+
  </Window.Resources>
  <Window.InputBindings>
   <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
