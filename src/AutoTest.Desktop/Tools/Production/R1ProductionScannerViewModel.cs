@@ -33,6 +33,7 @@ public sealed class R1ProductionScannerViewModel : BindableBase
         _recipeId = "R1-EOL", _stationProfileFile = "",
         _stationProfileRevision = "1", _exampleBarcode = "";
     private bool _running;
+    private bool _productionTestEnabled;
     private string _lastRun = "尚无真实执行";
     private string _lastEvidence = "—";
 
@@ -66,6 +67,11 @@ public sealed class R1ProductionScannerViewModel : BindableBase
     public string ExampleBarcode { get => _exampleBarcode; set => SetProperty(ref _exampleBarcode, value); }
     public string LastRun { get => _lastRun; private set => SetProperty(ref _lastRun, value); }
     public string LastEvidence { get => _lastEvidence; private set => SetProperty(ref _lastEvidence, value); }
+    public bool ProductionTestEnabled
+    {
+        get => _productionTestEnabled;
+        set => SetProperty(ref _productionTestEnabled, value);
+    }
     public bool IsRunning
     {
         get => _running;
@@ -100,6 +106,7 @@ public sealed class R1ProductionScannerViewModel : BindableBase
                 return;
             }
             _catalog = published;
+            ProductionTestEnabled = published.Recipes.Length == 1 && published.Recipes[0].ProductionTestEnabled;
             CatalogSource = "已发布的物理扫码规则 / 工程 TEST Revision 配方";
             RuleRevision = published.Revision;
             MatchDetail = "规则已载入，等待真实扫码。";
@@ -141,7 +148,7 @@ public sealed class R1ProductionScannerViewModel : BindableBase
                     program.Sha256, LabOrigin.Physical, true),
                 new LabArtifact(Path.GetFullPath(StationProfileFile), StationProfileRevision.Trim(),
                     stationSha, LabOrigin.Physical, true),
-                null, false, true);
+                null, false, true, ProductionTestEnabled: ProductionTestEnabled);
             var candidate = new LabCatalog("draft", false,
                 new[] { new LabIdentityRule("R1-PHYSICAL-SCAN", RulePattern.Trim(),
                     IdentityFields.Trim(), true) },
