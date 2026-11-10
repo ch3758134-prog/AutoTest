@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using AutoTest.Desktop.Tools.Flash;
 using AutoTest.Devices.Diagnostics;
 using AutoTest.Flash;
 using AutoTest.Specialists.Flash;
