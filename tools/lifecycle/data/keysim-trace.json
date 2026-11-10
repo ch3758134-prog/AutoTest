@@ -1,0 +1,195 @@
+{
+  "schema": "autotest-lifecycle/0.1",
+  "description": "KeySim first scoped evidence graph; edges are candidate unless the source explicitly names the relation",
+  "nodes": [
+    {
+      "id": "OBS-KEYSIM-20261109",
+      "kind": "fact",
+      "path": "docs/lifecycle-pilot/cases/CR-KEYSIM-001.md",
+      "anchor": "20 Key",
+      "description": "2026-11-09 field report, not calibrated measurement"
+    },
+    {
+      "id": "AT-SYS-011",
+      "kind": "requirement",
+      "work_product": "G1-03",
+      "maturity": "CONFIRMED",
+      "path": "SAEF/engineering/work-products/G1/G1-03/index.md",
+      "anchor": "AT-SYS-011"
+    },
+    {
+      "id": "IF-03",
+      "kind": "interface",
+      "work_product": "G1-05",
+      "path": "SAEF/engineering/work-products/G1/G1-05/index.md",
+      "anchor": "IF-03"
+    },
+    {
+      "id": "IF-06",
+      "kind": "interface",
+      "work_product": "G1-05",
+      "path": "SAEF/engineering/work-products/G1/G1-05/index.md",
+      "anchor": "IF-06"
+    },
+    {
+      "id": "G2-01",
+      "kind": "architecture",
+      "work_product": "G2-01",
+      "path": "SAEF/engineering/work-products/G2/G2-01/index.md",
+      "anchor": "20 键/五路电阻输出"
+    },
+    {
+      "id": "ICD-03",
+      "kind": "interface",
+      "work_product": "G2-05",
+      "path": "SAEF/engineering/work-products/G2/G2-05/index.md",
+      "anchor": "ICD-03"
+    },
+    {
+      "id": "G3-A2",
+      "kind": "detailed_design",
+      "work_product": "G3-02",
+      "path": "SAEF/engineering/work-products/G3/G3-02/index.md",
+      "anchor": "KeypadCommandCodec"
+    },
+    {
+      "id": "SRC-KEYPAD-CODEC",
+      "kind": "source",
+      "path": "src/AutoTest.Devices/Station/KeypadCommandCodec.cs",
+      "anchor": "EncodeMask(uint mask)"
+    },
+    {
+      "id": "SRC-KEYPAD-SERVICE",
+      "kind": "source",
+      "path": "src/AutoTest.Devices/Station/KeypadControlService.cs",
+      "anchor": "SetMaskAsync"
+    },
+    {
+      "id": "TEST-A2-KEYPAD",
+      "kind": "test",
+      "path": "tests/AutoTest.Devices.Tests/UsbCanProtocolTests.cs",
+      "anchor": "Verify_A2_T04"
+    },
+    {
+      "id": "EVIDENCE-B4",
+      "kind": "test",
+      "description": "No complete version-scoped five-channel voltage measurement attached; planned experiment"
+    },
+    {
+      "id": "WP-KEYSIM-001",
+      "kind": "work_package",
+      "status": "DRAFT",
+      "approved_by": "",
+      "approved_at": "",
+      "source_commit": "4530aba0079e8b2344e4ff5e706049450458a45b",
+      "allowed_paths": [
+        "src/AutoTest.Devices/Station/KeypadCommandCodec.cs",
+        "src/AutoTest.Devices/Station/KeypadControlService.cs"
+      ],
+      "required_inputs": [
+        "AT-SYS-011",
+        "ICD-03",
+        "G3-A2",
+        "EVIDENCE-B4"
+      ],
+      "baseline": {},
+      "verification": [
+        "Verify 20-key bit mask and release all without physical outputs",
+        "Obtain separately authorized B4 measured output evidence before any physical acceptance"
+      ],
+      "description": "Prospective physical keypad change; deliberately NOT_READY until approvals and B4 evidence"
+    }
+  ],
+  "edges": [
+    {
+      "from": "OBS-KEYSIM-20261109",
+      "to": "AT-SYS-011",
+      "kind": "derives_from",
+      "certainty": "review_required"
+    },
+    {
+      "from": "OBS-KEYSIM-20261109",
+      "to": "IF-06",
+      "kind": "derives_from",
+      "certainty": "review_required"
+    },
+    {
+      "from": "OBS-KEYSIM-20261109",
+      "to": "G2-01",
+      "kind": "allocated_to",
+      "certainty": "review_required"
+    },
+    {
+      "from": "AT-SYS-011",
+      "to": "ICD-03",
+      "kind": "allocated_to",
+      "certainty": "documented"
+    },
+    {
+      "from": "IF-03",
+      "to": "ICD-03",
+      "kind": "allocated_to",
+      "certainty": "review_required"
+    },
+    {
+      "from": "IF-06",
+      "to": "G3-A2",
+      "kind": "defined_by",
+      "certainty": "review_required"
+    },
+    {
+      "from": "G2-01",
+      "to": "ICD-03",
+      "kind": "defined_by",
+      "certainty": "review_required"
+    },
+    {
+      "from": "ICD-03",
+      "to": "G3-A2",
+      "kind": "defined_by",
+      "certainty": "documented"
+    },
+    {
+      "from": "G3-A2",
+      "to": "SRC-KEYPAD-CODEC",
+      "kind": "implements",
+      "certainty": "documented"
+    },
+    {
+      "from": "G3-A2",
+      "to": "SRC-KEYPAD-SERVICE",
+      "kind": "implements",
+      "certainty": "documented"
+    },
+    {
+      "from": "SRC-KEYPAD-CODEC",
+      "to": "TEST-A2-KEYPAD",
+      "kind": "verified_by",
+      "certainty": "documented"
+    },
+    {
+      "from": "G3-A2",
+      "to": "EVIDENCE-B4",
+      "kind": "verified_by",
+      "certainty": "review_required"
+    },
+    {
+      "from": "G3-A2",
+      "to": "WP-KEYSIM-001",
+      "kind": "depends_on",
+      "certainty": "review_required"
+    }
+  ],
+  "changes": [
+    {
+      "id": "CR-KEYSIM-001",
+      "origin": "OBS-KEYSIM-20261109",
+      "status": "UNDER_REVIEW",
+      "affected_nodes": [
+        "G3-A2",
+        "EVIDENCE-B4"
+      ],
+      "description": "Field feedback needs partial design/implementation reassessment"
+    }
+  ]
+}
