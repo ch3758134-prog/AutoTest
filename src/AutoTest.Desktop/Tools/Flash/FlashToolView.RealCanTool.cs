@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using AutoTest.Devices.Can;
 using AutoTest.Devices.Diagnostics;
 using AutoTest.Devices.Usb;
 using AutoTest.Flash;
