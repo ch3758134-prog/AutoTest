@@ -169,6 +169,41 @@ class ExecutionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuleError,"main"):
             self.engine.publish(wp["id"],worktree)
 
+    def test_export_complete_project_archive_to_reviewable_git_branch(self):
+        design=self._approved_design()
+        work,_=self._work(design)
+        self.engine.bind(work["id"],17,"DEVICE")
+        self.engine.dispatch(work["id"],"Owner","Confirmed")
+        tempdir=self.root/"archivework"
+        tempdir.mkdir()
+        subprocess.run(["git","init","-q","-b","feature/archive",str(tempdir)],check=True)
+        subprocess.run(["git","-C",str(tempdir),"remote","add","origin",
+                        "git@github.com:"+REPO+".git"],check=True)
+        with self.assertRaises(RuleError):
+            self.engine.archive_project(self.project,tempdir,"","")
+        result=self.engine.archive_project(self.project,tempdir,"Owner",
+                    "Reviewed for confidential information")
+        self.assertEqual(result["state"],"WRITTEN_NOT_COMMITTED")
+        target=tempdir/result["path"]
+        archived=json.loads(target.read_text(encoding="utf-8"))
+        self.assertTrue(archived["review_required_before_remote_push"])
+        self.assertEqual(archived["source_project_id"],self.project)
+        self.assertEqual(len(archived["engineering"]["execution"]["tasks"]),1)
+        self.assertNotIn("github_snapshot",archived["engineering"]["execution"])
+        pending=subprocess.run(["git","-C",str(tempdir),"status","--porcelain"],
+                  check=True,text=True,capture_output=True).stdout
+        self.assertIn("?? docs/",pending)
+        subprocess.run(["git","-C",str(tempdir),"branch","-m","main"],check=True)
+        with self.assertRaisesRegex(RuleError,"main"):
+            self.engine.archive_project(self.project,tempdir,"Owner","Review")
+
+    def test_git_origin_must_match_real_github_not_spoofed_host(self):
+        from studio_execution import _github_origin_matches
+        self.assertTrue(_github_origin_matches("https://github.com/"+REPO+".git",REPO))
+        self.assertTrue(_github_origin_matches("git@github.com:"+REPO+".git",REPO))
+        self.assertFalse(_github_origin_matches("https://evil.com/foo/"+REPO+".git",REPO))
+        self.assertFalse(_github_origin_matches("https://github.com/"+REPO+"-copy",REPO))
+
     def test_reader_normalizes_public_rest_payload(self):
         from studio_execution import normalize_issue,normalize_pr,latest_run_for
         issue=normalize_issue({"number":17,"title":"real issue","state":"open",
