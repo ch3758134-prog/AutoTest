@@ -95,7 +95,7 @@ pre.readout{background:#f6f8fb;border:1px solid var(--line);border-radius:8px;pa
 <div id="toasts" aria-live="polite"></div>
 <script>
 'use strict';
-const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n};
+const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined&&text!==null)n.textContent=String(text);return n};
 const add=(p,...children)=>{children.forEach(n=>p.append(n));return p};
 const $=s=>document.querySelector(s);
 const clean=n=>n.replaceChildren();
@@ -167,7 +167,7 @@ function renderDashboard(){const p=state.data.project;
  else{const arr=[...state.data.attention.slice(0,6),...state.data.design_review.slice(0,5)].filter((v,i,self)=>self.findIndex(o=>o.id===v.id)===i);arr.forEach(o=>attention.append(rowCard(o,openItem)));}a.node.append(attention);
  const b=section('系统构成与产品能力');b.header.append(button('打开产品结构','link',()=>navigate('product')));
  const grid=el('div','twocol');for(const kind of ['system','capability']){const panel=el('div','panel');add(panel,el('h2','',kind==='system'?'系统元素':'产品能力'));let items=state.data.objects.filter(x=>x.kind===kind);if(items.length)items.slice(0,8).forEach(o=>panel.append(rowCard(o,openItem)));else panel.append(el('p','','尚未建立'+groupLabel(kind)+'；不将文件列表冒充系统分解。'));panel.append(button('+ 新增'+groupLabel(kind),'link',()=>editorModal(kind)));grid.append(panel);}b.node.append(grid);
- const h=section('近期工程活动');let timeline=el('div','panel');if(!state.data.events.length)timeline.append(el('p','','尚无操作记录。'));state.data.events.slice(0,10).forEach(ev=>{let n=el('div','event');add(n,el('strong','',ev.action+' · '+(itemName(ev.object_id)||projectName())),el('small','',ev.timestamp+' · '+ev.actor+' · '+ev.note));timeline.append(n)});h.node.append(timeline);
+ const h=section('近期工程活动');let timeline=el('div','panel');if(!state.data.events.length)timeline.append(el('p','','尚无操作记录。'));state.data.events.slice(0,10).forEach(ev=>{let n=el('div','event');add(n,el('strong','',ev.action+' · '+(ev.object_id?itemName(ev.object_id):projectName())),el('small','',ev.timestamp+' · '+ev.actor+' · '+ev.note));timeline.append(n)});h.node.append(timeline);
  root.append(note('产品定义、需求设计、已批准基线、实现状态和真实验证是不同信息。修改已批准对象会生成新修订并回到草稿，不会擦除旧批准快照。'));}
 function renderEditor(){const types=groupKinds[state.view];const desc={product:'构建产品场景、能力和系统分解，而不是预先塞进某个专用硬件模型。',engineering:'分层维护需求、架构、接口和详细设计。每个工程对象都保留正文、来源、关系与历史版本。',governance:'记录方案比较、设计决定、风险与变更；实施后的发现可以回到系统需求重新审查。',delivery:'关联已批准设计、软件工作包、测试规格与实测证据，清楚地区分实施和验证。'}[state.view];
  heading(stages[state.view],desc||(state.view==='archive'?'阅读历史资料、理解来源、查看内容差异，必要时引用到当前工程对象；导入不会自动批准任何内容。':'当前工程对象'));
