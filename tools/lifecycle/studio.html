@@ -247,8 +247,27 @@ function editorModal(kind,existing=null){showModal((existing?'修订':'新建')+
  const title=field(body,'工程对象标题',existing?.title||'');const description=field(body,'完整问题、要求或设计内容',existing?.body||'','textarea');
  const parents=[['','无上级目录']].concat(state.data.objects.filter(x=>x.id!==existing?.id).map(x=>[x.id,groupLabel(x.kind)+' · '+x.title]));const parent=selectField(body,'所属工程结构 / 上级对象',parents,existing?.parent_id||'');
  const inputs={};for(const [key,label] of fieldSpecs[kind]||[]){let current=existing?.meta?.[key]||'';if(Array.isArray(current))current=current.join('\n');inputs[key]=field(body,label,current,(key==='acceptance'||key==='rationale'||key==='alternatives'||key==='file_scope'||key==='conclusion')?'textarea':'input');if(inputs[key].tagName==='TEXTAREA')inputs[key].className='short';}
+ const unitDesignInputs={};
+ if(kind==='design'){
+  body.append(note('纯编码工作包的设计输入：以下六项必须写清楚。对简单模块不适用的部分也要说明“不适用”及原因，不允许编码 AI 自行补做架构设计。'));
+  for(const [key,label] of [
+   ['behavior','单元功能、行为与算法规则'],
+   ['interfaces','参数、接口、数据范围与单位'],
+   ['states','状态、时序交互及不变量'],
+   ['errors','超时、取消、故障与恢复'],
+   ['concurrency','任务/线程/资源/实时性约束'],
+   ['verification','单元测试输入、预期结果和判定标准']
+  ]){
+    unitDesignInputs[key]=field(body,label,existing?.meta?.unit_design?.[key]||'','textarea');
+    unitDesignInputs[key].className='short';
+  }
+ }
+ if(kind==='work_package')body.append(note('此工作包交给纯编码 AI：需要提前准备已批准的软件单元详细设计、受审查的实现依赖、准确的源码 SHA 和完整测试合同；编码 AI 不得开展技术研究或自定公共接口。'));
  modalActions(footer,async()=>{
   const meta={...(existing?.meta||{})};for(const [k,input] of Object.entries(inputs))meta[k]=k==='file_scope'?input.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean):input.value;
+  if(kind==='design'&&Object.keys(unitDesignInputs).length)meta.unit_design=Object.fromEntries(
+    Object.entries(unitDesignInputs).map(([key,value])=>[key,value.value]));
+  if(kind==='work_package')meta.execution_role='CODER';
   let payload={title:title.value,body:description.value,parent_id:parent.value||null,meta};
   const result=await req(existing?'/api/studio/object/'+existing.id+'/update':'/api/studio/object',
     existing?{...payload,expected_revision:existing.revision}:{...payload,kind,project_id:state.project});
