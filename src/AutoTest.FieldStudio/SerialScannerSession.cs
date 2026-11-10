@@ -81,7 +81,7 @@ internal sealed class SerialScannerSession : IAsyncDisposable
                 catch (TimeoutException)
                 {
                     var packet = _framer.FlushAfterIdle(DateTimeOffset.UtcNow,
-                        TimeSpan.FromMilliseconds(450));
+                        SerialBarcodeFramer.DefaultIdleBoundary);
                     if (packet is not null) BarcodeReceived?.Invoke(packet);
                 }
             }
