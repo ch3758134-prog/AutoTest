@@ -206,6 +206,40 @@ class EngineeringStoreTest(unittest.TestCase):
         self.assertIn("系统总体结构",context["markdown"])
         self.assertEqual(len(context["manifest"]["inputs"]),2)
 
+    def test_coding_only_ai_requires_approved_complete_detailed_design(self):
+        design=self.create("design","单元详细设计",
+                           meta={"unit_design":{"behavior":"输入和输出语义",
+                                "interfaces":"有效数据区间和单位",
+                                "states":"静态单元不涉及状态，明确无状态",
+                                "errors":"无效输入返回失败",
+                                "concurrency":"无共享资源，单线程同步",
+                                "verification":"边界输入和非法值单测"}})
+        work=self.create("work_package","编码限定工作包",meta={
+            "execution_role":"CODER","source_sha":"a"*40,
+            "file_scope":["src/core.cs"],"acceptance":"测试符合规格",
+            "input_revisions":{design["id"]:design["revision"]+1}})
+        self.review_link(design,work)
+        reasons=self.store.readiness(work["id"])["reasons"]
+        self.assertTrue(any("上游对象尚未批准" in r for r in reasons))
+        self.approve(design)
+        self.approve(work)
+        bundle=self.store.context(work["id"])
+        self.assertIn("编码 AI 只负责执行",bundle["markdown"])
+        self.assertIn("单元详细设计",bundle["markdown"])
+
+    def test_coding_only_ai_blocks_ambiguous_unit_design(self):
+        design=self.approve(self.create("design","没有写完整的软件单元",
+                                         meta={"unit_design":{"behavior":"做处理"}}))
+        work=self.create("work_package","不应分配给编码 AI",meta={
+            "execution_role":"CODER","source_sha":"a"*40,
+            "file_scope":["src/x.cs"],"acceptance":"验证边界",
+            "input_revisions":{design["id"]:design["revision"]}})
+        self.review_link(design,work)
+        reasons=self.store.readiness(work["id"])["reasons"]
+        self.assertTrue(any("软件详细设计缺少" in reason for reason in reasons))
+        with self.assertRaises(RuleError):
+            self.approve(work)
+
     def test_database_reopens_with_same_data(self):
         req=self.create("requirement","断电重启后保留")
         reopened=Store(self.file)
