@@ -31,7 +31,11 @@ public interface IDeviceLabBackend : IAsyncDisposable
 /// <summary>Production adapter to the already-integrated, firmware-validated hardware controller.</summary>
 public sealed class HardwareDeviceLabBackend : IDeviceLabBackend
 {
-    private readonly HardwareBenchController _controller = new();
+    private readonly HardwareBenchController _controller;
+    public HardwareDeviceLabBackend() : this(new HardwareBenchController()) { }
+    public HardwareDeviceLabBackend(HardwareBenchController controller) =>
+        _controller = controller ?? throw new ArgumentNullException(nameof(controller));
+    public HardwareBenchController Controller => _controller;
     public IReadOnlyList<WinUsbCandidate> Enumerate() => _controller.Enumerate();
     public UsbSessionState State => _controller.State;
     public string? TraceFile => _controller.TraceFile;
