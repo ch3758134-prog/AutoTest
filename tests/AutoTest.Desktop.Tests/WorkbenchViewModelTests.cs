@@ -154,4 +154,51 @@ public sealed class WorkbenchViewModelTests
         Assert.Contains("Case 只能插入 Switch", vm.Diagnostic);
     }
 
+    [Fact]
+    public async Task EditedTestProgramIsSameProgramExecutedAfterProjectReopen()
+    {
+        var first = Create();
+        first.NewStepType = "SetVariable";
+        first.InsertRootCommand.Execute();
+        var setting = Assert.Single(first.Workspace.Document.Walk());
+        first.SelectedStep = first.Steps.Single();
+        first.EditedName = "Set mode for DUT";
+        first.EditedVariable = "mode";
+        first.EditedValue = "ready";
+        first.ApplyPropertiesCommand.Execute();
+
+        first.NewStepType = "Assert";
+        first.NewStepPhase = "Test";
+        first.InsertRootCommand.Execute();
+        first.SelectedStep = first.Steps.Single(x => x.NodeType == "Assert");
+        first.EditedVariable = "mode";
+        first.EditedExpected = "ready";
+        first.ApplyPropertiesCommand.Execute();
+
+        var folder = Path.Combine(Path.GetTempPath(), "AutoTest-run-" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(folder, "actual-editor.autotest-project.json");
+        try
+        {
+            await first.SaveProjectAsync(path);
+            var reopened = Create();
+            await reopened.OpenProjectAsync(path);
+            var names = reopened.Workspace.Document.Walk().Select(x => x.Name).ToArray();
+            Assert.Contains("Set mode for DUT", names);
+            Assert.Equal(2, names.Length);
+
+            var report = await reopened.RunCurrentDocumentAsync();
+            Assert.NotNull(report);
+            Assert.Equal(MockStepVerdict.Pass, report!.Verdict);
+            Assert.Equal("NO_HARDWARE_ACK", reopened.AckStatus);
+            Assert.Contains("NOT_PRODUCTION", reopened.Verdict);
+
+            reopened.SelectedStep = reopened.Steps.Single(x => x.NodeType == "Assert");
+            reopened.EditedExpected = "not-ready";
+            reopened.ApplyPropertiesCommand.Execute();
+            var failed = await reopened.RunCurrentDocumentAsync();
+            Assert.Equal(MockStepVerdict.Fail, failed!.Verdict);
+        }
+        finally { if (Directory.Exists(folder)) Directory.Delete(folder, true); }
+    }
+
 }
