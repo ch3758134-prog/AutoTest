@@ -665,7 +665,14 @@ class Store:
                     execution["github_snapshot"]=json.loads(row["snapshot"]) if row["snapshot"] else None
                 execution["tasks"]=[dict(r) for r in db.execute(
                     "SELECT * FROM execution_tasks WHERE project_id=?",(key,))]
+            proposals=[]
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='manager_proposals'").fetchone():
+                proposals=[dict(row) for row in db.execute(
+                    "SELECT * FROM manager_proposals WHERE project_id=? ORDER BY created,id",
+                    (key,))]
+                for proposal in proposals:
+                    proposal["source_objects"]=json.loads(proposal["source_objects"])
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
                     "objects":objects,"relations":links,"revisions":revisions,
                     "events":events,"technical_research":research,
-                    "execution":execution}
+                    "execution":execution,"manager_proposals":proposals}
