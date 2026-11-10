@@ -62,6 +62,10 @@ def handler_factory(store, token, repo=None):
                 if path == "/research.js":
                     return self.write((HERE / "studio_research_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/api/studio/version":
+                    return self.write({"application": "Engineering Workbench",
+                                       "version": "0.4", "mode": "editable",
+                                       "legacy": False})
                 if path == "/api/studio/bootstrap":
                     return self.write({"schema": "engineering-workbench/1",
                                        "csrf": token, "projects": store.projects()})
