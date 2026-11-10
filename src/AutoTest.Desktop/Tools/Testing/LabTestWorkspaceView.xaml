@@ -54,7 +54,7 @@
       <Button Content="Redo" Command="{Binding RedoCommand}"/>
       <Separator Width="12"/>
       <Button Content="Preflight" Command="{Binding PreflightCommand}"/>
-      <Button Content="执行真实 CAN1 只读测试" Command="{Binding RunPhysicalReadOnlyCommand}" FontWeight="SemiBold" Background="#176A8C" ToolTip="仅运行当前工程已保存的 TEST 程序；每次要求操作员授权，无法执行输出或烧录"/>
+      <Button Content="执行真实工程 TEST" Command="{Binding RunPhysicalReadOnlyCommand}" FontWeight="SemiBold" Background="#176A8C" ToolTip="执行当前已保存 TEST；只调用已接通的实际硬件能力，KEY_SIM 需 P05 配置、完整计划授权与 Cleanup 释放"/>
       <Button Content="Pause" Command="{Binding PauseCommand}"/>
       <Button Content="Resume" Command="{Binding ResumeCommand}"/>
       <Button Content="Step" Command="{Binding StepCommand}"/>
