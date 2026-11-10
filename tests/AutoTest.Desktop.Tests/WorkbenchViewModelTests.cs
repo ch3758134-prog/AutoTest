@@ -114,4 +114,44 @@ public sealed class WorkbenchViewModelTests
         }
         finally { Directory.Delete(Path.GetDirectoryName(path)!, true); }
     }
+    [Fact]
+    public async Task R1EditorCanCreateAndExecuteSwitchCaseMockProgram()
+    {
+        var vm = Create();
+        vm.NewStepPhase = "Prepare";
+        vm.NewStepType = "SetVariable";
+        vm.InsertRootCommand.Execute();
+        vm.NewStepPhase = "Test";
+        vm.NewStepType = "Switch";
+        vm.InsertRootCommand.Execute();
+        Assert.Equal("Switch", vm.SelectedStep!.NodeType);
+        vm.NewStepType = "Case";
+        vm.InsertChildCommand.Execute();
+        Assert.Equal("Case", vm.SelectedStep!.NodeType);
+        vm.NewStepType = "MockObserve";
+        vm.InsertChildCommand.Execute();
+        vm.NewStepType = "Assert";
+        vm.InsertAfterCommand.Execute();
+
+        Assert.Empty(vm.Workspace.Diagnostics());
+        var result = await vm.RunCurrentDocumentAsync();
+        Assert.NotNull(result);
+        Assert.Equal(MockStepVerdict.Pass, result!.Verdict);
+        Assert.Contains(result.Facts, x => x.Type == "Switch");
+        Assert.Contains(result.Facts, x => x.Type == "Case");
+        Assert.Contains(result.Facts, x => x.Type == "Assert");
+        Assert.Contains("MOCK", vm.RequestStatus);
+    }
+
+    [Fact]
+    public void R1EditorRejectsStandaloneCaseNodes()
+    {
+        var vm = Create();
+        vm.NewStepType = "Case";
+        vm.NewStepPhase = "Test";
+        vm.InsertRootCommand.Execute();
+        Assert.Empty(vm.Workspace.Document.Walk());
+        Assert.Contains("Case 只能插入 Switch", vm.Diagnostic);
+    }
+
 }
