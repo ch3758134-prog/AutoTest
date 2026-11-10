@@ -128,8 +128,8 @@ public sealed class FlashToolViewModel : BindableBase
         var image = Path.GetExtension(name).ToLowerInvariant() switch
         {
             ".bin" => FirmwareImageParser.ParseBin(bytes, binAddress),
-            ".hex" or ".ihex" => FirmwareImageParser.ParseHex(new UTF8Encoding(false, true).GetString(bytes)),
-            ".s19" or ".s28" or ".s37" or ".srec" or ".mot" =>
+            ".hex" or ".ihex" or ".h86" => FirmwareImageParser.ParseHex(new UTF8Encoding(false, true).GetString(bytes)),
+            ".s19" or ".s28" or ".s37" or ".srec" or ".mot" or ".sx" =>
                 FirmwareImageParser.ParseS19(new UTF8Encoding(false, true).GetString(bytes)),
             _ => throw new FirmwareFormatException("只接受 BIN / Intel HEX / S-record。")
         };
