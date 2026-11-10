@@ -14,24 +14,23 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Tools.Uds;
 
-// INTEGRATION registers the View/VM in the shared Prism Shell; this VM never
-// creates a physical CAN/USB session. Standalone instance is explicitly MOCK.
+// R1 uses the shared physical CAN1 session or explicitly imported offline recordings.
+// No simulated ECU transport is constructed.
 public sealed class UdsToolViewModel : BindableBase
 {
-    private readonly UdsDiagnosticWorkspace _backend;
     private readonly UdsReplayWorkspace _replay = new();
     private CancellationTokenSource? _sendStop;
     private Func<HardwareBenchController?>? _physicalProvider;
     private Func<string,bool>? _confirmPhysical;
     private CanToolConfigurationSnapshot? _canToolProfile;
-    private bool _isBusy, _injectPending, _noResponse, _injectNrc;
-    private string _profileName="Mock ECU", _mockIdentity="MOCK_ECU_A",
+    private bool _isBusy;
+    private string _profileName="未配置 ECU", _mockIdentity="",
         _txId="7E0", _rxId="7E8", _p2Ms="1000", _p2StarMs="5000",
-        _requestHex="22 F1 90", _expectedHex="", _serviceName="Read VIN (Mock)",
-        _documentPath="", _status="MOCK_READY", _responseHex="—",
+        _requestHex="22 F1 90", _expectedHex="", _serviceName="Read DID",
+        _documentPath="", _status="DEVICE_NOT_CONNECTED", _responseHex="—",
         _nrc="—", _expectedMatch="NOT_SPECIFIED", _error="", _responseSummary="尚未收到诊断响应。",
         _faultSid="22", _faultCode="31", _session="Default / Unknown",
-        _sourceMode="Mock", _replayPath="", _didParameter="F190", _dtcMaskParameter="FF";
+        _sourceMode="Physical Read", _replayPath="", _didParameter="F190", _dtcMaskParameter="FF";
     private UdsServiceDefinition? _selectedService;
     private UdsServiceDescriptor? _selectedCatalogService;
     public IReadOnlyList<UdsServiceDescriptor> ServiceCatalog { get; } =
@@ -63,14 +62,10 @@ public sealed class UdsToolViewModel : BindableBase
                 " 不会自动发出 CAN 报文。";
         }
     }
-    public UdsToolViewModel() : this(new UdsDiagnosticWorkspace()) { }
-    public UdsToolViewModel(UdsDiagnosticWorkspace backend)
+    public UdsToolViewModel()
     {
-        _backend = backend;
-        Services.Add(new("Read VIN (Mock)","22 F1 90",""));
-        Services.Add(new("Read DTC (Mock)","19 02 FF",""));
-        Services.Add(new("Tester Present (Mock)","3E 00",""));
-        Services.Add(new("Default session (Mock)","10 01",""));
+        Services.Add(new("Read DID","22 F1 90",""));
+        Services.Add(new("Read DTC","19 02 FF",""));
         PrepareReadDidCommand = new DelegateCommand(() =>
             PrepareTypedRequest(() => UdsTypedRequestBuilder.ReadDataByIdentifier(
                 checked((ushort)CanId(DidParameter))),"Read DID"), () => !IsBusy);
@@ -81,7 +76,6 @@ public sealed class UdsToolViewModel : BindableBase
             PrepareTypedRequest(UdsTypedRequestBuilder.TesterPresent,"Tester Present"), () => !IsBusy);
         SendCommand = new DelegateCommand(() => _ = SendBoundedAsync(), () => !IsBusy);
         CancelCommand = new DelegateCommand(() => _sendStop?.Cancel(), () => IsBusy && _sendStop is not null);
-        ResetCommand = new DelegateCommand(() => _ = ResetAsync(), () => !IsBusy);
         SaveServiceCommand = new DelegateCommand(SaveService, () => !IsBusy);
         DeleteServiceCommand = new DelegateCommand(DeleteService, () => !IsBusy);
         SaveDocumentCommand = new DelegateCommand(() => _ = SaveDocumentAsync(), () => !IsBusy);
@@ -95,20 +89,19 @@ public sealed class UdsToolViewModel : BindableBase
     public DelegateCommand PrepareTesterPresentCommand { get; }
     public DelegateCommand SendCommand { get; }
     public DelegateCommand CancelCommand { get; }
-    public DelegateCommand ResetCommand { get; }
     public DelegateCommand SaveServiceCommand { get; }
     public DelegateCommand DeleteServiceCommand { get; }
     public DelegateCommand SaveDocumentCommand { get; }
     public DelegateCommand LoadDocumentCommand { get; }
     public DelegateCommand LoadReplayCommand { get; }
-    public IReadOnlyList<string> SourceModes { get; } = ["Mock", "Replay", "Physical Read"];
+    public IReadOnlyList<string> SourceModes { get; } = ["Physical Read", "Replay"];
     public bool PhysicalTxEnabled =>
         _physicalProvider?.Invoke() is { State: UsbSessionState.Connected, ProtocolVersionVerified: true };
     public string SourceLabel => SourceMode switch
     {
         "Physical Read" => "PHYSICAL CAN1 / ONLY 0x19 + 0x22",
         "Replay" => "REPLAY / NO PHYSICAL CAN TX",
-        _ => "MOCK / NO PHYSICAL CAN TX"
+        _ => "UNSUPPORTED SOURCE"
     };
 
     public void AttachPhysicalLink(Func<HardwareBenchController?> device,
@@ -148,7 +141,7 @@ public sealed class UdsToolViewModel : BindableBase
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))
           foreach(var command in Commands()) command.RaiseCanExecuteChanged(); } }
-    private IEnumerable<DelegateCommand> Commands() => [SendCommand, CancelCommand, ResetCommand,
+    private IEnumerable<DelegateCommand> Commands() => [SendCommand, CancelCommand,
         SaveServiceCommand, DeleteServiceCommand, SaveDocumentCommand, LoadDocumentCommand, LoadReplayCommand,
         PrepareReadDidCommand, PrepareReadDtcCommand, PrepareTesterPresentCommand];
     public string ProfileName { get => _profileName; set => SetProperty(ref _profileName,value); }
@@ -236,7 +229,7 @@ public sealed class UdsToolViewModel : BindableBase
     {
         if (IsBusy) return;
         IsBusy=true;
-        Status=SourceMode switch { "Replay"=>"REPLAY_REQUEST","Physical Read"=>"PHYSICAL_READ_REQUEST",_=>"MOCK_SENDING" };
+        Status=SourceMode switch { "Replay"=>"REPLAY_REQUEST","Physical Read"=>"PHYSICAL_READ_REQUEST",_=>"UNSUPPORTED_SOURCE" };
         Error=""; Nrc="—"; ResponseHex="—";
         ResponseSummary="诊断请求执行中；等待明确的请求/响应证据。";
         try
@@ -253,13 +246,7 @@ public sealed class UdsToolViewModel : BindableBase
                 ApplyExchange(playback,request);
                 return;
             }
-            if (SourceMode!="Mock") throw new InvalidOperationException("Source not supported.");
-            _backend.SetNoResponse(NoResponse);
-            if (InjectPending && InjectNrc) throw new InvalidOperationException("Select NRC fault OR pending, not both.");
-            if (InjectPending) _backend.InjectNextPending(request[0]);
-            if (InjectNrc) _backend.InjectNextNrc(checked((byte)CanId(FaultSid)), checked((byte)CanId(FaultCode)));
-            var exchange=await _backend.SendMockAsync(Profile(),RequestHex,ExpectedHex,ct);
-            ApplyExchange(exchange,request);
+            throw new InvalidOperationException("R1 does not support simulated UDS communication.");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         { Status="CANCELLED"; Error="REQUEST_CANCELLED"; ResponseSummary="已取消，不能判定任何 ECU 响应成功。"; }
@@ -371,16 +358,6 @@ public sealed class UdsToolViewModel : BindableBase
         catch(Exception ex) { Status="REPLAY_ERROR"; Error=ex.Message; }
         finally { IsBusy=false; }
     }
-    public async Task ResetAsync()
-    {
-        if (IsBusy) return;
-        IsBusy=true; Error="";
-        try { await _backend.ResetMockAsync(MockIdentity); TraceRows.Clear(); Status="MOCK_RESET";
-            ResponseSummary="Mock ECU 已重置；不代表任何真实 ECU 状态发生变化。";
-            ResponseHex="—"; Nrc="—"; ExpectedMatch="NOT_SPECIFIED"; Session="Default / Unknown"; }
-        catch(Exception ex) { Status="MOCK_ERROR"; Error=ex.Message; }
-        finally { IsBusy=false; }
-    }
     public void SaveService()
     {
         if (IsBusy) return;
@@ -425,7 +402,6 @@ public sealed class UdsToolViewModel : BindableBase
             P2Ms=doc.Profile.P2Ms.ToString(CultureInfo.InvariantCulture);
             P2StarMs=doc.Profile.P2StarMs.ToString(CultureInfo.InvariantCulture);
             Services.Clear(); foreach(var item in doc.Services) Services.Add(item);
-            await _backend.ResetMockAsync(MockIdentity);
             TraceRows.Clear(); Status="DOCUMENT_LOADED"; Error="";
         }
         catch(Exception ex) { Status="DOCUMENT_ERROR"; Error=ex.Message; }
