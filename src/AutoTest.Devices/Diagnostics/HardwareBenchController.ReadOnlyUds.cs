@@ -37,6 +37,8 @@ public sealed partial class HardwareBenchController
         LeaseToken lease, Guid requestId, TimeSpan lifetime, int maxFrames,
         string typedConfirmation)
     {
+        if (PhysicalCanToolFlashActive)
+            throw new UnauthorizedAccessException("An exclusive CanTool Flash job owns CAN1.");
         ReadOnlyUdsTransmitBoundary.ValidateReadOnlyRequest(exactReadOnlyPdu.Span);
         string expected = PhysicalReadOnlyUdsConfirmation(requestId, endpoint, exactReadOnlyPdu.Span[0]);
         if (!string.Equals(typedConfirmation, expected, StringComparison.Ordinal))
@@ -101,6 +103,9 @@ public sealed partial class HardwareBenchController
             long generation = session.Generation;
             if (!leases.Validate(BusRole.DutCan, lease) || lease.SessionGeneration != generation)
                 return OperationResult<CanTxReceipt>.Rejected("STALE_DUT_CAN_LEASE", "Lease invalid or not from this session.");
+            if (PhysicalCanToolFlashActive)
+                return await TransmitCanToolFlashFrameAsync(tx, lease, session, link, ct)
+                    .ConfigureAwait(false);
             if (!_physicalUdsBoundary.TryConsumeOutgoing(tx.Frame, lease, generation,
                     out Guid requestId, out string reason))
             {
