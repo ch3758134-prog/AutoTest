@@ -20,7 +20,8 @@ public sealed record LabArtifact(string Key, string Revision, string Sha256,
 public sealed record LabRecipe(string RecipeId, string Revision, string ModelField,
     string CustomerField, LabArtifact TestProgram, LabArtifact StationProfile,
     LabArtifact? FlashImage, bool RequiresFlash, bool Enabled,
-    string EffectiveFromUtc = "", string EffectiveUntilUtc = "");
+    string EffectiveFromUtc = "", string EffectiveUntilUtc = "",
+    bool ProductionTestEnabled = false);
 
 public sealed record LabRuleSample(string RawBarcode, string ExpectedRuleId, string ExpectedRecipeId,
     string ObservedAtUtc = "");
