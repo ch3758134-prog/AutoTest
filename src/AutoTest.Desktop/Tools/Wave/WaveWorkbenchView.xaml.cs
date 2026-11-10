@@ -42,14 +42,14 @@ public partial class WaveWorkbenchView : UserControl
         {
             var controller = _deviceSource?.Invoke();
             var workspace = _workspaceSource?.Invoke();
+            var hub = controller?.Hub;
             if (controller is null || controller.State != UsbSessionState.Connected ||
-                !controller.ProtocolVersionVerified || controller.Hub is null ||
-                workspace?.DbcAssetId is null)
+                !controller.ProtocolVersionVerified || hub is null ||
+                workspace is null || workspace.DbcAssetId is null)
                 throw new InvalidOperationException("先在设备页连接并验证主控，再在工程中登记 DBC。");
             var asset = workspace.Assets.Single(x => x.Id == workspace.DbcAssetId.Value);
             var revision = asset.ToReference();
             var generation = controller.Generation;
-            var hub = controller.Hub;
             var picker = new Microsoft.Win32.SaveFileDialog
             {
                 Title = "保存真实 CAN1 RX 帧档案（5 秒）",
@@ -80,9 +80,21 @@ public partial class WaveWorkbenchView : UserControl
             // the DBC identity, ordered offsets and actual frame format.
             var bytes = JsonSerializer.SerializeToUtf8Bytes(archive,
                 new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllBytesAsync(picker.FileName, bytes, cancel.Token);
+            var temporary = picker.FileName + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                await File.WriteAllBytesAsync(temporary, bytes, cancel.Token);
+                cancel.Token.ThrowIfCancellationRequested();
+                File.Move(temporary, picker.FileName, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
             Model.ArchivePath = picker.FileName;
             await Model.OpenArchiveSelectedAsync();
+            if (!Model.ArchiveAvailable)
+                throw new InvalidDataException("已写出档案，但 Replay 再读校验失败：" + Model.Status);
             ArchiveCaptureStatus.Text = "真实 CAN1 RX 已保存 " + archive.Frames.Length +
                 " 帧；可执行独立 Replay。任何丢帧均保留在档案 Loss 字段。";
         }
