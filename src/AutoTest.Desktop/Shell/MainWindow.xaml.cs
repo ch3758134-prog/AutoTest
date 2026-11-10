@@ -264,6 +264,19 @@ public partial class MainWindow : Window
         try
         {
             binding.Verify(project);
+            // A scanned unit with any prior durable run must be deliberately
+            // marked as retest; it must never silently enter a "new DUT" count.
+            var existing = await new RunHistoryQuery(database).FindByDutAsync(binding.UnitKey);
+            if (existing.Length != 0 &&
+                MessageBox.Show(this,
+                    "此 DUT 身份在记录库中已有 " + existing.Length +
+                    " 次运行记录。\n\n这次是否确认为复测？拒绝将不启动实际测试。",
+                    "重复扫码 / 复测确认", MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            {
+                scanner.MarkRunCompleted(binding, null, "RETEST_CONFIRMATION_REQUIRED", null);
+                return;
+            }
             var test = GetProjectTestModel(project);
             if (test.Busy) throw new InvalidOperationException("PROJECT_TEST_ALREADY_RUNNING");
             var result = await test.RunPhysicalReadOnlyAsync(binding);
