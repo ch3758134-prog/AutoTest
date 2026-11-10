@@ -187,6 +187,7 @@ class EvidenceLedResearchTests(unittest.TestCase):
         self.assertEqual(len(exported["technical_research"]["decisions"]),1)
         self.research.reopen(study["id"],{"actor":"负责人",
                                         "reason":"现场出现不同固件修订，重新验证"})
+        self.assertFalse(self.research.evaluate(study["id"],option["id"])["ready"])
         gate=self.store.readiness(work["id"])
         self.assertFalse(gate["ready"])
         self.assertTrue(any("技术" in x or "Technology" in x
