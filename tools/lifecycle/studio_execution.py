@@ -429,6 +429,63 @@ class Execution:
                       +work_context["markdown"])
             return {"manifest":manifest,"markdown":markdown}
 
+    def archive_project(self, project_id, worktree):
+        """Write the entire authoritative engineering snapshot into a reviewable Git branch.
+
+        GitHub issues and PRs stay authoritative remotely; avoid duplicating their
+        cached bodies in the exported archive. Never commit or push automatically.
+        """
+        with self.store.db() as db:
+            cfg=self._config(db,project_id)
+            if not cfg:
+                raise RuleError("Configure GitHub repository before archiving")
+            repository=cfg["repository"]
+        root=Path(worktree).expanduser().resolve()
+        if not root.is_dir() or not (root/".git").exists():
+            raise RuleError("Project archive requires an existing Git worktree")
+        try:
+            branch=subprocess.run(
+                ["git","-C",str(root),"branch","--show-current"],
+                timeout=8,check=True,capture_output=True,text=True).stdout.strip()
+            origin=subprocess.run(
+                ["git","-C",str(root),"remote","get-url","origin"],
+                timeout=8,check=True,capture_output=True,text=True).stdout.strip()
+        except (subprocess.CalledProcessError,OSError,subprocess.TimeoutExpired) as exc:
+            raise RuleError("Cannot inspect Git worktree identity") from exc
+        if branch in ("", "main", "master"):
+            raise RuleError("Refuse engineering archive writes on main/master")
+        if repository.lower() not in origin.lower().replace("\\","/"):
+            raise RuleError("Git origin differs from configured GitHub repository")
+        if not re.fullmatch(r"[a-f0-9]{32}",project_id):
+            raise RuleError("Invalid project id")
+        project_data=self.store.export_project(project_id)
+        # GitHub remains authoritative for live execution facts.
+        execution=project_data.get("execution",{})
+        execution.pop("github_snapshot",None)
+        archive={"schema":"engineering-project-archive/1",
+                 "source_project_id":project_id,
+                 "exported_at":now(),
+                 "review_required_before_remote_push":True,
+                 "warning":"Archive contains design records, not raw evidence files. Review for confidential content.",
+                 "engineering":project_data}
+        parent=(root/"docs"/"engineering-control"/"projects"/project_id).resolve()
+        if not parent.is_relative_to(root):
+            raise RuleError("Unsafe archive path")
+        parent.mkdir(parents=True,exist_ok=True)
+        target=parent/"snapshot.json"
+        if target.is_symlink():
+            raise RuleError("Archive target must not be a symlink")
+        data=json.dumps(archive,ensure_ascii=False,sort_keys=True,indent=2)+"\n"
+        target.write_text(data,encoding="utf-8")
+        with self.store.db() as db:
+            self.store._audit(db,project_id,None,"EXPORT_PROJECT_TO_GIT","owner",
+                branch+" / "+str(target.relative_to(root)))
+        return {"repository":repository,"branch":branch,
+                "path":str(target.relative_to(root)).replace("\\","/"),
+                "sha256":hashlib.sha256(data.encode("utf-8")).hexdigest(),
+                "state":"WRITTEN_NOT_COMMITTED",
+                "warning":"Review confidential content, then commit and push through a professional Draft PR."}
+
     def publish(self, package_id, worktree):
         """Create reviewable task files in a non-main Git worktree, without staging/committing."""
         value=self.packet(package_id)
