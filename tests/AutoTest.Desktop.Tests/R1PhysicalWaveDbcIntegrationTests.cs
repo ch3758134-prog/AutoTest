@@ -52,7 +52,9 @@ public sealed class R1PhysicalWaveDbcIntegrationTests
         var signal = new SignalRef(asset.ToReference(), BusRole.DutCan, 1, "Value", "V");
         var source = new R1PhysicalWaveSignalSource(workspace, () => null);
         var failure = await Assert.ThrowsAsync<WaveCaptureException>(async () =>
-            await source.OpenAsync(signal, CancellationToken.None));
+        {
+            await source.OpenAsync(signal, CancellationToken.None);
+        });
         Assert.Equal("PHYSICAL_CAN_NOT_CONNECTED", failure.Code);
     }
 }
