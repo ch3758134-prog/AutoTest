@@ -22,6 +22,7 @@ public sealed partial class HardwareBenchController : IAsyncDisposable
     public event Action<UsbTraceRecord>? UsbTrace;
     public event Action<WinUsbOperationEvent>? NativeOperation;
     public event Action<HardwareCanTrace>? CanTrace;
+    public event Action<AutoTest.Contracts.CanObservation>? CanReceived;
     public event Action<UsbSessionState>? ConnectionChanged;
 
     public HardwareBenchController(IWinUsbDiscovery? discovery = null)
@@ -64,6 +65,7 @@ public sealed partial class HardwareBenchController : IAsyncDisposable
             _canBridge = new HardwareCanReceiveBridge(_session, _hub);
             _canBridge.Trace += RelayCan;
             _canBridge.ObservationPublished += ObservePhysicalReadOnlyUdsRx;
+            _canBridge.ObservationPublished += RelayCanObservation;
             _log.RecordMessage("CONNECTION_ATTEMPT", selected.DisplayIdentity);
             await _session.ConnectAsync(ct).ConfigureAwait(false);
             _physicalUdsLeases.Reset(_session.Generation);
@@ -114,6 +116,13 @@ public sealed partial class HardwareBenchController : IAsyncDisposable
         _log?.Record(record);
         UsbTrace?.Invoke(record);
     }
+    private void RelayCanObservation(AutoTest.Contracts.CanObservation observation)
+    {
+        foreach (Action<AutoTest.Contracts.CanObservation> handler in CanReceived?.GetInvocationList()
+                     .Cast<Action<AutoTest.Contracts.CanObservation>>() ??
+                 Enumerable.Empty<Action<AutoTest.Contracts.CanObservation>>())
+        { try { handler(observation); } catch { /* never block physical CAN RX */ } }
+    }
     private void RelayCan(HardwareCanTrace record)
     {
         _log?.Record(record);
@@ -155,6 +164,7 @@ public sealed partial class HardwareBenchController : IAsyncDisposable
         {
             _canBridge.Trace -= RelayCan;
             _canBridge.ObservationPublished -= ObservePhysicalReadOnlyUdsRx;
+            _canBridge.ObservationPublished -= RelayCanObservation;
             await _canBridge.DisposeAsync().ConfigureAwait(false);
             _canBridge = null;
         }
