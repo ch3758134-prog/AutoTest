@@ -5,7 +5,6 @@ using AutoTest.Devices.Can;
 using AutoTest.Devices.Usb;
 using AutoTest.Desktop.Tools.ControllerConfig;
 using AutoTest.Devices.Diagnostics;
-using AutoTest.Devices.Usb;
 using AutoTest.Projects.ControllerConfig;
 
 namespace AutoTest.Desktop.Bench;
