@@ -100,6 +100,16 @@ public partial class LabProductionToolView : UserControl, IAsyncDisposable
         }
         catch(Exception ex) { R1ScannerState.Text="断开失败："+ex.Message; }
     }
+    private void OpenProjectTest_Click(object sender, RoutedEventArgs e)
+    {
+        // Navigate to the ONE project-managed TEST runner. Never construct a
+        // second production Mock runner or automatically certify a scanned unit.
+        if (Window.GetWindow(this)?.FindName("WorkbenchTabs") is TabControl tabs)
+            tabs.SelectedIndex = 10;
+        else
+            R1ScannerState.Text = "无法定位当前工程测试工作台；没有启动测试。";
+    }
+
     private void BarcodeInput_OnKeyDown(object sender,KeyEventArgs e)
     {
         if (e.Key!=Key.Enter) return;
