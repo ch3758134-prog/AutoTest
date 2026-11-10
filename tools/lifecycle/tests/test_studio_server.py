@@ -93,6 +93,27 @@ class StudioApiTest(unittest.TestCase):
         self.assertEqual(backup["schema"], "engineering-workbench/1")
         self.assertEqual(len(backup["revisions"]), 3)
 
+    def test_execution_api_requires_real_project_and_exposes_worker_ui(self):
+        with self.assertRaises(HTTPError) as error:
+            self.request("/api/studio/execution?project=missing")
+        self.assertEqual(error.exception.code,400)
+        _,project=self.request("/api/studio/project",{"name":"Workspace"},
+                               token="local-test-token")
+        key=project["project"]["id"]
+        _,empty=self.request("/api/studio/execution?project="+key)
+        self.assertFalse(empty["configured"])
+        self.assertIsNone(empty["snapshot"])
+        _,configured=self.request("/api/studio/execution/configure",{
+            "project_id":key,"repository":"ch3758134-prog/AutoTest"},
+            token="local-test-token")
+        self.assertEqual(configured["repository"],"ch3758134-prog/AutoTest")
+        with self.assertRaises(HTTPError) as forbidden:
+            self.request("/api/studio/execution/refresh",{"project_id":key})
+        self.assertEqual(forbidden.exception.code,403)
+        with urlopen(self.url+"/execution.js",timeout=5) as response:
+            self.assertEqual(response.status,200)
+            self.assertIn(b'renderExecutionView',response.read())
+
     def test_research_workflow_via_local_api(self):
         _, project = self.request("/api/studio/project", {"name":"Embedded System"},
                                   token="local-test-token")
