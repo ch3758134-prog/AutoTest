@@ -17,11 +17,11 @@ public sealed record DbcSignal(string Name, int StartBit, int BitLength, bool In
             throw new ProjectDataException("DBC_SIGNAL_RANGE", $"Signal {Name} exceeds message payload.");
     }
 }
-public sealed record DbcMessage(uint Id, string Name, int Dlc, string Transmitter, ImmutableArray<DbcSignal> Signals)
+public sealed record DbcMessage(uint Id, string Name, int Dlc, string Transmitter, ImmutableArray<DbcSignal> Signals, bool IsExtended = false)
 {
     public void Validate()
     {
-        if (Id > 0x1FFFFFFF || string.IsNullOrWhiteSpace(Name) || Dlc is < 0 or > 8 || Signals.IsDefault)
+        if (Id > 0x1FFFFFFF || (!IsExtended && Id > 0x7FF) || string.IsNullOrWhiteSpace(Name) || Dlc is < 0 or > 8 || Signals.IsDefault)
             throw new ProjectDataException("DBC_MESSAGE", $"Invalid DBC message: {Name}.");
         foreach (var signal in Signals) signal.Validate(Dlc);
         if (Signals.GroupBy(s => s.Name, StringComparer.Ordinal).Any(g => g.Count() > 1))
@@ -38,15 +38,25 @@ public sealed record DbcMessage(uint Id, string Name, int Dlc, string Transmitte
 public sealed record DbcDatabase(string Name, int Revision, ImmutableArray<string> Nodes, ImmutableArray<DbcMessage> Messages)
 {
     public static DbcDatabase Create(string name) => new(name, 1, ImmutableArray<string>.Empty, ImmutableArray<DbcMessage>.Empty);
-    public DbcMessage FindMessage(uint id) => Messages.FirstOrDefault(m => m.Id == id) ??
-        throw new ProjectDataException("DBC_MESSAGE_MISSING", $"CAN frame {id:X} not found.");
-    public DbcSignal FindSignal(uint id, string signal) => FindMessage(id).Signals.FirstOrDefault(s => s.Name == signal) ??
+
+    public DbcMessage FindMessage(uint id, bool? extended = null)
+    {
+        var found = Messages.Where(m => m.Id == id && (!extended.HasValue || m.IsExtended == extended.Value)).ToArray();
+        return found.Length switch
+        {
+            1 => found[0],
+            0 => throw new ProjectDataException("DBC_MESSAGE_MISSING", $"CAN frame {id:X}/{extended} not found."),
+            _ => throw new ProjectDataException("DBC_FRAME_AMBIGUOUS", $"ID 0x{id:X} is both 11/29-bit; specify frame format.")
+        };
+    }
+    public DbcSignal FindSignal(uint id, string signal, bool? extended = null) =>
+        FindMessage(id, extended).Signals.FirstOrDefault(s => s.Name == signal) ??
         throw new ProjectDataException("DBC_SIGNAL_MISSING", $"Signal {signal} not found.");
     public DbcDatabase Validate()
     {
         if (string.IsNullOrWhiteSpace(Name) || Revision < 1 || Messages.IsDefault || Nodes.IsDefault)
             throw new ProjectDataException("DBC_DATABASE", "Invalid DBC database.");
-        if (Messages.GroupBy(m => m.Id).Any(g => g.Count() > 1))
+        if (Messages.GroupBy(m => (m.Id, m.IsExtended)).Any(g => g.Count() > 1))
             throw new ProjectDataException("DBC_MESSAGE_DUPLICATE", "Duplicate CAN frame id.");
         foreach (var message in Messages) message.Validate();
         return this;
