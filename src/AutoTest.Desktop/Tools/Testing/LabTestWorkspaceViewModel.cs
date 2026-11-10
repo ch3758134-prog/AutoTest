@@ -35,14 +35,13 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private LabDocumentEditor _editor;
     private V1Workspace? _project;
     private readonly LabRunCoordinator _runner;
-    private readonly ILabStation _station;
     private readonly LabPlanCompiler _compiler;
     private readonly SynchronizationContext? _ui;
     private LabTreeRow? _selected;
     private string _name = "";
     private string _parameterName = "variable", _parameterValue = "";
-    private string _insertType = "MockObserve";
-    private string _status = "Ready — Mock mode; physical outputs prohibited";
+    private string _insertType = "Observe";
+    private string _status = "工程 TEST 待配置；仅按已批准的真实设备能力执行";
     private string _verdict = "NOT_RUN";
     private bool _busy;
     private long _runGeneration;
@@ -62,16 +61,12 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private void Changed([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    public LabTestWorkspaceViewModel() : this(new SimulatedLabStation(), new LabPlanCompiler()) { }
-    public LabTestWorkspaceViewModel(V1Workspace project) : this(new SimulatedLabStation(), new LabPlanCompiler())
+    public LabTestWorkspaceViewModel() : this(new V1Workspace()) { }
+    public LabTestWorkspaceViewModel(V1Workspace project)
     {
         _project = project ?? throw new ArgumentNullException(nameof(project));
-        ReloadFromProject();
-    }
-    public LabTestWorkspaceViewModel(ILabStation station, LabPlanCompiler compiler)
-    {
-        _station = station; _compiler = compiler;
-        _editor = new LabDocumentEditor(CreateSample());
+        _compiler = new LabPlanCompiler();
+        _editor = new LabDocumentEditor(LabDocument.New("R1 工程测试程序"));
         _runner = new LabRunCoordinator();
         _ui = SynchronizationContext.Current;
         _runner.FactProduced += fact =>
@@ -93,7 +88,6 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         UndoCommand = new LabCommand(() => Edit(() => _editor.Undo()), () => !Busy && _editor.CanUndo);
         RedoCommand = new LabCommand(() => Edit(() => _editor.Redo()), () => !Busy && _editor.CanRedo);
         PreflightCommand = new LabCommand(Preflight, () => !Busy);
-        RunMockCommand = new LabCommand(() => _ = RunMockAsync(), () => !Busy);
         RunPhysicalReadOnlyCommand = new LabCommand(() => _ = RunPhysicalReadOnlyAsync(), () => !Busy && _project is not null && _physicalController is not null);
         PauseCommand = new LabCommand(() => Control(_runner.Pause), () => Busy);
         ResumeCommand = new LabCommand(() => Control(_runner.Resume), () => Busy);
@@ -113,7 +107,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<LabTreeRow> Tree { get; } = new();
     public ObservableCollection<LabStepFact> Facts { get; } = new();
     public ObservableCollection<KeyValuePair<string, string>> ParameterRows { get; } = new();
-    public string[] StepTypes { get; } = LabPlanCompiler.ExecutableNodes.OrderBy(x => x).ToArray();
+    public string[] StepTypes { get; } = LabPlanCompiler.ExecutableNodes.Where(x => x != "MockObserve").OrderBy(x => x).ToArray();
     public string SelectedInsertType { get => _insertType; set { _insertType = value; Changed(); } }
     public string SelectedName { get => _name; set { _name = value; Changed(); } }
     public string ParameterName { get => _parameterName; set { _parameterName = value; Changed(); } }
@@ -121,8 +115,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public string Status { get => _status; private set { _status = value; Changed(); } }
     public string Verdict { get => _verdict; private set { _verdict = value; Changed(); } }
     public bool Busy { get => _busy; private set { _busy = value; Changed(); RefreshCommands(); } }
-    public string SourceLabel => _project is null ? "STANDALONE LAB / MOCK" :
-        "PROJECT TEST / MOCK + GUARDED PHYSICAL CAN1 READ-ONLY";
+    public string SourceLabel => "工程 TEST · 真实设备执行 / 物理能力按设备与步骤合同约束";
     public string ProjectAssetStatus => _project is null
         ? "未绑定工程；LAB 文件独立保存"
         : _project.LabProgramAssetId is { } id
@@ -141,7 +134,6 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public ICommand UndoCommand { get; }
     public ICommand RedoCommand { get; }
     public ICommand PreflightCommand { get; }
-    public ICommand RunMockCommand { get; }
     public ICommand PauseCommand { get; }
     public ICommand ResumeCommand { get; }
     public ICommand StepCommand { get; }
@@ -183,7 +175,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     {
         foreach (var command in new[] { InsertCommand, DeleteCommand, CopyCommand, UpCommand,
             DownCommand, RenameCommand, SetParameterCommand, UndoCommand, RedoCommand,
-            PreflightCommand, RunMockCommand, RunPhysicalReadOnlyCommand, PauseCommand, ResumeCommand, StepCommand,
+            PreflightCommand, RunPhysicalReadOnlyCommand, PauseCommand, ResumeCommand, StepCommand,
             SkipCommand, RunToCommand, StopCommand, SaveCommand, OpenCommand,
             SaveToProjectCommand, ReloadProjectCommand })
             (command as LabCommand)?.Refresh();
@@ -247,7 +239,6 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             case "Subroutine": P("name", "helper"); S("body"); break;
             case "CallSubroutine": P("target", "helper"); break;
             case "SetVariable": P("variable", "mode"); P("value", "run"); break;
-            case "MockObserve": P("variable", "result"); P("value", "ready"); P("quality", "Observed"); break;
             case "Observe": P("variable", "result"); break;
             case "Assert": P("variable", "result"); P("equals", "ready"); break;
             case "Wait": P("milliseconds", "100"); break;
@@ -301,34 +292,10 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         try
         {
             var plan = _compiler.Prepare(Snapshot);
-            Status = plan.Ready ? $"Ready · SHA256 {plan.Digest[..12]} · Mock-only" :
+            Status = plan.Ready ? $"工程 TEST 预检通过 · SHA256 {plan.Digest[..12]} · 尚未执行" :
                 "Preflight blocked: " + string.Join(" | ", plan.Diagnostics.Take(4));
         }
         catch (Exception ex) { Status = "Preflight error: " + ex.Message; }
-    }
-    public async Task RunMockAsync()
-    {
-        if (Busy) return;
-        LabPreparedPlan plan;
-        try
-        {
-            plan = _compiler.Prepare(Snapshot);
-            if (!plan.Ready) { Status = "Preflight blocked: " + string.Join(" | ", plan.Diagnostics.Take(4)); return; }
-        }
-        catch (Exception ex) { Status = "Preflight error: " + ex.Message; return; }
-        _runGeneration++;
-        Facts.Clear(); Verdict = "RUNNING"; Busy = true;
-        Status = "Running Mock — not a physical ECU or production verdict";
-        try
-        {
-            var report = await _runner.RunAsync(plan, _station, LabSource.Mock);
-            foreach (var fact in report.Facts)
-                if (!Facts.Any(x => x.OperationId == fact.OperationId)) Facts.Add(fact);
-            Verdict = report.Verdict.ToString().ToUpperInvariant();
-            Status = $"Mock {Verdict} · RunId {report.RunId} · {report.Facts.Length} facts";
-        }
-        catch (Exception ex) { Verdict = "ERROR"; Status = "Run failed: " + ex.Message; }
-        finally { Busy = false; }
     }
     /// <summary>Formal R1 physical read-only run of the pinned PROJECT TEST resource.</summary>
     public async Task<LabRunReport?> RunPhysicalReadOnlyAsync(CancellationToken ct = default)
@@ -486,14 +453,5 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         }
         catch (Exception ex) { Status = "Open failed: " + ex.Message; }
     }
-    private static LabDocument CreateSample()
-    {
-        var doc = LabDocument.New("Mock smoke program");
-        var prepare = NewNode("SetVariable");
-        doc.Phases[LabPhase.Prepare].Add(prepare);
-        doc.Phases[LabPhase.Test].Add(NewNode("MockObserve"));
-        doc.Phases[LabPhase.Test].Add(NewNode("Assert"));
-        doc.Phases[LabPhase.Cleanup].Add(NewNode("Log"));
-        return doc;
-    }
+
 }
