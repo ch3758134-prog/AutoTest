@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.Application.V1;
 using AutoTest.Core;
 using AutoTest.Devices.Can;
