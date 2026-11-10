@@ -179,7 +179,7 @@
       <Button x:Name="R1TestRail" Content="测试" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P10 TEST 编辑"/>
       <Button x:Name="R1RunRail" Content="运行" Style="{StaticResource R1RailButton}" Click="OpenRun_Click" ToolTip="P11 TEST 调试（实验室）"/>
       <Button x:Name="R1ProductionRail" Content="扫码" Style="{StaticResource R1RailButton}" Click="OpenProduction_Click" ToolTip="P12 Production Scan"/>
-      <Button x:Name="R1RecordsRail" Content="记录" Style="{StaticResource R1RailButton}" Click="OpenRecords_Click" ToolTip="P13 Records & Reports"/>
+      <Button x:Name="R1RecordsRail" Content="记录" Style="{StaticResource R1RailButton}" Click="OpenRecords_Click" ToolTip="P13 Records &amp; Reports"/>
       <Button x:Name="R1AuditRail" Content="审计" Style="{StaticResource R1RailButton}" Click="OpenAudit_Click" ToolTip="Operations Audit"/>
      </StackPanel>
     </ScrollViewer>
