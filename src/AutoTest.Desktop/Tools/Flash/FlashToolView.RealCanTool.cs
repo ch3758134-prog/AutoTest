@@ -182,8 +182,19 @@ public partial class FlashToolView
         var image = ParseSourceImage(vm.ImagePath, address);
         if (!string.Equals(vm.CurrentImage.SourceFingerprint.Sha256, image.SourceFingerprint.Sha256,
                 StringComparison.OrdinalIgnoreCase) ||
-            image.ByteCount != vm.CurrentImage.ByteCount)
+            image.ByteCount != vm.CurrentImage.ByteCount ||
+            image.Segments.Length != vm.CurrentImage.Segments.Length)
             throw new IOException("固件内容或 BIN 地址自上次解析后发生变化；必须重新解析。");
+        // A BIN image may have identical raw-file SHA but a DIFFERENT flash base
+        // address. Physical authorization must pin the complete address map.
+        for (int i = 0; i < image.Segments.Length; i++)
+        {
+            var previouslyParsed = vm.CurrentImage.Segments[i];
+            var currentlyOnDisk = image.Segments[i];
+            if (previouslyParsed.Address != currentlyOnDisk.Address ||
+                !previouslyParsed.Data.AsSpan().SequenceEqual(currentlyOnDisk.Data.AsSpan()))
+                throw new IOException("镜像地址映射或固件数据已改变；拒绝使用旧授权烧录。");
+        }
         return image;
     }
 
@@ -202,6 +213,9 @@ public partial class FlashToolView
 
     private string OptionsFingerprint(CanToolFlashOptions options) =>
         string.Join("|",
+            (DataContext as FlashToolViewModel)?.BinAddress ?? "",
+            (DataContext as FlashToolViewModel)?.Target ?? "",
+            (DataContext as FlashToolViewModel)?.ExpectedIdentity ?? "",
             options.SecurityDllPath,
             options.AlignedBlockLength,
             options.P2TimeoutMs,
