@@ -396,7 +396,7 @@ public sealed class MainWindowViewModel : BindableBase
             var stale = Workspace.StaleDependencies.Any(d => d.To == a.Id);
             ResourceLines.Add($"{a.Kind.ToUpperInvariant()}  {a.Name} · r{a.Revision}" + (stale ? "  ⚠ 引用过期" : ""));
         }
-        ResourceLines.Add("测试程序：" + Workspace.Document.Name);
+        ResourceLines.Add("正式 TEST：" + (Workspace.LabProgram?.Name ?? "尚未登记测试程序"));
         ResourceNodes.Clear();
         var root = new WorkbenchResourceNode($"工程 · {Workspace.Project.Name} · r{Workspace.Project.Revision}");
         var assetGroup = new WorkbenchResourceNode("资源 / Assets");
@@ -408,8 +408,10 @@ public sealed class MainWindowViewModel : BindableBase
         }
         root.Children.Add(assetGroup);
         var testsGroup = new WorkbenchResourceNode("测试程序 / TEST");
-        testsGroup.Children.Add(new WorkbenchResourceNode(Workspace.Document.Name +
-            $" ({Workspace.Document.Walk().Count()} 步骤)"));
+        if (Workspace.LabProgram is { } formalProgram)
+            testsGroup.Children.Add(new WorkbenchResourceNode(formalProgram.Name +
+                $" ({formalProgram.Walk().Count()} 步骤) · 工程版本化 TEST"));
+        else testsGroup.Children.Add(new WorkbenchResourceNode("尚未登记正式 TEST 程序"));
         root.Children.Add(testsGroup);
         ResourceNodes.Add(root);
         EditableProjectName = Workspace.Project.Name;
@@ -427,7 +429,7 @@ public sealed class MainWindowViewModel : BindableBase
         SelectedStep = Steps.FirstOrDefault(s => s.Id == selected) ?? Steps.FirstOrDefault();
         RaisePropertyChanged(nameof(SelectedAssetStatus));
         UpdateCommands();
-        var assetSignature = string.Join("|", Workspace.Assets
+        var assetSignature = Workspace.Project.Id.Value.ToString("N") + "|" + string.Join("|", Workspace.Assets
             .OrderBy(a => a.Id.Value)
             .Select(a => a.Id.Value.ToString("N") + ":" + a.Revision + ":" + a.Sha256));
         if (!string.Equals(_assetRevisionSignature, assetSignature, StringComparison.Ordinal))
