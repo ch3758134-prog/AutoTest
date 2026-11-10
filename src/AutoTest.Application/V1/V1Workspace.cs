@@ -352,32 +352,41 @@ public sealed class V1Workspace
         var dir = Path.GetDirectoryName(full)!;
         var clone = _contents.ToDictionary(x => x.Key, x => x.Value.ToArray());
         var project = Project;
+        // Formal R1 uses the single revisioned 'test-program' asset.
+        // Legacy TestDocument is only retained if explicitly authored or loaded.
+        // Never create a second TEST asset for a fresh, empty R1 project.
         AssetId? documentAssetId = _documentId;
-        var documentBytes = Encoding.UTF8.GetBytes(TestDocumentCodec.Serialize(Document));
-        if (_documentId is null)
+        bool legacyAuthored = _documentId is not null ||
+            Document.Walk().Any() || Document.Name != "新测试程序";
+        if (_labProgramId is null && legacyAuthored)
         {
-            var entry = AssetEntry.Create("test", Document.Name,
-                "assets/" + Document.Id.Value.ToString("N") + ".r1.test.json", documentBytes);
-            project = (project with { Assets = project.Assets.Add(entry) }).WithRevision().Validate();
-            clone.Add(entry.Id, documentBytes);
-            documentAssetId = entry.Id;
-        }
-        else
-        {
-            var index = -1;
-            for (var i = 0; i < project.Assets.Length; i++)
-                if (project.Assets[i].Id == _documentId.Value) { index = i; break; }
-            var original = project.Assets[index];
-            if (!original.VerifyHash(documentBytes))
-                project = (project with { Assets = project.Assets.SetItem(index,
-                    original with { Revision = checked(original.Revision + 1), Sha256 = Sha(documentBytes),
-                        RelativePath = RevisionFile(original.Id, checked(original.Revision + 1), "test"),
-                        Name = Document.Name }) })
-                    .WithRevision().Validate();
-            clone[_documentId.Value] = documentBytes;
+            var documentBytes = Encoding.UTF8.GetBytes(TestDocumentCodec.Serialize(Document));
+            if (_documentId is null)
+            {
+                var entry = AssetEntry.Create("test", Document.Name,
+                    "assets/" + Document.Id.Value.ToString("N") + ".r1.test.json", documentBytes);
+                project = (project with { Assets = project.Assets.Add(entry) }).WithRevision().Validate();
+                clone.Add(entry.Id, documentBytes);
+                documentAssetId = entry.Id;
+            }
+            else
+            {
+                var index = -1;
+                for (var i = 0; i < project.Assets.Length; i++)
+                    if (project.Assets[i].Id == _documentId.Value) { index = i; break; }
+                var original = project.Assets[index];
+                if (!original.VerifyHash(documentBytes))
+                    project = (project with { Assets = project.Assets.SetItem(index,
+                        original with { Revision = checked(original.Revision + 1), Sha256 = Sha(documentBytes),
+                            RelativePath = RevisionFile(original.Id, checked(original.Revision + 1), "test"),
+                            Name = Document.Name }) })
+                        .WithRevision().Validate();
+                clone[_documentId.Value] = documentBytes;
+            }
         }
         // The document asset pins DBC revision at authoring time. Do not rewrite it on DBC edits.
-        if (_dbcId is { } dbc && Document.Walk().Any(n => n.Properties.ContainsKey("asset")) &&
+        if (_labProgramId is null && documentAssetId is not null &&
+            _dbcId is { } dbc && Document.Walk().Any(n => n.Properties.ContainsKey("asset")) &&
             !project.Dependencies.Any(d => d.From == documentAssetId!.Value && d.To == dbc))
         {
             var pin = Document.Walk().Select(n => n.Properties.GetValueOrDefault("asset"))
@@ -449,9 +458,11 @@ public sealed class V1Workspace
         var documents = project.Assets.Where(a => a.Kind == "test").ToArray();
         var dbcs = project.Assets.Where(a => a.Kind == "dbc").ToArray();
         var labPrograms = project.Assets.Where(a => a.Kind == "test-program").ToArray();
-        if (documents.Length != 1 || dbcs.Length > 1 || labPrograms.Length > 1)
-            throw new NotSupportedException("V1 单工程须有一个测试文档，且最多一个 DBC");
-        var document = TestDocumentCodec.Deserialize(Encoding.UTF8.GetString(loaded[documents[0].Id]));
+        if (documents.Length > 1 || dbcs.Length > 1 || labPrograms.Length > 1)
+            throw new NotSupportedException("工程存在重复 TEST/DBC 资源；不能在不经确认时自动合并。");
+        var document = documents.Length == 1
+            ? TestDocumentCodec.Deserialize(Encoding.UTF8.GetString(loaded[documents[0].Id]))
+            : TestDocument.Create("新测试程序");
         LabDocument? labProgram = labPrograms.Length == 1
             ? LabDocumentCodec.Open(Encoding.UTF8.GetString(loaded[labPrograms[0].Id])) : null;
         DbcDatabase? dbc = null;
@@ -462,7 +473,7 @@ public sealed class V1Workspace
         }
         // Only commit fully validated project/asset/document; broken files leave old workspace intact.
         Project = project; _edit = new StepEditTransaction(document);
-        _dbcId = dbcs.SingleOrDefault()?.Id; _documentId = documents[0].Id; Database = dbc;
+        _dbcId = dbcs.SingleOrDefault()?.Id; _documentId = documents.SingleOrDefault()?.Id; Database = dbc;
         _labProgramId = labPrograms.SingleOrDefault()?.Id; _labProgram = labProgram;
         _contents.Clear(); foreach (var (id, bytes) in loaded) _contents.Add(id, bytes);
         _path = full; _persistedManifestHash = Sha(await File.ReadAllBytesAsync(full, ct));
