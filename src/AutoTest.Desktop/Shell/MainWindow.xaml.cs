@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private AutoTest.DeviceLab.DeviceLabEmbeddedView? _device;
     private LabProductionToolView? _production;
     private LabTestWorkspaceViewModel? _projectTestModel;
+    private Guid? _projectTestContextId;
     private CanFrameHub? _waveReplayHub;
     private MainWindowViewModel? _workspaceEventsOwner;
     private ControllerConfigToolViewModel? _controllerConfiguration;
@@ -89,6 +90,19 @@ public partial class MainWindow : Window
             Dispatcher.InvokeAsync(() => OnWorkspaceAssetsChanged(sender, args));
             return;
         }
+        // The formal R1 TEST editor must not continue to show a different
+        // project's program after the shared workspace opens/creates a project.
+        if (_workspaceEventsOwner is { } vm && _projectTestModel is not null &&
+            _projectTestContextId != vm.Workspace.Project.Id.Value)
+        {
+            if (_projectTestModel.Busy)
+                _projectTestModel.StopCommand.Execute(null);
+            else
+            {
+                _projectTestModel.ReloadFromProject();
+                _projectTestContextId = vm.Workspace.Project.Id.Value;
+            }
+        }
         if (R1DbcHost.Content is DbcToolView dbc &&
             dbc.DataContext is DbcToolViewModel editor)
             editor.RefreshProjectStatus();
@@ -121,7 +135,15 @@ public partial class MainWindow : Window
 
     private LabTestWorkspaceViewModel GetProjectTestModel(AutoTest.Application.V1.V1Workspace workspace)
     {
-        if (_projectTestModel is not null) return _projectTestModel;
+        if (_projectTestModel is not null)
+        {
+            if (_projectTestContextId != workspace.Project.Id.Value && !_projectTestModel.Busy)
+            {
+                _projectTestModel.ReloadFromProject();
+                _projectTestContextId = workspace.Project.Id.Value;
+            }
+            return _projectTestModel;
+        }
         var model = new LabTestWorkspaceViewModel(workspace);
         model.AttachPhysicalReadOnly(
             () => _device?.Controller,
@@ -133,6 +155,7 @@ public partial class MainWindow : Window
                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) == MessageBoxResult.Yes);
         _projectTestModel = model;
+        _projectTestContextId = workspace.Project.Id.Value;
         return model;
     }
 
