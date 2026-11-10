@@ -8,6 +8,7 @@ using AutoTest.Projects.Resources;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Preparation;
 using AutoTest.Testing.Runtime;
+using AutoTest.Testing.Lab;
 
 namespace AutoTest.Application.V1;
 
@@ -26,6 +27,8 @@ public sealed class V1Workspace
     private string? _persistedManifestHash;
     private AssetId? _dbcId;
     private AssetId? _documentId;
+    private AssetId? _labProgramId;
+    private LabDocument? _labProgram;
     private StepEditTransaction _edit;
 
     public V1Workspace()
@@ -40,6 +43,8 @@ public sealed class V1Workspace
     public DbcDatabase? Database { get; private set; }
     public AssetId? DbcAssetId => _dbcId;
     public AssetId? DocumentAssetId => _documentId;
+    public AssetId? LabProgramAssetId => _labProgramId;
+    public LabDocument? LabProgram => _labProgram?.Copy();
     public string? ProjectPath => _path;
     public bool IsRunning => _runner.IsRunning;
     public MockRunReport? LastReport { get; private set; }
@@ -57,7 +62,8 @@ public sealed class V1Workspace
         Project = ProjectDefinition.Create(name);
         _edit = new StepEditTransaction(TestDocument.Create("新测试程序"));
         _contents.Clear(); _persistedAssetHashes.Clear(); _persistedAssetPaths.Clear();
-        _dbcId = null; _documentId = null; Database = null; LastReport = null;
+        _dbcId = null; _documentId = null; _labProgramId = null;
+        _labProgram = null; Database = null; LastReport = null;
         _path = null; _persistedManifestHash = null;
     }
 
@@ -151,6 +157,69 @@ public sealed class V1Workspace
         Database = updated with { Revision = revision };
         _contents[_dbcId.Value] = bytes;
         return next;
+    }
+
+    /// <summary>
+    /// R2's full LAB test-program schema is a versioned project asset, not a
+    /// free-floating standalone JSON. Importing it never launches physical
+    /// execution or mutates the older TEST document used by P11 Mock runs.
+    /// </summary>
+    public AssetEntry ImportLabProgram(string json, string filename = "test-program.lab.json")
+    {
+        EnsureIdle();
+        if (_labProgramId is not null)
+            throw new InvalidOperationException("LAB_PROGRAM_ALREADY_REGISTERED: use explicit revision replacement.");
+        var document = LabDocumentCodec.Open(json);
+        // Structural validation precedes changing any project state. Controller
+        // bindings may remain unresolved until station/project configuration.
+        var bytes = new UTF8Encoding(false).GetBytes(LabDocumentCodec.Save(document));
+        var editor = new ResourceEditService(Project);
+        var entry = editor.Add("test-program", document.Name,
+            "assets/" + document.Id.ToString("N") + ".lab.json", bytes);
+        Project = editor.Current;
+        _contents.Add(entry.Id, bytes);
+        _labProgramId = entry.Id;
+        _labProgram = document;
+        return entry;
+    }
+
+    public AssetEntry ReplaceLabProgram(string json, AssetRef expected)
+    {
+        EnsureIdle();
+        if (_labProgramId is null || _labProgram is null)
+            throw new InvalidOperationException("LAB_PROGRAM_REQUIRED");
+        var index = -1;
+        for (var i = 0; i < Project.Assets.Length; i++)
+            if (Project.Assets[i].Id == _labProgramId.Value) { index = i; break; }
+        if (index < 0) throw new InvalidOperationException("LAB_PROGRAM_ASSET_MISSING");
+        var original = Project.Assets[index];
+        if (original.Id != expected.Id ||
+            original.Revision != expected.Revision.Value ||
+            !string.Equals(original.Sha256, expected.Fingerprint.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("LAB_PROGRAM_REVISION_CONFLICT");
+        var nextDocument = LabDocumentCodec.Open(json);
+        if (nextDocument.Id != _labProgram.Id)
+            throw new InvalidOperationException("LAB_PROGRAM_IDENTITY_CHANGED");
+        var bytes = new UTF8Encoding(false).GetBytes(LabDocumentCodec.Save(nextDocument));
+        var sha = Sha(bytes);
+        if (string.Equals(sha, original.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("LAB_PROGRAM_UNCHANGED");
+        var revision = checked(original.Revision + 1);
+        var updated = original with
+        {
+            Revision = revision,
+            Sha256 = sha,
+            Name = nextDocument.Name,
+            RelativePath = RevisionFile(original.Id, revision, original.Kind)
+        };
+        var project = (Project with
+        {
+            Assets = Project.Assets.SetItem(index, updated)
+        }).WithRevision().Validate();
+        Project = project;
+        _contents[_labProgramId.Value] = bytes;
+        _labProgram = nextDocument;
+        return updated;
     }
 
     public void CreateTestDocument(string name)
@@ -379,9 +448,12 @@ public sealed class V1Workspace
         }
         var documents = project.Assets.Where(a => a.Kind == "test").ToArray();
         var dbcs = project.Assets.Where(a => a.Kind == "dbc").ToArray();
-        if (documents.Length != 1 || dbcs.Length > 1)
+        var labPrograms = project.Assets.Where(a => a.Kind == "test-program").ToArray();
+        if (documents.Length != 1 || dbcs.Length > 1 || labPrograms.Length > 1)
             throw new NotSupportedException("V1 单工程须有一个测试文档，且最多一个 DBC");
         var document = TestDocumentCodec.Deserialize(Encoding.UTF8.GetString(loaded[documents[0].Id]));
+        LabDocument? labProgram = labPrograms.Length == 1
+            ? LabDocumentCodec.Open(Encoding.UTF8.GetString(loaded[labPrograms[0].Id])) : null;
         DbcDatabase? dbc = null;
         if (dbcs.Length == 1)
         {
@@ -391,6 +463,7 @@ public sealed class V1Workspace
         // Only commit fully validated project/asset/document; broken files leave old workspace intact.
         Project = project; _edit = new StepEditTransaction(document);
         _dbcId = dbcs.SingleOrDefault()?.Id; _documentId = documents[0].Id; Database = dbc;
+        _labProgramId = labPrograms.SingleOrDefault()?.Id; _labProgram = labProgram;
         _contents.Clear(); foreach (var (id, bytes) in loaded) _contents.Add(id, bytes);
         _path = full; _persistedManifestHash = Sha(await File.ReadAllBytesAsync(full, ct));
         _persistedAssetHashes.Clear(); _persistedAssetPaths.Clear();
@@ -408,7 +481,13 @@ public sealed class V1Workspace
     }
     private static string Sha(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
     private static string RevisionFile(AssetId id, int revision, string kind) =>
-        $"assets/{id.Value:N}.r{revision}" + (kind == "test" ? ".test.json" : ".dbc");
+        $"assets/{id.Value:N}.r{revision}" + (kind switch
+        {
+            "test" => ".test.json",
+            "test-program" => ".lab.json",
+            "dbc" => ".dbc",
+            _ => throw new NotSupportedException("Unsupported asset revision kind: " + kind)
+        });
     private static async Task WriteAtomicAsync(string file, byte[] bytes, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
