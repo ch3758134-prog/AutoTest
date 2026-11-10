@@ -42,6 +42,12 @@ public interface IBenchWorkbenchPort
     // The backend is the final authority. Physical outputs must be denied by default there.
     Task<BenchOperationResult> ApplyStateAsync(string revision, string controllerId,
         string stateId, BenchEvidenceSource source, CancellationToken cancellationToken);
+    // Explicit safety recovery action: real CAN0 0x730 all-keys-release,
+    // not a Mock operation. Existing test fixture ports fail closed.
+    Task<BenchOperationResult> ReleaseAllPhysicalKeysAsync(CancellationToken cancellationToken) =>
+        Task.FromResult(new BenchOperationResult(false, null, null, null, null, null, null,
+            "PHYSICAL_RELEASE_UNSUPPORTED", "No physical release service connected.",
+            BenchEvidenceSource.Physical, null));
     Task SaveManualMeasurementAsync(BenchManualMeasurement measurement,
         CancellationToken cancellationToken);
 }
