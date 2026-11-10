@@ -54,10 +54,12 @@
       <TextBox Width="470" Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}" ToolTip="DBC 绝对文件路径（UTF-8）"/>
       <Button Content="打开" Command="{Binding OpenCommand}" Margin="8,0,0,0" Padding="12,4"/>
       <Button Content="保存" Command="{Binding SaveCommand}" Margin="6,0,0,0" Padding="12,4"/>
+      <Button Content="纳入当前工程" Command="{Binding ImportToProjectCommand}" Margin="6,0,0,0" Padding="12,4" ToolTip="将原始磁盘 DBC 注册到当前工程资源库；不偷偷覆盖已有版本"/>
       <Button Content="重置" Command="{Binding ResetCommand}" Margin="6,0,0,0" Padding="12,4"/>
     </StackPanel>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,9">
       <TextBlock Text="DBC Revision " FontWeight="SemiBold"/><TextBlock Text="{Binding Revision}" FontWeight="SemiBold"/>
+      <TextBlock Text=" · " Margin="5,0"/><TextBlock Text="{Binding ProjectStatus}" Foreground="#83CEB4" Margin="4,0,8,0" TextWrapping="Wrap"/>
       <TextBlock Text=" · " Margin="5,0"/><TextBlock Text="{Binding SupportSummary}" Foreground="#E8B967" TextWrapping="Wrap"/>
     </StackPanel>
     <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
