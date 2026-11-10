@@ -147,4 +147,43 @@ public sealed class R1PhysicalWaveDbcIntegrationTests
         Assert.Equal(0, hub.SubscriberCount);
     }
 
+    [Fact]
+    public async Task ExplicitDbcRevisionPublishPreservesPinnedTestReferencesAndRejectsOldTokens()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "AutoTest-DBC-r-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, "revision.dbc");
+        try
+        {
+            await File.WriteAllTextAsync(path, DbcText);
+            var workspace = new V1Workspace();
+            var editor = new DbcToolViewModel(workspace) { FilePath = path };
+            await editor.OpenFileAsync();
+            await editor.ImportToProjectAsync();
+            var previous = workspace.Assets.Single(x => x.Kind == "dbc");
+            workspace.AddEditableMockExample();
+            var step = workspace.Document.Walk().First();
+            workspace.PinStepToDbc(step.Id);
+            var oldToken = workspace.Document.Walk().First(x => x.Id == step.Id).Properties["asset"];
+
+            await File.WriteAllTextAsync(path, DbcText.Replace("(1,0)", "(2,0)"));
+            await editor.OpenFileAsync();
+            await editor.PublishProjectRevisionAsync();
+            Assert.Equal(2, editor.Revision);
+            Assert.Equal(2, workspace.Database!.FindSignal(1, "Value").Factor);
+            Assert.Equal(oldToken,
+                workspace.Document.Walk().First(x => x.Id == step.Id).Properties["asset"]);
+            Assert.NotEqual(previous.Sha256, workspace.Assets.Single(x => x.Kind == "dbc").Sha256);
+
+            var error = Assert.Throws<InvalidOperationException>(() =>
+                workspace.ReplaceDbcSource(DbcText, previous.ToReference(), "revision.dbc"));
+            Assert.Contains("DBC_REVISION_CONFLICT", error.Message);
+
+            await editor.PublishProjectRevisionAsync();
+            Assert.Contains("DBC_UNCHANGED", editor.Error);
+            Assert.Equal(2, workspace.Assets.Single(x => x.Kind == "dbc").Revision);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
 }
