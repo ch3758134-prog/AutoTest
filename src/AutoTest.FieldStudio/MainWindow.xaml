@@ -237,6 +237,7 @@
       <TextBlock Text="ECU 固件与编程配置" Style="{StaticResource HeaderText}" Width="255"/>
       <Button Content="导入 BIN / HEX / S19" Style="{StaticResource PrimaryButton}" Click="FlashImport_Click"/>
       <Button Content="检查文件结构" Click="FlashInspect_Click"/>
+      <Button Content="导入 CanTool 配置 XML" Click="FlashConfigImport_Click"/>
       <TextBlock Text="BIN 起始地址(Hex)" VerticalAlignment="Center" Margin="2,0,8,0"/>
       <TextBox x:Name="FlashBaseAddress" Width="114" ToolTip="BIN 无内置地址，必须输入真实目标的映射起始地址，不提供猜测默认值"/>
       <TextBlock Text="实际擦写未授权；等待 CanTool / ECU Profile 合同核实" Foreground="#A14D20" VerticalAlignment="Center"/>
@@ -245,14 +246,19 @@
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="320"/></Grid.ColumnDefinitions>
       <Border Style="{StaticResource CardBorder}" Margin="0,0,10,0">
        <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="镜像段 / 地址与长度（来源为真实导入文件）" Style="{StaticResource SectionText}"/>
-        <DataGrid x:Name="FlashSegments"/>
+        <TextBlock DockPanel.Dock="Top" Text="固件段 / CanTool 配置（只读导入）" Style="{StaticResource SectionText}"/>
+        <TabControl>
+         <TabItem Header="固件地址段"><DataGrid x:Name="FlashSegments"/></TabItem>
+         <TabItem Header="烧录配置字段 / 来源"><DataGrid x:Name="FlashConfigGrid"/></TabItem>
+        </TabControl>
        </DockPanel>
       </Border>
       <Border Grid.Column="1" Style="{StaticResource CardBorder}">
        <StackPanel>
         <TextBlock Text="编程前置检查" Style="{StaticResource SectionText}"/>
         <TextBlock x:Name="FlashInfo" Text="未选择镜像；无真实编程配置。" TextWrapping="Wrap" Margin="0,10,0,10"/>
+        <TextBlock Text="CanTool 配置状态" FontWeight="SemiBold" Margin="0,8,0,3"/>
+        <TextBlock x:Name="FlashConfigStatus" Text="未导入 Configuration.xml；不会猜测 APP/Boot CAN ID、地址、Key DLL。" Style="{StaticResource MutedText}" Margin="0,0,0,10"/>
         <TextBlock Text="待 CanTool 核实的配置" FontWeight="SemiBold" Margin="0,8,0,7"/>
         <TextBlock Text="APP/Boot Request/Response CAN ID&#x0a;Flash 起止地址 / 分段映射&#x0a;Seed-Key DLL / 安全级别&#x0a;UDS 会话与擦除例程&#x0a;0x74 最大块长 / 流控参数&#x0a;校验算法、复位与恢复程序" TextWrapping="Wrap" LineHeight="23"/>
         <TextBlock Text="不可从 Mock 或 USB ACK 推断 ECU 已经烧录成功。" Style="{StaticResource MutedText}" Margin="0,18,0,0"/>

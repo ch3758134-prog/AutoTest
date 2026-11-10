@@ -113,6 +113,7 @@ public partial class MainWindow : Window
     private int _canUiLost;
     private int _waveCursorIndex = -1;
     private FirmwareImage? _image;
+    private CanToolConfigurationSnapshot? _flashProfile;
     private string? _imagePath;
     private SignalOption? _selectedWave;
 
@@ -693,6 +694,39 @@ public partial class MainWindow : Window
         Log("UDS", direction + ": " + details);
     }
 
+    private void FlashConfigImport_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "CanTool XML (*.xml)|*.xml|All files (*.*)|*.*",
+            Title = "导入 CanTool Configuration.xml（仅解析，不连接 ECU）"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var profile = CanToolConfigurationImporter.LoadFile(dialog.FileName);
+            _flashProfile = profile;
+            FlashConfigGrid.ItemsSource = profile.Fields;
+            FlashConfigStatus.Text = $"Profile: {profile.SourceName}\n" +
+                $"SHA256: {profile.SourceSha256}\n" +
+                $"Boot TX/RX: 0x{profile.BootRequestId:X} / 0x{profile.BootResponseId:X}\n" +
+                $"APP TX/RX: 0x{profile.AppRequestId:X} / 0x{profile.AppResponseId:X}\n" +
+                $"Flash: 0x{profile.FlashStart:X8} ~ 0x{profile.FlashEndInclusive:X8} (含末地址)\n" +
+                $"CAN: {profile.BaudRate}（仅 XML 请求值，尚未验证主控实际速率）\n" +
+                "配置加载不等于真实编程条件通过。";
+            Log("FLASH CONFIG", $"导入只读 XML {profile.SourceName} SHA256={profile.SourceSha256}; 仅配置静态检查。");
+            FlashStatus.Text = "CanTool 配置已解析。仍需 ECU 身份、CAN1 速率、Seed/Key 与刷写流程的物理验证。";
+        }
+        catch (Exception ex)
+        {
+            _flashProfile = null;
+            FlashConfigGrid.ItemsSource = null;
+            FlashConfigStatus.Text = "配置导入失败：" + ex.Message;
+            Log("FLASH CONFIG", $"导入失败：{ex}");
+            MessageBox.Show(this, FlashConfigStatus.Text, "CanTool 配置", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private async void FlashImport_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpenFileDialog { Filter = "Firmware (*.hex;*.s19;*.s28;*.s37;*.bin)|*.hex;*.s19;*.s28;*.s37;*.bin|All files (*.*)|*.*" };
@@ -730,8 +764,13 @@ public partial class MainWindow : Window
         try
         {
             FirmwareImageParser.ValidateSegments(_image.Segments);
-            FlashStatus.Text = $"文件结构通过：{_image.Segments.Length} 个不重叠段、{_image.ByteCount:N0} 有效字节；" +
-                "未做 ECU FlashMap / SeedKey / Bootloader 验证，禁止烧录。";
+            string map = _flashProfile is null
+                ? "尚未加载 Flash XML 配置，无法确认映射。"
+                : _flashProfile.ImageFits(_image)
+                    ? "全部文件段位于当前 XML 声明的 Flash 地址范围内（未验证 ECU 实际映射）。"
+                    : "IMAGE_OUT_OF_FLASH_RANGE：文件段超出当前 XML 声明的 Flash 范围，禁止执行。";
+            FlashStatus.Text = $"文件结构检查通过：{_image.Segments.Length} 段、{_image.ByteCount:N0} 有效字节；" +
+                map + " 实际烧录仍未授权。";
             Log("FLASH", FlashStatus.Text);
         }
         catch (Exception ex) { Log("FLASH", "结构检查失败：" + ex.Message); }
