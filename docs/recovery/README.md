@@ -18,7 +18,8 @@ AutoTest 是一套完全离线 Windows ECU 研发、集成测试与出厂检测�
 2. `00_GIT_SNAPSHOT.md`：远端旧分支与 PR 精确身份；历史仍存在。
 3. `01_PRODUCT_AND_DECISION_MODEL.md`：已确认事实 / 临时工作假设 / 待探索的区别。
 4. `02_GIT_AND_MODULE_WORKFLOW.md`：未来模块责任、分支与集成规则（候选）。
-5. `overview.html`：给负责人连续阅读的 **增量式** 状态总览；不把静态 HTML 当作完整 SAEF 平台。
+5. `04_BACKEND_SOURCE_AUDIT.md`：按真实源码判断后端 KEEP / REWORK / TEST-ONLY / REPLACE，**旧 UI 彻底重做**；当前 main 尚未 Windows 验证。
+6. `overview.html`：给负责人连续阅读的 **增量式** 状态总览；不把静态 HTML 当作完整 SAEF 平台。
 
 ## 三项不可越界约束
 - 当前 main 软件代码未在本恢复分支修改；过去有 Build PASS 的旧 SHA 不等于当前 HEAD PASS。
