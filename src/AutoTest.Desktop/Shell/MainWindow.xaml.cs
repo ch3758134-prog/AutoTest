@@ -19,6 +19,7 @@ using AutoTest.Records.Exports;
 using AutoTest.Records.Operations;
 using AutoTest.Records.Queries;
 using AutoTest.Records.Storage;
+using AutoTest.Specialists.Wave;
 
 namespace AutoTest.Desktop.Shell;
 
@@ -131,8 +132,14 @@ public partial class MainWindow : Window
                 var wave = new WaveWorkbenchView();
                 var appData = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AutoTest");
-                wave.Model.BindBackend(new G4WaveReplayBackend(host,
-                    Path.Combine(appData,"G4-MockOnly","wave-workbench")));
+                var waveRoot = Path.Combine(appData, "R1", "wave-workbench");
+                var physicalCapture = new WaveCaptureService(
+                    new R1PhysicalWaveSignalSource(host.Workspace, () => _device?.Controller),
+                    new WaveEvidenceStore(Path.Combine(waveRoot, "live-captures")),
+                    new WaveReferenceRepository(Path.Combine(waveRoot, "live-references")));
+                var liveProvider = new WaveSharedLiveProvider(physicalCapture, "Physical");
+                wave.Model.BindBackend(new G4WaveReplayBackend(host, waveRoot,
+                    live: liveProvider));
                 R1WaveHost.Content = wave;
                 break;
             }
