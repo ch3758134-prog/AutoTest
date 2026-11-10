@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.IO;
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using AutoTest.Application.V1;
@@ -100,8 +99,11 @@ public sealed class R1PhysicalRunRecordBridge
             var quality = fact.Quality == LabQuality.Observed
                 ? physicalRef.IsEmpty ? EvidenceQuality.Derived : EvidenceQuality.HostObserved
                 : EvidenceQuality.Unknown;
-            var time = TimePoint.FromHostArrival(fact.AtUtc.ToUniversalTime(),
-                Stopwatch.GetTimestamp());
+            // The LAB fact supplies host UTC but not its original monotonic
+            // counter. Preserve the UTC and explicitly leave that counter
+            // unavailable rather than inventing a measurement timestamp.
+            var time = new TimePoint(fact.AtUtc.ToUniversalTime(), 0,
+                TimeSource.HostArrival, TimeQuality.HostArrivalOnly);
             var narrative = string.Join(" | ",
                 fact.Phase, fact.NodeType, "Expected=" + fact.Expected,
                 "Actual=" + (fact.Actual ?? "(unavailable)"),
