@@ -147,3 +147,46 @@ public sealed class R1PhysicalKeySimLabStation : IAuthorizedPhysicalControllerLa
         return new(true, null, sent.OperationId.ToString("D"));
     }
 }
+
+
+/// <summary>
+/// Deterministic authorization preflight for actual KEY_SIM operations.
+/// Conditional releases are not accepted as a recovery guarantee.
+/// </summary>
+public static class R1KeySimCleanupPolicy
+{
+    public static void RequireUnconditionalRelease(
+        LabDocument program, EcuControlProfile profile,
+        IEnumerable<LabControllerRef> approvedBindings)
+    {
+        ArgumentNullException.ThrowIfNull(program);
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(approvedBindings);
+        uint Mask(LabControllerRef reference)
+        {
+            if (!Guid.TryParse(reference.ControllerId, out var controller) ||
+                !Guid.TryParse(reference.StateId, out var state) ||
+                !int.TryParse(reference.Revision, out var revision))
+                throw new InvalidOperationException("KEYSIM_CONTROLLER_REFERENCE_INVALID");
+            return profile.ResolveState(controller, state, revision).KeyMask;
+        }
+        uint? Mask(LabNode node)
+        {
+            if (node.Type != "ControllerState") return null;
+            return Mask(new LabControllerRef(
+                node.Parameters.GetValueOrDefault("controllerId") ?? "",
+                node.Parameters.GetValueOrDefault("stateId") ?? "",
+                node.Parameters.GetValueOrDefault("revision") ?? ""));
+        }
+        if (!approvedBindings.Any(x => Mask(x) != 0)) return;
+        var cleanup = program.Phases[LabPhase.Cleanup];
+        if (cleanup.Count == 0 || Mask(cleanup[0]) != 0)
+            throw new InvalidOperationException(
+                "KEYSIM_CLEANUP_FIRST_RELEASE_REQUIRED: Cleanup 首步必须为无条件掩码0的 ControllerState。");
+        if (cleanup.Skip(1)
+            .SelectMany(node => LabDocument.Walk(new[] { node }))
+            .Select(Mask).Any(mask => mask.HasValue && mask.Value != 0))
+            throw new InvalidOperationException(
+                "KEYSIM_CLEANUP_REACTIVATION_FORBIDDEN: Cleanup 全部释放后不可重新激活按键。");
+    }
+}
