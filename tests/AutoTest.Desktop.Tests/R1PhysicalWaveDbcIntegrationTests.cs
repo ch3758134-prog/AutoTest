@@ -1,5 +1,7 @@
 using System.IO;
 using AutoTest.Application.V1;
+using AutoTest.Application.Composition;
+using AutoTest.Desktop.Shell;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Desktop.Tools.Dbc;
@@ -57,4 +59,27 @@ public sealed class R1PhysicalWaveDbcIntegrationTests
         });
         Assert.Equal("PHYSICAL_CAN_NOT_CONNECTED", failure.Code);
     }
+    [Fact]
+    public void ProjectAssetNotificationsTrackImportRevisionAndReset()
+    {
+        var workspace = new V1Workspace();
+        var vm = new MainWindowViewModel(ApplicationComposition.RegisterMock().Gateway, workspace);
+        var notifications = 0;
+        vm.WorkspaceAssetsChanged += (_, _) => notifications++;
+
+        workspace.ImportDbc(DbcText, "demo.dbc");
+        vm.RefreshExternalWorkspaceChanges();
+        Assert.Equal(1, notifications);
+        vm.RefreshExternalWorkspaceChanges();
+        Assert.Equal(1, notifications);
+
+        workspace.EditDbcSignal(1, "Value", 2);
+        vm.RefreshExternalWorkspaceChanges();
+        Assert.Equal(2, notifications);
+
+        workspace.CreateProject("new");
+        vm.RefreshExternalWorkspaceChanges();
+        Assert.Equal(3, notifications);
+    }
+
 }
