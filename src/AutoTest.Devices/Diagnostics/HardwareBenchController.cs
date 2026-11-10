@@ -141,6 +141,8 @@ public sealed partial class HardwareBenchController : IAsyncDisposable
     }
     public async Task DisconnectAsync()
     {
+        if (PhysicalCanToolFlashActive && State == UsbSessionState.Connected)
+            throw new InvalidOperationException("真实 CAN1 烧录尚未退出：必须先取消并等待作业终止，禁止断开 USB 主控。");
         _physicalUdsBoundary.Revoke();
         RevokePhysicalCanToolFlash();
         _physicalUdsLeases?.Reset(0);
