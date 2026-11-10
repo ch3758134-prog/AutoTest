@@ -361,4 +361,26 @@ public sealed class LabTestRuntimeTests
             x.Diagnostic == "WHEN_TIMEOUT_OR_CONDITION_NOT_MET");
     }
 
+    [Fact]
+    public async Task ActualObservationCannotBeOverriddenBySameNamedLocalVariable()
+    {
+        var doc = LabDocument.New("ECU signal provenance");
+        doc.Phases[LabPhase.Prepare].Add(N("SetVariable", ("variable", "signal"), ("value", "wrong")));
+        doc.Phases[LabPhase.Test].Add(N("Observe", ("variable", "signal")));
+        var decision = N("If", ("variable", "signal"), ("equals", "ok"));
+        decision.Slots.Add("then", new List<LabNode> { AssertSignal("ok") });
+        decision.Slots.Add("else", new List<LabNode> { N("Fail", ("message", "stale local value won")) });
+        doc.Phases[LabPhase.Test].Add(decision);
+        var replay = new RecordedReplayLabStation(new[]
+        {
+            new LabReplaySample("signal", "ok", LabQuality.Observed, "recorded-real-can:41")
+        });
+        var result = await Runner().RunAsync(new LabPlanCompiler().Prepare(doc),
+            replay, LabSource.Replay);
+        Assert.Equal(LabVerdict.Pass, result.Verdict);
+        Assert.Contains(result.Facts, f => f.NodeType == "If" &&
+            f.Actual == "ok" && f.TraceReference == "recorded-real-can:41");
+        Assert.DoesNotContain(result.Facts, f => f.NodeType == "Fail");
+    }
+
 }
