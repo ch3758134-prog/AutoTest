@@ -30,6 +30,44 @@ public sealed class R1KeySimControllerCatalog(Func<EcuControlProfile?> current)
 }
 
 /// <summary>
+/// A commanded held key must have a release on a guaranteed Cleanup path.
+/// Release hidden inside IF/CASE/WHEN is not guaranteed to execute.
+/// Only unconditional top-level steps or Sequence bodies qualify.
+/// This is a software recovery policy, not a demand for analog readback.
+/// </summary>
+public static class R1KeySimCleanupPolicy
+{
+    public static bool HasUnconditionalRelease(LabDocument document, EcuControlProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(profile);
+        if (!document.Phases.TryGetValue(LabPhase.Cleanup, out var cleanup))
+            return false;
+        return WalkGuaranteed(cleanup).Any(n =>
+        {
+            if (n.Type != "ControllerState" ||
+                !Guid.TryParse(n.Parameters.GetValueOrDefault("controllerId"), out var controller) ||
+                !Guid.TryParse(n.Parameters.GetValueOrDefault("stateId"), out var state) ||
+                !int.TryParse(n.Parameters.GetValueOrDefault("revision"), out var revision))
+                return false;
+            try { return profile.ResolveState(controller, state, revision).KeyMask == 0; }
+            catch { return false; }
+        });
+    }
+
+    private static IEnumerable<LabNode> WalkGuaranteed(IEnumerable<LabNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Type == "ControllerState") yield return node;
+            if (node.Type == "Sequence" &&
+                node.Slots.TryGetValue("body", out var body))
+                foreach (var child in WalkGuaranteed(body)) yield return child;
+        }
+    }
+}
+
+/// <summary>
 /// Physical R1 test station: real CAN1 signal observations + exactly
 /// pre-approved KEY_SIM 20-bit masks on CAN0. Per-run approval covers the
 /// immutable TEST plan; the device still grants only one USB CAN_SEND at a time.
