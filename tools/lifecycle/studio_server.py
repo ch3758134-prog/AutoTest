@@ -22,7 +22,7 @@ def handler_factory(store, token, repo=None):
     source_root = Path(repo).resolve() if repo else Path.cwd()
     research = Research(store)
     class Handler(BaseHTTPRequestHandler):
-        server_version = "EngineeringWorkbench/0.3"
+        server_version = "EngineeringWorkbench/0.4"
 
         def write(self, value, status=200, content_type="application/json; charset=utf-8",
                   download=None):
