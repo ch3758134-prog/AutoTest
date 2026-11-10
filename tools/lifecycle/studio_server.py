@@ -110,6 +110,9 @@ def handler_factory(store, token):
                     answer = store.create_relation(data)
                 elif path == "/api/studio/relation/delete":
                     answer = store.delete_relation(data.get("id", ""))
+                elif path == "/api/studio/relation/approve":
+                    answer = store.approve_relation(data.get("id", ""),
+                                                    data.get("actor", ""), data.get("note", ""))
                 elif len(pieces) == 6 and pieces[:4] == ["", "api", "studio", "object"]:
                     key, verb = pieces[4:6]
                     if verb == "update":
