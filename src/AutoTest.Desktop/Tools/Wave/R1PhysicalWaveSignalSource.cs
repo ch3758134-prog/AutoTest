@@ -44,13 +44,16 @@ public sealed class R1PhysicalWaveSignalSource : IWaveSignalSource
                 "A valid physical device session generation is required.");
         var dbc = CurrentDbc(signal);
         var publisher = new DecodedSignalPublisher(dbc);
+        // SignalRef currently has no frame-format bit. Ambiguous 11/29-bit
+        // definitions must fail closed rather than silently decode the wrong bus frame.
+        var extendedId = dbc.Database.FindMessage(signal.FrameId).IsExtended;
         // HostArrivalOnly is the actual 0x41 firmware evidence quality:
         // the controller does not provide synchronized ECU sampling timestamps.
         var origin = TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp());
         var spec = new CanSubscriptionSpec(signal.Role, ImmutableArray.Create(signal.FrameId),
             CanBackpressurePolicy.DropWithLossFact, 4096);
         return ValueTask.FromResult(new WaveSignalSubscription(origin,
-            ReadAsync(controller, generation, signal, publisher, spec, ct)));
+            ReadAsync(controller, generation, signal, extendedId, publisher, spec, ct)));
     }
 
     private AssetEntryWithDbc CurrentDbc(SignalRef signal)
@@ -68,7 +71,7 @@ public sealed class R1PhysicalWaveSignalSource : IWaveSignalSource
 
     private async IAsyncEnumerable<SignalObservation> ReadAsync(
         HardwareBenchController controller, long generation, SignalRef signal,
-        DecodedSignalPublisher publisher, CanSubscriptionSpec spec,
+        bool extendedId, DecodedSignalPublisher publisher, CanSubscriptionSpec spec,
         [EnumeratorCancellation] CancellationToken ct)
     {
         // A physical frame may never be accepted from a prior USB generation.
@@ -86,8 +89,7 @@ public sealed class R1PhysicalWaveSignalSource : IWaveSignalSource
                     "A CAN frame from another USB session was received.");
             if (observation.Frame.Role != signal.Role ||
                 observation.Frame.Id != signal.FrameId ||
-                observation.Frame.ExtendedId !=
-                    _workspace.Database!.FindMessage(signal.FrameId).IsExtended)
+                observation.Frame.ExtendedId != extendedId)
                 continue;
             if (observation.Time.Source != TimeSource.HostArrival ||
                 observation.Time.Quality != TimeQuality.HostArrivalOnly)
