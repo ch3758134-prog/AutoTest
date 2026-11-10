@@ -64,6 +64,10 @@ class Research:
                     reviewed_evidence TEXT NOT NULL, approver TEXT NOT NULL,
                     decided_at TEXT NOT NULL, state TEXT NOT NULL);
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(studies)")}
+            if "baseline_result_rowid" not in columns:
+                db.execute("""ALTER TABLE studies
+                    ADD COLUMN baseline_result_rowid INTEGER NOT NULL DEFAULT 0""")
 
     def _study(self, db, study_id):
         row = db.execute("SELECT * FROM studies WHERE id=?", (study_id,)).fetchone()
@@ -149,7 +153,10 @@ class Research:
                 if requirement["kind"] != "requirement":
                     raise RuleError("Research source must be an explicit requirement")
             key, stamp = ident(), now()
-            db.execute("""INSERT INTO studies VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            db.execute("""INSERT INTO studies
+                (id,project_id,title,question,constraints,requirement_id,minimum_level,
+                 status,revision,selected_option,decision_id,created,updated)
+                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                        (key, project_id, title, question, constraints, requirement_id,
                         minimum, "OPEN", 1, None, None, stamp, stamp))
             self.store._audit(db, project_id, requirement_id, "OPEN_INVESTIGATION",
@@ -272,8 +279,8 @@ class Research:
         accepted = []
         for experiment in experiments:
             reports = [dict(r) for r in db.execute(
-                "SELECT * FROM study_results WHERE experiment_id=? ORDER BY rowid",
-                (experiment["id"],))]
+                "SELECT * FROM study_results WHERE experiment_id=? AND rowid>? ORDER BY rowid",
+                (experiment["id"], study["baseline_result_rowid"]))]
             reviewed = [r for r in reports if r["reviewed_by"]]
             # The most recent reviewed run is authoritative. Failed older runs
             # remain visible in history, but can be superseded by a reviewed retest.
@@ -343,9 +350,11 @@ class Research:
                 raise RuleError("Only a decided investigation may be reopened")
             db.execute("""UPDATE study_decisions SET state='SUPERSEDED'
                           WHERE id=?""", (study["decision_id"],))
+            checkpoint=db.execute("SELECT COALESCE(MAX(rowid),0) FROM study_results").fetchone()[0]
             db.execute("""UPDATE studies SET status='OPEN',selected_option=NULL,
-                       decision_id=NULL,revision=?,updated=? WHERE id=?""",
-                       (study["revision"] + 1, now(), study_id))
+                       decision_id=NULL,revision=?,updated=?,baseline_result_rowid=?
+                       WHERE id=?""",
+                       (study["revision"] + 1, now(), checkpoint, study_id))
             self._audit(db, study, "REOPEN_TECHNOLOGY", actor, reason)
         return self.detail(study_id)
 
