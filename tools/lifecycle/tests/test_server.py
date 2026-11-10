@@ -49,7 +49,7 @@ class ServerTests(unittest.TestCase):
     def test_ui_is_local_and_present(self):
         code,headers,body=self.get('/')
         self.assertEqual(code,200)
-        self.assertIn('ENGINEERING CONTROL',body.decode('utf-8'))
+        self.assertIn('工程设计与生命周期管理',body.decode('utf-8'))
         self.assertIn('no-store',headers['Cache-Control'])
         self.assertTrue(UI.is_file())
 
