@@ -28,6 +28,7 @@ public sealed partial class HardwareBenchController
         public required string ImageHash;
         public int RemainingFrames;
         public bool AwaitingConsecutive;
+        public bool ProbeOnly;
         public bool Disposed;
     }
     private sealed class FlashPermitHandle(HardwareBenchController owner, CanToolFlashPermit permit)
@@ -116,6 +117,64 @@ public sealed partial class HardwareBenchController
         }
     }
 
+    public static string PhysicalCanToolProbeConfirmation(
+        string configurationSha256, uint appCanId, uint bootCanId, long generation)
+    {
+        if (configurationSha256 is not { Length: 64 } ||
+            !configurationSha256.All(Uri.IsHexDigit) ||
+            appCanId is 0 or > 0x1FFFFFFF ||
+            bootCanId is 0 or > 0x1FFFFFFF || generation <= 0)
+            throw new ArgumentException("Invalid CanTool probe configuration or USB generation.");
+        return $"AUTHORIZE CANTOOL PROBE CAN1 APP=0x{appCanId:X} BOOT=0x{bootCanId:X} " +
+            $"CONFIG={configurationSha256[..16].ToUpperInvariant()} GEN={generation}";
+    }
+
+    /// <summary>
+    /// Single-generation, four-frame, short-lived actual UDS 10 03 probe.
+    /// It cannot erase, unlock, download, reset or send arbitrary UDS data.
+    /// Diagnostic-session probing itself can change ECU session state.
+    /// </summary>
+    public IDisposable AuthorizePhysicalCanToolProbe(
+        LeaseToken lease, uint appRequestId, uint bootRequestId,
+        string configurationSha256, string typedConfirmation)
+    {
+        var expected = PhysicalCanToolProbeConfirmation(
+            configurationSha256, appRequestId, bootRequestId, lease.SessionGeneration);
+        if (!string.Equals(typedConfirmation, expected, StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("Explicit physical 0x10 03 probe confirmation required.");
+        var session = _session;
+        if (session is null || session.State != UsbSessionState.Connected ||
+            !_versionVerified || _link is null || _hub is null ||
+            session.Generation != lease.SessionGeneration)
+            throw new IOException("Current verified main controller is required.");
+        if (_log is null || _log.FailureMessage is not null || _log.Dropped != 0 ||
+            CanDropped != 0 || CanMalformed != 0 || HubDropped != 0)
+            throw new IOException("Physical CAN1 trace lost; refuse probe.");
+        if (_physicalUdsLeases is null || !_physicalUdsLeases.Validate(BusRole.DutCan, lease))
+            throw new UnauthorizedAccessException("Exclusive CAN1 lease is required for physical probe.");
+        lock (_flashPermitLock)
+        {
+            if (_activeFlashPermit is { Disposed: false })
+                throw new InvalidOperationException("Another CanTool Flash or probe session is active.");
+            _physicalUdsBoundary.Revoke();
+            var permit = new CanToolFlashPermit
+            {
+                Lease = lease, Generation = session.Generation,
+                AppTx = appRequestId, BootTx = bootRequestId,
+                ConfigurationHash = configurationSha256,
+                ImageHash = "PROBE_ONLY",
+                Expires = DateTimeOffset.UtcNow.AddSeconds(40),
+                RemainingFrames = 4,
+                ProbeOnly = true
+            };
+            _activeFlashPermit = permit;
+            _log.RecordMessage("FLASH_LAB_UDS_PROBE_AUTHORIZE",
+                $"CAN1 probe only 10 03; gen={session.Generation}; APP={appRequestId:X}; " +
+                $"BOOT={bootRequestId:X}; XML_SHA={configurationSha256}");
+            return new FlashPermitHandle(this, permit);
+        }
+    }
+
     private void RevokePhysicalCanToolFlash()
     {
         lock (_flashPermitLock)
@@ -157,6 +216,18 @@ public sealed partial class HardwareBenchController
             // Enforce a restricted ISO-TP envelope. The lab workflow issues
             // only 10/11/27/31/34/36/37; no arbitrary CAN injection.
             var bytes = frame.Data.AsSpan();
+            if (permit.ProbeOnly)
+            {
+                if (bytes.Length < 3 || bytes[0] != 0x02 ||
+                    bytes[1] != 0x10 || bytes[2] != 0x03)
+                {
+                    error = "PROBE_SCOPE_DENIES_NON_1003";
+                    return false;
+                }
+                permit.RemainingFrames--;
+                error = "";
+                return true;
+            }
             byte pci = (byte)(bytes[0] >> 4);
             if (pci is 0 or 1)
             {
