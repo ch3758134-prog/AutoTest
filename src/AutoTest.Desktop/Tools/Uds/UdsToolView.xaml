@@ -134,8 +134,23 @@
        <Button Content="重开" Command="{Binding LoadDocumentCommand}"/>
       </WrapPanel>
      </StackPanel>
-     <ListBox ItemsSource="{Binding Services}" SelectedItem="{Binding SelectedService,Mode=TwoWay}"
-              DisplayMemberPath="Name" BorderThickness="0" MinHeight="120"/>
+     <TabControl Background="#192431">
+      <TabItem Header="UDS 服务目录">
+       <DataGrid ItemsSource="{Binding ServiceCatalog}" SelectedItem="{Binding SelectedCatalogService,Mode=TwoWay}"
+                 AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                 CanUserAddRows="False" SelectionMode="Single" GridLinesVisibility="None">
+        <DataGrid.Columns>
+         <DataGridTextColumn Header="SID" Binding="{Binding Sid,StringFormat=X2}" Width="50"/>
+         <DataGridTextColumn Header="服务" Binding="{Binding Name}" Width="*"/>
+         <DataGridTextColumn Header="类别" Binding="{Binding Risk}" Width="115"/>
+        </DataGrid.Columns>
+       </DataGrid>
+      </TabItem>
+      <TabItem Header="我的诊断任务">
+       <ListBox ItemsSource="{Binding Services}" SelectedItem="{Binding SelectedService,Mode=TwoWay}"
+                DisplayMemberPath="Name" BorderThickness="0" MinHeight="120"/>
+      </TabItem>
+     </TabControl>
     </DockPanel>
    </Border>
    <!-- Request builder and response -->

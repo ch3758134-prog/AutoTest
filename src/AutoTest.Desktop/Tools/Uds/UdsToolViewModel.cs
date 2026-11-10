@@ -33,6 +33,36 @@ public sealed class UdsToolViewModel : BindableBase
         _faultSid="22", _faultCode="31", _session="Default / Unknown",
         _sourceMode="Mock", _replayPath="", _didParameter="F190", _dtcMaskParameter="FF";
     private UdsServiceDefinition? _selectedService;
+    private UdsServiceDescriptor? _selectedCatalogService;
+    public IReadOnlyList<UdsServiceDescriptor> ServiceCatalog { get; } =
+        new UdsServiceCatalog().All.OrderBy(x=>x.Sid).ToArray();
+    public UdsServiceDescriptor? SelectedCatalogService
+    {
+        get => _selectedCatalogService;
+        set
+        {
+            if (!SetProperty(ref _selectedCatalogService,value) || value is null) return;
+            if (IsBusy) return;
+            ServiceName=value.Name;
+            // Do not guess OEM-specific request payloads. All other services
+            // deliberately begin as incomplete and cannot be sent until edited.
+            RequestHex=value.Sid switch
+            {
+                0x22=>"22 F1 90",
+                0x19=>"19 02 FF",
+                0x3E=>"3E 00",
+                _=>value.Sid.ToString("X2")
+            };
+            ExpectedHex="";
+            Status="SERVICE_TEMPLATE_NOT_SENT";
+            Error="";
+            ResponseSummary=$"已选择 UDS 0x{value.Sid:X2} · {value.Name}，风险类别 {value.Risk}。"+
+                (value.Sid is 0x19 or 0x22 or 0x3E
+                    ? " 已填入常见示例 PDU，需核对 ECU 服务定义。"
+                    : " 此项未提供未知的 OEM 参数，必须按 ECU 文档构造完整 PDU。") +
+                " 不会自动发出 CAN 报文。";
+        }
+    }
     public UdsToolViewModel() : this(new UdsDiagnosticWorkspace()) { }
     public UdsToolViewModel(UdsDiagnosticWorkspace backend)
     {
