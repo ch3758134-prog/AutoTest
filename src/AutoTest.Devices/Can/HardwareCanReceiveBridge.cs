@@ -27,6 +27,8 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
     private readonly object _sync = new();
     private bool _disposed;
     public event Action<HardwareCanTrace>? Trace;
+    /// <summary>Observed physical CAN RX before shared Hub fan-out, for bounded physical TX authorization.</summary>
+    public event Action<CanObservation>? ObservationPublished;
     public long Queued => Interlocked.Read(ref _enqueued);
     public long DroppedBeforeDecode => Interlocked.Read(ref _queueDropped);
     public long InvalidFrames => Interlocked.Read(ref _malformed);
@@ -79,8 +81,12 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
                 else
                 {
                     var stamp = TimePoint.FromHostArrival(item.Utc, item.Ticks);
-                    _hub.Publish(new CanObservation(frame!, stamp, EvidenceQuality.HostObserved,
-                        item.Generation, DroppedBeforeDecode, EvidenceRef.New()));
+                    var observation = new CanObservation(frame!, stamp, EvidenceQuality.HostObserved,
+                        item.Generation, DroppedBeforeDecode, EvidenceRef.New());
+                    foreach (Action<CanObservation> observer in ObservationPublished?.GetInvocationList()
+                                 .Cast<Action<CanObservation>>() ?? Enumerable.Empty<Action<CanObservation>>())
+                    { try { observer(observation); } catch { /* never stall the USB receive queue */ } }
+                    _hub.Publish(observation);
                     Interlocked.Increment(ref _published);
                 }
                 var line = new HardwareCanTrace(item.Utc, item.Ticks, item.Generation,

@@ -31,6 +31,15 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>Revocation of a not-yet-consumed exact CAN grant; safe on cancellation.</summary>
+    public void RevokeSingleCanFrame()
+    {
+        lock (_sync)
+        {
+            _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
+        }
+    }
+
     public void AssertAllowedAndConsume(ReadOnlySpan<byte> rawRequest, long connectionGeneration)
     {
         if (!UsbWireCodec.TryDecodeRequest(rawRequest, out var request))
