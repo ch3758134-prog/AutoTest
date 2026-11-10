@@ -1,3 +1,5 @@
+> **V0.3 更新：本页以下内容保留为 V0.1/V0.2 历史试点记录。当前默认工作台已改为可写入的通用工程管理软件，最新 Windows 使用说明请优先阅读 [STUDIO_V03.md](STUDIO_V03.md)。要运行旧 KEY_SIM 只读页面请使用 `server.py --legacy`。**
+
 # 本地启动与首轮验收｜AutoTest Lifecycle V0.1
 
 > 仅 PR #28 候选，**不修改 main**、不执行硬件输出、不启动 AutoTest DUT 软件。使用 Python 3.10+ 标准库；不需要 XAMPP、ProjeQtOr、MySQL、npm、pip 或账号。
