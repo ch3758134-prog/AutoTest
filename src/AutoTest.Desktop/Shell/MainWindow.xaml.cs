@@ -154,6 +154,13 @@ public partial class MainWindow : Window
                 "确认真实 ECU 只读自动测试",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) == MessageBoxResult.Yes);
+        model.AttachPhysicalController(
+            () => _controllerConfiguration?.CurrentProfile,
+            () => _controllerConfiguration?.FilePath,
+            summary => MessageBox.Show(this, summary,
+                "确认已锁定工程 TEST / KEY_SIM 真实 CAN0 操作计划",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                MessageBoxResult.No) == MessageBoxResult.Yes);
         _projectTestModel = model;
         _projectTestContextId = workspace.Project.Id.Value;
         return model;
