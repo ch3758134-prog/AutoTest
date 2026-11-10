@@ -66,7 +66,7 @@ public sealed class CanToolFlashLogicTests
     [Fact]
     public void CanToolChecksumUsesTheReferenceSixteenBitOnesComplement()
     {
-        Assert.Equal((ushort)0xFFFA,
+        Assert.Equal((ushort)0xFFF9,
             CanToolFlashEngine.CanToolChecksum(new byte[]{1,2,3}));
         Assert.Equal((ushort)0xFFFF,
             CanToolFlashEngine.CanToolChecksum(Array.Empty<byte>()));
