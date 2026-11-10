@@ -50,6 +50,7 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
     private IWaveWorkbenchBackend? _backend;
     private CancellationTokenSource? _pending;
     private bool _busy;
+    private bool _refreshAfterCurrentOperation;
     private string _status = "未接入波形服务 · 请从正式工作台打开";
     private string _quality = "Unknown";
     private string _origin = "Unknown";
@@ -127,7 +128,19 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         LoadSignals();
     }
 
-    public void RefreshSignals() => LoadSignals();
+    public void RefreshSignals()
+    {
+        if (_busy)
+        {
+            // A project DBC asset/revision change invalidates any in-flight capture.
+            // Do not mutate the selected-signal collection under the capture loop.
+            _refreshAfterCurrentOperation = true;
+            _pending?.Cancel();
+            Status = "DBC_CHANGED: cancelling current Wave operation before refreshing signals";
+            return;
+        }
+        LoadSignals();
+    }
 
     // Awaitable command entrypoints also make deterministic Desktop behavior tests possible.
     public Task ReplaySelectedAsync() => RunOperationAsync(ReplayAsync);
@@ -397,7 +410,14 @@ public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
         finally
         {
             _pending.Dispose(); _pending = null;
-            _busy = false; OnChanged(nameof(Busy)); RefreshCommands();
+            _busy = false;
+            if (_refreshAfterCurrentOperation)
+            {
+                _refreshAfterCurrentOperation = false;
+                LoadSignals();
+                Status = "DBC_REVISION_CHANGED: Wave signal list reloaded after cancelling the previous operation";
+            }
+            OnChanged(nameof(Busy)); RefreshCommands();
         }
     }
 
