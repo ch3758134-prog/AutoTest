@@ -1,0 +1,52 @@
+name: R1 product UI Windows build
+
+on:
+  push:
+    branches: [feature/r1-html-product-ui-20261110]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/AutoTest.Desktop/**'
+      - 'docs/ui-r1/**'
+      - 'tests/AutoTest.Desktop.Tests/**'
+      - '.github/workflows/r1-product-ui-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r1-product-ui:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Use pinned .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.400'
+      - name: Print exact commit
+        shell: pwsh
+        run: |
+          git rev-parse HEAD
+          dotnet --version
+      - name: Restore formal Desktop
+        shell: pwsh
+        run: dotnet restore src/AutoTest.Desktop/AutoTest.Desktop.csproj
+      - name: Build formal R1 Desktop
+        shell: pwsh
+        run: dotnet build src/AutoTest.Desktop/AutoTest.Desktop.csproj -c Release --no-restore --verbosity minimal
+      - name: Run WPF UI model tests
+        shell: pwsh
+        run: dotnet test tests/AutoTest.Desktop.Tests/AutoTest.Desktop.Tests.csproj -c Release --verbosity normal
+      - name: Publish formal R1 candidate
+        shell: pwsh
+        run: dotnet publish src/AutoTest.Desktop/AutoTest.Desktop.csproj -c Release -r win-x64 --self-contained false -o output/AutoTest.R1 --verbosity minimal
+      - name: Store build evidence (not formal delivery)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoTest-R1-Product-UI-Windows-Validation
+          path: output/AutoTest.R1/
+          retention-days: 7
+          if-no-files-found: error
