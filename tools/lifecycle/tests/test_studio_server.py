@@ -20,14 +20,15 @@ class StudioApiTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.store = Store(Path(self.tmp.name) / "local.sqlite3")
         self.server = ThreadingHTTPServer(
-            ("127.0.0.1", 0), handler_factory(self.store, "local-test-token"))
+            ("127.0.0.1", 0), handler_factory(self.store, "local-test-token",
+                                                 manager_token="manager-secret-token-0123456789-0123456789"))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
         self.url = "http://127.0.0.1:" + str(self.server.server_port)
 
-    def request(self, path, data=None, *, token=None, origin=None):
+    def request(self, path, data=None, *, token=None, origin=None, manager_token=None):
         headers = {}
         body = None
         if data is not None:
@@ -35,11 +36,48 @@ class StudioApiTest(unittest.TestCase):
             body = json.dumps(data).encode("utf-8")
             if token is not None:
                 headers["X-Local-Token"] = token
+            if manager_token is not None:
+                headers["X-Manager-Token"] = manager_token
             if origin:
                 headers["Origin"] = origin
         req = Request(self.url + path, data=body, headers=headers)
         with urlopen(req, timeout=5) as response:
             return response.status, json.loads(response.read().decode("utf-8"))
+
+    def test_manager_restricted_token_can_propose_but_cannot_approve(self):
+        _, project = self.request("/api/studio/project",
+                                  {"name":"Embedded project"},token="local-test-token")
+        project_id=project["project"]["id"]
+        token="manager-secret-token-0123456789-0123456789"
+        _, brief=self.request("/api/studio/management/context?project="+project_id)
+        self.assertEqual(brief["project"]["id"],project_id)
+        _, proposals=self.request("/api/studio/management/propose",{
+            "project_id":project_id,"category":"TECHNICAL_RESEARCH","priority":"P1",
+            "title":"Inspect timing","rationale":"Time budget is unknown",
+            "next_action":"Design and authorize measurements",
+            "source_objects":[],"proposed_by":"AI-MANAGER"
+        },manager_token=token)
+        self.assertEqual(proposals[0]["status"],"PENDING")
+        with self.assertRaises(HTTPError) as ex:
+            self.request("/api/studio/object",{
+                "project_id":project_id,"kind":"requirement","title":"Unauthorised",
+                "body":"invalid"
+            },manager_token=token)
+        self.assertEqual(ex.exception.code,403)
+        with self.assertRaises(HTTPError) as ex:
+            self.request("/api/studio/management/review",{
+                "id":proposals[0]["id"],"decision":"ACCEPT_FOR_PLANNING",
+                "reviewer":"AI","note":"not allowed"
+            },manager_token=token)
+        self.assertEqual(ex.exception.code,403)
+        _, after=self.request("/api/studio/management/review",{
+                "id":proposals[0]["id"],"decision":"ACCEPT_FOR_PLANNING",
+                "reviewer":"Human owner","note":"Discuss next design steps"
+            },token="local-test-token")
+        self.assertEqual(after[0]["status"],"ACCEPT_FOR_PLANNING")
+        with urlopen(self.url+"/management.js",timeout=5) as response:
+            self.assertEqual(response.status,200)
+            self.assertIn(b'renderManagementView',response.read())
 
     def test_version_endpoint_identifies_editable_studio(self):
         status, version = self.request("/api/studio/version")
