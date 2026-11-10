@@ -31,6 +31,7 @@ public partial class MainWindow : Window
 {
     private G4ToolsWindow? _compatTools;
     private AutoTest.DeviceLab.DeviceLabEmbeddedView? _device;
+    private LabProductionToolView? _production;
     private bool _closed;
     private bool _disposing;
     private string _activeKey = "project";
@@ -100,7 +101,8 @@ public partial class MainWindow : Window
                 R1RunHost.Content = new LabTestWorkspaceView();
                 break;
             case 10 when R1ProductionHost.Content is null:
-                R1ProductionHost.Content = new LabProductionToolView();
+                _production = new LabProductionToolView();
+                R1ProductionHost.Content = _production;
                 break;
             case 11 when R1RecordsHost.Content is null:
             {
@@ -226,12 +228,16 @@ public partial class MainWindow : Window
 
     private async void Window_Closing(object? sender,CancelEventArgs e)
     {
-        if (_closed || _device is null) return;
+        if (_closed || (_device is null && _production is null)) return;
         e.Cancel=true;
         if (_disposing) return;
         _disposing=true;
         IsEnabled=false;
-        try { await _device.DisposeAsync(); }
+        try
+        {
+            if (_production is not null) await _production.DisposeAsync();
+            if (_device is not null) await _device.DisposeAsync();
+        }
         catch(Exception ex)
         {
             MessageBox.Show(this,"R1 设备会话关闭异常，请保留 USB/CAN 证据：\n"+ex,
