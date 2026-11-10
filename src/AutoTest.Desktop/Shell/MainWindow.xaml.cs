@@ -33,5 +33,14 @@ public partial class MainWindow : Window
         _deviceLab = new AutoTest.DeviceLab.DeviceLabWindow { Owner = this };
         _deviceLab.Show();
     }
+    private void OpenTest_Click(object sender, RoutedEventArgs e) => WorkbenchTabs.SelectedIndex = 0;
+    private void OpenUds_Click(object sender, RoutedEventArgs e) => WorkbenchTabs.SelectedIndex = 1;
+    private void OpenFlash_Click(object sender, RoutedEventArgs e) => WorkbenchTabs.SelectedIndex = 2;
+    private void R1About_Click(object sender, RoutedEventArgs e) =>
+        MessageBox.Show(this,
+            "R1 页面设计源：docs/ui-r1/reference/AutoTest_UI_Interactive_Prototype_V0.1.html\\n" +
+            "P08 UDS、P09 Flash 当前仍为独立 Mock/Replay View；真实 ECU 物理通路在 FieldStudio 专项验收。" +
+            "其余 R1 专业页面将在集成后陆续替换旧模块工作台。",
+            "AutoTest R1 UI · 交付边界", MessageBoxButton.OK, MessageBoxImage.Information);
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

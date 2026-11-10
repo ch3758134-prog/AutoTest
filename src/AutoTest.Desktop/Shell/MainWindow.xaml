@@ -2,11 +2,48 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:prism="http://prismlibrary.com/"
+ xmlns:uds="clr-namespace:AutoTest.Desktop.Tools.Uds"
+ xmlns:flash="clr-namespace:AutoTest.Desktop.Tools.Flash"
  prism:ViewModelLocator.AutoWireViewModel="True"
- Title="AutoTest · V1 工程工作台 · MOCK ONLY" Width="1440" Height="880"
- MinWidth="1030" MinHeight="650" WindowStartupLocation="CenterScreen"
- Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
- FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True">
+ Title="AutoTest Studio · R1 产品工作台 / 设计接入候选"
+ Width="1600" Height="960" MinWidth="1150" MinHeight="720"
+ WindowStartupLocation="CenterScreen" WindowState="Maximized"
+ Background="#101620" Foreground="#E2EDF7"
+ FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True"
+ SnapsToDevicePixels="True">
+ <Window.Resources>
+  <SolidColorBrush x:Key="R1Title" Color="#111924"/>
+  <SolidColorBrush x:Key="R1Panel" Color="#192431"/>
+  <SolidColorBrush x:Key="R1Surface" Color="#202D3B"/>
+  <SolidColorBrush x:Key="R1Stroke" Color="#314458"/>
+  <SolidColorBrush x:Key="R1Muted" Color="#92A4B7"/>
+  <SolidColorBrush x:Key="R1Accent" Color="#4FAAFB"/>
+  <Style x:Key="R1RailButton" TargetType="Button">
+   <Setter Property="Width" Value="44"/>
+   <Setter Property="Height" Value="45"/>
+   <Setter Property="Margin" Value="2,3"/>
+   <Setter Property="FontSize" Value="12"/>
+   <Setter Property="Padding" Value="3"/>
+   <Setter Property="Background" Value="Transparent"/>
+   <Setter Property="BorderThickness" Value="0"/>
+   <Setter Property="Foreground" Value="#B6C9D9"/>
+   <Setter Property="HorizontalContentAlignment" Value="Center"/>
+  </Style>
+  <Style x:Key="R1PanelHeader" TargetType="TextBlock">
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="FontSize" Value="12"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+  </Style>
+  <Style TargetType="TabControl">
+   <Setter Property="Background" Value="{StaticResource R1Panel}"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="BorderBrush" Value="{StaticResource R1Stroke}"/>
+  </Style>
+  <Style TargetType="TabItem">
+   <Setter Property="FontSize" Value="12"/>
+   <Setter Property="Padding" Value="15,8"/>
+  </Style>
+ </Window.Resources>
  <Window.InputBindings>
   <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
   <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenProjectCommand}"/>
@@ -17,90 +54,169 @@
   <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
   <KeyBinding Key="F2" Command="{Binding FocusNameCommand}"/>
  </Window.InputBindings>
- <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-  <RowDefinition Height="*"/><RowDefinition Height="25"/></Grid.RowDefinitions>
- <Menu Grid.Row="0">
-  <MenuItem Header="_文件"><MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
-   <MenuItem Header="打开工程（含测试程序）" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O"/>
-   <MenuItem Header="保存工程及测试程序" Command="{Binding SaveCommand}" InputGestureText="Ctrl+S"/>
-   <Separator/><MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
-   <MenuItem Header="应用所选 DBC 信号 Factor 编辑" Command="{Binding EditDbcCommand}"/>
-   <Separator/><MenuItem Header="退出" Click="Close_Click"/></MenuItem>
-  <MenuItem Header="_编辑"><MenuItem Header="撤销" Command="{Binding UndoCommand}" InputGestureText="Ctrl+Z"/>
-   <MenuItem Header="重做" Command="{Binding RedoCommand}" InputGestureText="Ctrl+Y"/>
-   <Separator/><MenuItem Header="前插步骤" Command="{Binding InsertBeforeCommand}"/>
-   <MenuItem Header="后插步骤" Command="{Binding InsertAfterCommand}"/>
-   <MenuItem Header="复制步骤" Command="{Binding CopyCommand}"/>
-   <MenuItem Header="插入子步骤" Command="{Binding InsertChildCommand}"/>
-   <MenuItem Header="删除" Command="{Binding DeleteCommand}"/></MenuItem>
-  <MenuItem Header="_运行"><MenuItem Header="校验 TEST 文档和工程资源" Command="{Binding ValidateCommand}"/>
-   <MenuItem Header="运行实际步骤（Mock Only）" Command="{Binding RunCommand}" InputGestureText="F5"/>
-   <MenuItem Header="停止并清理" Command="{Binding StopCommand}"/></MenuItem>
-  <MenuItem Header="_工具"><MenuItem Header="八方向 Mock 专项工作台（扫码 / 记录 / Wave / UDS / Flash）" Click="G4Tools_Click"/>
-   <MenuItem Header="G4-LAB 模块工作台（配置 / DBC / TEST / Records / Operations / UDS / Flash / Wave）" Click="Modules_Click"/>
-   <MenuItem Header="DEVICE B0/B1/B2 只读诊断（手动连接）" Click="DeviceLab_Click"/>
-   <Separator/><MenuItem Header="CAN（当前仅 Mock，未开放真实操作）" IsEnabled="False"/>
-   <MenuItem Header="DBC（仅基础导入与编辑）" Command="{Binding ImportDbcCommand}"/>
-   <MenuItem Header="UDS · ISO-TP Mock 诊断" Click="G4Tools_Click"/>
-   <MenuItem Header="Flash · Mock Bootloader" Click="G4Tools_Click"/>
-   <MenuItem Header="Wave · CAN/DBC 回放" Click="G4Tools_Click"/></MenuItem>
- </Menu>
- <Border Grid.Row="1" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}"
-  BorderThickness="0,0,0,1" Padding="10,7">
-  <DockPanel>
-   <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-    <TextBlock Text="●  MOCK / SIMULATED" Foreground="{StaticResource Warning}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-    <TextBlock Text="    NO DEVICE OUTPUT / NOT PRODUCTION PASS" Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
-   </StackPanel>
-   <StackPanel Orientation="Horizontal">
-    <Button Content="新建" Command="{Binding NewProjectCommand}"/>
-    <Button Content="打开" Command="{Binding OpenProjectCommand}"/>
-    <Button Content="保存工程" Command="{Binding SaveCommand}"/>
-    <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"/>
-    <Button Content="撤销" Command="{Binding UndoCommand}"/>
-    <Button Content="验证" Command="{Binding ValidateCommand}"/>
-    <Button Content="▶ TEST Mock" Background="#14644E" Command="{Binding RunCommand}"/>
-    <Button Content="■ 停止" Command="{Binding StopCommand}"/>
-   </StackPanel>
-  </DockPanel>
- </Border>
- <Grid Grid.Row="2"><Grid.ColumnDefinitions>
-  <ColumnDefinition Width="270" MinWidth="180"/><ColumnDefinition Width="5"/>
-  <ColumnDefinition Width="*" MinWidth="430"/><ColumnDefinition Width="5"/>
-  <ColumnDefinition Width="315" MinWidth="240"/></Grid.ColumnDefinitions>
-  <Border Grid.Column="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
-   <DockPanel><Border DockPanel.Dock="Top" Padding="12,12,12,7">
-    <StackPanel><TextBlock Text="工程资源管理器" FontSize="15" FontWeight="SemiBold"/>
-     <TextBlock Text="{Binding ProjectLabel}" Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,5" TextWrapping="Wrap"/>
-     <TextBox Text="{Binding SearchText,UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索实际 TEST 节点"/></StackPanel>
-   </Border><ContentControl prism:RegionManager.RegionName="ProjectExplorerRegion"/></DockPanel>
+ <Grid>
+  <Grid.RowDefinitions>
+   <RowDefinition Height="38"/>
+   <RowDefinition Height="30"/>
+   <RowDefinition Height="48"/>
+   <RowDefinition Height="*" MinHeight="290"/>
+   <RowDefinition Height="190" MinHeight="125"/>
+   <RowDefinition Height="25"/>
+  </Grid.RowDefinitions>
+  <!-- HTML #app title row / theme / workspace -->
+  <Border Background="{StaticResource R1Title}" BorderBrush="#263748" BorderThickness="0,0,0,1">
+   <DockPanel Margin="12,0">
+    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+     <TextBlock Text="DESIGN CANDIDATE" Foreground="#E8B967" FontSize="11" FontWeight="SemiBold"/>
+     <TextBlock Text="   /   MOCK &amp; REPLAY VIEWS · REAL HARDWARE IN FIELD STUDIO" Foreground="{StaticResource R1Muted}" FontSize="11"/>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+     <Border Background="#257AC2" CornerRadius="5" Width="25" Height="25" Margin="0,0,9,0">
+      <TextBlock Text="A" Foreground="White" FontWeight="Bold" FontSize="15"
+                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+     </Border>
+     <TextBlock Text="AutoTest" FontWeight="Bold" FontSize="16" Foreground="White" VerticalAlignment="Center"/>
+     <TextBlock Text="  STUDIO" FontSize="9" Foreground="#92A4B7" VerticalAlignment="Center"/>
+     <TextBlock Text="     /     " Foreground="#65798F" VerticalAlignment="Center"/>
+     <TextBlock Text="{Binding ProjectLabel}" Foreground="#CEDCEB" VerticalAlignment="Center"/>
+    </StackPanel>
+   </DockPanel>
   </Border>
-  <GridSplitter Grid.Column="1" Background="{StaticResource Line}" HorizontalAlignment="Stretch"/>
-  <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="*" MinHeight="260"/>
-   <RowDefinition Height="5"/><RowDefinition Height="240" MinHeight="140"/></Grid.RowDefinitions>
-   <Border Grid.Row="0" Background="{StaticResource Canvas}"><DockPanel>
-    <Border DockPanel.Dock="Top" Background="#27364A" Padding="12,9">
-     <StackPanel Orientation="Horizontal"><TextBlock Text="测试程序 · TEST 文档事务 / Prepare · Test · Cleanup" FontWeight="SemiBold"/>
-      <TextBlock Text="    ● 编辑后可保存重开" Foreground="{StaticResource Warning}"/></StackPanel></Border>
-    <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>
-   </DockPanel></Border>
-   <GridSplitter Grid.Row="1" Background="{StaticResource Line}"/>
-   <Border Grid.Row="2" Background="{StaticResource Panel}"><DockPanel>
-    <Border DockPanel.Dock="Top" Padding="12,8" Background="#29384A">
-     <TextBlock Text="RunCoordinator · StepFact / 模拟质量 / 预期-实际" FontWeight="SemiBold"/></Border>
-    <ContentControl prism:RegionManager.RegionName="RunMonitorRegion"/>
-   </DockPanel></Border>
+  <!-- HTML menu row / preserve all existing tested commands -->
+  <Menu Grid.Row="1" Background="#16202C" Foreground="#E2EDF7">
+   <MenuItem Header="_文件">
+    <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
+    <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}"/>
+    <MenuItem Header="保存工程" Command="{Binding SaveCommand}"/>
+    <Separator/>
+    <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
+    <MenuItem Header="退出" Click="Close_Click"/>
+   </MenuItem>
+   <MenuItem Header="_编辑">
+    <MenuItem Header="撤销" Command="{Binding UndoCommand}"/>
+    <MenuItem Header="重做" Command="{Binding RedoCommand}"/>
+    <MenuItem Header="前插步骤" Command="{Binding InsertBeforeCommand}"/>
+    <MenuItem Header="后插步骤" Command="{Binding InsertAfterCommand}"/>
+    <MenuItem Header="复制步骤" Command="{Binding CopyCommand}"/>
+    <MenuItem Header="插入子步骤" Command="{Binding InsertChildCommand}"/>
+    <MenuItem Header="删除节点" Command="{Binding DeleteCommand}"/>
+   </MenuItem>
+   <MenuItem Header="_运行">
+    <MenuItem Header="校验工程/测试资源" Command="{Binding ValidateCommand}"/>
+    <MenuItem Header="启动 Mock 测试" Command="{Binding RunCommand}"/>
+    <MenuItem Header="停止" Command="{Binding StopCommand}"/>
+   </MenuItem>
+   <MenuItem Header="_诊断">
+    <MenuItem Header="UDS Console / P08" Click="OpenUds_Click"/>
+    <MenuItem Header="CAN Flash / P09" Click="OpenFlash_Click"/>
+    <MenuItem Header="CAN / USB 设备诊断（独立工具）" Click="DeviceLab_Click"/>
+    <MenuItem Header="已有专业工作台（Mock/Replay）" Click="Modules_Click"/>
+   </MenuItem>
+   <MenuItem Header="_视图">
+    <MenuItem Header="测试程序 / P10" Click="OpenTest_Click"/>
+    <MenuItem Header="工程资源 / P01" Click="OpenTest_Click"/>
+    <MenuItem Header="旧集成工具（兼容）" Click="G4Tools_Click"/>
+   </MenuItem>
+   <MenuItem Header="_帮助"><MenuItem Header="R1 原型参考与独立联调说明" Click="R1About_Click"/></MenuItem>
+  </Menu>
+  <!-- HTML command bar, 48 px -->
+  <Border Grid.Row="2" Background="#16202C" Padding="11,7"
+          BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,0,1">
+   <DockPanel>
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <TextBlock Text="● MOCK HOST" Foreground="#E8B967" FontWeight="SemiBold" VerticalAlignment="Center"/>
+     <TextBlock Text="   CAN1 Physical Link: not attached to product shell" Foreground="{StaticResource R1Muted}" FontSize="11" VerticalAlignment="Center"/>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+     <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
+     <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
+     <Button Content="保存" Command="{Binding SaveCommand}"/>
+     <Button Content="验证" Command="{Binding ValidateCommand}"/>
+     <Border BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0" Margin="7,0,12,0"/>
+     <Button Content="UDS Console" Click="OpenUds_Click"/>
+     <Button Content="CAN Flash" Click="OpenFlash_Click"/>
+     <Button Content="设备联调" Click="DeviceLab_Click"/>
+     <Button Content="▶ Mock Run" Command="{Binding RunCommand}"/>
+     <Button Content="■ 停止" Command="{Binding StopCommand}"/>
+    </StackPanel>
+   </DockPanel>
+  </Border>
+  <!-- HTML rail / explorer / document / inspector -->
+  <Grid Grid.Row="3">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="50"/>
+    <ColumnDefinition Width="255" MinWidth="175"/>
+    <ColumnDefinition Width="5"/>
+    <ColumnDefinition Width="*" MinWidth="440"/>
+    <ColumnDefinition Width="5"/>
+    <ColumnDefinition Width="286" MinWidth="220"/>
+   </Grid.ColumnDefinitions>
+   <Border Background="#141D29" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
+    <StackPanel>
+     <Button Content="工&#x0a;程" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P01 / 工程资源和 TEST 编辑"/>
+     <Button Content="UDS" Style="{StaticResource R1RailButton}" Click="OpenUds_Click" ToolTip="P08 / UDS Console"/>
+     <Button Content="烧&#x0a;录" Style="{StaticResource R1RailButton}" Click="OpenFlash_Click" ToolTip="P09 / CAN Flash"/>
+     <Button Content="设&#x0a;备" Style="{StaticResource R1RailButton}" Click="DeviceLab_Click" ToolTip="P02 / 独立 USB/CAN 诊断"/>
+     <Button Content="其&#x0a;他" Style="{StaticResource R1RailButton}" Click="Modules_Click" ToolTip="其他 R1 模块在现有工作台中，尚未正式融合"/>
+    </StackPanel>
+   </Border>
+   <Border Grid.Column="1" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
+    <DockPanel>
+     <Border DockPanel.Dock="Top" Padding="12,13,12,10" BorderBrush="#263748" BorderThickness="0,0,0,1">
+      <StackPanel>
+       <TextBlock Text="EXPLORER / 工程资源" Style="{StaticResource R1PanelHeader}"/>
+       <TextBlock Text="{Binding ProjectLabel}" Foreground="{StaticResource R1Muted}" FontSize="11" Margin="0,5,0,9" TextWrapping="Wrap"/>
+       <TextBox Text="{Binding SearchText,UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索工程与测试节点"/>
+      </StackPanel>
+     </Border>
+     <ContentControl prism:RegionManager.RegionName="ProjectExplorerRegion"/>
+    </DockPanel>
+   </Border>
+   <GridSplitter Grid.Column="2" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
+   <Border Grid.Column="3" Background="#101620">
+    <TabControl x:Name="WorkbenchTabs" Background="#101620">
+     <TabItem Header="TEST · 测试程序">
+      <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>
+     </TabItem>
+     <TabItem Header="UDS · 诊断服务">
+      <uds:UdsToolView/>
+     </TabItem>
+     <TabItem Header="FLASH · ECU 烧录">
+      <flash:FlashToolView/>
+     </TabItem>
+    </TabControl>
+   </Border>
+   <GridSplitter Grid.Column="4" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
+   <Border Grid.Column="5" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0">
+    <DockPanel>
+     <Border DockPanel.Dock="Top" Background="#202D3B" Padding="12,12,12,9">
+      <StackPanel>
+       <TextBlock Text="INSPECTOR / 属性" Style="{StaticResource R1PanelHeader}"/>
+       <TextBlock Text="当前 TEST 选择与资源关联" Foreground="{StaticResource R1Muted}" Margin="0,5,0,0" FontSize="11"/>
+      </StackPanel>
+     </Border>
+     <ContentControl prism:RegionManager.RegionName="StepInspectorRegion"/>
+    </DockPanel>
+   </Border>
   </Grid>
-  <GridSplitter Grid.Column="3" Background="{StaticResource Line}" HorizontalAlignment="Stretch"/>
-  <Border Grid.Column="4" Background="{StaticResource Panel}"><DockPanel>
-   <Border DockPanel.Dock="Top" Background="#29384A" Padding="12,10">
-    <TextBlock Text="TEST 步骤属性检查器" FontSize="15" FontWeight="SemiBold"/></Border>
-   <ContentControl prism:RegionManager.RegionName="StepInspectorRegion"/>
-  </DockPanel></Border>
- </Grid>
- <Border Grid.Row="3" Background="#173650" Padding="11,3"><DockPanel>
-  <TextBlock Text="G4-V1  ·  SIMULATED ONLY" FontWeight="SemiBold"/>
-  <TextBlock Text="{Binding Status}" DockPanel.Dock="Right" HorizontalAlignment="Right" Foreground="{StaticResource Ink}"/>
- </DockPanel></Border>
+  <!-- HTML bottom panel / Trace -->
+  <Border Grid.Row="4" Background="#192431" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,1,0,0">
+   <DockPanel>
+    <Border DockPanel.Dock="Top" Background="#202D3B" Padding="12,6">
+     <StackPanel Orientation="Horizontal">
+      <TextBlock Text="OUTPUT / TRACE" FontWeight="SemiBold"/>
+      <TextBlock Text="    RUN MONITOR · StepFact · Expected/Actual" Foreground="{StaticResource R1Muted}" FontSize="11"/>
+      <TextBlock Text="    // UDS raw ISO-TP trace is available in P08 tab" Foreground="#46D0DC" FontSize="11"/>
+     </StackPanel>
+    </Border>
+    <ContentControl prism:RegionManager.RegionName="RunMonitorRegion"/>
+   </DockPanel>
+  </Border>
+  <Border Grid.Row="5" Background="#163C60" Padding="10,3">
+   <DockPanel>
+    <TextBlock Text="AutoTest R1 · DESIGN / NOT PHYSICAL VALIDATED" FontWeight="SemiBold" Foreground="#E2EDF7"/>
+    <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" HorizontalAlignment="Right" Foreground="#D4E7F8"/>
+   </DockPanel>
+  </Border>
  </Grid>
 </Window>
