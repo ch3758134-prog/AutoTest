@@ -101,6 +101,20 @@ public partial class LabProductionToolView : UserControl, IAsyncDisposable
         }
         catch(Exception ex) { R1ScannerState.Text="断开失败："+ex.Message; }
     }
+    private void BrowseStationProfile_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择实际工位 Controller / Station Profile 文件",
+            Filter = "配置文件 (*.json;*.xml;*.yaml;*.yml)|*.json;*.xml;*.yaml;*.yml|所有文件 (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true &&
+            DataContext is R1ProductionScannerViewModel model)
+            model.StationProfileFile = dialog.FileName;
+    }
+
     private void OpenProjectTest_Click(object sender, RoutedEventArgs e)
     {
         // Navigate to the ONE project-managed TEST runner. Never construct a
