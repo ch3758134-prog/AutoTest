@@ -60,6 +60,10 @@
                 <TextBox Width="160" Height="28" Text="{Binding ArchivePath, UpdateSourceTrigger=PropertyChanged}"
                          ToolTip="输入/选择保存的 CAN RX JSON 帧档案" Margin="0,0,7,7" />
                 <Button Click="ChooseArchive_Click" Content="选择帧文件…" />
+                <Button x:Name="RecordCanButton" Click="RecordCanArchive_Click"
+                        Content="录制真实 CAN1 RX / 5s"
+                        ToolTip="从已连接的唯一主控板记录实际接收帧，不向 CAN 发送任何数据"/>
+                <Button Click="CancelCanArchive_Click" Content="取消录制" />
                 <Button Command="{Binding OpenArchiveCommand}" Content="载入帧档案" />
                 <Button Command="{Binding LiveCommand}" Content="▶ 共享实时采集" />
                 <Button Command="{Binding StopCommand}" Content="■ 取消操作" />
@@ -204,7 +208,11 @@
         <Border Grid.Row="3" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0"
                 Margin="0,12,0,0" Padding="4,10,2,0">
             <DockPanel>
-                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#92A4B7" />
+                <StackPanel>
+                    <TextBlock x:Name="ArchiveCaptureStatus" Text="CAN RX 录制未开始"
+                               Foreground="#83CEB4" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#92A4B7" />
+                </StackPanel>
                 <TextBlock DockPanel.Dock="Right" Text="Physical / Replay / Mock 事实独立" Foreground="#92A4B7" />
             </DockPanel>
         </Border>
