@@ -1,0 +1,297 @@
+<Window x:Class="AutoTest.FieldStudio.MainWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="AutoTest · 真实硬件联调工作台" Width="1560" Height="930"
+ MinWidth="1180" MinHeight="690" WindowState="Maximized" Background="{StaticResource CanvasBrush}"
+ Loaded="Window_Loaded" Closing="Window_Closing">
+ <Grid>
+  <Grid.RowDefinitions>
+   <RowDefinition Height="66"/>
+   <RowDefinition Height="*"/>
+   <RowDefinition Height="110"/>
+   <RowDefinition Height="30"/>
+  </Grid.RowDefinitions>
+  <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
+   <Grid Margin="18,0">
+    <Grid.ColumnDefinitions>
+     <ColumnDefinition Width="210"/>
+     <ColumnDefinition Width="Auto"/>
+     <ColumnDefinition Width="*"/>
+     <ColumnDefinition Width="Auto"/>
+    </Grid.ColumnDefinitions>
+    <StackPanel VerticalAlignment="Center">
+     <TextBlock Text="AutoTest" FontSize="22" FontWeight="SemiBold" Foreground="#205A8A"/>
+     <TextBlock Text="FIELD STUDIO  ·  硬件联调" FontSize="10" Foreground="{StaticResource MutedBrush}"/>
+    </StackPanel>
+    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+     <ComboBox x:Name="DeviceCombo" Width="265" DisplayMemberPath="DisplayIdentity" ToolTip="仅枚举现役主控板 WinUSB 设备"/>
+     <Button Content="刷新设备" Click="Refresh_Click"/>
+     <Button x:Name="ConnectButton" Content="连接" Style="{StaticResource PrimaryButton}" Click="Connect_Click"/>
+     <Button x:Name="DisconnectButton" Content="断开" Click="Disconnect_Click"/>
+    </StackPanel>
+    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+     <TextBlock x:Name="UsbStatus" Text="USB 未连接" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,18,0"/>
+     <TextBlock x:Name="CanStatus" Text="CAN1 DUT · 未采集" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+    </StackPanel>
+    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+     <TextBlock Text="扫码枪" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+     <TextBox x:Name="ScanBox" Width="205" ToolTip="扫码枪键盘模式：先点击此输入框，再扫描；不安装全局键盘钩子"
+       PreviewTextInput="ScanBox_PreviewTextInput" PreviewKeyDown="ScanBox_PreviewKeyDown"/>
+     <TextBlock x:Name="CurrentDut" Text="DUT：未识别" VerticalAlignment="Center" MinWidth="165" FontSize="12"/>
+    </StackPanel>
+   </Grid>
+  </Border>
+
+  <TabControl x:Name="Workspace" Grid.Row="1" TabStripPlacement="Left" Margin="8,8,8,0" Background="{StaticResource CanvasBrush}">
+   <TabItem Header=" 设备 / CAN ">
+    <Grid Margin="14">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+      <TextBlock Text="主控板与 CAN 现场监控" Style="{StaticResource HeaderText}" Width="245"/>
+      <Button Content="读取固件版本" Click="ReadVersion_Click"/>
+      <Button Content="读取只读 GPIO 状态" Click="ReadGpio_Click"/>
+      <TextBlock x:Name="DeviceVersion" Text="未读取版本" VerticalAlignment="Center"/>
+     </StackPanel>
+     <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Border Style="{StaticResource CardBorder}" Margin="0,0,10,0">
+       <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="CAN1 / DUT 报文监视" Style="{StaticResource SectionText}"/>
+        <DataGrid x:Name="CanGrid" />
+       </DockPanel>
+      </Border>
+      <Border Grid.Column="1" Style="{StaticResource CardBorder}">
+       <StackPanel>
+        <TextBlock Text="实时设备状态" Style="{StaticResource SectionText}"/>
+        <TextBlock x:Name="DeviceInfo" Text="等待连接；主控 USB 连接不代表 ECU 通信已建立。" TextWrapping="Wrap" Margin="0,0,0,15"/>
+        <TextBlock Text="收发策略" Style="{StaticResource SectionText}"/>
+        <TextBlock Text="CAN1 = DUT；CAN0 = 按键板。所有专业模块共享唯一主控 USB/CAN Hub。" Style="{StaticResource MutedText}" Margin="0,0,0,10"/>
+        <TextBlock Text="物理 UDS 仅允许逐次明确授权的 0x19 / 0x22；禁止任意 CAN 发送与擦写。" Style="{StaticResource MutedText}" Margin="0,0,0,10"/>
+        <TextBlock x:Name="CanQuality" Text="RX 质量待验证" TextWrapping="Wrap"/>
+       </StackPanel>
+      </Border>
+     </Grid>
+    </Grid>
+   </TabItem>
+
+   <TabItem Header=" DBC 管理 ">
+    <Grid Margin="14">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="190"/></Grid.RowDefinitions>
+     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+      <TextBlock Text="DBC 文件与信号工程" Style="{StaticResource HeaderText}" Width="255"/>
+      <Button Content="导入 DBC" Click="ImportDbc_Click" Style="{StaticResource PrimaryButton}"/>
+      <Button Content="保存当前 DBC" Click="SaveDbc_Click"/>
+      <Button Content="移除文件" Click="RemoveDbc_Click"/>
+      <TextBlock x:Name="DbcStatus" Text="未加载文件" VerticalAlignment="Center"/>
+     </StackPanel>
+     <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="245"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Border Style="{StaticResource CardBorder}" Margin="0,0,10,0">
+       <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="工程 / DBC 文件" Style="{StaticResource SectionText}"/>
+        <ListBox x:Name="DbcFiles" DisplayMemberPath="Display" SelectionChanged="DbcFiles_SelectionChanged"/>
+       </DockPanel>
+      </Border>
+      <Border Grid.Column="1" Style="{StaticResource CardBorder}">
+       <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="报文列表（选择报文查看信号）" Style="{StaticResource SectionText}"/>
+        <DataGrid x:Name="DbcMessages" SelectionChanged="DbcMessages_SelectionChanged"/>
+       </DockPanel>
+      </Border>
+     </Grid>
+     <Border Grid.Row="2" Style="{StaticResource CardBorder}" Margin="0,10,0,0">
+      <DockPanel>
+       <TextBlock DockPanel.Dock="Top" Text="信号定义 / 属性（支持的语法可安全保存，不支持的扩展仅允许只读）" Style="{StaticResource SectionText}"/>
+       <DataGrid x:Name="DbcSignals"/>
+      </DockPanel>
+     </Border>
+    </Grid>
+   </TabItem>
+
+   <TabItem Header=" 波形分析 ">
+    <Grid Margin="14">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+      <TextBlock Text="实时信号波形" Style="{StaticResource HeaderText}" Width="195"/>
+      <Button x:Name="WaveRunButton" Content="开始观察" Click="WaveRun_Click" Style="{StaticResource PrimaryButton}"/>
+      <Button Content="停止观察" Click="WaveStop_Click"/>
+      <Button Content="采集当前参考" Click="WaveReference_Click"/>
+      <Button Content="参考比较" Click="WaveCompare_Click"/>
+      <Button Content="导出 CSV" Click="WaveExport_Click"/>
+      <TextBlock x:Name="WaveStatus" Text="请先加载 DBC，并选择需要观察的信号" VerticalAlignment="Center"/>
+     </StackPanel>
+     <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="235"/><ColumnDefinition Width="*"/><ColumnDefinition Width="245"/></Grid.ColumnDefinitions>
+      <Border Style="{StaticResource CardBorder}" Margin="0,0,10,0">
+       <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="可用信号（选择一条）" Style="{StaticResource SectionText}"/>
+        <ListBox x:Name="WaveSignals" DisplayMemberPath="Label" SelectionChanged="WaveSignals_SelectionChanged"/>
+       </DockPanel>
+      </Border>
+      <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="0,0,10,0">
+       <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="28"/><RowDefinition Height="*"/><RowDefinition Height="26"/></Grid.RowDefinitions>
+        <TextBlock x:Name="WaveTitle" Text="实时波形 · CAN1 主机接收时间" FontWeight="SemiBold"/>
+        <Canvas x:Name="WaveCanvas" Grid.Row="1" Background="#FAFCFE" SizeChanged="WaveCanvas_SizeChanged" MouseLeftButtonDown="WaveCanvas_Click"/>
+        <TextBlock x:Name="WaveCursor" Grid.Row="2" Text="点击图形定位游标" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
+       </Grid>
+      </Border>
+      <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+       <StackPanel>
+        <TextBlock Text="采集 / 分析" Style="{StaticResource SectionText}"/>
+        <TextBlock Text="波形源" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock Text="CAN1 → DBC 解码" Style="{StaticResource MutedText}"/>
+        <TextBlock Text="当前值" FontWeight="SemiBold" Margin="0,16,0,0"/>
+        <TextBlock x:Name="WaveValue" Text="—" FontSize="23"/>
+        <TextBlock Text="参考判定" FontWeight="SemiBold" Margin="0,18,0,0"/>
+        <TextBlock x:Name="WaveVerdict" Text="未采集参考" Style="{StaticResource MutedText}"/>
+        <TextBlock Text="数据质量" FontWeight="SemiBold" Margin="0,18,0,0"/>
+        <TextBlock x:Name="WaveQuality" Text="尚无数据；如有丢帧将标记不确定" Style="{StaticResource MutedText}"/>
+        <TextBlock Text="这里显示真实采集样本，不使用模拟曲线。" Style="{StaticResource MutedText}" Margin="0,20,0,0"/>
+       </StackPanel>
+      </Border>
+     </Grid>
+    </Grid>
+   </TabItem>
+
+   <TabItem Header=" UDS 诊断 ">
+    <Grid Margin="14">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="190"/></Grid.RowDefinitions>
+     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+      <TextBlock Text="UDS 诊断控制台" Style="{StaticResource HeaderText}" Width="240"/>
+      <TextBlock Text="物理只读请求需要明确授权；共享 USB/CAN1 会话" Style="{StaticResource MutedText}" VerticalAlignment="Center"/>
+     </StackPanel>
+     <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/><ColumnDefinition Width="285"/></Grid.ColumnDefinitions>
+      <Border Style="{StaticResource CardBorder}" Margin="0,0,10,0">
+       <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="诊断服务" Style="{StaticResource SectionText}"/>
+        <ListBox x:Name="UdsServices" SelectionChanged="UdsServices_SelectionChanged">
+         <ListBoxItem Tag="22 F1 90" Content="0x22 读取 DID"/>
+         <ListBoxItem Tag="19 02 FF" Content="0x19 读取 DTC"/>
+         <ListBoxItem Tag="10 03" Content="0x10 会话控制（未授权）"/>
+         <ListBoxItem Tag="11 01" Content="0x11 ECU 复位（未授权）"/>
+         <ListBoxItem Tag="27 01" Content="0x27 安全访问（未授权）"/>
+         <ListBoxItem Tag="2E F1 90" Content="0x2E 写入 DID（未授权）"/>
+         <ListBoxItem Tag="31 01" Content="0x31 例程控制（未授权）"/>
+         <ListBoxItem Tag="34 00 44" Content="0x34 下载请求（未授权）"/>
+         <ListBoxItem Tag="36 01" Content="0x36 数据传输（未授权）"/>
+         <ListBoxItem Tag="37" Content="0x37 退出传输（未授权）"/>
+        </ListBox>
+       </DockPanel>
+      </Border>
+      <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="0,0,10,0">
+       <StackPanel>
+        <TextBlock Text="请求编辑 / 原始响应" Style="{StaticResource SectionText}"/>
+        <TextBlock Text="请求 PDU（十六进制）" Margin="0,8,0,4"/>
+        <TextBox x:Name="UdsRequestText" Text="22 F1 90" Height="32"/>
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+         <Button Content="生成本次授权字符串" Click="UdsPrepare_Click"/>
+         <Button x:Name="UdsSendButton" Content="发送只读 UDS 请求" Style="{StaticResource PrimaryButton}" Click="UdsSend_Click"/>
+         <Button Content="取消" Click="UdsCancel_Click"/>
+        </StackPanel>
+        <TextBlock Text="授权内容（必须由操作者确认并粘贴在下方）" FontSize="11"/>
+        <TextBox x:Name="UdsExpected" IsReadOnly="True" TextWrapping="Wrap" Height="53"/>
+        <TextBox x:Name="UdsConfirmation" TextWrapping="Wrap" Height="53" Margin="0,4,0,10"/>
+        <TextBlock Text="UDS 响应与状态" Style="{StaticResource SectionText}"/>
+        <TextBox x:Name="UdsResponse" AcceptsReturn="True" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Height="120" Text="未执行真实请求。"/>
+       </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+       <StackPanel>
+        <TextBlock Text="ECU / ISO-TP 端点" Style="{StaticResource SectionText}"/>
+        <TextBlock Text="请求 CAN ID (Hex)" Margin="0,8,0,3"/>
+        <TextBox x:Name="UdsTxId" Text="7E0"/>
+        <TextBlock Text="响应 CAN ID (Hex)" Margin="0,10,0,3"/>
+        <TextBox x:Name="UdsRxId" Text="7E8"/>
+        <TextBlock Text="ECU Profile 修订标识" Margin="0,10,0,3"/>
+        <TextBox x:Name="UdsRevision" Text="LAB-EXPLICIT"/>
+        <TextBlock Text="P2(ms)" Margin="0,10,0,3"/>
+        <TextBox x:Name="UdsP2" Text="1000"/>
+        <TextBlock Text="P2*(ms)" Margin="0,10,0,3"/>
+        <TextBox x:Name="UdsP2Star" Text="5000"/>
+        <TextBlock Text="CAN1 / DUT 专用 · Normal Addressing；只支持明确授权的 0x19 / 0x22。" Style="{StaticResource MutedText}" Margin="0,12,0,0"/>
+       </StackPanel>
+      </Border>
+     </Grid>
+     <Border Grid.Row="2" Style="{StaticResource CardBorder}" Margin="0,10,0,0">
+      <DockPanel>
+       <TextBlock DockPanel.Dock="Top" Text="UDS 请求 / 响应 / 失败时间线" Style="{StaticResource SectionText}"/>
+       <DataGrid x:Name="UdsTraceGrid"/>
+      </DockPanel>
+     </Border>
+    </Grid>
+   </TabItem>
+
+   <TabItem Header=" ECU 烧录 ">
+    <Grid Margin="14">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="170"/></Grid.RowDefinitions>
+     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+      <TextBlock Text="ECU 固件与编程配置" Style="{StaticResource HeaderText}" Width="255"/>
+      <Button Content="导入 BIN / HEX / S19" Style="{StaticResource PrimaryButton}" Click="FlashImport_Click"/>
+      <Button Content="检查文件结构" Click="FlashInspect_Click"/>
+      <TextBlock Text="实际擦写未授权；等待 CanTool / ECU Profile 合同核实" Foreground="#A14D20" VerticalAlignment="Center"/>
+     </StackPanel>
+     <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="320"/></Grid.ColumnDefinitions>
+      <Border Style="{StaticResource CardBorder}" Margin="0,0,10,0">
+       <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="镜像段 / 地址与长度（来源为真实导入文件）" Style="{StaticResource SectionText}"/>
+        <DataGrid x:Name="FlashSegments"/>
+       </DockPanel>
+      </Border>
+      <Border Grid.Column="1" Style="{StaticResource CardBorder}">
+       <StackPanel>
+        <TextBlock Text="编程前置检查" Style="{StaticResource SectionText}"/>
+        <TextBlock x:Name="FlashInfo" Text="未选择镜像；无真实编程配置。" TextWrapping="Wrap" Margin="0,10,0,10"/>
+        <TextBlock Text="待 CanTool 核实的配置" FontWeight="SemiBold" Margin="0,8,0,7"/>
+        <TextBlock Text="APP/Boot Request/Response CAN ID&#x0a;Flash 起止地址 / 分段映射&#x0a;Seed-Key DLL / 安全级别&#x0a;UDS 会话与擦除例程&#x0a;0x74 最大块长 / 流控参数&#x0a;校验算法、复位与恢复程序" TextWrapping="Wrap" LineHeight="23"/>
+        <TextBlock Text="不可从 Mock 或 USB ACK 推断 ECU 已经烧录成功。" Style="{StaticResource MutedText}" Margin="0,18,0,0"/>
+       </StackPanel>
+      </Border>
+     </Grid>
+     <Border Grid.Row="2" Style="{StaticResource CardBorder}" Margin="0,10,0,0">
+      <StackPanel>
+       <TextBlock Text="烧录操作阶段（当前锁定）" Style="{StaticResource SectionText}"/>
+       <TextBlock Text="确认 ECU → 编程会话 → 安全访问 → 擦除 → 下载 → TransferData → 校验 → 复位 → 复验" FontSize="14" Margin="0,7,0,5"/>
+       <TextBlock Text="真实写入入口不会在协议、配置、供电与恢复要求未确认前暴露。" Foreground="#A14D20"/>
+       <TextBlock x:Name="FlashStatus" Text="状态：NOT_AUTHORIZED / NOT_RUN" Margin="0,8,0,0"/>
+      </StackPanel>
+     </Border>
+    </Grid>
+   </TabItem>
+
+   <TabItem Header=" 扫码 / DUT ">
+    <Grid Margin="14">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <StackPanel Orientation="Horizontal">
+      <TextBlock Text="扫码枪与 DUT 身份采集" Style="{StaticResource HeaderText}"/>
+      <TextBlock Text="使用顶部专用输入框；需要扫码枪键盘输入模式 + 回车结束符" Style="{StaticResource MutedText}" Margin="20,0,0,0"/>
+     </StackPanel>
+     <Border Grid.Row="1" Style="{StaticResource CardBorder}">
+      <DockPanel>
+       <TextBlock DockPanel.Dock="Top" Text="扫码历史（只表示采集成功，不代表已匹配 ECU 型号）" Style="{StaticResource SectionText}"/>
+       <DataGrid x:Name="ScanGrid"/>
+      </DockPanel>
+     </Border>
+    </Grid>
+   </TabItem>
+  </TabControl>
+  <Border Grid.Row="2" Background="White" Margin="8,5,8,0" BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+   <DockPanel Margin="10,5">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+     <TextBlock Text="统一操作日志 / Trace" FontWeight="SemiBold" Margin="0,0,20,0"/>
+     <Button Content="清除界面记录" Padding="8,1" MinHeight="23" Click="ClearLogs_Click"/>
+     <TextBlock Text="原始 USB/CAN JSONL 由 Device 层独立保存；清除界面不清除原始证据。" VerticalAlignment="Center" Style="{StaticResource MutedText}"/>
+    </StackPanel>
+    <DataGrid x:Name="LogGrid" HeadersVisibility="None" RowHeight="21" BorderThickness="0"/>
+   </DockPanel>
+  </Border>
+  <Border Grid.Row="3" Background="#273C50">
+   <Grid Margin="14,0">
+    <TextBlock x:Name="Footer" Foreground="White" VerticalAlignment="Center" FontSize="11"
+      Text="FIELD STUDIO · 真实硬件联调 · 全部模块共用同一设备会话 · CAN1 DUT / CAN0 KeySim"/>
+   </Grid>
+  </Border>
+ </Grid>
+</Window>
