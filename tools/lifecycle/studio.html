@@ -40,6 +40,16 @@ button.link{background:none;border:0;color:var(--blue);padding:4px 0;font-weight
 .detail{background:#fff;border:1px solid var(--line);border-radius:10px;min-height:500px}
 .detailhead{padding:22px 24px;border-bottom:1px solid var(--line)}.detailhead h2{margin:8px 0;font-size:22px;line-height:1.4}
 .detailbody{padding:23px 25px}.doc{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.9;color:#364960}.doc:empty:before{content:"尚未补充设计说明或依据";color:#9ba8b8}
+.doc h2{font-size:19px;margin:26px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.doc h3{font-size:16px;margin:20px 0 9px}
+.doc p{margin:10px 0;white-space:pre-wrap}
+.doc ul{margin:9px 0;padding-left:22px}
+.doc table{width:100%;border-collapse:collapse;font-size:12px;margin:15px 0}
+.doc th,.doc td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.doc th{background:#f1f6fc}
+.doc pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6fa;border:1px solid var(--line);padding:14px;border-radius:7px}
+.doc .blockquote{border-left:3px solid #b6d0f3;background:#f4f8ff;padding:10px 15px;color:#526882}
+.breadcrumbs{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:9px 0;color:var(--quiet);font-size:12px}
 .meta-table{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:14px 0}.meta-cell{background:#f7f9fc;border:1px solid #edf0f4;border-radius:7px;padding:10px 13px;min-width:0}.meta-cell label{color:var(--quiet);font-size:11px;display:block}.meta-cell div{font-size:13px;overflow-wrap:anywhere}
 .rule{border:0;border-top:1px solid var(--line);margin:24px 0}.detailsection{margin-top:22px}.detailsection h3{font-size:14px;margin:0 0 10px}
 .relation{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}.relation .reltext{flex:1;font-size:12px;color:var(--soft)}.relation button{border:0;background:none;color:var(--blue);font-weight:600;text-align:left}
@@ -128,6 +138,24 @@ function renderWelcome(){const box=el('div','blank');add(box,el('h2','','建立�
 function rowCard(obj,act){let b=el('button','item-row');let left=el('div');add(left,el('div','rowtitle',obj.title),el('div','rowdesc',groupLabel(obj.kind)+' · '+brief(obj.body,130)));add(b,left,badge(obj.state));b.onclick=()=>act(obj);return b}
 function stat(count,name,desc){let b=el('div','stat');add(b,el('b','',count),el('label','',name),el('small','',desc));return b}
 function openItem(obj){let v=Object.keys(groupKinds).find(g=>groupKinds[g].includes(obj.kind));if(!v)return;state.view=v;state.selected=obj.id;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));renderView();}
+function renderReadable(container,raw){
+ const lines=(raw||'').split(/\r?\n/);let i=0, fence=String.fromCharCode(96).repeat(3);
+ while(i<lines.length){const text=lines[i].trim();if(!text){i++;continue}
+  if(text.startsWith(fence)){const code=[];i++;while(i<lines.length&&!lines[i].trim().startsWith(fence))code.push(lines[i++]);i++;container.append(el('pre','',code.join('\n')));continue;}
+  let h=/^(#{1,5})\s+(.+)$/.exec(text);
+  if(h){container.append(el(h[1].length<=2?'h2':'h3','',h[2].replace(/\*\*/g,'')));i++;continue;}
+  if(text.startsWith('|')){let table=el('table'),first=true;
+   while(i<lines.length&&lines[i].trim().startsWith('|')){
+    let cells=lines[i].trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(v=>v.trim());
+    i++;if(cells.every(v=>/^:?-{3,}:?$/.test(v)))continue;
+    let row=el('tr');cells.forEach(v=>row.append(el(first?'th':'td','',v.replace(/\*\*/g,''))));table.append(row);first=false;
+   }container.append(table);continue;}
+  if(/^[-*] /.test(text)||/^\d+\. /.test(text)){let ul=el('ul');while(i<lines.length){let match=/^(?:[-*]|\d+\.)\s+(.+)$/.exec(lines[i].trim());if(!match)break;ul.append(el('li','',match[1].replace(/\*\*/g,'')));i++}container.append(ul);continue;}
+  if(text.startsWith('>')){container.append(el('div','blockquote',text.replace(/^>\s*/,'')));i++;continue;}
+  container.append(el('p','',text.replace(/\*\*/g,'')));i++;
+ }}
+function ancestry(obj){const result=[],seen=new Set([obj.id]);let current=obj;
+ while(current?.parent_id&&!seen.has(current.parent_id)){const parent=item(current.parent_id);if(!parent)break;result.unshift(parent);seen.add(parent.id);current=parent;}return result;}
 function renderDashboard(){const p=state.data.project;
  heading(p.name,'产品目标、工程决策、实施和验证的同一视图。所有信息来自当前项目记录，而不是按文件数计算的完成率。');
  const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('编辑产品定义','outline',()=>projectModal(p)));block.append(first);
@@ -150,6 +178,7 @@ function renderEditor(){const types=groupKinds[state.view];const desc={product:'
  function drawIndex(){clean(list);let count=0;for(const kind of types){const group=available.filter(x=>x.kind===kind&&(!state.filter||[x.title,x.body,x.kind].join(' ').toLowerCase().includes(state.filter.toLowerCase())));if(!group.length)continue;list.append(el('div','indextitle',groupLabel(kind)+' · '+group.length));group.sort((a,b)=>a.created.localeCompare(b.created)).forEach(x=>{let b=el('button','indexitem'+(x.id===state.selected?' active':''));add(b,el('span','',x.title),badge(x.state));b.onclick=()=>{state.selected=x.id;drawIndex();drawDetail()};list.append(b);count++})}if(!count)list.append(el('div','loading','没有符合条件的工程对象。'));}
  function drawDetail(){clean(detail);let selected=item(state.selected);if(!selected){const box=el('div','blank');box.style.margin='18px';add(box,el('h2','','尚无工程对象'),el('p','','从一个实际问题、能力或需求开始，逐层添加设计。'),button('+ 新增工程对象','primary',()=>editorModal(types[0])));detail.append(box);return;}
  const head=el('div','detailhead');add(head,el('div','buttonrow',null));head.firstChild.append(badge(groupLabel(selected.kind)),badge(selected.state),el('span','tiny','r'+selected.revision));add(head,el('h2','',selected.title));
+ const ancestors=ancestry(selected);if(ancestors.length){const path=el('div','breadcrumbs');ancestors.forEach((parent,index)=>{if(index)path.append(el('span','','›'));path.append(button(parent.title,'link',()=>openItem(parent)));});path.append(el('span','','› 当前对象'));head.append(path);}
  const actions=el('div','buttonrow');add(actions,button('编辑 / 提出修订','primary',()=>editorModal(selected.kind,selected)),button('增加关联','outline',()=>relationModal(selected)),button('历史版本','outline',()=>historyModal(selected)));
  if(selected.state==='DRAFT')actions.append(button('提交审查','outline',()=>transition(selected,'submit')));
  if(['DRAFT','IN_REVIEW'].includes(selected.state)&&selected.kind!=='change')actions.append(button('批准此修订','outline',()=>approvalModal(selected)));
@@ -160,7 +189,7 @@ function renderEditor(){const types=groupKinds[state.view];const desc={product:'
  const content=el('div','detailbody');
  const meta=el('div','meta-table');
  [['对象身份',selected.id.slice(0,12)],['当前状态',statuses[selected.state]||selected.state],['版本/修订','r'+selected.revision],['审批记录',selected.approved_by?selected.approved_by+' · '+selected.approved_at:'尚未批准']].forEach(([label,value])=>{let cell=el('div','meta-cell');add(cell,el('label','',label),el('div','',value));meta.append(cell)});content.append(meta);
- content.append(el('h3','','内容与设计依据'),el('div','doc',selected.body||''));let values=Object.entries(selected.meta||{}).filter(([key,value])=>value!==''&&value!==null&&JSON.stringify(value)!=='{}');
+ content.append(el('h3','','内容与设计依据'));let doc=el('div','doc');renderReadable(doc,selected.body||'');content.append(doc);let values=Object.entries(selected.meta||{}).filter(([key,value])=>value!==''&&value!==null&&JSON.stringify(value)!=='{}');
  if(values.length){content.append(el('hr','rule'),el('h3','','工程属性与验证条件'));const fields=el('div','meta-table');values.forEach(([key,value])=>{let f=el('div','meta-cell');add(f,el('label','',metaLabels[key]||key),el('div','',Array.isArray(value)?value.join('，'):typeof value==='object'?JSON.stringify(value):value));fields.append(f)});content.append(fields);}
  const relhead=el('div','detailsection');add(relhead,el('h3','','上下游关系'));const links=state.data.relations.filter(r=>r.source_id===selected.id||r.target_id===selected.id);
  if(!links.length)relhead.append(el('div','muted','尚未建立显式关系。不要从文件名推测架构、需求与代码已经追踪。'));
