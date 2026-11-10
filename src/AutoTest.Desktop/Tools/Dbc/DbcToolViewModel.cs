@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Security.Cryptography;
 using AutoTest.Application.V1;
 using System.Windows.Input;
 using AutoTest.Projects.Dbc;
@@ -78,6 +79,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
         : _project is null ? "独立 DBC 文件编辑模式" :
           "当前工程尚未登记 DBC；打开文件后点击【纳入当前工程】";
     public ICommand ImportToProjectCommand { get; }
+    public ICommand PublishProjectRevisionCommand { get; }
     public DbcMessage? SelectedMessage
     {
         get => _message;
@@ -107,6 +109,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     {
         _project = project;
         ImportToProjectCommand = new DbcToolCommand(() => _ = ImportToProjectAsync());
+        PublishProjectRevisionCommand = new DbcToolCommand(() => _ = PublishProjectRevisionAsync());
         OpenCommand = new DbcToolCommand(() => _ = OpenFileAsync());
         SaveCommand = new DbcToolCommand(() => _ = SaveSafeAsync());
         AddNodeCommand = new DbcToolCommand(() => Safe(() => { Document.AddNode(NewNodeName); Refresh(); }));
@@ -179,6 +182,36 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
         {
             Error = e.Message;
             Status = "导入工程资源失败，原始 DBC 文件未被修改";
+        }
+    }
+
+    public async Task PublishProjectRevisionAsync()
+    {
+        try
+        {
+            Error = "";
+            if (_project?.DbcAssetId is not { } id || _document is null)
+                throw new InvalidOperationException("先打开 DBC 文件并在工程中登记主 DBC。");
+            if (!_document.CanEdit)
+                throw new InvalidOperationException("DBC 含不支持安全写回的语法，不能发布为新的工程修订。");
+            if (string.IsNullOrWhiteSpace(FilePath) || string.IsNullOrWhiteSpace(_expectedHash))
+                throw new InvalidOperationException("请先保存当前本地 DBC 文件，再发布工程修订。");
+            var expected = _project.Assets.Single(x => x.Id == id).ToReference();
+            var bytes = await File.ReadAllBytesAsync(FilePath);
+            var actualHash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+            if (!string.Equals(actualHash, _expectedHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("DBC_DISK_CONFLICT: 磁盘文件已发生变化，请重新打开。");
+            var original = new UTF8Encoding(false, true).GetString(bytes);
+            var next = _project.ReplaceDbcSource(original, expected, Path.GetFileName(FilePath));
+            ProjectDbcImported?.Invoke(this, EventArgs.Empty);
+            RefreshProjectStatus();
+            Status = "DBC 工程修订已更新至 r" + next.Revision +
+                "；旧 TEST/参考引用不会自动重绑，请检查过期资源并保存工程。";
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+            Status = "DBC 新 Revision 发布失败；工程旧版本保持不变";
         }
     }
 
