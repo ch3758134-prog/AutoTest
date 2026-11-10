@@ -190,7 +190,9 @@ public partial class MainWindow : Window
                 break;
             }
             case 10 when R1RunHost.Content is null:
-                R1RunHost.Content = new LabTestWorkspaceView();
+                // P11 uses the same persisted TEST program as P10 and P01;
+                // no separate sample LabDocument or independent Mock runner.
+                R1RunHost.Content = new ProjectRunWorkbenchView(vm);
                 break;
             case 11 when R1ProductionHost.Content is null:
                 _production = new LabProductionToolView();
