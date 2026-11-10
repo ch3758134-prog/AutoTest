@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from lifecycle import ModelError, Workspace, read_json
+from catalog import catalog, document, evidence
 
 UI = Path(__file__).with_name('ui.html')
 
@@ -34,7 +35,13 @@ def make_handler(workspace: Workspace):
                 if url.path in {'/', '/index.html'}:
                     body = UI.read_bytes()
                     return self.write(200, body, 'text/html; charset=utf-8')
-                if url.path == '/api/overview':
+                if url.path == '/api/catalog':
+                    response = catalog(workspace)
+                elif url.path == '/api/document':
+                    response = document(workspace, params.get('id', [''])[0])
+                elif url.path == '/api/evidence':
+                    response = evidence(workspace)
+                elif url.path == '/api/overview':
                     nodes = [{**workspace.source(k), 'description': v.get('description', '')}
                              for k, v in workspace.nodes.items()]
                     response = {'schema': workspace.manifest['schema'], 'nodes': nodes,
