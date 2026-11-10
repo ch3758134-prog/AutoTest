@@ -5,6 +5,7 @@ using AutoTest.Application.V1;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Devices.Diagnostics;
+using AutoTest.Devices.Can;
 using AutoTest.Devices.Usb;
 using AutoTest.Projects.Dbc;
 using AutoTest.Specialists.Wave;
@@ -34,8 +35,9 @@ public sealed class R1PhysicalWaveSignalSource : IWaveSignalSource
         ct.ThrowIfCancellationRequested();
         WaveTimeQuality.ValidateSignal(signal);
         var controller = _controller();
+        var hub = controller?.Hub;
         if (controller is null || controller.State != UsbSessionState.Connected ||
-            !controller.ProtocolVersionVerified || controller.Hub is null)
+            !controller.ProtocolVersionVerified || hub is null)
             throw new WaveCaptureException("PHYSICAL_CAN_NOT_CONNECTED",
                 "Connect and verify the existing Station USB/CAN1 session before Live capture.");
         var generation = controller.Generation;
@@ -53,7 +55,7 @@ public sealed class R1PhysicalWaveSignalSource : IWaveSignalSource
         var spec = new CanSubscriptionSpec(signal.Role, ImmutableArray.Create(signal.FrameId),
             CanBackpressurePolicy.DropWithLossFact, 4096);
         return ValueTask.FromResult(new WaveSignalSubscription(origin,
-            ReadAsync(controller, generation, signal, extendedId, publisher, spec, ct)));
+            ReadAsync(controller, hub, generation, signal, extendedId, publisher, spec, ct)));
     }
 
     private AssetEntryWithDbc CurrentDbc(SignalRef signal)
@@ -70,12 +72,12 @@ public sealed class R1PhysicalWaveSignalSource : IWaveSignalSource
     }
 
     private async IAsyncEnumerable<SignalObservation> ReadAsync(
-        HardwareBenchController controller, long generation, SignalRef signal,
+        HardwareBenchController controller, CanFrameHub hub, long generation, SignalRef signal,
         bool extendedId, DecodedSignalPublisher publisher, CanSubscriptionSpec spec,
         [EnumeratorCancellation] CancellationToken ct)
     {
         // A physical frame may never be accepted from a prior USB generation.
-        await foreach (var observation in controller.Hub!.SubscribeAsync(spec, ct)
+        await foreach (var observation in hub.SubscribeAsync(spec, ct)
             .ConfigureAwait(false))
         {
             if (!ReferenceEquals(_controller(), controller) ||
