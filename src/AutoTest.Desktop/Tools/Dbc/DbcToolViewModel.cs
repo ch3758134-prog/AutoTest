@@ -3,6 +3,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
+using AutoTest.Application.V1;
 using System.Windows.Input;
 using AutoTest.Projects.Dbc;
 using AutoTest.Projects.Dbc.Lab;
@@ -22,6 +24,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
+    private readonly V1Workspace? _project;
     private DbcWorkbenchDocument? _document;
     private string? _expectedHash;
     private DbcMessage? _message;
@@ -60,7 +63,14 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public string SupportSummary => _document is null ? "未导入" :
         _document.CanEdit ? "受支持语法：可编辑 BO_/SG_/BU_/VAL_（保存前回读校验）" :
         "只读保护：" + string.Join(", ", _document.UnsupportedDirectives);
-    public int Revision => 0; // DBC revisions are issued by the shared AssetCatalog; this standalone UI is unbound.
+    public int Revision => _project?.DbcAssetId is { } id
+        ? _project.Assets.Single(x => x.Id == id).Revision : 0;
+    public string ProjectStatus => _project?.DbcAssetId is { } id
+        ? "当前工程主 DBC：已登记 Revision " + _project.Assets.Single(x => x.Id == id).Revision +
+          "；编辑本地文件不会偷偷覆盖工程资源"
+        : _project is null ? "独立 DBC 文件编辑模式" :
+          "当前工程尚未登记 DBC；打开文件后点击【纳入当前工程】";
+    public ICommand ImportToProjectCommand { get; }
     public DbcMessage? SelectedMessage
     {
         get => _message;
@@ -84,8 +94,12 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public ICommand ReplayCommand { get; }
     public ICommand ResetCommand { get; }
 
-    public DbcToolViewModel()
+    public DbcToolViewModel() : this(null) { }
+
+    public DbcToolViewModel(V1Workspace? project)
     {
+        _project = project;
+        ImportToProjectCommand = new DbcToolCommand(() => _ = ImportToProjectAsync());
         OpenCommand = new DbcToolCommand(() => _ = LoadSafeAsync());
         SaveCommand = new DbcToolCommand(() => _ = SaveSafeAsync());
         AddNodeCommand = new DbcToolCommand(() => Safe(() => { Document.AddNode(NewNodeName); Refresh(); }));
@@ -134,6 +148,32 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
         DecodeSummary = $"{result.Source} / DBC {result.RevisionQuality} / Lost {result.LostCount} / {result.TimeQuality}";
         Status = "Replay 解码完成（没有采集任何真实 ECU 帧）";
     }
+    private async Task ImportToProjectAsync()
+    {
+        try
+        {
+            Error = "";
+            if (_project is null)
+                throw new InvalidOperationException("当前界面未绑定正式工程。");
+            if (_document is null || string.IsNullOrWhiteSpace(FilePath))
+                throw new InvalidOperationException("先打开一份 DBC 文件，再导入工程。");
+            if (_project.DbcAssetId is not null)
+                throw new InvalidOperationException("当前工程已经有主 DBC；为避免覆盖已有版本，请在工程管理中创建新工程或执行明确的 Revision 变更。");
+            // Import the original disk text; do not silently normalize or drop
+            // unsupported vendor directives from a read-only DBC document.
+            var original = await File.ReadAllTextAsync(FilePath, new UTF8Encoding(false, true));
+            _project.ImportDbc(original, Path.GetFileName(FilePath));
+            Changed(nameof(Revision));
+            Changed(nameof(ProjectStatus));
+            Status = "DBC 已纳入当前工程资源库；Wave 可刷新信号。请保存工程以持久化 Revision。";
+        }
+        catch (Exception e)
+        {
+            Error = e.Message;
+            Status = "导入工程资源失败，原始 DBC 文件未被修改";
+        }
+    }
+
     private async Task LoadSafeAsync()
     {
         try
