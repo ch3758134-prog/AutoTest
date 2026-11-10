@@ -36,6 +36,10 @@ public partial class MainWindow : Window
     private ControllerConfigToolViewModel? _controllerConfiguration;
     private bool _closed;
     private bool _disposing;
+    private bool _explorerHidden;
+    private bool _inspectorHidden;
+    private GridLength _explorerSaved = new(255);
+    private GridLength _inspectorSaved = new(286);
     private string _activeKey = "project";
 
     public MainWindow()
@@ -211,6 +215,66 @@ public partial class MainWindow : Window
         };
         for (int i=0;i<buttons.Length;i++)
             buttons[i].Tag=i==index ? "active" : null;
+    }
+
+    private void Window_PreviewKeyDown(object sender,KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers==ModifierKeys.Control && e.Key==Key.K)
+        {
+            e.Handled=true;
+            ShowPalette();
+        }
+    }
+    private void CommandPalette_Click(object sender,RoutedEventArgs e) => ShowPalette();
+    private void ShowPalette()
+    {
+        var palette=new R1CommandPalette(OpenPaletteDestination) { Owner=this };
+        palette.ShowDialog();
+    }
+    private void OpenPaletteDestination(string key)
+    {
+        string[] keys = ["project","station","can","dbc","controller","bench","wave",
+            "uds","flash","program","run","production","records","operations"];
+        int selected=Array.IndexOf(keys,key);
+        if (selected>=0) Navigate(selected,key);
+    }
+    private void ToggleExplorer_Click(object sender,RoutedEventArgs e)
+    {
+        _explorerHidden=!_explorerHidden;
+        if (_explorerHidden)
+        {
+            if (R1ExplorerColumn.Width.Value>0) _explorerSaved=R1ExplorerColumn.Width;
+            R1ExplorerColumn.Width=new GridLength(0);
+            R1ExplorerSizerColumn.Width=new GridLength(0);
+            R1ExplorerPanel.Visibility=Visibility.Collapsed;
+            R1ExplorerSizer.Visibility=Visibility.Collapsed;
+        }
+        else
+        {
+            R1ExplorerColumn.Width=_explorerSaved;
+            R1ExplorerSizerColumn.Width=new GridLength(5);
+            R1ExplorerPanel.Visibility=Visibility.Visible;
+            R1ExplorerSizer.Visibility=Visibility.Visible;
+        }
+    }
+    private void ToggleInspector_Click(object sender,RoutedEventArgs e)
+    {
+        _inspectorHidden=!_inspectorHidden;
+        if (_inspectorHidden)
+        {
+            if (R1InspectorColumn.Width.Value>0) _inspectorSaved=R1InspectorColumn.Width;
+            R1InspectorColumn.Width=new GridLength(0);
+            R1InspectorSizerColumn.Width=new GridLength(0);
+            R1InspectorPanel.Visibility=Visibility.Collapsed;
+            R1InspectorSizer.Visibility=Visibility.Collapsed;
+        }
+        else
+        {
+            R1InspectorColumn.Width=_inspectorSaved;
+            R1InspectorSizerColumn.Width=new GridLength(5);
+            R1InspectorPanel.Visibility=Visibility.Visible;
+            R1InspectorSizer.Visibility=Visibility.Visible;
+        }
     }
 
     private void OpenProject_Click(object sender,RoutedEventArgs e) => Navigate(0,"project");

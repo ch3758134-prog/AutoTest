@@ -6,7 +6,7 @@
  xmlns:flash="clr-namespace:AutoTest.Desktop.Tools.Flash"
  xmlns:device="clr-namespace:AutoTest.DeviceLab;assembly=AutoTest.DeviceLab"
  prism:ViewModelLocator.AutoWireViewModel="True"
- Title="AutoTest Studio · R1 产品工作台 / 设计接入候选"
+ Title="AutoTest Studio · R1 产品工作台" PreviewKeyDown="Window_PreviewKeyDown"
  Width="1600" Height="960" MinWidth="1150" MinHeight="720"
  WindowStartupLocation="CenterScreen" WindowState="Maximized"
  Closing="Window_Closing"
@@ -80,8 +80,10 @@
   <Border Background="{StaticResource R1Title}" BorderBrush="#263748" BorderThickness="0,0,0,1">
    <DockPanel Margin="12,0">
     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-     <TextBlock Text="DESIGN CANDIDATE" Foreground="#E8B967" FontSize="11" FontWeight="SemiBold"/>
-     <TextBlock Text="   /   MOCK &amp; REPLAY VIEWS · REAL HARDWARE IN FIELD STUDIO" Foreground="{StaticResource R1Muted}" FontSize="11"/>
+     <TextBlock Text="R1 STUDIO" Foreground="#4FAAFB" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+     <TextBlock Text="   /   ECU INTEGRATION TEST &amp; DEVELOPMENT" Foreground="{StaticResource R1Muted}" FontSize="11" VerticalAlignment="Center"/>
+     <Button Content="⌕" FontSize="16" ToolTip="命令搜索 Ctrl+K" Click="CommandPalette_Click"
+             Background="Transparent" Foreground="#92A4B7" BorderThickness="0" Padding="12,0" Margin="12,0,0,0"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
      <Border Background="#257AC2" CornerRadius="5" Width="25" Height="25" Margin="0,0,9,0">
@@ -126,9 +128,24 @@
     <MenuItem Header="已有专业工作台（Mock/Replay）" Click="Modules_Click"/>
    </MenuItem>
    <MenuItem Header="_视图">
+    <MenuItem Header="工程资源 / P01" Click="OpenProject_Click"/>
+    <MenuItem Header="设备连接 / P02" Click="OpenStation_Click"/>
+    <MenuItem Header="CAN Monitor / P03" Click="OpenCan_Click"/>
+    <MenuItem Header="DBC Editor / P04" Click="OpenDbc_Click"/>
+    <MenuItem Header="Controller Designer / P05" Click="OpenController_Click"/>
+    <MenuItem Header="Manual Bench / P06" Click="OpenBench_Click"/>
+    <MenuItem Header="Wave Studio / P07" Click="OpenWave_Click"/>
+    <MenuItem Header="UDS Console / P08" Click="OpenUds_Click"/>
+    <MenuItem Header="CAN Flash / P09" Click="OpenFlash_Click"/>
     <MenuItem Header="测试程序 / P10" Click="OpenTest_Click"/>
-    <MenuItem Header="工程资源 / P01" Click="OpenTest_Click"/>
-    <MenuItem Header="旧集成工具（兼容）" Click="G4Tools_Click"/>
+    <MenuItem Header="运行监视 / P11" Click="OpenRun_Click"/>
+    <MenuItem Header="出厂检测 / P12" Click="OpenProduction_Click"/>
+    <MenuItem Header="记录与报告 / P13" Click="OpenRecords_Click"/>
+    <Separator/>
+    <MenuItem Header="命令搜索 Ctrl+K" Click="CommandPalette_Click"/>
+    <MenuItem Header="隐藏/显示资源栏" Click="ToggleExplorer_Click"/>
+    <MenuItem Header="隐藏/显示属性栏" Click="ToggleInspector_Click"/>
+    <MenuItem Header="历史集成工具（兼容）" Click="G4Tools_Click"/>
    </MenuItem>
    <MenuItem Header="_帮助"><MenuItem Header="R1 原型参考与独立联调说明" Click="R1About_Click"/></MenuItem>
   </Menu>
@@ -141,6 +158,7 @@
      <TextBlock Text="   CAN1 Physical Link: not attached to product shell" Foreground="{StaticResource R1Muted}" FontSize="11" VerticalAlignment="Center"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+     <Button Content="⌕" Click="CommandPalette_Click" ToolTip="命令搜索 Ctrl+K" FontSize="17"/>
      <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
      <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
      <Button Content="保存" Command="{Binding SaveCommand}"/>
@@ -158,11 +176,11 @@
   <Grid Grid.Row="3">
    <Grid.ColumnDefinitions>
     <ColumnDefinition Width="50"/>
-    <ColumnDefinition Width="255" MinWidth="175"/>
-    <ColumnDefinition Width="5"/>
+    <ColumnDefinition x:Name="R1ExplorerColumn" Width="255" MinWidth="0"/>
+    <ColumnDefinition x:Name="R1ExplorerSizerColumn" Width="5"/>
     <ColumnDefinition Width="*" MinWidth="440"/>
-    <ColumnDefinition Width="5"/>
-    <ColumnDefinition Width="286" MinWidth="220"/>
+    <ColumnDefinition x:Name="R1InspectorSizerColumn" Width="5"/>
+    <ColumnDefinition x:Name="R1InspectorColumn" Width="286" MinWidth="0"/>
    </Grid.ColumnDefinitions>
    <Border Background="#141D29" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -184,11 +202,13 @@
      </StackPanel>
     </ScrollViewer>
    </Border>
-   <Border Grid.Column="1" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
+   <Border x:Name="R1ExplorerPanel" Grid.Column="1" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
     <DockPanel>
      <Border DockPanel.Dock="Top" Padding="12,13,12,10" BorderBrush="#263748" BorderThickness="0,0,0,1">
       <StackPanel>
-       <TextBlock Text="EXPLORER / 工程资源" Style="{StaticResource R1PanelHeader}"/>
+       <DockPanel><Button Content="«" Click="ToggleExplorer_Click" DockPanel.Dock="Right" ToolTip="隐藏资源管理器"
+          Background="Transparent" Foreground="#92A4B7" BorderThickness="0" Padding="2"/>
+         <TextBlock Text="EXPLORER / 工程资源" Style="{StaticResource R1PanelHeader}"/></DockPanel>
        <TextBlock Text="{Binding ProjectLabel}" Foreground="{StaticResource R1Muted}" FontSize="11" Margin="0,5,0,9" TextWrapping="Wrap"/>
        <TextBox Text="{Binding SearchText,UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索工程与测试节点"/>
       </StackPanel>
@@ -196,7 +216,7 @@
      <ContentControl prism:RegionManager.RegionName="ProjectExplorerRegion"/>
     </DockPanel>
    </Border>
-   <GridSplitter Grid.Column="2" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
+   <GridSplitter x:Name="R1ExplorerSizer" Grid.Column="2" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
    <Border Grid.Column="3" Background="#101620">
     <TabControl x:Name="WorkbenchTabs" Background="#101620" SelectedIndex="0" SelectionChanged="WorkbenchTabs_SelectionChanged">
      <TabItem Header="P01 工程">
@@ -332,12 +352,14 @@
      </TabItem>
     </TabControl>
    </Border>
-   <GridSplitter Grid.Column="4" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
-   <Border Grid.Column="5" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0">
+   <GridSplitter x:Name="R1InspectorSizer" Grid.Column="4" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
+   <Border x:Name="R1InspectorPanel" Grid.Column="5" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0">
     <DockPanel>
      <Border DockPanel.Dock="Top" Background="#202D3B" Padding="12,12,12,9">
       <StackPanel>
-       <TextBlock Text="INSPECTOR / 属性" Style="{StaticResource R1PanelHeader}"/>
+       <DockPanel><Button Content="×" Click="ToggleInspector_Click" DockPanel.Dock="Right" ToolTip="隐藏属性栏"
+                   Background="Transparent" Foreground="#92A4B7" BorderThickness="0" Padding="2"/>
+                 <TextBlock Text="INSPECTOR / 属性" Style="{StaticResource R1PanelHeader}"/></DockPanel>
        <TextBlock x:Name="R1InspectorTitle" Text="工程 / Revision" FontSize="13" FontWeight="SemiBold" Margin="0,7,0,0"/>
        <TextBlock x:Name="R1InspectorDescription" Text="当前选择、属性与资源关联" Foreground="{StaticResource R1Muted}" Margin="0,7,0,0" FontSize="11" TextWrapping="Wrap"/>
       </StackPanel>
