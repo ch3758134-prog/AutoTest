@@ -4,6 +4,7 @@
  xmlns:prism="http://prismlibrary.com/"
  xmlns:uds="clr-namespace:AutoTest.Desktop.Tools.Uds"
  xmlns:flash="clr-namespace:AutoTest.Desktop.Tools.Flash"
+ xmlns:device="clr-namespace:AutoTest.DeviceLab;assembly=AutoTest.DeviceLab"
  prism:ViewModelLocator.AutoWireViewModel="True"
  Title="AutoTest Studio · R1 产品工作台 / 设计接入候选"
  Width="1600" Height="960" MinWidth="1150" MinHeight="720"
@@ -152,13 +153,24 @@
     <ColumnDefinition Width="286" MinWidth="220"/>
    </Grid.ColumnDefinitions>
    <Border Background="#141D29" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
-    <StackPanel>
-     <Button Content="工&#x0a;程" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P01 / 工程资源和 TEST 编辑"/>
-     <Button Content="UDS" Style="{StaticResource R1RailButton}" Click="OpenUds_Click" ToolTip="P08 / UDS Console"/>
-     <Button Content="烧&#x0a;录" Style="{StaticResource R1RailButton}" Click="OpenFlash_Click" ToolTip="P09 / CAN Flash"/>
-     <Button Content="设&#x0a;备" Style="{StaticResource R1RailButton}" Click="DeviceLab_Click" ToolTip="P02 / 独立 USB/CAN 诊断"/>
-     <Button Content="其&#x0a;他" Style="{StaticResource R1RailButton}" Click="Modules_Click" ToolTip="其他 R1 模块在现有工作台中，尚未正式融合"/>
-    </StackPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+     <StackPanel>
+      <Button Content="工程" Style="{StaticResource R1RailButton}" Click="OpenProject_Click" ToolTip="P01 工程资源 / Revision"/>
+      <Button Content="设备" Style="{StaticResource R1RailButton}" Click="OpenStation_Click" ToolTip="P02 主控 USB / 站点"/>
+      <Button Content="CAN" Style="{StaticResource R1RailButton}" Click="OpenCan_Click" ToolTip="P03 CAN1/CAN0 被动监视"/>
+      <Button Content="DBC" Style="{StaticResource R1RailButton}" Click="OpenDbc_Click" ToolTip="P04 DBC 文件 / 信号编辑"/>
+      <Button Content="控制" Style="{StaticResource R1RailButton}" Click="OpenController_Click" ToolTip="P05 Controller Designer"/>
+      <Button Content="台架" Style="{StaticResource R1RailButton}" Click="OpenBench_Click" ToolTip="P06 Manual Bench / 当前物理操作未接入"/>
+      <Button Content="波形" Style="{StaticResource R1RailButton}" Click="OpenWave_Click" ToolTip="P07 波形采集与比较"/>
+      <Button Content="UDS" Style="{StaticResource R1RailButton}" Click="OpenUds_Click" ToolTip="P08 诊断 Console"/>
+      <Button Content="烧录" Style="{StaticResource R1RailButton}" Click="OpenFlash_Click" ToolTip="P09 CAN Flash"/>
+      <Button Content="测试" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P10 TEST 编辑"/>
+      <Button Content="运行" Style="{StaticResource R1RailButton}" Click="OpenRun_Click" ToolTip="P11 TEST 调试（实验室）"/>
+      <Button Content="扫码" Style="{StaticResource R1RailButton}" Click="OpenProduction_Click" ToolTip="P12 Production Scan"/>
+      <Button Content="记录" Style="{StaticResource R1RailButton}" Click="OpenRecords_Click" ToolTip="P13 Records & Reports"/>
+      <Button Content="审计" Style="{StaticResource R1RailButton}" Click="OpenAudit_Click" ToolTip="Operations Audit"/>
+     </StackPanel>
+    </ScrollViewer>
    </Border>
    <Border Grid.Column="1" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
     <DockPanel>
@@ -174,15 +186,70 @@
    </Border>
    <GridSplitter Grid.Column="2" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
    <Border Grid.Column="3" Background="#101620">
-    <TabControl x:Name="WorkbenchTabs" Background="#101620">
-     <TabItem Header="TEST · 测试程序">
-      <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>
+    <TabControl x:Name="WorkbenchTabs" Background="#101620" SelectedIndex="0">
+     <TabItem Header="P01 工程">
+      <ScrollViewer Background="#101620" Padding="22">
+       <StackPanel MaxWidth="880" HorizontalAlignment="Left">
+        <TextBlock Text="工程中心 / PROJECT" FontWeight="SemiBold" FontSize="23" Margin="0,0,0,13"/>
+        <TextBlock Text="{Binding ProjectLabel}" Foreground="{StaticResource R1Muted}" Margin="0,0,0,12"/>
+        <TextBlock Text="工程/资源/TEST 的现役数据和命令由同一个 V1Workspace 管理；左侧 Explorer 对应资源引用。"
+                   TextWrapping="Wrap" Foreground="{StaticResource R1Muted}" Margin="0,0,0,14"/>
+        <WrapPanel>
+         <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
+         <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
+         <Button Content="保存工程与 TEST" Command="{Binding SaveCommand}"/>
+         <Button Content="校验资源" Command="{Binding ValidateCommand}"/>
+         <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"/>
+        </WrapPanel>
+        <TextBlock Text="需要编辑完整的 DBC 定义、控制器状态或测试程序，请从左侧选择对应专业工作区。"
+                   TextWrapping="Wrap" Margin="0,15,0,7"/>
+        <TextBlock Text="当前 R1 Shell 保留现役事务编辑器；跨专业 Revision 级的持久化统一资源引用尚在集成。"
+                   TextWrapping="Wrap" Foreground="#E8B967"/>
+       </StackPanel>
+      </ScrollViewer>
      </TabItem>
-     <TabItem Header="UDS · 诊断服务">
+     <TabItem Header="P02/P03 设备 + CAN">
+      <device:DeviceLabEmbeddedView x:Name="StationCanView"/>
+     </TabItem>
+     <TabItem Header="P04 DBC">
+      <ContentControl x:Name="R1DbcHost"/>
+     </TabItem>
+     <TabItem Header="P05 控制器">
+      <ContentControl x:Name="R1ControllerHost"/>
+     </TabItem>
+     <TabItem Header="P06 台架">
+      <ScrollViewer Background="#101620" Padding="18">
+       <StackPanel>
+        <TextBlock Text="Manual Bench / 真实台架" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Text="此工作区复用同一主控板 DEVICE 诊断会话。设备连接、CAN 接收及 GPIO 只读证据已可从“设备”打开；20 Key 电阻网络 / 五路模拟电压的物理控制适配尚未完成，危险输出禁用。"
+                   TextWrapping="Wrap" Margin="0,15,0,20" Foreground="#E8B967"/>
+        <Button Content="打开当前共享设备 / Station 状态" Click="OpenStation_Click" HorizontalAlignment="Left"/>
+       </StackPanel>
+      </ScrollViewer>
+     </TabItem>
+     <TabItem Header="P07 波形">
+      <ContentControl x:Name="R1WaveHost"/>
+     </TabItem>
+     <TabItem Header="P08 UDS">
       <uds:UdsToolView/>
      </TabItem>
-     <TabItem Header="FLASH · ECU 烧录">
+     <TabItem Header="P09 Flash">
       <flash:FlashToolView/>
+     </TabItem>
+     <TabItem Header="P10 TEST">
+      <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>
+     </TabItem>
+     <TabItem Header="P11 Run">
+      <ContentControl x:Name="R1RunHost"/>
+     </TabItem>
+     <TabItem Header="P12 Production">
+      <ContentControl x:Name="R1ProductionHost"/>
+     </TabItem>
+     <TabItem Header="P13 Records">
+      <ContentControl x:Name="R1RecordsHost"/>
+     </TabItem>
+     <TabItem Header="审计 Trace">
+      <ContentControl x:Name="R1OperationsHost"/>
      </TabItem>
     </TabControl>
    </Border>
