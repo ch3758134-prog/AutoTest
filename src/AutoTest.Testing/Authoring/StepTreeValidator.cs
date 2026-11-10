@@ -48,6 +48,10 @@ public static class StepTreeValidator
             if (n.Type == "Wait" && (!n.Properties.TryGetValue("milliseconds", out var ms) ||
                 !int.TryParse(ms, out var delay) || delay < 0 || delay > 60000))
                 errors.Add($"{location}: Wait outside 0..60000ms");
+            if (n.Type == "When" &&
+                (!n.Properties.TryGetValue("timeoutMs", out var timeout) ||
+                 !int.TryParse(timeout, out var limit) || limit < 0 || limit > 60000))
+                errors.Add($"{location}: When timeout outside 0..60000ms");
             if (n.Properties.TryGetValue("asset", out var asset) &&
                 (availableAssets is null || !availableAssets.Contains(asset)))
                 errors.Add($"{location}: unresolved asset {asset}");
