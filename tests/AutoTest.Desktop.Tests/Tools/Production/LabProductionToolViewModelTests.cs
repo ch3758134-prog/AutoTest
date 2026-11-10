@@ -7,83 +7,45 @@ using Xunit;
 
 namespace AutoTest.Desktop.Tests.Tools.Production;
 
-public sealed class LabProductionToolViewModelTests
+public sealed class R1ProductionScannerViewModelTests
 {
     [Fact]
-    public void ViewModelCanPreviewUniqueMockScan()
+    public async Task StartupWithoutCatalogDoesNotInjectDemoIdentityOrRecipe()
     {
-        var vm = NewVm();
-        vm.ScanInput = "M000001";
-        vm.PreviewScan();
-        Assert.Contains("唯一匹配", vm.MatchDetail);
-        Assert.Contains("MOCK", vm.Status);
+        var file = Path.Combine(Path.GetTempPath(), "r1-real-scan-" + Guid.NewGuid().ToString("N"));
+        var vm = new R1ProductionScannerViewModel(new LabCatalogStore(file));
+        await vm.LoadPublishedAsync();
+        Assert.Equal("—", vm.RuleRevision);
+        Assert.Contains("缺少有效", vm.CatalogSource);
+        Assert.Empty(vm.ScanEvents);
+
+        vm.AcceptSerialBarcode("M000001", "Physical COM5");
+        Assert.Contains("真实条码已收到", vm.MatchDetail);
+        Assert.Equal("CATALOG_NOT_READY", Assert.Single(vm.ScanEvents).Result);
+        Assert.DoesNotContain("MOCK PASS", vm.Status);
     }
 
     [Fact]
-    public async Task ViewModelDoesNotCountMockPassAsFactoryRelease()
+    public async Task RealInputIsRecordedWithoutCreatingFactoryRun()
     {
-        var vm = NewVm();
-        await vm.RunMockAsync();
-        Assert.Equal(1, vm.MockRunCount);
-        Assert.Equal(1, vm.DistinctMockUnits);
-        Assert.Equal(0, vm.FactoryReleasedCount);
-        Assert.Contains("出厂放行仍禁止", vm.Status);
+        var file = Path.Combine(Path.GetTempPath(), "r1-real-scan-" + Guid.NewGuid().ToString("N"));
+        var vm = new R1ProductionScannerViewModel(new LabCatalogStore(file));
+        await vm.LoadPublishedAsync();
+        vm.AcceptSerialBarcode("SN00000042", "USB COM · COM7");
+        var received = Assert.Single(vm.ScanEvents);
+        Assert.Equal("SN00000042", received.Input);
+        Assert.Contains("COM7", received.Origin);
+        Assert.Contains("没有启动自动测试", vm.Status);
     }
 
     [Fact]
-    public async Task ViewModelBlocksDuplicateUntilRetestConfirmation()
+    public async Task InvalidBarcodeIsRejectedWithoutDemoFallback()
     {
-        var vm = NewVm();
-        await vm.RunMockAsync();
-        await vm.RunMockAsync();
-        Assert.Equal(1, vm.MockRunCount);
-        Assert.Contains("RETEST_CONFIRMATION_REQUIRED", vm.Status);
-        vm.AllowRetest = true;
-        await vm.RunMockAsync();
-        Assert.Equal(2, vm.MockRunCount);
-        Assert.Equal(1, vm.DistinctMockUnits);
+        var file = Path.Combine(Path.GetTempPath(), "r1-real-scan-" + Guid.NewGuid().ToString("N"));
+        var vm = new R1ProductionScannerViewModel(new LabCatalogStore(file));
+        await vm.LoadPublishedAsync();
+        vm.AcceptSerialBarcode("", "USB COM · COM7");
+        Assert.NotEqual("CATALOG_NOT_READY", Assert.Single(vm.ScanEvents).Result);
+        Assert.Contains("没有执行测试", vm.Status);
     }
-
-    [Fact]
-    public async Task RuleDraftIsNotActiveUntilPublished()
-    {
-        var storePath = Path.Combine(Path.GetTempPath(), "labvm-" + Guid.NewGuid().ToString("N"));
-        var vm = new LabProductionToolViewModel(new LabCatalogStore(storePath),
-            new LabProductionOrchestrator(new LabDeterministicMockRunner(), new LabMemoryLedger()));
-        try
-        {
-            var old = vm.RuleRevision;
-            vm.Rules[0].Pattern = @"(?<serial>Z[0-9]{6})";
-            await vm.SaveDraftAsync();
-            Assert.Equal(old, vm.RuleRevision);
-            vm.ScanInput = "M000001";
-            vm.PreviewScan();
-            Assert.Contains("唯一匹配", vm.MatchDetail);
-            vm.Samples.Clear(); // Old sample expected M-code and would block publication.
-            await vm.PublishAsync();
-            Assert.NotEqual(old, vm.RuleRevision);
-            vm.PreviewScan();
-            Assert.Contains("IDENTITY_NO_MATCH", vm.MatchDetail);
-        }
-        finally
-        {
-            foreach (var suffix in new[] { ".published.json", ".draft.json" })
-                if (File.Exists(storePath + suffix)) File.Delete(storePath + suffix);
-        }
-    }
-
-    [Fact]
-    public async Task ViewModelDisconnectNeverClaimsPass()
-    {
-        var vm = NewVm();
-        vm.SelectedScenario = LabMockScenario.Disconnect;
-        await vm.RunMockAsync();
-        Assert.Equal(1, vm.MockRunCount);
-        Assert.Equal(0, vm.FactoryReleasedCount);
-        Assert.Contains("MockFail", vm.LastRun);
-    }
-
-    private static LabProductionToolViewModel NewVm() =>
-        new(new LabCatalogStore(Path.Combine(Path.GetTempPath(), "unused-" + Guid.NewGuid().ToString("N"))),
-            new LabProductionOrchestrator(new LabDeterministicMockRunner(), new LabMemoryLedger()));
 }
