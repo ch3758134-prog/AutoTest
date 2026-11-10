@@ -79,6 +79,12 @@ def normalize_run(raw):
     }
 
 
+def _github_origin_matches(origin, repository):
+    repo=require_repo(repository)
+    cleaned=origin.strip().replace("\\","/")
+    pattern=r"^(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)" + re.escape(repo) + r"(?:\.git)?$"
+    return bool(re.fullmatch(pattern,cleaned,re.IGNORECASE))
+
 class GitHubReader:
     def __init__(self, opener=None, token=None):
         self.opener = opener or urllib.request.urlopen
@@ -429,12 +435,14 @@ class Execution:
                       +work_context["markdown"])
             return {"manifest":manifest,"markdown":markdown}
 
-    def archive_project(self, project_id, worktree):
+    def archive_project(self, project_id, worktree, actor, note):
         """Write the entire authoritative engineering snapshot into a reviewable Git branch.
 
         GitHub issues and PRs stay authoritative remotely; avoid duplicating their
         cached bodies in the exported archive. Never commit or push automatically.
         """
+        actor=text_value(actor,"archive reviewer",limit=150,mandatory=True)
+        note=text_value(note,"archive review note",limit=1000,mandatory=True)
         with self.store.db() as db:
             cfg=self._config(db,project_id)
             if not cfg:
@@ -454,7 +462,7 @@ class Execution:
             raise RuleError("Cannot inspect Git worktree identity") from exc
         if branch in ("", "main", "master"):
             raise RuleError("Refuse engineering archive writes on main/master")
-        if repository.lower() not in origin.lower().replace("\\","/"):
+        if not _github_origin_matches(origin,repository):
             raise RuleError("Git origin differs from configured GitHub repository")
         if not re.fullmatch(r"[a-f0-9]{32}",project_id):
             raise RuleError("Invalid project id")
@@ -478,8 +486,8 @@ class Execution:
         data=json.dumps(archive,ensure_ascii=False,sort_keys=True,indent=2)+"\n"
         target.write_text(data,encoding="utf-8")
         with self.store.db() as db:
-            self.store._audit(db,project_id,None,"EXPORT_PROJECT_TO_GIT","owner",
-                branch+" / "+str(target.relative_to(root)))
+            self.store._audit(db,project_id,None,"EXPORT_PROJECT_TO_GIT",actor,
+                branch+" / "+str(target.relative_to(root))+" / "+note)
         return {"repository":repository,"branch":branch,
                 "path":str(target.relative_to(root)).replace("\\","/"),
                 "sha256":hashlib.sha256(data.encode("utf-8")).hexdigest(),
@@ -505,7 +513,7 @@ class Execution:
         repo=value["manifest"]["repository"]
         norm=remote.lower().replace("\\","/")
         expected=repo.lower()
-        if expected not in norm:
+        if not _github_origin_matches(remote,repo):
             raise RuleError("Git origin does not match the bound GitHub repository")
         out=(worktree/"docs"/"engineering-control"/"tasks").resolve()
         if not out.is_relative_to(worktree):
