@@ -737,7 +737,10 @@ public partial class MainWindow : Window
             AppendUds("PREPARE", $"SID=0x{pdu[0]:X2} TX={endpoint.RequestCanId:X} RX={endpoint.ResponseCanId:X} PID={_requestId:N}");
             var response = await PhysicalReadOnlyUds.RunAsync(_device, endpoint, profile, pdu,
                 _requestId, UdsConfirmation.Text.Trim(), token.Token);
-            UdsResponse.Text = $"Outcome: {response.Outcome}\nRequest: {Convert.ToHexString(response.RequestPdu.ToArray())}\n" +
+            UdsResponse.Text = "响应解释（不替代 ECU 原始证据）：\n" +
+                AutoTest.Specialists.Uds.UdsDiagnosticResponseFormatter.Explain(
+                    response.RequestPdu.AsSpan(), response.ResponsePdu.AsSpan()) +
+                $"\n\nOutcome: {response.Outcome}\nRequest: {Convert.ToHexString(response.RequestPdu.ToArray())}\n" +
                 $"Response: {Convert.ToHexString(response.ResponsePdu.ToArray())}\n" +
                 $"NRC: {(response.NegativeResponseCode.HasValue ? $"0x{response.NegativeResponseCode:X2}" : "—")}\n" +
                 $"Completed (Host): {response.CompletedAt.Utc:O}\n" +
