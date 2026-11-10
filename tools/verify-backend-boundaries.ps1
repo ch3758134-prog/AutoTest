@@ -24,26 +24,21 @@ foreach ($name in $projects) {
     continue
   }
   [xml]$project = Get-Content -LiteralPath $path -Raw
-  foreach ($group in @($project.Project.PropertyGroup)) {
-    if ($null -ne $group -and [string]$group.UseWPF -match '^(?i:true)$') {
+  foreach ($node in @($project.SelectNodes('//PropertyGroup/UseWPF'))) {
+    if ($node.InnerText.Trim().ToLowerInvariant() -eq 'true') {
       $failures.Add("BACKEND_OWNS_WPF: $relative")
     }
   }
-  foreach ($group in @($project.Project.ItemGroup)) {
-    if ($null -eq $group) { continue }
-    foreach ($reference in @($group.ProjectReference)) {
-      if ($null -eq $reference) { continue }
-      $include = [string]$reference.Include
-      if ($include -match '(?i)AutoTest\.(Desktop|DeviceLab|LabLinkGui)(/|\\|\.)') {
-        $failures.Add("BACKEND_REFERENCES_UI: $relative -> $include")
-      }
+  foreach ($reference in @($project.SelectNodes('//ProjectReference'))) {
+    $include = $reference.GetAttribute('Include')
+    if ($include -match '(?i)AutoTest\.(Desktop|DeviceLab|LabLinkGui)(/|\\|\.)') {
+      $failures.Add("BACKEND_REFERENCES_UI: $relative -> $include")
     }
-    foreach ($package in @($group.PackageReference)) {
-      if ($null -eq $package) { continue }
-      $id = [string]$package.Include
-      if ($id -match '^(?i:Prism\.|MahApps\.|MaterialDesignThemes\.|PresentationFramework)') {
-        $failures.Add("BACKEND_REFERENCES_UI_PACKAGE: $relative -> $id")
-      }
+  }
+  foreach ($package in @($project.SelectNodes('//PackageReference'))) {
+    $id = $package.GetAttribute('Include')
+    if ($id -match '^(?i:Prism\.|MahApps\.|MaterialDesignThemes\.|PresentationFramework)') {
+      $failures.Add("BACKEND_REFERENCES_UI_PACKAGE: $relative -> $id")
     }
   }
   $sourceRoot = Join-Path $repositoryRoot "src/$name"
