@@ -77,6 +77,8 @@ class Store:
                 source_id TEXT NOT NULL REFERENCES objects(id),
                 target_id TEXT NOT NULL REFERENCES objects(id),
                 kind TEXT NOT NULL, created TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'CANDIDATE',
+                approved_by TEXT, approved_at TEXT,
                 UNIQUE(source_id,target_id,kind));
               CREATE INDEX IF NOT EXISTS ix_rel_source ON relations(source_id);
               CREATE INDEX IF NOT EXISTS ix_rel_target ON relations(target_id);
@@ -85,6 +87,13 @@ class Store:
                 object_id TEXT, action TEXT NOT NULL, actor TEXT NOT NULL,
                 note TEXT NOT NULL, timestamp TEXT NOT NULL);
             """)
+            columns = {r["name"] for r in db.execute("PRAGMA table_info(relations)")}
+            if "status" not in columns:
+                db.execute("ALTER TABLE relations ADD COLUMN status TEXT NOT NULL DEFAULT 'CANDIDATE'")
+            if "approved_by" not in columns:
+                db.execute("ALTER TABLE relations ADD COLUMN approved_by TEXT")
+            if "approved_at" not in columns:
+                db.execute("ALTER TABLE relations ADD COLUMN approved_at TEXT")
 
     @contextmanager
     def db(self):
@@ -320,6 +329,8 @@ class Store:
             if not edges:
                 raise RuleError("Add at least one assessed impact relation before closing")
             assessments=obj["meta"].get("assessments", {})
+            if any(e["status"] != "APPROVED" for e in edges):
+                raise RuleError("Impact relations must be reviewed before closing")
             if any(assessments.get(e["target_id"]) not in ("REVISE","NO_CHANGE","INVESTIGATE")
                    for e in edges):
                 raise RuleError("Assess each linked target before closing the change")
@@ -348,13 +359,31 @@ class Store:
                 raise RuleError("Dependency would create a cycle")
             key=ident()
             try:
-                db.execute("INSERT INTO relations VALUES(?,?,?,?,?,?)",
-                           (key,source["project_id"],source_id,target_id,kind,now()))
+                db.execute("""INSERT INTO relations
+                    (id,project_id,source_id,target_id,kind,created,status)
+                    VALUES(?,?,?,?,?,?,'CANDIDATE')""",
+                    (key,source["project_id"],source_id,target_id,kind,now()))
             except sqlite3.IntegrityError as exc:
                 raise RuleError("Relation already exists") from exc
             self._audit(db,source["project_id"],source_id,"LINK", "owner",
                         kind+": "+source_id+" → "+target_id)
-        return {"id":key,"source_id":source_id,"target_id":target_id,"kind":kind}
+        return {"id":key,"source_id":source_id,"target_id":target_id,
+                "kind":kind,"status":"CANDIDATE"}
+
+    def approve_relation(self, key, actor, note):
+        actor = text_value(actor, "reviewer", limit=150, mandatory=True)
+        note = text_value(note, "relation justification", limit=3000, mandatory=True)
+        with self.db() as db:
+            r = db.execute("SELECT * FROM relations WHERE id=?", (key,)).fetchone()
+            if not r:
+                raise RuleError("Relation not found")
+            if r["status"] == "APPROVED":
+                raise RuleError("Relation already confirmed")
+            db.execute("UPDATE relations SET status='APPROVED', approved_by=?, approved_at=? WHERE id=?",
+                       (actor, now(), key))
+            self._audit(db, r["project_id"], r["source_id"], "APPROVE_RELATION", actor,
+                        note + " / " + r["kind"] + " / " + r["target_id"])
+        return {"id":key,"status":"APPROVED"}
 
     def delete_relation(self, key):
         with self.db() as db:
@@ -400,7 +429,8 @@ class Store:
                     path=trail+[target]
                     results.append({"id":target,"title":obj["title"],"kind":obj["kind"],
                                     "state":obj["state"],"trace":path,
-                                    "relation":r["kind"],"status":"POTENTIALLY_IMPACTED"})
+                                    "relation":r["kind"],"relation_review":r["status"],
+                                    "status":"POTENTIALLY_IMPACTED"})
                     queue.append((target,path))
             return {"origin":{"id":key,"title":root["title"]},"affected":results,
                     "note":"Relationship reachability is a review candidate, not automatic proof of impact"}
@@ -417,8 +447,13 @@ class Store:
                             ("file_scope","允许修改的文件范围")):
             if not meta.get(field):
                 why.append("缺少"+label)
-        upstream=[self._require_object(db,r["source_id"]) for r in db.execute(
-            "SELECT source_id FROM relations WHERE target_id=? AND kind='depends'",(key,))]
+        dependency_links = [dict(r) for r in db.execute(
+            "SELECT source_id,status FROM relations WHERE target_id=? AND kind='depends'",(key,))]
+        upstream=[self._require_object(db,r["source_id"]) for r in dependency_links]
+        for relation in dependency_links:
+            if relation["status"] != "APPROVED":
+                why.append("上游实施依赖尚未完成关系审查：" +
+                           self._require_object(db,relation["source_id"])["title"])
         if not upstream:
             why.append("尚未关联上游已审查的需求或设计")
         revisions=meta.get("input_revisions",{})
