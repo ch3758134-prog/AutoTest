@@ -24,6 +24,15 @@ public interface IAuthorizedReadOnlyPhysicalLabStation : ILabStation
     bool IsReadOnlyAuthorized { get; }
 }
 
+/// <summary>
+/// Narrow capability for the proven KEY_SIM CAN0 physical action family.
+/// An ordinary real read-only UDS/CAN station does NOT implement this.
+/// </summary>
+public interface IAuthorizedPhysicalControllerLabStation : IAuthorizedReadOnlyPhysicalLabStation
+{
+    bool ControllerActionsAuthorized { get; }
+}
+
 /// <summary>Deterministic isolated fixture, explicitly Mock or Replay. Never performs CAN TX.</summary>
 public sealed class SimulatedLabStation : ILabStation
 {
@@ -174,17 +183,17 @@ public sealed class LabRunCoordinator
             if (station is not IAuthorizedReadOnlyPhysicalLabStation physical ||
                 !physical.IsReadOnlyAuthorized || station.SessionGeneration <= 0)
                 throw new InvalidOperationException("PHYSICAL_TEST_EXECUTION_DENIED: no authorized read-only station.");
+            var controllerAllowed = station is IAuthorizedPhysicalControllerLabStation
+                { ControllerActionsAuthorized: true };
             var forbidden = plan.Restore().Walk()
-                .FirstOrDefault(n => n.Type is "MockObserve" or "ControllerState");
+                .FirstOrDefault(n => n.Type == "MockObserve" ||
+                    (n.Type == "ControllerState" && !controllerAllowed));
             if (forbidden is not null)
                 throw new InvalidOperationException("PHYSICAL_ACTION_NOT_AUTHORIZED: " +
                     forbidden.Type + " / " + forbidden.Id);
         }
         if (!plan.Ready) throw new InvalidOperationException(string.Join("; ", plan.Diagnostics));
         var document = plan.Restore();
-        if (source == LabSource.Physical && document.Walk().Any(n => n.Type == "MockObserve" ||
-            n.Type == "ControllerState"))
-            throw new InvalidOperationException("PHYSICAL_READONLY_PLAN_VIOLATION");
         if (source == LabSource.Replay && document.Walk().Any(n => n.Type == "MockObserve"))
             throw new InvalidOperationException("MOCK_OBSERVE_CANNOT_BE_REPLAY_EVIDENCE");
         CancellationTokenSource cts;
