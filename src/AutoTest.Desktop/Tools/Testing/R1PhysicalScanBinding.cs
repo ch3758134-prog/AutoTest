@@ -22,6 +22,8 @@ public sealed record R1PhysicalScanBinding(
         if (match is not { Accepted: true, Identity: not null, Recipe: not null } ||
             project.ProjectPath is null || project.LabProgramAssetId is null)
             throw new InvalidOperationException("R1_SCAN_PROJECT_NOT_READY");
+        if (match.Recipe.ProductionTestEnabled && match.Recipe.RequiresFlash)
+            throw new InvalidOperationException("PRODUCTION_RECIPE_FLASH_NOT_AVAILABLE");
         var current = project.Assets.Single(x => x.Id == project.LabProgramAssetId.Value);
         var supplied = match.Recipe.TestProgram;
         if (supplied.Source != LabOrigin.Physical || !supplied.Resolved ||
