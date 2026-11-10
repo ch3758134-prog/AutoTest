@@ -299,7 +299,16 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         catch (Exception ex) { Status = "Preflight error: " + ex.Message; }
     }
     /// <summary>Formal R1 physical read-only run of the pinned PROJECT TEST resource.</summary>
-    public async Task<LabRunReport?> RunPhysicalReadOnlyAsync(CancellationToken ct = default)
+    public Task<LabRunReport?> RunPhysicalReadOnlyAsync(CancellationToken ct = default)
+        => RunPhysicalReadOnlyAsync(null, ct);
+
+    /// <summary>
+    /// The barcode variant uses exactly the same physical TEST runner as P10/P11.
+    /// The scanned DUT and recipe revision are recorded as source facts, never
+    /// treated as a production PASS solely because an execution finished.
+    /// </summary>
+    public async Task<LabRunReport?> RunPhysicalReadOnlyAsync(
+        R1PhysicalScanBinding? scanned, CancellationToken ct = default)
     {
         if (Busy) return null;
         try
@@ -307,6 +316,9 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
             var saved = project.LabProgram ??
                 throw new InvalidOperationException("PROJECT_TEST_NOT_REGISTERED: 请先在 P10 纳入工程。");
+            // A production scan must match the exact current saved TEST asset
+            // before any operator confirmation, device access or run event.
+            scanned?.Verify(project);
             if (project.LabProgramAssetId is null)
                 throw new InvalidOperationException("PROJECT_TEST_ASSET_REQUIRED");
             if (!string.Equals(LabDocumentCodec.Save(saved), ExportJson(), StringComparison.Ordinal))
@@ -346,6 +358,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 var report = await _runner.RunAsync(plan, station, LabSource.Physical, ct);
                 foreach (var fact in report.Facts)
                     if (!Facts.Any(x => x.OperationId == fact.OperationId)) Facts.Add(fact);
+                scanned?.Verify(project);
                 if (controller.Generation != generation || !station.IsReadOnlyAuthorized ||
                     project.Assets.Single(a => a.Id == programAsset.Id).Sha256 != programHash ||
                     project.Assets.Single(a => a.Id == dbcAsset.Id).Sha256 != dbcHash)
@@ -363,6 +376,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                     ProgramSha256 = programHash, DbcAssetId = dbcAsset.Id.Value,
                     DbcRevision = dbcAsset.Revision, DbcSha256 = dbcHash,
                     DeviceGeneration = generation, Source = "PhysicalReadOnly",
+                    BarcodeBinding = scanned,
                     ProductionApproved = false, Report = report
                 };
                 var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
