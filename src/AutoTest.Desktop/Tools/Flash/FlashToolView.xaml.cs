@@ -4,7 +4,11 @@ using Microsoft.Win32;
 namespace AutoTest.Desktop.Tools.Flash;
 public partial class FlashToolView : UserControl
 {
-    public FlashToolView() => InitializeComponent();
+    public FlashToolView()
+    {
+        InitializeComponent();
+        DataContext=new FlashToolViewModel();
+    }
     private void BrowseImage_Click(object sender, RoutedEventArgs e)
     {
         var picker = new OpenFileDialog

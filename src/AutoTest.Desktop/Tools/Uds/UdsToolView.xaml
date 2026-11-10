@@ -2,7 +2,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:prism="http://prismlibrary.com/"
-    prism:ViewModelLocator.AutoWireViewModel="True"
+    prism:ViewModelLocator.AutoWireViewModel="False"
     Background="#101620" Foreground="#E2EDF7"
     FontFamily="Segoe UI" FontSize="13">
  <UserControl.Resources>
@@ -102,7 +102,7 @@
   </DockPanel>
   <Border Grid.Row="1" Background="#493425" BorderBrush="#876038"
           BorderThickness="1" CornerRadius="4" Padding="11,7" Margin="0,0,0,12">
-   <TextBlock Text="当前正式 R1 页面已按 HTML 设计开发；本分支诊断后端为 Mock / Replay。真实 CAN1 UDS 物理请求仍由 FieldStudio 实测，不会从此页面误发到 ECU。"
+   <TextBlock Text="R1 已提供 Mock、Replay 和受控 Physical Read。真实 CAN1 仅允许明确确认的 0x19/0x22 读取；会话切换、编程及 ECU 写入继续由独立权限门禁管理。"
               Foreground="#F5D7A2" TextWrapping="Wrap"/>
   </Border>
   <Grid Grid.Row="2">
@@ -196,9 +196,14 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
       <TextBlock Text="ECU PROFILE / INSPECTOR" Style="{StaticResource UdsSection}"/>
-      <TextBlock Text="通信来源由所选工作区决定，Mock/Replay 不连接真实 ECU。"
+      <TextBlock Text="通信来源支持 Mock / Replay / Physical Read；物理模式共用 P02 主控板会话。"
                  Foreground="{StaticResource UdsMuted}" TextWrapping="Wrap" Margin="0,0,0,10"/>
-      <TextBlock Text="Profile 名称" Style="{StaticResource UdsCaption}"/>
+      <WrapPanel Margin="0,0,0,7">
+       <Button Content="导入 CanTool XML" Click="ImportCanTool_Click"/>
+       <Button Content="使用 APP 地址" Click="UseCanToolApp_Click"/>
+       <Button Content="使用 Boot 地址" Click="UseCanToolBoot_Click"/>
+      </WrapPanel>
+      <TextBlock Text="Profile 名称（物理模式不允许 Mock 配置）" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ProfileName,UpdateSourceTrigger=PropertyChanged}"/>
       <TextBlock Text="测试用 ECU 身份" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding MockIdentity,UpdateSourceTrigger=PropertyChanged}"/>

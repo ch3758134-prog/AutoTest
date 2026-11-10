@@ -243,10 +243,10 @@
       <ContentControl x:Name="R1WaveHost"/>
      </TabItem>
      <TabItem Header="P08 UDS">
-      <uds:UdsToolView/>
+      <uds:UdsToolView x:Name="R1UdsView"/>
      </TabItem>
      <TabItem Header="P09 Flash">
-      <flash:FlashToolView/>
+      <flash:FlashToolView x:Name="R1FlashView"/>
      </TabItem>
      <TabItem Header="P10 TEST">
       <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>

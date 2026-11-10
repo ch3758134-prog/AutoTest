@@ -39,6 +39,12 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (R1UdsView.DataContext is UdsToolViewModel udsModel)
+            udsModel.AttachPhysicalLink(
+                () => _device?.Controller,
+                request => MessageBox.Show(this,request,"确认真实 CAN1 UDS 只读诊断",
+                    MessageBoxButton.YesNo,MessageBoxImage.Question,
+                    MessageBoxResult.No)==MessageBoxResult.Yes);
         DataContextChanged += (_,_) => PopulateTab(WorkbenchTabs.SelectedIndex);
         UpdateContext(0);
     }
