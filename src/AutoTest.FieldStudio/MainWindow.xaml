@@ -287,14 +287,20 @@
 
    <TabItem Header=" 扫码 / DUT ">
     <Grid Margin="14">
-     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <StackPanel Orientation="Horizontal">
-      <TextBlock Text="扫码枪与 DUT 身份采集" Style="{StaticResource HeaderText}"/>
-      <TextBlock Text="使用顶部专用输入框；需要扫码枪键盘输入模式 + 回车结束符" Style="{StaticResource MutedText}" Margin="20,0,0,0"/>
-     </StackPanel>
-     <Border Grid.Row="1" Style="{StaticResource CardBorder}">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <TextBlock Text="扫码枪输入诊断与 DUT 身份采集" Style="{StaticResource HeaderText}"/>
+     <Border Grid.Row="1" Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+      <StackPanel>
+       <TextBlock Text="实际扫码测试方式" Style="{StaticResource SectionText}"/>
+       <TextBlock Text="① 单击顶部空白输入框，先敲键盘 ABC123：应看到“已接收 6 字符”。再按 Enter 或点确认，记录应进入下方列表。" TextWrapping="Wrap" Margin="0,0,0,4"/>
+       <TextBlock Text="② 若键盘测试正常，把光标放回输入框，再用扫码枪扫条码；如带 Enter / Tab 后缀，会自动提交，无后缀则点确认。" TextWrapping="Wrap" Margin="0,0,0,4"/>
+       <TextBlock Text="③ 也可点“开启扫码监听”，在当前程序窗口集中接收键盘仿真输入；扫码前确保程序窗口处于前台，完成后务必停止监听。" TextWrapping="Wrap" Margin="0,0,0,4"/>
+       <TextBlock Text="若扫码时输入框字符数始终为 0：程序没有收到键盘输入。需检查扫码枪是 HID 键盘仿真、USB 虚拟串口还是厂商专有 HID 模式；本版尚未接串口适配器。" Style="{StaticResource MutedText}"/>
+      </StackPanel>
+     </Border>
+     <Border Grid.Row="2" Style="{StaticResource CardBorder}">
       <DockPanel>
-       <TextBlock DockPanel.Dock="Top" Text="扫码历史（只表示采集成功，不代表已匹配 ECU 型号）" Style="{StaticResource SectionText}"/>
+       <TextBlock DockPanel.Dock="Top" Text="扫码历史（只有明确收到并提交的输入；不代表已匹配 ECU 型号）" Style="{StaticResource SectionText}"/>
        <DataGrid x:Name="ScanGrid"/>
       </DockPanel>
      </Border>

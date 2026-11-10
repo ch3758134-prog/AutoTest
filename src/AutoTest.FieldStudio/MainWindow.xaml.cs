@@ -860,7 +860,7 @@ public partial class MainWindow : Window
         ScanBox.Clear();
         _scanWasTypedInFocusedField = false;
         ScanModeButton.Content = _scannerMode ? "停止扫码监听" : "开启扫码监听";
-        ScanStatus.Text = _scannerMode ? "监听已开启 · 当前窗口内键盘输入归扫码枪" : "点击扫码框或开启监听";
+        ScanStatus.Text = _scannerMode ? "扫码模式 · 等待字符 (输入/扫描后可见)" : "未监听 · 点击输入框输入或扫描";
         if (_scannerMode) ScanBox.Focus();
         Log("SCAN", _scannerMode
             ? "窗口扫码模式已开启；当前窗口中的所有文本按键会被视为扫码，普通编辑前请关闭。"
@@ -876,6 +876,7 @@ public partial class MainWindow : Window
             if (result is not null) AdmitScan(result);
             else ScanBox.AppendText(ch.ToString());
         }
+        ScanStatus.Text = $"扫码模式 · 捕获 {ScanBox.Text.Length} 字符；等待 Enter / Tab / 确认";
     }
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -900,6 +901,10 @@ public partial class MainWindow : Window
         // changes, but the input was actually captured in the intended field.
         if (!_scannerMode && ScanBox.IsKeyboardFocused && ScanBox.Text.Length > 0)
             _scanWasTypedInFocusedField = true;
+        if (!_scannerMode && ScanBox.IsKeyboardFocused)
+            ScanStatus.Text = ScanBox.Text.Length == 0
+                ? "输入框已聚焦 · 等待键盘/扫码枪字符"
+                : $"已接收 {ScanBox.Text.Length} 字符 · 按 Enter 或点击确认";
     }
 
     private void ScanBox_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -910,13 +915,24 @@ public partial class MainWindow : Window
     }
     private void ScanConfirm_Click(object sender, RoutedEventArgs e)
     {
-        if (_scannerMode) return;
+        if (_scannerMode)
+        {
+            var result = _keyboardScanner.CompleteScan();
+            AdmitScan(result);
+            ScanBox.Clear();
+            ScanStatus.Text = result.Accepted
+                ? "扫码内容已提交验证队列"
+                : $"未提交：{result.Code}（检查是否收到字符）";
+            return;
+        }
         string input = ScanBox.Text.Trim();
         var scan = new RawScan(input, "keyboard",
             TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp()),
             ScanBox.IsKeyboardFocused || _scanWasTypedInFocusedField);
         var result = _scannerRouter.PublishRaw(scan, ScannerCaptureMode.KeyboardWedge);
         AdmitScan(result);
+        if (!result.Accepted && result.Code == "SCAN_EMPTY")
+            ScanStatus.Text = "输入框为空：尚未收到任何字符。先点击输入框敲键盘验证，再扫描。";
         ScanBox.Clear();
         _scanWasTypedInFocusedField = false;
     }
