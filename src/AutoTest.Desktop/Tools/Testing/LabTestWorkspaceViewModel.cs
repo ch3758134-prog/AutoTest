@@ -122,14 +122,14 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public string Verdict { get => _verdict; private set { _verdict = value; Changed(); } }
     public bool Busy { get => _busy; private set { _busy = value; Changed(); RefreshCommands(); } }
     public string SourceLabel => _project is null ? "STANDALONE LAB / MOCK" :
-        "PROJECT-MANAGED R2 TEST / MOCK EXECUTION ONLY";
+        "PROJECT TEST / MOCK + GUARDED PHYSICAL CAN1 READ-ONLY";
     public string ProjectAssetStatus => _project is null
         ? "未绑定工程；LAB 文件独立保存"
         : _project.LabProgramAssetId is { } id
             ? "工程测试程序 · " + _project.Assets.Single(x => x.Id == id).Name +
               " · r" + _project.Assets.Single(x => x.Id == id).Revision +
               "（修改后需重新提交工程版本）"
-            : "当前工程尚无 R2 高级测试程序；点击【纳入当前工程】登记版本";
+            : "当前工程尚未登记测试程序；请先保存测试程序作为工程版本资源";
     public string DocumentName => _editor.Snapshot.Name;
     public ICommand InsertCommand { get; }
     public ICommand DeleteCommand { get; }
@@ -444,7 +444,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             }
             else project.ImportLabProgram(json);
             Changed(nameof(ProjectAssetStatus));
-            Status = "R2 TEST 已登记为当前工程版本资源；请到 P01 点击【保存工程】写入磁盘。当前仍禁止真实物理执行。";
+            Status = "TEST 已登记为当前工程版本资源；请到 P01 保存工程。真实运行仅允许经人工确认的 CAN1 只读观察/断言，不允许物理输出或烧录。";
         }
         catch (Exception ex) { Status = "工程 TEST 登记失败：" + ex.Message; }
     }
@@ -455,11 +455,11 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         {
             if (Busy) throw new InvalidOperationException("Cannot reload a program during execution");
             var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
-            var program = project.LabProgram ?? LabDocument.New("R2 project TEST program");
+            var program = project.LabProgram ?? LabDocument.New("R1 project TEST program");
             ImportJson(LabDocumentCodec.Save(program));
             Status = project.LabProgram is null
-                ? "当前工程尚无 R2 高级测试程序；新建草稿未登记，必须显式纳入工程。"
-                : "R2 TEST 已从当前工程已登记资源加载；编辑后需创建新 Revision。";
+                ? "当前工程尚未登记测试程序；新建草稿须显式纳入工程。"
+                : "TEST 已从当前工程版本资源加载；编辑后须创建新 Revision。";
             Changed(nameof(ProjectAssetStatus));
         }
         catch (Exception ex) { Status = "重新加载工程 TEST 失败：" + ex.Message; }
