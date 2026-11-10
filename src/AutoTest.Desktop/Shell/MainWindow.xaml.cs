@@ -337,8 +337,11 @@ public partial class MainWindow : Window
                     .PersistAsync(project, controller, binding, result,
                         test.PhysicalEvidencePath);
                 scanner.MarkRunCompleted(binding, stored.Value,
-                    "已写入 SQLite / Diagnostic · " + result.Verdict +
-                    " · 未授权出厂放行", test.PhysicalEvidencePath);
+                    (binding.ProductionTestEnabled
+                        ? "已写入 SQLite / 真实生产检测 · "
+                        : "已写入 SQLite / 诊断检测 · ") +
+                    result.Verdict + " · RunId 已持久化",
+                    test.PhysicalEvidencePath);
             }
             catch (Exception persistenceError)
             {
