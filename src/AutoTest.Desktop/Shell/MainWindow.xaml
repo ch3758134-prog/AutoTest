@@ -63,7 +63,7 @@
   <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewProjectCommand}"/>
   <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
   <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}"/>
-  <KeyBinding Key="F5" Command="{Binding RunCommand}"/>
+  
   <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
   <KeyBinding Key="F2" Command="{Binding FocusNameCommand}"/>
  </Window.InputBindings>
@@ -118,14 +118,14 @@
    </MenuItem>
    <MenuItem Header="_运行">
     <MenuItem Header="校验工程/测试资源" Command="{Binding ValidateCommand}"/>
-    <MenuItem Header="启动 Mock 测试" Command="{Binding RunCommand}"/>
+    <MenuItem Header="执行当前工程 TEST" Click="OpenRun_Click"/>
     <MenuItem Header="停止" Command="{Binding StopCommand}"/>
    </MenuItem>
    <MenuItem Header="_诊断">
     <MenuItem Header="UDS Console / P08" Click="OpenUds_Click"/>
     <MenuItem Header="CAN Flash / P09" Click="OpenFlash_Click"/>
     <MenuItem Header="CAN / USB 设备诊断（独立工具）" Click="DeviceLab_Click"/>
-    <MenuItem Header="已有专业工作台（Mock/Replay）" Click="Modules_Click"/>
+    
    </MenuItem>
    <MenuItem Header="_视图">
     <MenuItem Header="工程资源 / P01" Click="OpenProject_Click"/>
@@ -145,7 +145,7 @@
     <MenuItem Header="命令搜索 Ctrl+K" Click="CommandPalette_Click"/>
     <MenuItem Header="隐藏/显示资源栏" Click="ToggleExplorer_Click"/>
     <MenuItem Header="隐藏/显示属性栏" Click="ToggleInspector_Click"/>
-    <MenuItem Header="历史集成工具（兼容）" Click="G4Tools_Click"/>
+    
    </MenuItem>
    <MenuItem Header="_帮助"><MenuItem Header="R1 原型参考与独立联调说明" Click="R1About_Click"/></MenuItem>
   </Menu>
@@ -165,9 +165,8 @@
      <ComboBox x:Name="R1ExecutionSource" Width="118" Height="28"
                Background="#202D3B" Foreground="#E2EDF7" BorderBrush="#314458"
                SelectionChanged="ExecutionSource_SelectionChanged" SelectedIndex="0">
-      <ComboBoxItem Content="Mock / 仿真" Tag="Mock"/>
-      <ComboBoxItem Content="Replay / 回放" Tag="Replay"/>
       <ComboBoxItem Content="Physical / 实物" Tag="Physical"/>
+      <ComboBoxItem Content="Replay / 离线回放" Tag="Replay"/>
      </ComboBox>
      <Border Width="1" Height="22" Background="#314458" Margin="8,0"/>
      <TextBlock Text="工作区" Foreground="#92A4B7" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -189,7 +188,7 @@
      <Button Content="UDS Console" Click="OpenUds_Click"/>
      <Button Content="CAN Flash" Click="OpenFlash_Click"/>
      <Button Content="设备联调" Click="DeviceLab_Click"/>
-     <Button Content="▶ Mock Run" Command="{Binding RunCommand}"/>
+     <Button Content="▶ 工程 TEST" Click="OpenRun_Click"/>
      <Button Content="■ 停止" Command="{Binding StopCommand}"/>
     </StackPanel>
    </DockPanel>
@@ -358,14 +357,7 @@
       <flash:FlashToolView x:Name="R1FlashView"/>
      </TabItem>
      <TabItem Header="P10 TEST">
-      <TabControl Background="#101620" SelectedIndex="0">
-       <TabItem Header="R1 工程自动测试程序（正式执行）">
-        <ContentControl x:Name="R2AuthoringHost"/>
-       </TabItem>
-       <TabItem Header="旧版 TEST 编辑器（仅 Mock 兼容）">
-        <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>
-       </TabItem>
-      </TabControl>
+      <ContentControl x:Name="R2AuthoringHost"/>
      </TabItem>
      <TabItem Header="P11 Run">
       <ContentControl x:Name="R1RunHost"/>
