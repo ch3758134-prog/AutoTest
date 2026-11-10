@@ -66,6 +66,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             .ObservesProperty(() => Busy);
         SaveMeasurementCommand = new DelegateCommand(async () => await SaveMeasurementAsync(),
             () => !Busy && _lastState is not null).ObservesProperty(() => Busy);
+        ReleaseAllKeysCommand = new DelegateCommand(async () => await ReleaseAllKeysAsync(),
+            () => !Busy).ObservesProperty(() => Busy);
         foreach (var n in Enumerable.Range(1, 5)) Voltages.Add(new ManualVoltageInput(n));
         Append(WorkbenchSeverity.Neutral, "台架就绪", "尚未读取工程或硬件事实；仅允许经 DEVICE 验证的实际动作。");
     }
@@ -80,6 +82,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public ICommand RefreshCommand { get; }
     public ICommand ApplyStateCommand { get; }
     public ICommand SaveMeasurementCommand { get; }
+    public ICommand ReleaseAllKeysCommand { get; }
     public string ProjectName { get => _project; private set => SetProperty(ref _project, value); }
     public string EcuProfileName { get => _ecu; private set => SetProperty(ref _ecu, value); }
     public string Revision { get => _revision; private set => SetProperty(ref _revision, value); }
@@ -274,6 +277,33 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 $"Error {r.ErrorCode ?? "—"} {r.ErrorMessage ?? ""}", r.OperationId, r.TraceReference);
         }
         catch (Exception ex) { _lastState = null; _lastOperationId = null; Failure("切换控制状态", ex); }
+        finally { Busy = false; }
+    }
+
+    public async Task ReleaseAllKeysAsync()
+    {
+        if (Busy) return;
+        Busy = true;
+        try
+        {
+            var result = await _port.ReleaseAllPhysicalKeysAsync(CancellationToken.None);
+            _lastState = null;
+            _lastOperationId = null;
+            ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
+            LastOperation = result.Accepted ? "已向 CAN0 发送全部释放" :
+                "释放未获确认 / 已拒绝";
+            LastEvidence = result.AckDescription ?? "主控无有效 ACK，实际开关状态未知";
+            Append(result.Accepted ? WorkbenchSeverity.Success : WorkbenchSeverity.Error,
+                result.Accepted ? "真实全部释放请求已被主控接受" : "真实全部释放未确认",
+                "KEY_SIM CAN0 0x730 / 0x80 · " +
+                (result.ErrorCode ?? result.AckDescription ?? "无板级开关状态测量"),
+                result.OperationId, result.TraceReference);
+        }
+        catch (Exception ex)
+        {
+            LastEvidence = "释放结果 UNKNOWN；检查当前设备连接和台架状态";
+            Failure("真实全部释放", ex);
+        }
         finally { Busy = false; }
     }
 
