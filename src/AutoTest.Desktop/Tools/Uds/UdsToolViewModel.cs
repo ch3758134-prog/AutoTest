@@ -1,4 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Collections.Immutable;
+using AutoTest.Contracts;
+using AutoTest.Core;
+using AutoTest.Devices.Can;
+using AutoTest.Devices.Diagnostics;
+using AutoTest.Devices.Usb;
+using AutoTest.Specialists.Flash;
 using System.Globalization;
 using AutoTest.Specialists.Uds;
 using AutoTest.Specialists.Uds.Workbench;
@@ -14,6 +21,9 @@ public sealed class UdsToolViewModel : BindableBase
     private readonly UdsDiagnosticWorkspace _backend;
     private readonly UdsReplayWorkspace _replay = new();
     private CancellationTokenSource? _sendStop;
+    private Func<HardwareBenchController?>? _physicalProvider;
+    private Func<string,bool>? _confirmPhysical;
+    private CanToolConfigurationSnapshot? _canToolProfile;
     private bool _isBusy, _injectPending, _noResponse, _injectNrc;
     private string _profileName="Mock ECU", _mockIdentity="MOCK_ECU_A",
         _txId="7E0", _rxId="7E8", _p2Ms="1000", _p2StarMs="5000",
@@ -61,9 +71,50 @@ public sealed class UdsToolViewModel : BindableBase
     public DelegateCommand SaveDocumentCommand { get; }
     public DelegateCommand LoadDocumentCommand { get; }
     public DelegateCommand LoadReplayCommand { get; }
-    public IReadOnlyList<string> SourceModes { get; } = ["Mock", "Replay"];
-    public bool PhysicalTxEnabled => false;
-    public string SourceLabel => SourceMode=="Replay" ? "REPLAY / NO PHYSICAL CAN TX" : "MOCK / NO PHYSICAL CAN TX";
+    public IReadOnlyList<string> SourceModes { get; } = ["Mock", "Replay", "Physical Read"];
+    public bool PhysicalTxEnabled =>
+        _physicalProvider?.Invoke() is { State: UsbSessionState.Connected, ProtocolVersionVerified: true };
+    public string SourceLabel => SourceMode switch
+    {
+        "Physical Read" => "PHYSICAL CAN1 / ONLY 0x19 + 0x22",
+        "Replay" => "REPLAY / NO PHYSICAL CAN TX",
+        _ => "MOCK / NO PHYSICAL CAN TX"
+    };
+
+    public void AttachPhysicalLink(Func<HardwareBenchController?> device,
+        Func<string,bool> operatorConsent)
+    {
+        _physicalProvider = device ?? throw new ArgumentNullException(nameof(device));
+        _confirmPhysical = operatorConsent ?? throw new ArgumentNullException(nameof(operatorConsent));
+        RaisePropertyChanged(nameof(PhysicalTxEnabled));
+        RaisePropertyChanged(nameof(SourceLabel));
+    }
+
+    public void ImportCanToolConfiguration(string localXmlFile)
+    {
+        if (IsBusy) throw new InvalidOperationException("Wait until the current UDS request ends.");
+        _canToolProfile = CanToolConfigurationImporter.LoadFile(localXmlFile);
+        UseCanToolEndpoint(boot:false);
+    }
+
+    public void UseCanToolEndpoint(bool boot)
+    {
+        if (_canToolProfile is null)
+        {
+            Status="PROFILE_NOT_LOADED";
+            Error="请先导入现有的 CanTool Configuration.xml";
+            return;
+        }
+        var c=_canToolProfile;
+        TxId=(boot ? c.BootRequestId : c.AppRequestId).ToString("X");
+        RxId=(boot ? c.BootResponseId : c.AppResponseId).ToString("X");
+        ProfileName=$"CanTool-{(boot?"BOOT":"APP")}-{c.SourceSha256[..12]}";
+        Status="PROFILE_CONFIG_LOADED_NOT_VERIFIED";
+        Error="";
+        ResponseSummary=$"配置样本 {c.SourceName}：已填入 {(boot?"Bootloader":"APP")} 端点 " +
+            $"TX=0x{TxId} / RX=0x{RxId}，SHA256={c.SourceSha256}. " +
+            "此操作未发送 CAN；必须独立确认与连接的 ECU 物理身份和速率相符。";
+    }
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))
           foreach(var command in Commands()) command.RaiseCanExecuteChanged(); } }
@@ -82,7 +133,8 @@ public sealed class UdsToolViewModel : BindableBase
     public string ExpectedHex { get => _expectedHex; set => SetProperty(ref _expectedHex,value); }
     public string ServiceName { get => _serviceName; set => SetProperty(ref _serviceName,value); }
     public string DocumentPath { get => _documentPath; set => SetProperty(ref _documentPath,value); }
-    public string SourceMode { get => _sourceMode; set { if(SetProperty(ref _sourceMode,value)) RaisePropertyChanged(nameof(SourceLabel)); } }
+    public string SourceMode { get => _sourceMode; set { if(SetProperty(ref _sourceMode,value))
+        { RaisePropertyChanged(nameof(SourceLabel)); RaisePropertyChanged(nameof(PhysicalTxEnabled)); } } }
     public string ReplayPath { get => _replayPath; set => SetProperty(ref _replayPath,value); }
     public string FaultSid { get => _faultSid; set => SetProperty(ref _faultSid,value); }
     public string FaultCode { get => _faultCode; set => SetProperty(ref _faultCode,value); }
@@ -153,11 +205,18 @@ public sealed class UdsToolViewModel : BindableBase
     public async Task SendAsync(CancellationToken ct = default)
     {
         if (IsBusy) return;
-        IsBusy=true; Status=SourceMode=="Replay" ? "REPLAY_REQUEST" : "MOCK_SENDING"; Error=""; Nrc="—"; ResponseHex="—";
+        IsBusy=true;
+        Status=SourceMode switch { "Replay"=>"REPLAY_REQUEST","Physical Read"=>"PHYSICAL_READ_REQUEST",_=>"MOCK_SENDING" };
+        Error=""; Nrc="—"; ResponseHex="—";
         ResponseSummary="诊断请求执行中；等待明确的请求/响应证据。";
         try
         {
             var request=UdsHex.Parse(RequestHex);
+            if (SourceMode=="Physical Read")
+            {
+                await SendPhysicalReadAsync(request,ct);
+                return;
+            }
             if (SourceMode=="Replay")
             {
                 var playback=_replay.Consume(RequestHex,ExpectedHex);
@@ -179,6 +238,71 @@ public sealed class UdsToolViewModel : BindableBase
           ResponseSummary="请求处理错误，不提供已确认响应。"; }
         finally { IsBusy=false; }
     }
+    private async Task SendPhysicalReadAsync(byte[] request,CancellationToken ct)
+    {
+        if (request.Length is < 2 or > 4095 || request[0] is not (0x19 or 0x22))
+            throw new UnauthorizedAccessException(
+                "物理 CAN1 当前只允许 ReadDID 0x22 与 ReadDTC 0x19；会话切换/复位/安全访问/写入/烧录不可由此接口发送。");
+        var controller = _physicalProvider?.Invoke() ??
+            throw new InvalidOperationException("请先在 P02 设备页连接主控板，UDS 共用该 WinUSB / CAN1 会话。");
+        if (!PhysicalTxEnabled || controller.Hub is null)
+            throw new InvalidOperationException("主控板 USB 未连接或固件版本未通过校验，不能发送真实 UDS。");
+        var sourceProfile=Profile();
+        if (sourceProfile.Name.StartsWith("Mock",StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("不能使用 Mock ECU Profile 对真实 ECU 发送，请导入或指定当前 ECU 的有效配置。");
+        var endpoint = UdsToolDocumentStore.ToEndpoint(sourceProfile);
+        var physical = new ReadOnlyUdsPhysicalEndpoint(sourceProfile.Name,
+            endpoint.RequestCanId,endpoint.ResponseCanId,endpoint.RequestCanId>0x7FF);
+        physical.Validate();
+        var reqId=Guid.NewGuid();
+        var text=$"一次性真实 ECU 只读诊断\n\n" +
+            $"CAN1 DUT · 当前 USB Generation {controller.Generation}\n" +
+            $"ECU Profile：{sourceProfile.Name}\n" +
+            $"TX CAN ID：0x{physical.RequestCanId:X}\n" +
+            $"RX CAN ID：0x{physical.ResponseCanId:X}\n" +
+            $"UDS PDU：{Convert.ToHexString(request)}\n" +
+            $"服务：0x{request[0]:X2} / ReadOnly\n\n" +
+            "必须确认当前 ECU 与端点身份相符。只允许此次读取，不会进行复位或烧录。\n\n确认发送吗？";
+        if (_confirmPhysical is null ||
+            !_confirmPhysical(text))
+        {
+            Status="PHYSICAL_NOT_SENT";
+            Error="";
+            ResponseSummary="操作者取消请求；没有发送 CAN 帧。";
+            return;
+        }
+        TraceRows.Add(new UdsCanTraceRow("PHYSICAL UDS TX PDU", UdsHex.Format(request)));
+        var authorization=HardwareBenchController.PhysicalReadOnlyUdsConfirmation(reqId,physical,request[0]);
+        var response=await PhysicalReadOnlyUds.RunAsync(controller,physical,endpoint,
+            request,reqId,authorization,ct);
+        ResponseHex=response.ResponsePdu.IsDefaultOrEmpty ? "(no ECU response)" :
+            UdsHex.Format(response.ResponsePdu);
+        if (!response.ResponsePdu.IsDefaultOrEmpty)
+            TraceRows.Add(new UdsCanTraceRow("PHYSICAL ECU RX PDU",
+                UdsHex.Format(response.ResponsePdu)));
+        else
+            TraceRows.Add(new UdsCanTraceRow("PHYSICAL NO VALIDATED ECU RESPONSE",
+                $"Outcome={response.Outcome}"));
+        Status="PHYSICAL_"+response.Outcome.ToString().ToUpperInvariant();
+        Nrc=response.NegativeResponseCode.HasValue
+            ? $"0x{response.NegativeResponseCode.Value:X2}" : "—";
+        ExpectedMatch=string.IsNullOrWhiteSpace(ExpectedHex)
+            ? "NOT_SPECIFIED"
+            : response.ResponsePdu.IsDefaultOrEmpty ? "UNKNOWN" :
+                UdsHex.Parse(ExpectedHex).AsSpan().SequenceEqual(response.ResponsePdu.AsSpan())
+                ? "MATCH" : "MISMATCH";
+        ResponseSummary=UdsDiagnosticResponseFormatter.Explain(request,response.ResponsePdu.AsSpan())+
+            $"\n会话 Generation={controller.Generation}; Host UTC={response.CompletedAt.Utc:O}."+
+            " 原始 CAN1 RX / USB 主控 ACK 在同一个 DEVICE Trace 记录；ACK 不等于 ECU 正响应。";
+        Error=response.Outcome switch
+        {
+            Outcome.Accepted => "",
+            Outcome.Rejected => "ECU 返回负响应或本次请求被拒绝，请查看 NRC/Trace。",
+            _ => "通信状态不确定；不能推断 ECU 已执行或未执行。"
+        };
+        while(TraceRows.Count>2000) TraceRows.RemoveAt(0);
+    }
+
     private void ApplyExchange(UdsToolExchange exchange,byte[] request)
     {
             ResponseHex=string.IsNullOrEmpty(exchange.ResponseHex) ? "(no confirmed response)" : exchange.ResponseHex;
