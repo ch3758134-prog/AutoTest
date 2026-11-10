@@ -112,4 +112,25 @@ public sealed class R1RealKeySimTestPlanTests
         Assert.Equal("", vm.Snapshot.Phases[LabPhase.Test][0].Parameters["controllerId"]);
     }
 
+    [Fact]
+    public void ReleaseHiddenInsideConditionalDoesNotSatisfyGuaranteedCleanup()
+    {
+        var data = Profile();
+        var program = LabDocument.New("real KEY_SIM cleanup");
+        var release = State(data.Controller, data.Release, data.Profile.Revision);
+        var conditional = LabNode.New("If", "conditional release");
+        conditional.Parameters["variable"] = "mode";
+        conditional.Parameters["equals"] = "ready";
+        conditional.Slots["then"] = new List<LabNode> { release };
+        conditional.Slots["else"] = new List<LabNode>();
+        program.Phases[LabPhase.Cleanup].Add(conditional);
+        Assert.False(R1KeySimCleanupPolicy.HasUnconditionalRelease(program, data.Profile));
+
+        program.Phases[LabPhase.Cleanup].Clear();
+        var sequence = LabNode.New("Sequence", "guaranteed cleanup");
+        sequence.Slots["body"] = new List<LabNode> { release };
+        program.Phases[LabPhase.Cleanup].Add(sequence);
+        Assert.True(R1KeySimCleanupPolicy.HasUnconditionalRelease(program, data.Profile));
+    }
+
 }
