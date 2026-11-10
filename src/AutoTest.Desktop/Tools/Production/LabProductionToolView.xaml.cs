@@ -1,4 +1,5 @@
 using System.Text;
+using System.Collections.Immutable;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -24,13 +25,13 @@ public partial class LabProductionToolView : UserControl, IAsyncDisposable
         R1ScannerBaud.ItemsSource = new [] {9600,19200,38400,57600,115200,230400};
         R1ScannerBaud.SelectedItem = 9600;
         RefreshPorts();
-        _serial.BytesReceived += data => Dispatcher.BeginInvoke(() =>
+        _serial.BytesReceived += data => Dispatcher.InvokeAsync(() =>
         {
             var n=Interlocked.Add(ref _totalRx,data.Length);
             R1ScannerRxCount.Text=$"RX {n:N0} bytes";
             R1ScannerHex.Text="HEX "+Convert.ToHexString(data.AsSpan(0,Math.Min(data.Length,80)));
         });
-        _serial.BarcodeReceived += packet => Dispatcher.BeginInvoke(() =>
+        _serial.BarcodeReceived += packet => Dispatcher.InvokeAsync(() =>
         {
             try
             {
@@ -45,9 +46,9 @@ public partial class LabProductionToolView : UserControl, IAsyncDisposable
                 R1ScannerState.Text="编码不符合 UTF-8；原始 HEX 已显示，请检查设备字符编码："+ex.Message;
             }
         });
-        _serial.Fault += e => Dispatcher.BeginInvoke(() => R1ScannerState.Text="串口接收停止："+e);
-        _serial.FramingWarning += e => Dispatcher.BeginInvoke(() => R1ScannerState.Text="无效扫码帧："+e);
-        _serial.ConnectionChanged += connected => Dispatcher.BeginInvoke(() =>
+        _serial.Fault += e => Dispatcher.InvokeAsync(() => R1ScannerState.Text="串口接收停止："+e);
+        _serial.FramingWarning += e => Dispatcher.InvokeAsync(() => R1ScannerState.Text="无效扫码帧："+e);
+        _serial.ConnectionChanged += connected => Dispatcher.InvokeAsync(() =>
         {
             bool has = _serial.HasSession;
             R1ScannerConnect.IsEnabled=!has;
