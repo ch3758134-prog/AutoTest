@@ -121,7 +121,7 @@ class Research:
                 (study_id,))]
             for experiment in experiments:
                 experiment["results"] = [dict(r) for r in db.execute(
-                    "SELECT * FROM study_results WHERE experiment_id=? ORDER BY performed_at,id",
+                    "SELECT * FROM study_results WHERE experiment_id=? ORDER BY rowid",
                     (experiment["id"],))]
             decisions = [dict(r) for r in db.execute(
                 "SELECT * FROM study_decisions WHERE study_id=? ORDER BY study_revision DESC",
