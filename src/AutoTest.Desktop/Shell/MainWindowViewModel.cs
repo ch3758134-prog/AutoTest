@@ -149,7 +149,7 @@ public sealed class MainWindowViewModel : BindableBase
     }
     public ObservableCollection<string> FactLines { get; } = new();
     public ObservableCollection<string> AvailableTypes { get; } = new(new[]
-        { "MockObserve", "Assert", "SetVariable", "Wait", "Sequence", "If", "Loop", "Switch", "Case" });
+        { "MockObserve", "Assert", "SetVariable", "Wait", "Sequence", "If", "Loop", "Switch", "Case", "When" });
     public WorkbenchStepItem? SelectedStep
     {
         get => _selectedStep;
@@ -162,7 +162,8 @@ public sealed class MainWindowViewModel : BindableBase
             EditedValue = node?.Properties.GetValueOrDefault("value") ?? "";
             EditedExpected = node?.Properties.GetValueOrDefault("equals") ?? "";
             EditedCount = node?.Properties.GetValueOrDefault("count") ?? "2";
-            EditedMilliseconds = node?.Properties.GetValueOrDefault("milliseconds") ?? "0";
+            EditedMilliseconds = node?.Properties.GetValueOrDefault("milliseconds") ??
+                node?.Properties.GetValueOrDefault("timeoutMs") ?? "0";
             EditedQuality = node?.Properties.GetValueOrDefault("quality") ?? "Observed";
             RaisePropertyChanged(nameof(SelectedAssetStatus));
             UpdateCommands();
@@ -268,6 +269,9 @@ public sealed class MainWindowViewModel : BindableBase
             .WithProperty("variable", "mode").WithSlot("cases"),
         "Case" => StepNode.Create("Case", "匹配分支")
             .WithProperty("equals", "ready").WithSlot("body"),
+        "When" => StepNode.Create("When", "条件等待（尚未接真实观察源）")
+            .WithProperty("variable", "mode").WithProperty("equals", "ready")
+            .WithProperty("timeoutMs", "1000").WithSlot("body"),
         _ => throw new InvalidOperationException("不支持的 V1 节点类型")
     };
     private void InsertRoot()
@@ -296,7 +300,7 @@ public sealed class MainWindowViewModel : BindableBase
         var parent = child ? at?.Id : at?.Parent;
         string? slot = child ? at?.NodeType switch
         {
-            "Loop" or "Sequence" or "Case" => "body",
+            "Loop" or "Sequence" or "Case" or "When" => "body",
             "If" => intoElse ? "else" : "then",
             "Switch" => "cases",
             _ => null
@@ -351,6 +355,9 @@ public sealed class MainWindowViewModel : BindableBase
                 props["variable"] = EditedVariable; break;
             case "Case":
                 props["equals"] = EditedExpected; break;
+            case "When":
+                props["variable"] = EditedVariable; props["equals"] = EditedExpected;
+                props["timeoutMs"] = EditedMilliseconds; break;
             case "SetVariable":
                 props["variable"] = EditedVariable; props["value"] = EditedValue; break;
             case "Loop": props["count"] = EditedCount; break;
