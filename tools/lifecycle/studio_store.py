@@ -14,7 +14,7 @@ import uuid
 
 TYPES = ("context", "capability", "system", "requirement", "architecture",
          "interface", "design", "decision", "change", "risk", "work_package",
-         "test", "milestone")
+         "test", "milestone", "reference")
 LINKS = ("derives", "allocated", "defines", "depends", "implements", "verifies", "impacts")
 STATES = ("DRAFT", "IN_REVIEW", "APPROVED", "SUPERSEDED", "OPEN", "CLOSED")
 SCHEMA = "engineering-workbench/1"
