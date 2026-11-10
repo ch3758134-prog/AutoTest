@@ -199,11 +199,12 @@ function createStudyModal(){
     ],'PROTOTYPE');
     return {title,question,constraints,requirement,minimum};
   },'建立技术预研',async x=>{
-    const ans=await researchAction('/api/studio/research/create',{
+    const ans=await req('/api/studio/research/create',{
       project_id:state.project,title:x.title.value,question:x.question.value,
       constraints:x.constraints.value,requirement_id:x.requirement.value,
-      minimum_level:x.minimum.value},'已登记技术未知问题');
+      minimum_level:x.minimum.value});
     selectedStudyId=ans.study.id;
+    closeModal();await researchRefresh();toast('已登记技术未知问题');
   });
 }
 function createStudyOptionModal(study){
