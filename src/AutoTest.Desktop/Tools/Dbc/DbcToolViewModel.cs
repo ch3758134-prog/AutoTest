@@ -64,6 +64,12 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     public string SupportSummary => _document is null ? "未导入" :
         _document.CanEdit ? "受支持语法：可编辑 BO_/SG_/BU_/VAL_（保存前回读校验）" :
         "只读保护：" + string.Join(", ", _document.UnsupportedDirectives);
+    public void RefreshProjectStatus()
+    {
+        Changed(nameof(Revision));
+        Changed(nameof(ProjectStatus));
+    }
+
     public int Revision => _project?.DbcAssetId is { } id
         ? _project.Assets.Single(x => x.Id == id).Revision : 0;
     public string ProjectStatus => _project?.DbcAssetId is { } id
