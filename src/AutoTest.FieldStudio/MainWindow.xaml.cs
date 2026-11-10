@@ -130,6 +130,11 @@ public partial class MainWindow : Window
         _scannerRouter.AttachMode(ScannerCaptureMode.Disabled, new InputPolicy(false,512,""));
         _serialScanner.BytesReceived += ReceiveSerialChunk;
         _serialScanner.BarcodeReceived += ReceiveSerialBarcode;
+        _serialScanner.FramingWarning += message => OnUi(() =>
+        {
+            ScannerPending.Text = "串口帧解析拒绝：" + message;
+            Log("SCAN SERIAL", message);
+        });
         _serialScanner.Fault += reason =>
             OnUi(() =>
             {
@@ -139,11 +144,12 @@ public partial class MainWindow : Window
         _serialScanner.ConnectionChanged += connected =>
             OnUi(() =>
             {
-                ScannerSerialConnect.IsEnabled = !connected;
-                ScannerSerialDisconnect.IsEnabled = connected;
-                ScannerPortCombo.IsEnabled = !connected;
-                ScannerBaudCombo.IsEnabled = !connected;
-                if (!connected) ScanStatus.Text = "扫码 COM 已断开";
+                bool hasSession = _serialScanner.HasSession;
+                ScannerSerialConnect.IsEnabled = !hasSession;
+                ScannerSerialDisconnect.IsEnabled = hasSession;
+                ScannerPortCombo.IsEnabled = !hasSession;
+                ScannerBaudCombo.IsEnabled = !hasSession;
+                if (!connected) ScanStatus.Text = "扫码 COM 已断开 / 读取停止";
             });
         _scannerPump = Task.Run(() => ObserveAcceptedScansAsync(_scannerStop.Token));
         _device.ConnectionChanged += state => OnUi(() => SetConnectionState(state));
@@ -902,8 +908,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (_serialScanner.PortName is not null)
-                throw new InvalidOperationException("扫码枪串口已连接，请先断开。");
+            if (_serialScanner.HasSession)
+                throw new InvalidOperationException("扫码枪串口会话仍存在，请先断开。");
             var port = ScannerPortCombo.SelectedItem as string;
             if (string.IsNullOrWhiteSpace(port))
                 throw new InvalidOperationException("请选择设备管理器中 USB 串行设备所对应的 COM 口。");
