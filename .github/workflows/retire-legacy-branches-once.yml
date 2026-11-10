@@ -1,0 +1,43 @@
+name: Archive then retire obsolete branches (SHA-locked)
+
+on:
+  push:
+    branches: [maintenance/archive-retire-legacy-20261109]
+    paths: ['.github/workflows/retire-legacy-branches-once.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive-and-retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout maintenance commit with authenticated push
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read-only preflight, create archival tags and verify full Git bundle
+        run: |
+          set -euo pipefail
+          git config user.email "autotest-archive@users.noreply.github.com"
+          git config user.name "AutoTest recovery archive"
+          python3 tools/maintenance/retire_branches.py prepare docs/maintenance/20261109-retired-branches.json
+      - name: Save verified full Git bundle before permitting deletion
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoTest-pre-retirement-complete-git-bundle-20261109
+          path: |
+            maintenance-output/AutoTest-before-branch-retirement-20261109.bundle
+            docs/maintenance/20261109-retired-branches.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Delete only SHA-matched, previously archived legacy branches
+        run: |
+          set -euo pipefail
+          python3 tools/maintenance/retire_branches.py retire docs/maintenance/20261109-retired-branches.json
+      - name: Verify no deleted branch lost its archival tag
+        run: |
+          set -euo pipefail
+          python3 tools/maintenance/retire_branches.py verify docs/maintenance/20261109-retired-branches.json
