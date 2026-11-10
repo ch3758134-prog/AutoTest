@@ -173,7 +173,7 @@
       <StackPanel>
        <TextBlock Text="ECU 响应 / RESPONSE" Style="{StaticResource UdsSection}"/>
        <TextBlock Text="原始 UDS PDU" Style="{StaticResource UdsCaption}"/>
-       <TextBox Text="{Binding ResponseHex}" IsReadOnly="True" FontFamily="Consolas"/>
+       <TextBox Text="{Binding ResponseHex,Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas"/>
        <TextBlock Text="诊断解释 / NRC" Style="{StaticResource UdsCaption}"/>
        <TextBlock Text="{Binding ResponseSummary}" TextWrapping="Wrap" Margin="0,3,0,12" Foreground="#46D0DC"/>
        <Grid>
