@@ -52,7 +52,7 @@ public sealed class ProjectTestProgramAdapterTests
     }
 
     [Fact]
-    public void PhysicalRunStillRequiresAuthorizedExecutionAdapter()
+    public async Task PhysicalRunStillRequiresAuthorizedExecutionAdapter()
     {
         var tx = new StepEditTransaction(TestDocument.Create("physical run"));
         tx.Insert(TestPhase.Test, null, null, 0,
@@ -60,8 +60,8 @@ public sealed class ProjectTestProgramAdapterTests
         var plan = ProjectTestProgramAdapter.Prepare(tx.Current);
         Assert.True(plan.Ready);
         var runner = new LabRunCoordinator();
-        var error = Assert.ThrowsAsync<InvalidOperationException>(
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
             () => runner.RunAsync(plan, new SimulatedLabStation(), LabSource.Physical));
-        Assert.Contains("PHYSICAL_TEST_EXECUTION_DENIED", error.Result.Message);
+        Assert.Contains("PHYSICAL_TEST_EXECUTION_DENIED", error.Message);
     }
 }
