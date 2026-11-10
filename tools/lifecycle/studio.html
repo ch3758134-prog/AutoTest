@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Engineering Workbench · 工程研发管理</title>
+<style>
+:root{color-scheme:light;--bg:#f5f7fa;--paper:#fff;--line:#e1e7ef;--ink:#223247;--soft:#62758c;--quiet:#8b9bad;--blue:#225fb1;--pale:#eaf2fd;--good:#147a56;--gold:#9f6a19;--bad:#ba4b4d}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:14px/1.65 "Segoe UI","Microsoft Yahei UI",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #6295df;outline-offset:2px}
+button:disabled{cursor:not-allowed;opacity:.5}
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.side{background:var(--paper);border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh}
+.identity{padding:0 12px 20px;border-bottom:1px solid var(--line)}.identity strong{font-size:20px;letter-spacing:-.6px}.identity em{font-style:normal;color:var(--blue)}.identity small{display:block;color:var(--soft);font-size:11px}
+.projectpicker{padding:1px 8px 10px;border-bottom:1px solid var(--line)}.projectpicker label,.sideheading{font-size:11px;color:var(--quiet);display:block;margin-bottom:7px}.projectpicker select{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.nav{display:grid;gap:3px}.nav button{border:0;background:transparent;text-align:left;padding:11px 13px;border-radius:7px;color:#506783;display:flex;gap:11px;align-items:center}.nav button.active{background:var(--pale);color:var(--blue);font-weight:650}.nav button:hover{background:#f0f5fb}.nav b{font-size:17px;width:22px;text-align:center;font-weight:500}
+.sidefoot{margin-top:auto;border-top:1px solid var(--line);padding:14px 12px;color:var(--quiet);font-size:11px}.sidefoot .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#23a879;margin-right:7px}
+.main{min-width:0;padding:24px clamp(20px,4vw,58px) 80px;max-width:1540px;width:100%;margin:0 auto}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:28px;font-size:12px;color:var(--soft)}
+.top-actions{display:flex;gap:9px;align-items:center}
+.page-title{font-size:27px;margin:0;letter-spacing:-.6px;line-height:1.3}.intro{margin:8px 0 23px;color:var(--soft);font-size:13px;line-height:1.8}
+button.primary{background:var(--blue);color:white;border:1px solid var(--blue);border-radius:7px;font-weight:600;padding:9px 14px}button.primary:hover{background:#184f99}
+button.outline{background:white;color:#375877;border:1px solid #cad6e3;border-radius:7px;padding:9px 13px}button.outline:hover{background:#f0f5fc}
+button.link{background:none;border:0;color:var(--blue);padding:4px 0;font-weight:650}button.link:hover{text-decoration:underline}
+.buttonrow{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:19px 22px}
+.panel h2{font-size:16px;margin:0 0 10px}.panel p{color:var(--soft);margin:0}
+.stack{display:grid;gap:15px}.twocol{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,1fr);gap:15px}.threecol{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.fourcol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat{border:1px solid var(--line);background:#fff;border-radius:9px;padding:15px 18px}.stat b{font-size:25px;line-height:1.35}.stat label{display:block;color:var(--soft);font-size:12px}.stat small{display:block;color:var(--quiet);font-size:11px;margin-top:4px}
+.section{margin-top:25px}.sectionline{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px}.sectionline h2{font-size:16px;margin:0}.muted{color:var(--soft)}.tiny{font-size:11px;color:var(--quiet)}
+.badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;background:#edf1f6;color:#50667e;white-space:nowrap}.badge.good{background:#e6f5ee;color:var(--good)}.badge.warn{background:#fff4de;color:var(--gold)}.badge.bad{background:#ffecec;color:var(--bad)}.badge.blue{background:#e8f1fd;color:var(--blue)}
+.rowlist{display:grid;gap:0}.item-row{display:flex;text-align:left;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:0;border-bottom:1px solid var(--line);padding:12px 0;width:100%}.item-row:last-child{border-bottom:0}.item-row:hover .rowtitle{color:var(--blue)}.rowtitle{font-weight:600;color:#283d57;overflow-wrap:anywhere}.rowdesc{font-size:12px;color:var(--soft);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.blank{background:#fff;border:1px dashed #bdcbdc;border-radius:12px;padding:36px 22px;text-align:center}.blank h2{margin:0 0 9px}.blank p{color:var(--soft);max-width:650px;margin:0 auto 18px}
+.context{white-space:pre-wrap;line-height:1.85;color:#384c63;overflow-wrap:anywhere}
+.work{display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px;align-items:start}
+.index{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;min-height:500px}
+.indexhead{padding:16px;border-bottom:1px solid var(--line)}.indexhead input{width:100%;border:1px solid #d6e0ec;border-radius:7px;padding:9px 11px}
+.indextitle{margin:13px 13px 5px;color:#8191a6;font-size:11px;letter-spacing:.5px}
+.indexitem{display:flex;width:100%;text-align:left;border:0;background:white;border-bottom:1px solid #edf1f5;gap:8px;padding:12px;align-items:center;justify-content:space-between}.indexitem:hover{background:#f5f8fc}.indexitem.active{background:#eaf2fd;border-left:3px solid var(--blue);padding-left:9px}
+.indexitem span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.detail{background:#fff;border:1px solid var(--line);border-radius:10px;min-height:500px}
+.detailhead{padding:22px 24px;border-bottom:1px solid var(--line)}.detailhead h2{margin:8px 0;font-size:22px;line-height:1.4}
+.detailbody{padding:23px 25px}.doc{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.9;color:#364960}.doc:empty:before{content:"尚未补充设计说明或依据";color:#9ba8b8}
+.meta-table{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:14px 0}.meta-cell{background:#f7f9fc;border:1px solid #edf0f4;border-radius:7px;padding:10px 13px;min-width:0}.meta-cell label{color:var(--quiet);font-size:11px;display:block}.meta-cell div{font-size:13px;overflow-wrap:anywhere}
+.rule{border:0;border-top:1px solid var(--line);margin:24px 0}.detailsection{margin-top:22px}.detailsection h3{font-size:14px;margin:0 0 10px}
+.relation{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}.relation .reltext{flex:1;font-size:12px;color:var(--soft)}.relation button{border:0;background:none;color:var(--blue);font-weight:600;text-align:left}
+.timeline{display:grid;gap:10px}.event{padding:10px 0;border-bottom:1px solid var(--line)}.event strong{font-size:12px}.event small{color:var(--quiet);display:block}
+.toolbar{display:flex;gap:9px;align-items:center;justify-content:space-between;margin:15px 0;flex-wrap:wrap}
+.assess{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:12px 0}.assess strong{flex:1}.assess select{max-width:155px;padding:7px;border:1px solid var(--line);border-radius:6px}
+.reason{padding:12px 14px;border:1px solid #eecb94;background:#fff9f0;border-radius:7px;color:#825c24;margin-bottom:8px}
+.info{border:1px solid #d2e2f8;background:#f0f6ff;color:#4e6c8e;border-radius:8px;padding:13px 15px;font-size:12px;margin:14px 0}
+.hist{border-top:1px solid var(--line);padding:12px 0}.hist summary{cursor:pointer;font-weight:600}.hist pre{background:#f6f8fb;padding:15px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:12px}
+.hidden{display:none!important}
+.overlay{position:fixed;inset:0;background:rgba(19,39,64,.35);display:flex;align-items:center;justify-content:center;padding:18px;z-index:30}
+.modal{background:#fff;border-radius:13px;width:min(740px,100%);max-height:93vh;overflow:auto;box-shadow:0 15px 60px #0b25402c}
+.modalheader{padding:19px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.modalheader h2{font-size:18px;margin:0}.modalbody{padding:23px 24px}.modalfooter{padding:16px 24px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end;gap:9px}
+.field{margin-bottom:15px}.field label{font-size:12px;font-weight:650;display:block;margin-bottom:6px}.field small{display:block;color:var(--quiet);font-size:11px;margin-top:4px}
+.field input,.field textarea,.field select{width:100%;border:1px solid #cbd6e4;border-radius:7px;padding:10px 12px;background:#fff;color:var(--ink)}
+.field textarea{min-height:125px;resize:vertical}.field .short{min-height:75px}.field .long{min-height:205px}
+.error{color:#a9353c;background:#fff1f1;border:1px solid #f0c8ca;border-radius:7px;padding:12px;font-size:12px}
+pre.readout{background:#f6f8fb;border:1px solid var(--line);border-radius:8px;padding:16px;max-height:56vh;overflow:auto;white-space:pre-wrap;font-size:12px;line-height:1.7}
+.toast{position:fixed;bottom:22px;right:22px;background:#243c58;color:white;padding:12px 18px;border-radius:9px;box-shadow:0 8px 30px #1025392b;z-index:100;max-width:min(540px,85vw)}
+@media(max-width:1190px){.work{grid-template-columns:235px minmax(0,1fr)}.fourcol{grid-template-columns:repeat(2,minmax(0,1fr))}.twocol{grid-template-columns:1fr}}
+@media(max-width:800px){.app{display:block}.side{position:static;height:auto;padding:12px;gap:8px}.identity{padding:0 5px 9px}.sidefoot{display:none}.nav{grid-template-columns:repeat(3,minmax(0,1fr))}.nav button{font-size:12px;padding:8px 4px}.nav b{display:none}.main{padding:20px 14px}.work{display:block}.index{min-height:auto;margin-bottom:12px;max-height:270px;overflow:auto}.detail{min-height:300px}.detailbody{padding:18px}.threecol{grid-template-columns:1fr}.fourcol{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app"><aside class="side">
+  <div class="identity"><strong>Engineering<em>.</em></strong><small>研发工程与生命周期管理</small></div>
+  <div class="projectpicker"><label for="projectSelect">当前产品 / 项目</label><select id="projectSelect"></select><div class="buttonrow" style="margin-top:9px"><button class="link" id="newProject">+ 新建项目</button><button class="link" id="editProject">编辑定义</button></div></div>
+  <div class="sideheading" style="padding-left:12px">研发生命周期</div>
+  <nav class="nav" id="nav">
+    <button data-view="dashboard" class="active"><b>▦</b>项目驾驶舱</button>
+    <button data-view="product"><b>◎</b>产品与系统</button>
+    <button data-view="engineering"><b>⊞</b>需求与架构</button>
+    <button data-view="governance"><b>⇄</b>决策与变更</button>
+    <button data-view="delivery"><b>✓</b>实施与验证</button>
+    <button data-view="history"><b>◷</b>历史与配置</button>
+  </nav>
+  <div class="sidefoot"><span class="dot"></span>本机 · 单人 · 无账号<br>变更与审批均有修订记录<br>原始项目资料不被自动覆盖</div>
+</aside>
+<div class="main"><div class="topline"><span id="breadcrumb">工作区 / 项目驾驶舱</span><div class="top-actions"><span id="version" class="tiny"></span><button id="export" class="outline">导出项目备份</button></div></div><main id="content"></main></div></div>
+<div class="overlay hidden" id="overlay"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modalheader"><h2 id="modalTitle"></h2><button id="modalClose" class="outline">关闭 ×</button></div><div id="modalBody" class="modalbody"></div><div class="modalfooter" id="modalFooter"></div></div></div>
+<div id="toasts" aria-live="polite"></div>
+<script>
+'use strict';
+const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n};
+const add=(p,...children)=>{children.forEach(n=>p.append(n));return p};
+const $=s=>document.querySelector(s);
+const clean=n=>n.replaceChildren();
+const kinds={context:'产品背景',capability:'产品能力',system:'系统/组件',requirement:'需求',architecture:'总体架构',interface:'接口契约',design:'详细设计',decision:'技术决策',change:'问题/变更',risk:'风险',work_package:'实施工作包',test:'测试/证据',milestone:'里程碑'};
+const stages={dashboard:'项目驾驶舱',product:'产品与系统',engineering:'需求与架构',governance:'决策与变更',delivery:'实施与验证',history:'历史与配置'};
+const groupKinds={product:['context','capability','system'],engineering:['requirement','architecture','interface','design'],governance:['decision','change','risk'],delivery:['work_package','test','milestone']};
+const statuses={DRAFT:'草稿',IN_REVIEW:'待审查',APPROVED:'已批准',SUPERSEDED:'已替代',OPEN:'待处理',CLOSED:'已关闭'};
+const relationNames={derives:'来源/派生',allocated:'分配至',defines:'定义/约束',depends:'实施依赖',implements:'实现',verifies:'验证',impacts:'变更影响'};
+const metaLabels={source:'信息来源',acceptance:'验收/判定标准',rationale:'设计依据',alternatives:'候选方案',conclusion:'决策结论',source_sha:'代码基线 SHA',file_scope:'可修改文件',input_revisions:'固定输入修订',result:'验证结果',evidence_level:'证据等级',severity:'风险等级',configuration:'适用配置',assessments:'影响评审结论',due:'目标日期'};
+let state={token:'',projects:[],project:null,data:null,view:'dashboard',selected:null,filter:'',typeFilter:'all'};
+const root=$('#content');
+function button(label,cls,click){let b=el('button',cls,label);if(click)b.onclick=click;return b}
+function note(msg){return el('div','info',msg)}
+function badge(value){let s=el('span','badge',statuses[value]||value||'未定义');if(value==='APPROVED'||value==='PASS')s.classList.add('good');else if(value==='OPEN'||value==='IN_REVIEW'||value==='DRAFT'||value==='NOT_READY')s.classList.add('warn');else if(value==='FAIL')s.classList.add('bad');else s.classList.add('blue');return s}
+function heading(title,desc){add(root,el('h1','page-title',title),el('p','intro',desc))}
+function section(title){let s=el('section','section'),line=el('div','sectionline');line.append(el('h2','',title));s.append(line);root.append(s);return {node:s,header:line}}
+function brief(text,n=180){return text&&text.trim()?text.trim().slice(0,n):'尚无详细说明'}
+function projectName(){return state.data?.project?.name||''}
+function item(id){return state.data?.objects.find(x=>x.id===id)}
+function itemName(id){return item(id)?.title||'(工程对象已不存在)'}
+function groupLabel(kind){return kinds[kind]||kind}
+function toast(message){const node=el('div','toast',message);$('#toasts').append(node);setTimeout(()=>node.remove(),4500)}
+async function req(url,data){const params={cache:'no-store'};if(data!==undefined){params.method='POST';params.headers={'Content-Type':'application/json','X-Local-Token':state.token};params.body=JSON.stringify(data)}
+  let response=await fetch(url,params),payload=await response.json();if(!response.ok)throw Error(payload.error||'操作失败');return payload;}
+function qs(x){return encodeURIComponent(x)}
+async function boot(){const b=await req('/api/studio/bootstrap');state.token=b.csrf;state.projects=b.projects;let previous=localStorage.getItem('engineering-last-project');state.project=b.projects.some(x=>x.id===previous)?previous:b.projects[0]?.id||null;await refresh(false);navigate('dashboard')}
+async function refresh(render=true){if(state.project){state.data=await req('/api/studio/project?id='+qs(state.project));localStorage.setItem('engineering-last-project',state.project)}else state.data=null;
+  let picker=$('#projectSelect');clean(picker);if(!state.projects.length)picker.append(new Option('还没有项目',''));else state.projects.forEach(p=>picker.append(new Option(p.name,p.id)));
+  picker.value=state.project||'';$('#editProject').disabled=!state.project;$('#export').disabled=!state.project;
+  $('#version').textContent=state.data?('产品版本 '+(state.data.project.version||'未指定')):'本地工作区';
+  if(render)renderView();}
+function navigate(view){state.view=view;state.selected=null;state.filter='';state.typeFilter='all';document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));renderView()}
+function renderView(){clean(root);$('#breadcrumb').textContent=(projectName()||'工程工作区')+' / '+stages[state.view];
+ if(!state.data)return renderWelcome();
+ if(state.view==='dashboard')return renderDashboard();
+ if(state.view==='history')return renderHistory();
+ return renderEditor();}
+function renderWelcome(){const box=el('div','blank');add(box,el('h2','','建立你的第一个工程项目'),el('p','','从产品背景、使用场景和系统边界开始，逐层建立需求、架构、接口、详细设计和实施验证。所有对象可以再次修订，不需要按固定 Gate 一次性走完。'),button('创建工程项目','primary',()=>projectModal()));root.append(box);
+ const s=section('建立什么，而不只是记录什么');let grid=el('div','threecol');[['产品与系统','明确为何开发、产品版本、系统组成和能力边界'],['设计与决策','从需求到接口逐级展开，负责人审查并批准有效版本'],['反馈与验证','实施/实测发现问题时回到上层变更，再更新受影响工作包']].forEach(x=>{let c=el('div','panel');add(c,el('h2','',x[0]),el('p','',x[1]));grid.append(c)});s.node.append(grid);}
+function rowCard(obj,act){let b=el('button','item-row');let left=el('div');add(left,el('div','rowtitle',obj.title),el('div','rowdesc',groupLabel(obj.kind)+' · '+brief(obj.body,130)));add(b,left,badge(obj.state));b.onclick=()=>act(obj);return b}
+function stat(count,name,desc){let b=el('div','stat');add(b,el('b','',count),el('label','',name),el('small','',desc));return b}
+function renderDashboard(){const p=state.data.project;
+ heading(p.name,'产品目标、工程决策、实施和验证的同一视图。所有信息来自当前项目记录，而不是按文件数计算的完成率。');
+ const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('编辑产品定义','outline',()=>projectModal(p)));block.append(first);
+ add(block,el('h2','', '产品背景与目标'));block.append(el('div','context',p.body||p.summary||'尚未补充完整产品背景、目标用户和使用场景；请从这里开始。'));root.append(block);
+ const metrics=el('div','fourcol');metrics.style.marginTop='15px';let c=state.data.counts;
+ add(metrics,stat(c.requirement,'需求','各级需求登记数量'),stat(c.architecture+c.interface+c.design,'设计与接口','架构、接口及详细设计'),stat(c.change+c.decision+c.risk,'治理对象','变更、决策与风险'),stat(c.work_package+c.test,'实施与验证','工作包及测试对象'));root.append(metrics);
+ const a=section('需要你处理的工程事项');a.header.append(button('+ 记录发现/变更','outline',()=>editorModal('change')));
+ const attention=el('div','panel');if(!state.data.attention.length&&!state.data.design_review.length)attention.append(el('p','','目前没有待审查的治理对象。可以从产品与系统开始建立能力，再逐级展开需求与架构。'));
+ else{const arr=[...state.data.attention.slice(0,6),...state.data.design_review.slice(0,5)].filter((v,i,self)=>self.findIndex(o=>o.id===v.id)===i);arr.forEach(o=>attention.append(rowCard(o,openItem)));}a.node.append(attention);
+ const b=section('系统构成与产品能力');b.header.append(button('打开产品结构','link',()=>navigate('product')));
+ const grid=el('div','twocol');for(const kind of ['system','capability']){const panel=el('div','panel');add(panel,el('h2','',kind==='system'?'系统元素':'产品能力'));let items=state.data.objects.filter(x=>x.kind===kind);if(items.length)items.slice(0,8).forEach(o=>panel.append(rowCard(o,openItem)));else panel.append(el('p','','尚未建立'+groupLabel(kind)+'；不将文件列表冒充系统分解。'));panel.append(button('+ 新增'+groupLabel(kind),'link',()=>editorModal(kind)));grid.append(panel);}b.node.append(grid);
+ const h=section('近期工程活动');let timeline=el('div','panel');if(!state.data.events.length)timeline.append(el('p','','尚无操作记录。'));state.data.events.slice(0,10).forEach(ev=>{let n=el('div','event');add(n,el('strong','',ev.action+' · '+(itemName(ev.object_id)||projectName())),el('small','',ev.timestamp+' · '+ev.actor+' · '+ev.note));timeline.append(n)});h.node.append(timeline);
+ root.append(note('产品定义、需求设计、已批准基线、实现状态和真实验证是不同信息。修改已批准对象会生成新修订并回到草稿，不会擦除旧批准快照。'));}
+function renderEditor(){const types=groupKinds[state.view];const desc={product:'构建产品场景、能力和系统分解，而不是预先塞进某个专用硬件模型。',engineering:'分层维护需求、架构、接口和详细设计。每个工程对象都保留正文、来源、关系与历史版本。',governance:'记录方案比较、设计决定、风险与变更；实施后的发现可以回到系统需求重新审查。',delivery:'关联已批准设计、软件工作包、测试规格与实测证据，清楚地区分实施和验证。'}[state.view];
+ heading(stages[state.view],desc);
+ let toolbar=el('div','toolbar'),left=el('div','buttonrow');add(left,...types.map(kind=>button('+ '+groupLabel(kind),'outline',()=>editorModal(kind))));toolbar.append(left);root.append(toolbar);
+ const layout=el('div','work'),index=el('div','index'),detail=el('div','detail');layout.append(index,detail);root.append(layout);
+ const header=el('div','indexhead'),search=el('input');search.placeholder='搜索标题、内容、类型';search.value=state.filter;search.oninput=()=>{state.filter=search.value;drawIndex()};header.append(search);index.append(header);const list=el('div');index.append(list);
+ const available=state.data.objects.filter(x=>types.includes(x.kind));if(!state.selected||!available.some(x=>x.id===state.selected))state.selected=available[0]?.id||null;
+ function drawIndex(){clean(list);let count=0;for(const kind of types){const group=available.filter(x=>x.kind===kind&&(!state.filter||[x.title,x.body,x.kind].join(' ').toLowerCase().includes(state.filter.toLowerCase())));if(!group.length)continue;list.append(el('div','indextitle',groupLabel(kind)+' · '+group.length));group.sort((a,b)=>a.created.localeCompare(b.created)).forEach(x=>{let b=el('button','indexitem'+(x.id===state.selected?' active':''));add(b,el('span','',x.title),badge(x.state));b.onclick=()=>{state.selected=x.id;drawIndex();drawDetail()};list.append(b);count++})}if(!count)list.append(el('div','loading','没有符合条件的工程对象。'));}
+ function drawDetail(){clean(detail);let selected=item(state.selected);if(!selected){const box=el('div','blank');box.style.margin='18px';add(box,el('h2','','尚无工程对象'),el('p','','从一个实际问题、能力或需求开始，逐层添加设计。'),button('+ 新增工程对象','primary',()=>editorModal(types[0])));detail.append(box);return;}
+ const head=el('div','detailhead');add(head,el('div','buttonrow',null));head.firstChild.append(badge(groupLabel(selected.kind)),badge(selected.state),el('span','tiny','r'+selected.revision));add(head,el('h2','',selected.title));
+ const actions=el('div','buttonrow');add(actions,button('编辑 / 提出修订','primary',()=>editorModal(selected.kind,selected)),button('增加关联','outline',()=>relationModal(selected)),button('历史版本','outline',()=>historyModal(selected)));
+ if(selected.state==='DRAFT')actions.append(button('提交审查','outline',()=>transition(selected,'submit')));
+ if(['DRAFT','IN_REVIEW'].includes(selected.state)&&selected.kind!=='change')actions.append(button('批准此修订','outline',()=>approvalModal(selected)));
+ if(selected.kind==='change'&&selected.state==='OPEN')actions.append(button('关闭变更','outline',()=>approvalModal(selected,true)));
+ if(selected.kind==='work_package')actions.append(button('检查实施准入','outline',()=>showReadiness(selected)));
+ if(selected.kind==='work_package')actions.append(button('生成 AI 实施包','outline',()=>showContext(selected)));
+ head.append(actions);detail.append(head);
+ const content=el('div','detailbody');
+ const meta=el('div','meta-table');
+ [['对象身份',selected.id.slice(0,12)],['当前状态',statuses[selected.state]||selected.state],['版本/修订','r'+selected.revision],['审批记录',selected.approved_by?selected.approved_by+' · '+selected.approved_at:'尚未批准']].forEach(([label,value])=>{let cell=el('div','meta-cell');add(cell,el('label','',label),el('div','',value));meta.append(cell)});content.append(meta);
+ content.append(el('h3','','内容与设计依据'),el('div','doc',selected.body||''));let values=Object.entries(selected.meta||{}).filter(([key,value])=>value!==''&&value!==null&&JSON.stringify(value)!=='{}');
+ if(values.length){content.append(el('hr','rule'),el('h3','','工程属性与验证条件'));const fields=el('div','meta-table');values.forEach(([key,value])=>{let f=el('div','meta-cell');add(f,el('label','',metaLabels[key]||key),el('div','',Array.isArray(value)?value.join('，'):typeof value==='object'?JSON.stringify(value):value));fields.append(f)});content.append(fields);}
+ const relhead=el('div','detailsection');add(relhead,el('h3','','上下游关系'));const links=state.data.relations.filter(r=>r.source_id===selected.id||r.target_id===selected.id);
+ if(!links.length)relhead.append(el('div','muted','尚未建立显式关系。不要从文件名推测架构、需求与代码已经追踪。'));
+ for(const rel of links){const other=rel.source_id===selected.id?rel.target_id:rel.source_id;const row=el('div','relation');const direction=rel.source_id===selected.id?'下游':'上游';add(row,el('span','tiny',direction+' · '+relationNames[rel.kind]),button(itemName(other),'link',()=>{state.selected=other;const otherItem=item(other);if(otherItem&&types.includes(otherItem.kind)){drawIndex();drawDetail()}else{navigate(Object.keys(groupKinds).find(g=>groupKinds[g].includes(otherItem?.kind))||'dashboard');state.selected=other;renderView()}}),button('解除','link',()=>removeLink(rel)));relhead.append(row);}
+ content.append(relhead);
+ if(selected.kind==='change')renderChangeDetail(selected,content);
+ if(selected.kind==='work_package')renderWorkPackageHint(selected,content);
+ detail.append(content);}
+ async function removeLink(r){if(!confirm('解除这条工程关系？历史事件仍保留操作记录。'))return;await mutate('/api/studio/relation/delete',{id:r.id});}
+ drawIndex();drawDetail();}
+function renderChangeDetail(selected,content){const panel=el('div','detailsection');panel.append(el('h3','','变更影响确认'));
+ const impactLinks=state.data.relations.filter(r=>r.source_id===selected.id&&r.kind==='impacts');
+ if(!impactLinks.length)panel.append(el('div','muted','尚未关联受影响的需求或设计。点击“增加关联”，选择“变更影响”。'));
+ for(const r of impactLinks){let row=el('div','assess');row.append(el('strong','',itemName(r.target_id)));const s=el('select');[['','尚未评估'],['REVISE','需要修订'],['NO_CHANGE','确认无需改动'],['INVESTIGATE','继续研究']].forEach(([v,t])=>s.append(new Option(t,v)));s.value=selected.meta.assessments?.[r.target_id]||'';s.onchange=async()=>{try{const meta={...selected.meta,assessments:{...(selected.meta.assessments||{}),[r.target_id]:s.value}};await mutate('/api/studio/object/'+selected.id+'/update',{expected_revision:selected.revision,meta});toast('影响评估已登记新修订');}catch(e){toast('保存失败：'+e.message)}};row.append(s);panel.append(row);}
+ panel.append(button('展开潜在下游影响','link',()=>impactModal(selected)));content.append(panel);}
+function renderWorkPackageHint(selected,content){const section=el('div','detailsection');section.append(el('h3','','实施版本与上下文'));section.append(el('div','muted','工作包只有关联已批准且固定修订的上游设计、明确代码范围和验收条件，才可以批准并生成 AI 上下文。'));section.append(button('固定当前关联输入修订','outline',async()=>{
+  const ids=state.data.relations.filter(x=>x.target_id===selected.id&&x.kind==='depends').map(x=>x.source_id);
+  if(!ids.length){toast('请先建立“实施依赖”关联');return;}
+  const meta={...selected.meta,input_revisions:Object.fromEntries(ids.map(id=>[id,item(id)?.revision]))};
+  try{await mutate('/api/studio/object/'+selected.id+'/update',{expected_revision:selected.revision,meta});toast('输入修订已固定，请重新检查准入。');}catch(e){toast(e.message)}
+ }));content.append(section);}
+function renderHistory(){heading('历史、版本与配置','每一项工程对象的修订与审批独立保存。导出包含完整项目对象、关系、审查历史与操作记录。');const p=state.data.project;
+ const panel=el('div','panel');add(panel,el('h2','','当前产品配置'));const fields=el('div','meta-table');[['产品/项目',p.name],['目标版本',p.version||'未填写'],['型号/配置',p.variant||'未填写'],['创建时间',p.created],['最后活动',p.updated],['本机数据','SQLite，独立于源码仓库']].forEach(([k,v])=>{let cell=el('div','meta-cell');add(cell,el('label','',k),el('div','',v));fields.append(cell)});panel.append(fields,button('导出完整项目 JSON','primary',exportProject));root.append(panel);
+ const s=section('审查与修改历史');const events=el('div','panel');for(const event of state.data.events){let row=el('div','event');add(row,el('strong','',event.action+' · '+event.note),el('small','',event.timestamp+' · '+event.actor));events.append(row)}if(!state.data.events.length)events.append(el('p','','尚无历史事件'));s.node.append(events);root.append(note('此页的导出是项目级可机读快照，不等同于已实现项目导入恢复。建议同时备份本机 SQLite 数据文件。'));}
+function showModal(title,fn){$('#modalTitle').textContent=title;clean($('#modalBody'));clean($('#modalFooter'));$('#overlay').classList.remove('hidden');$('#modalBody').append(el('div','',null));if(fn)fn($('#modalBody'),$('#modalFooter'));}
+function closeModal(){$('#overlay').classList.add('hidden')}
+function field(parent,label,value='',mode='input',hint=''){const group=el('div','field');group.append(el('label','',label));let input=el(mode==='textarea'?'textarea':mode==='select'?'select':'input');if(mode==='textarea')input.className='long';input.value=value??'';group.append(input);if(hint)group.append(el('small','',hint));parent.append(group);return input;}
+function selectField(parent,label,choices,current=''){let select=field(parent,label,'','select');choices.forEach(([id,title])=>select.append(new Option(title,id)));select.value=current||'';return select;}
+function modalActions(footer,onSave,label='保存'){const err=el('div','error hidden');$('#modalBody').append(err);footer.append(button('取消','outline',closeModal));footer.append(button(label,'primary',async()=>{try{await onSave();closeModal()}catch(e){err.classList.remove('hidden');err.textContent=e.message}}));}
+async function mutate(path,data){const result=await req(path,data);state.projects=await req('/api/studio/projects');await refresh();return result;}
+function projectModal(project=null){showModal(project?'修改项目定义':'创建工程项目',(body,footer)=>{
+ const name=field(body,'项目/产品名称',project?.name||'');const summary=field(body,'一句话产品目标',project?.summary||'','textarea');summary.className='short';const details=field(body,'完整背景、使用场景、系统边界与约束',project?.body||'','textarea');
+ const version=field(body,'当前产品版本',project?.version||'');const variant=field(body,'适用型号 / 变体',project?.variant||'');
+ modalActions(footer,async()=>{const payload={name:name.value,summary:summary.value,body:details.value,version:version.value,variant:variant.value};
+ const result=await req(project?'/api/studio/project/update':'/api/studio/project',project?{...payload,id:project.id}:payload);
+ state.projects=await req('/api/studio/projects');state.project=result.project.id;state.selected=null;await refresh();toast(project?'项目定义已更新':'项目已创建。可以开始记录产品背景和系统能力。')},project?'保存定义':'创建项目');});}
+const fieldSpecs={context:[['source','背景与来源']],capability:[['acceptance','能力完成/验收标准']],system:[['rationale','结构划分理由']],requirement:[['source','需求来源'],['acceptance','可验证的验收条件']],architecture:[['rationale','架构选型与约束']],interface:[['acceptance','接口正确性/兼容条件']],design:[['acceptance','设计验收与异常场景']],decision:[['alternatives','候选方案及利弊'],['conclusion','推荐或已选方案'],['rationale','决策依据']],change:[['source','发现来源及证据'],['severity','影响/紧急程度']],risk:[['severity','风险等级'],['rationale','风险原因与缓解措施']],work_package:[['source_sha','目标源码提交 SHA'],['file_scope','可修改的文件范围（每行一个）'],['acceptance','实施验收条件']],test:[['result','执行结论：未执行、通过、失败、受限'],['evidence_level','证据类型：单测、集成、实测、用户验收'],['configuration','适用配置与版本']],milestone:[['due','计划完成日期'],['acceptance','关闭条件']]};
+function editorModal(kind,existing=null){showModal((existing?'修订':'新建')+groupLabel(kind),(body,footer)=>{
+ body.append(note('此操作写入本地工程数据库。修订已经批准的设计会创建新的草稿版本，旧批准历史继续保留。'));
+ const title=field(body,'工程对象标题',existing?.title||'');const description=field(body,'完整问题、要求或设计内容',existing?.body||'','textarea');
+ const parents=[['','无上级目录']].concat(state.data.objects.filter(x=>x.id!==existing?.id).map(x=>[x.id,groupLabel(x.kind)+' · '+x.title]));const parent=selectField(body,'所属工程结构 / 上级对象',parents,existing?.parent_id||'');
+ const inputs={};for(const [key,label] of fieldSpecs[kind]||[]){let current=existing?.meta?.[key]||'';if(Array.isArray(current))current=current.join('\n');inputs[key]=field(body,label,current,(key==='acceptance'||key==='rationale'||key==='alternatives'||key==='file_scope'||key==='conclusion')?'textarea':'input');if(inputs[key].tagName==='TEXTAREA')inputs[key].className='short';}
+ modalActions(footer,async()=>{
+  const meta={...(existing?.meta||{})};for(const [k,input] of Object.entries(inputs))meta[k]=k==='file_scope'?input.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean):input.value;
+  let payload={title:title.value,body:description.value,parent_id:parent.value||null,meta};
+  const result=await req(existing?'/api/studio/object/'+existing.id+'/update':'/api/studio/object',
+    existing?{...payload,expected_revision:existing.revision}:{...payload,kind,project_id:state.project});
+  state.selected=result.item.id;await refresh(false);renderView();toast(existing?'新修订已保存':'工程对象已创建');
+ },existing?'保存新修订':'创建工程对象');
+ });}
+function relationModal(selected){showModal('新增上下游工程关系',(body,footer)=>{
+ body.append(note('关系方向是“来源对象 → 受影响或下游对象”。不要以文件或标题相似性代替真实的工程关系。'));
+ const source=selectField(body,'起点（需求/设计/变更）',state.data.objects.map(x=>[x.id,x.title]),selected.id);
+ const kind=selectField(body,'关系类型',Object.entries(relationNames),selected.kind==='change'?'impacts':'defines');
+ const target=selectField(body,'终点（下游对象）',state.data.objects.filter(x=>x.id!==selected.id).map(x=>[x.id,x.title]));
+ modalActions(footer,async()=>{await mutate('/api/studio/relation',{source_id:source.value,target_id:target.value,kind:kind.value});toast('关系已保存');},'建立关联');});}
+async function transition(obj,action){if(action!=='submit')return;try{await mutate('/api/studio/object/'+obj.id+'/submit',{expected_revision:obj.revision});toast('已提交审查')}catch(e){toast(e.message)}}
+function approvalModal(obj,isClose=false){showModal(isClose?'关闭变更与评审':'审批工程对象',(body,footer)=>{
+ body.append(note(isClose?'需要确认每条关联影响已完成评估，再明确关闭理由。':'审批只针对当前修订。实施、构建和物理验证仍需要分别留证。'));
+ const actor=field(body,'作出决定的人','项目负责人');const reason=field(body,'决定依据、限制条件与理由','','textarea');
+ modalActions(footer,async()=>{await mutate('/api/studio/object/'+obj.id+'/'+(isClose?'close':'approve'),
+ {expected_revision:obj.revision,actor:actor.value,note:reason.value});toast(isClose?'变更已关闭':'该修订已批准并保留审批记录');},isClose?'确认关闭':'批准当前修订');
+ });}
+async function showReadiness(obj){try{const status=await req('/api/studio/readiness?id='+qs(obj.id));showModal('实施准入 · '+obj.title,(body,footer)=>{
+  add(body,badge(status.ready?'READY_TO_CODE':'NOT_READY'));
+  if(status.reasons.length)for(const why of status.reasons)body.append(el('div','reason',why));
+  else body.append(note('已通过自动准入检查。正式实施仍需遵守适用项目的安全约束和版本控制。'));
+  if(status.upstream.length){body.append(el('h3','','已关联的设计输入'));status.upstream.forEach(x=>body.append(el('p','',x.title+' / r'+x.revision+' / '+(statuses[x.state]||x.state))))}
+  footer.append(button('关闭','outline',closeModal));});}catch(e){toast(e.message)}}
+async function showContext(obj){try{const pack=await req('/api/studio/context?id='+qs(obj.id));showModal('AI 实施上下文 · 固定修订',(body,footer)=>{
+ body.append(note('此上下文基于当前批准并固定的工程对象生成，不代替源码安全审查。'));body.append(el('pre','readout',pack.markdown));
+ footer.append(button('复制文本','outline',()=>navigator.clipboard.writeText(pack.markdown).then(()=>toast('已复制上下文')).catch(()=>toast('复制受浏览器权限限制'))));
+ footer.append(button('保存 Markdown','primary',()=>downloadFile(pack.markdown,'implementation-context.md','text/markdown')));});}catch(e){toast(e.message)}}
+async function impactModal(selected){try{const result=await req('/api/studio/impact?id='+qs(selected.id));showModal('影响链分析 · '+selected.title,(body,footer)=>{
+  body.append(note('这些是按显式工程关系传播的潜在受影响对象。每一条仍需人判断是否需要修订或继续实验。'));
+  if(!result.affected.length)body.append(el('p','', '暂无下游关系'));
+  for(const x of result.affected){const cell=el('div','event');add(cell,el('strong','',x.title+' · '+groupLabel(x.kind)),el('small','',x.trace.map(itemName).join(' → ')));body.append(cell);}
+  footer.append(button('关闭','outline',closeModal));});}catch(e){toast(e.message)}}
+async function historyModal(selected){try{const detail=await req('/api/studio/object?id='+qs(selected.id));showModal('修订与历史 · '+selected.title,(body,footer)=>{
+ body.append(note('每次修改与批准都写入独立快照。旧版内容可以复查，不会被新的草稿覆盖。'));
+ for(const h of detail.history){const d=el('details','hist');d.append(el('summary','','r'+h.revision+' · '+h.action+' · '+h.recorded_at+' · '+(h.actor||'')));let pre=el('pre','',h.title+'\n\n'+h.body+'\n\n'+JSON.stringify(h.meta,null,2));d.append(pre);body.append(d);}
+ footer.append(button('关闭','outline',closeModal));});}catch(e){toast(e.message)}}
+function downloadFile(text,filename,format){let blob=new Blob([text],{type:format||'application/json'});let url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),600)}
+async function exportProject(){if(!state.project)return;try{let data=await req('/api/studio/export?project='+qs(state.project));downloadFile(JSON.stringify(data,null,2),'engineering-project-'+state.data.project.name.replace(/[\\/:*?"<>|]/g,'_')+'.json','application/json');toast('已生成项目结构化备份，请妥善保存。')}catch(e){toast(e.message)}}
+$('#projectSelect').onchange=async e=>{state.project=e.target.value;await refresh(false);navigate('dashboard')};
+$('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.data&&projectModal(state.data.project);
+$('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
+boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))});
+</script></body></html>
