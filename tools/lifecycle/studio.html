@@ -163,7 +163,7 @@ function renderEditor(){const types=groupKinds[state.view];const desc={product:'
  if(values.length){content.append(el('hr','rule'),el('h3','','工程属性与验证条件'));const fields=el('div','meta-table');values.forEach(([key,value])=>{let f=el('div','meta-cell');add(f,el('label','',metaLabels[key]||key),el('div','',Array.isArray(value)?value.join('，'):typeof value==='object'?JSON.stringify(value):value));fields.append(f)});content.append(fields);}
  const relhead=el('div','detailsection');add(relhead,el('h3','','上下游关系'));const links=state.data.relations.filter(r=>r.source_id===selected.id||r.target_id===selected.id);
  if(!links.length)relhead.append(el('div','muted','尚未建立显式关系。不要从文件名推测架构、需求与代码已经追踪。'));
- for(const rel of links){const other=rel.source_id===selected.id?rel.target_id:rel.source_id;const row=el('div','relation');const direction=rel.source_id===selected.id?'下游':'上游';add(row,el('span','tiny',direction+' · '+relationNames[rel.kind]),button(itemName(other),'link',()=>{state.selected=other;const otherItem=item(other);if(otherItem&&types.includes(otherItem.kind)){drawIndex();drawDetail()}else{navigate(Object.keys(groupKinds).find(g=>groupKinds[g].includes(otherItem?.kind))||'dashboard');state.selected=other;renderView()}}),button('解除','link',()=>removeLink(rel)));relhead.append(row);}
+ for(const rel of links){const other=rel.source_id===selected.id?rel.target_id:rel.source_id;const row=el('div','relation');const direction=rel.source_id===selected.id?'下游':'上游';add(row,el('span','tiny',direction+' · '+relationNames[rel.kind]),button(itemName(other),'link',()=>openItem(item(other))),badge(rel.status));if(rel.status==='CANDIDATE')row.append(button('确认关系','link',()=>relationApprovalModal(rel)));row.append(button('解除','link',()=>removeLink(rel)));relhead.append(row);}
  content.append(relhead);
  if(selected.kind==='change')renderChangeDetail(selected,content);
  if(selected.kind==='work_package')renderWorkPackageHint(selected,content);
@@ -215,8 +215,15 @@ function relationModal(selected){showModal('新增上下游工程关系',(body,f
  const source=selectField(body,'起点（需求/设计/变更）',state.data.objects.map(x=>[x.id,x.title]),selected.id);
  const kind=selectField(body,'关系类型',Object.entries(relationNames),selected.kind==='change'?'impacts':'defines');
  const target=selectField(body,'终点（下游对象）',state.data.objects.filter(x=>x.id!==selected.id).map(x=>[x.id,x.title]));
- modalActions(footer,async()=>{await mutate('/api/studio/relation',{source_id:source.value,target_id:target.value,kind:kind.value});toast('关系已保存');},'建立关联');});}
+ modalActions(footer,async()=>{await mutate('/api/studio/relation',{source_id:source.value,target_id:target.value,kind:kind.value});toast('关系已创建为候选，确认后才可作为正式实施依赖');},'建立关联');});}
 async function transition(obj,action){if(action!=='submit')return;try{await mutate('/api/studio/object/'+obj.id+'/submit',{expected_revision:obj.revision});toast('已提交审查')}catch(e){toast(e.message)}}
+function relationApprovalModal(rel){showModal('确认工程关系',(body,footer)=>{
+ body.append(note('关系只有经负责人审查确认后，才可以作为编码准入的有效设计依赖。关系本身保留审批者和理由。'));
+ body.append(el('p','',itemName(rel.source_id)+' → '+relationNames[rel.kind]+' → '+itemName(rel.target_id)));
+ const actor=field(body,'关系审查人','项目负责人');
+ const reason=field(body,'确认依据','','textarea');
+ modalActions(footer,async()=>{await mutate('/api/studio/relation/approve',{id:rel.id,actor:actor.value,note:reason.value});toast('工程关系已确认');},'确认关系');
+ });}
 function approvalModal(obj,isClose=false){showModal(isClose?'关闭变更与评审':'审批工程对象',(body,footer)=>{
  body.append(note(isClose?'需要确认每条关联影响已完成评估，再明确关闭理由。':'审批只针对当前修订。实施、构建和物理验证仍需要分别留证。'));
  const actor=field(body,'作出决定的人','项目负责人');const reason=field(body,'决定依据、限制条件与理由','','textarea');
