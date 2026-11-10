@@ -34,7 +34,8 @@ public sealed class R1PhysicalRunRecordBridge
     /// <summary>
     /// Production statistics are opted into by the PUBLISHED physical recipe,
     /// not inferred from ACKs, a UI label or a synthetic observation.
-    /// A PASS must include a real observed ECU assertion with trace provenance.
+    /// A PASS must include a real observed assertion OR a controller-ACK-confirmed
+    /// physical command, each with provenance; no mandatory ECU feedback loop.
     /// Failed/inconclusive physical runs remain production attempts in that mode.
     /// </summary>
     public static RecordRunMode ClassifyMode(
@@ -51,11 +52,12 @@ public sealed class R1PhysicalRunRecordBridge
         if (mode == RecordRunMode.Production &&
             report.Verdict == LabVerdict.Pass &&
             !report.Stopped &&
-            !report.Facts.Any(f => f.NodeType == "Assert" &&
+            !report.Facts.Any(f =>
                 f.Verdict == LabVerdict.Pass &&
-                f.Quality == LabQuality.Observed &&
+                ((f.NodeType == "Assert" && f.Quality == LabQuality.Observed) ||
+                 (f.NodeType == "ControllerState" && f.Quality == LabQuality.Observed)) &&
                 Guid.TryParse(f.TraceReference, out var trace) && trace != Guid.Empty))
-            throw new InvalidOperationException("PRODUCTION_PASS_WITHOUT_PHYSICAL_ASSERTION");
+            throw new InvalidOperationException("PRODUCTION_PASS_WITHOUT_VERIFIED_TEST_STEP");
         if (mode == RecordRunMode.Production && report.Stopped &&
             report.Verdict == LabVerdict.Pass)
             throw new InvalidOperationException("STOPPED_RUN_CANNOT_PASS");
