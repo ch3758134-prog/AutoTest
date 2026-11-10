@@ -71,4 +71,45 @@ public sealed class R1RealKeySimTestPlanTests
             workspace, controller, data.Profile, () => true,
             new[] { refId }, operatorApproved: true));
     }
+    [Fact]
+    public void FormalTestEditorBindsP05ConfiguredStateWithoutManualGuidEntry()
+    {
+        var data = Profile();
+        var project = new AutoTest.Application.V1.V1Workspace();
+        var vm = new LabTestWorkspaceViewModel(project);
+        vm.AttachPhysicalController(() => data.Profile, () => null, _ => false);
+        Assert.NotEmpty(vm.ControllerStateChoices);
+        var chosen = vm.ControllerStateChoices.Single(x => x.StateId == data.Active);
+        vm.SelectedInsertType = "ControllerState";
+        vm.InsertCommand.Execute(null);
+        var node = vm.Tree.Single(x => x.Phase == LabPhase.Test).Children.Single();
+        vm.Select(node);
+        vm.SelectedControllerChoice = chosen;
+        vm.ApplyControllerState();
+        var applied = Assert.Single(vm.Snapshot.Phases[LabPhase.Test]);
+        Assert.Equal("ControllerState", applied.Type);
+        Assert.Equal(data.Controller.ToString("D"), applied.Parameters["controllerId"]);
+        Assert.Equal(data.Active.ToString("D"), applied.Parameters["stateId"]);
+        Assert.Equal(data.Profile.Revision.ToString(), applied.Parameters["revision"]);
+        Assert.Contains("已绑定", vm.Status);
+    }
+
+    [Fact]
+    public void EditorRejectsStateChoiceAfterP05RevisionHasChanged()
+    {
+        var data = Profile();
+        var current = data.Profile;
+        var vm = new LabTestWorkspaceViewModel(new AutoTest.Application.V1.V1Workspace());
+        vm.AttachPhysicalController(() => current, () => null, _ => false);
+        var state = vm.ControllerStateChoices.Single(x => x.StateId == data.Active);
+        vm.SelectedInsertType = "ControllerState";
+        vm.InsertCommand.Execute(null);
+        vm.Select(vm.Tree.Single(x => x.Phase == LabPhase.Test).Children.Single());
+        vm.SelectedControllerChoice = state;
+        current = current with { Revision = current.Revision + 1 };
+        vm.ApplyControllerState();
+        Assert.Contains("状态已经变化", vm.Status);
+        Assert.Equal("", vm.Snapshot.Phases[LabPhase.Test][0].Parameters["controllerId"]);
+    }
+
 }
