@@ -580,6 +580,34 @@ class Store:
                           f"设计内容：{dep['body']}",
                           f"设计属性：{json.dumps(dep['meta'],ensure_ascii=False,sort_keys=True)}",
                           f"设计快照 SHA-256：{fingerprint}",""]
+            research_decisions=[]
+            for dep in upstream:
+                for study_id in dep["meta"].get("study_ids", []):
+                    study=db.execute("SELECT * FROM studies WHERE id=? AND project_id=?",
+                                     (study_id, obj["project_id"])).fetchone()
+                    if study is None or study["status"]!="DECIDED":
+                        raise RuleError("Technology investigation has become stale: " + study_id)
+                    decision=db.execute("SELECT * FROM study_decisions WHERE id=?",
+                                        (study["decision_id"],)).fetchone()
+                    if decision is None or decision["state"]!="CURRENT":
+                        raise RuleError("Technology decision is missing: " + study_id)
+                    option=db.execute("SELECT title FROM study_options WHERE id=?",
+                                      (decision["option_id"],)).fetchone()
+                    evidence=json.loads(decision["reviewed_evidence"])
+                    research_decisions.append({"id":study_id,"revision":study["revision"],
+                        "decision_id":decision["id"],"option_id":decision["option_id"],
+                        "evidence_ids":[x["id"] for x in evidence]})
+                    lines += [f"### 技术研究证据：{study['title']} / r{study['revision']}",
+                              f"已确认方案：{option['title'] if option else '(缺失方案)'}",
+                              f"决策依据：{decision['rationale']}",
+                              f"适用限制：{decision['restrictions'] or '(未记录)'}",
+                              f"研究审批：{decision['approver']} / {decision['decided_at']}",
+                              "证据引用（编码 AI 不得把它们冒充本轮实测结果）："]
+                    lines += [
+                        "- " + x["raw_reference"] + " | " + x["configuration"] +
+                        " | " + x["source_revision"] for x in evidence
+                    ]
+                    lines += [""]
             lines += ["## 允许修改的文件范围",*[
                 "- "+p for p in obj["meta"].get("file_scope",[])],
                 "","## 验收合同",str(obj["meta"].get("acceptance")),"",
@@ -593,7 +621,7 @@ class Store:
                     "manifest":{"project_id":obj["project_id"],"work_package_id":key,
                         "revision":obj["revision"],"source_sha":obj["meta"].get("source_sha"),
                         "product_version":project["version"],"variant":project["variant"],
-                        "inputs":inputs}}
+                        "inputs":inputs,"research_decisions":research_decisions}}
 
     def export_project(self,key):
         with self.db() as db:
@@ -607,5 +635,24 @@ class Store:
                     "SELECT * FROM revisions WHERE object_id=? ORDER BY revision",(ident_,)))
             events=[dict(r) for r in db.execute(
                 "SELECT * FROM events WHERE project_id=? ORDER BY timestamp",(key,))]
+            research={"studies":[],"options":[],"experiments":[],
+                      "results":[],"decisions":[]}
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='studies'").fetchone():
+                research["studies"]=[dict(r) for r in db.execute(
+                    "SELECT * FROM studies WHERE project_id=?",(key,))]
+                for study in research["studies"]:
+                    study_id=study["id"]
+                    research["options"].extend(dict(r) for r in db.execute(
+                        "SELECT * FROM study_options WHERE study_id=?",(study_id,)))
+                    experiments=[dict(r) for r in db.execute(
+                        "SELECT * FROM study_experiments WHERE study_id=?",(study_id,))]
+                    research["experiments"].extend(experiments)
+                    for experiment in experiments:
+                        research["results"].extend(dict(r) for r in db.execute(
+                            "SELECT * FROM study_results WHERE experiment_id=?",
+                            (experiment["id"],)))
+                    research["decisions"].extend(dict(r) for r in db.execute(
+                        "SELECT * FROM study_decisions WHERE study_id=?",(study_id,)))
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
-                    "objects":objects,"relations":links,"revisions":revisions,"events":events}
+                    "objects":objects,"relations":links,"revisions":revisions,
+                    "events":events,"technical_research":research}
