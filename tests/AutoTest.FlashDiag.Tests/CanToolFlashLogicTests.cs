@@ -1,3 +1,4 @@
+using AutoTest.Flash;
 using System.IO;
 using System.Text;
 using AutoTest.Devices.Diagnostics;
