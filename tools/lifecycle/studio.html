@@ -83,6 +83,7 @@ pre.readout{background:#f6f8fb;border:1px solid var(--line);border-radius:8px;pa
     <button data-view="dashboard" class="active"><b>▦</b>项目驾驶舱</button>
     <button data-view="product"><b>◎</b>产品与系统</button>
     <button data-view="engineering"><b>⊞</b>需求与架构</button>
+    <button data-view="research"><b>⌕</b>技术预研与实验</button>
     <button data-view="governance"><b>⇄</b>决策与变更</button>
     <button data-view="delivery"><b>✓</b>实施与验证</button>
     <button data-view="archive"><b>▤</b>资料与归档</button>
@@ -100,7 +101,7 @@ const add=(p,...children)=>{children.forEach(n=>p.append(n));return p};
 const $=s=>document.querySelector(s);
 const clean=n=>n.replaceChildren();
 const kinds={context:'产品背景',capability:'产品能力',system:'系统/组件',requirement:'需求',architecture:'总体架构',interface:'接口契约',design:'详细设计',decision:'技术决策',change:'问题/变更',risk:'风险',work_package:'实施工作包',test:'测试/证据',milestone:'里程碑',reference:'历史资料'};
-const stages={dashboard:'项目驾驶舱',product:'产品与系统',engineering:'需求与架构',governance:'决策与变更',delivery:'实施与验证',archive:'资料与归档',history:'历史与配置'};
+const stages={dashboard:'项目驾驶舱',product:'产品与系统',engineering:'需求与架构',research:'技术预研与实验',governance:'决策与变更',delivery:'实施与验证',archive:'资料与归档',history:'历史与配置'};
 const groupKinds={product:['context','capability','system'],engineering:['requirement','architecture','interface','design'],governance:['decision','change','risk'],delivery:['work_package','test','milestone'],archive:['reference']};
 const statuses={DRAFT:'草稿',IN_REVIEW:'待审查',APPROVED:'已批准',SUPERSEDED:'已替代',OPEN:'待处理',CLOSED:'已关闭'};
 const relationNames={derives:'来源/派生',allocated:'分配至',defines:'定义/约束',depends:'实施依赖',implements:'实现',verifies:'验证',impacts:'变更影响'};
@@ -131,6 +132,7 @@ function navigate(view){state.view=view;state.selected=null;state.filter='';stat
 function renderView(){clean(root);$('#breadcrumb').textContent=(projectName()||'工程工作区')+' / '+stages[state.view];
  if(!state.data)return renderWelcome();
  if(state.view==='dashboard')return renderDashboard();
+ if(state.view==='research')return renderResearchView();
  if(state.view==='history')return renderHistory();
  return renderEditor();}
 function renderWelcome(){const box=el('div','blank');add(box,el('h2','','建立你的第一个工程项目'),el('p','','从产品背景、使用场景和系统边界开始，逐层建立需求、架构、接口、详细设计和实施验证。所有对象可以再次修订，不需要按固定 Gate 一次性走完。'),button('创建工程项目','primary',()=>projectModal()));root.append(box);
@@ -299,4 +301,4 @@ $('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.
 $('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
 boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))});
-</script></body></html>
+</script><script src="/research.js"></script></body></html>
