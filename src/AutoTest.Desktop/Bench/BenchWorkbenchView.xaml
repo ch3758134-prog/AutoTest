@@ -100,6 +100,11 @@
                         </ComboBox>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding SourceDescription}"
                                    TextWrapping="Wrap" Margin="0,5,0,0"/>
+                        <Button Content="释放全部按键（真实 CAN0）"
+                                Style="{StaticResource BenchButton}"
+                                Command="{Binding ReleaseAllKeysCommand}"
+                                Margin="0,12,0,8"
+                                ToolTip="向按键板发送 0x730 / 80 00 00 00 00 00 00 00。需要逐次人工确认；主控 ACK 不等于按键板实际状态回读。"/>
                     </StackPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding States}">
