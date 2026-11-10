@@ -11,6 +11,7 @@ public sealed record SerialBarcodePacket(ImmutableArray<byte> Data, string Bound
 public sealed class SerialBarcodeFramer
 {
     public const int MaximumBytes = 512;
+    public static readonly TimeSpan DefaultIdleBoundary = TimeSpan.FromMilliseconds(450);
     private readonly List<byte> _current = [];
     private bool _discardUntilBoundary;
     private DateTimeOffset? _lastByteUtc;
@@ -21,6 +22,22 @@ public sealed class SerialBarcodeFramer
     public IReadOnlyList<SerialBarcodePacket> Accept(ReadOnlySpan<byte> input, DateTimeOffset now)
     {
         var completed = new List<SerialBarcodePacket>();
+        // A quiet interval separates successive scans, even when the device
+        // sends no CR/LF. Recover rejected frames at that same boundary.
+        if (!input.IsEmpty && _lastByteUtc is not null &&
+            now - _lastByteUtc.Value >= DefaultIdleBoundary)
+        {
+            if (_discardUntilBoundary)
+            {
+                _discardUntilBoundary = false;
+                _current.Clear();
+            }
+            else if (_current.Count > 0)
+            {
+                completed.Add(new SerialBarcodePacket(_current.ToImmutableArray(), "IDLE"));
+                _current.Clear();
+            }
+        }
         foreach (byte b in input)
         {
             _lastByteUtc = now;
@@ -59,9 +76,17 @@ public sealed class SerialBarcodeFramer
     }
     public SerialBarcodePacket? FlushAfterIdle(DateTimeOffset now, TimeSpan quiet)
     {
-        if (_discardUntilBoundary || _current.Count == 0 || _lastByteUtc is null ||
-            quiet <= TimeSpan.Zero || now - _lastByteUtc.Value < quiet)
+        if (_lastByteUtc is null || quiet <= TimeSpan.Zero ||
+            now - _lastByteUtc.Value < quiet)
             return null;
+        if (_discardUntilBoundary)
+        {
+            _discardUntilBoundary = false;
+            _current.Clear();
+            _lastByteUtc = null;
+            return null;
+        }
+        if (_current.Count == 0) return null;
         var packet = new SerialBarcodePacket(_current.ToImmutableArray(), "IDLE");
         _current.Clear();
         return packet;
