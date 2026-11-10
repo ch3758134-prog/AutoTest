@@ -1,38 +1,22 @@
-# AutoTest lifecycle M1 — offline traceability kernel
+# Engineering Workbench｜单人离线工程生命周期管理
 
-**Experimental management tool**, independent from all AutoTest product code. Python 3.10+ only; no pip install, database, account or internet connection. It reads the *current checkout* and cannot approve designs, change SAEF or operate hardware.
+**当前默认程序为 V0.3 通用可编辑工作台，不再是早期 KEY_SIM 只读演示。**
 
-First run after fetching PR #28 on the workstation:
-
-```powershell
-python tools/lifecycle/lifecycle.py --repo . inspect
-python tools/lifecycle/lifecycle.py --repo . impact OBS-KEYSIM-20261109
-python tools/lifecycle/lifecycle.py --repo . impact AT-SYS-011
-python tools/lifecycle/lifecycle.py --repo . readiness WP-KEYSIM-001
-python tools/lifecycle/lifecycle.py --repo . capture --out lifecycle-local-snapshot.json
-python -m unittest discover -s tools/lifecycle/tests -v
-```
-
-The repo checkout root must contain `SAEF/`. When run against another revision, missing files/anchors are reported; they are never silently reconstructed. Outputs are not saved unless `--out` is explicitly supplied to `capture`/`context`.
-
-**How to read results**:
-
-- `ANCHORED` only confirms a referenced string is present in a file. It does **not** mean the code meets a requirement, that an architecture link is valid, or that real hardware has passed.
-- `work_product_state` comes from SAEF `work_products.json`, `gate_state` from `project_state.json`, and `maturity` from the curated source entry; do not collapse these into one `approved` flag.
-- `POTENTIALLY_IMPACTED` is a candidate review queue, not a declaration that all requirements/test results are invalid.
-- `NOT_READY` on the seeded KEY_SIM work package is **expected**. It deliberately lacks B4 electrical evidence, an updated reviewed design baseline, verified source hashes and human approval.
-- A `READY_TO_CODE` result is a software-work-package check only and never authorizes unsafe bench outputs or ECU flash. A scope-specific approval still applies.
-
-To generate a coding context, create an approved candidate work-package revision with explicit approver/date, pinned `baseline` SHA-256 for every required source node, file scope, verification contract and no open affecting CR, then:
+运行与实际操作流程请先看 [STUDIO_V03.md](STUDIO_V03.md)；在 AutoTest 源码根目录：
 
 ```powershell
-python tools/lifecycle/lifecycle.py --repo . --model path\to\approved-manifest.json context WP-ID --out implementation-context.md
+py -3 -m unittest discover -s tools/lifecycle/tests -v
+py -3 tools/lifecycle/server.py --repo . --port 8765
 ```
 
-This first edition uses a **small curated graph**, because automatically inferred string matches would dangerously invent engineering traceability. Exact file references and anchors can be checked deterministically, while relation confidence is marked `documented` versus `review_required`. Later iterations can import SAEF relationships and require human verification, before expanding to full product coverage.
+打开 `http://127.0.0.1:8765/`；没有账号。数据写入本机 SQLite（Windows 默认 `%LOCALAPPDATA%\EngineeringWorkbench\workspace.sqlite3`），项目可独立导出为 JSON，但**尚无 JSON 一键恢复**，应定期备份 SQLite 文件。
 
-## First case: verified vs unverified
+工作台已经实现多个项目、工程对象增改、显式上下游关系、关系人工确认、技术决策/变更、历史修订、审批、变更影响审查、工作包准入、受控 AI 上下文生成，以及可选 SAEF 历史档案导入。
 
-Static source inspection of main `4530aba` found `KeypadCommandCodec.EncodeMask` and `EncodeReleaseAll` encoding a 20-bit mask to CAN ID `0x730` on `BusRole.KeypadCan`. `KeypadControlService.SetMaskAsync` currently returns `BENCH_NOT_AUTHORIZED`; existing unit test `Verify_A2_T04` checks encoding. **These are source-level facts**, not proof that any one of 5 analog outputs attains an expected voltage or that ECU recognizes it. No physical voltage measurements were supplied to this tool.
+旧试点保留在 `lifecycle.py`、`catalog.py`、`ui.html`、`data/keysim-trace.json`。需要旧版只读资料分析时：
 
-The actual KEY_SIM behavior finding is logged under `docs/lifecycle-pilot/cases/CR-KEYSIM-001.md`. The graph traces a candidate route from this finding to `AT-SYS-011`, `IF-03/06`, `ICD-03`, `G3-A2`, source and tests. A source-name match does not establish complete semantic conformance. For a new physical-output work package, B4 measurement and explicit approval remain blocking requirements.
+```powershell
+py -3 tools/lifecycle/server.py --legacy --repo . --port 8766
+```
+
+该旧版不得冒充通用项目管理软件。新版项目数据不自动写回 AutoTest 的正式 SAEF/代码。详细验收边界见 [STUDIO_V03.md](STUDIO_V03.md) 与 [PRODUCT-REQUIREMENTS-V03.md](../../docs/lifecycle-pilot/PRODUCT-REQUIREMENTS-V03.md)。
