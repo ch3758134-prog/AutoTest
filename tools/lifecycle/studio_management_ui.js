@@ -17,6 +17,7 @@ async function renderManagementView(){
     await navigator.clipboard.writeText(JSON.stringify(brief,null,2));
     toast('项目上下文已复制：包含来源/修订/GitHub 同步时间。');
   }));
+  options.append(button('核对 Git 工程版本','outline',managementGitBaselineModal));
   options.append(button('录入管理建议','primary',managementProposeModal));
   root.append(options);
   const mount=el('div','stack');
@@ -133,5 +134,43 @@ function managementProposeModal(){
       toast('已建立待审查管理建议');
       await renderManagementView();
     },'登记建议');
+  });
+}
+
+function managementGitBaselineModal(){
+  showModal('Git 工程基线差异审查',(body,footer)=>{
+    body.append(note('读取的是 --repo 对应工作树的 Git 已提交 HEAD 快照，而不是未提交的文件。只比较，不覆盖任何本地工程记录，也不自动相信 Git 提交等于负责人批准。'));
+    const result=el('div','panel','正在检查已提交 Git 快照……');
+    body.append(result);
+    const revision=field(body,'指定提交 SHA（可选；默认 HEAD）','HEAD');
+    const check=async()=>{
+      result.textContent='正在从 Git 精确提交读取工程档案……';
+      try {
+        const data=await req('/api/studio/baseline/preview?project='+
+          qs(state.project)+'&revision='+qs(revision.value.trim()||'HEAD'));
+        clean(result);
+        result.append(el('h3','','Git 对照：'+data.state));
+        result.append(el('div','tiny',data.repository+' · '+data.git_commit));
+        result.append(el('p','context','Git 工程文件：'+data.source_path));
+        result.append(el('p','context','两边对象：Git '+data.object_count_git+
+          ' 项；本地 '+data.object_count_local+' 项；差异 '+data.differences.length+' 项'));
+        if(!data.on_local_main_history)
+          result.append(el('div','reason','此提交不在本地已知 main 历史中，不能视为正式批准的工程基线。'));
+        if(!data.differences.length)result.append(el('p','','对象内容未发现差异；这不等于完成实测验收。'));
+        for(const difference of data.differences.slice(0,40)){
+          result.append(el('p','context',difference.comparison+' · '+difference.title+
+            ' · Git r'+(difference.revision_in_git??'-')+
+            ' / 本地 r'+(difference.revision_local??'-')));
+        }
+        result.append(el('div','tiny','比较只读，未自动同步。'+data.note));
+      }catch(error) {
+        clean(result);result.append(el('div','reason',
+          '暂时无法对照：'+error.message+
+          '。应先在非 main 的专业分支执行“项目归档”，经审查 Commit/Push 后再对照。'));
+      }
+    };
+    footer.append(button('重新比较','outline',check));
+    footer.append(button('关闭','primary',closeModal));
+    check();
   });
 }
