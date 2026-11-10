@@ -380,17 +380,42 @@
     </DockPanel>
    </Border>
   </Grid>
-  <!-- HTML bottom panel / Trace -->
-  <Border Grid.Row="4" Background="#192431" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,1,0,0">
+  <!-- R1 prototype: persistent bottom dock with four factual trace sources -->
+  <Border Grid.Row="4" Background="#192431" BorderBrush="{StaticResource R1Stroke}"
+          BorderThickness="0,1,0,0">
    <DockPanel>
-    <Border DockPanel.Dock="Top" Background="#202D3B" Padding="12,6">
-     <StackPanel Orientation="Horizontal">
-      <TextBlock x:Name="R1BottomLabel" Text="OUTPUT / TRACE" FontWeight="SemiBold"/>
-      <TextBlock Text="    RUN MONITOR · StepFact · Expected/Actual" Foreground="{StaticResource R1Muted}" FontSize="11"/>
-      <TextBlock Text="    // UDS raw ISO-TP trace is available in P08 tab" Foreground="#46D0DC" FontSize="11"/>
-     </StackPanel>
-    </Border>
-    <ContentControl prism:RegionManager.RegionName="RunMonitorRegion"/>
+    <DockPanel DockPanel.Dock="Top" Background="#202D3B" LastChildFill="True">
+     <Button DockPanel.Dock="Right" Content="⌄" Click="ToggleBottom_Click"
+             Background="Transparent" BorderThickness="0" Foreground="#92A4B7"
+             ToolTip="折叠/恢复底部面板" Padding="10,3"/>
+     <TextBlock x:Name="R1BottomLabel" Text="OUTPUT / TRACE" FontWeight="SemiBold"
+                Margin="12,5" Foreground="#92A4B7" VerticalAlignment="Center"/>
+    </DockPanel>
+    <TabControl x:Name="R1BottomTabs" Background="#192431" BorderThickness="0"
+                SelectedIndex="1" TabStripPlacement="Top">
+     <TabItem Header="CAN TRACE">
+      <DataGrid x:Name="R1BottomCanGrid" AutoGenerateColumns="True" IsReadOnly="True"
+                Background="#101620" Foreground="#E2EDF7" BorderThickness="0"
+                AlternatingRowBackground="#202D3B" RowBackground="#192431"
+                HeadersVisibility="Column" CanUserAddRows="False"
+                EnableRowVirtualization="True" EnableColumnVirtualization="True"/>
+     </TabItem>
+     <TabItem Header="RUN EVENTS">
+      <ContentControl prism:RegionManager.RegionName="RunMonitorRegion"/>
+     </TabItem>
+     <TabItem Header="OPERATIONS">
+      <DataGrid x:Name="R1BottomAuditGrid" AutoGenerateColumns="True" IsReadOnly="True"
+                Background="#101620" Foreground="#E2EDF7" BorderThickness="0"
+                AlternatingRowBackground="#202D3B" RowBackground="#192431"
+                HeadersVisibility="Column" EnableRowVirtualization="True"/>
+     </TabItem>
+     <TabItem Header="UDS / ISO-TP">
+      <DataGrid x:Name="R1BottomUdsGrid" AutoGenerateColumns="True" IsReadOnly="True"
+                Background="#101620" Foreground="#E2EDF7" BorderThickness="0"
+                AlternatingRowBackground="#202D3B" RowBackground="#192431"
+                HeadersVisibility="Column" EnableRowVirtualization="True"/>
+     </TabItem>
+    </TabControl>
    </DockPanel>
   </Border>
   <Border Grid.Row="5" Background="#163C60" Padding="10,3">

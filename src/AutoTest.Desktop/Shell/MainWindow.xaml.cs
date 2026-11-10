@@ -38,6 +38,8 @@ public partial class MainWindow : Window
     private bool _disposing;
     private bool _explorerHidden;
     private bool _inspectorHidden;
+    private bool _bottomHidden;
+    private GridLength _bottomSaved = new(190);
     private GridLength _explorerSaved = new(255);
     private GridLength _inspectorSaved = new(286);
     private string _activeKey = "project";
@@ -45,6 +47,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (R1UdsView.DataContext is UdsToolViewModel udsSource)
+            R1BottomUdsGrid.ItemsSource=udsSource.TraceRows;
         if (R1FlashView.DataContext is FlashToolViewModel flashModel)
             R1FlashView.AttachPhysicalLink(() => _device?.Controller);
         if (R1UdsView.DataContext is UdsToolViewModel udsModel)
@@ -85,6 +89,7 @@ public partial class MainWindow : Window
         if (tab is 1 or 2)
         {
             _device ??= new AutoTest.DeviceLab.DeviceLabEmbeddedView();
+            R1BottomCanGrid.ItemsSource=_device.ViewModel.CanTimeline;
             // Both R1 documents host the SAME controller + physical WinUSB session.
             if (tab == 1)
             {
@@ -153,8 +158,10 @@ public partial class MainWindow : Window
                 var root = Path.Combine(appData, "Operations");
                 var audit = new SqliteOperationAuditStore(Path.Combine(root,"operation-audit.sqlite"));
                 var trace = new OperationTraceArchive(Path.Combine(root,"traces"));
-                R1OperationsHost.Content = new OperationsView(new OperationsViewModel(
-                    audit,trace,new OperationAuditExporter(audit)));
+                var operationsModel=new OperationsViewModel(
+                    audit,trace,new OperationAuditExporter(audit));
+                R1OperationsHost.Content = new OperationsView(operationsModel);
+                R1BottomAuditGrid.ItemsSource=operationsModel.Entries;
                 break;
             }
         }
@@ -215,6 +222,26 @@ public partial class MainWindow : Window
         };
         for (int i=0;i<buttons.Length;i++)
             buttons[i].Tag=i==index ? "active" : null;
+    }
+
+    private void ToggleBottom_Click(object sender,RoutedEventArgs e)
+    {
+        if (Content is not Grid root || root.RowDefinitions.Count<5) return;
+        var panel=root.RowDefinitions[4];
+        _bottomHidden=!_bottomHidden;
+        if (_bottomHidden)
+        {
+            if (panel.Height.Value>40) _bottomSaved=panel.Height;
+            panel.MinHeight=27;
+            panel.Height=new GridLength(27);
+            R1BottomTabs.Visibility=Visibility.Collapsed;
+        }
+        else
+        {
+            panel.MinHeight=125;
+            panel.Height=_bottomSaved;
+            R1BottomTabs.Visibility=Visibility.Visible;
+        }
     }
 
     private void Window_PreviewKeyDown(object sender,KeyEventArgs e)
