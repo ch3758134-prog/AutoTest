@@ -74,7 +74,9 @@
             <StackPanel>
                 <TextBlock FontWeight="SemiBold" Text="生产状态" Margin="0,0,0,6"/>
                 <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
-                <TextBlock Text="尚未完成扫码身份到工程 TEST/生产数据库的正式绑定时，不允许签发出厂 PASS，也不生成虚构的运行记录。"
+                <TextBlock Text="{Binding LastRun}" TextWrapping="Wrap" Foreground="#46D0DC" Margin="0,6,0,0"/>
+                <TextBlock Text="{Binding LastEvidence}" TextWrapping="Wrap" Foreground="#81C9BA" Margin="0,3,0,0"/>
+                <TextBlock Text="实际扫码匹配后运行当前工程的同一份物理 TEST，绑定 DUT / Revision / RunId；真实只读结果暂不签发出厂 PASS。"
                            TextWrapping="Wrap" Foreground="#E8B967" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
@@ -95,6 +97,41 @@
                     <Button Content="转到 P11 · 当前工程测试" Click="OpenProjectTest_Click"
                             HorizontalAlignment="Left" Margin="0,16,0,0" Padding="16,8"/>
                 </StackPanel>
+            </TabItem>
+            <TabItem Header="扫码规则 / 当前工程 TEST 配方">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12" MaxWidth="720" HorizontalAlignment="Left">
+                        <TextBlock Text="为当前已保存工程发布实际扫码规则" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="规则必须明确匹配测试条码，不能由程序推测客户条码格式。工程须已登记并保存正式 TEST 和 DBC。"
+                                   Foreground="#92A4B7" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <TextBlock Text="完整条码正则表达式（使用命名捕获组）"/>
+                        <TextBox Text="{Binding RulePattern,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"
+                                 Width="610" HorizontalAlignment="Left" Margin="0,3,0,10"/>
+                        <TextBlock Text="身份字段（命名捕获组，逗号分隔；如 serial）"/>
+                        <TextBox Text="{Binding IdentityFields,UpdateSourceTrigger=PropertyChanged}" Width="410"
+                                 HorizontalAlignment="Left" Margin="0,3,0,10"/>
+                        <TextBlock Text="配方名称"/>
+                        <TextBox Text="{Binding RecipeId,UpdateSourceTrigger=PropertyChanged}" Width="410"
+                                 HorizontalAlignment="Left" Margin="0,3,0,10"/>
+                        <TextBlock Text="当前工位 Profile 文件（原始真实配置文件，使用 SHA256 固定）"/>
+                        <DockPanel HorizontalAlignment="Left" Width="610" Margin="0,3,0,10">
+                            <Button Content="浏览…" DockPanel.Dock="Right" Click="BrowseStationProfile_Click"/>
+                            <TextBox Text="{Binding StationProfileFile,UpdateSourceTrigger=PropertyChanged}"/>
+                        </DockPanel>
+                        <TextBlock Text="工位 Profile Revision（由操作者配置）"/>
+                        <TextBox Text="{Binding StationProfileRevision,UpdateSourceTrigger=PropertyChanged}"
+                                 Width="180" HorizontalAlignment="Left" Margin="0,3,0,10"/>
+                        <TextBlock Text="真实条码样本（用于发布前验证规则）"/>
+                        <TextBox Text="{Binding ExampleBarcode,UpdateSourceTrigger=PropertyChanged}"
+                                 Width="410" HorizontalAlignment="Left" Margin="0,3,0,12"/>
+                        <WrapPanel>
+                            <Button Content="发布到当前工程 TEST" Command="{Binding PublishRuleCommand}" Padding="14,8"/>
+                            <Button Content="重新加载已发布规则" Command="{Binding LoadCommand}"/>
+                        </WrapPanel>
+                        <TextBlock Text="只有明确的物理配方且 TestProgram ID/Revision/SHA256 与当前工程完全一致时才进入真实执行；工位文件哈希本身不证明硬件连接或设备动作。"
+                                   TextWrapping="Wrap" Foreground="#E8B967" Margin="0,12,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             <TabItem Header="真实扫码记录">
                 <DataGrid ItemsSource="{Binding ScanEvents}" IsReadOnly="True" Margin="12">
