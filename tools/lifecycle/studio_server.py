@@ -14,6 +14,7 @@ from studio_import import preview as saef_preview, import_saef
 from studio_research import Research
 from studio_execution import Execution
 from studio_management import Management
+from studio_baseline import GitBaseline
 
 HERE = Path(__file__).resolve().parent
 WEB = HERE / "studio.html"
@@ -25,6 +26,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     research = Research(store)
     execution = Execution(store)
     management = Management(store, execution, research)
+    baseline = GitBaseline(store, source_root, execution)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.5"
 
@@ -91,6 +93,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write(store.readiness(params.get("id", "")))
                 if path == "/api/studio/context":
                     return self.write(store.context(params.get("id", "")))
+                if path == "/api/studio/baseline/preview":
+                    return self.write(baseline.preview(params.get("project", ""),
+                                                       params.get("revision", "HEAD")))
                 if path == "/api/studio/management/context":
                     return self.write(management.context(params.get("project", "")))
                 if path == "/api/studio/management/proposals":
