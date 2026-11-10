@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - 'src/AutoTest.Desktop/**'
+      - 'tools/AutoTest.FlashDiag/**'
       - 'docs/ui-r1/**'
       - 'tests/AutoTest.Desktop.Tests/**'
       - '.github/workflows/r1-product-ui-windows.yml'
@@ -43,6 +44,22 @@ jobs:
       - name: Publish formal R1 candidate
         shell: pwsh
         run: dotnet publish src/AutoTest.Desktop/AutoTest.Desktop.csproj -c Release -r win-x64 --self-contained false -o output/AutoTest.R1 --verbosity minimal
+      - name: Restore independent Flash diagnostic
+        shell: pwsh
+        run: dotnet restore tools/AutoTest.FlashDiag/AutoTest.FlashDiag.csproj
+      - name: Build independent Flash diagnostic
+        shell: pwsh
+        run: dotnet build tools/AutoTest.FlashDiag/AutoTest.FlashDiag.csproj -c Release --no-restore --verbosity minimal
+      - name: Publish independent Flash diagnostic for Windows x64
+        shell: pwsh
+        run: dotnet publish tools/AutoTest.FlashDiag/AutoTest.FlashDiag.csproj -c Release -r win-x64 --self-contained false -o output/AutoTest.FlashDiag --verbosity minimal
+      - name: Upload Flash diagnostic test application
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoTest-FlashDiag-Standalone-Windows-x64
+          path: output/AutoTest.FlashDiag/
+          retention-days: 7
+          if-no-files-found: error
       - name: Store build evidence (not formal delivery)
         uses: actions/upload-artifact@v4
         with:
