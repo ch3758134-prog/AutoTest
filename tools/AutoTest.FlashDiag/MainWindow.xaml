@@ -133,14 +133,13 @@
          <TextBlock Text="ISO-TP FC 毫秒" Grid.Row="4" Margin="0,5"/>
          <TextBox x:Name="FlowControlTimeout" Grid.Row="4" Grid.Column="1" Text="2000"/>
         </Grid>
-        <CheckBox x:Name="InsertSignature" Content="按 CanTool 原流程写入末端 12 34 56 78 签名（OEM 专用；默认关闭）"
-                  TextWrapping="Wrap" Margin="0,12,0,6"/>
+        <CheckBox x:Name="InsertSignature" Content="按 CanTool 原流程写入末端 12 34 56 78 签名（OEM 专用；默认关闭）" Margin="0,12,0,6"/>
         <Button Content="解析镜像 / 核对地址范围 / 生成预检清单" Click="Preflight_Click"
                 HorizontalAlignment="Stretch" Margin="0,6"/>
         <TextBlock Text="3. 实机授权（非模拟）" FontSize="17" FontWeight="SemiBold" Margin="0,12,0,6"/>
-        <CheckBox x:Name="ConfirmPower" Content="已核实接线、目标 ECU 身份及实际供电状态" TextWrapping="Wrap"/>
-        <CheckBox x:Name="ConfirmBitrate" Content="已核实主控 CAN1 实际比特率与 XML 一致（导入 XML 不会改速率）" TextWrapping="Wrap"/>
-        <CheckBox x:Name="AuthorizeErase" Content="确认允许对该 ECU 执行真实擦除、下载和复位" TextWrapping="Wrap"/>
+        <CheckBox x:Name="ConfirmPower" Content="已核实接线、目标 ECU 身份及实际供电状态"/>
+        <CheckBox x:Name="ConfirmBitrate" Content="已核实主控 CAN1 实际比特率与 XML 一致（导入 XML 不会改速率）"/>
+        <CheckBox x:Name="AuthorizeErase" Content="确认允许对该 ECU 执行真实擦除、下载和复位"/>
         <Button Content="生成本次授权短语（无发送）" Click="PrepareAuthorization_Click" Margin="0,7"/>
         <TextBox x:Name="AuthorizationExpected" MinHeight="46" IsReadOnly="True"
                  TextWrapping="Wrap" Margin="0,3"/>
