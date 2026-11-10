@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private CanFrameHub? _waveReplayHub;
     private MainWindowViewModel? _workspaceEventsOwner;
     private ControllerConfigToolViewModel? _controllerConfiguration;
+    private bool _closePendingFlash;
     private bool _closed;
     private bool _stationStatusSubscribed;
     private bool _disposing;
@@ -54,6 +55,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        R1FlashView.PhysicalOperationStopped += (_, _) =>
+        {
+            if (_closePendingFlash && !_disposing && !_closed && !Dispatcher.HasShutdownStarted)
+                Dispatcher.BeginInvoke(new Action(Close));
+        };
         if (R1UdsView.DataContext is UdsToolViewModel udsSource)
             R1BottomUdsGrid.ItemsSource=udsSource.TraceRows;
         if (R1FlashView.DataContext is FlashToolViewModel flashModel)
@@ -612,6 +618,18 @@ public partial class MainWindow : Window
     private async void Window_Closing(object? sender,CancelEventArgs e)
     {
         if (_closed || _disposing) return;
+        // Physical flash owns the same Station CAN1 session. Never tear down
+        // WinUSB while a destructive CanTool job is still unwinding.
+        if (R1FlashView.IsPhysicalCan1Busy)
+        {
+            e.Cancel = true;
+            if (!_closePendingFlash)
+            {
+                _closePendingFlash = true;
+                R1FlashView.RequestCloseAfterPhysicalStop();
+            }
+            return;
+        }
         if (R1WaveHost.Content is WaveWorkbenchView wave)
             wave.CancelArchiveRecording();
         e.Cancel = true;
