@@ -45,7 +45,7 @@ public partial class FlashToolView : UserControl
             Filter = "Firmware image|*.hex;*.ihex;*.s19;*.s28;*.s37;*.srec;*.mot;*.bin|All files|*.*",
             CheckFileExists = true,
             Multiselect = false,
-            Title = "选择固件镜像（仅用于离线解析 / Mock Dry-run）"
+            Title = "选择真实固件镜像（仅执行文件解析，不发送刷写）"
         };
         if (picker.ShowDialog() != true || DataContext is not FlashToolViewModel vm) return;
         vm.ImagePath = picker.FileName;
