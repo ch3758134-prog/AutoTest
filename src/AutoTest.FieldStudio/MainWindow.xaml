@@ -192,18 +192,18 @@
        <StackPanel>
         <TextBlock Text="诊断请求 / ECU 响应" Style="{StaticResource SectionText}"/>
         <TextBlock x:Name="UdsGuide" Margin="0,4,0,10" Style="{StaticResource MutedText}"
-          Text="仅 0x22 读 DID、0x19 读 DTC 支持物理只读实测。①确认 ECU CAN ID ②选择服务 ③生成授权并复制 ④核对后手动粘贴 ⑤发送。其它服务灰显，后续开发。"/>
+          Text="真实只读诊断：①导入现场 XML 或填入已确认的 CAN ID ②选择 0x22/0x19 与请求参数 ③点击发送并在确认框核对目标 ECU。其它服务尚未开放物理发送。"/>
         <TextBlock Text="请求 PDU（十六进制）" Margin="0,8,0,4"/>
         <TextBox x:Name="UdsRequestText" Text="22 F1 90" Height="32"/>
         <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-         <Button x:Name="UdsPrepareButton" Content="①生成本次授权" Click="UdsPrepare_Click"/>
-         <Button x:Name="UdsCopyButton" Content="②复制授权文本" Click="UdsCopy_Click" IsEnabled="False"/>
-         <Button x:Name="UdsSendButton" Content="③发送只读请求" Style="{StaticResource PrimaryButton}" Click="UdsSend_Click" IsEnabled="False"/>
+         <Button x:Name="UdsPrepareButton" Content="①生成本次授权" Click="UdsPrepare_Click" Visibility="Collapsed"/>
+         <Button x:Name="UdsCopyButton" Content="②复制授权文本" Click="UdsCopy_Click" IsEnabled="False" Visibility="Collapsed"/>
+         <Button x:Name="UdsSendButton" Content="发送一次只读诊断 / CAN1" Style="{StaticResource PrimaryButton}" Click="UdsSend_Click" IsEnabled="False"/>
          <Button Content="取消" Click="UdsCancel_Click"/>
         </StackPanel>
-        <TextBlock Text="授权内容（必须由操作者确认并粘贴在下方）" FontSize="11"/>
-        <TextBox x:Name="UdsExpected" IsReadOnly="True" TextWrapping="Wrap" Height="53"/>
-        <TextBox x:Name="UdsConfirmation" TextWrapping="Wrap" Height="53" Margin="0,4,0,10" TextChanged="UdsConfirmation_TextChanged"
+        <TextBlock Text="授权内容（必须由操作者确认并粘贴在下方）" FontSize="11" Visibility="Collapsed"/>
+        <TextBox x:Name="UdsExpected" IsReadOnly="True" TextWrapping="Wrap" Height="53" Visibility="Collapsed"/>
+        <TextBox x:Name="UdsConfirmation" TextWrapping="Wrap" Height="53" Margin="0,4,0,10" TextChanged="UdsConfirmation_TextChanged" Visibility="Collapsed"
          ToolTip="核对目标 ECU 和请求后，将上方授权文本手动粘贴到这里。只读权限每次请求重新生成。"/>
         <TextBlock Text="UDS 响应与状态" Style="{StaticResource SectionText}"/>
         <TextBox x:Name="UdsResponse" AcceptsReturn="True" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Height="120" Text="未执行真实请求。"/>

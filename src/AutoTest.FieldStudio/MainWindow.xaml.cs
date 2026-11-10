@@ -687,10 +687,7 @@ public partial class MainWindow : Window
         UdsCopyButton.IsEnabled = !_busy && readOnly && _requestId != Guid.Empty;
         UdsSendButton.IsEnabled = !_busy && readOnly &&
             _device.State == UsbSessionState.Connected &&
-            _device.ProtocolVersionVerified &&
-            _requestId != Guid.Empty &&
-            !string.IsNullOrEmpty(_preparedHex) &&
-            string.Equals(UdsConfirmation.Text.Trim(), UdsExpected.Text, StringComparison.Ordinal);
+            _device.ProtocolVersionVerified;
     }
 
     private void UdsConfirmation_TextChanged(object sender, TextChangedEventArgs e) => UpdateUdsControls();
@@ -783,52 +780,86 @@ public partial class MainWindow : Window
     private async void UdsSend_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
-        CancellationTokenSource? token = null;
-        SetBusy(true);
+        CancellationTokenSource? token=null;
         try
         {
-            var pdu = ParsePdu(UdsRequestText.Text);
-            if (_device.State != UsbSessionState.Connected || !_device.ProtocolVersionVerified)
-                throw new InvalidOperationException("必须先连接并成功验证主控板版本。");
-            if (!IsSafePhysicalRead(pdu) || _requestId == Guid.Empty ||
-                _preparedHex != Convert.ToHexString(pdu))
-                throw new UnauthorizedAccessException("请求已变化或未生成本次授权，拒绝发送。");
-            if (!string.Equals(UdsExpected.Text, UdsConfirmation.Text.Trim(), StringComparison.Ordinal))
-                throw new UnauthorizedAccessException("必须手动粘贴当前授权串，拒绝自动授权。");
-            var endpoint = ReadEndpoint();
-            var profile = ReadProfile();
+            byte[] pdu=ParsePdu(UdsRequestText.Text);
+            if (!IsSafePhysicalRead(pdu))
+                throw new UnauthorizedAccessException("真实 CAN1 暂只允许 0x19/0x22 只读请求，其余 UDS 需独立编程授权。");
+            if (_device.State!=UsbSessionState.Connected || !_device.ProtocolVersionVerified)
+                throw new InvalidOperationException("主控 USB 未连接或固件版本未验证。");
+            var endpoint=ReadEndpoint();
+            var profile=ReadProfile();
             AutoTest.Specialists.Uds.UdsEndpointProfileValidator.ValidateAddressing(profile);
+            string confirm =
+                $"即将向真实 ECU 发送一次只读 UDS 诊断请求：\n\n" +
+                $"物理通道：CAN1 / DUT\n" +
+                $"TX CAN ID：0x{endpoint.RequestCanId:X} ({(endpoint.ExtendedId ? "29-bit" : "11-bit")})\n" +
+                $"RX CAN ID：0x{endpoint.ResponseCanId:X}\n" +
+                $"配置版本：{endpoint.ProfileRevision}\n" +
+                $"请求 PDU：{Convert.ToHexString(pdu)}\n" +
+                $"USB 会话：Generation {_device.Generation}\n\n" +
+                "确认当前连接的目标 ECU、端点和诊断服务正确吗？\n" +
+                "本操作只允许读取，不执行会话切换、复位、擦除或下载。";
+            if (MessageBox.Show(this,confirm,"确认真实 ECU 只读 UDS 请求",
+                    MessageBoxButton.YesNo,MessageBoxImage.Question,
+                    MessageBoxResult.No)!=MessageBoxResult.Yes)
+            {
+                UdsResponse.Text="操作者取消发送；没有发出 CAN 请求。";
+                AppendUds("NOT_SENT","Operator cancelled read-only UDS confirmation.");
+                return;
+            }
+            SetBusy(true);
+            _requestId=Guid.NewGuid();
+            _preparedHex=Convert.ToHexString(pdu);
+            string approval = HardwareBenchController.PhysicalReadOnlyUdsConfirmation(
+                _requestId,endpoint,pdu[0]);
             token = new CancellationTokenSource(TimeSpan.FromSeconds(25));
-            _udsStop = token;
-            AppendUds("PREPARE", $"SID=0x{pdu[0]:X2} TX={endpoint.RequestCanId:X} RX={endpoint.ResponseCanId:X} PID={_requestId:N}");
-            var response = await PhysicalReadOnlyUds.RunAsync(_device, endpoint, profile, pdu,
-                _requestId, UdsConfirmation.Text.Trim(), token.Token);
-            if (response.Outcome == Outcome.Accepted && response.ResponsePdu.Length > 0)
+            _udsStop=token;
+            AppendUds("SEND REQUEST",
+                $"Gen={_device.Generation} SID=0x{pdu[0]:X2} TX={endpoint.RequestCanId:X} RX={endpoint.ResponseCanId:X} RequestId={_requestId:N}");
+            var response = await PhysicalReadOnlyUds.RunAsync(_device,endpoint,profile,
+                pdu,_requestId,approval,token.Token);
+            if (response.Outcome == Outcome.Accepted && response.ResponsePdu.Length>0)
             {
                 _lastLiveUdsAcceptedGeneration = _device.Generation;
                 _lastUdsTx = endpoint.RequestCanId;
                 _lastUdsRx = endpoint.ResponseCanId;
                 _lastUdsExtended = endpoint.ExtendedId;
-                AppendUds("ECU ACCEPTED", $"当前 USB Gen={_device.Generation} RX={endpoint.ResponseCanId:X} SID={pdu[0]:X2}");
+                AppendUds("ECU ACCEPTED",
+                    $"Gen={_device.Generation} RX={endpoint.ResponseCanId:X} SID={pdu[0]:X2}");
             }
             else
-                AppendUds("ECU NOT VERIFIED", $"Outcome={response.Outcome}, NRC={(response.NegativeResponseCode?.ToString("X2") ?? "—")}");
-            UdsResponse.Text = "响应解释（不替代 ECU 原始证据）：\n" +
+                AppendUds("ECU NOT VERIFIED",
+                    $"Outcome={response.Outcome}; NRC={(response.NegativeResponseCode?.ToString("X2") ?? "—")}");
+            UdsResponse.Text = "UDS Response / ECU 真实响应：\n" +
                 AutoTest.Specialists.Uds.UdsDiagnosticResponseFormatter.Explain(
-                    response.RequestPdu.AsSpan(), response.ResponsePdu.AsSpan()) +
-                $"\n\nOutcome: {response.Outcome}\nRequest: {Convert.ToHexString(response.RequestPdu.ToArray())}\n" +
-                $"Response: {Convert.ToHexString(response.ResponsePdu.ToArray())}\n" +
-                $"NRC: {(response.NegativeResponseCode.HasValue ? $"0x{response.NegativeResponseCode:X2}" : "—")}\n" +
-                $"Completed (Host): {response.CompletedAt.Utc:O}\n" +
-                "注意：USB ACK 和 ECU 真实响应是两个不同的证据等级。";
-            AppendUds("ECU RX", UdsResponse.Text.Replace("\n", " | "));
+                    response.RequestPdu.AsSpan(),response.ResponsePdu.AsSpan()) +
+                $"\n\nOutcome: {response.Outcome}\nRequest: {Convert.ToHexString(response.RequestPdu.ToArray())}" +
+                $"\nResponse: {Convert.ToHexString(response.ResponsePdu.ToArray())}" +
+                $"\nNRC: {(response.NegativeResponseCode.HasValue ? $"0x{response.NegativeResponseCode:X2}" : "—")}" +
+                $"\nCompleted Host UTC: {response.CompletedAt.Utc:O}\n" +
+                "USB 控制器 ACK 与 ECU 物理响应分开记录；不将无响应当作成功。";
+            AppendUds("ECU RX",UdsResponse.Text.Replace("\n"," | "));
         }
-        catch (OperationCanceledException) { UdsResponse.Text = "已取消；如果 CAN 帧已发出，ECU 状态需要单独观察。"; AppendUds("CANCEL", UdsResponse.Text); }
-        catch (Exception ex) { UdsResponse.Text = "FAILED / UNCERTAIN: " + ex; AppendUds("ERROR", ex.Message); }
+        catch (OperationCanceledException)
+        {
+            UdsResponse.Text="取消或 25 秒总限时触发。CAN 帧可能已发出，当前 ECU 状态不应推断成功。";
+            AppendUds("CANCEL/UNCERTAIN",UdsResponse.Text);
+        }
+        catch (Exception ex)
+        {
+            UdsResponse.Text="FAILED / UNCERTAIN: "+ex;
+            AppendUds("ERROR",ex.Message);
+        }
         finally
         {
-            token?.Dispose(); _udsStop = null;
-            _requestId = Guid.Empty; _preparedHex = null; UdsExpected.Clear(); UdsConfirmation.Clear();
+            token?.Dispose();
+            _udsStop=null;
+            _requestId=Guid.Empty;
+            _preparedHex=null;
+            UdsExpected.Clear();
+            UdsConfirmation.Clear();
             SetBusy(false);
             UpdateUdsControls();
         }
