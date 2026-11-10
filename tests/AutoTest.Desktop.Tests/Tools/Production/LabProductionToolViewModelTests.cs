@@ -23,7 +23,7 @@ public sealed class R1ProductionScannerViewModelTests
         Assert.Empty(vm.ScanEvents);
 
         vm.AcceptSerialBarcode("M000001", "Physical COM5");
-        Assert.Contains("真实条码已收到", vm.MatchDetail);
+        Assert.Contains("收到真实条码", vm.MatchDetail);
         Assert.Equal("CATALOG_NOT_READY", Assert.Single(vm.ScanEvents).Result);
         Assert.DoesNotContain("MOCK PASS", vm.Status);
     }
