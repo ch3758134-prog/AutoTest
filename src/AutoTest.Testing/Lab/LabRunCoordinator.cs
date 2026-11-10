@@ -229,6 +229,17 @@ public sealed class LabRunCoordinator
                 return sample with { Quality = LabQuality.Stale, Value = null };
             return sample;
         }
+        (string? Value, LabQuality Quality, string? Trace) ControlValue(string name)
+        {
+            // Ordinary program variables and observed ECU signal facts are
+            // different sources. A real Observe/When can drive IF/SWITCH.
+            // An absent or stale observation must never select a branch.
+            if (variables.TryGetValue(name, out var declared))
+                return (declared, LabQuality.Observed, null);
+            var sample = Current(name);
+            return (sample.Value, sample.Quality, sample.TraceReference);
+        }
+
         async Task Execute(IEnumerable<LabNode> nodes, LabPhase phase, CancellationToken ct, bool cleanup = false)
         {
             foreach (var node in nodes)
@@ -275,13 +286,23 @@ public sealed class LabRunCoordinator
                         break;
                     case "If":
                         expected = Param(node, "equals");
-                        variables.TryGetValue(Param(node, "variable"), out actual);
-                        if (actual is null) { quality = LabQuality.Missing; verdict = LabVerdict.Inconclusive; }
+                        var ifValue = ControlValue(Param(node, "variable"));
+                        actual = ifValue.Value; quality = ifValue.Quality; trace = ifValue.Trace;
+                        if (actual is null || quality != LabQuality.Observed)
+                        {
+                            if (quality == LabQuality.Observed) quality = LabQuality.Missing;
+                            verdict = LabVerdict.Inconclusive;
+                        }
                         else branch = node.Slots[actual == expected ? "then" : "else"];
                         break;
                     case "Switch":
-                        variables.TryGetValue(Param(node, "variable"), out actual);
-                        if (actual is null) { quality = LabQuality.Missing; verdict = LabVerdict.Inconclusive; }
+                        var switchValue = ControlValue(Param(node, "variable"));
+                        actual = switchValue.Value; quality = switchValue.Quality; trace = switchValue.Trace;
+                        if (actual is null || quality != LabQuality.Observed)
+                        {
+                            if (quality == LabQuality.Observed) quality = LabQuality.Missing;
+                            verdict = LabVerdict.Inconclusive;
+                        }
                         else
                         {
                             var entries = node.Slots["cases"];
@@ -293,26 +314,52 @@ public sealed class LabRunCoordinator
                         break;
                     case "When":
                         expected = Param(node, "equals");
-                        var waitUntil = DateTimeOffset.UtcNow.AddMilliseconds(int.Parse(Param(node, "timeoutMs")));
-                        do
+                        var signalName = Param(node, "variable");
+                        using (var budget = CancellationTokenSource.CreateLinkedTokenSource(ct))
                         {
-                            variables.TryGetValue(Param(node, "variable"), out actual);
-                            if (actual != expected)
+                            var timeoutMs = int.Parse(Param(node, "timeoutMs"));
+                            budget.CancelAfter(TimeSpan.FromMilliseconds(timeoutMs));
+                            try
                             {
-                                var live = await station.ObserveAsync(Param(node, "variable"), runId, source, ct)
-                                    .ConfigureAwait(false);
-                                observations[Param(node, "variable")] = live;
-                                var checkedLive = Current(Param(node, "variable"));
-                                quality = checkedLive.Quality;
-                                trace = checkedLive.TraceReference;
-                                if (quality == LabQuality.Observed) actual = checkedLive.Value;
+                                do
+                                {
+                                    // A defined local variable can be a control condition.
+                                    // Otherwise obtain a FRESH station observation on each
+                                    // poll; do not reuse a prior ECU signal sample as if live.
+                                    if (variables.TryGetValue(signalName, out var local))
+                                    {
+                                        actual = local;
+                                        quality = LabQuality.Observed;
+                                    }
+                                    else
+                                    {
+                                        var live = await station.ObserveAsync(signalName, runId,
+                                            source, budget.Token).ConfigureAwait(false);
+                                        observations[signalName] = live;
+                                        var checkedLive = Current(signalName);
+                                        actual = checkedLive.Value;
+                                        quality = checkedLive.Quality;
+                                        trace = checkedLive.TraceReference;
+                                    }
+                                    if (actual == expected && quality == LabQuality.Observed)
+                                    { branch = node.Slots["body"]; break; }
+                                    await Task.Delay(10, budget.Token).ConfigureAwait(false);
+                                } while (true);
                             }
-                            if (actual == expected && quality == LabQuality.Observed)
-                            { branch = node.Slots["body"]; break; }
-                            if (DateTimeOffset.UtcNow >= waitUntil) break;
-                            await Task.Delay(10, ct).ConfigureAwait(false);
-                        } while (true);
-                        if (branch is null) { verdict = LabVerdict.Inconclusive; quality = LabQuality.Missing; }
+                            catch (OperationCanceledException) when
+                                (budget.IsCancellationRequested && !ct.IsCancellationRequested)
+                            {
+                                // The explicit step timeout is an inconclusive observation,
+                                // not a successful ECU acknowledgement.
+                            }
+                        }
+                        ct.ThrowIfCancellationRequested();
+                        if (branch is null)
+                        {
+                            verdict = LabVerdict.Inconclusive;
+                            if (quality == LabQuality.Observed) quality = LabQuality.Missing;
+                            diagnostic = "WHEN_TIMEOUT_OR_CONDITION_NOT_MET";
+                        }
                         break;
                     case "Loop": expected = Param(node, "count"); break;
                     case "Wait":
