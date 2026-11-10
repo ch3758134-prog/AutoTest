@@ -185,6 +185,27 @@ class EngineeringStoreTest(unittest.TestCase):
         self.assertFalse(any(x["id"] in {o["id"] for o in exported["objects"]}
                             for x in self.store.project(self.p2["id"])["objects"]))
 
+    def test_transitive_design_inputs_must_be_pinned_and_enter_ai_context(self):
+        req=self.approve(self.create("requirement", "完整产品要求"))
+        arch=self.approve(self.create("architecture", "系统总体结构"))
+        work=self.create("work_package", "根据设计编码", meta={
+            "source_sha":"e"*40,"file_scope":["src/product.cs"],"acceptance":"单测与联调",
+            "input_revisions":{arch["id"]:arch["revision"]}})
+        self.review_link(req,arch,"defines")
+        self.review_link(arch,work,"depends")
+        status=self.store.readiness(work["id"])
+        self.assertFalse(status["ready"])
+        self.assertTrue(any(req["title"] in reason for reason in status["reasons"]))
+        revised=self.store.update_object(work["id"],{"expected_revision":work["revision"],
+            "meta":{**work["meta"],"input_revisions":{
+                req["id"]:req["revision"],arch["id"]:arch["revision"]}}})["item"]
+        self.approve(revised)
+        context=self.store.context(work["id"])
+        self.assertIn("产品背景",context["markdown"])
+        self.assertIn("完整产品要求",context["markdown"])
+        self.assertIn("系统总体结构",context["markdown"])
+        self.assertEqual(len(context["manifest"]["inputs"]),2)
+
     def test_database_reopens_with_same_data(self):
         req=self.create("requirement","断电重启后保留")
         reopened=Store(self.file)
