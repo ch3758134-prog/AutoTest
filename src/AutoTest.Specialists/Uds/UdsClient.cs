@@ -69,10 +69,13 @@ public sealed class UdsClient : IUdsClient
                     }
                     return Result(Outcome.Rejected,pdu,response,response[2],_channel);
                 }
-                // Suppressed positive responses require an explicit separate no-response
-                // policy; never misinterpret timeout as an acknowledged ECU response.
+                // A matching SID is not enough. Read-only diagnostic results must
+                // echo the selected DID/subfunction and structurally match the
+                // response's data contract before they count as ECU accepted.
                 if (response.Length < 1 || response[0] != (byte)(pdu[0]+0x40))
                     throw new IsoTpProtocolException("Response SID/NRC does not match request.");
+                if (pdu[0] is 0x19 or 0x22)
+                    UdsReadOnlyResponseValidator.Validate(pdu, response);
                 return Result(Outcome.Accepted,pdu,response,null,_channel);
             }
         }
