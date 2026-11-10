@@ -177,7 +177,8 @@ def handler_factory(store, token, repo=None):
                 elif path == "/api/studio/execution/publish":
                     answer = execution.publish(data.get("object_id", ""),source_root)
                 elif path == "/api/studio/execution/archive-project":
-                    answer = execution.archive_project(data.get("project_id", ""),source_root)
+                    answer = execution.archive_project(data.get("project_id", ""),source_root,
+                                                       data.get("actor", ""), data.get("note", ""))
                 elif path == "/api/studio/research/create":
                     answer = research.create(data)
                 elif path == "/api/studio/research/option":
