@@ -153,6 +153,38 @@
                             <TextBlock Grid.Row="2" Text="{Binding TraceStats}" Foreground="{StaticResource Subtle}" Margin="0,8,0,0"/>
                         </Grid>
                     </TabItem>
+                    <TabItem Header="CAN 按 ID 实时监视">
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="真实 CAN0 / CAN1 · 按通道、11/29-bit 和报文 ID 合并刷新，保留完整原始 Trace；每个设备会话独立计数。"
+                                       Foreground="{StaticResource Subtle}" Margin="0,0,0,10"/>
+                            <DataGrid x:Name="R1CanIdsGrid" Grid.Row="1"
+                                      IsReadOnly="True" AutoGenerateColumns="False"
+                                      CanUserAddRows="False" CanUserDeleteRows="False"
+                                      HeadersVisibility="Column" RowHeaderWidth="0"
+                                      Background="#192431" Foreground="#E2EDF7"
+                                      RowBackground="#192431" AlternatingRowBackground="#202D3B"
+                                      BorderBrush="{StaticResource Outline}"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="CAN 通道" Binding="{Binding Channel}" Width="110"/>
+                                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="80"/>
+                                    <DataGridTextColumn Header="帧格式" Binding="{Binding Format}" Width="75"/>
+                                    <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="50"/>
+                                    <DataGridTextColumn Header="DATA / HEX（最新）" Binding="{Binding DataHex}" Width="*"/>
+                                    <DataGridTextColumn Header="周期 ms" Binding="{Binding PeriodMs}" Width="90"/>
+                                    <DataGridTextColumn Header="接收次数" Binding="{Binding Count}" Width="90"/>
+                                    <DataGridTextColumn Header="累计丢帧" Binding="{Binding LostFrames}" Width="80"/>
+                                    <DataGridTextColumn Header="最近时间" Binding="{Binding LastTime}" Width="100"/>
+                                    <DataGridTextColumn Header="会话" Binding="{Binding Generation}" Width="65"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
                     <TabItem Header="双路 CAN 被动接收">
                         <Grid Margin="12">
                             <Grid.RowDefinitions>
