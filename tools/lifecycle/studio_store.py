@@ -621,6 +621,9 @@ class Store:
                     "manifest":{"project_id":obj["project_id"],"work_package_id":key,
                         "revision":obj["revision"],"source_sha":obj["meta"].get("source_sha"),
                         "product_version":project["version"],"variant":project["variant"],
+                        "file_scope":obj["meta"].get("file_scope",[]),
+                        "acceptance":obj["meta"].get("acceptance",""),
+                        "execution_role":obj["meta"].get("execution_role",""),
                         "inputs":inputs,"research_decisions":research_decisions}}
 
     def export_project(self,key):
