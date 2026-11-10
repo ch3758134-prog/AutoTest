@@ -45,7 +45,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private string _lastEvidence = "ACK：未知 · 实际电压：未测量";
     private string _comment = "";
     private string _operatorName = "";
-    private BenchEvidenceSource _source = BenchEvidenceSource.Mock;
+    private BenchEvidenceSource _source = BenchEvidenceSource.Physical;
     private BenchConnectionSnapshot _connection = new(BenchConnection.Disconnected, null, null, null, null, null);
     private BenchConfiguration? _config;
     private BenchControllerDefinition? _selectedController;
@@ -67,7 +67,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         SaveMeasurementCommand = new DelegateCommand(async () => await SaveMeasurementAsync(),
             () => !Busy && _lastState is not null).ObservesProperty(() => Busy);
         foreach (var n in Enumerable.Range(1, 5)) Voltages.Add(new ManualVoltageInput(n));
-        Append(WorkbenchSeverity.Neutral, "台架就绪", "尚未读取工程或硬件事实；模式显示为 Mock。");
+        Append(WorkbenchSeverity.Neutral, "台架就绪", "尚未读取工程或硬件事实；仅允许经 DEVICE 验证的实际动作。");
     }
 
     public ObservableCollection<BenchControllerDefinition> Controllers { get; } = new();
@@ -98,7 +98,6 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     {
         BenchEvidenceSource.Physical => "Physical · 真实指令默认拒绝，须由 DEVICE 安全门禁单项授权",
         BenchEvidenceSource.Replay => "Replay · 回放数据不是实物响应",
-        BenchEvidenceSource.Mock => "Mock · 模拟操作，不产生真实电压",
         _ => "Unknown · 不允许作为实测证据"
     };
     public BenchEvidenceSource Source
