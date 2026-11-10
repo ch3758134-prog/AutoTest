@@ -1,0 +1,113 @@
+{
+  "schema": "AutoTest-current-status/1",
+  "as_of_local_date": "2026-11-09",
+  "product": "AutoTest",
+  "scope": "离线 Windows 通用 ECU 研发、集成测试与出厂检测平台。EPB 是首个 DUT 样本；R1 是可调整的首次交付愿景，不代表 UI、报告与全部流程已冻结。",
+  "code": {
+    "main_sha": "4530aba0079e8b2344e4ff5e706049450458a45b",
+    "build": "PASS",
+    "warnings": 0,
+    "errors": 0,
+    "test_passed": 336,
+    "test_total": 336,
+    "source": "https://github.com/ch3758134-prog/AutoTest/actions/runs/42736664152",
+    "kind": "Windows full AutoTest.sln Release Build/Test；无 WPF 视觉/实际启动或 DUT 物理验收"
+  },
+  "git": {
+    "active_branches": [
+      "main",
+      "recovery/product-led-baseline-20261109",
+      "maintenance/archive-retire-legacy-20261109"
+    ],
+    "retired_branches": 21,
+    "archival_tags": 21,
+    "archive_url": "https://github.com/ch3758134-prog/AutoTest/actions/runs/42737412239",
+    "bundle_artifact_id": 13727397720
+  },
+  "ui": {
+    "decision": "旧 G4/R1 前端未获用户操作验收，整体不作为新产品界面基线；必须重新做信息架构、Prism Shell、Design System、实用操作工作台。",
+    "evidence": "NOT_ACCEPTED",
+    "next": "新 WPF Gallery、真实截图和可用性测试均未完成；不得将现有 Desktop 58/58 代码测试当 UI 验收。"
+  },
+  "assets_missing": [
+    "现役两块 PCB 原理图 PDF 原始字节",
+    "现役主控与按键固件 ZIP/可验证构建源码",
+    "独立 SAEF eng.py、原 FRAMEWORK/catalog 和部分已批准 HTML 原始归档"
+  ],
+  "capabilities": [
+    {
+      "id": "DEVICE",
+      "title": "USB / CAN / Station",
+      "code": "真实 WinUSB 接收及会话/日志代码存在；主线尚无受控 CAN1 TX",
+      "test": "Devices 54/54 自动测试通过",
+      "physical": "历史现场已有 USB/CAN1 RX 证据，未与当前 SHA 重新绑定",
+      "next": "逐项复验设备身份、CAN1 TX 授权与原始 RX 日志"
+    },
+    {
+      "id": "PROJECT",
+      "title": "工程、DBC、Profile",
+      "code": "工程资源、Revision、DBC 解析/编辑/信号解码核心已提交",
+      "test": "Projects 33/33",
+      "physical": "真实工程文件往返与多 ECU Profile 仍需任务验收",
+      "next": "用真实 DBC/工程文件建立黄金样例"
+    },
+    {
+      "id": "TEST",
+      "title": "测试编辑与运行",
+      "code": "Authoring/Compiler 有源码，RunCoordinator 仍为 Mock-only",
+      "test": "Testing 34/34",
+      "physical": "真实 DUT 测试程序未验收",
+      "next": "保留 TestDocument/PreparedPlan，另接真 Station 执行器"
+    },
+    {
+      "id": "UDS",
+      "title": "ISO-TP / UDS",
+      "code": "ISO-TP/UDS 协议核心存在，真实 CAN1 RX/TX 配接未进主线",
+      "test": "Specialists 测试中的协议用例通过",
+      "physical": "真实 ECU ReadDID/DTC 事务 NOT_RUN",
+      "next": "以归档的 DEVICE/UDS 只读候选提取后端接线、审查授权并实测"
+    },
+    {
+      "id": "WAVE",
+      "title": "波形与参考判定",
+      "code": "比较/参考/质量校验核心存在，在线采集没有经验证的共享物理源",
+      "test": "Specialists 测试中的波形用例通过",
+      "physical": "实时 DUT 信号采集/参考判定 NOT_RUN",
+      "next": "CAN1 原始流 → DBC → 捕获/参考 → 比较及不确定质量"
+    },
+    {
+      "id": "SCAN",
+      "title": "扫码枪与型号规则",
+      "code": "KeyboardWedge、扫码路由、身份规则、生产样本核心存在",
+      "test": "Specialists 扫码/规则用例通过",
+      "physical": "实物扫码枪模式和端到端读取 NOT_RUN",
+      "next": "验证扫码枪输入、焦点/回车、复扫与型号匹配"
+    },
+    {
+      "id": "FLASH",
+      "title": "固件文件与 ECU 烧录",
+      "code": "HEX/S19/BIN 解析存在，现有 JobCoordinator 强依赖 Mock Workflow",
+      "test": "Specialists 固件解析与 Mock 用例通过",
+      "physical": "实体 ECU 编程 NOT_IMPLEMENTED / NOT_RUN",
+      "next": "依据 CanTool 配置核定 APP/Boot ID、Seed/Key ABI、镜像分段与安全恢复；先完成只读联调"
+    },
+    {
+      "id": "RECORD",
+      "title": "SQLite/Run 记录与报告",
+      "code": "追加式 Run/StepFact、查询、统计与暂行 HTML/JSON 导出存在",
+      "test": "Records 25/25",
+      "physical": "真实运行追溯与报告用户确认 NOT_RUN",
+      "next": "从真实运行证据定义报告字段和版式，不把旧模板视为冻结需求"
+    }
+  ],
+  "next_steps": [
+    "恢复缺失的 SAEF 原始资产与原生工具，不伪造已恢复",
+    "新前端从零建立 WPF Gallery / 设计系统，独立于旧 Desktop",
+    "优先完成 UDS、WAVE、SCAN、FLASH 的真实任务实测；烧录在安全前置满足前禁止物理写入",
+    "分批将通过验证的真实后端服务接入新 Prism Shell，不继承旧 UI 布局"
+  ],
+  "links": {
+    "audit": "https://github.com/ch3758134-prog/AutoTest/pull/21",
+    "issue": "https://github.com/ch3758134-prog/AutoTest/issues/22"
+  }
+}
