@@ -167,6 +167,18 @@ public sealed class WorkbenchViewModelTests
         first.EditedValue = "ready";
         first.ApplyPropertiesCommand.Execute();
 
+        // SetVariable configures control flow; it is NOT observed ECU evidence.
+        // Produce an explicit Mock observation so this offline regression
+        // verifies persistence without conflating variables with measurements.
+        first.NewStepType = "MockObserve";
+        first.NewStepPhase = "Test";
+        first.InsertRootCommand.Execute();
+        first.SelectedStep = first.Steps.Single(x => x.NodeType == "MockObserve");
+        first.EditedVariable = "mode";
+        first.EditedValue = "ready";
+        first.EditedQuality = "Observed";
+        first.ApplyPropertiesCommand.Execute();
+
         first.NewStepType = "Assert";
         first.NewStepPhase = "Test";
         first.InsertRootCommand.Execute();
@@ -184,7 +196,7 @@ public sealed class WorkbenchViewModelTests
             await reopened.OpenProjectAsync(path);
             var names = reopened.Workspace.Document.Walk().Select(x => x.Name).ToArray();
             Assert.Contains("Set mode for DUT", names);
-            Assert.Equal(2, names.Length);
+            Assert.Equal(3, names.Length);
 
             var report = await reopened.RunCurrentDocumentAsync();
             Assert.NotNull(report);
