@@ -189,7 +189,7 @@ public partial class MainWindow : Window
         _busy = busy;
         ConnectButton.IsEnabled = !busy && _device.State == UsbSessionState.Disconnected;
         DisconnectButton.IsEnabled = !busy && _device.State != UsbSessionState.Disconnected;
-        UdsSendButton.IsEnabled = !busy && _device.State == UsbSessionState.Connected;
+        UpdateUdsControls();
     }
     private void SetConnectionState(UsbSessionState state)
     {
@@ -203,6 +203,8 @@ public partial class MainWindow : Window
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         SetConnectionState(_device.State);
+        UdsServices.SelectedIndex = 0;
+        UpdateUdsControls();
         await RefreshAsync();
     }
     private async Task RefreshAsync()
@@ -563,6 +565,38 @@ public partial class MainWindow : Window
         catch (Exception ex) { Log("WAVE", "导出失败：" + ex.Message); }
     }
 
+    private bool IsUdsReadOnlyServiceSelected() =>
+        UdsServices.SelectedItem is ListBoxItem item && item.IsEnabled &&
+        item.Tag is string pdu && (pdu.StartsWith("22 ", StringComparison.Ordinal) ||
+            pdu.StartsWith("19 ", StringComparison.Ordinal));
+
+    private void UpdateUdsControls()
+    {
+        if (UdsSendButton is null || UdsPrepareButton is null || UdsCopyButton is null) return;
+        bool readOnly = IsUdsReadOnlyServiceSelected();
+        UdsPrepareButton.IsEnabled = !_busy && readOnly;
+        UdsCopyButton.IsEnabled = !_busy && readOnly && _requestId != Guid.Empty;
+        UdsSendButton.IsEnabled = !_busy && readOnly &&
+            _device.State == UsbSessionState.Connected &&
+            _device.ProtocolVersionVerified &&
+            _requestId != Guid.Empty &&
+            !string.IsNullOrEmpty(_preparedHex) &&
+            string.Equals(UdsConfirmation.Text.Trim(), UdsExpected.Text, StringComparison.Ordinal);
+    }
+
+    private void UdsConfirmation_TextChanged(object sender, TextChangedEventArgs e) => UpdateUdsControls();
+
+    private void UdsCopy_Click(object sender, RoutedEventArgs e)
+    {
+        if (_requestId == Guid.Empty || string.IsNullOrWhiteSpace(UdsExpected.Text)) return;
+        try
+        {
+            Clipboard.SetText(UdsExpected.Text);
+            UdsGuide.Text = "请确认 ECU 身份、TX/RX 和服务参数与实际目标匹配，再手动粘贴授权文本到下方。只有一致才会启用发送。";
+        }
+        catch (Exception ex) { Log("UDS", "无法复制授权：" + ex.Message); }
+    }
+
     private void UdsServices_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (UdsServices.SelectedItem is ListBoxItem item && item.Tag is string pdu)
@@ -570,7 +604,13 @@ public partial class MainWindow : Window
             UdsRequestText.Text = pdu;
             _requestId = Guid.Empty; _preparedHex = null;
             UdsExpected.Clear(); UdsConfirmation.Clear();
+            bool readOnly = IsUdsReadOnlyServiceSelected();
+            UdsGuide.Text = readOnly
+                ? "此项支持物理只读诊断：①填写目标 ECU 的 CAN 地址与 Profile 修订 ②生成授权 ③复制并人工核对后粘贴 ④发送并查看 ECU 返回。"
+                : "此服务尚未开放真实物理请求，不会向 ECU 发送。完整 UDS 会话、写入和编程服务另行实现。";
+            UdsResponse.Text = readOnly ? "尚未发送；USB 连接不代表 ECU 已建立诊断会话。" : "NOT_IMPLEMENTED：此服务仅展示，不能发送。";
         }
+        UpdateUdsControls();
     }
     private ReadOnlyUdsPhysicalEndpoint ReadEndpoint()
     {
@@ -599,9 +639,11 @@ public partial class MainWindow : Window
             _preparedHex = Convert.ToHexString(pdu);
             UdsExpected.Text = HardwareBenchController.PhysicalReadOnlyUdsConfirmation(_requestId, ep, pdu[0]);
             UdsConfirmation.Clear();
-            UdsResponse.Text = "待操作者逐字确认授权内容，并检查 CAN ID 与目标 ECU。";
+            UdsResponse.Text = "只读请求已准备；请核对 ECU/端点/PDU 后复制授权文本，再手动粘贴确认。";
+            UpdateUdsControls();
         }
-        catch (Exception ex) { UdsExpected.Clear(); _requestId = Guid.Empty; UdsResponse.Text = ex.Message; }
+        catch (Exception ex) { UdsExpected.Clear(); _requestId = Guid.Empty; UdsResponse.Text = "预检未通过：" + ex.Message; }
+        finally { UpdateUdsControls(); }
     }
     private async void UdsSend_Click(object sender, RoutedEventArgs e)
     {
@@ -640,6 +682,7 @@ public partial class MainWindow : Window
             token?.Dispose(); _udsStop = null;
             _requestId = Guid.Empty; _preparedHex = null; UdsExpected.Clear(); UdsConfirmation.Clear();
             SetBusy(false);
+            UpdateUdsControls();
         }
     }
     private void UdsCancel_Click(object sender, RoutedEventArgs e) => _udsStop?.Cancel();

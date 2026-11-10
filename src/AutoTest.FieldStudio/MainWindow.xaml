@@ -171,30 +171,34 @@
         <ListBox x:Name="UdsServices" SelectionChanged="UdsServices_SelectionChanged">
          <ListBoxItem Tag="22 F1 90" Content="0x22 读取 DID"/>
          <ListBoxItem Tag="19 02 FF" Content="0x19 读取 DTC"/>
-         <ListBoxItem Tag="10 03" Content="0x10 会话控制（未授权）"/>
-         <ListBoxItem Tag="11 01" Content="0x11 ECU 复位（未授权）"/>
-         <ListBoxItem Tag="27 01" Content="0x27 安全访问（未授权）"/>
-         <ListBoxItem Tag="2E F1 90" Content="0x2E 写入 DID（未授权）"/>
-         <ListBoxItem Tag="31 01" Content="0x31 例程控制（未授权）"/>
-         <ListBoxItem Tag="34 00 44" Content="0x34 下载请求（未授权）"/>
-         <ListBoxItem Tag="36 01" Content="0x36 数据传输（未授权）"/>
-         <ListBoxItem Tag="37" Content="0x37 退出传输（未授权）"/>
+         <ListBoxItem Tag="10 03" Content="0x10 会话控制（未授权）" IsEnabled="False"/>
+         <ListBoxItem Tag="11 01" Content="0x11 ECU 复位（未授权）" IsEnabled="False"/>
+         <ListBoxItem Tag="27 01" Content="0x27 安全访问（未授权）" IsEnabled="False"/>
+         <ListBoxItem Tag="2E F1 90" Content="0x2E 写入 DID（未授权）" IsEnabled="False"/>
+         <ListBoxItem Tag="31 01" Content="0x31 例程控制（未授权）" IsEnabled="False"/>
+         <ListBoxItem Tag="34 00 44" Content="0x34 下载请求（未授权）" IsEnabled="False"/>
+         <ListBoxItem Tag="36 01" Content="0x36 数据传输（未授权）" IsEnabled="False"/>
+         <ListBoxItem Tag="37" Content="0x37 退出传输（未授权）" IsEnabled="False"/>
         </ListBox>
        </DockPanel>
       </Border>
       <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="0,0,10,0">
        <StackPanel>
-        <TextBlock Text="请求编辑 / 原始响应" Style="{StaticResource SectionText}"/>
+        <TextBlock Text="诊断请求 / ECU 响应" Style="{StaticResource SectionText}"/>
+        <TextBlock x:Name="UdsGuide" Margin="0,4,0,10" Style="{StaticResource MutedText}"
+          Text="仅 0x22 读 DID、0x19 读 DTC 支持物理只读实测。①确认 ECU CAN ID ②选择服务 ③生成授权并复制 ④核对后手动粘贴 ⑤发送。其它服务灰显，后续开发。"/>
         <TextBlock Text="请求 PDU（十六进制）" Margin="0,8,0,4"/>
         <TextBox x:Name="UdsRequestText" Text="22 F1 90" Height="32"/>
         <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-         <Button Content="生成本次授权字符串" Click="UdsPrepare_Click"/>
-         <Button x:Name="UdsSendButton" Content="发送只读 UDS 请求" Style="{StaticResource PrimaryButton}" Click="UdsSend_Click"/>
+         <Button x:Name="UdsPrepareButton" Content="①生成本次授权" Click="UdsPrepare_Click"/>
+         <Button x:Name="UdsCopyButton" Content="②复制授权文本" Click="UdsCopy_Click" IsEnabled="False"/>
+         <Button x:Name="UdsSendButton" Content="③发送只读请求" Style="{StaticResource PrimaryButton}" Click="UdsSend_Click" IsEnabled="False"/>
          <Button Content="取消" Click="UdsCancel_Click"/>
         </StackPanel>
         <TextBlock Text="授权内容（必须由操作者确认并粘贴在下方）" FontSize="11"/>
         <TextBox x:Name="UdsExpected" IsReadOnly="True" TextWrapping="Wrap" Height="53"/>
-        <TextBox x:Name="UdsConfirmation" TextWrapping="Wrap" Height="53" Margin="0,4,0,10"/>
+        <TextBox x:Name="UdsConfirmation" TextWrapping="Wrap" Height="53" Margin="0,4,0,10" TextChanged="UdsConfirmation_TextChanged"
+         ToolTip="核对目标 ECU 和请求后，将上方授权文本手动粘贴到这里。只读权限每次请求重新生成。"/>
         <TextBlock Text="UDS 响应与状态" Style="{StaticResource SectionText}"/>
         <TextBox x:Name="UdsResponse" AcceptsReturn="True" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Height="120" Text="未执行真实请求。"/>
        </StackPanel>
@@ -212,7 +216,8 @@
         <TextBox x:Name="UdsP2" Text="1000"/>
         <TextBlock Text="P2*(ms)" Margin="0,10,0,3"/>
         <TextBox x:Name="UdsP2Star" Text="5000"/>
-        <TextBlock Text="CAN1 / DUT 专用 · Normal Addressing；只支持明确授权的 0x19 / 0x22。" Style="{StaticResource MutedText}" Margin="0,12,0,0"/>
+        <TextBlock x:Name="UdsEndpointHelp" Text="请从实际 ECU/项目配置填写 TX、RX CAN ID 和 Profile 修订；不提供猜测默认值。" Style="{StaticResource MutedText}" Margin="0,12,0,0"/>
+        <TextBlock Text="这里的 CAN ID 是 ECU 诊断端点，不是 USB 设备编号。USB 已连接不代表 ECU 已响应。" Style="{StaticResource MutedText}" Margin="0,14,0,0"/>
        </StackPanel>
       </Border>
      </Grid>
