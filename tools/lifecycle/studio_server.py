@@ -11,6 +11,7 @@ from urllib.parse import urlsplit, parse_qs
 
 from studio_store import Store, RuleError
 from studio_import import preview as saef_preview, import_saef
+from studio_research import Research
 
 HERE = Path(__file__).resolve().parent
 WEB = HERE / "studio.html"
@@ -19,6 +20,7 @@ PORT = 8765
 
 def handler_factory(store, token, repo=None):
     source_root = Path(repo).resolve() if repo else Path.cwd()
+    research = Research(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.3"
 
@@ -72,6 +74,13 @@ def handler_factory(store, token, repo=None):
                     return self.write(store.readiness(params.get("id", "")))
                 if path == "/api/studio/context":
                     return self.write(store.context(params.get("id", "")))
+                if path == "/api/studio/research":
+                    return self.write(research.list(params.get("project", "")))
+                if path == "/api/studio/research/detail":
+                    return self.write(research.detail(params.get("id", "")))
+                if path == "/api/studio/research/evaluate":
+                    return self.write(research.evaluate(params.get("study", ""),
+                                                        params.get("option", "")))
                 if path == "/api/studio/saef-preview":
                     return self.write(saef_preview(source_root, store, params.get("project", "")))
                 if path == "/api/studio/export":
@@ -119,6 +128,24 @@ def handler_factory(store, token, repo=None):
                                                     data.get("actor", ""), data.get("note", ""))
                 elif path == "/api/studio/import/saef":
                     answer = import_saef(source_root, store, data.get("project_id", ""))
+                elif path == "/api/studio/research/create":
+                    answer = research.create(data)
+                elif path == "/api/studio/research/option":
+                    answer = research.add_option(data.get("study_id", ""), data)
+                elif path == "/api/studio/research/experiment":
+                    answer = research.add_experiment(data.get("study_id", ""), data)
+                elif path == "/api/studio/research/authorize":
+                    answer = research.authorize(data.get("experiment_id", ""),
+                                                data.get("actor", ""), data.get("note", ""))
+                elif path == "/api/studio/research/result":
+                    answer = research.record_result(data.get("experiment_id", ""), data)
+                elif path == "/api/studio/research/review":
+                    answer = research.review_result(data.get("result_id", ""),
+                                                    data.get("actor", ""), data.get("note", ""))
+                elif path == "/api/studio/research/decide":
+                    answer = research.decide(data.get("study_id", ""), data)
+                elif path == "/api/studio/research/reopen":
+                    answer = research.reopen(data.get("study_id", ""), data)
                 elif len(pieces) == 6 and pieces[:4] == ["", "api", "studio", "object"]:
                     key, verb = pieces[4:6]
                     if verb == "update":
