@@ -6,6 +6,9 @@
     <RootNamespace>AutoTest.FieldStudio</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="System.IO.Ports" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../AutoTest.Core/AutoTest.Core.csproj" />
     <ProjectReference Include="../AutoTest.Contracts/AutoTest.Contracts.csproj" />
     <ProjectReference Include="../AutoTest.Devices/AutoTest.Devices.csproj" />

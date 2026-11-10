@@ -88,8 +88,6 @@ public partial class MainWindow : Window
     private readonly HardwareBenchController _device = new();
     private readonly ObservableCollection<CanRow> _canRows = [];
     private readonly Dictionary<(BusRole Role,uint Id,bool Extended),CanRow> _canById = [];
-    private bool _scannerMode;
-    private bool _scanWasTypedInFocusedField;
     private readonly ObservableCollection<LogRow> _logRows = [];
     private readonly ObservableCollection<ScanRow> _scanRows = [];
     private readonly ObservableCollection<UdsRow> _udsRows = [];
@@ -99,7 +97,9 @@ public partial class MainWindow : Window
     private readonly ConcurrentQueue<CanObservation> _pendingCan = new();
     private readonly DispatcherTimer _renderClock = new() { Interval = TimeSpan.FromMilliseconds(120) };
     private readonly BarcodeInputRouter _scannerRouter = new();
-    private readonly KeyboardWedgeCapture _keyboardScanner;
+    private readonly SerialScannerSession _serialScanner = new();
+    private string _serialScanOrigin = "";
+    private long _serialTotalBytes;
     private readonly CancellationTokenSource _scannerStop = new();
     private readonly Task _scannerPump;
     private readonly HashSet<string> _seenScans = new(StringComparer.Ordinal);
@@ -127,8 +127,24 @@ public partial class MainWindow : Window
         ScanGrid.ItemsSource = _scanRows;
         UdsTraceGrid.ItemsSource = _udsRows;
         DbcFiles.ItemsSource = _dbcFiles;
-        _scannerRouter.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
-        _keyboardScanner = new KeyboardWedgeCapture(_scannerRouter);
+        _scannerRouter.AttachMode(ScannerCaptureMode.Disabled, new InputPolicy(false,512,""));
+        _serialScanner.BytesReceived += ReceiveSerialChunk;
+        _serialScanner.BarcodeReceived += ReceiveSerialBarcode;
+        _serialScanner.Fault += reason =>
+            OnUi(() =>
+            {
+                ScannerSerialConnection.Text = "串口读取失败：" + reason + "；请断开后检查设备。";
+                Log("SCAN SERIAL", reason);
+            });
+        _serialScanner.ConnectionChanged += connected =>
+            OnUi(() =>
+            {
+                ScannerSerialConnect.IsEnabled = !connected;
+                ScannerSerialDisconnect.IsEnabled = connected;
+                ScannerPortCombo.IsEnabled = !connected;
+                ScannerBaudCombo.IsEnabled = !connected;
+                if (!connected) ScanStatus.Text = "扫码 COM 已断开";
+            });
         _scannerPump = Task.Run(() => ObserveAcceptedScansAsync(_scannerStop.Token));
         _device.ConnectionChanged += state => OnUi(() => SetConnectionState(state));
         _device.NativeOperation += fact =>
@@ -143,8 +159,9 @@ public partial class MainWindow : Window
         };
         _renderClock.Tick += (_, _) => DrainCanAndRender();
         _renderClock.Start();
-        ScanModeButton.Content = "开启扫码监听";
-        ScanStatus.Text = "点击扫码框或开启监听";
+        ScannerBaudCombo.ItemsSource = new[] { 9600, 19200, 38400, 57600, 115200, 230400 };
+        ScannerBaudCombo.SelectedItem = 9600;
+        ScanStatus.Text = "扫码 COM 未连接";
         Log("APP", "新独立实测工作台启动；无自动连接、无 CAN 发送、无真实烧录。");
     }
 
@@ -210,6 +227,7 @@ public partial class MainWindow : Window
         UdsServices.SelectedIndex = 0;
         UpdateUdsControls();
         await RefreshAsync();
+        RefreshScannerPorts();
     }
     private async Task RefreshAsync()
     {
@@ -853,89 +871,130 @@ public partial class MainWindow : Window
     }
 
 
-    private void ScanMode_Click(object sender, RoutedEventArgs e)
+
+    private void GoScanner_Click(object sender, RoutedEventArgs e) =>
+        Workspace.SelectedIndex = 5;
+
+    private void RefreshScannerPorts_Click(object sender, RoutedEventArgs e) => RefreshScannerPorts();
+
+    private void RefreshScannerPorts()
     {
-        _scannerMode = !_scannerMode;
-        _keyboardScanner.Clear();
-        ScanBox.Clear();
-        _scanWasTypedInFocusedField = false;
-        ScanModeButton.Content = _scannerMode ? "停止扫码监听" : "开启扫码监听";
-        ScanStatus.Text = _scannerMode ? "扫码模式 · 等待字符 (输入/扫描后可见)" : "未监听 · 点击输入框输入或扫描";
-        if (_scannerMode) ScanBox.Focus();
-        Log("SCAN", _scannerMode
-            ? "窗口扫码模式已开启；当前窗口中的所有文本按键会被视为扫码，普通编辑前请关闭。"
-            : "扫码监听已关闭；可手工点击输入框，再用回车/确认按钮录入。");
-    }
-    private void Window_PreviewTextInput(object sender, TextCompositionEventArgs e)
-    {
-        if (!_scannerMode) return;
-        e.Handled = true;
-        foreach (var ch in e.Text)
+        try
         {
-            var result = _keyboardScanner.OnKeyInput(ch, true);
-            if (result is not null) AdmitScan(result);
-            else ScanBox.AppendText(ch.ToString());
+            string? chosen = ScannerPortCombo.SelectedItem as string;
+            var ports = SerialScannerSession.AvailablePorts();
+            ScannerPortCombo.ItemsSource = ports;
+            if (chosen is not null && ports.Contains(chosen, StringComparer.OrdinalIgnoreCase))
+                ScannerPortCombo.SelectedItem = chosen;
+            else if (ports.Length == 1) ScannerPortCombo.SelectedIndex = 0;
+            ScannerSerialConnection.Text = ports.Length == 0
+                ? "Windows 没有列出可用 COM 端口，请检查 USB 串行设备驱动。"
+                : $"Windows 当前可用端口：{string.Join(", ", ports)}；选择扫码枪所在 COM。";
         }
-        ScanStatus.Text = $"扫码模式 · 捕获 {ScanBox.Text.Length} 字符；等待 Enter / Tab / 确认";
-    }
-    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (!_scannerMode) return;
-        if (e.Key == Key.Escape)
+        catch (Exception ex)
         {
-            ScanMode_Click(sender, e);
-            e.Handled = true;
+            ScannerSerialConnection.Text = "刷新串口失败：" + ex.Message;
+            Log("SCAN SERIAL", ex.ToString());
         }
-        if (e.Key is Key.Enter or Key.Tab)
-        {
-            var result = _keyboardScanner.OnKeyInput('\r', true);
-            if (result is not null) AdmitScan(result);
-            ScanBox.Clear();
-            e.Handled = true;
-        }
-    }
-    private void ScanBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        // The user may click the explicit Confirm button after a scanner with
-        // no Enter suffix has filled the focused textbox. Button focus then
-        // changes, but the input was actually captured in the intended field.
-        if (!_scannerMode && ScanBox.IsKeyboardFocused && ScanBox.Text.Length > 0)
-            _scanWasTypedInFocusedField = true;
-        if (!_scannerMode && ScanBox.IsKeyboardFocused)
-            ScanStatus.Text = ScanBox.Text.Length == 0
-                ? "输入框已聚焦 · 等待键盘/扫码枪字符"
-                : $"已接收 {ScanBox.Text.Length} 字符 · 按 Enter 或点击确认";
     }
 
-    private void ScanBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    private void ScannerConnect_Click(object sender, RoutedEventArgs e)
     {
-        if (_scannerMode || (e.Key is not (Key.Enter or Key.Tab))) return;
-        ScanConfirm_Click(sender, e);
-        e.Handled = true;
-    }
-    private void ScanConfirm_Click(object sender, RoutedEventArgs e)
-    {
-        if (_scannerMode)
+        try
         {
-            var result = _keyboardScanner.CompleteScan();
-            AdmitScan(result);
-            ScanBox.Clear();
-            ScanStatus.Text = result.Accepted
-                ? "扫码内容已提交验证队列"
-                : $"未提交：{result.Code}（检查是否收到字符）";
+            if (_serialScanner.PortName is not null)
+                throw new InvalidOperationException("扫码枪串口已连接，请先断开。");
+            var port = ScannerPortCombo.SelectedItem as string;
+            if (string.IsNullOrWhiteSpace(port))
+                throw new InvalidOperationException("请选择设备管理器中 USB 串行设备所对应的 COM 口。");
+            int baud = ScannerBaudCombo.SelectedItem is int selected ? selected
+                : throw new InvalidOperationException("请选择扫码枪实际波特率。");
+            _serialScanOrigin = "serial:" + port;
+            _scannerRouter.AttachVerifiedSerial(new InputPolicy(false,512,_serialScanOrigin),
+                verifiedByOperator: true);
+            _serialScanner.Connect(port, baud);
+            ScanStatus.Text = $"{port} · 等待扫码";
+            ScannerSerialConnection.Text = $"{port} 已打开 · {baud} bps · 8N1 · 无流控 · 只接收";
+            ScannerByteCount.Text = "累计接收：0 字节";
+            ScannerRawHex.Clear();
+            ScannerLastBarcode.Clear();
+            Interlocked.Exchange(ref _serialTotalBytes, 0);
+            Log("SCAN SERIAL", $"连接 {port}, {baud}, 8N1, no flow control; 未发送任何串口命令。");
+        }
+        catch (Exception ex)
+        {
+            ScannerSerialConnection.Text = "打开扫码枪串口失败：" + ex.Message;
+            ScanStatus.Text = "扫码串口连接失败";
+            _scannerRouter.AttachMode(ScannerCaptureMode.Disabled, new InputPolicy(false,512,""));
+            Log("SCAN SERIAL", ex.ToString());
+        }
+    }
+
+    private async void ScannerDisconnect_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _serialScanner.DisconnectAsync();
+            _scannerRouter.AttachMode(ScannerCaptureMode.Disabled, new InputPolicy(false,512,""));
+            ScannerSerialConnection.Text = "扫码枪串口已断开；主控 WinUSB 不受影响。";
+            ScanStatus.Text = "扫码 COM 已断开";
+            ScannerSerialConnect.IsEnabled = true;
+            ScannerSerialDisconnect.IsEnabled = false;
+            ScannerPortCombo.IsEnabled = true;
+            ScannerBaudCombo.IsEnabled = true;
+            Log("SCAN SERIAL","扫码枪断开。");
+        }
+        catch (Exception ex) { Log("SCAN SERIAL", "关闭串口失败：" + ex); }
+    }
+
+    private void ReceiveSerialChunk(byte[] raw)
+    {
+        var total=Interlocked.Add(ref _serialTotalBytes,raw.Length);
+        var hex=Convert.ToHexString(raw.AsSpan(0,Math.Min(raw.Length,100)));
+        OnUi(() =>
+        {
+            ScannerByteCount.Text = $"累计接收：{total:N0} 字节";
+            ScannerRawHex.Text = hex + (raw.Length>100 ? $" … (本次 {raw.Length} 字节)" : "");
+            ScannerPending.Text = $"最近接收：{DateTime.Now:HH:mm:ss.fff}，{raw.Length} 字节";
+            ScanStatus.Text = $"{_serialScanner.PortName ?? "COM"} · 已收 {total:N0} 字节";
+        });
+    }
+
+    private void ReceiveSerialBarcode(SerialBarcodePacket packet)
+    {
+        string origin=_serialScanOrigin;
+        string hex=Convert.ToHexString(packet.Data.AsSpan());
+        string value;
+        try
+        {
+            // A barcode commonly contains ASCII; UTF-8 also preserves Unicode
+            // when the scanner is configured for that encoding. Do not silently
+            // substitute replacement characters for an unknown serial codepage.
+            value = new UTF8Encoding(false,throwOnInvalidBytes:true)
+                .GetString(packet.Data.AsSpan());
+        }
+        catch (DecoderFallbackException ex)
+        {
+            OnUi(() =>
+            {
+                ScannerPending.Text="扫码字节编码不符合 UTF-8；请查看原始 HEX 和扫码枪编码设置。";
+                Log("SCAN SERIAL",$"编码失败；raw={hex}; {ex.Message}");
+            });
             return;
         }
-        string input = ScanBox.Text.Trim();
-        var scan = new RawScan(input, "keyboard",
-            TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp()),
-            ScanBox.IsKeyboardFocused || _scanWasTypedInFocusedField);
-        var result = _scannerRouter.PublishRaw(scan, ScannerCaptureMode.KeyboardWedge);
-        AdmitScan(result);
-        if (!result.Accepted && result.Code == "SCAN_EMPTY")
-            ScanStatus.Text = "输入框为空：尚未收到任何字符。先点击输入框敲键盘验证，再扫描。";
-        ScanBox.Clear();
-        _scanWasTypedInFocusedField = false;
+        var scan = new RawScan(value,origin,
+            TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp()),false);
+        var result = _scannerRouter.PublishRaw(scan,ScannerCaptureMode.VerifiedSerial);
+        OnUi(() =>
+        {
+            ScannerLastBarcode.Text = value;
+            ScannerPending.Text = $"完整数据：{packet.Boundary} 结束 · {packet.Data.Length} 字节";
+            ScanStatus.Text = result.Accepted ? $"条码已接收 · {DateTime.Now:HH:mm:ss}" :
+                $"扫码未通过：{result.Code}";
+            AdmitScan(result);
+        });
     }
+
     private void AdmitScan(ScanIngressResult result)
     {
         if (result.Accepted && result.Event is not null)
@@ -951,7 +1010,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var policy = new InputPolicy(true, 512, "keyboard");
+            var policy = new InputPolicy(false, 512, "");
             await foreach (var accepted in _scannerRouter.ObserveAsync(policy, ct).ConfigureAwait(false))
             {
                 OnUi(() =>
@@ -984,6 +1043,7 @@ public partial class MainWindow : Window
         {
             _renderClock.Stop();
             _scannerStop.Cancel();
+            await _serialScanner.DisposeAsync();
             _udsStop?.Cancel(); _rxStop?.Cancel();
             await _device.DisposeAsync();
             try { await _scannerPump; } catch (OperationCanceledException) { }

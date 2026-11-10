@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="AutoTest · 真实硬件联调工作台" Width="1560" Height="930"
  MinWidth="1180" MinHeight="690" WindowState="Maximized" Background="{StaticResource CanvasBrush}"
- Loaded="Window_Loaded" Closing="Window_Closing" PreviewTextInput="Window_PreviewTextInput" PreviewKeyDown="Window_PreviewKeyDown">
+ Loaded="Window_Loaded" Closing="Window_Closing">
  <Grid>
   <Grid.RowDefinitions>
    <RowDefinition Height="66"/>
@@ -34,12 +34,9 @@
      <TextBlock x:Name="CanStatus" Text="CAN1 DUT · 未采集" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
     </StackPanel>
     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button x:Name="ScanModeButton" Content="开启扫码监听" Click="ScanMode_Click" ToolTip="开启后，当前窗口的普通键盘输入也将作为扫码采集；编辑其它参数前关闭"/>
-     <TextBox x:Name="ScanBox" Width="175" ToolTip="扫码枪键盘模式：点此输入后回车；无回车后缀可点右侧确认"
-       PreviewKeyDown="ScanBox_PreviewKeyDown" TextChanged="ScanBox_TextChanged"/>
-     <Button Content="确认" Click="ScanConfirm_Click" ToolTip="接收当前输入框的内容；不要求扫码枪配置回车后缀"/>
-     <TextBlock x:Name="ScanStatus" Text="扫码未开启" VerticalAlignment="Center" Width="180" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
-     <TextBlock x:Name="CurrentDut" Text="DUT：未识别" VerticalAlignment="Center" MinWidth="125" FontSize="12"/>
+     <Button Content="扫码枪设置" Click="GoScanner_Click" ToolTip="选择 Windows 设备管理器里的 USB 串行设备 (COMx)"/>
+     <TextBlock x:Name="ScanStatus" Text="扫码 COM 未连接" VerticalAlignment="Center" Width="175" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
+     <TextBlock x:Name="CurrentDut" Text="DUT：未识别" VerticalAlignment="Center" MinWidth="150" FontSize="12"/>
     </StackPanel>
    </Grid>
   </Border>
@@ -288,19 +285,38 @@
    <TabItem Header=" 扫码 / DUT ">
     <Grid Margin="14">
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <TextBlock Text="扫码枪输入诊断与 DUT 身份采集" Style="{StaticResource HeaderText}"/>
+     <TextBlock Text="USB 串口扫码枪 / DUT 身份采集" Style="{StaticResource HeaderText}"/>
      <Border Grid.Row="1" Style="{StaticResource CardBorder}" Margin="0,0,0,12">
       <StackPanel>
-       <TextBlock Text="实际扫码测试方式" Style="{StaticResource SectionText}"/>
-       <TextBlock Text="① 单击顶部空白输入框，先敲键盘 ABC123：应看到“已接收 6 字符”。再按 Enter 或点确认，记录应进入下方列表。" TextWrapping="Wrap" Margin="0,0,0,4"/>
-       <TextBlock Text="② 若键盘测试正常，把光标放回输入框，再用扫码枪扫条码；如带 Enter / Tab 后缀，会自动提交，无后缀则点确认。" TextWrapping="Wrap" Margin="0,0,0,4"/>
-       <TextBlock Text="③ 也可点“开启扫码监听”，在当前程序窗口集中接收键盘仿真输入；扫码前确保程序窗口处于前台，完成后务必停止监听。" TextWrapping="Wrap" Margin="0,0,0,4"/>
-       <TextBlock Text="若扫码时输入框字符数始终为 0：程序没有收到键盘输入。需检查扫码枪是 HID 键盘仿真、USB 虚拟串口还是厂商专有 HID 模式；本版尚未接串口适配器。" Style="{StaticResource MutedText}"/>
+       <TextBlock Text="扫码枪 COM 串口连接 · 独立于主控板 WinUSB" Style="{StaticResource SectionText}"/>
+       <StackPanel Orientation="Horizontal" Margin="0,6,0,8">
+        <TextBlock Text="设备串口" VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <ComboBox x:Name="ScannerPortCombo" Width="110" ToolTip="选择设备管理器中 USB 串行设备 (COMx) 对应的 COM 号"/>
+        <Button Content="刷新串口" Click="RefreshScannerPorts_Click"/>
+        <TextBlock Text="波特率" VerticalAlignment="Center" Margin="4,0,8,0"/>
+        <ComboBox x:Name="ScannerBaudCombo" Width="110" ToolTip="必须与扫码枪当前串口配置一致；8 数据位、无校验、1 停止位、无流控"/>
+        <Button x:Name="ScannerSerialConnect" Content="连接扫码枪" Style="{StaticResource PrimaryButton}" Click="ScannerConnect_Click"/>
+        <Button x:Name="ScannerSerialDisconnect" Content="断开扫码枪" Click="ScannerDisconnect_Click" IsEnabled="False"/>
+       </StackPanel>
+       <TextBlock x:Name="ScannerSerialConnection" Text="未连接串口；先刷新、选择对应 COM 和实际波特率。" Style="{StaticResource MutedText}" Margin="0,0,0,7"/>
+       <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+        <TextBlock x:Name="ScannerByteCount" Text="累计接收：0 字节" FontWeight="SemiBold" Margin="0,0,22,0"/>
+        <TextBlock x:Name="ScannerPending" Text="等待数据；尚未发现扫码枪输入" Foreground="{StaticResource MutedBrush}"/>
+       </StackPanel>
+       <TextBlock Text="最近串口原始字节（HEX）" Margin="0,3,0,4"/>
+       <TextBox x:Name="ScannerRawHex" IsReadOnly="True" Height="50" TextWrapping="Wrap"
+                VerticalScrollBarVisibility="Auto" FontFamily="Consolas"/>
+       <TextBlock Text="最近完整条码" Margin="0,8,0,4" FontWeight="SemiBold"/>
+       <TextBox x:Name="ScannerLastBarcode" IsReadOnly="True" Height="30" FontSize="15"/>
+       <TextBlock Text="操作：插上扫码枪 → 选设备管理器中的 COMx 和波特率 → 连接扫码枪 → 直接扫码。收到回车/换行/ETX 即提交；无结束符时短暂无数据后提交。无需点击输入框或“确认”。"
+                  TextWrapping="Wrap" Margin="0,12,0,4"/>
+       <TextBlock Text="若接收字节数始终为 0，检查 COM 号、波特率、设备串口模式及端口是否被其他软件占用。原始 HEX 用于分析数据格式；识别失败时不会伪造条码。"
+                  Style="{StaticResource MutedText}"/>
       </StackPanel>
      </Border>
      <Border Grid.Row="2" Style="{StaticResource CardBorder}">
       <DockPanel>
-       <TextBlock DockPanel.Dock="Top" Text="扫码历史（只有明确收到并提交的输入；不代表已匹配 ECU 型号）" Style="{StaticResource SectionText}"/>
+       <TextBlock DockPanel.Dock="Top" Text="扫码记录（成功扫码不等于已识别 ECU 型号；重复扫码不增加出厂计数）" Style="{StaticResource SectionText}"/>
        <DataGrid x:Name="ScanGrid"/>
       </DockPanel>
      </Border>
