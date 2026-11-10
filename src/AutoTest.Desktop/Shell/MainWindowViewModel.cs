@@ -8,6 +8,7 @@ using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Runtime;
+using AutoTest.Testing.Lab;
 using Microsoft.Win32;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -81,6 +82,7 @@ public sealed class MainWindowViewModel : BindableBase
     private string _observationStatus = "NO_OBSERVATION";
     private string _verdict = "Inconclusive / NOT_PRODUCTION";
     private string _failureReason = "";
+    private string _r2PrepareStatus = "R2 TEST 尚未准备（真实执行未授权）";
     private string _projectLabel = "未保存工程";
     private string _editableProjectName = "未命名测试工程";
     private string _dbcFactor = "1";
@@ -107,6 +109,7 @@ public sealed class MainWindowViewModel : BindableBase
         PinToDbcCommand = new DelegateCommand(() => Edit(() => { if (SelectedStep is not null) Workspace.PinStepToDbc(SelectedStep.Id); }), () => !_busy && SelectedStep is not null);
         RebindCommand = new DelegateCommand(() => Edit(() => { if (SelectedStep is not null) Workspace.RebindDbcReference(SelectedStep.Id); }), () => !_busy && SelectedStep is not null);
         ValidateCommand = new DelegateCommand(Validate);
+        PrepareR2Command = new DelegateCommand(PrepareR2);
         UndoCommand = new DelegateCommand(() => Edit(() => Workspace.Editor.Undo()), () => !_busy && Workspace.Editor.CanUndo);
         RedoCommand = new DelegateCommand(() => Edit(() => Workspace.Editor.Redo()), () => !_busy && Workspace.Editor.CanRedo);
         NewProjectCommand = new DelegateCommand(NewProject, () => !_busy);
@@ -191,6 +194,7 @@ public sealed class MainWindowViewModel : BindableBase
     public string ObservationStatus { get => _observationStatus; private set => SetProperty(ref _observationStatus, value); }
     public string Verdict { get => _verdict; private set => SetProperty(ref _verdict, value); }
     public string FailureReason { get => _failureReason; private set => SetProperty(ref _failureReason, value); }
+    public string R2PrepareStatus { get => _r2PrepareStatus; private set => SetProperty(ref _r2PrepareStatus, value); }
     public DelegateCommand InsertRootCommand { get; }
     public DelegateCommand CopyCommand { get; }
     public DelegateCommand InsertBeforeCommand { get; }
@@ -204,6 +208,7 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand PinToDbcCommand { get; }
     public DelegateCommand RebindCommand { get; }
     public DelegateCommand ValidateCommand { get; }
+    public DelegateCommand PrepareR2Command { get; }
     public DelegateCommand UndoCommand { get; }
     public DelegateCommand RedoCommand { get; }
     public DelegateCommand NewProjectCommand { get; }
@@ -444,6 +449,32 @@ public sealed class MainWindowViewModel : BindableBase
         Diagnostic = errors.Count == 0 ? "Prepare READY · 测试文档及资源引用有效（仅可 Mock 执行）"
             : "Prepare BLOCKED: " + string.Join("; ", errors);
     }
+    private void PrepareR2()
+    {
+        try
+        {
+            var resourceErrors = Workspace.Diagnostics();
+            if (resourceErrors.Count > 0)
+            {
+                R2PrepareStatus = "R2 PREPARE BLOCKED: " + string.Join("; ", resourceErrors);
+                return;
+            }
+            var plan = ProjectTestProgramAdapter.Prepare(Workspace.Document);
+            if (!plan.Ready)
+            {
+                R2PrepareStatus = "R2 PREPARE BLOCKED: " + string.Join("; ", plan.Diagnostics);
+                return;
+            }
+            R2PrepareStatus = "R2 统一工程 TEST 快照已编译 / SHA256 " +
+                plan.Digest[..12] +
+                " / 非物理放行：真实动作仍需设备接口、操作授权和实测证据";
+        }
+        catch (Exception ex)
+        {
+            R2PrepareStatus = "R2 PREPARE BLOCKED: " + ex.Message;
+        }
+    }
+
     private void NewProject()
     {
         try { Workspace.CreateProject("新建工程"); Refresh(); FactLines.Clear(); Status = "已新建未保存工程"; }
