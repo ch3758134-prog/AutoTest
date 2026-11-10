@@ -85,7 +85,7 @@ class EngineeringStoreTest(unittest.TestCase):
     def test_project_separation_rejects_links_and_parent(self):
         a = self.create("system", "系统 A")
         b = self.create("system", "系统 B", self.p2["id"])
-        with self.assertRaisesRegex(RuleError, "different project"):
+        with self.assertRaisesRegex(RuleError, "[Cc]ross.project|different project"):
             self.store.create_relation({"source_id":a["id"],"target_id":b["id"],"kind":"defines"})
         with self.assertRaisesRegex(RuleError, "different project"):
             self.store.create_object({"project_id":self.p1["id"],"kind":"requirement",
