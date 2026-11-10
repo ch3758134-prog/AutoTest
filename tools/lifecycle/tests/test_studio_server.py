@@ -41,6 +41,13 @@ class StudioApiTest(unittest.TestCase):
         with urlopen(req, timeout=5) as response:
             return response.status, json.loads(response.read().decode("utf-8"))
 
+    def test_version_endpoint_identifies_editable_studio(self):
+        status, version = self.request("/api/studio/version")
+        self.assertEqual(status, 200)
+        self.assertEqual(version["version"], "0.4")
+        self.assertEqual(version["mode"], "editable")
+        self.assertFalse(version["legacy"])
+
     def test_bootstrap_no_credentials_and_empty_projects(self):
         status, boot = self.request("/api/studio/bootstrap")
         self.assertEqual(status, 200)
