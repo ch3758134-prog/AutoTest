@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using AutoTest.Testing.Lab;
+using AutoTest.Application.V1;
 
 namespace AutoTest.Desktop.Tools.Testing;
 
@@ -29,6 +30,7 @@ internal sealed class LabCommand(Action run, Func<bool>? enabled = null) : IComm
 public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
 {
     private LabDocumentEditor _editor;
+    private V1Workspace? _project;
     private readonly LabRunCoordinator _runner;
     private readonly ILabStation _station;
     private readonly LabPlanCompiler _compiler;
@@ -47,6 +49,11 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
     public LabTestWorkspaceViewModel() : this(new SimulatedLabStation(), new LabPlanCompiler()) { }
+    public LabTestWorkspaceViewModel(V1Workspace project) : this(new SimulatedLabStation(), new LabPlanCompiler())
+    {
+        _project = project ?? throw new ArgumentNullException(nameof(project));
+        ReloadFromProject();
+    }
     public LabTestWorkspaceViewModel(ILabStation station, LabPlanCompiler compiler)
     {
         _station = station; _compiler = compiler;
@@ -83,6 +90,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         StopCommand = new LabCommand(() => Control(_runner.Stop), () => Busy);
         SaveCommand = new LabCommand(SaveFile, () => !Busy);
         OpenCommand = new LabCommand(OpenFile, () => !Busy);
+        SaveToProjectCommand = new LabCommand(SaveToProject, () => !Busy && _project is not null);
+        ReloadProjectCommand = new LabCommand(ReloadFromProject, () => !Busy && _project is not null);
         Rebuild();
     }
 
@@ -97,7 +106,15 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public string Status { get => _status; private set { _status = value; Changed(); } }
     public string Verdict { get => _verdict; private set { _verdict = value; Changed(); } }
     public bool Busy { get => _busy; private set { _busy = value; Changed(); RefreshCommands(); } }
-    public string SourceLabel => "MOCK • NEVER PHYSICAL";
+    public string SourceLabel => _project is null ? "STANDALONE LAB / MOCK" :
+        "PROJECT-MANAGED R2 TEST / MOCK EXECUTION ONLY";
+    public string ProjectAssetStatus => _project is null
+        ? "未绑定工程；LAB 文件独立保存"
+        : _project.LabProgramAssetId is { } id
+            ? "工程测试程序 · " + _project.Assets.Single(x => x.Id == id).Name +
+              " · r" + _project.Assets.Single(x => x.Id == id).Revision +
+              "（修改后需重新提交工程版本）"
+            : "当前工程尚无 R2 高级测试程序；点击【纳入当前工程】登记版本";
     public string DocumentName => _editor.Snapshot.Name;
     public ICommand InsertCommand { get; }
     public ICommand DeleteCommand { get; }
@@ -118,6 +135,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public ICommand StopCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand OpenCommand { get; }
+    public ICommand SaveToProjectCommand { get; }
+    public ICommand ReloadProjectCommand { get; }
 
     public void Select(LabTreeRow? row)
     {
@@ -150,7 +169,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         foreach (var command in new[] { InsertCommand, DeleteCommand, CopyCommand, UpCommand,
             DownCommand, RenameCommand, SetParameterCommand, UndoCommand, RedoCommand,
             PreflightCommand, RunMockCommand, PauseCommand, ResumeCommand, StepCommand,
-            SkipCommand, RunToCommand, StopCommand, SaveCommand, OpenCommand })
+            SkipCommand, RunToCommand, StopCommand, SaveCommand, OpenCommand,
+            SaveToProjectCommand, ReloadProjectCommand })
             (command as LabCommand)?.Refresh();
     }
     private void Rebuild()
@@ -305,6 +325,41 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         if (_ui is null || SynchronizationContext.Current == _ui) action();
         else _ui.Post(_ => action(), null);
     }
+    private void SaveToProject()
+    {
+        try
+        {
+            if (Busy) throw new InvalidOperationException("Cannot publish a program during execution");
+            var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
+            var json = ExportJson();
+            if (project.LabProgramAssetId is { } id)
+            {
+                var asset = project.Assets.Single(x => x.Id == id);
+                project.ReplaceLabProgram(json, asset.ToReference());
+            }
+            else project.ImportLabProgram(json);
+            Changed(nameof(ProjectAssetStatus));
+            Status = "R2 TEST 已登记为当前工程版本资源；请到 P01 点击【保存工程】写入磁盘。当前仍禁止真实物理执行。";
+        }
+        catch (Exception ex) { Status = "工程 TEST 登记失败：" + ex.Message; }
+    }
+
+    public void ReloadFromProject()
+    {
+        try
+        {
+            if (Busy) throw new InvalidOperationException("Cannot reload a program during execution");
+            var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
+            var program = project.LabProgram ?? LabDocument.New("R2 project TEST program");
+            ImportJson(LabDocumentCodec.Save(program));
+            Status = project.LabProgram is null
+                ? "当前工程尚无 R2 高级测试程序；新建草稿未登记，必须显式纳入工程。"
+                : "R2 TEST 已从当前工程已登记资源加载；编辑后需创建新 Revision。";
+            Changed(nameof(ProjectAssetStatus));
+        }
+        catch (Exception ex) { Status = "重新加载工程 TEST 失败：" + ex.Message; }
+    }
+
     private void SaveFile()
     {
         try
