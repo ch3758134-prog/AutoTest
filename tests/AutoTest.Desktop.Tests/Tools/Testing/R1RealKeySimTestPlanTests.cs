@@ -133,4 +133,67 @@ public sealed class R1RealKeySimTestPlanTests
         Assert.True(R1KeySimCleanupPolicy.HasUnconditionalRelease(program, data.Profile));
     }
 
+    [Fact]
+    public void CleanupMustBeginWithUnconditionalPhysicalAllKeyRelease()
+    {
+        var data = Profile();
+        var bindings = new[] { new LabControllerRef(
+            data.Controller.ToString("D"), data.Active.ToString("D"),
+            data.Profile.Revision.ToString()) };
+        var doc = LabDocument.New("Real first release policy");
+        doc.Phases[LabPhase.Test].Add(
+            State(data.Controller, data.Active, data.Profile.Revision));
+        var conditional = LabNode.New("If");
+        conditional.Parameters["variable"] = "mode";
+        conditional.Parameters["equals"] = "ready";
+        conditional.Slots.Add("then", new List<LabNode> {
+            State(data.Controller, data.Release, data.Profile.Revision)
+        });
+        conditional.Slots.Add("else", new List<LabNode>());
+        doc.Phases[LabPhase.Cleanup].Add(conditional);
+        Assert.Contains("KEYSIM_CLEANUP_FIRST_RELEASE_REQUIRED",
+            Assert.Throws<InvalidOperationException>(() =>
+                R1KeySimCleanupPolicy.RequireUnconditionalRelease(
+                    doc, data.Profile, bindings)).Message);
+        doc.Phases[LabPhase.Cleanup].Insert(0,
+            State(data.Controller, data.Release, data.Profile.Revision));
+        R1KeySimCleanupPolicy.RequireUnconditionalRelease(doc, data.Profile, bindings);
+    }
+
+    [Fact]
+    public void CleanupCannotReactivateAnyKeyAfterRelease()
+    {
+        var data = Profile();
+        var binding = new LabControllerRef(data.Controller.ToString("D"),
+            data.Active.ToString("D"), data.Profile.Revision.ToString());
+        var doc = LabDocument.New("No reactivation");
+        doc.Phases[LabPhase.Test].Add(
+            State(data.Controller, data.Active, data.Profile.Revision));
+        doc.Phases[LabPhase.Cleanup].Add(
+            State(data.Controller, data.Release, data.Profile.Revision));
+        var nested = LabNode.New("Sequence");
+        nested.Slots.Add("body", new List<LabNode>
+        {
+            State(data.Controller, data.Active, data.Profile.Revision)
+        });
+        doc.Phases[LabPhase.Cleanup].Add(nested);
+        Assert.Contains("KEYSIM_CLEANUP_REACTIVATION_FORBIDDEN",
+            Assert.Throws<InvalidOperationException>(() =>
+                R1KeySimCleanupPolicy.RequireUnconditionalRelease(
+                    doc, data.Profile, new[] { binding })).Message);
+    }
+
+    [Fact]
+    public void ReleaseOnlyProgramDoesNotRequireRedundantSecondRelease()
+    {
+        var data = Profile();
+        var binding = new LabControllerRef(data.Controller.ToString("D"),
+            data.Release.ToString("D"), data.Profile.Revision.ToString());
+        var doc = LabDocument.New("Release only");
+        doc.Phases[LabPhase.Test].Add(
+            State(data.Controller, data.Release, data.Profile.Revision));
+        R1KeySimCleanupPolicy.RequireUnconditionalRelease(
+            doc, data.Profile, new[] { binding });
+    }
+
 }
