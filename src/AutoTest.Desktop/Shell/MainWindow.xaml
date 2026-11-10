@@ -9,6 +9,7 @@
  Title="AutoTest Studio · R1 产品工作台 / 设计接入候选"
  Width="1600" Height="960" MinWidth="1150" MinHeight="720"
  WindowStartupLocation="CenterScreen" WindowState="Maximized"
+ Closing="Window_Closing"
  Background="#101620" Foreground="#E2EDF7"
  FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True"
  SnapsToDevicePixels="True">
@@ -29,6 +30,17 @@
    <Setter Property="BorderThickness" Value="0"/>
    <Setter Property="Foreground" Value="#B6C9D9"/>
    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+   <Style.Triggers>
+    <Trigger Property="Tag" Value="active">
+     <Setter Property="Background" Value="#163C60"/>
+     <Setter Property="Foreground" Value="#4FAAFB"/>
+     <Setter Property="BorderBrush" Value="#4FAAFB"/>
+     <Setter Property="BorderThickness" Value="3,0,0,0"/>
+    </Trigger>
+    <Trigger Property="IsMouseOver" Value="True">
+     <Setter Property="Background" Value="#2C4054"/>
+    </Trigger>
+   </Style.Triggers>
   </Style>
   <Style x:Key="R1PanelHeader" TargetType="TextBlock">
    <Setter Property="FontWeight" Value="SemiBold"/>
@@ -155,20 +167,20 @@
    <Border Background="#141D29" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
      <StackPanel>
-      <Button Content="工程" Style="{StaticResource R1RailButton}" Click="OpenProject_Click" ToolTip="P01 工程资源 / Revision"/>
-      <Button Content="设备" Style="{StaticResource R1RailButton}" Click="OpenStation_Click" ToolTip="P02 主控 USB / 站点"/>
-      <Button Content="CAN" Style="{StaticResource R1RailButton}" Click="OpenCan_Click" ToolTip="P03 CAN1/CAN0 被动监视"/>
-      <Button Content="DBC" Style="{StaticResource R1RailButton}" Click="OpenDbc_Click" ToolTip="P04 DBC 文件 / 信号编辑"/>
-      <Button Content="控制" Style="{StaticResource R1RailButton}" Click="OpenController_Click" ToolTip="P05 Controller Designer"/>
-      <Button Content="台架" Style="{StaticResource R1RailButton}" Click="OpenBench_Click" ToolTip="P06 Manual Bench / 当前物理操作未接入"/>
-      <Button Content="波形" Style="{StaticResource R1RailButton}" Click="OpenWave_Click" ToolTip="P07 波形采集与比较"/>
-      <Button Content="UDS" Style="{StaticResource R1RailButton}" Click="OpenUds_Click" ToolTip="P08 诊断 Console"/>
-      <Button Content="烧录" Style="{StaticResource R1RailButton}" Click="OpenFlash_Click" ToolTip="P09 CAN Flash"/>
-      <Button Content="测试" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P10 TEST 编辑"/>
-      <Button Content="运行" Style="{StaticResource R1RailButton}" Click="OpenRun_Click" ToolTip="P11 TEST 调试（实验室）"/>
-      <Button Content="扫码" Style="{StaticResource R1RailButton}" Click="OpenProduction_Click" ToolTip="P12 Production Scan"/>
-      <Button Content="记录" Style="{StaticResource R1RailButton}" Click="OpenRecords_Click" ToolTip="P13 Records & Reports"/>
-      <Button Content="审计" Style="{StaticResource R1RailButton}" Click="OpenAudit_Click" ToolTip="Operations Audit"/>
+      <Button x:Name="R1ProjectRail" Content="工程" Style="{StaticResource R1RailButton}" Click="OpenProject_Click" ToolTip="P01 工程资源 / Revision"/>
+      <Button x:Name="R1StationRail" Content="设备" Style="{StaticResource R1RailButton}" Click="OpenStation_Click" ToolTip="P02 主控 USB / 站点"/>
+      <Button x:Name="R1CanRail" Content="CAN" Style="{StaticResource R1RailButton}" Click="OpenCan_Click" ToolTip="P03 CAN1/CAN0 被动监视"/>
+      <Button x:Name="R1DbcRail" Content="DBC" Style="{StaticResource R1RailButton}" Click="OpenDbc_Click" ToolTip="P04 DBC 文件 / 信号编辑"/>
+      <Button x:Name="R1ControllerRail" Content="控制" Style="{StaticResource R1RailButton}" Click="OpenController_Click" ToolTip="P05 Controller Designer"/>
+      <Button x:Name="R1BenchRail" Content="台架" Style="{StaticResource R1RailButton}" Click="OpenBench_Click" ToolTip="P06 Manual Bench / 当前物理操作未接入"/>
+      <Button x:Name="R1WaveRail" Content="波形" Style="{StaticResource R1RailButton}" Click="OpenWave_Click" ToolTip="P07 波形采集与比较"/>
+      <Button x:Name="R1UdsRail" Content="UDS" Style="{StaticResource R1RailButton}" Click="OpenUds_Click" ToolTip="P08 诊断 Console"/>
+      <Button x:Name="R1FlashRail" Content="烧录" Style="{StaticResource R1RailButton}" Click="OpenFlash_Click" ToolTip="P09 CAN Flash"/>
+      <Button x:Name="R1TestRail" Content="测试" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P10 TEST 编辑"/>
+      <Button x:Name="R1RunRail" Content="运行" Style="{StaticResource R1RailButton}" Click="OpenRun_Click" ToolTip="P11 TEST 调试（实验室）"/>
+      <Button x:Name="R1ProductionRail" Content="扫码" Style="{StaticResource R1RailButton}" Click="OpenProduction_Click" ToolTip="P12 Production Scan"/>
+      <Button x:Name="R1RecordsRail" Content="记录" Style="{StaticResource R1RailButton}" Click="OpenRecords_Click" ToolTip="P13 Records & Reports"/>
+      <Button x:Name="R1AuditRail" Content="审计" Style="{StaticResource R1RailButton}" Click="OpenAudit_Click" ToolTip="Operations Audit"/>
      </StackPanel>
     </ScrollViewer>
    </Border>
@@ -186,7 +198,7 @@
    </Border>
    <GridSplitter Grid.Column="2" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
    <Border Grid.Column="3" Background="#101620">
-    <TabControl x:Name="WorkbenchTabs" Background="#101620" SelectedIndex="0">
+    <TabControl x:Name="WorkbenchTabs" Background="#101620" SelectedIndex="0" SelectionChanged="WorkbenchTabs_SelectionChanged">
      <TabItem Header="P01 工程">
       <ScrollViewer Background="#101620" Padding="22">
        <StackPanel MaxWidth="880" HorizontalAlignment="Left">
@@ -259,10 +271,23 @@
      <Border DockPanel.Dock="Top" Background="#202D3B" Padding="12,12,12,9">
       <StackPanel>
        <TextBlock Text="INSPECTOR / 属性" Style="{StaticResource R1PanelHeader}"/>
-       <TextBlock Text="当前 TEST 选择与资源关联" Foreground="{StaticResource R1Muted}" Margin="0,5,0,0" FontSize="11"/>
+       <TextBlock x:Name="R1InspectorTitle" Text="工程 / Revision" FontSize="13" FontWeight="SemiBold" Margin="0,7,0,0"/>
+       <TextBlock x:Name="R1InspectorDescription" Text="当前选择、属性与资源关联" Foreground="{StaticResource R1Muted}" Margin="0,7,0,0" FontSize="11" TextWrapping="Wrap"/>
       </StackPanel>
      </Border>
-     <ContentControl prism:RegionManager.RegionName="StepInspectorRegion"/>
+     <Grid>
+      <Border x:Name="R1StepInspectorHost" Visibility="Collapsed">
+       <ContentControl prism:RegionManager.RegionName="StepInspectorRegion"/>
+      </Border>
+      <StackPanel x:Name="R1InspectorContext" Margin="13">
+       <TextBlock Text="CURRENT CONTEXT / 当前工作区" Foreground="{StaticResource R1Muted}" FontSize="10" Margin="0,0,0,12"/>
+       <TextBlock Text="选中中央专业工具中的内容可查看、编辑或保存。操作与工程资源由对应 ViewModel 管理。" TextWrapping="Wrap" Foreground="#C1D4E2" Margin="0,0,0,14"/>
+       <Border BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0" Margin="0,0,0,13"/>
+       <TextBlock Text="资源关联" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,10"/>
+       <TextBlock Text="{Binding ProjectLabel}" TextWrapping="Wrap" FontSize="12"/>
+       <TextBlock Text="Profile/Revision 与当前工作区随导航更新；具体专业属性在中央编辑器内显示。" Foreground="{StaticResource R1Muted}" TextWrapping="Wrap" FontSize="11" Margin="0,10,0,0"/>
+      </StackPanel>
+     </Grid>
     </DockPanel>
    </Border>
   </Grid>
@@ -271,7 +296,7 @@
    <DockPanel>
     <Border DockPanel.Dock="Top" Background="#202D3B" Padding="12,6">
      <StackPanel Orientation="Horizontal">
-      <TextBlock Text="OUTPUT / TRACE" FontWeight="SemiBold"/>
+      <TextBlock x:Name="R1BottomLabel" Text="OUTPUT / TRACE" FontWeight="SemiBold"/>
       <TextBlock Text="    RUN MONITOR · StepFact · Expected/Actual" Foreground="{StaticResource R1Muted}" FontSize="11"/>
       <TextBlock Text="    // UDS raw ISO-TP trace is available in P08 tab" Foreground="#46D0DC" FontSize="11"/>
      </StackPanel>
