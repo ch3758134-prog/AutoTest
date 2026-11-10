@@ -7,6 +7,7 @@ on:
       - recovery/backend-baseline-20261109
     paths:
       - 'AutoTest.Backend.slnf'
+      - 'tools/verify-backend-boundaries.ps1'
       - '.github/workflows/backend-windows.yml'
       - 'global.json'
       - 'Directory.*.props'
@@ -24,6 +25,7 @@ on:
     branches: [main]
     paths:
       - 'AutoTest.Backend.slnf'
+      - 'tools/verify-backend-boundaries.ps1'
       - '.github/workflows/backend-windows.yml'
       - 'global.json'
       - 'Directory.*.props'
@@ -59,6 +61,9 @@ jobs:
         run: |
           dotnet --info
           git rev-parse HEAD
+      - name: Verify backend does not depend on WPF presentation
+        shell: pwsh
+        run: ./tools/verify-backend-boundaries.ps1
       - name: Restore backend solution only
         shell: pwsh
         run: dotnet restore AutoTest.Backend.slnf
