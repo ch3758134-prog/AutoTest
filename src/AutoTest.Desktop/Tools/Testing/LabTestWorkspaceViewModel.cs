@@ -23,6 +23,14 @@ public sealed class LabTreeRow
     public ObservableCollection<LabTreeRow> Children { get; } = new();
 }
 
+public sealed record R1ControllerStateChoice(
+    Guid ControllerId, Guid StateId, string ControllerName, string StateName,
+    int Revision, uint Mask)
+{
+    public string Label => ControllerName + " / " + StateName +
+        " · 0x" + Mask.ToString("X5") + " · r" + Revision;
+}
+
 internal sealed class LabCommand(Action run, Func<bool>? enabled = null) : ICommand
 {
     public bool CanExecute(object? parameter) => enabled?.Invoke() ?? true;
@@ -52,6 +60,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private Func<EcuControlProfile?>? _keySimControllerProfile;
     private Func<string?>? _keySimControllerProfilePath;
     private Func<string,bool>? _approveKeySimProgram;
+    private R1ControllerStateChoice? _selectedControllerChoice;
     private string _physicalEvidencePath = "未执行";
     public string PhysicalEvidencePath { get => _physicalEvidencePath; private set { _physicalEvidencePath = value; Changed(); } }
     public ICommand RunPhysicalReadOnlyCommand { get; private set; } = null!;
@@ -76,6 +85,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         _approveKeySimProgram = approveProgram ??
             throw new ArgumentNullException(nameof(approveProgram));
         _compiler = new LabPlanCompiler(new R1KeySimControllerCatalog(profile));
+        RefreshControllerStates();
         RefreshCommands();
     }
 
@@ -123,6 +133,10 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         OpenCommand = new LabCommand(OpenFile, () => !Busy);
         SaveToProjectCommand = new LabCommand(SaveToProject, () => !Busy && _project is not null);
         ReloadProjectCommand = new LabCommand(ReloadFromProject, () => !Busy && _project is not null);
+        RefreshControllerStatesCommand = new LabCommand(RefreshControllerStates, () => !Busy);
+        ApplyControllerStateCommand = new LabCommand(ApplyControllerState,
+            () => !Busy && _selected?.StepId is not null &&
+                  _selectedControllerChoice is not null);
         Rebuild();
         ReloadFromProject();
     }
@@ -130,6 +144,17 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<LabTreeRow> Tree { get; } = new();
     public ObservableCollection<LabStepFact> Facts { get; } = new();
     public ObservableCollection<KeyValuePair<string, string>> ParameterRows { get; } = new();
+    public ObservableCollection<R1ControllerStateChoice> ControllerStateChoices { get; } = new();
+    public R1ControllerStateChoice? SelectedControllerChoice
+    {
+        get => _selectedControllerChoice;
+        set
+        {
+            _selectedControllerChoice = value;
+            Changed();
+            RefreshCommands();
+        }
+    }
     public string[] StepTypes { get; } = LabPlanCompiler.ExecutableNodes.Where(x => x != "MockObserve").OrderBy(x => x).ToArray();
     public string SelectedInsertType { get => _insertType; set { _insertType = value; Changed(); } }
     public string SelectedName { get => _name; set { _name = value; Changed(); } }
@@ -167,6 +192,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public ICommand OpenCommand { get; }
     public ICommand SaveToProjectCommand { get; }
     public ICommand ReloadProjectCommand { get; }
+    public ICommand RefreshControllerStatesCommand { get; }
+    public ICommand ApplyControllerStateCommand { get; }
 
     public void Select(LabTreeRow? row)
     {
@@ -200,7 +227,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             DownCommand, RenameCommand, SetParameterCommand, UndoCommand, RedoCommand,
             PreflightCommand, RunPhysicalReadOnlyCommand, PauseCommand, ResumeCommand, StepCommand,
             SkipCommand, RunToCommand, StopCommand, SaveCommand, OpenCommand,
-            SaveToProjectCommand, ReloadProjectCommand })
+            SaveToProjectCommand, ReloadProjectCommand, RefreshControllerStatesCommand,
+            ApplyControllerStateCommand })
             (command as LabCommand)?.Refresh();
     }
     private void Rebuild()
@@ -239,6 +267,54 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             rows.Add(row);
         }
     }
+    public void RefreshControllerStates()
+    {
+        ControllerStateChoices.Clear();
+        SelectedControllerChoice = null;
+        var profile = _keySimControllerProfile?.Invoke();
+        if (profile is null)
+        {
+            Status = "请先在 P05 打开或创建真实 Controller Profile，保存后再绑定 TEST。";
+            return;
+        }
+        foreach (var controller in profile.Controllers.OrderBy(x => x.Order))
+            foreach (var state in controller.States.OrderBy(x => x.Order))
+                ControllerStateChoices.Add(new R1ControllerStateChoice(
+                    controller.Id, state.Id, controller.Name, state.Name,
+                    profile.Revision, state.KeyMask));
+        Status = "已列出 P05 Controller 状态 " + ControllerStateChoices.Count +
+            " 项，执行前仍会校验真实配置文件与 Revision。";
+    }
+
+    public void ApplyControllerState()
+    {
+        if (_selected?.StepId is not Guid stepId ||
+            _editor.Snapshot.Walk().All(x => x.Id != stepId || x.Type != "ControllerState"))
+        {
+            Status = "先在 TEST 步骤树中选中 ControllerState 操作，再绑定 P05 状态。";
+            return;
+        }
+        var choice = SelectedControllerChoice;
+        var profile = _keySimControllerProfile?.Invoke();
+        if (choice is null || profile is null ||
+            choice.Revision != profile.Revision ||
+            !profile.Controllers.Any(c => c.Id == choice.ControllerId &&
+                c.States.Any(state => state.Id == choice.StateId &&
+                    state.KeyMask == choice.Mask)))
+        {
+            Status = "P05 Controller 状态已经变化，请重新加载状态列表。";
+            return;
+        }
+        Edit(() =>
+        {
+            _editor.SetParameter(stepId, "controllerId", choice.ControllerId.ToString("D"));
+            _editor.SetParameter(stepId, "stateId", choice.StateId.ToString("D"));
+            _editor.SetParameter(stepId, "revision", choice.Revision.ToString());
+        });
+        Status = "已绑定实际 P05 状态：" + choice.Label +
+            "；必须在 P10 登记 TEST 并在 P01 保存工程后才能执行。";
+    }
+
     private void Edit(Action mutation)
     {
         try { mutation(); Rebuild(); Status = "Edited — not saved"; }
