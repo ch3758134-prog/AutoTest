@@ -292,7 +292,12 @@ public partial class MainWindow : Window
         if (!IsLoaded || R1ExecutionSource.SelectedItem is not ComboBoxItem choice) return;
         string source=choice.Tag as string ?? "Mock";
         if (R1UdsView.DataContext is UdsToolViewModel uds)
-            uds.SourceMode=source;
+            uds.SourceMode = source switch
+            {
+                "Physical" => "Physical Read",
+                "Replay" => "Replay",
+                _ => "Mock"
+            };
         if (R1BenchHost.Content is BenchWorkbenchView bench &&
             bench.DataContext is BenchWorkbenchViewModel vm)
         {
