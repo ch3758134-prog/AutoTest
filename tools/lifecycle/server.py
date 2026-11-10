@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -71,6 +72,12 @@ def make_handler(workspace: Workspace):
 
 
 def main() -> int:
+    # Default entry point is the generic editable studio.
+    # The original SAEF/KEY_SIM read-only pilot stays available with --legacy.
+    if "--legacy" not in sys.argv:
+        from studio_server import main as studio_main
+        return studio_main()
+    sys.argv.remove("--legacy")
     parser = argparse.ArgumentParser(description='Read-only local AutoTest lifecycle workbench')
     parser.add_argument('--repo', type=Path, default=Path.cwd())
     parser.add_argument('--model', type=Path, default=Path(__file__).parent / 'data/keysim-trace.json')
