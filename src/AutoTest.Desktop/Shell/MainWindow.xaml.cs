@@ -39,6 +39,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (R1FlashView.DataContext is FlashToolViewModel flashModel)
+            R1FlashView.AttachPhysicalLink(() => _device?.Controller);
         if (R1UdsView.DataContext is UdsToolViewModel udsModel)
             udsModel.AttachPhysicalLink(
                 () => _device?.Controller,

@@ -147,6 +147,14 @@
     <Border Style="{StaticResource FlashCard}">
      <StackPanel>
       <TextBlock Text="IMAGE VALIDATION / 固件段" Style="{StaticResource FlashTitle}"/>
+      <WrapPanel Margin="0,0,0,4">
+       <Button Content="导入 CanTool XML" Click="ImportCanTool_Click"/>
+       <Button Content="真实硬件条件检查" Click="PhysicalPreflight_Click"/>
+      </WrapPanel>
+      <TextBlock Text="{Binding ConfigurationStatus}" Foreground="{StaticResource FlashMuted}"
+                 TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"/>
+      <TextBlock Text="{Binding PhysicalPreflight}" Foreground="#E8B967"
+                 TextWrapping="Wrap" FontSize="11" Margin="0,0,0,10"/>
       <WrapPanel>
        <TextBlock Text="格式  " Foreground="{StaticResource FlashMuted}"/>
        <TextBlock Text="{Binding Format}" FontWeight="SemiBold" Margin="0,0,18,0"/>
@@ -155,14 +163,28 @@
       </WrapPanel>
       <TextBlock Text="{Binding Hash}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,6"
                  Foreground="#46D0DC"/>
+      <TabControl Height="183" Background="#192431">
+       <TabItem Header="固件段 / SEGMENTS">
       <DataGrid ItemsSource="{Binding Segments}" IsReadOnly="True" AutoGenerateColumns="False"
-                CanUserAddRows="False" Height="115" RowHeaderWidth="0">
+                CanUserAddRows="False" Height="144" RowHeaderWidth="0">
        <DataGrid.Columns>
         <DataGridTextColumn Header="Start" Binding="{Binding Start}" Width="*"/>
         <DataGridTextColumn Header="End Exclusive" Binding="{Binding EndExclusive}" Width="*"/>
         <DataGridTextColumn Header="Bytes" Binding="{Binding Bytes}" Width="Auto"/>
        </DataGrid.Columns>
       </DataGrid>
+       </TabItem>
+       <TabItem Header="CanTool 配置 / SOURCE">
+        <DataGrid ItemsSource="{Binding ConfigurationFields}" AutoGenerateColumns="True"
+                  IsReadOnly="True" HeadersVisibility="Column" CanUserAddRows="False"
+                  Background="#192431" Foreground="#E2EDF7"/>
+       </TabItem>
+       <TabItem Header="真实硬件预检 / GATE">
+        <DataGrid ItemsSource="{Binding PhysicalChecks}" AutoGenerateColumns="True"
+                  IsReadOnly="True" HeadersVisibility="Column" CanUserAddRows="False"
+                  Background="#192431" Foreground="#E2EDF7"/>
+       </TabItem>
+      </TabControl>
      </StackPanel>
     </Border>
     <Border Grid.Row="2" Style="{StaticResource FlashCard}">

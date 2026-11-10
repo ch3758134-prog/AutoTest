@@ -1,9 +1,38 @@
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
+using AutoTest.Devices.Diagnostics;
 namespace AutoTest.Desktop.Tools.Flash;
 public partial class FlashToolView : UserControl
 {
+    private Func<HardwareBenchController?>? _physicalProvider;
+    public void AttachPhysicalLink(Func<HardwareBenchController?> provider) =>
+        _physicalProvider=provider ?? throw new ArgumentNullException(nameof(provider));
+    private void ImportCanTool_Click(object sender,RoutedEventArgs e)
+    {
+        var picker=new OpenFileDialog
+        {
+            Filter="CanTool XML (*.xml)|*.xml|All files (*.*)|*.*",
+            CheckFileExists=true,
+            Title="导入 CanTool Configuration.xml（只读配置解析）"
+        };
+        if(picker.ShowDialog()!=true) return;
+        try { if(DataContext is FlashToolViewModel vm) vm.ImportCanToolConfiguration(picker.FileName); }
+        catch(Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this),"CanTool 配置解析失败：\n"+ex.Message,
+                "ECU Flash",MessageBoxButton.OK,MessageBoxImage.Warning);
+        }
+    }
+    private void PhysicalPreflight_Click(object sender,RoutedEventArgs e)
+    {
+        try { if(DataContext is FlashToolViewModel vm) vm.EvaluatePhysicalPreflight(_physicalProvider?.Invoke()); }
+        catch(Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this),"烧录预检失败：\n"+ex.Message,
+                "ECU Flash",MessageBoxButton.OK,MessageBoxImage.Warning);
+        }
+    }
     public FlashToolView()
     {
         InitializeComponent();
