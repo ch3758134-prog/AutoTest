@@ -167,6 +167,40 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                     ? "CAN0 发送结果不确定；不要推断开关状态"
                     : "未收到主控有效 ACK");
     }
+    /// <summary>
+    /// Physical recovery: explicit 0x80 frame clears all KEY_SIM switch bits.
+    /// It remains available without a selected P05 controller state, because
+    /// a stale/missing project must not prevent an operator-requested release.
+    /// </summary>
+    public async Task<BenchOperationResult> ReleaseAllPhysicalKeysAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var source = BenchEvidenceSource.Physical;
+        var physical = _hardware();
+        if (physical is not { State: UsbSessionState.Connected,
+            ProtocolVersionVerified: true, Generation: > 0 })
+            return Reject("KEYSIM_RELEASE_DEVICE_NOT_CONNECTED",
+                "当前没有经过版本验证的主控，无法确认释放帧是否发送。", source);
+        var generation = physical.Generation;
+        if (_approveKeySim?.Invoke(0, generation) != true)
+            return Reject("KEYSIM_RELEASE_OPERATOR_REJECTED",
+                "操作员取消真实 CAN0 全部释放；未发送。", source);
+        var result = await physical.SetPhysicalKeySimMaskAsync(0,
+            HardwareBenchController.PhysicalKeySimConfirmation(0, generation), ct);
+        var accepted = result.Outcome == Outcome.Accepted &&
+            result.Value is { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged };
+        return new BenchOperationResult(accepted,
+            result.Value?.OperationId.ToString("D"),
+            result.OperationId.ToString("D"),
+            generation,
+            "CAN0 ID=0x730 DLC8 DATA=8000000000000000 / 全部释放",
+            accepted ? "MAIN_CONTROLLER_USB_CAN_SEND_ACK" : "UNKNOWN_OR_NOT_SENT",
+            result.Value?.Evidence.ToString(), result.FailureCode, result.Failure?.Message,
+            source,
+            accepted ? "主控确认 CAN 发送；按键板开关状态仍需按需观测" :
+                "释放结果未确认，不能宣称所有开关已断开");
+    }
+
     private static BenchOperationResult Reject(string code,string detail,BenchEvidenceSource source)
         => new(false,null,null,null,null,null,null,code,detail,source,null);
 
