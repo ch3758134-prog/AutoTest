@@ -130,7 +130,7 @@ function el(tag,cls,text){const node=document.createElement(tag);if(cls)node.cla
 function add(parent,...children){for(const child of children)parent.append(child);return parent;}
 function clean(parent){parent.replaceChildren();}
 function btn(text,cls,fn){const b=el('button',cls,text);b.addEventListener('click',fn);return b;}
-function tag(status){const t=el('span','tag',status||'未知');const s=String(status||'');if(/^(PASS|ACCEPTED|ANCHORED|READY_TO_CODE|PRESENT)$/.test(s))t.classList.add('green');else if(/DRAFT|LIMITATIONS|REVIEW|UNDER|候选|未知|NOT_READY/.test(s))t.classList.add('amber');else if(/MISSING|FAIL|NOT_STARTED/.test(s))t.classList.add('red');else t.classList.add('blue');return t;}
+function tag(status){const t=el('span','tag',status||'未知');const s=String(status||'');if(/^(PASS|ACCEPTED|ANCHORED|READY_TO_CODE|PRESENT)$/.test(s))t.classList.add('green');else if(/DRAFT|LIMITATIONS|REVIEW|UNDER|候选|未知|NOT_READY/.test(s))t.classList.add('amber');else if(/MISSING|FAIL|NOT_STARTED|DRIFT/.test(s))t.classList.add('red');else t.classList.add('blue');return t;}
 function heading(title,desc){add(main,el('h1','',title),el('p','subtitle',desc));}
 function section(title){const box=el('section','section');const top=el('div','sectionhead');top.append(el('h2','',title));box.append(top);main.append(box);return {box,top};}
 function stat(value,name,explain){const c=el('div','stat');add(c,el('div','value',value),el('div','name',name),el('div','explain',explain));return c;}
@@ -153,6 +153,7 @@ function renderHome(){
   add(alerts,makeAlert('实施 Gate 尚未完成审查','G4 Gate 状态为 '+(g?g.gate:'未知')+'。已批准的实施方案与实施 Gate 通过不是一回事。','amber',()=>{selectedPhase='G4';changeView('catalog');}),
     makeAlert('KEY_SIM：现场发现待核对','组合保持和五路电阻输出已经有上层设计依据，需要重点检查详细设计、实现与真实测量。','',()=>changeView('change')),
     makeAlert('B4 物理验收证据缺口','已有掩码编码和单测，不能据此认定五路输出电压或 ECU 识别已经验证。','red',()=>changeView('readiness')));a.box.append(alerts);
+  if(catalogData.content_drift_count>0)a.box.append(note('源文件校验发现 '+catalogData.content_drift_count+' 项登记工作产品的当前内容与历史批准 SHA-256 不一致。需要逐项复核版本关系；不能直接把历史批准转用于当前内容。'));
   const s=section('工程生命周期与当前档案');s.top.append(btn('浏览全部 '+catalogData.total+' 项工程文件','textbutton',()=>{selectedPhase='all';changeView('catalog');}));const phases=el('div','phasegrid');
   for(const group of catalogData.groups){const b=el('button','phase');add(b,el('div','id',group.id),el('div','name',group.title),el('div','small',group.items.length+' 项工作产品'),tag(group.gate));b.addEventListener('click',()=>{selectedPhase=group.id;changeView('catalog');});phases.append(b);}s.box.append(phases);
   const overview=section('从产品需求到实际实现');const grid=el('div','workgrid');
@@ -165,7 +166,7 @@ function renderHome(){
     makeSummary('测试证据：只验证协议编码','Verify_A2_T04',test&&test.text?test.text.slice(0,170):'测试代码尚未核实。',()=>openNode('TEST-A2-KEYPAD')));
   overview.box.append(grid);overview.box.append(note('上面的 KEY_SIM 是目前唯一完成建图的案例，不代表软件已掌握所有 AutoTest 子系统的实现与验证状态。系统设计和历史审批以原始 SAEF 记录为准。'));
 }
-function makeArtifact(rec){const b=el('button','artifact');const box=el('div');add(box,el('div','titleline',rec.id+' · '+rec.title),el('div','subline',rec.excerpt||rec.path));add(b,box,tag(rec.status));b.addEventListener('click',()=>openDoc(rec.id));return b;}
+function makeArtifact(rec){const b=el('button','artifact');const box=el('div');add(box,el('div','titleline',rec.id+' · '+rec.title),el('div','subline',rec.excerpt||rec.path));add(b,box,tag(rec.approval_content_match==='DRIFT'?'DRIFT':rec.status));b.addEventListener('click',()=>openDoc(rec.id));return b;}
 function renderCatalog(){
   heading('工程档案','直接阅读 SAEF 当前登记的工程文件，沿着产品背景、需求、架构、设计、实施和验证逐层展开。历史批准状态与当前真实验收不混为一谈。');
   const bar=el('div','filterbar'),sel=el('select'),search=el('input','search');search.placeholder='搜索工作产品编号、标题或内容摘要';const all=el('option','','全部阶段');all.value='all';sel.append(all);
@@ -215,7 +216,7 @@ function formatMarkdown(parent,raw){
   }
   if(code.length)container.append(el('pre','',code.join('\n')));parent.append(container);
 }
-async function openDoc(id){openPanel('正在读取 '+id+'…');try{const d=await api('/api/document?id='+encodeURIComponent(id));$('#drawertitle').textContent=id+' · 工程原文';add(body,el('h1','',d.title),el('div','meta',d.path));const tags=el('div','docmeta');add(tags,tag('工作产品 '+d.status),tag('历史 Gate '+d.gate),tag('修订 '+(d.revision||'未登记')));body.append(tags);body.append(note('完整原始文件内容；此处显示的是该修订的历史记录，不能据此推定当前源码或硬件已验收。'));formatMarkdown(body,d.body);}catch(err){body.append(el('div','note',err.message));}}
+async function openDoc(id){openPanel('正在读取 '+id+'…');try{const d=await api('/api/document?id='+encodeURIComponent(id));$('#drawertitle').textContent=id+' · 工程原文';add(body,el('h1','',d.title),el('div','meta',d.path));const tags=el('div','docmeta');add(tags,tag('工作产品 '+d.status),tag('历史 Gate '+d.gate),tag('修订 '+(d.revision||'未登记')));if(d.approval_content_match==='DRIFT')tags.append(tag('DRIFT · 当前内容与批准哈希不一致'));body.append(tags);body.append(note('完整原始文件内容；此处显示的是该修订的历史记录，不能据此推定当前源码或硬件已验收。'));formatMarkdown(body,d.body);}catch(err){body.append(el('div','note',err.message));}}
 function openNode(id){const n=findEvidence(id);if(!n)return;openPanel(id+' · 工程对象');add(body,el('h1','',id),el('p','subtitle',n.description||n.kind));const tags=el('div','docmeta');add(tags,tag(n.source_state),tag(n.work_product_state||'无独立批准记录'),tag(n.gate_state||'无 Gate 标记'));body.append(tags);if(n.text){body.append(el('h2','','来自原始文件的内容'));body.append(el('div','detail-text',n.text));}else body.append(note('当前尚无可读的源码/文档摘录。没有独立实测证据的对象，不能被认为已经验证。'));body.append(el('h2','section','来源与修订'));body.append(el('p','mono',n.path||'未附原始工程文件'));if(n.line)body.append(el('p','meta','文件行号：'+n.line));if(n.sha256)body.append(el('p','meta','内容 SHA-256：'+n.sha256));}
 $('#close').addEventListener('click',closePanel);back.addEventListener('click',e=>{if(e.target===back)closePanel();});document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>changeView(b.dataset.view)));
