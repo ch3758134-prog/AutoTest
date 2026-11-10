@@ -86,6 +86,58 @@ class StudioApiTest(unittest.TestCase):
         self.assertEqual(backup["schema"], "engineering-workbench/1")
         self.assertEqual(len(backup["revisions"]), 3)
 
+    def test_research_workflow_via_local_api(self):
+        _, project = self.request("/api/studio/project", {"name":"Embedded System"},
+                                  token="local-test-token")
+        key = project["project"]["id"]
+        _, research = self.request("/api/studio/research/create", {
+            "project_id":key, "title":"CAN sharing feasibility",
+            "question":"Will real bus consumer receive frames consistently?",
+            "constraints":"one physical CAN path", "minimum_level":"REAL"},
+            token="local-test-token")
+        study = research["study"]["id"]
+        _, option = self.request("/api/studio/research/option", {
+            "study_id":study, "title":"One owner hub", "approach":"single receiver",
+            "tradeoffs":"shared buffering"}, token="local-test-token")
+        option_id=option["options"][0]["id"]
+        _, planned = self.request("/api/studio/research/experiment", {
+            "study_id":study,"option_id":option_id,"title":"bench trial",
+            "method":"record real bus frames","success_criteria":"all frames correlated",
+            "environment":"USB controller / firmware 1","level":"REAL","required":True},
+            token="local-test-token")
+        experiment_id=planned["experiments"][0]["id"]
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/research/result", {
+                "experiment_id":experiment_id,"outcome":"PASS",
+                "observations":"claimed success","raw_reference":"not-real.log",
+                "configuration":"dev","source_revision":"v1","performed_by":"AI"},
+                token="local-test-token")
+        self.assertEqual(denied.exception.code,400)
+        self.request("/api/studio/research/authorize", {
+            "experiment_id":experiment_id,"actor":"Owner","note":"safe bench authorized"},
+            token="local-test-token")
+        _, recorded = self.request("/api/studio/research/result", {
+            "experiment_id":experiment_id, "outcome":"PASS",
+            "observations":"timestamped data confirmed","raw_reference":"trace-1.zip",
+            "configuration":"device A / firmware 1", "source_revision":"abc123",
+            "performed_by":"Tester"}, token="local-test-token")
+        result_id=recorded["experiments"][0]["results"][0]["id"]
+        self.request("/api/studio/research/review", {
+            "result_id":result_id,"actor":"Owner","note":"inspected raw trace"},
+            token="local-test-token")
+        _, gate=self.request("/api/studio/research/evaluate?study="+study+"&option="+option_id)
+        self.assertTrue(gate["ready"])
+        _, decided=self.request("/api/studio/research/decide", {
+            "study_id":study,"option_id":option_id,"approver":"Owner",
+            "rationale":"real frames confirmed","restrictions":"only tested firmware"},
+            token="local-test-token")
+        self.assertEqual(decided["study"]["status"],"DECIDED")
+        _, listing=self.request("/api/studio/research?project="+key)
+        self.assertEqual(listing[0]["reviewed_evidence"],1)
+        with urlopen(self.url+"/research.js",timeout=5) as response:
+            self.assertEqual(response.status,200)
+            self.assertIn(b'renderResearchView',response.read())
+
     def test_unsupported_methods_blocked(self):
         req = Request(self.url + "/api/studio/object", method="PUT", data=b'{}')
         with self.assertRaises(HTTPError) as ex:
