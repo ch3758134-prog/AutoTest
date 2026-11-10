@@ -482,13 +482,32 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                         throw new InvalidOperationException("KEYSIM_TEST_CONTROLLER_REFERENCE_INVALID");
                     return savedControllerProfile.ResolveState(c, state, revision).KeyMask;
                 }).ToArray();
-                // Active mask commands must have a real release in Cleanup,
-                // even if Test throws or an operator stops the run.
-                bool hasReleaseCleanup = R1KeySimCleanupPolicy.HasUnconditionalRelease(
-                    saved, savedControllerProfile);
-                if (masks.Any(mask => mask != 0) && !hasReleaseCleanup)
-                    throw new InvalidOperationException(
-                        "KEYSIM_CLEANUP_RELEASE_REQUIRED: 在 Cleanup 添加掩码为 0 的 ControllerState 全部释放步骤。");
+                // A nested/conditional release is NOT an unconditional
+                // recovery action: IF/WHEN/TRY may skip its branch. The FIRST
+                // root Cleanup node must send 0x730/0x80 before other steps
+                // (which may themselves fail, timeout, or be stopped).
+                bool IsRelease(LabNode n)
+                {
+                    if (n.Type != "ControllerState" ||
+                        !Guid.TryParse(n.Parameters.GetValueOrDefault("controllerId"), out var c) ||
+                        !Guid.TryParse(n.Parameters.GetValueOrDefault("stateId"), out var st) ||
+                        !int.TryParse(n.Parameters.GetValueOrDefault("revision"), out var rev))
+                        return false;
+                    return savedControllerProfile.ResolveState(c, st, rev).KeyMask == 0;
+                }
+                bool activeMasks = masks.Any(mask => mask != 0);
+                if (activeMasks)
+                {
+                    var cleanup = saved.Phases[LabPhase.Cleanup];
+                    if (cleanup.Count == 0 || !IsRelease(cleanup[0]))
+                        throw new InvalidOperationException(
+                            "KEYSIM_CLEANUP_FIRST_RELEASE_REQUIRED: Cleanup 首步必须是无条件掩码0的 ControllerState 全部释放。");
+                    if (cleanup.Skip(1).SelectMany(n => LabDocument.Walk(new[] { n }))
+                        .Where(n => n.Type == "ControllerState")
+                        .Any(n => !IsRelease(n)))
+                        throw new InvalidOperationException(
+                            "KEYSIM_CLEANUP_REACTIVATION_FORBIDDEN: 全部释放后不可再次闭合电阻网络开关。");
+                }
                 if (!controllerProfileCurrent())
                     throw new InvalidOperationException("P05_CONTROLLER_PROFILE_CHANGED_BEFORE_RUN");
                 var summary = "本次真实 ECU 工程 TEST 计划：" +
