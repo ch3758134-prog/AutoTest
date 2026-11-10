@@ -61,6 +61,10 @@ class ManagerProposalTests(unittest.TestCase):
         self.assertEqual(self.store.project(self.project)["objects"],[])
         with self.assertRaisesRegex(RuleError,"already reviewed"):
             self.manager.review(first[0]["id"],"REJECT","Owner","Duplicate")
+        archive=self.store.export_project(self.project)
+        self.assertEqual(len(archive["manager_proposals"]),1)
+        self.assertEqual(archive["manager_proposals"][0]["status"],"ACCEPT_FOR_PLANNING")
+        self.assertEqual(archive["manager_proposals"][0]["reviewer"],"Project owner")
 
     def test_cross_project_and_nonexistent_sources_rejected(self):
         other=self.store.create_object({"project_id":self.other,
