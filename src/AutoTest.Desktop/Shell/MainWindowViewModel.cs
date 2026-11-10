@@ -58,6 +58,8 @@ public sealed class WorkbenchResourceNode(string label)
 public sealed class MainWindowViewModel : BindableBase
 {
     private readonly IApplicationCommandGateway _gateway;
+    private string _assetRevisionSignature = "";
+    public event EventHandler? WorkspaceAssetsChanged;
     public V1Workspace Workspace { get; }
     public G4IntegrationHost? G4 { get; }
     private WorkbenchStepItem? _selectedStep;
@@ -390,6 +392,14 @@ public sealed class MainWindowViewModel : BindableBase
         SelectedStep = Steps.FirstOrDefault(s => s.Id == selected) ?? Steps.FirstOrDefault();
         RaisePropertyChanged(nameof(SelectedAssetStatus));
         UpdateCommands();
+        var assetSignature = string.Join("|", Workspace.Assets
+            .OrderBy(a => a.Id.Value)
+            .Select(a => a.Id.Value.ToString("N") + ":" + a.Revision + ":" + a.Sha256));
+        if (!string.Equals(_assetRevisionSignature, assetSignature, StringComparison.Ordinal))
+        {
+            _assetRevisionSignature = assetSignature;
+            WorkspaceAssetsChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
     private void RefreshFilter()
     {
