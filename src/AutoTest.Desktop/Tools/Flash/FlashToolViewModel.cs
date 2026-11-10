@@ -44,8 +44,12 @@ public sealed class FlashToolViewModel : BindableBase
     public DelegateCommand LoadCommand { get; }
     public DelegateCommand PreflightCommand { get; }
 
+    // Preflight VM cannot authorize programming. The P09 physical job owns a separate
+    // session-scoped, explicit CanTool permission; this flag remains false by design.
     public bool PhysicalProgrammingEnabled => false;
-    public string SourceLabel => "真实固件/配置预检；物理烧录尚未实现，禁止写入";
+    public CanToolConfigurationSnapshot? CurrentConfiguration => _canTool;
+    public FirmwareImage? CurrentImage => _image;
+    public string SourceLabel => "真实镜像和配置预检；物理烧录由 P09 独立授权作业执行，预检不能放行";
     public bool IsBusy
     {
         get => _busy;
@@ -174,7 +178,7 @@ public sealed class FlashToolViewModel : BindableBase
             Preflight = "PHYSICAL_WRITE_BLOCKED";
             Failure = string.Join("; ", result.Items.Where(x => !x.Passed).Select(x => x.Category));
         }
-        Status = "只执行镜像、配置和非破坏性预检；不进行 ECU 编程。";
+        Status = "本项为只读预检；如需物理烧录，必须在 P09 单独执行实机授权。";
     }
 
     public void EvaluatePhysicalPreflight(HardwareBenchController? controller)
@@ -195,6 +199,6 @@ public sealed class FlashToolViewModel : BindableBase
         PhysicalPreflight = $"真实预检：{result.Items.Count(x => x.Passed)} 项通过、" +
             $"{result.Items.Count(x => !x.Passed)} 项待完成；物理写入始终锁定。";
         Preflight = "PHYSICAL_WRITE_BLOCKED";
-        Status = "PHYSICAL_FLASH_NOT_IMPLEMENTED";
+        Status = "PHYSICAL_FLASH_REQUIRES_EXPLICIT_P09_JOB";
     }
 }
