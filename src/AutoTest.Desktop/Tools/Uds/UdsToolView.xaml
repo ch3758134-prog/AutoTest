@@ -146,6 +146,16 @@
       <TextBlock Text="请求编辑 / REQUEST BUILDER" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="服务名称" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ServiceName,UpdateSourceTrigger=PropertyChanged}"/>
+      <TextBlock Text="结构化参数 / SERVICE PARAMETERS" Style="{StaticResource UdsCaption}"/>
+      <WrapPanel Margin="0,0,0,5">
+       <TextBlock Text="DID (HEX)" Foreground="{StaticResource UdsMuted}" VerticalAlignment="Center" Margin="0,0,5,4"/>
+       <TextBox Width="74" Text="{Binding DidParameter,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
+       <Button Content="生成 ReadDID" Command="{Binding PrepareReadDidCommand}"/>
+       <TextBlock Text="DTC Mask" Foreground="{StaticResource UdsMuted}" VerticalAlignment="Center" Margin="6,0,5,4"/>
+       <TextBox Width="60" Text="{Binding DtcMaskParameter,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
+       <Button Content="生成 ReadDTC" Command="{Binding PrepareReadDtcCommand}"/>
+       <Button Content="生成 TesterPresent" Command="{Binding PrepareTesterPresentCommand}"/>
+      </WrapPanel>
       <TextBlock Text="UDS Request PDU · HEX（无需手工添加 ISO-TP PCI）" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding RequestHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" FontSize="14"
                ToolTip="例如 22 F1 90，应用层 PDU；多帧分包由 ISO-TP 层处理"/>
