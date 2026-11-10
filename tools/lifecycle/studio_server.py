@@ -12,6 +12,7 @@ from urllib.parse import urlsplit, parse_qs
 from studio_store import Store, RuleError
 from studio_import import preview as saef_preview, import_saef
 from studio_research import Research
+from studio_execution import Execution
 
 HERE = Path(__file__).resolve().parent
 WEB = HERE / "studio.html"
@@ -21,6 +22,7 @@ PORT = 8765
 def handler_factory(store, token, repo=None):
     source_root = Path(repo).resolve() if repo else Path.cwd()
     research = Research(store)
+    execution = Execution(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.4"
 
@@ -62,6 +64,9 @@ def handler_factory(store, token, repo=None):
                 if path == "/research.js":
                     return self.write((HERE / "studio_research_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/execution.js":
+                    return self.write((HERE / "studio_execution_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/api/studio/version":
                     return self.write({"application": "Engineering Workbench",
                                        "version": "0.4", "mode": "editable",
@@ -81,6 +86,13 @@ def handler_factory(store, token, repo=None):
                     return self.write(store.readiness(params.get("id", "")))
                 if path == "/api/studio/context":
                     return self.write(store.context(params.get("id", "")))
+                if path == "/api/studio/execution":
+                    return self.write(execution.overview(params.get("project", "")))
+                if path == "/api/studio/execution/queue":
+                    return self.write(execution.queue(params.get("project", ""),
+                                                      params.get("role", "")))
+                if path == "/api/studio/execution/packet":
+                    return self.write(execution.packet(params.get("id", "")))
                 if path == "/api/studio/research":
                     return self.write(research.list(params.get("project", "")))
                 if path == "/api/studio/research/detail":
@@ -135,6 +147,35 @@ def handler_factory(store, token, repo=None):
                                                     data.get("actor", ""), data.get("note", ""))
                 elif path == "/api/studio/import/saef":
                     answer = import_saef(source_root, store, data.get("project_id", ""))
+                elif path == "/api/studio/execution/configure":
+                    answer = execution.configure(data.get("project_id", ""),
+                                                 data.get("repository", ""))
+                elif path == "/api/studio/execution/refresh":
+                    answer = execution.refresh(data.get("project_id", ""))
+                elif path == "/api/studio/execution/import-issue":
+                    answer = execution.import_issue(data.get("project_id", ""),
+                                                    data.get("issue_number"))
+                elif path == "/api/studio/execution/bind":
+                    answer = execution.bind(data.get("object_id", ""),
+                                            data.get("issue_number"),
+                                            data.get("agent_role", "UNASSIGNED"))
+                elif path == "/api/studio/execution/link-pr":
+                    answer = execution.link_pr(data.get("object_id", ""),
+                                               data.get("pr_number"))
+                elif path == "/api/studio/execution/dispatch":
+                    answer = execution.dispatch(data.get("object_id", ""),
+                                                data.get("actor", ""),
+                                                data.get("note", ""))
+                elif path == "/api/studio/execution/revoke":
+                    answer = execution.revoke(data.get("object_id", ""),
+                                              data.get("actor", ""),
+                                              data.get("reason", ""))
+                elif path == "/api/studio/execution/claim":
+                    answer = execution.claim(data.get("object_id", ""),
+                                             data.get("agent_role", ""),
+                                             data.get("worker", ""))
+                elif path == "/api/studio/execution/publish":
+                    answer = execution.publish(data.get("object_id", ""),source_root)
                 elif path == "/api/studio/research/create":
                     answer = research.create(data)
                 elif path == "/api/studio/research/option":
