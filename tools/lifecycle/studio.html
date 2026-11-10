@@ -321,5 +321,5 @@ $('#projectSelect').onchange=async e=>{state.project=e.target.value;await refres
 $('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.data&&projectModal(state.data.project);
 $('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
-boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))});
+window.addEventListener('load',()=>boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))}));
 </script><script src="/research.js"></script></body></html>
