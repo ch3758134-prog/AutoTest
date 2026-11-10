@@ -45,6 +45,7 @@ GitHub 的 Issue/PR 与自动化测试结果来自远端真实同步。未绑定
 docs/engineering-control/
   README.md
   agent-work-protocol.json
+  projects/<project-id>/snapshot.json  # 项目全量结构化归档（不复制 GitHub 的全部 API 缓存）
   tasks/
     <work-package-id>.json  # 完整机器可读任务清单，设计指纹+Git/Issue 引用
     <work-package-id>.md    # 供 AI 直接阅读的详细上下文
