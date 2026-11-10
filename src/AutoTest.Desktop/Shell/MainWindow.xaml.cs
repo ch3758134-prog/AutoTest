@@ -214,9 +214,15 @@ public partial class MainWindow : Window
                 R1RunHost.Content = new R1ProjectRunView(GetProjectTestModel(host.Workspace));
                 break;
             case 11 when R1ProductionHost.Content is null:
-                _production = new LabProductionToolView();
+            {
+                var scanner = new R1ProductionScannerViewModel();
+                scanner.AttachProject(host.Workspace);
+                scanner.PhysicalScanMatched += binding =>
+                    _ = ExecuteScannedProjectTestAsync(scanner, binding, host.Workspace);
+                _production = new LabProductionToolView(scanner);
                 R1ProductionHost.Content = _production;
                 break;
+            }
             case 12 when R1RecordsHost.Content is null:
             {
                 var database = host.Records.Database;
@@ -240,6 +246,33 @@ public partial class MainWindow : Window
                 R1BottomAuditGrid.ItemsSource=operationsModel.Entries;
                 break;
             }
+        }
+    }
+
+    /// <summary>
+    /// Actual serial scan goes through the SAME current project TEST VM as P10
+    /// and P11. It never constructs a second production runner or a Mock ledger.
+    /// This is a real diagnostic TEST result, not an automatic factory release.
+    /// </summary>
+    private async Task ExecuteScannedProjectTestAsync(
+        R1ProductionScannerViewModel scanner,
+        R1PhysicalScanBinding binding,
+        AutoTest.Application.V1.V1Workspace project)
+    {
+        try
+        {
+            binding.Verify(project);
+            var test = GetProjectTestModel(project);
+            if (test.Busy) throw new InvalidOperationException("PROJECT_TEST_ALREADY_RUNNING");
+            var result = await test.RunPhysicalReadOnlyAsync(binding);
+            scanner.MarkRunCompleted(binding, result?.RunId,
+                result is null ? "未执行 / " + test.Status :
+                "真实 CAN1 测试 " + result.Verdict + " / 非出厂放行",
+                result is null ? null : test.PhysicalEvidencePath);
+        }
+        catch (Exception ex)
+        {
+            scanner.MarkRunCompleted(binding, null, "执行拒绝：" + ex.Message, null);
         }
     }
 
