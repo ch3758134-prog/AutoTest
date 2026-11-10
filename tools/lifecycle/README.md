@@ -1,6 +1,8 @@
 # Engineering Workbench｜单人离线工程生命周期管理
 
-**当前默认程序为 V0.3 通用可编辑工作台，不再是早期 KEY_SIM 只读演示。**
+**当前默认程序为 V0.4 通用可编辑工作台，新增技术预研/实验/架构证据门禁，不再是 KEY_SIM 只读演示。**
+
+最新研究到架构闭环说明：[TECH_INVESTIGATION_GATE_V04.md](../../docs/lifecycle-pilot/TECH_INVESTIGATION_GATE_V04.md)。
 
 运行与实际操作流程请先看 [STUDIO_V03.md](STUDIO_V03.md)；在 AutoTest 源码根目录：
 
