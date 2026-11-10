@@ -484,16 +484,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 }).ToArray();
                 // Active mask commands must have a real release in Cleanup,
                 // even if Test throws or an operator stops the run.
-                bool hasReleaseCleanup = LabDocument.Walk(saved.Phases[LabPhase.Cleanup])
-                    .Any(n =>
-                    {
-                        if (n.Type != "ControllerState") return false;
-                        if (!Guid.TryParse(n.Parameters.GetValueOrDefault("controllerId"), out var c) ||
-                            !Guid.TryParse(n.Parameters.GetValueOrDefault("stateId"), out var state) ||
-                            !int.TryParse(n.Parameters.GetValueOrDefault("revision"), out var revision))
-                            return false;
-                        return savedControllerProfile.ResolveState(c, state, revision).KeyMask == 0;
-                    });
+                bool hasReleaseCleanup = R1KeySimCleanupPolicy.HasUnconditionalRelease(
+                    saved, savedControllerProfile);
                 if (masks.Any(mask => mask != 0) && !hasReleaseCleanup)
                     throw new InvalidOperationException(
                         "KEYSIM_CLEANUP_RELEASE_REQUIRED: 在 Cleanup 添加掩码为 0 的 ControllerState 全部释放步骤。");
