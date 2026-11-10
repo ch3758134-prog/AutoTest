@@ -35,12 +35,10 @@
         </Style>
     </UserControl.Resources>
     <DockPanel Margin="16">
-        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-            <TextBlock FontSize="23" FontWeight="SemiBold" Text="P12 · 生产扫码与 DUT 识别" />
-            <TextBlock Margin="0,6,0,0" Foreground="#9B3D21" FontWeight="SemiBold"
-                       Text="USB 串口扫码为真实输入；当前 TEST 执行仍为 Mock，未完成出厂放行接线" />
-            <TextBlock Margin="0,4,0,0" Opacity="0.75"
-                       Text="扫码枪经 Windows USB 串行设备 (COMx) 直接传入本机。测试区的模拟运行与实际出厂记录独立。" />
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <TextBlock FontSize="23" FontWeight="SemiBold" Text="P12 · 真实生产扫码"/>
+            <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#92A4B7"
+                       Text="扫码枪直接连接 Windows COM 端口，条码原始记录和匹配状态来自实际输入。测试执行使用 P10/P11 当前工程程序，不建立第二套运行引擎。"/>
         </StackPanel>
         <Border DockPanel.Dock="Top" Background="#192431" BorderBrush="#314458"
                 BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,0,0,12">
@@ -70,180 +68,43 @@
                            Margin="0,7,0,0"/>
             </StackPanel>
         </Border>
-        <Border DockPanel.Dock="Bottom" BorderThickness="1,0,0,0" BorderBrush="#D6D6D6"
-                Margin="0,12,0,0" Padding="0,10,0,0">
+
+        <Border DockPanel.Dock="Bottom" Background="#192431" BorderBrush="#314458"
+                BorderThickness="1" Padding="12" Margin="0,12,0,0">
             <StackPanel>
-                <WrapPanel>
-                    <TextBlock FontWeight="SemiBold" Text="状态：" />
-                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
-                </WrapPanel>
-                <TextBlock Margin="0,4,0,0" Opacity="0.68" FontSize="11"
-                           Text="实际 TEST/Records/Physical 接线由 INTEGRATION 负责；当前内置 Mock 运行及内存历史不能代替持久生产记录。" />
+                <TextBlock FontWeight="SemiBold" Text="生产状态" Margin="0,0,0,6"/>
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
+                <TextBlock Text="尚未完成扫码身份到工程 TEST/生产数据库的正式绑定时，不允许签发出厂 PASS，也不生成虚构的运行记录。"
+                           TextWrapping="Wrap" Foreground="#E8B967" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
-        <TabControl>
-            <TabItem Header="扫码 / 模拟执行">
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" FontSize="13" Text="扫描 ECU / 模拟输入" FontWeight="SemiBold" />
-                    <DockPanel Grid.Row="1" Margin="0,8,0,12" LastChildFill="True">
-                        <Button DockPanel.Dock="Right" Content="解析并匹配" Command="{Binding PreviewCommand}" />
-                        <TextBox x:Name="BarcodeInput" KeyDown="BarcodeInput_OnKeyDown"
-                                 Text="{Binding ScanInput, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="在此处聚焦扫码；扫码枪通常附带 Enter 结束符" />
-                    </DockPanel>
-                    <Border Grid.Row="2" BorderBrush="#D6D6D6" BorderThickness="1" Padding="12" CornerRadius="4">
-                        <StackPanel>
-                            <TextBlock FontWeight="SemiBold" Text="匹配预览 / 不修改当前运行身份" />
-                            <TextBlock Margin="0,5,0,0" TextWrapping="Wrap" Text="{Binding MatchDetail}" />
-                            <TextBlock Margin="0,5,0,0" Opacity="0.75" Text="{Binding RuleRevision, StringFormat=已发布规则版本：{0}}" />
-                            <TextBlock Margin="0,3,0,0" Opacity="0.75" Text="{Binding CatalogSource}" />
-                        </StackPanel>
-                    </Border>
-                    <StackPanel Grid.Row="3" Margin="0,14,0,6">
-                        <TextBlock Text="模拟 TEST 场景（不会发送 CAN、IGN、KEY 或 Flash 命令）"
-                                   FontWeight="SemiBold" />
-                        <WrapPanel Margin="0,7,0,0" VerticalAlignment="Center">
-                            <ComboBox MinWidth="165" ItemsSource="{Binding Scenarios}"
-                                      SelectedItem="{Binding SelectedScenario, Mode=TwoWay}" />
-                            <CheckBox Content="明确允许同一 ECU 复测（不增加单件数）"
-                                      Margin="14,0,8,0" VerticalAlignment="Center"
-                                      IsChecked="{Binding AllowRetest, Mode=TwoWay}" />
-                            <Button Content="执行 Mock" Command="{Binding RunMockCommand}" />
-                            <Button Content="取消当前运行" Command="{Binding AbortCommand}" />
-                        </WrapPanel>
-                    </StackPanel>
-                    <StackPanel Grid.Row="4" Margin="0,10,0,0">
-                        <TextBlock FontSize="13" FontWeight="SemiBold" Text="最新运行 / RunId / 结果来源" />
-                        <TextBox Margin="0,7,0,0" BorderThickness="1" IsReadOnly="True"
-                                 Text="{Binding LastRun, Mode=OneWay}" TextWrapping="Wrap" />
-                        <TextBlock Margin="0,9,0,0" Text="PASS（Mock）仅为模拟执行结果，不产生 ECU 出厂合格结论。"
-                                   Foreground="#9B3D21" />
-                    </StackPanel>
-                </Grid>
-            </TabItem>
-            <TabItem Header="编号解析规则">
-                <DockPanel Margin="12">
-                    <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
-                        <TextBlock TextWrapping="Wrap" Opacity="0.75"
-                                   Text="使用 .NET 正则命名捕获组；身份字段以逗号分隔，保留原始编号前导零。多个不同正则需填写交集人工评审编号，运行遇到多匹配始终拒绝。" />
-                    </StackPanel>
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-                        <Button Content="新增规则" Command="{Binding AddRuleCommand}" />
-                        <Button Content="删除选中" Command="{Binding RemoveRuleCommand}" />
-                    </StackPanel>
-                    <DataGrid ItemsSource="{Binding Rules}" SelectedItem="{Binding SelectedRule}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="规则 ID" Width="140" Binding="{Binding RuleId, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="正则 Pattern" Width="*" Binding="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="身份字段 CSV" Width="140" Binding="{Binding IdentityFieldsCsv, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="交集评审编号" Width="155" Binding="{Binding OverlapReviewId, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridCheckBoxColumn Header="启用" Width="65" Binding="{Binding Enabled}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </DockPanel>
-            </TabItem>
-            <TabItem Header="配方 / TEST 资源">
-                <DockPanel Margin="12">
-                    <TextBlock DockPanel.Dock="Bottom" Margin="0,10,0,0" TextWrapping="Wrap" Opacity="0.75"
-                               Text="此处的测试程序与工位资源引用属于 Mock 演示；真实资源必须经 PROJECT 版本解析、权限预检和 INTEGRATION 适配，编辑文本不能自行认证物理资源。" />
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-                        <Button Content="新增配方" Command="{Binding AddRecipeCommand}" />
-                        <Button Content="删除选中" Command="{Binding RemoveRecipeCommand}" />
-                    </StackPanel>
-                    <DataGrid ItemsSource="{Binding Recipes}" SelectedItem="{Binding SelectedRecipe}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="配方 ID" Width="135" Binding="{Binding RecipeId, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="修订" Width="75" Binding="{Binding Revision, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="型号条件" Width="110" Binding="{Binding ModelField, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="客户条件" Width="110" Binding="{Binding CustomerField, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="Mock TEST 引用" Width="*" Binding="{Binding MockTestProgramKey, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="Mock Station 引用" Width="*" Binding="{Binding MockStationProfileKey, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="生效 UTC (含)" Width="175" Binding="{Binding EffectiveFromUtc, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="截止 UTC (不含)" Width="175" Binding="{Binding EffectiveUntilUtc, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridCheckBoxColumn Header="启用" Width="65" Binding="{Binding Enabled}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </DockPanel>
-            </TabItem>
-            <TabItem Header="规则验证样本">
-                <DockPanel Margin="12">
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-                        <Button Content="增加样本" Command="{Binding AddSampleCommand}" />
-                        <Button Content="删除选中" Command="{Binding RemoveSampleCommand}" />
-                    </StackPanel>
-                    <TextBlock DockPanel.Dock="Bottom" Margin="0,10,0,0" Opacity="0.75"
-                               Text="发布时逐个验证所有已填写样本，但有限样本不能证明所有正则完全无交集。" />
-                    <DataGrid ItemsSource="{Binding Samples}" SelectedItem="{Binding SelectedSample}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="原始扫码" Width="*" Binding="{Binding RawBarcode, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="预期规则 ID" Width="220" Binding="{Binding ExpectedRuleId, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="预期配方 ID" Width="220" Binding="{Binding ExpectedRecipeId, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="样本时间 UTC" Width="210" Binding="{Binding ObservedAtUtc, UpdateSourceTrigger=PropertyChanged}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </DockPanel>
-            </TabItem>
-            <TabItem Header="运行历史 / 统计">
-                <DockPanel Margin="12">
-                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-                        <TextBlock Text="本次会话 Mock 执行次数：" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding MockRunCount}" />
-                        <TextBlock Text="    不同模拟单件：" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding DistinctMockUnits}" />
-                        <TextBlock Text="    真实出厂放行单件：" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FactoryReleasedCount}" />
-                    </WrapPanel>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <DataGrid Grid.Row="0" ItemsSource="{Binding History}" IsReadOnly="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="RunId" Width="220" Binding="{Binding RunId}" />
-                            <DataGridTextColumn Header="结束时间" Width="155" Binding="{Binding When}" />
-                            <DataGridTextColumn Header="单件身份 Key" Width="*" Binding="{Binding UnitKey}" />
-                            <DataGridTextColumn Header="配方" Width="130" Binding="{Binding Recipe}" />
-                            <DataGridTextColumn Header="状态" Width="100" Binding="{Binding Result}" />
-                            <DataGridTextColumn Header="来源" Width="85" Binding="{Binding Origin}" />
-                            <DataGridCheckBoxColumn Header="出厂放行" Width="90" Binding="{Binding FactoryReleased}" />
-                        </DataGrid.Columns>
-                        </DataGrid>
-                        <GroupBox Grid.Row="1" Header="扫码观察（不等于 Run）" Margin="0,8,0,0">
-                            <DataGrid ItemsSource="{Binding ScanEvents}" IsReadOnly="True">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="时间" Width="155" Binding="{Binding When}" />
-                                    <DataGridTextColumn Header="扫码文本" Width="*" Binding="{Binding Input}" />
-                                    <DataGridTextColumn Header="匹配结果 / 拒绝原因" Width="220" Binding="{Binding Result}" />
-                                    <DataGridTextColumn Header="输入来源" Width="190" Binding="{Binding Origin}" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-                    </Grid>
-                </DockPanel>
-            </TabItem>
-            <TabItem Header="发布 / 本地配置">
+        <TabControl Background="#101620">
+            <TabItem Header="实际扫码 / 识别">
                 <StackPanel Margin="12">
-                    <TextBlock FontWeight="SemiBold" Text="保存草稿与发布是两个独立操作" FontSize="14" />
-                    <TextBlock Margin="0,7,0,0" TextWrapping="Wrap" Text="草稿允许保留错误供修正；发布必须通过全部规则、配方重叠和样本检查，新的配置只有发布后才能被扫码使用。" />
-                    <WrapPanel Margin="0,15,0,0">
-                        <Button Content="保存未发布草稿" Command="{Binding SaveDraftCommand}" />
-                        <Button Content="验证并发布 MOCK 配方" Command="{Binding PublishCommand}" />
-                        <Button Content="加载本地配置" Command="{Binding LoadCommand}" />
-                    </WrapPanel>
-                    <TextBlock Margin="0,18,0,0" Text="{Binding DraftState}" TextWrapping="Wrap" />
-                    <TextBlock Margin="0,9,0,0" Text="{Binding CatalogSource}" />
-                    <TextBlock Margin="0,9,0,0" Text="{Binding RuleRevision, StringFormat=当前生效修订：{0}}" />
-                    <TextBlock Margin="0,12,0,0" Foreground="#9B3D21" TextWrapping="Wrap"
-                               Text="此工具提供配置草稿和 MOCK 发布，不提供物理生产签发功能。不能把 JSON 编辑器、Mock 工位资源或内存历史当成真实产线放行证据。" />
+                    <TextBlock Text="条码输入 / 校验" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="校验条码" Command="{Binding PreviewCommand}"/>
+                        <TextBox x:Name="BarcodeInput" KeyDown="BarcodeInput_OnKeyDown"
+                                 Text="{Binding ScanInput, UpdateSourceTrigger=PropertyChanged}"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding MatchDetail}" TextWrapping="Wrap" Margin="0,12,0,3"/>
+                    <TextBlock Text="{Binding RuleRevision, StringFormat=规则版本：{0}}"
+                               Foreground="#92A4B7"/>
+                    <TextBlock Text="{Binding CatalogSource}" TextWrapping="Wrap"
+                               Foreground="#92A4B7" Margin="0,6,0,0"/>
+                    <Button Content="转到 P11 · 当前工程测试" Click="OpenProjectTest_Click"
+                            HorizontalAlignment="Left" Margin="0,16,0,0" Padding="16,8"/>
                 </StackPanel>
+            </TabItem>
+            <TabItem Header="真实扫码记录">
+                <DataGrid ItemsSource="{Binding ScanEvents}" IsReadOnly="True" Margin="12">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="时间" Width="160" Binding="{Binding When}"/>
+                        <DataGridTextColumn Header="扫码内容" Width="*" Binding="{Binding Input}"/>
+                        <DataGridTextColumn Header="匹配/拒绝状态" Width="220" Binding="{Binding Result}"/>
+                        <DataGridTextColumn Header="实际输入来源" Width="180" Binding="{Binding Origin}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
             </TabItem>
         </TabControl>
     </DockPanel>
