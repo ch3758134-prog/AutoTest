@@ -488,7 +488,7 @@ class Store:
         upstream = [p[0] for p in dependency_pairs]
         for design, relation in dependency_pairs:
             if relation["status"] != "APPROVED":
-                why.append("上游工程关系未审查：" + design["title"])
+                why.append("上游工程关系审查未完成：" + design["title"])
         direct_links = [r for _,r in dependency_pairs if r["target_id"]==key and r["kind"]=="depends"]
         if not direct_links:
             why.append("尚未关联上游已审查的需求或设计")
