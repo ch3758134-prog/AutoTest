@@ -100,7 +100,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
     {
         _project = project;
         ImportToProjectCommand = new DbcToolCommand(() => _ = ImportToProjectAsync());
-        OpenCommand = new DbcToolCommand(() => _ = LoadSafeAsync());
+        OpenCommand = new DbcToolCommand(() => _ = OpenFileAsync());
         SaveCommand = new DbcToolCommand(() => _ = SaveSafeAsync());
         AddNodeCommand = new DbcToolCommand(() => Safe(() => { Document.AddNode(NewNodeName); Refresh(); }));
         UpdateMessageCommand = new DbcToolCommand(() => Safe(() =>
@@ -148,7 +148,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
         DecodeSummary = $"{result.Source} / DBC {result.RevisionQuality} / Lost {result.LostCount} / {result.TimeQuality}";
         Status = "Replay 解码完成（没有采集任何真实 ECU 帧）";
     }
-    private async Task ImportToProjectAsync()
+    public async Task ImportToProjectAsync()
     {
         try
         {
@@ -174,7 +174,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task LoadSafeAsync()
+    public async Task OpenFileAsync()
     {
         try
         {
