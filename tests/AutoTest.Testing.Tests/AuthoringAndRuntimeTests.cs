@@ -167,4 +167,52 @@ public sealed class AuthoringAndRuntimeTests
         Assert.Equal(MockStepVerdict.Pass, (await running).Verdict);
     }
 
+    [Theory]
+    [InlineData("run", MockStepVerdict.Pass)]
+    [InlineData("other", MockStepVerdict.Fail)]
+    public async Task C2_SwitchExecutesMatchingOrDefaultCase(string value, MockStepVerdict expected)
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("switch"));
+        tx.Insert(TestPhase.Prepare, null, null, 0,
+            N("SetVariable", ("variable", "mode"), ("value", value)));
+        var branches = N("Switch", ("variable", "mode")).WithSlot("cases",
+            N("Case", ("equals", "run")).WithSlot("body", Observe(), AssertPressure()),
+            N("Case", ("equals", "*")).WithSlot("body", Observe("7"), AssertPressure()));
+        tx.Insert(TestPhase.Test, null, null, 0, branches);
+        var plan = new PlanCompiler().Prepare(tx.Current);
+        Assert.Empty(plan.Diagnostics);
+        var report = await new RunCoordinator().StartAsync(plan, new MockStation());
+        Assert.Equal(expected, report.Verdict);
+        Assert.Contains(report.Facts, f => f.Type == "Switch");
+        Assert.Single(report.Facts.Where(f => f.Type == "Case"));
+    }
+
+    [Fact]
+    public async Task C2_SwitchWithoutMatchIsInconclusive()
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("switch-none"));
+        tx.Insert(TestPhase.Prepare, null, null, 0,
+            N("SetVariable", ("variable", "mode"), ("value", "other")));
+        tx.Insert(TestPhase.Test, null, null, 0,
+            N("Switch", ("variable", "mode")).WithSlot("cases",
+                N("Case", ("equals", "run")).WithSlot("body", Observe(), AssertPressure())));
+        var report = await new RunCoordinator().StartAsync(
+            new PlanCompiler().Prepare(tx.Current), new MockStation());
+        Assert.Equal(MockStepVerdict.Inconclusive, report.Verdict);
+        Assert.Contains(report.Facts, f => f.Detail is not null &&
+            f.Detail.Contains("SWITCH_NO_MATCH"));
+    }
+
+    [Fact]
+    public void C1_RejectDuplicateSwitchCasesBeforeRun()
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("duplicate-switch"));
+        tx.Insert(TestPhase.Test, null, null, 0,
+            N("Switch", ("variable", "mode")).WithSlot("cases",
+                N("Case", ("equals", "x")).WithSlot("body"),
+                N("Case", ("equals", "x")).WithSlot("body")));
+        Assert.Contains(new PlanCompiler().Prepare(tx.Current).Diagnostics,
+            x => x.Contains("duplicate Switch Case values"));
+    }
+
 }
