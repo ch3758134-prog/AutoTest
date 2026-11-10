@@ -364,13 +364,13 @@ public partial class MainWindow : Window
     private void ExecutionSource_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
         if (!IsLoaded || R1ExecutionSource.SelectedItem is not ComboBoxItem choice) return;
-        string source=choice.Tag as string ?? "Mock";
+        string source=choice.Tag as string ?? "Physical";
         if (R1UdsView.DataContext is UdsToolViewModel uds)
             uds.SourceMode = source switch
             {
                 "Physical" => "Physical Read",
                 "Replay" => "Replay",
-                _ => "Mock"
+                _ => "Physical Read"
             };
         if (R1BenchHost.Content is BenchWorkbenchView bench &&
             bench.DataContext is BenchWorkbenchViewModel vm)
@@ -379,7 +379,7 @@ public partial class MainWindow : Window
             {
                 "Physical"=>BenchEvidenceSource.Physical,
                 "Replay"=>BenchEvidenceSource.Replay,
-                _=>BenchEvidenceSource.Mock
+                _=>BenchEvidenceSource.Physical
             };
         }
         // Each other module retains its own verified source. Selecting Physical
