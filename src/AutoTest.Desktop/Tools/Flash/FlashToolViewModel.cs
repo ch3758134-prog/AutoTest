@@ -3,6 +3,8 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using AutoTest.Specialists.Flash;
 using AutoTest.Specialists.Flash.Workbench;
+using AutoTest.Devices.Diagnostics;
+using AutoTest.Devices.Usb;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -11,6 +13,9 @@ namespace AutoTest.Desktop.Tools.Flash;
 public sealed class FlashToolViewModel : BindableBase
 {
     private readonly FlashDryRunWorkspace _backend;
+    private CanToolConfigurationSnapshot? _canTool;
+    private string _configStatus="尚未导入 CanTool Configuration.xml";
+    private string _physicalPreflight="未做真实 ECU 烧录条件检查";
     private bool _isBusy;
     private string _imagePath="",_binAddress="1000",_target="MOCK_TARGET_A",
         _expectedIdentity="MOCK_ECU_A",_observedIdentity="MOCK_ECU_A",
@@ -31,6 +36,10 @@ public sealed class FlashToolViewModel : BindableBase
         ExportAuditCommand = new DelegateCommand(() => _ = ExportAuditAsync(), () => !IsBusy && _backend.CurrentJob is not null);
     }
     public ObservableCollection<FlashSegmentDetail> Segments { get; } = new();
+    public ObservableCollection<CanToolConfigurationField> ConfigurationFields { get; } = new();
+    public ObservableCollection<FlashPreflightItem> PhysicalChecks { get; } = new();
+    public string ConfigurationStatus { get => _configStatus; private set => SetProperty(ref _configStatus,value); }
+    public string PhysicalPreflight { get => _physicalPreflight; private set => SetProperty(ref _physicalPreflight,value); }
     public ObservableCollection<string> Stages { get; } = new();
     public DelegateCommand LoadCommand { get; }
     public DelegateCommand PreflightCommand { get; }
@@ -38,6 +47,46 @@ public sealed class FlashToolViewModel : BindableBase
     public DelegateCommand CancelCommand { get; }
     public DelegateCommand ExportAuditCommand { get; }
     public bool PhysicalProgrammingEnabled => false;
+
+    public void ImportCanToolConfiguration(string fileName)
+    {
+        if (IsBusy) throw new InvalidOperationException("Cannot modify Flash Profile during an active job.");
+        var candidate=CanToolConfigurationImporter.LoadFile(fileName);
+        _canTool=candidate;
+        ConfigurationFields.Clear();
+        foreach(var field in candidate.Fields) ConfigurationFields.Add(field);
+        AllowedStart=candidate.FlashStart.ToString("X8");
+        AllowedEnd=candidate.EndExclusive.ToString("X");
+        ConfigurationStatus=$"配置已解析：{candidate.SourceName}; " +
+            $"SHA256={candidate.SourceSha256}; APP TX/RX 0x{candidate.AppRequestId:X}/0x{candidate.AppResponseId:X}; "+
+            $"Boot TX/RX 0x{candidate.BootRequestId:X}/0x{candidate.BootResponseId:X}; "+
+            $"CAN={candidate.BaudRate}(XML声明，非有效速率)。未加载 DLL，未向 ECU 发送。";
+        PhysicalPreflight="XML 已载入；必须检查镜像地址、当前主控代次、ECU 身份和 OEM 编程合同。";
+    }
+
+    public void EvaluatePhysicalPreflight(HardwareBenchController? device)
+    {
+        if (IsBusy) throw new InvalidOperationException("Cannot check new configuration during active job.");
+        var healthy=device is {State:UsbSessionState.Connected,ProtocolVersionVerified:true,Generation:>0};
+        var evidence=new FlashFieldEvidence(
+            UsbConnected: healthy,
+            ControllerVersionVerified: device?.ProtocolVersionVerified == true,
+            UsbGeneration: device?.Generation ?? 0,
+            LiveUdsReadAccepted: false,
+            LiveUdsEndpointMatches: false,
+            CanBitrateVerified: false,
+            EcuIdentityMatched: false,
+            MeasuredPowerInRange: false,
+            SecurityProviderValidated: false,
+            OemProgrammingContractValidated: false,
+            RecoveryProcedureValidated: false);
+        var checklist=FlashFieldPreflightEvaluator.Evaluate(_canTool,_backend.ParsedImage,evidence);
+        PhysicalChecks.Clear();
+        foreach(var item in checklist.Items) PhysicalChecks.Add(item);
+        PhysicalPreflight=$"配置/设备/地址证据：{checklist.Items.Count(x=>x.Passed)} 项通过，"+
+            $"{checklist.Items.Count(x=>!x.Passed)} 项阻断。真实擦写始终 LOCKED，"+
+            "未获授权不得复位、解锁、擦除或 TransferData。";
+    }
     public string SourceLabel => "MOCK DRY-RUN ONLY / PHYSICAL FLASH DISABLED";
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))

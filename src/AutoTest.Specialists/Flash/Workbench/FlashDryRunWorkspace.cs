@@ -29,6 +29,9 @@ public sealed class FlashDryRunWorkspace
     private ProgrammingJobCoordinator? _coordinator;
     private ProgrammingJobId? _jobId;
     public FlashImageDetail? Image => _image is null ? null : Describe(_image, _name);
+    // Immutable parsed image is also used by non-destructive CanTool address
+    // map checks; it must never be treated as a physical FLASH request.
+    public FirmwareImage? ParsedImage => _image;
     public ProgrammingJobId? CurrentJob => _jobId;
 
     public FlashImageDetail LoadImage(string fileName, ReadOnlySpan<byte> content, uint binAddress)
