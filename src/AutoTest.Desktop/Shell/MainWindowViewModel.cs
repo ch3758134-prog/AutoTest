@@ -333,6 +333,10 @@ public sealed class MainWindowViewModel : BindableBase
         }
         Workspace.Editor.ApplyProperties(item.Id, EditedName.Trim(), props);
     }
+    // The professional DBC editor shares this workspace but is hosted outside
+    // this VM. Re-project the tree after an explicit asset registration.
+    public void RefreshExternalWorkspaceChanges() => Refresh();
+
     private void Refresh(StepId? selected = null)
     {
         selected ??= SelectedStep?.Id;
