@@ -1,0 +1,86 @@
+<UserControl x:Class="AutoTest.Desktop.Tools.Testing.R1ProjectRunView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13">
+ <UserControl.Resources>
+  <Style TargetType="Button">
+   <Setter Property="Background" Value="#263748"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Padding" Value="10,6"/>
+   <Setter Property="Margin" Value="3,2"/>
+  </Style>
+  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E2EDF7"/></Style>
+  <Style TargetType="DataGrid">
+   <Setter Property="Background" Value="#192431"/>
+   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="BorderBrush" Value="#314458"/>
+  </Style>
+ </UserControl.Resources>
+ <Grid Margin="16">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/>
+   <RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+  <StackPanel Grid.Row="0" Margin="0,0,0,12">
+   <TextBlock Text="RUN / 工程测试执行" FontSize="22" FontWeight="SemiBold"/>
+   <TextBlock Text="{Binding DocumentName}" FontWeight="SemiBold" Margin="0,4,0,3"/>
+   <TextBlock Text="{Binding ProjectAssetStatus}" TextWrapping="Wrap" Foreground="#81C9BA"/>
+   <TextBlock Text="P10 与 P11 共用同一份工程版本化测试程序及单一运行会话；真实只读测试必须完成工程保存、DBC 与 TEST 版本检查、设备连接和逐次人工确认。"
+    TextWrapping="Wrap" Margin="0,9,0,0" Foreground="#92A4B7"/>
+  </StackPanel>
+  <WrapPanel Grid.Row="1" Margin="0,0,0,12">
+   <Button Content="预检当前测试程序" Command="{Binding PreflightCommand}"/>
+   <Button Content="运行 Mock（离线调试）" Command="{Binding RunMockCommand}"/>
+   <Button Content="执行真实 CAN1 只读测试" Command="{Binding RunPhysicalReadOnlyCommand}"
+    Background="#176A8C" FontWeight="SemiBold"/>
+   <Button Content="暂停" Command="{Binding PauseCommand}"/>
+   <Button Content="继续" Command="{Binding ResumeCommand}"/>
+   <Button Content="单步" Command="{Binding StepCommand}"/>
+   <Button Content="跳过选中" Command="{Binding SkipCommand}"/>
+   <Button Content="运行到选中" Command="{Binding RunToCommand}"/>
+   <Button Content="停止" Command="{Binding StopCommand}"/>
+  </WrapPanel>
+  <Grid Grid.Row="2">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="230"/>
+    <ColumnDefinition Width="*"/>
+   </Grid.ColumnDefinitions>
+   <Border Grid.Column="0" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="10" Margin="0,0,9,0">
+    <DockPanel>
+     <TextBlock DockPanel.Dock="Top" Text="测试步骤" FontWeight="SemiBold" Margin="0,0,0,10"/>
+     <TreeView ItemsSource="{Binding Tree}" SelectedItemChanged="StepTree_SelectionChanged" Background="#192431" Foreground="#E2EDF7" BorderThickness="0"/>
+    </DockPanel>
+   </Border>
+   <Border Grid.Column="1" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="8">
+    <DockPanel>
+     <TextBlock DockPanel.Dock="Top" Text="StepFact · 实际值 / 预期值 / 质量 / 来源 / 证据" FontWeight="SemiBold" Margin="0,0,0,8"/>
+     <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
+      CanUserAddRows="False" CanUserDeleteRows="False" RowHeaderWidth="0">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="阶段" Binding="{Binding Phase}" Width="65"/>
+       <DataGridTextColumn Header="步骤" Binding="{Binding NodeType}" Width="110"/>
+       <DataGridTextColumn Header="预期" Binding="{Binding Expected}" Width="*"/>
+       <DataGridTextColumn Header="实际" Binding="{Binding Actual}" Width="*"/>
+       <DataGridTextColumn Header="质量" Binding="{Binding Quality}" Width="90"/>
+       <DataGridTextColumn Header="结论" Binding="{Binding Verdict}" Width="100"/>
+       <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="80"/>
+       <DataGridTextColumn Header="Session" Binding="{Binding SessionGeneration}" Width="80"/>
+       <DataGridTextColumn Header="Trace" Binding="{Binding TraceReference}" Width="130"/>
+       <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="2*"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </DockPanel>
+   </Border>
+  </Grid>
+  <StackPanel Grid.Row="3" Margin="0,10,0,0">
+   <TextBlock Text="{Binding Verdict}" FontSize="16" FontWeight="SemiBold" Foreground="#46D0DC"/>
+   <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+   <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="#81C9BA" Margin="0,3,0,0"/>
+   <TextBlock Text="真实 CAN1 只读运行只产生诊断事实，不签发出厂 PASS。电源、IGN、按键、电磁阀、Flash 的物理动作尚未由此接口授权。"
+    TextWrapping="Wrap" Foreground="#E8B967" Margin="0,5,0,0"/>
+  </StackPanel>
+ </Grid>
+</UserControl>
