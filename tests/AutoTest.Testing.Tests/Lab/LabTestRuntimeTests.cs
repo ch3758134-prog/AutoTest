@@ -295,4 +295,70 @@ public sealed class LabTestRuntimeTests
         Assert.NotEqual(plan.Digest, new LabPlanCompiler().Prepare(doc).Digest);
         Assert.Equal(LabVerdict.Pass, (await Runner().RunAsync(plan, new SimulatedLabStation(), LabSource.Mock)).Verdict);
     }
+    [Fact]
+    public async Task IfAndSwitchFollowObservedSignalRatherThanOnlyLocalVariables()
+    {
+        var doc = LabDocument.New("Signal decisions");
+        doc.Phases[LabPhase.Test].Add(N("Observe", ("variable", "signal")));
+        var decision = N("If", ("variable", "signal"), ("equals", "ok"));
+        decision.Slots.Add("then", new List<LabNode> { N("Log", ("message", "real observation selected")) });
+        decision.Slots.Add("else", new List<LabNode> { N("Fail", ("message", "unexpected ECU response")) });
+        doc.Phases[LabPhase.Test].Add(decision);
+        var choice = N("Switch", ("variable", "signal"));
+        var matched = N("Case", ("equals", "ok"));
+        matched.Slots.Add("body", new List<LabNode> { AssertSignal("ok") });
+        choice.Slots.Add("cases", new List<LabNode> { matched });
+        doc.Phases[LabPhase.Test].Add(choice);
+
+        var replay = new RecordedReplayLabStation(new[]
+        {
+            new LabReplaySample("signal", "ok", LabQuality.Observed, "recorded-real-can:23")
+        });
+        var report = await Runner().RunAsync(new LabPlanCompiler().Prepare(doc),
+            replay, LabSource.Replay);
+        Assert.Equal(LabVerdict.Pass, report.Verdict);
+        Assert.Contains(report.Facts, x => x.NodeType == "If" &&
+            x.Actual == "ok" && x.TraceReference == "recorded-real-can:23");
+        Assert.Contains(report.Facts, x => x.NodeType == "Switch" && x.Actual == "ok");
+        Assert.Contains(report.Facts, x => x.NodeType == "Assert" && x.Verdict == LabVerdict.Pass);
+    }
+
+    [Fact]
+    public async Task WhenPerformsFreshSignalObservationAndExecutesItsOwnBody()
+    {
+        var doc = LabDocument.New("Wait actual signal");
+        var when = N("When", ("variable", "signal"), ("equals", "ok"), ("timeoutMs", "500"));
+        when.Slots.Add("body", new List<LabNode> { AssertSignal("ok") });
+        doc.Phases[LabPhase.Test].Add(when);
+        var station = new RecordedReplayLabStation(new[]
+        {
+            new LabReplaySample("signal", "ok", LabQuality.Observed, "recorded-real-can:29")
+        });
+        var report = await Runner().RunAsync(new LabPlanCompiler().Prepare(doc),
+            station, LabSource.Replay);
+        Assert.Equal(LabVerdict.Pass, report.Verdict);
+        Assert.Contains(report.Facts, x => x.NodeType == "When" &&
+            x.TraceReference == "recorded-real-can:29");
+        Assert.Contains(report.Facts, x => x.NodeType == "Assert" && x.Verdict == LabVerdict.Pass);
+    }
+
+    [Fact]
+    public async Task WhenMissingSignalTimesOutInconclusiveWithoutFakeSuccessfulBranch()
+    {
+        var doc = LabDocument.New("Missing ECU evidence");
+        var when = N("When", ("variable", "signal"), ("equals", "ok"), ("timeoutMs", "40"));
+        when.Slots.Add("body", new List<LabNode>
+        {
+            N("Fail", ("message", "should never execute without a received signal"))
+        });
+        doc.Phases[LabPhase.Test].Add(when);
+        var missing = new RecordedReplayLabStation(Array.Empty<LabReplaySample>());
+        var report = await Runner().RunAsync(new LabPlanCompiler().Prepare(doc),
+            missing, LabSource.Replay);
+        Assert.Equal(LabVerdict.Inconclusive, report.Verdict);
+        Assert.DoesNotContain(report.Facts, x => x.NodeType == "Fail");
+        Assert.Contains(report.Facts, x => x.NodeType == "When" &&
+            x.Diagnostic == "WHEN_TIMEOUT_OR_CONDITION_NOT_MET");
+    }
+
 }
