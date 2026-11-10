@@ -149,7 +149,7 @@ public sealed class MainWindowViewModel : BindableBase
     }
     public ObservableCollection<string> FactLines { get; } = new();
     public ObservableCollection<string> AvailableTypes { get; } = new(new[]
-        { "MockObserve", "Assert", "SetVariable", "Wait", "Sequence", "If", "Loop" });
+        { "MockObserve", "Assert", "SetVariable", "Wait", "Sequence", "If", "Loop", "Switch", "Case" });
     public WorkbenchStepItem? SelectedStep
     {
         get => _selectedStep;
@@ -264,10 +264,16 @@ public sealed class MainWindowViewModel : BindableBase
         "Sequence" => StepNode.Create("Sequence", "顺序块").WithSlot("body"),
         "If" => StepNode.Create("If", "条件")
             .WithProperty("variable", "mode").WithProperty("equals", "ready").WithSlot("then").WithSlot("else"),
+        "Switch" => StepNode.Create("Switch", "多路条件")
+            .WithProperty("variable", "mode").WithSlot("cases"),
+        "Case" => StepNode.Create("Case", "匹配分支")
+            .WithProperty("equals", "ready").WithSlot("body"),
         _ => throw new InvalidOperationException("不支持的 V1 节点类型")
     };
     private void InsertRoot()
     {
+        if (NewStepType == "Case")
+            throw new InvalidOperationException("Case 只能插入 Switch 的 cases 列表。");
         if (!Enum.TryParse<TestPhase>(NewStepPhase, out var phase))
             throw new ArgumentException("无效的测试阶段");
         var node = NewNode();
@@ -290,8 +296,21 @@ public sealed class MainWindowViewModel : BindableBase
         var parent = child ? at?.Id : at?.Parent;
         string? slot = child ? at?.NodeType switch
         {
-            "Loop" or "Sequence" => "body", "If" => intoElse ? "else" : "then", _ => null
+            "Loop" or "Sequence" or "Case" => "body",
+            "If" => intoElse ? "else" : "then",
+            "Switch" => "cases",
+            _ => null
         } : at?.Slot;
+        if (NewStepType == "Case")
+        {
+            bool insideSwitch = (child && at?.NodeType == "Switch") ||
+                (!child && at?.Parent is { } parentId &&
+                    Workspace.Document.Walk().Any(n => n.Id == parentId && n.Type == "Switch"));
+            if (!insideSwitch)
+                throw new InvalidOperationException("Case 只能放在 Switch 的 cases 槽中。");
+        }
+        if (child && at?.NodeType == "Switch" && NewStepType != "Case")
+            throw new InvalidOperationException("Switch 的 cases 槽只能放 Case 节点。");
         if (child && slot is null) throw new InvalidOperationException("只能在 Sequence / Loop / If 内插入子节点");
         var count = CountSiblings(phase, parent, slot);
         var position = child ? count : at is null ? count : Math.Min(count, at.Position + (after ? 1 : 0));
@@ -328,6 +347,10 @@ public sealed class MainWindowViewModel : BindableBase
                 props["quality"] = EditedQuality; break;
             case "Assert": case "If":
                 props["variable"] = EditedVariable; props["equals"] = EditedExpected; break;
+            case "Switch":
+                props["variable"] = EditedVariable; break;
+            case "Case":
+                props["equals"] = EditedExpected; break;
             case "SetVariable":
                 props["variable"] = EditedVariable; props["value"] = EditedValue; break;
             case "Loop": props["count"] = EditedCount; break;
