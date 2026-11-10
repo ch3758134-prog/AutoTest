@@ -1,4 +1,5 @@
 using AutoTest.Desktop.Tools.Testing;
+using AutoTest.Application.V1;
 using AutoTest.Testing.Lab;
 using Xunit;
 
@@ -41,4 +42,34 @@ public sealed class LabTestWorkspaceViewModelTests
         vm.PreflightCommand.Execute(null);
         Assert.Contains("Preflight blocked", vm.Status);
     }
+    [Fact]
+    public async Task PhysicalRunRejectsMissingProjectProgramBeforeDeviceAuthorization()
+    {
+        var project = new V1Workspace();
+        var vm = new LabTestWorkspaceViewModel(project);
+        var approvals = 0;
+        vm.AttachPhysicalReadOnly(() => null, () => { approvals++; return true; });
+        var result = await vm.RunPhysicalReadOnlyAsync();
+        Assert.Null(result);
+        Assert.Equal(0, approvals);
+        Assert.Equal("ERROR / NOT_PRODUCTION", vm.Verdict);
+        Assert.Contains("PROJECT_TEST_NOT_REGISTERED", vm.Status);
+    }
+
+    [Fact]
+    public async Task PhysicalRunRejectsUnsavedProjectBeforeDeviceAuthorization()
+    {
+        var project = new V1Workspace();
+        var vm = new LabTestWorkspaceViewModel(project);
+        vm.SaveToProjectCommand.Execute(null);
+        Assert.NotNull(project.LabProgramAssetId);
+        var approvals = 0;
+        vm.AttachPhysicalReadOnly(() => null, () => { approvals++; return true; });
+        var result = await vm.RunPhysicalReadOnlyAsync();
+        Assert.Null(result);
+        Assert.Equal(0, approvals);
+        Assert.Equal("ERROR / NOT_PRODUCTION", vm.Verdict);
+        Assert.Contains("PROJECT_NOT_SAVED", vm.Status);
+    }
+
 }
