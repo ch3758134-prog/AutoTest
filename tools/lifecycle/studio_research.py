@@ -260,59 +260,63 @@ class Research:
                         row["experiment_title"] + " / " + row["outcome"] + " / " + note)
         return self.detail(row["study_id"])
 
+    def _evaluate_in_db(self, db, study_id, option_id):
+        study = self._study(db, study_id)
+        self._option(db, study_id, option_id)
+        reasons = []
+        experiments = [dict(r) for r in db.execute(
+            "SELECT * FROM study_experiments WHERE study_id=? AND option_id=?",
+            (study_id, option_id))]
+        if not experiments:
+            reasons.append("No experiment plan is attached to this candidate")
+        accepted = []
+        for experiment in experiments:
+            reports = [dict(r) for r in db.execute(
+                "SELECT * FROM study_results WHERE experiment_id=? ORDER BY rowid",
+                (experiment["id"],))]
+            reviewed = [r for r in reports if r["reviewed_by"]]
+            # The most recent reviewed run is authoritative. Failed older runs
+            # remain visible in history, but can be superseded by a reviewed retest.
+            latest = reviewed[-1] if reviewed else None
+            if experiment["required"] and (not latest or latest["outcome"] != "PASS"):
+                reasons.append("Required experiment has no current reviewed PASS evidence: " +
+                               experiment["title"])
+            if latest and latest["outcome"] == "PASS":
+                if LEVELS[experiment["level"]] >= LEVELS[study["minimum_level"]]:
+                    accepted.append({
+                        "id": latest["id"], "experiment_id":experiment["id"],
+                        "level": experiment["level"],
+                        "configuration": latest["configuration"],
+                        "source_revision": latest["source_revision"],
+                        "raw_reference": latest["raw_reference"],
+                        "previous_failed_runs": sum(r["outcome"]=="FAIL" for r in reviewed[:-1])
+                    })
+        if not accepted:
+            reasons.append("No reviewed PASS evidence meets required maturity: " +
+                           study["minimum_level"])
+        return {"study_id":study_id, "option_id":option_id, "ready":not reasons,
+                "reasons":reasons,"accepted_evidence":accepted,
+                "minimum_level":study["minimum_level"]}
+
     def evaluate(self, study_id, option_id):
-        """Read-only decision gate; missing evidence cannot be replaced by a checkbox."""
+        """Read-only evidence gate. Neither an AI claim nor a checked box is evidence."""
         with self.store.db() as db:
-            study = self._study(db, study_id)
-            self._option(db, study_id, option_id)
-            reasons = []
-            experiments = [dict(r) for r in db.execute(
-                "SELECT * FROM study_experiments WHERE study_id=? AND option_id=?",
-                (study_id, option_id))]
-            if not experiments:
-                reasons.append("No experiment plan is attached to this candidate")
-            accepted = []
-            for experiment in experiments:
-                reports = [dict(r) for r in db.execute(
-                    "SELECT * FROM study_results WHERE experiment_id=? ORDER BY performed_at",
-                    (experiment["id"],))]
-                reviewed = [r for r in reports if r["reviewed_by"]]
-                good = [r for r in reviewed if r["outcome"] == "PASS"]
-                if experiment["required"] and not good:
-                    reasons.append("Required experiment has no reviewed PASS evidence: " +
-                                   experiment["title"])
-                if experiment["required"] and any(r["outcome"] == "FAIL" for r in reviewed):
-                    reasons.append("Required experiment has reviewed FAIL evidence: " +
-                                   experiment["title"])
-                for report in good:
-                    if LEVELS[experiment["level"]] >= LEVELS[study["minimum_level"]]:
-                        accepted.append({"id": report["id"], "experiment_id":experiment["id"],
-                                         "level": experiment["level"], "configuration":
-                                         report["configuration"], "source_revision":
-                                         report["source_revision"], "raw_reference":
-                                         report["raw_reference"]})
-            if not accepted:
-                reasons.append("No reviewed PASS evidence meets required maturity: " +
-                               study["minimum_level"])
-            return {"study_id":study_id, "option_id":option_id,
-                    "ready":not reasons, "reasons":reasons,
-                    "accepted_evidence":accepted,
-                    "minimum_level":study["minimum_level"]}
+            return self._evaluate_in_db(db, study_id, option_id)
 
     def decide(self, study_id, data):
         option_id = positive_text(data, "option_id", 100)
         actor = positive_text(data, "approver", 150)
         rationale = positive_text(data, "rationale")
         restrictions = text_value(data.get("restrictions", ""), "restrictions")
-        assessment = self.evaluate(study_id, option_id)
-        if not assessment["ready"]:
-            raise RuleError("Cannot approve technology route: " +
-                            "; ".join(assessment["reasons"]))
         with self.store.db() as db:
+            # Prevent decisions from racing with evidence writes on other requests.
+            db.execute("BEGIN IMMEDIATE")
             study = self._open(db, study_id)
             self._option(db, study_id, option_id)
-            # Re-evaluate under write transaction to prevent stale decision inputs
-            # in this single-user SQLite workflow (BEGIN IMMEDIATE).
+            assessment = self._evaluate_in_db(db, study_id, option_id)
+            if not assessment["ready"]:
+                raise RuleError("Cannot approve technology route: " +
+                                "; ".join(assessment["reasons"]))
             stamp = now()
             decision_id = ident()
             revision = study["revision"] + 1
