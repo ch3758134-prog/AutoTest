@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Text.Json;
+using AutoTest.Devices.Diagnostics;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -43,6 +46,17 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private string _verdict = "NOT_RUN";
     private bool _busy;
     private long _runGeneration;
+    private Func<HardwareBenchController?>? _physicalController;
+    private Func<bool>? _physicalApproval;
+    private string _physicalEvidencePath = "未执行";
+    public string PhysicalEvidencePath { get => _physicalEvidencePath; private set { _physicalEvidencePath = value; Changed(); } }
+    public ICommand RunPhysicalReadOnlyCommand { get; private set; } = null!;
+    public void AttachPhysicalReadOnly(Func<HardwareBenchController?> controller, Func<bool> approve)
+    {
+        _physicalController = controller ?? throw new ArgumentNullException(nameof(controller));
+        _physicalApproval = approve ?? throw new ArgumentNullException(nameof(approve));
+        RefreshCommands();
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Changed([CallerMemberName] string? name = null) =>
@@ -80,6 +94,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         RedoCommand = new LabCommand(() => Edit(() => _editor.Redo()), () => !Busy && _editor.CanRedo);
         PreflightCommand = new LabCommand(Preflight, () => !Busy);
         RunMockCommand = new LabCommand(() => _ = RunMockAsync(), () => !Busy);
+        RunPhysicalReadOnlyCommand = new LabCommand(() => _ = RunPhysicalReadOnlyAsync(), () => !Busy && _project is not null && _physicalController is not null);
         PauseCommand = new LabCommand(() => Control(_runner.Pause), () => Busy);
         ResumeCommand = new LabCommand(() => Control(_runner.Resume), () => Busy);
         StepCommand = new LabCommand(() => Control(_runner.Step), () => Busy);
@@ -168,7 +183,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     {
         foreach (var command in new[] { InsertCommand, DeleteCommand, CopyCommand, UpCommand,
             DownCommand, RenameCommand, SetParameterCommand, UndoCommand, RedoCommand,
-            PreflightCommand, RunMockCommand, PauseCommand, ResumeCommand, StepCommand,
+            PreflightCommand, RunMockCommand, RunPhysicalReadOnlyCommand, PauseCommand, ResumeCommand, StepCommand,
             SkipCommand, RunToCommand, StopCommand, SaveCommand, OpenCommand,
             SaveToProjectCommand, ReloadProjectCommand })
             (command as LabCommand)?.Refresh();
@@ -315,6 +330,96 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         catch (Exception ex) { Verdict = "ERROR"; Status = "Run failed: " + ex.Message; }
         finally { Busy = false; }
     }
+    /// <summary>Formal R1 physical read-only run of the pinned PROJECT TEST resource.</summary>
+    public async Task<LabRunReport?> RunPhysicalReadOnlyAsync(CancellationToken ct = default)
+    {
+        if (Busy) return null;
+        try
+        {
+            var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
+            var saved = project.LabProgram ??
+                throw new InvalidOperationException("PROJECT_TEST_NOT_REGISTERED: 请先在 P10 纳入工程。");
+            if (project.LabProgramAssetId is null)
+                throw new InvalidOperationException("PROJECT_TEST_ASSET_REQUIRED");
+            if (!string.Equals(LabDocumentCodec.Save(saved), ExportJson(), StringComparison.Ordinal))
+                throw new InvalidOperationException("TEST_UNSAVED_CHANGES: 请先将 P10 修改登记到工程。");
+            if (project.ProjectPath is null)
+                throw new InvalidOperationException("PROJECT_NOT_SAVED: 请先将工程保存到磁盘。");
+            if (project.Database is null || project.DbcAssetId is null)
+                throw new InvalidOperationException("PROJECT_DBC_REQUIRED");
+            if (project.StaleDependencies.Count != 0)
+                throw new InvalidOperationException("PROJECT_REFERENCE_STALE");
+            var plan = _compiler.Prepare(saved);
+            if (!plan.Ready)
+                throw new InvalidOperationException("TEST_PREFLIGHT_BLOCKED: " + string.Join("; ", plan.Diagnostics));
+            if (!saved.Walk().Any(n => n.Type == "Observe") ||
+                !saved.Walk().Any(n => n.Type == "Assert"))
+                throw new InvalidOperationException("PHYSICAL_READ_TEST_REQUIRES_OBSERVE_AND_ASSERT");
+            if (saved.Walk().Any(n => n.Type is "MockObserve" or "ControllerState"))
+                throw new UnauthorizedAccessException("PHYSICAL_READ_ONLY_FORBIDS_MOCK_AND_ACTUATION");
+            var controller = _physicalController?.Invoke() ??
+                throw new InvalidOperationException("STATION_NOT_INITIALIZED: 请先在 P02 连接主控板。");
+            if (_physicalApproval?.Invoke() != true)
+                throw new UnauthorizedAccessException("PHYSICAL_TEST_OPERATOR_APPROVAL_DENIED");
+            var station = new R2PhysicalCanReadOnlyLabStation(project, controller, true);
+            var programAsset = project.Assets.Single(a => a.Id == project.LabProgramAssetId.Value);
+            var dbcAsset = project.Assets.Single(a => a.Id == project.DbcAssetId.Value);
+            var generation = controller.Generation;
+            var programHash = programAsset.Sha256;
+            var dbcHash = dbcAsset.Sha256;
+            _runGeneration++;
+            Facts.Clear();
+            Verdict = "RUNNING_PHYSICAL_READ";
+            PhysicalEvidencePath = "运行中";
+            Busy = true;
+            Status = "正在执行当前工程已登记的 TEST · Physical CAN1 Read-Only · 不控制输出";
+            try
+            {
+                var report = await _runner.RunAsync(plan, station, LabSource.Physical, ct);
+                foreach (var fact in report.Facts)
+                    if (!Facts.Any(x => x.OperationId == fact.OperationId)) Facts.Add(fact);
+                if (controller.Generation != generation || !station.IsReadOnlyAuthorized ||
+                    project.Assets.Single(a => a.Id == programAsset.Id).Sha256 != programHash ||
+                    project.Assets.Single(a => a.Id == dbcAsset.Id).Sha256 != dbcHash)
+                    throw new IOException("PHYSICAL_RUN_CONTEXT_CHANGED: 运行期间设备或资源发生变化");
+                // A physical diagnostic verdict is never automatically a production PASS.
+                Verdict = report.Verdict + " / PHYSICAL_READ_ONLY / NOT_PRODUCTION";
+                var root = Path.Combine(Environment.GetFolderPath(
+                    Environment.SpecialFolder.LocalApplicationData), "AutoTest", "R1", "PhysicalRuns");
+                Directory.CreateDirectory(root);
+                var destination = Path.Combine(root, report.RunId.ToString("N") + ".json");
+                var evidence = new
+                {
+                    Schema = 1, RecordedUtc = DateTimeOffset.UtcNow, ProjectPath = project.ProjectPath,
+                    ProgramAssetId = programAsset.Id.Value, ProgramRevision = programAsset.Revision,
+                    ProgramSha256 = programHash, DbcAssetId = dbcAsset.Id.Value,
+                    DbcRevision = dbcAsset.Revision, DbcSha256 = dbcHash,
+                    DeviceGeneration = generation, Source = "PhysicalReadOnly",
+                    ProductionApproved = false, Report = report
+                };
+                var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                try
+                {
+                    await File.WriteAllBytesAsync(temporary,
+                        JsonSerializer.SerializeToUtf8Bytes(evidence), CancellationToken.None);
+                    File.Move(temporary, destination);
+                }
+                finally { if (File.Exists(temporary)) File.Delete(temporary); }
+                PhysicalEvidencePath = destination;
+                Status = "真实 CAN1 只读 TEST 完成 · Run " + report.RunId +
+                    " · " + report.Facts.Length + " StepFact · 已保存 JSON 证据 · 非出厂判定";
+                return report;
+            }
+            finally { Busy = false; }
+        }
+        catch (Exception ex)
+        {
+            Verdict = "ERROR / NOT_PRODUCTION";
+            Status = "真实 TEST 被拒绝或运行失败：" + ex.Message;
+            return null;
+        }
+    }
+
     private void Control(Action action)
     {
         try { action(); Status = "Run control requested"; }
