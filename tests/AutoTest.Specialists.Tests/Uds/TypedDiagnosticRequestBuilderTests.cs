@@ -44,7 +44,7 @@ public sealed class TypedDiagnosticRequestBuilderTests
         Assert.Throws<ArgumentOutOfRangeException>(()=>UdsTypedRequestBuilder.ReadDataByIdentifier());
         Assert.Throws<ArgumentOutOfRangeException>(()=>UdsTypedRequestBuilder.SessionControl(0x80));
         Assert.Throws<ArgumentOutOfRangeException>(()=>UdsTypedRequestBuilder.SecuritySeedRequest(2));
-        Assert.Throws<ArgumentException>(()=>UdsTypedRequestBuilder.RequestDownload(0xFFFFFF00,0x200));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>UdsTypedRequestBuilder.RequestDownload(0xFFFFFF00,0x200));
         Assert.Throws<ArgumentException>(()=>UdsTypedRequestBuilder.WriteDataByIdentifier(0xF190,[]));
     }
 }
