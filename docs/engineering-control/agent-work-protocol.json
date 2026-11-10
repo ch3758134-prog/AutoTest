@@ -1,0 +1,56 @@
+{
+  "schema": "engineering-agent-protocol/1",
+  "status": "DRAFT_REVIEW_REQUIRED",
+  "authorities": {
+    "engineering": "approved revision-pinned engineering objects",
+    "github": "exact issue/pr/commit/CI",
+    "physical": "separately reviewed raw bench evidence"
+  },
+  "roles": [
+    "SYSTEM_DESIGN",
+    "TECH_RESEARCH",
+    "SOFTWARE_ARCHITECT",
+    "CODER",
+    "INTEGRATION",
+    "TEST_EXECUTOR",
+    "HUMAN_APPROVER"
+  ],
+  "work_package": {
+    "schema": "engineering-coding-task/1",
+    "required": [
+      "work_package_id",
+      "revision",
+      "repository",
+      "issue_number",
+      "agent_role",
+      "source_sha",
+      "design_manifest",
+      "delivery",
+      "forbidden"
+    ],
+    "code_ready_enforced": true
+  },
+  "dispatch_states": [
+    "PLANNING",
+    "DISPATCHED",
+    "CLAIMED",
+    "REVOKED"
+  ],
+  "delivery": {
+    "branch": "professional",
+    "pull_request": "draft-to-main",
+    "must_include": [
+      "work_package_id",
+      "candidate_id",
+      "base_sha",
+      "head_sha",
+      "changed_files",
+      "build_test_evidence",
+      "user_lab_status"
+    ],
+    "merge_without_approval": false
+  },
+  "blocked_behavior": "report design/research gaps; no coder-initiated design changes",
+  "git_archive_directory": "docs/engineering-control/tasks",
+  "publication_requires_commit_push": true
+}
