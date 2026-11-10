@@ -106,7 +106,7 @@ public sealed class R1ProductionScannerViewModel : BindableBase
                 return;
             }
             _catalog = published;
-            ProductionTestEnabled = published.Recipes.Length == 1 && published.Recipes[0].ProductionTestEnabled;
+            ProductionTestEnabled = published.Recipes.Count == 1 && published.Recipes[0].ProductionTestEnabled;
             CatalogSource = "已发布的物理扫码规则 / 工程 TEST Revision 配方";
             RuleRevision = published.Revision;
             MatchDetail = "规则已载入，等待真实扫码。";
