@@ -400,8 +400,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 }).ToArray();
                 // Active mask commands must have a real release in Cleanup,
                 // even if Test throws or an operator stops the run.
-                bool hasReleaseCleanup = saved.Phases[LabPhase.Cleanup]
-                    .SelectMany(node => LabDocument.Walk(new[] { node }))
+                bool hasReleaseCleanup = LabDocument.Walk(saved.Phases[LabPhase.Cleanup])
                     .Any(n =>
                     {
                         if (n.Type != "ControllerState") return false;
