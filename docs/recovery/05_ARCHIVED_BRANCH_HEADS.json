@@ -1,0 +1,113 @@
+{
+  "manifest_schema": 1,
+  "repository": "ch3758134-prog/AutoTest",
+  "verified_main_sha": "4530aba0079e8b2344e4ff5e706049450458a45b",
+  "notes": "Archive every retired branch to an immutable lightweight tag and a Git bundle before deletion. Keep main, open recovery PR and this maintenance branch. Require SHA leases.",
+  "retirements": [
+    {
+      "name": "docs/r0-lab-lifecycle-v5-20261108",
+      "sha": "3a1bfa320a640488af7dc51a897d85863c22cc49",
+      "archive_tag": "archive/20261109/docs/r0-lab-lifecycle-v5-20261108"
+    },
+    {
+      "name": "fix/r1-workspace-keybinding-20261109",
+      "sha": "d1fa469a18d0b3da2713bcb14e4503543d37bb9f",
+      "archive_tag": "archive/20261109/fix/r1-workspace-keybinding-20261109"
+    },
+    {
+      "name": "flash/physical-lab-20261109",
+      "sha": "e66fb5ad85e7ee48d6fa05efe21996c2c1bf377d",
+      "archive_tag": "archive/20261109/flash/physical-lab-20261109"
+    },
+    {
+      "name": "integration/r0-lab-physical-bringup-20261109",
+      "sha": "cbb5fe759bf9036e78b4400c1cbfce4412c5ead7",
+      "archive_tag": "archive/20261109/integration/r0-lab-physical-bringup-20261109"
+    },
+    {
+      "name": "integration/r1-real-specialist-host-20261109",
+      "sha": "df8480d5cf5e79778e48c415e281341ffbbd5244",
+      "archive_tag": "archive/20261109/integration/r1-real-specialist-host-20261109"
+    },
+    {
+      "name": "lab/priority-uds-wave-scan-flash-20261109",
+      "sha": "2da397be37500301b5e29e644e5eed7182431502",
+      "archive_tag": "archive/20261109/lab/priority-uds-wave-scan-flash-20261109"
+    },
+    {
+      "name": "p1/device-readonly-uds-can1-tx-20261109",
+      "sha": "e50be650cbcc8fdb73d1de2f057c087220a37540",
+      "archive_tag": "archive/20261109/p1/device-readonly-uds-can1-tx-20261109"
+    },
+    {
+      "name": "r0-lab/uds-flash-observability-20261108",
+      "sha": "50c1e121f21af0d29cf34661b02d88b1ebbe5b81",
+      "archive_tag": "archive/20261109/r0-lab/uds-flash-observability-20261108"
+    },
+    {
+      "name": "r0-lab/wave-replay-offline-02",
+      "sha": "a711628828ddcec26a40d59db445500c0fed69d1",
+      "archive_tag": "archive/20261109/r0-lab/wave-replay-offline-02"
+    },
+    {
+      "name": "r0/device-station-keyvoltage-20261109",
+      "sha": "cc2efc3fe26eae9fb42d120d37ae1a639d7665a1",
+      "archive_tag": "archive/20261109/r0/device-station-keyvoltage-20261109"
+    },
+    {
+      "name": "r0/integration-diagnostics-01",
+      "sha": "1250d13f387416df5993c79601223943f74a3fa2",
+      "archive_tag": "archive/20261109/r0/integration-diagnostics-01"
+    },
+    {
+      "name": "r0/project-dbc-obs-02",
+      "sha": "435fe250a492df66f01134bb06207a1439220d3c",
+      "archive_tag": "archive/20261109/r0/project-dbc-obs-02"
+    },
+    {
+      "name": "r0/record-diag-02",
+      "sha": "571be18689f8b8d785c3c0f310357012a2a1c898",
+      "archive_tag": "archive/20261109/r0/record-diag-02"
+    },
+    {
+      "name": "r0/scan-production-diag-02",
+      "sha": "cc075ce1cac8b3b984eff5024060bbc7edfe8c45",
+      "archive_tag": "archive/20261109/r0/scan-production-diag-02"
+    },
+    {
+      "name": "r0/test-formal-r2-r3",
+      "sha": "0d29c0fc9e30795bbe8dc42eed3e1cee7da8a8dc",
+      "archive_tag": "archive/20261109/r0/test-formal-r2-r3"
+    },
+    {
+      "name": "r0/ui-bench-obs-01",
+      "sha": "ad8df5e369328a3d6518a8aab465fc570d26b870",
+      "archive_tag": "archive/20261109/r0/ui-bench-obs-01"
+    },
+    {
+      "name": "r1/ui-workbench-u1",
+      "sha": "efb2bbc7c443021c4179df334617ea0baa32f21d",
+      "archive_tag": "archive/20261109/r1/ui-workbench-u1"
+    },
+    {
+      "name": "recovery/backend-baseline-20261109",
+      "sha": "0ffac6a178845316be8a69214d2734528b37ea7b",
+      "archive_tag": "archive/20261109/recovery/backend-baseline-20261109"
+    },
+    {
+      "name": "uds/p1-readonly-issue17-pr16-20261109",
+      "sha": "ae22a761323f1a920349475a1d595e8f37be960e",
+      "archive_tag": "archive/20261109/uds/p1-readonly-issue17-pr16-20261109"
+    },
+    {
+      "name": "verification/full-main-windows-20261109",
+      "sha": "e21e1361ddd4881c7e17b7e7e607996f5478784a",
+      "archive_tag": "archive/20261109/verification/full-main-windows-20261109"
+    },
+    {
+      "name": "work/r1-real-functional-labs-20261109",
+      "sha": "ec6b1282fc05520e21bf7c55ee96a42ebdc05587",
+      "archive_tag": "archive/20261109/work/r1-real-functional-labs-20261109"
+    }
+  ]
+}
