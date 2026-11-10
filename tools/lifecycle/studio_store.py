@@ -253,6 +253,8 @@ class Store:
             obj = self._require_object(db, key)
             if "expected_revision" not in data or data["expected_revision"] != obj["revision"]:
                 raise RuleError("Revision conflict: refresh before saving")
+            if obj["kind"] == "change" and obj["state"] == "CLOSED":
+                raise RuleError("A closed change is immutable; create a follow-up change")
             changed = {}
             for field, maximum in (("title", 200), ("body", 50000)):
                 if field in data:
@@ -447,6 +449,20 @@ class Store:
                             ("file_scope","允许修改的文件范围")):
             if not meta.get(field):
                 why.append("缺少"+label)
+        source_sha = meta.get("source_sha")
+        if source_sha and (not isinstance(source_sha,str) or
+                not re.fullmatch(r"[0-9a-fA-F]{40}", source_sha)):
+            why.append("目标源码提交身份必须是完整的 40 位 Git SHA")
+        scope = meta.get("file_scope")
+        if scope:
+            if not isinstance(scope,list) or any(
+                    not isinstance(value,str) or not value.strip() or
+                    Path(value).is_absolute() or ".." in Path(value).parts
+                    for value in scope):
+                why.append("允许修改的文件范围必须是安全的仓库相对路径清单")
+        acceptance = meta.get("acceptance")
+        if acceptance and (not isinstance(acceptance,str) or not acceptance.strip()):
+            why.append("验收条件应为清晰可读的文本")
         dependency_links = [dict(r) for r in db.execute(
             "SELECT source_id,status FROM relations WHERE target_id=? AND kind='depends'",(key,))]
         upstream=[self._require_object(db,r["source_id"]) for r in dependency_links]
