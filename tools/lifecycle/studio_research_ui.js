@@ -336,3 +336,66 @@ function attachStudyModal(data){
     toast('设计已关联技术决定 r'+data.study.revision+'，需要重新审批修订');
   });
 }
+
+function renderResearchDashboardSection(){
+  const sectionBox=section('技术预研、关键实验与架构准入');
+  sectionBox.header.append(button('打开技术预研工作区','link',()=>navigate('research')));
+  const panel=el('div','panel');panel.append(el('p','','正在读取当前项目技术研究……'));
+  sectionBox.node.append(panel);
+  const projectId=state.project;
+  req('/api/studio/research?project='+qs(projectId)).then(studies=>{
+    if(state.view!=='dashboard'||state.project!==projectId)return;
+    clean(panel);
+    const openStudies=studies.filter(x=>x.status==='OPEN');
+    const approved=studies.filter(x=>x.status==='DECIDED');
+    const summary=el('div','buttonrow');
+    add(summary,badge('待研究 '+openStudies.length),badge('已有技术结论 '+approved.length));
+    panel.append(summary);
+    if(!studies.length){
+      panel.append(el('p','','当前没有登记技术预研。遇到架构技术未知时，先提出研究问题并定义实测计划，不要让纯编码 AI 自行选型。'));
+      panel.append(button('+ 新建技术预研','outline',()=>{
+        navigate('research');createStudyModal();
+      }));
+      return;
+    }
+    for(const st of studies.slice(0,5)){
+      const b=el('button','item-row');
+      const left=el('div');
+      add(left,el('div','rowtitle',st.title),el('div','rowdesc',
+        studyLevel(st.minimum_level)+' · '+st.experiment_count+' 项实验 · '+studyStatus(st.status)));
+      add(b,left,badge(st.status));
+      b.onclick=()=>{selectedStudyId=st.id;navigate('research');};
+      panel.append(b);
+    }
+    panel.append(note('这里反映技术路线的证据成熟度，不把研究活动的完成数量计作软件代码交付率。'));
+  }).catch(e=>{panel.textContent='研究数据无法读取：'+e.message;});
+}
+function appendDesignStudyLinks(design,target){
+  const refs=Array.isArray(design.meta.study_ids)?design.meta.study_ids:[];
+  if(!refs.length)return;
+  const block=el('div','detailsection');
+  block.append(el('h3','','已引用的技术预研与架构依据'));
+  block.append(el('div','tiny','下方状态独立于设计历史批准；研究被重新打开时旧设计必须复审。'));
+  const rows=el('div','rowlist');block.append(rows);target.append(block);
+  const projectId=state.project;
+  req('/api/studio/research?project='+qs(projectId)).then(studies=>{
+    if(state.selected!==design.id||projectId!==state.project)return;
+    clean(rows);
+    for(const id of refs){
+      const found=studies.find(x=>x.id===id);
+      const pin=design.meta.study_revisions?.[id];
+      const current=!!found && found.status==='DECIDED' && String(found.revision)===String(pin);
+      const line=el('div','relation');
+      const label=found?.title||('缺失的研究 '+id);
+      add(line,
+        button(label,'link',()=>{selectedStudyId=id;navigate('research');}),
+        el('div','reltext','引用修订 '+(pin||'未固定')+' · '+(found?'当前 r'+found.revision+' / '+studyStatus(found.status):'记录缺失')),
+        badge(current?'APPROVED':'REVIEW_REQUIRED'));
+      rows.append(line);
+    }
+    if(refs.some(id=>{
+      let f=studies.find(x=>x.id===id);
+      return !f || f.status!=='DECIDED'||String(f.revision)!==String(design.meta.study_revisions?.[id]);
+    }))rows.append(note('技术决定已过期或尚未完成，当前设计需要生成新修订并重新审批；受影响的正式编码工作包应暂停。'));
+  }).catch(error=>{rows.append(el('div','reason',error.message));});
+}
