@@ -383,4 +383,35 @@ public sealed class LabTestRuntimeTests
         Assert.DoesNotContain(result.Facts, f => f.NodeType == "Fail");
     }
 
+    [Fact]
+    public async Task ConfirmedPhysicalActionDoesNotNeedAnUnrequestedEcuFeedbackLoop()
+    {
+        var doc = LabDocument.New("Physical command contract");
+        doc.Phases[LabPhase.Test].Add(N("ControllerState",
+            ("controllerId", "custom"), ("stateId", "neutral"), ("revision", "r1")));
+        var plan = new LabPlanCompiler(new Catalog("r1")).Prepare(doc);
+        Assert.True(plan.Ready);
+        var report = await Runner().RunAsync(plan, new PhysicalAckStation(), LabSource.Physical);
+        Assert.Equal(LabVerdict.Pass, report.Verdict);
+        var fact = Assert.Single(report.Facts);
+        Assert.Equal("ControllerState", fact.NodeType);
+        Assert.Equal(LabQuality.Observed, fact.Quality);
+        Assert.True(Guid.TryParse(fact.TraceReference, out _));
+        // A real command receipt is a tested action, not a voltage reading.
+        Assert.DoesNotContain(report.Facts, f => f.NodeType == "Observe");
+    }
+
+    private sealed class PhysicalAckStation : IAuthorizedPhysicalControllerLabStation
+    {
+        public long SessionGeneration => 7;
+        public bool IsReadOnlyAuthorized => true;
+        public bool ControllerActionsAuthorized => true;
+        public ValueTask<LabObservation> ObserveAsync(string name, Guid run, LabSource source,
+            CancellationToken ct) => ValueTask.FromResult(
+                new LabObservation(name, null, LabQuality.Missing, source, run, 7));
+        public ValueTask<LabActionReceipt> SetControllerAsync(LabControllerRef binding,
+            Guid run, LabSource source, CancellationToken ct) =>
+            ValueTask.FromResult(new LabActionReceipt(true, null, Guid.NewGuid().ToString("D")));
+    }
+
 }
