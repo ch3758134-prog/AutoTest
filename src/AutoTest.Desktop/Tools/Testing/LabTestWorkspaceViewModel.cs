@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
+using System.Security.Cryptography;
+using AutoTest.Projects.ControllerConfig;
 using AutoTest.Devices.Diagnostics;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -35,7 +37,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private LabDocumentEditor _editor;
     private V1Workspace? _project;
     private readonly LabRunCoordinator _runner;
-    private readonly LabPlanCompiler _compiler;
+    private LabPlanCompiler _compiler;
     private readonly SynchronizationContext? _ui;
     private LabTreeRow? _selected;
     private string _name = "";
@@ -47,6 +49,9 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private long _runGeneration;
     private Func<HardwareBenchController?>? _physicalController;
     private Func<bool>? _physicalApproval;
+    private Func<EcuControlProfile?>? _keySimControllerProfile;
+    private Func<string?>? _keySimControllerProfilePath;
+    private Func<string,bool>? _approveKeySimProgram;
     private string _physicalEvidencePath = "未执行";
     public string PhysicalEvidencePath { get => _physicalEvidencePath; private set { _physicalEvidencePath = value; Changed(); } }
     public ICommand RunPhysicalReadOnlyCommand { get; private set; } = null!;
@@ -54,6 +59,23 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     {
         _physicalController = controller ?? throw new ArgumentNullException(nameof(controller));
         _physicalApproval = approve ?? throw new ArgumentNullException(nameof(approve));
+        RefreshCommands();
+    }
+
+    /// <summary>
+    /// Bind the P05 actual Controller/Profile to the ONE formal TEST compiler.
+    /// The profile must be saved to disk before enabling a physical key action.
+    /// </summary>
+    public void AttachPhysicalController(
+        Func<EcuControlProfile?> profile, Func<string?> savedProfilePath,
+        Func<string,bool> approveProgram)
+    {
+        _keySimControllerProfile = profile ?? throw new ArgumentNullException(nameof(profile));
+        _keySimControllerProfilePath = savedProfilePath ??
+            throw new ArgumentNullException(nameof(savedProfilePath));
+        _approveKeySimProgram = approveProgram ??
+            throw new ArgumentNullException(nameof(approveProgram));
+        _compiler = new LabPlanCompiler(new R1KeySimControllerCatalog(profile));
         RefreshCommands();
     }
 
