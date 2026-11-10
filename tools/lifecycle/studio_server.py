@@ -28,7 +28,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     management = Management(store, execution, research)
     baseline = GitBaseline(store, source_root, execution)
     class Handler(BaseHTTPRequestHandler):
-        server_version = "EngineeringWorkbench/0.5"
+        server_version = "EngineeringWorkbench/0.6"
 
         def write(self, value, status=200, content_type="application/json; charset=utf-8",
                   download=None):
@@ -76,7 +76,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
                                       content_type="application/javascript; charset=utf-8")
                 if path == "/api/studio/version":
                     return self.write({"application": "Engineering Workbench",
-                                       "version": "0.5", "mode": "editable",
+                                       "version": "0.6", "mode": "editable",
                                        "legacy": False})
                 if path == "/api/studio/bootstrap":
                     return self.write({"schema": "engineering-workbench/1",
