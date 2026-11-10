@@ -2,7 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 import re
-from lifecycle import Workspace, ModelError, inside
+from lifecycle import Workspace, ModelError, inside, content_hash
 
 ORDER = ("P0", "G0", "G1", "G2", "G3", "G4", "G5")
 LABELS = {"P0":"产品背景与研发范围","G0":"硬件与现场事实","G1":"系统需求","G2":"总体系统架构","G3":"详细设计","G4":"实施规划","G5":"验证与交付"}
@@ -30,14 +30,19 @@ def catalog(workspace: Workspace) -> dict:
         relative = rec.get("path", "")
         path = "SAEF/" + relative
         state, title, excerpt = "MISSING", key, ""
+        approved_hash = rec.get("accepted_sha256")
+        match_state = "NOT_CHECKED"
         if relative:
             source = inside(workspace.root, path)
             if source.is_file():
-                raw = source.read_text(encoding="utf-8", errors="replace")
+                source_bytes = source.read_bytes()
+                raw = source_bytes.decode("utf-8", errors="replace")
                 state, title, excerpt = "PRESENT", title_of(raw, key), teaser(raw)
+                match_state = ("MATCH" if content_hash(source_bytes) == approved_hash else "DRIFT") if approved_hash else "NO_ACCEPTED_HASH"
         records.append({"id":key,"phase":key.split("-",1)[0],"title":title,
                         "path":path,"status":rec.get("status","UNKNOWN"),
-                        "revision":rec.get("revision"),"excerpt":excerpt,"source_state":state})
+                        "revision":rec.get("revision"),"excerpt":excerpt,"source_state":state,
+                        "approval_content_match":match_state})
     counts = {}
     for rec in records:
         counts[rec["status"]] = counts.get(rec["status"],0)+1
@@ -47,6 +52,7 @@ def catalog(workspace: Workspace) -> dict:
     return {"project_id":workspace.project_state.get("project_id","AutoTest"),
             "working_phase":workspace.project_state.get("working_phase","UNKNOWN"),
             "total":len(records),"status_counts":counts,"groups":groups,
+            "content_drift_count":sum(1 for r in records if r["approval_content_match"]=="DRIFT"),
             "scope_note":"Registered historical work products, not a real-time product completion score"}
 
 def document(workspace: Workspace, key: str) -> dict:
@@ -60,11 +66,14 @@ def document(workspace: Workspace, key: str) -> dict:
     src = inside(workspace.root,path)
     if not src.is_file():
         raise ModelError(f"Missing file: {path}")
-    raw = src.read_text(encoding="utf-8", errors="replace")
+    source_bytes = src.read_bytes()
+    raw = source_bytes.decode("utf-8", errors="replace")
+    approved_hash = rec.get("accepted_sha256")
+    match_state = ("MATCH" if content_hash(source_bytes)==approved_hash else "DRIFT") if approved_hash else "NO_ACCEPTED_HASH"
     phase = key.split("-",1)[0]
     return {"id":key,"title":title_of(raw,key),"body":raw,"path":path,
             "status":rec.get("status","UNKNOWN"),"revision":rec.get("revision"),
-            "gate":workspace.project_state.get("gates",{}).get(phase,{}).get("status","UNKNOWN"),
+            "approval_content_match":match_state,"gate":workspace.project_state.get("gates",{}).get(phase,{}).get("status","UNKNOWN"),
             "note":"Historic approval does not establish current implementation or physical acceptance"}
 
 def excerpt_for(node: dict, root: Path) -> dict:
