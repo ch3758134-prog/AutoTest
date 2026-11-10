@@ -1,5 +1,7 @@
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
+using AutoTest.Devices.Diagnostics;
+using AutoTest.Core;
 using Xunit;
 
 namespace AutoTest.Devices.Tests;
@@ -54,4 +56,24 @@ public sealed class KeySimCanCodecTests
                 new byte[] { 0x80, 1, 0, 0, 0, 0, 0, 0 }),
             out _, out _));
     }
+    [Fact]
+    public async Task WithoutVerifiedPhysicalUsbNoKeySwitchCanBeSent()
+    {
+        await using var controller = new HardwareBenchController();
+        var auth = HardwareBenchController.PhysicalKeySimConfirmation(1, 1);
+        var result = await controller.SetPhysicalKeySimMaskAsync(1, auth);
+        Assert.Equal(Outcome.Rejected, result.Outcome);
+        Assert.Equal("KEYSIM_SESSION_NOT_READY", result.FailureCode);
+        Assert.Null(result.Value);
+    }
+
+    [Fact]
+    public async Task InvalidMaskCannotIssueHardwareAction()
+    {
+        await using var controller = new HardwareBenchController();
+        var result = await controller.SetPhysicalKeySimMaskAsync(0x100000u, "");
+        Assert.Equal(Outcome.Rejected, result.Outcome);
+        Assert.Equal("KEYSIM_MASK_INVALID", result.FailureCode);
+    }
+
 }
