@@ -30,10 +30,13 @@ public sealed class HubDbcSignalSource : IWaveSignalSource
         var asset = _workspace.Assets.Single(x => x.Id == _workspace.DbcAssetId.Value);
         var database = new AssetEntryWithDbc(asset, _workspace.Database);
         _ = DbcSignalResolver.Resolve(signal, database); // fail closed on stale revision
-        return ValueTask.FromResult(new WaveSignalSubscription(_origin, Read(signal, database, ct)));
+        // SignalRef has no frame-format field. Require unambiguous DBC ID and
+        // pin its 11/29-bit format so another frame with the same ID cannot decode.
+        var extended = database.Database.FindMessage(signal.FrameId).IsExtended;
+        return ValueTask.FromResult(new WaveSignalSubscription(_origin, Read(signal, database, extended, ct)));
     }
     private async IAsyncEnumerable<SignalObservation> Read(SignalRef signal,
-        AssetEntryWithDbc database, [EnumeratorCancellation] CancellationToken ct)
+        AssetEntryWithDbc database, bool extended, [EnumeratorCancellation] CancellationToken ct)
     {
         var publisher = new DecodedSignalPublisher(database);
         var spec = new CanSubscriptionSpec(signal.Role, ImmutableArray.Create(signal.FrameId),
@@ -42,6 +45,7 @@ public sealed class HubDbcSignalSource : IWaveSignalSource
         {
             if (frame.Time.Source != TimeSource.Replay || frame.Time.Quality != TimeQuality.ReplayDerived)
                 throw new WaveCaptureException("NON_REPLAY_CAN_FRAME", "Physical or untrusted CAN frame rejected.");
+            if (frame.Frame.ExtendedId != extended) continue;
             yield return publisher.ObserveSignal(signal, frame);
         }
     }
@@ -107,7 +111,7 @@ public sealed class HubDbcWaveReplay
                 var bytes = new byte[message.Dlc];
                 var period = 1 << Math.Min(definition.BitLength, 5);
                 DbcSignalCodec.EncodeRaw(definition, (ulong)(i % period), bytes);
-                var frame = CanFrame.Create(signal.Role, message.Id > 0x7FF,
+                var frame = CanFrame.Create(signal.Role, message.IsExtended,
                     message.Id, bytes);
                 var sampleTime = TimePoint.FromReplay(origin.Utc.AddMilliseconds((i + 1) * 20), i + 1);
                 _hub.Publish(new CanObservation(frame, sampleTime, EvidenceQuality.Derived,
