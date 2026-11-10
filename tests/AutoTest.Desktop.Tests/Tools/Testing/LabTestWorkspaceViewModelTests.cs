@@ -8,19 +8,21 @@ namespace AutoTest.Desktop.Tests.Tools.Testing;
 public sealed class LabTestWorkspaceViewModelTests
 {
     [Fact]
-    public async Task DefaultPageRunsActualMockFactsAndDoesNotClaimPhysicalResult()
+    public void FormalTestEditorHasNoMockRunnerOrInjectedSample()
     {
-        var vm = new LabTestWorkspaceViewModel(new SimulatedLabStation(), new LabPlanCompiler());
-        await vm.RunMockAsync();
-        Assert.Equal("PASS", vm.Verdict);
-        Assert.Contains(vm.Facts, f => f.NodeType == "Assert" && f.Verdict == LabVerdict.Pass);
-        Assert.All(vm.Facts, f => Assert.Equal(LabSource.Mock, f.Source));
-        Assert.Contains("Mock", vm.Status);
+        var vm = new LabTestWorkspaceViewModel(new AutoTest.Application.V1.V1Workspace());
+        Assert.Empty(vm.Snapshot.Walk());
+        Assert.DoesNotContain("MockObserve", vm.StepTypes);
+        Assert.Empty(vm.Facts);
+        Assert.Equal("NOT_RUN", vm.Verdict);
+        Assert.Contains("真实设备", vm.SourceLabel);
     }
     [Fact]
     public void SelectionEditSaveReloadAndUndoAreBoundToEditor()
     {
         var vm = new LabTestWorkspaceViewModel();
+        vm.SelectedInsertType = "Observe";
+        vm.InsertCommand.Execute(null);
         var first = vm.Tree.Single(p => p.Phase == LabPhase.Test).Children[0];
         vm.Select(first);
         vm.SelectedName = "Observed signal";
