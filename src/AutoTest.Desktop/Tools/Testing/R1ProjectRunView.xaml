@@ -28,12 +28,12 @@
    <TextBlock Text="RUN / 工程测试执行" FontSize="22" FontWeight="SemiBold"/>
    <TextBlock Text="{Binding DocumentName}" FontWeight="SemiBold" Margin="0,4,0,3"/>
    <TextBlock Text="{Binding ProjectAssetStatus}" TextWrapping="Wrap" Foreground="#81C9BA"/>
-   <TextBlock Text="P10 与 P11 共用同一份工程版本化测试程序及单一运行会话；真实只读测试必须完成工程保存、DBC 与 TEST 版本检查、设备连接和逐次人工确认。"
+   <TextBlock Text="P10 与 P11 共用同一份工程版本化测试程序及单一运行会话；真实执行须保存工程、DBC、TEST、P05 配置与版本，设备连接后按整个计划授权。"
     TextWrapping="Wrap" Margin="0,9,0,0" Foreground="#92A4B7"/>
   </StackPanel>
   <WrapPanel Grid.Row="1" Margin="0,0,0,12">
    <Button Content="预检当前测试程序" Command="{Binding PreflightCommand}"/>
-   <Button Content="执行真实 CAN1 只读测试" Command="{Binding RunPhysicalReadOnlyCommand}"
+   <Button Content="执行真实工程 TEST" Command="{Binding RunPhysicalReadOnlyCommand}"
     Background="#176A8C" FontWeight="SemiBold"/>
    <Button Content="暂停" Command="{Binding PauseCommand}"/>
    <Button Content="继续" Command="{Binding ResumeCommand}"/>
@@ -78,7 +78,7 @@
    <TextBlock Text="{Binding Verdict}" FontSize="16" FontWeight="SemiBold" Foreground="#46D0DC"/>
    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,5,0,0"/>
    <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="#81C9BA" Margin="0,3,0,0"/>
-   <TextBlock Text="真实 CAN1 只读运行只产生诊断事实，不签发出厂 PASS。电源、IGN、按键、电磁阀、Flash 的物理动作尚未由此接口授权。"
+   <TextBlock Text="已接入的 KEY_SIM CAN0 动作按真实固件发送；CAN1 观测独立断言。当前仅作诊断记录，未获准的 DUT 电源/Flash 不会执行，也不签发出厂 PASS。"
     TextWrapping="Wrap" Foreground="#E8B967" Margin="0,5,0,0"/>
   </StackPanel>
  </Grid>
