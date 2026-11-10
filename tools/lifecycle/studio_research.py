@@ -289,6 +289,9 @@ class Research:
                         "configuration": latest["configuration"],
                         "source_revision": latest["source_revision"],
                         "raw_reference": latest["raw_reference"],
+                        "evidence_sha256": latest["evidence_sha256"],
+                        "reviewed_by": latest["reviewed_by"],
+                        "reviewed_at": latest["reviewed_at"],
                         "previous_failed_runs": sum(r["outcome"]=="FAIL" for r in reviewed[:-1])
                     })
         if not accepted:
