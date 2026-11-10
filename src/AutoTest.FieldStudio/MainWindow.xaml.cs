@@ -116,6 +116,11 @@ public partial class MainWindow : Window
     private int _waveCursorIndex = -1;
     private FirmwareImage? _image;
     private CanToolConfigurationSnapshot? _flashProfile;
+    private readonly ObservableCollection<FlashPreflightItem> _flashChecks = [];
+    private long _lastLiveUdsAcceptedGeneration;
+    private uint _lastUdsTx;
+    private uint _lastUdsRx;
+    private bool _lastUdsExtended;
     private string? _imagePath;
     private SignalOption? _selectedWave;
 
@@ -126,6 +131,7 @@ public partial class MainWindow : Window
         LogGrid.ItemsSource = _logRows;
         ScanGrid.ItemsSource = _scanRows;
         UdsTraceGrid.ItemsSource = _udsRows;
+        FlashPreflightGrid.ItemsSource = _flashChecks;
         DbcFiles.ItemsSource = _dbcFiles;
         _scannerRouter.AttachMode(ScannerCaptureMode.Disabled, new InputPolicy(false,512,""));
         _serialScanner.BytesReceived += ReceiveSerialChunk;
@@ -224,7 +230,12 @@ public partial class MainWindow : Window
         DeviceInfo.Text = $"设备: {_device.SelectedInstanceId ?? "未选择"}\nWinUSB: {_device.DevicePath ?? "—"}\n" +
             $"原始证据: {_device.TraceFile ?? "—"}";
         Footer.Text = $"USB={state}  ·  CAN1 DUT  ·  Gen={_device.Generation}  ·  原始 Trace={_device.TraceFile ?? "—"}";
-        if (state != UsbSessionState.Connected) CanStatus.Text = "CAN1 DUT · 未连接";
+        if (state != UsbSessionState.Connected)
+        {
+            CanStatus.Text = "CAN1 DUT · 未连接";
+            _lastLiveUdsAcceptedGeneration = 0;
+            FlashPreflightSummary.Text = "主控未连接：旧会话 ECU 响应证据已失效。";
+        }
         SetBusy(_busy);
     }
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -710,6 +721,32 @@ public partial class MainWindow : Window
         }
         UpdateUdsControls();
     }
+    private void UdsUseAppProfile_Click(object sender, RoutedEventArgs e) => LoadUdsEndpointFromFlash(isBoot: false);
+    private void UdsUseBootProfile_Click(object sender, RoutedEventArgs e) => LoadUdsEndpointFromFlash(isBoot: true);
+
+    private void LoadUdsEndpointFromFlash(bool isBoot)
+    {
+        if (_flashProfile is null)
+        {
+            UdsResponse.Text = "先在【ECU 烧录】中导入现场 Configuration.xml，再选择 APP 或 Boot 地址。此操作不会发送 CAN 数据。";
+            return;
+        }
+        var config = _flashProfile;
+        uint tx = isBoot ? config.BootRequestId : config.AppRequestId;
+        uint rx = isBoot ? config.BootResponseId : config.AppResponseId;
+        UdsTxId.Text = tx.ToString("X", CultureInfo.InvariantCulture);
+        UdsRxId.Text = rx.ToString("X", CultureInfo.InvariantCulture);
+        UdsRevision.Text = $"CanTool-{(isBoot ? "BOOT" : "APP")}-{config.SourceSha256[..12]}";
+        _requestId=Guid.Empty;
+        _preparedHex=null;
+        UdsConfirmation.Clear(); UdsExpected.Clear();
+        UdsEndpointHelp.Text = $"{(isBoot ? "Bootloader" : "APP")} 配置：CAN1 TX=0x{tx:X}, RX=0x{rx:X}；" +
+            $"配置 SHA={config.SourceSha256[..12]}。这是配置声明，不证明实际 ECU 相符。";
+        UdsResponse.Text="已加载配置端点，尚未发送。请确认当前 ECU 处于正确运行模式。";
+        AppendUds("CONFIG", $"仅填入 {(isBoot?"Boot":"APP")} TX={tx:X} RX={rx:X}; no CAN TX");
+        UpdateUdsControls();
+    }
+
     private ReadOnlyUdsPhysicalEndpoint ReadEndpoint()
     {
         uint tx = ParseId(UdsTxId.Text), rx = ParseId(UdsRxId.Text);
@@ -766,6 +803,16 @@ public partial class MainWindow : Window
             AppendUds("PREPARE", $"SID=0x{pdu[0]:X2} TX={endpoint.RequestCanId:X} RX={endpoint.ResponseCanId:X} PID={_requestId:N}");
             var response = await PhysicalReadOnlyUds.RunAsync(_device, endpoint, profile, pdu,
                 _requestId, UdsConfirmation.Text.Trim(), token.Token);
+            if (response.Outcome == Outcome.Accepted && response.ResponsePdu.Length > 0)
+            {
+                _lastLiveUdsAcceptedGeneration = _device.Generation;
+                _lastUdsTx = endpoint.RequestCanId;
+                _lastUdsRx = endpoint.ResponseCanId;
+                _lastUdsExtended = endpoint.ExtendedId;
+                AppendUds("ECU ACCEPTED", $"当前 USB Gen={_device.Generation} RX={endpoint.ResponseCanId:X} SID={pdu[0]:X2}");
+            }
+            else
+                AppendUds("ECU NOT VERIFIED", $"Outcome={response.Outcome}, NRC={(response.NegativeResponseCode?.ToString("X2") ?? "—")}");
             UdsResponse.Text = "响应解释（不替代 ECU 原始证据）：\n" +
                 AutoTest.Specialists.Uds.UdsDiagnosticResponseFormatter.Explain(
                     response.RequestPdu.AsSpan(), response.ResponsePdu.AsSpan()) +
@@ -816,6 +863,7 @@ public partial class MainWindow : Window
                 "配置加载不等于真实编程条件通过。";
             Log("FLASH CONFIG", $"导入只读 XML {profile.SourceName} SHA256={profile.SourceSha256}; 仅配置静态检查。");
             FlashStatus.Text = "CanTool 配置已解析。仍需 ECU 身份、CAN1 速率、Seed/Key 与刷写流程的物理验证。";
+            BuildFlashFieldChecks();
         }
         catch (Exception ex)
         {
@@ -855,9 +903,44 @@ public partial class MainWindow : Window
                 "未绑定目标 ECU/内存范围；不能开始烧录。";
             FlashStatus.Text = "镜像文件已解析。物理 FLASH 仍为 NOT_AUTHORIZED / NOT_RUN";
             Log("FLASH", $"导入 {dlg.FileName} bytes={image.ByteCount}；本操作不向 ECU 发送数据。");
+            BuildFlashFieldChecks();
         }
         catch (Exception ex) { _image = null; _imagePath = null; FlashSegments.ItemsSource = null; Log("FLASH", "导入失败：" + ex.Message); }
     }
+    private void FlashPreflight_Click(object sender, RoutedEventArgs e) => BuildFlashFieldChecks();
+
+    private void BuildFlashFieldChecks()
+    {
+        var profile = _flashProfile;
+        bool knownEndpoint = profile is not null && (
+            (_lastUdsTx == profile.AppRequestId && _lastUdsRx == profile.AppResponseId &&
+                 _lastUdsExtended == (profile.AppRequestId > 0x7FF)) ||
+            (_lastUdsTx == profile.BootRequestId && _lastUdsRx == profile.BootResponseId &&
+                 _lastUdsExtended == (profile.BootRequestId > 0x7FF)));
+        var evidence = new FlashFieldEvidence(
+            UsbConnected: _device.State == UsbSessionState.Connected,
+            ControllerVersionVerified: _device.ProtocolVersionVerified,
+            UsbGeneration: _device.Generation,
+            LiveUdsReadAccepted: _lastLiveUdsAcceptedGeneration > 0 &&
+                _lastLiveUdsAcceptedGeneration == _device.Generation,
+            LiveUdsEndpointMatches: knownEndpoint,
+            CanBitrateVerified: false,
+            EcuIdentityMatched: false,
+            MeasuredPowerInRange: false,
+            SecurityProviderValidated: false,
+            OemProgrammingContractValidated: false,
+            RecoveryProcedureValidated: false);
+        var readiness = FlashFieldPreflightEvaluator.Evaluate(profile,_image,evidence);
+        _flashChecks.Clear();
+        foreach (var check in readiness.Items) _flashChecks.Add(check);
+        FlashPreflightSummary.Text = $"已核查 {readiness.Items.Length} 条："+
+            $"{readiness.Items.Count(x=>x.Passed)} PASS，{readiness.Items.Count(x=>!x.Passed)} BLOCKED。"+
+            (readiness.ReadOnlyCommunicationProven ? " ECU 只读诊断链路已有当前会话证据。" : " ECU UDS 只读诊断尚未确认。")+
+            " 实际烧录始终 LOCKED。";
+        FlashStatus.Text = FlashPreflightSummary.Text;
+        Log("FLASH PREFLIGHT", FlashPreflightSummary.Text);
+    }
+
     private void FlashInspect_Click(object sender, RoutedEventArgs e)
     {
         if (_image is null) { Log("FLASH", "请先选择固件文件。"); return; }

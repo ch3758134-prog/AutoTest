@@ -212,6 +212,12 @@
       <Border Grid.Column="2" Style="{StaticResource CardBorder}">
        <StackPanel>
         <TextBlock Text="ECU / ISO-TP 端点" Style="{StaticResource SectionText}"/>
+        <TextBlock Text="从 CanTool Configuration.xml 导入 APP/Boot 端点（不发送请求）"
+                   Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,8,0,3"/>
+        <WrapPanel Margin="0,0,0,10">
+         <Button Content="使用 APP 地址" Click="UdsUseAppProfile_Click"/>
+         <Button Content="使用 Boot 地址" Click="UdsUseBootProfile_Click"/>
+        </WrapPanel>
         <TextBlock Text="请求 CAN ID (Hex)" Margin="0,8,0,3"/>
         <TextBox x:Name="UdsTxId" Text="" ToolTip="必须填写已确认的 ECU Profile TX CAN ID"/>
         <TextBlock Text="响应 CAN ID (Hex)" Margin="0,10,0,3"/>
@@ -243,6 +249,7 @@
       <TextBlock Text="ECU 固件与编程配置" Style="{StaticResource HeaderText}" Width="255"/>
       <Button Content="导入 BIN / HEX / S19" Style="{StaticResource PrimaryButton}" Click="FlashImport_Click"/>
       <Button Content="检查文件结构" Click="FlashInspect_Click"/>
+      <Button Content="检查现场烧录条件" Click="FlashPreflight_Click"/>
       <Button Content="导入 CanTool 配置 XML" Click="FlashConfigImport_Click"/>
       <TextBlock Text="BIN 起始地址(Hex)" VerticalAlignment="Center" Margin="2,0,8,0"/>
       <TextBox x:Name="FlashBaseAddress" Width="114" ToolTip="BIN 无内置地址，必须输入真实目标的映射起始地址，不提供猜测默认值"/>
@@ -256,6 +263,7 @@
         <TabControl>
          <TabItem Header="固件地址段"><DataGrid x:Name="FlashSegments"/></TabItem>
          <TabItem Header="烧录配置字段 / 来源"><DataGrid x:Name="FlashConfigGrid"/></TabItem>
+         <TabItem Header="真实硬件预检 / 门禁"><DataGrid x:Name="FlashPreflightGrid" IsReadOnly="True"/></TabItem>
         </TabControl>
        </DockPanel>
       </Border>
@@ -277,6 +285,8 @@
        <TextBlock Text="确认 ECU → 编程会话 → 安全访问 → 擦除 → 下载 → TransferData → 校验 → 复位 → 复验" FontSize="14" Margin="0,7,0,5"/>
        <TextBlock Text="真实写入入口不会在协议、配置、供电与恢复要求未确认前暴露。" Foreground="#A14D20"/>
        <TextBlock x:Name="FlashStatus" Text="状态：NOT_AUTHORIZED / NOT_RUN" Margin="0,8,0,0"/>
+       <TextBlock x:Name="FlashPreflightSummary" Text="尚未运行现场条件检查；物理擦写入口保持锁定。"
+                  TextWrapping="Wrap" Margin="0,6,0,0" Foreground="#B77547"/>
       </StackPanel>
      </Border>
     </Grid>
