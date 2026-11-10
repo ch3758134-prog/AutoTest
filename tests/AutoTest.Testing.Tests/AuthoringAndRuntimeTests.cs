@@ -215,4 +215,21 @@ public sealed class AuthoringAndRuntimeTests
             x => x.Contains("duplicate Switch Case values"));
     }
 
+    [Fact]
+    public void WhenIsPersistableButCannotPretendToExecuteWithoutObservationSource()
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("when"));
+        tx.Insert(TestPhase.Test, null, null, 0,
+            N("When", ("variable", "mode"), ("equals", "ready"), ("timeoutMs", "1000"))
+                .WithSlot("body", Observe()));
+        var plan = new PlanCompiler().Prepare(tx.Current);
+        Assert.Contains(plan.Diagnostics, x => x.Contains("When not executable"));
+        var saved = TestDocumentCodec.Deserialize(TestDocumentCodec.Serialize(tx.Current));
+        Assert.Equal("1000", saved.Get(TestPhase.Test)[0].Properties["timeoutMs"]);
+
+        tx.SetProperty(tx.Current.Get(TestPhase.Test)[0].Id, "timeoutMs", "60001");
+        var invalid = new PlanCompiler().Prepare(tx.Current);
+        Assert.Contains(invalid.Diagnostics, x => x.Contains("When timeout outside"));
+    }
+
 }
