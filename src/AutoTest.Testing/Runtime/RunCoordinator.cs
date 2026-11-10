@@ -115,6 +115,24 @@ public sealed class RunCoordinator
                         if (actual is null) result = MockStepVerdict.Inconclusive;
                         break;
                     case "Loop": expected = Get("count"); break;
+                    case "Switch":
+                        expected = Get("variable");
+                        vars.TryGetValue(expected, out actual);
+                        quality = actual is null ? MockQuality.Missing : MockQuality.Observed;
+                        var selectedCase = actual is null ? null :
+                            node.Slots["cases"].FirstOrDefault(c =>
+                                c.Properties.GetValueOrDefault("equals") == actual)
+                            ?? node.Slots["cases"].FirstOrDefault(c =>
+                                c.Properties.GetValueOrDefault("equals") == "*");
+                        if (selectedCase is null)
+                        {
+                            result = MockStepVerdict.Inconclusive;
+                            detail = "SWITCH_NO_MATCH: no matching case or default.";
+                        }
+                        break;
+                    case "Case":
+                        expected = Get("equals");
+                        break;
                     case "Wait":
                         expected = Get("milliseconds");
                         await Task.Delay(int.Parse(expected), stop.Token); break;
@@ -131,6 +149,15 @@ public sealed class RunCoordinator
                     if (actual is not null)
                         await Execute(node.Slots[actual == expected ? "then" : "else"]);
                 }
+                else if (node.Type == "Switch" && actual is not null)
+                {
+                    var match = node.Slots["cases"].FirstOrDefault(c =>
+                        c.Properties.GetValueOrDefault("equals") == actual)
+                        ?? node.Slots["cases"].FirstOrDefault(c =>
+                            c.Properties.GetValueOrDefault("equals") == "*");
+                    if (match is not null) await Execute(ImmutableArray.Create(match));
+                }
+                else if (node.Type == "Case") await Execute(node.Slots["body"]);
                 else if (node.Type == "Loop")
                     for (int i = 0; i < int.Parse(expected); i++) await Execute(node.Slots["body"]);
                 else if (node.Type == "Sequence") await Execute(node.Slots["body"]);
@@ -176,6 +203,18 @@ public sealed class RunCoordinator
             if (node.Type == "SetVariable") vars[node.Properties["variable"]] = node.Properties["value"];
             else if (node.Type == "Wait") await Task.Delay(int.Parse(node.Properties["milliseconds"]));
             else if (node.Type == "Sequence")
+                await ExecuteCleanup(node.Slots["body"], facts, vars);
+            else if (node.Type == "Switch")
+            {
+                vars.TryGetValue(node.Properties["variable"], out var value);
+                var match = node.Slots["cases"].FirstOrDefault(c =>
+                    c.Properties.GetValueOrDefault("equals") == value)
+                    ?? node.Slots["cases"].FirstOrDefault(c =>
+                        c.Properties.GetValueOrDefault("equals") == "*");
+                if (match is not null)
+                    await ExecuteCleanup(ImmutableArray.Create(match), facts, vars);
+            }
+            else if (node.Type == "Case")
                 await ExecuteCleanup(node.Slots["body"], facts, vars);
             else throw new InvalidOperationException($"Cleanup node not supported: {node.Type}");
             facts.Add(new StepFact(Guid.NewGuid(), node.Id, node.Type, "", null,
