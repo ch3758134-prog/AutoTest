@@ -47,6 +47,7 @@ async function renderExecutionView(){
   const action=el('div','buttonrow');
   if(data.configured){
     action.append(button('从 GitHub 获取真实状态','primary',()=>executionSync()));
+    action.append(button('将工程项目归档到 Git 分支','outline',()=>executionArchiveProject()));
     config.append(el('p','muted','最近同步：'+(data.fetched_at||'从未同步')+' · 数据不自动视作当前状态；刷新会通过 GitHub API 获取新事实。'));
   }else config.append(el('p','muted','请先填写真实的 GitHub owner/repository，例如 ch3758134-prog/AutoTest。公开仓库可直接读取，私有仓库需要在服务进程配置 GITHUB_TOKEN。'));
   if(data.sync_error)config.append(el('div','reason','上次同步失败：'+data.sync_error+'；已有快照不应认作实时状态。'));
@@ -220,4 +221,17 @@ async function executionPublish(task){
    toast('已写入本地专业 Git 分支：'+paths+'。尚未提交和推送，需要受控 Git 交付。');
    await renderExecutionView();
  }catch(e){toast('归档失败：'+e.message);}
+}
+
+function executionArchiveProject(){
+ actionModal('生成项目 Git 工程档案',
+   '本操作会把当前项目工程需求、架构、研究、设计修订及任务领取记录写入当前非 main 的 Git 工作树。请先确认内容不含密钥、身份数据或未经脱敏的真实现场日志。文件不会自动 Commit/Push，也不会覆盖正式 SAEF。',
+   [{key:'actor',label:'确认导出人',value:'项目负责人'},
+    {key:'note',label:'确认信息已检查，后续受控审核提交',value:'已知这是本地 Git 工作树归档，不代表远端已入库'}],
+   async fields=>{
+     if(!fields.actor.trim()||!fields.note.trim())throw Error('归档确认说明不得为空');
+     const result=await req('/api/studio/execution/archive-project',{project_id:state.project});
+     closeModal();toast('本地 Git 工程档案已写入：'+result.path+'。尚未 Commit/Push，需要人工审查后按既定 PR 交付。');
+     if(state.view==='execution')await renderExecutionView();
+   },'生成待审查的 Git 归档');
 }
