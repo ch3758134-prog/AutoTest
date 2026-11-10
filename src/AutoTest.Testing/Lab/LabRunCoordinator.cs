@@ -234,10 +234,17 @@ public sealed class LabRunCoordinator
             // Ordinary program variables and observed ECU signal facts are
             // different sources. A real Observe/When can drive IF/SWITCH.
             // An absent or stale observation must never select a branch.
+            // Once a real sample has been observed for this name, its quality
+            // and provenance win over any local variable with the same name.
+            // Otherwise a SetVariable could silently mask an ECU fault.
+            if (observations.ContainsKey(name))
+            {
+                var observed = Current(name);
+                return (observed.Value, observed.Quality, observed.TraceReference);
+            }
             if (variables.TryGetValue(name, out var declared))
                 return (declared, LabQuality.Observed, null);
-            var sample = Current(name);
-            return (sample.Value, sample.Quality, sample.TraceReference);
+            return (null, LabQuality.Missing, null);
         }
 
         async Task Execute(IEnumerable<LabNode> nodes, LabPhase phase, CancellationToken ct, bool cleanup = false)
@@ -326,7 +333,8 @@ public sealed class LabRunCoordinator
                                     // A defined local variable can be a control condition.
                                     // Otherwise obtain a FRESH station observation on each
                                     // poll; do not reuse a prior ECU signal sample as if live.
-                                    if (variables.TryGetValue(signalName, out var local))
+                                    if (!observations.ContainsKey(signalName) &&
+                                        variables.TryGetValue(signalName, out var local))
                                     {
                                         actual = local;
                                         quality = LabQuality.Observed;
