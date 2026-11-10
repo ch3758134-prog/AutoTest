@@ -222,7 +222,7 @@ class Research:
         config = positive_text(data, "configuration", 5000)
         revision = positive_text(data, "source_revision", 500)
         performed_by = positive_text(data, "performed_by", 150)
-        digest = text_value(data.get("evidence_sha256", ""), "evidence_sha256", 64)
+        digest = text_value(data.get("evidence_sha256", ""), "evidence_sha256", limit=64)
         if digest and not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
             raise RuleError("Evidence SHA-256 must contain exactly 64 hex characters")
         with self.store.db() as db:
