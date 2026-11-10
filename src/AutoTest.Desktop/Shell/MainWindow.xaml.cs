@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private LabProductionToolView? _production;
     private ControllerConfigToolViewModel? _controllerConfiguration;
     private bool _closed;
+    private bool _stationStatusSubscribed;
     private bool _disposing;
     private bool _explorerHidden;
     private bool _inspectorHidden;
@@ -263,11 +264,17 @@ public partial class MainWindow : Window
                 StringComparison.OrdinalIgnoreCase)
                     ? Brushes.MediumSeaGreen : Brushes.SlateGray;
         }
-        _device.ViewModel.PropertyChanged+=(_,e)=>
+        if (!_stationStatusSubscribed)
         {
-            if (e.PropertyName==nameof(AutoTest.DeviceLab.DeviceLabViewModel.StatusText))
-                Dispatcher.InvokeAsync(RefreshLed);
-        };
+            _stationStatusSubscribed = true;
+            _device.ViewModel.PropertyChanged += (_, e) =>
+            {
+                if (!_closed && e.PropertyName ==
+                    nameof(AutoTest.DeviceLab.DeviceLabViewModel.StatusText) &&
+                    !Dispatcher.HasShutdownStarted)
+                    Dispatcher.InvokeAsync(RefreshLed);
+            };
+        }
         RefreshLed();
     }
     private void WorkspaceMode_SelectionChanged(object sender,SelectionChangedEventArgs e)
