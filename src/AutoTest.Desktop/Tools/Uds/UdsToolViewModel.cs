@@ -161,10 +161,7 @@ public sealed class UdsToolViewModel : BindableBase
     public string ReplayPath { get => _replayPath; set => SetProperty(ref _replayPath,value); }
     public string FaultSid { get => _faultSid; set => SetProperty(ref _faultSid,value); }
     public string FaultCode { get => _faultCode; set => SetProperty(ref _faultCode,value); }
-    public bool InjectNrc { get => _injectNrc; set => SetProperty(ref _injectNrc,value); }
     public string Session { get => _session; private set => SetProperty(ref _session,value); }
-    public bool InjectPending { get => _injectPending; set => SetProperty(ref _injectPending,value); }
-    public bool NoResponse { get => _noResponse; set => SetProperty(ref _noResponse,value); }
     public string Status { get => _status; private set => SetProperty(ref _status,value); }
     public string ResponseHex { get => _responseHex; private set => SetProperty(ref _responseHex,value); }
     public string Nrc { get => _nrc; private set => SetProperty(ref _nrc,value); }
