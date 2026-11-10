@@ -230,7 +230,7 @@ function executionArchiveProject(){
     {key:'note',label:'确认信息已检查，后续受控审核提交',value:'已知这是本地 Git 工作树归档，不代表远端已入库'}],
    async fields=>{
      if(!fields.actor.trim()||!fields.note.trim())throw Error('归档确认说明不得为空');
-     const result=await req('/api/studio/execution/archive-project',{project_id:state.project});
+     const result=await req('/api/studio/execution/archive-project',{project_id:state.project,actor:fields.actor,note:fields.note});
      closeModal();toast('本地 Git 工程档案已写入：'+result.path+'。尚未 Commit/Push，需要人工审查后按既定 PR 交付。');
      if(state.view==='execution')await renderExecutionView();
    },'生成待审查的 Git 归档');
