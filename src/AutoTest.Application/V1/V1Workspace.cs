@@ -84,6 +84,50 @@ public sealed class V1Workspace
         return entry;
     }
 
+    /// <summary>
+    /// Replace the project's DBC content as a new explicit revision. The caller
+    /// must provide the exact old asset identity/hash; stale concurrent edits
+    /// fail closed. Existing TEST references are never silently rebound.
+    /// </summary>
+    public AssetEntry ReplaceDbcSource(string utf8Text, AssetRef expected, string filename = "network.dbc")
+    {
+        EnsureIdle();
+        if (_dbcId is null || Database is null)
+            throw new InvalidOperationException("DBC_REQUIRED: 当前工程没有主 DBC。");
+        var index = -1;
+        for (var i = 0; i < Project.Assets.Length; i++)
+            if (Project.Assets[i].Id == _dbcId.Value) { index = i; break; }
+        if (index < 0) throw new InvalidOperationException("DBC_ASSET_MISSING");
+        var old = Project.Assets[index];
+        if (old.Id != expected.Id || old.Revision != expected.Revision.Value ||
+            !string.Equals(old.Sha256, expected.Fingerprint.Sha256,
+                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("DBC_REVISION_CONFLICT: 工程资源版本已经变化，请重新加载。");
+        var data = Encoding.UTF8.GetBytes(utf8Text ??
+            throw new ArgumentNullException(nameof(utf8Text)));
+        var source = DbcSource.Load(data);
+        var parsed = DbcParserAdapter.Parse(source.Text,
+            Path.GetFileNameWithoutExtension(filename));
+        var sha = Sha(data);
+        if (string.Equals(sha, old.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("DBC_UNCHANGED: 内容未发生变化，不创建伪修订。");
+        var revision = checked(old.Revision + 1);
+        var next = old with
+        {
+            Revision = revision, Sha256 = sha,
+            RelativePath = RevisionFile(old.Id, revision, old.Kind)
+        };
+        var project = (Project with
+        {
+            Assets = Project.Assets.SetItem(index, next)
+        }).WithRevision().Validate();
+        // Only mutate after every syntax, ID, version and resource validation passed.
+        Project = project;
+        Database = parsed with { Revision = revision };
+        _contents[_dbcId.Value] = data;
+        return next;
+    }
+
     /// <summary>Explicit edit; never rewrites a TEST document's pinned asset reference.</summary>
     public AssetEntry EditDbcSignal(uint messageId, string signalName, double factor)
     {
