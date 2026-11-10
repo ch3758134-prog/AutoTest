@@ -55,7 +55,8 @@
       <Button Content="浏览…" Click="BrowseDbc_Click" Margin="8,0,0,0" Padding="12,4"/>
       <Button Content="打开" Command="{Binding OpenCommand}" Margin="6,0,0,0" Padding="12,4"/>
       <Button Content="保存" Command="{Binding SaveCommand}" Margin="6,0,0,0" Padding="12,4"/>
-      <Button Content="纳入当前工程" Command="{Binding ImportToProjectCommand}" Margin="6,0,0,0" Padding="12,4" ToolTip="将原始磁盘 DBC 注册到当前工程资源库；不偷偷覆盖已有版本"/>
+      <Button Content="纳入工程" Command="{Binding ImportToProjectCommand}" Margin="6,0,0,0" Padding="12,4" ToolTip="首次登记当前工程主 DBC"/>
+      <Button Content="发布新修订" Command="{Binding PublishProjectRevisionCommand}" Margin="6,0,0,0" Padding="12,4" ToolTip="先保存本地编辑，再显式发布工程 DBC Revision；不会自动重绑旧引用"/>
       <Button Content="重置" Command="{Binding ResetCommand}" Margin="6,0,0,0" Padding="12,4"/>
     </StackPanel>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,9">
