@@ -102,7 +102,7 @@
   </DockPanel>
   <Border Grid.Row="1" Background="#493425" BorderBrush="#876038"
           BorderThickness="1" CornerRadius="4" Padding="11,7" Margin="0,0,0,12">
-   <TextBlock Text="R1 已提供 Mock、Replay 和受控 Physical Read。真实 CAN1 仅允许明确确认的 0x19/0x22 读取；会话切换、编程及 ECU 写入继续由独立权限门禁管理。"
+   <TextBlock Text="R1 仅支持真实 CAN1 只读 UDS 及离线档案 Replay。真实请求仅允许 0x19/0x22，其他服务不执行物理发送。"
               Foreground="#F5D7A2" TextWrapping="Wrap"/>
   </Border>
   <Grid Grid.Row="2">
@@ -177,7 +177,7 @@
       <TextBlock Text="期望 ECU Response PDU · HEX（可选，用于严格比较）" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ExpectedHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
       <WrapPanel Margin="0,5,0,0">
-       <Button Content="发送一次 / MOCK" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
+       <Button Content="发送真实请求 / 回放" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
        <Button Content="保存为服务" Command="{Binding SaveServiceCommand}"/>
        <Button Content="取消" Command="{Binding CancelCommand}"/>
       </WrapPanel>
@@ -211,16 +211,16 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
       <TextBlock Text="ECU PROFILE / INSPECTOR" Style="{StaticResource UdsSection}"/>
-      <TextBlock Text="通信来源支持 Mock / Replay / Physical Read；物理模式共用 P02 主控板会话。"
+      <TextBlock Text="通信来源：Physical Read / Replay。真实请求共用 P02 主控板会话。"
                  Foreground="{StaticResource UdsMuted}" TextWrapping="Wrap" Margin="0,0,0,10"/>
       <WrapPanel Margin="0,0,0,7">
        <Button Content="导入 CanTool XML" Click="ImportCanTool_Click"/>
        <Button Content="使用 APP 地址" Click="UseCanToolApp_Click"/>
        <Button Content="使用 Boot 地址" Click="UseCanToolBoot_Click"/>
       </WrapPanel>
-      <TextBlock Text="Profile 名称（物理模式不允许 Mock 配置）" Style="{StaticResource UdsCaption}"/>
+      <TextBlock Text="ECU Profile 名称" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ProfileName,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="测试用 ECU 身份" Style="{StaticResource UdsCaption}"/>
+      <TextBlock Text="ECU 身份标识（由实际配置确认）" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding MockIdentity,UpdateSourceTrigger=PropertyChanged}"/>
       <Grid>
        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -234,17 +234,6 @@
       </Grid>
       <TextBlock Text="会话状态" Style="{StaticResource UdsCaption}"/>
       <TextBlock Text="{Binding Session}" FontWeight="SemiBold" Margin="0,0,0,9"/>
-      <Button Content="重置 Mock ECU" Command="{Binding ResetCommand}"/>
-      <Separator Margin="0,11" Background="#314458"/>
-      <TextBlock Text="诊断故障注入 / MOCK ONLY" Style="{StaticResource UdsSection}"/>
-      <CheckBox Content="下次 NRC 负响应" IsChecked="{Binding InjectNrc}" Margin="0,5"/>
-      <CheckBox Content="下次 NRC 0x78 Pending" IsChecked="{Binding InjectPending}" Margin="0,5"/>
-      <CheckBox Content="模拟 ECU 不响应" IsChecked="{Binding NoResponse}" Margin="0,5"/>
-      <Grid>
-       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-       <StackPanel><TextBlock Text="SID" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding FaultSid}"/></StackPanel>
-       <StackPanel Grid.Column="2"><TextBlock Text="NRC" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding FaultCode}"/></StackPanel>
-      </Grid>
       <Separator Background="#314458" Margin="0,10"/>
       <TextBlock Text="Replay 记录文件" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ReplayPath,UpdateSourceTrigger=PropertyChanged}"/>
