@@ -463,6 +463,8 @@ public partial class MainWindow : Window
         if (_device is null && _production is null)
         {
             _waveReplayHub?.Dispose();
+            if (_workspaceEventsOwner is not null)
+                _workspaceEventsOwner.WorkspaceAssetsChanged -= OnWorkspaceAssetsChanged;
             _closed = true;
             return;
         }
