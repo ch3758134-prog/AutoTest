@@ -270,9 +270,15 @@ public sealed class UdsToolViewModel : BindableBase
     }
     private async Task SendPhysicalReadAsync(byte[] request,CancellationToken ct)
     {
+        // Reject invalid read-only PDU before requesting operator consent.
+        // DEVICE validates again at the physical CAN transmit boundary.
         if (request.Length is < 2 or > 4095 || request[0] is not (0x19 or 0x22))
             throw new UnauthorizedAccessException(
                 "物理 CAN1 当前只允许 ReadDID 0x22 与 ReadDTC 0x19；会话切换/复位/安全访问/写入/烧录不可由此接口发送。");
+        if (request[0] == 0x22 && (request.Length < 3 || (request.Length - 1) % 2 != 0))
+            throw new ArgumentException("0x22 必须提供至少一组完整的两字节 DID。");
+        if (request[0] == 0x19 && (request[1] & 0x80) != 0)
+            throw new ArgumentException("0x19 物理只读请求不得设置 suppressPosRspMsgIndicationBit。");
         var controller = _physicalProvider?.Invoke() ??
             throw new InvalidOperationException("请先在 P02 设备页连接主控板，UDS 共用该 WinUSB / CAN1 会话。");
         if (!PhysicalTxEnabled || controller.Hub is null)
