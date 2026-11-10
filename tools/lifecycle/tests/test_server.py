@@ -24,6 +24,16 @@ class ServerTests(unittest.TestCase):
             {'id':'TRACE-01','kind':'requirement','path':'doc.md','anchor':'TRACE-01'},
             {'id':'WP','kind':'work_package','status':'DRAFT','required_inputs':['TRACE-01'],'baseline':{},'verification':['unit test']}],
             'edges':[{'from':'TRACE-01','to':'WP','kind':'depends_on','certainty':'review_required'}], 'changes':[]}
+        control = root/'SAEF'/'engineering'/'control'
+        artifact = root/'SAEF'/'engineering'/'work-products'/'G1'/'G1-03'
+        control.mkdir(parents=True, exist_ok=True)
+        artifact.mkdir(parents=True, exist_ok=True)
+        (artifact/'index.md').write_text('# G1-03 | System requirements\\n\\nReal architecture and requirement prose.\\n', encoding='utf-8')
+        (control/'work_products.json').write_text(json.dumps({'G1-03':{
+            'path':'engineering/work-products/G1/G1-03/index.md',
+            'status':'ACCEPTED','revision':'R1'}}),encoding='utf-8')
+        (control/'project_state.json').write_text(json.dumps({'working_phase':'G4','gates':{
+            'G1':{'status':'PASS_WITH_LIMITATIONS'},'G4':{'status':'NOT_REVIEWED'}}}),encoding='utf-8')
         workspace = Workspace(root,manifest)
         self.server = ThreadingHTTPServer(('127.0.0.1',0),make_handler(workspace))
         self.worker = threading.Thread(target=self.server.serve_forever,daemon=True)
@@ -53,6 +63,26 @@ class ServerTests(unittest.TestCase):
     def test_readiness_not_ready(self):
         _,_,body=self.get('/api/readiness?package=WP')
         self.assertEqual(json.loads(body)['status'],'NOT_READY')
+
+    def test_registered_work_products_are_readable(self):
+        _,_,body=self.get('/api/catalog')
+        data=json.loads(body)
+        self.assertEqual(data['total'],1)
+        self.assertEqual(data['status_counts']['ACCEPTED'],1)
+        self.assertEqual(next(g for g in data['groups'] if g['id']=='G1')['gate'],'PASS_WITH_LIMITATIONS')
+        _,_,body=self.get('/api/document?id=G1-03')
+        doc=json.loads(body)
+        self.assertIn('Real architecture',doc['body'])
+        self.assertEqual(doc['status'],'ACCEPTED')
+
+    def test_evidence_excerpts_and_safe_unknown_document(self):
+        _,_,body=self.get('/api/evidence')
+        data=json.loads(body)
+        self.assertEqual(len(data['nodes']),2)
+        self.assertEqual(next(n for n in data['nodes'] if n['id']=='TRACE-01')['line'],1)
+        with self.assertRaises(HTTPError) as err:
+            self.get('/api/document?id=../../invalid')
+        self.assertEqual(err.exception.code,400)
 
     def test_post_refused(self):
         with self.assertRaises(HTTPError) as err:
