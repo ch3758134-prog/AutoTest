@@ -501,6 +501,23 @@ class Store:
         if not isinstance(revisions,dict):
             why.append("设计输入版本清单格式无效")
             revisions={}
+        if meta.get("execution_role") == "CODER":
+            designs = [x for x in upstream if x["kind"] == "design"]
+            if not designs:
+                why.append("纯编码任务必须关联已经批准的软件单元详细设计")
+            for design in designs:
+                contract = design["meta"].get("unit_design", {})
+                if not isinstance(contract, dict):
+                    contract = {}
+                for key, label in (
+                    ("behavior", "功能和算法规则"),
+                    ("interfaces", "软件接口与数据合同"),
+                    ("states", "状态转换及适用性说明"),
+                    ("errors", "错误、取消及异常处理"),
+                    ("concurrency", "时序、并发、资源及适用性说明"),
+                    ("verification", "单元验证输入与判定标准")):
+                    if not isinstance(contract.get(key), str) or not contract[key].strip():
+                        why.append("软件详细设计缺少" + label + "：" + design["title"])
         for input_item in upstream:
             if input_item["state"]!="APPROVED":
                 why.append("上游对象尚未批准："+input_item["title"])
@@ -566,7 +583,9 @@ class Store:
             lines += ["## 允许修改的文件范围",*[
                 "- "+p for p in obj["meta"].get("file_scope",[])],
                 "","## 验收合同",str(obj["meta"].get("acceptance")),"",
-                "## 必须遵守的工程控制",
+                "## 纯编码 AI 的职责与工程控制",
+                "编码 AI 只负责执行批准的详细设计、编写规定的测试和提交交付证据；禁止自行承担产品研究、技术选型、架构设计或创造新接口语义。",
+                "遇到详细设计缺口、技术可行性问题或代码与合同冲突，停止受影响部分并返回设计/研究问题；不擅自研究和修正正式架构。",
                 "遇到需求、接口或架构缺口先登记变更，不得由编码 AI 私自替换已批准的设计。",
                 "必须区分构建、单元测试、集成测试、实物验证与用户验收；不以模拟证据代替真实证据。",
                 "本上下文仅描述准入的软件实施任务，不授权实体危险输出、固件烧录或未经审批的现场行为。"]
