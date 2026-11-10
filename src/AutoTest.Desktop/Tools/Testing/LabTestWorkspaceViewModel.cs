@@ -54,6 +54,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private string _status = "工程 TEST 待配置；仅按已批准的真实设备能力执行";
     private string _verdict = "NOT_RUN";
     private bool _busy;
+    // Owns the single TEST run during preflight and operator approval as well as execution.
+    private readonly SemaphoreSlim _physicalRunGate = new(1, 1);
     private long _runGeneration;
     private Func<HardwareBenchController?>? _physicalController;
     private Func<bool>? _physicalApproval;
@@ -408,9 +410,15 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public async Task<LabRunReport?> RunPhysicalReadOnlyAsync(
         R1PhysicalScanBinding? scanned, CancellationToken ct = default)
     {
-        if (Busy) return null;
+        if (!_physicalRunGate.Wait(0))
+        {
+            Status = "RUN_ALREADY_IN_PROGRESS: 一个工位只能执行一份工程 TEST。";
+            return null;
+        }
+        Busy = true;
         try
         {
+            ct.ThrowIfCancellationRequested();
             var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
             var saved = project.LabProgram ??
                 throw new InvalidOperationException("PROJECT_TEST_NOT_REGISTERED: 请先在 P10 纳入工程。");
@@ -579,6 +587,11 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             Verdict = "ERROR / NOT_PRODUCTION";
             Status = "真实 TEST 被拒绝或运行失败：" + ex.Message;
             return null;
+        }
+        finally
+        {
+            Busy = false;
+            _physicalRunGate.Release();
         }
     }
 
