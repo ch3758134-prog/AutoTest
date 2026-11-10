@@ -82,4 +82,39 @@ public sealed class RecordedCanWaveReplayTests
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
+    [Fact]
+    public async Task SameNumericCanIdDifferentFrameFormat_IsNeverDecodedAsSignal()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "wave-format-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(root);
+            var workspace = new V1Workspace();
+            workspace.ImportDbc("BU_: ECU\nBO_ 801 MOTOR: 8 ECU\n SG_ Current : 0|8@1+ (1,0) [0|255] \"A\" ECU");
+            var dbc = workspace.Assets.Single(x => x.Id == workspace.DbcAssetId!.Value);
+            var signal = new SignalRef(dbc.ToReference(), BusRole.DutCan, 801, "Current", "A");
+            var frames = new[]
+            {
+                new RecordedCanRxRow(10000, BusRole.DutCan, 801, true, "EE00000000000000", 0, Guid.NewGuid()),
+                new RecordedCanRxRow(20000, BusRole.DutCan, 801, false, "0100000000000000", 0, Guid.NewGuid()),
+                new RecordedCanRxRow(30000, BusRole.DutCan, 801, true, "FF00000000000000", 0, Guid.NewGuid()),
+                new RecordedCanRxRow(40000, BusRole.DutCan, 801, false, "0200000000000000", 0, Guid.NewGuid())
+            };
+            var archive = new RecordedCanArchive(1, Guid.NewGuid(), dbc.Id.Value,
+                dbc.Revision, dbc.Sha256, T0, frames);
+            var file = Path.Combine(root, "mixed-frames.json");
+            await File.WriteAllTextAsync(file, JsonSerializer.Serialize(archive));
+            using var hub = new CanFrameHub();
+            var replay = new RecordedCanWaveReplayProvider(hub, hub.Publish,
+                () => true, workspace, Path.Combine(root, "evidence"));
+            replay.LoadArchiveFile(file);
+            var captured = await replay.ReplayAsync(signal, 8, CancellationToken.None);
+            Assert.Equal(2, captured.Series.Samples.Length);
+            Assert.Equal(new[] { 1d, 2d },
+                captured.Series.Samples.Select(x => x.Sample.Value).ToArray());
+            Assert.True(WaveTimeQuality.Describe(captured.Series).CanJudge);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
 }
