@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private FirmwareImage? _image;
     private CancellationTokenSource? _flashCancellation;
     private bool _closing;
+    private bool _exitRequested;
     private bool _connectionBusy;
     private bool _flashRunning;
     private bool _preflightValid;
@@ -349,6 +350,7 @@ public partial class MainWindow : Window
             CancelButton.IsEnabled = false;
             ConnectButton.IsEnabled = _device.State != UsbSessionState.Connected;
             DisconnectButton.IsEnabled = _device.State == UsbSessionState.Connected;
+            if (_exitRequested) Dispatcher.BeginInvoke(new Action(Close));
         }
     }
 
@@ -488,6 +490,7 @@ public partial class MainWindow : Window
             DisconnectButton.IsEnabled = _device.State == UsbSessionState.Connected;
             InvalidatePreflight("本次烧录作业结束，重新执行前必须重新核对真实目标与状态",
                 overwriteResult: false);
+            if (_exitRequested) Dispatcher.BeginInvoke(new Action(Close));
         }
     }
 
@@ -611,8 +614,12 @@ public partial class MainWindow : Window
         if (_flashRunning)
         {
             e.Cancel = true;
+            // During a real programming operation, never destroy the transport before
+            // the job reports a terminal state. Finish closing automatically afterwards.
+            _exitRequested = true;
             _flashCancellation?.Cancel();
-            Append("CLOSE_DENIED", "已请求取消真实烧录；等待作业明确退出后再关闭。");
+            Append("EXIT_PENDING",
+                "退出已请求；正在取消实际 CAN1 操作，作业结束后自动关闭。若擦除已开始，ECU 状态仍可能不确定。");
             return;
         }
         e.Cancel = true;
@@ -620,18 +627,26 @@ public partial class MainWindow : Window
         IsEnabled = false;
         try
         {
-            await _device.DisposeAsync();
+            await _device.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(4));
+        }
+        catch (Exception ex)
+        {
+            // An unresponsive USB driver may hold an async Dispose indefinitely.
+            // Do not leave the whole UI permanently disabled; save the failure and exit.
+            try
+            {
+                var path = Path.Combine(Path.GetTempPath(), "AutoTest-FlashLab-close-errors.log");
+                File.AppendAllText(path, $"{DateTimeOffset.Now:O} WinUSB dispose: {ex}\\n");
+            }
+            catch { /* Nothing may block window shutdown. */ }
+        }
+        finally
+        {
             _device.ConnectionChanged -= OnConnection;
             _device.UsbTrace -= OnUsb;
             _device.NativeOperation -= OnNative;
             _device.CanTrace -= OnCan;
             Close();
-        }
-        catch (Exception ex)
-        {
-            _closing = false;
-            IsEnabled = true;
-            MessageBox.Show(this, ex.Message, "设备会话关闭失败");
         }
     }
 }
