@@ -17,8 +17,10 @@ internal sealed class SerialScannerSession : IAsyncDisposable
     public event Action<byte[]>? BytesReceived;
     public event Action<SerialBarcodePacket>? BarcodeReceived;
     public event Action<string>? Fault;
+    public event Action<string>? FramingWarning;
     public event Action<bool>? ConnectionChanged;
     public string? PortName => _port?.IsOpen == true ? _port.PortName : null;
+    public bool HasSession => _port is not null;
     public int BaudRate => _port?.BaudRate ?? 0;
 
     public static string[] AvailablePorts() =>
@@ -70,7 +72,10 @@ internal sealed class SerialScannerSession : IAsyncDisposable
                     if (n == 0) continue;
                     byte[] bytes = chunk.AsSpan(0,n).ToArray();
                     BytesReceived?.Invoke(bytes);
+                    int oldDropped = _framer.DroppedFrames;
                     var packets = _framer.Accept(bytes, DateTimeOffset.UtcNow);
+                    if (_framer.DroppedFrames > oldDropped)
+                        FramingWarning?.Invoke(_framer.LastError ?? "无效串口扫码帧");
                     foreach (var packet in packets) BarcodeReceived?.Invoke(packet);
                 }
                 catch (TimeoutException)
