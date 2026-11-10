@@ -96,6 +96,14 @@ public sealed class R1ProductionScannerViewModelTests
             vm.MarkRunCompleted(accepted, Guid.NewGuid(), "Diagnostic Pass", "real-evidence.json");
             Assert.False(vm.IsRunning);
             Assert.Contains("real-evidence.json", vm.LastEvidence);
+
+            // Station configuration must be fixed to the published recipe,
+            // not merely referenced by an editable filesystem path.
+            await File.WriteAllTextAsync(profile, "{\"station\":\"changed-after-publish\"}");
+            Assert.Throws<InvalidOperationException>(() => accepted!.Verify(project));
+            vm.AcceptSerialBarcode("SN000042", "USB COM · COM7");
+            Assert.Equal("PROJECT_TEST_BINDING_INVALID", vm.ScanEvents[0].Result);
+            Assert.Equal(1, callbacks);
         }
         finally { Directory.Delete(root, true); }
     }
