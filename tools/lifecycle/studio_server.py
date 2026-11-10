@@ -59,6 +59,9 @@ def handler_factory(store, token, repo=None):
             try:
                 if path in ("/", "/index.html", "/**"):
                     return self.write(WEB.read_bytes(), content_type="text/html; charset=utf-8")
+                if path == "/research.js":
+                    return self.write((HERE / "studio_research_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/api/studio/bootstrap":
                     return self.write({"schema": "engineering-workbench/1",
                                        "csrf": token, "projects": store.projects()})
