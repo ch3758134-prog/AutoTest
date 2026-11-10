@@ -11,6 +11,8 @@ public sealed record SerialBarcodePacket(ImmutableArray<byte> Data, string Bound
 public sealed class SerialBarcodeFramer
 {
     public const int MaximumBytes = 512;
+    // Matches the idle timeout used by the serial scanner session.
+    public static readonly TimeSpan DefaultIdleBoundary = TimeSpan.FromMilliseconds(450);
     private readonly List<byte> _current = [];
     private bool _discardUntilBoundary;
     private DateTimeOffset? _lastByteUtc;
@@ -21,6 +23,23 @@ public sealed class SerialBarcodeFramer
     public IReadOnlyList<SerialBarcodePacket> Accept(ReadOnlySpan<byte> input, DateTimeOffset now)
     {
         var completed = new List<SerialBarcodePacket>();
+        // A new scan may arrive after a quiet gap without any CR/LF terminator.
+        // Recover a rejected unterminated frame, or publish the preceding valid
+        // frame, before consuming bytes from the next scan.
+        if (!input.IsEmpty && _lastByteUtc is not null &&
+            now - _lastByteUtc.Value >= DefaultIdleBoundary)
+        {
+            if (_discardUntilBoundary)
+            {
+                _discardUntilBoundary = false;
+                _current.Clear();
+            }
+            else if (_current.Count > 0)
+            {
+                completed.Add(new SerialBarcodePacket(_current.ToImmutableArray(), "IDLE"));
+                _current.Clear();
+            }
+        }
         foreach (byte b in input)
         {
             _lastByteUtc = now;
@@ -59,9 +78,19 @@ public sealed class SerialBarcodeFramer
     }
     public SerialBarcodePacket? FlushAfterIdle(DateTimeOffset now, TimeSpan quiet)
     {
-        if (_discardUntilBoundary || _current.Count == 0 || _lastByteUtc is null ||
-            quiet <= TimeSpan.Zero || now - _lastByteUtc.Value < quiet)
+        if (_lastByteUtc is null || quiet <= TimeSpan.Zero ||
+            now - _lastByteUtc.Value < quiet)
             return null;
+        if (_discardUntilBoundary)
+        {
+            // Never publish a fragment from a rejected scan. Reset at the
+            // idle boundary so the next legitimate scan can be accepted.
+            _discardUntilBoundary = false;
+            _current.Clear();
+            _lastByteUtc = null;
+            return null;
+        }
+        if (_current.Count == 0) return null;
         var packet = new SerialBarcodePacket(_current.ToImmutableArray(), "IDLE");
         _current.Clear();
         return packet;
