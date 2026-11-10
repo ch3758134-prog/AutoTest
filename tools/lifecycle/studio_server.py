@@ -10,13 +10,15 @@ import secrets
 from urllib.parse import urlsplit, parse_qs
 
 from studio_store import Store, RuleError
+from studio_import import preview as saef_preview, import_saef
 
 HERE = Path(__file__).resolve().parent
 WEB = HERE / "studio.html"
 PORT = 8765
 
 
-def handler_factory(store, token):
+def handler_factory(store, token, repo=None):
+    source_root = Path(repo).resolve() if repo else Path.cwd()
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.3"
 
@@ -70,6 +72,8 @@ def handler_factory(store, token):
                     return self.write(store.readiness(params.get("id", "")))
                 if path == "/api/studio/context":
                     return self.write(store.context(params.get("id", "")))
+                if path == "/api/studio/saef-preview":
+                    return self.write(saef_preview(source_root, store, params.get("project", "")))
                 if path == "/api/studio/export":
                     pid = params.get("project", "")
                     data = store.export_project(pid)
@@ -113,6 +117,8 @@ def handler_factory(store, token):
                 elif path == "/api/studio/relation/approve":
                     answer = store.approve_relation(data.get("id", ""),
                                                     data.get("actor", ""), data.get("note", ""))
+                elif path == "/api/studio/import/saef":
+                    answer = import_saef(source_root, store, data.get("project_id", ""))
                 elif len(pieces) == 6 and pieces[:4] == ["", "api", "studio", "object"]:
                     key, verb = pieces[4:6]
                     if verb == "update":
@@ -152,7 +158,7 @@ def main(argv=None):
         parser.error("Invalid port")
     store = Store(args.data)
     server = ThreadingHTTPServer(("127.0.0.1", args.port),
-                                 handler_factory(store, secrets.token_urlsafe(32)))
+                                 handler_factory(store, secrets.token_urlsafe(32), args.repo))
     print("Engineering Workbench: http://127.0.0.1:%d/" % args.port, flush=True)
     print("Data: " + str(store.path), flush=True)
     print("Press Ctrl+C to stop. This server never approves automatically.", flush=True)
