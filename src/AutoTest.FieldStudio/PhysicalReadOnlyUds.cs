@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.Immutable;
 using AutoTest.Contracts;
 using AutoTest.Core;
