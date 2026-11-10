@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using AutoTest.Desktop.G4;
+using AutoTest.Desktop.Bench;
 using AutoTest.Desktop.Tools.ControllerConfig;
 using AutoTest.Desktop.Tools.Dbc;
 using AutoTest.Desktop.Tools.Flash;
@@ -32,6 +33,7 @@ public partial class MainWindow : Window
     private G4ToolsWindow? _compatTools;
     private AutoTest.DeviceLab.DeviceLabEmbeddedView? _device;
     private LabProductionToolView? _production;
+    private ControllerConfigToolViewModel? _controllerConfiguration;
     private bool _closed;
     private bool _disposing;
     private string _activeKey = "project";
@@ -93,7 +95,14 @@ public partial class MainWindow : Window
                 R1DbcHost.Content = new DbcToolView(new DbcToolViewModel());
                 break;
             case 3 when R1ControllerHost.Content is null:
-                R1ControllerHost.Content = new ControllerConfigToolView(new ControllerConfigToolViewModel());
+                _controllerConfiguration ??= new ControllerConfigToolViewModel();
+                R1ControllerHost.Content = new ControllerConfigToolView(_controllerConfiguration);
+                break;
+            case 4 when R1BenchHost.Content is null:
+                _controllerConfiguration ??= new ControllerConfigToolViewModel();
+                R1BenchHost.Content = new BenchWorkbenchView(new BenchWorkbenchViewModel(
+                    new R1BenchWorkspacePort(() => _controllerConfiguration,
+                        () => _device?.Controller)));
                 break;
             case 5 when R1WaveHost.Content is null:
             {

@@ -301,14 +301,7 @@
       <ContentControl x:Name="R1ControllerHost"/>
      </TabItem>
      <TabItem Header="P06 台架">
-      <ScrollViewer Background="#101620" Padding="18">
-       <StackPanel>
-        <TextBlock Text="Manual Bench / 真实台架" FontSize="22" FontWeight="SemiBold"/>
-        <TextBlock Text="此工作区复用同一主控板 DEVICE 诊断会话。设备连接、CAN 接收及 GPIO 只读证据已可从“设备”打开；20 Key 电阻网络 / 五路模拟电压的物理控制适配尚未完成，危险输出禁用。"
-                   TextWrapping="Wrap" Margin="0,15,0,20" Foreground="#E8B967"/>
-        <Button Content="打开当前共享设备 / Station 状态" Click="OpenStation_Click" HorizontalAlignment="Left"/>
-       </StackPanel>
-      </ScrollViewer>
+      <ContentControl x:Name="R1BenchHost"/>
      </TabItem>
      <TabItem Header="P07 波形">
       <ContentControl x:Name="R1WaveHost"/>

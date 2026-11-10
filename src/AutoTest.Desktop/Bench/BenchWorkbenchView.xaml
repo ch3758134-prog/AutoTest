@@ -3,25 +3,36 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:bench="clr-namespace:AutoTest.Desktop.Bench"
              xmlns:wb="clr-namespace:AutoTest.Desktop.Workbench"
-             MinWidth="800" MinHeight="540" Background="#F6F8FB"
+             Background="#101620" Foreground="#E2EDF7"
              FontFamily="Segoe UI" FontSize="13">
     <UserControl.Resources>
+        <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E2EDF7"/></Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="#E2EDF7"/>
+            <Setter Property="Background" Value="#101620"/>
+            <Setter Property="BorderBrush" Value="#314458"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#E2EDF7"/>
+            <Setter Property="Background" Value="#202D3B"/>
+            <Setter Property="BorderBrush" Value="#314458"/>
+        </Style>
         <wb:BooleanToVisibilityConverter x:Key="VisibleWhenTrue" />
         <Style TargetType="Button" x:Key="BenchButton">
             <Setter Property="Padding" Value="14,9"/>
             <Setter Property="MinHeight" Value="36"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
-            <Setter Property="Background" Value="#E9EEF6"/>
-            <Setter Property="BorderBrush" Value="#CED7E5"/>
-            <Setter Property="Foreground" Value="#20314A"/>
+            <Setter Property="Background" Value="#263748"/>
+            <Setter Property="BorderBrush" Value="#314458"/>
+            <Setter Property="Foreground" Value="#E2EDF7"/>
         </Style>
         <Style TargetType="TextBlock" x:Key="FieldLabel">
-            <Setter Property="Foreground" Value="#54657B"/>
+            <Setter Property="Foreground" Value="#92A4B7"/>
             <Setter Property="FontSize" Value="12"/>
         </Style>
         <Style TargetType="Border" x:Key="Panel">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#DEE4EC"/>
+            <Setter Property="Background" Value="#192431"/>
+            <Setter Property="BorderBrush" Value="#314458"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="7"/>
             <Setter Property="Padding" Value="16"/>
@@ -36,7 +47,7 @@
         </Grid.RowDefinitions>
         <DockPanel Margin="0,0,0,14">
             <StackPanel DockPanel.Dock="Left">
-                <TextBlock FontSize="22" FontWeight="SemiBold" Text="手动实测台架"/>
+                <TextBlock FontSize="22" FontWeight="SemiBold" Text="Manual Bench / 手动台架"/>
                 <TextBlock Style="{StaticResource FieldLabel}" Text="根据工程配置动态操作；命令 ACK 不等于物理电压"/>
             </StackPanel>
             <Button DockPanel.Dock="Right" Style="{StaticResource BenchButton}" HorizontalAlignment="Right"
@@ -60,10 +71,10 @@
                         <TextBlock Text="{Binding DeviceIdentity}"/>
                     </StackPanel>
                     <TextBlock Text="{Binding ConnectionDetail}" TextWrapping="Wrap" Margin="0,3,0,0"
-                               Foreground="#54657B"/>
+                               Foreground="#92A4B7"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Style="{StaticResource BenchButton}" Background="#2255A4" Foreground="White"
+                    <Button Style="{StaticResource BenchButton}" Background="#1975BA" Foreground="White"
                             Content="{Binding ConnectionButtonLabel}" Command="{Binding ConnectCommand}"/>
                     <ComboBox Margin="0,8,8,0" MinWidth="210" ItemsSource="{Binding Devices}"
                               SelectedItem="{Binding SelectedDevice}" DisplayMemberPath="DisplayName"
@@ -95,7 +106,7 @@
                         <ItemsControl ItemsSource="{Binding States}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type bench:BenchStateItem}">
-                                    <Border BorderBrush="#DCE3ED" BorderThickness="0,0,0,1" Padding="2,10">
+                                    <Border BorderBrush="#314458" BorderThickness="0,0,0,1" Padding="2,10">
                                         <DockPanel>
                                             <Button DockPanel.Dock="Right" Style="{StaticResource BenchButton}"
                                                     Content="执行状态" Command="{Binding DataContext.ApplyStateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -117,7 +128,7 @@
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock FontWeight="SemiBold" FontSize="16" Text="操作结果与人工测量"/>
                         <TextBlock Text="{Binding LastOperation}" TextWrapping="Wrap" Margin="0,9,0,2"/>
-                        <TextBlock Foreground="#54657B" Text="{Binding LastEvidence}" TextWrapping="Wrap"/>
+                        <TextBlock Foreground="#92A4B7" Text="{Binding LastEvidence}" TextWrapping="Wrap"/>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="五路万用表读数（V） · 空白表示未测" Margin="0,14,0,5"/>
                     </StackPanel>
                     <Grid DockPanel.Dock="Top">
@@ -159,7 +170,7 @@
                 </StackPanel>
                 <DataGrid ItemsSource="{Binding Messages}" IsReadOnly="True" AutoGenerateColumns="False"
                           GridLinesVisibility="None" HeadersVisibility="Column" RowHeaderWidth="0"
-                          Background="White" BorderThickness="0" SelectionMode="Single">
+                          Background="#192431" BorderThickness="0" SelectionMode="Single">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="时间" Binding="{Binding When, StringFormat={}{0:HH:mm:ss.fff}}" Width="115"/>
                         <DataGridTextColumn Header="结果" Binding="{Binding Severity}" Width="85"/>
