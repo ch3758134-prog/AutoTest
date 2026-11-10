@@ -150,7 +150,7 @@ class EvidenceLedResearchTests(unittest.TestCase):
     def test_design_approval_requires_decided_and_pinned_study(self):
         study=self.study()
         architecture=self.design(study["id"],2)
-        with self.assertRaisesRegex(RuleError,"Technology investigation gate"):
+        with self.assertRaisesRegex(RuleError,"Technical investigation gate"):
             self.store.approve(architecture["id"],1,"负责人","审查架构")
         option=self.option(study["id"])
         e=self.experiment(study["id"],option["id"])
