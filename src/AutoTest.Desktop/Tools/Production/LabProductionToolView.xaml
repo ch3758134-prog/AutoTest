@@ -76,7 +76,7 @@
                 <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding LastRun}" TextWrapping="Wrap" Foreground="#46D0DC" Margin="0,6,0,0"/>
                 <TextBlock Text="{Binding LastEvidence}" TextWrapping="Wrap" Foreground="#81C9BA" Margin="0,3,0,0"/>
-                <TextBlock Text="实际扫码匹配后运行当前工程的同一份物理 TEST，绑定 DUT / Revision / RunId；真实只读结果暂不签发出厂 PASS。"
+                <TextBlock Text="扫码后执行当前工程的唯一真实 TEST，绑定 DUT、Revision 和 RunId。已发布配方若启用出厂检测统计，则按真实 TEST 结果保存生产 PASS/FAIL；测试结果不等同于发货放行。"
                            TextWrapping="Wrap" Foreground="#E8B967" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
@@ -121,6 +121,10 @@
                         <TextBlock Text="工位 Profile Revision（由操作者配置）"/>
                         <TextBox Text="{Binding StationProfileRevision,UpdateSourceTrigger=PropertyChanged}"
                                  Width="180" HorizontalAlignment="Left" Margin="0,3,0,10"/>
+                        <CheckBox IsChecked="{Binding ProductionTestEnabled,Mode=TwoWay}"
+                                   Content="将此已发布配方用于真实出厂检测统计（按工程 TEST 实际 PASS/FAIL 入库）"
+                                   Foreground="#E2EDF7" Margin="0,12,0,8"
+                                   ToolTip="关闭时仍可做真实诊断测试，但不进入生产统计；无真实设备/TEST 的运行绝不成为生产 PASS。"/>
                         <TextBlock Text="真实条码样本（用于发布前验证规则）"/>
                         <TextBox Text="{Binding ExampleBarcode,UpdateSourceTrigger=PropertyChanged}"
                                  Width="410" HorizontalAlignment="Left" Margin="0,3,0,12"/>
