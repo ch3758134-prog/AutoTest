@@ -1,0 +1,32 @@
+name: CanTool Flash Lab Windows validation
+on:
+  push:
+    branches: [feature/cantool-flash-lab-20261110]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  flash-lab:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.400'
+      - name: Restore standalone Flash Lab
+        shell: pwsh
+        run: dotnet restore tools/AutoTest.FlashDiag/AutoTest.FlashDiag.csproj
+      - name: Build standalone Flash Lab
+        shell: pwsh
+        run: dotnet build tools/AutoTest.FlashDiag/AutoTest.FlashDiag.csproj -c Release --no-restore
+      - name: Publish standalone Flash Lab
+        shell: pwsh
+        run: dotnet publish tools/AutoTest.FlashDiag/AutoTest.FlashDiag.csproj -c Release -r win-x64 --self-contained false -o output/AutoTest.FlashDiag
+      - name: Upload independent Flash Lab executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoTest-CanTool-Flash-Test-Windows-x64
+          path: output/AutoTest.FlashDiag/
+          retention-days: 7
+          if-no-files-found: error
