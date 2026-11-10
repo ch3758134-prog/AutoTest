@@ -31,19 +31,24 @@ public sealed class WaveWorkbenchViewModelTests
         public int ReplayCount { get; private set; }
         public int CompareCount { get; private set; }
         public bool Stale { get; set; }
+        public bool HoldReplayUntilCancellation { get; set; }
+        public TaskCompletionSource<bool> ReplayStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Dictionary<SignalRef, WaveReference> _references = new();
         public IReadOnlyList<WaveSignalChoice> ListSignals() => Stale ?
             [new WaveSignalChoice(First with { DbcAsset = First.DbcAsset with
                 { Revision = AssetRevision.Create(2) } }, "Current new rev")] :
             [new WaveSignalChoice(First, "Current [A]"),
              new WaveSignalChoice(Second, "Voltage [V]")];
-        public Task<WaveWorkbenchCapture> ReplayAsync(SignalRef signal, int samples, CancellationToken ct)
+        public async Task<WaveWorkbenchCapture> ReplayAsync(SignalRef signal, int samples, CancellationToken ct)
         {
             ReplayCount++;
+            ReplayStarted.TrySetResult(true);
+            if (HoldReplayUntilCancellation)
+                await Task.Delay(Timeout.Infinite, ct);
             var series = MakeSeries(signal);
-            return Task.FromResult(new WaveWorkbenchCapture(
+            return new WaveWorkbenchCapture(
                 new WaveEvidenceRef(EvidenceRef.New(), series.SourceRevision, signal.Unit,
-                    TimeQuality.ReplayDerived), series, "Replay / Shared CAN", WaveInputKind.Replay));
+                    TimeQuality.ReplayDerived), series, "Replay / Shared CAN", WaveInputKind.Replay);
         }
         public Task<WaveWorkbenchCapture> CaptureLiveAsync(SignalRef signal,
             TimeSpan duration, int maxSamples, CancellationToken ct)
@@ -148,4 +153,22 @@ public sealed class WaveWorkbenchViewModelTests
         Assert.Empty(vm.Results);
         Assert.Contains("WAVE_ERROR", vm.Status);
     }
+    [Fact]
+    public async Task DbcRevisionChangeDuringReplayCancelsOldCaptureBeforeRefreshing()
+    {
+        var backend = new FakeBackend { HoldReplayUntilCancellation = true };
+        var vm = new WaveWorkbenchViewModel();
+        vm.BindBackend(backend);
+        var operation = vm.ReplaySelectedAsync();
+        await backend.ReplayStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.True(vm.Busy);
+        backend.Stale = true;
+        vm.RefreshSignals();
+        await operation.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.False(vm.Busy);
+        Assert.Equal(0, vm.CaptureCount);
+        Assert.Single(vm.Signals);
+        Assert.Contains("DBC_REVISION_CHANGED", vm.Status);
+    }
+
 }
