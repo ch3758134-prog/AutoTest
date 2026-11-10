@@ -35,7 +35,10 @@ public sealed class KeySimCanCodecTests
         Assert.True(KeySimCanCodec.TryParse(frame, out var mask, out var released));
         Assert.Equal(0u, mask);
         Assert.True(released);
-        Assert.Equal(frame, KeySimCanCodec.SetMask(0));
+        var zeroMask = KeySimCanCodec.SetMask(0);
+        Assert.Equal(frame.Id, zeroMask.Id);
+        Assert.Equal(frame.Role, zeroMask.Role);
+        Assert.Equal(frame.Data.AsSpan().ToArray(), zeroMask.Data.AsSpan().ToArray());
     }
 
     [Fact]
