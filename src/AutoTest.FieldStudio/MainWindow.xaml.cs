@@ -67,7 +67,7 @@ public sealed class CanRow : INotifyPropertyChanged
 public sealed record LogRow(string Time, string Module, string Message);
 public sealed record ScanRow(string Time, string Source, string Barcode, string Result);
 public sealed record UdsRow(string Time, string Direction, string Detail);
-public sealed record DbcMessageRow(string Id, string Name, int Dlc, string Transmitter, int Signals);
+public sealed record DbcMessageRow(string Id, string FrameFormat, string Name, int Dlc, string Transmitter, int Signals, [property: Browsable(false)] bool IsExtended);
 public sealed record FirmwareSegmentRow(string Address, long Bytes, string EndExclusive);
 public sealed record SignalOption(DbcFileEntry File, DbcMessage Message, DbcSignal Signal)
 {
@@ -488,7 +488,7 @@ public partial class MainWindow : Window
             ? source[..250_000] + "\n\n[原始文件内容较长，预览仅显示前 250000 字符]"
             : source;
         DbcMessages.ItemsSource = entry.Document.Model.Messages.Select(m =>
-            new DbcMessageRow($"0x{m.Id:X}", m.Name, m.Dlc, m.Transmitter, m.Signals.Length)).ToList();
+            new DbcMessageRow($"0x{m.Id:X}", m.IsExtended ? "29-bit" : "11-bit", m.Name, m.Dlc, m.Transmitter, m.Signals.Length, m.IsExtended)).ToList();
         DbcStatus.Text = $"{entry.Name} · Revision {entry.Document.Model.Revision} · " +
             (entry.LegacyEncoding ? "GB18030 源文件只读（不允许覆盖原编码）" :
              entry.Document.CanEdit ? "安全可写语法" : "扩展只读：" + string.Join(", ", entry.Document.UnsupportedDirectives.Take(3)));
@@ -498,7 +498,7 @@ public partial class MainWindow : Window
         if (DbcFiles.SelectedItem is not DbcFileEntry entry ||
             DbcMessages.SelectedItem is not DbcMessageRow row) { DbcSignals.ItemsSource = null; return; }
         uint id = ParseId(row.Id);
-        DbcSignals.ItemsSource = entry.Document.Model.FindMessage(id).Signals.Select(s => new
+        DbcSignals.ItemsSource = entry.Document.Model.FindMessage(id, row.IsExtended).Signals.Select(s => new
         {
             s.Name, s.StartBit, s.BitLength, ByteOrder = s.Intel ? "Intel" : "Motorola",
             s.Signed, s.Factor, s.Offset, s.Unit, s.Receiver, s.Multiplexer
@@ -541,7 +541,8 @@ public partial class MainWindow : Window
     {
         if (!_waveRunning || _selectedWave is null) return;
         var selected = _selectedWave;
-        if (obs.Frame.Id != selected.Message.Id || obs.Frame.Dlc != selected.Message.Dlc ||
+        if (obs.Frame.Id != selected.Message.Id || obs.Frame.ExtendedId != selected.Message.IsExtended ||
+            obs.Frame.Dlc != selected.Message.Dlc ||
             selected.Signal.Multiplexer is not null) return;
         try
         {
