@@ -235,7 +235,7 @@ class Research:
                 raise RuleError("Experiment needs prior human authorization")
             # Physical execution is external to this application.
             key = ident()
-            db.execute("""INSERT INTO study_results VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            db.execute("""INSERT INTO study_results VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                        (key, experiment_id, outcome, observed, raw_ref, digest,
                         config, revision, performed_by, now(), None, None, None))
             self._audit(db, study, "RECORD_EXPERIMENT", performed_by,
