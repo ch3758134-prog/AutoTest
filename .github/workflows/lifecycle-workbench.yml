@@ -1,0 +1,32 @@
+name: Engineering Lifecycle Workbench
+
+on:
+  push:
+    branches:
+      - management/evolutionary-lifecycle-pilot-20261109
+    paths:
+      - 'tools/lifecycle/**'
+      - '.github/workflows/lifecycle-workbench.yml'
+  pull_request:
+    paths:
+      - 'tools/lifecycle/**'
+      - '.github/workflows/lifecycle-workbench.yml'
+  workflow_dispatch:
+
+jobs:
+  offline-tests:
+    name: Python stdlib / business rules / localhost API
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile Python source
+        run: python -m compileall -q tools/lifecycle
+      - name: Run lifecycle tests
+        run: python -m unittest discover -s tools/lifecycle/tests -v
