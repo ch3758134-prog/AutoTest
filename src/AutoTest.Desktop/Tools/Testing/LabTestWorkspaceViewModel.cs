@@ -102,6 +102,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         SaveToProjectCommand = new LabCommand(SaveToProject, () => !Busy && _project is not null);
         ReloadProjectCommand = new LabCommand(ReloadFromProject, () => !Busy && _project is not null);
         Rebuild();
+        ReloadFromProject();
     }
 
     public ObservableCollection<LabTreeRow> Tree { get; } = new();
