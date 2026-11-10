@@ -99,7 +99,8 @@
       </Border>
       <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="Transparent"/>
       <Border Grid.Column="2" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="12">
-        <StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+         <StackPanel>
           <TextBlock Text="Step properties" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
           <TextBlock Text="Name" Foreground="#92A4B7"/>
           <TextBox Text="{Binding SelectedName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
@@ -118,9 +119,23 @@
           <TextBlock Text="Parameter value" Foreground="#92A4B7"/>
           <TextBox Text="{Binding ParameterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
           <Button Content="Set parameter" Command="{Binding SetParameterCommand}" HorizontalAlignment="Left"/>
-          <TextBlock TextWrapping="Wrap" Margin="0,20,0,0" Foreground="#92A4B7" FontSize="11"
+          <Separator Margin="0,14,0,10" Background="#314458"/>
+          <TextBlock Text="真实 KEY_SIM / P05 控制器状态" FontWeight="SemiBold" Margin="0,0,0,7"/>
+          <Button Content="从 P05 刷新状态列表" Command="{Binding RefreshControllerStatesCommand}"
+                  HorizontalAlignment="Left"/>
+          <ComboBox ItemsSource="{Binding ControllerStateChoices}"
+                    SelectedItem="{Binding SelectedControllerChoice,Mode=TwoWay}"
+                    DisplayMemberPath="Label" Margin="0,7,0,5" MinHeight="30"
+                    ToolTip="选择真实控制器的状态；20 位掩码合成 KEY_SIM 五路电阻网络输出"/>
+          <Button Content="绑定到选中 ControllerState 步骤"
+                  Command="{Binding ApplyControllerStateCommand}"
+                  HorizontalAlignment="Left"/>
+          <TextBlock Text="配置中掩码 0=释放全部按键。实际动作需 P05 已保存、TEST 已保存，以及 Cleanup 定义全部释放状态。"
+                     TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#E8B967"/>
+          <TextBlock TextWrapping="Wrap" Margin="0,14,0,0" Foreground="#92A4B7" FontSize="11"
                      Text="ControllerState 必须引用工程 ControllerId/StateId/Revision。只允许设备与步骤合同支持的真实操作；没有配置的硬件行为不予执行。"/>
-        </StackPanel>
+         </StackPanel>
+        </ScrollViewer>
       </Border>
     </Grid>
     <Border Grid.Row="3" Background="#192431" BorderBrush="#314458" BorderThickness="1" Margin="0,9,0,0">
@@ -152,7 +167,7 @@
       <StackPanel>
         <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#E2EDF7"/>
         <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="#81C9BA"/>
-        <TextBlock Text="真实只读 TEST 只形成诊断证据，不构成出厂 PASS。实际供电/IGN/按键/夹具/CAN 发送须独立完成安全授权与真实执行接线。" TextWrapping="Wrap" Foreground="#E8B967"/>
+        <TextBlock Text="真实 KEY_SIM 状态由现役 CAN0 协议发送，CAN1 观测独立判定；主控 ACK 不代表电压/ECU 已响应。DUT 供电不由软件控制；当前为诊断证据，未签发出厂 PASS。" TextWrapping="Wrap" Foreground="#E8B967"/>
       </StackPanel>
     </Border>
   </Grid>
