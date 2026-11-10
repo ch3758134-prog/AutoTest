@@ -115,7 +115,7 @@ public partial class MainWindow : Window
         switch (tab)
         {
             case 3 when R1DbcHost.Content is null:
-                R1DbcHost.Content = new DbcToolView(new DbcToolViewModel());
+                R1DbcHost.Content = new DbcToolView(new DbcToolViewModel(host.Workspace));
                 break;
             case 4 when R1ControllerHost.Content is null:
                 _controllerConfiguration ??= new ControllerConfigToolViewModel();
