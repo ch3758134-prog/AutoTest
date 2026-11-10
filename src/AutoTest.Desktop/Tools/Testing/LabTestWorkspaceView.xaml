@@ -7,7 +7,6 @@
     <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
     <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}"/>
     <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
-    <KeyBinding Key="F5" Command="{Binding RunMockCommand}"/>
     <KeyBinding Key="F10" Command="{Binding StepCommand}"/>
   </UserControl.InputBindings>
   <UserControl.Resources>
@@ -55,7 +54,6 @@
       <Button Content="Redo" Command="{Binding RedoCommand}"/>
       <Separator Width="12"/>
       <Button Content="Preflight" Command="{Binding PreflightCommand}"/>
-      <Button Content="Run Mock" Command="{Binding RunMockCommand}" FontWeight="SemiBold"/>
       <Button Content="执行真实 CAN1 只读测试" Command="{Binding RunPhysicalReadOnlyCommand}" FontWeight="SemiBold" Background="#176A8C" ToolTip="仅运行当前工程已保存的 TEST 程序；每次要求操作员授权，无法执行输出或烧录"/>
       <Button Content="Pause" Command="{Binding PauseCommand}"/>
       <Button Content="Resume" Command="{Binding ResumeCommand}"/>
@@ -121,7 +119,7 @@
           <TextBox Text="{Binding ParameterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
           <Button Content="Set parameter" Command="{Binding SetParameterCommand}" HorizontalAlignment="Left"/>
           <TextBlock TextWrapping="Wrap" Margin="0,20,0,0" Foreground="#92A4B7" FontSize="11"
-                     Text="ControllerState requires PROJECT ControllerId / StateId / exact Revision. Missing or outdated references block Preflight. No physical output permission is available here."/>
+                     Text="ControllerState 必须引用工程 ControllerId/StateId/Revision。只允许设备与步骤合同支持的真实操作；没有配置的硬件行为不予执行。"/>
         </StackPanel>
       </Border>
     </Grid>
