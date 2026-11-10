@@ -189,6 +189,10 @@ public partial class MainWindow : Window
                 R1WaveHost.Content = wave;
                 break;
             }
+            case 9 when R2AuthoringHost.Content is null:
+                R2AuthoringHost.Content = new LabTestWorkspaceView(
+                    new LabTestWorkspaceViewModel(host.Workspace));
+                break;
             case 10 when R1RunHost.Content is null:
                 // P11 uses the same persisted TEST program as P10 and P01;
                 // no separate sample LabDocument or independent Mock runner.
