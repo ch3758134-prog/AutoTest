@@ -71,6 +71,9 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    /// <summary>Cancel any leftover physical CAN grant before leaving the TX critical section.</summary>
+    public void RevokeOneCanTransmission() => _fence.RevokeSingleCanFrame();
+
     public ValueTask OpenAsync(CancellationToken ct)
         => new(Task.Run(() => OpenCore(ct), ct));
 
