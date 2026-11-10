@@ -115,8 +115,17 @@ public partial class MainWindow : Window
         switch (tab)
         {
             case 3 when R1DbcHost.Content is null:
-                R1DbcHost.Content = new DbcToolView(new DbcToolViewModel(host.Workspace));
+            {
+                var dbcEditor = new DbcToolViewModel(host.Workspace);
+                dbcEditor.ProjectDbcImported += (_, _) =>
+                {
+                    vm.RefreshExternalWorkspaceChanges();
+                    if (R1WaveHost.Content is WaveWorkbenchView liveWave)
+                        liveWave.Model.RefreshSignals();
+                };
+                R1DbcHost.Content = new DbcToolView(dbcEditor);
                 break;
+            }
             case 4 when R1ControllerHost.Content is null:
                 _controllerConfiguration ??= new ControllerConfigToolViewModel();
                 R1ControllerHost.Content = new ControllerConfigToolView(_controllerConfiguration);
