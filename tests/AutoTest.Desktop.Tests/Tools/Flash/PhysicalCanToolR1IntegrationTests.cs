@@ -53,7 +53,7 @@ public sealed class PhysicalCanToolR1IntegrationTests
         Assert.Single(blocks);
         Assert.Equal(0x1000U, blocks[0].Address);
         Assert.Equal(0x200, blocks[0].Data.Length);
-        Assert.Equal(0x11, blocks[0].Data[0]);
-        Assert.Equal(0xFF, blocks[0].Data[^1]);
+        Assert.Equal((byte)0x11, blocks[0].Data[0]);
+        Assert.Equal((byte)0xFF, blocks[0].Data[^1]);
     }
 }
