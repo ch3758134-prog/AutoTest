@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../AutoTest.Devices/AutoTest.Devices.csproj" />
+    <ProjectReference Include="../AutoTest.Specialists/AutoTest.Specialists.csproj" />
+  </ItemGroup>
+</Project>
