@@ -154,8 +154,30 @@
           BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,0,1">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="● MOCK HOST" Foreground="#E8B967" FontWeight="SemiBold" VerticalAlignment="Center"/>
-     <TextBlock Text="   CAN1 Physical Link: not attached to product shell" Foreground="{StaticResource R1Muted}" FontSize="11" VerticalAlignment="Center"/>
+     <Ellipse x:Name="R1StationDot" Width="7" Height="7" Fill="#65798F"
+              Margin="2,0,6,0" VerticalAlignment="Center"/>
+     <TextBlock x:Name="R1StationStatus" Text="Station · 未连接"
+                Foreground="#92A4B7" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
+     <Button Content="⌄" Click="OpenStation_Click" ToolTip="打开 Station 连接"
+             Background="Transparent" Foreground="#92A4B7" BorderThickness="0" Padding="3"/>
+     <Border Width="1" Height="22" Background="#314458" Margin="8,0"/>
+     <TextBlock Text="执行源" Foreground="#92A4B7" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+     <ComboBox x:Name="R1ExecutionSource" Width="118" Height="28"
+               Background="#202D3B" Foreground="#E2EDF7" BorderBrush="#314458"
+               SelectionChanged="ExecutionSource_SelectionChanged" SelectedIndex="0">
+      <ComboBoxItem Content="Mock / 仿真" Tag="Mock"/>
+      <ComboBoxItem Content="Replay / 回放" Tag="Replay"/>
+      <ComboBoxItem Content="Physical / 实物" Tag="Physical"/>
+     </ComboBox>
+     <Border Width="1" Height="22" Background="#314458" Margin="8,0"/>
+     <TextBlock Text="工作区" Foreground="#92A4B7" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+     <ComboBox x:Name="R1WorkspaceMode" Width="108" Height="28"
+               Background="#202D3B" Foreground="#E2EDF7" BorderBrush="#314458"
+               SelectedIndex="0" SelectionChanged="WorkspaceMode_SelectionChanged">
+      <ComboBoxItem Content="开发调试"/>
+      <ComboBoxItem Content="出厂检测"/>
+      <ComboBoxItem Content="离线分析"/>
+     </ComboBox>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="⌕" Click="CommandPalette_Click" ToolTip="命令搜索 Ctrl+K" FontSize="17"/>

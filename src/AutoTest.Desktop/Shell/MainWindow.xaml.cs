@@ -90,6 +90,7 @@ public partial class MainWindow : Window
         {
             _device ??= new AutoTest.DeviceLab.DeviceLabEmbeddedView();
             R1BottomCanGrid.ItemsSource=_device.ViewModel.CanTimeline;
+            BindStationStatus();
             // Both R1 documents host the SAME controller + physical WinUSB session.
             if (tab == 1)
             {
@@ -242,6 +243,61 @@ public partial class MainWindow : Window
             panel.Height=_bottomSaved;
             R1BottomTabs.Visibility=Visibility.Visible;
         }
+    }
+
+    private void BindStationStatus()
+    {
+        if (_device is null) return;
+        System.Windows.Data.BindingOperations.SetBinding(R1StationStatus,
+            TextBlock.TextProperty,new System.Windows.Data.Binding(nameof(
+                AutoTest.DeviceLab.DeviceLabViewModel.StatusText))
+            {
+                Source=_device.ViewModel,
+                StringFormat="Station · {0}",
+                Mode=System.Windows.Data.BindingMode.OneWay
+            });
+        void RefreshLed()
+        {
+            R1StationDot.Fill=_device.ViewModel.StatusText.Contains("已连接",
+                StringComparison.Ordinal) || _device.ViewModel.StatusText.Contains("Connected",
+                StringComparison.OrdinalIgnoreCase)
+                    ? Brushes.MediumSeaGreen : Brushes.SlateGray;
+        }
+        _device.ViewModel.PropertyChanged+=(_,e)=>
+        {
+            if (e.PropertyName==nameof(AutoTest.DeviceLab.DeviceLabViewModel.StatusText))
+                Dispatcher.InvokeAsync(RefreshLed);
+        };
+        RefreshLed();
+    }
+    private void WorkspaceMode_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || R1WorkspaceMode is null) return;
+        switch (R1WorkspaceMode.SelectedIndex)
+        {
+            case 0: Navigate(0,"project"); break;
+            case 1: Navigate(11,"production"); break;
+            case 2: Navigate(12,"records"); break;
+        }
+    }
+    private void ExecutionSource_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || R1ExecutionSource.SelectedItem is not ComboBoxItem choice) return;
+        string source=choice.Tag as string ?? "Mock";
+        if (R1UdsView.DataContext is UdsToolViewModel uds)
+            uds.SourceMode=source;
+        if (R1BenchHost.Content is BenchWorkbenchView bench &&
+            bench.DataContext is BenchWorkbenchViewModel vm)
+        {
+            vm.Source=source switch
+            {
+                "Physical"=>BenchEvidenceSource.Physical,
+                "Replay"=>BenchEvidenceSource.Replay,
+                _=>BenchEvidenceSource.Mock
+            };
+        }
+        // Each other module retains its own verified source. Selecting Physical
+        // is NOT a global authorization for real ECU output or programming.
     }
 
     private void Window_PreviewKeyDown(object sender,KeyEventArgs e)
