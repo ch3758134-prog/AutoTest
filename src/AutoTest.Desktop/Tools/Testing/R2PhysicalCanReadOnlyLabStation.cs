@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.Immutable;
 using System.Globalization;
 using AutoTest.Application.V1;
