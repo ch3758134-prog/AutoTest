@@ -9,7 +9,7 @@
     <AssemblyName>AutoTest.FlashDiag</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/AutoTest.Desktop/AutoTest.Desktop.csproj" />
+    <ProjectReference Include="../../src/AutoTest.Specialists/AutoTest.Specialists.csproj" />
     <ProjectReference Include="../../src/AutoTest.Devices/AutoTest.Devices.csproj" />
   </ItemGroup>
 </Project>
