@@ -165,8 +165,8 @@ public sealed class R1ProductionScannerViewModel : BindableBase
         }
     }
 
-    public void AcceptSerialBarcode(string barcode, string origin) => Process(barcode, origin);
-    public void PreviewScan() => Process(ScanInput, "Manual / operator entry");
+    public void AcceptSerialBarcode(string barcode, string origin) => Process(barcode, origin, true);
+    public void PreviewScan() => Process(ScanInput, "Manual / preview only", false);
 
     public void MarkRunCompleted(R1PhysicalScanBinding binding, Guid? runId,
         string result, string? evidence)
@@ -178,7 +178,7 @@ public sealed class R1ProductionScannerViewModel : BindableBase
         Status = "扫码 TEST 已结束；判定为真实测试结果，尚未授权出厂放行。";
     }
 
-    private void Process(string raw, string origin)
+    private void Process(string raw, string origin, bool startPhysicalRun)
     {
         if (IsRunning)
         {
@@ -234,6 +234,11 @@ public sealed class R1ProductionScannerViewModel : BindableBase
         ScanEvents.Insert(0, new LabScanEventRow(DateTimeOffset.Now.ToString("O"),
             admission.Allowed ? admission.NormalizedText : raw, code, origin));
         while (ScanEvents.Count > 500) ScanEvents.RemoveAt(ScanEvents.Count - 1);
+        if (binding is not null && !startPhysicalRun)
+        {
+            Status = "人工输入只执行配方预览；实际自动测试由真实 USB COM 扫码触发。";
+            return;
+        }
         if (binding is not null)
         {
             IsRunning = true;
