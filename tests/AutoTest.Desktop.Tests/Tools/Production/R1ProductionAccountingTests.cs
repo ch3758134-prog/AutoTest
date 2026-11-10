@@ -49,7 +49,22 @@ public sealed class R1ProductionAccountingTests
         var report = Report();
         var exception = Assert.Throws<InvalidOperationException>(() =>
             R1PhysicalRunRecordBridge.ClassifyMode(Binding(true), report));
-        Assert.Contains("PRODUCTION_PASS_WITHOUT_PHYSICAL_ASSERTION", exception.Message);
+        Assert.Contains("PRODUCTION_PASS_WITHOUT_VERIFIED_TEST_STEP", exception.Message);
+    }
+
+    [Fact]
+    public void ConfirmedPhysicalControllerActionCanFormAProductionPass()
+    {
+        var run = Guid.NewGuid();
+        var operationId = Guid.NewGuid();
+        var receipt = new LabStepFact(operationId, Guid.NewGuid(), run, Guid.NewGuid(),
+            LabPhase.Test, "ControllerState", "KEY_SIM hold", null,
+            LabQuality.Observed, LabVerdict.Pass, LabSource.Physical,
+            9, DateTimeOffset.UtcNow, operationId.ToString("D"), null);
+        var report = new LabRunReport(run, new string('d', 64), LabSource.Physical,
+            LabVerdict.Pass, false, ImmutableArray.Create(receipt));
+        Assert.Equal(RecordRunMode.Production,
+            R1PhysicalRunRecordBridge.ClassifyMode(Binding(true), report));
     }
 
     [Fact]
