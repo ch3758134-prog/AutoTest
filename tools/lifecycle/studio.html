@@ -170,7 +170,8 @@ function renderDashboard(){const p=state.data.project;
  const b=section('系统构成与产品能力');b.header.append(button('打开产品结构','link',()=>navigate('product')));
  const grid=el('div','twocol');for(const kind of ['system','capability']){const panel=el('div','panel');add(panel,el('h2','',kind==='system'?'系统元素':'产品能力'));let items=state.data.objects.filter(x=>x.kind===kind);if(items.length)items.slice(0,8).forEach(o=>panel.append(rowCard(o,openItem)));else panel.append(el('p','','尚未建立'+groupLabel(kind)+'；不将文件列表冒充系统分解。'));panel.append(button('+ 新增'+groupLabel(kind),'link',()=>editorModal(kind)));grid.append(panel);}b.node.append(grid);
  const h=section('近期工程活动');let timeline=el('div','panel');if(!state.data.events.length)timeline.append(el('p','','尚无操作记录。'));state.data.events.slice(0,10).forEach(ev=>{let n=el('div','event');add(n,el('strong','',ev.action+' · '+(ev.object_id?itemName(ev.object_id):projectName())),el('small','',ev.timestamp+' · '+ev.actor+' · '+ev.note));timeline.append(n)});h.node.append(timeline);
- root.append(note('产品定义、需求设计、已批准基线、实现状态和真实验证是不同信息。修改已批准对象会生成新修订并回到草稿，不会擦除旧批准快照。'));}
+ root.append(note('产品定义、需求设计、已批准基线、实现状态和真实验证是不同信息。修改已批准对象会生成新修订并回到草稿，不会擦除旧批准快照。'));
+ renderResearchDashboardSection();}
 function renderEditor(){const types=groupKinds[state.view];const desc={product:'构建产品场景、能力和系统分解，而不是预先塞进某个专用硬件模型。',engineering:'分层维护需求、架构、接口和详细设计。每个工程对象都保留正文、来源、关系与历史版本。',governance:'记录方案比较、设计决定、风险与变更；实施后的发现可以回到系统需求重新审查。',delivery:'关联已批准设计、软件工作包、测试规格与实测证据，清楚地区分实施和验证。'}[state.view];
  heading(stages[state.view],desc||(state.view==='archive'?'阅读历史资料、理解来源、查看内容差异，必要时引用到当前工程对象；导入不会自动批准任何内容。':'当前工程对象'));
  let toolbar=el('div','toolbar'),left=el('div','buttonrow');add(left,...types.map(kind=>button('+ '+groupLabel(kind),'outline',()=>editorModal(kind))));if(state.view==='archive')left.append(button('从当前仓库导入 SAEF 档案','primary',importSaefModal));toolbar.append(left);root.append(toolbar);
@@ -197,6 +198,7 @@ function renderEditor(){const types=groupKinds[state.view];const desc={product:'
  if(!links.length)relhead.append(el('div','muted','尚未建立显式关系。不要从文件名推测架构、需求与代码已经追踪。'));
  for(const rel of links){const other=rel.source_id===selected.id?rel.target_id:rel.source_id;const row=el('div','relation');const direction=rel.source_id===selected.id?'下游':'上游';add(row,el('span','tiny',direction+' · '+relationNames[rel.kind]),button(itemName(other),'link',()=>openItem(item(other))),badge(rel.status));if(rel.status==='CANDIDATE')row.append(button('确认关系','link',()=>relationApprovalModal(rel)));row.append(button('解除','link',()=>removeLink(rel)));relhead.append(row);}
  content.append(relhead);
+ if(['architecture','interface','design'].includes(selected.kind))appendDesignStudyLinks(selected,content);
  if(selected.kind==='change')renderChangeDetail(selected,content);
  if(selected.kind==='work_package')renderWorkPackageHint(selected,content);
  detail.append(content);}
