@@ -7,11 +7,11 @@ using AutoTest.Projects.Project;
 
 namespace AutoTest.Projects.Dbc.Lab;
 
-public sealed record DbcValueTable(uint MessageId, string SignalName, ImmutableDictionary<long, string> Labels)
+public sealed record DbcValueTable(uint MessageId, string SignalName, ImmutableDictionary<long, string> Labels, bool IsExtended = false)
 {
     public DbcValueTable Validate(DbcDatabase model)
     {
-        model.FindSignal(MessageId, SignalName);
+        model.FindSignal(MessageId, SignalName, IsExtended);
         if (Labels.IsEmpty || Labels.Any(p => string.IsNullOrWhiteSpace(p.Value)))
             throw new ProjectDataException("DBC_VAL", "Value description entries are missing.");
         return this;
@@ -75,6 +75,7 @@ public sealed class DbcWorkbenchDocument
                 if (!match.Success) { unsupported.Add("VAL_ syntax"); continue; }
                 if (!uint.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
                 { unsupported.Add("VAL_ id"); continue; }
+                var (normalizedId, extendedId) = DbcFrameId.Decode(id);
                 var remainder = match.Groups[3].Value;
                 var labels = ImmutableDictionary.CreateBuilder<long, string>();
                 var cursor = 0;
@@ -90,7 +91,7 @@ public sealed class DbcWorkbenchDocument
                     unsupported.Add("VAL_ contents");
                 else
                 {
-                    try { tables.Add(new DbcValueTable(id, match.Groups[2].Value, labels.ToImmutable()).Validate(model)); }
+                    try { tables.Add(new DbcValueTable(normalizedId, match.Groups[2].Value, labels.ToImmutable(), extendedId).Validate(model)); }
                     catch (ProjectDataException) { unsupported.Add("VAL_ unresolved reference"); }
                 }
                 continue;
@@ -117,8 +118,6 @@ public sealed class DbcWorkbenchDocument
             unsupported.Add(line.Split(' ', '\t', ':')[0]);
         }
         if (inNs) unsupported.Add("NS_ block without BS_: terminator");
-        if (model.Messages.Any(m => m.Id > 0x7FF))
-            unsupported.Add("extended-frame policy not verified");
         return new(name, text, model, tables.ToImmutable(), unsupported.Distinct(StringComparer.Ordinal).ToArray());
     }
 
@@ -171,7 +170,7 @@ public sealed class DbcWorkbenchDocument
         var output = new StringBuilder(DbcParserAdapter.Export(Model));
         foreach (var value in _tables.OrderBy(t => t.MessageId).ThenBy(t => t.SignalName, StringComparer.Ordinal))
         {
-            output.Append("VAL_ ").Append(value.MessageId).Append(' ').Append(value.SignalName).Append(' ');
+            output.Append("VAL_ ").Append(DbcFrameId.Encode(value.MessageId, value.IsExtended)).Append(' ').Append(value.SignalName).Append(' ');
             foreach (var item in value.Labels.OrderBy(p => p.Key))
                 output.Append(item.Key).Append(" \"").Append(item.Value.Replace("\\", "\\\\").Replace("\"", "\\\""))
                     .Append("\" ");
@@ -186,7 +185,7 @@ public sealed class DbcWorkbenchDocument
     }
     private static bool ValueTablesMatch(IReadOnlyList<DbcValueTable> a, IReadOnlyList<DbcValueTable> b) =>
         a.Count == b.Count && a.All(x => b.Any(y => y.MessageId == x.MessageId &&
-            y.SignalName == x.SignalName && x.Labels.Count == y.Labels.Count &&
+            y.SignalName == x.SignalName && x.IsExtended == y.IsExtended && x.Labels.Count == y.Labels.Count &&
             x.Labels.All(kv => y.Labels.TryGetValue(kv.Key, out var v) && v == kv.Value)));
     public void Reset()
     {
@@ -199,6 +198,7 @@ public sealed class DbcWorkbenchDocument
         a.Nodes.SequenceEqual(b.Nodes) && a.Messages.Length == b.Messages.Length &&
         a.Messages.Zip(b.Messages).All(pair => pair.First.Id == pair.Second.Id &&
             pair.First.Name == pair.Second.Name && pair.First.Dlc == pair.Second.Dlc &&
+            pair.First.IsExtended == pair.Second.IsExtended &&
             pair.First.Transmitter == pair.Second.Transmitter &&
             pair.First.Signals.SequenceEqual(pair.Second.Signals));
     private void Mutate(Action<DbcEditSession> action)
