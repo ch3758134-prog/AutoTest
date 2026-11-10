@@ -31,6 +31,37 @@ public sealed class R1PhysicalRunRecordBridge
             Path.GetDirectoryName(database.DatabasePath)!, "artifacts"));
     }
 
+    /// <summary>
+    /// Production statistics are opted into by the PUBLISHED physical recipe,
+    /// not inferred from ACKs, a UI label or a synthetic observation.
+    /// A PASS must include a real observed ECU assertion with trace provenance.
+    /// Failed/inconclusive physical runs remain production attempts in that mode.
+    /// </summary>
+    public static RecordRunMode ClassifyMode(
+        AutoTest.Desktop.Tools.Testing.R1PhysicalScanBinding scan, LabRunReport report)
+    {
+        ArgumentNullException.ThrowIfNull(scan);
+        ArgumentNullException.ThrowIfNull(report);
+        if (report.Source != LabSource.Physical ||
+            report.RunId == Guid.Empty || report.Facts.IsDefaultOrEmpty ||
+            report.Facts.Any(f => f.Source != LabSource.Physical || f.RunId != report.RunId))
+            throw new InvalidOperationException("PHYSICAL_PRODUCTION_FACTS_REQUIRED");
+        var mode = scan.ProductionTestEnabled
+            ? RecordRunMode.Production : RecordRunMode.Diagnostic;
+        if (mode == RecordRunMode.Production &&
+            report.Verdict == LabVerdict.Pass &&
+            !report.Stopped &&
+            !report.Facts.Any(f => f.NodeType == "Assert" &&
+                f.Verdict == LabVerdict.Pass &&
+                f.Quality == LabQuality.Observed &&
+                Guid.TryParse(f.TraceReference, out var trace) && trace != Guid.Empty))
+            throw new InvalidOperationException("PRODUCTION_PASS_WITHOUT_PHYSICAL_ASSERTION");
+        if (mode == RecordRunMode.Production && report.Stopped &&
+            report.Verdict == LabVerdict.Pass)
+            throw new InvalidOperationException("STOPPED_RUN_CANNOT_PASS");
+        return mode;
+    }
+
     public async Task<RunId> PersistAsync(V1Workspace workspace,
         HardwareBenchController controller,
         AutoTest.Desktop.Tools.Testing.R1PhysicalScanBinding scan,
@@ -46,21 +77,7 @@ public sealed class R1PhysicalRunRecordBridge
             report.Facts.IsDefaultOrEmpty || string.IsNullOrWhiteSpace(originalEvidenceFile) ||
             !File.Exists(originalEvidenceFile))
             throw new InvalidOperationException("PHYSICAL_RUN_EVIDENCE_REQUIRED");
-        if (report.Facts.Any(f => f.Source != LabSource.Physical ||
-                f.RunId != report.RunId))
-            throw new InvalidOperationException("RUN_FACT_SOURCE_OR_ID_MISMATCH");
-        // A published physical production recipe, not the presence of a PASS
-        // verdict alone, decides whether a run enters production statistics.
-        // Assertion quality remains defined by the actual TEST program.
-        var mode = scan.ProductionTestEnabled
-            ? RecordRunMode.Production : RecordRunMode.Diagnostic;
-        if (mode == RecordRunMode.Production &&
-            report.Verdict == LabVerdict.Pass &&
-            !report.Facts.Any(f => f.NodeType == "Assert" &&
-                f.Verdict == LabVerdict.Pass &&
-                f.Quality == LabQuality.Observed &&
-                !string.IsNullOrWhiteSpace(f.TraceReference)))
-            throw new InvalidOperationException("PRODUCTION_PASS_WITHOUT_PHYSICAL_ASSERTION");
+        var mode = ClassifyMode(scan, report);
         if (controller.State != AutoTest.Devices.Usb.UsbSessionState.Connected ||
             !controller.ProtocolVersionVerified || controller.Generation <= 0 ||
             string.IsNullOrWhiteSpace(controller.SelectedInstanceId))
