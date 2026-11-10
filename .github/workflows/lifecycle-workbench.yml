@@ -34,6 +34,7 @@ jobs:
         run: |
           node --check tools/lifecycle/studio_research_ui.js
           node --check tools/lifecycle/studio_execution_ui.js
+          node --check tools/lifecycle/studio_management_ui.js
           python - <<'PY'
           from pathlib import Path
           import re
