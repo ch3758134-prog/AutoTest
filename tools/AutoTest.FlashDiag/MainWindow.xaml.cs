@@ -84,13 +84,13 @@ public partial class MainWindow : Window
         Append("FLASH " + item.Stage, item.Outcome + ": " + item.Detail);
     }
 
-    private void InvalidatePreflight(string reason)
+    private void InvalidatePreflight(string reason, bool overwriteResult = true)
     {
         _preflightValid = false;
         AuthorizationExpected.Text = "";
         AuthorizationEntered.Text = "";
         StartButton.IsEnabled = false;
-        FlashResultLine.Text = "请重新预检：" + reason;
+        if (overwriteResult) FlashResultLine.Text = "请重新预检：" + reason;
         FlashProgress.Value = 0;
     }
 
@@ -296,6 +296,62 @@ public partial class MainWindow : Window
         Append("IMAGE_PARSED", ImageSummary.Text.Replace("\n", " | "));
     }
 
+    private async void Probe_Click(object sender, RoutedEventArgs e)
+    {
+        if (_flashRunning || _connectionBusy) return;
+        if (_config is null || _device.State != UsbSessionState.Connected ||
+            !_device.ProtocolVersionVerified)
+        {
+            FlashResultLine.Text = "请先导入实际 CanTool XML 并连接真实 USB 主控。";
+            return;
+        }
+        var approval =
+            "将向实际 DUT CAN1 发送 CanTool 的 Boot 0x10 03；" +
+            "若无匹配回应，再向 APP 发送 0x10 03。\\n\\n" +
+            $"Boot TX/RX=0x{_config.BootRequestId:X}/0x{_config.BootResponseId:X}\\n" +
+            $"APP TX/RX=0x{_config.AppRequestId:X}/0x{_config.AppResponseId:X}\\n\\n" +
+            "这是实际 CAN 诊断会话切换，不执行 Seed/Key、擦除、下载或复位。确认发送？";
+        if (MessageBox.Show(this, approval, "真实 CAN1 APP/Boot 探测",
+            MessageBoxButton.YesNo, MessageBoxImage.Warning,
+            MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        _flashRunning = true;
+        ProbeButton.IsEnabled = false;
+        ConnectButton.IsEnabled = false;
+        DisconnectButton.IsEnabled = false;
+        StartButton.IsEnabled = false;
+        CancelButton.IsEnabled = true;
+        _flashCancellation = new CancellationTokenSource();
+        InvalidatePreflight("探测 CAN1 诊断会话后需重新预检");
+        try
+        {
+            Append("PROBE", "开始从真实 CAN1 探测 ECU 当前 APP/Boot 诊断地址。");
+            var engine = new CanToolFlashEngine(_device,
+                new Progress<CanToolFlashStage>(AddStage));
+            var outcome = await engine.ProbeAsync(_config, _flashCancellation.Token);
+            FlashResultLine.Text =
+                $"真实 CAN1 探测：{outcome.Mode}\\n" +
+                $"UDS 响应：{outcome.ResponseHex}\\n" +
+                (outcome.Error is null ? "已记录实际 ECU 响应。"
+                                       : "原因：" + outcome.Error);
+            Append("PROBE_END", FlashResultLine.Text.Replace("\\n", " | "));
+        }
+        catch (Exception ex)
+        {
+            FlashResultLine.Text = "CAN1 探测失败：" + ex.Message;
+            Append("PROBE_ERROR", ex.ToString());
+        }
+        finally
+        {
+            _flashCancellation?.Dispose();
+            _flashCancellation = null;
+            _flashRunning = false;
+            ProbeButton.IsEnabled = true;
+            CancelButton.IsEnabled = false;
+            ConnectButton.IsEnabled = _device.State != UsbSessionState.Connected;
+            DisconnectButton.IsEnabled = _device.State == UsbSessionState.Connected;
+        }
+    }
+
     private void Preflight_Click(object sender, RoutedEventArgs e)
     {
         if (_flashRunning) return;
@@ -430,7 +486,8 @@ public partial class MainWindow : Window
             CancelButton.IsEnabled = false;
             ConnectButton.IsEnabled = _device.State != UsbSessionState.Connected;
             DisconnectButton.IsEnabled = _device.State == UsbSessionState.Connected;
-            InvalidatePreflight("本次烧录作业结束，重新执行前必须重新核对真实目标与状态");
+            InvalidatePreflight("本次烧录作业结束，重新执行前必须重新核对真实目标与状态",
+                overwriteResult: false);
         }
     }
 
