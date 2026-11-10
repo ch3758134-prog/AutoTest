@@ -59,12 +59,12 @@ public sealed class R1ProductionScannerViewModelTests
         try
         {
             var project = new V1Workspace();
-            project.ImportDbc("BU_: ECU\\nBO_ 1 FRAME: 1 ECU\\n SG_ Value : 0|8@1+ (1,0) [0|255] \\"V\\" ECU\\n");
+            project.ImportDbc("BU_: ECU\nBO_ 1 FRAME: 1 ECU\n SG_ Value : 0|8@1+ (1,0) [0|255] \"V\" ECU\n");
             var doc = LabDocument.New("Real project program");
             project.ImportLabProgram(LabDocumentCodec.Save(doc));
             await project.SaveProjectAsync(Path.Combine(root, "real.autotest-project.json"));
             var profile = Path.Combine(root, "actual-station.json");
-            await File.WriteAllTextAsync(profile, "{\\"station\\":\\"configured-by-user\\"}");
+            await File.WriteAllTextAsync(profile, "{\"station\":\"configured-by-user\"}");
             var vm = new R1ProductionScannerViewModel(new LabCatalogStore(
                 Path.Combine(root, "catalog")));
             vm.AttachProject(project);
@@ -108,12 +108,12 @@ public sealed class R1ProductionScannerViewModelTests
         try
         {
             var project = new V1Workspace();
-            project.ImportDbc("BU_: ECU\\nBO_ 1 FRAME: 1 ECU\\n SG_ Value : 0|8@1+ (1,0) [0|255] \\"V\\" ECU\\n");
+            project.ImportDbc("BU_: ECU\nBO_ 1 FRAME: 1 ECU\n SG_ Value : 0|8@1+ (1,0) [0|255] \"V\" ECU\n");
             var doc = LabDocument.New("Actual program");
             var first = project.ImportLabProgram(LabDocumentCodec.Save(doc));
             await project.SaveProjectAsync(Path.Combine(root, "test.autotest-project.json"));
             var profile = Path.Combine(root, "profile.json");
-            await File.WriteAllTextAsync(profile, "{\\"station\\":1}");
+            await File.WriteAllTextAsync(profile, "{\"station\":1}");
             var vm = new R1ProductionScannerViewModel(new LabCatalogStore(Path.Combine(root, "catalog")));
             vm.AttachProject(project);
             vm.RulePattern = @"(?<serial>SN[0-9]{6})";
