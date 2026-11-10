@@ -19,7 +19,7 @@ public sealed class R1ProductionScannerViewModelTests
         var vm = new R1ProductionScannerViewModel(new LabCatalogStore(file));
         await vm.LoadPublishedAsync();
         Assert.Equal("—", vm.RuleRevision);
-        Assert.Contains("缺少有效", vm.CatalogSource);
+        Assert.Contains("缺少已发布", vm.CatalogSource);
         Assert.Empty(vm.ScanEvents);
 
         vm.AcceptSerialBarcode("M000001", "Physical COM5");
