@@ -41,11 +41,16 @@
               CornerRadius="3" Padding="9,4">
         <TextBlock Text="{Binding SourceLabel}" Foreground="#E8B967" FontWeight="Bold" FontSize="11"/>
       </Border>
-      <TextBlock Text="{Binding DocumentName}" Foreground="#92A4B7" FontSize="13"/>
+      <StackPanel>
+       <TextBlock Text="{Binding DocumentName}" Foreground="#92A4B7" FontSize="13"/>
+       <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#81C9BA" FontSize="11" TextWrapping="Wrap"/>
+      </StackPanel>
     </DockPanel>
     <WrapPanel Grid.Row="1" Margin="0,0,0,9">
       <Button Content="Open" Command="{Binding OpenCommand}"/>
-      <Button Content="Save" Command="{Binding SaveCommand}"/>
+      <Button Content="Save file" Command="{Binding SaveCommand}"/>
+      <Button Content="纳入当前工程 / 新 Revision" Command="{Binding SaveToProjectCommand}" Background="#176A8C"/>
+      <Button Content="从工程重新加载" Command="{Binding ReloadProjectCommand}"/>
       <Button Content="Undo" Command="{Binding UndoCommand}"/>
       <Button Content="Redo" Command="{Binding RedoCommand}"/>
       <Separator Width="12"/>
