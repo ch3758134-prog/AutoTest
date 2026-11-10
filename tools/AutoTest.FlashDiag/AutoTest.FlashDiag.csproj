@@ -11,5 +11,9 @@
   <ItemGroup>
     <ProjectReference Include="../../src/AutoTest.Specialists/AutoTest.Specialists.csproj" />
     <ProjectReference Include="../../src/AutoTest.Devices/AutoTest.Devices.csproj" />
+    <ProjectReference Include="../../src/AutoTest.Flash/AutoTest.Flash.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="CanToolFlashEngine.cs" />
   </ItemGroup>
 </Project>
