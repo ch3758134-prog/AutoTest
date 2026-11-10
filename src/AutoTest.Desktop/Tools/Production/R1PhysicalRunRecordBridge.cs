@@ -46,6 +46,21 @@ public sealed class R1PhysicalRunRecordBridge
             report.Facts.IsDefaultOrEmpty || string.IsNullOrWhiteSpace(originalEvidenceFile) ||
             !File.Exists(originalEvidenceFile))
             throw new InvalidOperationException("PHYSICAL_RUN_EVIDENCE_REQUIRED");
+        if (report.Facts.Any(f => f.Source != LabSource.Physical ||
+                f.RunId != report.RunId))
+            throw new InvalidOperationException("RUN_FACT_SOURCE_OR_ID_MISMATCH");
+        // A published physical production recipe, not the presence of a PASS
+        // verdict alone, decides whether a run enters production statistics.
+        // Assertion quality remains defined by the actual TEST program.
+        var mode = scan.ProductionTestEnabled
+            ? RecordRunMode.Production : RecordRunMode.Diagnostic;
+        if (mode == RecordRunMode.Production &&
+            report.Verdict == LabVerdict.Pass &&
+            !report.Facts.Any(f => f.NodeType == "Assert" &&
+                f.Verdict == LabVerdict.Pass &&
+                f.Quality == LabQuality.Observed &&
+                !string.IsNullOrWhiteSpace(f.TraceReference)))
+            throw new InvalidOperationException("PRODUCTION_PASS_WITHOUT_PHYSICAL_ASSERTION");
         if (controller.State != AutoTest.Devices.Usb.UsbSessionState.Connected ||
             !controller.ProtocolVersionVerified || controller.Generation <= 0 ||
             string.IsNullOrWhiteSpace(controller.SelectedInstanceId))
@@ -84,7 +99,7 @@ public sealed class R1PhysicalRunRecordBridge
         var start = report.Facts.Min(f => f.AtUtc).ToUniversalTime();
         var record = RunRecord.CreateFromSnapshot(snapshot,
             new SessionIdentity(scan.UnitKey, ruleFingerprint.Sha256,
-                "PhysicalSerialScanner"), RecordRunMode.Diagnostic,
+                "PhysicalSerialScanner"), mode,
             start, typeof(R1PhysicalRunRecordBridge).Assembly
                 .GetName().Version?.ToString() ?? "AutoTest-R1-unknown-build");
         var writer = new RunRecordWriter(_database);
