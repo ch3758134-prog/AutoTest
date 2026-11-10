@@ -608,6 +608,8 @@ public partial class MainWindow : Window
         catch (Exception ex) { Append("EXPORT_ERROR", ex.ToString()); }
     }
 
+    private void Exit_Click(object sender, RoutedEventArgs e) => Close();
+
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
         if (_closing) return;
