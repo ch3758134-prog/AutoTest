@@ -1,4 +1,7 @@
 using System.IO;
+using System.Diagnostics;
+using System.Text;
+using System.Security.Cryptography;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -23,7 +26,45 @@ using Microsoft.Win32;
 
 namespace AutoTest.FieldStudio;
 
-public sealed record CanRow(string Time, string Port, string Id, string Length, string Raw, string Quality);
+
+public sealed class CanRow : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public (BusRole Role, uint Id, bool Extended) Key { get; }
+    public string Port { get; }
+    public string Id { get; }
+    public string Format { get; }
+    public string LastSeen { get; private set; } = "";
+    public int Count { get; private set; }
+    public string Dlc { get; private set; } = "";
+    public string Data { get; private set; } = "";
+    public string PeriodMs { get; private set; } = "—";
+    public string Quality { get; private set; } = "";
+    private DateTimeOffset? _previous;
+
+    public CanRow(CanObservation first)
+    {
+        Key = (first.Frame.Role, first.Frame.Id, first.Frame.ExtendedId);
+        Port = first.Frame.Role == BusRole.DutCan ? "CAN1 / DUT" : "CAN0 / KEY";
+        Id = $"0x{first.Frame.Id:X}";
+        Format = first.Frame.ExtendedId ? "29-bit" : "11-bit";
+        Update(first);
+    }
+    public void Update(CanObservation observation)
+    {
+        Count++;
+        var time = observation.Time.Utc;
+        PeriodMs = _previous is null ? "—" :
+            ((time - _previous.Value).TotalMilliseconds).ToString("F1", CultureInfo.InvariantCulture);
+        _previous = time;
+        LastSeen = time.ToLocalTime().ToString("HH:mm:ss.fff");
+        Dlc = observation.Frame.Dlc.ToString(CultureInfo.InvariantCulture);
+        Data = Convert.ToHexString(observation.Frame.Data.ToArray());
+        Quality = $"{observation.Time.Quality} / lost={observation.LostFrames}";
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+    }
+}
+
 public sealed record LogRow(string Time, string Module, string Message);
 public sealed record ScanRow(string Time, string Source, string Barcode, string Result);
 public sealed record UdsRow(string Time, string Direction, string Detail);
@@ -33,12 +74,13 @@ public sealed record SignalOption(DbcFileEntry File, DbcMessage Message, DbcSign
 {
     public string Label => $"{File.Name} / {Message.Name} / {Signal.Name}  [{Signal.Unit}]";
 }
-public sealed class DbcFileEntry(DbcWorkbenchDocument document, DbcFileReceipt receipt)
+public sealed class DbcFileEntry(DbcWorkbenchDocument document, DbcFileReceipt receipt, bool legacyEncoding = false)
 {
+    public bool LegacyEncoding { get; } = legacyEncoding;
     public DbcWorkbenchDocument Document { get; } = document;
     public DbcFileReceipt Receipt { get; set; } = receipt;
     public string Name => System.IO.Path.GetFileName(Receipt.Path);
-    public string Display => $"{Name} {(Document.CanEdit ? "✎" : "只读")}";
+    public string Display => $"{Name} {(LegacyEncoding ? "GB18030/只读" : Document.CanEdit ? "UTF-8/可写" : "UTF-8/只读")}";
 }
 public sealed record WavePoint(DateTimeOffset HostUtc, double Value, long Lost, string Unit);
 
@@ -46,6 +88,8 @@ public partial class MainWindow : Window
 {
     private readonly HardwareBenchController _device = new();
     private readonly ObservableCollection<CanRow> _canRows = [];
+    private readonly Dictionary<(BusRole Role,uint Id,bool Extended),CanRow> _canById = [];
+    private bool _scannerMode;
     private readonly ObservableCollection<LogRow> _logRows = [];
     private readonly ObservableCollection<ScanRow> _scanRows = [];
     private readonly ObservableCollection<UdsRow> _udsRows = [];
@@ -95,6 +139,8 @@ public partial class MainWindow : Window
         };
         _renderClock.Tick += (_, _) => DrainCanAndRender();
         _renderClock.Start();
+        ScanModeButton.Content = "开启扫码监听";
+        ScanStatus.Text = "点击扫码框或开启监听";
         Log("APP", "新独立实测工作台启动；无自动连接、无 CAN 发送、无真实烧录。");
     }
 
@@ -263,11 +309,15 @@ public partial class MainWindow : Window
         while (n++ < 180 && _pendingCan.TryDequeue(out var obs))
         {
             var frame = obs.Frame;
-            var raw = Convert.ToHexString(frame.Data.ToArray());
-            _canRows.Add(new CanRow(obs.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
-                "CAN1 DUT", $"0x{frame.Id:X}", frame.Dlc.ToString(CultureInfo.InvariantCulture),
-                raw, $"{obs.Time.Quality} / lost={obs.LostFrames}"));
-            while (_canRows.Count > 350) _canRows.RemoveAt(0);
+            var key = (frame.Role, frame.Id, frame.ExtendedId);
+            if (_canById.TryGetValue(key, out var row))
+                row.Update(obs);
+            else
+            {
+                row = new CanRow(obs);
+                _canById.Add(key, row);
+                _canRows.Add(row);
+            }
             ProcessWaveFrame(obs);
         }
         CanStatus.Text = $"CAN1 RX: {_device.CanPublished:N0} · USB/Queue lost: {_device.CanDropped} · Hub lost: {_device.HubDropped}";
@@ -275,6 +325,39 @@ public partial class MainWindow : Window
                           $"USB Decode QueueLost {_device.CanDropped}, HubLost {_device.HubDropped}, " +
                           $"UI 掉帧 {Volatile.Read(ref _canUiLost)}；时间戳为 PC 接收时间。";
         if (_waveRunning) DrawWave();
+    }
+
+
+    private async Task<DbcFileEntry> LoadDbcForViewingAsync(string file)
+    {
+        try
+        {
+            var result = await DbcDocumentStore.OpenAsync(file);
+            return new DbcFileEntry(result.Document, result.Receipt);
+        }
+        catch (Exception ex) when (ex.Message.Contains("DBC source is not valid UTF-8", StringComparison.Ordinal))
+        {
+            // GB18030 is explicit here, not a silent fallback in the shared source/parser.
+            // Legacy encoding imports are read-only: never overwrite the original
+            // non-UTF8 source with a UTF8 re-export.
+            var answer = MessageBox.Show(this,
+                $"{System.IO.Path.GetFileName(file)} 不是 UTF-8 编码。是否以 GB18030 只读方式尝试打开？\n\n" +
+                "将保留磁盘原文件，禁止直接覆盖保存。",
+                "DBC 文件编码", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (answer != MessageBoxResult.Yes) throw;
+            var info = new FileInfo(file);
+            if (info.Length > 4 * 1024 * 1024)
+                throw new InvalidDataException("DBC 文件超过 4 MiB 解析上限。");
+            var bytes = await File.ReadAllBytesAsync(file);
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            var encoding = Encoding.GetEncoding("GB18030", EncoderFallback.ExceptionFallback,
+                DecoderFallback.ExceptionFallback);
+            var decoded = encoding.GetString(bytes);
+            var document = DbcWorkbenchDocument.Import(System.IO.Path.GetFileNameWithoutExtension(file), decoded);
+            var receipt = new DbcFileReceipt(System.IO.Path.GetFullPath(file),
+                Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), document.Model.Revision);
+            return new DbcFileEntry(document, receipt, true);
+        }
     }
 
     private async void ImportDbc_Click(object sender, RoutedEventArgs e)
@@ -287,14 +370,20 @@ public partial class MainWindow : Window
             {
                 if (_dbcFiles.Any(f => string.Equals(f.Receipt.Path, System.IO.Path.GetFullPath(file),
                     StringComparison.OrdinalIgnoreCase))) continue;
-                var result = await DbcDocumentStore.OpenAsync(file);
-                var entry = new DbcFileEntry(result.Document, result.Receipt);
+                var entry = await LoadDbcForViewingAsync(file);
                 _dbcFiles.Add(entry);
                 DbcFiles.SelectedItem = entry;
                 Log("DBC", $"加载 {entry.Name}; 报文 {entry.Document.Model.Messages.Length}; " +
                     $"CanEdit={entry.Document.CanEdit}; SHA={entry.Receipt.Sha256}");
             }
-            catch (Exception ex) { Log("DBC", $"{file}: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                DbcStatus.Text = $"导入失败：{System.IO.Path.GetFileName(file)} · {ex.Message}";
+                Log("DBC", $"{file}: {ex}");
+                MessageBox.Show(this, DbcStatus.Text + "\n\n" +
+                    "如文件仍无法导入，请提供原始 DBC 与日志以确认具体语法。不会静默丢弃信号或覆写源文件。",
+                    "DBC 导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
         PopulateSignals();
     }
@@ -303,7 +392,7 @@ public partial class MainWindow : Window
         if (DbcFiles.SelectedItem is not DbcFileEntry file) return;
         try
         {
-            if (!file.Document.CanEdit) throw new InvalidOperationException(
+            if (file.LegacyEncoding || !file.Document.CanEdit) throw new InvalidOperationException(
                 "包含不支持的 DBC 扩展：只能只读导入，不允许有损导出。");
             file.Receipt = await DbcDocumentStore.SaveAsync(file.Document, file.Receipt.Path, file.Receipt.Sha256);
             DbcStatus.Text = $"已安全写入（冲突检查） {file.Name}";
@@ -326,7 +415,8 @@ public partial class MainWindow : Window
         DbcMessages.ItemsSource = entry.Document.Model.Messages.Select(m =>
             new DbcMessageRow($"0x{m.Id:X}", m.Name, m.Dlc, m.Transmitter, m.Signals.Length)).ToList();
         DbcStatus.Text = $"{entry.Name} · Revision {entry.Document.Model.Revision} · " +
-            (entry.Document.CanEdit ? "安全可写语法" : "扩展只读：" + string.Join(", ", entry.Document.UnsupportedDirectives.Take(3)));
+            (entry.LegacyEncoding ? "GB18030 源文件只读（不允许覆盖原编码）" :
+             entry.Document.CanEdit ? "安全可写语法" : "扩展只读：" + string.Join(", ", entry.Document.UnsupportedDirectives.Take(3)));
     }
     private void DbcMessages_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -604,31 +694,72 @@ public partial class MainWindow : Window
         catch (Exception ex) { Log("FLASH", "结构检查失败：" + ex.Message); }
     }
 
-    private void ScanBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+
+    private void ScanMode_Click(object sender, RoutedEventArgs e)
     {
-        foreach (char ch in e.Text)
+        _scannerMode = !_scannerMode;
+        _keyboardScanner.Clear();
+        ScanBox.Clear();
+        ScanModeButton.Content = _scannerMode ? "停止扫码监听" : "开启扫码监听";
+        ScanStatus.Text = _scannerMode ? "监听已开启 · 当前窗口内键盘输入归扫码枪" : "点击扫码框或开启监听";
+        if (_scannerMode) ScanBox.Focus();
+        Log("SCAN", _scannerMode
+            ? "窗口扫码模式已开启；当前窗口中的所有文本按键会被视为扫码，普通编辑前请关闭。"
+            : "扫码监听已关闭；可手工点击输入框，再用回车/确认按钮录入。");
+    }
+    private void Window_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (!_scannerMode) return;
+        e.Handled = true;
+        foreach (var ch in e.Text)
         {
-            var result = _keyboardScanner.OnKeyInput(ch, ScanBox.IsKeyboardFocused);
+            var result = _keyboardScanner.OnKeyInput(ch, true);
             if (result is not null) AdmitScan(result);
+            else ScanBox.AppendText(ch.ToString());
+        }
+    }
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!_scannerMode) return;
+        if (e.Key == Key.Escape)
+        {
+            ScanMode_Click(sender, e);
+            e.Handled = true;
+        }
+        if (e.Key is Key.Enter or Key.Tab)
+        {
+            var result = _keyboardScanner.OnKeyInput('\r', true);
+            if (result is not null) AdmitScan(result);
+            ScanBox.Clear();
+            e.Handled = true;
         }
     }
     private void ScanBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
-        {
-            var result = _keyboardScanner.OnKeyInput('\r', ScanBox.IsKeyboardFocused);
-            if (result is not null) AdmitScan(result);
-            ScanBox.Clear(); e.Handled = true;
-        }
+        if (_scannerMode || (e.Key is not (Key.Enter or Key.Tab))) return;
+        ScanConfirm_Click(sender, e);
+        e.Handled = true;
+    }
+    private void ScanConfirm_Click(object sender, RoutedEventArgs e)
+    {
+        if (_scannerMode) return;
+        string input = ScanBox.Text.Trim();
+        var scan = new RawScan(input, "keyboard",
+            TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp()), ScanBox.IsKeyboardFocused);
+        var result = _scannerRouter.PublishRaw(scan, ScannerCaptureMode.KeyboardWedge);
+        AdmitScan(result);
+        ScanBox.Clear();
     }
     private void AdmitScan(ScanIngressResult result)
     {
         if (!result.Accepted || result.Event is null)
         {
+            ScanStatus.Text = $"扫码拒绝：{result.Code}";
             Log("SCAN", "拒绝输入：" + result.Code);
             return;
         }
         string value = result.Event.Scan.Text;
+        ScanStatus.Text = $"接收到条码 · {DateTime.Now:HH:mm:ss}";
         string status = _seenScans.Add(value) ? "已采集 / 待匹配" : "重复扫码 / 不新增出厂记录";
         CurrentDut.Text = $"DUT: {value}";
         _scanRows.Add(new ScanRow(DateTime.Now.ToString("HH:mm:ss.fff"),

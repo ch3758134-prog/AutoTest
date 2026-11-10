@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="AutoTest · 真实硬件联调工作台" Width="1560" Height="930"
  MinWidth="1180" MinHeight="690" WindowState="Maximized" Background="{StaticResource CanvasBrush}"
- Loaded="Window_Loaded" Closing="Window_Closing">
+ Loaded="Window_Loaded" Closing="Window_Closing" PreviewTextInput="Window_PreviewTextInput" PreviewKeyDown="Window_PreviewKeyDown">
  <Grid>
   <Grid.RowDefinitions>
    <RowDefinition Height="66"/>
@@ -34,10 +34,12 @@
      <TextBlock x:Name="CanStatus" Text="CAN1 DUT · 未采集" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
     </StackPanel>
     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="扫码枪" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
-     <TextBox x:Name="ScanBox" Width="205" ToolTip="扫码枪键盘模式：先点击此输入框，再扫描；不安装全局键盘钩子"
-       PreviewTextInput="ScanBox_PreviewTextInput" PreviewKeyDown="ScanBox_PreviewKeyDown"/>
-     <TextBlock x:Name="CurrentDut" Text="DUT：未识别" VerticalAlignment="Center" MinWidth="165" FontSize="12"/>
+     <Button x:Name="ScanModeButton" Content="开启扫码监听" Click="ScanMode_Click" ToolTip="开启后，当前窗口的普通键盘输入也将作为扫码采集；编辑其它参数前关闭"/>
+     <TextBox x:Name="ScanBox" Width="175" ToolTip="扫码枪键盘模式：点此输入后回车；无回车后缀可点右侧确认"
+       PreviewKeyDown="ScanBox_PreviewKeyDown"/>
+     <Button Content="确认" Click="ScanConfirm_Click" ToolTip="接收当前输入框的内容；不要求扫码枪配置回车后缀"/>
+     <TextBlock x:Name="ScanStatus" Text="扫码未开启" VerticalAlignment="Center" Width="180" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
+     <TextBlock x:Name="CurrentDut" Text="DUT：未识别" VerticalAlignment="Center" MinWidth="125" FontSize="12"/>
     </StackPanel>
    </Grid>
   </Border>
@@ -56,7 +58,7 @@
       <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Border Style="{StaticResource CardBorder}" Margin="0,0,10,0">
        <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="CAN1 / DUT 报文监视" Style="{StaticResource SectionText}"/>
+        <TextBlock DockPanel.Dock="Top" Text="CAN1 / DUT 实时 ID 表（每个 ID 一行，最新数据、累计次数及周期；原始报文见 Trace）" Style="{StaticResource SectionText}"/>
         <DataGrid x:Name="CanGrid" />
        </DockPanel>
       </Border>
