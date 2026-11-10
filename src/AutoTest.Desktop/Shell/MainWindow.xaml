@@ -200,23 +200,94 @@
    <Border Grid.Column="3" Background="#101620">
     <TabControl x:Name="WorkbenchTabs" Background="#101620" SelectedIndex="0" SelectionChanged="WorkbenchTabs_SelectionChanged">
      <TabItem Header="P01 工程">
-      <ScrollViewer Background="#101620" Padding="22">
-       <StackPanel MaxWidth="880" HorizontalAlignment="Left">
-        <TextBlock Text="工程中心 / PROJECT" FontWeight="SemiBold" FontSize="23" Margin="0,0,0,13"/>
-        <TextBlock Text="{Binding ProjectLabel}" Foreground="{StaticResource R1Muted}" Margin="0,0,0,12"/>
-        <TextBlock Text="工程/资源/TEST 的现役数据和命令由同一个 V1Workspace 管理；左侧 Explorer 对应资源引用。"
-                   TextWrapping="Wrap" Foreground="{StaticResource R1Muted}" Margin="0,0,0,14"/>
-        <WrapPanel>
-         <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
-         <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
-         <Button Content="保存工程与 TEST" Command="{Binding SaveCommand}"/>
-         <Button Content="校验资源" Command="{Binding ValidateCommand}"/>
-         <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"/>
-        </WrapPanel>
-        <TextBlock Text="需要编辑完整的 DBC 定义、控制器状态或测试程序，请从左侧选择对应专业工作区。"
-                   TextWrapping="Wrap" Margin="0,15,0,7"/>
-        <TextBlock Text="当前 R1 Shell 保留现役事务编辑器；跨专业 Revision 级的持久化统一资源引用尚在集成。"
-                   TextWrapping="Wrap" Foreground="#E8B967"/>
+      <ScrollViewer Background="#101620" VerticalScrollBarVisibility="Auto">
+       <StackPanel Margin="20,18,20,25">
+        <DockPanel Margin="0,0,0,15">
+         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
+          <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
+          <Button Content="验证工程" Command="{Binding ValidateCommand}" Background="#1975BA"/>
+         </StackPanel>
+         <StackPanel>
+          <TextBlock Text="PROJECT WORKSPACE / 工程中心" Foreground="#65798F" FontWeight="SemiBold" FontSize="11"/>
+          <TextBlock Text="工程中心" FontSize="23" FontWeight="SemiBold" Margin="0,6,0,2"/>
+          <TextBlock Text="通用 ECU 工程的资源、版本引用、测试程序与身份绑定"
+                     Foreground="#92A4B7" FontSize="11" TextWrapping="Wrap"/>
+         </StackPanel>
+        </DockPanel>
+        <Border Background="#202D3B" BorderBrush="#314458" BorderThickness="1" CornerRadius="6"
+                Padding="12" Margin="0,0,0,13">
+         <DockPanel>
+          <TextBlock DockPanel.Dock="Right" Text="REVISIONED ASSETS" Foreground="#52CE9C" FontSize="11" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding ProjectLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+         </DockPanel>
+        </Border>
+        <UniformGrid Columns="4" Margin="0,0,0,13">
+         <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
+          <StackPanel><TextBlock Text="{Binding Workspace.Project.Revision}" FontSize="22" FontWeight="SemiBold"/>
+           <TextBlock Text="工程 Revision" FontSize="11" Foreground="#92A4B7" Margin="0,5,0,0"/></StackPanel>
+         </Border>
+         <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
+          <StackPanel><TextBlock Text="{Binding Steps.Count}" FontSize="22" FontWeight="SemiBold"/>
+           <TextBlock Text="TEST 程序节点" FontSize="11" Foreground="#92A4B7" Margin="0,5,0,0"/></StackPanel>
+         </Border>
+         <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
+          <StackPanel><TextBlock Text="{Binding DbcSignals.Count}" FontSize="22" FontWeight="SemiBold"/>
+           <TextBlock Text="DBC 信号" FontSize="11" Foreground="#92A4B7" Margin="0,5,0,0"/></StackPanel>
+         </Border>
+         <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Padding="14">
+          <StackPanel><TextBlock Text="{Binding ResourceLines.Count}" FontSize="22" FontWeight="SemiBold"/>
+           <TextBlock Text="资源目录项" FontSize="11" Foreground="#92A4B7" Margin="0,5,0,0"/></StackPanel>
+         </Border>
+        </UniformGrid>
+        <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
+         <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Background="#202D3B" Margin="0,0,0,8" LastChildFill="True">
+           <TextBlock Text="工程资源与操作入口" FontSize="13" FontWeight="SemiBold" Margin="13,12" VerticalAlignment="Center"/>
+           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Content="保存工程" Command="{Binding SaveCommand}"/>
+            <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"/>
+            <Button Content="TEST 编辑器" Click="OpenTest_Click"/>
+           </StackPanel>
+          </DockPanel>
+          <Grid Margin="12,0,12,13">
+           <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="210"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*" MinWidth="200"/></Grid.ColumnDefinitions>
+           <GroupBox Header="工程资源 / Assets" Foreground="#E2EDF7" BorderBrush="#314458" Background="#192431">
+            <ListBox ItemsSource="{Binding ResourceLines}" Background="#101620" Foreground="#C7D8E8" BorderThickness="0"/>
+           </GroupBox>
+           <GroupBox Grid.Column="2" Header="版本和引用诊断" Foreground="#E2EDF7" BorderBrush="#314458" Background="#192431">
+            <DockPanel>
+             <TextBlock DockPanel.Dock="Top" Text="{Binding Diagnostic}" Foreground="#E8B967"
+                        TextWrapping="Wrap" Margin="8,5,8,10"/>
+             <ListBox ItemsSource="{Binding FactLines}" Background="#101620" Foreground="#92A4B7"
+                      BorderThickness="0"/>
+            </DockPanel>
+           </GroupBox>
+          </Grid>
+         </DockPanel>
+        </Border>
+        <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6">
+         <StackPanel Margin="14">
+          <TextBlock Text="跨工具协作 / 使用资源，而不是复制配置" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,13"/>
+          <UniformGrid Columns="3">
+           <StackPanel Margin="0,0,17,0">
+            <TextBlock Text="01 · 工程定义" Foreground="#46D0DC" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="DBC、Controller、Station、Wave Reference 和 Flash Profile 必须保持明确的版本与来源。"
+                       TextWrapping="Wrap" FontSize="12" Foreground="#C4D2DF"/>
+           </StackPanel>
+           <StackPanel Margin="0,0,17,0">
+            <TextBlock Text="02 · 验证与快照" Foreground="#46D0DC" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="TEST 运行按当前资源 Revision 固定定义；引用失效要显式处理，不可静默替换。"
+                       TextWrapping="Wrap" FontSize="12" Foreground="#C4D2DF"/>
+           </StackPanel>
+           <StackPanel>
+            <TextBlock Text="03 · 运行事实" Foreground="#46D0DC" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="请求、设备 ACK、ECU 观测与 Verdict 分层记录，关联 DUT、RunId 与独立 Trace。"
+                       TextWrapping="Wrap" FontSize="12" Foreground="#C4D2DF"/>
+           </StackPanel>
+          </UniformGrid>
+         </StackPanel>
+        </Border>
        </StackPanel>
       </ScrollViewer>
      </TabItem>
