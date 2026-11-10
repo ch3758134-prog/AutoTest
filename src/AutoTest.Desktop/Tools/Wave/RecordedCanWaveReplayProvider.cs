@@ -6,6 +6,7 @@ using AutoTest.Application.V1;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Devices.Can;
+using AutoTest.Projects.Dbc;
 using AutoTest.Specialists.Wave;
 
 namespace AutoTest.Desktop.Tools.Wave;
@@ -99,8 +100,16 @@ public sealed class RecordedCanWaveReplayProvider
                 StringComparison.OrdinalIgnoreCase))
             throw new WaveCaptureException("DBC_REVISION_STALE", "CAN trace and active DBC fingerprint differ.");
         if (maxFrames is < 2 or > 100_000) throw new ArgumentOutOfRangeException(nameof(maxFrames));
-        var matching = archive.Frames.Where(x => x.Role == signal.Role && x.FrameId == signal.FrameId)
-            .ToArray();
+        if (_workspace.Database is null || _workspace.DbcAssetId is null)
+            throw new WaveCaptureException("DBC_NOT_IMPORTED", "Active project DBC is unavailable.");
+        var asset = _workspace.Assets.Single(x => x.Id == _workspace.DbcAssetId.Value);
+        var pinnedDbc = new AssetEntryWithDbc(asset, _workspace.Database);
+        _ = DbcSignalResolver.Resolve(signal, pinnedDbc);
+        // Same numeric CAN ID can occur in 11-bit and 29-bit frames.
+        // Only replay the format declared by the pinned DBC.
+        var extended = pinnedDbc.Database.FindMessage(signal.FrameId).IsExtended;
+        var matching = archive.Frames.Where(x => x.Role == signal.Role &&
+            x.FrameId == signal.FrameId && x.Extended == extended).ToArray();
         if (matching.Length > maxFrames)
             throw new WaveCaptureException("REPLAY_FRAME_LIMIT", "Saved frame count exceeds the explicit capture budget; nothing was truncated silently.");
         if (matching.Length < 2) throw new WaveCaptureException("REPLAY_INSUFFICIENT_FRAMES", "Saved CAN trace has too few frames for the selected signal.");
