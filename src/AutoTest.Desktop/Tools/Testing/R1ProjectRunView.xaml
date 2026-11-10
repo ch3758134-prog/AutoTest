@@ -33,7 +33,6 @@
   </StackPanel>
   <WrapPanel Grid.Row="1" Margin="0,0,0,12">
    <Button Content="预检当前测试程序" Command="{Binding PreflightCommand}"/>
-   <Button Content="运行 Mock（离线调试）" Command="{Binding RunMockCommand}"/>
    <Button Content="执行真实 CAN1 只读测试" Command="{Binding RunPhysicalReadOnlyCommand}"
     Background="#176A8C" FontWeight="SemiBold"/>
    <Button Content="暂停" Command="{Binding PauseCommand}"/>
