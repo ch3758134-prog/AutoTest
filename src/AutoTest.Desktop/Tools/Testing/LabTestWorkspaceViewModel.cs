@@ -354,16 +354,90 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             var plan = _compiler.Prepare(saved);
             if (!plan.Ready)
                 throw new InvalidOperationException("TEST_PREFLIGHT_BLOCKED: " + string.Join("; ", plan.Diagnostics));
-            if (!saved.Walk().Any(n => n.Type == "Observe") ||
-                !saved.Walk().Any(n => n.Type == "Assert"))
-                throw new InvalidOperationException("PHYSICAL_READ_TEST_REQUIRES_OBSERVE_AND_ASSERT");
-            if (saved.Walk().Any(n => n.Type is "MockObserve" or "ControllerState"))
-                throw new UnauthorizedAccessException("PHYSICAL_READ_ONLY_FORBIDS_MOCK_AND_ACTUATION");
+            if (saved.Walk().Any(n => n.Type == "MockObserve"))
+                throw new UnauthorizedAccessException("R1_PHYSICAL_TEST_HAS_MOCK_STEP");
             var controller = _physicalController?.Invoke() ??
-                throw new InvalidOperationException("STATION_NOT_INITIALIZED: 请先在 P02 连接主控板。");
-            if (_physicalApproval?.Invoke() != true)
-                throw new UnauthorizedAccessException("PHYSICAL_TEST_OPERATOR_APPROVAL_DENIED");
-            var station = new R2PhysicalCanReadOnlyLabStation(project, controller, true);
+                throw new InvalidOperationException("STATION_NOT_INITIALIZED: 请在 P02 连接主控板。");
+            var keySteps = plan.ControllerBindings.Distinct().ToArray();
+            var hasKeyActions = keySteps.Length > 0;
+            Func<bool> controllerProfileCurrent = () => true;
+            string controllerProfileSha = "";
+            string? controllerProfilePath = null;
+            EcuControlProfile? savedControllerProfile = null;
+            IAuthorizedReadOnlyPhysicalLabStation station;
+            if (hasKeyActions)
+            {
+                var active = _keySimControllerProfile?.Invoke() ??
+                    throw new InvalidOperationException("P05_CONTROLLER_PROFILE_REQUIRED");
+                controllerProfilePath = _keySimControllerProfilePath?.Invoke();
+                if (string.IsNullOrWhiteSpace(controllerProfilePath))
+                    throw new InvalidOperationException("P05_CONTROLLER_PROFILE_NOT_SAVED");
+                var loaded = await ControllerRepository.OpenAsync(controllerProfilePath, ct);
+                if (active.ProfileId != loaded.Profile.ProfileId ||
+                    active.Revision != loaded.Profile.Revision ||
+                    !string.Equals(JsonSerializer.Serialize(active),
+                        JsonSerializer.Serialize(loaded.Profile), StringComparison.Ordinal))
+                    throw new InvalidOperationException("P05_CONTROLLER_PROFILE_UNSAVED_CHANGES");
+                savedControllerProfile = loaded.Profile;
+                controllerProfilePath = loaded.Receipt.Path;
+                controllerProfileSha = loaded.Receipt.Sha256;
+                var fixedProfile = active;
+                var fixedPath = controllerProfilePath;
+                var fixedSha = controllerProfileSha;
+                controllerProfileCurrent = () =>
+                    ReferenceEquals(_keySimControllerProfile?.Invoke(), fixedProfile) &&
+                    File.Exists(fixedPath) &&
+                    string.Equals(Convert.ToHexString(
+                        SHA256.HashData(File.ReadAllBytes(fixedPath))),
+                        fixedSha, StringComparison.OrdinalIgnoreCase);
+                var masks = keySteps.Select(binding =>
+                {
+                    if (!Guid.TryParse(binding.ControllerId, out var c) ||
+                        !Guid.TryParse(binding.StateId, out var state) ||
+                        !int.TryParse(binding.Revision, out var revision))
+                        throw new InvalidOperationException("KEYSIM_TEST_CONTROLLER_REFERENCE_INVALID");
+                    return savedControllerProfile.ResolveState(c, state, revision).KeyMask;
+                }).ToArray();
+                // Active mask commands must have a real release in Cleanup,
+                // even if Test throws or an operator stops the run.
+                bool hasReleaseCleanup = saved.Phases[LabPhase.Cleanup]
+                    .SelectMany(LabDocument.Walk)
+                    .Any(n =>
+                    {
+                        if (n.Type != "ControllerState") return false;
+                        if (!Guid.TryParse(n.Parameters.GetValueOrDefault("controllerId"), out var c) ||
+                            !Guid.TryParse(n.Parameters.GetValueOrDefault("stateId"), out var state) ||
+                            !int.TryParse(n.Parameters.GetValueOrDefault("revision"), out var revision))
+                            return false;
+                        return savedControllerProfile.ResolveState(c, state, revision).KeyMask == 0;
+                    });
+                if (masks.Any(mask => mask != 0) && !hasReleaseCleanup)
+                    throw new InvalidOperationException(
+                        "KEYSIM_CLEANUP_RELEASE_REQUIRED: 在 Cleanup 添加掩码为 0 的 ControllerState 全部释放步骤。");
+                if (!controllerProfileCurrent())
+                    throw new InvalidOperationException("P05_CONTROLLER_PROFILE_CHANGED_BEFORE_RUN");
+                var summary = "本次真实 ECU 工程 TEST 计划：" +
+                    "\nTEST SHA256：" + plan.Digest +
+                    "\nP05 Controller Profile：" + fixedPath +
+                    "\nProfile Revision：" + savedControllerProfile.Revision +
+                    "\nCAN0 KEY_SIM 掩码操作：" +
+                    string.Join(", ", masks.Select(m => "0x" + m.ToString("X5"))) +
+                    "\n已检查 Cleanup 释放状态；执行中会发送实际 CAN0 0x730 帧。" +
+                    "\n每个发送步骤只记录主控 ACK，不伪造按键板电压/ECU 识别结果。" +
+                    "\nCAN1 实际观测/断言作为独立测试步骤；不控制 DUT 主电源。" +
+                    "\n\n是否逐项授权本次已固定的实际动作？";
+                if (_approveKeySimProgram?.Invoke(summary) != true)
+                    throw new UnauthorizedAccessException("KEYSIM_TEST_OPERATOR_APPROVAL_DENIED");
+                station = new R1PhysicalKeySimLabStation(
+                    project, controller, savedControllerProfile, controllerProfileCurrent,
+                    keySteps, operatorApproved: true);
+            }
+            else
+            {
+                if (_physicalApproval?.Invoke() != true)
+                    throw new UnauthorizedAccessException("PHYSICAL_TEST_OPERATOR_APPROVAL_DENIED");
+                station = new R2PhysicalCanReadOnlyLabStation(project, controller, true);
+            }
             var programAsset = project.Assets.Single(a => a.Id == project.LabProgramAssetId.Value);
             var dbcAsset = project.Assets.Single(a => a.Id == project.DbcAssetId.Value);
             var generation = controller.Generation;
@@ -371,10 +445,12 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             var dbcHash = dbcAsset.Sha256;
             _runGeneration++;
             Facts.Clear();
-            Verdict = "RUNNING_PHYSICAL_READ";
+            Verdict = "RUNNING_PHYSICAL";
             PhysicalEvidencePath = "运行中";
             Busy = true;
-            Status = "正在执行当前工程已登记的 TEST · Physical CAN1 Read-Only · 不控制输出";
+            Status = hasKeyActions
+                ? "真实工程 TEST 执行中：KEY_SIM CAN0 实际动作 + CAN1 观测"
+                : "真实工程 TEST 执行中：CAN1 只读观测";
             try
             {
                 var report = await _runner.RunAsync(plan, station, LabSource.Physical, ct);
@@ -382,11 +458,14 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                     if (!Facts.Any(x => x.OperationId == fact.OperationId)) Facts.Add(fact);
                 scanned?.Verify(project);
                 if (controller.Generation != generation || !station.IsReadOnlyAuthorized ||
+                    (hasKeyActions && !controllerProfileCurrent()) ||
                     project.Assets.Single(a => a.Id == programAsset.Id).Sha256 != programHash ||
                     project.Assets.Single(a => a.Id == dbcAsset.Id).Sha256 != dbcHash)
                     throw new IOException("PHYSICAL_RUN_CONTEXT_CHANGED: 运行期间设备或资源发生变化");
                 // A physical diagnostic verdict is never automatically a production PASS.
-                Verdict = report.Verdict + " / PHYSICAL_READ_ONLY / NOT_PRODUCTION";
+                Verdict = report.Verdict +
+                    (hasKeyActions ? " / PHYSICAL_KEYSIM_CAN0" : " / PHYSICAL_CAN1_READONLY") +
+                    " / NOT_PRODUCTION";
                 var root = Path.Combine(Environment.GetFolderPath(
                     Environment.SpecialFolder.LocalApplicationData), "AutoTest", "R1", "PhysicalRuns");
                 Directory.CreateDirectory(root);
@@ -397,7 +476,11 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                     ProgramAssetId = programAsset.Id.Value, ProgramRevision = programAsset.Revision,
                     ProgramSha256 = programHash, DbcAssetId = dbcAsset.Id.Value,
                     DbcRevision = dbcAsset.Revision, DbcSha256 = dbcHash,
-                    DeviceGeneration = generation, Source = "PhysicalReadOnly",
+                    DeviceGeneration = generation,
+                    Source = hasKeyActions ? "PhysicalCAN0KeySimAndCAN1" : "PhysicalCAN1ReadOnly",
+                    ControllerProfilePath = controllerProfilePath,
+                    ControllerProfileSha256 = controllerProfileSha,
+                    ControllerProfileRevision = savedControllerProfile?.Revision,
                     BarcodeBinding = scanned,
                     ProductionApproved = false, Report = report
                 };
@@ -410,7 +493,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 }
                 finally { if (File.Exists(temporary)) File.Delete(temporary); }
                 PhysicalEvidencePath = destination;
-                Status = "真实 CAN1 只读 TEST 完成 · Run " + report.RunId +
+                Status = "真实工程 TEST 完成 · Run " + report.RunId +
                     " · " + report.Facts.Length + " StepFact · 已保存 JSON 证据 · 非出厂判定";
                 return report;
             }
@@ -448,7 +531,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             }
             else project.ImportLabProgram(json);
             Changed(nameof(ProjectAssetStatus));
-            Status = "TEST 已登记为当前工程版本资源；请到 P01 保存工程。真实运行仅允许经人工确认的 CAN1 只读观察/断言，不允许物理输出或烧录。";
+            Status = "TEST 已登记为当前工程资源；请到 P01 保存。经 P05 配置和程序授权可执行真实 KEY_SIM CAN0 状态步骤，其他输出只允许已实现的硬件能力。";
         }
         catch (Exception ex) { Status = "工程 TEST 登记失败：" + ex.Message; }
     }
