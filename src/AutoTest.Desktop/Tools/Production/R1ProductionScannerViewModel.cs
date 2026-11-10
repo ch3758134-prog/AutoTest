@@ -8,6 +8,8 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Tools.Production;
 
+public sealed record LabScanEventRow(string When, string Input, string Result, string Origin);
+
 /// <summary>
 /// The ONLY scanner model instantiated by formal R1 P12. Receives actual
 /// serial bytes and matches an explicitly published catalog. No demo catalog,
