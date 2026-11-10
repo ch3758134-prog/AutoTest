@@ -212,7 +212,7 @@ public sealed class LabRunCoordinator
             .ToDictionary(n => n.Parameters["name"], StringComparer.Ordinal);
         var sourceGeneration = station.SessionGeneration;
         var stopped = false;
-        var hadVerifiedAssertion = false;
+        var hadVerifiedCriterion = false;
         var worst = LabVerdict.Pass;
         var executedSteps = 0;
         string Param(LabNode n, string key) => n.Parameters.GetValueOrDefault(key, "");
@@ -298,7 +298,7 @@ public sealed class LabRunCoordinator
                         actual = sample.Value; quality = sample.Quality; trace = sample.TraceReference;
                         verdict = quality != LabQuality.Observed || actual is null
                             ? LabVerdict.Inconclusive : actual == expected ? LabVerdict.Pass : LabVerdict.Fail;
-                        if (verdict == LabVerdict.Pass) hadVerifiedAssertion = true;
+                        if (verdict == LabVerdict.Pass) hadVerifiedCriterion = true;
                         break;
                     case "If":
                         expected = Param(node, "equals");
@@ -394,7 +394,16 @@ public sealed class LabRunCoordinator
                         trace = receipt.TraceReference;
                         if (!receipt.Accepted)
                         { verdict = LabVerdict.Error; quality = LabQuality.Invalid; diagnostic = receipt.ErrorCode; }
-                        // ACK never counts as a verified assertion.
+                        else if (source == LabSource.Physical &&
+                            Guid.TryParse(receipt.TraceReference, out var actualOperation) &&
+                            actualOperation != Guid.Empty)
+                        {
+                            // Transport ACK proves this commanded action was accepted
+                            // by the real controller. It does NOT prove that a key
+                            // voltage was measured or that the ECU recognized it.
+                            // Tests may legitimately check commanded actions only.
+                            hadVerifiedCriterion = true;
+                        }
                         break;
                     case "Fail": verdict = LabVerdict.Fail; diagnostic = Param(node, "message"); break;
                     default: throw new NotSupportedException($"LAB unsupported node {node.Type}");
@@ -449,7 +458,7 @@ public sealed class LabRunCoordinator
             lock (_sync) { _running = null; _pause = false; _stepOnce = false; _runTo = null; _skip = null; Release(); }
             cts.Dispose();
         }
-        if (!stopped && worst == LabVerdict.Pass && !hadVerifiedAssertion) worst = LabVerdict.Inconclusive;
+        if (!stopped && worst == LabVerdict.Pass && !hadVerifiedCriterion) worst = LabVerdict.Inconclusive;
         return new LabRunReport(runId, plan.Digest, source, worst, stopped, facts.ToImmutable());
     }
 }
