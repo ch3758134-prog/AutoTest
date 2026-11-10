@@ -1,105 +1,168 @@
 <UserControl x:Class="AutoTest.Desktop.Tools.Flash.FlashToolView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13">
- <UserControl.Resources>
-  <Style TargetType="Button">
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="Background" Value="#263748"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
-   <Setter Property="Margin" Value="3,2"/>
-   <Setter Property="Padding" Value="12,6"/>
-  </Style>
-  <Style TargetType="TextBox">
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="Background" Value="#101620"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
-   <Setter Property="Padding" Value="6,5"/>
-  </Style>
-  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E2EDF7"/></Style>
-  <Style TargetType="DataGrid">
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="Background" Value="#192431"/>
-   <Setter Property="RowBackground" Value="#192431"/>
-   <Setter Property="AlternatingRowBackground" Value="#202D3B"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
-  </Style>
- </UserControl.Resources>
- <Grid Margin="16">
-  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <DockPanel Grid.Row="0" Margin="0,0,0,12">
-   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+ Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13"
+ UseLayoutRounding="True" SnapsToDevicePixels="True">
+ <Grid Margin="14">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*" MinHeight="320"/>
+  </Grid.RowDefinitions>
+  <DockPanel Grid.Row="0" Margin="0,0,0,11">
+   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+    <Button Content="导入 XML…" Click="ImportCanTool_Click"/>
     <Button Content="选择固件…" Click="BrowseImage_Click"/>
-    <Button Content="导入 CanTool XML…" Click="ImportCanTool_Click"/>
-    <Button Content="验证固件和配置" Command="{Binding PreflightCommand}"/>
-    <Button Content="检查当前真实主控" Click="PhysicalPreflight_Click"/>
+    <Button Content="验证镜像与配置" Command="{Binding PreflightCommand}"/>
+    <Button Content="核对主控" Click="PhysicalPreflight_Click"/>
+    <Button Content="打开 Station" Click="OpenStationFromFlash_Click"/>
    </StackPanel>
    <StackPanel>
-    <TextBlock Text="CAN Flash / 固件与配置" FontSize="22" FontWeight="SemiBold"/>
-    <TextBlock Text="Firmware · ECU Profile · Address Map · Hardware Preflight"
-               Foreground="#92A4B7" Margin="0,4,0,0"/>
+    <TextBlock Text="PROGRAMMING / CAN FLASH" Foreground="#65798F" FontSize="10" FontWeight="SemiBold"/>
+    <TextBlock Text="CAN Flash" FontSize="23" FontWeight="SemiBold" Margin="0,4,0,0"/>
+    <TextBlock Text="R1 P09 · 真实 CanTool APP / Boot / Security / Erase / Download / Verify / Reset"
+     Foreground="#92A4B7" FontSize="11" Margin="0,3,0,0"/>
    </StackPanel>
   </DockPanel>
-  <Border Grid.Row="1" Padding="10" BorderBrush="#876038" BorderThickness="1"
-          Background="#493425" Margin="0,0,0,12">
-   <TextBlock Text="当前模块只执行真实文件解析、地址范围验证与非破坏性硬件检查。尚未实现获准的物理刷写流程，不发送 ECU 擦除、写入或复位命令。"
-              TextWrapping="Wrap" Foreground="#F5D7A2"/>
+  <Border Grid.Row="1" Background="#342D25" BorderBrush="#8D6C3B" BorderThickness="1"
+   CornerRadius="4" Padding="10,8" Margin="0,0,0,11">
+   <TextBlock Text="真实 CAN1 路径已接入：P09 使用 R1 Station 的唯一 WinUSB 主控会话，不创建第二套设备连接。仅导入/预检不发送擦写；10 03 探测会改变诊断会话；擦写须独立授权及人工确认。尚未经实际 ECU 烧录验证。"
+    TextWrapping="Wrap" Foreground="#E8B967" FontSize="12"/>
   </Border>
   <Grid Grid.Row="2">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="310"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-   <Border Grid.Column="0" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="12">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel>
-      <TextBlock Text="镜像文件 / 实际 ECU 配置" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
-      <TextBlock Text="固件文件 HEX / S19 / BIN" Foreground="#92A4B7"/>
-      <TextBox Text="{Binding ImagePath,UpdateSourceTrigger=PropertyChanged}"/>
-      <WrapPanel Margin="0,4,0,14">
-       <Button Content="浏览…" Click="BrowseImage_Click"/>
-       <Button Content="解析文件" Command="{Binding LoadCommand}"/>
-      </WrapPanel>
-      <TextBlock Text="BIN 基地址（HEX）" Foreground="#92A4B7"/>
-      <TextBox Text="{Binding BinAddress,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="目标 ECU 型号（人工配置）" Foreground="#92A4B7" Margin="0,12,0,0"/>
-      <TextBox Text="{Binding Target,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="期望 ECU 身份（人工配置）" Foreground="#92A4B7" Margin="0,12,0,0"/>
-      <TextBox Text="{Binding ExpectedIdentity,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="CanTool XML Flash 起点 / 终点" Foreground="#92A4B7" Margin="0,12,0,0"/>
-      <TextBlock Text="{Binding AllowedStart}" FontFamily="Consolas"/>
-      <TextBlock Text="{Binding AllowedEnd}" FontFamily="Consolas" Margin="0,0,0,12"/>
-      <TextBlock Text="{Binding ConfigurationStatus}" TextWrapping="Wrap" Foreground="#81C9BA"/>
-     </StackPanel>
-    </ScrollViewer>
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="320" MinWidth="260"/>
+    <ColumnDefinition Width="5"/>
+    <ColumnDefinition Width="*" MinWidth="350"/>
+    <ColumnDefinition Width="5"/>
+    <ColumnDefinition Width="275" MinWidth="245"/>
+   </Grid.ColumnDefinitions>
+   <Border Grid.Column="0" Background="#192431" BorderBrush="#314458" BorderThickness="1" CornerRadius="5">
+    <DockPanel>
+     <Border DockPanel.Dock="Top" Padding="12,12,12,9" Background="#202D3B">
+      <TextBlock Text="EXPLORER / Flash 资源与参数" FontSize="12" FontWeight="SemiBold"/>
+     </Border>
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="12,10,12,16">
+       <TextBlock Text="01 / CANTOOL CONFIGURATION" Foreground="#4FAAFB" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,8"/>
+       <Button Content="导入 Configuration.xml" Click="ImportCanTool_Click" HorizontalAlignment="Stretch"/>
+       <TextBlock Text="{Binding ConfigurationStatus}" TextWrapping="Wrap" FontSize="11" Foreground="#81C9BA" Margin="0,7,0,0"/>
+       <TextBlock Text="Flash 起点 / 终点（不含）" Foreground="#92A4B7" Margin="0,10,0,3" FontSize="11"/>
+       <TextBlock Text="{Binding AllowedStart}" FontFamily="Consolas"/>
+       <TextBlock Text="{Binding AllowedEnd}" FontFamily="Consolas" Margin="0,0,0,7"/>
+       <Border Height="1" Background="#314458" Margin="0,10,0,12"/>
+       <TextBlock Text="02 / FIRMWARE IMAGE" Foreground="#4FAAFB" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+       <TextBlock Text="HEX / S19 / BIN 固件路径" Foreground="#92A4B7" FontSize="11"/>
+       <TextBox Text="{Binding ImagePath,UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,5"/>
+       <WrapPanel>
+        <Button Content="浏览固件…" Click="BrowseImage_Click"/>
+        <Button Content="解析镜像" Command="{Binding LoadCommand}"/>
+       </WrapPanel>
+       <TextBlock Text="BIN 基地址（十六进制）" Foreground="#92A4B7" FontSize="11" Margin="0,7,0,2"/>
+       <TextBox Text="{Binding BinAddress,UpdateSourceTrigger=PropertyChanged}"/>
+       <TextBlock Text="目标 ECU 型号" Foreground="#92A4B7" FontSize="11" Margin="0,9,0,2"/>
+       <TextBox Text="{Binding Target,UpdateSourceTrigger=PropertyChanged}"/>
+       <TextBlock Text="期望 ECU 身份" Foreground="#92A4B7" FontSize="11" Margin="0,9,0,2"/>
+       <TextBox Text="{Binding ExpectedIdentity,UpdateSourceTrigger=PropertyChanged}"/>
+       <Border Height="1" Background="#314458" Margin="0,14,0,12"/>
+       <TextBlock Text="03 / SECURITY PROVIDER" Foreground="#4FAAFB" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,7"/>
+       <TextBlock Text="原生 ZLGKey DLL（不能使用 sa_demo 充当 ECU 算法）"
+        Foreground="#92A4B7" FontSize="11" TextWrapping="Wrap"/>
+       <TextBox x:Name="SecurityDllPath" IsReadOnly="True" Margin="0,5,0,5"/>
+       <Button Content="选择真实 Seed/Key DLL…" Click="BrowseSecurityDll_Click" HorizontalAlignment="Stretch"/>
+       <Border Height="1" Background="#314458" Margin="0,14,0,12"/>
+       <TextBlock Text="04 / CANTOOL TIMING" Foreground="#4FAAFB" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,9"/>
+       <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="112"/></Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="BlockLength (HEX)" Margin="0,6,0,0"/>
+        <TextBox x:Name="FlashBlockLength" Grid.Row="0" Grid.Column="1" Text="200" Margin="0,2,0,4"/>
+        <TextBlock Grid.Row="1" Text="P2 ms" Margin="0,6,0,0"/>
+        <TextBox x:Name="FlashP2" Grid.Row="1" Grid.Column="1" Text="1000" Margin="0,2,0,4"/>
+        <TextBlock Grid.Row="2" Text="P2* ms" Margin="0,6,0,0"/>
+        <TextBox x:Name="FlashP2Star" Grid.Row="2" Grid.Column="1" Text="5000" Margin="0,2,0,4"/>
+        <TextBlock Grid.Row="3" Text="Erase ms" Margin="0,6,0,0"/>
+        <TextBox x:Name="FlashErase" Grid.Row="3" Grid.Column="1" Text="30000" Margin="0,2,0,4"/>
+        <TextBlock Grid.Row="4" Text="ISO-TP FC ms" Margin="0,6,0,0"/>
+        <TextBox x:Name="FlashFc" Grid.Row="4" Grid.Column="1" Text="2000" Margin="0,2,0,4"/>
+       </Grid>
+       <CheckBox x:Name="FlashSignature" Content="写入 CanTool OEM 末端签名（默认关闭）" Margin="0,9,0,2"/>
+      </StackPanel>
+     </ScrollViewer>
+    </DockPanel>
    </Border>
+   <GridSplitter Grid.Column="1" Background="#314458" HorizontalAlignment="Stretch"/>
    <Grid Grid.Column="2">
-    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="12">
+    <Grid.RowDefinitions>
+     <RowDefinition Height="Auto"/>
+     <RowDefinition Height="Auto"/>
+     <RowDefinition Height="*" MinHeight="160"/>
+     <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <Border Grid.Row="0" Background="#192431" BorderBrush="#314458" BorderThickness="1" CornerRadius="5" Padding="13">
      <StackPanel>
-      <TextBlock Text="固件解析结果" FontSize="15" FontWeight="SemiBold"/>
-      <WrapPanel Margin="0,12,0,8">
-       <TextBlock Text="格式：" Foreground="#92A4B7"/>
-       <TextBlock Text="{Binding Format}" Margin="0,0,18,0"/>
-       <TextBlock Text="字节：" Foreground="#92A4B7"/>
-       <TextBlock Text="{Binding Bytes}"/>
+      <DockPanel>
+       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="FlashProbeButton" Content="CAN1 探测 Boot / APP" Click="ProbePhysical_Click"/>
+        <Button Content="固件预检" Command="{Binding PreflightCommand}"/>
+       </StackPanel>
+       <StackPanel>
+        <TextBlock Text="PHYSICAL PROGRAMMING / 实机烧录" FontSize="15" FontWeight="SemiBold"/>
+        <TextBlock x:Name="PhysicalSessionLine" Text="Station 未连接；请在 P02 连接并验证主控"
+         Foreground="#92A4B7" TextWrapping="Wrap" Margin="0,5,0,0" FontSize="11"/>
+       </StackPanel>
+      </DockPanel>
+      <WrapPanel Margin="0,10,0,0">
+       <Button x:Name="FlashPrepareButton" Content="核对并生成本次授权" Click="PreparePhysicalFlash_Click"/>
+       <Button x:Name="FlashStartButton" Content="▶ 开始真实烧录" Click="StartPhysicalFlash_Click"
+        IsEnabled="False" Background="#206754"/>
+       <Button x:Name="FlashCancelButton" Content="■ 请求停止 / 取消" Click="CancelPhysicalFlash_Click"
+        IsEnabled="False"/>
+       <Button Content="导出本页诊断日志" Click="ExportPhysicalFlashLog_Click"/>
       </WrapPanel>
-      <TextBlock Text="{Binding Hash}" FontFamily="Consolas" TextWrapping="Wrap" Foreground="#46D0DC"/>
-      <TextBlock Text="{Binding Failure}" TextWrapping="Wrap" Foreground="#FF8994" Margin="0,7,0,0"/>
-      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+      <ProgressBar x:Name="FlashProgressBar" Height="9" Minimum="0" Maximum="100" Margin="0,11,0,5"/>
+      <TextBlock x:Name="FlashProgressLine" Text="尚未执行" Foreground="#81C9BA" FontSize="11"/>
      </StackPanel>
     </Border>
-    <TabControl Grid.Row="1" Margin="0,10,0,0" Background="#192431">
-     <TabItem Header="固件段">
+    <Border Grid.Row="1" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="10,7" Margin="0,7,0,0">
+     <StackPanel>
+      <TextBlock Text="{Binding Status}" Foreground="#92A4B7" FontSize="11" TextWrapping="Wrap"/>
+      <TextBlock x:Name="PhysicalResultLine" Text="真实烧录未开始。探测不会擦除；无物理 ECU 验证结果。"
+       TextWrapping="Wrap" Foreground="#E8B967" FontSize="12" Margin="0,4,0,0"/>
+     </StackPanel>
+    </Border>
+    <TabControl Grid.Row="2" Background="#101620" Margin="0,8,0,0">
+     <TabItem Header="FLASH STAGES / 阶段">
+      <DataGrid x:Name="FlashStagesGrid" AutoGenerateColumns="False" IsReadOnly="True" RowHeaderWidth="0">
+       <DataGrid.Columns>
+        <DataGridTextColumn Header="时间" Binding="{Binding Utc,StringFormat=HH:mm:ss.fff}" Width="110"/>
+        <DataGridTextColumn Header="阶段" Binding="{Binding Stage}" Width="175"/>
+        <DataGridTextColumn Header="结果" Binding="{Binding Outcome}" Width="110"/>
+        <DataGridTextColumn Header="细节 / NRC / 地址" Binding="{Binding Detail}" Width="*"/>
+        <DataGridTextColumn Header="已 ACK B" Binding="{Binding ConfirmedBytes}" Width="90"/>
+       </DataGrid.Columns>
+      </DataGrid>
+     </TabItem>
+     <TabItem Header="UDS / USB / CAN1 Trace">
+      <ListBox x:Name="FlashEventsList" FontFamily="Consolas" FontSize="11" Background="#101620"
+       Foreground="#D7E5F2" ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
+     </TabItem>
+     <TabItem Header="镜像段">
       <DataGrid ItemsSource="{Binding Segments}" AutoGenerateColumns="False" IsReadOnly="True" RowHeaderWidth="0">
        <DataGrid.Columns>
         <DataGridTextColumn Header="起点" Binding="{Binding Start}" Width="*"/>
         <DataGridTextColumn Header="终点（不含）" Binding="{Binding EndExclusive}" Width="*"/>
-        <DataGridTextColumn Header="字节" Binding="{Binding Bytes}" Width="Auto"/>
+        <DataGridTextColumn Header="字节数" Binding="{Binding Bytes}" Width="100"/>
        </DataGrid.Columns>
       </DataGrid>
      </TabItem>
-     <TabItem Header="CanTool 配置字段">
+     <TabItem Header="配置与 XML 来源">
       <DataGrid ItemsSource="{Binding ConfigurationFields}" AutoGenerateColumns="True" IsReadOnly="True"/>
      </TabItem>
-     <TabItem Header="真实硬件预检">
+     <TabItem Header="现场预检">
       <DockPanel>
        <StackPanel DockPanel.Dock="Top" Margin="8">
         <TextBlock Text="{Binding PhysicalPreflight}" TextWrapping="Wrap"/>
@@ -109,12 +172,46 @@
       </DockPanel>
      </TabItem>
     </TabControl>
+    <TextBlock Grid.Row="3" Text="{Binding SourceLabel}" Foreground="#92A4B7" FontSize="11" Margin="2,9,2,0" TextWrapping="Wrap"/>
    </Grid>
+   <GridSplitter Grid.Column="3" Background="#314458" HorizontalAlignment="Stretch"/>
+   <Border Grid.Column="4" Background="#192431" BorderBrush="#314458" BorderThickness="1" CornerRadius="5">
+    <DockPanel>
+     <Border DockPanel.Dock="Top" Background="#202D3B" Padding="12">
+      <StackPanel>
+       <TextBlock Text="INSPECTOR / 实机授权" FontSize="12" FontWeight="SemiBold"/>
+       <TextBlock Text="ECU · Config · Image · USB Session" Foreground="#92A4B7" FontSize="11" Margin="0,5,0,0"/>
+      </StackPanel>
+     </Border>
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="12,12,12,16">
+       <TextBlock Text="当前配置和固件" Foreground="#4FAAFB" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+       <TextBlock Text="{Binding Format,StringFormat=格式：{0}}" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding Bytes,StringFormat=镜像字节：{0}}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+       <TextBlock Text="{Binding Hash}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="10" Foreground="#46D0DC" Margin="0,5,0,0"/>
+       <TextBlock Text="{Binding Failure}" TextWrapping="Wrap" Foreground="#FF7886" Margin="0,5,0,0"/>
+       <Border Height="1" Background="#314458" Margin="0,14,0,12"/>
+       <TextBlock Text="实际烧录许可 / 必须逐项确认" Foreground="#4FAAFB" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap"/>
+       <CheckBox x:Name="FlashPowerConfirmed" Content="已核实 ECU 型号、接线、供电和恢复措施"
+        Margin="0,10,0,7"/>
+       <CheckBox x:Name="FlashRateConfirmed" Content="已核实 CAN1 物理比特率与 XML 期望一致"
+        Margin="0,2,0,7"/>
+       <CheckBox x:Name="FlashEraseConfirmed" Content="同意本次对实际 ECU 擦除、写入和复位"
+        Margin="0,2,0,7"/>
+       <TextBlock Text="提示：导入 XML 不会修改 CAN1 实际波特率。主控 ACK 也不代表 ECU UDS 成功。"
+        Foreground="#E8B967" TextWrapping="Wrap" FontSize="11" Margin="0,8,0,10"/>
+       <Button Content="生成真实烧录授权短语" Click="PreparePhysicalFlash_Click" HorizontalAlignment="Stretch"/>
+       <TextBlock Text="本次授权（需人工逐字核对）" Foreground="#92A4B7" FontSize="11" Margin="0,11,0,4"/>
+       <TextBox x:Name="FlashExpectedAuthorization" IsReadOnly="True" TextWrapping="Wrap"
+        AcceptsReturn="True" MinHeight="74"/>
+       <TextBlock Text="输入完全一致的授权短语" Foreground="#92A4B7" FontSize="11" Margin="0,11,0,4"/>
+       <TextBox x:Name="FlashTypedAuthorization" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="74"/>
+       <TextBlock Text="刷写被取消、断连或擦除 ACK 不明确时，结果必须保持 UNCERTAIN；不自动重试。"
+        Foreground="#FF7886" TextWrapping="Wrap" FontSize="11" Margin="0,12,0,0"/>
+      </StackPanel>
+     </ScrollViewer>
+    </DockPanel>
+   </Border>
   </Grid>
-  <StackPanel Grid.Row="3" Margin="0,12,0,0">
-   <TextBlock Text="{Binding SourceLabel}" Foreground="#E8B967" TextWrapping="Wrap"/>
-   <TextBlock Text="烧录发送路径暂未授权；配置解析和硬件条件核对不能当作 ECU 已经被编程的证据。"
-              Foreground="#92A4B7" TextWrapping="Wrap" Margin="0,5,0,0"/>
-  </StackPanel>
  </Grid>
 </UserControl>
