@@ -114,13 +114,8 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         if (source==BenchEvidenceSource.Replay)
             return Task.FromResult(Reject("REPLAY_READ_ONLY",
                 "回放不能执行状态修改；请选择实际录制文件读取。",source));
-        if (source!=BenchEvidenceSource.Mock)
-            return Task.FromResult(Reject("SOURCE_UNKNOWN","没有有效执行源。",source));
-        var op=Guid.NewGuid().ToString("N");
-        return Task.FromResult(new BenchOperationResult(true,op,op,null,
-            $"MODELED_KEYMASK:{profile.ResolveState(c,s,profile.Revision).KeyMask:X5}",
-            "MOCK_ONLY",null,null,null,BenchEvidenceSource.Mock,
-            "Mock 层确认状态映射；未向硬件发送 CAN，也未测得任何模拟电压。"));
+        return Task.FromResult(Reject("SOURCE_UNSUPPORTED",
+            "R1 不提供模拟按键或虚构的控制回执；请配置实际设备。",source));
     }
     private static BenchOperationResult Reject(string code,string detail,BenchEvidenceSource source)
         => new(false,null,null,null,null,null,null,code,detail,source,null);
