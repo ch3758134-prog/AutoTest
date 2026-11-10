@@ -190,9 +190,20 @@ public partial class MainWindow : Window
                 break;
             }
             case 9 when R2AuthoringHost.Content is null:
-                R2AuthoringHost.Content = new LabTestWorkspaceView(
-                    new LabTestWorkspaceViewModel(host.Workspace));
+            {
+                var testModel = new LabTestWorkspaceViewModel(host.Workspace);
+                testModel.AttachPhysicalReadOnly(
+                    () => _device?.Controller,
+                    () => MessageBox.Show(this,
+                        "将执行当前工程已保存的 TEST 程序，从已连接主控板的 CAN1 接收真实 ECU 信号。\n" +
+                        "本次仅允许只读观察和断言；不会控制电源、IGN、按键、夹具或启动烧录。\n" +
+                        "请确认硬件接线、ECU 型号、DBC 修订及安全隔离均已核对。\n\n是否授权本次执行？",
+                        "确认真实 ECU 只读自动测试",
+                        MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                        MessageBoxResult.No) == MessageBoxResult.Yes);
+                R2AuthoringHost.Content = new LabTestWorkspaceView(testModel);
                 break;
+            }
             case 10 when R1RunHost.Content is null:
                 // P11 uses the same persisted TEST program as P10 and P01;
                 // no separate sample LabDocument or independent Mock runner.
