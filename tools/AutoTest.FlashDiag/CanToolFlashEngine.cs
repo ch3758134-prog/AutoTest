@@ -44,6 +44,7 @@ public sealed record CanToolFlashStage(DateTimeOffset Utc, string Stage,
     string Outcome, string Detail, long ConfirmedBytes, long TotalBytes);
 public sealed record CanToolFlashResult(
     string Status, long ConfirmedBytes, long TotalBytes, string LastStage, string Detail);
+public sealed record CanToolProbeResult(string Mode, string ResponseHex, string? Error);
 
 /// <summary>
 /// Native-only CanTool ZLGKey ABI. No fallback LFSR/sa_demo algorithm is provided.
@@ -459,6 +460,104 @@ public sealed class CanToolFlashEngine
                 try { await _device.PhysicalDutCanLeases.ReleaseAsync(lease, CancellationToken.None); }
                 catch (Exception ex) { Emit("CLEANUP", "ERROR", "Failed to release CAN1 lease: " + ex.Message); }
             }
+        }
+    }
+
+    /// <summary>
+    /// CanTool APP/Boot detection without erase, security access, reset or
+    /// firmware. It sends 0x10 03 and will change the ECU diagnostic session.
+    /// A dedicated physical scope grants only the exact short UDS request.
+    /// </summary>
+    public async Task<CanToolProbeResult> ProbeAsync(
+        CanToolConfigurationSnapshot config, CancellationToken ct)
+    {
+        LeaseToken lease = default;
+        bool acquired = false;
+        IDisposable? permit = null;
+        try
+        {
+            if (_device.State != UsbSessionState.Connected ||
+                !_device.ProtocolVersionVerified || _device.Hub is null)
+                throw new IOException("Connect the physical WinUSB controller first.");
+            Emit("PROBE_PREFLIGHT", "START",
+                $"Boot={config.BootRequestId:X}/{config.BootResponseId:X}; " +
+                $"App={config.AppRequestId:X}/{config.AppResponseId:X}; no erase or download.");
+            var result = await _device.PhysicalDutCanLeases.AcquireAsync(
+                BusRole.DutCan, "CanTool-Physical-Probe-" + Guid.NewGuid().ToString("N"),
+                TimeSpan.FromSeconds(35), ct);
+            if (result.Outcome != Outcome.Accepted || result.Value.Value == Guid.Empty)
+                throw new IOException("Physical CAN1 is busy: " + result.FailureCode);
+            lease = result.Value; acquired = true;
+            string approval = HardwareBenchController.PhysicalCanToolProbeConfirmation(
+                config.SourceSha256, config.AppRequestId, config.BootRequestId,
+                lease.SessionGeneration);
+            permit = _device.AuthorizePhysicalCanToolProbe(lease,
+                config.AppRequestId, config.BootRequestId,
+                config.SourceSha256, approval);
+            var app = new UdsEndpointProfile(
+                BusRole.DutCan, config.AppRequestId, config.AppResponseId,
+                TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), "Normal");
+            var boot = new UdsEndpointProfile(
+                BusRole.DutCan, config.BootRequestId, config.BootResponseId,
+                TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), "Normal");
+            await using var appLink = new CanHubIsoTpLink(_device.Hub!, app, lease);
+            await using var bootLink = new CanHubIsoTpLink(_device.Hub!, boot, lease);
+            for (int count = 0; _device.Hub!.SubscriberCount < 2 && count < 100; count++)
+                await Task.Delay(10, ct);
+            if (_device.Hub!.SubscriberCount < 2)
+                throw new IOException("CAN1 RX APP/Boot filters failed to subscribe.");
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var isoOpts = new IsoTpOptions(TimeSpan.FromSeconds(2));
+            async Task<byte[]> ProbeOne(
+                string name, IsoTpConversation conversation, CancellationToken token)
+            {
+                Emit("PROBE_" + name, "TX", "Real CAN1 ISO-TP 02 10 03 on configured endpoint.");
+                await conversation.SendPduAsync(new byte[]{0x10, 0x03}, token);
+                var rx = await conversation.ReceivePduAsync(TimeSpan.FromSeconds(2), token);
+                Emit("PROBE_" + name, "RX", Convert.ToHexString(rx));
+                if (rx.Length < 2 || rx[0] != 0x50 || rx[1] != 0x03)
+                    throw new InvalidDataException(name + " 0x10 03 did not receive matching 0x50 03.");
+                return rx;
+            }
+            try
+            {
+                byte[] resp = await ProbeOne("BOOT",
+                    new IsoTpConversation(bootLink, isoOpts), ct);
+                Emit("PROBE_FINISHED", "BOOT", "Boot target answered 0x50 03.");
+                return new("BOOT", Convert.ToHexString(resp), null);
+            }
+            catch (Exception ex) when (ex is TimeoutException or IOException or InvalidDataException)
+            {
+                Emit("PROBE_BOOT", "NO_VALID_RESPONSE", ex.Message);
+            }
+            try
+            {
+                byte[] resp = await ProbeOne("APP",
+                    new IsoTpConversation(appLink, isoOpts), ct);
+                Emit("PROBE_FINISHED", "APP", "APP target answered 0x50 03.");
+                return new("APP", Convert.ToHexString(resp), null);
+            }
+            catch (Exception ex) when (ex is TimeoutException or IOException or InvalidDataException)
+            {
+                Emit("PROBE_FINISHED", "NO_VALID_ECU_RESPONSE", ex.Message);
+                return new("NO_RESPONSE", "", ex.Message);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            Emit("PROBE_FINISHED", "CANCELLED", "Physical CAN1 probe cancelled.");
+            return new("CANCELLED", "", "No erase/download was issued.");
+        }
+        catch (Exception ex)
+        {
+            Emit("PROBE_FINISHED", "FAILED", ex.GetType().Name + ": " + ex.Message);
+            return new("FAILED", "", ex.Message);
+        }
+        finally
+        {
+            permit?.Dispose();
+            if (acquired)
+                await _device.PhysicalDutCanLeases.ReleaseAsync(lease, CancellationToken.None);
         }
     }
 
