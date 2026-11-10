@@ -294,6 +294,11 @@ class Store:
                 raise RuleError("Only drafts or submitted objects can be approved")
             if obj["kind"] == "change":
                 raise RuleError("A change must be closed after assessing impacts, not approved as a design")
+            if obj["kind"] in ("architecture", "interface", "design"):
+                from studio_research import Research
+                reasons = Research.design_check(db, obj)
+                if reasons:
+                    raise RuleError("Technical investigation gate: " + "; ".join(reasons))
             if obj["kind"] == "work_package":
                 result = self._readiness(db, key, ignore_approval=True)
                 if result["reasons"]:
@@ -501,6 +506,10 @@ class Store:
                 why.append("上游对象尚未批准："+input_item["title"])
             if str(revisions.get(input_item["id"],""))!=str(input_item["revision"]):
                 why.append("设计输入修订已变化或未固定："+input_item["title"])
+            if input_item["kind"] in ("architecture", "interface", "design"):
+                from studio_research import Research
+                for reason in Research.design_check(db, input_item):
+                    why.append("引用的工程设计需复审：" + reason)
         # OPEN changes targeting a work package or a design input block readiness.
         ids={key,*[i["id"] for i in upstream]}
         for r in db.execute("""SELECT c.title, l.target_id FROM relations l
