@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using AutoTest.Specialists.Uds;
 using AutoTest.Specialists.Uds.Workbench;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -20,7 +21,7 @@ public sealed class UdsToolViewModel : BindableBase
         _documentPath="", _status="MOCK_READY", _responseHex="—",
         _nrc="—", _expectedMatch="NOT_SPECIFIED", _error="", _responseSummary="尚未收到诊断响应。",
         _faultSid="22", _faultCode="31", _session="Default / Unknown",
-        _sourceMode="Mock", _replayPath="";
+        _sourceMode="Mock", _replayPath="", _didParameter="F190", _dtcMaskParameter="FF";
     private UdsServiceDefinition? _selectedService;
     public UdsToolViewModel() : this(new UdsDiagnosticWorkspace()) { }
     public UdsToolViewModel(UdsDiagnosticWorkspace backend)
@@ -30,6 +31,14 @@ public sealed class UdsToolViewModel : BindableBase
         Services.Add(new("Read DTC (Mock)","19 02 FF",""));
         Services.Add(new("Tester Present (Mock)","3E 00",""));
         Services.Add(new("Default session (Mock)","10 01",""));
+        PrepareReadDidCommand = new DelegateCommand(() =>
+            PrepareTypedRequest(() => UdsTypedRequestBuilder.ReadDataByIdentifier(
+                checked((ushort)CanId(DidParameter))),"Read DID"), () => !IsBusy);
+        PrepareReadDtcCommand = new DelegateCommand(() =>
+            PrepareTypedRequest(() => UdsTypedRequestBuilder.ReadDtcByStatus(
+                checked((byte)CanId(DtcMaskParameter))),"Read DTC"), () => !IsBusy);
+        PrepareTesterPresentCommand = new DelegateCommand(() =>
+            PrepareTypedRequest(UdsTypedRequestBuilder.TesterPresent,"Tester Present"), () => !IsBusy);
         SendCommand = new DelegateCommand(() => _ = SendBoundedAsync(), () => !IsBusy);
         CancelCommand = new DelegateCommand(() => _sendStop?.Cancel(), () => IsBusy && _sendStop is not null);
         ResetCommand = new DelegateCommand(() => _ = ResetAsync(), () => !IsBusy);
@@ -41,6 +50,9 @@ public sealed class UdsToolViewModel : BindableBase
     }
     public ObservableCollection<UdsServiceDefinition> Services { get; } = new();
     public ObservableCollection<UdsCanTraceRow> TraceRows { get; } = new();
+    public DelegateCommand PrepareReadDidCommand { get; }
+    public DelegateCommand PrepareReadDtcCommand { get; }
+    public DelegateCommand PrepareTesterPresentCommand { get; }
     public DelegateCommand SendCommand { get; }
     public DelegateCommand CancelCommand { get; }
     public DelegateCommand ResetCommand { get; }
@@ -56,7 +68,8 @@ public sealed class UdsToolViewModel : BindableBase
         { if (SetProperty(ref _isBusy,value))
           foreach(var command in Commands()) command.RaiseCanExecuteChanged(); } }
     private IEnumerable<DelegateCommand> Commands() => [SendCommand, CancelCommand, ResetCommand,
-        SaveServiceCommand, DeleteServiceCommand, SaveDocumentCommand, LoadDocumentCommand, LoadReplayCommand];
+        SaveServiceCommand, DeleteServiceCommand, SaveDocumentCommand, LoadDocumentCommand, LoadReplayCommand,
+        PrepareReadDidCommand, PrepareReadDtcCommand, PrepareTesterPresentCommand];
     public string ProfileName { get => _profileName; set => SetProperty(ref _profileName,value); }
     public string MockIdentity { get => _mockIdentity; set => SetProperty(ref _mockIdentity,value); }
     public string TxId { get => _txId; set => SetProperty(ref _txId,value); }
@@ -64,6 +77,8 @@ public sealed class UdsToolViewModel : BindableBase
     public string P2Ms { get => _p2Ms; set => SetProperty(ref _p2Ms,value); }
     public string P2StarMs { get => _p2StarMs; set => SetProperty(ref _p2StarMs,value); }
     public string RequestHex { get => _requestHex; set => SetProperty(ref _requestHex,value); }
+    public string DidParameter { get => _didParameter; set => SetProperty(ref _didParameter,value); }
+    public string DtcMaskParameter { get => _dtcMaskParameter; set => SetProperty(ref _dtcMaskParameter,value); }
     public string ExpectedHex { get => _expectedHex; set => SetProperty(ref _expectedHex,value); }
     public string ServiceName { get => _serviceName; set => SetProperty(ref _serviceName,value); }
     public string DocumentPath { get => _documentPath; set => SetProperty(ref _documentPath,value); }
@@ -92,6 +107,30 @@ public sealed class UdsToolViewModel : BindableBase
             ExpectedHex=value.ExpectedHex;
         }
     }
+    private void PrepareTypedRequest(Func<UdsPreparedRequest> builder, string label)
+    {
+        if (IsBusy) return;
+        try
+        {
+            var request=builder();
+            RequestHex=request.PduHex;
+            ServiceName=label;
+            ExpectedHex="";
+            Status="PREPARED_NOT_SENT";
+            ResponseHex="—";
+            ResponseSummary=$"已构造 {request.Service.Name}，参数：{request.ParameterSummary}；" +
+                (request.IsReadOnly ? "服务类别：只读。" : "服务会改变 ECU 状态；物理发送仍被后端禁止。") +
+                " 尚未向任何设备发送。";
+            Error="";
+        }
+        catch(Exception ex)
+        {
+            Status="PARAMETER_INVALID";
+            Error=ex.GetType().Name+": "+ex.Message;
+            ResponseSummary="未生成 UDS PDU，请修正参数后重新构造。";
+        }
+    }
+
     private static uint CanId(string value) => uint.Parse(value.Trim().Replace("0x","",StringComparison.OrdinalIgnoreCase),
         NumberStyles.HexNumber,CultureInfo.InvariantCulture);
     private static int Ms(string value) => int.Parse(value,CultureInfo.InvariantCulture);
