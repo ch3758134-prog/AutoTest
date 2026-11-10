@@ -1,0 +1,40 @@
+name: Render incremental AutoTest engineering HTML
+
+on:
+  push:
+    branches: [recovery/product-led-baseline-20261109]
+    paths:
+      - '.github/workflows/render-recovery-html.yml'
+      - 'tools/recovery/render_dashboard.py'
+      - 'docs/recovery/current_status.json'
+      - 'SAEF/engineering/control/project_state.json'
+      - 'SAEF/engineering/control/work_products.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout current recovery state
+        uses: actions/checkout@v4
+      - name: Generate deterministic HTML from SAEF and evidence register
+        run: |
+          python3 tools/recovery/render_dashboard.py
+          python3 tools/recovery/render_dashboard.py --check
+      - name: Commit refreshed HTML only when registered facts changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- docs/recovery/overview.html; then
+            git config user.name "AutoTest engineering state renderer"
+            git config user.email "autotest-html@users.noreply.github.com"
+            git add docs/recovery/overview.html
+            git commit -m "docs(saef): regenerate current engineering HTML from source registers"
+            git push origin HEAD:recovery/product-led-baseline-20261109
+          else
+            echo "HTML unchanged; avoiding no-op commit"
+          fi
