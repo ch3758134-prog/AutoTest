@@ -21,10 +21,10 @@
   <SolidColorBrush x:Key="R1Muted" Color="#92A4B7"/>
   <SolidColorBrush x:Key="R1Accent" Color="#4FAAFB"/>
   <Style x:Key="R1RailButton" TargetType="Button">
-   <Setter Property="Width" Value="44"/>
-   <Setter Property="Height" Value="45"/>
+   <Setter Property="Width" Value="43"/>
+   <Setter Property="Height" Value="41"/>
    <Setter Property="Margin" Value="2,3"/>
-   <Setter Property="FontSize" Value="12"/>
+   <Setter Property="FontSize" Value="19"/>
    <Setter Property="Padding" Value="3"/>
    <Setter Property="Background" Value="Transparent"/>
    <Setter Property="BorderThickness" Value="0"/>
@@ -167,20 +167,20 @@
    <Border Background="#141D29" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
      <StackPanel>
-      <Button x:Name="R1ProjectRail" Content="工程" Style="{StaticResource R1RailButton}" Click="OpenProject_Click" ToolTip="P01 工程资源 / Revision"/>
-      <Button x:Name="R1StationRail" Content="设备" Style="{StaticResource R1RailButton}" Click="OpenStation_Click" ToolTip="P02 主控 USB / 站点"/>
-      <Button x:Name="R1CanRail" Content="CAN" Style="{StaticResource R1RailButton}" Click="OpenCan_Click" ToolTip="P03 CAN1/CAN0 被动监视"/>
-      <Button x:Name="R1DbcRail" Content="DBC" Style="{StaticResource R1RailButton}" Click="OpenDbc_Click" ToolTip="P04 DBC 文件 / 信号编辑"/>
-      <Button x:Name="R1ControllerRail" Content="控制" Style="{StaticResource R1RailButton}" Click="OpenController_Click" ToolTip="P05 Controller Designer"/>
-      <Button x:Name="R1BenchRail" Content="台架" Style="{StaticResource R1RailButton}" Click="OpenBench_Click" ToolTip="P06 Manual Bench / 当前物理操作未接入"/>
-      <Button x:Name="R1WaveRail" Content="波形" Style="{StaticResource R1RailButton}" Click="OpenWave_Click" ToolTip="P07 波形采集与比较"/>
-      <Button x:Name="R1UdsRail" Content="UDS" Style="{StaticResource R1RailButton}" Click="OpenUds_Click" ToolTip="P08 诊断 Console"/>
-      <Button x:Name="R1FlashRail" Content="烧录" Style="{StaticResource R1RailButton}" Click="OpenFlash_Click" ToolTip="P09 CAN Flash"/>
-      <Button x:Name="R1TestRail" Content="测试" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P10 TEST 编辑"/>
-      <Button x:Name="R1RunRail" Content="运行" Style="{StaticResource R1RailButton}" Click="OpenRun_Click" ToolTip="P11 TEST 调试（实验室）"/>
-      <Button x:Name="R1ProductionRail" Content="扫码" Style="{StaticResource R1RailButton}" Click="OpenProduction_Click" ToolTip="P12 Production Scan"/>
-      <Button x:Name="R1RecordsRail" Content="记录" Style="{StaticResource R1RailButton}" Click="OpenRecords_Click" ToolTip="P13 Records &amp; Reports"/>
-      <Button x:Name="R1AuditRail" Content="审计" Style="{StaticResource R1RailButton}" Click="OpenAudit_Click" ToolTip="Operations Audit"/>
+      <Button x:Name="R1ProjectRail" Content="▦" Style="{StaticResource R1RailButton}" Click="OpenProject_Click" ToolTip="P01 工程资源 / Revision"/>
+      <Button x:Name="R1StationRail" Content="⎔" Style="{StaticResource R1RailButton}" Click="OpenStation_Click" ToolTip="P02 主控 USB / 站点"/>
+      <Button x:Name="R1CanRail" Content="≋" Style="{StaticResource R1RailButton}" Click="OpenCan_Click" ToolTip="P03 CAN1/CAN0 被动监视"/>
+      <Button x:Name="R1DbcRail" Content="▤" Style="{StaticResource R1RailButton}" Click="OpenDbc_Click" ToolTip="P04 DBC 文件 / 信号编辑"/>
+      <Button x:Name="R1ControllerRail" Content="⊞" Style="{StaticResource R1RailButton}" Click="OpenController_Click" ToolTip="P05 Controller Designer"/>
+      <Button x:Name="R1BenchRail" Content="⌘" Style="{StaticResource R1RailButton}" Click="OpenBench_Click" ToolTip="P06 Manual Bench / 当前物理操作未接入"/>
+      <Button x:Name="R1WaveRail" Content="∿" Style="{StaticResource R1RailButton}" Click="OpenWave_Click" ToolTip="P07 波形采集与比较"/>
+      <Button x:Name="R1UdsRail" Content="⇄" Style="{StaticResource R1RailButton}" Click="OpenUds_Click" ToolTip="P08 诊断 Console"/>
+      <Button x:Name="R1FlashRail" Content="⇧" Style="{StaticResource R1RailButton}" Click="OpenFlash_Click" ToolTip="P09 CAN Flash"/>
+      <Button x:Name="R1TestRail" Content="⑂" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P10 TEST 编辑"/>
+      <Button x:Name="R1RunRail" Content="▶" Style="{StaticResource R1RailButton}" Click="OpenRun_Click" ToolTip="P11 TEST 调试（实验室）"/>
+      <Button x:Name="R1ProductionRail" Content="▣" Style="{StaticResource R1RailButton}" Click="OpenProduction_Click" ToolTip="P12 Production Scan"/>
+      <Button x:Name="R1RecordsRail" Content="▥" Style="{StaticResource R1RailButton}" Click="OpenRecords_Click" ToolTip="P13 Records &amp; Reports"/>
+      <Button x:Name="R1AuditRail" Content="⌗" Style="{StaticResource R1RailButton}" Click="OpenAudit_Click" ToolTip="Operations Audit"/>
      </StackPanel>
     </ScrollViewer>
    </Border>
