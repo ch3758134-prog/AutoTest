@@ -5,7 +5,7 @@ using System.Windows.Input;
 
 namespace AutoTest.Desktop.Shell;
 
-internal sealed record R1PaletteCommand(string Key, string Icon, string Title, string Hint);
+public sealed record R1PaletteCommand(string Key, string Icon, string Title, string Hint);
 
 /// <summary>R1 HTML Ctrl+K command palette, backed by the same product navigation.</summary>
 public partial class R1CommandPalette : Window
