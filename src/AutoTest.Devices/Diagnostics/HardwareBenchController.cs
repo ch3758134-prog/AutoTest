@@ -133,6 +133,7 @@ public sealed partial class HardwareBenchController : IAsyncDisposable
         if (state is UsbSessionState.Disconnected or UsbSessionState.Faulted)
         {
             _physicalUdsBoundary.Revoke();
+            RevokePhysicalCanToolFlash();
             _physicalUdsLeases?.Reset(0);
         }
         _log?.RecordMessage("STATE", state.ToString());
@@ -141,6 +142,7 @@ public sealed partial class HardwareBenchController : IAsyncDisposable
     public async Task DisconnectAsync()
     {
         _physicalUdsBoundary.Revoke();
+        RevokePhysicalCanToolFlash();
         _physicalUdsLeases?.Reset(0);
         var canPublished = CanPublished;
         var canDropped = CanDropped;
