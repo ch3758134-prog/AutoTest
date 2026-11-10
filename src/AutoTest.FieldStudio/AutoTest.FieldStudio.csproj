@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>AutoTest.FieldStudio</AssemblyName>
+    <RootNamespace>AutoTest.FieldStudio</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AutoTest.Core/AutoTest.Core.csproj" />
+    <ProjectReference Include="../AutoTest.Contracts/AutoTest.Contracts.csproj" />
+    <ProjectReference Include="../AutoTest.Devices/AutoTest.Devices.csproj" />
+    <ProjectReference Include="../AutoTest.Projects/AutoTest.Projects.csproj" />
+    <ProjectReference Include="../AutoTest.Specialists/AutoTest.Specialists.csproj" />
+  </ItemGroup>
+</Project>
