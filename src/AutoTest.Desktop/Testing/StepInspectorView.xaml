@@ -4,11 +4,11 @@
   <TextBlock Text="{Binding SelectedStep.TreeLabel,FallbackValue=未选择}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,10"/>
   <TextBlock Text="节点类型"/><TextBlock Text="{Binding SelectedStep.NodeType}" Foreground="{StaticResource Warning}" Margin="0,4,0,9"/>
   <TextBlock Text="名称"/><TextBox x:Name="NameInput" Text="{Binding EditedName,UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,9"/>
-  <TextBlock Text="变量（SetVariable / MockObserve / Assert / If）" TextWrapping="Wrap"/>
+  <TextBlock Text="变量（SetVariable / MockObserve / Assert / If / Switch / When）" TextWrapping="Wrap"/>
   <TextBox Text="{Binding EditedVariable,UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,9"/>
   <TextBlock Text="值（SetVariable / MockObserve）"/>
   <TextBox Text="{Binding EditedValue,UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,9"/>
-  <TextBlock Text="预期 equals（Assert / If）"/>
+  <TextBlock Text="预期 equals（Assert / If / Case / When；Case 可填 * 作默认分支）"/>
   <TextBox Text="{Binding EditedExpected,UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,9"/>
   <TextBlock Text="Mock 质量"/>
   <ComboBox SelectedValue="{Binding EditedQuality}" SelectedValuePath="Content" Margin="0,5,0,9">
@@ -16,8 +16,9 @@
   </ComboBox>
   <TextBlock Text="循环 count（0..1000）"/>
   <TextBox Text="{Binding EditedCount,UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,9"/>
-  <TextBlock Text="等待 ms（0..60000）"/>
+  <TextBlock Text="等待 ms / When 超时 ms（0..60000）"/>
   <TextBox Text="{Binding EditedMilliseconds,UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,9"/>
+  <TextBlock Text="Switch 的 cases 列表只能插入 Case；Case 的 body 才能插入实际步骤。When 当前可编辑但未接观察源，执行准备将拒绝。" TextWrapping="Wrap" Foreground="{StaticResource Warning}" Margin="0,3,0,9"/>
   <Button Content="应用属性到 TEST 事务" Command="{Binding ApplyPropertiesCommand}" Margin="0,4,0,6"/>
   <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Margin="0,6,0,0" Padding="0,8,0,0">
    <StackPanel>
