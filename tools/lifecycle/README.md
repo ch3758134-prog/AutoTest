@@ -1,6 +1,8 @@
 # Engineering Workbench｜单人离线工程生命周期管理
 
-**当前默认程序为 V0.4 通用可编辑工作台，新增技术预研/实验/架构证据门禁，不再是 KEY_SIM 只读演示。**
+**当前默认程序为 V0.5 通用可编辑工作台。新增真实 GitHub Issue/PR/CI 同步、AI 任务接单和 Git 工程项目归档；仍保留研究/实测/架构/详细设计门禁。**
+
+使用 GitHub 执行中心请先看 [STUDIO_V05.md](STUDIO_V05.md)。
 
 最新研究到架构闭环说明：[TECH_INVESTIGATION_GATE_V04.md](../../docs/lifecycle-pilot/TECH_INVESTIGATION_GATE_V04.md)。
 
