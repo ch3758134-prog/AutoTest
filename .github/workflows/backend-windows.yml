@@ -67,6 +67,9 @@ jobs:
       - name: Restore backend solution only
         shell: pwsh
         run: dotnet restore AutoTest.Backend.slnf
+      - name: Restore compile-negative test fixture without compiling it
+        shell: pwsh
+        run: dotnet restore tests/negative/StrongIdMisuse/StrongIdMisuse.csproj
       - name: Compile backend solution only
         shell: pwsh
         run: dotnet build AutoTest.Backend.slnf -c Release --no-restore --verbosity minimal
