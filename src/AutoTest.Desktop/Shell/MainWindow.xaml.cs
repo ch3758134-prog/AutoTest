@@ -593,39 +593,44 @@ public partial class MainWindow : Window
             "AutoTest R1 Studio",MessageBoxButton.OK,MessageBoxImage.Information);
     private void Close_Click(object sender,RoutedEventArgs e) => Close();
 
+    // A driver/serial disposal must not make the complete IDE impossible to close.
+    // Record the native cleanup failure without opening a modal dialog during shutdown.
+    private static async Task ReleaseOnExitAsync(string resource, Func<Task> dispose)
+    {
+        try { await dispose().WaitAsync(TimeSpan.FromSeconds(4)); }
+        catch (Exception ex)
+        {
+            try
+            {
+                var path = Path.Combine(Path.GetTempPath(), "AutoTest-R1-close-errors.log");
+                File.AppendAllText(path, $"{DateTimeOffset.Now:O} {resource}: {ex}\\n");
+            }
+            catch { /* Shutdown must continue even if diagnostic persistence fails. */ }
+        }
+    }
+
     private async void Window_Closing(object? sender,CancelEventArgs e)
     {
-        if (_closed) return;
+        if (_closed || _disposing) return;
         if (R1WaveHost.Content is WaveWorkbenchView wave)
             wave.CancelArchiveRecording();
-        if (_device is null && _production is null)
-        {
-            _waveReplayHub?.Dispose();
-            if (_workspaceEventsOwner is not null)
-                _workspaceEventsOwner.WorkspaceAssetsChanged -= OnWorkspaceAssetsChanged;
-            _closed = true;
-            return;
-        }
-        e.Cancel=true;
-        if (_disposing) return;
-        _disposing=true;
-        IsEnabled=false;
+        e.Cancel = true;
+        _disposing = true;
+        IsEnabled = false;
         try
         {
-            if (_production is not null) await _production.DisposeAsync();
-            if (_device is not null) await _device.DisposeAsync();
-        }
-        catch(Exception ex)
-        {
-            MessageBox.Show(this,"R1 设备会话关闭异常，请保留 USB/CAN 证据：\n"+ex,
-                "设备关闭失败",MessageBoxButton.OK,MessageBoxImage.Warning);
+            if (_production is not null)
+                await ReleaseOnExitAsync("Production scanner", () => _production.DisposeAsync().AsTask());
+            if (_device is not null)
+                await ReleaseOnExitAsync("WinUSB controller", () => _device.DisposeAsync().AsTask());
         }
         finally
         {
-            _waveReplayHub?.Dispose();
+            try { _waveReplayHub?.Dispose(); }
+            catch (Exception ex) { System.Diagnostics.Trace.TraceError(ex.ToString()); }
             if (_workspaceEventsOwner is not null)
                 _workspaceEventsOwner.WorkspaceAssetsChanged -= OnWorkspaceAssetsChanged;
-            _closed=true;
+            _closed = true;
             Close();
         }
     }
