@@ -20,6 +20,7 @@ using AutoTest.Records.Operations;
 using AutoTest.Records.Queries;
 using AutoTest.Records.Storage;
 using AutoTest.Specialists.Wave;
+using AutoTest.Devices.Can;
 
 namespace AutoTest.Desktop.Shell;
 
@@ -34,6 +35,7 @@ public partial class MainWindow : Window
     private G4ToolsWindow? _compatTools;
     private AutoTest.DeviceLab.DeviceLabEmbeddedView? _device;
     private LabProductionToolView? _production;
+    private CanFrameHub? _waveReplayHub;
     private MainWindowViewModel? _workspaceEventsOwner;
     private ControllerConfigToolViewModel? _controllerConfiguration;
     private bool _closed;
@@ -175,8 +177,14 @@ public partial class MainWindow : Window
                     new WaveEvidenceStore(Path.Combine(waveRoot, "live-captures")),
                     new WaveReferenceRepository(Path.Combine(waveRoot, "live-references")));
                 var liveProvider = new WaveSharedLiveProvider(physicalCapture, "Physical");
+                // Dedicated OFFLINE replay-only hub: never inject saved frames
+                // into the real DEVICE hub or a physical UDS subscriber.
+                var replayHub = _waveReplayHub ??= new CanFrameHub();
+                var recorded = new RecordedCanWaveReplayProvider(
+                    replayHub, replayHub.Publish, () => true,
+                    host.Workspace, Path.Combine(waveRoot, "recorded"));
                 wave.Model.BindBackend(new G4WaveReplayBackend(host, waveRoot,
-                    live: liveProvider));
+                    live: liveProvider, recorded: recorded));
                 R1WaveHost.Content = wave;
                 break;
             }
@@ -451,7 +459,13 @@ public partial class MainWindow : Window
 
     private async void Window_Closing(object? sender,CancelEventArgs e)
     {
-        if (_closed || (_device is null && _production is null)) return;
+        if (_closed) return;
+        if (_device is null && _production is null)
+        {
+            _waveReplayHub?.Dispose();
+            _closed = true;
+            return;
+        }
         e.Cancel=true;
         if (_disposing) return;
         _disposing=true;
@@ -466,6 +480,13 @@ public partial class MainWindow : Window
             MessageBox.Show(this,"R1 设备会话关闭异常，请保留 USB/CAN 证据：\n"+ex,
                 "设备关闭失败",MessageBoxButton.OK,MessageBoxImage.Warning);
         }
-        finally { _closed=true; Close(); }
+        finally
+        {
+            _waveReplayHub?.Dispose();
+            if (_workspaceEventsOwner is not null)
+                _workspaceEventsOwner.WorkspaceAssetsChanged -= OnWorkspaceAssetsChanged;
+            _closed=true;
+            Close();
+        }
     }
 }
