@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using AutoTest.Devices.Diagnostics;
+using AutoTest.Devices.Can;
 using AutoTest.Devices.Usb;
 using Microsoft.Win32;
 
