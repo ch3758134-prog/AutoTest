@@ -1,0 +1,68 @@
+name: One-time exact-main Windows full baseline
+on:
+  push:
+    branches: [verification/full-main-windows-20261109]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-main:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout pinned actual main commit
+        uses: actions/checkout@v4
+        with:
+          ref: '4530aba0079e8b2344e4ff5e706049450458a45b'
+          persist-credentials: false
+      - name: Verify exact main source identity
+        shell: pwsh
+        run: |
+          $sha = git rev-parse HEAD
+          Write-Host "BASELINE_MAIN_SHA=$sha"
+          if ($sha -ne '4530aba0079e8b2344e4ff5e706049450458a45b') { exit 1 }
+      - name: Setup pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.400'
+      - name: Restore complete solution
+        shell: pwsh
+        run: dotnet restore AutoTest.sln
+      - name: Restore contract negative compilation fixture
+        shell: pwsh
+        run: dotnet restore tests/negative/StrongIdMisuse/StrongIdMisuse.csproj
+      - name: Compile complete legacy main solution
+        shell: pwsh
+        run: dotnet build AutoTest.sln -c Release --no-restore --verbosity minimal
+      - name: Run all solution test assemblies, capturing each result
+        shell: pwsh
+        run: |
+          New-Item -Force -ItemType Directory -Path "$env:GITHUB_WORKSPACE/full-main-test-results" | Out-Null
+          $tests = @(
+            'tests/AutoTest.Contracts.Tests/AutoTest.Contracts.Tests.csproj',
+            'tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj',
+            'tests/AutoTest.Projects.Tests/AutoTest.Projects.Tests.csproj',
+            'tests/AutoTest.Testing.Tests/AutoTest.Testing.Tests.csproj',
+            'tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj',
+            'tests/AutoTest.Records.Tests/AutoTest.Records.Tests.csproj',
+            'tests/AutoTest.Application.Tests/AutoTest.Application.Tests.csproj',
+            'tests/AutoTest.Integration.Tests/AutoTest.Integration.Tests.csproj',
+            'tests/AutoTest.Desktop.Tests/AutoTest.Desktop.Tests.csproj'
+          )
+          $failed = @()
+          foreach ($path in $tests) {
+            $name = Split-Path -Leaf (Split-Path -Parent $path)
+            Write-Host "::group::Testing $name"
+            dotnet test $path -c Release --no-restore --no-build --logger "trx;LogFileName=$name.trx" --results-directory "$env:GITHUB_WORKSPACE/full-main-test-results"
+            if ($LASTEXITCODE -ne 0) { $failed += $name }
+            Write-Host "::endgroup::"
+          }
+          if ($failed.Count -gt 0) { throw "Failed test suites: $($failed -join ', ')" }
+      - name: Preserve full-main test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-main-windows-trx
+          path: full-main-test-results/
+          if-no-files-found: warn
+          retention-days: 30
