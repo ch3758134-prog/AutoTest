@@ -95,9 +95,8 @@
                                   SelectedItem="{Binding SelectedController}" Height="34"/>
                         <TextBlock Margin="0,12,0,3" Style="{StaticResource FieldLabel}" Text="操作数据来源"/>
                         <ComboBox SelectedValue="{Binding Source}" SelectedValuePath="Tag" Height="30">
-                            <ComboBoxItem Tag="{x:Static bench:BenchEvidenceSource.Mock}" Content="Mock（模拟）"/>
-                            <ComboBoxItem Tag="{x:Static bench:BenchEvidenceSource.Replay}" Content="Replay（回放）"/>
-                            <ComboBoxItem Tag="{x:Static bench:BenchEvidenceSource.Physical}" Content="Physical（受底层安全门禁控制）"/>
+                            <ComboBoxItem Tag="{x:Static bench:BenchEvidenceSource.Physical}" Content="Physical / 实际台架"/>
+                            <ComboBoxItem Tag="{x:Static bench:BenchEvidenceSource.Replay}" Content="Replay / 历史证据"/>
                         </ComboBox>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding SourceDescription}"
                                    TextWrapping="Wrap" Margin="0,5,0,0"/>
