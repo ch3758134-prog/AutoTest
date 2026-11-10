@@ -30,3 +30,18 @@ jobs:
         run: python -m compileall -q tools/lifecycle
       - name: Run lifecycle tests
         run: python -m unittest discover -s tools/lifecycle/tests -v
+      - name: Check research and studio browser script syntax
+        run: |
+          node --check tools/lifecycle/studio_research_ui.js
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+          source = Path("tools/lifecycle/studio.html").read_text(encoding="utf-8")
+          blocks = re.findall(r"<script>(.*?)</script>", source, flags=re.S)
+          if len(blocks) != 1:
+              raise SystemExit("Expected one inline studio JavaScript block")
+          output = Path("/tmp/engineering-inline.js")
+          output.write_text(blocks[0], encoding="utf-8")
+          subprocess.run(["node", "--check", str(output)], check=True)
+          PY
