@@ -75,6 +75,7 @@ pre.readout{background:#f6f8fb;border:1px solid var(--line);border-radius:8px;pa
     <button data-view="engineering"><b>⊞</b>需求与架构</button>
     <button data-view="governance"><b>⇄</b>决策与变更</button>
     <button data-view="delivery"><b>✓</b>实施与验证</button>
+    <button data-view="archive"><b>▤</b>资料与归档</button>
     <button data-view="history"><b>◷</b>历史与配置</button>
   </nav>
   <div class="sidefoot"><span class="dot"></span>本机 · 单人 · 无账号<br>变更与审批均有修订记录<br>原始项目资料不被自动覆盖</div>
@@ -88,9 +89,9 @@ const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className
 const add=(p,...children)=>{children.forEach(n=>p.append(n));return p};
 const $=s=>document.querySelector(s);
 const clean=n=>n.replaceChildren();
-const kinds={context:'产品背景',capability:'产品能力',system:'系统/组件',requirement:'需求',architecture:'总体架构',interface:'接口契约',design:'详细设计',decision:'技术决策',change:'问题/变更',risk:'风险',work_package:'实施工作包',test:'测试/证据',milestone:'里程碑'};
-const stages={dashboard:'项目驾驶舱',product:'产品与系统',engineering:'需求与架构',governance:'决策与变更',delivery:'实施与验证',history:'历史与配置'};
-const groupKinds={product:['context','capability','system'],engineering:['requirement','architecture','interface','design'],governance:['decision','change','risk'],delivery:['work_package','test','milestone']};
+const kinds={context:'产品背景',capability:'产品能力',system:'系统/组件',requirement:'需求',architecture:'总体架构',interface:'接口契约',design:'详细设计',decision:'技术决策',change:'问题/变更',risk:'风险',work_package:'实施工作包',test:'测试/证据',milestone:'里程碑',reference:'历史资料'};
+const stages={dashboard:'项目驾驶舱',product:'产品与系统',engineering:'需求与架构',governance:'决策与变更',delivery:'实施与验证',archive:'资料与归档',history:'历史与配置'};
+const groupKinds={product:['context','capability','system'],engineering:['requirement','architecture','interface','design'],governance:['decision','change','risk'],delivery:['work_package','test','milestone'],archive:['reference']};
 const statuses={DRAFT:'草稿',IN_REVIEW:'待审查',APPROVED:'已批准',SUPERSEDED:'已替代',OPEN:'待处理',CLOSED:'已关闭'};
 const relationNames={derives:'来源/派生',allocated:'分配至',defines:'定义/约束',depends:'实施依赖',implements:'实现',verifies:'验证',impacts:'变更影响'};
 const metaLabels={source:'信息来源',acceptance:'验收/判定标准',rationale:'设计依据',alternatives:'候选方案',conclusion:'决策结论',source_sha:'代码基线 SHA',file_scope:'可修改文件',input_revisions:'固定输入修订',result:'验证结果',evidence_level:'证据等级',severity:'风险等级',configuration:'适用配置',assessments:'影响评审结论',due:'目标日期'};
@@ -141,8 +142,8 @@ function renderDashboard(){const p=state.data.project;
  const h=section('近期工程活动');let timeline=el('div','panel');if(!state.data.events.length)timeline.append(el('p','','尚无操作记录。'));state.data.events.slice(0,10).forEach(ev=>{let n=el('div','event');add(n,el('strong','',ev.action+' · '+(itemName(ev.object_id)||projectName())),el('small','',ev.timestamp+' · '+ev.actor+' · '+ev.note));timeline.append(n)});h.node.append(timeline);
  root.append(note('产品定义、需求设计、已批准基线、实现状态和真实验证是不同信息。修改已批准对象会生成新修订并回到草稿，不会擦除旧批准快照。'));}
 function renderEditor(){const types=groupKinds[state.view];const desc={product:'构建产品场景、能力和系统分解，而不是预先塞进某个专用硬件模型。',engineering:'分层维护需求、架构、接口和详细设计。每个工程对象都保留正文、来源、关系与历史版本。',governance:'记录方案比较、设计决定、风险与变更；实施后的发现可以回到系统需求重新审查。',delivery:'关联已批准设计、软件工作包、测试规格与实测证据，清楚地区分实施和验证。'}[state.view];
- heading(stages[state.view],desc);
- let toolbar=el('div','toolbar'),left=el('div','buttonrow');add(left,...types.map(kind=>button('+ '+groupLabel(kind),'outline',()=>editorModal(kind))));toolbar.append(left);root.append(toolbar);
+ heading(stages[state.view],desc||(state.view==='archive'?'阅读历史资料、理解来源、查看内容差异，必要时引用到当前工程对象；导入不会自动批准任何内容。':'当前工程对象'));
+ let toolbar=el('div','toolbar'),left=el('div','buttonrow');add(left,...types.map(kind=>button('+ '+groupLabel(kind),'outline',()=>editorModal(kind))));if(state.view==='archive')left.append(button('从当前仓库导入 SAEF 档案','primary',importSaefModal));toolbar.append(left);root.append(toolbar);
  const layout=el('div','work'),index=el('div','index'),detail=el('div','detail');layout.append(index,detail);root.append(layout);
  const header=el('div','indexhead'),search=el('input');search.placeholder='搜索标题、内容、类型';search.value=state.filter;search.oninput=()=>{state.filter=search.value;drawIndex()};header.append(search);index.append(header);const list=el('div');index.append(list);
  const available=state.data.objects.filter(x=>types.includes(x.kind));if(!state.selected||!available.some(x=>x.id===state.selected))state.selected=available[0]?.id||null;
@@ -190,13 +191,25 @@ function field(parent,label,value='',mode='input',hint=''){const group=el('div',
 function selectField(parent,label,choices,current=''){let select=field(parent,label,'','select');choices.forEach(([id,title])=>select.append(new Option(title,id)));select.value=current||'';return select;}
 function modalActions(footer,onSave,label='保存'){const err=el('div','error hidden');$('#modalBody').append(err);footer.append(button('取消','outline',closeModal));footer.append(button(label,'primary',async()=>{try{await onSave();closeModal()}catch(e){err.classList.remove('hidden');err.textContent=e.message}}));}
 async function mutate(path,data){const result=await req(path,data);state.projects=await req('/api/studio/projects');await refresh();return result;}
+async function importSaefModal(){if(!state.project)return;showModal('导入现有 SAEF 历史工程档案',(body,footer)=>{
+ body.append(note('只读取启动参数 --repo 指定仓库下的 SAEF 工作产品。导入的是本地历史资料副本，不修改 Git 或原始 SAEF，也不继承其正式审批。'));
+ const out=el('div','loading','正在检查登记的工程资料……');body.append(out);
+ req('/api/studio/saef-preview?project='+qs(state.project)).then(pre=>{
+  clean(out);add(out,el('p','','可用文档：'+pre.available+' 项；本次新增：'+pre.new+' 项；已导入：'+pre.already_imported+' 项。'),el('p','','内容哈希与登记不同：'+pre.source_drift+' 项；这属于需要核对的档案差异，不表示正式工程决定自动失效。'));
+  footer.append(button('取消','outline',closeModal));
+  const apply=button('确认复制到当前项目','primary',async()=>{try{
+   const result=await req('/api/studio/import/saef',{project_id:state.project});
+   await refresh(false);closeModal();navigate('archive');toast('已导入 '+result.imported+' 项历史资料，未自动审批');}catch(e){toast('导入失败：'+e.message)}});
+  apply.disabled=pre.new===0;footer.append(apply);
+ }).catch(e=>{out.textContent='未发现可导入的 SAEF 工程资料：'+e.message;footer.append(button('关闭','outline',closeModal));});
+ });}
 function projectModal(project=null){showModal(project?'修改项目定义':'创建工程项目',(body,footer)=>{
  const name=field(body,'项目/产品名称',project?.name||'');const summary=field(body,'一句话产品目标',project?.summary||'','textarea');summary.className='short';const details=field(body,'完整背景、使用场景、系统边界与约束',project?.body||'','textarea');
  const version=field(body,'当前产品版本',project?.version||'');const variant=field(body,'适用型号 / 变体',project?.variant||'');
  modalActions(footer,async()=>{const payload={name:name.value,summary:summary.value,body:details.value,version:version.value,variant:variant.value};
  const result=await req(project?'/api/studio/project/update':'/api/studio/project',project?{...payload,id:project.id}:payload);
  state.projects=await req('/api/studio/projects');state.project=result.project.id;state.selected=null;await refresh();toast(project?'项目定义已更新':'项目已创建。可以开始记录产品背景和系统能力。')},project?'保存定义':'创建项目');});}
-const fieldSpecs={context:[['source','背景与来源']],capability:[['acceptance','能力完成/验收标准']],system:[['rationale','结构划分理由']],requirement:[['source','需求来源'],['acceptance','可验证的验收条件']],architecture:[['rationale','架构选型与约束']],interface:[['acceptance','接口正确性/兼容条件']],design:[['acceptance','设计验收与异常场景']],decision:[['alternatives','候选方案及利弊'],['conclusion','推荐或已选方案'],['rationale','决策依据']],change:[['source','发现来源及证据'],['severity','影响/紧急程度']],risk:[['severity','风险等级'],['rationale','风险原因与缓解措施']],work_package:[['source_sha','目标源码提交 SHA'],['file_scope','可修改的文件范围（每行一个）'],['acceptance','实施验收条件']],test:[['result','执行结论：未执行、通过、失败、受限'],['evidence_level','证据类型：单测、集成、实测、用户验收'],['configuration','适用配置与版本']],milestone:[['due','计划完成日期'],['acceptance','关闭条件']]};
+const fieldSpecs={context:[['source','背景与来源']],capability:[['acceptance','能力完成/验收标准']],system:[['rationale','结构划分理由']],requirement:[['source','需求来源'],['acceptance','可验证的验收条件']],architecture:[['rationale','架构选型与约束']],interface:[['acceptance','接口正确性/兼容条件']],design:[['acceptance','设计验收与异常场景']],decision:[['alternatives','候选方案及利弊'],['conclusion','推荐或已选方案'],['rationale','决策依据']],change:[['source','发现来源及证据'],['severity','影响/紧急程度']],risk:[['severity','风险等级'],['rationale','风险原因与缓解措施']],work_package:[['source_sha','目标源码提交 SHA'],['file_scope','可修改的文件范围（每行一个）'],['acceptance','实施验收条件']],test:[['result','执行结论：未执行、通过、失败、受限'],['evidence_level','证据类型：单测、集成、实测、用户验收'],['configuration','适用配置与版本']],milestone:[['due','计划完成日期'],['acceptance','关闭条件']],reference:[]};
 function editorModal(kind,existing=null){showModal((existing?'修订':'新建')+groupLabel(kind),(body,footer)=>{
  body.append(note('此操作写入本地工程数据库。修订已经批准的设计会创建新的草稿版本，旧批准历史继续保留。'));
  const title=field(body,'工程对象标题',existing?.title||'');const description=field(body,'完整问题、要求或设计内容',existing?.body||'','textarea');
