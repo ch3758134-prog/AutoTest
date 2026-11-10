@@ -193,6 +193,25 @@ class EvidenceLedResearchTests(unittest.TestCase):
         self.assertEqual(self.store.approve(unrelated["id"],1,"负责人",
                            "不存在关键未知技术")["item"]["state"],"APPROVED")
 
+    def test_reviewed_retest_can_resolve_previous_failed_experiment(self):
+        study=self.study()
+        option=self.option(study["id"])
+        exp=self.experiment(study["id"],option["id"])
+        failed=self.evidence(exp["id"],result="FAIL")
+        self.reviewed(failed["id"])
+        self.assertFalse(self.research.evaluate(study["id"],option["id"])["ready"])
+        # Another real run is recorded; older failure stays in evidence history.
+        later=self.research.record_result(exp["id"],{
+            "outcome":"PASS","observations":"reworked buffer policy was verified",
+            "raw_reference":"evidence/retest.zip","configuration":"board A/firmware F2",
+            "source_revision":"e"*40,"performed_by":"现场测试员"})
+        result=later["experiments"][0]["results"][-1]
+        self.reviewed(result["id"])
+        gate=self.research.evaluate(study["id"],option["id"])
+        self.assertTrue(gate["ready"])
+        self.assertEqual(gate["accepted_evidence"][0]["previous_failed_runs"],1)
+        self.assertEqual(len(self.research.detail(study["id"])["experiments"][0]["results"]),2)
+
     def test_invalid_evidence_hash_rejected(self):
         study=self.study()
         o=self.option(study["id"])
