@@ -1,4 +1,7 @@
 using System.IO;
+using System.Diagnostics;
+using System.Text.Json;
+using AutoTest.Devices.Can;
 using AutoTest.Application.V1;
 using AutoTest.Application.Composition;
 using AutoTest.Desktop.Shell;
@@ -80,6 +83,68 @@ public sealed class R1PhysicalWaveDbcIntegrationTests
         workspace.CreateProject("new");
         vm.RefreshExternalWorkspaceChanges();
         Assert.Equal(3, notifications);
+    }
+
+    [Fact]
+    public async Task ActualHubRxFramesProduceReplayCompatibleArchiveWithoutTransmit()
+    {
+        using var hub = new CanFrameHub();
+        var workspace = new V1Workspace();
+        var asset = workspace.ImportDbc(DbcText, "demo.dbc");
+        const long generation = 7;
+        var capture = R1RecordedCanArchiveCapture.CaptureAsync(
+            hub, () => true, asset.ToReference(), generation,
+            TimeSpan.FromMilliseconds(400), 64);
+        for (var attempt = 0; hub.SubscriberCount == 0 && attempt < 400; attempt++)
+            await Task.Delay(5);
+        Assert.Equal(1, hub.SubscriberCount);
+        for (var n = 0; n < 2; n++)
+        {
+            var payload = new byte[] { (byte)(n + 1) };
+            var frame = CanFrame.Create(BusRole.DutCan, false, 1, payload);
+            var stamp = TimePoint.FromHostArrival(
+                DateTimeOffset.UtcNow.AddMilliseconds(10 + n * 20),
+                Stopwatch.GetTimestamp());
+            hub.Publish(new CanObservation(frame, stamp, EvidenceQuality.HostObserved,
+                generation, 0, EvidenceRef.New()));
+            await Task.Delay(20);
+        }
+        var archive = await capture;
+        Assert.Equal(2, archive.Frames.Length);
+        Assert.Equal(asset.Id.Value, archive.DbcId);
+        Assert.Equal("01", archive.Frames[0].PayloadHex);
+        Assert.Equal("02", archive.Frames[1].PayloadHex);
+        Assert.All(archive.Frames, x => Assert.Equal(BusRole.DutCan, x.Role));
+
+        var directory = Path.Combine(Path.GetTempPath(), "AutoTest-Wave-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var file = Path.Combine(directory, "canrx.json");
+            await File.WriteAllBytesAsync(file, JsonSerializer.SerializeToUtf8Bytes(archive));
+            using var replayHub = new CanFrameHub();
+            var recorded = new RecordedCanWaveReplayProvider(
+                replayHub, replayHub.Publish, () => true, workspace, directory);
+            recorded.LoadArchiveFile(file);
+            Assert.True(recorded.HasArchive);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task CanRxArchiveRefusesStaleSessionBeforeSubscribing()
+    {
+        using var hub = new CanFrameHub();
+        var workspace = new V1Workspace();
+        var asset = workspace.ImportDbc(DbcText, "demo.dbc");
+        var failure = await Assert.ThrowsAsync<WaveCaptureException>(async () =>
+        {
+            await R1RecordedCanArchiveCapture.CaptureAsync(
+                hub, () => false, asset.ToReference(), 1,
+                TimeSpan.FromMilliseconds(200), 100);
+        });
+        Assert.Equal("PHYSICAL_RX_ARCHIVE_NOT_READY", failure.Code);
+        Assert.Equal(0, hub.SubscriberCount);
     }
 
 }
