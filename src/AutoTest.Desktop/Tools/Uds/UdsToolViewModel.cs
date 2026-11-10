@@ -12,12 +12,13 @@ public sealed class UdsToolViewModel : BindableBase
 {
     private readonly UdsDiagnosticWorkspace _backend;
     private readonly UdsReplayWorkspace _replay = new();
+    private CancellationTokenSource? _sendStop;
     private bool _isBusy, _injectPending, _noResponse, _injectNrc;
     private string _profileName="Mock ECU", _mockIdentity="MOCK_ECU_A",
         _txId="7E0", _rxId="7E8", _p2Ms="1000", _p2StarMs="5000",
         _requestHex="22 F1 90", _expectedHex="", _serviceName="Read VIN (Mock)",
         _documentPath="", _status="MOCK_READY", _responseHex="—",
-        _nrc="—", _expectedMatch="NOT_SPECIFIED", _error="",
+        _nrc="—", _expectedMatch="NOT_SPECIFIED", _error="", _responseSummary="尚未收到诊断响应。",
         _faultSid="22", _faultCode="31", _session="Default / Unknown",
         _sourceMode="Mock", _replayPath="";
     private UdsServiceDefinition? _selectedService;
@@ -29,7 +30,8 @@ public sealed class UdsToolViewModel : BindableBase
         Services.Add(new("Read DTC (Mock)","19 02 FF",""));
         Services.Add(new("Tester Present (Mock)","3E 00",""));
         Services.Add(new("Default session (Mock)","10 01",""));
-        SendCommand = new DelegateCommand(() => _ = SendAsync(), () => !IsBusy);
+        SendCommand = new DelegateCommand(() => _ = SendBoundedAsync(), () => !IsBusy);
+        CancelCommand = new DelegateCommand(() => _sendStop?.Cancel(), () => IsBusy && _sendStop is not null);
         ResetCommand = new DelegateCommand(() => _ = ResetAsync(), () => !IsBusy);
         SaveServiceCommand = new DelegateCommand(SaveService, () => !IsBusy);
         DeleteServiceCommand = new DelegateCommand(DeleteService, () => !IsBusy);
@@ -40,6 +42,7 @@ public sealed class UdsToolViewModel : BindableBase
     public ObservableCollection<UdsServiceDefinition> Services { get; } = new();
     public ObservableCollection<UdsCanTraceRow> TraceRows { get; } = new();
     public DelegateCommand SendCommand { get; }
+    public DelegateCommand CancelCommand { get; }
     public DelegateCommand ResetCommand { get; }
     public DelegateCommand SaveServiceCommand { get; }
     public DelegateCommand DeleteServiceCommand { get; }
@@ -52,7 +55,7 @@ public sealed class UdsToolViewModel : BindableBase
     public bool IsBusy { get => _isBusy; private set
         { if (SetProperty(ref _isBusy,value))
           foreach(var command in Commands()) command.RaiseCanExecuteChanged(); } }
-    private IEnumerable<DelegateCommand> Commands() => [SendCommand, ResetCommand,
+    private IEnumerable<DelegateCommand> Commands() => [SendCommand, CancelCommand, ResetCommand,
         SaveServiceCommand, DeleteServiceCommand, SaveDocumentCommand, LoadDocumentCommand, LoadReplayCommand];
     public string ProfileName { get => _profileName; set => SetProperty(ref _profileName,value); }
     public string MockIdentity { get => _mockIdentity; set => SetProperty(ref _mockIdentity,value); }
@@ -77,6 +80,7 @@ public sealed class UdsToolViewModel : BindableBase
     public string Nrc { get => _nrc; private set => SetProperty(ref _nrc,value); }
     public string ExpectedMatch { get => _expectedMatch; private set => SetProperty(ref _expectedMatch,value); }
     public string Error { get => _error; private set => SetProperty(ref _error,value); }
+    public string ResponseSummary { get => _responseSummary; private set => SetProperty(ref _responseSummary,value); }
     public UdsServiceDefinition? SelectedService
     {
         get => _selectedService;
@@ -94,10 +98,24 @@ public sealed class UdsToolViewModel : BindableBase
     private UdsToolProfile Profile() => new(ProfileName,MockIdentity,CanId(TxId),CanId(RxId),
         Ms(P2Ms),Ms(P2StarMs));
     private UdsToolDocument Document() => new(1,Profile(),Services.ToList());
+    private async Task SendBoundedAsync()
+    {
+        if (IsBusy) return;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        _sendStop=stop;
+        try { await SendAsync(stop.Token); }
+        finally
+        {
+            _sendStop=null;
+            CancelCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     public async Task SendAsync(CancellationToken ct = default)
     {
         if (IsBusy) return;
-        IsBusy=true; Status="MOCK_SENDING"; Error=""; Nrc="—"; ResponseHex="—";
+        IsBusy=true; Status=SourceMode=="Replay" ? "REPLAY_REQUEST" : "MOCK_SENDING"; Error=""; Nrc="—"; ResponseHex="—";
+        ResponseSummary="诊断请求执行中；等待明确的请求/响应证据。";
         try
         {
             var request=UdsHex.Parse(RequestHex);
@@ -116,14 +134,24 @@ public sealed class UdsToolViewModel : BindableBase
             ApplyExchange(exchange,request);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        { Status="CANCELLED"; Error="REQUEST_CANCELLED"; }
+        { Status="CANCELLED"; Error="REQUEST_CANCELLED"; ResponseSummary="已取消，不能判定任何 ECU 响应成功。"; }
         catch (Exception ex)
-        { Status="WORKBENCH_ERROR"; Error=ex.GetType().Name+": "+ex.Message; }
+        { Status="WORKBENCH_ERROR"; Error=ex.GetType().Name+": "+ex.Message;
+          ResponseSummary="请求处理错误，不提供已确认响应。"; }
         finally { IsBusy=false; }
     }
     private void ApplyExchange(UdsToolExchange exchange,byte[] request)
     {
             ResponseHex=string.IsNullOrEmpty(exchange.ResponseHex) ? "(no confirmed response)" : exchange.ResponseHex;
+            try
+            {
+                ResponseSummary=string.IsNullOrWhiteSpace(exchange.ResponseHex)
+                    ? "没有 ECU 诊断 PDU，不能把本地操作成功当作 ECU 应答。"
+                    : AutoTest.Specialists.Uds.UdsDiagnosticResponseFormatter.Explain(
+                        request,UdsHex.Parse(exchange.ResponseHex));
+            }
+            catch (Exception ex)
+            { ResponseSummary="响应解析未完成："+ex.Message+"；请查看原始 PDU。"; }
             Status=exchange.Source.ToUpperInvariant()+"_"+
                 (exchange.ExpectedMatched==false ? "EXPECTED_MISMATCH" : exchange.Outcome.ToUpperInvariant());
             Nrc=exchange.Nrc;
@@ -149,6 +177,7 @@ public sealed class UdsToolViewModel : BindableBase
         if (IsBusy) return;
         IsBusy=true; Error="";
         try { await _backend.ResetMockAsync(MockIdentity); TraceRows.Clear(); Status="MOCK_RESET";
+            ResponseSummary="Mock ECU 已重置；不代表任何真实 ECU 状态发生变化。";
             ResponseHex="—"; Nrc="—"; ExpectedMatch="NOT_SPECIFIED"; Session="Default / Unknown"; }
         catch(Exception ex) { Status="MOCK_ERROR"; Error=ex.Message; }
         finally { IsBusy=false; }
