@@ -206,9 +206,10 @@ function renderChangeDetail(selected,content){const panel=el('div','detailsectio
  for(const r of impactLinks){let row=el('div','assess');row.append(el('strong','',itemName(r.target_id)));const s=el('select');[['','尚未评估'],['REVISE','需要修订'],['NO_CHANGE','确认无需改动'],['INVESTIGATE','继续研究']].forEach(([v,t])=>s.append(new Option(t,v)));s.value=selected.meta.assessments?.[r.target_id]||'';s.onchange=async()=>{try{const meta={...selected.meta,assessments:{...(selected.meta.assessments||{}),[r.target_id]:s.value}};await mutate('/api/studio/object/'+selected.id+'/update',{expected_revision:selected.revision,meta});toast('影响评估已登记新修订');}catch(e){toast('保存失败：'+e.message)}};row.append(s);panel.append(row);}
  panel.append(button('展开潜在下游影响','link',()=>impactModal(selected)));content.append(panel);}
 function renderWorkPackageHint(selected,content){const section=el('div','detailsection');section.append(el('h3','','实施版本与上下文'));section.append(el('div','muted','工作包只有关联已批准且固定修订的上游设计、明确代码范围和验收条件，才可以批准并生成 AI 上下文。'));section.append(button('固定当前关联输入修订','outline',async()=>{
-  const ids=state.data.relations.filter(x=>x.target_id===selected.id&&x.kind==='depends').map(x=>x.source_id);
-  if(!ids.length){toast('请先建立“实施依赖”关联');return;}
-  const meta={...selected.meta,input_revisions:Object.fromEntries(ids.map(id=>[id,item(id)?.revision]))};
+  const report=await req('/api/studio/readiness?id='+qs(selected.id));
+  const inputs=report.upstream;
+  if(!inputs.length){toast('请先建立“实施依赖”关联');return;}
+  const meta={...selected.meta,input_revisions:Object.fromEntries(inputs.map(x=>[x.id,x.revision]))};
   try{await mutate('/api/studio/object/'+selected.id+'/update',{expected_revision:selected.revision,meta});toast('输入修订已固定，请重新检查准入。');}catch(e){toast(e.message)}
  }));content.append(section);}
 function renderHistory(){heading('历史、版本与配置','每一项工程对象的修订与审批独立保存。导出包含完整项目对象、关系、审查历史与操作记录。');const p=state.data.project;
