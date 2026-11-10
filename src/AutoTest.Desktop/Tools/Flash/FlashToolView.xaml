@@ -1,247 +1,120 @@
 <UserControl x:Class="AutoTest.Desktop.Tools.Flash.FlashToolView"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:prism="http://prismlibrary.com/"
-    prism:ViewModelLocator.AutoWireViewModel="False"
-    Background="#101620" Foreground="#E2EDF7"
-    FontFamily="Segoe UI" FontSize="13">
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13">
  <UserControl.Resources>
-  <SolidColorBrush x:Key="FlashPanel" Color="#192431"/>
-  <SolidColorBrush x:Key="FlashStroke" Color="#314458"/>
-  <SolidColorBrush x:Key="FlashMuted" Color="#92A4B7"/>
-  <Style x:Key="FlashCard" TargetType="Border">
-   <Setter Property="Background" Value="{StaticResource FlashPanel}"/>
-   <Setter Property="BorderBrush" Value="{StaticResource FlashStroke}"/>
-   <Setter Property="BorderThickness" Value="1"/>
-   <Setter Property="Padding" Value="13"/>
-   <Setter Property="CornerRadius" Value="5"/>
-  </Style>
-  <Style x:Key="FlashTitle" TargetType="TextBlock">
+  <Style TargetType="Button">
    <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="FontSize" Value="14"/>
-   <Setter Property="FontWeight" Value="SemiBold"/>
-   <Setter Property="Margin" Value="0,0,0,10"/>
+   <Setter Property="Background" Value="#263748"/>
+   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Margin" Value="3,2"/>
+   <Setter Property="Padding" Value="12,6"/>
   </Style>
-  <Style x:Key="FlashLabel" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="{StaticResource FlashMuted}"/>
-   <Setter Property="FontSize" Value="11"/>
-   <Setter Property="Margin" Value="0,7,0,4"/>
-  </Style>
-  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E2EDF7"/></Style>
   <Style TargetType="TextBox">
    <Setter Property="Foreground" Value="#E2EDF7"/>
    <Setter Property="Background" Value="#101620"/>
-   <Setter Property="BorderBrush" Value="{StaticResource FlashStroke}"/>
-   <Setter Property="Padding" Value="8,5"/>
-   <Setter Property="MinHeight" Value="29"/>
-   <Setter Property="Margin" Value="0,2,0,7"/>
+   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Padding" Value="6,5"/>
   </Style>
-  <Style TargetType="Button">
-   <Setter Property="Background" Value="#263748"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="{StaticResource FlashStroke}"/>
-   <Setter Property="MinHeight" Value="30"/>
-   <Setter Property="Padding" Value="10,6"/>
-   <Setter Property="Margin" Value="0,0,7,6"/>
-  </Style>
-  <Style x:Key="FlashPrimary" TargetType="Button">
-   <Setter Property="Background" Value="#126BBB"/>
-   <Setter Property="Foreground" Value="White"/>
-   <Setter Property="BorderBrush" Value="#277ABD"/>
-   <Setter Property="MinHeight" Value="33"/>
-   <Setter Property="Padding" Value="14,7"/>
-   <Setter Property="FontWeight" Value="SemiBold"/>
-   <Setter Property="Margin" Value="0,0,10,6"/>
-  </Style>
-  <Style TargetType="ListBox">
-   <Setter Property="Background" Value="#101620"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="{StaticResource FlashStroke}"/>
-  </Style>
+  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E2EDF7"/></Style>
   <Style TargetType="DataGrid">
-   <Setter Property="Background" Value="#192431"/>
    <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="Background" Value="#192431"/>
    <Setter Property="RowBackground" Value="#192431"/>
    <Setter Property="AlternatingRowBackground" Value="#202D3B"/>
-   <Setter Property="BorderBrush" Value="{StaticResource FlashStroke}"/>
-   <Setter Property="HeadersVisibility" Value="Column"/>
-   <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-   <Setter Property="HorizontalGridLinesBrush" Value="#314458"/>
+   <Setter Property="BorderBrush" Value="#314458"/>
   </Style>
  </UserControl.Resources>
- <Grid Margin="12">
-  <Grid.RowDefinitions>
-   <RowDefinition Height="Auto"/>
-   <RowDefinition Height="Auto"/>
-   <RowDefinition Height="*" MinHeight="280"/>
-   <RowDefinition Height="170" MinHeight="110"/>
-  </Grid.RowDefinitions>
-  <DockPanel Margin="3,0,3,11">
-   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-    <Button Content="检查镜像 / Profile" Command="{Binding PreflightCommand}"/>
-    <Button Content="▶ Mock Dry-run" Command="{Binding StartCommand}" Style="{StaticResource FlashPrimary}"/>
-    <Button Content="■ 请求中止" Command="{Binding CancelCommand}"/>
+ <Grid Margin="16">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <DockPanel Grid.Row="0" Margin="0,0,0,12">
+   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+    <Button Content="选择固件…" Click="BrowseImage_Click"/>
+    <Button Content="导入 CanTool XML…" Click="ImportCanTool_Click"/>
+    <Button Content="验证固件和配置" Command="{Binding PreflightCommand}"/>
+    <Button Content="检查当前真实主控" Click="PhysicalPreflight_Click"/>
    </StackPanel>
    <StackPanel>
-    <TextBlock Text="CAN Flash" FontWeight="SemiBold" FontSize="21"/>
-    <TextBlock Text="PROGRAMMING / FLASH  ·  Image Assets · ECU Preflight · Programming Job · Audit"
-               Foreground="{StaticResource FlashMuted}" FontSize="11" Margin="0,4,0,0"/>
+    <TextBlock Text="CAN Flash / 固件与配置" FontSize="22" FontWeight="SemiBold"/>
+    <TextBlock Text="Firmware · ECU Profile · Address Map · Hardware Preflight"
+               Foreground="#92A4B7" Margin="0,4,0,0"/>
    </StackPanel>
   </DockPanel>
-  <Border Grid.Row="1" Background="#493425" BorderBrush="#876038"
-          BorderThickness="1" CornerRadius="4" Padding="11,7" Margin="0,0,0,12">
-   <TextBlock Text="当前页面只有 Mock Bootloader / Dry-run。未实现、未放行真实 ECU 擦除与写入；断电、错误固件、Seed/Key 或未确认的刷写配置不能以演示结果替代。"
-              Foreground="#F5D7A2" TextWrapping="Wrap"/>
+  <Border Grid.Row="1" Padding="10" BorderBrush="#876038" BorderThickness="1"
+          Background="#493425" Margin="0,0,0,12">
+   <TextBlock Text="当前模块只执行真实文件解析、地址范围验证与非破坏性硬件检查。尚未实现获准的物理刷写流程，不发送 ECU 擦除、写入或复位命令。"
+              TextWrapping="Wrap" Foreground="#F5D7A2"/>
   </Border>
   <Grid Grid.Row="2">
-   <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="320" MinWidth="270"/>
-    <ColumnDefinition Width="10"/>
-    <ColumnDefinition Width="*" MinWidth="300"/>
-    <ColumnDefinition Width="10"/>
-    <ColumnDefinition Width="280" MinWidth="235"/>
-   </Grid.ColumnDefinitions>
-   <!-- Image / target binding -->
-   <Border Style="{StaticResource FlashCard}">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="310"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Border Grid.Column="0" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="12">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
-      <TextBlock Text="镜像和 ECU 匹配" Style="{StaticResource FlashTitle}"/>
-      <TextBlock Text="固件路径 / HEX · S19 · BIN" Style="{StaticResource FlashLabel}"/>
-      <TextBox Text="{Binding ImagePath,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"
-               ToolTip="真实文件只用于本地严格解析及模拟运行"/>
-      <WrapPanel>
-       <Button Content="选择文件…" Click="BrowseImage_Click"/>
-       <Button Content="解析镜像" Command="{Binding LoadCommand}"/>
+      <TextBlock Text="镜像文件 / 实际 ECU 配置" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
+      <TextBlock Text="固件文件 HEX / S19 / BIN" Foreground="#92A4B7"/>
+      <TextBox Text="{Binding ImagePath,UpdateSourceTrigger=PropertyChanged}"/>
+      <WrapPanel Margin="0,4,0,14">
+       <Button Content="浏览…" Click="BrowseImage_Click"/>
+       <Button Content="解析文件" Command="{Binding LoadCommand}"/>
       </WrapPanel>
-      <TextBlock Text="BIN 基地址 · Hex（BIN 无内置地址）" Style="{StaticResource FlashLabel}"/>
+      <TextBlock Text="BIN 基地址（HEX）" Foreground="#92A4B7"/>
       <TextBox Text="{Binding BinAddress,UpdateSourceTrigger=PropertyChanged}"/>
-      <Separator Background="#314458" Margin="0,13"/>
-      <TextBlock Text="ECU / PROFILE" Style="{StaticResource FlashTitle}"/>
-      <TextBlock Text="目标型号" Style="{StaticResource FlashLabel}"/>
+      <TextBlock Text="目标 ECU 型号（人工配置）" Foreground="#92A4B7" Margin="0,12,0,0"/>
       <TextBox Text="{Binding Target,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="期望 ECU 身份" Style="{StaticResource FlashLabel}"/>
+      <TextBlock Text="期望 ECU 身份（人工配置）" Foreground="#92A4B7" Margin="0,12,0,0"/>
       <TextBox Text="{Binding ExpectedIdentity,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="Mock ECU 返回身份" Style="{StaticResource FlashLabel}"/>
-      <TextBox Text="{Binding ObservedIdentity,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="允许地址起点 / 终点（End Exclusive）" Style="{StaticResource FlashLabel}"/>
-      <Grid>
-       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-       <TextBox Grid.Column="0" Text="{Binding AllowedStart,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
-       <TextBox Grid.Column="2" Text="{Binding AllowedEnd,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
-      </Grid>
-      <Grid>
-       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/><ColumnDefinition Width="7"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-       <StackPanel><TextBlock Text="模拟 V" Style="{StaticResource FlashLabel}"/><TextBox Text="{Binding MockVoltage}"/></StackPanel>
-       <StackPanel Grid.Column="2"><TextBlock Text="最低 V" Style="{StaticResource FlashLabel}"/><TextBox Text="{Binding VoltageMin}"/></StackPanel>
-       <StackPanel Grid.Column="4"><TextBlock Text="最高 V" Style="{StaticResource FlashLabel}"/><TextBox Text="{Binding VoltageMax}"/></StackPanel>
-      </Grid>
-      <TextBlock Text="传输块数据字节数（Mock）" Style="{StaticResource FlashLabel}"/>
-      <TextBox Text="{Binding ChunkSize,UpdateSourceTrigger=PropertyChanged}"/>
-      <Button Content="验证 Image / Profile" Command="{Binding PreflightCommand}" Style="{StaticResource FlashPrimary}"/>
+      <TextBlock Text="CanTool XML Flash 起点 / 终点" Foreground="#92A4B7" Margin="0,12,0,0"/>
+      <TextBlock Text="{Binding AllowedStart}" FontFamily="Consolas"/>
+      <TextBlock Text="{Binding AllowedEnd}" FontFamily="Consolas" Margin="0,0,0,12"/>
+      <TextBlock Text="{Binding ConfigurationStatus}" TextWrapping="Wrap" Foreground="#81C9BA"/>
      </StackPanel>
     </ScrollViewer>
    </Border>
-   <!-- Actual image parsing / preflight output -->
    <Grid Grid.Column="2">
-    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="11"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border Style="{StaticResource FlashCard}">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Border Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="12">
      <StackPanel>
-      <TextBlock Text="IMAGE VALIDATION / 固件段" Style="{StaticResource FlashTitle}"/>
-      <WrapPanel Margin="0,0,0,4">
-       <Button Content="导入 CanTool XML" Click="ImportCanTool_Click"/>
-       <Button Content="真实硬件条件检查" Click="PhysicalPreflight_Click"/>
+      <TextBlock Text="固件解析结果" FontSize="15" FontWeight="SemiBold"/>
+      <WrapPanel Margin="0,12,0,8">
+       <TextBlock Text="格式：" Foreground="#92A4B7"/>
+       <TextBlock Text="{Binding Format}" Margin="0,0,18,0"/>
+       <TextBlock Text="字节：" Foreground="#92A4B7"/>
+       <TextBlock Text="{Binding Bytes}"/>
       </WrapPanel>
-      <TextBlock Text="{Binding ConfigurationStatus}" Foreground="{StaticResource FlashMuted}"
-                 TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"/>
-      <TextBlock Text="{Binding PhysicalPreflight}" Foreground="#E8B967"
-                 TextWrapping="Wrap" FontSize="11" Margin="0,0,0,10"/>
-      <WrapPanel>
-       <TextBlock Text="格式  " Foreground="{StaticResource FlashMuted}"/>
-       <TextBlock Text="{Binding Format}" FontWeight="SemiBold" Margin="0,0,18,0"/>
-       <TextBlock Text="有效数据  " Foreground="{StaticResource FlashMuted}"/>
-       <TextBlock Text="{Binding Bytes}" FontWeight="SemiBold"/>
-      </WrapPanel>
-      <TextBlock Text="{Binding Hash}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,6"
-                 Foreground="#46D0DC"/>
-      <TabControl Height="183" Background="#192431">
-       <TabItem Header="固件段 / SEGMENTS">
-      <DataGrid ItemsSource="{Binding Segments}" IsReadOnly="True" AutoGenerateColumns="False"
-                CanUserAddRows="False" Height="144" RowHeaderWidth="0">
+      <TextBlock Text="{Binding Hash}" FontFamily="Consolas" TextWrapping="Wrap" Foreground="#46D0DC"/>
+      <TextBlock Text="{Binding Failure}" TextWrapping="Wrap" Foreground="#FF8994" Margin="0,7,0,0"/>
+      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+     </StackPanel>
+    </Border>
+    <TabControl Grid.Row="1" Margin="0,10,0,0" Background="#192431">
+     <TabItem Header="固件段">
+      <DataGrid ItemsSource="{Binding Segments}" AutoGenerateColumns="False" IsReadOnly="True" RowHeaderWidth="0">
        <DataGrid.Columns>
-        <DataGridTextColumn Header="Start" Binding="{Binding Start}" Width="*"/>
-        <DataGridTextColumn Header="End Exclusive" Binding="{Binding EndExclusive}" Width="*"/>
-        <DataGridTextColumn Header="Bytes" Binding="{Binding Bytes}" Width="Auto"/>
+        <DataGridTextColumn Header="起点" Binding="{Binding Start}" Width="*"/>
+        <DataGridTextColumn Header="终点（不含）" Binding="{Binding EndExclusive}" Width="*"/>
+        <DataGridTextColumn Header="字节" Binding="{Binding Bytes}" Width="Auto"/>
        </DataGrid.Columns>
       </DataGrid>
-       </TabItem>
-       <TabItem Header="CanTool 配置 / SOURCE">
-        <DataGrid ItemsSource="{Binding ConfigurationFields}" AutoGenerateColumns="True"
-                  IsReadOnly="True" HeadersVisibility="Column" CanUserAddRows="False"
-                  Background="#192431" Foreground="#E2EDF7"/>
-       </TabItem>
-       <TabItem Header="真实硬件预检 / GATE">
-        <DataGrid ItemsSource="{Binding PhysicalChecks}" AutoGenerateColumns="True"
-                  IsReadOnly="True" HeadersVisibility="Column" CanUserAddRows="False"
-                  Background="#192431" Foreground="#E2EDF7"/>
-       </TabItem>
-      </TabControl>
-     </StackPanel>
-    </Border>
-    <Border Grid.Row="2" Style="{StaticResource FlashCard}">
-     <StackPanel>
-      <TextBlock Text="PROGRAMMING JOB / 运行与预检" Style="{StaticResource FlashTitle}"/>
-      <WrapPanel Margin="0,0,0,6">
-       <Button Content="运行 Mock 预检" Command="{Binding PreflightCommand}"/>
-       <Button Content="启动 Dry-run" Command="{Binding StartCommand}" Style="{StaticResource FlashPrimary}"/>
-       <Button Content="停止" Command="{Binding CancelCommand}"/>
-      </WrapPanel>
-      <TextBlock Text="预检" Style="{StaticResource FlashLabel}"/>
-      <TextBlock Text="{Binding Preflight}" TextWrapping="Wrap" FontWeight="SemiBold"/>
-      <TextBlock Text="执行阶段 / 确认字节" Style="{StaticResource FlashLabel}"/>
-      <TextBlock Text="{Binding Progress}" FontFamily="Consolas" FontSize="15" Foreground="#46D0DC"/>
-      <TextBlock Text="{Binding Failure}" Foreground="#FF8994" TextWrapping="Wrap" Margin="0,10,0,0"/>
-      <TextBlock Text="{Binding RecoveryAdvice}" Foreground="{StaticResource FlashMuted}"
-                 TextWrapping="Wrap" Margin="0,8,0,0"/>
-     </StackPanel>
-    </Border>
+     </TabItem>
+     <TabItem Header="CanTool 配置字段">
+      <DataGrid ItemsSource="{Binding ConfigurationFields}" AutoGenerateColumns="True" IsReadOnly="True"/>
+     </TabItem>
+     <TabItem Header="真实硬件预检">
+      <DockPanel>
+       <StackPanel DockPanel.Dock="Top" Margin="8">
+        <TextBlock Text="{Binding PhysicalPreflight}" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding Preflight}" Foreground="#E8B967"/>
+       </StackPanel>
+       <DataGrid ItemsSource="{Binding PhysicalChecks}" AutoGenerateColumns="True" IsReadOnly="True"/>
+      </DockPanel>
+     </TabItem>
+    </TabControl>
    </Grid>
-   <!-- Right detailed stage / faults -->
-   <Border Grid.Column="4" Style="{StaticResource FlashCard}">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel>
-      <TextBlock Text="JOB INSPECTOR / STAGES" Style="{StaticResource FlashTitle}"/>
-      <TextBlock Text="只有完整的 MCU/ECU 响应与审计才能确认阶段成功；当前全部标记为 Mock。"
-                 Foreground="{StaticResource FlashMuted}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,11"/>
-      <ListBox ItemsSource="{Binding Stages}" Height="205" FontFamily="Consolas" FontSize="11"/>
-      <TextBlock Text="JobId / Snapshot" Style="{StaticResource FlashLabel}"/>
-      <TextBlock Text="{Binding Job}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11"/>
-      <Separator Background="#314458" Margin="0,14"/>
-      <TextBlock Text="MOCK 故障注入" Style="{StaticResource FlashTitle}"/>
-      <Grid>
-       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-       <StackPanel><TextBlock Text="失败 SID" Style="{StaticResource FlashLabel}"/><TextBox Text="{Binding FaultSid}"/></StackPanel>
-       <StackPanel Grid.Column="2"><TextBlock Text="NRC" Style="{StaticResource FlashLabel}"/><TextBox Text="{Binding FaultNrc}"/></StackPanel>
-      </Grid>
-      <TextBlock Text="传输前断开（第 N 块）" Style="{StaticResource FlashLabel}"/>
-      <TextBox Text="{Binding DropBlock}"/>
-      <Separator Background="#314458" Margin="0,9"/>
-      <TextBlock Text="审计导出 / 本地文件" Style="{StaticResource FlashLabel}"/>
-      <TextBox Text="{Binding AuditPath,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
-      <Button Content="导出 Mock 审计" Command="{Binding ExportAuditCommand}"/>
-     </StackPanel>
-    </ScrollViewer>
-   </Border>
   </Grid>
-  <Border Grid.Row="3" Style="{StaticResource FlashCard}" Margin="0,11,0,0">
-   <StackPanel>
-    <TextBlock Text="烧录阶段与失败恢复 / AUDIT" Style="{StaticResource FlashTitle}"/>
-    <TextBlock Text="Image Validation  →  ECU Preflight  →  Programming Session  →  Security Access  →  Erase  →  RequestDownload  →  TransferData  →  Verify  →  Reset  →  APP Readback"
-               TextWrapping="Wrap" Foreground="#D6E4F3" FontSize="13" Margin="0,5,0,13"/>
-    <TextBlock Text="{Binding Status}" FontWeight="SemiBold" Foreground="#46D0DC"/>
-    <TextBlock Text="{Binding SourceLabel}" Foreground="#E8B967" Margin="0,6,0,0"/>
-    <TextBlock Text="未完成正式物理适配、供电/IGN/安全算法、OEM 校验和失败恢复前，真实 Flash 始终不允许执行。"
-               Foreground="{StaticResource FlashMuted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
-   </StackPanel>
-  </Border>
+  <StackPanel Grid.Row="3" Margin="0,12,0,0">
+   <TextBlock Text="{Binding SourceLabel}" Foreground="#E8B967" TextWrapping="Wrap"/>
+   <TextBlock Text="烧录发送路径暂未授权；配置解析和硬件条件核对不能当作 ECU 已经被编程的证据。"
+              Foreground="#92A4B7" TextWrapping="Wrap" Margin="0,5,0,0"/>
+  </StackPanel>
  </Grid>
 </UserControl>
