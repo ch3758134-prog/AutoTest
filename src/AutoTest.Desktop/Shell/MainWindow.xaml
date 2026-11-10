@@ -291,8 +291,11 @@
        </StackPanel>
       </ScrollViewer>
      </TabItem>
-     <TabItem Header="P02/P03 设备 + CAN">
+     <TabItem Header="P02 Station">
       <ContentControl x:Name="R1StationHost"/>
+     </TabItem>
+     <TabItem Header="P03 CAN Monitor">
+      <ContentControl x:Name="R1CanHost"/>
      </TabItem>
      <TabItem Header="P04 DBC">
       <ContentControl x:Name="R1DbcHost"/>
