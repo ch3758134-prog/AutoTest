@@ -358,12 +358,12 @@
       <flash:FlashToolView x:Name="R1FlashView"/>
      </TabItem>
      <TabItem Header="P10 TEST">
-      <TabControl Background="#101620">
-       <TabItem Header="工程 TEST / 既有执行链">
-        <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>
-       </TabItem>
-       <TabItem Header="R2 高级测试程序 / 工程资产">
+      <TabControl Background="#101620" SelectedIndex="0">
+       <TabItem Header="R1 工程自动测试程序（正式执行）">
         <ContentControl x:Name="R2AuthoringHost"/>
+       </TabItem>
+       <TabItem Header="旧版 TEST 编辑器（仅 Mock 兼容）">
+        <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>
        </TabItem>
       </TabControl>
      </TabItem>
