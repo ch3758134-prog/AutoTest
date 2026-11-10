@@ -28,9 +28,9 @@ public static class DbcParserAdapter
             {
                 var m = Message.Match(line);
                 if (!m.Success) throw new ProjectDataException("DBC_PARSE", $"Malformed BO_ at line {lineNumber}.");
-                current = new DbcMessage(uint.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture),
-                    m.Groups[2].Value, int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture), m.Groups[4].Value,
-                    ImmutableArray<DbcSignal>.Empty);
+                var (id, extended) = DbcFrameId.Decode(uint.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture));
+                current = new DbcMessage(id, m.Groups[2].Value, int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture),
+                    m.Groups[4].Value, ImmutableArray<DbcSignal>.Empty, extended);
                 messages.Add(current); continue;
             }
             if (line.StartsWith("SG_ ", StringComparison.Ordinal))
@@ -62,7 +62,7 @@ public static class DbcParserAdapter
         b.AppendLine(string.Join(" ", database.Nodes)); b.AppendLine();
         foreach (var m in database.Messages)
         {
-            b.AppendLine($"BO_ {m.Id} {m.Name}: {m.Dlc} {m.Transmitter}");
+            b.AppendLine($"BO_ {DbcFrameId.Encode(m.Id, m.IsExtended)} {m.Name}: {m.Dlc} {m.Transmitter}");
             foreach (var s in m.Signals)
             {
                 string number(double x) => x.ToString("R", CultureInfo.InvariantCulture);
