@@ -169,6 +169,7 @@ public partial class MainWindow : Window
             case 6 when R1WaveHost.Content is null:
             {
                 var wave = new WaveWorkbenchView();
+                wave.AttachArchiveCapture(() => _device?.Controller, () => host.Workspace);
                 var appData = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AutoTest");
                 var waveRoot = Path.Combine(appData, "R1", "wave-workbench");
@@ -460,6 +461,8 @@ public partial class MainWindow : Window
     private async void Window_Closing(object? sender,CancelEventArgs e)
     {
         if (_closed) return;
+        if (R1WaveHost.Content is WaveWorkbenchView wave)
+            wave.CancelArchiveRecording();
         if (_device is null && _production is null)
         {
             _waveReplayHub?.Dispose();
