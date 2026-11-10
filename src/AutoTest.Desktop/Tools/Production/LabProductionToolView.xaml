@@ -2,18 +2,29 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              MinWidth="650" MinHeight="420"
-             Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}">
+             Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13">
     <UserControl.Resources>
         <Style TargetType="Button">
             <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Foreground" Value="#E2EDF7" />
+            <Setter Property="Background" Value="#263748" />
+            <Setter Property="BorderBrush" Value="#314458" />
             <Setter Property="Margin" Value="3,0,3,0" />
             <Setter Property="MinHeight" Value="30" />
         </Style>
         <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#101620" />
+            <Setter Property="Foreground" Value="#E2EDF7" />
+            <Setter Property="BorderBrush" Value="#314458" />
             <Setter Property="Padding" Value="6,5" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
         <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#192431" />
+            <Setter Property="Foreground" Value="#E2EDF7" />
+            <Setter Property="RowBackground" Value="#192431" />
+            <Setter Property="AlternatingRowBackground" Value="#202D3B" />
+            <Setter Property="BorderBrush" Value="#314458" />
             <Setter Property="RowHeight" Value="30" />
             <Setter Property="HeadersVisibility" Value="Column" />
             <Setter Property="CanUserAddRows" Value="False" />
@@ -25,12 +36,40 @@
     </UserControl.Resources>
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-            <TextBlock FontSize="23" FontWeight="SemiBold" Text="生产 / 扫码模拟工作台" />
+            <TextBlock FontSize="23" FontWeight="SemiBold" Text="P12 · 生产扫码与 DUT 识别" />
             <TextBlock Margin="0,6,0,0" Foreground="#9B3D21" FontWeight="SemiBold"
-                       Text="MOCK ONLY · 当前不是实物出厂检测 · 禁止真实放行及真实出厂数累计" />
+                       Text="USB 串口扫码为真实输入；当前 TEST 执行仍为 Mock，未完成出厂放行接线" />
             <TextBlock Margin="0,4,0,0" Opacity="0.75"
-                       Text="扫码直接输入本机专用框；键盘口设备与人工键入不能自动区分。不可截获其他编辑器的键盘输入。" />
+                       Text="扫码枪经 Windows USB 串行设备 (COMx) 直接传入本机。测试区的模拟运行与实际出厂记录独立。" />
         </StackPanel>
+        <Border DockPanel.Dock="Top" Background="#192431" BorderBrush="#314458"
+                BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="真实 USB 串口扫码枪 / SERIAL SCANNER" FontWeight="SemiBold" Foreground="#E2EDF7" Margin="0,0,0,9"/>
+                <WrapPanel>
+                    <TextBlock Text="COM" Foreground="#92A4B7" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <ComboBox x:Name="R1ScannerPorts" Width="100" Margin="0,0,6,0"
+                              Background="#202D3B" Foreground="#101620"/>
+                    <Button Content="刷新设备" Click="ScannerRefresh_Click"/>
+                    <TextBlock Text="波特率" Foreground="#92A4B7" VerticalAlignment="Center" Margin="9,0,8,0"/>
+                    <ComboBox x:Name="R1ScannerBaud" Width="105" Margin="0,0,9,0"
+                              Background="#202D3B" Foreground="#101620"/>
+                    <Button x:Name="R1ScannerConnect" Content="连接串口扫码枪" Click="ScannerConnect_Click"/>
+                    <Button x:Name="R1ScannerDisconnect" Content="断开" Click="ScannerDisconnect_Click" IsEnabled="False"/>
+                </WrapPanel>
+                <TextBlock x:Name="R1ScannerState" Text="选择真实扫码枪 COM 和波特率后连接；不需键盘焦点。"
+                           Foreground="#92A4B7" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                <WrapPanel Margin="0,10,0,4">
+                    <TextBlock x:Name="R1ScannerRxCount" Text="RX 0 bytes" Foreground="#46D0DC" FontFamily="Consolas" Margin="0,0,16,0"/>
+                    <TextBlock x:Name="R1ScannerBoundary" Text="等待扫码" Foreground="#92A4B7"/>
+                </WrapPanel>
+                <TextBlock x:Name="R1ScannerHex" Text="HEX —" Foreground="#92A4B7"
+                           FontFamily="Consolas" TextWrapping="Wrap" MaxHeight="40"/>
+                <TextBlock x:Name="R1ScannerBarcode" Text="LAST BARCODE —"
+                           Foreground="#E2EDF7" FontFamily="Consolas" FontSize="14" FontWeight="SemiBold"
+                           Margin="0,7,0,0"/>
+            </StackPanel>
+        </Border>
         <Border DockPanel.Dock="Bottom" BorderThickness="1,0,0,0" BorderBrush="#D6D6D6"
                 Margin="0,12,0,0" Padding="0,10,0,0">
             <StackPanel>

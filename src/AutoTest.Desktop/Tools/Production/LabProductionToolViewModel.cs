@@ -153,6 +153,36 @@ public sealed class LabProductionToolViewModel : BindableBase
     public int DistinctMockUnits => _orchestrator.DistinctDemoUnits;
     public int FactoryReleasedCount => _orchestrator.FactoryReleasedUnits;
 
+    /// <summary>
+    /// Physical USB COM scanner input is captured by the containing R1 View.
+    /// This is real barcode acquisition + catalog matching, not an EOL run
+    /// or a mock step. An admitted barcode alone never releases a unit.
+    /// </summary>
+    public void AcceptSerialBarcode(string barcode, string portOrigin)
+    {
+        var input = LabScannerAdmission.Admit(barcode,dedicatedFieldFocused:true,busy:IsBusy);
+        if (!input.Allowed)
+        {
+            _preview=null;
+            MatchDetail="串口条码拒绝："+input.Code;
+            Status="已收到实际扫码字节，条码格式未通过校验；未启动产测。";
+            ScanEvents.Insert(0,new LabScanEventRow(DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                barcode,input.Code,portOrigin));
+            return;
+        }
+        ScanInput=input.NormalizedText;
+        _preview=LabIdentityMatcher.Match(_publishedCatalog,input.NormalizedText,_publishedCatalog.Revision);
+        MatchDetail=_preview.Accepted
+            ? $"串口扫码匹配：{_preview.Identity!.UnitKey} / {_preview.Recipe!.RecipeId} / 规则 {_preview.Identity.RuleId}"
+            : $"已接收真实扫码：当前规则未匹配 {_preview.Code}；不自动运行、不增加出厂记录";
+        Status=_preview.Accepted
+            ? "串口已采集并匹配规则；尚未启动真实 TEST，未放行。"
+            : "串口扫码已采集；身份校验未通过，禁止生产执行。";
+        ScanEvents.Insert(0,new LabScanEventRow(DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+            input.NormalizedText,_preview.Code,portOrigin));
+        while(ScanEvents.Count>500) ScanEvents.RemoveAt(ScanEvents.Count-1);
+    }
+
     // Called only from a dedicated barcode TextBox / explicit button, never a global key hook.
     public void PreviewScan()
     {
