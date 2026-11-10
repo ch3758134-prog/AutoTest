@@ -1,7 +1,6 @@
 using System.IO;
 using System.Diagnostics;
 using System.Text;
-using System.Security.Cryptography;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -30,7 +29,7 @@ namespace AutoTest.FieldStudio;
 public sealed class CanRow : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
-    public (BusRole Role, uint Id, bool Extended) Key { get; }
+    [Browsable(false)] public (BusRole Role, uint Id, bool Extended) Key { get; }
     public string Port { get; }
     public string Id { get; }
     public string Format { get; }
@@ -395,6 +394,11 @@ public partial class MainWindow : Window
         if (DbcFiles.SelectedItem is not DbcFileEntry file) return;
         try
         {
+            if (!file.Document.IsDirty)
+            {
+                DbcStatus.Text = "当前文件未修改，未对磁盘原文件执行写入。";
+                return;
+            }
             if (file.LegacyEncoding || !file.Document.CanEdit) throw new InvalidOperationException(
                 "包含不支持的 DBC 扩展：只能只读导入，不允许有损导出。");
             file.Receipt = await DbcDocumentStore.SaveAsync(file.Document, file.Receipt.Path, file.Receipt.Sha256);
@@ -403,18 +407,82 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) { Log("DBC", "保存失败：" + ex.Message); }
     }
+    private async void SaveDbcAs_Click(object sender, RoutedEventArgs e)
+    {
+        if (DbcFiles.SelectedItem is not DbcFileEntry file) return;
+        var dialog = new SaveFileDialog
+        {
+            Filter = "DBC 文件 (*.dbc)|*.dbc",
+            FileName = System.IO.Path.GetFileNameWithoutExtension(file.Receipt.Path) + "-copy.dbc",
+            Title = "另存为新的 UTF-8 DBC（不覆盖现有文件）"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            if (File.Exists(dialog.FileName))
+                throw new IOException("目标文件已存在，禁止意外覆盖。请选择新文件名。");
+            if (file.Document.IsDirty && !file.Document.CanEdit)
+                throw new InvalidOperationException("当前 DBC 语法不可安全导出编辑版本。");
+            // For a legacy GB18030 source this creates an explicitly converted
+            // UTF8 copy; the original bytes are never overwritten.
+            var receipt = await DbcDocumentStore.SaveAsync(file.Document, dialog.FileName, null);
+            var copied = new DbcFileEntry(file.Document, receipt);
+            _dbcFiles.Add(copied);
+            DbcFiles.SelectedItem = copied;
+            DbcStatus.Text = "已另存为独立 UTF-8 文件，不覆盖原始 DBC。";
+            Log("DBC", $"UTF-8 另存为 {receipt.Path}; SHA={receipt.Sha256}");
+            PopulateSignals();
+        }
+        catch (Exception ex)
+        {
+            DbcStatus.Text = "另存为失败：" + ex.Message;
+            Log("DBC", ex.ToString());
+            MessageBox.Show(this, DbcStatus.Text, "DBC 另存为", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void ReloadDbc_Click(object sender, RoutedEventArgs e)
+    {
+        if (DbcFiles.SelectedItem is not DbcFileEntry previous) return;
+        if (previous.Document.IsDirty &&
+            MessageBox.Show(this, "当前文档有尚未保存的修改，确定要从磁盘重新加载？",
+                "重载 DBC", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+        try
+        {
+            var refreshed = await LoadDbcForViewingAsync(previous.Receipt.Path);
+            int index = _dbcFiles.IndexOf(previous);
+            if (index < 0) return;
+            _dbcFiles[index] = refreshed;
+            DbcFiles.SelectedIndex = index;
+            PopulateSignals();
+            Log("DBC", $"重新加载 {refreshed.Name} SHA={refreshed.Receipt.Sha256}");
+        }
+        catch (Exception ex)
+        {
+            DbcStatus.Text = "重载失败：" + ex.Message;
+            Log("DBC", ex.ToString());
+            MessageBox.Show(this, DbcStatus.Text, "DBC 重载", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void RemoveDbc_Click(object sender, RoutedEventArgs e)
     {
         if (DbcFiles.SelectedItem is not DbcFileEntry entry) return;
         _dbcFiles.Remove(entry);
         DbcMessages.ItemsSource = null; DbcSignals.ItemsSource = null;
+        DbcRawText.Clear();
         DbcStatus.Text = "已从工作区移除，不删除磁盘文件";
         PopulateSignals();
     }
     private void DbcFiles_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (DbcFiles.SelectedItem is not DbcFileEntry entry)
-        { DbcMessages.ItemsSource = null; DbcSignals.ItemsSource = null; return; }
+        { DbcMessages.ItemsSource = null; DbcSignals.ItemsSource = null; DbcRawText.Clear(); return; }
+        var source = entry.Document.ExportText();
+        DbcRawText.Text = source.Length > 250_000
+            ? source[..250_000] + "\n\n[原始文件内容较长，预览仅显示前 250000 字符]"
+            : source;
         DbcMessages.ItemsSource = entry.Document.Model.Messages.Select(m =>
             new DbcMessageRow($"0x{m.Id:X}", m.Name, m.Dlc, m.Transmitter, m.Signals.Length)).ToList();
         DbcStatus.Text = $"{entry.Name} · Revision {entry.Document.Model.Revision} · " +

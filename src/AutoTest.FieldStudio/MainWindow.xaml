@@ -82,7 +82,9 @@
      <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
       <TextBlock Text="DBC 文件与信号工程" Style="{StaticResource HeaderText}" Width="255"/>
       <Button Content="导入 DBC" Click="ImportDbc_Click" Style="{StaticResource PrimaryButton}"/>
-      <Button Content="保存当前 DBC" Click="SaveDbc_Click"/>
+      <Button Content="另存为 UTF-8" Click="SaveDbcAs_Click"/>
+      <Button Content="重载磁盘文件" Click="ReloadDbc_Click"/>
+      <Button Content="保存编辑" Click="SaveDbc_Click" ToolTip="仅保存已经完成合法编辑的文件；目前专业编辑控件尚未实现"/>
       <Button Content="移除文件" Click="RemoveDbc_Click"/>
       <TextBlock x:Name="DbcStatus" Text="未加载文件" VerticalAlignment="Center"/>
      </StackPanel>
@@ -103,8 +105,15 @@
      </Grid>
      <Border Grid.Row="2" Style="{StaticResource CardBorder}" Margin="0,10,0,0">
       <DockPanel>
-       <TextBlock DockPanel.Dock="Top" Text="信号定义 / 属性（支持的语法可安全保存，不支持的扩展仅允许只读）" Style="{StaticResource SectionText}"/>
-       <DataGrid x:Name="DbcSignals"/>
+       <TextBlock DockPanel.Dock="Top" Text="DBC 文件与解析结果（当前只读浏览；完整信号编辑尚未实现）" Style="{StaticResource SectionText}"/>
+       <TabControl>
+        <TabItem Header="信号定义"><DataGrid x:Name="DbcSignals"/></TabItem>
+        <TabItem Header="原始 DBC 内容（只读）">
+         <TextBox x:Name="DbcRawText" IsReadOnly="True" AcceptsReturn="True" FontFamily="Consolas"
+                  FontSize="12" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Auto"/>
+        </TabItem>
+       </TabControl>
       </DockPanel>
      </Border>
     </Grid>
