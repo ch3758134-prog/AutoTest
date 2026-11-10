@@ -56,6 +56,7 @@
       <Separator Width="12"/>
       <Button Content="Preflight" Command="{Binding PreflightCommand}"/>
       <Button Content="Run Mock" Command="{Binding RunMockCommand}" FontWeight="SemiBold"/>
+      <Button Content="执行真实 CAN1 只读测试" Command="{Binding RunPhysicalReadOnlyCommand}" FontWeight="SemiBold" Background="#176A8C" ToolTip="仅运行当前工程已保存的 TEST 程序；每次要求操作员授权，无法执行输出或烧录"/>
       <Button Content="Pause" Command="{Binding PauseCommand}"/>
       <Button Content="Resume" Command="{Binding ResumeCommand}"/>
       <Button Content="Step" Command="{Binding StepCommand}"/>
@@ -150,7 +151,11 @@
       </DockPanel>
     </Border>
     <Border Grid.Row="4" BorderBrush="#314458" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="4,6">
-      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#E2EDF7"/>
+      <StackPanel>
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#E2EDF7"/>
+        <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="#81C9BA"/>
+        <TextBlock Text="真实只读 TEST 只形成诊断证据，不构成出厂 PASS。实际供电/IGN/按键/夹具/CAN 发送须独立完成安全授权与真实执行接线。" TextWrapping="Wrap" Foreground="#E8B967"/>
+      </StackPanel>
     </Border>
   </Grid>
 </UserControl>
