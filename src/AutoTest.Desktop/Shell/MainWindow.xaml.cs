@@ -218,7 +218,8 @@ public partial class MainWindow : Window
                 var scanner = new R1ProductionScannerViewModel();
                 scanner.AttachProject(host.Workspace);
                 scanner.PhysicalScanMatched += binding =>
-                    _ = ExecuteScannedProjectTestAsync(scanner, binding, host.Workspace);
+                    _ = ExecuteScannedProjectTestAsync(scanner, binding,
+                        host.Workspace, host.Records.Database);
                 _production = new LabProductionToolView(scanner);
                 R1ProductionHost.Content = _production;
                 break;
@@ -257,7 +258,8 @@ public partial class MainWindow : Window
     private async Task ExecuteScannedProjectTestAsync(
         R1ProductionScannerViewModel scanner,
         R1PhysicalScanBinding binding,
-        AutoTest.Application.V1.V1Workspace project)
+        AutoTest.Application.V1.V1Workspace project,
+        RecordDatabase database)
     {
         try
         {
@@ -265,10 +267,32 @@ public partial class MainWindow : Window
             var test = GetProjectTestModel(project);
             if (test.Busy) throw new InvalidOperationException("PROJECT_TEST_ALREADY_RUNNING");
             var result = await test.RunPhysicalReadOnlyAsync(binding);
-            scanner.MarkRunCompleted(binding, result?.RunId,
-                result is null ? "未执行 / " + test.Status :
-                "真实 CAN1 测试 " + result.Verdict + " / 非出厂放行",
-                result is null ? null : test.PhysicalEvidencePath);
+            if (result is null)
+            {
+                scanner.MarkRunCompleted(binding, null, "未执行 / " + test.Status, null);
+                return;
+            }
+            // Real physical results are recorded as DIAGNOSTIC in the existing
+            // R1 SQLite / artifact store. Never convert a read-only verdict
+            // into an automatic factory release.
+            try
+            {
+                var controller = _device?.Controller ??
+                    throw new InvalidOperationException("PHYSICAL_DEVICE_NOT_AVAILABLE");
+                var stored = await new R1PhysicalRunRecordBridge(database)
+                    .PersistAsync(project, controller, binding, result,
+                        test.PhysicalEvidencePath);
+                scanner.MarkRunCompleted(binding, stored.Value,
+                    "已写入 SQLite / Diagnostic · " + result.Verdict +
+                    " · 未授权出厂放行", test.PhysicalEvidencePath);
+            }
+            catch (Exception persistenceError)
+            {
+                scanner.MarkRunCompleted(binding, result.RunId,
+                    "SQLITE_NOT_DURABLE: " + persistenceError.Message +
+                    " · 需检查 JSON 原始证据，不能算作已入库",
+                    test.PhysicalEvidencePath);
+            }
         }
         catch (Exception ex)
         {
