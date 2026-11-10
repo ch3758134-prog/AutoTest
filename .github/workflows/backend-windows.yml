@@ -1,0 +1,101 @@
+name: Backend-only Windows validation
+
+on:
+  push:
+    branches:
+      - main
+      - recovery/backend-baseline-20261109
+    paths:
+      - 'AutoTest.Backend.slnf'
+      - '.github/workflows/backend-windows.yml'
+      - 'global.json'
+      - 'Directory.*.props'
+      - 'NuGet.Config'
+      - 'src/AutoTest.Core/**'
+      - 'src/AutoTest.Contracts/**'
+      - 'src/AutoTest.Devices/**'
+      - 'src/AutoTest.Projects/**'
+      - 'src/AutoTest.Testing/**'
+      - 'src/AutoTest.Specialists/**'
+      - 'src/AutoTest.Records/**'
+      - 'src/AutoTest.Application/**'
+      - 'tests/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'AutoTest.Backend.slnf'
+      - '.github/workflows/backend-windows.yml'
+      - 'global.json'
+      - 'Directory.*.props'
+      - 'NuGet.Config'
+      - 'src/AutoTest.Core/**'
+      - 'src/AutoTest.Contracts/**'
+      - 'src/AutoTest.Devices/**'
+      - 'src/AutoTest.Projects/**'
+      - 'src/AutoTest.Testing/**'
+      - 'src/AutoTest.Specialists/**'
+      - 'src/AutoTest.Records/**'
+      - 'src/AutoTest.Application/**'
+      - 'tests/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-windows:
+    name: Core modules and backend tests (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.400'
+      - name: Record SDK and revision
+        shell: pwsh
+        run: |
+          dotnet --info
+          git rev-parse HEAD
+      - name: Restore backend solution only
+        shell: pwsh
+        run: dotnet restore AutoTest.Backend.slnf
+      - name: Compile backend solution only
+        shell: pwsh
+        run: dotnet build AutoTest.Backend.slnf -c Release --no-restore --verbosity minimal
+      - name: Run all backend tests independently and preserve failure evidence
+        shell: pwsh
+        run: |
+          New-Item -Force -ItemType Directory -Path "$env:GITHUB_WORKSPACE/backend-test-results" | Out-Null
+          $projects = @(
+            'tests/AutoTest.Contracts.Tests/AutoTest.Contracts.Tests.csproj',
+            'tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj',
+            'tests/AutoTest.Projects.Tests/AutoTest.Projects.Tests.csproj',
+            'tests/AutoTest.Testing.Tests/AutoTest.Testing.Tests.csproj',
+            'tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj',
+            'tests/AutoTest.Records.Tests/AutoTest.Records.Tests.csproj',
+            'tests/AutoTest.Application.Tests/AutoTest.Application.Tests.csproj',
+            'tests/AutoTest.Integration.Tests/AutoTest.Integration.Tests.csproj'
+          )
+          $failed = @()
+          foreach ($project in $projects) {
+            $name = (Split-Path -Leaf (Split-Path -Parent $project))
+            Write-Host "::group::Testing $name"
+            dotnet test $project -c Release --no-restore --no-build --verbosity normal --logger "trx;LogFileName=$name.trx" --results-directory "$env:GITHUB_WORKSPACE/backend-test-results"
+            if ($LASTEXITCODE -ne 0) { $failed += $name }
+            Write-Host "::endgroup::"
+          }
+          if ($failed.Count -gt 0) {
+            Write-Host "FAILED BACKEND PROJECTS: $($failed -join ', ')"
+            exit 1
+          }
+      - name: Preserve TRX evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend-test-results/
+          if-no-files-found: warn
+          retention-days: 30
