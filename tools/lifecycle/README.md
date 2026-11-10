@@ -1,6 +1,8 @@
 # Engineering Workbench｜单人离线工程生命周期管理
 
-**当前默认程序为 V0.5 通用可编辑工作台。新增真实 GitHub Issue/PR/CI 同步、AI 任务接单和 Git 工程项目归档；仍保留研究/实测/架构/详细设计门禁。**
+**当前默认程序为 V0.6 通用可编辑工作台。新增受限项目管理 AI 建议、负责人审查、Git 工程基线比较及精确源码范围验证；原有 GitHub Issue/PR/CI、技术研究和 CODE_READY 机制保留。**
+
+最新说明：[STUDIO_V06.md](STUDIO_V06.md)。
 
 使用 GitHub 执行中心请先看 [STUDIO_V05.md](STUDIO_V05.md)。
 
