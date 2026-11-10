@@ -99,6 +99,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _renderClock = new() { Interval = TimeSpan.FromMilliseconds(120) };
     private readonly BarcodeInputRouter _scannerRouter = new();
     private readonly KeyboardWedgeCapture _keyboardScanner;
+    private readonly CancellationTokenSource _scannerStop = new();
+    private readonly Task _scannerPump;
     private readonly HashSet<string> _seenScans = new(StringComparer.Ordinal);
     private CancellationTokenSource? _rxStop;
     private Task? _rxPump;
@@ -126,6 +128,7 @@ public partial class MainWindow : Window
         DbcFiles.ItemsSource = _dbcFiles;
         _scannerRouter.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
         _keyboardScanner = new KeyboardWedgeCapture(_scannerRouter);
+        _scannerPump = Task.Run(() => ObserveAcceptedScansAsync(_scannerStop.Token));
         _device.ConnectionChanged += state => OnUi(() => SetConnectionState(state));
         _device.NativeOperation += fact =>
         {
@@ -905,20 +908,39 @@ public partial class MainWindow : Window
     }
     private void AdmitScan(ScanIngressResult result)
     {
-        if (!result.Accepted || result.Event is null)
+        if (result.Accepted && result.Event is not null)
         {
-            ScanStatus.Text = $"扫码拒绝：{result.Code}";
-            Log("SCAN", "拒绝输入：" + result.Code);
+            ScanStatus.Text = "已接收条码输入，等待校验与入库";
             return;
         }
-        string value = result.Event.Scan.Text;
-        ScanStatus.Text = $"接收到条码 · {DateTime.Now:HH:mm:ss}";
-        string status = _seenScans.Add(value) ? "已采集 / 待匹配" : "重复扫码 / 不新增出厂记录";
-        CurrentDut.Text = $"DUT: {value}";
-        _scanRows.Add(new ScanRow(DateTime.Now.ToString("HH:mm:ss.fff"),
-            result.Event.Scan.Origin, value, status));
-        while (_scanRows.Count > 400) _scanRows.RemoveAt(0);
-        Log("SCAN", $"{value} · {status}（未启动任何测试或烧录）");
+        ScanStatus.Text = $"扫码拒绝：{result.Code}";
+        Log("SCAN", "拒绝输入：" + result.Code);
+    }
+
+    private async Task ObserveAcceptedScansAsync(CancellationToken ct)
+    {
+        try
+        {
+            var policy = new InputPolicy(true, 512, "keyboard");
+            await foreach (var accepted in _scannerRouter.ObserveAsync(policy, ct).ConfigureAwait(false))
+            {
+                OnUi(() =>
+                {
+                    string value = accepted.Scan.Text;
+                    ScanStatus.Text = $"接收到条码 · {DateTime.Now:HH:mm:ss}";
+                    string status = _seenScans.Add(value)
+                        ? "已采集 / 待匹配"
+                        : "重复扫码 / 不新增出厂记录";
+                    CurrentDut.Text = $"DUT: {value}";
+                    _scanRows.Add(new ScanRow(DateTime.Now.ToString("HH:mm:ss.fff"),
+                        accepted.Scan.Origin, value, status));
+                    while (_scanRows.Count > 400) _scanRows.RemoveAt(0);
+                    Log("SCAN", $"{value} · {status}（未启动任何测试或烧录）");
+                });
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (Exception ex) { Log("SCAN", "扫码事件队列停止：" + ex); }
     }
     private void ClearLogs_Click(object sender, RoutedEventArgs e) => _logRows.Clear();
 
@@ -931,8 +953,11 @@ public partial class MainWindow : Window
         try
         {
             _renderClock.Stop();
+            _scannerStop.Cancel();
             _udsStop?.Cancel(); _rxStop?.Cancel();
             await _device.DisposeAsync();
+            try { await _scannerPump; } catch (OperationCanceledException) { }
+            _scannerStop.Dispose();
             if (_rxPump is not null)
             {
                 try { await _rxPump; } catch (OperationCanceledException) { }
