@@ -53,4 +53,44 @@ public sealed class SerialBarcodeFramerTests
         Assert.Single(frames);
         Assert.Equal("AB",System.Text.Encoding.ASCII.GetString(frames[0].Data.AsSpan()));
     }
+    [Fact]
+    public void RejectedUnterminatedScan_RecoversAfterIdleWithoutReconnect()
+    {
+        var f = new SerialBarcodeFramer();
+        var now = DateTimeOffset.UtcNow;
+        Assert.Empty(f.Accept(System.Text.Encoding.ASCII.GetBytes(new string('X', 513)), now));
+        Assert.Equal(1, f.DroppedFrames);
+        Assert.Null(f.FlushAfterIdle(now.AddMilliseconds(500), TimeSpan.FromMilliseconds(450)));
+        var frames = f.Accept("NEXT\r"u8, now.AddMilliseconds(550));
+        Assert.Single(frames);
+        Assert.Equal("NEXT", System.Text.Encoding.ASCII.GetString(frames[0].Data.AsSpan()));
+        Assert.Equal(1, f.DroppedFrames);
+    }
+
+    [Fact]
+    public void RejectedUnterminatedScan_RecoversOnNextChunkAfterQuietGap()
+    {
+        var f = new SerialBarcodeFramer();
+        var now = DateTimeOffset.UtcNow;
+        Assert.Empty(f.Accept([0x41, 0x01], now));
+        var frames = f.Accept("VALID\n"u8, now.AddSeconds(1));
+        Assert.Single(frames);
+        Assert.Equal("VALID", System.Text.Encoding.ASCII.GetString(frames[0].Data.AsSpan()));
+    }
+
+    [Fact]
+    public void TwoUnterminatedScansSeparatedByIdle_DoNotConcatenate()
+    {
+        var f = new SerialBarcodeFramer();
+        var now = DateTimeOffset.UtcNow;
+        Assert.Empty(f.Accept("FIRST"u8, now));
+        var previous = f.Accept("SECOND"u8, now.AddSeconds(1));
+        Assert.Single(previous);
+        Assert.Equal("IDLE", previous[0].Boundary);
+        Assert.Equal("FIRST", System.Text.Encoding.ASCII.GetString(previous[0].Data.AsSpan()));
+        var current = f.FlushAfterIdle(now.AddSeconds(2), TimeSpan.FromMilliseconds(450));
+        Assert.NotNull(current);
+        Assert.Equal("SECOND", System.Text.Encoding.ASCII.GetString(current.Data.AsSpan()));
+    }
+
 }
