@@ -36,7 +36,7 @@
     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
      <Button x:Name="ScanModeButton" Content="开启扫码监听" Click="ScanMode_Click" ToolTip="开启后，当前窗口的普通键盘输入也将作为扫码采集；编辑其它参数前关闭"/>
      <TextBox x:Name="ScanBox" Width="175" ToolTip="扫码枪键盘模式：点此输入后回车；无回车后缀可点右侧确认"
-       PreviewKeyDown="ScanBox_PreviewKeyDown"/>
+       PreviewKeyDown="ScanBox_PreviewKeyDown" TextChanged="ScanBox_TextChanged"/>
      <Button Content="确认" Click="ScanConfirm_Click" ToolTip="接收当前输入框的内容；不要求扫码枪配置回车后缀"/>
      <TextBlock x:Name="ScanStatus" Text="扫码未开启" VerticalAlignment="Center" Width="180" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
      <TextBlock x:Name="CurrentDut" Text="DUT：未识别" VerticalAlignment="Center" MinWidth="125" FontSize="12"/>

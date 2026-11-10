@@ -89,6 +89,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<CanRow> _canRows = [];
     private readonly Dictionary<(BusRole Role,uint Id,bool Extended),CanRow> _canById = [];
     private bool _scannerMode;
+    private bool _scanWasTypedInFocusedField;
     private readonly ObservableCollection<LogRow> _logRows = [];
     private readonly ObservableCollection<ScanRow> _scanRows = [];
     private readonly ObservableCollection<UdsRow> _udsRows = [];
@@ -856,6 +857,7 @@ public partial class MainWindow : Window
         _scannerMode = !_scannerMode;
         _keyboardScanner.Clear();
         ScanBox.Clear();
+        _scanWasTypedInFocusedField = false;
         ScanModeButton.Content = _scannerMode ? "停止扫码监听" : "开启扫码监听";
         ScanStatus.Text = _scannerMode ? "监听已开启 · 当前窗口内键盘输入归扫码枪" : "点击扫码框或开启监听";
         if (_scannerMode) ScanBox.Focus();
@@ -890,6 +892,15 @@ public partial class MainWindow : Window
             e.Handled = true;
         }
     }
+    private void ScanBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // The user may click the explicit Confirm button after a scanner with
+        // no Enter suffix has filled the focused textbox. Button focus then
+        // changes, but the input was actually captured in the intended field.
+        if (!_scannerMode && ScanBox.IsKeyboardFocused && ScanBox.Text.Length > 0)
+            _scanWasTypedInFocusedField = true;
+    }
+
     private void ScanBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (_scannerMode || (e.Key is not (Key.Enter or Key.Tab))) return;
@@ -901,10 +912,12 @@ public partial class MainWindow : Window
         if (_scannerMode) return;
         string input = ScanBox.Text.Trim();
         var scan = new RawScan(input, "keyboard",
-            TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp()), ScanBox.IsKeyboardFocused);
+            TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp()),
+            ScanBox.IsKeyboardFocused || _scanWasTypedInFocusedField);
         var result = _scannerRouter.PublishRaw(scan, ScannerCaptureMode.KeyboardWedge);
         AdmitScan(result);
         ScanBox.Clear();
+        _scanWasTypedInFocusedField = false;
     }
     private void AdmitScan(ScanIngressResult result)
     {
