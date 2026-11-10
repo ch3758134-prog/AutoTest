@@ -13,16 +13,18 @@ from studio_store import Store, RuleError
 from studio_import import preview as saef_preview, import_saef
 from studio_research import Research
 from studio_execution import Execution
+from studio_management import Management
 
 HERE = Path(__file__).resolve().parent
 WEB = HERE / "studio.html"
 PORT = 8765
 
 
-def handler_factory(store, token, repo=None):
+def handler_factory(store, token, repo=None, manager_token=None):
     source_root = Path(repo).resolve() if repo else Path.cwd()
     research = Research(store)
     execution = Execution(store)
+    management = Management(store, execution, research)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.5"
 
@@ -86,6 +88,10 @@ def handler_factory(store, token, repo=None):
                     return self.write(store.readiness(params.get("id", "")))
                 if path == "/api/studio/context":
                     return self.write(store.context(params.get("id", "")))
+                if path == "/api/studio/management/context":
+                    return self.write(management.context(params.get("project", "")))
+                if path == "/api/studio/management/proposals":
+                    return self.write(management.list(params.get("project", "")))
                 if path == "/api/studio/execution":
                     return self.write(execution.overview(params.get("project", "")))
                 if path == "/api/studio/execution/queue":
@@ -113,8 +119,16 @@ def handler_factory(store, token, repo=None):
                 return self.write({"error": "Unable to read local workbench data"}, 500)
 
         def do_POST(self):
-            if not self.host_ok() or self.headers.get("X-Local-Token", "") != token:
-                return self.write({"error": "Local write token invalid"}, 403)
+            if not self.host_ok():
+                return self.write({"error": "Invalid local host"}, 403)
+            request_path, _ = self.route()
+            owner_request = secrets.compare_digest(self.headers.get("X-Local-Token", ""), token)
+            manager_request = (request_path == "/api/studio/management/propose"
+                               and manager_token is not None and
+                               secrets.compare_digest(self.headers.get("X-Manager-Token", ""),
+                                                      manager_token))
+            if not (owner_request or manager_request):
+                return self.write({"error": "Write permission denied for this role"}, 403)
             origin = self.headers.get("Origin", "")
             if origin and origin not in (
                 "http://127.0.0.1:" + str(self.server.server_port),
@@ -132,7 +146,14 @@ def handler_factory(store, token, repo=None):
                     raise RuleError("Request body must be an object")
                 path, params = self.route()
                 pieces = path.split("/")
-                if path == "/api/studio/project":
+                if path == "/api/studio/management/propose":
+                    answer = management.propose(data)
+                elif path == "/api/studio/management/review":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may review proposals"},403)
+                    answer = management.review(data.get("id", ""),data.get("decision", ""),
+                                               data.get("reviewer", ""),data.get("note", ""))
+                elif path == "/api/studio/project":
                     answer = store.create_project(data)
                 elif path == "/api/studio/project/update":
                     answer = store.update_project(data.get("id", ""), data)
@@ -231,12 +252,24 @@ def main(argv=None):
                         help="Existing project checkout for optional legacy references (no writes)")
     parser.add_argument("--data", type=Path, default=default_data(), help="SQLite workspace file")
     parser.add_argument("--port", type=int, default=PORT)
+    parser.add_argument("--manager-token-file", type=Path, default=None,
+                        help="Existing secret file handed only to a restricted manager CLI. "
+                             "Disabled when absent. Never commit token files.")
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error("Invalid port")
     store = Store(args.data)
+    manager_token = None
+    if args.manager_token_file:
+        secret_path = args.manager_token_file.expanduser().resolve()
+        if not secret_path.is_file():
+            parser.error("Manager token file must already exist")
+        manager_token = secret_path.read_text(encoding="utf-8").strip()
+        if len(manager_token) < 32:
+            parser.error("Manager token must be at least 32 characters")
     server = ThreadingHTTPServer(("127.0.0.1", args.port),
-                                 handler_factory(store, secrets.token_urlsafe(32), args.repo))
+                                 handler_factory(store, secrets.token_urlsafe(32),
+                                                 args.repo, manager_token))
     print("Engineering Workbench: http://127.0.0.1:%d/" % args.port, flush=True)
     print("Data: " + str(store.path), flush=True)
     print("Press Ctrl+C to stop. This server never approves automatically.", flush=True)
