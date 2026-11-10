@@ -39,7 +39,7 @@ public static class R1RecordedCanArchiveCapture
         window.CancelAfter(duration);
         try
         {
-            await foreach (var observed in hub.SubscribeAsync(spec, window.Token))
+            await foreach (var observed in hub.SubscribeAsync(spec, window.Token).ConfigureAwait(false))
             {
                 if (!sessionAndDbcStillCurrent() || observed.SessionGeneration != generation)
                     throw new WaveCaptureException("RX_ARCHIVE_GENERATION_CHANGED",
