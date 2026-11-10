@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private G4ToolsWindow? _compatTools;
     private AutoTest.DeviceLab.DeviceLabEmbeddedView? _device;
     private LabProductionToolView? _production;
+    private MainWindowViewModel? _workspaceEventsOwner;
     private ControllerConfigToolViewModel? _controllerConfiguration;
     private bool _closed;
     private bool _stationStatusSubscribed;
@@ -59,8 +60,37 @@ public partial class MainWindow : Window
                 request => MessageBox.Show(this,request,"确认真实 CAN1 UDS 只读诊断",
                     MessageBoxButton.YesNo,MessageBoxImage.Question,
                     MessageBoxResult.No)==MessageBoxResult.Yes);
-        DataContextChanged += (_,_) => PopulateTab(WorkbenchTabs.SelectedIndex);
+        DataContextChanged += (_, _) =>
+        {
+            BindWorkspaceEvents();
+            PopulateTab(WorkbenchTabs.SelectedIndex);
+        };
+        BindWorkspaceEvents();
         UpdateContext(0);
+    }
+
+    private void BindWorkspaceEvents()
+    {
+        if (_workspaceEventsOwner is not null)
+            _workspaceEventsOwner.WorkspaceAssetsChanged -= OnWorkspaceAssetsChanged;
+        _workspaceEventsOwner = DataContext as MainWindowViewModel;
+        if (_workspaceEventsOwner is not null)
+            _workspaceEventsOwner.WorkspaceAssetsChanged += OnWorkspaceAssetsChanged;
+    }
+
+    private void OnWorkspaceAssetsChanged(object? sender, EventArgs args)
+    {
+        if (_closed || Dispatcher.HasShutdownStarted) return;
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.InvokeAsync(() => OnWorkspaceAssetsChanged(sender, args));
+            return;
+        }
+        if (R1DbcHost.Content is DbcToolView dbc &&
+            dbc.DataContext is DbcToolViewModel editor)
+            editor.RefreshProjectStatus();
+        if (R1WaveHost.Content is WaveWorkbenchView wave)
+            wave.Model.RefreshSignals();
     }
 
     private void Navigate(int tab, string key)
@@ -120,8 +150,6 @@ public partial class MainWindow : Window
                 dbcEditor.ProjectDbcImported += (_, _) =>
                 {
                     vm.RefreshExternalWorkspaceChanges();
-                    if (R1WaveHost.Content is WaveWorkbenchView liveWave)
-                        liveWave.Model.RefreshSignals();
                 };
                 R1DbcHost.Content = new DbcToolView(dbcEditor);
                 break;
