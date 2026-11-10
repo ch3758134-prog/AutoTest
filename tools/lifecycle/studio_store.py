@@ -7,6 +7,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
+import hashlib
 from pathlib import Path
 import re
 import sqlite3
@@ -437,6 +438,26 @@ class Store:
             return {"origin":{"id":key,"title":root["title"]},"affected":results,
                     "note":"Relationship reachability is a review candidate, not automatic proof of impact"}
 
+    def _design_dependencies(self, db, key):
+        """All upstream design nodes on reviewed/confirmed trace links; include direct WP dependencies."""
+        relationships = []
+        seen = {key}
+        queue = [key]
+        valid_types = {"depends", "derives", "allocated", "defines"}
+        while queue:
+            current = queue.pop(0)
+            for link in db.execute("SELECT * FROM relations WHERE target_id=?", (current,)):
+                if link["kind"] not in valid_types:
+                    continue
+                origin = link["source_id"]
+                if origin == key:
+                    continue
+                if origin not in seen:
+                    seen.add(origin)
+                    queue.append(origin)
+                    relationships.append((self._require_object(db, origin), dict(link)))
+        return relationships
+
     def _readiness(self, db, key, ignore_approval=False):
         obj=self._require_object(db,key)
         if obj["kind"]!="work_package":
@@ -463,14 +484,13 @@ class Store:
         acceptance = meta.get("acceptance")
         if acceptance and (not isinstance(acceptance,str) or not acceptance.strip()):
             why.append("验收条件应为清晰可读的文本")
-        dependency_links = [dict(r) for r in db.execute(
-            "SELECT source_id,status FROM relations WHERE target_id=? AND kind='depends'",(key,))]
-        upstream=[self._require_object(db,r["source_id"]) for r in dependency_links]
-        for relation in dependency_links:
+        dependency_pairs = self._design_dependencies(db, key)
+        upstream = [p[0] for p in dependency_pairs]
+        for design, relation in dependency_pairs:
             if relation["status"] != "APPROVED":
-                why.append("上游实施依赖尚未完成关系审查：" +
-                           self._require_object(db,relation["source_id"])["title"])
-        if not upstream:
+                why.append("上游工程关系未审查：" + design["title"])
+        direct_links = [r for _,r in dependency_pairs if r["target_id"]==key and r["kind"]=="depends"]
+        if not direct_links:
             why.append("尚未关联上游已审查的需求或设计")
         revisions=meta.get("input_revisions",{})
         if not isinstance(revisions,dict):
@@ -502,25 +522,50 @@ class Store:
             if not status["ready"]:
                 raise RuleError("工作包尚未准入："+"；".join(status["reasons"]))
             obj=self._require_object(db,key)
-            upstream=[self._require_object(db,r["source_id"]) for r in db.execute(
-                "SELECT source_id FROM relations WHERE target_id=? AND kind='depends'",(key,))]
-            lines=[f"# 实施上下文：{obj['title']}","",
-                   f"项目：{self._require_project(db,obj['project_id'])['name']}",
+            project=self._require_project(db,obj["project_id"])
+            upstream=[p[0] for p in self._design_dependencies(db,key)]
+            lines=[f"# AI 实施上下文：{obj['title']}","",
+                   "## 产品背景（负责人登记的信息，不等同于批准设计）",
+                   f"项目/产品：{project['name']}",
+                   f"产品版本：{project['version'] or '未指定'}",
+                   f"型号/配置：{project['variant'] or '未指定'}",
+                   f"产品目标：{project['summary']}",
+                   project['body'] or "(未填写产品场景与系统边界)",
+                   "",
+                   "## 工作包身份及适用代码",
                    f"工作包：{key} / r{obj['revision']}",
-                   f"代码基线：{obj['meta'].get('source_sha')}","",
-                   "## 产品目标及实施范围",obj["body"],"",
-                   "## 已批准、固定修订的工程设计"]
+                   f"审批人：{obj['approved_by']}；审批时间：{obj['approved_at']}",
+                   f"代码基线（由负责人登记，尚未自动与 Git 远端核对）：{obj['meta'].get('source_sha')}",
+                   f"任务范围：{obj['body']}",
+                   "",
+                   "## 经批准且固定修订的相关工程设计"]
+            inputs=[]
             for dep in upstream:
-                lines += [f"### {dep['kind']}: {dep['title']} / r{dep['revision']}",dep["body"],""]
-            lines += ["## 可修改文件范围",*[
+                snapshot={"id":dep["id"],"revision":dep["revision"],
+                          "title":dep["title"],"kind":dep["kind"],
+                          "body":dep["body"],"meta":dep["meta"],
+                          "approved_at":dep["approved_at"]}
+                fingerprint=hashlib.sha256(json.dumps(snapshot,ensure_ascii=False,
+                    sort_keys=True,separators=(",",":")).encode("utf-8")).hexdigest()
+                inputs.append({"id":dep["id"],"revision":dep["revision"],
+                               "fingerprint_sha256":fingerprint})
+                lines += [f"### {dep['kind']} · {dep['title']} (r{dep['revision']})",
+                          f"审批：{dep['approved_by']} / {dep['approved_at']}",
+                          f"设计内容：{dep['body']}",
+                          f"设计属性：{json.dumps(dep['meta'],ensure_ascii=False,sort_keys=True)}",
+                          f"设计快照 SHA-256：{fingerprint}",""]
+            lines += ["## 允许修改的文件范围",*[
                 "- "+p for p in obj["meta"].get("file_scope",[])],
                 "","## 验收合同",str(obj["meta"].get("acceptance")),"",
-                "## 纪律","发现设计缺口时先记录变更，不由实施 AI 自行改变批准的接口或系统架构。",
-                "测试、实测和用户验收必须分别回写证据；本文件不授权物理危险操作。"]
+                "## 必须遵守的工程控制",
+                "遇到需求、接口或架构缺口先登记变更，不得由编码 AI 私自替换已批准的设计。",
+                "必须区分构建、单元测试、集成测试、实物验证与用户验收；不以模拟证据代替真实证据。",
+                "本上下文仅描述准入的软件实施任务，不授权实体危险输出、固件烧录或未经审批的现场行为。"]
             return {"work_package":key,"markdown":"\n".join(lines),
                     "manifest":{"project_id":obj["project_id"],"work_package_id":key,
                         "revision":obj["revision"],"source_sha":obj["meta"].get("source_sha"),
-                        "inputs":[{"id":p["id"],"revision":p["revision"]} for p in upstream]}}
+                        "product_version":project["version"],"variant":project["variant"],
+                        "inputs":inputs}}
 
     def export_project(self,key):
         with self.db() as db:
