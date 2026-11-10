@@ -23,8 +23,8 @@ public sealed class StepDescriptorCatalog
                 (props ?? []).ToImmutableArray(), executable));
         Add("Sequence", true, ["body"]);
         Add("If", true, ["then", "else"], ["variable", "equals"]);
-        Add("Switch", false, ["cases"], ["variable"]);
-        Add("Case", false, ["body"], ["equals"]);
+        Add("Switch", true, ["cases"], ["variable"]);
+        Add("Case", true, ["body"], ["equals"]);
         Add("When", false, ["body"], ["variable", "equals", "timeoutMs"]);
         Add("Loop", true, ["body"], ["count"]);
         Add("TryCatch", false, ["try", "catch", "finally"]);
