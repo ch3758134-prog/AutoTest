@@ -136,10 +136,29 @@ class AmendmentTests(unittest.TestCase):
         p=self.propose()
         detail=self.a.detail(p["id"])
         self.assertEqual(len(detail["related_candidates"]),1)
-        self.assertEqual(detail["related_candidates"][0]["direction"],"downstream")
+        self.assertEqual(detail["related_candidates"][0]["direction"],"source_to_target")
         self.assertEqual(detail["state"],"CANDIDATE")
         self.assertEqual(self.store.object(target["id"])["item"]["revision"],
                          target["revision"])
+
+    def test_depends_link_orientation_is_not_a_downstream_impact_verdict(self):
+        dependent=self.store.create_object({"project_id":self.project,
+            "kind":"work_package","title":"CAN test implementation",
+            "body":"This task depends on the CAN requirement"})["item"]
+        relation=self.store.create_relation({
+            "source_id":dependent["id"],"target_id":self.obj["id"],
+            "kind":"depends"})
+        self.store.approve_relation(relation["id"],"Owner","Reviewed dependency")
+        candidate=self.propose()
+        detail=self.a.detail(candidate["id"])
+        self.assertEqual(len(detail["related_candidates"]),1)
+        found=detail["related_candidates"][0]
+        self.assertEqual(found["object_id"],dependent["id"])
+        self.assertEqual(found["relation"],"depends")
+        self.assertEqual(found["direction"],"target_to_source")
+        self.assertIn("not an impact",found["interpretation"])
+        self.assertEqual(self.store.object(dependent["id"])["item"]["revision"],
+                         dependent["revision"])
 
     def test_archive_roundtrip_preserves_candidates_and_applied_revisions(self):
         review=self.propose()
