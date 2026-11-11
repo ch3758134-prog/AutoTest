@@ -58,6 +58,13 @@ public interface IBenchWorkbenchPort
             "The connected bench adapter does not support physical KEY_SIM masks.",
             BenchEvidenceSource.Physical, null));
 
+    Task<BenchOperationResult> SetIgnAsync(bool on,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(new BenchOperationResult(false, null, null, null,
+            null, null, null, "IGN_PHYSICAL_UNAVAILABLE",
+            "Actual IGN output command has not been enabled on this bench adapter.",
+            BenchEvidenceSource.Physical, null));
+
     Task SaveManualMeasurementAsync(BenchManualMeasurement measurement,
         CancellationToken cancellationToken);
 }
