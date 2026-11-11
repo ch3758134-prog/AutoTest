@@ -93,7 +93,7 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuleError,"blocked"):
             self.g.publish(change["change"]["id"],"Human","Try publishing twice",
                            change["change"]["base_digest"])
-        with self.assertRaisesRegex(RuleError,"governed"):
+        with self.assertRaisesRegex(RuleError,"Legacy summary is archived"):
             self.store.update_project(self.project["id"],{"summary":"Unauthorized edit"})
 
     def test_unknown_and_unmapped_impact_block_release(self):
