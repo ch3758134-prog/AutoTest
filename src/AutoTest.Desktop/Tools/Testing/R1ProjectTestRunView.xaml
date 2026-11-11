@@ -1,20 +1,20 @@
 <UserControl x:Class="AutoTest.Desktop.Tools.Testing.R1ProjectTestRunView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13">
+ Background="#F5F7FA" Foreground="#203249" FontFamily="Segoe UI" FontSize="13">
  <UserControl.Resources>
   <Style TargetType="Button">
-   <Setter Property="Background" Value="#263748"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#ECF2F9"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D5DFEA"/>
    <Setter Property="Padding" Value="12,7"/>
    <Setter Property="Margin" Value="0,0,8,6"/>
   </Style>
-  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E2EDF7"/></Style>
+  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#203249"/></Style>
   <Style TargetType="DataGrid">
-   <Setter Property="Background" Value="#192431"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#FFFFFF"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D5DFEA"/>
   </Style>
  </UserControl.Resources>
  <Grid Margin="16">
@@ -27,29 +27,29 @@
   <StackPanel Grid.Row="0" Margin="0,0,0,14">
    <TextBlock Text="P11 / 正式工程自动测试" FontSize="22" FontWeight="SemiBold"/>
    <TextBlock Text="{Binding DocumentName}" FontSize="15" FontWeight="SemiBold" Margin="0,5,0,3"/>
-   <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#83CEB4" TextWrapping="Wrap"/>
+   <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#177D65" TextWrapping="Wrap"/>
    <TextBlock Text="P10 与 P11 使用同一个测试程序实例。真实执行仅允许经过工程版本固定、操作员授权的 CAN1 只读 Observe / Assert；物理输出和烧录仍被锁定。"
-              Foreground="#E8B967" Margin="0,8,0,0" TextWrapping="Wrap"/>
+              Foreground="#90611A" Margin="0,8,0,0" TextWrapping="Wrap"/>
   </StackPanel>
-  <Border Grid.Row="1" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="12">
+  <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="#D5DFEA" BorderThickness="1" Padding="12">
    <WrapPanel>
     <Button Content="预检当前 TEST" Command="{Binding PreflightCommand}"/>
     <Button Content="发布 TEST 至工程" Command="{Binding SaveToProjectCommand}"/>
     <Button Content="从工程重载 TEST" Command="{Binding ReloadProjectCommand}"/>
     <Button Content="运行真实 CAN1 只读 TEST" Command="{Binding RunPhysicalReadOnlyCommand}"
-            Background="#175A77" FontWeight="Bold"/>
+            Background="#236CAD" FontWeight="Bold"/>
     <Button Content="运行离线 Mock" Command="{Binding RunMockCommand}"/>
     <Button Content="暂停" Command="{Binding PauseCommand}"/>
     <Button Content="继续" Command="{Binding ResumeCommand}"/>
     <Button Content="单步" Command="{Binding StepCommand}"/>
-    <Button Content="停止" Command="{Binding StopCommand}" Foreground="#FF7886"/>
+    <Button Content="停止" Command="{Binding StopCommand}" Foreground="#B53D4B"/>
    </WrapPanel>
   </Border>
   <StackPanel Grid.Row="2" Margin="2,12">
    <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
-   <TextBlock Text="{Binding Verdict}" FontWeight="SemiBold" Foreground="#E8B967" Margin="0,5"/>
+   <TextBlock Text="{Binding Verdict}" FontWeight="SemiBold" Foreground="#90611A" Margin="0,5"/>
    <TextBlock Text="{Binding PhysicalEvidencePath, StringFormat=本地实测证据：{0}}"
-              TextWrapping="Wrap" Foreground="#83CEB4"/>
+              TextWrapping="Wrap" Foreground="#177D65"/>
   </StackPanel>
   <DataGrid Grid.Row="3" ItemsSource="{Binding Facts}" IsReadOnly="True"
             AutoGenerateColumns="False" CanUserAddRows="False" RowHeaderWidth="0">
