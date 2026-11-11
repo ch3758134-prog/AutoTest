@@ -134,6 +134,25 @@ class DefinitionResearch:
             return {"change_id":change_id,"tasks":rows,
                     "note":"Candidate findings, even when produced by AI, are not accepted research or factual proof. Owner review and source verification are separate."}
 
+    def activate(self,task_id,expected_revision,reviewer,rationale):
+        """Choose a suggested perspective as actual in-scope work."""
+        reviewer=text_value(reviewer,"reviewer",limit=150,mandatory=True)
+        rationale=text_value(rationale,"research scope selection",limit=8000,mandatory=True)
+        with self.store.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            task=self._task(db,task_id)
+            self._require_active(db,task)
+            if task["state"]!="SUGGESTED":
+                raise RuleError("Only suggested perspectives may be activated")
+            if type(expected_revision) is not int or task["revision"]!=expected_revision:
+                raise RuleError("Research task revision conflict")
+            db.execute("""UPDATE definition_research_tasks SET state='OPEN',revision=?,
+                  updated=? WHERE id=?""",(task["revision"]+1,now(),task_id))
+            self.store._audit(db,task["project_id"],None,
+                  "ACTIVATE_RESEARCH_PERSPECTIVE",reviewer,
+                  task["domain"]+" / "+rationale)
+        return {"task_id":task_id,"state":"OPEN","revision":task["revision"]+1}
+
     def add_topic(self,change_id,question,reviewer,rationale):
         """Owner adds an actual research question, beyond suggested viewpoints."""
         question=text_value(question,"research question",limit=6000,mandatory=True)
