@@ -32,6 +32,36 @@ public partial class BenchWorkbenchView : UserControl
         if (DataContext is BenchWorkbenchViewModel vm) vm.CanMonitor.Stop();
     }
 
+    private async void ReloadKeyActions_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not BenchWorkbenchViewModel vm) return;
+        if (vm.KeyActions.HasUnsavedChanges)
+        {
+            if (MessageBox.Show(
+                "当前按键动作存在未保存修改。放弃这些修改并重新加载当前工程的按键动作？",
+                "确认放弃按键草稿", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+                return;
+            await vm.KeyActions.DiscardDraftAndReloadAsync();
+        }
+        else await vm.KeyActions.LoadAsync();
+    }
+
+    private async void ReloadCanMessages_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not BenchWorkbenchViewModel vm) return;
+        if (vm.CanMessages.Dirty)
+        {
+            if (MessageBox.Show(
+                "CAN 发送表存在未保存修改。放弃这些修改并重新加载当前工程的 CAN 报文？",
+                "确认放弃 CAN 草稿", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+                return;
+            await vm.CanMessages.DiscardDraftAndReloadAsync();
+        }
+        else await vm.CanMessages.LoadAsync();
+    }
+
     private void OpenCan_Click(object sender, RoutedEventArgs e) =>
         OpenCanRequested?.Invoke(this, EventArgs.Empty);
 
