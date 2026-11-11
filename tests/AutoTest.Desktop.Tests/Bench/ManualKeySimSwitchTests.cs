@@ -101,6 +101,22 @@ public sealed class ManualKeySimSwitchTests
     }
 
     [Fact]
+    public async Task SolenoidActionsAreExplicitAndReadbackNeverClaimsMechanicalPosition()
+    {
+        var port = new CountingPort();
+        var vm = new BenchWorkbenchViewModel(port);
+        await vm.InitializeAsync();
+        await vm.SetSolenoidAsync(1);
+        Assert.Equal((byte)1, port.LastSolAction);
+        Assert.Contains("机械", vm.SolenoidStatus);
+        await vm.ReadSolenoidAsync();
+        Assert.Equal(1, port.SolReadCount);
+        Assert.Contains("机械到位仍未验证", vm.SolenoidStatus);
+        await vm.SetSolenoidAsync(0);
+        Assert.Equal((byte)0, port.LastSolAction);
+    }
+
+    [Fact]
     public async Task EmptySelectionNeverSendsPhysicalFrame()
     {
         var port = new CountingPort();
@@ -115,6 +131,8 @@ public sealed class ManualKeySimSwitchTests
         public int ReleaseCount { get; private set; }
         public uint? LastMask { get; private set; }
         public bool? LastIgnOn { get; private set; }
+        public byte? LastSolAction { get; private set; }
+        public int SolReadCount { get; private set; }
         public BenchManualMeasurement? Saved { get; private set; }
         public Task<BenchConfiguration?> LoadConfigurationAsync(CancellationToken ct) =>
             Task.FromResult<BenchConfiguration?>(null);
@@ -149,6 +167,23 @@ public sealed class ManualKeySimSwitchTests
                 "SET_IGN 0x12", "MAIN_CONTROLLER_ACK", "ign-trace", null, null,
                 BenchEvidenceSource.Physical,
                 "主控已接受，实际电压未读取"));
+        }
+
+        public Task<BenchOperationResult> SetSolenoidAsync(byte action, CancellationToken ct)
+        {
+            LastSolAction = action;
+            return Task.FromResult(new BenchOperationResult(true, "sol-op", "sol-cor", 1,
+                "SET_SOL 0x16", "MAIN_CONTROLLER_ACK", "sol-trace", null, null,
+                BenchEvidenceSource.Physical,
+                "主控 ACK；没有机械到位传感器"));
+        }
+        public Task<BenchOperationResult> ReadSolenoidAsync(CancellationToken ct)
+        {
+            SolReadCount++;
+            return Task.FromResult(new BenchOperationResult(true, null, null, 1,
+                "GET_SOL 0x17", "GPIO_ACTION_1", "sol-trace", null, null,
+                BenchEvidenceSource.Physical,
+                "固件动作编码 1，不证明气缸到位"));
         }
 
         public Task SaveManualMeasurementAsync(BenchManualMeasurement m, CancellationToken ct)
