@@ -110,6 +110,26 @@ public sealed class BenchCanEditorTests
     }
 
     [Fact]
+    public async Task UnsavedCanRowsCannotSendAfterProjectSwitch()
+    {
+        var port = new TestPort { ActiveProjectId = "ECU-A" };
+        var vm = new BenchCanEditorViewModel(port);
+        await vm.LoadAsync();
+        vm.AddCommand.Execute();
+        vm.SelectedMessage!.IsChecked = true;
+        port.ActiveProjectId = "ECU-B";
+        await vm.SendOnceAsync();
+        await vm.StartPeriodicAsync();
+        await vm.SaveAsync();
+        Assert.Equal(0, port.SendCount);
+        Assert.Equal(0, port.PeriodicCount);
+        Assert.Null(port.Saved);
+        port.ActiveProjectId = "ECU-A";
+        await vm.StartPeriodicAsync();
+        Assert.Equal(1, port.PeriodicCount);
+    }
+
+    [Fact]
     public async Task SavedCanRecordsRejectCrossProjectLoad()
     {
         var dir = Path.Combine(Path.GetTempPath(), "autotest-can-" + Guid.NewGuid().ToString("N"));
@@ -146,6 +166,7 @@ public sealed class BenchCanEditorTests
 
     private sealed class TestPort : IBenchWorkbenchPort
     {
+        public string? ActiveProjectId { get; set; }
         public IReadOnlyList<BenchCanMessage>? Saved { get; set; }
         public BenchCanMessage? LastMessage { get; private set; }
         public int SendCount { get; private set; }
