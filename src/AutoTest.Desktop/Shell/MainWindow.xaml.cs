@@ -454,6 +454,7 @@ public partial class MainWindow : Window
                 };
                 var bench = new BenchWorkbenchView(_benchModel);
                 bench.OpenStationRequested += (_, _) => OpenDocument("station");
+                bench.OpenCanRequested += (_, _) => OpenDocument("can");
                 view = bench;
                 break;
             }
