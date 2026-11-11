@@ -64,7 +64,7 @@ public sealed class R1RunStepRow : INotifyPropertyChanged
         Actual = fact.Actual ?? "无实际观测";
         Verdict = fact.Verdict.ToString().ToUpperInvariant();
         Quality = fact.Quality.ToString().ToUpperInvariant();
-        Source = fact.Source.ToString();
+        Source = fact.Source.ToString().ToUpperInvariant();
         TraceReference = fact.TraceReference ?? "";
         Diagnostic = fact.Diagnostic ?? "";
         Time = fact.AtUtc.ToLocalTime().ToString("HH:mm:ss.fff");
