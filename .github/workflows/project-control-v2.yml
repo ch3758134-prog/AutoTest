@@ -31,7 +31,9 @@ jobs:
       - name: Python syntax
         run: python -m compileall -q tools/project-control-v2 tools/lifecycle/studio_plan_integrity.py
       - name: JavaScript syntax
-        run: node --check tools/project-control-v2/app.js
+        run: |
+          node --check tools/project-control-v2/app.js
+          node --check tools/project-control-v2/actions.js
       - name: Plan candidate integrity
         run: python -m unittest discover -s tools/lifecycle/tests -p 'test_studio_plan_integrity.py' -v
       - name: New workbench checks
