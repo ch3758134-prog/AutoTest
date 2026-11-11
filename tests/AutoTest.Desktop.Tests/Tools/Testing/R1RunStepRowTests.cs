@@ -24,7 +24,6 @@ public sealed class R1RunStepRowTests
     {
         var step = LabNode.New("Observe", "Physical ECU response");
         var row = new R1RunStepRow(step, LabPhase.Test, 1, 0);
-        var eventId = Guid.NewGuid();
         var fact = new LabStepFact(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
             step.Id, LabPhase.Test, "Observe", "50 03", "7F 10 22",
             LabQuality.Observed, LabVerdict.Fail, LabSource.Physical, 5,
