@@ -127,6 +127,7 @@ public partial class MainWindow : Window
                     MessageBoxButton.YesNo, MessageBoxImage.Warning,
                     MessageBoxResult.No) == MessageBoxResult.Yes);
             _testProjectId = workspace.Project.Id.Value;
+            TestCasesList.DataContext = _test;
             TestCasesList.ItemsSource = _test.TestCases;
             PlannedStepsList.ItemsSource = _test.RunStepRows;
         }
