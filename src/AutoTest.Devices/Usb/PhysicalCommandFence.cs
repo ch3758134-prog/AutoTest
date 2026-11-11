@@ -11,6 +11,9 @@ public sealed class PhysicalCommandFence
     private bool? _authorizedIgnOn;
     private DateTimeOffset _ignExpiry;
     private long _ignConnection;
+    private byte? _authorizedSolAction;
+    private long _solConnection;
+    private DateTimeOffset _solExpiry;
 
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is 0xF0 or 0xF1 or 0x11 or 0x13 or 0x15 or 0x17 or 0x1F);
@@ -58,6 +61,31 @@ public sealed class PhysicalCommandFence
         lock (_sync) { _authorizedIgnOn = null; _ignConnection = 0; _ignExpiry = default; }
     }
 
+    /// <summary>One-shot physical solenoid action (0=raise, 1=lower);
+    /// not a statement about actual actuator position or pneumatic pressure.</summary>
+    public void AuthorizeSingleSolenoid(byte action, string exactConfirmation,
+        long connectionGeneration)
+    {
+        if (action > 1) throw new ArgumentOutOfRangeException(nameof(action));
+        if (connectionGeneration <= 0) throw new InvalidOperationException("No live connection.");
+        var expected = $"AUTHORIZE SOL {action} GEN {connectionGeneration}";
+        if (!string.Equals(exactConfirmation, expected, StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("Solenoid requires per-command explicit consent.");
+        lock (_sync)
+        {
+            _authorizedSolAction = action;
+            _solConnection = connectionGeneration;
+            _solExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
+        }
+    }
+    public void RevokeSingleSolenoid()
+    {
+        lock (_sync)
+        {
+            _authorizedSolAction = null; _solConnection = 0; _solExpiry = default;
+        }
+    }
+
     /// <summary>Revocation of a not-yet-consumed exact CAN grant; safe on cancellation.</summary>
     public void RevokeSingleCanFrame()
     {
@@ -88,6 +116,17 @@ public sealed class PhysicalCommandFence
                 _ignExpiry = default;
                 return;
             }
+            if (request.Command == FirmwareReadOnlyProtocol.SetSolenoid &&
+                request.Payload.Length == 1 && request.Payload[0] <= 1 &&
+                _authorizedSolAction.HasValue &&
+                _authorizedSolAction.Value == request.Payload[0] &&
+                _solConnection == connectionGeneration &&
+                DateTimeOffset.UtcNow < _solExpiry)
+            {
+                _authorizedSolAction = null;
+                _solConnection = 0; _solExpiry = default;
+                return;
+            }
             if (request.Command == MainControllerCodec.CanSend && _singleCanPayload is not null &&
                 _authorizedConnection == connectionGeneration && DateTimeOffset.UtcNow < _canExpiry &&
                 request.Payload.AsSpan().SequenceEqual(_singleCanPayload))
@@ -105,6 +144,7 @@ public sealed class PhysicalCommandFence
         {
             _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
             _authorizedIgnOn = null; _ignConnection = 0; _ignExpiry = default;
+            _authorizedSolAction = null; _solConnection = 0; _solExpiry = default;
         }
     }
 }
