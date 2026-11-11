@@ -16,6 +16,7 @@ from studio_definition_research import DefinitionResearch
 from studio_definition_suggestions import DefinitionSuggestions
 from studio_semantics import semantic_context, legacy_project_projection
 from studio_knowledge import EngineeringKnowledge
+from studio_product_identity import ProductIdentity
 
 PROPOSAL_KINDS = ("PRODUCT_DEFINITION_REVIEW", "REQUIREMENT_CLARIFICATION", "TECHNICAL_RESEARCH", "ARCHITECTURE_REVIEW",
                   "DETAILED_DESIGN", "CODING", "INTEGRATION", "VERIFICATION",
@@ -53,7 +54,9 @@ class Management:
         exe = self.execution.overview(project_id)
         studies = self.research.list(project_id)
         verification = Verification(self.store).list(project_id)
-        governance = DefinitionGovernance(self.store).status(project_id)
+        governance = DefinitionGovernance(self.store).status(project_id)  # archival only
+        identity = ProductIdentity(self.store).status(project_id)
+        identity_invalidations = ProductIdentity(self.store).invalidations(project_id)
         suggestions=DefinitionSuggestions(self.store).list(project_id)
         knowledge=EngineeringKnowledge(self.store).list(project_id)
         research_queue=[]
@@ -82,22 +85,19 @@ class Management:
                         and x["state"] != "APPROVED"]
         technical = [x for x in studies if x["status"] != "DECIDED"]
         blockers = []
-        if governance["baseline_status"]!="BASELINED":
-            blockers.append({"type":"PRODUCT_DEFINITION_BASELINE",
-                             "reason":"Product definition is "+governance["baseline_status"]+
-                                      "; imported text is not approved"})
-        for x in governance["changes"]:
-            if x["state"]=="REVIEW":
-                blockers.append({"type":"PRODUCT_DEFINITION_CHANGE",
-                                 "change_id":x["id"],
-                                 "reason":"Major product definition change requires multi-domain review"})
-        for research_task in research_queue:
-            if research_task["state"] not in ("REVIEWED","NOT_APPLICABLE","SUGGESTED"):
-                blockers.append({"type":"PRODUCT_DEFINITION_RESEARCH",
-                                 "change_id":research_task["change_id"],
-                                 "task_id":research_task["task_id"],
-                                 "reason":"Required domain research not reviewed: "+
-                                          research_task["domain"]})
+        if identity["state"]!="BASELINED":
+            blockers.append({"type":"PRODUCT_IDENTITY_NOT_ESTABLISHED",
+                "reason":"Canonical product identity has not been reviewed; legacy project text cannot serve as approval"})
+        for x in identity["proposals"]:
+            if x["state"] in ("CANDIDATE","SCOPED"):
+                blockers.append({"type":"IDENTITY_PROPOSAL_PENDING",
+                    "proposal_id":x["id"],
+                    "reason":"Product identity proposal needs human scope and impact discussion; existing work is not automatically stopped"})
+        for x in identity_invalidations:
+            if x["state"]=="OPEN":
+                blockers.append({"type":"PRODUCT_IDENTITY_INVALIDATION",
+                    "proposal_id":x["proposal_id"],"object_id":x["package_id"],
+                    "reason":"Identity revision explicitly affected this implementation package"})
         for x in open_changes:
             blockers.append({"type":"CHANGE_REVIEW","object_id":x["id"],
                              "reason":"Change is not closed: "+x["title"]})
@@ -129,6 +129,8 @@ class Management:
             "project":p["project"],
             "engineering_semantics":semantic_context(),
             "legacy_project_interpretation":legacy_project_projection(p["project"]),
+            "product_identity":identity,
+            "product_identity_invalidations":identity_invalidations,
             "engineering_knowledge":knowledge,
             "engineering_objects":objects,
             "engineering_relations":p["relations"],
@@ -156,6 +158,9 @@ class Management:
                 "Record user corrections, sourced observations, open questions and interpretations as separate engineering_knowledge candidates; link related claims across conceptual roles rather than forcing them into product definition.",
                 "Manager may propose engineering knowledge and semantic links, but cannot accept a record, confirm a relation, declare source truth or publish a product baseline.",
                 "Human-reviewed knowledge and semantic relationships are reference context; they do not automatically revise approved product definition or authorize implementation.",
+                "Only product_identity is the canonical product identity; old governance tables and project summary/body/version/variant are historical context/metadata and must not be treated as current approval.",
+                "AI may submit product-identity statement candidates with semantic reasoning and knowledge links; only owner may assess scope, disposition actual impacted engineering objects, and publish a new identity revision.",
+                "Product identity scope and impact are contextual human reasoning, not fixed ten-domain checklists; absence of mapped impacts is not proof of no effect.",
                 "The old project summary is a candidate identity statement; body is historical context; version and variant are metadata, not automatically parts of product identity.",
                 "Distinguish stable product identity from purpose, system components, capabilities, release scope, first DUT, hardware configuration and experimental evidence. A statement may have more than one role.",
                 "For mixed claims, preserve the original wording and propose appropriate linked engineering objects; explain your conceptual reasons and counterfactuals, not word-based rejections.",
