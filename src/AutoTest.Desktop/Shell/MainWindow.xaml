@@ -103,18 +103,20 @@
                 <MenuItem Header="TEST 程序编辑" Click="OpenTest_Click"/>
                 <MenuItem Header="检查工程与引用" Command="{Binding ValidateCommand}"/>
             </MenuItem>
-            <MenuItem Header="专业工具（独立窗口）">
-                <MenuItem Header="设备连接 / Station" Click="OpenStation_Click"/>
-                <MenuItem Header="CAN 监视" Click="OpenCan_Click"/>
-                <MenuItem Header="DBC 信号编辑" Click="OpenDbc_Click"/>
-                <MenuItem Header="Controller / 按键映射" Click="OpenController_Click"/>
-                <MenuItem Header="手动台架" Click="OpenBench_Click"/>
-                <MenuItem Header="波形分析" Click="OpenWave_Click"/>
+            <MenuItem Header="专业工具">
                 <MenuItem Header="UDS 诊断" Click="OpenUds_Click"/>
                 <MenuItem Header="CAN 烧录" Click="OpenFlash_Click"/>
+                <MenuItem Header="波形分析" Click="OpenWave_Click"/>
+                <MenuItem Header="DBC 编辑器" Click="OpenDbc_Click"/>
+            </MenuItem>
+            <MenuItem Header="设备与工位">
+                <MenuItem Header="手动台架" Click="OpenBench_Click"/>
+                <MenuItem Header="设备连接 / Station" Click="OpenStation_Click"/>
+                <MenuItem Header="CAN 监视" Click="OpenCan_Click"/>
+                <MenuItem Header="Controller 按键配置" Click="OpenController_Click"/>
                 <Separator/>
-                <MenuItem Header="扫码 COM / 编号绑定" Click="OpenProduction_Click"/>
-                <MenuItem Header="记录与报告" Click="OpenRecords_Click"/>
+                <MenuItem Header="编号绑定 / 扫码 COM" Click="OpenProduction_Click"/>
+                <MenuItem Header="运行记录与报告" Click="OpenRecords_Click"/>
                 <MenuItem Header="操作审计" Click="OpenAudit_Click"/>
             </MenuItem>
             <MenuItem Header="视图">
@@ -148,19 +150,16 @@
                     <Button Content="▶ 自动测试" Background="#176AB2" Foreground="White"
                         FontWeight="SemiBold" Click="OpenRun_Click"/>
                     <Button Content="TEST 编辑" Click="OpenTest_Click"/>
+                    <Button Content="手动台架" Click="OpenBench_Click"
+                        ToolTip="打开独立的真实 KEY_SIM / IGN / 夹具台架窗口"/>
                     <Menu Background="Transparent" Foreground="#254461" VerticalAlignment="Center"
                           Margin="0,0,7,0">
-                        <MenuItem Header="专业工具 ▾" ToolTip="所有工具在独立窗口打开，不占用自动测试工作区">
-                            <MenuItem Header="CAN 监视 / 设备连接" Click="OpenCan_Click"/>
-                            <MenuItem Header="DBC 编辑器" Click="OpenDbc_Click"/>
-                            <MenuItem Header="波形分析" Click="OpenWave_Click"/>
+                        <MenuItem Header="专业工具 ▾"
+                            ToolTip="UDS、烧录、波形与 DBC 以独立可调整窗口打开">
                             <MenuItem Header="UDS 诊断" Click="OpenUds_Click"/>
                             <MenuItem Header="CAN 烧录" Click="OpenFlash_Click"/>
-                            <Separator/>
-                            <MenuItem Header="Controller 与按键映射" Click="OpenController_Click"/>
-                            <MenuItem Header="手动台架" Click="OpenBench_Click"/>
-                            <MenuItem Header="编号绑定 / COM 配置" Click="OpenProduction_Click"/>
-                            <MenuItem Header="记录与报告" Click="OpenRecords_Click"/>
+                            <MenuItem Header="波形分析" Click="OpenWave_Click"/>
+                            <MenuItem Header="DBC 编辑器" Click="OpenDbc_Click"/>
                         </MenuItem>
                     </Menu>
                     <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
