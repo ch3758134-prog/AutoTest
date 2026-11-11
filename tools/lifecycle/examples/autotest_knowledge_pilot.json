@@ -1,0 +1,208 @@
+{
+  "schema": "engineering-knowledge-pilot/1",
+  "project": "AutoTest",
+  "reference_note": "本文件根据 2026-11-10 用户与项目管理 AI 的真实澄清整理，属于候选输入，不包含任何人工审查状态。记录来源为对话；用户应依据实际工程归档和实测补足可追溯 URI。",
+  "purpose": "演示同一工程事实如何在产品身份、用途、系统组成、能力、版本和验证中起不同作用，而不是挤进一段产品定义。",
+  "entries": [
+    {
+      "alias": "K-PRODUCT",
+      "title": "AutoTest 是软硬件一体化的 ECU 测试系统",
+      "statement": "AutoTest 包含 Windows 上位机、主控板和按键板；外部被测 ECU 不属于 AutoTest 产品本体。",
+      "interpretation": "用户明确纠正了将 AutoTest 等同于上位机软件的理解。软硬件一体化性质应影响产品身份；组成、接口与部件分工需要独立的系统边界资料。该陈述不证明当前全部功能均已物理验证。",
+      "provenance": "USER_INPUT",
+      "concept_ids": [
+        "product_identity",
+        "system_boundary",
+        "decision"
+      ],
+      "source_refs": [
+        "discussion://2026-11-10/autotest-product-includes-main-board-and-key-board"
+      ],
+      "related_objects": []
+    },
+    {
+      "alias": "K-PURPOSE",
+      "title": "系统目标是提供 ECU 外部刺激并观测响应",
+      "statement": "AutoTest 设计目标是模拟 ECU 所需的外部刺激，并对 ECU 响应开展采集和分析。",
+      "interpretation": "这是用户提出的根本设计目的，当前工程应进一步区分长期覆盖目标和某一硬件版本实测可用的刺激类型。“全部刺激”不能不经能力矩阵就宣称全部实现。",
+      "provenance": "USER_INPUT",
+      "concept_ids": [
+        "product_purpose",
+        "product_identity",
+        "capability"
+      ],
+      "source_refs": [
+        "discussion://2026-11-10/external-ecu-stimulus-design-goal"
+      ],
+      "related_objects": []
+    },
+    {
+      "alias": "K-STIMULUS",
+      "title": "当前重点外部刺激涉及 IO、CAN 和按键",
+      "statement": "用户指出 IO 控制、CAN 和按键是当前主要外部刺激方式，今后可能扩展。",
+      "interpretation": "这些是当前目标能力类别与实施关注点；不能因为本阶段重点三个方向，就将未来产品限制为永远仅有三种接口。每个具体刺激需要对应硬件、协议、配置和实际验证。",
+      "provenance": "USER_INPUT",
+      "concept_ids": [
+        "capability",
+        "requirements",
+        "release_scope"
+      ],
+      "source_refs": [
+        "discussion://2026-11-10/io-can-key-stimulus"
+      ],
+      "related_objects": []
+    },
+    {
+      "alias": "K-KEY",
+      "title": "现役按键板通过电阻网络模拟五路电压",
+      "statement": "当前 KEY_SIM 按键板通过 20 Key 电阻网络组合开关合成五路模拟电压，能够按组合保持输出，用于模拟 DUT 的真实按键电压输入。",
+      "interpretation": "这是具体硬件实现语义，不能按 20 路离散输入设计。不同 ECU 的电压识别区间与通道映射仍需按配置考察；不能把五路输出当作所有未来 AutoTest 硬件的永恒上限。",
+      "provenance": "USER_INPUT",
+      "concept_ids": [
+        "system_boundary",
+        "capability",
+        "design",
+        "configuration"
+      ],
+      "source_refs": [
+        "discussion://2026-11-09/key-simulator-20-key-five-voltage-channels"
+      ],
+      "related_objects": []
+    },
+    {
+      "alias": "K-RX",
+      "title": "CAN RX 不等于单一波形功能",
+      "statement": "用户指出，对接收到的 CAN 数据需要远比接收和波形显示更丰富的处理能力。",
+      "interpretation": "可进一步调查原始帧监视、DBC 信号解码、状态/事件/时序/条件处理、日志和自动测试引用；这些属于待研究的处理链条，不能把每项示例直接宣称为当前已完成的功能。",
+      "provenance": "OPEN_QUESTION",
+      "concept_ids": [
+        "capability",
+        "requirements",
+        "architecture",
+        "decision"
+      ],
+      "source_refs": [
+        "discussion://2026-11-10/can-response-processing-not-only-wave"
+      ],
+      "related_objects": []
+    },
+    {
+      "alias": "K-RELEASE",
+      "title": "EPB 与 R1 的角色是验证和阶段安排",
+      "statement": "AutoTest 项目的 R1 重点应用场景是出厂检测，EPB 是首个实际验证对象。",
+      "interpretation": "属于项目实施范围和验证策略的上下文。它们不是所有 AutoTest 产品永久必须成立的身份条件，但仍需保留在相关阶段计划与测试资料中。",
+      "provenance": "USER_INPUT",
+      "concept_ids": [
+        "release_scope",
+        "stakeholder_context",
+        "verification_evidence"
+      ],
+      "source_refs": [
+        "discussion://2026-11-10/r1-production-epb-first-case"
+      ],
+      "related_objects": []
+    },
+    {
+      "alias": "K-CAN-OBSERVATION",
+      "title": "真实 CAN 接收证据有明确适用范围",
+      "statement": "用户现场确认主控板 WinUSB 已连接，CAN1 接口能够接收到 DUT 报文。",
+      "interpretation": "这是特定现场观察，不意味着 CAN TX、UDS、Flash、按键电压、自动测试判定或全系统验收已经通过；需补齐源日志、固件/软件修订、DUT 与具体接线。",
+      "provenance": "OBSERVATION",
+      "concept_ids": [
+        "verification_evidence",
+        "configuration"
+      ],
+      "source_refs": [
+        "discussion://2026-11-09/device-lab-can1-rx-observation"
+      ],
+      "related_objects": []
+    },
+    {
+      "alias": "K-CONFIG",
+      "title": "当前现场通道接线是设备配置",
+      "statement": "用户现场指出当前 CAN0 接按键板、CAN1 接 DUT。",
+      "interpretation": "属于现役硬件设备版本与现场接线事实；除非有明确接口契约，不应当把它直接写成所有未来 AutoTest 的产品身份。",
+      "provenance": "USER_INPUT",
+      "concept_ids": [
+        "configuration",
+        "system_boundary"
+      ],
+      "source_refs": [
+        "discussion://2026-11-09/can0-keyboard-can1-dut"
+      ],
+      "related_objects": []
+    },
+    {
+      "alias": "K-TEST",
+      "title": "自动测试程序组织刺激、观察与判定",
+      "statement": "自动测试程序应能够组织系统提供的刺激能力和响应处理能力，同时专业功能可以独立用于调试。",
+      "interpretation": "这是用户需求与应用组织上的判断，具体编辑语义、硬件仲裁、数据共享和时序保证还需架构与详细设计。不能由此推断所有实际接口已经完成或存在两套测试引擎。",
+      "provenance": "USER_INPUT",
+      "concept_ids": [
+        "capability",
+        "requirements",
+        "architecture"
+      ],
+      "source_refs": [
+        "discussion://2026-11-10/automatic-test-and-independent-tools"
+      ],
+      "related_objects": []
+    }
+  ],
+  "relations": [
+    {
+      "from": "K-PURPOSE",
+      "to": "K-PRODUCT",
+      "relation": "REFINES",
+      "rationale": "系统根本目的细化了产品身份，但不替代物理组成事实。"
+    },
+    {
+      "from": "K-STIMULUS",
+      "to": "K-PURPOSE",
+      "relation": "CONTEXT_FOR",
+      "rationale": "当前三类刺激是长期外部刺激目标的已讨论实现范围。"
+    },
+    {
+      "from": "K-KEY",
+      "to": "K-STIMULUS",
+      "relation": "CONTEXT_FOR",
+      "rationale": "KEY_SIM 是现役按键模拟能力的具体电气实现实例。"
+    },
+    {
+      "from": "K-RX",
+      "to": "K-PURPOSE",
+      "relation": "REFINES",
+      "rationale": "响应处理能力与外部刺激目的共同决定实际测试工作模型。"
+    },
+    {
+      "from": "K-RELEASE",
+      "to": "K-PRODUCT",
+      "relation": "CONTEXT_FOR",
+      "rationale": "R1 与 EPB 提供项目历史与阶段上下文，不自动写入产品身份。"
+    },
+    {
+      "from": "K-CAN-OBSERVATION",
+      "to": "K-RX",
+      "relation": "CONTEXT_FOR",
+      "rationale": "物理 RX 观察支持 CAN 接收存在，但不能验证整个解析分析链条。"
+    },
+    {
+      "from": "K-CONFIG",
+      "to": "K-CAN-OBSERVATION",
+      "relation": "CONTEXT_FOR",
+      "rationale": "具体 CAN 通道接线限制该现场观测的适用条件。"
+    },
+    {
+      "from": "K-TEST",
+      "to": "K-PURPOSE",
+      "relation": "DERIVED_FROM",
+      "rationale": "自动测试工作组织是系统目标的应用方式而非唯一产品定义。"
+    }
+  ],
+  "warnings": [
+    "所有 entries 均应通过 /api/studio/knowledge/propose 逐条成为候选，先核对来源再审查。此 JSON 不是可以直接恢复覆盖用户 SQLite 的正式项目备份。",
+    "relations 中的 alias 仅用于示例映射；保存真实关系时必须用服务端返回的唯一 ID，不能按名称猜测。",
+    "任何真实范围、证据或语义归属冲突都应在试用中保留为待研究，不应为了填满表单或展示高完成度而做虚假批准。",
+    "产品定义与需求的正式发布仍通过原有工程门禁单独审批；本文件本身不赋予执行权限。"
+  ]
+}
