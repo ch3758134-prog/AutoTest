@@ -121,6 +121,33 @@ class CanonicalIdentityTests(unittest.TestCase):
                       "Checked input is an actual user correction")
         self.identity.publish(proposal["id"],self.base["digest"],"Owner","Review complete")
 
+    def test_ai_linked_engineering_knowledge_appears_as_reviewable_impact_candidate(self):
+        requirement=self.store.create_object({"project_id":self.project,
+            "kind":"requirement","title":"Observe CAN response states",
+            "body":"CAN response conditions require clarification"})["item"]
+        knowledge=self.k.propose(self.project,{
+            "title":"CAN response usage","statement":"CAN RX supports more than waveform display",
+            "interpretation":"The existing requirement may need explicit timing and state logic",
+            "concept_ids":["capability","requirements","architecture"],
+            "provenance":"AI_INTERPRETATION",
+            "source_refs":["discussion://rx-analysis-correction"],
+            "related_objects":[requirement["id"]]
+        },"AI management","AI_CANDIDATE")
+        proposal=self.draft(knowledge_ids=[])
+        detail=self.identity.detail(proposal["id"])
+        suggested=detail["knowledge_impact_candidates"]
+        self.assertEqual(len(suggested),1)
+        self.assertEqual(suggested[0]["knowledge_id"],knowledge["id"])
+        self.assertEqual(suggested[0]["object_id"],requirement["id"])
+        self.assertEqual(suggested[0]["knowledge_state"],"CANDIDATE")
+        self.assertEqual(detail["impacts"],[])
+        self.identity.assess_impact(proposal["id"],requirement["id"],
+              requirement["revision"],"UNKNOWN",
+              "Original AI hypothesis needs actual requirement review",
+              ["discussion://rx-analysis-correction"],"Owner")
+        self.assertEqual(self.identity.detail(proposal["id"])["impacts"][0]
+                         ["disposition"],"UNKNOWN")
+
     def test_exact_archive_roundtrip_and_invalid_impact_is_rejected(self):
         package=self.store.create_object({"project_id":self.project,"kind":"work_package",
                            "title":"Reevaluate CAN device integration","body":"Work"})["item"]
