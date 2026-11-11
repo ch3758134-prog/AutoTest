@@ -102,6 +102,12 @@ public interface IBenchWorkbenchPort
         Task.FromResult(new BenchActionExecution(false, false, false,
             "真实 DUT CAN 周期发送尚未接线，不允许仿真。"));
 
+    Task<BenchActionExecution> RunCanPeriodicBatchAsync(
+        IReadOnlyList<BenchCanMessage> checkedMessages,
+        IProgress<BenchCanPeriodicProgress>? progress, CancellationToken ct) =>
+        Task.FromResult(new BenchActionExecution(false, false, false,
+            "真实 DUT CAN1 多报文周期发送尚未接线，禁止仿真。"));
+
     Task SaveManualMeasurementAsync(BenchManualMeasurement measurement,
         CancellationToken cancellationToken);
 }
