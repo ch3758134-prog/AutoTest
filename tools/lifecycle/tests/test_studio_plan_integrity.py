@@ -29,7 +29,7 @@ class ProjectPlanIntegrityTests(unittest.TestCase):
         issues = result["issues"]
         codes = {i["code"] for i in issues}
         self.assertIn("UNAPPROVED_INPUT", codes)
-        self.assertIn("UPSTREAM_WORK_BLOCKED", codes)
+        # Downstream items have their own unapproved inputs, so no inferred second cause.
         work = {w["id"]: w for w in result["work"]}
         self.assertEqual(work["w-g1-review"]["assessment"], "NO_RECORDED_BLOCKER")
         self.assertEqual(work["w-device-facts"]["assessment"], "NO_RECORDED_BLOCKER")
@@ -37,6 +37,19 @@ class ProjectPlanIntegrityTests(unittest.TestCase):
         self.assertEqual(work["w-core-implementation"]["assessment"], "NEEDS_REVIEW")
         self.assertEqual(work["w-physical-verification"]["assessment"], "NEEDS_REVIEW")
         self.assertTrue(all(w["note"].startswith("NO_RECORDED_BLOCKER is not") for w in result["work"]))
+
+    def test_dependency_propagation_when_downstream_inputs_are_otherwise_valid(self):
+        plan = copy.deepcopy(self.plan)
+        approved = {"object_id": "at-p0-approved-charter-v01",
+                    "revision": 2, "role": "REQUIRED_BASELINE"}
+        plan["work"][3]["sources"] = [copy.deepcopy(approved)]
+        plan["work"][4]["sources"] = [copy.deepcopy(approved)]
+        report = assess(plan, self.archive)
+        self.assertIn("UPSTREAM_WORK_BLOCKED", {i["code"] for i in report["issues"]})
+        statuses = {w["id"]: w["assessment"] for w in report["work"]}
+        self.assertEqual(statuses["w-g2-design"], "NEEDS_REVIEW")
+        self.assertEqual(statuses["w-core-implementation"], "NEEDS_REVIEW")
+        self.assertEqual(statuses["w-physical-verification"], "NEEDS_REVIEW")
 
     def test_stale_product_scope_is_not_silently_accepted_or_globally_deleted(self):
         plan = copy.deepcopy(self.plan)
