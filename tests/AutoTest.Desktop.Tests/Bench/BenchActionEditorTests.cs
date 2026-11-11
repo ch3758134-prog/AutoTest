@@ -16,15 +16,15 @@ public sealed class BenchActionEditorTests
     {
         var fake = new ActionPort();
         var vm = new BenchKeyActionEditorViewModel(fake);
-        vm.NewActionCommand.Execute(null);
+        vm.NewActionCommand.Execute();
         Assert.Single(vm.Actions);
         vm.SelectedAction!.Name = "工程定义的任意真实操作";
-        vm.AddSetKeysCommand.Execute(null);
+        vm.AddSetKeysCommand.Execute();
         vm.Switches[0].IsSelected = true;
         vm.Switches[12].IsSelected = true;
-        vm.AddHoldCommand.Execute(null);
+        vm.AddHoldCommand.Execute();
         vm.SelectedStep!.DurationMs = 380;
-        vm.AddSetKeysCommand.Execute(null); // explicit all-open switch state, NOT a hardcoded idle
+        vm.AddSetKeysCommand.Execute(); // explicit all-open switch state, NOT a hardcoded idle
         Assert.Equal(0u, vm.SelectedStep!.Mask);
         Assert.Equal(0, fake.Runs);
         await vm.SaveAsync();
@@ -43,15 +43,15 @@ public sealed class BenchActionEditorTests
     {
         var fake = new ActionPort();
         var vm = new BenchKeyActionEditorViewModel(fake);
-        vm.NewActionCommand.Execute(null);
-        vm.AddHoldCommand.Execute(null);
+        vm.NewActionCommand.Execute();
+        vm.AddHoldCommand.Execute();
         await vm.SaveAsync();
         Assert.True(vm.HasUnsavedChanges);
         Assert.Null(fake.Saved);
         await vm.RunAsync();
         Assert.Equal(0, fake.Runs);
-        vm.AddSetKeysCommand.Execute(null); // inserts after the selected hold
-        vm.MoveStepUpCommand.Execute(null);  // now starts with SetKeys
+        vm.AddSetKeysCommand.Execute(); // inserts after the selected hold
+        vm.MoveStepUpCommand.Execute();  // now starts with SetKeys
         await vm.SaveAsync();
         Assert.False(vm.HasUnsavedChanges);
         await vm.RunAsync();
@@ -69,7 +69,7 @@ public sealed class BenchActionEditorTests
         var vm = new BenchKeyActionEditorViewModel(fake);
         await vm.LoadAsync();
         Assert.Single(vm.Actions);
-        vm.NewActionCommand.Execute(null);
+        vm.NewActionCommand.Execute();
         await vm.LoadAsync();
         Assert.Equal(2, vm.Actions.Count);
         Assert.True(vm.HasUnsavedChanges);
@@ -80,12 +80,12 @@ public sealed class BenchActionEditorTests
     {
         var fake = new ActionPort { WaitUntilCancelled = true };
         var vm = new BenchKeyActionEditorViewModel(fake);
-        vm.NewActionCommand.Execute(null);
-        vm.AddSetKeysCommand.Execute(null);
+        vm.NewActionCommand.Execute();
+        vm.AddSetKeysCommand.Execute();
         await vm.SaveAsync();
         var running = vm.RunAsync();
         Assert.True(vm.IsActionRunning);
-        vm.StopActionCommand.Execute(null);
+        vm.StopActionCommand.Execute();
         await running;
         Assert.False(vm.IsActionRunning);
         Assert.Contains("取消", vm.Status);
