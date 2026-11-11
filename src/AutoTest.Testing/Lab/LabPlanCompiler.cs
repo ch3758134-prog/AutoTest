@@ -29,7 +29,7 @@ public sealed class LabPlanCompiler
 {
     private static readonly Dictionary<string, string[]> Allowed = new(StringComparer.Ordinal)
     {
-        ["Sequence"] = ["body"], ["If"] = ["then", "else"],
+        ["Sequence"] = ["body"], ["TestCase"] = ["body"], ["If"] = ["then", "else"],
         ["Switch"] = ["cases"], ["Case"] = ["body"], ["Default"] = ["body"],
         ["When"] = ["body"], ["Loop"] = ["body"],
         ["TryCatch"] = ["try", "catch", "finally"],
@@ -118,6 +118,12 @@ public sealed class LabPlanCompiler
                     if (resolution is null || !resolution.Value.Found ||
                         !string.Equals(resolution.Value.CurrentRevision, reference.Revision, StringComparison.Ordinal))
                         problems.Add($"{where}: controller/state missing or stale revision");
+                    break;
+                case "TestCase":
+                    if (owner is not null || !where.StartsWith("Test/", StringComparison.Ordinal))
+                        problems.Add($"{where}: TestCase must be a top-level TEST node");
+                    if (string.IsNullOrWhiteSpace(node.Name))
+                        problems.Add($"{where}: TestCase name is required");
                     break;
                 case "TryCatch": case "Sequence": case "Log": case "Fail": break;
             }
