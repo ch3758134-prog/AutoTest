@@ -255,6 +255,29 @@ window.projectActions=(()=>{
      reasonField()
    ],async v=>await request('review_receipt',{id,decision:v.decision,reason:v.reason}),'记录审查');
  }
+ function artifactSubmit(id){
+   const doc=obj(id);if(!doc)throw Error('未找到该文件');
+   dialogBox('提交正式工程成果审查',
+     '送审版本固定到当前内容指纹和修订。它不是普通 AI 草稿，也不会因为提交自动批准或进入下一阶段。',[
+       {name:'revision',label:'本次提交的确切版本',value:'r'+doc.revision,readonly:true},
+       reasonField()
+     ],async v=>await request('submit_artifact',{
+       object_id:id,object_revision:doc.revision,reason:v.reason
+     }),'形成正式送审');
+ }
+ function artifactReview(id){
+   const submission=control().artifact_submissions.find(s=>s.id===id);
+   if(!submission)throw Error('未找到送审记录');
+   dialogBox('负责人审查工程成果',
+     submission.title+' / r'+submission.object_revision+'。批准仅使这一份确切工程文件成为有效成果，不能替代阶段 Gate、代码集成或实体 ECU 验收。',[
+       {name:'decision',label:'审查结论',type:'select',options:[
+         {value:'RETURN',label:'退回补充研究或修订'},
+         {value:'APPROVE',label:'批准此正式工程成果版本'},
+         {value:'REJECT',label:'不采纳该成果'}]},
+       reasonField()
+     ],async v=>await request('review_artifact',{id,decision:v.decision,reason:v.reason}),
+     '正式记录审查决定');
+ }
  function phaseReview(){
    const approved=data.objects.filter(o=>o.state==='APPROVED');
    dialogBox('记录阶段评审决定','流程 Gate 与单份文件的批准不同。通过 Gate 必须引用已经批准且属于该阶段的工程成果，不能把 G1 研究草稿当成依据。',[
@@ -266,9 +289,18 @@ window.projectActions=(()=>{
        {value:'PASS',label:'通过（须有正式依据）'}]},
      {name:'evidence_ids',label:'已批准且属于当前阶段的证据',type:'checklist',
       options:approved.map(o=>({value:o.id,label:o.title}))},
+     {name:'waivers',label:'附条件通过的例外说明（仅 PASS_WITH_LIMITATIONS，每行：工程对象ID | 具体理由）',
+      type:'textarea',rows:3,help:'每个缺失的必要成果都应有明确理由；完全通过时不接受例外。'},
      reasonField()
-   ],async v=>await request('record_phase_review',{phase_id:v.phase_id,cycle_id:v.cycle_id,decision:v.decision,
-       evidence_ids:v.evidence_ids,reason:v.reason}),'记录阶段评审');
+   ],async v=>{
+     const waivers=v.waivers.split('\n').map(x=>x.trim()).filter(Boolean).map(x=>{
+       const split=x.indexOf('|');
+       if(split<1)throw Error('每条例外必须写工程对象ID | 具体理由');
+       return {object_id:x.slice(0,split).trim(),reason:x.slice(split+1).trim()};
+     });
+     await request('record_phase_review',{phase_id:v.phase_id,cycle_id:v.cycle_id,decision:v.decision,
+       evidence_ids:v.evidence_ids,waivers,reason:v.reason});
+   },'记录阶段评审');
  }
  function milestoneForm(id){
    const existing=data.plan.milestones?.find(x=>x.id===id);
@@ -515,7 +547,8 @@ window.projectActions=(()=>{
        'change-work':()=>changeForm(id),'change-assess':()=>changeAssess(id),
        'change-resolve':()=>changeResolve(id),'reconcile':()=>reconcileForm(id),
        'receipt-add':()=>receiptForm(id),'receipt-review':()=>receiptReview(id),
-       'phase-review':phaseReview,'remote-check':syncCheck
+       'phase-review':phaseReview,'artifact-submit':()=>artifactSubmit(id),
+       'artifact-review':()=>artifactReview(id),'remote-check':syncCheck
      };
      const fn=fns[action];if(fn)Promise.resolve(fn()).catch(ex=>error(ex.message));
    }catch(ex){error(ex.message)}
