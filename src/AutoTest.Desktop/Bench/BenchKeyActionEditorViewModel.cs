@@ -194,6 +194,9 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
             RaisePropertyChanged(nameof(IsKeyStep));
             RaisePropertyChanged(nameof(IsHoldStep));
             RaisePropertyChanged(nameof(HasSelectedStep));
+            SelectedStepResult = value is { Kind: BenchActionStepKind.SetKeys }
+                ? "可试发当前选中的开关组合；仅选择步骤或勾选开关不会发送。"
+                : "当前没有选中可单独发送的开关步骤。";
         }
     }
 
@@ -265,22 +268,6 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         SelectedAction = Actions.FirstOrDefault();
         MarkDirty();
     }
-    /// <summary>Copy the direct twenty-switch experiment into a named action.</summary>
-    public void AddCurrentBenchMask(uint mask)
-    {
-        if (!CanEdit || mask > 0xFFFFF) return;
-        if (SelectedAction is null) NewAction();
-        if (SelectedStep is { Kind: BenchActionStepKind.SetKeys } selected && selected.Mask == 0)
-        {
-            selected.Mask = mask;
-            SelectedStep = null;
-            SelectedStep = selected;
-        }
-        else AddStep(BenchActionStep.SetKeys(mask, "开关组合 " +
-            (Steps.Count(x => x.Kind == BenchActionStepKind.SetKeys) + 1)));
-        Status = "已将当前 20 路开关组合加入动作；可继续添加保持时间。";
-    }
-
     private void AddStep(BenchActionStep step)
     {
         if (!CanEdit || SelectedAction is null) return;
