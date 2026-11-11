@@ -82,6 +82,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         _port = port ?? throw new ArgumentNullException(nameof(port));
         KeyActions = new BenchKeyActionEditorViewModel(_port,
             note => Append(WorkbenchSeverity.Progress, "按键动作", note));
+        CanMessages = new BenchCanEditorViewModel(_port,
+            note => Append(WorkbenchSeverity.Progress, "CAN1 发送", note));
         ConnectCommand = new DelegateCommand(async () => await ConnectOrDisconnectAsync(), () => !Busy)
             .ObservesProperty(() => Busy);
         RefreshCommand = new DelegateCommand(async () => await ReloadAsync(), () => !Busy)
@@ -129,6 +131,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     }
 
     public BenchKeyActionEditorViewModel KeyActions { get; }
+    public BenchCanEditorViewModel CanMessages { get; }
     public ObservableCollection<BenchControllerDefinition> Controllers { get; } = new();
     public ObservableCollection<BenchStateItem> States { get; } = new();
     public ObservableCollection<BenchDevice> Devices { get; } = new();
@@ -276,6 +279,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 Append(WorkbenchSeverity.Success, "配置已读取", $"{ProjectName} · {EcuProfileName} · revision {Revision}");
             }
             await KeyActions.LoadAsync();
+            await CanMessages.LoadAsync();
             UpdateConnection(await _port.GetConnectionAsync(CancellationToken.None));
         }
         catch (Exception ex) { Failure("读取台架信息", ex); }
