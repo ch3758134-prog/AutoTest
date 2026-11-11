@@ -129,6 +129,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write(store.projects())
                 if path == "/api/studio/project":
                     return self.write(store.project(params.get("id", "")))
+                if path == "/api/studio/project/context-history":
+                    return self.write(store.project_context_history(params.get("project","")))
                 if path == "/api/studio/object":
                     return self.write(store.object(params.get("id", "")))
                 if path == "/api/studio/impact":
