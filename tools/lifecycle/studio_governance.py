@@ -12,7 +12,7 @@ from studio_store import Store, RuleError, ident, now, text_value
 from studio_definition_research import DefinitionResearch
 from studio_semantics import legacy_project_projection
 
-POLICY_VERSION = "product-definition-control/2"
+POLICY_VERSION = "product-definition-control/3"
 FIELDS = ("summary", "body", "version", "variant")
 DOMAINS = (
     ("POSITIONING", "产品定位与价值目标"),
@@ -137,6 +137,7 @@ class DefinitionGovernance:
                   "created":r["created"],"updated":r["updated"]})
             return {"project_id":project_id,"policy_version":POLICY_VERSION,
               "domains":[{"key":k,"label":v} for k,v in DOMAINS],
+              "domain_meaning":"Suggested perspectives for research, not mandatory research quotas; mark out-of-scope with a reason or add a relevant topic.",
               "definition":current,"definition_digest":current_hash,
               "interpretation":legacy_project_projection(current),
               "baseline":{"revision":baseline["revision"],"digest":baseline["digest"],
@@ -280,9 +281,9 @@ class DefinitionGovernance:
         if failures:
             raise RuleError("Required research must be reviewed before implementation impact: "+
                             "; ".join(failures))
-        return digest([(domain,tasks[domain]["revision"],
-                        tasks[domain]["accepted_submission_id"])
-                       for domain,_ in DOMAINS])
+        return digest([(domain,task["state"],task["revision"],
+                        task["accepted_submission_id"])
+                       for domain,task in sorted(tasks.items())])
 
     def review_package(self,change_id,package_id,outcome,rationale,evidence_refs,
                        reviewer,expected_base_digest,expected_package_revision):
@@ -342,14 +343,19 @@ class DefinitionGovernance:
         reasons.extend(research_reasons)
         research_manifest=None
         if not research_reasons:
-            research_manifest=digest([(domain,research_tasks[domain]["revision"],
-                   research_tasks[domain]["accepted_submission_id"])
-                   for domain,_ in DOMAINS])
+            research_manifest=digest([(domain,task["state"],task["revision"],
+                   task["accepted_submission_id"])
+                   for domain,task in sorted(research_tasks.items())])
         missing=[]
         for domain,_ in DOMAINS:
+            task=research_tasks.get(domain)
+            # An explicitly explained scope decision means this suggested
+            # perspective does not require a separate impact form. This is
+            # not a blanket assertion of "no downstream impact".
+            if task and task["state"]=="NOT_APPLICABLE":
+                continue
             r=reviews.get(domain)
             if r is None:missing.append(domain);continue
-            task=research_tasks.get(domain)
             if (not task or r.get("research_revision")!=task["revision"] or
                 task["state"]!="REVIEWED"):
                 reasons.append(domain+": impact decision not pinned to current reviewed research")
@@ -363,7 +369,7 @@ class DefinitionGovernance:
                 obj=db.execute("SELECT revision,project_id FROM objects WHERE id=?",(oid,)).fetchone()
                 if not obj or obj["project_id"]!=change["project_id"] or obj["revision"]!=revision:
                     reasons.append(domain+": referenced engineering object changed "+oid)
-        if missing:reasons.append("Mandatory impact domains not reviewed: "+", ".join(missing))
+        if missing:reasons.append("Impact assessments missing for researched perspectives: "+", ".join(missing))
         packages=[dict(x) for x in db.execute(
             "SELECT id,title,revision FROM objects WHERE project_id=? AND kind='work_package'",
             (change["project_id"],))]
@@ -399,7 +405,8 @@ class DefinitionGovernance:
         return {"ready":not reasons,"reasons":reasons,"missing_domains":missing,
                 "reviewed":len(reviews),"required":len(DOMAINS),
                 "research_reviewed":sum(t["state"]=="REVIEWED" for t in research_tasks.values()),
-                "research_required":len(DOMAINS),
+                "research_scoped_out":sum(t["state"]=="NOT_APPLICABLE" for t in research_tasks.values()),
+                "research_required":len(research_tasks),
                 "package_reviewed":len(reviews_by_package),"package_total":len(packages),
                 "new_baseline_revision":change["base_revision"]+1}
 
