@@ -19,8 +19,14 @@
    ```
    
    浏览器打开 http://127.0.0.1:8766/。若此临时文件已存在会被复用；需要干净体验应指定不存在的新文件名。
-3. 终端打印的 Owner access key 只输入本机 HTML 的“负责人授权”，不要交给任何 AI、Codex 或提交到 Git。需要受限管理 AI HTTP 提案时，使用仓库外的独立 owner/manager token 文件；参阅 [V1.3 说明](STUDIO_V13.md)。
+3. **浏览 Git 提交中的项目管理 AI 候选记录不需要负责人密钥，也不会自动弹出授权窗。** 只有在 HTML 执行正式工程写入、审查或批准时，当前 V1.3 才要求本机 Owner access key；密钥不能交给 AI、Codex 或 GitHub。管理 AI HTTP 提案另用仓库外的独立受限密钥，详见 [V1.3 说明](STUDIO_V13.md)。
 4. 若要用真实 Windows 数据，必须先停止旧服务，安全备份 %LOCALAPPDATA%/EngineeringWorkbench/workspace.sqlite3，在**副本**演练迁移、修订和恢复；GitHub 提交不会修改本机 SQLite。
+
+## 项目管理 AI → GitHub → HTML 首轮实测
+
+GitHub 分支中的 `docs/engineering-control/projects/index.json` 指向已提交的项目管理候选记录；首个真实样本在 `docs/engineering-control/projects/autotest/management-view.json`。启动服务时提供管理分支的 `--repo .` 后，只读接口 `GET /api/studio/git-management` 会通过 `git show <本地检出HEAD>:<文件>` 取得**已提交**内容，返回准确 Git SHA、来源与待审结论。HTML 在空白 SQLite 工作区的首页直接显示这些资料，**不需创建项目、导入 SAEF 或负责人授权**。
+
+本功能只解决首轮**已版本化的 AI 管理结果展示**：不自动导入/批准工程对象，不执行 GitHub 远端实时同步，也不将 JSON 作为唯一工程事实。PR/CI/物理验证状态仍必须注明来源和检查时间。用户直接在聊天中反馈，项目管理 AI 更新 Git 文件，Codex 拉取新的精确 PR HEAD 并重启服务后再验证 HTML。
 
 ## 已有功能
 
