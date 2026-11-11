@@ -16,7 +16,7 @@ import re
 import threading
 import uuid
 
-from studio_plan_integrity import assess, PlanError
+from plan_integrity import assess, PlanError
 
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$")
 SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
