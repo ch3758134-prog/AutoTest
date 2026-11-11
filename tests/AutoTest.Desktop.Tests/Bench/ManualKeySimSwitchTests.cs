@@ -34,7 +34,7 @@ public sealed class ManualKeySimSwitchTests
         await vm.ApplyDirectMaskAsync();
         Assert.Equal(1, port.DirectCallCount);
         Assert.Equal(0x80001u, port.LastMask);
-        Assert.Contains("主控 CAN_SEND", vm.DirectResult);
+        Assert.Contains("主控已接收", vm.DirectResult);
         Assert.Contains("未测量", vm.DirectResult);
     }
 
