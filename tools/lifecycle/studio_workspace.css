@@ -179,6 +179,10 @@ button.ws-related-link:hover{text-decoration:underline}
 .ws-meta-line strong{display:block;color:#5a7181;margin-bottom:3px}
 .ws-meta-line span{color:#8695a2}
 .ws-reader-footer{margin-top:25px;border-top:1px solid #e4e9ed;padding-top:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;color:#7e8f9d;font-size:13px}
+.ws-home-advanced{margin-top:28px;padding:17px 20px;border:1px dashed #d8e2e9;border-radius:10px;color:#63788a;background:#fafcfd}
+.ws-home-advanced summary{cursor:pointer;font-weight:650;font-size:13px;color:#58778b}
+.ws-home-advanced p{font-size:13px;line-height:1.8}
+.ws-home-advanced .ws-actions{margin-top:14px}
 @media(max-width:1350px){
   .ws-reader-layout{grid-template-columns:165px minmax(0,1fr)}
   .ws-reader-rail{position:static;grid-column:2;max-height:none;border-top:1px solid #e6ebf0;padding-top:22px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
