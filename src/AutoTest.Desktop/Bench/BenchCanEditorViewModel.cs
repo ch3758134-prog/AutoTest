@@ -336,23 +336,35 @@ public sealed class BenchCanEditorViewModel : BindableBase
         return message;
     }
 
-    private void EncodeSignalInput(BenchDbcSignalInput input)
+    private void EncodeSignalInput(BenchDbcSignalInput changedInput)
     {
         if (SelectedMessage is not { } item || !CanEdit || _editingSignal) return;
+        var offending = changedInput;
         try
         {
             var message = ResolvePinnedDbcMessage(item);
-            if (!message.Signals.Contains(input.Definition))
-                throw new InvalidOperationException("信号定义已变化。");
-            if (!double.TryParse(input.ValueText, NumberStyles.Float,
-                CultureInfo.InvariantCulture, out var value) || !double.IsFinite(value))
-                throw new ArgumentException("信号值应为有限数字，例如 1、12.5。");
-            if (value < input.Definition.Minimum || value > input.Definition.Maximum)
-                throw new ArgumentException(
-                    $"信号 {input.Name} 超出 DBC 范围 [{input.Definition.Minimum}, {input.Definition.Maximum}] {input.Unit}。");
             var data = item.Snapshot().Payload();
-            if (data.Length != message.Dlc) throw new ArgumentException("Data 长度不符合 DBC DLC。");
-            DbcSignalCodec.EncodePhysical(input.Definition, value, data);
+            if (data.Length != message.Dlc)
+                throw new ArgumentException("Data 字节数不符合 DBC DLC。");
+
+            // Encode ALL currently visible signal values as one atomic draft.
+            // Changing signal B must never clear invalid input in signal A and
+            // resurrect the previously encoded byte values.
+            foreach (var field in SignalInputs)
+            {
+                offending = field;
+                if (!message.Signals.Contains(field.Definition))
+                    throw new InvalidOperationException("DBC 信号定义已变化。");
+                if (!double.TryParse(field.ValueText, NumberStyles.Float,
+                    CultureInfo.InvariantCulture, out var value) || !double.IsFinite(value))
+                    throw new ArgumentException($"信号 {field.Name} 需要有效数字，例如 1、12.5。");
+                if (value < field.Definition.Minimum || value > field.Definition.Maximum)
+                    throw new ArgumentException(
+                        $"信号 {field.Name} 超出 DBC 范围 " +
+                        $"[{field.Definition.Minimum}, {field.Definition.Maximum}] {field.Unit}。");
+                DbcSignalCodec.EncodePhysical(field.Definition, value, data);
+            }
+
             _editingSignal = true;
             try { item.DataHex = Convert.ToHexString(data); }
             finally { _editingSignal = false; }
@@ -360,13 +372,13 @@ public sealed class BenchCanEditorViewModel : BindableBase
             item.InvalidSignalName = null;
             item.InvalidSignalText = null;
             _signalInvalid = false;
-            SignalStatus = $"已将 {input.Name}={input.ValueText} {input.Unit} 编码为报文 Data（未发送）";
+            SignalStatus = $"已根据 {SignalInputs.Count} 个 DBC 信号生成 Data（未发送）。";
         }
         catch (Exception ex)
         {
             item.SignalError = ex.Message;
-            item.InvalidSignalName = input.Name;
-            item.InvalidSignalText = input.ValueText;
+            item.InvalidSignalName = offending.Name;
+            item.InvalidSignalText = offending.ValueText;
             _signalInvalid = true;
             SignalStatus = "信号值无效，禁止发送：" + ex.Message;
         }
