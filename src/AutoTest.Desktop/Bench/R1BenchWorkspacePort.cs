@@ -167,6 +167,57 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                     : "未收到主控有效 ACK");
     }
     /// <summary>
+    /// Direct manual-bench switch selection: uses exactly the same verified
+    /// CAN0 KEY_SIM path as configured Controller States, without requiring a
+    /// named ECU Profile to inspect the actual board's twenty switch bits.
+    /// Only USB CAN_SEND ACK is observable; five analog outputs are not read.
+    /// </summary>
+    public async Task<BenchOperationResult> ApplyPhysicalKeyMaskAsync(
+        uint mask, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var source = BenchEvidenceSource.Physical;
+        if (mask == 0 || mask > KeySimCanCodec.MaxMask)
+            return Reject("KEYSIM_DIRECT_MASK_INVALID",
+                "直接选中的按键组合必须在 1～20 位范围且非空；全部释放使用独立的释放命令。",
+                source);
+        var physical = _hardware();
+        if (physical is not { State: UsbSessionState.Connected,
+            ProtocolVersionVerified: true, Generation: > 0 })
+            return Reject("KEYSIM_DEVICE_NOT_CONNECTED",
+                "需在设备连接窗口建立真实主控并完成固件版本验证。", source);
+        var generation = physical.Generation;
+        if (_approveKeySim?.Invoke(mask, generation) != true)
+            return Reject("KEYSIM_OPERATOR_REJECTED",
+                "本次 CAN0 组合开关操作未经操作员确认，未发送。", source);
+        if (!ReferenceEquals(_hardware(), physical) ||
+            physical.State != UsbSessionState.Connected ||
+            physical.Generation != generation)
+            return Reject("KEYSIM_SESSION_CHANGED",
+                "确认期间 WinUSB 会话变化；没有发送过期掩码。", source);
+        var result = await physical.SetPhysicalKeySimMaskAsync(mask,
+            HardwareBenchController.PhysicalKeySimConfirmation(mask, generation), ct);
+        var accepted = result.Outcome == Outcome.Accepted &&
+            result.Value is { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged };
+        return new BenchOperationResult(accepted,
+            result.Value?.OperationId.ToString("D"),
+            result.OperationId.ToString("D"),
+            generation,
+            $"CAN0 ID=0x730 DLC=8 / KEY20 MASK=0x{mask:X5}",
+            accepted ? "MAIN_CONTROLLER_USB_CAN_SEND_ACK" :
+                result.Outcome == Outcome.Uncertain ? "UNKNOWN" : "NOT_SENT",
+            result.Value?.Evidence.ToString(),
+            result.FailureCode,
+            result.Failure?.Message,
+            source,
+            accepted
+                ? "主控已 ACK；并未测量 KEY_SIM 五路输出电压或 ECU 识别状态"
+                : result.Outcome == Outcome.Uncertain
+                    ? "实际 CAN0 发送状态不确定；不得将选中位当成已确认状态"
+                    : "未确认主控接受 CAN_SEND");
+    }
+
+    /// <summary>
     /// Physical recovery: explicit 0x80 frame clears all KEY_SIM switch bits.
     /// It remains available without a selected P05 controller state, because
     /// a stale/missing project must not prevent an operator-requested release.
