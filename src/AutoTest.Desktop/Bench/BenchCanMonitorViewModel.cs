@@ -150,7 +150,10 @@ public sealed class BenchCanMonitorViewModel : BindableBase
 
     private void OnReceive(CanObservation sample)
     {
-        if (sample.Frame.Role != BusRole.DutCan) return;
+        // Ignore stale frames racing with a disconnect/reconnect. The UI must
+        // never attribute an old ECU broadcast to the new physical session.
+        if (sample.Frame.Role != BusRole.DutCan || !_sourceConnected ||
+            sample.SessionGeneration != _sourceGeneration) return;
         _pending.Enqueue(sample);
         if (Interlocked.Increment(ref _pendingCount) > MaxPending && _pending.TryDequeue(out _))
         { Interlocked.Decrement(ref _pendingCount); Interlocked.Increment(ref _displayDropped); }
