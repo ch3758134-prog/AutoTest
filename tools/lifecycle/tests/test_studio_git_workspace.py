@@ -83,20 +83,39 @@ class GitHydrationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuleError, "Invalid Git"):
             committed_project(self.repo, "../../private")
 
-    def test_repository_candidate_is_a_valid_restorable_engineering_archive(self):
+    def test_owner_approval_marker_without_record_is_rejected(self):
+        target = self.repo / self.path
+        record = json.loads(target.read_text(encoding="utf-8"))
+        record["authority"] = "OWNER_APPROVED_P0_DOCUMENT"
+        target.write_text(json.dumps(record), encoding="utf-8")
+        self.git("add", ".")
+        self.git("commit", "-qm", "fake owner authority")
+        with self.assertRaisesRegex(RuleError, "explicit decision record"):
+            hydrate_empty(self.repo, self.root / "forged_owner.sqlite", self.project_id)
+
+    def test_repository_approved_p0_is_restorable_without_approving_other_objects(self):
         root = Path(__file__).resolve().parents[3]
         file = root / "docs/engineering-control/projects/autotest/snapshot.json"
         if not file.is_file():
             self.skipTest("Checked-in AutoTest source archive not present")
         raw = json.loads(file.read_text(encoding="utf-8"))
         from studio_restore import preview, restore_to_empty
-        self.assertEqual(raw["authority"], "AI_CANDIDATE_NOT_APPROVED")
+        from studio_product_identity import ProductIdentity
+        self.assertEqual(raw["authority"], "OWNER_APPROVED_P0_DOCUMENT")
         self.assertEqual(preview(raw["engineering"])["status"], "STRUCTURAL_PRECHECK_PASS")
         target = self.root / "autotest-trial.sqlite"
         restored = restore_to_empty(raw["engineering"], target)
         self.assertEqual(restored["project"]["id"], "autotest")
         self.assertGreaterEqual(len(restored["objects"]), 10)
-        self.assertTrue(all(x["state"] != "APPROVED" for x in restored["objects"]))
+        approved = [o for o in restored["objects"] if o["state"] == "APPROVED"]
+        self.assertEqual(len(approved), 1)
+        self.assertEqual(approved[0]["id"], "at-p0-approved-charter-v01")
+        self.assertEqual(approved[0]["kind"], "context")
+        self.assertTrue(all(r["status"] == "CANDIDATE" for r in restored["relations"]))
+        identity = ProductIdentity(Store(target)).status("autotest")
+        self.assertEqual(identity["state"], "BASELINED")
+        self.assertEqual(identity["baseline"]["revision"], 1)
+        self.assertEqual(identity["baseline"]["statement"], raw["approval"]["statement"])
 
 
 if __name__ == "__main__":
