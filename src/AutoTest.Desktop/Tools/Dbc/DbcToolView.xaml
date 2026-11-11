@@ -12,15 +12,24 @@
   
  </UserControl.Resources>
   <Grid Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-      <TextBlock Text="DBC 数据库" Style="{StaticResource AtPageTitle}" Margin="0,0,16,0"/>
-      <TextBox x:Name="DbcFilePathBox" Width="300" Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}" ToolTip="DBC 绝对文件路径（UTF-8）"/>
-      <Button Content="浏览…" Click="BrowseDbc_Click" Margin="8,0,0,0" Padding="12,4"/>
-      <Button Content="打开" Style="{StaticResource AtPrimaryButton}" Command="{Binding OpenCommand}" Margin="6,0,0,0" Padding="12,4"/>
-      <Button Content="保存" Command="{Binding SaveCommand}" Margin="6,0,0,0" Padding="12,4"/>
-      <Button Content="纳入工程" Command="{Binding ImportToProjectCommand}" Margin="6,0,0,0" Padding="12,4" ToolTip="首次登记当前工程主 DBC"/>
-      <Button Content="发布新修订" Command="{Binding PublishProjectRevisionCommand}" Margin="6,0,0,0" Padding="12,4" ToolTip="先保存本地编辑，再显式发布工程 DBC Revision；不会自动重绑旧引用"/>
-      <Button Content="重置" Style="{StaticResource AtQuietButton}" Command="{Binding ResetCommand}" Margin="6,0,0,0" Padding="12,4"/>
+    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+     <TextBlock Text="DBC 数据库" Style="{StaticResource AtPageTitle}" Margin="0,0,0,8"/>
+     <WrapPanel>
+      <TextBlock Text="文件" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <TextBox x:Name="DbcFilePathBox" Width="300" Text="{Binding FilePath,UpdateSourceTrigger=PropertyChanged}"
+       ToolTip="当前 DBC 的完整文件路径" Margin="0,0,6,0"/>
+      <Button Content="选择文件" Click="BrowseDbc_Click"/>
+      <Button Content="打开 DBC" Style="{StaticResource AtPrimaryButton}" Command="{Binding OpenCommand}"/>
+      <Button Content="保存文件" Command="{Binding SaveCommand}"/>
+      <Menu Background="Transparent" VerticalAlignment="Center">
+       <MenuItem Header="工程资源 ▾">
+        <MenuItem Header="纳入当前工程" Command="{Binding ImportToProjectCommand}"/>
+        <MenuItem Header="发布新修订" Command="{Binding PublishProjectRevisionCommand}"/>
+        <Separator/>
+        <MenuItem Header="重置未保存编辑" Command="{Binding ResetCommand}"/>
+       </MenuItem>
+      </Menu>
+     </WrapPanel>
     </StackPanel>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,9">
       <TextBlock Text="DBC Revision " FontWeight="SemiBold"/><TextBlock Text="{Binding Revision}" FontWeight="SemiBold"/>
@@ -29,12 +38,16 @@
     </StackPanel>
     <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <GroupBox Header="报文" Grid.Column="0" Margin="0,0,8,0"><DockPanel Margin="6">
-        <StackPanel DockPanel.Dock="Bottom"><TextBlock Text="ID（0x100）/ 名称 / DLC / TX节点" Foreground="{DynamicResource StudioMuted}"/>
-          <TextBox Text="{Binding NewMessageId, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+        <StackPanel DockPanel.Dock="Bottom"><TextBlock Text="CAN ID（HEX）" Style="{StaticResource AtHint}"/>
+          <TextBox Text="{Binding NewMessageId, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"
+          ToolTip="例如 0x123"/> 
+          <TextBlock Text="报文名称" Style="{StaticResource AtHint}"/>
           <TextBox Text="{Binding NewMessageName, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+          <TextBlock Text="长度（DLC）" Style="{StaticResource AtHint}"/>
           <TextBox Text="{Binding NewMessageDlc, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+          <TextBlock Text="发送节点" Style="{StaticResource AtHint}"/>
           <TextBox Text="{Binding Transmitter, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
-          <TextBlock Text="新增 Node"/><TextBox Text="{Binding NewNodeName, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
+          <TextBlock Text="新节点名称" Style="{StaticResource AtHint}"/><TextBox Text="{Binding NewNodeName, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
           <Button Content="添加节点" Command="{Binding AddNodeCommand}" Margin="0,2" Padding="8,3"/>
           <WrapPanel Margin="0,4"><Button Content="新增报文" Command="{Binding AddMessageCommand}" Padding="9,3"/>
             <Button Content="删除报文" Command="{Binding DeleteMessageCommand}" Margin="5,0" Padding="9,3"/>
@@ -42,7 +55,7 @@
         </StackPanel><ListBox ItemsSource="{Binding Messages}" SelectedItem="{Binding SelectedMessage}" DisplayMemberPath="Name"/>
       </DockPanel></GroupBox>
       <GroupBox Grid.Column="1" Header="信号" Margin="0,0,8,0"><DockPanel Margin="6">
-        <StackPanel DockPanel.Dock="Bottom"><TextBox Text="{Binding SignalName, UpdateSourceTrigger=PropertyChanged}" Margin="0,3"/>
+        <StackPanel DockPanel.Dock="Bottom"><TextBlock Text="信号名称" Style="{StaticResource AtHint}"/><TextBox Text="{Binding SignalName, UpdateSourceTrigger=PropertyChanged}" Margin="0,3"/>
           <WrapPanel><Button Content="新增信号" Command="{Binding AddSignalCommand}" Padding="8,3"/>
             <Button Content="删除信号" Command="{Binding DeleteSignalCommand}" Margin="4,0" Padding="8,3"/></WrapPanel>
         </StackPanel><ListBox ItemsSource="{Binding Signals}" SelectedItem="{Binding SelectedSignal}" DisplayMemberPath="Name"/>
@@ -52,14 +65,14 @@
         <UniformGrid Grid.Row="0" Columns="4">
           <StackPanel Margin="3"><TextBlock Text="起始位"/><TextBox Text="{Binding StartBit, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
           <StackPanel Margin="3"><TextBlock Text="位长度"/><TextBox Text="{Binding BitLength, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-          <StackPanel Margin="3"><TextBlock Text="Factor"/><TextBox Text="{Binding Factor, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-          <StackPanel Margin="3"><TextBlock Text="Offset"/><TextBox Text="{Binding Offset, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-          <StackPanel Margin="3"><TextBlock Text="Minimum"/><TextBox Text="{Binding Minimum, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-          <StackPanel Margin="3"><TextBlock Text="Maximum"/><TextBox Text="{Binding Maximum, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-          <StackPanel Margin="3"><TextBlock Text="Unit"/><TextBox Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-          <StackPanel Margin="3"><TextBlock Text="Receiver"/><TextBox Text="{Binding Receiver, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-          <StackPanel Margin="3"><CheckBox Content="Intel little-endian" IsChecked="{Binding Intel}"/></StackPanel>
-          <StackPanel Margin="3"><CheckBox Content="Signed" IsChecked="{Binding Signed}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="比例因子"/><TextBox Text="{Binding Factor, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="偏移值"/><TextBox Text="{Binding Offset, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="最小值"/><TextBox Text="{Binding Minimum, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="最大值"/><TextBox Text="{Binding Maximum, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="单位"/><TextBox Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><TextBlock Text="接收节点"/><TextBox Text="{Binding Receiver, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+          <StackPanel Margin="3"><CheckBox Content="Intel 小端" IsChecked="{Binding Intel}"/></StackPanel>
+          <StackPanel Margin="3"><CheckBox Content="有符号" IsChecked="{Binding Signed}"/></StackPanel>
           <StackPanel Margin="3"><TextBlock Text="Mux (M/mN)"/><TextBox Text="{Binding Mux, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
           <Button Content="更新信号属性" Command="{Binding UpdateSignalCommand}" Margin="3" Padding="8,4"/>
         </UniformGrid>
