@@ -103,7 +103,7 @@
                 <MenuItem Header="TEST 程序编辑" Click="OpenTest_Click"/>
                 <MenuItem Header="检查工程与引用" Command="{Binding ValidateCommand}"/>
             </MenuItem>
-            <MenuItem Header="专业工具">
+            <MenuItem Header="专业工具（独立窗口）">
                 <MenuItem Header="设备连接 / Station" Click="OpenStation_Click"/>
                 <MenuItem Header="CAN 监视" Click="OpenCan_Click"/>
                 <MenuItem Header="DBC 信号编辑" Click="OpenDbc_Click"/>
@@ -124,8 +124,8 @@
             </MenuItem>
             <MenuItem Header="窗口">
                 <MenuItem Header="浮动 TEST 编辑器" Click="FloatTest_Click"/>
-                <MenuItem Header="浮动 DBC 编辑器" Click="FloatDbc_Click"/>
-                <MenuItem Header="浮动波形分析" Click="FloatWave_Click"/>
+                <MenuItem Header="打开 DBC 独立窗口" Click="FloatDbc_Click"/>
+                <MenuItem Header="打开波形独立窗口" Click="FloatWave_Click"/>
                 <MenuItem Header="返回自动测试" Click="OpenRun_Click"/>
             </MenuItem>
         </Menu>
