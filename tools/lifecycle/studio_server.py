@@ -74,6 +74,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/management.js":
                     return self.write((HERE / "studio_management_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/capability.js":
+                    return self.write((HERE / "studio_capability_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/api/studio/version":
                     return self.write({"application": "Engineering Workbench",
                                        "version": "0.6", "mode": "editable",
