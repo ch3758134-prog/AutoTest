@@ -19,7 +19,7 @@ function engineeringPlanModel(brief){
     const execution=executions.get(o.id)||null;
     const state=execution?.effective_state||'NOT_LINKED';
     return {object:o,dependencies,unresolved,check,execution,state,
-      action:state==='BLOCKED_BY_CHANGED_DESIGN'?'REVALIDATE':
+      action:(state==='BLOCKED_BY_CHANGED_DESIGN'||state==='BLOCKED_BY_PRODUCT_DEFINITION')?'REVALIDATE':
         unresolved.length?'REVIEW_DEPENDENCIES':
         !check.ready?'COMPLETE_DESIGN':
         !execution?'BIND_GITHUB':
@@ -37,7 +37,7 @@ const PLAN_ACTIONS={
   REVIEW_DEPENDENCIES:'审查任务输入关系',
   COMPLETE_DESIGN:'补齐软件设计/实施准入',
   BIND_GITHUB:'关联真实 GitHub Issue',
-  REVALIDATE:'设计变化，需撤回或复核旧派发',
+  REVALIDATE:'工程基线变化或失效，需复核旧派发',
   REVIEW_DISPATCH:'人工决定是否派发',
   INSPECT_EXECUTION:'核对任务、PR 和实际验证'
 };
