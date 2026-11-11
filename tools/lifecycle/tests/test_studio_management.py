@@ -39,7 +39,7 @@ class ManagerProposalTests(unittest.TestCase):
             "kind":"requirement","title":"Physical behavior",
             "body":"Read real device input","meta":{}})["item"]
         brief=self.manager.context(self.project)
-        self.assertEqual(brief["schema"],"engineering-manager-brief/1")
+        self.assertEqual(brief["schema"],"engineering-manager-brief/2")
         self.assertTrue(any(x["id"]==req["id"] for x in brief["engineering_objects"]))
         self.assertIsNone(brief["github"]["fetched_at"])
         self.assertIsNone(brief["github"]["snapshot"])
