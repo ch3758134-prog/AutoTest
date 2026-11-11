@@ -41,10 +41,14 @@ async function renderManagementView(){
     managementFact('GitHub 状态',result.github.repository?
       result.github.repository+' · 最近同步 '+(result.github.fetched_at||'未知'):'尚未连接 GitHub'),
     managementFact('研究问题',result.technical_studies.length+' 项'),
+    managementFact('执行证据',result.verification_runs.length+' 条（独立于测试规格）'),
+    managementFact('待审证据',result.verification_runs.filter(x=>!x.review_decision).length+' 条'),
+    managementFact('已确认失败',result.verification_runs.filter(x=>x.review_decision==='CONFIRMED'&&x.outcome==='FAIL').length+' 条'),
     managementFact('待处理阻塞',result.blockers.length+' 项'));
   info.append(facts);
   if(result.github.error)info.append(el('div','reason','GitHub 同步出错：'+result.github.error));
   if(!result.github.fetched_at)info.append(note('GitHub 未同步。AI 不得根据本地对象数量推断远端项目完成状态。'));
+  info.append(el('p','tiny','执行证据由本地人工登记；证据审查与真实产品验收必须分别判断。'))
   mount.append(info);
   const problems=el('div','panel');
   const ph=el('div','sectionline');add(ph,el('h2','','工程阻塞与需要补齐的条件'));
