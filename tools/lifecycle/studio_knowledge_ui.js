@@ -72,7 +72,7 @@ function knowledgeEntryDetail(item,data,guide){
       el('div','context','概念作用：'+item.concept_ids.map(x=>conceptNames[x]||x).join(' / ')),
       el('div','context','原始来源/引用：\n'+item.source_refs.join('\n')),
       el('div','context','关联工程对象：'+(item.related_objects.join('、')||'暂无')),
-      el('div','tiny','来源性质：'+item.provenance+' · 记录者 '+item.created_by+
+      el('div','tiny','提交者标注的来源性质（未经独立核实）：'+item.provenance+' · 记录者 '+item.created_by+
            ' · '+item.origin_role+' · 当前 '+KNOWLEDGE_STATE[item.state]));
     if(item.review_reason)panel.append(el('p','context','负责人审查说明：'+item.review_reason));
     body.append(panel);
@@ -97,7 +97,7 @@ function knowledgeCreateModal(guide,existing=null,refines=null){
     const title=field(body,'此项认识的主题',existing?.title||'');
     const statement=field(body,'原话、观察或需要研究的主张',existing?.statement||'','textarea');
     const interpretation=field(body,'为什么这样理解，适用范围、争议和不确定性',existing?.interpretation||'','textarea');
-    const provenance=selectField(body,'这段材料是什么性质',[
+    const provenance=selectField(body,'提交者认为材料来自哪里（待核实）',[
       ['USER_INPUT','用户提供的输入（不等于外部验证）'],
       ['DOCUMENT','资料中的描述（需要核查来源）'],
       ['OBSERVATION','有条件的观察记录'],
