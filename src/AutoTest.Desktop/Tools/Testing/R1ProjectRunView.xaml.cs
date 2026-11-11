@@ -12,6 +12,11 @@ public partial class R1ProjectRunView : UserControl
         DataContext = model ?? throw new ArgumentNullException(nameof(model));
     }
 
+    public event EventHandler? EditProgramRequested;
+
+    private void OpenProgram_Click(object sender, RoutedEventArgs e) =>
+        EditProgramRequested?.Invoke(this, EventArgs.Empty);
+
     private void StepTree_SelectionChanged(object sender,
         RoutedPropertyChangedEventArgs<object> args)
     {
