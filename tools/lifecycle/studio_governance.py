@@ -11,7 +11,7 @@ import json
 from studio_store import Store, RuleError, ident, now, text_value
 from studio_definition_research import DefinitionResearch
 
-POLICY_VERSION = "product-definition-control/1"
+POLICY_VERSION = "product-definition-control/2"
 FIELDS = ("summary", "body", "version", "variant")
 DOMAINS = (
     ("POSITIONING", "产品定位与价值目标"),
