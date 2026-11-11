@@ -75,13 +75,32 @@ function processView(){
  return html;
 }
 function reviews(){
- const approved=data.objects.filter(o=>o.state==='APPROVED');
- const g1=data.objects.filter(o=>o.id==='at-g1-integrated-autotest-study'||o.id==='at-g1-integrated-behavior-requirements'||o.id==='at-g1-physical-loop-verification-criteria');
- let html=heading('项目管理 / 正式成果与审查','成果与审查','这里不展示 36 个内部工程草稿。只展示正式批准的成果和已整理、确有实际审查意义的候审材料。');
- html+='<div class="review-banner"><div><div class="eyebrow">当前需要确认</div><h3>G1 V1.0 整体需求研究尚未批准</h3><p>本页面不提供跳过审查的按钮。你可以先阅读完整报告，再在正式受控流程中作出修订或批准决定。</p></div>'+btn('阅读 G1 报告','data-open-doc','at-g1-integrated-autotest-study','primary')+'</div>';
- html+='<section class="section">'+sectionHead('正式批准的工程依据')+approved.map(o=>'<div class="document-item"><div><strong>'+a(o.title)+'</strong>'+pill('已批准','approved')+'<p>'+a(toText(o.body,210))+'</p></div>'+btn('阅读','data-open-doc',o.id)+'</div>').join('')+'</section>';
- html+='<section class="section">'+sectionHead('需要审查的正式研究成果')+g1.map(o=>'<div class="document-item"><div><strong>'+a(o.title)+'</strong>'+pill('未批准','pending')+'<p>'+a(toText(o.body,240))+'</p></div>'+btn('阅读全文','data-open-doc',o.id)+'</div>').join('')+'</section>';
- html+='<div class="callout">注意：“候审材料”表示可供你检查的研究工作，不表示已经生成不可变的正式提交审批事务。当前试用版本只读，审查动作需要后续正式实现。</div>';
+ const g1ids=new Set(['at-g1-integrated-autotest-study','at-g1-integrated-behavior-requirements','at-g1-physical-loop-verification-criteria']);
+ const approved=data.objects.filter(o=>o.state==='APPROVED'&&!g1ids.has(o.id));
+ const g1=data.objects.filter(o=>g1ids.has(o.id));
+ const approvedG1=g1.filter(o=>o.state==='APPROVED').length;
+ let html=heading('项目管理 / 正式成果与审查','成果与审查','内部调查与修订不会自动进入负责人日常管理列表。只有明确选定的正式成果才能提交独立审查，批准版本保留可核对的来源身份。');
+ html+='<div class="review-banner"><div><div class="eyebrow">当前正式审查</div><h3>'+
+  (approvedG1===g1.length?'G1 成果均有批准记录，阶段 Gate 仍需单独审查':
+   approvedG1?'G1 部分成果已批准，仍有 '+(g1.length-approvedG1)+' 项待审':
+   'G1 完整系统需求研究尚未批准')+
+  '</h3><p>正式送审、审查决定与阶段 Gate 各有独立记录。读取文档不产生批准，审批不等于实体 ECU 验收。</p></div>'+
+  btn('阅读 G1 综合报告','data-open-doc','at-g1-integrated-autotest-study','primary')+'</div>';
+ html+='<section class="section">'+sectionHead('已批准的产品与工程依据')+
+   approved.map(o=>'<div class="document-item"><div><strong>'+a(o.title)+'</strong>'+pill('已批准','approved')+
+   '<p>'+a(toText(o.body,210))+'</p></div>'+btn('阅读','data-open-doc',o.id)+'</div>').join('')+'</section>';
+ html+='<section class="section">'+sectionHead('G1 正式成果与审批')+g1.map(o=>{
+   const submitted=(data.control.artifact_submissions||[]).find(s=>s.object_id===o.id && s.object_revision===o.revision && s.status==='IN_REVIEW');
+   const state=o.state==='APPROVED'?'已批准':submitted?'正式送审中':'尚未正式送审';
+   const tone=o.state==='APPROVED'?'approved':submitted?'pending':'unknown';
+   const reviewAction=o.state==='APPROVED'?'':submitted?
+     '<button class="primary" data-pm="artifact-review" data-id="'+a(submitted.id)+'">进行负责人审查</button>':
+     '<button class="secondary" data-pm="artifact-submit" data-id="'+a(o.id)+'">提交正式审查</button>';
+   return '<div class="document-item"><div><strong>'+a(o.title)+'</strong> '+pill(state,tone)+
+     '<p>'+a(toText(o.body,240))+'</p></div><div class="pm-artifact-actions">'+
+      btn('阅读全文','data-open-doc',o.id)+reviewAction+'</div></div>';
+ }).join('')+'</section>';
+ html+='<div class="callout">正式审批以固定的文件修订及内容指纹为依据；原始研究资料不会因审批被直接覆盖。内部草稿仍留在历史来源中，不会自动升格为工程要求。</div>';
  return html;
 }
 function handoff(){
