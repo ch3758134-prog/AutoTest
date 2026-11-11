@@ -31,6 +31,20 @@ jobs:
         run: |
           git rev-parse HEAD
           dotnet --version
+      - name: Reject legacy layered Shell UI
+        shell: pwsh
+        run: |
+          $xaml = Get-Content src/AutoTest.Desktop/Shell/MainWindow.xaml -Raw -Encoding utf8
+          $code = Get-Content src/AutoTest.Desktop/Shell/MainWindow.xaml.cs -Raw -Encoding utf8
+          foreach ($legacy in @('WorkbenchTabs','R1OperatorSurface','R1WorkspaceMode','R1WorkspaceGrid','R1OperatorHost','P01 工程')) {
+            if ($xaml.Contains($legacy) -or $code.Contains($legacy)) {
+              throw "LEGACY_SHELL_REINTRODUCED: $legacy"
+            }
+          }
+          if (-not $xaml.Contains('DocumentTabs') -or -not $xaml.Contains('ExplorerTabs')) {
+            throw 'UNIFIED_IDE_SHELL_MISSING'
+          }
+          Write-Host 'UNIFIED_TEST_IDE_SHELL_STRUCTURE_PASS'
       - name: Restore formal Desktop
         shell: pwsh
         run: dotnet restore src/AutoTest.Desktop/AutoTest.Desktop.csproj
