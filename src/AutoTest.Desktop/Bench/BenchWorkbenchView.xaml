@@ -319,7 +319,7 @@
         </ItemsControl.ItemTemplate>
        </ItemsControl>
       </ScrollViewer>
-      <TextBlock Grid.Row="2" Text="还没有按键动作。点击右上角“+ 新建动作”，\n动作就会作为按钮出现在这里。"
+      <TextBlock Grid.Row="2" Text="还没有按键动作。点击右上角“+ 新建动作”，动作就会作为按钮出现在这里。"
        HorizontalAlignment="Center" VerticalAlignment="Center"
        TextAlignment="Center" TextWrapping="Wrap" FontSize="13"
        Foreground="#7A8FA5" Margin="14">
