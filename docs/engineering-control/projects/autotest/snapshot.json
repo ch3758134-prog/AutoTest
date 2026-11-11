@@ -1,11 +1,11 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T07:26:23.495Z",
+  "exported_at": "2026-11-11T07:36:34.086Z",
   "authority": "OWNER_APPROVED_P0_DOCUMENT",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T07:26:23.495Z",
+    "exported_at": "2026-11-11T07:36:34.086Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T07:26:23.495Z"
+      "updated": "2026-11-11T07:36:34.086Z"
     },
     "objects": [
       {
@@ -575,6 +575,193 @@
         "approved_at": "2026-11-11T07:26:23.495Z",
         "created": "2026-11-11T07:26:23.495Z",
         "updated": "2026-11-11T07:26:23.495Z"
+      },
+      {
+        "id": "at-g0-system-inventory",
+        "project_id": "autotest",
+        "kind": "system",
+        "title": "G0｜现有 ECU 测试系统组成与实物身份调查（初始盘点）",
+        "body": "本次 G0 从已经批准的 P0 产品定义出发：AutoTest 是一个以真实台架为基础的软硬件测试系统。本对象盘查现存物理系统的组成，而非延用旧架构。\n\n目前历史来源所列组成：① Windows 工位 PC 和 HOST；② 主控 PCB 与主控 MCU 固件；③ KEY_SIM 按键 PCB 与其 MCU 固件；④ 供电、夹具及电磁阀、CAN/USB 线束和 DUT 外部信号连接；⑤ 外部扫码枪（作为工位识别设备）；⑥ 实际被测 ECU（测试对象，不属于 AutoTest 自研电子控制器）。\n\n已见历史源资料：主控 TestCtr V1.5 原理图（5 页）、按键 EPB_ODD V1.1 原理图（4 页），对应 FW-MAIN-Project.zip、FW-KEY-WS.zip；本轮只重新核对了 GitHub 中的文字核查记录，并未将 PDF 上的板卡型号或固件 ZIP 的身份验证为现役实装或现场已烧录镜像。\n\n**当前事实层级**：P0 确认的是系统边界；历史 G0 是设计/源码研究及旧批准记录；2026-11-09 USB/CAN1 RX 是后续用户报告的局部实测。当前实物板号、装配/线束、实际固件版本、设备角色和连接/供电状态仍需对现役工位核对。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）",
+          "source_type": "HISTORICAL_SOURCE_REVIEW",
+          "baseline_input": "at-p0-approved-charter-v01:r2",
+          "references": [
+            "SAEF/engineering/work-products/G0/G0-01/index.md",
+            "SAEF/engineering/work-products/G0/G0-02/index.md",
+            "SAEF/engineering/work-products/G0/G0-03/index.md",
+            "SAEF/engineering/work-products/G0/G0-04/index.md",
+            "SAEF/engineering/work-products/G0/G0-05/index.md",
+            "SAEF/engineering/work-products/G0/G0-07/index.md",
+            "SAEF/engineering/work-products/G0/G0-08/index.md",
+            "SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json",
+            "docs/delivery/04_R1产品完成度与实测推进看板.md",
+            "PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26"
+          ],
+          "evidence_scope": "G0_DESK_RECONNAISSANCE_ONLY",
+          "approval_note": "未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate",
+          "investigation_topic": "CURRENT_ASSET_IDENTITY",
+          "evidence_level": "HISTORICAL_SCHEMATIC_AND_SOURCE_REVIEW",
+          "status": "TO_CONFIRM_CURRENT_PHYSICAL_CONFIGURATION"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:36:34.086Z",
+        "updated": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "at-g0-hardware-capability-map",
+        "project_id": "autotest",
+        "kind": "reference",
+        "title": "G0｜已有硬件路径及能力证据分级（不作为新设计结论）",
+        "body": "历史资料能够提供的**设计线索**（并非新产品要求、当前现役能力批准）：\n\n主控 PCB：USB 隔离与上位机通信、两路 CAN 收发器/MCU CAN 资源、IGN 与夹具相关的高/低边输出、DAC/模拟激励电路及外部连接器。旧原理图的 CAN1/CAN2 与软件 CAN0/CAN1 命名不必一致，须用实际线路/固件核实。\n\n按键 PCB：CAN 接收、20 路电阻网络/模拟开关控制，形成 5 路依赖电源及 DUT 输入阻抗的模拟电压网络；不是 20 路独立 ECU 按键输出，更不是 5 路任意 DAC。历史记录含 KEY16 引脚映射差异，仍待核对。\n\n工位设备：外部电源、夹具及电磁阀、线束；不能从板载电源器件推导 DUT 主供电可软件控制，也不能把阀控制 ACK 当机械到位反馈。外部扫码枪属于系统接入设备，不能把它误划为主控 MCU 电气激励。\n\n证据层级必须分别记录：原始图纸/源码（只证明设计或源代码）→实装和版本身份→真实接线与电气测量→目标 DUT 的实际行为→自动测试集成与可复现记录。未来 G1 需求、G2 架构不由本表自动决定。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）",
+          "source_type": "HISTORICAL_SOURCE_REVIEW",
+          "baseline_input": "at-p0-approved-charter-v01:r2",
+          "references": [
+            "SAEF/engineering/work-products/G0/G0-01/index.md",
+            "SAEF/engineering/work-products/G0/G0-02/index.md",
+            "SAEF/engineering/work-products/G0/G0-03/index.md",
+            "SAEF/engineering/work-products/G0/G0-04/index.md",
+            "SAEF/engineering/work-products/G0/G0-05/index.md",
+            "SAEF/engineering/work-products/G0/G0-07/index.md",
+            "SAEF/engineering/work-products/G0/G0-08/index.md",
+            "SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json",
+            "docs/delivery/04_R1产品完成度与实测推进看板.md",
+            "PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26"
+          ],
+          "evidence_scope": "G0_DESK_RECONNAISSANCE_ONLY",
+          "approval_note": "未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate",
+          "investigation_topic": "PHYSICAL_PATH_EVIDENCE_HIERARCHY",
+          "known_design_records": [
+            "G0-02 MAIN",
+            "G0-03 KEY",
+            "G0-04 FW-MAIN",
+            "G0-05 FW-KEY",
+            "G0-07 interface matrix"
+          ],
+          "evidence_level": "HISTORICAL_DESIGN_ONLY"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:36:34.086Z",
+        "updated": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "at-g0-evidence-current",
+        "project_id": "autotest",
+        "kind": "reference",
+        "title": "G0｜历史静态材料与后续现场实测的证据时序",
+        "body": "2026-11-03：历史 SAEF G0 曾获 PASS_WITH_LIMITATIONS。其限制明确为 B0～B6 32 项现场复验尚未执行、主控/按键板现役烧录镜像身份和线束未核证等。该批准只证明当时的有限制历史事实档案评审，不表示本次重新定义产品后的 G0 自动完成。\n\n2026-11-09：主对话旧实测看板记录用户通过 DeviceLab 实际连接主控 WinUSB、观察到 DUT CAN1 RX 连续 2464 帧且当次截图丢帧/解码错误为零。该事实是用户提供的那次基础 USB/CAN 接收证据，**不**自动证明 CAN TX、KEY_SIM、IGN、夹具、UDS、刷写或自动测试闭环已验证；不要求仅为重复证明该历史观察而无意义重测。\n\n2026-11-10～11：PR #26 FieldStudio 包含 USB 串口扫码枪接入的候选实现，但其 PR 正文仍声明未完成真实扫码枪现场扫描验证；PR 文字标称的 HEAD 与 GitHub 实际 PR HEAD 不同，应后续版本核实。这属于软件候选/CI 资料，不是新的硬件功能实测。\n\n新 G0 把相同能力在不同时间、来源及软件/硬件配置下的证据并列管理，不允许用“历史 G0 未执行”抹去后来的真实 RX 观察，也不允许把最新 CI 冒充实体动作成功。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）",
+          "source_type": "HISTORICAL_SOURCE_REVIEW",
+          "baseline_input": "at-p0-approved-charter-v01:r2",
+          "references": [
+            "SAEF/engineering/work-products/G0/G0-01/index.md",
+            "SAEF/engineering/work-products/G0/G0-02/index.md",
+            "SAEF/engineering/work-products/G0/G0-03/index.md",
+            "SAEF/engineering/work-products/G0/G0-04/index.md",
+            "SAEF/engineering/work-products/G0/G0-05/index.md",
+            "SAEF/engineering/work-products/G0/G0-07/index.md",
+            "SAEF/engineering/work-products/G0/G0-08/index.md",
+            "SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json",
+            "docs/delivery/04_R1产品完成度与实测推进看板.md",
+            "PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26"
+          ],
+          "evidence_scope": "G0_DESK_RECONNAISSANCE_ONLY",
+          "approval_note": "未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate",
+          "investigation_topic": "EVIDENCE_CHRONOLOGY",
+          "evidence_level": "HISTORICAL_GATE_PLUS_OWNER_REPORTED_BENCH_AND_PR_METADATA",
+          "requires_new_test": false
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:36:34.086Z",
+        "updated": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "at-g0-current-unknowns",
+        "project_id": "autotest",
+        "kind": "risk",
+        "title": "G0｜现役工位实物与固件身份尚未完整对应（待调查）",
+        "body": "本次新产品范围下的待核实事项，按对事实调查的影响组织，不作为全部现场测试的强制前置：\n\nA. 当前工位：实装主控/按键 PCB 版本、是否都接入、供电/夹具/线束配置、DUT 型号及安全操作边界。\nB. MCU 固件：两块实物中实际运行的固件/编译 Target/映像版本，与归档源码是否一致。\nC. 对外刺激：CAN 实际通路/终端、IGN/夹具输出真实电平及动作、KEY_SIM 20 开关→5 路电压与 DUT 识别关系；原理图、命令 ACK 和 ECU 端测量必须分开。\nD. 后续能力：真实 CAN TX、相关设备恢复、采集时基/丢帧、串口扫码枪的实际接口与样例。它们的优先级应由后续产品级目标和受控调查决定，而不是未经审查要求全部重测。\nE. 旧图纸与现场一致性：尤其 KEY16 控制线、CAN 原理图/固件通道编号、供电和阀反馈语义。\n\n不申请当前上电、刷写或危险输出试验授权；先完成只读现况盘点和证据归档，再针对关键未核能力决定安全取证方式。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）",
+          "source_type": "HISTORICAL_SOURCE_REVIEW",
+          "baseline_input": "at-p0-approved-charter-v01:r2",
+          "references": [
+            "SAEF/engineering/work-products/G0/G0-01/index.md",
+            "SAEF/engineering/work-products/G0/G0-02/index.md",
+            "SAEF/engineering/work-products/G0/G0-03/index.md",
+            "SAEF/engineering/work-products/G0/G0-04/index.md",
+            "SAEF/engineering/work-products/G0/G0-05/index.md",
+            "SAEF/engineering/work-products/G0/G0-07/index.md",
+            "SAEF/engineering/work-products/G0/G0-08/index.md",
+            "SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json",
+            "docs/delivery/04_R1产品完成度与实测推进看板.md",
+            "PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26"
+          ],
+          "evidence_scope": "G0_DESK_RECONNAISSANCE_ONLY",
+          "approval_note": "未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate",
+          "investigation_topic": "CURRENT_CONFIGURATION_EVIDENCE_GAPS",
+          "risk_level": "OPEN_G0_FACTS",
+          "no_hardware_acts": true
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:36:34.086Z",
+        "updated": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "at-g0-investigation-plan",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "G0｜重新定义产品后的现有系统调查工作顺序（非实现计划）",
+        "body": "G0 仅依据已批准的 P0 产品身份开展事实调查，不签发旧系统设计为新架构。推荐顺序：\n1. **只读资产身份**：从现有资料与现场信息核实 PCB/固件/HOST/外设/夹具/线束/DUT 的身份与实际组成，建立可溯源配置清单。\n2. **板级物理能力分析**：对照原理图、电气网络、引出接口和 DUT 侧条件，区分设计支持、实际装配、真实输出及不可确定能力，记录差异。\n3. **现役固件与上位机利用情况**：追踪固件和 HOST 的真实版本与接口使用，但不能让已有软件反向定义产品应具备的能力。\n4. **证据缺口裁决**：将已经存在的实体事实与尚需现场测量的条件分开；只对影响后续需求/设计的未知组织取证，不作无差别重复测试。\n5. **形成可审的 G0 事实基线候选**：以资产身份、能力/限制、现有证据、未知与可信程度为核心，交用户审核；它不包括新架构及编码合同。\n\n此记录不是执行工作包或 P0/G0 Gate 决议。现场操作之前需独立核实安全条件与实物版本。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）",
+          "source_type": "HISTORICAL_SOURCE_REVIEW",
+          "baseline_input": "at-p0-approved-charter-v01:r2",
+          "references": [
+            "SAEF/engineering/work-products/G0/G0-01/index.md",
+            "SAEF/engineering/work-products/G0/G0-02/index.md",
+            "SAEF/engineering/work-products/G0/G0-03/index.md",
+            "SAEF/engineering/work-products/G0/G0-04/index.md",
+            "SAEF/engineering/work-products/G0/G0-05/index.md",
+            "SAEF/engineering/work-products/G0/G0-07/index.md",
+            "SAEF/engineering/work-products/G0/G0-08/index.md",
+            "SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json",
+            "docs/delivery/04_R1产品完成度与实测推进看板.md",
+            "PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26"
+          ],
+          "evidence_scope": "G0_DESK_RECONNAISSANCE_ONLY",
+          "approval_note": "未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate",
+          "investigation_topic": "G0_READ_ONLY_RECONNAISSANCE_SEQUENCE",
+          "scope_gate": "P0_IDENTITY_V01_APPROVED_ONLY",
+          "engineering_phase": "G0_FACT_DISCOVERY",
+          "not_code_ready": true
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:36:34.086Z",
+        "updated": "2026-11-11T07:36:34.086Z"
       }
     ],
     "relations": [
@@ -717,6 +904,39 @@
         "target_id": "at-req-core-test-loop",
         "kind": "depends",
         "created": "2026-11-11T07:04:23.904Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g0-r1",
+        "project_id": "autotest",
+        "source_id": "at-g0-system-inventory",
+        "target_id": "at-g0-hardware-capability-map",
+        "kind": "defines",
+        "created": "2026-11-11T07:36:34.086Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g0-r2",
+        "project_id": "autotest",
+        "source_id": "at-g0-evidence-current",
+        "target_id": "at-test-canrx",
+        "kind": "verifies",
+        "created": "2026-11-11T07:36:34.086Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g0-r3",
+        "project_id": "autotest",
+        "source_id": "at-g0-current-unknowns",
+        "target_id": "at-g0-hardware-capability-map",
+        "kind": "impacts",
+        "created": "2026-11-11T07:36:34.086Z",
         "status": "CANDIDATE",
         "approved_by": null,
         "approved_at": null
@@ -1002,6 +1222,46 @@
         "action": "APPROVE_BY_EXPLICIT_USER_DECISION",
         "actor": "AUTO_TEST_OWNER_EXPLICIT_DECISION",
         "timestamp": "2026-11-11T07:26:23.495Z"
+      },
+      {
+        "object_id": "at-g0-system-inventory",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g0-system-inventory\",\"project_id\":\"autotest\",\"kind\":\"system\",\"title\":\"G0｜现有 ECU 测试系统组成与实物身份调查（初始盘点）\",\"body\":\"本次 G0 从已经批准的 P0 产品定义出发：AutoTest 是一个以真实台架为基础的软硬件测试系统。本对象盘查现存物理系统的组成，而非延用旧架构。\\n\\n目前历史来源所列组成：① Windows 工位 PC 和 HOST；② 主控 PCB 与主控 MCU 固件；③ KEY_SIM 按键 PCB 与其 MCU 固件；④ 供电、夹具及电磁阀、CAN/USB 线束和 DUT 外部信号连接；⑤ 外部扫码枪（作为工位识别设备）；⑥ 实际被测 ECU（测试对象，不属于 AutoTest 自研电子控制器）。\\n\\n已见历史源资料：主控 TestCtr V1.5 原理图（5 页）、按键 EPB_ODD V1.1 原理图（4 页），对应 FW-MAIN-Project.zip、FW-KEY-WS.zip；本轮只重新核对了 GitHub 中的文字核查记录，并未将 PDF 上的板卡型号或固件 ZIP 的身份验证为现役实装或现场已烧录镜像。\\n\\n**当前事实层级**：P0 确认的是系统边界；历史 G0 是设计/源码研究及旧批准记录；2026-11-09 USB/CAN1 RX 是后续用户报告的局部实测。当前实物板号、装配/线束、实际固件版本、设备角色和连接/供电状态仍需对现役工位核对。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）\",\"source_type\":\"HISTORICAL_SOURCE_REVIEW\",\"baseline_input\":\"at-p0-approved-charter-v01:r2\",\"references\":[\"SAEF/engineering/work-products/G0/G0-01/index.md\",\"SAEF/engineering/work-products/G0/G0-02/index.md\",\"SAEF/engineering/work-products/G0/G0-03/index.md\",\"SAEF/engineering/work-products/G0/G0-04/index.md\",\"SAEF/engineering/work-products/G0/G0-05/index.md\",\"SAEF/engineering/work-products/G0/G0-07/index.md\",\"SAEF/engineering/work-products/G0/G0-08/index.md\",\"SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json\",\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26\"],\"evidence_scope\":\"G0_DESK_RECONNAISSANCE_ONLY\",\"approval_note\":\"未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate\",\"investigation_topic\":\"CURRENT_ASSET_IDENTITY\",\"evidence_level\":\"HISTORICAL_SCHEMATIC_AND_SOURCE_REVIEW\",\"status\":\"TO_CONFIRM_CURRENT_PHYSICAL_CONFIGURATION\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:36:34.086Z\",\"updated\":\"2026-11-11T07:36:34.086Z\"}",
+        "action": "CREATE_G0_FACT_DISCOVERY_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "object_id": "at-g0-hardware-capability-map",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g0-hardware-capability-map\",\"project_id\":\"autotest\",\"kind\":\"reference\",\"title\":\"G0｜已有硬件路径及能力证据分级（不作为新设计结论）\",\"body\":\"历史资料能够提供的**设计线索**（并非新产品要求、当前现役能力批准）：\\n\\n主控 PCB：USB 隔离与上位机通信、两路 CAN 收发器/MCU CAN 资源、IGN 与夹具相关的高/低边输出、DAC/模拟激励电路及外部连接器。旧原理图的 CAN1/CAN2 与软件 CAN0/CAN1 命名不必一致，须用实际线路/固件核实。\\n\\n按键 PCB：CAN 接收、20 路电阻网络/模拟开关控制，形成 5 路依赖电源及 DUT 输入阻抗的模拟电压网络；不是 20 路独立 ECU 按键输出，更不是 5 路任意 DAC。历史记录含 KEY16 引脚映射差异，仍待核对。\\n\\n工位设备：外部电源、夹具及电磁阀、线束；不能从板载电源器件推导 DUT 主供电可软件控制，也不能把阀控制 ACK 当机械到位反馈。外部扫码枪属于系统接入设备，不能把它误划为主控 MCU 电气激励。\\n\\n证据层级必须分别记录：原始图纸/源码（只证明设计或源代码）→实装和版本身份→真实接线与电气测量→目标 DUT 的实际行为→自动测试集成与可复现记录。未来 G1 需求、G2 架构不由本表自动决定。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）\",\"source_type\":\"HISTORICAL_SOURCE_REVIEW\",\"baseline_input\":\"at-p0-approved-charter-v01:r2\",\"references\":[\"SAEF/engineering/work-products/G0/G0-01/index.md\",\"SAEF/engineering/work-products/G0/G0-02/index.md\",\"SAEF/engineering/work-products/G0/G0-03/index.md\",\"SAEF/engineering/work-products/G0/G0-04/index.md\",\"SAEF/engineering/work-products/G0/G0-05/index.md\",\"SAEF/engineering/work-products/G0/G0-07/index.md\",\"SAEF/engineering/work-products/G0/G0-08/index.md\",\"SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json\",\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26\"],\"evidence_scope\":\"G0_DESK_RECONNAISSANCE_ONLY\",\"approval_note\":\"未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate\",\"investigation_topic\":\"PHYSICAL_PATH_EVIDENCE_HIERARCHY\",\"known_design_records\":[\"G0-02 MAIN\",\"G0-03 KEY\",\"G0-04 FW-MAIN\",\"G0-05 FW-KEY\",\"G0-07 interface matrix\"],\"evidence_level\":\"HISTORICAL_DESIGN_ONLY\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:36:34.086Z\",\"updated\":\"2026-11-11T07:36:34.086Z\"}",
+        "action": "CREATE_G0_FACT_DISCOVERY_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "object_id": "at-g0-evidence-current",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g0-evidence-current\",\"project_id\":\"autotest\",\"kind\":\"reference\",\"title\":\"G0｜历史静态材料与后续现场实测的证据时序\",\"body\":\"2026-11-03：历史 SAEF G0 曾获 PASS_WITH_LIMITATIONS。其限制明确为 B0～B6 32 项现场复验尚未执行、主控/按键板现役烧录镜像身份和线束未核证等。该批准只证明当时的有限制历史事实档案评审，不表示本次重新定义产品后的 G0 自动完成。\\n\\n2026-11-09：主对话旧实测看板记录用户通过 DeviceLab 实际连接主控 WinUSB、观察到 DUT CAN1 RX 连续 2464 帧且当次截图丢帧/解码错误为零。该事实是用户提供的那次基础 USB/CAN 接收证据，**不**自动证明 CAN TX、KEY_SIM、IGN、夹具、UDS、刷写或自动测试闭环已验证；不要求仅为重复证明该历史观察而无意义重测。\\n\\n2026-11-10～11：PR #26 FieldStudio 包含 USB 串口扫码枪接入的候选实现，但其 PR 正文仍声明未完成真实扫码枪现场扫描验证；PR 文字标称的 HEAD 与 GitHub 实际 PR HEAD 不同，应后续版本核实。这属于软件候选/CI 资料，不是新的硬件功能实测。\\n\\n新 G0 把相同能力在不同时间、来源及软件/硬件配置下的证据并列管理，不允许用“历史 G0 未执行”抹去后来的真实 RX 观察，也不允许把最新 CI 冒充实体动作成功。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）\",\"source_type\":\"HISTORICAL_SOURCE_REVIEW\",\"baseline_input\":\"at-p0-approved-charter-v01:r2\",\"references\":[\"SAEF/engineering/work-products/G0/G0-01/index.md\",\"SAEF/engineering/work-products/G0/G0-02/index.md\",\"SAEF/engineering/work-products/G0/G0-03/index.md\",\"SAEF/engineering/work-products/G0/G0-04/index.md\",\"SAEF/engineering/work-products/G0/G0-05/index.md\",\"SAEF/engineering/work-products/G0/G0-07/index.md\",\"SAEF/engineering/work-products/G0/G0-08/index.md\",\"SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json\",\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26\"],\"evidence_scope\":\"G0_DESK_RECONNAISSANCE_ONLY\",\"approval_note\":\"未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate\",\"investigation_topic\":\"EVIDENCE_CHRONOLOGY\",\"evidence_level\":\"HISTORICAL_GATE_PLUS_OWNER_REPORTED_BENCH_AND_PR_METADATA\",\"requires_new_test\":false},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:36:34.086Z\",\"updated\":\"2026-11-11T07:36:34.086Z\"}",
+        "action": "CREATE_G0_FACT_DISCOVERY_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "object_id": "at-g0-current-unknowns",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g0-current-unknowns\",\"project_id\":\"autotest\",\"kind\":\"risk\",\"title\":\"G0｜现役工位实物与固件身份尚未完整对应（待调查）\",\"body\":\"本次新产品范围下的待核实事项，按对事实调查的影响组织，不作为全部现场测试的强制前置：\\n\\nA. 当前工位：实装主控/按键 PCB 版本、是否都接入、供电/夹具/线束配置、DUT 型号及安全操作边界。\\nB. MCU 固件：两块实物中实际运行的固件/编译 Target/映像版本，与归档源码是否一致。\\nC. 对外刺激：CAN 实际通路/终端、IGN/夹具输出真实电平及动作、KEY_SIM 20 开关→5 路电压与 DUT 识别关系；原理图、命令 ACK 和 ECU 端测量必须分开。\\nD. 后续能力：真实 CAN TX、相关设备恢复、采集时基/丢帧、串口扫码枪的实际接口与样例。它们的优先级应由后续产品级目标和受控调查决定，而不是未经审查要求全部重测。\\nE. 旧图纸与现场一致性：尤其 KEY16 控制线、CAN 原理图/固件通道编号、供电和阀反馈语义。\\n\\n不申请当前上电、刷写或危险输出试验授权；先完成只读现况盘点和证据归档，再针对关键未核能力决定安全取证方式。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）\",\"source_type\":\"HISTORICAL_SOURCE_REVIEW\",\"baseline_input\":\"at-p0-approved-charter-v01:r2\",\"references\":[\"SAEF/engineering/work-products/G0/G0-01/index.md\",\"SAEF/engineering/work-products/G0/G0-02/index.md\",\"SAEF/engineering/work-products/G0/G0-03/index.md\",\"SAEF/engineering/work-products/G0/G0-04/index.md\",\"SAEF/engineering/work-products/G0/G0-05/index.md\",\"SAEF/engineering/work-products/G0/G0-07/index.md\",\"SAEF/engineering/work-products/G0/G0-08/index.md\",\"SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json\",\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26\"],\"evidence_scope\":\"G0_DESK_RECONNAISSANCE_ONLY\",\"approval_note\":\"未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate\",\"investigation_topic\":\"CURRENT_CONFIGURATION_EVIDENCE_GAPS\",\"risk_level\":\"OPEN_G0_FACTS\",\"no_hardware_acts\":true},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:36:34.086Z\",\"updated\":\"2026-11-11T07:36:34.086Z\"}",
+        "action": "CREATE_G0_FACT_DISCOVERY_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "object_id": "at-g0-investigation-plan",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g0-investigation-plan\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"G0｜重新定义产品后的现有系统调查工作顺序（非实现计划）\",\"body\":\"G0 仅依据已批准的 P0 产品身份开展事实调查，不签发旧系统设计为新架构。推荐顺序：\\n1. **只读资产身份**：从现有资料与现场信息核实 PCB/固件/HOST/外设/夹具/线束/DUT 的身份与实际组成，建立可溯源配置清单。\\n2. **板级物理能力分析**：对照原理图、电气网络、引出接口和 DUT 侧条件，区分设计支持、实际装配、真实输出及不可确定能力，记录差异。\\n3. **现役固件与上位机利用情况**：追踪固件和 HOST 的真实版本与接口使用，但不能让已有软件反向定义产品应具备的能力。\\n4. **证据缺口裁决**：将已经存在的实体事实与尚需现场测量的条件分开；只对影响后续需求/设计的未知组织取证，不作无差别重复测试。\\n5. **形成可审的 G0 事实基线候选**：以资产身份、能力/限制、现有证据、未知与可信程度为核心，交用户审核；它不包括新架构及编码合同。\\n\\n此记录不是执行工作包或 P0/G0 Gate 决议。现场操作之前需独立核实安全条件与实物版本。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）\",\"source_type\":\"HISTORICAL_SOURCE_REVIEW\",\"baseline_input\":\"at-p0-approved-charter-v01:r2\",\"references\":[\"SAEF/engineering/work-products/G0/G0-01/index.md\",\"SAEF/engineering/work-products/G0/G0-02/index.md\",\"SAEF/engineering/work-products/G0/G0-03/index.md\",\"SAEF/engineering/work-products/G0/G0-04/index.md\",\"SAEF/engineering/work-products/G0/G0-05/index.md\",\"SAEF/engineering/work-products/G0/G0-07/index.md\",\"SAEF/engineering/work-products/G0/G0-08/index.md\",\"SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json\",\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26\"],\"evidence_scope\":\"G0_DESK_RECONNAISSANCE_ONLY\",\"approval_note\":\"未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate\",\"investigation_topic\":\"G0_READ_ONLY_RECONNAISSANCE_SEQUENCE\",\"scope_gate\":\"P0_IDENTITY_V01_APPROVED_ONLY\",\"engineering_phase\":\"G0_FACT_DISCOVERY\",\"not_code_ready\":true},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:36:34.086Z\",\"updated\":\"2026-11-11T07:36:34.086Z\"}",
+        "action": "CREATE_G0_FACT_DISCOVERY_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:36:34.086Z"
       }
     ],
     "events": [
@@ -1184,6 +1444,51 @@
         "actor": "AutoTest 项目负责人（本轮对话明确批准）",
         "note": "at-p0-identity-approval-v01 / revision 1 / P0 V0.1 显式批准，独立于 P0 Gate",
         "timestamp": "2026-11-11T07:26:23.495Z"
+      },
+      {
+        "id": "evt-at-g0-system-inventory",
+        "project_id": "autotest",
+        "object_id": "at-g0-system-inventory",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "在已批准 P0 之后重新开展 G0 只读调查；仅历史资料复核，未验证现役实物",
+        "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "evt-at-g0-hardware-capability-map",
+        "project_id": "autotest",
+        "object_id": "at-g0-hardware-capability-map",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "在已批准 P0 之后重新开展 G0 只读调查；仅历史资料复核，未验证现役实物",
+        "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "evt-at-g0-evidence-current",
+        "project_id": "autotest",
+        "object_id": "at-g0-evidence-current",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "在已批准 P0 之后重新开展 G0 只读调查；仅历史资料复核，未验证现役实物",
+        "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "evt-at-g0-current-unknowns",
+        "project_id": "autotest",
+        "object_id": "at-g0-current-unknowns",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "在已批准 P0 之后重新开展 G0 只读调查；仅历史资料复核，未验证现役实物",
+        "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "evt-at-g0-investigation-plan",
+        "project_id": "autotest",
+        "object_id": "at-g0-investigation-plan",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "在已批准 P0 之后重新开展 G0 只读调查；仅历史资料复核，未验证现役实物",
+        "timestamp": "2026-11-11T07:36:34.086Z"
       }
     ],
     "technical_research": {
@@ -1288,12 +1593,19 @@
         "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
         "changed_by": "AUTO_TEST_OWNER_EXPLICIT_P0_V01_APPROVAL",
         "changed_at": "2026-11-11T07:26:23.495Z"
+      },
+      {
+        "project_id": "autotest",
+        "revision": 5,
+        "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
+        "changed_by": "AI_PROJECT_MANAGER_G0_FACT_DISCOVERY_STARTED",
+        "changed_at": "2026-11-11T07:36:34.086Z"
       }
     ],
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "P0 V0.1《产品定义与立项说明》已由负责人明确批准并发布稳定产品身份基线 r1；其他已有工程对象均保持原候审状态，P0 整体 Gate 未签发。",
+  "p0_discussion_note": "P0 V0.1 已批准。G0 只读现况调查已开始；本次新增 5 项 G0 事实/来源/缺口/调查顺序候选，旧图纸和固件资料是待核来源，不作新设计/现场动作/历史 Gate 迁移。",
   "approval": {
     "approval_id": "AT-P0-CHARTER-V01-OWNER-20261110",
     "scope": "P0_PRODUCT_DEFINITION_AND_INITIATION_V0_1",
