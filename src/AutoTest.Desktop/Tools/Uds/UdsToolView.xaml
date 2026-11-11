@@ -220,8 +220,6 @@
       </WrapPanel>
       <TextBlock Text="ECU Profile 名称" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ProfileName,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="ECU 身份标识（由实际配置确认）" Style="{StaticResource UdsCaption}"/>
-      <TextBox Text="{Binding MockIdentity,UpdateSourceTrigger=PropertyChanged}"/>
       <Grid>
        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
        <StackPanel><TextBlock Text="TX CAN ID" Style="{StaticResource UdsCaption}"/><TextBox Text="{Binding TxId,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/></StackPanel>
