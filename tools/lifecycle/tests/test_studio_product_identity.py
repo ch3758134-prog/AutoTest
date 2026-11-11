@@ -39,6 +39,20 @@ class CanonicalIdentityTests(unittest.TestCase):
             "Owner","Compared the user's corrected product identity against the current engineering scope",
             ["discussion://product-identity-review"])
 
+    def test_new_project_does_not_require_legacy_product_summary(self):
+        created=self.store.create_project({"name":"New ECU project",
+            "body":"Current research and stage background","version":"R1",
+            "variant":"first DUT"})["project"]
+        self.assertEqual(created["summary"],"")
+        self.assertEqual(ProductIdentity(self.store).status(created["id"])["state"],
+                         "UNBASELINED")
+        html=(Path(__file__).resolve().parents[1]/"studio.html").read_text(encoding="utf-8")
+        block=html.split("function projectModal(project=null)",1)[1].split("const fieldSpecs=",1)[0]
+        self.assertIn("当前研发阶段 / 版本（可选）",block)
+        self.assertIn("正式产品身份",block)
+        self.assertNotIn("一句话产品目标",block)
+        self.assertNotIn("summary:",block)
+
     def test_legacy_project_text_is_never_the_canonical_identity(self):
         self.assertEqual(self.base["state"],"UNBASELINED")
         self.assertIsNone(self.base["baseline"])
