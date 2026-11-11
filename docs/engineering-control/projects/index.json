@@ -1,0 +1,10 @@
+{
+  "schema": "engineering-manager-view-index/1",
+  "status": "CANDIDATE_NOT_APPROVED",
+  "projects": [
+    {
+      "id": "autotest",
+      "path": "docs/engineering-control/projects/autotest/management-view.json"
+    }
+  ]
+}
