@@ -4,6 +4,7 @@
  Background="#F6F8FB" Foreground="#23374D" FontFamily="Segoe UI" FontSize="13"
  UseLayoutRounding="True" SnapsToDevicePixels="True">
  <UserControl.Resources>
+  <BooleanToVisibilityConverter x:Key="BoolVis"/>
   <SolidColorBrush x:Key="Ink" Color="#23374D"/>
   <SolidColorBrush x:Key="Muted" Color="#657D95"/>
   <SolidColorBrush x:Key="Rule" Color="#DCE5EF"/>
@@ -79,7 +80,7 @@
    </StackPanel>
    <StackPanel>
     <TextBlock Text="手动台架" FontSize="23" FontWeight="SemiBold"/>
-    <TextBlock Text="真实 ECU 外部激励 · KEY_SIM 20 路组合开关 / CAN0 · 操作与证据分离"
+    <TextBlock Text="真实 ECU 外部激励 · 工程按键动作 / IGN / CAN · 真实设备执行"
      Foreground="{StaticResource Muted}" FontSize="11" Margin="0,5,0,0"/>
    </StackPanel>
   </DockPanel>
@@ -119,88 +120,101 @@
     <ColumnDefinition Width="1*" MinWidth="315"/>
    </Grid.ColumnDefinitions>
    <Border Grid.Column="0" Style="{StaticResource Panel}">
-    <DockPanel>
-     <StackPanel DockPanel.Dock="Top">
-      <TextBlock Text="KEY_SIM · 按键组合" FontSize="16" FontWeight="SemiBold"/>
-      <TextBlock Text="K01～K20 是电阻网络开关，不是 20 路模拟输出。可同时选中多个；勾选本身不会发送任何命令。"
-       Foreground="{StaticResource Muted}" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,11"/>
-      <Border Background="#F3F8FE" BorderBrush="#DFEAF6" BorderThickness="1"
-       CornerRadius="4" Padding="8" Margin="0,0,0,9">
-       <DockPanel>
-        <TextBlock DockPanel.Dock="Right" Text="CAN0 · 标准帧 ID 0x730"
-         Foreground="#5D7892" FontSize="11" VerticalAlignment="Center"/>
-        <TextBlock Text="{Binding SelectedKeyMaskText}" FontSize="15"
-         FontWeight="SemiBold" Foreground="#1D609C"/>
-       </DockPanel>
-      </Border>
+    <Grid DataContext="{Binding KeyActions}">
+     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*" MinHeight="155"/>
+      <RowDefinition Height="Auto"/>
+     </Grid.RowDefinitions>
+     <StackPanel Grid.Row="0" Margin="0,0,0,10">
+      <TextBlock Text="按键动作" FontSize="16" FontWeight="SemiBold"/>
+      <TextBlock Text="按工程保存任意命名的动作；每步定义完整的 20 路开关状态或保持时间。无预设动作、无自动返回。"
+       Foreground="{StaticResource Muted}" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
      </StackPanel>
-     <StackPanel DockPanel.Dock="Bottom" Margin="0,9,0,0">
-      <WrapPanel>
-       <Button Content="▶ 应用选中的开关组合" Command="{Binding ApplyDirectMaskCommand}"
-        Background="#176AB2" Foreground="White" FontWeight="SemiBold"
-        ToolTip="要求真实会话 + 操作者确认，一次性发送选中 20-bit mask 到 CAN0"/>
-       <Button Content="清空勾选（不发送）" Command="{Binding ClearSwitchesCommand}"/>
-       <Button Content="释放全部真实按键" Command="{Binding ReleaseAllKeysCommand}"
-        Background="#FFF5F3" Foreground="#A74541" Margin="0"
-        ToolTip="真实 CAN0 0x730 发送全释放命令；需要再次确认。即使无 Controller 配置也可以操作。"/>
-      </WrapPanel>
-      <TextBlock Text="{Binding DirectResult}" Foreground="#536F89"
-       Margin="0,9,0,2" TextWrapping="Wrap" FontSize="12"/>
-      <TextBlock Text="ACK 只证明主控接收 CAN_SEND，不是五路输出电压或 ECU 识别的回读。"
-       Foreground="#8B6733" FontSize="11" TextWrapping="Wrap"/>
-     </StackPanel>
-     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-      <StackPanel>
-       <ItemsControl ItemsSource="{Binding Switches}">
-        <ItemsControl.Style>
-         <Style TargetType="ItemsControl">
-          <Style.Triggers>
-           <DataTrigger Binding="{Binding Busy}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger>
-          </Style.Triggers>
-         </Style>
-        </ItemsControl.Style>
-        <ItemsControl.ItemsPanel>
-         <ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-         <DataTemplate>
-          <Border BorderBrush="#E3EAF2" BorderThickness="1" CornerRadius="4"
-           Background="#F9FBFE" Margin="3" Padding="2">
-           <CheckBox Style="{StaticResource KeySwitch}" Content="{Binding BitLabel}"
-            IsChecked="{Binding IsSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-          </Border>
-         </DataTemplate>
-        </ItemsControl.ItemTemplate>
-       </ItemsControl>
-       <Expander Header="按 Controller Profile 执行预设按键状态（可选）"
-        Margin="0,14,0,0" Foreground="#385B7E">
-        <StackPanel Margin="4,9,4,7">
-         <TextBlock Text="可直接使用上面的 20 Key 开关；本区仅供有命名映射的 ECU 工程使用。"
-          Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
-         <ComboBox ItemsSource="{Binding Controllers}" DisplayMemberPath="Name"
-          SelectedItem="{Binding SelectedController}" Height="29" Margin="0,0,0,7"/>
-         <ItemsControl ItemsSource="{Binding States}">
+     <Grid Grid.Row="1" Margin="0,0,0,7">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <ComboBox Grid.Column="0" ItemsSource="{Binding Actions}" DisplayMemberPath="Name"
+       SelectedItem="{Binding SelectedAction,Mode=TwoWay}" MinHeight="30"
+       ToolTip="当前工程保存的按键动作；未配置时列表为空"/>
+      <Button Grid.Column="1" Content="新建动作" Command="{Binding NewActionCommand}"
+       IsEnabled="{Binding CanEdit}" Margin="8,0,0,0"/>
+     </Grid>
+     <WrapPanel Grid.Row="2" Margin="0,0,0,9" IsEnabled="{Binding CanEdit}">
+      <Button Content="复制" Command="{Binding CopyActionCommand}"/>
+      <Button Content="删除" Command="{Binding DeleteActionCommand}"/>
+      <Button Content="保存到工程" Command="{Binding SaveActionsCommand}"
+       Background="#176AB2" Foreground="White"/>
+      <Button Content="重新加载" Command="{Binding ReloadActionsCommand}" Margin="0"/>
+     </WrapPanel>
+     <Grid Grid.Row="3" Margin="0,0,0,9">
+      <Grid.ColumnDefinitions>
+       <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock Text="动作名称" VerticalAlignment="Center" Margin="0,0,10,0"/>
+      <TextBox Grid.Column="1" MinHeight="28" IsEnabled="{Binding CanEdit}"
+       Text="{Binding SelectedAction.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+     </Grid>
+     <WrapPanel Grid.Row="4" Margin="0,0,0,7" IsEnabled="{Binding CanEdit}">
+      <Button Content="+ 设置 Key 状态" Command="{Binding AddSetKeysCommand}"/>
+      <Button Content="+ 保持" Command="{Binding AddHoldCommand}"/>
+      <Button Content="上移" Command="{Binding MoveStepUpCommand}"/>
+      <Button Content="下移" Command="{Binding MoveStepDownCommand}"/>
+      <Button Content="移除" Command="{Binding RemoveStepCommand}" Margin="0"/>
+     </WrapPanel>
+     <Grid Grid.Row="5">
+      <Grid.RowDefinitions><RowDefinition Height="148"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <ListBox Grid.Row="0" ItemsSource="{Binding Steps}" SelectedItem="{Binding SelectedStep,Mode=TwoWay}"
+       DisplayMemberPath="Summary" BorderBrush="#DCE5EF" BorderThickness="1"
+       ToolTip="步骤按列表顺序执行；先选中步骤，再编辑该步骤的参数"/>
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+       <StackPanel Margin="0,10,0,0" IsEnabled="{Binding CanEdit}">
+        <StackPanel Visibility="{Binding IsKeyStep,Converter={StaticResource BoolVis}}">
+         <TextBlock Text="编辑选中步骤 · 完整 20 路 Key 状态" FontWeight="SemiBold"/>
+         <TextBlock Text="勾选表示闭合；不勾选表示断开。这里仅编辑配置，不立即发送指令。"
+          Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,7"/>
+         <ItemsControl ItemsSource="{Binding Switches}">
+          <ItemsControl.ItemsPanel>
+           <ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
            <DataTemplate>
-            <Border BorderBrush="#E4EAF2" BorderThickness="0,0,0,1" Padding="0,6">
-             <DockPanel>
-              <Button DockPanel.Dock="Right" Content="执行" MinHeight="25" Padding="8,3"
-               Command="{Binding DataContext.ApplyStateCommand,RelativeSource={RelativeSource AncestorType=UserControl}}"
-               CommandParameter="{Binding}" Margin="0"/>
-              <StackPanel>
-               <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
-               <TextBlock Text="{Binding Subtitle}" Foreground="#697E94" FontSize="11"/>
-              </StackPanel>
-             </DockPanel>
-            </Border>
+            <CheckBox Style="{StaticResource KeySwitch}" Content="{Binding BitLabel}"
+             IsChecked="{Binding IsSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
            </DataTemplate>
           </ItemsControl.ItemTemplate>
          </ItemsControl>
+         <Button Content="全部断开（仅修改此步骤）" Command="{Binding ClearMaskCommand}"
+          HorizontalAlignment="Left" Margin="0,7,0,0"/>
         </StackPanel>
-       </Expander>
-      </StackPanel>
-     </ScrollViewer>
-    </DockPanel>
+        <StackPanel Visibility="{Binding IsHoldStep,Converter={StaticResource BoolVis}}">
+         <TextBlock Text="编辑选中步骤 · 保持当前输出" FontWeight="SemiBold" Margin="0,0,0,7"/>
+         <StackPanel Orientation="Horizontal">
+          <TextBox Width="120" Text="{Binding SelectedStep.DurationMs,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+          <TextBlock Text="ms（1～600000）" VerticalAlignment="Center" Margin="10,0,0,0"/>
+         </StackPanel>
+         <TextBlock Text="等待期间不发送其他 Key 指令；完成后继续下一个步骤。"
+          Foreground="{StaticResource Muted}" TextWrapping="Wrap" FontSize="11" Margin="0,7,0,0"/>
+        </StackPanel>
+       </StackPanel>
+      </ScrollViewer>
+     </Grid>
+     <StackPanel Grid.Row="6" Margin="0,9,0,0">
+      <WrapPanel>
+       <Button Content="▶ 执行当前动作" Command="{Binding RunActionCommand}"
+        Background="#176AB2" Foreground="White" FontWeight="SemiBold"/>
+       <Button Content="停止动作" Command="{Binding StopActionCommand}"
+        Background="#FFF1EC" Foreground="#A74541" Margin="0"/>
+      </WrapPanel>
+      <TextBlock Text="{Binding Status}" Foreground="#536F89"
+       FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0"/>
+      <TextBlock Text="{Binding Progress}" Foreground="#7C6037"
+       FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+     </StackPanel>
+    </Grid>
    </Border>
 
    <Border Grid.Column="2" Style="{StaticResource Panel}">
