@@ -256,6 +256,7 @@ window.projectActions=(()=>{
    const approved=data.objects.filter(o=>o.state==='APPROVED');
    dialogBox('记录阶段评审决定','流程 Gate 与单份文件的批准不同。通过 Gate 必须引用已经批准且属于该阶段的工程成果，不能把 G1 研究草稿当成依据。',[
      {name:'phase_id',label:'阶段',type:'select',options:data.process.stages.map(s=>({value:s.id,label:s.id+' · '+s.name}))},
+     {name:'cycle_id',label:'研发轮次',type:'select',options:control().cycles.map(x=>({value:x.id,label:x.title}))},
      {name:'decision',label:'阶段决定',type:'select',options:[
        {value:'DEFER',label:'暂缓决定'}, {value:'RETURN',label:'退回补充'},
        {value:'PASS_WITH_LIMITATIONS',label:'附条件通过（须有正式依据）'},
@@ -263,9 +264,83 @@ window.projectActions=(()=>{
      {name:'evidence_ids',label:'已批准且属于当前阶段的证据',type:'checklist',
       options:approved.map(o=>({value:o.id,label:o.title}))},
      reasonField()
-   ],async v=>await request('record_phase_review',{phase_id:v.phase_id,decision:v.decision,
+   ],async v=>await request('record_phase_review',{phase_id:v.phase_id,cycle_id:v.cycle_id,decision:v.decision,
        evidence_ids:v.evidence_ids,reason:v.reason}),'记录阶段评审');
  }
+ function milestoneForm(id){
+   const existing=data.plan.milestones?.find(x=>x.id===id);
+   dialogBox(id?'修改项目里程碑':'添加项目里程碑',
+    '里程碑表达交付目标和检查点，不等同于研发 Gate；未知日期应留空，不能为画甘特图编造排期。',[
+      {name:'title',label:'里程碑名称',required:true,value:existing?.title||''},
+      {name:'deliverable_id',label:'对应交付成果',type:'select',value:existing?.deliverable_id||data.plan.deliverables[0]?.id,
+       options:data.plan.deliverables.map(d=>({value:d.id,label:d.title}))},
+      {name:'exit_condition',label:'达成里程碑必须具备的结果和证据',type:'textarea',rows:4,required:true,value:existing?.exit_condition||''},
+      {name:'target_date',label:'目标日期（可留空）',type:'date',value:existing?.target_date||''},
+      {name:'date_basis',label:'目标日期的依据（设置日期时必填）',value:existing?.date_basis||''},
+      reasonField()
+    ],async v=>{
+      const item={title:v.title,deliverable_id:v.deliverable_id,
+        exit_condition:v.exit_condition,target_date:v.target_date||null,date_basis:v.date_basis||null};
+      if(id)await request('edit_milestone',{id,patch:item,reason:v.reason});
+      else await request('create_milestone',{item,reason:v.reason});
+    },id?'登记里程碑修订':'添加里程碑');
+ }
+ function riskForm(id){
+   dialogBox('登记项目风险','风险是未来可能发生的偏差，不应与已经发生的问题或技术研究草稿混同。',[
+     {name:'title',label:'风险名称',required:true},
+     {name:'description',label:'可能发生的情况及其影响',type:'textarea',rows:4,required:true},
+     {name:'likelihood',label:'发生可能性',type:'select',options:[
+       {value:'LOW',label:'低'},{value:'MEDIUM',label:'中'},{value:'HIGH',label:'高'},{value:'CRITICAL',label:'极高'}]},
+     {name:'severity',label:'影响严重程度',type:'select',options:[
+       {value:'LOW',label:'低'},{value:'MEDIUM',label:'中'},{value:'HIGH',label:'高'},{value:'CRITICAL',label:'严重'}]},
+     {name:'mitigation',label:'计划采取的预防或应对措施',type:'textarea',rows:3,required:true},
+     {name:'owner',label:'负责跟进的人或 AI 方向',required:true,value:'工程总协调'},
+     {name:'affected_work',label:'可能受影响的工作',type:'checklist',options:workOptions(),value:id?[id]:[]},
+     {name:'source_refs',label:'风险依据（每行一个）',type:'textarea',rows:2},
+     reasonField()
+   ],async v=>await request('raise_risk',{
+     title:v.title,description:v.description,likelihood:v.likelihood,severity:v.severity,
+     mitigation:v.mitigation,owner:v.owner,affected_work:v.affected_work,
+     source_refs:v.source_refs.split('\n').map(x=>x.trim()).filter(Boolean),reason:v.reason
+   }),'登记风险');
+ }
+ function riskReview(id){
+   dialogBox('更新风险处理结果','风险关闭需要核实相应措施和实际证据，不能因为 AI 认为影响不大就关闭。',[
+     {name:'status',label:'最新风险处理状态',type:'select',options:[
+       {value:'MITIGATING',label:'正在落实应对措施'},
+       {value:'MITIGATED',label:'已采取措施并有相关证据'},
+       {value:'CLOSED',label:'风险已关闭，有明确证据'}]},
+     {name:'evidence_refs',label:'对应的实际证据，每行一个',type:'textarea',rows:3},
+     reasonField()
+   ],async v=>await request('review_risk',{
+     id,status:v.status,evidence_refs:v.evidence_refs.split('\n').map(x=>x.trim()).filter(Boolean),
+     reason:v.reason
+   }),'记录风险处理');
+ }
+ function cycleForm(){
+   dialogBox('登记新一轮研发工作',
+     '螺旋研发应从明确的新问题或变化开始，限定重新开展的工作范围；不自动推翻上一轮有效设计或批准文件。',[
+       {name:'title',label:'迭代或工作轮次',required:true,placeholder:'例如：真实台架反馈引发的按键控制修订'},
+       {name:'trigger',label:'为何需要新一轮工作',type:'textarea',required:true,rows:4},
+       {name:'scope',label:'本次重点修订与不受影响的范围',type:'textarea',required:true,rows:4},
+       reasonField()
+     ],async v=>await request('start_cycle',{
+       title:v.title,trigger:v.trigger,scope:v.scope,reason:v.reason
+     }),'建立研发轮次');
+ }
+ function cycleClose(id){
+   dialogBox('关闭当前研发轮次',
+     '关闭轮次只是对这一轮工作的管理记录，不自动等于任何阶段 Gate 或产品验收通过。',
+     [reasonField()],async v=>await request('close_cycle',{id,reason:v.reason}),'确认关闭');
+ }
+ const riskItem=r=>'<div class="pm-record"><div class="pm-record-head"><strong>'+a(r.title)+'</strong>'+
+   pill(r.status==='OPEN'?'待处理风险':r.status==='MITIGATING'?'处理中':r.status==='CLOSED'?'已关闭':'已有措施',
+     r.status==='CLOSED'?'approved':'pending')+'</div><p class="pm-muted">'+a(r.description)+'</p>'+
+   '<p class="pm-muted">可能性 '+a(r.likelihood)+' / 影响 '+a(r.severity)+' / 负责 '+a(r.owner)+'</p>'+
+   (r.status==='OPEN'||r.status==='MITIGATING'?'<button class="ghost" data-pm="risk-review" data-id="'+a(r.id)+'">更新风险</button>':'')+'</div>';
+ const milestoneItem=m=>'<div class="pm-record"><div class="pm-record-head"><strong>'+a(m.title)+'</strong>'+
+   pill(m.target_date?'计划日期 '+m.target_date:'尚无可靠日期','unknown')+'</div>'+
+   '<p class="pm-muted">'+a(m.exit_condition)+'</p><button class="ghost" data-pm="milestone-edit" data-id="'+a(m.id)+'">调整里程碑</button></div>';
  function workButtons(w){
    const p=control()?.progress?.[w.id],invalid=control()?.invalidation?.[w.id];
    return '<div class="rule"></div><h3>工作推进和受控操作</h3>'+
@@ -275,7 +350,7 @@ window.projectActions=(()=>{
     '<button class="secondary" data-pm="progress" data-id="'+a(w.id)+'">登记工作进展</button>'+
     (p?.state==='REPORTED_COMPLETE'?'<button class="secondary" data-pm="verify" data-id="'+a(w.id)+'">核实完成条件</button>':'')+
     '<button class="secondary" data-pm="change-work" data-id="'+a(w.id)+'">登记问题或变更</button>'+
-    '<button class="secondary" data-pm="receipt-add" data-id="'+a(w.id)+'">登记本地执行回执</button>'+
+    '<button class="secondary" data-pm="receipt-add" data-id="'+a(w.id)+'">登记本地执行回执</button>'+'<button class="secondary" data-pm="risk-new" data-id="'+a(w.id)+'">登记工作风险</button>'+
     (invalid&&!invalid.resolved?'<button class="primary" data-pm="reconcile" data-id="'+a(w.id)+'">变更后复核</button>':'')+
     '</div>';
  }
@@ -297,7 +372,7 @@ window.projectActions=(()=>{
    }
    if(page==='plan'){
      const header='<section class="pm-management-head"><div><div class="eyebrow">当前计划版本 r'+record.planning.revision+'</div><h2>'+a(showState())+'</h2><p class="pm-muted">'+(baseline?'最近批准计划：'+a(baseline.id)+' / r'+baseline.revision:'当前尚无正式批准的计划基线')+'</p></div><div class="pm-inline-actions">'+
-       '<button class="primary" data-pm="work-new">添加开发工作</button>'+
+       '<button class="primary" data-pm="work-new">添加开发工作</button>'+'<button class="secondary" data-pm="milestone-new">添加里程碑</button>'+
        (record.planning.status==='DRAFT'||record.planning.status==='REVISION_DRAFT'?'<button class="secondary" data-pm="plan-submit">提交计划审查</button>':'')+
        (record.planning.status==='IN_REVIEW'?'<button class="secondary" data-pm="plan-withdraw">撤回修改</button><button class="primary" data-pm="plan-approve">批准计划</button><button class="secondary" data-pm="plan-return">退回</button>':'')+'</div></section>';
      const first=root.querySelector('.callout.warn');if(first)first.textContent=record.planning.status==='BASELINED'?
@@ -312,6 +387,12 @@ window.projectActions=(()=>{
        (record.changes.length?record.changes.slice().reverse().map(changeItem).join(''):'<p class="pm-muted">尚未在新版管理记录中登记变化；不表示工程没有历史问题。</p>')+
        '</div></div></section>';
      root.insertAdjacentHTML('beforeend',foot);
+     root.insertAdjacentHTML('beforeend','<section class="section pm-two-cols">'+
+       '<div class="panel"><div class="pane-title"><h2>交付里程碑</h2><button class="ghost" data-pm="milestone-new">添加里程碑</button></div>'+
+       (data.plan.milestones?.length?data.plan.milestones.map(milestoneItem).join(''):'<p class="pm-muted">尚无里程碑。可以先建立无日期的检查点。</p>')+
+       '</div><div class="panel"><div class="pane-title"><h2>项目风险</h2><button class="ghost" data-pm="risk-new">登记风险</button></div>'+
+       (record.risks.length?record.risks.slice().reverse().map(riskItem).join(''):'<p class="pm-muted">尚未在此版本登记风险，不代表不存在技术未知。</p>')+
+       '</div></section>');
    }
    if(page==='deliverables'){
      root.querySelector('.page-heading')?.insertAdjacentHTML('afterend','<div class="pm-top-actions"><button class="primary" data-pm="deliverable-new">新增交付成果</button><span class="pm-muted">新增内容首先是范围候选，不自动修改 P0</span></div>');
@@ -321,7 +402,19 @@ window.projectActions=(()=>{
        if(d)card.insertAdjacentHTML('beforeend','<div class="pm-card-action"><button class="ghost" data-pm="deliverable-edit" data-id="'+a(d.id)+'">编辑成果与验收条件</button></div>');
      });
    }
+   if(page==='deliverables'){
+     root.insertAdjacentHTML('beforeend','<section class="section panel"><div class="pane-title"><h2>交付里程碑</h2>'+
+       '<button class="secondary" data-pm="milestone-new">新增里程碑</button></div>'+
+       (data.plan.milestones?.length?data.plan.milestones.map(milestoneItem).join(''):'<p class="pm-muted">尚无已登记里程碑</p>')+
+       '</section>');
+   }
    if(page==='process'){
+     root.insertAdjacentHTML('beforeend','<section class="section"><div class="panel"><div class="pane-title"><h2>螺旋研发轮次</h2><button class="secondary" data-pm="cycle-new">登记新一轮工作</button></div>'+
+       record.cycles.slice().reverse().map(x=>'<div class="pm-record"><div class="pm-record-head"><strong>'+a(x.title)+'</strong>'+
+         pill(x.state==='ACTIVE'?'进行中':'已关闭',x.state==='ACTIVE'?'pending':'approved')+'</div>'+
+         '<p class="pm-muted">触发原因：'+a(x.trigger)+'；范围：'+a(x.scope)+'</p>'+
+         (x.state==='ACTIVE'?'<button class="ghost" data-pm="cycle-close" data-id="'+a(x.id)+'">关闭本轮</button>':'')+
+         '</div>').join('')+'</div></section>');
      root.insertAdjacentHTML('beforeend','<section class="section"><div class="panel"><div class="pane-title"><h2>阶段审查与正式记录</h2><button class="secondary" data-pm="phase-review">记录阶段审查</button></div>'+
        (record.phase_reviews.length?record.phase_reviews.slice().reverse().map(phaseRecord).join(''):'<p class="pm-muted">本项目管理版本尚无新记录的正式阶段决定；历史审批需按来源单独核对。</p>')+
        '<div class="callout">阶段决定必须有真实的批准成果与负责人依据。系统不能由报告标题、草稿数量或对象状态自行认定 Gate 通过。</div></div></section>');
@@ -371,6 +464,9 @@ window.projectActions=(()=>{
    try{
      const fns={
        'auth':ownerAuth,'work-new':()=>workForm(null),'work-edit':()=>workForm(id),
+       'milestone-new':()=>milestoneForm(null),'milestone-edit':()=>milestoneForm(id),
+       'risk-new':()=>riskForm(id),'risk-review':()=>riskReview(id),
+       'cycle-new':cycleForm,'cycle-close':()=>cycleClose(id),
        'deliverable-new':()=>deliverableForm(null),'deliverable-edit':()=>deliverableForm(id),
        'plan-submit':()=>planDecision('submit_plan'),'plan-withdraw':()=>planDecision('withdraw_plan'),
        'plan-approve':()=>planDecision('approve_plan'),'plan-return':()=>planDecision('return_plan'),
