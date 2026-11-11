@@ -77,11 +77,13 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private BenchStateItem? _lastState;
     private string? _lastOperationId;
 
-    public BenchWorkbenchViewModel(IBenchWorkbenchPort port)
+    public BenchWorkbenchViewModel(IBenchWorkbenchPort port,
+        Func<AutoTest.Devices.Diagnostics.HardwareBenchController?>? hardware = null)
     {
         _port = port ?? throw new ArgumentNullException(nameof(port));
         KeyActions = new BenchKeyActionEditorViewModel(_port,
             note => Append(WorkbenchSeverity.Progress, "按键动作", note));
+        CanMonitor = new BenchCanMonitorViewModel(hardware ?? (() => null));
         CanMessages = new BenchCanEditorViewModel(_port,
             note => Append(WorkbenchSeverity.Progress, "CAN1 发送", note));
         ConnectCommand = new DelegateCommand(async () => await ConnectOrDisconnectAsync(), () => !Busy)
@@ -132,6 +134,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
 
     public BenchKeyActionEditorViewModel KeyActions { get; }
     public BenchCanEditorViewModel CanMessages { get; }
+    public BenchCanMonitorViewModel CanMonitor { get; }
     public ObservableCollection<BenchControllerDefinition> Controllers { get; } = new();
     public ObservableCollection<BenchStateItem> States { get; } = new();
     public ObservableCollection<BenchDevice> Devices { get; } = new();
