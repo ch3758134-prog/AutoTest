@@ -429,6 +429,12 @@
     </DockPanel>
    </Border>
   </Grid>
+  <!-- V6: operator has its OWN content surface, not the old P01–P13 tab host.
+       The exact SAME R1ProjectRunView instance is redocked by code-behind. -->
+  <Border Grid.Row="3" x:Name="R1OperatorSurface" Panel.ZIndex="10"
+          Visibility="Collapsed" Background="#F5F7FA">
+   <ContentControl x:Name="R1OperatorHost"/>
+  </Border>
   <!-- R1 prototype: persistent bottom dock with four factual trace sources -->
   <Border Grid.Row="4" x:Name="R1BottomPanel" Background="#FFFFFF" BorderBrush="{StaticResource R1Stroke}"
           BorderThickness="0,1,0,0">
