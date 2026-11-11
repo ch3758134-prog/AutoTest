@@ -20,6 +20,7 @@ from studio_verification import Verification
 from studio_governance import DefinitionGovernance
 from studio_definition_research import DefinitionResearch
 from studio_definition_suggestions import DefinitionSuggestions
+from studio_semantics import semantic_context
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -109,6 +110,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/restore.js":
                     return self.write((HERE / "studio_restore_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/api/studio/semantics":
+                    return self.write(semantic_context(params.get("focus", "")))
                 if path == "/api/studio/version":
                     return self.write({"application": "Engineering Workbench",
                                        "version": "0.9", "mode": "editable",
