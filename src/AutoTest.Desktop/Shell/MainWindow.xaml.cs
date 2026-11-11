@@ -242,7 +242,7 @@ public partial class MainWindow : Window
         var host = vm.G4;
         switch (tab)
         {
-            case 3 when R1DbcHost.Content is null:
+            case 3 when R1DbcHost.Content is null && !_floatingDocuments.ContainsKey(3):
             {
                 var dbcEditor = new DbcToolViewModel(host.Workspace);
                 dbcEditor.ProjectDbcImported += (_, _) =>
@@ -273,7 +273,7 @@ public partial class MainWindow : Window
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes)));
                 break;
-            case 6 when R1WaveHost.Content is null:
+            case 6 when R1WaveHost.Content is null && !_floatingDocuments.ContainsKey(6):
             {
                 var wave = new WaveWorkbenchView();
                 wave.AttachArchiveCapture(() => _device?.Controller, () => host.Workspace);
@@ -296,7 +296,7 @@ public partial class MainWindow : Window
                 R1WaveHost.Content = wave;
                 break;
             }
-            case 9 when R2AuthoringHost.Content is null:
+            case 9 when R2AuthoringHost.Content is null && !_floatingDocuments.ContainsKey(9):
                 R2AuthoringHost.Content = new LabTestWorkspaceView(GetProjectTestModel(host.Workspace));
                 break;
             case 10 when R1RunHost.Content is null && R1OperatorHost.Content is null:
