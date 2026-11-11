@@ -18,6 +18,7 @@ from studio_baseline import GitBaseline
 from studio_change import ChangeReview
 from studio_verification import Verification
 from studio_governance import DefinitionGovernance
+from studio_definition_research import DefinitionResearch
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -34,6 +35,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     change_review = ChangeReview(store)
     verification = Verification(store)
     governance = DefinitionGovernance(store)
+    definition_research = DefinitionResearch(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.8"
 
@@ -96,6 +98,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/governance.js":
                     return self.write((HERE / "studio_governance_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/definition-research.js":
+                    return self.write((HERE / "studio_definition_research_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/restore.js":
                     return self.write((HERE / "studio_restore_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
@@ -122,6 +127,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write(governance.status(params.get("project", "")))
                 if path == "/api/studio/governance/detail":
                     return self.write(governance.detail(params.get("id", "")))
+                if path == "/api/studio/governance/research":
+                    return self.write(definition_research.list(params.get("change", "")))
                 if path == "/api/studio/governance/gate":
                     return self.write(governance.gate(params.get("id", "")))
                 if path == "/api/studio/governance/invalidations":
@@ -168,7 +175,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 return self.write({"error": "Invalid local host"}, 403)
             request_path, _ = self.route()
             owner_request = secrets.compare_digest(self.headers.get("X-Local-Token", ""), token)
-            manager_request = (request_path == "/api/studio/management/propose"
+            manager_request = (request_path in (
+                                   "/api/studio/management/propose",
+                                   "/api/studio/governance/research/submit")
                                and manager_token is not None and
                                secrets.compare_digest(self.headers.get("X-Manager-Token", ""),
                                                       manager_token))
@@ -226,6 +235,26 @@ def handler_factory(store, token, repo=None, manager_token=None):
                         data.get("proposed"),data.get("reason",""),
                         data.get("source_refs"),data.get("proposer",""),
                         data.get("expected_digest",""))
+                elif path == "/api/studio/governance/research/submit":
+                    answer = definition_research.submit(
+                        data.get("task_id",""),data.get("expected_revision"),
+                        data.get("author",""),
+                        "OWNER_SUBMISSION" if owner_request else "AI_CANDIDATE",
+                        data.get("finding",""),data.get("evidence_refs"),
+                        data.get("limitations",""),data.get("linked_study_id"))
+                elif path == "/api/studio/governance/research/review":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may review definition research"},403)
+                    answer = definition_research.review(
+                        data.get("task_id",""),data.get("submission_id",""),
+                        data.get("expected_revision"),data.get("decision",""),
+                        data.get("reviewer",""),data.get("rationale",""))
+                elif path == "/api/studio/governance/research/reopen":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may reopen definition research"},403)
+                    answer = definition_research.reopen(
+                        data.get("task_id",""),data.get("expected_revision"),
+                        data.get("reviewer",""),data.get("rationale",""))
                 elif path == "/api/studio/governance/review":
                     if not owner_request:
                         return self.write({"error":"Only owner may submit impact-domain review"},403)
