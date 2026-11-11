@@ -135,6 +135,7 @@ class Management:
             "product_definition_suggestions":[{
                 "id":x["id"],"state":x["state"],"origin_role":x["origin_role"],
                 "reason":x["reason"],"summary":x["proposed"]["summary"],
+                "semantic_notes":x.get("semantic_notes",""),
                 "base_digest":x["base_digest"],"accepted_change_id":x["accepted_change_id"]
             } for x in suggestions],
             "verification_runs":verification["runs"],
