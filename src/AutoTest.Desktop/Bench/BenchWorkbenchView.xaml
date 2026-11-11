@@ -148,7 +148,7 @@
       <Button Content="删除" Command="{Binding DeleteActionCommand}"/>
       <Button Content="保存到工程" Command="{Binding SaveActionsCommand}"
        Background="#176AB2" Foreground="White"/>
-      <Button Content="重新加载" Command="{Binding ReloadActionsCommand}" Margin="0"/>
+      <Button Content="重新加载" Click="ReloadKeyActions_Click" Margin="0"/>
      </WrapPanel>
      <Grid Grid.Row="3" Margin="0,0,0,9">
       <Grid.ColumnDefinitions>
@@ -259,7 +259,7 @@
          <Button Content="+ 新建报文" Command="{Binding AddCommand}"/>
          <Button Content="删除当前行" Command="{Binding DeleteCommand}"/>
          <Button Content="保存配置" Command="{Binding SaveCommand}"/>
-         <Button Content="重新加载" Command="{Binding ReloadCommand}" Margin="0"/>
+         <Button Content="重新加载" Click="ReloadCanMessages_Click" Margin="0"/>
         </WrapPanel>
         <WrapPanel Margin="0,0,0,6">
          <Button Content="开始发送（勾选行）" Command="{Binding StartPeriodicCommand}"
