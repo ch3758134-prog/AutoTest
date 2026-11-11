@@ -23,6 +23,25 @@ git rev-parse HEAD
 
 HEAD 必须与 PR #28 当前 HEAD 对照；不同则停止并排查，不拿 main 或过时 HEAD 假装已更新。
 
+## 本轮真实项目管理验收优先入口（比空白示范更重要）
+
+首次做 AutoTest 项目管理 AI 协作验收时，不要使用空白数据库创建项目。**先从当前 Git HEAD 已提交的原生工程快照恢复一份全新的、独立试用数据库**：
+
+```powershell
+# 须位于 PR #28 的准确工作树，并先确认 Git HEAD
+git rev-parse HEAD
+$head = (git rev-parse --short=12 HEAD).Trim()
+$db = Join-Path $env:TEMP ("engineering-git-review-" + $head + ".sqlite3")
+if (Test-Path $db) { throw "试用库已存在，请换一个新文件名；不得删除或覆盖" }
+py -3 tools/lifecycle/studio_server.py --repo . --git-workspace --data $db --port 8766
+```
+
+如果 8766 已有服务在运行，明确是之前启动的工作台后先正常停止它，或者选择其它空闲端口；绝不终止无关进程。
+
+此模式会对 `docs/engineering-control/projects/autotest/snapshot.json` 中的 `engineering` 做原有 `studio_restore` 全结构校验，再恢复到**同一套** SQLite 工程对象模型（不是第二个报告页），显示 Git commit 与恢复的项目 ID。HTML 项目选择直接出现 **AutoTest**；可以打开需求/架构/问题/实测证据对象。恢复的 15 个对象只是待审草稿/开放问题，关系仍是候选，并未获得批准。此功能拒绝非空工作区，不能用在默认现役 SQLite 上。
+
+GitHub 后续更新到新 SHA 时，仍需使用新的试用 DB；当前版本**尚不支持安全地向已有工作区自动增量合并**。不要把重新检出源码当成现场资料自动同步。
+
 ## 2. 用独立试用数据库启动
 
 先在上述候选工作树测试（Python 3.10+，标准库）：
