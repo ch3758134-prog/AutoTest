@@ -133,7 +133,7 @@ class CanonicalIdentityTests(unittest.TestCase):
             "source_refs":["discussion://rx-analysis-correction"],
             "related_objects":[requirement["id"]]
         },"AI management","AI_CANDIDATE")
-        proposal=self.draft(knowledge_ids=[])
+        proposal=self.draft(knowledge_ids=[knowledge["id"]])
         detail=self.identity.detail(proposal["id"])
         suggested=detail["knowledge_impact_candidates"]
         self.assertEqual(len(suggested),1)
