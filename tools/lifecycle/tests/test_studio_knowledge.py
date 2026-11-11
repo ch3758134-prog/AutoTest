@@ -113,6 +113,14 @@ class EngineeringKnowledgeTests(unittest.TestCase):
         self.assertTrue(repeat["already_imported"])
         self.assertEqual(len(self.k.list(self.project)["items"]),2)
         self.assertEqual(len(self.k.list(self.project)["links"]),1)
+        archive=self.store.export_project(self.project)
+        self.assertEqual(len(archive["knowledge"]["intakes"]),1)
+        recovered=self.root/"intake-recovered.sqlite"
+        restore_to_empty(archive,recovered)
+        restored=EngineeringKnowledge(Store(recovered))
+        again=restored.intake(self.project,bundle,"AI manager","AI_CANDIDATE")
+        self.assertTrue(again["already_imported"])
+        self.assertEqual(len(restored.list(self.project)["items"]),2)
         broken=json.loads(json.dumps(bundle))
         broken["relations"][0]["to"]="OTHER"
         with self.assertRaisesRegex(RuleError,"distinct intake aliases"):
@@ -169,7 +177,7 @@ class EngineeringKnowledgeTests(unittest.TestCase):
         dest=self.root/"legacy.sqlite"
         restore_to_empty(archive,dest)
         self.assertEqual(Store(dest).export_project(self.project)["knowledge"],
-                         {"items":[],"revisions":[],"links":[]})
+                         {"items":[],"revisions":[],"links":[],"intakes":[]})
 
 
 if __name__=="__main__":
