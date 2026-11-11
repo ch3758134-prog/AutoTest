@@ -43,6 +43,8 @@ async function renderManagementView(){
       ' · ' +(result.product_definition_governance.baseline?.revision||'无批准版本')),
     managementFact('产品定义待审变更',result.product_definition_governance.changes.filter(
       x=>x.state==='REVIEW').length+' 项'),
+    managementFact('产品定义研究待复核',result.product_definition_research_tasks.filter(
+      x=>x.state!=='REVIEWED').length+' / '+result.product_definition_research_tasks.length+' 项'),
     managementFact('GitHub 状态',result.github.repository?
       result.github.repository+' · 最近同步 '+(result.github.fetched_at||'未知'):'尚未连接 GitHub'),
     managementFact('研究问题',result.technical_studies.length+' 项'),
@@ -70,6 +72,12 @@ async function renderManagementView(){
       const target=item(problem.object_id);
       if(target){navigate(target.kind==='work_package'?'delivery':'engineering');openItem(target);}
     }));
+    if(problem.type==='PRODUCT_DEFINITION_RESEARCH'&&problem.change_id)
+      row.append(button('处理研究','outline',
+        ()=>definitionResearchModal(problem.change_id)));
+    if(problem.type==='PRODUCT_DEFINITION_CHANGE'&&problem.change_id)
+      row.append(button('查看变更门禁','outline',
+        ()=>definitionChangeModal(problem.change_id)));
     problems.append(row);
   }
   mount.append(problems);
