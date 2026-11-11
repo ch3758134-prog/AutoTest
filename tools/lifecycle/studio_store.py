@@ -325,7 +325,9 @@ class Store:
         if not changed:
             raise RuleError("No object edits submitted")
         changed.update(revision=obj["revision"]+1, updated=now())
-        if obj["state"] == "APPROVED":
+        if obj["state"] in ("APPROVED","IN_REVIEW"):
+            # Changed material requires a fresh review; even a submitted
+            # draft cannot retain a prior review state after content edits.
             changed.update(state="DRAFT", approved_by=None, approved_at=None)
         patch = ", ".join(f"{f}=?" for f in changed)
         db.execute(f"UPDATE objects SET {patch} WHERE id=?", (*changed.values(), key))
@@ -338,6 +340,9 @@ class Store:
     def update_object(self, key, data):
         with self.db() as db:
             db.execute("BEGIN IMMEDIATE")
+            current=self._require_object(db,key)
+            if current["state"]=="APPROVED":
+                raise RuleError("Approved object requires a reviewed engineering amendment")
             self._update_object_tx(db, key, data)
         return self.object(key)
 
