@@ -15,6 +15,7 @@ from studio_research import Research
 from studio_execution import Execution
 from studio_management import Management
 from studio_baseline import GitBaseline
+from studio_change import ChangeReview
 
 HERE = Path(__file__).resolve().parent
 WEB = HERE / "studio.html"
@@ -27,6 +28,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     execution = Execution(store)
     management = Management(store, execution, research)
     baseline = GitBaseline(store, source_root, execution)
+    change_review = ChangeReview(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.6"
 
@@ -92,6 +94,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write(store.object(params.get("id", "")))
                 if path == "/api/studio/impact":
                     return self.write(store.impact(params.get("id", "")))
+                if path == "/api/studio/change/review":
+                    return self.write(change_review.detail(params.get("id", "")))
                 if path == "/api/studio/readiness":
                     return self.write(store.readiness(params.get("id", "")))
                 if path == "/api/studio/context":
@@ -172,6 +176,15 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     answer = store.create_object(data)
                 elif path == "/api/studio/relation":
                     answer = store.create_relation(data)
+                elif path == "/api/studio/change/assess":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may assess change impacts"},403)
+                    answer = change_review.assess(
+                        data.get("change_id",""),data.get("target_id",""),
+                        data.get("expected_change_revision"),
+                        data.get("expected_target_revision"),
+                        data.get("outcome",""),data.get("reviewer",""),
+                        data.get("rationale",""))
                 elif path == "/api/studio/relation/delete":
                     answer = store.delete_relation(data.get("id", ""))
                 elif path == "/api/studio/relation/approve":
