@@ -67,7 +67,7 @@ class GovernedResearchTests(unittest.TestCase):
         self.assertEqual(self.task()["state"],"OPEN")
         with self.assertRaisesRegex(RuleError,"Domain research must receive"):
             self.g.review(self.change_id,"POSITIONING","NO_IMPACT",
-                "Old status","evidence string",[],"Human",
+                "Old status",["test://unreviewed"],[],"Human",
                 self.change["change"]["base_digest"])
         review=self.research.review(task["id"],submitted["submission_id"],
             task["revision"],"ACCEPT","Human","Checked actual source")
