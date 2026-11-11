@@ -6,6 +6,7 @@ reasoning; there is no keyword or sentence-length eligibility check.
 """
 from __future__ import annotations
 import json
+import hashlib
 from studio_store import Store, RuleError, ident, now, text_value
 from studio_semantics import load_catalog
 
@@ -81,6 +82,15 @@ class EngineeringKnowledge:
                 reviewed_at TEXT);
               CREATE INDEX IF NOT EXISTS idx_knowledge_links_project
                 ON engineering_knowledge_links(project_id,state);
+              CREATE TABLE IF NOT EXISTS engineering_knowledge_intakes(
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL REFERENCES projects(id),
+                payload_digest TEXT NOT NULL,
+                origin_role TEXT NOT NULL,
+                proposed_by TEXT NOT NULL,
+                result_json TEXT NOT NULL,
+                created TEXT NOT NULL,
+                UNIQUE(project_id,payload_digest));
             """)
 
     @staticmethod
@@ -133,6 +143,94 @@ class EngineeringKnowledge:
                 VALUES(?,?,?,?,?,?)""",
                 (item["id"],item["revision"],
                  json.dumps(item,ensure_ascii=False,sort_keys=True),operation,actor,now()))
+
+    def intake(self,project_id,payload,actor,origin_role):
+        """Atomic, duplicate-safe candidate import; never auto-reviews data."""
+        actor=text_value(actor,"intake author",limit=150,mandatory=True)
+        if origin_role not in ("AI_CANDIDATE","OWNER_CANDIDATE"):
+            raise RuleError("Unknown intake capability role")
+        if not isinstance(payload,dict) or payload.get("schema")!="engineering-knowledge-intake/1":
+            raise RuleError("Expected engineering-knowledge-intake/1")
+        entries=payload.get("entries",[])
+        links=payload.get("relations",[])
+        if (not isinstance(entries,list) or not 1<=len(entries)<=50 or
+            not isinstance(links,list) or len(links)>100):
+            raise RuleError("Knowledge intake requires 1–50 entries and up to 100 links")
+        prepared=[]
+        aliases=set()
+        for entry in entries:
+            if not isinstance(entry,dict):
+                raise RuleError("Intake entry must be a structured claim")
+            alias=text_value(entry.get("alias",""),"local intake alias",limit=80,mandatory=True)
+            if alias in aliases:raise RuleError("Duplicate intake alias")
+            aliases.add(alias)
+            prepared.append((alias,self._fields(entry)))
+        prepared_links=[]
+        for relation in links:
+            if not isinstance(relation,dict):
+                raise RuleError("Relation must be an object")
+            start,end=relation.get("from"),relation.get("to")
+            kind=relation.get("relation")
+            if start not in aliases or end not in aliases or start==end:
+                raise RuleError("Relation requires two distinct intake aliases")
+            if kind not in RELATIONS:raise RuleError("Unknown knowledge relation")
+            why=text_value(relation.get("rationale",""),"relationship reasoning",
+                           limit=8000,mandatory=True)
+            prepared_links.append((start,end,kind,why))
+        raw=json.dumps(payload,sort_keys=True,ensure_ascii=False,
+                       separators=(",",":")).encode("utf-8")
+        fingerprint=hashlib.sha256(raw).hexdigest()
+        with self.store.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self.store._require_project(db,project_id)
+            previous=db.execute("""SELECT result_json FROM engineering_knowledge_intakes
+                      WHERE project_id=? AND payload_digest=?""",
+                      (project_id,fingerprint)).fetchone()
+            if previous:
+                result=json.loads(previous["result_json"])
+                result["already_imported"]=True
+                return result
+            alias_ids={}
+            stamp=now()
+            for alias,fields in prepared:
+                title,statement,interpretation,concepts,provenance,refs,objects=fields
+                self._check_project_objects(db,project_id,objects)
+                key=ident();alias_ids[alias]=key
+                db.execute("""INSERT INTO engineering_knowledge
+                    (id,project_id,title,statement,interpretation,concept_ids,
+                     provenance,source_refs,related_objects,origin_role,created_by,
+                     revision,state,reviewed_by,review_reason,reviewed_at,created,updated)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (key,project_id,title,statement,interpretation,
+                     json.dumps(concepts,ensure_ascii=False),provenance,
+                     json.dumps(refs,ensure_ascii=False),
+                     json.dumps(objects,ensure_ascii=False),
+                     origin_role,actor,1,"CANDIDATE",None,None,None,stamp,stamp))
+                self._history(db,self._item(db,key),"BATCH_PROPOSE",actor)
+            link_ids=[]
+            for source_alias,target_alias,kind,why in prepared_links:
+                key=ident();link_ids.append(key)
+                db.execute("""INSERT INTO engineering_knowledge_links
+                  (id,project_id,source_id,target_id,relation,rationale,
+                   source_revision,target_revision,origin_role,proposed_by,
+                   state,reviewed_by,review_reason,created,reviewed_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?,NULL)""",
+                  (key,project_id,alias_ids[source_alias],alias_ids[target_alias],
+                   kind,why,1,1,origin_role,actor,"CANDIDATE",stamp))
+            result={"schema":"engineering-knowledge-intake-result/1",
+                "project_id":project_id,"status":"CANDIDATE_ONLY",
+                "items":[{"alias":alias,"id":key} for alias,key in alias_ids.items()],
+                "links":link_ids,"already_imported":False,
+                "note":"No product definition, engineering approval or coding permission was changed."}
+            db.execute("""INSERT INTO engineering_knowledge_intakes
+                (id,project_id,payload_digest,origin_role,proposed_by,result_json,created)
+                VALUES(?,?,?,?,?,?,?)""",
+                (ident(),project_id,fingerprint,origin_role,actor,
+                 json.dumps(result,ensure_ascii=False),stamp))
+            self.store._audit(db,project_id,None,"INTAKE_KNOWLEDGE_CANDIDATES",
+                              actor,fingerprint+" / "+str(len(entries))+
+                              " entries / "+str(len(links))+" relations")
+        return result
 
     def list(self,project_id):
         with self.store.db() as db:
@@ -190,6 +288,8 @@ class EngineeringKnowledge:
             item=self._item(db,item_id)
             if item["state"]!="CANDIDATE":
                 raise RuleError("Reviewed knowledge is immutable; propose a new item linked by REFINES")
+            if origin_role=="AI_CANDIDATE" and item["origin_role"]=="OWNER_CANDIDATE":
+                raise RuleError("AI cannot revise a human-origin candidate")
             if type(expected_revision) is not int or expected_revision!=item["revision"]:
                 raise RuleError("Knowledge revision conflict")
             self._check_project_objects(db,item["project_id"],objects)
@@ -263,16 +363,31 @@ class EngineeringKnowledge:
                             (link_id,)).fetchone()
             if not link:raise RuleError("Knowledge link does not exist")
             if link["state"]!="CANDIDATE":raise RuleError("Link already reviewed")
+            pinned_source,pinned_target=link["source_revision"],link["target_revision"]
             if decision=="CONFIRM":
                 source=self._item(db,link["source_id"]);target=self._item(db,link["target_id"])
-                if (source["state"]!="ACCEPTED" or target["state"]!="ACCEPTED" or
-                    source["revision"]!=link["source_revision"] or
-                    target["revision"]!=link["target_revision"]):
-                    raise RuleError("Link endpoints must be currently accepted at pinned revisions")
+                if source["state"]!="ACCEPTED" or target["state"]!="ACCEPTED":
+                    raise RuleError("Link endpoints must be currently accepted")
+                # Owner acceptance advances the audit revision but does not
+                # change the claim. A relation proposed during research must
+                # survive that purely administrative transition.
+                semantic_fields=("title","statement","interpretation","concept_ids",
+                                 "provenance","source_refs","related_objects")
+                for endpoint,pinned in ((source,pinned_source),(target,pinned_target)):
+                    if endpoint["revision"]!=pinned:
+                        prior=db.execute("""SELECT snapshot FROM engineering_knowledge_revisions
+                            WHERE item_id=? AND revision=?""",(endpoint["id"],pinned)).fetchone()
+                        if not prior:
+                            raise RuleError("Link references missing source snapshot")
+                        old=json.loads(prior["snapshot"])
+                        if any(old.get(k)!=endpoint[k] for k in semantic_fields):
+                            raise RuleError("Knowledge semantic content changed after relation proposal")
+                pinned_source,pinned_target=source["revision"],target["revision"]
             state="CONFIRMED" if decision=="CONFIRM" else "REJECTED"
             db.execute("""UPDATE engineering_knowledge_links SET
-                state=?,reviewed_by=?,review_reason=?,reviewed_at=? WHERE id=?""",
-                (state,reviewer,reason,now(),link_id))
+                state=?,source_revision=?,target_revision=?,
+                reviewed_by=?,review_reason=?,reviewed_at=? WHERE id=?""",
+                (state,pinned_source,pinned_target,reviewer,reason,now(),link_id))
             self.store._audit(db,link["project_id"],None,"REVIEW_KNOWLEDGE_LINK",
                               reviewer,link_id+" / "+decision)
         return {"id":link_id,"state":state}
