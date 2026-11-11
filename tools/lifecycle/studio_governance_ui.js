@@ -21,6 +21,7 @@ async function definitionGovernanceModal(){
       head.append(note('现有内容是历史/导入的工作资料，还没有经过本治理内核签发。不能将其当作受控定义基线。'));
     if(info.baseline_status==='DRIFT')
       head.append(note('受控定义内容与现存项目记录不一致：禁止继续发布变更，须先处理数据库或历史来源差异。'));
+    head.append(button('为什么这些信息不应混在产品定义里？','outline',()=>engineeringSemanticsModal()));
     body.append(head);
     const changes=el('div','detailsection');
     changes.append(el('strong','','定义修订申请'));
@@ -58,11 +59,13 @@ function definitionProposeModal(info){
   const p=info.definition;
   showModal('提交新产品定义候选',(body,footer)=>{
     body.append(note('此处只创建候选，不立即替换现役定义。你可以和 AI 先充分讨论、保存调查结论，再逐领域审查。'));
-    const summary=field(body,'产品定位与核心价值',p.summary,'textarea');
-    const detail=field(body,'完整定义：用户、场景、系统边界与约束',p.body,'textarea');
-    const version=field(body,'拟定义产品版本',p.version);
-    const variant=field(body,'拟适用产品变体',p.variant);
-    const reason=field(body,'为什么重新审查：冲突、反馈、事实变化与待解决问题','','textarea');
+    const summary=field(body,'产品身份的简洁候选表述（产品是什么）',p.summary,'textarea');
+    const detail=field(body,'原有项目背景与上下文（保留原文，不等同产品身份）',p.body,'textarea');
+    const version=field(body,'项目/交付版本元数据（旧版存储字段）',p.version);
+    const variant=field(body,'配置/产品变体元数据（旧版存储字段）',p.variant);
+    body.append(note('V1.0 先提供语义区分，现有 SQLite 仍将四个历史字段一起做版本校验；不要把背景、版本和变体当成产品的永久定义。更完整的存储拆分需另外迁移与验收。'));
+    body.append(button('查看概念说明与反例','outline',()=>engineeringSemanticsModal()));
+    const reason=field(body,'讨论的分歧、语义归属及需要进一步调查的事项','','textarea');
     const source=field(body,'原始依据（每行一个 GitHub/文档/实测证据引用）','','textarea');
     const actor=field(body,'提出人或协作参与者','产品负责人');
     const error=el('div','error hidden');body.append(error);
