@@ -15,12 +15,15 @@ from studio_research import Research
 from studio_execution import Execution
 from studio_management import Management
 from studio_verification import Verification
+from studio_governance import DefinitionGovernance, definition, digest
 
 TABLES = (
     "projects","objects","revisions","relations","events",
     "studies","study_options","study_experiments","study_results","study_decisions",
     "github_projects","execution_tasks","manager_proposals",
-    "verification_runs","verification_reviews"
+    "verification_runs","verification_reviews",
+    "definition_baselines","definition_changes","definition_reviews",
+    "definition_invalidations"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -57,6 +60,11 @@ def _validate(archive):
         raise RuleError("Invalid verification section")
     sections["runs"]=_array(verification.get("runs"),"runs")
     sections["reviews"]=_array(verification.get("reviews"),"reviews")
+    governance=archive.get("governance",{"baselines":[],"changes":[],"reviews":[],"invalidations":[]})
+    if not isinstance(governance,dict):
+        raise RuleError("Invalid definition governance section")
+    for key in ("baselines","changes","reviews","invalidations"):
+        sections["g_"+key]=_array(governance.get(key),"governance."+key)
     objects=sections["objects"]
     ids={x.get("id") for x in objects}
     if (None in ids or len(ids)!=len(objects) or
@@ -127,6 +135,53 @@ def _validate(archive):
             raise RuleError("Execution evidence references a non-test object")
     if any(x.get("run_id") not in runs for x in sections["reviews"]):
         raise RuleError("Evidence review references an unknown run")
+    # A recovered archive must not be able to forge a different live
+    # product definition by inserting a mismatched approved snapshot.
+    baseline_rows=sections["g_baselines"]
+    baseline_revisions=[x.get("revision") for x in baseline_rows]
+    if any(x.get("project_id")!=pid for x in baseline_rows) or (
+        len(set(baseline_revisions))!=len(baseline_rows)):
+        raise RuleError("Invalid product definition baseline identities")
+    change_ids={c.get("id") for c in sections["g_changes"]}
+    if None in change_ids or len(change_ids)!=len(sections["g_changes"]):
+        raise RuleError("Duplicate or missing governed change identity")
+    for c in sections["g_changes"]:
+        if c.get("project_id")!=pid:raise RuleError("Cross-project governed change")
+        for key in ("proposed_json","source_refs"):
+            try:json.loads(c[key])
+            except (ValueError,KeyError,TypeError) as exc:
+                raise RuleError("Invalid governed change JSON") from exc
+    for b in baseline_rows:
+        if b.get("change_id") not in change_ids:
+            raise RuleError("Definition baseline references unknown change")
+        try:record=json.loads(b["definition_json"])
+        except (ValueError,KeyError,TypeError) as exc:
+            raise RuleError("Invalid definition baseline JSON") from exc
+        if digest(record)!=b.get("digest"):
+            raise RuleError("Definition baseline digest does not match recorded content")
+    if baseline_rows:
+        latest=max(baseline_rows,key=lambda b:b["revision"])
+        if latest["digest"]!=digest(definition(project)):
+            raise RuleError("Archived active product definition differs from latest baseline")
+    for review in sections["g_reviews"]:
+        if review.get("change_id") not in change_ids:
+            raise RuleError("Domain review references missing governed change")
+        for key in ("affected_revisions","evidence_refs"):
+            try:value=json.loads(review[key])
+            except (ValueError,KeyError,TypeError) as exc:
+                raise RuleError("Invalid governed impact review JSON") from exc
+            if key=="affected_revisions":
+                if not isinstance(value,dict) or any(
+                   (oid,rev) not in snapshots for oid,rev in value.items()):
+                    raise RuleError("Governed review references unknown engineering revision")
+    for pending in sections["g_invalidations"]:
+        if (pending.get("project_id")!=pid or
+            pending.get("change_id") not in change_ids or
+            pending.get("package_id") not in ids):
+            raise RuleError("Invalid definition revalidation reference")
+        target=next(x for x in objects if x["id"]==pending["package_id"])
+        if target["kind"]!="work_package":
+            raise RuleError("Invalidation target must be a work package")
     repository=execution.get("repository")
     if repository is None and sections["tasks"]:
         raise RuleError("Execution tasks require a GitHub configuration")
@@ -168,6 +223,7 @@ def restore_to_empty(archive,output_database):
     engine=Execution(store)
     Management(store,engine,research)
     Verification(store)
+    DefinitionGovernance(store)
     del engine,research
     with store.db() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -210,6 +266,11 @@ def restore_to_empty(archive,output_database):
         _insert(db,"manager_proposals",proposals)
         _insert(db,"verification_runs",sec["runs"])
         _insert(db,"verification_reviews",sec["reviews"])
+        for table,key in (("definition_changes","g_changes"),
+                          ("definition_baselines","g_baselines"),
+                          ("definition_reviews","g_reviews"),
+                          ("definition_invalidations","g_invalidations")):
+            _insert(db,table,sec[key])
         errors=db.execute("PRAGMA foreign_key_check").fetchall()
         if errors:
             raise RuleError("Foreign-key validation failed; entire restore rolled back")
