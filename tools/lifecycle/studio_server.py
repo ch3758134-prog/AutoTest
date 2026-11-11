@@ -91,6 +91,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/plan.js":
                     return self.write((HERE / "studio_plan_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/restore.js":
+                    return self.write((HERE / "studio_restore_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/api/studio/version":
                     return self.write({"application": "Engineering Workbench",
                                        "version": "0.6", "mode": "editable",
