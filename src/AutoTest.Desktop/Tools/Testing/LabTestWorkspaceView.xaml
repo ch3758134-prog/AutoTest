@@ -2,7 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:AutoTest.Desktop.Tools.Testing"
-             Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13">
+             Background="#F5F7FA" Foreground="#203249" FontFamily="Segoe UI" FontSize="13">
   <UserControl.InputBindings>
     <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
     <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}"/>
@@ -14,19 +14,19 @@
       <TextBlock Text="{Binding Caption}" FontSize="12.5" Margin="3,4"/>
     </HierarchicalDataTemplate>
     <Style TargetType="Button">
-      <Setter Property="Background" Value="#263748"/><Setter Property="Foreground" Value="#E2EDF7"/>
-      <Setter Property="BorderBrush" Value="#314458"/>
+      <Setter Property="Background" Value="#E8F0F8"/><Setter Property="Foreground" Value="#203249"/>
+      <Setter Property="BorderBrush" Value="#D5DFEA"/>
       <Setter Property="MinHeight" Value="28"/><Setter Property="Padding" Value="9,3"/>
       <Setter Property="Margin" Value="3,2"/>
     </Style>
-    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#E2EDF7"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#203249"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
       <Style TargetType="TextBox">
-      <Setter Property="Background" Value="#101620"/><Setter Property="Foreground" Value="#E2EDF7"/>
-      <Setter Property="BorderBrush" Value="#314458"/>
+      <Setter Property="Background" Value="#F5F7FA"/><Setter Property="Foreground" Value="#203249"/>
+      <Setter Property="BorderBrush" Value="#D5DFEA"/>
     </Style>
     <Style TargetType="DataGrid">
-      <Setter Property="Background" Value="#192431"/><Setter Property="Foreground" Value="#E2EDF7"/>
-      <Setter Property="BorderBrush" Value="#314458"/>
+      <Setter Property="Background" Value="#FFFFFF"/><Setter Property="Foreground" Value="#203249"/>
+      <Setter Property="BorderBrush" Value="#D5DFEA"/>
     </Style>
   </UserControl.Resources>
   <Grid Margin="12">
@@ -38,11 +38,11 @@
       <TextBlock DockPanel.Dock="Left" Text="TEST PROGRAM" FontSize="19" FontWeight="SemiBold" Margin="0,0,18,0"/>
       <Border DockPanel.Dock="Right" Background="#493425" BorderBrush="#876038" BorderThickness="1"
               CornerRadius="3" Padding="9,4">
-        <TextBlock Text="{Binding SourceLabel}" Foreground="#E8B967" FontWeight="Bold" FontSize="11"/>
+        <TextBlock Text="{Binding SourceLabel}" Foreground="#90611A" FontWeight="Bold" FontSize="11"/>
       </Border>
       <StackPanel>
-       <TextBlock Text="{Binding DocumentName}" Foreground="#92A4B7" FontSize="13"/>
-       <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#81C9BA" FontSize="11" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding DocumentName}" Foreground="#667C92" FontSize="13"/>
+       <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#13836B" FontSize="11" TextWrapping="Wrap"/>
       </StackPanel>
     </DockPanel>
     <WrapPanel Grid.Row="1" Margin="0,0,0,9">
@@ -60,11 +60,11 @@
       <Button Content="Step" Command="{Binding StepCommand}"/>
       <Button Content="Skip selected" Command="{Binding SkipCommand}"/>
       <Button Content="Run to selected" Command="{Binding RunToCommand}"/>
-      <Button Content="STOP" Command="{Binding StopCommand}" Foreground="#FF7886" FontWeight="Bold"/>
+      <Button Content="STOP" Command="{Binding StopCommand}" Foreground="#BC3C50" FontWeight="Bold"/>
     </WrapPanel>
     <Grid Grid.Row="2">
       <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="5"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
-      <Border Grid.Column="0" Background="#192431" BorderBrush="#314458" BorderThickness="1">
+      <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#D5DFEA" BorderThickness="1">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Margin="8,7,8,4">
             <TextBlock Text="Steps · Prepare / Test / Cleanup" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -98,14 +98,14 @@
         </DockPanel>
       </Border>
       <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="Transparent"/>
-      <Border Grid.Column="2" Background="#192431" BorderBrush="#314458" BorderThickness="1" Padding="12">
+      <Border Grid.Column="2" Background="#FFFFFF" BorderBrush="#D5DFEA" BorderThickness="1" Padding="12">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
          <StackPanel>
           <TextBlock Text="Step properties" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
-          <TextBlock Text="Name" Foreground="#92A4B7"/>
+          <TextBlock Text="Name" Foreground="#667C92"/>
           <TextBox Text="{Binding SelectedName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
           <Button Content="Rename selected step" Command="{Binding RenameCommand}" HorizontalAlignment="Left" Margin="0,0,0,15"/>
-          <TextBlock Text="Current parameters" Foreground="#92A4B7" Margin="0,0,0,4"/>
+          <TextBlock Text="Current parameters" Foreground="#667C92" Margin="0,0,0,4"/>
           <DataGrid ItemsSource="{Binding ParameterRows}" AutoGenerateColumns="False" IsReadOnly="True"
                     Height="110" RowHeaderWidth="0" HeadersVisibility="Column" CanUserAddRows="False"
                     Margin="0,0,0,12" FontSize="12">
@@ -114,12 +114,12 @@
               <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*"/>
             </DataGrid.Columns>
           </DataGrid>
-          <TextBlock Text="Parameter key" Foreground="#92A4B7"/>
+          <TextBlock Text="Parameter key" Foreground="#667C92"/>
           <TextBox Text="{Binding ParameterName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8"/>
-          <TextBlock Text="Parameter value" Foreground="#92A4B7"/>
+          <TextBlock Text="Parameter value" Foreground="#667C92"/>
           <TextBox Text="{Binding ParameterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
           <Button Content="Set parameter" Command="{Binding SetParameterCommand}" HorizontalAlignment="Left"/>
-          <Separator Margin="0,14,0,10" Background="#314458"/>
+          <Separator Margin="0,14,0,10" Background="#D5DFEA"/>
           <TextBlock Text="真实 KEY_SIM / P05 控制器状态" FontWeight="SemiBold" Margin="0,0,0,7"/>
           <Button Content="从 P05 刷新状态列表" Command="{Binding RefreshControllerStatesCommand}"
                   HorizontalAlignment="Left"/>
@@ -131,18 +131,18 @@
                   Command="{Binding ApplyControllerStateCommand}"
                   HorizontalAlignment="Left"/>
           <TextBlock Text="配置中掩码 0=释放全部按键。实际动作需 P05 已保存、TEST 已保存，以及 Cleanup 定义全部释放状态。"
-                     TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#E8B967"/>
-          <TextBlock TextWrapping="Wrap" Margin="0,14,0,0" Foreground="#92A4B7" FontSize="11"
+                     TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#90611A"/>
+          <TextBlock TextWrapping="Wrap" Margin="0,14,0,0" Foreground="#667C92" FontSize="11"
                      Text="ControllerState 必须引用工程 ControllerId/StateId/Revision。只允许设备与步骤合同支持的真实操作；没有配置的硬件行为不予执行。"/>
          </StackPanel>
         </ScrollViewer>
       </Border>
     </Grid>
-    <Border Grid.Row="3" Background="#192431" BorderBrush="#314458" BorderThickness="1" Margin="0,9,0,0">
+    <Border Grid.Row="3" Background="#FFFFFF" BorderBrush="#D5DFEA" BorderThickness="1" Margin="0,9,0,0">
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="9,5,9,5">
           <TextBlock DockPanel.Dock="Left" Text="Execution facts · Expected / Actual / Quality" FontWeight="SemiBold"/>
-          <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}" FontWeight="SemiBold" Foreground="#46D0DC"/>
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}" FontWeight="SemiBold" Foreground="#087D9C"/>
         </DockPanel>
         <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
                   CanUserAddRows="False" CanUserDeleteRows="False" BorderThickness="0"
@@ -163,11 +163,11 @@
         </DataGrid>
       </DockPanel>
     </Border>
-    <Border Grid.Row="4" BorderBrush="#314458" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="4,6">
+    <Border Grid.Row="4" BorderBrush="#D5DFEA" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="4,6">
       <StackPanel>
-        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#E2EDF7"/>
-        <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="#81C9BA"/>
-        <TextBlock Text="真实 KEY_SIM 状态由现役 CAN0 协议发送，CAN1 观测独立判定；主控 ACK 不代表电压/ECU 已响应。DUT 供电不由软件控制；当前为诊断证据，未签发出厂 PASS。" TextWrapping="Wrap" Foreground="#E8B967"/>
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#203249"/>
+        <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="#13836B"/>
+        <TextBlock Text="真实 KEY_SIM 状态由现役 CAN0 协议发送，CAN1 观测独立判定；主控 ACK 不代表电压/ECU 已响应。DUT 供电不由软件控制；当前为诊断证据，未签发出厂 PASS。" TextWrapping="Wrap" Foreground="#90611A"/>
       </StackPanel>
     </Border>
   </Grid>
