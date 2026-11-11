@@ -199,7 +199,8 @@ function ancestry(obj){const result=[],seen=new Set([obj.id]);let current=obj;
 function renderDashboard(){const p=state.data.project;
  heading(p.name,'产品需求、工程结构、决策与验证的同一视图。对象数量不代表产品完成率。');
  if(state.gitSource && state.gitSource.project_id===p.id){
-   root.append(note('工程对象来自 Git 提交 '+state.gitSource.commit+'，来源：'+state.gitSource.path+'。这是管理 AI 的待审候选工程快照，已恢复到独立试用工作区，不代表设计已批准、实现完成或现场验收。'));
+    const approvedP0=state.gitSource.authority==='OWNER_APPROVED_P0_DOCUMENT';
+    root.append(note('工程对象来自 Git 提交 '+state.gitSource.commit+'，来源：'+state.gitSource.path+'。'+(approvedP0?'《AutoTest 产品定义与立项说明》V0.1 已获负责人批准，产品身份基线 r1 已生效；其他工程对象仍按各自草稿/待审状态显示，P0 Gate、实现与实测未获批准。':'这是管理 AI 的待审候选工程快照，不代表设计已批准、实现完成或现场验收。')+' 当前恢复到独立试用工作区，不会自动修改其它本地数据库。'));
  }
  const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('产品身份 · 研究与审查','outline',productIdentityModal));block.append(first);
  add(block,el('h2','', '项目背景与阶段信息（非产品身份）'));block.append(el('div','context',p.body||p.summary||'尚未补充项目背景；应通过工程知识或相关工程对象澄清。'));root.append(block);
