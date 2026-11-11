@@ -127,9 +127,15 @@ public partial class MainWindow : Window
                     MessageBoxButton.YesNo, MessageBoxImage.Warning,
                     MessageBoxResult.No) == MessageBoxResult.Yes);
             _testProjectId = workspace.Project.Id.Value;
-            TestCasesList.DataContext = _test;
+            ExplorerTabs.DataContext = _test;
             TestCasesList.ItemsSource = _test.TestCases;
-            PlannedStepsList.ItemsSource = _test.RunStepRows;
+            PlannedStepsList.DataContext = _test;
+            // A separate grouped view avoids grouping the main execution
+            // DataGrid and preserves one shared SelectedRunStep across panes.
+            var groupedSteps = new ListCollectionView(_test.RunStepRows);
+            groupedSteps.GroupDescriptions.Add(
+                new PropertyGroupDescription(nameof(R1RunStepRow.Phase)));
+            PlannedStepsList.ItemsSource = groupedSteps;
         }
         else if (_testProjectId != workspace.Project.Id.Value && !_test.Busy)
         {
@@ -519,7 +525,10 @@ public partial class MainWindow : Window
     private void PlannedSteps_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_test is not null && PlannedStepsList.SelectedItem is R1RunStepRow step)
+        {
             _test.SelectedRunStep = step;
+            PlannedStepsList.ScrollIntoView(step);
+        }
     }
     private void ShowExplorer()
     {
