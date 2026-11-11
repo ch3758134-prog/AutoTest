@@ -16,7 +16,7 @@
    <TextBox Text="{Binding EditableProjectName,UpdateSourceTrigger=PropertyChanged}"
     ToolTip="当前工程名称（工程师编辑）" Padding="6,5"
     Background="#F7FAFD" Foreground="{DynamicResource StudioText}" BorderBrush="#D9E3EE" Margin="0,0,0,5"/>
-   <Button Content="更新工程名称" Command="{Binding RenameProjectCommand}" HorizontalAlignment="Left"/>
+   <Button Content="更新名称" Command="{Binding RenameProjectCommand}" HorizontalAlignment="Left"/>
   </StackPanel>
   <TreeView Grid.Row="1" x:Name="ResourceTree"
     ItemsSource="{Binding ResourceNodes}" BorderThickness="0"
@@ -34,7 +34,7 @@
     <Button Content="DBC 编辑" Click="OpenDbc_Click"/>
     <Button Content="编号规则" Click="OpenRules_Click"/>
    </WrapPanel>
-   <Button Content="打开工程所在文件夹" Click="OpenFolder_Click"
+   <Button Content="打开工程文件夹" Style="{StaticResource AtQuietButton}" Click="OpenFolder_Click"
     HorizontalAlignment="Stretch" Margin="0,4,0,0"/>
    <TextBlock Text="编辑和保存进入工程资源修订；运行时使用已冻结的资源版本。"
     FontSize="11" TextWrapping="Wrap" Foreground="#778A9D" Margin="3,9,0,3"/>
