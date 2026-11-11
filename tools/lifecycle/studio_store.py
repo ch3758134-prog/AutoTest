@@ -685,7 +685,17 @@ class Store:
                     (key,))]
                 for proposal in proposals:
                     proposal["source_objects"]=json.loads(proposal["source_objects"])
+            verification={"runs":[],"reviews":[]}
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='verification_runs'").fetchone():
+                verification["runs"]=[dict(row) for row in db.execute(
+                    "SELECT * FROM verification_runs WHERE project_id=? ORDER BY created,id",(key,))]
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='verification_reviews'").fetchone():
+                    verification["reviews"]=[dict(row) for row in db.execute(
+                        """SELECT r.* FROM verification_reviews r
+                           JOIN verification_runs v ON v.id=r.run_id
+                           WHERE v.project_id=? ORDER BY r.reviewed_at,r.run_id""",(key,))]
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
                     "objects":objects,"relations":links,"revisions":revisions,
                     "events":events,"technical_research":research,
-                    "execution":execution,"manager_proposals":proposals}
+                    "execution":execution,"manager_proposals":proposals,
+                    "verification":verification}
