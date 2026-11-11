@@ -31,15 +31,24 @@
                 </WrapPanel>
                 <TextBlock x:Name="R1ScannerState" Text="选择真实扫码枪 COM 和波特率后连接；不需键盘焦点。"
                            Foreground="#697C8E" TextWrapping="Wrap" Margin="0,7,0,0"/>
-                <WrapPanel Margin="0,10,0,4">
-                    <TextBlock x:Name="R1ScannerRxCount" Text="RX 0 bytes" Foreground="#127B91" FontFamily="Consolas" Margin="0,0,16,0"/>
-                    <TextBlock x:Name="R1ScannerBoundary" Text="等待扫码" Foreground="#697C8E"/>
-                </WrapPanel>
-                <TextBlock x:Name="R1ScannerHex" Text="HEX —" Foreground="#697C8E"
-                           FontFamily="Consolas" TextWrapping="Wrap" MaxHeight="40"/>
-                <TextBlock x:Name="R1ScannerBarcode" Text="最近扫码 —"
-                           Foreground="{DynamicResource StudioText}" FontFamily="Consolas" FontSize="14" FontWeight="SemiBold"
-                           Margin="0,7,0,0"/>
+                <Border Background="{DynamicResource StudioSurface}" CornerRadius="5"
+                    Padding="10" Margin="0,10,0,6">
+                    <TextBlock x:Name="R1ScannerBarcode" Text="最近扫码 —"
+                        Foreground="{DynamicResource StudioText}" FontFamily="Consolas"
+                        FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                </Border>
+                <Expander Header="扫码通信调试" IsExpanded="False" Margin="0,3,0,0">
+                    <StackPanel Margin="7,5,0,0">
+                        <WrapPanel Margin="0,0,0,4">
+                            <TextBlock x:Name="R1ScannerRxCount" Text="RX 0 bytes"
+                                Foreground="#127B91" FontFamily="Consolas" Margin="0,0,16,0"/>
+                            <TextBlock x:Name="R1ScannerBoundary" Text="等待扫码"
+                                Foreground="#697C8E"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="R1ScannerHex" Text="HEX —" Foreground="#697C8E"
+                            FontFamily="Consolas" TextWrapping="Wrap" MaxHeight="40"/>
+                    </StackPanel>
+                </Expander>
             </StackPanel>
         </Border>
 
