@@ -12,6 +12,39 @@ namespace AutoTest.Desktop.Tests.Bench;
 public sealed class BenchActionEditorTests
 {
     [Fact]
+    public async Task ActionCardsTrackCurrentSelectionAndClickExecutesThatAction()
+    {
+        var port = new ActionPort();
+        var vm = new BenchKeyActionEditorViewModel(port);
+        vm.NewActionCommand.Execute();
+        var first = vm.SelectedAction!;
+        first.Name = "实验 A";
+        Assert.True(first.IsSelected);
+        vm.Switches[0].IsSelected = true;
+        vm.NewActionCommand.Execute();
+        var second = vm.SelectedAction!;
+        second.Name = "实验 B";
+        vm.Switches[4].IsSelected = true;
+        Assert.False(first.IsSelected);
+        Assert.True(second.IsSelected);
+        vm.SelectedAction = first;
+        Assert.True(first.IsSelected);
+        Assert.False(second.IsSelected);
+        await vm.RunAsync();
+        Assert.Equal("实验 A", port.LastAction!.Name);
+        Assert.Equal(1u, port.LastAction.Steps[0].Mask);
+        vm.CopyActionCommand.Execute();
+        var duplicate = vm.SelectedAction!;
+        Assert.True(duplicate.IsSelected);
+        Assert.False(first.IsSelected);
+        Assert.Contains("副本", duplicate.Name);
+        vm.DeleteActionCommand.Execute();
+        Assert.DoesNotContain(duplicate, vm.Actions);
+        Assert.Equal(2, vm.Actions.Count);
+        Assert.Equal(1, port.Runs); // selection, copy and delete never send
+    }
+
+    [Fact]
     public async Task UserCanCreateAnyNamedOrderedActionAndSaveWithoutPhysicalOutput()
     {
         var fake = new ActionPort();
