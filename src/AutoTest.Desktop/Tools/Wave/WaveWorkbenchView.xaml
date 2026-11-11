@@ -1,29 +1,29 @@
 <UserControl x:Class="AutoTest.Desktop.Tools.Wave.WaveWorkbenchView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#101620"
-             Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13"
+             Background="#F5F7FA"
+             Foreground="#203249" FontFamily="Segoe UI" FontSize="13"
              Focusable="True">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="PanelBrush" Color="#192431" />
-        <SolidColorBrush x:Key="LineBrush" Color="#314458" />
+        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="LineBrush" Color="#D6E1EC" />
         <Style TargetType="Button">
             <Setter Property="MinWidth" Value="76" />
             <Setter Property="Padding" Value="10,7" />
             <Setter Property="Margin" Value="0,0,7,7" />
-            <Setter Property="Background" Value="#263748" />
-            <Setter Property="Foreground" Value="#E2EDF7" />
-            <Setter Property="BorderBrush" Value="#314458" />
+            <Setter Property="Background" Value="#EAF0F8" />
+            <Setter Property="Foreground" Value="#203249" />
+            <Setter Property="BorderBrush" Value="#D6E1EC" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="Padding" Value="6,4" />
-            <Setter Property="Background" Value="#101620" />
-            <Setter Property="Foreground" Value="#E2EDF7" />
-            <Setter Property="BorderBrush" Value="#314458" />
+            <Setter Property="Background" Value="#F5F7FA" />
+            <Setter Property="Foreground" Value="#203249" />
+            <Setter Property="BorderBrush" Value="#D6E1EC" />
         </Style>
         <Style TargetType="TextBlock" x:Key="SmallCaption">
-            <Setter Property="Foreground" Value="#92A4B7" />
+            <Setter Property="Foreground" Value="#637A90" />
             <Setter Property="FontSize" Value="12" />
         </Style>
     </UserControl.Resources>
@@ -46,9 +46,9 @@
                 <TextBlock Style="{StaticResource SmallCaption}"
                            Text="DBC 信号 · CAN Replay · 实时共享源 · 参考版本 · 容差证据" />
             </StackPanel>
-            <Border DockPanel.Dock="Right" Background="#163C60" CornerRadius="4"
+            <Border DockPanel.Dock="Right" Background="#D9EBFD" CornerRadius="4"
                     Padding="10,5" HorizontalAlignment="Right">
-                <TextBlock Text="WAVE · LAB I4" Foreground="#46D0DC" FontWeight="SemiBold" />
+                <TextBlock Text="WAVE · LAB I4" Foreground="#127C9D" FontWeight="SemiBold" />
             </Border>
         </DockPanel>
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}"
@@ -56,7 +56,7 @@
             <WrapPanel>
                 <Button Command="{Binding ReloadCommand}" Content="刷新 DBC 信号 (Ctrl+L)" />
                 <Button Command="{Binding ReplayCommand}" Content="↻ 档案 Replay (Ctrl+R)" />
-                <Button Command="{Binding MockCommand}" Content="◇ 示例 CAN Mock" />
+                <Button Visibility="Collapsed" Command="{Binding MockCommand}" Content="示例 CAN（已停用）" />
                 <TextBox Width="160" Height="28" Text="{Binding ArchivePath, UpdateSourceTrigger=PropertyChanged}"
                          ToolTip="输入/选择保存的 CAN RX JSON 帧档案" Margin="0,0,7,7" />
                 <Button Click="ChooseArchive_Click" Content="选择帧文件…" />
@@ -92,7 +92,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                              Margin="1,8,1,8" Foreground="#E2EDF7" ToolTip="DBC Revision 已固定；修改后需要重新刷新信号" />
+                                              Margin="1,8,1,8" Foreground="#203249" ToolTip="DBC Revision 已固定；修改后需要重新刷新信号" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -116,19 +116,19 @@
                         </StackPanel>
                     </DockPanel>
                 </Border>
-                <Border Grid.Row="1" Background="#0D1722" BorderBrush="{StaticResource LineBrush}"
+                <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="{StaticResource LineBrush}"
                         BorderThickness="1" CornerRadius="6" ClipToBounds="True">
                     <Viewbox Stretch="Uniform">
                         <Canvas x:Name="ChartCanvas" Width="950" Height="350" ClipToBounds="True"
-                                Background="#0D1722" MouseLeftButtonDown="ChartCanvas_MouseLeftButtonDown">
+                                Background="#FFFFFF" MouseLeftButtonDown="ChartCanvas_MouseLeftButtonDown">
                             <Rectangle Canvas.Left="48" Canvas.Top="12" Width="852" Height="322"
-                                       Stroke="#314458" StrokeThickness="1" />
-                            <Line X1="48" X2="900" Y1="92" Y2="92" Stroke="#202D3B" />
-                            <Line X1="48" X2="900" Y1="174" Y2="174" Stroke="#202D3B" />
-                            <Line X1="48" X2="900" Y1="254" Y2="254" Stroke="#202D3B" />
-                            <Line X1="261" X2="261" Y1="12" Y2="334" Stroke="#202D3B" />
-                            <Line X1="474" X2="474" Y1="12" Y2="334" Stroke="#202D3B" />
-                            <Line X1="687" X2="687" Y1="12" Y2="334" Stroke="#202D3B" />
+                                       Stroke="#D6E1EC" StrokeThickness="1" />
+                            <Line X1="48" X2="900" Y1="92" Y2="92" Stroke="#ECF2F8" />
+                            <Line X1="48" X2="900" Y1="174" Y2="174" Stroke="#ECF2F8" />
+                            <Line X1="48" X2="900" Y1="254" Y2="254" Stroke="#ECF2F8" />
+                            <Line X1="261" X2="261" Y1="12" Y2="334" Stroke="#ECF2F8" />
+                            <Line X1="474" X2="474" Y1="12" Y2="334" Stroke="#ECF2F8" />
+                            <Line X1="687" X2="687" Y1="12" Y2="334" Stroke="#ECF2F8" />
                             <ItemsControl ItemsSource="{Binding Traces}" Canvas.Left="0" Canvas.Top="0">
                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
@@ -138,10 +138,10 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Polyline Points="{Binding CursorLineA}" Stroke="#E8B967" StrokeThickness="1.7" />
-                            <Polyline Points="{Binding CursorLineB}" Stroke="#FF7886" StrokeThickness="1.7" />
+                            <Polyline Points="{Binding CursorLineA}" Stroke="#8F611B" StrokeThickness="1.7" />
+                            <Polyline Points="{Binding CursorLineB}" Stroke="#B63B51" StrokeThickness="1.7" />
                             <TextBlock Canvas.Left="52" Canvas.Top="336" FontSize="11"
-                                       Foreground="#92A4B7" Text="时间（s） / 单击 A · Shift+单击 B" />
+                                       Foreground="#637A90" Text="时间（s） / 单击 A · Shift+单击 B" />
                         </Canvas>
                     </Viewbox>
                 </Border>
@@ -155,7 +155,7 @@
                                 <DataTemplate>
                                     <DockPanel Margin="0,1,0,1">
                                         <Rectangle Fill="{Binding Color}" Width="11" Height="3" Margin="0,7,8,0" DockPanel.Dock="Left" />
-                                        <TextBlock Text="{Binding Name}" Foreground="#B6C9D9" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Name}" Foreground="#3F5A76" TextTrimming="CharacterEllipsis" />
                                     </DockPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -183,15 +183,15 @@
                     </StackPanel>
                     <TextBlock Grid.Row="1" Text="比较结果" FontWeight="SemiBold" Margin="0,7,0,8" />
                     <TextBlock Grid.Row="2" Text="PASS 仅表示当前离线数据满足规则，不等于实机验收。"
-                               TextWrapping="Wrap" Foreground="#E8B967" Margin="0,0,0,8" />
+                               TextWrapping="Wrap" Foreground="#8F611B" Margin="0,0,0,8" />
                     <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding Results}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderThickness="0,0,0,1" BorderBrush="#314458" Padding="0,8">
+                                    <Border BorderThickness="0,0,0,1" BorderBrush="#D6E1EC" Padding="0,8">
                                         <StackPanel>
                                             <TextBlock Text="{Binding Signal}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding Verdict}" FontSize="18" Foreground="#E8B967" />
+                                            <TextBlock Text="{Binding Verdict}" FontSize="18" Foreground="#8F611B" />
                                             <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" />
                                             <TextBlock Text="{Binding Coverage}" Style="{StaticResource SmallCaption}" />
                                             <TextBlock Text="{Binding EvidenceId}" Style="{StaticResource SmallCaption}"
@@ -210,10 +210,10 @@
             <DockPanel>
                 <StackPanel>
                     <TextBlock x:Name="ArchiveCaptureStatus" Text="CAN RX 录制未开始"
-                               Foreground="#83CEB4" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#92A4B7" />
+                               Foreground="#167B5A" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#637A90" />
                 </StackPanel>
-                <TextBlock DockPanel.Dock="Right" Text="Physical / Replay / Mock 事实独立" Foreground="#92A4B7" />
+                <TextBlock DockPanel.Dock="Right" Text="Physical / Replay / Mock 事实独立" Foreground="#637A90" />
             </DockPanel>
         </Border>
     </Grid>
