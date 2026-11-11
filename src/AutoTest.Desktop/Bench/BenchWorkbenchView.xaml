@@ -193,7 +193,7 @@
         <StackPanel Visibility="{Binding IsHoldStep,Converter={StaticResource BoolVis}}">
          <TextBlock Text="编辑选中步骤 · 保持当前输出" FontWeight="SemiBold" Margin="0,0,0,7"/>
          <StackPanel Orientation="Horizontal">
-          <TextBox Width="120" Text="{Binding SelectedStep.DurationMs,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+          <TextBox Width="120" Text="{Binding SelectedStep.DurationMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
           <TextBlock Text="ms（1～600000）" VerticalAlignment="Center" Margin="10,0,0,0"/>
          </StackPanel>
          <TextBlock Text="等待期间不发送其他 Key 指令；完成后继续下一个步骤。"
