@@ -216,7 +216,12 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         while (Actions.Any(a => a.Name.Equals(copy.Name, StringComparison.OrdinalIgnoreCase)))
             copy.Name += " 副本";
         foreach (var step in source.Steps)
-            copy.Steps.Add(new BenchKeyStepItem(new(step.Kind, step.Mask, step.DurationMs)));
+        {
+            var cloned = new BenchKeyStepItem(new(step.Kind, step.Mask, step.DurationMs));
+            if (step.Kind == BenchActionStepKind.Hold)
+                cloned.DurationMsText = step.DurationMsText; // preserve visible draft, even if invalid
+            copy.Steps.Add(cloned);
+        }
         Track(copy);
         Actions.Add(copy);
         SelectedAction = copy;
