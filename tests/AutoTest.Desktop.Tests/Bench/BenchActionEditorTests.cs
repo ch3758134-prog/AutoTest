@@ -81,6 +81,43 @@ public sealed class BenchActionEditorTests
     }
 
     [Fact]
+    public async Task KeySimDraftCannotExecuteOrSaveAfterProjectSwitch()
+    {
+        var port = new ActionPort { ActiveProjectId = "ECU-A" };
+        var vm = new BenchKeyActionEditorViewModel(port);
+        await vm.LoadAsync();
+        vm.NewActionCommand.Execute();
+        vm.AddSetKeysCommand.Execute();
+        vm.Switches[4].IsSelected = true;
+        port.ActiveProjectId = "ECU-B";
+        await vm.RunAsync();
+        await vm.SaveAsync();
+        Assert.Equal(0, port.Runs);
+        Assert.Null(port.Saved);
+        Assert.Contains("工程", vm.Status);
+        port.ActiveProjectId = "ECU-A";
+        await vm.RunAsync();
+        Assert.Equal(1, port.Runs);
+    }
+
+    [Fact]
+    public async Task CleanSavedKeyActionsReloadForNewProjectWithoutStaleRows()
+    {
+        var port = new ActionPort { ActiveProjectId = "ECU-A" };
+        var vm = new BenchKeyActionEditorViewModel(port);
+        await vm.LoadAsync();
+        vm.NewActionCommand.Execute();
+        vm.AddSetKeysCommand.Execute();
+        await vm.SaveAsync();
+        Assert.Single(vm.Actions);
+        port.Saved = Array.Empty<BenchKeyAction>();
+        port.ActiveProjectId = "ECU-B";
+        await vm.LoadAsync();
+        Assert.Empty(vm.Actions);
+        Assert.False(vm.HasUnsavedChanges);
+    }
+
+    [Fact]
     public async Task ReloadCannotDiscardDirtyProjectAction()
     {
         var fake = new ActionPort
@@ -155,6 +192,7 @@ public sealed class BenchActionEditorTests
 
     private sealed class ActionPort : IBenchWorkbenchPort
     {
+        public string? ActiveProjectId { get; set; }
         public IReadOnlyList<BenchKeyAction>? Saved { get; set; }
         public BenchKeyAction? LastAction { get; private set; }
         public int Runs { get; private set; }
