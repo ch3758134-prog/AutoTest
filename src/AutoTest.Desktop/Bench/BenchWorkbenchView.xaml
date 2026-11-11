@@ -69,8 +69,8 @@
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
-   <RowDefinition Height="*" MinHeight="280"/>
-   <RowDefinition Height="182" MinHeight="120"/>
+   <RowDefinition Height="3*" MinHeight="270"/>
+   <RowDefinition Height="2*" MinHeight="170"/>
   </Grid.RowDefinitions>
   <DockPanel Grid.Row="0" Margin="0,0,0,12">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -221,59 +221,76 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
       <Border BorderBrush="#DCE5EF" Background="#FAFCFF" BorderThickness="1"
-       Padding="10" CornerRadius="5" Margin="0,0,0,12">
+       Padding="10" CornerRadius="5" Margin="0,0,0,10">
        <StackPanel DataContext="{Binding CanMessages}">
-        <DockPanel Margin="0,0,0,7">
-         <Button DockPanel.Dock="Right" Content="打开 CAN 监视" Click="OpenCan_Click" Margin="5,0,0,0"
-          ToolTip="打开共用的 DUT CAN 实时接收与按 ID 刷新监视器"/>
-         <TextBlock Text="DUT CAN 发送" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        <DockPanel Margin="0,0,0,5">
+         <TextBlock Text="CAN 发送报文编辑" FontSize="16" FontWeight="SemiBold"/>
+         <TextBlock DockPanel.Dock="Right" Text="{Binding CheckedCount,StringFormat=已勾选 {0} 条}"
+          Foreground="#176AB2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
         </DockPanel>
-        <TextBlock Text="配置归属当前工程；单次真实 CAN1 发送与 PC 定时周期发送。KEY_SIM 内部 CAN0 不在此发送。"
-         Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
-        <ComboBox ItemsSource="{Binding Messages}" DisplayMemberPath="Name"
-         SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" MinHeight="30" Margin="0,0,0,8"/>
-        <WrapPanel IsEnabled="{Binding CanEdit}" Margin="0,0,0,8">
-         <Button Content="新建报文" Command="{Binding AddCommand}"/>
-         <Button Content="删除" Command="{Binding DeleteCommand}"/>
-         <Button Content="保存到工程" Command="{Binding SaveCommand}"/>
+        <TextBlock Text="勾选多条报文后点击“开始发送”；每条按自己的周期发送。可直接试发，不必先保存到工程。"
+         Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,7"/>
+        <DataGrid ItemsSource="{Binding Messages}" SelectedItem="{Binding SelectedMessage,Mode=TwoWay}"
+         CanUserAddRows="False" AutoGenerateColumns="False" CanUserDeleteRows="False" IsEnabled="{Binding CanEdit}"
+         ScrollViewer.HorizontalScrollBarVisibility="Auto" HorizontalAlignment="Stretch"
+         SelectionUnit="FullRow" HeadersVisibility="Column" Height="184" Margin="0,0,0,9">
+         <DataGrid.Columns>
+          <DataGridTemplateColumn Header="发" Width="44">
+           <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+             <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center"
+              IsChecked="{Binding IsChecked,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+            </DataTemplate>
+           </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="名称" Width="95"
+           Binding="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+          <DataGridTextColumn Header="ID (HEX)" Width="94"
+           Binding="{Binding CanIdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+          <DataGridCheckBoxColumn Header="扩展" Width="54"
+           Binding="{Binding Extended,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+          <DataGridTextColumn Header="数据 (HEX)" Width="130"
+           Binding="{Binding DataHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+          <DataGridTextColumn Header="周期ms" Width="65"
+           Binding="{Binding PeriodMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+         </DataGrid.Columns>
+        </DataGrid>
+        <WrapPanel Margin="0,0,0,6">
+         <Button Content="+ 新建报文" Command="{Binding AddCommand}"/>
+         <Button Content="删除当前行" Command="{Binding DeleteCommand}"/>
+         <Button Content="保存配置" Command="{Binding SaveCommand}"/>
          <Button Content="重新加载" Command="{Binding ReloadCommand}" Margin="0"/>
         </WrapPanel>
-        <StackPanel IsEnabled="{Binding CanEdit}">
-         <TextBlock Text="报文名称" FontSize="11" Foreground="{StaticResource Muted}"/>
-         <TextBox Text="{Binding SelectedMessage.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-          Margin="0,3,0,7"/>
-         <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
-          <StackPanel Width="160">
-           <TextBlock Text="CAN ID（十六进制）" FontSize="11" Foreground="{StaticResource Muted}"/>
-           <TextBox Text="{Binding SelectedMessage.CanIdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-            Margin="0,3,0,0"/>
-          </StackPanel>
-          <CheckBox Content="扩展帧（29-bit）" IsChecked="{Binding SelectedMessage.Extended,Mode=TwoWay}"
-           VerticalAlignment="Bottom" Margin="12,0,0,5"/>
-         </StackPanel>
-         <TextBlock Text="数据 HEX（0～8 字节，如 01 02 03）" FontSize="11" Foreground="{StaticResource Muted}"/>
-         <TextBox Text="{Binding SelectedMessage.DataHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-          Margin="0,3,0,7"/>
-         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-          <TextBlock Text="发送周期" VerticalAlignment="Center" Margin="0,0,8,0"/>
-          <TextBox Width="90" Text="{Binding SelectedMessage.PeriodMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-          <TextBlock Text="ms（20～60000）" Foreground="{StaticResource Muted}"
-           VerticalAlignment="Center" Margin="8,0,0,0"/>
-         </StackPanel>
-        </StackPanel>
-        <WrapPanel Margin="0,0,0,7">
-         <Button Content="发送一次" Command="{Binding SendOnceCommand}"
+        <WrapPanel Margin="0,0,0,6">
+         <Button Content="开始发送（勾选行）" Command="{Binding StartPeriodicCommand}"
           Background="#176AB2" Foreground="White" FontWeight="SemiBold"/>
-         <Button Content="启动周期" Command="{Binding StartPeriodicCommand}"
-          Background="#E8F4FF"/>
-         <Button Content="停止周期" Command="{Binding StopPeriodicCommand}" Margin="0"
+         <Button Content="停止发送" Command="{Binding StopPeriodicCommand}"
           Background="#FFF1EC" Foreground="#A74541"/>
+         <Button Content="单次发送（选中行）" Command="{Binding SendOnceCommand}" Margin="0"/>
         </WrapPanel>
-        <TextBlock Text="{Binding Status}" FontSize="11" TextWrapping="Wrap" Foreground="#536F89"/>
-        <TextBlock Text="{Binding PeriodicStatus}" FontSize="11" TextWrapping="Wrap"
-         Foreground="#8B6733" Margin="0,4,0,0"/>
+        <TextBlock Text="{Binding Status}" Foreground="#536F89" FontSize="11" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding PeriodicStatus}" Foreground="#8B6733" FontSize="11"
+         TextWrapping="Wrap" Margin="0,4,0,0"/>
        </StackPanel>
       </Border>
+      <Border BorderBrush="#E5EBF3" BorderThickness="0,1,0,0" Margin="0,5,0,7"/>
+      <TextBlock Text="IGN · 真实输出" FontSize="15" FontWeight="SemiBold"/>
+
+      <WrapPanel Margin="0,0,0,7">
+       <Button Content="IGN ON" Command="{Binding IgnOnCommand}"
+        Foreground="#146A4D" Background="#E7F5ED"
+        FontWeight="SemiBold" Padding="15,7"/>
+       <Button Content="IGN OFF" Command="{Binding IgnOffCommand}"
+        Foreground="#A44835" Background="#FFF3EF"
+        FontWeight="SemiBold" Padding="15,7"/>
+      </WrapPanel>
+      <TextBlock Text="{Binding IgnStatus}" FontSize="11" TextWrapping="Wrap"
+       Foreground="#57738C" Margin="0,0,0,9"/>
+      <TextBlock Text="IGN 高边输出 OFF 表示断开高边开关，不等于主动拉低电平。按钮仅经人工确认后发送；ACK 不等于测得电压。"
+       FontSize="11" TextWrapping="Wrap" Foreground="#8B6733" Margin="0,0,0,9"/>
+
+      <Expander Header="其他：人工电压记录 / 夹具控制" IsExpanded="False" Margin="0,8,0,0">
+       <StackPanel Margin="0,8,0,0">
       <TextBlock Text="实际控制结果 / 人工测量" FontSize="16" FontWeight="SemiBold"/>
       <TextBlock Text="{Binding LastOperation}" Margin="0,8,0,4" TextWrapping="Wrap"/>
       <TextBlock Text="{Binding LastEvidence}" Foreground="#57738C" FontSize="11"
@@ -307,20 +324,6 @@
        Foreground="#8A6734" FontSize="11" TextWrapping="Wrap"/>
       <Border BorderBrush="#E5EBF3" BorderThickness="0,1,0,0" Margin="0,13,0,11"/>
       <TextBlock Text="其他台架硬件" FontWeight="SemiBold" FontSize="13"/>
-      <TextBlock Text="IGN · 真实主控 SET_IGN 0x12" FontSize="12"
-       FontWeight="SemiBold" Margin="0,7,0,6"/>
-      <WrapPanel Margin="0,0,0,7">
-       <Button Content="IGN ON" Command="{Binding IgnOnCommand}"
-        Foreground="#146A4D" Background="#E7F5ED"
-        FontWeight="SemiBold" Padding="15,7"/>
-       <Button Content="IGN OFF" Command="{Binding IgnOffCommand}"
-        Foreground="#A44835" Background="#FFF3EF"
-        FontWeight="SemiBold" Padding="15,7"/>
-      </WrapPanel>
-      <TextBlock Text="{Binding IgnStatus}" FontSize="11" TextWrapping="Wrap"
-       Foreground="#57738C" Margin="0,0,0,9"/>
-      <TextBlock Text="IGN 高边输出 OFF 表示断开高边开关，不等于主动拉低电平。按钮仅经人工确认后发送；ACK 不等于测得电压。"
-       FontSize="11" TextWrapping="Wrap" Foreground="#8B6733" Margin="0,0,0,9"/>
       <Border BorderBrush="#E5EBF3" BorderThickness="0,1,0,0" Margin="0,0,0,9"/>
       <TextBlock Text="夹具电磁阀 · SET_SOL 0x16" FontSize="12"
        FontWeight="SemiBold" Margin="0,7,0,6"/>
@@ -340,26 +343,61 @@
        FontSize="11" TextWrapping="Wrap" Foreground="#8B6733" Margin="0,0,0,7"/>
       <TextBlock Text="ECU 电源：现场采用独立供电，不把主控 ECU_PWR_DRV 当成真实 ECU 输入总电源；不提供误导性的电源按钮。"
        FontSize="11" TextWrapping="Wrap" Foreground="#8B6733"/>
+       </StackPanel>
+      </Expander>
      </StackPanel>
     </ScrollViewer>
    </Border>
   </Grid>
 
-  <Border Grid.Row="3" Style="{StaticResource Panel}" Padding="10">
-   <DockPanel>
-    <TextBlock DockPanel.Dock="Top" Text="台架操作记录 · ACK / 错误 / Session / Trace"
-     FontSize="13" FontWeight="SemiBold" Margin="1,0,0,8"/>
-    <DataGrid ItemsSource="{Binding Messages}" AutoGenerateColumns="False" IsReadOnly="True"
-     CanUserAddRows="False" CanUserDeleteRows="False" RowHeaderWidth="0"
-     SelectionMode="Single">
-     <DataGrid.Columns>
-      <DataGridTextColumn Header="时间" Binding="{Binding When,StringFormat={}{0:HH:mm:ss.fff}}" Width="105"/>
-      <DataGridTextColumn Header="类别" Binding="{Binding Severity}" Width="75"/>
-      <DataGridTextColumn Header="操作" Binding="{Binding Heading}" Width="195"/>
-      <DataGridTextColumn Header="请求 / ACK / 错误说明" Binding="{Binding Details}" Width="*"/>
-      <DataGridTextColumn Header="证据" Binding="{Binding TraceReference}" Width="155"/>
-     </DataGrid.Columns>
-    </DataGrid>
+  <Border Grid.Row="3" Style="{StaticResource Panel}" Padding="9">
+   <DockPanel DataContext="{Binding CanMonitor}">
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+     <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+      <TextBlock Text="ID 筛选" VerticalAlignment="Center" Margin="0,0,6,0"/>
+      <TextBox Width="116" Text="{Binding FilterId,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+       Margin="0,0,8,0" ToolTip="输入 CAN ID 或 ID 的一部分，例如 123"/>
+      <Button Content="{Binding PauseLabel}" Command="{Binding PauseCommand}"/>
+      <Button Content="清空显示" Command="{Binding ClearCommand}" Margin="0"/>
+     </WrapPanel>
+     <TextBlock Text="ECU CAN 接收日志 · 真实 CAN1 广播" FontSize="14"
+      FontWeight="SemiBold" VerticalAlignment="Center"/>
+    </DockPanel>
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+     <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+      <TextBlock Text="{Binding Received,StringFormat=接收 {0} 帧}" Margin="0,0,12,0"/>
+      <TextBlock Text="{Binding DisplayDropped,StringFormat=显示丢弃 {0}}" Margin="0,0,12,0"/>
+      <TextBlock Text="{Binding DeviceDropped,StringFormat=设备接收丢弃 {0}}"/>
+     </WrapPanel>
+     <TextBlock Text="{Binding Status}" FontSize="11" Foreground="{StaticResource Muted}"/>
+    </DockPanel>
+    <TabControl>
+     <TabItem Header="按 ID 刷新">
+      <DataGrid ItemsSource="{Binding IdView}" AutoGenerateColumns="False"
+       IsReadOnly="True" RowHeaderWidth="0" CanUserAddRows="False" HeadersVisibility="Column">
+       <DataGrid.Columns>
+        <DataGridTextColumn Header="最近时间" Binding="{Binding LastAt,StringFormat={}{0:HH:mm:ss.fff}}" Width="120"/>
+        <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="95"/>
+        <DataGridTextColumn Header="帧格式" Binding="{Binding FrameType}" Width="72"/>
+        <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="65"/>
+        <DataGridTextColumn Header="最新数据 HEX" Binding="{Binding Data}" Width="*"/>
+        <DataGridTextColumn Header="接收次数" Binding="{Binding Count}" Width="85"/>
+       </DataGrid.Columns>
+      </DataGrid>
+     </TabItem>
+     <TabItem Header="原始接收流水">
+      <DataGrid ItemsSource="{Binding HistoryView}" AutoGenerateColumns="False"
+       IsReadOnly="True" RowHeaderWidth="0" CanUserAddRows="False" HeadersVisibility="Column">
+       <DataGrid.Columns>
+        <DataGridTextColumn Header="时间" Binding="{Binding ReceivedAt,StringFormat={}{0:HH:mm:ss.fff}}" Width="120"/>
+        <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="95"/>
+        <DataGridTextColumn Header="帧格式" Binding="{Binding FrameType}" Width="72"/>
+        <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="65"/>
+        <DataGridTextColumn Header="数据 HEX" Binding="{Binding Data}" Width="*"/>
+       </DataGrid.Columns>
+      </DataGrid>
+     </TabItem>
+    </TabControl>
    </DockPanel>
   </Border>
  </Grid>
