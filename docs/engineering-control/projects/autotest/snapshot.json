@@ -1,11 +1,11 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T08:01:33.731Z",
+  "exported_at": "2026-11-11T08:05:10.000Z",
   "authority": "OWNER_APPROVED_P0_DOCUMENT",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T08:01:33.731Z",
+    "exported_at": "2026-11-11T08:05:10.000Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T08:01:33.731Z"
+      "updated": "2026-11-11T08:05:10.000Z"
     },
     "objects": [
       {
@@ -907,10 +907,10 @@
         "project_id": "autotest",
         "kind": "requirement",
         "title": "G1｜已获用户认可的周期 CAN 环境及运行中信号调整需求",
-        "body": "用户明确回答“是”：ECU 测试中通常需要持续周期发送模拟整车环境的多条 CAN 报文；测试过程中能够改变选定信号值，其他正在周期发送的报文继续保持其配置。用户同时认可此前的通用测试行为概念（可配置流程控制、刺激/环境、并行观测、判定条件、结果与证据），明确 ecu.test 是后续功能研究的重要参考对象。\n此项确认的是行为要求：不能将原始 CAN 报文发送编辑、DBC 信号可修改性、CAN 环境的持续活动与测试步骤简单串成“一条报文发完再走下一步”。具体资源组织、并行发送调度、时间精度、信号写入优先级、异常/资源竞争策略等属后续 G1 细化和 G2/G3 实施设计，不因用户确认通用模型即获得批准。\n官方参考：ecu.test 2026.3 Bus access 的 WriteCyclic；Stimulation control 的异步 Start/Stop；Signal recording/trace analysis 的时间序列分析。",
+        "body": "用户明确回答“是”：ECU 测试中通常需要持续周期发送模拟整车环境的多条 CAN 报文；测试过程中能够改变选定信号值，其他正在周期发送的报文继续保持其配置。用户同时认可此前的通用测试行为概念（可配置流程控制、刺激/环境、并行观测、判定条件、结果与证据），明确 ecu.test 是后续功能研究的重要参考对象。\n此项确认的是行为要求：不能将原始 CAN 报文发送编辑、DBC 信号可修改性、CAN 环境的持续活动与测试步骤简单串成“一条报文发完再走下一步”。具体资源组织、并行发送调度、时间精度、信号写入优先级、异常/资源竞争策略等属后续 G1 细化和 G2/G3 实施设计，不因用户确认通用模型即获得批准。\n官方参考：ecu.test 2026.3 Bus access 的 WriteCyclic；Stimulation control 的异步 Start/Stop；Signal recording/trace analysis 的时间序列分析。\n\n**澄清（2026-11-11）**：此前询问“单独配置 CAN 环境 / 每用例一份环境 / 两种都要”的三选一不成立，它混淆了三种正交设计问题：① CAN 报文与 DBC/信号等定义资源的复用范围；② 周期发送会话的启动、暂停/终止、运行时变更等生命周期；③ 测试程序如何引用已有资源或临时配置刺激。负责人没有选择三者之一；不可推定“单用例对应单环境”或强制创建环境文件。明确确认的需求仍是同一 CAN 帧 ID 继续周期发送、数据可按步骤改变、其他报文保持发送。根据 ecu.test 官方资料，WriteCyclic 支持 CycleTime/CycleCount（计数 0 为持续发送）；在支持操作的端口可用 PDU timing/calc class 修改周期发送而不重启周期；测试程序可重用 package/stimulation package/parameters。这些只是比较研究，不等于 AutoTest 必须照搬其资源类型或可以忽略当前主控固件限制。参考：https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Bus-access-tab.html；https://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html 。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
           "source": "用户明确确认：此前通用测试行为模型认可，CAN环境周期持续发送及运行中局部信号变更；ecu.test为重要技术参考（2026-11-10 America/Los_Angeles）",
           "source_type": "USER_EXPLICIT_REQUIREMENT_CONFIRMATION",
@@ -922,12 +922,23 @@
             "https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Bus-access-tab.html",
             "https://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Action-window/Test-steps-tab/Stimulation-control.html",
             "https://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html"
+          ],
+          "research_clarification": "RESOURCE_REUSE_VS_TX_LIFECYCLE_VS_CASE_CONTROL_SEPARATED",
+          "user_selected_resource_packaging": false,
+          "verified_ecu_test_features": [
+            "WriteCyclic cycle parameters",
+            "PDU timing manipulation port-dependent",
+            "Reusable stimulation package and parameter sets"
+          ],
+          "additional_sources": [
+            "https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Bus-access-tab.html",
+            "https://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html"
           ]
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T08:01:33.731Z",
-        "updated": "2026-11-11T08:01:33.731Z"
+        "updated": "2026-11-11T08:05:10.000Z"
       }
     ],
     "relations": [
@@ -1595,6 +1606,14 @@
         "action": "RECORD_USER_CONFIRMED_G1_REQUIREMENT_AS_REVIEWABLE_OBJECT",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T08:01:33.731Z"
+      },
+      {
+        "object_id": "at-g1-confirmed-can-environment-runtime",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-g1-confirmed-can-environment-runtime\",\"project_id\":\"autotest\",\"kind\":\"requirement\",\"title\":\"G1｜已获用户认可的周期 CAN 环境及运行中信号调整需求\",\"body\":\"用户明确回答“是”：ECU 测试中通常需要持续周期发送模拟整车环境的多条 CAN 报文；测试过程中能够改变选定信号值，其他正在周期发送的报文继续保持其配置。用户同时认可此前的通用测试行为概念（可配置流程控制、刺激/环境、并行观测、判定条件、结果与证据），明确 ecu.test 是后续功能研究的重要参考对象。\\n此项确认的是行为要求：不能将原始 CAN 报文发送编辑、DBC 信号可修改性、CAN 环境的持续活动与测试步骤简单串成“一条报文发完再走下一步”。具体资源组织、并行发送调度、时间精度、信号写入优先级、异常/资源竞争策略等属后续 G1 细化和 G2/G3 实施设计，不因用户确认通用模型即获得批准。\\n官方参考：ecu.test 2026.3 Bus access 的 WriteCyclic；Stimulation control 的异步 Start/Stop；Signal recording/trace analysis 的时间序列分析。\\n\\n**澄清（2026-11-11）**：此前询问“单独配置 CAN 环境 / 每用例一份环境 / 两种都要”的三选一不成立，它混淆了三种正交设计问题：① CAN 报文与 DBC/信号等定义资源的复用范围；② 周期发送会话的启动、暂停/终止、运行时变更等生命周期；③ 测试程序如何引用已有资源或临时配置刺激。负责人没有选择三者之一；不可推定“单用例对应单环境”或强制创建环境文件。明确确认的需求仍是同一 CAN 帧 ID 继续周期发送、数据可按步骤改变、其他报文保持发送。根据 ecu.test 官方资料，WriteCyclic 支持 CycleTime/CycleCount（计数 0 为持续发送）；在支持操作的端口可用 PDU timing/calc class 修改周期发送而不重启周期；测试程序可重用 package/stimulation package/parameters。这些只是比较研究，不等于 AutoTest 必须照搬其资源类型或可以忽略当前主控固件限制。参考：https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Bus-access-tab.html；https://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html 。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户明确确认：此前通用测试行为模型认可，CAN环境周期持续发送及运行中局部信号变更；ecu.test为重要技术参考（2026-11-10 America/Los_Angeles）\",\"source_type\":\"USER_EXPLICIT_REQUIREMENT_CONFIRMATION\",\"semantic_status\":\"USER_CONFIRMED_REQUIREMENT_INTENT\",\"formal_stage\":\"G1_REQUIREMENT_TO_BE_REVIEWED\",\"user_confirmed\":true,\"baseline_preservation\":\"P0 approved unchanged; does not approve G1 Gate or implementation\",\"reference_urls\":[\"https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Bus-access-tab.html\",\"https://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Action-window/Test-steps-tab/Stimulation-control.html\",\"https://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html\"],\"research_clarification\":\"RESOURCE_REUSE_VS_TX_LIFECYCLE_VS_CASE_CONTROL_SEPARATED\",\"user_selected_resource_packaging\":false,\"verified_ecu_test_features\":[\"WriteCyclic cycle parameters\",\"PDU timing manipulation port-dependent\",\"Reusable stimulation package and parameter sets\"],\"additional_sources\":[\"https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Bus-access-tab.html\",\"https://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html\"]},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T08:01:33.731Z\",\"updated\":\"2026-11-11T08:05:10.000Z\"}",
+        "action": "CLARIFY_G1_RESEARCH_NOT_USER_CHOICE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T08:05:10.000Z"
       }
     ],
     "events": [
@@ -1948,6 +1967,15 @@
         "actor": "AI_PROJECT_MANAGER",
         "note": "负责人认可通用行为模型和运行中持续 CAN 周期环境的局部信号修改；工程详细设计仍需审查",
         "timestamp": "2026-11-11T08:01:33.731Z"
+      },
+      {
+        "id": "evt-at-g1-confirmed-can-environment-runtime-r2",
+        "project_id": "autotest",
+        "object_id": "at-g1-confirmed-can-environment-runtime",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "纠正错误三选一；区分配置复用、周期CAN运行语义与测试调用；不制造用户未作出的选择",
+        "timestamp": "2026-11-11T08:05:10.000Z"
       }
     ],
     "technical_research": {
@@ -2080,12 +2108,19 @@
         "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
         "changed_by": "AI_PROJECT_MANAGER_G1_USER_CONFIRMED_RUNTIME_BEHAVIOR",
         "changed_at": "2026-11-11T08:01:33.731Z"
+      },
+      {
+        "project_id": "autotest",
+        "revision": 9,
+        "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
+        "changed_by": "AI_PROJECT_MANAGER_G1_CAN_QUESTION_CORRECTION",
+        "changed_at": "2026-11-11T08:05:10.000Z"
       }
     ],
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "P0 V0.1 已正式批准；G1 用户已确认通用测试行为模型、周期多报文 CAN 环境、运行中部分信号修改与其余周期发送保持；首条自动测试须纳入 ECU 广播波形判定，ecu.test 为优先参考。工程设计与 G1 Gate 未批准。",
+  "p0_discussion_note": "P0 产品定义已批准。G1 用户已确认 CAN 周期环境及运行中局部信号变更；旧三选一环境封装问题不成立，不推定用户选择，下一步由 AI 研究资源与运行机制。",
   "approval": {
     "approval_id": "AT-P0-CHARTER-V01-OWNER-20261110",
     "scope": "P0_PRODUCT_DEFINITION_AND_INITIATION_V0_1",
