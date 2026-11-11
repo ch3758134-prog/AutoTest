@@ -35,7 +35,11 @@ public sealed class CoreContractTests
         };
         process.StartInfo.ArgumentList.Add("build");
         process.StartInfo.ArgumentList.Add("tests/negative/StrongIdMisuse/StrongIdMisuse.csproj");
-        process.StartInfo.ArgumentList.Add("--no-restore");
+        // The negative fixture is intentionally outside AutoTest.sln. A normal
+        // solution restore does NOT generate its project.assets.json on a fresh
+        // worktree. Build it with restore so the failure is the expected C#
+        // strong-ID type error (CS1503), not an incidental missing assets file.
+        process.StartInfo.ArgumentList.Add("-p:RestoreIgnoreFailedSources=true");
         process.StartInfo.ArgumentList.Add("--nologo");
         process.StartInfo.ArgumentList.Add("-v:q");
         Assert.True(process.Start());
@@ -43,7 +47,10 @@ public sealed class CoreContractTests
         var error = process.StandardError.ReadToEnd();
         Assert.True(process.WaitForExit(30000), "Negative compilation timed out.");
         Assert.NotEqual(0, process.ExitCode);
-        Assert.Contains("CS1503", output + error);
+        var diagnostics = output + Environment.NewLine + error;
+        Assert.True(diagnostics.Contains("CS1503", StringComparison.Ordinal),
+            "The negative fixture must fail with the strong-ID type error CS1503. Actual compiler output:" +
+            Environment.NewLine + diagnostics);
     }
 
     [Fact]
