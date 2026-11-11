@@ -1,0 +1,404 @@
+{
+  "schema": "engineering-semantic-handbook/1",
+  "edition": "semantic-guidance/1",
+  "language": "zh-CN",
+  "purpose": "为项目管理 AI 与人工审查提供工程概念的理解依据，不是关键词分类器或内容长度限制器。语义指导本身不是项目事实，也不是设计审批。",
+  "principles": [
+    "先理解事实及其成立的条件，再判断它在当前讨论中的工程作用；一个事实可以关联多个对象，但在每处作用不同。",
+    "把产品根本属性、发展目标、当前版本计划、首个验证对象、技术实现和历史假设区分开来；保留联系，不把它们压进同一段最高层定义。",
+    "不要通过出现某个词判断内容越界。结合反事实提问：若版本、技术、验证对象改变，产品身份是否随之改变？",
+    "当表达混合多个层次时，先保留原话和来源，再提出如何拆分与建立联系；不要擅删、伪造共识或改写已批准基线。",
+    "系统应以语义说明、反例、关系与任务时提供适当上下文引导 AI；结构化字段是记录与追踪工具，不能替代判断。",
+    "对不确定、冲突、缺失证据须显式说明。研究内容和正式结论分开，人类裁决并不意味着所有外部事实已被验证。"
+  ],
+  "concepts": [
+    {
+      "id": "product_identity",
+      "name": "产品定义/产品身份",
+      "purpose": "使一个不了解项目的人迅速理解这是什么产品及其根本特征；提供后续分析的稳定参照点。",
+      "includes": "产品类别、基本用途、区别于相邻产品的本质性质；在确实构成产品身份时可包含软硬件一体化性质。",
+      "not_substitutes": "不是需求清单、功能目录、设备参数、研发路线图或版本验收报告；产品定义不承担这些文档的全部职责。",
+      "questions": [
+        "如果换一个首批 DUT、换硬件版本，描述是否还成立？",
+        "删去当前研发计划后，是否仍能识别产品？",
+        "这句话描述本质属性，还是在讲当前实现？"
+      ],
+      "examples": [
+        {
+          "text": "AutoTest 是面向 ECU 的软硬件一体化外部激励与响应测试系统。",
+          "judgment": "可能属于产品定义；仍须核实激励范围和用户价值。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "R1 以 EPB 出厂检测为重点，已完成 2464 帧 CAN RX 实测。",
+          "judgment": "这些是阶段目标和验证证据，不因为与 AutoTest 有关就成为产品身份。"
+        }
+      ],
+      "related": [
+        "product_purpose",
+        "system_boundary",
+        "capability",
+        "release_scope"
+      ]
+    },
+    {
+      "id": "product_purpose",
+      "name": "产品目的与价值",
+      "purpose": "说明为什么需要此系统、它要解决哪类现实问题及希望带来的效果。",
+      "includes": "用户实际问题、价值、长期方向、相对其他方案的取舍理由。",
+      "not_substitutes": "不等于已经实现某项能力，也不等于产品应永久具备某种实施方式。",
+      "questions": [
+        "谁遇到什么真实困难？",
+        "哪些属于长期方向，哪些可验证的当前目标？"
+      ],
+      "examples": [
+        {
+          "text": "减少因各 ECU 测试条件不一致带来的重现困难。",
+          "judgment": "可能是目标，需要真实问题和证据。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "USB 使用某个固件命令字。",
+          "judgment": "是技术设计而非价值。"
+        }
+      ],
+      "related": [
+        "product_identity",
+        "stakeholder_context",
+        "requirements"
+      ]
+    },
+    {
+      "id": "stakeholder_context",
+      "name": "用户、场景与运行概念",
+      "purpose": "从人的工作过程解释系统的使用环境、角色、触发条件与从开始到结束的行为。",
+      "includes": "测试工程师、调试、生产操作员的具体任务，工作流、异常和实际环境。",
+      "not_substitutes": "不是 UI 菜单清单，也不是以当前首个使用者替代全部目标用户。",
+      "questions": [
+        "此场景是否只是阶段首选？",
+        "任务如何发生，如何处理失败与中断？"
+      ],
+      "examples": [
+        {
+          "text": "工程师在完成按键激励配置后观察 DUT 的 CAN 响应。",
+          "judgment": "属于使用场景，可能导出需求。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "界面按钮为蓝色。",
+          "judgment": "具体 UI 设计。"
+        }
+      ],
+      "related": [
+        "requirements",
+        "release_scope",
+        "product_purpose"
+      ]
+    },
+    {
+      "id": "system_boundary",
+      "name": "系统边界、组成与环境",
+      "purpose": "区分属于产品的软硬件、外部 DUT 和依赖的工装/服务，以及接口责任。",
+      "includes": "系统本体、部件职责、外部环境和接口、替换与扩展边界。",
+      "not_substitutes": "不是把当前板卡所有细节凝固成永恒产品定义，也不是把产品部件误写成纯外设。",
+      "questions": [
+        "这块硬件属于产品还是外部条件？",
+        "替换具体板卡是否改变产品身份？",
+        "当硬件不支持某刺激时如何表达覆盖限制？"
+      ],
+      "examples": [
+        {
+          "text": "AutoTest 包含上位机、主控板和按键板，DUT 是系统外部被测对象。",
+          "judgment": "属于组成与边界；其中软硬件一体化性质也会影响产品定义。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "本次测试使用 CAN1 接 DUT。",
+          "judgment": "实际接线/设备配置，不一定是永久系统边界。"
+        }
+      ],
+      "related": [
+        "product_identity",
+        "architecture",
+        "configuration"
+      ]
+    },
+    {
+      "id": "capability",
+      "name": "系统能力",
+      "purpose": "描述系统能提供或期望提供的行为和服务，以及适用条件与能力证据级别。",
+      "includes": "刺激模拟、响应采集解释、自动测试编排、专业工具等能力与限制。",
+      "not_substitutes": "不能把愿景、源码候选与物理验证成功混为一谈。",
+      "questions": [
+        "这是目标能力、设计能力、代码能力还是已验证能力？",
+        "依赖什么硬件、固件和 ECU 配置？"
+      ],
+      "examples": [
+        {
+          "text": "支持按配置发出单次或周期 CAN 报文。",
+          "judgment": "能力陈述，是否已支持须独立验收。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "CAN1 接收到 2464 帧，零报错。",
+          "judgment": "特定测试证据，不能代表所有 CAN 能力已具备。"
+        }
+      ],
+      "related": [
+        "requirements",
+        "verification_evidence",
+        "system_boundary"
+      ]
+    },
+    {
+      "id": "requirements",
+      "name": "需求",
+      "purpose": "将已澄清的需要与能力进一步表达成可检验的期望行为和条件。",
+      "includes": "功能、性能、接口、约束、质量属性；必要时包含明确适用对象和验收条件。",
+      "not_substitutes": "不能把设计方案直接伪装成用户需求，也不能仅引用需求编号却缺少语义。",
+      "questions": [
+        "该要求在什么条件下成立？",
+        "能否观察或测量是否满足？",
+        "从哪个使用需求或系统目标派生？"
+      ],
+      "examples": [
+        {
+          "text": "当周期 CAN 发送停止时，系统记录停止原因并停止后续周期帧。",
+          "judgment": "候选可验证需求。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "用某个类名和事件处理程序实现周期发送。",
+          "judgment": "设计。"
+        }
+      ],
+      "related": [
+        "capability",
+        "design",
+        "verification_evidence"
+      ]
+    },
+    {
+      "id": "architecture",
+      "name": "架构",
+      "purpose": "说明系统分解、职责分配、关键关系、数据与控制路径，以及重要权衡。",
+      "includes": "软硬件分工、共享 CAN 输入、统一设备会话、数据流和变更影响。",
+      "not_substitutes": "架构不是界面分栏图或目录结构；详细实现决策应在对应设计中解释。",
+      "questions": [
+        "为何这样分配职责？",
+        "哪些方案被比较过？",
+        "跨硬件/软件边界如何验证？"
+      ],
+      "examples": [
+        {
+          "text": "采集到的 CAN 原始帧通过共享管线供信号解码与测试判定使用。",
+          "judgment": "属于架构候选。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "用户希望解析 CAN 数据。",
+          "judgment": "更接近用户需要或能力范围。"
+        }
+      ],
+      "related": [
+        "system_boundary",
+        "design",
+        "requirements"
+      ]
+    },
+    {
+      "id": "design",
+      "name": "详细设计与接口合同",
+      "purpose": "说明已选架构怎样在精确模块、协议、状态、数据结构、错误路径中实施。",
+      "includes": "时序、消息、接口、参数、异常恢复和测试条件。",
+      "not_substitutes": "不是产品身份；也不能未签发就向编码 AI 作为确定任务输入。",
+      "questions": [
+        "输入输出与错误是什么？",
+        "与架构和需求哪些版本对应？",
+        "真实硬件是否具备这条执行路径？"
+      ],
+      "examples": [
+        {
+          "text": "SET_IGN=0x12，payload=1 表示 ON。",
+          "judgment": "特定现役协议事实；适用固件版本须标注。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "面向 ECU 测试。",
+          "judgment": "产品层概念，缺乏详细设计信息。"
+        }
+      ],
+      "related": [
+        "architecture",
+        "requirements",
+        "configuration"
+      ]
+    },
+    {
+      "id": "release_scope",
+      "name": "阶段目标、版本范围与交付计划",
+      "purpose": "回答这个阶段做什么、先做什么、延后什么，以及完成的证据是什么。",
+      "includes": "R1 范围、优先级、依赖、首个验证对象、阶段性里程碑。",
+      "not_substitutes": "不是产品永恒身份；阶段选择改变不一定等于产品定义变化。",
+      "questions": [
+        "这是长期性质还是目前先后安排？",
+        "首个样本被替换后产品是否仍成立？"
+      ],
+      "examples": [
+        {
+          "text": "R1 先用 EPB 做真实台架贯通，优先验收出厂检测。",
+          "judgment": "阶段范围和验证路线，不应自动塞进产品身份。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "AutoTest 是软硬件一体化 ECU 测试系统。",
+          "judgment": "产品层描述。"
+        }
+      ],
+      "related": [
+        "product_identity",
+        "verification_evidence",
+        "implementation"
+      ]
+    },
+    {
+      "id": "configuration",
+      "name": "配置、产品变体与适用条件",
+      "purpose": "说明某次实现或测试适用的 ECU、硬件固件、资源版本、通道和操作参数。",
+      "includes": "Controller/Profile、DBC、设备版次、连接、配置约束及兼容关系。",
+      "not_substitutes": "不能以当前单个配置代替通用产品目标，也不能把配置文件本身当作验证结果。",
+      "questions": [
+        "对哪些硬件和 ECU 组合成立？",
+        "版本更改会使哪些测试证据过期？"
+      ],
+      "examples": [
+        {
+          "text": "现役设备 CAN0 为按键板、CAN1 为 DUT。",
+          "judgment": "现场硬件配置事实，与板卡版本关联。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "支持多种 ECU 测试。",
+          "judgment": "目标/能力范围，尚未指定某一配置。"
+        }
+      ],
+      "related": [
+        "system_boundary",
+        "design",
+        "verification_evidence"
+      ]
+    },
+    {
+      "id": "verification_evidence",
+      "name": "验证结果与事实证据",
+      "purpose": "以明确条件记录实际观察、来源、版本、范围及其能支持的结论。",
+      "includes": "源码构建、软件运行、真实设备测量、用户验收，以及原始数据引用。",
+      "not_substitutes": "CI 通过不等于 DUT 物理响应通过；一次设备观察不等于整个能力已验证。",
+      "questions": [
+        "在哪个提交、固件、DUT 和配置下观察？",
+        "此证据直接支持什么，不能推出什么？"
+      ],
+      "examples": [
+        {
+          "text": "DeviceLab 现场观察到 CAN1 RX 连续报文。",
+          "judgment": "限定环境的实测证据。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "我们希望未来支持所有外部刺激。",
+          "judgment": "目标，不是证据。"
+        }
+      ],
+      "related": [
+        "requirements",
+        "capability",
+        "configuration"
+      ]
+    },
+    {
+      "id": "decision",
+      "name": "工程判断、假设、争议与变更",
+      "purpose": "保存为什么接受某结论、有哪些未决假设和备选方案，以及改变哪些已批准对象。",
+      "includes": "原话、冲突事实、分析过程、批准或拒绝、版本及待证事项。",
+      "not_substitutes": "记录 AI 候选不等于人已批准；会议中说过不等于事实经验证。",
+      "questions": [
+        "哪些是用户新确认的事实？",
+        "哪些是 AI 自己提出的解释？",
+        "是否在无意识中把候选升级成批准？"
+      ],
+      "examples": [
+        {
+          "text": "用户指出主控板和按键板属于 AutoTest 产品本体。",
+          "judgment": "需要记录为确认的用户输入并考察系统组成影响。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "据此立即重写所有固件和 UI。",
+          "judgment": "未经影响分析和授权的实施跳跃。"
+        }
+      ],
+      "related": [
+        "product_identity",
+        "system_boundary",
+        "architecture"
+      ]
+    },
+    {
+      "id": "implementation",
+      "name": "实施工作与执行授权",
+      "purpose": "把已批准、版本明确的详细设计转换为可验证、范围限定的开发操作。",
+      "includes": "源代码位置、PR/HEAD、任务边界、依赖、Build/Test/实测证据。",
+      "not_substitutes": "PR 开着不是完成、代码存在不是需求正确，AI 不能自行重定产品目的。",
+      "questions": [
+        "设计已签发且与源代码版本对应吗？",
+        "任务授权是否覆盖所改的文件？"
+      ],
+      "examples": [
+        {
+          "text": "在 PR #27 中实现正式 WPF Shell。",
+          "judgment": "候选实施工作；完成程度需独立核实。"
+        }
+      ],
+      "counterexamples": [
+        {
+          "text": "因为我们讨论了产品定义，所以立即更换固件。",
+          "judgment": "不构成合法实施授权。"
+        }
+      ],
+      "related": [
+        "design",
+        "verification_evidence",
+        "release_scope"
+      ]
+    }
+  ],
+  "ai_workflow": [
+    "接收用户原话：记录其原意与证据性质，不把自己的补写冒充用户判断。",
+    "检索有关的概念说明与当前工程数据；先复原使用场景，不从关键词直接贴标签。",
+    "分解主张：事实、目标、解释、设计、阶段安排、实施记录、未知项，并分别说明为什么。",
+    "识别交叉归属：同一主张可以在系统边界和产品身份两处发挥不同作用，说明关系而非强制唯一类别。",
+    "形成候选：写简洁的产品身份表述，把细节作为关联对象或上下文保存，不自行宣告正式批准。",
+    "自我反驳：检查是否把当前版本、首例或硬件约束升格成永久定义，是否遗漏用户新纠正的关键事实。",
+    "请求人类裁决争议；只在受控门禁下进行基线发布及受限编码派发。"
+  ],
+  "review_questions": [
+    "提出了哪些可追溯的事实？哪些只是 AI 的解释？",
+    "为什么这些语句属于产品身份而非版本范围/配置/证据？",
+    "有没有将用户明确纠正的系统本体误缩成上位机？",
+    "如果移除 R1、EPB 或当下某块板卡，产品本质是否仍能准确表达？",
+    "哪些重要内容被放在下层对象或保留为待研究，而不是被丢弃？",
+    "是否存在已批准内容被偷偷改写或新的未确认事实被宣告为有效？"
+  ]
+}
