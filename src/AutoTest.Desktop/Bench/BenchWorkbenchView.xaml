@@ -268,8 +268,6 @@
        </ItemsControl.ItemTemplate>
       </ItemsControl>
       <DockPanel Margin="0,8,0,7">
-       <TextBlock Text="{Binding SelectedKeyTechnicalMask}"
-        DockPanel.Dock="Right" Foreground="#8494A5" FontSize="10" VerticalAlignment="Center"/>
        <TextBlock Text="{Binding SelectedKeyMaskText}" FontWeight="SemiBold"
         VerticalAlignment="Center"/>
       </DockPanel>
