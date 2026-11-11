@@ -244,6 +244,36 @@ async function importSaefModal(){if(!state.project)return;showModal('导入现�
   apply.disabled=pre.new===0;footer.append(apply);
  }).catch(e=>{out.textContent='未发现可导入的 SAEF 工程资料：'+e.message;footer.append(button('关闭','outline',closeModal));});
  });}
+async function projectContextModal(project){
+  let history=[];
+  try{history=await req('/api/studio/project/context-history?project='+qs(project.id));}
+  catch(e){toast('读取项目背景历史失败：'+e.message);}
+  showModal('项目背景、阶段与配置（非产品身份）',(body,footer)=>{
+    body.append(note('此处维护的是项目背景、R1 等阶段元数据和具体变体。正式产品身份在独立页面审查，不会随本页保存而改变。旧版 summary 只读，不再接受直接修改。'));
+    const name=field(body,'项目名称',project.name);
+    const version=field(body,'当前项目/交付阶段',project.version);
+    const variant=field(body,'当前产品变体或工作配置',project.variant);
+    const background=field(body,'项目背景与工作上下文',project.body,'textarea');
+    const panel=el('div','detailsection');
+    add(panel,el('strong','','已记录的上下文修订 · '+history.length));
+    for(const row of history.slice(-6).reverse())
+      panel.append(el('div','tiny','r'+row.revision+' · '+row.changed_at+' · '+row.changed_by));
+    body.append(panel);
+    const actor=field(body,'记录人','项目负责人');
+    const err=el('div','error hidden');body.append(err);
+    footer.append(button('返回','outline',closeModal));
+    footer.append(button('更新项目背景与阶段信息','primary',async()=>{
+      try{
+        await req('/api/studio/project/update',{
+          id:project.id,name:name.value,version:version.value,
+          variant:variant.value,body:background.value,actor:actor.value
+        });
+        toast('项目背景已保存，不涉及产品身份发布');
+        closeModal();await refresh(false);navigate('dashboard');
+      }catch(e){err.textContent=e.message;err.classList.remove('hidden');}
+    }));
+  });
+}
 function projectModal(project=null){if(project){productIdentityModal();return}showModal(project?'修改项目定义':'创建工程项目',(body,footer)=>{
  const name=field(body,'项目/产品名称',project?.name||'');const summary=field(body,'一句话产品目标',project?.summary||'','textarea');summary.className='short';const details=field(body,'完整背景、使用场景、系统边界与约束',project?.body||'','textarea');
  const version=field(body,'当前产品版本',project?.version||'');const variant=field(body,'适用型号 / 变体',project?.variant||'');
@@ -325,7 +355,7 @@ async function historyModal(selected){try{const detail=await req('/api/studio/ob
 function downloadFile(text,filename,format){let blob=new Blob([text],{type:format||'application/json'});let url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),600)}
 async function exportProject(){if(!state.project)return;try{let data=await req('/api/studio/export?project='+qs(state.project));downloadFile(JSON.stringify(data,null,2),'engineering-project-'+state.data.project.name.replace(/[\\/:*?"<>|]/g,'_')+'.json','application/json');toast('已生成项目结构化备份，请妥善保存。')}catch(e){toast(e.message)}}
 $('#projectSelect').onchange=async e=>{state.project=e.target.value;await refresh(false);navigate('dashboard')};
-$('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.data&&projectModal(state.data.project);
+$('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.data&&projectContextModal(state.data.project);
 $('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
 window.addEventListener('load',()=>boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))}));
