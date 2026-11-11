@@ -16,13 +16,20 @@ public partial class BenchWorkbenchView : UserControl
         InitializeComponent();
         DataContext = viewModel;
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (DataContext is not BenchWorkbenchViewModel vm) return;
+        vm.CanMonitor.Start();
         await vm.InitializeAsync();
         await vm.RefreshConnectionAsync();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is BenchWorkbenchViewModel vm) vm.CanMonitor.Stop();
     }
 
     private void OpenCan_Click(object sender, RoutedEventArgs e) =>
