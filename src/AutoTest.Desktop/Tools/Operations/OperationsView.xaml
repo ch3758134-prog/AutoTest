@@ -22,8 +22,8 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="True">
-      <TextBlock DockPanel.Dock="Left" FontWeight="SemiBold" FontSize="17" Text="Operations Audit / 原始证据追溯" Margin="0,0,16,0" VerticalAlignment="Center" />
-      <TextBlock Foreground="{DynamicResource StudioMuted}" VerticalAlignment="Center" Text="追加记录 · 失败可查 · 不等真实设备连接"/>
+      <TextBlock DockPanel.Dock="Left" FontWeight="SemiBold" FontSize="17" Text="操作审计与证据" Margin="0,0,16,0" VerticalAlignment="Center" />
+      <TextBlock Foreground="{DynamicResource StudioMuted}" VerticalAlignment="Center" Text="查询操作事实、失败阶段和设备返回证据"/>
     </DockPanel>
     <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
       <TextBlock Text="搜索" VerticalAlignment="Center" Margin="0,0,4,0"/>
@@ -32,7 +32,7 @@
       <ComboBox Width="104" ItemsSource="{Binding OriginOptions}" SelectedItem="{Binding OriginFilter}" Margin="0,0,8,0"/>
       <CheckBox Content="仅错误" IsChecked="{Binding OnlyFailures}" VerticalAlignment="Center" Margin="0,0,10,0"/>
       <CheckBox Content="有关联 Trace" IsChecked="{Binding OnlyWithTrace}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-      <Button Content="_查询" Command="{Binding RefreshCommand}" Padding="12,3" IsDefault="True" Margin="0,0,8,0"/>
+      <Button Content="_查询" Style="{StaticResource AtPrimaryButton}" Command="{Binding RefreshCommand}" Padding="12,3" IsDefault="True" Margin="0,0,8,0"/>
       <Button Content="更多" Command="{Binding MoreCommand}" Padding="12,3"/>
     </WrapPanel>
     <DataGrid Grid.Row="2" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
