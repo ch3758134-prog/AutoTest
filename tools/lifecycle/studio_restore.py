@@ -19,6 +19,7 @@ from studio_governance import DefinitionGovernance, definition, digest
 from studio_definition_suggestions import DefinitionSuggestions
 from studio_knowledge import EngineeringKnowledge
 from studio_product_identity import ProductIdentity, sha
+from studio_amendments import EngineeringAmendments, ALLOWED_PATCH
 
 TABLES = (
     "projects","project_context_revisions","objects","revisions","relations","events",
@@ -33,7 +34,8 @@ TABLES = (
     "engineering_knowledge","engineering_knowledge_revisions",
     "engineering_knowledge_links","engineering_knowledge_intakes",
     "product_identity_baselines","product_identity_proposals",
-    "product_identity_impacts","product_identity_invalidations"
+    "product_identity_impacts","product_identity_invalidations",
+    "engineering_amendments"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -113,6 +115,8 @@ def _validate(archive):
         raise RuleError("Invalid canonical product identity archive")
     for key in ("baselines","proposals","impacts","invalidations"):
         sections["i_"+key]=_array(product_identity.get(key,[]),"product_identity."+key)
+    sections["amendments"]=_array(archive.get("engineering_amendments",[]),
+                                    "engineering_amendments")
     objects=sections["objects"]
     ids={x.get("id") for x in objects}
     if (None in ids or len(ids)!=len(objects) or
@@ -451,6 +455,52 @@ def _validate(archive):
             (package["id"],inv.get("pinned_revision")) not in snapshots or
             inv.get("state") not in ("OPEN","RESOLVED")):
             raise RuleError("Canonical identity invalidation references invalid work package")
+    amendment_ids=set()
+    for candidate in sections["amendments"]:
+        aid=candidate.get("id")
+        if not aid or aid in amendment_ids:
+            raise RuleError("Duplicate/missing engineering amendment identity")
+        amendment_ids.add(aid)
+        oid=candidate.get("target_id")
+        base=candidate.get("base_revision")
+        if (candidate.get("project_id")!=pid or oid not in ids or
+            type(base) is not int or (oid,base) not in snapshots):
+            raise RuleError("Engineering amendment references a missing project object revision")
+        if candidate.get("state") not in (
+            "CANDIDATE","READY_TO_APPLY","RESEARCH_NEEDED","REJECTED","APPLIED"):
+            raise RuleError("Unknown engineering amendment state")
+        try:
+            old=json.loads(candidate["base_snapshot"])
+            patch=json.loads(candidate["proposed_patch"])
+            sources=json.loads(candidate["source_refs"])
+            pins=json.loads(candidate["knowledge_pins"])
+        except (KeyError,TypeError,ValueError) as exc:
+            raise RuleError("Malformed engineering amendment JSON") from exc
+        origin=json.loads(snapshots[(oid,base)]["snapshot"])
+        if (not isinstance(old,dict) or old!=origin or
+            not isinstance(patch,dict) or not patch or set(patch)-ALLOWED_PATCH):
+            raise RuleError("Engineering amendment does not preserve exact target origin")
+        if "meta" in patch and not isinstance(patch["meta"],dict):
+            raise RuleError("Engineering amendment metadata must be an object")
+        if not isinstance(sources,list) or not sources or not all(
+            isinstance(x,str) and x.strip() for x in sources):
+            raise RuleError("Engineering amendment has missing source evidence")
+        if not isinstance(pins,list):
+            raise RuleError("Engineering amendment knowledge pins malformed")
+        for pin in pins:
+            if (not isinstance(pin,dict) or pin.get("id") not in knowledge_ids or
+                (pin["id"],pin.get("revision")) not in revision_keys):
+                raise RuleError("Engineering amendment pins unknown knowledge revision")
+        if candidate["state"] in ("READY_TO_APPLY","APPLIED"):
+            if not candidate.get("scope_rationale") or not candidate.get("scope_evidence"):
+                raise RuleError("Reviewed amendment needs explicit scope and evidence")
+        if candidate["state"]=="APPLIED":
+            applied=candidate.get("applied_revision")
+            if applied!=base+1 or (oid,applied) not in snapshots:
+                raise RuleError("Applied amendment has missing resulting revision")
+            resultant=json.loads(snapshots[(oid,applied)]["snapshot"])
+            if any(resultant.get(field)!=value for field,value in patch.items()):
+                raise RuleError("Applied engineering amendment snapshot differs from reviewed patch")
     return pid,sections,execution
 
 
@@ -493,6 +543,7 @@ def restore_to_empty(archive,output_database):
     DefinitionSuggestions(store)
     EngineeringKnowledge(store)
     ProductIdentity(store)
+    EngineeringAmendments(store)
     del engine,research
     with store.db() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -518,6 +569,7 @@ def restore_to_empty(archive,output_database):
         _insert(db,"engineering_knowledge_revisions",sec["k_revisions"])
         _insert(db,"engineering_knowledge_links",sec["k_links"])
         _insert(db,"engineering_knowledge_intakes",sec["k_intakes"])
+        _insert(db,"engineering_amendments",sec["amendments"])
         for table,key in (("product_identity_proposals","i_proposals"),
                           ("product_identity_baselines","i_baselines"),
                           ("product_identity_impacts","i_impacts"),
