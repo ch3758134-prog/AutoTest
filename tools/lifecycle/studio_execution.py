@@ -214,6 +214,9 @@ class Execution:
     def _product_definition_gate(self,db,project_id):
         """A coding authorization needs an active product definition baseline."""
         from studio_governance import definition, digest
+        if not db.execute("""SELECT 1 FROM sqlite_master WHERE type='table'
+                             AND name='definition_baselines'""").fetchone():
+            raise RuleError("Governed product definition baseline required before coding dispatch")
         baseline=db.execute("""SELECT digest,revision FROM definition_baselines
                    WHERE project_id=? ORDER BY revision DESC LIMIT 1""",
                    (project_id,)).fetchone()
