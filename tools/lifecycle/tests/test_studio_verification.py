@@ -78,6 +78,17 @@ class VerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuleError,"not found"):
             self.ver.review("nonexistent","CONFIRMED","Reviewer","Reason")
 
+    def test_export_preserves_full_evidence_history_and_isolates_projects(self):
+        first=self.ver.record(self.payload())
+        self.ver.review(first["id"],"CONFIRMED","Reviewer","Raw evidence verified")
+        exported=self.store.export_project(self.p)
+        self.assertEqual(len(exported["verification"]["runs"]),1)
+        self.assertEqual(len(exported["verification"]["reviews"]),1)
+        self.assertEqual(exported["verification"]["runs"][0]["evidence_ref"],
+                         self.payload()["evidence_ref"])
+        other=self.store.export_project(self.p2)
+        self.assertEqual(other["verification"],{"runs":[],"reviews":[]})
+
     def test_ui_route_and_asset(self):
         base=Path(__file__).resolve().parents[1]
         server=(base/"studio_server.py").read_text(encoding="utf-8")
