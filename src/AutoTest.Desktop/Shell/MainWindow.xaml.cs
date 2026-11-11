@@ -421,6 +421,16 @@ public partial class MainWindow : Window
     private void CloseDocument(string key)
     {
         if (key == "run") return; // primary TEST is never closed
+        if (key == "flash" && _flash?.IsPhysicalCan1Busy == true)
+        {
+            // Closing a document must never conceal an in-flight destructive
+            // ECU operation; the window can only close after a safe stop.
+            MessageBox.Show(this,
+                "CAN 烧录仍在执行。请先在烧录工具中停止操作并等待实际结束，之后才能关闭此文档。",
+                "设备会话正在执行烧录", MessageBoxButton.OK, MessageBoxImage.Warning);
+            OpenDocument("flash");
+            return;
+        }
         if (_floating.TryGetValue(key, out var floating))
             floating.Close();
         if (_documents.Remove(key, out var tab))
@@ -557,6 +567,30 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             ShowPalette();
+            return;
+        }
+        // Conventional IDE navigation: keeps one document surface regardless
+        // of which professional tool or TEST editor currently has keyboard focus.
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.W)
+        {
+            if (DocumentTabs.SelectedItem is TabItem selected &&
+                selected.Tag is string key && key != "run")
+            {
+                e.Handled = true;
+                CloseDocument(key);
+            }
+            return;
+        }
+        if (e.Key == Key.Tab &&
+            (Keyboard.Modifiers == ModifierKeys.Control ||
+             Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift)))
+        {
+            if (DocumentTabs.Items.Count <= 1) return;
+            e.Handled = true;
+            var direction = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -1 : 1;
+            var index = DocumentTabs.SelectedIndex;
+            DocumentTabs.SelectedIndex =
+                (index + direction + DocumentTabs.Items.Count) % DocumentTabs.Items.Count;
         }
     }
     private void CommandPalette_Click(object sender, RoutedEventArgs e) => ShowPalette();
