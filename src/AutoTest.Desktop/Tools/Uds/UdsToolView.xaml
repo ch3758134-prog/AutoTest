@@ -3,14 +3,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:prism="http://prismlibrary.com/"
     prism:ViewModelLocator.AutoWireViewModel="False"
-    Background="#101620" Foreground="#E2EDF7"
+    Background="#F5F7FA" Foreground="#203249"
     FontFamily="Segoe UI" FontSize="13">
  <UserControl.Resources>
-  <SolidColorBrush x:Key="UdsPanel" Color="#192431"/>
-  <SolidColorBrush x:Key="UdsRaised" Color="#202D3B"/>
-  <SolidColorBrush x:Key="UdsBorder" Color="#314458"/>
-  <SolidColorBrush x:Key="UdsMuted" Color="#92A4B7"/>
-  <SolidColorBrush x:Key="UdsAccent" Color="#4FAAFB"/>
+  <SolidColorBrush x:Key="UdsPanel" Color="#FFFFFF"/>
+  <SolidColorBrush x:Key="UdsRaised" Color="#ECF2F8"/>
+  <SolidColorBrush x:Key="UdsBorder" Color="#D6E1EC"/>
+  <SolidColorBrush x:Key="UdsMuted" Color="#637A90"/>
+  <SolidColorBrush x:Key="UdsAccent" Color="#176CB5"/>
   <Style x:Key="UdsCard" TargetType="Border">
    <Setter Property="Background" Value="{StaticResource UdsPanel}"/>
    <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
@@ -24,32 +24,32 @@
    <Setter Property="Margin" Value="0,7,0,4"/>
   </Style>
   <Style x:Key="UdsSection" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="Foreground" Value="#203249"/>
    <Setter Property="FontSize" Value="14"/>
    <Setter Property="FontWeight" Value="SemiBold"/>
    <Setter Property="Margin" Value="0,0,0,10"/>
   </Style>
   <Style TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="Foreground" Value="#203249"/>
   </Style>
   <Style TargetType="TextBox">
-   <Setter Property="Background" Value="#101620"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="Background" Value="#F5F7FA"/>
+   <Setter Property="Foreground" Value="#203249"/>
    <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
    <Setter Property="Margin" Value="0,2,0,7"/>
    <Setter Property="Padding" Value="8,5"/>
    <Setter Property="MinHeight" Value="29"/>
   </Style>
   <Style TargetType="ComboBox">
-   <Setter Property="Background" Value="#202D3B"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="Background" Value="#ECF2F8"/>
+   <Setter Property="Foreground" Value="#203249"/>
    <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
    <Setter Property="Padding" Value="7,4"/>
   </Style>
   <Style TargetType="Button">
-   <Setter Property="Background" Value="#263748"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#EAF0F8"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D6E1EC"/>
    <Setter Property="Padding" Value="10,6"/>
    <Setter Property="MinHeight" Value="30"/>
    <Setter Property="Margin" Value="0,0,7,5"/>
@@ -64,19 +64,19 @@
    <Setter Property="FontWeight" Value="SemiBold"/>
   </Style>
   <Style TargetType="ListBox">
-   <Setter Property="Background" Value="#101620"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="Background" Value="#F5F7FA"/>
+   <Setter Property="Foreground" Value="#203249"/>
    <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
   </Style>
   <Style TargetType="DataGrid">
-   <Setter Property="Background" Value="#192431"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="RowBackground" Value="#192431"/>
-   <Setter Property="AlternatingRowBackground" Value="#202D3B"/>
+   <Setter Property="Background" Value="#FFFFFF"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="RowBackground" Value="#FFFFFF"/>
+   <Setter Property="AlternatingRowBackground" Value="#ECF2F8"/>
    <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
    <Setter Property="HeadersVisibility" Value="Column"/>
    <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-   <Setter Property="HorizontalGridLinesBrush" Value="#314458"/>
+   <Setter Property="HorizontalGridLinesBrush" Value="#D6E1EC"/>
   </Style>
  </UserControl.Resources>
  <Grid Margin="12">
@@ -100,10 +100,10 @@
                Foreground="{StaticResource UdsMuted}" FontSize="11" Margin="0,4,0,0"/>
    </StackPanel>
   </DockPanel>
-  <Border Grid.Row="1" Background="#493425" BorderBrush="#876038"
+  <Border Grid.Row="1" Background="#FFF6E8" BorderBrush="#C9A271"
           BorderThickness="1" CornerRadius="4" Padding="11,7" Margin="0,0,0,12">
    <TextBlock Text="R1 仅支持真实 CAN1 只读 UDS 及离线档案 Replay。真实请求仅允许 0x19/0x22，其他服务不执行物理发送。"
-              Foreground="#F5D7A2" TextWrapping="Wrap"/>
+              Foreground="#744611" TextWrapping="Wrap"/>
   </Border>
   <Grid Grid.Row="2">
    <Grid.ColumnDefinitions>
@@ -126,7 +126,7 @@
        <Button Content="保存服务" Command="{Binding SaveServiceCommand}"/>
        <Button Content="删除服务" Command="{Binding DeleteServiceCommand}"/>
       </WrapPanel>
-      <Separator Background="#314458" Margin="0,6"/>
+      <Separator Background="#D6E1EC" Margin="0,6"/>
       <TextBlock Text="服务定义文档 / JSON" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding DocumentPath,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
       <WrapPanel>
@@ -134,7 +134,7 @@
        <Button Content="重开" Command="{Binding LoadDocumentCommand}"/>
       </WrapPanel>
      </StackPanel>
-     <TabControl Background="#192431">
+     <TabControl Background="#FFFFFF">
       <TabItem Header="UDS 服务目录">
        <DataGrid ItemsSource="{Binding ServiceCatalog}" SelectedItem="{Binding SelectedCatalogService,Mode=TwoWay}"
                  AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
@@ -190,7 +190,7 @@
        <TextBlock Text="原始 UDS PDU" Style="{StaticResource UdsCaption}"/>
        <TextBox Text="{Binding ResponseHex,Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas"/>
        <TextBlock Text="诊断解释 / NRC" Style="{StaticResource UdsCaption}"/>
-       <TextBlock Text="{Binding ResponseSummary}" TextWrapping="Wrap" Margin="0,3,0,12" Foreground="#46D0DC"/>
+       <TextBlock Text="{Binding ResponseSummary}" TextWrapping="Wrap" Margin="0,3,0,12" Foreground="#127C9D"/>
        <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -201,7 +201,7 @@
         <TextBlock Grid.Row="2" Text="预期比对：" Foreground="{StaticResource UdsMuted}"/>
         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ExpectedMatch}"/>
        </Grid>
-       <TextBlock Text="{Binding Error}" Foreground="#FF8994" TextWrapping="Wrap" Margin="0,11,0,0"/>
+       <TextBlock Text="{Binding Error}" Foreground="#BD4052" TextWrapping="Wrap" Margin="0,11,0,0"/>
       </StackPanel>
      </ScrollViewer>
     </Border>
@@ -234,7 +234,7 @@
       </Grid>
       <TextBlock Text="会话状态" Style="{StaticResource UdsCaption}"/>
       <TextBlock Text="{Binding Session}" FontWeight="SemiBold" Margin="0,0,0,9"/>
-      <Separator Background="#314458" Margin="0,10"/>
+      <Separator Background="#D6E1EC" Margin="0,10"/>
       <TextBlock Text="Replay 记录文件" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ReplayPath,UpdateSourceTrigger=PropertyChanged}"/>
       <Button Content="加载 Replay JSON" Command="{Binding LoadReplayCommand}"/>
@@ -248,7 +248,7 @@
      <TextBlock Text="TRANSPORT / UDS TRACE" FontWeight="SemiBold"/>
      <TextBlock Text="    ISO-TP · TX/RX · NRC · 时间线" Foreground="{StaticResource UdsMuted}"/>
      <TextBlock Text="    源=" Foreground="{StaticResource UdsMuted}"/>
-     <TextBlock Text="{Binding SourceLabel}" Foreground="#E8B967"/>
+     <TextBlock Text="{Binding SourceLabel}" Foreground="#8F611B"/>
     </StackPanel>
     <DataGrid ItemsSource="{Binding TraceRows}" IsReadOnly="True" AutoGenerateColumns="False"
               HeadersVisibility="Column" CanUserAddRows="False" RowHeaderWidth="0">
