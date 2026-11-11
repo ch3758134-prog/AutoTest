@@ -19,34 +19,34 @@ public partial class ProjectExplorerView : UserControl
         DataContext = vm;
     }
 
-    private void GoTo(int tab)
-    {
-        if (Window.GetWindow(this)?.FindName("WorkbenchTabs") is TabControl tabs)
-            tabs.SelectedIndex = tab;
-    }
+    // Type-safe document requests: the explorer no longer depends on
+    // a magic numbered TabControl or a particular layout tree.
+    public event Action<string>? OpenRequested;
+
+    private void GoTo(string key) => OpenRequested?.Invoke(key);
 
     private void ResourceTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (ResourceTree.SelectedItem is not WorkbenchResourceNode node) return;
-        int tab = node.Kind switch
+        string? key = node.Kind switch
         {
-            "test" => 9,
-            "dbc" => 3,
-            "controller" => 4,
-            "wave" => 6,
-            "flash" => 8,
-            "scan" => 11,
-            "records" => 12,
-            _ => -1
+            "test" => "program",
+            "dbc" => "dbc",
+            "controller" => "controller",
+            "wave" => "wave",
+            "flash" => "flash",
+            "scan" => "scan",
+            "records" => "records",
+            _ => null
         };
-        if (tab < 0) return;
-        GoTo(tab);
+        if (key is null) return;
+        GoTo(key);
         e.Handled = true;
     }
 
-    private void OpenTest_Click(object sender, RoutedEventArgs e) => GoTo(9);
-    private void OpenDbc_Click(object sender, RoutedEventArgs e) => GoTo(3);
-    private void OpenRules_Click(object sender, RoutedEventArgs e) => GoTo(11);
+    private void OpenTest_Click(object sender, RoutedEventArgs e) => GoTo("program");
+    private void OpenDbc_Click(object sender, RoutedEventArgs e) => GoTo("dbc");
+    private void OpenRules_Click(object sender, RoutedEventArgs e) => GoTo("scan");
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
