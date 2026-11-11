@@ -102,10 +102,11 @@ async function definitionChangeModal(id){
     const gate=detail.gate;
     const bar=el('div','detailsection');
     add(bar,el('strong','','工程准入：'+(gate.ready?'已满足全部准入条件':'不可发布')),
-      el('div','tiny','必需研究 '+(gate.research_reviewed||0)+' / '+(gate.research_required||10)+
+      el('div','tiny','研究已复核 '+(gate.research_reviewed||0)+' · 不适用且已说明 '+(gate.research_scoped_out||0)+
+        ' · 研究事项 '+(gate.research_required||0)+
         '；领域影响 '+gate.reviewed+' / '+gate.required+'；工作包 '+
         gate.package_reviewed+' / '+gate.package_total));
-    bar.append(button('查看必需研究与候选证据','outline',
+    bar.append(button('调整研究范围并查看证据','outline',
       ()=>definitionResearchModal(c.id)));
     if(!gate.ready){
       for(const reason of gate.reasons.slice(0,14))
