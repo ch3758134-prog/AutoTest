@@ -188,7 +188,9 @@
                                     <TextBlock Text="当前 TEST · 用例勾选" FontSize="11" FontWeight="SemiBold"
                                         Foreground="#526B85" VerticalAlignment="Center" Margin="1,0,4,0"/>
                                 </DockPanel>
-                                <ItemsControl x:Name="TestCasesList" Grid.Row="1" Margin="5,0,3,9">
+                                <ScrollViewer Grid.Row="1" MaxHeight="216" VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,7">
+                                <ItemsControl x:Name="TestCasesList" Margin="5,0,3,9">
                                     <ItemsControl.Style>
                                         <Style TargetType="ItemsControl">
                                             <Style.Triggers>
@@ -210,7 +212,7 @@
                                             </DockPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                </ItemsControl>                                </ScrollViewer>
                                 <Border Grid.Row="2" BorderBrush="#E6EDF4" BorderThickness="0,1,0,0">
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Top" Text="执行步骤" Margin="11,10,0,6"
