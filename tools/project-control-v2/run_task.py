@@ -19,7 +19,6 @@ import time
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-sys.path.insert(0, str(REPO / "tools/lifecycle"))
 from control import Control, ControlError
 from sync import status as git_status
 
@@ -39,7 +38,7 @@ def execute(args, output=sys.stdout):
     if any(not x or "\x00" in x for x in command):
         raise ControlError("invalid command argument")
     ctl = Control(HERE / "workspace/autotest.json",
-                  REPO / "docs/engineering-control/projects/autotest/snapshot.json")
+                  HERE / "sources/autotest_engineering.json")
     before = ctl.read()
     w = next((x for x in before["planning"]["work"] if x["id"] == args.work), None)
     if w is None:
