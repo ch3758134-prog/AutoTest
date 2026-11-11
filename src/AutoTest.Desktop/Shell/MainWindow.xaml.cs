@@ -52,6 +52,7 @@ public partial class MainWindow : Window
     private GridLength _inspectorSaved = new(286);
     private string _activeKey = "project";
     private bool _applyingWorkspaceMode;
+    private readonly Dictionary<int, Window> _floatingDocuments = new();
 
     public MainWindow()
     {
@@ -682,6 +683,57 @@ public partial class MainWindow : Window
             R1InspectorSizer.Visibility=Visibility.Visible;
         }
     }
+
+    // Real WPF floating windows. A professional view is detached and moved,
+    // not copied: there is still one ViewModel, one project, one Device Station
+    // and one shared CAN session. Closing the window docks it back.
+    private void FloatDocument(int tab, ContentControl host, string title)
+    {
+        if (_floatingDocuments.TryGetValue(tab, out var active))
+        {
+            if (active.IsVisible) { active.Activate(); return; }
+            _floatingDocuments.Remove(tab);
+        }
+        if (R1WorkspaceMode.SelectedIndex == 0)
+            ApplyWorkspaceMode(1);
+        PopulateTab(tab);
+        if (host.Content is not FrameworkElement view)
+        {
+            MessageBox.Show(this,
+                "请先打开当前工程并完成对应编辑器初始化，之后再独立开窗。",
+                "AutoTest 编辑窗口", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        host.Content = null;
+        var floating = new Window
+        {
+            Title = "AutoTest Studio · " + title,
+            Width = 1220,
+            Height = 790,
+            MinWidth = 820,
+            MinHeight = 540,
+            Background = Brushes.White,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this,
+            Content = view
+        };
+        _floatingDocuments[tab] = floating;
+        floating.Closed += (_, _) =>
+        {
+            floating.Content = null;
+            if (!_closed && !Dispatcher.HasShutdownStarted)
+                host.Content = view;
+            _floatingDocuments.Remove(tab);
+        };
+        floating.Show();
+    }
+
+    private void FloatTest_Click(object sender, RoutedEventArgs e)
+        => FloatDocument(9, R2AuthoringHost, "TEST 测试程序编辑器");
+    private void FloatDbc_Click(object sender, RoutedEventArgs e)
+        => FloatDocument(3, R1DbcHost, "DBC 信号编辑器");
+    private void FloatWave_Click(object sender, RoutedEventArgs e)
+        => FloatDocument(6, R1WaveHost, "Wave Studio 波形分析");
 
     private void OpenProject_Click(object sender,RoutedEventArgs e) => Navigate(0,"project");
     private void OpenStation_Click(object sender,RoutedEventArgs e) => Navigate(1,"station");
