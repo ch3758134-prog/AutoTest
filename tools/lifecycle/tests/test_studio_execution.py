@@ -10,6 +10,7 @@ import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from studio_store import Store,RuleError
 from studio_execution import Execution, GitHubReader,require_repo
+from studio_governance import DefinitionGovernance,DOMAINS
 
 REPO="ch3758134-prog/AutoTest"
 
@@ -44,7 +45,22 @@ class ExecutionTests(unittest.TestCase):
         self.fixture=FixtureReader()
         self.engine=Execution(self.store,self.fixture)
         self.project=self.store.create_project({"name":"Embedded Lab","summary":"real devices",
+                                                "body":"User-validated engineering device and test workbench",
                                                 "version":"R1"})["project"]["id"]
+        self.governance=DefinitionGovernance(self.store)
+        current=self.governance.status(self.project)
+        proposed=dict(current["definition"])
+        proposed["summary"]="Review approved generic device engineering baseline"
+        change=self.governance.propose(self.project,proposed,
+            "Fixture establishes product requirements before authorizing coding",
+            ["test://product-specification"],"Fixture owner",current["definition_digest"])
+        for key,_ in DOMAINS:
+            self.governance.review(change["change"]["id"],key,"NO_IMPACT",
+                "Fixture has no existing implementation before baseline publication",
+                ["test://product-specification"],[],"Fixture owner",change["change"]["base_digest"])
+        self.governance.publish(change["change"]["id"],"Fixture owner",
+            "Fixture initial product definition approved",
+            change["change"]["base_digest"])
         self.engine.configure(self.project,REPO)
         self.engine.refresh(self.project)
 
@@ -89,6 +105,23 @@ class ExecutionTests(unittest.TestCase):
             self.engine.dispatch(task["object_id"],"Owner","Send coding task")
         with self.assertRaises(RuleError):
             self.engine.import_issue(self.project,17)
+
+    def test_unbaselined_or_under_review_product_blocks_coding_dispatch(self):
+        work,_=self._work()
+        self.engine.bind(work["id"],17,"DEVICE")
+        current=self.governance.status(self.project)
+        proposal=dict(current["definition"])
+        proposal["body"]="A newly discovered system boundary requires analysis"
+        change=self.governance.propose(self.project,proposal,
+            "Investigating major product boundary before downstream code",
+            ["observation://new-behavior"],"Owner",current["definition_digest"])
+        with self.assertRaisesRegex(RuleError,"under review"):
+            self.engine.dispatch(work["id"],"Owner","Unsafe attempt")
+        self.governance.reject(change["change"]["id"],"Owner","Wait for supporting evidence")
+        with self.store.db() as db:
+            db.execute("DELETE FROM definition_baselines WHERE project_id=?",(self.project,))
+        with self.assertRaisesRegex(RuleError,"baseline required"):
+            self.engine.dispatch(work["id"],"Owner","Unbaselined attempt")
 
     def test_code_ready_dispatch_claim_and_pr_mapping(self):
         wp,design=self._work()
