@@ -199,6 +199,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
                                    "/api/studio/management/propose",
                                    "/api/studio/governance/research/submit",
                                    "/api/studio/governance/suggest",
+                                   "/api/studio/knowledge/intake",
                                    "/api/studio/knowledge/propose",
                                    "/api/studio/knowledge/revise",
                                    "/api/studio/knowledge/link/propose")
@@ -259,6 +260,11 @@ def handler_factory(store, token, repo=None, manager_token=None):
                         data.get("proposed"),data.get("reason",""),
                         data.get("source_refs"),data.get("proposer",""),
                         data.get("expected_digest",""))
+                elif path == "/api/studio/knowledge/intake":
+                    answer = knowledge.intake(
+                        data.get("project_id",""),data.get("bundle"),
+                        data.get("author",""),
+                        "OWNER_CANDIDATE" if owner_request else "AI_CANDIDATE")
                 elif path == "/api/studio/knowledge/propose":
                     answer = knowledge.propose(
                         data.get("project_id",""),data.get("entry"),
