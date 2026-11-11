@@ -115,6 +115,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/product-identity.js":
                     return self.write((HERE / "studio_product_identity_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/amendments.js":
+                    return self.write((HERE / "studio_amendments_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/restore.js":
                     return self.write((HERE / "studio_restore_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
