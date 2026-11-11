@@ -154,6 +154,10 @@ class Store:
         return self.project(key)
 
     def update_project(self, key, data):
+        # Product semantics are baseline controlled. Only administrative rename
+        # remains a direct edit; never accept summary/body/version/variant here.
+        if any(field in data for field in ("summary","body","version","variant")):
+            raise RuleError("Product definition is governed; propose/review/publish a versioned change")
         with self.db() as db:
             old = self._require_project(db, key)
             fields = {}
@@ -483,6 +487,13 @@ class Store:
         why=[]
         if not ignore_approval and obj["state"]!="APPROVED":
             why.append("实施工作包尚未获得负责人批准")
+        # An approved product change invalidates only explicitly impacted packages
+        # and their reviewed downstream dependencies; unaffected work stays usable.
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='definition_invalidations'").fetchone():
+            pending=db.execute("""SELECT change_id FROM definition_invalidations
+                   WHERE package_id=? AND status='OPEN'""",(key,)).fetchall()
+            for row in pending:
+                why.append("产品定义变更要求重新评审此工作包："+row["change_id"])
         meta=obj["meta"]
         for field,label in (("acceptance","可验证验收条件"),("source_sha","目标源码提交身份"),
                             ("file_scope","允许修改的文件范围")):
@@ -694,8 +705,19 @@ class Store:
                         """SELECT r.* FROM verification_reviews r
                            JOIN verification_runs v ON v.id=r.run_id
                            WHERE v.project_id=? ORDER BY r.reviewed_at,r.run_id""",(key,))]
+            governance={"baselines":[],"changes":[],"reviews":[],"invalidations":[]}
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='definition_changes'").fetchone():
+                governance["baselines"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM definition_baselines WHERE project_id=? ORDER BY revision",(key,))]
+                governance["changes"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM definition_changes WHERE project_id=? ORDER BY created,id",(key,))]
+                change_ids={x["id"] for x in governance["changes"]}
+                governance["reviews"]=[dict(x) for x in db.execute(
+                    "SELECT r.* FROM definition_reviews r JOIN definition_changes c ON c.id=r.change_id WHERE c.project_id=? ORDER BY r.change_id,r.domain",(key,))]
+                governance["invalidations"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM definition_invalidations WHERE project_id=? ORDER BY created,package_id",(key,))]
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
                     "objects":objects,"relations":links,"revisions":revisions,
                     "events":events,"technical_research":research,
                     "execution":execution,"manager_proposals":proposals,
-                    "verification":verification}
+                    "verification":verification,"governance":governance}
