@@ -163,6 +163,28 @@ class StudioApiTest(unittest.TestCase):
                 "expected_base_digest":status["definition_digest"]},
                 token="local-test-token")
         self.assertEqual(denied.exception.code,400)
+        _,queue=self.request("/api/studio/governance/research?change="+change)
+        self.assertEqual(len(queue["tasks"]),10)
+        for task in queue["tasks"]:
+            _,submission=self.request("/api/studio/governance/research/submit",{
+                "task_id":task["id"],"expected_revision":task["revision"],
+                "finding":"Assessed impact on "+task["domain"],
+                "evidence_refs":["test://source/"+task["domain"]],
+                "limitations":"The fixtures use no real hardware",
+                "author":"AI Analyst"},manager_token="manager-secret-token-0123456789-0123456789")
+            self.assertEqual(submission["origin_role"],"AI_CANDIDATE")
+            with self.assertRaises(HTTPError) as denied:
+                self.request("/api/studio/governance/research/review",{
+                    "task_id":task["id"],"submission_id":submission["submission_id"],
+                    "expected_revision":task["revision"],"decision":"ACCEPT",
+                    "reviewer":"AI","rationale":"Self approval"},
+                    manager_token="manager-secret-token-0123456789-0123456789")
+            self.assertEqual(denied.exception.code,403)
+            self.request("/api/studio/governance/research/review",{
+                "task_id":task["id"],"submission_id":submission["submission_id"],
+                "expected_revision":task["revision"],"decision":"ACCEPT",
+                "reviewer":"Human","rationale":"Test-only evidence reviewed"},
+                token="local-test-token")
         for domain in status["domains"]:
             self.request("/api/studio/governance/review",{
                 "change_id":change,"domain":domain["key"],"outcome":"NO_IMPACT",
