@@ -139,7 +139,7 @@ function renderView(){clean(root);$('#breadcrumb').textContent=(projectName()||'
  if(state.view==='management')return renderManagementView();
  if(state.view==='history')return renderHistory();
  return renderEditor();}
-function renderWelcome(){const box=el('div','blank');add(box,el('h2','','建立你的第一个工程项目'),el('p','','从产品背景、使用场景和系统边界开始，逐层建立需求、架构、接口、详细设计和实施验证。所有对象可以再次修订，不需要按固定 Gate 一次性走完。'),button('创建工程项目','primary',()=>projectModal()));root.append(box);
+function renderWelcome(){const box=el('div','blank');add(box,el('h2','','建立你的第一个工程项目'),el('p','','从产品背景、使用场景和系统边界开始，逐层建立需求、架构、接口、详细设计和实施验证。所有对象可以再次修订，不需要按固定 Gate 一次性走完。'),button('创建工程项目','primary',()=>projectModal()),button('从备份恢复项目','outline',restoreWorkspaceModal));root.append(box);
  const s=section('建立什么，而不只是记录什么');let grid=el('div','threecol');[['产品与系统','明确为何开发、产品版本、系统组成和能力边界'],['设计与决策','从需求到接口逐级展开，负责人审查并批准有效版本'],['反馈与验证','实施/实测发现问题时回到上层变更，再更新受影响工作包']].forEach(x=>{let c=el('div','panel');add(c,el('h2','',x[0]),el('p','',x[1]));grid.append(c)});s.node.append(grid);}
 function rowCard(obj,act){let b=el('button','item-row');let left=el('div');add(left,el('div','rowtitle',obj.title),el('div','rowdesc',groupLabel(obj.kind)+' · '+brief(obj.body,130)));add(b,left,badge(obj.state));b.onclick=()=>act(obj);return b}
 function stat(count,name,desc){let b=el('div','stat');add(b,el('b','',count),el('label','',name),el('small','',desc));return b}
@@ -329,4 +329,4 @@ $('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.
 $('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
 window.addEventListener('load',()=>boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))}));
-</script><script src="/research.js"></script><script src="/execution.js"></script><script src="/management.js"></script><script src="/capability.js"></script><script src="/change.js"></script><script src="/verification.js"></script><script src="/plan.js"></script></body></html>
+</script><script src="/research.js"></script><script src="/execution.js"></script><script src="/management.js"></script><script src="/capability.js"></script><script src="/change.js"></script><script src="/verification.js"></script><script src="/plan.js"></script><script src="/restore.js"></script></body></html>
