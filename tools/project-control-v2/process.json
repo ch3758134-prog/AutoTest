@@ -1,0 +1,89 @@
+{
+  "schema": "engineering-process-review-map/1",
+  "project_id": "autotest",
+  "notice": "本文件是新管理界面的流程呈现配置，不变更正式流程政策，不签发任何 Gate。阶段状态仅引用真实记录或明确标识未知。",
+  "cycle": {
+    "id": "CURRENT",
+    "title": "当前研发周期",
+    "review_state": "PROCESS_RECONCILIATION_REQUIRED",
+    "description": "本候选工作台尚未从正式工程记录确认本轮周期身份、阶段 Gate 决定及当前计划基线；不得自行推断。"
+  },
+  "stages": [
+    {
+      "id": "P0",
+      "name": "产品定义与立项",
+      "review": "ARTIFACT_APPROVED_GATE_UNVERIFIED",
+      "summary": "P0 V0.1 产品定义已正式批准；不能据此推断 P0 Gate 也已通过。",
+      "primary_object": "at-p0-approved-charter-v01",
+      "required_outcomes": [
+        "明确产品身份与立项目的",
+        "确认总体范围和现阶段开发目标",
+        "形成批准记录"
+      ]
+    },
+    {
+      "id": "G0",
+      "name": "现状调查与约束",
+      "review": "NOT_VERIFIED",
+      "summary": "存在已有工程调查资料，但未确认本轮完整调查的正式 Gate 决定。",
+      "required_outcomes": [
+        "调查已有软件硬件及开发约束",
+        "明确可靠事实和未知问题",
+        "评估后续研发输入"
+      ]
+    },
+    {
+      "id": "G1",
+      "name": "系统需求",
+      "review": "REPORT_PREPARED_UNAPPROVED",
+      "summary": "已有完整 G1 研究报告 r4；需求正式批准与 Gate 仍未完成。",
+      "primary_object": "at-g1-integrated-autotest-study",
+      "required_outcomes": [
+        "形成系统级可验证需求",
+        "确认需求与产品目标一致",
+        "保留来源、未知项和验证意图",
+        "正式审查"
+      ]
+    },
+    {
+      "id": "G2",
+      "name": "系统架构",
+      "review": "NOT_VERIFIED",
+      "summary": "历史方案不自动形成当前新 P0/G1 的架构批准。",
+      "required_outcomes": [
+        "建立与有效需求一致的系统架构",
+        "比较关键方案和约束",
+        "审核接口与实现边界"
+      ]
+    },
+    {
+      "id": "G3",
+      "name": "详细设计",
+      "review": "NOT_VERIFIED",
+      "summary": "有历史设计资料，当前是否满足新基线需要重新核对。",
+      "required_outcomes": [
+        "提供足以授权对应实施的详细设计",
+        "明确行为、接口、状态、异常和验证条件"
+      ]
+    },
+    {
+      "id": "G4",
+      "name": "实施与验证",
+      "review": "CANDIDATE_CODE_EXISTS_NO_ACCEPTANCE",
+      "summary": "历史源码及多专业候选实现存在；不能推断真实 ECU 自动测试闭环通过。",
+      "required_outcomes": [
+        "对应批准设计完成实施",
+        "完成集成与测试",
+        "形成真实验证和交付证据"
+      ]
+    }
+  ],
+  "principles": [
+    "流程阶段与交付成果、任务工作分别管理",
+    "内部草稿不成为正式成果",
+    "研究可以开展，受控实施需要满足实际适用的准入条件",
+    "阶段通过只能由正式决定证明",
+    "变化按实际影响修订工作，不全量回滚",
+    "AI、GitHub、Codex 的执行回执是计划核实输入而非自动验收"
+  ]
+}
