@@ -127,6 +127,10 @@ public sealed class BenchCanEditorTests
         port.ActiveProjectId = "ECU-A";
         await vm.StartPeriodicAsync();
         Assert.Equal(1, port.PeriodicCount);
+        port.ActiveProjectId = "ECU-B";
+        await vm.DiscardDraftAndReloadAsync();
+        Assert.Empty(vm.Messages);
+        Assert.False(vm.Dirty);
     }
 
     [Fact]
