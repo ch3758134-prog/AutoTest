@@ -11,6 +11,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from studio_store import Store,RuleError
 from studio_execution import Execution, GitHubReader,require_repo
 from studio_governance import DefinitionGovernance,DOMAINS
+from studio_definition_research import DefinitionResearch
 
 REPO="ch3758134-prog/AutoTest"
 
@@ -54,6 +55,14 @@ class ExecutionTests(unittest.TestCase):
         change=self.governance.propose(self.project,proposed,
             "Fixture establishes product requirements before authorizing coding",
             ["test://product-specification"],"Fixture owner",current["definition_digest"])
+        coordinator=DefinitionResearch(self.store)
+        for task in coordinator.list(change["change"]["id"])["tasks"]:
+            finding=coordinator.submit(task["id"],task["revision"],
+                "Fixture analyst","AI_CANDIDATE",
+                "No existing product implementation in this fixture",
+                ["test://product-specification"],"Fixture only")
+            coordinator.review(task["id"],finding["submission_id"],
+                task["revision"],"ACCEPT","Fixture owner","Input reviewed")
         for key,_ in DOMAINS:
             self.governance.review(change["change"]["id"],key,"NO_IMPACT",
                 "Fixture has no existing implementation before baseline publication",
