@@ -25,7 +25,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="波形采集与判定" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Text="波形采集与判定" Style="{StaticResource AtPageTitle}" />
                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                     <TextBlock Text="Signal  " Foreground="#69819A" />
                     <TextBlock Text="{Binding Signal}" FontWeight="SemiBold" />
@@ -35,15 +35,15 @@
                     <TextBlock Text="{Binding Quality}" />
                 </StackPanel>
             </StackPanel>
-            <TextBlock Grid.Column="1" Text="WAVE / G4" VerticalAlignment="Top"
+            <TextBlock Grid.Column="1" Text="采集与对比" VerticalAlignment="Top"
                        FontWeight="SemiBold" Foreground="#1680A6" />
         </Grid>
         <Border Grid.Row="1" Background="{StaticResource Panel}" CornerRadius="7"
                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="11"
                 Margin="0,0,0,12">
             <WrapPanel>
-                <Button Command="{Binding StartCommand}" Content="▶  开始采集" />
-                <Button Command="{Binding StopCommand}" Content="■  停止" />
+                <Button Command="{Binding StartCommand}" Content="▶ 开始采集" Style="{StaticResource AtPrimaryButton}" />
+                <Button Command="{Binding StopCommand}" Content="■ 停止" Style="{StaticResource AtDangerButton}" />
                 <Button Command="{Binding MarkReferenceCommand}" Content="◇  保存参考" />
                 <Button Command="{Binding ReplayCommand}" Content="↺  回放" />
                 <Button Command="{Binding CompareCommand}" Content="◎  对比判定" />
