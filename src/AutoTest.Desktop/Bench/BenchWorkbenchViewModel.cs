@@ -140,8 +140,6 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public ObservableCollection<BenchDevice> Devices { get; } = new();
     public ObservableCollection<ManualVoltageInput> Voltages { get; } = new();
     public ObservableCollection<BenchSwitchItem> Switches { get; } = new();
-    public void AddCurrentKeyCombinationToAction() =>
-        KeyActions.AddCurrentBenchMask(SelectedKeyMask);
     public uint SelectedKeyMask => Switches.Aggregate(0u,
         (mask, item) => item.IsSelected ? mask | item.Bit : mask);
     public int SelectedKeyCount => Switches.Count(x => x.IsSelected);
