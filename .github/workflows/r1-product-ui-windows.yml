@@ -43,6 +43,28 @@ jobs:
       - name: Publish formal R1 candidate
         shell: pwsh
         run: dotnet publish src/AutoTest.Desktop/AutoTest.Desktop.csproj -c Release -r win-x64 --self-contained false -o output/AutoTest.R1 --verbosity minimal
+      - name: WPF startup smoke test (no device connection or ECU commands)
+        shell: pwsh
+        run: |
+          $exe = Join-Path (Resolve-Path 'output/AutoTest.R1').Path 'AutoTest.Desktop.exe'
+          $stdErr = Join-Path $env:RUNNER_TEMP 'r1-startup-stderr.log'
+          $stdOut = Join-Path $env:RUNNER_TEMP 'r1-startup-stdout.log'
+          $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru -RedirectStandardError $stdErr -RedirectStandardOutput $stdOut
+          try {
+            Start-Sleep -Seconds 6
+            $proc.Refresh()
+            if ($proc.HasExited) {
+              Write-Host "R1_WPF_STARTUP_EARLY_EXIT: $($proc.ExitCode)"
+              if (Test-Path $stdErr) { Get-Content $stdErr }
+              if (Test-Path $stdOut) { Get-Content $stdOut }
+              throw "R1 WPF process exited before startup smoke window."
+            }
+            Write-Host "R1_WPF_STARTUP_SURVIVED_6_SECONDS"
+          }
+          finally {
+            $proc.Refresh()
+            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+          }
       - name: Store build evidence (not formal delivery)
         uses: actions/upload-artifact@v4
         with:
