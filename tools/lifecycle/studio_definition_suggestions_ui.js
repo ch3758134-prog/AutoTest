@@ -29,9 +29,12 @@ function definitionSuggestionDetailModal(suggestion,info){
     add(detail,el('strong','','原始候选来源：'+suggestion.origin_role),
       el('p','context','提出人：'+suggestion.proposed_by+'\n原因：'+suggestion.reason),
       el('p','context','候选定位：'+suggestion.proposed.summary),
-      el('p','context','候选完整定义：\n'+suggestion.proposed.body),
+      el('p','context','关联项目背景（不是产品身份）：\n'+suggestion.proposed.body),
       el('p','context','候选版本：'+suggestion.proposed.version+' · 适用变体：'+suggestion.proposed.variant),
       el('p','context','待查来源：\n'+suggestion.source_refs.join('\n')));
+    if(suggestion.semantic_notes)
+      detail.append(el('p','context','AI 对各项内容语义归属的说明：\n'+suggestion.semantic_notes));
+    detail.append(button('查看工程概念指导','outline',()=>engineeringSemanticsModal()));
     body.append(detail);
     if(suggestion.base_digest!==info.definition_digest)
       body.append(note('建议基于旧定义版本，当前项目定义已变化；必须重新提交并审查差异，不能直接接受。'));
