@@ -55,6 +55,18 @@ class VerificationTests(unittest.TestCase):
             self.ver.record(self.payload())
         self.assertEqual(self.ver.list(self.p)["runs"],[])
 
+    def test_hardware_only_evidence_has_no_mandatory_software_sha(self):
+        payload=self.payload()
+        payload["source_sha"]=""
+        payload["level"]="BENCH"
+        payload["configuration"]="Hardware assembly drawing rev C / serial fixture 4"
+        run=self.ver.record(payload)
+        self.assertEqual(run["source_sha"],"")
+        self.assertEqual(run["level"],"BENCH")
+        payload["level"]="UNIT"
+        with self.assertRaisesRegex(RuleError,"Software test execution requires"):
+            self.ver.record(payload)
+
     def test_unreviewed_and_rejected_are_distinct(self):
         p=self.payload()
         p["outcome"]="PASS"
