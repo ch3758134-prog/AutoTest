@@ -445,9 +445,28 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
             ? Task.FromException(new InvalidOperationException("当前未绑定已保存的工程 CAN 配置。"))
             : _canStore.SaveAsync(messages, ct);
 
+    private string? CheckDbcBinding(BenchCanMessage message)
+    {
+        if (message.DbcRevision is null) return null; // raw frame is valid without DBC
+        var revision = _projectDbcRevision?.Invoke();
+        var db = _projectDbc?.Invoke();
+        if (db is null || revision != message.DbcRevision)
+            return "DBC 资源已切换或 Revision 不一致。请重新关联工程 DBC，或转为原始报文。";
+        try
+        {
+            var def = db.FindMessage(message.ArbitrationId, message.Extended);
+            if (def.Name != message.DbcMessageName || def.Dlc != message.Payload().Length)
+                return "DBC 报文定义不匹配：检查报文名称、帧格式和 Data 字节数。";
+        }
+        catch (Exception ex) { return "DBC 报文绑定无效：" + ex.Message; }
+        return null;
+    }
+
     private async Task<string?> CanPreflightAsync(BenchCanMessage message, CancellationToken ct)
     {
         message.Validate();
+        var dbcProblem = CheckDbcBinding(message);
+        if (dbcProblem is not null) return dbcProblem;
         if (_canStore is null)
             return "CAN 发送配置尚未绑定正式工程。";
         // Exploratory CAN bench work is allowed before the operator saves a resource.
@@ -469,6 +488,8 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         var gen = physical.Generation;
         if (_approveCan?.Invoke(message, gen, false) != true)
             return Reject("MANUAL_CAN_NOT_APPROVED", "操作员取消 CAN1 单次发送。", BenchEvidenceSource.Physical);
+        if (CheckDbcBinding(message) is { } changedDbc)
+            return Reject("MANUAL_DBC_REVISION_CHANGED", changedDbc, BenchEvidenceSource.Physical);
         if (!ReferenceEquals(_hardware(), physical) ||
             _testRunning?.Invoke() == true || physical.Generation != gen ||
             physical.PhysicalCanToolFlashActive)
@@ -552,6 +573,9 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         IProgress<BenchCanPeriodicProgress>? progress, CancellationToken ct)
     {
         BenchCanMessage.ValidateAll(checkedMessages);
+        foreach (var dbcBound in checkedMessages)
+            if (CheckDbcBinding(dbcBound) is { } problem)
+                return new(false, false, false, problem);
         if (checkedMessages.Count == 0)
             return new(false, false, false, "请先勾选至少一条 CAN 报文。");
         if (_projectId is null || string.IsNullOrWhiteSpace(_projectId()))
@@ -590,7 +614,8 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                     physical.State != UsbSessionState.Connected ||
                     physical.Generation != generation || !physical.ProtocolVersionVerified ||
                     physical.PhysicalCanToolFlashActive || _testRunning?.Invoke() == true ||
-                    _projectId() != projectIdentity || _projectPath?.Invoke() != projectPath)
+                    _projectId() != projectIdentity || _projectPath?.Invoke() != projectPath ||
+                    snapshot.Any(m => CheckDbcBinding(m) is not null))
                     return new(false, false, false,
                         "CAN 周期已中止：工程、USB 或其他物理任务状态变化；最后一帧状态未知。");
 
