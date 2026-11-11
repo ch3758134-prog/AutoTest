@@ -165,6 +165,13 @@ public sealed class BenchCanEditorViewModel : BindableBase
             Status = "尚有未保存的 CAN 配置；请先保存，避免覆盖编辑内容。";
             return;
         }
+        if (DifferentProject)
+        {
+            SelectedMessage = null;
+            Messages.Clear();
+            _editorProjectId = _port.ActiveProjectId;
+            RaisePropertyChanged(nameof(CheckedCount));
+        }
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
         try
