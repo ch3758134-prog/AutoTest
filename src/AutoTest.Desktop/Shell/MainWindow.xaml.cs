@@ -305,15 +305,15 @@ public partial class MainWindow : Window
         var tool = new Window
         {
             Title = "AutoTest · " + _titles[key],
-            Width = 1380,
-            Height = 840,
-            MinWidth = 860,
-            MinHeight = 580,
+            Width = key == "bench" ? 1560 : 1380,
+            Height = key == "bench" ? 900 : 840,
+            MinWidth = key == "bench" ? 1130 : 860,
+            MinHeight = key == "bench" ? 680 : 580,
             Background = Brushes.White,
             Owner = this,
             ShowInTaskbar = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            WindowState = WindowState.Normal,
+            WindowState = key == "bench" ? WindowState.Maximized : WindowState.Normal,
             Content = view
         };
         tool.Closing += (_, e) =>
