@@ -113,33 +113,37 @@
       </DockPanel>
       <WrapPanel Margin="0,0,0,6">
        <Button Content="＋ 从 DBC 选择报文" Click="ChooseDbcCanMessage_Click"
-        Background="#E6F1FC" Foreground="#155F9E" FontWeight="SemiBold"
+        Style="{StaticResource AtPrimaryButton}"
         ToolTip="从当前工程已导入的 DBC 中按报文名称或 CAN ID 选择，然后加入下方发送表"/>
        <Button Content="＋ 原始报文" Command="{Binding AddCommand}"
         ToolTip="创建一条可直接编辑 ID 和十六进制 Data 的报文"/>
        <Button Content="DBC 管理" Click="OpenDbc_Click"
         ToolTip="导入或修改当前工程的 DBC，返回后即可选报文"/>
-       <Button Content="删除行" Command="{Binding DeleteCommand}"
-        Margin="0" ToolTip="删除当前选中的发送报文"/>
+
       </WrapPanel>
       <WrapPanel Margin="0,0,0,6">
        <Button Content="▶ 发送勾选报文" Command="{Binding StartPeriodicCommand}"
-        IsEnabled="{Binding CanEdit}" Background="#176AB2" Foreground="White"
-        FontWeight="SemiBold" ToolTip="按各行的独立周期向真实 DUT CAN1 发送所有勾选行；停止前一直发送"/>
+        IsEnabled="{Binding CanStartPeriodic}" Style="{StaticResource AtPrimaryButton}"
+        ToolTip="按各行的独立周期向真实 DUT CAN1 发送所有勾选行；停止前一直发送"/>
        <Button Content="■ 停止发送" Command="{Binding StopPeriodicCommand}"
         IsEnabled="{Binding IsPeriodicRunning}"
         Background="#FFF0ED" Foreground="#A74541"
         ToolTip="停止本次已勾选报文的所有周期发送；不会自动修改报文数据"/>
        <Button Content="单发选中行" Command="{Binding SendOnceCommand}"
-        IsEnabled="{Binding CanEdit}" ToolTip="当前选中的一行仅发送一次"/>
-       <Button Content="保存发送表" Command="{Binding SaveCommand}"
-        IsEnabled="{Binding CanEdit}" Margin="0"
-        ToolTip="保存当前报文表到工程；现场试发可先不保存"/>
+        IsEnabled="{Binding CanSendOnce}" ToolTip="当前选中的一行仅发送一次"/>
+       <Menu Background="Transparent" VerticalAlignment="Center">
+        <MenuItem Header="发送表管理 ▾">
+         <MenuItem Header="保存发送表" Command="{Binding SaveCommand}"/>
+         <MenuItem Header="重新加载" Click="ReloadCanMessages_Click"/>
+         <Separator/>
+         <MenuItem Header="删除选中报文" Command="{Binding DeleteCommand}"/>
+        </MenuItem>
+       </Menu>
       </WrapPanel>
       <TextBlock Text="{Binding DbcStatus}" FontSize="11" Foreground="#607B94"
        TextWrapping="Wrap" Margin="0,1,0,3"/>
-      <TextBlock Text="左侧勾选要周期发送的报文；先编辑 ID / Data / 周期，再点击“发送勾选报文”。"
-       FontSize="11" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+      <TextBlock Text="勾选一行或多行，按各自周期发送；单发只使用当前选中行。"
+       Style="{StaticResource AtHint}"/>
      </StackPanel>
 
      <DataGrid x:Name="TransmitGrid" Grid.Row="1" ItemsSource="{Binding Messages}"
@@ -171,6 +175,20 @@
         Binding="{Binding SourceLabel}"/>
       </DataGrid.Columns>
      </DataGrid>
+     <TextBlock Grid.Row="1"
+       Text="还没有发送报文。可从工程 DBC 中选取，或新增一条原始 CAN 报文。"
+       TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
+      <TextBlock.Style>
+       <Style TargetType="TextBlock" BasedOn="{StaticResource AtHint}">
+        <Setter Property="Visibility" Value="Collapsed"/>
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding Messages.Count}" Value="0">
+          <Setter Property="Visibility" Value="Visible"/>
+         </DataTrigger>
+        </Style.Triggers>
+       </Style>
+      </TextBlock.Style>
+     </TextBlock>
 
      <!-- Signal editing is part of the chosen transmit row, not a permanent
           unrelated empty table: collapse entirely when editing raw CAN. -->
@@ -232,15 +250,15 @@
        <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
       <DockPanel Grid.Row="0" Margin="0,0,0,6">
-       <Button DockPanel.Dock="Right" Content="+ 新建动作"
+       <Button DockPanel.Dock="Right" Content="＋ 新建动作"
         Click="CreateKeyAction_Click" Margin="8,0,0,0"
-        Background="#176AB2" Foreground="White" FontWeight="SemiBold"/>
+        Style="{StaticResource AtPrimaryButton}"/>
        <TextBlock Text="按键动作" FontSize="17" FontWeight="SemiBold"
         VerticalAlignment="Center"/>
       </DockPanel>
       <TextBlock Grid.Row="1" FontSize="11" TextWrapping="Wrap"
        Foreground="{StaticResource Muted}" Margin="0,0,0,9"
-       Text="左键点击按钮试运行对应动作；右键编辑、重命名、复制或删除。执行真实动作前需要确认。"/>
+       Text="单击动作即可执行；右键可编辑、重命名、复制或删除。真实输出需确认。"/>
       <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
        HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,7">
        <ItemsControl ItemsSource="{Binding KeyActions.Actions}">
@@ -254,7 +272,7 @@
            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
            ToolTip="左键：试运行此动作（需确认）；右键：编辑、重命名、复制或删除">
            <Button.Style>
-            <Style TargetType="Button">
+            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
              <Setter Property="Background" Value="#F6F9FD"/>
              <Setter Property="Foreground" Value="#23374D"/>
              <Setter Property="BorderBrush" Value="#C7D7E7"/>
@@ -309,16 +327,20 @@
        </TextBlock.Style>
       </TextBlock>
       <StackPanel Grid.Row="3">
-       <WrapPanel Margin="0,0,0,5">
-        <Button Content="编辑选中动作" Click="EditSelectedKeyAction_Click"/>
-        <Button Content="停止动作" Command="{Binding KeyActions.StopActionCommand}"
-         Foreground="#A74541" Background="#FFF1EC" Margin="0"/>
-       </WrapPanel>
-       <WrapPanel Margin="0,0,0,5">
-        <Button Content="保存动作配置" Command="{Binding KeyActions.SaveActionsCommand}"/>
-        <Button Content="重新加载" Click="ReloadKeyActions_Click"/>
-        <Button Content="释放全部真实按键" Command="{Binding ReleaseAllKeysCommand}"
-         Foreground="#A74541" Background="#FFF1EC" Margin="0"/>
+       <WrapPanel Margin="0,0,0,7">
+        <Button Content="停止当前动作" Style="{StaticResource AtDangerButton}"
+         IsEnabled="{Binding KeyActions.IsActionRunning}"
+         Command="{Binding KeyActions.StopActionCommand}"/>
+        <Button Content="松开全部按键" Command="{Binding ReleaseAllKeysCommand}"
+         Style="{StaticResource AtDangerButton}"
+         ToolTip="真实发送全部断开的开关组合；这不是仅清空编辑草稿"/>
+        <Menu Background="Transparent" VerticalAlignment="Center">
+         <MenuItem Header="动作配置 ▾">
+          <MenuItem Header="编辑选中动作" Click="EditSelectedKeyAction_Click"/>
+          <MenuItem Header="保存到工程" Command="{Binding KeyActions.SaveActionsCommand}"/>
+          <MenuItem Header="重新加载" Click="ReloadKeyActions_Click"/>
+         </MenuItem>
+        </Menu>
        </WrapPanel>
        <TextBlock Text="{Binding KeyActions.Status}" FontSize="11"
         Foreground="#536F89" TextWrapping="Wrap"/>
