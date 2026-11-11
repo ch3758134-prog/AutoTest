@@ -3,24 +3,13 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="AutoTest · 编辑按键动作" Width="1040" Height="790"
  MinWidth="800" MinHeight="630" WindowStartupLocation="CenterOwner"
- Background="#F6F8FB" Foreground="#23374D" FontFamily="Segoe UI" FontSize="13"
+ Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Segoe UI" FontSize="13"
  UseLayoutRounding="True" SnapsToDevicePixels="True">
  <Window.Resources>
   <BooleanToVisibilityConverter x:Key="BoolVis"/>
   <SolidColorBrush x:Key="Muted" Color="#657D95"/>
-  <Style TargetType="Button">
-   <Setter Property="MinHeight" Value="31"/>
-   <Setter Property="Padding" Value="11,6"/>
-   <Setter Property="Margin" Value="0,0,7,0"/>
-   <Setter Property="Background" Value="#F7FAFE"/>
-   <Setter Property="Foreground" Value="#23374D"/>
-   <Setter Property="BorderBrush" Value="#CBD9E8"/>
-  </Style>
-  <Style TargetType="TextBox">
-   <Setter Property="Padding" Value="7,5"/>
-   <Setter Property="BorderBrush" Value="#CBD9E8"/>
-   <Setter Property="Background" Value="White"/>
-  </Style>
+  
+  
   <Style x:Key="KeyToggle" TargetType="ToggleButton">
    <Setter Property="Margin" Value="3"/>
    <Setter Property="Padding" Value="6,10"/>
