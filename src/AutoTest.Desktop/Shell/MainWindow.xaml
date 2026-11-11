@@ -1,483 +1,231 @@
 <Window x:Class="AutoTest.Desktop.Shell.MainWindow"
- xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
- xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:prism="http://prismlibrary.com/"
- xmlns:uds="clr-namespace:AutoTest.Desktop.Tools.Uds"
- xmlns:flash="clr-namespace:AutoTest.Desktop.Tools.Flash"
- xmlns:device="clr-namespace:AutoTest.DeviceLab;assembly=AutoTest.DeviceLab"
- prism:ViewModelLocator.AutoWireViewModel="True"
- Title="AutoTest Studio · R1 产品工作台" PreviewKeyDown="Window_PreviewKeyDown"
- Width="1600" Height="960" MinWidth="1150" MinHeight="720"
- WindowStartupLocation="CenterScreen" WindowState="Maximized"
- Closing="Window_Closing"
- Background="#F5F7FA" Foreground="#203249"
- FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True"
- SnapsToDevicePixels="True">
- <Window.Resources>
-  <SolidColorBrush x:Key="R1Title" Color="#F8FAFC"/>
-  <SolidColorBrush x:Key="R1Panel" Color="#FFFFFF"/>
-  <SolidColorBrush x:Key="R1Surface" Color="#EDF2F8"/>
-  <SolidColorBrush x:Key="R1Stroke" Color="#D5DFEA"/>
-  <SolidColorBrush x:Key="R1Muted" Color="#667C92"/>
-  <SolidColorBrush x:Key="R1Accent" Color="#176CB5"/>
-  <Style x:Key="R1RailButton" TargetType="Button">
-   <Setter Property="Width" Value="43"/>
-   <Setter Property="Height" Value="41"/>
-   <Setter Property="Margin" Value="2,3"/>
-   <Setter Property="FontSize" Value="19"/>
-   <Setter Property="Padding" Value="3"/>
-   <Setter Property="Background" Value="Transparent"/>
-   <Setter Property="BorderThickness" Value="0"/>
-   <Setter Property="Foreground" Value="#526C85"/>
-   <Setter Property="HorizontalContentAlignment" Value="Center"/>
-   <Style.Triggers>
-    <Trigger Property="Tag" Value="active">
-     <Setter Property="Background" Value="#E0EDFB"/>
-     <Setter Property="Foreground" Value="#176CB5"/>
-     <Setter Property="BorderBrush" Value="#176CB5"/>
-     <Setter Property="BorderThickness" Value="3,0,0,0"/>
-    </Trigger>
-    <Trigger Property="IsMouseOver" Value="True">
-     <Setter Property="Background" Value="#DCEBFA"/>
-    </Trigger>
-   </Style.Triggers>
-  </Style>
-  <ControlTemplate x:Key="R1OperatorTabTemplate" TargetType="{x:Type TabControl}">
-   <Border Background="#F5F7FA" Padding="0">
-    <ContentPresenter ContentSource="SelectedContent"/>
-   </Border>
-  </ControlTemplate>
-  <Style x:Key="R1PanelHeader" TargetType="TextBlock">
-   <Setter Property="FontWeight" Value="SemiBold"/>
-   <Setter Property="FontSize" Value="12"/>
-   <Setter Property="Foreground" Value="#203249"/>
-  </Style>
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:prism="http://prismlibrary.com/"
+    prism:ViewModelLocator.AutoWireViewModel="True"
+    Title="AutoTest Studio · ECU 自动测试" Width="1580" Height="920"
+    MinWidth="1150" MinHeight="720" WindowState="Maximized"
+    WindowStartupLocation="CenterScreen"
+    Background="#F6F8FB" Foreground="#24364A"
+    FontFamily="Segoe UI" FontSize="13"
+    SnapsToDevicePixels="True" UseLayoutRounding="True"
+    Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Border" Color="#DCE4EE"/>
+        <SolidColorBrush x:Key="Text" Color="#24364A"/>
+        <SolidColorBrush x:Key="Muted" Color="#6A7E93"/>
+        <SolidColorBrush x:Key="Primary" Color="#176AB2"/>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="#254461"/>
+            <Setter Property="Background" Value="#F7FAFD"/>
+            <Setter Property="BorderBrush" Value="#CEDCEB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="11,6"/>
+            <Setter Property="MinHeight" Value="29"/>
+            <Setter Property="Margin" Value="0,0,7,0"/>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Padding" Value="13,8"/>
+            <Setter Property="Foreground" Value="#4A627B"/>
+            <Setter Property="Background" Value="#F3F6FA"/>
+        </Style>
+    </Window.Resources>
+    <Window.InputBindings>
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenProjectCommand}"/>
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewProjectCommand}"/>
+    </Window.InputBindings>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="37"/>
+            <RowDefinition Height="29"/>
+            <RowDefinition Height="47"/>
+            <RowDefinition Height="*" MinHeight="330"/>
+            <RowDefinition x:Name="LogRow" Height="29" MinHeight="29"/>
+            <RowDefinition Height="27"/>
+        </Grid.RowDefinitions>
 
- </Window.Resources>
- <Window.InputBindings>
-  <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
-  <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenProjectCommand}"/>
-  <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewProjectCommand}"/>
-  <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
-  <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}"/>
-  
-  <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
-  <KeyBinding Key="F2" Command="{Binding FocusNameCommand}"/>
- </Window.InputBindings>
- <Grid>
-  <Grid.RowDefinitions>
-   <RowDefinition Height="38"/>
-   <RowDefinition Height="30"/>
-   <RowDefinition Height="48"/>
-   <RowDefinition Height="*" MinHeight="290"/>
-   <RowDefinition Height="190" MinHeight="125"/>
-   <RowDefinition Height="25"/>
-  </Grid.RowDefinitions>
-  <!-- HTML #app title row / theme / workspace -->
-  <Border Background="{StaticResource R1Title}" BorderBrush="#E8F0F8" BorderThickness="0,0,0,1">
-   <DockPanel Margin="12,0">
-    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-     <TextBlock Text="R1 STUDIO" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-     <TextBlock Text="   /   ECU INTEGRATION TEST &amp; DEVELOPMENT" Foreground="{StaticResource R1Muted}" FontSize="11" VerticalAlignment="Center"/>
-     <Button Content="⌕" FontSize="16" ToolTip="命令搜索 Ctrl+K" Click="CommandPalette_Click"
-             Background="Transparent" Foreground="#667C92" BorderThickness="0" Padding="12,0" Margin="12,0,0,0"/>
-    </StackPanel>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-     <Border Background="#176CB5" CornerRadius="5" Width="25" Height="25" Margin="0,0,9,0">
-      <TextBlock Text="A" Foreground="White" FontWeight="Bold" FontSize="15"
-                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
-     </Border>
-     <TextBlock Text="AutoTest" FontWeight="Bold" FontSize="16" Foreground="#203249" VerticalAlignment="Center"/>
-     <TextBlock Text="  STUDIO" FontSize="9" Foreground="#667C92" VerticalAlignment="Center"/>
-     <TextBlock Text="     /     " Foreground="#8795A8" VerticalAlignment="Center"/>
-     <TextBlock Text="{Binding ProjectLabel}" Foreground="#3B4F67" VerticalAlignment="Center"/>
-    </StackPanel>
-   </DockPanel>
-  </Border>
-  <!-- HTML menu row / preserve all existing tested commands -->
-  <Menu Grid.Row="1" Background="#FFFFFF" Foreground="#203249">
-   <MenuItem Header="_文件">
-    <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
-    <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}"/>
-    <MenuItem Header="保存工程" Command="{Binding SaveCommand}"/>
-    <Separator/>
-    <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
-    <MenuItem Header="退出" Click="Close_Click"/>
-   </MenuItem>
-   <MenuItem Header="_编辑">
-    <MenuItem Header="撤销" Command="{Binding UndoCommand}"/>
-    <MenuItem Header="重做" Command="{Binding RedoCommand}"/>
-    <MenuItem Header="前插步骤" Command="{Binding InsertBeforeCommand}"/>
-    <MenuItem Header="后插步骤" Command="{Binding InsertAfterCommand}"/>
-    <MenuItem Header="复制步骤" Command="{Binding CopyCommand}"/>
-    <MenuItem Header="插入子步骤" Command="{Binding InsertChildCommand}"/>
-    <MenuItem Header="删除节点" Command="{Binding DeleteCommand}"/>
-   </MenuItem>
-   <MenuItem Header="_运行">
-    <MenuItem Header="校验工程/测试资源" Command="{Binding ValidateCommand}"/>
-    <MenuItem Header="执行当前工程 TEST" Click="OpenRun_Click"/>
-    <MenuItem Header="停止" Command="{Binding StopCommand}"/>
-   </MenuItem>
-   <MenuItem Header="_诊断">
-    <MenuItem Header="UDS Console / P08" Click="OpenUds_Click"/>
-    <MenuItem Header="CAN Flash / P09" Click="OpenFlash_Click"/>
-    <MenuItem Header="CAN / USB 设备诊断（独立工具）" Click="DeviceLab_Click"/>
-    
-   </MenuItem>
-   <MenuItem Header="_视图">
-    <MenuItem Header="工程资源 / P01" Click="OpenProject_Click"/>
-    <MenuItem Header="设备连接 / P02" Click="OpenStation_Click"/>
-    <MenuItem Header="CAN Monitor / P03" Click="OpenCan_Click"/>
-    <MenuItem Header="DBC Editor / P04" Click="OpenDbc_Click"/>
-    <MenuItem Header="Controller Designer / P05" Click="OpenController_Click"/>
-    <MenuItem Header="Manual Bench / P06" Click="OpenBench_Click"/>
-    <MenuItem Header="Wave Studio / P07" Click="OpenWave_Click"/>
-    <MenuItem Header="UDS Console / P08" Click="OpenUds_Click"/>
-    <MenuItem Header="CAN Flash / P09" Click="OpenFlash_Click"/>
-    <MenuItem Header="测试程序 / P10" Click="OpenTest_Click"/>
-    <MenuItem Header="运行监视 / P11" Click="OpenRun_Click"/>
-    <MenuItem Header="出厂检测 / P12" Click="OpenProduction_Click"/>
-    <MenuItem Header="记录与报告 / P13" Click="OpenRecords_Click"/>
-    <Separator/>
-    <MenuItem Header="命令搜索 Ctrl+K" Click="CommandPalette_Click"/>
-    <MenuItem Header="隐藏/显示资源栏" Click="ToggleExplorer_Click"/>
-    <MenuItem Header="隐藏/显示属性栏" Click="ToggleInspector_Click"/>
-    
-   </MenuItem>
-   <MenuItem Header="_窗口">
-    <MenuItem Header="独立 TEST 编辑窗口" Click="FloatTest_Click"/>
-    <MenuItem Header="独立 DBC 编辑窗口" Click="FloatDbc_Click"/>
-    <MenuItem Header="独立波形工具窗口" Click="FloatWave_Click"/>
-    <Separator/>
-    <MenuItem Header="自动测试主工作台" Click="OperatorWorkspace_Click"/>
-    <MenuItem Header="工程开发 IDE" Click="EngineeringWorkspace_Click"/>
-   </MenuItem>
-   <MenuItem Header="_帮助"><MenuItem Header="R1 原型参考与独立联调说明" Click="R1About_Click"/></MenuItem>
-  </Menu>
-  <!-- HTML command bar, 48 px -->
-  <Border Grid.Row="2" Background="#FFFFFF" Padding="11,7"
-          BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,0,1">
-   <DockPanel>
-    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Ellipse x:Name="R1StationDot" Width="7" Height="7" Fill="#8795A8"
-              Margin="2,0,6,0" VerticalAlignment="Center"/>
-     <TextBlock x:Name="R1StationStatus" Text="Station · 未连接"
-                Foreground="#667C92" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
-     <Button Content="⌄" Click="OpenStation_Click" ToolTip="打开 Station 连接"
-             Background="Transparent" Foreground="#667C92" BorderThickness="0" Padding="3"/>
-     <Border Width="1" Height="22" Background="#D5DFEA" Margin="8,0"/>
-     <TextBlock Text="扫码" Foreground="#667C92" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
-     <TextBlock x:Name="R1ScannerStatus" Text="等待扫码枪配置"
-                Foreground="#3B4F67" MaxWidth="210" TextTrimming="CharacterEllipsis"
-                FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-     <Button Content="COM" Click="OpenProduction_Click" ToolTip="设置真实 USB COM 扫码枪 / 编号绑定"
-             Padding="7,3" MinHeight="27" Margin="0,0,5,0"/>
-     <Border Width="1" Height="22" Background="#D5DFEA" Margin="8,0"/>
-     <TextBlock Text="执行源" Foreground="#667C92" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-     <ComboBox x:Name="R1ExecutionSource" Width="118" Height="28"
-               Background="#EDF2F8" Foreground="#203249" BorderBrush="#D5DFEA"
-               SelectionChanged="ExecutionSource_SelectionChanged" SelectedIndex="0">
-      <ComboBoxItem Content="Physical / 实物" Tag="Physical"/>
-      <ComboBoxItem Content="Replay / 离线回放" Tag="Replay"/>
-     </ComboBox>
-     <Border Width="1" Height="22" Background="#D5DFEA" Margin="8,0"/>
-     <TextBlock Text="工作区" Foreground="#667C92" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-     <ComboBox x:Name="R1WorkspaceMode" Width="122" Height="28"
-               Background="#EDF2F8" Foreground="#203249" BorderBrush="#D5DFEA"
-               SelectedIndex="0" SelectionChanged="WorkspaceMode_SelectionChanged">
-      <ComboBoxItem Content="自动测试"/>
-      <ComboBoxItem Content="工程开发"/>
-      <ComboBoxItem Content="专业工具"/>
-     </ComboBox>
-    </StackPanel>
-    <StackPanel x:Name="R1ModeActions" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="▶ 自动测试" Click="OperatorWorkspace_Click" Background="#DCECFB" Foreground="#125993"
-             FontWeight="SemiBold" Padding="14,5" Margin="0,0,6,0"/>
-     <Button Content="▤ 工程开发" Click="EngineeringWorkspace_Click" Padding="14,5" Margin="0,0,6,0"/>
-     <Button Content="TEST 编辑" Click="OpenTest_Click" Padding="13,5" Margin="0,0,5,0"/>
-     <Button Content="专业工具 ▾" Click="ToolsWorkspace_Click" Padding="13,5" Margin="0,0,5,0"/>
-    </StackPanel>
-    <StackPanel x:Name="R1DeveloperActions" Visibility="Collapsed" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="⌕" Click="CommandPalette_Click" ToolTip="命令搜索 Ctrl+K" FontSize="17"/>
-     <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
-     <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
-     <Button Content="保存" Command="{Binding SaveCommand}"/>
-     <Button Content="验证" Command="{Binding ValidateCommand}"/>
-     <Border BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0" Margin="7,0,12,0"/>
-     <Button Content="UDS Console" Click="OpenUds_Click"/>
-     <Button Content="CAN Flash" Click="OpenFlash_Click"/>
-     <Button Content="设备联调" Click="DeviceLab_Click"/>
-     <Button Content="▶ 工程 TEST" Click="OpenRun_Click"/>
-     <Button Content="■ 停止" Command="{Binding StopCommand}"/>
-    </StackPanel>
-   </DockPanel>
-  </Border>
-  <!-- HTML rail / explorer / document / inspector -->
-  <Grid Grid.Row="3" x:Name="R1WorkspaceGrid">
-   <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="R1RailColumn" Width="50"/>
-    <ColumnDefinition x:Name="R1ExplorerColumn" Width="255" MinWidth="0"/>
-    <ColumnDefinition x:Name="R1ExplorerSizerColumn" Width="5"/>
-    <ColumnDefinition Width="*" MinWidth="440"/>
-    <ColumnDefinition x:Name="R1InspectorSizerColumn" Width="5"/>
-    <ColumnDefinition x:Name="R1InspectorColumn" Width="286" MinWidth="0"/>
-   </Grid.ColumnDefinitions>
-   <Border x:Name="R1RailPanel" Background="#F1F5F9" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-     <StackPanel>
-      <Button x:Name="R1ProjectRail" Content="▦" Style="{StaticResource R1RailButton}" Click="OpenProject_Click" ToolTip="P01 工程资源 / Revision"/>
-      <Button x:Name="R1StationRail" Content="⎔" Style="{StaticResource R1RailButton}" Click="OpenStation_Click" ToolTip="P02 主控 USB / 站点"/>
-      <Button x:Name="R1CanRail" Content="≋" Style="{StaticResource R1RailButton}" Click="OpenCan_Click" ToolTip="P03 CAN1/CAN0 被动监视"/>
-      <Button x:Name="R1DbcRail" Content="▤" Style="{StaticResource R1RailButton}" Click="OpenDbc_Click" ToolTip="P04 DBC 文件 / 信号编辑"/>
-      <Button x:Name="R1ControllerRail" Content="⊞" Style="{StaticResource R1RailButton}" Click="OpenController_Click" ToolTip="P05 Controller Designer"/>
-      <Button x:Name="R1BenchRail" Content="⌘" Style="{StaticResource R1RailButton}" Click="OpenBench_Click" ToolTip="P06 Manual Bench / 当前物理操作未接入"/>
-      <Button x:Name="R1WaveRail" Content="∿" Style="{StaticResource R1RailButton}" Click="OpenWave_Click" ToolTip="P07 波形采集与比较"/>
-      <Button x:Name="R1UdsRail" Content="⇄" Style="{StaticResource R1RailButton}" Click="OpenUds_Click" ToolTip="P08 诊断 Console"/>
-      <Button x:Name="R1FlashRail" Content="⇧" Style="{StaticResource R1RailButton}" Click="OpenFlash_Click" ToolTip="P09 CAN Flash"/>
-      <Button x:Name="R1TestRail" Content="⑂" Style="{StaticResource R1RailButton}" Click="OpenTest_Click" ToolTip="P10 TEST 编辑"/>
-      <Button x:Name="R1RunRail" Content="▶" Style="{StaticResource R1RailButton}" Click="OpenRun_Click" ToolTip="P11 TEST 调试（实验室）"/>
-      <Button x:Name="R1ProductionRail" Content="▣" Style="{StaticResource R1RailButton}" Click="OpenProduction_Click" ToolTip="P12 Production Scan"/>
-      <Button x:Name="R1RecordsRail" Content="▥" Style="{StaticResource R1RailButton}" Click="OpenRecords_Click" ToolTip="P13 Records &amp; Reports"/>
-      <Button x:Name="R1AuditRail" Content="⌗" Style="{StaticResource R1RailButton}" Click="OpenAudit_Click" ToolTip="Operations Audit"/>
-     </StackPanel>
-    </ScrollViewer>
-   </Border>
-   <Border x:Name="R1ExplorerPanel" Grid.Column="1" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
-    <DockPanel>
-     <Border DockPanel.Dock="Top" Padding="12,13,12,10" BorderBrush="#E8F0F8" BorderThickness="0,0,0,1">
-      <StackPanel>
-       <DockPanel><Button Content="«" Click="ToggleExplorer_Click" DockPanel.Dock="Right" ToolTip="隐藏资源管理器"
-          Background="Transparent" Foreground="#667C92" BorderThickness="0" Padding="2"/>
-         <TextBlock Text="EXPLORER / 工程资源" Style="{StaticResource R1PanelHeader}"/></DockPanel>
-       <TextBlock Text="{Binding ProjectLabel}" Foreground="{StaticResource R1Muted}" FontSize="11" Margin="0,5,0,9" TextWrapping="Wrap"/>
-       <TextBox Text="{Binding SearchText,UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索工程与测试节点"/>
-      </StackPanel>
-     </Border>
-     <ContentControl prism:RegionManager.RegionName="ProjectExplorerRegion"/>
-    </DockPanel>
-   </Border>
-   <GridSplitter x:Name="R1ExplorerSizer" Grid.Column="2" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
-   <Border Grid.Column="3" Background="#F5F7FA">
-    <TabControl x:Name="WorkbenchTabs" Background="#F5F7FA" SelectedIndex="10" SelectionChanged="WorkbenchTabs_SelectionChanged">
-     <TabControl.Style>
-      <Style TargetType="TabControl">
-       <Style.Triggers>
-        <DataTrigger Binding="{Binding ElementName=R1WorkspaceMode, Path=SelectedIndex}" Value="0">
-         <Setter Property="Template" Value="{StaticResource R1OperatorTabTemplate}"/>
-        </DataTrigger>
-       </Style.Triggers>
-      </Style>
-     </TabControl.Style>
-     <TabItem Header="工程资源">
-      <ScrollViewer Background="#F5F7FA" VerticalScrollBarVisibility="Auto">
-       <StackPanel Margin="20,18,20,25">
-        <DockPanel Margin="0,0,0,15">
-         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
-          <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
-          <Button Content="验证工程" Command="{Binding ValidateCommand}" Background="#1975BA"/>
-         </StackPanel>
-         <StackPanel>
-          <TextBlock Text="PROJECT WORKSPACE / 工程中心" Foreground="#8795A8" FontWeight="SemiBold" FontSize="11"/>
-          <TextBlock Text="工程中心" FontSize="23" FontWeight="SemiBold" Margin="0,6,0,2"/>
-          <TextBlock Text="通用 ECU 工程的资源、版本引用、测试程序与身份绑定"
-                     Foreground="#667C92" FontSize="11" TextWrapping="Wrap"/>
-         </StackPanel>
-        </DockPanel>
-        <Border Background="#EDF2F8" BorderBrush="#D5DFEA" BorderThickness="1" CornerRadius="6"
-                Padding="12" Margin="0,0,0,13">
-         <DockPanel>
-          <TextBlock DockPanel.Dock="Right" Text="REVISIONED ASSETS" Foreground="#177C55" FontSize="11" VerticalAlignment="Center"/>
-          <TextBlock Text="{Binding ProjectLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-         </DockPanel>
-        </Border>
-        <UniformGrid Columns="4" Margin="0,0,0,13">
-         <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
-          <StackPanel><TextBlock Text="{Binding Workspace.Project.Revision}" FontSize="22" FontWeight="SemiBold"/>
-           <TextBlock Text="工程 Revision" FontSize="11" Foreground="#667C92" Margin="0,5,0,0"/></StackPanel>
-         </Border>
-         <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
-          <StackPanel><TextBlock Text="{Binding Steps.Count}" FontSize="22" FontWeight="SemiBold"/>
-           <TextBlock Text="TEST 程序节点" FontSize="11" Foreground="#667C92" Margin="0,5,0,0"/></StackPanel>
-         </Border>
-         <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
-          <StackPanel><TextBlock Text="{Binding DbcSignals.Count}" FontSize="22" FontWeight="SemiBold"/>
-           <TextBlock Text="DBC 信号" FontSize="11" Foreground="#667C92" Margin="0,5,0,0"/></StackPanel>
-         </Border>
-         <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Padding="14">
-          <StackPanel><TextBlock Text="{Binding ResourceLines.Count}" FontSize="22" FontWeight="SemiBold"/>
-           <TextBlock Text="资源目录项" FontSize="11" Foreground="#667C92" Margin="0,5,0,0"/></StackPanel>
-         </Border>
-        </UniformGrid>
-        <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
-         <DockPanel>
-          <DockPanel DockPanel.Dock="Top" Background="#EDF2F8" Margin="0,0,0,8" LastChildFill="True">
-           <TextBlock Text="工程资源与操作入口" FontSize="13" FontWeight="SemiBold" Margin="13,12" VerticalAlignment="Center"/>
-           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Content="保存工程" Command="{Binding SaveCommand}"/>
-            <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"/>
-            <Button Content="TEST 编辑器" Click="OpenTest_Click"/>
-           </StackPanel>
-          </DockPanel>
-          <Grid Margin="12,0,12,13">
-           <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="210"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*" MinWidth="200"/></Grid.ColumnDefinitions>
-           <GroupBox Header="工程资源 / Assets" Foreground="#203249" BorderBrush="#D5DFEA" Background="#FFFFFF">
-            <ListBox ItemsSource="{Binding ResourceLines}" Background="#F5F7FA" Foreground="#C7D8E8" BorderThickness="0"/>
-           </GroupBox>
-           <GroupBox Grid.Column="2" Header="版本和引用诊断" Foreground="#203249" BorderBrush="#D5DFEA" Background="#FFFFFF">
-            <DockPanel>
-             <TextBlock DockPanel.Dock="Top" Text="{Binding Diagnostic}" Foreground="#90611A"
-                        TextWrapping="Wrap" Margin="8,5,8,10"/>
-             <ListBox ItemsSource="{Binding FactLines}" Background="#F5F7FA" Foreground="#667C92"
-                      BorderThickness="0"/>
+        <!-- Single coherent application chrome. No nested operator/developer shells. -->
+        <Border Grid.Row="0" Background="#F8FAFD" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+            <DockPanel Margin="13,0,13,0">
+                <TextBlock DockPanel.Dock="Right" Text="ECU 测试与开发 · R1"
+                    FontSize="11" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                <Border DockPanel.Dock="Left" Background="#176AB2" Width="26" Height="26"
+                    CornerRadius="5" Margin="0,0,9,0" VerticalAlignment="Center">
+                    <TextBlock Text="A" Foreground="White" FontWeight="Bold" FontSize="16"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="AutoTest Studio" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center"/>
+                <TextBlock Text="   /   " Foreground="#A3B0BF" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ProjectLabel}" Foreground="#58738E" VerticalAlignment="Center"/>
             </DockPanel>
-           </GroupBox>
-          </Grid>
-         </DockPanel>
         </Border>
-        <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6">
-         <StackPanel Margin="14">
-          <TextBlock Text="跨工具协作 / 使用资源，而不是复制配置" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,13"/>
-          <UniformGrid Columns="3">
-           <StackPanel Margin="0,0,17,0">
-            <TextBlock Text="01 · 工程定义" Foreground="#087D9C" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
-            <TextBlock Text="DBC、Controller、Station、Wave Reference 和 Flash Profile 必须保持明确的版本与来源。"
-                       TextWrapping="Wrap" FontSize="12" Foreground="#536C86"/>
-           </StackPanel>
-           <StackPanel Margin="0,0,17,0">
-            <TextBlock Text="02 · 验证与快照" Foreground="#087D9C" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
-            <TextBlock Text="TEST 运行按当前资源 Revision 固定定义；引用失效要显式处理，不可静默替换。"
-                       TextWrapping="Wrap" FontSize="12" Foreground="#536C86"/>
-           </StackPanel>
-           <StackPanel>
-            <TextBlock Text="03 · 运行事实" Foreground="#087D9C" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
-            <TextBlock Text="请求、设备 ACK、ECU 观测与 Verdict 分层记录，关联 DUT、RunId 与独立 Trace。"
-                       TextWrapping="Wrap" FontSize="12" Foreground="#536C86"/>
-           </StackPanel>
-          </UniformGrid>
-         </StackPanel>
+
+        <Menu Grid.Row="1" Background="#FFFFFF" Foreground="#25364A">
+            <MenuItem Header="文件">
+                <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
+                <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}"/>
+                <MenuItem Header="保存工程" Command="{Binding SaveCommand}"/>
+                <Separator/>
+                <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
+                <MenuItem Header="退出" Click="Close_Click"/>
+            </MenuItem>
+            <MenuItem Header="测试">
+                <MenuItem Header="自动测试" Click="OpenRun_Click"/>
+                <MenuItem Header="TEST 程序编辑" Click="OpenTest_Click"/>
+                <MenuItem Header="检查工程与引用" Command="{Binding ValidateCommand}"/>
+            </MenuItem>
+            <MenuItem Header="专业工具">
+                <MenuItem Header="设备连接 / Station" Click="OpenStation_Click"/>
+                <MenuItem Header="CAN 监视" Click="OpenCan_Click"/>
+                <MenuItem Header="DBC 信号编辑" Click="OpenDbc_Click"/>
+                <MenuItem Header="Controller / 按键映射" Click="OpenController_Click"/>
+                <MenuItem Header="手动台架" Click="OpenBench_Click"/>
+                <MenuItem Header="波形分析" Click="OpenWave_Click"/>
+                <MenuItem Header="UDS 诊断" Click="OpenUds_Click"/>
+                <MenuItem Header="CAN 烧录" Click="OpenFlash_Click"/>
+                <Separator/>
+                <MenuItem Header="扫码 COM / 编号绑定" Click="OpenProduction_Click"/>
+                <MenuItem Header="记录与报告" Click="OpenRecords_Click"/>
+                <MenuItem Header="操作审计" Click="OpenAudit_Click"/>
+            </MenuItem>
+            <MenuItem Header="视图">
+                <MenuItem Header="显示 / 隐藏工程树" Click="ToggleExplorer_Click"/>
+                <MenuItem Header="显示 / 隐藏运行日志" Click="ToggleBottom_Click"/>
+                <MenuItem Header="命令搜索 Ctrl+K" Click="CommandPalette_Click"/>
+            </MenuItem>
+            <MenuItem Header="窗口">
+                <MenuItem Header="浮动 TEST 编辑器" Click="FloatTest_Click"/>
+                <MenuItem Header="浮动 DBC 编辑器" Click="FloatDbc_Click"/>
+                <MenuItem Header="浮动波形分析" Click="FloatWave_Click"/>
+                <MenuItem Header="返回自动测试" Click="OpenRun_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- Test is the primary action. Scanner is only a small station input status. -->
+        <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+            <DockPanel Margin="12,7">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse x:Name="StationLed" Width="8" Height="8" Fill="#8A9CAF" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="StationStatus" Text="Station 未连接" VerticalAlignment="Center"
+                        Foreground="#59738D" FontSize="11" Margin="0,0,10,0"/>
+                    <Button Content="连接" Click="OpenStation_Click" Padding="7,3" MinHeight="27"/>
+                    <Border Height="23" Width="1" Background="#DCE4EE" Margin="6,0,12,0"/>
+                    <TextBlock x:Name="ScannerStatus" Text="扫码：等待编号" VerticalAlignment="Center"
+                        Foreground="#536D87" FontSize="11" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+                    <Button Content="COM" Click="OpenProduction_Click" Padding="7,3" MinHeight="27" Margin="9,0,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="▶ 自动测试" Background="#176AB2" Foreground="White"
+                        FontWeight="SemiBold" Click="OpenRun_Click"/>
+                    <Button Content="TEST 编辑" Click="OpenTest_Click"/>
+                    <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
+                    <Button Content="保存" Command="{Binding SaveCommand}"/>
+                    <Button Content="查找工具" Click="CommandPalette_Click" Margin="1,0,0,0"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
-       </StackPanel>
-      </ScrollViewer>
-     </TabItem>
-     <TabItem Header="Station / USB">
-      <ContentControl x:Name="R1StationHost"/>
-     </TabItem>
-     <TabItem Header="CAN Monitor">
-      <ContentControl x:Name="R1CanHost"/>
-     </TabItem>
-     <TabItem Header="DBC 编辑">
-      <ContentControl x:Name="R1DbcHost"/>
-     </TabItem>
-     <TabItem Header="Controller">
-      <ContentControl x:Name="R1ControllerHost"/>
-     </TabItem>
-     <TabItem Header="手动台架">
-      <ContentControl x:Name="R1BenchHost"/>
-     </TabItem>
-     <TabItem Header="Wave Studio">
-      <ContentControl x:Name="R1WaveHost"/>
-     </TabItem>
-     <TabItem Header="UDS Console">
-      <uds:UdsToolView x:Name="R1UdsView"/>
-     </TabItem>
-     <TabItem Header="CAN Flash">
-      <flash:FlashToolView x:Name="R1FlashView"/>
-     </TabItem>
-     <TabItem Header="TEST 编辑">
-      <ContentControl x:Name="R2AuthoringHost"/>
-     </TabItem>
-     <TabItem Header="自动测试">
-      <ContentControl x:Name="R1RunHost"/>
-     </TabItem>
-     <TabItem Header="编号绑定 / COM">
-      <ContentControl x:Name="R1ProductionHost"/>
-     </TabItem>
-     <TabItem Header="记录报告">
-      <ContentControl x:Name="R1RecordsHost"/>
-     </TabItem>
-     <TabItem Header="审计 / Trace">
-      <ContentControl x:Name="R1OperationsHost"/>
-     </TabItem>
-    </TabControl>
-   </Border>
-   <GridSplitter x:Name="R1InspectorSizer" Grid.Column="4" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
-   <Border x:Name="R1InspectorPanel" Grid.Column="5" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0">
-    <DockPanel>
-     <Border DockPanel.Dock="Top" Background="#EDF2F8" Padding="12,12,12,9">
-      <StackPanel>
-       <DockPanel><Button Content="×" Click="ToggleInspector_Click" DockPanel.Dock="Right" ToolTip="隐藏属性栏"
-                   Background="Transparent" Foreground="#667C92" BorderThickness="0" Padding="2"/>
-                 <TextBlock Text="INSPECTOR / 属性" Style="{StaticResource R1PanelHeader}"/></DockPanel>
-       <TextBlock x:Name="R1InspectorTitle" Text="工程 / Revision" FontSize="13" FontWeight="SemiBold" Margin="0,7,0,0"/>
-       <TextBlock x:Name="R1InspectorDescription" Text="当前选择、属性与资源关联" Foreground="{StaticResource R1Muted}" Margin="0,7,0,0" FontSize="11" TextWrapping="Wrap"/>
-      </StackPanel>
-     </Border>
-     <Grid>
-      <Border x:Name="R1StepInspectorHost" Visibility="Collapsed">
-       <ContentControl prism:RegionManager.RegionName="StepInspectorRegion"/>
-      </Border>
-      <StackPanel x:Name="R1InspectorContext" Margin="13">
-       <TextBlock Text="CURRENT CONTEXT / 当前工作区" Foreground="{StaticResource R1Muted}" FontSize="10" Margin="0,0,0,12"/>
-       <TextBlock Text="选中中央专业工具中的内容可查看、编辑或保存。操作与工程资源由对应 ViewModel 管理。" TextWrapping="Wrap" Foreground="#51677E" Margin="0,0,0,14"/>
-       <Border BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0" Margin="0,0,0,13"/>
-       <TextBlock Text="资源关联" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,10"/>
-       <TextBlock Text="{Binding ProjectLabel}" TextWrapping="Wrap" FontSize="12"/>
-       <TextBlock Text="Profile/Revision 与当前工作区随导航更新；具体专业属性在中央编辑器内显示。" Foreground="{StaticResource R1Muted}" TextWrapping="Wrap" FontSize="11" Margin="0,10,0,0"/>
-      </StackPanel>
-     </Grid>
-    </DockPanel>
-   </Border>
-  </Grid>
-  <!-- V6: operator has its OWN content surface, not the old P01–P13 tab host.
-       The exact SAME R1ProjectRunView instance is redocked by code-behind. -->
-  <Border Grid.Row="3" x:Name="R1OperatorSurface" Panel.ZIndex="10"
-          Visibility="Collapsed" Background="#F5F7FA">
-   <ContentControl x:Name="R1OperatorHost"/>
-  </Border>
-  <!-- R1 prototype: persistent bottom dock with four factual trace sources -->
-  <Border Grid.Row="4" x:Name="R1BottomPanel" Background="#FFFFFF" BorderBrush="{StaticResource R1Stroke}"
-          BorderThickness="0,1,0,0">
-   <DockPanel>
-    <DockPanel DockPanel.Dock="Top" Background="#EDF2F8" LastChildFill="True">
-     <Button DockPanel.Dock="Right" Content="⌄" Click="ToggleBottom_Click"
-             Background="Transparent" BorderThickness="0" Foreground="#667C92"
-             ToolTip="折叠/恢复底部面板" Padding="10,3"/>
-     <TextBlock x:Name="R1BottomLabel" Text="OUTPUT / TRACE" FontWeight="SemiBold"
-                Margin="12,5" Foreground="#667C92" VerticalAlignment="Center"/>
-    </DockPanel>
-    <TabControl x:Name="R1BottomTabs" Background="#FFFFFF" BorderThickness="0"
-                SelectedIndex="1" TabStripPlacement="Top">
-     <TabItem Header="CAN TRACE">
-      <DataGrid x:Name="R1BottomCanGrid" AutoGenerateColumns="True" IsReadOnly="True"
-                Background="#F5F7FA" Foreground="#203249" BorderThickness="0"
-                AlternatingRowBackground="#EDF2F8" RowBackground="#FFFFFF"
-                HeadersVisibility="Column" CanUserAddRows="False"
-                EnableRowVirtualization="True" EnableColumnVirtualization="True"/>
-     </TabItem>
-     <TabItem Header="RUN EVENTS">
-      <ContentControl prism:RegionManager.RegionName="RunMonitorRegion"/>
-     </TabItem>
-     <TabItem Header="OPERATIONS">
-      <DataGrid x:Name="R1BottomAuditGrid" AutoGenerateColumns="True" IsReadOnly="True"
-                Background="#F5F7FA" Foreground="#203249" BorderThickness="0"
-                AlternatingRowBackground="#EDF2F8" RowBackground="#FFFFFF"
-                HeadersVisibility="Column" EnableRowVirtualization="True"/>
-     </TabItem>
-     <TabItem Header="UDS / ISO-TP">
-      <DataGrid x:Name="R1BottomUdsGrid" AutoGenerateColumns="True" IsReadOnly="True"
-                Background="#F5F7FA" Foreground="#203249" BorderThickness="0"
-                AlternatingRowBackground="#EDF2F8" RowBackground="#FFFFFF"
-                HeadersVisibility="Column" EnableRowVirtualization="True"/>
-     </TabItem>
-    </TabControl>
-   </DockPanel>
-  </Border>
-  <Border Grid.Row="5" Background="#E0EDFB" Padding="10,3">
-   <DockPanel>
-    <TextBlock Text="AutoTest R1 · 实际执行证据与授权状态可追踪 / 现场验收待完成" FontWeight="SemiBold" Foreground="#203249"/>
-    <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" HorizontalAlignment="Right" Foreground="#294867"/>
-   </DockPanel>
-  </Border>
- </Grid>
+
+        <Grid Grid.Row="3" Background="#F6F8FB">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="ExplorerColumn" Width="257" MinWidth="0"/>
+                <ColumnDefinition x:Name="ExplorerSplitterColumn" Width="5"/>
+                <ColumnDefinition Width="*" MinWidth="620"/>
+            </Grid.ColumnDefinitions>
+            <!-- An IDE always provides access to the project and TEST structure. -->
+            <Border x:Name="ExplorerPanel" Grid.Column="0" Background="White"
+                BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Background="#F6F9FC" Padding="12,10"
+                        BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="‹" Click="ToggleExplorer_Click"
+                                Padding="6,0" MinHeight="20" Margin="0" Background="Transparent"
+                                BorderThickness="0" ToolTip="收起工程树"/>
+                            <TextBlock Text="工程 / TEST" FontSize="13" FontWeight="SemiBold"/>
+                        </DockPanel>
+                    </Border>
+                    <TabControl x:Name="ExplorerTabs" Background="White" BorderThickness="0">
+                        <TabItem Header="测试结构">
+                            <Grid Margin="7">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="当前 TEST · 测试用例" Margin="7,9,0,5"
+                                    Foreground="#6A7E93" FontSize="11"/>
+                                <ItemsControl x:Name="TestCasesList" Grid.Row="1" Margin="5,0,3,9">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Margin="5,5,5,5">
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding StepCount, StringFormat={}{0} 步}"
+                                                    Foreground="#7C8C9F" FontSize="11" VerticalAlignment="Center"/>
+                                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                                                    ToolTip="仅用于本次工程局部运行；扫码仍运行全部已发布 TEST">
+                                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" MaxWidth="170"/>
+                                                </CheckBox>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Border Grid.Row="2" BorderBrush="#E6EDF4" BorderThickness="0,1,0,0">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Top" Text="执行步骤" Margin="11,10,0,6"
+                                            Foreground="#6A7E93" FontSize="11"/>
+                                        <ListBox x:Name="PlannedStepsList" BorderThickness="0"
+                                            DisplayMemberPath="Name" Background="White"
+                                            Foreground="#29435E" FontSize="12"
+                                            SelectionChanged="PlannedSteps_SelectionChanged"/>
+                                    </DockPanel>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="工程文件">
+                            <ContentControl x:Name="ExplorerDocumentHost" Background="White"/>
+                        </TabItem>
+                    </TabControl>
+                </DockPanel>
+            </Border>
+            <GridSplitter x:Name="ExplorerSplitter" Grid.Column="1" Width="5"
+                HorizontalAlignment="Stretch" Background="#EDF2F8"/>
+            <!-- The ONE document host. The operator TEST is its first permanent document. -->
+            <TabControl x:Name="DocumentTabs" Grid.Column="2" Background="#F6F8FB"
+                BorderBrush="{StaticResource Border}" BorderThickness="0"
+                SelectionChanged="DocumentTabs_SelectionChanged"/>
+        </Grid>
+
+        <Border Grid.Row="4" Background="White"
+            BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="日志 ▴ / ▾" Click="ToggleBottom_Click"
+                    Background="Transparent" BorderThickness="0" Margin="0" Padding="12,2" MinHeight="25"/>
+                <TextBlock DockPanel.Dock="Left" Text="运行事件 / 原始证据" Foreground="#6A7E93"
+                    VerticalAlignment="Center" FontSize="11" Margin="13,0,9,0"/>
+                <TabControl x:Name="EvidenceTabs" Visibility="Collapsed"
+                    Background="White" BorderThickness="0" TabStripPlacement="Top">
+                    <TabItem Header="CAN TRACE">
+                        <DataGrid x:Name="CanTraceGrid" AutoGenerateColumns="True" IsReadOnly="True"
+                            CanUserAddRows="False" RowHeaderWidth="0"/>
+                    </TabItem>
+                    <TabItem Header="UDS / ISO-TP">
+                        <DataGrid x:Name="UdsTraceGrid" AutoGenerateColumns="True" IsReadOnly="True"
+                            CanUserAddRows="False" RowHeaderWidth="0"/>
+                    </TabItem>
+                    <TabItem Header="操作审计">
+                        <DataGrid x:Name="AuditGrid" AutoGenerateColumns="True" IsReadOnly="True"
+                            CanUserAddRows="False" RowHeaderWidth="0"/>
+                    </TabItem>
+                </TabControl>
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Row="5" Background="#EAF2FC" Padding="12,5">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="#56708B"
+                    FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="700"/>
+                <TextBlock Text="R1 · TEST 为主 · 真实硬件状态和执行事实独立记录" FontSize="11"
+                    Foreground="#345976"/>
+            </DockPanel>
+        </Border>
+    </Grid>
 </Window>
