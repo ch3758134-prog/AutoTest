@@ -62,6 +62,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private string _lastEvidence = "ACK：未知 · 实际电压：未测量";
     private string _directResult = "尚未操作。勾选 K01～K20 只修改准备发送的掩码，不会触发硬件。";
     private string _ignStatus = "IGN 实际电平未知 · 尚未收到本次主控命令 ACK";
+    private string _solenoidStatus = "夹具机械状态 UNKNOWN · 尚未读取当前固件动作值";
     private uint? _lastDirectAcceptedMask;
     private string? _lastDirectOperationId;
     private bool _updatingSwitches;
@@ -100,6 +101,15 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             () => !Busy && _connection.State == BenchConnection.Connected)
             .ObservesProperty(() => Busy);
         IgnOffCommand = new DelegateCommand(async () => await SetIgnAsync(false),
+            () => !Busy && _connection.State == BenchConnection.Connected)
+            .ObservesProperty(() => Busy);
+        SolenoidRaiseCommand = new DelegateCommand(async () => await SetSolenoidAsync(0),
+            () => !Busy && _connection.State == BenchConnection.Connected)
+            .ObservesProperty(() => Busy);
+        SolenoidLowerCommand = new DelegateCommand(async () => await SetSolenoidAsync(1),
+            () => !Busy && _connection.State == BenchConnection.Connected)
+            .ObservesProperty(() => Busy);
+        SolenoidReadCommand = new DelegateCommand(async () => await ReadSolenoidAsync(),
             () => !Busy && _connection.State == BenchConnection.Connected)
             .ObservesProperty(() => Busy);
         foreach (var i in Enumerable.Range(0, 20))
@@ -157,6 +167,14 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public ICommand ClearSwitchesCommand { get; }
     public ICommand IgnOnCommand { get; }
     public ICommand IgnOffCommand { get; }
+    public ICommand SolenoidRaiseCommand { get; }
+    public ICommand SolenoidLowerCommand { get; }
+    public ICommand SolenoidReadCommand { get; }
+    public string SolenoidStatus
+    {
+        get => _solenoidStatus;
+        private set => SetProperty(ref _solenoidStatus, value);
+    }
     public string IgnStatus
     {
         get => _ignStatus;
@@ -445,6 +463,67 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         finally { Busy = false; }
     }
 
+    public async Task SetSolenoidAsync(byte action)
+    {
+        if (Busy || action > 1) return;
+        Busy = true;
+        // Physical fixture movement invalidates any prior voltage observation
+        // context. The request may still fail/timeout, so mechanical state
+        // remains UNKNOWN until the operator separately observes it.
+        _lastState = null; _lastOperationId = null;
+        _lastDirectAcceptedMask = null; _lastDirectOperationId = null;
+        ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
+        SolenoidStatus = action == 0
+            ? "请求电磁阀升起 · 等待主控 ACK；机械位置未知"
+            : "请求电磁阀下落 · 等待主控 ACK；机械压紧未确认";
+        Append(WorkbenchSeverity.Progress, "SET_SOL 请求",
+            $"真实 USB 0x16 / action {action}");
+        try
+        {
+            var result = await _port.SetSolenoidAsync(action, CancellationToken.None);
+            SolenoidStatus = result.Accepted
+                ? $"主控已接受 SET_SOL={action}；实际夹具机械状态仍 UNKNOWN"
+                : $"SET_SOL={action} 未确认：{result.ErrorCode ?? "UNKNOWN"}；实际机械位置 UNKNOWN";
+            LastOperation = $"SET_SOL {action} / " + (result.Accepted ? "主控 ACK" : "UNKNOWN / DENIED");
+            LastEvidence = result.AckDescription ?? "主控命令无有效 ACK";
+            Append(result.Accepted ? WorkbenchSeverity.Success : WorkbenchSeverity.Error,
+                result.Accepted ? "主控接受夹具动作（非到位反馈）" : "夹具动作失败/不确定",
+                $"REQ {result.RawRequest ?? "—"} | RESP {result.RawResponse ?? "—"} | " +
+                $"Generation {result.SessionGeneration?.ToString() ?? "—"} | " +
+                $"{result.ErrorCode ?? "—"} {result.ErrorMessage ?? ""}",
+                result.OperationId, result.TraceReference);
+        }
+        catch (Exception ex)
+        {
+            SolenoidStatus = "SET_SOL 请求失败，机械状态 UNKNOWN：" + ex.Message;
+            Failure("夹具电磁阀操作", ex);
+        }
+        finally { Busy = false; }
+    }
+
+    public async Task ReadSolenoidAsync()
+    {
+        if (Busy) return;
+        Busy = true;
+        try
+        {
+            var result = await _port.ReadSolenoidAsync(CancellationToken.None);
+            SolenoidStatus = result.Accepted
+                ? $"GET_SOL 固件状态：{result.RawResponse ?? "UNKNOWN"}；机械到位仍未验证"
+                : $"GET_SOL 读取失败：{result.ErrorCode ?? "UNKNOWN"}；机械状态 UNKNOWN";
+            Append(result.Accepted ? WorkbenchSeverity.Success : WorkbenchSeverity.Error,
+                "GET_SOL / GPIO 动作编码", result.AckDescription ?? result.ErrorMessage ??
+                "固件状态未知，不代表夹具机械到位",
+                result.OperationId, result.TraceReference);
+        }
+        catch (Exception ex)
+        {
+            SolenoidStatus = "GET_SOL 读取异常；机械状态 UNKNOWN";
+            Failure("读取夹具固件状态", ex);
+        }
+        finally { Busy = false; }
+    }
+
     public async Task RefreshConnectionAsync()
     {
         if (Busy) return;
@@ -560,6 +639,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             _lastState = null; _lastOperationId = null;
             _lastDirectAcceptedMask = null; _lastDirectOperationId = null;
             IgnStatus = "USB 已断连；IGN 实际电平未知，不能推断已关闭";
+            SolenoidStatus = "USB 已断连；夹具机械状态 UNKNOWN，不能推断已升起或已压紧";
             // Any subsequent connection starts from fresh discovery.
             SelectedDevice = null;
             Devices.Clear();
@@ -570,6 +650,9 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         ((DelegateCommand)ApplyDirectMaskCommand).RaiseCanExecuteChanged();
         ((DelegateCommand)IgnOnCommand).RaiseCanExecuteChanged();
         ((DelegateCommand)IgnOffCommand).RaiseCanExecuteChanged();
+        ((DelegateCommand)SolenoidRaiseCommand).RaiseCanExecuteChanged();
+        ((DelegateCommand)SolenoidLowerCommand).RaiseCanExecuteChanged();
+        ((DelegateCommand)SolenoidReadCommand).RaiseCanExecuteChanged();
     }
     private void Failure(string stage, Exception ex)
     {
