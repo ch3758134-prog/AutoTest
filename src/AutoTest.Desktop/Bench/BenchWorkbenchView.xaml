@@ -176,7 +176,7 @@
        FontSize="11" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
      </StackPanel>
 
-     <DataGrid Grid.Row="1" ItemsSource="{Binding Messages}"
+     <DataGrid x:Name="TransmitGrid" Grid.Row="1" ItemsSource="{Binding Messages}"
       SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
       HeadersVisibility="Column" RowHeaderWidth="0" Margin="0,0,0,8"
