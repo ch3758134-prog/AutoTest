@@ -282,6 +282,14 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
             Status = "存在未保存修改。请先保存；重新加载不会覆盖草稿。";
             return;
         }
+        if (DifferentProject)
+        {
+            // No local edits to lose. Drop previously loaded ECU actions before
+            // touching another project's store, including unsaved projects.
+            SelectedAction = null;
+            Actions.Clear();
+            _editorProjectId = _port.ActiveProjectId;
+        }
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
         try
