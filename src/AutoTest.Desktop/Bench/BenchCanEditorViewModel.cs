@@ -128,7 +128,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             : $"当前选中：DBC · {SelectedMessage.DbcMessageName}（修改下方信号自动编码）";
     public string SendModeStatus => _periodicRunning
         ? $"正在周期发送 {CheckedCount} 条 · ACK {_frameCount} 帧"
-        : $"未发送 · 已勾选 {CheckedCount} 条";
+        : $"周期未运行 · 已勾选 {CheckedCount} 条";
     private string? _editorProjectId;
     private bool DifferentProject => _editorProjectId != _port.ActiveProjectId;
     private const string ProjectChangedMessage =
