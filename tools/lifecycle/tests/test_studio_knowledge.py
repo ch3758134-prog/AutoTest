@@ -170,6 +170,22 @@ class EngineeringKnowledgeTests(unittest.TestCase):
         with self.assertRaisesRegex(RuleError,"missing/cross-project"):
             preview(altered)
 
+    def test_real_autotest_pilot_bundle_can_be_imported_as_candidates(self):
+        source=Path(__file__).resolve().parents[1]/"examples"/"autotest_knowledge_pilot.json"
+        bundle=json.loads(source.read_text(encoding="utf-8"))
+        result=self.k.intake(self.project,bundle,"AI management trial","AI_CANDIDATE")
+        self.assertEqual(len(result["items"]),9)
+        self.assertEqual(len(result["links"]),8)
+        records=self.k.list(self.project)
+        self.assertEqual(len(records["items"]),9)
+        self.assertTrue(all(x["state"]=="CANDIDATE" for x in records["items"]))
+        self.assertTrue(all(x["origin_role"]=="AI_CANDIDATE" for x in records["items"]))
+        self.assertTrue(all(x["state"]=="CANDIDATE" for x in records["links"]))
+        self.assertEqual(result["status"],"CANDIDATE_ONLY")
+        self.assertEqual(
+            self.k.intake(self.project,bundle,"Another collaborator","AI_CANDIDATE")
+            ["already_imported"],True)
+
     def test_legacy_archive_without_knowledge_remains_restorable(self):
         archive=self.store.export_project(self.project)
         archive.pop("knowledge")
