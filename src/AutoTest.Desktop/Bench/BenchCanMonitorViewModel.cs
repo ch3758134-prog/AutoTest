@@ -169,6 +169,8 @@ public sealed class BenchCanMonitorViewModel : BindableBase
         ById.Clear();
         History.Clear();
         _ids.Clear();
+        while (_pending.TryDequeue(out _)) { }
+        Interlocked.Exchange(ref _pendingCount, 0);
         _received = 0;
         Interlocked.Exchange(ref _displayDropped, 0);
         RaisePropertyChanged(nameof(Received));
