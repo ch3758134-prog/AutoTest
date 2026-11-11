@@ -61,8 +61,11 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
         info=self.g.status(self.project["id"])
         self.assertEqual(info["baseline_status"],"UNBASELINED")
         self.assertIsNone(info["baseline"])
-        with self.assertRaisesRegex(RuleError,"governed"):
-            self.store.update_project(self.project["id"],{"body":"Unchecked replacement"})
+        # Legacy body is historical project context now, not canonical identity.
+        self.store.update_project(self.project["id"],{
+            "body":"More accurate historical context","actor":"Human owner"})
+        self.assertEqual(self.store.project(self.project["id"])["project"]["body"],
+                         "More accurate historical context")
         change=self.proposal()
         self.assertFalse(change["gate"]["ready"])
         self.assertEqual(change["gate"]["missing_domains"],["POSITIONING"])
