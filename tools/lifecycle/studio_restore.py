@@ -17,6 +17,7 @@ from studio_management import Management
 from studio_verification import Verification
 from studio_governance import DefinitionGovernance, definition, digest
 from studio_definition_suggestions import DefinitionSuggestions
+from studio_knowledge import EngineeringKnowledge
 
 TABLES = (
     "projects","objects","revisions","relations","events",
@@ -27,7 +28,8 @@ TABLES = (
     "definition_package_reviews","definition_invalidations",
     "definition_research_tasks","definition_research_submissions",
     "definition_research_decisions","definition_research_scope_decisions",
-    "definition_suggestions"
+    "definition_suggestions",
+    "engineering_knowledge","engineering_knowledge_revisions","engineering_knowledge_links"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -77,6 +79,11 @@ def _validate(archive):
                          "research_decisions","research_scope_decisions","suggestions")
         sections["g_"+key]=_array(governance.get(key,[] if optional else None),
                                  "governance."+key)
+    knowledge=archive.get("knowledge",{"items":[],"revisions":[],"links":[]})
+    if not isinstance(knowledge,dict):
+        raise RuleError("Invalid engineering knowledge archive")
+    for kind in ("items","revisions","links"):
+        sections["k_"+kind]=_array(knowledge.get(kind,[]),"knowledge."+kind)
     objects=sections["objects"]
     ids={x.get("id") for x in objects}
     if (None in ids or len(ids)!=len(objects) or
@@ -280,6 +287,65 @@ def _validate(archive):
     repository=execution.get("repository")
     if repository is None and sections["tasks"]:
         raise RuleError("Execution tasks require a GitHub configuration")
+    item_rows=sections["k_items"]
+    knowledge_ids={x.get("id") for x in item_rows}
+    if None in knowledge_ids or len(knowledge_ids)!=len(item_rows):
+        raise RuleError("Duplicate or missing knowledge item identity")
+    knowledge_map={x["id"]:x for x in item_rows}
+    for item in item_rows:
+        if item.get("project_id")!=pid or item.get("state") not in (
+            "CANDIDATE","ACCEPTED","REJECTED","RESEARCH_NEEDED"):
+            raise RuleError("Unknown or cross-project knowledge entry")
+        if type(item.get("revision")) is not int or item["revision"]<1:
+            raise RuleError("Knowledge entry revision must be positive")
+        for field in ("concept_ids","source_refs","related_objects"):
+            try:values=json.loads(item[field])
+            except (KeyError,ValueError,TypeError) as exc:
+                raise RuleError("Invalid knowledge "+field) from exc
+            if not isinstance(values,list) or any(not isinstance(x,str) for x in values):
+                raise RuleError("Knowledge "+field+" must be a list of strings")
+            if field=="related_objects" and any(x not in ids for x in values):
+                raise RuleError("Knowledge references missing engineering object")
+    revision_rows=sections["k_revisions"]
+    revision_keys=set()
+    revisions_by_item={}
+    for record in revision_rows:
+        key=(record.get("item_id"),record.get("revision"))
+        if key in revision_keys or key[0] not in knowledge_ids:
+            raise RuleError("Knowledge revision duplicated or references missing entry")
+        revision_keys.add(key)
+        try:snapshot=json.loads(record["snapshot"])
+        except (ValueError,KeyError,TypeError) as exc:
+            raise RuleError("Invalid knowledge revision snapshot") from exc
+        if (not isinstance(snapshot,dict) or snapshot.get("id")!=key[0] or
+            snapshot.get("revision")!=key[1]):
+            raise RuleError("Knowledge revision snapshot does not match its identity")
+        revisions_by_item.setdefault(key[0],set()).add(key[1])
+    for entry in item_rows:
+        revs=revisions_by_item.get(entry["id"],set())
+        if revs!=set(range(1,entry["revision"]+1)):
+            raise RuleError("Knowledge revision history must be complete")
+    link_ids=set()
+    for link in sections["k_links"]:
+        lid=link.get("id")
+        if not lid or lid in link_ids:
+            raise RuleError("Duplicate or missing engineering knowledge link")
+        link_ids.add(lid)
+        source=knowledge_map.get(link.get("source_id"))
+        target=knowledge_map.get(link.get("target_id"))
+        if (not source or not target or source["id"]==target["id"] or
+            link.get("project_id")!=pid):
+            raise RuleError("Knowledge link cannot reference missing/cross-project entries")
+        if (link.get("source_revision") not in revisions_by_item[source["id"]] or
+            link.get("target_revision") not in revisions_by_item[target["id"]]):
+            raise RuleError("Knowledge link targets missing pinned revisions")
+        if link.get("state") not in ("CANDIDATE","CONFIRMED","REJECTED"):
+            raise RuleError("Unknown knowledge link review state")
+        if (link["state"]=="CONFIRMED" and (
+            source["state"]!="ACCEPTED" or target["state"]!="ACCEPTED" or
+            source["revision"]!=link["source_revision"] or
+            target["revision"]!=link["target_revision"])):
+            raise RuleError("Confirmed knowledge link has stale or unreviewed endpoints")
     return pid,sections,execution
 
 
@@ -320,6 +386,7 @@ def restore_to_empty(archive,output_database):
     Verification(store)
     DefinitionGovernance(store)
     DefinitionSuggestions(store)
+    EngineeringKnowledge(store)
     del engine,research
     with store.db() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -340,6 +407,9 @@ def restore_to_empty(archive,output_database):
             db.execute("UPDATE objects SET parent_id=? WHERE id=?",(parent,oid))
         _insert(db,"revisions",sec["revisions"])
         _insert(db,"relations",sec["relations"])
+        _insert(db,"engineering_knowledge",sec["k_items"])
+        _insert(db,"engineering_knowledge_revisions",sec["k_revisions"])
+        _insert(db,"engineering_knowledge_links",sec["k_links"])
         _insert(db,"events",sec["events"])
         for table,key in (("studies","studies"),("study_options","options"),
                           ("study_experiments","experiments"),("study_results","results"),
