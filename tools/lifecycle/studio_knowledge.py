@@ -250,7 +250,7 @@ class EngineeringKnowledge:
                 "schema":"engineering-knowledge-ledger/1",
                 "project_id":project_id,
                 "items":items,"links":links,"revisions":revisions,
-                "note":"Accepted means a human recorded review, not independent verification of source truth or engineering release.",
+                "note":"Provenance is claimed by the submitting actor, not authenticated source metadata. Accepted means human review, not independent verification or engineering release.",
             }
 
     def propose(self,project_id,payload,actor,origin_role):
