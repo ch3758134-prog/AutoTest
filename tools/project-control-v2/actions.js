@@ -111,6 +111,8 @@ window.projectActions=(()=>{
      {name:'title',label:'工作名称',required:true,value:existing?.title||''},
      {name:'deliverable_id',label:'所属交付目标',type:'select',required:true,value:existing?.deliverable_id||data.plan.deliverables[0]?.id,
       options:data.plan.deliverables.map(d=>({value:d.id,label:d.title}))},
+     {name:'parent_work_id',label:'上级工作（工作分解）',type:'select',value:existing?.parent_work_id||'',
+      options:[{value:'',label:'独立工作，无上级'},...workOptions(id)]},
      {name:'kind',label:'工作性质',type:'select',value:existing?.kind||'RESEARCH',options:Object.entries(types).map(([value,label])=>({value,label}))},
      {name:'mode',label:'工作类型',type:'select',value:existing?.mode||'EXPLORATORY',options:[{value:'EXPLORATORY',label:'探索研究（不需要预先批准所有结论）'},{value:'CONTROLLED',label:'受控工程工作（不能凭候选设计执行）'}]},
      {name:'horizon',label:'计划层次',type:'select',value:existing?.horizon||'CURRENT',options:[{value:'CURRENT',label:'当前'},{value:'NEXT',label:'下一步'},{value:'LATER',label:'后续规划'}]},
@@ -128,7 +130,7 @@ window.projectActions=(()=>{
    ];
    dialogBox(id?'调整开发计划中的工作':'添加一项开发工作',
      '变更计划内容会留下版本记录；已批准计划会进入待重新审查的候选修订。',fields,async v=>{
-       const item={title:v.title,deliverable_id:v.deliverable_id,kind:v.kind,
+       const item={title:v.title,deliverable_id:v.deliverable_id,parent_work_id:v.parent_work_id||null,kind:v.kind,
          mode:v.mode,horizon:v.horizon,priority:v.priority,assignee:v.assignee,
          expected_result:v.expected_result,exit_condition:v.exit_condition,
          depends_on:v.depends_on,sources:sourcesFor(v.source_ids,v.mode),
@@ -338,6 +340,42 @@ window.projectActions=(()=>{
      r.status==='CLOSED'?'approved':'pending')+'</div><p class="pm-muted">'+a(r.description)+'</p>'+
    '<p class="pm-muted">可能性 '+a(r.likelihood)+' / 影响 '+a(r.severity)+' / 负责 '+a(r.owner)+'</p>'+
    (r.status==='OPEN'||r.status==='MITIGATING'?'<button class="ghost" data-pm="risk-review" data-id="'+a(r.id)+'">更新风险</button>':'')+'</div>';
+ function wbsView(){
+   let out='<div class="pm-record">';
+   for(const d of data.plan.deliverables){
+     out+='<h3>'+a(d.title)+'</h3>';
+     const related=data.plan.work.filter(w=>w.deliverable_id===d.id);
+     const byParent=(parent,depth,seen)=>{
+       if(depth>10)return '';
+       return related.filter(w=>(w.parent_work_id||null)===parent).map(w=>{
+         if(seen.has(w.id))return '';
+         const nested=new Set(seen);nested.add(w.id);
+         return '<div class="pm-wbs-item" style="margin-left:'+Math.min(depth*18,126)+'px" data-work="'+a(w.id)+'"><span>'+
+          (depth?'└ ':'• ')+a(w.title)+'</span><span class="pm-muted">'+a(types[w.kind]||w.kind)+'</span></div>'+
+          byParent(w.id,depth+1,nested);
+       }).join('');
+     };
+     out+=byParent(null,0,new Set());
+   }
+   return out+'</div>';
+ }
+ function ganttView(){
+   const works=data.plan.work.filter(w=>w.planned_start&&w.planned_finish);
+   if(!works.length)return '<div class="empty">当前尚无根据可靠日期形成的时间排期。先研究范围、依赖和工作量，再安排日期；不会生成虚构甘特图。</div>';
+   const day=s=>Date.parse(s+'T00:00:00Z')/86400000;
+   let first=Math.min(...works.map(w=>day(w.planned_start)));
+   let last=Math.max(...works.map(w=>day(w.planned_finish)));
+   const extent=Math.max(1,last-first+1);
+   return '<div class="pm-gantt"><div class="pm-gantt-axis"><span>'+a(works.reduce((x,w)=>day(w.planned_start)<day(x)?w.planned_start:x,works[0].planned_start))+'</span><span>'+
+      a(works.reduce((x,w)=>day(w.planned_finish)>day(x)?w.planned_finish:x,works[0].planned_finish))+'</span></div>'+
+     works.map(w=>{
+       const left=(day(w.planned_start)-first)/extent*100;
+       const width=Math.max(1.5,(day(w.planned_finish)-day(w.planned_start)+1)/extent*100);
+       return '<div class="pm-gantt-row" data-work="'+a(w.id)+'"><div class="pm-gantt-title">'+a(w.title)+'</div>'+
+         '<div class="pm-gantt-track"><span style="left:'+left+'%;width:'+width+'%"></span></div>'+
+         '<div class="pm-gantt-dates">'+a(w.planned_start)+' 至 '+a(w.planned_finish)+'</div></div>';
+     }).join('')+'</div>';
+ }
  const milestoneItem=m=>'<div class="pm-record"><div class="pm-record-head"><strong>'+a(m.title)+'</strong>'+
    pill(m.target_date?'计划日期 '+m.target_date:'尚无可靠日期','unknown')+'</div>'+
    '<p class="pm-muted">'+a(m.exit_condition)+'</p><button class="ghost" data-pm="milestone-edit" data-id="'+a(m.id)+'">调整里程碑</button></div>';
@@ -387,6 +425,8 @@ window.projectActions=(()=>{
        (record.changes.length?record.changes.slice().reverse().map(changeItem).join(''):'<p class="pm-muted">尚未在新版管理记录中登记变化；不表示工程没有历史问题。</p>')+
        '</div></div></section>';
      root.insertAdjacentHTML('beforeend',foot);
+     root.insertAdjacentHTML('beforeend','<section class="section"><div class="pm-two-cols"><div class="panel"><h2>按交付成果分解工作</h2>'+
+       wbsView()+'</div><div class="panel"><h2>计划时间安排</h2>'+ganttView()+'</div></div></section>');
      root.insertAdjacentHTML('beforeend','<section class="section pm-two-cols">'+
        '<div class="panel"><div class="pane-title"><h2>交付里程碑</h2><button class="ghost" data-pm="milestone-new">添加里程碑</button></div>'+
        (data.plan.milestones?.length?data.plan.milestones.map(milestoneItem).join(''):'<p class="pm-muted">尚无里程碑。可以先建立无日期的检查点。</p>')+
