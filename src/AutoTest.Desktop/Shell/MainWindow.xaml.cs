@@ -2,10 +2,11 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using AutoTest.Desktop.G4;
 using AutoTest.Desktop.Bench;
+using AutoTest.Desktop.Project;
 using AutoTest.Desktop.Tools.ControllerConfig;
 using AutoTest.Desktop.Tools.Dbc;
 using AutoTest.Desktop.Tools.Flash;
@@ -15,371 +16,467 @@ using AutoTest.Desktop.Tools.Records;
 using AutoTest.Desktop.Tools.Testing;
 using AutoTest.Desktop.Tools.Uds;
 using AutoTest.Desktop.Tools.Wave;
+using AutoTest.Devices.Can;
 using AutoTest.Records.Exports;
 using AutoTest.Records.Operations;
 using AutoTest.Records.Queries;
 using AutoTest.Records.Storage;
 using AutoTest.Specialists.Wave;
-using AutoTest.Devices.Can;
 
 namespace AutoTest.Desktop.Shell;
 
 /// <summary>
-/// Exactly one formal R1 Shell. Professional Views are hosted in-place, sharing
-/// G4 Application/Record resources rather than launching competing workspaces.
-/// The embedded DEVICE view owns at most one physical USB connection and is
-/// constructed lazily on the first Station/CAN navigation.
+/// The one and only R1 product shell.  Documents are opened on demand, TEST is
+/// always the primary document, and the explorer is present in both running and
+/// editing. There are NO numbered pages, NO mode switcher, NO second operator
+/// surface and NO duplicate testing/device services.
 /// </summary>
 public partial class MainWindow : Window
 {
-    private G4ToolsWindow? _compatTools;
-    private AutoTest.DeviceLab.DeviceLabEmbeddedView? _device;
-    private LabProductionToolView? _production;
-    private LabTestWorkspaceViewModel? _projectTestModel;
-    private Guid? _projectTestContextId;
-    private CanFrameHub? _waveReplayHub;
+    private readonly Dictionary<string, TabItem> _documents = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, FrameworkElement> _views = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Window> _floating = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _titles = new(StringComparer.Ordinal)
+    {
+        ["run"] = "自动测试",
+        ["program"] = "TEST 编辑",
+        ["station"] = "设备 / CAN",
+        ["dbc"] = "DBC 编辑",
+        ["controller"] = "Controller",
+        ["bench"] = "手动台架",
+        ["wave"] = "Wave Studio",
+        ["uds"] = "UDS Console",
+        ["flash"] = "CAN Flash",
+        ["scan"] = "编号绑定 / COM",
+        ["records"] = "记录报告",
+        ["operations"] = "操作审计"
+    };
+
     private MainWindowViewModel? _workspaceEventsOwner;
-    private ControllerConfigToolViewModel? _controllerConfiguration;
-    private bool _closePendingFlash;
-    private bool _closed;
+    private LabTestWorkspaceViewModel? _test;
+    private Guid? _testProjectId;
+    private ProjectExplorerView? _explorerView;
+    private AutoTest.DeviceLab.DeviceLabEmbeddedView? _device;
+    private LabProductionToolView? _scannerView;
+    private ControllerConfigToolViewModel? _controllerConfig;
+    private CanFrameHub? _waveReplayHub;
+    private FlashToolView? _flash;
     private bool _stationStatusSubscribed;
-    private bool _disposing;
+    private bool _closing;
+    private bool _closed;
+    private bool _closeAfterFlash;
     private bool _explorerHidden;
-    private bool _inspectorHidden;
-    private bool _bottomHidden;
-    private GridLength _bottomSaved = new(190);
-    private GridLength _explorerSaved = new(255);
-    private GridLength _inspectorSaved = new(286);
-    private string _activeKey = "project";
-    private bool _applyingWorkspaceMode;
-    // WPF TabControl raises SelectionChanged during InitializeComponent;
-    // generated x:Name fields that follow it in XAML are still null then.
-    private bool _xamlReady;
-    private readonly Dictionary<int, Window> _floatingDocuments = new();
-    private readonly HashSet<int> _openedDocuments = new() { 9, 10 };
+    private bool _logsExpanded;
 
     public MainWindow()
     {
         InitializeComponent();
-        _xamlReady = true;
-        R1FlashView.PhysicalOperationStopped += (_, _) =>
-        {
-            if (_closePendingFlash && !_disposing && !_closed && !Dispatcher.HasShutdownStarted)
-                Dispatcher.BeginInvoke(new Action(Close));
-        };
-        if (R1UdsView.DataContext is UdsToolViewModel udsSource)
-            R1BottomUdsGrid.ItemsSource=udsSource.TraceRows;
-        if (R1FlashView.DataContext is FlashToolViewModel flashModel)
-            R1FlashView.AttachPhysicalLink(() => _device?.Controller);
-        if (R1UdsView.DataContext is UdsToolViewModel udsModel)
-            udsModel.AttachPhysicalLink(
-                () => _device?.Controller,
-                request => MessageBox.Show(this,request,"确认真实 CAN1 UDS 只读诊断",
-                    MessageBoxButton.YesNo,MessageBoxImage.Question,
-                    MessageBoxResult.No)==MessageBoxResult.Yes);
-        DataContextChanged += (_, _) =>
-        {
-            BindWorkspaceEvents();
-            PopulateTab(WorkbenchTabs.SelectedIndex);
-            if (IsLoaded && R1WorkspaceMode.SelectedIndex == 0)
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (!_closed && !Dispatcher.HasShutdownStarted)
-                        ApplyWorkspaceMode(0);
-                }), System.Windows.Threading.DispatcherPriority.ContextIdle);
-        };
-        BindWorkspaceEvents();
-        UpdateContext(10);
+        DataContextChanged += (_, _) => BindWorkspace();
         Loaded += (_, _) =>
         {
-            // Instantiate the real COM scanner once, independently of the TEST view.
-            // Scanning does not become a TEST step or a second production runner.
-            PopulateTab(11);
-            if (_production?.DataContext is R1ProductionScannerViewModel scanner)
-                scanner.PropertyChanged += (_, _) => RefreshScannerStrip();
-            RefreshScannerStrip();
-            // Force the operator TEST viewport only after Prism has attached
-            // its workspace. The old P01 document may otherwise win startup.
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (!_closed && !Dispatcher.HasShutdownStarted)
-                    ApplyWorkspaceMode(0);
-            }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            BindWorkspace();
+            if (DataContext is MainWindowViewModel vm)
+                SetupWorkspace(vm);
         };
     }
 
-    private void BindWorkspaceEvents()
+    private void BindWorkspace()
     {
         if (_workspaceEventsOwner is not null)
-            _workspaceEventsOwner.WorkspaceAssetsChanged -= OnWorkspaceAssetsChanged;
+            _workspaceEventsOwner.WorkspaceAssetsChanged -= OnAssetsChanged;
         _workspaceEventsOwner = DataContext as MainWindowViewModel;
         if (_workspaceEventsOwner is not null)
-            _workspaceEventsOwner.WorkspaceAssetsChanged += OnWorkspaceAssetsChanged;
+            _workspaceEventsOwner.WorkspaceAssetsChanged += OnAssetsChanged;
+        if (IsLoaded && _workspaceEventsOwner is not null)
+            SetupWorkspace(_workspaceEventsOwner);
     }
 
-    private void OnWorkspaceAssetsChanged(object? sender, EventArgs args)
+    private void SetupWorkspace(MainWindowViewModel vm)
+    {
+        if (vm.G4 is null) return;
+        if (_explorerView is null)
+        {
+            _explorerView = new ProjectExplorerView(vm);
+            _explorerView.OpenRequested += OpenDocument;
+            ExplorerDocumentHost.Content = _explorerView;
+        }
+        EnsureTestModel(vm.G4.Workspace);
+        EnsureScanner(vm);
+        OpenDocument("run");
+    }
+
+    private LabTestWorkspaceViewModel EnsureTestModel(AutoTest.Application.V1.V1Workspace workspace)
+    {
+        if (_test is null)
+        {
+            _test = new LabTestWorkspaceViewModel(workspace);
+            _test.AttachPhysicalReadOnly(
+                () => _device?.Controller,
+                () => MessageBox.Show(this,
+                    "本次工程 TEST 将通过 R1 Station 的 CAN1 读取真实 ECU。\n" +
+                    "请核对接线、工程及 DBC 修订。仅已授权且实际实现的物理操作允许执行。\n" +
+                    "确认本次实际 TEST 运行？",
+                    "真实 ECU 测试授权", MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
+            _test.AttachPhysicalController(
+                () => _controllerConfig?.CurrentProfile,
+                () => _controllerConfig?.FilePath,
+                summary => MessageBox.Show(this, summary,
+                    "真实 CAN0 / KEY_SIM 组合按键确认",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                    MessageBoxResult.No) == MessageBoxResult.Yes);
+            _testProjectId = workspace.Project.Id.Value;
+            TestCasesList.ItemsSource = _test.TestCases;
+            PlannedStepsList.ItemsSource = _test.RunStepRows;
+        }
+        else if (_testProjectId != workspace.Project.Id.Value && !_test.Busy)
+        {
+            _test.ReloadFromProject();
+            _testProjectId = workspace.Project.Id.Value;
+        }
+        return _test;
+    }
+
+    private void EnsureScanner(MainWindowViewModel vm)
+    {
+        if (_scannerView is not null || vm.G4 is null) return;
+        var scan = new R1ProductionScannerViewModel();
+        scan.AttachProject(vm.G4.Workspace);
+        scan.PhysicalScanMatched += binding =>
+        {
+            // This path always runs the complete published TEST; the checkboxes
+            // in the engineering tree never affect production barcode selection.
+            Dispatcher.InvokeAsync(() =>
+            {
+                OpenDocument("run");
+                _ = RunScannedTestAsync(scan, binding, vm.G4.Workspace,
+                    vm.G4.Records.Database);
+            });
+        };
+        scan.PropertyChanged += (_, _) =>
+        {
+            if (!_closed && !Dispatcher.HasShutdownStarted)
+                Dispatcher.InvokeAsync(RefreshScannerStatus);
+        };
+        _scannerView = new LabProductionToolView(scan);
+        RefreshScannerStatus();
+    }
+
+    private void RefreshScannerStatus()
+    {
+        if (_scannerView?.DataContext is not R1ProductionScannerViewModel scan) return;
+        var number = string.IsNullOrWhiteSpace(scan.ScanInput) ? "等待编号" : scan.ScanInput;
+        ScannerStatus.Text = "扫码：" + number + " · " + scan.MatchDetail;
+        ScannerStatus.ToolTip = ScannerStatus.Text;
+    }
+
+    private void OnAssetsChanged(object? sender, EventArgs e)
     {
         if (_closed || Dispatcher.HasShutdownStarted) return;
         if (!Dispatcher.CheckAccess())
         {
-            Dispatcher.InvokeAsync(() => OnWorkspaceAssetsChanged(sender, args));
+            Dispatcher.InvokeAsync(() => OnAssetsChanged(sender, e));
             return;
         }
-        // The formal R1 TEST editor must not continue to show a different
-        // project's program after the shared workspace opens/creates a project.
-        if (_workspaceEventsOwner is { } vm && _projectTestModel is not null &&
-            _projectTestContextId != vm.Workspace.Project.Id.Value)
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (_test is not null && _testProjectId != vm.Workspace.Project.Id.Value)
         {
-            if (_projectTestModel.Busy)
-                _projectTestModel.StopCommand.Execute(null);
+            if (_test.Busy) _test.StopCommand.Execute(null);
             else
             {
-                _projectTestModel.ReloadFromProject();
-                _projectTestContextId = vm.Workspace.Project.Id.Value;
+                _test.ReloadFromProject();
+                _testProjectId = vm.Workspace.Project.Id.Value;
             }
         }
-        if (R1DbcHost.Content is DbcToolView dbc &&
-            dbc.DataContext is DbcToolViewModel editor)
-            editor.RefreshProjectStatus();
-        if (R1WaveHost.Content is WaveWorkbenchView wave)
-            wave.Model.RefreshSignals();
+        if (_views.TryGetValue("dbc", out var dbc) &&
+            dbc.DataContext is DbcToolViewModel dbcVm)
+            dbcVm.RefreshProjectStatus();
+        if (_views.TryGetValue("wave", out var wave) && wave is WaveWorkbenchView w)
+            w.Model.RefreshSignals();
     }
 
-    private void Navigate(int tab, string key)
+    /// <summary>Only one tab for each currently opened actual document/tool.</summary>
+    private void OpenDocument(string key)
     {
-        // A request to edit or inspect a professional tool must leave the
-        // full-width operator viewport; never silently show old tabs over it.
-        if (R1WorkspaceMode is not null && R1WorkspaceMode.SelectedIndex == 0 &&
-            tab != 10 && !_applyingWorkspaceMode)
-            R1WorkspaceMode.SelectedIndex = tab is 0 or 9 ? 1 : 2;
-        _activeKey = key;
-        _openedDocuments.Add(tab);
-        WorkbenchTabs.SelectedIndex = tab;
-        PopulateTab(tab);
-        UpdateContext(tab);
-        RefreshDocumentTabVisibility();
-    }
-
-    private void WorkbenchTabs_SelectionChanged(object sender, SelectionChangedEventArgs args)
-    {
-        // This routed event fires while InitializeComponent is still creating
-        // TabItems. Do not call PopulateTab/UpdateContext until all x:Name
-        // controls (particularly R1OperatorHost) actually exist.
-        if (!_xamlReady || !ReferenceEquals(args.Source, WorkbenchTabs)) return;
-        int selected = WorkbenchTabs.SelectedIndex;
-        if (selected < 0) return;
-        if (IsLoaded && R1WorkspaceMode.SelectedIndex == 0 &&
-            selected != 10 && !_applyingWorkspaceMode)
+        if (_closed) return;
+        if (key == "project")
         {
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (!_closed && R1WorkspaceMode.SelectedIndex == 0)
-                    WorkbenchTabs.SelectedIndex = 10;
-            }));
+            ShowExplorer();
+            ExplorerTabs.SelectedIndex = 1;
             return;
         }
-        _activeKey=selected switch
+        if (key == "can" || key == "station")
         {
-            0=>"project",1=>"station",2=>"can",3=>"dbc",4=>"controller",
-            5=>"bench",6=>"wave",7=>"uds",8=>"flash",9=>"program",
-            10=>"run",11=>"production",12=>"records",13=>"operations",
-            _=>"project"
-        };
-        PopulateTab(selected);
-        UpdateContext(selected);
-    }
-
-    private LabTestWorkspaceViewModel GetProjectTestModel(AutoTest.Application.V1.V1Workspace workspace)
-    {
-        if (_projectTestModel is not null)
-        {
-            if (_projectTestContextId != workspace.Project.Id.Value && !_projectTestModel.Busy)
-            {
-                _projectTestModel.ReloadFromProject();
-                _projectTestContextId = workspace.Project.Id.Value;
-            }
-            return _projectTestModel;
+            var device = EnsureDevice();
+            if (key == "can") device.ShowCan();
+            else device.ShowStation();
+            key = "station"; // same physical controller AND the same WPF view
         }
-        var model = new LabTestWorkspaceViewModel(workspace);
-        model.AttachPhysicalReadOnly(
-            () => _device?.Controller,
-            () => MessageBox.Show(this,
-                "将运行当前工程已保存的 TEST，读取共享主控 CAN1 的真实 ECU 信号。\n" +
-                "此执行仅授权只读观察和断言，不控制供电、IGN、按键、夹具或刷写。\n" +
-                "请核实硬件接线、工程、DBC 修订及本次安全条件。\n\n是否授权本次真实只读测试？",
-                "确认真实 ECU 只读自动测试",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                MessageBoxResult.No) == MessageBoxResult.Yes);
-        model.AttachPhysicalController(
-            () => _controllerConfiguration?.CurrentProfile,
-            () => _controllerConfiguration?.FilePath,
-            summary => MessageBox.Show(this, summary,
-                "确认已锁定工程 TEST / KEY_SIM 真实 CAN0 操作计划",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                MessageBoxResult.No) == MessageBoxResult.Yes);
-        _projectTestModel = model;
-        _projectTestContextId = workspace.Project.Id.Value;
-        return model;
-    }
-
-    private void PopulateTab(int tab)
-    {
-        if (tab is 1 or 2)
+        if (_floating.TryGetValue(key, out var window))
         {
-            _device ??= new AutoTest.DeviceLab.DeviceLabEmbeddedView();
-            R1BottomCanGrid.ItemsSource=_device.ViewModel.CanTimeline;
-            BindStationStatus();
-            // Both R1 documents host the SAME controller + physical WinUSB session.
-            if (tab == 1)
-            {
-                if (ReferenceEquals(R1CanHost.Content,_device))
-                    R1CanHost.Content=null;
-                R1StationHost.Content=_device;
-                _device.ShowStation();
-            }
-            else
-            {
-                if (ReferenceEquals(R1StationHost.Content,_device))
-                    R1StationHost.Content=null;
-                R1CanHost.Content=_device;
-                _device.ShowCan();
-            }
+            window.Activate();
             return;
         }
-        if (DataContext is not MainWindowViewModel vm || vm.G4 is null) return;
+        if (_documents.TryGetValue(key, out var existing))
+        {
+            DocumentTabs.SelectedItem = existing;
+            return;
+        }
+
+        if (!_titles.ContainsKey(key)) return;
+        var view = GetOrCreateView(key);
+        if (view is null) return;
+        var tab = new TabItem { Content = view, Tag = key };
+        var header = new StackPanel { Orientation = Orientation.Horizontal };
+        header.Children.Add(new TextBlock
+        {
+            Text = _titles[key], VerticalAlignment = VerticalAlignment.Center,
+            FontWeight = key == "run" ? FontWeights.SemiBold : FontWeights.Normal
+        });
+        if (key != "run")
+        {
+            var close = new Button
+            {
+                Content = "×", Padding = new Thickness(5, 0, 3, 0),
+                Margin = new Thickness(9, 0, 0, 0), MinHeight = 18,
+                BorderThickness = new Thickness(0), Background = Brushes.Transparent,
+                Foreground = Brushes.SlateGray
+            };
+            close.Click += (_, _) => CloseDocument(key);
+            header.Children.Add(close);
+        }
+        tab.Header = header;
+        _documents[key] = tab;
+        DocumentTabs.Items.Add(tab);
+        DocumentTabs.SelectedItem = tab;
+    }
+
+    private FrameworkElement? GetOrCreateView(string key)
+    {
+        if (_views.TryGetValue(key, out var cached)) return cached;
+        if (DataContext is not MainWindowViewModel { G4: not null } vm)
+            return null;
         var host = vm.G4;
-        switch (tab)
+        FrameworkElement view;
+        switch (key)
         {
-            case 3 when R1DbcHost.Content is null && !_floatingDocuments.ContainsKey(3):
+            case "run":
+                view = new R1ProjectRunView(EnsureTestModel(host.Workspace));
+                break;
+            case "program":
+                view = new LabTestWorkspaceView(EnsureTestModel(host.Workspace));
+                break;
+            case "station":
+                view = EnsureDevice();
+                break;
+            case "dbc":
             {
-                var dbcEditor = new DbcToolViewModel(host.Workspace);
-                dbcEditor.ProjectDbcImported += (_, _) =>
-                {
-                    vm.RefreshExternalWorkspaceChanges();
-                };
-                R1DbcHost.Content = new DbcToolView(dbcEditor);
+                var dbc = new DbcToolViewModel(host.Workspace);
+                dbc.ProjectDbcImported += (_, _) => vm.RefreshExternalWorkspaceChanges();
+                view = new DbcToolView(dbc);
                 break;
             }
-            case 4 when R1ControllerHost.Content is null:
-                _controllerConfiguration ??= new ControllerConfigToolViewModel();
-                R1ControllerHost.Content = new ControllerConfigToolView(_controllerConfiguration);
+            case "controller":
+                _controllerConfig ??= new ControllerConfigToolViewModel();
+                view = new ControllerConfigToolView(_controllerConfig);
                 break;
-            case 5 when R1BenchHost.Content is null:
-                _controllerConfiguration ??= new ControllerConfigToolViewModel();
-                R1BenchHost.Content = new BenchWorkbenchView(new BenchWorkbenchViewModel(
-                    new R1BenchWorkspacePort(() => _controllerConfiguration,
+            case "bench":
+                _controllerConfig ??= new ControllerConfigToolViewModel();
+                view = new BenchWorkbenchView(new BenchWorkbenchViewModel(
+                    new R1BenchWorkspacePort(() => _controllerConfig,
                         () => _device?.Controller, approveKeySim: (mask, generation) =>
                             MessageBox.Show(this,
-                                $"真实按键板操作：CAN0 / KEY_SIM ID 0x730 / 20 Key 掩码 0x{mask:X5}\\n" +
-                                $"主控 USB Generation：{generation}\\n" +
-                                (mask == 0
-                                    ? "动作：释放全部 20 Key 电阻组合开关。\\n"
-                                    : "动作：按配置闭合并保持对应电阻网络开关。\\n") +
-                                "主控 CAN_SEND 回执只证明已接受发送请求，不代表 KEY_SIM 或 ECU 已响应。\\n" +
-                                "已确认当前台架及预期掩码，是否执行此次真实操作？",
-                                "确认真实 KEY_SIM 按键操作",
+                                $"真实按键板操作：CAN0 / KEY_SIM / 20 Key 掩码 0x{mask:X5}\n" +
+                                $"USB Generation：{generation}\n" +
+                                (mask == 0 ? "将释放全部按键组合。\n" :
+                                     "将闭合并保持对应电阻网络开关。\n") +
+                                "USB CAN_SEND ACK 不代表 DUT 已确认。是否执行？",
+                                "真实 KEY_SIM 操作确认",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes)));
                 break;
-            case 6 when R1WaveHost.Content is null && !_floatingDocuments.ContainsKey(6):
+            case "wave":
             {
                 var wave = new WaveWorkbenchView();
                 wave.AttachArchiveCapture(() => _device?.Controller, () => host.Workspace);
                 var appData = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AutoTest");
-                var waveRoot = Path.Combine(appData, "R1", "wave-workbench");
-                var physicalCapture = new WaveCaptureService(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "AutoTest", "R1", "wave-workbench");
+                var capture = new WaveCaptureService(
                     new R1PhysicalWaveSignalSource(host.Workspace, () => _device?.Controller),
-                    new WaveEvidenceStore(Path.Combine(waveRoot, "live-captures")),
-                    new WaveReferenceRepository(Path.Combine(waveRoot, "live-references")));
-                var liveProvider = new WaveSharedLiveProvider(physicalCapture, "Physical");
-                // Dedicated OFFLINE replay-only hub: never inject saved frames
-                // into the real DEVICE hub or a physical UDS subscriber.
-                var replayHub = _waveReplayHub ??= new CanFrameHub();
+                    new WaveEvidenceStore(Path.Combine(appData, "live-captures")),
+                    new WaveReferenceRepository(Path.Combine(appData, "live-references")));
+                var live = new WaveSharedLiveProvider(capture, "Physical");
+                var replay = _waveReplayHub ??= new CanFrameHub();
                 var recorded = new RecordedCanWaveReplayProvider(
-                    replayHub, replayHub.Publish, () => true,
-                    host.Workspace, Path.Combine(waveRoot, "recorded"));
-                wave.Model.BindBackend(new G4WaveReplayBackend(host, waveRoot,
-                    live: liveProvider, recorded: recorded));
-                R1WaveHost.Content = wave;
+                    replay, replay.Publish, () => true,
+                    host.Workspace, Path.Combine(appData, "recorded"));
+                wave.Model.BindBackend(new G4WaveReplayBackend(
+                    host, appData, live: live, recorded: recorded));
+                view = wave;
                 break;
             }
-            case 9 when R2AuthoringHost.Content is null && !_floatingDocuments.ContainsKey(9):
-                R2AuthoringHost.Content = new LabTestWorkspaceView(GetProjectTestModel(host.Workspace));
-                break;
-            case 10 when R1RunHost.Content is null && R1OperatorHost.Content is null:
-                R1RunHost.Content = new R1ProjectRunView(GetProjectTestModel(host.Workspace));
-                break;
-            case 11 when R1ProductionHost.Content is null:
+            case "uds":
             {
-                var scanner = new R1ProductionScannerViewModel();
-                scanner.AttachProject(host.Workspace);
-                scanner.PhysicalScanMatched += binding =>
+                var uds = new UdsToolView();
+                if (uds.DataContext is UdsToolViewModel model)
                 {
-                    // Barcode matching runs the entire published TEST and is
-                    // completely independent from the engineer's checkboxes.
-                    Navigate(10, "run");
-                    _ = ExecuteScannedProjectTestAsync(scanner, binding,
-                        host.Workspace, host.Records.Database);
+                    model.AttachPhysicalLink(() => _device?.Controller,
+                        request => MessageBox.Show(this, request,
+                            "实际 CAN1 UDS 诊断确认",
+                            MessageBoxButton.YesNo, MessageBoxImage.Question,
+                            MessageBoxResult.No) == MessageBoxResult.Yes);
+                    UdsTraceGrid.ItemsSource = model.TraceRows;
+                }
+                view = uds;
+                break;
+            }
+            case "flash":
+            {
+                _flash = new FlashToolView();
+                _flash.AttachPhysicalLink(() => _device?.Controller);
+                _flash.PhysicalOperationStopped += (_, _) =>
+                {
+                    if (_closeAfterFlash && !_closed && !Dispatcher.HasShutdownStarted)
+                        Dispatcher.BeginInvoke(new Action(Close));
                 };
-                _production = new LabProductionToolView(scanner);
-                R1ProductionHost.Content = _production;
+                view = _flash;
                 break;
             }
-            case 12 when R1RecordsHost.Content is null:
+            case "scan":
+                EnsureScanner(vm);
+                view = _scannerView!;
+                break;
+            case "records":
             {
-                var database = host.Records.Database;
-                var root = Path.Combine(Path.GetDirectoryName(database.DatabasePath)!, "artifacts");
-                var reports = new RunReportExporter(database,new ArtifactRepository(root));
-                var history = new RecordHistoryToolSource(new RunHistoryQuery(database),
-                    new ProductionStatistics(database),reports);
-                R1RecordsHost.Content = new RecordsView(new RecordsViewModel(history));
+                var db = host.Records.Database;
+                var folder = Path.Combine(Path.GetDirectoryName(db.DatabasePath)!, "artifacts");
+                var exporter = new RunReportExporter(db, new ArtifactRepository(folder));
+                var source = new RecordHistoryToolSource(
+                    new RunHistoryQuery(db), new ProductionStatistics(db), exporter);
+                view = new RecordsView(new RecordsViewModel(source));
                 break;
             }
-            case 13 when R1OperationsHost.Content is null:
+            case "operations":
             {
-                var appData = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AutoTest");
-                var root = Path.Combine(appData, "Operations");
-                var audit = new SqliteOperationAuditStore(Path.Combine(root,"operation-audit.sqlite"));
-                var trace = new OperationTraceArchive(Path.Combine(root,"traces"));
-                var operationsModel=new OperationsViewModel(
-                    audit,trace,new OperationAuditExporter(audit));
-                R1OperationsHost.Content = new OperationsView(operationsModel);
-                R1BottomAuditGrid.ItemsSource=operationsModel.Entries;
+                var root = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "AutoTest", "Operations");
+                var audit = new SqliteOperationAuditStore(
+                    Path.Combine(root, "operation-audit.sqlite"));
+                var archive = new OperationTraceArchive(Path.Combine(root, "traces"));
+                var model = new OperationsViewModel(
+                    audit, archive, new OperationAuditExporter(audit));
+                view = new OperationsView(model);
+                AuditGrid.ItemsSource = model.Entries;
                 break;
             }
+            default:
+                return null;
         }
+        _views[key] = view;
+        return view;
     }
 
-    /// <summary>
-    /// Actual serial scan goes through the SAME current project TEST VM as P10
-    /// and P11. It never constructs a second production runner or a Mock ledger.
-    /// This is a real diagnostic TEST result, not an automatic factory release.
-    /// </summary>
-    private async Task ExecuteScannedProjectTestAsync(
-        R1ProductionScannerViewModel scanner,
-        R1PhysicalScanBinding binding,
-        AutoTest.Application.V1.V1Workspace project,
-        RecordDatabase database)
+    private AutoTest.DeviceLab.DeviceLabEmbeddedView EnsureDevice()
+    {
+        if (_device is not null) return _device;
+        _device = new AutoTest.DeviceLab.DeviceLabEmbeddedView();
+        CanTraceGrid.ItemsSource = _device.ViewModel.CanTimeline;
+        BindingOperations.SetBinding(StationStatus, TextBlock.TextProperty,
+            new Binding(nameof(AutoTest.DeviceLab.DeviceLabViewModel.StatusText))
+            {
+                Source = _device.ViewModel, StringFormat = "Station · {0}",
+                Mode = BindingMode.OneWay
+            });
+        void Led()
+        {
+            var state = _device.ViewModel.StatusText;
+            StationLed.Fill = state.Contains("已连接", StringComparison.Ordinal) ||
+                state.Contains("Connected", StringComparison.OrdinalIgnoreCase)
+                ? Brushes.MediumSeaGreen : Brushes.SlateGray;
+        }
+        if (!_stationStatusSubscribed)
+        {
+            _stationStatusSubscribed = true;
+            _device.ViewModel.PropertyChanged += (_, e) =>
+            {
+                if (!_closed && !Dispatcher.HasShutdownStarted &&
+                    e.PropertyName == nameof(AutoTest.DeviceLab.DeviceLabViewModel.StatusText))
+                    Dispatcher.InvokeAsync(Led);
+            };
+        }
+        Led();
+        return _device;
+    }
+
+    private void CloseDocument(string key)
+    {
+        if (key == "run") return; // primary TEST is never closed
+        if (_floating.TryGetValue(key, out var floating))
+            floating.Close();
+        if (_documents.Remove(key, out var tab))
+        {
+            tab.Content = null;
+            DocumentTabs.Items.Remove(tab);
+        }
+        // Retain services/VM, not the obsolete UI tabs. Reopening the tool
+        // reuses its real device/service instance where that is required.
+        if (DocumentTabs.SelectedItem is null)
+            OpenDocument("run");
+    }
+
+    private void FloatDocument(string key)
+    {
+        OpenDocument(key);
+        if (_floating.TryGetValue(key, out var active))
+        {
+            active.Activate();
+            return;
+        }
+        if (!_documents.TryGetValue(key, out var tab) ||
+            tab.Content is not FrameworkElement view) return;
+        tab.Content = new TextBlock
+        {
+            Text = "此文档已在独立窗口中打开。关闭独立窗口将回到此处。",
+            Margin = new Thickness(24), Foreground = Brushes.SlateGray
+        };
+        var window = new Window
+        {
+            Title = "AutoTest Studio · " + _titles[key],
+            Width = 1200, Height = 790, MinWidth = 810, MinHeight = 540,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this, Background = Brushes.White, Content = view
+        };
+        _floating[key] = window;
+        window.Closed += (_, _) =>
+        {
+            window.Content = null;
+            _floating.Remove(key);
+            if (!_closed && _documents.ContainsKey(key))
+                tab.Content = view;
+        };
+        window.Show();
+    }
+
+    private async Task RunScannedTestAsync(
+        R1ProductionScannerViewModel scanner, R1PhysicalScanBinding binding,
+        AutoTest.Application.V1.V1Workspace project, RecordDatabase database)
     {
         try
         {
             binding.Verify(project);
-            // A scanned unit with any prior durable run must be deliberately
-            // marked as retest; it must never silently enter a "new DUT" count.
-            var existing = await new RunHistoryQuery(database).FindByDutAsync(binding.UnitKey);
-            if (existing.Length != 0 &&
+            var previous = await new RunHistoryQuery(database).FindByDutAsync(binding.UnitKey);
+            if (previous.Length != 0 &&
                 MessageBox.Show(this,
-                    "此 DUT 身份在记录库中已有 " + existing.Length +
-                    " 次运行记录。\n\n这次是否确认为复测？拒绝将不启动实际测试。",
-                    "重复扫码 / 复测确认", MessageBoxButton.YesNo,
+                    "该 DUT 已有 " + previous.Length + " 条运行记录。是否明确作为复测继续？",
+                    "重复编号 / 复测确认", MessageBoxButton.YesNo,
                     MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
             {
                 scanner.MarkRunCompleted(binding, null, "RETEST_CONFIRMATION_REQUIRED", null);
                 return;
             }
-            var test = GetProjectTestModel(project);
+            var test = EnsureTestModel(project);
             if (test.Busy) throw new InvalidOperationException("PROJECT_TEST_ALREADY_RUNNING");
             var result = await test.RunPhysicalReadOnlyAsync(binding);
             if (result is null)
@@ -387,29 +484,22 @@ public partial class MainWindow : Window
                 scanner.MarkRunCompleted(binding, null, "未执行 / " + test.Status, null);
                 return;
             }
-            // Real physical results are recorded as DIAGNOSTIC in the existing
-            // R1 SQLite / artifact store. Never convert a read-only verdict
-            // into an automatic factory release.
             try
             {
                 var controller = _device?.Controller ??
                     throw new InvalidOperationException("PHYSICAL_DEVICE_NOT_AVAILABLE");
                 var stored = await new R1PhysicalRunRecordBridge(database)
-                    .PersistAsync(project, controller, binding, result,
-                        test.PhysicalEvidencePath);
+                    .PersistAsync(project, controller, binding, result, test.PhysicalEvidencePath);
                 scanner.MarkRunCompleted(binding, stored.Value,
-                    (binding.ProductionTestEnabled
-                        ? "已写入 SQLite / 真实生产检测 · "
-                        : "已写入 SQLite / 诊断检测 · ") +
+                    (binding.ProductionTestEnabled ? "真实生产检测 / " : "诊断检测 / ") +
                     result.Verdict + " · RunId 已持久化",
                     test.PhysicalEvidencePath);
             }
-            catch (Exception persistenceError)
+            catch (Exception ex)
             {
                 scanner.MarkRunCompleted(binding, result.RunId,
-                    "SQLITE_NOT_DURABLE: " + persistenceError.Message +
-                    " · 需检查 JSON 原始证据，不能算作已入库",
-                    test.PhysicalEvidencePath);
+                    "SQLITE_NOT_DURABLE: " + ex.Message +
+                    " · 原始证据待核验，不能算作已入库", test.PhysicalEvidencePath);
             }
         }
         catch (Exception ex)
@@ -418,464 +508,119 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdateContext(int tab)
+    private void DocumentTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (R1InspectorTitle is null) return;
-        var names = new[]
-        {
-            "工程 / Revision","设备 / Station","CAN / Monitor","DBC / Signal",
-            "Controller / State","Manual Bench","波形 / Cursor","UDS / ECU Profile",
-            "CAN Flash / Image","TEST / Step","Run / StepFact","Production / DUT",
-            "Records / Report","Operations / Audit"
-        };
-        R1InspectorTitle.Text = tab>=0 && tab<names.Length ? names[tab] : "资源";
-        R1InspectorDescription.Text = tab switch
-        {
-            1 => "主控 WinUSB 身份、状态与设备诊断。",
-            2 => "DUT CAN1、按键板 CAN0 的接收、筛选和原始 Trace。",
-            3 => "DBC 消息、信号、枚举表和 Revision。",
-            6 => "波形信号选择、参考曲线、双游标及判定证据。",
-            7 => "UDS 服务目录、请求参数、诊断会话、原始响应与 NRC。",
-            8 => "烧录镜像、配置来源、编程阶段与 ECU 最终复验。",
-            11 => "扫码规则、DUT 身份与生产流程。",
-            12 => "数据库历史、报告与独立 DUT 统计。",
-            _ => "选择资源或工作区中的对象，操作作用于对应专业模型。"
-        };
-        if (R1StepInspectorHost is not null)
-            R1StepInspectorHost.Visibility = tab==9 ? Visibility.Visible : Visibility.Collapsed;
-        if (R1InspectorContext is not null)
-            R1InspectorContext.Visibility = tab==9 ? Visibility.Collapsed : Visibility.Visible;
-        if (R1BottomLabel is not null)
-            R1BottomLabel.Text = tab switch
-            {
-                7 => "UDS · RAW TRACE / NRC",
-                8 => "FLASH · JOB STAGES / AUDIT",
-                6 => "WAVE · CAPTURE QUALITY",
-                1 or 2 => "USB / CAN · HARDWARE TRACE",
-                _ => "OUTPUT / TRACE · StepFact / Verdict"
-            };
-        UpdateRailSelected();
+        // Only one document host exists. Selection changes must NEVER recreate
+        // a TEST runner, rebind an active device or change the running program.
+        if (!ReferenceEquals(e.Source, DocumentTabs)) return;
+    }
+    private void PlannedSteps_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_test is not null && PlannedStepsList.SelectedItem is R1RunStepRow step)
+            _test.SelectedRunStep = step;
+    }
+    private void ShowExplorer()
+    {
+        if (!_explorerHidden) return;
+        ToggleExplorer_Click(this, new RoutedEventArgs());
+    }
+    private void ToggleExplorer_Click(object sender, RoutedEventArgs e)
+    {
+        _explorerHidden = !_explorerHidden;
+        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 257);
+        ExplorerSplitterColumn.Width = new GridLength(_explorerHidden ? 0 : 5);
+        ExplorerPanel.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
+        ExplorerSplitter.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
+    }
+    private void ToggleBottom_Click(object sender, RoutedEventArgs e)
+    {
+        _logsExpanded = !_logsExpanded;
+        LogRow.MinHeight = _logsExpanded ? 110 : 29;
+        LogRow.Height = new GridLength(_logsExpanded ? 175 : 29);
+        EvidenceTabs.Visibility = _logsExpanded ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void UpdateRailSelected()
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        var buttons = new[]
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.K)
         {
-            R1ProjectRail,R1StationRail,R1CanRail,R1DbcRail,R1ControllerRail,
-            R1BenchRail,R1WaveRail,R1UdsRail,R1FlashRail,R1TestRail,
-            R1RunRail,R1ProductionRail,R1RecordsRail,R1AuditRail
-        };
-        var index = _activeKey switch
-        {
-            "project"=>0,"station"=>1,"can"=>2,"dbc"=>3,"controller"=>4,
-            "bench"=>5,"wave"=>6,"uds"=>7,"flash"=>8,"program"=>9,
-            "run"=>10,"production"=>11,"records"=>12,"operations"=>13,_=>0
-        };
-        for (int i=0;i<buttons.Length;i++)
-            buttons[i].Tag=i==index ? "active" : null;
-    }
-
-    private void ToggleBottom_Click(object sender,RoutedEventArgs e)
-    {
-        if (Content is not Grid root || root.RowDefinitions.Count<5) return;
-        var panel=root.RowDefinitions[4];
-        _bottomHidden=!_bottomHidden;
-        if (_bottomHidden)
-        {
-            if (panel.Height.Value>40) _bottomSaved=panel.Height;
-            panel.MinHeight=27;
-            panel.Height=new GridLength(27);
-            R1BottomTabs.Visibility=Visibility.Collapsed;
-        }
-        else
-        {
-            panel.MinHeight=125;
-            panel.Height=_bottomSaved;
-            R1BottomTabs.Visibility=Visibility.Visible;
-        }
-    }
-
-    private void BindStationStatus()
-    {
-        if (_device is null) return;
-        System.Windows.Data.BindingOperations.SetBinding(R1StationStatus,
-            TextBlock.TextProperty,new System.Windows.Data.Binding(nameof(
-                AutoTest.DeviceLab.DeviceLabViewModel.StatusText))
-            {
-                Source=_device.ViewModel,
-                StringFormat="Station · {0}",
-                Mode=System.Windows.Data.BindingMode.OneWay
-            });
-        void RefreshLed()
-        {
-            R1StationDot.Fill=_device.ViewModel.StatusText.Contains("已连接",
-                StringComparison.Ordinal) || _device.ViewModel.StatusText.Contains("Connected",
-                StringComparison.OrdinalIgnoreCase)
-                    ? Brushes.MediumSeaGreen : Brushes.SlateGray;
-        }
-        if (!_stationStatusSubscribed)
-        {
-            _stationStatusSubscribed = true;
-            _device.ViewModel.PropertyChanged += (_, e) =>
-            {
-                if (!_closed && e.PropertyName ==
-                    nameof(AutoTest.DeviceLab.DeviceLabViewModel.StatusText) &&
-                    !Dispatcher.HasShutdownStarted)
-                    Dispatcher.InvokeAsync(RefreshLed);
-            };
-        }
-        RefreshLed();
-    }
-    private void RefreshScannerStrip()
-    {
-        if (R1ScannerStatus is null) return;
-        var scanner = _production?.DataContext as R1ProductionScannerViewModel;
-        if (scanner is null)
-        {
-            R1ScannerStatus.Text = "扫码未初始化";
-            return;
-        }
-        var barcode = string.IsNullOrWhiteSpace(scanner.ScanInput)
-            ? "待扫码" : "编号 " + scanner.ScanInput;
-        R1ScannerStatus.Text = barcode + " · " + scanner.MatchDetail;
-        R1ScannerStatus.ToolTip = R1ScannerStatus.Text;
-    }
-
-    private void PlaceRunViewInSelectedEnvironment(bool operatorMode)
-    {
-        // A real, permanently separate operator surface guarantees that the
-        // legacy project page cannot reappear during Prism load/rebind.
-        // Move the SAME view rather than re-running or cloning TEST logic.
-        if (operatorMode)
-        {
-            PopulateTab(10);
-            if (R1RunHost.Content is UIElement run)
-            {
-                R1RunHost.Content = null;
-                R1OperatorHost.Content = run;
-            }
-            R1WorkspaceGrid.Visibility = Visibility.Collapsed;
-            R1OperatorSurface.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            R1OperatorSurface.Visibility = Visibility.Collapsed;
-            if (R1OperatorHost.Content is UIElement run)
-            {
-                R1OperatorHost.Content = null;
-                R1RunHost.Content = run;
-            }
-            R1WorkspaceGrid.Visibility = Visibility.Visible;
-        }
-    }
-
-    private void RefreshDocumentTabVisibility()
-    {
-        // Legacy pages still exist for compatibility, but they no longer form
-        // a permanent strip of fourteen equal-priority product functions.
-        // The tab strip is a set of documents/tools actually opened in this
-        // process. The operator template hides all document tabs entirely.
-        if (WorkbenchTabs is null || R1WorkspaceMode is null) return;
-        var operatorMode = R1WorkspaceMode.SelectedIndex == 0;
-        for (var i = 0; i < WorkbenchTabs.Items.Count; i++)
-        {
-            if (WorkbenchTabs.Items[i] is TabItem item)
-                item.Visibility = operatorMode
-                    ? (i == 10 ? Visibility.Visible : Visibility.Collapsed)
-                    : (_openedDocuments.Contains(i) || i == WorkbenchTabs.SelectedIndex
-                        ? Visibility.Visible : Visibility.Collapsed);
-        }
-    }
-
-    private void ApplyWorkspaceMode(int mode)
-    {
-        if (_applyingWorkspaceMode || _closed) return;
-        _applyingWorkspaceMode = true;
-        try
-        {
-            var engineering = mode == 1;
-            var professional = mode == 2;
-            // V6: file/document IDE only in the engineering environment.
-            // The ordinary automatic TEST viewport is a single document,
-            // with neither file explorer nor legacy page tabs.
-            R1RailColumn.Width = new GridLength(engineering || professional ? 50 : 0);
-            R1RailPanel.Visibility = engineering || professional
-                ? Visibility.Visible : Visibility.Collapsed;
-            R1DeveloperActions.Visibility = engineering
-                ? Visibility.Visible : Visibility.Collapsed;
-
-            var showExplorer = engineering;
-            if (_explorerHidden == showExplorer)
-                ToggleExplorer_Click(this, new RoutedEventArgs());
-            if (_inspectorHidden == showExplorer)
-                ToggleInspector_Click(this, new RoutedEventArgs());
-
-            // Hide the entire empty trace dock during automatic testing,
-            // not just its content while leaving a 190px blank placeholder.
-            if (Content is Grid root && root.RowDefinitions.Count >= 5)
-            {
-                var outputRow = root.RowDefinitions[4];
-                if (engineering)
-                {
-                    outputRow.MinHeight = 27;
-                    outputRow.Height = new GridLength(158);
-                    R1BottomPanel.Visibility = Visibility.Visible;
-                    R1BottomTabs.Visibility = Visibility.Visible;
-                    _bottomHidden = false;
-                }
-                else
-                {
-                    outputRow.MinHeight = 0;
-                    outputRow.Height = new GridLength(0);
-                    R1BottomPanel.Visibility = Visibility.Collapsed;
-                    R1BottomTabs.Visibility = Visibility.Collapsed;
-                    _bottomHidden = true;
-                }
-            }
-            if (R1WorkspaceMode.SelectedIndex != mode)
-                R1WorkspaceMode.SelectedIndex = mode;
-            switch (mode)
-            {
-                case 0: Navigate(10, "run"); break;
-                case 1: Navigate(9, "program"); break;
-                case 2: Navigate(6, "wave"); break;
-            }
-            RefreshDocumentTabVisibility();
-            PlaceRunViewInSelectedEnvironment(mode == 0);
-        }
-        finally { _applyingWorkspaceMode = false; }
-    }
-
-    private void OperatorWorkspace_Click(object sender, RoutedEventArgs e)
-        => ApplyWorkspaceMode(0);
-    private void EngineeringWorkspace_Click(object sender, RoutedEventArgs e)
-        => ApplyWorkspaceMode(1);
-    private void ToolsWorkspace_Click(object sender, RoutedEventArgs e)
-        => ApplyWorkspaceMode(2);
-
-    private void WorkspaceMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!IsLoaded || R1WorkspaceMode is null) return;
-        ApplyWorkspaceMode(R1WorkspaceMode.SelectedIndex);
-    }
-    private void ExecutionSource_SelectionChanged(object sender,SelectionChangedEventArgs e)
-    {
-        if (!IsLoaded || R1ExecutionSource.SelectedItem is not ComboBoxItem choice) return;
-        string source=choice.Tag as string ?? "Physical";
-        if (R1UdsView.DataContext is UdsToolViewModel uds)
-            uds.SourceMode = source switch
-            {
-                "Physical" => "Physical Read",
-                "Replay" => "Replay",
-                _ => "Physical Read"
-            };
-        if (R1BenchHost.Content is BenchWorkbenchView bench &&
-            bench.DataContext is BenchWorkbenchViewModel vm)
-        {
-            vm.Source=source switch
-            {
-                "Physical"=>BenchEvidenceSource.Physical,
-                "Replay"=>BenchEvidenceSource.Replay,
-                _=>BenchEvidenceSource.Physical
-            };
-        }
-        // Each other module retains its own verified source. Selecting Physical
-        // is NOT a global authorization for real ECU output or programming.
-    }
-
-    private void Window_PreviewKeyDown(object sender,KeyEventArgs e)
-    {
-        if (Keyboard.Modifiers==ModifierKeys.Control && e.Key==Key.K)
-        {
-            e.Handled=true;
+            e.Handled = true;
             ShowPalette();
         }
     }
-    private void CommandPalette_Click(object sender,RoutedEventArgs e) => ShowPalette();
+    private void CommandPalette_Click(object sender, RoutedEventArgs e) => ShowPalette();
     private void ShowPalette()
     {
-        var palette=new R1CommandPalette(OpenPaletteDestination) { Owner=this };
+        var palette = new R1CommandPalette(OpenDocument) { Owner = this };
         palette.ShowDialog();
     }
-    private void OpenPaletteDestination(string key)
-    {
-        string[] keys = ["project","station","can","dbc","controller","bench","wave",
-            "uds","flash","program","run","production","records","operations"];
-        int selected=Array.IndexOf(keys,key);
-        if (selected>=0) Navigate(selected,key);
-    }
-    private void ToggleExplorer_Click(object sender,RoutedEventArgs e)
-    {
-        _explorerHidden=!_explorerHidden;
-        if (_explorerHidden)
-        {
-            if (R1ExplorerColumn.Width.Value>0) _explorerSaved=R1ExplorerColumn.Width;
-            R1ExplorerColumn.Width=new GridLength(0);
-            R1ExplorerSizerColumn.Width=new GridLength(0);
-            R1ExplorerPanel.Visibility=Visibility.Collapsed;
-            R1ExplorerSizer.Visibility=Visibility.Collapsed;
-        }
-        else
-        {
-            R1ExplorerColumn.Width=_explorerSaved;
-            R1ExplorerSizerColumn.Width=new GridLength(5);
-            R1ExplorerPanel.Visibility=Visibility.Visible;
-            R1ExplorerSizer.Visibility=Visibility.Visible;
-        }
-    }
-    private void ToggleInspector_Click(object sender,RoutedEventArgs e)
-    {
-        _inspectorHidden=!_inspectorHidden;
-        if (_inspectorHidden)
-        {
-            if (R1InspectorColumn.Width.Value>0) _inspectorSaved=R1InspectorColumn.Width;
-            R1InspectorColumn.Width=new GridLength(0);
-            R1InspectorSizerColumn.Width=new GridLength(0);
-            R1InspectorPanel.Visibility=Visibility.Collapsed;
-            R1InspectorSizer.Visibility=Visibility.Collapsed;
-        }
-        else
-        {
-            R1InspectorColumn.Width=_inspectorSaved;
-            R1InspectorSizerColumn.Width=new GridLength(5);
-            R1InspectorPanel.Visibility=Visibility.Visible;
-            R1InspectorSizer.Visibility=Visibility.Visible;
-        }
-    }
+    private void OpenRun_Click(object sender, RoutedEventArgs e) => OpenDocument("run");
+    private void OpenTest_Click(object sender, RoutedEventArgs e) => OpenDocument("program");
+    private void OpenStation_Click(object sender, RoutedEventArgs e) => OpenDocument("station");
+    private void OpenCan_Click(object sender, RoutedEventArgs e) => OpenDocument("can");
+    private void OpenDbc_Click(object sender, RoutedEventArgs e) => OpenDocument("dbc");
+    private void OpenController_Click(object sender, RoutedEventArgs e) => OpenDocument("controller");
+    private void OpenBench_Click(object sender, RoutedEventArgs e) => OpenDocument("bench");
+    private void OpenWave_Click(object sender, RoutedEventArgs e) => OpenDocument("wave");
+    private void OpenUds_Click(object sender, RoutedEventArgs e) => OpenDocument("uds");
+    private void OpenFlash_Click(object sender, RoutedEventArgs e) => OpenDocument("flash");
+    private void OpenProduction_Click(object sender, RoutedEventArgs e) => OpenDocument("scan");
+    private void OpenRecords_Click(object sender, RoutedEventArgs e) => OpenDocument("records");
+    private void OpenAudit_Click(object sender, RoutedEventArgs e) => OpenDocument("operations");
+    private void FloatTest_Click(object sender, RoutedEventArgs e) => FloatDocument("program");
+    private void FloatDbc_Click(object sender, RoutedEventArgs e) => FloatDocument("dbc");
+    private void FloatWave_Click(object sender, RoutedEventArgs e) => FloatDocument("wave");
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
-    // Real WPF floating windows. A professional view is detached and moved,
-    // not copied: there is still one ViewModel, one project, one Device Station
-    // and one shared CAN session. Closing the window docks it back.
-    private void FloatDocument(int tab, ContentControl host, string title)
+    private static async Task DisposeSafelyAsync(string name, Func<Task> action)
     {
-        if (_floatingDocuments.TryGetValue(tab, out var active))
-        {
-            if (active.IsVisible) { active.Activate(); return; }
-            _floatingDocuments.Remove(tab);
-        }
-        if (R1WorkspaceMode.SelectedIndex == 0)
-            ApplyWorkspaceMode(1);
-        PopulateTab(tab);
-        if (host.Content is not FrameworkElement view)
-        {
-            MessageBox.Show(this,
-                "请先打开当前工程并完成对应编辑器初始化，之后再独立开窗。",
-                "AutoTest 编辑窗口", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-        host.Content = null;
-        var floating = new Window
-        {
-            Title = "AutoTest Studio · " + title,
-            Width = 1220,
-            Height = 790,
-            MinWidth = 820,
-            MinHeight = 540,
-            Background = Brushes.White,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = this,
-            Content = view
-        };
-        _floatingDocuments[tab] = floating;
-        floating.Closed += (_, _) =>
-        {
-            floating.Content = null;
-            if (!_closed && !Dispatcher.HasShutdownStarted)
-                host.Content = view;
-            _floatingDocuments.Remove(tab);
-        };
-        floating.Show();
-    }
-
-    private void FloatTest_Click(object sender, RoutedEventArgs e)
-        => FloatDocument(9, R2AuthoringHost, "TEST 测试程序编辑器");
-    private void FloatDbc_Click(object sender, RoutedEventArgs e)
-        => FloatDocument(3, R1DbcHost, "DBC 信号编辑器");
-    private void FloatWave_Click(object sender, RoutedEventArgs e)
-        => FloatDocument(6, R1WaveHost, "Wave Studio 波形分析");
-
-    private void OpenProject_Click(object sender,RoutedEventArgs e) => Navigate(0,"project");
-    private void OpenStation_Click(object sender,RoutedEventArgs e) => Navigate(1,"station");
-    private void OpenCan_Click(object sender,RoutedEventArgs e) => Navigate(2,"can");
-    private void OpenDbc_Click(object sender,RoutedEventArgs e) => Navigate(3,"dbc");
-    private void OpenController_Click(object sender,RoutedEventArgs e) => Navigate(4,"controller");
-    private void OpenBench_Click(object sender,RoutedEventArgs e) => Navigate(5,"bench");
-    private void OpenWave_Click(object sender,RoutedEventArgs e) => Navigate(6,"wave");
-    private void OpenUds_Click(object sender,RoutedEventArgs e) => Navigate(7,"uds");
-    private void OpenFlash_Click(object sender,RoutedEventArgs e) => Navigate(8,"flash");
-    private void OpenTest_Click(object sender,RoutedEventArgs e) => Navigate(9,"program");
-    private void OpenRun_Click(object sender,RoutedEventArgs e) => Navigate(10,"run");
-    private void OpenProduction_Click(object sender,RoutedEventArgs e) => Navigate(11,"production");
-    private void OpenRecords_Click(object sender,RoutedEventArgs e) => Navigate(12,"records");
-    private void OpenAudit_Click(object sender,RoutedEventArgs e) => Navigate(13,"operations");
-    private void DeviceLab_Click(object sender,RoutedEventArgs e) => OpenStation_Click(sender,e);
-    private void Modules_Click(object sender,RoutedEventArgs e) => OpenProject_Click(sender,e);
-
-    private void G4Tools_Click(object sender,RoutedEventArgs e)
-    {
-        if (DataContext is not MainWindowViewModel { G4: not null } vm) return;
-        if (_compatTools is { IsVisible: true }) { _compatTools.Activate(); return; }
-        _compatTools = new G4ToolsWindow(vm) { Owner=this };
-        _compatTools.Show();
-    }
-
-    private void R1About_Click(object sender,RoutedEventArgs e) =>
-        MessageBox.Show(this,
-            "产品设计基准：docs/ui-r1/reference/AutoTest_UI_Interactive_Prototype_V0.1.html\n"+
-            "一个 R1 Shell，13 个专业工作区，统一导航、工程资源和审计。"+
-            "目前真实物理烧录仍按独立 FieldStudio 流程验收，不以 Mock 模拟代替实测。",
-            "AutoTest R1 Studio",MessageBoxButton.OK,MessageBoxImage.Information);
-    private void Close_Click(object sender,RoutedEventArgs e) => Close();
-
-    // A driver/serial disposal must not make the complete IDE impossible to close.
-    // Record the native cleanup failure without opening a modal dialog during shutdown.
-    private static async Task ReleaseOnExitAsync(string resource, Func<Task> dispose)
-    {
-        try { await dispose().WaitAsync(TimeSpan.FromSeconds(4)); }
+        try { await action().WaitAsync(TimeSpan.FromSeconds(4)); }
         catch (Exception ex)
         {
             try
             {
-                var path = Path.Combine(Path.GetTempPath(), "AutoTest-R1-close-errors.log");
-                File.AppendAllText(path, $"{DateTimeOffset.Now:O} {resource}: {ex}\\n");
+                File.AppendAllText(Path.Combine(Path.GetTempPath(), "AutoTest-R1-close-errors.log"),
+                    $"{DateTimeOffset.Now:O} {name}: {ex}\n");
             }
-            catch { /* Shutdown must continue even if diagnostic persistence fails. */ }
+            catch { /* a log failure must not trap the desktop process */ }
         }
     }
 
-    private async void Window_Closing(object? sender,CancelEventArgs e)
+    private async void Window_Closing(object? sender, CancelEventArgs e)
     {
-        if (_closed || _disposing) return;
-        // Physical flash owns the same Station CAN1 session. Never tear down
-        // WinUSB while a destructive CanTool job is still unwinding.
-        if (R1FlashView.IsPhysicalCan1Busy)
+        if (_closed || _closing) return;
+        if (_flash?.IsPhysicalCan1Busy == true)
         {
             e.Cancel = true;
-            if (!_closePendingFlash)
+            if (!_closeAfterFlash)
             {
-                _closePendingFlash = true;
-                R1FlashView.RequestCloseAfterPhysicalStop();
+                _closeAfterFlash = true;
+                _flash.RequestCloseAfterPhysicalStop();
             }
             return;
         }
-        if (R1WaveHost.Content is WaveWorkbenchView wave)
-            wave.CancelArchiveRecording();
         e.Cancel = true;
-        _disposing = true;
+        _closing = true;
         IsEnabled = false;
         try
         {
-            if (_production is not null)
-                await ReleaseOnExitAsync("Production scanner", () => _production.DisposeAsync().AsTask());
+            if (_views.TryGetValue("wave", out var w) && w is WaveWorkbenchView wave)
+                wave.CancelArchiveRecording();
+            foreach (var floating in _floating.Values.ToArray())
+                floating.Close();
+            if (_scannerView is not null)
+                await DisposeSafelyAsync("COM scanner",
+                    () => _scannerView.DisposeAsync().AsTask());
             if (_device is not null)
-                await ReleaseOnExitAsync("WinUSB controller", () => _device.DisposeAsync().AsTask());
+                await DisposeSafelyAsync("WinUSB controller",
+                    () => _device.DisposeAsync().AsTask());
         }
         finally
         {
             try { _waveReplayHub?.Dispose(); }
             catch (Exception ex) { System.Diagnostics.Trace.TraceError(ex.ToString()); }
             if (_workspaceEventsOwner is not null)
-                _workspaceEventsOwner.WorkspaceAssetsChanged -= OnWorkspaceAssetsChanged;
+                _workspaceEventsOwner.WorkspaceAssetsChanged -= OnAssetsChanged;
             _closed = true;
             Close();
         }
