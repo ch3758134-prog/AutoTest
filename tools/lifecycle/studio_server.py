@@ -40,7 +40,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     definition_research = DefinitionResearch(store)
     definition_suggestions = DefinitionSuggestions(store)
     class Handler(BaseHTTPRequestHandler):
-        server_version = "EngineeringWorkbench/0.9"
+        server_version = "EngineeringWorkbench/1.0"
 
         def write(self, value, status=200, content_type="application/json; charset=utf-8",
                   download=None):
@@ -117,7 +117,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write(semantic_context(params.get("focus", "")))
                 if path == "/api/studio/version":
                     return self.write({"application": "Engineering Workbench",
-                                       "version": "0.9", "mode": "editable",
+                                       "version": "1.0", "mode": "editable",
                                        "legacy": False})
                 if path == "/api/studio/bootstrap":
                     return self.write({"schema": "engineering-workbench/1",
