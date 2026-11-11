@@ -11,6 +11,7 @@ public partial class BenchWorkbenchView : UserControl
 {
     public event EventHandler? OpenStationRequested;
     public event EventHandler? OpenCanRequested;
+    public event EventHandler? OpenDbcRequested;
     public BenchWorkbenchView(BenchWorkbenchViewModel viewModel)
     {
         InitializeComponent();
@@ -68,6 +69,9 @@ public partial class BenchWorkbenchView : UserControl
         vm.AddCurrentKeyCombinationToAction();
         ActionEditorExpander.IsExpanded = true;
     }
+
+    private void OpenDbc_Click(object sender, RoutedEventArgs e) =>
+        OpenDbcRequested?.Invoke(this, EventArgs.Empty);
 
     private void OpenCan_Click(object sender, RoutedEventArgs e) =>
         OpenCanRequested?.Invoke(this, EventArgs.Empty);
