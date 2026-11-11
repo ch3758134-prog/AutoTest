@@ -220,6 +220,60 @@
    <Border Grid.Column="2" Style="{StaticResource Panel}">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
+      <Border BorderBrush="#DCE5EF" Background="#FAFCFF" BorderThickness="1"
+       Padding="10" CornerRadius="5" Margin="0,0,0,12">
+       <StackPanel DataContext="{Binding CanMessages}">
+        <DockPanel Margin="0,0,0,7">
+         <Button DockPanel.Dock="Right" Content="打开 CAN 监视" Click="OpenCan_Click" Margin="5,0,0,0"
+          ToolTip="打开共用的 DUT CAN 实时接收与按 ID 刷新监视器"/>
+         <TextBlock Text="DUT CAN 发送" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        </DockPanel>
+        <TextBlock Text="配置归属当前工程；单次真实 CAN1 发送与 PC 定时周期发送。KEY_SIM 内部 CAN0 不在此发送。"
+         Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <ComboBox ItemsSource="{Binding Messages}" DisplayMemberPath="Name"
+         SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" MinHeight="30" Margin="0,0,0,8"/>
+        <WrapPanel IsEnabled="{Binding CanEdit}" Margin="0,0,0,8">
+         <Button Content="新建报文" Command="{Binding AddCommand}"/>
+         <Button Content="删除" Command="{Binding DeleteCommand}"/>
+         <Button Content="保存到工程" Command="{Binding SaveCommand}"/>
+         <Button Content="重新加载" Command="{Binding ReloadCommand}" Margin="0"/>
+        </WrapPanel>
+        <StackPanel IsEnabled="{Binding CanEdit}">
+         <TextBlock Text="报文名称" FontSize="11" Foreground="{StaticResource Muted}"/>
+         <TextBox Text="{Binding SelectedMessage.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+          Margin="0,3,0,7"/>
+         <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+          <StackPanel Width="160">
+           <TextBlock Text="CAN ID（十六进制）" FontSize="11" Foreground="{StaticResource Muted}"/>
+           <TextBox Text="{Binding SelectedMessage.CanIdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+            Margin="0,3,0,0"/>
+          </StackPanel>
+          <CheckBox Content="扩展帧（29-bit）" IsChecked="{Binding SelectedMessage.Extended,Mode=TwoWay}"
+           VerticalAlignment="Bottom" Margin="12,0,0,5"/>
+         </StackPanel>
+         <TextBlock Text="数据 HEX（0～8 字节，如 01 02 03）" FontSize="11" Foreground="{StaticResource Muted}"/>
+         <TextBox Text="{Binding SelectedMessage.DataHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+          Margin="0,3,0,7"/>
+         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+          <TextBlock Text="发送周期" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <TextBox Width="90" Text="{Binding SelectedMessage.PeriodMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+          <TextBlock Text="ms（20～60000）" Foreground="{StaticResource Muted}"
+           VerticalAlignment="Center" Margin="8,0,0,0"/>
+         </StackPanel>
+        </StackPanel>
+        <WrapPanel Margin="0,0,0,7">
+         <Button Content="发送一次" Command="{Binding SendOnceCommand}"
+          Background="#176AB2" Foreground="White" FontWeight="SemiBold"/>
+         <Button Content="启动周期" Command="{Binding StartPeriodicCommand}"
+          Background="#E8F4FF"/>
+         <Button Content="停止周期" Command="{Binding StopPeriodicCommand}" Margin="0"
+          Background="#FFF1EC" Foreground="#A74541"/>
+        </WrapPanel>
+        <TextBlock Text="{Binding Status}" FontSize="11" TextWrapping="Wrap" Foreground="#536F89"/>
+        <TextBlock Text="{Binding PeriodicStatus}" FontSize="11" TextWrapping="Wrap"
+         Foreground="#8B6733" Margin="0,4,0,0"/>
+       </StackPanel>
+      </Border>
       <TextBlock Text="实际控制结果 / 人工测量" FontSize="16" FontWeight="SemiBold"/>
       <TextBlock Text="{Binding LastOperation}" Margin="0,8,0,4" TextWrapping="Wrap"/>
       <TextBlock Text="{Binding LastEvidence}" Foreground="#57738C" FontSize="11"
