@@ -15,6 +15,8 @@ namespace AutoTest.Desktop.Bench;
 public sealed class BenchCanMessageItem : BindableBase
 {
     private string _name;
+    private bool _checked;
+    public bool IsChecked { get => _checked; set => SetProperty(ref _checked, value); }
     private string _canIdHex;
     private bool _extended;
     private string _dataHex;
@@ -64,6 +66,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
     private string _status = "CAN 报文未加载";
     private string _periodicStatus = "未启动周期发送";
     private long _frameCount;
+    public int CheckedCount => Messages.Count(m => m.IsChecked);
 
     public BenchCanEditorViewModel(IBenchWorkbenchPort port, Action<string>? audit = null)
     {
@@ -97,6 +100,11 @@ public sealed class BenchCanEditorViewModel : BindableBase
     {
         item.PropertyChanged += (_, e) =>
         {
+            if (e.PropertyName == nameof(BenchCanMessageItem.IsChecked))
+            {
+                RaisePropertyChanged(nameof(CheckedCount));
+                return;
+            }
             if (e.PropertyName is nameof(BenchCanMessageItem.Name)
                 or nameof(BenchCanMessageItem.CanIdHex)
                 or nameof(BenchCanMessageItem.Extended)
@@ -111,7 +119,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         if (_dirty) return;
         _dirty = true;
         RaisePropertyChanged(nameof(Dirty));
-        Status = "CAN 配置已修改，需先保存到当前工程";
+        Status = "已修改（可直接试发，保存后才写入工程）";
     }
     private void ClearDirty()
     {
@@ -129,6 +137,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         Track(item);
         Messages.Add(item);
         SelectedMessage = item;
+        RaisePropertyChanged(nameof(CheckedCount));
         MarkDirty();
     }
     private void Delete()
@@ -136,6 +145,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         if (!CanEdit || SelectedMessage is not { } selected) return;
         Messages.Remove(selected);
         SelectedMessage = Messages.FirstOrDefault();
+        RaisePropertyChanged(nameof(CheckedCount));
         MarkDirty();
     }
     public async Task LoadAsync()
@@ -160,6 +170,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
                 Messages.Add(item);
             }
             SelectedMessage = Messages.FirstOrDefault();
+            RaisePropertyChanged(nameof(CheckedCount));
             ClearDirty();
             Status = $"当前工程已加载 {Messages.Count} 条 CAN 发送配置";
         }
@@ -193,11 +204,6 @@ public sealed class BenchCanEditorViewModel : BindableBase
             Status = "先选择一条 CAN 报文；周期发送中不可修改配置。";
             return false;
         }
-        if (_dirty)
-        {
-            Status = "请先保存 CAN 发送配置，再操作真实设备。";
-            return false;
-        }
         try { snapshot = SelectedMessage.Snapshot(); return true; }
         catch (Exception ex) { Status = "CAN 报文配置无效：" + ex.Message; return false; }
     }
@@ -221,13 +227,31 @@ public sealed class BenchCanEditorViewModel : BindableBase
 
     public async Task StartPeriodicAsync()
     {
-        if (!TryGetSavedSnapshot(out var message) || message is null) return;
+        if (!CanEdit) return;
+        var checkedRows = Messages.Where(x => x.IsChecked).ToArray();
+        if (checkedRows.Length == 0)
+        {
+            Status = "请先勾选要周期发送的 CAN 报文。";
+            return;
+        }
+        BenchCanMessage[] selected;
+        try
+        {
+            selected = checkedRows.Select(x => x.Snapshot()).ToArray();
+            BenchCanMessage.ValidateAll(selected);
+        }
+        catch (Exception ex)
+        {
+            Status = "勾选的报文存在无效配置：" + ex.Message;
+            return;
+        }
+        // Freeze all checked frames, periods and project identity for this run.
         _periodic = new CancellationTokenSource();
         _periodicRunning = true;
         _frameCount = 0;
         RaisePropertyChanged(nameof(IsPeriodicRunning));
         RaisePropertyChanged(nameof(CanEdit));
-        PeriodicStatus = "正在申请真实 CAN1 周期发送；PC 定时，不保证硬实时";
+        PeriodicStatus = $"已勾选 {selected.Length} 条；准备真实 CAN1 周期发送（Windows 主机定时，非硬实时）";
         try
         {
             var progress = new Progress<BenchCanPeriodicProgress>(p =>
@@ -235,11 +259,12 @@ public sealed class BenchCanEditorViewModel : BindableBase
                 _frameCount = p.AcknowledgedFrames;
                 PeriodicStatus = p.Description;
             });
-            _audit($"请求 CAN1 周期发报：{message.Name} · 0x{message.ArbitrationId:X} · {message.PeriodMs} ms");
-            var result = await _port.RunCanPeriodicAsync(message, progress, _periodic.Token);
-            Status = result.Completed ? "周期发送已达到安全上限并停止" :
+            _audit($"CAN1 批量发送：{selected.Length} 条，" +
+                string.Join(", ", selected.Select(m => $"0x{m.ArbitrationId:X}/{m.PeriodMs}ms")));
+            var result = await _port.RunCanPeriodicBatchAsync(selected, progress, _periodic.Token);
+            Status = result.Completed ? "周期发送达到安全上限并停止" :
                 result.Cancelled ? "用户已停止 CAN1 周期发送" : "CAN1 周期任务停止或被拒绝";
-            PeriodicStatus = result.Detail + $" · 已确认主控 ACK {_frameCount} 帧";
+            PeriodicStatus = result.Detail + $" · 主控 ACK {_frameCount} 帧";
             _audit(Status + " | " + PeriodicStatus);
         }
         catch (OperationCanceledException)
