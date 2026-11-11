@@ -687,6 +687,9 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                 {
                     var result = await physical.SetPhysicalKeySimMaskAsync(step.Mask,
                         HardwareBenchController.PhysicalKeySimConfirmation(step.Mask, generation), ct);
+                    if (ct.IsCancellationRequested)
+                        return new(false, true, false,
+                            "用户停止 KEY_SIM 动作；正在取消的主控指令结果可能 UNKNOWN，未自动发送释放状态。");
                     var accepted = result.Outcome == Outcome.Accepted &&
                         result.Value is { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged };
                     if (!accepted)
