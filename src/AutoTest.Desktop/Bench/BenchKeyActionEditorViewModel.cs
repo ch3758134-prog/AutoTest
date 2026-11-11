@@ -391,6 +391,21 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
             SetClean();
             Status = $"已加载当前工程的 {Actions.Count} 个按键动作";
         }
+        catch (InvalidOperationException e) when (
+            e.Message.Contains("请先创建并保存正式工程", StringComparison.Ordinal) ||
+            e.Message.Contains("工程未保存到有效", StringComparison.Ordinal))
+        {
+            // An unsaved PROJECT is a valid exploratory bench workspace:
+            // allow temporary key actions and real trials, but the project store
+            // still rejects persistence until the project itself is saved.
+            if (Actions.Count == 0 && !_dirty)
+            {
+                _editorProjectId = _port.ActiveProjectId;
+                SetClean();
+                Status = "工程尚未保存：可新建按键按钮并试运行；要保存动作配置，请先保存工程。";
+            }
+            else Status = "当前工程动作无法读取：" + e.Message;
+        }
         catch (Exception e) { Status = "加载工程动作失败：" + e.Message; }
         finally { _working = false; RaisePropertyChanged(nameof(CanEdit)); }
     }
