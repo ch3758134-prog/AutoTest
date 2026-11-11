@@ -307,12 +307,18 @@ async function projectContextModal(project){
     }));
   });
 }
-function projectModal(project=null){if(project){productIdentityModal();return}showModal(project?'修改项目定义':'创建工程项目',(body,footer)=>{
- const name=field(body,'项目/产品名称',project?.name||'');const summary=field(body,'一句话产品目标',project?.summary||'','textarea');summary.className='short';const details=field(body,'完整背景、使用场景、系统边界与约束',project?.body||'','textarea');
- const version=field(body,'当前产品版本',project?.version||'');const variant=field(body,'适用型号 / 变体',project?.variant||'');
- modalActions(footer,async()=>{const payload={name:name.value,summary:summary.value,body:details.value,version:version.value,variant:variant.value};
- const result=await req(project?'/api/studio/project/update':'/api/studio/project',project?{...payload,id:project.id}:payload);
- state.projects=await req('/api/studio/projects');state.project=result.project.id;state.selected=null;await refresh();toast(project?'项目定义已更新':'项目已创建。可以开始记录产品背景和系统能力。')},project?'保存定义':'创建项目');});}
+function projectModal(project=null){if(project){productIdentityModal();return}showModal('创建工程项目',(body,footer)=>{
+ body.append(note('先建立项目工作区，不代表产品定义已经审批。正式产品身份在“产品与系统”中另行提出、审查和发布；当前阶段、样本与配置只属于项目背景。'));
+ const name=field(body,'工程项目名称','');
+ const details=field(body,'项目背景与当前研发情况（可选）','','textarea');details.className='short';
+ const version=field(body,'当前研发阶段 / 版本（可选）','');
+ const variant=field(body,'当前适用型号 / 配置（可选）','');
+ modalActions(footer,async()=>{
+   const result=await req('/api/studio/project',{name:name.value,body:details.value,version:version.value,variant:variant.value});
+   state.projects=await req('/api/studio/projects');state.project=result.project.id;state.selected=null;
+   await refresh();toast('项目工作区已创建。产品身份与工程对象需要单独核实和审查。');
+ },'创建项目');
+});}
 const fieldSpecs={context:[['source','背景与来源']],capability:[['acceptance','能力完成/验收标准']],system:[['rationale','结构划分理由']],requirement:[['source','需求来源'],['acceptance','可验证的验收条件']],architecture:[['rationale','架构选型与约束']],interface:[['acceptance','接口正确性/兼容条件']],design:[['acceptance','设计验收与异常场景']],decision:[['alternatives','候选方案及利弊'],['conclusion','推荐或已选方案'],['rationale','决策依据']],change:[['source','发现来源及证据'],['severity','影响/紧急程度']],risk:[['severity','风险等级'],['rationale','风险原因与缓解措施']],work_package:[['source_sha','目标源码提交 SHA'],['file_scope','可修改的文件范围（每行一个）'],['acceptance','实施验收条件']],test:[['result','执行结论：未执行、通过、失败、受限'],['evidence_level','证据类型：单测、集成、实测、用户验收'],['configuration','适用配置与版本']],milestone:[['due','计划完成日期'],['acceptance','关闭条件']],reference:[]};
 function editorModal(kind,existing=null){showModal((existing?'修订':'新建')+groupLabel(kind),(body,footer)=>{
  const approved=!!(existing&&existing.state==='APPROVED');
