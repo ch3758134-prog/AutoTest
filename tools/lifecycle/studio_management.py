@@ -14,6 +14,7 @@ from studio_verification import Verification
 from studio_governance import DefinitionGovernance
 from studio_definition_research import DefinitionResearch
 from studio_definition_suggestions import DefinitionSuggestions
+from studio_semantics import semantic_context, legacy_project_projection
 
 PROPOSAL_KINDS = ("PRODUCT_DEFINITION_REVIEW", "REQUIREMENT_CLARIFICATION", "TECHNICAL_RESEARCH", "ARCHITECTURE_REVIEW",
                   "DETAILED_DESIGN", "CODING", "INTEGRATION", "VERIFICATION",
@@ -124,6 +125,8 @@ class Management:
         return {
             "schema":"engineering-manager-brief/1",
             "project":p["project"],
+            "engineering_semantics":semantic_context(),
+            "legacy_project_interpretation":legacy_project_projection(p["project"]),
             "engineering_objects":objects,
             "engineering_relations":p["relations"],
             "technical_studies":studies,
@@ -145,6 +148,11 @@ class Management:
                 "This brief is evidence, not a request to invent completion or dates.",
                 "You may propose research/design/plan/verification/coding work only.",
                 "Do not approve engineering revisions, invent technical evidence, dispatch coding, merge or modify policy.",
+                "Read engineering_semantics before classifying or editing any product-level information. Concept explanations are guidance; facts and project evidence take precedence.",
+                "The old project summary is a candidate identity statement; body is historical context; version and variant are metadata, not automatically parts of product identity.",
+                "Distinguish stable product identity from purpose, system components, capabilities, release scope, first DUT, hardware configuration and experimental evidence. A statement may have more than one role.",
+                "For mixed claims, preserve the original wording and propose appropriate linked engineering objects; explain your conceptual reasons and counterfactuals, not word-based rejections.",
+                "When reviewing R1 or EPB references, do not automatically call them irrelevant; explain whether they are essential to the product nature or current delivery context.",
                 "Product definition must be proposed, reviewed in every applicable policy domain and published by the owner's governed route.",
                 "You may submit candidate research findings to a task ID, with source references and explicit limits; the owner must independently review them.",
                 "AI may submit a complete product definition suggestion, but it will not create a formal change or pause coding until owner triage.",
