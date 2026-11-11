@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from studio_store import Store, RuleError, ident, now, text_value
+from studio_verification import Verification
 
 PROPOSAL_KINDS = ("REQUIREMENT_CLARIFICATION", "TECHNICAL_RESEARCH", "ARCHITECTURE_REVIEW",
                   "DETAILED_DESIGN", "CODING", "INTEGRATION", "VERIFICATION",
@@ -46,6 +47,7 @@ class Management:
         p = self.store.project(project_id)
         exe = self.execution.overview(project_id)
         studies = self.research.list(project_id)
+        verification = Verification(self.store).list(project_id)
         objects = p["objects"]
         indexed = {x["id"]: x for x in objects}
         ready = {}
@@ -76,12 +78,23 @@ class Management:
             if task["effective_state"] == "BLOCKED_BY_CHANGED_DESIGN":
                 blockers.append({"type":"STALE_TASK","object_id":task["object_id"],
                                  "reason":"Dispatched coding packet became stale"})
+        for run in verification["runs"]:
+            if run["review_decision"] is None:
+                blockers.append({"type":"EVIDENCE_REVIEW","object_id":run["test_object_id"],
+                                 "reason":"Execution evidence is not reviewed: "+run["id"]})
+            elif run["review_decision"]=="CONFIRMED" and run["outcome"]=="FAIL":
+                blockers.append({"type":"CONFIRMED_TEST_FAILURE",
+                                 "object_id":run["test_object_id"],
+                                 "reason":"Reviewed failure evidence: "+run["id"]+
+                                           " / "+run["configuration"]})
         return {
             "schema":"engineering-manager-brief/1",
             "project":p["project"],
             "engineering_objects":objects,
             "engineering_relations":p["relations"],
             "technical_studies":studies,
+            "verification_runs":verification["runs"],
+            "verification_note":verification["note"],
             "implementation_readiness":ready,
             "github":{"repository":exe["repository"],"fetched_at":exe["fetched_at"],
                       "error":exe["sync_error"],"snapshot":exe["snapshot"]},
@@ -93,6 +106,8 @@ class Management:
                 "Do not approve engineering revisions, invent technical evidence, dispatch coding, merge or modify policy.",
                 "A coding proposal is not CODE_READY. It needs separately approved detailed software design.",
                 "GitHub status is an explicitly refreshed snapshot; cached values are not live.",
+                "Recorded execution PASS is an operator assertion, not product acceptance.",
+                "Evidence CONFIRMED is a human review of that record, not physical certification.",
                 "Return proposals with exact source object ids and plain rationale.",
             ],
         }
