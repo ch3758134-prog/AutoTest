@@ -127,122 +127,129 @@
    <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch"
     Background="#DFE8F1" ResizeDirection="Columns" ShowsPreview="True"/>
 
-   <!-- LEFT: raw and DBC-bound frames share the SAME real DUT CAN1 path. -->
+   <!-- LEFT: a single coherent CAN1 transmit workbench: add/choose/edit/send. -->
    <Border Grid.Column="0" Style="{StaticResource Panel}" Padding="11">
     <Grid DataContext="{Binding CanMessages}">
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="2*" MinHeight="140"/>
+      <RowDefinition Height="*" MinHeight="235"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="1.15*" MinHeight="130"/>
       <RowDefinition Height="Auto"/>
      </Grid.RowDefinitions>
+
      <StackPanel Grid.Row="0" Margin="0,0,0,8">
-      <TextBlock Text="CAN 报文发送" FontSize="17" FontWeight="SemiBold"/>
-      <TextBlock Text="编辑报文 → 勾选要周期发送的行 → 开始发送。未勾选的不发送。"
-       FontSize="11" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,5"/>
-      <WrapPanel Margin="0,0,0,5">
-       <Button Content="+ 新建原始报文" Command="{Binding AddCommand}"/>
-       <Button Content="删除选中报文" Command="{Binding DeleteCommand}"/>
-       <Button Content="打开 DBC 工具" Click="OpenDbc_Click" Margin="0"/>
+      <DockPanel Margin="0,0,0,8">
+       <TextBlock DockPanel.Dock="Right" Text="{Binding SendModeStatus}"
+        Foreground="#176AB2" FontSize="11" VerticalAlignment="Center"
+        TextAlignment="Right" Margin="8,0,0,0"/>
+       <TextBlock Text="CAN 报文发送" FontSize="17" FontWeight="SemiBold"
+        VerticalAlignment="Center"/>
+      </DockPanel>
+      <WrapPanel Margin="0,0,0,6">
+       <Button Content="＋ 从 DBC 选择报文" Click="ChooseDbcCanMessage_Click"
+        Background="#E6F1FC" Foreground="#155F9E" FontWeight="SemiBold"
+        ToolTip="从当前工程已导入的 DBC 中按报文名称或 CAN ID 选择，然后加入下方发送表"/>
+       <Button Content="＋ 原始报文" Command="{Binding AddCommand}"
+        ToolTip="创建一条可直接编辑 ID 和十六进制 Data 的报文"/>
+       <Button Content="DBC 管理" Click="OpenDbc_Click"
+        ToolTip="导入或修改当前工程的 DBC，返回后即可选报文"/>
+       <Button Content="删除行" Command="{Binding DeleteCommand}"
+        Margin="0" ToolTip="删除当前选中的发送报文"/>
       </WrapPanel>
-      <TextBlock Text="从当前工程 DBC 选择报文（可选）"
-       FontSize="11" Foreground="{StaticResource Muted}" Margin="0,0,0,4"/>
-      <Grid>
-       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="Auto"/>
-       </Grid.ColumnDefinitions>
-       <ComboBox ItemsSource="{Binding DbcMessages}" SelectedItem="{Binding SelectedDbcMessage}"
-        DisplayMemberPath="Name" MinHeight="30" ToolTip="选取已导入工程的 DBC 报文，不需要重新导入文件"/>
-       <Button Grid.Column="1" Content="添加 DBC 报文" Command="{Binding AddFromDbcCommand}"
-        Margin="7,0,0,0"/>
-      </Grid>
-      <TextBlock Text="{Binding DbcStatus}" FontSize="11" Foreground="#536F89"
-       TextWrapping="Wrap" Margin="0,4,0,0"/>
+      <WrapPanel Margin="0,0,0,6">
+       <Button Content="▶ 发送勾选报文" Command="{Binding StartPeriodicCommand}"
+        IsEnabled="{Binding CanEdit}" Background="#176AB2" Foreground="White"
+        FontWeight="SemiBold" ToolTip="按各行的独立周期向真实 DUT CAN1 发送所有勾选行；停止前一直发送"/>
+       <Button Content="■ 停止发送" Command="{Binding StopPeriodicCommand}"
+        IsEnabled="{Binding IsPeriodicRunning}"
+        Background="#FFF0ED" Foreground="#A74541"
+        ToolTip="停止本次已勾选报文的所有周期发送；不会自动修改报文数据"/>
+       <Button Content="单发选中行" Command="{Binding SendOnceCommand}"
+        IsEnabled="{Binding CanEdit}" ToolTip="当前选中的一行仅发送一次"/>
+       <Button Content="保存发送表" Command="{Binding SaveCommand}"
+        IsEnabled="{Binding CanEdit}" Margin="0"
+        ToolTip="保存当前报文表到工程；现场试发可先不保存"/>
+      </WrapPanel>
+      <TextBlock Text="{Binding DbcStatus}" FontSize="11" Foreground="#607B94"
+       TextWrapping="Wrap" Margin="0,1,0,3"/>
+      <TextBlock Text="左侧勾选要周期发送的报文；先编辑 ID / Data / 周期，再点击“发送勾选报文”。"
+       FontSize="11" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
      </StackPanel>
 
      <DataGrid Grid.Row="1" ItemsSource="{Binding Messages}"
       SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-      HeadersVisibility="Column" RowHeaderWidth="0" Margin="0,0,0,7"
+      HeadersVisibility="Column" RowHeaderWidth="0" Margin="0,0,0,8"
       ScrollViewer.HorizontalScrollBarVisibility="Auto" SelectionUnit="FullRow">
       <DataGrid.Columns>
        <DataGridTemplateColumn Header="发" Width="35">
         <DataGridTemplateColumn.CellTemplate>
          <DataTemplate>
           <CheckBox IsChecked="{Binding IsChecked,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-           VerticalAlignment="Center" HorizontalAlignment="Center" ToolTip="勾选后参加周期发送"/>
+           VerticalAlignment="Center" HorizontalAlignment="Center"
+           ToolTip="勾选此行：参与周期发送；未勾选不发送"/>
          </DataTemplate>
         </DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="名称" Width="82"
+       <DataGridTextColumn Header="报文名称" Width="95"
         Binding="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
        <DataGridTextColumn Header="CAN ID" Width="81"
         Binding="{Binding CanIdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-       <DataGridCheckBoxColumn Header="扩展" Width="43"
+       <DataGridCheckBoxColumn Header="扩展" Width="46"
         Binding="{Binding Extended,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-       <DataGridTextColumn Header="数据（十六进制）" Width="130"
+       <DataGridTextColumn Header="DATA (HEX)" Width="136"
         Binding="{Binding DataHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-       <DataGridTextColumn Header="周期 ms" Width="68"
+       <DataGridTextColumn Header="周期 ms" Width="67"
         Binding="{Binding PeriodMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+       <DataGridTextColumn Header="来源" Width="53" IsReadOnly="True"
+        Binding="{Binding SourceLabel}"/>
       </DataGrid.Columns>
      </DataGrid>
 
-     <StackPanel Grid.Row="2" Margin="0,0,0,8">
-      <WrapPanel Margin="0,0,0,5">
-       <Button Content="开始周期发送（勾选行）" Command="{Binding StartPeriodicCommand}"
-        Background="#176AB2" Foreground="White" FontWeight="SemiBold"/>
-       <Button Content="停止发送" Command="{Binding StopPeriodicCommand}" Margin="0"
-        Foreground="#A74541" Background="#FFF1EC"/>
-      </WrapPanel>
-      <WrapPanel>
-       <Button Content="单次发送（选中行）" Command="{Binding SendOnceCommand}"/>
-       <Button Content="保存发送表" Command="{Binding SaveCommand}"/>
-       <Button Content="重新加载" Click="ReloadCanMessages_Click" Margin="0"/>
-      </WrapPanel>
-     </StackPanel>
-
-     <Border Grid.Row="3" BorderBrush="{StaticResource Rule}" BorderThickness="1"
-      CornerRadius="4" Padding="8" Background="#FAFCFF">
-      <Grid>
+     <!-- Signal editing is part of the chosen transmit row, not a permanent
+          unrelated empty table: collapse entirely when editing raw CAN. -->
+     <Border Grid.Row="2" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+      Visibility="{Binding HasDbcSignals,Converter={StaticResource BoolVis}}"
+      CornerRadius="5" Padding="9" Background="#FAFCFF"
+      Margin="0,0,0,7">
+      <Grid Height="192">
        <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="*"/>
-        <RowDefinition Height="Auto"/>
        </Grid.RowDefinitions>
-       <DockPanel Grid.Row="0" Margin="0,0,0,4">
-        <Button DockPanel.Dock="Right" Content="转为原始报文"
-         Command="{Binding UnbindDbcCommand}" Margin="0" Padding="6,3" MinHeight="24"/>
-        <TextBlock Text="DBC 信号编辑" FontWeight="SemiBold" FontSize="13"
-         VerticalAlignment="Center"/>
+       <DockPanel Grid.Row="0" Margin="0,0,0,5">
+        <Button DockPanel.Dock="Right" Content="改为原始报文"
+         Command="{Binding UnbindDbcCommand}" Margin="0" Padding="6,3"
+         MinHeight="25" ToolTip="解除工程 DBC 绑定，保留当前十六进制 CAN 数据"/>
+        <TextBlock Text="当前 DBC 报文 · 信号值" FontWeight="SemiBold"
+         FontSize="13" VerticalAlignment="Center"/>
        </DockPanel>
-       <TextBlock Grid.Row="1" Text="{Binding SignalStatus}" FontSize="11"
-        Foreground="#536F89" TextWrapping="Wrap" Margin="0,0,0,5"/>
+       <TextBlock Grid.Row="1" Text="{Binding SignalStatus}" Foreground="#536F89"
+        FontSize="11" TextWrapping="Wrap" Margin="0,0,0,5"/>
        <DataGrid Grid.Row="2" ItemsSource="{Binding SignalInputs}"
         AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
         IsEnabled="{Binding CanEdit}" HeadersVisibility="Column" RowHeaderWidth="0">
         <DataGrid.Columns>
-         <DataGridTextColumn Header="信号" Width="*" Binding="{Binding Name}" IsReadOnly="True"/>
+         <DataGridTextColumn Header="信号名称" Width="*" Binding="{Binding Name}" IsReadOnly="True"/>
          <DataGridTextColumn Header="物理值" Width="100"
           Binding="{Binding ValueText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
          <DataGridTextColumn Header="单位" Width="58" Binding="{Binding Unit}" IsReadOnly="True"/>
         </DataGrid.Columns>
        </DataGrid>
-       <TextBlock Grid.Row="3" Text="修改信号值会自动编码左侧选中报文的 Data；未发送前不会影响 ECU。"
-        FontSize="10" Foreground="#6F8498" TextWrapping="Wrap" Margin="0,5,0,0"/>
       </Grid>
      </Border>
-     <StackPanel Grid.Row="4" Margin="0,7,0,0">
-      <TextBlock Text="{Binding Status}" FontSize="11" TextWrapping="Wrap" Foreground="#536F89"/>
-      <TextBlock Text="{Binding PeriodicStatus}" FontSize="11" TextWrapping="Wrap"
-       Foreground="#8B6733" Margin="0,3,0,0"/>
+
+     <StackPanel Grid.Row="3" Margin="0,3,0,0">
+      <TextBlock Text="{Binding SelectedSourceLabel}" FontSize="11"
+       Foreground="#536F89" TextWrapping="Wrap" Margin="0,0,0,3"/>
+      <TextBlock Text="{Binding Status}" FontSize="11"
+       TextWrapping="Wrap" Foreground="#607992" Margin="0,0,0,3"/>
+      <TextBlock Text="{Binding PeriodicStatus}" FontSize="11"
+       TextWrapping="Wrap" Foreground="#8B6733"/>
      </StackPanel>
     </Grid>
    </Border>
-
-
 
    <!-- CENTER: named action buttons are the operation surface, NOT a step editor. -->
    <Border Grid.Column="2" Style="{StaticResource Panel}" Padding="11">
