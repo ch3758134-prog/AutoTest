@@ -526,6 +526,21 @@ public sealed class BenchCanEditorViewModel : BindableBase
             ClearDirty();
             Status = $"已加载 {Messages.Count} 条 CAN 发送报文";
         }
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("请先保存工程", StringComparison.Ordinal) ||
+            ex.Message.Contains("未找到当前已保存", StringComparison.Ordinal))
+        {
+            // The user's new unsaved ECU workspace is a valid manual bench.
+            // Sending an exploratory physical CAN frame never requires a
+            // sidecar file; only persisting the transmit table does.
+            if (Messages.Count == 0 && !_dirty)
+            {
+                _editorProjectId = _port.ActiveProjectId;
+                ClearDirty();
+                Status = "工程尚未保存：可直接编辑、试发 CAN 报文；保存发送表前请先保存工程。";
+            }
+            else Status = "读取 CAN 配置失败：" + ex.Message;
+        }
         catch (Exception ex) { Status = "CAN 配置加载失败：" + ex.Message; }
         finally { _working = false; RaisePropertyChanged(nameof(CanEdit)); }
     }
