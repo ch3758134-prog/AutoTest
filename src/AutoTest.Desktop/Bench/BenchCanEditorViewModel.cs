@@ -166,6 +166,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
     public string PeriodicStatus { get => _periodicStatus; private set => SetProperty(ref _periodicStatus, value); }
     public bool Dirty => _dirty;
     public bool CanEdit => !_working && !_periodicRunning;
+    public bool CanStartPeriodic => CanEdit && CheckedCount > 0;
+    public bool CanSendOnce => CanEdit && SelectedMessage is not null;
     public bool IsPeriodicRunning => _periodicRunning;
     public BenchCanMessageItem? SelectedMessage
     {
@@ -176,6 +178,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             {
                 RebuildSignalInputs();
                 RaisePropertyChanged(nameof(SelectedSourceLabel));
+                RaisePropertyChanged(nameof(CanSendOnce));
             }
         }
     }
@@ -410,6 +413,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             if (e.PropertyName == nameof(BenchCanMessageItem.IsChecked))
             {
                 RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
                 RaisePropertyChanged(nameof(SendModeStatus));
                 return;
             }
@@ -457,6 +461,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         Messages.Add(item);
         SelectedMessage = item;
         RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(SendModeStatus));
         MarkDirty();
     }
@@ -466,6 +471,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         Messages.Remove(selected);
         SelectedMessage = Messages.FirstOrDefault();
         RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(SendModeStatus));
         MarkDirty();
     }
@@ -478,6 +484,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         ClearDirty();
         _editorProjectId = null;
         RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(SendModeStatus));
         await LoadAsync();
     }
@@ -502,9 +509,12 @@ public sealed class BenchCanEditorViewModel : BindableBase
             Messages.Clear();
             _editorProjectId = _port.ActiveProjectId;
             RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
         }
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
+        RaisePropertyChanged(nameof(CanSendOnce));
         try
         {
             var editingProjectId = _port.ActiveProjectId;
@@ -522,6 +532,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             }
             SelectedMessage = Messages.FirstOrDefault();
             RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
             RaisePropertyChanged(nameof(SendModeStatus));
             ClearDirty();
             Status = $"已加载 {Messages.Count} 条 CAN 发送报文";
@@ -542,7 +553,9 @@ public sealed class BenchCanEditorViewModel : BindableBase
             else Status = "读取 CAN 配置失败：" + ex.Message;
         }
         catch (Exception ex) { Status = "CAN 配置加载失败：" + ex.Message; }
-        finally { _working = false; RaisePropertyChanged(nameof(CanEdit)); }
+        finally { _working = false; RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
+        RaisePropertyChanged(nameof(CanSendOnce)); }
     }
 
     public async Task SaveAsync()
@@ -555,6 +568,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
         }
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
+        RaisePropertyChanged(nameof(CanSendOnce));
         try
         {
             // Saving old encoded bytes after an invalid physical-value edit
@@ -571,7 +586,9 @@ public sealed class BenchCanEditorViewModel : BindableBase
             _audit(Status);
         }
         catch (Exception ex) { Status = "保存失败，编辑内容保留：" + ex.Message; }
-        finally { _working = false; RaisePropertyChanged(nameof(CanEdit)); }
+        finally { _working = false; RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
+        RaisePropertyChanged(nameof(CanSendOnce)); }
     }
 
     private bool TryGetSavedSnapshot(out BenchCanMessage? snapshot)
@@ -597,6 +614,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
         if (!TryGetSavedSnapshot(out var message) || message is null) return;
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
+        RaisePropertyChanged(nameof(CanSendOnce));
         try
         {
             var result = await _port.SendCanOnceAsync(message, CancellationToken.None);
@@ -606,7 +625,9 @@ public sealed class BenchCanEditorViewModel : BindableBase
             _audit(Status + $" | {result.RawRequest} | {result.RawResponse} | {result.TraceReference}");
         }
         catch (Exception ex) { Status = "CAN1 单发异常，实际发送结果 UNKNOWN：" + ex.Message; _audit(Status); }
-        finally { _working = false; RaisePropertyChanged(nameof(CanEdit)); }
+        finally { _working = false; RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
+        RaisePropertyChanged(nameof(CanSendOnce)); }
     }
 
     public async Task StartPeriodicAsync()
@@ -642,6 +663,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
         _frameCount = 0;
         RaisePropertyChanged(nameof(IsPeriodicRunning));
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
+        RaisePropertyChanged(nameof(CanSendOnce));
         RaisePropertyChanged(nameof(SendModeStatus));
         PeriodicStatus = $"已勾选 {selected.Length} 条；准备真实 CAN1 周期发送（Windows 主机定时，非硬实时）";
         try
@@ -677,6 +700,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
             _periodicRunning = false;
             RaisePropertyChanged(nameof(IsPeriodicRunning));
             RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(CanStartPeriodic));
+        RaisePropertyChanged(nameof(CanSendOnce));
             RaisePropertyChanged(nameof(SendModeStatus));
         }
     }
