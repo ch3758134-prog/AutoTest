@@ -43,8 +43,11 @@ public sealed class BenchKeyStepItem : BindableBase
         set { if (SetProperty(ref _durationMsText, value)) RaisePropertyChanged(nameof(Summary)); }
     }
     public string Summary => Kind == BenchActionStepKind.SetKeys
-        ? $"设置完整 Key 状态 · 0x{Mask:X5}"
-        : $"保持当前输出 · {DurationMsText} ms";
+        ? Mask == 0
+            ? "切换按键：全部断开"
+            : "切换按键：闭合 " + string.Join("、", Enumerable.Range(0, 20)
+                .Where(i => (Mask & (1u << i)) != 0).Select(i => $"K{i + 1:00}"))
+        : $"保持当前按键组合 {DurationMsText} 毫秒";
     public BenchKeyStepItem(BenchActionStep step)
     {
         Kind = step.Kind;
@@ -194,7 +197,7 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         if (_dirty || _working) return;
         _dirty = true;
         RaisePropertyChanged(nameof(HasUnsavedChanges));
-        Status = "配置已修改，尚未保存到工程；保存后才可执行";
+        Status = "按键配置已修改；可立即试运行，确认效果后再保存到工程。";
     }
     private void SetClean()
     {
@@ -238,6 +241,15 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         SelectedAction = Actions.FirstOrDefault();
         MarkDirty();
     }
+    /// <summary>Copy the direct twenty-switch experiment into a named action.</summary>
+    public void AddCurrentBenchMask(uint mask)
+    {
+        if (!CanEdit || mask > 0xFFFFF) return;
+        if (SelectedAction is null) NewAction();
+        AddStep(BenchActionStep.SetKeys(mask));
+        Status = "已将当前 20 路开关组合加入动作；可继续添加保持时间。";
+    }
+
     private void AddStep(BenchActionStep step)
     {
         if (!CanEdit || SelectedAction is null) return;
