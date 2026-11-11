@@ -1,11 +1,11 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T07:44:20.705Z",
+  "exported_at": "2026-11-11T07:57:18.701Z",
   "authority": "OWNER_APPROVED_P0_DOCUMENT",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T07:44:20.705Z",
+    "exported_at": "2026-11-11T07:57:18.701Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T07:44:20.705Z"
+      "updated": "2026-11-11T07:57:18.701Z"
     },
     "objects": [
       {
@@ -805,6 +805,75 @@
         "approved_at": null,
         "created": "2026-11-11T07:44:20.705Z",
         "updated": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "id": "at-g1-ecu-epb-test-behavior",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "G1｜EPB 用例揭示的实际自动测试机制（非产品专用需求）",
+        "body": "负责人明确：IGN 为点火/非点火状态，影响 ECU 控制判定；ECU 同时从 CAN 接收表示整车状态及车辆信息的环境信号，并据此决策；按键模拟可表达驻车、释放、无操作，其电气实现由现有 KEY_SIM 电阻网络产生。典型静态驻车/静态释放、熄火驻车/熄火释放等，仅用于说明机制：在不同 CAN 环境和 IGN 状态下施加按键刺激，观察 ECU 的决策和动作，也可能预期不动作。当前闭环的重要观察之一，是 ECU 广播的调试 CAN 报文中表示制动电机电流的数据，经过信号解析形成随时间变化的曲线，用于判定其实际报告的执行情况。具体报文、信号、波形阈值、测试步骤顺序和电气参数均没有确定，也不准写入 AutoTest 的通用核心。负责人明确不希望再围绕单一 EPB 用例设计系统。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户本轮测试行为澄清（2026-11-10）：EPB 点火/非点火、CAN 整车状态、驻车/释放/无操作、ECU 动作与广播电流判定",
+          "source_type": "USER_OPERATIONAL_MECHANISM",
+          "research_status": "G1_DISCUSSION_NOT_APPROVED",
+          "approval_note": "P0 已批准，但当前 G1 概念不代表详细设计、接口或编码授权",
+          "firmware_freeze": "TEMPORARY_NO_CHANGES",
+          "classification": "CONFIRMED_REAL_WORLD_MECHANISM_NOT_CANONICAL_TEST_CASE",
+          "example_role": "ILLUSTRATION_NOT_FIXED_PRODUCT_CONFIG"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:57:18.701Z",
+        "updated": "2026-11-11T07:57:18.701Z"
+      },
+      {
+        "id": "at-g1-generalized-stimulus-observation-judgement",
+        "project_id": "autotest",
+        "kind": "reference",
+        "title": "G1｜通用自动测试机制研究：持续环境、动作、观测与时间判定",
+        "body": "面向已批准 P0（通用可配置软硬件 ECU 自动测试），成熟工具研究对照 Vector vTESTstudio、TraceTronic ecu.test 和 ASAM XIL，形成以下 G1 研究观点：\n1. 测试程序应能够组织流程控制、参数与重复利用，但刺激、环境、采集和判据不能被某个 EPB 固定流程绑死。\n2. CAN 环境可能是持续广播的多报文/信号状态，测试过程能在环境运行时修改相应状态；其编辑资源是否拆出及具体生命周期需要进一步用户行为确认。\n3. IGN、KEY_SIM、CAN 及未来其它刺激应保留独立动作语义、持续/触发/停止等行为的差异，不把所有刺激简化为发一次命令。\n4. 观测不能局限于“立即读取一个值”：原始 CAN 接收/DBC 解码、时间序列采集、时序判断、参考波形比较、期望动作和期望无动作均需要研究。\n5. 波形判据可以与刺激序列解耦，以便复用、重新评价及采用未来不同信号源；可在过程内触发判定或事后对保留证据分析，具体同步/异步行为待研究。\n6. 结果应区分条件不满足、真实失败、没有足够观测、数据损坏/断链和执行错误；连续环境、刺激、观测与判据须有可以关联的时间线。\n7. 保留测试行为层与实际硬件/通信端点的映射边界，不应把通用测试步骤绑定现有主控 CAN 通道编号或某 ECU 固定 DBC 信号。\n8. 本记录仅是功能需求研究，不决定 G2 类、G3 数据结构、默认 UI、实时性能指标或 Codex 实施细节。\n来源： https://www.vector.com/en/product/vteststudio/ ; https://www.asam.net/standards/detail/xil/ ; https://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html ; https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Test-steps-tab/Stimulation-control.html ; https://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Test-case-editor/Test-steps.html",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "公开成熟 ECU 测试框架技术文档及用户当前 EPB 机制澄清",
+          "source_type": "RESEARCH_AND_AI_INTERPRETATION",
+          "research_status": "G1_ANALYSIS_CANDIDATE",
+          "sources": [
+            "https://www.vector.com/en/product/vteststudio/",
+            "https://www.asam.net/standards/detail/xil/",
+            "https://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html",
+            "https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Test-steps-tab/Stimulation-control.html"
+          ],
+          "approval_note": "非已批准通用引擎设计；验证用例不得冻结为产品边界"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:57:18.701Z",
+        "updated": "2026-11-11T07:57:18.701Z"
+      },
+      {
+        "id": "at-g1-evidence-source-quality",
+        "project_id": "autotest",
+        "kind": "risk",
+        "title": "G1｜ECU 自报电流与独立物理测量的证据区别（观察来源质量）",
+        "body": "当前 EPB 用户描述的电流波形来自 ECU 通过 CAN 广播的调试数据，再经 DBC/信号解析形成时间序列。它是 ECU 自身采集并对外报告的电流或相关内部测量值，不可在没有外部传感器比对时声称为独立电气测量，也不能仅凭正常收到报文就判定执行动作满足条件。评估需要考察样本有效性、采样间隔/时间戳、连续性、缩放/单位、缺帧与延迟，并以测试配置指定规则；将来可扩展独立采集通道而不更改通用判定范式。具体波形模型、信号类型、单位与判据没有在 G1 冻结。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户对 EPB 电流来源的说明 + 时间序列分析方法研究",
+          "source_type": "EVIDENCE_SEMANTICS",
+          "not_blocking_user_workflow_research": true,
+          "unverified_electrical_independence": true
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:57:18.701Z",
+        "updated": "2026-11-11T07:57:18.701Z"
       }
     ],
     "relations": [
@@ -992,6 +1061,39 @@
         "kind": "defines",
         "status": "CANDIDATE",
         "created": "2026-11-11T07:44:20.705Z",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g1-rel-behavior-test",
+        "project_id": "autotest",
+        "source_id": "at-g1-ecu-epb-test-behavior",
+        "target_id": "at-cap-test",
+        "kind": "defines",
+        "status": "CANDIDATE",
+        "created": "2026-11-11T07:57:18.701Z",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g1-rel-general-test",
+        "project_id": "autotest",
+        "source_id": "at-g1-generalized-stimulus-observation-judgement",
+        "target_id": "at-cap-test",
+        "kind": "defines",
+        "status": "CANDIDATE",
+        "created": "2026-11-11T07:57:18.701Z",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g1-rel-evidence-risk",
+        "project_id": "autotest",
+        "source_id": "at-g1-evidence-source-quality",
+        "target_id": "at-g1-generalized-stimulus-observation-judgement",
+        "kind": "impacts",
+        "status": "CANDIDATE",
+        "created": "2026-11-11T07:57:18.701Z",
         "approved_by": null,
         "approved_at": null
       }
@@ -1356,6 +1458,30 @@
         "action": "CREATE_G0_ASSET_INPUT_FROM_USER_REPORT",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "object_id": "at-g1-ecu-epb-test-behavior",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g1-ecu-epb-test-behavior\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"G1｜EPB 用例揭示的实际自动测试机制（非产品专用需求）\",\"body\":\"负责人明确：IGN 为点火/非点火状态，影响 ECU 控制判定；ECU 同时从 CAN 接收表示整车状态及车辆信息的环境信号，并据此决策；按键模拟可表达驻车、释放、无操作，其电气实现由现有 KEY_SIM 电阻网络产生。典型静态驻车/静态释放、熄火驻车/熄火释放等，仅用于说明机制：在不同 CAN 环境和 IGN 状态下施加按键刺激，观察 ECU 的决策和动作，也可能预期不动作。当前闭环的重要观察之一，是 ECU 广播的调试 CAN 报文中表示制动电机电流的数据，经过信号解析形成随时间变化的曲线，用于判定其实际报告的执行情况。具体报文、信号、波形阈值、测试步骤顺序和电气参数均没有确定，也不准写入 AutoTest 的通用核心。负责人明确不希望再围绕单一 EPB 用例设计系统。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户本轮测试行为澄清（2026-11-10）：EPB 点火/非点火、CAN 整车状态、驻车/释放/无操作、ECU 动作与广播电流判定\",\"source_type\":\"USER_OPERATIONAL_MECHANISM\",\"research_status\":\"G1_DISCUSSION_NOT_APPROVED\",\"approval_note\":\"P0 已批准，但当前 G1 概念不代表详细设计、接口或编码授权\",\"firmware_freeze\":\"TEMPORARY_NO_CHANGES\",\"classification\":\"CONFIRMED_REAL_WORLD_MECHANISM_NOT_CANONICAL_TEST_CASE\",\"example_role\":\"ILLUSTRATION_NOT_FIXED_PRODUCT_CONFIG\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:57:18.701Z\",\"updated\":\"2026-11-11T07:57:18.701Z\"}",
+        "action": "CREATE_G1_RESEARCH_CANDIDATE_FROM_USER_WORKFLOW",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:57:18.701Z"
+      },
+      {
+        "object_id": "at-g1-generalized-stimulus-observation-judgement",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g1-generalized-stimulus-observation-judgement\",\"project_id\":\"autotest\",\"kind\":\"reference\",\"title\":\"G1｜通用自动测试机制研究：持续环境、动作、观测与时间判定\",\"body\":\"面向已批准 P0（通用可配置软硬件 ECU 自动测试），成熟工具研究对照 Vector vTESTstudio、TraceTronic ecu.test 和 ASAM XIL，形成以下 G1 研究观点：\\n1. 测试程序应能够组织流程控制、参数与重复利用，但刺激、环境、采集和判据不能被某个 EPB 固定流程绑死。\\n2. CAN 环境可能是持续广播的多报文/信号状态，测试过程能在环境运行时修改相应状态；其编辑资源是否拆出及具体生命周期需要进一步用户行为确认。\\n3. IGN、KEY_SIM、CAN 及未来其它刺激应保留独立动作语义、持续/触发/停止等行为的差异，不把所有刺激简化为发一次命令。\\n4. 观测不能局限于“立即读取一个值”：原始 CAN 接收/DBC 解码、时间序列采集、时序判断、参考波形比较、期望动作和期望无动作均需要研究。\\n5. 波形判据可以与刺激序列解耦，以便复用、重新评价及采用未来不同信号源；可在过程内触发判定或事后对保留证据分析，具体同步/异步行为待研究。\\n6. 结果应区分条件不满足、真实失败、没有足够观测、数据损坏/断链和执行错误；连续环境、刺激、观测与判据须有可以关联的时间线。\\n7. 保留测试行为层与实际硬件/通信端点的映射边界，不应把通用测试步骤绑定现有主控 CAN 通道编号或某 ECU 固定 DBC 信号。\\n8. 本记录仅是功能需求研究，不决定 G2 类、G3 数据结构、默认 UI、实时性能指标或 Codex 实施细节。\\n来源： https://www.vector.com/en/product/vteststudio/ ; https://www.asam.net/standards/detail/xil/ ; https://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html ; https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Test-steps-tab/Stimulation-control.html ; https://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Test-case-editor/Test-steps.html\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"公开成熟 ECU 测试框架技术文档及用户当前 EPB 机制澄清\",\"source_type\":\"RESEARCH_AND_AI_INTERPRETATION\",\"research_status\":\"G1_ANALYSIS_CANDIDATE\",\"sources\":[\"https://www.vector.com/en/product/vteststudio/\",\"https://www.asam.net/standards/detail/xil/\",\"https://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html\",\"https://docs.tracetronic.com/help/ecu.test/en/Main-program/Action-window/Test-steps-tab/Stimulation-control.html\"],\"approval_note\":\"非已批准通用引擎设计；验证用例不得冻结为产品边界\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:57:18.701Z\",\"updated\":\"2026-11-11T07:57:18.701Z\"}",
+        "action": "CREATE_G1_RESEARCH_CANDIDATE_FROM_USER_WORKFLOW",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:57:18.701Z"
+      },
+      {
+        "object_id": "at-g1-evidence-source-quality",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g1-evidence-source-quality\",\"project_id\":\"autotest\",\"kind\":\"risk\",\"title\":\"G1｜ECU 自报电流与独立物理测量的证据区别（观察来源质量）\",\"body\":\"当前 EPB 用户描述的电流波形来自 ECU 通过 CAN 广播的调试数据，再经 DBC/信号解析形成时间序列。它是 ECU 自身采集并对外报告的电流或相关内部测量值，不可在没有外部传感器比对时声称为独立电气测量，也不能仅凭正常收到报文就判定执行动作满足条件。评估需要考察样本有效性、采样间隔/时间戳、连续性、缩放/单位、缺帧与延迟，并以测试配置指定规则；将来可扩展独立采集通道而不更改通用判定范式。具体波形模型、信号类型、单位与判据没有在 G1 冻结。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户对 EPB 电流来源的说明 + 时间序列分析方法研究\",\"source_type\":\"EVIDENCE_SEMANTICS\",\"not_blocking_user_workflow_research\":true,\"unverified_electrical_independence\":true},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:57:18.701Z\",\"updated\":\"2026-11-11T07:57:18.701Z\"}",
+        "action": "CREATE_G1_RESEARCH_CANDIDATE_FROM_USER_WORKFLOW",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:57:18.701Z"
       }
     ],
     "events": [
@@ -1628,6 +1754,33 @@
         "actor": "AI_PROJECT_MANAGER",
         "note": "负责人确认两板、两固件、原理图、CanTool 和旧 src 均是需管理资产；不作为设计批准",
         "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "id": "evt-at-g1-ecu-epb-test-behavior",
+        "project_id": "autotest",
+        "object_id": "at-g1-ecu-epb-test-behavior",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "用户测试机制与成熟 ECU 自动测试方法对照；保持待审，不实施",
+        "timestamp": "2026-11-11T07:57:18.701Z"
+      },
+      {
+        "id": "evt-at-g1-generalized-stimulus-observation-judgement",
+        "project_id": "autotest",
+        "object_id": "at-g1-generalized-stimulus-observation-judgement",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "用户测试机制与成熟 ECU 自动测试方法对照；保持待审，不实施",
+        "timestamp": "2026-11-11T07:57:18.701Z"
+      },
+      {
+        "id": "evt-at-g1-evidence-source-quality",
+        "project_id": "autotest",
+        "object_id": "at-g1-evidence-source-quality",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "用户测试机制与成熟 ECU 自动测试方法对照；保持待审，不实施",
+        "timestamp": "2026-11-11T07:57:18.701Z"
       }
     ],
     "technical_research": {
@@ -1746,12 +1899,19 @@
         "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
         "changed_by": "AI_PROJECT_MANAGER_G0_OWNER_FACT_CORRECTION",
         "changed_at": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "project_id": "autotest",
+        "revision": 7,
+        "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
+        "changed_by": "AI_PROJECT_MANAGER_G1_RESEARCH_STARTED",
+        "changed_at": "2026-11-11T07:57:18.701Z"
       }
     ],
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "已确认现役 KEY_SIM 接入 DUT、双 CAN/USB/IGN/阀/扫码枪的系统关系；主控与按键固件暂时冻结，CanTool/src/原理图为真实研发资产。G0 事实够用即进入自动测试需求研究，全面实测后置。不改变已批准 P0。",
+  "p0_discussion_note": "P0 V0.1 已批准，当前从 G1 研究通用测试行为。用户确认 IGN/CAN整车环境/按键/电流调试报文判定的 EPB 机制只是实例；不把特定用例做成通用产品约束，现场全面复验后置。",
   "approval": {
     "approval_id": "AT-P0-CHARTER-V01-OWNER-20261110",
     "scope": "P0_PRODUCT_DEFINITION_AND_INITIATION_V0_1",
