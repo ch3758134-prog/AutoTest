@@ -86,6 +86,7 @@ window.projectActions=(()=>{
    if(endpoint==='/api/control/action'){
      lastRemote=null;
      await refresh();
+     closeDrawer();
      toast('已记录至本地工作记录；需 Git 提交才能供其他对话读取');
    }
    return body;
@@ -339,7 +340,7 @@ window.projectActions=(()=>{
    pill(r.status==='OPEN'?'待处理风险':r.status==='MITIGATING'?'处理中':r.status==='CLOSED'?'已关闭':'已有措施',
      r.status==='CLOSED'?'approved':'pending')+'</div><p class="pm-muted">'+a(r.description)+'</p>'+
    '<p class="pm-muted">可能性 '+a(r.likelihood)+' / 影响 '+a(r.severity)+' / 负责 '+a(r.owner)+'</p>'+
-   (r.status==='OPEN'||r.status==='MITIGATING'?'<button class="ghost" data-pm="risk-review" data-id="'+a(r.id)+'">更新风险</button>':'')+'</div>';
+   (r.status==='OPEN'||r.status==='MITIGATING'||r.status==='MITIGATED'?'<button class="ghost" data-pm="risk-review" data-id="'+a(r.id)+'">更新风险</button>':'')+'</div>';
  function wbsView(){
    let out='<div class="pm-record">';
    for(const d of data.plan.deliverables){
