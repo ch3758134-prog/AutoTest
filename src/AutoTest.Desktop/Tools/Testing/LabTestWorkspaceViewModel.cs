@@ -612,6 +612,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 // A physical diagnostic verdict is never automatically a production PASS.
                 Verdict = report.Verdict +
                     (hasKeyActions ? " / PHYSICAL_KEYSIM_CAN0" : " / PHYSICAL_CAN1_READONLY") +
+                    (selectedCaseIds is null ? "" : " / SELECTED_CASES_ONLY") +
                     " / NOT_PRODUCTION";
                 var root = Path.Combine(Environment.GetFolderPath(
                     Environment.SpecialFolder.LocalApplicationData), "AutoTest", "R1", "PhysicalRuns");
