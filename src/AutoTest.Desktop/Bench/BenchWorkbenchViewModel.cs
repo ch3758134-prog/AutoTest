@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +31,22 @@ public sealed class ManualVoltageInput : BindableBase
     public string Value { get => _value; set => SetProperty(ref _value, value); }
 }
 
+/// <summary>20 KEY_SIM resistor switches, independent of any named ECU Profile.</summary>
+public sealed class BenchSwitchItem : BindableBase
+{
+    private bool _selected;
+    public int Index { get; }
+    public string Number => (Index + 1).ToString("00");
+    public string BitLabel => "K" + Number;
+    public uint Bit => 1u << Index;
+    public bool IsSelected
+    {
+        get => _selected;
+        set => SetProperty(ref _selected, value);
+    }
+    public BenchSwitchItem(int zeroBasedIndex) => Index = zeroBasedIndex;
+}
+
 public sealed class BenchWorkbenchViewModel : BindableBase
 {
     private readonly IBenchWorkbenchPort _port;
@@ -43,6 +60,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private string _deviceIdentity = "—";
     private string _lastOperation = "尚无操作";
     private string _lastEvidence = "ACK：未知 · 实际电压：未测量";
+    private string _directResult = "尚未操作。勾选 K01～K20 只修改准备发送的掩码，不会触发硬件。";
+    private bool _updatingSwitches;
     private string _comment = "";
     private string _operatorName = "";
     private BenchEvidenceSource _source = BenchEvidenceSource.Physical;
@@ -68,6 +87,21 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             () => !Busy && _lastState is not null).ObservesProperty(() => Busy);
         ReleaseAllKeysCommand = new DelegateCommand(async () => await ReleaseAllKeysAsync(),
             () => !Busy).ObservesProperty(() => Busy);
+        ApplyDirectMaskCommand = new DelegateCommand(async () => await ApplyDirectMaskAsync(),
+            () => !Busy && SelectedKeyMask != 0 && _connection.State == BenchConnection.Connected)
+            .ObservesProperty(() => Busy);
+        ClearSwitchesCommand = new DelegateCommand(ClearSelectedSwitches,
+            () => !Busy).ObservesProperty(() => Busy);
+        foreach (var i in Enumerable.Range(0, 20))
+        {
+            var item = new BenchSwitchItem(i);
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(BenchSwitchItem.IsSelected) && !_updatingSwitches)
+                    UpdateSwitchSelection();
+            };
+            Switches.Add(item);
+        }
         foreach (var n in Enumerable.Range(1, 5)) Voltages.Add(new ManualVoltageInput(n));
         Append(WorkbenchSeverity.Neutral, "台架就绪", "尚未读取工程或硬件事实；仅允许经 DEVICE 验证的实际动作。");
     }
@@ -76,6 +110,32 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public ObservableCollection<BenchStateItem> States { get; } = new();
     public ObservableCollection<BenchDevice> Devices { get; } = new();
     public ObservableCollection<ManualVoltageInput> Voltages { get; } = new();
+    public ObservableCollection<BenchSwitchItem> Switches { get; } = new();
+    public uint SelectedKeyMask => Switches.Aggregate(0u,
+        (mask, item) => item.IsSelected ? mask | item.Bit : mask);
+    public int SelectedKeyCount => Switches.Count(x => x.IsSelected);
+    public string SelectedKeyMaskText => $"0x{SelectedKeyMask:X5} · 已选 {SelectedKeyCount}/20";
+    public string DirectResult
+    {
+        get => _directResult;
+        private set => SetProperty(ref _directResult, value);
+    }
+    private void UpdateSwitchSelection()
+    {
+        RaisePropertyChanged(nameof(SelectedKeyMask));
+        RaisePropertyChanged(nameof(SelectedKeyCount));
+        RaisePropertyChanged(nameof(SelectedKeyMaskText));
+        ((DelegateCommand)ApplyDirectMaskCommand).RaiseCanExecuteChanged();
+        DirectResult = "已修改待发送组合；尚未发出 CAN0 指令。";
+    }
+    private void ClearSelectedSwitches()
+    {
+        _updatingSwitches = true;
+        try { foreach (var sw in Switches) sw.IsSelected = false; }
+        finally { _updatingSwitches = false; }
+        UpdateSwitchSelection();
+        DirectResult = "仅清除了界面勾选；未发送任何释放帧。若需释放真实按键，请执行「释放全部按键」。";
+    }
     public ObservableCollection<WorkbenchMessage> Messages { get; } = new();
 
     public ICommand ConnectCommand { get; }
@@ -83,6 +143,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public ICommand ApplyStateCommand { get; }
     public ICommand SaveMeasurementCommand { get; }
     public ICommand ReleaseAllKeysCommand { get; }
+    public ICommand ApplyDirectMaskCommand { get; }
+    public ICommand ClearSwitchesCommand { get; }
     public string ProjectName { get => _project; private set => SetProperty(ref _project, value); }
     public string EcuProfileName { get => _ecu; private set => SetProperty(ref _ecu, value); }
     public string Revision { get => _revision; private set => SetProperty(ref _revision, value); }
@@ -280,6 +342,50 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         finally { Busy = false; }
     }
 
+    /// <summary>
+    /// One explicitly authorized physical CAN0 operation for the selected
+    /// combination. The mask is frozen before the await; editing checkboxes
+    /// can never change the payload already in flight.
+    /// </summary>
+    public async Task ApplyDirectMaskAsync()
+    {
+        if (Busy || SelectedKeyMask == 0) return;
+        var mask = SelectedKeyMask;
+        Busy = true;
+        DirectResult = $"请求真实 CAN0 / 0x730 · MASK 0x{mask:X5}";
+        Append(WorkbenchSeverity.Progress, "发出按键组合请求",
+            $"KEY_SIM K01～K20 · 0x{mask:X5} / Session {_connection.SessionGeneration?.ToString() ?? "UNKNOWN"}");
+        try
+        {
+            var result = await _port.ApplyPhysicalKeyMaskAsync(mask, CancellationToken.None);
+            var accepted = result.Accepted &&
+                result.Source == BenchEvidenceSource.Physical;
+            DirectResult = accepted
+                ? $"主控 CAN_SEND 已 ACK · 目标组合 0x{mask:X5}；实际开关及五路电压未测量"
+                : $"未确认组合生效：{result.ErrorCode ?? "UNKNOWN"} · {result.ErrorMessage ?? result.AckDescription ?? "无有效 ACK"}";
+            LastOperation = $"KEY_SIM 组合：0x{mask:X5} · " + (accepted ? "主控 ACK" : "失败/不确定");
+            LastEvidence = result.AckDescription ?? "主控无有效 ACK，实际开关状态未知";
+            Append(accepted ? WorkbenchSeverity.Success : WorkbenchSeverity.Error,
+                accepted ? "主控接受组合命令（非硬件状态反馈）" : "组合命令失败或状态不确定",
+                $"MASK 0x{mask:X5} | REQ {result.RawRequest ?? "—"} | RESP {result.RawResponse ?? "—"} | " +
+                $"Generation {result.SessionGeneration?.ToString() ?? "—"} | {result.ErrorCode ?? "—"} {result.ErrorMessage ?? ""}",
+                result.OperationId, result.TraceReference);
+        }
+        catch (Exception ex)
+        {
+            DirectResult = "请求失败；实际开关状态 UNKNOWN：" + ex.Message;
+            Failure("应用选中按键组合", ex);
+        }
+        finally { Busy = false; ((DelegateCommand)ApplyDirectMaskCommand).RaiseCanExecuteChanged(); }
+    }
+
+    public async Task RefreshConnectionAsync()
+    {
+        if (Busy) return;
+        try { UpdateConnection(await _port.GetConnectionAsync(CancellationToken.None)); }
+        catch (Exception ex) { Failure("刷新共享主控连接状态", ex); }
+    }
+
     public async Task ReleaseAllKeysAsync()
     {
         if (Busy) return;
@@ -293,6 +399,17 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             LastOperation = result.Accepted ? "已向 CAN0 发送全部释放" :
                 "释放未获确认 / 已拒绝";
             LastEvidence = result.AckDescription ?? "主控无有效 ACK，实际开关状态未知";
+            DirectResult = result.Accepted
+                ? "主控确认已发送全部释放帧；实际 KEY_SIM 开关状态没有回读"
+                : "全部释放未确认；实际 KEY_SIM 开关状态 UNKNOWN";
+            if (result.Accepted)
+            {
+                _updatingSwitches = true;
+                try { foreach (var sw in Switches) sw.IsSelected = false; }
+                finally { _updatingSwitches = false; }
+                UpdateSwitchSelection();
+                DirectResult = "主控确认已发送全部释放帧；实际 KEY_SIM 开关状态没有回读";
+            }
             Append(result.Accepted ? WorkbenchSeverity.Success : WorkbenchSeverity.Error,
                 result.Accepted ? "真实全部释放请求已被主控接受" : "真实全部释放未确认",
                 "KEY_SIM CAN0 0x730 / 0x80 · " +
@@ -370,6 +487,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             RaisePropertyChanged(nameof(ShowDeviceChoice));
         }
         ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
+        ((DelegateCommand)ApplyDirectMaskCommand).RaiseCanExecuteChanged();
     }
     private void Failure(string stage, Exception ex)
     {
