@@ -4,16 +4,10 @@
  Title="从工程 DBC 选择 CAN 发送报文"
  Width="700" Height="530" MinWidth="580" MinHeight="430"
  WindowStartupLocation="CenterOwner"
- FontFamily="Segoe UI" FontSize="13" Background="#F6F8FB"
- Foreground="#23374D" UseLayoutRounding="True">
+ FontFamily="Segoe UI" FontSize="13" Background="{DynamicResource StudioBg}"
+ Foreground="{DynamicResource StudioText}" UseLayoutRounding="True">
  <Window.Resources>
-  <Style TargetType="Button">
-   <Setter Property="MinHeight" Value="32"/>
-   <Setter Property="Padding" Value="12,6"/>
-   <Setter Property="Margin" Value="0,0,8,0"/>
-   <Setter Property="Background" Value="#F7FAFE"/>
-   <Setter Property="BorderBrush" Value="#CBD9E8"/>
-  </Style>
+  
  </Window.Resources>
  <Grid Margin="18">
   <Grid.RowDefinitions>
