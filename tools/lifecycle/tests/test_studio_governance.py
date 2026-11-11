@@ -8,6 +8,7 @@ import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from studio_store import Store,RuleError
 from studio_governance import DefinitionGovernance,DOMAINS,POLICY_VERSION
+from studio_definition_research import DefinitionResearch
 
 
 class ProductDefinitionGovernanceTests(unittest.TestCase):
@@ -20,6 +21,7 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
             "body":"Supports developer and operator workflows, offline, no specific ECU requirement.",
             "version":"R0","variant":"generic"})["project"]
         self.g=DefinitionGovernance(self.store)
+        self.research=DefinitionResearch(self.store)
 
     def proposal(self,project_id=None,reference=None):
         project_id=project_id or self.project["id"]
@@ -32,8 +34,22 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
             ["repo://design/research","discussion://product/decision"],
             "Owner",reference or status["definition_digest"])
 
+    def review_research(self,change,domains=None):
+        domains=set(domains or [x for x,_ in DOMAINS])
+        data=self.research.list(change["change"]["id"])
+        for task in data["tasks"]:
+            if task["domain"] not in domains or task["state"]=="REVIEWED":continue
+            submission=self.research.submit(task["id"],task["revision"],"Analyst",
+                "AI_CANDIDATE","Examined product change for "+task["domain"],
+                ["test://reviewed/"+task["domain"]],
+                "External factual verification is outside this fixture")
+            self.research.review(task["id"],submission["submission_id"],
+                task["revision"],"ACCEPT","Owner",
+                "In this fixture, reviewed evidence is explicitly accepted")
+
     def fill(self,change,impacts=None):
         impacts=impacts or {}
+        self.review_research(change)
         for domain,_ in DOMAINS:
             ids=impacts.get(domain,[])
             self.g.review(change["change"]["id"],domain,"IMPACT" if ids else "NO_IMPACT",
@@ -226,6 +242,7 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
         foreign=self.store.create_object({"project_id":other["id"],
                "kind":"requirement","title":"Foreign","body":"Not linked"})["item"]
         change=self.proposal()
+        self.review_research(change,["CAPABILITIES"])
         with self.assertRaisesRegex(RuleError,"Cross-project"):
             self.g.review(change["change"]["id"],"CAPABILITIES","IMPACT",
                  "Potential external impact",["link://outside"],[foreign["id"]],
