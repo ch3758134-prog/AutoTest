@@ -234,6 +234,15 @@ def handler_factory(store, token, repo=None, manager_token=None):
                         data.get("rationale",""),data.get("evidence_refs"),
                         data.get("affected_ids"),data.get("reviewer",""),
                         data.get("expected_base_digest",""))
+                elif path == "/api/studio/governance/review-package":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may assess implementation impact"},403)
+                    answer = governance.review_package(
+                        data.get("change_id",""),data.get("package_id",""),
+                        data.get("outcome",""),data.get("rationale",""),
+                        data.get("evidence_refs"),data.get("reviewer",""),
+                        data.get("expected_base_digest",""),
+                        data.get("expected_package_revision"))
                 elif path == "/api/studio/governance/publish":
                     if not owner_request:
                         return self.write({"error":"Only owner may publish product definition"},403)
