@@ -16,6 +16,7 @@ from studio_execution import Execution
 from studio_management import Management
 from studio_verification import Verification
 from studio_governance import DefinitionGovernance, definition, digest
+from studio_definition_suggestions import DefinitionSuggestions
 
 TABLES = (
     "projects","objects","revisions","relations","events",
@@ -25,7 +26,7 @@ TABLES = (
     "definition_baselines","definition_changes","definition_reviews",
     "definition_package_reviews","definition_invalidations",
     "definition_research_tasks","definition_research_submissions",
-    "definition_research_decisions"
+    "definition_research_decisions","definition_suggestions"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -64,13 +65,14 @@ def _validate(archive):
     sections["reviews"]=_array(verification.get("reviews"),"reviews")
     governance=archive.get("governance",{"baselines":[],"changes":[],"reviews":[],
         "package_reviews":[],"invalidations":[],"research_tasks":[],
-        "research_submissions":[],"research_decisions":[]})
+        "research_submissions":[],"research_decisions":[],"suggestions":[]})
     if not isinstance(governance,dict):
         raise RuleError("Invalid definition governance section")
     for key in ("baselines","changes","reviews","package_reviews","invalidations",
-                "research_tasks","research_submissions","research_decisions"):
+                "research_tasks","research_submissions","research_decisions",
+                "suggestions"):
         optional=key in ("package_reviews","research_tasks","research_submissions",
-                         "research_decisions")
+                         "research_decisions","suggestions")
         sections["g_"+key]=_array(governance.get(key,[] if optional else None),
                                  "governance."+key)
     objects=sections["objects"]
@@ -224,6 +226,17 @@ def _validate(archive):
             decision.get("submission_id") not in submission_ids or
             submission_map[decision["submission_id"]]["task_id"]!=decision["task_id"]):
             raise RuleError("Research decision references mismatched task/submission")
+    for suggestion in sections["g_suggestions"]:
+        if suggestion.get("project_id")!=pid:
+            raise RuleError("Cross-project product-definition suggestion")
+        for key in ("proposed_json","source_refs"):
+            try:json.loads(suggestion[key])
+            except (ValueError,KeyError,TypeError) as exc:
+                raise RuleError("Invalid product-definition suggestion data") from exc
+        if suggestion.get("accepted_change_id") and suggestion["accepted_change_id"] not in change_ids:
+            raise RuleError("Accepted suggestion refers to missing governed change")
+    if len({x.get("id") for x in sections["g_suggestions"]})!=len(sections["g_suggestions"]):
+        raise RuleError("Duplicate product-definition suggestion ID")
     for review in sections["g_package_reviews"]:
         if (review.get("change_id") not in change_ids or
             review.get("package_id") not in ids):
@@ -287,6 +300,7 @@ def restore_to_empty(archive,output_database):
     Management(store,engine,research)
     Verification(store)
     DefinitionGovernance(store)
+    DefinitionSuggestions(store)
     del engine,research
     with store.db() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -336,7 +350,8 @@ def restore_to_empty(archive,output_database):
                           ("definition_baselines","g_baselines"),
                           ("definition_reviews","g_reviews"),
                           ("definition_package_reviews","g_package_reviews"),
-                          ("definition_invalidations","g_invalidations")):
+                          ("definition_invalidations","g_invalidations"),
+                          ("definition_suggestions","g_suggestions")):
             _insert(db,table,sec[key])
         errors=db.execute("PRAGMA foreign_key_check").fetchall()
         if errors:
