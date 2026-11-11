@@ -380,6 +380,91 @@ function renderProcess(){
     '发现新事实 → 核对有效范围及工程决定 → 确定受影响的交付和工作 → 重新研究/设计必要部分 → 修订计划与输入版本 → 继续受控实施。未受影响的工作不应无差别停止。'));
 }
 
+function impactPreview(deliverableId) {
+  const affected = new Set([deliverableId]);
+  let updated=true;
+  while(updated){
+    updated=false;
+    for(const d of data().deliverables){
+      if(d.parent && affected.has(d.parent) && !affected.has(d.id)){
+        affected.add(d.id);updated=true;
+      }
+    }
+  }
+  const direct = data().work.filter(w=>affected.has(w.deliverable)).map(w=>w.id);
+  const downstream = new Set();
+  const seen = new Set(direct);
+  updated=true;
+  while(updated){
+    updated=false;
+    for(const w of data().work){
+      if(seen.has(w.id))continue;
+      if(w.depends.some(dep=>seen.has(dep))){
+        downstream.add(w.id);seen.add(w.id);updated=true;
+      }
+    }
+  }
+  return {direct,downstream:[...downstream]};
+}
+function renderChangePreview(){
+  const sec=part('范围变化与计划影响预览','基于已经登记的交付—工作—依赖关系推算；未登记关系仍然未知');
+  const panel=node('div','card card-pad');
+  const intro=node('p','quiet','如果产品范围、需求或新的硬件事实发生变化，先定位可能影响的交付成果与开发工作，再决定是否需要调整计划或重新研究。此处不会改写任何工程数据。');
+  panel.append(intro);
+  const controls=node('div','toolbar');
+  const select=node('select','filter-select');
+  select.setAttribute('aria-label','选择发生变化的交付成果');
+  for(const d of data().deliverables){
+    const opt=node('option','',d.id+' · '+d.title);opt.value=d.id;select.append(opt);
+  }
+  const kind=node('select','filter-select');
+  kind.setAttribute('aria-label','选择问题性质');
+  for(const [k,v] of [
+    ['FACT','已知工程事实被纠正'],['REQUIREMENT','需求理解或验收要求变化'],
+    ['SCOPE','当前版本交付范围变化'],['IMPLEMENT','仅实施存在缺陷']
+  ]){
+    const opt=node('option','',v);opt.value=k;kind.append(opt);
+  }
+  append(controls,select,kind);
+  panel.append(controls);
+  const results=node('div','');
+  panel.append(results);
+  function draw(){
+    results.replaceChildren();
+    const found=impactPreview(select.value);
+    const expl={
+      FACT:'先核对事实证据与适用范围；并不自动改变产品定义。',
+      REQUIREMENT:'需要核对有效需求及设计输入，必要时按原流程重新审查。',
+      SCOPE:'先审查版本范围变化、交付承诺和开发计划，不能无授权扩大范围。',
+      IMPLEMENT:'优先核查实现缺陷及设计符合性，不自动回滚需求或 P0。'
+    };
+    results.append(node('div','note-box',expl[kind.value]));
+    const all=found.direct.concat(found.downstream);
+    if(!all.length){
+      results.append(node('div','empty','目前没有登记直接关联的工作。这不是无影响的证明，应补充关系及证据。'));
+      return;
+    }
+    const header=node('h3','', '已登记的可能受影响工作');
+    results.append(header);
+    const list=node('div','');
+    for(const id of all){
+      const w=work(id);
+      const row=node('div','strip'),main=node('div','strip-main');
+      append(main,node('div','strip-title',w.id+' · '+w.title),
+        node('div','strip-desc',found.direct.includes(id)?'直接对应交付':'由已登记的任务依赖传递'));
+      append(row,main,button('查看',()=>openWork(w.id),'button ghost small'));
+      list.append(row);
+    }
+    results.append(list);
+    results.append(node('p','section-note',
+      '这里只显示显式登记的影响路径。需由工程总协调 AI 对照实际设计、代码和证据评估其他可能影响，并由负责人审查重大范围或基线变更。'));
+  }
+  select.addEventListener('change',draw);
+  kind.addEventListener('change',draw);
+  draw();
+  sec.append(panel);
+}
+
 function renderDecisions(){
   heading('CONTROL & DECISIONS / 管理控制', '决策、问题与计划调整',
     '让需要你真正决定的事情显现出来；普通 AI 草稿和工作笔记不应作为日常待审批事项。');
@@ -394,6 +479,7 @@ function renderDecisions(){
       button('复制审查交接',()=>copy(decisionHandoff(q)),'button ghost small'));
     box.append(acts);sec.append(box);
   }
+  renderChangePreview();
   const note=part('正式决定的边界');
   note.append(node('div','note-box',
     '当前重构版本不提供绕过正式审查的“批准”按钮。要批准需求、阶段 Gate、计划基线或任务执行，必须在正式审查机制中针对确切版本操作，不能用本地建议冒充。'));
