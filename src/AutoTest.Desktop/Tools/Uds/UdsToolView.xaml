@@ -33,7 +33,7 @@
   
   
   
-  <Style x:Key="UdsSendButton" TargetType="Button">
+  <Style x:Key="UdsSendButton" TargetType="Button" BasedOn="{StaticResource AtPrimaryButton}">
    <Setter Property="Background" Value="#126BBB"/>
    <Setter Property="Foreground" Value="White"/>
    <Setter Property="BorderBrush" Value="#277ABD"/>
@@ -55,13 +55,13 @@
   <!-- R1 P08 title / service actions derived from the approved HTML -->
   <DockPanel Margin="3,0,3,11">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-    <TextBlock Text="EXECUTION SOURCE" Foreground="{StaticResource UdsMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+    <TextBlock Text="通信来源" Foreground="{StaticResource UdsMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
     <ComboBox Width="105" ItemsSource="{Binding SourceModes}" SelectedItem="{Binding SourceMode,Mode=TwoWay}" Margin="0,0,7,0"/>
     <Button Content="发送请求" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
     <Button Content="取消" Command="{Binding CancelCommand}"/>
    </StackPanel>
    <StackPanel>
-    <TextBlock Text="UDS Console" FontSize="21" FontWeight="SemiBold"/>
+    <TextBlock Text="UDS 诊断" FontSize="21" FontWeight="SemiBold"/>
     <TextBlock Text="DIAGNOSTICS / UDS  ·  Service Builder · ISO-TP · NRC · Response · Trace"
                Foreground="{StaticResource UdsMuted}" FontSize="11" Margin="0,4,0,0"/>
    </StackPanel>
@@ -83,7 +83,7 @@
    <Border Style="{StaticResource UdsCard}">
     <DockPanel>
      <StackPanel DockPanel.Dock="Top">
-      <TextBlock Text="服务目录 / UDS SERVICES" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="UDS 服务目录" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="保存可复用诊断任务；选中后自动填入请求编辑器"
                  Foreground="{StaticResource UdsMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,11"/>
      </StackPanel>
@@ -124,10 +124,10 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="11"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <Border Style="{StaticResource UdsCard}">
      <StackPanel>
-      <TextBlock Text="请求编辑 / REQUEST BUILDER" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="请求编辑" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="服务名称" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ServiceName,UpdateSourceTrigger=PropertyChanged}"/>
-      <TextBlock Text="结构化参数 / SERVICE PARAMETERS" Style="{StaticResource UdsCaption}"/>
+      <TextBlock Text="服务参数" Style="{StaticResource UdsCaption}"/>
       <WrapPanel Margin="0,0,0,5">
        <TextBlock Text="DID (HEX)" Foreground="{StaticResource UdsMuted}" VerticalAlignment="Center" Margin="0,0,5,4"/>
        <TextBox Width="74" Text="{Binding DidParameter,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
