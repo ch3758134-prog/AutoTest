@@ -27,6 +27,7 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     private readonly ProjectBenchActionsStore? _actionStore;
     private readonly ProjectBenchCanStore? _canStore;
     private readonly Func<BenchCanMessage, long, bool, bool>? _approveCan;
+    private readonly Func<IReadOnlyList<BenchCanMessage>, long, bool>? _approveCanBatch;
     private readonly Func<BenchKeyAction, long, bool>? _approveKeyAction;
     private readonly Func<string?>? _projectPath;
     private readonly Func<string?>? _projectId;
@@ -40,13 +41,15 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         Func<string?>? projectPath = null, Func<string?>? projectId = null,
         Func<BenchKeyAction, long, bool>? approveKeyAction = null,
         Func<BenchCanMessage, long, bool, bool>? approveCan = null,
-        Func<string?>? projectName = null)
+        Func<string?>? projectName = null,
+        Func<IReadOnlyList<BenchCanMessage>, long, bool>? approveCanBatch = null)
     {
         _projectPath = projectPath;
         _projectName = projectName;
         _projectId = projectId;
         _approveKeyAction = approveKeyAction;
         _approveCan = approveCan;
+        _approveCanBatch = approveCanBatch;
         if (projectPath is not null && projectId is not null)
         {
             _actionStore = new ProjectBenchActionsStore(projectPath, projectId);
@@ -526,6 +529,96 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         {
             return new(false, true, false,
                 "CAN1 周期发送已停止；若取消发生在 USB 发送期间，最后一帧实际结果未知。");
+        }
+    }
+
+    /// <summary>
+    /// A single operator approval for all checked DUT CAN1 frames.
+    /// Their independent periods are best-effort host scheduling, serialized over
+    /// the existing WinUSB CAN_SEND path. No separate USB session or mock CAN.
+    /// </summary>
+    public async Task<BenchActionExecution> RunCanPeriodicBatchAsync(
+        IReadOnlyList<BenchCanMessage> checkedMessages,
+        IProgress<BenchCanPeriodicProgress>? progress, CancellationToken ct)
+    {
+        BenchCanMessage.ValidateAll(checkedMessages);
+        if (checkedMessages.Count == 0)
+            return new(false, false, false, "请先勾选至少一条 CAN 报文。");
+        if (_projectId is null || string.IsNullOrWhiteSpace(_projectId()))
+            return new(false, false, false, "没有当前工程身份，拒绝真实发送。");
+        if (_testRunning?.Invoke() == true)
+            return new(false, false, false, "自动 TEST 正在运行，禁止手动发送。");
+        var physical = _hardware();
+        if (physical is not { State: UsbSessionState.Connected,
+            ProtocolVersionVerified: true, Generation: > 0 } ||
+            physical.PhysicalCanToolFlashActive)
+            return new(false, false, false, "主控未连接、未验证或正在执行烧录。");
+        var snapshot = checkedMessages.ToArray();
+        var generation = physical.Generation;
+        var projectIdentity = _projectId();
+        var projectPath = _projectPath?.Invoke();
+        if (_approveCanBatch?.Invoke(snapshot, generation) != true)
+            return new(false, false, false, "用户取消 CAN1 周期发送，未发送。");
+
+        // Build and validate every frame BEFORE sending any of them.
+        var frames = snapshot.Select(message =>
+            AutoTest.Contracts.CanFrame.Create(AutoTest.Contracts.BusRole.DutCan,
+                message.Extended, message.ArbitrationId, message.Payload())).ToArray();
+        var confirmations = frames.Select(f =>
+            HardwareBenchController.PhysicalManualCanConfirmation(f, generation)).ToArray();
+        var periodTicks = snapshot.Select(m =>
+            Math.Max(1L, System.Diagnostics.Stopwatch.Frequency * m.PeriodMs / 1000L)).ToArray();
+        var due = Enumerable.Repeat(System.Diagnostics.Stopwatch.GetTimestamp(), snapshot.Length).ToArray();
+        var endAt = DateTimeOffset.UtcNow.AddMinutes(30);
+        long ackCount = 0;
+        try
+        {
+            while (ackCount < 10000 && DateTimeOffset.UtcNow < endAt)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!ReferenceEquals(_hardware(), physical) ||
+                    physical.State != UsbSessionState.Connected ||
+                    physical.Generation != generation || !physical.ProtocolVersionVerified ||
+                    physical.PhysicalCanToolFlashActive || _testRunning?.Invoke() == true ||
+                    _projectId() != projectIdentity || _projectPath?.Invoke() != projectPath)
+                    return new(false, false, false,
+                        "CAN 周期已中止：工程、USB 或其他物理任务状态变化；最后一帧状态未知。");
+
+                var index = 0;
+                for (int i = 1; i < due.Length; i++)
+                    if (due[i] < due[index]) index = i;
+
+                var now = System.Diagnostics.Stopwatch.GetTimestamp();
+                if (now < due[index])
+                {
+                    var wait = TimeSpan.FromSeconds((due[index] - now) /
+                        (double)System.Diagnostics.Stopwatch.Frequency);
+                    await Task.Delay(wait, ct);
+                    continue;
+                }
+
+                var result = await physical.SendPhysicalManualCan1Async(
+                    frames[index], confirmations[index], ct);
+                if (result.Outcome != Outcome.Accepted ||
+                    result.Value is not { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged })
+                    return new(false, false, false,
+                        $"CAN1 ID=0x{snapshot[index].ArbitrationId:X} 主控 ACK 未确认：" +
+                        $"{result.FailureCode ?? "UNKNOWN"}；所有周期发送已停止。");
+                ackCount++;
+                progress?.Report(new BenchCanPeriodicProgress(ackCount,
+                    $"CAN1 真实发送：{snapshot.Length} 条选中，主控 ACK {ackCount} 帧，" +
+                    $"最近 ID=0x{snapshot[index].ArbitrationId:X}（主机定时）"));
+                // Never send a catch-up burst after Windows/USB delays.
+                var next = due[index] + periodTicks[index];
+                due[index] = Math.Max(next, System.Diagnostics.Stopwatch.GetTimestamp());
+            }
+            return new(true, false, false,
+                "已达到会话安全上限（10000 帧或 30 分钟），所有选中周期已停止。");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return new(false, true, false,
+                "用户停止全部周期发送；取消时正在进行的最后一帧结果可能未知。");
         }
     }
 
