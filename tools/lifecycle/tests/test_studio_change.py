@@ -94,15 +94,45 @@ class ChangeReviewTest(unittest.TestCase):
         with self.assertRaisesRegex(RuleError,"missing or stale"):
             self.store.close_change(change["id"],2,"Human","Legacy approval incomplete")
 
+    def test_capture_is_atomic_and_candidate_only(self):
+        target=self.obj("capability","Monitor output")
+        created=self.review.capture(target["id"],1,"Observed wrong display",
+                                    "Observed frames were not refreshed",
+                                    "lab://session/123","Human")
+        change=created["change"]
+        self.assertEqual(change["kind"],"change")
+        self.assertEqual(change["state"],"OPEN")
+        self.assertEqual(change["meta"]["origin_target_revision"],1)
+        self.assertEqual(len(created["targets"]),1)
+        self.assertEqual(created["targets"][0]["relation"]["status"],"CANDIDATE")
+        with self.assertRaisesRegex(RuleError,"explicitly approved"):
+            self.review.assess(change["id"],target["id"],1,1,"REVISE","Human","Confirmed")
+        self.assertEqual(len(self.store.project(self.project)["objects"]),2)
+        self.assertTrue(any(x["action"]=="CAPTURE_FINDING"
+                            for x in self.store.project(self.project)["events"]))
+
+    def test_capture_stale_target_does_not_create_partial_change(self):
+        target=self.obj("design","Original design")
+        self.store.update_object(target["id"],{"expected_revision":1,"body":"Revised"})
+        before=self.store.project(self.project)
+        with self.assertRaisesRegex(RuleError,"Target revision conflict"):
+            self.review.capture(target["id"],1,"Wrong report","Detail",
+                                "lab://report","Human")
+        after=self.store.project(self.project)
+        self.assertEqual(len(after["objects"]),len(before["objects"]))
+        self.assertEqual(len(after["relations"]),len(before["relations"]))
+
     def test_change_review_ui_routes_are_wired(self):
         server=(Path(__file__).resolve().parents[1]/"studio_server.py").read_text(encoding="utf-8")
         html=(Path(__file__).resolve().parents[1]/"studio.html").read_text(encoding="utf-8")
         self.assertIn('if path == "/api/studio/change/review":',server)
+        self.assertIn('elif path == "/api/studio/change/capture":',server)
         self.assertIn('elif path == "/api/studio/change/assess":',server)
         self.assertIn('if not owner_request:',server)
         self.assertIn('if path == "/change.js":',server)
         self.assertIn('<script src="/change.js"></script>',html)
         self.assertIn("changeReviewModal(selected.id)",html)
+        self.assertIn("captureFindingModal(selected)",html)
 
 
 if __name__=="__main__":
