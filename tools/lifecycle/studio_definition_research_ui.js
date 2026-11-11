@@ -10,15 +10,16 @@ async function definitionResearchModal(changeId){
   }catch(e){toast('研究任务加载失败：'+e.message);return;}
   const tasks=data.tasks||[],reviewed=tasks.filter(x=>x.state==='REVIEWED').length;
   const excluded=tasks.filter(x=>x.state==='NOT_APPLICABLE').length;
+  const suggested=tasks.filter(x=>x.state==='SUGGESTED').length;
   showModal('产品定义变更 · 研究范围与证据复核',(body,footer)=>{
     body.append(note('内置领域是帮助 AI 不遗漏重要问题的研究视角，不是十篇固定报告。你可以根据具体变更决定哪些需要调查、哪些不适用，并补充新的研究问题；理由、证据与版本必须保留。'));
     const summary=el('div','detailsection');
-    add(summary,el('strong','','已复核研究 '+reviewed+' 项 · 不适用并说明 '+excluded+' 项 · 待澄清 '+(tasks.length-reviewed-excluded)+' 项'),
+    add(summary,el('strong','','已复核研究 '+reviewed+' 项 · 不适用并说明 '+excluded+' 项 · 待研究 '+(tasks.length-reviewed-excluded-suggested)+' 项 · 可选视角 '+suggested+' 项'),
        el('p','context','范围由工程事实和问题性质决定。将某方向判断为不适用不等于断言相关工程实现没有影响；证据引用仍须核查。'));
     body.append(summary);
     for(const task of tasks){
       const panel=el('div','detailsection'),line=el('div','sectionline');
-      add(line,el('strong','',task.domain+' · '+(task.state==='REVIEWED'?'已复核':task.state==='NOT_APPLICABLE'?'已说明不适用':'待研究')),
+      add(line,el('strong','',task.domain+' · '+(task.state==='REVIEWED'?'已复核':task.state==='NOT_APPLICABLE'?'已说明不适用':task.state==='SUGGESTED'?'可选视角':'待研究')),
         el('span','tiny','任务 r'+task.revision+' · 候选 '+task.submissions.length+' 份'));
       panel.append(line);
       panel.append(el('p','context',task.question));
@@ -35,13 +36,14 @@ async function definitionResearchModal(changeId){
         '已有候选材料但尚未获得确认；不能自动视为该领域研究完成。'));
       const controls=el('div','buttonrow');
       if(detail.change.state==='REVIEW'){
-        if(task.state==='OPEN'){
-          controls.append(button('提交研究材料','outline',
+        if(task.state==='OPEN'||task.state==='SUGGESTED'){
+          controls.append(button('提交候选材料','outline',
             ()=>definitionResearchSubmitModal(changeId,task)));
-          controls.append(button('说明本方向不适用','outline',
+          if(task.state==='SUGGESTED')controls.append(button('纳入本次研究','outline',
+            ()=>definitionResearchActivateModal(changeId,task)));
+          if(task.state==='OPEN')controls.append(button('说明不适用','outline',
             ()=>definitionResearchScopeModal(changeId,task)));
-        }
-        else controls.append(button('重新开启研究','outline',
+        }else controls.append(button('重新开启研究','outline',
           ()=>definitionResearchReopenModal(changeId,task)));
         controls.append(button('查看候选与审查','outline',
           ()=>definitionResearchCandidateModal(changeId,task)));
@@ -56,7 +58,8 @@ async function definitionResearchModal(changeId){
 function definitionResearchSubmitModal(changeId,task){
   showModal('提交研究发现 · '+task.domain,(body,footer)=>{
     body.append(note('填写的是候选材料，不是结论审批。可链接已经经实验结果审查并作出 DECIDED 决定的技术研究 ID；系统会固定其研究修订。'));
-    body.append(el('p','context','本次研究问题：'+task.question));
+    body.append(el('p','context','本次研究视角/问题：'+task.question));
+    if(task.state==='SUGGESTED')body.append(note('AI 可以先提交候选材料，但这不会让此视角自动变成必做任务；负责人决定是否纳入。'));
     const finding=field(body,'已查到的事实、不同观点与判断过程','','textarea');
     const refs=field(body,'可追溯来源（每行一个）','','textarea');
     const limits=field(body,'未解决问题、适用范围与局限','','textarea');
@@ -178,6 +181,26 @@ function definitionResearchNewTopicModal(changeId){
         await req('/api/studio/governance/research/add-topic',{
           change_id:changeId,question:question.value,
           rationale:reason.value,reviewer:reviewer.value
+        });
+        await definitionResearchModal(changeId);
+      }catch(e){err.textContent=e.message;err.classList.remove('hidden');}
+    }));
+  });
+}
+
+function definitionResearchActivateModal(changeId,task){
+  showModal('将这个研究视角纳入实际工作',(body,footer)=>{
+    body.append(note('将参考视角纳入本次变更的实际研究范围。没有选择的其他视角不会自动变成待办。'));
+    body.append(el('p','context',task.question));
+    const rationale=field(body,'为什么要调查这一方向','','textarea');
+    const reviewer=field(body,'负责人','项目负责人');
+    const err=el('div','error hidden');body.append(err);
+    footer.append(button('返回','outline',()=>definitionResearchModal(changeId)));
+    footer.append(button('确认纳入研究','primary',async()=>{
+      try{
+        await req('/api/studio/governance/research/activate',{
+          task_id:task.id,expected_revision:task.revision,
+          reviewer:reviewer.value,rationale:rationale.value
         });
         await definitionResearchModal(changeId);
       }catch(e){err.textContent=e.message;err.classList.remove('hidden');}
