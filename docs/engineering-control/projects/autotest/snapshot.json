@@ -1,11 +1,11 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T07:36:34.086Z",
+  "exported_at": "2026-11-11T07:44:20.705Z",
   "authority": "OWNER_APPROVED_P0_DOCUMENT",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T07:36:34.086Z",
+    "exported_at": "2026-11-11T07:44:20.705Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T07:36:34.086Z"
+      "updated": "2026-11-11T07:44:20.705Z"
     },
     "objects": [
       {
@@ -488,23 +488,27 @@
         "project_id": "autotest",
         "kind": "work_package",
         "title": "自动测试真实闭环设计核验与现有实现复盘（研究工作包）",
-        "body": "优先盘点现有 TEST 编辑器、CAN RX/TX、IGN/KEY_SIM、设备会话、DBC 响应解码、判定和 RunId/StepFact/Verdict 的现役实现及真实证据；形成一条具体 ECU 的最小工作流与缺口清单，并为有缺口的单元提供经批准的详细设计和测试条件。当前是研究/工程设计工作包而非编码合同，绝不可标记 CODE_READY 或允许 Codex 自行补设计。",
+        "body": "围绕已批准的 P0 产品目标，在现有硬件/固件暂时冻结且已确认双 CAN、USB、IGN、夹具、KEY_SIM 组成的前提下，优先对自动测试进行系统性需求与技术研究：工程师应如何编辑/组织测试步骤、怎样选择刺激、观察 ECU CAN 广播并依据规则判定；手动试验与自动测试程序的关系是什么；需哪些已有 CAN/DBC 能力与数据资源。对照现有 HOST、历史 src、CanTool 和固件/原理图作为技术资产，识别已有能力和未知接口。先形成 G1 清晰需求/使用行为，再选定 G2 架构和 G3 可实施合同。\n\n本工作包当前只允许资料调查、需求解释、方案研究及问题记录；不要求先做真实台架复测、不派发重写软件代码、不改主控或按键板固件，也不将 Mock 或旧软件能力当物理验收。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
+          "source": "用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）",
           "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
           "priority": "P0_FIRST_RESEARCH",
           "execution_role": "RESEARCH_DESIGN",
           "code_ready": false,
           "file_scope": [],
-          "acceptance": "对照精确 Git HEAD、已批准设计、硬件事实和现场记录，交付具体可验收的最小真实自动测试链与缺口"
+          "acceptance": "对照精确 Git HEAD、已批准设计、硬件事实和现场记录，交付具体可验收的最小真实自动测试链与缺口",
+          "next_focus": "G1_AUTOMATIC_TEST_REQUIREMENTS",
+          "field_test_prerequisite": false,
+          "firmware_freeze": "CURRENT_TEMPORARY",
+          "prior_source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T07:04:23.904Z",
-        "updated": "2026-11-11T07:04:23.904Z"
+        "updated": "2026-11-11T07:44:20.705Z"
       },
       {
         "id": "at-p0-product-core-agreement",
@@ -581,12 +585,12 @@
         "project_id": "autotest",
         "kind": "system",
         "title": "G0｜现有 ECU 测试系统组成与实物身份调查（初始盘点）",
-        "body": "本次 G0 从已经批准的 P0 产品定义出发：AutoTest 是一个以真实台架为基础的软硬件测试系统。本对象盘查现存物理系统的组成，而非延用旧架构。\n\n目前历史来源所列组成：① Windows 工位 PC 和 HOST；② 主控 PCB 与主控 MCU 固件；③ KEY_SIM 按键 PCB 与其 MCU 固件；④ 供电、夹具及电磁阀、CAN/USB 线束和 DUT 外部信号连接；⑤ 外部扫码枪（作为工位识别设备）；⑥ 实际被测 ECU（测试对象，不属于 AutoTest 自研电子控制器）。\n\n已见历史源资料：主控 TestCtr V1.5 原理图（5 页）、按键 EPB_ODD V1.1 原理图（4 页），对应 FW-MAIN-Project.zip、FW-KEY-WS.zip；本轮只重新核对了 GitHub 中的文字核查记录，并未将 PDF 上的板卡型号或固件 ZIP 的身份验证为现役实装或现场已烧录镜像。\n\n**当前事实层级**：P0 确认的是系统边界；历史 G0 是设计/源码研究及旧批准记录；2026-11-09 USB/CAN1 RX 是后续用户报告的局部实测。当前实物板号、装配/线束、实际固件版本、设备角色和连接/供电状态仍需对现役工位核对。",
+        "body": "当前由负责人直接确认的 AutoTest 实物与研发组成：\n\n• Windows PC 上位机：自动测试的核心软件工作环境。PC 通过 USB 与主控板通信；扫码枪直接连接 PC，作为外部识别设备。\n• 主控板：与 PC 的 USB 连接；具有两路 CAN，分别连接 KEY_SIM 按键板与被测 ECU；承担 CAN 收发，并控制 IGN 与夹具电磁阀，从而完成相应外部刺激和夹具控制。\n• KEY_SIM 按键板：已接入当前台架且已连接 DUT。它是通过开关/电阻网络模拟 ECU 外部按键输入的硬件组成，不能用此前“未接入”的旧状态代替负责人最新确认。\n• ECU 夹具及外部连接与供电：现实存在，属于系统运行环境/实物组成；具体电气状态和安全参数本轮不作新实测。\n• 主控板与按键板各有固件代码：均属于 AutoTest 系统软件资产；**当前暂时冻结修改**，冻结不是功能不存在、未来不能修改或设计上永久禁止迭代。\n• 主控原理图、按键原理图和两套固件源码均是真实工程资产；此外独立 CanTool（烧录及上位机工具参考）和历史 src（上位机既有研究/源码）同属需要纳入资产管理的参考代码。\n• DUT：ECU 为被测对象，不是 AutoTest 自身控制器。\n\n这个组成关系来自负责人本轮直接陈述，属于当前已知工程事实/现况报告；并不等于已经测完所有引脚、动作、电气阈值或通路性能。\n\n**当前工作边界**：先围绕自动测试建立功能与设计，不以复验完整真实台架作为进入自动测试需求研究和软件研发的门槛；后续当具体物理操作或交付验收需要新证据时，再按其能力项安排针对性核验。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）",
+          "source": "用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）",
           "source_type": "HISTORICAL_SOURCE_REVIEW",
           "baseline_input": "at-p0-approved-charter-v01:r2",
           "references": [
@@ -603,14 +607,18 @@
           ],
           "evidence_scope": "G0_DESK_RECONNAISSANCE_ONLY",
           "approval_note": "未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate",
-          "investigation_topic": "CURRENT_ASSET_IDENTITY",
-          "evidence_level": "HISTORICAL_SCHEMATIC_AND_SOURCE_REVIEW",
-          "status": "TO_CONFIRM_CURRENT_PHYSICAL_CONFIGURATION"
+          "investigation_topic": "CURRENT_SYSTEM_COMPONENTS_OWNER_CONFIRMED",
+          "evidence_level": "OWNER_CONFIRMED_CURRENT_BENCH_TOPOLOGY",
+          "status": "TO_CONFIRM_CURRENT_PHYSICAL_CONFIGURATION",
+          "key_sim_current_state": "CONNECTED_TO_DUT",
+          "firmware_state": "TEMPORARILY_FROZEN_BOTH_CODEBASES",
+          "current_priority": "AUTO_TEST_FUNCTION_AND_SOFTWARE_RESEARCH",
+          "prior_source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T07:36:34.086Z",
-        "updated": "2026-11-11T07:36:34.086Z"
+        "updated": "2026-11-11T07:44:20.705Z"
       },
       {
         "id": "at-g0-hardware-capability-map",
@@ -695,12 +703,12 @@
         "project_id": "autotest",
         "kind": "risk",
         "title": "G0｜现役工位实物与固件身份尚未完整对应（待调查）",
-        "body": "本次新产品范围下的待核实事项，按对事实调查的影响组织，不作为全部现场测试的强制前置：\n\nA. 当前工位：实装主控/按键 PCB 版本、是否都接入、供电/夹具/线束配置、DUT 型号及安全操作边界。\nB. MCU 固件：两块实物中实际运行的固件/编译 Target/映像版本，与归档源码是否一致。\nC. 对外刺激：CAN 实际通路/终端、IGN/夹具输出真实电平及动作、KEY_SIM 20 开关→5 路电压与 DUT 识别关系；原理图、命令 ACK 和 ECU 端测量必须分开。\nD. 后续能力：真实 CAN TX、相关设备恢复、采集时基/丢帧、串口扫码枪的实际接口与样例。它们的优先级应由后续产品级目标和受控调查决定，而不是未经审查要求全部重测。\nE. 旧图纸与现场一致性：尤其 KEY16 控制线、CAN 原理图/固件通道编号、供电和阀反馈语义。\n\n不申请当前上电、刷写或危险输出试验授权；先完成只读现况盘点和证据归档，再针对关键未核能力决定安全取证方式。",
+        "body": "负责人已明确确认的现况不再列作未知：当前有主控板、按键板、ECU 夹具；KEY_SIM 已接入并连 DUT；主控双 CAN 分别接 KEY_SIM 和 ECU，USB 接 PC，IGN/电磁阀由主控控制，扫码枪直连 PC；两套固件当前暂时冻结，但始终是可持续开发的系统软件资产。\n\n仍可在之后按实际需求核验的技术细节：当前具体 PCB 装配及固件二进制版本、CAN 通道编号与线束逐线映射、DUT 输入端电压及按键组合、IGN/阀状态与失效处理、总线性能、CanTool/src 代码与现役 HOST 对照、扫码枪协议与业务匹配。这些仅是后续设计/验证的证据缺口，不再因存在未知而阻塞当前自动测试的功能定义与软件实现规划。\n\n本阶段不要求用户再次插拔、通电、测量 KEY_SIM，亦不申请烧录 MCU、控制阀体等实体操作。任何涉及实际设备的试验都在相关设计和安全边界清楚后单独安排。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）",
+          "source": "用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）",
           "source_type": "HISTORICAL_SOURCE_REVIEW",
           "baseline_input": "at-p0-approved-charter-v01:r2",
           "references": [
@@ -719,24 +727,29 @@
           "approval_note": "未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate",
           "investigation_topic": "CURRENT_CONFIGURATION_EVIDENCE_GAPS",
           "risk_level": "OPEN_G0_FACTS",
-          "no_hardware_acts": true
+          "no_hardware_acts": true,
+          "open_question_class": "DEFERRED_TECHNICAL_DETAILS",
+          "key_sim_connection_gap": "CLOSED_BY_OWNER_REPORT",
+          "blocking_current_software_requirements": false,
+          "immediate_bench_test": false,
+          "prior_source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T07:36:34.086Z",
-        "updated": "2026-11-11T07:36:34.086Z"
+        "updated": "2026-11-11T07:44:20.705Z"
       },
       {
         "id": "at-g0-investigation-plan",
         "project_id": "autotest",
         "kind": "context",
         "title": "G0｜重新定义产品后的现有系统调查工作顺序（非实现计划）",
-        "body": "G0 仅依据已批准的 P0 产品身份开展事实调查，不签发旧系统设计为新架构。推荐顺序：\n1. **只读资产身份**：从现有资料与现场信息核实 PCB/固件/HOST/外设/夹具/线束/DUT 的身份与实际组成，建立可溯源配置清单。\n2. **板级物理能力分析**：对照原理图、电气网络、引出接口和 DUT 侧条件，区分设计支持、实际装配、真实输出及不可确定能力，记录差异。\n3. **现役固件与上位机利用情况**：追踪固件和 HOST 的真实版本与接口使用，但不能让已有软件反向定义产品应具备的能力。\n4. **证据缺口裁决**：将已经存在的实体事实与尚需现场测量的条件分开；只对影响后续需求/设计的未知组织取证，不作无差别重复测试。\n5. **形成可审的 G0 事实基线候选**：以资产身份、能力/限制、现有证据、未知与可信程度为核心，交用户审核；它不包括新架构及编码合同。\n\n此记录不是执行工作包或 P0/G0 Gate 决议。现场操作之前需独立核实安全条件与实物版本。",
+        "body": "基于已批准的 P0 V0.1 和负责人最新确认的系统组成，G0 首先完成够用的**已知资产接收与系统边界澄清**，而不是把所有现役台架参数与现场复验列成研发前置条件。\n\n目前可直接进入围绕自动测试的下一步研究：\n1. 将主控/KEY_SIM/夹具/PC/扫码枪/两套 MCU 固件以及 CanTool、历史 src、原理图作为不同角色的现有工程资产记录清楚；旧资产可作为硬件事实与参考实现，不直接等于新产品已批准架构。\n2. 依据 G0 已知能力边界，研究自动测试必须向硬件请求什么动作、接收什么 DUT 响应、如何进行判断，以及工程师怎样定义/调试/运行测试程序。此处属于 G1 的业务与行为需求研究，不是 G2 架构或 G4 编码。\n3. 仅在具体设计依赖某项未核实电气条件、协议或设备性能时，回到 G0 定向查原理图/源码/历史记录，必要时提出后续实测；不要求先完成无关的台架复测清单。\n4. 两套现役 MCU 固件暂时冻结；新 HOST 的软件方案需在能力和协议事实基础上研究。若某能力确实要求更改固件，单独形成有依据的方案和批准，不默许自动修改。\n\nG0 当前结论属于事实输入及历史资产接收，尚未签发本轮新的 G0 Gate、硬件测试或实施授权。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）",
+          "source": "用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）",
           "source_type": "HISTORICAL_SOURCE_REVIEW",
           "baseline_input": "at-p0-approved-charter-v01:r2",
           "references": [
@@ -753,15 +766,45 @@
           ],
           "evidence_scope": "G0_DESK_RECONNAISSANCE_ONLY",
           "approval_note": "未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate",
-          "investigation_topic": "G0_READ_ONLY_RECONNAISSANCE_SEQUENCE",
+          "investigation_topic": "FACT_INPUT_SATISFIED_FOR_AUTO_TEST_REQUIREMENTS",
           "scope_gate": "P0_IDENTITY_V01_APPROVED_ONLY",
           "engineering_phase": "G0_FACT_DISCOVERY",
-          "not_code_ready": true
+          "not_code_ready": true,
+          "next_phase_topic": "G1_AUTO_TEST_BEHAVIOR_AND_USER_WORKFLOW",
+          "field_validation_priority": "ON_DEMAND_NOT_UPFRONT",
+          "execution_authorized": false,
+          "prior_source": "GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T07:36:34.086Z",
-        "updated": "2026-11-11T07:36:34.086Z"
+        "updated": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "id": "at-g0-reference-assets-current",
+        "project_id": "autotest",
+        "kind": "reference",
+        "title": "G0｜自动测试相关既有工程资产清单与继承原则",
+        "body": "现有真实工程资产按用途归档，而不把参考源代码直接等同未来软件架构：\n\n**系统硬件/固件**\n- 主控板原理图（历史归档：HW-MAIN-TestCtr-V1.5.pdf；当前实物版本按需再核）；主控 MCU 固件源码工程（FW-MAIN-Project.zip、Keil 工程入口历史归档）。\n- KEY_SIM 按键板原理图（历史归档：HW-KEY-EPB_ODD-V1.1.pdf）；按键板 MCU 固件源码工程（FW-KEY-WS.zip、WS/EPB_EOL 历史归档）。\n- 现场主控板、已接 DUT 的 KEY_SIM、夹具、电磁阀、USB/两路 CAN 接线，均由负责人确认现存。两套 MCU 固件当前暂时冻结修改，后续可按工程变更迭代。\n\n**参考软件**\n- CanTool：作为 CAN 收发、UDS、烧录流程与配置、DBC/波形等现成工具/参考实现研究资产。负责人确认已有代码，不在本条声称已取得当前仓库中的具体源文件或许可完整性；精确源码与版本归档路径日后查对。\n- 历史 src：旧 AutoTest HOST 源码参考，历史文件 src(20261030-022559).zip；已在旧 G0-06 有静态研究记录，保留可复用的设计思想、经验、功能和失败经验，但不要求新版兼容旧代码结构。\n- 当前 AutoTest GitHub HOST：开发候选及各模块 PR 是另一类现役实现资产，具体 HEAD、代码覆盖、编译和实测状态按需逐项核实。\n\n**使用原则**\n资料调查先明确事实来源和可复用能力，不把硬件电路支持、代码存在、真实执行通过三者混为一谈。第一研究主线是如何完成可编辑、可运行、可判断、可追溯的 ECU 自动测试；现阶段不要求台架全面复测。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）",
+          "source_type": "OWNER_ASSET_REPORT_AND_HISTORICAL_G0_INDEX",
+          "engineering_class": "ASSET_INVENTORY",
+          "role": "EVIDENCE_AND_RESEARCH_INPUT",
+          "firmware_modified": false,
+          "do_not_assume_cantool_archived_in_repo": true,
+          "related_objects": [
+            "at-g0-system-inventory",
+            "at-wp-core-loop-study"
+          ]
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:44:20.705Z",
+        "updated": "2026-11-11T07:44:20.705Z"
       }
     ],
     "relations": [
@@ -938,6 +981,17 @@
         "kind": "impacts",
         "created": "2026-11-11T07:36:34.086Z",
         "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g0-asset-core-study",
+        "project_id": "autotest",
+        "source_id": "at-g0-reference-assets-current",
+        "target_id": "at-wp-core-loop-study",
+        "kind": "defines",
+        "status": "CANDIDATE",
+        "created": "2026-11-11T07:44:20.705Z",
         "approved_by": null,
         "approved_at": null
       }
@@ -1262,6 +1316,46 @@
         "action": "CREATE_G0_FACT_DISCOVERY_CANDIDATE",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "object_id": "at-g0-system-inventory",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-g0-system-inventory\",\"project_id\":\"autotest\",\"kind\":\"system\",\"title\":\"G0｜现有 ECU 测试系统组成与实物身份调查（初始盘点）\",\"body\":\"当前由负责人直接确认的 AutoTest 实物与研发组成：\\n\\n• Windows PC 上位机：自动测试的核心软件工作环境。PC 通过 USB 与主控板通信；扫码枪直接连接 PC，作为外部识别设备。\\n• 主控板：与 PC 的 USB 连接；具有两路 CAN，分别连接 KEY_SIM 按键板与被测 ECU；承担 CAN 收发，并控制 IGN 与夹具电磁阀，从而完成相应外部刺激和夹具控制。\\n• KEY_SIM 按键板：已接入当前台架且已连接 DUT。它是通过开关/电阻网络模拟 ECU 外部按键输入的硬件组成，不能用此前“未接入”的旧状态代替负责人最新确认。\\n• ECU 夹具及外部连接与供电：现实存在，属于系统运行环境/实物组成；具体电气状态和安全参数本轮不作新实测。\\n• 主控板与按键板各有固件代码：均属于 AutoTest 系统软件资产；**当前暂时冻结修改**，冻结不是功能不存在、未来不能修改或设计上永久禁止迭代。\\n• 主控原理图、按键原理图和两套固件源码均是真实工程资产；此外独立 CanTool（烧录及上位机工具参考）和历史 src（上位机既有研究/源码）同属需要纳入资产管理的参考代码。\\n• DUT：ECU 为被测对象，不是 AutoTest 自身控制器。\\n\\n这个组成关系来自负责人本轮直接陈述，属于当前已知工程事实/现况报告；并不等于已经测完所有引脚、动作、电气阈值或通路性能。\\n\\n**当前工作边界**：先围绕自动测试建立功能与设计，不以复验完整真实台架作为进入自动测试需求研究和软件研发的门槛；后续当具体物理操作或交付验收需要新证据时，再按其能力项安排针对性核验。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）\",\"source_type\":\"HISTORICAL_SOURCE_REVIEW\",\"baseline_input\":\"at-p0-approved-charter-v01:r2\",\"references\":[\"SAEF/engineering/work-products/G0/G0-01/index.md\",\"SAEF/engineering/work-products/G0/G0-02/index.md\",\"SAEF/engineering/work-products/G0/G0-03/index.md\",\"SAEF/engineering/work-products/G0/G0-04/index.md\",\"SAEF/engineering/work-products/G0/G0-05/index.md\",\"SAEF/engineering/work-products/G0/G0-07/index.md\",\"SAEF/engineering/work-products/G0/G0-08/index.md\",\"SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json\",\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26\"],\"evidence_scope\":\"G0_DESK_RECONNAISSANCE_ONLY\",\"approval_note\":\"未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate\",\"investigation_topic\":\"CURRENT_SYSTEM_COMPONENTS_OWNER_CONFIRMED\",\"evidence_level\":\"OWNER_CONFIRMED_CURRENT_BENCH_TOPOLOGY\",\"status\":\"TO_CONFIRM_CURRENT_PHYSICAL_CONFIGURATION\",\"key_sim_current_state\":\"CONNECTED_TO_DUT\",\"firmware_state\":\"TEMPORARILY_FROZEN_BOTH_CODEBASES\",\"current_priority\":\"AUTO_TEST_FUNCTION_AND_SOFTWARE_RESEARCH\",\"prior_source\":\"GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:36:34.086Z\",\"updated\":\"2026-11-11T07:44:20.705Z\"}",
+        "action": "REVISE_G0_WITH_OWNER_CURRENT_CONFIGURATION_FACT",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "object_id": "at-g0-current-unknowns",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-g0-current-unknowns\",\"project_id\":\"autotest\",\"kind\":\"risk\",\"title\":\"G0｜现役工位实物与固件身份尚未完整对应（待调查）\",\"body\":\"负责人已明确确认的现况不再列作未知：当前有主控板、按键板、ECU 夹具；KEY_SIM 已接入并连 DUT；主控双 CAN 分别接 KEY_SIM 和 ECU，USB 接 PC，IGN/电磁阀由主控控制，扫码枪直连 PC；两套固件当前暂时冻结，但始终是可持续开发的系统软件资产。\\n\\n仍可在之后按实际需求核验的技术细节：当前具体 PCB 装配及固件二进制版本、CAN 通道编号与线束逐线映射、DUT 输入端电压及按键组合、IGN/阀状态与失效处理、总线性能、CanTool/src 代码与现役 HOST 对照、扫码枪协议与业务匹配。这些仅是后续设计/验证的证据缺口，不再因存在未知而阻塞当前自动测试的功能定义与软件实现规划。\\n\\n本阶段不要求用户再次插拔、通电、测量 KEY_SIM，亦不申请烧录 MCU、控制阀体等实体操作。任何涉及实际设备的试验都在相关设计和安全边界清楚后单独安排。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）\",\"source_type\":\"HISTORICAL_SOURCE_REVIEW\",\"baseline_input\":\"at-p0-approved-charter-v01:r2\",\"references\":[\"SAEF/engineering/work-products/G0/G0-01/index.md\",\"SAEF/engineering/work-products/G0/G0-02/index.md\",\"SAEF/engineering/work-products/G0/G0-03/index.md\",\"SAEF/engineering/work-products/G0/G0-04/index.md\",\"SAEF/engineering/work-products/G0/G0-05/index.md\",\"SAEF/engineering/work-products/G0/G0-07/index.md\",\"SAEF/engineering/work-products/G0/G0-08/index.md\",\"SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json\",\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26\"],\"evidence_scope\":\"G0_DESK_RECONNAISSANCE_ONLY\",\"approval_note\":\"未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate\",\"investigation_topic\":\"CURRENT_CONFIGURATION_EVIDENCE_GAPS\",\"risk_level\":\"OPEN_G0_FACTS\",\"no_hardware_acts\":true,\"open_question_class\":\"DEFERRED_TECHNICAL_DETAILS\",\"key_sim_connection_gap\":\"CLOSED_BY_OWNER_REPORT\",\"blocking_current_software_requirements\":false,\"immediate_bench_test\":false,\"prior_source\":\"GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:36:34.086Z\",\"updated\":\"2026-11-11T07:44:20.705Z\"}",
+        "action": "REVISE_G0_WITH_OWNER_CURRENT_CONFIGURATION_FACT",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "object_id": "at-g0-investigation-plan",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-g0-investigation-plan\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"G0｜重新定义产品后的现有系统调查工作顺序（非实现计划）\",\"body\":\"基于已批准的 P0 V0.1 和负责人最新确认的系统组成，G0 首先完成够用的**已知资产接收与系统边界澄清**，而不是把所有现役台架参数与现场复验列成研发前置条件。\\n\\n目前可直接进入围绕自动测试的下一步研究：\\n1. 将主控/KEY_SIM/夹具/PC/扫码枪/两套 MCU 固件以及 CanTool、历史 src、原理图作为不同角色的现有工程资产记录清楚；旧资产可作为硬件事实与参考实现，不直接等于新产品已批准架构。\\n2. 依据 G0 已知能力边界，研究自动测试必须向硬件请求什么动作、接收什么 DUT 响应、如何进行判断，以及工程师怎样定义/调试/运行测试程序。此处属于 G1 的业务与行为需求研究，不是 G2 架构或 G4 编码。\\n3. 仅在具体设计依赖某项未核实电气条件、协议或设备性能时，回到 G0 定向查原理图/源码/历史记录，必要时提出后续实测；不要求先完成无关的台架复测清单。\\n4. 两套现役 MCU 固件暂时冻结；新 HOST 的软件方案需在能力和协议事实基础上研究。若某能力确实要求更改固件，单独形成有依据的方案和批准，不默许自动修改。\\n\\nG0 当前结论属于事实输入及历史资产接收，尚未签发本轮新的 G0 Gate、硬件测试或实施授权。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）\",\"source_type\":\"HISTORICAL_SOURCE_REVIEW\",\"baseline_input\":\"at-p0-approved-charter-v01:r2\",\"references\":[\"SAEF/engineering/work-products/G0/G0-01/index.md\",\"SAEF/engineering/work-products/G0/G0-02/index.md\",\"SAEF/engineering/work-products/G0/G0-03/index.md\",\"SAEF/engineering/work-products/G0/G0-04/index.md\",\"SAEF/engineering/work-products/G0/G0-05/index.md\",\"SAEF/engineering/work-products/G0/G0-07/index.md\",\"SAEF/engineering/work-products/G0/G0-08/index.md\",\"SAEF/engineering/control/approvals/AT-M2-20261103-G0-GATE.json\",\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"PR #26 https://github.com/ch3758134-prog/AutoTest/pull/26\"],\"evidence_scope\":\"G0_DESK_RECONNAISSANCE_ONLY\",\"approval_note\":\"未审批 G0 本次事实基线、未授权任何实物动作、未改变历史 SAEF Gate\",\"investigation_topic\":\"FACT_INPUT_SATISFIED_FOR_AUTO_TEST_REQUIREMENTS\",\"scope_gate\":\"P0_IDENTITY_V01_APPROVED_ONLY\",\"engineering_phase\":\"G0_FACT_DISCOVERY\",\"not_code_ready\":true,\"next_phase_topic\":\"G1_AUTO_TEST_BEHAVIOR_AND_USER_WORKFLOW\",\"field_validation_priority\":\"ON_DEMAND_NOT_UPFRONT\",\"execution_authorized\":false,\"prior_source\":\"GitHub main 历史 G0 工程材料 + 2026-11-09 主对话用户实测记录（复盘）\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:36:34.086Z\",\"updated\":\"2026-11-11T07:44:20.705Z\"}",
+        "action": "REVISE_G0_WITH_OWNER_CURRENT_CONFIGURATION_FACT",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "object_id": "at-wp-core-loop-study",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-wp-core-loop-study\",\"project_id\":\"autotest\",\"kind\":\"work_package\",\"title\":\"自动测试真实闭环设计核验与现有实现复盘（研究工作包）\",\"body\":\"围绕已批准的 P0 产品目标，在现有硬件/固件暂时冻结且已确认双 CAN、USB、IGN、夹具、KEY_SIM 组成的前提下，优先对自动测试进行系统性需求与技术研究：工程师应如何编辑/组织测试步骤、怎样选择刺激、观察 ECU CAN 广播并依据规则判定；手动试验与自动测试程序的关系是什么；需哪些已有 CAN/DBC 能力与数据资源。对照现有 HOST、历史 src、CanTool 和固件/原理图作为技术资产，识别已有能力和未知接口。先形成 G1 清晰需求/使用行为，再选定 G2 架构和 G3 可实施合同。\\n\\n本工作包当前只允许资料调查、需求解释、方案研究及问题记录；不要求先做真实台架复测、不派发重写软件代码、不改主控或按键板固件，也不将 Mock 或旧软件能力当物理验收。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"priority\":\"P0_FIRST_RESEARCH\",\"execution_role\":\"RESEARCH_DESIGN\",\"code_ready\":false,\"file_scope\":[],\"acceptance\":\"对照精确 Git HEAD、已批准设计、硬件事实和现场记录，交付具体可验收的最小真实自动测试链与缺口\",\"next_focus\":\"G1_AUTOMATIC_TEST_REQUIREMENTS\",\"field_test_prerequisite\":false,\"firmware_freeze\":\"CURRENT_TEMPORARY\",\"prior_source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:04:23.904Z\",\"updated\":\"2026-11-11T07:44:20.705Z\"}",
+        "action": "REVISE_G0_WITH_OWNER_CURRENT_CONFIGURATION_FACT",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "object_id": "at-g0-reference-assets-current",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g0-reference-assets-current\",\"project_id\":\"autotest\",\"kind\":\"reference\",\"title\":\"G0｜自动测试相关既有工程资产清单与继承原则\",\"body\":\"现有真实工程资产按用途归档，而不把参考源代码直接等同未来软件架构：\\n\\n**系统硬件/固件**\\n- 主控板原理图（历史归档：HW-MAIN-TestCtr-V1.5.pdf；当前实物版本按需再核）；主控 MCU 固件源码工程（FW-MAIN-Project.zip、Keil 工程入口历史归档）。\\n- KEY_SIM 按键板原理图（历史归档：HW-KEY-EPB_ODD-V1.1.pdf）；按键板 MCU 固件源码工程（FW-KEY-WS.zip、WS/EPB_EOL 历史归档）。\\n- 现场主控板、已接 DUT 的 KEY_SIM、夹具、电磁阀、USB/两路 CAN 接线，均由负责人确认现存。两套 MCU 固件当前暂时冻结修改，后续可按工程变更迭代。\\n\\n**参考软件**\\n- CanTool：作为 CAN 收发、UDS、烧录流程与配置、DBC/波形等现成工具/参考实现研究资产。负责人确认已有代码，不在本条声称已取得当前仓库中的具体源文件或许可完整性；精确源码与版本归档路径日后查对。\\n- 历史 src：旧 AutoTest HOST 源码参考，历史文件 src(20261030-022559).zip；已在旧 G0-06 有静态研究记录，保留可复用的设计思想、经验、功能和失败经验，但不要求新版兼容旧代码结构。\\n- 当前 AutoTest GitHub HOST：开发候选及各模块 PR 是另一类现役实现资产，具体 HEAD、代码覆盖、编译和实测状态按需逐项核实。\\n\\n**使用原则**\\n资料调查先明确事实来源和可复用能力，不把硬件电路支持、代码存在、真实执行通过三者混为一谈。第一研究主线是如何完成可编辑、可运行、可判断、可追溯的 ECU 自动测试；现阶段不要求台架全面复测。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户本次明确澄清｜AutoTest 现存系统、实接 KEY_SIM、两套固件冻结与自动测试优先（2026-11-10 America/Los_Angeles）\",\"source_type\":\"OWNER_ASSET_REPORT_AND_HISTORICAL_G0_INDEX\",\"engineering_class\":\"ASSET_INVENTORY\",\"role\":\"EVIDENCE_AND_RESEARCH_INPUT\",\"firmware_modified\":false,\"do_not_assume_cantool_archived_in_repo\":true,\"related_objects\":[\"at-g0-system-inventory\",\"at-wp-core-loop-study\"]},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:44:20.705Z\",\"updated\":\"2026-11-11T07:44:20.705Z\"}",
+        "action": "CREATE_G0_ASSET_INPUT_FROM_USER_REPORT",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:44:20.705Z"
       }
     ],
     "events": [
@@ -1489,6 +1583,51 @@
         "actor": "AI_PROJECT_MANAGER",
         "note": "在已批准 P0 之后重新开展 G0 只读调查；仅历史资料复核，未验证现役实物",
         "timestamp": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "id": "evt-at-g0-system-inventory-r2",
+        "project_id": "autotest",
+        "object_id": "at-g0-system-inventory",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "按负责人现况澄清修正 G0 档案，不作新的现场实验、方案决策或 P0 变更",
+        "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "id": "evt-at-g0-current-unknowns-r2",
+        "project_id": "autotest",
+        "object_id": "at-g0-current-unknowns",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "按负责人现况澄清修正 G0 档案，不作新的现场实验、方案决策或 P0 变更",
+        "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "id": "evt-at-g0-investigation-plan-r2",
+        "project_id": "autotest",
+        "object_id": "at-g0-investigation-plan",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "按负责人现况澄清修正 G0 档案，不作新的现场实验、方案决策或 P0 变更",
+        "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "id": "evt-at-wp-core-loop-study-r2",
+        "project_id": "autotest",
+        "object_id": "at-wp-core-loop-study",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "按负责人现况澄清修正 G0 档案，不作新的现场实验、方案决策或 P0 变更",
+        "timestamp": "2026-11-11T07:44:20.705Z"
+      },
+      {
+        "id": "evt-at-g0-reference-assets-current",
+        "project_id": "autotest",
+        "object_id": "at-g0-reference-assets-current",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "负责人确认两板、两固件、原理图、CanTool 和旧 src 均是需管理资产；不作为设计批准",
+        "timestamp": "2026-11-11T07:44:20.705Z"
       }
     ],
     "technical_research": {
@@ -1600,12 +1739,19 @@
         "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
         "changed_by": "AI_PROJECT_MANAGER_G0_FACT_DISCOVERY_STARTED",
         "changed_at": "2026-11-11T07:36:34.086Z"
+      },
+      {
+        "project_id": "autotest",
+        "revision": 6,
+        "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
+        "changed_by": "AI_PROJECT_MANAGER_G0_OWNER_FACT_CORRECTION",
+        "changed_at": "2026-11-11T07:44:20.705Z"
       }
     ],
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "P0 V0.1 已批准。G0 只读现况调查已开始；本次新增 5 项 G0 事实/来源/缺口/调查顺序候选，旧图纸和固件资料是待核来源，不作新设计/现场动作/历史 Gate 迁移。",
+  "p0_discussion_note": "已确认现役 KEY_SIM 接入 DUT、双 CAN/USB/IGN/阀/扫码枪的系统关系；主控与按键固件暂时冻结，CanTool/src/原理图为真实研发资产。G0 事实够用即进入自动测试需求研究，全面实测后置。不改变已批准 P0。",
   "approval": {
     "approval_id": "AT-P0-CHARTER-V01-OWNER-20261110",
     "scope": "P0_PRODUCT_DEFINITION_AND_INITIATION_V0_1",
