@@ -42,6 +42,11 @@
     </Trigger>
    </Style.Triggers>
   </Style>
+  <ControlTemplate x:Key="R1OperatorTabTemplate" TargetType="{x:Type TabControl}">
+   <Border Background="#F5F7FA" Padding="0">
+    <ContentPresenter ContentSource="SelectedContent"/>
+   </Border>
+  </ControlTemplate>
   <Style x:Key="R1PanelHeader" TargetType="TextBlock">
    <Setter Property="FontWeight" Value="SemiBold"/>
    <Setter Property="FontSize" Value="12"/>
@@ -248,10 +253,9 @@
     <TabControl x:Name="WorkbenchTabs" Background="#F5F7FA" SelectedIndex="10" SelectionChanged="WorkbenchTabs_SelectionChanged">
      <TabControl.Style>
       <Style TargetType="TabControl">
-       <Setter Property="TabStripPlacement" Value="Top"/>
        <Style.Triggers>
         <DataTrigger Binding="{Binding ElementName=R1WorkspaceMode, Path=SelectedIndex}" Value="0">
-         <Setter Property="TabStripPlacement" Value="Bottom"/>
+         <Setter Property="Template" Value="{StaticResource R1OperatorTabTemplate}"/>
         </DataTrigger>
        </Style.Triggers>
       </Style>
