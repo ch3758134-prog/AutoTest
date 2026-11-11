@@ -143,7 +143,8 @@
        FontSize="11" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,5"/>
       <WrapPanel Margin="0,0,0,5">
        <Button Content="+ 新建原始报文" Command="{Binding AddCommand}"/>
-       <Button Content="删除选中报文" Command="{Binding DeleteCommand}" Margin="0"/>
+       <Button Content="删除选中报文" Command="{Binding DeleteCommand}"/>
+       <Button Content="打开 DBC 工具" Click="OpenDbc_Click" Margin="0"/>
       </WrapPanel>
       <TextBlock Text="从当前工程 DBC 选择报文（可选）"
        FontSize="11" Foreground="{StaticResource Muted}" Margin="0,0,0,4"/>
