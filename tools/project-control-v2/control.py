@@ -626,20 +626,39 @@ class Control:
                 evidence_ids = items(payload.get("evidence_ids"), "evidence_ids", 30)
                 archive = self.archive()["engineering"]
                 approved = {o["id"] for o in archive["objects"] if o["state"] == "APPROVED"}
+                required_map = record.get("phase_evidence_map", {})
+                required = required_map.get(phase, [])
+                waivers = items(payload.get("waivers", []), "phase requirement waivers", 30)
                 if decision in ("PASS", "PASS_WITH_LIMITATIONS"):
+                    if not required:
+                        raise ControlError("Gate criteria are not mapped for this phase; define formal outcomes before passing")
                     if not evidence_ids or any(e not in approved for e in evidence_ids):
                         raise ControlError("passing Gate needs exact approved evidence, not draft research")
-                    stages = [o.get("meta", {}).get("phase") for o in archive["objects"]
-                              if o.get("id") in evidence_ids]
-                    if phase == "P0" and plan["product_anchor"]["id"] not in evidence_ids:
-                        raise ControlError("P0 Gate needs the explicitly approved P0 product definition")
-                    if phase != "P0" and phase not in stages:
-                        raise ControlError("Gate evidence must explicitly belong to the reviewed phase")
+                    missing = set(required) - set(evidence_ids)
+                    if decision == "PASS" and (missing or waivers):
+                        raise ControlError("PASS requires all mapped approved outcomes, without unreviewed omissions")
+                    if decision == "PASS_WITH_LIMITATIONS":
+                        covered = set()
+                        for waiver in waivers:
+                            if not isinstance(waiver, dict):
+                                raise ControlError("invalid Gate waiver")
+                            mid = ident(waiver.get("object_id"), "waived outcome")
+                            if mid in covered:
+                                raise ControlError("duplicate waiver")
+                            covered.add(mid)
+                            text(waiver.get("reason"), "justification of omitted outcome")
+                        if covered != missing:
+                            raise ControlError("each missing required outcome needs an explicit owner waiver")
+                else:
+                    if waivers:
+                        raise ControlError("deferred/returned stages cannot publish outcome waivers")
                 cycle_id = ident(payload.get("cycle_id", record["cycles"][-1]["id"]), "cycle id")
                 if not any(x["id"] == cycle_id for x in record["cycles"]):
                     raise ControlError("phase review cycle is unknown")
                 entry = {"id": new_id("phase"), "cycle_id": cycle_id, "phase_id": phase, "decision": decision,
-                         "evidence_ids": evidence_ids, "actor": actor, "reason": reason,
+                         "evidence_ids": evidence_ids, "waivers": waivers,
+                         "criteria_map": copy.deepcopy(required_map.get(phase, [])),
+                         "actor": actor, "reason": reason,
                          "at": now(), "local_only": True}
                 record["phase_reviews"].append(entry)
                 outcome = {"id": entry["id"],
