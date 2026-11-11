@@ -342,6 +342,19 @@ class Store:
             if any(assessments.get(e["target_id"]) not in ("REVISE","NO_CHANGE","INVESTIGATE")
                    for e in edges):
                 raise RuleError("Assess each linked target before closing the change")
+            # New structured assessments must still reference the reviewed target revision.
+            # Legacy unpinned assessment data is not sufficient for new closure.
+            details=obj["meta"].get("assessment_details",{})
+            if not isinstance(details,dict):
+                raise RuleError("Impact assessment details are malformed")
+            for edge in edges:
+                target=self._require_object(db,edge["target_id"])
+                record=details.get(target["id"],{})
+                if (not isinstance(record,dict) or
+                    record.get("target_revision") != target["revision"] or
+                    record.get("outcome") != assessments.get(target["id"]) or
+                    not record.get("rationale") or not record.get("reviewer")):
+                    raise RuleError("Impact assessment is missing or stale: "+target["title"])
             db.execute("""UPDATE objects SET state='CLOSED',revision=?,updated=? WHERE id=?""",
                        (obj["revision"]+1,now(),key))
             self._record(db,self._require_object(db,key),"CLOSE",actor)
