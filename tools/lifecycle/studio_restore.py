@@ -23,7 +23,7 @@ TABLES = (
     "github_projects","execution_tasks","manager_proposals",
     "verification_runs","verification_reviews",
     "definition_baselines","definition_changes","definition_reviews",
-    "definition_invalidations"
+    "definition_package_reviews","definition_invalidations"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -60,10 +60,10 @@ def _validate(archive):
         raise RuleError("Invalid verification section")
     sections["runs"]=_array(verification.get("runs"),"runs")
     sections["reviews"]=_array(verification.get("reviews"),"reviews")
-    governance=archive.get("governance",{"baselines":[],"changes":[],"reviews":[],"invalidations":[]})
+    governance=archive.get("governance",{"baselines":[],"changes":[],"reviews":[],"package_reviews":[],"invalidations":[]})
     if not isinstance(governance,dict):
         raise RuleError("Invalid definition governance section")
-    for key in ("baselines","changes","reviews","invalidations"):
+    for key in ("baselines","changes","reviews","package_reviews","invalidations"):
         sections["g_"+key]=_array(governance.get(key),"governance."+key)
     objects=sections["objects"]
     ids={x.get("id") for x in objects}
@@ -174,6 +174,19 @@ def _validate(archive):
                 if not isinstance(value,dict) or any(
                    (oid,rev) not in snapshots for oid,rev in value.items()):
                     raise RuleError("Governed review references unknown engineering revision")
+    for review in sections["g_package_reviews"]:
+        if (review.get("change_id") not in change_ids or
+            review.get("package_id") not in ids):
+            raise RuleError("Work-package impact review references missing engineering record")
+        package=next(x for x in objects if x["id"]==review["package_id"])
+        if (package["kind"]!="work_package" or
+            (review["package_id"],review.get("reviewed_revision")) not in snapshots):
+            raise RuleError("Work-package impact review references invalid historical revision")
+        try:refs=json.loads(review["evidence_refs"])
+        except (KeyError,ValueError,TypeError) as exc:
+            raise RuleError("Invalid work-package review evidence") from exc
+        if not isinstance(refs,list):
+            raise RuleError("Work-package review evidence references must be a list")
     for pending in sections["g_invalidations"]:
         if (pending.get("project_id")!=pid or
             pending.get("change_id") not in change_ids or
@@ -269,6 +282,7 @@ def restore_to_empty(archive,output_database):
         for table,key in (("definition_changes","g_changes"),
                           ("definition_baselines","g_baselines"),
                           ("definition_reviews","g_reviews"),
+                          ("definition_package_reviews","g_package_reviews"),
                           ("definition_invalidations","g_invalidations")):
             _insert(db,table,sec[key])
         errors=db.execute("PRAGMA foreign_key_check").fetchall()
