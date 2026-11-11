@@ -1,11 +1,11 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T08:15:21.016Z",
+  "exported_at": "2026-11-11T08:21:31.559Z",
   "authority": "OWNER_APPROVED_P0_DOCUMENT",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T08:15:21.016Z",
+    "exported_at": "2026-11-11T08:21:31.559Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T08:15:21.016Z"
+      "updated": "2026-11-11T08:21:31.559Z"
     },
     "objects": [
       {
@@ -951,10 +951,10 @@
         "project_id": "autotest",
         "kind": "reference",
         "title": "G1｜成熟通用 ECU 测试软件整体工作流调查（以 ecu.test 为主）",
-        "body": "# G1 整体调查 V0.2｜通用 ECU 自动测试系统\n\n## 总体研究结论\n自动测试的对象是完整的测试活动，而不是若干 CAN 操作的集合。工程配置、程序编辑、参数/数据定义、台架和工具接入、持续刺激、连续采集、时序及波形判定、运行调试、结果归档必须能够相互协同。G1 定义“用户能做什么、真实系统应表现什么”；G2/G3 才决定“软件如何拆分与实现”。\n\n## ecu.test 2026.3 的成熟机制\n① Project 组织 Package、参数、重复调用及执行；可按配置复用测试逻辑。\n② Test bench configuration 提供 Host/Tool/Port 技术访问；Test configuration 描述被测系统及可访问量；两者协同，在离线编辑模式下不把未连接设备标成可用。\n③ Global/Local/Parameterized Mapping 通过抽象名称关联信号和实际访问路径，减少更换 ECU 或工具时修改测试步骤的范围。\n④ Package 可以组合顺序、条件、等待、循环、React-On、变量和刺激动作；周期报文只是一种可能持续存在的刺激，不能主导通用架构。\n⑤ Signal Recording 与 Trace Analysis 对整个测试过程记录和评估时间序列（响应延迟、状态保持、范围等）；测试报告能够关联步骤、记录与评价结果，也支持后续分析任务。\n⑥ 编辑、交互执行/调试、报告属于同一项目工作流程，但可以是不同操作界面或执行阶段。\n主要来源：\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-2-Test-configuration.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-4-Mappings.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Action-window/Test-steps-tab/Flow-control.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Global-mapping.html\nhttps://docs.tracetronic.com/help/ecu.test/en/Main-program/Reportviewer.html\nhttps://www.asam.net/standards/detail/xil/\n\n## AutoTest 的完整用户任务链（研究用，不是固定场景分类）\n建立或重开工程→编写/配置测试程序、参数、信号与外部资源→连接或选择适用的真实台架/ECU 配置→检查运行前置→运行持续刺激与离散动作→同时采集 ECU 实际 CAN/DBC 信号→判定状态/时间/波形→查看步骤、错误和证据→保存 Run、原始数据与 Verdict→再次编辑或复用。\n这条链只用于发现整体能力缺口；测试操作可以交叠发生，不限定真实程序只按单线程线性执行。\n\n## 必须共同满足的关系\n- 工程资源与程序引用应保持有效，能保存重开和适配不同 ECU；测试程序不可写死 EPB 特有 CAN ID、按键或电流判据。\n- CAN 环境持续按周期发送，运行中修改某些信号时其他帧继续；IGN/KEY_SIM/未来刺激按合适行为控制。资源复用方式/内部调度留 G2 研究。\n- ECU 广播解码、波形时间序列与判据应能够直接服务自动测试，尤其首条真实闭环要得到基于波形的实际判定，而非仅独立展示曲线。\n- 真实零值、有意义的无动作与数据缺失/丢帧要区分；通信 ACK、ECU 自报电流和独立物理测量三者不得混淆。\n- 手动台架、CAN/DBC、UDS、烧录、Wave 等专业工具可以独立使用也能按条件参加自动测试，但不另造一套执行模型。\n- 运行期间程序编辑、资源引用、数据采集、运行错误及结果归档要保持一致且可追踪；断开、取消或记录失败不能冒充成功。\n- 扫码/生产匹配和真实刷写规则可分阶段研究，不阻塞首个真实 ECU 自动测试闭环。\n\n## 历史成果与现役源码对照\n旧 SAEF G1-03 已列工程、DBC、设备、测试、波形、独立工具和证据等要求；G2-03/04/05、G3-04 已研究 TestDocument、状态所有权、调试、运行证据及工具复用，作为技术参考。\n但旧 G1 将 B0～B6 全面复验置于闭环研发之前、以及将研发/自动测试/出厂并列作固定业务分类的做法，应按本次 P0 纠偏。旧文件本轮不重新签发。\nGitHub main `src/AutoTest.Testing/Authoring/StepDescriptorCatalog.cs` 已列出 CAN/UDS/Wave 等步骤，但实际标记为不可执行；main `src/AutoTest.Testing/Runtime/RunCoordinator.cs` 为 MockStation 驱动，并不证明物理 ECU 自动执行已贯通。closed Draft PR #10 扩展 Mock 调试但无真实设备；open Draft PR #27 涉及 UI/工具/设备候选接线，不能用文件存在或 CI 代替整链实测。\n真实主控/KEY_SIM 与两套暂时冻结固件、CanTool、历史 src、图纸是已确认工程资产。暂不要求重复全面台架核证，但到物理验收时必须有与具体能力对应的证据。\n\n## 留给 G2/G3，不能在 G1 定死\necu.test 同款 TCF/TBC 文件格式或层数、CAN 环境是否独立文件、发送状态所有权和调度器、动作 Handler 与资源租约、Trace 算法接口/数据格式、线程模型、WPF Dock/视图布局、生产顺序和串口扫码配置详情。研发人员负责评价使用行为；AI 负责设计和取舍。\n\n**状态：整体 G1 需求研究候选；未批准 G1、G2/G3 或编码。**",
+        "body": "# G1 整体调查 V0.2｜通用 ECU 自动测试系统\n\n## 总体研究结论\n自动测试的对象是完整的测试活动，而不是若干 CAN 操作的集合。工程配置、程序编辑、参数/数据定义、台架和工具接入、持续刺激、连续采集、时序及波形判定、运行调试、结果归档必须能够相互协同。G1 定义“用户能做什么、真实系统应表现什么”；G2/G3 才决定“软件如何拆分与实现”。\n\n## ecu.test 2026.3 的成熟机制\n① Project 组织 Package、参数、重复调用及执行；可按配置复用测试逻辑。\n② Test bench configuration 提供 Host/Tool/Port 技术访问；Test configuration 描述被测系统及可访问量；两者协同，在离线编辑模式下不把未连接设备标成可用。\n③ Global/Local/Parameterized Mapping 通过抽象名称关联信号和实际访问路径，减少更换 ECU 或工具时修改测试步骤的范围。\n④ Package 可以组合顺序、条件、等待、循环、React-On、变量和刺激动作；周期报文只是一种可能持续存在的刺激，不能主导通用架构。\n⑤ Signal Recording 与 Trace Analysis 对整个测试过程记录和评估时间序列（响应延迟、状态保持、范围等）；测试报告能够关联步骤、记录与评价结果，也支持后续分析任务。\n⑥ 编辑、交互执行/调试、报告属于同一项目工作流程，但可以是不同操作界面或执行阶段。\n主要来源：\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-2-Test-configuration.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-4-Mappings.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Action-window/Test-steps-tab/Flow-control.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Global-mapping.html\nhttps://docs.tracetronic.com/help/ecu.test/en/Main-program/Reportviewer.html\nhttps://www.asam.net/standards/detail/xil/\n\n## AutoTest 的完整用户任务链（研究用，不是固定场景分类）\n建立或重开工程→编写/配置测试程序、参数、信号与外部资源→连接或选择适用的真实台架/ECU 配置→检查运行前置→运行持续刺激与离散动作→同时采集 ECU 实际 CAN/DBC 信号→判定状态/时间/波形→查看步骤、错误和证据→保存 Run、原始数据与 Verdict→再次编辑或复用。\n这条链只用于发现整体能力缺口；测试操作可以交叠发生，不限定真实程序只按单线程线性执行。\n\n## 必须共同满足的关系\n- 工程资源与程序引用应保持有效，能保存重开和适配不同 ECU；测试程序不可写死 EPB 特有 CAN ID、按键或电流判据。\n- CAN 环境持续按周期发送，运行中修改某些信号时其他帧继续；IGN/KEY_SIM/未来刺激按合适行为控制。资源复用方式/内部调度留 G2 研究。\n- ECU 广播解码、波形时间序列与判据应能够直接服务自动测试，尤其首条真实闭环要得到基于波形的实际判定，而非仅独立展示曲线。\n- 真实零值、有意义的无动作与数据缺失/丢帧要区分；通信 ACK、ECU 自报电流和独立物理测量三者不得混淆。\n- 手动台架、CAN/DBC、UDS、烧录、Wave 等专业工具可以独立使用也能按条件参加自动测试，但不另造一套执行模型。\n- 运行期间程序编辑、资源引用、数据采集、运行错误及结果归档要保持一致且可追踪；断开、取消或记录失败不能冒充成功。\n- 扫码/生产匹配和真实刷写规则可分阶段研究，不阻塞首个真实 ECU 自动测试闭环。\n\n## 历史成果与现役源码对照\n旧 SAEF G1-03 已列工程、DBC、设备、测试、波形、独立工具和证据等要求；G2-03/04/05、G3-04 已研究 TestDocument、状态所有权、调试、运行证据及工具复用，作为技术参考。\n但旧 G1 将 B0～B6 全面复验置于闭环研发之前、以及将研发/自动测试/出厂并列作固定业务分类的做法，应按本次 P0 纠偏。旧文件本轮不重新签发。\nGitHub main `src/AutoTest.Testing/Authoring/StepDescriptorCatalog.cs` 已列出 CAN/UDS/Wave 等步骤，但实际标记为不可执行；main `src/AutoTest.Testing/Runtime/RunCoordinator.cs` 为 MockStation 驱动，并不证明物理 ECU 自动执行已贯通。closed Draft PR #10 扩展 Mock 调试但无真实设备；open Draft PR #27 涉及 UI/工具/设备候选接线，不能用文件存在或 CI 代替整链实测。\n真实主控/KEY_SIM 与两套暂时冻结固件、CanTool、历史 src、图纸是已确认工程资产。暂不要求重复全面台架核证，但到物理验收时必须有与具体能力对应的证据。\n\n## 留给 G2/G3，不能在 G1 定死\necu.test 同款 TCF/TBC 文件格式或层数、CAN 环境是否独立文件、发送状态所有权和调度器、动作 Handler 与资源租约、Trace 算法接口/数据格式、线程模型、WPF Dock/视图布局、生产顺序和串口扫码配置详情。研发人员负责评价使用行为；AI 负责设计和取舍。\n\n**状态：整体 G1 需求研究候选；未批准 G1、G2/G3 或编码。**\n\n## V0.3 补充｜从成熟软件到整体需求的跨功能证据\n\n### A. ecu.test 的整体组织方式（2026.3 官方资料已核对）\n1. Test bench configuration (TBC) 管理技术工具/Host/Port，Test configuration (TCF) 提供被测系统/模型/DBC 的功能视图；Mapping 让测试步骤引用功能名称而非每次改动实际访问路径。需要的是**不同ECU/台架可适配的用户效果**，不是在 AutoTest 必须照搬两个配置文件或三层映射对象。\n2. Project 编辑器能够组合多个 Package 的引用和参数集，并支持同一包按不同参数多次执行、测试失败处理与局部重跑。Package 文档包含步骤、变量、属性、信号记录、Trace analysis 和上一次报告。不同运行可以复用同一程序。\n3. Signal Recording 在测试期间采样；Trace Analysis 分析时间关系、状态保持、范围等，并与运行报告关联。ecu.test 允许刺激和分析任务分开、在不同时间执行，以及同一刺激数据关联多个分析包；通过 analysis jobs 持有 Trace/参数/映射的对应关系。\n4. 正式执行界面将当前步骤、调用栈、实时消息、测试阶段、Trace 分析及报告放在一致的运行上下文中。**AutoTest 应重点借鉴从执行到证据的连续性，不必复制界面结构。**\n来源：\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-2-Test-configuration.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-4-Mappings.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Test-case-editor/Work-window.html\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html\nhttps://docs.tracetronic.com/help/ecu.test/en/Test-execution/Analysis-jobs.html\nhttps://docs.tracetronic.com/help/ecu.test/en/Test-execution/Test-execution.html\n\n### B. 整体能力共同约束（G1 行为而非软件类定义）\n- **程序/参数/资源一致性**：测试程序可在离线编辑并保存；执行时针对有效资源运行，运行中编辑不能无声改变这次 Run 的解释和判据。\n- **刺激/流程与时间相关性**：持续 CAN 环境、IGN、KEY_SIM 以及未来动作可与观测同时发生；可观察到何时开始/更新/停止，不能把“运行到下一步”视作所有背景刺激已停止。\n- **实际数据/观测来源**：原始 CAN、DBC 信号和波形须能回溯来源；ECU 自报电流不等于独立传感器电流；数据缺失、不可信与数值零严格区分。\n- **判定的两类用途**：运行中条件/等待可能要读取及时观测以决定下一步；波形/参考比较也可能在采集后对完整时间序列求最终结果。G1 应允许这两类测试目的，而不是先假定只能实时判断或只能事后分析。具体执行模型属于 G2/G3。\n- **分析可复查性（建议）**：同一份可靠的已保存观测可以用修订后的判据重新分析，且新分析不得悄悄覆盖原始运行/旧判定；是否首轮实现需后续划分优先级。\n- **运行与结果关系**：步骤、动作、观测、判据、Verdict、运行时异常、数据提交必须可关联；停止/断线/不完整数据不能生成假的 PASS。\n- **独立工具/自动测试协同**：CAN 监视、DBC、Wave、UDS、Flash、手动台架均应服务各自工作且适用时与自动测试相接，不能以工具窗口或引用代码的存在代替整个运行工作流完成。\n- **产品扩展**：新增 ECU 测试对象、项目数据和专业工具时不要求修改 EPB 专用的通用引擎常量；实现方法由后续架构阶段决定。\n\n### C. 源码与成熟度审查（区分现役 main、候选、实测）\n1. main 的 StepDescriptorCatalog 目前把 CanSend、UdsRequest、WaveCapture、WaveCompare 标为不可执行；main 的 RunCoordinator 接口使用 MockStation。**此两处确证 main 的相应测试主线还不是包含真实设备/波形判定的完整执行路径**。\n2. closed Draft PR #10（HEAD 0d29c0f...）扩展了正式测试编辑、条件、子程序、Mock 调试，未获得真实设备接入验收。\n3. open Draft PR #27（HEAD a8779a6...）的 `R2PhysicalCanReadOnlyLabStation` 能在受控条件下从真实 CAN1/DBC 获取单步观察，但明确只读；`R1PhysicalKeySimLabStation` 包含经授权的实体按键状态动作及清理策略；`R1PhysicalWaveSignalSource` 设计从共享真实 CAN 流提供 Wave 观察；`R1PhysicalRunRecordBridge` 为实际只读运行归档候选。**因此不能笼统断言全部真实设备能力不存在**。但尚未见一份关联同一可编辑程序、持续 CAN 环境、实体刺激、实时广播、波形判据、最终 Verdict 与完整持久化的经用户验收运行证据。\n4. 当前真实工位组成及 KEY_SIM 已连接 DUT 由负责人报告；并不自动验证上面完整链路。全面台架 B0～B6 复验不作为 G1 的必要前置，但后续首个真实闭环验收必须使用适用实物与真实数据。\n代码来源：\nhttps://github.com/ch3758134-prog/AutoTest/blob/main/src/AutoTest.Testing/Authoring/StepDescriptorCatalog.cs\nhttps://github.com/ch3758134-prog/AutoTest/blob/main/src/AutoTest.Testing/Runtime/RunCoordinator.cs\nhttps://github.com/ch3758134-prog/AutoTest/pull/10\nhttps://github.com/ch3758134-prog/AutoTest/pull/27\n\n### D. 未决事项分类（不是当前要负责人选择的技术题）\n- G1 需要继续判断的用户效果：运行时条件监测与完整波形判定如何共同服务同一程序；跨测试的资源复用与个别配置覆盖；失败后用户如何理解执行/记录状态；采集数据和参考波形的可复核体验。\n- G2/G3 技术研究：ecu.test 风格 Mapping 是否必要、总线发送/订阅状态所有权、运行快照与分析作业结构、数据时间基准和关联、引用/存储格式、WPF 布局与适当的执行控制边界。\n- 按实际需要后置：现役板卡电气细节、条码型号映射、具体 CAN ID/DBC 电流阈值、未来多 DUT、真实烧录及生产放行。\n\n**此补充不代替 G1 正式评审；没有新增用户批准的需求，也没有对 G2/G3 结构作出决定。**",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 2,
+        "revision": 3,
         "meta": {
           "source": "2026-11-11 负责人纠偏：G1 应当从整体通用测试软件需求出发研究，不能以 CAN 单点方案先行替代全局架构；成熟 ecu.test 的整体配置/执行/观察/判定/报告需要系统性对照",
           "source_type": "RESEARCH_AND_OWNER_PROCESS_CORRECTION",
@@ -976,22 +976,33 @@
           "study_revision": "V0.2",
           "survey_status": "EVIDENCE_CHECKED",
           "whole_system": true,
-          "design_authority": "NONE"
+          "design_authority": "NONE",
+          "review_version": "V0.3",
+          "research_depth": "OFFICIAL_ECUTEST_EXECUTION_ANALYSIS_MAPPINGS_AND_CODE_DIFF",
+          "new_read_sources": [
+            "ecu.test 2026.3 project editor",
+            "ecu.test 2026.3 signal recording and trace analysis",
+            "ecu.test 2026.3 analysis jobs",
+            "AutoTest main TEST",
+            "AutoTest PR#10 TEST",
+            "AutoTest PR#27 Physical ReadOnly/KeySim/LiveWave/Records"
+          ],
+          "explicit_limit": "NO_G2_ARCHITECTURE_APPROVAL"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T08:08:48.069Z",
-        "updated": "2026-11-11T08:15:21.016Z"
+        "updated": "2026-11-11T08:21:31.559Z"
       },
       {
         "id": "at-g1-integrated-behavior-requirements",
         "project_id": "autotest",
         "kind": "requirement",
         "title": "G1｜AutoTest 完整自动测试行为要求矩阵（12 项，整体候审）",
-        "body": "# G1 整体自动测试行为要求初稿\n\n| ID | 用户可观察的系统行为 | 事实来源 | 需求状态 |\n|---|---|---|---|\n| INT-01 | 工程和资源能建立、保存、重开及编辑，测试程序可独立于在线实物维护 | 用户明确+旧G1 | 明确 |\n| INT-02 | 测试核心支持不同 ECU 的参数、信号、资源及判据变化，不内置 EPB 逻辑 | 已批准P0 | 明确 |\n| INT-03 | 图形化测试程序可组合步骤、条件、等待、循环、变量、子程序与调试控制 | 用户旧要求+G3 | 明确意图/细节待审 |\n| INT-04 | 持续周期 CAN 环境可在运行中修改部分报文数据，其余仍按配置发送 | 本轮用户明确 | 明确 |\n| INT-05 | IGN、KEY_SIM、CAN 及其他合适刺激可用于测试程序，设备行为可观察 | 已确认现有系统 | 明确 |\n| INT-06 | 观察真实 ECU 的原始 CAN、DBC 解码信号及时间序列，可选择采集区间 | 本轮用户明确 | 明确 |\n| INT-07 | 支持可配置的状态/时间/波形判定、期望动作或期望不动作；波形判定是首条真实闭环内容 | 本轮用户明确 | 明确 |\n| INT-08 | 显示运行中的步骤、预期实际、错误和结果，支持工程师中断、定位和再运行 | 用户旧要求+旧G1 | 明确方向/细节待审 |\n| INT-09 | 手动台架、CAN/DBC、Wave、UDS、烧录等工具可独立使用并按适用条件协同自动测试 | 已批准P0 | 明确 |\n| INT-10 | 保存每次运行、原始观测、判据及 Verdict 的关联证据，区分数据不足和有效零值 | 已批准P0+专业研究 | 明确目标/粒度待审 |\n| INT-11 | 工程资源、设备或数据缺失与危险状态应明确提示，不得用 ACK 替代物理事实 | 安全/旧G1研究 | 建议 |\n| INT-12 | 扫码、生产追溯、实际刷写可持续完善，不必先确定全部规则才打通真实自动测试 | 已批准P0 | 明确 |\n\n**整体观察路径**：同一工程/测试程序可定义并保存周期 CAN 环境与适用物理刺激，运行时改变部分环境信号，采集 DUT 的真实 CAN/DBC 时间序列，经可配置波形/时间判据给出步骤与最终 Verdict，记录数据来源和错误；保存重开后可重复执行。此路径只用于检验能力相互协同，不把 EPB 或某个流程固化成通用测试程序。\n\n**阶段边界**：INT-01～12 是整体需求候审，不是 G2 的模块分工。G2/G3 再考虑映射、配置文件、资源所有权、运行态和 WPF 组织；固件暂时冻结，真实台架全面复验按需安排。本对象未获得 G1 Gate 或代码实施授权。",
+        "body": "# G1 整体自动测试行为要求初稿\n\n| ID | 用户可观察的系统行为 | 事实来源 | 需求状态 |\n|---|---|---|---|\n| INT-01 | 工程和资源能建立、保存、重开及编辑，测试程序可独立于在线实物维护 | 用户明确+旧G1 | 明确 |\n| INT-02 | 测试核心支持不同 ECU 的参数、信号、资源及判据变化，不内置 EPB 逻辑 | 已批准P0 | 明确 |\n| INT-03 | 图形化测试程序可组合步骤、条件、等待、循环、变量、子程序与调试控制 | 用户旧要求+G3 | 明确意图/细节待审 |\n| INT-04 | 持续周期 CAN 环境可在运行中修改部分报文数据，其余仍按配置发送 | 本轮用户明确 | 明确 |\n| INT-05 | IGN、KEY_SIM、CAN 及其他合适刺激可用于测试程序，设备行为可观察 | 已确认现有系统 | 明确 |\n| INT-06 | 观察真实 ECU 的原始 CAN、DBC 解码信号及时间序列，可选择采集区间 | 本轮用户明确 | 明确 |\n| INT-07 | 支持可配置的状态/时间/波形判定、期望动作或期望不动作；波形判定是首条真实闭环内容 | 本轮用户明确 | 明确 |\n| INT-08 | 显示运行中的步骤、预期实际、错误和结果，支持工程师中断、定位和再运行 | 用户旧要求+旧G1 | 明确方向/细节待审 |\n| INT-09 | 手动台架、CAN/DBC、Wave、UDS、烧录等工具可独立使用并按适用条件协同自动测试 | 已批准P0 | 明确 |\n| INT-10 | 保存每次运行、原始观测、判据及 Verdict 的关联证据，区分数据不足和有效零值 | 已批准P0+专业研究 | 明确目标/粒度待审 |\n| INT-11 | 工程资源、设备或数据缺失与危险状态应明确提示，不得用 ACK 替代物理事实 | 安全/旧G1研究 | 建议 |\n| INT-12 | 扫码、生产追溯、实际刷写可持续完善，不必先确定全部规则才打通真实自动测试 | 已批准P0 | 明确 |\n\n**整体观察路径**：同一工程/测试程序可定义并保存周期 CAN 环境与适用物理刺激，运行时改变部分环境信号，采集 DUT 的真实 CAN/DBC 时间序列，经可配置波形/时间判据给出步骤与最终 Verdict，记录数据来源和错误；保存重开后可重复执行。此路径只用于检验能力相互协同，不把 EPB 或某个流程固化成通用测试程序。\n\n**阶段边界**：INT-01～12 是整体需求候审，不是 G2 的模块分工。G2/G3 再考虑映射、配置文件、资源所有权、运行态和 WPF 组织；固件暂时冻结，真实台架全面复验按需安排。本对象未获得 G1 Gate 或代码实施授权。\n\n## V0.2｜跨功能要求补充及证据边界\n\n**整体需求不是拆成十二个独立软件模块。** 从工程师任务看，至少以下关系需要同时成立：\n- INT-01/02/03：一个实际可编辑/重开的测试程序必须能找到正确的工程资源与适用 ECU 配置，参数/引用改动不偷偷改变已启动 Run。\n- INT-04/05/06：刺激在流程步骤之间可持续，IGN/KEY_SIM/CAN 与 ECU 观察可以时间重叠；刺激事件、接收时间和采样来源能够关联。\n- INT-06/07/10：判定能够使用有效时间序列；既可为运行中的条件/等待服务（待细化），也可依据测试后的完整波形求结论；原始事实与后续再分析不能混为一次已完成的运行。\n- INT-08/09/11：独立手动工具与自动程序存在共享设备和采集关系；用户应能观察失败、停止、未知状态，不许显示成动作成功。\n- INT-10/12：每次真实 Run 的输入、判据、结果及存储状态可复查；扫码/烧录/生产细则可以后续完成，但不改造出第二套测试程序执行模型。\n\n**新增 G1 建议（尚未获得用户逐项确认）：**\n(A) 已保存的真实采集记录应有明确数据来源及适用版本，以支持波形判据重新评价；\n(B) 对运行中条件判断和采集后波形评价分别定义用户可见的判定时机及结果；\n(C) 支持安全地告知“停止请求已发出，但持续刺激/实体输出状态仍未知”；\n(D) 使用同一逻辑测试资源改变 ECU/Profile/DBC 时，失效引用能定位并说明，而非静默替换。\n\n**G1 当前不批准**：是否独立建立 CAN 环境文件、单独分析包、Mapping 三层模型、异步任务、波形持久格式、发送任务调度和 WPF 界面结构。成熟 ecu.test 的 Package/AnalysisJob 等均是设计参考，不是已批准 AutoTest 对象。\n\n**验收研究入口**：参见 at-g1-physical-loop-verification-criteria 草稿；它给出全链路验收的可观察证据，不是现场操作指令，也不表示任何一项已经执行。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
           "source_evidence": "ecu.test 2026.3 官方文档 + ASAM XIL + SAEF G1-03/G2-03/G2-04/G2-05/G3-04 + AutoTest.Testing main 与 PR #10/#27",
           "source_type": "AI_G1_SYNTHESIS_USER_INTENT_PARTIALLY_CONFIRMED",
@@ -999,12 +1010,47 @@
           "approval": "NOT_APPROVED",
           "g1_matrix_items": 12,
           "not_architecture": true,
-          "study_ref": "at-g1-integrated-autotest-study"
+          "study_ref": "at-g1-integrated-autotest-study",
+          "requirements_revision": "V0.2",
+          "cross_domain_links_added": true,
+          "unapproved_new_suggestions": [
+            "REANALYSIS_ON_STORED_TRACE",
+            "ONLINE_VS_POSTRUN_DECISION_TIMING",
+            "STOP_UNCERTAINTY",
+            "MAPPING_REF_DIAGNOSTICS"
+          ],
+          "classification": "G1_RESEARCH_CANDIDATE"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T08:15:21.016Z",
-        "updated": "2026-11-11T08:15:21.016Z"
+        "updated": "2026-11-11T08:21:31.559Z"
+      },
+      {
+        "id": "at-g1-physical-loop-verification-criteria",
+        "project_id": "autotest",
+        "kind": "test",
+        "title": "G1｜首个真实 ECU 自动测试闭环的跨功能验收观察条件（未执行）",
+        "body": "# G1｜真实自动测试闭环整体验收条件（研究候选）\n\n目标不是为 EPB 固定一条通用测试用例，也不是要求当前立即上电实测；只规定**第一条针对实际 ECU 的可配置自动测试链**将来必须提供哪些可观察结果，才能称为真正打通。不得将 Mock、纯单测或 UI 截图当成实体 ECU 验收。\n\n| 检查项 | 未来必须观察到的证据 | 与其他能力的关系 | 目前状态 |\n|---|---|---|---|\n| V-01 工程与程序 | 创建/保存/重开一个用户编辑的测试工程、测试程序，步骤引用保持正确 | 工程↔DBC↔设备资源↔测试编辑 | NOT_RUN |\n| V-02 环境刺激 | 适用的 CAN 报文持续周期发送，运行中改变部分信号，其他报文不被中断、重复或改写 | 程序↔CAN↔配置↔共享设备 | NOT_RUN |\n| V-03 实际动作 | 经允许对真实 ECU 施加适用的 IGN、KEY_SIM 等动作；命令、应答与实际观测分级 | 设备↔测试步骤↔安全/错误 | NOT_RUN |\n| V-04 连续观察 | 实际 DUT CAN RX 与 DBC 解析的目标信号形成有时间来源的连续观测和波形记录 | CAN/DBC↔Wave↔Run | NOT_RUN |\n| V-05 规则判定 | 针对有实际数据的配置判据给出预期/实际、时间窗口及波形结果；有效无动作与数据缺失可区分 | Wave/时序↔Runtime↔Verdict | NOT_RUN |\n| V-06 运行过程 | 界面展示当前步骤、可见刺激/观测/判据及失败原因；停止与异常不会制造假 PASS | 编辑/运行/设备/证据↔UI | NOT_RUN |\n| V-07 结果与证据 | RunId、程序/资源版本、刺激时间、实际 CAN/波形、判据和最终 Verdict 能对应，保留本次完整或不完整归档状态 | 测试↔专业工具↔Record/报告 | NOT_RUN |\n| V-08 重复与复核 | 同一保存程序可再次执行并形成独立运行结果；必要时能查看所引用的原始证据 | 程序复用↔Run/Records | NOT_RUN |\n\n**不要求**为满足验收而固定 EPB 的静态驻车/释放、熄火驻车/释放顺序，也不预设具体报文 ID、信号名、电流阈值或采样率。应根据经确认的实际 ECU 测试条件选择代表性步骤与判据。\n\n**前置与边界**：主控与 KEY_SIM 固件当前暂时冻结；根据具体现役固件能力研究 HOST 实现。V-01～V-08 是一项完整链路的验收观察条件，不是 8 个独立模块的通关卡。现阶段不执行实体刺激或烧录；将来上电和夹具动作要满足现场安全条件并由负责人实际操作或授权。\n\n**源码成熟度备注**：main TEST 存在 MockStation，CAN/UDS/Wave 在 Builtins 标为不可执行；PR #27 已有真实只读 CAN/Live Wave/受控 KeySim/记录桥接候选；两者不能混称已通过 V-01～V-08。闭环完成需一个确切版本、一次真实 ECU 测试及相互关联的运行证据。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "G1 综合研究 + 用户已确认真实自动测试目标 + ecu.test 2026.3 官方 + main/PR#27 源码",
+          "source_type": "AI_SYNTHESIZED_FUTURE_ACCEPTANCE",
+          "phase": "G1_VERIFICATION_INTENT",
+          "test_state": "NOT_RUN",
+          "hardware_actions_executed": false,
+          "soft_build_executed": false,
+          "source_pr_head": "a8779a685b6f2c70aa4ff8d0aa0716bf14b76e9a",
+          "scope": "ONE_REAL_ECU_END_TO_END_EXECUTION_NOT_SEPARATE_MOCK_DEMONSTRATIONS",
+          "not_hardware_test_instruction": true,
+          "approved_by_owner": false
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T08:21:31.559Z",
+        "updated": "2026-11-11T08:21:31.559Z"
       }
     ],
     "relations": [
@@ -1268,6 +1314,28 @@
         "target_id": "at-cap-test",
         "kind": "defines",
         "created": "2026-11-11T08:15:21.016Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g1-rel-int-verification",
+        "project_id": "autotest",
+        "source_id": "at-g1-integrated-behavior-requirements",
+        "target_id": "at-g1-physical-loop-verification-criteria",
+        "kind": "verifies",
+        "created": "2026-11-11T08:21:31.559Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-g1-rel-loop-milestone",
+        "project_id": "autotest",
+        "source_id": "at-g1-physical-loop-verification-criteria",
+        "target_id": "at-p0-core-autotest-milestone",
+        "kind": "verifies",
+        "created": "2026-11-11T08:21:31.559Z",
         "status": "CANDIDATE",
         "approved_by": null,
         "approved_at": null
@@ -1745,6 +1813,30 @@
         "action": "CREATE_INTEGRATED_G1_REQUIREMENTS",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T08:15:21.016Z"
+      },
+      {
+        "object_id": "at-g1-integrated-autotest-study",
+        "revision": 3,
+        "snapshot": "{\"id\":\"at-g1-integrated-autotest-study\",\"project_id\":\"autotest\",\"kind\":\"reference\",\"title\":\"G1｜成熟通用 ECU 测试软件整体工作流调查（以 ecu.test 为主）\",\"body\":\"# G1 整体调查 V0.2｜通用 ECU 自动测试系统\\n\\n## 总体研究结论\\n自动测试的对象是完整的测试活动，而不是若干 CAN 操作的集合。工程配置、程序编辑、参数/数据定义、台架和工具接入、持续刺激、连续采集、时序及波形判定、运行调试、结果归档必须能够相互协同。G1 定义“用户能做什么、真实系统应表现什么”；G2/G3 才决定“软件如何拆分与实现”。\\n\\n## ecu.test 2026.3 的成熟机制\\n① Project 组织 Package、参数、重复调用及执行；可按配置复用测试逻辑。\\n② Test bench configuration 提供 Host/Tool/Port 技术访问；Test configuration 描述被测系统及可访问量；两者协同，在离线编辑模式下不把未连接设备标成可用。\\n③ Global/Local/Parameterized Mapping 通过抽象名称关联信号和实际访问路径，减少更换 ECU 或工具时修改测试步骤的范围。\\n④ Package 可以组合顺序、条件、等待、循环、React-On、变量和刺激动作；周期报文只是一种可能持续存在的刺激，不能主导通用架构。\\n⑤ Signal Recording 与 Trace Analysis 对整个测试过程记录和评估时间序列（响应延迟、状态保持、范围等）；测试报告能够关联步骤、记录与评价结果，也支持后续分析任务。\\n⑥ 编辑、交互执行/调试、报告属于同一项目工作流程，但可以是不同操作界面或执行阶段。\\n主要来源：\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-2-Test-configuration.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-4-Mappings.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Action-window/Test-steps-tab/Flow-control.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Global-mapping.html\\nhttps://docs.tracetronic.com/help/ecu.test/en/Main-program/Reportviewer.html\\nhttps://www.asam.net/standards/detail/xil/\\n\\n## AutoTest 的完整用户任务链（研究用，不是固定场景分类）\\n建立或重开工程→编写/配置测试程序、参数、信号与外部资源→连接或选择适用的真实台架/ECU 配置→检查运行前置→运行持续刺激与离散动作→同时采集 ECU 实际 CAN/DBC 信号→判定状态/时间/波形→查看步骤、错误和证据→保存 Run、原始数据与 Verdict→再次编辑或复用。\\n这条链只用于发现整体能力缺口；测试操作可以交叠发生，不限定真实程序只按单线程线性执行。\\n\\n## 必须共同满足的关系\\n- 工程资源与程序引用应保持有效，能保存重开和适配不同 ECU；测试程序不可写死 EPB 特有 CAN ID、按键或电流判据。\\n- CAN 环境持续按周期发送，运行中修改某些信号时其他帧继续；IGN/KEY_SIM/未来刺激按合适行为控制。资源复用方式/内部调度留 G2 研究。\\n- ECU 广播解码、波形时间序列与判据应能够直接服务自动测试，尤其首条真实闭环要得到基于波形的实际判定，而非仅独立展示曲线。\\n- 真实零值、有意义的无动作与数据缺失/丢帧要区分；通信 ACK、ECU 自报电流和独立物理测量三者不得混淆。\\n- 手动台架、CAN/DBC、UDS、烧录、Wave 等专业工具可以独立使用也能按条件参加自动测试，但不另造一套执行模型。\\n- 运行期间程序编辑、资源引用、数据采集、运行错误及结果归档要保持一致且可追踪；断开、取消或记录失败不能冒充成功。\\n- 扫码/生产匹配和真实刷写规则可分阶段研究，不阻塞首个真实 ECU 自动测试闭环。\\n\\n## 历史成果与现役源码对照\\n旧 SAEF G1-03 已列工程、DBC、设备、测试、波形、独立工具和证据等要求；G2-03/04/05、G3-04 已研究 TestDocument、状态所有权、调试、运行证据及工具复用，作为技术参考。\\n但旧 G1 将 B0～B6 全面复验置于闭环研发之前、以及将研发/自动测试/出厂并列作固定业务分类的做法，应按本次 P0 纠偏。旧文件本轮不重新签发。\\nGitHub main `src/AutoTest.Testing/Authoring/StepDescriptorCatalog.cs` 已列出 CAN/UDS/Wave 等步骤，但实际标记为不可执行；main `src/AutoTest.Testing/Runtime/RunCoordinator.cs` 为 MockStation 驱动，并不证明物理 ECU 自动执行已贯通。closed Draft PR #10 扩展 Mock 调试但无真实设备；open Draft PR #27 涉及 UI/工具/设备候选接线，不能用文件存在或 CI 代替整链实测。\\n真实主控/KEY_SIM 与两套暂时冻结固件、CanTool、历史 src、图纸是已确认工程资产。暂不要求重复全面台架核证，但到物理验收时必须有与具体能力对应的证据。\\n\\n## 留给 G2/G3，不能在 G1 定死\\necu.test 同款 TCF/TBC 文件格式或层数、CAN 环境是否独立文件、发送状态所有权和调度器、动作 Handler 与资源租约、Trace 算法接口/数据格式、线程模型、WPF Dock/视图布局、生产顺序和串口扫码配置详情。研发人员负责评价使用行为；AI 负责设计和取舍。\\n\\n**状态：整体 G1 需求研究候选；未批准 G1、G2/G3 或编码。**\\n\\n## V0.3 补充｜从成熟软件到整体需求的跨功能证据\\n\\n### A. ecu.test 的整体组织方式（2026.3 官方资料已核对）\\n1. Test bench configuration (TBC) 管理技术工具/Host/Port，Test configuration (TCF) 提供被测系统/模型/DBC 的功能视图；Mapping 让测试步骤引用功能名称而非每次改动实际访问路径。需要的是**不同ECU/台架可适配的用户效果**，不是在 AutoTest 必须照搬两个配置文件或三层映射对象。\\n2. Project 编辑器能够组合多个 Package 的引用和参数集，并支持同一包按不同参数多次执行、测试失败处理与局部重跑。Package 文档包含步骤、变量、属性、信号记录、Trace analysis 和上一次报告。不同运行可以复用同一程序。\\n3. Signal Recording 在测试期间采样；Trace Analysis 分析时间关系、状态保持、范围等，并与运行报告关联。ecu.test 允许刺激和分析任务分开、在不同时间执行，以及同一刺激数据关联多个分析包；通过 analysis jobs 持有 Trace/参数/映射的对应关系。\\n4. 正式执行界面将当前步骤、调用栈、实时消息、测试阶段、Trace 分析及报告放在一致的运行上下文中。**AutoTest 应重点借鉴从执行到证据的连续性，不必复制界面结构。**\\n来源：\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-2-Test-configuration.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-4-Mappings.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Project-editor.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Main-program/Editor/Test-case-editor/Work-window.html\\nhttps://docs.tracetronic.com/help/ecu.test/2026.3/en/Tutorial/Fundamentals/Lesson-5-Signalrecording-Traceanalysis.html\\nhttps://docs.tracetronic.com/help/ecu.test/en/Test-execution/Analysis-jobs.html\\nhttps://docs.tracetronic.com/help/ecu.test/en/Test-execution/Test-execution.html\\n\\n### B. 整体能力共同约束（G1 行为而非软件类定义）\\n- **程序/参数/资源一致性**：测试程序可在离线编辑并保存；执行时针对有效资源运行，运行中编辑不能无声改变这次 Run 的解释和判据。\\n- **刺激/流程与时间相关性**：持续 CAN 环境、IGN、KEY_SIM 以及未来动作可与观测同时发生；可观察到何时开始/更新/停止，不能把“运行到下一步”视作所有背景刺激已停止。\\n- **实际数据/观测来源**：原始 CAN、DBC 信号和波形须能回溯来源；ECU 自报电流不等于独立传感器电流；数据缺失、不可信与数值零严格区分。\\n- **判定的两类用途**：运行中条件/等待可能要读取及时观测以决定下一步；波形/参考比较也可能在采集后对完整时间序列求最终结果。G1 应允许这两类测试目的，而不是先假定只能实时判断或只能事后分析。具体执行模型属于 G2/G3。\\n- **分析可复查性（建议）**：同一份可靠的已保存观测可以用修订后的判据重新分析，且新分析不得悄悄覆盖原始运行/旧判定；是否首轮实现需后续划分优先级。\\n- **运行与结果关系**：步骤、动作、观测、判据、Verdict、运行时异常、数据提交必须可关联；停止/断线/不完整数据不能生成假的 PASS。\\n- **独立工具/自动测试协同**：CAN 监视、DBC、Wave、UDS、Flash、手动台架均应服务各自工作且适用时与自动测试相接，不能以工具窗口或引用代码的存在代替整个运行工作流完成。\\n- **产品扩展**：新增 ECU 测试对象、项目数据和专业工具时不要求修改 EPB 专用的通用引擎常量；实现方法由后续架构阶段决定。\\n\\n### C. 源码与成熟度审查（区分现役 main、候选、实测）\\n1. main 的 StepDescriptorCatalog 目前把 CanSend、UdsRequest、WaveCapture、WaveCompare 标为不可执行；main 的 RunCoordinator 接口使用 MockStation。**此两处确证 main 的相应测试主线还不是包含真实设备/波形判定的完整执行路径**。\\n2. closed Draft PR #10（HEAD 0d29c0f...）扩展了正式测试编辑、条件、子程序、Mock 调试，未获得真实设备接入验收。\\n3. open Draft PR #27（HEAD a8779a6...）的 `R2PhysicalCanReadOnlyLabStation` 能在受控条件下从真实 CAN1/DBC 获取单步观察，但明确只读；`R1PhysicalKeySimLabStation` 包含经授权的实体按键状态动作及清理策略；`R1PhysicalWaveSignalSource` 设计从共享真实 CAN 流提供 Wave 观察；`R1PhysicalRunRecordBridge` 为实际只读运行归档候选。**因此不能笼统断言全部真实设备能力不存在**。但尚未见一份关联同一可编辑程序、持续 CAN 环境、实体刺激、实时广播、波形判据、最终 Verdict 与完整持久化的经用户验收运行证据。\\n4. 当前真实工位组成及 KEY_SIM 已连接 DUT 由负责人报告；并不自动验证上面完整链路。全面台架 B0～B6 复验不作为 G1 的必要前置，但后续首个真实闭环验收必须使用适用实物与真实数据。\\n代码来源：\\nhttps://github.com/ch3758134-prog/AutoTest/blob/main/src/AutoTest.Testing/Authoring/StepDescriptorCatalog.cs\\nhttps://github.com/ch3758134-prog/AutoTest/blob/main/src/AutoTest.Testing/Runtime/RunCoordinator.cs\\nhttps://github.com/ch3758134-prog/AutoTest/pull/10\\nhttps://github.com/ch3758134-prog/AutoTest/pull/27\\n\\n### D. 未决事项分类（不是当前要负责人选择的技术题）\\n- G1 需要继续判断的用户效果：运行时条件监测与完整波形判定如何共同服务同一程序；跨测试的资源复用与个别配置覆盖；失败后用户如何理解执行/记录状态；采集数据和参考波形的可复核体验。\\n- G2/G3 技术研究：ecu.test 风格 Mapping 是否必要、总线发送/订阅状态所有权、运行快照与分析作业结构、数据时间基准和关联、引用/存储格式、WPF 布局与适当的执行控制边界。\\n- 按实际需要后置：现役板卡电气细节、条码型号映射、具体 CAN ID/DBC 电流阈值、未来多 DUT、真实烧录及生产放行。\\n\\n**此补充不代替 G1 正式评审；没有新增用户批准的需求，也没有对 G2/G3 结构作出决定。**\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":3,\"meta\":{\"source\":\"2026-11-11 负责人纠偏：G1 应当从整体通用测试软件需求出发研究，不能以 CAN 单点方案先行替代全局架构；成熟 ecu.test 的整体配置/执行/观察/判定/报告需要系统性对照\",\"source_type\":\"RESEARCH_AND_OWNER_PROCESS_CORRECTION\",\"document_type\":\"G1_INTEGRATED_WORKFLOW_RESEARCH\",\"phase\":\"G1\",\"method\":\"COMPLETE_WORKFLOW_FIRST_COMPONENT_DESIGN_LATER\",\"primary_benchmark\":\"ecu.test 2026.3\",\"related_g0_assets\":[\"at-g0-reference-assets-current\",\"at-g0-system-inventory\"],\"related_g1_requirements\":[\"at-g1-confirmed-can-environment-runtime\",\"at-cap-test\"],\"approval\":\"NOT_APPROVED\",\"architecture\":\"NOT_DEFINED\",\"source_evidence\":\"ecu.test 2026.3 官方文档 + ASAM XIL + SAEF G1-03/G2-03/G2-04/G2-05/G3-04 + AutoTest.Testing main 与 PR #10/#27\",\"study_revision\":\"V0.2\",\"survey_status\":\"EVIDENCE_CHECKED\",\"whole_system\":true,\"design_authority\":\"NONE\",\"review_version\":\"V0.3\",\"research_depth\":\"OFFICIAL_ECUTEST_EXECUTION_ANALYSIS_MAPPINGS_AND_CODE_DIFF\",\"new_read_sources\":[\"ecu.test 2026.3 project editor\",\"ecu.test 2026.3 signal recording and trace analysis\",\"ecu.test 2026.3 analysis jobs\",\"AutoTest main TEST\",\"AutoTest PR#10 TEST\",\"AutoTest PR#27 Physical ReadOnly/KeySim/LiveWave/Records\"],\"explicit_limit\":\"NO_G2_ARCHITECTURE_APPROVAL\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T08:08:48.069Z\",\"updated\":\"2026-11-11T08:21:31.559Z\"}",
+        "action": "G1_INTEGRATED_RESEARCH_V03_EVIDENCE_AND_CROSS_DOMAIN_REVIEW",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T08:21:31.559Z"
+      },
+      {
+        "object_id": "at-g1-integrated-behavior-requirements",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-g1-integrated-behavior-requirements\",\"project_id\":\"autotest\",\"kind\":\"requirement\",\"title\":\"G1｜AutoTest 完整自动测试行为要求矩阵（12 项，整体候审）\",\"body\":\"# G1 整体自动测试行为要求初稿\\n\\n| ID | 用户可观察的系统行为 | 事实来源 | 需求状态 |\\n|---|---|---|---|\\n| INT-01 | 工程和资源能建立、保存、重开及编辑，测试程序可独立于在线实物维护 | 用户明确+旧G1 | 明确 |\\n| INT-02 | 测试核心支持不同 ECU 的参数、信号、资源及判据变化，不内置 EPB 逻辑 | 已批准P0 | 明确 |\\n| INT-03 | 图形化测试程序可组合步骤、条件、等待、循环、变量、子程序与调试控制 | 用户旧要求+G3 | 明确意图/细节待审 |\\n| INT-04 | 持续周期 CAN 环境可在运行中修改部分报文数据，其余仍按配置发送 | 本轮用户明确 | 明确 |\\n| INT-05 | IGN、KEY_SIM、CAN 及其他合适刺激可用于测试程序，设备行为可观察 | 已确认现有系统 | 明确 |\\n| INT-06 | 观察真实 ECU 的原始 CAN、DBC 解码信号及时间序列，可选择采集区间 | 本轮用户明确 | 明确 |\\n| INT-07 | 支持可配置的状态/时间/波形判定、期望动作或期望不动作；波形判定是首条真实闭环内容 | 本轮用户明确 | 明确 |\\n| INT-08 | 显示运行中的步骤、预期实际、错误和结果，支持工程师中断、定位和再运行 | 用户旧要求+旧G1 | 明确方向/细节待审 |\\n| INT-09 | 手动台架、CAN/DBC、Wave、UDS、烧录等工具可独立使用并按适用条件协同自动测试 | 已批准P0 | 明确 |\\n| INT-10 | 保存每次运行、原始观测、判据及 Verdict 的关联证据，区分数据不足和有效零值 | 已批准P0+专业研究 | 明确目标/粒度待审 |\\n| INT-11 | 工程资源、设备或数据缺失与危险状态应明确提示，不得用 ACK 替代物理事实 | 安全/旧G1研究 | 建议 |\\n| INT-12 | 扫码、生产追溯、实际刷写可持续完善，不必先确定全部规则才打通真实自动测试 | 已批准P0 | 明确 |\\n\\n**整体观察路径**：同一工程/测试程序可定义并保存周期 CAN 环境与适用物理刺激，运行时改变部分环境信号，采集 DUT 的真实 CAN/DBC 时间序列，经可配置波形/时间判据给出步骤与最终 Verdict，记录数据来源和错误；保存重开后可重复执行。此路径只用于检验能力相互协同，不把 EPB 或某个流程固化成通用测试程序。\\n\\n**阶段边界**：INT-01～12 是整体需求候审，不是 G2 的模块分工。G2/G3 再考虑映射、配置文件、资源所有权、运行态和 WPF 组织；固件暂时冻结，真实台架全面复验按需安排。本对象未获得 G1 Gate 或代码实施授权。\\n\\n## V0.2｜跨功能要求补充及证据边界\\n\\n**整体需求不是拆成十二个独立软件模块。** 从工程师任务看，至少以下关系需要同时成立：\\n- INT-01/02/03：一个实际可编辑/重开的测试程序必须能找到正确的工程资源与适用 ECU 配置，参数/引用改动不偷偷改变已启动 Run。\\n- INT-04/05/06：刺激在流程步骤之间可持续，IGN/KEY_SIM/CAN 与 ECU 观察可以时间重叠；刺激事件、接收时间和采样来源能够关联。\\n- INT-06/07/10：判定能够使用有效时间序列；既可为运行中的条件/等待服务（待细化），也可依据测试后的完整波形求结论；原始事实与后续再分析不能混为一次已完成的运行。\\n- INT-08/09/11：独立手动工具与自动程序存在共享设备和采集关系；用户应能观察失败、停止、未知状态，不许显示成动作成功。\\n- INT-10/12：每次真实 Run 的输入、判据、结果及存储状态可复查；扫码/烧录/生产细则可以后续完成，但不改造出第二套测试程序执行模型。\\n\\n**新增 G1 建议（尚未获得用户逐项确认）：**\\n(A) 已保存的真实采集记录应有明确数据来源及适用版本，以支持波形判据重新评价；\\n(B) 对运行中条件判断和采集后波形评价分别定义用户可见的判定时机及结果；\\n(C) 支持安全地告知“停止请求已发出，但持续刺激/实体输出状态仍未知”；\\n(D) 使用同一逻辑测试资源改变 ECU/Profile/DBC 时，失效引用能定位并说明，而非静默替换。\\n\\n**G1 当前不批准**：是否独立建立 CAN 环境文件、单独分析包、Mapping 三层模型、异步任务、波形持久格式、发送任务调度和 WPF 界面结构。成熟 ecu.test 的 Package/AnalysisJob 等均是设计参考，不是已批准 AutoTest 对象。\\n\\n**验收研究入口**：参见 at-g1-physical-loop-verification-criteria 草稿；它给出全链路验收的可观察证据，不是现场操作指令，也不表示任何一项已经执行。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source_evidence\":\"ecu.test 2026.3 官方文档 + ASAM XIL + SAEF G1-03/G2-03/G2-04/G2-05/G3-04 + AutoTest.Testing main 与 PR #10/#27\",\"source_type\":\"AI_G1_SYNTHESIS_USER_INTENT_PARTIALLY_CONFIRMED\",\"confirmed_scope\":\"P0, CAN持续环境, 真实波形闭环, 通用测试模型\",\"approval\":\"NOT_APPROVED\",\"g1_matrix_items\":12,\"not_architecture\":true,\"study_ref\":\"at-g1-integrated-autotest-study\",\"requirements_revision\":\"V0.2\",\"cross_domain_links_added\":true,\"unapproved_new_suggestions\":[\"REANALYSIS_ON_STORED_TRACE\",\"ONLINE_VS_POSTRUN_DECISION_TIMING\",\"STOP_UNCERTAINTY\",\"MAPPING_REF_DIAGNOSTICS\"],\"classification\":\"G1_RESEARCH_CANDIDATE\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T08:15:21.016Z\",\"updated\":\"2026-11-11T08:21:31.559Z\"}",
+        "action": "G1_INTEGRATED_RESEARCH_V03_EVIDENCE_AND_CROSS_DOMAIN_REVIEW",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T08:21:31.559Z"
+      },
+      {
+        "object_id": "at-g1-physical-loop-verification-criteria",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-g1-physical-loop-verification-criteria\",\"project_id\":\"autotest\",\"kind\":\"test\",\"title\":\"G1｜首个真实 ECU 自动测试闭环的跨功能验收观察条件（未执行）\",\"body\":\"# G1｜真实自动测试闭环整体验收条件（研究候选）\\n\\n目标不是为 EPB 固定一条通用测试用例，也不是要求当前立即上电实测；只规定**第一条针对实际 ECU 的可配置自动测试链**将来必须提供哪些可观察结果，才能称为真正打通。不得将 Mock、纯单测或 UI 截图当成实体 ECU 验收。\\n\\n| 检查项 | 未来必须观察到的证据 | 与其他能力的关系 | 目前状态 |\\n|---|---|---|---|\\n| V-01 工程与程序 | 创建/保存/重开一个用户编辑的测试工程、测试程序，步骤引用保持正确 | 工程↔DBC↔设备资源↔测试编辑 | NOT_RUN |\\n| V-02 环境刺激 | 适用的 CAN 报文持续周期发送，运行中改变部分信号，其他报文不被中断、重复或改写 | 程序↔CAN↔配置↔共享设备 | NOT_RUN |\\n| V-03 实际动作 | 经允许对真实 ECU 施加适用的 IGN、KEY_SIM 等动作；命令、应答与实际观测分级 | 设备↔测试步骤↔安全/错误 | NOT_RUN |\\n| V-04 连续观察 | 实际 DUT CAN RX 与 DBC 解析的目标信号形成有时间来源的连续观测和波形记录 | CAN/DBC↔Wave↔Run | NOT_RUN |\\n| V-05 规则判定 | 针对有实际数据的配置判据给出预期/实际、时间窗口及波形结果；有效无动作与数据缺失可区分 | Wave/时序↔Runtime↔Verdict | NOT_RUN |\\n| V-06 运行过程 | 界面展示当前步骤、可见刺激/观测/判据及失败原因；停止与异常不会制造假 PASS | 编辑/运行/设备/证据↔UI | NOT_RUN |\\n| V-07 结果与证据 | RunId、程序/资源版本、刺激时间、实际 CAN/波形、判据和最终 Verdict 能对应，保留本次完整或不完整归档状态 | 测试↔专业工具↔Record/报告 | NOT_RUN |\\n| V-08 重复与复核 | 同一保存程序可再次执行并形成独立运行结果；必要时能查看所引用的原始证据 | 程序复用↔Run/Records | NOT_RUN |\\n\\n**不要求**为满足验收而固定 EPB 的静态驻车/释放、熄火驻车/释放顺序，也不预设具体报文 ID、信号名、电流阈值或采样率。应根据经确认的实际 ECU 测试条件选择代表性步骤与判据。\\n\\n**前置与边界**：主控与 KEY_SIM 固件当前暂时冻结；根据具体现役固件能力研究 HOST 实现。V-01～V-08 是一项完整链路的验收观察条件，不是 8 个独立模块的通关卡。现阶段不执行实体刺激或烧录；将来上电和夹具动作要满足现场安全条件并由负责人实际操作或授权。\\n\\n**源码成熟度备注**：main TEST 存在 MockStation，CAN/UDS/Wave 在 Builtins 标为不可执行；PR #27 已有真实只读 CAN/Live Wave/受控 KeySim/记录桥接候选；两者不能混称已通过 V-01～V-08。闭环完成需一个确切版本、一次真实 ECU 测试及相互关联的运行证据。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"G1 综合研究 + 用户已确认真实自动测试目标 + ecu.test 2026.3 官方 + main/PR#27 源码\",\"source_type\":\"AI_SYNTHESIZED_FUTURE_ACCEPTANCE\",\"phase\":\"G1_VERIFICATION_INTENT\",\"test_state\":\"NOT_RUN\",\"hardware_actions_executed\":false,\"soft_build_executed\":false,\"source_pr_head\":\"a8779a685b6f2c70aa4ff8d0aa0716bf14b76e9a\",\"scope\":\"ONE_REAL_ECU_END_TO_END_EXECUTION_NOT_SEPARATE_MOCK_DEMONSTRATIONS\",\"not_hardware_test_instruction\":true,\"approved_by_owner\":false},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T08:21:31.559Z\",\"updated\":\"2026-11-11T08:21:31.559Z\"}",
+        "action": "CREATE_G1_END_TO_END_ACCEPTANCE_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T08:21:31.559Z"
       }
     ],
     "events": [
@@ -2143,6 +2235,33 @@
         "actor": "AI_PROJECT_MANAGER",
         "note": "通用测试 G1 跨功能行为矩阵，均为候审，不固定软硬件架构",
         "timestamp": "2026-11-11T08:15:21.016Z"
+      },
+      {
+        "id": "evt-at-g1-integrated-autotest-study-r3",
+        "project_id": "autotest",
+        "object_id": "at-g1-integrated-autotest-study",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "ecu.test 官方整体执行/波形分析 + AutoTest G3及PR #27源代码交叉调查；增加G1联合行为和验证条件，绝非G2设计批准",
+        "timestamp": "2026-11-11T08:21:31.559Z"
+      },
+      {
+        "id": "evt-at-g1-integrated-behavior-requirements-r2",
+        "project_id": "autotest",
+        "object_id": "at-g1-integrated-behavior-requirements",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "ecu.test 官方整体执行/波形分析 + AutoTest G3及PR #27源代码交叉调查；增加G1联合行为和验证条件，绝非G2设计批准",
+        "timestamp": "2026-11-11T08:21:31.559Z"
+      },
+      {
+        "id": "evt-at-g1-physical-loop-verification-criteria",
+        "project_id": "autotest",
+        "object_id": "at-g1-physical-loop-verification-criteria",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "为首个真实闭环提出整体观测/判定/记录验收条件，全部 NOT_RUN；非现场动作或设计批准",
+        "timestamp": "2026-11-11T08:21:31.559Z"
       }
     ],
     "technical_research": {
@@ -2296,12 +2415,19 @@
         "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
         "changed_by": "AI_PROJECT_MANAGER_G1_INTEGRATED_RESEARCH_V02",
         "changed_at": "2026-11-11T08:15:21.016Z"
+      },
+      {
+        "project_id": "autotest",
+        "revision": 12,
+        "snapshot": "{\"name\":\"AutoTest\",\"body\":\"《AutoTest 产品定义与立项说明》V0.1 已经项目负责人明确批准。正式全文以工程对象 at-p0-approved-charter-v01（APPROVED r2）为准；稳定产品身份以 product_identity baseline r1 为准。产品目标、边界与近期方向已确认；现役硬件能力、系统需求、架构、详细设计、实施与现场验证仍需后续调查和独立审批。当前项目阶段标签 R1/EPB 仅为研发上下文，不属于产品身份。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"AutoTest 是一套面向不同型号 ECU 的可配置软硬件一体化自动测试系统。它依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。\"}",
+        "changed_by": "AI_PROJECT_MANAGER_G1_V03_WHOLE_WORKFLOW_AND_ACCEPTANCE",
+        "changed_at": "2026-11-11T08:21:31.559Z"
       }
     ],
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "P0 V0.1 已批准；G1 已综合 ecu.test、ASAM XIL、旧 G1-G3 和 main/PR 现状，新增整体研究 V0.2 与 12 项可审行为要求，不提前发布 G2/G3。",
+  "p0_discussion_note": "G1 V0.3：基于 ecu.test 的整体工程、参数复用、技术台架与功能数据映射、执行/Signal Recording/Trace 分离，结合 main/PR#27 真实与Mock代码差异，补全跨功能需求、真实闭环 V-01～V-08 观察条件。仅形成待审 G1 和未执行验收方案；P0 保持已批准，G2/G3 不推进。",
   "approval": {
     "approval_id": "AT-P0-CHARTER-V01-OWNER-20261110",
     "scope": "P0_PRODUCT_DEFINITION_AND_INITIATION_V0_1",
