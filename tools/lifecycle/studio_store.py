@@ -770,9 +770,25 @@ class Store:
                     knowledge["intakes"]=[dict(x) for x in db.execute(
                         "SELECT * FROM engineering_knowledge_intakes WHERE project_id=? ORDER BY created,id",
                         (key,))]
+            product_identity={"baselines":[],"proposals":[],"impacts":[],"invalidations":[]}
+            if db.execute("""SELECT 1 FROM sqlite_master WHERE type='table'
+                             AND name='product_identity_proposals'""").fetchone():
+                product_identity["baselines"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM product_identity_baselines WHERE project_id=? ORDER BY revision",
+                    (key,))]
+                product_identity["proposals"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM product_identity_proposals WHERE project_id=? ORDER BY created,id",
+                    (key,))]
+                product_identity["impacts"]=[dict(x) for x in db.execute(
+                    """SELECT i.* FROM product_identity_impacts i
+                       JOIN product_identity_proposals p ON p.id=i.proposal_id
+                       WHERE p.project_id=? ORDER BY i.proposal_id,i.object_id""",(key,))]
+                product_identity["invalidations"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM product_identity_invalidations WHERE project_id=? ORDER BY created,package_id",
+                    (key,))]
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
                     "objects":objects,"relations":links,"revisions":revisions,
                     "events":events,"technical_research":research,
                     "execution":execution,"manager_proposals":proposals,
                     "verification":verification,"governance":governance,
-                    "knowledge":knowledge}
+                    "knowledge":knowledge,"product_identity":product_identity}
