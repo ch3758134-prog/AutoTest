@@ -11,8 +11,9 @@ import hashlib
 import json
 from studio_store import Store, RuleError, ident, now, text_value
 from studio_verification import Verification
+from studio_governance import DefinitionGovernance
 
-PROPOSAL_KINDS = ("REQUIREMENT_CLARIFICATION", "TECHNICAL_RESEARCH", "ARCHITECTURE_REVIEW",
+PROPOSAL_KINDS = ("PRODUCT_DEFINITION_REVIEW", "REQUIREMENT_CLARIFICATION", "TECHNICAL_RESEARCH", "ARCHITECTURE_REVIEW",
                   "DETAILED_DESIGN", "CODING", "INTEGRATION", "VERIFICATION",
                   "SCHEDULE", "BLOCKER")
 PRIORITIES = ("P0", "P1", "P2", "P3")
@@ -48,6 +49,7 @@ class Management:
         exe = self.execution.overview(project_id)
         studies = self.research.list(project_id)
         verification = Verification(self.store).list(project_id)
+        governance = DefinitionGovernance(self.store).status(project_id)
         objects = p["objects"]
         indexed = {x["id"]: x for x in objects}
         ready = {}
@@ -61,6 +63,15 @@ class Management:
                         and x["state"] != "APPROVED"]
         technical = [x for x in studies if x["status"] != "DECIDED"]
         blockers = []
+        if governance["baseline_status"]!="BASELINED":
+            blockers.append({"type":"PRODUCT_DEFINITION_BASELINE",
+                             "reason":"Product definition is "+governance["baseline_status"]+
+                                      "; imported text is not approved"})
+        for x in governance["changes"]:
+            if x["state"]=="REVIEW":
+                blockers.append({"type":"PRODUCT_DEFINITION_CHANGE",
+                                 "change_id":x["id"],
+                                 "reason":"Major product definition change requires multi-domain review"})
         for x in open_changes:
             blockers.append({"type":"CHANGE_REVIEW","object_id":x["id"],
                              "reason":"Change is not closed: "+x["title"]})
@@ -93,6 +104,7 @@ class Management:
             "engineering_objects":objects,
             "engineering_relations":p["relations"],
             "technical_studies":studies,
+            "product_definition_governance":governance,
             "verification_runs":verification["runs"],
             "verification_note":verification["note"],
             "implementation_readiness":ready,
@@ -104,6 +116,8 @@ class Management:
                 "This brief is evidence, not a request to invent completion or dates.",
                 "You may propose research/design/plan/verification/coding work only.",
                 "Do not approve engineering revisions, invent technical evidence, dispatch coding, merge or modify policy.",
+                "Product definition must be proposed, reviewed in every applicable policy domain and published by the owner's governed route.",
+                "A plan suggestion cannot substitute for approved product baseline or impacts; treat missing links as unknown, not no-impact.",
                 "A coding proposal is not CODE_READY. It needs separately approved detailed software design.",
                 "GitHub status is an explicitly refreshed snapshot; cached values are not live.",
                 "Recorded execution PASS is an operator assertion, not product acceptance.",
