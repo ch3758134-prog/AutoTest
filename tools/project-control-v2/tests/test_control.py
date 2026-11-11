@@ -9,7 +9,6 @@ import unittest
 HERE = Path(__file__).resolve().parents[1]
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(ROOT / "tools/lifecycle"))
 from control import Control, ControlError
 from server import load_model
 from sync import status as sync_status
@@ -21,7 +20,7 @@ class ControlTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.work = Path(self.tmp.name) / "autotest.json"
         self.work.write_bytes((HERE / "workspace/autotest.json").read_bytes())
-        self.archive = ROOT / "docs/engineering-control/projects/autotest/snapshot.json"
+        self.archive = HERE / "sources/autotest_engineering.json"
         self.ctrl = Control(self.work, self.archive)
 
     def action(self, name, **fields):
