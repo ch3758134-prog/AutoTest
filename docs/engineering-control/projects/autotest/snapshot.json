@@ -1,11 +1,11 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T06:20:00+00:00",
+  "exported_at": "2026-11-11T06:59:03.890Z",
   "authority": "AI_CANDIDATE_NOT_APPROVED",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T06:20:00+00:00",
+    "exported_at": "2026-11-11T06:59:03.890Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T06:52:15.981Z"
+      "updated": "2026-11-11T06:59:03.890Z"
     },
     "objects": [
       {
@@ -366,23 +366,52 @@
         "id": "at-p0-serial-identity-boundary",
         "project_id": "autotest",
         "kind": "change",
-        "title": "ECU 编码、实物标签与扫码责任边界待澄清",
-        "body": "用户本次明确提出出厂需要设计一套编码，并计划使用扫码枪实现测试对象记录。此前 SAEF P0-01 候审章程写有‘用户团队设计 DUT 实物标签编号方案，HOST 不负责生成或打印编号’的旧边界；当前两种表达尚不能直接视作一致。需澄清每台 DUT 在烧录前是否已有唯一编号、编号由谁生成/打印/粘贴、型号与唯一实物身份如何区分，以及扫码在烧录、测试、复测中的关联时机。未确认前不得把条码规则和生产放行流程当成有效需求。",
+        "title": "外部 ECU 编码方案与 AutoTest 配置匹配的协同设计（待研究）",
+        "body": "已明确：ECU 在进入出厂流程前就具有唯一且可扫码的实物编号。编号规则的制定/调整是与 AutoTest 配套的外部业务与标识体系设计，并非要求 AutoTest 生成或打印编号。过去的编号设计主要面向唯一识别；由于 AutoTest 将按 ECU 型号与适用条件选择烧录镜像/刷写配置、通信矩阵/DBC、测试程序与判定资源，外部编码方案得以与测试配置匹配共同设计。这意味着编码是实物身份与工程资源关联的业务入口，但尚不能认定条码本身必须包含型号、软件版本、批次等字段，也不能预设一定直接解析或依赖数据库查询。后续 G1 应明确编码字段/版本、识别与配置映射规则、维护权责、歧义/未知码处理和复测追溯；G2 再确定具体实现。此前将用户意图理解为由 AutoTest 创建唯一编号，属于 AI 理解错误，现已纠正。",
         "parent_id": null,
         "state": "OPEN",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）",
-          "source_type": "USER_INPUT_VS_PRIOR_CANDIDATE",
-          "engineering_class": "open_scope_question",
-          "severity": "P0_DISCUSSION",
+          "source": "用户对话｜P0 ECU 编码与测试资源配置关系澄清（2026-11-10，America/Los_Angeles）",
+          "source_type": "USER_CLARIFICATION_AND_AI_SYNTHESIS",
+          "engineering_class": "external_code_scheme_configuration_integration",
+          "severity": "P0_RESEARCH",
           "reference_document": "SAEF/engineering/work-products/P0/P0-01/index.md",
-          "review_note": "仅提出需核实的边界，不预先决定编号由软件或外部系统生成"
+          "review_note": "用户澄清了项目边界；具体编码格式与配置匹配设计尚须继续研究。本对象为待审候选，不授权实施。",
+          "resolved_misunderstanding": "原有编号已经存在；外部负责编码方案，AutoTest 负责读取、规则匹配、关联资源与测试记录；没有提出系统必须生成或打印实物编码",
+          "remaining_design_question": "编号内容与字段、模式/版本、解析还是映射、适用工程资源条件与配置规则的关系尚未确定",
+          "prior_source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T06:52:15.981Z",
-        "updated": "2026-11-11T06:52:15.981Z"
+        "updated": "2026-11-11T06:59:03.890Z"
+      },
+      {
+        "id": "at-p0-serial-code-fact",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "进入出厂流程前的 ECU 唯一编号与外部编码方案（用户澄清）",
+        "body": "每台 ECU 在进入 AutoTest 出厂检测流程前已经具有唯一的可扫码编号。编号方案由与 AutoTest 配套的外部业务设计工作负责，并可为了支持不同 ECU 型号与烧录、DBC、测试资源匹配而重新设计。AutoTest 读取该编号，依据适用的可配置规则建立实物身份、型号/资源和历史测试记录之间的关联；“编号本身携带全部信息”还是“编号映射到外部信息”等策略尚未决定。不得将编码体系协同设计误写为 AutoTest 必须负责产生/打印唯一编号。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户对话｜P0 ECU 编码与测试资源配置关系澄清（2026-11-10，America/Los_Angeles）",
+          "source_type": "USER_DIRECT_CLARIFICATION",
+          "engineering_class": "as_is_identity_and_external_code_design_boundary",
+          "evidence_status": "USER_REPORTED_PROCESS_UNDER_REVIEW",
+          "related_object_ids": [
+            "at-p0-serial-identity-boundary",
+            "at-p0-model-variation",
+            "at-cap-scan"
+          ],
+          "review_note": "用户明确确认事实；工程对象草稿不代表系统设计和产品身份已签发"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:59:03.890Z",
+        "updated": "2026-11-11T06:59:03.890Z"
       }
     ],
     "relations": [
@@ -638,6 +667,22 @@
         "action": "CREATE_AI_CANDIDATE_FROM_USER_DISCUSSION",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "object_id": "at-p0-serial-identity-boundary",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-p0-serial-identity-boundary\",\"project_id\":\"autotest\",\"kind\":\"change\",\"title\":\"外部 ECU 编码方案与 AutoTest 配置匹配的协同设计（待研究）\",\"body\":\"已明确：ECU 在进入出厂流程前就具有唯一且可扫码的实物编号。编号规则的制定/调整是与 AutoTest 配套的外部业务与标识体系设计，并非要求 AutoTest 生成或打印编号。过去的编号设计主要面向唯一识别；由于 AutoTest 将按 ECU 型号与适用条件选择烧录镜像/刷写配置、通信矩阵/DBC、测试程序与判定资源，外部编码方案得以与测试配置匹配共同设计。这意味着编码是实物身份与工程资源关联的业务入口，但尚不能认定条码本身必须包含型号、软件版本、批次等字段，也不能预设一定直接解析或依赖数据库查询。后续 G1 应明确编码字段/版本、识别与配置映射规则、维护权责、歧义/未知码处理和复测追溯；G2 再确定具体实现。此前将用户意图理解为由 AutoTest 创建唯一编号，属于 AI 理解错误，现已纠正。\",\"parent_id\":null,\"state\":\"OPEN\",\"revision\":2,\"meta\":{\"source\":\"用户对话｜P0 ECU 编码与测试资源配置关系澄清（2026-11-10，America/Los_Angeles）\",\"source_type\":\"USER_CLARIFICATION_AND_AI_SYNTHESIS\",\"engineering_class\":\"external_code_scheme_configuration_integration\",\"severity\":\"P0_RESEARCH\",\"reference_document\":\"SAEF/engineering/work-products/P0/P0-01/index.md\",\"review_note\":\"用户澄清了项目边界；具体编码格式与配置匹配设计尚须继续研究。本对象为待审候选，不授权实施。\",\"resolved_misunderstanding\":\"原有编号已经存在；外部负责编码方案，AutoTest 负责读取、规则匹配、关联资源与测试记录；没有提出系统必须生成或打印实物编码\",\"remaining_design_question\":\"编号内容与字段、模式/版本、解析还是映射、适用工程资源条件与配置规则的关系尚未确定\",\"prior_source\":\"用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T06:59:03.890Z\"}",
+        "action": "REVISE_P0_SCOPE_CANDIDATE_FROM_USER_CLARIFICATION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:59:03.890Z"
+      },
+      {
+        "object_id": "at-p0-serial-code-fact",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-p0-serial-code-fact\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"进入出厂流程前的 ECU 唯一编号与外部编码方案（用户澄清）\",\"body\":\"每台 ECU 在进入 AutoTest 出厂检测流程前已经具有唯一的可扫码编号。编号方案由与 AutoTest 配套的外部业务设计工作负责，并可为了支持不同 ECU 型号与烧录、DBC、测试资源匹配而重新设计。AutoTest 读取该编号，依据适用的可配置规则建立实物身份、型号/资源和历史测试记录之间的关联；“编号本身携带全部信息”还是“编号映射到外部信息”等策略尚未决定。不得将编码体系协同设计误写为 AutoTest 必须负责产生/打印唯一编号。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户对话｜P0 ECU 编码与测试资源配置关系澄清（2026-11-10，America/Los_Angeles）\",\"source_type\":\"USER_DIRECT_CLARIFICATION\",\"engineering_class\":\"as_is_identity_and_external_code_design_boundary\",\"evidence_status\":\"USER_REPORTED_PROCESS_UNDER_REVIEW\",\"related_object_ids\":[\"at-p0-serial-identity-boundary\",\"at-p0-model-variation\",\"at-cap-scan\"],\"review_note\":\"用户明确确认事实；工程对象草稿不代表系统设计和产品身份已签发\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:59:03.890Z\",\"updated\":\"2026-11-11T06:59:03.890Z\"}",
+        "action": "CREATE_USER_CONFIRMED_AS_IS_CONTEXT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:59:03.890Z"
       }
     ],
     "events": [
@@ -676,6 +721,24 @@
         "actor": "AI_PROJECT_MANAGER",
         "note": "P0 立项调查：用户陈述/候选，未审批",
         "timestamp": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "id": "evt-at-p0-serial-identity-boundary-20261111065903890",
+        "project_id": "autotest",
+        "object_id": "at-p0-serial-identity-boundary",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "纠正将外部编码方案协同设计误解为 AutoTest 生成 ECU 编号的错误；保留 v1",
+        "timestamp": "2026-11-11T06:59:03.890Z"
+      },
+      {
+        "id": "evt-at-p0-serial-code-fact-20261111065903890",
+        "project_id": "autotest",
+        "object_id": "at-p0-serial-code-fact",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "记录 ECU 已有可扫码唯一编码及外部编码方案与配置匹配的协同关系",
+        "timestamp": "2026-11-11T06:59:03.890Z"
       }
     ],
     "technical_research": {
@@ -732,5 +795,5 @@
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "新增 P0 现场事实与候选目标；所有对象仍为 DRAFT / OPEN，关系均为 CANDIDATE，未批准任何设计、测试或产品身份。"
+  "p0_discussion_note": "P0 编码方案边界已根据用户澄清修订：已有唯一可扫编码，外部制定编码方案，AutoTest 可配置资源匹配；编号语义/方案细节待 G1 研究，保留工程候选修订历史，未签发批准。"
 }
