@@ -73,7 +73,7 @@
                      ToolTip="设置数值信号的绝对判定容差" Margin="0,0,7,0"/>
                     <Button Command="{Binding CompareCommand}" Content="比较并生成证据"/>
                 </WrapPanel>
-            </StackPanel></WrapPanel>
+            </StackPanel>
         </Border>
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
