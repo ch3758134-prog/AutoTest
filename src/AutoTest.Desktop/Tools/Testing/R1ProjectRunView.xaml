@@ -55,6 +55,18 @@
     <TextBlock Text="自动测试" FontWeight="SemiBold" FontSize="23"/>
     <TextBlock Text="{Binding DocumentName}" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
     <TextBlock Text="{Binding ProjectAssetStatus}" FontSize="11" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+    <WrapPanel Margin="0,9,0,0" VerticalAlignment="Center">
+     <Border Background="#EAF2FB" BorderBrush="#D5E3F1" BorderThickness="1" Padding="9,4" CornerRadius="3" Margin="0,0,7,0">
+      <TextBlock Text="{Binding SelectedScopeText}" FontWeight="SemiBold" Foreground="#176CB5" FontSize="12"/>
+     </Border>
+     <Border Background="#F3F7FB" BorderBrush="#DBE4EE" BorderThickness="1" Padding="9,4" CornerRadius="3" Margin="0,0,7,0">
+      <TextBlock Text="{Binding RunFactsText}" Foreground="#486079" FontSize="12"/>
+     </Border>
+     <Border Background="#F3F7FB" BorderBrush="#DBE4EE" BorderThickness="1" Padding="9,4" CornerRadius="3">
+      <TextBlock Text="{Binding CurrentStepText}" Foreground="#486079" FontSize="12"/>
+     </Border>
+    </WrapPanel>
+    <TextBlock Text="{Binding CurrentFailureText}" Foreground="#915E1D" FontSize="11" Margin="2,7,0,0" TextTrimming="CharacterEllipsis"/>
    </StackPanel>
   </DockPanel>
   <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource Outline}"
