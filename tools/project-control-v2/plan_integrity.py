@@ -123,6 +123,31 @@ def assess(plan, archive):
                 not charter or charter.get("state") != "APPROVED" or charter.get("revision") != rev):
             problem("UNSUPPORTED_SCOPE_COMMITMENT", key, "current approved scope anchor is not valid")
 
+    # A delivery milestone is a planning commitment, never a product
+    # acceptance or phase Gate. Unknown dates may be left empty.
+    milestones = _records(plan.get("milestones", []), "milestones")
+    milestone_ids = set()
+    for m in milestones:
+        if not isinstance(m, dict):
+            raise PlanError("milestone must be an object")
+        mid = _id(m.get("id"), "milestone.id")
+        if mid in milestone_ids:
+            raise PlanError("duplicate milestone id: " + mid)
+        milestone_ids.add(mid)
+        _text(m.get("title"), "milestone.title")
+        _text(m.get("exit_condition"), "milestone.exit_condition")
+        if m.get("deliverable_id") not in deliv_index:
+            problem("MILESTONE_UNLINKED", mid, "milestone lacks a known delivery objective")
+        if m.get("target_date"):
+            from datetime import date
+            try:
+                date.fromisoformat(m["target_date"])
+            except (TypeError, ValueError):
+                problem("INVALID_MILESTONE_DATE", mid, "milestone target date is invalid")
+            if not m.get("date_basis"):
+                problem("UNSUPPORTED_MILESTONE_DATE", mid,
+                        "milestone date has no stated planning rationale")
+
     works = _records(plan.get("work"), "work")
     work_index = {}
     for w in works:
@@ -203,6 +228,7 @@ def assess(plan, archive):
                            "verified": bool(charter and charter.get("state") == "APPROVED"
                                             and charter.get("revision") == rev)},
         "deliverables": len(deliv_index),
+        "milestones": len(milestone_ids),
         "work": [{"id": w["id"], "kind": w["kind"], "mode": w["mode"],
                   "horizon": w["horizon"], "state": w["state"],
                   "assessment": "NEEDS_REVIEW" if w["id"] in blocked else "NO_RECORDED_BLOCKER",
