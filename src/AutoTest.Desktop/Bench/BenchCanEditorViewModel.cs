@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Prism.Commands;
 using AutoTest.Projects.Dbc;
-using System.Globalization;
 using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Bench;
@@ -42,7 +41,7 @@ public sealed class BenchCanMessageItem : BindableBase
     private string? _dbcMessageName;
     public string? DbcRevision { get => _dbcRevision; set => SetProperty(ref _dbcRevision, value); }
     public string? DbcMessageName { get => _dbcMessageName; set => SetProperty(ref _dbcMessageName, value); }
-    public string SourceLabel => DbcRevision is null ? "原始报文" : "工程 DBC";
+    public string SourceLabel => DbcRevision is null ? "原始" : "DBC";
     public string Id { get; }
     public string Name { get => _name; set => SetProperty(ref _name, value); }
     public string CanIdHex { get => _canIdHex; set => SetProperty(ref _canIdHex, value); }
@@ -106,6 +105,13 @@ public sealed class BenchCanEditorViewModel : BindableBase
     public string SignalStatus { get => _signalStatus; private set => SetProperty(ref _signalStatus, value); }
     public bool HasDbcSignals => SignalInputs.Count > 0;
     public bool HasDbc => DbcMessages.Count > 0;
+    public string SelectedSourceLabel => SelectedMessage is null
+        ? "未选择报文" : SelectedMessage.DbcRevision is null
+            ? "当前选中：原始报文（直接编辑 ID / DATA）"
+            : $"当前选中：DBC · {SelectedMessage.DbcMessageName}（修改下方信号自动编码）";
+    public string SendModeStatus => _periodicRunning
+        ? $"正在周期发送 {CheckedCount} 条 · ACK {_frameCount} 帧"
+        : $"未发送 · 已勾选 {CheckedCount} 条";
     private string? _editorProjectId;
     private bool DifferentProject => _editorProjectId != _port.ActiveProjectId;
     private const string ProjectChangedMessage =
@@ -149,7 +155,11 @@ public sealed class BenchCanEditorViewModel : BindableBase
         get => _selected;
         set
         {
-            if (SetProperty(ref _selected, value)) RebuildSignalInputs();
+            if (SetProperty(ref _selected, value))
+            {
+                RebuildSignalInputs();
+                RaisePropertyChanged(nameof(SelectedSourceLabel));
+            }
         }
     }
 
@@ -171,37 +181,64 @@ public sealed class BenchCanEditorViewModel : BindableBase
             DbcMessages.FirstOrDefault();
         RaisePropertyChanged(nameof(HasDbc));
         DbcStatus = db is null || revision is null
-            ? "当前工程没有 DBC：先在 DBC 工具导入并纳入工程，再回来刷新"
-            : $"工程 DBC：{db.Name} · {DbcMessages.Count} 条报文 · {revision}";
+            ? "当前工程未导入 DBC；可点“DBC 管理”导入，或直接添加原始报文"
+            : $"已加载工程 DBC「{db.Name}」：可选择 {DbcMessages.Count} 条报文";
         RebuildSignalInputs();
     }
 
-    private void AddFromDbc()
+    /// <summary>
+    /// Picker and legacy command use the same project-pinned DBC operation.
+    /// Does not create a new DBC document or transmit until explicitly requested.
+    /// </summary>
+    public bool TryAddFromDbc(DbcMessage message)
     {
-        if (!CanEdit || SelectedDbcMessage is not { } message) {
-            DbcStatus = "请先选择当前工程 DBC 中的报文；没有 DBC 时可用原始报文。";
-            return;
+        if (!CanEdit)
+        {
+            Status = "正在发送或处理 CAN 操作，不能修改发送表。";
+            return false;
         }
+        if (DifferentProject)
+        {
+            Status = ProjectChangedMessage;
+            return false;
+        }
+        var db = _port.ActiveDbc;
         var revision = _port.ActiveDbcRevision;
-        if (_port.ActiveDbc is null || string.IsNullOrWhiteSpace(revision)) {
-            DbcStatus = "工程 DBC 未加载或已切换，请刷新 DBC 列表。";
-            return;
+        if (db is null || string.IsNullOrWhiteSpace(revision))
+        {
+            Status = "当前工程未导入 DBC；可先使用原始报文，或到 DBC 管理导入。";
+            return false;
         }
-        var current = _port.ActiveDbc.Messages.FirstOrDefault(
-            m => m.Id == message.Id && m.IsExtended == message.IsExtended);
-        if (current is null || current != message) {
-            DbcStatus = "工程 DBC 已改变，请先刷新列表再添加。";
-            return;
+        var current = db.Messages.FirstOrDefault(m =>
+            m.Id == message.Id && m.IsExtended == message.IsExtended);
+        if (current is null || current != message)
+        {
+            Status = "工程 DBC 已变化，请重新打开选择窗口。";
+            return false;
         }
-        var value = new BenchCanMessage(Guid.NewGuid().ToString("D"),
-            message.Name, message.Id, message.IsExtended,
-            Convert.ToHexString(new byte[message.Dlc]), 100, revision, message.Name);
-        var item = new BenchCanMessageItem(value);
+        var name = message.Name;
+        for (int n = 2; Messages.Any(x =>
+            x.Name.Equals(name, StringComparison.OrdinalIgnoreCase)); n++)
+            name = message.Name + " " + n;
+        var item = new BenchCanMessageItem(new BenchCanMessage(
+            Guid.NewGuid().ToString("D"), name, message.Id,
+            message.IsExtended, Convert.ToHexString(new byte[message.Dlc]),
+            100, revision, message.Name));
         Track(item);
         Messages.Add(item);
         SelectedMessage = item;
         MarkDirty();
-        DbcStatus = $"已从 DBC 添加 {message.Name}；编辑信号后可直接试发，无需先保存";
+        DbcStatus = $"已从工程 DBC 添加 {message.Name}（0x{message.Id:X}）";
+        Status = $"“{message.Name}”已加入发送表。可编辑信号或 DATA，勾选后开始周期发送。";
+        RaisePropertyChanged(nameof(SelectedSourceLabel));
+        RaisePropertyChanged(nameof(SendModeStatus));
+        return true;
+    }
+
+    private void AddFromDbc()
+    {
+        if (SelectedDbcMessage is { } selected) TryAddFromDbc(selected);
+        else Status = "当前工程没有可选的 DBC 报文。";
     }
 
     private void UnbindDbc()
@@ -328,6 +365,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             if (e.PropertyName == nameof(BenchCanMessageItem.IsChecked))
             {
                 RaisePropertyChanged(nameof(CheckedCount));
+                RaisePropertyChanged(nameof(SendModeStatus));
                 return;
             }
             if (e.PropertyName is nameof(BenchCanMessageItem.Name)
@@ -373,6 +411,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         Messages.Add(item);
         SelectedMessage = item;
         RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(SendModeStatus));
         MarkDirty();
     }
     private void Delete()
@@ -381,6 +420,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         Messages.Remove(selected);
         SelectedMessage = Messages.FirstOrDefault();
         RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(SendModeStatus));
         MarkDirty();
     }
     public async Task DiscardDraftAndReloadAsync()
@@ -392,6 +432,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         ClearDirty();
         _editorProjectId = null;
         RaisePropertyChanged(nameof(CheckedCount));
+        RaisePropertyChanged(nameof(SendModeStatus));
         await LoadAsync();
     }
 
@@ -435,8 +476,9 @@ public sealed class BenchCanEditorViewModel : BindableBase
             }
             SelectedMessage = Messages.FirstOrDefault();
             RaisePropertyChanged(nameof(CheckedCount));
+            RaisePropertyChanged(nameof(SendModeStatus));
             ClearDirty();
-            Status = $"当前工程已加载 {Messages.Count} 条 CAN 发送配置";
+            Status = $"已加载 {Messages.Count} 条 CAN 发送报文";
         }
         catch (Exception ex) { Status = "CAN 配置加载失败：" + ex.Message; }
         finally { _working = false; RaisePropertyChanged(nameof(CanEdit)); }
@@ -533,6 +575,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         _frameCount = 0;
         RaisePropertyChanged(nameof(IsPeriodicRunning));
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(SendModeStatus));
         PeriodicStatus = $"已勾选 {selected.Length} 条；准备真实 CAN1 周期发送（Windows 主机定时，非硬实时）";
         try
         {
@@ -540,6 +583,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             {
                 _frameCount = p.AcknowledgedFrames;
                 PeriodicStatus = p.Description;
+                RaisePropertyChanged(nameof(SendModeStatus));
             });
             _audit($"CAN1 批量发送：{selected.Length} 条，" +
                 string.Join(", ", selected.Select(m => $"0x{m.ArbitrationId:X}/{m.PeriodMs}ms")));
@@ -566,6 +610,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             _periodicRunning = false;
             RaisePropertyChanged(nameof(IsPeriodicRunning));
             RaisePropertyChanged(nameof(CanEdit));
+            RaisePropertyChanged(nameof(SendModeStatus));
         }
     }
 }
