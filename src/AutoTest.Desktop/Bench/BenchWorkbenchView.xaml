@@ -253,7 +253,24 @@
        Foreground="#57738C" Margin="0,0,0,9"/>
       <TextBlock Text="IGN 高边输出 OFF 表示断开高边开关，不等于主动拉低电平。按钮仅经人工确认后发送；ACK 不等于测得电压。"
        FontSize="11" TextWrapping="Wrap" Foreground="#8B6733" Margin="0,0,0,9"/>
-      <TextBlock Text="夹具电磁阀、ECU 电源：现有固件与设备层尚无确认的完整操作接口，不提供无法工作的假控制按钮。"
+      <Border BorderBrush="#E5EBF3" BorderThickness="0,1,0,0" Margin="0,0,0,9"/>
+      <TextBlock Text="夹具电磁阀 · SET_SOL 0x16" FontSize="12"
+       FontWeight="SemiBold" Margin="0,7,0,6"/>
+      <WrapPanel Margin="0,0,0,7">
+       <Button Content="升起（0）" Command="{Binding SolenoidRaiseCommand}"
+        Foreground="#146A4D" Background="#E7F5ED" FontWeight="SemiBold"
+        Padding="12,7"/>
+       <Button Content="下落（1）" Command="{Binding SolenoidLowerCommand}"
+        Foreground="#A44835" Background="#FFF3EF" FontWeight="SemiBold"
+        Padding="12,7"/>
+       <Button Content="读取固件状态" Command="{Binding SolenoidReadCommand}"
+        Padding="8,7" Margin="0"/>
+      </WrapPanel>
+      <TextBlock Text="{Binding SolenoidStatus}" FontSize="11"
+       TextWrapping="Wrap" Foreground="#57738C" Margin="0,0,0,7"/>
+      <TextBlock Text="GET_SOL=0x17 返回主控动作编码/GPIO 状态，不代表气缸或夹具已实际到位。夹具动作每次均需现场确认，当前固件镜像和机械接线仍待实测核验。"
+       FontSize="11" TextWrapping="Wrap" Foreground="#8B6733" Margin="0,0,0,7"/>
+      <TextBlock Text="ECU 电源：现场采用独立供电，不把主控 ECU_PWR_DRV 当成真实 ECU 输入总电源；不提供误导性的电源按钮。"
        FontSize="11" TextWrapping="Wrap" Foreground="#8B6733"/>
      </StackPanel>
     </ScrollViewer>
