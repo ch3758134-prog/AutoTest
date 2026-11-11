@@ -1,0 +1,142 @@
+{
+  "schema": "engineering-development-plan-candidate/1",
+  "status": "PROPOSED",
+  "project_id": "autotest",
+  "purpose": "检验 P0 近期真实 ECU 自动测试闭环目标如何转化为交付成果、近期研究及后续受控开发计划。此文件是项目管理模型的演示性候选，不是新增 R1 承诺、阶段批准或派发指令。",
+  "planning_assumptions": "P0 V0.1 产品定义已经批准；G1 完整研究 r4 尚未批准。实现工作可以预留为远期规划，但不能因此跳过需求、架构与详细设计的必要审查；已有代码和历史方案需按实际版本单独核实。未设置未经论证的日期。",
+  "product_anchor": {
+    "id": "at-p0-approved-charter-v01",
+    "revision": 2
+  },
+  "deliverables": [
+    {
+      "id": "d-real-autotest-loop",
+      "title": "真实 ECU 自动测试闭环",
+      "success_condition": "依据当前有效的程序与资源，在同一次真实 ECU 运行中完成可配置刺激、连续观察、波形/时序判定、Verdict 和对应的可追溯记录，并有完整的验收证据。",
+      "commitment": "IN_SCOPE_FROM_APPROVED_BASELINE"
+    }
+  ],
+  "work": [
+    {
+      "id": "w-g1-review",
+      "title": "G1 整体系统需求研究审查与必要修订",
+      "kind": "RESEARCH",
+      "mode": "EXPLORATORY",
+      "horizon": "CURRENT",
+      "state": "PLANNED",
+      "deliverable_id": "d-real-autotest-loop",
+      "expected_result": "完成整体需求正式审查并明确需要补充研究的内容。",
+      "exit_condition": "有确切送审版本、审查结论及待办；本任务完成不自动批准 G1。",
+      "depends_on": [],
+      "sources": [
+        {
+          "object_id": "at-p0-approved-charter-v01",
+          "revision": 2,
+          "role": "CONTEXT"
+        },
+        {
+          "object_id": "at-g1-integrated-autotest-study",
+          "revision": 4,
+          "role": "CONTEXT"
+        }
+      ]
+    },
+    {
+      "id": "w-device-facts",
+      "title": "梳理实际台架与 G1 需求的物理证据差异",
+      "kind": "RESEARCH",
+      "mode": "EXPLORATORY",
+      "horizon": "CURRENT",
+      "state": "PROPOSED",
+      "deliverable_id": "d-real-autotest-loop",
+      "expected_result": "形成哪些硬件能力已实测、哪些只有静态事实或候选代码的对照。",
+      "exit_condition": "对物理观测和软件模拟做明确区分，并列出仍待核实内容。",
+      "depends_on": [],
+      "sources": [
+        {
+          "object_id": "at-p0-approved-charter-v01",
+          "revision": 2,
+          "role": "CONTEXT"
+        },
+        {
+          "object_id": "at-g1-physical-loop-verification-criteria",
+          "revision": 1,
+          "role": "CONTEXT"
+        }
+      ]
+    },
+    {
+      "id": "w-g2-design",
+      "title": "形成基于正式系统需求的整体架构与协同设计",
+      "kind": "DESIGN",
+      "mode": "CONTROLLED",
+      "horizon": "NEXT",
+      "state": "PROPOSED",
+      "deliverable_id": "d-real-autotest-loop",
+      "expected_result": "完成与有效 G1 需求相符合的整体架构方案与相关决策。",
+      "exit_condition": "形成可审查的 G2 设计成果及风险说明，未经审查不声称正式基线成立。",
+      "depends_on": [
+        "w-g1-review"
+      ],
+      "sources": [
+        {
+          "object_id": "at-p0-approved-charter-v01",
+          "revision": 2,
+          "role": "REQUIRED_BASELINE"
+        },
+        {
+          "object_id": "at-g1-integrated-autotest-study",
+          "revision": 4,
+          "role": "REQUIRED_BASELINE"
+        }
+      ]
+    },
+    {
+      "id": "w-core-implementation",
+      "title": "在获批准设计基础上组织核心软件实现与集成",
+      "kind": "IMPLEMENT",
+      "mode": "CONTROLLED",
+      "horizon": "LATER",
+      "state": "PROPOSED",
+      "deliverable_id": "d-real-autotest-loop",
+      "expected_result": "与确切设计及 Git 基线相符的候选代码、PR、构建及测试回执。",
+      "exit_condition": "经过设计准入和实际集成验证，有可核验的来源版本与测试报告。",
+      "depends_on": [
+        "w-g2-design"
+      ],
+      "sources": [
+        {
+          "object_id": "at-p0-approved-charter-v01",
+          "revision": 2,
+          "role": "REQUIRED_BASELINE"
+        },
+        {
+          "object_id": "at-g1-integrated-behavior-requirements",
+          "revision": 2,
+          "role": "REQUIRED_BASELINE"
+        }
+      ]
+    },
+    {
+      "id": "w-physical-verification",
+      "title": "执行同一真实 ECU 的整条自动测试闭环验收",
+      "kind": "VERIFY",
+      "mode": "CONTROLLED",
+      "horizon": "LATER",
+      "state": "PROPOSED",
+      "deliverable_id": "d-real-autotest-loop",
+      "expected_result": "有一次真实测试 Run 的刺激、响应、波形判据和运行结果的相互关联证据。",
+      "exit_condition": "对 V-01～V-08 核对实际证据，并保留未满足项和负责人验收决定。",
+      "depends_on": [
+        "w-core-implementation"
+      ],
+      "sources": [
+        {
+          "object_id": "at-g1-physical-loop-verification-criteria",
+          "revision": 1,
+          "role": "REQUIRED_BASELINE"
+        }
+      ]
+    }
+  ]
+}
