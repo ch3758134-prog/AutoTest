@@ -191,7 +191,7 @@ def _validate(archive):
     if None in task_ids or len(task_ids)!=len(research_tasks):
         raise RuleError("Duplicate definition research task identities")
     for task in research_tasks:
-        if task.get("change_id") not in change_ids or task.get("state") not in ("OPEN","REVIEWED","NOT_APPLICABLE"):
+        if task.get("change_id") not in change_ids or task.get("state") not in ("OPEN","REVIEWED","NOT_APPLICABLE","SUGGESTED"):
             raise RuleError("Invalid definition research task")
     submissions=sections["g_research_submissions"]
     submission_ids={x.get("id") for x in submissions}
