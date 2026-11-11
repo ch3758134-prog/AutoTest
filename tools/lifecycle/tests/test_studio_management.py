@@ -46,6 +46,27 @@ class ManagerProposalTests(unittest.TestCase):
         self.assertEqual(len(brief["content_sha256"]),64)
         self.assertIn("may propose", " ".join(brief["advisory_instructions"]))
 
+    def test_manager_reads_verification_failures_without_auto_acceptance(self):
+        from studio_verification import Verification
+        verification=Verification(self.store)
+        test=self.store.create_object({"project_id":self.project,
+            "kind":"test","title":"Bench current monitoring",
+            "body":"Measure under real loads","meta":{}})["item"]
+        run=verification.record({
+            "test_object_id":test["id"],"test_revision":1,
+            "level":"BENCH","outcome":"FAIL","configuration":"variant A",
+            "source_sha":"b"*40,"evidence_ref":"bench://raw/event-001",
+            "environment":"real station","actor":"Technician"})
+        before=self.manager.context(self.project)
+        self.assertEqual(len(before["verification_runs"]),1)
+        self.assertTrue(any(x["type"]=="EVIDENCE_REVIEW" for x in before["blockers"]))
+        verification.review(run["id"],"CONFIRMED","Owner","Raw trace inspected")
+        after=self.manager.context(self.project)
+        self.assertFalse(any(x["type"]=="EVIDENCE_REVIEW" for x in after["blockers"]))
+        self.assertTrue(any(x["type"]=="CONFIRMED_TEST_FAILURE" for x in after["blockers"]))
+        self.assertEqual(self.store.object(test["id"])["item"]["state"],"DRAFT")
+        self.assertEqual(self.store.project(self.other)["objects"],[])
+
     def test_proposal_does_not_create_approved_design_or_work_package(self):
         first=self.manager.propose({
             "project_id":self.project,"category":"CODING","priority":"P0",
