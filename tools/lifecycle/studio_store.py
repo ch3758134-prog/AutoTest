@@ -746,8 +746,22 @@ class Store:
                     governance["suggestions"]=[dict(x) for x in db.execute(
                         "SELECT * FROM definition_suggestions WHERE project_id=? ORDER BY created,id",
                         (key,))]
+            knowledge={"items":[],"revisions":[],"links":[]}
+            if db.execute("""SELECT 1 FROM sqlite_master WHERE type='table'
+                             AND name='engineering_knowledge'""").fetchone():
+                knowledge["items"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM engineering_knowledge WHERE project_id=? ORDER BY created,id",
+                    (key,))]
+                knowledge["revisions"]=[dict(x) for x in db.execute(
+                    """SELECT r.* FROM engineering_knowledge_revisions r
+                       JOIN engineering_knowledge k ON r.item_id=k.id
+                       WHERE k.project_id=? ORDER BY r.item_id,r.revision""",(key,))]
+                knowledge["links"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM engineering_knowledge_links WHERE project_id=? ORDER BY created,id",
+                    (key,))]
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
                     "objects":objects,"relations":links,"revisions":revisions,
                     "events":events,"technical_research":research,
                     "execution":execution,"manager_proposals":proposals,
-                    "verification":verification,"governance":governance}
+                    "verification":verification,"governance":governance,
+                    "knowledge":knowledge}
