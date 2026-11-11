@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -179,6 +180,33 @@ public partial class BenchWorkbenchView : UserControl
         _editorWindow = dialog;
         dialog.Show();
         if (focusName) dialog.FocusActionName();
+    }
+
+    private void ChooseDbcCanMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not BenchWorkbenchViewModel bench) return;
+        var editor = bench.CanMessages;
+        if (!editor.CanEdit) return;
+        editor.RefreshDbcCatalog();
+
+        if (!editor.HasDbc)
+        {
+            var answer = MessageBox.Show(Window.GetWindow(this),
+                "当前工程还没有可选的 DBC 报文。\\n" +
+                "需要先在 DBC 工具中导入文件并加入当前工程。\\n\\n现在打开 DBC 工具吗？",
+                "从工程 DBC 选择发送报文",
+                MessageBoxButton.YesNo, MessageBoxImage.Information, MessageBoxResult.Yes);
+            if (answer == MessageBoxResult.Yes)
+                OpenDbcRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        var picker = new BenchDbcMessagePickerWindow(editor.DbcMessages.ToArray(), editor.DbcStatus)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        if (picker.ShowDialog() == true && picker.PickedMessage is { } message)
+            editor.TryAddFromDbc(message);
     }
 
     private void OpenDbc_Click(object sender, RoutedEventArgs e) =>
