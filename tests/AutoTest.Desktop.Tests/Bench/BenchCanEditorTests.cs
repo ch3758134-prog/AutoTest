@@ -136,6 +136,24 @@ public sealed class BenchCanEditorTests
     }
 
     [Fact]
+    public async Task UnsavedProjectCanTryRawCanWithoutPriorSave()
+    {
+        var port = new TestPort { ActiveProjectId = "temporary-ecu",
+            RejectLoadForUnsavedProject = true };
+        var vm = new BenchCanEditorViewModel(port);
+        await vm.LoadAsync();
+        Assert.Contains("工程尚未保存", vm.Status);
+        vm.AddCommand.Execute();
+        vm.SelectedMessage!.CanIdHex = "0x567";
+        vm.SelectedMessage.DataHex = "AB CD";
+        vm.SelectedMessage.IsChecked = true;
+        await vm.StartPeriodicAsync();
+        Assert.Equal(1, port.PeriodicCount);
+        Assert.Equal(0x567u, port.LastBatch!.Single().ArbitrationId);
+        Assert.Null(port.Saved);
+    }
+
+    [Fact]
     public async Task ChosenProjectDbcMessageBecomesCheckedCyclicTransmitRowWithoutSaving()
     {
         var left = new DbcMessage(0x111, "FirstMessage", 2, "Tester",
@@ -301,6 +319,7 @@ public sealed class BenchCanEditorTests
     private sealed class TestPort : IBenchWorkbenchPort
     {
         public string? ActiveProjectId { get; set; }
+        public bool RejectLoadForUnsavedProject { get; set; }
         public DbcDatabase? ActiveDbc { get; set; }
         public string? ActiveDbcRevision { get; set; }
         public IReadOnlyList<BenchCanMessage>? Saved { get; set; }
@@ -309,8 +328,13 @@ public sealed class BenchCanEditorTests
         public int PeriodicCount { get; private set; }
         public bool StayActiveUntilCancel { get; set; }
         public IReadOnlyList<BenchCanMessage>? LastBatch { get; private set; }
-        public Task<IReadOnlyList<BenchCanMessage>> LoadCanMessagesAsync(CancellationToken ct) =>
-            Task.FromResult(Saved ?? (IReadOnlyList<BenchCanMessage>)Array.Empty<BenchCanMessage>());
+        public Task<IReadOnlyList<BenchCanMessage>> LoadCanMessagesAsync(CancellationToken ct)
+        {
+            if (RejectLoadForUnsavedProject)
+                throw new InvalidOperationException("请先保存工程，才能保存 CAN 发送配置。");
+            return Task.FromResult(Saved ??
+                (IReadOnlyList<BenchCanMessage>)Array.Empty<BenchCanMessage>());
+        }
         public Task SaveCanMessagesAsync(IReadOnlyList<BenchCanMessage> messages, CancellationToken ct)
         { Saved = messages; return Task.CompletedTask; }
         public Task<BenchOperationResult> SendCanOnceAsync(BenchCanMessage message, CancellationToken ct)
