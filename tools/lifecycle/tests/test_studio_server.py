@@ -82,7 +82,7 @@ class StudioApiTest(unittest.TestCase):
     def test_version_endpoint_identifies_editable_studio(self):
         status, version = self.request("/api/studio/version")
         self.assertEqual(status, 200)
-        self.assertEqual(version["version"], "0.9")
+        self.assertEqual(version["version"], "1.0")
         self.assertEqual(version["mode"], "editable")
         self.assertFalse(version["legacy"])
 
@@ -177,6 +177,41 @@ class StudioApiTest(unittest.TestCase):
         self.assertEqual(after["definition"],state["definition"])
         with urlopen(self.url+"/definition-suggestions.js",timeout=5) as response:
             self.assertIn(b'definitionSuggestionInbox',response.read())
+
+    def test_semantic_context_can_be_read_and_scope_cannot_be_set_by_ai(self):
+        _,guide=self.request("/api/studio/semantics?focus=product_identity,release_scope")
+        self.assertEqual([x["id"] for x in guide["concepts"]],
+                         ["product_identity","release_scope"])
+        self.assertTrue(guide["review_questions"])
+        _,project=self.request("/api/studio/project",{
+            "name":"Engineering","summary":"Generic ECU system",
+            "body":"Current work includes hardware and firmware"},token="local-test-token")
+        pid=project["project"]["id"]
+        _,state=self.request("/api/studio/governance/status?project="+pid)
+        suggested=dict(state["definition"])
+        suggested["summary"]="Stimulus and response engineering test system"
+        _,change=self.request("/api/studio/governance/propose",{
+            "project_id":pid,"proposed":suggested,
+            "reason":"Correct a semantic definition that ignored the hardware",
+            "source_refs":["discussion://user-correction"],
+            "proposer":"Owner","expected_digest":state["definition_digest"]},
+            token="local-test-token")
+        _,tasks=self.request("/api/studio/governance/research?change="+change["change"]["id"])
+        self.assertEqual(sum(x["state"]=="SUGGESTED" for x in tasks["tasks"]),9)
+        arch=next(x for x in tasks["tasks"] if x["domain"]=="ARCHITECTURE")
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/governance/research/activate",{
+                "task_id":arch["id"],"expected_revision":arch["revision"],
+                "reviewer":"AI","rationale":"Self-activation"},
+                manager_token="manager-secret-token-0123456789-0123456789")
+        self.assertEqual(denied.exception.code,403)
+        _,active=self.request("/api/studio/governance/research/activate",{
+            "task_id":arch["id"],"expected_revision":arch["revision"],
+            "reviewer":"Owner","rationale":"Board responsibilities must be reconsidered"},
+            token="local-test-token")
+        self.assertEqual(active["state"],"OPEN")
+        with urlopen(self.url+"/semantics.js",timeout=5) as response:
+            self.assertIn(b'engineeringSemanticsModal',response.read())
 
     def test_product_definition_requires_owner_review_and_domain_gate(self):
         _,project=self.request("/api/studio/project",{
