@@ -159,10 +159,11 @@ class EngineeringStoreTest(unittest.TestCase):
         with self.assertRaises(RuleError):
             self.store.close_change(change["id"],1,"Owner","处理完成")
         self.store.approve_relation(impact["id"],"Owner","确认为需求行为的变更")
-        self.store.update_object(change["id"],{"expected_revision":1,
-            "meta":{"source":"实际电压和日志",
-                    "assessments":{req["id"]:"REVISE"}}})
-        updated=self.store.close_change(change["id"],2,"Owner","已审查所有影响")["item"]
+        from studio_change import ChangeReview
+        reviewed=ChangeReview(self.store).assess(change["id"],req["id"],1,
+            req["revision"],"REVISE","Owner","记录波动导致的采样约束修订")["change"]
+        updated=self.store.close_change(change["id"],reviewed["revision"],
+            "Owner","已审查所有直接影响")["item"]
         self.assertEqual(updated["state"],"CLOSED")
 
     def test_change_blocks_approved_work_package(self):
