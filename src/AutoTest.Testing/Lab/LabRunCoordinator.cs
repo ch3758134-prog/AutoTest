@@ -273,7 +273,7 @@ public sealed class LabRunCoordinator
                 List<LabNode>? branch = null;
                 switch (node.Type)
                 {
-                    case "Sequence": branch = node.Slots["body"]; break;
+                    case "Sequence": case "TestCase": branch = node.Slots["body"]; break;
                     case "SetVariable":
                         variables[Param(node, "variable")] = Param(node, "value"); break;
                     case "MockObserve":
