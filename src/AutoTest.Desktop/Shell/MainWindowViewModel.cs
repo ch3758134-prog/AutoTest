@@ -46,9 +46,10 @@ public sealed record WorkbenchDbcSignal(uint FrameId, string SignalName, double 
 {
     public string Label => $"0x{FrameId:X} / {SignalName} · Factor={Factor.ToString("R", CultureInfo.InvariantCulture)} {Unit}";
 }
-public sealed class WorkbenchResourceNode(string label)
+public sealed class WorkbenchResourceNode(string label, string kind = "folder")
 {
     public string Label { get; } = label;
+    public string Kind { get; } = kind;
     public ObservableCollection<WorkbenchResourceNode> Children { get; } = new();
 }
 
@@ -398,21 +399,45 @@ public sealed class MainWindowViewModel : BindableBase
         }
         ResourceLines.Add("正式 TEST：" + (Workspace.LabProgram?.Name ?? "尚未登记测试程序"));
         ResourceNodes.Clear();
-        var root = new WorkbenchResourceNode($"工程 · {Workspace.Project.Name} · r{Workspace.Project.Revision}");
-        var assetGroup = new WorkbenchResourceNode("资源 / Assets");
-        foreach (var asset in Workspace.Assets)
-        {
-            var stale = Workspace.StaleDependencies.Any(d => d.To == asset.Id);
-            assetGroup.Children.Add(new WorkbenchResourceNode($"{asset.Kind} / {asset.Name} · r{asset.Revision}" +
-                (stale ? " ⚠ REFERENCE_STALE" : "")));
-        }
-        root.Children.Add(assetGroup);
+        var root = new WorkbenchResourceNode(
+            $"工程 / {Workspace.Project.Name} / r{Workspace.Project.Revision}", "project");
         var testsGroup = new WorkbenchResourceNode("测试程序 / TEST");
         if (Workspace.LabProgram is { } formalProgram)
-            testsGroup.Children.Add(new WorkbenchResourceNode(formalProgram.Name +
-                $" ({formalProgram.Walk().Count()} 步骤) · 工程版本化 TEST"));
-        else testsGroup.Children.Add(new WorkbenchResourceNode("尚未登记正式 TEST 程序"));
+            testsGroup.Children.Add(new WorkbenchResourceNode(
+                formalProgram.Name + $" · {formalProgram.Walk().Count()} 步骤", "test"));
+        else
+            testsGroup.Children.Add(new WorkbenchResourceNode(
+                "未登记正式 TEST · 双击进入编辑器", "test"));
         root.Children.Add(testsGroup);
+        var dbcGroup = new WorkbenchResourceNode("DBC / 网络信号");
+        var controllerGroup = new WorkbenchResourceNode("Controller / 工位");
+        var waveGroup = new WorkbenchResourceNode("Wave / 参考波形");
+        var flashGroup = new WorkbenchResourceNode("Flash / 固件与配置");
+        var otherGroup = new WorkbenchResourceNode("其他工程资产");
+        foreach (var asset in Workspace.Assets)
+        {
+            var kind = asset.Kind.ToString();
+            var stale = Workspace.StaleDependencies.Any(d => d.To == asset.Id);
+            var label = $"{asset.Name} · r{asset.Revision}" + (stale ? " · 引用已过期" : "");
+            if (kind.Contains("Dbc", StringComparison.OrdinalIgnoreCase))
+                dbcGroup.Children.Add(new WorkbenchResourceNode(label, "dbc"));
+            else if (kind.Contains("Controller", StringComparison.OrdinalIgnoreCase))
+                controllerGroup.Children.Add(new WorkbenchResourceNode(label, "controller"));
+            else if (kind.Contains("Wave", StringComparison.OrdinalIgnoreCase))
+                waveGroup.Children.Add(new WorkbenchResourceNode(label, "wave"));
+            else if (kind.Contains("Flash", StringComparison.OrdinalIgnoreCase) ||
+                     kind.Contains("Firmware", StringComparison.OrdinalIgnoreCase))
+                flashGroup.Children.Add(new WorkbenchResourceNode(label, "flash"));
+            else if (!kind.Contains("Test", StringComparison.OrdinalIgnoreCase))
+                otherGroup.Children.Add(new WorkbenchResourceNode(label, "other"));
+        }
+        root.Children.Add(dbcGroup);
+        root.Children.Add(controllerGroup);
+        root.Children.Add(waveGroup);
+        root.Children.Add(flashGroup);
+        root.Children.Add(new WorkbenchResourceNode("编号规则 / 工位绑定", "scan"));
+        root.Children.Add(new WorkbenchResourceNode("运行记录 / 报告", "records"));
+        if (otherGroup.Children.Count != 0) root.Children.Add(otherGroup);
         ResourceNodes.Add(root);
         EditableProjectName = Workspace.Project.Name;
         var oldDbc = SelectedDbcSignal;
