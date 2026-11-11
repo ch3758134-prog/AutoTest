@@ -51,7 +51,7 @@ class EngineeringStoreTest(unittest.TestCase):
         self.assertEqual(len(self.store.projects()), 2)
 
     def test_project_definitions_cannot_bypass_governance(self):
-        with self.assertRaisesRegex(RuleError,"governed"):
+        with self.assertRaisesRegex(RuleError,"Legacy summary is archived"):
             self.store.update_project(self.p2["id"], {"summary": "未经审查改变产品定位", "version": "0.3"})
         before=self.store.project(self.p2["id"])["project"]
         self.assertNotEqual(before["version"],"0.3")
