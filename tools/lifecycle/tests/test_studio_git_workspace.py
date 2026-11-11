@@ -102,6 +102,9 @@ class GitHydrationTests(unittest.TestCase):
         from studio_restore import preview, restore_to_empty
         from studio_product_identity import ProductIdentity
         self.assertEqual(raw["authority"], "OWNER_APPROVED_P0_DOCUMENT")
+        source = committed_project(root, "autotest")
+        self.assertEqual(source["authority"], "OWNER_APPROVED_P0_DOCUMENT")
+        self.assertEqual(source["archive"]["project"]["id"], "autotest")
         self.assertEqual(preview(raw["engineering"])["status"], "STRUCTURAL_PRECHECK_PASS")
         target = self.root / "autotest-trial.sqlite"
         restored = restore_to_empty(raw["engineering"], target)
