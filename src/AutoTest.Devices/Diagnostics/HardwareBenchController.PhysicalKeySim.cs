@@ -13,7 +13,10 @@ namespace AutoTest.Devices.Diagnostics;
 /// </summary>
 public sealed partial class HardwareBenchController
 {
-    private readonly SemaphoreSlim _physicalKeySimWrite = new(1, 1);
+    // Both real DUT CAN1 and KEY_SIM CAN0 use one WinUSB command fence.
+    // Serialize the entire exact-frame authorization + RequestAsync + revoke
+    // so simultaneous stimuli cannot invalidate each other's one-shot grants.
+    private readonly SemaphoreSlim _physicalSharedCanWrite = new(1, 1);
 
     public static string PhysicalKeySimConfirmation(uint mask, long generation)
     {
@@ -31,7 +34,7 @@ public sealed partial class HardwareBenchController
         if (ct.IsCancellationRequested)
             return OperationResult<CanTxReceipt>.Rejected("CANCELLED_BEFORE_TX",
                 "No physical request attempted.");
-        try { await _physicalKeySimWrite.WaitAsync(ct).ConfigureAwait(false); }
+        try { await _physicalSharedCanWrite.WaitAsync(ct).ConfigureAwait(false); }
         catch (OperationCanceledException)
         {
             return OperationResult<CanTxReceipt>.Rejected("CANCELLED_BEFORE_TX",
@@ -104,7 +107,7 @@ public sealed partial class HardwareBenchController
             }
             finally { link.RevokeOneCanTransmission(); }
         }
-        finally { _physicalKeySimWrite.Release(); }
+        finally { _physicalSharedCanWrite.Release(); }
     }
 }
 
