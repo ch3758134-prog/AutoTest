@@ -152,8 +152,19 @@ public sealed class BenchCanEditorViewModel : BindableBase
         RaisePropertyChanged(nameof(CheckedCount));
         MarkDirty();
     }
-    public async Task LoadAsync()
+    public async Task DiscardDraftAndReloadAsync()
     {
+        if (!CanEdit) return;
+        // Caller must confirm losing unsaved CAN row edits.
+        SelectedMessage = null;
+        Messages.Clear();
+        ClearDirty();
+        _editorProjectId = null;
+        RaisePropertyChanged(nameof(CheckedCount));
+        await LoadAsync();
+    }
+
+
         if (!CanEdit) return;
         if (_dirty && DifferentProject)
         {
