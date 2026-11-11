@@ -464,7 +464,8 @@ public partial class MainWindow : Window
                             if (_benchModel is not null)
                             {
                                 _ = _benchModel.RefreshConnectionAsync();
-                                _benchModel.CanMonitor.Start();
+                                if (_views.TryGetValue("bench", out var benchView) && benchView.IsLoaded)
+                                    _benchModel.CanMonitor.Start();
                             }
                         }));
                 };
