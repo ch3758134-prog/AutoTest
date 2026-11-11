@@ -15,6 +15,7 @@ from studio_governance import DefinitionGovernance
 from studio_definition_research import DefinitionResearch
 from studio_definition_suggestions import DefinitionSuggestions
 from studio_semantics import semantic_context, legacy_project_projection
+from studio_knowledge import EngineeringKnowledge
 
 PROPOSAL_KINDS = ("PRODUCT_DEFINITION_REVIEW", "REQUIREMENT_CLARIFICATION", "TECHNICAL_RESEARCH", "ARCHITECTURE_REVIEW",
                   "DETAILED_DESIGN", "CODING", "INTEGRATION", "VERIFICATION",
@@ -54,6 +55,7 @@ class Management:
         verification = Verification(self.store).list(project_id)
         governance = DefinitionGovernance(self.store).status(project_id)
         suggestions=DefinitionSuggestions(self.store).list(project_id)
+        knowledge=EngineeringKnowledge(self.store).list(project_id)
         research_queue=[]
         coordinator=DefinitionResearch(self.store)
         for change in governance["changes"]:
@@ -127,6 +129,7 @@ class Management:
             "project":p["project"],
             "engineering_semantics":semantic_context(),
             "legacy_project_interpretation":legacy_project_projection(p["project"]),
+            "engineering_knowledge":knowledge,
             "engineering_objects":objects,
             "engineering_relations":p["relations"],
             "technical_studies":studies,
@@ -150,6 +153,9 @@ class Management:
                 "You may propose research/design/plan/verification/coding work only.",
                 "Do not approve engineering revisions, invent technical evidence, dispatch coding, merge or modify policy.",
                 "Read engineering_semantics before classifying or editing any product-level information. Concept explanations are guidance; facts and project evidence take precedence.",
+                "Record user corrections, sourced observations, open questions and interpretations as separate engineering_knowledge candidates; link related claims across conceptual roles rather than forcing them into product definition.",
+                "Manager may propose engineering knowledge and semantic links, but cannot accept a record, confirm a relation, declare source truth or publish a product baseline.",
+                "Human-reviewed knowledge and semantic relationships are reference context; they do not automatically revise approved product definition or authorize implementation.",
                 "The old project summary is a candidate identity statement; body is historical context; version and variant are metadata, not automatically parts of product identity.",
                 "Distinguish stable product identity from purpose, system components, capabilities, release scope, first DUT, hardware configuration and experimental evidence. A statement may have more than one role.",
                 "For mixed claims, preserve the original wording and propose appropriate linked engineering objects; explain your conceptual reasons and counterfactuals, not word-based rejections.",
