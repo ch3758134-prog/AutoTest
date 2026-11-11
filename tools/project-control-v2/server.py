@@ -76,7 +76,7 @@ def handler(control=None, owner_token=None):
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Content-Security-Policy",
-                             "default-src 'self'; script-src 'self'; style-src 'self'; "
+                             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
                              "connect-src 'self'; object-src 'none'; base-uri 'none'")
             self.end_headers()
             self.wfile.write(content)
