@@ -64,7 +64,8 @@ def _validate(archive):
     if not isinstance(governance,dict):
         raise RuleError("Invalid definition governance section")
     for key in ("baselines","changes","reviews","package_reviews","invalidations"):
-        sections["g_"+key]=_array(governance.get(key),"governance."+key)
+        sections["g_"+key]=_array(governance.get(key,[] if key=="package_reviews" else None),
+                                     "governance."+key)
     objects=sections["objects"]
     ids={x.get("id") for x in objects}
     if (None in ids or len(ids)!=len(objects) or
