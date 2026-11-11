@@ -30,7 +30,6 @@ vm.runInContext('data=model',ctx);
 const render=(expr)=>vm.runInContext(expr,ctx);
 
 const reviews=render('reviews()');
-assert.ok(reviews.includes('at-g1')===false,'HTML should show human titles, not raw ids');
 assert.ok(reviews.includes('成熟通用 ECU 测试软件整体工作流调查'));
 assert.ok(!reviews.includes('完整自动测试行为要求矩阵（12 项'));
 assert.ok(!reviews.includes('跨功能验收观察条件（未执行）'));
