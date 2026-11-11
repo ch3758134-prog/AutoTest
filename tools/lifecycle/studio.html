@@ -77,7 +77,7 @@ pre.readout{background:#f6f8fb;border:1px solid var(--line);border-radius:8px;pa
 <body>
 <div class="app"><aside class="side">
   <div class="identity"><strong>Engineering<em>.</em></strong><small>研发工程与生命周期管理 · V1.3（AI 受控修订与工程审批）</small></div>
-  <div class="projectpicker"><label for="projectSelect">当前产品 / 项目</label><select id="projectSelect"></select><div class="buttonrow" style="margin-top:9px"><button class="link" id="newProject">+ 新建项目</button><button class="link" id="editProject">编辑项目背景</button><button class="link" id="ownerUnlock">负责人授权</button></div></div>
+  <div class="projectpicker"><label for="projectSelect">当前产品 / 项目</label><select id="projectSelect"></select><div class="buttonrow" style="margin-top:9px"><button class="link" id="newProject">+ 新建项目</button><button class="link" id="editProject">编辑项目背景</button><button class="link" id="ownerUnlock" hidden>负责人授权</button></div></div>
   <div class="sideheading" style="padding-left:12px">研发生命周期</div>
   <nav class="nav" id="nav">
     <button data-view="dashboard" class="active"><b>▦</b>项目驾驶舱</button>
@@ -108,7 +108,7 @@ const groupKinds={product:['context','capability','system'],engineering:['requir
 const statuses={DRAFT:'草稿',IN_REVIEW:'待审查',APPROVED:'已批准',SUPERSEDED:'已替代',OPEN:'待处理',CLOSED:'已关闭'};
 const relationNames={derives:'来源/派生',allocated:'分配至',defines:'定义/约束',depends:'实施依赖',implements:'实现',verifies:'验证',impacts:'变更影响'};
 const metaLabels={source:'信息来源',acceptance:'验收/判定标准',rationale:'设计依据',alternatives:'候选方案',conclusion:'决策结论',source_sha:'代码基线 SHA',file_scope:'可修改文件',input_revisions:'固定输入修订',result:'验证结果',evidence_level:'证据等级',severity:'风险等级',configuration:'适用配置',assessments:'影响评审结论',due:'目标日期'};
-let state={token:'',projects:[],project:null,data:null,view:'dashboard',selected:null,filter:'',typeFilter:'all',gitViews:null,gitViewsError:''};
+let state={token:'',projects:[],project:null,data:null,view:'dashboard',selected:null,filter:'',typeFilter:'all'};
 const root=$('#content');
 function button(label,cls,click){let b=el('button',cls,label);if(click)b.onclick=click;return b}
 function note(msg){return el('div','info',msg)}
@@ -128,7 +128,6 @@ async function boot(){
   const b=await req('/api/studio/bootstrap');
   state.token='';
   state.projects=b.projects;
-  try{state.gitViews=await req('/api/studio/git-management')}catch(e){state.gitViewsError=e.message;state.gitViews=null;}
   let previous=localStorage.getItem('engineering-last-project');
   state.project=b.projects.some(x=>x.id===previous)?previous:b.projects[0]?.id||null;
   await refresh(false);navigate('dashboard');
@@ -161,7 +160,7 @@ function ownerUnlockModal(){
 async function refresh(render=true){if(state.project){state.data=await req('/api/studio/project?id='+qs(state.project));localStorage.setItem('engineering-last-project',state.project)}else state.data=null;
   let picker=$('#projectSelect');clean(picker);if(!state.projects.length)picker.append(new Option('还没有项目',''));else state.projects.forEach(p=>picker.append(new Option(p.name,p.id)));
   picker.value=state.project||'';$('#editProject').disabled=!state.project;$('#export').disabled=!state.project;
-  $('#version').textContent=state.data?('产品版本 '+(state.data.project.version||'未指定')):'本地工作区';
+  $('#version').textContent=state.data?('研发阶段 '+(state.data.project.version||'未指定')):'本地工作区';
   if(render)renderView();}
 function navigate(view){state.view=view;state.selected=null;state.filter='';state.typeFilter='all';document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));renderView()}
 function renderView(){clean(root);$('#breadcrumb').textContent=(projectName()||'工程工作区')+' / '+stages[state.view];
@@ -172,54 +171,9 @@ function renderView(){clean(root);$('#breadcrumb').textContent=(projectName()||'
  if(state.view==='management')return renderManagementView();
  if(state.view==='history')return renderHistory();
  return renderEditor();}
-function renderWelcome(){if(state.gitViews?.projects?.length)return renderGitManagedViews();
+function renderWelcome(){
  const box=el('div','blank');add(box,el('h2','','建立你的第一个工程项目'),el('p','','从产品背景、使用场景和系统边界开始，逐层建立需求、架构、接口、详细设计和实施验证。所有对象可以再次修订，不需要按固定 Gate 一次性走完。'),button('创建工程项目','primary',()=>projectModal()),button('从备份恢复项目','outline',restoreWorkspaceModal));root.append(box);
  const s=section('建立什么，而不只是记录什么');let grid=el('div','threecol');[['产品与系统','明确为何开发、产品版本、系统组成和能力边界'],['设计与决策','从需求到接口逐级展开，负责人审查并批准有效版本'],['反馈与验证','实施/实测发现问题时回到上层变更，再更新受影响工作包']].forEach(x=>{let c=el('div','panel');add(c,el('h2','',x[0]),el('p','',x[1]));grid.append(c)});s.node.append(grid);}
-function renderGitManagedViews(){
- heading('项目管理 AI｜GitHub 工程状态','此页直接读取本地检出的 Git HEAD 中的管理记录，不需要创建 SQLite 项目，也不要求负责人登录。管理记录均为 AI 候选，尚未获得工程批准。');
- const current=state.gitViews;
- root.append(el('p','tiny','Git 源提交：'+current.git_commit+' · '+current.authority+' · 当前检出状态，不保证远程仓库此刻未变化'));
- for(const project of current.projects){
-   const intro=el('div','panel');
-   add(intro,el('h2','',project.project_name+' · '+project.title),
-     el('p','context',project.summary||''));
-   add(intro,el('p','tiny','记录时间：'+(project.observed_at||'未记录')+' · 源文件：'+project.git_path));
-   root.append(intro);
-   const evSection=section('已经收集的事实与证据边界');
-   const ev=el('div','panel');
-   for(const item of project.evidence){
-     const div=el('div','event');
-     const line=el('div','buttonrow');
-     add(line,el('strong','',item.title),badge(item.status||'待查'));
-     div.append(line,el('p','context',item.detail||''));
-     if(item.sha)div.append(el('div','tiny','记录时 HEAD：'+item.sha));
-     if(item.source){
-       if(/^https:\/\/github\.com\//.test(item.source)){
-         const a=el('a','','查看 GitHub 来源');a.href=item.source;a.target='_blank';a.rel='noopener noreferrer';div.append(a);
-       }else div.append(el('div','tiny','来源：'+item.source));
-     }
-     ev.append(div);
-   }
-   evSection.node.append(ev);
-   const actionSection=section('项目管理 AI 的下一步建议（尚未批准）');
-   const work=el('div','panel');
-   for(const item of project.judgments){
-     const div=el('div','event');
-     const header=el('div','buttonrow');
-     add(header,el('strong','',item.title),badge(item.priority||'待排期'));
-     div.append(header,el('p','context','理由：'+(item.reason||'')),
-         el('p','context','下一步：'+(item.next_action||'')));
-     work.append(div);
-   }
-   actionSection.node.append(work);
-   if(project.open_questions?.length){
-     const qs=section('你可以直接与项目管理 AI 讨论的问题');const pane=el('div','panel');
-     for(const q of project.open_questions)pane.append(el('p','context','· '+q));
-     qs.node.append(pane);
-   }
- }
- root.append(note('这里显示的是 Git 版本化管理判断，不是已批准的产品身份、工程需求、正式设计或现场验收；你在聊天中指出错误后，由项目管理 AI 复核并提交新的 Git 修订。'));
-}
 function rowCard(obj,act){let b=el('button','item-row');let left=el('div');add(left,el('div','rowtitle',obj.title),el('div','rowdesc',groupLabel(obj.kind)+' · '+brief(obj.body,130)));add(b,left,badge(obj.state));b.onclick=()=>act(obj);return b}
 function stat(count,name,desc){let b=el('div','stat');add(b,el('b','',count),el('label','',name),el('small','',desc));return b}
 function openItem(obj){let v=Object.keys(groupKinds).find(g=>groupKinds[g].includes(obj.kind));if(!v)return;state.view=v;state.selected=obj.id;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));renderView();}
@@ -303,7 +257,7 @@ function renderWorkPackageHint(selected,content){const section=el('div','details
   try{await mutate('/api/studio/object/'+selected.id+'/update',{expected_revision:selected.revision,meta});toast('输入修订已固定，请重新检查准入。');}catch(e){toast(e.message)}
  }));content.append(section);}
 function renderHistory(){heading('历史、版本与配置','每一项工程对象的修订与审批独立保存。导出包含完整项目对象、关系、审查历史与操作记录。');const p=state.data.project;
- const panel=el('div','panel');add(panel,el('h2','','当前产品配置'));const fields=el('div','meta-table');[['产品/项目',p.name],['目标版本',p.version||'未填写'],['型号/配置',p.variant||'未填写'],['创建时间',p.created],['最后活动',p.updated],['本机数据','SQLite，独立于源码仓库']].forEach(([k,v])=>{let cell=el('div','meta-cell');add(cell,el('label','',k),el('div','',v));fields.append(cell)});panel.append(fields,button('导出完整项目 JSON','primary',exportProject));root.append(panel);
+ const panel=el('div','panel');add(panel,el('h2','','当前产品配置'));const fields=el('div','meta-table');[['产品/项目',p.name],['目标版本',p.version||'未填写'],['型号/配置',p.variant||'未填写'],['创建时间',p.created],['最后活动',p.updated],['本机数据','SQLite，独立于源码仓库']].forEach(([k,v])=>{let cell=el('div','meta-cell');add(cell,el('label','',k),el('div','',v));fields.append(cell)});panel.append(fields,button('导出完整项目 JSON','primary',exportProject),button('本地工程写入验证（需要修改或审批时）','outline',ownerUnlockModal));root.append(panel);
  const s=section('审查与修改历史');const events=el('div','panel');for(const event of state.data.events){let row=el('div','event');add(row,el('strong','',event.action+' · '+event.note),el('small','',event.timestamp+' · '+event.actor));events.append(row)}if(!state.data.events.length)events.append(el('p','','尚无历史事件'));s.node.append(events);root.append(note('此页的导出是项目级可机读快照，不等同于已实现项目导入恢复。建议同时备份本机 SQLite 数据文件。'));}
 function showModal(title,fn){$('#modalTitle').textContent=title;clean($('#modalBody'));clean($('#modalFooter'));$('#overlay').classList.remove('hidden');$('#modalBody').append(el('div','',null));if(fn)fn($('#modalBody'),$('#modalFooter'));}
 function closeModal(){$('#overlay').classList.add('hidden')}
