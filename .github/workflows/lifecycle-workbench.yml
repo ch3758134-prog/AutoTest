@@ -44,6 +44,7 @@ jobs:
           node --check tools/lifecycle/studio_knowledge_ui.js
           node --check tools/lifecycle/studio_product_identity_ui.js
           node --check tools/lifecycle/studio_amendments_ui.js
+          node --check tools/lifecycle/studio_workspace_ui.js
           python - <<'PY'
           from pathlib import Path
           import re
