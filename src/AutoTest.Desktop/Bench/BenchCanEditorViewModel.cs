@@ -164,7 +164,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
         await LoadAsync();
     }
 
-
+    public async Task LoadAsync()
+    {
         if (!CanEdit) return;
         if (_dirty && DifferentProject)
         {
