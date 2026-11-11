@@ -101,6 +101,20 @@ class RestoreTests(unittest.TestCase):
         saved=Store(self.target).export_project(self.pid)
         self.assertEqual(saved["execution"]["repository"],"ch3758134-prog/AutoTest")
 
+    def test_browser_recovery_is_explicitly_wired(self):
+        base=Path(__file__).resolve().parents[1]
+        server=(base/"studio_server.py").read_text(encoding="utf-8")
+        html=(base/"studio.html").read_text(encoding="utf-8")
+        wizard=(base/"studio_restore_ui.js").read_text(encoding="utf-8")
+        self.assertIn('if path == "/restore.js":',server)
+        self.assertIn('if path == "/api/studio/restore/preview":',server)
+        self.assertIn('elif path == "/api/studio/restore/apply":',server)
+        self.assertIn('RESTORE_TO_EMPTY_WORKSPACE',server)
+        self.assertIn('<script src="/restore.js"></script>',html)
+        self.assertIn('restoreWorkspaceModal',html)
+        self.assertIn('restore/apply',wizard)
+        self.assertIn('restore/preview',wizard)
+
     def test_wrong_schema_is_rejected(self):
         archive=self.archive()
         archive["schema"]="unsafe/2"
