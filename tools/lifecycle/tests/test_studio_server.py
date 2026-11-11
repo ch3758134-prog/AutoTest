@@ -131,6 +131,59 @@ class StudioApiTest(unittest.TestCase):
         self.assertEqual(backup["schema"], "engineering-workbench/1")
         self.assertEqual(len(backup["revisions"]), 3)
 
+    def test_product_definition_requires_owner_review_and_domain_gate(self):
+        _,project=self.request("/api/studio/project",{
+            "name":"Generic Device","summary":"Legacy unreviewed description",
+            "body":"Imported description of a user-facing engineering product",
+            "version":"R0","variant":"A"},token="local-test-token")
+        pid=project["project"]["id"]
+        _,status=self.request("/api/studio/governance/status?project="+pid)
+        self.assertEqual(status["baseline_status"],"UNBASELINED")
+        with self.assertRaises(HTTPError) as forbidden:
+            self.request("/api/studio/project/update",{
+                "id":pid,"summary":"Try bypassing governance"},token="local-test-token")
+        self.assertEqual(forbidden.exception.code,400)
+        proposal=dict(status["definition"])
+        proposal["summary"]="Controlled engineering product definition"
+        payload={"project_id":pid,"proposed":proposal,
+                 "reason":"Product positioning requires full impact analysis",
+                 "source_refs":["discussion://product-definition"],
+                 "proposer":"Human","expected_digest":status["definition_digest"]}
+        with self.assertRaises(HTTPError) as forbidden:
+            self.request("/api/studio/governance/propose",payload,
+                         manager_token="manager-secret-token-0123456789-0123456789")
+        self.assertEqual(forbidden.exception.code,403)
+        _,created=self.request("/api/studio/governance/propose",payload,
+                              token="local-test-token")
+        change=created["change"]["id"]
+        self.assertFalse(created["gate"]["ready"])
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/governance/publish",{
+                "change_id":change,"reviewer":"Owner","decision_note":"Early",
+                "expected_base_digest":status["definition_digest"]},
+                token="local-test-token")
+        self.assertEqual(denied.exception.code,400)
+        for domain in status["domains"]:
+            self.request("/api/studio/governance/review",{
+                "change_id":change,"domain":domain["key"],"outcome":"NO_IMPACT",
+                "rationale":"Explicitly assessed applicability and scope",
+                "evidence_refs":["study://review/"+domain["key"]],
+                "affected_ids":[],"reviewer":"Owner",
+                "expected_base_digest":status["definition_digest"]
+            },token="local-test-token")
+        _,gate=self.request("/api/studio/governance/gate?id="+change)
+        self.assertTrue(gate["ready"])
+        _,published=self.request("/api/studio/governance/publish",{
+            "change_id":change,"reviewer":"Owner","decision_note":"Domain review accepted",
+            "expected_base_digest":status["definition_digest"]},
+            token="local-test-token")
+        self.assertEqual(published["revision"],1)
+        _,after=self.request("/api/studio/governance/status?project="+pid)
+        self.assertEqual(after["baseline_status"],"BASELINED")
+        self.assertEqual(after["definition"]["summary"],proposal["summary"])
+        with urlopen(self.url+"/governance.js",timeout=5) as response:
+            self.assertIn(b'definitionGovernanceModal',response.read())
+
     def test_execution_api_requires_real_project_and_exposes_worker_ui(self):
         with self.assertRaises(HTTPError) as error:
             self.request("/api/studio/execution?project=missing")
