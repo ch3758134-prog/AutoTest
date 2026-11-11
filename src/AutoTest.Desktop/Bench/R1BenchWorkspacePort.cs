@@ -599,6 +599,11 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
 
                 var result = await physical.SendPhysicalManualCan1Async(
                     frames[index], confirmations[index], ct);
+                // A cancelled USB request may return UNCERTAIN rather than throw.
+                // Never report it as an ordinary CAN transmission failure.
+                if (ct.IsCancellationRequested)
+                    return new(false, true, false,
+                        "已停止 CAN 周期任务；取消中的最后一帧真实发送状态 UNKNOWN。");
                 if (result.Outcome != Outcome.Accepted ||
                     result.Value is not { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged })
                     return new(false, false, false,
@@ -608,9 +613,10 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                 progress?.Report(new BenchCanPeriodicProgress(ackCount,
                     $"CAN1 真实发送：{snapshot.Length} 条选中，主控 ACK {ackCount} 帧，" +
                     $"最近 ID=0x{snapshot[index].ArbitrationId:X}（主机定时）"));
-                // Never send a catch-up burst after Windows/USB delays.
-                var next = due[index] + periodTicks[index];
-                due[index] = Math.Max(next, System.Diagnostics.Stopwatch.GetTimestamp());
+                // Re-arm after ACK, not at a stale deadline. A late ACK must
+                // never trigger multiple almost back-to-back catch-up frames.
+                due[index] = BenchCanSchedule.NextDue(
+                    System.Diagnostics.Stopwatch.GetTimestamp(), periodTicks[index]);
             }
             return new(true, false, false,
                 "已达到会话安全上限（10000 帧或 30 分钟），所有选中周期已停止。");
