@@ -101,6 +101,10 @@ class DefinitionGovernance:
                   PRIMARY KEY(package_id,change_id));
             """)
             DefinitionResearch.ensure(db)
+            package_columns={r["name"] for r in db.execute(
+                "PRAGMA table_info(definition_package_reviews)")}
+            if "research_manifest_sha" not in package_columns:
+                db.execute("ALTER TABLE definition_package_reviews ADD COLUMN research_manifest_sha TEXT")
 
     def _baseline(self,db,project_id):
         row=db.execute("""SELECT * FROM definition_baselines WHERE project_id=?
@@ -267,6 +271,17 @@ class DefinitionGovernance:
                               change_id+" / "+domain+" / "+outcome+" / "+rationale)
         return self.detail(change_id)
 
+    @staticmethod
+    def _research_manifest(db,change_id):
+        failures,tasks=DefinitionResearch.gate_rows(
+            db,change_id,[domain for domain,_ in DOMAINS])
+        if failures:
+            raise RuleError("Required research must be reviewed before implementation impact: "+
+                            "; ".join(failures))
+        return digest([(domain,tasks[domain]["revision"],
+                        tasks[domain]["accepted_submission_id"])
+                       for domain,_ in DOMAINS])
+
     def review_package(self,change_id,package_id,outcome,rationale,evidence_refs,
                        reviewer,expected_base_digest,expected_package_revision):
         if outcome not in ("IMPACT","NO_IMPACT","UNKNOWN"):
@@ -290,17 +305,20 @@ class DefinitionGovernance:
                 raise RuleError("Review target must be a work package in this project")
             if type(expected_package_revision) is not int or obj["revision"]!=expected_package_revision:
                 raise RuleError("Work package revision conflict; review latest implementation")
+            research_manifest=self._research_manifest(db,change_id)
             db.execute("""INSERT INTO definition_package_reviews
                (change_id,package_id,outcome,rationale,evidence_refs,
-                reviewed_revision,reviewer,reviewed_at)
-               VALUES(?,?,?,?,?,?,?,?)
+                reviewed_revision,reviewer,reviewed_at,research_manifest_sha)
+               VALUES(?,?,?,?,?,?,?,?,?)
                ON CONFLICT(change_id,package_id) DO UPDATE SET
                  outcome=excluded.outcome,rationale=excluded.rationale,
                  evidence_refs=excluded.evidence_refs,
                  reviewed_revision=excluded.reviewed_revision,
-                 reviewer=excluded.reviewer,reviewed_at=excluded.reviewed_at""",
+                 reviewer=excluded.reviewer,reviewed_at=excluded.reviewed_at,
+                 research_manifest_sha=excluded.research_manifest_sha""",
                (change_id,package_id,outcome,rationale,
-                json.dumps(evidence_refs,ensure_ascii=False),obj["revision"],reviewer,now()))
+                json.dumps(evidence_refs,ensure_ascii=False),obj["revision"],
+                reviewer,now(),research_manifest))
             self.store._audit(db,change["project_id"],package_id,
                 "REVIEW_IMPLEMENTATION_IMPACT",reviewer,change_id+" / "+outcome+" / "+rationale)
         return self.detail(change_id)
@@ -320,6 +338,11 @@ class DefinitionGovernance:
         research_reasons,research_tasks=DefinitionResearch.gate_rows(
             db,change["id"],[domain for domain,_ in DOMAINS])
         reasons.extend(research_reasons)
+        research_manifest=None
+        if not research_reasons:
+            research_manifest=digest([(domain,research_tasks[domain]["revision"],
+                   research_tasks[domain]["accepted_submission_id"])
+                   for domain,_ in DOMAINS])
         missing=[]
         for domain,_ in DOMAINS:
             r=reviews.get(domain)
@@ -356,6 +379,9 @@ class DefinitionGovernance:
                 reasons.append("Unresolved work package impact: "+package["title"])
             if review["reviewed_revision"]!=package["revision"]:
                 reasons.append("Work package review is stale: "+package["title"])
+            if not research_manifest or review.get("research_manifest_sha")!=research_manifest:
+                reasons.append("Work package impact review does not reflect current domain research: "+
+                               package["title"])
             if not review["rationale"] or not _json(review["evidence_refs"],"package evidence"):
                 reasons.append("Work package impact lacks evidence: "+package["title"])
             if review["outcome"]=="NO_IMPACT" and package["id"] in affected_by_graph:
