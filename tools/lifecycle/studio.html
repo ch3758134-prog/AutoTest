@@ -204,6 +204,8 @@ function renderReadable(container,raw){
 function ancestry(obj){const result=[],seen=new Set([obj.id]);let current=obj;
  while(current?.parent_id&&!seen.has(current.parent_id)){const parent=item(current.parent_id);if(!parent)break;result.unshift(parent);seen.add(parent.id);current=parent;}return result;}
 function renderDashboard(){return renderWorkspaceHome();}
+function showWorkspaceCapabilityDetails(){renderCapabilityTrace();}
+function showWorkspaceResearchDetails(){renderResearchDashboardSection();}
 function renderEditor(){const types=groupKinds[state.view];const desc={product:'构建产品场景、能力和系统分解，而不是预先塞进某个专用硬件模型。',engineering:'分层维护需求、架构、接口和详细设计。每个工程对象都保留正文、来源、关系与历史版本。',governance:'记录方案比较、设计决定、风险与变更；实施后的发现可以回到系统需求重新审查。',delivery:'关联已批准设计、软件工作包、测试规格与实测证据，清楚地区分实施和验证。'}[state.view];
  heading(stages[state.view],desc||(state.view==='archive'?'阅读历史资料、理解来源、查看内容差异，必要时引用到当前工程对象；导入不会自动批准任何内容。':'当前工程对象'));
  let toolbar=el('div','toolbar'),left=el('div','buttonrow');add(left,...types.map(kind=>button('+ '+groupLabel(kind),'outline',()=>editorModal(kind))));if(state.view==='archive')left.append(button('从当前仓库导入 SAEF 档案','primary',importSaefModal));toolbar.append(left);root.append(toolbar);
