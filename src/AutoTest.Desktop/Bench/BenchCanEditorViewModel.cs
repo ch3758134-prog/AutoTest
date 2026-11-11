@@ -45,7 +45,20 @@ public sealed class BenchCanMessageItem : BindableBase
         set { if (SetProperty(ref _dbcRevision, value)) RaisePropertyChanged(nameof(SourceLabel)); }
     }
     public string? DbcMessageName { get => _dbcMessageName; set => SetProperty(ref _dbcMessageName, value); }
-    public string SourceLabel => DbcRevision is null ? "原始" : "DBC";
+    private string? _signalError;
+    public string? SignalError
+    {
+        get => _signalError;
+        set
+        {
+            if (SetProperty(ref _signalError, value))
+                RaisePropertyChanged(nameof(SourceLabel));
+        }
+    }
+    public string? InvalidSignalName { get; set; }
+    public string? InvalidSignalText { get; set; }
+    public string SourceLabel => DbcRevision is null ? "原始" :
+        SignalError is null ? "DBC" : "DBC !";
     public string Id { get; }
     public string Name { get => _name; set => SetProperty(ref _name, value); }
     public string CanIdHex { get => _canIdHex; set => SetProperty(ref _canIdHex, value); }
@@ -250,6 +263,9 @@ public sealed class BenchCanEditorViewModel : BindableBase
         if (!CanEdit || SelectedMessage is null) return;
         SelectedMessage.DbcRevision = null;
         SelectedMessage.DbcMessageName = null;
+        SelectedMessage.SignalError = null;
+        SelectedMessage.InvalidSignalName = null;
+        SelectedMessage.InvalidSignalText = null;
         RebuildSignalInputs();
         MarkDirty();
         SignalStatus = "已转为原始报文；保留当前 ID 和 Data 字节，可直接编辑。";
@@ -258,8 +274,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
     private void RebuildSignalInputs()
     {
         SignalInputs.Clear();
-        _signalInvalid = false;
         var selected = SelectedMessage;
+        _signalInvalid = selected?.SignalError is not null;
         if (selected?.DbcRevision is null)
         {
             SignalStatus = "原始报文：直接编辑 ID / Data HEX；如需信号编码，先从 DBC 添加报文";
@@ -282,15 +298,22 @@ public sealed class BenchCanEditorViewModel : BindableBase
             {
                 var value = DbcSignalCodec.DecodePhysical(signal, data);
                 var input = new BenchDbcSignalInput(signal, value);
+                // Preserve the user's invalid text when switching between
+                // rows: never silently turn it back into the old valid bytes.
+                if (selected.InvalidSignalName == signal.Name &&
+                    selected.InvalidSignalText is { } pendingText)
+                    input.ValueText = pendingText;
                 input.PropertyChanged += (_, e) => {
                     if (e.PropertyName == nameof(BenchDbcSignalInput.ValueText))
                         EncodeSignalInput(input);
                 };
                 SignalInputs.Add(input);
             }
-            SignalStatus = message.Signals.Length == 0
-                ? "该 DBC 报文不含信号；可直接编辑 Data HEX"
-                : $"当前编辑：{message.Name} · {message.Dlc} 字节；信号值改变后自动编码 Data HEX";
+            SignalStatus = selected.SignalError is { } inputError
+                ? "此报文有无效信号值，禁止发送：" + inputError
+                : message.Signals.Length == 0
+                    ? "该 DBC 报文不含信号；可直接编辑 Data HEX"
+                    : $"当前编辑：{message.Name} · {message.Dlc} 字节；修改物理值后生成 Data HEX";
         }
         catch (Exception ex)
         {
@@ -333,11 +356,17 @@ public sealed class BenchCanEditorViewModel : BindableBase
             _editingSignal = true;
             try { item.DataHex = Convert.ToHexString(data); }
             finally { _editingSignal = false; }
+            item.SignalError = null;
+            item.InvalidSignalName = null;
+            item.InvalidSignalText = null;
             _signalInvalid = false;
             SignalStatus = $"已将 {input.Name}={input.ValueText} {input.Unit} 编码为报文 Data（未发送）";
         }
         catch (Exception ex)
         {
+            item.SignalError = ex.Message;
+            item.InvalidSignalName = input.Name;
+            item.InvalidSignalText = input.ValueText;
             _signalInvalid = true;
             SignalStatus = "信号值无效，禁止发送：" + ex.Message;
         }
@@ -351,8 +380,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
             var m = ResolvePinnedDbcMessage(item);
             if (item.Snapshot().Payload().Length != m.Dlc)
                 throw new InvalidOperationException("Data 字节数与 DBC DLC 不一致。");
-            if (ReferenceEquals(item, SelectedMessage) && _signalInvalid)
-                throw new InvalidOperationException("有无效的信号输入，需修正后才能发出。");
+            if (item.SignalError is { } error)
+                throw new InvalidOperationException("有无效的信号输入：" + error);
             return true;
         }
         catch (Exception ex)
@@ -378,7 +407,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
                 or nameof(BenchCanMessageItem.DataHex)
                 or nameof(BenchCanMessageItem.PeriodMsText)
                 or nameof(BenchCanMessageItem.DbcRevision)
-                or nameof(BenchCanMessageItem.DbcMessageName))
+                or nameof(BenchCanMessageItem.DbcMessageName)
+                or nameof(BenchCanMessageItem.SignalError))
             {
                 MarkDirty();
                 if (ReferenceEquals(item, SelectedMessage) &&
@@ -500,6 +530,12 @@ public sealed class BenchCanEditorViewModel : BindableBase
         RaisePropertyChanged(nameof(CanEdit));
         try
         {
+            // Saving old encoded bytes after an invalid physical-value edit
+            // would disguise the operator's pending unsent input.
+            if (Messages.FirstOrDefault(m => m.SignalError is not null) is { } invalid)
+                throw new InvalidOperationException(
+                    $"报文“{invalid.Name}”的 DBC 信号无效，请修正或转为原始报文：" +
+                    invalid.SignalError);
             var items = Messages.Select(m => m.Snapshot()).ToArray();
             BenchCanMessage.ValidateAll(items);
             await _port.SaveCanMessagesAsync(items, CancellationToken.None);
