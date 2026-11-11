@@ -153,7 +153,17 @@
         "assignee": "待安排"
       }
     ],
-    "submitted_digest": null
+    "submitted_digest": null,
+    "milestones": [
+      {
+        "id": "milestone-first-real-ecu-loop",
+        "title": "首个真实 ECU 自动测试闭环",
+        "deliverable_id": "d-real-autotest-loop",
+        "exit_condition": "同一次真实 ECU Run 中完成刺激、观察、判定和可追溯记录，并以可核验实测证据支持负责人验收。",
+        "target_date": null,
+        "date_basis": null
+      }
+    ]
   },
   "progress": {},
   "changes": [],
@@ -170,6 +180,19 @@
       "reason": "保留 AutoTest 真实 P0 和 G1 来源；重新建模为候选项目计划，非正式批准或实际派发。",
       "subject": null,
       "at": "2026-11-11T00:00:00+00:00"
+    }
+  ],
+  "risks": [],
+  "cycles": [
+    {
+      "id": "cycle-initial",
+      "title": "现行研发轮次（正式边界待核定）",
+      "trigger": "基于已批准 P0 V0.1 组织近期研发；具体阶段 Gate 不由本记录自动推断。",
+      "scope": "首个真实 ECU 自动测试闭环的系统需求与实施准备",
+      "state": "ACTIVE",
+      "created": "2026-11-11T00:00:00+00:00",
+      "actor": "V2_DESIGN",
+      "confirmation": "CANDIDATE_NOT_APPROVED"
     }
   ]
 }
