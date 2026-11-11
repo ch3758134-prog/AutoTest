@@ -32,7 +32,7 @@ STAGE_IDS = {"P0", "G0", "G1", "G2", "G3", "G4"}
 ACTIONS = {"create_work", "edit_work", "create_deliverable", "edit_deliverable",
            "submit_plan", "withdraw_plan", "approve_plan", "return_plan",
            "update_progress", "verify_work", "raise_change", "assess_change",
-           "resolve_change", "record_receipt", "review_receipt", "record_phase_review"}
+           "resolve_change", "reconcile_work", "record_receipt", "review_receipt", "record_phase_review"}
 FIELD_WORK = {"title", "kind", "mode", "horizon", "deliverable_id",
               "expected_result", "exit_condition", "depends_on", "sources",
               "priority", "assignee", "planned_start", "planned_finish", "schedule_basis", "state"}
