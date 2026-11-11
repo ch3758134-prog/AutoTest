@@ -229,9 +229,6 @@ function renderHome() {
     ['NEXT','下一步：受控整体设计','依据正式需求开展设计审查'],
     ['LATER','后续：实现及真实验收','根据有效设计与实测条件逐步实施']]){
     const item=node('div','progress-step'+(k==='CURRENT'?' current':''));
-    append(item,node('div','',
-      ),node('div','')); // replaced by text nodes below
-    item.replaceChildren();
     const content=node('div');
     append(content,node('strong','',title),node('p','',desc));
     item.append(content);pipeline.append(item);
@@ -454,7 +451,7 @@ function openDelivery(id){
   body.append(s);
   const ev=node('div','drawer-group');
   ev.append(node('h3','','依据与证据'));sourcesList(d.source_ids,ev);body.append(ev);
-  $('#drawer').showModal();
+  if (!$('#drawer').open) $('#drawer').showModal();
 }
 
 function field(label,tag,value,choices){
@@ -533,7 +530,7 @@ function openWork(id){
   const ev=node('div','drawer-group');
   ev.append(node('h3','','相关正式来源及候选资料'));
   sourcesList(w.source_ids,ev);body.append(ev);
-  $('#drawer').showModal();
+  if (!$('#drawer').open) $('#drawer').showModal();
 }
 
 function render(){
