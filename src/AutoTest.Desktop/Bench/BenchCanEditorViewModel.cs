@@ -7,11 +7,28 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Prism.Commands;
+using AutoTest.Projects.Dbc;
+using System.Globalization;
 using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Bench;
 
 /// <summary>An editable DUT CAN1 message, never an internal KEY_SIM control frame.</summary>
+/// <summary>One editable physical DBC value, kept separate from CAN bytes until validated.</summary>
+public sealed class BenchDbcSignalInput : BindableBase
+{
+    private string _value;
+    public DbcSignal Definition { get; }
+    public string Name => Definition.Name;
+    public string Unit => Definition.Unit;
+    public string ValueText { get => _value; set => SetProperty(ref _value, value); }
+    public BenchDbcSignalInput(DbcSignal definition, double value)
+    {
+        Definition = definition;
+        _value = value.ToString("G17", CultureInfo.InvariantCulture);
+    }
+}
+
 public sealed class BenchCanMessageItem : BindableBase
 {
     private string _name;
@@ -21,6 +38,11 @@ public sealed class BenchCanMessageItem : BindableBase
     private bool _extended;
     private string _dataHex;
     private string _periodMsText;
+    private string? _dbcRevision;
+    private string? _dbcMessageName;
+    public string? DbcRevision { get => _dbcRevision; set => SetProperty(ref _dbcRevision, value); }
+    public string? DbcMessageName { get => _dbcMessageName; set => SetProperty(ref _dbcMessageName, value); }
+    public string SourceLabel => DbcRevision is null ? "原始报文" : "工程 DBC";
     public string Id { get; }
     public string Name { get => _name; set => SetProperty(ref _name, value); }
     public string CanIdHex { get => _canIdHex; set => SetProperty(ref _canIdHex, value); }
@@ -36,6 +58,8 @@ public sealed class BenchCanMessageItem : BindableBase
         _extended = value.Extended;
         _dataHex = value.DataHex;
         _periodMsText = value.PeriodMs.ToString(CultureInfo.InvariantCulture);
+        _dbcRevision = value.DbcRevision;
+        _dbcMessageName = value.DbcMessageName;
     }
 
     public BenchCanMessage Snapshot()
@@ -48,7 +72,7 @@ public sealed class BenchCanMessageItem : BindableBase
             throw new ArgumentException("周期必须是整数毫秒。");
         var normalized = new BenchCanMessage(Id, Name.Trim(), id, Extended,
             new string(DataHex.Where(c => !char.IsWhiteSpace(c) && c != '-').ToArray()).ToUpperInvariant(),
-            period);
+            period, DbcRevision, DbcMessageName);
         normalized.Validate();
         return normalized;
     }
@@ -66,6 +90,22 @@ public sealed class BenchCanEditorViewModel : BindableBase
     private string _status = "CAN 报文未加载";
     private string _periodicStatus = "未启动周期发送";
     private long _frameCount;
+    private bool _editingSignal;
+    private bool _signalInvalid;
+    private string _dbcStatus = "尚未关联工程 DBC";
+    private string _signalStatus = "选择 DBC 报文后可编辑信号物理值";
+    private DbcMessage? _selectedDbcMessage;
+    public ObservableCollection<DbcMessage> DbcMessages { get; } = new();
+    public ObservableCollection<BenchDbcSignalInput> SignalInputs { get; } = new();
+    public DbcMessage? SelectedDbcMessage
+    {
+        get => _selectedDbcMessage;
+        set => SetProperty(ref _selectedDbcMessage, value);
+    }
+    public string DbcStatus { get => _dbcStatus; private set => SetProperty(ref _dbcStatus, value); }
+    public string SignalStatus { get => _signalStatus; private set => SetProperty(ref _signalStatus, value); }
+    public bool HasDbcSignals => SignalInputs.Count > 0;
+    public bool HasDbc => DbcMessages.Count > 0;
     private string? _editorProjectId;
     private bool DifferentProject => _editorProjectId != _port.ActiveProjectId;
     private const string ProjectChangedMessage =
@@ -77,6 +117,9 @@ public sealed class BenchCanEditorViewModel : BindableBase
         _port = port;
         _audit = audit ?? (_ => { });
         AddCommand = new DelegateCommand(Add);
+        AddFromDbcCommand = new DelegateCommand(AddFromDbc);
+        UnbindDbcCommand = new DelegateCommand(UnbindDbc);
+        RefreshDbcCommand = new DelegateCommand(RefreshDbcCatalog);
         DeleteCommand = new DelegateCommand(Delete);
         SaveCommand = new DelegateCommand(async () => await SaveAsync());
         ReloadCommand = new DelegateCommand(async () => await LoadAsync());
@@ -87,6 +130,9 @@ public sealed class BenchCanEditorViewModel : BindableBase
 
     public ObservableCollection<BenchCanMessageItem> Messages { get; } = new();
     public DelegateCommand AddCommand { get; }
+    public DelegateCommand AddFromDbcCommand { get; }
+    public DelegateCommand UnbindDbcCommand { get; }
+    public DelegateCommand RefreshDbcCommand { get; }
     public DelegateCommand DeleteCommand { get; }
     public DelegateCommand SaveCommand { get; }
     public DelegateCommand ReloadCommand { get; }
@@ -98,7 +144,179 @@ public sealed class BenchCanEditorViewModel : BindableBase
     public bool Dirty => _dirty;
     public bool CanEdit => !_working && !_periodicRunning;
     public bool IsPeriodicRunning => _periodicRunning;
-    public BenchCanMessageItem? SelectedMessage { get => _selected; set => SetProperty(ref _selected, value); }
+    public BenchCanMessageItem? SelectedMessage
+    {
+        get => _selected;
+        set
+        {
+            if (SetProperty(ref _selected, value)) RebuildSignalInputs();
+        }
+    }
+
+
+    public void RefreshDbcCatalog()
+    {
+        var selectedId = SelectedDbcMessage?.Id;
+        var selectedExt = SelectedDbcMessage?.IsExtended;
+        DbcMessages.Clear();
+        var db = _port.ActiveDbc;
+        var revision = _port.ActiveDbcRevision;
+        if (db is not null && revision is not null)
+        {
+            foreach (var message in db.Messages.OrderBy(m => m.Id))
+                DbcMessages.Add(message);
+        }
+        SelectedDbcMessage = DbcMessages.FirstOrDefault(
+            m => m.Id == selectedId && m.IsExtended == selectedExt) ??
+            DbcMessages.FirstOrDefault();
+        RaisePropertyChanged(nameof(HasDbc));
+        DbcStatus = db is null || revision is null
+            ? "当前工程没有 DBC：先在 DBC 工具导入并纳入工程，再回来刷新"
+            : $"工程 DBC：{db.Name} · {DbcMessages.Count} 条报文 · {revision}";
+        RebuildSignalInputs();
+    }
+
+    private void AddFromDbc()
+    {
+        if (!CanEdit || SelectedDbcMessage is not { } message) {
+            DbcStatus = "请先选择当前工程 DBC 中的报文；没有 DBC 时可用原始报文。";
+            return;
+        }
+        var revision = _port.ActiveDbcRevision;
+        if (_port.ActiveDbc is null || string.IsNullOrWhiteSpace(revision)) {
+            DbcStatus = "工程 DBC 未加载或已切换，请刷新 DBC 列表。";
+            return;
+        }
+        var current = _port.ActiveDbc.Messages.FirstOrDefault(
+            m => m.Id == message.Id && m.IsExtended == message.IsExtended);
+        if (current is null || current != message) {
+            DbcStatus = "工程 DBC 已改变，请先刷新列表再添加。";
+            return;
+        }
+        var value = new BenchCanMessage(Guid.NewGuid().ToString("D"),
+            message.Name, message.Id, message.IsExtended,
+            Convert.ToHexString(new byte[message.Dlc]), 100, revision, message.Name);
+        var item = new BenchCanMessageItem(value);
+        Track(item);
+        Messages.Add(item);
+        SelectedMessage = item;
+        MarkDirty();
+        DbcStatus = $"已从 DBC 添加 {message.Name}；编辑信号后可直接试发，无需先保存";
+    }
+
+    private void UnbindDbc()
+    {
+        if (!CanEdit || SelectedMessage is null) return;
+        SelectedMessage.DbcRevision = null;
+        SelectedMessage.DbcMessageName = null;
+        RebuildSignalInputs();
+        MarkDirty();
+        SignalStatus = "已转为原始报文；保留当前 ID 和 Data 字节，可直接编辑。";
+    }
+
+    private void RebuildSignalInputs()
+    {
+        SignalInputs.Clear();
+        _signalInvalid = false;
+        var selected = SelectedMessage;
+        if (selected?.DbcRevision is null)
+        {
+            SignalStatus = "原始报文：直接编辑 ID / Data HEX；如需信号编码，先从 DBC 添加报文";
+            RaisePropertyChanged(nameof(HasDbcSignals));
+            return;
+        }
+        try
+        {
+            var message = ResolvePinnedDbcMessage(selected);
+            if (message.Signals.Any(s => s.Multiplexer is not null))
+            {
+                SignalStatus = "该 DBC 报文包含复用信号；为避免错误编码，请使用原始报文方式。";
+                _signalInvalid = true;
+                return;
+            }
+            var data = selected.Snapshot().Payload();
+            if (data.Length != message.Dlc)
+                throw new InvalidOperationException("Data 长度与 DBC DLC 不同。");
+            foreach (var signal in message.Signals)
+            {
+                var value = DbcSignalCodec.DecodePhysical(signal, data);
+                var input = new BenchDbcSignalInput(signal, value);
+                input.PropertyChanged += (_, e) => {
+                    if (e.PropertyName == nameof(BenchDbcSignalInput.ValueText))
+                        EncodeSignalInput(input);
+                };
+                SignalInputs.Add(input);
+            }
+            SignalStatus = message.Signals.Length == 0
+                ? "该 DBC 报文不含信号；可直接编辑 Data HEX"
+                : $"当前编辑：{message.Name} · {message.Dlc} 字节；信号值改变后自动编码 Data HEX";
+        }
+        catch (Exception ex)
+        {
+            _signalInvalid = true;
+            SignalStatus = "DBC 绑定不可用：" + ex.Message;
+        }
+        finally { RaisePropertyChanged(nameof(HasDbcSignals)); }
+    }
+
+    private DbcMessage ResolvePinnedDbcMessage(BenchCanMessageItem item)
+    {
+        var db = _port.ActiveDbc;
+        if (item.DbcRevision is null || db is null ||
+            _port.ActiveDbcRevision != item.DbcRevision)
+            throw new InvalidOperationException("工程 DBC Revision 已变化：请重新从 DBC 添加，或解除绑定改用原始报文。");
+        var id = item.Snapshot().ArbitrationId;
+        var message = db.FindMessage(id, item.Extended);
+        if (message.Name != item.DbcMessageName)
+            throw new InvalidOperationException("当前 DBC 报文名称已变化，拒绝旧绑定。");
+        return message;
+    }
+
+    private void EncodeSignalInput(BenchDbcSignalInput input)
+    {
+        if (SelectedMessage is not { } item || !CanEdit || _editingSignal) return;
+        try
+        {
+            var message = ResolvePinnedDbcMessage(item);
+            if (!message.Signals.Contains(input.Definition))
+                throw new InvalidOperationException("信号定义已变化。");
+            if (!double.TryParse(input.ValueText, NumberStyles.Float,
+                CultureInfo.InvariantCulture, out var value))
+                throw new ArgumentException("信号值应为数字，例如 1、12.5。");
+            var data = item.Snapshot().Payload();
+            if (data.Length != message.Dlc) throw new ArgumentException("Data 长度不符合 DBC DLC。");
+            DbcSignalCodec.EncodePhysical(input.Definition, value, data);
+            _editingSignal = true;
+            try { item.DataHex = Convert.ToHexString(data); }
+            finally { _editingSignal = false; }
+            _signalInvalid = false;
+            SignalStatus = $"已将 {input.Name}={input.ValueText} {input.Unit} 编码为报文 Data（未发送）";
+        }
+        catch (Exception ex)
+        {
+            _signalInvalid = true;
+            SignalStatus = "信号值无效，禁止发送：" + ex.Message;
+        }
+    }
+
+    private bool CheckDbcBinding(BenchCanMessageItem item)
+    {
+        if (item.DbcRevision is null) return true;
+        try
+        {
+            var m = ResolvePinnedDbcMessage(item);
+            if (item.Snapshot().Payload().Length != m.Dlc)
+                throw new InvalidOperationException("Data 字节数与 DBC DLC 不一致。");
+            if (ReferenceEquals(item, SelectedMessage) && _signalInvalid)
+                throw new InvalidOperationException("有无效的信号输入，需修正后才能发出。");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Status = "DBC 报文不可发送：" + ex.Message;
+            return false;
+        }
+    }
 
     private void Track(BenchCanMessageItem item)
     {
@@ -113,8 +331,18 @@ public sealed class BenchCanEditorViewModel : BindableBase
                 or nameof(BenchCanMessageItem.CanIdHex)
                 or nameof(BenchCanMessageItem.Extended)
                 or nameof(BenchCanMessageItem.DataHex)
-                or nameof(BenchCanMessageItem.PeriodMsText))
+                or nameof(BenchCanMessageItem.PeriodMsText)
+                or nameof(BenchCanMessageItem.DbcRevision)
+                or nameof(BenchCanMessageItem.DbcMessageName))
+            {
                 MarkDirty();
+                if (ReferenceEquals(item, SelectedMessage) &&
+                    e.PropertyName is nameof(BenchCanMessageItem.DataHex)
+                        or nameof(BenchCanMessageItem.CanIdHex)
+                        or nameof(BenchCanMessageItem.Extended)
+                        or nameof(BenchCanMessageItem.DbcRevision))
+                    if (!_editingSignal) RebuildSignalInputs();
+            }
         };
     }
 
@@ -167,6 +395,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
     public async Task LoadAsync()
     {
         if (!CanEdit) return;
+        RefreshDbcCatalog();
         if (_dirty && DifferentProject)
         {
             Status = ProjectChangedMessage;
@@ -246,6 +475,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             Status = "先选择一条 CAN 报文；周期发送中不可修改配置。";
             return false;
         }
+        if (!CheckDbcBinding(SelectedMessage)) return false;
         try { snapshot = SelectedMessage.Snapshot(); return true; }
         catch (Exception ex) { Status = "CAN 报文配置无效：" + ex.Message; return false; }
     }
@@ -292,6 +522,8 @@ public sealed class BenchCanEditorViewModel : BindableBase
             Status = "勾选的报文存在无效配置：" + ex.Message;
             return;
         }
+        // One bad or stale DBC binding blocks the entire set before physical TX.
+        if (checkedRows.Any(x => !CheckDbcBinding(x))) return;
         // Freeze all checked frames, periods and project identity for this run.
         _periodic = new CancellationTokenSource();
         _periodicRunning = true;
