@@ -1,19 +1,48 @@
 <UserControl x:Class="AutoTest.Desktop.Testing.TestEditorView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
- <DockPanel Margin="10">
-  <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,9">
-   <ComboBox ItemsSource="{Binding AvailableTypes}" SelectedItem="{Binding NewStepType,Mode=TwoWay}" Width="128" Margin="0,0,7,4"/>
-   <ComboBox ItemsSource="{Binding AvailablePhases}" SelectedItem="{Binding NewStepPhase,Mode=TwoWay}" Width="88" Margin="0,0,7,4"/>
-   <Button Content="＋ 阶段根节点" Command="{Binding InsertRootCommand}"/>
-   <Button Content="＋ 前插" Command="{Binding InsertBeforeCommand}"/>
-   <Button Content="＋ 后插" Command="{Binding InsertAfterCommand}"/>
-   <Button Content="↳ 子节点" Command="{Binding InsertChildCommand}"/>
-   <Button Content="↳ IF ELSE" Command="{Binding InsertElseCommand}"/>
-   <Button Content="上移" Command="{Binding MoveUpCommand}"/>
-   <Button Content="下移" Command="{Binding MoveDownCommand}"/>
-   <Button Content="复制" Command="{Binding CopyCommand}"/>
-   <Button Content="删除" Command="{Binding DeleteCommand}"/>
-  </WrapPanel>
-  <ListBox ItemsSource="{Binding FilteredSteps}" SelectedItem="{Binding SelectedStep,Mode=TwoWay}" MouseDoubleClick="OnDoubleClick">
+ <DockPanel Margin="12">
+  <!-- Selection and creation live above the tree. Structural operations
+       remain available by right-clicking an individual step. -->
+  <Border DockPanel.Dock="Top" Style="{StaticResource AtSurface}"
+   Padding="12,11" Margin="0,0,0,10">
+   <StackPanel>
+    <DockPanel Margin="0,0,0,9">
+     <TextBlock DockPanel.Dock="Right" Text="右键步骤可插入、复制、移动或删除"
+      Style="{StaticResource AtHint}" VerticalAlignment="Center"/>
+     <TextBlock Text="编辑测试步骤" Style="{StaticResource AtSectionTitle}"/>
+    </DockPanel>
+    <WrapPanel Margin="0,0,0,5">
+     <TextBlock Text="步骤类型" VerticalAlignment="Center" Margin="0,0,7,0"/>
+     <ComboBox ItemsSource="{Binding AvailableTypes}" SelectedItem="{Binding NewStepType,Mode=TwoWay}"
+      Width="144" Margin="0,0,12,0"/>
+     <TextBlock Text="阶段" VerticalAlignment="Center" Margin="0,0,7,0"/>
+     <ComboBox ItemsSource="{Binding AvailablePhases}" SelectedItem="{Binding NewStepPhase,Mode=TwoWay}"
+      Width="104" Margin="0,0,12,0"/>
+     <Button Content="＋ 插入步骤" Command="{Binding InsertAfterCommand}"
+      Style="{StaticResource AtPrimaryButton}" ToolTip="在选中步骤后插入"/>
+     <Button Content="＋ 子步骤" Command="{Binding InsertChildCommand}"
+      ToolTip="在选中步骤内部插入"/>
+    </WrapPanel>
+    <WrapPanel>
+     <Button Content="新增阶段根节点" Command="{Binding InsertRootCommand}"/>
+     <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,6,0">
+      <MenuItem Header="插入选项 ▾">
+       <MenuItem Header="在前面插入" Command="{Binding InsertBeforeCommand}"/>
+       <MenuItem Header="在后面插入" Command="{Binding InsertAfterCommand}"/>
+       <MenuItem Header="插入子节点" Command="{Binding InsertChildCommand}"/>
+       <MenuItem Header="插入 IF / ELSE" Command="{Binding InsertElseCommand}"/>
+      </MenuItem>
+      <MenuItem Header="步骤操作 ▾">
+       <MenuItem Header="上移" Command="{Binding MoveUpCommand}"/>
+       <MenuItem Header="下移" Command="{Binding MoveDownCommand}"/>
+       <MenuItem Header="复制步骤及子树" Command="{Binding CopyCommand}"/>
+       <Separator/>
+       <MenuItem Header="删除所选步骤" Command="{Binding DeleteCommand}"/>
+      </MenuItem>
+     </Menu>
+    </WrapPanel>
+   </StackPanel>
+  </Border>
+  <ListBox ItemsSource="{Binding FilteredSteps}" SelectedItem="{Binding SelectedStep,Mode=TwoWay}" MouseDoubleClick="OnDoubleClick" PreviewMouseRightButtonDown="OnStepRightClick">
    <ListBox.ItemTemplate><DataTemplate><Grid Margin="0,2">
     <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/><ColumnDefinition Width="120"/></Grid.ColumnDefinitions>
     <TextBlock Text="{Binding IndexLabel}" Foreground="{StaticResource Subtle}" Margin="3"/>
