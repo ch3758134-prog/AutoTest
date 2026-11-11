@@ -95,9 +95,12 @@ async function definitionChangeModal(id){
     body.append(source);
     const gate=detail.gate;
     const bar=el('div','detailsection');
-    add(bar,el('strong','','工程准入：'+(gate.ready?'已满足逐领域审查条件':'不可发布')),
-      el('div','tiny','已评估 '+gate.reviewed+' / '+gate.required+' 个领域；实施工作包 '+
+    add(bar,el('strong','','工程准入：'+(gate.ready?'已满足全部准入条件':'不可发布')),
+      el('div','tiny','必需研究 '+(gate.research_reviewed||0)+' / '+(gate.research_required||10)+
+        '；领域影响 '+gate.reviewed+' / '+gate.required+'；工作包 '+
         gate.package_reviewed+' / '+gate.package_total));
+    bar.append(button('查看必需研究与候选证据','outline',
+      ()=>definitionResearchModal(c.id)));
     if(!gate.ready){
       for(const reason of gate.reasons.slice(0,14))
         bar.append(el('div','context','• '+reason));
@@ -138,6 +141,7 @@ async function definitionChangeModal(id){
       implementation.append(entry);
     }
     body.append(implementation);
+    footer.append(button('打开研究任务与结论复核','outline',()=>definitionResearchModal(c.id)));
     footer.append(button('关闭','outline',closeModal));
     if(c.state==='REVIEW'){
       footer.append(button('拒绝候选','outline',()=>definitionDecisionModal(detail,false)));
@@ -177,7 +181,7 @@ function definitionPackageReviewModal(detail,pack,prior){
 
 function definitionDomainModal(detail,domain,label,prior){
   showModal('影响评估 · '+label,(body,footer)=>{
-    body.append(note('先研究这个领域是否适用，必要时追查缺失的对象关系。选择“有影响”必须指明已有工程对象；找不到受影响对象，应先补建追踪与研究，而非跳过。'));
+    body.append(note('必须先在同次变更的研究队列确认本领域证据，才能保存影响结论。若研究后来重新开启，旧领域判断自动失效。缺失工程对象时需先研究和补建追踪关系。'));
     const outcome=selectField(body,'此变更对该领域的影响',[
       ['UNKNOWN','尚未查清（阻断发布）'],
       ['IMPACT','存在影响，须复核下游对象'],
