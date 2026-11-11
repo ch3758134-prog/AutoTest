@@ -144,6 +144,54 @@ class GovernedResearchTests(unittest.TestCase):
                "Technical claims",["lab://run"],"Not independently reviewed",
                technical)
 
+    def test_reopened_technical_decision_invalidates_product_research_gate(self):
+        engine=Research(self.store)
+        opened=engine.create({"project_id":self.project,
+             "title":"Independent interface study","question":"What timing behavior is observed?",
+             "constraints":"Only test sources, no physical hardware",
+             "minimum_level":"ANALYSIS"})
+        study=opened["study"]["id"]
+        opt=engine.add_option(study,{"title":"Profile A",
+            "approach":"Describe measured behavior",
+            "tradeoffs":"Limited to tested configuration"})
+        option_id=opt["options"][0]["id"]
+        planned=engine.add_experiment(study,{"option_id":option_id,
+            "title":"Inspect recorded interface contract",
+            "method":"Review source constraints and test specifications",
+            "success_criteria":"All expected fields are accounted for",
+            "environment":"Recorded configuration, no physical execution",
+            "level":"ANALYSIS","required":True})
+        eid=planned["experiments"][0]["id"]
+        engine.authorize(eid,"Owner","Authorization for document analysis")
+        result=engine.record_result(eid,{"outcome":"PASS",
+             "observations":"All fields matched the fixture contract",
+             "raw_reference":"test://source/reference",
+             "configuration":"document revision 1",
+             "source_revision":"fixture-revision-1",
+             "performed_by":"Analyst"})
+        rid=result["experiments"][0]["results"][0]["id"]
+        engine.review_result(rid,"Owner","Observed evidence independently checked")
+        engine.decide(study,{"option_id":option_id,"approver":"Owner",
+              "rationale":"Document evidence supports this limited route",
+              "restrictions":"Only the recorded configuration"})
+        task=self.task("INTERFACES_HARDWARE")
+        found=self.research.submit(task["id"],task["revision"],"AI","AI_CANDIDATE",
+             "Interface findings from reviewed investigation",
+             ["study://"+study],"No hardware validation",
+             study)
+        self.research.review(task["id"],found["submission_id"],
+             task["revision"],"ACCEPT","Owner","Checked the active study decision")
+        self.complete_research()
+        for domain,_ in DOMAINS:
+            self.g.review(self.change_id,domain,"NO_IMPACT",
+                "Compared current baseline and scope",["test://fixture-review"],[],
+                "Owner",self.change["change"]["base_digest"])
+        self.assertTrue(self.g.gate(self.change_id)["ready"])
+        engine.reopen(study,{"actor":"Owner","reason":"New evidence contradicts source contract"})
+        self.assertFalse(self.g.gate(self.change_id)["ready"])
+        self.assertTrue(any("technical investigation decision is stale" in reason
+                            for reason in self.g.gate(self.change_id)["reasons"]))
+
     def test_export_and_restore_research_history_and_reject_broken_linkage(self):
         self.complete_research()
         for domain,_ in DOMAINS:
