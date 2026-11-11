@@ -40,9 +40,9 @@ const result=ctx.engineeringPlanModel({
 const byId=Object.fromEntries(result.packages.map(x=>[x.object.id,x]));
 assert.equal(byId.blocked.action,'REVIEW_DEPENDENCIES');
 assert.equal(byId.ready.action,'BIND_GITHUB');
-assert.equal(byId.stale.action,'COMPLETE_DESIGN'); // evidence of not-ready is authoritative
+assert.equal(byId.stale.action,'REVALIDATE'); // stale dispatched packet takes precedence
 assert.equal(result.milestones[0].due,'2026-12-01');
-assert.equal(result.packages[0].object.id,'blocked');
+assert.equal(result.packages[0].object.id,'stale');
 assert.equal(ctx.engineeringPlanModel({engineering_objects:[],engineering_relations:[]}).packages.length,0);
 """
         subprocess.run(["node","-e",script,str(HERE/"studio_plan_ui.js")],
