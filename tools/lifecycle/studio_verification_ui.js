@@ -3,6 +3,33 @@
 const VERIFICATION_LEVELS=[
   ['UNIT','单元测试'],['INTEGRATION','软件集成'],['BENCH','真实台架'],['USER_ACCEPTANCE','用户验收']
 ];
+async function capabilityVerificationModal(model){
+  let all;
+  try{all=await req('/api/studio/verification?project='+qs(state.project));}
+  catch(e){toast('验证证据加载失败：'+e.message);return;}
+  showModal(model.cap.title+' · 版本化验证证据',(body,footer)=>{
+    body.append(note('只列出此能力沿已批准追踪关系关联的测试规格及其执行记录。不以最新一条 PASS 覆盖历史 FAIL；不将人工证据确认当作整项能力验收。'));
+    for(const test of model.tests){
+      const panel=el('div','detailsection');
+      const h=el('div','sectionline');add(h,el('strong','',test.title+' · 规格 r'+test.revision),badge(test.state));
+      panel.append(h);
+      const runs=all.runs.filter(x=>x.test_object_id===test.id);
+      if(!runs.length)panel.append(el('p','context','无执行记录或尚未归档。'));
+      for(const run of runs){
+        const line=el('div','event');
+        const changed=run.test_revision!==test.revision;
+        add(line,el('strong','',run.level+' · '+run.outcome+' · '+(run.review_decision||'UNREVIEWED')),
+          el('small','',run.created+' · 规格 r'+run.test_revision+(changed?'（历史规格）':'')+
+            ' · '+run.configuration+' · '+run.source_sha.slice(0,12)));
+        panel.append(line);
+      }
+      panel.append(button('打开测试执行与证据','outline',()=>verificationHistoryModal(test)));
+      body.append(panel);
+    }
+    footer.append(button('关闭','outline',closeModal));
+  });
+}
+
 async function verificationHistoryModal(test){
   let result;
   try{result=await req('/api/studio/verification?project='+qs(state.project));}
