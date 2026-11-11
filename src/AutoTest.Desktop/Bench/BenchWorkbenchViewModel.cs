@@ -60,7 +60,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private string _deviceIdentity = "—";
     private string _lastOperation = "尚无操作";
     private string _lastEvidence = "ACK：未知 · 实际电压：未测量";
-    private string _directResult = "尚未操作。勾选 K01～K20 只修改准备发送的掩码，不会触发硬件。";
+    private string _directResult = "先勾选要闭合的开关，再点击“发送当前组合”。右侧查看 ECU 广播报文。";
     private string _ignStatus = "IGN 实际电平未知 · 尚未收到本次主控命令 ACK";
     private string _solenoidStatus = "夹具机械状态 UNKNOWN · 尚未读取当前固件动作值";
     private uint? _lastDirectAcceptedMask;
@@ -140,10 +140,13 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public ObservableCollection<BenchDevice> Devices { get; } = new();
     public ObservableCollection<ManualVoltageInput> Voltages { get; } = new();
     public ObservableCollection<BenchSwitchItem> Switches { get; } = new();
+    public void AddCurrentKeyCombinationToAction() =>
+        KeyActions.AddCurrentBenchMask(SelectedKeyMask);
     public uint SelectedKeyMask => Switches.Aggregate(0u,
         (mask, item) => item.IsSelected ? mask | item.Bit : mask);
     public int SelectedKeyCount => Switches.Count(x => x.IsSelected);
-    public string SelectedKeyMaskText => $"0x{SelectedKeyMask:X5} · 已选 {SelectedKeyCount}/20";
+    public string SelectedKeyMaskText => $"已闭合 {SelectedKeyCount} / 20 路";
+    public string SelectedKeyTechnicalMask => $"开关编码 0x{SelectedKeyMask:X5}";
     public string DirectResult
     {
         get => _directResult;
@@ -154,6 +157,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(SelectedKeyMask));
         RaisePropertyChanged(nameof(SelectedKeyCount));
         RaisePropertyChanged(nameof(SelectedKeyMaskText));
+        RaisePropertyChanged(nameof(SelectedKeyTechnicalMask));
         ((DelegateCommand)ApplyDirectMaskCommand).RaiseCanExecuteChanged();
         DirectResult = "已修改待发送组合；尚未发出 CAN0 指令。";
     }
@@ -422,7 +426,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             _lastDirectOperationId = accepted ? result.OperationId : null;
             ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
             DirectResult = accepted
-                ? $"主控 CAN_SEND 已 ACK · 目标组合 0x{mask:X5}；实际开关及五路电压未测量"
+                ? $"主控已接收按键组合指令（{System.Numerics.BitOperations.PopCount(mask)} 路闭合）。请看右侧 CAN 接收；实际输出电压尚未测量"
                 : $"未确认组合生效：{result.ErrorCode ?? "UNKNOWN"} · {result.ErrorMessage ?? result.AckDescription ?? "无有效 ACK"}";
             LastOperation = $"KEY_SIM 组合：0x{mask:X5} · " + (accepted ? "主控 ACK" : "失败/不确定");
             LastEvidence = result.AckDescription ?? "主控无有效 ACK，实际开关状态未知";
