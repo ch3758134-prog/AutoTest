@@ -24,7 +24,7 @@ from studio_semantics import semantic_context
 from studio_knowledge import EngineeringKnowledge
 from studio_product_identity import ProductIdentity
 from studio_amendments import EngineeringAmendments
-from studio_git_management import current_views as git_manager_views
+from studio_git_workspace import hydrate_empty
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -132,8 +132,6 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write({"schema":"engineering-workbench/2",
                                        "owner_auth":"required",
                                        "projects":store.projects()})
-                if path == "/api/studio/git-management":
-                    return self.write(git_manager_views(source_root))
                 if path == "/api/studio/projects":
                     return self.write(store.projects())
                 if path == "/api/studio/project":
@@ -592,6 +590,8 @@ def main(argv=None):
     parser.add_argument("--repo", type=Path, default=Path.cwd(),
                         help="Existing project checkout for optional legacy references (no writes)")
     parser.add_argument("--data", type=Path, default=default_data(), help="SQLite workspace file")
+    parser.add_argument("--git-workspace", action="store_true",
+                        help="Restore the exact Git HEAD candidate into an EMPTY, ISOLATED trial database")
     parser.add_argument("--port", type=int, default=PORT)
     parser.add_argument("--owner-token-file", type=Path, default=None,
                         help="Existing owner-only secret file of at least 32 characters; "
@@ -602,6 +602,16 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error("Invalid port")
+    if args.git_workspace:
+        if args.data.expanduser().resolve() == default_data().expanduser().resolve():
+            parser.error("--git-workspace requires explicit --data outside the default workspace")
+        try:
+            hydrated = hydrate_empty(args.repo, args.data)
+        except RuleError as exc:
+            parser.error(str(exc))
+        print("Git engineering candidate: " + hydrated["commit"], flush=True)
+        print("Restored project: " + hydrated["project_id"] +
+              " (DRAFT / unapproved)", flush=True)
     store = Store(args.data)
     manager_token = None
     if args.manager_token_file:
