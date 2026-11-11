@@ -29,7 +29,8 @@ TABLES = (
     "definition_research_tasks","definition_research_submissions",
     "definition_research_decisions","definition_research_scope_decisions",
     "definition_suggestions",
-    "engineering_knowledge","engineering_knowledge_revisions","engineering_knowledge_links"
+    "engineering_knowledge","engineering_knowledge_revisions",
+    "engineering_knowledge_links","engineering_knowledge_intakes"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -79,10 +80,10 @@ def _validate(archive):
                          "research_decisions","research_scope_decisions","suggestions")
         sections["g_"+key]=_array(governance.get(key,[] if optional else None),
                                  "governance."+key)
-    knowledge=archive.get("knowledge",{"items":[],"revisions":[],"links":[]})
+    knowledge=archive.get("knowledge",{"items":[],"revisions":[],"links":[],"intakes":[]})
     if not isinstance(knowledge,dict):
         raise RuleError("Invalid engineering knowledge archive")
-    for kind in ("items","revisions","links"):
+    for kind in ("items","revisions","links","intakes"):
         sections["k_"+kind]=_array(knowledge.get(kind,[]),"knowledge."+kind)
     objects=sections["objects"]
     ids={x.get("id") for x in objects}
@@ -346,6 +347,20 @@ def _validate(archive):
             source["revision"]!=link["source_revision"] or
             target["revision"]!=link["target_revision"])):
             raise RuleError("Confirmed knowledge link has stale or unreviewed endpoints")
+    intake_digests=set()
+    for intake in sections["k_intakes"]:
+        fingerprint=intake.get("payload_digest")
+        if (not fingerprint or fingerprint in intake_digests or
+            intake.get("project_id")!=pid):
+            raise RuleError("Duplicate or cross-project knowledge intake")
+        intake_digests.add(fingerprint)
+        try:result=json.loads(intake["result_json"])
+        except (KeyError,ValueError,TypeError) as exc:
+            raise RuleError("Invalid knowledge intake result") from exc
+        if (result.get("project_id")!=pid or
+            any(x.get("id") not in knowledge_ids for x in result.get("items",[])) or
+            any(lid not in link_ids for lid in result.get("links",[]))):
+            raise RuleError("Knowledge intake result has broken identities")
     return pid,sections,execution
 
 
@@ -410,6 +425,7 @@ def restore_to_empty(archive,output_database):
         _insert(db,"engineering_knowledge",sec["k_items"])
         _insert(db,"engineering_knowledge_revisions",sec["k_revisions"])
         _insert(db,"engineering_knowledge_links",sec["k_links"])
+        _insert(db,"engineering_knowledge_intakes",sec["k_intakes"])
         _insert(db,"events",sec["events"])
         for table,key in (("studies","studies"),("study_options","options"),
                           ("study_experiments","experiments"),("study_results","results"),
