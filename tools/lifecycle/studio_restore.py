@@ -23,7 +23,9 @@ TABLES = (
     "github_projects","execution_tasks","manager_proposals",
     "verification_runs","verification_reviews",
     "definition_baselines","definition_changes","definition_reviews",
-    "definition_package_reviews","definition_invalidations"
+    "definition_package_reviews","definition_invalidations",
+    "definition_research_tasks","definition_research_submissions",
+    "definition_research_decisions"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -60,12 +62,17 @@ def _validate(archive):
         raise RuleError("Invalid verification section")
     sections["runs"]=_array(verification.get("runs"),"runs")
     sections["reviews"]=_array(verification.get("reviews"),"reviews")
-    governance=archive.get("governance",{"baselines":[],"changes":[],"reviews":[],"package_reviews":[],"invalidations":[]})
+    governance=archive.get("governance",{"baselines":[],"changes":[],"reviews":[],
+        "package_reviews":[],"invalidations":[],"research_tasks":[],
+        "research_submissions":[],"research_decisions":[]})
     if not isinstance(governance,dict):
         raise RuleError("Invalid definition governance section")
-    for key in ("baselines","changes","reviews","package_reviews","invalidations"):
-        sections["g_"+key]=_array(governance.get(key,[] if key=="package_reviews" else None),
-                                     "governance."+key)
+    for key in ("baselines","changes","reviews","package_reviews","invalidations",
+                "research_tasks","research_submissions","research_decisions"):
+        optional=key in ("package_reviews","research_tasks","research_submissions",
+                         "research_decisions")
+        sections["g_"+key]=_array(governance.get(key,[] if optional else None),
+                                 "governance."+key)
     objects=sections["objects"]
     ids={x.get("id") for x in objects}
     if (None in ids or len(ids)!=len(objects) or
@@ -175,6 +182,48 @@ def _validate(archive):
                 if not isinstance(value,dict) or any(
                    (oid,rev) not in snapshots for oid,rev in value.items()):
                     raise RuleError("Governed review references unknown engineering revision")
+    research_tasks=sections["g_research_tasks"]
+    task_ids={t.get("id") for t in research_tasks}
+    if None in task_ids or len(task_ids)!=len(research_tasks):
+        raise RuleError("Duplicate definition research task identities")
+    for task in research_tasks:
+        if task.get("change_id") not in change_ids or task.get("state") not in ("OPEN","REVIEWED"):
+            raise RuleError("Invalid definition research task")
+    submissions=sections["g_research_submissions"]
+    submission_ids={x.get("id") for x in submissions}
+    if None in submission_ids or len(submission_ids)!=len(submissions):
+        raise RuleError("Duplicate research submission identities")
+    task_map={x["id"]:x for x in research_tasks}
+    submission_map={x["id"]:x for x in submissions}
+    for finding in submissions:
+        task=task_map.get(finding.get("task_id"))
+        if task is None or not isinstance(finding.get("task_revision"),int):
+            raise RuleError("Research submission references missing task/revision")
+        if finding["task_revision"]>task["revision"]:
+            raise RuleError("Research submission references future task revision")
+        if finding.get("linked_study_id") and finding["linked_study_id"] not in studies:
+            raise RuleError("Research submission references unknown technical study")
+        try:refs=json.loads(finding["evidence_refs"])
+        except (KeyError,ValueError,TypeError) as exc:
+            raise RuleError("Invalid definition research evidence references") from exc
+        if not isinstance(refs,list):
+            raise RuleError("Definition research evidence must be a list")
+    for task in research_tasks:
+        accepted=task.get("accepted_submission_id")
+        if task["state"]=="REVIEWED" and (
+            accepted not in submission_ids or
+            submission_map[accepted]["task_id"]!=task["id"]):
+            raise RuleError("Reviewed research has no linked accepted finding")
+        if task["state"]=="OPEN" and accepted is not None:
+            raise RuleError("Open research must not retain accepted submission")
+    decisions=sections["g_research_decisions"]
+    if len({x.get("id") for x in decisions})!=len(decisions):
+        raise RuleError("Duplicate research review decisions")
+    for decision in decisions:
+        if (decision.get("task_id") not in task_ids or
+            decision.get("submission_id") not in submission_ids or
+            submission_map[decision["submission_id"]]["task_id"]!=decision["task_id"]):
+            raise RuleError("Research decision references mismatched task/submission")
     for review in sections["g_package_reviews"]:
         if (review.get("change_id") not in change_ids or
             review.get("package_id") not in ids):
@@ -281,6 +330,9 @@ def restore_to_empty(archive,output_database):
         _insert(db,"verification_runs",sec["runs"])
         _insert(db,"verification_reviews",sec["reviews"])
         for table,key in (("definition_changes","g_changes"),
+                          ("definition_research_tasks","g_research_tasks"),
+                          ("definition_research_submissions","g_research_submissions"),
+                          ("definition_research_decisions","g_research_decisions"),
                           ("definition_baselines","g_baselines"),
                           ("definition_reviews","g_reviews"),
                           ("definition_package_reviews","g_package_reviews"),
