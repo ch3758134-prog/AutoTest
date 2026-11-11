@@ -77,7 +77,7 @@ public sealed class MainWindowViewModel : BindableBase
     private string _newStepType = "MockObserve";
     private string _newStepPhase = "Test";
     private string _diagnostic = "请选择节点，所有改动写入 TEST 事务模型。";
-    private string _status = "G4-V1 · 离线工程编辑 · MOCK ONLY";
+    private string _status = "R1 · 工程未运行 · 实际设备状态与测试结果请以实时观测为准";
     private string _requestStatus = "NOT_STARTED";
     private string _ackStatus = "NO_HARDWARE_ACK";
     private string _observationStatus = "NO_OBSERVATION";
