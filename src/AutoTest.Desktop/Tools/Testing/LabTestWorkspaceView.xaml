@@ -24,7 +24,7 @@
       <RowDefinition Height="*"/><RowDefinition Height="180"/><RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <DockPanel Grid.Row="0" LastChildFill="True" Margin="3,0,3,9">
-      <TextBlock DockPanel.Dock="Left" Text="TEST PROGRAM" FontSize="19" FontWeight="SemiBold" Margin="0,0,18,0"/>
+      <TextBlock DockPanel.Dock="Left" Text="TEST 程序编辑" Style="{StaticResource AtPageTitle}" Margin="0,0,18,0"/>
       <Border DockPanel.Dock="Right" Background="#493425" BorderBrush="#876038" BorderThickness="1"
               CornerRadius="3" Padding="9,4">
         <TextBlock Text="{Binding SourceLabel}" Foreground="#90611A" FontWeight="Bold" FontSize="11"/>
@@ -35,18 +35,18 @@
       </StackPanel>
     </DockPanel>
     <WrapPanel Grid.Row="1" Margin="0,0,0,9">
-      <Button Content="Open" Command="{Binding OpenCommand}"/>
-      <Button Content="Save file" Command="{Binding SaveCommand}"/>
+      <Button Content="打开" Command="{Binding OpenCommand}"/>
+      <Button Content="保存文件" Command="{Binding SaveCommand}"/>
       <Button Content="纳入当前工程 / 新 Revision" Command="{Binding SaveToProjectCommand}" Background="#176A8C"/>
       <Button Content="从工程重新加载" Command="{Binding ReloadProjectCommand}"/>
-      <Button Content="Undo" Command="{Binding UndoCommand}"/>
-      <Button Content="Redo" Command="{Binding RedoCommand}"/>
+      <Button Content="撤销" Command="{Binding UndoCommand}"/>
+      <Button Content="重做" Command="{Binding RedoCommand}"/>
       <Separator Width="12"/>
-      <Button Content="Preflight" Command="{Binding PreflightCommand}"/>
-      <Button Content="执行真实工程 TEST" Command="{Binding RunPhysicalReadOnlyCommand}" FontWeight="SemiBold" Background="#176A8C" ToolTip="执行当前已保存 TEST；只调用已接通的实际硬件能力，KEY_SIM 需 P05 配置、完整计划授权与 Cleanup 释放"/>
-      <Button Content="Pause" Command="{Binding PauseCommand}"/>
-      <Button Content="Resume" Command="{Binding ResumeCommand}"/>
-      <Button Content="Step" Command="{Binding StepCommand}"/>
+      <Button Content="运行前检查" Command="{Binding PreflightCommand}"/>
+      <Button Content="执行当前测试" Style="{StaticResource AtPrimaryButton}" Command="{Binding RunPhysicalReadOnlyCommand}" FontWeight="SemiBold" Background="#176A8C" ToolTip="执行当前已保存 TEST；只调用已接通的实际硬件能力，KEY_SIM 需 P05 配置、完整计划授权与 Cleanup 释放"/>
+      <Button Content="暂停" Command="{Binding PauseCommand}"/>
+      <Button Content="继续" Command="{Binding ResumeCommand}"/>
+      <Button Content="单步" Command="{Binding StepCommand}"/>
       <Button Content="Skip selected" Command="{Binding SkipCommand}"/>
       <Button Content="Run to selected" Command="{Binding RunToCommand}"/>
       <Button Content="STOP" Command="{Binding StopCommand}" Foreground="#BC3C50" FontWeight="Bold"/>
