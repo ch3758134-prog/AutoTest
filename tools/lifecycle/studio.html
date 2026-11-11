@@ -108,7 +108,7 @@ const groupKinds={product:['context','capability','system'],engineering:['requir
 const statuses={DRAFT:'草稿',IN_REVIEW:'待审查',APPROVED:'已批准',SUPERSEDED:'已替代',OPEN:'待处理',CLOSED:'已关闭'};
 const relationNames={derives:'来源/派生',allocated:'分配至',defines:'定义/约束',depends:'实施依赖',implements:'实现',verifies:'验证',impacts:'变更影响'};
 const metaLabels={source:'信息来源',acceptance:'验收/判定标准',rationale:'设计依据',alternatives:'候选方案',conclusion:'决策结论',source_sha:'代码基线 SHA',file_scope:'可修改文件',input_revisions:'固定输入修订',result:'验证结果',evidence_level:'证据等级',severity:'风险等级',configuration:'适用配置',assessments:'影响评审结论',due:'目标日期'};
-let state={token:'',projects:[],project:null,data:null,view:'dashboard',selected:null,filter:'',typeFilter:'all'};
+let state={token:'',projects:[],project:null,data:null,view:'dashboard',selected:null,filter:'',typeFilter:'all',gitSource:null};
 const root=$('#content');
 function button(label,cls,click){let b=el('button',cls,label);if(click)b.onclick=click;return b}
 function note(msg){return el('div','info',msg)}
@@ -128,6 +128,7 @@ async function boot(){
   const b=await req('/api/studio/bootstrap');
   state.token='';
   state.projects=b.projects;
+  state.gitSource=b.git_source||null;
   let previous=localStorage.getItem('engineering-last-project');
   state.project=b.projects.some(x=>x.id===previous)?previous:b.projects[0]?.id||null;
   await refresh(false);navigate('dashboard');
@@ -196,7 +197,10 @@ function renderReadable(container,raw){
 function ancestry(obj){const result=[],seen=new Set([obj.id]);let current=obj;
  while(current?.parent_id&&!seen.has(current.parent_id)){const parent=item(current.parent_id);if(!parent)break;result.unshift(parent);seen.add(parent.id);current=parent;}return result;}
 function renderDashboard(){const p=state.data.project;
- heading(p.name,'产品目标、工程决策、实施和验证的同一视图。所有信息来自当前项目记录，而不是按文件数计算的完成率。');
+ heading(p.name,'产品需求、工程结构、决策与验证的同一视图。对象数量不代表产品完成率。');
+ if(state.gitSource && state.gitSource.project_id===p.id){
+   root.append(note('工程对象来自 Git 提交 '+state.gitSource.commit+'，来源：'+state.gitSource.path+'。这是管理 AI 的待审候选工程快照，已恢复到独立试用工作区，不代表设计已批准、实现完成或现场验收。'));
+ }
  const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('产品身份 · 研究与审查','outline',productIdentityModal));block.append(first);
  add(block,el('h2','', '项目背景与阶段信息（非产品身份）'));block.append(el('div','context',p.body||p.summary||'尚未补充项目背景；应通过工程知识或相关工程对象澄清。'));root.append(block);
  const metrics=el('div','fourcol');metrics.style.marginTop='15px';let c=state.data.counts;
