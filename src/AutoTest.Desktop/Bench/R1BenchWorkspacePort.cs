@@ -718,6 +718,8 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                     return new(false, false, false,
                         "动作执行期间工程、主控会话或设备占用发生变化，停止后续步骤；最后开关状态 UNKNOWN。");
                 var step = frozen.Steps[i];
+                var stepName = string.IsNullOrWhiteSpace(step.Name)
+                    ? $"步骤 {i + 1}" : step.Name.Trim();
                 if (step.Kind == BenchActionStepKind.SetKeys)
                 {
                     var result = await physical.SetPhysicalKeySimMaskAsync(step.Mask,
@@ -729,16 +731,16 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                         result.Value is { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged };
                     if (!accepted)
                         return new(false, false, false,
-                            $"步骤 {i + 1} 主控 ACK 未确认：{result.FailureCode ?? "UNKNOWN"}；" +
+                            $"“{stepName}”主控 ACK 未确认：{result.FailureCode ?? "UNKNOWN"}；" +
                             "不推断最终 KEY_SIM 开关或 ECU 识别状态。");
                     lastMask = $"0x{step.Mask:X5}";
                     progress?.Report(new BenchActionProgress(i + 1, frozen.Steps.Count,
-                        $"已请求 Key 状态 {lastMask}，主控 CAN_SEND ACK；五路实际电压未测量"));
+                        $"“{stepName}”已请求切换开关，主控已确认接收指令；五路实际电压未测量"));
                 }
                 else
                 {
                     progress?.Report(new BenchActionProgress(i + 1, frozen.Steps.Count,
-                        $"保持当前 Key 状态 {step.DurationMs} ms"));
+                        $"“{stepName}”：保持当前开关组合 {step.DurationMs} 毫秒"));
                     await Task.Delay(step.DurationMs, ct);
                 }
             }
