@@ -90,7 +90,7 @@ class Management:
                                  "change_id":x["id"],
                                  "reason":"Major product definition change requires multi-domain review"})
         for research_task in research_queue:
-            if research_task["state"]!="REVIEWED":
+            if research_task["state"] not in ("REVIEWED","NOT_APPLICABLE"):
                 blockers.append({"type":"PRODUCT_DEFINITION_RESEARCH",
                                  "change_id":research_task["change_id"],
                                  "task_id":research_task["task_id"],
@@ -153,6 +153,7 @@ class Management:
                 "Distinguish stable product identity from purpose, system components, capabilities, release scope, first DUT, hardware configuration and experimental evidence. A statement may have more than one role.",
                 "For mixed claims, preserve the original wording and propose appropriate linked engineering objects; explain your conceptual reasons and counterfactuals, not word-based rejections.",
                 "When reviewing R1 or EPB references, do not automatically call them irrelevant; explain whether they are essential to the product nature or current delivery context.",
+                "Treat seeded research perspectives as prompts for considered scope, not a mandatory fixed study quota. Owner can explain inapplicability and add project-specific questions.",
                 "Product definition must be proposed, reviewed in every applicable policy domain and published by the owner's governed route.",
                 "You may submit candidate research findings to a task ID, with source references and explicit limits; the owner must independently review them.",
                 "AI may submit a complete product definition suggestion, but it will not create a formal change or pause coding until owner triage.",
