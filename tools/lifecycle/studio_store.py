@@ -830,6 +830,12 @@ class Store:
             context_history=[dict(x) for x in db.execute(
                 "SELECT * FROM project_context_revisions WHERE project_id=? ORDER BY revision",
                 (key,))]
+            amendments=[]
+            if db.execute("""SELECT 1 FROM sqlite_master WHERE type='table'
+                             AND name='engineering_amendments'""").fetchone():
+                amendments=[dict(r) for r in db.execute(
+                    "SELECT * FROM engineering_amendments WHERE project_id=? ORDER BY created,id",
+                    (key,))]
             product_identity={"baselines":[],"proposals":[],"impacts":[],"invalidations":[]}
             if db.execute("""SELECT 1 FROM sqlite_master WHERE type='table'
                              AND name='product_identity_proposals'""").fetchone():
@@ -852,4 +858,5 @@ class Store:
                     "execution":execution,"manager_proposals":proposals,
                     "verification":verification,"governance":governance,
                     "knowledge":knowledge,"product_identity":product_identity,
-                    "project_context_history":context_history}
+                    "project_context_history":context_history,
+                    "engineering_amendments":amendments}
