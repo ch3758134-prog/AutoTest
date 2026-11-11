@@ -13,6 +13,7 @@ from studio_management import Management
 from studio_verification import Verification
 from studio_restore import preview,restore_to_empty
 from studio_governance import DefinitionGovernance,DOMAINS
+from studio_definition_research import DefinitionResearch
 
 
 class RestoreTests(unittest.TestCase):
@@ -78,6 +79,13 @@ class RestoreTests(unittest.TestCase):
         change=gov.propose(self.pid,proposed,
                            "Review product definition before engineering authorization",
                            ["study://product-inputs"],"Human",status["definition_digest"])
+        coordinator=DefinitionResearch(self.original)
+        for task in coordinator.list(change["change"]["id"])["tasks"]:
+            submission=coordinator.submit(task["id"],task["revision"],"Analyst",
+                "AI_CANDIDATE","Reviewed definition effect for "+task["domain"],
+                ["study://product-inputs"],"Bound to the fixture")
+            coordinator.review(task["id"],submission["submission_id"],
+                task["revision"],"ACCEPT","Human","Checked source")
         for domain,_ in DOMAINS:
             gov.review(change["change"]["id"],domain,"NO_IMPACT",
                 "This test fixture records a complete human domain review",
