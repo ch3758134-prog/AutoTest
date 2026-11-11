@@ -82,7 +82,7 @@
       <TextBlock Text="A" Foreground="White" FontWeight="Bold" FontSize="15"
                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
      </Border>
-     <TextBlock Text="AutoTest" FontWeight="Bold" FontSize="16" Foreground="White" VerticalAlignment="Center"/>
+     <TextBlock Text="AutoTest" FontWeight="Bold" FontSize="16" Foreground="#203249" VerticalAlignment="Center"/>
      <TextBlock Text="  STUDIO" FontSize="9" Foreground="#667C92" VerticalAlignment="Center"/>
      <TextBlock Text="     /     " Foreground="#8795A8" VerticalAlignment="Center"/>
      <TextBlock Text="{Binding ProjectLabel}" Foreground="#3B4F67" VerticalAlignment="Center"/>
@@ -177,7 +177,14 @@
       <ComboBoxItem Content="专业工具"/>
      </ComboBox>
     </StackPanel>
-    <StackPanel x:Name="R1DeveloperActions" Orientation="Horizontal" VerticalAlignment="Center">
+    <StackPanel x:Name="R1ModeActions" Orientation="Horizontal" VerticalAlignment="Center">
+     <Button Content="▶ 自动测试" Click="OperatorWorkspace_Click" Background="#DCECFB" Foreground="#125993"
+             FontWeight="SemiBold" Padding="14,5" Margin="0,0,6,0"/>
+     <Button Content="▤ 工程开发" Click="EngineeringWorkspace_Click" Padding="14,5" Margin="0,0,6,0"/>
+     <Button Content="TEST 编辑" Click="OpenTest_Click" Padding="13,5" Margin="0,0,5,0"/>
+     <Button Content="专业工具 ▾" Click="ToolsWorkspace_Click" Padding="13,5" Margin="0,0,5,0"/>
+    </StackPanel>
+    <StackPanel x:Name="R1DeveloperActions" Visibility="Collapsed" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="⌕" Click="CommandPalette_Click" ToolTip="命令搜索 Ctrl+K" FontSize="17"/>
      <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
      <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
@@ -193,7 +200,7 @@
    </DockPanel>
   </Border>
   <!-- HTML rail / explorer / document / inspector -->
-  <Grid Grid.Row="3">
+  <Grid Grid.Row="3" x:Name="R1WorkspaceGrid">
    <Grid.ColumnDefinitions>
     <ColumnDefinition x:Name="R1RailColumn" Width="50"/>
     <ColumnDefinition x:Name="R1ExplorerColumn" Width="255" MinWidth="0"/>
@@ -239,6 +246,16 @@
    <GridSplitter x:Name="R1ExplorerSizer" Grid.Column="2" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
    <Border Grid.Column="3" Background="#F5F7FA">
     <TabControl x:Name="WorkbenchTabs" Background="#F5F7FA" SelectedIndex="10" SelectionChanged="WorkbenchTabs_SelectionChanged">
+     <TabControl.Style>
+      <Style TargetType="TabControl">
+       <Setter Property="TabStripPlacement" Value="Top"/>
+       <Style.Triggers>
+        <DataTrigger Binding="{Binding ElementName=R1WorkspaceMode, Path=SelectedIndex}" Value="0">
+         <Setter Property="TabStripPlacement" Value="Bottom"/>
+        </DataTrigger>
+       </Style.Triggers>
+      </Style>
+     </TabControl.Style>
      <TabItem Header="P01 工程">
       <ScrollViewer Background="#F5F7FA" VerticalScrollBarVisibility="Auto">
        <StackPanel Margin="20,18,20,25">
@@ -401,7 +418,7 @@
    </Border>
   </Grid>
   <!-- R1 prototype: persistent bottom dock with four factual trace sources -->
-  <Border Grid.Row="4" Background="#FFFFFF" BorderBrush="{StaticResource R1Stroke}"
+  <Border Grid.Row="4" x:Name="R1BottomPanel" Background="#FFFFFF" BorderBrush="{StaticResource R1Stroke}"
           BorderThickness="0,1,0,0">
    <DockPanel>
     <DockPanel DockPanel.Dock="Top" Background="#EDF2F8" LastChildFill="True">
