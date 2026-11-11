@@ -24,7 +24,17 @@ const stageCard=s=>'<button class="phase '+(s.id==='G1'?'active':'')+'" data-sta
 const dateHint='未建立经过验证的时间排期，因此不生成虚构的甘特图或完成率。';
 
 function toText(v,n=220){const x=String(v||'').replace(/^#+.*$/gm,'').replace(/\*\*/g,'').replace(/\s+/g,' ').trim();return x.length>n?x.slice(0,n)+'…':x;}
-function taskStatus(w){if(statusOf(w)==='NEEDS_REVIEW')return pill('需重新核对','pending');return pill(w.state==='PLANNED'?'已列入候选计划':'规划候选','unknown');}
+function taskStatus(w){
+ const progress=data?.control?.progress?.[w.id];
+ const invalid=data?.control?.invalidation?.[w.id];
+ if(invalid&&!invalid.resolved)return pill('变更后需复核','danger');
+ if(progress?.state==='VERIFIED_COMPLETE')return pill('已核实工作结果','approved');
+ if(progress?.state==='REPORTED_COMPLETE')return pill('已报告待核实','pending');
+ if(progress?.state==='IN_PROGRESS')return pill('进行中','unknown');
+ if(progress?.state==='BLOCKED')return pill('执行受阻','danger');
+ if(statusOf(w)==='NEEDS_REVIEW')return pill('输入需复核','pending');
+ return pill(w.state==='PLANNED'?'计划中':'规划候选','unknown');
+}
 function taskLine(w){return '<div class="work-line" data-work="'+a(w.id)+'" tabindex="0" role="button" aria-label="查看工作 '+a(w.title)+'"><div><strong>'+a(w.title)+'</strong><div class="helper">'+a(w.expected_result)+'</div></div><div>'+a(workKind[w.kind])+'</div><div>'+a(planningHorizon[w.horizon])+'</div><div>'+taskStatus(w)+'</div><div class="go">›</div></div>';}
 function miniTask(w){return '<div class="list-row clickable" data-work="'+a(w.id)+'"><div class="list-icon">'+(w.kind==='RESEARCH'?'⌕':w.kind==='DESIGN'?'◇':w.kind==='VERIFY'?'✓':'▤')+'</div><div class="list-copy"><strong>'+a(w.title)+'</strong><p>'+a(workKind[w.kind])+' · '+a(planningHorizon[w.horizon])+' · '+a(w.expected_result)+'</p></div>'+taskStatus(w)+'</div>';}
 
@@ -119,6 +129,7 @@ function openWork(id){
  const w=workById(id);if(!w)return;
  const issues=data.assessment.issues.filter(x=>x.at===w.id);
  let html='<div class="eyebrow">'+a(workKind[w.kind])+' · '+a(planningHorizon[w.horizon])+'</div><h2>'+a(w.title)+'</h2><div class="summary-row">'+pill('候选计划','pending')+pill(workMode[w.mode])+'</div><div class="rule"></div><h3>预期成果</h3><p>'+a(w.expected_result)+'</p><div class="rule"></div><h3>任务完成条件</h3><p>'+a(w.exit_condition)+'</p><div class="rule"></div><h3>上游工作</h3><p>'+a(w.depends_on.map(x=>workById(x)?.title||x).join('；')||'当前未声明前置工作')+'</p><div class="rule"></div><h3>工程输入与有效性</h3><div class="checklist">'+w.sources.map(s=>{const o=obj(s.object_id);return '<div class="check-item">'+a(o?.title||s.object_id)+' / r'+a(s.revision)+' / '+a(s.role==='CONTEXT'?'研究上下文':'要求有效的正式基线')+' / '+a(o?.state||'MISSING')+'</div>'}).join('')+'</div><div class="rule"></div><h3>计划核对</h3>'+(issues.length?issues.map(i=>'<div class="callout warn">'+a(i.code)+'：'+a(i.detail)+'</div>').join(''):'<div class="callout">没有当前模型识别的缺口，但不代表已经得到正式执行或批准。</div>')+'<div class="actions">'+btn('复制交接给 ChatGPT / Codex','data-handoff',w.id,'primary')+'</div>';
+ html+=window.projectActions?.workButtons?.(w)||'';
  showDrawer(html);
 }
 function showDrawer(html){$('#drawer-content').innerHTML=html;$('#drawer').classList.add('visible');$('#drawer').setAttribute('aria-hidden','false')}
@@ -129,11 +140,12 @@ function navigate(p){page=p;filter='ALL';render();closeDrawer();window.scrollTo(
 function render(){
  if(!data)return;
  document.querySelectorAll('#navigation button').forEach(b=>b.classList.toggle('active',b.dataset.page===page||(page==='document'&&b.dataset.page==='reviews')));
- const titles={overview:'总览',deliverables:'目标与交付',plan:'开发计划',process:'研发流程',reviews:'成果与审查',handoff:'协作交接',document:'文档阅读'};
+ const titles={overview:'总览',deliverables:'目标与交付',plan:'开发计划',process:'研发流程',reviews:'成果与审查',handoff:'协作交接',document:'文档阅读',sync:'GitHub 与本地记录'};
  $('#crumb-current').textContent=titles[page]||'总览';
- let html=page==='overview'?overview():page==='deliverables'?deliverables():page==='plan'?workPlan():page==='process'?processView():page==='reviews'?reviews():page==='handoff'?handoff():page==='document'?docPage(window.currentDoc):overview();
+ let html=page==='sync'?(window.projectActions?.syncPage()||'<p>正在加载同步信息</p>'):page==='overview'?overview():page==='deliverables'?deliverables():page==='plan'?workPlan():page==='process'?processView():page==='reviews'?reviews():page==='handoff'?handoff():page==='document'?docPage(window.currentDoc):overview();
  $('#main').innerHTML=html;
  $('#plan-count').textContent=data.plan.work.length;
+ if(window.projectActions?.renderExtras)window.projectActions.renderExtras();
 }
 async function refresh(){
  $('#main').innerHTML='<div class="empty">正在读取工程资料……</div>';
