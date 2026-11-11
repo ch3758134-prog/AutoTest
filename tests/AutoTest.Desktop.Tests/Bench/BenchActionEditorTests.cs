@@ -12,6 +12,27 @@ namespace AutoTest.Desktop.Tests.Bench;
 public sealed class BenchActionEditorTests
 {
     [Fact]
+    public async Task UnsavedProjectStillAllowsTemporaryActionCardAndPhysicalTrial()
+    {
+        var port = new ActionPort
+        {
+            ActiveProjectId = "current-workspace",
+            RejectLoadForUnsavedProject = true
+        };
+        var vm = new BenchKeyActionEditorViewModel(port);
+        await vm.LoadAsync();
+        Assert.Contains("工程尚未保存", vm.Status);
+        vm.NewActionCommand.Execute();
+        Assert.Single(vm.Actions);
+        vm.SelectedAction!.Name = "临时驻车研究";
+        vm.Switches[3].IsSelected = true;
+        await vm.RunAsync();
+        Assert.Equal(1, port.Runs);
+        Assert.Equal("临时驻车研究", port.LastAction!.Name);
+        Assert.True(vm.HasUnsavedChanges);
+    }
+
+    [Fact]
     public async Task ActionCardsTrackCurrentSelectionAndClickExecutesThatAction()
     {
         var port = new ActionPort();
@@ -278,6 +299,7 @@ public sealed class BenchActionEditorTests
         public string? ActiveProjectId { get; set; }
         public IReadOnlyList<BenchKeyAction>? Saved { get; set; }
         public BenchKeyAction? LastAction { get; private set; }
+        public bool RejectLoadForUnsavedProject { get; set; }
         public int Runs { get; private set; }
         public int DirectKeyCalls { get; private set; }
         public int ReleaseCalls { get; private set; }
@@ -297,8 +319,12 @@ public sealed class BenchActionEditorTests
         }
         public bool WaitUntilCancelled { get; set; }
 
-        public Task<IReadOnlyList<BenchKeyAction>> LoadKeyActionsAsync(CancellationToken ct) =>
-            Task.FromResult(Saved ?? (IReadOnlyList<BenchKeyAction>)Array.Empty<BenchKeyAction>());
+        public Task<IReadOnlyList<BenchKeyAction>> LoadKeyActionsAsync(CancellationToken ct)
+        {
+            if (RejectLoadForUnsavedProject)
+                throw new InvalidOperationException("请先创建并保存正式工程，再配置工程按键动作。");
+            return Task.FromResult(Saved ?? (IReadOnlyList<BenchKeyAction>)Array.Empty<BenchKeyAction>());
+        }
         public Task SaveKeyActionsAsync(IReadOnlyList<BenchKeyAction> actions, CancellationToken ct)
         { Saved = actions; return Task.CompletedTask; }
         public async Task<BenchActionExecution> RunKeyActionAsync(
