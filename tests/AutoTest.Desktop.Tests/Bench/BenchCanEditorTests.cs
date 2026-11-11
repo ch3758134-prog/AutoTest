@@ -161,7 +161,7 @@ public sealed class BenchCanEditorTests
         vm.SignalInputs[0].ValueText = "not-a-number";
         await vm.SendOnceAsync();
         Assert.Equal(1, port.SendCount); // no stale Data after invalid physical value
-        vm.SignalInputs[0].ValueText = "12.5"; // unsupported representability
+        vm.SignalInputs[0].ValueText = "12.25"; // 0.5 factor cannot encode 12.25 exactly
         await vm.SendOnceAsync();
         Assert.Equal(1, port.SendCount);
         vm.SignalInputs[0].ValueText = "11";
