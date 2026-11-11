@@ -341,7 +341,8 @@ class Control:
                     raise ControlError("product scope anchor is no longer valid")
                 baseline = {"id": new_id("planbaseline"), "revision": plan["revision"],
                             "at": now(), "actor": actor, "reason": reason,
-                            "digest": plan["submitted_digest"], "plan": self.plan(record),
+                            "digest": plan["submitted_digest"], "source_digest": digest(self.archive()),
+                            "plan": self.plan(record),
                             "known_issues": assessment["issues"]}
                 record["baselines"].append(baseline)
                 plan["status"] = "BASELINED"
@@ -479,7 +480,7 @@ class Control:
             elif name == "review_risk":
                 subject = ident(payload.get("id"), "risk id")
                 risk = next((x for x in record["risks"] if x["id"] == subject), None)
-                if risk is None or risk["status"] not in ("OPEN", "MITIGATING"):
+                if risk is None or risk["status"] not in ("OPEN", "MITIGATING", "MITIGATED"):
                     raise ControlError("risk is not open")
                 decision = payload.get("status")
                 if decision not in ("MITIGATING", "MITIGATED", "CLOSED"):
@@ -557,6 +558,8 @@ class Control:
                         raise ControlError("passing Gate needs exact approved evidence, not draft research")
                     stages = [o.get("meta", {}).get("phase") for o in archive["objects"]
                               if o.get("id") in evidence_ids]
+                    if phase == "P0" and plan["product_anchor"]["id"] not in evidence_ids:
+                        raise ControlError("P0 Gate needs the explicitly approved P0 product definition")
                     if phase != "P0" and phase not in stages:
                         raise ControlError("Gate evidence must explicitly belong to the reviewed phase")
                 cycle_id = ident(payload.get("cycle_id", record["cycles"][-1]["id"]), "cycle id")
