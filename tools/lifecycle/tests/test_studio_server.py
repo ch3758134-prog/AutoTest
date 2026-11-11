@@ -44,6 +44,42 @@ class StudioApiTest(unittest.TestCase):
         with urlopen(req, timeout=5) as response:
             return response.status, json.loads(response.read().decode("utf-8"))
 
+    def test_ai_intake_bundle_creates_only_candidates_and_is_idempotent(self):
+        _,project=self.request("/api/studio/project",{
+            "name":"Knowledge Pilot","summary":"Legacy product metadata",
+            "body":"Engineering context only"},token="local-test-token")
+        pid=project["project"]["id"]
+        def claim(alias):
+            return {"alias":alias,"title":"Knowledge "+alias,
+              "statement":"Source claim "+alias,
+              "interpretation":"Specific context limits the scope of this statement",
+              "concept_ids":["product_identity","system_boundary"],
+              "provenance":"AI_INTERPRETATION",
+              "source_refs":["discussion://case-"+alias],"related_objects":[]}
+        bundle={"schema":"engineering-knowledge-intake/1",
+                "entries":[claim("K1"),claim("K2")],
+                "relations":[{"from":"K1","to":"K2","relation":"CONTEXT_FOR",
+                    "rationale":"Current stage explains, but does not define, product identity"}]}
+        token="manager-secret-token-0123456789-0123456789"
+        _,result=self.request("/api/studio/knowledge/intake",{
+            "project_id":pid,"bundle":bundle,"author":"AI manager"},manager_token=token)
+        self.assertEqual(result["status"],"CANDIDATE_ONLY")
+        self.assertEqual(len(result["items"]),2)
+        _,repeat=self.request("/api/studio/knowledge/intake",{
+            "project_id":pid,"bundle":bundle,"author":"AI manager"},manager_token=token)
+        self.assertTrue(repeat["already_imported"])
+        _,entries=self.request("/api/studio/knowledge?project="+pid)
+        self.assertEqual(len(entries["items"]),2)
+        self.assertTrue(all(x["state"]=="CANDIDATE" for x in entries["items"]))
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/knowledge/link/review",{
+                "id":entries["links"][0]["id"],
+                "decision":"CONFIRM","reviewer":"AI",
+                "reason":"Illegitimate approval"},manager_token=token)
+        self.assertEqual(denied.exception.code,403)
+        _,governance=self.request("/api/studio/governance/status?project="+pid)
+        self.assertEqual(governance["baseline_status"],"UNBASELINED")
+
     def test_ai_knowledge_is_candidate_and_cannot_approve_or_link_confirm(self):
         _,project=self.request("/api/studio/project",{
             "name":"AutoTest Knowledge","summary":"Legacy product text",
