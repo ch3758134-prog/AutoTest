@@ -21,6 +21,7 @@ async function renderManagementView(){
   options.append(button('产品身份 · 研究与变更','outline',productIdentityModal));
   options.append(button('工程概念说明与语义判断','outline',()=>engineeringSemanticsModal()));
   options.append(button('工程认识与语义关系','outline',knowledgeWorkbench));
+  options.append(button('AI 工程对象修订候选','outline',amendmentsWorkbench));
   options.append(button('录入管理建议','primary',managementProposeModal));
   root.append(options);
   const mount=el('div','stack');
@@ -45,6 +46,8 @@ async function renderManagementView(){
        ' · '+(result.product_identity.baseline?.revision||'无受控版本')),
     managementFact('待审产品身份候选',result.product_identity.proposals.filter(
       x=>x.state==='CANDIDATE'||x.state==='SCOPED').length+' 项'),
+    managementFact('AI 工程修订待审',result.engineering_amendments.items.filter(
+      x=>x.state==='CANDIDATE'||x.state==='READY_TO_APPLY').length+' 项'),
     managementFact('已审工程认识',result.engineering_knowledge.items.filter(
       x=>x.state==='ACCEPTED').length+' 项；候选 '+
       result.engineering_knowledge.items.filter(x=>x.state==='CANDIDATE').length+' 项'),
