@@ -57,12 +57,11 @@
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
     <TextBlock Text="通信来源" Foreground="{StaticResource UdsMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
     <ComboBox Width="105" ItemsSource="{Binding SourceModes}" SelectedItem="{Binding SourceMode,Mode=TwoWay}" Margin="0,0,7,0"/>
-    <Button Content="发送请求" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
-    <Button Content="取消" Command="{Binding CancelCommand}"/>
+
    </StackPanel>
    <StackPanel>
-    <TextBlock Text="UDS 诊断" FontSize="21" FontWeight="SemiBold"/>
-    <TextBlock Text="DIAGNOSTICS / UDS  ·  Service Builder · ISO-TP · NRC · Response · Trace"
+    <TextBlock Text="UDS 诊断" Style="{StaticResource AtPageTitle}"/>
+    <TextBlock Text="选择服务 → 编辑请求 → 发送 → 查看 ECU 响应"
                Foreground="{StaticResource UdsMuted}" FontSize="11" Margin="0,4,0,0"/>
    </StackPanel>
   </DockPanel>
@@ -83,7 +82,7 @@
    <Border Style="{StaticResource UdsCard}">
     <DockPanel>
      <StackPanel DockPanel.Dock="Top">
-      <TextBlock Text="UDS 服务目录" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="① 选择诊断服务" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="保存可复用诊断任务；选中后自动填入请求编辑器"
                  Foreground="{StaticResource UdsMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,11"/>
      </StackPanel>
@@ -124,7 +123,7 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="11"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <Border Style="{StaticResource UdsCard}">
      <StackPanel>
-      <TextBlock Text="请求编辑" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="② 编辑诊断请求" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="服务名称" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ServiceName,UpdateSourceTrigger=PropertyChanged}"/>
       <TextBlock Text="服务参数" Style="{StaticResource UdsCaption}"/>
@@ -135,7 +134,7 @@
        <TextBlock Text="DTC Mask" Foreground="{StaticResource UdsMuted}" VerticalAlignment="Center" Margin="6,0,5,4"/>
        <TextBox Width="60" Text="{Binding DtcMaskParameter,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
        <Button Content="生成 ReadDTC" Command="{Binding PrepareReadDtcCommand}"/>
-       <Button Content="生成 TesterPresent" Command="{Binding PrepareTesterPresentCommand}"/>
+       <Button Content="生成 TesterPresent" ToolTip="仅构造 PDU；真实物理发送仍受服务白名单限制" Command="{Binding PrepareTesterPresentCommand}"/>
       </WrapPanel>
       <TextBlock Text="UDS Request PDU · HEX（无需手工添加 ISO-TP PCI）" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding RequestHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" FontSize="14"
@@ -143,7 +142,7 @@
       <TextBlock Text="期望 ECU Response PDU · HEX（可选，用于严格比较）" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ExpectedHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
       <WrapPanel Margin="0,5,0,0">
-       <Button Content="发送真实请求 / 回放" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
+       <Button Content="发送请求 / 回放" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
        <Button Content="保存为服务" Command="{Binding SaveServiceCommand}"/>
        <Button Content="取消" Command="{Binding CancelCommand}"/>
       </WrapPanel>
@@ -152,7 +151,7 @@
     <Border Grid.Row="2" Style="{StaticResource UdsCard}">
      <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel>
-       <TextBlock Text="ECU 响应 / RESPONSE" Style="{StaticResource UdsSection}"/>
+       <TextBlock Text="③ 查看 ECU 响应" Style="{StaticResource UdsSection}"/>
        <TextBlock Text="原始 UDS PDU" Style="{StaticResource UdsCaption}"/>
        <TextBox Text="{Binding ResponseHex,Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas"/>
        <TextBlock Text="诊断解释 / NRC" Style="{StaticResource UdsCaption}"/>
@@ -176,7 +175,7 @@
    <Border Grid.Column="4" Style="{StaticResource UdsCard}">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
-      <TextBlock Text="ECU PROFILE / INSPECTOR" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="通信配置" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="通信来源：Physical Read / Replay。真实请求共用 P02 主控板会话。"
                  Foreground="{StaticResource UdsMuted}" TextWrapping="Wrap" Margin="0,0,0,10"/>
       <WrapPanel Margin="0,0,0,7">
@@ -209,7 +208,7 @@
   <Border Grid.Row="3" Style="{StaticResource UdsCard}" Margin="0,11,0,0" Padding="10">
    <DockPanel>
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-     <TextBlock Text="TRANSPORT / UDS TRACE" FontWeight="SemiBold"/>
+     <TextBlock Text="诊断通信流水" FontWeight="SemiBold"/>
      <TextBlock Text="    ISO-TP · TX/RX · NRC · 时间线" Foreground="{StaticResource UdsMuted}"/>
      <TextBlock Text="    源=" Foreground="{StaticResource UdsMuted}"/>
      <TextBlock Text="{Binding SourceLabel}" Foreground="#8F611B"/>
