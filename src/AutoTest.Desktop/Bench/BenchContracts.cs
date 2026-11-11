@@ -48,6 +48,16 @@ public interface IBenchWorkbenchPort
         Task.FromResult(new BenchOperationResult(false, null, null, null, null, null, null,
             "PHYSICAL_RELEASE_UNSUPPORTED", "No physical release service connected.",
             BenchEvidenceSource.Physical, null));
+    // Independent physical 20-bit resistor-switch mask. Does not require
+    // importing a Controller Profile or pretending the five output voltages
+    // are automatically measured.
+    Task<BenchOperationResult> ApplyPhysicalKeyMaskAsync(uint mask,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(new BenchOperationResult(false, null, null, null, null,
+            null, null, "DIRECT_KEYSIM_UNSUPPORTED",
+            "The connected bench adapter does not support physical KEY_SIM masks.",
+            BenchEvidenceSource.Physical, null));
+
     Task SaveManualMeasurementAsync(BenchManualMeasurement measurement,
         CancellationToken cancellationToken);
 }
