@@ -98,6 +98,15 @@
      <Grid>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <ItemsControl Grid.Row="0" ItemsSource="{Binding TestCases}" Margin="11,10,11,8">
+       <ItemsControl.Style>
+        <Style TargetType="ItemsControl">
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding Busy}" Value="True">
+           <Setter Property="IsEnabled" Value="False"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style>
+       </ItemsControl.Style>
        <ItemsControl.ItemTemplate>
         <DataTemplate>
          <Border BorderBrush="#E7ECF3" BorderThickness="0,0,0,1" Padding="0,7">
