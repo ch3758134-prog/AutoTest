@@ -74,6 +74,10 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     private bool _running;
     private bool _working;
     private bool _loadingSwitches;
+    private string? _editorProjectId;
+    private bool DifferentProject => _editorProjectId != _port.ActiveProjectId;
+    private const string ProjectChangedMessage =
+        "当前工程已切换：不能把旧工程按键动作发给新 ECU。请返回原工程保存草稿，或取消旧草稿后重新加载。";
     private string _status = "尚未加载工程动作";
     private string _progress = "尚未执行";
     private CancellationTokenSource? _execution;
@@ -268,6 +272,11 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     public async Task LoadAsync()
     {
         if (_running || _working) return;
+        if (_dirty && DifferentProject)
+        {
+            Status = ProjectChangedMessage;
+            return;
+        }
         if (_dirty)
         {
             Status = "存在未保存修改。请先保存；重新加载不会覆盖草稿。";
@@ -277,7 +286,11 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         RaisePropertyChanged(nameof(CanEdit));
         try
         {
+            var editingProjectId = _port.ActiveProjectId;
             var loaded = await _port.LoadKeyActionsAsync(CancellationToken.None);
+            if (editingProjectId != _port.ActiveProjectId)
+                throw new InvalidOperationException("加载期间工程已切换，已拒绝替换编辑器内容。");
+            _editorProjectId = editingProjectId;
             BenchActionValidation.ValidateAll(loaded);
             Actions.Clear();
             SelectedAction = null;
@@ -303,6 +316,11 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     public async Task SaveAsync()
     {
         if (_running || _working) return;
+        if (DifferentProject)
+        {
+            Status = ProjectChangedMessage;
+            return;
+        }
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
         try
@@ -321,6 +339,11 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     public async Task RunAsync()
     {
         if (!CanEdit || SelectedAction is not { } selected) return;
+        if (DifferentProject)
+        {
+            Status = ProjectChangedMessage;
+            return;
+        }
         // Trial runs use a validated frozen snapshot; persistence is optional.
         BenchKeyAction action;
         try
