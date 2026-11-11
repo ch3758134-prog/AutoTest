@@ -19,10 +19,10 @@ function engineeringPlanModel(brief){
     const execution=executions.get(o.id)||null;
     const state=execution?.effective_state||'NOT_LINKED';
     return {object:o,dependencies,unresolved,check,execution,state,
-      action:unresolved.length?'REVIEW_DEPENDENCIES':
+      action:state==='BLOCKED_BY_CHANGED_DESIGN'?'REVALIDATE':
+        unresolved.length?'REVIEW_DEPENDENCIES':
         !check.ready?'COMPLETE_DESIGN':
         !execution?'BIND_GITHUB':
-        state==='BLOCKED_BY_CHANGED_DESIGN'?'REVALIDATE':
         state==='PLANNING'||state==='REVOKED'?'REVIEW_DISPATCH':
         'INSPECT_EXECUTION'};
   });
