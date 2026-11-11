@@ -52,12 +52,16 @@ public partial class MainWindow : Window
     private GridLength _inspectorSaved = new(286);
     private string _activeKey = "project";
     private bool _applyingWorkspaceMode;
+    // WPF TabControl raises SelectionChanged during InitializeComponent;
+    // generated x:Name fields that follow it in XAML are still null then.
+    private bool _xamlReady;
     private readonly Dictionary<int, Window> _floatingDocuments = new();
     private readonly HashSet<int> _openedDocuments = new() { 9, 10 };
 
     public MainWindow()
     {
         InitializeComponent();
+        _xamlReady = true;
         R1FlashView.PhysicalOperationStopped += (_, _) =>
         {
             if (_closePendingFlash && !_disposing && !_closed && !Dispatcher.HasShutdownStarted)
@@ -158,8 +162,12 @@ public partial class MainWindow : Window
 
     private void WorkbenchTabs_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (!ReferenceEquals(args.Source,WorkbenchTabs)) return;
-        int selected=WorkbenchTabs.SelectedIndex;
+        // This routed event fires while InitializeComponent is still creating
+        // TabItems. Do not call PopulateTab/UpdateContext until all x:Name
+        // controls (particularly R1OperatorHost) actually exist.
+        if (!_xamlReady || !ReferenceEquals(args.Source, WorkbenchTabs)) return;
+        int selected = WorkbenchTabs.SelectedIndex;
+        if (selected < 0) return;
         if (IsLoaded && R1WorkspaceMode.SelectedIndex == 0 &&
             selected != 10 && !_applyingWorkspaceMode)
         {
