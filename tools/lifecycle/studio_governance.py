@@ -10,6 +10,7 @@ import json
 
 from studio_store import Store, RuleError, ident, now, text_value
 from studio_definition_research import DefinitionResearch
+from studio_semantics import legacy_project_projection
 
 POLICY_VERSION = "product-definition-control/2"
 FIELDS = ("summary", "body", "version", "variant")
@@ -137,6 +138,7 @@ class DefinitionGovernance:
             return {"project_id":project_id,"policy_version":POLICY_VERSION,
               "domains":[{"key":k,"label":v} for k,v in DOMAINS],
               "definition":current,"definition_digest":current_hash,
+              "interpretation":legacy_project_projection(current),
               "baseline":{"revision":baseline["revision"],"digest":baseline["digest"],
                   "approved_by":baseline["approved_by"],"approved_at":baseline["created"]}
                   if baseline else None,
