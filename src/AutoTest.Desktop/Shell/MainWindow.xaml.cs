@@ -220,9 +220,17 @@ public partial class MainWindow : Window
             else device.ShowStation();
             key = "station"; // same physical controller AND the same WPF view
         }
+        // Professional tools are deliberately NOT IDE document tabs.
+        // Opening any of them gives it a whole, maximizable top-level window
+        // instead of fitting its native control surface into the TEST viewport.
+        if (R1ToolWindowPolicy.IsProfessionalTool(key))
+        {
+            OpenProfessionalToolWindow(key);
+            return;
+        }
         if (_floating.TryGetValue(key, out var window))
         {
-            window.Activate();
+            RestoreToolWindow(window);
             return;
         }
         if (_documents.TryGetValue(key, out var existing))
@@ -257,6 +265,78 @@ public partial class MainWindow : Window
         _documents[key] = tab;
         DocumentTabs.Items.Add(tab);
         DocumentTabs.SelectedItem = tab;
+    }
+
+    private static void RestoreToolWindow(Window window)
+    {
+        if (window.WindowState == WindowState.Minimized)
+            window.WindowState = WindowState.Maximized;
+        window.Activate();
+        window.Focus();
+    }
+
+    /// <summary>
+    /// Full-size professional windows share the same project, physical device
+    /// and tool ViewModels held by this Shell. Closing a window never creates a
+    /// new WinUSB owner, changes TEST documents or disposes the COM scanner.
+    /// </summary>
+    private void OpenProfessionalToolWindow(string key)
+    {
+        key = R1ToolWindowPolicy.Normalize(key);
+        if (_floating.TryGetValue(key, out var existing))
+        {
+            RestoreToolWindow(existing);
+            return;
+        }
+        if (!_titles.ContainsKey(key)) return;
+        var view = GetOrCreateView(key);
+        if (view is null) return;
+
+        // Remove any old central tab if present in a previously opened session.
+        if (_documents.Remove(key, out var obsolete))
+        {
+            obsolete.Content = null;
+            DocumentTabs.Items.Remove(obsolete);
+        }
+
+        // The application can keep running a TEST while an engineer analyzes
+        // CAN/UDS/Wave/Flash in a second full-screen or second-monitor window.
+        var tool = new Window
+        {
+            Title = "AutoTest · " + _titles[key],
+            Width = 1380,
+            Height = 840,
+            MinWidth = 860,
+            MinHeight = 580,
+            Background = Brushes.White,
+            Owner = this,
+            ShowInTaskbar = true,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            WindowState = WindowState.Maximized,
+            Content = view
+        };
+        tool.Closing += (_, e) =>
+        {
+            if (key == "flash" && _flash?.IsPhysicalCan1Busy == true)
+            {
+                e.Cancel = true;
+                if (!_closing)
+                    MessageBox.Show(tool,
+                        "实际 ECU 烧录仍在执行。请在烧录界面请求停止并等待安全结束，不能通过关闭窗口隐藏正在执行的操作。",
+                        "烧录正在执行", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        };
+        tool.Closed += (_, _) =>
+        {
+            // A closed Window cannot be reused, but its professional View can.
+            // Detach the existing View to reopen it in a fresh dedicated window.
+            tool.Content = null;
+            _floating.Remove(key);
+            if (key == "wave" && view is WaveWorkbenchView wave)
+                wave.CancelArchiveRecording();
+        };
+        _floating[key] = tool;
+        tool.Show();
     }
 
     private FrameworkElement? GetOrCreateView(string key)
@@ -435,6 +515,14 @@ public partial class MainWindow : Window
             OpenDocument("flash");
             return;
         }
+        if (R1ToolWindowPolicy.IsProfessionalTool(key))
+        {
+            // A tool's close control lives on its dedicated window, not as an
+            // extra removable tab in the central TEST area.
+            if (_floating.TryGetValue(R1ToolWindowPolicy.Normalize(key), out var toolWindow))
+                toolWindow.Close();
+            return;
+        }
         if (_floating.TryGetValue(key, out var floating))
             floating.Close();
         if (_documents.Remove(key, out var tab))
@@ -450,6 +538,11 @@ public partial class MainWindow : Window
 
     private void FloatDocument(string key)
     {
+        if (R1ToolWindowPolicy.IsProfessionalTool(key))
+        {
+            OpenDocument(key);
+            return;
+        }
         OpenDocument(key);
         if (_floating.TryGetValue(key, out var active))
         {
