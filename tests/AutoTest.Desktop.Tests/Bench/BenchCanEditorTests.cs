@@ -35,13 +35,14 @@ public sealed class BenchCanEditorTests
     }
 
     [Fact]
-    public async Task UnsavedChangesBlockPhysicalCanAndReload()
+    public async Task UnsavedValidCanCanTrialRunWithoutSavingAndReloadKeepsDraft()
     {
         var port = new TestPort();
         var vm = new BenchCanEditorViewModel(port);
         vm.AddCommand.Execute();
         await vm.SendOnceAsync();
-        Assert.Equal(0, port.SendCount);
+        Assert.Equal(1, port.SendCount);
+        Assert.Null(port.Saved);
         await vm.LoadAsync();
         Assert.Single(vm.Messages);
         Assert.True(vm.Dirty);
@@ -59,7 +60,8 @@ public sealed class BenchCanEditorTests
         var port = new TestPort { StayActiveUntilCancel = true };
         var vm = new BenchCanEditorViewModel(port);
         vm.AddCommand.Execute();
-        await vm.SaveAsync();
+        // An unsaved checked frame may be sent as a bench experiment.
+        vm.SelectedMessage!.IsChecked = true;
         var running = vm.StartPeriodicAsync();
         Assert.True(vm.IsPeriodicRunning);
         vm.StopPeriodicCommand.Execute();
@@ -67,6 +69,31 @@ public sealed class BenchCanEditorTests
         Assert.Equal(1, port.PeriodicCount);
         Assert.False(vm.IsPeriodicRunning);
         Assert.Contains("取消", vm.Status);
+    }
+
+    [Fact]
+    public async Task CheckedRowsDefineBatchAndUnselectedRowIsNotTransmitted()
+    {
+        var port = new TestPort();
+        var vm = new BenchCanEditorViewModel(port);
+        vm.AddCommand.Execute();
+        vm.SelectedMessage!.CanIdHex = "0x123";
+        vm.SelectedMessage.DataHex = "01 02";
+        vm.SelectedMessage.PeriodMsText = "100";
+        vm.SelectedMessage.IsChecked = true;
+        vm.AddCommand.Execute();
+        vm.SelectedMessage!.CanIdHex = "0x456";
+        vm.SelectedMessage.PeriodMsText = "250";
+        vm.SelectedMessage.IsChecked = true;
+        vm.AddCommand.Execute();
+        vm.SelectedMessage!.CanIdHex = "0x789";
+        Assert.Equal(2, vm.CheckedCount);
+        await vm.StartPeriodicAsync();
+        Assert.Equal(1, port.PeriodicCount);
+        Assert.Equal(new uint[]{0x123u, 0x456u}, port.LastBatch!.Select(x => x.ArbitrationId).ToArray());
+        Assert.Equal(new int[]{100, 250}, port.LastBatch.Select(x => x.PeriodMs).ToArray());
+        Assert.True(vm.Dirty); // trial did not save
+        Assert.Null(port.Saved);
     }
 
     [Fact]
@@ -111,6 +138,7 @@ public sealed class BenchCanEditorTests
         public int SendCount { get; private set; }
         public int PeriodicCount { get; private set; }
         public bool StayActiveUntilCancel { get; set; }
+        public IReadOnlyList<BenchCanMessage>? LastBatch { get; private set; }
         public Task<IReadOnlyList<BenchCanMessage>> LoadCanMessagesAsync(CancellationToken ct) =>
             Task.FromResult(Saved ?? (IReadOnlyList<BenchCanMessage>)Array.Empty<BenchCanMessage>());
         public Task SaveCanMessagesAsync(IReadOnlyList<BenchCanMessage> messages, CancellationToken ct)
@@ -123,10 +151,12 @@ public sealed class BenchCanEditorTests
                 "CAN1 0x40", "ACK", "trace", null, null, BenchEvidenceSource.Physical,
                 "ACK does not prove ECU received"));
         }
-        public async Task<BenchActionExecution> RunCanPeriodicAsync(BenchCanMessage message,
+        public async Task<BenchActionExecution> RunCanPeriodicBatchAsync(
+            IReadOnlyList<BenchCanMessage> messages,
             IProgress<BenchCanPeriodicProgress>? progress, CancellationToken ct)
         {
             PeriodicCount++;
+            LastBatch = messages.ToArray();
             if (StayActiveUntilCancel) await Task.Delay(TimeSpan.FromSeconds(10), ct);
             return new BenchActionExecution(true, false, false, "test-only");
         }
