@@ -20,7 +20,7 @@ async function capabilityVerificationModal(model){
         const changed=run.test_revision!==test.revision;
         add(line,el('strong','',run.level+' · '+run.outcome+' · '+(run.review_decision||'UNREVIEWED')),
           el('small','',run.created+' · 规格 r'+run.test_revision+(changed?'（历史规格）':'')+
-            ' · '+run.configuration+' · '+run.source_sha.slice(0,12)));
+            ' · '+run.configuration+' · '+(run.source_sha?run.source_sha.slice(0,12):'无软件 SHA')));
         panel.append(line);
       }
       panel.append(button('打开测试执行与证据','outline',()=>verificationHistoryModal(test)));
@@ -62,7 +62,7 @@ async function verificationHistoryModal(test){
 }
 function verificationRecordModal(test){
   showModal('登记测试执行 · '+test.title,(body,footer)=>{
-    body.append(note('只能记录已经实际执行的测试。必须填写真实证据引用和完整代码提交 SHA。系统不根据文字自动验证原始日志，更不会自动签发验收。'));
+    body.append(note('只能记录已经实际执行的测试。必须填写真实证据引用和适用配置；软件单测/集成测试需要完整 Git SHA，纯硬件实测可以不填软件 SHA。系统不根据文字自动验证原始日志，更不会自动签发验收。'));
     const level=selectField(body,'执行层级',VERIFICATION_LEVELS);
     const outcome=selectField(body,'执行观察结论',[
       ['PASS','观察通过'],['FAIL','观察失败'],['INCONCLUSIVE','无法判断']]);
