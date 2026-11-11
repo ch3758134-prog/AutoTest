@@ -425,6 +425,16 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         IProgress<BenchActionProgress>? progress, CancellationToken ct)
     {
         BenchActionValidation.Validate(action);
+        if (_actionStore is null)
+            return new(false, false, false, "未绑定工程动作配置，拒绝真实输出。");
+        // Never execute an unsaved action or one from a different open project.
+        // This also blocks stale action selections after the user switches projects.
+        var currentActions = await _actionStore.LoadAsync(ct);
+        var saved = currentActions.FirstOrDefault(a => a.Id == action.Id);
+        if (saved is null || saved.Name != action.Name ||
+            saved.Steps.Count != action.Steps.Count ||
+            !saved.Steps.SequenceEqual(action.Steps))
+            return new(false, false, false, "当前动作与工程中已保存的配置不一致；请重新加载工程动作。");
         if (_projectPath is null || _projectId is null ||
             string.IsNullOrWhiteSpace(_projectPath()) || string.IsNullOrWhiteSpace(_projectId()))
             return new(false, false, false, "尚未绑定已保存的工程，拒绝真实输出。");
