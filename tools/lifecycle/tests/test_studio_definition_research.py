@@ -52,13 +52,74 @@ class GovernedResearchTests(unittest.TestCase):
         for task in self.research.list(self.change_id)["tasks"]:
             if task["state"]!="REVIEWED":self.confirm(task)
 
-    def test_proposal_creates_exactly_ten_mandatory_research_tasks(self):
+    def test_proposal_starts_with_ten_suggested_research_perspectives(self):
         tasks=self.research.list(self.change_id)["tasks"]
         self.assertEqual({x["domain"] for x in tasks},{x for x,_ in DOMAINS})
         self.assertEqual(len(tasks),10)
         self.assertTrue(all(x["state"]=="OPEN" for x in tasks))
         self.assertEqual(self.change["gate"]["research_required"],10)
         self.assertFalse(self.change["gate"]["ready"])
+
+    def test_suggested_perspectives_can_be_scoped_with_explanation(self):
+        tasks=self.research.list(self.change_id)["tasks"]
+        self.assertEqual(len(tasks),10)
+        for task in tasks:
+            if task["domain"]=="POSITIONING":
+                self.confirm(task)
+                continue
+            self.research.set_not_applicable(
+                task["id"],task["revision"],"Human owner",
+                "This product-identity wording does not change this particular engineering dimension; checked the current scope.",
+                ["study://reviewed-domain-boundary/"+task["domain"]])
+        self.g.review(self.change_id,"POSITIONING","NO_IMPACT",
+            "Identity remains equivalent for the tested user problem",
+            ["study://product-identity"],[],"Human",
+            self.change["change"]["base_digest"])
+        gate=self.g.gate(self.change_id)
+        self.assertTrue(gate["ready"],gate["reasons"])
+        self.assertEqual(gate["research_reviewed"],1)
+        self.assertEqual(gate["research_scoped_out"],9)
+        archive=self.store.export_project(self.project)
+        self.assertEqual(len(archive["governance"]["research_scope_decisions"]),9)
+        restored=self.root/"scope-restored.db"
+        restore_to_empty(archive,restored)
+        self.assertEqual(Store(restored).export_project(self.project)["governance"]
+                         ["research_scope_decisions"],
+                         archive["governance"]["research_scope_decisions"])
+
+    def test_project_specific_research_topic_requires_review_and_can_be_reopened(self):
+        self.complete_research()
+        for domain,_ in DOMAINS:
+            self.g.review(self.change_id,domain,"NO_IMPACT",
+                "Domain evaluated with accepted evidence",
+                ["source://domain-review"],[],"Human",
+                self.change["change"]["base_digest"])
+        self.assertTrue(self.g.gate(self.change_id)["ready"])
+        added=self.research.add_topic(self.change_id,
+            "How can stimulus timing and CAN response be compared?",
+            "Human","Unaddressed practical issue from ECU field operation")
+        self.assertFalse(self.g.gate(self.change_id)["ready"])
+        topic=next(x for x in self.research.list(self.change_id)["tasks"]
+                   if x["id"]==added["task_id"])
+        self.confirm(topic)
+        self.assertTrue(self.g.gate(self.change_id)["ready"])
+        self.research.reopen(topic["id"],2,"Human",
+                             "New timing evidence must be evaluated")
+        self.assertFalse(self.g.gate(self.change_id)["ready"])
+
+    def test_scope_exclusion_is_not_ai_self_approval_or_keyword_rejection(self):
+        task=self.task("POSITIONING")
+        with self.assertRaisesRegex(RuleError,"traceable supporting"):
+            self.research.set_not_applicable(task["id"],1,"Owner",
+                "Wrong use",[])
+        result=self.research.set_not_applicable(task["id"],1,"Owner",
+            "EPB is a first verification example, not necessarily the identity of the generic product",
+            ["discussion://full-user-context"])
+        self.assertEqual(result["state"],"NOT_APPLICABLE")
+        self.assertEqual(self.task("POSITIONING")["state"],"NOT_APPLICABLE")
+        self.research.reopen(task["id"],2,"Owner",
+                             "Reconsider after receiving new stakeholder evidence")
+        self.assertEqual(self.task("POSITIONING")["state"],"OPEN")
 
     def test_ai_submission_remains_candidate_until_owner_review(self):
         task=self.task()
