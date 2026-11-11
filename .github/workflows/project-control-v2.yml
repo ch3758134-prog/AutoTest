@@ -1,0 +1,38 @@
+name: Project Control V2 Candidate
+
+on:
+  push:
+    branches:
+      - management/project-control-redesign-20261111
+    paths:
+      - 'tools/project-control-v2/**'
+      - 'tools/lifecycle/studio_plan_integrity.py'
+      - 'tools/lifecycle/examples/autotest_plan_control_pilot.json'
+      - 'docs/engineering-control/projects/autotest/snapshot.json'
+      - '.github/workflows/project-control-v2.yml'
+  pull_request:
+    paths:
+      - 'tools/project-control-v2/**'
+      - 'tools/lifecycle/studio_plan_integrity.py'
+      - 'docs/engineering-control/projects/autotest/snapshot.json'
+      - '.github/workflows/project-control-v2.yml'
+  workflow_dispatch:
+
+jobs:
+  read-only-workbench-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python syntax
+        run: python -m compileall -q tools/project-control-v2 tools/lifecycle/studio_plan_integrity.py
+      - name: JavaScript syntax
+        run: node --check tools/project-control-v2/app.js
+      - name: Plan candidate integrity
+        run: python -m unittest discover -s tools/lifecycle/tests -p 'test_studio_plan_integrity.py' -v
+      - name: New workbench checks
+        run: python -m unittest discover -s tools/project-control-v2/tests -v
