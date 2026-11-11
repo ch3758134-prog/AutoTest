@@ -142,7 +142,7 @@
        <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="95"/>
        <DataGridTextColumn Header="质量" Binding="{Binding Quality}" Width="95"/>
        <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="90"/>
-       <DataGridTextColumn Header="耗时/时间" Binding="{Binding Utc,StringFormat=HH:mm:ss.fff}" Width="110"/>
+       <DataGridTextColumn Header="耗时/时间" Binding="{Binding AtUtc,StringFormat=HH:mm:ss.fff}" Width="110"/>
        <DataGridTextColumn Header="原始证据" Binding="{Binding TraceReference}" Width="150"/>
        <DataGridTextColumn Header="错误/NRC" Binding="{Binding Diagnostic}" Width="1.4*"/>
       </DataGrid.Columns>
