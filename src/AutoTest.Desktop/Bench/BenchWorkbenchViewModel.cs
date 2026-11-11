@@ -348,6 +348,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 States.Any(s => ReferenceEquals(s, item));
             _lastState = r.Accepted && contextValid ? item : null;
             _lastOperationId = r.Accepted && contextValid ? r.OperationId : null;
+            _lastDirectAcceptedMask = null; _lastDirectOperationId = null;
             ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
             LastOperation = r.Accepted ? $"已接受 · {summary}" : $"已拒绝 · {summary}";
             LastEvidence = $"ACK：{r.AckDescription ?? "未提供"} · 实际电压：未测量";
@@ -412,6 +413,11 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     {
         if (Busy) return;
         Busy = true;
+        // An IGN output command changes the electrical context. Invalidate
+        // any pending manual voltage measurement from a prior key operation.
+        _lastState = null; _lastOperationId = null;
+        _lastDirectAcceptedMask = null; _lastDirectOperationId = null;
+        ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
         var label = on ? "ON" : "OFF";
         IgnStatus = $"请求 IGN {label} · 等待真实主控 ACK / 电压状态 UNKNOWN";
         Append(WorkbenchSeverity.Progress, "请求真实 IGN " + label,
