@@ -11,6 +11,13 @@ const obj=id=>data.objects.find(x=>x.id===id);
 const issueCount=(id)=>data.assessment.issues.filter(x=>x.at===id).length;
 const workById=id=>data.plan.work.find(x=>x.id===id);
 const statusOf=w=>data.assessment.work.find(x=>x.id===w.id)?.assessment || 'UNKNOWN';
+const phaseStatus=s=>{
+ const found=(data?.control?.phase_reviews||[]).filter(r=>r.phase_id===s.id);
+ if(!found.length)return reviewDesc[s.review]||'未核实';
+ const last=found[found.length-1];
+ const labels={PASS:'本地 Gate 通过记录 · 尚需 Git 发布核验',PASS_WITH_LIMITATIONS:'本地限制性通过记录 · 待核验',RETURN:'已退回（本地记录）',DEFER:'已暂缓（本地记录）'};
+ return labels[last.decision]||'阶段决定待核验';
+};
 const workKind={RESEARCH:'调查与研究',DESIGN:'系统与软件设计',IMPLEMENT:'编码与实现',INTEGRATE:'集成',VERIFY:'验证与验收',COORDINATE:'协调与计划'};
 const planningHorizon={CURRENT:'当前工作',NEXT:'下一步',LATER:'后续规划'};
 const workMode={EXPLORATORY:'探索研究',CONTROLLED:'受控工程工作'};
@@ -20,7 +27,7 @@ const pill=(label,tone='unknown')=>'<span class="pill '+a(tone)+'">'+a(label)+'<
 const sectionHead=(title,action='',actionText='')=>'<div class="section-head"><h2>'+a(title)+'</h2>'+(action?'<button class="link" data-go="'+a(action)+'">'+a(actionText)+'</button>':'')+'</div>';
 const heading=(eyebrow,title,desc,actions='')=>'<div class="page-heading"><div><div class="eyebrow">'+a(eyebrow)+'</div><h1>'+a(title)+'</h1><p>'+a(desc)+'</p></div>'+actions+'</div>';
 const btn=(text,action,attr='',kind='secondary')=>'<button class="'+kind+'" '+action+'="'+a(attr)+'">'+a(text)+'</button>';
-const stageCard=s=>'<button class="phase '+(s.id==='G1'?'active':'')+'" data-stage="'+a(s.id)+'"><span class="code">'+a(s.id)+'</span><strong>'+a(s.name)+'</strong><span class="small-status">'+a(reviewDesc[s.review]||s.review)+'</span></button>';
+const stageCard=s=>'<button class="phase '+(s.id==='G1'?'active':'')+'" data-stage="'+a(s.id)+'"><span class="code">'+a(s.id)+'</span><strong>'+a(s.name)+'</strong><span class="small-status">'+a(phaseStatus(s))+'</span></button>';
 const dateHint='未建立经过验证的时间排期，因此不生成虚构的甘特图或完成率。';
 
 function toText(v,n=220){const x=String(v||'').replace(/^#+.*$/gm,'').replace(/\*\*/g,'').replace(/\s+/g,' ').trim();return x.length>n?x.slice(0,n)+'…':x;}
@@ -41,12 +48,14 @@ function miniTask(w){return '<div class="list-row clickable" data-work="'+a(w.id
 function overview(){
  const current=data.plan.work.filter(x=>x.horizon==='CURRENT');
  const g1=data.process.stages.find(x=>x.id==='G1');
- const good=data.assessment.work.filter(x=>x.assessment==='NO_RECORDED_BLOCKER').length;
+ const verified=Object.values(data.control?.progress||{}).filter(x=>x.state==='VERIFIED_COMPLETE').length;
+ const needsReview=data.assessment.work.filter(x=>x.assessment==='NEEDS_REVIEW').length;
+ const planStatus={DRAFT:'计划草拟中',IN_REVIEW:'计划待审',BASELINED:'已有批准计划',REVISION_DRAFT:'计划修订中'}[data.control?.planning?.status]||'未知';
  let html=heading('项目管理 / 概览',data.project.name,'项目目标、开发计划、阶段要求和实际证据应当相互一致。这里优先展示你现在需要把握的事项。');
  html+='<div class="hero"><div class="hero-main"><div class="eyebrow">当前关键管理事项</div><h2>审查 G1 的正式系统需求成果</h2><p>'+a(g1.summary)+' 这份研究可以继续讨论和修订；不因为“报告已经整理”就自动开启缺少有效设计输入的编码任务。</p><div class="actions">'+btn('阅读 G1 完整研究','data-open-doc','at-g1-integrated-autotest-study','primary')+btn('查看阶段要求','data-stage','G1')+'</div></div><div class="hero-side"><div class="eyebrow">当前项目依据</div><h3>产品定义 P0 V0.1</h3><p>已获得正式批准；阶段 Gate 与后续需求、架构和实际验收仍需分别核实。</p><div class="rule"></div><div class="eyebrow">计划真实性</div><p>当前计划是用于研究开发管理关系的候选，不是获批准的项目计划。记录中的已有事实与未来建议严格区分。</p></div></div>';
  html+='<section class="section">'+sectionHead('研发流程','process','查看阶段要求')+'<div class="timeline">'+data.process.stages.map(stageCard).join('')+'</div></section>';
  html+='<section class="section split"><div class="panel"><div class="pane-title"><h2>近期工作</h2><button class="ghost" data-go="plan">全部工作 →</button></div><div class="list">'+current.map(miniTask).join('')+'</div><div class="callout">'+a('这些任务来自未批准的规划方案，不意味着已实际派发给其他 ChatGPT 对话或 Codex。')+'</div></div><div class="panel"><h2>需要警惕的偏差</h2><div class="list"><div class="list-row"><div class="list-icon">!</div><div class="list-copy"><strong>已整理的 G1 不是有效设计基线</strong><p>后续架构和编码不能直接将候选研究当成正式批准输入。</p></div></div><div class="list-row"><div class="list-icon">↻</div><div class="list-copy"><strong>真实 ECU 自动测试闭环尚无整体验收证据</strong><p>已有源码和软件检查应与真实台架验收明确区分。</p></div></div><div class="list-row"><div class="list-icon">◎</div><div class="list-copy"><strong>工作计划需要正式核定</strong><p>现有 '+a(String(data.plan.work.length))+' 项规划仅用于验证管理关系，不代表已经落实的排期。</p></div></div></div></div></section>';
- html+='<section class="section">'+sectionHead('当前资料与计划一致性','plan','查看影响与依赖')+'<div class="value-grid"><div class="value-box"><span>规划中的工作</span><strong>'+data.plan.work.length+'</strong><span>全部为候选计划</span></div><div class="value-box"><span>未发现记录内阻碍</span><strong>'+good+'</strong><span>仅说明没有当前模型已识别的阻碍</span></div><div class="value-box"><span>需核对的规划工作</span><strong>'+(data.plan.work.length-good)+'</strong><span>不会自动禁止独立调查</span></div></div><div class="callout">当前 Git HEAD：'+a((data.source.git_head||'未知').slice(0,12))+'。'+a(data.source.note)+' '+a(dateHint)+'</div></section>';
+ html+='<section class="section">'+sectionHead('当前资料与计划一致性','plan','查看影响与依赖')+'<div class="value-grid"><div class="value-box"><span>计划工作</span><strong>'+data.plan.work.length+'</strong><span>'+a(planStatus)+'</span></div><div class="value-box"><span>工作结果已核实</span><strong>'+verified+'</strong><span>完成核实不等于产品验收</span></div><div class="value-box"><span>输入有待复核</span><strong>'+needsReview+'</strong><span>不会自动禁止独立调查</span></div></div><div class="callout">当前 Git HEAD：'+a((data.source.git_head||'未知').slice(0,12))+'。'+a(data.source.note)+' '+a(dateHint)+'</div></section>';
  return html;
 }
 
@@ -70,18 +79,18 @@ function workPlan(){
 function processView(){
  const s=data.process.stages.find(x=>x.id===selectedStage)||data.process.stages[0];
  let html=heading('项目管理 / 研发流程','既定研发流程','流程定义阶段应达到什么结果，不替代产品交付结构和日常任务计划。每轮可以按实际影响重新执行相应工作，但不能无凭据推断 Gate 已通过。');
- html+='<div class="timeline">'+data.process.stages.map(x=>'<button class="phase '+(x.id===s.id?'active':'')+'" data-stage="'+a(x.id)+'"><span class="code">'+a(x.id)+'</span><strong>'+a(x.name)+'</strong><span class="small-status">'+a(reviewDesc[x.review]||x.review)+'</span></button>').join('')+'</div>';
- html+='<section class="section split"><div class="panel"><div class="eyebrow">阶段要求</div><div class="hstack"><h2>'+a(s.id)+' · '+a(s.name)+'</h2>'+pill(reviewDesc[s.review]||'未核实',stageTone(s))+'</div><p class="subtitle">'+a(s.summary)+'</p><div class="stage-feature"><h3>本阶段的工作结果应当包括</h3><div class="checklist">'+s.required_outcomes.map(x=>'<div class="check-item">□ '+a(x)+'</div>').join('')+'</div></div>'+(s.primary_object?'<div class="actions">'+btn('阅读对应正式/候审文件','data-open-doc',s.primary_object,'primary')+'</div>':'')+'</div><div class="panel"><h2>螺旋开发怎样反映在这里？</h2><p class="subtitle">新的事实、需求调整或设计问题应先形成影响判断，再决定哪些成果与工作需要修订。已有批准版本保持可追溯；未受影响的工作不因为阶段回访而被清空。</p><div class="callout">当前周期正式身份及 Gate 决定未完成核实。界面不会假设 P0 Gate 已通过，也不会把 G1 报告的“研究完成”解释为需求批准。</div></div></section>';
+ html+='<div class="timeline">'+data.process.stages.map(x=>'<button class="phase '+(x.id===s.id?'active':'')+'" data-stage="'+a(x.id)+'"><span class="code">'+a(x.id)+'</span><strong>'+a(x.name)+'</strong><span class="small-status">'+a(phaseStatus(x))+'</span></button>').join('')+'</div>';
+ html+='<section class="section split"><div class="panel"><div class="eyebrow">阶段要求</div><div class="hstack"><h2>'+a(s.id)+' · '+a(s.name)+'</h2>'+pill(phaseStatus(s),stageTone(s))+'</div><p class="subtitle">'+a(s.summary)+'</p><div class="stage-feature"><h3>本阶段的工作结果应当包括</h3><div class="checklist">'+s.required_outcomes.map(x=>'<div class="check-item">□ '+a(x)+'</div>').join('')+'</div></div>'+(s.primary_object?'<div class="actions">'+btn('阅读对应正式/候审文件','data-open-doc',s.primary_object,'primary')+'</div>':'')+'</div><div class="panel"><h2>螺旋开发怎样反映在这里？</h2><p class="subtitle">新的事实、需求调整或设计问题应先形成影响判断，再决定哪些成果与工作需要修订。已有批准版本保持可追溯；未受影响的工作不因为阶段回访而被清空。</p><div class="callout">当前周期正式身份及 Gate 决定未完成核实。界面不会假设 P0 Gate 已通过，也不会把 G1 报告的“研究完成”解释为需求批准。</div></div></section>';
  return html;
 }
 function reviews(){
  const approved=data.objects.filter(o=>o.state==='APPROVED');
- const g1=data.objects.filter(o=>o.id==='at-g1-integrated-autotest-study'||o.id==='at-g1-integrated-behavior-requirements'||o.id==='at-g1-physical-loop-verification-criteria');
- let html=heading('项目管理 / 正式成果与审查','成果与审查','这里不展示 36 个内部工程草稿。只展示正式批准的成果和已整理、确有实际审查意义的候审材料。');
- html+='<div class="review-banner"><div><div class="eyebrow">当前需要确认</div><h3>G1 V1.0 整体需求研究尚未批准</h3><p>本页面不提供跳过审查的按钮。你可以先阅读完整报告，再在正式受控流程中作出修订或批准决定。</p></div>'+btn('阅读 G1 报告','data-open-doc','at-g1-integrated-autotest-study','primary')+'</div>';
+ const g1=data.objects.filter(o=>o.id==='at-g1-integrated-autotest-study');
+ let html=heading('项目管理 / 正式成果与审查','成果与审查','内部草稿和对话记录默认不在此展示。这里只呈现已批准依据和整理完成、可供负责人阅读的研究报告。');
+ html+='<div class="review-banner"><div><div class="eyebrow">已有整理的研究报告</div><h3>G1 V1.0 整体需求研究 · 未批准</h3><p>报告已整理，但尚无独立正式提交审查记录。可先阅读全文，批准或退回须遵循对应正式工程流程。</p></div>'+btn('阅读 G1 报告','data-open-doc','at-g1-integrated-autotest-study','primary')+'</div>';
  html+='<section class="section">'+sectionHead('正式批准的工程依据')+approved.map(o=>'<div class="document-item"><div><strong>'+a(o.title)+'</strong>'+pill('已批准','approved')+'<p>'+a(toText(o.body,210))+'</p></div>'+btn('阅读','data-open-doc',o.id)+'</div>').join('')+'</section>';
- html+='<section class="section">'+sectionHead('需要审查的正式研究成果')+g1.map(o=>'<div class="document-item"><div><strong>'+a(o.title)+'</strong>'+pill('未批准','pending')+'<p>'+a(toText(o.body,240))+'</p></div>'+btn('阅读全文','data-open-doc',o.id)+'</div>').join('')+'</section>';
- html+='<div class="callout">注意：“候审材料”表示可供你检查的研究工作，不表示已经生成不可变的正式提交审批事务。当前试用版本只读，审查动作需要后续正式实现。</div>';
+ html+='<section class="section">'+sectionHead('供负责人阅读的研究报告')+g1.map(o=>'<div class="document-item"><div><strong>'+a(o.title)+'</strong>'+pill('未批准','pending')+'<p>'+a(toText(o.body,240))+'</p></div>'+btn('阅读全文','data-open-doc',o.id)+'</div>').join('')+'</section>';
+ html+='<div class="callout">注意：“候审材料”表示可供你检查的研究工作，不表示已经生成不可变的正式提交审批事务。项目计划、进度和变更可在管理界面操作；这不构成 G1 需求文件批准，正式审查需另行记录。</div>';
  return html;
 }
 function handoff(){
