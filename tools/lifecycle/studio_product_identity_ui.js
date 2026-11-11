@@ -110,6 +110,23 @@ async function productIdentityProposalModal(id){
       impacts.append(button('评估一个实际工程对象','outline',
         ()=>productIdentityImpactModal(data)));
     body.append(impacts);
+    const hints=el('div','detailsection');
+    const candidates=(data.knowledge_impact_candidates||[]).filter(h=>
+      !data.impacts.some(x=>x.object_id===h.object_id));
+    add(hints,el('strong','','工程知识提示的待核查影响 · '+candidates.length),
+      el('p','context','AI 根据已有工程认识与对象关系提出线索，不能自动认定有影响。'));
+    for(const hint of candidates.slice(0,40)){
+      const line=el('div','item-row'),left=el('div');left.style.flex='1';
+      add(left,el('strong','',hint.object_title+' · '+hint.object_kind),
+        el('div','tiny',hint.knowledge_state+' / '+hint.origin_role),
+        el('p','context',hint.interpretation.slice(0,270)));
+      line.append(left);
+      if(p.state==='CANDIDATE'||p.state==='SCOPED')
+        line.append(button('核查此关联','outline',()=>productIdentityImpactModal(data,hint)));
+      hints.append(line);
+    }
+    if(!candidates.length)hints.append(el('p','context','暂无关联线索。AI 可以在工程认识中提出 related_objects，说明为什么某项需求或设计可能受影响。'));
+    body.append(hints);
     const gate=el('div','detailsection');
     add(gate,el('strong','',data.gate.ready?'已满足形式准入条件，仍需负责人签发':'尚不具备发布条件'),
       el('div','tiny','已评估 '+data.gate.assessed_objects+' 项，明确有影响 '+data.gate.impacted_objects+' 项'));
@@ -131,7 +148,7 @@ function productIdentityScopeModal(detail){
   const p=detail.proposal;
   showModal('产品身份变化 · 语义范围复核',(body,footer)=>{
     body.append(note('应结合用户实际讨论、现有工程对象和关联关系解释：哪些内容是真正的身份变化，哪些仍属于当前工程背景；为什么选择考察这些对象？不要求把所有领域机械填成“无影响”。'));
-    const why=field(body,'变化实质、研究范围及尚未排除的风险',p.scope_rationale||'','textarea');
+    const why=field(body,'变化实质、研究范围及尚未排除的风险',p.scope_rationale||p.reasoning||'','textarea');
     const refs=field(body,'支持当前判断的来源（每行一个）',(p.scope_evidence||[]).join('\n'),'textarea');
     const reviewer=field(body,'负责人','项目负责人');
     const err=el('div','error hidden');body.append(err);
@@ -148,20 +165,20 @@ function productIdentityScopeModal(detail){
     }));
   });
 }
-function productIdentityImpactModal(detail){
+function productIdentityImpactModal(detail,hint=null){
   const p=detail.proposal;
   showModal('具体工程对象 · 影响判断',(body,footer)=>{
     body.append(note('选择确实需要考察的对象，并根据实际需求、设计或代码依赖判断。没有被列入不代表已判定无影响；本次分析的边界要在范围复核中明确说明。'));
     const options=state.data.objects.map(x=>[x.id,x.title+' · '+x.kind+' · r'+x.revision]);
     if(!options.length){body.append(el('p','context','当前没有工程对象可供评估；先回到研究与系统分解。'));footer.append(button('返回','outline',()=>productIdentityProposalModal(p.id)));return;}
-    const selected=selectField(body,'受影响或已考察的工程对象',options,options[0][0]);
+    const selected=selectField(body,'受影响或已考察的工程对象',options,hint?.object_id||options[0][0]);
     const outcome=selectField(body,'此对象的判断',[
       ['UNKNOWN','尚不明确，继续调查'],
       ['IMPACT','有影响，需要复核'],
       ['NO_IMPACT','经考察本次无直接影响']
     ],'UNKNOWN');
-    const why=field(body,'判断理由及其限制','','textarea');
-    const refs=field(body,'依据（每行一个）','','textarea');
+    const why=field(body,'判断理由及其限制',hint?.interpretation||'','textarea');
+    const refs=field(body,'依据（每行一个）',(hint?.evidence_refs||[]).join('\n'),'textarea');
     const reviewer=field(body,'负责人','项目负责人');
     const err=el('div','error hidden');body.append(err);
     footer.append(button('返回','outline',()=>productIdentityProposalModal(p.id)));
