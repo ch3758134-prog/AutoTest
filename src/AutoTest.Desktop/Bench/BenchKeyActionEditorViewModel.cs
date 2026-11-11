@@ -13,6 +13,9 @@ namespace AutoTest.Desktop.Bench;
 public sealed class BenchKeyActionItem : BindableBase
 {
     private string _name;
+    private bool _isSelected;
+    // A card reflects the currently selected action without a second UI-only action list.
+    public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
     public string Id { get; }
     public string Name { get => _name; set => SetProperty(ref _name, value); }
     public ObservableCollection<BenchKeyStepItem> Steps { get; } = new();
@@ -171,6 +174,8 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         set
         {
             if (!SetProperty(ref _selectedAction, value)) return;
+            foreach (var action in Actions)
+                action.IsSelected = ReferenceEquals(action, value);
             Steps.Clear();
             if (value is not null)
                 foreach (var step in value.Steps) Steps.Add(step);
