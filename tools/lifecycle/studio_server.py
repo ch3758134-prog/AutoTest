@@ -255,7 +255,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                         data.get("reason",""),data.get("source_refs"),
                         data.get("proposer",""),
                         "OWNER_CANDIDATE" if owner_request else "AI_CANDIDATE",
-                        data.get("expected_digest",""))
+                        data.get("expected_digest",""),
+                        data.get("semantic_notes",""))
                 elif path == "/api/studio/governance/suggest/accept":
                     if not owner_request:
                         return self.write({"error":"Only owner may accept product suggestions"},403)
