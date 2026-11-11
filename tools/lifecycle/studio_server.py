@@ -103,6 +103,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/definition-research.js":
                     return self.write((HERE / "studio_definition_research_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/definition-suggestions.js":
+                    return self.write((HERE / "studio_definition_suggestions_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/restore.js":
                     return self.write((HERE / "studio_restore_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
