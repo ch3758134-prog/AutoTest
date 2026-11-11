@@ -213,7 +213,7 @@
                                Foreground="#167B5A" TextWrapping="Wrap"/>
                     <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#637A90" />
                 </StackPanel>
-                <TextBlock DockPanel.Dock="Right" Text="Physical / Replay / Mock 事实独立" Foreground="#637A90" />
+                <TextBlock DockPanel.Dock="Right" Text="Physical / Replay 原始事实分别记录" Foreground="#637A90" />
             </DockPanel>
         </Border>
     </Grid>
