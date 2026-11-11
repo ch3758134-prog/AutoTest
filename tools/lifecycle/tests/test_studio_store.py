@@ -50,9 +50,14 @@ class EngineeringStoreTest(unittest.TestCase):
         self.assertIn("温室环境控制器", b["project"]["summary"])
         self.assertEqual(len(self.store.projects()), 2)
 
-    def test_project_definitions_are_editable(self):
-        p = self.store.update_project(self.p2["id"], {"summary": "增加记录功能", "version": "0.3"})
-        self.assertEqual(p["project"]["version"], "0.3")
+    def test_project_definitions_cannot_bypass_governance(self):
+        with self.assertRaisesRegex(RuleError,"governed"):
+            self.store.update_project(self.p2["id"], {"summary": "未经审查改变产品定位", "version": "0.3"})
+        before=self.store.project(self.p2["id"])["project"]
+        self.assertNotEqual(before["version"],"0.3")
+        # Administrative project rename is not a semantic product-definition edit.
+        p=self.store.update_project(self.p2["id"],{"name":"新工程名称"})
+        self.assertEqual(p["project"]["name"],"新工程名称")
 
     def test_revision_history_and_explicit_approval(self):
         req = self.create("requirement", "可验证用户要求")
