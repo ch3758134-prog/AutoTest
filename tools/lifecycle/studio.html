@@ -77,7 +77,7 @@ pre.readout{background:#f6f8fb;border:1px solid var(--line);border-radius:8px;pa
 <body>
 <div class="app"><aside class="side">
   <div class="identity"><strong>Engineering<em>.</em></strong><small>研发工程与生命周期管理 · V1.2（独立产品身份与工程知识）</small></div>
-  <div class="projectpicker"><label for="projectSelect">当前产品 / 项目</label><select id="projectSelect"></select><div class="buttonrow" style="margin-top:9px"><button class="link" id="newProject">+ 新建项目</button><button class="link" id="editProject">编辑定义</button></div></div>
+  <div class="projectpicker"><label for="projectSelect">当前产品 / 项目</label><select id="projectSelect"></select><div class="buttonrow" style="margin-top:9px"><button class="link" id="newProject">+ 新建项目</button><button class="link" id="editProject">编辑项目背景</button><button class="link" id="ownerUnlock">负责人授权</button></div></div>
   <div class="sideheading" style="padding-left:12px">研发生命周期</div>
   <nav class="nav" id="nav">
     <button data-view="dashboard" class="active"><b>▦</b>项目驾驶舱</button>
@@ -124,7 +124,40 @@ function toast(message){const node=el('div','toast',message);$('#toasts').append
 async function req(url,data){const params={cache:'no-store'};if(data!==undefined){params.method='POST';params.headers={'Content-Type':'application/json','X-Local-Token':state.token};params.body=JSON.stringify(data)}
   let response=await fetch(url,params),payload=await response.json();if(!response.ok)throw Error(payload.error||'操作失败');return payload;}
 function qs(x){return encodeURIComponent(x)}
-async function boot(){const b=await req('/api/studio/bootstrap');state.token=b.csrf;state.projects=b.projects;let previous=localStorage.getItem('engineering-last-project');state.project=b.projects.some(x=>x.id===previous)?previous:b.projects[0]?.id||null;await refresh(false);navigate('dashboard')}
+async function boot(){
+  const b=await req('/api/studio/bootstrap');
+  state.token='';
+  state.projects=b.projects;
+  let previous=localStorage.getItem('engineering-last-project');
+  state.project=b.projects.some(x=>x.id===previous)?previous:b.projects[0]?.id||null;
+  await refresh(false);navigate('dashboard');
+  ownerUnlockModal();
+}
+function ownerUnlockModal(){
+  showModal('负责人授权 · 启用工程写入',(body,footer)=>{
+    body.append(note('只读浏览不需要授权。要签发设计、修改工程对象或批准执行，请输入启动工作台时提供的负责人访问密钥。此密钥不会通过只读 API 下发，也不会存入浏览器长期存储。管理 AI 使用不同、权限更低的令牌。'));
+    const secret=field(body,'负责人访问密钥');
+    secret.type='password';
+    secret.autocomplete='off';
+    const err=el('div','error hidden');body.append(err);
+    footer.append(button('先以只读方式查看','outline',closeModal));
+    footer.append(button('验证并启用写操作','primary',async()=>{
+      const candidate=secret.value.trim();
+      if(!candidate){err.textContent='请输入负责人访问密钥';err.classList.remove('hidden');return;}
+      state.token=candidate;
+      try{
+        const authenticated=await req('/api/studio/auth/check',{});
+        if(!authenticated.owner)throw Error('授权无效');
+        secret.value='';
+        $('#ownerUnlock').textContent='已授权（本次页面）';
+        closeModal();toast('负责人本次页面授权成功；AI 仍使用独立受限权限');
+      }catch(e){
+        state.token='';secret.value='';
+        err.textContent='授权失败：'+e.message;err.classList.remove('hidden');
+      }
+    }));
+  });
+}
 async function refresh(render=true){if(state.project){state.data=await req('/api/studio/project?id='+qs(state.project));localStorage.setItem('engineering-last-project',state.project)}else state.data=null;
   let picker=$('#projectSelect');clean(picker);if(!state.projects.length)picker.append(new Option('还没有项目',''));else state.projects.forEach(p=>picker.append(new Option(p.name,p.id)));
   picker.value=state.project||'';$('#editProject').disabled=!state.project;$('#export').disabled=!state.project;
@@ -355,7 +388,7 @@ async function historyModal(selected){try{const detail=await req('/api/studio/ob
 function downloadFile(text,filename,format){let blob=new Blob([text],{type:format||'application/json'});let url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),600)}
 async function exportProject(){if(!state.project)return;try{let data=await req('/api/studio/export?project='+qs(state.project));downloadFile(JSON.stringify(data,null,2),'engineering-project-'+state.data.project.name.replace(/[\\/:*?"<>|]/g,'_')+'.json','application/json');toast('已生成项目结构化备份，请妥善保存。')}catch(e){toast(e.message)}}
 $('#projectSelect').onchange=async e=>{state.project=e.target.value;await refresh(false);navigate('dashboard')};
-$('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.data&&projectContextModal(state.data.project);
+$('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.data&&projectContextModal(state.data.project);$('#ownerUnlock').onclick=ownerUnlockModal;
 $('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
 window.addEventListener('load',()=>boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))}));
