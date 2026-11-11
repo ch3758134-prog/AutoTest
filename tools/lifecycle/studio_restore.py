@@ -26,7 +26,8 @@ TABLES = (
     "definition_baselines","definition_changes","definition_reviews",
     "definition_package_reviews","definition_invalidations",
     "definition_research_tasks","definition_research_submissions",
-    "definition_research_decisions","definition_suggestions"
+    "definition_research_decisions","definition_research_scope_decisions",
+    "definition_suggestions"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -65,14 +66,15 @@ def _validate(archive):
     sections["reviews"]=_array(verification.get("reviews"),"reviews")
     governance=archive.get("governance",{"baselines":[],"changes":[],"reviews":[],
         "package_reviews":[],"invalidations":[],"research_tasks":[],
-        "research_submissions":[],"research_decisions":[],"suggestions":[]})
+        "research_submissions":[],"research_decisions":[],
+        "research_scope_decisions":[],"suggestions":[]})
     if not isinstance(governance,dict):
         raise RuleError("Invalid definition governance section")
     for key in ("baselines","changes","reviews","package_reviews","invalidations",
                 "research_tasks","research_submissions","research_decisions",
-                "suggestions"):
+                "research_scope_decisions","suggestions"):
         optional=key in ("package_reviews","research_tasks","research_submissions",
-                         "research_decisions","suggestions")
+                         "research_decisions","research_scope_decisions","suggestions")
         sections["g_"+key]=_array(governance.get(key,[] if optional else None),
                                  "governance."+key)
     objects=sections["objects"]
@@ -189,7 +191,7 @@ def _validate(archive):
     if None in task_ids or len(task_ids)!=len(research_tasks):
         raise RuleError("Duplicate definition research task identities")
     for task in research_tasks:
-        if task.get("change_id") not in change_ids or task.get("state") not in ("OPEN","REVIEWED"):
+        if task.get("change_id") not in change_ids or task.get("state") not in ("OPEN","REVIEWED","NOT_APPLICABLE"):
             raise RuleError("Invalid definition research task")
     submissions=sections["g_research_submissions"]
     submission_ids={x.get("id") for x in submissions}
@@ -237,6 +239,23 @@ def _validate(archive):
             raise RuleError("Accepted suggestion refers to missing governed change")
     if len({x.get("id") for x in sections["g_suggestions"]})!=len(sections["g_suggestions"]):
         raise RuleError("Duplicate product-definition suggestion ID")
+    for decision in sections["g_research_scope_decisions"]:
+        task=task_map.get(decision.get("task_id"))
+        if not task or not isinstance(decision.get("task_revision"),int):
+            raise RuleError("Scope decision references unknown task or revision")
+        if (decision["task_revision"]>task["revision"] or
+            decision.get("decision")!="NOT_APPLICABLE"):
+            raise RuleError("Invalid scope decision or future task revision")
+        try:references=json.loads(decision["evidence_refs"])
+        except (KeyError,TypeError,ValueError) as exc:
+            raise RuleError("Invalid scope decision evidence") from exc
+        if not isinstance(references,list) or not references:
+            raise RuleError("Scope decision must preserve source references")
+    for task in research_tasks:
+        if task["state"]=="NOT_APPLICABLE" and not any(
+            d.get("task_id")==task["id"] and d.get("task_revision")==task["revision"]
+            for d in sections["g_research_scope_decisions"]):
+            raise RuleError("Scoped-out research has no review decision")
     for review in sections["g_package_reviews"]:
         if (review.get("change_id") not in change_ids or
             review.get("package_id") not in ids):
@@ -347,6 +366,7 @@ def restore_to_empty(archive,output_database):
                           ("definition_research_tasks","g_research_tasks"),
                           ("definition_research_submissions","g_research_submissions"),
                           ("definition_research_decisions","g_research_decisions"),
+                          ("definition_research_scope_decisions","g_research_scope_decisions"),
                           ("definition_baselines","g_baselines"),
                           ("definition_reviews","g_reviews"),
                           ("definition_package_reviews","g_package_reviews"),
