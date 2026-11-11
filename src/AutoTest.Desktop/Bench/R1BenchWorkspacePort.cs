@@ -6,6 +6,7 @@ using AutoTest.Devices.Usb;
 using AutoTest.Desktop.Tools.ControllerConfig;
 using AutoTest.Devices.Diagnostics;
 using AutoTest.Projects.ControllerConfig;
+using AutoTest.Projects.Dbc;
 
 namespace AutoTest.Desktop.Bench;
 
@@ -33,6 +34,10 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     private readonly Func<string?>? _projectId;
     public string? ActiveProjectId => _projectId?.Invoke();
     private readonly Func<string?>? _projectName;
+    private readonly Func<DbcDatabase?>? _projectDbc;
+    private readonly Func<string?>? _projectDbcRevision;
+    public DbcDatabase? ActiveDbc => _projectDbc?.Invoke();
+    public string? ActiveDbcRevision => _projectDbcRevision?.Invoke();
     public R1BenchWorkspacePort(Func<ControllerConfigToolViewModel?> configuration,
         Func<HardwareBenchController?> hardware, string? auditPath = null,
         Func<uint,long,bool>? approveKeySim = null,
@@ -43,10 +48,14 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         Func<BenchKeyAction, long, bool>? approveKeyAction = null,
         Func<BenchCanMessage, long, bool, bool>? approveCan = null,
         Func<string?>? projectName = null,
-        Func<IReadOnlyList<BenchCanMessage>, long, bool>? approveCanBatch = null)
+        Func<IReadOnlyList<BenchCanMessage>, long, bool>? approveCanBatch = null,
+        Func<DbcDatabase?>? projectDbc = null,
+        Func<string?>? projectDbcRevision = null)
     {
         _projectPath = projectPath;
         _projectName = projectName;
+        _projectDbc = projectDbc;
+        _projectDbcRevision = projectDbcRevision;
         _projectId = projectId;
         _approveKeyAction = approveKeyAction;
         _approveCan = approveCan;
