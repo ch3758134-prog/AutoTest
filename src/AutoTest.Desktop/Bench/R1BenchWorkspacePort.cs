@@ -20,6 +20,7 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     private readonly Func<HardwareBenchController?> _hardware;
     private readonly Func<uint,long,bool>? _approveKeySim;
     private readonly Func<bool,long,bool>? _approveIgn;
+    private readonly Func<byte,long,bool>? _approveSolenoid;
     private readonly Func<bool>? _testRunning;
     private readonly SemaphoreSlim _saveGate = new(1,1);
     private readonly string _auditPath;
@@ -27,10 +28,12 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         Func<HardwareBenchController?> hardware, string? auditPath = null,
         Func<uint,long,bool>? approveKeySim = null,
         Func<bool,long,bool>? approveIgn = null,
-        Func<bool>? testRunning = null)
+        Func<bool>? testRunning = null,
+        Func<byte,long,bool>? approveSolenoid = null)
     {
         _approveIgn = approveIgn;
         _testRunning = testRunning;
+        _approveSolenoid = approveSolenoid;
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _hardware = hardware ?? throw new ArgumentNullException(nameof(hardware));
         _approveKeySim = approveKeySim;
@@ -314,6 +317,78 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                 : result.Outcome == Outcome.Uncertain
                     ? "IGN 物理输出未知；按现场电压表确认"
                     : "SET_IGN 未获得有效 ACK");
+    }
+
+    public async Task<BenchOperationResult> SetSolenoidAsync(byte action, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var source = BenchEvidenceSource.Physical;
+        if (action > 1)
+            return Reject("SOL_ACTION_INVALID", "电磁阀命令只允许 0=升起、1=下落。", source);
+        if (_testRunning?.Invoke() == true)
+            return Reject("TEST_EXECUTION_ACTIVE", "自动 TEST 正在执行，禁止手动电磁阀动作。", source);
+        var physical = _hardware();
+        if (physical is not { State: UsbSessionState.Connected,
+            ProtocolVersionVerified: true, Generation: > 0 })
+            return Reject("SOL_DEVICE_NOT_READY", "需要已验证版本且已连接的真实主控板。", source);
+        if (physical.PhysicalCanToolFlashActive)
+            return Reject("SOL_FLASH_ACTIVE", "ECU 烧录进行中，禁止电磁阀动作。", source);
+        var generation = physical.Generation;
+        if (_approveSolenoid?.Invoke(action, generation) != true)
+            return Reject("SOL_OPERATOR_REJECTED", "操作员未授权电磁阀动作，未发送。", source);
+        if (!ReferenceEquals(_hardware(), physical) ||
+            physical.Generation != generation ||
+            physical.State != UsbSessionState.Connected ||
+            physical.PhysicalCanToolFlashActive ||
+            _testRunning?.Invoke() == true)
+            return Reject("SOL_SESSION_CHANGED", "确认期间硬件/执行状态变化，未发送。", source);
+        var result = await physical.SetPhysicalSolenoidAsync(action,
+            HardwareBenchController.PhysicalSolenoidConfirmation(action, generation), ct);
+        var accepted = result.Outcome == Outcome.Accepted &&
+            result.Value is { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged };
+        return new BenchOperationResult(accepted,
+            result.Value?.OperationId.ToString("D"),
+            result.OperationId.ToString("D"), generation,
+            $"USB SET_SOL 0x16 PAYLOAD {action:X2} / " + (action == 0 ? "升起" : "下落"),
+            accepted ? "MAIN_CONTROLLER_SET_SOL_ACK" :
+                result.Outcome == Outcome.Uncertain ? "UNKNOWN" : "NOT_SENT",
+            result.Value?.Evidence.ToString(), result.FailureCode,
+            result.Failure?.Message, source,
+            accepted
+                ? "主控 ACK 已接受 SET_SOL；并未测得气缸行程/夹紧到位"
+                : result.Outcome == Outcome.Uncertain
+                    ? "SET_SOL 结果不确定，实际夹具状态 UNKNOWN"
+                    : "未收到可靠 SET_SOL ACK");
+    }
+
+    /// <summary>GET_SOL 0x17 reports firmware action/GPIO state, not mechanical contact.</summary>
+    public async Task<BenchOperationResult> ReadSolenoidAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var source = BenchEvidenceSource.Physical;
+        var physical = _hardware();
+        if (physical is not { State: UsbSessionState.Connected,
+            ProtocolVersionVerified: true, Generation: > 0 })
+            return Reject("SOL_READ_NOT_READY", "未连接已验证的主控板，无法读取固件 GPIO 状态。", source);
+        var generation = physical.Generation;
+        try
+        {
+            var response = await physical.ReadOnlyCommandAsync(
+                FirmwareReadOnlyProtocol.GetSolenoid, TimeSpan.FromSeconds(2), ct);
+            if (physical.State != UsbSessionState.Connected || physical.Generation != generation ||
+                response.Command != FirmwareReadOnlyProtocol.GetSolenoid ||
+                response.Payload.Length != 1 || response.Payload[0] > 1)
+                return Reject("SOL_READ_INVALID",
+                    "GET_SOL 返回与当前主控会话不一致，丢弃陈旧结果。", source);
+            return new BenchOperationResult(true, null, null, generation,
+                "USB GET_SOL 0x17", "GPIO_ACTION_" + response.Payload[0],
+                physical.TraceFile, null, null, source,
+                $"固件报告动作值 {response.Payload[0]}（0=升起/1=下落）；不是机械到位回读");
+        }
+        catch (Exception ex)
+        {
+            return Reject("SOL_READ_FAILED", ex.Message, source);
+        }
     }
 
     private static BenchOperationResult Reject(string code,string detail,BenchEvidenceSource source)
