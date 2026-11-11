@@ -318,11 +318,12 @@ public partial class MainWindow : Window
         };
         tool.Closing += (_, e) =>
         {
-            if (key == "bench" && _benchModel?.KeyActions.IsActionRunning == true)
+            if (key == "bench" && (_benchModel?.KeyActions.IsActionRunning == true ||
+                _benchModel?.CanMessages.IsPeriodicRunning == true))
             {
                 e.Cancel = true;
                 MessageBox.Show(tool,
-                    "真实按键连续动作仍在执行。请在手动台架停止动作并等待当前指令返回，再关闭窗口。",
+                    "手动台架仍在发送真实 KEY_SIM 动作或 CAN1 周期帧。请先停止发送，再关闭窗口。",
                     "手动台架正在执行", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -429,6 +430,17 @@ public partial class MainWindow : Window
                                 $"主控 Session：{generation}\n" +
                                 "结束或停止时均不自动复位；请核对现场接线。是否执行？",
                                 "确认真实连续按键动作",
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                                MessageBoxResult.No) == MessageBoxResult.Yes,
+                        approveCan: (message, generation, periodic) =>
+                            MessageBox.Show(this,
+                                $"向真实 ECU CAN1 发送报文：{message.Name}\n" +
+                                $"ID=0x{message.ArbitrationId:X} / { (message.Extended ? "扩展帧" : "标准帧") }\n" +
+                                $"DATA={message.DataHex} / USB Generation={generation}\n" +
+                                (periodic ? $"PC 定时重复发送，每 {message.PeriodMs} ms。非板端硬实时周期，最大 10000 帧/30 分钟。\\n" :
+                                            "只发送一帧。\\n") +
+                                "这是实际硬件 CAN1 发送，不代表 ECU 已收到。是否授权？",
+                                "确认真实 DUT CAN1 发送",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes));
                 station.Controller.ConnectionChanged += state =>
@@ -789,11 +801,12 @@ public partial class MainWindow : Window
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
         if (_closed || _closing) return;
-        if (_benchModel?.KeyActions.IsActionRunning == true)
+        if ((_benchModel?.KeyActions.IsActionRunning == true ||
+                _benchModel?.CanMessages.IsPeriodicRunning == true))
         {
             e.Cancel = true;
             MessageBox.Show(this,
-                "真实按键动作正在执行。先在手动台架停止动作，避免退出时隐藏正在进行的真实输出。",
+                "手动台架的真实按键动作或 CAN 周期发送仍在执行。请先停止，避免退出时隐藏实际输出。",
                 "手动台架正在执行", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
