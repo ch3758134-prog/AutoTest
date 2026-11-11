@@ -29,13 +29,13 @@
         </Grid.RowDefinitions>
         <DockPanel Grid.Row="0" Margin="0,0,0,12">
             <StackPanel DockPanel.Dock="Left">
-                <TextBlock Text="波形分析工作区" FontSize="23" FontWeight="SemiBold" />
+                <TextBlock Text="波形分析" Style="{StaticResource AtPageTitle}" />
                 <TextBlock Style="{StaticResource SmallCaption}"
-                           Text="DBC 信号 · CAN Replay · 实时共享源 · 参考版本 · 容差证据" />
+                           Text="信号观察 · 采样记录 · 参考波形 · 判定证据" />
             </StackPanel>
             <Border DockPanel.Dock="Right" Background="#D9EBFD" CornerRadius="4"
                     Padding="10,5" HorizontalAlignment="Right">
-                <TextBlock Text="WAVE · LAB I4" Foreground="#127C9D" FontWeight="SemiBold" />
+                <TextBlock Text="DBC / CAN1" Foreground="#127C9D" FontWeight="SemiBold" />
             </Border>
         </DockPanel>
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}"
@@ -43,7 +43,7 @@
             <WrapPanel>
                 <Button Command="{Binding ReloadCommand}" Content="刷新 DBC 信号 (Ctrl+L)" />
                 <Button Command="{Binding ReplayCommand}" Content="↻ 档案 Replay (Ctrl+R)" />
-                <Button Visibility="Collapsed" Command="{Binding MockCommand}" Content="示例 CAN（已停用）" />
+                
                 <TextBox Width="160" Height="28" Text="{Binding ArchivePath, UpdateSourceTrigger=PropertyChanged}"
                          ToolTip="输入/选择保存的 CAN RX JSON 帧档案" Margin="0,0,7,7" />
                 <Button Click="ChooseArchive_Click" Content="选择帧文件…" />
