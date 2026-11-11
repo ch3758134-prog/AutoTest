@@ -7,6 +7,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from studio_store import Store, RuleError
+from studio_amendments import EngineeringAmendments
 
 
 class EngineeringStoreTest(unittest.TestCase):
@@ -40,6 +41,19 @@ class EngineeringStoreTest(unittest.TestCase):
         self.store.approve_relation(link["id"], "Owner", "核对上游设计定义与下游约束")
         return link
 
+    def reviewed_edit(self,obj,patch):
+        current=self.store.object(obj["id"])["item"]
+        amend=EngineeringAmendments(self.store)
+        proposal=amend.propose(current["project_id"],current["id"],
+            current["revision"],patch,"Changed requirement/design needs revision",
+            ["test://reviewed-input"],[],"Owner","OWNER_CANDIDATE")
+        amend.review(proposal["id"],current["revision"],"REVISE","Owner",
+            "Current engineering input requires an explicit new revision",
+            ["test://scope-reviewed"])
+        amend.apply(proposal["id"],current["revision"],"Owner",
+            "Apply reviewed amendment, not direct overwrite")
+        return self.store.object(obj["id"])["item"]
+
     def test_two_independent_products_and_no_ecu_hardcoding(self):
         self.create("requirement", "温度超限自动关闭", self.p2["id"])
         self.create("system", "双 CAN 台架主控", self.p1["id"])
@@ -64,8 +78,10 @@ class EngineeringStoreTest(unittest.TestCase):
         approved = self.approve(req)
         self.assertEqual(approved["state"], "APPROVED")
         self.assertEqual(approved["revision"], 2)
-        edited = self.store.update_object(req["id"], {
-            "expected_revision": approved["revision"], "body": "新需求，待评审"})["item"]
+        with self.assertRaisesRegex(RuleError,"reviewed engineering amendment"):
+            self.store.update_object(req["id"],{
+                "expected_revision":approved["revision"],"body":"新需求，待评审"})
+        edited=self.reviewed_edit(approved,{"body":"新需求，待评审"})
         self.assertEqual(edited["state"], "DRAFT")
         self.assertEqual(edited["revision"], 3)
         self.assertEqual(len(self.store.object(req["id"])["history"]), 3)
@@ -145,7 +161,10 @@ class EngineeringStoreTest(unittest.TestCase):
             "input_revisions":{req["id"]:req["revision"]}})
         self.review_link(req,wp)
         self.approve(wp)
-        self.store.update_object(req["id"],{"expected_revision":2,"body":"新的需求"})
+        with self.assertRaisesRegex(RuleError,"reviewed engineering amendment"):
+            self.store.update_object(req["id"],{
+                "expected_revision":2,"body":"新的需求"})
+        self.reviewed_edit(req,{"body":"新的需求"})
         result=self.store.readiness(wp["id"])
         self.assertFalse(result["ready"])
         self.assertTrue(any("上游对象尚未批准" in r for r in result["reasons"]))
