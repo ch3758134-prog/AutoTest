@@ -391,7 +391,7 @@ public partial class MainWindow : Window
                                 "真实 KEY_SIM 操作确认",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes));
-                station.Controller.ConnectionChanged += _ =>
+                station.Controller.ConnectionChanged += state =>
                 {
                     if (!_closed && !Dispatcher.HasShutdownStarted)
                         Dispatcher.BeginInvoke(new Action(() =>
