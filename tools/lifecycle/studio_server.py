@@ -269,6 +269,12 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     answer = definition_suggestions.reject(
                         data.get("id",""),data.get("reviewer",""),
                         data.get("rationale",""))
+                elif path == "/api/studio/governance/research/activate":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may activate a suggested research topic"},403)
+                    answer = definition_research.activate(
+                        data.get("task_id",""),data.get("expected_revision"),
+                        data.get("reviewer",""),data.get("rationale",""))
                 elif path == "/api/studio/governance/research/scope-out":
                     if not owner_request:
                         return self.write({"error":"Only owner may decide research scope"},403)
