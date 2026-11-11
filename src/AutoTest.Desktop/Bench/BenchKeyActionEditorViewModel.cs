@@ -23,14 +23,43 @@ public sealed class BenchKeyStepItem : BindableBase
 {
     private uint _mask;
     private int _durationMs;
+    private string _durationMsText;
     public BenchActionStepKind Kind { get; }
     public uint Mask { get => _mask; set { if (SetProperty(ref _mask, value)) RaisePropertyChanged(nameof(Summary)); } }
-    public int DurationMs { get => _durationMs; set { if (SetProperty(ref _durationMs, value)) RaisePropertyChanged(nameof(Summary)); } }
+    // Keep an int setter for programmatic loading/tests, but the WPF editor
+    // uses a string. An invalid text value must NEVER silently run the old int.
+    public int DurationMs
+    {
+        get => _durationMs;
+        set
+        {
+            if (SetProperty(ref _durationMs, value))
+                DurationMsText = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+    public string DurationMsText
+    {
+        get => _durationMsText;
+        set { if (SetProperty(ref _durationMsText, value)) RaisePropertyChanged(nameof(Summary)); }
+    }
     public string Summary => Kind == BenchActionStepKind.SetKeys
         ? $"设置完整 Key 状态 · 0x{Mask:X5}"
-        : $"保持当前输出 · {DurationMs} ms";
+        : $"保持当前输出 · {DurationMsText} ms";
     public BenchKeyStepItem(BenchActionStep step)
-    { Kind = step.Kind; _mask = step.Mask; _durationMs = step.DurationMs; }
+    {
+        Kind = step.Kind;
+        _mask = step.Mask;
+        _durationMs = step.DurationMs;
+        _durationMsText = step.DurationMs.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+    public BenchActionStep ToStep()
+    {
+        if (Kind == BenchActionStepKind.SetKeys) return BenchActionStep.SetKeys(Mask);
+        if (!int.TryParse(DurationMsText, System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out var milliseconds))
+            throw new ArgumentException("保持时间必须是 1～600000 的整数毫秒；未执行旧值。");
+        return BenchActionStep.Hold(milliseconds);
+    }
 }
 
 // Editor-only state. Checked Key bits never send hardware themselves.
@@ -152,7 +181,7 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     private void Track(BenchKeyStepItem step) =>
         step.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName is nameof(BenchKeyStepItem.Mask) or nameof(BenchKeyStepItem.DurationMs))
+            if (e.PropertyName is nameof(BenchKeyStepItem.Mask) or nameof(BenchKeyStepItem.DurationMsText))
                 MarkDirty();
         };
 
@@ -264,8 +293,7 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     }
 
     private BenchKeyAction Snapshot(BenchKeyActionItem item) =>
-        new(item.Id, item.Name.Trim(), item.Steps.Select(s =>
-            new BenchActionStep(s.Kind, s.Mask, s.DurationMs)).ToArray());
+        new(item.Id, item.Name.Trim(), item.Steps.Select(s => s.ToStep()).ToArray());
 
     public async Task SaveAsync()
     {
