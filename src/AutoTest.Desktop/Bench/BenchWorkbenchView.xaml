@@ -239,9 +239,21 @@
        Foreground="#8A6734" FontSize="11" TextWrapping="Wrap"/>
       <Border BorderBrush="#E5EBF3" BorderThickness="0,1,0,0" Margin="0,13,0,11"/>
       <TextBlock Text="其他台架硬件" FontWeight="SemiBold" FontSize="13"/>
-      <TextBlock Text="IGN：已识别主控 0x12 协议，但当前底层物理授权路径未接通。"
-       FontSize="11" TextWrapping="Wrap" Margin="0,7,0,4"/>
-      <TextBlock Text="夹具电磁阀、ECU 电源：尚无确认的完整命令/回读接口，不提供假控制按钮。"
+      <TextBlock Text="IGN · 真实主控 SET_IGN 0x12" FontSize="12"
+       FontWeight="SemiBold" Margin="0,7,0,6"/>
+      <WrapPanel Margin="0,0,0,7">
+       <Button Content="IGN ON" Command="{Binding IgnOnCommand}"
+        Foreground="#146A4D" Background="#E7F5ED"
+        FontWeight="SemiBold" Padding="15,7"/>
+       <Button Content="IGN OFF" Command="{Binding IgnOffCommand}"
+        Foreground="#A44835" Background="#FFF3EF"
+        FontWeight="SemiBold" Padding="15,7"/>
+      </WrapPanel>
+      <TextBlock Text="{Binding IgnStatus}" FontSize="11" TextWrapping="Wrap"
+       Foreground="#57738C" Margin="0,0,0,9"/>
+      <TextBlock Text="IGN 高边输出 OFF 表示断开高边开关，不等于主动拉低电平。按钮仅经人工确认后发送；ACK 不等于测得电压。"
+       FontSize="11" TextWrapping="Wrap" Foreground="#8B6733" Margin="0,0,0,9"/>
+      <TextBlock Text="夹具电磁阀、ECU 电源：现有固件与设备层尚无确认的完整操作接口，不提供无法工作的假控制按钮。"
        FontSize="11" TextWrapping="Wrap" Foreground="#8B6733"/>
      </StackPanel>
     </ScrollViewer>
