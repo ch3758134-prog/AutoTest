@@ -33,6 +33,9 @@ async function definitionGovernanceModal(){
       changes.append(line);
     }
     body.append(changes);
+    const suggestionPanel=el('div','detailsection');
+    body.append(suggestionPanel);
+    definitionSuggestionInbox(suggestionPanel,info);
     const work=invalid.filter(x=>x.status==='OPEN');
     if(work.length){
       const box=el('div','detailsection');box.append(el('strong','','已发布变更导致的实施复核：'+work.length+' 项'));
