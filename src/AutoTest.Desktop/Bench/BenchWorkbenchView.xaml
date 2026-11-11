@@ -357,6 +357,11 @@
         <Button Content="重新加载" Click="ReloadKeyActions_Click" Margin="0"/>
        </WrapPanel>
        <WrapPanel Margin="0,0,0,6">
+        <Button Content="释放全部真实按键"
+         Command="{Binding DataContext.ReleaseAllKeysCommand,RelativeSource={RelativeSource AncestorType=UserControl}}"
+         Foreground="#A74541" Background="#FFF1EC" Margin="0"/>
+       </WrapPanel>
+       <WrapPanel Margin="0,0,0,6">
         <Button Content="复制动作" Command="{Binding CopyActionCommand}"/>
         <Button Content="删除动作" Command="{Binding DeleteActionCommand}" Margin="0"/>
        </WrapPanel>
@@ -392,9 +397,6 @@
        </WrapPanel>
        <TextBlock Text="{Binding SolenoidStatus}" FontSize="10" Foreground="#536F89"
         TextWrapping="Wrap"/>
-       <Button Content="释放全部真实按键" Command="{Binding ReleaseAllKeysCommand}"
-        HorizontalAlignment="Left" Foreground="#A74541" Background="#FFF1EC"
-        Margin="0,7,0,0"/>
       </StackPanel>
      </Border>
     </Grid>
