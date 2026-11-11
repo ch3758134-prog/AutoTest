@@ -113,6 +113,7 @@ async function definitionChangeModal(id){
         bar.append(el('div','context','• '+reason));
     }else bar.append(note('全部领域已完成有效评估，但这不等于认证了证据真实性、设计正确性或真实设备可用。'));
     body.append(bar);
+    const scopeByDomain=Object.fromEntries((detail.research_scope||[]).map(t=>[t.domain,t]));
     for(const entry of [
       ['POSITIONING','产品定位与价值目标'],['STAKEHOLDERS','用户、角色与使用环境'],
       ['WORKFLOWS','端到端业务场景与操作流程'],['CAPABILITIES','产品能力与功能边界'],
@@ -123,12 +124,22 @@ async function definitionChangeModal(id){
       ['DELIVERY_RISK','进度、风险和交付']
     ]){
       const [key,label]=entry,prior=byDomain[key],line=el('div','item-row');
+      const scope=scopeByDomain[key];
       const left=el('div');left.style.flex='1';
-      add(left,el('strong','',label),el('div','tiny',prior?prior.outcome:'尚未评估'));
+      const labelState=scope?.state==='SUGGESTED'?'参考视角（未选为本次任务）':
+        scope?.state==='NOT_APPLICABLE'?'已说明本次不适用':
+        scope?.state==='OPEN'?'正在研究，不能先下结论':
+        prior?prior.outcome:'研究已确认，待评估影响';
+      add(left,el('strong','',label),el('div','tiny',labelState));
       if(prior)add(left,el('div','context',prior.rationale.slice(0,260)),
                    el('div','tiny','证据 '+prior.evidence_refs.length+' 项 · 显式影响对象 '+Object.keys(prior.affected_revisions).length+' 项'));
       line.append(left);
-      if(c.state==='REVIEW')line.append(button(prior?'重新评估':'评估此领域','outline',()=>definitionDomainModal(detail,key,label,prior)));
+      if(c.state==='REVIEW'){
+        if(scope?.state==='REVIEWED')
+          line.append(button(prior?'重新评估':'评估影响','outline',()=>definitionDomainModal(detail,key,label,prior)));
+        else if(scope?.state==='OPEN'||scope?.state==='SUGGESTED')
+          line.append(button('处理研究范围','outline',()=>definitionResearchModal(c.id)));
+      }
       body.append(line);
     }
     const implementation=el('div','detailsection');
