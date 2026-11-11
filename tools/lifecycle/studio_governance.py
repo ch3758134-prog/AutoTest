@@ -83,6 +83,13 @@ class DefinitionGovernance:
                   rationale TEXT NOT NULL, evidence_refs TEXT NOT NULL,
                   affected_revisions TEXT NOT NULL, reviewer TEXT NOT NULL,
                   reviewed_at TEXT NOT NULL, PRIMARY KEY(change_id,domain));
+                CREATE TABLE IF NOT EXISTS definition_package_reviews(
+                  change_id TEXT NOT NULL REFERENCES definition_changes(id),
+                  package_id TEXT NOT NULL REFERENCES objects(id),
+                  outcome TEXT NOT NULL, rationale TEXT NOT NULL,
+                  evidence_refs TEXT NOT NULL, reviewed_revision INTEGER NOT NULL,
+                  reviewer TEXT NOT NULL, reviewed_at TEXT NOT NULL,
+                  PRIMARY KEY(change_id,package_id));
                 CREATE TABLE IF NOT EXISTS definition_invalidations(
                   project_id TEXT NOT NULL REFERENCES projects(id),
                   package_id TEXT NOT NULL REFERENCES objects(id),
@@ -143,7 +150,17 @@ class DefinitionGovernance:
                 review["affected_revisions"]=_json(review["affected_revisions"],"affected revisions")
             change["proposed"]=_json(change.pop("proposed_json"),"proposed definition")
             change["source_refs"]=_json(change.pop("source_refs"),"source refs")
-            return {"change":change,"reviews":reviews,"gate":self._gate(db,change)}
+            package_reviews=[dict(x) for x in db.execute(
+                "SELECT * FROM definition_package_reviews WHERE change_id=? ORDER BY package_id",
+                (change_id,))]
+            for entry in package_reviews:
+                entry["evidence_refs"]=_json(entry["evidence_refs"],"package references")
+            packages=[{"id":x["id"],"title":x["title"],"revision":x["revision"],
+                       "state":x["state"]} for x in db.execute(
+                "SELECT id,title,revision,state FROM objects WHERE project_id=? AND kind='work_package' ORDER BY title,id",
+                (change["project_id"],))]
+            return {"change":change,"reviews":reviews,"package_reviews":package_reviews,
+                    "packages":packages,"gate":self._gate(db,change)}
 
     def propose(self,project_id,proposed,reason,source_refs,proposer,expected_digest):
         proposed=_text_fields(proposed)
@@ -229,6 +246,44 @@ class DefinitionGovernance:
                               change_id+" / "+domain+" / "+outcome+" / "+rationale)
         return self.detail(change_id)
 
+    def review_package(self,change_id,package_id,outcome,rationale,evidence_refs,
+                       reviewer,expected_base_digest,expected_package_revision):
+        if outcome not in ("IMPACT","NO_IMPACT","UNKNOWN"):
+            raise RuleError("Unknown implementation package impact decision")
+        rationale=text_value(rationale,"implementation review",limit=12000,mandatory=True)
+        reviewer=text_value(reviewer,"reviewer",limit=150,mandatory=True)
+        if (not isinstance(evidence_refs,list) or not evidence_refs or len(evidence_refs)>30
+            or any(not isinstance(x,str) or not x.strip() or len(x)>1000 for x in evidence_refs)):
+            raise RuleError("Work package impact review requires referenced evidence")
+        with self.store.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            change=self._change(db,change_id)
+            if change["state"]!="REVIEW":raise RuleError("Definition change is sealed")
+            _,baseline,_,current_hash=self._snapshot(db,change["project_id"])
+            if (change["base_digest"]!=current_hash or
+                expected_base_digest!=current_hash or
+                change["base_revision"]!=(baseline["revision"] if baseline else 0)):
+                raise RuleError("Product definition baseline changed; refresh before review")
+            obj=self.store._require_object(db,package_id)
+            if obj["kind"]!="work_package" or obj["project_id"]!=change["project_id"]:
+                raise RuleError("Review target must be a work package in this project")
+            if type(expected_package_revision) is not int or obj["revision"]!=expected_package_revision:
+                raise RuleError("Work package revision conflict; review latest implementation")
+            db.execute("""INSERT INTO definition_package_reviews
+               (change_id,package_id,outcome,rationale,evidence_refs,
+                reviewed_revision,reviewer,reviewed_at)
+               VALUES(?,?,?,?,?,?,?,?)
+               ON CONFLICT(change_id,package_id) DO UPDATE SET
+                 outcome=excluded.outcome,rationale=excluded.rationale,
+                 evidence_refs=excluded.evidence_refs,
+                 reviewed_revision=excluded.reviewed_revision,
+                 reviewer=excluded.reviewer,reviewed_at=excluded.reviewed_at""",
+               (change_id,package_id,outcome,rationale,
+                json.dumps(evidence_refs,ensure_ascii=False),obj["revision"],reviewer,now()))
+            self.store._audit(db,change["project_id"],package_id,
+                "REVIEW_IMPLEMENTATION_IMPACT",reviewer,change_id+" / "+outcome+" / "+rationale)
+        return self.detail(change_id)
+
     def _gate(self,db,change):
         project,baseline,current,current_hash=self._snapshot(db,change["project_id"])
         reasons=[]
@@ -256,8 +311,34 @@ class DefinitionGovernance:
                 if not obj or obj["project_id"]!=change["project_id"] or obj["revision"]!=revision:
                     reasons.append(domain+": referenced engineering object changed "+oid)
         if missing:reasons.append("Mandatory impact domains not reviewed: "+", ".join(missing))
+        packages=[dict(x) for x in db.execute(
+            "SELECT id,title,revision FROM objects WHERE project_id=? AND kind='work_package'",
+            (change["project_id"],))]
+        reviews_by_package={x["package_id"]:dict(x) for x in db.execute(
+            "SELECT * FROM definition_package_reviews WHERE change_id=?",(change["id"],))}
+        # Unknown edges cannot silently exempt implementation work. Require an
+        # explicit disposition of EVERY work package at a product-level change.
+        affected_by_graph={p["id"] for p in self._affected_packages(db,change["id"])}
+        missing_packages=[]
+        for package in packages:
+            review=reviews_by_package.get(package["id"])
+            if review is None:
+                missing_packages.append(package["title"]);continue
+            if review["outcome"]=="UNKNOWN":
+                reasons.append("Unresolved work package impact: "+package["title"])
+            if review["reviewed_revision"]!=package["revision"]:
+                reasons.append("Work package review is stale: "+package["title"])
+            if not review["rationale"] or not _json(review["evidence_refs"],"package evidence"):
+                reasons.append("Work package impact lacks evidence: "+package["title"])
+            if review["outcome"]=="NO_IMPACT" and package["id"] in affected_by_graph:
+                reasons.append("Work package no-impact conflicts with reviewed dependency graph: "+
+                               package["title"])
+        if missing_packages:
+            reasons.append("Implementation work packages not individually reviewed: "+
+                           ", ".join(missing_packages[:20]))
         return {"ready":not reasons,"reasons":reasons,"missing_domains":missing,
                 "reviewed":len(reviews),"required":len(DOMAINS),
+                "package_reviewed":len(reviews_by_package),"package_total":len(packages),
                 "new_baseline_revision":change["base_revision"]+1}
 
     def gate(self,change_id):
@@ -280,6 +361,9 @@ class DefinitionGovernance:
                 if link["status"]!="APPROVED" or link["kind"] not in FOLLOW_LINKS:continue
                 if link["target_id"] not in reached:
                     reached.add(link["target_id"]);queue.append(link["target_id"])
+        for row in db.execute("""SELECT package_id FROM definition_package_reviews
+                  WHERE change_id=? AND outcome='IMPACT'""",(change_id,)):
+            reached.add(row["package_id"])
         if not reached:return []
         return [dict(x) for x in db.execute(
             "SELECT id,title,revision FROM objects WHERE project_id=? AND kind='work_package'",
