@@ -268,7 +268,7 @@
        </Style.Triggers>
       </Style>
      </TabControl.Style>
-     <TabItem Header="P01 工程">
+     <TabItem Header="工程资源">
       <ScrollViewer Background="#F5F7FA" VerticalScrollBarVisibility="Auto">
        <StackPanel Margin="20,18,20,25">
         <DockPanel Margin="0,0,0,15">
@@ -360,43 +360,43 @@
        </StackPanel>
       </ScrollViewer>
      </TabItem>
-     <TabItem Header="P02 Station">
+     <TabItem Header="Station / USB">
       <ContentControl x:Name="R1StationHost"/>
      </TabItem>
-     <TabItem Header="P03 CAN Monitor">
+     <TabItem Header="CAN Monitor">
       <ContentControl x:Name="R1CanHost"/>
      </TabItem>
-     <TabItem Header="P04 DBC">
+     <TabItem Header="DBC 编辑">
       <ContentControl x:Name="R1DbcHost"/>
      </TabItem>
-     <TabItem Header="P05 控制器">
+     <TabItem Header="Controller">
       <ContentControl x:Name="R1ControllerHost"/>
      </TabItem>
-     <TabItem Header="P06 台架">
+     <TabItem Header="手动台架">
       <ContentControl x:Name="R1BenchHost"/>
      </TabItem>
-     <TabItem Header="P07 波形">
+     <TabItem Header="Wave Studio">
       <ContentControl x:Name="R1WaveHost"/>
      </TabItem>
-     <TabItem Header="P08 UDS">
+     <TabItem Header="UDS Console">
       <uds:UdsToolView x:Name="R1UdsView"/>
      </TabItem>
-     <TabItem Header="P09 Flash">
+     <TabItem Header="CAN Flash">
       <flash:FlashToolView x:Name="R1FlashView"/>
      </TabItem>
-     <TabItem Header="P10 TEST">
+     <TabItem Header="TEST 编辑">
       <ContentControl x:Name="R2AuthoringHost"/>
      </TabItem>
-     <TabItem Header="P11 Run">
+     <TabItem Header="自动测试">
       <ContentControl x:Name="R1RunHost"/>
      </TabItem>
-     <TabItem Header="工位扫码 / 编号绑定">
+     <TabItem Header="编号绑定 / COM">
       <ContentControl x:Name="R1ProductionHost"/>
      </TabItem>
-     <TabItem Header="P13 Records">
+     <TabItem Header="记录报告">
       <ContentControl x:Name="R1RecordsHost"/>
      </TabItem>
-     <TabItem Header="审计 Trace">
+     <TabItem Header="审计 / Trace">
       <ContentControl x:Name="R1OperationsHost"/>
      </TabItem>
     </TabControl>
