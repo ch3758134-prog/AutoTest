@@ -8,6 +8,9 @@ public sealed class PhysicalCommandFence
     private byte[]? _singleCanPayload;
     private DateTimeOffset _canExpiry;
     private long _authorizedConnection;
+    private bool? _authorizedIgnOn;
+    private DateTimeOffset _ignExpiry;
+    private long _ignConnection;
 
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is 0xF0 or 0xF1 or 0x11 or 0x13 or 0x15 or 0x17 or 0x1F);
@@ -31,6 +34,30 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>
+    /// One-shot, session-bound IGN command authorization. SET_IGN=0x12 carries
+    /// exactly one byte (1=ON / 0=OFF). It is NEVER authorized by a CAN lease.
+    /// </summary>
+    public void AuthorizeSingleIgn(bool on, string exactConfirmation,
+        long connectionGeneration)
+    {
+        if (connectionGeneration <= 0) throw new InvalidOperationException("No live connection.");
+        var expected = "AUTHORIZE IGN " + (on ? "ON" : "OFF") + " GEN " + connectionGeneration;
+        if (!string.Equals(exactConfirmation, expected, StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("IGN requires explicit per-operation approval.");
+        lock (_sync)
+        {
+            _authorizedIgnOn = on;
+            _ignConnection = connectionGeneration;
+            _ignExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
+        }
+    }
+
+    public void RevokeSingleIgn()
+    {
+        lock (_sync) { _authorizedIgnOn = null; _ignConnection = 0; _ignExpiry = default; }
+    }
+
     /// <summary>Revocation of a not-yet-consumed exact CAN grant; safe on cancellation.</summary>
     public void RevokeSingleCanFrame()
     {
@@ -49,6 +76,18 @@ public sealed class PhysicalCommandFence
         if (IsReadOnly(request.Command, request.Payload)) return;
         lock (_sync)
         {
+            if (request.Command == MainControllerCodec.SetIgn &&
+                request.Payload.Length == 1 && request.Payload[0] <= 1 &&
+                _authorizedIgnOn.HasValue &&
+                _authorizedIgnOn.Value == (request.Payload[0] == 1) &&
+                _ignConnection == connectionGeneration &&
+                DateTimeOffset.UtcNow < _ignExpiry)
+            {
+                _authorizedIgnOn = null; // one shot, consumed BEFORE physical I/O
+                _ignConnection = 0;
+                _ignExpiry = default;
+                return;
+            }
             if (request.Command == MainControllerCodec.CanSend && _singleCanPayload is not null &&
                 _authorizedConnection == connectionGeneration && DateTimeOffset.UtcNow < _canExpiry &&
                 request.Payload.AsSpan().SequenceEqual(_singleCanPayload))
@@ -62,6 +101,10 @@ public sealed class PhysicalCommandFence
 
     public void Reset()
     {
-        lock (_sync) { _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default; }
+        lock (_sync)
+        {
+            _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
+            _authorizedIgnOn = null; _ignConnection = 0; _ignExpiry = default;
+        }
     }
 }
