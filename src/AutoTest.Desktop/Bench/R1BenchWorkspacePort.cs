@@ -24,13 +24,24 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     private readonly Func<bool>? _testRunning;
     private readonly SemaphoreSlim _saveGate = new(1,1);
     private readonly string _auditPath;
+    private readonly ProjectBenchActionsStore? _actionStore;
+    private readonly Func<BenchKeyAction, long, bool>? _approveKeyAction;
+    private readonly Func<string?>? _projectPath;
+    private readonly Func<string?>? _projectId;
     public R1BenchWorkspacePort(Func<ControllerConfigToolViewModel?> configuration,
         Func<HardwareBenchController?> hardware, string? auditPath = null,
         Func<uint,long,bool>? approveKeySim = null,
         Func<bool,long,bool>? approveIgn = null,
         Func<bool>? testRunning = null,
-        Func<byte,long,bool>? approveSolenoid = null)
+        Func<byte,long,bool>? approveSolenoid = null,
+        Func<string?>? projectPath = null, Func<string?>? projectId = null,
+        Func<BenchKeyAction, long, bool>? approveKeyAction = null)
     {
+        _projectPath = projectPath;
+        _projectId = projectId;
+        _approveKeyAction = approveKeyAction;
+        if (projectPath is not null && projectId is not null)
+            _actionStore = new ProjectBenchActionsStore(projectPath, projectId);
         _approveIgn = approveIgn;
         _testRunning = testRunning;
         _approveSolenoid = approveSolenoid;
@@ -393,6 +404,92 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
 
     private static BenchOperationResult Reject(string code,string detail,BenchEvidenceSource source)
         => new(false,null,null,null,null,null,null,code,detail,source,null);
+
+    public Task<IReadOnlyList<BenchKeyAction>> LoadKeyActionsAsync(CancellationToken ct) =>
+        _actionStore is null
+            ? Task.FromException<IReadOnlyList<BenchKeyAction>>(
+                new InvalidOperationException("手动台架未绑定当前工程。"))
+            : _actionStore.LoadAsync(ct);
+
+    public Task SaveKeyActionsAsync(IReadOnlyList<BenchKeyAction> actions, CancellationToken ct) =>
+        _actionStore is null
+            ? Task.FromException(new InvalidOperationException("手动台架未绑定当前工程。"))
+            : _actionStore.SaveAsync(actions, ct);
+
+    /// <summary>
+    /// One operator authorization for a frozen action plan. Every SetKeys step
+    /// is a real KEY_SIM CAN0 operation, not a fake voltages/simulated ECU.
+    /// Cancellation does NOT send an invented "neutral" mask.
+    /// </summary>
+    public async Task<BenchActionExecution> RunKeyActionAsync(BenchKeyAction action,
+        IProgress<BenchActionProgress>? progress, CancellationToken ct)
+    {
+        BenchActionValidation.Validate(action);
+        if (_projectPath is null || _projectId is null ||
+            string.IsNullOrWhiteSpace(_projectPath()) || string.IsNullOrWhiteSpace(_projectId()))
+            return new(false, false, false, "尚未绑定已保存的工程，拒绝真实输出。");
+        if (_testRunning?.Invoke() == true)
+            return new(false, false, false, "自动 TEST 正在运行，禁止手动按键动作。");
+        var physical = _hardware();
+        if (physical is not { State: UsbSessionState.Connected,
+            ProtocolVersionVerified: true, Generation: > 0 })
+            return new(false, false, false, "真实主控尚未连接并完成协议版本验证。");
+        if (physical.PhysicalCanToolFlashActive)
+            return new(false, false, false, "真实 CAN1 烧录进行中，禁止 KEY_SIM 操作。");
+        var generation = physical.Generation;
+        var identity = _projectId();
+        var projectPath = _projectPath();
+        var frozen = new BenchKeyAction(action.Id, action.Name, action.Steps.ToArray());
+        if (_approveKeyAction?.Invoke(frozen, generation) != true)
+            return new(false, false, false, "用户取消真实按键连续动作；未发送。");
+
+        string? lastMask = null;
+        try
+        {
+            for (var i = 0; i < frozen.Steps.Count; ++i)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!ReferenceEquals(_hardware(), physical) ||
+                    physical.Generation != generation ||
+                    physical.State != UsbSessionState.Connected ||
+                    !physical.ProtocolVersionVerified ||
+                    physical.PhysicalCanToolFlashActive ||
+                    _testRunning?.Invoke() == true ||
+                    _projectId() != identity || _projectPath() != projectPath)
+                    return new(false, false, false,
+                        "动作执行期间工程、主控会话或设备占用发生变化，停止后续步骤；最后开关状态 UNKNOWN。");
+                var step = frozen.Steps[i];
+                if (step.Kind == BenchActionStepKind.SetKeys)
+                {
+                    var result = await physical.SetPhysicalKeySimMaskAsync(step.Mask,
+                        HardwareBenchController.PhysicalKeySimConfirmation(step.Mask, generation), ct);
+                    var accepted = result.Outcome == Outcome.Accepted &&
+                        result.Value is { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged };
+                    if (!accepted)
+                        return new(false, false, false,
+                            $"步骤 {i + 1} 主控 ACK 未确认：{result.FailureCode ?? "UNKNOWN"}；" +
+                            "不推断最终 KEY_SIM 开关或 ECU 识别状态。");
+                    lastMask = $"0x{step.Mask:X5}";
+                    progress?.Report(new BenchActionProgress(i + 1, frozen.Steps.Count,
+                        $"已请求 Key 状态 {lastMask}，主控 CAN_SEND ACK；五路实际电压未测量"));
+                }
+                else
+                {
+                    progress?.Report(new BenchActionProgress(i + 1, frozen.Steps.Count,
+                        $"保持当前 Key 状态 {step.DurationMs} ms"));
+                    await Task.Delay(step.DurationMs, ct);
+                }
+            }
+            return new(true, false, false,
+                $"动作执行完成；最后已确认发送掩码 {lastMask ?? "UNKNOWN"}。" +
+                "未自动恢复任何状态，五路电压及 ECU 识别均未测量。");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return new(false, true, false,
+                "用户停止动作；不会自动释放或恢复。最后已发送的开关状态可能保持，实际电压 UNKNOWN。");
+        }
+    }
 
     public async Task SaveManualMeasurementAsync(BenchManualMeasurement measurement,CancellationToken ct)
     {
