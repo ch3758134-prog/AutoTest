@@ -24,6 +24,7 @@ from studio_semantics import semantic_context
 from studio_knowledge import EngineeringKnowledge
 from studio_product_identity import ProductIdentity
 from studio_amendments import EngineeringAmendments
+from studio_git_management import current_views as git_manager_views
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -131,6 +132,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write({"schema":"engineering-workbench/2",
                                        "owner_auth":"required",
                                        "projects":store.projects()})
+                if path == "/api/studio/git-management":
+                    return self.write(git_manager_views(source_root))
                 if path == "/api/studio/projects":
                     return self.write(store.projects())
                 if path == "/api/studio/project":
