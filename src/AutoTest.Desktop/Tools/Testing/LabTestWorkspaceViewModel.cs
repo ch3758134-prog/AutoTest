@@ -130,6 +130,12 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         _editor = new LabDocumentEditor(LabDocument.New("R1 工程测试程序"));
         _runner = new LabRunCoordinator();
         _ui = SynchronizationContext.Current;
+        Facts.CollectionChanged += (_, _) =>
+        {
+            Changed(nameof(RunFactsText));
+            Changed(nameof(CurrentStepText));
+            Changed(nameof(CurrentFailureText));
+        };
         _runner.FactProduced += fact =>
         {
             var generation = _runGeneration;
@@ -194,10 +200,38 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         {
             var choice = new LabTestCaseChoice(item);
             if (oldSelection.TryGetValue(item.Id, out var previous)) choice.IsSelected = previous;
+            choice.PropertyChanged += (_, _) => Changed(nameof(SelectedScopeText));
             TestCases.Add(choice);
         }
+        Changed(nameof(SelectedScopeText));
     }
     public ObservableCollection<LabStepFact> Facts { get; } = new();
+    public string SelectedScopeText =>
+        TestCases.Count == 0 ? "当前 TEST 尚无可运行用例" :
+        $"已勾选 {TestCases.Count(x => x.IsSelected)} / {TestCases.Count} 个测试用例";
+    public string RunFactsText =>
+        $"{Facts.Count} 条实际步骤事实";
+    public string CurrentStepText
+    {
+        get
+        {
+            var last = Facts.LastOrDefault();
+            return last is null ? "等待执行" :
+                $"{last.Phase} · {last.NodeType} · {last.Verdict}";
+        }
+    }
+    public string CurrentFailureText
+    {
+        get
+        {
+            var failure = Facts.LastOrDefault(f =>
+                f.Verdict is LabVerdict.Error or LabVerdict.Fail);
+            return failure is null ? "无已观察到的失败步骤" :
+                failure.NodeType + "：" + (string.IsNullOrWhiteSpace(failure.Diagnostic)
+                    ? $"预期 {failure.Expected} / 实际 {failure.Actual ?? "未观测"}"
+                    : failure.Diagnostic);
+        }
+    }
     public ObservableCollection<KeyValuePair<string, string>> ParameterRows { get; } = new();
     public ObservableCollection<R1ControllerStateChoice> ControllerStateChoices { get; } = new();
     public R1ControllerStateChoice? SelectedControllerChoice
