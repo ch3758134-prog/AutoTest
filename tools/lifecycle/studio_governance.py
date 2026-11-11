@@ -9,6 +9,7 @@ import hashlib
 import json
 
 from studio_store import Store, RuleError, ident, now, text_value
+from studio_definition_research import DefinitionResearch
 
 POLICY_VERSION = "product-definition-control/1"
 FIELDS = ("summary", "body", "version", "variant")
@@ -99,6 +100,7 @@ class DefinitionGovernance:
                   resolution TEXT, resolved_at TEXT,
                   PRIMARY KEY(package_id,change_id));
             """)
+            DefinitionResearch.ensure(db)
 
     def _baseline(self,db,project_id):
         row=db.execute("""SELECT * FROM definition_baselines WHERE project_id=?
@@ -190,6 +192,7 @@ class DefinitionGovernance:
                 json.dumps(proposed,ensure_ascii=False),reason,
                 json.dumps(source_refs,ensure_ascii=False),proposer,
                 "REVIEW",POLICY_VERSION,stamp,stamp))
+            DefinitionResearch.seed(db,cid,[domain for domain,_ in DOMAINS])
             self.store._audit(db,project_id,None,"PROPOSE_DEFINITION_CHANGE",proposer,
                               cid+" / "+reason)
         return self.detail(cid)
@@ -223,6 +226,23 @@ class DefinitionGovernance:
                 change["base_revision"]!=(baseline["revision"] if baseline else 0) or
                 expected_base_digest!=current_hash):
                 raise RuleError("Product definition baseline changed; review must restart")
+            task=db.execute("""SELECT state,revision,accepted_submission_id
+                    FROM definition_research_tasks
+                    WHERE change_id=? AND domain=?""",(change_id,domain)).fetchone()
+            if (not task or task["state"]!="REVIEWED" or
+                not task["accepted_submission_id"]):
+                raise RuleError("Domain research must receive human review before impact assessment")
+            # Even previously accepted findings cannot be used when a linked
+            # technical investigation has since reopened or changed revision.
+            evidence=db.execute("""SELECT linked_study_id,linked_study_revision
+                    FROM definition_research_submissions WHERE id=?""",
+                    (task["accepted_submission_id"],)).fetchone()
+            if evidence and evidence["linked_study_id"]:
+                study=db.execute("SELECT revision,status FROM studies WHERE id=?",
+                                 (evidence["linked_study_id"],)).fetchone()
+                if (not study or study["status"]!="DECIDED" or
+                    study["revision"]!=evidence["linked_study_revision"]):
+                    raise RuleError("Linked technical investigation is stale; reopen domain research")
             affected={}
             for oid in affected_ids:
                 obj=self.store._require_object(db,oid)
@@ -231,16 +251,17 @@ class DefinitionGovernance:
                 affected[oid]=obj["revision"]
             db.execute("""INSERT INTO definition_reviews
               (change_id,domain,outcome,rationale,evidence_refs,
-               affected_revisions,reviewer,reviewed_at)
-              VALUES(?,?,?,?,?,?,?,?)
+               affected_revisions,reviewer,reviewed_at,research_revision)
+              VALUES(?,?,?,?,?,?,?,?,?)
               ON CONFLICT(change_id,domain) DO UPDATE SET
                 outcome=excluded.outcome,rationale=excluded.rationale,
                 evidence_refs=excluded.evidence_refs,
                 affected_revisions=excluded.affected_revisions,
-                reviewer=excluded.reviewer,reviewed_at=excluded.reviewed_at""",
+                reviewer=excluded.reviewer,reviewed_at=excluded.reviewed_at,
+                research_revision=excluded.research_revision""",
                (change_id,domain,outcome,rationale,
                 json.dumps(evidence_refs,ensure_ascii=False),
-                json.dumps(affected,ensure_ascii=False),reviewer,now()))
+                json.dumps(affected,ensure_ascii=False),reviewer,now(),task["revision"]))
             db.execute("UPDATE definition_changes SET updated=? WHERE id=?",(now(),change_id))
             self.store._audit(db,change["project_id"],None,"REVIEW_DEFINITION_DOMAIN",reviewer,
                               change_id+" / "+domain+" / "+outcome+" / "+rationale)
@@ -296,10 +317,17 @@ class DefinitionGovernance:
             reasons.append("Approved baseline differs from project data")
         reviews={x["domain"]:dict(x) for x in db.execute(
             "SELECT * FROM definition_reviews WHERE change_id=?",(change["id"],))}
+        research_reasons,research_tasks=DefinitionResearch.gate_rows(
+            db,change["id"],[domain for domain,_ in DOMAINS])
+        reasons.extend(research_reasons)
         missing=[]
         for domain,_ in DOMAINS:
             r=reviews.get(domain)
             if r is None:missing.append(domain);continue
+            task=research_tasks.get(domain)
+            if (not task or r.get("research_revision")!=task["revision"] or
+                task["state"]!="REVIEWED"):
+                reasons.append(domain+": impact decision not pinned to current reviewed research")
             if r["outcome"]=="UNKNOWN":reasons.append(domain+": unresolved impact")
             if not r["rationale"] or not _json(r["evidence_refs"],"evidence references"):
                 reasons.append(domain+": review reasoning/evidence missing")
@@ -342,6 +370,8 @@ class DefinitionGovernance:
                            ", ".join(missing_packages[:20]))
         return {"ready":not reasons,"reasons":reasons,"missing_domains":missing,
                 "reviewed":len(reviews),"required":len(DOMAINS),
+                "research_reviewed":sum(t["state"]=="REVIEWED" for t in research_tasks.values()),
+                "research_required":len(DOMAINS),
                 "package_reviewed":len(reviews_by_package),"package_total":len(packages),
                 "new_baseline_revision":change["base_revision"]+1}
 
