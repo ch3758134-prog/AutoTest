@@ -243,142 +243,108 @@
    </Border>
 
 
-   <!-- CENTER: ONE 20-switch editor belongs to the selected named action step. -->
+
+   <!-- CENTER: named action buttons are the operation surface, NOT a step editor. -->
    <Border Grid.Column="2" Style="{StaticResource Panel}" Padding="11">
     <Grid>
      <Grid.RowDefinitions>
-      <RowDefinition Height="*" MinHeight="320"/>
+      <RowDefinition Height="*" MinHeight="250"/>
       <RowDefinition Height="Auto"/>
      </Grid.RowDefinitions>
-     <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
-      HorizontalScrollBarVisibility="Disabled">
-      <StackPanel DataContext="{Binding KeyActions}">
-       <TextBlock Text="按键动作" FontSize="17" FontWeight="SemiBold"/>
-       <TextBlock Text="新建动作或选择已有动作，逐步配置 ECU 要接收的开关组合。"
-        FontSize="11" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
-        Margin="0,4,0,9"/>
-       <Grid Margin="0,0,0,5">
-        <Grid.ColumnDefinitions>
-         <ColumnDefinition Width="*"/>
-         <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
-        <ComboBox ItemsSource="{Binding Actions}" SelectedItem="{Binding SelectedAction,Mode=TwoWay}"
-         DisplayMemberPath="Name" MinHeight="30" ToolTip="当前工程的自定义按键动作"/>
-        <Button Grid.Column="1" Content="新建动作" Command="{Binding NewActionCommand}"
-         Margin="7,0,0,0"/>
-       </Grid>
-       <DockPanel Margin="0,0,0,8">
-        <TextBlock DockPanel.Dock="Left" Text="动作名称" VerticalAlignment="Center"
-         Margin="0,0,8,0"/>
-        <TextBox Text="{Binding SelectedAction.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-         MinHeight="29" ToolTip="例如：按键识别实验 A；名称由你自由定义"/>
-       </DockPanel>
-
-       <DockPanel Margin="0,0,0,5">
-        <TextBlock Text="动作步骤（按顺序执行）" FontWeight="SemiBold"
-         VerticalAlignment="Center"/>
-       </DockPanel>
-       <WrapPanel IsEnabled="{Binding CanEdit}" Margin="0,0,0,5">
-        <Button Content="+ 开关组合" Command="{Binding AddSetKeysCommand}"/>
-        <Button Content="+ 保持时间" Command="{Binding AddHoldCommand}"/>
-        <Button Content="上移" Command="{Binding MoveStepUpCommand}"/>
-        <Button Content="下移" Command="{Binding MoveStepDownCommand}"/>
-        <Button Content="删除步骤" Command="{Binding RemoveStepCommand}" Margin="0"/>
-       </WrapPanel>
-       <ListBox Height="112" ItemsSource="{Binding Steps}" DisplayMemberPath="Summary"
-        SelectedItem="{Binding SelectedStep,Mode=TwoWay}" Margin="0,0,0,9"
-        ToolTip="点击不同步骤，下方 20 路开关会切换到该步骤的配置"/>
-
-       <Border BorderBrush="{StaticResource Rule}" BorderThickness="1" CornerRadius="5"
-        Padding="9" Background="#FAFCFF" Margin="0,0,0,8">
-        <StackPanel>
-         <TextBlock Text="当前步骤编辑" FontWeight="SemiBold" FontSize="13"
-          Margin="0,0,0,7"/>
-         <Grid Margin="0,0,0,8">
-          <Grid.ColumnDefinitions>
-           <ColumnDefinition Width="Auto"/>
-           <ColumnDefinition Width="*"/>
-          </Grid.ColumnDefinitions>
-          <TextBlock Text="步骤名称" VerticalAlignment="Center" Margin="0,0,8,0"/>
-          <TextBox Grid.Column="1" MinHeight="27" IsEnabled="{Binding CanEdit}"
-           Text="{Binding SelectedStep.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-           ToolTip="可独立命名每个开关组合或保持步骤，例如：驻车按下、等待识别"/>
-         </Grid>
-         <StackPanel Visibility="{Binding IsKeyStep,Converter={StaticResource BoolVis}}">
-          <TextBlock Text="本步骤的 20 路开关" FontWeight="SemiBold" Margin="0,0,0,4"/>
-          <TextBlock Text="勾选＝闭合，不勾选＝断开；这里只编辑当前选中步骤。"
-           FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Muted}"
-           Margin="0,0,0,6"/>
-          <ItemsControl ItemsSource="{Binding Switches}" IsEnabled="{Binding CanEdit}">
-           <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate>
-           </ItemsControl.ItemsPanel>
-           <ItemsControl.ItemTemplate>
-            <DataTemplate>
-             <Border BorderBrush="#DCE5EF" BorderThickness="1" CornerRadius="3"
-              Margin="2" Background="White" Padding="2">
-              <CheckBox Content="{Binding BitLabel}"
-               IsChecked="{Binding IsSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-               FontWeight="SemiBold" HorizontalAlignment="Center"
-               Margin="2" Padding="3,6"
-               ToolTip="当前步骤的真实 KEY_SIM 电阻网络开关状态；编辑本身不会发送"/>
-             </Border>
-            </DataTemplate>
-           </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <WrapPanel Margin="0,8,0,5">
-           <Button Content="试发此开关组合" Command="{Binding SendSelectedStepCommand}"
-            IsEnabled="{Binding CanEdit}" Background="#176AB2" Foreground="White"/>
-           <Button Content="清空本步骤勾选" Command="{Binding ClearMaskCommand}"
-            IsEnabled="{Binding CanEdit}" Margin="0"/>
-          </WrapPanel>
-          <TextBlock Text="{Binding SelectedStepResult}" FontSize="11"
-           Foreground="#536F89" TextWrapping="Wrap"/>
-         </StackPanel>
-         <StackPanel Visibility="{Binding IsHoldStep,Converter={StaticResource BoolVis}}">
-          <TextBlock Text="本步骤保持前一步的开关状态，不再发送新开关组合。"
-           FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Muted}"
-           Margin="0,0,0,7"/>
-          <WrapPanel>
-           <TextBlock Text="保持时间" VerticalAlignment="Center" Margin="0,0,8,0"/>
-           <TextBox Width="100" IsEnabled="{Binding CanEdit}"
-            Text="{Binding SelectedStep.DurationMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-           <TextBlock Text="毫秒" VerticalAlignment="Center" Margin="8,0,0,0"/>
-          </WrapPanel>
-         </StackPanel>
-        </StackPanel>
-       </Border>
-
-       <WrapPanel Margin="0,0,0,6">
-        <Button Content="试运行整个动作" Command="{Binding RunActionCommand}"
-         Background="#176AB2" Foreground="White" FontWeight="SemiBold"/>
-        <Button Content="停止动作" Command="{Binding StopActionCommand}"/>
-        <Button Content="保存动作" Command="{Binding SaveActionsCommand}"/>
-        <Button Content="重新加载" Click="ReloadKeyActions_Click" Margin="0"/>
-       </WrapPanel>
-       <WrapPanel Margin="0,0,0,6">
-        <Button Content="释放全部真实按键"
-         Command="{Binding DataContext.ReleaseAllKeysCommand,RelativeSource={RelativeSource AncestorType=UserControl}}"
+     <Grid Grid.Row="0">
+      <Grid.RowDefinitions>
+       <RowDefinition Height="Auto"/>
+       <RowDefinition Height="Auto"/>
+       <RowDefinition Height="*"/>
+       <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+      <DockPanel Grid.Row="0" Margin="0,0,0,6">
+       <Button DockPanel.Dock="Right" Content="+ 新建动作"
+        Click="CreateKeyAction_Click" Margin="8,0,0,0"
+        Background="#176AB2" Foreground="White" FontWeight="SemiBold"/>
+       <TextBlock Text="按键动作" FontSize="17" FontWeight="SemiBold"
+        VerticalAlignment="Center"/>
+      </DockPanel>
+      <TextBlock Grid.Row="1" FontSize="11" TextWrapping="Wrap"
+       Foreground="{StaticResource Muted}" Margin="0,0,0,9"
+       Text="左键点击按钮试运行对应动作；右键编辑、重命名、复制或删除。执行真实动作前需要确认。"/>
+      <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+       HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,7">
+       <ItemsControl ItemsSource="{Binding KeyActions.Actions}">
+        <ItemsControl.ItemsPanel>
+         <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+         <DataTemplate>
+          <Button Click="KeyActionTile_Click" Margin="3" MinHeight="77" Padding="8,11"
+           HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center"
+           ToolTip="左键：试运行此动作（需确认）；右键：编辑、重命名、复制或删除">
+           <Button.Style>
+            <Style TargetType="Button">
+             <Setter Property="Background" Value="#F6F9FD"/>
+             <Setter Property="Foreground" Value="#23374D"/>
+             <Setter Property="BorderBrush" Value="#C7D7E7"/>
+             <Setter Property="BorderThickness" Value="1"/>
+             <Setter Property="Cursor" Value="Hand"/>
+             <Style.Triggers>
+              <DataTrigger Binding="{Binding IsSelected}" Value="True">
+               <Setter Property="Background" Value="#E4F0FE"/>
+               <Setter Property="BorderBrush" Value="#176AB2"/>
+               <Setter Property="BorderThickness" Value="2"/>
+              </DataTrigger>
+              <Trigger Property="IsMouseOver" Value="True">
+               <Setter Property="BorderBrush" Value="#176AB2"/>
+              </Trigger>
+             </Style.Triggers>
+            </Style>
+           </Button.Style>
+           <Button.ContextMenu>
+            <ContextMenu>
+             <MenuItem Header="执行动作" Click="KeyActionMenu_Run_Click"/>
+             <MenuItem Header="编辑动作" Click="KeyActionMenu_Edit_Click"/>
+             <MenuItem Header="重命名" Click="KeyActionMenu_Rename_Click"/>
+             <MenuItem Header="复制动作" Click="KeyActionMenu_Copy_Click"/>
+             <Separator/>
+             <MenuItem Header="删除动作" Click="KeyActionMenu_Delete_Click"/>
+            </ContextMenu>
+           </Button.ContextMenu>
+           <StackPanel HorizontalAlignment="Center">
+            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
+             TextAlignment="Center" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Steps.Count,StringFormat=共 {0} 个步骤}"
+             Foreground="#69829B" FontSize="11" Margin="0,6,0,0" TextAlignment="Center"/>
+           </StackPanel>
+          </Button>
+         </DataTemplate>
+        </ItemsControl.ItemTemplate>
+       </ItemsControl>
+      </ScrollViewer>
+      <StackPanel Grid.Row="3">
+       <WrapPanel Margin="0,0,0,5">
+        <Button Content="编辑选中动作" Click="EditSelectedKeyAction_Click"/>
+        <Button Content="停止动作" Command="{Binding KeyActions.StopActionCommand}"
          Foreground="#A74541" Background="#FFF1EC" Margin="0"/>
        </WrapPanel>
-       <WrapPanel Margin="0,0,0,6">
-        <Button Content="复制动作" Command="{Binding CopyActionCommand}"/>
-        <Button Content="删除动作" Command="{Binding DeleteActionCommand}" Margin="0"/>
+       <WrapPanel Margin="0,0,0,5">
+        <Button Content="保存动作配置" Command="{Binding KeyActions.SaveActionsCommand}"/>
+        <Button Content="重新加载" Click="ReloadKeyActions_Click"/>
+        <Button Content="释放全部真实按键" Command="{Binding ReleaseAllKeysCommand}"
+         Foreground="#A74541" Background="#FFF1EC" Margin="0"/>
        </WrapPanel>
-       <TextBlock Text="{Binding Status}" Foreground="#536F89" FontSize="11"
-        TextWrapping="Wrap" Margin="0,0,0,4"/>
-       <TextBlock Text="{Binding Progress}" Foreground="#8B6733" FontSize="11"
-        TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding KeyActions.Status}" FontSize="11"
+        Foreground="#536F89" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding KeyActions.Progress}" FontSize="11"
+        Foreground="#8B6733" TextWrapping="Wrap" Margin="0,3,0,0"/>
       </StackPanel>
-     </ScrollViewer>
+     </Grid>
 
-     <!-- IGN and fixture are one separate hardware-control group, not Key steps. -->
+     <!-- Separate hardware controls do not belong inside an action sequence. -->
      <Border Grid.Row="1" BorderBrush="{StaticResource Rule}" BorderThickness="1"
-      CornerRadius="5" Background="#F6F9FC" Padding="9" Margin="0,9,0,0">
+      CornerRadius="5" Background="#F6F9FC" Padding="9" Margin="0,10,0,0">
       <StackPanel>
-       <TextBlock Text="其他设备控制 · IGN / 夹具" FontSize="14" FontWeight="SemiBold"/>
+       <TextBlock Text="其他设备控制" FontSize="14" FontWeight="SemiBold"/>
        <WrapPanel Margin="0,7,0,3">
-        <TextBlock Text="点火 IGN" VerticalAlignment="Center" FontWeight="SemiBold"
+        <TextBlock Text="IGN" VerticalAlignment="Center" FontWeight="SemiBold"
          Margin="0,0,9,0"/>
         <Button Content="打开" Command="{Binding IgnOnCommand}"
          Foreground="#146A4D" Background="#E7F5ED" Padding="9,4"/>
@@ -395,8 +361,8 @@
         <Button Content="读取状态" Command="{Binding SolenoidReadCommand}"
          Padding="9,4" Margin="0"/>
        </WrapPanel>
-       <TextBlock Text="{Binding SolenoidStatus}" FontSize="10" Foreground="#536F89"
-        TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding SolenoidStatus}" FontSize="10"
+        TextWrapping="Wrap" Foreground="#536F89"/>
       </StackPanel>
      </Border>
     </Grid>
