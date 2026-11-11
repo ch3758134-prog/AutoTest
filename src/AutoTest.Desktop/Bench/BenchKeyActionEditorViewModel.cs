@@ -269,6 +269,17 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         MarkDirty();
     }
 
+    public async Task DiscardDraftAndReloadAsync()
+    {
+        if (_running || _working) return;
+        // Call only following an explicit confirmation in the WPF view.
+        SelectedAction = null;
+        Actions.Clear();
+        SetClean();
+        _editorProjectId = null;
+        await LoadAsync();
+    }
+
     public async Task LoadAsync()
     {
         if (_running || _working) return;
