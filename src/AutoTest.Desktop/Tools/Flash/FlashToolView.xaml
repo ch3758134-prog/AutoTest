@@ -11,8 +11,6 @@
   </Grid.RowDefinitions>
   <DockPanel Grid.Row="0" Margin="0,0,0,11">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-    <Button Content="导入 XML…" Click="ImportCanTool_Click"/>
-    <Button Content="选择固件…" Click="BrowseImage_Click"/>
     <Button Content="验证镜像与配置" Style="{StaticResource AtPrimaryButton}" Command="{Binding PreflightCommand}"/>
     <Button Content="核对主控" Click="PhysicalPreflight_Click"/>
     <Button Content="设备连接" Click="OpenStationFromFlash_Click"/>
@@ -26,7 +24,7 @@
   </DockPanel>
   <Border Grid.Row="1" Background="#FFF5E7" BorderBrush="#BF9D65" BorderThickness="1"
    CornerRadius="4" Padding="10,8" Margin="0,0,0,11">
-   <TextBlock Text="真实 CAN1 路径已接入：P09 使用 R1 Station 的唯一 WinUSB 主控会话，不创建第二套设备连接。仅导入/预检不发送擦写；10 03 探测会改变诊断会话；擦写须独立授权及人工确认。尚未经实际 ECU 烧录验证。"
+   <TextBlock Text="导入文件与预检不会擦写 ECU；真实擦写需要逐项授权和人工确认。CAN1 共用当前主控会话，实机烧录尚待验证。"
     TextWrapping="Wrap" Foreground="#8F611B" FontSize="12"/>
   </Border>
   <Grid Grid.Row="2">
@@ -47,7 +45,7 @@
        <TextBlock Text="设备与诊断配置" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,8"/>
        <Button Content="导入 Configuration.xml" Click="ImportCanTool_Click" HorizontalAlignment="Stretch"/>
        <TextBlock Text="{Binding ConfigurationStatus}" TextWrapping="Wrap" FontSize="11" Foreground="#167B5A" Margin="0,7,0,0"/>
-       <TextBlock Text="Flash 起点 / 终点（不含）" Foreground="{DynamicResource StudioMuted}" Margin="0,10,0,3" FontSize="11"/>
+       <TextBlock Text="写入地址范围（终点不含）" Foreground="{DynamicResource StudioMuted}" Margin="0,10,0,3" FontSize="11"/>
        <TextBlock Text="{Binding AllowedStart}" FontFamily="Consolas"/>
        <TextBlock Text="{Binding AllowedEnd}" FontFamily="Consolas" Margin="0,0,0,7"/>
        <Border Height="1" Background="{DynamicResource StudioLine}" Margin="0,10,0,12"/>
@@ -71,7 +69,7 @@
        <TextBox x:Name="SecurityDllPath" IsReadOnly="True" Margin="0,5,0,5"/>
        <Button Content="选择真实 Seed/Key DLL…" Click="BrowseSecurityDll_Click" HorizontalAlignment="Stretch"/>
        <Border Height="1" Background="{DynamicResource StudioLine}" Margin="0,14,0,12"/>
-       <TextBlock Text="04 / CANTOOL TIMING" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,9"/>
+       <TextBlock Text="通信与擦写超时参数" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,9"/>
        <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="112"/></Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -110,16 +108,16 @@
         <Button Content="固件预检" Command="{Binding PreflightCommand}"/>
        </StackPanel>
        <StackPanel>
-        <TextBlock Text="PHYSICAL PROGRAMMING / 实机烧录" FontSize="15" FontWeight="SemiBold"/>
+        <TextBlock Text="实机烧录" FontSize="15" FontWeight="SemiBold"/>
         <TextBlock x:Name="PhysicalSessionLine" Text="Station 未连接；请在 P02 连接并验证主控"
          Foreground="{DynamicResource StudioMuted}" TextWrapping="Wrap" Margin="0,5,0,0" FontSize="11"/>
        </StackPanel>
       </DockPanel>
       <WrapPanel Margin="0,10,0,0">
        <Button x:Name="FlashPrepareButton" Content="核对并生成本次授权" Click="PreparePhysicalFlash_Click"/>
-       <Button x:Name="FlashStartButton" Content="▶ 开始真实烧录" Click="StartPhysicalFlash_Click"
+       <Button x:Name="FlashStartButton" Content="开始真实 ECU 烧录" Style="{StaticResource AtDangerButton}" Click="StartPhysicalFlash_Click"
         IsEnabled="False" Background="#E1F4ED"/>
-       <Button x:Name="FlashCancelButton" Content="■ 请求停止 / 取消" Click="CancelPhysicalFlash_Click"
+       <Button x:Name="FlashCancelButton" Content="请求停止 / 取消" Style="{StaticResource AtDangerButton}" Click="CancelPhysicalFlash_Click"
         IsEnabled="False"/>
        <Button Content="导出本页诊断日志" Click="ExportPhysicalFlashLog_Click"/>
       </WrapPanel>
@@ -179,8 +177,8 @@
     <DockPanel>
      <Border DockPanel.Dock="Top" Background="{DynamicResource StudioSurface}" Padding="12">
       <StackPanel>
-       <TextBlock Text="INSPECTOR / 实机授权" FontSize="12" FontWeight="SemiBold"/>
-       <TextBlock Text="ECU · Config · Image · USB Session" Foreground="{DynamicResource StudioMuted}" FontSize="11" Margin="0,5,0,0"/>
+       <TextBlock Text="实机授权与检查" FontSize="12" FontWeight="SemiBold"/>
+       <TextBlock Text="核对 ECU、配置、固件和设备连接" Foreground="{DynamicResource StudioMuted}" FontSize="11" Margin="0,5,0,0"/>
       </StackPanel>
      </Border>
      <ScrollViewer VerticalScrollBarVisibility="Auto">
