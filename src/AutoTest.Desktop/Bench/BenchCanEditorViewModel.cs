@@ -281,8 +281,11 @@ public sealed class BenchCanEditorViewModel : BindableBase
             if (!message.Signals.Contains(input.Definition))
                 throw new InvalidOperationException("信号定义已变化。");
             if (!double.TryParse(input.ValueText, NumberStyles.Float,
-                CultureInfo.InvariantCulture, out var value))
-                throw new ArgumentException("信号值应为数字，例如 1、12.5。");
+                CultureInfo.InvariantCulture, out var value) || !double.IsFinite(value))
+                throw new ArgumentException("信号值应为有限数字，例如 1、12.5。");
+            if (value < input.Definition.Minimum || value > input.Definition.Maximum)
+                throw new ArgumentException(
+                    $"信号 {input.Name} 超出 DBC 范围 [{input.Definition.Minimum}, {input.Definition.Maximum}] {input.Unit}。");
             var data = item.Snapshot().Payload();
             if (data.Length != message.Dlc) throw new ArgumentException("Data 长度不符合 DBC DLC。");
             DbcSignalCodec.EncodePhysical(input.Definition, value, data);
