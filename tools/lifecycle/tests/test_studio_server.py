@@ -44,6 +44,23 @@ class StudioApiTest(unittest.TestCase):
         with urlopen(req, timeout=5) as response:
             return response.status, json.loads(response.read().decode("utf-8"))
 
+    def test_read_first_workspace_assets_available(self):
+        """The full-document UI assets must be served by the existing localhost server."""
+        for path, mime, marker in (
+            ("/", "text/html", b'workspace.js'),
+            ("/workspace.css", "text/css", b'ws-reader-paper'),
+            ("/workspace.js", "application/javascript", b'renderDocumentWorkspace'),
+        ):
+            with self.subTest(path=path):
+                with urlopen(self.url + path, timeout=5) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertIn(mime, response.headers.get("Content-Type", ""))
+                    self.assertIn(marker, response.read())
+        with urlopen(self.url + "/", timeout=5) as response:
+            content = response.read()
+        self.assertIn(b'data-view="stages"', content)
+        self.assertIn(b'/workspace.css', content)
+
     def test_ai_intake_bundle_creates_only_candidates_and_is_idempotent(self):
         _,project=self.request("/api/studio/project",{
             "name":"Knowledge Pilot","summary":"Legacy product metadata",
