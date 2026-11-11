@@ -208,6 +208,21 @@ function renderWorkspaceHome() {
   else secondary.append(el('p', 'ws-muted', '当前快照尚未标记完整研究报告。'));
   columns.append(primary, secondary);
   root.append(columns);
+  const advanced = el('details','ws-home-advanced');
+  advanced.append(el('summary','', '按需展开：能力追踪与技术预研'));
+  const moreActions = el('div','ws-actions');
+  const trace = wsAction('查看能力与需求追踪', () => {
+    showWorkspaceCapabilityDetails();
+    trace.disabled = true;
+  });
+  const research = wsAction('查看专业技术研究概况', () => {
+    showWorkspaceResearchDetails();
+    research.disabled = true;
+  });
+  moreActions.append(trace, research);
+  advanced.append(el('p','ws-muted','这些是完整工程管理功能，平时不占据项目首页。展开后仍可查看原始依据和受控关系。'));
+  advanced.append(moreActions);
+  root.append(advanced);
   root.append(wsSourceNote());
 }
 
