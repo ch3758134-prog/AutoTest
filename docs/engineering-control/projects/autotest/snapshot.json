@@ -1,11 +1,11 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T07:12:17.014Z",
+  "exported_at": "2026-11-11T07:18:15.618Z",
   "authority": "AI_CANDIDATE_NOT_APPROVED",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T07:12:17.014Z",
+    "exported_at": "2026-11-11T07:18:15.618Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T07:12:17.014Z"
+      "updated": "2026-11-11T07:18:15.618Z"
     },
     "objects": [
       {
@@ -338,25 +338,30 @@
         "project_id": "autotest",
         "kind": "context",
         "title": "AutoTest 立项动因与产品目标（待审）",
-        "body": "AutoTest 的长期目的，是把原来分散的 ECU 外部刺激、CAN/UDS/烧录/DBC、响应观察与判定、出厂测试记录连接为统一的软硬件测试环境。当前最优先形成可用的自动测试上位机：针对一个真实 ECU，在同一套工程与测试程序中组织 CAN、IGN、按键等适用刺激，获取真实响应，并依据明确条件作出测试判定及保存可追溯日志。只有这一真实闭环成立，才围绕运行中暴露的需要细化不同型号资源、烧录、扫码、编码协同和生产管理。后续能力仍属于产品规划，不因暂未作出其规则决策而阻止核心闭环研发。既有专业工具源码可并行研究/复用，但不作为首轮闭环的全量先决条件。",
+        "body": "AutoTest 的产品目的，是改变原先 ECU 测试需要在独立 CAN 软件、手动台架、烧录与人工观察之间切换的方式：基于真实的软硬件台架，统一组织受控外部刺激、ECU CAN 通信与广播的采集和解析、响应分析、自动判定与测试记录，形成面向不同 ECU 的可配置自动测试闭环。系统在满足相应台架配置和被测对象条件下尽可能覆盖测试所需的外部刺激；“全部外部刺激”是面向实际测试需求的产品目标，并非未经实测就宣称当前硬件能模拟任意 ECU 接口。Windows 上位机是测试编排、开发、数据分析和工具操作的核心工作环境，但 AutoTest 整体还包括主控/按键等板卡及固件、夹具、供电与连接等真实台架组成部分。烧录、UDS、DBC、波形等专业能力是实际测试需要的工具；既可独立供工程师使用，也可作为自动测试可组织的能力。后续可按实际需求继续集成其它专业工具，不预先封闭工具范围。首轮研发仍优先打通真实自动测试闭环，后续逐步完善型号配置、扫码和生产追溯。负责人主要承担软件研发，不意味着产品范围仅限软件。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 2,
+        "revision": 3,
         "meta": {
-          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
-          "source_type": "USER_INTENT_AND_AI_SYNTHESIS",
+          "source": "用户对话｜P0 产品目的、完整软硬件边界、上位机核心与开放工具扩展澄清（2026-11-10，America/Los_Angeles）",
+          "source_type": "USER_EXPLICIT_PURPOSE_AGREEMENT_AND_CLARIFICATION",
           "engineering_class": "project_purpose",
           "proposed_product_identity": "面向多型号 ECU 的软硬件一体化自动测试与检验系统",
           "review_note": "产品身份仅作候选陈述；当前不得自动发布产品身份基线",
           "planning_priority": "FIRST_REAL_AUTOTEST_CLOSED_LOOP",
           "staging": "先真实自动测试→围绕核心测试完善配置与工具→完整出厂工作流",
           "decision_status": "P0_USER_PRIORITY_CONFIRMED_DETAIL_UNDER_REVIEW",
-          "prior_source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）"
+          "prior_source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）",
+          "purpose_agreement": "USER_CONFIRMED_WITH_SCOPE_CLARIFICATION",
+          "tool_scope": "EXTENSIBLE_NOT_CLOSED_LIST",
+          "hardware_scope": "FULL_TEST_BENCH_PRODUCT_NOT_SOFTWARE_ONLY",
+          "host_position": "CORE_USER_SOFTWARE_WORKSPACE_NOT_ENTIRE_SYSTEM",
+          "approval_boundary": "本次确认产品目的与边界讨论方向，不意味着正式签发完整产品定义或任何低层方案"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T06:52:15.981Z",
-        "updated": "2026-11-11T07:04:23.904Z"
+        "updated": "2026-11-11T07:18:15.618Z"
       },
       {
         "id": "at-p0-model-variation",
@@ -525,6 +530,28 @@
         "approved_at": null,
         "created": "2026-11-11T07:12:17.014Z",
         "updated": "2026-11-11T07:12:17.014Z"
+      },
+      {
+        "id": "at-p0-system-boundary-host-core",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "P0 产品边界｜真实台架、上位机核心与可扩展专业工具",
+        "body": "AutoTest 是完整的软硬件一体化 ECU 测试系统，不是只有 Windows 上位机。真实台架及其外部激励、CAN 通信和响应采集是产品有效工作的物理基础；上位机处于用户操作、测试程序开发与执行、信号分析以及专业工具集成的核心位置，但不替代台架硬件、固件及辅助设备。现阶段使用的烧录、UDS、DBC、波形分析等只是当前测试所需要的专业工具，不构成产品未来能力边界的封闭列表。专业工具既可单独承担开发/诊断活动，也可以按其适用条件被自动测试使用。负责人个人主要承担嵌入式/软件开发职责，这属于人员分工背景，不能据此将产品定义缩减为软件。产品目标指向适用 ECU 所需外部刺激的广泛覆盖，但任意接口和性能能力仍要在后续事实调查、需求及实现设计中按配置证实。本条仅记录 P0 范围认识，不决定硬件或代码架构。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户对话｜P0 产品目的、完整软硬件边界、上位机核心与开放工具扩展澄清（2026-11-10，America/Los_Angeles）",
+          "source_type": "USER_DIRECT_SCOPE_CLARIFICATION",
+          "engineering_class": "P0_SYSTEM_BOUNDARY",
+          "user_role_note": "软件研发主责≠产品仅包含软件",
+          "hardware_capability_note": "产品目标不能等同当前硬件已验证能力",
+          "not_architecture": "本记录不指定接口分工、模块实现、产品硬件版本"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:18:15.618Z",
+        "updated": "2026-11-11T07:18:15.618Z"
       }
     ],
     "relations": [
@@ -920,6 +947,22 @@
         "action": "RECORD_USER_AGREED_P0_CORE_NO_GATE_APPROVAL",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T07:12:17.014Z"
+      },
+      {
+        "object_id": "at-p0-product-purpose",
+        "revision": 3,
+        "snapshot": "{\"id\":\"at-p0-product-purpose\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"AutoTest 立项动因与产品目标（待审）\",\"body\":\"AutoTest 的产品目的，是改变原先 ECU 测试需要在独立 CAN 软件、手动台架、烧录与人工观察之间切换的方式：基于真实的软硬件台架，统一组织受控外部刺激、ECU CAN 通信与广播的采集和解析、响应分析、自动判定与测试记录，形成面向不同 ECU 的可配置自动测试闭环。系统在满足相应台架配置和被测对象条件下尽可能覆盖测试所需的外部刺激；“全部外部刺激”是面向实际测试需求的产品目标，并非未经实测就宣称当前硬件能模拟任意 ECU 接口。Windows 上位机是测试编排、开发、数据分析和工具操作的核心工作环境，但 AutoTest 整体还包括主控/按键等板卡及固件、夹具、供电与连接等真实台架组成部分。烧录、UDS、DBC、波形等专业能力是实际测试需要的工具；既可独立供工程师使用，也可作为自动测试可组织的能力。后续可按实际需求继续集成其它专业工具，不预先封闭工具范围。首轮研发仍优先打通真实自动测试闭环，后续逐步完善型号配置、扫码和生产追溯。负责人主要承担软件研发，不意味着产品范围仅限软件。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":3,\"meta\":{\"source\":\"用户对话｜P0 产品目的、完整软硬件边界、上位机核心与开放工具扩展澄清（2026-11-10，America/Los_Angeles）\",\"source_type\":\"USER_EXPLICIT_PURPOSE_AGREEMENT_AND_CLARIFICATION\",\"engineering_class\":\"project_purpose\",\"proposed_product_identity\":\"面向多型号 ECU 的软硬件一体化自动测试与检验系统\",\"review_note\":\"产品身份仅作候选陈述；当前不得自动发布产品身份基线\",\"planning_priority\":\"FIRST_REAL_AUTOTEST_CLOSED_LOOP\",\"staging\":\"先真实自动测试→围绕核心测试完善配置与工具→完整出厂工作流\",\"decision_status\":\"P0_USER_PRIORITY_CONFIRMED_DETAIL_UNDER_REVIEW\",\"prior_source\":\"用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）\",\"purpose_agreement\":\"USER_CONFIRMED_WITH_SCOPE_CLARIFICATION\",\"tool_scope\":\"EXTENSIBLE_NOT_CLOSED_LIST\",\"hardware_scope\":\"FULL_TEST_BENCH_PRODUCT_NOT_SOFTWARE_ONLY\",\"host_position\":\"CORE_USER_SOFTWARE_WORKSPACE_NOT_ENTIRE_SYSTEM\",\"approval_boundary\":\"本次确认产品目的与边界讨论方向，不意味着正式签发完整产品定义或任何低层方案\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T07:18:15.618Z\"}",
+        "action": "REVISE_USER_CONFIRMED_P0_PURPOSE_SCOPE_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:18:15.618Z"
+      },
+      {
+        "object_id": "at-p0-system-boundary-host-core",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-p0-system-boundary-host-core\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"P0 产品边界｜真实台架、上位机核心与可扩展专业工具\",\"body\":\"AutoTest 是完整的软硬件一体化 ECU 测试系统，不是只有 Windows 上位机。真实台架及其外部激励、CAN 通信和响应采集是产品有效工作的物理基础；上位机处于用户操作、测试程序开发与执行、信号分析以及专业工具集成的核心位置，但不替代台架硬件、固件及辅助设备。现阶段使用的烧录、UDS、DBC、波形分析等只是当前测试所需要的专业工具，不构成产品未来能力边界的封闭列表。专业工具既可单独承担开发/诊断活动，也可以按其适用条件被自动测试使用。负责人个人主要承担嵌入式/软件开发职责，这属于人员分工背景，不能据此将产品定义缩减为软件。产品目标指向适用 ECU 所需外部刺激的广泛覆盖，但任意接口和性能能力仍要在后续事实调查、需求及实现设计中按配置证实。本条仅记录 P0 范围认识，不决定硬件或代码架构。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户对话｜P0 产品目的、完整软硬件边界、上位机核心与开放工具扩展澄清（2026-11-10，America/Los_Angeles）\",\"source_type\":\"USER_DIRECT_SCOPE_CLARIFICATION\",\"engineering_class\":\"P0_SYSTEM_BOUNDARY\",\"user_role_note\":\"软件研发主责≠产品仅包含软件\",\"hardware_capability_note\":\"产品目标不能等同当前硬件已验证能力\",\"not_architecture\":\"本记录不指定接口分工、模块实现、产品硬件版本\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:18:15.618Z\",\"updated\":\"2026-11-11T07:18:15.618Z\"}",
+        "action": "CREATE_P0_BOUNDARY_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:18:15.618Z"
       }
     ],
     "events": [
@@ -1066,6 +1109,24 @@
         "actor": "AI_PROJECT_MANAGER",
         "note": "用户认可 P0 核心产品定位；范围仅限核心定位，保留正式定义审批",
         "timestamp": "2026-11-11T07:12:17.014Z"
+      },
+      {
+        "id": "evt-at-p0-product-purpose-r3",
+        "project_id": "autotest",
+        "object_id": "at-p0-product-purpose",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "用户确认并扩展产品目的：真实台架是系统组成，上位机核心但非全部；专业工具可独立使用并继续扩展",
+        "timestamp": "2026-11-11T07:18:15.618Z"
+      },
+      {
+        "id": "evt-at-p0-system-boundary-host-core",
+        "project_id": "autotest",
+        "object_id": "at-p0-system-boundary-host-core",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "P0 软硬件系统边界及上位机核心定位的用户澄清，非设计批准",
+        "timestamp": "2026-11-11T07:18:15.618Z"
       }
     ],
     "technical_research": {
@@ -1129,5 +1190,5 @@
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "P0 产品核心定位“可配置的 ECU 自动测试系统”经用户明确认可，完整产品身份仍为候选；现在继续讨论产品目的，不跨到 G0/G1/G2。"
+  "p0_discussion_note": "本轮用户认可产品目的并补充完整软硬件边界、上位机核心、CAN广播解析与专业工具开放扩展；P0仍在确认中，不提前转G0或签发设计。"
 }
