@@ -74,6 +74,18 @@ public sealed class WinUsbByteLink : IUsbByteLink
     /// <summary>Cancel any leftover physical CAN grant before leaving the TX critical section.</summary>
     public void RevokeOneCanTransmission() => _fence.RevokeSingleCanFrame();
 
+    /// <summary>Separate one-use physical IGN authorization; CAN grants do not cover IGN.</summary>
+    public void AuthorizeOneIgnTransmission(bool on, string exactConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; IGN authorization cannot survive reconnect.");
+            _fence.AuthorizeSingleIgn(on, exactConfirmation, _epoch);
+        }
+    }
+    public void RevokeOneIgnTransmission() => _fence.RevokeSingleIgn();
+
     public ValueTask OpenAsync(CancellationToken ct)
         => new(Task.Run(() => OpenCore(ct), ct));
 
