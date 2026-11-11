@@ -171,6 +171,54 @@ public sealed class BenchCanEditorTests
     }
 
     [Fact]
+    public async Task InvalidDbcSignalIsNotForgottenWhenSwitchingRowsOrEditingOtherSignals()
+    {
+        var a = new DbcSignal("SignalA", 0, 8, true, false,
+            1, 0, 0, 100, "V", "ECU");
+        var b = new DbcSignal("SignalB", 8, 8, true, false,
+            1, 0, 0, 100, "V", "ECU");
+        var definition = new DbcMessage(0x320, "TwoSignals", 2, "Tester",
+            ImmutableArray.Create(a, b));
+        var port = new TestPort
+        {
+            ActiveDbc = new DbcDatabase("Dbc", 1, ImmutableArray<string>.Empty,
+                ImmutableArray.Create(definition)),
+            ActiveDbcRevision = "rev1"
+        };
+        var vm = new BenchCanEditorViewModel(port);
+        vm.RefreshDbcCatalog();
+        Assert.True(vm.TryAddFromDbc(definition));
+        var bound = vm.SelectedMessage!;
+        vm.SignalInputs[0].ValueText = "10";
+        Assert.Equal("0A00", bound.DataHex);
+
+        // Signal A is visibly invalid. Selecting an unrelated row must not
+        // silently reintroduce the old bytes as a valid physical value.
+        vm.SignalInputs[0].ValueText = "invalid";
+        Assert.NotNull(bound.SignalError);
+        Assert.Equal("DBC !", bound.SourceLabel);
+        vm.AddCommand.Execute();
+        vm.SelectedMessage = bound;
+        Assert.Equal("invalid", vm.SignalInputs[0].ValueText);
+        vm.SignalInputs[1].ValueText = "5";
+        Assert.NotNull(bound.SignalError);
+        await vm.SendOnceAsync();
+        Assert.Equal(0, port.SendCount);
+        await vm.SaveAsync();
+        Assert.Null(port.Saved);
+        Assert.Equal("0A00", bound.DataHex);
+
+        // The entire visible signal set is validated and re-encoded together.
+        vm.SignalInputs[0].ValueText = "20";
+        Assert.Null(bound.SignalError);
+        Assert.Equal("DBC", bound.SourceLabel);
+        Assert.Equal("1405", bound.DataHex);
+        await vm.SendOnceAsync();
+        Assert.Equal(1, port.SendCount);
+        Assert.Equal("1405", port.LastMessage!.DataHex);
+    }
+
+    [Fact]
     public async Task ProjectDbcSignalEditingBuildsPhysicalCanDataAndRejectsStaleRevision()
     {
         var signal = new DbcSignal("MotorCmd", 0, 8, true, false,
