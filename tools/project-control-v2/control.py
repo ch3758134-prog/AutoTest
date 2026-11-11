@@ -36,7 +36,7 @@ ACTIONS = {"create_work", "edit_work", "create_deliverable", "edit_deliverable",
            "create_milestone", "edit_milestone", "raise_risk", "review_risk", "start_cycle", "close_cycle"}
 FIELD_WORK = {"title", "kind", "mode", "horizon", "deliverable_id",
               "expected_result", "exit_condition", "depends_on", "sources",
-              "priority", "assignee", "planned_start", "planned_finish", "schedule_basis", "state"}
+              "priority", "assignee", "planned_start", "planned_finish", "schedule_basis", "state", "parent_work_id"}
 FIELD_DELIV = {"title", "success_condition", "commitment"}
 FIELD_MILESTONE = {"title", "deliverable_id", "exit_condition", "target_date", "date_basis"}
 RISK_LEVELS = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
@@ -86,6 +86,10 @@ def validate_work(work, existing):
     ident(work.get("deliverable_id"), "deliverable_id")
     if work.get("deliverable_id") not in existing["deliverables"]:
         raise ControlError("work must link to a real deliverable")
+    if work.get("parent_work_id") is not None:
+        ident(work["parent_work_id"], "parent_work_id")
+        if work["parent_work_id"] == work["id"]:
+            raise ControlError("work item cannot parent itself")
     deps = items(work.get("depends_on", []), "depends_on")
     if len(deps) != len(set(deps)) or any(not isinstance(d, str) or not ID_RE.fullmatch(d) for d in deps):
         raise ControlError("invalid or repeated dependency")
@@ -583,7 +587,10 @@ class Control:
             if wid in visited:
                 return
             stack.add(wid)
-            for dep in indexed[wid].get("depends_on", []):
+            upstream = list(indexed[wid].get("depends_on", []))
+            if indexed[wid].get("parent_work_id"):
+                upstream.append(indexed[wid]["parent_work_id"])
+            for dep in upstream:
                 if dep not in indexed:
                     raise ControlError("unknown dependency: " + dep)
                 dfs(dep)
