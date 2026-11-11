@@ -33,7 +33,8 @@ ACTIONS = {"create_work", "edit_work", "create_deliverable", "edit_deliverable",
            "submit_plan", "withdraw_plan", "approve_plan", "return_plan",
            "update_progress", "verify_work", "raise_change", "assess_change",
            "resolve_change", "reconcile_work", "record_receipt", "review_receipt", "record_phase_review",
-           "create_milestone", "edit_milestone", "raise_risk", "review_risk", "start_cycle", "close_cycle"}
+           "create_milestone", "edit_milestone", "raise_risk", "review_risk", "start_cycle", "close_cycle",
+           "submit_artifact", "review_artifact"}
 FIELD_WORK = {"title", "kind", "mode", "horizon", "deliverable_id",
               "expected_result", "exit_condition", "depends_on", "sources",
               "priority", "assignee", "planned_start", "planned_finish", "schedule_basis", "state", "parent_work_id"}
@@ -165,8 +166,28 @@ class Control:
                 raise ControlError("unknown shared project control record")
             return record
 
-    def archive(self):
+    def raw_archive(self):
         return json.loads(self.archive_file.read_text(encoding="utf-8"))
+
+    def archive(self):
+        """Effective source, overlaying only exact human-approved revisions.
+
+        The original research source file is immutable for this operation.
+        Unapproved AI notes never become approved by rendering or planning.
+        """
+        source = self.raw_archive()
+        record = self.read()
+        for item in source["engineering"]["objects"]:
+            for baseline in reversed(record.get("artifact_baselines", [])):
+                if (baseline["object_id"] == item["id"] and
+                        baseline["object_revision"] == item["revision"] and
+                        baseline["source_digest"] == digest(item)):
+                    item["state"] = "APPROVED"
+                    item.setdefault("meta", {})["approved_control_record"] = baseline["id"]
+                    item["approved_by"] = baseline["actor"]
+                    item["approved_at"] = baseline["at"]
+                    break
+        return source
 
     @staticmethod
     def plan(record):
@@ -309,6 +330,58 @@ class Control:
                         raise ControlError("invalid milestone patch")
                     validate_milestone(dict(milestone, **patch), {d["id"] for d in plan["deliverables"]})
                     milestone.update(patch)
+
+            elif name == "submit_artifact":
+                subject = ident(payload.get("object_id"), "engineering object id")
+                rev = payload.get("object_revision")
+                if type(rev) is not int or rev < 1:
+                    raise ControlError("object_revision must be the exact positive source revision")
+                raw = self.raw_archive()["engineering"]
+                doc = next((o for o in raw["objects"] if o["id"] == subject), None)
+                if doc is None or doc["revision"] != rev:
+                    raise ControlError("document revision not found")
+                if doc["state"] == "APPROVED":
+                    raise ControlError("already-approved source is not a new submission")
+                if any(s["object_id"] == subject and s["object_revision"] == rev
+                       and s["status"] == "IN_REVIEW" for s in record["artifact_submissions"]):
+                    raise ControlError("this exact document revision is already in formal review")
+                submitted = {"id": new_id("artifact-review"), "object_id": subject,
+                             "object_revision": rev, "source_digest": digest(doc),
+                             "title": doc["title"], "status": "IN_REVIEW",
+                             "submitted_at": now(), "submitted_by": actor,
+                             "submission_reason": reason,
+                             "decision": None}
+                record["artifact_submissions"].append(submitted)
+                outcome = {"submission_id": submitted["id"], "status": "IN_REVIEW",
+                           "warning": "submission does not approve content or Gate"}
+
+            elif name == "review_artifact":
+                subject = ident(payload.get("id"), "review submission id")
+                submitted = next((s for s in record["artifact_submissions"] if s["id"] == subject), None)
+                if not submitted or submitted["status"] != "IN_REVIEW":
+                    raise ControlError("document is not awaiting formal review")
+                decision = payload.get("decision")
+                if decision not in ("APPROVE", "RETURN", "REJECT"):
+                    raise ControlError("invalid formal document review decision")
+                raw = self.raw_archive()["engineering"]
+                doc = next((o for o in raw["objects"] if o["id"] == submitted["object_id"]), None)
+                if (doc is None or doc["revision"] != submitted["object_revision"] or
+                        digest(doc) != submitted["source_digest"]):
+                    raise ControlError("source document changed after submission; review latest exact revision")
+                submitted.update(status="REVIEWED", decision=decision, reviewed_at=now(),
+                                 reviewer=actor, review_reason=reason)
+                if decision == "APPROVE":
+                    baseline = {"id": new_id("artifactbaseline"),
+                                "object_id": doc["id"], "object_revision": doc["revision"],
+                                "source_digest": submitted["source_digest"],
+                                "snapshot": copy.deepcopy(doc), "actor": actor,
+                                "reason": reason, "at": now(),
+                                "submission_id": submitted["id"]}
+                    record["artifact_baselines"].append(baseline)
+                    outcome = {"artifact_baseline": baseline["id"],
+                               "warning": "approved document does not approve phase Gate or physical testing"}
+                else:
+                    outcome = {"review": submitted["id"], "decision": decision}
 
             elif name == "submit_plan":
                 if plan["status"] not in ("DRAFT", "REVISION_DRAFT"):
