@@ -1,7 +1,7 @@
 """Human-reviewed change impact assessment; no design edits or approvals are implied."""
 from __future__ import annotations
 import json
-from studio_store import Store, RuleError, text_value, now
+from studio_store import Store, RuleError, text_value, now, ident
 
 OUTCOMES = ("REVISE", "NO_CHANGE", "INVESTIGATE")
 
@@ -9,6 +9,38 @@ OUTCOMES = ("REVISE", "NO_CHANGE", "INVESTIGATE")
 class ChangeReview:
     def __init__(self, store: Store):
         self.store = store
+
+    def capture(self, target_id, target_revision, title, body, source, actor):
+        """Atomically record an observation and an unapproved impact hypothesis."""
+        title=text_value(title,"finding title",limit=200,mandatory=True)
+        body=text_value(body,"finding details",limit=50000,mandatory=True)
+        source=text_value(source,"evidence reference",limit=4000,mandatory=True)
+        actor=text_value(actor,"reporter",limit=150,mandatory=True)
+        with self.store.db() as db:
+            target=self.store._require_object(db,target_id)
+            if type(target_revision) is not int or target["revision"]!=target_revision:
+                raise RuleError("Target revision conflict: refresh before filing finding")
+            key,instant=ident(),now()
+            meta={"source":source,"reported_by":actor,
+                  "origin_target_revision":target_revision}
+            db.execute("""INSERT INTO objects
+              (id,project_id,kind,title,body,parent_id,state,revision,meta,
+               approved_by,approved_at,created,updated)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               (key,target["project_id"],"change",title,body,None,"OPEN",1,
+                json.dumps(meta,ensure_ascii=False),None,None,instant,instant))
+            self.store._record(db,self.store._require_object(db,key),"CREATE",actor)
+            rel_id=ident()
+            db.execute("""INSERT INTO relations
+               (id,project_id,source_id,target_id,kind,created,status)
+               VALUES(?,?,?,?,?,?,'CANDIDATE')""",
+               (rel_id,target["project_id"],key,target_id,"impacts",instant))
+            self.store._audit(db,target["project_id"],key,"CAPTURE_FINDING",actor,
+                              "Candidate impact on "+target_id+" r"+str(target_revision)+
+                              " / "+source)
+            db.execute("UPDATE projects SET updated=? WHERE id=?",
+                       (instant,target["project_id"]))
+        return self.detail(key)
 
     def detail(self, change_id):
         with self.store.db() as db:
