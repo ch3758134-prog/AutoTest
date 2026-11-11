@@ -78,6 +78,17 @@ public interface IBenchWorkbenchPort
             "No physical GET_SOL controller is connected to this bench port.",
             BenchEvidenceSource.Physical, null));
 
+    // Project-scoped editable action sequences; default ports do not persist or actuate.
+    Task<IReadOnlyList<BenchKeyAction>> LoadKeyActionsAsync(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<BenchKeyAction>>(Array.Empty<BenchKeyAction>());
+    Task SaveKeyActionsAsync(IReadOnlyList<BenchKeyAction> actions,
+        CancellationToken cancellationToken) =>
+        Task.FromException(new NotSupportedException("工程按键动作存储尚未接线。"));
+    Task<BenchActionExecution> RunKeyActionAsync(BenchKeyAction action,
+        IProgress<BenchActionProgress>? progress, CancellationToken cancellationToken) =>
+        Task.FromResult(new BenchActionExecution(false, false, false,
+            "实际 KEY_SIM 连续动作执行接口未接线，不允许仿真。"));
+
     Task SaveManualMeasurementAsync(BenchManualMeasurement measurement,
         CancellationToken cancellationToken);
 }
