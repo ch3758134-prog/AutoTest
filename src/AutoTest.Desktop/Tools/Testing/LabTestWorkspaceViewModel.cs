@@ -130,8 +130,24 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         _editor = new LabDocumentEditor(LabDocument.New("R1 工程测试程序"));
         _runner = new LabRunCoordinator();
         _ui = SynchronizationContext.Current;
-        Facts.CollectionChanged += (_, _) =>
+        Facts.CollectionChanged += (_, e) =>
         {
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+            {
+                foreach (var row in RunStepRows) row.Reset();
+            }
+            else if (e.NewItems is not null)
+            {
+                foreach (var value in e.NewItems)
+                {
+                    if (value is not LabStepFact fact) continue;
+                    var row = RunStepRows.FirstOrDefault(x => x.StepId == fact.StepId);
+                    row?.Observe(fact);
+                    if (row is not null && (fact.Verdict is LabVerdict.Fail or LabVerdict.Error ||
+                        SelectedRunStep is null))
+                        SelectedRunStep = row;
+                }
+            }
             Changed(nameof(RunFactsText));
             Changed(nameof(CurrentStepText));
             Changed(nameof(CurrentFailureText));
@@ -181,6 +197,37 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     }
 
     public ObservableCollection<LabTreeRow> Tree { get; } = new();
+    public ObservableCollection<R1RunStepRow> RunStepRows { get; } = new();
+    private R1RunStepRow? _selectedRunStep;
+    public R1RunStepRow? SelectedRunStep
+    {
+        get => _selectedRunStep;
+        set
+        {
+            if (ReferenceEquals(_selectedRunStep, value)) return;
+            _selectedRunStep = value;
+            Changed();
+        }
+    }
+    private void RefreshRunStepRows()
+    {
+        RunStepRows.Clear();
+        var doc = Snapshot;
+        var counter = 0;
+        void Visit(IEnumerable<LabNode> nodes, LabPhase phase, int depth)
+        {
+            foreach (var node in nodes)
+            {
+                RunStepRows.Add(new R1RunStepRow(node, phase, ++counter, depth));
+                foreach (var slot in node.Slots.OrderBy(k => k.Key, StringComparer.Ordinal))
+                    Visit(slot.Value, phase, depth + 1);
+            }
+        }
+        foreach (var phase in Enum.GetValues<LabPhase>())
+            Visit(doc.Phases[phase], phase, 0);
+        SelectedRunStep = RunStepRows.FirstOrDefault(x => x.Type != "Subroutine")
+            ?? RunStepRows.FirstOrDefault();
+    }
     // UI-only run selection; never written back to the published TEST file.
     // The barcode path intentionally ignores these choices and runs the entire TEST.
     public ObservableCollection<LabTestCaseChoice> TestCases { get; } = new();
@@ -331,7 +378,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             AddNodes(root.Children, doc.Phases[phase], phase, null, null);
             Tree.Add(root);
         }
-        _selected = null; RefreshTestCases(); Changed(nameof(DocumentName)); RefreshCommands();
+        _selected = null; RefreshTestCases(); RefreshRunStepRows(); Changed(nameof(DocumentName)); RefreshCommands();
     }
     private static void AddNodes(ObservableCollection<LabTreeRow> rows, List<LabNode> nodes,
         LabPhase phase, Guid? parent, string? slot)
