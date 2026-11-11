@@ -35,7 +35,7 @@ ACTIONS = {"create_work", "edit_work", "create_deliverable", "edit_deliverable",
            "resolve_change", "record_receipt", "review_receipt", "record_phase_review"}
 FIELD_WORK = {"title", "kind", "mode", "horizon", "deliverable_id",
               "expected_result", "exit_condition", "depends_on", "sources",
-              "priority", "assignee", "planned_start", "planned_finish", "schedule_basis"}
+              "priority", "assignee", "planned_start", "planned_finish", "schedule_basis", "state"}
 FIELD_DELIV = {"title", "success_condition", "commitment"}
 
 
@@ -94,6 +94,8 @@ def validate_work(work, existing):
         rev = s.get("revision")
         if type(rev) is not int or rev < 1:
             raise ControlError("source revision must be positive integer")
+    if work.get("state", "PROPOSED") not in ("PROPOSED", "PLANNED"):
+        raise ControlError("invalid plan work state")
     if work.get("priority", "NORMAL") not in PRIORITIES:
         raise ControlError("invalid priority")
     if work.get("assignee"):
@@ -226,6 +228,7 @@ class Control:
                         w.setdefault("depends_on", [])
                         w.setdefault("sources", [])
                         w.setdefault("priority", "NORMAL")
+                        w.setdefault("state", "PROPOSED")
                         validate_work(w, {"deliverables": {d["id"] for d in plan["deliverables"]}})
                         plan["work"].append(w)
                         subject = w["id"]
@@ -317,6 +320,10 @@ class Control:
                 if stage == "REPORTED_COMPLETE" and not evidence:
                     raise ControlError("reporting completion requires evidence links")
                 detail = text(payload.get("detail"), "progress detail", 4000)
+                if (stage in ("IN_PROGRESS", "REPORTED_COMPLETE") and
+                        subject in record["invalidation"] and
+                        not record["invalidation"][subject]["resolved"]):
+                    raise ControlError("work is affected by an unresolved reviewed change")
                 record["progress"][subject] = {"state": stage, "detail": detail,
                                                "evidence_refs": evidence,
                                                "updated": now(), "actor": actor,
@@ -328,6 +335,9 @@ class Control:
                 current = record["progress"].get(subject)
                 if not current or current["state"] != "REPORTED_COMPLETE":
                     raise ControlError("work must be reported complete before owner verification")
+                if (subject in record["invalidation"] and
+                        not record["invalidation"][subject]["resolved"]):
+                    raise ControlError("cannot verify work affected by an unresolved change")
                 if not current["evidence_refs"]:
                     raise ControlError("no completion evidence")
                 current.update(state="VERIFIED_COMPLETE", verified_by=actor,
@@ -381,9 +391,25 @@ class Control:
                         if assessment["disposition"] in ("REASSESS", "INVESTIGATE"):
                             record["invalidation"][wid] = {"change_id": subject, "at": now(),
                                                            "reason": assessment["rationale"],
-                                                           "resolved": False}
+                                                           "resolved": False, "plan_revision_at_change": plan["revision"]}
                 # A change never edits approved product definition automatically.
                 outcome = {"note": "approved scope remains unchanged; affected plan tasks require review"}
+
+            elif name == "reconcile_work":
+                subject = ident(payload.get("id"), "work id")
+                self._work(record, subject)
+                invalidation = record["invalidation"].get(subject)
+                if not invalidation or invalidation["resolved"]:
+                    raise ControlError("work has no pending change impact")
+                disposition = payload.get("disposition")
+                if disposition not in ("NO_CHANGE", "REPLANNED"):
+                    raise ControlError("change impact must be reconciled explicitly")
+                if disposition == "REPLANNED" and not (
+                        plan["status"] == "BASELINED" and
+                        plan["revision"] > invalidation["plan_revision_at_change"]):
+                    raise ControlError("replanning must be published as a newer plan baseline first")
+                invalidation.update(resolved=True, reviewed_at=now(), reviewed_by=actor,
+                                    disposition=disposition, review_reason=reason)
 
             elif name == "record_receipt":
                 subject = ident(payload.get("work_id"), "receipt work_id")
@@ -431,6 +457,10 @@ class Control:
                 if decision in ("PASS", "PASS_WITH_LIMITATIONS"):
                     if not evidence_ids or any(e not in approved for e in evidence_ids):
                         raise ControlError("passing Gate needs exact approved evidence, not draft research")
+                    stages = [o.get("meta", {}).get("phase") for o in archive["objects"]
+                              if o.get("id") in evidence_ids]
+                    if phase != "P0" and phase not in stages:
+                        raise ControlError("Gate evidence must explicitly belong to the reviewed phase")
                 entry = {"id": new_id("phase"), "phase_id": phase, "decision": decision,
                          "evidence_ids": evidence_ids, "actor": actor, "reason": reason,
                          "at": now(), "local_only": True}
@@ -438,8 +468,8 @@ class Control:
                 outcome = {"id": entry["id"],
                            "warning": "local review is not GitHub-published approval until committed"}
 
-            record["revision"] += 1
             self._event(record, name, actor, reason, subject)
+            record["revision"] += 1
             self._write(record)
             return {"ok": True, "revision": record["revision"],
                     "event": record["events"][-1], "result": outcome}
