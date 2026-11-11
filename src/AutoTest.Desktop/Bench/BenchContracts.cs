@@ -65,6 +65,19 @@ public interface IBenchWorkbenchPort
             "Actual IGN output command has not been enabled on this bench adapter.",
             BenchEvidenceSource.Physical, null));
 
+    Task<BenchOperationResult> SetSolenoidAsync(byte action,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(new BenchOperationResult(false, null, null, null,
+            null, null, null, "SOL_PHYSICAL_UNAVAILABLE",
+            "No physical SET_SOL controller is connected to this bench port.",
+            BenchEvidenceSource.Physical, null));
+
+    Task<BenchOperationResult> ReadSolenoidAsync(CancellationToken cancellationToken) =>
+        Task.FromResult(new BenchOperationResult(false, null, null, null,
+            null, null, null, "SOL_READ_UNAVAILABLE",
+            "No physical GET_SOL controller is connected to this bench port.",
+            BenchEvidenceSource.Physical, null));
+
     Task SaveManualMeasurementAsync(BenchManualMeasurement measurement,
         CancellationToken cancellationToken);
 }
