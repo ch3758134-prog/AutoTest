@@ -44,6 +44,41 @@ class StudioApiTest(unittest.TestCase):
         with urlopen(req, timeout=5) as response:
             return response.status, json.loads(response.read().decode("utf-8"))
 
+    def test_ai_knowledge_is_candidate_and_cannot_approve_or_link_confirm(self):
+        _,project=self.request("/api/studio/project",{
+            "name":"AutoTest Knowledge","summary":"Legacy product text",
+            "body":"Current R1 engineering data"},token="local-test-token")
+        pid=project["project"]["id"]
+        record={"title":"Product boundary correction",
+            "statement":"AutoTest includes main board and key simulator",
+            "interpretation":"System is not software alone; user claim requires system design review",
+            "concept_ids":["product_identity","system_boundary"],
+            "source_refs":["discussion://current-user-correction"],
+            "related_objects":[],"provenance":"USER_INPUT"}
+        manager="manager-secret-token-0123456789-0123456789"
+        _,a=self.request("/api/studio/knowledge/propose",{
+            "project_id":pid,"entry":record,"author":"AI manager"},manager_token=manager)
+        self.assertEqual(a["state"],"CANDIDATE")
+        _,ledger=self.request("/api/studio/knowledge?project="+pid)
+        self.assertEqual(len(ledger["items"]),1)
+        self.assertEqual(ledger["items"][0]["origin_role"],"AI_CANDIDATE")
+        _,brief=self.request("/api/studio/management/context?project="+pid)
+        self.assertEqual(len(brief["engineering_knowledge"]["items"]),1)
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/knowledge/review",{
+                "id":a["id"],"expected_revision":1,"decision":"ACCEPT",
+                "reviewer":"AI","reason":"Self-approved"},manager_token=manager)
+        self.assertEqual(denied.exception.code,403)
+        _,b=self.request("/api/studio/knowledge/review",{
+            "id":a["id"],"expected_revision":1,"decision":"ACCEPT",
+            "reviewer":"Human owner","reason":"Verified user correction, not physical function"},
+            token="local-test-token")
+        self.assertEqual(b["state"],"ACCEPTED")
+        _,governance=self.request("/api/studio/governance/status?project="+pid)
+        self.assertEqual(governance["baseline_status"],"UNBASELINED")
+        with urlopen(self.url+"/knowledge.js",timeout=5) as response:
+            self.assertIn(b'knowledgeWorkbench',response.read())
+
     def test_manager_restricted_token_can_propose_but_cannot_approve(self):
         _, project = self.request("/api/studio/project",
                                   {"name":"Embedded project"},token="local-test-token")
