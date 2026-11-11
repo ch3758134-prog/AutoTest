@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     private GridLength _explorerSaved = new(255);
     private GridLength _inspectorSaved = new(286);
     private string _activeKey = "project";
+    private bool _applyingWorkspaceMode;
 
     public MainWindow()
     {
@@ -74,6 +75,12 @@ public partial class MainWindow : Window
         {
             BindWorkspaceEvents();
             PopulateTab(WorkbenchTabs.SelectedIndex);
+            if (IsLoaded && R1WorkspaceMode.SelectedIndex == 0)
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (!_closed && !Dispatcher.HasShutdownStarted)
+                        ApplyWorkspaceMode(0);
+                }), System.Windows.Threading.DispatcherPriority.ContextIdle);
         };
         BindWorkspaceEvents();
         UpdateContext(10);
@@ -85,7 +92,13 @@ public partial class MainWindow : Window
             if (_production?.DataContext is R1ProductionScannerViewModel scanner)
                 scanner.PropertyChanged += (_, _) => RefreshScannerStrip();
             RefreshScannerStrip();
-            ApplyWorkspaceMode(0);
+            // Force the operator TEST viewport only after Prism has attached
+            // its workspace. The old P01 document may otherwise win startup.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!_closed && !Dispatcher.HasShutdownStarted)
+                    ApplyWorkspaceMode(0);
+            }), System.Windows.Threading.DispatcherPriority.ContextIdle);
         };
     }
 
@@ -128,6 +141,11 @@ public partial class MainWindow : Window
 
     private void Navigate(int tab, string key)
     {
+        // A request to edit or inspect a professional tool must leave the
+        // full-width operator viewport; never silently show old tabs over it.
+        if (R1WorkspaceMode is not null && R1WorkspaceMode.SelectedIndex == 0 &&
+            tab != 10 && !_applyingWorkspaceMode)
+            R1WorkspaceMode.SelectedIndex = tab is 0 or 9 ? 1 : 2;
         _activeKey = key;
         WorkbenchTabs.SelectedIndex = tab;
         PopulateTab(tab);
@@ -138,6 +156,16 @@ public partial class MainWindow : Window
     {
         if (!ReferenceEquals(args.Source,WorkbenchTabs)) return;
         int selected=WorkbenchTabs.SelectedIndex;
+        if (IsLoaded && R1WorkspaceMode.SelectedIndex == 0 &&
+            selected != 10 && !_applyingWorkspaceMode)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!_closed && R1WorkspaceMode.SelectedIndex == 0)
+                    WorkbenchTabs.SelectedIndex = 10;
+            }));
+            return;
+        }
         _activeKey=selected switch
         {
             0=>"project",1=>"station",2=>"can",3=>"dbc",4=>"controller",
@@ -503,26 +531,67 @@ public partial class MainWindow : Window
 
     private void ApplyWorkspaceMode(int mode)
     {
-        // Only layout changes: a Run is owned by the shared TEST coordinator,
-        // not by the lifetime of an IDE tab or an explorer dock.
-        var engineering = mode != 0;
-        R1RailColumn.Width = new GridLength(engineering ? 50 : 0);
-        R1RailPanel.Visibility = engineering ? Visibility.Visible : Visibility.Collapsed;
-        R1DeveloperActions.Visibility = engineering ? Visibility.Visible : Visibility.Collapsed;
-        if (_explorerHidden == engineering)
-            ToggleExplorer_Click(this, new RoutedEventArgs());
-        if (_inspectorHidden == engineering)
-            ToggleInspector_Click(this, new RoutedEventArgs());
-        if (_bottomHidden == engineering)
-            ToggleBottom_Click(this, new RoutedEventArgs());
-
-        switch (mode)
+        if (_applyingWorkspaceMode || _closed) return;
+        _applyingWorkspaceMode = true;
+        try
         {
-            case 0: Navigate(10, "run"); break;          // operator: full-width TEST/StepFact
-            case 1: Navigate(9, "program"); break;       // developer: files, TEST editor, inspector
-            case 2: Navigate(2, "can"); break;           // tools: real station and professional views
+            var engineering = mode == 1;
+            var professional = mode == 2;
+            // V6: file/document IDE only in the engineering environment.
+            // The ordinary automatic TEST viewport is a single document,
+            // with neither file explorer nor legacy page tabs.
+            R1RailColumn.Width = new GridLength(engineering || professional ? 50 : 0);
+            R1RailPanel.Visibility = engineering || professional
+                ? Visibility.Visible : Visibility.Collapsed;
+            R1DeveloperActions.Visibility = engineering
+                ? Visibility.Visible : Visibility.Collapsed;
+
+            var showExplorer = engineering;
+            if (_explorerHidden == showExplorer)
+                ToggleExplorer_Click(this, new RoutedEventArgs());
+            if (_inspectorHidden == showExplorer)
+                ToggleInspector_Click(this, new RoutedEventArgs());
+
+            // Hide the entire empty trace dock during automatic testing,
+            // not just its content while leaving a 190px blank placeholder.
+            if (Content is Grid root && root.RowDefinitions.Count >= 5)
+            {
+                var outputRow = root.RowDefinitions[4];
+                if (engineering)
+                {
+                    outputRow.MinHeight = 27;
+                    outputRow.Height = new GridLength(158);
+                    R1BottomPanel.Visibility = Visibility.Visible;
+                    R1BottomTabs.Visibility = Visibility.Visible;
+                    _bottomHidden = false;
+                }
+                else
+                {
+                    outputRow.MinHeight = 0;
+                    outputRow.Height = new GridLength(0);
+                    R1BottomPanel.Visibility = Visibility.Collapsed;
+                    R1BottomTabs.Visibility = Visibility.Collapsed;
+                    _bottomHidden = true;
+                }
+            }
+            if (R1WorkspaceMode.SelectedIndex != mode)
+                R1WorkspaceMode.SelectedIndex = mode;
+            switch (mode)
+            {
+                case 0: Navigate(10, "run"); break;
+                case 1: Navigate(9, "program"); break;
+                case 2: Navigate(6, "wave"); break;
+            }
         }
+        finally { _applyingWorkspaceMode = false; }
     }
+
+    private void OperatorWorkspace_Click(object sender, RoutedEventArgs e)
+        => ApplyWorkspaceMode(0);
+    private void EngineeringWorkspace_Click(object sender, RoutedEventArgs e)
+        => ApplyWorkspaceMode(1);
+    private void ToolsWorkspace_Click(object sender, RoutedEventArgs e)
+        => ApplyWorkspaceMode(2);
 
     private void WorkspaceMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
