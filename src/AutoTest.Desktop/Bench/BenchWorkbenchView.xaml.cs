@@ -63,13 +63,6 @@ public partial class BenchWorkbenchView : UserControl
         else await vm.CanMessages.LoadAsync();
     }
 
-    private void AddCurrentMaskToAction_Click(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is not BenchWorkbenchViewModel vm) return;
-        vm.AddCurrentKeyCombinationToAction();
-        ActionEditorExpander.IsExpanded = true;
-    }
-
     private void OpenDbc_Click(object sender, RoutedEventArgs e) =>
         OpenDbcRequested?.Invoke(this, EventArgs.Empty);
 
