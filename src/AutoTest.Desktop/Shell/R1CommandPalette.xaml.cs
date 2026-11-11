@@ -13,7 +13,7 @@ public partial class R1CommandPalette : Window
     private readonly Action<string> _execute;
     private readonly List<R1PaletteCommand> _all =
     [
-        new("project","▦","工程中心","Project / Explorer"),
+        new("project","▦","工程文件","Project / Explorer"),
         new("station","⎔","设备连接","USB / Station"),
         new("can","≋","CAN Monitor","CAN / RX Trace"),
         new("dbc","▤","DBC Editor","Signals / DBC"),
@@ -22,9 +22,9 @@ public partial class R1CommandPalette : Window
         new("wave","∿","Wave Studio","Capture / Compare"),
         new("uds","⇄","UDS Console","Diagnostics / ISO-TP"),
         new("flash","⇧","CAN Flash","ECU Programming"),
-        new("program","⑂","测试程序编辑","Test / Authoring"),
-        new("run","▷","运行与调试","Execution / Debug"),
-        new("production","▣","扫码出厂","Production / EOL"),
+        new("program","⑂","TEST 程序编辑","Test / Authoring"),
+        new("run","▷","自动测试工作台","Execution / Verdict"),
+        new("scan","▣","编号规则与 COM 扫码","Production / Binding"),
         new("records","▥","记录与报告","Records / Reports"),
         new("operations","⌗","操作审计","Operations / Audit")
     ];
