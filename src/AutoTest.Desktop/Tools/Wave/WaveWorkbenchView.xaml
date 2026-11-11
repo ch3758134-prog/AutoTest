@@ -40,26 +40,40 @@
         </DockPanel>
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="1" Padding="11" CornerRadius="6" Margin="0,0,0,12">
-            <WrapPanel>
-                <Button Command="{Binding ReloadCommand}" Content="刷新 DBC 信号 (Ctrl+L)" />
-                <Button Command="{Binding ReplayCommand}" Content="↻ 档案 Replay (Ctrl+R)" />
-                
-                <TextBox Width="160" Height="28" Text="{Binding ArchivePath, UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="输入/选择保存的 CAN RX JSON 帧档案" Margin="0,0,7,7" />
-                <Button Click="ChooseArchive_Click" Content="选择帧文件…" />
-                <Button x:Name="RecordCanButton" Click="RecordCanArchive_Click"
-                        Content="录制真实 CAN1 RX / 5s"
-                        ToolTip="从已连接的唯一主控板记录实际接收帧，不向 CAN 发送任何数据"/>
-                <Button Click="CancelCanArchive_Click" Content="取消录制" />
-                <Button Command="{Binding OpenArchiveCommand}" Content="载入帧档案" />
-                <Button Command="{Binding LiveCommand}" Content="▶ 共享实时采集" />
-                <Button Command="{Binding StopCommand}" Content="■ 取消操作" />
-                <Button Command="{Binding SaveReferenceCommand}" Content="保存参考" />
-                <Button Command="{Binding LoadReferenceCommand}" Content="读取参考" />
-                <TextBlock Text="绝对容差" Margin="8,8,6,0" VerticalAlignment="Top" />
-                <TextBox Width="70" Height="28" Text="{Binding ToleranceText, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Command="{Binding CompareCommand}" Content="比较 / 证据" Margin="8,0,7,7" />
-            </WrapPanel>
+            <StackPanel>
+                <TextBlock Text="采集与回放" Style="{StaticResource AtSectionTitle}" Margin="0,0,0,8"/>
+                <WrapPanel Margin="0,0,0,5">
+                    <Button Command="{Binding LiveCommand}" Content="▶ 实时采集"
+                     Style="{StaticResource AtPrimaryButton}"/>
+                    <Button x:Name="RecordCanButton" Click="RecordCanArchive_Click"
+                     Content="录制 CAN1（5秒）"
+                     ToolTip="从已连接主控记录真实 CAN1 接收帧，不发送指令"/>
+                    <Button Click="CancelCanArchive_Click" Content="取消录制"
+                     Style="{StaticResource AtDangerButton}"/>
+                    <Button Command="{Binding StopCommand}" Content="停止当前操作"
+                     Style="{StaticResource AtDangerButton}"/>
+                    <Button Command="{Binding ReloadCommand}" Content="刷新 DBC 信号"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,0,0,10">
+                    <TextBlock Text="接收档案" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox Width="185" Text="{Binding ArchivePath,UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="保存的真实 CAN1 RX 档案路径" Margin="0,0,7,0"/>
+                    <Button Click="ChooseArchive_Click" Content="选择文件"/>
+                    <Button Command="{Binding OpenArchiveCommand}" Content="加载档案"/>
+                    <Button Command="{Binding ReplayCommand}" Content="回放档案"/>
+                </WrapPanel>
+                <Separator Background="{DynamicResource StudioLine}" Margin="0,0,0,9"/>
+                <WrapPanel>
+                    <TextBlock Text="参考与判定" Style="{StaticResource AtSectionTitle}"
+                     VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Button Command="{Binding SaveReferenceCommand}" Content="保存参考波形"/>
+                    <Button Command="{Binding LoadReferenceCommand}" Content="加载参考波形"/>
+                    <TextBlock Text="绝对容差" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox Width="80" Text="{Binding ToleranceText,UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="设置数值信号的绝对判定容差" Margin="0,0,7,0"/>
+                    <Button Command="{Binding CompareCommand}" Content="比较并生成证据"/>
+                </WrapPanel>
+            </StackPanel></WrapPanel>
         </Border>
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
