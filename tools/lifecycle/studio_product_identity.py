@@ -186,8 +186,32 @@ class ProductIdentity:
                 "SELECT * FROM product_identity_impacts WHERE proposal_id=? ORDER BY object_id",
                 (proposal_id,))]
             for item in impacts:item["evidence_refs"]=json.loads(item["evidence_refs"])
+            # AI research already has a structured, versioned route:
+            # linked engineering knowledge. Project it as an impact *candidate*
+            # rather than creating a competing, special-purpose AI form.
+            suggestions=[]
+            for r in db.execute("""SELECT id,title,statement,interpretation,
+                   source_refs,related_objects,origin_role,state,revision
+                   FROM engineering_knowledge WHERE project_id=?
+                   ORDER BY updated DESC,id DESC""",(proposal["project_id"],)):
+                links=json.loads(r["related_objects"])
+                if not links:continue
+                source_refs=json.loads(r["source_refs"])
+                for oid in links:
+                    obj=db.execute("SELECT title,kind,revision FROM objects WHERE id=? AND project_id=?",
+                                   (oid,proposal["project_id"])).fetchone()
+                    if not obj:continue
+                    suggestions.append({
+                        "knowledge_id":r["id"],"knowledge_revision":r["revision"],
+                        "knowledge_state":r["state"],"origin_role":r["origin_role"],
+                        "title":r["title"],"statement":r["statement"],
+                        "interpretation":r["interpretation"],
+                        "evidence_refs":source_refs,
+                        "object_id":oid,"object_title":obj["title"],
+                        "object_kind":obj["kind"],"object_revision":obj["revision"]})
             baseline,revision,d=self._snapshot(db,proposal["project_id"])
             return {"proposal":self._decode_proposal(proposal),"impacts":impacts,
+                    "knowledge_impact_candidates":suggestions,
                     "gate":self._gate(db,proposal),"current_revision":revision,
                     "current_digest":d}
 
