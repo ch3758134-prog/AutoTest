@@ -12,6 +12,7 @@ from studio_execution import Execution
 from studio_management import Management
 from studio_verification import Verification
 from studio_restore import preview,restore_to_empty
+from studio_governance import DefinitionGovernance,DOMAINS
 
 
 class RestoreTests(unittest.TestCase):
@@ -68,6 +69,33 @@ class RestoreTests(unittest.TestCase):
             self.assertEqual(new_archive[key],archive[key],key)
         self.assertEqual(new_archive["execution"]["repository"],None)
         self.assertEqual(len(new_archive["technical_research"]["studies"]),1)
+
+    def test_governed_product_definition_roundtrip_and_tamper_rejection(self):
+        gov=DefinitionGovernance(self.original)
+        status=gov.status(self.pid)
+        proposed=dict(status["definition"])
+        proposed["summary"]="Versioned evidence-led test product"
+        change=gov.propose(self.pid,proposed,
+                           "Review product definition before engineering authorization",
+                           ["study://product-inputs"],"Human",status["definition_digest"])
+        for domain,_ in DOMAINS:
+            gov.review(change["change"]["id"],domain,"NO_IMPACT",
+                "This test fixture records a complete human domain review",
+                ["study://product-inputs"],[],"Human",change["change"]["base_digest"])
+        gov.publish(change["change"]["id"],"Human","Full review signed in test",
+                    change["change"]["base_digest"])
+        archive=self.archive()
+        self.assertEqual(len(archive["governance"]["reviews"]),len(DOMAINS))
+        restore_to_empty(archive,self.target)
+        rebuilt=Store(self.target)
+        self.assertEqual(rebuilt.export_project(self.pid)["governance"],
+                         archive["governance"])
+        self.assertEqual(DefinitionGovernance(rebuilt).status(self.pid)["baseline_status"],
+                         "BASELINED")
+        tampered=copy.deepcopy(archive)
+        tampered["governance"]["baselines"][0]["digest"]="0"*64
+        with self.assertRaisesRegex(RuleError,"digest"):
+            preview(tampered)
 
     def test_corrupt_snapshot_is_rejected_without_writing(self):
         archive=self.archive()
