@@ -32,7 +32,7 @@ def git_head():
 
 def load_model(control=None):
     control = control or Control(CONTROL_PATH, ARCHIVE)
-    source = json.loads(ARCHIVE.read_text(encoding="utf-8"))
+    source = control.archive()  # raw candidate research + only exact human-approved overlays
     archive = source["engineering"]
     record, plan, assessment = control.model()
     process = json.loads(PROCESS.read_text(encoding="utf-8"))
