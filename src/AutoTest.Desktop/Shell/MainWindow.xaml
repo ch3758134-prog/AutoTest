@@ -10,16 +10,16 @@
  Width="1600" Height="960" MinWidth="1150" MinHeight="720"
  WindowStartupLocation="CenterScreen" WindowState="Maximized"
  Closing="Window_Closing"
- Background="#101620" Foreground="#E2EDF7"
+ Background="#F5F7FA" Foreground="#203249"
  FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True"
  SnapsToDevicePixels="True">
  <Window.Resources>
-  <SolidColorBrush x:Key="R1Title" Color="#111924"/>
-  <SolidColorBrush x:Key="R1Panel" Color="#192431"/>
-  <SolidColorBrush x:Key="R1Surface" Color="#202D3B"/>
-  <SolidColorBrush x:Key="R1Stroke" Color="#314458"/>
-  <SolidColorBrush x:Key="R1Muted" Color="#92A4B7"/>
-  <SolidColorBrush x:Key="R1Accent" Color="#4FAAFB"/>
+  <SolidColorBrush x:Key="R1Title" Color="#F8FAFC"/>
+  <SolidColorBrush x:Key="R1Panel" Color="#FFFFFF"/>
+  <SolidColorBrush x:Key="R1Surface" Color="#EDF2F8"/>
+  <SolidColorBrush x:Key="R1Stroke" Color="#D5DFEA"/>
+  <SolidColorBrush x:Key="R1Muted" Color="#667C92"/>
+  <SolidColorBrush x:Key="R1Accent" Color="#176CB5"/>
   <Style x:Key="R1RailButton" TargetType="Button">
    <Setter Property="Width" Value="43"/>
    <Setter Property="Height" Value="41"/>
@@ -28,24 +28,24 @@
    <Setter Property="Padding" Value="3"/>
    <Setter Property="Background" Value="Transparent"/>
    <Setter Property="BorderThickness" Value="0"/>
-   <Setter Property="Foreground" Value="#B6C9D9"/>
+   <Setter Property="Foreground" Value="#526C85"/>
    <Setter Property="HorizontalContentAlignment" Value="Center"/>
    <Style.Triggers>
     <Trigger Property="Tag" Value="active">
-     <Setter Property="Background" Value="#163C60"/>
-     <Setter Property="Foreground" Value="#4FAAFB"/>
-     <Setter Property="BorderBrush" Value="#4FAAFB"/>
+     <Setter Property="Background" Value="#E0EDFB"/>
+     <Setter Property="Foreground" Value="#176CB5"/>
+     <Setter Property="BorderBrush" Value="#176CB5"/>
      <Setter Property="BorderThickness" Value="3,0,0,0"/>
     </Trigger>
     <Trigger Property="IsMouseOver" Value="True">
-     <Setter Property="Background" Value="#2C4054"/>
+     <Setter Property="Background" Value="#DCEBFA"/>
     </Trigger>
    </Style.Triggers>
   </Style>
   <Style x:Key="R1PanelHeader" TargetType="TextBlock">
    <Setter Property="FontWeight" Value="SemiBold"/>
    <Setter Property="FontSize" Value="12"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="Foreground" Value="#203249"/>
   </Style>
 
  </Window.Resources>
@@ -69,28 +69,28 @@
    <RowDefinition Height="25"/>
   </Grid.RowDefinitions>
   <!-- HTML #app title row / theme / workspace -->
-  <Border Background="{StaticResource R1Title}" BorderBrush="#263748" BorderThickness="0,0,0,1">
+  <Border Background="{StaticResource R1Title}" BorderBrush="#E8F0F8" BorderThickness="0,0,0,1">
    <DockPanel Margin="12,0">
     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-     <TextBlock Text="R1 STUDIO" Foreground="#4FAAFB" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+     <TextBlock Text="R1 STUDIO" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
      <TextBlock Text="   /   ECU INTEGRATION TEST &amp; DEVELOPMENT" Foreground="{StaticResource R1Muted}" FontSize="11" VerticalAlignment="Center"/>
      <Button Content="⌕" FontSize="16" ToolTip="命令搜索 Ctrl+K" Click="CommandPalette_Click"
-             Background="Transparent" Foreground="#92A4B7" BorderThickness="0" Padding="12,0" Margin="12,0,0,0"/>
+             Background="Transparent" Foreground="#667C92" BorderThickness="0" Padding="12,0" Margin="12,0,0,0"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-     <Border Background="#257AC2" CornerRadius="5" Width="25" Height="25" Margin="0,0,9,0">
+     <Border Background="#176CB5" CornerRadius="5" Width="25" Height="25" Margin="0,0,9,0">
       <TextBlock Text="A" Foreground="White" FontWeight="Bold" FontSize="15"
                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
      </Border>
      <TextBlock Text="AutoTest" FontWeight="Bold" FontSize="16" Foreground="White" VerticalAlignment="Center"/>
-     <TextBlock Text="  STUDIO" FontSize="9" Foreground="#92A4B7" VerticalAlignment="Center"/>
-     <TextBlock Text="     /     " Foreground="#65798F" VerticalAlignment="Center"/>
-     <TextBlock Text="{Binding ProjectLabel}" Foreground="#CEDCEB" VerticalAlignment="Center"/>
+     <TextBlock Text="  STUDIO" FontSize="9" Foreground="#667C92" VerticalAlignment="Center"/>
+     <TextBlock Text="     /     " Foreground="#8795A8" VerticalAlignment="Center"/>
+     <TextBlock Text="{Binding ProjectLabel}" Foreground="#3B4F67" VerticalAlignment="Center"/>
     </StackPanel>
    </DockPanel>
   </Border>
   <!-- HTML menu row / preserve all existing tested commands -->
-  <Menu Grid.Row="1" Background="#16202C" Foreground="#E2EDF7">
+  <Menu Grid.Row="1" Background="#FFFFFF" Foreground="#203249">
    <MenuItem Header="_文件">
     <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
     <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}"/>
@@ -142,35 +142,42 @@
    <MenuItem Header="_帮助"><MenuItem Header="R1 原型参考与独立联调说明" Click="R1About_Click"/></MenuItem>
   </Menu>
   <!-- HTML command bar, 48 px -->
-  <Border Grid.Row="2" Background="#16202C" Padding="11,7"
+  <Border Grid.Row="2" Background="#FFFFFF" Padding="11,7"
           BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,0,1">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Ellipse x:Name="R1StationDot" Width="7" Height="7" Fill="#65798F"
+     <Ellipse x:Name="R1StationDot" Width="7" Height="7" Fill="#8795A8"
               Margin="2,0,6,0" VerticalAlignment="Center"/>
      <TextBlock x:Name="R1StationStatus" Text="Station · 未连接"
-                Foreground="#92A4B7" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
+                Foreground="#667C92" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
      <Button Content="⌄" Click="OpenStation_Click" ToolTip="打开 Station 连接"
-             Background="Transparent" Foreground="#92A4B7" BorderThickness="0" Padding="3"/>
-     <Border Width="1" Height="22" Background="#314458" Margin="8,0"/>
-     <TextBlock Text="执行源" Foreground="#92A4B7" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+             Background="Transparent" Foreground="#667C92" BorderThickness="0" Padding="3"/>
+     <Border Width="1" Height="22" Background="#D5DFEA" Margin="8,0"/>
+     <TextBlock Text="扫码" Foreground="#667C92" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
+     <TextBlock x:Name="R1ScannerStatus" Text="等待扫码枪配置"
+                Foreground="#3B4F67" MaxWidth="210" TextTrimming="CharacterEllipsis"
+                FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+     <Button Content="COM" Click="OpenProduction_Click" ToolTip="设置真实 USB COM 扫码枪 / 编号绑定"
+             Padding="7,3" MinHeight="27" Margin="0,0,5,0"/>
+     <Border Width="1" Height="22" Background="#D5DFEA" Margin="8,0"/>
+     <TextBlock Text="执行源" Foreground="#667C92" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
      <ComboBox x:Name="R1ExecutionSource" Width="118" Height="28"
-               Background="#202D3B" Foreground="#E2EDF7" BorderBrush="#314458"
+               Background="#EDF2F8" Foreground="#203249" BorderBrush="#D5DFEA"
                SelectionChanged="ExecutionSource_SelectionChanged" SelectedIndex="0">
       <ComboBoxItem Content="Physical / 实物" Tag="Physical"/>
       <ComboBoxItem Content="Replay / 离线回放" Tag="Replay"/>
      </ComboBox>
-     <Border Width="1" Height="22" Background="#314458" Margin="8,0"/>
-     <TextBlock Text="工作区" Foreground="#92A4B7" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-     <ComboBox x:Name="R1WorkspaceMode" Width="108" Height="28"
-               Background="#202D3B" Foreground="#E2EDF7" BorderBrush="#314458"
+     <Border Width="1" Height="22" Background="#D5DFEA" Margin="8,0"/>
+     <TextBlock Text="工作区" Foreground="#667C92" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+     <ComboBox x:Name="R1WorkspaceMode" Width="122" Height="28"
+               Background="#EDF2F8" Foreground="#203249" BorderBrush="#D5DFEA"
                SelectedIndex="0" SelectionChanged="WorkspaceMode_SelectionChanged">
-      <ComboBoxItem Content="开发调试"/>
-      <ComboBoxItem Content="出厂检测"/>
-      <ComboBoxItem Content="离线分析"/>
+      <ComboBoxItem Content="自动测试"/>
+      <ComboBoxItem Content="工程开发"/>
+      <ComboBoxItem Content="专业工具"/>
      </ComboBox>
     </StackPanel>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+    <StackPanel x:Name="R1DeveloperActions" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="⌕" Click="CommandPalette_Click" ToolTip="命令搜索 Ctrl+K" FontSize="17"/>
      <Button Content="新建工程" Command="{Binding NewProjectCommand}"/>
      <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
@@ -188,14 +195,14 @@
   <!-- HTML rail / explorer / document / inspector -->
   <Grid Grid.Row="3">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="50"/>
+    <ColumnDefinition x:Name="R1RailColumn" Width="50"/>
     <ColumnDefinition x:Name="R1ExplorerColumn" Width="255" MinWidth="0"/>
     <ColumnDefinition x:Name="R1ExplorerSizerColumn" Width="5"/>
     <ColumnDefinition Width="*" MinWidth="440"/>
     <ColumnDefinition x:Name="R1InspectorSizerColumn" Width="5"/>
     <ColumnDefinition x:Name="R1InspectorColumn" Width="286" MinWidth="0"/>
    </Grid.ColumnDefinitions>
-   <Border Background="#141D29" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
+   <Border x:Name="R1RailPanel" Background="#F1F5F9" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
      <StackPanel>
       <Button x:Name="R1ProjectRail" Content="▦" Style="{StaticResource R1RailButton}" Click="OpenProject_Click" ToolTip="P01 工程资源 / Revision"/>
@@ -217,10 +224,10 @@
    </Border>
    <Border x:Name="R1ExplorerPanel" Grid.Column="1" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="0,0,1,0">
     <DockPanel>
-     <Border DockPanel.Dock="Top" Padding="12,13,12,10" BorderBrush="#263748" BorderThickness="0,0,0,1">
+     <Border DockPanel.Dock="Top" Padding="12,13,12,10" BorderBrush="#E8F0F8" BorderThickness="0,0,0,1">
       <StackPanel>
        <DockPanel><Button Content="«" Click="ToggleExplorer_Click" DockPanel.Dock="Right" ToolTip="隐藏资源管理器"
-          Background="Transparent" Foreground="#92A4B7" BorderThickness="0" Padding="2"/>
+          Background="Transparent" Foreground="#667C92" BorderThickness="0" Padding="2"/>
          <TextBlock Text="EXPLORER / 工程资源" Style="{StaticResource R1PanelHeader}"/></DockPanel>
        <TextBlock Text="{Binding ProjectLabel}" Foreground="{StaticResource R1Muted}" FontSize="11" Margin="0,5,0,9" TextWrapping="Wrap"/>
        <TextBox Text="{Binding SearchText,UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索工程与测试节点"/>
@@ -230,10 +237,10 @@
     </DockPanel>
    </Border>
    <GridSplitter x:Name="R1ExplorerSizer" Grid.Column="2" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
-   <Border Grid.Column="3" Background="#101620">
-    <TabControl x:Name="WorkbenchTabs" Background="#101620" SelectedIndex="0" SelectionChanged="WorkbenchTabs_SelectionChanged">
+   <Border Grid.Column="3" Background="#F5F7FA">
+    <TabControl x:Name="WorkbenchTabs" Background="#F5F7FA" SelectedIndex="10" SelectionChanged="WorkbenchTabs_SelectionChanged">
      <TabItem Header="P01 工程">
-      <ScrollViewer Background="#101620" VerticalScrollBarVisibility="Auto">
+      <ScrollViewer Background="#F5F7FA" VerticalScrollBarVisibility="Auto">
        <StackPanel Margin="20,18,20,25">
         <DockPanel Margin="0,0,0,15">
          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -242,40 +249,40 @@
           <Button Content="验证工程" Command="{Binding ValidateCommand}" Background="#1975BA"/>
          </StackPanel>
          <StackPanel>
-          <TextBlock Text="PROJECT WORKSPACE / 工程中心" Foreground="#65798F" FontWeight="SemiBold" FontSize="11"/>
+          <TextBlock Text="PROJECT WORKSPACE / 工程中心" Foreground="#8795A8" FontWeight="SemiBold" FontSize="11"/>
           <TextBlock Text="工程中心" FontSize="23" FontWeight="SemiBold" Margin="0,6,0,2"/>
           <TextBlock Text="通用 ECU 工程的资源、版本引用、测试程序与身份绑定"
-                     Foreground="#92A4B7" FontSize="11" TextWrapping="Wrap"/>
+                     Foreground="#667C92" FontSize="11" TextWrapping="Wrap"/>
          </StackPanel>
         </DockPanel>
-        <Border Background="#202D3B" BorderBrush="#314458" BorderThickness="1" CornerRadius="6"
+        <Border Background="#EDF2F8" BorderBrush="#D5DFEA" BorderThickness="1" CornerRadius="6"
                 Padding="12" Margin="0,0,0,13">
          <DockPanel>
-          <TextBlock DockPanel.Dock="Right" Text="REVISIONED ASSETS" Foreground="#52CE9C" FontSize="11" VerticalAlignment="Center"/>
+          <TextBlock DockPanel.Dock="Right" Text="REVISIONED ASSETS" Foreground="#177C55" FontSize="11" VerticalAlignment="Center"/>
           <TextBlock Text="{Binding ProjectLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
          </DockPanel>
         </Border>
         <UniformGrid Columns="4" Margin="0,0,0,13">
-         <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
+         <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
           <StackPanel><TextBlock Text="{Binding Workspace.Project.Revision}" FontSize="22" FontWeight="SemiBold"/>
-           <TextBlock Text="工程 Revision" FontSize="11" Foreground="#92A4B7" Margin="0,5,0,0"/></StackPanel>
+           <TextBlock Text="工程 Revision" FontSize="11" Foreground="#667C92" Margin="0,5,0,0"/></StackPanel>
          </Border>
-         <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
+         <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
           <StackPanel><TextBlock Text="{Binding Steps.Count}" FontSize="22" FontWeight="SemiBold"/>
-           <TextBlock Text="TEST 程序节点" FontSize="11" Foreground="#92A4B7" Margin="0,5,0,0"/></StackPanel>
+           <TextBlock Text="TEST 程序节点" FontSize="11" Foreground="#667C92" Margin="0,5,0,0"/></StackPanel>
          </Border>
-         <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
+         <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,8,0">
           <StackPanel><TextBlock Text="{Binding DbcSignals.Count}" FontSize="22" FontWeight="SemiBold"/>
-           <TextBlock Text="DBC 信号" FontSize="11" Foreground="#92A4B7" Margin="0,5,0,0"/></StackPanel>
+           <TextBlock Text="DBC 信号" FontSize="11" Foreground="#667C92" Margin="0,5,0,0"/></StackPanel>
          </Border>
-         <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Padding="14">
+         <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Padding="14">
           <StackPanel><TextBlock Text="{Binding ResourceLines.Count}" FontSize="22" FontWeight="SemiBold"/>
-           <TextBlock Text="资源目录项" FontSize="11" Foreground="#92A4B7" Margin="0,5,0,0"/></StackPanel>
+           <TextBlock Text="资源目录项" FontSize="11" Foreground="#667C92" Margin="0,5,0,0"/></StackPanel>
          </Border>
         </UniformGrid>
-        <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
+        <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
          <DockPanel>
-          <DockPanel DockPanel.Dock="Top" Background="#202D3B" Margin="0,0,0,8" LastChildFill="True">
+          <DockPanel DockPanel.Dock="Top" Background="#EDF2F8" Margin="0,0,0,8" LastChildFill="True">
            <TextBlock Text="工程资源与操作入口" FontSize="13" FontWeight="SemiBold" Margin="13,12" VerticalAlignment="Center"/>
            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
             <Button Content="保存工程" Command="{Binding SaveCommand}"/>
@@ -285,38 +292,38 @@
           </DockPanel>
           <Grid Margin="12,0,12,13">
            <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="210"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*" MinWidth="200"/></Grid.ColumnDefinitions>
-           <GroupBox Header="工程资源 / Assets" Foreground="#E2EDF7" BorderBrush="#314458" Background="#192431">
-            <ListBox ItemsSource="{Binding ResourceLines}" Background="#101620" Foreground="#C7D8E8" BorderThickness="0"/>
+           <GroupBox Header="工程资源 / Assets" Foreground="#203249" BorderBrush="#D5DFEA" Background="#FFFFFF">
+            <ListBox ItemsSource="{Binding ResourceLines}" Background="#F5F7FA" Foreground="#C7D8E8" BorderThickness="0"/>
            </GroupBox>
-           <GroupBox Grid.Column="2" Header="版本和引用诊断" Foreground="#E2EDF7" BorderBrush="#314458" Background="#192431">
+           <GroupBox Grid.Column="2" Header="版本和引用诊断" Foreground="#203249" BorderBrush="#D5DFEA" Background="#FFFFFF">
             <DockPanel>
-             <TextBlock DockPanel.Dock="Top" Text="{Binding Diagnostic}" Foreground="#E8B967"
+             <TextBlock DockPanel.Dock="Top" Text="{Binding Diagnostic}" Foreground="#90611A"
                         TextWrapping="Wrap" Margin="8,5,8,10"/>
-             <ListBox ItemsSource="{Binding FactLines}" Background="#101620" Foreground="#92A4B7"
+             <ListBox ItemsSource="{Binding FactLines}" Background="#F5F7FA" Foreground="#667C92"
                       BorderThickness="0"/>
             </DockPanel>
            </GroupBox>
           </Grid>
          </DockPanel>
         </Border>
-        <Border Background="#192431" BorderBrush="#263748" BorderThickness="1" CornerRadius="6">
+        <Border Background="#FFFFFF" BorderBrush="#E8F0F8" BorderThickness="1" CornerRadius="6">
          <StackPanel Margin="14">
           <TextBlock Text="跨工具协作 / 使用资源，而不是复制配置" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,13"/>
           <UniformGrid Columns="3">
            <StackPanel Margin="0,0,17,0">
-            <TextBlock Text="01 · 工程定义" Foreground="#46D0DC" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="01 · 工程定义" Foreground="#087D9C" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <TextBlock Text="DBC、Controller、Station、Wave Reference 和 Flash Profile 必须保持明确的版本与来源。"
-                       TextWrapping="Wrap" FontSize="12" Foreground="#C4D2DF"/>
+                       TextWrapping="Wrap" FontSize="12" Foreground="#536C86"/>
            </StackPanel>
            <StackPanel Margin="0,0,17,0">
-            <TextBlock Text="02 · 验证与快照" Foreground="#46D0DC" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="02 · 验证与快照" Foreground="#087D9C" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <TextBlock Text="TEST 运行按当前资源 Revision 固定定义；引用失效要显式处理，不可静默替换。"
-                       TextWrapping="Wrap" FontSize="12" Foreground="#C4D2DF"/>
+                       TextWrapping="Wrap" FontSize="12" Foreground="#536C86"/>
            </StackPanel>
            <StackPanel>
-            <TextBlock Text="03 · 运行事实" Foreground="#46D0DC" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="03 · 运行事实" Foreground="#087D9C" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <TextBlock Text="请求、设备 ACK、ECU 观测与 Verdict 分层记录，关联 DUT、RunId 与独立 Trace。"
-                       TextWrapping="Wrap" FontSize="12" Foreground="#C4D2DF"/>
+                       TextWrapping="Wrap" FontSize="12" Foreground="#536C86"/>
            </StackPanel>
           </UniformGrid>
          </StackPanel>
@@ -354,7 +361,7 @@
      <TabItem Header="P11 Run">
       <ContentControl x:Name="R1RunHost"/>
      </TabItem>
-     <TabItem Header="P12 Production">
+     <TabItem Header="工位扫码 / 编号绑定">
       <ContentControl x:Name="R1ProductionHost"/>
      </TabItem>
      <TabItem Header="P13 Records">
@@ -368,10 +375,10 @@
    <GridSplitter x:Name="R1InspectorSizer" Grid.Column="4" Background="{StaticResource R1Stroke}" HorizontalAlignment="Stretch"/>
    <Border x:Name="R1InspectorPanel" Grid.Column="5" Background="{StaticResource R1Panel}" BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0">
     <DockPanel>
-     <Border DockPanel.Dock="Top" Background="#202D3B" Padding="12,12,12,9">
+     <Border DockPanel.Dock="Top" Background="#EDF2F8" Padding="12,12,12,9">
       <StackPanel>
        <DockPanel><Button Content="×" Click="ToggleInspector_Click" DockPanel.Dock="Right" ToolTip="隐藏属性栏"
-                   Background="Transparent" Foreground="#92A4B7" BorderThickness="0" Padding="2"/>
+                   Background="Transparent" Foreground="#667C92" BorderThickness="0" Padding="2"/>
                  <TextBlock Text="INSPECTOR / 属性" Style="{StaticResource R1PanelHeader}"/></DockPanel>
        <TextBlock x:Name="R1InspectorTitle" Text="工程 / Revision" FontSize="13" FontWeight="SemiBold" Margin="0,7,0,0"/>
        <TextBlock x:Name="R1InspectorDescription" Text="当前选择、属性与资源关联" Foreground="{StaticResource R1Muted}" Margin="0,7,0,0" FontSize="11" TextWrapping="Wrap"/>
@@ -383,7 +390,7 @@
       </Border>
       <StackPanel x:Name="R1InspectorContext" Margin="13">
        <TextBlock Text="CURRENT CONTEXT / 当前工作区" Foreground="{StaticResource R1Muted}" FontSize="10" Margin="0,0,0,12"/>
-       <TextBlock Text="选中中央专业工具中的内容可查看、编辑或保存。操作与工程资源由对应 ViewModel 管理。" TextWrapping="Wrap" Foreground="#C1D4E2" Margin="0,0,0,14"/>
+       <TextBlock Text="选中中央专业工具中的内容可查看、编辑或保存。操作与工程资源由对应 ViewModel 管理。" TextWrapping="Wrap" Foreground="#51677E" Margin="0,0,0,14"/>
        <Border BorderBrush="{StaticResource R1Stroke}" BorderThickness="1,0,0,0" Margin="0,0,0,13"/>
        <TextBlock Text="资源关联" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,10"/>
        <TextBlock Text="{Binding ProjectLabel}" TextWrapping="Wrap" FontSize="12"/>
@@ -394,22 +401,22 @@
    </Border>
   </Grid>
   <!-- R1 prototype: persistent bottom dock with four factual trace sources -->
-  <Border Grid.Row="4" Background="#192431" BorderBrush="{StaticResource R1Stroke}"
+  <Border Grid.Row="4" Background="#FFFFFF" BorderBrush="{StaticResource R1Stroke}"
           BorderThickness="0,1,0,0">
    <DockPanel>
-    <DockPanel DockPanel.Dock="Top" Background="#202D3B" LastChildFill="True">
+    <DockPanel DockPanel.Dock="Top" Background="#EDF2F8" LastChildFill="True">
      <Button DockPanel.Dock="Right" Content="⌄" Click="ToggleBottom_Click"
-             Background="Transparent" BorderThickness="0" Foreground="#92A4B7"
+             Background="Transparent" BorderThickness="0" Foreground="#667C92"
              ToolTip="折叠/恢复底部面板" Padding="10,3"/>
      <TextBlock x:Name="R1BottomLabel" Text="OUTPUT / TRACE" FontWeight="SemiBold"
-                Margin="12,5" Foreground="#92A4B7" VerticalAlignment="Center"/>
+                Margin="12,5" Foreground="#667C92" VerticalAlignment="Center"/>
     </DockPanel>
-    <TabControl x:Name="R1BottomTabs" Background="#192431" BorderThickness="0"
+    <TabControl x:Name="R1BottomTabs" Background="#FFFFFF" BorderThickness="0"
                 SelectedIndex="1" TabStripPlacement="Top">
      <TabItem Header="CAN TRACE">
       <DataGrid x:Name="R1BottomCanGrid" AutoGenerateColumns="True" IsReadOnly="True"
-                Background="#101620" Foreground="#E2EDF7" BorderThickness="0"
-                AlternatingRowBackground="#202D3B" RowBackground="#192431"
+                Background="#F5F7FA" Foreground="#203249" BorderThickness="0"
+                AlternatingRowBackground="#EDF2F8" RowBackground="#FFFFFF"
                 HeadersVisibility="Column" CanUserAddRows="False"
                 EnableRowVirtualization="True" EnableColumnVirtualization="True"/>
      </TabItem>
@@ -418,23 +425,23 @@
      </TabItem>
      <TabItem Header="OPERATIONS">
       <DataGrid x:Name="R1BottomAuditGrid" AutoGenerateColumns="True" IsReadOnly="True"
-                Background="#101620" Foreground="#E2EDF7" BorderThickness="0"
-                AlternatingRowBackground="#202D3B" RowBackground="#192431"
+                Background="#F5F7FA" Foreground="#203249" BorderThickness="0"
+                AlternatingRowBackground="#EDF2F8" RowBackground="#FFFFFF"
                 HeadersVisibility="Column" EnableRowVirtualization="True"/>
      </TabItem>
      <TabItem Header="UDS / ISO-TP">
       <DataGrid x:Name="R1BottomUdsGrid" AutoGenerateColumns="True" IsReadOnly="True"
-                Background="#101620" Foreground="#E2EDF7" BorderThickness="0"
-                AlternatingRowBackground="#202D3B" RowBackground="#192431"
+                Background="#F5F7FA" Foreground="#203249" BorderThickness="0"
+                AlternatingRowBackground="#EDF2F8" RowBackground="#FFFFFF"
                 HeadersVisibility="Column" EnableRowVirtualization="True"/>
      </TabItem>
     </TabControl>
    </DockPanel>
   </Border>
-  <Border Grid.Row="5" Background="#163C60" Padding="10,3">
+  <Border Grid.Row="5" Background="#E0EDFB" Padding="10,3">
    <DockPanel>
-    <TextBlock Text="AutoTest R1 · DESIGN / NOT PHYSICAL VALIDATED" FontWeight="SemiBold" Foreground="#E2EDF7"/>
-    <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" HorizontalAlignment="Right" Foreground="#D4E7F8"/>
+    <TextBlock Text="AutoTest R1 · 实际执行证据与授权状态可追踪 / 现场验收待完成" FontWeight="SemiBold" Foreground="#203249"/>
+    <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" HorizontalAlignment="Right" Foreground="#294867"/>
    </DockPanel>
   </Border>
  </Grid>
