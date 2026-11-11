@@ -89,6 +89,19 @@ public interface IBenchWorkbenchPort
         Task.FromResult(new BenchActionExecution(false, false, false,
             "实际 KEY_SIM 连续动作执行接口未接线，不允许仿真。"));
 
+    Task<IReadOnlyList<BenchCanMessage>> LoadCanMessagesAsync(CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<BenchCanMessage>>(Array.Empty<BenchCanMessage>());
+    Task SaveCanMessagesAsync(IReadOnlyList<BenchCanMessage> messages, CancellationToken ct) =>
+        Task.FromException(new NotSupportedException("工程 CAN 报文配置未接线。"));
+    Task<BenchOperationResult> SendCanOnceAsync(BenchCanMessage message, CancellationToken ct) =>
+        Task.FromResult(new BenchOperationResult(false, null, null, null, null, null,
+            null, "CAN1_UNAVAILABLE", "真实 DUT CAN 单发接口未接线。",
+            BenchEvidenceSource.Physical, null));
+    Task<BenchActionExecution> RunCanPeriodicAsync(BenchCanMessage message,
+        IProgress<BenchCanPeriodicProgress>? progress, CancellationToken ct) =>
+        Task.FromResult(new BenchActionExecution(false, false, false,
+            "真实 DUT CAN 周期发送尚未接线，不允许仿真。"));
+
     Task SaveManualMeasurementAsync(BenchManualMeasurement measurement,
         CancellationToken cancellationToken);
 }
