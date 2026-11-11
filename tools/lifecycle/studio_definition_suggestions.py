@@ -23,10 +23,14 @@ class DefinitionSuggestions:
                    proposed_by TEXT NOT NULL,origin_role TEXT NOT NULL,
                    state TEXT NOT NULL,reviewed_by TEXT,review_note TEXT,
                    accepted_change_id TEXT REFERENCES definition_changes(id),
-                   created TEXT NOT NULL,updated TEXT NOT NULL);
+                   created TEXT NOT NULL,updated TEXT NOT NULL,
+                   semantic_notes TEXT NOT NULL DEFAULT '');
                 CREATE INDEX IF NOT EXISTS ix_definition_suggestions_project
                     ON definition_suggestions(project_id,state);
             """)
+            columns={x["name"] for x in db.execute("PRAGMA table_info(definition_suggestions)")}
+            if "semantic_notes" not in columns:
+                db.execute("ALTER TABLE definition_suggestions ADD COLUMN semantic_notes TEXT NOT NULL DEFAULT ''")
 
     def _get(self,db,key):
         row=db.execute("SELECT * FROM definition_suggestions WHERE id=?",(key,)).fetchone()
@@ -48,11 +52,12 @@ class DefinitionSuggestions:
                  (project_id,))]
 
     def suggest(self,project_id,proposed,reason,source_refs,author,origin_role,
-                expected_digest):
+                expected_digest,semantic_notes=""):
         from studio_governance import _text_fields,digest,definition
         proposed=_text_fields(proposed)
         reason=text_value(reason,"product-definition proposal rationale",
                           limit=12000,mandatory=True)
+        semantic_notes=text_value(semantic_notes,"interpretive notes",limit=16000)
         author=text_value(author,"candidate proposer",limit=150,mandatory=True)
         if origin_role not in ("AI_CANDIDATE","OWNER_CANDIDATE"):
             raise RuleError("Role must be assigned by the trusted server route")
@@ -81,6 +86,9 @@ class DefinitionSuggestions:
               (key,project_id,current_digest,json.dumps(proposed,ensure_ascii=False),
                reason,json.dumps(source_refs,ensure_ascii=False),
                author,origin_role,"PENDING",None,None,None,stamp,stamp))
+            if semantic_notes:
+                db.execute("UPDATE definition_suggestions SET semantic_notes=? WHERE id=?",
+                           (semantic_notes,key))
             self.store._audit(db,project_id,None,"SUGGEST_PRODUCT_DEFINITION",
                               author,key+" / "+origin_role+" / "+reason)
         return {"id":key,"status":"PENDING","note":"Candidate only; formal engineering state unchanged."}
