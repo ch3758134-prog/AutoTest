@@ -14,11 +14,10 @@ from urllib.parse import urlsplit
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-ARCHIVE = REPO / "docs/engineering-control/projects/autotest/snapshot.json"
+ARCHIVE = HERE / "sources/autotest_engineering.json"
 PROCESS = HERE / "process.json"
 CONTROL_PATH = HERE / "workspace/autotest.json"
 
-sys.path.insert(0, str(REPO / "tools/lifecycle"))
 from control import Control, ControlError
 from sync import status as git_status, check_remote
 
