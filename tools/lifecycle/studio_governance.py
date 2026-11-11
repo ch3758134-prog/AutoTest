@@ -168,7 +168,12 @@ class DefinitionGovernance:
                        "state":x["state"]} for x in db.execute(
                 "SELECT id,title,revision,state FROM objects WHERE project_id=? AND kind='work_package' ORDER BY title,id",
                 (change["project_id"],))]
+            research_scope=[{"domain":x["domain"],"state":x["state"],
+                             "revision":x["revision"]}
+                       for x in db.execute("""SELECT domain,state,revision
+                         FROM definition_research_tasks WHERE change_id=?""",(change_id,))]
             return {"change":change,"reviews":reviews,"package_reviews":package_reviews,
+                    "research_scope":research_scope,
                     "packages":packages,"gate":self._gate(db,change)}
 
     def propose(self,project_id,proposed,reason,source_refs,proposer,expected_digest):
