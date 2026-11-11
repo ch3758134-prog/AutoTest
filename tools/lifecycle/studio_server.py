@@ -17,6 +17,7 @@ from studio_management import Management
 from studio_baseline import GitBaseline
 from studio_change import ChangeReview
 from studio_verification import Verification
+from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
 WEB = HERE / "studio.html"
@@ -167,14 +168,27 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 return self.write({"error": "Use application/json"}, 415)
             try:
                 size = int(self.headers.get("Content-Length", "0"))
-                if size < 1 or size > 250000:
+                max_size = 12_500_000 if request_path.startswith("/api/studio/restore/") else 250000
+                if size < 1 or size > max_size:
                     return self.write({"error": "Invalid request length"}, 413)
                 data = json.loads(self.rfile.read(size).decode("utf-8"))
                 if not isinstance(data, dict):
                     raise RuleError("Request body must be an object")
                 path, params = self.route()
                 pieces = path.split("/")
-                if path == "/api/studio/management/propose":
+                if path == "/api/studio/restore/preview":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may preview project recovery"},403)
+                    answer = restore_preview(data.get("archive"))
+                elif path == "/api/studio/restore/apply":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may restore workspaces"},403)
+                    if data.get("confirmation")!="RESTORE_TO_EMPTY_WORKSPACE":
+                        raise RuleError("Explicit empty-workspace recovery confirmation required")
+                    result = restore_to_empty(data.get("archive"),store.path)
+                    answer = {"restored_project_id":result["project"]["id"],
+                              "warning":"Historical approvals/evidence restored as records, not revalidated."}
+                elif path == "/api/studio/management/propose":
                     answer = management.propose(data)
                 elif path == "/api/studio/management/review":
                     if not owner_request:
