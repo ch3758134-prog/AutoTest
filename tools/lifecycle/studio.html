@@ -164,8 +164,8 @@ function ancestry(obj){const result=[],seen=new Set([obj.id]);let current=obj;
  while(current?.parent_id&&!seen.has(current.parent_id)){const parent=item(current.parent_id);if(!parent)break;result.unshift(parent);seen.add(parent.id);current=parent;}return result;}
 function renderDashboard(){const p=state.data.project;
  heading(p.name,'产品目标、工程决策、实施和验证的同一视图。所有信息来自当前项目记录，而不是按文件数计算的完成率。');
- const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('产品定义治理 / 变更','outline',definitionGovernanceModal));block.append(first);
- add(block,el('h2','', '产品背景与目标'));block.append(el('div','context',p.body||p.summary||'尚未补充完整产品背景、目标用户和使用场景；请从这里开始。'));root.append(block);
+ const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('产品身份 · 研究与审查','outline',productIdentityModal));block.append(first);
+ add(block,el('h2','', '项目背景与阶段信息（非产品身份）'));block.append(el('div','context',p.body||p.summary||'尚未补充项目背景；应通过工程知识或相关工程对象澄清。'));root.append(block);
  const metrics=el('div','fourcol');metrics.style.marginTop='15px';let c=state.data.counts;
  add(metrics,stat(c.requirement,'需求','各级需求登记数量'),stat(c.architecture+c.interface+c.design,'设计与接口','架构、接口及详细设计'),stat(c.change+c.decision+c.risk,'治理对象','变更、决策与风险'),stat(c.work_package+c.test,'实施与验证','工作包及测试对象'));root.append(metrics);
  const a=section('需要你处理的工程事项');a.header.append(button('+ 记录发现/变更','outline',()=>editorModal('change')));
@@ -175,7 +175,7 @@ function renderDashboard(){const p=state.data.project;
  const grid=el('div','twocol');for(const kind of ['system','capability']){const panel=el('div','panel');add(panel,el('h2','',kind==='system'?'系统元素':'产品能力'));let items=state.data.objects.filter(x=>x.kind===kind);if(items.length)items.slice(0,8).forEach(o=>panel.append(rowCard(o,openItem)));else panel.append(el('p','','尚未建立'+groupLabel(kind)+'；不将文件列表冒充系统分解。'));panel.append(button('+ 新增'+groupLabel(kind),'link',()=>editorModal(kind)));grid.append(panel);}b.node.append(grid);
  const h=section('近期工程活动');let timeline=el('div','panel');if(!state.data.events.length)timeline.append(el('p','','尚无操作记录。'));state.data.events.slice(0,10).forEach(ev=>{let n=el('div','event');add(n,el('strong','',ev.action+' · '+(ev.object_id?itemName(ev.object_id):projectName())),el('small','',ev.timestamp+' · '+ev.actor+' · '+ev.note));timeline.append(n)});h.node.append(timeline);
  root.append(note('产品定义、需求设计、已批准基线、实现状态和真实验证是不同信息。修改已批准对象会生成新修订并回到草稿，不会擦除旧批准快照。'));
- renderGovernanceBanner(block);renderCapabilityTrace();renderResearchDashboardSection();}
+ renderProductIdentityBanner(block);renderCapabilityTrace();renderResearchDashboardSection();}
 function renderEditor(){const types=groupKinds[state.view];const desc={product:'构建产品场景、能力和系统分解，而不是预先塞进某个专用硬件模型。',engineering:'分层维护需求、架构、接口和详细设计。每个工程对象都保留正文、来源、关系与历史版本。',governance:'记录方案比较、设计决定、风险与变更；实施后的发现可以回到系统需求重新审查。',delivery:'关联已批准设计、软件工作包、测试规格与实测证据，清楚地区分实施和验证。'}[state.view];
  heading(stages[state.view],desc||(state.view==='archive'?'阅读历史资料、理解来源、查看内容差异，必要时引用到当前工程对象；导入不会自动批准任何内容。':'当前工程对象'));
  let toolbar=el('div','toolbar'),left=el('div','buttonrow');add(left,...types.map(kind=>button('+ '+groupLabel(kind),'outline',()=>editorModal(kind))));if(state.view==='archive')left.append(button('从当前仓库导入 SAEF 档案','primary',importSaefModal));toolbar.append(left);root.append(toolbar);
@@ -244,7 +244,7 @@ async function importSaefModal(){if(!state.project)return;showModal('导入现�
   apply.disabled=pre.new===0;footer.append(apply);
  }).catch(e=>{out.textContent='未发现可导入的 SAEF 工程资料：'+e.message;footer.append(button('关闭','outline',closeModal));});
  });}
-function projectModal(project=null){if(project){definitionGovernanceModal();return}showModal(project?'修改项目定义':'创建工程项目',(body,footer)=>{
+function projectModal(project=null){if(project){productIdentityModal();return}showModal(project?'修改项目定义':'创建工程项目',(body,footer)=>{
  const name=field(body,'项目/产品名称',project?.name||'');const summary=field(body,'一句话产品目标',project?.summary||'','textarea');summary.className='short';const details=field(body,'完整背景、使用场景、系统边界与约束',project?.body||'','textarea');
  const version=field(body,'当前产品版本',project?.version||'');const variant=field(body,'适用型号 / 变体',project?.variant||'');
  modalActions(footer,async()=>{const payload={name:name.value,summary:summary.value,body:details.value,version:version.value,variant:variant.value};
@@ -329,4 +329,4 @@ $('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.
 $('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
 window.addEventListener('load',()=>boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))}));
-</script><script src="/research.js"></script><script src="/execution.js"></script><script src="/management.js"></script><script src="/capability.js"></script><script src="/change.js"></script><script src="/verification.js"></script><script src="/plan.js"></script><script src="/restore.js"></script><script src="/governance.js"></script><script src="/definition-research.js"></script><script src="/definition-suggestions.js"></script><script src="/semantics.js"></script><script src="/knowledge.js"></script></body></html>
+</script><script src="/research.js"></script><script src="/execution.js"></script><script src="/management.js"></script><script src="/capability.js"></script><script src="/change.js"></script><script src="/verification.js"></script><script src="/plan.js"></script><script src="/restore.js"></script><script src="/product-identity.js"></script><script src="/semantics.js"></script><script src="/knowledge.js"></script></body></html>
