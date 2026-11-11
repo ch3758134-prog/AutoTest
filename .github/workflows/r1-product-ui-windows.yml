@@ -45,6 +45,25 @@ jobs:
             throw 'UNIFIED_IDE_SHELL_MISSING'
           }
           Write-Host 'UNIFIED_TEST_IDE_SHELL_STRUCTURE_PASS'
+          # V7 candidates must not retain the ten-tool page previously tested
+          # as ModuleToolsWindow: those controls belong in their own windows.
+          if (Test-Path src/AutoTest.Desktop/Shell/R1ToolWindowPolicy.cs) {
+            foreach ($oldView in @(
+              'src/AutoTest.Desktop/G4/ModuleToolsWindow.xaml',
+              'src/AutoTest.Desktop/G4/ModuleToolsWindow.xaml.cs',
+              'src/AutoTest.Desktop/G4/G4ToolsWindow.xaml',
+              'src/AutoTest.Desktop/G4/G4ToolsWindow.xaml.cs')) {
+              if (Test-Path $oldView) {
+                throw "OBSOLETE_MULTI_TOOL_WINDOW_REINTRODUCED: $oldView"
+              }
+            }
+            $shell = Get-Content src/AutoTest.Desktop/Shell/MainWindow.xaml.cs -Raw -Encoding utf8
+            if (-not $shell.Contains('OpenProfessionalToolWindow') -or
+                -not $shell.Contains('R1ToolWindowPolicy.IsProfessionalTool')) {
+              throw 'PROFESSIONAL_TOOL_STANDALONE_ROUTING_MISSING'
+            }
+            Write-Host 'PROFESSIONAL_TOOLS_STANDALONE_WINDOW_POLICY_PASS'
+          }
       - name: Restore formal Desktop
         shell: pwsh
         run: dotnet restore src/AutoTest.Desktop/AutoTest.Desktop.csproj
