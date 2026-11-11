@@ -38,7 +38,7 @@
     <Button Content="从工程重载 TEST" Command="{Binding ReloadProjectCommand}"/>
     <Button Content="运行真实 CAN1 只读 TEST" Command="{Binding RunPhysicalReadOnlyCommand}"
             Background="#236CAD" FontWeight="Bold"/>
-    <Button Content="运行离线 Mock" Command="{Binding RunMockCommand}"/>
+    
     <Button Content="暂停" Command="{Binding PauseCommand}"/>
     <Button Content="继续" Command="{Binding ResumeCommand}"/>
     <Button Content="单步" Command="{Binding StepCommand}"/>
