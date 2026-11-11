@@ -123,6 +123,7 @@ function sourceBanner() {
     node('code','',source().sha.slice(0,12)),
     node('span','',source().branch));
   if (source().record_dirty_in_worktree) bar.append(node('span','', '工作树中存在未提交的数据变更，当前视图仍读取已提交版本'));
+  if (source().evidence_dirty_in_worktree) bar.append(node('span','', '有未提交的本地执行回执；仅在提交 Git 后才显示为共享证据'));
   if (snapshot.local_stale) bar.append(node('span','', '本地管理建议基于旧 SHA，必须重新核实'));
   if (snapshot.local.unsynced) bar.append(chip('有本地未同步建议','amber'));
   const small = node('span','', '不是 GitHub 远端实时状态');
@@ -428,9 +429,24 @@ function renderCollaboration(){
   const evidence=node('div','card card-pad');
   sourcesList(data().sources.map(s=>s.id),evidence);
   sec3.append(evidence);
-  const note=node('div','note-box',
-    '本次数据中没有完整的本地 Codex 执行回执，因而不声称本地与 GitHub 已同步。下一步应按任务编号、实际 SHA、命令退出码、测试结果及证据文件引用形成回执，经过 Git 提交才供跨对话共同核实。');
-  $('#page').append(note);
+  const receipts = snapshot.receipts || [];
+  const section=part('本地 Codex 执行回执','仅显示已进入当前 Git 提交的记录，未提交文件不会冒充同步完成');
+  if (!receipts.length) {
+    section.append(node('div','empty','当前 Git HEAD 尚无已提交的 Codex 执行回执。没有记录不代表本地没有工作，也不能推断任何实体功能已验收。'));
+  } else {
+    const list=node('div','card');
+    for (const r of [...receipts].reverse().slice(0,15)) {
+      const line=node('div','strip'),details=node('div','strip-main');
+      append(details,node('div','strip-title',(r.work_id||'未关联工作')+' · '+lab(r.outcome)),
+        node('div','strip-desc',r.summary||'没有摘要'),
+        node('div','fine','运行 HEAD：'+(r.actual_head_sha||'未知')+' · '+(r.reported_at||'')));
+      line.append(details);
+      line.append(chip('执行记录 ≠ 产品验收','amber'));
+      list.append(line);
+    }
+    section.append(list);
+  }
+  $('#page').append(node('div','note-box','只有确切的 Git 提交、命令退出码、日志及可复核测试记录才能支持工程判断。回执 PASS 不自动等于集成验收、真实设备通过或负责人批准。'));
 }
 
 function openDelivery(id){
