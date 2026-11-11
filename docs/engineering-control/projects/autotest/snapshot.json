@@ -1,20 +1,20 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T06:59:03.890Z",
+  "exported_at": "2026-11-11T07:04:23.904Z",
   "authority": "AI_CANDIDATE_NOT_APPROVED",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T06:59:03.890Z",
+    "exported_at": "2026-11-11T07:04:23.904Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
       "summary": "",
-      "body": "通用 ECU 外部刺激与集成测试开发工作台。工程范围涵盖硬件激励、CAN/DBC、测试程序、诊断与烧录、波形、扫码及记录报告。R1 重点用于出厂检测，EPB 是首个工程验证对象；具体方案需按工程对象和现场证据分别审查。本档案是管理 AI 的待审查起点，非新的产品身份批准。",
+      "body": "AutoTest 是通用 ECU 软硬件外部刺激与响应自动测试环境。当前最先完成一条真实 ECU 的上位机可编辑自动测试闭环（实际刺激→响应采集/分析→判定→日志）。之后围绕真实自动测试完善专业工具、不同型号的工程配置、扫码外设、编码方案协同及出厂记录。R1 出厂检测是重点应用，EPB 为首个实物验证对象。当前是 P0 候选研发优先级，不代表设计/代码/物理验收已批准或完成。",
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T06:59:03.890Z"
+      "updated": "2026-11-11T07:04:23.904Z"
     },
     "objects": [
       {
@@ -96,36 +96,44 @@
         "project_id": "autotest",
         "kind": "capability",
         "title": "唯一测试程序及受控执行",
-        "body": "测试程序负责准备、测试、清理、条件/循环/等待、硬件刺激、CAN、专业动作以及结果；生产出厂是该引擎的运行场景，不另造第二套测试程序。",
+        "body": "自动测试是首轮研发与验收的核心能力。上位机应允许工程师编辑一条针对真实 ECU 的程序，配置适用的 CAN、IGN 与按键等外部刺激，按步骤执行、采集实际 CAN 响应（必要时基于 DBC 解码），使用可解释的条件作出 Verdict，并保存步骤与运行日志，形成可复现的最小真实闭环。准备、测试、清理、条件/等待/循环等完整表达能力随后沿此唯一引擎完善；出厂测试不另建执行模型。UDS、烧录、完整波形判定等专业动作是可整合的后续阶段能力，不要求全部先于首个闭环完成。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
-          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "priority": "P0_FIRST_DELIVERABLE",
+          "initial_acceptance": "一条真实 ECU 可编辑程序→可观察真实刺激/响应→规则判定→日志结果，能够重跑并查明失败",
+          "non_goals": "本阶段不以前置完成所有型号规则、扫码设备和生产报告作为门禁",
+          "prior_source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T06:20:00+00:00",
-        "updated": "2026-11-11T06:20:00+00:00"
+        "updated": "2026-11-11T07:04:23.904Z"
       },
       {
         "id": "at-cap-scan",
         "project_id": "autotest",
         "kind": "capability",
         "title": "扫码识别、流程匹配与生产记录",
-        "body": "测试前扫码可参与 DUT 身份识别和测试配方/程序选择；运行后依据真实判定进行生产结果、复测与放行。需核对正式需求与最新源码。",
+        "body": "扫码枪是 AutoTest 规划内的真实 Windows 外设与产品功能，用于读取 ECU 在进入出厂流程前已有的唯一可扫码编号。随后根据可配置业务规则关联型号、测试资源、烧录配置以及运行历史；出厂流程完成后可基于真实 Verdict 处理复测与追溯。扫码和编号方案协同设计是完整生产检验的重要组成部分，但不是首条可编辑真实自动测试闭环的前置条件。外部设计 ECU 编码方案，AutoTest 负责设备读入、识别、匹配与关联记录；扫描设备的驱动/端口与编码映射规则分别设计，不混成同一问题。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
-          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "stage": "PRODUCTION_WORKFLOW_AFTER_CORE_LOOP",
+          "peripheral": "REAL_WINDOWS_BARCODE_SCANNER",
+          "is_blocking_first_autotest": false,
+          "prior_source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T06:20:00+00:00",
-        "updated": "2026-11-11T06:20:00+00:00"
+        "updated": "2026-11-11T07:04:23.904Z"
       },
       {
         "id": "at-req-scan-before",
@@ -284,21 +292,25 @@
         "project_id": "autotest",
         "kind": "work_package",
         "title": "扫码双阶段流程的详细设计复核（尚不可编码）",
-        "body": "需要复核 TEST、SCAN、RECORD 当前需求与实现，并形成明确的前置身份匹配和后置结果处理设计、接口及验收合同。尚缺已批准详细设计，不满足 CODE_READY。",
+        "body": "后续工作包：在自动测试已经能针对真实 ECU 完成刺激、响应分析、Verdict 和运行日志之后，研究扫码枪作为实际外设的接入，以及测试前编号→型号/配置/程序匹配、测试后 Verdict→生产记录/复测放行。现有相关代码和设备研究可以保留/并行，但未决编码字段、资源版本与匹配策略不能抢占首轮自动测试闭环；该包尚无获批详细设计，CODE_READY=否。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
           "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
           "execution_role": "CODER",
           "file_scope": [],
-          "acceptance": "完成设计和影响审查后，才可生成编码包；当前仅供研究与规划。"
+          "acceptance": "完成设计和影响审查后，才可生成编码包；当前仅供研究与规划。",
+          "priority": "FOLLOW_ON",
+          "prerequisite": "核心真实自动测试闭环的可用性与最小证据",
+          "code_ready": false,
+          "prior_source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T06:20:00+00:00",
-        "updated": "2026-11-11T06:20:00+00:00"
+        "updated": "2026-11-11T07:04:23.904Z"
       },
       {
         "id": "at-p0-existing-process",
@@ -326,53 +338,61 @@
         "project_id": "autotest",
         "kind": "context",
         "title": "AutoTest 立项动因与产品目标（待审）",
-        "body": "立项要解决的核心问题不是简单拼装已有 UI，而是将物理台架刺激（按键、IGN 等）、CAN/UDS/刷写/DBC 等通信能力、被测 ECU 的真实响应采集与分析判定连接起来，形成面向多型号 ECU 的可编辑、可执行、可记录的自动测试闭环。在生产检验中还应记录各台 DUT 的身份、实际烧录与测试经历、结果和复测历史。该目标为讨论候选，不意味着功能已交付。",
+        "body": "AutoTest 的长期目的，是把原来分散的 ECU 外部刺激、CAN/UDS/烧录/DBC、响应观察与判定、出厂测试记录连接为统一的软硬件测试环境。当前最优先形成可用的自动测试上位机：针对一个真实 ECU，在同一套工程与测试程序中组织 CAN、IGN、按键等适用刺激，获取真实响应，并依据明确条件作出测试判定及保存可追溯日志。只有这一真实闭环成立，才围绕运行中暴露的需要细化不同型号资源、烧录、扫码、编码协同和生产管理。后续能力仍属于产品规划，不因暂未作出其规则决策而阻止核心闭环研发。既有专业工具源码可并行研究/复用，但不作为首轮闭环的全量先决条件。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）",
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
           "source_type": "USER_INTENT_AND_AI_SYNTHESIS",
           "engineering_class": "project_purpose",
           "proposed_product_identity": "面向多型号 ECU 的软硬件一体化自动测试与检验系统",
-          "review_note": "产品身份仅作候选陈述；当前不得自动发布产品身份基线"
+          "review_note": "产品身份仅作候选陈述；当前不得自动发布产品身份基线",
+          "planning_priority": "FIRST_REAL_AUTOTEST_CLOSED_LOOP",
+          "staging": "先真实自动测试→围绕核心测试完善配置与工具→完整出厂工作流",
+          "decision_status": "P0_USER_PRIORITY_CONFIRMED_DETAIL_UNDER_REVIEW",
+          "prior_source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T06:52:15.981Z",
-        "updated": "2026-11-11T06:52:15.981Z"
+        "updated": "2026-11-11T07:04:23.904Z"
       },
       {
         "id": "at-p0-model-variation",
         "project_id": "autotest",
         "kind": "context",
         "title": "不同 ECU 型号的测试资源差异（用户陈述）",
-        "body": "不同型号被测 ECU 在烧录程序/镜像、刷写配置与安全参数、要执行的测试内容，以及 CAN 通信矩阵/DBC 等方面存在差异。工程系统需要表达型号及适用配置与这些资源之间的关系，避免把首个 EPB 型号、某一个 DBC、某一刷写流程或某一判定条件硬编码为全局规则。具体资源版本、兼容条件、可选项和异常处理需进入 G1 需求及后续设计研究。",
+        "body": "不同 ECU 型号、硬件/客户/软件版本等差异确实可能影响烧录程序、刷写配置、通信矩阵/DBC、测试动作及判定标准。但这些差异的实际条件和映射规则当前尚不足以决定。首轮仅需用已知的一套明确可操作配置，在真实 ECU 上打通自动测试；随后根据不同 DUT 的实际测试需求，渐进研究资源版本、适用条件与自动选择规则。不得为了推测全部型号组合阻塞当前自动测试，也不得把第一台 EPB 的规则硬编码为通用内核。",
         "parent_id": null,
         "state": "DRAFT",
-        "revision": 1,
+        "revision": 2,
         "meta": {
-          "source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）",
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
           "source_type": "USER_STATEMENT",
           "engineering_class": "variant_drivers",
-          "review_note": "尚未决定单个型号到各资源的精确基数与选择算法"
+          "review_note": "尚未决定单个型号到各资源的精确基数与选择算法",
+          "decision_status": "DEFERRED_UNTIL_TEST_CORE_WORKING",
+          "not_blocking": "第一条真实自动测试闭环",
+          "preserve_future_need": true,
+          "prior_source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）"
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T06:52:15.981Z",
-        "updated": "2026-11-11T06:52:15.981Z"
+        "updated": "2026-11-11T07:04:23.904Z"
       },
       {
         "id": "at-p0-serial-identity-boundary",
         "project_id": "autotest",
         "kind": "change",
         "title": "外部 ECU 编码方案与 AutoTest 配置匹配的协同设计（待研究）",
-        "body": "已明确：ECU 在进入出厂流程前就具有唯一且可扫码的实物编号。编号规则的制定/调整是与 AutoTest 配套的外部业务与标识体系设计，并非要求 AutoTest 生成或打印编号。过去的编号设计主要面向唯一识别；由于 AutoTest 将按 ECU 型号与适用条件选择烧录镜像/刷写配置、通信矩阵/DBC、测试程序与判定资源，外部编码方案得以与测试配置匹配共同设计。这意味着编码是实物身份与工程资源关联的业务入口，但尚不能认定条码本身必须包含型号、软件版本、批次等字段，也不能预设一定直接解析或依赖数据库查询。后续 G1 应明确编码字段/版本、识别与配置映射规则、维护权责、歧义/未知码处理和复测追溯；G2 再确定具体实现。此前将用户意图理解为由 AutoTest 创建唯一编号，属于 AI 理解错误，现已纠正。",
+        "body": "ECU 进入出厂流程前已经有唯一可扫码编号。外部业务需要重新设计或调整编码方案，使其能够与 AutoTest 中的型号、烧录程序及配置、DBC、测试程序和记录体系配合；AutoTest 不因而承担编号生成/打印职责。用户已明确型号/版本/客户配置等更细匹配规则目前无法决策：必须先打通真实自动测试上位机，在该核心测试可工作后，以实际 ECU 差异推进扫码规则、编码配置关联和生产流程设计。当前不预设字段格式、不预设解析或数据库映射方案，也不将未定的编码规则作为核心自动测试实现门禁。",
         "parent_id": null,
         "state": "OPEN",
-        "revision": 2,
+        "revision": 3,
         "meta": {
-          "source": "用户对话｜P0 ECU 编码与测试资源配置关系澄清（2026-11-10，America/Los_Angeles）",
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
           "source_type": "USER_CLARIFICATION_AND_AI_SYNTHESIS",
           "engineering_class": "external_code_scheme_configuration_integration",
           "severity": "P0_RESEARCH",
@@ -380,12 +400,15 @@
           "review_note": "用户澄清了项目边界；具体编码格式与配置匹配设计尚须继续研究。本对象为待审候选，不授权实施。",
           "resolved_misunderstanding": "原有编号已经存在；外部负责编码方案，AutoTest 负责读取、规则匹配、关联资源与测试记录；没有提出系统必须生成或打印实物编码",
           "remaining_design_question": "编号内容与字段、模式/版本、解析还是映射、适用工程资源条件与配置规则的关系尚未确定",
-          "prior_source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）"
+          "prior_source": "用户对话｜P0 ECU 编码与测试资源配置关系澄清（2026-11-10，America/Los_Angeles）",
+          "stage": "AFTER_FIRST_REAL_AUTOTEST_LOOP",
+          "decision_status": "EXTERNAL_CODE_SYSTEM_BOUNDARY_CONFIRMED_MAPPING_PENDING",
+          "blocking_first_loop": false
         },
         "approved_by": null,
         "approved_at": null,
         "created": "2026-11-11T06:52:15.981Z",
-        "updated": "2026-11-11T06:59:03.890Z"
+        "updated": "2026-11-11T07:04:23.904Z"
       },
       {
         "id": "at-p0-serial-code-fact",
@@ -412,6 +435,71 @@
         "approved_at": null,
         "created": "2026-11-11T06:59:03.890Z",
         "updated": "2026-11-11T06:59:03.890Z"
+      },
+      {
+        "id": "at-p0-core-autotest-milestone",
+        "project_id": "autotest",
+        "kind": "milestone",
+        "title": "首个真实 ECU 自动测试闭环可用（近期核心成果）",
+        "body": "面向首个已知 ECU，在统一 Windows 上位机中具备可编辑测试程序、配置并执行所需真实外部刺激、观察 DUT 实际响应、按规则产生清楚的结果与保存运行日志的闭环。该里程碑优先于多型号资源匹配、扫码编号方案、完整生产记录及全部专业工具动作；它们是后续围绕核心流程逐步完善的能力。验证必须用真实 ECU 和明确配置，不得以 Mock 测试或页面可打开代替。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "stage": "FIRST_WORKING_CAPABILITY",
+          "acceptance_level": "PHYSICAL_GUI_AND_RUN_EVIDENCE_REQUIRED",
+          "scope_note": "当前仅提出验收边界，尚未选定具体 ECU 的完整测试动作和采集判定合同"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:04:23.904Z",
+        "updated": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "at-req-core-test-loop",
+        "project_id": "autotest",
+        "kind": "requirement",
+        "title": "真实 ECU 自动测试最小工作流（待 G1 细化）",
+        "body": "工程师应能够在上位机准备一条可保存、重开的测试程序，指定可用 ECU 配置和刺激动作，按步骤操作 CAN、IGN 和按键等实际适用输出，持续采集 DUT CAN 响应（必要时解码相关信号），对响应值、状态或时序进行可追溯判定，得到单次运行结果及逐步骤日志。真实硬件失败、超时、取消、清理等行为仍需详细设计与安全审核；当前不能从需求草案直接派发物理操作或编码。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "priority": "CORE_BEFORE_BARCODE_MATCHING",
+          "acceptance": "真实 ECU 一条明确测试链：刺激→响应→条件判断→Verdict→可追溯记录；真实响应与 Mock 区分",
+          "state_note": "P0 导向的 G1 候选；尚未批准"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:04:23.904Z",
+        "updated": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "at-wp-core-loop-study",
+        "project_id": "autotest",
+        "kind": "work_package",
+        "title": "自动测试真实闭环设计核验与现有实现复盘（研究工作包）",
+        "body": "优先盘点现有 TEST 编辑器、CAN RX/TX、IGN/KEY_SIM、设备会话、DBC 响应解码、判定和 RunId/StepFact/Verdict 的现役实现及真实证据；形成一条具体 ECU 的最小工作流与缺口清单，并为有缺口的单元提供经批准的详细设计和测试条件。当前是研究/工程设计工作包而非编码合同，绝不可标记 CODE_READY 或允许 Codex 自行补设计。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "priority": "P0_FIRST_RESEARCH",
+          "execution_role": "RESEARCH_DESIGN",
+          "code_ready": false,
+          "file_scope": [],
+          "acceptance": "对照精确 Git HEAD、已批准设计、硬件事实和现场记录，交付具体可验收的最小真实自动测试链与缺口"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:04:23.904Z",
+        "updated": "2026-11-11T07:04:23.904Z"
       }
     ],
     "relations": [
@@ -510,6 +598,50 @@
         "target_id": "at-cap-scan",
         "kind": "impacts",
         "created": "2026-11-11T06:52:15.981Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-rel-cap-core-req",
+        "project_id": "autotest",
+        "source_id": "at-cap-test",
+        "target_id": "at-req-core-test-loop",
+        "kind": "defines",
+        "created": "2026-11-11T07:04:23.904Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-rel-core-can",
+        "project_id": "autotest",
+        "source_id": "at-cap-can",
+        "target_id": "at-req-core-test-loop",
+        "kind": "defines",
+        "created": "2026-11-11T07:04:23.904Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-rel-core-key",
+        "project_id": "autotest",
+        "source_id": "at-cap-key",
+        "target_id": "at-req-core-test-loop",
+        "kind": "defines",
+        "created": "2026-11-11T07:04:23.904Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-rel-wp-core-req",
+        "project_id": "autotest",
+        "source_id": "at-wp-core-loop-study",
+        "target_id": "at-req-core-test-loop",
+        "kind": "depends",
+        "created": "2026-11-11T07:04:23.904Z",
         "status": "CANDIDATE",
         "approved_by": null,
         "approved_at": null
@@ -683,6 +815,78 @@
         "action": "CREATE_USER_CONFIRMED_AS_IS_CONTEXT_CANDIDATE",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T06:59:03.890Z"
+      },
+      {
+        "object_id": "at-p0-product-purpose",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-p0-product-purpose\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"AutoTest 立项动因与产品目标（待审）\",\"body\":\"AutoTest 的长期目的，是把原来分散的 ECU 外部刺激、CAN/UDS/烧录/DBC、响应观察与判定、出厂测试记录连接为统一的软硬件测试环境。当前最优先形成可用的自动测试上位机：针对一个真实 ECU，在同一套工程与测试程序中组织 CAN、IGN、按键等适用刺激，获取真实响应，并依据明确条件作出测试判定及保存可追溯日志。只有这一真实闭环成立，才围绕运行中暴露的需要细化不同型号资源、烧录、扫码、编码协同和生产管理。后续能力仍属于产品规划，不因暂未作出其规则决策而阻止核心闭环研发。既有专业工具源码可并行研究/复用，但不作为首轮闭环的全量先决条件。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"source_type\":\"USER_INTENT_AND_AI_SYNTHESIS\",\"engineering_class\":\"project_purpose\",\"proposed_product_identity\":\"面向多型号 ECU 的软硬件一体化自动测试与检验系统\",\"review_note\":\"产品身份仅作候选陈述；当前不得自动发布产品身份基线\",\"planning_priority\":\"FIRST_REAL_AUTOTEST_CLOSED_LOOP\",\"staging\":\"先真实自动测试→围绕核心测试完善配置与工具→完整出厂工作流\",\"decision_status\":\"P0_USER_PRIORITY_CONFIRMED_DETAIL_UNDER_REVIEW\",\"prior_source\":\"用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "REVISE_AI_CANDIDATE_FROM_P0_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-cap-test",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-cap-test\",\"project_id\":\"autotest\",\"kind\":\"capability\",\"title\":\"唯一测试程序及受控执行\",\"body\":\"自动测试是首轮研发与验收的核心能力。上位机应允许工程师编辑一条针对真实 ECU 的程序，配置适用的 CAN、IGN 与按键等外部刺激，按步骤执行、采集实际 CAN 响应（必要时基于 DBC 解码），使用可解释的条件作出 Verdict，并保存步骤与运行日志，形成可复现的最小真实闭环。准备、测试、清理、条件/等待/循环等完整表达能力随后沿此唯一引擎完善；出厂测试不另建执行模型。UDS、烧录、完整波形判定等专业动作是可整合的后续阶段能力，不要求全部先于首个闭环完成。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"priority\":\"P0_FIRST_DELIVERABLE\",\"initial_acceptance\":\"一条真实 ECU 可编辑程序→可观察真实刺激/响应→规则判定→日志结果，能够重跑并查明失败\",\"non_goals\":\"本阶段不以前置完成所有型号规则、扫码设备和生产报告作为门禁\",\"prior_source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "REVISE_AI_CANDIDATE_FROM_P0_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-p0-model-variation",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-p0-model-variation\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"不同 ECU 型号的测试资源差异（用户陈述）\",\"body\":\"不同 ECU 型号、硬件/客户/软件版本等差异确实可能影响烧录程序、刷写配置、通信矩阵/DBC、测试动作及判定标准。但这些差异的实际条件和映射规则当前尚不足以决定。首轮仅需用已知的一套明确可操作配置，在真实 ECU 上打通自动测试；随后根据不同 DUT 的实际测试需求，渐进研究资源版本、适用条件与自动选择规则。不得为了推测全部型号组合阻塞当前自动测试，也不得把第一台 EPB 的规则硬编码为通用内核。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"source_type\":\"USER_STATEMENT\",\"engineering_class\":\"variant_drivers\",\"review_note\":\"尚未决定单个型号到各资源的精确基数与选择算法\",\"decision_status\":\"DEFERRED_UNTIL_TEST_CORE_WORKING\",\"not_blocking\":\"第一条真实自动测试闭环\",\"preserve_future_need\":true,\"prior_source\":\"用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "REVISE_AI_CANDIDATE_FROM_P0_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-cap-scan",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-cap-scan\",\"project_id\":\"autotest\",\"kind\":\"capability\",\"title\":\"扫码识别、流程匹配与生产记录\",\"body\":\"扫码枪是 AutoTest 规划内的真实 Windows 外设与产品功能，用于读取 ECU 在进入出厂流程前已有的唯一可扫码编号。随后根据可配置业务规则关联型号、测试资源、烧录配置以及运行历史；出厂流程完成后可基于真实 Verdict 处理复测与追溯。扫码和编号方案协同设计是完整生产检验的重要组成部分，但不是首条可编辑真实自动测试闭环的前置条件。外部设计 ECU 编码方案，AutoTest 负责设备读入、识别、匹配与关联记录；扫描设备的驱动/端口与编码映射规则分别设计，不混成同一问题。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"stage\":\"PRODUCTION_WORKFLOW_AFTER_CORE_LOOP\",\"peripheral\":\"REAL_WINDOWS_BARCODE_SCANNER\",\"is_blocking_first_autotest\":false,\"prior_source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "REVISE_AI_CANDIDATE_FROM_P0_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-p0-serial-identity-boundary",
+        "revision": 3,
+        "snapshot": "{\"id\":\"at-p0-serial-identity-boundary\",\"project_id\":\"autotest\",\"kind\":\"change\",\"title\":\"外部 ECU 编码方案与 AutoTest 配置匹配的协同设计（待研究）\",\"body\":\"ECU 进入出厂流程前已经有唯一可扫码编号。外部业务需要重新设计或调整编码方案，使其能够与 AutoTest 中的型号、烧录程序及配置、DBC、测试程序和记录体系配合；AutoTest 不因而承担编号生成/打印职责。用户已明确型号/版本/客户配置等更细匹配规则目前无法决策：必须先打通真实自动测试上位机，在该核心测试可工作后，以实际 ECU 差异推进扫码规则、编码配置关联和生产流程设计。当前不预设字段格式、不预设解析或数据库映射方案，也不将未定的编码规则作为核心自动测试实现门禁。\",\"parent_id\":null,\"state\":\"OPEN\",\"revision\":3,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"source_type\":\"USER_CLARIFICATION_AND_AI_SYNTHESIS\",\"engineering_class\":\"external_code_scheme_configuration_integration\",\"severity\":\"P0_RESEARCH\",\"reference_document\":\"SAEF/engineering/work-products/P0/P0-01/index.md\",\"review_note\":\"用户澄清了项目边界；具体编码格式与配置匹配设计尚须继续研究。本对象为待审候选，不授权实施。\",\"resolved_misunderstanding\":\"原有编号已经存在；外部负责编码方案，AutoTest 负责读取、规则匹配、关联资源与测试记录；没有提出系统必须生成或打印实物编码\",\"remaining_design_question\":\"编号内容与字段、模式/版本、解析还是映射、适用工程资源条件与配置规则的关系尚未确定\",\"prior_source\":\"用户对话｜P0 ECU 编码与测试资源配置关系澄清（2026-11-10，America/Los_Angeles）\",\"stage\":\"AFTER_FIRST_REAL_AUTOTEST_LOOP\",\"decision_status\":\"EXTERNAL_CODE_SYSTEM_BOUNDARY_CONFIRMED_MAPPING_PENDING\",\"blocking_first_loop\":false},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "REVISE_AI_CANDIDATE_FROM_P0_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-wp-scan-design",
+        "revision": 2,
+        "snapshot": "{\"id\":\"at-wp-scan-design\",\"project_id\":\"autotest\",\"kind\":\"work_package\",\"title\":\"扫码双阶段流程的详细设计复核（尚不可编码）\",\"body\":\"后续工作包：在自动测试已经能针对真实 ECU 完成刺激、响应分析、Verdict 和运行日志之后，研究扫码枪作为实际外设的接入，以及测试前编号→型号/配置/程序匹配、测试后 Verdict→生产记录/复测放行。现有相关代码和设备研究可以保留/并行，但未决编码字段、资源版本与匹配策略不能抢占首轮自动测试闭环；该包尚无获批详细设计，CODE_READY=否。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":2,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"execution_role\":\"CODER\",\"file_scope\":[],\"acceptance\":\"完成设计和影响审查后，才可生成编码包；当前仅供研究与规划。\",\"priority\":\"FOLLOW_ON\",\"prerequisite\":\"核心真实自动测试闭环的可用性与最小证据\",\"code_ready\":false,\"prior_source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "REVISE_AI_CANDIDATE_FROM_P0_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-p0-core-autotest-milestone",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-p0-core-autotest-milestone\",\"project_id\":\"autotest\",\"kind\":\"milestone\",\"title\":\"首个真实 ECU 自动测试闭环可用（近期核心成果）\",\"body\":\"面向首个已知 ECU，在统一 Windows 上位机中具备可编辑测试程序、配置并执行所需真实外部刺激、观察 DUT 实际响应、按规则产生清楚的结果与保存运行日志的闭环。该里程碑优先于多型号资源匹配、扫码编号方案、完整生产记录及全部专业工具动作；它们是后续围绕核心流程逐步完善的能力。验证必须用真实 ECU 和明确配置，不得以 Mock 测试或页面可打开代替。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"stage\":\"FIRST_WORKING_CAPABILITY\",\"acceptance_level\":\"PHYSICAL_GUI_AND_RUN_EVIDENCE_REQUIRED\",\"scope_note\":\"当前仅提出验收边界，尚未选定具体 ECU 的完整测试动作和采集判定合同\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:04:23.904Z\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "CREATE_AI_CANDIDATE_FROM_USER_PRIORITY",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-req-core-test-loop",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-req-core-test-loop\",\"project_id\":\"autotest\",\"kind\":\"requirement\",\"title\":\"真实 ECU 自动测试最小工作流（待 G1 细化）\",\"body\":\"工程师应能够在上位机准备一条可保存、重开的测试程序，指定可用 ECU 配置和刺激动作，按步骤操作 CAN、IGN 和按键等实际适用输出，持续采集 DUT CAN 响应（必要时解码相关信号），对响应值、状态或时序进行可追溯判定，得到单次运行结果及逐步骤日志。真实硬件失败、超时、取消、清理等行为仍需详细设计与安全审核；当前不能从需求草案直接派发物理操作或编码。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"priority\":\"CORE_BEFORE_BARCODE_MATCHING\",\"acceptance\":\"真实 ECU 一条明确测试链：刺激→响应→条件判断→Verdict→可追溯记录；真实响应与 Mock 区分\",\"state_note\":\"P0 导向的 G1 候选；尚未批准\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:04:23.904Z\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "CREATE_AI_CANDIDATE_FROM_USER_PRIORITY",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-wp-core-loop-study",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-wp-core-loop-study\",\"project_id\":\"autotest\",\"kind\":\"work_package\",\"title\":\"自动测试真实闭环设计核验与现有实现复盘（研究工作包）\",\"body\":\"优先盘点现有 TEST 编辑器、CAN RX/TX、IGN/KEY_SIM、设备会话、DBC 响应解码、判定和 RunId/StepFact/Verdict 的现役实现及真实证据；形成一条具体 ECU 的最小工作流与缺口清单，并为有缺口的单元提供经批准的详细设计和测试条件。当前是研究/工程设计工作包而非编码合同，绝不可标记 CODE_READY 或允许 Codex 自行补设计。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户对话｜AutoTest P0 核心自动测试优先及后续功能渐进设计澄清（2026-11-10 America/Los_Angeles）\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"priority\":\"P0_FIRST_RESEARCH\",\"execution_role\":\"RESEARCH_DESIGN\",\"code_ready\":false,\"file_scope\":[],\"acceptance\":\"对照精确 Git HEAD、已批准设计、硬件事实和现场记录，交付具体可验收的最小真实自动测试链与缺口\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:04:23.904Z\",\"updated\":\"2026-11-11T07:04:23.904Z\"}",
+        "action": "CREATE_AI_CANDIDATE_FROM_USER_PRIORITY",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:04:23.904Z"
       }
     ],
     "events": [
@@ -739,6 +943,87 @@
         "actor": "AI_PROJECT_MANAGER",
         "note": "记录 ECU 已有可扫码唯一编码及外部编码方案与配置匹配的协同关系",
         "timestamp": "2026-11-11T06:59:03.890Z"
+      },
+      {
+        "id": "evt-at-p0-product-purpose-r2",
+        "project_id": "autotest",
+        "object_id": "at-p0-product-purpose",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "调整研发优先级与前置条件；保留上一修订，未批准",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-cap-test-r2",
+        "project_id": "autotest",
+        "object_id": "at-cap-test",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "调整研发优先级与前置条件；保留上一修订，未批准",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-p0-model-variation-r2",
+        "project_id": "autotest",
+        "object_id": "at-p0-model-variation",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "调整研发优先级与前置条件；保留上一修订，未批准",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-cap-scan-r2",
+        "project_id": "autotest",
+        "object_id": "at-cap-scan",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "调整研发优先级与前置条件；保留上一修订，未批准",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-p0-serial-identity-boundary-r3",
+        "project_id": "autotest",
+        "object_id": "at-p0-serial-identity-boundary",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "调整研发优先级与前置条件；保留上一修订，未批准",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-wp-scan-design-r2",
+        "project_id": "autotest",
+        "object_id": "at-wp-scan-design",
+        "action": "REVISE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "调整研发优先级与前置条件；保留上一修订，未批准",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-p0-core-autotest-milestone",
+        "project_id": "autotest",
+        "object_id": "at-p0-core-autotest-milestone",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "P0 核心自动测试优先；仅草稿不授权实现",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-req-core-test-loop",
+        "project_id": "autotest",
+        "object_id": "at-req-core-test-loop",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "P0 核心自动测试优先；仅草稿不授权实现",
+        "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-wp-core-loop-study",
+        "project_id": "autotest",
+        "object_id": "at-wp-core-loop-study",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "P0 核心自动测试优先；仅草稿不授权实现",
+        "timestamp": "2026-11-11T07:04:23.904Z"
       }
     ],
     "technical_research": {
@@ -790,10 +1075,17 @@
         "snapshot": "{\"name\":\"AutoTest\",\"body\":\"通用 ECU 外部刺激与集成测试开发工作台。工程范围涵盖硬件激励、CAN/DBC、测试程序、诊断与烧录、波形、扫码及记录报告。R1 重点用于出厂检测，EPB 是首个工程验证对象；具体方案需按工程对象和现场证据分别审查。本档案是管理 AI 的待审查起点，非新的产品身份批准。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"\"}",
         "changed_by": "AI_PROJECT_MANAGER_GIT_CANDIDATE",
         "changed_at": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "project_id": "autotest",
+        "revision": 2,
+        "snapshot": "{\"name\":\"AutoTest\",\"body\":\"AutoTest 是通用 ECU 软硬件外部刺激与响应自动测试环境。当前最先完成一条真实 ECU 的上位机可编辑自动测试闭环（实际刺激→响应采集/分析→判定→日志）。之后围绕真实自动测试完善专业工具、不同型号的工程配置、扫码外设、编码方案协同及出厂记录。R1 出厂检测是重点应用，EPB 为首个实物验证对象。当前是 P0 候选研发优先级，不代表设计/代码/物理验收已批准或完成。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"\"}",
+        "changed_by": "AI_PROJECT_MANAGER_GIT_CANDIDATE",
+        "changed_at": "2026-11-11T07:04:23.904Z"
       }
     ],
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "P0 编码方案边界已根据用户澄清修订：已有唯一可扫编码，外部制定编码方案，AutoTest 可配置资源匹配；编号语义/方案细节待 G1 研究，保留工程候选修订历史，未签发批准。"
+  "p0_discussion_note": "用户确认：第一要务是上位机的真实自动测试闭环，型号条件/编码映射尚不能定，不应成为前置阻碍；扫码枪仍是产品本体计划内外设，后续依核心测试细化。所有修订为待审候选。"
 }
