@@ -10,24 +10,24 @@
     </UserControl.Resources>
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <TextBlock FontSize="23" FontWeight="SemiBold" Text="工位输入 / 编号规则"/>
+            <TextBlock FontSize="23" FontWeight="SemiBold" Text="扫码与生产配置"/>
             <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#697C8E"
                        Text="扫码枪仅输入编号，实际 COM 串口独立于 TEST；已发布编号绑定规则决定完整程序，不接受工程师勾选用例作为出厂运行范围。"/>
         </StackPanel>
         <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}"
                 BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,0,0,12">
             <StackPanel>
-                <TextBlock Text="真实 USB 串口扫码枪 / SERIAL SCANNER" FontWeight="SemiBold" Foreground="{DynamicResource StudioText}" Margin="0,0,0,9"/>
+                <TextBlock Text="扫码枪连接" FontWeight="SemiBold" Foreground="{DynamicResource StudioText}" Margin="0,0,0,9"/>
                 <WrapPanel>
                     <TextBlock Text="COM" Foreground="#697C8E" VerticalAlignment="Center" Margin="0,0,7,0"/>
                     <ComboBox x:Name="R1ScannerPorts" Width="100" Margin="0,0,6,0"
-                              Background="#EDF3F9" Foreground="{DynamicResource StudioBg}"/>
+                              Background="{DynamicResource StudioPanel}" Foreground="{DynamicResource StudioText}"/>
                     <Button Content="刷新设备" Click="ScannerRefresh_Click"/>
                     <TextBlock Text="波特率" Foreground="#697C8E" VerticalAlignment="Center" Margin="9,0,8,0"/>
                     <ComboBox x:Name="R1ScannerBaud" Width="105" Margin="0,0,9,0"
                               Background="#EDF3F9" Foreground="{DynamicResource StudioBg}"/>
-                    <Button x:Name="R1ScannerConnect" Content="连接串口扫码枪" Click="ScannerConnect_Click"/>
-                    <Button x:Name="R1ScannerDisconnect" Content="断开" Click="ScannerDisconnect_Click" IsEnabled="False"/>
+                    <Button x:Name="R1ScannerConnect" Content="连接扫码枪" Style="{StaticResource AtPrimaryButton}" Click="ScannerConnect_Click"/>
+                    <Button x:Name="R1ScannerDisconnect" Content="断开" Style="{StaticResource AtDangerButton}" Click="ScannerDisconnect_Click" IsEnabled="False"/>
                 </WrapPanel>
                 <TextBlock x:Name="R1ScannerState" Text="选择真实扫码枪 COM 和波特率后连接；不需键盘焦点。"
                            Foreground="#697C8E" TextWrapping="Wrap" Margin="0,7,0,0"/>
@@ -37,7 +37,7 @@
                 </WrapPanel>
                 <TextBlock x:Name="R1ScannerHex" Text="HEX —" Foreground="#697C8E"
                            FontFamily="Consolas" TextWrapping="Wrap" MaxHeight="40"/>
-                <TextBlock x:Name="R1ScannerBarcode" Text="LAST BARCODE —"
+                <TextBlock x:Name="R1ScannerBarcode" Text="最近扫码 —"
                            Foreground="{DynamicResource StudioText}" FontFamily="Consolas" FontSize="14" FontWeight="SemiBold"
                            Margin="0,7,0,0"/>
             </StackPanel>
