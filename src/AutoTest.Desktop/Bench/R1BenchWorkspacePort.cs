@@ -30,6 +30,7 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     private readonly Func<BenchKeyAction, long, bool>? _approveKeyAction;
     private readonly Func<string?>? _projectPath;
     private readonly Func<string?>? _projectId;
+    private readonly Func<string?>? _projectName;
     public R1BenchWorkspacePort(Func<ControllerConfigToolViewModel?> configuration,
         Func<HardwareBenchController?> hardware, string? auditPath = null,
         Func<uint,long,bool>? approveKeySim = null,
@@ -38,9 +39,11 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         Func<byte,long,bool>? approveSolenoid = null,
         Func<string?>? projectPath = null, Func<string?>? projectId = null,
         Func<BenchKeyAction, long, bool>? approveKeyAction = null,
-        Func<BenchCanMessage, long, bool, bool>? approveCan = null)
+        Func<BenchCanMessage, long, bool, bool>? approveCan = null,
+        Func<string?>? projectName = null)
     {
         _projectPath = projectPath;
+        _projectName = projectName;
         _projectId = projectId;
         _approveKeyAction = approveKeyAction;
         _approveCan = approveCan;
@@ -63,7 +66,12 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     {
         cancellationToken.ThrowIfCancellationRequested();
         EcuControlProfile? config = _configuration()?.CurrentProfile;
-        if (config is null) return Task.FromResult<BenchConfiguration?>(null);
+        if (config is null)
+            return Task.FromResult<BenchConfiguration?>(new BenchConfiguration(
+                (_projectPath?.Invoke() is { Length: > 0 } ? "" : "未保存 · ") +
+                    (_projectName?.Invoke() ?? "当前工程"),
+                "未加载 Controller Profile（不影响手动实验）",
+                "—", Array.Empty<BenchControllerDefinition>()));
         config.Validate();
         var controllers = config.Controllers.OrderBy(x=>x.Order)
             .Select(c => new BenchControllerDefinition(c.Id.ToString("D"),c.Name,
@@ -80,7 +88,8 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                         : "未配置目标模拟电压")).ToArray()))
             .ToArray();
         return Task.FromResult<BenchConfiguration?>(new BenchConfiguration(
-            config.EcuName,config.EcuName,config.Revision.ToString(),controllers));
+            (_projectName?.Invoke() ?? config.EcuName),
+            config.EcuName,config.Revision.ToString(),controllers));
     }
     public Task<BenchConnectionSnapshot> GetConnectionAsync(CancellationToken cancellationToken)
     {
@@ -428,9 +437,8 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         message.Validate();
         if (_canStore is null)
             return "CAN 发送配置尚未绑定正式工程。";
-        var saved = (await _canStore.LoadAsync(ct)).FirstOrDefault(m => m.Id == message.Id);
-        if (saved != message)
-            return "所选 CAN 报文与当前工程的已保存配置不一致，请先保存并刷新。";
+        // Exploratory CAN bench work is allowed before the operator saves a resource.
+        // Validate the frozen configuration and require the real DEVICE gate, not persistence.
         if (_testRunning?.Invoke() == true)
             return "自动 TEST 正在执行，禁止手动 CAN1 发送。";
         if (_hardware() is not { State: UsbSessionState.Connected,
@@ -541,19 +549,10 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         IProgress<BenchActionProgress>? progress, CancellationToken ct)
     {
         BenchActionValidation.Validate(action);
-        if (_actionStore is null)
-            return new(false, false, false, "未绑定工程动作配置，拒绝真实输出。");
-        // Never execute an unsaved action or one from a different open project.
-        // This also blocks stale action selections after the user switches projects.
-        var currentActions = await _actionStore.LoadAsync(ct);
-        var saved = currentActions.FirstOrDefault(a => a.Id == action.Id);
-        if (saved is null || saved.Name != action.Name ||
-            saved.Steps.Count != action.Steps.Count ||
-            !saved.Steps.SequenceEqual(action.Steps))
-            return new(false, false, false, "当前动作与工程中已保存的配置不一致；请重新加载工程动作。");
-        if (_projectPath is null || _projectId is null ||
-            string.IsNullOrWhiteSpace(_projectPath()) || string.IsNullOrWhiteSpace(_projectId()))
-            return new(false, false, false, "尚未绑定已保存的工程，拒绝真实输出。");
+        if (_projectId is null || string.IsNullOrWhiteSpace(_projectId()))
+            return new(false, false, false, "尚未绑定当前工程身份，拒绝真实输出。");
+        // Frozen, validated steps may be run as a trial without saving first.
+        // The project identity and device generation remain guarded throughout execution.
         if (_testRunning?.Invoke() == true)
             return new(false, false, false, "自动 TEST 正在运行，禁止手动按键动作。");
         var physical = _hardware();
