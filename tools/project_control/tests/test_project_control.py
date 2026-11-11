@@ -14,7 +14,8 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from server import ProjectError, committed_project, handler_factory, propose_note, validate_project, load_local
+from server import ProjectError, committed_project, handler_factory, propose_note, validate_project, load_local, committed_receipts
+from receipt import stage as stage_receipt, ReceiptError
 
 HERE = Path(__file__).resolve().parents[1]
 
@@ -66,6 +67,7 @@ class GitServerTests(unittest.TestCase):
         dest = self.repo / "tools/project_control"
         dest.mkdir(parents=True, exist_ok=True)
         shutil.copy(HERE / "project.json", dest / "project.json")
+        shutil.copy(HERE / "receipts.json", dest / "receipts.json")
         (dest / ".gitignore").write_text(".local/\n", encoding="utf-8")
         self.run_git("add", ".")
         self.run_git("commit", "-qm", "fixture")
@@ -147,6 +149,45 @@ class GitServerTests(unittest.TestCase):
         with self.assertRaises(HTTPError) as err:
             self.post(data, csrf=snap["csrf"], origin="http://malicious.example")
         self.assertEqual(err.exception.code, 403)
+
+    def test_receipt_requires_real_command_and_published_git_commit(self):
+        sha = self.run_git("rev-parse", "HEAD")
+        receipt = {
+            "schema": "project-control-receipt/1",
+            "project_id": "autotest", "work_id": "W-103",
+            "input_sha": sha, "actual_head_sha": sha,
+            "branch": "test-fixture", "executor": "local Codex",
+            "outcome": "INCONCLUSIVE",
+            "summary": "Test is a fixture only",
+            "commands": [{"command": "echo fixture", "exit_code": 0,
+                          "observation": "fixture command recorded"}],
+            "evidence_refs": [],
+        }
+        self.assertEqual(json.loads(self.get("/api/project")[2])["receipts"], [])
+        result = stage_receipt(self.repo, receipt)
+        self.assertEqual(result["work_id"], "W-103")
+        self.assertTrue(json.loads(self.get("/api/project")[2])["source"]["evidence_dirty_in_worktree"])
+        self.assertEqual(json.loads(self.get("/api/project")[2])["receipts"], [])
+        self.run_git("add", "tools/project_control/receipts.json")
+        self.run_git("commit", "-qm", "publish receipt fixture")
+        published = json.loads(self.get("/api/project")[2])["receipts"]
+        self.assertEqual(len(published), 1)
+        self.assertEqual(published[0]["status"], "EXECUTION_REPORT_NOT_PRODUCT_ACCEPTANCE")
+
+    def test_receipt_pass_cannot_cover_failed_or_unknown_command(self):
+        sha = self.run_git("rev-parse", "HEAD")
+        record = {"schema": "project-control-receipt/1", "project_id": "autotest",
+                  "work_id": "W-101", "input_sha": sha, "actual_head_sha": sha,
+                  "branch": "main", "executor": "test", "outcome": "PASS",
+                  "summary": "not trustworthy",
+                  "commands": [{"command": "pytest", "exit_code": 1,
+                                "observation": "one test failed"}],
+                  "evidence_refs": []}
+        with self.assertRaisesRegex(ReceiptError, "PASS"):
+            stage_receipt(self.repo, record)
+        record["commands"][0]["exit_code"] = None
+        with self.assertRaisesRegex(ReceiptError, "PASS"):
+            stage_receipt(self.repo, record)
 
     def test_static_routes_and_exports_are_available(self):
         for path, typ, phrase in (
