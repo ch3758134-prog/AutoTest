@@ -103,6 +103,7 @@ function renderCapabilityTrace(){
     const header=el('div','buttonrow');
     header.append(button(m.cap.title,'link',()=>openItem(m.cap)));
     header.append(badge(m.cap.state));
+    header.append(button('记录此能力的问题','outline',()=>captureFindingModal(m.cap)));
     summary.append(header);
     const counts=el('div','tiny','已审查关系可达：需求 '+m.requirements.length+
       ' · 架构/接口/详细设计 '+m.designs.length+
