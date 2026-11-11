@@ -705,7 +705,8 @@ class Store:
                         """SELECT r.* FROM verification_reviews r
                            JOIN verification_runs v ON v.id=r.run_id
                            WHERE v.project_id=? ORDER BY r.reviewed_at,r.run_id""",(key,))]
-            governance={"baselines":[],"changes":[],"reviews":[],"invalidations":[]}
+            governance={"baselines":[],"changes":[],"reviews":[],
+                        "package_reviews":[],"invalidations":[]}
             if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='definition_changes'").fetchone():
                 governance["baselines"]=[dict(x) for x in db.execute(
                     "SELECT * FROM definition_baselines WHERE project_id=? ORDER BY revision",(key,))]
@@ -714,6 +715,8 @@ class Store:
                 change_ids={x["id"] for x in governance["changes"]}
                 governance["reviews"]=[dict(x) for x in db.execute(
                     "SELECT r.* FROM definition_reviews r JOIN definition_changes c ON c.id=r.change_id WHERE c.project_id=? ORDER BY r.change_id,r.domain",(key,))]
+                governance["package_reviews"]=[dict(x) for x in db.execute(
+                    "SELECT r.* FROM definition_package_reviews r JOIN definition_changes c ON c.id=r.change_id WHERE c.project_id=? ORDER BY r.change_id,r.package_id",(key,))]
                 governance["invalidations"]=[dict(x) for x in db.execute(
                     "SELECT * FROM definition_invalidations WHERE project_id=? ORDER BY created,package_id",(key,))]
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
