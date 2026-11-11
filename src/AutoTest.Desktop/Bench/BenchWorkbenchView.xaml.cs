@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -9,6 +11,7 @@ namespace AutoTest.Desktop.Bench;
 /// </summary>
 public partial class BenchWorkbenchView : UserControl
 {
+    private BenchKeyActionEditorWindow? _editorWindow;
     public event EventHandler? OpenStationRequested;
     public event EventHandler? OpenCanRequested;
     public event EventHandler? OpenDbcRequested;
@@ -61,6 +64,121 @@ public partial class BenchWorkbenchView : UserControl
             await vm.CanMessages.DiscardDraftAndReloadAsync();
         }
         else await vm.CanMessages.LoadAsync();
+    }
+
+    private BenchKeyActionEditorViewModel? Actions =>
+        (DataContext as BenchWorkbenchViewModel)?.KeyActions;
+
+    private void SelectCard(BenchKeyActionItem action)
+    {
+        if (Actions is { } vm && vm.Actions.Contains(action))
+            vm.SelectedAction = action;
+    }
+
+    private async void KeyActionTile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: BenchKeyActionItem action }) return;
+        SelectCard(action);
+        if (Actions is { IsActionRunning: false } vm)
+            await vm.RunAsync(); // The real DEVICE adapter prompts before output.
+    }
+
+    private void CreateKeyAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (Actions is not { CanEdit: true } vm) return;
+        vm.NewActionCommand.Execute();
+        if (vm.SelectedAction is not null)
+            OpenActionEditor(vm.SelectedAction, focusName: true);
+    }
+
+    private void EditSelectedKeyAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (Actions?.SelectedAction is { } action)
+            OpenActionEditor(action);
+        else
+            MessageBox.Show("请先新建或选择一个按键动作按钮。", "按键动作",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    // WPF ContextMenu is outside the ordinary visual tree. Retrieve the
+    // originating card from PlacementTarget rather than using its stale
+    // inherited DataContext (which can point to another ECU action).
+    private static BenchKeyActionItem? MenuAction(object sender)
+    {
+        return sender is MenuItem { Parent: ContextMenu menu } &&
+               menu.PlacementTarget is Button { DataContext: BenchKeyActionItem action }
+            ? action : null;
+    }
+
+    private void KeyActionMenu_Run_Click(object sender, RoutedEventArgs e)
+    {
+        if (MenuAction(sender) is { } action)
+            _ = RunCardActionAsync(action);
+    }
+
+    private async Task RunCardActionAsync(BenchKeyActionItem action)
+    {
+        SelectCard(action);
+        if (Actions is { IsActionRunning: false } vm)
+            await vm.RunAsync();
+    }
+
+    private void KeyActionMenu_Edit_Click(object sender, RoutedEventArgs e)
+    {
+        if (MenuAction(sender) is { } action) OpenActionEditor(action);
+    }
+
+    private void KeyActionMenu_Rename_Click(object sender, RoutedEventArgs e)
+    {
+        if (MenuAction(sender) is { } action)
+            OpenActionEditor(action, focusName: true);
+    }
+
+    private void KeyActionMenu_Copy_Click(object sender, RoutedEventArgs e)
+    {
+        if (MenuAction(sender) is not { } action || Actions is not { CanEdit: true } vm) return;
+        SelectCard(action);
+        vm.CopyActionCommand.Execute();
+        if (vm.SelectedAction is { } copied)
+            OpenActionEditor(copied, focusName: true);
+    }
+
+    private void KeyActionMenu_Delete_Click(object sender, RoutedEventArgs e)
+    {
+        if (MenuAction(sender) is not { } action || Actions is not { CanEdit: true } vm) return;
+        if (MessageBox.Show($"删除动作“{action.Name}”？\\n这将修改当前编辑草稿；保存后才会更新工程配置。",
+                "确认删除按键动作", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        SelectCard(action);
+        vm.DeleteActionCommand.Execute();
+    }
+
+    private void OpenActionEditor(BenchKeyActionItem action, bool focusName = false)
+    {
+        if (Actions is not { } vm || !vm.Actions.Contains(action)) return;
+        SelectCard(action);
+        if (_editorWindow is { IsVisible: true } existing)
+        {
+            if (existing.WindowState == WindowState.Minimized)
+                existing.WindowState = WindowState.Normal;
+            existing.Activate();
+            if (focusName) existing.FocusActionName();
+            return;
+        }
+
+        var dialog = new BenchKeyActionEditorWindow(vm)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        dialog.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_editorWindow, dialog))
+                _editorWindow = null;
+        };
+        _editorWindow = dialog;
+        dialog.Show();
+        if (focusName) dialog.FocusActionName();
     }
 
     private void OpenDbc_Click(object sender, RoutedEventArgs e) =>
