@@ -68,6 +68,13 @@ class Store:
                 parent_id TEXT REFERENCES objects(id), state TEXT NOT NULL,
                 revision INTEGER NOT NULL, meta TEXT NOT NULL,
                 approved_by TEXT, approved_at TEXT, created TEXT NOT NULL, updated TEXT NOT NULL);
+              CREATE TABLE IF NOT EXISTS project_context_revisions(
+                project_id TEXT NOT NULL REFERENCES projects(id),
+                revision INTEGER NOT NULL,
+                snapshot TEXT NOT NULL,
+                changed_by TEXT NOT NULL,
+                changed_at TEXT NOT NULL,
+                PRIMARY KEY(project_id,revision));
               CREATE INDEX IF NOT EXISTS ix_objects_project ON objects(project_id);
               CREATE TABLE IF NOT EXISTS revisions(
                 object_id TEXT NOT NULL, revision INTEGER NOT NULL,
@@ -150,30 +157,70 @@ class Store:
         with self.db() as db:
             db.execute("INSERT INTO projects VALUES(?,?,?,?,?,?,?,?)",
                        (key, name, summary, body, version, variant, instant, instant))
+            db.execute("""INSERT INTO project_context_revisions
+              (project_id,revision,snapshot,changed_by,changed_at)
+              VALUES(?,?,?,?,?)""",
+              (key,1,json.dumps({"name":name,"body":body,"version":version,
+                                 "variant":variant,"legacy_summary":summary},
+                                 ensure_ascii=False),"owner",instant))
             self._audit(db, key, None, "CREATE_PROJECT", "owner", name)
         return self.project(key)
 
     def update_project(self, key, data):
-        # Product semantics are baseline controlled. Only administrative rename
-        # remains a direct edit; never accept summary/body/version/variant here.
-        if any(field in data for field in ("summary","body","version","variant")):
-            raise RuleError("Product definition is governed; propose/review/publish a versioned change")
+        """Update project context/administration independently of product identity.
+
+        Legacy summary cannot be changed through this route. Stage version and
+        variant are contextual metadata, never product-identity baselines.
+        """
+        if "summary" in data:
+            raise RuleError("Legacy summary is archived; use product identity or engineering knowledge")
+        actor=text_value(data.get("actor","owner"),"context editor",
+                         limit=150,mandatory=True)
         with self.db() as db:
-            old = self._require_project(db, key)
-            fields = {}
-            for field, maximum in (("name", 140), ("summary", 6000), ("body", 50000),
-                                   ("version", 80), ("variant", 80)):
+            db.execute("BEGIN IMMEDIATE")
+            old=self._require_project(db,key)
+            fields={}
+            for field,maximum in (("name",140),("body",50000),
+                                  ("version",80),("variant",80)):
                 if field in data:
-                    fields[field] = text_value(data[field], field, limit=maximum,
-                                               mandatory=field == "name")
+                    value=text_value(data[field],field,limit=maximum,
+                                     mandatory=field=="name")
+                    if old[field]!=value:fields[field]=value
             if not fields:
-                raise RuleError("No project changes submitted")
-            fields["updated"] = now()
-            updates = ", ".join(f"{f}=?" for f in fields)
-            db.execute(f"UPDATE projects SET {updates} WHERE id=?", (*fields.values(), key))
-            self._audit(db, key, None, "UPDATE_PROJECT", "owner",
-                        "Changed: " + ", ".join(fields))
+                raise RuleError("No contextual project fields changed")
+            current=db.execute("""SELECT MAX(revision) FROM project_context_revisions
+                    WHERE project_id=?""",(key,)).fetchone()[0]
+            if current is None:
+                db.execute("""INSERT INTO project_context_revisions
+                   (project_id,revision,snapshot,changed_by,changed_at)
+                   VALUES(?,?,?,?,?)""",
+                   (key,1,json.dumps({"name":old["name"],"body":old["body"],
+                     "version":old["version"],"variant":old["variant"],
+                     "legacy_summary":old["summary"]},ensure_ascii=False),
+                    "legacy-import",old["created"]))
+                current=1
+            stamp=now()
+            updates=", ".join(f"{name}=?" for name in fields)
+            db.execute(f"UPDATE projects SET {updates},updated=? WHERE id=?",
+                       (*fields.values(),stamp,key))
+            updated=self._require_project(db,key)
+            db.execute("""INSERT INTO project_context_revisions
+                 (project_id,revision,snapshot,changed_by,changed_at)
+                 VALUES(?,?,?,?,?)""",
+                 (key,current+1,json.dumps({"name":updated["name"],
+                  "body":updated["body"],"version":updated["version"],
+                  "variant":updated["variant"],"legacy_summary":updated["summary"]},
+                  ensure_ascii=False),actor,stamp))
+            self._audit(db,key,None,"UPDATE_PROJECT_CONTEXT",actor,
+                       "Changed: "+", ".join(fields))
         return self.project(key)
+
+    def project_context_history(self,key):
+        with self.db() as db:
+            self._require_project(db,key)
+            return [dict(x) for x in db.execute(
+                "SELECT * FROM project_context_revisions WHERE project_id=? ORDER BY revision",
+                (key,))]
 
     def project(self, key):
         with self.db() as db:
@@ -770,6 +817,9 @@ class Store:
                     knowledge["intakes"]=[dict(x) for x in db.execute(
                         "SELECT * FROM engineering_knowledge_intakes WHERE project_id=? ORDER BY created,id",
                         (key,))]
+            context_history=[dict(x) for x in db.execute(
+                "SELECT * FROM project_context_revisions WHERE project_id=? ORDER BY revision",
+                (key,))]
             product_identity={"baselines":[],"proposals":[],"impacts":[],"invalidations":[]}
             if db.execute("""SELECT 1 FROM sqlite_master WHERE type='table'
                              AND name='product_identity_proposals'""").fetchone():
@@ -791,4 +841,5 @@ class Store:
                     "events":events,"technical_research":research,
                     "execution":execution,"manager_proposals":proposals,
                     "verification":verification,"governance":governance,
-                    "knowledge":knowledge,"product_identity":product_identity}
+                    "knowledge":knowledge,"product_identity":product_identity,
+                    "project_context_history":context_history}
