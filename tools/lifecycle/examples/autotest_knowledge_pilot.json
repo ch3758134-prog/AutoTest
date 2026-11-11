@@ -1,5 +1,5 @@
 {
-  "schema": "engineering-knowledge-pilot/1",
+  "schema": "engineering-knowledge-intake/1",
   "project": "AutoTest",
   "reference_note": "本文件根据 2026-11-10 用户与项目管理 AI 的真实澄清整理，属于候选输入，不包含任何人工审查状态。记录来源为对话；用户应依据实际工程归档和实测补足可追溯 URI。",
   "purpose": "演示同一工程事实如何在产品身份、用途、系统组成、能力、版本和验证中起不同作用，而不是挤进一段产品定义。",
