@@ -9,6 +9,7 @@ using System.Windows.Data;
 using System.Windows.Threading;
 using AutoTest.Contracts;
 using AutoTest.Devices.Diagnostics;
+using AutoTest.Devices.Usb;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -50,6 +51,9 @@ public sealed class BenchCanMonitorViewModel : BindableBase
     private int _pendingCount;
     private long _received;
     private long _displayDropped;
+    private long _pausedSkipped;
+    private long _sourceGeneration;
+    private bool _sourceConnected;
     private string _filter = "";
     private bool _paused;
     private string _status = "等待真实 DUT CAN1 接收数据";
@@ -84,6 +88,8 @@ public sealed class BenchCanMonitorViewModel : BindableBase
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public long Received => _received;
     public long DisplayDropped => Interlocked.Read(ref _displayDropped);
+    // Explicit UI pause is not CAN loss or device transport backpressure.
+    public long PausedSkipped => Interlocked.Read(ref _pausedSkipped);
     public long DeviceDropped => _source?.CanDropped ?? 0;
 
     public BenchCanMonitorViewModel(Func<HardwareBenchController?> hardware)
@@ -106,15 +112,29 @@ public sealed class BenchCanMonitorViewModel : BindableBase
     public void Start()
     {
         var current = _hardware();
+        bool connected = current?.State == UsbSessionState.Connected;
+        long generation = current?.Generation ?? 0;
+        bool changed = !ReferenceEquals(_source, current) ||
+                       _sourceGeneration != generation || _sourceConnected != connected;
         if (!ReferenceEquals(_source, current))
         {
             if (_source is not null) _source.CanReceived -= OnReceive;
             _source = current;
             if (_source is not null) _source.CanReceived += OnReceive;
         }
+        if (changed)
+        {
+            // Discard old-session buffered frames; do not present them as new ECU RX.
+            while (_pending.TryDequeue(out _)) { }
+            Interlocked.Exchange(ref _pendingCount, 0);
+            _sourceGeneration = generation;
+            _sourceConnected = connected;
+            Status = current is null ? "等待共享主控设备" :
+                !connected ? "主控未连接：连接后显示 ECU CAN1 广播" :
+                Paused ? "显示已暂停（仍统计真实接收）" :
+                "正在接收 DUT CAN1 广播；如无帧，请检查 ECU 供电及 CAN 接线";
+        }
         _refresh.Start();
-        Status = current is null ? "共享设备接收源尚不可用" :
-            "DUT CAN1 接收监视已就绪；连接主控后显示 ECU 广播";
     }
 
     public void Stop()
@@ -122,6 +142,8 @@ public sealed class BenchCanMonitorViewModel : BindableBase
         _refresh.Stop();
         if (_source is not null) _source.CanReceived -= OnReceive;
         _source = null;
+        _sourceGeneration = 0;
+        _sourceConnected = false;
         while (_pending.TryDequeue(out _)) { }
         Interlocked.Exchange(ref _pendingCount, 0);
     }
@@ -136,13 +158,19 @@ public sealed class BenchCanMonitorViewModel : BindableBase
 
     private void Drain()
     {
-        if (_source is not null && !ReferenceEquals(_source, _hardware())) Start();
+        // Detect a source created AFTER opening this window and reconnect generations.
+        // In particular, null -> non-null must establish the CAN RX subscription.
+        var latest = _hardware();
+        if (!ReferenceEquals(_source, latest) ||
+            _sourceGeneration != (latest?.Generation ?? 0) ||
+            _sourceConnected != (latest?.State == UsbSessionState.Connected))
+            Start();
         int processed = 0;
         while (processed++ < 500 && _pending.TryDequeue(out var sample))
         {
             Interlocked.Decrement(ref _pendingCount);
             _received++;
-            if (Paused) { Interlocked.Increment(ref _displayDropped); continue; }
+            if (Paused) { Interlocked.Increment(ref _pausedSkipped); continue; }
             var f = sample.Frame;
             var data = string.Join(" ", f.Data.Select(b => b.ToString("X2")));
             var at = sample.Time.Utc.ToLocalTime();
@@ -162,6 +190,7 @@ public sealed class BenchCanMonitorViewModel : BindableBase
         RaisePropertyChanged(nameof(Received));
         RaisePropertyChanged(nameof(DeviceDropped));
         RaisePropertyChanged(nameof(DisplayDropped));
+        RaisePropertyChanged(nameof(PausedSkipped));
     }
 
     public void ClearDisplay()
@@ -173,8 +202,10 @@ public sealed class BenchCanMonitorViewModel : BindableBase
         Interlocked.Exchange(ref _pendingCount, 0);
         _received = 0;
         Interlocked.Exchange(ref _displayDropped, 0);
+        Interlocked.Exchange(ref _pausedSkipped, 0);
         RaisePropertyChanged(nameof(Received));
         RaisePropertyChanged(nameof(DisplayDropped));
+        RaisePropertyChanged(nameof(PausedSkipped));
         // No CAN commands are sent; only UI display is reset.
     }
 }
