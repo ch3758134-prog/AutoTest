@@ -51,9 +51,11 @@ def committed_project(repo):
         raise ProjectError("Git 提交中的项目记录不是有效 JSON") from exc
     validate_project(data)
     dirty = bool(git(repo, "status", "--porcelain", "--", DATA_PATH))
+    evidence_dirty = bool(git(repo, "status", "--porcelain", "--", "tools/project_control/receipts.json"))
     return data, {
         "sha": sha, "branch": branch, "record": DATA_PATH,
         "record_dirty_in_worktree": dirty,
+        "evidence_dirty_in_worktree": evidence_dirty,
         "note": "内容来自当前本地 Git HEAD，未联网验证 GitHub 远端是否有更新。"
     }
 
@@ -100,6 +102,20 @@ def validate_project(p):
     done = set()
     for key in works:
         visit(key, set(), done)
+
+
+def committed_receipts(repo):
+    """Evidence becomes visible only after a Git commit exists."""
+    raw = git(repo, "show", "HEAD:tools/project_control/receipts.json")
+    try:
+        ledger = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ProjectError("Git evidence ledger is not valid JSON") from exc
+    if not isinstance(ledger, dict) or ledger.get("schema") != "project-control-receipts/1" or not isinstance(ledger.get("runs"), list):
+        raise ProjectError("Git evidence ledger format is invalid")
+    if len(ledger["runs"]) > 2000:
+        raise ProjectError("Evidence ledger needs pagination before exceeding 2000 records")
+    return ledger["runs"]
 
 
 def local_path(repo):
@@ -220,9 +236,11 @@ def handler_factory(repo: Path):
             if path == "/api/project":
                 try:
                     data, source = committed_project(repo)
+                    receipts = committed_receipts(repo)
                     local = load_local(repo)
                     return self.send_bytes({
                         "project": data, "source": source, "local": local,
+                        "receipts": receipts,
                         "local_stale": bool(local["notes"] and local["base_sha"] != source["sha"]),
                         "csrf": session,
                     })
