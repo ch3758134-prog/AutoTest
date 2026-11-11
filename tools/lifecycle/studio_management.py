@@ -14,6 +14,7 @@ from studio_verification import Verification
 from studio_semantics import semantic_context, legacy_project_projection
 from studio_knowledge import EngineeringKnowledge
 from studio_product_identity import ProductIdentity
+from studio_amendments import EngineeringAmendments
 
 PROPOSAL_KINDS = ("PRODUCT_DEFINITION_REVIEW", "REQUIREMENT_CLARIFICATION", "TECHNICAL_RESEARCH", "ARCHITECTURE_REVIEW",
                   "DETAILED_DESIGN", "CODING", "INTEGRATION", "VERIFICATION",
@@ -54,6 +55,7 @@ class Management:
         identity = ProductIdentity(self.store).status(project_id)
         identity_invalidations = ProductIdentity(self.store).invalidations(project_id)
         knowledge=EngineeringKnowledge(self.store).list(project_id)
+        amendments=EngineeringAmendments(self.store).list(project_id)
         objects = p["objects"]
         indexed = {x["id"]: x for x in objects}
         ready = {}
@@ -114,6 +116,7 @@ class Management:
             "product_identity":identity,
             "product_identity_invalidations":identity_invalidations,
             "engineering_knowledge":knowledge,
+            "engineering_amendments":amendments,
             "engineering_objects":objects,
             "engineering_relations":p["relations"],
             "technical_studies":studies,
@@ -131,6 +134,8 @@ class Management:
                 "Read engineering_semantics before classifying or editing any product-level information. Concept explanations are guidance; facts and project evidence take precedence.",
                 "Record user corrections, sourced observations, open questions and interpretations as separate engineering_knowledge candidates; link related claims across conceptual roles rather than forcing them into product definition.",
                 "Manager may propose engineering knowledge and semantic links, but cannot accept a record, confirm a relation, declare source truth or publish a product baseline.",
+                "For a correction to an existing requirement, architecture, interface, system component or detailed design, submit an engineering_amendment against an exact object revision with proposed changed fields and cited sources. Never treat it as an approved edit.",
+                "The human owner reviews amendment scope, may request further research, or applies to create a new draft revision; AI may not review or apply amendments. Existing CODE_READY dependency/version protections remain in effect.",
                 "Human-reviewed knowledge and semantic relationships are reference context; they do not automatically revise approved product definition or authorize implementation.",
                 "Only product_identity is the canonical product identity; old governance tables and project summary/body/version/variant are historical context/metadata and must not be treated as current approval.",
                 "AI may submit product-identity statement candidates with semantic reasoning and knowledge links; only owner may assess scope, disposition actual impacted engineering objects, and publish a new identity revision.",
