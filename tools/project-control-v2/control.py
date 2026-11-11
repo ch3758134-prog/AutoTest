@@ -32,11 +32,14 @@ STAGE_IDS = {"P0", "G0", "G1", "G2", "G3", "G4"}
 ACTIONS = {"create_work", "edit_work", "create_deliverable", "edit_deliverable",
            "submit_plan", "withdraw_plan", "approve_plan", "return_plan",
            "update_progress", "verify_work", "raise_change", "assess_change",
-           "resolve_change", "reconcile_work", "record_receipt", "review_receipt", "record_phase_review"}
+           "resolve_change", "reconcile_work", "record_receipt", "review_receipt", "record_phase_review",
+           "create_milestone", "edit_milestone", "raise_risk", "review_risk", "start_cycle", "close_cycle"}
 FIELD_WORK = {"title", "kind", "mode", "horizon", "deliverable_id",
               "expected_result", "exit_condition", "depends_on", "sources",
               "priority", "assignee", "planned_start", "planned_finish", "schedule_basis", "state"}
 FIELD_DELIV = {"title", "success_condition", "commitment"}
+FIELD_MILESTONE = {"title", "deliverable_id", "exit_condition", "target_date", "date_basis"}
+RISK_LEVELS = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
 
 
 class ControlError(ValueError):
@@ -123,6 +126,22 @@ def validate_deliverable(item):
         raise ControlError("deliverable commitment is required")
 
 
+def validate_milestone(item, deliverables):
+    if not isinstance(item, dict) or any(k not in FIELD_MILESTONE | {"id"} for k in item):
+        raise ControlError("invalid milestone fields")
+    ident(item.get("id"), "milestone id")
+    text(item.get("title"), "milestone title")
+    text(item.get("exit_condition"), "milestone success condition")
+    if item.get("deliverable_id") not in deliverables:
+        raise ControlError("milestone must refer to a real deliverable")
+    if item.get("target_date"):
+        from datetime import date
+        try:
+            date.fromisoformat(text(item["target_date"], "milestone target date", 10))
+        except ValueError as exc:
+            raise ControlError("milestone target date must be real ISO date") from exc
+        text(item.get("date_basis"), "milestone schedule basis")
+
 def new_id(prefix):
     return prefix + "-" + uuid.uuid4().hex[:12]
 
@@ -152,7 +171,7 @@ class Control:
                 "status": "PROPOSED", "project_id": record["project_id"],
                 "purpose": p["purpose"], "planning_assumptions": p["planning_assumptions"],
                 "product_anchor": p["product_anchor"], "deliverables": p["deliverables"],
-                "work": p["work"]}
+                "milestones": p.get("milestones", []), "work": p["work"]}
 
     def model(self):
         record = self.read()
@@ -263,6 +282,29 @@ class Control:
                             raise ControlError("invalid deliverable patch")
                         validate_deliverable(dict(d, **patch))
                         d.update(patch)
+
+            elif name in ("create_milestone", "edit_milestone"):
+                self._editing_plan(record)
+                if name == "create_milestone":
+                    milestone = copy.deepcopy(payload.get("item"))
+                    if not isinstance(milestone, dict):
+                        raise ControlError("milestone item required")
+                    milestone["id"] = ident(milestone.get("id", new_id("milestone")), "milestone id")
+                    validate_milestone(milestone, {d["id"] for d in plan["deliverables"]})
+                    if any(x["id"] == milestone["id"] for x in plan.setdefault("milestones", [])):
+                        raise ControlError("milestone id already exists")
+                    plan["milestones"].append(milestone)
+                    subject = milestone["id"]
+                else:
+                    subject = ident(payload.get("id"), "milestone id")
+                    milestone = next((m for m in plan.get("milestones", []) if m["id"] == subject), None)
+                    if milestone is None:
+                        raise ControlError("milestone not found")
+                    patch = payload.get("patch")
+                    if not isinstance(patch, dict) or not patch or any(k not in FIELD_MILESTONE for k in patch):
+                        raise ControlError("invalid milestone patch")
+                    validate_milestone(dict(milestone, **patch), {d["id"] for d in plan["deliverables"]})
+                    milestone.update(patch)
 
             elif name == "submit_plan":
                 if plan["status"] not in ("DRAFT", "REVISION_DRAFT"):
@@ -411,6 +453,58 @@ class Control:
                 invalidation.update(resolved=True, reviewed_at=now(), reviewed_by=actor,
                                     disposition=disposition, review_reason=reason)
 
+            elif name == "raise_risk":
+                risk = {"id": new_id("risk"),
+                        "title": text(payload.get("title"), "risk title", 220),
+                        "description": text(payload.get("description"), "risk description"),
+                        "likelihood": payload.get("likelihood"),
+                        "severity": payload.get("severity"),
+                        "mitigation": text(payload.get("mitigation"), "mitigation plan"),
+                        "owner": text(payload.get("owner"), "risk owner", 140),
+                        "source_refs": items(payload.get("source_refs", []), "risk sources", 30),
+                        "affected_work": items(payload.get("affected_work", []), "risk affected work", 100),
+                        "status": "OPEN", "created": now(), "actor": actor}
+                if risk["likelihood"] not in RISK_LEVELS or risk["severity"] not in RISK_LEVELS:
+                    raise ControlError("risk likelihood/severity must be explicit")
+                for wid in risk["affected_work"]:
+                    self._work(record, wid)
+                record["risks"].append(risk)
+                subject = risk["id"]
+                outcome = {"risk_id": subject}
+
+            elif name == "review_risk":
+                subject = ident(payload.get("id"), "risk id")
+                risk = next((x for x in record["risks"] if x["id"] == subject), None)
+                if risk is None or risk["status"] not in ("OPEN", "MITIGATING"):
+                    raise ControlError("risk is not open")
+                decision = payload.get("status")
+                if decision not in ("MITIGATING", "MITIGATED", "CLOSED"):
+                    raise ControlError("invalid risk review state")
+                evidence = items(payload.get("evidence_refs", []), "risk resolution sources", 30)
+                if decision in ("MITIGATED", "CLOSED") and not evidence:
+                    raise ControlError("closing a risk requires supporting evidence")
+                risk.update(status=decision, evidence_refs=evidence,
+                            reviewed_by=actor, reviewed_at=now(), review_reason=reason)
+
+            elif name == "start_cycle":
+                cycle = {"id": new_id("cycle"),
+                         "title": text(payload.get("title"), "iteration title", 220),
+                         "trigger": text(payload.get("trigger"), "iteration trigger", 4000),
+                         "scope": text(payload.get("scope"), "iteration scope", 4000),
+                         "created": now(), "actor": actor, "state": "ACTIVE",
+                         "confirmation": "OWNER_LOCAL_RECORDED"}
+                record["cycles"].append(cycle)
+                subject = cycle["id"]
+                outcome = {"cycle_id": subject, "note": "new cycle does not rewrite earlier baselines"}
+
+            elif name == "close_cycle":
+                subject = ident(payload.get("id"), "cycle id")
+                cycle = next((x for x in record["cycles"] if x["id"] == subject), None)
+                if cycle is None or cycle["state"] != "ACTIVE":
+                    raise ControlError("only active cycles can be closed")
+                cycle.update(state="CLOSED", closed_at=now(), reviewed_by=actor,
+                             closure_note=reason)
+
             elif name == "record_receipt":
                 subject = ident(payload.get("work_id"), "receipt work_id")
                 self._work(record, subject)
@@ -461,7 +555,10 @@ class Control:
                               if o.get("id") in evidence_ids]
                     if phase != "P0" and phase not in stages:
                         raise ControlError("Gate evidence must explicitly belong to the reviewed phase")
-                entry = {"id": new_id("phase"), "phase_id": phase, "decision": decision,
+                cycle_id = ident(payload.get("cycle_id", record["cycles"][-1]["id"]), "cycle id")
+                if not any(x["id"] == cycle_id for x in record["cycles"]):
+                    raise ControlError("phase review cycle is unknown")
+                entry = {"id": new_id("phase"), "cycle_id": cycle_id, "phase_id": phase, "decision": decision,
                          "evidence_ids": evidence_ids, "actor": actor, "reason": reason,
                          "at": now(), "local_only": True}
                 record["phase_reviews"].append(entry)
