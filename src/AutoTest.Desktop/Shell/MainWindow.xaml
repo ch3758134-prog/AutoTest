@@ -152,8 +152,16 @@
                         <TabItem Header="测试结构">
                             <Grid Margin="7">
                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Text="当前 TEST · 测试用例" Margin="7,9,0,5"
-                                    Foreground="#6A7E93" FontSize="11"/>
+                                <DockPanel Grid.Row="0" Margin="5,7,1,6" LastChildFill="True">
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="全选" Command="{Binding SelectAllCasesCommand}" Padding="6,2"
+                                            MinHeight="23" Margin="0,0,4,0" FontSize="11"/>
+                                        <Button Content="清空" Command="{Binding ClearCasesCommand}" Padding="6,2"
+                                            MinHeight="23" Margin="0" FontSize="11"/>
+                                    </StackPanel>
+                                    <TextBlock Text="当前 TEST · 用例勾选" FontSize="11" FontWeight="SemiBold"
+                                        Foreground="#526B85" VerticalAlignment="Center" Margin="1,0,4,0"/>
+                                </DockPanel>
                                 <ItemsControl x:Name="TestCasesList" Grid.Row="1" Margin="5,0,3,9">
                                     <ItemsControl.Style>
                                         <Style TargetType="ItemsControl">
@@ -182,9 +190,43 @@
                                         <TextBlock DockPanel.Dock="Top" Text="执行步骤" Margin="11,10,0,6"
                                             Foreground="#6A7E93" FontSize="11"/>
                                         <ListBox x:Name="PlannedStepsList" BorderThickness="0"
-                                            DisplayMemberPath="Name" Background="White"
-                                            Foreground="#29435E" FontSize="12"
-                                            SelectionChanged="PlannedSteps_SelectionChanged"/>
+                                            Background="White" Foreground="#29435E" FontSize="12"
+                                            SelectedItem="{Binding SelectedRunStep, Mode=TwoWay}"
+                                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                            SelectionChanged="PlannedSteps_SelectionChanged">
+                                            <ListBox.GroupStyle>
+                                                <GroupStyle>
+                                                    <GroupStyle.HeaderTemplate>
+                                                        <DataTemplate>
+                                                            <Border Background="#EBF1F8" Padding="9,6" Margin="0,6,0,1">
+                                                                <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
+                                                                    Foreground="#436385"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </GroupStyle.HeaderTemplate>
+                                                </GroupStyle>
+                                            </ListBox.GroupStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Padding="3,7" ToolTip="{Binding Diagnostic}">
+                                                        <DockPanel LastChildFill="True">
+                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}"
+                                                                Foreground="#768BA1" FontSize="10"
+                                                                VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                                            <TextBlock DockPanel.Dock="Left" Text="{Binding Number}"
+                                                                Foreground="#91A0B1" FontSize="10"
+                                                                Width="25" VerticalAlignment="Center"/>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Name}" Foreground="#284760"
+                                                                    FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Text="{Binding Type}" Foreground="#8293A5" FontSize="10"
+                                                                    TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+                                                            </StackPanel>
+                                                        </DockPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
                                     </DockPanel>
                                 </Border>
                             </Grid>
