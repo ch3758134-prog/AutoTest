@@ -66,6 +66,10 @@ public sealed class BenchCanEditorViewModel : BindableBase
     private string _status = "CAN 报文未加载";
     private string _periodicStatus = "未启动周期发送";
     private long _frameCount;
+    private string? _editorProjectId;
+    private bool DifferentProject => _editorProjectId != _port.ActiveProjectId;
+    private const string ProjectChangedMessage =
+        "工程已切换：旧工程的 CAN 报文不能直接发到新 ECU。请返回原工程保存草稿，或取消草稿后重新加载。";
     public int CheckedCount => Messages.Count(m => m.IsChecked);
 
     public BenchCanEditorViewModel(IBenchWorkbenchPort port, Action<string>? audit = null)
@@ -151,6 +155,11 @@ public sealed class BenchCanEditorViewModel : BindableBase
     public async Task LoadAsync()
     {
         if (!CanEdit) return;
+        if (_dirty && DifferentProject)
+        {
+            Status = ProjectChangedMessage;
+            return;
+        }
         if (_dirty)
         {
             Status = "尚有未保存的 CAN 配置；请先保存，避免覆盖编辑内容。";
@@ -160,7 +169,11 @@ public sealed class BenchCanEditorViewModel : BindableBase
         RaisePropertyChanged(nameof(CanEdit));
         try
         {
+            var editingProjectId = _port.ActiveProjectId;
             var saved = await _port.LoadCanMessagesAsync(CancellationToken.None);
+            if (editingProjectId != _port.ActiveProjectId)
+                throw new InvalidOperationException("加载期间当前工程已切换。");
+            _editorProjectId = editingProjectId;
             BenchCanMessage.ValidateAll(saved);
             Messages.Clear();
             foreach (var value in saved)
@@ -181,6 +194,11 @@ public sealed class BenchCanEditorViewModel : BindableBase
     public async Task SaveAsync()
     {
         if (!CanEdit) return;
+        if (DifferentProject)
+        {
+            Status = ProjectChangedMessage;
+            return;
+        }
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
         try
@@ -199,6 +217,11 @@ public sealed class BenchCanEditorViewModel : BindableBase
     private bool TryGetSavedSnapshot(out BenchCanMessage? snapshot)
     {
         snapshot = null;
+        if (DifferentProject)
+        {
+            Status = ProjectChangedMessage;
+            return false;
+        }
         if (!CanEdit || SelectedMessage is null)
         {
             Status = "先选择一条 CAN 报文；周期发送中不可修改配置。";
@@ -228,6 +251,11 @@ public sealed class BenchCanEditorViewModel : BindableBase
     public async Task StartPeriodicAsync()
     {
         if (!CanEdit) return;
+        if (DifferentProject)
+        {
+            Status = ProjectChangedMessage;
+            return;
+        }
         var checkedRows = Messages.Where(x => x.IsChecked).ToArray();
         if (checkedRows.Length == 0)
         {
