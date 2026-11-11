@@ -12,7 +12,7 @@
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <TextBlock FontSize="23" FontWeight="SemiBold" Text="扫码与生产配置"/>
             <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#697C8E"
-                       Text="扫码枪仅输入编号，实际 COM 串口独立于 TEST；已发布编号绑定规则决定完整程序，不接受工程师勾选用例作为出厂运行范围。"/>
+                       Text="扫描编号 → 匹配工程规则 → 执行已发布测试程序 → 保存真实结果"/>
         </StackPanel>
         <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}"
                 BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,0,0,12">
@@ -59,7 +59,7 @@
                 <StackPanel Margin="12">
                     <TextBlock Text="条码输入 / 校验" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="校验条码" Command="{Binding PreviewCommand}"/>
+                        <Button DockPanel.Dock="Right" Content="校验条码" Style="{StaticResource AtPrimaryButton}" Command="{Binding PreviewCommand}"/>
                         <TextBox x:Name="BarcodeInput" KeyDown="BarcodeInput_OnKeyDown"
                                  Text="{Binding ScanInput, UpdateSourceTrigger=PropertyChanged}"/>
                     </DockPanel>
@@ -68,7 +68,7 @@
                                Foreground="#697C8E"/>
                     <TextBlock Text="{Binding CatalogSource}" TextWrapping="Wrap"
                                Foreground="#697C8E" Margin="0,6,0,0"/>
-                    <Button Content="转到 P11 · 当前工程测试" Click="OpenProjectTest_Click"
+                    <Button Content="打开当前工程测试" Click="OpenProjectTest_Click"
                             HorizontalAlignment="Left" Margin="0,16,0,0" Padding="16,8"/>
                 </StackPanel>
             </TabItem>
@@ -103,7 +103,7 @@
                         <TextBox Text="{Binding ExampleBarcode,UpdateSourceTrigger=PropertyChanged}"
                                  Width="410" HorizontalAlignment="Left" Margin="0,3,0,12"/>
                         <WrapPanel>
-                            <Button Content="发布到当前工程 TEST" Command="{Binding PublishRuleCommand}" Padding="14,8"/>
+                            <Button Content="发布到当前工程" Style="{StaticResource AtPrimaryButton}" Command="{Binding PublishRuleCommand}" Padding="14,8"/>
                             <Button Content="重新加载已发布规则" Command="{Binding LoadCommand}"/>
                         </WrapPanel>
                         <TextBlock Text="只有明确的物理配方且 TestProgram ID/Revision/SHA256 与当前工程完全一致时才进入真实执行；工位文件哈希本身不证明硬件连接或设备动作。"
