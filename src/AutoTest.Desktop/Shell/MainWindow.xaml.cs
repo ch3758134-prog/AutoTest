@@ -442,14 +442,30 @@ public partial class MainWindow : Window
                                 "这是实际硬件 CAN1 发送，不代表 ECU 已收到。是否授权？",
                                 "确认真实 DUT CAN1 发送",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                                MessageBoxResult.No) == MessageBoxResult.Yes));
+                                MessageBoxResult.No) == MessageBoxResult.Yes,
+                        projectName: () => host.Workspace.Project.Name,
+                        approveCanBatch: (selected, generation) =>
+                            MessageBox.Show(this,
+                                $"真实 DUT CAN1 周期发送：选中 {selected.Count} 条报文。\n" +
+                                string.Join("\\n", selected.Select(f =>
+                                    $"ID=0x{f.ArbitrationId:X} { (f.Extended ? "扩展" : "标准") } " +
+                                    $"DATA={f.DataHex} / {f.PeriodMs} ms")) +
+                                $"\\nSession={generation}，PC 定时发送，非硬实时周期。\n" +
+                                "发送前确认现场 ECU 接线；是否启动整组周期发送？",
+                                "确认真实多报文周期发送",
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                                MessageBoxResult.No) == MessageBoxResult.Yes),
+                    () => station.Controller);
                 station.Controller.ConnectionChanged += state =>
                 {
                     if (!_closed && !Dispatcher.HasShutdownStarted)
                         Dispatcher.BeginInvoke(new Action(() =>
                         {
                             if (_benchModel is not null)
+                            {
                                 _ = _benchModel.RefreshConnectionAsync();
+                                _benchModel.CanMonitor.Start();
+                            }
                         }));
                 };
                 var bench = new BenchWorkbenchView(_benchModel);
