@@ -454,7 +454,10 @@ public partial class MainWindow : Window
                                 "发送前确认现场 ECU 接线；是否启动整组周期发送？",
                                 "确认真实多报文周期发送",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                                MessageBoxResult.No) == MessageBoxResult.Yes),
+                                MessageBoxResult.No) == MessageBoxResult.Yes,
+                        projectDbc: () => host.Workspace.Database,
+                        projectDbcRevision: () => host.Workspace.DbcAssetId is { } dbcId
+                            ? host.Workspace.AssetToken(dbcId) : null),
                     () => station.Controller);
                 station.Controller.ConnectionChanged += state =>
                 {
