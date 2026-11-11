@@ -367,6 +367,7 @@
      <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
       <TextBlock Text="{Binding Received,StringFormat=接收 {0} 帧}" Margin="0,0,12,0"/>
       <TextBlock Text="{Binding DisplayDropped,StringFormat=显示丢弃 {0}}" Margin="0,0,12,0"/>
+      <TextBlock Text="{Binding PausedSkipped,StringFormat=暂停未显示 {0}}" Margin="0,0,12,0"/>
       <TextBlock Text="{Binding DeviceDropped,StringFormat=设备接收丢弃 {0}}"/>
      </WrapPanel>
      <TextBlock Text="{Binding Status}" FontSize="11" Foreground="{StaticResource Muted}"/>
