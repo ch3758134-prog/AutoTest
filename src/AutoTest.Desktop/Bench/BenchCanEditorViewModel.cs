@@ -39,7 +39,11 @@ public sealed class BenchCanMessageItem : BindableBase
     private string _periodMsText;
     private string? _dbcRevision;
     private string? _dbcMessageName;
-    public string? DbcRevision { get => _dbcRevision; set => SetProperty(ref _dbcRevision, value); }
+    public string? DbcRevision
+    {
+        get => _dbcRevision;
+        set { if (SetProperty(ref _dbcRevision, value)) RaisePropertyChanged(nameof(SourceLabel)); }
+    }
     public string? DbcMessageName { get => _dbcMessageName; set => SetProperty(ref _dbcMessageName, value); }
     public string SourceLabel => DbcRevision is null ? "原始" : "DBC";
     public string Id { get; }
