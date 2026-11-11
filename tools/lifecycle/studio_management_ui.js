@@ -1,6 +1,6 @@
 /* Real engineering management review; suggestions are not approvals or tasks. */
 'use strict';
-const CATEGORY_LABELS={
+const CATEGORY_LABELS={PRODUCT_DEFINITION_REVIEW:'产品定义与影响再研究',
   REQUIREMENT_CLARIFICATION:'需求澄清', TECHNICAL_RESEARCH:'技术预研',
   ARCHITECTURE_REVIEW:'架构复核',DETAILED_DESIGN:'软件详细设计',
   CODING:'编码提案', INTEGRATION:'集成计划',VERIFICATION:'验证安排',
@@ -18,6 +18,7 @@ async function renderManagementView(){
     toast('项目上下文已复制：包含来源/修订/GitHub 同步时间。');
   }));
   options.append(button('核对 Git 工程版本','outline',managementGitBaselineModal));
+  options.append(button('产品定义审查与版本门禁','outline',definitionGovernanceModal));
   options.append(button('录入管理建议','primary',managementProposeModal));
   root.append(options);
   const mount=el('div','stack');
@@ -38,6 +39,10 @@ async function renderManagementView(){
   const facts=el('div','meta-table');
   add(facts,
     managementFact('工程设计',result.engineering_objects.length+' 项对象（不代表已交付）'),
+    managementFact('产品定义基线',result.product_definition_governance.baseline_status+
+      ' · ' +(result.product_definition_governance.baseline?.revision||'无批准版本')),
+    managementFact('产品定义待审变更',result.product_definition_governance.changes.filter(
+      x=>x.state==='REVIEW').length+' 项'),
     managementFact('GitHub 状态',result.github.repository?
       result.github.repository+' · 最近同步 '+(result.github.fetched_at||'未知'):'尚未连接 GitHub'),
     managementFact('研究问题',result.technical_studies.length+' 项'),
@@ -49,6 +54,8 @@ async function renderManagementView(){
   if(result.github.error)info.append(el('div','reason','GitHub 同步出错：'+result.github.error));
   if(!result.github.fetched_at)info.append(note('GitHub 未同步。AI 不得根据本地对象数量推断远端项目完成状态。'));
   info.append(el('p','tiny','执行证据由本地人工登记；证据审查与真实产品验收必须分别判断。'))
+  if(result.product_definition_governance.baseline_status!=='BASELINED')
+    info.append(note('产品定义尚未建立有效的受控基线；重大变更及其影响领域必须审查，编码派发被拦截。'));
   mount.append(info);
   const problems=el('div','panel');
   const ph=el('div','sectionline');add(ph,el('h2','','工程阻塞与需要补齐的条件'));
