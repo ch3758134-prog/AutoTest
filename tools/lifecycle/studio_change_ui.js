@@ -50,16 +50,20 @@ function changeAssessModal(change,target){
     ],target.assessment.outcome||'INVESTIGATE');
     const actor=field(body,'评估人',target.assessment.reviewer||'项目负责人');
     const rationale=field(body,'依据与处理决定',target.assessment.rationale||'','textarea');
-    modalActions(footer,async()=>{
-      await req('/api/studio/change/assess',{
-        change_id:change.id,target_id:target.target.id,
-        expected_change_revision:change.revision,
-        expected_target_revision:target.target.revision,
-        outcome:outcome.value,reviewer:actor.value,rationale:rationale.value
-      });
-      await refresh(false);
-      toast('目标修订绑定的影响评估已记录');
-      await changeReviewModal(change.id);
-    },'记录影响结论');
+    const error=el('div','error hidden');body.append(error);
+    footer.append(button('取消','outline',closeModal));
+    footer.append(button('记录影响结论','primary',async()=>{
+      try{
+        await req('/api/studio/change/assess',{
+          change_id:change.id,target_id:target.target.id,
+          expected_change_revision:change.revision,
+          expected_target_revision:target.target.revision,
+          outcome:outcome.value,reviewer:actor.value,rationale:rationale.value
+        });
+        await refresh(false);
+        toast('目标修订绑定的影响评估已记录');
+        await changeReviewModal(change.id);
+      }catch(e){error.textContent=e.message;error.classList.remove('hidden');}
+    }));
   });
 }
