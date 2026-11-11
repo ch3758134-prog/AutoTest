@@ -17,6 +17,7 @@ from studio_management import Management
 from studio_baseline import GitBaseline
 from studio_change import ChangeReview
 from studio_verification import Verification
+from studio_governance import DefinitionGovernance
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -32,6 +33,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     baseline = GitBaseline(store, source_root, execution)
     change_review = ChangeReview(store)
     verification = Verification(store)
+    governance = DefinitionGovernance(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.7"
 
@@ -91,6 +93,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/plan.js":
                     return self.write((HERE / "studio_plan_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
+                if path == "/governance.js":
+                    return self.write((HERE / "studio_governance_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/restore.js":
                     return self.write((HERE / "studio_restore_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
@@ -113,6 +118,14 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write(change_review.detail(params.get("id", "")))
                 if path == "/api/studio/verification":
                     return self.write(verification.list(params.get("project", "")))
+                if path == "/api/studio/governance/status":
+                    return self.write(governance.status(params.get("project", "")))
+                if path == "/api/studio/governance/detail":
+                    return self.write(governance.detail(params.get("id", "")))
+                if path == "/api/studio/governance/gate":
+                    return self.write(governance.gate(params.get("id", "")))
+                if path == "/api/studio/governance/invalidations":
+                    return self.write(governance.invalidations(params.get("project", "")))
                 if path == "/api/studio/readiness":
                     return self.write(store.readiness(params.get("id", "")))
                 if path == "/api/studio/context":
@@ -206,6 +219,38 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     answer = store.create_object(data)
                 elif path == "/api/studio/relation":
                     answer = store.create_relation(data)
+                elif path == "/api/studio/governance/propose":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may register a product-definition proposal"},403)
+                    answer = governance.propose(data.get("project_id",""),
+                        data.get("proposed"),data.get("reason",""),
+                        data.get("source_refs"),data.get("proposer",""),
+                        data.get("expected_digest",""))
+                elif path == "/api/studio/governance/review":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may submit impact-domain review"},403)
+                    answer = governance.review(data.get("change_id",""),
+                        data.get("domain",""),data.get("outcome",""),
+                        data.get("rationale",""),data.get("evidence_refs"),
+                        data.get("affected_ids"),data.get("reviewer",""),
+                        data.get("expected_base_digest",""))
+                elif path == "/api/studio/governance/publish":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may publish product definition"},403)
+                    answer = governance.publish(data.get("change_id",""),
+                        data.get("reviewer",""),data.get("decision_note",""),
+                        data.get("expected_base_digest",""))
+                elif path == "/api/studio/governance/reject":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may reject product changes"},403)
+                    answer = governance.reject(data.get("change_id",""),
+                        data.get("reviewer",""),data.get("reason",""))
+                elif path == "/api/studio/governance/resolve":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may revalidate a work package"},403)
+                    answer = governance.resolve(data.get("package_id",""),
+                        data.get("change_id",""),data.get("expected_package_revision"),
+                        data.get("reviewer",""),data.get("rationale",""))
                 elif path == "/api/studio/verification/record":
                     if not owner_request:
                         return self.write({"error":"Only owner may record execution evidence"},403)
