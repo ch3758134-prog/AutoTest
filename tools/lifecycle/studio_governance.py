@@ -333,6 +333,10 @@ class DefinitionGovernance:
             if review["outcome"]=="NO_IMPACT" and package["id"] in affected_by_graph:
                 reasons.append("Work package no-impact conflicts with reviewed dependency graph: "+
                                package["title"])
+        implementation=reviews.get("IMPLEMENTATION")
+        if (implementation and implementation["outcome"]=="NO_IMPACT" and
+            (affected_by_graph or any(r["outcome"]=="IMPACT" for r in reviews_by_package.values()))):
+            reasons.append("Implementation domain no-impact contradicts impacted work packages")
         if missing_packages:
             reasons.append("Implementation work packages not individually reviewed: "+
                            ", ".join(missing_packages[:20]))
