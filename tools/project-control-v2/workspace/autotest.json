@@ -196,5 +196,20 @@
     }
   ],
   "artifact_submissions": [],
-  "artifact_baselines": []
+  "artifact_baselines": [],
+  "phase_evidence_map": {
+    "P0": [
+      "at-p0-approved-charter-v01"
+    ],
+    "G0": [],
+    "G1": [
+      "at-g1-integrated-autotest-study",
+      "at-g1-integrated-behavior-requirements",
+      "at-g1-physical-loop-verification-criteria"
+    ],
+    "G2": [],
+    "G3": [],
+    "G4": []
+  },
+  "phase_evidence_note": "当前为 AutoTest 专项的工作产品覆盖映射；空清单不表示 Gate 可直接通过，而是阶段正式要求仍需明确。PASS 需要已批准且覆盖该阶段的要求；附条件通过必须逐项说明裁剪理由。"
 }
