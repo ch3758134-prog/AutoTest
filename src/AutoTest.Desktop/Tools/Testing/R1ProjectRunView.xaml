@@ -127,7 +127,8 @@
     <ColumnDefinition Width="10"/>
     <ColumnDefinition Width="1*" MinWidth="290"/>
    </Grid.ColumnDefinitions>
-   <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="5">
+   <Grid Grid.Column="0">
+   <Border Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="5">
     <DockPanel>
      <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#E1E8F0"
       BorderThickness="0,0,0,1" Padding="11,9">
@@ -153,6 +154,35 @@
      </DataGrid>
     </DockPanel>
    </Border>
+   <!-- Only real configured TEST actions appear; zero-step projects show a
+        useful editor entry, never simulated steps or fabricated outcomes. -->
+   <Border HorizontalAlignment="Center" VerticalAlignment="Center" Padding="25,22"
+     MaxWidth="520" CornerRadius="6" Background="#F7FAFD"
+     BorderBrush="#DFE8F2" BorderThickness="1">
+    <Border.Style>
+     <Style TargetType="Border">
+      <Setter Property="Visibility" Value="Collapsed"/>
+      <Style.Triggers>
+       <DataTrigger Binding="{Binding RunStepRows.Count}" Value="0">
+        <Setter Property="Visibility" Value="Visible"/>
+       </DataTrigger>
+      </Style.Triggers>
+     </Style>
+    </Border.Style>
+    <StackPanel HorizontalAlignment="Center">
+     <TextBlock Text="当前工程还没有可显示的 TEST 步骤" FontSize="15"
+      FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,9"/>
+     <TextBlock Text="在 TEST 编辑器中建立测试用例、添加步骤并保存到工程。返回这里后会显示实际程序结构与执行事实。"
+      TextWrapping="Wrap" TextAlignment="Center" Foreground="#617B92"
+      FontSize="12" Margin="0,0,0,15"/>
+     <Button Content="打开 TEST 程序编辑器" Click="OpenProgram_Click"
+      HorizontalAlignment="Center" Background="#176AB2" Foreground="White"
+      Padding="16,8" FontWeight="SemiBold"/>
+     <TextBlock Text="没有真实 DUT 观测时不会生成 PASS" FontSize="11"
+      TextAlignment="Center" Foreground="#8695A7" Margin="0,13,0,0"/>
+    </StackPanel>
+   </Border>
+   </Grid>
    <GridSplitter Grid.Column="1" Background="Transparent" HorizontalAlignment="Stretch"/>
    <Border Grid.Column="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="5">
     <DockPanel>
