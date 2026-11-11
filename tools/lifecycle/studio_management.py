@@ -12,6 +12,7 @@ import json
 from studio_store import Store, RuleError, ident, now, text_value
 from studio_verification import Verification
 from studio_governance import DefinitionGovernance
+from studio_definition_research import DefinitionResearch
 
 PROPOSAL_KINDS = ("PRODUCT_DEFINITION_REVIEW", "REQUIREMENT_CLARIFICATION", "TECHNICAL_RESEARCH", "ARCHITECTURE_REVIEW",
                   "DETAILED_DESIGN", "CODING", "INTEGRATION", "VERIFICATION",
@@ -50,6 +51,19 @@ class Management:
         studies = self.research.list(project_id)
         verification = Verification(self.store).list(project_id)
         governance = DefinitionGovernance(self.store).status(project_id)
+        research_queue=[]
+        coordinator=DefinitionResearch(self.store)
+        for change in governance["changes"]:
+            if change["state"]!="REVIEW":
+                continue
+            detail=coordinator.list(change["id"])
+            for task in detail["tasks"]:
+                research_queue.append({
+                    "change_id":change["id"],"task_id":task["id"],
+                    "domain":task["domain"],"question":task["question"],
+                    "revision":task["revision"],"state":task["state"],
+                    "candidate_count":len(task["submissions"]),
+                    "reviewed_by":task["reviewed_by"]})
         objects = p["objects"]
         indexed = {x["id"]: x for x in objects}
         ready = {}
@@ -72,6 +86,13 @@ class Management:
                 blockers.append({"type":"PRODUCT_DEFINITION_CHANGE",
                                  "change_id":x["id"],
                                  "reason":"Major product definition change requires multi-domain review"})
+        for research_task in research_queue:
+            if research_task["state"]!="REVIEWED":
+                blockers.append({"type":"PRODUCT_DEFINITION_RESEARCH",
+                                 "change_id":research_task["change_id"],
+                                 "task_id":research_task["task_id"],
+                                 "reason":"Required domain research not reviewed: "+
+                                          research_task["domain"]})
         for x in open_changes:
             blockers.append({"type":"CHANGE_REVIEW","object_id":x["id"],
                              "reason":"Change is not closed: "+x["title"]})
@@ -105,6 +126,7 @@ class Management:
             "engineering_relations":p["relations"],
             "technical_studies":studies,
             "product_definition_governance":governance,
+            "product_definition_research_tasks":research_queue,
             "verification_runs":verification["runs"],
             "verification_note":verification["note"],
             "implementation_readiness":ready,
@@ -117,6 +139,8 @@ class Management:
                 "You may propose research/design/plan/verification/coding work only.",
                 "Do not approve engineering revisions, invent technical evidence, dispatch coding, merge or modify policy.",
                 "Product definition must be proposed, reviewed in every applicable policy domain and published by the owner's governed route.",
+                "You may submit candidate research findings to a task ID, with source references and explicit limits; the owner must independently review them.",
+                "Do not mark required research reviewed, reopen/change approved domains or publish a product baseline.",
                 "A plan suggestion cannot substitute for approved product baseline or impacts; treat missing links as unknown, not no-impact.",
                 "A coding proposal is not CODE_READY. It needs separately approved detailed software design.",
                 "GitHub status is an explicitly refreshed snapshot; cached values are not live.",
