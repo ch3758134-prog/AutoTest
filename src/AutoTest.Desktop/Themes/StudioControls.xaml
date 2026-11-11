@@ -141,6 +141,8 @@
   <Setter Property="ColumnHeaderHeight" Value="35"/><Setter Property="RowHeight" Value="34"/>
   <Setter Property="EnableRowVirtualization" Value="True"/><Setter Property="EnableColumnVirtualization" Value="True"/>
   <Setter Property="CanUserAddRows" Value="False"/>
+  <Setter Property="CanUserDeleteRows" Value="False"/>
+  <Setter Property="AutoGenerateColumns" Value="False"/>
  </Style>
  <Style TargetType="{x:Type DataGridColumnHeader}">
   <Setter Property="Background" Value="{StaticResource StudioSurface}"/><Setter Property="Foreground" Value="{StaticResource StudioMuted}"/>
