@@ -56,9 +56,30 @@ class GovernedResearchTests(unittest.TestCase):
         tasks=self.research.list(self.change_id)["tasks"]
         self.assertEqual({x["domain"] for x in tasks},{x for x,_ in DOMAINS})
         self.assertEqual(len(tasks),10)
-        self.assertTrue(all(x["state"]=="OPEN" for x in tasks))
-        self.assertEqual(self.change["gate"]["research_required"],10)
+        self.assertEqual({x["domain"] for x in tasks if x["state"]=="OPEN"},{"POSITIONING"})
+        self.assertEqual(len([x for x in tasks if x["state"]=="SUGGESTED"]),9)
+        self.assertEqual(self.change["gate"]["research_required"],1)
+        self.assertEqual(self.change["gate"]["research_suggested"],9)
         self.assertFalse(self.change["gate"]["ready"])
+
+    def test_single_relevant_research_does_not_force_nine_empty_assessments(self):
+        self.confirm(self.task("POSITIONING"))
+        self.g.review(self.change_id,"POSITIONING","NO_IMPACT",
+            "Explained the product identity and protected related context",
+            ["study://user-discussion"],[],"Human",
+            self.change["change"]["base_digest"])
+        gate=self.g.gate(self.change_id)
+        self.assertTrue(gate["ready"],gate["reasons"])
+        self.assertEqual(gate["research_required"],1)
+        self.assertEqual(gate["research_suggested"],9)
+        # A suggested viewpoint becomes required only after owner activation.
+        source=self.task("ARCHITECTURE")
+        activated=self.research.activate(source["id"],source["revision"],"Human",
+            "Product system boundary changes may require architectural allocation")
+        self.assertEqual(activated["state"],"OPEN")
+        self.assertFalse(self.g.gate(self.change_id)["ready"])
+        with self.assertRaisesRegex(RuleError,"Only suggested"):
+            self.research.activate(source["id"],source["revision"],"Human","Stale action")
 
     def test_suggested_perspectives_can_be_scoped_with_explanation(self):
         tasks=self.research.list(self.change_id)["tasks"]
