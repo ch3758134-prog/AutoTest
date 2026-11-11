@@ -136,6 +136,41 @@ public sealed class BenchCanEditorTests
     }
 
     [Fact]
+    public async Task ChosenProjectDbcMessageBecomesCheckedCyclicTransmitRowWithoutSaving()
+    {
+        var left = new DbcMessage(0x111, "FirstMessage", 2, "Tester",
+            ImmutableArray<DbcSignal>.Empty);
+        var chosen = new DbcMessage(0x234, "SecondMessage", 3, "Tester",
+            ImmutableArray<DbcSignal>.Empty);
+        var db = new DbcDatabase("RealEcuDbc", 7, ImmutableArray<string>.Empty,
+            ImmutableArray.Create(left, chosen));
+        var port = new TestPort { ActiveDbc = db, ActiveDbcRevision = "asset#7" };
+        var vm = new BenchCanEditorViewModel(port);
+        vm.RefreshDbcCatalog();
+        Assert.Equal(2, vm.DbcMessages.Count);
+        Assert.True(vm.TryAddFromDbc(vm.DbcMessages.Single(x => x.Name == "SecondMessage")));
+        Assert.Equal("SecondMessage", vm.SelectedMessage!.Name);
+        Assert.Equal("0x234", vm.SelectedMessage.CanIdHex);
+        Assert.Equal("000000", vm.SelectedMessage.DataHex);
+        Assert.Equal("DBC", vm.SelectedMessage.SourceLabel);
+        Assert.Contains("SecondMessage", vm.SelectedSourceLabel);
+        Assert.Null(port.Saved); // adding never writes the project
+        vm.SelectedMessage.IsChecked = true;
+        Assert.Contains("已勾选 1 条", vm.SendModeStatus);
+        await vm.StartPeriodicAsync();
+        Assert.Equal(1, port.PeriodicCount);
+        Assert.Single(port.LastBatch!);
+        Assert.Equal(0x234u, port.LastBatch![0].ArbitrationId);
+        Assert.Equal("asset#7", port.LastBatch[0].DbcRevision);
+        Assert.Null(port.Saved); // real CAN trial does not demand Save first
+        Assert.True(vm.TryAddFromDbc(chosen));
+        Assert.Equal(2, vm.Messages.Count);
+        Assert.Equal("SecondMessage 2", vm.SelectedMessage!.Name); // unique user-facing names
+        vm.UnbindDbcCommand.Execute();
+        Assert.Equal("原始", vm.SelectedMessage.SourceLabel);
+    }
+
+    [Fact]
     public async Task ProjectDbcSignalEditingBuildsPhysicalCanDataAndRejectsStaleRevision()
     {
         var signal = new DbcSignal("MotorCmd", 0, 8, true, false,
