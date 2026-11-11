@@ -18,7 +18,7 @@ function capabilityTraceModel(snapshot){
     while(queue.length){
       const id=queue.shift();
       for(const next of neighbors.get(id)||[]){
-        if(!visited.has(next)){visited.add(next);queue.push(next);}
+        if(!visited.has(next)&&index.get(next).kind!=='capability'){visited.add(next);queue.push(next);}
       }
     }
     const linked=[...visited].filter(id=>id!==cap.id).map(id=>index.get(id));
