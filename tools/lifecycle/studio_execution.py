@@ -212,24 +212,19 @@ class Execution:
         return self.overview(project_id)
 
     def _product_definition_gate(self,db,project_id):
-        """A coding authorization needs an active product definition baseline."""
-        from studio_governance import definition, digest
+        """Require the canonical product identity for coding authorization.
+
+        A *candidate* identity change is not an authorization or global stop.
+        Only published, explicitly impacted work packages are invalidated via
+        Store._readiness. Legacy four-field definition baselines do not count.
+        """
+        from studio_product_identity import ProductIdentity
         if not db.execute("""SELECT 1 FROM sqlite_master WHERE type='table'
-                             AND name='definition_baselines'""").fetchone():
-            raise RuleError("Governed product definition baseline required before coding dispatch")
-        baseline=db.execute("""SELECT digest,revision FROM definition_baselines
-                   WHERE project_id=? ORDER BY revision DESC LIMIT 1""",
-                   (project_id,)).fetchone()
+                  AND name='product_identity_baselines'""").fetchone():
+            raise RuleError("Canonical product identity baseline required before coding dispatch")
+        baseline=ProductIdentity._baseline(db,project_id)
         if baseline is None:
-            raise RuleError("Governed product definition baseline required before coding dispatch")
-        current=self.store._require_project(db,project_id)
-        if digest(definition(current))!=baseline["digest"]:
-            raise RuleError("Current product definition drifted from approved baseline")
-        pending=db.execute("""SELECT 1 FROM definition_changes
-                  WHERE project_id=? AND state='REVIEW' LIMIT 1""",
-                  (project_id,)).fetchone()
-        if pending:
-            raise RuleError("Major product definition change is under review; coding authorization paused")
+            raise RuleError("Canonical product identity baseline required before coding dispatch")
         return baseline["revision"]
 
     def overview(self, project_id):
