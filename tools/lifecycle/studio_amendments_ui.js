@@ -59,8 +59,10 @@ async function amendmentDetailModal(id){
    const related=el('div','detailsection');
    related.append(el('strong','','相关工程对象（仅提供影响审查线索）'));
    for(const x of r.related_candidates){
-     related.append(el('p','context',x.direction+' / '+x.relation+' / '+x.title+
-       ' · '+x.kind+' r'+x.revision));
+     const orientation=x.direction==='source_to_target'?'本对象 → 关联对象':'关联对象 → 本对象';
+     related.append(el('p','context','已记录关系：'+orientation+' · '+x.relation+
+       ' · '+x.title+' · '+x.kind+' r'+x.revision+
+       '（关系方向不等于已确定的工程影响方向）'));
    }
    if(!r.related_candidates.length)related.append(el('p','context','现有受控关系图中无邻近对象；这不证明不存在间接影响。'));
    body.append(related);
