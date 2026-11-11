@@ -27,6 +27,31 @@
             <Setter Property="MinHeight" Value="29"/>
             <Setter Property="Margin" Value="0,0,7,0"/>
         </Style>
+        <!-- Only the opened documents are tabs. Overflow scrolls horizontally
+             instead of wrapping tabs into multiple rows and stealing TEST space. -->
+        <Style x:Key="IdeDocuments" TargetType="TabControl">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local" Background="#F6F8FB">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="#EFF3F8"
+                                BorderBrush="#DCE4EE" BorderThickness="0,0,0,1">
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                    VerticalScrollBarVisibility="Disabled" CanContentScroll="True"
+                                    Focusable="False">
+                                    <TabPanel IsItemsHost="True" Background="#EFF3F8"/>
+                                </ScrollViewer>
+                            </Border>
+                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style TargetType="TabItem">
             <Setter Property="Padding" Value="13,8"/>
             <Setter Property="Foreground" Value="#4A627B"/>
@@ -112,7 +137,8 @@
                     <Ellipse x:Name="StationLed" Width="8" Height="8" Fill="#8A9CAF" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <TextBlock x:Name="StationStatus" Text="Station 未连接" VerticalAlignment="Center"
                         Foreground="#59738D" FontSize="11" Margin="0,0,10,0"/>
-                    <Button Content="连接" Click="OpenStation_Click" Padding="7,3" MinHeight="27"/>
+                    <Button Content="设备连接…" Click="OpenStation_Click" ToolTip="打开设备连接工具；不会在未经确认时自动连接硬件"
+                        Padding="7,3" MinHeight="27"/>
                     <Border Height="23" Width="1" Background="#DCE4EE" Margin="6,0,12,0"/>
                     <TextBlock x:Name="ScannerStatus" Text="扫码：等待编号" VerticalAlignment="Center"
                         Foreground="#536D87" FontSize="11" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
@@ -240,7 +266,7 @@
             <GridSplitter x:Name="ExplorerSplitter" Grid.Column="1" Width="5"
                 HorizontalAlignment="Stretch" Background="#EDF2F8"/>
             <!-- The ONE document host. The operator TEST is its first permanent document. -->
-            <TabControl x:Name="DocumentTabs" Grid.Column="2" Background="#F6F8FB"
+            <TabControl x:Name="DocumentTabs" Grid.Column="2" Style="{StaticResource IdeDocuments}" Background="#F6F8FB"
                 BorderBrush="{StaticResource Border}" BorderThickness="0"
                 SelectionChanged="DocumentTabs_SelectionChanged"/>
         </Grid>
