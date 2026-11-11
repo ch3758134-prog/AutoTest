@@ -93,3 +93,7 @@ button.primary{background:#246381;border:1px solid #246381;color:#fff;font-size:
 .pm-gantt-track{height:15px;background:repeating-linear-gradient(90deg,#f1f5f7 0,#f1f5f7 calc(25% - 1px),#dce7ed 25%);border-radius:5px;position:relative;overflow:hidden}
 .pm-gantt-track>span{position:absolute;top:2px;bottom:2px;background:#5294b1;border-radius:4px;min-width:4px}
 .pm-gantt-dates{color:#8396a3;font-size:11px;margin-top:6px}
+
+.pm-artifact-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+.pm-artifact-actions button{min-width:136px}
+@media(max-width:760px){.document-item{flex-wrap:wrap}.pm-artifact-actions{width:100%;flex-direction:row;flex-wrap:wrap;justify-content:flex-end}}
