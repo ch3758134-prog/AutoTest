@@ -53,6 +53,7 @@ public partial class MainWindow : Window
     private string _activeKey = "project";
     private bool _applyingWorkspaceMode;
     private readonly Dictionary<int, Window> _floatingDocuments = new();
+    private readonly HashSet<int> _openedDocuments = new() { 9, 10 };
 
     public MainWindow()
     {
@@ -148,9 +149,11 @@ public partial class MainWindow : Window
             tab != 10 && !_applyingWorkspaceMode)
             R1WorkspaceMode.SelectedIndex = tab is 0 or 9 ? 1 : 2;
         _activeKey = key;
+        _openedDocuments.Add(tab);
         WorkbenchTabs.SelectedIndex = tab;
         PopulateTab(tab);
         UpdateContext(tab);
+        RefreshDocumentTabVisibility();
     }
 
     private void WorkbenchTabs_SelectionChanged(object sender, SelectionChangedEventArgs args)
@@ -530,6 +533,24 @@ public partial class MainWindow : Window
         R1ScannerStatus.ToolTip = R1ScannerStatus.Text;
     }
 
+    private void RefreshDocumentTabVisibility()
+    {
+        // Legacy pages still exist for compatibility, but they no longer form
+        // a permanent strip of fourteen equal-priority product functions.
+        // The tab strip is a set of documents/tools actually opened in this
+        // process. The operator template hides all document tabs entirely.
+        if (WorkbenchTabs is null || R1WorkspaceMode is null) return;
+        var operatorMode = R1WorkspaceMode.SelectedIndex == 0;
+        for (var i = 0; i < WorkbenchTabs.Items.Count; i++)
+        {
+            if (WorkbenchTabs.Items[i] is TabItem item)
+                item.Visibility = operatorMode
+                    ? (i == 10 ? Visibility.Visible : Visibility.Collapsed)
+                    : (_openedDocuments.Contains(i) || i == WorkbenchTabs.SelectedIndex
+                        ? Visibility.Visible : Visibility.Collapsed);
+        }
+    }
+
     private void ApplyWorkspaceMode(int mode)
     {
         if (_applyingWorkspaceMode || _closed) return;
@@ -583,6 +604,7 @@ public partial class MainWindow : Window
                 case 1: Navigate(9, "program"); break;
                 case 2: Navigate(6, "wave"); break;
             }
+            RefreshDocumentTabVisibility();
         }
         finally { _applyingWorkspaceMode = false; }
     }
