@@ -196,13 +196,50 @@ function renderReadable(container,raw){
  }}
 function ancestry(obj){const result=[],seen=new Set([obj.id]);let current=obj;
  while(current?.parent_id&&!seen.has(current.parent_id)){const parent=item(current.parent_id);if(!parent)break;result.unshift(parent);seen.add(parent.id);current=parent;}return result;}
+function renderPhaseReviewOverview(){
+ const objects=state.data?.objects||[];
+ const byPhase=new Map();
+ for(const obj of objects){
+  const match=/^(P0|G[0-9]+)\s*[｜|:：-]/.exec(obj.title||'');
+  const explicit=/^(P0|G[0-9]+)$/.test(obj.meta?.phase||'')?obj.meta.phase:null;
+  const phase=explicit||(match?match[1]:null);
+  if(!phase)continue;
+  if(!byPhase.has(phase))byPhase.set(phase,[]);
+  byPhase.get(phase).push(obj);
+ }
+ const area=section('研发阶段成果与待审事项');
+ area.header.append(el('span','tiny','以本次加载的工程快照为准，不等于阶段 Gate 通过'));
+ const panel=el('div','panel');
+ panel.append(el('h2','','先看做到哪里，再进入单个工程对象'));
+ const source=state.gitSource;
+ if(source&&source.project_id===state.project){
+  panel.append(note('本次加载的 Git 版本：'+source.commit.slice(0,12)+'。本地试用数据库不会随 GitHub 的新提交自动更新；如果缺少新研究报告，请先核对版本。'));
+ }else panel.append(note('本工作区未显示 Git 快照来源，请核对本机数据来源；不能据此推断远程最新进度。'));
+ const phases=[...byPhase.keys()].sort((a,b)=>a[0]===b[0]?Number(a.slice(1))-Number(b.slice(1)):a[0]==='P'?-1:1);
+ if(!phases.length)panel.append(el('p','muted','当前快照没有标注 P0/G0/G1 等阶段成果，不能通过对象总数判断项目进度。'));
+ for(const phase of phases){
+  const list=byPhase.get(phase),approved=list.filter(o=>o.state==='APPROVED');
+  const complete=list.some(o=>o.meta?.research_complete===true);
+  const headingRow=el('div','buttonrow');
+  headingRow.append(el('strong','',phase==='P0'?'P0 · 产品定义':phase+' · 系统研究'));
+  headingRow.append(badge(complete?'研究已整理 · 待负责人审查':approved.length?'包含已批准对象 · Gate另审':'草稿/候审'));
+  panel.append(headingRow);
+  panel.append(el('p','muted',list.length+' 个本阶段对象，'+approved.length+' 个已批准。'+(complete?'研究完成不等于需求或 Gate 获批。':'阶段 Gate 未按对象数量自动判定。')));
+  const rank=o=>o.meta?.research_complete?0:o.state==='APPROVED'?1:o.kind==='requirement'?2:o.kind==='test'?3:o.kind==='reference'?4:5;
+  const ordered=[...list].sort((a,b)=>rank(a)-rank(b)||a.title.localeCompare(b.title,'zh-CN'));
+  ordered.slice(0,phase==='G1'?5:3).forEach(obj=>panel.append(rowCard(obj,openItem)));
+ }
+ if(!byPhase.has('G1'))panel.append(note('当前快照没有 G1 研究成果。如果远程已提交 G1 完整报告，本机加载的可能是旧版本，不应重新创建需求来补空白。'));
+ area.node.append(panel);
+}
 function renderDashboard(){const p=state.data.project;
  heading(p.name,'产品需求、工程结构、决策与验证的同一视图。对象数量不代表产品完成率。');
  if(state.gitSource && state.gitSource.project_id===p.id){
     const approvedP0=state.gitSource.authority==='OWNER_APPROVED_P0_DOCUMENT';
     root.append(note('工程对象来自 Git 提交 '+state.gitSource.commit+'，来源：'+state.gitSource.path+'。'+(approvedP0?'《AutoTest 产品定义与立项说明》V0.1 已获负责人批准，产品身份基线 r1 已生效；其他工程对象仍按各自草稿/待审状态显示，P0 Gate、实现与实测未获批准。':'这是管理 AI 的待审候选工程快照，不代表设计已批准、实现完成或现场验收。')+' 当前恢复到独立试用工作区，不会自动修改其它本地数据库。'));
  }
- const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('产品身份 · 研究与审查','outline',productIdentityModal));block.append(first);
+ renderPhaseReviewOverview();
+  const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('产品身份 · 研究与审查','outline',productIdentityModal));block.append(first);
  add(block,el('h2','', '项目背景与阶段信息（非产品身份）'));block.append(el('div','context',p.body||p.summary||'尚未补充项目背景；应通过工程知识或相关工程对象澄清。'));root.append(block);
  const metrics=el('div','fourcol');metrics.style.marginTop='15px';let c=state.data.counts;
  add(metrics,stat(c.requirement,'需求','各级需求登记数量'),stat(c.architecture+c.interface+c.design,'设计与接口','架构、接口及详细设计'),stat(c.change+c.decision+c.risk,'治理对象','变更、决策与风险'),stat(c.work_package+c.test,'实施与验证','工作包及测试对象'));root.append(metrics);
