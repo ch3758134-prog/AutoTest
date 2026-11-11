@@ -62,6 +62,7 @@ public partial class MainWindow : Window
     private ControllerConfigToolViewModel? _controllerConfig;
     private CanFrameHub? _waveReplayHub;
     private FlashToolView? _flash;
+    private BenchWorkbenchViewModel? _benchModel;
     private bool _stationStatusSubscribed;
     private bool _closing;
     private bool _closed;
@@ -312,7 +313,7 @@ public partial class MainWindow : Window
             Owner = this,
             ShowInTaskbar = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            WindowState = WindowState.Maximized,
+            WindowState = WindowState.Normal,
             Content = view
         };
         tool.Closing += (_, e) =>
@@ -373,10 +374,14 @@ public partial class MainWindow : Window
                 view = new ControllerConfigToolView(_controllerConfig);
                 break;
             case "bench":
+            {
+                // Prepare the shared Station facade, but do NOT connect USB.
+                // Bench and every tool continue to use this exact same handle.
+                var station = EnsureDevice();
                 _controllerConfig ??= new ControllerConfigToolViewModel();
-                view = new BenchWorkbenchView(new BenchWorkbenchViewModel(
+                _benchModel ??= new BenchWorkbenchViewModel(
                     new R1BenchWorkspacePort(() => _controllerConfig,
-                        () => _device?.Controller, approveKeySim: (mask, generation) =>
+                        () => station.Controller, approveKeySim: (mask, generation) =>
                             MessageBox.Show(this,
                                 $"真实按键板操作：CAN0 / KEY_SIM / 20 Key 掩码 0x{mask:X5}\n" +
                                 $"USB Generation：{generation}\n" +
@@ -385,8 +390,21 @@ public partial class MainWindow : Window
                                 "USB CAN_SEND ACK 不代表 DUT 已确认。是否执行？",
                                 "真实 KEY_SIM 操作确认",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                                MessageBoxResult.No) == MessageBoxResult.Yes)));
+                                MessageBoxResult.No) == MessageBoxResult.Yes));
+                station.Controller.ConnectionChanged += _ =>
+                {
+                    if (!_closed && !Dispatcher.HasShutdownStarted)
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            if (_benchModel is not null)
+                                _ = _benchModel.RefreshConnectionAsync();
+                        }));
+                };
+                var bench = new BenchWorkbenchView(_benchModel);
+                bench.OpenStationRequested += (_, _) => OpenDocument("station");
+                view = bench;
                 break;
+            }
             case "wave":
             {
                 var wave = new WaveWorkbenchView();
