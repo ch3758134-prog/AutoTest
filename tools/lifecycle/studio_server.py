@@ -102,15 +102,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/plan.js":
                     return self.write((HERE / "studio_plan_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
-                if path == "/governance.js":
-                    return self.write((HERE / "studio_governance_ui.js").read_bytes(),
-                                      content_type="application/javascript; charset=utf-8")
-                if path == "/definition-research.js":
-                    return self.write((HERE / "studio_definition_research_ui.js").read_bytes(),
-                                      content_type="application/javascript; charset=utf-8")
-                if path == "/definition-suggestions.js":
-                    return self.write((HERE / "studio_definition_suggestions_ui.js").read_bytes(),
-                                      content_type="application/javascript; charset=utf-8")
+                # Legacy four-field governance UI was retired. Historical
+                # records remain readable as archived data, not active scripts.
                 if path == "/semantics.js":
                     return self.write((HERE / "studio_semantics_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
