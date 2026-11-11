@@ -318,6 +318,14 @@ public partial class MainWindow : Window
         };
         tool.Closing += (_, e) =>
         {
+            if (key == "bench" && _benchModel?.KeyActions.IsActionRunning == true)
+            {
+                e.Cancel = true;
+                MessageBox.Show(tool,
+                    "真实按键连续动作仍在执行。请在手动台架停止动作并等待当前指令返回，再关闭窗口。",
+                    "手动台架正在执行", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             if (key == "flash" && _flash?.IsPhysicalCan1Busy == true)
             {
                 e.Cancel = true;
@@ -409,6 +417,18 @@ public partial class MainWindow : Window
                                 "当前动作会改变夹具机械状态。主控 ACK 与 GET_SOL 不证明机械压紧到位，" +
                                 "请核对工装、人员与 DUT 位置。是否执行本次单次命令？",
                                 "真实夹具电磁阀操作确认",
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                                MessageBoxResult.No) == MessageBoxResult.Yes,
+                        projectPath: () => host.Workspace.ProjectPath,
+                        projectId: () => host.Workspace.Project.Id.Value.ToString("D"),
+                        approveKeyAction: (action, generation) =>
+                            MessageBox.Show(this,
+                                $"执行当前工程的按键动作：{action.Name}\\n" +
+                                $"步骤数：{action.Steps.Count}\\n" +
+                                $"会按步骤发送真实 KEY_SIM 开关状态并保持指定时间。\\n" +
+                                $"主控 Session：{generation}\\n" +
+                                "结束或停止时均不自动复位；请核对现场接线。是否执行？",
+                                "确认真实连续按键动作",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes));
                 station.Controller.ConnectionChanged += state =>
@@ -769,6 +789,14 @@ public partial class MainWindow : Window
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
         if (_closed || _closing) return;
+        if (_benchModel?.KeyActions.IsActionRunning == true)
+        {
+            e.Cancel = true;
+            MessageBox.Show(this,
+                "真实按键动作正在执行。先在手动台架停止动作，避免退出时隐藏正在进行的真实输出。",
+                "手动台架正在执行", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         if (_flash?.IsPhysicalCan1Busy == true)
         {
             e.Cancel = true;
