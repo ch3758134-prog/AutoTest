@@ -1,0 +1,33 @@
+name: Project Control V2
+
+on:
+  push:
+    branches:
+      - management/project-control-clean-20261111
+    paths:
+      - 'tools/project-control-v2/**'
+      - '.github/workflows/project-control-v2.yml'
+  pull_request:
+    paths:
+      - 'tools/project-control-v2/**'
+      - '.github/workflows/project-control-v2.yml'
+  workflow_dispatch:
+
+jobs:
+  project-control-validation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile isolated project management service
+        run: python -m compileall -q tools/project-control-v2
+      - name: Check browser scripts
+        run: |
+          node --check tools/project-control-v2/app.js
+          node --check tools/project-control-v2/actions.js
+      - name: Run domain, authorization and real-project tests
+        run: python -m unittest discover -s tools/project-control-v2/tests -v
