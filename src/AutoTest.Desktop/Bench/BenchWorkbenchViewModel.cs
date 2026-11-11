@@ -251,7 +251,13 @@ public sealed class BenchWorkbenchViewModel : BindableBase
 
     public async Task InitializeAsync()
     {
-        if (_initialized) return;
+        if (_initialized)
+        {
+            // ViewModels are reused when the independent tool window reopens.
+            // Refresh the actual PROJECT so old ECU actions cannot appear current.
+            await ReloadAsync();
+            return;
+        }
         _initialized = true;
         await ReloadAsync();
     }
