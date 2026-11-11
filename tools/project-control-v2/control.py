@@ -313,7 +313,7 @@ class Control:
                 assessment = assess(self.plan(record), self.archive())
                 if not assessment["product_anchor"]["verified"]:
                     raise ControlError("product scope anchor must be verified before submitting the plan")
-                if any(i["code"] in ("INVALID_DEPENDENCY", "UNLINKED_WORK", "SOURCE_MISSING", "SOURCE_STALE") for i in assessment["issues"]):
+                if any(i["code"] in ("INVALID_DEPENDENCY", "UNLINKED_WORK", "SOURCE_MISSING", "SOURCE_STALE", "MILESTONE_UNLINKED", "UNSUPPORTED_MILESTONE_DATE", "INVALID_MILESTONE_DATE") for i in assessment["issues"]):
                     raise ControlError("plan has unresolved structural or stale source errors")
                 plan["status"] = "IN_REVIEW"
                 plan["submitted_digest"] = digest(self.plan(record))
