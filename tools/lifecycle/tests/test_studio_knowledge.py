@@ -91,13 +91,46 @@ class EngineeringKnowledgeTests(unittest.TestCase):
         self.k.review(b["id"],1,"ACCEPT","Human","Checked project context")
         # Relation was proposed against candidate revisions; new accepted revisions
         # require a fresh relation proposal so stale judgments cannot be reused.
-        with self.assertRaisesRegex(RuleError,"pinned revisions"):
-            self.k.review_link(link["id"],"CONFIRM","Human","Stale version")
-        second=self.k.propose_link(self.project,a["id"],b["id"],"CONTEXT_FOR",
-            "These are distinct but related engineering scopes","Human","OWNER_CANDIDATE")
-        accepted=self.k.review_link(second["id"],"CONFIRM","Human",
-            "Reviewed source, target and their current revisions")
-        self.assertEqual(accepted["state"],"CONFIRMED")
+        # Acceptance changes only review status. The proposed semantic link
+        # remains valid if the claim text and sources have not changed.
+        confirmed=self.k.review_link(link["id"],"CONFIRM","Human",
+            "Verified both approved statements retain the proposed meaning")
+        self.assertEqual(confirmed["state"],"CONFIRMED")
+        self.assertEqual(self.k.list(self.project)["links"][0]["source_revision"],2)
+
+    def test_import_bundle_is_atomic_idempotent_and_preserves_links(self):
+        one=self.entry("Hardware boundary")
+        two=self.entry("Release context")
+        one["alias"]="K01";two["alias"]="K02"
+        bundle={"schema":"engineering-knowledge-intake/1",
+                "entries":[one,two],
+                "relations":[{"from":"K01","to":"K02","relation":"CONTEXT_FOR",
+                   "rationale":"An implementation stage provides context, not product identity"}]}
+        first=self.k.intake(self.project,bundle,"AI manager","AI_CANDIDATE")
+        self.assertEqual(first["status"],"CANDIDATE_ONLY")
+        self.assertEqual(len(first["items"]),2)
+        repeat=self.k.intake(self.project,bundle,"AI manager","AI_CANDIDATE")
+        self.assertTrue(repeat["already_imported"])
+        self.assertEqual(len(self.k.list(self.project)["items"]),2)
+        self.assertEqual(len(self.k.list(self.project)["links"]),1)
+        broken=json.loads(json.dumps(bundle))
+        broken["relations"][0]["to"]="OTHER"
+        with self.assertRaisesRegex(RuleError,"distinct intake aliases"):
+            self.k.intake(self.project,broken,"AI manager","AI_CANDIDATE")
+        self.assertEqual(len(self.k.list(self.project)["items"]),2)
+
+    def test_changed_claim_content_stales_early_relation(self):
+        first=self.propose("Claim one")
+        second=self.propose("Claim two")
+        link=self.k.propose_link(self.project,first["id"],second["id"],"REFINES",
+            "Proposal against original content","AI","AI_CANDIDATE")
+        modified=self.entry("Changed interpretation")
+        modified["statement"]="Entirely different source content"
+        self.k.revise(first["id"],1,modified,"AI","AI_CANDIDATE")
+        self.k.review(first["id"],2,"ACCEPT","Human","Reviewed revised content")
+        self.k.review(second["id"],1,"ACCEPT","Human","Reviewed second content")
+        with self.assertRaisesRegex(RuleError,"semantic content changed"):
+            self.k.review_link(link["id"],"CONFIRM","Human","Old reasoning")
 
     def test_cross_project_relation_and_invalid_concept_are_not_written(self):
         a=self.propose()
