@@ -211,9 +211,33 @@ class Execution:
                               f"{repo}: {len(snapshot['issues'])} issues, {len(snapshot['pull_requests'])} PRs")
         return self.overview(project_id)
 
+    def _product_definition_gate(self,db,project_id):
+        """A coding authorization needs an active product definition baseline."""
+        from studio_governance import definition, digest
+        baseline=db.execute("""SELECT digest,revision FROM definition_baselines
+                   WHERE project_id=? ORDER BY revision DESC LIMIT 1""",
+                   (project_id,)).fetchone()
+        if baseline is None:
+            raise RuleError("Governed product definition baseline required before coding dispatch")
+        current=self.store._require_project(db,project_id)
+        if digest(definition(current))!=baseline["digest"]:
+            raise RuleError("Current product definition drifted from approved baseline")
+        pending=db.execute("""SELECT 1 FROM definition_changes
+                  WHERE project_id=? AND state='REVIEW' LIMIT 1""",
+                  (project_id,)).fetchone()
+        if pending:
+            raise RuleError("Major product definition change is under review; coding authorization paused")
+        return baseline["revision"]
+
     def overview(self, project_id):
         with self.store.db() as db:
             config=self._config(db,project_id)
+            try:
+                baseline_revision=self._product_definition_gate(db,project_id)
+                product_block=None
+            except RuleError as error:
+                baseline_revision=None
+                product_block=str(error)
             tasks=[dict(x) for x in db.execute(
                 "SELECT * FROM execution_tasks WHERE project_id=? ORDER BY updated DESC",
                 (project_id,))]
@@ -228,7 +252,9 @@ class Execution:
                 task["readiness"]=(self.store._readiness(db,task["object_id"])
                                    if obj else {"ready":False,"reasons":["Missing work package"]})
                 if task["state"] in ("DISPATCHED","CLAIMED"):
-                    if (not task["readiness"]["ready"]
+                    if product_block:
+                        task["effective_state"]="BLOCKED_BY_PRODUCT_DEFINITION"
+                    elif (not task["readiness"]["ready"]
                         or task["revision"]!=task["pinned_revision"]
                         or obj["meta"].get("source_sha")!=task["pinned_source_sha"]):
                         task["effective_state"]="BLOCKED_BY_CHANGED_DESIGN"
@@ -239,6 +265,8 @@ class Execution:
             backlog = [o for o in objects if o["id"] not in {t["object_id"] for t in tasks}]
             return {
                 "configured":bool(config),
+                "product_baseline_revision":baseline_revision,
+                "product_control_blocker":product_block,
                 "repository":config["repository"] if config else None,
                 "fetched_at":config["fetched_at"] if config else None,
                 "sync_error":config["last_error"] if config else None,
@@ -348,6 +376,7 @@ class Execution:
             issue=self._issue(config,task["issue_number"])
             if issue["state"]!="open":
                 raise RuleError("GitHub Issue is not open")
+            self._product_definition_gate(db,task["project_id"])
             obj=self.store._require_object(db,package_id)
             if obj["meta"].get("execution_role")!="CODER":
                 raise RuleError("Only coding-only work packages can enter this AI queue")
@@ -392,6 +421,7 @@ class Execution:
             task=self._task(db,package_id)
             if task["agent_role"]!=role or task["state"]!="DISPATCHED":
                 raise RuleError("Task not dispatched to this AI role or already claimed")
+            self._product_definition_gate(db,task["project_id"])
             obj=self.store._require_object(db,package_id)
             readiness=self.store._readiness(db,package_id)
             if (not readiness["ready"] or obj["revision"]!=task["pinned_revision"]
@@ -411,6 +441,7 @@ class Execution:
             task=self._task(db,package_id)
             obj=self.store._require_object(db,package_id)
             config=self._config(db,task["project_id"])
+            self._product_definition_gate(db,task["project_id"])
             if task["state"] not in ("DISPATCHED","CLAIMED"):
                 raise RuleError("Task has not been dispatched")
             readiness=self.store._readiness(db,package_id)
