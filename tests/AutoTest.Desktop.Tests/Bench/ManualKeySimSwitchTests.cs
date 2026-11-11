@@ -39,6 +39,25 @@ public sealed class ManualKeySimSwitchTests
     }
 
     [Fact]
+    public async Task DirectMaskManualVoltageUsesLastAcknowledgedMaskAndNeverInfersVoltage()
+    {
+        var port = new CountingPort();
+        var vm = new BenchWorkbenchViewModel(port);
+        await vm.InitializeAsync();
+        vm.Switches[2].IsSelected = true;
+        await vm.ApplyDirectMaskAsync();
+        vm.Switches[3].IsSelected = true; // next selected mask is NOT the command already sent
+        vm.Voltages[0].Value = "2";
+        await vm.SaveMeasurementAsync();
+        Assert.NotNull(port.Saved);
+        Assert.Equal("RAW_KEYSIM", port.Saved!.ProjectRevision);
+        Assert.Equal("MASK_0x00004", port.Saved.StateId);
+        Assert.Equal("op", port.Saved.OperationId);
+        Assert.Equal(2m, port.Saved.Voltages[0].Volts);
+        Assert.Null(port.Saved.Voltages[1].Volts);
+    }
+
+    [Fact]
     public async Task ClearingSelectionDoesNotReleaseHardware()
     {
         var port = new CountingPort();
@@ -78,6 +97,7 @@ public sealed class ManualKeySimSwitchTests
         public int DirectCallCount { get; private set; }
         public int ReleaseCount { get; private set; }
         public uint? LastMask { get; private set; }
+        public BenchManualMeasurement? Saved { get; private set; }
         public Task<BenchConfiguration?> LoadConfigurationAsync(CancellationToken ct) =>
             Task.FromResult<BenchConfiguration?>(null);
         public Task<BenchConnectionSnapshot> GetConnectionAsync(CancellationToken ct) =>
@@ -104,8 +124,11 @@ public sealed class ManualKeySimSwitchTests
             ReleaseCount++;
             return Task.FromResult(Result(true));
         }
-        public Task SaveManualMeasurementAsync(BenchManualMeasurement m, CancellationToken ct) =>
-            Task.CompletedTask;
+        public Task SaveManualMeasurementAsync(BenchManualMeasurement m, CancellationToken ct)
+        {
+            Saved = m;
+            return Task.CompletedTask;
+        }
         private static BenchOperationResult Result(bool accepted) =>
             new(accepted, "op", "corr", 1, "CAN0", "USB ACK",
                 "fixture-trace", null, null, BenchEvidenceSource.Physical,
