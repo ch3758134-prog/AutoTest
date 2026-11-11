@@ -1,0 +1,21 @@
+name: Project Control Rebuild
+on:
+  push:
+    branches:
+      - management/project-control-rebuild-20261111
+  pull_request:
+    paths:
+      - 'tools/project_control/**'
+      - '.github/workflows/project-control-rebuild.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+      - name: Check JavaScript source
+        run: node --check tools/project_control/app.js
+      - name: Check Python and run project-management tests
+        run: |
+          python3 -m compileall -q tools/project_control
+          python3 -m unittest discover -s tools/project_control/tests -v
