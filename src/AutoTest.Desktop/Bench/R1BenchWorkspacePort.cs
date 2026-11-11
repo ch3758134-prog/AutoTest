@@ -19,12 +19,18 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     private readonly Func<ControllerConfigToolViewModel?> _configuration;
     private readonly Func<HardwareBenchController?> _hardware;
     private readonly Func<uint,long,bool>? _approveKeySim;
+    private readonly Func<bool,long,bool>? _approveIgn;
+    private readonly Func<bool>? _testRunning;
     private readonly SemaphoreSlim _saveGate = new(1,1);
     private readonly string _auditPath;
     public R1BenchWorkspacePort(Func<ControllerConfigToolViewModel?> configuration,
         Func<HardwareBenchController?> hardware, string? auditPath = null,
-        Func<uint,long,bool>? approveKeySim = null)
+        Func<uint,long,bool>? approveKeySim = null,
+        Func<bool,long,bool>? approveIgn = null,
+        Func<bool>? testRunning = null)
     {
+        _approveIgn = approveIgn;
+        _testRunning = testRunning;
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _hardware = hardware ?? throw new ArgumentNullException(nameof(hardware));
         _approveKeySim = approveKeySim;
@@ -105,6 +111,9 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         BenchEvidenceSource source, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+        if (_testRunning?.Invoke() == true)
+            return Reject("TEST_EXECUTION_ACTIVE",
+                "自动 TEST 正在执行；请先停止 TEST，再执行手动台架动作。", source);
         if (_configuration()?.CurrentProfile is not { } profile ||
             profile.Revision.ToString() != revision ||
             !Guid.TryParse(controllerId, out var controller) ||
@@ -133,6 +142,10 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
             ProtocolVersionVerified: true, Generation: > 0 })
             return Reject("KEYSIM_DEVICE_NOT_CONNECTED",
                 "需要 P02 当前已验证的真实主控 USB 会话。", source);
+        if (physical.PhysicalCanToolFlashActive)
+            return Reject("FLASH_ACTIVE", "CAN1 烧录过程中禁止手动按键控制。", source);
+        if (physical.PhysicalCanToolFlashActive)
+            return Reject("FLASH_ACTIVE", "ECU 正在烧录，禁止手动 KEY_SIM 输出。", source);
         var generation = physical.Generation;
         if (_approveKeySim?.Invoke(mask, generation) != true)
             return Reject("KEYSIM_OPERATOR_REJECTED",
@@ -177,6 +190,8 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     {
         ct.ThrowIfCancellationRequested();
         var source = BenchEvidenceSource.Physical;
+        if (_testRunning?.Invoke() == true)
+            return Reject("TEST_EXECUTION_ACTIVE", "自动 TEST 正在运行，禁止手动 CAN0 输出。", source);
         if (mask == 0 || mask > KeySimCanCodec.MaxMask)
             return Reject("KEYSIM_DIRECT_MASK_INVALID",
                 "直接选中的按键组合必须在 1～20 位范围且非空；全部释放使用独立的释放命令。",
@@ -226,11 +241,15 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     {
         ct.ThrowIfCancellationRequested();
         var source = BenchEvidenceSource.Physical;
+        if (_testRunning?.Invoke() == true)
+            return Reject("TEST_EXECUTION_ACTIVE", "自动 TEST 正在运行，禁止手动释放按键。", source);
         var physical = _hardware();
         if (physical is not { State: UsbSessionState.Connected,
             ProtocolVersionVerified: true, Generation: > 0 })
             return Reject("KEYSIM_RELEASE_DEVICE_NOT_CONNECTED",
                 "当前没有经过版本验证的主控，无法确认释放帧是否发送。", source);
+        if (physical.PhysicalCanToolFlashActive)
+            return Reject("FLASH_ACTIVE", "ECU 烧录运行中，禁止手动 KEY_SIM 释放。", source);
         var generation = physical.Generation;
         if (_approveKeySim?.Invoke(0, generation) != true)
             return Reject("KEYSIM_RELEASE_OPERATOR_REJECTED",
@@ -249,6 +268,52 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
             source,
             accepted ? "主控确认 CAN 发送；按键板开关状态仍需按需观测" :
                 "释放结果未确认，不能宣称所有开关已断开");
+    }
+
+    /// <summary>Real SET_IGN 0x12 physical output through the same verified USB session.</summary>
+    public async Task<BenchOperationResult> SetIgnAsync(bool on, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var source = BenchEvidenceSource.Physical;
+        if (_testRunning?.Invoke() == true)
+            return Reject("TEST_EXECUTION_ACTIVE",
+                "自动 TEST 正在运行，禁止独立切换 IGN。", source);
+        var physical = _hardware();
+        if (physical is not { State: UsbSessionState.Connected,
+            ProtocolVersionVerified: true, Generation: > 0 })
+            return Reject("IGN_DEVICE_NOT_READY",
+                "需要已连接、已核对版本的真实主控板。", source);
+        if (physical.PhysicalCanToolFlashActive)
+            return Reject("IGN_FLASH_ACTIVE",
+                "CAN1 ECU 烧录时不可手动切换 IGN。", source);
+        var generation = physical.Generation;
+        if (_approveIgn?.Invoke(on, generation) != true)
+            return Reject("IGN_OPERATOR_NOT_AUTHORIZED",
+                "用户取消了本次真实 IGN 操作，未发送。", source);
+        if (!ReferenceEquals(_hardware(), physical) ||
+            physical.State != UsbSessionState.Connected ||
+            physical.Generation != generation ||
+            _testRunning?.Invoke() == true || physical.PhysicalCanToolFlashActive)
+            return Reject("IGN_SESSION_CHANGED",
+                "确认过程中执行状态或 USB Generation 已变化，拒绝发送。", source);
+        var result = await physical.SetPhysicalIgnAsync(on,
+            HardwareBenchController.PhysicalIgnConfirmation(on, generation), ct);
+        var accepted = result.Outcome == Outcome.Accepted &&
+            result.Value is { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged };
+        return new BenchOperationResult(accepted,
+            result.Value?.OperationId.ToString("D"),
+            result.OperationId.ToString("D"), generation,
+            "USB CMD 0x12 / SET_IGN=" + (on ? "01 ON" : "00 OFF"),
+            accepted ? "MAIN_CONTROLLER_SET_IGN_ACK" :
+                result.Outcome == Outcome.Uncertain ? "UNKNOWN" : "NOT_SENT",
+            result.Value?.Evidence.ToString(),
+            result.FailureCode, result.Failure?.Message,
+            source,
+            accepted
+                ? "主控确认已接受 IGN 命令；未实测 IGN 电压，实际输出状态不可由 ACK 证明"
+                : result.Outcome == Outcome.Uncertain
+                    ? "IGN 物理输出未知；按现场电压表确认"
+                    : "SET_IGN 未获得有效 ACK");
     }
 
     private static BenchOperationResult Reject(string code,string detail,BenchEvidenceSource source)
