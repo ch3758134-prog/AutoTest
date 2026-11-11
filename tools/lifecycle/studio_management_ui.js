@@ -43,6 +43,8 @@ async function renderManagementView(){
       ' · ' +(result.product_definition_governance.baseline?.revision||'无批准版本')),
     managementFact('产品定义待审变更',result.product_definition_governance.changes.filter(
       x=>x.state==='REVIEW').length+' 项'),
+    managementFact('待确认的 AI 定义候选',result.product_definition_suggestions.filter(
+      x=>x.state==='PENDING').length+' 项（不阻止正式研发）'),
     managementFact('产品定义研究待复核',result.product_definition_research_tasks.filter(
       x=>x.state!=='REVIEWED').length+' / '+result.product_definition_research_tasks.length+' 项'),
     managementFact('GitHub 状态',result.github.repository?
