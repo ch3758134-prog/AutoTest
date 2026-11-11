@@ -10,6 +10,7 @@ namespace AutoTest.Desktop.Bench;
 public partial class BenchWorkbenchView : UserControl
 {
     public event EventHandler? OpenStationRequested;
+    public event EventHandler? OpenCanRequested;
     public BenchWorkbenchView(BenchWorkbenchViewModel viewModel)
     {
         InitializeComponent();
@@ -23,6 +24,9 @@ public partial class BenchWorkbenchView : UserControl
         await vm.InitializeAsync();
         await vm.RefreshConnectionAsync();
     }
+
+    private void OpenCan_Click(object sender, RoutedEventArgs e) =>
+        OpenCanRequested?.Invoke(this, EventArgs.Empty);
 
     private void OpenStation_Click(object sender, RoutedEventArgs e) =>
         OpenStationRequested?.Invoke(this, EventArgs.Empty);
