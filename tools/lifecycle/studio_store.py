@@ -706,7 +706,8 @@ class Store:
                            JOIN verification_runs v ON v.id=r.run_id
                            WHERE v.project_id=? ORDER BY r.reviewed_at,r.run_id""",(key,))]
             governance={"baselines":[],"changes":[],"reviews":[],
-                        "package_reviews":[],"invalidations":[]}
+                        "package_reviews":[],"invalidations":[],
+                        "research_tasks":[],"research_submissions":[],"research_decisions":[]}
             if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='definition_changes'").fetchone():
                 governance["baselines"]=[dict(x) for x in db.execute(
                     "SELECT * FROM definition_baselines WHERE project_id=? ORDER BY revision",(key,))]
@@ -719,6 +720,21 @@ class Store:
                     "SELECT r.* FROM definition_package_reviews r JOIN definition_changes c ON c.id=r.change_id WHERE c.project_id=? ORDER BY r.change_id,r.package_id",(key,))]
                 governance["invalidations"]=[dict(x) for x in db.execute(
                     "SELECT * FROM definition_invalidations WHERE project_id=? ORDER BY created,package_id",(key,))]
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='definition_research_tasks'").fetchone():
+                    governance["research_tasks"]=[dict(x) for x in db.execute(
+                        """SELECT t.* FROM definition_research_tasks t
+                           JOIN definition_changes c ON c.id=t.change_id
+                           WHERE c.project_id=? ORDER BY t.change_id,t.domain""",(key,))]
+                    governance["research_submissions"]=[dict(x) for x in db.execute(
+                        """SELECT s.* FROM definition_research_submissions s
+                           JOIN definition_research_tasks t ON t.id=s.task_id
+                           JOIN definition_changes c ON c.id=t.change_id
+                           WHERE c.project_id=? ORDER BY s.task_id,s.created,s.id""",(key,))]
+                    governance["research_decisions"]=[dict(x) for x in db.execute(
+                        """SELECT d.* FROM definition_research_decisions d
+                           JOIN definition_research_tasks t ON t.id=d.task_id
+                           JOIN definition_changes c ON c.id=t.change_id
+                           WHERE c.project_id=? ORDER BY d.task_id,d.created,d.id""",(key,))]
             return {"schema":SCHEMA,"exported_at":now(),"project":project,
                     "objects":objects,"relations":links,"revisions":revisions,
                     "events":events,"technical_research":research,
