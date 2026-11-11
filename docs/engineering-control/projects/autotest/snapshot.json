@@ -1,0 +1,538 @@
+{
+  "schema": "engineering-project-archive/1",
+  "source_project_id": "autotest",
+  "exported_at": "2026-11-11T06:20:00+00:00",
+  "authority": "AI_CANDIDATE_NOT_APPROVED",
+  "engineering": {
+    "schema": "engineering-workbench/1",
+    "exported_at": "2026-11-11T06:20:00+00:00",
+    "project": {
+      "id": "autotest",
+      "name": "AutoTest",
+      "summary": "",
+      "body": "通用 ECU 外部刺激与集成测试开发工作台。工程范围涵盖硬件激励、CAN/DBC、测试程序、诊断与烧录、波形、扫码及记录报告。R1 重点用于出厂检测，EPB 是首个工程验证对象；具体方案需按工程对象和现场证据分别审查。本档案是管理 AI 的待审查起点，非新的产品身份批准。",
+      "version": "R1（研发阶段）",
+      "variant": "EPB 首个验证对象",
+      "created": "2026-11-11T06:20:00+00:00",
+      "updated": "2026-11-11T06:20:00+00:00"
+    },
+    "objects": [
+      {
+        "id": "at-context-r1",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "R1 与 EPB 是阶段背景，而非产品定义",
+        "body": "项目首个验证对象为 EPB，R1 首要应用是出厂检测；这些上下文不能被强制写入所有 ECU 项目的产品身份。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-system-stimulus",
+        "project_id": "autotest",
+        "kind": "system",
+        "title": "ECU 外部刺激与通信链路",
+        "body": "Windows 主机通过 USB 控制主控板；据现有现场说明 CAN0 用于 KEY_SIM 按键板，CAN1 连接被测 ECU。需要以实际固件、接线与使用记录持续复核。",
+        "parent_id": "at-context-r1",
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-cap-can",
+        "project_id": "autotest",
+        "kind": "capability",
+        "title": "CAN 收发、DBC 与可观察信号",
+        "body": "支持 CAN 帧收发和 DBC 解码，真实 CAN1 RX 具有用户报告的基础观察记录；不能据此推定 CAN TX、UDS 或波形判定已通过。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/delivery/04_R1产品完成度与实测推进看板.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "acceptance": "分别证明物理RX、物理TX、DBC导入和实时解码以及波形参考判定。"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-cap-key",
+        "project_id": "autotest",
+        "kind": "capability",
+        "title": "按键动作、IGN 与夹具刺激",
+        "body": "KEY_SIM 的 20 Key 是电阻网络组合开关，不等于 ECU 的 20 路按键；组合后输出五路模拟电压供 ECU 识别。动作、保持时间、释放与不同 ECU 的配置关系属于真实台架和工程模型。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "acceptance": "按工程配置执行动作序列并由真实设备输出验证；不得把 Mock 视为实测。"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-cap-test",
+        "project_id": "autotest",
+        "kind": "capability",
+        "title": "唯一测试程序及受控执行",
+        "body": "测试程序负责准备、测试、清理、条件/循环/等待、硬件刺激、CAN、专业动作以及结果；生产出厂是该引擎的运行场景，不另造第二套测试程序。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-cap-scan",
+        "project_id": "autotest",
+        "kind": "capability",
+        "title": "扫码识别、流程匹配与生产记录",
+        "body": "测试前扫码可参与 DUT 身份识别和测试配方/程序选择；运行后依据真实判定进行生产结果、复测与放行。需核对正式需求与最新源码。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-req-scan-before",
+        "project_id": "autotest",
+        "kind": "requirement",
+        "title": "测试前扫码身份与程序选择（待审查）",
+        "body": "用户近期要求扫码后匹配相关自动测试程序；该功能应在测试执行前完成身份与适用程序的选择，并区分扫码原始输入与身份规则判定。",
+        "parent_id": "at-cap-scan",
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "acceptance": "提供扫码原始输入、身份规则、适用配方选择和无法匹配的明确行为，均绑定有效配置与证据。"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-req-scan-after",
+        "project_id": "autotest",
+        "kind": "requirement",
+        "title": "测试后 Verdict 与生产结果处理（待审查）",
+        "body": "真实测试执行产生可追溯的 StepFact / Verdict，生产结果及复测/放行依据已确认的身份、配方与实际判定。不能把读取扫码输入和测试后的正式放行混为同一步。",
+        "parent_id": "at-cap-scan",
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "acceptance": "真实运行标识、步骤事实、Verdict、扫码身份、复测次数与报告关联一致。"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-arch-one-engine",
+        "project_id": "autotest",
+        "kind": "architecture",
+        "title": "统一自动测试引擎（待审查）",
+        "body": "自动测试程序是系统统一执行模型。手动台架和专业测试工具是独立工作入口，但与测试运行共享工程资源、设备会话和受控操作语义。",
+        "parent_id": "at-cap-test",
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-if-canhw",
+        "project_id": "autotest",
+        "kind": "interface",
+        "title": "USB 主控与 CAN0/CAN1 的接线语义",
+        "body": "按现场说明，CAN0 连接 KEY_SIM，CAN1 连接 DUT。USB/协议身份、CAN 速率与安全控制必须绑定真实配置，不应从历史页面或 Mock 实现推断设备状态。",
+        "parent_id": "at-system-stimulus",
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-change-scan-order",
+        "project_id": "autotest",
+        "kind": "change",
+        "title": "扫码先后顺序的历史记录冲突",
+        "body": "旧看板将“正式扫码匹配”整体放在波形判定之后；新用户需求已将测试前身份/程序匹配与测试后结果放行区分。需要按具体需求和执行链评审并修正历史文件。",
+        "parent_id": null,
+        "state": "OPEN",
+        "revision": 1,
+        "meta": {
+          "source": "docs/delivery/04_R1产品完成度与实测推进看板.md ; docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "severity": "HIGH",
+          "acceptance": "逐项核对 TEST/SCAN/RECORD 的需求、设计、真实代码和生产验证；未经复核不自动批准改动。"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-test-canrx",
+        "project_id": "autotest",
+        "kind": "test",
+        "title": "用户报告的 CAN1 RX 基础现场观察",
+        "body": "现有记录称 2026-11-09 DeviceLab 真实连接成功并观察 CAN1 连续收报文 2464 帧，截图中丢帧/DecodeErrors 为零。这是当次用户观察，不等于当前软件候选的 CAN TX、UDS 或 Flash 已 PASS。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/delivery/04_R1产品完成度与实测推进看板.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "result": "USER_REPORTED_RX_OBSERVATION",
+          "evidence_level": "用户截图与对话记录；原始日志和精确配置需核对",
+          "configuration": "2026-11-09现场台架；未建立完整可复现证据包"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-risk-physical",
+        "project_id": "autotest",
+        "kind": "risk",
+        "title": "研发候选 CI 与物理验收易混淆",
+        "body": "PR #26/#27 编译或测试状态不得冒充 GUI 人工验收和真实 ECU 物理验证。UDS、Flash、波形 Verdict、生产流程均应有独立的实测证据。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "severity": "HIGH"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-ref-pr-status",
+        "project_id": "autotest",
+        "kind": "reference",
+        "title": "GitHub 当前候选及事实边界",
+        "body": "PR #26（Field Studio）与 PR #27（R1 WPF UI）在 2026-11-11 06:10 UTC 观察时仍为 OPEN/Draft，未合并 main；PR #28 是本工程管理工具自身的开发候选。上述均属于观察时点状态，不是系统完成度。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md ; https://github.com/ch3758134-prog/AutoTest/pull/26 ; https://github.com/ch3758134-prog/AutoTest/pull/27",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-wp-scan-design",
+        "project_id": "autotest",
+        "kind": "work_package",
+        "title": "扫码双阶段流程的详细设计复核（尚不可编码）",
+        "body": "需要复核 TEST、SCAN、RECORD 当前需求与实现，并形成明确的前置身份匹配和后置结果处理设计、接口及验收合同。尚缺已批准详细设计，不满足 CODE_READY。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md",
+          "evidence_status": "AI_CANDIDATE_NOT_APPROVED",
+          "execution_role": "CODER",
+          "file_scope": [],
+          "acceptance": "完成设计和影响审查后，才可生成编码包；当前仅供研究与规划。"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:20:00+00:00",
+        "updated": "2026-11-11T06:20:00+00:00"
+      }
+    ],
+    "relations": [
+      {
+        "id": "at-link-scan-cap",
+        "project_id": "autotest",
+        "source_id": "at-cap-scan",
+        "target_id": "at-req-scan-before",
+        "kind": "defines",
+        "created": "2026-11-11T06:20:00+00:00",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-link-verdict",
+        "project_id": "autotest",
+        "source_id": "at-cap-scan",
+        "target_id": "at-req-scan-after",
+        "kind": "defines",
+        "created": "2026-11-11T06:20:00+00:00",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-link-study",
+        "project_id": "autotest",
+        "source_id": "at-change-scan-order",
+        "target_id": "at-req-scan-before",
+        "kind": "impacts",
+        "created": "2026-11-11T06:20:00+00:00",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-link-impl",
+        "project_id": "autotest",
+        "source_id": "at-wp-scan-design",
+        "target_id": "at-arch-one-engine",
+        "kind": "depends",
+        "created": "2026-11-11T06:20:00+00:00",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-link-if",
+        "project_id": "autotest",
+        "source_id": "at-system-stimulus",
+        "target_id": "at-if-canhw",
+        "kind": "defines",
+        "created": "2026-11-11T06:20:00+00:00",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      }
+    ],
+    "revisions": [
+      {
+        "object_id": "at-context-r1",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-context-r1\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"R1 与 EPB 是阶段背景，而非产品定义\",\"body\":\"项目首个验证对象为 EPB，R1 首要应用是出厂检测；这些上下文不能被强制写入所有 ECU 项目的产品身份。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-system-stimulus",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-system-stimulus\",\"project_id\":\"autotest\",\"kind\":\"system\",\"title\":\"ECU 外部刺激与通信链路\",\"body\":\"Windows 主机通过 USB 控制主控板；据现有现场说明 CAN0 用于 KEY_SIM 按键板，CAN1 连接被测 ECU。需要以实际固件、接线与使用记录持续复核。\",\"parent_id\":\"at-context-r1\",\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-cap-can",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-cap-can\",\"project_id\":\"autotest\",\"kind\":\"capability\",\"title\":\"CAN 收发、DBC 与可观察信号\",\"body\":\"支持 CAN 帧收发和 DBC 解码，真实 CAN1 RX 具有用户报告的基础观察记录；不能据此推定 CAN TX、UDS 或波形判定已通过。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"acceptance\":\"分别证明物理RX、物理TX、DBC导入和实时解码以及波形参考判定。\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-cap-key",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-cap-key\",\"project_id\":\"autotest\",\"kind\":\"capability\",\"title\":\"按键动作、IGN 与夹具刺激\",\"body\":\"KEY_SIM 的 20 Key 是电阻网络组合开关，不等于 ECU 的 20 路按键；组合后输出五路模拟电压供 ECU 识别。动作、保持时间、释放与不同 ECU 的配置关系属于真实台架和工程模型。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"acceptance\":\"按工程配置执行动作序列并由真实设备输出验证；不得把 Mock 视为实测。\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-cap-test",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-cap-test\",\"project_id\":\"autotest\",\"kind\":\"capability\",\"title\":\"唯一测试程序及受控执行\",\"body\":\"测试程序负责准备、测试、清理、条件/循环/等待、硬件刺激、CAN、专业动作以及结果；生产出厂是该引擎的运行场景，不另造第二套测试程序。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-cap-scan",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-cap-scan\",\"project_id\":\"autotest\",\"kind\":\"capability\",\"title\":\"扫码识别、流程匹配与生产记录\",\"body\":\"测试前扫码可参与 DUT 身份识别和测试配方/程序选择；运行后依据真实判定进行生产结果、复测与放行。需核对正式需求与最新源码。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-req-scan-before",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-req-scan-before\",\"project_id\":\"autotest\",\"kind\":\"requirement\",\"title\":\"测试前扫码身份与程序选择（待审查）\",\"body\":\"用户近期要求扫码后匹配相关自动测试程序；该功能应在测试执行前完成身份与适用程序的选择，并区分扫码原始输入与身份规则判定。\",\"parent_id\":\"at-cap-scan\",\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"acceptance\":\"提供扫码原始输入、身份规则、适用配方选择和无法匹配的明确行为，均绑定有效配置与证据。\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-req-scan-after",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-req-scan-after\",\"project_id\":\"autotest\",\"kind\":\"requirement\",\"title\":\"测试后 Verdict 与生产结果处理（待审查）\",\"body\":\"真实测试执行产生可追溯的 StepFact / Verdict，生产结果及复测/放行依据已确认的身份、配方与实际判定。不能把读取扫码输入和测试后的正式放行混为同一步。\",\"parent_id\":\"at-cap-scan\",\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"acceptance\":\"真实运行标识、步骤事实、Verdict、扫码身份、复测次数与报告关联一致。\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-arch-one-engine",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-arch-one-engine\",\"project_id\":\"autotest\",\"kind\":\"architecture\",\"title\":\"统一自动测试引擎（待审查）\",\"body\":\"自动测试程序是系统统一执行模型。手动台架和专业测试工具是独立工作入口，但与测试运行共享工程资源、设备会话和受控操作语义。\",\"parent_id\":\"at-cap-test\",\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-if-canhw",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-if-canhw\",\"project_id\":\"autotest\",\"kind\":\"interface\",\"title\":\"USB 主控与 CAN0/CAN1 的接线语义\",\"body\":\"按现场说明，CAN0 连接 KEY_SIM，CAN1 连接 DUT。USB/协议身份、CAN 速率与安全控制必须绑定真实配置，不应从历史页面或 Mock 实现推断设备状态。\",\"parent_id\":\"at-system-stimulus\",\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-change-scan-order",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-change-scan-order\",\"project_id\":\"autotest\",\"kind\":\"change\",\"title\":\"扫码先后顺序的历史记录冲突\",\"body\":\"旧看板将“正式扫码匹配”整体放在波形判定之后；新用户需求已将测试前身份/程序匹配与测试后结果放行区分。需要按具体需求和执行链评审并修正历史文件。\",\"parent_id\":null,\"state\":\"OPEN\",\"revision\":1,\"meta\":{\"source\":\"docs/delivery/04_R1产品完成度与实测推进看板.md ; docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"severity\":\"HIGH\",\"acceptance\":\"逐项核对 TEST/SCAN/RECORD 的需求、设计、真实代码和生产验证；未经复核不自动批准改动。\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-test-canrx",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-test-canrx\",\"project_id\":\"autotest\",\"kind\":\"test\",\"title\":\"用户报告的 CAN1 RX 基础现场观察\",\"body\":\"现有记录称 2026-11-09 DeviceLab 真实连接成功并观察 CAN1 连续收报文 2464 帧，截图中丢帧/DecodeErrors 为零。这是当次用户观察，不等于当前软件候选的 CAN TX、UDS 或 Flash 已 PASS。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/delivery/04_R1产品完成度与实测推进看板.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"result\":\"USER_REPORTED_RX_OBSERVATION\",\"evidence_level\":\"用户截图与对话记录；原始日志和精确配置需核对\",\"configuration\":\"2026-11-09现场台架；未建立完整可复现证据包\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-risk-physical",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-risk-physical\",\"project_id\":\"autotest\",\"kind\":\"risk\",\"title\":\"研发候选 CI 与物理验收易混淆\",\"body\":\"PR #26/#27 编译或测试状态不得冒充 GUI 人工验收和真实 ECU 物理验证。UDS、Flash、波形 Verdict、生产流程均应有独立的实测证据。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"severity\":\"HIGH\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-ref-pr-status",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-ref-pr-status\",\"project_id\":\"autotest\",\"kind\":\"reference\",\"title\":\"GitHub 当前候选及事实边界\",\"body\":\"PR #26（Field Studio）与 PR #27（R1 WPF UI）在 2026-11-11 06:10 UTC 观察时仍为 OPEN/Draft，未合并 main；PR #28 是本工程管理工具自身的开发候选。上述均属于观察时点状态，不是系统完成度。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md ; https://github.com/ch3758134-prog/AutoTest/pull/26 ; https://github.com/ch3758134-prog/AutoTest/pull/27\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-wp-scan-design",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-wp-scan-design\",\"project_id\":\"autotest\",\"kind\":\"work_package\",\"title\":\"扫码双阶段流程的详细设计复核（尚不可编码）\",\"body\":\"需要复核 TEST、SCAN、RECORD 当前需求与实现，并形成明确的前置身份匹配和后置结果处理设计、接口及验收合同。尚缺已批准详细设计，不满足 CODE_READY。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md\",\"evidence_status\":\"AI_CANDIDATE_NOT_APPROVED\",\"execution_role\":\"CODER\",\"file_scope\":[],\"acceptance\":\"完成设计和影响审查后，才可生成编码包；当前仅供研究与规划。\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:20:00+00:00\",\"updated\":\"2026-11-11T06:20:00+00:00\"}",
+        "action": "CREATE_GIT_CANDIDATE",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:20:00+00:00"
+      }
+    ],
+    "events": [],
+    "technical_research": {
+      "studies": [],
+      "options": [],
+      "experiments": [],
+      "results": [],
+      "decisions": []
+    },
+    "execution": {
+      "repository": "ch3758134-prog/AutoTest",
+      "synced_at": null,
+      "github_snapshot": null,
+      "tasks": []
+    },
+    "manager_proposals": [],
+    "verification": {
+      "runs": [],
+      "reviews": []
+    },
+    "governance": {
+      "baselines": [],
+      "changes": [],
+      "reviews": [],
+      "package_reviews": [],
+      "invalidations": [],
+      "research_tasks": [],
+      "research_submissions": [],
+      "research_decisions": [],
+      "research_scope_decisions": [],
+      "suggestions": []
+    },
+    "knowledge": {
+      "items": [],
+      "revisions": [],
+      "links": [],
+      "intakes": []
+    },
+    "product_identity": {
+      "baselines": [],
+      "proposals": [],
+      "impacts": [],
+      "invalidations": []
+    },
+    "project_context_history": [
+      {
+        "project_id": "autotest",
+        "revision": 1,
+        "snapshot": "{\"name\":\"AutoTest\",\"body\":\"通用 ECU 外部刺激与集成测试开发工作台。工程范围涵盖硬件激励、CAN/DBC、测试程序、诊断与烧录、波形、扫码及记录报告。R1 重点用于出厂检测，EPB 是首个工程验证对象；具体方案需按工程对象和现场证据分别审查。本档案是管理 AI 的待审查起点，非新的产品身份批准。\",\"version\":\"R1（研发阶段）\",\"variant\":\"EPB 首个验证对象\",\"legacy_summary\":\"\"}",
+        "changed_by": "AI_PROJECT_MANAGER_GIT_CANDIDATE",
+        "changed_at": "2026-11-11T06:20:00+00:00"
+      }
+    ],
+    "engineering_amendments": []
+  },
+  "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate."
+}
