@@ -130,7 +130,7 @@ function renderCapabilityTrace(){
         });
       }));
     }
-    if(m.tests.length)links.append(button('查看执行证据','outline',()=>verificationHistoryModal(m.tests[0])));
+    if(m.tests.length)links.append(button('查看全部验证证据','outline',()=>capabilityVerificationModal(m)));
     summary.append(links);
     line.append(summary);table.append(line);
   }
