@@ -76,7 +76,17 @@ public partial class MainWindow : Window
             PopulateTab(WorkbenchTabs.SelectedIndex);
         };
         BindWorkspaceEvents();
-        UpdateContext(0);
+        UpdateContext(10);
+        Loaded += (_, _) =>
+        {
+            // Instantiate the real COM scanner once, independently of the TEST view.
+            // Scanning does not become a TEST step or a second production runner.
+            PopulateTab(11);
+            if (_production?.DataContext is R1ProductionScannerViewModel scanner)
+                scanner.PropertyChanged += (_, _) => RefreshScannerStrip();
+            RefreshScannerStrip();
+            ApplyWorkspaceMode(0);
+        };
     }
 
     private void BindWorkspaceEvents()
@@ -265,8 +275,13 @@ public partial class MainWindow : Window
                 var scanner = new R1ProductionScannerViewModel();
                 scanner.AttachProject(host.Workspace);
                 scanner.PhysicalScanMatched += binding =>
+                {
+                    // Barcode matching runs the entire published TEST and is
+                    // completely independent from the engineer's checkboxes.
+                    Navigate(10, "run");
                     _ = ExecuteScannedProjectTestAsync(scanner, binding,
                         host.Workspace, host.Records.Database);
+                };
                 _production = new LabProductionToolView(scanner);
                 R1ProductionHost.Content = _production;
                 break;
@@ -471,15 +486,48 @@ public partial class MainWindow : Window
         }
         RefreshLed();
     }
-    private void WorkspaceMode_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    private void RefreshScannerStrip()
+    {
+        if (R1ScannerStatus is null) return;
+        var scanner = _production?.DataContext as R1ProductionScannerViewModel;
+        if (scanner is null)
+        {
+            R1ScannerStatus.Text = "扫码未初始化";
+            return;
+        }
+        var barcode = string.IsNullOrWhiteSpace(scanner.ScanInput)
+            ? "待扫码" : "编号 " + scanner.ScanInput;
+        R1ScannerStatus.Text = barcode + " · " + scanner.MatchDetail;
+        R1ScannerStatus.ToolTip = R1ScannerStatus.Text;
+    }
+
+    private void ApplyWorkspaceMode(int mode)
+    {
+        // Only layout changes: a Run is owned by the shared TEST coordinator,
+        // not by the lifetime of an IDE tab or an explorer dock.
+        var engineering = mode != 0;
+        R1RailColumn.Width = new GridLength(engineering ? 50 : 0);
+        R1RailPanel.Visibility = engineering ? Visibility.Visible : Visibility.Collapsed;
+        R1DeveloperActions.Visibility = engineering ? Visibility.Visible : Visibility.Collapsed;
+        if (_explorerHidden == engineering)
+            ToggleExplorer_Click(this, new RoutedEventArgs());
+        if (_inspectorHidden == engineering)
+            ToggleInspector_Click(this, new RoutedEventArgs());
+        if (_bottomHidden == engineering)
+            ToggleBottom_Click(this, new RoutedEventArgs());
+
+        switch (mode)
+        {
+            case 0: Navigate(10, "run"); break;          // operator: full-width TEST/StepFact
+            case 1: Navigate(9, "program"); break;       // developer: files, TEST editor, inspector
+            case 2: Navigate(2, "can"); break;           // tools: real station and professional views
+        }
+    }
+
+    private void WorkspaceMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded || R1WorkspaceMode is null) return;
-        switch (R1WorkspaceMode.SelectedIndex)
-        {
-            case 0: Navigate(0,"project"); break;
-            case 1: Navigate(11,"production"); break;
-            case 2: Navigate(12,"records"); break;
-        }
+        ApplyWorkspaceMode(R1WorkspaceMode.SelectedIndex);
     }
     private void ExecutionSource_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
