@@ -1,0 +1,85 @@
+{
+  "schema": "engineering-manager-view/1",
+  "project_id": "autotest",
+  "project_name": "AutoTest",
+  "status": "AI_CANDIDATE_NOT_APPROVED",
+  "title": "AutoTest｜首轮真实工程管理盘查",
+  "summary": "本记录由项目管理 AI 从 GitHub PR 和工程文档整理，供负责人在 HTML 中直接审阅、质疑与要求修改。仅列可核实事实和待审查判断；不批准任何设计，不宣称实物功能已完成。",
+  "observed_at": "2026-11-11T05:50:38Z",
+  "source_policy": "各 GitHub 状态仅表示观察时点；拉取后仍需核对最新 SHA；CI、GUI、物理用户验收互不等价。",
+  "evidence": [
+    {
+      "id": "PR26",
+      "kind": "GITHUB_PR",
+      "status": "OPEN_DRAFT",
+      "title": "Field Studio 独立实测工具候选",
+      "detail": "候选包含 USB/DBC/Wave/UDS/Scanner 等工作台；没有从 PR 状态推断物理功能已经通过。",
+      "sha": "45d5cce40c7cdc1c45f506e8e9b57d61f0ce71c3",
+      "source": "https://github.com/ch3758134-prog/AutoTest/pull/26"
+    },
+    {
+      "id": "PR27",
+      "kind": "GITHUB_PR",
+      "status": "OPEN_DRAFT",
+      "title": "R1 WPF 正式 UI 候选",
+      "detail": "仍为 Draft；编译候选与用户 GUI 操作验收必须区分。",
+      "sha": "a8779a685b6f2c70aa4ff8d0aa0716bf14b76e9a",
+      "source": "https://github.com/ch3758134-prog/AutoTest/pull/27"
+    },
+    {
+      "id": "PR28",
+      "kind": "GITHUB_PR",
+      "status": "OPEN_DRAFT",
+      "title": "Engineering Workbench V1.3 管理工具",
+      "detail": "工作台在用户 Windows 浏览器已显示 V1.3，说明基础页面可启动；Git 资料到 HTML 管理事实的读取通路仍需验证。",
+      "sha": "d1e245c0afa0e66113c3dd817eb48cc376c88486",
+      "source": "https://github.com/ch3758134-prog/AutoTest/pull/28"
+    },
+    {
+      "id": "RX-OBS",
+      "kind": "USER_REPORTED_PHYSICAL",
+      "status": "REPORTED_WITH_SCREENSHOT",
+      "title": "真实 USB 连接和 CAN1 RX 基础观察",
+      "detail": "2026-11-09 已记录用户连接成功与 2464 帧基础 CAN RX 观察。该事实不推出 CAN TX/UDS/Flash/波形判定已经通过；原始证据完整性和适用配置仍需核对。",
+      "source": "docs/delivery/04_R1产品完成度与实测推进看板.md"
+    },
+    {
+      "id": "SCANNER-CONFLICT",
+      "kind": "ENGINEERING_CONFLICT",
+      "status": "REVIEW_REQUIRED",
+      "title": "扫码发生时机的需求冲突",
+      "detail": "旧研发看板描述扫码正式匹配在波形判定后，而较新的真实项目盘查要求区分测试前扫码身份/方案选择和测试后的结果放行。不能据旧看板推断现行实施方案。",
+      "source": "docs/lifecycle-pilot/AutoTest_真实项目盘查与HTML管理界面_20261110_候选.md"
+    }
+  ],
+  "judgments": [
+    {
+      "id": "M-001",
+      "priority": "P0",
+      "status": "MANAGER_PROPOSAL",
+      "title": "先验证 GitHub → HTML 的只读真实项目管理资料闭环",
+      "reason": "当前 HTML 主要依赖本机 SQLite，管理 AI 提交 GitHub 后不能自动在空工作区显示真实管理结论。本记录以 Git commit 为准显示，不自动进入批准对象。",
+      "next_action": "拉取精确 PR #28 HEAD，打开工作台，在无数据库项目时确认能看到本记录及其来源、状态和待审事项；反馈给项目管理 AI。"
+    },
+    {
+      "id": "M-002",
+      "priority": "P1",
+      "status": "RESEARCH_NEEDED",
+      "title": "澄清测试前扫码与测试后放行的完整工程合同",
+      "reason": "两个历史文件对扫码顺序的表达不一致；涉及 TEST/SCAN/RECORD 与实际生产流程。",
+      "next_action": "项目管理 AI 对照已确认需求、现役实现及用户意见，按具体对象提交修订候选，不直接改已批准设计。"
+    },
+    {
+      "id": "M-003",
+      "priority": "P1",
+      "status": "EVIDENCE_REQUIRED",
+      "title": "区分 R1 各链路源码、CI、GUI 和物理验收",
+      "reason": "已有多个 Draft PR 和历史实测，但不能把 PR 绿灯变成 R1 整体已完成。",
+      "next_action": "按准确 PR HEAD 更新各功能的可验证证据和下一项独立验收动作，不生成虚假进度百分比。"
+    }
+  ],
+  "open_questions": [
+    "你在 HTML 看到的状态、来源、风险与下一步行动是否足以帮助你实际把握项目？",
+    "对于 AutoTest R1，你当前最希望优先解决哪个尚未现场验证的功能链？"
+  ]
+}
