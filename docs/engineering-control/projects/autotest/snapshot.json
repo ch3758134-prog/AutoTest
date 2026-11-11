@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T06:20:00+00:00"
+      "updated": "2026-11-11T06:52:15.981Z"
     },
     "objects": [
       {
@@ -299,6 +299,90 @@
         "approved_at": null,
         "created": "2026-11-11T06:20:00+00:00",
         "updated": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "id": "at-p0-existing-process",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "原有 ECU 测试与出厂工作方式（用户陈述）",
+        "body": "不同 ECU 型号都需要研发测试或出厂检测。原先在物理手动台架上操作按键、IGN 等刺激，CAN 则由独立的专用上位机完成。该 CAN 工具支持单次/周期发送、UDS 调试、基于型号配置的刷写、DBC 编辑及波形分析，但台架物理刺激、CAN 工具、人工响应验证之间没有形成统一的自动执行与记录流程。典型出厂过程是先烧录，再到专门台架刺激并观察 ECU 响应；此前没有系统性的出厂对象记录。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）",
+          "source_type": "USER_STATEMENT",
+          "engineering_class": "as_is_process",
+          "verification_level": "USER_PROCESS_DESCRIPTION",
+          "review_note": "描述历史工作方式，不推定某一现役软件版本的功能缺失，也不替代 G0 设备检查"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:52:15.981Z",
+        "updated": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "id": "at-p0-product-purpose",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "AutoTest 立项动因与产品目标（待审）",
+        "body": "立项要解决的核心问题不是简单拼装已有 UI，而是将物理台架刺激（按键、IGN 等）、CAN/UDS/刷写/DBC 等通信能力、被测 ECU 的真实响应采集与分析判定连接起来，形成面向多型号 ECU 的可编辑、可执行、可记录的自动测试闭环。在生产检验中还应记录各台 DUT 的身份、实际烧录与测试经历、结果和复测历史。该目标为讨论候选，不意味着功能已交付。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）",
+          "source_type": "USER_INTENT_AND_AI_SYNTHESIS",
+          "engineering_class": "project_purpose",
+          "proposed_product_identity": "面向多型号 ECU 的软硬件一体化自动测试与检验系统",
+          "review_note": "产品身份仅作候选陈述；当前不得自动发布产品身份基线"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:52:15.981Z",
+        "updated": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "id": "at-p0-model-variation",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "不同 ECU 型号的测试资源差异（用户陈述）",
+        "body": "不同型号被测 ECU 在烧录程序/镜像、刷写配置与安全参数、要执行的测试内容，以及 CAN 通信矩阵/DBC 等方面存在差异。工程系统需要表达型号及适用配置与这些资源之间的关系，避免把首个 EPB 型号、某一个 DBC、某一刷写流程或某一判定条件硬编码为全局规则。具体资源版本、兼容条件、可选项和异常处理需进入 G1 需求及后续设计研究。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）",
+          "source_type": "USER_STATEMENT",
+          "engineering_class": "variant_drivers",
+          "review_note": "尚未决定单个型号到各资源的精确基数与选择算法"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:52:15.981Z",
+        "updated": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "id": "at-p0-serial-identity-boundary",
+        "project_id": "autotest",
+        "kind": "change",
+        "title": "ECU 编码、实物标签与扫码责任边界待澄清",
+        "body": "用户本次明确提出出厂需要设计一套编码，并计划使用扫码枪实现测试对象记录。此前 SAEF P0-01 候审章程写有‘用户团队设计 DUT 实物标签编号方案，HOST 不负责生成或打印编号’的旧边界；当前两种表达尚不能直接视作一致。需澄清每台 DUT 在烧录前是否已有唯一编号、编号由谁生成/打印/粘贴、型号与唯一实物身份如何区分，以及扫码在烧录、测试、复测中的关联时机。未确认前不得把条码规则和生产放行流程当成有效需求。",
+        "parent_id": null,
+        "state": "OPEN",
+        "revision": 1,
+        "meta": {
+          "source": "用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）",
+          "source_type": "USER_INPUT_VS_PRIOR_CANDIDATE",
+          "engineering_class": "open_scope_question",
+          "severity": "P0_DISCUSSION",
+          "reference_document": "SAEF/engineering/work-products/P0/P0-01/index.md",
+          "review_note": "仅提出需核实的边界，不预先决定编号由软件或外部系统生成"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T06:52:15.981Z",
+        "updated": "2026-11-11T06:52:15.981Z"
       }
     ],
     "relations": [
@@ -353,6 +437,50 @@
         "target_id": "at-if-canhw",
         "kind": "defines",
         "created": "2026-11-11T06:20:00+00:00",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-p0-rel-purpose-test",
+        "project_id": "autotest",
+        "source_id": "at-p0-product-purpose",
+        "target_id": "at-cap-test",
+        "kind": "defines",
+        "created": "2026-11-11T06:52:15.981Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-p0-rel-variation-can",
+        "project_id": "autotest",
+        "source_id": "at-p0-model-variation",
+        "target_id": "at-cap-can",
+        "kind": "defines",
+        "created": "2026-11-11T06:52:15.981Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-p0-rel-variation-scan",
+        "project_id": "autotest",
+        "source_id": "at-p0-model-variation",
+        "target_id": "at-cap-scan",
+        "kind": "defines",
+        "created": "2026-11-11T06:52:15.981Z",
+        "status": "CANDIDATE",
+        "approved_by": null,
+        "approved_at": null
+      },
+      {
+        "id": "at-p0-rel-id-scanning",
+        "project_id": "autotest",
+        "source_id": "at-p0-serial-identity-boundary",
+        "target_id": "at-cap-scan",
+        "kind": "impacts",
+        "created": "2026-11-11T06:52:15.981Z",
         "status": "CANDIDATE",
         "approved_by": null,
         "approved_at": null
@@ -478,9 +606,78 @@
         "action": "CREATE_GIT_CANDIDATE",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T06:20:00+00:00"
+      },
+      {
+        "object_id": "at-p0-existing-process",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-p0-existing-process\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"原有 ECU 测试与出厂工作方式（用户陈述）\",\"body\":\"不同 ECU 型号都需要研发测试或出厂检测。原先在物理手动台架上操作按键、IGN 等刺激，CAN 则由独立的专用上位机完成。该 CAN 工具支持单次/周期发送、UDS 调试、基于型号配置的刷写、DBC 编辑及波形分析，但台架物理刺激、CAN 工具、人工响应验证之间没有形成统一的自动执行与记录流程。典型出厂过程是先烧录，再到专门台架刺激并观察 ECU 响应；此前没有系统性的出厂对象记录。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）\",\"source_type\":\"USER_STATEMENT\",\"engineering_class\":\"as_is_process\",\"verification_level\":\"USER_PROCESS_DESCRIPTION\",\"review_note\":\"描述历史工作方式，不推定某一现役软件版本的功能缺失，也不替代 G0 设备检查\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T06:52:15.981Z\"}",
+        "action": "CREATE_AI_CANDIDATE_FROM_USER_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "object_id": "at-p0-product-purpose",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-p0-product-purpose\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"AutoTest 立项动因与产品目标（待审）\",\"body\":\"立项要解决的核心问题不是简单拼装已有 UI，而是将物理台架刺激（按键、IGN 等）、CAN/UDS/刷写/DBC 等通信能力、被测 ECU 的真实响应采集与分析判定连接起来，形成面向多型号 ECU 的可编辑、可执行、可记录的自动测试闭环。在生产检验中还应记录各台 DUT 的身份、实际烧录与测试经历、结果和复测历史。该目标为讨论候选，不意味着功能已交付。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）\",\"source_type\":\"USER_INTENT_AND_AI_SYNTHESIS\",\"engineering_class\":\"project_purpose\",\"proposed_product_identity\":\"面向多型号 ECU 的软硬件一体化自动测试与检验系统\",\"review_note\":\"产品身份仅作候选陈述；当前不得自动发布产品身份基线\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T06:52:15.981Z\"}",
+        "action": "CREATE_AI_CANDIDATE_FROM_USER_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "object_id": "at-p0-model-variation",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-p0-model-variation\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"不同 ECU 型号的测试资源差异（用户陈述）\",\"body\":\"不同型号被测 ECU 在烧录程序/镜像、刷写配置与安全参数、要执行的测试内容，以及 CAN 通信矩阵/DBC 等方面存在差异。工程系统需要表达型号及适用配置与这些资源之间的关系，避免把首个 EPB 型号、某一个 DBC、某一刷写流程或某一判定条件硬编码为全局规则。具体资源版本、兼容条件、可选项和异常处理需进入 G1 需求及后续设计研究。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）\",\"source_type\":\"USER_STATEMENT\",\"engineering_class\":\"variant_drivers\",\"review_note\":\"尚未决定单个型号到各资源的精确基数与选择算法\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T06:52:15.981Z\"}",
+        "action": "CREATE_AI_CANDIDATE_FROM_USER_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "object_id": "at-p0-serial-identity-boundary",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-p0-serial-identity-boundary\",\"project_id\":\"autotest\",\"kind\":\"change\",\"title\":\"ECU 编码、实物标签与扫码责任边界待澄清\",\"body\":\"用户本次明确提出出厂需要设计一套编码，并计划使用扫码枪实现测试对象记录。此前 SAEF P0-01 候审章程写有‘用户团队设计 DUT 实物标签编号方案，HOST 不负责生成或打印编号’的旧边界；当前两种表达尚不能直接视作一致。需澄清每台 DUT 在烧录前是否已有唯一编号、编号由谁生成/打印/粘贴、型号与唯一实物身份如何区分，以及扫码在烧录、测试、复测中的关联时机。未确认前不得把条码规则和生产放行流程当成有效需求。\",\"parent_id\":null,\"state\":\"OPEN\",\"revision\":1,\"meta\":{\"source\":\"用户当前对话｜AutoTest P0 立项动因及原有工作方式（2026-11-10，America/Los_Angeles）\",\"source_type\":\"USER_INPUT_VS_PRIOR_CANDIDATE\",\"engineering_class\":\"open_scope_question\",\"severity\":\"P0_DISCUSSION\",\"reference_document\":\"SAEF/engineering/work-products/P0/P0-01/index.md\",\"review_note\":\"仅提出需核实的边界，不预先决定编号由软件或外部系统生成\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T06:52:15.981Z\",\"updated\":\"2026-11-11T06:52:15.981Z\"}",
+        "action": "CREATE_AI_CANDIDATE_FROM_USER_DISCUSSION",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T06:52:15.981Z"
       }
     ],
-    "events": [],
+    "events": [
+      {
+        "id": "evt-at-p0-existing-process",
+        "project_id": "autotest",
+        "object_id": "at-p0-existing-process",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "P0 立项调查：用户陈述/候选，未审批",
+        "timestamp": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "id": "evt-at-p0-product-purpose",
+        "project_id": "autotest",
+        "object_id": "at-p0-product-purpose",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "P0 立项调查：用户陈述/候选，未审批",
+        "timestamp": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "id": "evt-at-p0-model-variation",
+        "project_id": "autotest",
+        "object_id": "at-p0-model-variation",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "P0 立项调查：用户陈述/候选，未审批",
+        "timestamp": "2026-11-11T06:52:15.981Z"
+      },
+      {
+        "id": "evt-at-p0-serial-identity-boundary",
+        "project_id": "autotest",
+        "object_id": "at-p0-serial-identity-boundary",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "P0 立项调查：用户陈述/候选，未审批",
+        "timestamp": "2026-11-11T06:52:15.981Z"
+      }
+    ],
     "technical_research": {
       "studies": [],
       "options": [],
@@ -534,5 +731,6 @@
     ],
     "engineering_amendments": []
   },
-  "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate."
+  "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
+  "p0_discussion_note": "新增 P0 现场事实与候选目标；所有对象仍为 DRAFT / OPEN，关系均为 CANDIDATE，未批准任何设计、测试或产品身份。"
 }
