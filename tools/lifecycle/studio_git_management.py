@@ -13,8 +13,8 @@ import subprocess
 from studio_store import RuleError
 
 INDEX = "docs/engineering-control/projects/index.json"
-PROJECT_PATH = re.compile(r"docs/engineering-control/projects/([a-z0-9][a-z0-9_-]{0,62})/management-view\\.json\\Z")
-SHA = re.compile(r"[a-f0-9]{40}\\Z")
+PROJECT_PATH = re.compile(r"docs/engineering-control/projects/([a-z0-9][a-z0-9_-]{0,62})/management-view\.json\Z")
+SHA = re.compile(r"[a-f0-9]{40}\Z")
 
 
 def _git(repo: Path, *args: str) -> str:
