@@ -22,6 +22,8 @@ public sealed class BenchKeyActionItem : BindableBase
 public sealed class BenchKeyStepItem : BindableBase
 {
     private uint _mask;
+    private string _name;
+    public string Name { get => _name; set { if (SetProperty(ref _name, value)) RaisePropertyChanged(nameof(Summary)); } }
     private int _durationMs;
     private string _durationMsText;
     public BenchActionStepKind Kind { get; }
@@ -42,26 +44,33 @@ public sealed class BenchKeyStepItem : BindableBase
         get => _durationMsText;
         set { if (SetProperty(ref _durationMsText, value)) RaisePropertyChanged(nameof(Summary)); }
     }
-    public string Summary => Kind == BenchActionStepKind.SetKeys
-        ? Mask == 0
-            ? "切换按键：全部断开"
-            : "切换按键：闭合 " + string.Join("、", Enumerable.Range(0, 20)
-                .Where(i => (Mask & (1u << i)) != 0).Select(i => $"K{i + 1:00}"))
-        : $"保持当前按键组合 {DurationMsText} 毫秒";
+    public string Summary
+    {
+        get
+        {
+            var description = Kind == BenchActionStepKind.SetKeys
+                ? (Mask == 0 ? "全部断开" :
+                    "闭合 " + string.Join("、", Enumerable.Range(0, 20)
+                        .Where(i => (Mask & (1u << i)) != 0).Select(i => $"K{i + 1:00}")))
+                : $"保持 {DurationMsText} 毫秒";
+            return string.IsNullOrWhiteSpace(Name) ? description : Name.Trim() + " · " + description;
+        }
+    }
     public BenchKeyStepItem(BenchActionStep step)
     {
         Kind = step.Kind;
         _mask = step.Mask;
+        _name = step.Name ?? "";
         _durationMs = step.DurationMs;
         _durationMsText = step.DurationMs.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
     public BenchActionStep ToStep()
     {
-        if (Kind == BenchActionStepKind.SetKeys) return BenchActionStep.SetKeys(Mask);
+        if (Kind == BenchActionStepKind.SetKeys) return BenchActionStep.SetKeys(Mask, Name.Trim());
         if (!int.TryParse(DurationMsText, System.Globalization.NumberStyles.None,
             System.Globalization.CultureInfo.InvariantCulture, out var milliseconds))
             throw new ArgumentException("保持时间必须是 1～600000 的整数毫秒；未执行旧值。");
-        return BenchActionStep.Hold(milliseconds);
+        return BenchActionStep.Hold(milliseconds, Name.Trim());
     }
 }
 
@@ -77,6 +86,9 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     private bool _running;
     private bool _working;
     private bool _loadingSwitches;
+    private string _selectedStepResult = "选中开关组合步骤后，可试发这一组开关，或执行完整动作。";
+    public string SelectedStepResult
+    { get => _selectedStepResult; private set => SetProperty(ref _selectedStepResult, value); }
     private string? _editorProjectId;
     private bool DifferentProject => _editorProjectId != _port.ActiveProjectId;
     private const string ProjectChangedMessage =
@@ -106,8 +118,12 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         NewActionCommand = new DelegateCommand(NewAction);
         CopyActionCommand = new DelegateCommand(CopyAction);
         DeleteActionCommand = new DelegateCommand(DeleteAction);
-        AddSetKeysCommand = new DelegateCommand(() => AddStep(BenchActionStep.SetKeys(0)));
-        AddHoldCommand = new DelegateCommand(() => AddStep(BenchActionStep.Hold(100)));
+        AddSetKeysCommand = new DelegateCommand(() =>
+            AddStep(BenchActionStep.SetKeys(0, "开关组合 " +
+                (Steps.Count(x => x.Kind == BenchActionStepKind.SetKeys) + 1))));
+        AddHoldCommand = new DelegateCommand(() =>
+            AddStep(BenchActionStep.Hold(100, "保持 " +
+                (Steps.Count(x => x.Kind == BenchActionStepKind.Hold) + 1))));
         RemoveStepCommand = new DelegateCommand(RemoveStep);
         MoveStepUpCommand = new DelegateCommand(() => MoveStep(-1));
         MoveStepDownCommand = new DelegateCommand(() => MoveStep(+1));
@@ -117,6 +133,7 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         ReloadActionsCommand = new DelegateCommand(async () => await LoadAsync());
         RunActionCommand = new DelegateCommand(async () => await RunAsync());
         StopActionCommand = new DelegateCommand(() => _execution?.Cancel());
+        SendSelectedStepCommand = new DelegateCommand(async () => await SendSelectedStepAsync());
     }
 
     public ObservableCollection<BenchKeyActionItem> Actions { get; } = new();
@@ -136,11 +153,13 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     public DelegateCommand ReloadActionsCommand { get; }
     public DelegateCommand RunActionCommand { get; }
     public DelegateCommand StopActionCommand { get; }
+    public DelegateCommand SendSelectedStepCommand { get; }
     public bool HasUnsavedChanges => _dirty;
     public bool IsActionRunning => _running;
     public bool CanEdit => !_running && !_working;
     public bool IsKeyStep => SelectedStep?.Kind == BenchActionStepKind.SetKeys;
     public bool IsHoldStep => SelectedStep?.Kind == BenchActionStepKind.Hold;
+    public bool HasSelectedStep => SelectedStep is not null;
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string Progress { get => _progress; private set => SetProperty(ref _progress, value); }
     public uint CurrentMask => Switches.Aggregate(0u, (mask, sw) =>
@@ -174,6 +193,7 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
             finally { _loadingSwitches = false; }
             RaisePropertyChanged(nameof(IsKeyStep));
             RaisePropertyChanged(nameof(IsHoldStep));
+            RaisePropertyChanged(nameof(HasSelectedStep));
         }
     }
 
@@ -188,7 +208,9 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     private void Track(BenchKeyStepItem step) =>
         step.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName is nameof(BenchKeyStepItem.Mask) or nameof(BenchKeyStepItem.DurationMsText))
+            if (e.PropertyName is nameof(BenchKeyStepItem.Mask)
+                or nameof(BenchKeyStepItem.DurationMsText)
+                or nameof(BenchKeyStepItem.Name))
                 MarkDirty();
         };
 
@@ -211,6 +233,8 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         for (var i = 2; Actions.Any(a => a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)); i++)
             name = $"新动作 {i}";
         var action = new BenchKeyActionItem(Guid.NewGuid().ToString("D"), name);
+        // One editable 20-switch step is available immediately after "New action".
+        action.Steps.Add(new BenchKeyStepItem(BenchActionStep.SetKeys(0, "开关组合 1")));
         Track(action);
         Actions.Add(action);
         SelectedAction = action;
@@ -224,7 +248,7 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
             copy.Name += " 副本";
         foreach (var step in source.Steps)
         {
-            var cloned = new BenchKeyStepItem(new(step.Kind, step.Mask, step.DurationMs));
+            var cloned = new BenchKeyStepItem(new(step.Kind, step.Mask, step.DurationMs, step.Name));
             if (step.Kind == BenchActionStepKind.Hold)
                 cloned.DurationMsText = step.DurationMsText; // preserve visible draft, even if invalid
             copy.Steps.Add(cloned);
@@ -246,7 +270,14 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     {
         if (!CanEdit || mask > 0xFFFFF) return;
         if (SelectedAction is null) NewAction();
-        AddStep(BenchActionStep.SetKeys(mask));
+        if (SelectedStep is { Kind: BenchActionStepKind.SetKeys } selected && selected.Mask == 0)
+        {
+            selected.Mask = mask;
+            SelectedStep = null;
+            SelectedStep = selected;
+        }
+        else AddStep(BenchActionStep.SetKeys(mask, "开关组合 " +
+            (Steps.Count(x => x.Kind == BenchActionStepKind.SetKeys) + 1)));
         Status = "已将当前 20 路开关组合加入动作；可继续添加保持时间。";
     }
 
@@ -279,6 +310,37 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         Steps.Move(index, target);
         SelectedAction.Steps.Move(index, target);
         MarkDirty();
+    }
+
+    /// <summary>
+    /// Experimental single-step send uses the same verified physical DEVICE
+    /// adapter as the full action. Selecting/editing any checkbox sends nothing.
+    /// A zero-mask step is an explicit all-open request, never an implicit reset.
+    /// </summary>
+    public async Task SendSelectedStepAsync()
+    {
+        if (!CanEdit || SelectedStep is not { Kind: BenchActionStepKind.SetKeys } step) return;
+        if (DifferentProject) { Status = ProjectChangedMessage; return; }
+        var mask = step.Mask; // immutable command snapshot
+        var stepName = string.IsNullOrWhiteSpace(step.Name) ? "当前开关组合" : step.Name.Trim();
+        _working = true;
+        RaisePropertyChanged(nameof(CanEdit));
+        SelectedStepResult = $"正在试发“{stepName}”……";
+        try
+        {
+            var result = mask == 0
+                ? await _port.ReleaseAllPhysicalKeysAsync(CancellationToken.None)
+                : await _port.ApplyPhysicalKeyMaskAsync(mask, CancellationToken.None);
+            SelectedStepResult = result.Accepted
+                ? $"主控已接收“{stepName}”开关指令；请观察 ECU CAN 报文，实际 5 路电压未测量。"
+                : $"“{stepName}”未确认发出：{result.ErrorMessage ?? result.ErrorCode ?? "状态未知"}。";
+            _audit(SelectedStepResult);
+        }
+        catch (Exception e)
+        {
+            SelectedStepResult = $"“{stepName}”试发异常：{e.Message}；硬件实际状态未知。";
+        }
+        finally { _working = false; RaisePropertyChanged(nameof(CanEdit)); }
     }
 
     public async Task DiscardDraftAndReloadAsync()
