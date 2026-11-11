@@ -1,5 +1,28 @@
 /* V0.7 change workbench: explicit impact approval, target-revision assessment and closure. */
 'use strict';
+function captureFindingModal(target){
+  showModal('从当前工程对象记录新发现 · '+target.title,(body,footer)=>{
+    body.append(note('保留当前目标 r'+target.revision+' 的身份。新发现和 impacts 候选关系会一次性写入本地工程数据库；未经关系审查，不视为正式影响结论。'));
+    const title=field(body,'发现标题');
+    const details=field(body,'观察、问题或真实行为', '', 'textarea');
+    const source=field(body,'证据来源（日志、实验记录或可追溯路径）','', 'textarea');
+    const actor=field(body,'记录人','项目负责人');
+    const error=el('div','error hidden');body.append(error);
+    footer.append(button('取消','outline',closeModal));
+    footer.append(button('记录发现并建立候选影响','primary',async()=>{
+      try{
+        const created=await req('/api/studio/change/capture',{
+          target_id:target.id,target_revision:target.revision,
+          title:title.value,body:details.value,source:source.value,actor:actor.value
+        });
+        await refresh(false);
+        toast('已记录新发现；影响关系仍待审查');
+        await changeReviewModal(created.change.id);
+      }catch(e){error.textContent=e.message;error.classList.remove('hidden');}
+    }));
+  });
+}
+
 async function changeReviewModal(changeId){
   let data;
   try{data=await req('/api/studio/change/review?id='+qs(changeId));}
