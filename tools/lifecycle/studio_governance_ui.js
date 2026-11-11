@@ -96,7 +96,8 @@ async function definitionChangeModal(id){
     const gate=detail.gate;
     const bar=el('div','detailsection');
     add(bar,el('strong','','工程准入：'+(gate.ready?'已满足逐领域审查条件':'不可发布')),
-      el('div','tiny','已评估 '+gate.reviewed+' / '+gate.required+' 个领域'));
+      el('div','tiny','已评估 '+gate.reviewed+' / '+gate.required+' 个领域；实施工作包 '+
+        gate.package_reviewed+' / '+gate.package_total));
     if(!gate.ready){
       for(const reason of gate.reasons.slice(0,14))
         bar.append(el('div','context','• '+reason));
@@ -120,6 +121,23 @@ async function definitionChangeModal(id){
       if(c.state==='REVIEW')line.append(button(prior?'重新评估':'评估此领域','outline',()=>definitionDomainModal(detail,key,label,prior)));
       body.append(line);
     }
+    const implementation=el('div','detailsection');
+    implementation.append(el('strong','','实施工作包逐项影响复核'));
+    implementation.append(el('p','context','产品定义属于高层变更。即使关系图没有连接某个工作包，也必须独立判定该包是否受影响；无影响必须有证据和说明。'));
+    const byPackage=Object.fromEntries((detail.package_reviews||[]).map(x=>[x.package_id,x]));
+    if(!detail.packages?.length)implementation.append(el('p','context','目前无实施工作包；这不意味着没有尚未建模的工程实现。'));
+    for(const pack of detail.packages||[]){
+      const review=byPackage[pack.id],entry=el('div','item-row'),left=el('div');
+      left.style.flex='1';
+      add(left,el('strong','',pack.title+' · r'+pack.revision),
+        el('div','tiny',review?review.outcome+' · '+(review.reviewed_revision===pack.revision?'当前修订':'修订已变更'):'尚未审查'));
+      if(review)left.append(el('div','context',review.rationale.slice(0,180)));
+      entry.append(left);
+      if(c.state==='REVIEW')
+        entry.append(button(review?'重新核对':'核对影响','outline',()=>definitionPackageReviewModal(detail,pack,review)));
+      implementation.append(entry);
+    }
+    body.append(implementation);
     footer.append(button('关闭','outline',closeModal));
     if(c.state==='REVIEW'){
       footer.append(button('拒绝候选','outline',()=>definitionDecisionModal(detail,false)));
@@ -127,6 +145,36 @@ async function definitionChangeModal(id){
     }
   });
 }
+function definitionPackageReviewModal(detail,pack,prior){
+  showModal('实施包影响裁决 · '+pack.title,(body,footer)=>{
+    body.append(note('系统不能因缺少依赖关系就断言无影响。必须逐包核对业务目标、设计输入、接口与代码。决定绑定当前实施包修订。'));
+    const choice=selectField(body,'对该工作包的影响',[
+      ['UNKNOWN','尚未查清，阻断产品定义发布'],
+      ['IMPACT','受影响，发布后必须重新审核工作包'],
+      ['NO_IMPACT','已证明不受影响，附事实依据']
+    ],prior?.outcome||'UNKNOWN');
+    const reason=field(body,'判断依据与继续行动',prior?.rationale||'','textarea');
+    const evidence=field(body,'证据/版本来源（每行一个）',
+      prior?.evidence_refs?.join('\n')||'','textarea');
+    const reviewer=field(body,'审查人',prior?.reviewer||'项目负责人');
+    const error=el('div','error hidden');body.append(error);
+    footer.append(button('取消','outline',closeModal));
+    footer.append(button('保存实施包影响判断','primary',async()=>{
+      try{
+        await req('/api/studio/governance/review-package',{
+          change_id:detail.change.id,package_id:pack.id,
+          expected_package_revision:pack.revision,
+          outcome:choice.value,rationale:reason.value,
+          evidence_refs:evidence.value.split('\n').map(x=>x.trim()).filter(Boolean),
+          reviewer:reviewer.value,
+          expected_base_digest:detail.change.base_digest
+        });
+        await definitionChangeModal(detail.change.id);
+      }catch(e){error.textContent=e.message;error.classList.remove('hidden');}
+    }));
+  });
+}
+
 function definitionDomainModal(detail,domain,label,prior){
   showModal('影响评估 · '+label,(body,footer)=>{
     body.append(note('先研究这个领域是否适用，必要时追查缺失的对象关系。选择“有影响”必须指明已有工程对象；找不到受影响对象，应先补建追踪与研究，而非跳过。'));
