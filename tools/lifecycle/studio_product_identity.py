@@ -190,10 +190,12 @@ class ProductIdentity:
             # linked engineering knowledge. Project it as an impact *candidate*
             # rather than creating a competing, special-purpose AI form.
             suggestions=[]
+            linked_knowledge=set(json.loads(proposal["knowledge_ids"]))
             for r in db.execute("""SELECT id,title,statement,interpretation,
                    source_refs,related_objects,origin_role,state,revision
                    FROM engineering_knowledge WHERE project_id=?
                    ORDER BY updated DESC,id DESC""",(proposal["project_id"],)):
+                if r["id"] not in linked_knowledge:continue
                 links=json.loads(r["related_objects"])
                 if not links:continue
                 source_refs=json.loads(r["source_refs"])
