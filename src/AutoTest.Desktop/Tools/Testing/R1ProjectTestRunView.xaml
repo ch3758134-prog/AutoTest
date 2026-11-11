@@ -15,7 +15,7 @@
    <RowDefinition Height="*"/>
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,14">
-   <TextBlock Text="P11 / 正式工程自动测试" FontSize="22" FontWeight="SemiBold"/>
+   <TextBlock Text="工程测试" Style="{StaticResource AtPageTitle}"/>
    <TextBlock Text="{Binding DocumentName}" FontSize="15" FontWeight="SemiBold" Margin="0,5,0,3"/>
    <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#177D65" TextWrapping="Wrap"/>
    <TextBlock Text="P10 与 P11 使用同一个测试程序实例。真实执行仅允许经过工程版本固定、操作员授权的 CAN1 只读 Observe / Assert；物理输出和烧录仍被锁定。"
@@ -26,13 +26,13 @@
     <Button Content="预检当前 TEST" Command="{Binding PreflightCommand}"/>
     <Button Content="发布 TEST 至工程" Command="{Binding SaveToProjectCommand}"/>
     <Button Content="从工程重载 TEST" Command="{Binding ReloadProjectCommand}"/>
-    <Button Content="运行真实 CAN1 只读 TEST" Command="{Binding RunPhysicalReadOnlyCommand}"
+    <Button Content="执行真实 CAN1 只读测试" Style="{StaticResource AtPrimaryButton}" Command="{Binding RunPhysicalReadOnlyCommand}"
             Background="#236CAD" FontWeight="Bold"/>
     
     <Button Content="暂停" Command="{Binding PauseCommand}"/>
     <Button Content="继续" Command="{Binding ResumeCommand}"/>
     <Button Content="单步" Command="{Binding StepCommand}"/>
-    <Button Content="停止" Command="{Binding StopCommand}" Foreground="#B53D4B"/>
+    <Button Content="停止" Style="{StaticResource AtDangerButton}" Command="{Binding StopCommand}" Foreground="#B53D4B"/>
    </WrapPanel>
   </Border>
   <StackPanel Grid.Row="2" Margin="2,12">
@@ -44,12 +44,12 @@
   <DataGrid Grid.Row="3" ItemsSource="{Binding Facts}" IsReadOnly="True"
             AutoGenerateColumns="False" CanUserAddRows="False" RowHeaderWidth="0">
    <DataGrid.Columns>
-    <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="70"/>
-    <DataGridTextColumn Header="Step" Binding="{Binding NodeType}" Width="110"/>
-    <DataGridTextColumn Header="Expected" Binding="{Binding Expected}" Width="*"/>
-    <DataGridTextColumn Header="Actual" Binding="{Binding Actual}" Width="*"/>
-    <DataGridTextColumn Header="Quality" Binding="{Binding Quality}" Width="90"/>
-    <DataGridTextColumn Header="Verdict" Binding="{Binding Verdict}" Width="90"/>
+    <DataGridTextColumn Header="阶段" Binding="{Binding Phase}" Width="70"/>
+    <DataGridTextColumn Header="步骤" Binding="{Binding NodeType}" Width="110"/>
+    <DataGridTextColumn Header="预期" Binding="{Binding Expected}" Width="*"/>
+    <DataGridTextColumn Header="实际" Binding="{Binding Actual}" Width="*"/>
+    <DataGridTextColumn Header="质量" Binding="{Binding Quality}" Width="90"/>
+    <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="90"/>
     <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="90"/>
     <DataGridTextColumn Header="Trace" Binding="{Binding TraceReference}" Width="150"/>
     <DataGridTextColumn Header="Diagnostic" Binding="{Binding Diagnostic}" Width="2*"/>
