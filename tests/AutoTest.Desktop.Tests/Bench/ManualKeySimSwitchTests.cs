@@ -84,6 +84,23 @@ public sealed class ManualKeySimSwitchTests
     }
 
     [Fact]
+    public async Task IgnitionIsSeparateFromKeysAndInvalidatesPreviousVoltageContext()
+    {
+        var port = new CountingPort();
+        var vm = new BenchWorkbenchViewModel(port);
+        await vm.InitializeAsync();
+        vm.Switches[1].IsSelected = true;
+        await vm.ApplyDirectMaskAsync();
+        Assert.True(vm.SaveMeasurementCommand.CanExecute(null));
+        await vm.SetIgnAsync(true);
+        Assert.Equal(true, port.LastIgnOn);
+        Assert.Contains("实际电压", vm.IgnStatus);
+        Assert.False(vm.SaveMeasurementCommand.CanExecute(null));
+        Assert.Equal(0, port.ReleaseCount);
+        Assert.Equal(1, port.DirectCallCount);
+    }
+
+    [Fact]
     public async Task EmptySelectionNeverSendsPhysicalFrame()
     {
         var port = new CountingPort();
@@ -97,6 +114,7 @@ public sealed class ManualKeySimSwitchTests
         public int DirectCallCount { get; private set; }
         public int ReleaseCount { get; private set; }
         public uint? LastMask { get; private set; }
+        public bool? LastIgnOn { get; private set; }
         public BenchManualMeasurement? Saved { get; private set; }
         public Task<BenchConfiguration?> LoadConfigurationAsync(CancellationToken ct) =>
             Task.FromResult<BenchConfiguration?>(null);
@@ -124,6 +142,15 @@ public sealed class ManualKeySimSwitchTests
             ReleaseCount++;
             return Task.FromResult(Result(true));
         }
+        public Task<BenchOperationResult> SetIgnAsync(bool on, CancellationToken ct)
+        {
+            LastIgnOn = on;
+            return Task.FromResult(new BenchOperationResult(true, "ign-op", "ign-corr", 1,
+                "SET_IGN 0x12", "MAIN_CONTROLLER_ACK", "ign-trace", null, null,
+                BenchEvidenceSource.Physical,
+                "主控已接受，实际电压未读取"));
+        }
+
         public Task SaveManualMeasurementAsync(BenchManualMeasurement m, CancellationToken ct)
         {
             Saved = m;
