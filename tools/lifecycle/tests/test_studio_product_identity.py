@@ -168,6 +168,31 @@ class CanonicalIdentityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuleError,"invalid object revision"):
             preview(forged)
 
+    def test_stage_and_project_context_change_without_identity_version_change(self):
+        proposal=self.draft()
+        self.scope(proposal)
+        self.identity.publish(proposal["id"],self.base["digest"],"Owner",
+                              "Product identity reviewed separately")
+        before=self.identity.status(self.project)
+        self.store.update_project(self.project,{
+            "version":"R2","variant":"next bench",
+            "body":"New stage now considers another ECU","actor":"Project owner"})
+        after=self.identity.status(self.project)
+        self.assertEqual(after["digest"],before["digest"])
+        self.assertEqual(after["revision"],before["revision"])
+        self.assertEqual(after["legacy_project_context"]["version"],"R2")
+        history=self.store.project_context_history(self.project)
+        self.assertEqual(len(history),2)
+        self.assertEqual(history[0]["revision"],1)
+        self.assertEqual(history[1]["revision"],2)
+        archive=self.store.export_project(self.project)
+        path=self.root/"context.sqlite"
+        restore_to_empty(archive,path)
+        restored=Store(path)
+        self.assertEqual(restored.project_context_history(self.project),history)
+        self.assertEqual(ProductIdentity(restored).status(self.project)["baseline"],
+                         before["baseline"])
+
     def test_old_archive_is_readable_but_not_silently_migrated(self):
         archive=self.store.export_project(self.project)
         archive.pop("product_identity",None)
