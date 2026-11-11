@@ -1,20 +1,20 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <!-- Source of truth: docs/ui-r1/reference/AutoTest_UI_Interactive_Prototype_V0.1.html -->
- <SolidColorBrush x:Key="StudioBg" Color="#101620"/>
- <SolidColorBrush x:Key="StudioTitle" Color="#111924"/>
- <SolidColorBrush x:Key="StudioBar" Color="#16202C"/>
- <SolidColorBrush x:Key="StudioShell" Color="#141D29"/>
- <SolidColorBrush x:Key="StudioPanel" Color="#192431"/>
- <SolidColorBrush x:Key="StudioSurface" Color="#202D3B"/>
- <SolidColorBrush x:Key="StudioHover" Color="#2C4054"/>
- <SolidColorBrush x:Key="StudioLine" Color="#314458"/>
- <SolidColorBrush x:Key="StudioText" Color="#E2EDF7"/>
- <SolidColorBrush x:Key="StudioMuted" Color="#92A4B7"/>
- <SolidColorBrush x:Key="StudioAccent" Color="#4FAAFB"/>
- <SolidColorBrush x:Key="StudioGreen" Color="#52CE9C"/>
- <SolidColorBrush x:Key="StudioYellow" Color="#E8B967"/>
- <SolidColorBrush x:Key="StudioRed" Color="#FF7886"/>
+ <SolidColorBrush x:Key="StudioBg" Color="#F5F7FA"/>
+ <SolidColorBrush x:Key="StudioTitle" Color="#F8FAFC"/>
+ <SolidColorBrush x:Key="StudioBar" Color="#FFFFFF"/>
+ <SolidColorBrush x:Key="StudioShell" Color="#F1F5F9"/>
+ <SolidColorBrush x:Key="StudioPanel" Color="#FFFFFF"/>
+ <SolidColorBrush x:Key="StudioSurface" Color="#EDF2F8"/>
+ <SolidColorBrush x:Key="StudioHover" Color="#DCEBFA"/>
+ <SolidColorBrush x:Key="StudioLine" Color="#D5DFEA"/>
+ <SolidColorBrush x:Key="StudioText" Color="#203249"/>
+ <SolidColorBrush x:Key="StudioMuted" Color="#667C92"/>
+ <SolidColorBrush x:Key="StudioAccent" Color="#176CB5"/>
+ <SolidColorBrush x:Key="StudioGreen" Color="#177C55"/>
+ <SolidColorBrush x:Key="StudioYellow" Color="#90611A"/>
+ <SolidColorBrush x:Key="StudioRed" Color="#BC3C50"/>
  <Style TargetType="{x:Type TextBlock}"><Setter Property="Foreground" Value="{StaticResource StudioText}"/></Style>
  <Style TargetType="{x:Type Button}">
   <Setter Property="Foreground" Value="{StaticResource StudioText}"/><Setter Property="Background" Value="{StaticResource StudioSurface}"/>
@@ -28,7 +28,7 @@
      Margin="{TemplateBinding Padding}" RecognizesAccessKey="True"/>
    </Border><ControlTemplate.Triggers>
     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{StaticResource StudioHover}"/></Trigger>
-    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Chrome" Property="Background" Value="#163C60"/><Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource StudioAccent}"/></Trigger>
+    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Chrome" Property="Background" Value="#E0EDFB"/><Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource StudioAccent}"/></Trigger>
     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.42"/></Trigger>
    </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
  </Style>
@@ -44,7 +44,7 @@
    <Border x:Name="Entry" Background="{TemplateBinding Background}"><ContentPresenter ContentSource="Content" Margin="{TemplateBinding Padding}"/></Border>
    <ControlTemplate.Triggers>
     <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Entry" Property="Background" Value="{StaticResource StudioHover}"/></Trigger>
-    <Trigger Property="IsSelected" Value="True"><Setter TargetName="Entry" Property="Background" Value="#163C60"/></Trigger>
+    <Trigger Property="IsSelected" Value="True"><Setter TargetName="Entry" Property="Background" Value="#E0EDFB"/></Trigger>
    </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
  </Style>
  <Style TargetType="{x:Type ComboBox}">
@@ -86,7 +86,7 @@
   <Setter Property="Foreground" Value="{StaticResource StudioMuted}"/><Setter Property="Background" Value="{StaticResource StudioShell}"/>
   <Setter Property="FontSize" Value="12"/><Setter Property="Padding" Value="13,8"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="{x:Type TabItem}">
-   <Border x:Name="TabChrome" Background="{TemplateBinding Background}" BorderBrush="#263748"
+   <Border x:Name="TabChrome" Background="{TemplateBinding Background}" BorderBrush="#E8F0F8"
     BorderThickness="0,0,1,1" Padding="{TemplateBinding Padding}">
     <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" HorizontalAlignment="Center" VerticalAlignment="Center"/>
    </Border>
@@ -151,7 +151,7 @@
  <Style TargetType="{x:Type DataGridRow}">
   <Setter Property="Foreground" Value="{StaticResource StudioText}"/>
   <Style.Triggers>
-   <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#163C60"/></Trigger>
+   <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#E0EDFB"/></Trigger>
   </Style.Triggers>
  </Style>
  <Style TargetType="{x:Type CheckBox}"><Setter Property="Foreground" Value="{StaticResource StudioText}"/><Setter Property="Margin" Value="0,4,0,4"/></Style>
