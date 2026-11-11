@@ -36,7 +36,8 @@ class ProjectModelTests(unittest.TestCase):
         deliverables = {d["id"] for d in self.record["deliverables"]}
         works = {w["id"] for w in self.record["work"]}
         self.assertTrue(all(w["deliverable"] in deliverables for w in self.record["work"]))
-        self.assertNotEqual(len(works), len(deliverables))
+        self.assertTrue(all(w['id'] not in deliverables for w in self.record['work']))
+        self.assertTrue(all(d['id'] not in works for d in self.record['deliverables']))
         self.assertTrue(any(w["kind"] == "RESEARCH" for w in self.record["work"]))
         self.assertTrue(any(w["kind"] == "IMPLEMENT" for w in self.record["work"]))
         self.assertTrue(all("planned_finish" not in w for w in self.record["work"]))
