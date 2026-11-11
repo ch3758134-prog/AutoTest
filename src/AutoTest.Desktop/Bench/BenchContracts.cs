@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+using AutoTest.Projects.Dbc;
+
 namespace AutoTest.Desktop.Bench;
 
 // UI-local port: INTEGRATION maps this onto the ONE shared Project/DEVICE/RECORD composition.
@@ -36,6 +38,10 @@ public interface IBenchWorkbenchPort
     // Identity at editor load time, not a Controller Profile name. Null is used
     // by nonphysical test ports; the real adapter always reads the live PROJECT.
     string? ActiveProjectId => null;
+    // Current in-memory PROJECT DBC (already parsed and validated by V1Workspace).
+    // No second file picker and no detached copy of the project's network model.
+    DbcDatabase? ActiveDbc => null;
+    string? ActiveDbcRevision => null;
     // No transport is created here. These methods MUST delegate to the existing shared session.
     Task<BenchConfiguration?> LoadConfigurationAsync(CancellationToken cancellationToken);
     Task<BenchConnectionSnapshot> GetConnectionAsync(CancellationToken cancellationToken);
