@@ -29,16 +29,16 @@
   <DockPanel Grid.Row="0" Margin="0,0,0,11">
    <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
     <Button Content="检查运行条件" Command="{Binding PreflightCommand}"/>
-    <Button Content="▶ 执行完整 TEST" Command="{Binding RunPhysicalReadOnlyCommand}"
+    <Button Content="▶ 执行完整 TEST" Style="{StaticResource AtPrimaryButton}" Command="{Binding RunPhysicalReadOnlyCommand}"
       Background="#176CB5" Foreground="White" FontWeight="SemiBold"/>
     <Button Content="暂停" Command="{Binding PauseCommand}"/>
     <Button Content="继续" Command="{Binding ResumeCommand}"/>
-    <Button Content="停止" Command="{Binding StopCommand}" Foreground="#B63B51"/>
+    <Button Content="停止" Style="{StaticResource AtDangerButton}" Command="{Binding StopCommand}" Foreground="#B63B51"/>
    </WrapPanel>
    <StackPanel>
     <DockPanel>
-     <TextBlock Text="自动测试" FontSize="23" FontWeight="SemiBold"/>
-     <TextBlock Text="  /  TEST 执行与判定" FontSize="12"
+     <TextBlock Text="自动测试" Style="{StaticResource AtPageTitle}"/>
+     <TextBlock Text="  /  执行与判定" FontSize="12"
        Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="7,0,0,4"/>
     </DockPanel>
     <TextBlock Text="{Binding DocumentName}" Foreground="{StaticResource Muted}"
