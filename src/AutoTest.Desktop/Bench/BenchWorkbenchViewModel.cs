@@ -61,6 +61,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private string _lastOperation = "尚无操作";
     private string _lastEvidence = "ACK：未知 · 实际电压：未测量";
     private string _directResult = "尚未操作。勾选 K01～K20 只修改准备发送的掩码，不会触发硬件。";
+    private uint? _lastDirectAcceptedMask;
+    private string? _lastDirectOperationId;
     private bool _updatingSwitches;
     private string _comment = "";
     private string _operatorName = "";
@@ -84,7 +86,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             state => state is not null && !Busy && SelectedController is not null)
             .ObservesProperty(() => Busy);
         SaveMeasurementCommand = new DelegateCommand(async () => await SaveMeasurementAsync(),
-            () => !Busy && _lastState is not null).ObservesProperty(() => Busy);
+            () => !Busy && (_lastState is not null || _lastDirectAcceptedMask.HasValue))
+            .ObservesProperty(() => Busy);
         ReleaseAllKeysCommand = new DelegateCommand(async () => await ReleaseAllKeysAsync(),
             () => !Busy).ObservesProperty(() => Busy);
         ApplyDirectMaskCommand = new DelegateCommand(async () => await ApplyDirectMaskAsync(),
@@ -168,7 +171,10 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public BenchEvidenceSource Source
     {
         get => _source;
-        set { if (SetProperty(ref _source, value)) { _lastState = null; _lastOperationId = null; ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged(); RaisePropertyChanged(nameof(SourceDescription)); RaisePropertyChanged(nameof(IsPhysical)); } }
+        set { if (SetProperty(ref _source, value)) { _lastState = null; _lastOperationId = null;
+            _lastDirectAcceptedMask = null; _lastDirectOperationId = null;
+            ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
+            RaisePropertyChanged(nameof(SourceDescription)); RaisePropertyChanged(nameof(IsPhysical)); } }
     }
     public BenchControllerDefinition? SelectedController
     {
@@ -360,6 +366,11 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             var result = await _port.ApplyPhysicalKeyMaskAsync(mask, CancellationToken.None);
             var accepted = result.Accepted &&
                 result.Source == BenchEvidenceSource.Physical;
+            _lastState = null;
+            _lastOperationId = null;
+            _lastDirectAcceptedMask = accepted ? mask : null;
+            _lastDirectOperationId = accepted ? result.OperationId : null;
+            ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
             DirectResult = accepted
                 ? $"主控 CAN_SEND 已 ACK · 目标组合 0x{mask:X5}；实际开关及五路电压未测量"
                 : $"未确认组合生效：{result.ErrorCode ?? "UNKNOWN"} · {result.ErrorMessage ?? result.AckDescription ?? "无有效 ACK"}";
@@ -395,6 +406,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             var result = await _port.ReleaseAllPhysicalKeysAsync(CancellationToken.None);
             _lastState = null;
             _lastOperationId = null;
+            _lastDirectAcceptedMask = null;
+            _lastDirectOperationId = null;
             ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
             LastOperation = result.Accepted ? "已向 CAN0 发送全部释放" :
                 "释放未获确认 / 已拒绝";
@@ -426,7 +439,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
 
     public async Task SaveMeasurementAsync()
     {
-        if (Busy || _config is null || _lastState is null) return;
+        if (Busy || (_lastState is null && !_lastDirectAcceptedMask.HasValue)) return;
         var values = new List<BenchManualVoltage>();
         foreach (var input in Voltages)
         {
@@ -447,11 +460,21 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         Busy = true;
         try
         {
-            var measurement = new BenchManualMeasurement(_config.Revision,
-                _lastState.Controller.ControllerId, _lastState.State.StateId, _lastOperationId, Source,
-                values, string.IsNullOrWhiteSpace(Comment) ? null : Comment.Trim());
+            // A direct KEY_SIM command has no ECU Profile by design. Bind the
+            // manual meter values to the last acknowledged physical mask/OpId,
+            // never to currently checked UI bits or an invented analog reading.
+            var direct = _lastDirectAcceptedMask.HasValue && _lastState is null;
+            var measurement = direct
+                ? new BenchManualMeasurement("RAW_KEYSIM", "KEYSIM_CAN0",
+                    $"MASK_0x{_lastDirectAcceptedMask!.Value:X5}", _lastDirectOperationId,
+                    BenchEvidenceSource.Physical, values,
+                    string.IsNullOrWhiteSpace(Comment) ? null : Comment.Trim())
+                : new BenchManualMeasurement(_config!.Revision,
+                    _lastState!.Controller.ControllerId, _lastState.State.StateId,
+                    _lastOperationId, Source, values,
+                    string.IsNullOrWhiteSpace(Comment) ? null : Comment.Trim());
             await _port.SaveManualMeasurementAsync(measurement, CancellationToken.None);
-            LastEvidence = $"命令记录：{_lastOperationId ?? "未提供"} · 人工测量：已保存，非自动采样";
+            LastEvidence = $"命令记录：{measurement.OperationId ?? "未提供"} · 人工测量：已保存，非自动采样";
             Append(WorkbenchSeverity.Success, "已保存人工万用表记录",
                 $"配置 {measurement.ProjectRevision} · {measurement.ControllerId}/{measurement.StateId} · " +
                 string.Join(", ", values.Where(v => v.Volts.HasValue).Select(v => $"CH{v.Channel}={v.Volts}V")),
@@ -480,6 +503,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         if (state.State != BenchConnection.Connected)
         {
             _lastState = null; _lastOperationId = null;
+            _lastDirectAcceptedMask = null; _lastDirectOperationId = null;
             // Any subsequent connection starts from fresh discovery.
             SelectedDevice = null;
             Devices.Clear();
