@@ -22,6 +22,7 @@ from studio_definition_research import DefinitionResearch
 from studio_definition_suggestions import DefinitionSuggestions
 from studio_semantics import semantic_context
 from studio_knowledge import EngineeringKnowledge
+from studio_product_identity import ProductIdentity
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -41,6 +42,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     definition_research = DefinitionResearch(store)
     definition_suggestions = DefinitionSuggestions(store)
     knowledge = EngineeringKnowledge(store)
+    product_identity = ProductIdentity(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/1.1"
 
@@ -158,6 +160,12 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/api/studio/baseline/preview":
                     return self.write(baseline.preview(params.get("project", ""),
                                                        params.get("revision", "HEAD")))
+                if path == "/api/studio/product-identity":
+                    return self.write(product_identity.status(params.get("project","")))
+                if path == "/api/studio/product-identity/detail":
+                    return self.write(product_identity.detail(params.get("id","")))
+                if path == "/api/studio/product-identity/invalidations":
+                    return self.write(product_identity.invalidations(params.get("project","")))
                 if path == "/api/studio/knowledge":
                     return self.write(knowledge.list(params.get("project","")))
                 if path == "/api/studio/management/context":
@@ -199,6 +207,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
                                    "/api/studio/management/propose",
                                    "/api/studio/governance/research/submit",
                                    "/api/studio/governance/suggest",
+                                   "/api/studio/product-identity/propose",
                                    "/api/studio/knowledge/intake",
                                    "/api/studio/knowledge/propose",
                                    "/api/studio/knowledge/revise",
@@ -226,7 +235,50 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     raise RuleError("Request body must be an object")
                 path, params = self.route()
                 pieces = path.split("/")
-                if path == "/api/studio/restore/preview":
+                if path.startswith("/api/studio/governance/"):
+                    return self.write({
+                        "error":"Retired legacy definition authoring route. Historical records are read-only; use /api/studio/product-identity."},410)
+                if path == "/api/studio/product-identity/propose":
+                    answer = product_identity.propose(
+                        data.get("project_id",""),data.get("statement",""),
+                        data.get("reasoning",""),data.get("source_refs"),
+                        data.get("knowledge_ids",[]),data.get("actor",""),
+                        "OWNER_CANDIDATE" if owner_request else "AI_CANDIDATE",
+                        data.get("expected_digest",""))
+                elif path == "/api/studio/product-identity/review-scope":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may assess identity change scope"},403)
+                    answer = product_identity.review_scope(
+                        data.get("id",""),data.get("expected_digest",""),
+                        data.get("reviewer",""),data.get("rationale",""),
+                        data.get("evidence_refs"))
+                elif path == "/api/studio/product-identity/assess-impact":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may assess engineering impact"},403)
+                    answer = product_identity.assess_impact(
+                        data.get("id",""),data.get("object_id",""),
+                        data.get("expected_object_revision"),data.get("disposition",""),
+                        data.get("rationale",""),data.get("evidence_refs"),
+                        data.get("reviewer",""))
+                elif path == "/api/studio/product-identity/publish":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may publish product identity"},403)
+                    answer = product_identity.publish(
+                        data.get("id",""),data.get("expected_digest",""),
+                        data.get("reviewer",""),data.get("decision_note",""))
+                elif path == "/api/studio/product-identity/reject":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may reject identity proposals"},403)
+                    answer = product_identity.reject(
+                        data.get("id",""),data.get("reviewer",""),data.get("reason",""))
+                elif path == "/api/studio/product-identity/resolve":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may resolve implementation invalidation"},403)
+                    answer = product_identity.resolve(
+                        data.get("id",""),data.get("package_id",""),
+                        data.get("expected_revision"),data.get("reviewer",""),
+                        data.get("rationale",""))
+                elif path == "/api/studio/restore/preview":
                     if not owner_request:
                         return self.write({"error":"Only owner may preview project recovery"},403)
                     answer = restore_preview(data.get("archive"))
