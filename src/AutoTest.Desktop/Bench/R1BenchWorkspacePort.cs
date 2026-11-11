@@ -258,7 +258,24 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     {
         ArgumentNullException.ThrowIfNull(measurement);
         ct.ThrowIfCancellationRequested();
-        if (_configuration()?.CurrentProfile?.Revision.ToString()!=measurement.ProjectRevision)
+        if (measurement.ProjectRevision == "RAW_KEYSIM")
+        {
+            // No Controller Profile is required for direct KEY_SIM operation.
+            // Only an acknowledged physical command may be linked to manually
+            // measured CH1..CH5. Never synthesize voltages from switch masks.
+            if (measurement.Source != BenchEvidenceSource.Physical ||
+                measurement.ControllerId != "KEYSIM_CAN0" ||
+                !measurement.StateId.StartsWith("MASK_0x", StringComparison.Ordinal) ||
+                measurement.StateId.Length != 12 ||
+                !uint.TryParse(measurement.StateId.AsSpan(7),
+                    System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture, out var mask) ||
+                mask == 0 || mask > KeySimCanCodec.MaxMask ||
+                string.IsNullOrWhiteSpace(measurement.OperationId))
+                throw new InvalidOperationException(
+                    "直接掩码人工测量必须引用确实获得主控 ACK 的 KEY_SIM 操作。");
+        }
+        else if (_configuration()?.CurrentProfile?.Revision.ToString()!=measurement.ProjectRevision)
             throw new InvalidOperationException("当前 Controller Revision 已变更，拒绝保存过期测量。");
         if (measurement.Voltages.Count==0 || !measurement.Voltages.Any(v=>v.Volts.HasValue))
             throw new ArgumentException("必须填写实际万用表读数，空白不是零伏。");
