@@ -202,6 +202,9 @@ public partial class MainWindow : Window
             dbcVm.RefreshProjectStatus();
         if (_views.TryGetValue("wave", out var wave) && wave is WaveWorkbenchView w)
             w.Model.RefreshSignals();
+        // The bench uses the SAME active PROJECT DBC database as DBC/WAVE.
+        // Refresh its catalog without replacing unsaved raw CAN TX rows.
+        _benchModel?.CanMessages.RefreshDbcCatalog();
     }
 
     /// <summary>Only one tab for each currently opened actual document/tool.</summary>
