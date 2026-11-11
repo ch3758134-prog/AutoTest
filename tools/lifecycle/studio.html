@@ -315,7 +315,10 @@ function projectModal(project=null){if(project){productIdentityModal();return}sh
  state.projects=await req('/api/studio/projects');state.project=result.project.id;state.selected=null;await refresh();toast(project?'项目定义已更新':'项目已创建。可以开始记录产品背景和系统能力。')},project?'保存定义':'创建项目');});}
 const fieldSpecs={context:[['source','背景与来源']],capability:[['acceptance','能力完成/验收标准']],system:[['rationale','结构划分理由']],requirement:[['source','需求来源'],['acceptance','可验证的验收条件']],architecture:[['rationale','架构选型与约束']],interface:[['acceptance','接口正确性/兼容条件']],design:[['acceptance','设计验收与异常场景']],decision:[['alternatives','候选方案及利弊'],['conclusion','推荐或已选方案'],['rationale','决策依据']],change:[['source','发现来源及证据'],['severity','影响/紧急程度']],risk:[['severity','风险等级'],['rationale','风险原因与缓解措施']],work_package:[['source_sha','目标源码提交 SHA'],['file_scope','可修改的文件范围（每行一个）'],['acceptance','实施验收条件']],test:[['result','执行结论：未执行、通过、失败、受限'],['evidence_level','证据类型：单测、集成、实测、用户验收'],['configuration','适用配置与版本']],milestone:[['due','计划完成日期'],['acceptance','关闭条件']],reference:[]};
 function editorModal(kind,existing=null){showModal((existing?'修订':'新建')+groupLabel(kind),(body,footer)=>{
- body.append(note('此操作写入本地工程数据库。修订已经批准的设计会创建新的草稿版本，旧批准历史继续保留。'));
+ const approved=!!(existing&&existing.state==='APPROVED');
+ body.append(note(approved?
+   '此版本已经批准，不能直接覆盖。你可以与项目管理 AI 讨论并由 AI 提出修订，也可以在此提交附理由的修订候选；必须经过负责人复核才能成为新草稿。':
+   '未批准的工程内容可以继续编辑；提交审查后如果内容再变更，将重新返回草稿。'));
  const title=field(body,'工程对象标题',existing?.title||'');const description=field(body,'完整问题、要求或设计内容',existing?.body||'','textarea');
  const parents=[['','无上级目录']].concat(state.data.objects.filter(x=>x.id!==existing?.id).map(x=>[x.id,groupLabel(x.kind)+' · '+x.title]));const parent=selectField(body,'所属工程结构 / 上级对象',parents,existing?.parent_id||'');
  const inputs={};for(const [key,label] of fieldSpecs[kind]||[]){let current=existing?.meta?.[key]||'';if(Array.isArray(current))current=current.join('\n');inputs[key]=field(body,label,current,(key==='acceptance'||key==='rationale'||key==='alternatives'||key==='file_scope'||key==='conclusion')?'textarea':'input');if(inputs[key].tagName==='TEXTAREA')inputs[key].className='short';}
@@ -335,16 +338,33 @@ function editorModal(kind,existing=null){showModal((existing?'修订':'新建')+
   }
  }
  if(kind==='work_package')body.append(note('此工作包交给纯编码 AI：需要提前准备已批准的软件单元详细设计、受审查的实现依赖、准确的源码 SHA 和完整测试合同；编码 AI 不得开展技术研究或自定公共接口。'));
+ const reason=approved?field(body,'修订的工程依据及影响判断','','textarea'):null;
+ const sources=approved?field(body,'原始资料、讨论或实测依据（每行一个）','','textarea'):null;
  modalActions(footer,async()=>{
   const meta={...(existing?.meta||{})};for(const [k,input] of Object.entries(inputs))meta[k]=k==='file_scope'?input.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean):input.value;
   if(kind==='design'&&Object.keys(unitDesignInputs).length)meta.unit_design=Object.fromEntries(
     Object.entries(unitDesignInputs).map(([key,value])=>[key,value.value]));
   if(kind==='work_package')meta.execution_role='CODER';
   let payload={title:title.value,body:description.value,parent_id:parent.value||null,meta};
+  if(approved){
+    const patch={};
+    if(payload.title!==existing.title)patch.title=payload.title;
+    if(payload.body!==existing.body)patch.body=payload.body;
+    if(payload.parent_id!==existing.parent_id)patch.parent_id=payload.parent_id;
+    if(JSON.stringify(payload.meta)!==JSON.stringify(existing.meta))patch.meta=payload.meta;
+    await req('/api/studio/amendments/propose',{
+      project_id:state.project,target_id:existing.id,base_revision:existing.revision,
+      proposed_patch:patch,reasoning:reason.value,
+      source_refs:sources.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),
+      knowledge_ids:[],actor:'项目负责人'
+    });
+    toast('修订候选已提交，可在 AI 工程对象修订候选中审查；正式对象尚未改变');
+    return;
+  }
   const result=await req(existing?'/api/studio/object/'+existing.id+'/update':'/api/studio/object',
     existing?{...payload,expected_revision:existing.revision}:{...payload,kind,project_id:state.project});
-  state.selected=result.item.id;await refresh(false);renderView();toast(existing?'新修订已保存':'工程对象已创建');
- },existing?'保存新修订':'创建工程对象');
+  state.selected=result.item.id;await refresh(false);renderView();toast(existing?'草稿新修订已保存':'工程对象已创建');
+ },approved?'提出需审查的修订候选':existing?'保存草稿修订':'创建工程对象');
  });}
 function relationModal(selected){showModal('新增上下游工程关系',(body,footer)=>{
  body.append(note('关系方向是“来源对象 → 受影响或下游对象”。不要以文件或标题相似性代替真实的工程关系。'));
