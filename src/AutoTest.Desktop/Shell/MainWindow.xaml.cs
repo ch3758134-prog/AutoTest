@@ -40,16 +40,16 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, string> _titles = new(StringComparer.Ordinal)
     {
         ["run"] = "自动测试",
-        ["program"] = "TEST 编辑",
-        ["station"] = "设备 / CAN",
-        ["dbc"] = "DBC 编辑",
-        ["controller"] = "Controller",
+        ["program"] = "TEST 程序编辑",
+        ["station"] = "设备连接与 CAN",
+        ["dbc"] = "DBC 数据库",
+        ["controller"] = "控制器与按键配置",
         ["bench"] = "手动台架",
-        ["wave"] = "Wave Studio",
-        ["uds"] = "UDS Console",
-        ["flash"] = "CAN Flash",
-        ["scan"] = "编号绑定 / COM",
-        ["records"] = "记录报告",
+        ["wave"] = "波形分析",
+        ["uds"] = "UDS 诊断",
+        ["flash"] = "CAN 烧录",
+        ["scan"] = "扫码与生产配置",
+        ["records"] = "运行记录与报告",
         ["operations"] = "操作审计"
     };
 
@@ -312,7 +312,11 @@ public partial class MainWindow : Window
             Height = key == "bench" ? 900 : 840,
             MinWidth = key == "bench" ? 1130 : 860,
             MinHeight = key == "bench" ? 680 : 580,
-            Background = Brushes.White,
+            Background = Application.Current.TryFindResource("StudioBg") as Brush ?? Brushes.White,
+            FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
+            FontSize = 13,
+            UseLayoutRounding = true,
+            SnapsToDevicePixels = true,
             Owner = this,
             ShowInTaskbar = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
