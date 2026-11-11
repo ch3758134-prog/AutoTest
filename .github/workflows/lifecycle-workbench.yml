@@ -40,9 +40,6 @@ jobs:
           node --check tools/lifecycle/studio_verification_ui.js
           node --check tools/lifecycle/studio_plan_ui.js
           node --check tools/lifecycle/studio_restore_ui.js
-          node --check tools/lifecycle/studio_governance_ui.js
-          node --check tools/lifecycle/studio_definition_research_ui.js
-          node --check tools/lifecycle/studio_definition_suggestions_ui.js
           node --check tools/lifecycle/studio_semantics_ui.js
           node --check tools/lifecycle/studio_knowledge_ui.js
           node --check tools/lifecycle/studio_product_identity_ui.js
