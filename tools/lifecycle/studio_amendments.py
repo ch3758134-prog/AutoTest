@@ -166,7 +166,8 @@ class EngineeringAmendments:
                 result.append({"object_id":related,"title":obj["title"],"kind":obj["kind"],
                                "revision":obj["revision"],"state":obj["state"],
                                "relation":r["kind"],
-                               "direction":"downstream" if r["source_id"]==target_id else "upstream"})
+                               "direction":"source_to_target" if r["source_id"]==target_id else "target_to_source",
+                               "interpretation":"Recorded link orientation only; not an impact, dependency or causal verdict"})
         return result
 
     def list(self,project_id):
