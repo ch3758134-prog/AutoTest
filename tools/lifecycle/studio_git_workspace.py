@@ -135,7 +135,7 @@ def committed_project(root, project_id="autotest"):
                 proposal.get("reviewer") != actor or
                 proposal.get("reviewed_at") != decision["approved_at"]):
             raise RuleError("Canonical P0 identity differs from explicit owner approval")
-        if any(x.get("state") == "APPROVED" for x in archive.get("relations", [])):
+        if any(x.get("status") == "APPROVED" for x in archive.get("relations", [])):
             raise RuleError("P0 document approval does not approve engineering relations")
     return {
         "commit": commit, "path": path,
