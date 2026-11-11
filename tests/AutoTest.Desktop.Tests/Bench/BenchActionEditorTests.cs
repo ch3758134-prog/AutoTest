@@ -19,11 +19,14 @@ public sealed class BenchActionEditorTests
         vm.NewActionCommand.Execute();
         Assert.Single(vm.Actions);
         vm.SelectedAction!.Name = "工程定义的任意真实操作";
-        vm.AddSetKeysCommand.Execute();
+        // New action immediately exposes its first 20-switch editing step.
+        Assert.Single(vm.Steps);
+        vm.SelectedStep!.Name = "准备按键组合";
         vm.Switches[0].IsSelected = true;
         vm.Switches[12].IsSelected = true;
         vm.AddHoldCommand.Execute();
-        vm.SelectedStep!.DurationMs = 380;
+        vm.SelectedStep!.Name = "稳定保持阶段";
+        vm.SelectedStep.DurationMs = 380;
         vm.AddSetKeysCommand.Execute(); // explicit all-open switch state, NOT a hardcoded idle
         Assert.Equal(0u, vm.SelectedStep!.Mask);
         Assert.Equal(0, fake.Runs);
@@ -32,6 +35,8 @@ public sealed class BenchActionEditorTests
         Assert.Equal(3, fake.Saved!.Single().Steps.Count);
         Assert.Equal((1u << 0) | (1u << 12), fake.Saved.Single().Steps[0].Mask);
         Assert.Equal(380, fake.Saved.Single().Steps[1].DurationMs);
+        Assert.Equal("准备按键组合", fake.Saved.Single().Steps[0].Name);
+        Assert.Equal("稳定保持阶段", fake.Saved.Single().Steps[1].Name);
         Assert.Equal(0u, fake.Saved.Single().Steps[2].Mask);
         await vm.RunAsync();
         Assert.Equal(1, fake.Runs);
@@ -45,13 +50,13 @@ public sealed class BenchActionEditorTests
         var vm = new BenchKeyActionEditorViewModel(fake);
         vm.NewActionCommand.Execute();
         vm.AddHoldCommand.Execute();
+        vm.MoveStepUpCommand.Execute(); // invalid: starts by holding an undefined mask
         await vm.SaveAsync();
         Assert.True(vm.HasUnsavedChanges);
         Assert.Null(fake.Saved);
         await vm.RunAsync();
         Assert.Equal(0, fake.Runs);
-        vm.AddSetKeysCommand.Execute(); // inserts after the selected hold
-        vm.MoveStepUpCommand.Execute();  // now starts with SetKeys
+        vm.MoveStepDownCommand.Execute(); // restore valid order: SetKeys then Hold
         await vm.RunAsync();
         Assert.Equal(1, fake.Runs);
         Assert.True(vm.HasUnsavedChanges);
@@ -64,7 +69,6 @@ public sealed class BenchActionEditorTests
         var port = new ActionPort();
         var vm = new BenchKeyActionEditorViewModel(port);
         vm.NewActionCommand.Execute();
-        vm.AddSetKeysCommand.Execute();
         vm.AddHoldCommand.Execute();
         vm.SelectedStep!.DurationMs = 300;
         vm.SelectedStep.DurationMsText = "not-a-number";
@@ -87,7 +91,6 @@ public sealed class BenchActionEditorTests
         var vm = new BenchKeyActionEditorViewModel(port);
         await vm.LoadAsync();
         vm.NewActionCommand.Execute();
-        vm.AddSetKeysCommand.Execute();
         vm.Switches[4].IsSelected = true;
         port.ActiveProjectId = "ECU-B";
         await vm.RunAsync();
@@ -111,7 +114,6 @@ public sealed class BenchActionEditorTests
         var vm = new BenchKeyActionEditorViewModel(port);
         await vm.LoadAsync();
         vm.NewActionCommand.Execute();
-        vm.AddSetKeysCommand.Execute();
         await vm.SaveAsync();
         Assert.Single(vm.Actions);
         port.Saved = Array.Empty<BenchKeyAction>();
@@ -119,6 +121,51 @@ public sealed class BenchActionEditorTests
         await vm.LoadAsync();
         Assert.Empty(vm.Actions);
         Assert.False(vm.HasUnsavedChanges);
+    }
+
+    [Fact]
+    public async Task SelectedNamedKeyStepCanSendPhysicalMaskWithoutSavingWholeAction()
+    {
+        var port = new ActionPort();
+        var vm = new BenchKeyActionEditorViewModel(port);
+        vm.NewActionCommand.Execute();
+        vm.SelectedStep!.Name = "用户自定义短按触发";
+        vm.Switches[0].IsSelected = true;
+        vm.Switches[12].IsSelected = true;
+        Assert.Equal(0, port.DirectKeyCalls); // editing never sends
+        await vm.SendSelectedStepAsync();
+        Assert.Equal(1, port.DirectKeyCalls);
+        Assert.Equal((1u << 0) | (1u << 12), port.LastDirectMask);
+        Assert.Null(port.Saved);
+        Assert.True(vm.HasUnsavedChanges);
+        Assert.Contains("用户自定义短按触发", vm.SelectedStepResult);
+        vm.ClearMaskCommand.Execute();
+        await vm.SendSelectedStepAsync();
+        Assert.Equal(1, port.ReleaseCalls); // deliberate zero mask = release
+    }
+
+    [Fact]
+    public async Task PerStepNamesSurviveProjectStoreReloadAndRemainEditable()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "autotest-named-key-steps-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var file = Path.Combine(root, "named.autotest-project.json");
+        File.WriteAllText(file, "{}");
+        var id = Guid.NewGuid().ToString("D");
+        try
+        {
+            var store = new ProjectBenchActionsStore(() => file, () => id);
+            var action = new BenchKeyAction(Guid.NewGuid().ToString("D"), "实验 A", new[] {
+                BenchActionStep.SetKeys(0x04001, "第一次触发"),
+                BenchActionStep.Hold(150, "等待调试报文"),
+                BenchActionStep.SetKeys(0, "全部断开")});
+            await store.SaveAsync(new[] { action }, CancellationToken.None);
+            var loaded = (await store.LoadAsync(CancellationToken.None)).Single();
+            Assert.Equal(action.Steps.ToArray(), loaded.Steps.ToArray());
+            Assert.Equal("第一次触发", loaded.Steps[0].Name);
+            Assert.Equal("等待调试报文", loaded.Steps[1].Name);
+        }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
@@ -144,7 +191,6 @@ public sealed class BenchActionEditorTests
         var fake = new ActionPort { WaitUntilCancelled = true };
         var vm = new BenchKeyActionEditorViewModel(fake);
         vm.NewActionCommand.Execute();
-        vm.AddSetKeysCommand.Execute();
         await vm.SaveAsync();
         var running = vm.RunAsync();
         Assert.True(vm.IsActionRunning);
@@ -200,6 +246,22 @@ public sealed class BenchActionEditorTests
         public IReadOnlyList<BenchKeyAction>? Saved { get; set; }
         public BenchKeyAction? LastAction { get; private set; }
         public int Runs { get; private set; }
+        public int DirectKeyCalls { get; private set; }
+        public int ReleaseCalls { get; private set; }
+        public uint LastDirectMask { get; private set; }
+        public Task<BenchOperationResult> ApplyPhysicalKeyMaskAsync(uint mask, CancellationToken ct)
+        {
+            DirectKeyCalls++;
+            LastDirectMask = mask;
+            return Task.FromResult(new BenchOperationResult(true, "key-op", "key-corr", 1,
+                "KEY_SIM", "ACK", null, null, null, BenchEvidenceSource.Physical, "physical fixture"));
+        }
+        public Task<BenchOperationResult> ReleaseAllPhysicalKeysAsync(CancellationToken ct)
+        {
+            ReleaseCalls++;
+            return Task.FromResult(new BenchOperationResult(true, "key-release", "key-corr", 1,
+                "KEY_SIM", "ACK", null, null, null, BenchEvidenceSource.Physical, "physical fixture"));
+        }
         public bool WaitUntilCancelled { get; set; }
 
         public Task<IReadOnlyList<BenchKeyAction>> LoadKeyActionsAsync(CancellationToken ct) =>
