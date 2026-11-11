@@ -25,6 +25,8 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     private readonly SemaphoreSlim _saveGate = new(1,1);
     private readonly string _auditPath;
     private readonly ProjectBenchActionsStore? _actionStore;
+    private readonly ProjectBenchCanStore? _canStore;
+    private readonly Func<BenchCanMessage, long, bool, bool>? _approveCan;
     private readonly Func<BenchKeyAction, long, bool>? _approveKeyAction;
     private readonly Func<string?>? _projectPath;
     private readonly Func<string?>? _projectId;
@@ -35,13 +37,18 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
         Func<bool>? testRunning = null,
         Func<byte,long,bool>? approveSolenoid = null,
         Func<string?>? projectPath = null, Func<string?>? projectId = null,
-        Func<BenchKeyAction, long, bool>? approveKeyAction = null)
+        Func<BenchKeyAction, long, bool>? approveKeyAction = null,
+        Func<BenchCanMessage, long, bool, bool>? approveCan = null)
     {
         _projectPath = projectPath;
         _projectId = projectId;
         _approveKeyAction = approveKeyAction;
+        _approveCan = approveCan;
         if (projectPath is not null && projectId is not null)
+        {
             _actionStore = new ProjectBenchActionsStore(projectPath, projectId);
+            _canStore = new ProjectBenchCanStore(projectPath, projectId);
+        }
         _approveIgn = approveIgn;
         _testRunning = testRunning;
         _approveSolenoid = approveSolenoid;
@@ -404,6 +411,115 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
 
     private static BenchOperationResult Reject(string code,string detail,BenchEvidenceSource source)
         => new(false,null,null,null,null,null,null,code,detail,source,null);
+
+    public Task<IReadOnlyList<BenchCanMessage>> LoadCanMessagesAsync(CancellationToken ct) =>
+        _canStore is null
+            ? Task.FromException<IReadOnlyList<BenchCanMessage>>(
+                new InvalidOperationException("当前未绑定已保存的工程 CAN 配置。"))
+            : _canStore.LoadAsync(ct);
+
+    public Task SaveCanMessagesAsync(IReadOnlyList<BenchCanMessage> messages, CancellationToken ct) =>
+        _canStore is null
+            ? Task.FromException(new InvalidOperationException("当前未绑定已保存的工程 CAN 配置。"))
+            : _canStore.SaveAsync(messages, ct);
+
+    private async Task<string?> CanPreflightAsync(BenchCanMessage message, CancellationToken ct)
+    {
+        message.Validate();
+        if (_canStore is null)
+            return "CAN 发送配置尚未绑定正式工程。";
+        var saved = (await _canStore.LoadAsync(ct)).FirstOrDefault(m => m.Id == message.Id);
+        if (saved != message)
+            return "所选 CAN 报文与当前工程的已保存配置不一致，请先保存并刷新。";
+        if (_testRunning?.Invoke() == true)
+            return "自动 TEST 正在执行，禁止手动 CAN1 发送。";
+        if (_hardware() is not { State: UsbSessionState.Connected,
+            ProtocolVersionVerified: true, Generation: > 0 } hardware ||
+            hardware.PhysicalCanToolFlashActive)
+            return "当前没有经过版本验证的空闲真实 CAN1 主控会话。";
+        return null;
+    }
+
+    public async Task<BenchOperationResult> SendCanOnceAsync(BenchCanMessage message, CancellationToken ct)
+    {
+        var problem = await CanPreflightAsync(message, ct);
+        if (problem is not null) return Reject("MANUAL_CAN_PREFLIGHT", problem, BenchEvidenceSource.Physical);
+        var physical = _hardware()!;
+        var gen = physical.Generation;
+        if (_approveCan?.Invoke(message, gen, false) != true)
+            return Reject("MANUAL_CAN_NOT_APPROVED", "操作员取消 CAN1 单次发送。", BenchEvidenceSource.Physical);
+        if (!ReferenceEquals(_hardware(), physical) ||
+            _testRunning?.Invoke() == true || physical.Generation != gen ||
+            physical.PhysicalCanToolFlashActive)
+            return Reject("MANUAL_CAN_CONTEXT_CHANGED", "授权期间真实主控会话或测试状态变化。", BenchEvidenceSource.Physical);
+        var frame = AutoTest.Contracts.CanFrame.Create(AutoTest.Contracts.BusRole.DutCan,
+            message.Extended, message.ArbitrationId, message.Payload());
+        var r = await physical.SendPhysicalManualCan1Async(frame,
+            HardwareBenchController.PhysicalManualCanConfirmation(frame, gen), ct);
+        bool accepted = r.Outcome == Outcome.Accepted &&
+            r.Value is { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged };
+        return new BenchOperationResult(accepted,
+            r.Value?.OperationId.ToString("D"),
+            r.OperationId.ToString("D"), gen,
+            $"CAN1 ID=0x{message.ArbitrationId:X} DATA={message.DataHex}",
+            accepted ? "MAIN_CONTROLLER_CAN_SEND_ACK" : "UNKNOWN_OR_DENIED",
+            r.Value?.Evidence.ToString(), r.FailureCode, r.Failure?.Message,
+            BenchEvidenceSource.Physical,
+            accepted ? "主控接受 CAN1 发送；未证明 ECU 已接收或执行。" :
+                "无可靠 CAN1 发送 ACK；总线实际状态未知。");
+    }
+
+    /// <summary>
+    /// Actual CAN1 frames, scheduled by the Windows host, not firmware's
+    /// unverified board periodic scheduler. Bound the operator's authorization
+    /// to one frozen message, session, project, 10000 frames and 30 minutes.
+    /// </summary>
+    public async Task<BenchActionExecution> RunCanPeriodicAsync(BenchCanMessage message,
+        IProgress<BenchCanPeriodicProgress>? progress, CancellationToken ct)
+    {
+        var problem = await CanPreflightAsync(message, ct);
+        if (problem is not null) return new(false, false, false, problem);
+        var physical = _hardware()!;
+        var gen = physical.Generation;
+        var projectId = _projectId!();
+        var projectPath = _projectPath!();
+        if (_approveCan?.Invoke(message, gen, true) != true)
+            return new(false, false, false, "操作员取消真实 CAN1 周期发送。");
+        var frame = AutoTest.Contracts.CanFrame.Create(AutoTest.Contracts.BusRole.DutCan,
+            message.Extended, message.ArbitrationId, message.Payload());
+        var confirmation = HardwareBenchController.PhysicalManualCanConfirmation(frame, gen);
+        var started = DateTimeOffset.UtcNow;
+        try
+        {
+            for (long count = 0; count < 10000 &&
+                DateTimeOffset.UtcNow - started < TimeSpan.FromMinutes(30); count++)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!ReferenceEquals(_hardware(), physical) ||
+                    physical.State != UsbSessionState.Connected ||
+                    physical.Generation != gen || !physical.ProtocolVersionVerified ||
+                    physical.PhysicalCanToolFlashActive || _testRunning?.Invoke() == true ||
+                    _projectId!() != projectId || _projectPath!() != projectPath)
+                    return new(false, false, false,
+                        "CAN 周期任务中止：工程/USB/TEST/Flash 状态已变化，最后帧状态 UNKNOWN。");
+                var r = await physical.SendPhysicalManualCan1Async(frame, confirmation, ct);
+                if (r.Outcome != Outcome.Accepted ||
+                    r.Value is not { Ack: AutoTest.Contracts.AckKind.DeviceAcknowledged })
+                    return new(false, false, false,
+                        $"第 {count + 1} 帧没有可靠主控 ACK：{r.FailureCode ?? "UNKNOWN"}，周期已停止。");
+                progress?.Report(new BenchCanPeriodicProgress(count + 1,
+                    $"PC 定时真实 CAN1 发送 · 主控 ACK {count + 1} 帧；非板端硬实时周期"));
+                await Task.Delay(message.PeriodMs, ct);
+            }
+            return new(true, false, false,
+                "已达到周期发送安全上限（10000 帧/30 分钟），自动停止；需要重新授权。");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return new(false, true, false,
+                "CAN1 周期发送已停止；若取消发生在 USB 发送期间，最后一帧实际结果未知。");
+        }
+    }
 
     public Task<IReadOnlyList<BenchKeyAction>> LoadKeyActionsAsync(CancellationToken ct) =>
         _actionStore is null
