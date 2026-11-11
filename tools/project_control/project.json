@@ -1,0 +1,354 @@
+{
+  "schema": "project-control/1",
+  "project": {
+    "id": "autotest",
+    "name": "AutoTest",
+    "subtitle": "通用 ECU 软硬件一体化自动测试系统",
+    "identity": "面向不同型号 ECU 的可配置软硬件一体化自动测试系统。依托真实台架提供外部刺激与响应采集，由上位机组织测试执行、数据分析与结果判定，并集成测试所需的专业工具。",
+    "status": "ACTIVE_RESEARCH",
+    "release": "近期目标 · 真实 ECU 自动测试闭环",
+    "objective": "先形成可编辑、可执行、可重跑的真实 ECU 自动测试过程：外部刺激、连续响应采集、波形/时序判定，以及完整运行记录。",
+    "scope_note": "近期目标决定先后顺序，不削减已确认的通用 ECU 产品定位。后续专业工具、扫码及生产应用依实际研究纳入计划。",
+    "approval": {
+      "status": "OWNER_APPROVED_IN_SOURCE",
+      "document": "P0 产品定义与立项说明 V0.1",
+      "id": "AT-P0-CHARTER-V01-OWNER-20261110",
+      "note": "负责人批准的是 P0 文件，不等于 P0 整阶段 Gate 通过；该审批记录来源于尚未合并 main 的旧候选分支。",
+      "source": "E-P0"
+    },
+    "plan_status": "PROPOSED_NOT_APPROVED",
+    "plan_note": "本计划是供项目负责人核实的重构演示候选；绝不等同于已批准项目计划。"
+  },
+  "workflow": {
+    "status": "REFERENCE_ONLY",
+    "note": "P0、G0、G1 等属于既定螺旋研发流程。本工作台演示阶段关联，但暂不代替经过批准的完整过程定义和 Gate 规则。",
+    "phases": [
+      {
+        "id": "P0",
+        "name": "产品定义",
+        "status": "DOCUMENT_APPROVED_GATE_UNKNOWN",
+        "summary": "产品定义 V0.1 已获负责人批准；阶段 Gate 状态需单独核实。"
+      },
+      {
+        "id": "G0",
+        "name": "现状调查",
+        "status": "HISTORICAL_EVIDENCE",
+        "summary": "已存在台架、固件和历史软件资产的研究资料；不能推导 Gate 已批准。"
+      },
+      {
+        "id": "G1",
+        "name": "系统需求",
+        "status": "REVIEW_REQUESTED",
+        "summary": "完整系统需求研究 V1.0 r4 已整理，尚未获得负责人审批。"
+      },
+      {
+        "id": "G2",
+        "name": "系统架构",
+        "status": "NOT_BASELINED",
+        "summary": "有历史候选设计，但新 P0/G1 下的整体架构尚未批准。"
+      },
+      {
+        "id": "G3",
+        "name": "详细设计",
+        "status": "NOT_BASELINED",
+        "summary": "保留历史资料作证据；正式详细设计仍需核对有效需求与架构。"
+      },
+      {
+        "id": "G4",
+        "name": "实施与验证",
+        "status": "HISTORICAL_CODE_EXISTS",
+        "summary": "GitHub 中存在候选代码，真实自动测试闭环尚无完整验收通过证据。"
+      }
+    ]
+  },
+  "deliverables": [
+    {
+      "id": "D-100",
+      "parent": null,
+      "title": "近期交付：真实 ECU 自动测试闭环",
+      "type": "RELEASE_GOAL",
+      "scope": "PROPOSED_PLANNING_BREAKDOWN",
+      "description": "从真实 DUT 的外部刺激到可解释判定与记录的完整使用结果",
+      "acceptance": "同一测试程序、同一次真实运行的完整证据链",
+      "source_ids": [
+        "E-P0",
+        "E-G1",
+        "E-VERIFICATION"
+      ]
+    },
+    {
+      "id": "D-110",
+      "parent": "D-100",
+      "title": "工程资源与图形化测试程序",
+      "type": "PRODUCT_CAPABILITY",
+      "scope": "CANDIDATE",
+      "description": "编辑、保存、重开、运行，并正确引用测试资源",
+      "acceptance": "保存和重开后可继续在真实流程中执行",
+      "source_ids": [
+        "E-G1"
+      ]
+    },
+    {
+      "id": "D-120",
+      "parent": "D-100",
+      "title": "真实台架外部刺激",
+      "type": "PRODUCT_CAPABILITY",
+      "scope": "CANDIDATE",
+      "description": "CAN 周期环境、IGN、KEY_SIM 等适用刺激可按程序协同",
+      "acceptance": "真实 DUT 对应外部动作可观察；连续 CAN 不被不相关操作中断",
+      "source_ids": [
+        "E-G1"
+      ]
+    },
+    {
+      "id": "D-130",
+      "parent": "D-100",
+      "title": "连续采集与波形判定",
+      "type": "PRODUCT_CAPABILITY",
+      "scope": "CANDIDATE",
+      "description": "原始 CAN、DBC 解码与时间序列构成判据的可靠输入",
+      "acceptance": "真实信号时序可追溯，能区别缺失数据与有效零值",
+      "source_ids": [
+        "E-G1",
+        "E-VERIFICATION"
+      ]
+    },
+    {
+      "id": "D-140",
+      "parent": "D-100",
+      "title": "运行记录与结果复核",
+      "type": "PRODUCT_CAPABILITY",
+      "scope": "CANDIDATE",
+      "description": "每次运行的程序、资源、刺激、观测、Verdict 和异常可对应",
+      "acceptance": "独立 Run 可重复、核查并追踪证据完整性",
+      "source_ids": [
+        "E-VERIFICATION"
+      ]
+    },
+    {
+      "id": "D-200",
+      "parent": null,
+      "title": "后续交付：工具和生产场景持续完善",
+      "type": "FUTURE_DELIVERY",
+      "scope": "NOT_COMMITTED_FOR_NEAR_TERM",
+      "description": "CAN/DBC、UDS、烧录、波形专业工具，扫码和生产应用继续按需求发展",
+      "acceptance": "下一轮独立定义，不作为近期完整闭环的强制前置",
+      "source_ids": [
+        "E-P0"
+      ]
+    }
+  ],
+  "work": [
+    {
+      "id": "W-101",
+      "title": "审查 G1 完整系统需求研究",
+      "deliverable": "D-100",
+      "kind": "REVIEW",
+      "phase": "G1",
+      "owner": "工程总协调 / 负责人",
+      "state": "WAITING_OWNER",
+      "horizon": "NOW",
+      "priority": "P1",
+      "depends": [],
+      "blocking": [],
+      "source_ids": [
+        "E-G1"
+      ],
+      "output": "正式审查意见或需要补充研究的具体问题",
+      "exit": "明确审查结论，不把研究完成解释为 Gate 通过"
+    },
+    {
+      "id": "W-102",
+      "title": "核对真实台架事实与候选实现差异",
+      "deliverable": "D-120",
+      "kind": "RESEARCH",
+      "phase": "G0",
+      "owner": "设备方向 ChatGPT",
+      "state": "PLANNED",
+      "horizon": "NOW",
+      "priority": "P1",
+      "depends": [],
+      "blocking": [],
+      "source_ids": [
+        "E-G1",
+        "E-VERIFICATION"
+      ],
+      "output": "事实/候选源码/实测证据的分层对照和缺失证据",
+      "exit": "指出哪些已实测、哪些只是资料或候选实现"
+    },
+    {
+      "id": "W-103",
+      "title": "复核已有源码与目标能力差距",
+      "deliverable": "D-100",
+      "kind": "RESEARCH",
+      "phase": "G1",
+      "owner": "工程总协调 / 集成验证",
+      "state": "PLANNED",
+      "horizon": "NOW",
+      "priority": "P1",
+      "depends": [],
+      "blocking": [],
+      "source_ids": [
+        "E-G1",
+        "E-CODE"
+      ],
+      "output": "确切提交的代码能力核对及缺口",
+      "exit": "区分代码存在、CI 通过、真实 DUT 验收三个层次"
+    },
+    {
+      "id": "W-201",
+      "title": "完成系统级架构与设计审查",
+      "deliverable": "D-100",
+      "kind": "DESIGN",
+      "phase": "G2",
+      "owner": "工程总协调 + 相关专业",
+      "state": "DEPENDENCY_WAIT",
+      "horizon": "NEXT",
+      "priority": "P1",
+      "depends": [
+        "W-101"
+      ],
+      "blocking": [
+        "G1 正式需求基线尚未批准"
+      ],
+      "source_ids": [
+        "E-G1"
+      ],
+      "output": "经审查的总体架构与接口关系",
+      "exit": "经批准的设计基线；提前开展研究不等于正式放行"
+    },
+    {
+      "id": "W-301",
+      "title": "依据受控设计实现并集成核心功能",
+      "deliverable": "D-100",
+      "kind": "IMPLEMENT",
+      "phase": "G4",
+      "owner": "专业 ChatGPT / 本地 Codex",
+      "state": "NOT_SCHEDULED",
+      "horizon": "LATER",
+      "priority": "P1",
+      "depends": [
+        "W-201"
+      ],
+      "blocking": [
+        "缺少当前正式架构与详细设计输入"
+      ],
+      "source_ids": [
+        "E-CODE"
+      ],
+      "output": "按准确输入版本的 PR、构建和测试记录",
+      "exit": "实施准入、代码审查与集成结果均可核验"
+    },
+    {
+      "id": "W-401",
+      "title": "执行真实 ECU 端到端闭环验收",
+      "deliverable": "D-100",
+      "kind": "VERIFY",
+      "phase": "G4",
+      "owner": "集成验证 + 现场负责人",
+      "state": "NOT_SCHEDULED",
+      "horizon": "LATER",
+      "priority": "P1",
+      "depends": [
+        "W-301"
+      ],
+      "blocking": [
+        "尚无完整真实闭环测试记录"
+      ],
+      "source_ids": [
+        "E-VERIFICATION"
+      ],
+      "output": "同一 Run 关联的刺激、响应、波形、判定和记录",
+      "exit": "按八项观察条件核验真实证据，并由负责人作决定"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "Q-1",
+      "title": "G1 完整需求研究是否满足正式审查要求？",
+      "type": "REVIEW",
+      "status": "NEEDS_OWNER",
+      "description": "研究报告已整理完成，但需求尚未批准。应阅读全文并决定补充研究、修订或批准的范围。",
+      "source_ids": [
+        "E-G1"
+      ],
+      "work_ids": [
+        "W-101"
+      ],
+      "owner": "负责人"
+    },
+    {
+      "id": "Q-2",
+      "title": "近期工作计划是否采用这份候选分解？",
+      "type": "PLAN_BASELINE",
+      "status": "PROPOSAL",
+      "description": "工作分解与任务顺序仅是演示性建议，需要按实际项目目标及现有实现审查，不能作为已批准承诺。",
+      "source_ids": [
+        "E-P0",
+        "E-G1"
+      ],
+      "work_ids": [
+        "W-102",
+        "W-103"
+      ],
+      "owner": "负责人"
+    },
+    {
+      "id": "Q-3",
+      "title": "已有候选实现与新需求不一致时怎么调整？",
+      "type": "RISK",
+      "status": "RESEARCH_REQUIRED",
+      "description": "应基于真实 Git HEAD、源码与实测进行差异审查，明确哪些保留、替换、停止，而不是迁就旧代码。",
+      "source_ids": [
+        "E-CODE",
+        "E-G1"
+      ],
+      "work_ids": [
+        "W-103"
+      ],
+      "owner": "工程总协调"
+    }
+  ],
+  "sources": [
+    {
+      "id": "E-P0",
+      "kind": "APPROVED_DOCUMENT_RECORD",
+      "label": "P0 V0.1 已批准产品定义",
+      "url": "https://github.com/ch3758134-prog/AutoTest/blob/1c562a8cb192b3a805c23ef94a4aac68dc227067/docs/engineering-control/projects/autotest/snapshot.json",
+      "revision": "r2 / AT-P0-CHARTER-V01-OWNER-20261110",
+      "note": "批准记录位于旧 Draft PR 的工程归档，不宣称 main 已纳入。"
+    },
+    {
+      "id": "E-G1",
+      "kind": "UNAPPROVED_RESEARCH",
+      "label": "G1 完整系统需求研究 V1.0 r4",
+      "url": "https://github.com/ch3758134-prog/AutoTest/blob/1c562a8cb192b3a805c23ef94a4aac68dc227067/docs/engineering-control/projects/autotest/snapshot.json",
+      "revision": "r4 / NOT APPROVED",
+      "note": "研究完整，不等于 G1 Gate、设计或编码准入通过。"
+    },
+    {
+      "id": "E-VERIFICATION",
+      "kind": "UNEXECUTED_CRITERIA",
+      "label": "真实 ECU 自动测试闭环 V-01～V-08",
+      "url": "https://github.com/ch3758134-prog/AutoTest/blob/1c562a8cb192b3a805c23ef94a4aac68dc227067/docs/engineering-control/projects/autotest/snapshot.json",
+      "revision": "r1 / NOT_RUN",
+      "note": "是未来观察标准，不是已经完成的实机结果。"
+    },
+    {
+      "id": "E-CODE",
+      "kind": "CODE_ASSET_REQUIRES_REVIEW",
+      "label": "AutoTest GitHub 现有代码和候选 PR",
+      "url": "https://github.com/ch3758134-prog/AutoTest",
+      "revision": "需核对确切实现 SHA",
+      "note": "源码和候选 PR 存在，但不能从这一事实推导整体验收。"
+    }
+  ],
+  "collaboration": {
+    "mode": "HUMAN_ORCHESTRATED_CHATGPT_GITHUB_CODEX",
+    "coordinator": "ChatGPT 网页端工程总协调对话",
+    "specialists": "按复杂度安排的专业 ChatGPT 对话，可负责研究、设计和后续编码",
+    "verifier": "集成验证对话；需要时专项独立审查",
+    "executor": "本地 Codex 按明确输入执行并提交可核验回执",
+    "boundary": "对话由负责人触发；GitHub 保存可复核交接记录。系统不提供自动 Agent Loop。"
+  }
+}
