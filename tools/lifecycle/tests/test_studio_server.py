@@ -153,7 +153,7 @@ class StudioApiTest(unittest.TestCase):
     def test_version_endpoint_identifies_editable_studio(self):
         status, version = self.request("/api/studio/version")
         self.assertEqual(status, 200)
-        self.assertEqual(version["version"], "1.0")
+        self.assertEqual(version["version"], "1.1")
         self.assertEqual(version["mode"], "editable")
         self.assertFalse(version["legacy"])
 
