@@ -98,6 +98,10 @@ public sealed class BenchActionEditorTests
         port.ActiveProjectId = "ECU-A";
         await vm.RunAsync();
         Assert.Equal(1, port.Runs);
+        port.ActiveProjectId = "ECU-B";
+        await vm.DiscardDraftAndReloadAsync();
+        Assert.Empty(vm.Actions);
+        Assert.False(vm.HasUnsavedChanges);
     }
 
     [Fact]
