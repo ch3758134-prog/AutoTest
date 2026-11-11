@@ -49,9 +49,11 @@ class Verification:
             raise RuleError("Invalid execution level or result")
         revision = data.get("test_revision")
         configuration = text_value(data.get("configuration",""),"configuration",limit=3000,mandatory=True)
-        sha = text_value(data.get("source_sha",""),"source SHA",limit=40,mandatory=True)
-        if not re.fullmatch(r"[0-9a-fA-F]{40}",sha):
+        sha = text_value(data.get("source_sha",""),"source SHA",limit=40)
+        if sha and not re.fullmatch(r"[0-9a-fA-F]{40}",sha):
             raise RuleError("Source SHA must be a full 40-character Git commit")
+        if not sha and level in ("UNIT","INTEGRATION"):
+            raise RuleError("Software test execution requires a full Git source SHA")
         evidence = text_value(data.get("evidence_ref",""),"raw evidence reference",limit=5000,mandatory=True)
         environment = text_value(data.get("environment",""),"execution environment",limit=3000,mandatory=True)
         actor = text_value(data.get("actor",""),"operator",limit=150,mandatory=True)
