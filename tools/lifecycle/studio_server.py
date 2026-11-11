@@ -19,6 +19,7 @@ from studio_change import ChangeReview
 from studio_verification import Verification
 from studio_governance import DefinitionGovernance
 from studio_definition_research import DefinitionResearch
+from studio_definition_suggestions import DefinitionSuggestions
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -36,6 +37,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     verification = Verification(store)
     governance = DefinitionGovernance(store)
     definition_research = DefinitionResearch(store)
+    definition_suggestions = DefinitionSuggestions(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/0.8"
 
@@ -129,6 +131,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write(governance.detail(params.get("id", "")))
                 if path == "/api/studio/governance/research":
                     return self.write(definition_research.list(params.get("change", "")))
+                if path == "/api/studio/governance/suggestions":
+                    return self.write(definition_suggestions.list(params.get("project", "")))
                 if path == "/api/studio/governance/gate":
                     return self.write(governance.gate(params.get("id", "")))
                 if path == "/api/studio/governance/invalidations":
@@ -177,7 +181,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
             owner_request = secrets.compare_digest(self.headers.get("X-Local-Token", ""), token)
             manager_request = (request_path in (
                                    "/api/studio/management/propose",
-                                   "/api/studio/governance/research/submit")
+                                   "/api/studio/governance/research/submit",
+                                   "/api/studio/governance/suggest")
                                and manager_token is not None and
                                secrets.compare_digest(self.headers.get("X-Manager-Token", ""),
                                                       manager_token))
@@ -235,6 +240,25 @@ def handler_factory(store, token, repo=None, manager_token=None):
                         data.get("proposed"),data.get("reason",""),
                         data.get("source_refs"),data.get("proposer",""),
                         data.get("expected_digest",""))
+                elif path == "/api/studio/governance/suggest":
+                    answer = definition_suggestions.suggest(
+                        data.get("project_id",""),data.get("proposed"),
+                        data.get("reason",""),data.get("source_refs"),
+                        data.get("proposer",""),
+                        "OWNER_CANDIDATE" if owner_request else "AI_CANDIDATE",
+                        data.get("expected_digest",""))
+                elif path == "/api/studio/governance/suggest/accept":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may accept product suggestions"},403)
+                    answer = definition_suggestions.accept(
+                        data.get("id",""),data.get("reviewer",""),
+                        data.get("rationale",""),data.get("expected_base_digest",""))
+                elif path == "/api/studio/governance/suggest/reject":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may reject product suggestions"},403)
+                    answer = definition_suggestions.reject(
+                        data.get("id",""),data.get("reviewer",""),
+                        data.get("rationale",""))
                 elif path == "/api/studio/governance/research/submit":
                     answer = definition_research.submit(
                         data.get("task_id",""),data.get("expected_revision"),
