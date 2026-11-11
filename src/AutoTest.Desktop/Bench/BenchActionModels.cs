@@ -9,10 +9,15 @@ namespace AutoTest.Desktop.Bench;
 // Neither action names nor a "neutral"/"released" switch mask are hardcoded.
 public enum BenchActionStepKind { SetKeys, Hold }
 
-public sealed record BenchActionStep(BenchActionStepKind Kind, uint Mask, int DurationMs)
+// Step names describe an engineer's own ECU experiment, not any hardcoded
+// "park/release" semantics. Null supports existing pre-name project files.
+public sealed record BenchActionStep(
+    BenchActionStepKind Kind, uint Mask, int DurationMs, string? Name = null)
 {
-    public static BenchActionStep SetKeys(uint mask) => new(BenchActionStepKind.SetKeys, mask, 0);
-    public static BenchActionStep Hold(int milliseconds) => new(BenchActionStepKind.Hold, 0, milliseconds);
+    public static BenchActionStep SetKeys(uint mask, string? name = null) =>
+        new(BenchActionStepKind.SetKeys, mask, 0, name);
+    public static BenchActionStep Hold(int milliseconds, string? name = null) =>
+        new(BenchActionStepKind.Hold, 0, milliseconds, name);
 }
 
 public sealed record BenchKeyAction(string Id, string Name, IReadOnlyList<BenchActionStep> Steps);
@@ -41,6 +46,8 @@ public static class BenchActionValidation
         foreach (var step in action.Steps)
         {
             if (step is null) throw new ArgumentException("动作步骤不能为空。");
+            if (step.Name is not null && step.Name.Trim().Length > 100)
+                throw new ArgumentException("步骤名称不能超过 100 个字符。");
             switch (step.Kind)
             {
                 case BenchActionStepKind.SetKeys when step.Mask <= MaximumKeyMask && step.DurationMs == 0:
