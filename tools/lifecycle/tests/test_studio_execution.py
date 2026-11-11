@@ -11,6 +11,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from studio_store import Store,RuleError
 from studio_execution import Execution, GitHubReader,require_repo
 from studio_product_identity import ProductIdentity
+from studio_amendments import EngineeringAmendments
 
 REPO="ch3758134-prog/AutoTest"
 
@@ -172,8 +173,20 @@ class ExecutionTests(unittest.TestCase):
         wp,design=self._work()
         self.engine.bind(wp["id"],17,"DEVICE")
         self.engine.dispatch(wp["id"],"Owner","Ready")
-        self.store.update_object(design["id"],{"expected_revision":design["revision"],
-                            "body":"Changed architecture, needs review"})
+        with self.assertRaisesRegex(RuleError,"reviewed engineering amendment"):
+            self.store.update_object(design["id"],{
+                "expected_revision":design["revision"],
+                "body":"Changed architecture, needs review"})
+        amendments=EngineeringAmendments(self.store)
+        candidate=amendments.propose(self.project,design["id"],design["revision"],
+            {"body":"Changed architecture, needs review"},
+            "Field findings invalidate the old detailed design",
+            ["review://updated-design"],[],"AI","AI_CANDIDATE")
+        amendments.review(candidate["id"],design["revision"],"REVISE",
+            "Owner","Design change affects the CAN hub implementation",
+            ["test://design-impact-reviewed"])
+        amendments.apply(candidate["id"],design["revision"],"Owner",
+            "Generate unapproved replacement design revision")
         info=self.engine.overview(self.project)
         self.assertEqual(info["tasks"][0]["effective_state"],"BLOCKED_BY_CHANGED_DESIGN")
         self.assertEqual(self.engine.queue(self.project,"DEVICE"),[])
