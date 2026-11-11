@@ -319,6 +319,21 @@
         </ItemsControl.ItemTemplate>
        </ItemsControl>
       </ScrollViewer>
+      <TextBlock Grid.Row="2" Text="还没有按键动作。点击右上角“+ 新建动作”，\n动作就会作为按钮出现在这里。"
+       HorizontalAlignment="Center" VerticalAlignment="Center"
+       TextAlignment="Center" TextWrapping="Wrap" FontSize="13"
+       Foreground="#7A8FA5" Margin="14">
+       <TextBlock.Style>
+        <Style TargetType="TextBlock">
+         <Setter Property="Visibility" Value="Collapsed"/>
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding KeyActions.Actions.Count}" Value="0">
+           <Setter Property="Visibility" Value="Visible"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style>
+       </TextBlock.Style>
+      </TextBlock>
       <StackPanel Grid.Row="3">
        <WrapPanel Margin="0,0,0,5">
         <Button Content="编辑选中动作" Click="EditSelectedKeyAction_Click"/>
