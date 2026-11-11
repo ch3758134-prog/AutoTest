@@ -65,7 +65,7 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
             self.store.update_project(self.project["id"],{"body":"Unchecked replacement"})
         change=self.proposal()
         self.assertFalse(change["gate"]["ready"])
-        self.assertEqual(len(change["gate"]["missing_domains"]),len(DOMAINS))
+        self.assertEqual(change["gate"]["missing_domains"],["POSITIONING"])
         with self.assertRaisesRegex(RuleError,"blocked"):
             self.g.publish(change["change"]["id"],"Owner","Approve without study",
                            change["change"]["base_digest"])
