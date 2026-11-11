@@ -23,6 +23,7 @@ from studio_definition_suggestions import DefinitionSuggestions
 from studio_semantics import semantic_context
 from studio_knowledge import EngineeringKnowledge
 from studio_product_identity import ProductIdentity
+from studio_amendments import EngineeringAmendments
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -43,6 +44,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     definition_suggestions = DefinitionSuggestions(store)
     knowledge = EngineeringKnowledge(store)
     product_identity = ProductIdentity(store)
+    amendments = EngineeringAmendments(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/1.2"
 
@@ -164,6 +166,10 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     return self.write(product_identity.detail(params.get("id","")))
                 if path == "/api/studio/product-identity/invalidations":
                     return self.write(product_identity.invalidations(params.get("project","")))
+                if path == "/api/studio/amendments":
+                    return self.write(amendments.list(params.get("project","")))
+                if path == "/api/studio/amendments/detail":
+                    return self.write(amendments.detail(params.get("id","")))
                 if path == "/api/studio/knowledge":
                     return self.write(knowledge.list(params.get("project","")))
                 if path == "/api/studio/management/context":
@@ -206,6 +212,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
                                    "/api/studio/governance/research/submit",
                                    "/api/studio/governance/suggest",
                                    "/api/studio/product-identity/propose",
+                                   "/api/studio/amendments/propose",
                                    "/api/studio/knowledge/intake",
                                    "/api/studio/knowledge/propose",
                                    "/api/studio/knowledge/revise",
@@ -310,6 +317,26 @@ def handler_factory(store, token, repo=None, manager_token=None):
                         data.get("proposed"),data.get("reason",""),
                         data.get("source_refs"),data.get("proposer",""),
                         data.get("expected_digest",""))
+                elif path == "/api/studio/amendments/propose":
+                    answer = amendments.propose(
+                        data.get("project_id",""),data.get("target_id",""),
+                        data.get("base_revision"),data.get("proposed_patch"),
+                        data.get("reasoning",""),data.get("source_refs"),
+                        data.get("knowledge_ids",[]),data.get("actor",""),
+                        "OWNER_CANDIDATE" if owner_request else "AI_CANDIDATE")
+                elif path == "/api/studio/amendments/review":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may review engineering amendments"},403)
+                    answer = amendments.review(
+                        data.get("id",""),data.get("expected_target_revision"),
+                        data.get("decision",""),data.get("reviewer",""),
+                        data.get("reason",""),data.get("evidence_refs"))
+                elif path == "/api/studio/amendments/apply":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may apply engineering amendments"},403)
+                    answer = amendments.apply(
+                        data.get("id",""),data.get("expected_target_revision"),
+                        data.get("reviewer",""),data.get("reason",""))
                 elif path == "/api/studio/knowledge/intake":
                     answer = knowledge.intake(
                         data.get("project_id",""),data.get("bundle"),
