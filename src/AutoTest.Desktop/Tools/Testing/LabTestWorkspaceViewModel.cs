@@ -31,6 +31,33 @@ public sealed record R1ControllerStateChoice(
         " · 0x" + Mask.ToString("X5") + " · r" + Revision;
 }
 
+public sealed class LabTestCaseChoice : INotifyPropertyChanged
+{
+    private bool _selected = true;
+    public Guid Id { get; }
+    public string Name { get; }
+    public int StepCount { get; }
+    public bool IsLegacy { get; }
+    public bool IsSelected
+    {
+        get => _selected;
+        set
+        {
+            if (_selected == value) return;
+            _selected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public LabTestCaseChoice(LabTestCaseDefinition testCase)
+    {
+        Id = testCase.Id;
+        Name = testCase.Name;
+        StepCount = testCase.StepCount;
+        IsLegacy = testCase.IsLegacy;
+    }
+}
+
 internal sealed class LabCommand(Action run, Func<bool>? enabled = null) : ICommand
 {
     public bool CanExecute(object? parameter) => enabled?.Invoke() ?? true;
@@ -123,6 +150,10 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         RedoCommand = new LabCommand(() => Edit(() => _editor.Redo()), () => !Busy && _editor.CanRedo);
         PreflightCommand = new LabCommand(Preflight, () => !Busy);
         RunPhysicalReadOnlyCommand = new LabCommand(() => _ = RunPhysicalReadOnlyAsync(), () => !Busy && _project is not null && _physicalController is not null);
+        RunSelectedPhysicalCommand = new LabCommand(() => _ = RunSelectedPhysicalAsync(),
+            () => !Busy && _project is not null && _physicalController is not null);
+        SelectAllCasesCommand = new LabCommand(() => SelectCases(true), () => !Busy);
+        ClearCasesCommand = new LabCommand(() => SelectCases(false), () => !Busy);
         PauseCommand = new LabCommand(() => Control(_runner.Pause), () => Busy);
         ResumeCommand = new LabCommand(() => Control(_runner.Resume), () => Busy);
         StepCommand = new LabCommand(() => Control(_runner.Step), () => Busy);
@@ -144,6 +175,28 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     }
 
     public ObservableCollection<LabTreeRow> Tree { get; } = new();
+    // UI-only run selection; never written back to the published TEST file.
+    // The barcode path intentionally ignores these choices and runs the entire TEST.
+    public ObservableCollection<LabTestCaseChoice> TestCases { get; } = new();
+    public ICommand RunSelectedPhysicalCommand { get; }
+    public ICommand SelectAllCasesCommand { get; }
+    public ICommand ClearCasesCommand { get; }
+    private void SelectCases(bool selected)
+    {
+        foreach (var item in TestCases) item.IsSelected = selected;
+        Status = selected ? "已选择全部测试用例（尚未运行）" : "已取消全部选择；不能空选运行";
+    }
+    private void RefreshTestCases()
+    {
+        var oldSelection = TestCases.ToDictionary(x => x.Id, x => x.IsSelected);
+        TestCases.Clear();
+        foreach (var item in LabSelectiveExecution.Discover(Snapshot))
+        {
+            var choice = new LabTestCaseChoice(item);
+            if (oldSelection.TryGetValue(item.Id, out var previous)) choice.IsSelected = previous;
+            TestCases.Add(choice);
+        }
+    }
     public ObservableCollection<LabStepFact> Facts { get; } = new();
     public ObservableCollection<KeyValuePair<string, string>> ParameterRows { get; } = new();
     public ObservableCollection<R1ControllerStateChoice> ControllerStateChoices { get; } = new();
@@ -227,7 +280,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     {
         foreach (var command in new[] { InsertCommand, DeleteCommand, CopyCommand, UpCommand,
             DownCommand, RenameCommand, SetParameterCommand, UndoCommand, RedoCommand,
-            PreflightCommand, RunPhysicalReadOnlyCommand, PauseCommand, ResumeCommand, StepCommand,
+            PreflightCommand, RunPhysicalReadOnlyCommand, RunSelectedPhysicalCommand,
+            SelectAllCasesCommand, ClearCasesCommand, PauseCommand, ResumeCommand, StepCommand,
             SkipCommand, RunToCommand, StopCommand, SaveCommand, OpenCommand,
             SaveToProjectCommand, ReloadProjectCommand, RefreshControllerStatesCommand,
             ApplyControllerStateCommand })
@@ -243,7 +297,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             AddNodes(root.Children, doc.Phases[phase], phase, null, null);
             Tree.Add(root);
         }
-        _selected = null; Changed(nameof(DocumentName)); RefreshCommands();
+        _selected = null; RefreshTestCases(); Changed(nameof(DocumentName)); RefreshCommands();
     }
     private static void AddNodes(ObservableCollection<LabTreeRow> rows, List<LabNode> nodes,
         LabPhase phase, Guid? parent, string? slot)
@@ -329,7 +383,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         void S(params string[] names) { foreach (var slot in names) n.Slots.Add(slot, new List<LabNode>()); }
         switch (type)
         {
-            case "Sequence": S("body"); break;
+            case "Sequence": case "TestCase": S("body"); break;
             case "If": P("variable", "mode"); P("equals", "run"); S("then", "else"); break;
             case "Switch": P("variable", "mode"); S("cases"); break;
             case "Case": P("equals", "run"); S("body"); break;
@@ -356,6 +410,15 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         var slot = chosen?.Slot;
         var index = chosen?.StepId is null ? (parent is null ? Snapshot.Phases[phase].Count :
             Snapshot.Walk().First(n => n.Id == parent).Slots[slot!].Count) : chosen.Index + 1;
+        // A TEST CASE is a top-level runnable group, not a nested physical action.
+        // Insert it at TEST root independently of the current selected step.
+        if (SelectedInsertType == "TestCase")
+        {
+            var c = NewNode("TestCase") with { Name = "新测试用例" };
+            Edit(() => _editor.Insert(LabPhase.Test, null, null,
+                Snapshot.Phases[LabPhase.Test].Count, c));
+            return;
+        }
         // Selected container can insert directly into its first child slot.
         if (chosen?.StepId is Guid id)
         {
@@ -407,8 +470,18 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     /// The scanned DUT and recipe revision are recorded as source facts, never
     /// treated as a production PASS solely because an execution finished.
     /// </summary>
-    public async Task<LabRunReport?> RunPhysicalReadOnlyAsync(
-        R1PhysicalScanBinding? scanned, CancellationToken ct = default)
+    public Task<LabRunReport?> RunPhysicalReadOnlyAsync(
+        R1PhysicalScanBinding? scanned, CancellationToken ct = default) =>
+        RunPhysicalCoreAsync(scanned, null, ct);
+
+    // Engineering-only execution of selected TestCase groups. The scanner path
+    // still runs the full published program and does not consume UI checkboxes.
+    public Task<LabRunReport?> RunSelectedPhysicalAsync(CancellationToken ct = default) =>
+        RunPhysicalCoreAsync(null, TestCases.Where(x => x.IsSelected).Select(x => x.Id).ToArray(), ct);
+
+    private async Task<LabRunReport?> RunPhysicalCoreAsync(
+        R1PhysicalScanBinding? scanned, IReadOnlyCollection<Guid>? selectedCaseIds,
+        CancellationToken ct = default)
     {
         if (!_physicalRunGate.Wait(0))
         {
@@ -435,7 +508,11 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 throw new InvalidOperationException("PROJECT_DBC_REQUIRED");
             if (project.StaleDependencies.Count != 0)
                 throw new InvalidOperationException("PROJECT_REFERENCE_STALE");
-            var plan = _compiler.Prepare(saved);
+            if (scanned is not null && selectedCaseIds is not null)
+                throw new InvalidOperationException("PRODUCTION_MUST_RUN_FULL_TEST");
+            var selective = selectedCaseIds is null ? null :
+                LabSelectiveExecution.Prepare(saved, selectedCaseIds, _compiler);
+            var plan = selective?.Plan ?? _compiler.Prepare(saved);
             if (!plan.Ready)
                 throw new InvalidOperationException("TEST_PREFLIGHT_BLOCKED: " + string.Join("; ", plan.Diagnostics));
             if (saved.Walk().Any(n => n.Type == "MockObserve"))
@@ -552,6 +629,9 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                     ControllerProfileSha256 = controllerProfileSha,
                     ControllerProfileRevision = savedControllerProfile?.Revision,
                     BarcodeBinding = scanned,
+                    RunScope = selectedCaseIds is null ? "FULL_PROGRAM" : "SELECTED_TEST_CASES",
+                    SourceProgramDigest = selective?.SourceProgramDigest ?? plan.Digest,
+                    SelectedTestCaseIds = selective?.SelectedCaseIds,
                     ProductionApproved = false, Report = report
                 };
                 var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -563,7 +643,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 }
                 finally { if (File.Exists(temporary)) File.Delete(temporary); }
                 PhysicalEvidencePath = destination;
-                Status = "真实工程 TEST 完成 · Run " + report.RunId +
+                Status = (selectedCaseIds is null ? "完整工程 TEST 完成" : "已勾选测试用例执行完成") + " · Run " + report.RunId +
                     " · " + report.Facts.Length + " StepFact · 已保存 JSON 证据 · 非出厂判定";
                 return report;
             }
