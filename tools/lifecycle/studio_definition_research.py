@@ -76,7 +76,9 @@ class DefinitionResearch:
                (id,change_id,domain,question,state,revision,accepted_submission_id,
                 reviewed_by,reviewed_at,created,updated)
                VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
-               (ident(),change_id,domain,prompt,"OPEN",1,None,None,None,instant,instant))
+               (ident(),change_id,domain,prompt,
+                "OPEN" if domain=="POSITIONING" else "SUGGESTED",
+                1,None,None,None,instant,instant))
 
     def __init__(self,store:Store):
         self.store=store
@@ -172,7 +174,7 @@ class DefinitionResearch:
             db.execute("BEGIN IMMEDIATE")
             task=self._task(db,task_id)
             self._require_active(db,task)
-            if task["state"]!="OPEN":
+            if task["state"] not in ("OPEN","SUGGESTED"):
                 raise RuleError("Reopen an existing scope decision before changing it")
             if type(expected_revision) is not int or task["revision"]!=expected_revision:
                 raise RuleError("Research task revision conflict")
@@ -206,8 +208,8 @@ class DefinitionResearch:
             db.execute("BEGIN IMMEDIATE")
             task=self._task(db,task_id)
             self._require_active(db,task)
-            if task["state"]!="OPEN":
-                raise RuleError("Reviewed research must be reopened before new submissions")
+            if task["state"] not in ("OPEN","SUGGESTED"):
+                raise RuleError("Reviewed or scoped-out research must be reopened before new submissions")
             if type(expected_revision) is not int or expected_revision!=task["revision"]:
                 raise RuleError("Research task revision conflict")
             study_revision=None
@@ -240,8 +242,8 @@ class DefinitionResearch:
             db.execute("BEGIN IMMEDIATE")
             task=self._task(db,task_id)
             self._require_active(db,task)
-            if task["state"]!="OPEN":
-                raise RuleError("Research already reviewed; reopen to reassess")
+            if task["state"] not in ("OPEN","SUGGESTED"):
+                raise RuleError("Research already reviewed or scoped out; reopen to reassess")
             if type(expected_revision) is not int or expected_revision!=task["revision"]:
                 raise RuleError("Research task revision conflict")
             result=db.execute("SELECT * FROM definition_research_submissions WHERE id=? AND task_id=?",
@@ -305,6 +307,10 @@ class DefinitionResearch:
         if not rows:
             reasons.append("Research scope has no questions or recorded disposition")
         for domain,task in rows.items():
+            if task["state"]=="SUGGESTED":
+                # A reference perspective is not itself a required work item.
+                # AI material may exist, but no approval is inferred from it.
+                continue
             if task["state"]=="NOT_APPLICABLE":
                 decision=db.execute("""SELECT * FROM definition_research_scope_decisions
                     WHERE task_id=? AND task_revision=? AND decision='NOT_APPLICABLE'""",
