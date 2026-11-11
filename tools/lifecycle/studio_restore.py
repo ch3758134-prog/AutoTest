@@ -21,7 +21,7 @@ from studio_knowledge import EngineeringKnowledge
 from studio_product_identity import ProductIdentity, sha
 
 TABLES = (
-    "projects","objects","revisions","relations","events",
+    "projects","project_context_revisions","objects","revisions","relations","events",
     "studies","study_options","study_experiments","study_results","study_decisions",
     "github_projects","execution_tasks","manager_proposals",
     "verification_runs","verification_reviews",
@@ -56,6 +56,25 @@ def _validate(archive):
         if key not in project:
             raise RuleError("Project definition missing "+key)
     sections={key:_array(archive.get(key),key) for key in TABLE_KEYS}
+    sections["context_history"]=_array(
+        archive.get("project_context_history",[]),"project_context_history")
+    history=sections["context_history"]
+    revisions=[x.get("revision") for x in history]
+    if revisions!=list(range(1,len(history)+1)):
+        raise RuleError("Project context history revisions must be contiguous")
+    for record in history:
+        if record.get("project_id")!=pid:
+            raise RuleError("Cross-project context history")
+        try:snapshot=json.loads(record["snapshot"])
+        except (KeyError,ValueError,TypeError) as exc:
+            raise RuleError("Invalid project context history") from exc
+        if not isinstance(snapshot,dict):
+            raise RuleError("Context history must contain a structured snapshot")
+    if history:
+        latest=json.loads(history[-1]["snapshot"])
+        for field in ("name","body","version","variant"):
+            if latest.get(field)!=project.get(field):
+                raise RuleError("Project context history differs from current project record")
     research=archive.get("technical_research")
     if not isinstance(research,dict):
         raise RuleError("Missing technical research section")
@@ -480,6 +499,7 @@ def restore_to_empty(archive,output_database):
         if db.execute("SELECT COUNT(*) FROM projects").fetchone()[0]:
             raise RuleError("Restore is allowed only into an empty workspace")
         _insert(db,"projects",[archive["project"]])
+        _insert(db,"project_context_revisions",sec["context_history"])
         objects=[]
         parents=[]
         for obj in sec["objects"]:
