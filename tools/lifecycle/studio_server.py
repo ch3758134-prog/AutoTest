@@ -32,7 +32,7 @@ WEB = HERE / "studio.html"
 PORT = 8765
 
 
-def handler_factory(store, token, repo=None, manager_token=None):
+def handler_factory(store, token, repo=None, manager_token=None, git_source=None):
     source_root = Path(repo).resolve() if repo else Path.cwd()
     research = Research(store)
     execution = Execution(store)
@@ -131,7 +131,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/api/studio/bootstrap":
                     return self.write({"schema":"engineering-workbench/2",
                                        "owner_auth":"required",
-                                       "projects":store.projects()})
+                                       "projects":store.projects(),
+                                       "git_source":git_source})
                 if path == "/api/studio/projects":
                     return self.write(store.projects())
                 if path == "/api/studio/project":
@@ -602,6 +603,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error("Invalid port")
+    hydrated = None
     if args.git_workspace:
         if args.data.expanduser().resolve() == default_data().expanduser().resolve():
             parser.error("--git-workspace requires explicit --data outside the default workspace")
@@ -635,7 +637,10 @@ def main(argv=None):
         print("Owner access key for this launch (enter only in local workbench): "+
               owner_token,flush=True)
     server = ThreadingHTTPServer(("127.0.0.1", args.port),
-                                 handler_factory(store,owner_token,args.repo,manager_token))
+                                 handler_factory(store,owner_token,args.repo,manager_token,
+                                                 git_source=({k: hydrated[k] for k in
+                                                  ("commit", "path", "project_id", "authority")}
+                                                  if hydrated else None)))
     print("Engineering Workbench: http://127.0.0.1:%d/" % args.port, flush=True)
     print("Data: " + str(store.path), flush=True)
     print("Press Ctrl+C to stop. This server never approves automatically.", flush=True)
