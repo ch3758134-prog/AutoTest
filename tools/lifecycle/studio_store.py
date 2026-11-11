@@ -300,35 +300,45 @@ class Store:
             db.execute("UPDATE projects SET updated=? WHERE id=?", (instant, project_id))
         return self.object(key)
 
+    def _update_object_tx(self, db, key, data, actor="owner"):
+        """Shared atomic engine for manual and reviewed AI-proposed amendments.
+
+        Calling code must hold the same write transaction for the proposal
+        decision and the engineering-object revision. Approval never carries
+        over after a content change.
+        """
+        obj = self._require_object(db, key)
+        if "expected_revision" not in data or data["expected_revision"] != obj["revision"]:
+            raise RuleError("Revision conflict: refresh before saving")
+        if obj["kind"] == "change" and obj["state"] == "CLOSED":
+            raise RuleError("A closed change is immutable; create a follow-up change")
+        changed = {}
+        for field, maximum in (("title", 200), ("body", 50000)):
+            if field in data:
+                changed[field] = text_value(data[field], field, limit=maximum,
+                                            mandatory=field=="title")
+        if "meta" in data:
+            changed["meta"] = json.dumps(json_object(data["meta"]), ensure_ascii=False)
+        if "parent_id" in data:
+            changed["parent_id"] = self._validate_parent(
+                db, obj["project_id"], data["parent_id"] or None, moving_id=key)
+        if not changed:
+            raise RuleError("No object edits submitted")
+        changed.update(revision=obj["revision"]+1, updated=now())
+        if obj["state"] == "APPROVED":
+            changed.update(state="DRAFT", approved_by=None, approved_at=None)
+        patch = ", ".join(f"{f}=?" for f in changed)
+        db.execute(f"UPDATE objects SET {patch} WHERE id=?", (*changed.values(), key))
+        current = self._require_object(db, key)
+        self._record(db, current, "REVISE", actor)
+        self._audit(db, obj["project_id"], key, "REVISE_OBJECT", actor,
+                    "Revised " + obj["title"])
+        return current
+
     def update_object(self, key, data):
         with self.db() as db:
-            obj = self._require_object(db, key)
-            if "expected_revision" not in data or data["expected_revision"] != obj["revision"]:
-                raise RuleError("Revision conflict: refresh before saving")
-            if obj["kind"] == "change" and obj["state"] == "CLOSED":
-                raise RuleError("A closed change is immutable; create a follow-up change")
-            changed = {}
-            for field, maximum in (("title", 200), ("body", 50000)):
-                if field in data:
-                    changed[field] = text_value(data[field], field, limit=maximum,
-                                                mandatory=field=="title")
-            if "meta" in data:
-                changed["meta"] = json.dumps(json_object(data["meta"]), ensure_ascii=False)
-            if "parent_id" in data:
-                changed["parent_id"] = self._validate_parent(
-                    db, obj["project_id"], data["parent_id"] or None, moving_id=key)
-            if not changed:
-                raise RuleError("No object edits submitted")
-            changed.update(revision=obj["revision"]+1, updated=now())
-            if obj["state"] == "APPROVED":
-                changed.update(state="DRAFT", approved_by=None, approved_at=None)
-            # Revisions are append-only snapshots. An approved predecessor remains accessible.
-            patch = ", ".join(f"{f}=?" for f in changed)
-            db.execute(f"UPDATE objects SET {patch} WHERE id=?", (*changed.values(), key))
-            current = self._require_object(db, key)
-            self._record(db, current, "REVISE", "owner")
-            self._audit(db, obj["project_id"], key, "REVISE_OBJECT", "owner",
-                        "Revised " + obj["title"])
+            db.execute("BEGIN IMMEDIATE")
+            self._update_object_tx(db, key, data)
         return self.object(key)
 
     def submit(self, key, expected_revision):
