@@ -62,6 +62,13 @@ public partial class BenchWorkbenchView : UserControl
         else await vm.CanMessages.LoadAsync();
     }
 
+    private void AddCurrentMaskToAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not BenchWorkbenchViewModel vm) return;
+        vm.AddCurrentKeyCombinationToAction();
+        ActionEditorExpander.IsExpanded = true;
+    }
+
     private void OpenCan_Click(object sender, RoutedEventArgs e) =>
         OpenCanRequested?.Invoke(this, EventArgs.Empty);
 
