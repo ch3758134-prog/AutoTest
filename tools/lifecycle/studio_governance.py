@@ -352,7 +352,7 @@ class DefinitionGovernance:
             # An explicitly explained scope decision means this suggested
             # perspective does not require a separate impact form. This is
             # not a blanket assertion of "no downstream impact".
-            if task and task["state"]=="NOT_APPLICABLE":
+            if task and task["state"] in ("NOT_APPLICABLE","SUGGESTED"):
                 continue
             r=reviews.get(domain)
             if r is None:missing.append(domain);continue
@@ -406,7 +406,8 @@ class DefinitionGovernance:
                 "reviewed":len(reviews),"required":len(DOMAINS),
                 "research_reviewed":sum(t["state"]=="REVIEWED" for t in research_tasks.values()),
                 "research_scoped_out":sum(t["state"]=="NOT_APPLICABLE" for t in research_tasks.values()),
-                "research_required":len(research_tasks),
+                "research_required":sum(t["state"]!="SUGGESTED" for t in research_tasks.values()),
+                "research_suggested":sum(t["state"]=="SUGGESTED" for t in research_tasks.values()),
                 "package_reviewed":len(reviews_by_package),"package_total":len(packages),
                 "new_baseline_revision":change["base_revision"]+1}
 
