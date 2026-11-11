@@ -80,6 +80,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public BenchWorkbenchViewModel(IBenchWorkbenchPort port)
     {
         _port = port ?? throw new ArgumentNullException(nameof(port));
+        KeyActions = new BenchKeyActionEditorViewModel(_port,
+            note => Append(WorkbenchSeverity.Progress, "按键动作", note));
         ConnectCommand = new DelegateCommand(async () => await ConnectOrDisconnectAsync(), () => !Busy)
             .ObservesProperty(() => Busy);
         RefreshCommand = new DelegateCommand(async () => await ReloadAsync(), () => !Busy)
@@ -126,6 +128,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         Append(WorkbenchSeverity.Neutral, "台架就绪", "尚未读取工程或硬件事实；仅允许经 DEVICE 验证的实际动作。");
     }
 
+    public BenchKeyActionEditorViewModel KeyActions { get; }
     public ObservableCollection<BenchControllerDefinition> Controllers { get; } = new();
     public ObservableCollection<BenchStateItem> States { get; } = new();
     public ObservableCollection<BenchDevice> Devices { get; } = new();
@@ -272,6 +275,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
                 SelectedController = Controllers.FirstOrDefault();
                 Append(WorkbenchSeverity.Success, "配置已读取", $"{ProjectName} · {EcuProfileName} · revision {Revision}");
             }
+            await KeyActions.LoadAsync();
             UpdateConnection(await _port.GetConnectionAsync(CancellationToken.None));
         }
         catch (Exception ex) { Failure("读取台架信息", ex); }
