@@ -1,16 +1,10 @@
 <UserControl x:Class="AutoTest.Desktop.Tools.Testing.ProjectRunWorkbenchView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Background="#F5F7FA" Foreground="#203249" FontFamily="Segoe UI" FontSize="13">
+ Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Segoe UI" FontSize="13">
  <UserControl.Resources>
-  <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#203249"/></Style>
-  <Style TargetType="Button">
-   <Setter Property="Background" Value="#EAF0F8"/>
-   <Setter Property="Foreground" Value="#203249"/>
-   <Setter Property="BorderBrush" Value="#D6E1EC"/>
-   <Setter Property="Margin" Value="0,0,8,0"/>
-   <Setter Property="Padding" Value="12,7"/>
-  </Style>
+  
+  
  </UserControl.Resources>
  <Grid Margin="18">
   <Grid.RowDefinitions>
@@ -24,7 +18,7 @@
    <TextBlock Text="{Binding ProjectLabel}" FontWeight="SemiBold"/>
    <TextBlock Text="当前执行后端仅为 MOCK：不控制真实 ECU，不产生出厂 PASS。物理步骤执行须通过独立受控执行适配和安全门禁。" Foreground="#98641F" TextWrapping="Wrap" Margin="0,8,0,0"/>
   </StackPanel>
-  <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="#D6E1EC" BorderThickness="1" Padding="12" Margin="0,0,0,12">
+  <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Padding="12" Margin="0,0,0,12">
    <StackPanel>
     <WrapPanel>
      <Button Content="检查当前工程 / TEST" Command="{Binding ValidateCommand}"/>
@@ -44,7 +38,7 @@
     <ColumnDefinition Width="240"/>
     <ColumnDefinition Width="*"/>
    </Grid.ColumnDefinitions>
-   <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#D6E1EC" BorderThickness="1" Margin="0,0,10,0" Padding="12">
+   <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Margin="0,0,10,0" Padding="12">
     <StackPanel>
      <TextBlock Text="RUN / RESULT" FontWeight="SemiBold" Margin="0,0,0,15"/>
      <TextBlock Text="请求"/><TextBlock Text="{Binding RequestStatus}" TextWrapping="Wrap" Margin="0,3,0,12"/>
@@ -57,8 +51,8 @@
    <Grid Grid.Column="1">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <TextBlock Text="StepFact / 审计事实（仅来自当前工程 TEST 的运行）" FontWeight="SemiBold" Margin="0,0,0,10"/>
-    <ListBox Grid.Row="1" ItemsSource="{Binding FactLines}" Background="#FFFFFF" Foreground="#203249"
-      BorderBrush="#D6E1EC" FontFamily="Consolas" FontSize="12" HorizontalContentAlignment="Stretch"
+    <ListBox Grid.Row="1" ItemsSource="{Binding FactLines}" Background="#FFFFFF" Foreground="{DynamicResource StudioText}"
+      BorderBrush="{DynamicResource StudioLine}" FontFamily="Consolas" FontSize="12" HorizontalContentAlignment="Stretch"
       ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
    </Grid>
   </Grid>
