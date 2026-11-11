@@ -1,0 +1,4 @@
+# Local trial notes are never formal engineering/project approvals.
+.local/
+__pycache__/
+*.pyc
