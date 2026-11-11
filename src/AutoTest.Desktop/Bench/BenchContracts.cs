@@ -33,6 +33,9 @@ public sealed record BenchManualMeasurement(string ProjectRevision, string Contr
 
 public interface IBenchWorkbenchPort
 {
+    // Identity at editor load time, not a Controller Profile name. Null is used
+    // by nonphysical test ports; the real adapter always reads the live PROJECT.
+    string? ActiveProjectId => null;
     // No transport is created here. These methods MUST delegate to the existing shared session.
     Task<BenchConfiguration?> LoadConfigurationAsync(CancellationToken cancellationToken);
     Task<BenchConnectionSnapshot> GetConnectionAsync(CancellationToken cancellationToken);
