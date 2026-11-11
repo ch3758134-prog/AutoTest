@@ -26,6 +26,22 @@ AI 项目管理页显示本地登记的 milestone 和 work_package；通过已�
 
 该视图不构造虚假完成率、不预测工期、不将对象标为已交付、不自动触发派发。里程碑日期仅来自负责人输入的 `meta.due`。它不是基于资源与关键路径的正式排期引擎；后续仍需依赖调度、版本冲突与实际完成证据的严格模型。
 
+## 结构化项目归档恢复：空工作区专用
+
+恢复工具：`tools/lifecycle/studio_restore.py`。严格采用先预检再应用，不允许覆盖已有项目。举例：
+
+```powershell
+# 从现有工程工作台导出得到 JSON 后，先预检（无写入）
+py -3 tools/lifecycle/studio_restore.py --archive D:\\Backups\\engineering-project.json --data D:\\Recovery\\workspace.sqlite3
+
+# 仅在已核对预检内容、确定目标是空工作区时执行
+py -3 tools/lifecycle/studio_restore.py --archive D:\\Backups\\engineering-project.json --data D:\\Recovery\\workspace.sqlite3 --apply
+```
+
+本工具执行结构化对象/修订/关系/来源检查，使用 SQLite 事务写入；出错回滚。能够恢复已有工程对象、关系、历史修订、审查事件、技术研究、GitHub 任务快照、管理建议和验证证据元数据。
+
+**当前恢复功能的边界：** 没有恢复外部原始日志、波形、PDF 或 Git 仓库；没有验证历史审批签名或 Git SHA 真实性；不会重连 GitHub，也不会实际恢复设备。不能将 JSON 导入成功冒充恢复了整个工程运行环境。恢复 CLI 目前尚未接入可操作 UI，正式用户发布前还需 Windows 实测、文件完整性清单、自动备份及可视化恢复。
+
 ## 重要限制
 
 - `PASS` 只表示执行人填写的本次运行结果，`CONFIRMED` 表示人员审查了该条证据，不自动代表系统、产品或实物通过验收。原始证据只存路径/标识；工具没有验证引用文件的真实性或内容。
