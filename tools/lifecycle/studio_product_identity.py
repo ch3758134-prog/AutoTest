@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 from studio_store import Store, RuleError, ident, now, text_value
+from studio_knowledge import EngineeringKnowledge
 
 RELATIONS = frozenset(("derives","allocated","defines","depends","implements"))
 OUTCOMES = frozenset(("IMPACT","NO_IMPACT","UNKNOWN"))
@@ -33,6 +34,7 @@ def refs(value,field="source references",required=True):
 class ProductIdentity:
     def __init__(self,store:Store):
         self.store=store
+        EngineeringKnowledge(store)  # Ensure shared knowledge schema even without the HTTP boot path
         with store.db() as db:
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS product_identity_baselines(
