@@ -194,5 +194,7 @@
       "actor": "V2_DESIGN",
       "confirmation": "CANDIDATE_NOT_APPROVED"
     }
-  ]
+  ],
+  "artifact_submissions": [],
+  "artifact_baselines": []
 }
