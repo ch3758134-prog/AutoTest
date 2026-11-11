@@ -89,6 +89,17 @@ class EngineeringStoreTest(unittest.TestCase):
         self.assertEqual(old["state"], "APPROVED")
         self.assertIn("可验证用户要求", old["body"])
 
+    def test_submitted_draft_edit_revokes_earlier_review_submission(self):
+        obj=self.create("requirement","CAN signal processing")
+        self.store.submit(obj["id"],obj["revision"])
+        reviewed=self.store.object(obj["id"])["item"]
+        self.assertEqual(reviewed["state"],"IN_REVIEW")
+        rewritten=self.store.update_object(obj["id"],{
+            "expected_revision":reviewed["revision"],
+            "body":"Updated behavior and a new open question"})["item"]
+        self.assertEqual(rewritten["state"],"DRAFT")
+        self.assertEqual(rewritten["revision"],reviewed["revision"]+1)
+
     def test_revision_conflict_does_not_write(self):
         req = self.create("requirement", "原始设计")
         with self.assertRaisesRegex(RuleError, "Revision conflict"):
