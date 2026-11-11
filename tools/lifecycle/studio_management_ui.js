@@ -99,6 +99,7 @@ async function renderManagementView(){
     inbox.append(panel);
   }
   mount.append(inbox);
+  renderEngineeringPlan(result,mount);
   mount.append(note('注意：纳入计划候选不会自动新增已批准需求、设计、实验或编码任务。正式实施仍须经软件详细设计、CODE_READY 和 GitHub 执行门禁。'));
 }
 function managementFact(label,text){
