@@ -288,11 +288,7 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
     public async Task RunAsync()
     {
         if (!CanEdit || SelectedAction is not { } selected) return;
-        if (_dirty)
-        {
-            Status = "请先保存按键动作，再执行真实硬件。";
-            return;
-        }
+        // Trial runs use a validated frozen snapshot; persistence is optional.
         BenchKeyAction action;
         try
         {
@@ -304,7 +300,7 @@ public sealed class BenchKeyActionEditorViewModel : BindableBase
         _running = true;
         RaisePropertyChanged(nameof(IsActionRunning));
         RaisePropertyChanged(nameof(CanEdit));
-        Progress = $"开始真实动作：{action.Name} / {action.Steps.Count} 步";
+        Progress = $"{(_dirty ? "未保存配置试运行" : "开始真实动作")}：{action.Name} / {action.Steps.Count} 步";
         _audit(Progress);
         try
         {
