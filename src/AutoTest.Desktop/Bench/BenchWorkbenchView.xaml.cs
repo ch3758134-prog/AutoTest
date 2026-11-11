@@ -205,8 +205,14 @@ public partial class BenchWorkbenchView : UserControl
         {
             Owner = Window.GetWindow(this)
         };
-        if (picker.ShowDialog() == true && picker.PickedMessage is { } message)
-            editor.TryAddFromDbc(message);
+        if (picker.ShowDialog() == true && picker.PickedMessage is { } message &&
+            editor.TryAddFromDbc(message))
+        {
+            // Complete the user workflow: land on the new CAN TX row, not an
+            // unrelated configuration tool or invisible last row.
+            TransmitGrid.ScrollIntoView(editor.SelectedMessage);
+            TransmitGrid.Focus();
+        }
     }
 
     private void OpenDbc_Click(object sender, RoutedEventArgs e) =>
