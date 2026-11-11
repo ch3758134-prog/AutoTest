@@ -56,6 +56,7 @@ async function knowledgeWorkbench(){
     }
     footer.append(button('关闭','outline',closeModal));
     footer.append(button('登记工程认识候选','primary',()=>knowledgeCreateModal(guide)));
+    footer.append(button('导入 AI 整理的候选包','outline',knowledgeIntakeModal));
     if(data.items.length>=2)footer.append(button('提出知识关系','outline',
       ()=>knowledgeLinkProposeModal(data)));
     footer.append(button('查看概念说明','outline',()=>engineeringSemanticsModal('all')));
@@ -216,6 +217,58 @@ function knowledgeLinkReviewModal(link,data){
         });
         await knowledgeWorkbench();
       }catch(e){err.textContent=e.message;err.classList.remove('hidden');}
+    }));
+  });
+}
+
+function knowledgeIntakeModal(){
+  showModal('导入工程认识候选包（不自动批准）',(body,footer)=>{
+    body.append(note('使用项目管理 AI 提供的 JSON 候选包，或从磁盘选择一份。系统会先核对结构、工程项目和别名引用，再一次性保存为待审材料。它不会替换原有项目、产品定义或正式审批状态。'));
+    const filebox=document.createElement('input');
+    filebox.type='file';filebox.accept='.json,application/json';
+    body.append(filebox);
+    const textArea=field(body,'候选 JSON（也可以从文件加载）','','textarea');
+    textArea.rows=12;
+    const summary=el('p','context','尚未加载候选包');
+    body.append(summary);
+    filebox.addEventListener('change',async()=>{
+      const file=filebox.files?.[0];
+      if(!file)return;
+      try{
+        if(file.size>220000)throw Error('候选包过大；请先拆分并审查内容');
+        textArea.value=await file.text();
+        summarize();
+      }catch(e){summary.textContent=e.message;}
+    });
+    function summarize(){
+      try{
+        const value=JSON.parse(textArea.value);
+        if(value.schema!=='engineering-knowledge-intake/1')
+          throw Error('格式不是 engineering-knowledge-intake/1');
+        if(!Array.isArray(value.entries)||!Array.isArray(value.relations))
+          throw Error('缺少候选条目或关系清单');
+        summary.textContent='待导入 '+value.entries.length+' 条认识，'+
+          value.relations.length+' 条候选关系。请确认来源及所属项目：'+
+          (value.project||'由你选择的当前工作区确定');
+        return value;
+      }catch(e){summary.textContent='无法解析：'+e.message;return null;}
+    }
+    textArea.addEventListener('input',summarize);
+    const actor=field(body,'提交人','项目管理协作者');
+    const error=el('div','error hidden');body.append(error);
+    footer.append(button('取消','outline',knowledgeWorkbench));
+    footer.append(button('将整包保存为待审候选','primary',async()=>{
+      const bundle=summarize();
+      if(!bundle)return;
+      try{
+        const result=await req('/api/studio/knowledge/intake',{
+          project_id:state.project,bundle,author:actor.value
+        });
+        toast(result.already_imported?
+          '此候选包此前已导入，没有重复写入':
+          '已保存 '+result.items.length+' 条候选与 '+result.links.length+' 条关系；全部待审');
+        await knowledgeWorkbench();
+      }catch(e){error.textContent=e.message;error.classList.remove('hidden');}
     }));
   });
 }
