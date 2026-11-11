@@ -164,6 +164,9 @@ public sealed class BenchCanEditorTests
         vm.SignalInputs[0].ValueText = "12.25"; // 0.5 factor cannot encode 12.25 exactly
         await vm.SendOnceAsync();
         Assert.Equal(1, port.SendCount);
+        vm.SignalInputs[0].ValueText = "110"; // raw 220 fits 8bit, but DBC max is 100
+        await vm.SendOnceAsync();
+        Assert.Equal(1, port.SendCount);
         vm.SignalInputs[0].ValueText = "11";
         await vm.SendOnceAsync();
         Assert.Equal(2, port.SendCount);
