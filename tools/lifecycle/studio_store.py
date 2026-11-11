@@ -708,7 +708,7 @@ class Store:
             governance={"baselines":[],"changes":[],"reviews":[],
                         "package_reviews":[],"invalidations":[],
                         "research_tasks":[],"research_submissions":[],"research_decisions":[],
-                        "suggestions":[]}
+                        "research_scope_decisions":[],"suggestions":[]}
             if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='definition_changes'").fetchone():
                 governance["baselines"]=[dict(x) for x in db.execute(
                     "SELECT * FROM definition_baselines WHERE project_id=? ORDER BY revision",(key,))]
@@ -736,6 +736,12 @@ class Store:
                            JOIN definition_research_tasks t ON t.id=d.task_id
                            JOIN definition_changes c ON c.id=t.change_id
                            WHERE c.project_id=? ORDER BY d.task_id,d.created,d.id""",(key,))]
+                    if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='definition_research_scope_decisions'").fetchone():
+                        governance["research_scope_decisions"]=[dict(x) for x in db.execute(
+                            """SELECT d.* FROM definition_research_scope_decisions d
+                               JOIN definition_research_tasks t ON t.id=d.task_id
+                               JOIN definition_changes c ON c.id=t.change_id
+                               WHERE c.project_id=? ORDER BY d.task_id,d.created,d.id""",(key,))]
                 if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='definition_suggestions'").fetchone():
                     governance["suggestions"]=[dict(x) for x in db.execute(
                         "SELECT * FROM definition_suggestions WHERE project_id=? ORDER BY created,id",
