@@ -269,8 +269,12 @@ public partial class MainWindow : Window
         switch (key)
         {
             case "run":
-                view = new R1ProjectRunView(EnsureTestModel(host.Workspace));
+            {
+                var runView = new R1ProjectRunView(EnsureTestModel(host.Workspace));
+                runView.EditProgramRequested += (_, _) => OpenDocument("program");
+                view = runView;
                 break;
+            }
             case "program":
                 view = new LabTestWorkspaceView(EnsureTestModel(host.Workspace));
                 break;
