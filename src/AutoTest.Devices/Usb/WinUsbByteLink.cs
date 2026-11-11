@@ -86,6 +86,17 @@ public sealed class WinUsbByteLink : IUsbByteLink
     }
     public void RevokeOneIgnTransmission() => _fence.RevokeSingleIgn();
 
+    public void AuthorizeOneSolenoidTransmission(byte action, string exactConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; solenoid grant cannot survive reconnect.");
+            _fence.AuthorizeSingleSolenoid(action, exactConfirmation, _epoch);
+        }
+    }
+    public void RevokeOneSolenoidTransmission() => _fence.RevokeSingleSolenoid();
+
     public ValueTask OpenAsync(CancellationToken ct)
         => new(Task.Run(() => OpenCore(ct), ct));
 
