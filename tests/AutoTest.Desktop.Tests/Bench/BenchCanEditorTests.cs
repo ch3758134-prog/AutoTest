@@ -96,6 +96,19 @@ public sealed class BenchCanEditorTests
         Assert.Null(port.Saved);
     }
 
+    [Theory]
+    [InlineData(1000L, 100L, 1100L)]
+    [InlineData(1650L, 100L, 1750L)]
+    [InlineData(20000L, 500L, 20500L)]
+    public void HostPeriodicCanNeverCompensatesDelayedAckWithCatchUpBurst(
+        long ackTicks, long periodTicks, long expected)
+    {
+        // A board delay, extra CAN traffic, or Windows scheduling jitter must
+        // not cause the same row to be sent immediately again.
+        Assert.Equal(expected, BenchCanSchedule.NextDue(ackTicks, periodTicks));
+        Assert.Throws<ArgumentOutOfRangeException>(() => BenchCanSchedule.NextDue(ackTicks, 0));
+    }
+
     [Fact]
     public async Task SavedCanRecordsRejectCrossProjectLoad()
     {
