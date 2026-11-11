@@ -53,6 +53,13 @@ class DefinitionResearch:
                 task_revision INTEGER NOT NULL,
                 verdict TEXT NOT NULL, reviewer TEXT NOT NULL,
                 rationale TEXT NOT NULL, created TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS definition_research_scope_decisions(
+                id TEXT PRIMARY KEY,
+                task_id TEXT NOT NULL REFERENCES definition_research_tasks(id),
+                task_revision INTEGER NOT NULL,
+                decision TEXT NOT NULL,
+                rationale TEXT NOT NULL, evidence_refs TEXT NOT NULL,
+                reviewer TEXT NOT NULL, created TEXT NOT NULL);
         """)
         cols={r["name"] for r in db.execute("PRAGMA table_info(definition_reviews)")}
         if "research_revision" not in cols:
@@ -117,8 +124,72 @@ class DefinitionResearch:
                 task["decisions"]=[dict(x) for x in db.execute(
                     "SELECT * FROM definition_research_decisions WHERE task_id=? ORDER BY created,id",
                     (task["id"],))]
+                task["scope_decisions"]=[dict(x) for x in db.execute(
+                    "SELECT * FROM definition_research_scope_decisions WHERE task_id=? ORDER BY created,id",
+                    (task["id"],))]
+                for decision in task["scope_decisions"]:
+                    decision["evidence_refs"]=json.loads(decision["evidence_refs"])
             return {"change_id":change_id,"tasks":rows,
                     "note":"Candidate findings, even when produced by AI, are not accepted research or factual proof. Owner review and source verification are separate."}
+
+    def add_topic(self,change_id,question,reviewer,rationale):
+        """Owner adds an actual research question, beyond suggested viewpoints."""
+        question=text_value(question,"research question",limit=6000,mandatory=True)
+        reviewer=text_value(reviewer,"scope reviewer",limit=150,mandatory=True)
+        rationale=text_value(rationale,"why this question matters",limit=8000,mandatory=True)
+        with self.store.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            change=db.execute("SELECT * FROM definition_changes WHERE id=?",(change_id,)).fetchone()
+            if not change or change["state"]!="REVIEW":
+                raise RuleError("Only active product changes may add research questions")
+            # Confirm the proposal is still based on the active project definition.
+            snapshot={"project_id":change["project_id"],"base_digest":change["base_digest"],
+                      "base_revision":change["base_revision"],"change_state":change["state"]}
+            self._require_active(db,snapshot)
+            count=db.execute("SELECT COUNT(*) FROM definition_research_tasks WHERE change_id=?",
+                             (change_id,)).fetchone()[0]
+            if count>=80:raise RuleError("Research topic count exceeds supported archive bounds")
+            task_id,stamp=ident(),now()
+            db.execute("""INSERT INTO definition_research_tasks
+              (id,change_id,domain,question,state,revision,accepted_submission_id,
+               reviewed_by,reviewed_at,created,updated)
+              VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+              (task_id,change_id,"TOPIC_"+task_id,question,"OPEN",1,
+               None,None,None,stamp,stamp))
+            self.store._audit(db,change["project_id"],None,"ADD_DEFINITION_RESEARCH_TOPIC",
+                 reviewer,task_id+" / "+rationale)
+        return {"task_id":task_id,"change_id":change_id,"state":"OPEN"}
+
+    def set_not_applicable(self,task_id,expected_revision,reviewer,rationale,evidence_refs):
+        """Human scope disposition, not an AI auto-classifier."""
+        reviewer=text_value(reviewer,"reviewer",limit=150,mandatory=True)
+        rationale=text_value(rationale,"scope reasoning",limit=12000,mandatory=True)
+        if (not isinstance(evidence_refs,list) or not evidence_refs or
+            len(evidence_refs)>30 or any(not isinstance(x,str) or not x.strip()
+              or len(x)>1500 for x in evidence_refs)):
+            raise RuleError("Scope decision needs traceable supporting context")
+        with self.store.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            task=self._task(db,task_id)
+            self._require_active(db,task)
+            if task["state"]!="OPEN":
+                raise RuleError("Reopen an existing scope decision before changing it")
+            if type(expected_revision) is not int or task["revision"]!=expected_revision:
+                raise RuleError("Research task revision conflict")
+            revision=task["revision"]+1
+            db.execute("""INSERT INTO definition_research_scope_decisions
+               (id,task_id,task_revision,decision,rationale,evidence_refs,reviewer,created)
+               VALUES(?,?,?,?,?,?,?,?)""",
+               (ident(),task_id,revision,"NOT_APPLICABLE",rationale,
+                json.dumps(evidence_refs,ensure_ascii=False),reviewer,now()))
+            db.execute("""UPDATE definition_research_tasks SET state='NOT_APPLICABLE',
+                accepted_submission_id=NULL,reviewed_by=?,reviewed_at=?,
+                revision=?,updated=? WHERE id=?""",
+                (reviewer,now(),revision,now(),task_id))
+            self.store._audit(db,task["project_id"],None,"REVIEW_RESEARCH_SCOPE",reviewer,
+                              task["domain"]+" / NOT_APPLICABLE / "+rationale)
+        return {"task_id":task_id,"state":"NOT_APPLICABLE","revision":revision,
+                "note":"Scoped out after owner reasoning; not an AI claim of no impact."}
 
     def submit(self,task_id,expected_revision,author,origin_role,
                finding,evidence_refs,limitations,linked_study_id=None):
@@ -213,8 +284,8 @@ class DefinitionResearch:
             db.execute("BEGIN IMMEDIATE")
             task=self._task(db,task_id)
             self._require_active(db,task)
-            if task["state"]!="REVIEWED":
-                raise RuleError("Only reviewed research may be reopened")
+            if task["state"] not in ("REVIEWED","NOT_APPLICABLE"):
+                raise RuleError("Only reviewed or scoped-out research may be reopened")
             if expected_revision!=task["revision"]:
                 raise RuleError("Research task revision conflict")
             db.execute("""UPDATE definition_research_tasks SET state='OPEN',
@@ -227,17 +298,23 @@ class DefinitionResearch:
 
     @staticmethod
     def gate_rows(db,change_id,domains):
+        """Inspect actual scoped questions; seed viewpoints are not research quotas."""
         rows={r["domain"]:dict(r) for r in db.execute(
             "SELECT * FROM definition_research_tasks WHERE change_id=?",(change_id,))}
         reasons=[]
-        if len(rows)!=len(domains):
-            reasons.append("Required definition research task set is incomplete")
-        for domain in domains:
-            task=rows.get(domain)
-            if not task:
-                reasons.append(domain+": mandatory research task missing");continue
+        if not rows:
+            reasons.append("Research scope has no questions or recorded disposition")
+        for domain,task in rows.items():
+            if task["state"]=="NOT_APPLICABLE":
+                decision=db.execute("""SELECT * FROM definition_research_scope_decisions
+                    WHERE task_id=? AND task_revision=? AND decision='NOT_APPLICABLE'""",
+                    (task["id"],task["revision"])).fetchone()
+                if (not decision or not decision["rationale"] or
+                    not json.loads(decision["evidence_refs"])):
+                    reasons.append(domain+": research scope exclusion is not explained")
+                continue
             if task["state"]!="REVIEWED" or not task["accepted_submission_id"]:
-                reasons.append(domain+": mandatory research remains unreviewed")
+                reasons.append(domain+": research question remains unresolved")
                 continue
             finding=db.execute(
                 "SELECT * FROM definition_research_submissions WHERE id=?",
