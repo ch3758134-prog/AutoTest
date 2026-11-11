@@ -73,6 +73,9 @@ jobs:
       - name: Run WPF UI model tests
         shell: pwsh
         run: dotnet test tests/AutoTest.Desktop.Tests/AutoTest.Desktop.Tests.csproj -c Release --verbosity normal
+      - name: Verify physical device command fences (no hardware connection)
+        shell: pwsh
+        run: dotnet test tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj -c Release --verbosity normal
       - name: Publish formal R1 candidate
         shell: pwsh
         run: dotnet publish src/AutoTest.Desktop/AutoTest.Desktop.csproj -c Release -r win-x64 --self-contained false -o output/AutoTest.R1 --verbosity minimal
