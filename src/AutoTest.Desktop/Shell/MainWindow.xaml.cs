@@ -299,7 +299,7 @@ public partial class MainWindow : Window
             case 9 when R2AuthoringHost.Content is null:
                 R2AuthoringHost.Content = new LabTestWorkspaceView(GetProjectTestModel(host.Workspace));
                 break;
-            case 10 when R1RunHost.Content is null:
+            case 10 when R1RunHost.Content is null && R1OperatorHost.Content is null:
                 R1RunHost.Content = new R1ProjectRunView(GetProjectTestModel(host.Workspace));
                 break;
             case 11 when R1ProductionHost.Content is null:
@@ -533,6 +533,34 @@ public partial class MainWindow : Window
         R1ScannerStatus.ToolTip = R1ScannerStatus.Text;
     }
 
+    private void PlaceRunViewInSelectedEnvironment(bool operatorMode)
+    {
+        // A real, permanently separate operator surface guarantees that the
+        // legacy project page cannot reappear during Prism load/rebind.
+        // Move the SAME view rather than re-running or cloning TEST logic.
+        if (operatorMode)
+        {
+            PopulateTab(10);
+            if (R1RunHost.Content is UIElement run)
+            {
+                R1RunHost.Content = null;
+                R1OperatorHost.Content = run;
+            }
+            R1WorkspaceGrid.Visibility = Visibility.Collapsed;
+            R1OperatorSurface.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            R1OperatorSurface.Visibility = Visibility.Collapsed;
+            if (R1OperatorHost.Content is UIElement run)
+            {
+                R1OperatorHost.Content = null;
+                R1RunHost.Content = run;
+            }
+            R1WorkspaceGrid.Visibility = Visibility.Visible;
+        }
+    }
+
     private void RefreshDocumentTabVisibility()
     {
         // Legacy pages still exist for compatibility, but they no longer form
@@ -605,6 +633,7 @@ public partial class MainWindow : Window
                 case 2: Navigate(6, "wave"); break;
             }
             RefreshDocumentTabVisibility();
+            PlaceRunViewInSelectedEnvironment(mode == 0);
         }
         finally { _applyingWorkspaceMode = false; }
     }
