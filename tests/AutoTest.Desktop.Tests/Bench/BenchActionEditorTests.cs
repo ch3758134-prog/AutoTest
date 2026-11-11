@@ -59,6 +59,28 @@ public sealed class BenchActionEditorTests
     }
 
     [Fact]
+    public async Task InvalidDisplayedHoldTextCannotExecuteStaleNumericHold()
+    {
+        var port = new ActionPort();
+        var vm = new BenchKeyActionEditorViewModel(port);
+        vm.NewActionCommand.Execute();
+        vm.AddSetKeysCommand.Execute();
+        vm.AddHoldCommand.Execute();
+        vm.SelectedStep!.DurationMs = 300;
+        vm.SelectedStep.DurationMsText = "not-a-number";
+        await vm.RunAsync();
+        Assert.Equal(0, port.Runs);
+        Assert.Contains("动作不合法", vm.Status);
+        await vm.SaveAsync();
+        Assert.Null(port.Saved);
+        Assert.True(vm.HasUnsavedChanges);
+        vm.SelectedStep.DurationMsText = "350";
+        await vm.RunAsync();
+        Assert.Equal(1, port.Runs);
+        Assert.Equal(350, port.LastAction!.Steps[1].DurationMs);
+    }
+
+    [Fact]
     public async Task ReloadCannotDiscardDirtyProjectAction()
     {
         var fake = new ActionPort
