@@ -202,162 +202,78 @@ class StudioApiTest(unittest.TestCase):
         self.assertEqual(backup["schema"], "engineering-workbench/1")
         self.assertEqual(len(backup["revisions"]), 3)
 
-    def test_ai_can_suggest_definition_but_only_owner_can_start_governed_research(self):
+    def test_legacy_four_field_definition_writes_are_retired(self):
         _,project=self.request("/api/studio/project",{
-            "name":"Generic Device","summary":"Current user test environment",
-            "body":"Engineering users create test projects and verify real outputs",
-            "version":"R1","variant":"generic"},token="local-test-token")
-        pid=project["project"]["id"]
-        _,state=self.request("/api/studio/governance/status?project="+pid)
-        proposed=dict(state["definition"])
-        proposed["summary"]="Integrated engineering IDE and test operations"
-        payload={"project_id":pid,"proposed":proposed,
-             "reason":"AI noticed missing engineering workflow boundaries",
-             "source_refs":["review://product-analysis"],"proposer":"AI-manager",
-             "expected_digest":state["definition_digest"]}
-        _,candidate=self.request("/api/studio/governance/suggest",payload,
-             manager_token="manager-secret-token-0123456789-0123456789")
-        self.assertEqual(candidate["status"],"PENDING")
-        _,before=self.request("/api/studio/governance/status?project="+pid)
-        self.assertEqual(before["changes"],[])
-        self.assertEqual(before["definition"],state["definition"])
-        _,inbox=self.request("/api/studio/governance/suggestions?project="+pid)
-        self.assertEqual(inbox[0]["origin_role"],"AI_CANDIDATE")
-        with self.assertRaises(HTTPError) as denied:
-            self.request("/api/studio/governance/suggest/accept",{
-                "id":candidate["id"],"reviewer":"AI",
-                "rationale":"Unsafe self acceptance",
-                "expected_base_digest":state["definition_digest"]},
-                manager_token="manager-secret-token-0123456789-0123456789")
-        self.assertEqual(denied.exception.code,403)
-        with self.assertRaises(HTTPError) as denied:
-            self.request("/api/studio/governance/publish",{
-                "change_id":"none","reviewer":"AI","decision_note":"Unsafe",
-                "expected_base_digest":state["definition_digest"]},
-                manager_token="manager-secret-token-0123456789-0123456789")
-        self.assertEqual(denied.exception.code,403)
-        _,accepted=self.request("/api/studio/governance/suggest/accept",{
-            "id":candidate["id"],"reviewer":"Human owner",
-            "rationale":"Research is warranted, not yet approved",
-            "expected_base_digest":state["definition_digest"]},
+            "name":"AutoTest","summary":"Old software-only description",
+            "body":"R1 initial EPB stage","version":"R1","variant":"current hardware"},
             token="local-test-token")
-        self.assertEqual(accepted["state"],"ACCEPTED_FOR_RESEARCH")
-        _,research=self.request("/api/studio/governance/research?change="+accepted["change_id"])
-        self.assertEqual(len(research["tasks"]),10)
-        _,after=self.request("/api/studio/governance/status?project="+pid)
-        self.assertEqual(after["definition"],state["definition"])
-        with urlopen(self.url+"/definition-suggestions.js",timeout=5) as response:
-            self.assertIn(b'definitionSuggestionInbox',response.read())
-
-    def test_semantic_context_can_be_read_and_scope_cannot_be_set_by_ai(self):
-        _,guide=self.request("/api/studio/semantics?focus=product_identity,release_scope")
-        self.assertEqual([x["id"] for x in guide["concepts"]],
-                         ["product_identity","release_scope"])
-        self.assertTrue(guide["review_questions"])
-        _,project=self.request("/api/studio/project",{
-            "name":"Engineering","summary":"Generic ECU system",
-            "body":"Current work includes hardware and firmware"},token="local-test-token")
         pid=project["project"]["id"]
-        _,state=self.request("/api/studio/governance/status?project="+pid)
-        suggested=dict(state["definition"])
-        suggested["summary"]="Stimulus and response engineering test system"
-        _,change=self.request("/api/studio/governance/propose",{
-            "project_id":pid,"proposed":suggested,
-            "reason":"Correct a semantic definition that ignored the hardware",
-            "source_refs":["discussion://user-correction"],
-            "proposer":"Owner","expected_digest":state["definition_digest"]},
-            token="local-test-token")
-        _,tasks=self.request("/api/studio/governance/research?change="+change["change"]["id"])
-        self.assertEqual(sum(x["state"]=="SUGGESTED" for x in tasks["tasks"]),9)
-        arch=next(x for x in tasks["tasks"] if x["domain"]=="ARCHITECTURE")
-        with self.assertRaises(HTTPError) as denied:
-            self.request("/api/studio/governance/research/activate",{
-                "task_id":arch["id"],"expected_revision":arch["revision"],
-                "reviewer":"AI","rationale":"Self-activation"},
-                manager_token="manager-secret-token-0123456789-0123456789")
-        self.assertEqual(denied.exception.code,403)
-        _,active=self.request("/api/studio/governance/research/activate",{
-            "task_id":arch["id"],"expected_revision":arch["revision"],
-            "reviewer":"Owner","rationale":"Board responsibilities must be reconsidered"},
-            token="local-test-token")
-        self.assertEqual(active["state"],"OPEN")
-        with urlopen(self.url+"/semantics.js",timeout=5) as response:
-            self.assertIn(b'engineeringSemanticsModal',response.read())
-
-    def test_product_definition_requires_owner_review_and_domain_gate(self):
-        _,project=self.request("/api/studio/project",{
-            "name":"Generic Device","summary":"Legacy unreviewed description",
-            "body":"Imported description of a user-facing engineering product",
-            "version":"R0","variant":"A"},token="local-test-token")
-        pid=project["project"]["id"]
-        _,status=self.request("/api/studio/governance/status?project="+pid)
-        self.assertEqual(status["baseline_status"],"UNBASELINED")
-        with self.assertRaises(HTTPError) as forbidden:
-            self.request("/api/studio/project/update",{
-                "id":pid,"summary":"Try bypassing governance"},token="local-test-token")
-        self.assertEqual(forbidden.exception.code,400)
-        proposal=dict(status["definition"])
-        proposal["summary"]="Controlled engineering product definition"
-        payload={"project_id":pid,"proposed":proposal,
-                 "reason":"Product positioning requires full impact analysis",
-                 "source_refs":["discussion://product-definition"],
-                 "proposer":"Human","expected_digest":status["definition_digest"]}
-        with self.assertRaises(HTTPError) as forbidden:
-            self.request("/api/studio/governance/propose",payload,
-                         manager_token="manager-secret-token-0123456789-0123456789")
-        self.assertEqual(forbidden.exception.code,403)
-        _,created=self.request("/api/studio/governance/propose",payload,
-                              token="local-test-token")
-        change=created["change"]["id"]
-        self.assertFalse(created["gate"]["ready"])
-        with self.assertRaises(HTTPError) as denied:
-            self.request("/api/studio/governance/publish",{
-                "change_id":change,"reviewer":"Owner","decision_note":"Early",
-                "expected_base_digest":status["definition_digest"]},
+        _,legacy=self.request("/api/studio/governance/status?project="+pid)
+        self.assertEqual(legacy["baseline_status"],"UNBASELINED")
+        with self.assertRaises(HTTPError) as retired:
+            self.request("/api/studio/governance/propose",{
+                "project_id":pid,"proposed":legacy["definition"],
+                "reason":"Legacy cannot publish","source_refs":["test://legacy"],
+                "proposer":"Human","expected_digest":legacy["definition_digest"]},
                 token="local-test-token")
-        self.assertEqual(denied.exception.code,400)
-        _,queue=self.request("/api/studio/governance/research?change="+change)
-        self.assertEqual(len(queue["tasks"]),10)
-        for task in queue["tasks"]:
-            _,submission=self.request("/api/studio/governance/research/submit",{
-                "task_id":task["id"],"expected_revision":task["revision"],
-                "finding":"Assessed impact on "+task["domain"],
-                "evidence_refs":["test://source/"+task["domain"]],
-                "limitations":"The fixtures use no real hardware",
-                "author":"AI Analyst"},manager_token="manager-secret-token-0123456789-0123456789")
-            self.assertEqual(submission["origin_role"],"AI_CANDIDATE")
-            with self.assertRaises(HTTPError) as denied:
-                self.request("/api/studio/governance/research/review",{
-                    "task_id":task["id"],"submission_id":submission["submission_id"],
-                    "expected_revision":task["revision"],"decision":"ACCEPT",
-                    "reviewer":"AI","rationale":"Self approval"},
-                    manager_token="manager-secret-token-0123456789-0123456789")
-            self.assertEqual(denied.exception.code,403)
-            self.request("/api/studio/governance/research/review",{
-                "task_id":task["id"],"submission_id":submission["submission_id"],
-                "expected_revision":task["revision"],"decision":"ACCEPT",
-                "reviewer":"Human","rationale":"Test-only evidence reviewed"},
+        self.assertEqual(retired.exception.code,410)
+        with self.assertRaises(HTTPError) as retired:
+            self.request("/api/studio/governance/publish",{
+                "change_id":"does-not-exist","reviewer":"Human",
+                "decision_note":"Outdated path","expected_base_digest":legacy["definition_digest"]},
                 token="local-test-token")
-        for domain in status["domains"]:
-            self.request("/api/studio/governance/review",{
-                "change_id":change,"domain":domain["key"],"outcome":"NO_IMPACT",
-                "rationale":"Explicitly assessed applicability and scope",
-                "evidence_refs":["study://review/"+domain["key"]],
-                "affected_ids":[],"reviewer":"Owner",
-                "expected_base_digest":status["definition_digest"]
-            },token="local-test-token")
-        _,gate=self.request("/api/studio/governance/gate?id="+change)
-        self.assertTrue(gate["ready"])
-        _,published=self.request("/api/studio/governance/publish",{
-            "change_id":change,"reviewer":"Owner","decision_note":"Domain review accepted",
-            "expected_base_digest":status["definition_digest"]},
+        self.assertEqual(retired.exception.code,410)
+        _,identity=self.request("/api/studio/product-identity?project="+pid)
+        self.assertEqual(identity["state"],"UNBASELINED")
+        self.assertEqual(identity["legacy_project_context"]["version"],"R1")
+
+    def test_ai_can_suggest_identity_but_owner_scopes_impacts_and_publishes(self):
+        _,project=self.request("/api/studio/project",{
+            "name":"Integrated ECU system","summary":"Legacy project summary",
+            "body":"Legacy project background","version":"R1","variant":"EPB"},
             token="local-test-token")
+        pid=project["project"]["id"]
+        _,identity=self.request("/api/studio/product-identity?project="+pid)
+        proposal={"project_id":pid,
+            "statement":"A configurable hardware-software ECU stimulus and response test system",
+            "reasoning":"Product nature includes hardware and ECU external stimuli; R1 and EPB remain stage context",
+            "source_refs":["discussion://2026-11-10/user-corrections"],
+            "knowledge_ids":[],"actor":"AI manager","expected_digest":identity["digest"]}
+        manager="manager-secret-token-0123456789-0123456789"
+        _,candidate=self.request("/api/studio/product-identity/propose",
+                                  proposal,manager_token=manager)
+        self.assertEqual(candidate["state"],"CANDIDATE")
+        _,current=self.request("/api/studio/product-identity?project="+pid)
+        self.assertEqual(current["state"],"UNBASELINED")
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/product-identity/review-scope",{
+                "id":candidate["id"],"expected_digest":identity["digest"],
+                "reviewer":"AI","rationale":"AI self-approval",
+                "evidence_refs":["test://source"]},manager_token=manager)
+        self.assertEqual(denied.exception.code,403)
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/product-identity/publish",{
+                "id":candidate["id"],"expected_digest":identity["digest"],
+                "reviewer":"AI","decision_note":"Unsafe approval"},manager_token=manager)
+        self.assertEqual(denied.exception.code,403)
+        _,scope=self.request("/api/studio/product-identity/review-scope",{
+            "id":candidate["id"],"expected_digest":identity["digest"],
+            "reviewer":"Human owner","rationale":"Reviewed semantic scope and outstanding engineering impacts",
+            "evidence_refs":["test://scope-reviewed"]},token="local-test-token")
+        self.assertTrue(scope["gate"]["ready"])
+        _,published=self.request("/api/studio/product-identity/publish",{
+            "id":candidate["id"],"expected_digest":identity["digest"],
+            "reviewer":"Human owner","decision_note":"Identity approved; legacy stage is not changed"},
+            token="local-test-token")
+        self.assertEqual(published["state"],"BASELINED")
         self.assertEqual(published["revision"],1)
-        _,after=self.request("/api/studio/governance/status?project="+pid)
-        self.assertEqual(after["baseline_status"],"BASELINED")
-        self.assertEqual(after["definition"]["summary"],proposal["summary"])
-        with urlopen(self.url+"/governance.js",timeout=5) as response:
-            self.assertIn(b'definitionGovernanceModal',response.read())
+        _,same_project=self.request("/api/studio/project?id="+pid)
+        self.assertEqual(same_project["project"]["version"],"R1")
+        self.assertEqual(same_project["project"]["summary"],"Legacy project summary")
+        _,guide=self.request("/api/studio/semantics?focus=product_identity,release_scope")
+        self.assertEqual(len(guide["concepts"]),2)
+        with urlopen(self.url+"/product-identity.js",timeout=5) as response:
+            self.assertIn(b'productIdentityModal',response.read())
 
     def test_execution_api_requires_real_project_and_exposes_worker_ui(self):
         with self.assertRaises(HTTPError) as error:
