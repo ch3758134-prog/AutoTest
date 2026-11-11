@@ -187,6 +187,7 @@ function renderEditor(){const types=groupKinds[state.view];const desc={product:'
  const head=el('div','detailhead');add(head,el('div','buttonrow',null));head.firstChild.append(badge(groupLabel(selected.kind)),badge(selected.state),el('span','tiny','r'+selected.revision));add(head,el('h2','',selected.title));
  const ancestors=ancestry(selected);if(ancestors.length){const path=el('div','breadcrumbs');ancestors.forEach((parent,index)=>{if(index)path.append(el('span','','›'));path.append(button(parent.title,'link',()=>openItem(parent)));});path.append(el('span','','› 当前对象'));head.append(path);}
  const actions=el('div','buttonrow');add(actions,button('编辑 / 提出修订','primary',()=>editorModal(selected.kind,selected)),button('增加关联','outline',()=>relationModal(selected)),button('历史版本','outline',()=>historyModal(selected)));
+ if(selected.kind!=='change')actions.append(button('记录发现 / 变更','outline',()=>captureFindingModal(selected)));
  if(selected.state==='DRAFT')actions.append(button('提交审查','outline',()=>transition(selected,'submit')));
  if(['DRAFT','IN_REVIEW'].includes(selected.state)&&selected.kind!=='change')actions.append(button('批准此修订','outline',()=>approvalModal(selected)));
  if(selected.kind==='change')actions.append(button('逐项审查影响','primary',()=>changeReviewModal(selected.id)));
