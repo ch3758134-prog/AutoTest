@@ -73,23 +73,28 @@ pre.readout{background:#f6f8fb;border:1px solid var(--line);border-radius:8px;pa
 @media(max-width:1190px){.work{grid-template-columns:235px minmax(0,1fr)}.fourcol{grid-template-columns:repeat(2,minmax(0,1fr))}.twocol{grid-template-columns:1fr}}
 @media(max-width:800px){.app{display:block}.side{position:static;height:auto;padding:12px;gap:8px}.identity{padding:0 5px 9px}.sidefoot{display:none}.nav{grid-template-columns:repeat(3,minmax(0,1fr))}.nav button{font-size:12px;padding:8px 4px}.nav b{display:none}.main{padding:20px 14px}.work{display:block}.index{min-height:auto;margin-bottom:12px;max-height:270px;overflow:auto}.detail{min-height:300px}.detailbody{padding:18px}.threecol{grid-template-columns:1fr}.fourcol{grid-template-columns:repeat(2,1fr)}}
 </style>
+<link rel="stylesheet" href="/workspace.css">
 </head>
 <body>
 <div class="app"><aside class="side">
-  <div class="identity"><strong>Engineering<em>.</em></strong><small>研发工程与生命周期管理 · V1.3（AI 受控修订与工程审批）</small></div>
+  <div class="identity"><strong>Engineering<em>.</em></strong><small>工程研发工作台 · 研究、审查与交付</small></div>
   <div class="projectpicker"><label for="projectSelect">当前产品 / 项目</label><select id="projectSelect"></select><div class="buttonrow" style="margin-top:9px"><button class="link" id="newProject">+ 新建项目</button><button class="link" id="editProject">编辑项目背景</button><button class="link" id="ownerUnlock" hidden>负责人授权</button></div></div>
-  <div class="sideheading" style="padding-left:12px">研发生命周期</div>
-  <nav class="nav" id="nav">
-    <button data-view="dashboard" class="active"><b>▦</b>项目驾驶舱</button>
-    <button data-view="product"><b>◎</b>产品与系统</button>
-    <button data-view="engineering"><b>⊞</b>需求与架构</button>
-    <button data-view="research"><b>⌕</b>技术预研与实验</button>
-    <button data-view="execution"><b>⇥</b>GitHub 与 AI 执行</button>
-    <button data-view="management"><b>⌘</b>AI 项目管理与审批</button>
-    <button data-view="governance"><b>⇄</b>决策与变更</button>
-    <button data-view="delivery"><b>✓</b>实施与验证</button>
-    <button data-view="archive"><b>▤</b>资料与归档</button>
-    <button data-view="history"><b>◷</b>历史与配置</button>
+  <nav class="nav" id="nav" aria-label="主要导航">
+    <div class="ws-nav-heading">工作空间</div>
+    <button data-view="dashboard" class="active"><b>▦</b>项目概览</button>
+    <button data-view="stages"><b>▤</b>阶段与成果</button>
+    <button data-view="engineering"><b>≡</b>需求与工程对象</button>
+    <button data-view="management"><b>◎</b>研究与审查</button>
+    <details class="ws-nav-more">
+      <summary>专业工程工具</summary>
+      <button data-view="product"><b>◈</b>产品与系统</button>
+      <button data-view="research"><b>⌕</b>技术预研与实验</button>
+      <button data-view="governance"><b>⇄</b>决策与变更</button>
+      <button data-view="delivery"><b>✓</b>实施与验证</button>
+      <button data-view="execution"><b>⇥</b>GitHub 与 AI 执行</button>
+      <button data-view="archive"><b>▤</b>资料与归档</button>
+      <button data-view="history"><b>◷</b>历史与配置</button>
+    </details>
   </nav>
   <div class="sidefoot"><span class="dot"></span>本机 · 单人 · 无账号<br>变更与审批均有修订记录<br>原始项目资料不被自动覆盖</div>
 </aside>
@@ -103,7 +108,7 @@ const add=(p,...children)=>{children.forEach(n=>p.append(n));return p};
 const $=s=>document.querySelector(s);
 const clean=n=>n.replaceChildren();
 const kinds={context:'产品背景',capability:'产品能力',system:'系统/组件',requirement:'需求',architecture:'总体架构',interface:'接口契约',design:'详细设计',decision:'技术决策',change:'问题/变更',risk:'风险',work_package:'实施工作包',test:'测试/证据',milestone:'里程碑',reference:'历史资料'};
-const stages={dashboard:'项目驾驶舱',product:'产品与系统',engineering:'需求与架构',research:'技术预研与实验',execution:'GitHub 与 AI 执行',management:'AI 项目管理与审批',governance:'决策与变更',delivery:'实施与验证',archive:'资料与归档',history:'历史与配置'};
+const stages={dashboard:'项目驾驶舱',stages:'阶段与成果',reader:'文档阅读',product:'产品与系统',engineering:'需求与架构',research:'技术预研与实验',execution:'GitHub 与 AI 执行',management:'AI 项目管理与审批',governance:'决策与变更',delivery:'实施与验证',archive:'资料与归档',history:'历史与配置'};
 const groupKinds={product:['context','capability','system'],engineering:['requirement','architecture','interface','design'],governance:['decision','change','risk'],delivery:['work_package','test','milestone'],archive:['reference']};
 const statuses={DRAFT:'草稿',IN_REVIEW:'待审查',APPROVED:'已批准',SUPERSEDED:'已替代',OPEN:'待处理',CLOSED:'已关闭'};
 const relationNames={derives:'来源/派生',allocated:'分配至',defines:'定义/约束',depends:'实施依赖',implements:'实现',verifies:'验证',impacts:'变更影响'};
@@ -167,6 +172,8 @@ function navigate(view){state.view=view;state.selected=null;state.filter='';stat
 function renderView(){clean(root);$('#breadcrumb').textContent=(projectName()||'工程工作区')+' / '+stages[state.view];
  if(!state.data)return renderWelcome();
  if(state.view==='dashboard')return renderDashboard();
+  if(state.view==='stages')return renderPhaseWorkspace();
+  if(state.view==='reader')return renderDocumentWorkspace();
  if(state.view==='research')return renderResearchView();
  if(state.view==='execution')return renderExecutionView();
  if(state.view==='management')return renderManagementView();
@@ -196,61 +203,7 @@ function renderReadable(container,raw){
  }}
 function ancestry(obj){const result=[],seen=new Set([obj.id]);let current=obj;
  while(current?.parent_id&&!seen.has(current.parent_id)){const parent=item(current.parent_id);if(!parent)break;result.unshift(parent);seen.add(parent.id);current=parent;}return result;}
-function renderPhaseReviewOverview(){
- const objects=state.data?.objects||[];
- const byPhase=new Map();
- for(const obj of objects){
-  const match=/^(P0|G[0-9]+)\s*[｜|:：-]/.exec(obj.title||'');
-  const explicit=/^(P0|G[0-9]+)$/.test(obj.meta?.phase||'')?obj.meta.phase:null;
-  const phase=explicit||(match?match[1]:null);
-  if(!phase)continue;
-  if(!byPhase.has(phase))byPhase.set(phase,[]);
-  byPhase.get(phase).push(obj);
- }
- const area=section('研发阶段成果与待审事项');
- area.header.append(el('span','tiny','以本次加载的工程快照为准，不等于阶段 Gate 通过'));
- const panel=el('div','panel');
- panel.append(el('h2','','先看做到哪里，再进入单个工程对象'));
- const source=state.gitSource;
- if(source&&source.project_id===state.project){
-  panel.append(note('本次加载的 Git 版本：'+source.commit.slice(0,12)+'。本地试用数据库不会随 GitHub 的新提交自动更新；如果缺少新研究报告，请先核对版本。'));
- }else panel.append(note('本工作区未显示 Git 快照来源，请核对本机数据来源；不能据此推断远程最新进度。'));
- const phases=[...byPhase.keys()].sort((a,b)=>a[0]===b[0]?Number(a.slice(1))-Number(b.slice(1)):a[0]==='P'?-1:1);
- if(!phases.length)panel.append(el('p','muted','当前快照没有标注 P0/G0/G1 等阶段成果，不能通过对象总数判断项目进度。'));
- for(const phase of phases){
-  const list=byPhase.get(phase),approved=list.filter(o=>o.state==='APPROVED');
-  const complete=list.some(o=>o.meta?.research_complete===true);
-  const headingRow=el('div','buttonrow');
-  headingRow.append(el('strong','',phase==='P0'?'P0 · 产品定义':phase+' · 系统研究'));
-  headingRow.append(badge(complete?'研究已整理 · 待负责人审查':approved.length?'包含已批准对象 · Gate另审':'草稿/候审'));
-  panel.append(headingRow);
-  panel.append(el('p','muted',list.length+' 个本阶段对象，'+approved.length+' 个已批准。'+(complete?'研究完成不等于需求或 Gate 获批。':'阶段 Gate 未按对象数量自动判定。')));
-  const rank=o=>o.meta?.research_complete?0:o.state==='APPROVED'?1:o.kind==='requirement'?2:o.kind==='test'?3:o.kind==='reference'?4:5;
-  const ordered=[...list].sort((a,b)=>rank(a)-rank(b)||a.title.localeCompare(b.title,'zh-CN'));
-  ordered.slice(0,phase==='G1'?5:3).forEach(obj=>panel.append(rowCard(obj,openItem)));
- }
- if(!byPhase.has('G1'))panel.append(note('当前快照没有 G1 研究成果。如果远程已提交 G1 完整报告，本机加载的可能是旧版本，不应重新创建需求来补空白。'));
- area.node.append(panel);
-}
-function renderDashboard(){const p=state.data.project;
- heading(p.name,'产品需求、工程结构、决策与验证的同一视图。对象数量不代表产品完成率。');
- if(state.gitSource && state.gitSource.project_id===p.id){
-    const approvedP0=state.gitSource.authority==='OWNER_APPROVED_P0_DOCUMENT';
-    root.append(note('工程对象来自 Git 提交 '+state.gitSource.commit+'，来源：'+state.gitSource.path+'。'+(approvedP0?'《AutoTest 产品定义与立项说明》V0.1 已获负责人批准，产品身份基线 r1 已生效；其他工程对象仍按各自草稿/待审状态显示，P0 Gate、实现与实测未获批准。':'这是管理 AI 的待审候选工程快照，不代表设计已批准、实现完成或现场验收。')+' 当前恢复到独立试用工作区，不会自动修改其它本地数据库。'));
- }
- renderPhaseReviewOverview();
-  const block=el('div','panel');const first=el('div','buttonrow');add(first,badge(p.version||'未指定版本'),p.variant?badge('配置 '+p.variant):el('span','tiny','未指定配置'),button('产品身份 · 研究与审查','outline',productIdentityModal));block.append(first);
- add(block,el('h2','', '项目背景与阶段信息（非产品身份）'));block.append(el('div','context',p.body||p.summary||'尚未补充项目背景；应通过工程知识或相关工程对象澄清。'));root.append(block);
- const metrics=el('div','fourcol');metrics.style.marginTop='15px';let c=state.data.counts;
- add(metrics,stat(c.requirement,'需求','各级需求登记数量'),stat(c.architecture+c.interface+c.design,'设计与接口','架构、接口及详细设计'),stat(c.change+c.decision+c.risk,'治理对象','变更、决策与风险'),stat(c.work_package+c.test,'实施与验证','工作包及测试对象'));root.append(metrics);
- const a=section('需要你处理的工程事项');a.header.append(button('+ 记录发现/变更','outline',()=>editorModal('change')));
- const attention=el('div','panel');if(!state.data.attention.length&&!state.data.design_review.length)attention.append(el('p','','目前没有待审查的治理对象。可以从产品与系统开始建立能力，再逐级展开需求与架构。'));
- else{const arr=[...state.data.attention.slice(0,6),...state.data.design_review.slice(0,5)].filter((v,i,self)=>self.findIndex(o=>o.id===v.id)===i);arr.forEach(o=>attention.append(rowCard(o,openItem)));}a.node.append(attention);
- const b=section('系统构成与产品能力');b.header.append(button('打开产品结构','link',()=>navigate('product')));
- const grid=el('div','twocol');for(const kind of ['system','capability']){const panel=el('div','panel');add(panel,el('h2','',kind==='system'?'系统元素':'产品能力'));let items=state.data.objects.filter(x=>x.kind===kind);if(items.length)items.slice(0,8).forEach(o=>panel.append(rowCard(o,openItem)));else panel.append(el('p','','尚未建立'+groupLabel(kind)+'；不将文件列表冒充系统分解。'));panel.append(button('+ 新增'+groupLabel(kind),'link',()=>editorModal(kind)));grid.append(panel);}b.node.append(grid);
- const h=section('近期工程活动');let timeline=el('div','panel');if(!state.data.events.length)timeline.append(el('p','','尚无操作记录。'));state.data.events.slice(0,10).forEach(ev=>{let n=el('div','event');add(n,el('strong','',ev.action+' · '+(ev.object_id?itemName(ev.object_id):projectName())),el('small','',ev.timestamp+' · '+ev.actor+' · '+ev.note));timeline.append(n)});h.node.append(timeline);
- root.append(note('产品定义、需求设计、已批准基线、实现状态和真实验证是不同信息。修改已批准对象会生成新修订并回到草稿，不会擦除旧批准快照。'));
- renderProductIdentityBanner(block);renderCapabilityTrace();renderResearchDashboardSection();}
+function renderDashboard(){return renderWorkspaceHome();}
 function renderEditor(){const types=groupKinds[state.view];const desc={product:'构建产品场景、能力和系统分解，而不是预先塞进某个专用硬件模型。',engineering:'分层维护需求、架构、接口和详细设计。每个工程对象都保留正文、来源、关系与历史版本。',governance:'记录方案比较、设计决定、风险与变更；实施后的发现可以回到系统需求重新审查。',delivery:'关联已批准设计、软件工作包、测试规格与实测证据，清楚地区分实施和验证。'}[state.view];
  heading(stages[state.view],desc||(state.view==='archive'?'阅读历史资料、理解来源、查看内容差异，必要时引用到当前工程对象；导入不会自动批准任何内容。':'当前工程对象'));
  let toolbar=el('div','toolbar'),left=el('div','buttonrow');add(left,...types.map(kind=>button('+ '+groupLabel(kind),'outline',()=>editorModal(kind))));if(state.view==='archive')left.append(button('从当前仓库导入 SAEF 档案','primary',importSaefModal));toolbar.append(left);root.append(toolbar);
@@ -460,4 +413,4 @@ $('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.
 $('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
 window.addEventListener('load',()=>boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))}));
-</script><script src="/research.js"></script><script src="/execution.js"></script><script src="/management.js"></script><script src="/capability.js"></script><script src="/change.js"></script><script src="/verification.js"></script><script src="/plan.js"></script><script src="/restore.js"></script><script src="/product-identity.js"></script><script src="/semantics.js"></script><script src="/knowledge.js"></script><script src="/amendments.js"></script></body></html>
+</script><script src="/research.js"></script><script src="/execution.js"></script><script src="/management.js"></script><script src="/capability.js"></script><script src="/change.js"></script><script src="/verification.js"></script><script src="/plan.js"></script><script src="/restore.js"></script><script src="/product-identity.js"></script><script src="/semantics.js"></script><script src="/knowledge.js"></script><script src="/amendments.js"></script><script src="/workspace.js"></script></body></html>
