@@ -158,7 +158,7 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
         self.assertTrue(self.store.readiness(work[0]["id"])["ready"])
         self.assertTrue(self.store.readiness(work[1]["id"])["ready"])
         change=self.proposal()
-        self.fill(change,{"CAPABILITIES":[req1["id"]]})
+        self.fill(change,{"CAPABILITIES":[req1["id"]],"IMPLEMENTATION":[work[0]["id"]]})
         for obj,outcome in ((work[0],"IMPACT"),(work[1],"NO_IMPACT")):
             self.g.review_package(change["change"]["id"],obj["id"],outcome,
                 "Independent product impact evaluation for this implementation",
@@ -209,7 +209,7 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
         link=self.store.create_relation({"source_id":req["id"],"target_id":wp["id"],"kind":"depends"})
         self.store.approve_relation(link["id"],"Owner","Reviewed requirement dependency")
         change=self.proposal()
-        self.fill(change,{"CAPABILITIES":[req["id"]]})
+        self.fill(change,{"CAPABILITIES":[req["id"]],"IMPLEMENTATION":[wp["id"]]})
         self.g.review_package(change["change"]["id"],wp["id"],"NO_IMPACT",
             "Contradicts graph",["repo://affected-code"],"Owner",
             change["change"]["base_digest"],1)
