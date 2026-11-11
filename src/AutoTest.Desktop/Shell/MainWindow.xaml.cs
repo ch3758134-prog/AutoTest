@@ -6,6 +6,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using AutoTest.Desktop.Bench;
+using AutoTest.Desktop.G4;
 using AutoTest.Desktop.Project;
 using AutoTest.Desktop.Tools.ControllerConfig;
 using AutoTest.Desktop.Tools.Dbc;
