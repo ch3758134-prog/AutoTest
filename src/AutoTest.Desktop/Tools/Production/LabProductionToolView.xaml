@@ -2,37 +2,11 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              MinWidth="650" MinHeight="420"
-             Background="#F5F7FA" Foreground="#203249" FontFamily="Segoe UI" FontSize="13">
+             Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Segoe UI" FontSize="13">
     <UserControl.Resources>
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="10,5" />
-            <Setter Property="Foreground" Value="#203249" />
-            <Setter Property="Background" Value="#ECF2F9" />
-            <Setter Property="BorderBrush" Value="#D5DFEA" />
-            <Setter Property="Margin" Value="3,0,3,0" />
-            <Setter Property="MinHeight" Value="30" />
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#F5F7FA" />
-            <Setter Property="Foreground" Value="#203249" />
-            <Setter Property="BorderBrush" Value="#D5DFEA" />
-            <Setter Property="Padding" Value="6,5" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-        <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="#FFFFFF" />
-            <Setter Property="Foreground" Value="#203249" />
-            <Setter Property="RowBackground" Value="#FFFFFF" />
-            <Setter Property="AlternatingRowBackground" Value="#EDF3F9" />
-            <Setter Property="BorderBrush" Value="#D5DFEA" />
-            <Setter Property="RowHeight" Value="30" />
-            <Setter Property="HeadersVisibility" Value="Column" />
-            <Setter Property="CanUserAddRows" Value="False" />
-            <Setter Property="CanUserDeleteRows" Value="False" />
-            <Setter Property="AutoGenerateColumns" Value="False" />
-            <Setter Property="GridLinesVisibility" Value="Horizontal" />
-            <Setter Property="Margin" Value="0,8,0,0" />
-        </Style>
+        
+        
+        
     </UserControl.Resources>
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
@@ -40,18 +14,18 @@
             <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#697C8E"
                        Text="扫码枪仅输入编号，实际 COM 串口独立于 TEST；已发布编号绑定规则决定完整程序，不接受工程师勾选用例作为出厂运行范围。"/>
         </StackPanel>
-        <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#D5DFEA"
+        <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}"
                 BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,0,0,12">
             <StackPanel>
-                <TextBlock Text="真实 USB 串口扫码枪 / SERIAL SCANNER" FontWeight="SemiBold" Foreground="#203249" Margin="0,0,0,9"/>
+                <TextBlock Text="真实 USB 串口扫码枪 / SERIAL SCANNER" FontWeight="SemiBold" Foreground="{DynamicResource StudioText}" Margin="0,0,0,9"/>
                 <WrapPanel>
                     <TextBlock Text="COM" Foreground="#697C8E" VerticalAlignment="Center" Margin="0,0,7,0"/>
                     <ComboBox x:Name="R1ScannerPorts" Width="100" Margin="0,0,6,0"
-                              Background="#EDF3F9" Foreground="#F5F7FA"/>
+                              Background="#EDF3F9" Foreground="{DynamicResource StudioBg}"/>
                     <Button Content="刷新设备" Click="ScannerRefresh_Click"/>
                     <TextBlock Text="波特率" Foreground="#697C8E" VerticalAlignment="Center" Margin="9,0,8,0"/>
                     <ComboBox x:Name="R1ScannerBaud" Width="105" Margin="0,0,9,0"
-                              Background="#EDF3F9" Foreground="#F5F7FA"/>
+                              Background="#EDF3F9" Foreground="{DynamicResource StudioBg}"/>
                     <Button x:Name="R1ScannerConnect" Content="连接串口扫码枪" Click="ScannerConnect_Click"/>
                     <Button x:Name="R1ScannerDisconnect" Content="断开" Click="ScannerDisconnect_Click" IsEnabled="False"/>
                 </WrapPanel>
@@ -64,12 +38,12 @@
                 <TextBlock x:Name="R1ScannerHex" Text="HEX —" Foreground="#697C8E"
                            FontFamily="Consolas" TextWrapping="Wrap" MaxHeight="40"/>
                 <TextBlock x:Name="R1ScannerBarcode" Text="LAST BARCODE —"
-                           Foreground="#203249" FontFamily="Consolas" FontSize="14" FontWeight="SemiBold"
+                           Foreground="{DynamicResource StudioText}" FontFamily="Consolas" FontSize="14" FontWeight="SemiBold"
                            Margin="0,7,0,0"/>
             </StackPanel>
         </Border>
 
-        <Border DockPanel.Dock="Bottom" Background="#FFFFFF" BorderBrush="#D5DFEA"
+        <Border DockPanel.Dock="Bottom" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}"
                 BorderThickness="1" Padding="12" Margin="0,12,0,0">
             <StackPanel>
                 <TextBlock FontWeight="SemiBold" Text="生产状态" Margin="0,0,0,6"/>
@@ -80,7 +54,7 @@
                            TextWrapping="Wrap" Foreground="#90611A" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
-        <TabControl Background="#F5F7FA">
+        <TabControl Background="{DynamicResource StudioBg}">
             <TabItem Header="实际扫码 / 识别">
                 <StackPanel Margin="12">
                     <TextBlock Text="条码输入 / 校验" FontWeight="SemiBold" Margin="0,0,0,8"/>
@@ -123,7 +97,7 @@
                                  Width="180" HorizontalAlignment="Left" Margin="0,3,0,10"/>
                         <CheckBox IsChecked="{Binding ProductionTestEnabled,Mode=TwoWay}"
                                    Content="将此已发布配方用于真实出厂检测统计（按工程 TEST 实际 PASS/FAIL 入库）"
-                                   Foreground="#203249" Margin="0,12,0,8"
+                                   Foreground="{DynamicResource StudioText}" Margin="0,12,0,8"
                                    ToolTip="关闭时仍可做真实诊断测试，但不进入生产统计；无真实设备/TEST 的运行绝不成为生产 PASS。"/>
                         <TextBlock Text="真实条码样本（用于发布前验证规则）"/>
                         <TextBox Text="{Binding ExampleBarcode,UpdateSourceTrigger=PropertyChanged}"
