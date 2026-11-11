@@ -390,7 +390,17 @@ public partial class MainWindow : Window
                                 "USB CAN_SEND ACK 不代表 DUT 已确认。是否执行？",
                                 "真实 KEY_SIM 操作确认",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                                MessageBoxResult.No) == MessageBoxResult.Yes));
+                                MessageBoxResult.No) == MessageBoxResult.Yes,
+                        approveIgn: (on, generation) =>
+                            MessageBox.Show(this,
+                                "真实主控 IGN 物理输出切换：" + (on ? "ON（高边输出导通）" : "OFF（高边输出断开）") + "\n" +
+                                "USB 命令 SET_IGN=0x12，Payload=" + (on ? "01" : "00") + "\n" +
+                                "Session Generation=" + generation + "\n" +
+                                "注意：主控 ACK 不等于实际电压已确认；请确保负载接线安全，是否发出单次命令？",
+                                "确认真实 IGN 输出",
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                                MessageBoxResult.No) == MessageBoxResult.Yes,
+                        testRunning: () => _test?.Busy == true));
                 station.Controller.ConnectionChanged += state =>
                 {
                     if (!_closed && !Dispatcher.HasShutdownStarted)
