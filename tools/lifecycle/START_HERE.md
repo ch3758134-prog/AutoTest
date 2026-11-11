@@ -38,7 +38,7 @@ py -3 tools/lifecycle/studio_server.py --repo . --git-workspace --data $db --por
 
 如果 8766 已有服务在运行，明确是之前启动的工作台后先正常停止它，或者选择其它空闲端口；绝不终止无关进程。
 
-此模式会对 `docs/engineering-control/projects/autotest/snapshot.json` 中的 `engineering` 做原有 `studio_restore` 全结构校验，再恢复到**同一套** SQLite 工程对象模型（不是第二个报告页），显示 Git commit 与恢复的项目 ID。HTML 项目选择直接出现 **AutoTest**；可以打开需求/架构/问题/实测证据对象。恢复的 15 个对象只是待审草稿/开放问题，关系仍是候选，并未获得批准。此功能拒绝非空工作区，不能用在默认现役 SQLite 上。
+此模式会对 `docs/engineering-control/projects/autotest/snapshot.json` 中的 `engineering` 做原有 `studio_restore` 全结构校验，再恢复到**同一套** SQLite 工程对象模型（不是第二个报告页），显示 Git commit 与恢复的项目 ID。HTML 项目选择直接出现 **AutoTest**；可以打开需求/架构/问题/实测证据对象。恢复的工程对象中，**P0 V0.1 产品定义与立项说明已明确批准**，其产品身份基线 r1 可查询；其余对象仍按独立草稿/开放状态显示，所有 13 条工程关系仍为候选。该审批不等于 P0 Gate 或硬件/软件设计已获授权。此功能拒绝非空工作区，不能用在默认现役 SQLite 上。
 
 GitHub 后续更新到新 SHA 时，仍需使用新的试用 DB；当前版本**尚不支持安全地向已有工作区自动增量合并**。不要把重新检出源码当成现场资料自动同步。
 
