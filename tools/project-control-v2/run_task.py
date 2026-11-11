@@ -55,26 +55,19 @@ def execute(args, output=sys.stdout):
     started_mono = time.monotonic()
     exit_code, failure_note = None, ""
     try:
-        # stdout and stderr are merged in actual arrival order into one local log.
+        # Wait with a real deadline even if the command is silent. Raw logs are
+        # local-only to avoid silently publishing secrets or huge trace files.
         with log_path.open("x", encoding="utf-8", errors="replace") as log:
-            p = subprocess.Popen(command, cwd=str(REPO), stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT, text=True, encoding="utf-8",
-                                 errors="replace", bufsize=1, shell=False)
             try:
-                deadline = started_mono + args.timeout
-                assert p.stdout is not None
-                for line in p.stdout:
-                    log.write(line)
-                    output.write(line)
-                    if time.monotonic() > deadline:
-                        p.kill()
-                        failure_note = "operator timeout exceeded; process killed"
-                        break
-                exit_code = p.wait(timeout=8)
-            finally:
-                if p.poll() is None:
-                    p.kill()
-                    p.wait()
+                finished = subprocess.run(
+                    command, cwd=str(REPO), stdout=log, stderr=subprocess.STDOUT,
+                    text=True, encoding="utf-8", errors="replace", shell=False,
+                    timeout=args.timeout, check=False)
+                exit_code = finished.returncode
+            except subprocess.TimeoutExpired:
+                exit_code = 124
+                failure_note = "operator timeout exceeded; command terminated"
+                log.write("\n" + failure_note + "\n")
     except OSError as exc:
         failure_note = "could not run command: " + str(exc)
         exit_code = 127
