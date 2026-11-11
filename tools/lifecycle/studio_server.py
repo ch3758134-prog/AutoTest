@@ -84,6 +84,12 @@ def handler_factory(store, token, repo=None, manager_token=None, git_source=None
             try:
                 if path in ("/", "/index.html", "/**"):
                     return self.write(WEB.read_bytes(), content_type="text/html; charset=utf-8")
+                if path == "/workspace.css":
+                    return self.write((HERE / "studio_workspace.css").read_bytes(),
+                                      content_type="text/css; charset=utf-8")
+                if path == "/workspace.js":
+                    return self.write((HERE / "studio_workspace_ui.js").read_bytes(),
+                                      content_type="application/javascript; charset=utf-8")
                 if path == "/research.js":
                     return self.write((HERE / "studio_research_ui.js").read_bytes(),
                                       content_type="application/javascript; charset=utf-8")
