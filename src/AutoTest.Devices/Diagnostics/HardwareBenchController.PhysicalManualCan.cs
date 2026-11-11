@@ -15,7 +15,7 @@ namespace AutoTest.Devices.Diagnostics;
 /// </summary>
 public sealed partial class HardwareBenchController
 {
-    private readonly SemaphoreSlim _physicalManualCanWrite = new(1, 1);
+    // The shared fence semaphore is declared in PhysicalKeySim.cs for this controller.
 
     public static string PhysicalManualCanConfirmation(CanFrame frame, long generation)
     {
@@ -33,7 +33,7 @@ public sealed partial class HardwareBenchController
                 "Manual DUT CAN transmissions must use CAN1, never KEY_SIM CAN0.");
         if (ct.IsCancellationRequested)
             return OperationResult<CanTxReceipt>.Rejected("CANCELLED_BEFORE_TX", "No frame sent.");
-        try { await _physicalManualCanWrite.WaitAsync(ct).ConfigureAwait(false); }
+        try { await _physicalSharedCanWrite.WaitAsync(ct).ConfigureAwait(false); }
         catch (OperationCanceledException)
         {
             return OperationResult<CanTxReceipt>.Rejected("CANCELLED_BEFORE_TX", "No frame sent.");
@@ -102,6 +102,6 @@ public sealed partial class HardwareBenchController
             }
             finally { link.RevokeOneCanTransmission(); }
         }
-        finally { _physicalManualCanWrite.Release(); }
+        finally { _physicalSharedCanWrite.Release(); }
     }
 }
