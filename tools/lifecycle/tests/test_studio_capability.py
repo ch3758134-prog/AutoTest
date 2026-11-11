@@ -23,7 +23,7 @@ const objects=[
  obj('test1','test','DRAFT'),obj('r2','requirement','APPROVED'),
  obj('r3','requirement','DRAFT')
 ];
-const edge=(source_id,target_id,status='APPROVED')=>({source_id,target_id,status});
+const edge=(source_id,target_id,status='APPROVED',kind='defines')=>({source_id,target_id,status,kind});
 const model=context.capabilityTraceModel({objects,relations:[
  edge('cap-a','r1'),edge('r1','d1'),edge('d1','test1'),
  edge('cap-b','r1'),edge('cap-b','r2'),
@@ -39,6 +39,26 @@ assert.equal(a.tests[0].state,'DRAFT'); // presence is NOT verification
 const b=model.find(x=>x.cap.id==='cap-b');
 assert.deepEqual(Array.from(b.requirements,x=>x.id),['r1','r2']);
 assert.equal(context.capabilityTraceModel({objects:[],relations:[]}).length,0);
+const gaps=context.capabilityGapModel(a,{objects,relations:[
+ edge('cap-a','r1'),edge('r1','d1'),edge('d1','test1'),
+ edge('cap-a','r3','CANDIDATE')
+]});
+assert.ok(gaps.some(x=>x.code==='RELATION_REVIEW'));
+assert.ok(gaps.some(x=>x.code==='VERIFICATION_UNLINKED')===false);
+assert.ok(gaps.some(x=>x.code==='DESIGN_REVIEW')===false);
+const sparse=context.capabilityTraceModel({objects:[obj('lonely','capability')],relations:[]})[0];
+const sparseGaps=context.capabilityGapModel(sparse,{objects:[obj('lonely','capability')],relations:[]});
+assert.ok(sparseGaps.some(x=>x.code==='TRACE_MISSING'));
+assert.ok(sparseGaps.some(x=>x.code==='REQUIREMENT_UNLINKED'));
+assert.ok(sparseGaps.some(x=>x.code==='VERIFICATION_UNLINKED'));
+const affectedObjects=[obj('risk-cap','capability'),obj('req','requirement','APPROVED'),obj('open','change','OPEN')];
+const affectedLinks=[edge('risk-cap','req'),edge('open','req','APPROVED','impacts')];
+const affected=context.capabilityTraceModel({objects:affectedObjects,relations:affectedLinks})[0];
+const affectedGaps=context.capabilityGapModel(affected,{objects:affectedObjects,relations:affectedLinks});
+assert.ok(affectedGaps.some(x=>x.code==='CHANGE_OPEN'));
+assert.equal(affected.linked.some(o=>o.kind==='change'),false);
+const unrelated=[...affectedLinks,edge('open','risk-cap','CANDIDATE','impacts')];
+assert.equal(context.capabilityTraceModel({objects:affectedObjects,relations:unrelated})[0].requirements.length,1);
 """
         subprocess.run(["node", "-e", script, str(HERE / "studio_capability_ui.js")],
                        check=True, capture_output=True, text=True)
