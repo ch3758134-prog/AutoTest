@@ -192,6 +192,7 @@ function renderEditor(){const types=groupKinds[state.view];const desc={product:'
  if(['DRAFT','IN_REVIEW'].includes(selected.state)&&selected.kind!=='change')actions.append(button('批准此修订','outline',()=>approvalModal(selected)));
  if(selected.kind==='change')actions.append(button('逐项审查影响','primary',()=>changeReviewModal(selected.id)));
  if(selected.kind==='change'&&selected.state==='OPEN')actions.append(button('关闭变更','outline',()=>approvalModal(selected,true)));
+ if(selected.kind==='test')actions.append(button('执行记录与证据审查','primary',()=>verificationHistoryModal(selected)));
  if(selected.kind==='work_package')actions.append(button('检查实施准入','outline',()=>showReadiness(selected)));
  if(selected.kind==='work_package')actions.append(button('生成 AI 实施包','outline',()=>showContext(selected)));
  head.append(actions);detail.append(head);
@@ -328,4 +329,4 @@ $('#newProject').onclick=()=>projectModal();$('#editProject').onclick=()=>state.
 $('#export').onclick=exportProject;$('#modalClose').onclick=closeModal;$('#overlay').onclick=e=>{if(e.target===$('#overlay'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 document.querySelectorAll('[data-view]').forEach(n=>n.onclick=()=>navigate(n.dataset.view));
 window.addEventListener('load',()=>boot().catch(e=>{clean(root);add(root,el('h1','','本地工作区未能启动'),note(e.message))}));
-</script><script src="/research.js"></script><script src="/execution.js"></script><script src="/management.js"></script><script src="/capability.js"></script><script src="/change.js"></script></body></html>
+</script><script src="/research.js"></script><script src="/execution.js"></script><script src="/management.js"></script><script src="/capability.js"></script><script src="/change.js"></script><script src="/verification.js"></script></body></html>
