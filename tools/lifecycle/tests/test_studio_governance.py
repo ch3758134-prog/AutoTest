@@ -159,6 +159,11 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
         self.assertTrue(self.store.readiness(work[1]["id"])["ready"])
         change=self.proposal()
         self.fill(change,{"CAPABILITIES":[req1["id"]]})
+        for obj,outcome in ((work[0],"IMPACT"),(work[1],"NO_IMPACT")):
+            self.g.review_package(change["change"]["id"],obj["id"],outcome,
+                "Independent product impact evaluation for this implementation",
+                ["test://implementation-review"],"Owner",
+                change["change"]["base_digest"],2)
         result=self.g.publish(change["change"]["id"],"Owner","Impacted path confirmed",
                               change["change"]["base_digest"])
         self.assertEqual([x["id"] for x in result["invalidated_work_packages"]],
@@ -171,6 +176,49 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
         self.g.resolve(work[0]["id"],change["change"]["id"],2,
                        "Owner","Reviewed approved work package against new product definition")
         self.assertTrue(self.store.readiness(work[0]["id"])["ready"])
+
+    def test_missing_implementation_review_is_a_hard_gate_even_without_graph(self):
+        orphan=self.store.create_object({"project_id":self.project["id"],
+            "kind":"work_package","title":"Orphan implementation","body":"No mapping recorded"})["item"]
+        change=self.proposal()
+        self.fill(change)
+        gate=self.g.gate(change["change"]["id"])
+        self.assertFalse(gate["ready"])
+        self.assertEqual(gate["package_total"],1)
+        self.assertTrue(any("individually reviewed" in r for r in gate["reasons"]))
+        with self.assertRaisesRegex(RuleError,"blocked"):
+            self.g.publish(change["change"]["id"],"Owner","Unsafe approval",
+                           change["change"]["base_digest"])
+        self.g.review_package(change["change"]["id"],orphan["id"],"UNKNOWN",
+            "Not enough information",["review://pending"],"Owner",
+            change["change"]["base_digest"],1)
+        self.assertFalse(self.g.gate(change["change"]["id"])["ready"])
+        self.g.review_package(change["change"]["id"],orphan["id"],"NO_IMPACT",
+            "Checked actual implementation and found no product semantic coupling",
+            ["review://independent-module"],"Owner",
+            change["change"]["base_digest"],1)
+        self.assertTrue(self.g.gate(change["change"]["id"])["ready"])
+        self.store.update_object(orphan["id"],{"expected_revision":1,"body":"Revised source boundary"})
+        self.assertFalse(self.g.gate(change["change"]["id"])["ready"])
+
+    def test_relationship_conflict_rejects_false_no_impact(self):
+        req=self.store.create_object({"project_id":self.project["id"],
+            "kind":"requirement","title":"Affected business rule","body":"Old rule"})["item"]
+        wp=self.store.create_object({"project_id":self.project["id"],
+            "kind":"work_package","title":"Downstream implementation","body":"Old integration"})["item"]
+        link=self.store.create_relation({"source_id":req["id"],"target_id":wp["id"],"kind":"depends"})
+        self.store.approve_relation(link["id"],"Owner","Reviewed requirement dependency")
+        change=self.proposal()
+        self.fill(change,{"CAPABILITIES":[req["id"]]})
+        self.g.review_package(change["change"]["id"],wp["id"],"NO_IMPACT",
+            "Contradicts graph",["repo://affected-code"],"Owner",
+            change["change"]["base_digest"],1)
+        reasons=self.g.gate(change["change"]["id"])["reasons"]
+        self.assertTrue(any("conflicts with reviewed dependency graph" in x for x in reasons))
+        self.g.review_package(change["change"]["id"],wp["id"],"IMPACT",
+            "Corrected after dependency review",["repo://affected-code"],"Owner",
+            change["change"]["base_digest"],1)
+        self.assertTrue(self.g.gate(change["change"]["id"])["ready"])
 
     def test_cross_project_impact_is_forbidden(self):
         other=self.store.create_project({"name":"Other","summary":"Other product",
