@@ -81,3 +81,15 @@ button.primary{background:#246381;border:1px solid #246381;color:#fff;font-size:
 .pm-auth{width:min(500px,calc(100vw - 25px))}.pm-auth .pm-form{grid-template-columns:1fr}
 @media(max-width:1000px){.pm-two-cols{grid-template-columns:1fr}.pm-stat-grid{grid-template-columns:1fr}}
 @media(max-width:650px){.pm-management-head{display:block;padding:20px}.pm-inline-actions{margin-top:15px}.pm-form{grid-template-columns:1fr;padding:18px}.pm-checklist{grid-template-columns:1fr}.pm-dialog-head{padding:20px}.pm-facts{grid-template-columns:1fr;gap:2px}.pm-facts dd{margin-bottom:12px}}
+
+.pm-wbs-item{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 10px;border-bottom:1px solid #ecf0f3;cursor:pointer;font-size:13px;line-height:1.6;color:#405e71}
+.pm-wbs-item:hover{background:#f5f9fa;color:#245e77}
+.pm-wbs-item .pm-muted{font-size:11px;flex-shrink:0}
+.pm-gantt{max-width:100%;overflow-x:auto}
+.pm-gantt-axis{display:flex;justify-content:space-between;font-size:11px;color:#8295a4;padding:4px 0 12px;border-bottom:1px solid #dfe7ec}
+.pm-gantt-row{cursor:pointer;padding:13px 0;border-bottom:1px solid #ebeff2}
+.pm-gantt-row:hover{background:#f7fafb}
+.pm-gantt-title{font-size:12px;font-weight:650;color:#486879;margin-bottom:7px}
+.pm-gantt-track{height:15px;background:repeating-linear-gradient(90deg,#f1f5f7 0,#f1f5f7 calc(25% - 1px),#dce7ed 25%);border-radius:5px;position:relative;overflow:hidden}
+.pm-gantt-track>span{position:absolute;top:2px;bottom:2px;background:#5294b1;border-radius:4px;min-width:4px}
+.pm-gantt-dates{color:#8396a3;font-size:11px;margin-top:6px}
