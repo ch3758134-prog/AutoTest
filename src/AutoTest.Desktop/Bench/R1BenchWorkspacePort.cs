@@ -490,6 +490,11 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
                     await Task.Delay(step.DurationMs, ct);
                 }
             }
+            if (!ReferenceEquals(_hardware(), physical) ||
+                physical.State != UsbSessionState.Connected || physical.Generation != generation ||
+                _testRunning?.Invoke() == true ||
+                _projectId() != identity || _projectPath() != projectPath)
+                return new(false, false, false, "结束时主控/工程状态已变化，最终物理状态 UNKNOWN。");
             return new(true, false, false,
                 $"动作执行完成；最后已确认发送掩码 {lastMask ?? "UNKNOWN"}。" +
                 "未自动恢复任何状态，五路电压及 ECU 识别均未测量。");
