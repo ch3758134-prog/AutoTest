@@ -2,7 +2,7 @@ name: R1 product UI Windows build
 
 on:
   push:
-    branches: [feature/r1-html-product-ui-20261110, feature/r1-v6-selective-testcases-20261110, feature/r1-unified-ide-shell-rebuild-20261111, feature/r1-manual-bench-action-editor-20261111]
+    branches: [feature/r1-html-product-ui-20261110, feature/r1-v6-selective-testcases-20261110, feature/r1-unified-ide-shell-rebuild-20261111, feature/r1-manual-bench-action-editor-20261111, feature/r1-full-product-ui-system-20261111]
   pull_request:
     branches: [main]
     paths:
