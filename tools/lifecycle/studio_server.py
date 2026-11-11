@@ -21,6 +21,7 @@ from studio_governance import DefinitionGovernance
 from studio_definition_research import DefinitionResearch
 from studio_definition_suggestions import DefinitionSuggestions
 from studio_semantics import semantic_context
+from studio_knowledge import EngineeringKnowledge
 from studio_restore import preview as restore_preview, restore_to_empty
 
 HERE = Path(__file__).resolve().parent
@@ -39,6 +40,7 @@ def handler_factory(store, token, repo=None, manager_token=None):
     governance = DefinitionGovernance(store)
     definition_research = DefinitionResearch(store)
     definition_suggestions = DefinitionSuggestions(store)
+    knowledge = EngineeringKnowledge(store)
     class Handler(BaseHTTPRequestHandler):
         server_version = "EngineeringWorkbench/1.0"
 
@@ -153,6 +155,8 @@ def handler_factory(store, token, repo=None, manager_token=None):
                 if path == "/api/studio/baseline/preview":
                     return self.write(baseline.preview(params.get("project", ""),
                                                        params.get("revision", "HEAD")))
+                if path == "/api/studio/knowledge":
+                    return self.write(knowledge.list(params.get("project","")))
                 if path == "/api/studio/management/context":
                     return self.write(management.context(params.get("project", "")))
                 if path == "/api/studio/management/proposals":
@@ -191,7 +195,10 @@ def handler_factory(store, token, repo=None, manager_token=None):
             manager_request = (request_path in (
                                    "/api/studio/management/propose",
                                    "/api/studio/governance/research/submit",
-                                   "/api/studio/governance/suggest")
+                                   "/api/studio/governance/suggest",
+                                   "/api/studio/knowledge/propose",
+                                   "/api/studio/knowledge/revise",
+                                   "/api/studio/knowledge/link/propose")
                                and manager_token is not None and
                                secrets.compare_digest(self.headers.get("X-Manager-Token", ""),
                                                       manager_token))
@@ -249,6 +256,35 @@ def handler_factory(store, token, repo=None, manager_token=None):
                         data.get("proposed"),data.get("reason",""),
                         data.get("source_refs"),data.get("proposer",""),
                         data.get("expected_digest",""))
+                elif path == "/api/studio/knowledge/propose":
+                    answer = knowledge.propose(
+                        data.get("project_id",""),data.get("entry"),
+                        data.get("author",""),
+                        "OWNER_CANDIDATE" if owner_request else "AI_CANDIDATE")
+                elif path == "/api/studio/knowledge/revise":
+                    answer = knowledge.revise(
+                        data.get("id",""),data.get("expected_revision"),
+                        data.get("entry"),data.get("author",""),
+                        "OWNER_CANDIDATE" if owner_request else "AI_CANDIDATE")
+                elif path == "/api/studio/knowledge/review":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may review knowledge"},403)
+                    answer = knowledge.review(
+                        data.get("id",""),data.get("expected_revision"),
+                        data.get("decision",""),data.get("reviewer",""),
+                        data.get("reason",""))
+                elif path == "/api/studio/knowledge/link/propose":
+                    answer = knowledge.propose_link(
+                        data.get("project_id",""),data.get("source_id",""),
+                        data.get("target_id",""),data.get("relation",""),
+                        data.get("rationale",""),data.get("author",""),
+                        "OWNER_CANDIDATE" if owner_request else "AI_CANDIDATE")
+                elif path == "/api/studio/knowledge/link/review":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may review knowledge links"},403)
+                    answer = knowledge.review_link(
+                        data.get("id",""),data.get("decision",""),
+                        data.get("reviewer",""),data.get("reason",""))
                 elif path == "/api/studio/governance/suggest":
                     answer = definition_suggestions.suggest(
                         data.get("project_id",""),data.get("proposed"),
