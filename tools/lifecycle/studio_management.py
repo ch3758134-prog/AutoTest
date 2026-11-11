@@ -90,7 +90,7 @@ class Management:
                                  "change_id":x["id"],
                                  "reason":"Major product definition change requires multi-domain review"})
         for research_task in research_queue:
-            if research_task["state"] not in ("REVIEWED","NOT_APPLICABLE"):
+            if research_task["state"] not in ("REVIEWED","NOT_APPLICABLE","SUGGESTED"):
                 blockers.append({"type":"PRODUCT_DEFINITION_RESEARCH",
                                  "change_id":research_task["change_id"],
                                  "task_id":research_task["task_id"],
