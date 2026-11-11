@@ -10,8 +10,7 @@ import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from studio_store import Store,RuleError
 from studio_execution import Execution, GitHubReader,require_repo
-from studio_governance import DefinitionGovernance,DOMAINS
-from studio_definition_research import DefinitionResearch
+from studio_product_identity import ProductIdentity
 
 REPO="ch3758134-prog/AutoTest"
 
@@ -48,28 +47,18 @@ class ExecutionTests(unittest.TestCase):
         self.project=self.store.create_project({"name":"Embedded Lab","summary":"real devices",
                                                 "body":"User-validated engineering device and test workbench",
                                                 "version":"R1"})["project"]["id"]
-        self.governance=DefinitionGovernance(self.store)
-        current=self.governance.status(self.project)
-        proposed=dict(current["definition"])
-        proposed["summary"]="Review approved generic device engineering baseline"
-        change=self.governance.propose(self.project,proposed,
-            "Fixture establishes product requirements before authorizing coding",
-            ["test://product-specification"],"Fixture owner",current["definition_digest"])
-        coordinator=DefinitionResearch(self.store)
-        for task in coordinator.list(change["change"]["id"])["tasks"]:
-            finding=coordinator.submit(task["id"],task["revision"],
-                "Fixture analyst","AI_CANDIDATE",
-                "No existing product implementation in this fixture",
-                ["test://product-specification"],"Fixture only")
-            coordinator.review(task["id"],finding["submission_id"],
-                task["revision"],"ACCEPT","Fixture owner","Input reviewed")
-        for key,_ in DOMAINS:
-            self.governance.review(change["change"]["id"],key,"NO_IMPACT",
-                "Fixture has no existing implementation before baseline publication",
-                ["test://product-specification"],[],"Fixture owner",change["change"]["base_digest"])
-        self.governance.publish(change["change"]["id"],"Fixture owner",
-            "Fixture initial product definition approved",
-            change["change"]["base_digest"])
+        self.identity=ProductIdentity(self.store)
+        status=self.identity.status(self.project)
+        candidate=self.identity.propose(
+            self.project,"Integrated ECU stimulus/response engineering system",
+            "Explicitly recognize the hardware-software system",
+            ["test://approved-product-identity-fixture"],[],
+            "Fixture owner","OWNER_CANDIDATE",status["digest"])
+        self.identity.review_scope(candidate["id"],status["digest"],"Fixture owner",
+            "No engineering objects exist at fixture identity establishment",
+            ["test://initial-scope-reviewed"])
+        self.identity.publish(candidate["id"],status["digest"],"Fixture owner",
+            "Initial canonical identity signed for coding gate test")
         self.engine.configure(self.project,REPO)
         self.engine.refresh(self.project)
 
@@ -115,45 +104,52 @@ class ExecutionTests(unittest.TestCase):
         with self.assertRaises(RuleError):
             self.engine.import_issue(self.project,17)
 
-    def test_unbaselined_or_under_review_product_blocks_coding_dispatch(self):
-        work,_=self._work()
-        self.engine.bind(work["id"],17,"DEVICE")
-        current=self.governance.status(self.project)
-        proposal=dict(current["definition"])
-        proposal["body"]="A newly discovered system boundary requires analysis"
-        change=self.governance.propose(self.project,proposal,
-            "Investigating major product boundary before downstream code",
-            ["observation://new-behavior"],"Owner",current["definition_digest"])
-        with self.assertRaisesRegex(RuleError,"under review"):
-            self.engine.dispatch(work["id"],"Owner","Unsafe attempt")
-        self.governance.reject(change["change"]["id"],"Owner","Wait for supporting evidence")
+    def test_only_canonical_identity_baseline_allows_coding_dispatch(self):
+        wp,_=self._work()
+        self.engine.bind(wp["id"],17,"DEVICE")
         with self.store.db() as db:
-            db.execute("DELETE FROM definition_baselines WHERE project_id=?",(self.project,))
-        with self.assertRaisesRegex(RuleError,"baseline required"):
-            self.engine.dispatch(work["id"],"Owner","Unbaselined attempt")
+            db.execute("DELETE FROM product_identity_baselines WHERE project_id=?",
+                       (self.project,))
+        with self.assertRaisesRegex(RuleError,"Canonical product identity baseline required"):
+            self.engine.dispatch(wp["id"],"Owner","Unsafe attempt")
 
-    def test_major_product_review_pauses_already_dispatched_ai_work(self):
-        work,_=self._work()
-        self.engine.bind(work["id"],17,"DEVICE")
-        self.engine.dispatch(work["id"],"Owner","Approved coding task")
-        self.assertEqual(len(self.engine.queue(self.project,"DEVICE")),1)
-        current=self.governance.status(self.project)
-        proposal=dict(current["definition"])
-        proposal["body"]="New external integration assumptions; must revisit impact"
-        change=self.governance.propose(self.project,proposal,
-            "A major positioning change is being investigated",
-            ["incident://new-product-scope"],"Human",current["definition_digest"])
+    def test_pending_identity_proposal_does_not_globally_pause_unaffected_work(self):
+        wp,_=self._work()
+        self.engine.bind(wp["id"],17,"DEVICE")
+        self.engine.dispatch(wp["id"],"Owner","Approved coding task")
+        current=self.identity.status(self.project)
+        self.identity.propose(self.project,"ECU platform with additional external stimuli",
+            "Discussion is open, impact not yet known",
+            ["discussion://identity-question"],[],"AI","AI_CANDIDATE",current["digest"])
         overview=self.engine.overview(self.project)
-        self.assertEqual(overview["tasks"][0]["effective_state"],
-                         "BLOCKED_BY_PRODUCT_DEFINITION")
-        self.assertEqual(self.engine.queue(self.project,"DEVICE"),[])
-        with self.assertRaisesRegex(RuleError,"under review"):
-            self.engine.claim(work["id"],"DEVICE","CODER-1")
-        with self.assertRaisesRegex(RuleError,"under review"):
-            self.engine.packet(work["id"])
-        self.governance.reject(change["change"]["id"],"Human",
-                               "Not supported by the current experiment evidence")
+        self.assertEqual(overview["tasks"][0]["effective_state"],"DISPATCHED")
         self.assertEqual(len(self.engine.queue(self.project,"DEVICE")),1)
+        packet=self.engine.claim(wp["id"],"DEVICE","CODEX-DEVICE")
+        self.assertEqual(packet["manifest"]["source_sha"],"a"*40)
+
+    def test_published_identity_impact_blocks_affected_work_only(self):
+        affected,_=self._work()
+        self.engine.bind(affected["id"],17,"DEVICE")
+        self.engine.dispatch(affected["id"],"Owner","Approved coding task")
+        current=self.identity.status(self.project)
+        candidate=self.identity.propose(self.project,
+            "ECU platform supporting additional controlled stimulus channels",
+            "The driver work package might require redesign",
+            ["discussion://new-stimulus"],[],"AI","AI_CANDIDATE",current["digest"])
+        self.identity.review_scope(candidate["id"],current["digest"],"Owner",
+            "Reviewed the specific impacted device path",
+            ["review://impact-scoping"])
+        pinned=self.store.object(affected["id"])["item"]
+        self.identity.assess_impact(candidate["id"],affected["id"],
+            pinned["revision"],"IMPACT","The device input contract changed",
+            ["design://new-hardware-input"],"Owner")
+        self.identity.publish(candidate["id"],current["digest"],"Owner",
+            "Work package revision must be reviewed")
+        self.assertEqual(self.engine.overview(self.project)["tasks"][0]["effective_state"],
+                         "BLOCKED_BY_CHANGED_DESIGN")
+        self.assertEqual(self.engine.queue(self.project,"DEVICE"),[])
+        with self.assertRaises(RuleError):
+            self.engine.claim(affected["id"],"DEVICE","CODEX-DEVICE")
 
     def test_code_ready_dispatch_claim_and_pr_mapping(self):
         wp,design=self._work()
