@@ -236,6 +236,38 @@ class ProductDefinitionGovernanceTests(unittest.TestCase):
             change["change"]["base_digest"],1)
         self.assertTrue(self.g.gate(change["change"]["id"])["ready"])
 
+    def test_new_research_invalidates_prior_implementation_no_impact(self):
+        wp=self.store.create_object({"project_id":self.project["id"],
+            "kind":"work_package","title":"Independent maintenance module",
+            "body":"Candidate implementation"})["item"]
+        change=self.proposal()
+        self.fill(change)
+        self.g.review_package(change["change"]["id"],wp["id"],"NO_IMPACT",
+            "Separated the implementation from the proposed product workflow",
+            ["test://scope-review"],"Owner",change["change"]["base_digest"],1)
+        self.assertTrue(self.g.gate(change["change"]["id"])["ready"])
+        task=next(t for t in self.research.list(change["change"]["id"])["tasks"]
+                  if t["domain"]=="STAKEHOLDERS")
+        self.research.reopen(task["id"],task["revision"],"Owner",
+                             "New customer role evidence must be examined")
+        self.assertFalse(self.g.gate(change["change"]["id"])["ready"])
+        reopened=next(t for t in self.research.list(change["change"]["id"])["tasks"]
+                      if t["id"]==task["id"])
+        finding=self.research.submit(task["id"],reopened["revision"],
+            "Researcher","AI_CANDIDATE","Different user workflow noted",
+            ["test://new-interview"],"Not a real interview")
+        self.research.review(task["id"],finding["submission_id"],
+            reopened["revision"],"ACCEPT","Owner","New input reviewed")
+        self.g.review(change["change"]["id"],"STAKEHOLDERS","NO_IMPACT",
+            "Re-evaluated new user role evidence",["test://new-interview"],
+            [],"Owner",change["change"]["base_digest"])
+        errors=self.g.gate(change["change"]["id"])["reasons"]
+        self.assertTrue(any("does not reflect current domain research" in x for x in errors))
+        self.g.review_package(change["change"]["id"],wp["id"],"NO_IMPACT",
+            "Rechecked package with new user role evidence",
+            ["test://re-reviewed-package"],"Owner",change["change"]["base_digest"],1)
+        self.assertTrue(self.g.gate(change["change"]["id"])["ready"])
+
     def test_cross_project_impact_is_forbidden(self):
         other=self.store.create_project({"name":"Other","summary":"Other product",
                                            "body":"Other project history"})["project"]
