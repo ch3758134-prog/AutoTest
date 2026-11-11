@@ -39,7 +39,7 @@ public sealed class BenchActionEditorTests
     }
 
     [Fact]
-    public async Task ActionCannotRunUnsavedOrHoldUnknownKeyState()
+    public async Task InvalidActionCannotRunButValidUnsavedKeyActionCanBeTried()
     {
         var fake = new ActionPort();
         var vm = new BenchKeyActionEditorViewModel(fake);
@@ -52,10 +52,10 @@ public sealed class BenchActionEditorTests
         Assert.Equal(0, fake.Runs);
         vm.AddSetKeysCommand.Execute(); // inserts after the selected hold
         vm.MoveStepUpCommand.Execute();  // now starts with SetKeys
-        await vm.SaveAsync();
-        Assert.False(vm.HasUnsavedChanges);
         await vm.RunAsync();
         Assert.Equal(1, fake.Runs);
+        Assert.True(vm.HasUnsavedChanges);
+        Assert.Null(fake.Saved);
     }
 
     [Fact]
