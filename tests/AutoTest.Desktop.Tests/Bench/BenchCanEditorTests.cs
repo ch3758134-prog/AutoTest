@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoTest.Desktop.Bench;
+using AutoTest.Projects.Dbc;
+using System.Collections.Immutable;
 using Xunit;
 
 namespace AutoTest.Desktop.Tests.Bench;
@@ -134,6 +136,48 @@ public sealed class BenchCanEditorTests
     }
 
     [Fact]
+    public async Task ProjectDbcSignalEditingBuildsPhysicalCanDataAndRejectsStaleRevision()
+    {
+        var signal = new DbcSignal("MotorCmd", 0, 8, true, false,
+            0.5, 0, 0, 100, "Nm", "ECU");
+        var message = new DbcMessage(0x321, "MotorControl", 2, "Tester",
+            ImmutableArray.Create(signal));
+        var db = new DbcDatabase("BenchDbc", 1,
+            ImmutableArray<string>.Empty, ImmutableArray.Create(message));
+        var port = new TestPort { ActiveDbc = db, ActiveDbcRevision = "dbcref@1" };
+        var vm = new BenchCanEditorViewModel(port);
+        vm.RefreshDbcCatalog();
+        Assert.True(vm.HasDbc);
+        Assert.Equal("MotorControl", vm.SelectedDbcMessage?.Name);
+        vm.AddFromDbcCommand.Execute();
+        Assert.Equal("0000", vm.SelectedMessage?.DataHex);
+        Assert.Single(vm.SignalInputs);
+        vm.SignalInputs[0].ValueText = "10";
+        Assert.Equal("1400", vm.SelectedMessage!.DataHex);
+        Assert.True(vm.Dirty);
+        await vm.SendOnceAsync();
+        Assert.Equal(1, port.SendCount);
+        Assert.Equal(new byte[]{0x14,0x00}, port.LastMessage!.Payload());
+        vm.SignalInputs[0].ValueText = "not-a-number";
+        await vm.SendOnceAsync();
+        Assert.Equal(1, port.SendCount); // no stale Data after invalid physical value
+        vm.SignalInputs[0].ValueText = "12.5"; // unsupported representability
+        await vm.SendOnceAsync();
+        Assert.Equal(1, port.SendCount);
+        vm.SignalInputs[0].ValueText = "11";
+        await vm.SendOnceAsync();
+        Assert.Equal(2, port.SendCount);
+        Assert.Equal("1600", port.LastMessage!.DataHex);
+        port.ActiveDbcRevision = "dbcref@2";
+        await vm.SendOnceAsync();
+        Assert.Equal(2, port.SendCount);
+        Assert.Contains("DBC", vm.Status);
+        vm.UnbindDbcCommand.Execute();
+        await vm.SendOnceAsync();
+        Assert.Equal(3, port.SendCount); // explicit raw frame keeps bytes
+    }
+
+    [Fact]
     public async Task SavedCanRecordsRejectCrossProjectLoad()
     {
         var dir = Path.Combine(Path.GetTempPath(), "autotest-can-" + Guid.NewGuid().ToString("N"));
@@ -171,6 +215,8 @@ public sealed class BenchCanEditorTests
     private sealed class TestPort : IBenchWorkbenchPort
     {
         public string? ActiveProjectId { get; set; }
+        public DbcDatabase? ActiveDbc { get; set; }
+        public string? ActiveDbcRevision { get; set; }
         public IReadOnlyList<BenchCanMessage>? Saved { get; set; }
         public BenchCanMessage? LastMessage { get; private set; }
         public int SendCount { get; private set; }
