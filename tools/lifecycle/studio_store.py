@@ -494,6 +494,12 @@ class Store:
                    WHERE package_id=? AND status='OPEN'""",(key,)).fetchall()
             for row in pending:
                 why.append("产品定义变更要求重新评审此工作包："+row["change_id"])
+        # Canonical product-identity decisions invalidate only explicitly affected
+        # work packages and reviewed downstream dependencies.
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='product_identity_invalidations'").fetchone():
+            for row in db.execute("""SELECT proposal_id FROM product_identity_invalidations
+                    WHERE package_id=? AND state='OPEN'""",(key,)):
+                why.append("产品身份修订后的实施复核未完成："+row["proposal_id"])
         meta=obj["meta"]
         for field,label in (("acceptance","可验证验收条件"),("source_sha","目标源码提交身份"),
                             ("file_scope","允许修改的文件范围")):
