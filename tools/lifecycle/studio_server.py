@@ -268,6 +268,19 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     answer = definition_suggestions.reject(
                         data.get("id",""),data.get("reviewer",""),
                         data.get("rationale",""))
+                elif path == "/api/studio/governance/research/scope-out":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may decide research scope"},403)
+                    answer = definition_research.set_not_applicable(
+                        data.get("task_id",""),data.get("expected_revision"),
+                        data.get("reviewer",""),data.get("rationale",""),
+                        data.get("evidence_refs"))
+                elif path == "/api/studio/governance/research/add-topic":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may extend research scope"},403)
+                    answer = definition_research.add_topic(
+                        data.get("change_id",""),data.get("question",""),
+                        data.get("reviewer",""),data.get("rationale",""))
                 elif path == "/api/studio/governance/research/submit":
                     answer = definition_research.submit(
                         data.get("task_id",""),data.get("expected_revision"),
