@@ -199,6 +199,9 @@
      <Button Content="UDS Console" Click="OpenUds_Click"/>
      <Button Content="CAN Flash" Click="OpenFlash_Click"/>
      <Button Content="设备联调" Click="DeviceLab_Click"/>
+     <Button Content="独立 TEST 窗口" Click="FloatTest_Click" ToolTip="浮动到第二显示器，使用同一工程/TEST ViewModel"/>
+     <Button Content="独立 DBC 窗口" Click="FloatDbc_Click" ToolTip="分离 DBC 编辑器，不复制文件"/>
+     <Button Content="独立波形窗口" Click="FloatWave_Click" ToolTip="浮动波形工具，复用当前共享 CAN Hub"/>
      <Button Content="▶ 工程 TEST" Click="OpenRun_Click"/>
      <Button Content="■ 停止" Command="{Binding StopCommand}"/>
     </StackPanel>
