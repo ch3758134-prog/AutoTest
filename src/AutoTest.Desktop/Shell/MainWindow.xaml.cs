@@ -400,7 +400,17 @@ public partial class MainWindow : Window
                                 "确认真实 IGN 输出",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes,
-                        testRunning: () => _test?.Busy == true));
+                        testRunning: () => _test?.Busy == true,
+                        approveSolenoid: (action, generation) =>
+                            MessageBox.Show(this,
+                                "正在请求真实夹具电磁阀动作：" +
+                                (action == 0 ? "升起（命令 00）" : "下落（命令 01）") + "\n" +
+                                "USB CMD SET_SOL=0x16，Session Generation=" + generation + "\n" +
+                                "当前动作会改变夹具机械状态。主控 ACK 与 GET_SOL 不证明机械压紧到位，" +
+                                "请核对工装、人员与 DUT 位置。是否执行本次单次命令？",
+                                "真实夹具电磁阀操作确认",
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                                MessageBoxResult.No) == MessageBoxResult.Yes));
                 station.Controller.ConnectionChanged += state =>
                 {
                     if (!_closed && !Dispatcher.HasShutdownStarted)
