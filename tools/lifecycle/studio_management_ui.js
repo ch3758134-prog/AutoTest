@@ -18,7 +18,7 @@ async function renderManagementView(){
     toast('项目上下文已复制：包含来源/修订/GitHub 同步时间。');
   }));
   options.append(button('核对 Git 工程版本','outline',managementGitBaselineModal));
-  options.append(button('产品定义审查与版本门禁','outline',definitionGovernanceModal));
+  options.append(button('产品身份 · 研究与变更','outline',productIdentityModal));
   options.append(button('工程概念说明与语义判断','outline',()=>engineeringSemanticsModal()));
   options.append(button('工程认识与语义关系','outline',knowledgeWorkbench));
   options.append(button('录入管理建议','primary',managementProposeModal));
@@ -41,14 +41,15 @@ async function renderManagementView(){
   const facts=el('div','meta-table');
   add(facts,
     managementFact('工程设计',result.engineering_objects.length+' 项对象（不代表已交付）'),
-    managementFact('产品定义基线',result.product_definition_governance.baseline_status+
-      ' · ' +(result.product_definition_governance.baseline?.revision||'无批准版本')),
-    managementFact('产品定义待审变更',result.product_definition_governance.changes.filter(
-      x=>x.state==='REVIEW').length+' 项'),
-    managementFact('待确认的 AI 定义候选',result.product_definition_suggestions.filter(
-      x=>x.state==='PENDING').length+' 项（不阻止正式研发）'),
-    managementFact('产品定义研究待复核',result.product_definition_research_tasks.filter(
-      x=>x.state==='OPEN').length+' 项，另有 '+result.product_definition_research_tasks.filter(x=>x.state==='SUGGESTED').length+' 项可选视角'),
+    managementFact('正式产品身份',result.product_identity.state+
+       ' · '+(result.product_identity.baseline?.revision||'无受控版本')),
+    managementFact('待审产品身份候选',result.product_identity.proposals.filter(
+      x=>x.state==='CANDIDATE'||x.state==='SCOPED').length+' 项'),
+    managementFact('已审工程认识',result.engineering_knowledge.items.filter(
+      x=>x.state==='ACCEPTED').length+' 项；候选 '+
+      result.engineering_knowledge.items.filter(x=>x.state==='CANDIDATE').length+' 项'),
+    managementFact('产品身份影响复核',result.product_identity_invalidations.filter(
+      x=>x.state==='OPEN').length+' 个工作包'),
     managementFact('GitHub 状态',result.github.repository?
       result.github.repository+' · 最近同步 '+(result.github.fetched_at||'未知'):'尚未连接 GitHub'),
     managementFact('研究问题',result.technical_studies.length+' 项'),
@@ -60,8 +61,8 @@ async function renderManagementView(){
   if(result.github.error)info.append(el('div','reason','GitHub 同步出错：'+result.github.error));
   if(!result.github.fetched_at)info.append(note('GitHub 未同步。AI 不得根据本地对象数量推断远端项目完成状态。'));
   info.append(el('p','tiny','执行证据由本地人工登记；证据审查与真实产品验收必须分别判断。'))
-  if(result.product_definition_governance.baseline_status!=='BASELINED')
-    info.append(note('产品定义尚未建立有效的受控基线；重大变更及其影响领域必须审查，编码派发被拦截。'));
+  if(result.product_identity.state!=='BASELINED')
+    info.append(note('正式产品身份还没有签发。旧工程简介不自动作为产品定义；原有已批准工作包是否可执行仍由独立详细设计及 CODE_READY 条件判断。'));
   mount.append(info);
   const problems=el('div','panel');
   const ph=el('div','sectionline');add(ph,el('h2','','工程阻塞与需要补齐的条件'));
@@ -76,12 +77,13 @@ async function renderManagementView(){
       const target=item(problem.object_id);
       if(target){navigate(target.kind==='work_package'?'delivery':'engineering');openItem(target);}
     }));
-    if(problem.type==='PRODUCT_DEFINITION_RESEARCH'&&problem.change_id)
-      row.append(button('处理研究','outline',
-        ()=>definitionResearchModal(problem.change_id)));
-    if(problem.type==='PRODUCT_DEFINITION_CHANGE'&&problem.change_id)
-      row.append(button('查看变更门禁','outline',
-        ()=>definitionChangeModal(problem.change_id)));
+    if(problem.type==='IDENTITY_PROPOSAL_PENDING'&&problem.proposal_id)
+      row.append(button('审查身份候选','outline',
+        ()=>productIdentityProposalModal(problem.proposal_id)));
+    if(problem.type==='PRODUCT_IDENTITY_NOT_ESTABLISHED')
+      row.append(button('建立产品身份','outline',productIdentityModal));
+    if(problem.type==='PRODUCT_IDENTITY_INVALIDATION')
+      row.append(button('处理版本影响','outline',productIdentityModal));
     problems.append(row);
   }
   mount.append(problems);
