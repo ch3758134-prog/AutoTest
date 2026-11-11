@@ -61,6 +61,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private string _lastOperation = "尚无操作";
     private string _lastEvidence = "ACK：未知 · 实际电压：未测量";
     private string _directResult = "尚未操作。勾选 K01～K20 只修改准备发送的掩码，不会触发硬件。";
+    private string _ignStatus = "IGN 实际电平未知 · 尚未收到本次主控命令 ACK";
     private uint? _lastDirectAcceptedMask;
     private string? _lastDirectOperationId;
     private bool _updatingSwitches;
@@ -95,6 +96,12 @@ public sealed class BenchWorkbenchViewModel : BindableBase
             .ObservesProperty(() => Busy);
         ClearSwitchesCommand = new DelegateCommand(ClearSelectedSwitches,
             () => !Busy).ObservesProperty(() => Busy);
+        IgnOnCommand = new DelegateCommand(async () => await SetIgnAsync(true),
+            () => !Busy && _connection.State == BenchConnection.Connected)
+            .ObservesProperty(() => Busy);
+        IgnOffCommand = new DelegateCommand(async () => await SetIgnAsync(false),
+            () => !Busy && _connection.State == BenchConnection.Connected)
+            .ObservesProperty(() => Busy);
         foreach (var i in Enumerable.Range(0, 20))
         {
             var item = new BenchSwitchItem(i);
@@ -148,6 +155,13 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     public ICommand ReleaseAllKeysCommand { get; }
     public ICommand ApplyDirectMaskCommand { get; }
     public ICommand ClearSwitchesCommand { get; }
+    public ICommand IgnOnCommand { get; }
+    public ICommand IgnOffCommand { get; }
+    public string IgnStatus
+    {
+        get => _ignStatus;
+        private set => SetProperty(ref _ignStatus, value);
+    }
     public string ProjectName { get => _project; private set => SetProperty(ref _project, value); }
     public string EcuProfileName { get => _ecu; private set => SetProperty(ref _ecu, value); }
     public string Revision { get => _revision; private set => SetProperty(ref _revision, value); }
@@ -390,6 +404,41 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         finally { Busy = false; ((DelegateCommand)ApplyDirectMaskCommand).RaiseCanExecuteChanged(); }
     }
 
+    /// <summary>
+    /// IGN ON/OFF commands are explicitly authorized through the shared
+    /// WinUSB physical fence. USB ACK is never shown as measured IGN voltage.
+    /// </summary>
+    public async Task SetIgnAsync(bool on)
+    {
+        if (Busy) return;
+        Busy = true;
+        var label = on ? "ON" : "OFF";
+        IgnStatus = $"请求 IGN {label} · 等待真实主控 ACK / 电压状态 UNKNOWN";
+        Append(WorkbenchSeverity.Progress, "请求真实 IGN " + label,
+            "SET_IGN USB CMD 0x12 · " + (on ? "01" : "00"));
+        try
+        {
+            var result = await _port.SetIgnAsync(on, CancellationToken.None);
+            IgnStatus = result.Accepted
+                ? $"主控 ACK · 已请求 IGN {label}；IGN 实际电压仍未读取"
+                : $"IGN {label} 操作失败/不确定：{result.ErrorCode ?? "UNKNOWN"} · 实际电平 UNKNOWN";
+            LastOperation = "IGN " + label + " / " + (result.Accepted ? "主控 ACK" : "UNKNOWN / DENIED");
+            LastEvidence = result.AckDescription ?? "IGN 无可靠 ACK，实际电平未知";
+            Append(result.Accepted ? WorkbenchSeverity.Success : WorkbenchSeverity.Error,
+                "IGN " + label + (result.Accepted ? " · 主控已接受（非物理回读）" : " · 失败/拒绝"),
+                $"REQ {result.RawRequest ?? "—"} | RESP {result.RawResponse ?? "—"} | " +
+                $"Generation {result.SessionGeneration?.ToString() ?? "—"} | " +
+                $"{result.ErrorCode ?? "—"} {result.ErrorMessage ?? ""}",
+                result.OperationId, result.TraceReference);
+        }
+        catch (Exception ex)
+        {
+            IgnStatus = $"IGN {label} 输出状态 UNKNOWN：" + ex.Message;
+            Failure("切换 IGN " + label, ex);
+        }
+        finally { Busy = false; }
+    }
+
     public async Task RefreshConnectionAsync()
     {
         if (Busy) return;
@@ -504,6 +553,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         {
             _lastState = null; _lastOperationId = null;
             _lastDirectAcceptedMask = null; _lastDirectOperationId = null;
+            IgnStatus = "USB 已断连；IGN 实际电平未知，不能推断已关闭";
             // Any subsequent connection starts from fresh discovery.
             SelectedDevice = null;
             Devices.Clear();
@@ -512,6 +562,8 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         }
         ((DelegateCommand)SaveMeasurementCommand).RaiseCanExecuteChanged();
         ((DelegateCommand)ApplyDirectMaskCommand).RaiseCanExecuteChanged();
+        ((DelegateCommand)IgnOnCommand).RaiseCanExecuteChanged();
+        ((DelegateCommand)IgnOffCommand).RaiseCanExecuteChanged();
     }
     private void Failure(string stage, Exception ex)
     {
