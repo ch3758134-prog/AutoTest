@@ -24,9 +24,9 @@
 
 ## 项目管理 AI → GitHub → 原生工程对象｜首轮实测
 
-**目前不再用独立的 GitHub 状态报告页冒充工程管理。** 项目管理 AI 将 AutoTest 的真实工程调查结果写为现有 `Store.export_project` 的完整工程快照，归档在 `docs/engineering-control/projects/autotest/snapshot.json`（原有归档路径）。内部是同一套 project/object/revision/relation/knowledge/governance 结构；当前档案包含 15 个待审工程对象及 5 条候选关联，**没有已批准设计、产品身份基线或真实完成率**。
+**目前不再用独立的 GitHub 状态报告页冒充工程管理。** 项目管理 AI 将 AutoTest 的真实工程调查结果写为现有 `Store.export_project` 的完整工程快照，归档在 `docs/engineering-control/projects/autotest/snapshot.json`（原有归档路径）。内部是同一套 project/object/revision/relation/knowledge/governance 结构。当前档案包含 **26 个工程对象、13 条候选关系**，其中《AutoTest 产品定义与立项说明》V0.1 为负责人正式批准的 P0 文档，产品身份基线为 r1；其它工程对象仍各自处于待审状态，**没有自动批准详细设计、P0 Gate、物理实测或实现完成率**。
 
-当前 Git HEAD 的候选档案仅可恢复到**空的、独立试用数据库**。本地 Codex 检出 PR #28 指定完整 SHA 后，在已有工作树中运行：
+当前 Git HEAD 的工程档案（含已记录的 P0 审批）仅可恢复到**空的、独立试用数据库**。本地 Codex 检出 PR #28 指定完整 SHA 后，在已有工作树中运行：
 
 ```powershell
 py -3 tools/lifecycle/studio_server.py --repo . --git-workspace --data "$env:TEMP/engineering-git-review-<HEAD短SHA>-new.sqlite3" --port 8766
