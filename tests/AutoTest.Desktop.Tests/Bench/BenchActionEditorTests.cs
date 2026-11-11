@@ -108,10 +108,10 @@ public sealed class BenchActionEditorTests
                 new[] { BenchActionStep.SetKeys(0x80001), BenchActionStep.Hold(175),
                     BenchActionStep.SetKeys(0) });
             await store.SaveAsync(new[] { action }, CancellationToken.None);
-            Assert.Equal(action, (await store.LoadAsync(CancellationToken.None)).Single() with
-            {
-                Steps = action.Steps
-            });
+            var loaded = (await store.LoadAsync(CancellationToken.None)).Single();
+            Assert.Equal(action.Id, loaded.Id);
+            Assert.Equal(action.Name, loaded.Name);
+            Assert.Equal(action.Steps.ToArray(), loaded.Steps.ToArray());
             active = Guid.NewGuid().ToString("D");
             await Assert.ThrowsAsync<InvalidDataException>(() => store.LoadAsync(CancellationToken.None));
         }
