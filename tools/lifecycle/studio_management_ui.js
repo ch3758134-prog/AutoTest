@@ -19,6 +19,7 @@ async function renderManagementView(){
   }));
   options.append(button('核对 Git 工程版本','outline',managementGitBaselineModal));
   options.append(button('产品定义审查与版本门禁','outline',definitionGovernanceModal));
+  options.append(button('工程概念说明与语义判断','outline',()=>engineeringSemanticsModal()));
   options.append(button('录入管理建议','primary',managementProposeModal));
   root.append(options);
   const mount=el('div','stack');
