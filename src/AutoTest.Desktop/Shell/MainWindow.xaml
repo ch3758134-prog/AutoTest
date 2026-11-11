@@ -144,6 +144,14 @@
     <MenuItem Header="隐藏/显示属性栏" Click="ToggleInspector_Click"/>
     
    </MenuItem>
+   <MenuItem Header="_窗口">
+    <MenuItem Header="独立 TEST 编辑窗口" Click="FloatTest_Click"/>
+    <MenuItem Header="独立 DBC 编辑窗口" Click="FloatDbc_Click"/>
+    <MenuItem Header="独立波形工具窗口" Click="FloatWave_Click"/>
+    <Separator/>
+    <MenuItem Header="自动测试主工作台" Click="OperatorWorkspace_Click"/>
+    <MenuItem Header="工程开发 IDE" Click="EngineeringWorkspace_Click"/>
+   </MenuItem>
    <MenuItem Header="_帮助"><MenuItem Header="R1 原型参考与独立联调说明" Click="R1About_Click"/></MenuItem>
   </Menu>
   <!-- HTML command bar, 48 px -->
@@ -199,9 +207,6 @@
      <Button Content="UDS Console" Click="OpenUds_Click"/>
      <Button Content="CAN Flash" Click="OpenFlash_Click"/>
      <Button Content="设备联调" Click="DeviceLab_Click"/>
-     <Button Content="独立 TEST 窗口" Click="FloatTest_Click" ToolTip="浮动到第二显示器，使用同一工程/TEST ViewModel"/>
-     <Button Content="独立 DBC 窗口" Click="FloatDbc_Click" ToolTip="分离 DBC 编辑器，不复制文件"/>
-     <Button Content="独立波形窗口" Click="FloatWave_Click" ToolTip="浮动波形工具，复用当前共享 CAN Hub"/>
      <Button Content="▶ 工程 TEST" Click="OpenRun_Click"/>
      <Button Content="■ 停止" Command="{Binding StopCommand}"/>
     </StackPanel>
