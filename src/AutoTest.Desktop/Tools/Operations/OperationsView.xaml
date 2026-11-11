@@ -2,52 +2,52 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              MinHeight="410"
-              Background="#101620" Foreground="#E2EDF7" FontFamily="Segoe UI" FontSize="13">
+              Background="#F5F7FA" Foreground="#203249" FontFamily="Segoe UI" FontSize="13">
 <UserControl.Resources>
   <Style TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#E2EDF7"/>
+   <Setter Property="Foreground" Value="#203249"/>
   </Style>
   <Style TargetType="TextBox">
-   <Setter Property="Background" Value="#101620"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#F5F7FA"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D6E1EC"/>
    <Setter Property="Padding" Value="7,5"/>
   </Style>
   <Style TargetType="Button">
-   <Setter Property="Background" Value="#263748"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#EAF0F8"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D6E1EC"/>
    <Setter Property="Padding" Value="10,6"/>
    <Setter Property="MinHeight" Value="30"/>
   </Style>
   <Style TargetType="ComboBox">
-   <Setter Property="Background" Value="#202D3B"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#ECF2F8"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D6E1EC"/>
   </Style>
   <Style TargetType="GroupBox">
-   <Setter Property="Background" Value="#192431"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#FFFFFF"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D6E1EC"/>
   </Style>
   <Style TargetType="DataGrid">
-   <Setter Property="Background" Value="#192431"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="RowBackground" Value="#192431"/>
-   <Setter Property="AlternatingRowBackground" Value="#202D3B"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
-   <Setter Property="HorizontalGridLinesBrush" Value="#314458"/>
-   <Setter Property="VerticalGridLinesBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#FFFFFF"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="RowBackground" Value="#FFFFFF"/>
+   <Setter Property="AlternatingRowBackground" Value="#ECF2F8"/>
+   <Setter Property="BorderBrush" Value="#D6E1EC"/>
+   <Setter Property="HorizontalGridLinesBrush" Value="#D6E1EC"/>
+   <Setter Property="VerticalGridLinesBrush" Value="#D6E1EC"/>
   </Style>
   <Style TargetType="ListBox">
-   <Setter Property="Background" Value="#101620"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#F5F7FA"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D6E1EC"/>
   </Style>
   <Style TargetType="TabControl">
-   <Setter Property="Background" Value="#192431"/>
-   <Setter Property="Foreground" Value="#E2EDF7"/>
-   <Setter Property="BorderBrush" Value="#314458"/>
+   <Setter Property="Background" Value="#FFFFFF"/>
+   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="BorderBrush" Value="#D6E1EC"/>
   </Style>
  </UserControl.Resources>
   <Grid Margin="12">
@@ -60,7 +60,7 @@
     </Grid.RowDefinitions>
     <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="True">
       <TextBlock DockPanel.Dock="Left" FontWeight="SemiBold" FontSize="17" Text="Operations Audit / 原始证据追溯" Margin="0,0,16,0" VerticalAlignment="Center" />
-      <TextBlock Foreground="#92A4B7" VerticalAlignment="Center" Text="追加记录 · 失败可查 · 不等真实设备连接"/>
+      <TextBlock Foreground="#637A90" VerticalAlignment="Center" Text="追加记录 · 失败可查 · 不等真实设备连接"/>
     </DockPanel>
     <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
       <TextBlock Text="搜索" VerticalAlignment="Center" Margin="0,0,4,0"/>
@@ -111,8 +111,8 @@
         <Button DockPanel.Dock="Right" Content="CSV 导出" Command="{Binding CsvCommand}" Padding="10,3" Margin="5,0,0,0"/>
         <TextBox Text="{Binding ExportPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="输入一个尚不存在的绝对文件路径"/>
       </DockPanel>
-      <TextBlock Text="{Binding State}" Foreground="#92A4B7" TextTrimming="CharacterEllipsis"/>
-      <TextBlock Text="{Binding Error}" Foreground="#FF7886" TextWrapping="Wrap"/>
+      <TextBlock Text="{Binding State}" Foreground="#637A90" TextTrimming="CharacterEllipsis"/>
+      <TextBlock Text="{Binding Error}" Foreground="#B63B51" TextWrapping="Wrap"/>
     </StackPanel>
   </Grid>
 </UserControl>
