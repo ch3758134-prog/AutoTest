@@ -123,6 +123,29 @@ class ExecutionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuleError,"baseline required"):
             self.engine.dispatch(work["id"],"Owner","Unbaselined attempt")
 
+    def test_major_product_review_pauses_already_dispatched_ai_work(self):
+        work,_=self._work()
+        self.engine.bind(work["id"],17,"DEVICE")
+        self.engine.dispatch(work["id"],"Owner","Approved coding task")
+        self.assertEqual(len(self.engine.queue(self.project,"DEVICE")),1)
+        current=self.governance.status(self.project)
+        proposal=dict(current["definition"])
+        proposal["body"]="New external integration assumptions; must revisit impact"
+        change=self.governance.propose(self.project,proposal,
+            "A major positioning change is being investigated",
+            ["incident://new-product-scope"],"Human",current["definition_digest"])
+        overview=self.engine.overview(self.project)
+        self.assertEqual(overview["tasks"][0]["effective_state"],
+                         "BLOCKED_BY_PRODUCT_DEFINITION")
+        self.assertEqual(self.engine.queue(self.project,"DEVICE"),[])
+        with self.assertRaisesRegex(RuleError,"under review"):
+            self.engine.claim(work["id"],"DEVICE","CODER-1")
+        with self.assertRaisesRegex(RuleError,"under review"):
+            self.engine.packet(work["id"])
+        self.governance.reject(change["change"]["id"],"Human",
+                               "Not supported by the current experiment evidence")
+        self.assertEqual(len(self.engine.queue(self.project,"DEVICE")),1)
+
     def test_code_ready_dispatch_claim_and_pr_mapping(self):
         wp,design=self._work()
         self.engine.bind(wp["id"],17,"DEVICE")
