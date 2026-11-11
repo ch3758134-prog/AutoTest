@@ -46,7 +46,7 @@ async function verificationHistoryModal(test){
           ' · 执行人 '+run.actor));
       card.append(el('p','context','配置：'+run.configuration+
           '\n环境与设备身份：'+run.environment+
-          '\nGit SHA：'+run.source_sha+
+          '\nGit SHA：'+(run.source_sha||'未提供，需核对硬件/配置身份')+
           '\n证据引用：'+run.evidence_ref));
       if(run.review_decision){
         card.append(el('p','context','证据审查：'+run.review_decision+
@@ -67,7 +67,7 @@ function verificationRecordModal(test){
     const outcome=selectField(body,'执行观察结论',[
       ['PASS','观察通过'],['FAIL','观察失败'],['INCONCLUSIVE','无法判断']]);
     const config=field(body,'产品配置/型号/软件版本');
-    const sha=field(body,'实际运行的 Git 40 位提交 SHA');
+    const sha=field(body,'软件源码 Git 40 位 SHA（单测/集成必填；无软件的实物测试可留空）');
     const environment=field(body,'测试环境、硬件/固件身份及关键条件','','textarea');
     const evidence=field(body,'原始日志、波形或证据文件引用','','textarea');
     const actor=field(body,'实际执行人','项目负责人');
