@@ -235,7 +235,7 @@
        Margin="0,4,0,7"/>
       <Button Content="保存人工测量" Command="{Binding SaveMeasurementCommand}"
        HorizontalAlignment="Left" Margin="0,0,0,10"/>
-      <TextBlock Text="保存测量需先执行有效 Controller 预设状态；直接原始 Mask 模式目前只保留命令及 ACK 日志。"
+      <TextBlock Text="只有获得主控 ACK 的真实按键组合或 Controller 状态才能关联人工测量；未采样仍显示未知，不能推断 ECU PASS。"
        Foreground="#8A6734" FontSize="11" TextWrapping="Wrap"/>
       <Border BorderBrush="#E5EBF3" BorderThickness="0,1,0,0" Margin="0,13,0,11"/>
       <TextBlock Text="其他台架硬件" FontWeight="SemiBold" FontSize="13"/>
