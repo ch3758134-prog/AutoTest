@@ -3,9 +3,13 @@ using System.Windows.Controls;
 
 namespace AutoTest.Desktop.Bench;
 
+/// <summary>
+/// Real hardware bench view. The shared Station handles the only WinUSB
+/// connection; opening this view never silently creates another session.
+/// </summary>
 public partial class BenchWorkbenchView : UserControl
 {
-    // INTEGRATION registers this View + VM in the existing Prism Desktop container.
+    public event EventHandler? OpenStationRequested;
     public BenchWorkbenchView(BenchWorkbenchViewModel viewModel)
     {
         InitializeComponent();
@@ -15,7 +19,11 @@ public partial class BenchWorkbenchView : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (DataContext is BenchWorkbenchViewModel vm)
-            await vm.InitializeAsync();
+        if (DataContext is not BenchWorkbenchViewModel vm) return;
+        await vm.InitializeAsync();
+        await vm.RefreshConnectionAsync();
     }
+
+    private void OpenStation_Click(object sender, RoutedEventArgs e) =>
+        OpenStationRequested?.Invoke(this, EventArgs.Empty);
 }
