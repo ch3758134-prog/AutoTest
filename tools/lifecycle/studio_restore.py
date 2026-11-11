@@ -18,6 +18,7 @@ from studio_verification import Verification
 from studio_governance import DefinitionGovernance, definition, digest
 from studio_definition_suggestions import DefinitionSuggestions
 from studio_knowledge import EngineeringKnowledge
+from studio_product_identity import ProductIdentity, sha
 
 TABLES = (
     "projects","objects","revisions","relations","events",
@@ -30,7 +31,9 @@ TABLES = (
     "definition_research_decisions","definition_research_scope_decisions",
     "definition_suggestions",
     "engineering_knowledge","engineering_knowledge_revisions",
-    "engineering_knowledge_links","engineering_knowledge_intakes"
+    "engineering_knowledge_links","engineering_knowledge_intakes",
+    "product_identity_baselines","product_identity_proposals",
+    "product_identity_impacts","product_identity_invalidations"
 )
 RESEARCH = ("studies","options","experiments","results","decisions")
 TABLE_KEYS = ("objects","revisions","relations","events","manager_proposals")
@@ -85,6 +88,12 @@ def _validate(archive):
         raise RuleError("Invalid engineering knowledge archive")
     for kind in ("items","revisions","links","intakes"):
         sections["k_"+kind]=_array(knowledge.get(kind,[]),"knowledge."+kind)
+    product_identity=archive.get("product_identity",{
+        "baselines":[],"proposals":[],"impacts":[],"invalidations":[]})
+    if not isinstance(product_identity,dict):
+        raise RuleError("Invalid canonical product identity archive")
+    for key in ("baselines","proposals","impacts","invalidations"):
+        sections["i_"+key]=_array(product_identity.get(key,[]),"product_identity."+key)
     objects=sections["objects"]
     ids={x.get("id") for x in objects}
     if (None in ids or len(ids)!=len(objects) or
@@ -361,6 +370,68 @@ def _validate(archive):
             any(x.get("id") not in knowledge_ids for x in result.get("items",[])) or
             any(lid not in link_ids for lid in result.get("links",[]))):
             raise RuleError("Knowledge intake result has broken identities")
+    proposals=sections["i_proposals"]
+    proposal_ids={r.get("id") for r in proposals}
+    if None in proposal_ids or len(proposal_ids)!=len(proposals):
+        raise RuleError("Duplicate canonical identity proposal identity")
+    proposal_map={x["id"]:x for x in proposals}
+    knowledge_set={x["id"] for x in sections["k_items"]}
+    for p in proposals:
+        if (p.get("project_id")!=pid or p.get("state") not in
+            ("CANDIDATE","SCOPED","PUBLISHED","REJECTED") or
+            type(p.get("base_revision")) is not int):
+            raise RuleError("Invalid or cross-project canonical identity proposal")
+        for field in ("source_refs","knowledge_ids"):
+            try:values=json.loads(p[field])
+            except (KeyError,TypeError,ValueError) as exc:
+                raise RuleError("Invalid identity proposal references") from exc
+            if not isinstance(values,list) or any(not isinstance(x,str) for x in values):
+                raise RuleError("Invalid identity references array")
+            if field=="knowledge_ids" and any(x not in knowledge_set for x in values):
+                raise RuleError("Product identity references missing knowledge")
+        if p.get("scope_evidence") is not None:
+            try: evidence=json.loads(p["scope_evidence"])
+            except (ValueError,TypeError) as exc:
+                raise RuleError("Invalid canonical identity scope evidence") from exc
+            if not isinstance(evidence,list):
+                raise RuleError("Canonical identity scope evidence must be a list")
+    baselines=sections["i_baselines"]
+    if len({(r.get("project_id"),r.get("revision")) for r in baselines})!=len(baselines):
+        raise RuleError("Duplicate canonical identity baseline")
+    if sorted(x.get("revision") for x in baselines)!=list(range(1,len(baselines)+1)):
+        raise RuleError("Canonical identity baseline revisions must be contiguous")
+    for base in baselines:
+        p=proposal_map.get(base.get("proposal_id"))
+        if (base.get("project_id")!=pid or not p or p["state"]!="PUBLISHED" or
+            p["statement"]!=base.get("statement") or
+            base.get("digest")!=sha({"statement":base.get("statement")})):
+            raise RuleError("Canonical identity baseline not linked to approved proposal")
+    impacts=sections["i_impacts"]
+    if len({(x.get("proposal_id"),x.get("object_id")) for x in impacts})!=len(impacts):
+        raise RuleError("Duplicate canonical identity impact")
+    for impact in impacts:
+        if (impact.get("proposal_id") not in proposal_ids or
+            impact.get("object_id") not in ids or
+            impact.get("disposition") not in ("IMPACT","NO_IMPACT","UNKNOWN") or
+            (impact.get("object_id"),impact.get("object_revision")) not in snapshots):
+            raise RuleError("Canonical identity impact points to invalid object revision")
+        try:ref_values=json.loads(impact["evidence_refs"])
+        except (ValueError,KeyError,TypeError) as exc:
+            raise RuleError("Canonical identity impact evidence is invalid") from exc
+        if not isinstance(ref_values,list) or not ref_values:
+            raise RuleError("Canonical identity impact needs evidence references")
+    invalidation_keys=set()
+    for inv in sections["i_invalidations"]:
+        key=(inv.get("proposal_id"),inv.get("package_id"))
+        if key in invalidation_keys:
+            raise RuleError("Duplicate canonical identity invalidation")
+        invalidation_keys.add(key)
+        package=by_id.get(inv.get("package_id"))
+        if (inv.get("project_id")!=pid or inv.get("proposal_id") not in proposal_ids or
+            not package or package["kind"]!="work_package" or
+            (package["id"],inv.get("pinned_revision")) not in snapshots or
+            inv.get("state") not in ("OPEN","RESOLVED")):
+            raise RuleError("Canonical identity invalidation references invalid work package")
     return pid,sections,execution
 
 
@@ -402,6 +473,7 @@ def restore_to_empty(archive,output_database):
     DefinitionGovernance(store)
     DefinitionSuggestions(store)
     EngineeringKnowledge(store)
+    ProductIdentity(store)
     del engine,research
     with store.db() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -426,6 +498,11 @@ def restore_to_empty(archive,output_database):
         _insert(db,"engineering_knowledge_revisions",sec["k_revisions"])
         _insert(db,"engineering_knowledge_links",sec["k_links"])
         _insert(db,"engineering_knowledge_intakes",sec["k_intakes"])
+        for table,key in (("product_identity_proposals","i_proposals"),
+                          ("product_identity_baselines","i_baselines"),
+                          ("product_identity_impacts","i_impacts"),
+                          ("product_identity_invalidations","i_invalidations")):
+            _insert(db,table,sec[key])
         _insert(db,"events",sec["events"])
         for table,key in (("studies","studies"),("study_options","options"),
                           ("study_experiments","experiments"),("study_results","results"),
