@@ -115,6 +115,26 @@ class StudioApiTest(unittest.TestCase):
         with urlopen(self.url+"/knowledge.js",timeout=5) as response:
             self.assertIn(b'knowledgeWorkbench',response.read())
 
+    def test_even_owner_http_edit_cannot_bypass_approved_object_review(self):
+        _,project=self.request("/api/studio/project",{"name":"Controlled revision"},
+                               token="local-test-token")
+        pid=project["project"]["id"]
+        _,created=self.request("/api/studio/object",{
+            "project_id":pid,"kind":"requirement",
+            "title":"Hardware stimulated CAN test",
+            "body":"First approved requirement"},token="local-test-token")
+        item=created["item"]
+        approved=self.store.approve(item["id"],item["revision"],
+                      "Human","Approved initial requirement")["item"]
+        with self.assertRaises(HTTPError) as refused:
+            self.request("/api/studio/object/"+item["id"]+"/update",{
+                "expected_revision":approved["revision"],
+                "body":"Overwritten via ordinary editor"},token="local-test-token")
+        self.assertEqual(refused.exception.code,400)
+        _,unchanged=self.request("/api/studio/object?id="+item["id"])
+        self.assertEqual(unchanged["item"]["state"],"APPROVED")
+        self.assertEqual(unchanged["item"]["body"],approved["body"])
+
     def test_manager_can_propose_precise_requirement_amendment_but_not_apply(self):
         _,project=self.request("/api/studio/project",{"name":"ECU lab"},
                                token="local-test-token")
