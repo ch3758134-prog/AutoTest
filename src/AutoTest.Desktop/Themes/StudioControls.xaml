@@ -12,6 +12,10 @@
  <SolidColorBrush x:Key="StudioText" Color="#203249"/>
  <SolidColorBrush x:Key="StudioMuted" Color="#667C92"/>
  <SolidColorBrush x:Key="StudioAccent" Color="#176CB5"/>
+ <SolidColorBrush x:Key="StudioAccentHover" Color="#135994"/>
+ <SolidColorBrush x:Key="StudioAccentPress" Color="#104A79"/>
+ <SolidColorBrush x:Key="StudioDangerTint" Color="#FFF1EE"/>
+ <SolidColorBrush x:Key="StudioFocus" Color="#4695DD"/>
  <SolidColorBrush x:Key="StudioGreen" Color="#177C55"/>
  <SolidColorBrush x:Key="StudioYellow" Color="#90611A"/>
  <SolidColorBrush x:Key="StudioRed" Color="#BC3C50"/>
@@ -19,23 +23,24 @@
  <Style TargetType="{x:Type Button}">
   <Setter Property="Foreground" Value="{StaticResource StudioText}"/><Setter Property="Background" Value="{StaticResource StudioSurface}"/>
   <Setter Property="BorderBrush" Value="{StaticResource StudioLine}"/><Setter Property="BorderThickness" Value="1"/>
-  <Setter Property="Padding" Value="10,6"/><Setter Property="Margin" Value="0,0,6,0"/><Setter Property="MinHeight" Value="29"/>
+  <Setter Property="Padding" Value="12,7"/><Setter Property="Margin" Value="0,0,7,0"/><Setter Property="MinHeight" Value="34"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="{x:Type Button}">
    <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" SnapsToDevicePixels="True">
+    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" SnapsToDevicePixels="True">
     <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
      Margin="{TemplateBinding Padding}" RecognizesAccessKey="True"/>
    </Border><ControlTemplate.Triggers>
     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{StaticResource StudioHover}"/></Trigger>
-    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Chrome" Property="Background" Value="#E0EDFB"/><Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource StudioAccent}"/></Trigger>
+    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Chrome" Property="Background" Value="#D2E5F9"/><Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource StudioAccent}"/></Trigger>
+    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource StudioFocus}"/><Setter TargetName="Chrome" Property="BorderThickness" Value="2"/></Trigger>
     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.42"/></Trigger>
    </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
  </Style>
  <Style TargetType="{x:Type TextBox}">
-  <Setter Property="Foreground" Value="{StaticResource StudioText}"/><Setter Property="Background" Value="{StaticResource StudioBg}"/>
+  <Setter Property="Foreground" Value="{StaticResource StudioText}"/><Setter Property="Background" Value="{StaticResource StudioPanel}"/>
   <Setter Property="BorderBrush" Value="{StaticResource StudioLine}"/><Setter Property="CaretBrush" Value="{StaticResource StudioAccent}"/>
-  <Setter Property="SelectionBrush" Value="#31679C"/><Setter Property="Padding" Value="7,5"/><Setter Property="MinHeight" Value="28"/>
+  <Setter Property="SelectionBrush" Value="#31679C"/><Setter Property="Padding" Value="9,7"/><Setter Property="MinHeight" Value="32"/>
  </Style>
  <Style TargetType="{x:Type ComboBoxItem}">
   <Setter Property="Foreground" Value="{StaticResource StudioText}"/><Setter Property="Background" Value="{StaticResource StudioSurface}"/>
@@ -133,7 +138,8 @@
   <Setter Property="RowBackground" Value="{StaticResource StudioPanel}"/><Setter Property="AlternatingRowBackground" Value="{StaticResource StudioSurface}"/>
   <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource StudioLine}"/><Setter Property="VerticalGridLinesBrush" Value="{StaticResource StudioLine}"/>
   <Setter Property="HeadersVisibility" Value="Column"/><Setter Property="GridLinesVisibility" Value="Horizontal"/>
-  <Setter Property="ColumnHeaderHeight" Value="32"/><Setter Property="RowHeight" Value="30"/>
+  <Setter Property="ColumnHeaderHeight" Value="35"/><Setter Property="RowHeight" Value="34"/>
+  <Setter Property="EnableRowVirtualization" Value="True"/><Setter Property="EnableColumnVirtualization" Value="True"/>
   <Setter Property="CanUserAddRows" Value="False"/>
  </Style>
  <Style TargetType="{x:Type DataGridColumnHeader}">
@@ -162,4 +168,88 @@
  <Style TargetType="{x:Type ProgressBar}">
   <Setter Property="Foreground" Value="{StaticResource StudioAccent}"/><Setter Property="Background" Value="{StaticResource StudioPanel}"/>
  </Style>
+
+ <!-- Unified R1 interaction vocabulary.
+      Major actions are physically distinct from neutral management commands.
+      All tools use these tokens; none introduces another independent palette. -->
+ <Style x:Key="AtPrimaryButton" TargetType="{x:Type Button}"
+        BasedOn="{StaticResource {x:Type Button}}">
+  <Setter Property="Background" Value="{StaticResource StudioAccent}"/>
+  <Setter Property="Foreground" Value="White"/>
+  <Setter Property="BorderBrush" Value="{StaticResource StudioAccent}"/>
+  <Setter Property="FontWeight" Value="SemiBold"/>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="{x:Type Button}">
+     <Border x:Name="PrimaryBorder" Background="{TemplateBinding Background}"
+        BorderBrush="{TemplateBinding BorderBrush}"
+        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6"
+        SnapsToDevicePixels="True">
+      <ContentPresenter Content="{TemplateBinding Content}"
+         ContentTemplate="{TemplateBinding ContentTemplate}"
+         HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+         VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+         Margin="{TemplateBinding Padding}" RecognizesAccessKey="True"/>
+     </Border>
+     <ControlTemplate.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+       <Setter TargetName="PrimaryBorder" Property="Background" Value="{StaticResource StudioAccentHover}"/>
+      </Trigger>
+      <Trigger Property="IsPressed" Value="True">
+       <Setter TargetName="PrimaryBorder" Property="Background" Value="{StaticResource StudioAccentPress}"/>
+      </Trigger>
+      <Trigger Property="IsKeyboardFocused" Value="True">
+       <Setter TargetName="PrimaryBorder" Property="BorderBrush" Value="{StaticResource StudioFocus}"/>
+       <Setter TargetName="PrimaryBorder" Property="BorderThickness" Value="2"/>
+      </Trigger>
+      <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.40"/></Trigger>
+     </ControlTemplate.Triggers>
+    </ControlTemplate>
+   </Setter.Value>
+  </Setter>
+ </Style>
+ <Style x:Key="AtQuietButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+  <Setter Property="Background" Value="Transparent"/>
+  <Setter Property="BorderBrush" Value="Transparent"/>
+  <Setter Property="Foreground" Value="{StaticResource StudioMuted}"/>
+ </Style>
+ <Style x:Key="AtDangerButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+  <Setter Property="Background" Value="{StaticResource StudioDangerTint}"/>
+  <Setter Property="BorderBrush" Value="#E9C4C2"/>
+  <Setter Property="Foreground" Value="{StaticResource StudioRed}"/>
+ </Style>
+ <Style x:Key="AtSurface" TargetType="{x:Type Border}">
+  <Setter Property="Background" Value="{StaticResource StudioPanel}"/>
+  <Setter Property="BorderBrush" Value="{StaticResource StudioLine}"/>
+  <Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="CornerRadius" Value="9"/>
+  <Setter Property="Padding" Value="16"/>
+ </Style>
+ <Style x:Key="AtPageTitle" TargetType="{x:Type TextBlock}">
+  <Setter Property="FontSize" Value="22"/>
+  <Setter Property="FontWeight" Value="SemiBold"/>
+  <Setter Property="Foreground" Value="{StaticResource StudioText}"/>
+ </Style>
+ <Style x:Key="AtSectionTitle" TargetType="{x:Type TextBlock}">
+  <Setter Property="FontSize" Value="15"/>
+  <Setter Property="FontWeight" Value="SemiBold"/>
+  <Setter Property="Foreground" Value="{StaticResource StudioText}"/>
+ </Style>
+ <Style x:Key="AtHint" TargetType="{x:Type TextBlock}">
+  <Setter Property="FontSize" Value="12"/>
+  <Setter Property="Foreground" Value="{StaticResource StudioMuted}"/>
+  <Setter Property="TextWrapping" Value="Wrap"/>
+ </Style>
+ <Style x:Key="AtStatus" TargetType="{x:Type TextBlock}">
+  <Setter Property="FontSize" Value="12"/>
+  <Setter Property="Foreground" Value="{StaticResource StudioMuted}"/>
+  <Setter Property="TextWrapping" Value="Wrap"/>
+ </Style>
+ <Style x:Key="AtToolbar" TargetType="{x:Type Border}">
+  <Setter Property="Background" Value="{StaticResource StudioPanel}"/>
+  <Setter Property="BorderBrush" Value="{StaticResource StudioLine}"/>
+  <Setter Property="BorderThickness" Value="0,0,0,1"/>
+  <Setter Property="Padding" Value="12,8"/>
+ </Style>
+
 </ResourceDictionary>
