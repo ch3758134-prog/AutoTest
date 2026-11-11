@@ -13,14 +13,14 @@
  </UserControl.Resources>
   <Grid Margin="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-      <TextBlock Text="DBC Editor / 数据库与信号管理" FontSize="18" FontWeight="Bold" Margin="0,0,16,0"/>
+      <TextBlock Text="DBC 数据库" Style="{StaticResource AtPageTitle}" Margin="0,0,16,0"/>
       <TextBox x:Name="DbcFilePathBox" Width="300" Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}" ToolTip="DBC 绝对文件路径（UTF-8）"/>
       <Button Content="浏览…" Click="BrowseDbc_Click" Margin="8,0,0,0" Padding="12,4"/>
-      <Button Content="打开" Command="{Binding OpenCommand}" Margin="6,0,0,0" Padding="12,4"/>
+      <Button Content="打开" Style="{StaticResource AtPrimaryButton}" Command="{Binding OpenCommand}" Margin="6,0,0,0" Padding="12,4"/>
       <Button Content="保存" Command="{Binding SaveCommand}" Margin="6,0,0,0" Padding="12,4"/>
       <Button Content="纳入工程" Command="{Binding ImportToProjectCommand}" Margin="6,0,0,0" Padding="12,4" ToolTip="首次登记当前工程主 DBC"/>
       <Button Content="发布新修订" Command="{Binding PublishProjectRevisionCommand}" Margin="6,0,0,0" Padding="12,4" ToolTip="先保存本地编辑，再显式发布工程 DBC Revision；不会自动重绑旧引用"/>
-      <Button Content="重置" Command="{Binding ResetCommand}" Margin="6,0,0,0" Padding="12,4"/>
+      <Button Content="重置" Style="{StaticResource AtQuietButton}" Command="{Binding ResetCommand}" Margin="6,0,0,0" Padding="12,4"/>
     </StackPanel>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,9">
       <TextBlock Text="DBC Revision " FontWeight="SemiBold"/><TextBlock Text="{Binding Revision}" FontWeight="SemiBold"/>
@@ -28,7 +28,7 @@
       <TextBlock Text=" · " Margin="5,0"/><TextBlock Text="{Binding SupportSummary}" Foreground="#8F611B" TextWrapping="Wrap"/>
     </StackPanel>
     <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <GroupBox Header="报文树 (BO_)" Grid.Column="0" Margin="0,0,8,0"><DockPanel Margin="6">
+      <GroupBox Header="报文" Grid.Column="0" Margin="0,0,8,0"><DockPanel Margin="6">
         <StackPanel DockPanel.Dock="Bottom"><TextBlock Text="ID（0x100）/ 名称 / DLC / TX节点" Foreground="{DynamicResource StudioMuted}"/>
           <TextBox Text="{Binding NewMessageId, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
           <TextBox Text="{Binding NewMessageName, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"/>
@@ -41,7 +41,7 @@
             <Button Content="更新报文" Command="{Binding UpdateMessageCommand}" Margin="5,0" Padding="9,3"/></WrapPanel>
         </StackPanel><ListBox ItemsSource="{Binding Messages}" SelectedItem="{Binding SelectedMessage}" DisplayMemberPath="Name"/>
       </DockPanel></GroupBox>
-      <GroupBox Grid.Column="1" Header="信号树 (SG_)" Margin="0,0,8,0"><DockPanel Margin="6">
+      <GroupBox Grid.Column="1" Header="信号" Margin="0,0,8,0"><DockPanel Margin="6">
         <StackPanel DockPanel.Dock="Bottom"><TextBox Text="{Binding SignalName, UpdateSourceTrigger=PropertyChanged}" Margin="0,3"/>
           <WrapPanel><Button Content="新增信号" Command="{Binding AddSignalCommand}" Padding="8,3"/>
             <Button Content="删除信号" Command="{Binding DeleteSignalCommand}" Margin="4,0" Padding="8,3"/></WrapPanel>
