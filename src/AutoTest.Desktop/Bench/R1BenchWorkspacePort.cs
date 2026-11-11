@@ -31,6 +31,7 @@ public sealed class R1BenchWorkspacePort : IBenchWorkbenchPort
     private readonly Func<BenchKeyAction, long, bool>? _approveKeyAction;
     private readonly Func<string?>? _projectPath;
     private readonly Func<string?>? _projectId;
+    public string? ActiveProjectId => _projectId?.Invoke();
     private readonly Func<string?>? _projectName;
     public R1BenchWorkspacePort(Func<ControllerConfigToolViewModel?> configuration,
         Func<HardwareBenchController?> hardware, string? auditPath = null,
