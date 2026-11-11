@@ -41,7 +41,7 @@ class ProjectControlTests(unittest.TestCase):
         self.addCleanup(server.shutdown)
         base = "http://127.0.0.1:" + str(server.server_port)
         for path, mime, marker in (
-            ("/", "text/html", b'project'),
+            ("/", "text/html", b'AutoTest'),
             ("/app.js", "application/javascript", b'function workPlan()'),
             ("/app.css", "text/css", b'.hero'),
             ("/api/model", "application/json", b'"plan_status": "PROPOSED_NOT_APPROVED"'),
