@@ -79,7 +79,7 @@
    </StackPanel>
    <StackPanel>
     <TextBlock Text="手动台架" FontSize="23" FontWeight="SemiBold"/>
-    <TextBlock Text="左侧编辑 CAN 报文 · 中间操作 20 路按键与 IGN · 右侧观察 ECU CAN 广播"
+    <TextBlock Text="左侧选择和发送 CAN 报文 · 中间点击按键动作 · 右侧观察 ECU CAN 广播"
      Foreground="{StaticResource Muted}" FontSize="11" Margin="0,5,0,0"/>
    </StackPanel>
   </DockPanel>
