@@ -38,7 +38,7 @@ class SemanticGuidanceTests(unittest.TestCase):
         self.assertEqual(view["product_identity_candidate"],project["summary"])
         self.assertEqual(view["project_background_and_context"],project["body"])
         self.assertEqual(view["release_or_product_version_metadata"],"R1")
-        self.assertIn("not automatically",view["warning"])
+        self.assertIn("Do not interpret",view["warning"])
 
     def test_ai_management_context_includes_semantics_without_claiming_approval(self):
         with tempfile.TemporaryDirectory() as folder:
