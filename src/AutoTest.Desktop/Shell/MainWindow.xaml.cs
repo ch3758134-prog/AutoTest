@@ -312,7 +312,7 @@ public partial class MainWindow : Window
             Height = key == "bench" ? 900 : 840,
             MinWidth = key == "bench" ? 1130 : 860,
             MinHeight = key == "bench" ? 680 : 580,
-            Background = Application.Current.TryFindResource("StudioBg") as Brush ?? Brushes.White,
+            Background = System.Windows.Application.Current.TryFindResource("StudioBg") as Brush ?? Brushes.White,
             FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
             FontSize = 13,
             UseLayoutRounding = true,
