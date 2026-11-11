@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoTest · 项目研发管理</title><link rel="stylesheet" href="/app.css"></head>
+<body>
+<div id="shell">
+<aside class="sidebar">
+ <div class="identity"><div class="mark">A</div><div><strong>AutoTest</strong><small>项目研发管理 · 设计候选 V2</small></div></div>
+ <div class="nav-section">项目管理</div>
+ <nav id="navigation" aria-label="项目导航">
+  <button data-page="overview" class="active"><span class="navicon">◧</span>项目总览</button>
+  <button data-page="deliverables"><span class="navicon">◈</span>目标与交付</button>
+  <button data-page="plan"><span class="navicon">≡</span>开发计划<span id="plan-count" class="nav-count"></span></button>
+  <button data-page="process"><span class="navicon">◇</span>研发流程</button>
+  <button data-page="reviews"><span class="navicon">▤</span>成果与审查</button>
+  <button data-page="handoff"><span class="navicon">↗</span>协作交接</button>
+ </nav>
+ <div class="side-divider"></div>
+ <div class="side-note"><div class="note-indicator"></div>当前为只读试用，不修改工程批准、源码或计划基线。</div>
+ <a class="repository" href="https://github.com/ch3758134-prog/AutoTest" target="_blank" rel="noopener noreferrer">↗ GitHub 工程仓库</a>
+</aside>
+<div class="workspace">
+ <header class="topbar">
+   <div class="crumb">项目 <span>/</span> AutoTest <span>/</span> <b id="crumb-current">总览</b></div>
+   <div class="top-right"><span class="read-only">● 只读候选</span><button id="reload" class="text-button">↻ 更新读取</button></div>
+ </header>
+ <main id="main" tabindex="-1"></main>
+</div></div>
+<aside id="drawer" class="drawer" aria-label="详情" aria-hidden="true">
+ <div class="drawer-top"><span>工程详情</span><button id="drawer-close" aria-label="关闭详情">×</button></div>
+ <div id="drawer-content"></div>
+</aside>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/app.js"></script></body></html>
