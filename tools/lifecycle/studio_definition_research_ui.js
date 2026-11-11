@@ -9,19 +9,24 @@ async function definitionResearchModal(changeId){
     ]);
   }catch(e){toast('研究任务加载失败：'+e.message);return;}
   const tasks=data.tasks||[],reviewed=tasks.filter(x=>x.state==='REVIEWED').length;
-  showModal('产品定义变更 · 必需研究与事实复核',(body,footer)=>{
-    body.append(note('十项研究任务由工程规则在变更申请建立时自动生成，不是 AI 自己选择范围。AI 可以提交候选发现，但研究证据未经负责人审查不会成为有效结论；不能据此发布定义。'));
+  const excluded=tasks.filter(x=>x.state==='NOT_APPLICABLE').length;
+  showModal('产品定义变更 · 研究范围与证据复核',(body,footer)=>{
+    body.append(note('内置领域是帮助 AI 不遗漏重要问题的研究视角，不是十篇固定报告。你可以根据具体变更决定哪些需要调查、哪些不适用，并补充新的研究问题；理由、证据与版本必须保留。'));
     const summary=el('div','detailsection');
-    add(summary,el('strong','','已确认研究 '+reviewed+' / '+tasks.length),
-       el('p','context','影响审查仍需在研究确认后分别完成。原始来源必须实际核查；文字确认不证明证据真实。'));
+    add(summary,el('strong','','已复核研究 '+reviewed+' 项 · 不适用并说明 '+excluded+' 项 · 待澄清 '+(tasks.length-reviewed-excluded)+' 项'),
+       el('p','context','范围由工程事实和问题性质决定。将某方向判断为不适用不等于断言相关工程实现没有影响；证据引用仍须核查。'));
     body.append(summary);
     for(const task of tasks){
       const panel=el('div','detailsection'),line=el('div','sectionline');
-      add(line,el('strong','',task.domain+' · '+(task.state==='REVIEWED'?'已复核':'待研究')),
+      add(line,el('strong','',task.domain+' · '+(task.state==='REVIEWED'?'已复核':task.state==='NOT_APPLICABLE'?'已说明不适用':'待研究')),
         el('span','tiny','任务 r'+task.revision+' · 候选 '+task.submissions.length+' 份'));
       panel.append(line);
       panel.append(el('p','context',task.question));
       const active=task.submissions.find(s=>s.id===task.accepted_submission_id);
+      if(task.state==='NOT_APPLICABLE'){
+        const scoped=task.scope_decisions?.slice(-1)[0];
+        if(scoped)panel.append(el('p','context','范围裁决：'+scoped.rationale+'\n依据：'+scoped.evidence_refs.join('；')));
+      }
       if(active){
         panel.append(el('p','context','确认的研究结论：'+active.finding.slice(0,380)));
         panel.append(el('div','tiny','局限：'+active.limitations.slice(0,180)+
@@ -30,8 +35,12 @@ async function definitionResearchModal(changeId){
         '已有候选材料但尚未获得确认；不能自动视为该领域研究完成。'));
       const controls=el('div','buttonrow');
       if(detail.change.state==='REVIEW'){
-        if(task.state==='OPEN')controls.append(button('提交研究材料','outline',
-          ()=>definitionResearchSubmitModal(changeId,task)));
+        if(task.state==='OPEN'){
+          controls.append(button('提交研究材料','outline',
+            ()=>definitionResearchSubmitModal(changeId,task)));
+          controls.append(button('说明本方向不适用','outline',
+            ()=>definitionResearchScopeModal(changeId,task)));
+        }
         else controls.append(button('重新开启研究','outline',
           ()=>definitionResearchReopenModal(changeId,task)));
         controls.append(button('查看候选与审查','outline',
@@ -40,12 +49,14 @@ async function definitionResearchModal(changeId){
       panel.append(controls);body.append(panel);
     }
     footer.append(button('返回定义影响审查','outline',()=>definitionChangeModal(changeId)));
+    if(detail.change.state==='REVIEW')
+      footer.append(button('增加实际研究问题','outline',()=>definitionResearchNewTopicModal(changeId)));
   });
 }
 function definitionResearchSubmitModal(changeId,task){
   showModal('提交研究发现 · '+task.domain,(body,footer)=>{
     body.append(note('填写的是候选材料，不是结论审批。可链接已经经实验结果审查并作出 DECIDED 决定的技术研究 ID；系统会固定其研究修订。'));
-    body.append(el('p','context','必需问题：'+task.question));
+    body.append(el('p','context','本次研究问题：'+task.question));
     const finding=field(body,'已查到的事实、不同观点与判断过程','','textarea');
     const refs=field(body,'可追溯来源（每行一个）','','textarea');
     const limits=field(body,'未解决问题、适用范围与局限','','textarea');
@@ -127,6 +138,47 @@ function definitionResearchReopenModal(changeId,task){
           reviewer:reviewer.value,rationale:why.value
         });
         toast('研究任务已重新开启；相关领域判断必须重新审查');
+        await definitionResearchModal(changeId);
+      }catch(e){err.textContent=e.message;err.classList.remove('hidden');}
+    }));
+  });
+}
+
+function definitionResearchScopeModal(changeId,task){
+  showModal('研究范围判断 · '+task.domain,(body,footer)=>{
+    body.append(note('这是对本次问题研究范围的解释，不是自动判定任何代码“无影响”。不要因为缺少关联对象就轻易宣布不适用。'));
+    body.append(el('p','context','本方向的启发问题：'+task.question));
+    const why=field(body,'为什么这个方向与当前变更无直接关系？','','textarea');
+    const refs=field(body,'支持该判断的工程事实或讨论来源（每行一个）','','textarea');
+    const reviewer=field(body,'负责人','项目负责人');
+    const err=el('div','error hidden');body.append(err);
+    footer.append(button('返回研究','outline',()=>definitionResearchModal(changeId)));
+    footer.append(button('记录范围判断','primary',async()=>{
+      try{
+        await req('/api/studio/governance/research/scope-out',{
+          task_id:task.id,expected_revision:task.revision,
+          reviewer:reviewer.value,rationale:why.value,
+          evidence_refs:refs.value.split('\n').map(x=>x.trim()).filter(Boolean)
+        });
+        await definitionResearchModal(changeId);
+      }catch(e){err.textContent=e.message;err.classList.remove('hidden');}
+    }));
+  });
+}
+function definitionResearchNewTopicModal(changeId){
+  showModal('增加当前工程真正需要研究的问题',(body,footer)=>{
+    body.append(note('不要求只能从预置领域中选择。研究问题应来自当前事实、争议或尚未解决的工程关系，并解释为什么需要。'));
+    const question=field(body,'需要弄清楚的问题','','textarea');
+    const reason=field(body,'此问题为什么对当前工程变更有意义','','textarea');
+    const reviewer=field(body,'负责人','项目负责人');
+    const err=el('div','error hidden');body.append(err);
+    footer.append(button('返回研究','outline',()=>definitionResearchModal(changeId)));
+    footer.append(button('加入研究范围','primary',async()=>{
+      try{
+        await req('/api/studio/governance/research/add-topic',{
+          change_id:changeId,question:question.value,
+          rationale:reason.value,reviewer:reviewer.value
+        });
         await definitionResearchModal(changeId);
       }catch(e){err.textContent=e.message;err.classList.remove('hidden');}
     }));
