@@ -21,13 +21,13 @@
       <RowDefinition Height="160"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
-    <TextBlock Grid.Row="0" Text="Records / 运行历史、报告与生产统计" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8"/>
+    <TextBlock Grid.Row="0" Text="运行记录与报告" Style="{StaticResource AtPageTitle}" Margin="0,0,0,8"/>
     <WrapPanel Grid.Row="1" Margin="0,0,0,8">
       <TextBlock Text="ECU 编号" VerticalAlignment="Center" Margin="0,0,5,0"/>
       <TextBox Width="180" Text="{Binding DutId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
       <TextBlock Text="执行模式" VerticalAlignment="Center" Margin="0,0,5,0"/>
       <ComboBox Width="128" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" Margin="0,0,8,0"/>
-      <Button Content="_查询" Command="{Binding RefreshCommand}" Padding="12,3" IsDefault="True"/>
+      <Button Content="_查询" Style="{StaticResource AtPrimaryButton}" Command="{Binding RefreshCommand}" Padding="12,3" IsDefault="True"/>
     </WrapPanel>
     <TextBlock Grid.Row="2" Text="{Binding Summary}" TextWrapping="Wrap" Foreground="{DynamicResource StudioMuted}" Margin="0,0,0,7"/>
     <DataGrid Grid.Row="3" ItemsSource="{Binding Runs}" SelectedItem="{Binding Selected, Mode=TwoWay}"
@@ -35,17 +35,17 @@
               EnableRowVirtualization="True" GridLinesVisibility="Horizontal" Margin="0,0,0,7">
       <DataGrid.Columns>
         <DataGridTextColumn Header="开始 UTC" Binding="{Binding StartedUtc, StringFormat={}{0:MM-dd HH:mm:ss}}" Width="140"/>
-        <DataGridTextColumn Header="DUT" Binding="{Binding DutId}" Width="115"/>
+        <DataGridTextColumn Header="ECU" Binding="{Binding DutId}" Width="115"/>
         <DataGridTextColumn Header="RunId" Binding="{Binding RunId}" Width="*" />
         <DataGridTextColumn Header="模式" Binding="{Binding Mode}" Width="90"/>
         <DataGridTextColumn Header="持久化" Binding="{Binding PersistenceState}" Width="92"/>
-        <DataGridTextColumn Header="Verdict" Binding="{Binding Verdict}" Width="85"/>
+        <DataGridTextColumn Header="结果" Binding="{Binding Verdict}" Width="85"/>
         <DataGridTextColumn Header="事实" Binding="{Binding FactCount}" Width="60"/>
         <DataGridTextColumn Header="步骤" Binding="{Binding StepFactCount}" Width="60"/>
         <DataGridTextColumn Header="错误" Binding="{Binding FailureReason}" Width="130"/>
       </DataGrid.Columns>
     </DataGrid>
-    <GroupBox Grid.Row="4" Header="不可变执行快照（来自持久化记录，不依赖当前工程）" Margin="0,0,0,7">
+    <GroupBox Grid.Row="4" Header="执行快照 · 已归档记录" Margin="0,0,0,7">
       <TextBox Text="{Binding Snapshot, Mode=OneWay}" FontFamily="Consolas" FontSize="11" IsReadOnly="True"
                TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
     </GroupBox>
