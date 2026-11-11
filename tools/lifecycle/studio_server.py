@@ -128,8 +128,9 @@ def handler_factory(store, token, repo=None, manager_token=None):
                                        "version": "1.2", "mode": "editable",
                                        "legacy": False})
                 if path == "/api/studio/bootstrap":
-                    return self.write({"schema": "engineering-workbench/1",
-                                       "csrf": token, "projects": store.projects()})
+                    return self.write({"schema":"engineering-workbench/2",
+                                       "owner_auth":"required",
+                                       "projects":store.projects()})
                 if path == "/api/studio/projects":
                     return self.write(store.projects())
                 if path == "/api/studio/project":
@@ -243,6 +244,11 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     raise RuleError("Request body must be an object")
                 path, params = self.route()
                 pieces = path.split("/")
+                if path == "/api/studio/auth/check":
+                    if not owner_request:
+                        return self.write({"error":"Owner authorization required"},403)
+                    return self.write({"owner":True,
+                                       "note":"Owner access credential is not disclosed by read APIs"})
                 if path.startswith("/api/studio/governance/"):
                     return self.write({
                         "error":"Retired legacy definition authoring route. Historical records are read-only; use /api/studio/product-identity."},410)
@@ -584,6 +590,9 @@ def main(argv=None):
                         help="Existing project checkout for optional legacy references (no writes)")
     parser.add_argument("--data", type=Path, default=default_data(), help="SQLite workspace file")
     parser.add_argument("--port", type=int, default=PORT)
+    parser.add_argument("--owner-token-file", type=Path, default=None,
+                        help="Existing owner-only secret file of at least 32 characters; "
+                             "required if manager access is enabled")
     parser.add_argument("--manager-token-file", type=Path, default=None,
                         help="Existing secret file handed only to a restricted manager CLI. "
                              "Disabled when absent. Never commit token files.")
@@ -599,9 +608,21 @@ def main(argv=None):
         manager_token = secret_path.read_text(encoding="utf-8").strip()
         if len(manager_token) < 32:
             parser.error("Manager token must be at least 32 characters")
+    if manager_token and not args.owner_token_file:
+        parser.error("--owner-token-file is required with manager AI access")
+    if args.owner_token_file:
+        owner_path=args.owner_token_file.expanduser().resolve()
+        if not owner_path.is_file():
+            parser.error("Owner token file must already exist")
+        owner_token=owner_path.read_text(encoding="utf-8").strip()
+        if len(owner_token)<32:
+            parser.error("Owner token must be at least 32 characters")
+    else:
+        owner_token=secrets.token_urlsafe(32)
+        print("Owner access key for this launch (enter only in local workbench): "+
+              owner_token,flush=True)
     server = ThreadingHTTPServer(("127.0.0.1", args.port),
-                                 handler_factory(store, secrets.token_urlsafe(32),
-                                                 args.repo, manager_token))
+                                 handler_factory(store,owner_token,args.repo,manager_token))
     print("Engineering Workbench: http://127.0.0.1:%d/" % args.port, flush=True)
     print("Data: " + str(store.path), flush=True)
     print("Press Ctrl+C to stop. This server never approves automatically.", flush=True)
