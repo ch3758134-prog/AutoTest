@@ -179,6 +179,13 @@ def handler_factory(store, token, repo=None, manager_token=None):
                     answer = store.create_object(data)
                 elif path == "/api/studio/relation":
                     answer = store.create_relation(data)
+                elif path == "/api/studio/change/capture":
+                    if not owner_request:
+                        return self.write({"error":"Only owner may capture findings"},403)
+                    answer = change_review.capture(
+                        data.get("target_id",""),data.get("target_revision"),
+                        data.get("title",""),data.get("body",""),
+                        data.get("source",""),data.get("actor",""))
                 elif path == "/api/studio/change/assess":
                     if not owner_request:
                         return self.write({"error":"Only owner may assess change impacts"},403)
