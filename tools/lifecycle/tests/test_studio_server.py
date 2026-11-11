@@ -115,6 +115,57 @@ class StudioApiTest(unittest.TestCase):
         with urlopen(self.url+"/knowledge.js",timeout=5) as response:
             self.assertIn(b'knowledgeWorkbench',response.read())
 
+    def test_manager_can_propose_precise_requirement_amendment_but_not_apply(self):
+        _,project=self.request("/api/studio/project",{"name":"ECU lab"},
+                               token="local-test-token")
+        pid=project["project"]["id"]
+        _,created=self.request("/api/studio/object",{
+            "project_id":pid,"kind":"requirement",
+            "title":"CAN response requirement","body":"Only decode raw CAN frames"},
+            token="local-test-token")
+        original=created["item"]
+        manager="manager-secret-token-0123456789-0123456789"
+        _,proposal=self.request("/api/studio/amendments/propose",{
+            "project_id":pid,"target_id":original["id"],
+            "base_revision":original["revision"],
+            "proposed_patch":{"body":"Decode frames and analyze response timing and events"},
+            "reasoning":"User says RX processing includes more than decoded waveform",
+            "source_refs":["discussion://rx-analysis-correction"],
+            "knowledge_ids":[],"actor":"Project manager AI"},manager_token=manager)
+        self.assertEqual(proposal["state"],"CANDIDATE")
+        _,brief=self.request("/api/studio/management/context?project="+pid)
+        self.assertEqual(len(brief["engineering_amendments"]["items"]),1)
+        _,unchanged=self.request("/api/studio/object?id="+original["id"])
+        self.assertEqual(unchanged["item"]["body"],original["body"])
+        with self.assertRaises(HTTPError) as rejected:
+            self.request("/api/studio/amendments/review",{
+                "id":proposal["id"],"expected_target_revision":original["revision"],
+                "decision":"REVISE","reviewer":"AI","reason":"Self-review",
+                "evidence_refs":["test://source"]},manager_token=manager)
+        self.assertEqual(rejected.exception.code,403)
+        with self.assertRaises(HTTPError) as rejected:
+            self.request("/api/studio/amendments/apply",{
+                "id":proposal["id"],"expected_target_revision":original["revision"],
+                "reviewer":"AI","reason":"Unauthorized"},manager_token=manager)
+        self.assertEqual(rejected.exception.code,403)
+        _,reviewed=self.request("/api/studio/amendments/review",{
+            "id":proposal["id"],"expected_target_revision":original["revision"],
+            "decision":"REVISE","reviewer":"Owner",
+            "reason":"Reviewed scope of response analysis",
+            "evidence_refs":["test://owner-review"]},token="local-test-token")
+        self.assertEqual(reviewed["state"],"READY_TO_APPLY")
+        _,applied=self.request("/api/studio/amendments/apply",{
+            "id":proposal["id"],"expected_target_revision":original["revision"],
+            "reviewer":"Owner","reason":"Create a new unapproved requirements draft"},
+            token="local-test-token")
+        self.assertEqual(applied["state"],"APPLIED")
+        _,latest=self.request("/api/studio/object?id="+original["id"])
+        self.assertEqual(latest["item"]["revision"],original["revision"]+1)
+        self.assertEqual(latest["item"]["state"],"DRAFT")
+        self.assertIn("response timing",latest["item"]["body"])
+        with urlopen(self.url+"/amendments.js",timeout=5) as response:
+            self.assertIn(b'amendmentsWorkbench',response.read())
+
     def test_manager_restricted_token_can_propose_but_cannot_approve(self):
         _, project = self.request("/api/studio/project",
                                   {"name":"Embedded project"},token="local-test-token")
