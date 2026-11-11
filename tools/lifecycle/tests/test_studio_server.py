@@ -212,7 +212,20 @@ class StudioApiTest(unittest.TestCase):
         status, boot = self.request("/api/studio/bootstrap")
         self.assertEqual(status, 200)
         self.assertEqual(boot["projects"], [])
-        self.assertEqual(boot["csrf"], "local-test-token")
+        self.assertNotIn("csrf",boot)
+        self.assertNotIn("local-test-token",json.dumps(boot))
+        self.assertEqual(boot["owner_auth"],"required")
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/auth/check",{},
+                manager_token="manager-secret-token-0123456789-0123456789")
+        self.assertEqual(denied.exception.code,403)
+        _,authorized=self.request("/api/studio/auth/check",{},
+                                  token="local-test-token")
+        self.assertTrue(authorized["owner"])
+        with urlopen(self.url+"/",timeout=5) as response:
+            html=response.read()
+            self.assertIn(b'ownerUnlockModal',html)
+            self.assertNotIn(b'local-test-token',html)
 
     def test_write_requires_token(self):
         with self.assertRaises(HTTPError) as ex:
