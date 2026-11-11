@@ -131,6 +131,53 @@ class StudioApiTest(unittest.TestCase):
         self.assertEqual(backup["schema"], "engineering-workbench/1")
         self.assertEqual(len(backup["revisions"]), 3)
 
+    def test_ai_can_suggest_definition_but_only_owner_can_start_governed_research(self):
+        _,project=self.request("/api/studio/project",{
+            "name":"Generic Device","summary":"Current user test environment",
+            "body":"Engineering users create test projects and verify real outputs",
+            "version":"R1","variant":"generic"},token="local-test-token")
+        pid=project["project"]["id"]
+        _,state=self.request("/api/studio/governance/status?project="+pid)
+        proposed=dict(state["definition"])
+        proposed["summary"]="Integrated engineering IDE and test operations"
+        payload={"project_id":pid,"proposed":proposed,
+             "reason":"AI noticed missing engineering workflow boundaries",
+             "source_refs":["review://product-analysis"],"proposer":"AI-manager",
+             "expected_digest":state["definition_digest"]}
+        _,candidate=self.request("/api/studio/governance/suggest",payload,
+             manager_token="manager-secret-token-0123456789-0123456789")
+        self.assertEqual(candidate["status"],"PENDING")
+        _,before=self.request("/api/studio/governance/status?project="+pid)
+        self.assertEqual(before["changes"],[])
+        self.assertEqual(before["definition"],state["definition"])
+        _,inbox=self.request("/api/studio/governance/suggestions?project="+pid)
+        self.assertEqual(inbox[0]["origin_role"],"AI_CANDIDATE")
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/governance/suggest/accept",{
+                "id":candidate["id"],"reviewer":"AI",
+                "rationale":"Unsafe self acceptance",
+                "expected_base_digest":state["definition_digest"]},
+                manager_token="manager-secret-token-0123456789-0123456789")
+        self.assertEqual(denied.exception.code,403)
+        with self.assertRaises(HTTPError) as denied:
+            self.request("/api/studio/governance/publish",{
+                "change_id":"none","reviewer":"AI","decision_note":"Unsafe",
+                "expected_base_digest":state["definition_digest"]},
+                manager_token="manager-secret-token-0123456789-0123456789")
+        self.assertEqual(denied.exception.code,403)
+        _,accepted=self.request("/api/studio/governance/suggest/accept",{
+            "id":candidate["id"],"reviewer":"Human owner",
+            "rationale":"Research is warranted, not yet approved",
+            "expected_base_digest":state["definition_digest"]},
+            token="local-test-token")
+        self.assertEqual(accepted["state"],"ACCEPTED_FOR_RESEARCH")
+        _,research=self.request("/api/studio/governance/research?change="+accepted["change_id"])
+        self.assertEqual(len(research["tasks"]),10)
+        _,after=self.request("/api/studio/governance/status?project="+pid)
+        self.assertEqual(after["definition"],state["definition"])
+        with urlopen(self.url+"/definition-suggestions.js",timeout=5) as response:
+            self.assertIn(b'definitionSuggestionInbox',response.read())
+
     def test_product_definition_requires_owner_review_and_domain_gate(self):
         _,project=self.request("/api/studio/project",{
             "name":"Generic Device","summary":"Legacy unreviewed description",
