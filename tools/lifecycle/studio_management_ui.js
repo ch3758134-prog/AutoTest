@@ -47,7 +47,7 @@ async function renderManagementView(){
     managementFact('待确认的 AI 定义候选',result.product_definition_suggestions.filter(
       x=>x.state==='PENDING').length+' 项（不阻止正式研发）'),
     managementFact('产品定义研究待复核',result.product_definition_research_tasks.filter(
-      x=>x.state!=='REVIEWED'&&x.state!=='NOT_APPLICABLE').length+' / '+result.product_definition_research_tasks.length+' 项（按实际适用性）'),
+      x=>x.state==='OPEN').length+' 项，另有 '+result.product_definition_research_tasks.filter(x=>x.state==='SUGGESTED').length+' 项可选视角'),
     managementFact('GitHub 状态',result.github.repository?
       result.github.repository+' · 最近同步 '+(result.github.fetched_at||'未知'):'尚未连接 GitHub'),
     managementFact('研究问题',result.technical_studies.length+' 项'),
