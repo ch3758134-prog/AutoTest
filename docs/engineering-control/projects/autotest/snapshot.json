@@ -1,11 +1,11 @@
 {
   "schema": "engineering-project-archive/1",
   "source_project_id": "autotest",
-  "exported_at": "2026-11-11T07:04:23.904Z",
+  "exported_at": "2026-11-11T07:12:17.014Z",
   "authority": "AI_CANDIDATE_NOT_APPROVED",
   "engineering": {
     "schema": "engineering-workbench/1",
-    "exported_at": "2026-11-11T07:04:23.904Z",
+    "exported_at": "2026-11-11T07:12:17.014Z",
     "project": {
       "id": "autotest",
       "name": "AutoTest",
@@ -14,7 +14,7 @@
       "version": "R1（研发阶段）",
       "variant": "EPB 首个验证对象",
       "created": "2026-11-11T06:20:00+00:00",
-      "updated": "2026-11-11T07:04:23.904Z"
+      "updated": "2026-11-11T07:12:17.014Z"
     },
     "objects": [
       {
@@ -500,6 +500,31 @@
         "approved_at": null,
         "created": "2026-11-11T07:04:23.904Z",
         "updated": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "at-p0-product-core-agreement",
+        "project_id": "autotest",
+        "kind": "context",
+        "title": "P0 产品核心定位｜可配置的 ECU 自动测试系统（用户认可）",
+        "body": "本次 P0 产品定义讨论中，负责人明确认可将 AutoTest 的产品核心确定为“可配置的 ECU 自动测试系统”。讨论中的完整候选定义为：“AutoTest 是一套面向不同型号 ECU 的软硬件一体化自动测试系统，通过可配置的外部刺激与响应分析，实现 ECU 测试过程的自动执行和结果判定。”当前认可范围是核心定位；完整定义的准确措辞、边界和 P0 正式批准尚待后续审查。此记录是用户确认的讨论事实，不改变已有产品身份签发基线、Gate 或下层设计。",
+        "parent_id": null,
+        "state": "DRAFT",
+        "revision": 1,
+        "meta": {
+          "source": "用户本次对话｜对“可配置的 ECU 自动测试系统”核心定位回复“认同”",
+          "source_type": "USER_EXPLICIT_AGREEMENT",
+          "agreed_scope": "CORE_PRODUCT_POSITIONING_ONLY",
+          "agreed_core": "可配置的 ECU 自动测试系统",
+          "complete_definition_status": "CANDIDATE_NOT_YET_APPROVED",
+          "business_phase": "P0_PRODUCT_DEFINITION",
+          "recorded_by": "AI_PROJECT_MANAGER",
+          "next_topic": "P0 产品目的与现实价值",
+          "approval_limit": "未正式批准产品身份全文、P0 Gate 或任何 G0-G5 设计"
+        },
+        "approved_by": null,
+        "approved_at": null,
+        "created": "2026-11-11T07:12:17.014Z",
+        "updated": "2026-11-11T07:12:17.014Z"
       }
     ],
     "relations": [
@@ -887,6 +912,14 @@
         "action": "CREATE_AI_CANDIDATE_FROM_USER_PRIORITY",
         "actor": "AI_PROJECT_MANAGER",
         "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "object_id": "at-p0-product-core-agreement",
+        "revision": 1,
+        "snapshot": "{\"id\":\"at-p0-product-core-agreement\",\"project_id\":\"autotest\",\"kind\":\"context\",\"title\":\"P0 产品核心定位｜可配置的 ECU 自动测试系统（用户认可）\",\"body\":\"本次 P0 产品定义讨论中，负责人明确认可将 AutoTest 的产品核心确定为“可配置的 ECU 自动测试系统”。讨论中的完整候选定义为：“AutoTest 是一套面向不同型号 ECU 的软硬件一体化自动测试系统，通过可配置的外部刺激与响应分析，实现 ECU 测试过程的自动执行和结果判定。”当前认可范围是核心定位；完整定义的准确措辞、边界和 P0 正式批准尚待后续审查。此记录是用户确认的讨论事实，不改变已有产品身份签发基线、Gate 或下层设计。\",\"parent_id\":null,\"state\":\"DRAFT\",\"revision\":1,\"meta\":{\"source\":\"用户本次对话｜对“可配置的 ECU 自动测试系统”核心定位回复“认同”\",\"source_type\":\"USER_EXPLICIT_AGREEMENT\",\"agreed_scope\":\"CORE_PRODUCT_POSITIONING_ONLY\",\"agreed_core\":\"可配置的 ECU 自动测试系统\",\"complete_definition_status\":\"CANDIDATE_NOT_YET_APPROVED\",\"business_phase\":\"P0_PRODUCT_DEFINITION\",\"recorded_by\":\"AI_PROJECT_MANAGER\",\"next_topic\":\"P0 产品目的与现实价值\",\"approval_limit\":\"未正式批准产品身份全文、P0 Gate 或任何 G0-G5 设计\"},\"approved_by\":null,\"approved_at\":null,\"created\":\"2026-11-11T07:12:17.014Z\",\"updated\":\"2026-11-11T07:12:17.014Z\"}",
+        "action": "RECORD_USER_AGREED_P0_CORE_NO_GATE_APPROVAL",
+        "actor": "AI_PROJECT_MANAGER",
+        "timestamp": "2026-11-11T07:12:17.014Z"
       }
     ],
     "events": [
@@ -1024,6 +1057,15 @@
         "actor": "AI_PROJECT_MANAGER",
         "note": "P0 核心自动测试优先；仅草稿不授权实现",
         "timestamp": "2026-11-11T07:04:23.904Z"
+      },
+      {
+        "id": "evt-at-p0-product-core-agreement",
+        "project_id": "autotest",
+        "object_id": "at-p0-product-core-agreement",
+        "action": "CREATE_OBJECT",
+        "actor": "AI_PROJECT_MANAGER",
+        "note": "用户认可 P0 核心产品定位；范围仅限核心定位，保留正式定义审批",
+        "timestamp": "2026-11-11T07:12:17.014Z"
       }
     ],
     "technical_research": {
@@ -1087,5 +1129,5 @@
     "engineering_amendments": []
   },
   "note": "Canonical Store.export_project shape. No approval, physical verification or coding authorization is granted by this Git candidate.",
-  "p0_discussion_note": "用户确认：第一要务是上位机的真实自动测试闭环，型号条件/编码映射尚不能定，不应成为前置阻碍；扫码枪仍是产品本体计划内外设，后续依核心测试细化。所有修订为待审候选。"
+  "p0_discussion_note": "P0 产品核心定位“可配置的 ECU 自动测试系统”经用户明确认可，完整产品身份仍为候选；现在继续讨论产品目的，不跨到 G0/G1/G2。"
 }
