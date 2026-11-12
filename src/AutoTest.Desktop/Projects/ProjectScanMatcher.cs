@@ -46,13 +46,14 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
         document.Validate();
         var rules = document.ToRules();
         var available = snapshot.Definition.Assets;
-        AssetRef RequireAsset(Guid id, string kind)
+        AssetRef RequireAsset(Guid id, string kind, int? expectedRevision, string? expectedSha256)
         {
             var asset = available.FirstOrDefault(x => x.Id.Value == id &&
                 x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase));
-            if (asset is null)
+            if (asset is null || asset.Revision != expectedRevision ||
+                !string.Equals(asset.Sha256, expectedSha256, StringComparison.OrdinalIgnoreCase))
                 throw new ProjectDataException("SCAN_ASSET_STALE",
-                    "发布配方引用的工程资源不存在或类型已改变：" + kind + " " + id);
+                    "发布配方引用的工程资源版本不一致，请回到配置编辑器重新确认资源：" + kind);
             return asset.ToReference();
         }
         var recipes = document.Recipes.Where(x => x.Published).Select(x =>
@@ -60,11 +61,14 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
             if (x.TestProgramAssetId is not Guid testId)
                 throw new ProjectDataException("SCAN_RECIPE_INVALID", "发布配方未关联测试程序。");
             var assets = ImmutableArray.CreateBuilder<AssetRef>();
-            assets.Add(RequireAsset(testId, ProjectWorkspaceService.TestProgramKind));
+            assets.Add(RequireAsset(testId, ProjectWorkspaceService.TestProgramKind,
+                x.TestProgramRevision, x.TestProgramFingerprint));
             if (x.DbcAssetId is Guid dbcId)
-                assets.Add(RequireAsset(dbcId, ProjectWorkspaceService.DbcKind));
+                assets.Add(RequireAsset(dbcId, ProjectWorkspaceService.DbcKind,
+                    x.DbcRevision, x.DbcFingerprint));
             if (x.FirmwareAssetId is Guid firmwareId)
-                assets.Add(RequireAsset(firmwareId, ProjectWorkspaceService.FirmwareKind));
+                assets.Add(RequireAsset(firmwareId, ProjectWorkspaceService.FirmwareKind,
+                    x.FirmwareRevision, x.FirmwareFingerprint));
             else if (x.RequiresFlash)
                 throw new ProjectDataException("SCAN_RECIPE_INVALID", "要求烧录的配方没有固件。");
             return new ProductionRecipe(x.RecipeId, 1,

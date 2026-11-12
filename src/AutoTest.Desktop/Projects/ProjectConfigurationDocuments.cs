@@ -12,7 +12,9 @@ namespace AutoTest.Desktop.Projects;
 /// <summary>Project-authored records: not hardware measurements, permissions or executable procedures.</summary>
 public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
     Guid? DbcAssetId, BusRole Bus, uint CanId, string SignalName, string Unit,
-    Guid? ReferenceAssetId, WaveComparisonConfig Comparison)
+    Guid? ReferenceAssetId, WaveComparisonConfig Comparison,
+    int? DbcAssetRevision = null, string? DbcAssetFingerprint = null,
+    int? ReferenceAssetRevision = null, string? ReferenceAssetFingerprint = null)
 {
     public static WaveSettingsDocument Create(string name) => new(1, name, null,
         BusRole.DutCan, 0, "", "", null,
@@ -26,7 +28,12 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
         if (Comparison is null || Comparison.ValidateThresholds() is { } issue)
             throw new ProjectDataException("WAVE_THRESHOLDS",
                 "波形判定参数无效：" + (Comparison?.ValidateThresholds() ?? "缺少参数"));
-        // DBC/Signal/Reference may remain empty in a saved draft; execution is not enabled.
+        if (DbcAssetId.HasValue && !ProjectConfigurationCodec.ValidPin(DbcAssetRevision, DbcAssetFingerprint))
+            throw new ProjectDataException("WAVE_DBC_PIN", "已选择的 DBC 缺少资源修订与哈希。");
+        if (ReferenceAssetId.HasValue &&
+            !ProjectConfigurationCodec.ValidPin(ReferenceAssetRevision, ReferenceAssetFingerprint))
+            throw new ProjectDataException("WAVE_REF_PIN", "参考波形缺少资源修订与哈希。");
+        // Drafts may remain unbound; no physical waveform capture is implied.
     }
 }
 
@@ -36,7 +43,8 @@ public sealed record FlashSettingsDocument(int SchemaVersion, string Name, strin
     uint? RequestCanId, uint? ResponseCanId, bool ExtendedCanId,
     int P2Milliseconds, int P2StarMilliseconds, string Session,
     string SecurityLevel, string SeedKeyProvider, string EraseRoutine,
-    string VerifyRoutine, string MemoryRanges, bool ApprovedByOperator)
+    string VerifyRoutine, string MemoryRanges, bool ApprovedByOperator,
+    int? FirmwareRevision = null, string? FirmwareFingerprint = null)
 {
     public static FlashSettingsDocument Create(string name) => new(1, name, "", "", null,
         null, null, false, 50, 5000, "", "", "", "", "", "", false);
@@ -49,6 +57,12 @@ public sealed record FlashSettingsDocument(int SchemaVersion, string Name, strin
         var maximum = ExtendedCanId ? 0x1FFFFFFFu : 0x7FFu;
         if (RequestCanId > maximum || ResponseCanId > maximum)
             throw new ProjectDataException("FLASH_CAN_ID", "请求/响应 CAN ID 超出帧类型范围。");
+        if (FirmwareAssetId.HasValue &&
+            !ProjectConfigurationCodec.ValidPin(FirmwareRevision, FirmwareFingerprint))
+            throw new ProjectDataException("FLASH_IMAGE_PIN", "固件配置缺少资源修订与哈希。");
+        if (ApprovedByOperator)
+            throw new ProjectDataException("FLASH_NOT_AUTHORIZED",
+                "配置文件不能包含物理操作授权，必须在真实运行流程单独获得授权。");
         // Authored settings NEVER authorize the real physical flash path.
     }
 }
@@ -57,7 +71,10 @@ public sealed record ScanRuleDraft(string RuleId, string Pattern, string Identit
     bool Published);
 public sealed record ScanRecipeDraft(string RecipeId, string Model, string Customer,
     Guid? TestProgramAssetId, Guid? FirmwareAssetId, Guid? DbcAssetId,
-    bool RequiresFlash, bool Published);
+    bool RequiresFlash, bool Published,
+    int? TestProgramRevision = null, string? TestProgramFingerprint = null,
+    int? FirmwareRevision = null, string? FirmwareFingerprint = null,
+    int? DbcRevision = null, string? DbcFingerprint = null);
 
 public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, bool Published,
     List<ScanRuleDraft> Rules, List<ScanRecipeDraft> Recipes)
@@ -84,9 +101,14 @@ public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, b
             throw new ProjectDataException("SCAN_RECIPE_MISSING", "正式发布前必须指定至少一个配方。");
         foreach (var recipe in Recipes.Where(r => r.Published))
             if (string.IsNullOrWhiteSpace(recipe.RecipeId) || recipe.TestProgramAssetId is null ||
-                (recipe.RequiresFlash && recipe.FirmwareAssetId is null))
+                (recipe.RequiresFlash && recipe.FirmwareAssetId is null) ||
+                !ProjectConfigurationCodec.ValidPin(recipe.TestProgramRevision, recipe.TestProgramFingerprint) ||
+                (recipe.FirmwareAssetId.HasValue &&
+                 !ProjectConfigurationCodec.ValidPin(recipe.FirmwareRevision, recipe.FirmwareFingerprint)) ||
+                (recipe.DbcAssetId.HasValue &&
+                 !ProjectConfigurationCodec.ValidPin(recipe.DbcRevision, recipe.DbcFingerprint)))
                 throw new ProjectDataException("SCAN_RECIPE_INVALID",
-                    "已发布配方必须指定测试程序，烧录配方必须指定固件资源。");
+                    "已发布配方必须保存测试程序和其他引用资源的修订/哈希，避免静默换版本。");
     }
 
     public IdentityRuleSet ToRules()
@@ -110,6 +132,8 @@ public static class ProjectConfigurationCodec
         WriteIndented = true, PropertyNameCaseInsensitive = false,
         AllowTrailingCommas = false
     };
+    public static bool ValidPin(int? revision, string? sha) =>
+        revision is > 0 && sha is { Length: 64 } && sha.All(Uri.IsHexDigit);
     public static bool IsConfiguration(string kind) => kind is
         ControllerKind or WaveSettingsKind or FlashSettingsKind or ScanSettingsKind;
 

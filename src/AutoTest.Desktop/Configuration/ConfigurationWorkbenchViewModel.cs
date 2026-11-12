@@ -314,6 +314,14 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             .Select(x => x.Name) ?? []).ToArray();
     private string AssetNameFor(Guid? id) =>
         _workspace.Current?.Definition.Assets.FirstOrDefault(x => x.Id.Value == id)?.Name ?? "";
+    private (Guid? Id, int? Revision, string? Sha256) ResolvePinnedAsset(string name, string kind)
+    {
+        var id = ResolveAsset(name, kind);
+        if (id is null) return (null, null, null);
+        var asset = _workspace.Current!.Definition.Assets.Single(x => x.Id.Value == id.Value);
+        return (asset.Id.Value, asset.Revision, asset.Sha256);
+    }
+
     private Guid? ResolveAsset(string name, string kind)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
@@ -388,12 +396,17 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             }
             else if (_working is WaveSettingsDocument wave)
             {
+                var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
+                var reference = ResolvePinnedAsset(F("reference"), ProjectWorkspaceService.WaveKind);
                 next = wave with
                 {
-                    Name = F("name"), DbcAssetId = ResolveAsset(F("dbc"), ProjectWorkspaceService.DbcKind),
+                    Name = F("name"), DbcAssetId = dbc.Id,
+                    DbcAssetRevision = dbc.Revision, DbcAssetFingerprint = dbc.Sha256,
+                    ReferenceAssetRevision = reference.Revision,
+                    ReferenceAssetFingerprint = reference.Sha256,
                     Bus = Enum.Parse<BusRole>(F("role"), true),
                     CanId = ParseCan(F("id")), SignalName = F("signal"), Unit = F("unit"),
-                    ReferenceAssetId = ResolveAsset(F("reference"), ProjectWorkspaceService.WaveKind),
+                    ReferenceAssetId = reference.Id,
                     Comparison = new WaveComparisonConfig(
                         Number(F("abs")) ?? 0, Number(F("rel")) ?? 0, Number(F("coverage")) ?? 0,
                         Number(F("ratio")) ?? 0, Number(F("shift")) ?? 0, Number(F("gap")) ?? 0,
@@ -403,10 +416,12 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             }
             else if (_working is FlashSettingsDocument flash)
             {
+                var firmware = ResolvePinnedAsset(F("image"), ProjectWorkspaceService.FirmwareKind);
                 next = flash with
                 {
                     Name = F("name"), Target = F("target"), ExpectedEcuIdentity = F("identity"),
-                    FirmwareAssetId = ResolveAsset(F("image"), ProjectWorkspaceService.FirmwareKind),
+                    FirmwareAssetId = firmware.Id,
+                    FirmwareRevision = firmware.Revision, FirmwareFingerprint = firmware.Sha256,
                     ExtendedCanId = Yes(F("extended")),
                     RequestCanId = ParseOptionalCan(F("request")),
                     ResponseCanId = ParseOptionalCan(F("response")),
@@ -432,12 +447,14 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 else if (key.StartsWith("recipe|", StringComparison.Ordinal))
                 {
                     var recipes = scan.Recipes.ToList();
+                    var test = ResolvePinnedAsset(F("test"), ProjectWorkspaceService.TestProgramKind);
+                    var flash = ResolvePinnedAsset(F("flash"), ProjectWorkspaceService.FirmwareKind);
+                    var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
                     recipes[ParseIndex(key)] = new ScanRecipeDraft(F("id"), F("model"),
-                        F("customer"),
-                        ResolveAsset(F("test"), ProjectWorkspaceService.TestProgramKind),
-                        ResolveAsset(F("flash"), ProjectWorkspaceService.FirmwareKind),
-                        ResolveAsset(F("dbc"), ProjectWorkspaceService.DbcKind),
-                        Yes(F("requiresFlash")), Yes(F("published")));
+                        F("customer"), test.Id, flash.Id, dbc.Id,
+                        Yes(F("requiresFlash")), Yes(F("published")),
+                        test.Revision, test.Sha256,
+                        flash.Revision, flash.Sha256, dbc.Revision, dbc.Sha256);
                     next = scan with { Recipes = recipes };
                 }
             }
