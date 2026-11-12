@@ -349,7 +349,10 @@ class Target:
                 "assets": assets, "decisions": decisions, "tasks": tasks,
                 "context_assessment": context_view,
                 "delivery_review_boundary": "PRIVATE_GIT_METADATA_NOT_PROJECT_HISTORY_OR_REMOTE_PUBLISHED",
-                "delivery_state": self.read_delivery_store(),
+                "delivery_summary": {
+                    "count": len(self.read_delivery_store()["delivery_reviews"]),
+                    "note": "Full private candidate content requires separate local review token."
+                },
                 "process_catalog": process_catalog(),
                 "process_policy_current": policy_is_current(management["process_control"]),
                 "git": {
@@ -869,6 +872,20 @@ def handler(targets, owner_token, registry_dir=None, review_token=None):
                     return self.respond(target.workspace_status())
                 except (ManagementError, OSError, ValueError) as err:
                     return self.respond({"error": str(err)}, 409)
+            if url.path == "/api/delivery-reviews":
+                if not review_token or not secrets.compare_digest(
+                        self.headers.get("X-Review-Token", ""), review_token):
+                    return self.respond({"error": "separate local review token required"}, 403)
+                project_id = parse_qs(url.query).get("project_id", [""])[0]
+                target = targets.get(project_id)
+                if target is None:
+                    return self.respond({"error": "unknown project"}, 404)
+                try:
+                    with target.lock:
+                        target.check_identity()
+                        return self.respond(target.read_delivery_store())
+                except (ManagementError, DeliveryError, OSError) as error:
+                    return self.respond({"error": str(error)}, 409)
             if url.path == "/api/model":
                 project_id = parse_qs(url.query).get("project_id", [""])[0]
                 target = targets.get(project_id)
