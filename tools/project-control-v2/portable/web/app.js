@@ -3,7 +3,7 @@ const $=s=>document.querySelector(s);
 const e=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const txt=v=>e(String(v??""));
 let projects=[],model=null,selected=null,page="overview",ownerToken="",remoteSnapshot=null,workspaceSnapshot=null;
-const labels={overview:"项目总览",deliverables:"目标与交付",work:"研发工作",requirements:"需求与依据",plans:"计划与依赖",changes:"变更与阶段审查",risks:"风险与里程碑",evidence:"资产与正式依据",handoff:"AI 与 Codex 交接",workspace:"本地工作区"};
+const labels={overview:"项目总览",deliverables:"目标与交付",work:"研发工作",modules:"模块与实际代码",requirements:"需求与依据",plans:"计划与依赖",changes:"变更与阶段审查",risks:"风险与里程碑",evidence:"资产与正式依据",handoff:"AI 与 Codex 交接",workspace:"本地工作区"};
 const escapeJSON=s=>JSON.stringify(s).replace(/</g,"\\u003c");
 const pill=(value,tone="")=>'<span class="pill '+tone+'">'+e(value)+'</span>';
 const empty=message=>'<div class="empty">'+e(message)+'</div>';
@@ -22,7 +22,7 @@ function overview(){
  const p=project(),m=management(),a=model.assets,t=model.tasks,git=model.git;
  let html=head("PROJECT OVERVIEW",p.display_name||p.project_id,"根据真实项目登记和本地 Git 状态汇总；未知或未批准内容不会自动变成正式完成。");
  html+='<div class="hero"><div><div class="eyebrow">当前管理事实</div><h2>'+e(p.initialization_state)+'</h2><p>项目来源 '+e(p.intake_mode||"UNKNOWN")+' · 项目目标和范围的正式状态由工程依据和审批记录决定；初始化不表示 Gate 通过。</p></div><div class="mini"><strong>目标仓库</strong><p class="source-row">'+e(p.repo_url)+'</p><br><strong>本地 HEAD</strong><p class="mono">'+e(git.head)+'</p></div></div>';
- html+='<section class="section"><div class="grid">'+[['交付成果',count("deliverables"),"均按候选与批准分别管理"],['研发任务',count("work"),"不自动获得编码权限"],['风险与问题',count("risks"),"以真实证据核对"],['已记录决策',model.decisions.decisions?.length||0,"不代表所有决策已核实"],['登记 Codex 任务',t.tasks?.length||0,"READY 仍需真实授权"],['Git 跟踪资产',a.tracked_file_count??0,"仅为索引快照"]].map(x=>'<div class="panel stat"><label>'+e(x[0])+'</label><strong>'+e(x[1])+'</strong><p>'+e(x[2])+'</p></div>').join("")+'</div></section>';
+ html+='<section class="section"><div class="grid">'+[['交付成果',count("deliverables"),"均按候选与批准分别管理"],['研发任务',count("work"),"不自动获得编码权限"],['源码模块',count("modules"),"与源码实际提交分别核对"],['风险与问题',count("risks"),"以真实证据核对"],['已记录决策',model.decisions.decisions?.length||0,"不代表所有决策已核实"],['登记 Codex 任务',t.tasks?.length||0,"READY 仍需真实授权"],['Git 跟踪资产',a.tracked_file_count??0,"仅为索引快照"]].map(x=>'<div class="panel stat"><label>'+e(x[0])+'</label><strong>'+e(x[1])+'</strong><p>'+e(x[2])+'</p></div>').join("")+'</div></section>';
  html+='<section class="section pair">'+panel("近期工作",m.work.length?'<div class="list">'+m.work.slice(0,6).map(w=>line(w.title,w.kind+" · "+w.expected_result,pill(m.progress[w.id]?.state||w.state))).join("")+'</div>':empty("尚未建立研发工作。先确认目标与交付，再建立任务。"))+panel("正式性与来源",'<div class="details"><span>项目标识</span><strong>'+e(p.project_id)+'</strong></div><div class="details"><span>产品定义</span>'+pill(p.formal_product_identity||"UNKNOWN")+'</div><div class="details"><span>范围决定</span>'+pill(p.scope_decision||"UNKNOWN")+'</div><div class="details"><span>Gate</span>'+pill(p.phase_gate||"UNKNOWN")+'</div><div class="details"><span>本地分支</span><span class="mono">'+e(git.branch)+'</span></div>')+'</section>';
  return html;
 }
@@ -38,6 +38,32 @@ function work(){
  let html=head("WORK PLAN","研发工作","任务性质、预期成果和当前实际进度分开记录。研究任务可探索，但不能越过设计准入。",action("新增研发工作","create_work"));
  html+=m.work.length?'<section class="panel"><table class="table"><thead><tr><th>工作项</th><th>性质</th><th>对应交付</th><th>实际记录</th><th>操作</th></tr></thead><tbody>'+m.work.map(w=>'<tr><td><strong>'+e(w.title)+'</strong><small>'+e(w.expected_result)+'</small><small class="mono">'+e(w.id)+'</small></td><td>'+pill(w.kind)+'</td><td>'+e(m.deliverables.find(d=>d.id===w.deliverable_id)?.title||"未知")+'</td><td>'+pill(m.progress[w.id]?.state||"未记录")+'</td><td><button class="copy" data-progress="'+e(w.id)+'">记录进展</button></td></tr>').join("")+'</tbody></table></section>':empty("尚无任务。先在“目标与交付”建立候选交付成果。");
  html+='<section class="section info">本地记录的工作完成，不意味着 G1/G2/G3/G4 阶段通过，也不表示 Codex 已获得编码实施授权。</section>';
+ return html;
+}
+function modules(){
+ const m=management(), c=model.code_status||{}, entries=m.modules||[], snapshots=c.registered_modules||[], candidates=c.candidates||[];
+ let html=head("SOURCE OWNERSHIP","模块与实际代码","真实源码状态、模块责任、公共接口、候选提交及集成证据分开显示，不按任务完成猜测代码状态。",action("登记模块边界","create_module")+' <button class="secondary" data-action="assign_module_work">绑定工作与模块</button>');
+ html+='<div class="info"><strong>证据来源：</strong>'+e(c.source||"UNKNOWN")+' · 本地 HEAD：<code>'+e(c.git_head||"暂无提交")+'</code> · 分支：'+e(c.branch||model.git.branch)+'。远端集成状态必须由 GitHub 真实提交/PR 另行核对。</div>';
+ html+='<section class="section">'+panel("模块源码台账",entries.length?
+   '<table class="table"><thead><tr><th>模块与职责</th><th>边界和接口</th><th>本地实际代码</th><th>远端集成</th></tr></thead><tbody>'+
+   entries.map(mod=>{
+     const code=snapshots.find(x=>x.id===mod.id);
+     return '<tr><td><strong>'+e(mod.title)+'</strong><small class="mono">'+e(mod.id)+'</small><small>'+e(mod.responsibility)+'</small></td>'+
+     '<td>'+pill(mod.owner_role)+'<small class="mono">'+e((mod.owned_prefixes||[]).join("、"))+'</small><small>公共接口：'+e((mod.contracts||[]).join("、")||"未登记")+'</small></td>'+
+     '<td>'+pill(code?.working_tree||"尚无可核实 Git 快照","pending")+'<small>追踪文件 '+e(code?.tracked_file_count??"—")+' · 未提交变更 '+e(code?.working_change_count??"—")+'</small><small>最后改动提交：</small><small class="mono">'+e(code?.last_changed_commit||"未知")+'</small></td>'+
+     '<td>'+pill("远端未核实","pending")+'<small>边界：'+e(mod.boundary_state)+'</small></td></tr>';
+   }).join("")+'</tbody></table>':empty("尚未登记真实代码模块。先分析源码路径及接口边界，不按分支名称随意划模块。"))+'</section>';
+ html+='<section class="section">'+panel("候选提交及跨模块影响",candidates.length?
+   candidates.map(x=>line(x.task_id+" · "+(x.candidate_head||"缺少 HEAD"),
+     "影响模块："+(x.touched_modules||[]).join("、")+"；公共接口："+(x.interface_changes||[]).join("、")+"；跨模块："+(x.cross_module_paths||[]).join("、")+"；未归属："+(x.unowned_paths||[]).join("、")+"；提交："+x.git_assessment,
+     pill(x.boundary_assessment,"pending"))).join(""):empty("没有可关联的本地 Codex 候选提交，不代表任何模块已交付。"))+'</section>';
+ if((c.unowned_working_change_count||0)>0)html+='<section class="section info">还有 '+e(c.unowned_working_change_count)+' 个本地改动不属于已登记模块：'+e((c.unowned_working_changes||[]).join("、"))+'。先核对归属后再接入稳定基线。</section>';
+ html+='<section class="section">'+panel("模块状态如何实际确认",
+ '<div class="details"><span>已写源码</span><strong>在实际 Git 对象中找到提交与文件</strong></div>'+
+ '<div class="details"><span>可供审查</span><strong>候选 HEAD、真实 diff、回执、接口影响齐全</strong></div>'+
+ '<div class="details"><span>可集成</span><strong>审查通过且必要验证有证据</strong></div>'+
+ '<div class="details"><span>稳定基线</span><strong>目标 GitHub 分支已经包含对应实现</strong></div>'+
+ '<div class="details"><span>可以交付</span><strong>再核对构建、测试和目标场景实测</strong></div>')+'</section>';
  return html;
 }
 function requirements(){
@@ -97,7 +123,7 @@ function workspaceView(){
  html+='<section class="section">'+panel("工作区交接与退出",'<p>创建/检视：工作区必须有来源仓库、任务、目的、精确 Git 基线和授权的本地根目录。临时查看结束后先运行只读退出预览，再检查 ignored 文件、未跟踪文件、独有提交、stash、Git 关系和占用情况。</p><div class="warning">未登记的旧文件夹、独立 clone、运行中的服务、未知 PID、断链 worktree 一律先保留并人工审查；不可运行 git clean -fdx、reset --hard、worktree prune 或系统级递归删除。</div>')+'</section>';
  return html;
 }
-const pages={overview,deliverables,work,requirements,plans,changes,risks,evidence,handoff,workspace:workspaceView};
+const pages={overview,deliverables,work,modules,requirements,plans,changes,risks,evidence,handoff,workspace:workspaceView};
 function render(){if(!model)return;$("#crumb-current").textContent=labels[page];document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));$("#main").innerHTML=pages[page]();}
 const definitions={
  create_deliverable:{title:"新增候选交付成果",desc:"此操作仅保存候选，不批准产品范围。",fields:[["id","交付 ID","text"],["title","交付名称","text"],["success_condition","完成或验收条件","textarea"]]},
