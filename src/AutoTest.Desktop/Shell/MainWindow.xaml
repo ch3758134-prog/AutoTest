@@ -114,7 +114,6 @@
                             <MenuItem Header="扫码与生产" Click="OpenProduction_Click"/>
                             <MenuItem Header="运行记录与报告" Click="OpenRecords_Click"/>
                             <MenuItem Header="操作审计" Click="OpenAudit_Click"/>
-                            <MenuItem Header="设备高级诊断" Click="OpenStationDetails_Click"/>
                         </MenuItem>
                         <MenuItem Header="更多 ▾">
                             <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
