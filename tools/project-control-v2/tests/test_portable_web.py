@@ -191,6 +191,55 @@ class PortableWebTests(unittest.TestCase):
         self.assertEqual(self.revision("project-1"), revision + 1)
         self.assertFalse(lock.exists())
 
+    def test_web_formal_plan_and_change_workflow_never_auto_approves(self):
+        def act(kind, **payload):
+            payload.setdefault("reason", "Auditable proposal")
+            payload["expected_revision"] = self.revision("project-1")
+            status, body = self.post(action=kind, payload=payload)
+            self.assertEqual(status, 200, body)
+        act("create_deliverable", id="D1", title="Engineering outcome",
+            success_condition="Evidence and review")
+        act("create_work", id="W1", title="Research target", kind="RESEARCH",
+            deliverable_id="D1", expected_result="Source analysis")
+        act("create_work", id="W2", title="Verify design", kind="VERIFY",
+            deliverable_id="D1", expected_result="Test result")
+        act("link_dependency", id="W2", depends_on="W1")
+        act("create_requirement", id="REQ1", title="Document sources",
+            statement="Persist traceable reasons", source_refs=["reference-001"],
+            acceptance="Reviewed explanation")
+        act("create_plan", id="PLAN1", title="Complete verified project",
+            objective="Research then verify", work_ids=["W1", "W2"],
+            exit_condition="Reviewed evidence")
+        act("submit_plan", id="PLAN1")
+        act("create_change", id="CR1", title="New research constraint",
+            justification="Updated source", source_refs=["reference-002"],
+            root_work_ids=["W1"])
+        act("assess_change", id="CR1", impact_summary="W1 and downstream W2 require review")
+        act("request_gate_review", id="G1-REVIEW", stage="Requirements",
+            purpose="Check research traceability", work_ids=["W1"],
+            evidence_refs=["reference-001"])
+        state = self.get("/api/model?project_id=project-1")["management"]
+        self.assertEqual(state["plans"][0]["state"], "REASSESSMENT_REQUIRED")
+        self.assertEqual(state["changes"][0]["affected_work_ids"], ["W1", "W2"])
+        self.assertEqual(state["changes"][0]["decision"], "NOT_APPROVED")
+        self.assertEqual(state["gate_reviews"][0]["state"], "REQUESTED_NOT_APPROVED")
+        self.assertEqual(state["requirements"][0]["state"], "PROPOSED_NOT_APPROVED")
+        self.assertEqual(self.get("/api/model?project_id=project-2")["management"]["plans"], [])
+
+    def test_workspace_inventory_is_localhost_token_gated(self):
+        url = self.base + "/api/workspaces?project_id=project-1"
+        with self.assertRaises(HTTPError) as unauthorized:
+            urlopen(url, timeout=5)
+        self.assertEqual(unauthorized.exception.code, 403)
+        fake = {"schema": "project-control-local-workspaces/1", "revision": 3,
+                "workspaces": [], "events": []}
+        with patch.object(service, "workspace_registry", return_value=fake):
+            request = Request(url, headers={"X-Owner-Token": "test-owner-secret"})
+            with urlopen(request, timeout=5) as response:
+                data = json.loads(response.read())
+            self.assertEqual(data["registry_revision"], 3)
+            self.assertEqual(data["workspaces"], [])
+
     def test_auth_stale_revision_and_unapproved_operations_blocked(self):
         revision = self.revision("project-1")
         payload = {"id": "d-1", "title": "Risk", "success_condition": "Evidence",
