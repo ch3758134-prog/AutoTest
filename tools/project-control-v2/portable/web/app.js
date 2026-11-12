@@ -2,7 +2,7 @@
 const $=s=>document.querySelector(s);
 const e=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const txt=v=>e(String(v??""));
-let projects=[],model=null,selected=null,page="overview",ownerToken="",remoteSnapshot=null,workspaceSnapshot=null;
+let projects=[],model=null,selected=null,page="overview",ownerToken="",remoteSnapshot=null,workspaceSnapshot=null,moduleRemoteSnapshot=null;
 const labels={overview:"项目总览",deliverables:"目标与交付",work:"研发工作",modules:"模块与实际代码",requirements:"需求与依据",plans:"计划与依赖",changes:"变更与阶段审查",risks:"风险与里程碑",evidence:"资产与正式依据",handoff:"AI 与 Codex 交接",workspace:"本地工作区"};
 const escapeJSON=s=>JSON.stringify(s).replace(/</g,"\\u003c");
 const pill=(value,tone="")=>'<span class="pill '+tone+'">'+e(value)+'</span>';
@@ -15,7 +15,7 @@ const project=()=>model.project, management=()=>model.management;
 function notify(message,error=false){const n=$("#toast");n.textContent=message;n.style.background=error?"#854747":"#28475f";n.classList.add("visible");setTimeout(()=>n.classList.remove("visible"),3400);}
 async function read(url){const r=await fetch(url,{cache:"no-store"});const data=await r.json();if(!r.ok)throw Error(data.error||"读取失败");return data;}
 async function loadProjects(){const data=await read("/api/projects");projects=data.projects;if(!projects.length)throw Error("没有已登记的项目");const id=selected&&projects.some(p=>p.project_id===selected)?selected:projects[0].project_id;$("#project-select").innerHTML=projects.map(p=>'<option value="'+e(p.project_id)+'">'+e(p.display_name||p.project_id)+'</option>').join("");selected=id;$("#project-select").value=id;await loadModel();}
-async function loadModel(){remoteSnapshot=null;workspaceSnapshot=null;model=await read("/api/model?project_id="+encodeURIComponent(selected));$("#project-source").textContent=model.project.repo_url;$("#sync-pill").textContent=model.git.dirty?"本地有未提交变更":"本地 HEAD · 远端未核对";render();}
+async function loadModel(){remoteSnapshot=null;workspaceSnapshot=null;moduleRemoteSnapshot=null;model=await read("/api/model?project_id="+encodeURIComponent(selected));$("#project-source").textContent=model.project.repo_url;$("#sync-pill").textContent=model.git.dirty?"本地有未提交变更":"本地 HEAD · 远端未核对";render();}
 const count=(collection)=>management()[collection]?.length||0;
 const mstatus=()=>management().status;
 function overview(){
@@ -42,7 +42,7 @@ function work(){
 }
 function modules(){
  const m=management(), c=model.code_status||{}, entries=m.modules||[], snapshots=c.registered_modules||[], candidates=c.candidates||[];
- let html=head("SOURCE OWNERSHIP","模块与实际代码","真实源码状态、模块责任、公共接口、候选提交及集成证据分开显示，不按任务完成猜测代码状态。",action("登记模块边界","create_module")+' <button class="secondary" data-action="assign_module_work">绑定工作与模块</button>');
+ let html=head("SOURCE OWNERSHIP","模块与实际代码","真实源码状态、模块责任、公共接口、候选提交及集成证据分开显示，不按任务完成猜测代码状态。",action("登记模块边界","create_module")+' <button class="secondary" data-action="assign_module_work">绑定工作与模块</button> <button class="secondary" id="check-module-remote">核对 GitHub 源码</button>');
  html+='<div class="info"><strong>证据来源：</strong>'+e(c.source||"UNKNOWN")+' · 本地 HEAD：<code>'+e(c.git_head||"暂无提交")+'</code> · 分支：'+e(c.branch||model.git.branch)+'。远端集成状态必须由 GitHub 真实提交/PR 另行核对。</div>';
  html+='<section class="section">'+panel("模块源码台账",entries.length?
    '<table class="table"><thead><tr><th>模块与职责</th><th>边界和接口</th><th>本地实际代码</th><th>远端集成</th></tr></thead><tbody>'+
@@ -53,6 +53,24 @@ function modules(){
      '<td>'+pill(code?.working_tree||"尚无可核实 Git 快照","pending")+'<small>追踪文件 '+e(code?.tracked_file_count??"—")+' · 未提交变更 '+e(code?.working_change_count??"—")+'</small><small>最后改动提交：</small><small class="mono">'+e(code?.last_changed_commit||"未知")+'</small></td>'+
      '<td>'+pill("远端未核实","pending")+'<small>边界：'+e(mod.boundary_state)+'</small></td></tr>';
    }).join("")+'</tbody></table>':empty("尚未登记真实代码模块。先分析源码路径及接口边界，不按分支名称随意划模块。"))+'</section>';
+ if(moduleRemoteSnapshot){
+   const r=moduleRemoteSnapshot;
+   html+='<section class="section">'+panel("GitHub 真实仓库快照（人工触发）",
+       '<div class="details"><span>目标仓库</span><strong>'+e(r.repository)+'</strong></div>'+
+       '<div class="details"><span>默认基线分支</span><strong>'+e(r.branch)+'</strong></div>'+
+       '<div class="details"><span>核对的 GitHub HEAD</span><code>'+e(r.head)+'</code></div>'+
+       (r.modules||[]).map(x=>line(x.module_id,
+           (x.last_commits_by_path||[]).map(y=>y.path+" → "+y.commit_sha).join("；")||"该模块在 GitHub 默认分支尚无代码提交",
+           pill("已查真实 GitHub 历史，未核准交付"))).join("")+
+       (r.pr_search_truncated?'<div class="warning">近期 PR 窗口不完整，不能据此断言没有其他候选。</div>':""))+'</section>';
+   html+='<section class="section">'+panel("近期候选 PR（真实 GitHub 文件清单）",
+       (r.recent_prs||[]).length?r.recent_prs.map(x=>
+         line("PR #"+x.pr_number+" · "+x.head_sha,
+              "影响模块："+x.affected_modules.join("、")+"；接口："+x.interface_changes.join("、")+
+              "；未归属："+x.unowned_paths.join("、")+"；状态："+x.state,
+              pill(x.merged_by_github?"GitHub 已合并，仍须验证交付":"尚未合并","pending"))).join("")
+       :empty("在最近检查的 PR 范围内，没有发现涉及已登记模块的 PR；并不能代表历史上从未提交。"))+'</section>';
+ }
  html+='<section class="section">'+panel("候选提交及跨模块影响",candidates.length?
    candidates.map(x=>line(x.task_id+" · "+(x.candidate_head||"缺少 HEAD"),
      "影响模块："+(x.touched_modules||[]).join("、")+"；公共接口："+(x.interface_changes||[]).join("、")+"；跨模块："+(x.cross_module_paths||[]).join("、")+"；未归属："+(x.unowned_paths||[]).join("、")+"；提交："+x.git_assessment,
@@ -152,8 +170,20 @@ async function checkRemote(){if(!ownerToken)ownerToken=prompt("请输入服务�
 async function collectLocalReceipts(){if(!ownerToken)ownerToken=prompt("请输入服务终端的本次负责人授权码")||"";if(!ownerToken)return;try{const r=await fetch("/api/collect-local-receipts",{method:"POST",headers:{"Content-Type":"application/json","X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected})});const v=await r.json();if(!r.ok){if(r.status===403)ownerToken="";throw Error(v.error||"回执收集失败");}await loadModel();notify("导入 "+v.imported.length+" 份；待人工处理 "+v.held.length+" 份；已存在 "+v.skipped.length+" 份",Boolean(v.held.length));}catch(err){notify(err.message,true);}}
 async function getOwnerToken(){if(!ownerToken)ownerToken=prompt("请输入本机管理服务终端的负责人授权码")||"";return ownerToken;}
 async function showWorkspaces(){if(!await getOwnerToken())return;try{const r=await fetch("/api/workspaces?project_id="+encodeURIComponent(selected),{headers:{"X-Owner-Token":ownerToken},cache:"no-store"});const data=await r.json();if(!r.ok){if(r.status===403)ownerToken="";throw Error(data.error||"工作区检查失败");}workspaceSnapshot=data;render();}catch(err){notify(err.message,true);}}
+async function fetchRemoteModules(){
+ if(!await getOwnerToken())return;
+ try{
+   const r=await fetch("/api/modules/remote?project_id="+encodeURIComponent(selected),
+      {headers:{"X-Owner-Token":ownerToken},cache:"no-store"});
+   const data=await r.json();
+   if(!r.ok){if(r.status===403)ownerToken="";throw Error(data.error||"读取 GitHub 代码状态失败");}
+   moduleRemoteSnapshot=data;
+   render();
+   notify("已核对 GitHub 基线 "+data.branch+" · "+data.head.slice(0,12));
+ }catch(err){notify(err.message,true);}
+}
 async function collectRegisteredReceipts(){if(!await getOwnerToken())return;try{const r=await fetch("/api/collect-registered-receipts",{method:"POST",headers:{"Content-Type":"application/json","X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected})});const data=await r.json();if(!r.ok){if(r.status===403)ownerToken="";throw Error(data.error||"登记工作区回执收集失败");}await loadModel();notify("已登记工作区："+data.registered_examined+"；导入："+data.imported.length+"；待审："+data.held.length,Boolean(data.held.length));}catch(err){notify(err.message,true);}}
-document.addEventListener("click",event=>{if(event.target.closest("#show-workspaces")){showWorkspaces();return;}if(event.target.closest("#collect-registered-receipts")){collectRegisteredReceipts();return;}if(event.target.closest("#check-remote")){checkRemote();return;}if(event.target.closest("#collect-receipts")){collectLocalReceipts();return;}const review=event.target.closest("[data-review]");if(review){openForm("review_receipt",review.dataset.review);return;}for(const [selector,cmd] of [["[data-plan-submit]","submit_plan"],["[data-plan-revise]","revise_plan"],["[data-plan-review]","record_plan_review"],["[data-change-assess]","assess_change"]]){const el=event.target.closest(selector);if(el){openForm(cmd,el.getAttribute(selector.slice(1,-1)));return;}}const nav=event.target.closest("[data-page]");if(nav){page=nav.dataset.page;render();return;}const work=event.target.closest("[data-progress]");if(work){openForm("set_progress",work.dataset.progress);return;}const btn=event.target.closest("[data-action]");if(btn){openForm(btn.dataset.action);return;}if(event.target.closest("#copy-handoff")){navigator.clipboard?.writeText(handoffText).then(()=>notify("已复制启动消息")).catch(()=>notify("浏览器不允许剪贴板，请手动复制",true));}});
+document.addEventListener("click",event=>{if(event.target.closest("#check-module-remote")){fetchRemoteModules();return;}if(event.target.closest("#show-workspaces")){showWorkspaces();return;}if(event.target.closest("#collect-registered-receipts")){collectRegisteredReceipts();return;}if(event.target.closest("#check-remote")){checkRemote();return;}if(event.target.closest("#collect-receipts")){collectLocalReceipts();return;}const review=event.target.closest("[data-review]");if(review){openForm("review_receipt",review.dataset.review);return;}for(const [selector,cmd] of [["[data-plan-submit]","submit_plan"],["[data-plan-revise]","revise_plan"],["[data-plan-review]","record_plan_review"],["[data-change-assess]","assess_change"]]){const el=event.target.closest(selector);if(el){openForm(cmd,el.getAttribute(selector.slice(1,-1)));return;}}const nav=event.target.closest("[data-page]");if(nav){page=nav.dataset.page;render();return;}const work=event.target.closest("[data-progress]");if(work){openForm("set_progress",work.dataset.progress);return;}const btn=event.target.closest("[data-action]");if(btn){openForm(btn.dataset.action);return;}if(event.target.closest("#copy-handoff")){navigator.clipboard?.writeText(handoffText).then(()=>notify("已复制启动消息")).catch(()=>notify("浏览器不允许剪贴板，请手动复制",true));}});
 $("#project-select").addEventListener("change",async event=>{selected=event.target.value;page="overview";try{await loadModel();}catch(err){notify(err.message,true);$("#main").textContent=err.message;}});
 $("#refresh").addEventListener("click",()=>loadModel().catch(err=>notify(err.message,true)));
 $("#form-close").addEventListener("click",()=>$("#edit-dialog").close());$("#form-cancel").addEventListener("click",()=>$("#edit-dialog").close());$("#edit-form").addEventListener("submit",submitForm);
