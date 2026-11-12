@@ -33,9 +33,16 @@ public sealed class DbcWorkbenchDocument
     private DbcEditSession _editing;
     private ImmutableArray<DbcValueTable> _tables;
     private bool _dirty;
+    private readonly bool _sourcePreserving;
+    private static readonly HashSet<string> SafeToPreserve = new(StringComparer.Ordinal)
+    {
+        "VERSION nonempty", "CM_", "BA_", "BA_DEF_", "BA_DEF_DEF_",
+        "extended-frame policy not verified"
+    };
     public string SourceSha256 { get; }
     public IReadOnlyList<string> UnsupportedDirectives { get; }
-    public bool CanEdit => UnsupportedDirectives.Count == 0;
+    public bool CanEdit => UnsupportedDirectives.Count == 0 || _sourcePreserving;
+    public bool IsSourcePreserving => _sourcePreserving;
     public bool IsDirty => _dirty;
     public DbcDatabase Model => _editing.Draft;
     public IReadOnlyList<DbcValueTable> ValueTables => _tables;
@@ -48,6 +55,7 @@ public sealed class DbcWorkbenchDocument
         _editing = new DbcEditSession(model);
         _tables = tables;
         UnsupportedDirectives = unsupported;
+        _sourcePreserving = unsupported.Count > 0 && unsupported.All(SafeToPreserve.Contains);
         SourceSha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(original))).ToLowerInvariant();
     }
 
@@ -122,11 +130,13 @@ public sealed class DbcWorkbenchDocument
         return new(name, text, model, tables.ToImmutable(), unsupported.Distinct(StringComparer.Ordinal).ToArray());
     }
 
-    public void AddNode(string name) => Mutate(e => e.AddNode(name));
-    public void AddMessage(DbcMessage message) => Mutate(e => e.AddMessage(message));
+    public void AddNode(string name) { RejectShapeEdits(); Mutate(e => e.AddNode(name)); }
+    public void AddMessage(DbcMessage message) { RejectShapeEdits(); Mutate(e => e.AddMessage(message)); }
     public void UpdateMessage(uint previousId, DbcMessage replacement)
     {
         RequireEditable();
+        if (_sourcePreserving && previousId != replacement.Id)
+            throw new ProjectDataException("DBC_SOURCE_PRESERVE", "保留原文模式暂不允许修改 CAN ID，避免破坏注释和属性引用。");
         if (_tables.Any(t => t.MessageId == previousId) && previousId != replacement.Id)
             throw new ProjectDataException("DBC_VAL_REFERENCE", "Remove value tables before changing this frame ID.");
         Mutate(e =>
@@ -138,24 +148,31 @@ public sealed class DbcWorkbenchDocument
     }
     public void DeleteMessage(uint id)
     {
+        RejectShapeEdits();
         Mutate(e => e.RemoveMessage(id));
         _tables = _tables.RemoveAll(v => v.MessageId == id);
     }
-    public void AddSignal(uint messageId, DbcSignal signal) => Mutate(e => e.AddSignal(messageId, signal));
+    public void AddSignal(uint messageId, DbcSignal signal) { RejectShapeEdits(); Mutate(e => e.AddSignal(messageId, signal)); }
     public void UpdateSignal(uint messageId, string previousName, DbcSignal updated)
     {
+        if (_sourcePreserving && previousName != updated.Name)
+            throw new ProjectDataException("DBC_SOURCE_PRESERVE", "保留原文模式暂不允许重命名信号，避免破坏注释和枚举引用。");
         if (_tables.Any(t => t.MessageId == messageId && t.SignalName == previousName) && updated.Name != previousName)
             throw new ProjectDataException("DBC_VAL_REFERENCE", "Remove value description before renaming the signal.");
         Mutate(e => e.EditSignal(messageId, previousName, updated));
     }
     public void DeleteSignal(uint messageId, string name)
     {
+        RejectShapeEdits();
         Mutate(e => e.RemoveSignal(messageId, name));
         _tables = _tables.RemoveAll(v => v.MessageId == messageId && v.SignalName == name);
     }
     public void SetValueDescription(uint messageId, string name, long raw, string label)
     {
         RequireEditable();
+        if (_sourcePreserving)
+            throw new ProjectDataException("DBC_SOURCE_PRESERVE",
+                "保留原文模式暂不支持修改 VAL_ 枚举定义，原有枚举信息已保留。");
         Model.FindSignal(messageId, name);
         if (string.IsNullOrWhiteSpace(label)) throw new ProjectDataException("DBC_VAL", "Label required.");
         var index = Array.FindIndex(_tables.ToArray(), t => t.MessageId == messageId && t.SignalName == name);
@@ -168,7 +185,8 @@ public sealed class DbcWorkbenchDocument
     {
         if (!_dirty) return _original;
         RequireEditable();
-        var output = new StringBuilder(DbcParserAdapter.Export(Model));
+        var output = _sourcePreserving ? null : new StringBuilder(DbcParserAdapter.Export(Model));
+        if (!_sourcePreserving)
         foreach (var value in _tables.OrderBy(t => t.MessageId).ThenBy(t => t.SignalName, StringComparer.Ordinal))
         {
             output.Append("VAL_ ").Append(value.MessageId).Append(' ').Append(value.SignalName).Append(' ');
@@ -177,7 +195,9 @@ public sealed class DbcWorkbenchDocument
                     .Append("\" ");
             output.AppendLine(";");
         }
-        var serialized = output.ToString();
+        var serialized = _sourcePreserving
+            ? DbcSourcePreservingExporter.Rewrite(_original, Model)
+            : output!.ToString();
         var roundTrip = Import(_name, serialized);
         if (!roundTrip.CanEdit || !Equivalent(Model, roundTrip.Model) ||
             !ValueTablesMatch(ValueTables, roundTrip.ValueTables))
@@ -207,6 +227,14 @@ public sealed class DbcWorkbenchDocument
         action(_editing);
         _dirty = true;
     }
+    private void RejectShapeEdits()
+    {
+        RequireEditable();
+        if (_sourcePreserving)
+            throw new ProjectDataException("DBC_SOURCE_PRESERVE",
+                "当前 DBC 带有需要保留的附加元数据，本轮只允许编辑现有报文和信号的参数。");
+    }
+
     private void RequireEditable()
     {
         if (!CanEdit) throw new ProjectDataException("DBC_UNSUPPORTED_READONLY",
