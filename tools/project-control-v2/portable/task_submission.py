@@ -152,6 +152,12 @@ def make_plan(root, task_id, receipt, pr):
 
 
 def main(argv=None):
+    # Python on Windows may inherit a legacy charmap console. Every management
+    # command writes UTF-8 Chinese project names and JSON, without requiring
+    # users to change the system code page.
+    for output in (sys.stdout, sys.stderr):
+        if hasattr(output, "reconfigure"):
+            output.reconfigure(encoding="utf-8", errors="replace")
     cli = argparse.ArgumentParser(description="Preflight task PR submission (no remote writes)")
     cli.add_argument("--target", type=Path, required=True)
     cli.add_argument("--task-id", required=True)
