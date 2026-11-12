@@ -1,6 +1,8 @@
 using System.IO;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
+using AutoTest.Projects.Dbc.Editing;
+using AutoTest.Projects.Dbc;
 using AutoTest.Core;
 using AutoTest.Testing.Authoring;
 using System.Security.Cryptography;
@@ -136,6 +138,227 @@ public sealed class ProjectWorkspaceService
         return result;
     }
 
+    /// <summary>Open a DBC asset through the existing, fail-closed Projects workbench.</summary>
+    public async Task<DbcEditorSession> OpenDbcEditorAsync(AssetId id, CancellationToken ct = default)
+    {
+        var current = Current ?? throw new InvalidOperationException("请先打开工程。");
+        var asset = current.Definition.Assets.FirstOrDefault(x => x.Id == id)
+            ?? throw new ProjectDataException("ASSET_NOT_FOUND", "DBC 工程资源已不存在。");
+        if (!string.Equals(asset.Kind, DbcKind, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("该工程资源不是 DBC。");
+
+        return await Task.Run(async () =>
+        {
+            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            var loaded = await DbcDocumentStore.OpenAsync(path, ct).ConfigureAwait(false);
+            if (!string.Equals(loaded.Receipt.Sha256, asset.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("DBC_ASSET_CHANGED",
+                    "DBC 文件与工程登记的 SHA256 不一致。为避免覆盖外部修改，已阻止编辑，请先核对文件和工程清单。");
+            return new DbcEditorSession(current.Definition.Id, current.ManifestPath,
+                current.ManifestSha256, asset.Id, asset.Revision, asset.Name,
+                loaded.Document, loaded.Receipt);
+        }, ct);
+    }
+
+    /// <summary>Persist edited DBC, verify reread, then advance project asset SHA and revision.</summary>
+    public async Task<DbcEditorSession> SaveDbcEditorAsync(
+        DbcEditorSession opened, CancellationToken ct = default)
+    {
+        if (!opened.Document.CanEdit)
+            throw new ProjectDataException("DBC_UNSUPPORTED_READONLY", "该 DBC 包含当前写入器不支持的结构，不能编辑保存。");
+        if (!opened.Document.IsDirty)
+            return opened;
+
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("工程已关闭。");
+            if (current.Definition.Id != opened.ProjectId ||
+                !string.Equals(current.ManifestPath, opened.ManifestPath, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("DBC_PROJECT_CHANGED", "当前工程已切换，请重新打开 DBC。");
+            var assetIndex = -1;
+            for (var i = 0; i < current.Definition.Assets.Length; i++)
+                if (current.Definition.Assets[i].Id == opened.AssetId) { assetIndex = i; break; }
+            if (assetIndex < 0) throw new ProjectDataException("DBC_ASSET_MISSING", "DBC 资源已从工程移除。");
+            var asset = current.Definition.Assets[assetIndex];
+            if (asset.Revision != opened.AssetRevision ||
+                !string.Equals(asset.Sha256, opened.FileReceipt.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("DBC_REVISION_CONFLICT", "DBC 资源修订已变化，请重新加载后再保存。");
+
+            // The workbench file store handles unchanged-file conflict and atomic replacement.
+            // The project manifest is updated only after verified re-read of the stored DBC.
+            var result = await Task.Run(async () =>
+            {
+                await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+                var receipt = await DbcDocumentStore.SaveAsync(
+                    opened.Document, path, opened.FileReceipt.Sha256, ct).ConfigureAwait(false);
+                var check = await DbcDocumentStore.OpenAsync(path, ct).ConfigureAwait(false);
+                if (!string.Equals(check.Receipt.Sha256, receipt.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new ProjectDataException("DBC_SAVE_VERIFY", "DBC 文件保存后复核失败，请检查备份文件。");
+
+                var updated = asset with
+                {
+                    Sha256 = receipt.Sha256,
+                    Revision = checked(asset.Revision + 1)
+                };
+                var newProject = (current.Definition with
+                {
+                    Assets = current.Definition.Assets.SetItem(assetIndex, updated)
+                }).WithRevision().Validate();
+
+                // If the manifest save fails, DbcDocumentStore has retained a .bak copy.
+                // Never silently claim success when file and manifest revisions differ.
+                await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                await ProjectRepository.SaveDefinitionAsync(newProject, current.ManifestPath, ct)
+                    .ConfigureAwait(false);
+                var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct)
+                    .ConfigureAwait(false);
+                var manifestHash = await HashFileAsync(current.ManifestPath, ct).ConfigureAwait(false);
+                return (Context: new OpenProjectContext(verified, current.ManifestPath, manifestHash),
+                    Document: check.Document, Receipt: check.Receipt, Revision: updated.Revision);
+            }, ct);
+
+            Current = result.Context;
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return new DbcEditorSession(result.Context.Definition.Id, result.Context.ManifestPath,
+                result.Context.ManifestSha256, opened.AssetId, result.Revision, asset.Name,
+                result.Document, result.Receipt);
+        }
+        finally { _writeLock.Release(); }
+    }
+
+
+    /// <summary>Read a formal TEST resource with exact project and file hashes.</summary>
+    public async Task<TestEditorSession> OpenTestEditorAsync(AssetId assetId, CancellationToken ct = default)
+    {
+        var current = Current ?? throw new InvalidOperationException("请先打开工程。");
+        var asset = current.Definition.Assets.FirstOrDefault(x => x.Id == assetId)
+            ?? throw new ProjectDataException("ASSET_NOT_FOUND", "TEST 资源不存在。");
+        if (!string.Equals(asset.Kind, TestProgramKind, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("选中资源不是测试程序。");
+        return await Task.Run(async () =>
+        {
+            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+            var hash = Convert.ToHexString(SHA256.HashData(bytes));
+            if (!hash.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("TEST_ASSET_CHANGED",
+                    "TEST 文件与工程登记指纹不符，不能直接编辑。请检查外部修改。");
+            var document = TestDocumentCodec.Deserialize(new UTF8Encoding(false, true).GetString(bytes));
+            return new TestEditorSession(current.Definition.Id, current.ManifestPath,
+                asset.Id, asset.Revision, asset.Name, path, hash, document);
+        }, ct);
+    }
+
+    /// <summary>Save a TEST document through its canonical codec and update the project asset.</summary>
+    public async Task<TestEditorSession> SaveTestEditorAsync(
+        TestEditorSession opened, TestDocument edited, CancellationToken ct = default)
+    {
+        // Validate the candidate before making *any* disk changes.
+        var serialized = TestDocumentCodec.Serialize(edited);
+        var decoded = TestDocumentCodec.Deserialize(serialized);
+        if (opened.Document.Id != decoded.Id)
+            throw new ProjectDataException("TEST_ID_CHANGED", "不能替换测试程序的持久身份。");
+        if (TestDocumentCodec.Serialize(opened.Document) == serialized)
+            return opened;
+        var bytes = new UTF8Encoding(false).GetBytes(serialized);
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("工程已经关闭。");
+            if (current.Definition.Id != opened.ProjectId ||
+                !string.Equals(current.ManifestPath, opened.ManifestPath, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("TEST_PROJECT_CHANGED", "工程已切换，请重新打开测试程序。");
+            var index = -1;
+            for (var i = 0; i < current.Definition.Assets.Length; i++)
+                if (current.Definition.Assets[i].Id == opened.AssetId) { index = i; break; }
+            if (index < 0) throw new ProjectDataException("TEST_ASSET_MISSING", "测试程序已不在工程清单内。");
+            var asset = current.Definition.Assets[index];
+            if (!string.Equals(asset.Kind, TestProgramKind, StringComparison.OrdinalIgnoreCase) ||
+                asset.Revision != opened.AssetRevision ||
+                !asset.Sha256.Equals(opened.FileHash, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("TEST_REVISION_CONFLICT",
+                    "测试资源已被另一编辑操作修改，不能覆盖旧版本。");
+
+            var result = await Task.Run(async () =>
+            {
+                await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+                var fileHash = await HashFileAsync(path, ct).ConfigureAwait(false);
+                if (!fileHash.Equals(opened.FileHash, StringComparison.OrdinalIgnoreCase))
+                    throw new ProjectDataException("TEST_FILE_CONFLICT",
+                        "TEST 文件在磁盘上发生变化，已拒绝覆盖。");
+                var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                var backup = path + ".bak";
+                var manifestAttempted = false;
+                try
+                {
+                    await File.WriteAllBytesAsync(temporary, bytes, ct).ConfigureAwait(false);
+                    var staged = TestDocumentCodec.Deserialize(
+                        new UTF8Encoding(false, true).GetString(
+                            await File.ReadAllBytesAsync(temporary, ct).ConfigureAwait(false)));
+                    if (staged.Id != edited.Id)
+                        throw new ProjectDataException("TEST_SAVE_VERIFY", "暂存测试程序复核失败。");
+
+                    ct.ThrowIfCancellationRequested();
+                    if (!File.Exists(path))
+                        throw new ProjectDataException("TEST_FILE_CONFLICT", "原测试文件已丢失，不能覆盖。");
+                    if (!string.Equals(await HashFileAsync(path, ct).ConfigureAwait(false),
+                        opened.FileHash, StringComparison.OrdinalIgnoreCase))
+                        throw new ProjectDataException("TEST_FILE_CONFLICT", "保存前测试文件被外部修改。");
+                    File.Replace(temporary, path, backup);
+                    var newHash = await HashFileAsync(path, ct).ConfigureAwait(false);
+                    var reloaded = TestDocumentCodec.Deserialize(
+                        new UTF8Encoding(false, true).GetString(
+                            await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false)));
+                    if (reloaded.Id != edited.Id || !newHash.Equals(
+                        Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+                        throw new ProjectDataException("TEST_SAVE_VERIFY", "写入测试文件后复核失败。");
+
+                    var nextAsset = asset with
+                    {
+                        Sha256 = newHash,
+                        Revision = checked(asset.Revision + 1)
+                    };
+                    var next = (current.Definition with
+                    {
+                        Assets = current.Definition.Assets.SetItem(index, nextAsset)
+                    }).WithRevision().Validate();
+
+                    await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                    manifestAttempted = true;
+                    await ProjectRepository.SaveDefinitionAsync(next, current.ManifestPath, ct)
+                        .ConfigureAwait(false);
+                    var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct)
+                        .ConfigureAwait(false);
+                    var manifestHash = await HashFileAsync(current.ManifestPath, ct).ConfigureAwait(false);
+                    return (Context: new OpenProjectContext(verified, current.ManifestPath, manifestHash),
+                        Session: new TestEditorSession(verified.Id, current.ManifestPath, asset.Id,
+                            nextAsset.Revision, asset.Name, path, newHash, reloaded));
+                }
+                catch
+                {
+                    // If manifest write has not been attempted, restore the original from
+                    // File.Replace backup, provided this process still owns the changed file.
+                    if (!manifestAttempted && File.Exists(backup) && File.Exists(path) &&
+                        string.Equals(await HashFileAsync(path, CancellationToken.None).ConfigureAwait(false),
+                            Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+                        File.Copy(backup, path, overwrite: true);
+                    throw;
+                }
+                finally
+                {
+                    if (File.Exists(temporary)) File.Delete(temporary);
+                }
+            }, ct);
+            Current = result.Context;
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return result.Session;
+        }
+        finally { _writeLock.Release(); }
+    }
+
     public async Task<AssetEntry> ImportDbcAsync(string sourcePath, CancellationToken ct = default)
     {
         if (!string.Equals(Path.GetExtension(sourcePath), ".dbc", StringComparison.OrdinalIgnoreCase))
@@ -143,10 +366,17 @@ public sealed class ProjectWorkspaceService
         var source = Path.GetFullPath(sourcePath);
         var info = new FileInfo(source);
         if (!info.Exists) throw new FileNotFoundException("找不到所选 DBC 文件。", source);
-        if (info.Length > 32 * 1024 * 1024)
-            throw new InvalidDataException("DBC 文件超过当前 32 MB 导入上限。");
+        if (info.Length > 4 * 1024 * 1024)
+            throw new InvalidDataException("现有 DBC 工作台仅支持打开最大 4 MB 的文件。请先精简或拆分 DBC。");
         var bytes = await File.ReadAllBytesAsync(source, ct);
         var name = Path.GetFileNameWithoutExtension(source);
+        // Do not register a resource that the existing Projects parser cannot open.
+        // Rich directives remain importable but are explicitly read-only if unsafe to export.
+        await Task.Run(() =>
+        {
+            var decoded = DbcSource.Load(bytes);
+            _ = DbcWorkbenchDocument.Import(name, decoded.Text);
+        }, ct);
         return await AddAssetAsync(DbcKind, name, ".dbc", bytes, ct);
     }
 

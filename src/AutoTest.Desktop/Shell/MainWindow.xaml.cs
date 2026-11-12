@@ -15,12 +15,30 @@ public partial class MainWindow : Window
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
+        Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
     }
 
     private void ResourceTree_SelectedItemChanged(
         object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         _viewModel.SelectResource(e.NewValue as ResourceTreeNode);
+    }
+
+    private void ResourceTree_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_viewModel.SelectedResourceIsTestProgram &&
+            ((ICommand)_viewModel.OpenTestProgramCommand).CanExecute(null))
+        {
+            ((ICommand)_viewModel.OpenTestProgramCommand).Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (_viewModel.SelectedResourceIsDbc &&
+            ((ICommand)_viewModel.OpenDbcCommand).CanExecute(null))
+        {
+            ((ICommand)_viewModel.OpenDbcCommand).Execute(null);
+            e.Handled = true;
+        }
     }
 
     private void ResourceTree_RightClick(object sender, MouseButtonEventArgs e)

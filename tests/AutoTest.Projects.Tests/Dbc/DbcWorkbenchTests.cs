@@ -27,7 +27,8 @@ public sealed class DbcWorkbenchTests
     {
         var source = Basic + "\nCM_ SG_ 291 Speed \"comment\";\n";
         var doc = DbcWorkbenchDocument.Import("example", source);
-        Assert.False(doc.CanEdit);
+        Assert.True(doc.CanEdit);
+        Assert.True(doc.IsSourcePreserving);
         Assert.Equal(source, doc.ExportText());
     }
     [Fact] public void UnknownSyntax_RefusesDestructiveEdits()
@@ -35,7 +36,7 @@ public sealed class DbcWorkbenchTests
         var doc = DbcWorkbenchDocument.Import("example", Basic + "\nBA_ \"GenMsgCycleTime\" BO_ 291 10;\n");
         var error = Assert.Throws<ProjectDataException>(() => doc.AddSignal(291,
             new DbcSignal("New", 40, 8, true, false, 1, 0, 0, 255, "", "Tester")));
-        Assert.Equal("DBC_UNSUPPORTED_READONLY", error.Code);
+        Assert.Equal("DBC_SOURCE_PRESERVE", error.Code);
     }
     [Fact] public void EditingSignalsAndValueTables_RoundTripsSemantics()
     {

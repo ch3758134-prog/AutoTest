@@ -2,6 +2,10 @@ using System.Collections.ObjectModel;
 using System.IO;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
+using AutoTest.Desktop.Dbc;
+using AutoTest.Desktop.Testing;
+using System.Text.Json;
+using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -14,23 +18,34 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly NewProjectDialogService _newDialog;
     private readonly ProjectFileDialogService _fileDialogs;
+    private readonly DbcWorkbenchWindowService _dbcWindows;
+    private readonly TestEditorWindowService _testWindows;
+    private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
     private ResourceTreeNode? _selectedResource;
 
     public MainWindowViewModel(
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
-        ProjectFileDialogService fileDialogs)
+        ProjectFileDialogService fileDialogs, DbcWorkbenchWindowService dbcWindows,
+        TestEditorWindowService testWindows, RecentProjectStore recentProjects)
     {
         _workspace = workspace;
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
+        _dbcWindows = dbcWindows;
+        _testWindows = testWindows;
+        _recentProjects = recentProjects;
         NewProjectCommand = new DelegateCommand(OpenNewProject, () => !IsBusy);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
             () => HasProject && !IsBusy);
         ImportDbcCommand = new DelegateCommand(async () => await ImportDbcAsync(),
             () => HasProject && !IsBusy);
+        OpenDbcCommand = new DelegateCommand(async () => await OpenSelectedDbcAsync(),
+            () => SelectedResourceIsDbc && !IsBusy);
+        OpenTestProgramCommand = new DelegateCommand(async () => await OpenSelectedTestProgramAsync(),
+            () => SelectedResourceIsTestProgram && !IsBusy);
         RenameResourceCommand = new DelegateCommand(async () => await RenameResourceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
@@ -45,6 +60,15 @@ public sealed class MainWindowViewModel : BindableBase
             StatusMessage = _workspace.Current is { } current
                 ? "工程已载入：" + current.ManifestPath
                 : "尚未打开工程";
+            if (_workspace.Current is { } opened)
+            {
+                try { _recentProjects.Remember(opened.ManifestPath); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                                   ArgumentException or JsonException)
+                {
+                    StatusMessage = "工程已打开，但无法保存最近工程记录：" + error.Message;
+                }
+            }
             RefreshCommands();
         };
         RebuildResourceTree();
@@ -57,6 +81,10 @@ public sealed class MainWindowViewModel : BindableBase
     public int AssetCount => _workspace.Current?.Definition.Assets.Length ?? 0;
     public bool HasSelectedResource => _selectedResource is not null && HasProject;
     public bool SelectedResourceIsAsset => _selectedResource?.Asset is not null;
+    public bool SelectedResourceIsDbc => string.Equals(_selectedResource?.Asset?.Kind,
+        ProjectWorkspaceService.DbcKind, StringComparison.OrdinalIgnoreCase);
+    public bool SelectedResourceIsTestProgram => string.Equals(_selectedResource?.Asset?.Kind,
+        ProjectWorkspaceService.TestProgramKind, StringComparison.OrdinalIgnoreCase);
     public string SelectedResourceTitle => _selectedResource?.Label ?? "";
     public string SelectedResourceDescription => _selectedResource?.Description ?? "";
     public string SelectedResourcePath => _selectedResource?.Asset?.RelativePath ?? "";
@@ -81,8 +109,42 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenProjectCommand { get; }
     public DelegateCommand NewTestProgramCommand { get; }
     public DelegateCommand ImportDbcCommand { get; }
+    public DelegateCommand OpenDbcCommand { get; }
+    public DelegateCommand OpenTestProgramCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
     public DelegateCommand RemoveReferenceCommand { get; }
+
+    public async Task RestoreLastProjectAsync()
+    {
+        if (HasProject || IsBusy) return;
+        string? path;
+        try { path = _recentProjects.GetLastProjectManifest(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                          ArgumentException or JsonException)
+        {
+            StatusMessage = "无法读取上次工程记录：" + error.Message;
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(path)) return;
+        if (!File.Exists(path))
+        {
+            StatusMessage = "上次工程文件不存在，请手动打开：" + path;
+            return;
+        }
+        IsBusy = true;
+        try
+        {
+            await _workspace.OpenAsync(path);
+            StatusMessage = "已自动打开上次工程：" + path;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                          ArgumentException or ProjectDataException or
+                                          InvalidDataException or JsonException)
+        {
+            StatusMessage = "上次工程打开失败，可手动选择：" + error.Message;
+        }
+        finally { IsBusy = false; }
+    }
 
     public void SelectResource(ResourceTreeNode? item)
     {
@@ -97,6 +159,8 @@ public sealed class MainWindowViewModel : BindableBase
     {
         RaisePropertyChanged(nameof(HasSelectedResource));
         RaisePropertyChanged(nameof(SelectedResourceIsAsset));
+        RaisePropertyChanged(nameof(SelectedResourceIsDbc));
+        RaisePropertyChanged(nameof(SelectedResourceIsTestProgram));
         RaisePropertyChanged(nameof(SelectedResourceTitle));
         RaisePropertyChanged(nameof(SelectedResourceDescription));
         RaisePropertyChanged(nameof(SelectedResourcePath));
@@ -200,7 +264,9 @@ public sealed class MainWindowViewModel : BindableBase
         {
             var entry = await _workspace.CreateTestProgramAsync(name);
             SelectAsset(entry.Id);
-            StatusMessage = "测试程序已创建：" + entry.Name;
+            var session = await _workspace.OpenTestEditorAsync(entry.Id);
+            _testWindows.Show(session);
+            StatusMessage = "测试程序已创建并打开：" + entry.Name;
         });
     }
 
@@ -213,7 +279,31 @@ public sealed class MainWindowViewModel : BindableBase
         {
             var entry = await _workspace.ImportDbcAsync(path);
             SelectAsset(entry.Id);
-            StatusMessage = "DBC 已导入工程：" + entry.Name;
+            var opened = await _workspace.OpenDbcEditorAsync(entry.Id);
+            _dbcWindows.Show(opened);
+            StatusMessage = "DBC 已导入并打开：" + entry.Name;
+        });
+    }
+
+    private async Task OpenSelectedTestProgramAsync()
+    {
+        if (!SelectedResourceIsTestProgram || _selectedResource?.Asset is not { } asset) return;
+        await RunOperationAsync(async () =>
+        {
+            var session = await _workspace.OpenTestEditorAsync(asset.Id);
+            _testWindows.Show(session);
+            StatusMessage = "已打开测试程序：" + asset.Name;
+        });
+    }
+
+    private async Task OpenSelectedDbcAsync()
+    {
+        if (!SelectedResourceIsDbc || _selectedResource?.Asset is not { } asset) return;
+        await RunOperationAsync(async () =>
+        {
+            var opened = await _workspace.OpenDbcEditorAsync(asset.Id);
+            _dbcWindows.Show(opened);
+            StatusMessage = "已打开 DBC：" + asset.Name;
         });
     }
 
@@ -256,6 +346,7 @@ public sealed class MainWindowViewModel : BindableBase
         try { await operation(); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or
                                      InvalidDataException or FormatException or NotSupportedException or
+                                     JsonException or OverflowException or
                                      AutoTest.Projects.Project.ProjectDataException)
         {
             StatusMessage = "操作失败：" + e.Message;
@@ -270,6 +361,8 @@ public sealed class MainWindowViewModel : BindableBase
         OpenProjectCommand?.RaiseCanExecuteChanged();
         NewTestProgramCommand?.RaiseCanExecuteChanged();
         ImportDbcCommand?.RaiseCanExecuteChanged();
+        OpenDbcCommand?.RaiseCanExecuteChanged();
+        OpenTestProgramCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();
         RemoveReferenceCommand?.RaiseCanExecuteChanged();
     }

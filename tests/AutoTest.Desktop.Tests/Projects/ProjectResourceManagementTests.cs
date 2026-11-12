@@ -33,7 +33,12 @@ public sealed class ProjectResourceManagementTests
             var workspace = new ProjectWorkspaceService();
             var created = await workspace.CreateAsync("ECU", parent);
             var source = Path.Combine(parent, "known.dbc");
-            await File.WriteAllTextAsync(source, "VERSION \"1.0\"\n");
+            await File.WriteAllTextAsync(source, """
+                VERSION "1.0"
+                BU_: ECU Tester
+                BO_ 291 Status: 8 ECU
+                 SG_ Speed : 0|16@1+ (0.1,0) [0|6553.5] "km/h" Tester
+                """);
             var test = await workspace.CreateTestProgramAsync("诊断步骤");
             var dbc = await workspace.ImportDbcAsync(source);
             Assert.Equal(ProjectWorkspaceService.TestProgramKind, test.Kind);
