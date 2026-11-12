@@ -1,12 +1,37 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using AutoTest.Desktop.Projects;
 
 namespace AutoTest.Desktop.Shell;
 
 public partial class MainWindow : Window
 {
+    private readonly MainWindowViewModel _viewModel;
+
     public MainWindow(MainWindowViewModel viewModel)
     {
         InitializeComponent();
+        _viewModel = viewModel;
         DataContext = viewModel;
+    }
+
+    private void ResourceTree_SelectedItemChanged(
+        object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        _viewModel.SelectResource(e.NewValue as ResourceTreeNode);
+    }
+
+    private void ResourceTree_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        DependencyObject? node = e.OriginalSource as DependencyObject;
+        while (node is not null && node is not TreeViewItem)
+            node = VisualTreeHelper.GetParent(node);
+        if (node is TreeViewItem item)
+        {
+            item.IsSelected = true;
+            item.Focus();
+        }
     }
 }
