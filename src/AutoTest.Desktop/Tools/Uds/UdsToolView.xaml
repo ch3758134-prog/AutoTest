@@ -4,13 +4,13 @@
     xmlns:prism="http://prismlibrary.com/"
     prism:ViewModelLocator.AutoWireViewModel="False"
     Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}"
-    FontFamily="Segoe UI" FontSize="13">
+    FontFamily="Microsoft YaHei UI" FontSize="13">
  <UserControl.Resources>
   <SolidColorBrush x:Key="UdsPanel" Color="#FFFFFF"/>
-  <SolidColorBrush x:Key="UdsRaised" Color="#ECF2F8"/>
-  <SolidColorBrush x:Key="UdsBorder" Color="#D6E1EC"/>
-  <SolidColorBrush x:Key="UdsMuted" Color="#637A90"/>
-  <SolidColorBrush x:Key="UdsAccent" Color="#176CB5"/>
+  <SolidColorBrush x:Key="UdsRaised" Color="#EDF5FF"/>
+  <SolidColorBrush x:Key="UdsBorder" Color="#D9E5F3"/>
+  <SolidColorBrush x:Key="UdsMuted" Color="#647A90"/>
+  <SolidColorBrush x:Key="UdsAccent" Color="#3188ED"/>
   <Style x:Key="UdsCard" TargetType="Border">
    <Setter Property="Background" Value="{StaticResource UdsPanel}"/>
    <Setter Property="BorderBrush" Value="{StaticResource UdsBorder}"/>
@@ -24,7 +24,7 @@
    <Setter Property="Margin" Value="0,7,0,4"/>
   </Style>
   <Style x:Key="UdsSection" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#203249"/>
+   <Setter Property="Foreground" Value="#253648"/>
    <Setter Property="FontSize" Value="14"/>
    <Setter Property="FontWeight" Value="SemiBold"/>
    <Setter Property="Margin" Value="0,0,0,10"/>
@@ -34,9 +34,9 @@
   
   
   <Style x:Key="UdsSendButton" TargetType="Button" BasedOn="{StaticResource AtPrimaryButton}">
-   <Setter Property="Background" Value="#126BBB"/>
+   <Setter Property="Background" Value="#3188ED"/>
    <Setter Property="Foreground" Value="White"/>
-   <Setter Property="BorderBrush" Value="#277ABD"/>
+   <Setter Property="BorderBrush" Value="#A3CFFF"/>
    <Setter Property="Padding" Value="14,8"/>
    <Setter Property="MinHeight" Value="34"/>
    <Setter Property="Margin" Value="0,0,9,6"/>
@@ -65,12 +65,12 @@
    </StackPanel>
    <StackPanel>
     <TextBlock Text="UDS 诊断" Style="{StaticResource AtPageTitle}"/>
-    <TextBlock Text="选择服务 → 编辑请求 → 发送 → 查看 ECU 响应"
+    <TextBlock Text="选择服务、编辑请求、发送并查看 ECU 的真实响应"
                Foreground="{StaticResource UdsMuted}" FontSize="11" Margin="0,4,0,0"/>
    </StackPanel>
   </DockPanel>
   <Border Grid.Row="1" Background="#FFF6E8" BorderBrush="#C9A271"
-          BorderThickness="1" CornerRadius="4" Padding="11,7" Margin="0,0,0,12">
+          BorderThickness="1" CornerRadius="7" Padding="11,7" Margin="0,0,0,12">
    <TextBlock Text="当前实机诊断只允许读取故障码（0x19）和数据标识（0x22）。其他服务可编辑，但不能向真实 ECU 发送；可通过已保存记录离线查看。"
               Foreground="#744611" TextWrapping="Wrap"/>
   </Border>
@@ -86,7 +86,7 @@
    <Border Style="{StaticResource UdsCard}">
     <DockPanel>
      <StackPanel DockPanel.Dock="Top">
-      <TextBlock Text="① 选择诊断服务" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="常用诊断服务" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="保存可复用诊断任务；选中后自动填入请求编辑器"
                  Foreground="{StaticResource UdsMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,11"/>
      </StackPanel>
@@ -127,7 +127,7 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="11"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <Border Style="{StaticResource UdsCard}">
      <StackPanel>
-      <TextBlock Text="② 编辑诊断请求" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="请求报文（发送）" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="服务名称" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ServiceName,UpdateSourceTrigger=PropertyChanged}"/>
       <TextBlock Text="服务参数" Style="{StaticResource UdsCaption}"/>
@@ -140,10 +140,10 @@
        <Button Content="生成 ReadDTC" Command="{Binding PrepareReadDtcCommand}"/>
        <Button Content="生成 TesterPresent" ToolTip="仅构造 PDU；真实物理发送仍受服务白名单限制" Command="{Binding PrepareTesterPresentCommand}"/>
       </WrapPanel>
-      <TextBlock Text="UDS Request PDU · HEX（无需手工添加 ISO-TP PCI）" Style="{StaticResource UdsCaption}"/>
+      <TextBlock Text="请求数据（HEX，不含 ISO-TP 帧头）" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding RequestHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" FontSize="14"
                ToolTip="例如 22 F1 90，应用层 PDU；多帧分包由 ISO-TP 层处理"/>
-      <TextBlock Text="期望 ECU Response PDU · HEX（可选，用于严格比较）" Style="{StaticResource UdsCaption}"/>
+      <TextBlock Text="期望响应（HEX，可选）" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ExpectedHex,UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
       <WrapPanel Margin="0,5,0,0">
        <Button Content="发送请求 / 回放" Command="{Binding SendCommand}" Style="{StaticResource UdsSendButton}"/>
@@ -155,11 +155,11 @@
     <Border Grid.Row="2" Style="{StaticResource UdsCard}">
      <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel>
-       <TextBlock Text="③ 查看 ECU 响应" Style="{StaticResource UdsSection}"/>
+       <TextBlock Text="响应报文与解析" Style="{StaticResource UdsSection}"/>
        <TextBlock Text="原始 UDS PDU" Style="{StaticResource UdsCaption}"/>
        <TextBox Text="{Binding ResponseHex,Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas"/>
        <TextBlock Text="诊断解释 / NRC" Style="{StaticResource UdsCaption}"/>
-       <TextBlock Text="{Binding ResponseSummary}" TextWrapping="Wrap" Margin="0,3,0,12" Foreground="#127C9D"/>
+       <TextBlock Text="{Binding ResponseSummary}" TextWrapping="Wrap" Margin="0,3,0,12" Foreground="#287FD4"/>
        <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -179,9 +179,9 @@
    <Border Grid.Column="4" Style="{StaticResource UdsCard}">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
-      <TextBlock Text="通信配置" Style="{StaticResource UdsSection}"/>
+      <TextBlock Text="诊断上下文" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="实机请求与手动台架共用同一主控连接；离线记录不会向 ECU 发送数据。"
-                 Foreground="{StaticResource UdsMuted}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                 Foreground="{StaticResource UdsMuted}" TextWrapping="Wrap" Margin="0,0,0,12"/>
       <WrapPanel Margin="0,0,0,7">
        <Button Content="导入 CanTool XML" Click="ImportCanTool_Click"/>
        <Button Content="使用 APP 地址" Click="UseCanToolApp_Click"/>
@@ -212,10 +212,10 @@
   <Border Grid.Row="3" Style="{StaticResource UdsCard}" Margin="0,11,0,0" Padding="10">
    <DockPanel>
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-     <TextBlock Text="诊断通信流水" FontWeight="SemiBold"/>
+     <TextBlock Text="报文追踪与诊断日志" FontWeight="SemiBold"/>
      <TextBlock Text="    ISO-TP · TX/RX · NRC · 时间线" Foreground="{StaticResource UdsMuted}"/>
      <TextBlock Text="    源=" Foreground="{StaticResource UdsMuted}"/>
-     <TextBlock Text="{Binding SourceLabel}" Foreground="#8F611B"/>
+     <TextBlock Text="{Binding SourceLabel}" Foreground="#78623D"/>
     </StackPanel>
     <DataGrid ItemsSource="{Binding TraceRows}" IsReadOnly="True" AutoGenerateColumns="False"
               HeadersVisibility="Column" CanUserAddRows="False" RowHeaderWidth="0">
