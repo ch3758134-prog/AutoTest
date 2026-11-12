@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "3.2-portable-e2e-security-candidate",
+  "version": "3.3-module-source-ledger-manual-validation",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -33,7 +33,9 @@
     "portable/WORKSPACE_LIFECYCLE.md",
     "portable/GOVERNANCE.md",
     "portable/management_sync.py",
-    "portable/git_ref_atomic.py"
+    "portable/git_ref_atomic.py",
+    "portable/module_control.py",
+    "portable/remote_module_status.py"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -62,12 +64,16 @@
     "extracted_package_bootstrap": "NEW_ADOPT_SMOKE_TESTS",
     "pr_ci_observation": "EXACT_HEAD_CHECK_RUNS_OBSERVED_NOT_AUTO_APPROVED",
     "local_web_host_validation": "LOCALHOST_ONLY_REJECT_DNS_REBINDING",
-    "extracted_package_http_smoke": "NEW_ADOPT_HTTP_AUTH_LOCAL_WRITES"
+    "extracted_package_http_smoke": "NEW_ADOPT_HTTP_AUTH_LOCAL_WRITES",
+    "module_status": "LOCAL_GIT_OBJECTS_WITH_EXPLICIT_REMOTE_GITHUB_READ_ONLY",
+    "module_boundary_enforcement": "CODEX_TASK_MODULE_SCOPE_AND_PUBLIC_INTERFACE_REVIEW_REQUIRED",
+    "module_pr_scope": "CROSS_MODULE_PR_FILE_CHANGE_REVIEW_REQUIRED",
+    "ci_policy": "NO_AUTOMATIC_PUSH_OR_PR_RUNS_MANUAL_ONLY"
   },
   "separation": {
     "package_source": "Project Control system files",
     "target_repo": "User-provided GitHub repository",
     "local_workspace": "User-selected folder for Codex execution"
   },
-  "warning": "Candidate package: requires independent real target-GitHub permissions and reviewer approval for remote mutations. CI fixtures and Windows runner tests do not prove live app/OS process interactions."
+  "warning": "Candidate; real GitHub permissions, human approval, module integration, Windows workstation behavior and formal delivery still require separate independent review. Local module state never means remote integrated."
 }
