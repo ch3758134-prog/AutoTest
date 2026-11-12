@@ -1,7 +1,7 @@
 <UserControl x:Class="AutoTest.Desktop.Tools.Flash.FlashToolView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Segoe UI" FontSize="13"
+ Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Microsoft YaHei UI" FontSize="13"
  UseLayoutRounding="True" SnapsToDevicePixels="True">
  <Grid Margin="14">
   <Grid.RowDefinitions>
@@ -11,21 +11,21 @@
   </Grid.RowDefinitions>
   <DockPanel Grid.Row="0" Margin="0,0,0,11">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-    <Button Content="验证镜像与配置" Style="{StaticResource AtPrimaryButton}" Command="{Binding PreflightCommand}"/>
+    <Button Content="烧录前检查" Style="{StaticResource AtPrimaryButton}" Command="{Binding PreflightCommand}"/>
     <Button Content="核对主控" Click="PhysicalPreflight_Click"/>
     <Button Content="设备连接" Click="OpenStationFromFlash_Click"/>
    </StackPanel>
    <StackPanel>
-    <TextBlock Text="ECU 编程" Foreground="{DynamicResource StudioMuted}" FontSize="10" FontWeight="SemiBold"/>
+    <TextBlock Text="固件编程" Foreground="{DynamicResource StudioMuted}" FontSize="10" FontWeight="SemiBold"/>
     <TextBlock Text="CAN 烧录" Style="{StaticResource AtPageTitle}" Margin="0,4,0,0"/>
     <TextBlock Text="配置检查 · 镜像加载 · 安全访问 · 擦写校验"
      Foreground="{DynamicResource StudioMuted}" FontSize="11" Margin="0,3,0,0"/>
    </StackPanel>
   </DockPanel>
   <Border Grid.Row="1" Background="#FFF5E7" BorderBrush="#BF9D65" BorderThickness="1"
-   CornerRadius="4" Padding="10,8" Margin="0,0,0,11">
-   <TextBlock Text="导入文件与预检不会擦写 ECU；真实擦写需要逐项授权和人工确认。CAN1 共用当前主控会话，实机烧录尚待验证。"
-    TextWrapping="Wrap" Foreground="#8F611B" FontSize="12"/>
+   CornerRadius="7" Padding="10,8" Margin="0,0,0,11">
+   <TextBlock Text="烧录属于高风险物理操作。预检不擦写 ECU；真实写入必须确认设备、固件、配置与授权。"
+    TextWrapping="Wrap" Foreground="#78623D" FontSize="12"/>
   </Border>
   <Grid Grid.Row="2">
    <Grid.ColumnDefinitions>
@@ -35,21 +35,21 @@
     <ColumnDefinition Width="5"/>
     <ColumnDefinition Width="275" MinWidth="245"/>
    </Grid.ColumnDefinitions>
-   <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" CornerRadius="5">
+   <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" CornerRadius="7">
     <DockPanel>
      <Border DockPanel.Dock="Top" Padding="12,12,12,9" Background="{DynamicResource StudioSurface}">
-      <TextBlock Text="烧录资源与参数" FontSize="12" FontWeight="SemiBold"/>
+      <TextBlock Text="固件与配置包" FontSize="12" FontWeight="SemiBold"/>
      </Border>
      <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel Margin="12,10,12,16">
-       <TextBlock Text="设备与诊断配置" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,8"/>
+       <TextBlock Text="设备与诊断配置" Foreground="#3188ED" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,8"/>
        <Button Content="导入 Configuration.xml" Click="ImportCanTool_Click" HorizontalAlignment="Stretch"/>
-       <TextBlock Text="{Binding ConfigurationStatus}" TextWrapping="Wrap" FontSize="11" Foreground="#167B5A" Margin="0,7,0,0"/>
+       <TextBlock Text="{Binding ConfigurationStatus}" TextWrapping="Wrap" FontSize="11" Foreground="#2B7BCB" Margin="0,7,0,0"/>
        <TextBlock Text="写入地址范围（终点不含）" Foreground="{DynamicResource StudioMuted}" Margin="0,10,0,3" FontSize="11"/>
        <TextBlock Text="{Binding AllowedStart}" FontFamily="Consolas"/>
        <TextBlock Text="{Binding AllowedEnd}" FontFamily="Consolas" Margin="0,0,0,7"/>
        <Border Height="1" Background="{DynamicResource StudioLine}" Margin="0,10,0,12"/>
-       <TextBlock Text="固件镜像" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+       <TextBlock Text="固件镜像" Foreground="#3188ED" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
        <TextBlock Text="HEX / S19 / BIN 固件路径" Foreground="{DynamicResource StudioMuted}" FontSize="11"/>
        <TextBox Text="{Binding ImagePath,UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,5"/>
        <WrapPanel>
@@ -63,13 +63,13 @@
        <TextBlock Text="期望 ECU 身份" Foreground="{DynamicResource StudioMuted}" FontSize="11" Margin="0,9,0,2"/>
        <TextBox Text="{Binding ExpectedIdentity,UpdateSourceTrigger=PropertyChanged}"/>
        <Border Height="1" Background="{DynamicResource StudioLine}" Margin="0,14,0,12"/>
-       <TextBlock Text="安全访问算法" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,7"/>
+       <TextBlock Text="安全访问算法" Foreground="#3188ED" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,7"/>
        <TextBlock Text="选择与当前 ECU 匹配的 Seed/Key 算法库。不能使用示例算法替代正式算法。"
         Foreground="{DynamicResource StudioMuted}" FontSize="11" TextWrapping="Wrap"/>
        <TextBox x:Name="SecurityDllPath" IsReadOnly="True" Margin="0,5,0,5"/>
        <Button Content="选择真实 Seed/Key DLL…" Click="BrowseSecurityDll_Click" HorizontalAlignment="Stretch"/>
        <Border Height="1" Background="{DynamicResource StudioLine}" Margin="0,14,0,12"/>
-       <TextBlock Text="通信与擦写超时参数" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,9"/>
+       <TextBlock Text="通信与擦写超时参数" Foreground="#3188ED" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,9"/>
        <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="112"/></Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -100,7 +100,7 @@
      <RowDefinition Height="*" MinHeight="160"/>
      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
-    <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" CornerRadius="5" Padding="13">
+    <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" CornerRadius="7" Padding="13">
      <StackPanel>
       <DockPanel>
        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -108,7 +108,7 @@
         <Button Content="固件预检" Command="{Binding PreflightCommand}"/>
        </StackPanel>
        <StackPanel>
-        <TextBlock Text="实机烧录" FontSize="15" FontWeight="SemiBold"/>
+        <TextBlock Text="烧录流程与进度" FontSize="15" FontWeight="SemiBold"/>
         <TextBlock x:Name="PhysicalSessionLine" Text="主控未连接；请打开设备连接，确认接线安全后连接主控"
          Foreground="{DynamicResource StudioMuted}" TextWrapping="Wrap" Margin="0,5,0,0" FontSize="11"/>
        </StackPanel>
@@ -116,20 +116,20 @@
       <WrapPanel Margin="0,10,0,0">
        <Button x:Name="FlashPrepareButton" Content="核对并生成本次授权" Click="PreparePhysicalFlash_Click"/>
        <Button x:Name="FlashStartButton" Content="开始真实 ECU 烧录" Style="{StaticResource AtDangerButton}" Click="StartPhysicalFlash_Click"
-        IsEnabled="False" Background="#E1F4ED"/>
+        IsEnabled="False" Background="#E9F4FF"/>
        <Button x:Name="FlashCancelButton" Content="请求停止 / 取消" Style="{StaticResource AtDangerButton}" Click="CancelPhysicalFlash_Click"
         IsEnabled="False"/>
        <Button Content="导出本页诊断日志" Click="ExportPhysicalFlashLog_Click"/>
       </WrapPanel>
       <ProgressBar x:Name="FlashProgressBar" Height="9" Minimum="0" Maximum="100" Margin="0,11,0,5"/>
-      <TextBlock x:Name="FlashProgressLine" Text="尚未执行" Foreground="#167B5A" FontSize="11"/>
+      <TextBlock x:Name="FlashProgressLine" Text="尚未执行" Foreground="#2B7BCB" FontSize="11"/>
      </StackPanel>
     </Border>
     <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Padding="10,7" Margin="0,7,0,0">
      <StackPanel>
       <TextBlock Text="{Binding Status,Converter={StaticResource OperatorStatusConverter}}" Foreground="{DynamicResource StudioMuted}" FontSize="11" TextWrapping="Wrap"/>
       <TextBlock x:Name="PhysicalResultLine" Text="真实烧录未开始。探测不会擦除；无物理 ECU 验证结果。"
-       TextWrapping="Wrap" Foreground="#8F611B" FontSize="12" Margin="0,4,0,0"/>
+       TextWrapping="Wrap" Foreground="#78623D" FontSize="12" Margin="0,4,0,0"/>
      </StackPanel>
     </Border>
     <TabControl Grid.Row="2" Background="{DynamicResource StudioBg}" Margin="0,8,0,0">
@@ -164,7 +164,7 @@
       <DockPanel>
        <StackPanel DockPanel.Dock="Top" Margin="8">
         <TextBlock Text="{Binding PhysicalPreflight}" TextWrapping="Wrap"/>
-        <TextBlock Text="{Binding Preflight}" Foreground="#8F611B"/>
+        <TextBlock Text="{Binding Preflight}" Foreground="#78623D"/>
        </StackPanel>
        <DataGrid ItemsSource="{Binding PhysicalChecks}" AutoGenerateColumns="True" IsReadOnly="True"/>
       </DockPanel>
@@ -173,7 +173,7 @@
     <TextBlock Grid.Row="3" Text="{Binding SourceLabel}" Foreground="{DynamicResource StudioMuted}" FontSize="11" Margin="2,9,2,0" TextWrapping="Wrap"/>
    </Grid>
    <GridSplitter Grid.Column="3" Background="{DynamicResource StudioLine}" HorizontalAlignment="Stretch"/>
-   <Border Grid.Column="4" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" CornerRadius="5">
+   <Border Grid.Column="4" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" CornerRadius="7">
     <DockPanel>
      <Border DockPanel.Dock="Top" Background="{DynamicResource StudioSurface}" Padding="12">
       <StackPanel>
@@ -183,13 +183,13 @@
      </Border>
      <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel Margin="12,12,12,16">
-       <TextBlock Text="当前配置和固件" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+       <TextBlock Text="当前配置和固件" Foreground="#3188ED" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
        <TextBlock Text="{Binding Format,StringFormat=格式：{0}}" TextWrapping="Wrap"/>
        <TextBlock Text="{Binding Bytes,StringFormat=镜像字节：{0}}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-       <TextBlock Text="{Binding Hash}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="10" Foreground="#127C9D" Margin="0,5,0,0"/>
+       <TextBlock Text="{Binding Hash}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="10" Foreground="#287FD4" Margin="0,5,0,0"/>
        <TextBlock Text="{Binding Failure}" TextWrapping="Wrap" Foreground="#B63B51" Margin="0,5,0,0"/>
        <Border Height="1" Background="{DynamicResource StudioLine}" Margin="0,14,0,12"/>
-       <TextBlock Text="实际烧录许可 / 必须逐项确认" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap"/>
+       <TextBlock Text="实际烧录许可 / 必须逐项确认" Foreground="#3188ED" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap"/>
        <CheckBox x:Name="FlashPowerConfirmed" Content="已核实 ECU 型号、接线、供电和恢复措施"
         Margin="0,10,0,7"/>
        <CheckBox x:Name="FlashRateConfirmed" Content="已核实 CAN1 物理比特率与 XML 期望一致"
@@ -197,7 +197,7 @@
        <CheckBox x:Name="FlashEraseConfirmed" Content="同意本次对实际 ECU 擦除、写入和复位"
         Margin="0,2,0,7"/>
        <TextBlock Text="提示：导入 XML 不会修改 CAN1 实际波特率。主控 ACK 也不代表 ECU UDS 成功。"
-        Foreground="#8F611B" TextWrapping="Wrap" FontSize="11" Margin="0,8,0,10"/>
+        Foreground="#78623D" TextWrapping="Wrap" FontSize="11" Margin="0,8,0,10"/>
        <Button Content="生成真实烧录授权短语" Click="PreparePhysicalFlash_Click" HorizontalAlignment="Stretch"/>
        <TextBlock Text="本次授权（需人工逐字核对）" Foreground="{DynamicResource StudioMuted}" FontSize="11" Margin="0,11,0,4"/>
        <TextBox x:Name="FlashExpectedAuthorization" IsReadOnly="True" TextWrapping="Wrap"
