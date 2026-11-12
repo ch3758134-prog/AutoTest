@@ -7,14 +7,14 @@
     MinWidth="1150" MinHeight="720" WindowState="Maximized"
     WindowStartupLocation="CenterScreen"
     Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}"
-    FontFamily="Segoe UI" FontSize="13"
+    FontFamily="Microsoft YaHei UI" FontSize="13"
     SnapsToDevicePixels="True" UseLayoutRounding="True"
     Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown">
     <Window.Resources>
-        <SolidColorBrush x:Key="Border" Color="#DCE4EE"/>
+        <SolidColorBrush x:Key="Border" Color="#DCE6F3"/>
         <SolidColorBrush x:Key="Text" Color="#24364A"/>
-        <SolidColorBrush x:Key="Muted" Color="#6A7E93"/>
-        <SolidColorBrush x:Key="Primary" Color="#176AB2"/>
+        <SolidColorBrush x:Key="Muted" Color="#65778A"/>
+        <SolidColorBrush x:Key="Primary" Color="#2E85EE"/>
         <!-- Application control styles are the single source of truth. -->
         <!-- Only the opened documents are tabs. Overflow scrolls horizontally
              instead of wrapping tabs into multiple rows and stealing TEST space. -->
@@ -22,17 +22,17 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabControl">
-                        <Grid KeyboardNavigation.TabNavigation="Local" Background="#F6F8FB">
+                        <Grid KeyboardNavigation.TabNavigation="Local" Background="#F6F9FE">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Background="#EFF3F8"
-                                BorderBrush="#DCE4EE" BorderThickness="0,0,0,1">
+                            <Border Grid.Row="0" Background="#EDF4FE"
+                                BorderBrush="#DCE6F3" BorderThickness="0,0,0,1">
                                 <ScrollViewer HorizontalScrollBarVisibility="Auto"
                                     VerticalScrollBarVisibility="Disabled" CanContentScroll="True"
                                     Focusable="False">
-                                    <TabPanel IsItemsHost="True" Background="#EFF3F8"/>
+                                    <TabPanel IsItemsHost="True" Background="#EDF4FE"/>
                                 </ScrollViewer>
                             </Border>
                             <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
@@ -44,7 +44,7 @@
         <Style TargetType="TabItem">
             <Setter Property="Padding" Value="13,8"/>
             <Setter Property="Foreground" Value="#4A627B"/>
-            <Setter Property="Background" Value="#F3F6FA"/>
+            <Setter Property="Background" Value="#F4F8FE"/>
         </Style>
     </Window.Resources>
     <Window.InputBindings>
@@ -63,18 +63,18 @@
         </Grid.RowDefinitions>
 
         <!-- Single coherent application chrome. No nested operator/developer shells. -->
-        <Border Grid.Row="0" Background="#F8FAFD" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="#F8FAFF" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
             <DockPanel Margin="13,0,13,0">
-                <TextBlock DockPanel.Dock="Right" Text="ECU 测试与开发"
+                <TextBlock DockPanel.Dock="Right" Text="ECU 测试工作台"
                     FontSize="11" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
-                <Border DockPanel.Dock="Left" Background="#176AB2" Width="26" Height="26"
+                <Border DockPanel.Dock="Left" Background="#2E85EE" Width="26" Height="26"
                     CornerRadius="5" Margin="0,0,9,0" VerticalAlignment="Center">
                     <TextBlock Text="A" Foreground="White" FontWeight="Bold" FontSize="16"
                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
-                <TextBlock Text="AutoTest" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center"/>
-                <TextBlock Text="   /   " Foreground="#A3B0BF" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding ProjectLabel}" Foreground="#58738E" VerticalAlignment="Center"/>
+                <TextBlock Text="AutoTest" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
+                <TextBlock Text="   /   " Foreground="#94A4B7" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ProjectLabel}" Foreground="#5D7087" VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
 
@@ -89,7 +89,7 @@
             </MenuItem>
             <MenuItem Header="测试">
                 <MenuItem Header="自动测试" Click="OpenRun_Click"/>
-                <MenuItem Header="TEST 程序编辑" Click="OpenTest_Click"/>
+                <MenuItem Header="测试程序编辑" Click="OpenTest_Click"/>
                 <MenuItem Header="检查工程与引用" Command="{Binding ValidateCommand}"/>
             </MenuItem>
             <MenuItem Header="专业工具">
@@ -125,23 +125,23 @@
         <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
             <DockPanel Margin="12,7">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse x:Name="StationLed" Width="8" Height="8" Fill="#8A9CAF" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock x:Name="StationStatus" Text="设备未连接" VerticalAlignment="Center"
-                        Foreground="#59738D" FontSize="11" Margin="0,0,10,0"/>
+                    <Ellipse x:Name="StationLed" Width="8" Height="8" Fill="#92A6BD" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="StationStatus" Text="未连接主控" VerticalAlignment="Center"
+                        Foreground="#62778E" FontSize="11" Margin="0,0,10,0"/>
                     <Button Content="连接设备" x:Name="StationConnectButton" Click="OpenStation_Click" ToolTip="自动发现设备并连接；不执行任何物理输出"
                         Padding="7,3" MinHeight="27"/>
-                    <Border Height="23" Width="1" Background="#DCE4EE" Margin="6,0,12,0"/>
+                    <Border Height="23" Width="1" Background="#DCE6F3" Margin="6,0,12,0"/>
                     <TextBlock x:Name="ScannerStatus" Text="扫码：等待编号" VerticalAlignment="Center"
-                        Foreground="#536D87" FontSize="11" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+                        Foreground="#63758A" FontSize="11" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
                     <Button Content="扫码设置" Click="OpenProduction_Click" Padding="7,3" MinHeight="27" Margin="9,0,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="测试运行"
+                    <Button Content="运行测试"
                         FontWeight="SemiBold" Click="OpenRun_Click"/>
                     <Button Content="编辑测试程序" Style="{StaticResource AtPrimaryButton}" Click="OpenTest_Click"/>
                     <Button Content="手动台架" Click="OpenBench_Click"
                         ToolTip="打开独立的真实 KEY_SIM / IGN / 夹具台架窗口"/>
-                    <Menu Background="Transparent" Foreground="#254461" VerticalAlignment="Center"
+                    <Menu Background="Transparent" Foreground="#364B62" VerticalAlignment="Center"
                           Margin="0,0,7,0">
                         <MenuItem Header="专业工具 ▾"
                             ToolTip="UDS、烧录、波形与 DBC 以独立可调整窗口打开">
@@ -153,22 +153,33 @@
                     </Menu>
                     <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
                     <Button Content="保存工程" Command="{Binding SaveCommand}"/>
-                    <Button Content="⌕ 查找命令" Click="CommandPalette_Click" Margin="1,0,0,0"/>
+                    <Button Content="⌕ 命令搜索" Click="CommandPalette_Click" Margin="1,0,0,0"/>
                 </StackPanel>
             </DockPanel>
         </Border>
 
-        <Grid Grid.Row="3" Background="#F6F8FB">
+        <Grid Grid.Row="3" Background="#F6F9FE">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="ExplorerColumn" Width="257" MinWidth="0"/>
+                <ColumnDefinition Width="50"/>
+                <ColumnDefinition x:Name="ExplorerColumn" Width="273" MinWidth="0"/>
                 <ColumnDefinition x:Name="ExplorerSplitterColumn" Width="5"/>
                 <ColumnDefinition Width="*" MinWidth="620"/>
             </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="#F7FAFF" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
+                <StackPanel Margin="3,10,3,0">
+                    <Button Content="⌂" FontSize="21" Style="{StaticResource AtQuietButton}" ToolTip="工程资源" Click="ToggleExplorer_Click" MinHeight="42" Margin="0,0,0,8"/>
+                    <Button Content="▤" FontSize="20" Style="{StaticResource AtPrimaryButton}" ToolTip="测试程序编辑" Click="OpenTest_Click" MinHeight="42" Margin="0,0,0,8"/>
+                    <Button Content="▶" FontSize="19" Style="{StaticResource AtQuietButton}" ToolTip="自动测试运行" Click="OpenRun_Click" MinHeight="42" Margin="0,0,0,8"/>
+                    <Button Content="▣" FontSize="19" Style="{StaticResource AtQuietButton}" ToolTip="手动台架（独立窗口）" Click="OpenBench_Click" MinHeight="42" Margin="0,0,0,8"/>
+                    <Button Content="∿" FontSize="22" Style="{StaticResource AtQuietButton}" ToolTip="波形分析（独立窗口）" Click="OpenWave_Click" MinHeight="42" Margin="0,0,0,8"/>
+                    <Button Content="⌕" FontSize="21" Style="{StaticResource AtQuietButton}" ToolTip="查找命令 Ctrl+K" Click="CommandPalette_Click" MinHeight="42" Margin="0"/>
+                </StackPanel>
+            </Border>
             <!-- An IDE always provides access to the project and TEST structure. -->
-            <Border x:Name="ExplorerPanel" Grid.Column="0" Background="White"
+            <Border x:Name="ExplorerPanel" Grid.Column="1" Background="White"
                 BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#F6F9FC" Padding="12,10"
+                    <Border DockPanel.Dock="Top" Background="#F5F9FF" Padding="12,10"
                         BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="‹" Click="ToggleExplorer_Click"
@@ -177,101 +188,14 @@
                             <TextBlock Text="工程资源" FontSize="13" FontWeight="SemiBold"/>
                         </DockPanel>
                     </Border>
-                    <TabControl x:Name="ExplorerTabs" Background="White" BorderThickness="0">
-                        <TabItem Header="本次执行">
-                            <Grid Margin="7">
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                <DockPanel Grid.Row="0" Margin="5,7,1,6" LastChildFill="True">
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button Content="全选" Command="{Binding SelectAllCasesCommand}" Padding="6,2"
-                                            MinHeight="23" Margin="0,0,4,0" FontSize="11"/>
-                                        <Button Content="清空" Command="{Binding ClearCasesCommand}" Padding="6,2"
-                                            MinHeight="23" Margin="0" FontSize="11"/>
-                                    </StackPanel>
-                                    <TextBlock Text="本次执行的测试用例" FontSize="11" FontWeight="SemiBold"
-                                        Foreground="#526B85" VerticalAlignment="Center" Margin="1,0,4,0"/>
-                                </DockPanel>
-                                <ScrollViewer Grid.Row="1" MaxHeight="216" VerticalScrollBarVisibility="Auto"
-                                    HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,7">
-                                <ItemsControl x:Name="TestCasesList" Margin="5,0,3,9">
-                                    <ItemsControl.Style>
-                                        <Style TargetType="ItemsControl">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Busy}" Value="True">
-                                                    <Setter Property="IsEnabled" Value="False"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </ItemsControl.Style>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <DockPanel Margin="5,5,5,5">
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding StepCount, StringFormat={}{0} 步}"
-                                                    Foreground="#7C8C9F" FontSize="11" VerticalAlignment="Center"/>
-                                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                                                    ToolTip="仅用于本次工程局部运行；扫码仍运行全部已发布 TEST">
-                                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" MaxWidth="170"/>
-                                                </CheckBox>
-                                            </DockPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>                                </ScrollViewer>
-                                <Border Grid.Row="2" BorderBrush="#E6EDF4" BorderThickness="0,1,0,0">
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Top" Text="执行步骤" Margin="11,10,0,6"
-                                            Foreground="#6A7E93" FontSize="11"/>
-                                        <ListBox x:Name="PlannedStepsList" BorderThickness="0"
-                                            Background="White" Foreground="#29435E" FontSize="12"
-                                            SelectedItem="{Binding SelectedRunStep, Mode=TwoWay}"
-                                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                            SelectionChanged="PlannedSteps_SelectionChanged">
-                                            <ListBox.GroupStyle>
-                                                <GroupStyle>
-                                                    <GroupStyle.HeaderTemplate>
-                                                        <DataTemplate>
-                                                            <Border Background="#EBF1F8" Padding="9,6" Margin="0,6,0,1">
-                                                                <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
-                                                                    Foreground="#436385"/>
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </GroupStyle.HeaderTemplate>
-                                                </GroupStyle>
-                                            </ListBox.GroupStyle>
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Padding="3,7" ToolTip="{Binding Diagnostic}">
-                                                        <DockPanel LastChildFill="True">
-                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}"
-                                                                Foreground="#768BA1" FontSize="10"
-                                                                VerticalAlignment="Center" Margin="5,0,0,0"/>
-                                                            <TextBlock DockPanel.Dock="Left" Text="{Binding Number}"
-                                                                Foreground="#91A0B1" FontSize="10"
-                                                                Width="25" VerticalAlignment="Center"/>
-                                                            <StackPanel>
-                                                                <TextBlock Text="{Binding Name}" Foreground="#284760"
-                                                                    FontSize="12" TextTrimming="CharacterEllipsis"/>
-                                                                <TextBlock Text="{Binding Type}" Foreground="#8293A5" FontSize="10"
-                                                                    TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
-                                                            </StackPanel>
-                                                        </DockPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
-                                    </DockPanel>
-                                </Border>
-                            </Grid>
-                        </TabItem>
-                        <TabItem Header="工程文件" IsSelected="True">
-                            <ContentControl x:Name="ExplorerDocumentHost" Background="White"/>
-                        </TabItem>
-                    </TabControl>
+                    <ContentControl x:Name="ExplorerDocumentHost" Background="{DynamicResource StudioPanel}" Margin="4,6,4,0"/>
+
                 </DockPanel>
             </Border>
-            <GridSplitter x:Name="ExplorerSplitter" Grid.Column="1" Width="5"
+            <GridSplitter x:Name="ExplorerSplitter" Grid.Column="2" Width="5"
                 HorizontalAlignment="Stretch" Background="#EDF2F8"/>
             <!-- The ONE document host. The operator TEST is its first permanent document. -->
-            <TabControl x:Name="DocumentTabs" Grid.Column="2" Style="{StaticResource IdeDocuments}" Background="#F6F8FB"
+            <TabControl x:Name="DocumentTabs" Grid.Column="3" Style="{StaticResource IdeDocuments}" Background="#F6F9FE"
                 BorderBrush="{StaticResource Border}" BorderThickness="0"
                 SelectionChanged="DocumentTabs_SelectionChanged"/>
         </Grid>
@@ -281,7 +205,7 @@
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="日志 ▴ / ▾" Click="ToggleBottom_Click"
                     Background="Transparent" BorderThickness="0" Margin="0" Padding="12,2" MinHeight="25"/>
-                <TextBlock DockPanel.Dock="Left" Text="运行记录与证据" Foreground="#6A7E93"
+                <TextBlock DockPanel.Dock="Left" Text="通信记录与操作日志" Foreground="#65778A"
                     VerticalAlignment="Center" FontSize="11" Margin="13,0,9,0"/>
                 <TabControl x:Name="EvidenceTabs" Visibility="Collapsed"
                     Background="White" BorderThickness="0" TabStripPlacement="Top">
@@ -303,10 +227,10 @@
 
         <Border Grid.Row="5" Background="#F1F3F5" Padding="12,5">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="#56708B"
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="#526C87"
                     FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="700"/>
-                <TextBlock Text="设备连接状态和 ECU 测试结果分别记录" FontSize="11"
-                    Foreground="#345976"/>
+                <TextBlock Text="主控连接不等于 ECU 测试通过" FontSize="11"
+                    Foreground="#355B81"/>
             </DockPanel>
         </Border>
     </Grid>
