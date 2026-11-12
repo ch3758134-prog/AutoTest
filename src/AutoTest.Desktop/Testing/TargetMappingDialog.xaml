@@ -1,0 +1,35 @@
+<Window x:Class="AutoTest.Desktop.Testing.TargetMappingDialog"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="绑定测试对象" Width="660" Height="345" MinWidth="560" MinHeight="320"
+ WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+ Background="{StaticResource Panel}" Foreground="{StaticResource Ink}"
+ FontFamily="{StaticResource UiFont}" FontSize="13">
+ <Grid Margin="20">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
+   <RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+  <TextBlock Grid.Row="0" Text="从工程资源选择真实测试对象"
+     FontSize="18" FontWeight="SemiBold" Margin="0,0,0,17"/>
+  <StackPanel Grid.Row="1" Margin="0,0,0,13">
+   <TextBlock Text="资源与操作 / 信号" Margin="0,0,0,7"/>
+   <ComboBox x:Name="TargetChoice" ItemsSource="{Binding Choices}"
+      SelectionChanged="TargetChoice_Changed" MinHeight="32"/>
+  </StackPanel>
+  <StackPanel Grid.Row="2" Margin="0,0,0,13">
+   <TextBlock Text="测试程序引用名称" Margin="0,0,0,7"/>
+   <TextBox x:Name="AliasInput" MinHeight="30"/>
+  </StackPanel>
+  <TextBlock Grid.Row="3" TextWrapping="Wrap" Foreground="{StaticResource Subtle}"
+    Text="引用名称用于测试步骤；真实资产标识、修订和 SHA256 会自动保存到同一个 TEST 文件。修改配置后必须明确重新绑定。"/>
+  <DockPanel Grid.Row="4" LastChildFill="False" Margin="0,13,0,0">
+   <TextBlock x:Name="ErrorText" Foreground="{StaticResource Danger}"
+       VerticalAlignment="Center" DockPanel.Dock="Left"/>
+   <Button Content="取消" IsCancel="True" DockPanel.Dock="Right" MinWidth="75"/>
+   <Button Content="添加绑定" Click="Add_Click" DockPanel.Dock="Right"
+       Style="{StaticResource AtPrimaryButton}" MinWidth="100"/>
+  </DockPanel>
+ </Grid>
+</Window>
