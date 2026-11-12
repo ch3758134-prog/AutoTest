@@ -282,6 +282,49 @@ def verify(state, task, digest):
             "note": "Scope check does not approve results, merges or local cleanup."}
 
 
+def read_local_test_logs():
+    """Read a task-specific test index inside the Git metadata, never the source tree.
+
+    Codex may write project-control/test-runs.json to Git metadata with entries:
+    {"name":"unit tests","exit_code":0,"log_file":"logs/unit.txt"}.
+    The exit code remains Codex self-reported even when log bytes hash correctly.
+    """
+    git_path = git("rev-parse", "--git-path", "project-control")
+    metadata = Path(git_path)
+    if not metadata.is_absolute():
+        metadata = ROOT / metadata
+    index = metadata / "test-runs.json"
+    if not index.exists():
+        return []
+    if index.is_symlink() or index.stat().st_size > 65536:
+        raise TaskError("unsafe test evidence index")
+    try:
+        runs = json.loads(index.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as err:
+        raise TaskError("invalid local test run index") from err
+    if not isinstance(runs, list) or len(runs) > 25:
+        raise TaskError("too many test runs")
+    output = []
+    for run in runs:
+        if not isinstance(run, dict) or not isinstance(run.get("name"), str):
+            raise TaskError("test run needs a valid name")
+        name = run["name"].strip()
+        log_ref = run.get("log_file")
+        if (not 1 <= len(name) <= 160 or type(run.get("exit_code")) is not int
+                or not isinstance(log_ref, str) or not log_ref.startswith("logs/")
+                or "\\" in log_ref or ":" in log_ref or any(
+                    x in ("", ".", "..") for x in log_ref.split("/"))):
+            raise TaskError("unsafe test log reference or exit code")
+        path = (metadata / log_ref).resolve()
+        if (not path.is_relative_to(metadata.resolve()) or path.is_symlink()
+                or not path.is_file() or path.stat().st_size > 20_000_000):
+            raise TaskError("test log missing or unsafe")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        output.append({"name": name, "exit_code": run["exit_code"],
+                       "log_sha256": digest, "log_ref": log_ref})
+    return output
+
+
 def report_result(state, task, digest, project):
     """Create an unreviewed local receipt without mutating governance files."""
     checked = verify(state, task, digest)
@@ -304,7 +347,7 @@ def report_result(state, task, digest, project):
         "changed_paths": checked["modified_paths"],
         "scope_status": "SCOPE_OK",
         "workspace_clean": True,
-        "test_evidence": [],
+        "test_evidence": read_local_test_logs(),
         "result_status": "REPORTED_NOT_VERIFIED",
         "ignored_files_not_covered_by_clean_check": True,
         "issued_at": datetime.now(timezone.utc).isoformat(),
