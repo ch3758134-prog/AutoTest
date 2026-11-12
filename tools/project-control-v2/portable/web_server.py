@@ -651,6 +651,12 @@ def handler(targets, owner_token):
 
 
 def main(argv=None):
+    # Python on Windows may inherit a legacy charmap console. Every management
+    # command writes UTF-8 Chinese project names and JSON, without requiring
+    # users to change the system code page.
+    for output in (sys.stdout, sys.stderr):
+        if hasattr(output, "reconfigure"):
+            output.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Project Control: explicit multi-project local manager")
     parser.add_argument("--target", type=Path, action="append", required=True,
                         help="Local Git checkout containing .project-control/management.json; repeat for more projects")
