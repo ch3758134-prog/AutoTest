@@ -1,4 +1,5 @@
 using AutoTest.Desktop.Hardware;
+using System.IO;
 using AutoTest.Desktop.Projects;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Preparation;
@@ -44,6 +45,7 @@ public sealed class RealTestWorkbenchService
         if (!await _station.WaitAsync(0, ct))
             throw new InvalidOperationException("Another test is already running.");
         ConfiguredStationActionPort? actions = null;
+        RealRunEvidenceRecorder? evidence = null;
         try
         {
             if (!_hardware.IsConnected)
@@ -59,12 +61,18 @@ public sealed class RealTestWorkbenchService
                 await actions.AuthorizeAsync(plan.Fingerprint, confirmation, mappings, ct);
             var wave = new ConfiguredWavePort(_projects, _signals);
             var run = new RealRunCoordinator(_signals, actions, wave);
+            evidence = new RealRunEvidenceRecorder(_hardware, _signals);
             _running = run;
-            return await run.StartAsync(plan, ct);
+            var result = await run.StartAsync(plan, ct);
+            var project = _projects.Current ??
+                throw new InvalidOperationException("工程在运行期间已关闭。");
+            var path = await evidence.SaveAsync(project.RootDirectory, result, CancellationToken.None);
+            return result with { EvidencePath = path };
         }
         finally
         {
             _running = null;
+            evidence?.Dispose();
             // Guard against exceptions before the interpreter began its own finally.
             if (actions is not null)
             {

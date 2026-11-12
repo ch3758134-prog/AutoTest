@@ -13,7 +13,10 @@ public sealed record RealStepFact(StepId Step, string Type, RealStepStatus Statu
     string Expected, string Actual, string Detail, DateTimeOffset At, string? Evidence = null);
 
 public sealed record RealRunResult(RunId Run, string PlanFingerprint, RealTestVerdict Verdict,
-    ImmutableArray<RealStepFact> Facts, IReadOnlyDictionary<string, TestDatum> Variables);
+    ImmutableArray<RealStepFact> Facts, IReadOnlyDictionary<string, TestDatum> Variables)
+{
+    public string? EvidencePath { get; init; }
+}
 
 /// <summary>
 /// A variable retains its data quality and source; no implicit verdict is created by Read.

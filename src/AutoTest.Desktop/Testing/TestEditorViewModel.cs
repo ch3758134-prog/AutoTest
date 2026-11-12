@@ -330,7 +330,9 @@ public sealed class TestEditorViewModel : BindableBase
         {
             var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval);
             foreach (var fact in result.Facts) RunFacts.Add(fact);
-            RunSummary = "执行完成 · " + result.Verdict + " · " + result.Facts.Length + " 条步骤记录";
+            RunSummary = "执行完成 · " + result.Verdict + " · " + result.Facts.Length +
+                " 条步骤记录" + (result.EvidencePath is null ? "" :
+                " · 证据：" + result.EvidencePath);
             StatusMessage = RunSummary;
         }
         catch (Exception e)

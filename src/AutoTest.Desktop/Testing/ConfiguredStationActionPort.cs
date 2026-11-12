@@ -216,7 +216,9 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             if (_fingerprint is null) return;
             try
             {
-                if (_buttons.Count > 0 && _active.Length > 0)
+                // Release regardless of our last ACK: a timed-out physical command can
+                // have affected the board even if the host did not receive confirmation.
+                if (_buttons.Count > 0)
                 {
                     await _hardware.SendTestCanAsync(KeypadCommandCodec.EncodeReleaseAll(),
                         _fingerprint, ct);
