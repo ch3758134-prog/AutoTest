@@ -418,7 +418,20 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             return null;
         }
         var preferred = previousStepId.HasValue ? FindStep(Tree, previousStepId.Value) : null;
-        var first = preferred ?? Tree.FirstOrDefault(p => p.Phase == LabPhase.Test)?.Children.FirstOrDefault()
+        static IEnumerable<LabTreeRow> WalkRows(IEnumerable<LabTreeRow> roots)
+        {
+            foreach (var row in roots)
+            {
+                yield return row;
+                foreach (var nested in WalkRows(row.Children)) yield return nested;
+            }
+        }
+        var parametersByNode = doc.Walk()
+            .Where(n => n.Parameters.Count > 0)
+            .Select(n => n.Id).ToHashSet();
+        var first = preferred ?? WalkRows(Tree.Where(p => p.Phase == LabPhase.Test))
+            .FirstOrDefault(row => row.StepId is Guid id && parametersByNode.Contains(id))
+            ?? Tree.FirstOrDefault(p => p.Phase == LabPhase.Test)?.Children.FirstOrDefault()
             ?? Tree.SelectMany(p => p.Children).FirstOrDefault();
         Select(first);
         RefreshCommands();
