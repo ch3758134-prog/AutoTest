@@ -121,6 +121,28 @@ class PortableInitializationTests(unittest.TestCase):
             init.create_preview(inspected, "adopt")
         self.assertEqual((self.root / "new-user-file.txt").read_text(), "preserve")
 
+    def test_upgrade_preserves_old_portable_records(self):
+        self.add_asset()
+        initial = self.inspect()
+        preview = init.create_preview(initial, "adopt", project_id="existing-project")
+        init.apply_preview(self.root, initial, preview)
+        git(self.root, "add", ".")
+        git(self.root, "commit", "-m", "initial intake")
+        previous_project = (self.root / ".project-control/project.json").read_bytes()
+        previous_tasks = (self.root / ".project-control/tasks.json").read_bytes()
+        git(self.root, "rm", ".project-control/management.json")
+        git(self.root, "commit", "-m", "old schema without management")
+        inspected = self.inspect()
+        review = init.upgrade_management(self.root, inspected)
+        self.assertEqual(review["status"], "UPGRADE_PREVIEW")
+        self.assertFalse((self.root / ".project-control/management.json").exists())
+        result = init.upgrade_management(self.root, inspected, apply=True)
+        self.assertEqual(result["status"], "LOCAL_UPGRADE_WRITTEN_NOT_COMMITTED")
+        self.assertEqual((self.root / ".project-control/project.json").read_bytes(), previous_project)
+        self.assertEqual((self.root / ".project-control/tasks.json").read_bytes(), previous_tasks)
+        with self.assertRaises(init.InitError):
+            init.upgrade_management(self.root, self.inspect(), apply=True)
+
     def test_adopt_without_history_requires_more_investigation(self):
         with self.assertRaises(init.InitError):
             init.create_preview(self.inspect(), "adopt")
