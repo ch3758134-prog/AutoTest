@@ -427,6 +427,12 @@ def verify_remote_pr(client, project, task, receipt, number):
 
 
 def main(argv=None):
+    # Python on Windows may inherit a legacy charmap console. Every management
+    # command writes UTF-8 Chinese project names and JSON, without requiring
+    # users to change the system code page.
+    for output in (sys.stdout, sys.stderr):
+        if hasattr(output, "reconfigure"):
+            output.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(description="Explicit target GitHub Contents CAS tool")
     p.add_argument("--plan", required=True, type=Path)
     p.add_argument("--repo-url", required=True)
