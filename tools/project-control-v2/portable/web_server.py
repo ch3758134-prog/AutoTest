@@ -366,7 +366,7 @@ class Target:
                             "delivery_release": "SEPARATE_LOCAL_REVIEW_TOKEN_NOT_VERIFIED_HUMAN_IDENTITY"},
             }
 
-    def delivery_store_path(self):
+    def delivery_store_path(self, *, create=False):
         # Git metadata, including per-worktree gitdir, is intentionally not
         # tracked or uploaded with management.json. Reject symlink substitutions.
         raw = git(self.root, "rev-parse", "--git-path", "project-control/deliveries.json")
@@ -375,7 +375,8 @@ class Target:
             path = self.root / path
         if path.parent.is_symlink() or path.is_symlink():
             raise ManagementError("unsafe private delivery store")
-        path.parent.mkdir(parents=True, exist_ok=True)
+        if create:
+            path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def read_delivery_store(self):
@@ -411,7 +412,7 @@ class Target:
             raise ManagementError("expected private store revision required")
         with self.lock, manager_file_lock(self.root):
             self.check_identity()
-            path = self.delivery_store_path()
+            path = self.delivery_store_path(create=True)
             old_bytes = path.read_bytes() if path.exists() else None
             state = self.read_delivery_store()
             if expected != state["revision"]:
