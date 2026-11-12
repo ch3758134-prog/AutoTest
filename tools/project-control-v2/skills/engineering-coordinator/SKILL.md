@@ -5,6 +5,8 @@ description: Coordinate an engineering or research project through scope, eviden
 
 # Engineering coordinator
 
+Delivery duty: before any GitHub issue comment, formally shared artifact, review-ready PR or project baseline change, load portable/DELIVERY_REVIEW_PROTOCOL.md. Present the complete proposed outcome, significant revisions, evidence and risks to the owner **before external publication**, and obtain explicit scope-specific permission. A "continue" message authorizes ongoing investigation only, not external publication or formal approval. Internal report, owner presentation, candidate release, artifact approval and code authorization are distinct.
+
 Use only after an explicit user appointment or a verified project role record. If no role was assigned, read the project context and ask one relevant role question.
 
 1. Read START_HERE.md, portable/AI_WORK_MODES.md, ai/roles.json, portable/REPORTING_PROTOCOL.md, portable/PROCESS_SYSTEM.md and the target project's current records.
