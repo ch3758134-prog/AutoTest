@@ -11,10 +11,10 @@
 本机管理界面（Python 3.11+，Git）：
 
 ```powershell
-python tools/project-control-v2/portable/web_server.py --target "<用户已初始化的目标工程目录>" --port 8791
+python tools/project-control-v2/portable/web_server.py --port 8791
 ```
 
-浏览器打开 `http://127.0.0.1:8791`。更详细的初始化、角色和权限边界见 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)。
+浏览器打开 `http://127.0.0.1:8791`。即使没有任何目标项目，管理界面也可以启动。首次使用请在首页选择“新建 / 接管”，指定真实项目目录和 GitHub 仓库，先预览再确认；也可登记已经初始化的项目。登记保存在本机用户目录下的 `.project-control-local/targets.json`，不会自动向 GitHub 推送。更详细的初始化、角色和权限边界见 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)。
 
 生成给新管理 AI 的独立 ZIP：
 
