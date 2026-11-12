@@ -249,8 +249,11 @@ def validate_remote_authority(client, parts, branch, plan, proposed, current):
             if not isinstance(inp, dict) or inp.get("type") != "DESIGN_BASELINE":
                 continue
             design_path, design_sha = inp.get("path"), inp.get("blob_sha")
-            if (not isinstance(design_path, str) or not design_path.startswith("docs/")
-                    or ".." in design_path.split("/") or not HEX40.fullmatch(str(design_sha))):
+            if (not isinstance(design_path, str) or not design_path
+                    or design_path.startswith("/") or "\\" in design_path
+                    or ":" in design_path or any(p in ("", ".", "..") for p in design_path.split("/"))
+                    or design_path.startswith(".project-control/")
+                    or not HEX40.fullmatch(str(design_sha))):
                 continue
             try:
                 remote_blob, _ = client.file(parts, design_path, pin)
