@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
 using AutoTest.Core;
