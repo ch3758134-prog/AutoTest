@@ -2,15 +2,15 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{DynamicResource StudioBg}"
-             Foreground="{DynamicResource StudioText}" FontFamily="Segoe UI" FontSize="13"
+             Foreground="{DynamicResource StudioText}" FontFamily="Microsoft YaHei UI" FontSize="13"
              Focusable="True">
     <UserControl.Resources>
         <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="LineBrush" Color="#D6E1EC" />
+        <SolidColorBrush x:Key="LineBrush" Color="#D9E5F3" />
         
         
         <Style TargetType="TextBlock" x:Key="SmallCaption">
-            <Setter Property="Foreground" Value="#637A90" />
+            <Setter Property="Foreground" Value="#647A90" />
             <Setter Property="FontSize" Value="12" />
         </Style>
     </UserControl.Resources>
@@ -31,17 +31,17 @@
             <StackPanel DockPanel.Dock="Left">
                 <TextBlock Text="波形分析" Style="{StaticResource AtPageTitle}" />
                 <TextBlock Style="{StaticResource SmallCaption}"
-                           Text="信号观察 · 采样记录 · 参考波形 · 判定证据" />
+                           Text="真实信号采集、参考波形对比与判定" />
             </StackPanel>
-            <Border DockPanel.Dock="Right" Background="#D9EBFD" CornerRadius="4"
+            <Border DockPanel.Dock="Right" Background="#E0F0FF" CornerRadius="7"
                     Padding="10,5" HorizontalAlignment="Right">
-                <TextBlock Text="DBC / CAN1" Foreground="#127C9D" FontWeight="SemiBold" />
+                <TextBlock Text="DBC / CAN1" Foreground="#287FD4" FontWeight="SemiBold" />
             </Border>
         </DockPanel>
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="1" Padding="11" CornerRadius="6" Margin="0,0,0,12">
             <StackPanel>
-                <TextBlock Text="采集与回放" Style="{StaticResource AtSectionTitle}" Margin="0,0,0,8"/>
+                <TextBlock Text="信号与采集" Style="{StaticResource AtSectionTitle}" Margin="0,0,0,8"/>
                 <WrapPanel Margin="0,0,0,5">
                     <Button Command="{Binding LiveCommand}" Content="▶ 实时采集"
                      Style="{StaticResource AtPrimaryButton}"/>
@@ -54,8 +54,8 @@
                      Style="{StaticResource AtDangerButton}"/>
                     <Button Command="{Binding ReloadCommand}" Content="刷新 DBC 信号"/>
                 </WrapPanel>
-                <WrapPanel Margin="0,0,0,10">
-                    <TextBlock Text="接收档案" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <WrapPanel Margin="0,0,0,12">
+                    <TextBlock Text="捕获记录" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBox Width="185" Text="{Binding ArchivePath,UpdateSourceTrigger=PropertyChanged}"
                      ToolTip="保存的真实 CAN1 RX 档案路径" Margin="0,0,7,0"/>
                     <Button Click="ChooseArchive_Click" Content="选择文件"/>
@@ -64,7 +64,7 @@
                 </WrapPanel>
                 <Separator Background="{DynamicResource StudioLine}" Margin="0,0,0,9"/>
                 <WrapPanel>
-                    <TextBlock Text="参考与判定" Style="{StaticResource AtSectionTitle}"
+                    <TextBlock Text="参考对比与判定" Style="{StaticResource AtSectionTitle}"
                      VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <Button Command="{Binding SaveReferenceCommand}" Content="保存参考波形"/>
                     <Button Command="{Binding LoadReferenceCommand}" Content="加载参考波形"/>
@@ -123,13 +123,13 @@
                         <Canvas x:Name="ChartCanvas" Width="950" Height="350" ClipToBounds="True"
                                 Background="#FFFFFF" MouseLeftButtonDown="ChartCanvas_MouseLeftButtonDown">
                             <Rectangle Canvas.Left="48" Canvas.Top="12" Width="852" Height="322"
-                                       Stroke="#D6E1EC" StrokeThickness="1" />
-                            <Line X1="48" X2="900" Y1="92" Y2="92" Stroke="#ECF2F8" />
-                            <Line X1="48" X2="900" Y1="174" Y2="174" Stroke="#ECF2F8" />
-                            <Line X1="48" X2="900" Y1="254" Y2="254" Stroke="#ECF2F8" />
-                            <Line X1="261" X2="261" Y1="12" Y2="334" Stroke="#ECF2F8" />
-                            <Line X1="474" X2="474" Y1="12" Y2="334" Stroke="#ECF2F8" />
-                            <Line X1="687" X2="687" Y1="12" Y2="334" Stroke="#ECF2F8" />
+                                       Stroke="#D9E5F3" StrokeThickness="1" />
+                            <Line X1="48" X2="900" Y1="92" Y2="92" Stroke="#EDF5FF" />
+                            <Line X1="48" X2="900" Y1="174" Y2="174" Stroke="#EDF5FF" />
+                            <Line X1="48" X2="900" Y1="254" Y2="254" Stroke="#EDF5FF" />
+                            <Line X1="261" X2="261" Y1="12" Y2="334" Stroke="#EDF5FF" />
+                            <Line X1="474" X2="474" Y1="12" Y2="334" Stroke="#EDF5FF" />
+                            <Line X1="687" X2="687" Y1="12" Y2="334" Stroke="#EDF5FF" />
                             <ItemsControl ItemsSource="{Binding Traces}" Canvas.Left="0" Canvas.Top="0">
                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
@@ -139,7 +139,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Polyline Points="{Binding CursorLineA}" Stroke="#8F611B" StrokeThickness="1.7" />
+                            <Polyline Points="{Binding CursorLineA}" Stroke="#78623D" StrokeThickness="1.7" />
                             <Polyline Points="{Binding CursorLineB}" Stroke="#B63B51" StrokeThickness="1.7" />
                             <TextBlock Canvas.Left="52" Canvas.Top="336" FontSize="11"
                                        Foreground="{DynamicResource StudioMuted}" Text="时间（s） / 单击 A · Shift+单击 B" />
@@ -183,8 +183,8 @@
                         <TextBlock Text="{Binding ReferenceStatus}" TextWrapping="Wrap" />
                     </StackPanel>
                     <TextBlock Grid.Row="1" Text="比较结果" FontWeight="SemiBold" Margin="0,7,0,8" />
-                    <TextBlock Grid.Row="2" Text="PASS 仅表示当前离线数据满足规则，不等于实机验收。"
-                               TextWrapping="Wrap" Foreground="#8F611B" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="2" Text="离线判定只说明已加载的数据符合规则，不代表当前 ECU 已验收。"
+                               TextWrapping="Wrap" Foreground="#78623D" Margin="0,0,0,8" />
                     <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding Results}">
                             <ItemsControl.ItemTemplate>
@@ -192,7 +192,7 @@
                                     <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource StudioLine}" Padding="0,8">
                                         <StackPanel>
                                             <TextBlock Text="{Binding Signal}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding Verdict}" FontSize="18" Foreground="#8F611B" />
+                                            <TextBlock Text="{Binding Verdict}" FontSize="18" Foreground="#78623D" />
                                             <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" />
                                             <TextBlock Text="{Binding Coverage}" Style="{StaticResource SmallCaption}" />
                                             <TextBlock Text="{Binding EvidenceId}" Style="{StaticResource SmallCaption}"
@@ -211,7 +211,7 @@
             <DockPanel>
                 <StackPanel>
                     <TextBlock x:Name="ArchiveCaptureStatus" Text="CAN RX 录制未开始"
-                               Foreground="#167B5A" TextWrapping="Wrap"/>
+                               Foreground="#2B7BCB" TextWrapping="Wrap"/>
                     <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource StudioMuted}" />
                 </StackPanel>
                 <TextBlock DockPanel.Dock="Right" Text="实时采集和离线回放的数据来源分别记录" Foreground="{DynamicResource StudioMuted}" />
