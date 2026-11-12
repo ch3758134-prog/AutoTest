@@ -335,9 +335,9 @@ public partial class MainWindow : Window
     private FrameworkElement BuildProfessionalChrome(string key, FrameworkElement view)
     {
         var vm = DataContext as MainWindowViewModel;
-        Brush Brush(string color) => new SolidColorBrush(
+        Brush ColorBrush(string color) => new SolidColorBrush(
             (Color)ColorConverter.ConvertFromString(color));
-        var root = new Grid { Background = Brush("#F4F8FD") };
+        var root = new Grid { Background = ColorBrush("#F4F8FD") };
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(45) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(52) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -345,21 +345,21 @@ public partial class MainWindow : Window
 
         var header = new DockPanel
         {
-            Background = Brush("#F6FAFF"),
+            Background = ColorBrush("#F6FAFF"),
             LastChildFill = true,
             Margin = new Thickness(0)
         };
         var brand = new TextBlock
         {
             Text = "▣  AutoTest", FontSize = 17, FontWeight = FontWeights.Bold,
-            Foreground = Brush("#263A54"), Margin = new Thickness(17, 0, 16, 0),
+            Foreground = ColorBrush("#263A54"), Margin = new Thickness(17, 0, 16, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
         DockPanel.SetDock(brand, Dock.Left);
         header.Children.Add(brand);
         var breadcrumb = new TextBlock
         {
-            Text = " /  " + _titles[key], FontSize = 13, Foreground = Brush("#617B97"),
+            Text = " /  " + _titles[key], FontSize = 13, Foreground = ColorBrush("#617B97"),
             VerticalAlignment = VerticalAlignment.Center
         };
         header.Children.Add(breadcrumb);
@@ -427,7 +427,7 @@ public partial class MainWindow : Window
         };
         var indicator = new TextBlock
         {
-            FontSize = 12, Foreground = Brush("#657D96"),
+            FontSize = 12, Foreground = ColorBrush("#657D96"),
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0)
         };
         indicator.SetBinding(TextBlock.TextProperty,
@@ -446,7 +446,7 @@ public partial class MainWindow : Window
         main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var rail = new StackPanel
         {
-            Background = Brush("#F7FAFF"), Margin = new Thickness(4, 11, 4, 0)
+            Background = ColorBrush("#F7FAFF"), Margin = new Thickness(4, 11, 4, 0)
         };
         rail.Children.Add(ToolButton("⌂", () => { Activate(); ShowExplorer(); }));
         rail.Children.Add(ToolButton("▤", () => { OpenDocument("program"); Activate(); }));
@@ -462,12 +462,12 @@ public partial class MainWindow : Window
             Grid.SetColumn(explorer, 1);
             main.Children.Add(explorer);
         }
-        var separator = new Border { Background = Brush("#E6EDF6") };
+        var separator = new Border { Background = ColorBrush("#E6EDF6") };
         Grid.SetColumn(separator, 2); main.Children.Add(separator);
         var toolFrame = new Border
         {
-            Background = Brush("#F4F8FD"),
-            BorderBrush = Brush("#E1EAF5"),
+            Background = ColorBrush("#F4F8FD"),
+            BorderBrush = ColorBrush("#E1EAF5"),
             BorderThickness = new Thickness(1, 0, 0, 0),
             Child = view
         };
@@ -481,7 +481,7 @@ public partial class MainWindow : Window
         var footerLeft = new TextBlock
         {
             Text = "AutoTest  ·  独立专业工具窗口  ·  与主工作台共享当前工程和设备",
-            Foreground = Brush("#778DA5"), FontSize = 11,
+            Foreground = ColorBrush("#778DA5"), FontSize = 11,
             VerticalAlignment = VerticalAlignment.Center
         };
         footer.Children.Add(footerLeft);
@@ -552,6 +552,8 @@ public partial class MainWindow : Window
         {
             // A closed Window cannot be reused, but its professional View can.
             // Detach the existing View to reopen it in a fresh dedicated window.
+            if (view.Parent is Border viewHost)
+                viewHost.Child = null; // detach cached professional view before reopening
             tool.Content = null;
             _floating.Remove(key);
             if (key == "wave" && view is WaveWorkbenchView wave)
