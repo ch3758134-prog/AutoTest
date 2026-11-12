@@ -1,0 +1,68 @@
+{
+  "schema": "project-control-codex-dispatch/1",
+  "scope": "PROJECT_CONTROL_V2_CANDIDATE",
+  "description": "Codex reads this file itself after user launches a local session; each ready task is a limited local code implementation assignment, never an approval to merge or push.",
+  "selection": {
+    "when_task_unspecified": "REQUIRE_EXACTLY_ONE_READY",
+    "if_zero": "STOP_AND_REPORT",
+    "if_multiple": "STOP_AND_ASK_TASK_ID"
+  },
+  "tasks": [
+    {
+      "id": "PC-WORKSPACE-LOCAL-001",
+      "project_id": "project-control-v2",
+      "title": "本地工程工作区生命周期管理内核与受控 CLI",
+      "status": "READY_FOR_LOCAL_IMPLEMENTATION",
+      "role": "local_executor",
+      "authorization": {
+        "classification": "LIMITED_LOCAL_CANDIDATE_IMPLEMENTATION",
+        "reference": "用户在2026-11-11明确要求继续完善本地仓库与目录管理并让Codex从GitHub自助执行",
+        "not_formal_gate_approval": true
+      },
+      "source": {
+        "repo_full_name": "ch3758134-prog/AutoTest",
+        "url": "https://github.com/ch3758134-prog/AutoTest.git",
+        "branch": "management/project-control-redesign-20261111",
+        "minimum_ancestor_sha": "e2cb9fa7cb80e4915a79187b5f44ea92986695c5",
+        "local_task_branch": "management/pc-workspace-lifecycle-local"
+      },
+      "workspace": {
+        "kind": "PERSISTENT_TASK_DEVELOPMENT",
+        "creation": "USER_SELECTED_EMPTY_DIRECTORY",
+        "disposition": "KEEP_UNTIL_REVIEWED",
+        "new_git_clone_in_selected_directory": true
+      },
+      "inputs": [
+        "CODEX_START_HERE.md",
+        "tools/project-control-v2/ai/codex/README.md",
+        "tools/project-control-v2/ai/codex/WORKSPACE_LIFECYCLE_SPEC.md",
+        "tools/project-control-v2/README.md",
+        "tools/project-control-v2/sync.py"
+      ],
+      "allowed_paths": [
+        "tools/project-control-v2/workspace_control/**",
+        "tools/project-control-v2/tests/test_workspace_control.py",
+        "tools/project-control-v2/README.md"
+      ],
+      "acceptance": [
+        "实现明确的工作区登记、只读盘点、任务关联、状态检查、退出前预览和受控回收 CLI；登记簿在临时工作区之外",
+        "新建临时工作区必须在允许根目录内、来源与任务匹配、无覆盖且具备清理意图",
+        "回收前核对 dirty/untracked/ignored/独有提交/进程占用/目录身份；未知即保留，绝无强制清理",
+        "单元测试覆盖失败保护、路径穿越、未保存内容、失效worktree和重复操作；真实项目目录只读盘点",
+        "交付变更清单、准确HEAD、测试原始日志及工作区去向，不能声称真实Windows已验收"
+      ],
+      "restrictions": [
+        "NO_PUSH",
+        "NO_MERGE",
+        "NO_MAIN_WRITE",
+        "NO_FORCE_CLEAN",
+        "NO_RESET",
+        "NO_PR36",
+        "NO_DELETE_EXISTING_WORKSPACE",
+        "NO_TERMINATE_SERVICES",
+        "NO_UNAUTHORIZED_PATH_WRITE"
+      ],
+      "completion": "LOCAL_CANDIDATE_WITH_TEST_EVIDENCE_AWAITING_COORDINATOR_REVIEW"
+    }
+  ]
+}
