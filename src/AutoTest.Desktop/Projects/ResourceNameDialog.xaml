@@ -14,8 +14,7 @@
     <TextBlock x:Name="Prompt" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
     <StackPanel Grid.Row="1">
       <TextBlock Text="资源名称" Margin="0,0,0,7"/>
-      <TextBox x:Name="ResourceNameInput" MaxLength="100"
-               KeyDown="NameInput_KeyDown"/>
+      <TextBox x:Name="ResourceNameInput" MaxLength="100"/>
       <TextBlock x:Name="ErrorText" Foreground="{StaticResource Danger}"
                  TextWrapping="Wrap" Margin="0,7,0,0"/>
     </StackPanel>

@@ -27,7 +27,7 @@ public partial class MainWindow : Window
     {
         DependencyObject? node = e.OriginalSource as DependencyObject;
         while (node is not null && node is not TreeViewItem)
-            node = VisualTreeHelper.GetParent(node);
+            node = node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);
         if (node is TreeViewItem item)
         {
             item.IsSelected = true;

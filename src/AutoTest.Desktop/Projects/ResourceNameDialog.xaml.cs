@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Input;
 
 namespace AutoTest.Desktop.Projects;
 
@@ -16,10 +15,6 @@ public partial class ResourceNameDialog : Window
         Loaded += (_, _) => { ResourceNameInput.Focus(); ResourceNameInput.SelectAll(); };
     }
 
-    private void NameInput_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter) { Confirm_Click(sender, new RoutedEventArgs()); e.Handled = true; }
-    }
 
     private void Confirm_Click(object sender, RoutedEventArgs e)
     {
