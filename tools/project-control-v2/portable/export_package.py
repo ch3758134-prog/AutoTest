@@ -86,6 +86,12 @@ def build_zip(destination, root=ROOT):
 
 
 def main(argv=None):
+    # Python on Windows may inherit a legacy charmap console. Every management
+    # command writes UTF-8 Chinese project names and JSON, without requiring
+    # users to change the system code page.
+    for output in (sys.stdout, sys.stderr):
+        if hasattr(output, "reconfigure"):
+            output.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Export self-contained Project Control manager ZIP")
     parser.add_argument("--out", required=True, help="New ZIP path that does not exist")
     args = parser.parse_args(argv)
