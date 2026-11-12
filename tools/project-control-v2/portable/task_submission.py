@@ -91,6 +91,18 @@ def make_plan(root, task_id, receipt, pr):
         raise SubmissionError(str(exc)) from exc
     # Supplying a PR snapshot is not evidence of its provider origin. The
     # manager must fetch it directly through the connected GitHub provider.
+    changed = receipt.get("changed_paths")
+    if (not isinstance(changed, list) or not changed or len(changed) > 500
+            or len(changed) != len(set(x for x in changed if isinstance(x, str)))):
+        raise SubmissionError("Codex receipt is missing unique changed file paths")
+    scope = task.get("allowed_paths", [])
+    from receipt_evidence import safe_path as safe_changed_path, path_allowed
+    for changed_path in changed:
+        safe_changed_path(changed_path)
+        if (changed_path == "PROJECT_START_HERE.md" or
+                changed_path.startswith(".project-control/") or
+                not path_allowed(changed_path, scope)):
+            raise SubmissionError("reported changed file exceeds approved task scope")
     records.index(task)
     updated = json.loads(contents["tasks.json"])
     found = next(i for i, x in enumerate(updated["tasks"]) if x.get("id") == task_id)
@@ -104,6 +116,7 @@ def make_plan(root, task_id, receipt, pr):
         "pr_branch": pr_observation["head_branch"],
         "base_branch": pr_observation["base_branch"],
         "receipt_id": receipt.get("receipt_id"),
+        "changed_paths": sorted(changed),
         "status": "CANDIDATE_REQUIRES_INDEPENDENT_REVIEW",
         "code_review": "NOT_APPROVED",
         "ci_review": "NOT_CHECKED",
