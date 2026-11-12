@@ -127,7 +127,7 @@
     </Border>
     <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Padding="10,7" Margin="0,7,0,0">
      <StackPanel>
-      <TextBlock Text="{Binding Status}" Foreground="{DynamicResource StudioMuted}" FontSize="11" TextWrapping="Wrap"/>
+      <TextBlock Text="{Binding Status,Converter={StaticResource OperatorStatusConverter}}" Foreground="{DynamicResource StudioMuted}" FontSize="11" TextWrapping="Wrap"/>
       <TextBlock x:Name="PhysicalResultLine" Text="真实烧录未开始。探测不会擦除；无物理 ECU 验证结果。"
        TextWrapping="Wrap" Foreground="#8F611B" FontSize="12" Margin="0,4,0,0"/>
      </StackPanel>
