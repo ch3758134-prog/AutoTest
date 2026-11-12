@@ -1,13 +1,13 @@
 <UserControl x:Class="AutoTest.Desktop.Bench.BenchWorkbenchView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Segoe UI" FontSize="13"
+ Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Microsoft YaHei UI" FontSize="13"
  UseLayoutRounding="True" SnapsToDevicePixels="True">
  <UserControl.Resources>
   <BooleanToVisibilityConverter x:Key="BoolVis"/>
-  <SolidColorBrush x:Key="Ink" Color="#23374D"/>
-  <SolidColorBrush x:Key="Muted" Color="#657D95"/>
-  <SolidColorBrush x:Key="Rule" Color="#DCE5EF"/>
+  <SolidColorBrush x:Key="Ink" Color="#253648"/>
+  <SolidColorBrush x:Key="Muted" Color="#647A90"/>
+  <SolidColorBrush x:Key="Rule" Color="#D9E5F3"/>
   
   
   
@@ -22,7 +22,7 @@
   <Style x:Key="KeySwitch" TargetType="CheckBox">
    <Setter Property="Margin" Value="4"/>
    <Setter Property="Padding" Value="9,7"/>
-   <Setter Property="Foreground" Value="#29435D"/>
+   <Setter Property="Foreground" Value="#283D55"/>
    <Setter Property="FontWeight" Value="SemiBold"/>
    <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
@@ -45,7 +45,7 @@
    </StackPanel>
    <StackPanel>
     <TextBlock Text="手动台架" FontSize="23" FontWeight="SemiBold"/>
-    <TextBlock Text="左侧选择和发送 CAN 报文 · 中间点击按键动作 · 右侧观察 ECU CAN 广播"
+    <TextBlock Text="CAN1 报文发送、真实按键动作及 ECU 接收监控"
      Foreground="{StaticResource Muted}" FontSize="11" Margin="0,5,0,0"/>
    </StackPanel>
   </DockPanel>
@@ -57,7 +57,7 @@
      <ColumnDefinition Width="1.5*"/>
     </Grid.ColumnDefinitions>
     <StackPanel Grid.Column="0">
-     <TextBlock Text="主控设备" FontSize="11" Foreground="{StaticResource Muted}"/>
+     <TextBlock Text="主控连接" FontSize="11" Foreground="{StaticResource Muted}"/>
      <TextBlock Text="{Binding ConnectionStatus}" FontSize="15" FontWeight="SemiBold"
       Margin="0,5,0,2"/>
      <TextBlock Text="{Binding DeviceIdentity}" TextTrimming="CharacterEllipsis"
@@ -89,9 +89,9 @@
     <ColumnDefinition Width="35*" MinWidth="330"/>
    </Grid.ColumnDefinitions>
    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
-    Background="#DFE8F1" ResizeDirection="Columns" ShowsPreview="True"/>
+    Background="#D9E5F3" ResizeDirection="Columns" ShowsPreview="True"/>
    <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch"
-    Background="#DFE8F1" ResizeDirection="Columns" ShowsPreview="True"/>
+    Background="#D9E5F3" ResizeDirection="Columns" ShowsPreview="True"/>
 
    <!-- LEFT: a single coherent CAN1 transmit workbench: add/choose/edit/send. -->
    <Border Grid.Column="0" Style="{StaticResource Panel}" Padding="11">
@@ -106,9 +106,9 @@
      <StackPanel Grid.Row="0" Margin="0,0,0,8">
       <DockPanel Margin="0,0,0,8">
        <TextBlock DockPanel.Dock="Right" Text="{Binding SendModeStatus}"
-        Foreground="#176AB2" FontSize="11" VerticalAlignment="Center"
+        Foreground="#3188ED" FontSize="11" VerticalAlignment="Center"
         TextAlignment="Right" Margin="8,0,0,0"/>
-       <TextBlock Text="CAN 报文发送" FontSize="17" FontWeight="SemiBold"
+       <TextBlock Text="CAN1 发送" FontSize="17" FontWeight="SemiBold"
         VerticalAlignment="Center"/>
       </DockPanel>
       <WrapPanel Margin="0,0,0,6">
@@ -195,7 +195,7 @@
           unrelated empty table: collapse entirely when editing raw CAN. -->
      <Border Grid.Row="2" BorderBrush="{StaticResource Rule}" BorderThickness="1"
       Visibility="{Binding HasDbcSignals,Converter={StaticResource BoolVis}}"
-      CornerRadius="5" Padding="9" Background="#FAFCFF"
+      CornerRadius="7" Padding="9" Background="#F9FBFF"
       Margin="0,0,0,7">
       <Grid Height="192">
        <Grid.RowDefinitions>
@@ -231,7 +231,7 @@
       <TextBlock Text="{Binding Status}" FontSize="11"
        TextWrapping="Wrap" Foreground="#607992" Margin="0,0,0,3"/>
       <TextBlock Text="{Binding PeriodicStatus}" FontSize="11"
-       TextWrapping="Wrap" Foreground="#8B6733"/>
+       TextWrapping="Wrap" Foreground="#80694A"/>
      </StackPanel>
     </Grid>
    </Border>
@@ -254,7 +254,7 @@
        <Button DockPanel.Dock="Right" Content="＋ 新建动作"
         Click="CreateKeyAction_Click" Margin="8,0,0,0"
         Style="{StaticResource AtPrimaryButton}"/>
-       <TextBlock Text="按键动作" FontSize="17" FontWeight="SemiBold"
+       <TextBlock Text="外部激励 · 按键动作" FontSize="17" FontWeight="SemiBold"
         VerticalAlignment="Center"/>
       </DockPanel>
       <TextBlock Grid.Row="1" FontSize="11" TextWrapping="Wrap"
@@ -274,19 +274,19 @@
            ToolTip="左键执行真实按键动作（需确认），右键编辑配置">
            <Button.Style>
             <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-             <Setter Property="Background" Value="#F6F9FD"/>
-             <Setter Property="Foreground" Value="#23374D"/>
-             <Setter Property="BorderBrush" Value="#C7D7E7"/>
+             <Setter Property="Background" Value="#F7FAFF"/>
+             <Setter Property="Foreground" Value="#253648"/>
+             <Setter Property="BorderBrush" Value="#D8E5F4"/>
              <Setter Property="BorderThickness" Value="1"/>
              <Setter Property="Cursor" Value="Hand"/>
              <Style.Triggers>
               <DataTrigger Binding="{Binding IsSelected}" Value="True">
-               <Setter Property="Background" Value="#E4F0FE"/>
-               <Setter Property="BorderBrush" Value="#176AB2"/>
+               <Setter Property="Background" Value="#E5F2FF"/>
+               <Setter Property="BorderBrush" Value="#3188ED"/>
                <Setter Property="BorderThickness" Value="2"/>
               </DataTrigger>
               <Trigger Property="IsMouseOver" Value="True">
-               <Setter Property="BorderBrush" Value="#176AB2"/>
+               <Setter Property="BorderBrush" Value="#3188ED"/>
               </Trigger>
              </Style.Triggers>
             </Style>
@@ -346,20 +346,20 @@
        <TextBlock Text="{Binding KeyActions.Status}" FontSize="11"
         Foreground="#536F89" TextWrapping="Wrap"/>
        <TextBlock Text="{Binding KeyActions.Progress}" FontSize="11"
-        Foreground="#8B6733" TextWrapping="Wrap" Margin="0,3,0,0"/>
+        Foreground="#80694A" TextWrapping="Wrap" Margin="0,3,0,0"/>
       </StackPanel>
      </Grid>
 
      <!-- Separate hardware controls do not belong inside an action sequence. -->
      <Border Grid.Row="1" BorderBrush="{StaticResource Rule}" BorderThickness="1"
-      CornerRadius="5" Background="#F6F9FC" Padding="9" Margin="0,10,0,0">
+      CornerRadius="7" Background="#F5F9FF" Padding="9" Margin="0,10,0,0">
       <StackPanel>
-       <TextBlock Text="IGN 与夹具控制" FontSize="14" FontWeight="SemiBold"/>
+       <TextBlock Text="IGN 与夹具" FontSize="14" FontWeight="SemiBold"/>
        <WrapPanel Margin="0,7,0,3">
         <TextBlock Text="IGN" VerticalAlignment="Center" FontWeight="SemiBold"
          Margin="0,0,9,0"/>
         <Button Content="打开" Command="{Binding IgnOnCommand}"
-         Foreground="#146A4D" Background="#E7F5ED" Padding="9,4"/>
+         Foreground="#2B7BCB" Background="#E9F4FF" Padding="9,4"/>
         <Button Content="关闭" Command="{Binding IgnOffCommand}"
          Foreground="#A44835" Background="#FFF3EF" Padding="9,4" Margin="0"/>
        </WrapPanel>
@@ -389,8 +389,8 @@
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
      </Grid.RowDefinitions>
-     <StackPanel Grid.Row="0" Margin="0,0,0,10">
-      <TextBlock Text="ECU CAN 接收日志" FontSize="17" FontWeight="SemiBold"/>
+     <StackPanel Grid.Row="0" Margin="0,0,0,12">
+      <TextBlock Text="CAN1 ECU 接收监控" FontSize="17" FontWeight="SemiBold"/>
       <TextBlock Text="实时显示被测 ECU 在 CAN1 广播的调试报文"
        Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,6"/>
       <TextBlock Text="{Binding Status}" FontSize="11" Foreground="#536F89"
