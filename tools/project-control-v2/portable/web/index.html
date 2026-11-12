@@ -32,6 +32,22 @@
 <dialog id="edit-dialog"><form id="edit-form"><header><h2 id="form-title"></h2><button type="button" id="form-close" class="close" aria-label="关闭">×</button></header><p id="form-desc" class="hint"></p><div id="form-fields"></div><footer><button type="button" id="form-cancel" class="secondary">取消</button><button type="submit" class="primary">保存本地候选</button></footer></form></dialog>
 <dialog id="initialize-dialog"><form id="initialize-form"><header><h2>新建 / 接管真实项目</h2><button type="button" id="initialize-close" class="close" aria-label="关闭">×</button></header><p class="hint">选择已存在的本地 Git 仓库根目录和准确的 GitHub origin。先预览、再确认。不会替你创建假工程、执行 Git 提交或推送。</p><div id="form-fields"><label>本地 Git 仓库根目录<input id="initialize-path" required placeholder="例如 D:\\01_Projects\\YourProject" autocomplete="off"></label><label>目标 GitHub 仓库 URL<input id="initialize-repo" required placeholder="https://github.com/owner/repository.git" autocomplete="off"></label><label>接入方式<select id="initialize-mode"><option value="adopt">接管已有项目（可含文档、硬件与源码）</option><option value="new">新建项目（无既有 Git 资产）</option></select></label><label>项目标识（可选）<input id="initialize-id" placeholder="例如 my-project" autocomplete="off"></label><label>项目名称（可选）<input id="initialize-name" placeholder="例如 工程研发项目" autocomplete="off"></label><pre id="initialize-result" class="onboard-preview" role="status">尚未执行预检，不会写入任何工程文件。</pre></div><footer><button type="button" id="initialize-cancel" class="secondary">取消</button><button type="submit" id="initialize-preview" class="secondary">检查并预览</button><button type="button" id="initialize-apply" class="primary" disabled>确认本地初始化</button></footer></form></dialog>
 <dialog id="register-dialog"><form id="register-form"><header><h2>登记已有管理项目</h2><button type="button" id="register-close" class="close" aria-label="关闭">×</button></header><p class="hint">指定本地项目 Git 根目录。此操作仅登记已经初始化的真实项目，不创建、覆盖或推送项目文件。</p><div id="form-fields"><label>目标项目本地根目录<input id="register-path" name="path" type="text" required placeholder="例如 D:\\01_Projects\\MyProject" autocomplete="off"></label><p id="register-result" class="hint" role="status"></p></div><footer><button id="register-cancel" type="button" class="secondary">取消</button><button type="submit" class="primary">核对并登记</button></footer></form></dialog>
+<dialog id="delivery-draft-dialog" class="delivery-dialog">
+  <form id="delivery-draft-form">
+    <header><h2>导入 AI 已完成的成果候选</h2>
+      <button type="button" id="delivery-draft-close" class="close" aria-label="关闭">×</button></header>
+    <p class="hint">请先让 AI 完成完整正文及说明，再导入一个 JSON 候选包。这里仅建立本机内部草稿；不会公开、签发批准或改动项目代码。</p>
+    <label>AI 提供的完整候选 JSON
+      <textarea id="delivery-draft-json" rows="9" required placeholder='{"id":"ART-001","kind":"REQUIREMENTS","title":"...","why":"...","body":"完整正文","scope":"...","changes":"...","limitations":"...","owner_question":"...","publication_type":"GITHUB_CANDIDATE_COMMENT","publication_target":"...","source_refs":["..."]}'></textarea>
+    </label>
+    <div id="delivery-draft-preview" class="onboard-preview" role="status">尚未预览，不会保存。</div>
+    <footer>
+      <button type="button" id="delivery-draft-cancel" class="secondary">取消</button>
+      <button type="button" id="delivery-draft-check" class="secondary">检查并预览全文</button>
+      <button type="submit" id="delivery-draft-apply" class="primary" disabled>保存为内部候选</button>
+    </footer>
+  </form>
+</dialog>
 <dialog id="owner-review-dialog" class="delivery-dialog">
   <form id="owner-review-form">
     <header><h2>完整成果审阅（非正式工程批准）</h2><button type="button" id="owner-review-close" class="close" aria-label="关闭">×</button></header>
@@ -40,6 +56,7 @@
       <select id="owner-review-decision" required>
         <option value="REQUEST_CHANGES">退回修改，不允许发布</option>
         <option value="HOLD">暂缓处理，不允许发布</option>
+        <option value="ACKNOWLEDGE_INTERNAL_REVIEW">已阅读并记录意见，不对外发布、不批准内容</option>
         <option value="ALLOW_CANDIDATE_PUBLICATION">允许按所示位置发布为候审候选（不批准内容）</option>
       </select>
     </label>
