@@ -12,9 +12,17 @@ public sealed class TestEditorDialogs
         Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
         ?? Application.Current.MainWindow;
 
-    public StepParametersResult? EditParameters(StepNode step)
+    public StepParametersResult? EditParameters(StepNode step,
+        IReadOnlyList<string>? mappedTargets = null)
     {
-        var dialog = new StepParametersDialog(step);
+        var dialog = new StepParametersDialog(step, mappedTargets);
+        if (ActiveOwner is { IsLoaded: true } owner) dialog.Owner = owner;
+        return dialog.ShowDialog() == true ? dialog.Result : null;
+    }
+
+    public TestTargetMapping? ChooseMapping(IReadOnlyList<MappingChoice> choices)
+    {
+        var dialog = new TargetMappingDialog(choices);
         if (ActiveOwner is { IsLoaded: true } owner) dialog.Owner = owner;
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }

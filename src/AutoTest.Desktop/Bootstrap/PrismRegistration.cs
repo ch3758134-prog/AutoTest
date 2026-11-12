@@ -12,6 +12,8 @@ public static class PrismRegistration
     public static void RegisterTypes(IContainerRegistry registry)
     {
         registry.RegisterSingleton<HardwareConnectionService>();
+        registry.RegisterSingleton<LiveDbcSignalService>();
+        registry.RegisterSingleton<RealTestWorkbenchService>();
         registry.RegisterSingleton<RecentProjectStore>();
         registry.RegisterSingleton<ProjectWorkspaceService>();
         registry.RegisterSingleton<NewProjectDialogService>();

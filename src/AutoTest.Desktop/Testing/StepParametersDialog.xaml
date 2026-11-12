@@ -32,8 +32,32 @@
             <DataTemplate>
               <StackPanel Margin="0,0,0,14">
                 <TextBlock Text="{Binding DisplayName}" Margin="0,0,0,6"/>
+                <ComboBox ItemsSource="{Binding Options}"
+                    SelectedItem="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
+                  <ComboBox.Style>
+                    <Style TargetType="ComboBox">
+                      <Setter Property="Visibility" Value="Collapsed"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasOptions}" Value="True">
+                          <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </ComboBox.Style>
+                </ComboBox>
                 <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="{Binding Key}"/>
+                         ToolTip="{Binding Key}">
+                  <TextBox.Style>
+                    <Style TargetType="TextBox">
+                      <Setter Property="Visibility" Value="Visible"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasOptions}" Value="True">
+                          <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBox.Style>
+                </TextBox>
               </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

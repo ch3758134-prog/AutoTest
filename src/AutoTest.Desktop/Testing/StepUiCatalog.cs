@@ -17,8 +17,14 @@ public static class StepUiCatalog
         new("Loop", "循环", "重复执行指定次数（0–1000）", true),
         new("Sequence", "步骤分组", "包含有顺序的子步骤", true),
         new("SetVariable", "设置变量", "设置测试程序变量", true),
-        new("Assert", "条件断言", "比较测试程序变量", true),
-        new("When", "等待条件", "等待变量满足条件（仅编辑，运行能力未接入）", false)
+        new("Write", "写入 / 外部激励", "操作映射对象：按键、IGN 或 DBC CAN 报文", true),
+        new("Read", "读取信号", "读取 DBC 解析值保存到变量，读取本身不判定", true),
+        new("WaitUntil", "等待响应条件", "持续观察信号，将条件是否成立写入变量", true),
+        new("Calculate", "计算", "用变量和字面值计算新的测试数据", true),
+        new("Expect", "期望判定", "在指定位置用表达式作出测试判定", true),
+        new("WaveStart", "开始波形记录", "开始记录所选的实时 DBC 信号", true),
+        new("WaveStop", "结束波形记录", "结束采集并将样本数保存为数据", true),
+        new("WaveAnalyze", "波形分析", "独立分析已采集波形，将分析结果保存为数据", true)
     ];
     public static string Label(string type) =>
         Choices.FirstOrDefault(c => c.Type == type)?.Label ?? type;
@@ -50,10 +56,20 @@ public static class StepUiCatalog
         "equals" => "比较值",
         "value" => "变量值",
         "timeoutMs" => "超时（毫秒）",
+        "target" => "已映射操作 / DBC 信号",
+        "mode" => "读取模式（Latest / Next）",
+        "maxAgeMs" => "最大数据年龄（毫秒）",
+        "operator" => "运算符 / 比较符",
+        "expected" => "目标值或变量",
+        "left" => "左操作数（$变量 或数值）",
+        "right" => "右操作数（$变量 或数值）",
+        "captureKey" => "采集名称",
+        "durationMs" => "最长记录时间（毫秒）",
+        "reference" => "参考波形名称",
         _ => key
     };
 
-    public static StepNode NewNode(string type)
+    public static StepNode NewNode(string type, string defaultTarget = "")
     {
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(type)
             ?? throw new ArgumentException("未知步骤类型：" + type);
@@ -68,10 +84,20 @@ public static class StepUiCatalog
             {
                 "milliseconds" => "500",
                 "count" => "2",
-                "variable" => "value",
+                "variable" => type == "Read" || type == "WaitUntil" ? "response" : "value",
                 "equals" => "1",
-                "value" => "1",
+                "value" => type == "Write" ? "Pulse" : "1",
                 "timeoutMs" => "1000",
+                "maxAgeMs" => "500",
+                "mode" => "Next",
+                "target" => defaultTarget,
+                "captureKey" => "capture1",
+                "durationMs" => "3000",
+                "reference" => "",
+                "operator" => type == "Calculate" ? "+" : "==",
+                "expected" => "1",
+                "left" => "$response",
+                "right" => "1",
                 _ => "1"
             };
             node = node.WithProperty(property, value);

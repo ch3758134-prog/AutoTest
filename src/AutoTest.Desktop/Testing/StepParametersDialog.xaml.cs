@@ -8,12 +8,16 @@ namespace AutoTest.Desktop.Testing;
 public sealed class StepPropertyField : BindableBase
 {
     private string _value;
-    public StepPropertyField(string key, string value)
+    public StepPropertyField(string key, string value,
+        IReadOnlyList<string>? options = null)
     {
         Key = key;
         _value = value;
+        Options = options ?? Array.Empty<string>();
     }
     public string Key { get; }
+    public IReadOnlyList<string> Options { get; }
+    public bool HasOptions => Options.Count > 0;
     public string DisplayName => StepUiCatalog.PropertyLabel(Key);
     public string Value { get => _value; set => SetProperty(ref _value, value); }
 }
@@ -23,7 +27,7 @@ public partial class StepParametersDialog : Window
     public ObservableCollection<StepPropertyField> Fields { get; } = new();
     public StepParametersResult? Result { get; private set; }
 
-    public StepParametersDialog(StepNode node)
+    public StepParametersDialog(StepNode node, IReadOnlyList<string>? targetNames = null)
     {
         InitializeComponent();
         DataContext = this;
@@ -34,7 +38,8 @@ public partial class StepParametersDialog : Window
         var keys = required.Concat(node.Properties.Keys)
             .Distinct(StringComparer.Ordinal);
         foreach (var key in keys)
-            Fields.Add(new StepPropertyField(key, node.Properties.GetValueOrDefault(key, "")));
+            Fields.Add(new StepPropertyField(key, node.Properties.GetValueOrDefault(key, ""),
+                key == "target" ? targetNames : null));
         Loaded += (_, _) => { NameInput.Focus(); NameInput.SelectAll(); };
     }
 

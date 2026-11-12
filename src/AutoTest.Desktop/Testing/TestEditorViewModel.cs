@@ -5,6 +5,8 @@ using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
+using AutoTest.Testing.Runtime;
+using AutoTest.Testing.Preparation;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -15,6 +17,10 @@ public sealed class TestEditorViewModel : BindableBase
 {
     private readonly ProjectWorkspaceService _workspace;
     private readonly TestEditorDialogs _dialogs;
+    private readonly RealTestWorkbenchService _realTest;
+    private TestTargetMapping? _selectedMapping;
+    private string _approval = "";
+    private string _runSummary = "未运行真实测试";
     private readonly StepDescriptorCatalog _catalog = StepDescriptorCatalog.Builtins();
     private TestEditorSession _session;
     private StepEditTransaction _transaction;
@@ -24,10 +30,12 @@ public sealed class TestEditorViewModel : BindableBase
     private string _status = "请选择阶段或步骤进行编辑。";
 
     public TestEditorViewModel(ProjectWorkspaceService workspace,
-        TestEditorDialogs dialogs, TestEditorSession session)
+        TestEditorDialogs dialogs, TestEditorSession session,
+        RealTestWorkbenchService realTest)
     {
         _workspace = workspace;
         _dialogs = dialogs;
+        _realTest = realTest;
         _session = session;
         _transaction = new StepEditTransaction(session.Document);
 
@@ -42,10 +50,41 @@ public sealed class TestEditorViewModel : BindableBase
         RedoCommand = new DelegateCommand(Redo, () => _transaction.CanRedo && !IsBusy);
         SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => IsDirty && !IsBusy);
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
+        AddMappingCommand = new DelegateCommand(async () => await AddMappingAsync(), () => !IsBusy);
+        RemoveMappingCommand = new DelegateCommand(RemoveMapping, () => SelectedMapping is not null && !IsBusy);
+        RunCommand = new DelegateCommand(async () => await RunRealAsync(), () => !IsBusy && !IsDirty);
+        StopRunCommand = new DelegateCommand(() => _realTest.RequestStop(), () => IsBusy && _realTest.IsRunning);
+        RefreshMappings();
         RefreshTree(null);
     }
 
     public ObservableCollection<StepTreeItem> StepRoots { get; } = new();
+    public ObservableCollection<TestTargetMapping> Mappings { get; } = new();
+    public ObservableCollection<RealStepFact> RunFacts { get; } = new();
+    public TestTargetMapping? SelectedMapping
+    {
+        get => _selectedMapping;
+        set
+        {
+            if (SetProperty(ref _selectedMapping, value))
+                RemoveMappingCommand?.RaiseCanExecuteChanged();
+        }
+    }
+    public string RunApproval
+    {
+        get => _approval;
+        set => SetProperty(ref _approval, value);
+    }
+    public string ExpectedApproval
+    {
+        get
+        {
+            try { return RealTestWorkbenchService.ExpectedApproval(_realTest.Prepare(_transaction.Current)); }
+            catch { return ""; }
+        }
+    }
+    public string RunSummary { get => _runSummary; private set => SetProperty(ref _runSummary, value); }
+    public string MappingInfo => Mappings.Count + " 个已配置对象";
     public IReadOnlyList<StepUiChoice> StepTypes => StepUiCatalog.Choices;
     public ObservableCollection<KeyValuePair<string, string>> InspectorProperties { get; } = new();
     public StepUiChoice SelectedStepType
@@ -99,6 +138,10 @@ public sealed class TestEditorViewModel : BindableBase
     public DelegateCommand RedoCommand { get; }
     public DelegateCommand SaveCommand { get; }
     public DelegateCommand ReloadCommand { get; }
+    public DelegateCommand AddMappingCommand { get; }
+    public DelegateCommand RemoveMappingCommand { get; }
+    public DelegateCommand RunCommand { get; }
+    public DelegateCommand StopRunCommand { get; }
 
     public void SelectItem(StepTreeItem? item)
     {
@@ -129,7 +172,8 @@ public sealed class TestEditorViewModel : BindableBase
     {
         if (!CanAddChild || _selectedItem is null) return;
         var target = _selectedItem;
-        var next = StepUiCatalog.NewNode(SelectedStepType.Type);
+        var next = StepUiCatalog.NewNode(SelectedStepType.Type, SelectedMapping?.Name ??
+            Mappings.FirstOrDefault()?.Name ?? "");
         Mutate(() =>
         {
             var coordinates = target.CoordinatesForAppend();
@@ -142,7 +186,8 @@ public sealed class TestEditorViewModel : BindableBase
     {
         if (!CanEditSelectedStep || _selectedItem is null) return;
         var target = _selectedItem;
-        var node = StepUiCatalog.NewNode(SelectedStepType.Type);
+        var node = StepUiCatalog.NewNode(SelectedStepType.Type, SelectedMapping?.Name ??
+            Mappings.FirstOrDefault()?.Name ?? "");
         Mutate(() =>
         {
             var coordinates = target.CoordinatesForSibling();
@@ -155,7 +200,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         var node = _selectedItem?.Step;
         if (!CanEditSelectedStep || node is null) return;
-        var result = _dialogs.EditParameters(node);
+        var result = _dialogs.EditParameters(node, Mappings.Select(x => x.Name).ToArray());
         if (result is null) return;
         Mutate(() =>
         {
@@ -228,6 +273,79 @@ public sealed class TestEditorViewModel : BindableBase
         catch (Exception error) when (IsEditorError(error)) { _dialogs.ShowError(error.Message); }
     }
 
+    private void RefreshMappings()
+    {
+        var selectedName = SelectedMapping?.Name;
+        Mappings.Clear();
+        foreach (var item in _transaction.Current.Mappings) Mappings.Add(item);
+        SelectedMapping = Mappings.FirstOrDefault(x => x.Name == selectedName) ?? Mappings.FirstOrDefault();
+        RaisePropertyChanged(nameof(MappingInfo));
+        RaisePropertyChanged(nameof(ExpectedApproval));
+    }
+
+    private async Task AddMappingAsync()
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            var choices = await TestTargetCatalog.LoadAsync(_workspace);
+            var selected = _dialogs.ChooseMapping(choices);
+            if (selected is null) return;
+            _transaction.UpsertMapping(selected);
+            RefreshMappings();
+            SelectedMapping = Mappings.First(x => x.Name == selected.Name);
+            RefreshTree(_selectedItem?.Step?.Id);
+            StatusMessage = "已添加或更新映射：" + selected.Name + "，请保存测试程序。";
+        }
+        catch (Exception e) when (IsEditorError(e))
+        {
+            StatusMessage = "绑定失败：" + e.Message;
+            _dialogs.ShowError(StatusMessage);
+        }
+        finally { IsBusy = false; }
+    }
+
+    private void RemoveMapping()
+    {
+        if (SelectedMapping is not { } choice || IsBusy) return;
+        try
+        {
+            _transaction.RemoveMapping(choice.Name);
+            RefreshMappings();
+            RefreshTree(_selectedItem?.Step?.Id);
+            StatusMessage = "已移除映射：" + choice.Name;
+        }
+        catch (Exception e) when (IsEditorError(e)) { _dialogs.ShowError(e.Message); }
+    }
+
+    private async Task RunRealAsync()
+    {
+        if (IsBusy || IsDirty) return;
+        IsBusy = true;
+        RunFacts.Clear();
+        RunSummary = "正在执行真实测试…";
+        StopRunCommand.RaiseCanExecuteChanged();
+        try
+        {
+            var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval);
+            foreach (var fact in result.Facts) RunFacts.Add(fact);
+            RunSummary = "执行完成 · " + result.Verdict + " · " + result.Facts.Length + " 条步骤记录";
+            StatusMessage = RunSummary;
+        }
+        catch (Exception e)
+        {
+            RunSummary = "真实测试未完成：" + e.Message;
+            StatusMessage = RunSummary;
+            _dialogs.ShowError(RunSummary);
+        }
+        finally
+        {
+            RunApproval = "";
+            IsBusy = false;
+        }
+    }
+
     private void RefreshTree(StepId? preferred)
     {
         var previous = _selectedItem;
@@ -250,6 +368,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (selected is null && previous is { Kind: StepTreeItemKind.Phase })
             selected = StepRoots.First(x => x.Phase == previous.Phase);
         SelectItem(selected ?? StepRoots[1]);
+        RaisePropertyChanged(nameof(ExpectedApproval));
         RefreshCommands();
     }
 
@@ -292,6 +411,7 @@ public sealed class TestEditorViewModel : BindableBase
         {
             _session = await _workspace.SaveTestEditorAsync(_session, _transaction.Current);
             _transaction = new StepEditTransaction(_session.Document);
+            RefreshMappings();
             RefreshTree(_selectedItem?.Step?.Id);
             RaisePropertyChanged(nameof(AssetRevision));
             StatusMessage = "测试程序已保存并重新读取；工程资源修订 " + AssetRevision;
@@ -309,6 +429,7 @@ public sealed class TestEditorViewModel : BindableBase
         {
             _session = await _workspace.OpenTestEditorAsync(_session.AssetId);
             _transaction = new StepEditTransaction(_session.Document);
+            RefreshMappings();
             RefreshTree(null);
             RaisePropertyChanged(nameof(AssetRevision));
             StatusMessage = "测试程序已从磁盘重新加载。";
@@ -331,6 +452,10 @@ public sealed class TestEditorViewModel : BindableBase
         RedoCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged();
         ReloadCommand?.RaiseCanExecuteChanged();
+        AddMappingCommand?.RaiseCanExecuteChanged();
+        RemoveMappingCommand?.RaiseCanExecuteChanged();
+        RunCommand?.RaiseCanExecuteChanged();
+        StopRunCommand?.RaiseCanExecuteChanged();
     }
 
     private static bool IsEditorError(Exception e) =>

@@ -91,6 +91,23 @@
                          FontSize="11" Foreground="{StaticResource Subtle}"/>
             </DockPanel>
           </Border>
+          <Border DockPanel.Dock="Top" Background="{StaticResource Panel}"
+                  BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
+                  Padding="10,8">
+            <StackPanel>
+              <DockPanel Margin="0,0,0,7">
+                <TextBlock Text="测试对象映射" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding MappingInfo}"
+                           Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
+              </DockPanel>
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Content="删除映射" Command="{Binding RemoveMappingCommand}"/>
+                <Button DockPanel.Dock="Right" Content="添加对象…" Command="{Binding AddMappingCommand}"/>
+                <ComboBox ItemsSource="{Binding Mappings}" SelectedItem="{Binding SelectedMapping}"
+                          DisplayMemberPath="Name" Margin="0,0,8,0" MinHeight="27"/>
+              </DockPanel>
+            </StackPanel>
+          </Border>
           <TreeView x:Name="StepsTree" ItemsSource="{Binding StepRoots}"
                     Tag="{Binding}" BorderThickness="0" Margin="5,7"
                     SelectedItemChanged="StepsTree_SelectedItemChanged"
@@ -184,6 +201,30 @@
                        FontSize="11" Margin="0,16,0,6"/>
             <TextBlock Text="{Binding SelectedId}" TextWrapping="Wrap" FontSize="11"
                        Margin="0,0,0,17"/>
+            <Border Height="1" Background="{StaticResource Line}" Margin="0,14,0,17"/>
+            <TextBlock Text="真实测试执行" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,10"/>
+            <TextBlock Text="运行授权文本（仅对包含物理写入的 TEST 必填）"
+                       Foreground="{StaticResource Subtle}" Margin="0,0,0,5"/>
+            <TextBox Text="{Binding ExpectedApproval}" IsReadOnly="True"
+                     FontFamily="Consolas" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <TextBox Text="{Binding RunApproval,UpdateSourceTrigger=PropertyChanged}"
+                     FontFamily="Consolas" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+              <Button Content="开始真实测试" Command="{Binding RunCommand}"
+                      Style="{StaticResource AtPrimaryButton}"/>
+              <Button Content="停止" Command="{Binding StopRunCommand}"/>
+            </StackPanel>
+            <TextBlock Text="{Binding RunSummary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+            <DataGrid ItemsSource="{Binding RunFacts}" IsReadOnly="True" AutoGenerateColumns="False"
+                      MaxHeight="220" HeadersVisibility="Column" RowHeaderWidth="0"
+                      CanUserAddRows="False">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="步骤" Binding="{Binding Type}" Width="85"/>
+                <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="95"/>
+                <DataGridTextColumn Header="实际数据" Binding="{Binding Actual}" Width="100"/>
+                <DataGridTextColumn Header="说明" Binding="{Binding Detail}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
 
           </StackPanel>
         </ScrollViewer>

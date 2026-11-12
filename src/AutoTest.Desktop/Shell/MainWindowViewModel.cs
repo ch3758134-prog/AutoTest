@@ -26,6 +26,7 @@ public sealed class MainWindowViewModel : BindableBase
 {
     private readonly ProjectWorkspaceService _workspace;
     private readonly HardwareConnectionService _hardware;
+    private readonly RealTestWorkbenchService _realTest;
     private readonly KeyboardWedgeCapture _scanCapture;
     private readonly ProjectScanMatcher _scanMatcher;
     private readonly CancellationTokenSource _scanStop = new();
@@ -55,10 +56,11 @@ public sealed class MainWindowViewModel : BindableBase
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
         ProjectFileDialogService fileDialogs, DbcEditorDialogs dbcDialogs,
         TestEditorDialogs testDialogs, RecentProjectStore recentProjects,
-        HardwareConnectionService hardware)
+        HardwareConnectionService hardware, RealTestWorkbenchService realTest)
     {
         _workspace = workspace;
         _hardware = hardware;
+        _realTest = realTest;
         var router = new BarcodeInputRouter();
         router.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
         router.SetAdmissionGate(() => !_hardwareBusy);
@@ -555,7 +557,7 @@ public sealed class MainWindowViewModel : BindableBase
             var entry = await _workspace.CreateTestProgramAsync(name);
             SelectAsset(entry.Id);
             var session = await _workspace.OpenTestEditorAsync(entry.Id);
-            var editor = new TestEditorViewModel(_workspace, _testDialogs, session);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, session, _realTest);
             ActivateEditor("test|" + entry.Id, new TestEditorView(editor),
                 "测试程序 · " + entry.Name, editor.ConfirmClose);
             StatusMessage = "测试程序已创建并打开：" + entry.Name;
@@ -670,7 +672,7 @@ public sealed class MainWindowViewModel : BindableBase
         await RunOperationAsync(async () =>
         {
             var session = await _workspace.OpenTestEditorAsync(asset.Id);
-            var editor = new TestEditorViewModel(_workspace, _testDialogs, session);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, session, _realTest);
             ActivateEditor("test|" + asset.Id, new TestEditorView(editor),
                 "测试程序 · " + asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试程序：" + asset.Name;
