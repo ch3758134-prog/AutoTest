@@ -538,7 +538,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         {
             var plan = _compiler.Prepare(Snapshot);
             Status = plan.Ready ? $"工程 TEST 预检通过 · SHA256 {plan.Digest[..12]} · 尚未执行" :
-                "Preflight blocked: " + string.Join(" | ", plan.Diagnostics.Take(4));
+                "运行前检查未通过：" + string.Join(" | ", plan.Diagnostics.Take(4));
         }
         catch (Exception ex) { Status = "运行前检查失败：" + ex.Message; }
     }
