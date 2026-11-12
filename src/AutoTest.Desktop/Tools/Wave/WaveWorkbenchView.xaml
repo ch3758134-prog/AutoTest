@@ -24,7 +24,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="*" MinHeight="285"/>
+            <RowDefinition Height="182" MinHeight="135"/>
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <DockPanel Grid.Row="0" Margin="0,0,0,12">
@@ -206,7 +207,42 @@
                 </Grid>
             </Border>
         </Grid>
-        <Border Grid.Row="3" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0"
+        <Border Grid.Row="3" Background="White" BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="1" CornerRadius="7" Margin="0,11,0,0">
+          <TabControl Background="White" BorderThickness="0">
+            <TabItem Header="信号与采集项">
+              <DataGrid ItemsSource="{Binding Signals}" AutoGenerateColumns="False" IsReadOnly="True"
+                RowHeaderWidth="0" BorderThickness="0">
+                <DataGrid.Columns>
+                  <DataGridCheckBoxColumn Header="显示" Binding="{Binding IsSelected}" Width="70"/>
+                  <DataGridTextColumn Header="DBC 信号名称" Binding="{Binding Name}" Width="*"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </TabItem>
+            <TabItem Header="参考对比与判定">
+              <DataGrid ItemsSource="{Binding Results}" AutoGenerateColumns="False" IsReadOnly="True"
+                RowHeaderWidth="0" BorderThickness="0">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="信号" Binding="{Binding Signal}" Width="*"/>
+                  <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="110"/>
+                  <DataGridTextColumn Header="覆盖率" Binding="{Binding Coverage}" Width="115"/>
+                  <DataGridTextColumn Header="判定详情" Binding="{Binding Detail}" Width="2*"/>
+                </DataGrid.Columns>
+              </DataGrid>
+            </TabItem>
+            <TabItem Header="采集来源与操作状态">
+              <ScrollViewer Background="White" Padding="13,10">
+                <StackPanel>
+                  <TextBlock Text="{Binding Origin}" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding Quality}" Foreground="#6A819A" Margin="0,7,0,0"/>
+                  <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#546E8A" Margin="0,9,0,0"/>
+                  <TextBlock Text="{Binding ReferenceStatus}" TextWrapping="Wrap" Foreground="#7890A7" Margin="0,7,0,0"/>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+          </TabControl>
+        </Border>
+        <Border Grid.Row="4" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0"
                 Margin="0,12,0,0" Padding="4,10,2,0">
             <DockPanel>
                 <StackPanel>
