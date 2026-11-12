@@ -8,6 +8,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 import json
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
