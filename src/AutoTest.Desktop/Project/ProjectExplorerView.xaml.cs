@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using AutoTest.Desktop.Shell;
 
 namespace AutoTest.Desktop.Project;
@@ -25,9 +26,8 @@ public partial class ProjectExplorerView : UserControl
 
     private void GoTo(string key) => OpenRequested?.Invoke(key);
 
-    private void ResourceTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private bool OpenResource(WorkbenchResourceNode node)
     {
-        if (ResourceTree.SelectedItem is not WorkbenchResourceNode node) return;
         string? key = node.Kind switch
         {
             "test" => "program",
@@ -39,9 +39,35 @@ public partial class ProjectExplorerView : UserControl
             "records" => "records",
             _ => null
         };
-        if (key is null) return;
+        if (key is null) return false;
         GoTo(key);
-        e.Handled = true;
+        return true;
+    }
+
+    private void ResourceTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (ResourceTree.SelectedItem is WorkbenchResourceNode node && OpenResource(node))
+            e.Handled = true;
+    }
+
+    private void ResourceTree_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        // Nested resources must be selected by hit target before the context menu opens.
+        for (DependencyObject? visual = e.OriginalSource as DependencyObject;
+             visual is not null;
+             visual = VisualTreeHelper.GetParent(visual))
+        {
+            if (visual is not TreeViewItem node) continue;
+            node.IsSelected = true;
+            node.Focus();
+            break;
+        }
+    }
+
+    private void OpenSelectedResource_Click(object sender, RoutedEventArgs e)
+    {
+        if (ResourceTree.SelectedItem is WorkbenchResourceNode node)
+            OpenResource(node);
     }
 
     private void OpenTest_Click(object sender, RoutedEventArgs e) => GoTo("program");
