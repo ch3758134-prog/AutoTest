@@ -161,6 +161,7 @@ def pick(project, registry, task_id=None):
     mode = t.get("mode")
     if mode not in ("EXPLORATORY", "CONTROLLED"):
         raise TaskError("task requires explicit EXPLORATORY or CONTROLLED mode")
+    module_scope(t)
     if mode == "CONTROLLED":
         if (project.get("formal_product_identity") != "APPROVED"
                 or project.get("scope_decision") != "APPROVED"):
@@ -190,6 +191,68 @@ def pick(project, registry, task_id=None):
         if not candidates:
             raise TaskError("CONTROLLED task lacks a matching approved design baseline")
     return t
+
+
+def module_scope(task, modifications=None):
+    """Require module-scoped implementation and reviewed interface changes.
+
+    This is embedded in the per-project resolver; it cannot rely on the
+    manager's separately installed module_control.py.
+    """
+    path = STATE / "management.json"
+    if not path.is_file() or path.is_symlink():
+        raise TaskError("module governance file unavailable")
+    management = json.loads(path.read_text(encoding="utf-8"))
+    registered = management.get("modules", [])
+    if not isinstance(registered, list):
+        raise TaskError("module registry invalid")
+    if not registered:
+        if task.get("module_id"):
+            raise TaskError("task references an unregistered module")
+        return {"module_id": None, "outside_module": [], "interface_review_required": []}
+    module_id = task.get("module_id")
+    if not module_id:
+        if task.get("mode") == "CONTROLLED":
+            raise TaskError("controlled implementation must name its source module")
+        return {"module_id": None, "outside_module": [], "interface_review_required": []}
+    modules = [m for m in registered if isinstance(m, dict) and m.get("id") == module_id]
+    if len(modules) != 1:
+        raise TaskError("task module ID is not unique or does not exist")
+    module = modules[0]
+    prefixes, contracts = module.get("owned_prefixes"), module.get("contracts")
+    if not isinstance(prefixes, list) or not prefixes or not isinstance(contracts, list):
+        raise TaskError("module boundaries are invalid")
+    if any(not isinstance(p, str) or not p.endswith("/") or
+           p.startswith("/") or ".." in p.split("/") for p in prefixes):
+        raise TaskError("unsafe module ownership prefixes")
+    decisions = json.loads((STATE / "decisions.json").read_text(encoding="utf-8")).get("decisions")
+    if not isinstance(decisions, list):
+        raise TaskError("module exception decision registry invalid")
+    def approved(kind, target):
+        return any(
+            isinstance(d, dict) and d.get("kind") == kind
+            and d.get("state") == "APPROVED" and d.get("task_id") == task["id"]
+            and d.get("module_id") == module_id
+            and d.get("source_sha") == task["source"]["pinned_sha"]
+            and isinstance(d.get("paths"), list) and target in d["paths"]
+            and d.get("approved_by") and d.get("approval_reference")
+            for d in decisions
+        )
+    def owned(path):
+        return any(path.startswith(prefix) for prefix in prefixes)
+    for scope in task["allowed_paths"]:
+        relative = scope[:-3] + "/" if scope.endswith("/**") else scope
+        if not owned(relative) and not approved("MODULE_CROSS_SCOPE_APPROVAL", scope):
+            raise TaskError("implementation scope exceeds module boundary: " + scope)
+    outside = []
+    interface = []
+    for name in modifications or []:
+        if not owned(name) and not approved("MODULE_CROSS_SCOPE_APPROVAL", name):
+            outside.append(name)
+        if name in contracts and not approved("MODULE_INTERFACE_CHANGE_APPROVAL", name):
+            interface.append(name)
+    return {"module_id": module_id, "outside_module": sorted(outside),
+            "interface_review_required": sorted(interface)}
 
 
 def assert_source_state(state, task):
@@ -273,13 +336,19 @@ def verify(state, task, digest):
     if check.returncode:
         raise TaskError("task commit history no longer descends from claim")
     modifications = changed_files(parent)
+    boundary = module_scope(task, modifications)
     outside = [x for x in modifications
                if x == PROTECTED[0] or x.startswith(PROTECTED[1])
                or not path_allowed(x, task["allowed_paths"])]
-    return {"task_id": task["id"], "start_head": parent, "current_head": state["head"],
+    outside = sorted(set(outside + boundary["outside_module"]
+                         + boundary["interface_review_required"]))
+    return {"task_id": task["id"], "module_id": boundary["module_id"],
+            "start_head": parent, "current_head": state["head"],
             "modified_paths": modifications, "outside_scope": outside,
+            "outside_module": boundary["outside_module"],
+            "interface_review_required": boundary["interface_review_required"],
             "status": "BLOCKED_SCOPE" if outside else "SCOPE_OK",
-            "note": "Scope check does not approve results, merges or local cleanup."}
+            "note": "Source scope and module interface review do not approve results, merges or cleanup."}
 
 
 def read_local_test_logs():
