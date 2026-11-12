@@ -8,6 +8,13 @@
 
 只有发现任务所需的关键依据，才能提出项目计划或专业工作候选；不能因源码存在就宣布已经完成存量项目接管。遇到重要未知继续调查，不让负责人重复整理 GitHub 已有资料。GitHub 文档并非 ChatGPT 自动安装的原生 Skill，新 AI 必须确认实际读取成功。
 
+## 可移植 AI Skills（不保证网页端自动加载）
+
+- [skills/project-intake/SKILL.md](skills/project-intake/SKILL.md)：存量接管与项目认识恢复。
+- [skills/engineering-coordinator/SKILL.md](skills/engineering-coordinator/SKILL.md)：明确受委任的工程协调角色与职责。
+
+这些文件随导出包携带，兼容原生 Skills 的客户端须自行按其产品规定注册；ChatGPT 网页端只从 GitHub 阅读这些文件并不等于安装了 Skill，也不获得任何额外权限。
+
 ## VNext 首先读取：工程过程与 AI 接管
 
 通用研发所有活动与岗位均需读取 [portable/REPORTING_PROTOCOL.md](portable/REPORTING_PROTOCOL.md)，按过程解释工作的目的、成果和真正需要的决策，不能只复述管理状态或旧 P0 案例。
