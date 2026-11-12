@@ -378,6 +378,12 @@ def upgrade_runtime(directory, inspected, *, apply=False,
 
 
 def cli(argv=None):
+    # Python on Windows may inherit a legacy charmap console. Every management
+    # command writes UTF-8 Chinese project names and JSON, without requiring
+    # users to change the system code page.
+    for output in (sys.stdout, sys.stderr):
+        if hasattr(output, "reconfigure"):
+            output.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Safe target GitHub project initialization (candidate)")
     parser.add_argument("action", choices=["inspect", "preview", "apply", "upgrade-preview", "upgrade",
                                       "upgrade-runtime-preview", "upgrade-runtime"])
