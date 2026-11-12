@@ -168,17 +168,20 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             if (plan.Timing.DelayBeforePressMs > 0)
                 await Task.Delay(plan.Timing.DelayBeforePressMs, ct);
             bool changed = false;
+            bool attempted = false;
             try
             {
                 var maskFrame = KeypadCommandCodec.EncodeMask(plan.MaskDuringOperation);
+                attempted = true; // A failed USB write can still have modified hardware.
                 await _hardware.SendTestCanAsync(maskFrame, _fingerprint, ct);
                 changed = true;
                 if (actuation == ButtonActuation.Pulse)
                 {
                     await Task.Delay(plan.Timing.DefaultPressDurationMs, ct);
+                    using var release = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                     await _hardware.SendTestCanAsync(
                         KeypadCommandCodec.EncodeMask(plan.MaskAfterOperation), _fingerprint,
-                        CancellationToken.None);
+                        release.Token);
                 }
                 _active = plan.ActiveAfterOperation;
                 if (plan.Timing.DelayAfterReleaseMs > 0)
@@ -191,14 +194,17 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 {
                     try
                     {
+                        using var emergencyRelease = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                         await _hardware.SendTestCanAsync(
                             KeypadCommandCodec.EncodeMask(plan.MaskAfterOperation),
-                            _fingerprint, CancellationToken.None);
+                            _fingerprint, emergencyRelease.Token);
                         _active = plan.ActiveAfterOperation;
                     }
                     catch { _unknown = true; }
                 }
-                else _unknown = true; // rejected/timeout output state cannot be guessed
+                else if (attempted) _unknown = true;
+                // A failure before a physical write was attempted does not establish
+                // an unknown output state. A failed attempted write always does.
                 throw;
             }
         }

@@ -71,7 +71,12 @@ public sealed class ControllerConfigurationTests
             ImmutableArray.Create(new IncompatibleKeyPair(1, 2)));
         var configured = profile with { KeyHardwarePolicy = policy };
         var reopened = ControllerRepository.Decode(ControllerRepository.Encode(configured));
-        Assert.Equal(policy, reopened.KeyHardwarePolicy);
+        Assert.NotNull(reopened.KeyHardwarePolicy);
+        Assert.Equal(policy.SupportedMask, reopened.KeyHardwarePolicy.SupportedMask);
+        Assert.Equal(policy.HardwareProfileId, reopened.KeyHardwarePolicy.HardwareProfileId);
+        Assert.Single(reopened.KeyHardwarePolicy.ForbiddenPairs);
+        Assert.Equal(new IncompatibleKeyPair(1, 2),
+            reopened.KeyHardwarePolicy.ForbiddenPairs[0]);
         var stalePolicy = configured with
         {
             KeyHardwarePolicy = policy with { HardwareProfileId = Guid.NewGuid() }
