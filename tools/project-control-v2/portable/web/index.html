@@ -24,9 +24,10 @@
   <div class="side-footer"><span class="dot"></span> 本地项目记录 · 非远端实时状态<br><span>不自动批准、不自动推送或清理</span></div>
 </aside>
 <section class="content"><header class="top"><div class="crumb"><span>工程管理</span> / <b id="crumb-current">总览</b></div>
-<div class="top-actions"><span id="sync-pill" class="small-pill">本地数据</span><button id="refresh" class="tertiary">刷新</button></div></header>
+<div class="top-actions"><span id="sync-pill" class="small-pill">本地数据</span><button id="show-register-target" class="tertiary">登记项目</button><button id="refresh" class="tertiary">刷新</button></div></header>
 <main id="main" tabindex="-1"><p class="loading">正在读取已登记的项目…</p></main></section>
 </div>
 <dialog id="edit-dialog"><form id="edit-form"><header><h2 id="form-title"></h2><button type="button" id="form-close" class="close" aria-label="关闭">×</button></header><p id="form-desc" class="hint"></p><div id="form-fields"></div><footer><button type="button" id="form-cancel" class="secondary">取消</button><button type="submit" class="primary">保存本地候选</button></footer></form></dialog>
+<dialog id="register-dialog"><form id="register-form"><header><h2>登记已有管理项目</h2><button type="button" id="register-close" class="close" aria-label="关闭">×</button></header><p class="hint">指定本地项目 Git 根目录。此操作仅登记已经初始化的真实项目，不创建、覆盖或推送项目文件。</p><div id="form-fields"><label>目标项目本地根目录<input id="register-path" name="path" type="text" required placeholder="例如 D:\\01_Projects\\MyProject" autocomplete="off"></label><p id="register-result" class="hint" role="status"></p></div><footer><button id="register-cancel" type="button" class="secondary">取消</button><button type="submit" class="primary">核对并登记</button></footer></form></dialog>
 <div id="toast" class="toast" aria-live="polite" role="status"></div>
 <script defer src="/app.js"></script></body></html>
