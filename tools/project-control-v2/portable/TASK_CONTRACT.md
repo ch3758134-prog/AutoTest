@@ -35,6 +35,8 @@
 }
 ```
 
+**在目标仓库把任务从 DRAFT 发布为 READY 以前，管理 AI 必须按 [REMOTE_HANDOFF.md](REMOTE_HANDOFF.md) 复核任务的独立人类授权记录 `TASK_EXECUTION_APPROVAL`：该决定必须包含任务 ID、固定来源 SHA、授权人和可追溯批准引用。不能通过仅填写任务 JSON 中的 `approved_by` 绕过这一决定。**
+
 上述结构的 `DRAFT` 不能领取。工程协调 AI 须核对项目有效设计和用户批准，将任务授权信息写入 **目标仓库**、完成版本确认之后才改为 `READY_FOR_LOCAL_IMPLEMENTATION`。仅为创建一次性预研/探索原型的任务可使用 `EXPLORATORY`；必须仍有明确范围和用户授权，不能将探索代码直接作为正式产品实现。
 
 `CONTROLLED` 模式需要在目标仓库 `.project-control/decisions.json` 有匹配的 `DESIGN_APPROVAL` 记录，至少包含：
