@@ -67,7 +67,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
           <DockPanel Margin="1,0,0,7">
             <TextBlock Text="按键状态矩阵（K01～K20）" Style="{StaticResource AtSectionTitle}"/>
-            <TextBlock DockPanel.Dock="Right" Text="{Binding StateMaskHex, StringFormat=开关组合：{0}}" Style="{StaticResource AtHint}"/>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding StateMaskHex, StringFormat='开关组合：{0}'}" Style="{StaticResource AtHint}"/>
           </DockPanel>
           <Border Background="{DynamicResource StudioLightBlue}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" CornerRadius="7" Padding="8">
             <ItemsControl ItemsSource="{Binding KeyBits}">
