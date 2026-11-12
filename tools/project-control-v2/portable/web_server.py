@@ -188,8 +188,9 @@ class Target:
         with self.lock:
             self.check_identity()
             project = load_json(self.project_path)
-            if project.get("project_id") != self.project_id:
-                raise ManagementError("project identity changed; reopen the server")
+            if (project.get("project_id") != self.project_id
+                    or project.get("repo_url") != self.initial.get("repo_url")):
+                raise ManagementError("project identity or repository changed; reopen the server")
             management = load_json(self.data_path)
             self.check_record(management)
             management.setdefault("receipts", [])
