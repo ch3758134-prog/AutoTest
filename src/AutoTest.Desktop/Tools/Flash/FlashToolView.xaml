@@ -7,7 +7,8 @@
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
-   <RowDefinition Height="*" MinHeight="320"/>
+   <RowDefinition Height="*" MinHeight="300"/>
+   <RowDefinition Height="202" MinHeight="140"/>
   </Grid.RowDefinitions>
   <DockPanel Grid.Row="0" Margin="0,0,0,11">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -132,44 +133,25 @@
        TextWrapping="Wrap" Foreground="#78623D" FontSize="12" Margin="0,4,0,0"/>
      </StackPanel>
     </Border>
-    <TabControl Grid.Row="2" Background="{DynamicResource StudioBg}" Margin="0,8,0,0">
-     <TabItem Header="烧录阶段">
-      <DataGrid x:Name="FlashStagesGrid" AutoGenerateColumns="False" IsReadOnly="True" RowHeaderWidth="0">
-       <DataGrid.Columns>
-        <DataGridTextColumn Header="时间" Binding="{Binding Utc,StringFormat=HH:mm:ss.fff}" Width="110"/>
-        <DataGridTextColumn Header="阶段" Binding="{Binding Stage}" Width="175"/>
-        <DataGridTextColumn Header="结果" Binding="{Binding Outcome}" Width="110"/>
-        <DataGridTextColumn Header="细节 / NRC / 地址" Binding="{Binding Detail}" Width="*"/>
-        <DataGridTextColumn Header="已 ACK B" Binding="{Binding ConfirmedBytes}" Width="90"/>
-       </DataGrid.Columns>
-      </DataGrid>
-     </TabItem>
-     <TabItem Header="诊断通信明细">
-      <ListBox x:Name="FlashEventsList" FontFamily="Consolas" FontSize="11" Background="{DynamicResource StudioBg}"
-       Foreground="{DynamicResource StudioText}" ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
-     </TabItem>
-     <TabItem Header="镜像段">
-      <DataGrid ItemsSource="{Binding Segments}" AutoGenerateColumns="False" IsReadOnly="True" RowHeaderWidth="0">
-       <DataGrid.Columns>
-        <DataGridTextColumn Header="起点" Binding="{Binding Start}" Width="*"/>
-        <DataGridTextColumn Header="终点（不含）" Binding="{Binding EndExclusive}" Width="*"/>
-        <DataGridTextColumn Header="字节数" Binding="{Binding Bytes}" Width="100"/>
-       </DataGrid.Columns>
-      </DataGrid>
-     </TabItem>
-     <TabItem Header="配置与 XML 来源">
-      <DataGrid ItemsSource="{Binding ConfigurationFields}" AutoGenerateColumns="True" IsReadOnly="True"/>
-     </TabItem>
-     <TabItem Header="现场预检">
-      <DockPanel>
-       <StackPanel DockPanel.Dock="Top" Margin="8">
-        <TextBlock Text="{Binding PhysicalPreflight}" TextWrapping="Wrap"/>
-        <TextBlock Text="{Binding Preflight}" Foreground="#78623D"/>
-       </StackPanel>
-       <DataGrid ItemsSource="{Binding PhysicalChecks}" AutoGenerateColumns="True" IsReadOnly="True"/>
-      </DockPanel>
-     </TabItem>
-    </TabControl>
+    <Border Grid.Row="2" Background="White" BorderBrush="{DynamicResource StudioLine}"
+      BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,8,0,0">
+     <DockPanel>
+      <Border DockPanel.Dock="Top" Background="{DynamicResource StudioLightBlue}" Padding="9,7">
+       <TextBlock Text="UDS 烧录阶段" FontSize="14" FontWeight="SemiBold" Foreground="#345B85"/>
+      </Border>
+      <StackPanel Margin="12,11">
+       <TextBlock Text="01   连接主控与 ECU" FontWeight="SemiBold" Margin="0,5,0,8"/>
+       <TextBlock Text="02   进入编程会话" FontWeight="SemiBold" Margin="0,5,0,8"/>
+       <TextBlock Text="03   擦除目标区域" FontWeight="SemiBold" Margin="0,5,0,8"/>
+       <TextBlock Text="04   下载程序数据" FontWeight="SemiBold" Margin="0,5,0,8"/>
+       <TextBlock Text="05   校验程序完整性" FontWeight="SemiBold" Margin="0,5,0,8"/>
+       <TextBlock Text="06   ECU 复位与结束" FontWeight="SemiBold" Margin="0,5,0,8"/>
+       <TextBlock Text="以上为阶段定义，不表示操作已经执行或通过。每阶段真实结果见下方追踪。"
+         Foreground="{DynamicResource StudioMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+      </StackPanel>
+     </DockPanel>
+    </Border>
+
     <TextBlock Grid.Row="3" Text="{Binding SourceLabel}" Foreground="{DynamicResource StudioMuted}" FontSize="11" Margin="2,9,2,0" TextWrapping="Wrap"/>
    </Grid>
    <GridSplitter Grid.Column="3" Background="{DynamicResource StudioLine}" HorizontalAlignment="Stretch"/>
@@ -211,5 +193,46 @@
     </DockPanel>
    </Border>
   </Grid>
+  <Border Grid.Row="3" Background="White" BorderBrush="{DynamicResource StudioLine}"
+   BorderThickness="1" CornerRadius="7" Margin="0,11,0,0" Padding="0">
+       <TabControl Background="White" BorderThickness="0">
+     <TabItem Header="烧录阶段">
+      <DataGrid x:Name="FlashStagesGrid" AutoGenerateColumns="False" IsReadOnly="True" RowHeaderWidth="0">
+       <DataGrid.Columns>
+        <DataGridTextColumn Header="时间" Binding="{Binding Utc,StringFormat=HH:mm:ss.fff}" Width="110"/>
+        <DataGridTextColumn Header="阶段" Binding="{Binding Stage}" Width="175"/>
+        <DataGridTextColumn Header="结果" Binding="{Binding Outcome}" Width="110"/>
+        <DataGridTextColumn Header="细节 / NRC / 地址" Binding="{Binding Detail}" Width="*"/>
+        <DataGridTextColumn Header="已 ACK B" Binding="{Binding ConfirmedBytes}" Width="90"/>
+       </DataGrid.Columns>
+      </DataGrid>
+     </TabItem>
+     <TabItem Header="诊断通信明细">
+      <ListBox x:Name="FlashEventsList" FontFamily="Consolas" FontSize="11" Background="{DynamicResource StudioBg}"
+       Foreground="{DynamicResource StudioText}" ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
+     </TabItem>
+     <TabItem Header="镜像段">
+      <DataGrid ItemsSource="{Binding Segments}" AutoGenerateColumns="False" IsReadOnly="True" RowHeaderWidth="0">
+       <DataGrid.Columns>
+        <DataGridTextColumn Header="起点" Binding="{Binding Start}" Width="*"/>
+        <DataGridTextColumn Header="终点（不含）" Binding="{Binding EndExclusive}" Width="*"/>
+        <DataGridTextColumn Header="字节数" Binding="{Binding Bytes}" Width="100"/>
+       </DataGrid.Columns>
+      </DataGrid>
+     </TabItem>
+     <TabItem Header="配置与 XML 来源">
+      <DataGrid ItemsSource="{Binding ConfigurationFields}" AutoGenerateColumns="True" IsReadOnly="True"/>
+     </TabItem>
+     <TabItem Header="现场预检">
+      <DockPanel>
+       <StackPanel DockPanel.Dock="Top" Margin="8">
+        <TextBlock Text="{Binding PhysicalPreflight}" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding Preflight}" Foreground="#78623D"/>
+       </StackPanel>
+       <DataGrid ItemsSource="{Binding PhysicalChecks}" AutoGenerateColumns="True" IsReadOnly="True"/>
+      </DockPanel>
+     </TabItem>
+    </TabControl>
+  </Border>
  </Grid>
 </UserControl>
