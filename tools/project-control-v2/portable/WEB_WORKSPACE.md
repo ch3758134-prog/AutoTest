@@ -27,17 +27,17 @@ python tools/project-control-v2/portable/export_package.py --out "ProjectControl
 新项目/已有项目的首次候选初始化（如已存在管理目录，请使用 upgrade-preview 判断，不要重置）：
 
 ```powershell
-python portable/project_init.py inspect --target "D:\Projects\MyProject" --repo-url "https://github.com/owner/MyProject.git"
-python portable/project_init.py preview --target "D:\Projects\MyProject" --repo-url "https://github.com/owner/MyProject.git" --mode adopt
+python portable/project_init.py inspect --target "<用户指定的目标项目目录>" --repo-url "https://github.com/owner/MyProject.git"
+python portable/project_init.py preview --target "<用户指定的目标项目目录>" --repo-url "https://github.com/owner/MyProject.git" --mode adopt
 # 由管理 AI 和负责人审查来源与变更后才执行
-python portable/project_init.py apply --target "D:\Projects\MyProject" --repo-url "https://github.com/owner/MyProject.git" --mode adopt
+python portable/project_init.py apply --target "<用户指定的目标项目目录>" --repo-url "https://github.com/owner/MyProject.git" --mode adopt
 ```
 
 `--mode new` 仅适用于无既有 Git 跟踪资产的新项目。已存在管理记录不得重复 apply。旧版已经有 `.project-control/`、但没有 `management.json` 时：
 
 ```powershell
-python portable/project_init.py upgrade-preview --target "D:\Projects\MyProject" --repo-url "https://github.com/owner/MyProject.git"
-python portable/project_init.py upgrade --target "D:\Projects\MyProject" --repo-url "https://github.com/owner/MyProject.git"
+python portable/project_init.py upgrade-preview --target "<用户指定的目标项目目录>" --repo-url "https://github.com/owner/MyProject.git"
+python portable/project_init.py upgrade --target "<用户指定的目标项目目录>" --repo-url "https://github.com/owner/MyProject.git"
 ```
 
 上述命令**仅修改本地项目文件**，从不 commit、push、merge 或签发任何工程批准。运行前请先核实文件差异和 Git origin。管理 AI 可以使用 GitHub 连接在目标远端准备这些候选文件；没有写权限时不能谎称远端已完成初始化。
@@ -45,7 +45,7 @@ python portable/project_init.py upgrade --target "D:\Projects\MyProject" --repo-
 Web 启动示例（在**Project Control 管理系统文件夹根目录**运行，`--target` 可重复）：
 
 ```powershell
-python portable/web_server.py --target "D:\Projects\MyProject" --target "D:\Projects\AnotherProject" --port 8791
+python portable/web_server.py --target "<用户指定的目标项目目录>" --target "<用户指定的另一个目标项目目录>" --port 8791
 ```
 
 浏览器访问 `http://127.0.0.1:8791`。本地服务监听环回地址；第一次保存候选记录需输入服务终端打印的一次性负责人令牌，不保存进仓库。
