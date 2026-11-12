@@ -34,7 +34,7 @@ CI 在 Linux 与 Windows runner 执行 Python 回归测试、前端脚本语法/
 
 新增来源发现/当前适用性审查/缺失资料补全方法与 `context_assessment.py`；整体审查记录见 `AI_CONTEXT_ARCHITECTURE_REVIEW_20261112.md`。和旧 `context_discovery.py` 分离，旧 `COVERED` 不能作为当前有效证据。新版测试覆盖单次空搜索、API 错误、仅发现未审查来源、历史适用性理由、未经授权的补全和局部任务前提。
 
-已增加可选目标项目 `.project-control/context_assessment.json` 的**只读 Web 展示**，明确显示 NOT_RECORDED/INVALID_RECORD 和待办候选；但尚未实现 Web 编辑/保存、与现有工作及决策记录的受控联动、远端同步、旧格式的自动迁移。新 ChatGPT 对话从零接管以及真实 Windows 端到端仍需另行实测。软件结构审计不能证明 AI 的真实理解，也不能证明在各种外部资料缺失情况下都能正确判断。
+4.5 已加入本地管理 `management.json` 中的历史证据评价登记与补全候选工作关联（负责人令牌、CAS 修订、项目身份、证据摘要及明确未授权状态），Web 可输入 AI 生成的记录并组织到现有 WBS；旧版项目的独立 `context_assessment.json` 仅只读显示。**仍未完成**正式审批交接、远端同步事务、旧格式自动迁移及新 AI 接管端到端实测。新 ChatGPT 对话从零接管以及真实 Windows 端到端仍需另行实测。软件结构审计不能证明 AI 的真实理解，也不能证明在各种外部资料缺失情况下都能正确判断。
 
 ## 4. 正式验收前仍须独立证明的项目
 
