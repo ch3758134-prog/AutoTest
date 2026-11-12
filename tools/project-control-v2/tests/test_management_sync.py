@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 HERE=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location("management_sync_tested",HERE/"portable/management_sync.py")
@@ -99,6 +100,20 @@ class ManagementSyncTests(unittest.TestCase):
         self.assertEqual(json.loads(self.client.remote_source)["status"],"DRAFT")
         self.assertEqual(len(self.client.writes),1)
         self.assertEqual(git(self.root,"rev-parse","HEAD"),self.sha)
+
+    def test_atomic_remote_management_transport_only_follows_revision_validation(self):
+        plan=sync.preview(self.root,self.client)
+        with patch("git_ref_atomic.commit_exact_file",
+                   return_value={"status":"ATOMIC_GIT_REF_CAS_PUBLISHED_AND_VERIFIED",
+                                 "commit_sha":"c"*40}) as commit:
+            result=sync.publish(self.client,plan,apply=True,atomic=True)
+        self.assertEqual(result["status"],"ATOMIC_REMOTE_MANAGEMENT_DRAFT_PUBLISHED_VERIFIED")
+        self.assertEqual(result["revision"],2)
+        self.assertEqual(self.client.writes,[])
+        args=commit.call_args.args
+        self.assertEqual(args[4],".project-control/management.json")
+        self.assertEqual(args[5],plan["candidate_content"])
+        self.assertEqual(args[3],self.sha)
 
     def test_branch_drift_and_file_conflict_never_write(self):
         plan=sync.preview(self.root,self.client)
