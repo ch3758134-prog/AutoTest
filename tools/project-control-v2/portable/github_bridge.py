@@ -146,6 +146,34 @@ class GitHub:
         except (KeyError, TypeError) as err:
             raise RemoteError("GitHub PR metadata incomplete") from err
 
+    def check_runs(self, parts, head_sha, max_pages=10):
+        """Read exact-commit GitHub checks, never infer required status rules."""
+        owner, repo = parts
+        head_sha = assert_sha(head_sha)
+        runs = []
+        for page in range(1, max_pages + 1):
+            data = self.request(
+                "GET", "/repos/" + quote(owner) + "/" + quote(repo)
+                + "/commits/" + head_sha + "/check-runs?per_page=100&page=" + str(page))
+            batch = data.get("check_runs") if isinstance(data, dict) else None
+            if not isinstance(batch, list):
+                raise RemoteError("GitHub check-runs response incomplete")
+            for check in batch:
+                if not isinstance(check, dict) or check.get("head_sha") != head_sha:
+                    raise RemoteError("check run does not belong to exact reviewed commit")
+                status = check.get("status")
+                conclusion = check.get("conclusion")
+                if status not in ("queued", "in_progress", "completed"):
+                    raise RemoteError("unknown check-run status")
+                if not isinstance(check.get("name"), str):
+                    raise RemoteError("unnamed check-run response")
+                runs.append({"name": check["name"][:160], "status": status,
+                             "conclusion": conclusion, "head_sha": head_sha})
+            if len(batch) < 100:
+                return runs
+        raise RemoteError("too many check runs to verify fully")
+
+
     def pr_files(self, parts, number, max_pages=20):
         owner, repo = parts
         files = []
@@ -397,7 +425,7 @@ def publish_plan(client, plan, repo_url, *, apply=False, atomic=False):
     return result
 
 
-def verify_remote_pr(client, project, task, receipt, number):
+def verify_remote_pr(client, project, task, receipt, number, *, include_ci=False):
     """Check PR head and actual changed paths. Does not approve CI or review."""
     from pr_evidence import validate as validate_metadata, PrEvidenceError
     parts = repo_parts(project.get("repo_url"))
@@ -421,8 +449,30 @@ def verify_remote_pr(client, project, task, receipt, number):
     observation["pr_files_checked"] = True
     observation["reviewed_head_sha"] = meta["head_sha"]
     observation["status"] = "PR_FILES_AND_IDENTITY_MATCHED_PENDING_CI_AND_REVIEW"
-    # Do not trust purported CI results/approvals without fetching provider
-    # data for the same SHA and explicit reviewer decisions.
+    if include_ci:
+        runs = client.check_runs(parts, meta["head_sha"])
+        observation["check_runs"] = runs
+        if not runs:
+            observation["ci_observation"] = "NO_CHECK_RUNS_OBSERVED"
+        elif any(x["status"] != "completed" for x in runs):
+            observation["ci_observation"] = "CHECKS_PENDING"
+        elif any(x["conclusion"] != "success" for x in runs):
+            observation["ci_observation"] = "CHECKS_NOT_ALL_SUCCESS"
+        else:
+            observation["ci_observation"] = "ALL_OBSERVED_CHECK_RUNS_SUCCESS_NOT_FORMAL_CI_APPROVAL"
+        observation["ci_checked"] = True
+    else:
+        observation["ci_observation"] = "NOT_CHECKED"
+    # Re-fetch PR after reading files/CI. A concurrent force push or a new
+    # candidate commit requires a fresh evidence cycle.
+    final_pr = client.pr(parts, number)
+    if (final_pr.get("head_sha") != meta["head_sha"]
+            or final_pr.get("state") != meta["state"]
+            or final_pr.get("merged") != meta["merged"]
+            or final_pr.get("base") != meta["base"]):
+        raise RemoteError("PR metadata changed while collecting review evidence")
+    observation["task_accepted"] = False
+    observation["gate_approved"] = False
     return observation
 
 
