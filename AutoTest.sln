@@ -27,8 +27,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoTest.Devices.Tests", "t
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoTest.Desktop.Tests", "tests\AutoTest.Desktop.Tests\AutoTest.Desktop.Tests.csproj", "{093CF131-0DE1-5198-AFD7-E637D30106E0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoTest.Integration.Tests", "tests\AutoTest.Integration.Tests\AutoTest.Integration.Tests.csproj", "{71D0A03B-C167-5D26-B70D-01A0917EA40A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoTest.TestFixtures", "tests\AutoTest.TestFixtures\AutoTest.TestFixtures.csproj", "{F6AC6A98-D453-59F1-B0FA-5669EC4A2CBE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoTest.Projects.Tests", "tests\AutoTest.Projects.Tests\AutoTest.Projects.Tests.csproj", "{ACE476CB-5D49-59A8-85DE-E4638469F1B4}"
@@ -203,18 +201,6 @@ Global
 		{093CF131-0DE1-5198-AFD7-E637D30106E0}.Release|x64.Build.0 = Release|Any CPU
 		{093CF131-0DE1-5198-AFD7-E637D30106E0}.Release|x86.ActiveCfg = Release|Any CPU
 		{093CF131-0DE1-5198-AFD7-E637D30106E0}.Release|x86.Build.0 = Release|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Debug|x64.Build.0 = Debug|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Debug|x86.Build.0 = Debug|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Release|x64.ActiveCfg = Release|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Release|x64.Build.0 = Release|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Release|x86.ActiveCfg = Release|Any CPU
-		{71D0A03B-C167-5D26-B70D-01A0917EA40A}.Release|x86.Build.0 = Release|Any CPU
 		{F6AC6A98-D453-59F1-B0FA-5669EC4A2CBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F6AC6A98-D453-59F1-B0FA-5669EC4A2CBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F6AC6A98-D453-59F1-B0FA-5669EC4A2CBE}.Debug|x64.ActiveCfg = Debug|Any CPU
