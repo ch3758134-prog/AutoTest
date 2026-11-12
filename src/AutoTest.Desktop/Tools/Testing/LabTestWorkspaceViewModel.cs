@@ -353,9 +353,12 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 ParameterRows.Clear();
                 foreach (var p in node.Parameters.OrderBy(x => x.Key, StringComparer.Ordinal))
                     ParameterRows.Add(p);
+                var firstParameter = ParameterRows.FirstOrDefault();
+                ParameterName = firstParameter.Key ?? "";
+                ParameterValue = firstParameter.Value ?? "";
             }
         }
-        else { SelectedName = ""; SelectedStepTypeLabel = "选择左侧步骤查看设置"; ParameterRows.Clear(); }
+        else { SelectedName = ""; SelectedStepTypeLabel = "选择左侧步骤查看设置"; ParameterRows.Clear(); ParameterName = ""; ParameterValue = ""; }
         RefreshCommands();
     }
     public LabDocument Snapshot => _editor.Snapshot;
@@ -380,6 +383,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     }
     private void Rebuild()
     {
+        // Editing the program must not throw the operator back to the first case.
+        var previousStepId = _selected?.StepId;
         Tree.Clear();
         var doc = Snapshot;
         foreach (var phase in Enum.GetValues<LabPhase>())
@@ -402,7 +407,18 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         // Keep an inspector populated when opening a real program. No synthetic step is added.
         _selected = null;
         RefreshTestCases(); RefreshRunStepRows(); Changed(nameof(DocumentName));
-        var first = Tree.FirstOrDefault(p => p.Phase == LabPhase.Test)?.Children.FirstOrDefault()
+        static LabTreeRow? FindStep(IEnumerable<LabTreeRow> roots, Guid id)
+        {
+            foreach (var row in roots)
+            {
+                if (row.StepId == id) return row;
+                var nested = FindStep(row.Children, id);
+                if (nested is not null) return nested;
+            }
+            return null;
+        }
+        var preferred = previousStepId.HasValue ? FindStep(Tree, previousStepId.Value) : null;
+        var first = preferred ?? Tree.FirstOrDefault(p => p.Phase == LabPhase.Test)?.Children.FirstOrDefault()
             ?? Tree.SelectMany(p => p.Children).FirstOrDefault();
         Select(first);
         RefreshCommands();
@@ -516,7 +532,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     }
     private static LabNode NewNode(string type)
     {
-        var n = LabNode.New(type);
+        var n = LabNode.New(type, LabStepLocalization.Display(type));
         void P(string key, string value) => n.Parameters.Add(key, value);
         void S(params string[] names) { foreach (var slot in names) n.Slots.Add(slot, new List<LabNode>()); }
         switch (type)
