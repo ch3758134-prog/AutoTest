@@ -1,6 +1,6 @@
 # START_HERE｜可移植项目管理系统入场入口（候选）
 
-> 本文件属于交付给 ChatGPT 网页端的**项目管理系统文件夹本身**。它不是某个被管理项目的数据，不要求先打开 AutoTest 仓库。当前为 V2 通用初始化改造候选，现有 Web 工作台仍含 AutoTest 试点绑定，不能宣称已通用化。
+> 本文件属于交付给 ChatGPT 网页端的**项目管理系统文件夹本身**。它不是某个被管理项目的数据，不要求先打开 AutoTest 仓库。通用本地多项目工作台已具备候选实现（[portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)），原先的 server.py/app.js 仍为 AutoTest 试点，不可混用。
 
 ## 交给管理 AI 的实际输入
 
@@ -40,5 +40,6 @@
 
 - 通用管理 AI 入口与初始化协议：候选，已写入本文件夹；
 - 新/旧项目本地模板生成：`portable/project_init.py` 提供受控初始化和只读盘点；
-- 现有 V2 Web 工作台：仍使用 AutoTest 示例数据和固定路径，**尚不能宣称适用于任意目标仓库**；
+- 通用 Web 候选：`portable/web_server.py` 可加载多个已显式登记的目标 Git 工作区，管理当地候选成果、计划、风险及任务证据；原 V2 `server.py` 仍固定 AutoTest；
+- 本地数据变更不自动推送 GitHub，正式审批、任务发布和跨机器同步继续受控；
 - Codex 自助读取：目前仅在试点管理分支已有固定任务模型；项目实例必须先建立自己的 `.project-control/tasks.json` 和远端入口。
