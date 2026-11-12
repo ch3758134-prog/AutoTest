@@ -25,7 +25,7 @@ class IsolatedPackageTests(unittest.TestCase):
             self.assertFalse((root.parent / "AI_START_HERE.md").exists())
             self.assertFalse((root.parent / ".git").exists())
             self.assertTrue((root / manifest["entrypoint"]).is_file())
-            for name in ("project_init.py", "target_resolver.py"):
+            for name in ("project_init.py", "target_resolver.py", "web_server.py"):
                 script = root / "portable" / name
                 p = subprocess.run([sys.executable, str(script), "--help"],
                                    cwd=tmp, capture_output=True, text=True, encoding="utf-8")
@@ -34,13 +34,14 @@ class IsolatedPackageTests(unittest.TestCase):
             self.assertIn("目标 GitHub 仓库", start)
             self.assertIn("codex", start.lower())
 
-    def test_manifest_honestly_reports_web_ui_not_generic(self):
+    def test_manifest_honestly_reports_web_ui_is_candidate(self):
         manifest = json.loads((HERE / "PORTABLE_MANIFEST.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["capabilities"]["generic_web_ui"], "NOT_IMPLEMENTED")
-        self.assertEqual(manifest["capabilities"]["multi_project_store"], "NOT_IMPLEMENTED")
+        self.assertEqual(manifest["capabilities"]["generic_web_ui"], "CANDIDATE_LOCAL_GENERIC")
+        self.assertEqual(manifest["capabilities"]["multi_project_store"], "CANDIDATE_LOCAL_REPOSITORY_RECORDS")
         audit = (HERE / "portable/COMPLETENESS_AUDIT.md").read_text(encoding="utf-8")
         self.assertIn("server.py", audit)
         self.assertIn("AutoTest", audit)
+        self.assertIn("Windows", audit)
 
 
 if __name__ == "__main__":
