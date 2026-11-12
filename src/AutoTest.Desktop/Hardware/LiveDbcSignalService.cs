@@ -46,7 +46,19 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
         _hardware = hardware;
         _projects = projects;
         _hardware.FrameObserved += OnFrame;
+        _hardware.ConnectionChanged += OnConnectionChanged;
         _projects.CurrentChanged += OnProjectChanged;
+    }
+
+    private void OnConnectionChanged(long epoch)
+    {
+        lock (_gate)
+        {
+            _generation = epoch;
+            _latest.Clear();
+            foreach (var sink in _sinks) sink.Channel.Writer.TryComplete();
+            _sinks.Clear();
+        }
     }
 
     private void OnProjectChanged(object? sender, EventArgs e)
@@ -125,9 +137,11 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
         lock (_gate)
         {
             if (_disposed) return;
-            if (_generation != frame.SessionGeneration)
+            var epoch = _hardware.CurrentStationEpoch;
+            if (epoch == 0) return;
+            if (_generation != epoch)
             {
-                _generation = frame.SessionGeneration;
+                _generation = epoch;
                 _latest.Clear();
             }
             foreach (var item in _bindings)
@@ -165,6 +179,8 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
             return new(TestSignalStatus.Disconnected, null, "Main controller disconnected");
         lock (_gate)
         {
+            if (_generation != _hardware.CurrentStationEpoch)
+                return new(TestSignalStatus.NoFrame, null, "No frame from the current physical connection");
             if (!_bindings.TryGetValue(target.Name, out var b) || b.Mapping != target)
                 return new(TestSignalStatus.DecodeError, null, "Unbound or changed DBC mapping");
             if (!_latest.TryGetValue(target.Name, out var found))
@@ -192,7 +208,9 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            return new(TestSignalStatus.Timeout, null, "No next signal frame within timeout");
+            return !_hardware.IsConnected
+                ? new(TestSignalStatus.Disconnected, null, "Main controller disconnected")
+                : new(TestSignalStatus.Timeout, null, "No next signal frame within timeout");
         }
         throw new InvalidOperationException("Unreachable observation state");
     }
@@ -232,15 +250,23 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
             mapping = _bindings.Values.SingleOrDefault(b => b.Ref == signal)?.Mapping
                 ?? throw new WaveCaptureException("SIGNAL_SOURCE_UNAVAILABLE", "Signal not bound to a TEST mapping.");
         }
+        var epoch = _hardware.CurrentStationEpoch;
+        if (epoch == 0) throw new WaveCaptureException("DISCONNECTED", "Station is not connected.");
         var origin = TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp());
-        return ValueTask.FromResult(new WaveSignalSubscription(origin, StreamWave(mapping, ct)));
+        return ValueTask.FromResult(new WaveSignalSubscription(origin, StreamWave(mapping, epoch, ct)));
     }
 
-    private async IAsyncEnumerable<SignalObservation> StreamWave(TestTargetMapping mapping,
+    private async IAsyncEnumerable<SignalObservation> StreamWave(TestTargetMapping mapping, long epoch,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
         await foreach (var sample in ObserveAsync(mapping, ct).WithCancellation(ct))
+        {
+            if (_hardware.CurrentStationEpoch != epoch)
+                throw new WaveCaptureException("SESSION_CHANGED", "USB/CAN session changed during capture.");
             if (sample.Observation is { } observation) yield return observation;
+        }
+        if (_hardware.CurrentStationEpoch != epoch)
+            throw new WaveCaptureException("SESSION_CHANGED", "USB/CAN session changed during capture.");
     }
 
     public void Dispose()
@@ -253,6 +279,7 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
             _sinks.Clear();
         }
         _hardware.FrameObserved -= OnFrame;
+        _hardware.ConnectionChanged -= OnConnectionChanged;
         _projects.CurrentChanged -= OnProjectChanged;
     }
 }

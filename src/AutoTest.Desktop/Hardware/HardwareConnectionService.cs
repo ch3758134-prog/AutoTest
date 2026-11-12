@@ -25,6 +25,10 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;
+    private long _epochCounter;
+    private long _currentEpoch;
+    public long CurrentStationEpoch => Interlocked.Read(ref _currentEpoch);
+    public event Action<long>? ConnectionChanged;
     private bool _testRunApproved;
     private string? _approvedPlan;
 
@@ -74,6 +78,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 ObserveBusAsync(_hub, BusRole.DutCan, _monitorStop.Token),
                 ObserveBusAsync(_hub, BusRole.KeypadCan, _monitorStop.Token)
             };
+            Interlocked.Exchange(ref _currentEpoch, Interlocked.Increment(ref _epochCounter));
+            try { ConnectionChanged?.Invoke(CurrentStationEpoch); } catch { }
             Record("主控连接确认；CAN1=DUT，CAN0=按键板。CAN 接收监视已启动。");
         }
         catch
@@ -197,6 +203,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
+            Interlocked.Exchange(ref _currentEpoch, 0);
+            try { ConnectionChanged?.Invoke(0); } catch { }
             _link?.RevokePhysicalTestRun();
             _testRunApproved = false;
             _approvedPlan = null;
