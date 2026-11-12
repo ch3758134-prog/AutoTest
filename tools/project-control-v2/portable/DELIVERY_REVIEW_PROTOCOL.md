@@ -34,8 +34,8 @@ AI 应先在 ChatGPT 自然语言中交代：
 候审稿的完整正文首先保存在目标项目本地 Git 管理元数据目录下的 `project-control/deliveries.json`（通过 `git rev-parse --git-path` 定位，支持 linked worktree）。它**不是** `.project-control/management.json`，因此不会被该 JSON 的远端同步器意外发布。每个版本有 SHA-256、历史、状态、拟发布目标和来源。
 
 - 具有本地日常管理令牌的客户端可以在 `POST /api/delivery-draft-action` 使用 `stage_delivery / revise_delivery / offer_delivery_review`，只能创建和提交**待审候选**。同一令牌不能通过普通 `/api/action` 授予候审发布许可。
-- 负责人审阅界面通过 `GET /api/delivery-reviews` 读取完整候选；管理或独立审阅令牌才能读取。普通 `/api/model` 不含敏感全文，仅显示数量。
-- `POST /api/owner-delivery-decision` 需要**独立审阅令牌**、精确版本/正文 SHA、明确勾选与非空审查理由；仅接受 `REQUEST_CHANGES / HOLD / ALLOW_CANDIDATE_PUBLICATION`。旧版本许可不会继承到修改后的新正文。
+- 负责人审阅界面通过 `GET /api/delivery-reviews` 读取完整候选；管理或独立审阅令牌才能读取。负责人工作台还允许通过“导入／修订 AI 候选成果”将 AI 准备好的完整 JSON 候审包预览后保存，不要求负责人自己撰写研究；所有入库均为私有内部草稿，改动旧正文会失效既有候审发布许可。普通 `/api/model` 不含敏感全文，仅显示数量。
+- `POST /api/owner-delivery-decision` 需要**独立审阅令牌**、精确版本/正文 SHA、明确勾选与非空审查理由；仅接受 `REQUEST_CHANGES / HOLD / ACKNOWLEDGE_INTERNAL_REVIEW / ALLOW_CANDIDATE_PUBLICATION`。其中 `ACKNOWLEDGE_INTERNAL_REVIEW` 仅记录已阅读，不允许对外发布，也不是正式工程批准；标为 `NO_EXTERNAL_PUBLICATION` 的成果不可以获得对外候审发布许可。旧版本许可不会继承到修改后的新正文。
 - 上述接口对项目身份、状态和存储修订执行 CAS；只有本地受控写入，**不会自动 Git commit、push、发 Issue 评论或创建 PR**。实际 GitHub 发布必须通过单独控制的发布动作，再核验对象、发布许可、目标和真实远端结果。
 - 若新 AI 只有 GitHub 网页连接而无法访问用户的本地审阅存储，必须**先在聊天中展示成果并请求明确的发布许可**；不能假装本地审阅状态已经写入。受支持的托管工作平台需另外实现可信的 review+publication handoff。
 - 本地令牌不是密码学意义的“这个真人确实阅读过”，仅证明客户端持有该进程的独立能力令牌。正式产品/范围/需求/设计批准必须从可信人类外部渠道独立核对。
