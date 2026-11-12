@@ -14,7 +14,62 @@ const action=(text,id)=>'<button class="primary" data-action="'+e(id)+'">'+e(tex
 const project=()=>model.project, management=()=>model.management;
 function notify(message,error=false){const n=$("#toast");n.textContent=message;n.style.background=error?"#854747":"#28475f";n.classList.add("visible");setTimeout(()=>n.classList.remove("visible"),3400);}
 async function read(url){const r=await fetch(url,{cache:"no-store"});const data=await r.json();if(!r.ok)throw Error(data.error||"读取失败");return data;}
-async function loadProjects(){const data=await read("/api/projects");projects=data.projects;if(!projects.length)throw Error("没有已登记的项目");const id=selected&&projects.some(p=>p.project_id===selected)?selected:projects[0].project_id;$("#project-select").innerHTML=projects.map(p=>'<option value="'+e(p.project_id)+'">'+e(p.display_name||p.project_id)+'</option>').join("");selected=id;$("#project-select").value=id;await loadModel();}
+function emptyProjectHome(){
+ model=null; selected=null; page="overview";
+ $("#project-select").innerHTML='<option value="">尚未登记项目</option>';
+ $("#project-select").disabled=true;
+ $("#project-source").textContent="管理系统已启动 · 尚未连接任何目标项目";
+ $("#sync-pill").textContent="未连接项目";
+ $("#crumb-current").textContent="项目接入";
+ document.querySelectorAll("nav button").forEach(x=>{x.classList.remove("active");x.disabled=true;});
+ $("#main").innerHTML=
+ '<div class="heading"><div><div class="eyebrow">PROJECT CONTROL</div><h1>项目管理工作台</h1><p>软件已经启动。你还没有登记项目，不需要创建测试工程，也不应将软件自身当成管理对象。</p></div></div>'+
+ '<div class="hero"><div><div class="eyebrow">开始使用</div><h2>先接入一个真实项目</h2><p>可以接管已有源码项目，也可以从一个真实 GitHub 仓库开始新项目。目标工程与项目管理工具是两套独立文件。</p><p style="margin-top:16px"><button class="primary" id="empty-register-target">登记已初始化项目</button></p></div><div class="mini"><strong>当前状态</strong><p>服务已就绪</p><br><strong>已登记项目</strong><p>0</p></div></div>'+
+ '<section class="section pair">'+
+ '<div class="panel"><h2>已有项目</h2><p>先对目标仓库进行资产审查，再初始化自己的 .project-control 记录。完成后在这里登记本地目标项目根目录。</p><p class="muted">不会自动写入 AutoTest 或任何未授权目录。</p></div>'+
+ '<div class="panel"><h2>新项目</h2><p>从实际目标仓库建立工程标识、需求和管理基线。初始化必须明确目标目录与 GitHub origin，不能凭管理工具的安装位置猜测。</p><p class="muted">新建 / 接管的命令见 portable/WEB_WORKSPACE.md。</p></div></section>';
+}
+async function loadProjects(){
+ const data=await read("/api/projects");
+ projects=data.projects||[];
+ if(!projects.length){emptyProjectHome();return;}
+ $("#project-select").disabled=false;
+ document.querySelectorAll("nav button").forEach(x=>x.disabled=false);
+ const id=selected&&projects.some(p=>p.project_id===selected)?selected:projects[0].project_id;
+ $("#project-select").innerHTML=projects.map(p=>'<option value="'+e(p.project_id)+'">'+e(p.display_name||p.project_id)+'</option>').join("");
+ selected=id;$("#project-select").value=id;await loadModel();
+}
+function showTargetRegistration(){
+ $("#register-path").value="";
+ $("#register-result").textContent="已有项目必须先按初始化协议生成 .project-control；此操作不会写入目标工程。";
+ $("#register-dialog").showModal();
+}
+async function registerTarget(event){
+ event.preventDefault();
+ const folder=$("#register-path").value.trim();
+ if(!folder)return;
+ if(!await getOwnerToken())return;
+ $("#register-result").textContent="正在核对真实 Git 仓库和项目管理记录…";
+ try{
+   const response=await fetch("/api/register-target",{
+     method:"POST",
+     headers:{"Content-Type":"application/json","X-Owner-Token":ownerToken},
+     body:JSON.stringify({path:folder})
+   });
+   const data=await response.json();
+   if(!response.ok){
+     if(response.status===403)ownerToken="";
+     throw Error(data.error||"无法登记该目录");
+   }
+   selected=data.project_id;
+   $("#register-dialog").close();
+   await loadProjects();
+   notify("已登记项目 "+(data.display_name||data.project_id)+"；未修改任何工程文件。");
+ }catch(error){
+   $("#register-result").textContent=error.message+
+   "。若项目尚未初始化，请先在真实项目 Git 根目录运行 portable/project_init.py 的 inspect、preview、apply；不要创建临时假项目。";
+ }
+}
 async function loadModel(){remoteSnapshot=null;workspaceSnapshot=null;moduleRemoteSnapshot=null;model=await read("/api/model?project_id="+encodeURIComponent(selected));$("#project-source").textContent=model.project.repo_url;$("#sync-pill").textContent=model.git.dirty?"本地有未提交变更":"本地 HEAD · 远端未核对";render();}
 const count=(collection)=>management()[collection]?.length||0;
 const mstatus=()=>management().status;
@@ -183,7 +238,10 @@ async function fetchRemoteModules(){
  }catch(err){notify(err.message,true);}
 }
 async function collectRegisteredReceipts(){if(!await getOwnerToken())return;try{const r=await fetch("/api/collect-registered-receipts",{method:"POST",headers:{"Content-Type":"application/json","X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected})});const data=await r.json();if(!r.ok){if(r.status===403)ownerToken="";throw Error(data.error||"登记工作区回执收集失败");}await loadModel();notify("已登记工作区："+data.registered_examined+"；导入："+data.imported.length+"；待审："+data.held.length,Boolean(data.held.length));}catch(err){notify(err.message,true);}}
-document.addEventListener("click",event=>{if(event.target.closest("#check-module-remote")){fetchRemoteModules();return;}if(event.target.closest("#show-workspaces")){showWorkspaces();return;}if(event.target.closest("#collect-registered-receipts")){collectRegisteredReceipts();return;}if(event.target.closest("#check-remote")){checkRemote();return;}if(event.target.closest("#collect-receipts")){collectLocalReceipts();return;}const review=event.target.closest("[data-review]");if(review){openForm("review_receipt",review.dataset.review);return;}for(const [selector,cmd] of [["[data-plan-submit]","submit_plan"],["[data-plan-revise]","revise_plan"],["[data-plan-review]","record_plan_review"],["[data-change-assess]","assess_change"]]){const el=event.target.closest(selector);if(el){openForm(cmd,el.getAttribute(selector.slice(1,-1)));return;}}const nav=event.target.closest("[data-page]");if(nav){page=nav.dataset.page;render();return;}const work=event.target.closest("[data-progress]");if(work){openForm("set_progress",work.dataset.progress);return;}const btn=event.target.closest("[data-action]");if(btn){openForm(btn.dataset.action);return;}if(event.target.closest("#copy-handoff")){navigator.clipboard?.writeText(handoffText).then(()=>notify("已复制启动消息")).catch(()=>notify("浏览器不允许剪贴板，请手动复制",true));}});
+document.addEventListener("click",event=>{if(event.target.closest("#show-register-target")||event.target.closest("#empty-register-target")){showTargetRegistration();return;}if(event.target.closest("#check-module-remote")){fetchRemoteModules();return;}if(event.target.closest("#show-workspaces")){showWorkspaces();return;}if(event.target.closest("#collect-registered-receipts")){collectRegisteredReceipts();return;}if(event.target.closest("#check-remote")){checkRemote();return;}if(event.target.closest("#collect-receipts")){collectLocalReceipts();return;}const review=event.target.closest("[data-review]");if(review){openForm("review_receipt",review.dataset.review);return;}for(const [selector,cmd] of [["[data-plan-submit]","submit_plan"],["[data-plan-revise]","revise_plan"],["[data-plan-review]","record_plan_review"],["[data-change-assess]","assess_change"]]){const el=event.target.closest(selector);if(el){openForm(cmd,el.getAttribute(selector.slice(1,-1)));return;}}const nav=event.target.closest("[data-page]");if(nav){page=nav.dataset.page;render();return;}const work=event.target.closest("[data-progress]");if(work){openForm("set_progress",work.dataset.progress);return;}const btn=event.target.closest("[data-action]");if(btn){openForm(btn.dataset.action);return;}if(event.target.closest("#copy-handoff")){navigator.clipboard?.writeText(handoffText).then(()=>notify("已复制启动消息")).catch(()=>notify("浏览器不允许剪贴板，请手动复制",true));}});
+$("#register-form").addEventListener("submit",registerTarget);
+$("#register-close").addEventListener("click",()=>$("#register-dialog").close());
+$("#register-cancel").addEventListener("click",()=>$("#register-dialog").close());
 $("#project-select").addEventListener("change",async event=>{selected=event.target.value;page="overview";try{await loadModel();}catch(err){notify(err.message,true);$("#main").textContent=err.message;}});
 $("#refresh").addEventListener("click",()=>loadModel().catch(err=>notify(err.message,true)));
 $("#form-close").addEventListener("click",()=>$("#edit-dialog").close());$("#form-cancel").addEventListener("click",()=>$("#edit-dialog").close());$("#edit-form").addEventListener("submit",submitForm);
