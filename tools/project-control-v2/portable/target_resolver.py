@@ -128,6 +128,22 @@ def pick(project, registry, task_id=None):
     if (not isinstance(auth, dict) or not auth.get("approved_by")
             or not auth.get("approval_reference")):
         raise TaskError("task lacks a human-confirmed implementation authorization")
+    decisions = json.loads((STATE / "decisions.json").read_text(encoding="utf-8"))
+    if (decisions.get("schema") != "project-control-target-decisions/1"
+            or decisions.get("project_id") != project.get("project_id")
+            or not isinstance(decisions.get("decisions"), list)):
+        raise TaskError("valid project decision history is required")
+    approved_tasks = [
+        d for d in decisions["decisions"] if isinstance(d, dict)
+        and d.get("kind") == "TASK_EXECUTION_APPROVAL"
+        and d.get("state") == "APPROVED"
+        and d.get("task_id") == t.get("id")
+        and d.get("source_sha") == source["pinned_sha"]
+        and d.get("approved_by") == auth["approved_by"]
+        and d.get("approval_reference") == auth["approval_reference"]
+    ]
+    if len(approved_tasks) != 1:
+        raise TaskError("task lacks a unique separately recorded execution approval")
     required = {"NO_FORCE_PUSH", "NO_MERGE", "NO_RESET", "NO_UNAUTHORIZED_DELETE"}
     if not required.issubset(set(t.get("restrictions", []))):
         raise TaskError("mandatory operation restrictions are missing")
@@ -150,11 +166,6 @@ def pick(project, registry, task_id=None):
                 or project.get("scope_decision") != "APPROVED"):
             raise TaskError("formal project identity/scope not yet approved for controlled work")
         # Do not treat a bare path or claimed stage as approved design.
-        decisions = json.loads((STATE / "decisions.json").read_text(encoding="utf-8"))
-        if (decisions.get("schema") != "project-control-target-decisions/1"
-                or decisions.get("project_id") != project.get("project_id")
-                or not isinstance(decisions.get("decisions"), list)):
-            raise TaskError("valid formal decision history is required")
         candidates = []
         for entry in t["inputs"]:
             if not isinstance(entry, dict) or entry.get("type") != "DESIGN_BASELINE":
