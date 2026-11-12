@@ -107,7 +107,7 @@
     <DockPanel LastChildFill="True">
      <Border DockPanel.Dock="Top" Background="White" Padding="16,12,14,9" BorderBrush="{StaticResource EditorLine}" BorderThickness="0,0,0,1" CornerRadius="8,8,0,0">
       <StackPanel>
-       <DockPanel Margin="0,0,0,12">
+       <DockPanel LastChildFill="False" Margin="0,0,0,12">
         <TextBlock Text="测试步骤" Style="{StaticResource EditorSection}"/>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
          <Button Content="↶" Command="{Binding UndoCommand}" Style="{StaticResource EditorAction}" ToolTip="撤销 (Ctrl+Z)"/>
