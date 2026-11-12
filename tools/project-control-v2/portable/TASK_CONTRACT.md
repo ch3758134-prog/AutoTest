@@ -58,6 +58,8 @@
 2. 读取 `PROJECT_START_HERE.md`、`.project-control/project.json`、`.project-control/tasks.json`，然后执行 `python .project-control/resolve.py select`。若有多个 READY，必须明确任务 ID。
 3. 在原始来源分支执行 `python .project-control/resolve.py claim` 登记本地起点，再创建任务专属分支。
 4. 按任务允许范围实施并测试，最后执行 `python .project-control/resolve.py verify-scope`；失败不得自动 reset 或清理。
-5. 提交准确 Git SHA、命令/日志证据和工作区处置状态给工程协调者；能否 push/创建 PR/合并由单独授权与真实权限规则决定。
+5. 实施代码全部形成被授权范围内的实际提交且工作树无未跟踪修改后，在本地运行 `python .project-control/resolve.py report`。它生成 `project-control-codex-result/1` 回执，位于该 Git worktree 的内部元数据目录，不会修改 `.project-control/tasks.json` 或自动上传。
+6. 管理 AI 可使用通用 Web 服务的当前工作区回执收集接口进行独立 Git 范围审查；提交 SHA 未在管理工作区取得则保持未核实。测试日志 SHA 仍须另行核对，不因 Codex 自报就成为 PASS。
+7. 提交准确 Git SHA、真实命令/日志证据和工作区处置状态给工程协调者；能否 push/创建 PR/合并由单独授权与真实权限规则决定。
 
 原始本地执行记录和临时绝对路径不默认上传到 GitHub。未经确认的历史内容不得被管理 AI 自动标为批准。
