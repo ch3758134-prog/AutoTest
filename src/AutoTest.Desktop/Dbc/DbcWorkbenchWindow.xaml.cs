@@ -22,11 +22,11 @@ public partial class DbcWorkbenchWindow : Window
 
     private void MessageList_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (_viewModel.EditMessageCommand.CanExecute()) _viewModel.EditMessageCommand.Execute();
+        if (_viewModel.CanEdit && !_viewModel.IsBusy) _viewModel.EditMessage();
     }
 
     private void SignalGrid_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (_viewModel.EditSignalCommand.CanExecute()) _viewModel.EditSignalCommand.Execute();
+        if (_viewModel.CanEdit && !_viewModel.IsBusy) _viewModel.EditSignal();
     }
 }

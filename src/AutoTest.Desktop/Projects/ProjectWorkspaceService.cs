@@ -2,6 +2,7 @@ using System.IO;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
 using AutoTest.Projects.Dbc.Editing;
+using AutoTest.Projects.Dbc;
 using AutoTest.Core;
 using AutoTest.Testing.Authoring;
 using System.Security.Cryptography;
@@ -238,6 +239,13 @@ public sealed class ProjectWorkspaceService
             throw new InvalidDataException("现有 DBC 工作台仅支持打开最大 4 MB 的文件。请先精简或拆分 DBC。");
         var bytes = await File.ReadAllBytesAsync(source, ct);
         var name = Path.GetFileNameWithoutExtension(source);
+        // Do not register a resource that the existing Projects parser cannot open.
+        // Rich directives remain importable but are explicitly read-only if unsafe to export.
+        await Task.Run(() =>
+        {
+            var decoded = DbcSource.Load(bytes);
+            _ = DbcWorkbenchDocument.Import(name, decoded.Text);
+        }, ct);
         return await AddAssetAsync(DbcKind, name, ".dbc", bytes, ct);
     }
 
