@@ -35,6 +35,10 @@ python tools/project-control-v2/portable/export_package.py --out ProjectControl.
 - **候选状态**：真实目标 GitHub 仓库的端到端交付、完整人类授权、Windows 实际现场验收尚未完成。不能把本地脚本测试等同正式交付。
 
 
+## 体系审查与追踪
+
+完整问题分析、外部方案比较、跨文件修订范围及尚未完成的验证，见 [AI_CONTEXT_ARCHITECTURE_REVIEW_20261112.md](AI_CONTEXT_ARCHITECTURE_REVIEW_20261112.md)。
+
 ## 4.4 候选｜证据评价与主动补全
 
 首次项目接管不能把关键词搜索无结果直接当作资料不存在，也不能把找到的历史文档当作当前生效的产品定义。新方法 [portable/EVIDENCE_AND_REMEDIATION.md](portable/EVIDENCE_AND_REMEDIATION.md) 将来源发现、当前适用性审查、历史变更和缺失工程依据的补全责任分开。[portable/context_assessment.py](portable/context_assessment.py) 校验新版结构化调查记录，旧 `context_discovery.py` 仅保留历史格式的可读性。
