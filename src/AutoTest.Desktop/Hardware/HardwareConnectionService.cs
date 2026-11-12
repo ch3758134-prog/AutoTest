@@ -20,6 +20,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private CancellationTokenSource? _monitorStop;
     private Task[] _monitorTasks = Array.Empty<Task>();
     public bool IsConnected => _usb?.State == UsbSessionState.Connected;
+    public bool HasSession => _usb is not null;
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;

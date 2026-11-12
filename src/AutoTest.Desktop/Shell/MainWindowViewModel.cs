@@ -26,6 +26,9 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly HardwareConnectionService _hardware;
     private readonly KeyboardWedgeCapture _scanCapture;
+    private readonly CancellationTokenSource _scanStop = new();
+    private readonly Task _scanReader;
+    private string? _activeEditorProjectPath;
     private string _hardwareStatus = "USB 未连接";
     private string _scanStatus = "扫码未开始";
     private bool _hardwareBusy;
@@ -58,6 +61,15 @@ public sealed class MainWindowViewModel : BindableBase
         router.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
         router.SetAdmissionGate(() => !_hardwareBusy);
         _scanCapture = new KeyboardWedgeCapture(router);
+        _scanReader = Task.Run(async () =>
+        {
+            try
+            {
+                await foreach (var _ in router.ObserveAsync(new InputPolicy(true, 512, "keyboard"),
+                                   _scanStop.Token)) { /* Drain accepted ingress; UI updates from capture results. */ }
+            }
+            catch (OperationCanceledException) when (_scanStop.IsCancellationRequested) { }
+        });
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
         _dbcDialogs = dbcDialogs;
@@ -105,6 +117,10 @@ public sealed class MainWindowViewModel : BindableBase
             }));
         _workspace.CurrentChanged += (_, _) =>
         {
+            if (_activeEditorProjectPath is not null &&
+                !string.Equals(_activeEditorProjectPath, _workspace.Current?.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase))
+                ClearEditor();
             RaisePropertyChanged(nameof(HasProject));
             RaisePropertyChanged(nameof(CurrentProjectName));
             RaisePropertyChanged(nameof(CurrentProjectPath));
@@ -141,7 +157,7 @@ public sealed class MainWindowViewModel : BindableBase
         private set => SetProperty(ref _scanStatus, value);
     }
     public string ConnectionButtonText => _hardwareBusy ? "正在操作…" :
-        _hardware.IsConnected ? "断开" : "连接";
+        _hardware.HasSession ? "断开" : "连接";
     public DelegateCommand ConnectHardwareCommand { get; }
     public DelegateCommand OpenCanMonitorCommand { get; }
     public DelegateCommand TransmitCanCommand { get; }
@@ -237,7 +253,7 @@ public sealed class MainWindowViewModel : BindableBase
         ConnectHardwareCommand.RaiseCanExecuteChanged();
         try
         {
-            if (_hardware.IsConnected) await _hardware.DisconnectAsync();
+            if (_hardware.HasSession) await _hardware.DisconnectAsync();
             else await _hardware.ConnectAsync();
             HardwareStatus = _hardware.IsConnected ? "USB 主控已连接（只读检测通过）" : "USB 已断开";
         }
@@ -253,6 +269,16 @@ public sealed class MainWindowViewModel : BindableBase
             ConnectHardwareCommand.RaiseCanExecuteChanged();
         }
     }
+    public async Task ShutdownAsync()
+    {
+        _scanStop.Cancel();
+        try { await _scanReader; }
+        catch (OperationCanceledException) { }
+        _scanStop.Dispose();
+        try { await _hardware.DisposeAsync(); }
+        catch (Exception error) { StatusMessage = "程序关闭期间主控断开失败：" + error.Message; }
+    }
+
     private void OpenCanMonitor()
     {
         if (IsAlreadyOpen("can|monitor") || !ConfirmCloseActiveEditor()) return;
@@ -280,6 +306,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void ActivateEditor(string key, UserControl editor, string title, Func<bool> confirmClose)
     {
         _activeEditorKey = key;
+        _activeEditorProjectPath = _workspace.Current?.ManifestPath;
         _confirmEditorClose = confirmClose;
         ActiveEditorTitle = title;
         ActiveEditorView = editor;
@@ -294,6 +321,7 @@ public sealed class MainWindowViewModel : BindableBase
         ActiveEditorView = null;
         ActiveEditorTitle = "";
         _activeEditorKey = null;
+        _activeEditorProjectPath = null;
         _confirmEditorClose = null;
     }
     public bool HasProject => _workspace.Current is not null;

@@ -9,6 +9,8 @@ namespace AutoTest.Desktop.Shell;
 public partial class MainWindow : Window
 {
     private readonly MainWindowViewModel _viewModel;
+    private bool _shutdownStarted;
+    private bool _shutdownComplete;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -16,9 +18,18 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
-        Closing += (_, e) =>
+        Closing += async (_, e) =>
         {
-            if (!_viewModel.ConfirmCloseActiveEditor()) e.Cancel = true;
+            if (_shutdownComplete) return;
+            e.Cancel = true;
+            if (_shutdownStarted || !_viewModel.ConfirmCloseActiveEditor()) return;
+            _shutdownStarted = true;
+            try { await _viewModel.ShutdownAsync(); }
+            finally
+            {
+                _shutdownComplete = true;
+                Close();
+            }
         };
     }
 
