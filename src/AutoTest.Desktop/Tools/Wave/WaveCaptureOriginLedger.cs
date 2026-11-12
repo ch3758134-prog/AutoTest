@@ -11,8 +11,8 @@ public sealed record WaveCaptureOriginFact(Guid CaptureEvidence, WaveInputKind I
     string? ArchiveSha256, string ExternalOperationId);
 
 /// <summary>
-/// Append-only provenance for the existing V1 WaveEvidenceDocument schema. The legacy G4
-/// generated-frame timestamps are ReplayDerived, but the data is explicitly classified Mock.
+/// Append-only provenance for WaveEvidenceDocument captures. Generated-frame
+/// timestamps can be ReplayDerived, but generated data must be classified Mock.
 /// ExternalOperationId is deliberately UNKNOWN until RECORD/INTEGRATION supplies the global ID.
 /// </summary>
 public sealed class WaveCaptureOriginLedger

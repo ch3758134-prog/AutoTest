@@ -267,10 +267,10 @@ public sealed class WaveComparatorTests
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (root is not null &&
-               !File.Exists(Path.Combine(root.FullName, "samples", "G4-WAVE", "fixed_signal_replay.json")))
+               !File.Exists(Path.Combine(root.FullName, "samples", "wave", "fixed_signal_replay.json")))
             root = root.Parent;
         Assert.NotNull(root);
-        var bytes = File.ReadAllBytes(Path.Combine(root!.FullName, "samples", "G4-WAVE",
+        var bytes = File.ReadAllBytes(Path.Combine(root!.FullName, "samples", "wave",
             "fixed_signal_replay.json"));
         var fixture = WaveReplayFixtureCodec.Read(bytes);
         var location = Path.Combine(Path.GetTempPath(), "wave-fixture-" + Guid.NewGuid().ToString("N"));
