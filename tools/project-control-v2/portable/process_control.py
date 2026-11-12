@@ -17,7 +17,7 @@ SCHEMA = "project-control-process-state/1"
 ID = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{1,99}$")
 HEAD = re.compile(r"^[a-f0-9]{40}$")
 ACTIONS = frozenset(("open_process_activity", "set_process_obligation", "review_process_activity",
-                     "request_process_review", "record_ai_intake", "record_ai_work_report"))
+                     "request_process_review", "record_ai_intake", "record_ai_work_report", "set_process_focus"))
 DISPOSITIONS = frozenset(("SATISFIED_CANDIDATE", "NOT_APPLICABLE_PROPOSED",
                           "DEFERRED_PROPOSED", "EXCEPTION_REQUESTED", "OPEN", "CONFLICT"))
 REVIEWS = frozenset(("ADEQUATE_CANDIDATE", "REWORK_REQUIRED", "INSUFFICIENT_EVIDENCE"))
@@ -57,6 +57,16 @@ def catalog():
             raise ProcessError("invalid obligation catalog")
         if any(o["kind"] not in ("CORE", "CONDITIONAL") for o in p["obligations"]):
             raise ProcessError("invalid obligation kind")
+    for proc in result["processes"]:
+        guide=proc.get("owner_guidance")
+        if not isinstance(guide,dict) or any(not isinstance(guide.get(k),str) or not guide[k].strip() for k in ("why","expected_result","owner_focus")):
+            raise ProcessError("missing owner guidance")
+        for key in ("entry_checks","work_method","review_checks","handoff_expectations"):
+            if not proc.get(key) or not isinstance(proc[key],list):
+                raise ProcessError("missing process methods and review criteria")
+        role_notes=proc.get("reporting_guidance",{})
+        if any(not role_notes.get(r) for r in proc["responsible_roles"]):
+            raise ProcessError("missing role handoff rules")
     for profile in result["profiles"]:
         if any(x not in ids for x in profile["process_ids"]):
             raise ProcessError("invalid process profile")
@@ -69,9 +79,9 @@ def initial_state(profile_id="general-rd", config=None):
     return {"schema": SCHEMA, "catalog_version": config["version"],
             "catalog_sha256": hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest(),
             "profile_id": profile_id, "profile_status": "PROPOSED_NOT_APPROVED", "activities": [], "intakes": [], "reports": [],
-            "review_requests": [], "warning": "No formal owner approval or task authorization is issued here."}
+            "review_requests": [], "current_focus": None, "focus_history": [], "warning": "No formal owner approval or task authorization is issued here."}
 
-def state_for(record, config=None):
+def state_for(record, config=None, *, allow_stale=False):
     if not isinstance(record, dict):
         raise ProcessError("invalid management record")
     value = record.setdefault("process_control", initial_state(config=config))
@@ -80,13 +90,20 @@ def state_for(record, config=None):
     config = config or catalog()
     if (value.get("catalog_version") != config["version"] or
         value.get("catalog_sha256") != hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest()):
-        raise ProcessError("process policy version/hash conflict: explicit migration review required")
+        if not allow_stale:
+            raise ProcessError("process policy version/hash conflict: explicit migration review required")
     if value.get("profile_id") not in {p["id"] for p in config["profiles"]}:
         raise ProcessError("unknown project process profile")
     for name in ("activities", "intakes", "reports", "review_requests"):
         if not isinstance(value.get(name), list):
             raise ProcessError("invalid process state: " + name)
+    if value.get("current_focus") is not None and not isinstance(value["current_focus"],dict):
+        raise ProcessError("invalid focus record")
     return value
+
+def policy_is_current(state):
+    return (state.get("catalog_version")==catalog()["version"] and
+            state.get("catalog_sha256")==hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest())
 
 def locate(seq, id, label):
     return next((x for x in seq if x.get("id") == id), None) or _missing(label)
@@ -132,7 +149,15 @@ def apply(record, action, payload):
         raise ProcessError("unsupported process action")
     config = catalog()
     state = state_for(record, config)
-    if action == "open_process_activity":
+    if action == "set_process_focus":
+        a=locate(state["activities"],identifier(payload.get("activity_id"),"activity id"),"activity")
+        focus={"activity_id":a["id"],"activity_revision":a["revision"],
+               "reason":word(payload.get("reason"),"focus reason",1000),
+               "source_refs":strings(payload.get("source_refs"),"focus evidence",required=True),
+               "state":"CANDIDATE_NOT_APPROVED"}
+        state.setdefault("focus_history",[]).append(focus)
+        state["current_focus"]=focus
+    elif action == "open_process_activity":
         id = identifier(payload.get("id"), "activity id")
         unique(state["activities"], id)
         process = process_for(state, word(payload.get("process_id"), "process id", 80), config)
@@ -169,6 +194,9 @@ def apply(record, action, payload):
         activity["revision"] += 1
         activity["technical_review"] = None
         activity["state"] = "DRAFT_NOT_APPROVED"
+        for r in state["reports"]:
+            if r.get("activity_id")==activity["id"]:
+                r["freshness"]="STALE_AFTER_ACTIVITY_REVISION"
         for req in state["review_requests"]:
             if req["activity_id"] == activity["id"] and req["state"] == "REQUESTED_NOT_APPROVED":
                 req["state"] = "STALE_AFTER_REVISION"
@@ -241,8 +269,20 @@ def apply(record, action, payload):
                 raise ProcessError("NONE owner action cannot request a decision")
         else:
             owner_request = word(owner_request, "specific owner request", 1000)
+        intake=locate(state["intakes"],identifier(payload.get("intake_id"),"intake id"),"intake")
+        activity_id=payload.get("activity_id") or None
+        a=locate(state["activities"],identifier(activity_id,"activity id"),"activity") if activity_id else None
+        audience=payload.get("audience") or ("OWNER" if intake["role"]=="coordinator" else "COORDINATOR")
+        if audience not in ("OWNER","COORDINATOR","SPECIALIST","EXECUTOR"):
+            raise ProcessError("invalid report audience")
+        kind=payload.get("report_kind") or "PROGRESS"
+        if kind not in ("PROGRESS","FINDING","BLOCKER","REVIEW","HANDOFF","DELIVERY"):
+            raise ProcessError("invalid report kind")
         state["reports"].append({"id": id,
-            "intake_id": locate(state["intakes"], identifier(payload.get("intake_id"), "intake id"), "intake")["id"],
+            "intake_id":intake["id"],"reporter_role":intake["role"],
+            "audience":audience,"report_kind":kind,"activity_id":activity_id,
+            "activity_revision":a["revision"] if a else None,
+            "freshness":"CURRENT_AT_RECORDING",
             "focus": focus, "why_this_work": why, "judgement": judgement,
             "owner_action": owner_action, "owner_request": owner_request.strip(),
             "summary": word(payload.get("summary"), "completed work"),

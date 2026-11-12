@@ -4,6 +4,8 @@
 
 ## VNext 首先读取：工程过程与 AI 接管
 
+通用研发所有活动与岗位均需读取 [portable/REPORTING_PROTOCOL.md](portable/REPORTING_PROTOCOL.md)，按过程解释工作的目的、成果和真正需要的决策，不能只复述管理状态或旧 P0 案例。
+
 新 AI 的第一份可见报告应先按 [portable/REPORTING_PROTOCOL.md](portable/REPORTING_PROTOCOL.md) 解释**当前工作、为什么做、核心判断、下一步和真实待决事项**，不能直接以 P0、HEAD 和状态数量当作交付。
 
 - [portable/PROCESS_SYSTEM.md](portable/PROCESS_SYSTEM.md)：完整的过程、责任履行、AI 接管报告与正式批准边界。

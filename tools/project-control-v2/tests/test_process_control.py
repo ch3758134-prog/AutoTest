@@ -27,7 +27,7 @@ class ProcessControlTests(unittest.TestCase):
 
     def test_catalog_has_procedures_not_fixed_gate_model(self):
         data = catalog()
-        self.assertEqual(data['version'], '1.0.0')
+        self.assertEqual(data['version'], '1.2.0')
         self.assertIn('initiation', {x['id'] for x in data['processes']})
         self.assertIn('research', {x['id'] for x in data['profiles']})
         self.assertNotIn('G4', [x['id'] for x in data['processes']])

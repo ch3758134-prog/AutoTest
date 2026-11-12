@@ -17,7 +17,7 @@ from github_bridge import GitHub, RemoteError
 from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS, KINDS as GOVERNANCE_FIELDS
 from process_control import (apply as apply_process, ACTIONS as PROCESS_ACTIONS,
                              catalog as process_catalog, initial_state as initial_process_state,
-                             state_for as process_state_for, ProcessError)
+                             state_for as process_state_for, policy_is_current, ProcessError)
 from module_control import (add_module, assign_work as assign_module_work,
                             defined_modules, local_source_snapshot, assess_candidate_paths,
                             ModuleError)
@@ -234,7 +234,7 @@ class Target:
             if name in value and not isinstance(value[name], list):
                 raise ManagementError("invalid governance collection: " + name)
         try:
-            process_state_for(value)
+            process_state_for(value, allow_stale=True)
         except ProcessError as error:
             raise ManagementError("invalid process state: " + str(error)) from error
         try:
@@ -264,7 +264,7 @@ class Target:
             management.setdefault("modules", [])
             for name in GOVERNANCE_FIELDS:
                 management.setdefault(name, [])
-            process_state_for(management)
+            process_state_for(management, allow_stale=True)
             assets = load_json(self.directory / "assets.json")
             decisions = load_json(self.directory / "decisions.json")
             tasks = load_json(self.directory / "tasks.json")
@@ -313,6 +313,7 @@ class Target:
                 "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
                 "process_catalog": process_catalog(),
+                "process_policy_current": policy_is_current(management["process_control"]),
                 "git": {
                     "head": self.head_or_none(),
                     "branch": git(self.root, "branch", "--show-current") or "(detached)",
