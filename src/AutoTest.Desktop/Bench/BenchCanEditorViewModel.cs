@@ -166,6 +166,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
     public string PeriodicStatus { get => _periodicStatus; private set => SetProperty(ref _periodicStatus, value); }
     public bool Dirty => _dirty;
     public bool CanEdit => !_working && !_periodicRunning;
+    public bool IsSendTableReadOnly => !CanEdit;
     public bool CanStartPeriodic => CanEdit && CheckedCount > 0;
     public bool CanSendOnce => CanEdit && SelectedMessage is not null;
     public bool IsPeriodicRunning => _periodicRunning;
@@ -513,6 +514,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         }
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(IsSendTableReadOnly));
         RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(CanSendOnce));
         try
@@ -554,6 +556,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         }
         catch (Exception ex) { Status = "CAN 配置加载失败：" + ex.Message; }
         finally { _working = false; RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(IsSendTableReadOnly));
         RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(CanSendOnce)); }
     }
@@ -568,6 +571,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         }
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(IsSendTableReadOnly));
         RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(CanSendOnce));
         try
@@ -587,6 +591,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         }
         catch (Exception ex) { Status = "保存失败，编辑内容保留：" + ex.Message; }
         finally { _working = false; RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(IsSendTableReadOnly));
         RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(CanSendOnce)); }
     }
@@ -614,6 +619,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         if (!TryGetSavedSnapshot(out var message) || message is null) return;
         _working = true;
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(IsSendTableReadOnly));
         RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(CanSendOnce));
         try
@@ -626,6 +632,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         }
         catch (Exception ex) { Status = "CAN1 单发异常，实际发送结果 UNKNOWN：" + ex.Message; _audit(Status); }
         finally { _working = false; RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(IsSendTableReadOnly));
         RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(CanSendOnce)); }
     }
@@ -663,6 +670,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
         _frameCount = 0;
         RaisePropertyChanged(nameof(IsPeriodicRunning));
         RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(IsSendTableReadOnly));
         RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(CanSendOnce));
         RaisePropertyChanged(nameof(SendModeStatus));
@@ -700,6 +708,7 @@ public sealed class BenchCanEditorViewModel : BindableBase
             _periodicRunning = false;
             RaisePropertyChanged(nameof(IsPeriodicRunning));
             RaisePropertyChanged(nameof(CanEdit));
+        RaisePropertyChanged(nameof(IsSendTableReadOnly));
         RaisePropertyChanged(nameof(CanStartPeriodic));
         RaisePropertyChanged(nameof(CanSendOnce));
             RaisePropertyChanged(nameof(SendModeStatus));
