@@ -29,6 +29,15 @@ vm.runInContext(fs.readFileSync(path.join(here,'app.js'),'utf8'),ctx);
 vm.runInContext('data=model',ctx);
 const render=(expr)=>vm.runInContext(expr,ctx);
 
+const entryText=render('aiEntryMessage()');
+assert.match(entryText,/AI_START_HERE.md/);
+assert.match(entryText,/主动向我问一个必要的问题/);
+assert.match(entryText,/不要将自身默认为工程总协调/);
+const handoffPage=render('handoff()');
+assert.match(handoffPage,/复制统一 AI 阅读入口/);
+assert.match(handoffPage,/data-ai-entry/);
+assert.doesNotMatch(handoffPage,/必须手动选择角色/);
+
 const reviews=render('reviews()');
 assert.ok(reviews.includes('成熟通用 ECU 测试软件整体工作流调查'));
 assert.ok(!reviews.includes('完整自动测试行为要求矩阵（12 项'));
