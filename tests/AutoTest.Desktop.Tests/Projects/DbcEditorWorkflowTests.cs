@@ -63,6 +63,12 @@ public sealed class DbcEditorWorkflowTests
             Assert.False(opened.Document.IsDirty);
             Assert.Equal(2, opened.Document.Model.FindMessage(291).Signals.Length);
 
+            var message = opened.Document.Model.FindMessage(291);
+            opened.Document.UpdateMessage(291, message with
+            {
+                Name = "StatusEdited",
+                Transmitter = "ECU2"
+            });
             var speed = opened.Document.Model.FindSignal(291, "Speed");
             opened.Document.UpdateSignal(291, "Speed", speed with { Factor = 0.25 });
             Assert.True(opened.Document.IsDirty);
@@ -81,6 +87,8 @@ public sealed class DbcEditorWorkflowTests
             await differentInstance.OpenAsync(project.ManifestPath);
             var reloaded = await differentInstance.OpenDbcEditorAsync(asset.Id);
             Assert.Equal(0.25, reloaded.Document.Model.FindSignal(291, "Speed").Factor);
+            Assert.Equal("StatusEdited", reloaded.Document.Model.FindMessage(291).Name);
+            Assert.Equal("ECU2", reloaded.Document.Model.FindMessage(291).Transmitter);
             Assert.Equal(updatedAsset.Sha256, reloaded.FileReceipt.Sha256);
         }
         finally { Directory.Delete(parent, recursive: true); }
