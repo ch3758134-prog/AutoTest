@@ -11,7 +11,7 @@ import re
 
 ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$")
 KINDS = ("requirements", "plans", "changes", "gate_reviews", "trace_links")
-ACTIONS = {"create_requirement", "link_dependency", "create_plan", "submit_plan",
+ACTIONS = {"create_requirement", "link_dependency", "create_plan", "revise_plan", "submit_plan",
            "record_plan_review", "create_change", "assess_change", "request_gate_review"}
 
 
@@ -150,6 +150,23 @@ def apply(record, action, payload):
             "exit_condition": text(payload.get("exit_condition"), "exit condition"),
             "state": "DRAFT", "submission_hash": None, "review_history": []
         })
+    elif action == "revise_plan":
+        plan = find(record["plans"], ident(payload.get("id"), "plan ID"), "plan")
+        if plan["state"] not in ("SUBMITTED_FOR_HUMAN_REVIEW", "REVISION_REQUESTED",
+                                 "REASSESSMENT_REQUIRED", "REVIEWED_PENDING_EXTERNAL_APPROVAL"):
+            raise GovernanceError("plan cannot be revised from this state")
+        updated_ids = ids(payload.get("work_ids"), "revised work IDs")
+        for wid in updated_ids:
+            find(work, wid, "revised work")
+        plan["review_history"].append({
+            "result": "REOPENED_FOR_REVISION",
+            "comment": text(payload.get("reason"), "revision reason")
+        })
+        plan["work_ids"] = updated_ids
+        plan["objective"] = text(payload.get("objective"), "plan objective")
+        plan["exit_condition"] = text(payload.get("exit_condition"), "exit condition")
+        plan["state"] = "DRAFT"
+        plan["submission_hash"] = None
     elif action == "submit_plan":
         plan = find(record["plans"], ident(payload.get("id"), "plan ID"), "plan")
         if plan["state"] not in ("DRAFT", "REASSESSMENT_REQUIRED"):
@@ -164,7 +181,11 @@ def apply(record, action, payload):
             raise GovernanceError("plan has not been submitted for review")
         if plan["submission_hash"] != snapshot(record, plan["work_ids"]):
             plan["state"] = "REASSESSMENT_REQUIRED"
-            raise GovernanceError("plan source changed; re-evaluation required before review")
+            plan["review_history"].append({
+                "result": "SOURCE_CHANGED_REASSESSMENT_REQUIRED",
+                "comment": "WBS or deliverable changed after plan submission"
+            })
+            return record
         decision = payload.get("decision")
         if decision not in ("REQUEST_CHANGES", "REVIEWED_PENDING_FORMAL_APPROVAL"):
             raise GovernanceError("Web candidate review cannot authorize implementation")
