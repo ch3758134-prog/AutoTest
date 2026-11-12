@@ -128,7 +128,7 @@ def apply(record, action, payload, *, at, owner_channel=False):
     row = find(values, rid)
     if row is None:
         raise DeliveryError("unknown delivery")
-    if payload.get("expected_revision") != row["revision"] or payload.get("expected_sha256") != row["sha256"]:
+    if payload.get("delivery_revision") != row["revision"] or payload.get("expected_sha256") != row["sha256"]:
         raise DeliveryError("stale delivery: read exact current version before acting")
     if action == "revise_delivery":
         if row["status"] not in ("DRAFT_INTERNAL", "AWAITING_OWNER_REVIEW",
