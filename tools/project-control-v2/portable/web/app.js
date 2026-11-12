@@ -269,7 +269,26 @@ function risks(){
 }
 function evidence(){
  const p=project(),assets=model.assets,decisions=model.decisions;
- let html=head("EVIDENCE & APPROVAL","资产与正式依据","读取项目接管时的资产清单和决策记录，保护旧历史，避免把存在的文件误当正式批准。");
+ const context=model.context_assessment||{status:"NOT_RECORDED",note:"尚无项目证据评价"};
+ let html=head("EVIDENCE & APPROVAL","资产与正式依据","区分资料已找到、当前适用性候选和真正获得批准的工程依据；历史资产记录本身不证明现行有效。");
+ const checked=context.audit||{};
+ const pending=(checked.not_searched_or_incomplete||[]).length;
+ const found=(checked.found_not_assessed||[]).length;
+ const gaps=(checked.confirmed_gaps||[]).length;
+ const proposed=(context.proposed_actions||[]);
+ html+=panel("项目认识与资料补全（只读候选）",
+   '<p class="hint">'+e(context.note||"")+'</p>'+
+   '<div class="details"><span>评价记录</span>'+pill(context.status||"NOT_RECORDED",
+      context.status==="CANDIDATE_STRUCTURAL_REVIEW"?"blue":"pending")+'</div>'+
+   (context.status==="CANDIDATE_STRUCTURAL_REVIEW"?
+      '<p>尚未查明或检索不足：'+e(pending)+' 项；已找到但未审查：'+e(found)+
+      ' 项；确认缺口候选：'+e(gaps)+' 项。</p>'+
+      (proposed.length?'<div class="list">'+proposed.map(a=>line(
+        a.topic+" · "+a.kind,a.reason+"；候选成果："+a.expected_output,
+        pill("待组织 · 未授权","pending"))).join("")+'</div>':
+        '<p class="hint">没有登记补全提案，不代表所有工程依据已经齐全。</p>')
+      :'<p class="hint">可在目标项目 .project-control/context_assessment.json 保存经过审查的 v2 候选记录。工作台仅只读展示，不自动生成、审批或发布任务。</p>'));
+
  html+='<div class="pair">'+panel("资产快照",'<div class="stat"><label>已登记 Git 跟踪文件</label><strong>'+e(assets.tracked_file_count??0)+'</strong></div><p class="hint">来源：'+e(assets.observation_source||"未知")+'；远端历史/PR/CI：'+e(assets.remote_history_pr_ci||"未核对")+'</p>'+ (assets.entries?.length?'<div class="list">'+assets.entries.slice(0,40).map(a=>line(a.path,"可信度："+a.confidence+" · 批准："+a.approval)).join("")+'</div>':empty("没有来源清单"))+(assets.entries?.length>40?'<p class="hint">只展示前 40 条；完整资产在目标仓库 assets.json 中。</p>':""))+panel("正式决策记录",decisions.decisions?.length?decisions.decisions.map(d=>line(d.kind||"决策",d.approval_reference||"无来源",pill(d.state||"未核实"))).join(""):empty("尚无经系统登记的正式决定。不能由此否定原有历史成果。"))+'</div>';
  return html;
 }
