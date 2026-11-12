@@ -6,7 +6,7 @@
 
 检查目标仓库可访问性、账号/组织、默认分支、HEAD、目录、现有 `.project-control`、可见分支/PR/Issue、CI 与已有工程文件。访问失败时明确未核实事项。仓库可能包含 README、源码、设计、数据、固件、CAD/EDA 等多种资产；不因没有源码就称为空项目。
 
-**禁止**：直接 clone 大量临时副本来调查；擅自 push/merge/reset；从仓库名称猜产品定义；使用管理系统源码的原始 AutoTest 项目状态污染目标项目。
+**禁止**：直接 clone 大量临时副本来调查；擅自 push/merge/reset；从仓库名称猜产品定义；把管理软件研发时的示例项目状态当作目标项目真实资产。
 
 ## B. 全新项目 NEW
 
@@ -61,7 +61,7 @@ PROJECT_START_HERE.md
 - `tasks.json`：任务合同与执行状态，默认空、没有 READY；
 - `README.md`：读取顺序及各状态解释。
 
-不要把管理工具内部 `workspace/autotest.json` 或 `sources/autotest_engineering.json` 放进其他项目。
+管理系统独立包不含任何示例工程的项目资产。目标项目只能根据自己的真实仓库和批准记录建立数据。
 
 ## E. 管理 AI—GitHub—Codex 的最低闭环
 
@@ -78,4 +78,4 @@ PROJECT_START_HERE.md
 
 ## G. 管理系统的自身演进
 
-当前 `tools/project-control-v2/server.py` 等程序仍有 AutoTest 固定示例绑定。只有真实完成通用项目数据加载、项目选择、权限、迁移、UI 验收及新旧项目端到端验证，才能标为“完全通用产品”。本初始化协议不构成这种完成证明。
+当前可移植管理包已包含通用多项目 Web、初始化、工作区登记、版本校验与基础审核能力；这不等于全部真实 GitHub、Windows 操作和长期治理已经验收。不得以初始化协议或脚本测试替代最终交付验证。
