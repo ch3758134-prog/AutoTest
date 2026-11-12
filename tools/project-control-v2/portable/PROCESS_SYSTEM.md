@@ -6,6 +6,12 @@
 
 按 [CONTEXT_DISCOVERY.md](CONTEXT_DISCOVERY.md) 建立按岗位与任务裁剪的资料搜索地图。现有源码、PR 和当前计划仅是项目证据的一部分；先调查产品目的、业务背景、研究、需求历史、设计理由和撤回决定，再决定哪些过程活动需要开展。不得以检索文件数量或结构化审查通过宣称项目已被完整理解。不同客户端读取 Skills 的方式见 [AI_WORK_MODES.md](AI_WORK_MODES.md)。
 
+## 资料不足时的工程责任
+
+先按 [EVIDENCE_AND_REMEDIATION.md](EVIDENCE_AND_REMEDIATION.md) 区分：未检索、检索失败、来源已找到但未审查、历史有效但目前适用性未确认、经过调查的资料缺口。协调者必须推动适当的补全工作：研究来源、复核需求、追踪变更、编制缺失的候选项目文件或试验验证。不得从一次空搜索直接断言项目“不完整”，也不得把历史 `ACCEPTED` 自动视为当前目标。
+
+过程目录决定适合什么样的研究/需求/设计/验证工作，**并非每个发现缺口都必须启动固定阶段或创建一套新表格**。新 `context_assessment.py` 的结构审查只可作为证据附件，不得直接赋予 `SATISFIED_CANDIDATE`、READY 或正式 Gate。
+
 ## 1. AI 首次接管
 
 1. 读取 `START_HERE.md`、`ai/roles.json`、当前仓库和 `.project-control/{project,management,assets,decisions,tasks}.json`；核实远端 HEAD、来源和历史矛盾，不靠旧“PASS”推断当前有效。
