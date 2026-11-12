@@ -20,8 +20,9 @@ KINDS = {"RESEARCH", "REQUIREMENTS", "DESIGN", "PLAN", "MANAGEMENT", "TEST_RESUL
 PUBLICATION = {"NO_EXTERNAL_PUBLICATION", "GITHUB_CANDIDATE_COMMENT",
                "GITHUB_DRAFT_PR", "VERSIONED_PROJECT_ARTIFACT"}
 STATES = {"DRAFT_INTERNAL", "AWAITING_OWNER_REVIEW", "RETURNED_FOR_REVISION",
-          "ON_HOLD", "RELEASED_FOR_CANDIDATE_PUBLICATION"}
-OWNER_DECISIONS = {"REQUEST_CHANGES", "HOLD", "ALLOW_CANDIDATE_PUBLICATION"}
+          "ON_HOLD", "RELEASED_FOR_CANDIDATE_PUBLICATION", "REVIEWED_INTERNAL_ONLY"}
+OWNER_DECISIONS = {"REQUEST_CHANGES", "HOLD", "ALLOW_CANDIDATE_PUBLICATION",
+                   "ACKNOWLEDGE_INTERNAL_REVIEW"}
 CONTENT_FIELDS = ("kind", "title", "why", "body", "scope", "changes", "limitations",
                   "owner_question", "publication_type", "publication_target", "source_refs")
 
@@ -135,7 +136,8 @@ def apply(record, action, payload, *, at, owner_channel=False):
     if action == "revise_delivery":
         if row["status"] not in ("DRAFT_INTERNAL", "AWAITING_OWNER_REVIEW",
                                  "RETURNED_FOR_REVISION", "ON_HOLD",
-                                 "RELEASED_FOR_CANDIDATE_PUBLICATION"):
+                                 "RELEASED_FOR_CANDIDATE_PUBLICATION",
+                                 "REVIEWED_INTERNAL_ONLY"):
             raise DeliveryError("delivery cannot be revised")
         if len(row["history"]) >= MAX_HISTORY:
             raise DeliveryError("version archive full")
@@ -171,6 +173,10 @@ def apply(record, action, payload, *, at, owner_channel=False):
         decision = payload.get("decision")
         if decision not in OWNER_DECISIONS:
             raise DeliveryError("invalid owner review decision")
+        if row["publication_type"] == "NO_EXTERNAL_PUBLICATION" and decision == "ALLOW_CANDIDATE_PUBLICATION":
+            raise DeliveryError("private-only candidate cannot obtain public publication permission")
+        if len(row["review_history"]) >= 32:
+            raise DeliveryError("owner review history full; archive before continuing")
         if payload.get("confirm_exact_content") is not True:
             raise DeliveryError("owner must explicitly confirm this exact candidate version")
         reason = required(payload.get("reason"), "owner review reason", 1000)
@@ -181,6 +187,7 @@ def apply(record, action, payload, *, at, owner_channel=False):
         row["review_history"].append(entry)
         row["status"] = {"REQUEST_CHANGES": "RETURNED_FOR_REVISION",
                          "HOLD": "ON_HOLD",
+                         "ACKNOWLEDGE_INTERNAL_REVIEW": "REVIEWED_INTERNAL_ONLY",
                          "ALLOW_CANDIDATE_PUBLICATION": "RELEASED_FOR_CANDIDATE_PUBLICATION"}[decision]
         row["owner_release"] = entry if decision == "ALLOW_CANDIDATE_PUBLICATION" else None
         row["updated_at"] = at
