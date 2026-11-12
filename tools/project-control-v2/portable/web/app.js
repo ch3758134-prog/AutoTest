@@ -148,12 +148,16 @@ async function loadModel(){remoteSnapshot=null;workspaceSnapshot=null;moduleRemo
 const count=(collection)=>management()[collection]?.length||0;
 const mstatus=()=>management().status;
 function ownerBriefingPanel(){
+ const awaiting=model.delivery_summary?.count||0;
+ const deliveryNotice=awaiting?'<p class="hint"><strong>候审成果：</strong>本机登记 '+e(awaiting)+' 份，请到“成果审阅与交付”阅读完整内容；没有阅读/决定不构成交付或批准。</p>':"";
+
  const c=management().process_control||{},acts=c.activities||[],reports=c.reports||[],focus=c.current_focus||null;
  const activity=focus?acts.find(a=>a.id===focus.activity_id):null;
  const proc=activity?(model.process_catalog?.processes||[]).find(p=>p.id===activity.process_id):null;
  const candidates=reports.filter(r=>(!r.audience||r.audience==="OWNER")&&r.freshness!=="STALE_AFTER_ACTIVITY_REVISION"&&(!focus||r.activity_id===focus.activity_id));
  const report=candidates.length?candidates[candidates.length-1]:null;
  let html='<section class="section"><div class="heading"><div><div class="eyebrow">项目负责人视图 · 候选信息</div><h2>当前最值得关注的事</h2></div></div>';
+ html+=deliveryNotice;
  if(model.process_policy_current===false)html+='<div class="warning">本项目旧过程版本仅供只读核对；新过程写入需要单独迁移审查，不能沿用旧批准。</div>';
  const ctx=model.context_assessment||{status:"NOT_RECORDED"};
  if(ctx.status==="NOT_RECORDED"){
@@ -442,16 +446,16 @@ function workspaceView(){
 function processView(){
  const state=management().process_control||{activities:[],intakes:[],reports:[],review_requests:[]};
  const catalog=model.process_catalog||{version:"未知",processes:[]};
- let html=head("PROCESS & AI WORK","工程过程与 AI 接管","工作责任、技术审查、负责人决定和正式实施互不等价；这里仅记录候选，不自动批准或派发代码。",action("创建工程活动","open_process_activity"));
+ let html=head("PROCESS & AI WORK","工程过程与 AI 接管","内部报告、技术审查和负责人已阅读完整成果是三回事；本页记录内部候选，不直接完成对外成果交付。",action("创建工程活动","open_process_activity"));
  html+=ownerBriefingPanel();
  html+='<section class="section pair">'+panel("当前制度版本",'<div class="details"><span>过程规范</span><strong>'+e(catalog.version)+'</strong></div><div class="details"><span>项目 Profile</span><strong>'+e(state.profile_id||"未建立")+'</strong></div><div class="details"><span>已登记活动</span><strong>'+e((state.activities||[]).length)+'</strong></div><p>过程是工程工作的目的和方法，阶段是项目的组织和审查点。初始责任不会因为文件、代码或旧 PASS 而自动完成。</p>')+
- panel("新 AI 接管与报告",'<p>先自行读取仓库身份、有效依据、当前授权与过程说明，再向负责人汇报来源、角色、冲突和下一步。</p>'+action("记录 AI 接管","record_ai_intake")+' '+action("提交 AI 工作报告","record_ai_work_report")+'<p class="hint">接管或报告均不授予任务、审批、合并或真实硬件权限。</p>')+'</section>';
+ panel("新 AI 接管与报告",'<p>先自行读取仓库身份、有效依据、当前授权与过程说明，再向负责人汇报来源、角色、冲突和下一步。</p>'+action("记录 AI 接管","record_ai_intake")+' '+action("记录内部 AI 报告","record_ai_work_report")+'<p class="hint">接管或报告均不授予任务、审批、合并或真实硬件权限。</p>')+'</section>';
  html+='<section class="section">'+panel("工程活动及责任履行",(state.activities||[]).length?(state.activities||[]).map(a=>{
   const process=catalog.processes.find(p=>p.id===a.process_id)||{};
   const counts=(a.obligations||[]).filter(o=>o.disposition==="SATISFIED_CANDIDATE").length;
-  return '<div class="line"><div><strong>'+e(process.name||a.process_id)+' · '+e(a.id)+'</strong><p>'+e(a.objective)+'</p><p>职责 '+e(a.role)+' · 候选证据 '+counts+'/'+(a.obligations||[]).length+' · 工作修订 '+e(a.revision)+' · '+e(a.state)+'</p>'+(a.obligations||[]).map(o=>'<small>'+e(o.id)+'：'+e(o.disposition)+'</small>').join(' ')+'</div><div><button class="copy" data-focus-for="'+e(a.id)+'">设为当前关注</button> <button class="copy" data-obligation-for="'+e(a.id)+'">处理责任</button> <button class="copy" data-process-review-for="'+e(a.id)+'">技术审查</button> <button class="copy" data-owner-review-for="'+e(a.id)+'">请求审批</button></div></div>';}).join(''):empty("尚无工程活动。先阅读过程规范并由负责角色开展有来源的工作；不会自动生成批准的 P0。"))+'</section>';
+  return '<div class="line"><div><strong>'+e(process.name||a.process_id)+' · '+e(a.id)+'</strong><p>'+e(a.objective)+'</p><p>职责 '+e(a.role)+' · 候选证据 '+counts+'/'+(a.obligations||[]).length+' · 工作修订 '+e(a.revision)+' · '+e(a.state)+'</p>'+(a.obligations||[]).map(o=>'<small>'+e(o.id)+'：'+e(o.disposition)+'</small>').join(' ')+'</div><div><button class="copy" data-focus-for="'+e(a.id)+'">设为当前关注</button> <button class="copy" data-obligation-for="'+e(a.id)+'">处理责任</button> <button class="copy" data-process-review-for="'+e(a.id)+'">技术审查</button> <button class="copy" data-owner-review-for="'+e(a.id)+'">准备审阅提案</button></div></div>';}).join(''):empty("尚无工程活动。先阅读过程规范并由负责角色开展有来源的工作；不会自动生成批准的 P0。"))+'</section>';
  html+='<details class="section"><summary>展开全部研发过程的工作指导</summary>'+catalog.processes.map(p=>'<details class="panel"><summary><strong>'+e(p.name)+'</strong> · '+e(p.purpose)+'</summary><p><strong>为什么做：</strong>'+e(p.owner_guidance?.why||p.purpose)+'</p><p><strong>预期成果：</strong>'+e(p.owner_guidance?.expected_result||"待定")+'</p><p><strong>工作方法：</strong>'+e((p.work_method||p.activities).join("；"))+'</p><p><strong>审查准则：</strong>'+e((p.review_checks||[]).join("；"))+'</p><p><strong>交接：</strong>'+e((p.handoff_expectations||[]).join("；"))+'</p></details>').join("")+'</details>';
- html+='<section class="section pair">'+panel("AI 接管记录",(state.intakes||[]).length?state.intakes.map(i=>line(i.id+' · '+i.role,i.role_source+'；下一步：'+i.next_action,pill(i.state))).join(''):empty("尚未记录新 AI 接管。"))+panel("汇报与负责人审核请求",(state.reports||[]).map(r=>line(r.id,r.summary,pill(r.state))).join('')+(state.review_requests||[]).map(r=>line(r.id,r.activity_id+'@'+r.activity_revision,pill(r.state))).join('')||empty("暂无报告或审核请求。"))+'</section>';
+ html+='<section class="section pair">'+panel("AI 接管记录",(state.intakes||[]).length?state.intakes.map(i=>line(i.id+' · '+i.role,i.role_source+'；下一步：'+i.next_action,pill(i.state))).join(''):empty("尚未记录新 AI 接管。"))+panel("内部报告与尚未展示的审查提案",(state.reports||[]).map(r=>line(r.id,r.summary,pill(r.state))).join('')+(state.review_requests||[]).map(r=>line(r.id,r.activity_id+'@'+r.activity_revision,pill(r.state))).join('')||empty("暂无报告或审核请求。"))+'</section>';
  return html;
 }
 
@@ -464,9 +468,9 @@ const definitions={
  set_process_focus:{title:"指定当前关注工作",desc:"只修改负责人展示重点，不意味着批准。",fields:[["source_refs","关注这项工作的依据（逐行）","textarea"]]},
  set_process_obligation:{title:"记录责任处理结果",desc:"每项责任需要实际证据或明确的缺口处置；理由不产生放行权。",fields:[["obligation_id","责任项","obligation-id"],["disposition","处理状态","obligation-state"],["evidence_refs","证据引用（满足状态必填）","textarea"],["impact","不适用/延期/例外/冲突的影响（按需）","optional-textarea"],["owner","延期/例外的责任人（按需）","optional-text"],["close_by","延期/例外的关闭标准（按需）","optional-text"]]},
  review_process_activity:{title:"技术内容审查",desc:"记录内容质量意见，不授予项目正式批准；原作者不可自称独立审查。",fields:[["reviewer_role","审查岗位","ai-review-role"],["outcome","审查结论","technical-review"],["evidence_refs","审查依据（逐行）","textarea"]]},
- request_process_review:{title:"提交负责人审查请求",desc:"只有全部责任有候选证据且当前技术审查一致时才能提交；状态仍为待批准。",fields:[["id","审核请求 ID","text"],["purpose","需要负责人决定什么","textarea"]]},
+ request_process_review:{title:"准备负责人审查提案",desc:"仅在本地准备审核请求，不证明负责人看到全文；完整候审稿需通过“成果审阅与交付”提供，正式批准独立处理。",fields:[["id","审核请求 ID","text"],["purpose","需要负责人决定什么","textarea"]]},
  record_ai_intake:{title:"AI 入场与理解汇报",desc:"读取事实、角色来源和任务后再登记；入场不等于工作授权。",fields:[["id","接管 ID","text"],["role","岗位","ai-role"],["role_source","岗位依据","role-source"],["task_ref","任务引用（可空）","optional-text"],["observed_head","核实的 Git HEAD（可空）","optional-text"],["source_refs","已读依据（逐行）","textarea"],["verified_facts","已核实的事实（逐行）","textarea"],["conflicts","冲突（可空）","optional-textarea"],["unknowns","未知事项（可空）","optional-textarea"],["next_action","下一项工作","textarea"]]},
-  record_ai_work_report:{title:"AI 工作报告 · 负责人优先",desc:"先解释项目问题和工作意义，再报告实际进展、判断、下一步和真正待决事项。仅保存候选，不代表审批。",fields:[["id","报告 ID","text"],["intake_id","接管记录","intake-id"],["activity_id","关联的工程活动（可空）","optional-activity"],["audience","报告接收者","report-audience"],["report_kind","报告性质","report-kind"],["focus","当前在解决的项目问题","textarea"],["why_this_work","为什么现在做这项工作","textarea"],["judgement","有依据的重要判断","textarea"],["summary","真实完成的工作","textarea"],["next_action","下一步行动","textarea"],["owner_action","需要负责人采取的动作","owner-action"],["owner_request","需要负责人处理的具体问题（无则留空）","optional-textarea"],["evidence_refs","证据来源（逐行）","textarea"],["unfinished","尚未完成事项（可空）","optional-textarea"]]},
+  record_ai_work_report:{title:"AI 内部工作报告",desc:"内部保存状态，不能代表已向负责人交付完整成果。需要审阅的成果应另行准备完整候审稿。",fields:[["id","报告 ID","text"],["intake_id","接管记录","intake-id"],["activity_id","关联的工程活动（可空）","optional-activity"],["audience","报告接收者","report-audience"],["report_kind","报告性质","report-kind"],["focus","当前在解决的项目问题","textarea"],["why_this_work","为什么现在做这项工作","textarea"],["judgement","有依据的重要判断","textarea"],["summary","真实完成的工作","textarea"],["next_action","下一步行动","textarea"],["owner_action","需要负责人采取的动作","owner-action"],["owner_request","需要负责人处理的具体问题（无则留空）","optional-textarea"],["evidence_refs","证据来源（逐行）","textarea"],["unfinished","尚未完成事项（可空）","optional-textarea"]]},
  create_deliverable:{title:"新增候选交付成果",desc:"此操作仅保存候选，不批准产品范围。",fields:[["id","交付 ID","text"],["title","交付名称","text"],["success_condition","完成或验收条件","textarea"]]},
  create_work:{title:"新增研发工作",desc:"实施授权不会因此自动产生。",fields:[["id","工作 ID","text"],["title","工作名称","text"],["deliverable_id","对应交付","delivery"],["kind","工作性质","kind"],["expected_result","预期成果","textarea"]]},
  raise_risk:{title:"登记风险",desc:"风险关闭需要后续证据与审查。",fields:[["id","风险 ID","text"],["title","风险标题","text"],["description","风险情况","textarea"],["mitigation","建议处置","textarea"]]},
@@ -502,7 +506,7 @@ else if(type==="technical-review")control='<select name="'+field+'">'+["ADEQUATE
 else if(type==="obligation-state")control='<select name="'+field+'">'+["SATISFIED_CANDIDATE","NOT_APPLICABLE_PROPOSED","DEFERRED_PROPOSED","EXCEPTION_REQUESTED","OPEN","CONFLICT"].map(x=>'<option>'+x+'</option>').join("")+'</select>';
 else if(type==="optional-activity")control='<select name="'+field+'"><option value="">不指定</option>'+(management().process_control?.activities||[]).map(a=>'<option value="'+e(a.id)+'">'+e(a.objective)+'</option>').join("")+'</select>';
  else if(type==="report-audience")control='<select name="'+field+'"><option value="">按岗位默认接收者</option>'+[["OWNER","项目负责人"],["COORDINATOR","项目协调者"],["SPECIALIST","专业人员"],["EXECUTOR","执行人员"]].map(v=>'<option value="'+v[0]+'">'+e(v[1])+'</option>').join("")+'</select>';
- else if(type==="report-kind")control='<select name="'+field+'">'+[["PROGRESS","进展"],["FINDING","发现"],["BLOCKER","阻塞"],["REVIEW","审查"],["HANDOFF","交接"],["DELIVERY","交付"]].map(v=>'<option value="'+v[0]+'">'+e(v[1])+'</option>').join("")+'</select>';
+ else if(type==="report-kind")control='<select name="'+field+'">'+[["PROGRESS","进展"],["FINDING","发现"],["BLOCKER","阻塞"],["REVIEW","审查"],["HANDOFF","交接"],["DELIVERY","交付候选（未展示）"]].map(v=>'<option value="'+v[0]+'">'+e(v[1])+'</option>').join("")+'</select>';
  else if(type==="owner-action")control='<select name="'+field+'">'+[["NONE","当前无需决定"],["REVIEW","需要审阅"],["DECIDE","需要决策"],["PROVIDE_INFORMATION","需要提供关键事实"]].map(x=>'<option value="'+x[0]+'">'+e(x[1])+'</option>').join("")+'</select>';
  else if(type==="intake-id")control='<select name="'+field+'">'+(management().process_control?.intakes||[]).map(i=>'<option value="'+e(i.id)+'">'+e(i.id+" · "+i.role)+'</option>').join("")+'</select>';
 else if(type==="optional-textarea")control='<textarea name="'+field+'"></textarea>';
