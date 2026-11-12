@@ -25,6 +25,12 @@
     Background="{DynamicResource StudioPanel}" BorderThickness="0" Padding="6,8"
     MouseDoubleClick="ResourceTree_MouseDoubleClick"
     PreviewMouseRightButtonDown="ResourceTree_RightClick">
+   <TreeView.ItemContainerStyle>
+    <Style TargetType="{x:Type TreeViewItem}">
+     <Setter Property="IsExpanded" Value="True"/>
+     <Setter Property="Margin" Value="0,2"/>
+    </Style>
+   </TreeView.ItemContainerStyle>
    <TreeView.Resources>
     <HierarchicalDataTemplate DataType="{x:Type vm:WorkbenchResourceNode}" ItemsSource="{Binding Children}">
      <StackPanel Orientation="Horizontal" Margin="0,5">
