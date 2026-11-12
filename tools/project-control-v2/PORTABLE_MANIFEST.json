@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "4.3-context-discovery-candidate",
+  "version": "4.4-evidence-remediation-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -45,7 +45,9 @@
     "portable/AI_WORK_MODES.md",
     "portable/context_discovery.py",
     "skills/project-intake/SKILL.md",
-    "skills/engineering-coordinator/SKILL.md"
+    "skills/engineering-coordinator/SKILL.md",
+    "portable/EVIDENCE_AND_REMEDIATION.md",
+    "portable/context_assessment.py"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -88,7 +90,12 @@
     "old_process_policy": "READ_ONLY_NO_SILENT_MIGRATION",
     "context_discovery": "ROLE_SCOPED_CANDIDATE_WITH_SOURCE_COVERAGE_AUDIT",
     "skill_adapter": "DOCUMENTED_NOT_AUTO_INSTALLED",
-    "agent_skill_source_files": "PORTABLE_NOT_AUTO_INSTALLED"
+    "agent_skill_source_files": "PORTABLE_NOT_AUTO_INSTALLED",
+    "evidence_assessment": "V2_CURRENT_APPLICABILITY_CANDIDATE_STRUCTURAL_ONLY",
+    "missing_artifact_remediation": "PROPOSED_NOT_AUTHORIZED",
+    "legacy_discovery_v1": "READ_ONLY_NEEDS_REASSESSMENT",
+    "full_web_workbench_evidence_integration": "NOT_IMPLEMENTED",
+    "real_agent_intake_e2e": "NOT_VERIFIED"
   },
   "separation": {
     "package_source": "Project Control system files",
