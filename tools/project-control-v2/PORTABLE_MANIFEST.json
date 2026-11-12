@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "2.5-receipt-sync-locked-candidate",
+  "version": "2.6-github-dispatch-pr-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -23,7 +23,10 @@
     "portable/web/app.css",
     "portable/export_package.py",
     "portable/receipt_evidence.py",
-    "portable/remote_sync.py"
+    "portable/remote_sync.py",
+    "portable/task_publication.py",
+    "portable/pr_evidence.py",
+    "portable/REMOTE_HANDOFF.md"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -35,12 +38,14 @@
     "windows_end_to_end": "NOT_VERIFIED",
     "local_codex_receipts": "CANDIDATE_LOCAL_SCOPE_CHECKED",
     "remote_sync": "EXPLICIT_READ_ONLY_CHECK",
-    "management_writes": "LOCAL_REVISION_CAS_WITH_COOPERATIVE_GIT_METADATA_LOCK"
+    "management_writes": "LOCAL_REVISION_CAS_WITH_COOPERATIVE_GIT_METADATA_LOCK",
+    "task_publication": "REVIEWED_CANDIDATE_CONTENT_WITH_GITHUB_BLOB_CAS_REQUIRED",
+    "pr_handoff": "METADATA_CONSISTENCY_CHECK_NOT_ACCEPTANCE"
   },
   "separation": {
     "package_source": "Project Control system files",
     "target_repo": "User-provided GitHub repository",
     "local_workspace": "User-selected folder for Codex execution"
   },
-  "warning": "Codex code-scope receipts and read-only remote checks are candidates; test logs, remote publication, cross-worktree collection, OS security and Windows E2E remain unverified."
+  "warning": "Remote task publishing requires manager AI connected GitHub write and independent human approval. PR matching does not verify CI, code review, release or Gate; not yet Windows E2E."
 }
