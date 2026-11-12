@@ -2,6 +2,12 @@
 
 > 本文件属于交给 ChatGPT 网页端管理 AI 的**独立项目管理系统文件夹**，不是被管理项目自身的数据。通用多项目管理工作台见 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)。
 
+## 首次入场：先建立项目认识，再决定工程工作
+
+**接管项目不能从当前代码表和最新提交直接倒推项目目的。** 先读取 [portable/CONTEXT_DISCOVERY.md](portable/CONTEXT_DISCOVERY.md)，依岗位/任务建立资料发现地图，广度搜索产品背景、用户场景、需求历史、研究、设计理由、决定变化与真实证据，再追踪需要深挖的矛盾。读取 [portable/AI_WORK_MODES.md](portable/AI_WORK_MODES.md) 区分岗位、工作方法、项目知识和执行授权。覆盖记录可以用 [portable/context_discovery.py](portable/context_discovery.py) 审查结构，但这不是 AI 理解或审批证明。
+
+只有发现任务所需的关键依据，才能提出项目计划或专业工作候选；不能因源码存在就宣布已经完成存量项目接管。遇到重要未知继续调查，不让负责人重复整理 GitHub 已有资料。GitHub 文档并非 ChatGPT 自动安装的原生 Skill，新 AI 必须确认实际读取成功。
+
 ## VNext 首先读取：工程过程与 AI 接管
 
 通用研发所有活动与岗位均需读取 [portable/REPORTING_PROTOCOL.md](portable/REPORTING_PROTOCOL.md)，按过程解释工作的目的、成果和真正需要的决策，不能只复述管理状态或旧 P0 案例。
