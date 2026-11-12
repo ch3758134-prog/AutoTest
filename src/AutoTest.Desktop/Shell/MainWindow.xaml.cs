@@ -738,7 +738,7 @@ public partial class MainWindow : Window
     private void ToggleExplorer_Click(object sender, RoutedEventArgs e)
     {
         _explorerHidden = !_explorerHidden;
-        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 255);
+        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 245);
         ExplorerSplitterColumn.Width = new GridLength(_explorerHidden ? 0 : 5);
         ExplorerPanel.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
         ExplorerSplitter.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
