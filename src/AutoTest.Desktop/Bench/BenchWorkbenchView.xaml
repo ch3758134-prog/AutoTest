@@ -40,7 +40,7 @@
   <DockPanel Grid.Row="0" Margin="0,0,0,12">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
     <Button Content="连接主控" Click="OpenStation_Click"
-     ToolTip="打开共用的真实 WinUSB 主控连接窗口；本手动台架不会创建第二条 USB 会话"/>
+     ToolTip="直接搜索并连接共用主控，保持本台架窗口；不会创建第二条 USB 会话"/>
     <Button Content="刷新状态/工程" Command="{Binding RefreshCommand}" Margin="0"/>
    </StackPanel>
    <StackPanel>
