@@ -69,6 +69,42 @@ def check_collections(record):
         raise ContextWorkflowError("duplicate remediation link")
     return reviews, links
 
+def topic_fingerprint(assessment, topic):
+    """Compare only evidence and actions for the domain on which a work item relies."""
+    entry = assessment["topics"][topic]
+    sources = {a["id"]: a for a in assessment["sources"]}
+    claims = {a["id"]: a for a in assessment["claims"]}
+    attempts = {a["id"]: a for a in assessment["search_attempts"]}
+    relevant_source_ids = set(entry["source_ids"])
+    for claim_id in entry["claim_ids"]:
+        relevant_source_ids.update(claims[claim_id]["source_ids"])
+    return digest({
+        "topic": entry,
+        "sources": sorted((sources[i] for i in relevant_source_ids), key=lambda a: a["id"]),
+        "claims": sorted((claims[i] for i in entry["claim_ids"]), key=lambda a: a["id"]),
+        "attempts": sorted((attempts[i] for i in entry["search_attempt_ids"]), key=lambda a: a["id"]),
+        "actions": sorted((a for a in assessment["proposed_actions"] if a["topic"] == topic),
+                          key=lambda a: a["id"]),
+    })
+
+
+def work_context_changed(work, previous_reviews, new_assessment):
+    """An unrelated evidence update must not invalidate a different workstream."""
+    previous = next((v for v in previous_reviews
+                     if v["id"] == work.get("context_review_id")), None)
+    if not previous:
+        return True
+    action_id = work.get("context_action_id")
+    old_action = next((a for a in previous["assessment"]["proposed_actions"]
+                       if a["id"] == action_id), None)
+    new_action = next((a for a in new_assessment["proposed_actions"]
+                       if a["id"] == action_id), None)
+    if not old_action or old_action != new_action:
+        return True
+    topic = old_action["topic"]
+    return topic_fingerprint(previous["assessment"], topic) != topic_fingerprint(new_assessment, topic)
+
+
 def current_view(record):
     reviews, links = check_collections(record)
     if not reviews:
@@ -83,8 +119,15 @@ def current_view(record):
                 for a in v["assessment"]["proposed_actions"][:40]],
             "action_links": [
                 {"action_id": x["action_id"], "work_id": x["work_id"],
-                 "status": x["status"], "review_id": x["review_id"]}
-                for x in links if x["review_id"] == v["id"]],
+                 "status": x["status"], "review_id": x["review_id"],
+                 "carried_forward": x["review_id"] != v["id"]}
+                for x in links
+                if (x["review_id"] == v["id"] or
+                    (x["action_id"] in {a["id"] for a in v["assessment"]["proposed_actions"]}
+                     and any(w.get("id") == x["work_id"] and
+                             w.get("context_evidence_status") == "CURRENT_CANDIDATE" and
+                             w.get("context_last_matching_review_id") == v["id"]
+                             for w in record.get("work", []))))],
             "note": "候选证据审查，非正式批准。补全工作仅是 PROPOSED，未经授权不得实施。"}
 
 def apply(record, operation, payload, *, project_id, repo_url, recorded_at):
@@ -117,8 +160,11 @@ def apply(record, operation, payload, *, project_id, repo_url, recorded_at):
         affected = set()
         for work in record.get("work", []):
             if work.get("context_review_id") and work.get("context_review_id") != review_id:
-                work["context_evidence_status"] = "STALE_AFTER_NEW_ASSESSMENT"
-                affected.add(work["id"])
+                if work_context_changed(work, reviews[:-1], assessment):
+                    work["context_evidence_status"] = "STALE_AFTER_NEW_ASSESSMENT"
+                    affected.add(work["id"])
+                elif work.get("context_evidence_status") == "CURRENT_CANDIDATE":
+                    work["context_last_matching_review_id"] = review_id
         for plan in record.get("plans", []):
             if any(w in affected for w in plan.get("work_ids", [])):
                 if plan.get("state") in ("SUBMITTED_FOR_HUMAN_REVIEW",
