@@ -209,7 +209,7 @@ class WorkspaceLifecycleTests(unittest.TestCase):
         result=subprocess.run(["git","clone",str(self.source),str(self.work)],
                               capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
-        with self.assertRaisesRegex(wm.WorkspaceError,"another remote"):
+        with self.assertRaisesRegex(wm.WorkspaceError,"remote URL must be explicit"):
             wm.register_existing("TASK-EXISTING","project","TASK-1","TASK",
                                  "Check source",self.work,self.allowed,self.remote,"main",
                                  self.pin,self.registry,apply=True)
