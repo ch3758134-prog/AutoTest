@@ -186,7 +186,7 @@ public sealed class DbcWorkbenchDocument
         if (!_dirty) return _original;
         RequireEditable();
         var output = _sourcePreserving ? null : new StringBuilder(DbcParserAdapter.Export(Model));
-        if (!_sourcePreserving)
+        if (output is not null)
         foreach (var value in _tables.OrderBy(t => t.MessageId).ThenBy(t => t.SignalName, StringComparer.Ordinal))
         {
             output.Append("VAL_ ").Append(value.MessageId).Append(' ').Append(value.SignalName).Append(' ');

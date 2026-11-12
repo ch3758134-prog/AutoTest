@@ -9,6 +9,8 @@ namespace AutoTest.Desktop.Shell;
 public partial class MainWindow : Window
 {
     private readonly MainWindowViewModel _viewModel;
+    private bool _shutdownStarted;
+    private bool _shutdownComplete;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -16,6 +18,35 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
+        Closing += async (_, e) =>
+        {
+            if (_shutdownComplete) return;
+            e.Cancel = true;
+            if (_shutdownStarted || !_viewModel.ConfirmCloseActiveEditor()) return;
+            _shutdownStarted = true;
+            try { await _viewModel.ShutdownAsync(); }
+            finally
+            {
+                _shutdownComplete = true;
+                Close();
+            }
+        };
+    }
+
+    private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
+    {
+        _viewModel.CaptureScannerText(e.Text);
+        ScannerEntry.Text += e.Text;
+        ScannerEntry.CaretIndex = ScannerEntry.Text.Length;
+        e.Handled = true;
+    }
+
+    private void ScannerEntry_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Return)) return;
+        _viewModel.FinishScannerInput();
+        ScannerEntry.Clear();
+        e.Handled = true;
     }
 
     private void ResourceTree_SelectedItemChanged(

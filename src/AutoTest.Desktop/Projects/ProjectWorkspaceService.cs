@@ -5,6 +5,8 @@ using AutoTest.Projects.Dbc.Editing;
 using AutoTest.Projects.Dbc;
 using AutoTest.Core;
 using AutoTest.Testing.Authoring;
+using AutoTest.Specialists.Flash;
+using AutoTest.Specialists.Wave;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -23,6 +25,8 @@ public sealed class ProjectWorkspaceService
     public const string ManifestFileName = "project.autotest-project.json";
     public const string TestProgramKind = "test-program";
     public const string DbcKind = "dbc";
+    public const string FirmwareKind = "firmware";
+    public const string WaveKind = "wave";
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     public string SuggestedDirectory => Current?.RootDirectory ?? AppContext.BaseDirectory;
     public OpenProjectContext? Current { get; private set; }
@@ -380,6 +384,48 @@ public sealed class ProjectWorkspaceService
         return await AddAssetAsync(DbcKind, name, ".dbc", bytes, ct);
     }
 
+    /// <summary>Import and validate an Intel HEX or S-record image; never guess a BIN load address.</summary>
+    public async Task<AssetEntry> ImportFirmwareAsync(string sourcePath, CancellationToken ct = default)
+    {
+        var source = Path.GetFullPath(sourcePath);
+        var ext = Path.GetExtension(source).ToLowerInvariant();
+        if (ext is not (".hex" or ".s19" or ".s28" or ".s37"))
+            throw new ArgumentException("固件资源仅支持 Intel HEX 或 S19/S28/S37。BIN 必须先配置基地址。");
+        var info = new FileInfo(source);
+        if (!info.Exists) throw new FileNotFoundException("固件文件不存在。", source);
+        if (info.Length > 64L * 1024 * 1024)
+            throw new InvalidDataException("固件源文件超过 64 MB，已拒绝导入。");
+        var bytes = await File.ReadAllBytesAsync(source, ct);
+        var text = Encoding.UTF8.GetString(bytes);
+        await Task.Run(() =>
+        {
+            if (ext == ".hex") _ = FirmwareImageParser.ParseHex(text);
+            else _ = FirmwareImageParser.ParseS19(text);
+        }, ct);
+        return await AddAssetAsync(FirmwareKind, Path.GetFileNameWithoutExtension(source), ext, bytes, ct);
+    }
+
+    /// <summary>Register validated waveform evidence; it does not claim to be a pinned reference.</summary>
+    public async Task<AssetEntry> ImportWaveEvidenceAsync(string sourcePath, CancellationToken ct = default)
+    {
+        var source = Path.GetFullPath(sourcePath);
+        if (!source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("请选择波形证据 JSON 文件。");
+        var info = new FileInfo(source);
+        if (!info.Exists) throw new FileNotFoundException("波形文件不存在。", source);
+        if (info.Length > 64L * 1024 * 1024)
+            throw new InvalidDataException("波形证据超过 64 MB，已拒绝导入。");
+        var bytes = await File.ReadAllBytesAsync(source, ct);
+        await Task.Run(() =>
+        {
+            var document = WaveEvidenceCodec.Read(bytes);
+            if (!WaveEvidenceCodec.Verify(document))
+                throw new InvalidDataException("波形证据校验失败，不能登记为工程资源。");
+        }, ct);
+        var name = Path.GetFileNameWithoutExtension(source);
+        return await AddAssetAsync(WaveKind, name, ".wave.json", bytes, ct);
+    }
+
     public Task<AssetEntry> CreateTestProgramAsync(string name, CancellationToken ct = default)
     {
         ValidateResourceName(name);
@@ -403,9 +449,15 @@ public sealed class ProjectWorkspaceService
                     x.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
                     throw new IOException("同类资源中已存在同名资源，请先重命名。");
 
-                var relative = kind == DbcKind
-                    ? "assets/dbc/" + Guid.NewGuid().ToString("N") + extension
-                    : "assets/tests/" + Guid.NewGuid().ToString("N") + extension;
+                var folder = kind switch
+                {
+                    DbcKind => "dbc",
+                    TestProgramKind => "tests",
+                    FirmwareKind => "firmware",
+                    WaveKind => "wave",
+                    _ => throw new ArgumentException("不支持的工程资源类型：" + kind)
+                };
+                var relative = "assets/" + folder + "/" + Guid.NewGuid().ToString("N") + extension;
                 var editor = new ResourceEditService(current.Definition);
                 var added = editor.Add(kind, name, relative, bytes);
                 var path = ProjectPathPolicy.Normalize(current.RootDirectory, relative);

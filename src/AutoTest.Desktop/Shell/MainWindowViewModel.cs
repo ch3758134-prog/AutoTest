@@ -1,5 +1,13 @@
 using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Input;
+using AutoTest.Desktop.Hardware;
+using AutoTest.Contracts;
+using AutoTest.Devices.Can;
+using System.Globalization;
+using AutoTest.Specialists.Scan;
 using System.IO;
+using System.Windows.Controls;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Dbc;
@@ -16,10 +24,26 @@ namespace AutoTest.Desktop.Shell;
 public sealed class MainWindowViewModel : BindableBase
 {
     private readonly ProjectWorkspaceService _workspace;
+    private readonly HardwareConnectionService _hardware;
+    private readonly KeyboardWedgeCapture _scanCapture;
+    private readonly CancellationTokenSource _scanStop = new();
+    private readonly Task _scanReader;
+    private string? _activeEditorProjectPath;
+    private string _hardwareStatus = "USB 未连接";
+    private string _scanStatus = "扫码未开始";
+    private bool _hardwareBusy;
+    private string _canId = "";
+    private string _canData = "";
+    private string _canConfirmation = "";
+    private string _canTxStatus = "仅允许操作员逐帧确认发送；发送结果以设备 ACK 为准。";
     private readonly NewProjectDialogService _newDialog;
     private readonly ProjectFileDialogService _fileDialogs;
-    private readonly DbcWorkbenchWindowService _dbcWindows;
-    private readonly TestEditorWindowService _testWindows;
+    private readonly DbcEditorDialogs _dbcDialogs;
+    private readonly TestEditorDialogs _testDialogs;
+    private UserControl? _activeEditorView;
+    private Func<bool>? _confirmEditorClose;
+    private string? _activeEditorKey;
+    private string _activeEditorTitle = "";
     private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
@@ -27,20 +51,39 @@ public sealed class MainWindowViewModel : BindableBase
 
     public MainWindowViewModel(
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
-        ProjectFileDialogService fileDialogs, DbcWorkbenchWindowService dbcWindows,
-        TestEditorWindowService testWindows, RecentProjectStore recentProjects)
+        ProjectFileDialogService fileDialogs, DbcEditorDialogs dbcDialogs,
+        TestEditorDialogs testDialogs, RecentProjectStore recentProjects,
+        HardwareConnectionService hardware)
     {
         _workspace = workspace;
+        _hardware = hardware;
+        var router = new BarcodeInputRouter();
+        router.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
+        router.SetAdmissionGate(() => !_hardwareBusy);
+        _scanCapture = new KeyboardWedgeCapture(router);
+        _scanReader = Task.Run(async () =>
+        {
+            try
+            {
+                await foreach (var _ in router.ObserveAsync(new InputPolicy(true, 512, "keyboard"),
+                                   _scanStop.Token)) { /* Drain accepted ingress; UI updates from capture results. */ }
+            }
+            catch (OperationCanceledException) when (_scanStop.IsCancellationRequested) { }
+        });
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
-        _dbcWindows = dbcWindows;
-        _testWindows = testWindows;
+        _dbcDialogs = dbcDialogs;
+        _testDialogs = testDialogs;
         _recentProjects = recentProjects;
         NewProjectCommand = new DelegateCommand(OpenNewProject, () => !IsBusy);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
             () => HasProject && !IsBusy);
         ImportDbcCommand = new DelegateCommand(async () => await ImportDbcAsync(),
+            () => HasProject && !IsBusy);
+        ImportFirmwareCommand = new DelegateCommand(async () => await ImportFirmwareAsync(),
+            () => HasProject && !IsBusy);
+        ImportWaveCommand = new DelegateCommand(async () => await ImportWaveAsync(),
             () => HasProject && !IsBusy);
         OpenDbcCommand = new DelegateCommand(async () => await OpenSelectedDbcAsync(),
             () => SelectedResourceIsDbc && !IsBusy);
@@ -50,8 +93,33 @@ public sealed class MainWindowViewModel : BindableBase
             () => _selectedResource?.Asset is not null && !IsBusy);
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
+        ConnectHardwareCommand = new DelegateCommand(async () => await ToggleHardwareAsync(),
+            () => !_hardwareBusy);
+        OpenCanMonitorCommand = new DelegateCommand(OpenCanMonitor);
+        TransmitCanCommand = new DelegateCommand(async () => await TransmitCanAsync(), () => !_hardwareBusy);
+        _hardware.EvidenceRecorded += line =>
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                HardwareStatus = line;
+                StatusMessage = line;
+            }));
+        _hardware.FrameObserved += frame =>
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var f = frame.Frame;
+                CanRecords.Add(new CanMonitorRow(
+                    frame.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
+                    f.Role == BusRole.DutCan ? "CAN1 · DUT" : "CAN0 · 按键板",
+                    "0x" + f.Id.ToString("X"), f.ExtendedId ? "扩展" : "标准",
+                    f.Dlc, Convert.ToHexString(f.Data.ToArray()), frame.LostFrames));
+                if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
+            }));
         _workspace.CurrentChanged += (_, _) =>
         {
+            if (_activeEditorProjectPath is not null &&
+                !string.Equals(_activeEditorProjectPath, _workspace.Current?.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase))
+                ClearEditor();
             RaisePropertyChanged(nameof(HasProject));
             RaisePropertyChanged(nameof(CurrentProjectName));
             RaisePropertyChanged(nameof(CurrentProjectPath));
@@ -74,7 +142,182 @@ public sealed class MainWindowViewModel : BindableBase
         RebuildResourceTree();
     }
 
+    public sealed record CanMonitorRow(string Time, string Port, string Id, string Format,
+        byte Dlc, string Data, long Lost);
+    public ObservableCollection<CanMonitorRow> CanRecords { get; } = new();
     public ObservableCollection<ResourceTreeNode> ResourceNodes { get; } = new();
+    public string HardwareStatus
+    {
+        get => _hardwareStatus;
+        private set => SetProperty(ref _hardwareStatus, value);
+    }
+    public string ScanStatus
+    {
+        get => _scanStatus;
+        private set => SetProperty(ref _scanStatus, value);
+    }
+    public string ConnectionButtonText => _hardwareBusy ? "正在操作…" :
+        _hardware.HasSession ? "断开" : "连接";
+    public DelegateCommand ConnectHardwareCommand { get; }
+    public DelegateCommand OpenCanMonitorCommand { get; }
+    public DelegateCommand TransmitCanCommand { get; }
+    public string CanId
+    {
+        get => _canId;
+        set { if (SetProperty(ref _canId, value)) RaisePropertyChanged(nameof(ExpectedCanConfirmation)); }
+    }
+    public string CanData
+    {
+        get => _canData;
+        set { if (SetProperty(ref _canData, value)) RaisePropertyChanged(nameof(ExpectedCanConfirmation)); }
+    }
+    public string CanConfirmation
+    {
+        get => _canConfirmation;
+        set => SetProperty(ref _canConfirmation, value);
+    }
+    public string CanTxStatus
+    {
+        get => _canTxStatus;
+        private set => SetProperty(ref _canTxStatus, value);
+    }
+    public string ExpectedCanConfirmation
+    {
+        get
+        {
+            try { return "AUTHORIZE CAN TX " +
+                Convert.ToHexString(CanFrameCodec.ToUsbPayload(BuildCanFrame(),
+                    new BusRoleMap(default, DutPort: 1, KeypadPort: 0))); }
+            catch (Exception error) when (error is FormatException or ArgumentException or OverflowException)
+            { return "请输入合法的标准帧 ID 和最多 8 字节 HEX 数据。"; }
+        }
+    }
+    private CanFrame BuildCanFrame()
+    {
+        var text = CanId.Trim().Replace("0x", "", StringComparison.OrdinalIgnoreCase);
+        if (!uint.TryParse(text, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var id))
+            throw new FormatException("CAN ID 必须是十六进制整数。");
+        var bytes = Convert.FromHexString(string.Concat(CanData.Where(c => !char.IsWhiteSpace(c))));
+        return CanFrame.Create(BusRole.DutCan, extended: false, id, bytes);
+    }
+    private async Task TransmitCanAsync()
+    {
+        if (_hardwareBusy) return;
+        try
+        {
+            var frame = BuildCanFrame();
+            if (CanConfirmation != ExpectedCanConfirmation)
+            {
+                CanTxStatus = "确认文本不匹配，物理发送已拦截。";
+                return;
+            }
+            _hardwareBusy = true;
+            ConnectHardwareCommand.RaiseCanExecuteChanged();
+            TransmitCanCommand.RaiseCanExecuteChanged();
+            await _hardware.SendCanOnceAsync(frame, CanConfirmation);
+            CanTxStatus = "设备已 ACK；请核对 CAN 接收和 DUT 响应。";
+        }
+        catch (Exception error)
+        {
+            CanTxStatus = "发送失败或状态未知：" + error.Message;
+        }
+        finally
+        {
+            CanConfirmation = "";
+            _hardwareBusy = false;
+            ConnectHardwareCommand.RaiseCanExecuteChanged();
+            TransmitCanCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public void CaptureScannerText(string text)
+    {
+        foreach (var character in text)
+        {
+            var result = _scanCapture.OnKeyInput(character, scannerFieldHasFocus: true);
+            if (result is { Accepted: false }) ScanStatus = "扫码拒绝：" + result.Code;
+        }
+    }
+    public void FinishScannerInput()
+    {
+        var result = _scanCapture.CompleteScan();
+        ScanStatus = result.Accepted
+            ? "已采集：" + result.Event!.Scan.Text + "（尚未匹配配置）"
+            : "扫码拒绝：" + result.Code;
+    }
+    private async Task ToggleHardwareAsync()
+    {
+        if (_hardwareBusy) return;
+        _hardwareBusy = true;
+        RaisePropertyChanged(nameof(ConnectionButtonText));
+        ConnectHardwareCommand.RaiseCanExecuteChanged();
+        try
+        {
+            if (_hardware.HasSession) await _hardware.DisconnectAsync();
+            else await _hardware.ConnectAsync();
+            HardwareStatus = _hardware.IsConnected ? "USB 主控已连接（只读检测通过）" : "USB 已断开";
+        }
+        catch (Exception error)
+        {
+            HardwareStatus = "USB 操作失败：" + error.Message;
+            StatusMessage = HardwareStatus;
+        }
+        finally
+        {
+            _hardwareBusy = false;
+            RaisePropertyChanged(nameof(ConnectionButtonText));
+            ConnectHardwareCommand.RaiseCanExecuteChanged();
+        }
+    }
+    public async Task ShutdownAsync()
+    {
+        _scanStop.Cancel();
+        try { await _scanReader; }
+        catch (OperationCanceledException) { }
+        _scanStop.Dispose();
+        try { await _hardware.DisposeAsync(); }
+        catch (Exception error) { StatusMessage = "程序关闭期间主控断开失败：" + error.Message; }
+    }
+
+    private void OpenCanMonitor()
+    {
+        if (IsAlreadyOpen("can|monitor") || !ConfirmCloseActiveEditor()) return;
+        ActivateEditor("can|monitor", new CanMonitorView(this), "CAN 监视", () => true);
+    }
+
+    public UserControl? ActiveEditorView
+    {
+        get => _activeEditorView;
+        private set
+        {
+            if (!SetProperty(ref _activeEditorView, value)) return;
+            RaisePropertyChanged(nameof(HasActiveEditor));
+        }
+    }
+    public bool HasActiveEditor => ActiveEditorView is not null;
+    public string ActiveEditorTitle
+    {
+        get => _activeEditorTitle;
+        private set => SetProperty(ref _activeEditorTitle, value);
+    }
+    public bool ConfirmCloseActiveEditor() => _confirmEditorClose?.Invoke() ?? true;
+    private bool IsAlreadyOpen(string key) => HasActiveEditor && _activeEditorKey == key;
+    private void ActivateEditor(string key, UserControl editor, string title, Func<bool> confirmClose)
+    {
+        _activeEditorKey = key;
+        _activeEditorProjectPath = _workspace.Current?.ManifestPath;
+        _confirmEditorClose = confirmClose;
+        ActiveEditorTitle = title;
+        ActiveEditorView = editor;
+    }
+    private void ClearEditor()
+    {
+        ActiveEditorView = null;
+        ActiveEditorTitle = "";
+        _activeEditorKey = null;
+        _activeEditorProjectPath = null;
+        _confirmEditorClose = null;
+    }
     public bool HasProject => _workspace.Current is not null;
     public string CurrentProjectName => _workspace.Current?.Definition.Name ?? "未打开工程";
     public string CurrentProjectPath => _workspace.Current?.ManifestPath ?? "";
@@ -109,6 +352,8 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenProjectCommand { get; }
     public DelegateCommand NewTestProgramCommand { get; }
     public DelegateCommand ImportDbcCommand { get; }
+    public DelegateCommand ImportFirmwareCommand { get; }
+    public DelegateCommand ImportWaveCommand { get; }
     public DelegateCommand OpenDbcCommand { get; }
     public DelegateCommand OpenTestProgramCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
@@ -189,9 +434,9 @@ public sealed class MainWindowViewModel : BindableBase
              Icon: "▥", Empty: "尚未导入 DBC"),
             (Key: "controller", Title: "控制器与按键配置",
              Icon: "⚙", Empty: "尚无控制器配置"),
-            (Key: "wave", Title: "波形参考",
+            (Key: ProjectWorkspaceService.WaveKind, Title: "波形证据",
              Icon: "⌁", Empty: "尚无参考波形"),
-            (Key: "firmware", Title: "固件与烧录资源",
+            (Key: ProjectWorkspaceService.FirmwareKind, Title: "固件资源",
              Icon: "◫", Empty: "尚无固件资源")
         };
         var assets = current.Definition.Assets;
@@ -238,6 +483,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void OpenNewProject()
     {
         if (IsBusy) return;
+        if (!ConfirmCloseActiveEditor()) return;
         IsBusy = true;
         try { _newDialog.ShowDialog(); }
         catch (Exception e) { StatusMessage = "新建工程窗口打开失败：" + e.Message; }
@@ -247,9 +493,10 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenProjectAsync()
     {
         var path = _fileDialogs.PickProjectManifest();
-        if (path is null) return;
+        if (path is null || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
+            ClearEditor();
             await _workspace.OpenAsync(path);
             StatusMessage = "工程已打开：" + path;
         });
@@ -259,13 +506,15 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (!HasProject) return;
         var name = _fileDialogs.AskResourceName("新建测试程序", "新建测试程序");
-        if (name is null) return;
+        if (name is null || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
             var entry = await _workspace.CreateTestProgramAsync(name);
             SelectAsset(entry.Id);
             var session = await _workspace.OpenTestEditorAsync(entry.Id);
-            _testWindows.Show(session);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, session);
+            ActivateEditor("test|" + entry.Id, new TestEditorView(editor),
+                "测试程序 · " + entry.Name, editor.ConfirmClose);
             StatusMessage = "测试程序已创建并打开：" + entry.Name;
         });
     }
@@ -274,24 +523,55 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (!HasProject) return;
         var path = _fileDialogs.PickDbcFile(_workspace.Current?.RootDirectory);
-        if (path is null) return;
+        if (path is null || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
             var entry = await _workspace.ImportDbcAsync(path);
             SelectAsset(entry.Id);
             var opened = await _workspace.OpenDbcEditorAsync(entry.Id);
-            _dbcWindows.Show(opened);
+            var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
+            ActivateEditor("dbc|" + entry.Id, new DbcWorkbenchView(editor),
+                "DBC · " + entry.Name, editor.ConfirmClose);
             StatusMessage = "DBC 已导入并打开：" + entry.Name;
+        });
+    }
+
+    private async Task ImportFirmwareAsync()
+    {
+        if (!HasProject) return;
+        var path = _fileDialogs.PickFirmwareFile(_workspace.Current?.RootDirectory);
+        if (path is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var entry = await _workspace.ImportFirmwareAsync(path);
+            SelectAsset(entry.Id);
+            StatusMessage = "固件校验并登记为工程资源：" + entry.Name + "（尚未配置烧录流程）";
+        });
+    }
+
+    private async Task ImportWaveAsync()
+    {
+        if (!HasProject) return;
+        var path = _fileDialogs.PickWaveEvidenceFile(_workspace.Current?.RootDirectory);
+        if (path is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var entry = await _workspace.ImportWaveEvidenceAsync(path);
+            SelectAsset(entry.Id);
+            StatusMessage = "波形证据校验并登记：" + entry.Name + "（不自动标为参考波形）";
         });
     }
 
     private async Task OpenSelectedTestProgramAsync()
     {
         if (!SelectedResourceIsTestProgram || _selectedResource?.Asset is not { } asset) return;
+        if (IsAlreadyOpen("test|" + asset.Id) || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
             var session = await _workspace.OpenTestEditorAsync(asset.Id);
-            _testWindows.Show(session);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, session);
+            ActivateEditor("test|" + asset.Id, new TestEditorView(editor),
+                "测试程序 · " + asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试程序：" + asset.Name;
         });
     }
@@ -299,10 +579,13 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenSelectedDbcAsync()
     {
         if (!SelectedResourceIsDbc || _selectedResource?.Asset is not { } asset) return;
+        if (IsAlreadyOpen("dbc|" + asset.Id) || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
             var opened = await _workspace.OpenDbcEditorAsync(asset.Id);
-            _dbcWindows.Show(opened);
+            var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
+            ActivateEditor("dbc|" + asset.Id, new DbcWorkbenchView(editor),
+                "DBC · " + asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开 DBC：" + asset.Name;
         });
     }
@@ -324,10 +607,15 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task RemoveReferenceAsync()
     {
         var asset = _selectedResource?.Asset;
-        if (asset is null || !_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
+        if (asset is null) return;
+        var editorUsesAsset = _activeEditorKey is not null &&
+            _activeEditorKey.EndsWith("|" + asset.Id, StringComparison.Ordinal);
+        if (editorUsesAsset && !ConfirmCloseActiveEditor()) return;
+        if (!_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
         await RunOperationAsync(async () =>
         {
             await _workspace.RemoveAssetReferenceAsync(asset.Id);
+            if (editorUsesAsset) ClearEditor();
             SelectResource(null);
             StatusMessage = "已移除工程资源引用，磁盘原文件保留：" + asset.Name;
         });
@@ -361,6 +649,8 @@ public sealed class MainWindowViewModel : BindableBase
         OpenProjectCommand?.RaiseCanExecuteChanged();
         NewTestProgramCommand?.RaiseCanExecuteChanged();
         ImportDbcCommand?.RaiseCanExecuteChanged();
+        ImportFirmwareCommand?.RaiseCanExecuteChanged();
+        ImportWaveCommand?.RaiseCanExecuteChanged();
         OpenDbcCommand?.RaiseCanExecuteChanged();
         OpenTestProgramCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();
