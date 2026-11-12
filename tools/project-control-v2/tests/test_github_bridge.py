@@ -18,8 +18,36 @@ class FakeGitHub:
         self.old_blob="b"*40
         self.new_head="c"*40
         self.writes=[]
+        self.pin="9"*40
+        self.design_sha="8"*40
+        self.original_task={
+            "id":"IMPL-001", "state":"DRAFT", "project_id":"demo",
+            "mode":"CONTROLLED", "executor":"local_codex",
+            "source":{"repo_url":"https://github.com/acme/demo.git",
+                      "branch":"main","pinned_sha":self.pin,"work_branch":"feature/impl"},
+            "authorization":{"approved_by":"Owner","approval_reference":"owner-001"},
+            "inputs":[{"type":"DESIGN_BASELINE","path":"design/feature.md",
+                       "blob_sha":self.design_sha}],
+            "allowed_paths":["src/**"],"acceptance":["Reviewed"]
+        }
         self.content=json.dumps({"schema":"project-control-target-tasks/1",
-                                 "project_id":"demo","tasks":[{"id":"IMPL-001","state":"DRAFT"}]}).encode()
+                                  "project_id":"demo","tasks":[self.original_task]}).encode()
+        self.project_data=json.dumps({
+            "schema":"project-control-target-project/1","project_id":"demo",
+            "repo_url":"https://github.com/acme/demo.git",
+            "formal_product_identity":"APPROVED","scope_decision":"APPROVED"
+        }).encode()
+        self.decisions_data=json.dumps({
+            "schema":"project-control-target-decisions/1","project_id":"demo",
+            "decisions":[
+                {"kind":"TASK_EXECUTION_APPROVAL","state":"APPROVED",
+                 "task_id":"IMPL-001","source_sha":self.pin,
+                 "approved_by":"Owner","approval_reference":"owner-001"},
+                {"kind":"DESIGN_APPROVAL","state":"APPROVED",
+                 "path":"design/feature.md","blob_sha":self.design_sha,
+                 "approved_by":"Owner","approval_reference":"design-001"}
+            ]
+        }).encode()
         self.pr_head="d"*40
         self.remote_files=["src/feature.py"]
 
@@ -27,7 +55,16 @@ class FakeGitHub:
         return self.head
 
     def file(self,parts,path,branch):
+        if path=="project.json" or path==".project-control/project.json":
+            return ("3"*40),self.project_data
+        if path==".project-control/decisions.json":
+            return ("4"*40),self.decisions_data
+        if path=="design/feature.md":
+            return self.design_sha,b"# verified design\n"
         return (self.old_blob if not self.writes else "e"*40),self.content
+
+    def is_ancestor(self,parts,pin,head):
+        return pin==self.pin and head==self.head
 
     def commit_parents(self,parts,sha):
         assert sha==self.new_head
@@ -63,7 +100,8 @@ class GitHubBridgeTests(unittest.TestCase):
                    "proposed_content":json.dumps({
                        "schema":"project-control-target-tasks/1",
                        "project_id":"demo",
-                       "tasks":[{"id":"IMPL-001","state":"READY_FOR_LOCAL_IMPLEMENTATION"}]})}
+                       "tasks":[{**self.client.original_task,"state":"READY_FOR_LOCAL_IMPLEMENTATION",
+                                 "published_source_sha":self.client.pin}]})}
 
     def test_preview_never_contacts_github(self):
         result=bridge.publish_plan(self.client,self.plan,
@@ -116,6 +154,28 @@ class GitHubBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(bridge.RemoteError,"changed during"):
             bridge.publish_plan(self.client,self.plan,"https://github.com/acme/demo.git",apply=True)
         self.assertEqual(len(self.client.writes),1)
+
+    def test_remote_task_decision_is_revalidated_before_write(self):
+        data=json.loads(self.client.decisions_data)
+        data["decisions"]=[d for d in data["decisions"] if d["kind"]!="TASK_EXECUTION_APPROVAL"]
+        self.client.decisions_data=json.dumps(data).encode()
+        with self.assertRaisesRegex(bridge.RemoteError,"separately authorized"):
+            bridge.publish_plan(self.client,self.plan,"https://github.com/acme/demo.git",apply=True)
+        self.assertEqual(self.client.writes,[])
+
+    def test_remote_design_blob_is_revalidated_before_write(self):
+        self.client.design_sha="7"*40
+        with self.assertRaisesRegex(bridge.RemoteError,"approved design"):
+            bridge.publish_plan(self.client,self.plan,"https://github.com/acme/demo.git",apply=True)
+        self.assertEqual(self.client.writes,[])
+
+    def test_candidate_cannot_modify_existing_work_scope(self):
+        data=json.loads(self.plan["proposed_content"])
+        data["tasks"][0]["allowed_paths"]=["**"]
+        self.plan["proposed_content"]=json.dumps(data)
+        with self.assertRaisesRegex(bridge.RemoteError,"unapproved edits"):
+            bridge.publish_plan(self.client,self.plan,"https://github.com/acme/demo.git",apply=True)
+        self.assertEqual(self.client.writes,[])
 
     def test_actual_pr_files_match_receipt_before_review(self):
         project={"project_id":"demo","repo_url":"https://github.com/acme/demo.git"}
