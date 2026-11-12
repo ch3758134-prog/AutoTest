@@ -4,9 +4,9 @@
  Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Segoe UI"
  FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
  <UserControl.Resources>
-  <SolidColorBrush x:Key="Ink" Color="#203249"/>
-  <SolidColorBrush x:Key="Muted" Color="#6A7E93"/>
-  <SolidColorBrush x:Key="Line" Color="#D8E2ED"/>
+  <SolidColorBrush x:Key="Ink" Color="#25364A"/>
+  <SolidColorBrush x:Key="Muted" Color="#61768D"/>
+  <SolidColorBrush x:Key="Line" Color="#D7E3F2"/>
   
   
   <Style TargetType="CheckBox">
@@ -23,22 +23,23 @@
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="*" MinHeight="260"/>
+   <RowDefinition Height="170"/>
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
   <!-- V6: the executing TEST, not the barcode or IDE file tree, owns this view. -->
   <DockPanel Grid.Row="0" Margin="0,0,0,11">
    <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
-    <Button Content="检查运行条件" Command="{Binding PreflightCommand}"/>
-    <Button Content="▶ 执行完整 TEST" Style="{StaticResource AtPrimaryButton}" Command="{Binding RunPhysicalReadOnlyCommand}"
-      Background="#176CB5" Foreground="White" FontWeight="SemiBold"/>
+    <Button Content="预检" Command="{Binding PreflightCommand}"/>
+    <Button Content="▶ 开始执行" Style="{StaticResource AtPrimaryButton}" Command="{Binding RunPhysicalReadOnlyCommand}"
+      Background="#2C83E7" Foreground="White" FontWeight="SemiBold"/>
     <Button Content="暂停" Command="{Binding PauseCommand}"/>
     <Button Content="继续" Command="{Binding ResumeCommand}"/>
-    <Button Content="停止" Style="{StaticResource AtDangerButton}" Command="{Binding StopCommand}" Foreground="#B63B51"/>
+    <Button Content="停止" Style="{StaticResource AtDangerButton}" Command="{Binding StopCommand}" Foreground="#A73A4F"/>
    </WrapPanel>
    <StackPanel>
     <DockPanel>
-     <TextBlock Text="自动测试" Style="{StaticResource AtPageTitle}"/>
-     <TextBlock Text="  /  执行与判定" FontSize="12"
+     <TextBlock Text="自动测试运行" Style="{StaticResource AtPageTitle}"/>
+     <TextBlock Text="  /  测试计划、实时状态与判定" FontSize="12"
        Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="7,0,0,4"/>
     </DockPanel>
     <TextBlock Text="{Binding DocumentName}" Foreground="{StaticResource Muted}"
@@ -56,7 +57,7 @@
     </Grid.ColumnDefinitions>
     <StackPanel Grid.Column="0">
      <TextBlock Text="本次测试状态" Foreground="{StaticResource Muted}" FontSize="11"/>
-     <TextBlock Text="{Binding Verdict}" FontSize="17" FontWeight="Bold" Foreground="#245B88"
+     <TextBlock Text="{Binding Verdict}" FontSize="17" FontWeight="Bold" Foreground="#2665A8"
       Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
     </StackPanel>
     <StackPanel Grid.Column="1" Margin="14,0,0,0">
@@ -72,7 +73,7 @@
     <StackPanel Grid.Column="3" Margin="14,0,0,0">
      <TextBlock Text="真实步骤事实 / 执行进度" Foreground="{StaticResource Muted}" FontSize="11"/>
      <TextBlock Text="{Binding RunFactsText}" FontSize="15" FontWeight="SemiBold"
-      Foreground="#176CB5" Margin="0,6,0,0"/>
+      Foreground="#2C83E7" Margin="0,6,0,0"/>
     </StackPanel>
    </Grid>
   </Border>
@@ -86,8 +87,8 @@
     <TextBlock Text="{Binding SelectedScopeText}" VerticalAlignment="Center" FontWeight="SemiBold"
       Foreground="#325A7D" Margin="2,0,12,0"/>
     <Button Content="▶ 仅运行勾选用例" Command="{Binding RunSelectedPhysicalCommand}"
-      Background="#E9F3FF" Foreground="#176CB5" FontWeight="SemiBold" MinHeight="28"/>
-    <TextBlock Text="在左侧 TEST 树中勾选；正式扫码运行不受勾选影响" VerticalAlignment="Center"
+      Background="#E5F2FF" Foreground="#2C83E7" FontWeight="SemiBold" MinHeight="28"/>
+    <TextBlock Text="本页执行计划决定本次手动运行范围；正式扫码运行不受影响" VerticalAlignment="Center"
       FontSize="11" Foreground="{StaticResource Muted}" Margin="8,0,0,0"/>
    </StackPanel>
   </DockPanel>
@@ -95,17 +96,52 @@
   <!-- Main focus: planned steps (including unexecuted steps) and the selected factual result. -->
   <Grid Grid.Row="3">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="2.2*" MinWidth="400"/>
-    <ColumnDefinition Width="10"/>
-    <ColumnDefinition Width="1*" MinWidth="290"/>
+    <ColumnDefinition Width="235" MinWidth="185"/>
+    <ColumnDefinition Width="7"/>
+    <ColumnDefinition Width="2.2*" MinWidth="390"/>
+    <ColumnDefinition Width="7"/>
+    <ColumnDefinition Width="1*" MinWidth="245"/>
    </Grid.ColumnDefinitions>
-   <Grid Grid.Column="0">
+   <Border Grid.Column="0" Style="{StaticResource AtIdeCard}" Padding="0">
+    <DockPanel>
+     <Border DockPanel.Dock="Top" Style="{StaticResource AtBlueHeading}">
+      <StackPanel>
+       <TextBlock Text="执行计划" Style="{StaticResource AtEditorHeading}"/>
+       <TextBlock Text="选择本次执行的测试用例" Style="{StaticResource AtHint}" Margin="0,5,0,0"/>
+      </StackPanel>
+     </Border>
+     <StackPanel DockPanel.Dock="Bottom" Margin="10,8">
+      <Button Content="运行勾选用例" Command="{Binding RunSelectedPhysicalCommand}" Style="{StaticResource AtPrimaryButton}" Margin="0,0,0,7"/>
+      <WrapPanel>
+       <Button Content="全部选中" Command="{Binding SelectAllCasesCommand}" Style="{StaticResource AtQuietButton}"/>
+       <Button Content="清空选择" Command="{Binding ClearCasesCommand}" Style="{StaticResource AtQuietButton}"/>
+      </WrapPanel>
+      <TextBlock Text="只影响本次手动运行，不改变扫码生产的正式执行范围。" Style="{StaticResource AtHint}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+     </StackPanel>
+     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="9,11">
+      <ItemsControl ItemsSource="{Binding TestCases}">
+       <ItemsControl.ItemTemplate>
+        <DataTemplate>
+         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="4,5" ToolTip="本次手动执行时是否包含此用例">
+          <StackPanel>
+           <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+           <TextBlock Text="{Binding StepCount, StringFormat={}{0} 个步骤}" Style="{StaticResource AtHint}" Margin="0,3,0,0"/>
+          </StackPanel>
+         </CheckBox>
+        </DataTemplate>
+       </ItemsControl.ItemTemplate>
+      </ItemsControl>
+     </ScrollViewer>
+    </DockPanel>
+   </Border>
+   <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="Transparent"/>
+  <Grid Grid.Column="2">
    <Border Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="5">
     <DockPanel>
      <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#E1E8F0"
       BorderThickness="0,0,0,1" Padding="11,9">
       <DockPanel>
-       <TextBlock Text="TEST 执行过程" FontWeight="SemiBold" FontSize="14"/>
+       <TextBlock Text="实时测试步骤" FontWeight="SemiBold" FontSize="14"/>
        <TextBlock DockPanel.Dock="Right" Text="{Binding RunFactsText}" FontSize="11"
         Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
       </DockPanel>
@@ -147,19 +183,19 @@
      <TextBlock Text="在 TEST 编辑器中建立测试用例、添加步骤并保存到工程。返回这里后会显示实际程序结构与执行事实。"
       TextWrapping="Wrap" TextAlignment="Center" Foreground="#617B92"
       FontSize="12" Margin="0,0,0,15"/>
-     <Button Content="打开 TEST 程序编辑器" Click="OpenProgram_Click"
-      HorizontalAlignment="Center" Background="#176AB2" Foreground="White"
+     <Button Content="编辑测试程序" Click="OpenProgram_Click"
+      HorizontalAlignment="Center" Background="#2C83E7" Foreground="White"
       Padding="16,8" FontWeight="SemiBold"/>
-     <TextBlock Text="没有真实 DUT 观测时不会生成 PASS" FontSize="11"
+     <TextBlock Text="没有真实 ECU 观测不会生成通过结果" FontSize="11"
       TextAlignment="Center" Foreground="#8695A7" Margin="0,13,0,0"/>
     </StackPanel>
    </Border>
    </Grid>
-   <GridSplitter Grid.Column="1" Background="Transparent" HorizontalAlignment="Stretch"/>
-   <Border Grid.Column="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="5">
+   <GridSplitter Grid.Column="3" Background="Transparent" HorizontalAlignment="Stretch"/>
+   <Border Grid.Column="4" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="5">
     <DockPanel>
      <Border DockPanel.Dock="Top" BorderBrush="#E1E8F0" BorderThickness="0,0,0,1" Padding="12,9">
-      <TextBlock Text="当前步骤 · 实际判定" FontWeight="SemiBold" FontSize="14"/>
+      <TextBlock Text="当前步骤详情" FontWeight="SemiBold" FontSize="14"/>
      </Border>
      <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel Margin="14,14,14,10">
@@ -176,7 +212,7 @@
        <Border BorderBrush="#E1E8F1" BorderThickness="0,1,0,0" Padding="0,11,0,0">
         <StackPanel>
          <TextBlock Text="步骤判定" Foreground="#778A9B" FontSize="11"/>
-         <TextBlock Text="{Binding SelectedRunStep.Verdict}" Foreground="#995F19" FontSize="15"
+         <TextBlock Text="{Binding SelectedRunStep.Verdict}" Foreground="#7F5D3B" FontSize="15"
           FontWeight="SemiBold" Margin="0,5,0,12"/>
         </StackPanel>
        </Border>
@@ -203,7 +239,28 @@
     </DockPanel>
    </Border>
   </Grid>
-  <Border Grid.Row="4" Background="#EFF5FC" BorderBrush="#D6E2EF" BorderThickness="1"
+  <Border Grid.Row="4" Style="{StaticResource AtIdeCard}" Padding="0" Margin="0,10,0,0">
+   <DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource AtBlueHeading}">
+     <DockPanel>
+      <TextBlock Text="执行结果与步骤事实" Style="{StaticResource AtEditorHeading}"/>
+      <TextBlock DockPanel.Dock="Right" Text="{Binding RunFactsText}" Style="{StaticResource AtHint}"/>
+     </DockPanel>
+    </Border>
+    <DataGrid ItemsSource="{Binding Facts}" IsReadOnly="True" AutoGenerateColumns="False" BorderThickness="0" RowHeaderWidth="0">
+     <DataGrid.Columns>
+      <DataGridTextColumn Header="阶段" Binding="{Binding Phase}" Width="75"/>
+      <DataGridTextColumn Header="步骤类型" Binding="{Binding NodeType}" Width="120"/>
+      <DataGridTextColumn Header="预期" Binding="{Binding Expected}" Width="*"/>
+      <DataGridTextColumn Header="实际" Binding="{Binding Actual}" Width="*"/>
+      <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="100"/>
+      <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="100"/>
+      <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="1.5*"/>
+     </DataGrid.Columns>
+    </DataGrid>
+   </DockPanel>
+  </Border>
+  <Border Grid.Row="5" Background="#EEF6FF" BorderBrush="#D6E2EF" BorderThickness="1"
     CornerRadius="4" Padding="12,8" Margin="0,11,0,0">
    <StackPanel>
     <TextBlock Text="{Binding Status}" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold"/>
