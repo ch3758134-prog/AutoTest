@@ -21,12 +21,19 @@
   <TreeView Grid.Row="1" x:Name="ResourceTree"
     ItemsSource="{Binding ResourceNodes}" BorderThickness="0"
     Background="White" Foreground="{DynamicResource StudioText}"
-    MouseDoubleClick="ResourceTree_MouseDoubleClick" Margin="0,2,0,5">
+    MouseDoubleClick="ResourceTree_MouseDoubleClick" PreviewMouseRightButtonDown="ResourceTree_RightClick" Margin="0,2,0,5">
    <TreeView.Resources>
     <HierarchicalDataTemplate DataType="{x:Type vm:WorkbenchResourceNode}" ItemsSource="{Binding Children}">
      <TextBlock Text="{Binding Label}" TextWrapping="Wrap" FontSize="12" Foreground="#284660"/>
     </HierarchicalDataTemplate>
    </TreeView.Resources>
+   <TreeView.ContextMenu>
+    <ContextMenu>
+     <MenuItem Header="打开选中资源" Click="OpenSelectedResource_Click"/>
+     <Separator/>
+     <MenuItem Header="打开工程文件夹" Click="OpenFolder_Click"/>
+    </ContextMenu>
+   </TreeView.ContextMenu>
   </TreeView>
   <StackPanel Grid.Row="2" Margin="0,8,0,0">
    <WrapPanel>
