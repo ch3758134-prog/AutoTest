@@ -137,7 +137,7 @@ def empty_management(project_id):
         "status": "DRAFT", "deliverables": [], "work": [], "milestones": [],
         "risks": [], "progress": {}, "events": [], "receipts": [],
         "requirements": [], "plans": [], "changes": [], "gate_reviews": [], "trace_links": [],
-        "modules": [], "process_control": initial_process_state(), "delivery_reviews": []
+        "modules": [], "process_control": initial_process_state()
     }
 
 
@@ -243,7 +243,6 @@ class Target:
         except ProcessError as error:
             raise ManagementError("invalid process state: " + str(error)) from error
         check_context_collections(value)
-        delivery_items(value)
         try:
             defined_modules(value)
         except ModuleError as error:
@@ -349,7 +348,8 @@ class Target:
                 "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
                 "context_assessment": context_view,
-                "delivery_review_boundary": "STAGED_LOCAL_NOT_PUBLISHED; OWNER_RELEASE_IS_NOT_FORMAL_APPROVAL",
+                "delivery_review_boundary": "PRIVATE_GIT_METADATA_NOT_PROJECT_HISTORY_OR_REMOTE_PUBLISHED",
+                "delivery_state": self.read_delivery_store(),
                 "process_catalog": process_catalog(),
                 "process_policy_current": policy_is_current(management["process_control"]),
                 "git": {
@@ -362,6 +362,81 @@ class Target:
                            "task_ready_promotion": False, "local_cleanup": False,
                             "delivery_release": "SEPARATE_LOCAL_REVIEW_TOKEN_NOT_VERIFIED_HUMAN_IDENTITY"},
             }
+
+    def delivery_store_path(self):
+        # Git metadata, including per-worktree gitdir, is intentionally not
+        # tracked or uploaded with management.json. Reject symlink substitutions.
+        raw = git(self.root, "rev-parse", "--git-path", "project-control/deliveries.json")
+        path = Path(raw)
+        if not path.is_absolute():
+            path = self.root / path
+        if path.parent.is_symlink() or path.is_symlink():
+            raise ManagementError("unsafe private delivery store")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def read_delivery_store(self):
+        path = self.delivery_store_path()
+        if not path.exists():
+            return {"schema": "project-control-private-deliveries/1",
+                    "project_id": self.project_id, "revision": 1,
+                    "delivery_reviews": [], "events": []}
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 4_000_000:
+            raise ManagementError("unsafe or oversized private delivery store")
+        value = load_json(path)
+        if (value.get("schema") != "project-control-private-deliveries/1"
+                or value.get("project_id") != self.project_id
+                or type(value.get("revision")) is not int or value["revision"] < 1
+                or not isinstance(value.get("events"), list)
+                or len(value["events"]) != value["revision"] - 1):
+            raise ManagementError("private delivery store revision or identity invalid")
+        delivery_items(value)
+        return value
+
+    def apply_delivery(self, name, payload, *, owner_review_authorized=False):
+        if not isinstance(payload, dict):
+            raise ManagementError("delivery action payload must be an object")
+        if name not in ("stage_delivery", "revise_delivery", "offer_delivery_review",
+                        "owner_decide_delivery"):
+            raise ManagementError("unknown delivery action")
+        if name == "owner_decide_delivery" and not owner_review_authorized:
+            raise ManagementError("owner decision requires the separate review endpoint")
+        if name != "owner_decide_delivery" and owner_review_authorized:
+            raise ManagementError("owner review channel does not edit AI drafts")
+        expected = payload.get("expected_store_revision")
+        if type(expected) is not int:
+            raise ManagementError("expected private store revision required")
+        with self.lock, manager_file_lock(self.root):
+            self.check_identity()
+            path = self.delivery_store_path()
+            old_bytes = path.read_bytes() if path.exists() else None
+            state = self.read_delivery_store()
+            if expected != state["revision"]:
+                raise ManagementError("stale delivery review store; refresh the exact candidate")
+            output = apply_delivery(state, name, payload, at=stamp(),
+                                    owner_channel=owner_review_authorized)
+            state["revision"] += 1
+            state["events"].append({"revision": state["revision"], "action": name,
+                                    "delivery_id": output["id"], "at": stamp(),
+                                    "state": output["status"],
+                                    "formal_product_approval": False})
+            raw = (json.dumps(state, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+            if len(raw) > 4_000_000:
+                raise ManagementError("private delivery store needs explicit archival")
+            tmp = path.with_name(".deliveries." + secrets.token_hex(8) + ".tmp")
+            try:
+                with tmp.open("xb") as fp:
+                    fp.write(raw)
+                    fp.flush()
+                    os.fsync(fp.fileno())
+                if path.is_symlink() or (path.read_bytes() if path.exists() else None) != old_bytes:
+                    raise ManagementError("private delivery store changed during review; refresh")
+                os.replace(tmp, path)
+            finally:
+                tmp.unlink(missing_ok=True)
+            return {"project_id": self.project_id,
+                    "store_revision": state["revision"], "delivery": output,
+                    "remote_published": False, "formal_project_approval": False}
 
     def remote_status(self):
         with self.lock:
@@ -509,7 +584,7 @@ class Target:
                     "imported": imported, "skipped": skipped, "held": held,
                     "scope": "EXPLICIT_LOCAL_REGISTRY_ONLY"}
 
-    def apply(self, name, payload, *, owner_review_authorized=False):
+    def apply(self, name, payload):
         if not isinstance(payload, dict):
             raise ManagementError("action payload must be a JSON object")
         reason = checked_text(payload.get("reason"), "change reason", 2000)
@@ -528,23 +603,15 @@ class Target:
                 raise ManagementError("stale revision; refresh and review current changes")
             record.setdefault("receipts", [])
             record.setdefault("modules", [])
-            record.setdefault("delivery_reviews", [])
-            if name == "owner_decide_delivery" and not owner_review_authorized:
-                raise ManagementError("owner review decision is not a general manager action")
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
                              "create_milestone", "record_receipt", "review_receipt",
                              "verify_log_evidence", "create_module", "assign_module_work",
-                             "record_context_assessment", "propose_context_remediation_work",
-                             "stage_delivery", "revise_delivery", "offer_delivery_review",
-                             "owner_decide_delivery"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
+                             "record_context_assessment", "propose_context_remediation_work"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
             works = record["work"]
-            if name in ("stage_delivery", "revise_delivery", "offer_delivery_review",
-                        "owner_decide_delivery"):
-                apply_delivery(record, name, payload, at=stamp(), owner_channel=owner_review_authorized)
-            elif name in ("record_context_assessment", "propose_context_remediation_work"):
+            if name in ("record_context_assessment", "propose_context_remediation_work"):
                 apply_context_workflow(record, name, payload, project_id=self.project_id,
                                        repo_url=self.initial["repo_url"], recorded_at=stamp())
             elif name in PROCESS_ACTIONS:
@@ -843,7 +910,7 @@ def handler(targets, owner_token, registry_dir=None, review_token=None):
             if operation not in ("/api/action", "/api/collect-local-receipts",
                                   "/api/collect-registered-receipts", "/api/register-target",
                                   "/api/project-preview", "/api/project-apply",
-                                  "/api/owner-delivery-decision"):
+                                  "/api/owner-delivery-decision", "/api/delivery-draft-action"):
                 return self.respond({"error": "unknown operation"}, 404)
             try:
                 payload = json.loads(self.rfile.read(int(length)).decode("utf-8"))
@@ -921,11 +988,16 @@ def handler(targets, owner_token, registry_dir=None, review_token=None):
                     return self.respond(target.collect_local_receipts())
                 if operation == "/api/collect-registered-receipts":
                     return self.respond(target.collect_registered_receipts())
-                if operation == "/api/owner-delivery-decision":
-                    if payload.get("action") != "owner_decide_delivery":
-                        raise ManagementError("owner review endpoint only accepts exact delivery decisions")
-                    return self.respond(target.apply(payload["action"], payload.get("payload"),
-                                                     owner_review_authorized=True))
+                if operation in ("/api/owner-delivery-decision", "/api/delivery-draft-action"):
+                    action = payload.get("action")
+                    if operation == "/api/owner-delivery-decision" and action != "owner_decide_delivery":
+                        raise ManagementError("review endpoint requires an exact owner decision")
+                    if operation == "/api/delivery-draft-action" and action not in (
+                            "stage_delivery", "revise_delivery", "offer_delivery_review"):
+                        raise ManagementError("draft endpoint cannot record owner decisions")
+                    return self.respond(target.apply_delivery(
+                        action, payload.get("payload"),
+                        owner_review_authorized=(operation == "/api/owner-delivery-decision")))
                 return self.respond(target.apply(payload.get("action"), payload.get("payload")))
             except (OSError, ManagementError, InitError, ValueError, TypeError) as error:
                 return self.respond({"error": str(error)}, 400)
