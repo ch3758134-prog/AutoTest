@@ -281,6 +281,49 @@ def create(workspace_id, project_id, task_id, kind, purpose, path, allowed_root,
         raise
 
 
+def register_existing(workspace_id, project_id, task_id, kind, purpose,
+                      path, allowed_root, repo_url, source_ref, pinned_sha,
+                      location=None, apply=False):
+    """Adopt a Git checkout created by Codex in the USER-selected directory.
+
+    This is intentionally different from create(): no new clone, checkout,
+    worktree or file modifications. Crucial for first-time Codex bootstrap,
+    because workspace_manager.py is itself obtained from the target repo.
+    """
+    if kind == "TEMP":
+        raise WorkspaceError("existing checkouts cannot silently become disposable TEMP")
+    target, root = ensure_path_inside(path, allowed_root)
+    if str(target) != run_git(target, "rev-parse", "--show-toplevel"):
+        raise WorkspaceError("existing folder is not its Git repository root")
+    if canonical(run_git(target, "remote", "get-url", "origin")) != canonical(repo_url):
+        raise WorkspaceError("existing checkout belongs to another remote")
+    head = run_git(target, "rev-parse", "--verify", "HEAD")
+    if run_git(target, "branch", "--show-current") != source_ref:
+        raise WorkspaceError("existing checkout on wrong source branch")
+    if run_git(target, "merge-base", pinned_sha, head, missing=True) != pinned_sha:
+        raise WorkspaceError("existing checkout does not descend from task pin")
+    record = make_record(workspace_id, project_id, task_id, kind, purpose, target,
+                         root, repo_url, source_ref, pinned_sha, "EXISTING_CHECKOUT_RETAIN")
+    record["state"] = "ACTIVE"
+    record["creation_head"] = head
+    record["git_common_dir"] = run_git(target, "rev-parse", "--git-common-dir")
+    record["disposition"] = "PRESERVE_EXISTING_UNTIL_HUMAN_REVIEW"
+    record["cleanup_policy"] = "NEVER_AUTO_DELETE_EXISTING"
+    record["initial_dirty"] = bool(run_git(target, "status", "--porcelain", "--untracked-files=all"))
+    if not apply:
+        return {"status": "REGISTRATION_PREVIEW_ONLY", "workspace": record,
+                "note": "Never changes the existing project checkout."}
+    with registry_lock(location):
+        data = read_registry(location)
+        validate_registration(data, workspace_id, target)
+        data["workspaces"].append(record)
+        commit_event(data, "EXISTING_WORKSPACE_REGISTERED", workspace_id,
+                     "read-only verified identity, no files altered")
+        persist(data, location)
+    return {"status": "ACTIVE_EXISTING_REGISTERED", "workspace_id": workspace_id,
+            "canonical_path": str(target), "initial_dirty": record["initial_dirty"]}
+
+
 def inspect_one(record):
     """Read-only classification; do not infer a workspace is safe to remove."""
     root = Path(record["canonical_path"])
@@ -415,7 +458,7 @@ def archive(workspace_id, reason, location=None, apply=False):
 
 def cli(argv=None):
     p = argparse.ArgumentParser(description="Registered Codex Git workspaces; safe retirement")
-    p.add_argument("action", choices=["create", "inspect", "scan", "close", "archive"])
+    p.add_argument("action", choices=["create", "register-existing", "inspect", "scan", "close", "archive"])
     p.add_argument("--registry-dir")
     p.add_argument("--workspace-id")
     p.add_argument("--project-id")
@@ -440,6 +483,11 @@ def cli(argv=None):
                             args.purpose, args.workspace, args.allowed_root, args.repo_url,
                             args.source_ref, args.pinned_sha, args.parent_repo,
                             args.registry_dir, args.apply)
+        elif args.action == "register-existing":
+            result = register_existing(args.workspace_id, args.project_id, args.task_id,
+                                       args.type, args.purpose, args.workspace, args.allowed_root,
+                                       args.repo_url, args.source_ref, args.pinned_sha,
+                                       args.registry_dir, args.apply)
         elif args.action == "scan":
             result = scan(args.allowed_root, args.registry_dir)
         elif args.action == "inspect":
