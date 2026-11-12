@@ -133,7 +133,7 @@ class ProcessControlTests(unittest.TestCase):
           'judgement':'已有资料能支持候选目标，但新范围尚需重新核对',
           'owner_action':'REVIEW','owner_request':'审阅立项目的候选',
           'summary':'调查完成','evidence_refs':['source.md'],'unfinished':['审批'], 'next_action':'提交候审'})
-        self.assertEqual(self.record['process_control']['reports'][0]['state'],'REPORTED_NOT_ACCEPTED')
+        self.assertEqual(self.record['process_control']['reports'][0]['state'],'INTERNAL_REPORT_NOT_DELIVERED')
 
     def test_policy_mismatch_rejects_implicit_upgrade(self):
         self.record['process_control']=initial_state()
