@@ -31,6 +31,8 @@ import subprocess
 import threading
 from urllib.parse import parse_qs, urlsplit
 import sys
+import time
+from project_init import inspect_target, create_preview, apply_preview, InitError
 
 HERE = Path(__file__).resolve().parent
 UI = HERE / "web"
@@ -650,6 +652,9 @@ def handler(targets, owner_token, registry_dir=None):
     # The local console may start before any managed project exists. Register
     # initialized projects explicitly after opening the application.
     target_lock = threading.RLock()
+    # Previews are server-memory capabilities, never written into a project.
+    # A preview is not an authorization to push/commit or change Gate state.
+    pending_previews = {}
     assets = {
         "/": ("index.html", "text/html; charset=utf-8"),
         "/app.css": ("app.css", "text/css; charset=utf-8"),
@@ -768,12 +773,62 @@ def handler(targets, owner_token, registry_dir=None):
                 return self.respond({"error": "invalid body size"}, 413)
             operation = urlsplit(self.path).path
             if operation not in ("/api/action", "/api/collect-local-receipts",
-                                  "/api/collect-registered-receipts", "/api/register-target"):
+                                  "/api/collect-registered-receipts", "/api/register-target",
+                                  "/api/project-preview", "/api/project-apply"):
                 return self.respond({"error": "unknown operation"}, 404)
             try:
                 payload = json.loads(self.rfile.read(int(length)).decode("utf-8"))
                 if not isinstance(payload, dict):
                     raise ManagementError("JSON object required")
+                if operation == "/api/project-preview":
+                    root_path = checked_text(payload.get("path"), "target directory", 4096)
+                    repo_url = checked_text(payload.get("repo_url"), "GitHub repository", 2048)
+                    mode = payload.get("mode")
+                    if mode not in ("new", "adopt"):
+                        raise ManagementError("choose new or adopt explicitly")
+                    project_id = payload.get("project_id") or None
+                    project_name = payload.get("project_name") or None
+                    inspected = inspect_target(root_path, repo_url)
+                    preview = create_preview(inspected, mode, project_id, project_name)
+                    with target_lock:
+                        if len(pending_previews) >= 15:
+                            pending_previews.clear()
+                        token = secrets.token_urlsafe(32)
+                        pending_previews[token] = (time.monotonic(), inspected, preview)
+                    return self.respond({
+                        "status": "PREVIEW_ONLY_NO_FILES_WRITTEN",
+                        "review_token": token, "project_id": preview["project_id"],
+                        "repo_url": preview["repo"], "mode": preview["mode"],
+                        "source_head": preview["source_head"],
+                        "source_branch": preview["source_branch"],
+                        "tracked_files_count": inspected["tracked_files_count"],
+                        "would_create": list(preview["files"]),
+                        "warning": "These are unapproved local candidate records. Confirm explicitly to create; never push or approve automatically.",
+                    })
+                if operation == "/api/project-apply":
+                    review_token = checked_text(payload.get("review_token"), "review token", 128)
+                    if payload.get("confirm") is not True:
+                        raise ManagementError("explicit project initialization confirmation required")
+                    with target_lock:
+                        pending = pending_previews.pop(review_token, None)
+                        if pending is None:
+                            raise ManagementError("project preview expired or already used")
+                        at, inspected, preview = pending
+                        if time.monotonic() - at > 900:
+                            raise ManagementError("project preview expired; inspect again")
+                        root = Path(inspected["root"]).resolve(strict=True)
+                        if preview["project_id"] in targets or any(
+                                x.root == root for x in targets.values()):
+                            raise ManagementError("project already registered")
+                        outcome = apply_preview(root, inspected, preview)
+                        target = Target(root, registry_dir=registry_dir)
+                        persist_registered_target(target.root, registry_dir)
+                        targets[target.project_id] = target
+                    return self.respond({
+                        "status": outcome["status"], "project_id": target.project_id,
+                        "created": outcome["paths"],
+                        "note": "Local draft only: no Git commit, push, design approval or Gate PASS.",
+                    })
                 if operation == "/api/register-target":
                     raw_path = checked_text(payload.get("path"), "target directory", 4096)
                     target = Target(Path(raw_path), registry_dir=registry_dir)
@@ -798,7 +853,7 @@ def handler(targets, owner_token, registry_dir=None):
                 if operation == "/api/collect-registered-receipts":
                     return self.respond(target.collect_registered_receipts())
                 return self.respond(target.apply(payload.get("action"), payload.get("payload")))
-            except (OSError, ManagementError, ValueError, TypeError) as error:
+            except (OSError, ManagementError, InitError, ValueError, TypeError) as error:
                 return self.respond({"error": str(error)}, 400)
 
         def log_message(self, fmt, *args):
