@@ -100,9 +100,20 @@ def apply(record, operation, payload, *, project_id, repo_url, recorded_at):
         reviews.append({"id": review_id, "digest": sha, "assessment": assessment,
                         "recorded_at": recorded_at,
                         "state": "CANDIDATE_NOT_APPROVED"})
+        affected = set()
         for work in record.get("work", []):
             if work.get("context_review_id") and work.get("context_review_id") != review_id:
                 work["context_evidence_status"] = "STALE_AFTER_NEW_ASSESSMENT"
+                affected.add(work["id"])
+        for plan in record.get("plans", []):
+            if any(w in affected for w in plan.get("work_ids", [])):
+                if plan.get("state") in ("SUBMITTED_FOR_HUMAN_REVIEW",
+                                         "REVIEWED_PENDING_EXTERNAL_APPROVAL"):
+                    plan["state"] = "REASSESSMENT_REQUIRED"
+                    plan["reason"] = "Upstream evidence review changed; resubmit scoped plan"
+        for gate in record.get("gate_reviews", []):
+            if any(w in affected for w in gate.get("work_ids", [])):
+                gate["context_source_warning"] = "EVIDENCE_REASSESSMENT_REQUIRED"
         record["context_reviews"] = reviews
         record["context_action_links"] = links
         return {"review_id": review_id, "status": "CANDIDATE_NOT_APPROVED"}
