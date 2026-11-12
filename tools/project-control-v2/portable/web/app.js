@@ -24,9 +24,9 @@ function emptyProjectHome(){
  document.querySelectorAll("nav button").forEach(x=>{x.classList.remove("active");x.disabled=true;});
  $("#main").innerHTML=
  '<div class="heading"><div><div class="eyebrow">PROJECT CONTROL</div><h1>项目管理工作台</h1><p>软件已经启动。你还没有登记项目，不需要创建测试工程，也不应将软件自身当成管理对象。</p></div></div>'+
- '<div class="hero"><div><div class="eyebrow">开始使用</div><h2>先接入一个真实项目</h2><p>可以接管已有源码项目，也可以从真实 GitHub 仓库开始新项目。目标工程与项目管理工具是两套独立文件。</p><p style="margin-top:16px"><button class="primary" id="empty-initialize-project">新建 / 接管项目</button> <button class="secondary" id="empty-register-target">登记已初始化项目</button></p></div><div class="mini"><strong>当前状态</strong><p>服务已就绪</p><br><strong>已登记项目</strong><p>0</p></div></div>'+
+ '<div class="hero"><div><div class="eyebrow">开始使用</div><h2>先接入一个真实项目</h2><p>可以接管有历史研究、需求、设计、硬件或源码的项目，也可以从目标 GitHub 仓库启动新项目。应先理解项目目的并评价资料有效性，不能只按已有代码形成计划。</p><p style="margin-top:16px"><button class="primary" id="empty-initialize-project">新建 / 接管项目</button> <button class="secondary" id="empty-register-target">登记已初始化项目</button></p></div><div class="mini"><strong>当前状态</strong><p>服务已就绪</p><br><strong>已登记项目</strong><p>0</p></div></div>'+
  '<section class="section pair">'+
- '<div class="panel"><h2>已有项目</h2><p>先对目标仓库进行资产审查，再初始化自己的 .project-control 记录。完成后在这里登记本地目标项目根目录。</p><p class="muted">不会自动写入 AutoTest 或任何未授权目录。</p></div>'+
+ '<div class="panel"><h2>已有项目</h2><p>先调查项目目标、用户场景、历史决定和资料的当前适用性，再登记已有资产及证据缺口。初始化只是创建候选管理记录，不代表历史文件自动成为有效基线。</p><p class="muted">不会自动写入 AutoTest 或任何未授权目录。</p></div>'+
  '<div class="panel"><h2>新项目</h2><p>从实际目标仓库建立工程标识、需求和管理基线。初始化必须明确目标目录与 GitHub origin，不能凭管理工具的安装位置猜测。</p><p class="muted">新建 / 接管的命令见 portable/WEB_WORKSPACE.md。</p></div></section>';
 }
 async function loadProjects(){
