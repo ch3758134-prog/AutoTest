@@ -29,6 +29,7 @@ SCAFFOLD = (
     ".project-control/tasks.json",
     ".project-control/management.json",
     ".project-control/resolve.py",
+    ".project-control/workspace_manager.py",
 )
 
 
@@ -176,6 +177,7 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
                   "revision": 1, "status": "DRAFT", "deliverables": [], "work": [],
                   "milestones": [], "risks": [], "progress": {}, "events": []}
     resolver_source = (Path(__file__).resolve().parent / "target_resolver.py").read_text(encoding="utf-8")
+    workspace_source = (Path(__file__).resolve().parent / "workspace_manager.py").read_text(encoding="utf-8")
     return {
         "repo": inspected["repo_url"], "mode": mode.upper(), "project_id": project_id,
         "source_head": inspected["git_head"], "source_branch": inspected["branch"],
@@ -188,6 +190,7 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
             ".project-control/tasks.json": json_text(tasks),
             ".project-control/management.json": json_text(management),
             ".project-control/resolve.py": resolver_source,
+            ".project-control/workspace_manager.py": workspace_source,
         },
         "warning": "Candidate only. Requires human authorization for actual Git/GitHub changes.",
     }
