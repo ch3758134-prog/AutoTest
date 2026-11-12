@@ -47,9 +47,9 @@
   </Style>
   <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}"/>
   <Style x:Key="AtPrimaryButton" TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">
-    <Setter Property="Background" Value="{StaticResource Accent}"/>
-    <Setter Property="Foreground" Value="{StaticResource White}"/>
-    <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+    <Setter Property="Background" Value="{StaticResource MutedSurface}"/>
+    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
     <Setter Property="MinHeight" Value="34"/>
   </Style>
   <Style x:Key="AtQuietButton" TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">

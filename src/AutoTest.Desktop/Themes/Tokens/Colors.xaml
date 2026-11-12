@@ -6,7 +6,7 @@
   <Color x:Key="InkColor">#24364C</Color>
   <Color x:Key="SubtleColor">#687D94</Color>
   <Color x:Key="LineColor">#DCE5EF</Color>
-  <Color x:Key="AccentColor">#337FDB</Color>
+  <Color x:Key="AccentColor">#587EAA</Color>
   <SolidColorBrush x:Key="Canvas" Color="{StaticResource BackgroundColor}"/>
   <SolidColorBrush x:Key="Panel" Color="{StaticResource PanelColor}"/>
   <SolidColorBrush x:Key="Ink" Color="{StaticResource InkColor}"/>

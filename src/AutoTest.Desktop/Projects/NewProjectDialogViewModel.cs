@@ -10,7 +10,7 @@ public sealed class NewProjectDialogViewModel : BindableBase
     private readonly Func<string?> _chooseDirectory;
     private string _projectName = "新建测试工程";
     private string _parentDirectory =
-        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        AppContext.BaseDirectory;
     private string _validationMessage = "";
     private bool _isCreating;
 
