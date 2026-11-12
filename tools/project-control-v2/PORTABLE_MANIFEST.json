@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "4.2-full-lifecycle-and-owner-focus-candidate",
+  "version": "4.3-context-discovery-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -40,7 +40,10 @@
     "portable/process_control.py",
     "portable/PROCESS_SYSTEM.md",
     "portable/REPORTING_PROTOCOL.md",
-    "portable/POLICY_MIGRATION.md"
+    "portable/POLICY_MIGRATION.md",
+    "portable/CONTEXT_DISCOVERY.md",
+    "portable/AI_WORK_MODES.md",
+    "portable/context_discovery.py"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -80,12 +83,14 @@
     "owner_first_reporting": "CANDIDATE_WITH_SEMANTIC_STRUCTURE_VALIDATION_AND_OWNER_FIRST_UI",
     "lifecycle_guidance": "11_PROCESS_ROLE_AND_OWNER_CONTRACTS_CANDIDATE",
     "explicit_owner_focus": "CANDIDATE_ACTIVITY_REPORT_BINDING_WITH_STALENESS",
-    "old_process_policy": "READ_ONLY_NO_SILENT_MIGRATION"
+    "old_process_policy": "READ_ONLY_NO_SILENT_MIGRATION",
+    "context_discovery": "ROLE_SCOPED_CANDIDATE_WITH_SOURCE_COVERAGE_AUDIT",
+    "skill_adapter": "DOCUMENTED_NOT_AUTO_INSTALLED"
   },
   "separation": {
     "package_source": "Project Control system files",
     "target_repo": "User-provided GitHub repository",
     "local_workspace": "User-selected folder for Codex execution"
   },
-  "warning": "Candidate; real GitHub permissions, human approval, module integration, Windows workstation behavior and formal delivery still require separate independent review. Local module state never means remote integrated."
+  "warning": "Candidate; real GitHub permissions, human approval, module integration, Windows workstation behavior and formal delivery still require separate independent review. Local module state never means remote integrated. Discovery records are structural only, not proof of project understanding."
 }
