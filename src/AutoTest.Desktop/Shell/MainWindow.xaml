@@ -14,7 +14,7 @@
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="35"/>
-      <RowDefinition Height="46"/>
+      <RowDefinition Height="86"/>
       <RowDefinition Height="*" MinHeight="350"/>
       <RowDefinition Height="27"/>
     </Grid.RowDefinitions>
@@ -48,45 +48,52 @@
     </Border>
     <Border Grid.Row="1" Background="{StaticResource Panel}"
             BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
-      <DockPanel Margin="12,0,13,0" LastChildFill="True">
-        <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount,StringFormat='工程资源 {0} 项'}"
-                   FontSize="11" Foreground="{StaticResource Subtle}"
-                   VerticalAlignment="Center" Margin="0,0,0,0"/>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
-                    Margin="10,0,8,0">
-          <TextBlock Text="{Binding ConnectionButtonText,StringFormat='USB：{0}'}"
-                     Visibility="Collapsed"/>
-          <Button Content="{Binding ConnectionButtonText}" Command="{Binding ConnectHardwareCommand}"
-                  Style="{StaticResource AtButton}" ToolTip="{Binding HardwareStatus}"/>
-          <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}"
-                  Style="{StaticResource AtButton}" Margin="4,0,8,0"/>
-          <TextBlock Text="扫码" VerticalAlignment="Center" Margin="4,0,5,0"/>
-          <TextBox x:Name="ScannerEntry" Width="180" Height="28" VerticalContentAlignment="Center"
-                   ToolTip="鼠标点击此框，让 USB 扫码枪以键盘模式输入条码并发送回车。"
-                   PreviewTextInput="ScannerEntry_TextInput"
-                   PreviewKeyDown="ScannerEntry_KeyDown"/>
-          <TextBlock Text="{Binding ScanStatus}" VerticalAlignment="Center"
-                     Width="185" Margin="7,0,0,0" FontSize="11"
-                     Foreground="{StaticResource Subtle}" TextTrimming="CharacterEllipsis"
-                     ToolTip="{Binding ScanStatus}"/>
-        </StackPanel>
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button Content="新建工程" Command="{Binding NewProjectCommand}"
-                  Style="{StaticResource AtButton}" ToolTip="创建新工程 (Ctrl+N)"/>
-          <Button Content="打开工程" Command="{Binding OpenProjectCommand}"
-                  Style="{StaticResource AtButton}" ToolTip="从程序目录选择工程文件 (Ctrl+O)"/>
-          <Border Width="1" Height="24" Background="{StaticResource Line}"
-                  Margin="2,0,10,0"/>
-          <Button Content="新建测试程序" Command="{Binding NewTestProgramCommand}"
-                  Style="{StaticResource AtButton}" ToolTip="创建真实空 TEST 文档并加入工程资源"/>
-          <Button Content="打开测试程序" Command="{Binding OpenTestProgramCommand}"
-                  Style="{StaticResource AtButton}" ToolTip="打开工程树中选中的测试程序"/>
-          <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"
-                  Style="{StaticResource AtButton}" ToolTip="把所选 DBC 复制到当前工程并登记资源"/>
-          <Button Content="打开 DBC" Command="{Binding OpenDbcCommand}"
-                  Style="{StaticResource AtButton}" ToolTip="打开选中的 DBC 工作台"/>
-        </StackPanel>
-      </DockPanel>
+      <Grid Margin="12,0,13,0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="45"/>
+          <RowDefinition Height="40"/>
+        </Grid.RowDefinitions>
+        <DockPanel Grid.Row="0" LastChildFill="True">
+          <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount,StringFormat='工程资源 {0} 项'}"
+                     FontSize="11" Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
+          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Content="新建工程" Command="{Binding NewProjectCommand}"
+                    Style="{StaticResource AtButton}" ToolTip="创建工程 (Ctrl+N)"/>
+            <Button Content="打开工程" Command="{Binding OpenProjectCommand}"
+                    Style="{StaticResource AtButton}" ToolTip="打开已有工程 (Ctrl+O)"/>
+            <Border Width="1" Height="24" Background="{StaticResource Line}" Margin="2,0,10,0"/>
+            <Button Content="新建测试程序" Command="{Binding NewTestProgramCommand}"
+                    Style="{StaticResource AtButton}"/>
+            <Button Content="打开测试程序" Command="{Binding OpenTestProgramCommand}"
+                    Style="{StaticResource AtButton}"/>
+            <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"
+                    Style="{StaticResource AtButton}"/>
+            <Button Content="打开 DBC" Command="{Binding OpenDbcCommand}"
+                    Style="{StaticResource AtButton}"/>
+          </StackPanel>
+        </DockPanel>
+        <DockPanel Grid.Row="1" LastChildFill="True">
+          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="主控板" VerticalAlignment="Center" Margin="0,0,7,0"/>
+            <Button Content="{Binding ConnectionButtonText}" Command="{Binding ConnectHardwareCommand}"
+                    Style="{StaticResource AtButton}" ToolTip="{Binding HardwareStatus}"/>
+            <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}"
+                    Style="{StaticResource AtButton}" Margin="4,0,14,0"/>
+            <Border Width="1" Height="22" Background="{StaticResource Line}" Margin="0,0,12,0"/>
+            <TextBlock Text="扫码枪" VerticalAlignment="Center" Margin="0,0,7,0"/>
+            <TextBox x:Name="ScannerEntry" Width="220" Height="28" VerticalContentAlignment="Center"
+                     ToolTip="点击输入框后扫描，扫码枪需要以键盘模式发送文本和回车"
+                     PreviewTextInput="ScannerEntry_TextInput"
+                     PreviewKeyDown="ScannerEntry_KeyDown"/>
+            <TextBlock Text="{Binding ScanStatus}" Width="220" VerticalAlignment="Center"
+                       Margin="9,0,0,0" FontSize="11" Foreground="{StaticResource Subtle}"
+                       TextTrimming="CharacterEllipsis" ToolTip="{Binding ScanStatus}"/>
+          </StackPanel>
+          <TextBlock Text="{Binding HardwareStatus}" VerticalAlignment="Center"
+                     HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"
+                     FontSize="11" Foreground="{StaticResource Subtle}" Margin="12,0,0,0"/>
+        </DockPanel>
+      </Grid>
     </Border>
     <Grid Grid.Row="2" Background="{StaticResource Canvas}">
       <Grid.ColumnDefinitions>
