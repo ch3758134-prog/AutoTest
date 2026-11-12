@@ -106,7 +106,9 @@ class ContextWorkflowTests(unittest.TestCase):
         v=submit(r,assessment())
         link(r,v["review_id"])
         v2=submit(r,assessment("second"))
-        self.assertEqual(r["work"][0]["context_evidence_status"], "STALE_AFTER_NEW_ASSESSMENT")
+        self.assertEqual(r["work"][0]["context_evidence_status"], "CURRENT_CANDIDATE")
+        self.assertEqual(r["work"][0]["context_last_matching_review_id"],v2["review_id"])
+        self.assertTrue(m.current_view(r)["action_links"][0]["carried_forward"])
         with self.assertRaises(m.ContextWorkflowError):
             link(r,v["review_id"],work_id="WORK-2")
         self.assertNotEqual(v2["review_id"],v["review_id"])
@@ -119,10 +121,28 @@ class ContextWorkflowTests(unittest.TestCase):
                       "state":"SUBMITTED_FOR_HUMAN_REVIEW"}]
         r["gate_reviews"]=[{"id":"GATE-1","work_ids":["WORK-1"],
                             "state":"REQUESTED_NOT_APPROVED"}]
-        submit(r,assessment("changed"))
+        changed=assessment("changed")
+        changed["topics"]["purpose"]["limitation"]="new source contradicts purpose"
+        submit(r,changed)
+        self.assertEqual(r["work"][0]["context_evidence_status"], "STALE_AFTER_NEW_ASSESSMENT")
         self.assertEqual(r["plans"][0]["state"],"REASSESSMENT_REQUIRED")
         self.assertEqual(r["gate_reviews"][0]["context_source_warning"],
                          "EVIDENCE_REASSESSMENT_REQUIRED")
+
+    def test_unrelated_evidence_change_does_not_stale_work_or_plan(self):
+        r=record()
+        first=submit(r,assessment())
+        link(r,first["review_id"])
+        r["plans"]=[{"id":"PLAN-1","work_ids":["WORK-1"],
+                      "state":"SUBMITTED_FOR_HUMAN_REVIEW"}]
+        changed=assessment("unrelated updated")
+        changed["topics"]["history_decisions"]["limitation"]="historical decision under review"
+        last=submit(r,changed)
+        self.assertEqual(r["work"][0]["context_evidence_status"], "CURRENT_CANDIDATE")
+        self.assertEqual(r["plans"][0]["state"],"SUBMITTED_FOR_HUMAN_REVIEW")
+        self.assertTrue(any(x["carried_forward"] and x["work_id"]=="WORK-1"
+                         for x in m.current_view(r)["action_links"]))
+        self.assertEqual(r["work"][0]["context_last_matching_review_id"],last["review_id"])
 
     def test_missing_deliverable_refused(self):
         r=record()
