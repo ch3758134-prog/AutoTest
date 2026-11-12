@@ -67,8 +67,8 @@
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
-   <RowDefinition Height="*" MinHeight="345"/>
-   <RowDefinition Height="180" MinHeight="115"/>
+   <RowDefinition Height="*" MinHeight="240"/>
+   <RowDefinition Height="155" MinHeight="85"/>
   </Grid.RowDefinitions>
 
   <!-- Clear IDE document title; no duplicate page-specific navigation toolbar. -->
@@ -121,9 +121,9 @@
 
   <Grid Grid.Row="2">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="*" MinWidth="540"/>
+    <ColumnDefinition Width="*" MinWidth="495"/>
     <ColumnDefinition Width="8"/>
-    <ColumnDefinition Width="335" MinWidth="290" MaxWidth="440"/>
+    <ColumnDefinition Width="300" MinWidth="260" MaxWidth="410"/>
    </Grid.ColumnDefinitions>
 
    <!-- Editorial center dominates: real hierarchical test steps, no unused giant canvas. -->
