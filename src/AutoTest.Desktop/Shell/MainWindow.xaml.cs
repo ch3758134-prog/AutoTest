@@ -69,6 +69,7 @@ public partial class MainWindow : Window
     private bool _closeAfterFlash;
     private bool _explorerHidden;
     private bool _logsExpanded;
+    private bool _connectionBusy;
 
     public MainWindow()
     {
@@ -104,7 +105,8 @@ public partial class MainWindow : Window
         }
         EnsureTestModel(vm.G4.Workspace);
         EnsureScanner(vm);
-        OpenDocument("run");
+        ExplorerTabs.SelectedIndex = 1;
+        OpenDocument("program");
     }
 
     private LabTestWorkspaceViewModel EnsureTestModel(AutoTest.Application.V1.V1Workspace workspace)
@@ -575,15 +577,15 @@ public partial class MainWindow : Window
         BindingOperations.SetBinding(StationStatus, TextBlock.TextProperty,
             new Binding(nameof(AutoTest.DeviceLab.DeviceLabViewModel.StatusText))
             {
-                Source = _device.ViewModel, StringFormat = "Station · {0}",
+                Source = _device.ViewModel,
                 Mode = BindingMode.OneWay
             });
         void Led()
         {
             var state = _device.ViewModel.StatusText;
-            StationLed.Fill = state.Contains("已连接", StringComparison.Ordinal) ||
-                state.Contains("Connected", StringComparison.OrdinalIgnoreCase)
-                ? Brushes.MediumSeaGreen : Brushes.SlateGray;
+            StationLed.Fill = _device.ViewModel.IsConnected ? Brushes.MediumSeaGreen : Brushes.SlateGray;
+            StationConnectButton.Content = _device.ViewModel.IsConnected ? "断开设备" : "连接设备";
+            StationConnectButton.IsEnabled = !_connectionBusy;
         }
         if (!_stationStatusSubscribed)
         {
@@ -795,7 +797,79 @@ public partial class MainWindow : Window
     }
     private void OpenRun_Click(object sender, RoutedEventArgs e) => OpenDocument("run");
     private void OpenTest_Click(object sender, RoutedEventArgs e) => OpenDocument("program");
-    private void OpenStation_Click(object sender, RoutedEventArgs e) => OpenDocument("station");
+    private async void OpenStation_Click(object sender, RoutedEventArgs e)
+    {
+        if (_connectionBusy) return;
+        var model = EnsureDevice().ViewModel;
+        _connectionBusy = true;
+        StationConnectButton.IsEnabled = false;
+        StationStatus.Text = model.IsConnected ? "正在断开设备…" : "正在搜索设备…";
+        try
+        {
+            if (model.IsConnected)
+                await model.DisconnectFromShellAsync();
+            else
+                await model.ConnectFromShellAsync(ChoosePhysicalController, () =>
+                    MessageBox.Show(this,
+                        "请确认主控、按键板和 ECU 的接线以及外部供电状态安全。\\n" +
+                        "连接只建立 USB/CAN 会话，不自动控制 IGN、按键、夹具或发送 CAN。\\n" +
+                        "是否连接当前主控板？",
+                        "连接设备前的安全确认", MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
+        }
+        finally
+        {
+            _connectionBusy = false;
+            StationConnectButton.IsEnabled = true;
+            StationConnectButton.Content = model.IsConnected ? "断开设备" : "连接设备";
+            StationStatus.Text = model.StatusText;
+            if (!model.IsConnected && model.ResultText.Contains("失败", StringComparison.Ordinal))
+                MessageBox.Show(this, model.ResultText, "设备连接失败",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private AutoTest.Devices.Usb.WinUsbCandidate? ChoosePhysicalController(
+        IReadOnlyList<AutoTest.Devices.Usb.WinUsbCandidate> candidates)
+    {
+        var dialog = new Window
+        {
+            Title = "选择主控设备", Owner = this, Width = 540, Height = 300,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize
+        };
+        var panel = new DockPanel { Margin = new Thickness(18) };
+        var title = new TextBlock
+        {
+            Text = "发现多台可连接的主控板，请选择实际接线的设备：",
+            Margin = new Thickness(0, 0, 0, 12),
+            FontSize = 14
+        };
+        DockPanel.SetDock(title, Dock.Top);
+        panel.Children.Add(title);
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        DockPanel.SetDock(actions, Dock.Bottom);
+        var list = new ListBox { ItemsSource = candidates, DisplayMemberPath = "DeviceInstanceId" };
+        var cancel = new Button { Content = "取消", MinWidth = 84, Margin = new Thickness(0, 0, 8, 0) };
+        var select = new Button { Content = "选择并连接", MinWidth = 108, IsDefault = true };
+        cancel.Click += (_, _) => dialog.DialogResult = false;
+        select.Click += (_, _) =>
+        {
+            if (list.SelectedItem is not null) dialog.DialogResult = true;
+        };
+        actions.Children.Add(cancel);
+        actions.Children.Add(select);
+        panel.Children.Add(actions);
+        panel.Children.Add(list);
+        dialog.Content = panel;
+        return dialog.ShowDialog() == true
+            ? list.SelectedItem as AutoTest.Devices.Usb.WinUsbCandidate : null;
+    }
     private void OpenCan_Click(object sender, RoutedEventArgs e) => OpenDocument("can");
     private void OpenDbc_Click(object sender, RoutedEventArgs e) => OpenDocument("dbc");
     private void OpenController_Click(object sender, RoutedEventArgs e) => OpenDocument("controller");
