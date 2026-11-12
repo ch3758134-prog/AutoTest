@@ -14,6 +14,10 @@ python tools/project-control-v2/portable/export_package.py --out "ProjectControl
 
 当管理 AI 需要从新建/接管推进到向 Codex 正式交付任务时，先读取 [REMOTE_HANDOFF.md](REMOTE_HANDOFF.md)。通用包的 `task_publication.py` 只生成 READY 发布候选，`task_submission.py` 则校验 PR 与回执后生成 SUBMITTED_FOR_REVIEW 候选，二者均不直接写 GitHub。其中规定：先记录独立人类授权、再做任务发布预检、用 GitHub Contents 当前 blob SHA 受控写入、确认目标仓库当前 HEAD，然后让 Codex 在本地执行。其 PR 成果需要按最新 Head/CI/变更范围核对，不能把本地管理界面保存视为远端已发布。
 
+## 管理记录 GitHub 同步
+
+通用 Web 对 `.project-control/management.json` 的修改是**本地候选**，不等于 GitHub 已同步。需要发布时，管理 AI 应使用已连接的 GitHub 工具核对目标仓库、HEAD、文件 SHA、草案审查与审批范围，再做受控远端更新；可选的 `portable/management_sync.py` 提供**仅限该管理文件**的本机 GitHub SHA-CAS 传输。它要求当前本地基线 HEAD 与远端分支一致、远端文件 blob 没有变化、管理事件历史保持前缀一致、没有额外未审本地改动；默认只预览，只有显式 `--apply` 及外部环境 GitHub token 才能写入。发布后本地工作区仍需受控拉取和核对，不能自动清理。它不能跨多个文件形成事务，也不能签发正式批准。
+
 ## 最新受控能力
 
 - 在当前已登记的真实项目目录中，通用 UI 已有候选需求、WBS、依赖、计划提交/修订、变更影响、阶段审查请求以及 Codex 回执查看；所有正式通过状态仍要求外部授权。
