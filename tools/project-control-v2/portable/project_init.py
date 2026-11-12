@@ -27,6 +27,7 @@ SCAFFOLD = (
     ".project-control/assets.json",
     ".project-control/decisions.json",
     ".project-control/tasks.json",
+    ".project-control/management.json",
     ".project-control/resolve.py",
 )
 
@@ -171,6 +172,9 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
 """
     def json_text(value):
         return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+    management = {"schema": "project-control-target-management/1", "project_id": project_id,
+                  "revision": 1, "status": "DRAFT", "deliverables": [], "work": [],
+                  "milestones": [], "risks": [], "progress": {}, "events": []}
     resolver_source = (Path(__file__).resolve().parent / "target_resolver.py").read_text(encoding="utf-8")
     return {
         "repo": inspected["repo_url"], "mode": mode.upper(), "project_id": project_id,
@@ -182,6 +186,7 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
             ".project-control/assets.json": json_text(asset),
             ".project-control/decisions.json": json_text(decisions),
             ".project-control/tasks.json": json_text(tasks),
+            ".project-control/management.json": json_text(management),
             ".project-control/resolve.py": resolver_source,
         },
         "warning": "Candidate only. Requires human authorization for actual Git/GitHub changes.",
