@@ -291,7 +291,7 @@ function evidence(){
         ((context.action_links||[]).some(x=>x.action_id===a.id)?
           ' · 已关联工作 '+e((context.action_links||[]).find(x=>x.action_id===a.id).work_id):''))).join("")+'</div>':
         '<p class="hint">没有登记补全提案，不代表所有工程依据已经齐全。</p>')
-      :'<p class="hint">可在目标项目 .project-control/context_assessment.json 保存经过审查的 v2 候选记录。工作台支持保存 AI 已调查的候选记录，并组织为未授权工作；不会自动审批或发布任务。</p>'));
+      :'<p class="hint">调查候选可由管理 AI 按 v2 结构提供，并通过本地受控操作保存到 management.json；需要对应交付成果后才能组织为待审工作，不能因此批准、执行或发布任务。</p>'));
 
  html+='<div class="pair">'+panel("资产快照",'<div class="stat"><label>已登记 Git 跟踪文件</label><strong>'+e(assets.tracked_file_count??0)+'</strong></div><p class="hint">来源：'+e(assets.observation_source||"未知")+'；远端历史/PR/CI：'+e(assets.remote_history_pr_ci||"未核对")+'</p>'+ (assets.entries?.length?'<div class="list">'+assets.entries.slice(0,40).map(a=>line(a.path,"可信度："+a.confidence+" · 批准："+a.approval)).join("")+'</div>':empty("没有来源清单"))+(assets.entries?.length>40?'<p class="hint">只展示前 40 条；完整资产在目标仓库 assets.json 中。</p>':""))+panel("正式决策记录",decisions.decisions?.length?decisions.decisions.map(d=>line(d.kind||"决策",d.approval_reference||"无来源",pill(d.state||"未核实"))).join(""):empty("尚无经系统登记的正式决定。不能由此否定原有历史成果。"))+'</div>';
  return html;
