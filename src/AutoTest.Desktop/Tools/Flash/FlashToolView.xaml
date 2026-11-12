@@ -64,7 +64,7 @@
        <TextBox Text="{Binding ExpectedIdentity,UpdateSourceTrigger=PropertyChanged}"/>
        <Border Height="1" Background="{DynamicResource StudioLine}" Margin="0,14,0,12"/>
        <TextBlock Text="安全访问算法" Foreground="#176CB5" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,7"/>
-       <TextBlock Text="原生 ZLGKey DLL（不能使用 sa_demo 充当 ECU 算法）"
+       <TextBlock Text="选择与当前 ECU 匹配的 Seed/Key 算法库。不能使用示例算法替代正式算法。"
         Foreground="{DynamicResource StudioMuted}" FontSize="11" TextWrapping="Wrap"/>
        <TextBox x:Name="SecurityDllPath" IsReadOnly="True" Margin="0,5,0,5"/>
        <Button Content="选择真实 Seed/Key DLL…" Click="BrowseSecurityDll_Click" HorizontalAlignment="Stretch"/>
@@ -109,7 +109,7 @@
        </StackPanel>
        <StackPanel>
         <TextBlock Text="实机烧录" FontSize="15" FontWeight="SemiBold"/>
-        <TextBlock x:Name="PhysicalSessionLine" Text="Station 未连接；请在 P02 连接并验证主控"
+        <TextBlock x:Name="PhysicalSessionLine" Text="主控未连接；请打开设备连接，确认接线安全后连接主控"
          Foreground="{DynamicResource StudioMuted}" TextWrapping="Wrap" Margin="0,5,0,0" FontSize="11"/>
        </StackPanel>
       </DockPanel>
@@ -133,7 +133,7 @@
      </StackPanel>
     </Border>
     <TabControl Grid.Row="2" Background="{DynamicResource StudioBg}" Margin="0,8,0,0">
-     <TabItem Header="FLASH STAGES / 阶段">
+     <TabItem Header="烧录阶段">
       <DataGrid x:Name="FlashStagesGrid" AutoGenerateColumns="False" IsReadOnly="True" RowHeaderWidth="0">
        <DataGrid.Columns>
         <DataGridTextColumn Header="时间" Binding="{Binding Utc,StringFormat=HH:mm:ss.fff}" Width="110"/>
@@ -144,7 +144,7 @@
        </DataGrid.Columns>
       </DataGrid>
      </TabItem>
-     <TabItem Header="UDS / USB / CAN1 Trace">
+     <TabItem Header="诊断通信明细">
       <ListBox x:Name="FlashEventsList" FontFamily="Consolas" FontSize="11" Background="{DynamicResource StudioBg}"
        Foreground="{DynamicResource StudioText}" ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
      </TabItem>
