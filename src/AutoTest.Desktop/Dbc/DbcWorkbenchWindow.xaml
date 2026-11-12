@@ -28,10 +28,38 @@
       <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
       <Setter Property="BorderThickness" Value="0,0,1,1"/>
     </Style>
+    <Style TargetType="ListBoxItem">
+      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="Padding" Value="4,3"/>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="{StaticResource HoverSurface}"/>
+        </Trigger>
+        <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Background" Value="{StaticResource SelectedSurface}"/>
+          <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style TargetType="DataGridRow">
+      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Style.Triggers>
+        <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Background" Value="{StaticResource SelectedSurface}"/>
+          <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
     <Style TargetType="DataGridCell">
       <Setter Property="Padding" Value="6,5"/>
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Style.Triggers>
+        <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Background" Value="{StaticResource SelectedSurface}"/>
+          <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+        </Trigger>
+      </Style.Triggers>
     </Style>
   </Window.Resources>
   <Window.InputBindings>
