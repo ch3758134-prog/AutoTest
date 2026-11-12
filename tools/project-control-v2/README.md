@@ -44,3 +44,10 @@ python tools/project-control-v2/portable/export_package.py --out ProjectControl.
 首次项目接管不能把关键词搜索无结果直接当作资料不存在，也不能把找到的历史文档当作当前生效的产品定义。新方法 [portable/EVIDENCE_AND_REMEDIATION.md](portable/EVIDENCE_AND_REMEDIATION.md) 将来源发现、当前适用性审查、历史变更和缺失工程依据的补全责任分开。[portable/context_assessment.py](portable/context_assessment.py) 校验新版结构化调查记录，旧 `context_discovery.py` 仅保留历史格式的可读性。
 
 当前仍为候选：源文件和文档存在不等于 ChatGPT 网页原生 Skill 已安装，结构审查通过不等于系统理解/批准；所有真实工作授权仍使用现有 Task Contract/人类批准机制。
+
+
+## 4.5 候选｜证据评价纳入本地工程管理台账
+
+`portable/context_workflow.py` 允许 AI 的证据评价通过工作台受控导入 `management.json.context_reviews`（保留历史/校验摘要/版本）；补全提案经审查可关联到 `management.work` 中的 `PROPOSED` 工作，准确保留来源评价 ID、补全 action ID，且 `execution_authorized=false`。本地 CAS 检查和审批/执行权限保持独立，旧的离散候选 JSON 不会自动获得批准或迁移。参见 `portable/WEB_WORKSPACE.md`。
+
+新增 `tests/test_context_workflow.py`，需在真实发行包环境执行回归及 Windows UI 试验；本次 GitHub 修改本身不等于单测已通过。
