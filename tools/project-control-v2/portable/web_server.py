@@ -8,7 +8,8 @@ All writes are local draft management records and require the session owner toke
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
+import hashlib
+from receipt_evidence import assess as assess_receipt, ReceiptError
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -88,7 +89,7 @@ def empty_management(project_id):
     return {
         "schema": SCHEMA, "project_id": project_id, "revision": 1,
         "status": "DRAFT", "deliverables": [], "work": [], "milestones": [],
-        "risks": [], "progress": {}, "events": []
+        "risks": [], "progress": {}, "events": [], "receipts": []
     }
 
 
@@ -136,6 +137,8 @@ class Target:
                 raise ManagementError("invalid management collection: " + name)
         if not isinstance(value.get("progress"), dict):
             raise ManagementError("invalid progress map")
+        if "receipts" in value and not isinstance(value["receipts"], list):
+            raise ManagementError("invalid receipt collection")
 
     def head_or_none(self):
         # A brand-new, locally initialized Git repository may have no first commit.
@@ -154,6 +157,7 @@ class Target:
                 raise ManagementError("project identity changed; reopen the server")
             management = load_json(self.data_path)
             self.check_record(management)
+            management.setdefault("receipts", [])
             assets = load_json(self.directory / "assets.json")
             decisions = load_json(self.directory / "decisions.json")
             tasks = load_json(self.directory / "tasks.json")
@@ -185,8 +189,9 @@ class Target:
             self.check_record(record)
             if revision != record["revision"]:
                 raise ManagementError("stale revision; refresh and review current changes")
+            record.setdefault("receipts", [])
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
-                             "create_milestone"}
+                             "create_milestone", "record_receipt", "review_receipt"}
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
@@ -242,6 +247,36 @@ class Target:
                 if any(x.get("id") == entry["id"] for x in record["risks"]):
                     raise ManagementError("duplicate risk ID")
                 record["risks"].append(entry)
+            elif name == "record_receipt":
+                incoming = payload.get("receipt")
+                project = load_json(self.project_path)
+                tasks_path = self.directory / "tasks.json"
+                tasks = load_json(tasks_path)
+                receipt = assess_receipt(
+                    self.root, project, tasks,
+                    hashlib.sha256(tasks_path.read_bytes()).hexdigest(), incoming)
+                if any(x.get("id") == receipt["id"] for x in record["receipts"]):
+                    raise ManagementError("receipt already imported; cannot overwrite evidence")
+                receipt["recorded_at"] = stamp()
+                receipt["import_reason"] = reason
+                record["receipts"].append(receipt)
+            elif name == "review_receipt":
+                rid = checked_id(payload.get("id"), "receipt id")
+                found = [x for x in record["receipts"] if x.get("id") == rid]
+                if len(found) != 1:
+                    raise ManagementError("receipt not found uniquely")
+                decision = payload.get("decision")
+                if decision not in ("NEEDS_MORE_EVIDENCE", "REJECTED", "CODE_SCOPE_REVIEWED"):
+                    raise ManagementError("unsupported receipt review decision")
+                receipt = found[0]
+                if decision == "CODE_SCOPE_REVIEWED" and receipt["git_assessment"] != "LOCAL_COMMIT_SCOPE_VERIFIED":
+                    raise ManagementError("cannot review local scope without independently checked Git object")
+                if receipt.get("review_status") != "PENDING_INDEPENDENT_REVIEW":
+                    raise ManagementError("receipt already reviewed; preserve history")
+                receipt["review_status"] = decision
+                receipt["reviewed_at"] = stamp()
+                receipt["review_reason"] = reason
+                # Reviewing a code-scope receipt never approves tests or a Gate.
             elif name == "create_milestone":
                 delivery = checked_id(payload.get("deliverable_id"), "deliverable_id")
                 if not any(d["id"] == delivery for d in objects):
