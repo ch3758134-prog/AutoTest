@@ -38,12 +38,12 @@ python portable/task_publication.py --target "<用户指定的目标项目目录
 
 发布时：
 - 重新从目标 GitHub 读取 `.project-control/tasks.json` 的当前**文件 blob SHA**、目标分支 HEAD、任务状态和批准记录；
-- 使用 GitHub Contents API 的**现有文件 blob SHA 作为更新操作的 `sha` 条件**，目标分支填准确分支，不使用旧文件 SHA 覆盖他人新编辑；
+- 优先使用 **Git Data 原子分支引用校验**：以已审查 HEAD 为唯一父提交，创建只修改 `tasks.json` 的候选树/提交，再以 `force=false` 非强制更新远端分支。并发写入导致非快进时必须拒绝；同时核对原文件 blob SHA 与当前批准记录，不使用旧版本覆盖他人新编辑；
 - 如果内容或审批在审查后发生变化、版本冲突、网络失败或无写权限，**停止并重新评估**，不能暴力重试、改主分支或宣称成功；
 - GitHub 返回新 commit 后再次读取任务文件，确认该唯一任务确实为 `READY_FOR_LOCAL_IMPLEMENTATION` 且仍属准确项目、批准输入及任务范围。记录真实提交 SHA。
 - 一个没有明确指定任务 ID 的本地 Codex 会话只能领取**唯一** READY 任务；多个任务并行时，管理 AI 只需让用户选择稳定任务 ID，不需转发完整详细设计。
 
-**重要**：`sha` 条件只保护单个文件的版本，不自动提供跨 `tasks.json`、`decisions.json` 和源码文件的完整原子事务。真正的并发事务、权限隔离和审批可信性仍需 GitHub 分支规则与进一步工程治理。
+**重要**：Git 分支引用的非强制更新能阻止同时推进同一分支的写入覆盖，但**不自动原子更新多个项目管理文件，也不证明审批人的真实身份**。仍需 GitHub 分支保护、可追溯审批和正确的仓库写权限。GitHub Contents 文件 SHA 写入仍保留为显式兼容选项，不能当成同等级别的分支引用事务。
 
 ## 4. Codex 实施与回执
 
@@ -63,7 +63,7 @@ Codex 验证目录为空、仓库 origin、分支和来源 SHA；使用 `python 
 2. 利用 `portable/pr_evidence.py` 的规则对这些元数据做一致性检查；它只判断**提供的 PR 信息**是否相互匹配，若未通过连接真实获取，则不能宣布远程核对成功。
 3. 检查**准确 head_sha** 的 GitHub PR 文件清单/补丁、必要 CI 运行及日志；CI 成功只能证明对应检查已成功，不等于目标 ECU/硬件/项目成果已真实验收。任何 PR HEAD 变化都要求重新比对及重审。
 4. 区分 `REPORTED`、`PR_METADATA_MATCHED`、`SUBMITTED_FOR_REVIEW`、`CODE_SCOPE_REVIEWED`、`CI_CHECKED`、`ACCEPTED` 和 `MERGED`。`portable/task_submission.py` 已能校验一份真实来源的 Codex 回执与最新 PR 信息，在本地目标仓库生成只读的 `tasks.json` 提交审核候选（包含原文件 blob SHA，供 GitHub CAS 写入）。这**只标记已提交待审**，并不会接受测试或 Gate。
-5. 变更和决定应回写**目标项目** `.project-control` 管理记录，并使用目标仓库最新版 blob SHA 作并发条件；不可把一个工作项自报完成视为产品 Gate 通过。
+5. 变更和决定应回写**目标项目** `.project-control` 管理记录，并优先使用目标仓库最新 HEAD 的非强制 Git 引用条件和文件 blob 校验；不可把一个工作项自报完成视为产品 Gate 通过。
 
 当前软件已实现本地回执、Git diff 校验、GitHub PR 元数据及文件一致性核对、显式只读远端 HEAD 检查、已登记 worktree 回执归集和原始日志 SHA 校验。**仍没有完整的 GitHub PR/CI 一体化自动验收和可核实的人类批准闭环**，也没有独立目标仓库的真实远端交付验收；这些必须继续实测。
 
