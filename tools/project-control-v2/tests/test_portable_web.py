@@ -192,10 +192,10 @@ class PortableWebTests(unittest.TestCase):
         self.assertFalse(lock.exists())
 
     def test_web_formal_plan_and_change_workflow_never_auto_approves(self):
-        def act(kind, **payload):
+        def act(action_name, **payload):
             payload.setdefault("reason", "Auditable proposal")
             payload["expected_revision"] = self.revision("project-1")
-            status, body = self.post(action=kind, payload=payload)
+            status, body = self.post(action=action_name, payload=payload)
             self.assertEqual(status, 200, body)
         act("create_deliverable", id="D1", title="Engineering outcome",
             success_condition="Evidence and review")
