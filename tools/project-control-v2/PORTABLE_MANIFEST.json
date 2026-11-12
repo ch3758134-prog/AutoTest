@@ -14,13 +14,15 @@
     "portable/COMPLETENESS_AUDIT.md",
     "portable/project_init.py",
     "ai/roles.json",
-    "ai/BOOTSTRAP.md"
+    "ai/BOOTSTRAP.md",
+    "portable/target_resolver.py",
+    "portable/TASK_CONTRACT.md"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
     "new_project_bootstrap": "CANDIDATE",
     "existing_project_adoption": "CANDIDATE",
-    "codex_target_dispatch": "REQUIRES_TARGET_TASK_RECORD",
+    "codex_target_dispatch": "GENERIC_RESOLVER_CANDIDATE_WITH_TARGET_TASK_RECORD",
     "generic_web_ui": "NOT_IMPLEMENTED",
     "multi_project_store": "NOT_IMPLEMENTED",
     "windows_end_to_end": "NOT_VERIFIED"
