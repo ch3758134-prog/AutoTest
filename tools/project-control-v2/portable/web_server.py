@@ -182,6 +182,53 @@ class Target:
             self.check_identity()
             return inspect_remote(self.root, check_remote=True)
 
+    def collect_local_receipts(self):
+        """Import only the registered worktree's locally saved Codex receipts.
+
+        No other directories are searched. Worktree-specific Git metadata
+        must be explicitly registered before cross-worktree collection is possible.
+        """
+        with self.lock:
+            self.check_identity()
+            location = git(self.root, "rev-parse", "--git-path", "project-control")
+            folder = Path(location)
+            if not folder.is_absolute():
+                folder = self.root / folder
+            if folder.is_symlink():
+                raise ManagementError("unsafe Git receipt directory")
+            if not folder.is_dir():
+                return {"project_id": self.project_id, "imported": [], "skipped": [],
+                        "held": [], "scope": "CURRENT_REGISTERED_WORKTREE_ONLY"}
+            paths = sorted(folder.glob("receipt-*.json"))
+            if len(paths) > 100:
+                raise ManagementError("too many unreviewed receipts; manual triage required")
+            imported, skipped, held = [], [], []
+            for file in paths:
+                if file.is_symlink() or not file.is_file() or file.stat().st_size > 65536:
+                    held.append({"file": file.name, "reason": "unsafe receipt file"})
+                    continue
+                try:
+                    raw = json.loads(file.read_text(encoding="utf-8"))
+                    rid = raw.get("receipt_id") if isinstance(raw, dict) else None
+                    if not isinstance(rid, str) or not ID.fullmatch(rid):
+                        raise ManagementError("invalid receipt identifier")
+                    record = load_json(self.data_path)
+                    existing = record.get("receipts", [])
+                    if any(item.get("id") == rid for item in existing):
+                        skipped.append(rid)
+                        continue
+                    self.apply("record_receipt", {
+                        "expected_revision": record["revision"],
+                        "reason": "从已登记的当前 Git 工作区接收 Codex 待审回执",
+                        "receipt": raw
+                    })
+                    imported.append(rid)
+                except (OSError, ValueError, TypeError, ManagementError) as error:
+                    held.append({"file": file.name, "reason": str(error)[:220]})
+            return {"project_id": self.project_id, "imported": imported,
+                    "skipped": skipped, "held": held,
+                    "scope": "CURRENT_REGISTERED_WORKTREE_ONLY"}
+
     def apply(self, name, payload):
         if not isinstance(payload, dict):
             raise ManagementError("action payload must be a JSON object")
@@ -399,7 +446,8 @@ def handler(targets, owner_token):
             length = self.headers.get("Content-Length", "")
             if not length.isdigit() or not (1 <= int(length) <= MAX_BODY):
                 return self.respond({"error": "invalid body size"}, 413)
-            if urlsplit(self.path).path != "/api/action":
+            operation = urlsplit(self.path).path
+            if operation not in ("/api/action", "/api/collect-local-receipts"):
                 return self.respond({"error": "unknown operation"}, 404)
             try:
                 payload = json.loads(self.rfile.read(int(length)).decode("utf-8"))
@@ -408,6 +456,8 @@ def handler(targets, owner_token):
                 target = targets.get(payload.get("project_id"))
                 if target is None:
                     raise ManagementError("project not registered")
+                if operation == "/api/collect-local-receipts":
+                    return self.respond(target.collect_local_receipts())
                 return self.respond(target.apply(payload.get("action"), payload.get("payload")))
             except (OSError, ManagementError, ValueError, TypeError) as error:
                 return self.respond({"error": str(error)}, 400)
