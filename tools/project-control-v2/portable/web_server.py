@@ -180,7 +180,10 @@ class Target:
         for name in GOVERNANCE_FIELDS:
             if name in value and not isinstance(value[name], list):
                 raise ManagementError("invalid governance collection: " + name)
-        defined_modules(value)
+        try:
+            defined_modules(value)
+        except ModuleError as error:
+            raise ManagementError("invalid module boundary registry: " + str(error)) from error
 
     def head_or_none(self):
         # A brand-new, locally initialized Git repository may have no first commit.
