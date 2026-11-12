@@ -49,9 +49,19 @@ def check_record(obj, project_id):
             or type(obj.get("revision")) is not int or obj["revision"] < 1
             or not isinstance(obj.get("events"), list)):
         raise SyncConflict("invalid or formally approved management record")
+    if len(obj["events"]) != obj["revision"] - 1:
+        raise SyncConflict("management revision and event history are inconsistent")
+    for i, event in enumerate(obj["events"]):
+        if (not isinstance(event, dict) or event.get("revision") != i + 2
+                or not isinstance(event.get("operation"), str)
+                or not event.get("operation")):
+            raise SyncConflict("management event revision lineage is invalid")
     for name in ("deliverables", "work", "requirements", "plans", "changes",
                  "gate_reviews", "risks", "milestones", "receipts"):
-        for x in obj.get(name, []):
+        entries = obj.get(name, [])
+        if not isinstance(entries, list):
+            raise SyncConflict("invalid management collection " + name)
+        for x in entries:
             if not isinstance(x, dict):
                 raise SyncConflict("malformed management collection " + name)
             if x.get("state") in ("APPROVED", "ACCEPTED", "GATE_PASS", "PASS"):
