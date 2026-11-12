@@ -64,17 +64,16 @@ class GitHub:
             raise RemoteError("unsafe GitHub API resource")
         if self.exchange:
             return self.exchange(method, resource, data)
-        if not self.token:
-            raise RemoteError("GitHub token missing; use a connected ChatGPT writer or environment token")
+        if not self.token and method != "GET":
+            raise RemoteError("GitHub write token missing; read-only public requests only")
         payload = json.dumps(data, ensure_ascii=False).encode("utf-8") if data is not None else None
-        req = Request(
-            API + resource, data=payload, method=method,
-            headers={"Authorization": "Bearer " + self.token,
-                     "Accept": "application/vnd.github+json",
-                     "X-GitHub-Api-Version": "2022-11-28",
-                     "Content-Type": "application/json",
-                     "User-Agent": "ProjectControl-Candidate"},
-        )
+        headers = {"Accept": "application/vnd.github+json",
+                   "X-GitHub-Api-Version": "2022-11-28",
+                   "Content-Type": "application/json",
+                   "User-Agent": "ProjectControl-Candidate"}
+        if self.token:
+            headers["Authorization"] = "Bearer " + self.token
+        req = Request(API + resource, data=payload, method=method, headers=headers)
         try:
             with urlopen(req, timeout=25) as response:
                 return json.loads(response.read().decode("utf-8"))
