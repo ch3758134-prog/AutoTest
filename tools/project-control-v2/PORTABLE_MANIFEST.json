@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "2.6-github-dispatch-pr-candidate",
+  "version": "2.7-github-task-pr-submission-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -26,7 +26,8 @@
     "portable/remote_sync.py",
     "portable/task_publication.py",
     "portable/pr_evidence.py",
-    "portable/REMOTE_HANDOFF.md"
+    "portable/REMOTE_HANDOFF.md",
+    "portable/task_submission.py"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -40,7 +41,8 @@
     "remote_sync": "EXPLICIT_READ_ONLY_CHECK",
     "management_writes": "LOCAL_REVISION_CAS_WITH_COOPERATIVE_GIT_METADATA_LOCK",
     "task_publication": "REVIEWED_CANDIDATE_CONTENT_WITH_GITHUB_BLOB_CAS_REQUIRED",
-    "pr_handoff": "METADATA_CONSISTENCY_CHECK_NOT_ACCEPTANCE"
+    "pr_handoff": "METADATA_CONSISTENCY_CHECK_NOT_ACCEPTANCE",
+    "task_submission": "CAS_PROPOSAL_SUBMITTED_FOR_REVIEW_ONLY"
   },
   "separation": {
     "package_source": "Project Control system files",
