@@ -113,8 +113,17 @@ def validate_task(project, tasks, decisions, task_id, root):
     if read_git(root, "branch", "--show-current") != source["branch"]:
         raise PublicationError("wrong publishing branch")
     head = read_git(root, "rev-parse", "HEAD")
-    if head != source["pinned_sha"]:
-        raise PublicationError("source pin is stale; review new HEAD before task publication")
+    # Approval decisions and task drafts are committed *after* the source pin.
+    # Requiring HEAD == pinned_sha creates an impossible self-reference when
+    # a human approval record itself includes that pinned_sha.
+    try:
+        ancestry = subprocess.run(
+            ["git", "-C", str(root), "merge-base", "--is-ancestor", source["pinned_sha"], head],
+            capture_output=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise PublicationError("cannot verify pinned Git history") from exc
+    if ancestry.returncode:
+        raise PublicationError("pinned source is not an ancestor of current approved branch")
     if read_git(root, "status", "--porcelain", "--untracked-files=all"):
         raise PublicationError("source worktree is dirty; review and commit before publishing")
     paths = task.get("allowed_paths")
@@ -205,6 +214,7 @@ def make_plan(root, task_id):
         "project_id": project["project_id"], "task_id": task_id,
         "repo_url": project["repo_url"], "source_branch": task["source"]["branch"],
         "source_commit": task["source"]["pinned_sha"],
+        "preflight_branch_head": read_git(root, "rev-parse", "HEAD"),
         "expected_tasks_blob_sha": raw_blob,
         "original_tasks_sha256": hashlib.sha256(source_files["tasks.json"]).hexdigest(),
         "desired_file": ".project-control/tasks.json",
