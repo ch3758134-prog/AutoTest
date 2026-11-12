@@ -1,4 +1,4 @@
-# Project Control Portable｜真正独立于 AutoTest 的多项目工作台（候选）
+# Project Control Portable｜真正独立于 任何试点工程 的多项目工作台（候选）
 
 ## 将通用管理系统文件夹交给新的 ChatGPT 对话
 
@@ -8,7 +8,7 @@
 python tools/project-control-v2/portable/export_package.py --out "ProjectControl.zip"
 ```
 
-其内容只有 `PORTABLE_MANIFEST.json` 列出的通用系统文件及逐文件 SHA-256 校验单；不会打包 AutoTest 专用 `sources/`、`workspace/`、旧 `app.js`、Git 元数据和本地日志。上传/解压文件夹后，新的 ChatGPT 工程协调 AI 从 `START_HERE.md` 启动。
+其内容只有 `PORTABLE_MANIFEST.json` 列出的通用系统文件及逐文件 SHA-256 校验单；不会打包 任何试点工程 专用 `sources/`、`workspace/`、旧 `app.js`、Git 元数据和本地日志。上传/解压文件夹后，新的 ChatGPT 工程协调 AI 从 `START_HERE.md` 启动。
 
 ## GitHub 协作
 
@@ -28,7 +28,7 @@ python tools/project-control-v2/portable/export_package.py --out "ProjectControl
 
 ## 使用定位
 
-管理 AI 在 ChatGPT 网页端首先读取本文件夹的 `START_HERE.md`，用户同时提供一个**目标 GitHub 仓库地址**。管理 AI 按 `portable/INITIALIZATION_PROTOCOL.md` 研究目标仓库，建立或接管**目标仓库自己的** `.project-control/`，不把 AutoTest 的产品资料复制过去。
+管理 AI 在 ChatGPT 网页端首先读取本文件夹的 `START_HERE.md`，用户同时提供一个**目标 GitHub 仓库地址**。管理 AI 按 `portable/INITIALIZATION_PROTOCOL.md` 研究目标仓库，建立或接管**目标仓库自己的** `.project-control/`，不把 任何试点工程 的产品资料复制过去。
 
 本地 Web 管理台是项目管理系统文件夹中的一个**可选工作环境**：你可以在本机把一个或多个已经初始化的目标 Git 仓库交给它，管理台只读/写这些目标目录下的管理记录。网页端 ChatGPT 与本地 Codex 的实际协作不要求 8791 永久运行。
 
@@ -66,7 +66,7 @@ python portable/web_server.py --target "<用户指定的目标项目目录>" --t
 
 - 根据目标仓库 `.project-control/project.json` 和 `git origin` 校验身份；多项目登记不允许相同项目 ID 或同一目录重复出现；
 - 选择当前项目并查看 HEAD、分支、Git 未提交状态、资产来源、正式决策及 Codex 任务合同；
-- 维护交付成果、WBS 工作候选、工作进展报告、风险和里程碑，均采用**实际项目的本地管理记录**，而不是 AutoTest 的静态 UI 数据；
+- 维护交付成果、WBS 工作候选、工作进展报告、风险和里程碑，均采用**实际项目的本地管理记录**，而不是 任何试点工程 的静态 UI 数据；
 - 本地管理记录有 revision、原子写入和事件审计。浏览器采用每次修订号进行并发冲突拒绝，不会自动覆盖旧版本；
 - 不提供正式 P0/Gate/设计批准按钮，不提供一键 push/merge、任务 READY 权限提升、远端同步伪造或自动回收目录；
 - 任务文本可从目标仓库入口复制给 Codex，但未登记唯一有效任务时不能假装存在已授权实施任务。
@@ -99,7 +99,7 @@ ProjectControl（管理软件文件夹）
 
 1. Web 端只作用于**本地已显式登记的 Git 项目路径**。跨机器/跨 GitHub 的同步由真实受控 Git 提交和人工/AI 审查实现，不是本地保存后自动生效。
 2. 初始化模板不能凭文件文本创建“正式批准”或签发 Gate。任务被标 READY 需要与有来源的人类批准、正式设计和 GitHub 权限一致。
-3. 这是一套可独立运行的**候选通用 Web 管理台**，但原 `server.py` 和 `app.js` 是 AutoTest 试点，仍保留用于旧界面比较；不能把两套界面混称正式 R1。
+3. 这是一套可独立运行的**候选通用 Web 管理台**，但原 `server.py` 和 `app.js` 是 任何试点工程 试点，仍保留用于旧界面比较；不能把两套界面混称正式 R1。
 4. 当前没有 Windows 浏览器实测或跨平台远端协作端到端验收记录，也没有可靠的系统级文件访问隔离。验证需逐步开展。
 5. 同一管理记录现在使用 Git 元数据目录中的协作式跨进程排他锁、修订号和写入前内容比对。锁失效时拒绝覆盖，**不擅自清理陈旧锁**。这不是对不遵守锁协议的其他进程的操作系统安全隔离。
 6. 回执中测试日志 SHA 是 Codex 自报，**并非管理系统已独立运行测试**。Git 候选提交不在管理工作区时将其标为 `RESULT_OBJECT_NOT_LOADED`；不得宣布代码已经核实。
