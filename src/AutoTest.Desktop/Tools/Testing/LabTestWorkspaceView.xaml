@@ -242,7 +242,7 @@
          Style="{StaticResource AtQuietButton}" Margin="0,5,0,12"/>
        <DockPanel Margin="0,0,0,9">
         <TextBlock Text="参数设置" FontWeight="SemiBold" FontSize="14" Foreground="#263B51"/>
-        <Button DockPanel.Dock="Right" Content="＋" Style="{StaticResource AtQuietButton}" ToolTip="添加参数字段：展开下方高级参数"/>
+        <TextBlock DockPanel.Dock="Right" Text="选择参数编辑" Foreground="#8094AA" FontSize="11" VerticalAlignment="Center"/>
        </DockPanel>
        <DataGrid ItemsSource="{Binding ParameterRows}" SelectedItem="{Binding SelectedParameterRow,Mode=TwoWay}"
         AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" Height="145"
