@@ -22,6 +22,22 @@ public partial class MainWindow : Window
         };
     }
 
+    private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
+    {
+        _viewModel.CaptureScannerText(e.Text);
+        ScannerEntry.Text += e.Text;
+        ScannerEntry.CaretIndex = ScannerEntry.Text.Length;
+        e.Handled = true;
+    }
+
+    private void ScannerEntry_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Return)) return;
+        _viewModel.FinishScannerInput();
+        ScannerEntry.Clear();
+        e.Handled = true;
+    }
+
     private void ResourceTree_SelectedItemChanged(
         object sender, RoutedPropertyChangedEventArgs<object> e)
     {

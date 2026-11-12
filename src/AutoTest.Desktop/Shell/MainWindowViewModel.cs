@@ -1,4 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Input;
+using AutoTest.Desktop.Hardware;
+using AutoTest.Contracts;
+using AutoTest.Specialists.Scan;
 using System.IO;
 using System.Windows.Controls;
 using AutoTest.Core;
@@ -17,6 +22,11 @@ namespace AutoTest.Desktop.Shell;
 public sealed class MainWindowViewModel : BindableBase
 {
     private readonly ProjectWorkspaceService _workspace;
+    private readonly HardwareConnectionService _hardware;
+    private readonly KeyboardWedgeCapture _scanCapture;
+    private string _hardwareStatus = "USB 未连接";
+    private string _scanStatus = "扫码未开始";
+    private bool _hardwareBusy;
     private readonly NewProjectDialogService _newDialog;
     private readonly ProjectFileDialogService _fileDialogs;
     private readonly DbcEditorDialogs _dbcDialogs;
@@ -33,9 +43,15 @@ public sealed class MainWindowViewModel : BindableBase
     public MainWindowViewModel(
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
         ProjectFileDialogService fileDialogs, DbcEditorDialogs dbcDialogs,
-        TestEditorDialogs testDialogs, RecentProjectStore recentProjects)
+        TestEditorDialogs testDialogs, RecentProjectStore recentProjects,
+        HardwareConnectionService hardware)
     {
         _workspace = workspace;
+        _hardware = hardware;
+        var router = new BarcodeInputRouter();
+        router.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
+        router.SetAdmissionGate(() => !_hardwareBusy);
+        _scanCapture = new KeyboardWedgeCapture(router);
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
         _dbcDialogs = dbcDialogs;
@@ -56,6 +72,26 @@ public sealed class MainWindowViewModel : BindableBase
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
         CloseEditorCommand = new DelegateCommand(CloseActiveEditor, () => HasActiveEditor && !IsBusy);
+        ConnectHardwareCommand = new DelegateCommand(async () => await ToggleHardwareAsync(),
+            () => !_hardwareBusy);
+        OpenCanMonitorCommand = new DelegateCommand(OpenCanMonitor);
+        _hardware.EvidenceRecorded += line =>
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                HardwareStatus = line;
+                StatusMessage = line;
+            }));
+        _hardware.FrameObserved += frame =>
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var f = frame.Frame;
+                CanRecords.Add(new CanMonitorRow(
+                    frame.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
+                    f.Role == BusRole.DutCan ? "CAN1 · DUT" : "CAN0 · 按键板",
+                    "0x" + f.Id.ToString("X"), f.ExtendedId ? "扩展" : "标准",
+                    f.Dlc, Convert.ToHexString(f.Data.ToArray()), frame.LostFrames));
+                if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
+            }));
         _workspace.CurrentChanged += (_, _) =>
         {
             RaisePropertyChanged(nameof(HasProject));
@@ -80,7 +116,69 @@ public sealed class MainWindowViewModel : BindableBase
         RebuildResourceTree();
     }
 
-    public ObservableCollection<ResourceTreeNode> ResourceNodes { get; } = new();
+    public sealed record CanMonitorRow(string Time, string Port, string Id, string Format,
+        byte Dlc, string Data, long Lost);
+    public ObservableCollection<CanMonitorRow> CanRecords { get; } = new();
+    public string HardwareStatus
+    {
+        get => _hardwareStatus;
+        private set => SetProperty(ref _hardwareStatus, value);
+    }
+    public string ScanStatus
+    {
+        get => _scanStatus;
+        private set => SetProperty(ref _scanStatus, value);
+    }
+    public string ConnectionButtonText => _hardwareBusy ? "正在操作…" :
+        _hardware.IsConnected ? "断开" : "连接";
+    public DelegateCommand ConnectHardwareCommand { get; }
+    public DelegateCommand OpenCanMonitorCommand { get; }
+
+    public void CaptureScannerText(string text)
+    {
+        foreach (var character in text)
+        {
+            var result = _scanCapture.OnKeyInput(character, scannerFieldHasFocus: true);
+            if (result is { Accepted: false }) ScanStatus = "扫码拒绝：" + result.Code;
+        }
+    }
+    public void FinishScannerInput()
+    {
+        var result = _scanCapture.CompleteScan();
+        ScanStatus = result.Accepted
+            ? "已采集：" + result.Event!.Scan.Text + "（尚未匹配配置）"
+            : "扫码拒绝：" + result.Code;
+    }
+    private async Task ToggleHardwareAsync()
+    {
+        if (_hardwareBusy) return;
+        _hardwareBusy = true;
+        RaisePropertyChanged(nameof(ConnectionButtonText));
+        ConnectHardwareCommand.RaiseCanExecuteChanged();
+        try
+        {
+            if (_hardware.IsConnected) await _hardware.DisconnectAsync();
+            else await _hardware.ConnectAsync();
+            HardwareStatus = _hardware.IsConnected ? "USB 主控已连接（只读检测通过）" : "USB 已断开";
+        }
+        catch (Exception error)
+        {
+            HardwareStatus = "USB 操作失败：" + error.Message;
+            StatusMessage = HardwareStatus;
+        }
+        finally
+        {
+            _hardwareBusy = false;
+            RaisePropertyChanged(nameof(ConnectionButtonText));
+            ConnectHardwareCommand.RaiseCanExecuteChanged();
+        }
+    }
+    private void OpenCanMonitor()
+    {
+        if (IsAlreadyOpen("can|monitor") || !ConfirmCloseActiveEditor()) return;
+        ActivateEditor("can|monitor", new CanMonitorView(this), "CAN 监视", () => true);
+    }
+
     public UserControl? ActiveEditorView
     {
         get => _activeEditorView;

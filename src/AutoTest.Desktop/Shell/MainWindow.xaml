@@ -50,6 +50,24 @@
         <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount,StringFormat='工程资源 {0} 项'}"
                    FontSize="11" Foreground="{StaticResource Subtle}"
                    VerticalAlignment="Center" Margin="0,0,0,0"/>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                    Margin="10,0,8,0">
+          <TextBlock Text="{Binding ConnectionButtonText,StringFormat='USB：{0}'}"
+                     Visibility="Collapsed"/>
+          <Button Content="{Binding ConnectionButtonText}" Command="{Binding ConnectHardwareCommand}"
+                  Style="{StaticResource AtButton}" ToolTip="{Binding HardwareStatus}"/>
+          <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}"
+                  Style="{StaticResource AtButton}" Margin="4,0,8,0"/>
+          <TextBlock Text="扫码" VerticalAlignment="Center" Margin="4,0,5,0"/>
+          <TextBox x:Name="ScannerEntry" Width="180" Height="28" VerticalContentAlignment="Center"
+                   ToolTip="鼠标点击此框，让 USB 扫码枪以键盘模式输入条码并发送回车。"
+                   PreviewTextInput="ScannerEntry_TextInput"
+                   PreviewKeyDown="ScannerEntry_KeyDown"/>
+          <TextBlock Text="{Binding ScanStatus}" VerticalAlignment="Center"
+                     Width="185" Margin="7,0,0,0" FontSize="11"
+                     Foreground="{StaticResource Subtle}" TextTrimming="CharacterEllipsis"
+                     ToolTip="{Binding ScanStatus}"/>
+        </StackPanel>
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
           <Button Content="新建工程" Command="{Binding NewProjectCommand}"
                   Style="{StaticResource AtButton}" ToolTip="创建新工程 (Ctrl+N)"/>
