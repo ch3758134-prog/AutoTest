@@ -15,6 +15,38 @@ public sealed class ToolCommand(Action action) : ICommand
     public void Requery() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
 
+/// <summary>Editable visual switch bit, not an independent hardware output.</summary>
+public sealed class KeyBitChoice : INotifyPropertyChanged
+{
+    private bool _isChecked;
+    private readonly Action<int, bool> _changed;
+    public int Number { get; }
+    public string Label => $"K{Number:D2}";
+    public bool IsChecked
+    {
+        get => _isChecked;
+        set
+        {
+            if (_isChecked == value) return;
+            _isChecked = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsChecked)));
+            _changed(Number, value);
+        }
+    }
+    public KeyBitChoice(int number, Action<int, bool> changed)
+    {
+        Number = number;
+        _changed = changed;
+    }
+    public void SetFromMask(bool value)
+    {
+        if (_isChecked == value) return;
+        _isChecked = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsChecked)));
+    }
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
 public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -36,7 +68,42 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
     public string HardwareProfileId { get; set; } = "";
     public string ControllerName { get; set; } = "";
     public string StateName { get; set; } = "";
-    public string StateMaskHex { get; set; } = "0x0";
+    private string _stateMaskHex = "0x0";
+    public ObservableCollection<KeyBitChoice> KeyBits { get; } = new();
+    public string StateMaskHex
+    {
+        get => _stateMaskHex;
+        set
+        {
+            if (_stateMaskHex == value) return;
+            _stateMaskHex = value;
+            Changed();
+            UpdateKeySelections();
+        }
+    }
+    private void UpdateKeySelections()
+    {
+        var input = _stateMaskHex.Trim();
+        if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) input = input[2..];
+        if (!uint.TryParse(input, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var mask))
+            return; // Editing an incomplete HEX string must not silently erase it.
+        foreach (var bit in KeyBits)
+            bit.SetFromMask((mask & (1u << (bit.Number - 1))) != 0);
+    }
+    private void SetKeyBit(int number, bool selected)
+    {
+        var input = _stateMaskHex.Trim();
+        if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) input = input[2..];
+        if (!uint.TryParse(input, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var mask))
+        {
+            Error = "请先修正十六进制按键掩码，再编辑开关组合。";
+            UpdateKeySelections();
+            return;
+        }
+        var flag = 1u << (number - 1);
+        mask = selected ? mask | flag : mask & ~flag;
+        StateMaskHex = $"0x{mask:X5}";
+    }
     public string VoltageChannel { get; set; } = "1";
     public string TargetVolts { get; set; } = "";
     public string MinVolts { get; set; } = "";
@@ -79,6 +146,9 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
 
     public ControllerConfigToolViewModel()
     {
+        for (var number = 1; number <= 20; number++)
+            KeyBits.Add(new KeyBitChoice(number, SetKeyBit));
+        UpdateKeySelections();
         CreateCommand = new ToolCommand(() => Guard(Create));
         OpenCommand = new ToolCommand(() => _ = OpenGuardedAsync());
         SaveCommand = new ToolCommand(() => _ = SaveGuardedAsync());
