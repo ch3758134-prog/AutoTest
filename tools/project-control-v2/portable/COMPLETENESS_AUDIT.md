@@ -11,9 +11,9 @@
 | 工程资产分类/批准追溯 | 有概念规则与初始登记 | 未实现全面的跨来源证明体系 |
 | 多项目数据模型 | 新增目标仓库独立 `management.json` 及多项目显式加载 | 原 AutoTest 模型没有整体迁移，新旧模型字段尚需长期治理 |
 | 通用本地 Web UI | 新增候选 `portable/web_server.py` 和 `portable/web/*` | 需真实 Windows 浏览器、人机操作及跨项目数据迁移验收；旧 `server.py` 仍是 AutoTest |
-| 正式计划/变更/风险 | 通用 UI 已有成果、工作、进度、风险和里程碑本地草案；正式审批禁止 | 与旧 V2 复杂计划、依赖、变更、Gate 审查的完整功能差距仍存在 |
+| 正式计划/变更/风险 | 新增候选需求、WBS 依赖、计划快照与修订、变化影响图和 Gate 审查请求 | 正式批准/复杂资源规划与旧模型迁移尚不完整 |
 | Codex 远程任务发现 | 原试点 CODEX_START_HERE+dispatch+resolve；本候选新增目标仓库通用 resolve.py | 目标仓库仍需独立任务合同与真实授权；通用校验器仅做本地检查 |
-| 空目录工作区创建/清理 | 已能识别当前工作区的本地 Codex 回执 | 临时 clone/worktree 登记、跨工作区自动归集和安全清理仍未完成 |
+| 空目录工作区创建/清理 | 实现可移植 workspace_manager.py：登记自有 clone、linked TEMP 创建/审查/正常退出、历史目录只读扫描、跨已登记 worktree 回执收集 | 真实 Windows 占用进程、联接点与断链目录现场验收未完成；普通 clone 不自动删除 |
 | GitHub 多仓库支持与安全写入 | 已提供登记项目的显式只读 `ls-remote` 检查与候选 Codex 回执复核 | 已有受控任务发布与 PR 接收状态的版本比对候选；**真正跨 GitHub PR 发布/接收、CAS 竞态与跨机器同步未作实测** |
 | 测试与验证 | 新增跨项目回执、Git 文件核验、远端只读版本检查、写入锁、项目隔离及 HTTP 授权回归 | 未提供实际 Windows + 真实新/旧项目全链路验收 |
 
@@ -23,6 +23,9 @@
 - `portable/pr_evidence.py`：接受通过 GitHub 连接取得的 PR 元数据，检查目标仓库、分支和候选提交是否与 Codex 回执相符；该检查**不等于 PR 内容审查、CI 验收或项目 Gate**。
 - `portable/task_submission.py`：将取得正确 PR 与 Codex 回执的 READY 任务转为 `SUBMITTED_FOR_REVIEW` 的候选 GitHub 文件修改，保留独立审查与 Gate 边界；本身不自动提交远端。
 - `portable/REMOTE_HANDOFF.md`：管理 AI 主动读取的完整任务发布、Codex 领取及远端 PR 复核协议。
+- 新增 `portable/github_bridge.py` 可选显式 HTTPS GitHub Contents SHA-CAS 工具，可重新核对真实批准记录、设计 blob、任务版本与最新 PR 文件范围；端到端真实 GitHub 写入仍未通过实际目标仓库实测。
+- 新增 `portable/workspace_manager.py` 本机工作区登记与审查退出，和 `portable/governance.py` 通用计划/变更候选；所有未能确认的旧目录仍保留。
+- 已增加无网络的 NEW/ADOPT→授权→本地 Codex→回执→PR 候选的完整测试夹具，但这并非真实 Windows 或 Github 账号级别的验收。
 - 仍缺少实际跨机器 GitHub 写入/PR 端到端验证以及可靠 Windows 工作区回收。要避免把受控协作的文本约束当成系统级权限。
 
 ## 分发包边界
