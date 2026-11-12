@@ -5,8 +5,6 @@ No fetch, push, checkout, shell commands, merge or deletion is performed.
 """
 from __future__ import annotations
 
-import hashlib
-import json
 from pathlib import Path
 import re
 import subprocess
@@ -115,11 +113,6 @@ def validate_report(project, tasks, report):
         raise ReceiptError("receipt branch does not match allocated task branch")
     if not HEX40.fullmatch(str(source.get("pinned_sha", ""))):
         raise ReceiptError("task pinned source is missing")
-    if report.get("task_registry_sha256") != hashlib.sha256(
-            json.dumps(tasks, ensure_ascii=False, indent=2).encode("utf-8")).hexdigest():
-        # Raw on-disk SHA may contain formatting differences; the caller should
-        # pass its actual registry content digest instead of this fallback.
-        pass
     return task
 
 
