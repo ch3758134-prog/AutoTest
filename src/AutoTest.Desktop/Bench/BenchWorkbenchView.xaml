@@ -35,7 +35,8 @@
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
-   <RowDefinition Height="*" MinHeight="450"/>
+   <RowDefinition Height="*" MinHeight="320"/>
+   <RowDefinition Height="155" MinHeight="100"/>
   </Grid.RowDefinitions>
   <DockPanel Grid.Row="0" Margin="0,0,0,12">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -442,5 +443,17 @@
     </Grid>
    </Border>
   </Grid>
+  <Border Grid.Row="3" Style="{StaticResource AtIdeCard}" Padding="0" Margin="0,10,0,0">
+   <DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource AtBlueHeading}">
+     <DockPanel>
+      <TextBlock Text="操作日志" Style="{StaticResource AtEditorHeading}"/>
+      <TextBlock DockPanel.Dock="Right" Text="真实 CAN / KEY_SIM / IGN / 夹具操作记录；主控 ACK 不等于 ECU 响应" Style="{StaticResource AtHint}"/>
+     </DockPanel>
+    </Border>
+    <ListBox ItemsSource="{Binding OperationLines}" BorderThickness="0" FontSize="12"
+             ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+   </DockPanel>
+  </Border>
  </Grid>
 </UserControl>
