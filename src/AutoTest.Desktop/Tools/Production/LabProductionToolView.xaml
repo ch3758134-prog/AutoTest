@@ -72,7 +72,7 @@
                         <TextBox x:Name="BarcodeInput" KeyDown="BarcodeInput_OnKeyDown"
                                  Text="{Binding ScanInput, UpdateSourceTrigger=PropertyChanged}"/>
                     </DockPanel>
-                    <TextBlock Text="{Binding MatchDetail}" TextWrapping="Wrap" Margin="0,12,0,3"/>
+                    <TextBlock Text="{Binding MatchDetail,Converter={StaticResource OperatorStatusConverter}}" TextWrapping="Wrap" Margin="0,12,0,3"/>
                     <TextBlock Text="{Binding RuleRevision, StringFormat=规则版本：{0}}"
                                Foreground="#697C8E"/>
                     <TextBlock Text="{Binding CatalogSource}" TextWrapping="Wrap"
