@@ -1,3 +1,7 @@
+> **Project Control V2 / ChatGPT 统一入口（当前仅为候选分支）**：如果你是第一次阅读本仓库，或准备以工程总协调、专业研发、集成验证等身份参加项目，先读取 [AI_START_HERE.md](AI_START_HERE.md)。AI 应自行识别项目、角色和任务，身份不明确时主动向用户询问；用户不需要编写角色提示词。以下 HOST 工程说明是历史文件，不能据此推断当前管理系统的项目阶段或正式批准状态。
+
+---
+
 # AutoTest HOST · WPB-G4-INIT · INTEGRATION / V0-R2
 
 ## 范围与来源
