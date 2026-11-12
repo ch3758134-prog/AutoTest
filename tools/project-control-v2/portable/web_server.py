@@ -873,9 +873,12 @@ def handler(targets, owner_token, registry_dir=None, review_token=None):
                 except (ManagementError, OSError, ValueError) as err:
                     return self.respond({"error": str(err)}, 409)
             if url.path == "/api/delivery-reviews":
-                if not review_token or not secrets.compare_digest(
-                        self.headers.get("X-Review-Token", ""), review_token):
-                    return self.respond({"error": "separate local review token required"}, 403)
+                authorized_reader = (
+                    secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token)
+                    or (bool(review_token) and secrets.compare_digest(
+                        self.headers.get("X-Review-Token", ""), review_token)))
+                if not authorized_reader:
+                    return self.respond({"error": "private management or review token required"}, 403)
                 project_id = parse_qs(url.query).get("project_id", [""])[0]
                 target = targets.get(project_id)
                 if target is None:
