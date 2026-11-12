@@ -7,7 +7,7 @@ namespace AutoTest.Devices.Diagnostics;
 /// Narrow, read-only GUI boundary. Implementations must use the existing UsbSessionService,
 /// never a second USB parser or a direct WinUSB write path.
 /// </summary>
-public interface IDeviceLabBackend : IAsyncDisposable
+public interface IDeviceDiagnosticBackend : IAsyncDisposable
 {
     IReadOnlyList<WinUsbCandidate> Enumerate();
     UsbSessionState State { get; }
@@ -29,7 +29,7 @@ public interface IDeviceLabBackend : IAsyncDisposable
 }
 
 /// <summary>Production adapter to the already-integrated, firmware-validated hardware controller.</summary>
-public sealed class HardwareDeviceLabBackend : IDeviceLabBackend
+public sealed class HardwareDiagnosticBackend : IDeviceDiagnosticBackend
 {
     private readonly HardwareBenchController _controller = new();
     public IReadOnlyList<WinUsbCandidate> Enumerate() => _controller.Enumerate();
@@ -58,23 +58,23 @@ public sealed class HardwareDeviceLabBackend : IDeviceLabBackend
     public ValueTask DisposeAsync() => _controller.DisposeAsync();
 }
 
-public sealed record DeviceLabCommand(string Name, byte Command)
+public sealed record DeviceDiagnosticCommand(string Name, byte Command)
 {
     public override string ToString() => $"{Name} (0x{Command:X2})";
 }
 
 /// <summary>No arbitrary CMD or payload editor is exposed; no CAN transmit entry point.</summary>
-public static class DeviceLabReadOnlyCommands
+public static class DeviceDiagnosticReadOnlyCommands
 {
-    public static IReadOnlyList<DeviceLabCommand> All { get; } = Array.AsReadOnly(new[]
+    public static IReadOnlyList<DeviceDiagnosticCommand> All { get; } = Array.AsReadOnly(new[]
     {
-        new DeviceLabCommand("PING", FirmwareReadOnlyProtocol.Ping),
-        new DeviceLabCommand("固件版本", FirmwareReadOnlyProtocol.GetVersion),
-        new DeviceLabCommand("ECU 电源 GPIO 回读", FirmwareReadOnlyProtocol.GetEcuPower),
-        new DeviceLabCommand("IGN GPIO 回读", FirmwareReadOnlyProtocol.GetIgn),
-        new DeviceLabCommand("按键板电源 GPIO 回读", FirmwareReadOnlyProtocol.GetKeyPower),
-        new DeviceLabCommand("夹具控制 GPIO 回读", FirmwareReadOnlyProtocol.GetSolenoid),
-        new DeviceLabCommand("电源 GPIO 汇总", FirmwareReadOnlyProtocol.GetAllPower)
+        new DeviceDiagnosticCommand("PING", FirmwareReadOnlyProtocol.Ping),
+        new DeviceDiagnosticCommand("固件版本", FirmwareReadOnlyProtocol.GetVersion),
+        new DeviceDiagnosticCommand("ECU 电源 GPIO 回读", FirmwareReadOnlyProtocol.GetEcuPower),
+        new DeviceDiagnosticCommand("IGN GPIO 回读", FirmwareReadOnlyProtocol.GetIgn),
+        new DeviceDiagnosticCommand("按键板电源 GPIO 回读", FirmwareReadOnlyProtocol.GetKeyPower),
+        new DeviceDiagnosticCommand("夹具控制 GPIO 回读", FirmwareReadOnlyProtocol.GetSolenoid),
+        new DeviceDiagnosticCommand("电源 GPIO 汇总", FirmwareReadOnlyProtocol.GetAllPower)
     });
 
     public static bool IsApproved(byte command)
@@ -83,7 +83,7 @@ public static class DeviceLabReadOnlyCommands
 }
 
 /// <summary>Structured, correlation-ready UI operation event. This is not evidence of physical actuation.</summary>
-public sealed record DeviceLabOperationEvent(DateTimeOffset Utc, string Category, string Action,
+public sealed record DeviceDiagnosticOperationEvent(DateTimeOffset Utc, string Category, string Action,
     string Outcome, string? DeviceInstanceId, long Generation, string? TraceFile,
     string? Detail, string? ExceptionType)
 {
@@ -94,9 +94,9 @@ public sealed record DeviceLabOperationEvent(DateTimeOffset Utc, string Category
 /// Stateful B0/B1/B2 read-only workflow for WPF. B0 confirmation is single-use for every
 /// manual connect, including retry/reconnect. Disconnect never reconnects automatically.
 /// </summary>
-public sealed class DeviceLabSession : IAsyncDisposable
+public sealed class DeviceDiagnosticSession : IAsyncDisposable
 {
-    private readonly IDeviceLabBackend _backend;
+    private readonly IDeviceDiagnosticBackend _backend;
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private readonly Func<string> _newTracePath;
     private readonly Func<bool>? _auditHealthy;
@@ -104,13 +104,13 @@ public sealed class DeviceLabSession : IAsyncDisposable
     private bool _b0Confirmed;
     private bool _disposed;
 
-    public event Action<DeviceLabOperationEvent>? OperationRecorded;
+    public event Action<DeviceDiagnosticOperationEvent>? OperationRecorded;
     public event Action<UsbTraceRecord>? UsbTrace;
     public event Action<WinUsbOperationEvent>? NativeOperation;
     public event Action<HardwareCanTrace>? CanTrace;
     public event Action<UsbSessionState>? ConnectionChanged;
 
-    public DeviceLabSession(IDeviceLabBackend backend, Func<string>? newTracePath = null,
+    public DeviceDiagnosticSession(IDeviceDiagnosticBackend backend, Func<string>? newTracePath = null,
         Func<bool>? auditHealthy = null)
     {
         _backend = backend ?? throw new ArgumentNullException(nameof(backend));
@@ -207,7 +207,7 @@ public sealed class DeviceLabSession : IAsyncDisposable
         CancellationToken ct = default)
     {
         // Deny before attempting a transport operation, including while disconnected.
-        if (!DeviceLabReadOnlyCommands.IsApproved(command))
+        if (!DeviceDiagnosticReadOnlyCommands.IsApproved(command))
             throw new UnauthorizedAccessException($"CMD 0x{command:X2} is not a read-only DEVICE UI command.");
         if (timeout < TimeSpan.FromMilliseconds(100) || timeout > TimeSpan.FromSeconds(30))
             throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -274,7 +274,7 @@ public sealed class DeviceLabSession : IAsyncDisposable
     private void Emit(string category, string action, string outcome, string? detail = null,
         string? exceptionType = null)
     {
-        var evt = new DeviceLabOperationEvent(DateTimeOffset.UtcNow, category, action, outcome,
+        var evt = new DeviceDiagnosticOperationEvent(DateTimeOffset.UtcNow, category, action, outcome,
             _selected?.DeviceInstanceId, _backend.Generation, _backend.TraceFile, detail, exceptionType);
         InvokeObservers(OperationRecorded, evt);
     }
@@ -286,12 +286,12 @@ public sealed class DeviceLabSession : IAsyncDisposable
     private static string NewTracePath()
     {
         var baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AutoTest", "DeviceLab", "Traces");
+            "AutoTest", "DeviceDiagnostics", "Traces");
         return Path.Combine(baseDir, $"device-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmssfff}-{Guid.NewGuid():N}.jsonl");
     }
     private void ThrowIfDisposed()
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(DeviceLabSession));
+        if (_disposed) throw new ObjectDisposedException(nameof(DeviceDiagnosticSession));
     }
     public async ValueTask DisposeAsync()
     {

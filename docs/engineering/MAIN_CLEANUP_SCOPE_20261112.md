@@ -42,3 +42,7 @@
 - 去掉旧 `UdsDiagnosticWorkspace` 模拟 ECU，保留 UDS 服务文档类型/文件读写及 Replay。通用 `UdsClient` 现对所有非只读服务拒绝，直到物理授权链单独集成；改用受控测试通道验证只读响应、NRC 及超时。
 - Desktop 当前是干净的最小 WPF Prism Shell，不包含任何已接线的工程/DBC/自动测试界面；后续按正式产品职责重新构建。
 - 不主动运行 CI，未做 Windows 本地编译/实机测试；审核以本次源码差异和依赖关系为依据。
+
+## 第四批：诊断设备正式命名（2026-11-12）
+- 最后一个 `DeviceLabSession.cs` 不属于已移除的 WPF DeviceLab 程序，它是只读主控 USB/CAN 诊断边界。保留真实设备实现，但将类型、文件和测试统一更名为 `DeviceDiagnosticSession`、`HardwareDiagnosticBackend`、`IDeviceDiagnosticBackend`、`DeviceDiagnosticReadOnlyCommands` 等；默认日志目录使用 `DeviceDiagnostics`。
+- 没有改变 USB 命令白名单、B0 授权、主控收发协议、安全行为或公共实体测试来源。无新 CI，真实设备联机结果不在本提交声明。

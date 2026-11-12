@@ -5,20 +5,20 @@ using AutoTest.Devices.Usb;
 
 namespace AutoTest.Devices.Tests;
 
-public sealed class DeviceLabSessionTests
+public sealed class DeviceDiagnosticSessionTests
 {
     private const string InstanceId = "USB\\VID_1183&PID_5850\\DEVICE_A";
 
     [Fact]
     public void LAB_DEVICE_01_CommandCatalogIsExactlyFirmwareReadOnlyWhitelist()
     {
-        var actual = DeviceLabReadOnlyCommands.All.Select(c => c.Command).ToArray();
+        var actual = DeviceDiagnosticReadOnlyCommands.All.Select(c => c.Command).ToArray();
         Assert.Equal(new byte[] { 0xF0, 0xF1, 0x11, 0x13, 0x15, 0x17, 0x1F }, actual);
         Assert.Equal(actual.Length, actual.Distinct().Count());
         foreach (var command in actual)
             Assert.True(PhysicalCommandFence.IsReadOnly(command, ReadOnlySpan<byte>.Empty));
         foreach (var hazardous in new byte[] { 0x10, 0x12, 0x14, 0x16, 0x40, 0x50, 0x51, 0x52, 0x53, 0xFF })
-            Assert.False(DeviceLabReadOnlyCommands.IsApproved(hazardous));
+            Assert.False(DeviceDiagnosticReadOnlyCommands.IsApproved(hazardous));
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public sealed class DeviceLabSessionTests
     {
         var backend = new FakeBackend { FailConnectOnce = true };
         await using var ui = MakeSession(backend);
-        var events = new List<DeviceLabOperationEvent>();
+        var events = new List<DeviceDiagnosticOperationEvent>();
         ui.OperationRecorded += events.Add;
         ui.Select(backend.Candidates.Single());
         ui.SetB0IsolationConfirmed(true);
@@ -109,7 +109,7 @@ public sealed class DeviceLabSessionTests
     {
         var backend = new FakeBackend();
         await using var ui = MakeSession(backend);
-        var events = new List<DeviceLabOperationEvent>();
+        var events = new List<DeviceDiagnosticOperationEvent>();
         ui.OperationRecorded += events.Add;
         ui.Select(backend.Candidates.Single());
         ui.SetB0IsolationConfirmed(true);
@@ -168,10 +168,10 @@ public sealed class DeviceLabSessionTests
         Assert.Equal(1, backend.ConnectCount);
     }
 
-    private static DeviceLabSession MakeSession(FakeBackend backend) =>
+    private static DeviceDiagnosticSession MakeSession(FakeBackend backend) =>
         new(backend, () => $"/tmp/device-g4-test-{Guid.NewGuid():N}.jsonl");
 
-    private sealed class FakeBackend : IDeviceLabBackend
+    private sealed class FakeBackend : IDeviceDiagnosticBackend
     {
         public List<WinUsbCandidate> Candidates { get; } =
             new() { new WinUsbCandidate("mock-path", InstanceId, "WinUSB") };
