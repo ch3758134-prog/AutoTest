@@ -170,6 +170,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 }
             }
             Changed(nameof(RunFactsText));
+            NotifyRunVisuals();
             Changed(nameof(CurrentStepText));
             Changed(nameof(CurrentFailureText));
         };
@@ -230,6 +231,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             if (ReferenceEquals(_selectedRunStep, value)) return;
             _selectedRunStep = value;
             Changed();
+            Changed(nameof(RunTimelineRows));
         }
     }
     private void RefreshRunStepRows()
@@ -250,6 +252,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             Visit(doc.Phases[phase], phase, 0);
         SelectedRunStep = RunStepRows.FirstOrDefault(x => x.Type != "Subroutine")
             ?? RunStepRows.FirstOrDefault();
+        NotifyRunVisuals();
     }
     // UI-only run selection; never written back to the published TEST file.
     // The barcode path intentionally ignores these choices and runs the entire TEST.
@@ -281,6 +284,39 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         $"已勾选 {TestCases.Count(x => x.IsSelected)} / {TestCases.Count} 个测试用例";
     public string RunFactsText =>
         $"{Facts.Count} 条实际步骤事实";
+    public int RunTotalSteps => RunStepRows.Count(x => x.Type != "Subroutine");
+    public int RunCompletedSteps => RunStepRows.Count(x => x.Verdict != "未执行" && x.Verdict != "定义");
+    public int RunPassedSteps => RunStepRows.Count(x => x.Verdict is "PASS" or "通过");
+    public int RunFailedSteps => RunStepRows.Count(x => x.Verdict is "FAIL" or "ERROR" or "失败");
+    public int RunRemainingSteps => Math.Max(0, RunTotalSteps - RunCompletedSteps);
+    public double RunProgressPercent => RunTotalSteps == 0 ? 0 :
+        Math.Min(100, 100.0 * RunCompletedSteps / RunTotalSteps);
+    public string RunProgressLabel => RunTotalSteps == 0 ? "无计划步骤" :
+        $"{RunProgressPercent:0.#}%";
+    // Only actual planned TEST nodes; the timeline never invents a stage or measurement.
+    public IReadOnlyList<R1RunStepRow> RunTimelineRows
+    {
+        get
+        {
+            var candidates = RunStepRows.Where(x => x.Type != "Subroutine").ToArray();
+            if (candidates.Length <= 4) return candidates;
+            var currentIndex = Array.FindIndex(candidates, x =>
+                x.StepId == SelectedRunStep?.StepId);
+            var start = Math.Clamp(currentIndex - 1, 0, candidates.Length - 4);
+            return candidates.Skip(start).Take(4).ToArray();
+        }
+    }
+    private void NotifyRunVisuals()
+    {
+        Changed(nameof(RunTotalSteps));
+        Changed(nameof(RunCompletedSteps));
+        Changed(nameof(RunPassedSteps));
+        Changed(nameof(RunFailedSteps));
+        Changed(nameof(RunRemainingSteps));
+        Changed(nameof(RunProgressPercent));
+        Changed(nameof(RunProgressLabel));
+        Changed(nameof(RunTimelineRows));
+    }
     public string CurrentStepText
     {
         get
