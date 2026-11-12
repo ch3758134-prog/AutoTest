@@ -12,6 +12,9 @@ from contextlib import contextmanager
 import hashlib
 from receipt_evidence import assess as assess_receipt, verify_test_logs, ReceiptError
 from context_assessment import audit as audit_context_assessment, AssessmentError
+from context_workflow import (apply as apply_context_workflow, current_view as context_current_view,
+                              check_collections as check_context_collections,
+                              ContextWorkflowError)
 from remote_sync import inspect as inspect_remote, SyncError
 from remote_module_status import inspect as inspect_remote_modules
 from github_bridge import GitHub, RemoteError
@@ -238,6 +241,7 @@ class Target:
             process_state_for(value, allow_stale=True)
         except ProcessError as error:
             raise ManagementError("invalid process state: " + str(error)) from error
+        check_context_collections(value)
         try:
             defined_modules(value)
         except ModuleError as error:
@@ -335,6 +339,10 @@ class Target:
                     "remote_pr_verified": False, "ci_verified": False,
                     "integrated": "UNKNOWN",
                 })
+            if management.get("context_reviews"):
+                # Versioned CAS-managed evidence reviews take precedence over the
+                # optional legacy read-only file; no duplicate sources of truth.
+                context_view = context_current_view(management)
             return {
                 "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
@@ -518,12 +526,16 @@ class Target:
             record.setdefault("modules", [])
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
                              "create_milestone", "record_receipt", "review_receipt",
-                             "verify_log_evidence", "create_module", "assign_module_work"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
+                             "verify_log_evidence", "create_module", "assign_module_work",
+                             "record_context_assessment", "propose_context_remediation_work"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
             works = record["work"]
-            if name in PROCESS_ACTIONS:
+            if name in ("record_context_assessment", "propose_context_remediation_work"):
+                apply_context_workflow(record, name, payload, project_id=self.project_id,
+                                       repo_url=self.initial["repo_url"], recorded_at=stamp())
+            elif name in PROCESS_ACTIONS:
                 apply_process(record, name, payload)
             elif name in GOVERNANCE_ACTIONS:
                 apply_governance(record, name, payload)
