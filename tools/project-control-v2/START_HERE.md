@@ -2,6 +2,10 @@
 
 > 本文件属于交付给 ChatGPT 网页端的**项目管理系统文件夹本身**。它不是某个被管理项目的数据，不要求先打开 AutoTest 仓库。通用本地多项目工作台已具备候选实现（[portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)），原先的 server.py/app.js 仍为 AutoTest 试点，不可混用。
 
+## 独立管理系统包
+
+从管理系统研发仓库运行 `python tools/project-control-v2/portable/export_package.py --out ProjectControl.zip`，生成单独的 `ProjectControl/` ZIP。发行包只包含通用工作所需的文件、Web UI、脚本和校验清单；不包括旧 AutoTest 的项目数据、旧 UI、Git 历史或本地日志。用户把这个 ZIP 解压后的文件夹提供给新的管理 AI 对话即可。ZIP 不是项目本身，也不会凭空拥有目标 GitHub 仓库写权限。
+
 ## 交给管理 AI 的实际输入
 
 - **本文件夹**：项目管理制度、岗位说明、初始化协议、模板和候选管理程序；
