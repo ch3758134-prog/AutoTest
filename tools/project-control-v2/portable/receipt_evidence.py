@@ -116,6 +116,42 @@ def validate_report(project, tasks, report):
     return task
 
 
+def verify_test_logs(repo_root, report):
+    """Check local log BYTES without declaring the test genuinely executed.
+
+    Candidate logs are stored in the worktree Git metadata, outside tracked
+    source and outside automatically uploaded GitHub artifacts.
+    """
+    import hashlib
+    evidence = report.get("test_evidence", [])
+    if not evidence or not all(isinstance(x, dict) and x.get("log_ref") for x in evidence):
+        return "SELF_REPORTED_LOG_HASHES_NOT_INDEPENDENTLY_VERIFIED"
+    metadata = run_git(repo_root, "rev-parse", "--git-path", "project-control")
+    if metadata is None:
+        return "LOCAL_TEST_LOGS_UNAVAILABLE"
+    base = Path(metadata.decode("utf-8", errors="replace").strip()
+                if isinstance(metadata, bytes) else metadata)
+    if not base.is_absolute():
+        base = Path(repo_root) / base
+    if not base.is_dir() or base.is_symlink():
+        return "LOCAL_TEST_LOGS_UNAVAILABLE"
+    for item in evidence:
+        ref = item.get("log_ref")
+        if (not isinstance(ref, str) or not ref.startswith("logs/")
+                or "\\" in ref or ":" in ref or any(
+                    x in ("", ".", "..") for x in ref.split("/"))):
+            raise ReceiptError("unsafe log reference in receipt")
+        target = base / ref
+        if target.is_symlink() or not target.is_file():
+            return "LOCAL_TEST_LOGS_UNAVAILABLE"
+        if not target.resolve().is_relative_to(base.resolve()) or target.stat().st_size > 20_000_000:
+            raise ReceiptError("test log is unsafe or oversized")
+        actual = hashlib.sha256(target.read_bytes()).hexdigest()
+        if actual != item["log_sha256"]:
+            raise ReceiptError("local test log content changed after Codex report")
+    return "LOCAL_LOG_HASHES_VERIFIED_EXIT_CODES_SELF_REPORTED"
+
+
 def assess(root, project, tasks, tasks_raw_sha256, report):
     task = validate_report(project, tasks, report)
     if report["task_registry_sha256"] != tasks_raw_sha256:
@@ -162,7 +198,7 @@ def assess(root, project, tasks, tasks_raw_sha256, report):
         "work_branch": report["work_branch"], "changed_paths": sorted(report["changed_paths"]),
         "test_evidence": report.get("test_evidence", []),
         "git_assessment": status,
-        "test_assessment": "SELF_REPORTED_LOG_HASHES_NOT_INDEPENDENTLY_VERIFIED",
+        "test_assessment": verify_test_logs(root, report),
         "review_status": "PENDING_INDEPENDENT_REVIEW",
         "safety": "NO_AUTOMATIC_TASK_COMPLETION_OR_GATE",
     }
