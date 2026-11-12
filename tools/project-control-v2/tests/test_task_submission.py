@@ -71,6 +71,7 @@ class TaskSubmissionTests(unittest.TestCase):
                         "candidate_head": "f" * 40,
                         "work_branch": "feature/task-impl-001", "scope_status": "SCOPE_OK",
                         "workspace_clean": True,
+                        "changed_paths": ["src/feature.py"],
                         "task_registry_sha256": hashlib.sha256(self.tasks_path.read_bytes()).hexdigest(),
                         "receipt_id": "receipt-01"}
         self.pr = {"number": 12, "url": "https://github.com/team/target-project/pull/12",
