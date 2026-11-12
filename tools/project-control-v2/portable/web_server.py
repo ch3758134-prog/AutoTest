@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 from receipt_evidence import assess as assess_receipt, ReceiptError
+from remote_sync import inspect as inspect_remote, SyncError
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -175,6 +176,11 @@ class Target:
                 "limits": {"formal_approval": False, "remote_write": False,
                            "task_ready_promotion": False, "local_cleanup": False},
             }
+
+    def remote_status(self):
+        with self.lock:
+            self.check_identity()
+            return inspect_remote(self.root, check_remote=True)
 
     def apply(self, name, payload):
         if not isinstance(payload, dict):
@@ -348,6 +354,19 @@ def handler(targets, owner_token):
                     ],
                     "note": "Only explicitly registered local projects are shown.",
                 })
+            if url.path == "/api/remote-status":
+                if self.client_address[0] not in ("127.0.0.1", "::1"):
+                    return self.respond({"error": "localhost only"}, 403)
+                if not secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token):
+                    return self.respond({"error": "owner token required"}, 403)
+                project_id = parse_qs(url.query).get("project_id", [""])[0]
+                target = targets.get(project_id)
+                if target is None:
+                    return self.respond({"error": "unknown project"}, 404)
+                try:
+                    return self.respond(target.remote_status())
+                except (ManagementError, SyncError, OSError) as error:
+                    return self.respond({"error": str(error)}, 409)
             if url.path == "/api/model":
                 project_id = parse_qs(url.query).get("project_id", [""])[0]
                 target = targets.get(project_id)
