@@ -31,7 +31,7 @@ jobs:
         run: |
           git rev-parse HEAD
           dotnet --version
-      - name: Reject legacy layered Shell UI
+      - name: Verify unified single-tab IDE and independent professional tools
         shell: pwsh
         run: |
           $xaml = Get-Content src/AutoTest.Desktop/Shell/MainWindow.xaml -Raw -Encoding utf8
@@ -41,7 +41,7 @@ jobs:
               throw "LEGACY_SHELL_REINTRODUCED: $legacy"
             }
           }
-          if (-not $xaml.Contains('DocumentTabs') -or -not $xaml.Contains('ExplorerTabs')) {
+          if (-not $xaml.Contains('DocumentTabs') -or -not $xaml.Contains('ExplorerDocumentHost') -or -not $xaml.Contains('StationConnectButton')) {
             throw 'UNIFIED_IDE_SHELL_MISSING'
           }
           Write-Host 'UNIFIED_TEST_IDE_SHELL_STRUCTURE_PASS'
