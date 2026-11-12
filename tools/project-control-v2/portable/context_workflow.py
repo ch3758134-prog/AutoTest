@@ -50,9 +50,15 @@ def check_collections(record):
            or not isinstance(v.get("digest"), str)
            or digest(v["assessment"]) != v["digest"] for v in reviews):
         raise ContextWorkflowError("context review digest mismatch")
-    if any(not isinstance(v, dict) or v.get("review_id") not in {x["id"] for x in reviews}
-           or not isinstance(v.get("work_id"), str) for v in links):
+    known_reviews = {x["id"] for x in reviews}
+    known_works = {w.get("id") for w in record.get("work", []) if isinstance(w, dict)}
+    if any(not isinstance(v, dict) or v.get("review_id") not in known_reviews
+           or v.get("work_id") not in known_works
+           or v.get("status") != "PROPOSED_NOT_AUTHORIZED"
+           for v in links):
         raise ContextWorkflowError("invalid context work link")
+    if len({(v["review_id"], v["action_id"]) for v in links}) != len(links):
+        raise ContextWorkflowError("duplicate remediation link")
     return reviews, links
 
 def current_view(record):
