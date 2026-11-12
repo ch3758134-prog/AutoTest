@@ -461,6 +461,38 @@ public sealed class ProjectWorkspaceService
         }, ct);
     }
 
+    /// <summary>Prevent a config from silently following a different version of its referenced resource.</summary>
+    private static void ValidateConfigurationReferences(string kind, object document, ProjectDefinition project)
+    {
+        void Check(Guid? id, string expectedKind, int? revision, string? fingerprint)
+        {
+            if (!id.HasValue) return;
+            var asset = project.Assets.FirstOrDefault(x => x.Id.Value == id.Value &&
+                x.Kind.Equals(expectedKind, StringComparison.OrdinalIgnoreCase));
+            if (asset is null || asset.Revision != revision ||
+                !string.Equals(asset.Sha256, fingerprint, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("CONFIG_ASSET_STALE",
+                    "引用资源已不存在或发生版本变更，请重新选择并确认：" + expectedKind);
+        }
+
+        if (kind == WaveSettingsKind && document is WaveSettingsDocument wave)
+        {
+            Check(wave.DbcAssetId, DbcKind, wave.DbcAssetRevision, wave.DbcAssetFingerprint);
+            Check(wave.ReferenceAssetId, WaveKind, wave.ReferenceAssetRevision, wave.ReferenceAssetFingerprint);
+        }
+        else if (kind == FlashSettingsKind && document is FlashSettingsDocument flash)
+            Check(flash.FirmwareAssetId, FirmwareKind, flash.FirmwareRevision, flash.FirmwareFingerprint);
+        else if (kind == ScanSettingsKind && document is ScanMatchSettingsDocument scan && scan.Published)
+            foreach (var recipe in scan.Recipes.Where(x => x.Published))
+            {
+                Check(recipe.TestProgramAssetId, TestProgramKind,
+                    recipe.TestProgramRevision, recipe.TestProgramFingerprint);
+                Check(recipe.DbcAssetId, DbcKind, recipe.DbcRevision, recipe.DbcFingerprint);
+                Check(recipe.FirmwareAssetId, FirmwareKind,
+                    recipe.FirmwareRevision, recipe.FirmwareFingerprint);
+            }
+    }
+
     /// <summary>Store validated typed configuration, then atomically advance project revision.</summary>
     public async Task<ProjectConfigurationSession> SaveConfigurationAsync(
         ProjectConfigurationSession opened, object document, CancellationToken ct = default)
@@ -487,6 +519,7 @@ public sealed class ProjectWorkspaceService
                 !string.Equals(asset.Sha256, opened.FileSha256, StringComparison.OrdinalIgnoreCase))
                 throw new ProjectDataException("CONFIG_REVISION_CONFLICT",
                     "工程配置已经更新，请重新打开再编辑。");
+            ValidateConfigurationReferences(opened.Kind, document, current.Definition);
 
             var result = await Task.Run(async () =>
             {

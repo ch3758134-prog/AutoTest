@@ -114,7 +114,7 @@ public sealed class ProjectConfigurationWorkflowTests
             var error = await Assert.ThrowsAsync<ProjectDataException>(
                 () => workspace.SaveConfigurationAsync(saved, wrong));
             // The schema accepts authoring a future revision but matching must reject stale asset refs.
-            Assert.Equal("SCAN_RECIPE_INVALID", error.Code);
+            Assert.Equal("CONFIG_ASSET_STALE", error.Code);
         }
         finally { Directory.Delete(parent, true); }
     }
