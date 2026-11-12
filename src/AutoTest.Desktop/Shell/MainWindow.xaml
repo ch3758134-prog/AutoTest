@@ -321,12 +321,8 @@
             <Border DockPanel.Dock="Top" Background="{StaticResource ToolbarSurface}"
                     BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
                     Padding="12,7">
-              <DockPanel LastChildFill="True">
-                <Button DockPanel.Dock="Right" Content="关闭编辑区" Command="{Binding CloseEditorCommand}"
-                        Style="{StaticResource AtButton}" Margin="8,0,0,0" />
-                <TextBlock Text="{Binding ActiveEditorTitle}" FontWeight="SemiBold"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-              </DockPanel>
+              <TextBlock Text="{Binding ActiveEditorTitle}" FontWeight="SemiBold"
+                         VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </Border>
             <ContentControl Content="{Binding ActiveEditorView}" />
           </DockPanel>

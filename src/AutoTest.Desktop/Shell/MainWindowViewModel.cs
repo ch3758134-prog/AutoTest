@@ -93,7 +93,6 @@ public sealed class MainWindowViewModel : BindableBase
             () => _selectedResource?.Asset is not null && !IsBusy);
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
-        CloseEditorCommand = new DelegateCommand(CloseActiveEditor, () => HasActiveEditor && !IsBusy);
         ConnectHardwareCommand = new DelegateCommand(async () => await ToggleHardwareAsync(),
             () => !_hardwareBusy);
         OpenCanMonitorCommand = new DelegateCommand(OpenCanMonitor);
@@ -293,7 +292,6 @@ public sealed class MainWindowViewModel : BindableBase
         {
             if (!SetProperty(ref _activeEditorView, value)) return;
             RaisePropertyChanged(nameof(HasActiveEditor));
-            CloseEditorCommand?.RaiseCanExecuteChanged();
         }
     }
     public bool HasActiveEditor => ActiveEditorView is not null;
@@ -311,11 +309,6 @@ public sealed class MainWindowViewModel : BindableBase
         _confirmEditorClose = confirmClose;
         ActiveEditorTitle = title;
         ActiveEditorView = editor;
-    }
-    private void CloseActiveEditor()
-    {
-        if (!ConfirmCloseActiveEditor()) return;
-        ClearEditor();
     }
     private void ClearEditor()
     {
@@ -365,7 +358,6 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenTestProgramCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
     public DelegateCommand RemoveReferenceCommand { get; }
-    public DelegateCommand CloseEditorCommand { get; }
 
     public async Task RestoreLastProjectAsync()
     {
@@ -663,6 +655,5 @@ public sealed class MainWindowViewModel : BindableBase
         OpenTestProgramCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();
         RemoveReferenceCommand?.RaiseCanExecuteChanged();
-        CloseEditorCommand?.RaiseCanExecuteChanged();
     }
 }
