@@ -2,6 +2,12 @@
 
 > 本文件属于交付给 ChatGPT 网页端的**项目管理系统文件夹本身**。它不是某个被管理项目的数据，不要求先打开 AutoTest 仓库。通用本地多项目工作台已具备候选实现（[portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)），原先的 server.py/app.js 仍为 AutoTest 试点，不可混用。
 
+## 必读：完整工程协作与本地工作区
+
+- [portable/GOVERNANCE.md](portable/GOVERNANCE.md)：通用工程实体、WBS、计划、变更影响、阶段审查与正式批准的职责边界。
+- [portable/WORKSPACE_LIFECYCLE.md](portable/WORKSPACE_LIFECYCLE.md)：Codex 对用户选定空目录的自助登记、临时 linked worktree 安全退出及回执归集。
+- [portable/REMOTE_HANDOFF.md](portable/REMOTE_HANDOFF.md)：正式任务的发布、源代码回执、PR 和验收交接。
+
 ## GitHub 任务发布与远程交接（必须阅读）
 
 [portable/REMOTE_HANDOFF.md](portable/REMOTE_HANDOFF.md) 是管理 AI 研究、设计、正式任务发布、Codex 本地执行、GitHub PR 核对以及成果审查的统一连接协议。用户只提供管理系统文件夹与目标仓库；管理 AI 自行从已连接 GitHub 获取源码、审批依据、分支/PR/HEAD，不能向用户转嫁这些技术信息。通用源码提供只读任务发布预检与 PR 元数据一致性核对，**并不意味着网页端已经能调用远端项目的自动事务服务**。
