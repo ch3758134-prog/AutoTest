@@ -42,7 +42,7 @@ public sealed class LabTestWorkspaceViewModelTests
         vm.SelectedInsertType = "ControllerState";
         vm.InsertCommand.Execute(null);
         vm.PreflightCommand.Execute(null);
-        Assert.Contains("Preflight blocked", vm.Status);
+        Assert.Contains("运行前检查未通过", vm.Status);
     }
     [Fact]
     public async Task PhysicalRunRejectsMissingProjectProgramBeforeDeviceAuthorization()
@@ -55,7 +55,7 @@ public sealed class LabTestWorkspaceViewModelTests
         Assert.Null(result);
         Assert.Equal(0, approvals);
         Assert.Equal("ERROR / NOT_PRODUCTION", vm.Verdict);
-        Assert.Contains("PROJECT_TEST_NOT_REGISTERED", vm.Status);
+        Assert.Contains("工程没有已保存的测试程序", vm.Status);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public sealed class LabTestWorkspaceViewModelTests
         Assert.Null(result);
         Assert.Equal(0, approvals);
         Assert.Equal("ERROR / NOT_PRODUCTION", vm.Verdict);
-        Assert.Contains("PROJECT_NOT_SAVED", vm.Status);
+        Assert.Contains("工程尚未保存到磁盘", vm.Status);
     }
 
 }
