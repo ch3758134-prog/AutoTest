@@ -127,7 +127,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     {
         _project = project ?? throw new ArgumentNullException(nameof(project));
         _compiler = new LabPlanCompiler();
-        _editor = new LabDocumentEditor(LabDocument.New("R1 工程测试程序"));
+        _editor = new LabDocumentEditor(LabDocument.New("新建测试程序"));
         _runner = new LabRunCoordinator();
         _ui = SynchronizationContext.Current;
         Facts.CollectionChanged += (_, e) =>
@@ -301,7 +301,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public bool Busy { get => _busy; private set { _busy = value; Changed(); RefreshCommands(); } }
     public string SourceLabel => "工程 TEST · 真实设备执行 / 物理能力按设备与步骤合同约束";
     public string ProjectAssetStatus => _project is null
-        ? "未绑定工程；LAB 文件独立保存"
+        ? "未保存工程 · 可以编辑测试程序，正式执行前需保存到工程"
         : _project.LabProgramAssetId is { } id
             ? "工程测试程序 · " + _project.Assets.Single(x => x.Id == id).Name +
               " · r" + _project.Assets.Single(x => x.Id == id).Revision +
@@ -374,7 +374,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         var doc = Snapshot;
         foreach (var phase in Enum.GetValues<LabPhase>())
         {
-            var root = new LabTreeRow { Caption = phase.ToString().ToUpperInvariant(), Phase = phase };
+            var root = new LabTreeRow { Caption = LabStepLocalization.Display(phase.ToString()), Phase = phase };
             AddNodes(root.Children, doc.Phases[phase], phase, null, null);
             Tree.Add(root);
         }
@@ -388,14 +388,14 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             var n = nodes[i];
             var row = new LabTreeRow
             {
-                Caption = $"{i + 1:D2}  {n.Type}  ·  {n.Name}", Phase = phase,
+                Caption = $"{i + 1:D2}  {LabStepLocalization.Display(n.Type)}  ·  {n.Name}", Phase = phase,
                 StepId = n.Id, ParentId = parent, Slot = slot, Index = i
             };
             foreach (var branch in n.Slots)
             {
                 var slotRow = new LabTreeRow
                 {
-                    Caption = branch.Key.ToUpperInvariant(), Phase = phase,
+                    Caption = LabStepLocalization.Display(branch.Key), Phase = phase,
                     ParentId = n.Id, Slot = branch.Key
                 };
                 AddNodes(slotRow.Children, branch.Value, phase, n.Id, branch.Key);
@@ -411,7 +411,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         var profile = _keySimControllerProfile?.Invoke();
         if (profile is null)
         {
-            Status = "请先在 P05 打开或创建真实 Controller Profile，保存后再绑定 TEST。";
+            Status = "请先打开控制器与按键配置，创建并保存 ECU 对应的按键状态。";
             return;
         }
         foreach (var controller in profile.Controllers.OrderBy(x => x.Order))
@@ -419,8 +419,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 ControllerStateChoices.Add(new R1ControllerStateChoice(
                     controller.Id, state.Id, controller.Name, state.Name,
                     profile.Revision, state.KeyMask));
-        Status = "已列出 P05 Controller 状态 " + ControllerStateChoices.Count +
-            " 项，执行前仍会校验真实配置文件与 Revision。";
+        Status = "当前控制器可用按键状态 " + ControllerStateChoices.Count +
+            " 项；执行前会检查配置版本是否仍然有效。";
     }
 
     public void ApplyControllerState()
@@ -428,7 +428,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         if (_selected?.StepId is not Guid stepId ||
             _editor.Snapshot.Walk().All(x => x.Id != stepId || x.Type != "ControllerState"))
         {
-            Status = "先在 TEST 步骤树中选中 ControllerState 操作，再绑定 P05 状态。";
+            Status = "请先选中测试步骤中的“按键状态”，再关联工程中的控制器状态。";
             return;
         }
         var choice = SelectedControllerChoice;
@@ -439,7 +439,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 c.States.Any(state => state.Id == choice.StateId &&
                     state.KeyMask == choice.Mask)))
         {
-            Status = "P05 Controller 状态已经变化，请重新加载状态列表。";
+            Status = "控制器按键配置已经变化，请刷新按键状态列表。";
             return;
         }
         Edit(() =>
@@ -448,14 +448,14 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             _editor.SetParameter(stepId, "stateId", choice.StateId.ToString("D"));
             _editor.SetParameter(stepId, "revision", choice.Revision.ToString());
         });
-        Status = "已绑定实际 P05 状态：" + choice.Label +
-            "；必须在 P10 登记 TEST 并在 P01 保存工程后才能执行。";
+        Status = "已关联控制器按键状态：" + choice.Label +
+            "；正式执行前请保存测试程序并保存工程。";
     }
 
     private void Edit(Action mutation)
     {
-        try { mutation(); Rebuild(); Status = "Edited — not saved"; }
-        catch (Exception ex) { Status = "Edit rejected: " + ex.Message; }
+        try { mutation(); Rebuild(); Status = "步骤已修改，尚未保存"; }
+        catch (Exception ex) { Status = "无法修改步骤：" + ex.Message; }
     }
     private static LabNode NewNode(string type)
     {
@@ -747,7 +747,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private void Control(Action action)
     {
         try { action(); Status = "Run control requested"; }
-        catch (Exception ex) { Status = "Control rejected: " + ex.Message; }
+        catch (Exception ex) { Status = "操作已拒绝：" + ex.Message; }
     }
     private void Post(Action action)
     {
@@ -768,7 +768,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             }
             else project.ImportLabProgram(json);
             Changed(nameof(ProjectAssetStatus));
-            Status = "TEST 已登记为当前工程资源；请到 P01 保存。经 P05 配置和程序授权可执行真实 KEY_SIM CAN0 状态步骤，其他输出只允许已实现的硬件能力。";
+            Status = "测试程序已加入当前工程；请保存工程文件。控制器按键步骤仍需有效配置与执行授权。";
         }
         catch (Exception ex) { Status = "工程 TEST 登记失败：" + ex.Message; }
     }
@@ -779,11 +779,11 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         {
             if (Busy) throw new InvalidOperationException("Cannot reload a program during execution");
             var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
-            var program = project.LabProgram ?? LabDocument.New("R1 project TEST program");
+            var program = project.LabProgram ?? LabDocument.New("新建测试程序");
             ImportJson(LabDocumentCodec.Save(program));
             Status = project.LabProgram is null
                 ? "当前工程尚未登记测试程序；新建草稿须显式纳入工程。"
-                : "TEST 已从当前工程版本资源加载；编辑后须创建新 Revision。";
+                : "已从当前工程加载测试程序；修改后需要保存新的资源版本。";
             Changed(nameof(ProjectAssetStatus));
         }
         catch (Exception ex) { Status = "重新加载工程 TEST 失败：" + ex.Message; }
@@ -793,22 +793,22 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     {
         try
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "AutoTest LAB document (*.json)|*.json", FileName = "test-program.json" };
+            var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "AutoTest 测试程序 (*.json)|*.json", FileName = "test-program.json" };
             if (dialog.ShowDialog() != true) return;
             System.IO.File.WriteAllText(dialog.FileName, ExportJson());
-            Status = "Saved LAB JSON (not yet PROJECT-managed)";
+            Status = "测试程序已保存为独立文件；如要用于当前工程，请点击“保存到当前工程”。";
         }
-        catch (Exception ex) { Status = "Save failed: " + ex.Message; }
+        catch (Exception ex) { Status = "保存测试程序失败：" + ex.Message; }
     }
     private void OpenFile()
     {
         try
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "AutoTest LAB document (*.json)|*.json" };
+            var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "AutoTest 测试程序 (*.json)|*.json" };
             if (dialog.ShowDialog() != true) return;
             ImportJson(System.IO.File.ReadAllText(dialog.FileName));
         }
-        catch (Exception ex) { Status = "Open failed: " + ex.Message; }
+        catch (Exception ex) { Status = "打开测试程序失败：" + ex.Message; }
     }
 
 }
