@@ -47,7 +47,8 @@
     "skills/project-intake/SKILL.md",
     "skills/engineering-coordinator/SKILL.md",
     "portable/EVIDENCE_AND_REMEDIATION.md",
-    "portable/context_assessment.py"
+    "portable/context_assessment.py",
+    "portable/context_assessment_example.json"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -94,7 +95,7 @@
     "evidence_assessment": "V2_CURRENT_APPLICABILITY_CANDIDATE_STRUCTURAL_ONLY",
     "missing_artifact_remediation": "PROPOSED_NOT_AUTHORIZED",
     "legacy_discovery_v1": "READ_ONLY_NEEDS_REASSESSMENT",
-    "full_web_workbench_evidence_integration": "NOT_IMPLEMENTED",
+    "full_web_workbench_evidence_integration": "OPTIONAL_READ_ONLY_CANDIDATE_VIEW_NO_WRITE_WORKFLOW",
     "real_agent_intake_e2e": "NOT_VERIFIED"
   },
   "separation": {
