@@ -2,8 +2,8 @@
 const $=s=>document.querySelector(s);
 const e=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const txt=v=>e(String(v??""));
-let projects=[],model=null,selected=null,page="overview",ownerToken="",remoteSnapshot=null,workspaceSnapshot=null,moduleRemoteSnapshot=null,intakeReviewToken=null;
-const labels={process:"工程过程与 AI",overview:"项目总览",deliverables:"目标与交付",work:"研发工作",modules:"模块与实际代码",requirements:"需求与依据",plans:"计划与依赖",changes:"变更与阶段审查",risks:"风险与里程碑",evidence:"资产与正式依据",handoff:"AI 与 Codex 交接",workspace:"本地工作区"};
+let reviewToken="", activeDeliveryId="", projects=[],model=null,selected=null,page="overview",ownerToken="",remoteSnapshot=null,workspaceSnapshot=null,moduleRemoteSnapshot=null,intakeReviewToken=null;
+const labels={deliveries:"成果审阅与交付",process:"工程过程与 AI",overview:"项目总览",deliverables:"目标与交付",work:"研发工作",modules:"模块与实际代码",requirements:"需求与依据",plans:"计划与依赖",changes:"变更与阶段审查",risks:"风险与里程碑",evidence:"资产与正式依据",handoff:"AI 与 Codex 交接",workspace:"本地工作区"};
 const escapeJSON=s=>JSON.stringify(s).replace(/</g,"\\u003c");
 const pill=(value,tone="")=>'<span class="pill '+tone+'">'+e(value)+'</span>';
 const empty=message=>'<div class="empty">'+e(message)+'</div>';
@@ -311,6 +311,97 @@ function evidence(){
  html+='<div class="pair">'+panel("资产快照",'<div class="stat"><label>已登记 Git 跟踪文件</label><strong>'+e(assets.tracked_file_count??0)+'</strong></div><p class="hint">来源：'+e(assets.observation_source||"未知")+'；远端历史/PR/CI：'+e(assets.remote_history_pr_ci||"未核对")+'</p>'+ (assets.entries?.length?'<div class="list">'+assets.entries.slice(0,40).map(a=>line(a.path,"可信度："+a.confidence+" · 批准："+a.approval)).join("")+'</div>':empty("没有来源清单"))+(assets.entries?.length>40?'<p class="hint">只展示前 40 条；完整资产在目标仓库 assets.json 中。</p>':""))+panel("正式决策记录",decisions.decisions?.length?decisions.decisions.map(d=>line(d.kind||"决策",d.approval_reference||"无来源",pill(d.state||"未核实"))).join(""):empty("尚无经系统登记的正式决定。不能由此否定原有历史成果。"))+'</div>';
  return html;
 }
+function deliveryView(){
+ const items=management().delivery_reviews||[];
+ let html=head("OWNER REVIEW & CANDIDATE DELIVERY","成果审阅与交付",
+ "管理 AI 可以先保存内部草稿，但必须向负责人呈现完整成果、修改差异和拟发布范围；负责人允许发布候审也不代表正式批准。");
+ html+='<section class="section">'+panel("目前需要审阅的成果",
+   items.length?items.map(d=>{
+      const state=pill(d.status, d.status==="RELEASED_FOR_CANDIDATE_PUBLICATION"?"blue":"pending");
+      const metadata='<div class="details"><span>版本</span><strong>'+e(d.revision)+'</strong></div>'+
+         '<div class="details"><span>内容 SHA-256</span><code>'+e(d.sha256)+'</code></div>'+
+         '<p><strong>为什么做：</strong>'+e(d.why)+'</p>'+
+         '<p><strong>审查范围：</strong>'+e(d.scope)+'</p>'+
+         '<p><strong>与旧版差异：</strong>'+e(d.changes)+'</p>'+
+         '<p><strong>限制与未完成：</strong>'+e(d.limitations)+'</p>'+
+         '<p><strong>请负责人决定：</strong>'+e(d.owner_question)+'</p>'+
+         '<p><strong>拟发布位置：</strong>'+e(d.publication_type)+' · '+e(d.publication_target)+'</p>'+
+         '<p class="hint">证据：'+e((d.source_refs||[]).join("；"))+'</p>';
+      const controls=d.status==="DRAFT_INTERNAL"?
+        '<button class="secondary" data-delivery-offer="'+e(d.id)+'">准备提交负责人审阅（不发布）</button>':
+        d.status==="AWAITING_OWNER_REVIEW"?
+        '<button class="primary" data-delivery-review="'+e(d.id)+'">审阅此版本全文并作决定</button>':
+        (d.status==="RELEASED_FOR_CANDIDATE_PUBLICATION"?
+          '<p class="hint">仅批准发布为候审。实际 GitHub 是否已发布需要另行核实；不代表产品/阶段/任务批准。</p>':
+          '<p class="hint">已退回或暂缓；AI 应修改后重新提交新版本。</p>');
+      return '<article class="panel delivery-item"><div class="line"><div><h2>'+e(d.title)+'</h2><p>'+
+          e(d.id)+' · '+e(d.kind)+'</p></div>'+state+'</div>'+metadata+
+          '<details><summary>展开完整成果正文（'+e(d.body.length)+' 字符）</summary>'+
+          '<pre class="delivery-document">'+e(d.body)+'</pre></details>'+
+          '<div class="delivery-controls">'+controls+'</div></article>';
+   }).join(''):empty("还没有需要审阅的完整交付稿。管理 AI 应先准备全文及差异，不要求负责人替 AI 填表。"))+'</section>';
+ html+='<section class="section info">交付状态与正式审批分开：DRAFT_INTERNAL 是内部候选；AWAITING_OWNER_REVIEW 仅表示待读；RELEASED_FOR_CANDIDATE_PUBLICATION 仅允许候审发布。此本地工作台不自动写 GitHub，也不签发产品定义、计划、Gate 或 Codex 执行许可。</section>';
+ return html;
+}
+function openOwnerDeliveryReview(id){
+ const d=(management().delivery_reviews||[]).find(x=>x.id===id);
+ if(!d||d.status!=="AWAITING_OWNER_REVIEW"){notify("当前版本不在待审状态，请刷新",true);return;}
+ activeDeliveryId=id;
+ $("#owner-review-content").innerHTML=
+  '<p class="hint"><strong>'+e(d.title)+'</strong> · 第 '+e(d.revision)+' 版 · SHA-256 '+e(d.sha256)+'</p>'+
+  '<p><strong>工作必要性：</strong>'+e(d.why)+'</p>'+
+  '<p><strong>审查对象和范围：</strong>'+e(d.scope)+'</p>'+
+  '<p><strong>与原有效成果差异：</strong>'+e(d.changes)+'</p>'+
+  '<p><strong>来源与证据：</strong>'+e((d.source_refs||[]).join("；"))+'</p>'+
+  '<p><strong>未解决与风险：</strong>'+e(d.limitations)+'</p>'+
+  '<p><strong>你本次需要决定：</strong>'+e(d.owner_question)+'</p>'+
+  '<p><strong>允许候审发布的位置：</strong>'+e(d.publication_type)+" · "+e(d.publication_target)+'</p>'+
+  '<h3>完整候审正文</h3><pre class="delivery-document">'+e(d.body)+'</pre>';
+ $("#owner-review-decision").value="REQUEST_CHANGES";
+ $("#owner-review-reason").value="";
+ $("#owner-review-confirm").checked=false;
+ $("#owner-review-dialog").showModal();
+}
+async function offerDelivery(id){
+ const d=(management().delivery_reviews||[]).find(x=>x.id===id);
+ if(!d||d.status!=="DRAFT_INTERNAL")return;
+ if(!confirm("提交为本地负责人待审候选？不会发布到 GitHub，也不会批准内容。"))return;
+ if(!await getOwnerToken())return;
+ try{
+  const response=await fetch("/api/action",{method:"POST",headers:{"Content-Type":"application/json",
+     "X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected,action:"offer_delivery_review",
+     payload:{id,delivery_revision:d.revision,expected_sha256:d.sha256,expected_revision:management().revision,
+              reason:"准备完整候选成果供负责人审阅；未授权发布"}})});
+  const data=await response.json();
+  if(!response.ok){if(response.status===403)ownerToken="";throw Error(data.error||"无法准备审阅");}
+  await loadModel();notify("已准备为待审稿，未发布或批准。");
+ }catch(err){notify(err.message,true);}
+}
+async function decideOwnerDelivery(event){
+ event.preventDefault();
+ const d=(management().delivery_reviews||[]).find(x=>x.id===activeDeliveryId);
+ if(!d||d.status!=="AWAITING_OWNER_REVIEW"){notify("待审稿已变化，请刷新",true);return;}
+ if(!$("#owner-review-confirm").checked){notify("必须先确认准确的版本和审查范围",true);return;}
+ const decision=$("#owner-review-decision").value, reason=$("#owner-review-reason").value.trim();
+ if(!reason){notify("请写明审查理由",true);return;}
+ if(decision==="ALLOW_CANDIDATE_PUBLICATION"&&!confirm(
+   "你只允许将此准确版本公开为【候审候选】，不会批准工程内容、正式基线、Gate 或编码任务。确认继续？"))return;
+ if(!reviewToken)reviewToken=prompt("输入服务终端单独显示的「候选交付审阅令牌」，不是普通管理令牌")||"";
+ if(!reviewToken)return;
+ try{
+  const response=await fetch("/api/owner-delivery-decision",{method:"POST",
+    headers:{"Content-Type":"application/json","X-Review-Token":reviewToken},
+    body:JSON.stringify({project_id:selected,action:"owner_decide_delivery",
+       payload:{id:d.id,delivery_revision:d.revision,expected_sha256:d.sha256,
+                expected_revision:management().revision,decision,reason,confirm_exact_content:true}})});
+  const result=await response.json();
+  if(!response.ok){if(response.status===403)reviewToken="";throw Error(result.error||"审阅决定未记录");}
+  $("#owner-review-dialog").close();activeDeliveryId="";
+  await loadModel();notify(decision==="ALLOW_CANDIDATE_PUBLICATION"?
+       "只记录了候审发布许可；尚未发布 GitHub，也未正式批准工程成果":
+       "审阅结果已记录；内容未获发布许可。");
+ }catch(err){notify(err.message,true);}
+}
 function handoff(){
  const t=model.tasks.tasks||[],git=model.git,p=project();
  let html=head("AI HANDOFF","AI 与 Codex 交接","ChatGPT 组织研发并写入目标 GitHub 管理记录；Codex 自行读取目标仓库已授权任务，用户不必搬运实施方案。");
@@ -345,7 +436,7 @@ function processView(){
  return html;
 }
 
-const pages={process:processView,overview,deliverables,work,modules,requirements,plans,changes,risks,evidence,handoff,workspace:workspaceView};
+const pages={deliveries:deliveryView,process:processView,overview,deliverables,work,modules,requirements,plans,changes,risks,evidence,handoff,workspace:workspaceView};
 function render(){if(!model)return;$("#crumb-current").textContent=labels[page];document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));$("#main").innerHTML=pages[page]();}
 const definitions={
  record_context_assessment:{title:"登记 AI 项目证据评价",desc:"请使用 AI 形成的 project-control-context-assessment/2 记录；将严格校验来源结构并作为本地候选保存，绝不批准。负责人不需要自行填写资料清单。",fields:[["assessment_json","AI 已编制的证据评价 JSON","textarea"]]},
@@ -427,9 +518,16 @@ async function fetchRemoteModules(){
 }
 async function collectRegisteredReceipts(){if(!await getOwnerToken())return;try{const r=await fetch("/api/collect-registered-receipts",{method:"POST",headers:{"Content-Type":"application/json","X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected})});const data=await r.json();if(!r.ok){if(r.status===403)ownerToken="";throw Error(data.error||"登记工作区回执收集失败");}await loadModel();notify("已登记工作区："+data.registered_examined+"；导入："+data.imported.length+"；待审："+data.held.length,Boolean(data.held.length));}catch(err){notify(err.message,true);}}
 document.addEventListener("click",event=>{
+ const ownerDelivery=event.target.closest("[data-delivery-review]");
+ if(ownerDelivery){openOwnerDeliveryReview(ownerDelivery.dataset.deliveryReview);return;}
+ const offer=event.target.closest("[data-delivery-offer]");
+ if(offer){offerDelivery(offer.dataset.deliveryOffer);return;}
  const contextAction=event.target.closest("[data-context-action]");
  if(contextAction){openForm("propose_context_remediation_work",contextAction.dataset.contextAction);return;}
 if(event.target.closest("#show-initialize-project")||event.target.closest("#empty-initialize-project")){showProjectInitialization();return;}if(event.target.closest("#show-register-target")||event.target.closest("#empty-register-target")){showTargetRegistration();return;}if(event.target.closest("#check-module-remote")){fetchRemoteModules();return;}if(event.target.closest("#show-workspaces")){showWorkspaces();return;}if(event.target.closest("#collect-registered-receipts")){collectRegisteredReceipts();return;}if(event.target.closest("#check-remote")){checkRemote();return;}if(event.target.closest("#collect-receipts")){collectLocalReceipts();return;}for(const [selector,command] of [["[data-focus-for]","set_process_focus"],["[data-obligation-for]","set_process_obligation"],["[data-process-review-for]","review_process_activity"],["[data-owner-review-for]","request_process_review"]]){const el=event.target.closest(selector);if(el){openForm(command,el.getAttribute(selector.slice(1,-1)));return;}}const review=event.target.closest("[data-review]");if(review){openForm("review_receipt",review.dataset.review);return;}for(const [selector,cmd] of [["[data-plan-submit]","submit_plan"],["[data-plan-revise]","revise_plan"],["[data-plan-review]","record_plan_review"],["[data-change-assess]","assess_change"]]){const el=event.target.closest(selector);if(el){openForm(cmd,el.getAttribute(selector.slice(1,-1)));return;}}const nav=event.target.closest("[data-page]");if(nav){page=nav.dataset.page;render();return;}const work=event.target.closest("[data-progress]");if(work){openForm("set_progress",work.dataset.progress);return;}const btn=event.target.closest("[data-action]");if(btn){openForm(btn.dataset.action);return;}if(event.target.closest("#copy-handoff")){navigator.clipboard?.writeText(handoffText).then(()=>notify("已复制启动消息")).catch(()=>notify("浏览器不允许剪贴板，请手动复制",true));}});
+$("#owner-review-form").addEventListener("submit",decideOwnerDelivery);
+$("#owner-review-close").addEventListener("click",()=>$("#owner-review-dialog").close());
+$("#owner-review-cancel").addEventListener("click",()=>$("#owner-review-dialog").close());
 $("#initialize-form").addEventListener("submit",previewProjectInitialization);
 $("#initialize-apply").addEventListener("click",applyProjectInitialization);
 $("#initialize-close").addEventListener("click",()=>$("#initialize-dialog").close());
