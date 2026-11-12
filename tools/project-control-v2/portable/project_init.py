@@ -8,11 +8,13 @@ This is a bootstrap aid, not a project approval or a full web UI.
 from __future__ import annotations
 
 import argparse
+import hashlib
 from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import sys
 from urllib.parse import urlsplit
@@ -279,14 +281,113 @@ def upgrade_management(directory, inspected, *, apply=False):
             "created": ".project-control/management.json"}
 
 
+def upgrade_runtime(directory, inspected, *, apply=False,
+                    expected_resolver_sha=None, expected_workspace_sha=None):
+    """Explicit safe target tool migration; never overwrite unknown revisions.
+
+    This does not replace engineering files, management decisions or task data.
+    Old tool bytes are backed up under Git metadata before a controlled update.
+    """
+    root = Path(directory).resolve(strict=True)
+    fresh = inspect_target(root, inspected["repo_url"])
+    if fresh["worktree_dirty"] or fresh["git_head"] != inspected["git_head"]:
+        raise InitError("runtime upgrade requires a stable clean Git checkout")
+    control = root / ".project-control"
+    if control.is_symlink() or not control.is_dir():
+        raise InitError("target project management records are missing")
+    project_path = control / "project.json"
+    if project_path.is_symlink() or not project_path.is_file():
+        raise InitError("unsafe project record")
+    project = json.loads(project_path.read_text(encoding="utf-8"))
+    if project.get("schema") != "project-control-target-project/1" or (
+            project.get("repo_url") != inspected["repo_url"]):
+        raise InitError("target project identity mismatch")
+    scripts = {
+        "resolve.py": "target_resolver.py",
+        "workspace_manager.py": "workspace_manager.py"
+    }
+    plan = []
+    for target_name, source_name in scripts.items():
+        target = control / target_name
+        source = Path(__file__).resolve().parent / source_name
+        new_bytes = source.read_bytes()
+        if target.is_symlink():
+            raise InitError("unsafe runtime target symlink")
+        old = target.read_bytes() if target.exists() else None
+        old_sha = hashlib.sha256(old).hexdigest() if old is not None else None
+        new_sha = hashlib.sha256(new_bytes).hexdigest()
+        expectation = (expected_resolver_sha if target_name == "resolve.py"
+                       else expected_workspace_sha)
+        operation = ("UNCHANGED" if old == new_bytes else
+                     "CREATE" if old is None else "REPLACE_WITH_BACKUP")
+        if apply and operation == "REPLACE_WITH_BACKUP" and expectation != old_sha:
+            raise InitError("runtime hash mismatch or missing explicit expected hash for " + target_name)
+        plan.append((target_name, target, old, new_bytes, old_sha, new_sha, operation))
+    preview = {
+        "status": "RUNTIME_UPGRADE_PREVIEW",
+        "repo_url": inspected["repo_url"],
+        "source_head": inspected["git_head"],
+        "actions": [{"name": name, "operation": op,
+                     "current_sha256": old_sha, "desired_sha256": new_sha}
+                    for name, _, _, _, old_sha, new_sha, op in plan],
+        "note": "No writes unless --apply; existing runtime always backed up before replacement.",
+    }
+    if not apply:
+        return preview
+    backup_base = run_git(root, "rev-parse", "--git-path", "project-control/runtime-backup")
+    backup_folder = Path(backup_base)
+    if not backup_folder.is_absolute():
+        backup_folder = root / backup_folder
+    changed = []
+    for name, target, old, new, old_sha, _, op in plan:
+        if op == "UNCHANGED":
+            continue
+        if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() != old_sha:
+            raise InitError("runtime changed during migration; partial updates require manual review")
+        if op == "REPLACE_WITH_BACKUP":
+            backup_folder.mkdir(parents=True, exist_ok=True)
+            if backup_folder.is_symlink():
+                raise InitError("unsafe backup directory")
+            backup = backup_folder / (name + "." + old_sha + ".bak")
+            if not backup.exists():
+                with backup.open("xb") as stream:
+                    stream.write(old)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            elif backup.read_bytes() != old:
+                raise InitError("existing backup conflicts with current runtime")
+            tmp = target.with_name("." + name + "." + secrets.token_hex(8) + ".tmp")
+            try:
+                with tmp.open("xb") as stream:
+                    stream.write(new)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(tmp, target)
+            finally:
+                tmp.unlink(missing_ok=True)
+        else:
+            with target.open("xb") as stream:
+                stream.write(new)
+        changed.append(name)
+    return {
+        "status": "LOCAL_RUNTIME_UPGRADED_NOT_COMMITTED",
+        "created_or_replaced": changed,
+        "backup_dir": str(backup_folder) if any(x[6] == "REPLACE_WITH_BACKUP" for x in plan) else None,
+        "note": "Review Git diff; a runtime migration is not a GitHub push or phase approval.",
+    }
+
+
 def cli(argv=None):
     parser = argparse.ArgumentParser(description="Safe target GitHub project initialization (candidate)")
-    parser.add_argument("action", choices=["inspect", "preview", "apply", "upgrade-preview", "upgrade"])
+    parser.add_argument("action", choices=["inspect", "preview", "apply", "upgrade-preview", "upgrade",
+                                      "upgrade-runtime-preview", "upgrade-runtime"])
     parser.add_argument("--target", required=True, help="Root of already-existing target Git checkout")
     parser.add_argument("--repo-url", required=True, help="User-supplied GitHub repository URL")
     parser.add_argument("--mode", choices=["new", "adopt"])
     parser.add_argument("--project-id")
     parser.add_argument("--project-name")
+    parser.add_argument("--expected-resolver-sha")
+    parser.add_argument("--expected-workspace-sha")
     args = parser.parse_args(argv)
     try:
         inspected = inspect_target(args.target, args.repo_url)
@@ -294,6 +395,11 @@ def cli(argv=None):
             result = inspected
         elif args.action in ("upgrade-preview", "upgrade"):
             result = upgrade_management(args.target, inspected, apply=args.action == "upgrade")
+        elif args.action in ("upgrade-runtime-preview", "upgrade-runtime"):
+            result = upgrade_runtime(
+                args.target, inspected, apply=args.action == "upgrade-runtime",
+                expected_resolver_sha=args.expected_resolver_sha,
+                expected_workspace_sha=args.expected_workspace_sha)
         else:
             if not args.mode:
                 raise InitError("--mode must be explicitly chosen after project investigation")
