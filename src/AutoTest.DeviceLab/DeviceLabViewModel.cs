@@ -271,6 +271,7 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
         {
             StatusText = $"主控连接：{state} · 会话 {_session.Generation}";
             if (state != UsbSessionState.Connected) ClearStationEvidence();
+            Notify(nameof(IsConnected));
             RefreshButtons();
         });
 
@@ -288,6 +289,53 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
             Notify(nameof(TraceStats)); Notify(nameof(CanStats)); RefreshButtons();
         }
     }
+    /// <summary>
+    /// Main-window connect: discover first, require explicit cabling confirmation,
+    /// then open the same audited physical session used by the diagnostic view.
+    /// A connection never energizes IGN, keys, fixture or transmits a CAN frame.
+    /// </summary>
+    public Task ConnectFromShellAsync(
+        Func<IReadOnlyList<WinUsbCandidate>, WinUsbCandidate?> chooseCandidate,
+        Func<bool> confirmIsolation)
+        => RunAsync(async () =>
+        {
+            if (_session.State == UsbSessionState.Connected)
+            {
+                ResultText = "主控已连接，无需重复连接。";
+                return;
+            }
+            StatusText = "正在搜索主控设备…";
+            await RefreshAsync();
+            if (Candidates.Count == 0)
+                throw new InvalidOperationException("未发现匹配的主控板。请检查 USB 连接和驱动后重试。");
+            var candidate = Candidates.Count == 1 ? Candidates[0] : chooseCandidate(Candidates.ToList());
+            if (candidate is null)
+            {
+                ResultText = "未选择主控设备，未建立连接。";
+                StatusText = "未连接";
+                return;
+            }
+            SelectedCandidate = candidate;
+            if (!confirmIsolation())
+            {
+                ResultText = "未确认接线安全，未建立连接。";
+                StatusText = "未连接";
+                return;
+            }
+            B0Acknowledged = true; // Existing DeviceLabSession performs the audited B0 gate.
+            if (!B0Acknowledged)
+                throw new InvalidOperationException("设备接线安全确认未通过，未建立连接。");
+            await ConnectAsync();
+        });
+
+    public Task DisconnectFromShellAsync() => RunAsync(async () =>
+    {
+        if (_session.State != UsbSessionState.Disconnected)
+            await DisconnectAsync();
+    }, allowWhenAuditFailed: true);
+
+    public bool IsConnected => _session.State == UsbSessionState.Connected;
+
     private async Task RefreshAsync()
     {
         var list = await Task.Run(() => _session.Enumerate());
