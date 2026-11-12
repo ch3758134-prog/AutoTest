@@ -46,3 +46,33 @@ jobs:
           path: ProjectControl_Portable.zip
           if-no-files-found: error
           retention-days: 30
+
+  portable-windows-validation:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Windows Python source
+        run: python -m compileall -q tools/project-control-v2/portable
+      - name: Validate portable Windows browser scripts
+        run: node --check tools/project-control-v2/portable/web/app.js
+      - name: Verify portable Windows browser behavior
+        run: node tools/project-control-v2/tests/portable_ui_behavior.js
+      - name: Run portable project-management test fixtures on Windows
+        run: python -m unittest discover -s tools/project-control-v2/tests -v
+      - name: Package standalone management folder on Windows
+        run: python tools/project-control-v2/portable/export_package.py --out ProjectControl_Windows_Candidate.zip
+      - name: Upload Windows-validated portable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProjectControl-Windows-Candidate
+          path: ProjectControl_Windows_Candidate.zip
+          if-no-files-found: error
+          retention-days: 30
