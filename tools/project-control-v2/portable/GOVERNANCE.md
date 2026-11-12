@@ -23,7 +23,7 @@
 
 ## 与 GitHub 的关系
 
-通用工具不默认自动把本地 management.json 推送到 GitHub。管理 AI 在真正的目标 GitHub 仓库维护项目最新记录，GitHub 文件 SHA 和分支 HEAD 是并发与来源校验依据。Codex 任务发布可由 task_publication.py 本地预检及可选 github_bridge.py 执行单文件 SHA-CAS；提交 PR 的状态候选由 task_submission.py 准备。**这些都不保证跨多个文件的完整事务原子性。**
+通用工具不默认自动把本地 management.json 推送到 GitHub。管理 AI 在真正的目标 GitHub 仓库维护项目最新记录，GitHub 文件 blob SHA 与经审查的分支 HEAD 是并发与来源校验依据。Codex 任务发布可由 task_publication.py 本地预检及可选 github_bridge.py 执行非强制 Git 分支引用校验；兼容 Contents 文件 SHA 写入需要明确选择；提交 PR 的状态候选由 task_submission.py 准备。**这些都不保证跨多个文件的完整事务原子性。**
 
 AI 不应该只靠 JSON 里的 APPROVED 字样授予自己权限，必须核对真实责任人/批准来源和 GitHub 连接所允许的操作。未能核对的状态保留 UNKNOWN 或待审批，不应写 PASS。
 
