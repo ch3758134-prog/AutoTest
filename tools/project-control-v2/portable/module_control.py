@@ -246,6 +246,10 @@ def assess_candidate_paths(record, changed_paths, task_module_id):
             interface_changes.append(path)
         if task_module_id and owner["id"] != task_module_id:
             shared.append(path)
+    if len(owned_by) > 1 and task_module_id is None:
+        # A PR touching multiple modules is cross-module even if every
+        # individual file is owned. The integration owner must review it.
+        shared = sorted(x for values in owned_by.values() for x in values)
     return {
         "source": "PROVIDED_DIFF_REQUIRES_GIT_OR_GITHUB_VERIFICATION",
         "task_module_id": task_module_id,
