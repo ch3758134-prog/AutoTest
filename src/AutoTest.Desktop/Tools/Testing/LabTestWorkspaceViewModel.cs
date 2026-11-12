@@ -180,9 +180,9 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         UndoCommand = new LabCommand(() => Edit(() => _editor.Undo()), () => !Busy && _editor.CanUndo);
         RedoCommand = new LabCommand(() => Edit(() => _editor.Redo()), () => !Busy && _editor.CanRedo);
         PreflightCommand = new LabCommand(Preflight, () => !Busy);
-        RunPhysicalReadOnlyCommand = new LabCommand(() => _ = RunPhysicalReadOnlyAsync(), () => !Busy && _project is not null && _physicalController is not null);
+        RunPhysicalReadOnlyCommand = new LabCommand(() => _ = RunPhysicalReadOnlyAsync(), () => !Busy && !IsReviewSample && _project is not null && _physicalController is not null);
         RunSelectedPhysicalCommand = new LabCommand(() => _ = RunSelectedPhysicalAsync(),
-            () => !Busy && _project is not null && _physicalController is not null);
+            () => !Busy && !IsReviewSample && _project is not null && _physicalController is not null);
         SelectAllCasesCommand = new LabCommand(() => SelectCases(true), () => !Busy);
         ClearCasesCommand = new LabCommand(() => SelectCases(false), () => !Busy);
         PauseCommand = new LabCommand(() => Control(_runner.Pause), () => Busy);
@@ -326,7 +326,11 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public string Status { get => _status; private set { _status = value; Changed(); } }
     public string Verdict { get => _verdict; private set { _verdict = value; Changed(); } }
     public bool Busy { get => _busy; private set { _busy = value; Changed(); RefreshCommands(); } }
-    public string SourceLabel => "工程 TEST · 真实设备执行 / 物理能力按设备与步骤合同约束";
+    // This fixture is a real, editable PROJECT but never a production recipe.
+    // Its stable PROJECT identity is independent of disk location or file names.
+    public bool IsReviewSample => _project?.Project.Id.Value ==
+        new Guid("33333333-1111-4111-8111-333333333333");
+    public string SourceLabel => "工程测试程序 · 运行前核对设备、DBC 与物理授权";
     public string ProjectAssetStatus => _project is null
         ? "未保存工程 · 可以编辑测试程序，正式执行前需保存到工程"
         : _project.LabProgramAssetId is { } id
@@ -694,6 +698,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         {
             ct.ThrowIfCancellationRequested();
             var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
+            if (IsReviewSample)
+                throw new UnauthorizedAccessException("该工程是界面评审样例，不允许执行任何真实硬件测试或生产放行。");
             var saved = project.LabProgram ??
                 throw new InvalidOperationException("工程没有已保存的测试程序；请在程序编辑器点击“保存到当前工程”。");
             // A production scan must match the exact current saved TEST asset
@@ -898,6 +904,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             }
             else project.ImportLabProgram(json);
             Changed(nameof(ProjectAssetStatus));
+            Changed(nameof(IsReviewSample));
+            RefreshCommands();
             Status = "测试程序已加入当前工程；请保存工程文件。控制器按键步骤仍需有效配置与执行授权。";
         }
         catch (Exception ex) { Status = "保存测试程序到工程失败：" + ex.Message; }
