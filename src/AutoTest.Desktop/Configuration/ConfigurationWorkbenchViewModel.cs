@@ -227,6 +227,15 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 AddField("return", "弹回目标状态 ID", state.ReturnStateId?.ToString(),
                     "仅 SpringReturn 状态需要目标 State ID。");
                 AddField("group", "互斥组", state.ExclusiveGroup);
+                AddField("pressDelay", "按下前固定延迟（ms）",
+                    state.ActionTiming.DelayBeforePressMs.ToString(CultureInfo.InvariantCulture),
+                    "从步骤请求到开始施加电阻组合的固定延迟。");
+                AddField("pressHold", "短按默认保持时间（ms）",
+                    state.ActionTiming.DefaultPressDurationMs.ToString(CultureInfo.InvariantCulture),
+                    "0 表示未指定；短按步骤必须明确设置正数。持续保持由测试步骤选择。");
+                AddField("releaseDelay", "释放后固定间隔（ms）",
+                    state.ActionTiming.DelayAfterReleaseMs.ToString(CultureInfo.InvariantCulture),
+                    "只决定动作间隔，不表示 ECU 已产生响应。");
                 for (int ch = 1; ch <= 5; ch++)
                 {
                     var window = state.Windows.FirstOrDefault(x => x.Channel == ch);
@@ -395,6 +404,10 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                         Name = F("name"), KeyMask = mask,
                         Interaction = Enum.Parse<ControlInteraction>(F("interaction"), true),
                         ReturnStateId = returnId, ExclusiveGroup = F("group"),
+                        ActionTiming = new ButtonActionTiming(
+                            int.Parse(F("pressDelay"), CultureInfo.InvariantCulture),
+                            int.Parse(F("pressHold"), CultureInfo.InvariantCulture),
+                            int.Parse(F("releaseDelay"), CultureInfo.InvariantCulture)).Validate(),
                         Windows = windows.ToImmutable()
                     };
                     next = profile with
