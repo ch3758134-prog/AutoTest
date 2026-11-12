@@ -2,6 +2,10 @@
 
 本文件是管理系统通用知识，不是 AutoTest 项目范围或 P0 批准。不把 SAEF 的 P0～G5 固定为唯一研发流程。
 
+## AI 接管前的信息发现原则
+
+按 [CONTEXT_DISCOVERY.md](CONTEXT_DISCOVERY.md) 建立按岗位与任务裁剪的资料搜索地图。现有源码、PR 和当前计划仅是项目证据的一部分；先调查产品目的、业务背景、研究、需求历史、设计理由和撤回决定，再决定哪些过程活动需要开展。不得以检索文件数量或结构化审查通过宣称项目已被完整理解。不同客户端读取 Skills 的方式见 [AI_WORK_MODES.md](AI_WORK_MODES.md)。
+
 ## 1. AI 首次接管
 
 1. 读取 `START_HERE.md`、`ai/roles.json`、当前仓库和 `.project-control/{project,management,assets,decisions,tasks}.json`；核实远端 HEAD、来源和历史矛盾，不靠旧“PASS”推断当前有效。
