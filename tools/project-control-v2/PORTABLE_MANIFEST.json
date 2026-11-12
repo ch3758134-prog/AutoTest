@@ -1,9 +1,9 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "2.0-portable-init-candidate",
+  "version": "2.1-portable-web-candidate",
   "entrypoint": "START_HERE.md",
-  "scope": "GENERIC_MANAGER_ONBOARDING",
+  "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
   "example_project": "autotest",
   "status": "CANDIDATE_NOT_RELEASED",
@@ -16,15 +16,20 @@
     "ai/roles.json",
     "ai/BOOTSTRAP.md",
     "portable/target_resolver.py",
-    "portable/TASK_CONTRACT.md"
+    "portable/TASK_CONTRACT.md",
+    "portable/web_server.py",
+    "portable/WEB_WORKSPACE.md",
+    "portable/web/index.html",
+    "portable/web/app.js",
+    "portable/web/app.css"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
     "new_project_bootstrap": "CANDIDATE",
     "existing_project_adoption": "CANDIDATE",
     "codex_target_dispatch": "GENERIC_RESOLVER_CANDIDATE_WITH_TARGET_TASK_RECORD",
-    "generic_web_ui": "NOT_IMPLEMENTED",
-    "multi_project_store": "NOT_IMPLEMENTED",
+    "generic_web_ui": "CANDIDATE_LOCAL_GENERIC",
+    "multi_project_store": "CANDIDATE_LOCAL_REPOSITORY_RECORDS",
     "windows_end_to_end": "NOT_VERIFIED"
   },
   "separation": {
@@ -32,5 +37,5 @@
     "target_repo": "User-provided GitHub repository",
     "local_workspace": "User-selected folder for Codex execution"
   },
-  "warning": "Existing server/app.js/process.json/AutoTest samples are not yet generic."
+  "warning": "Portable web_server.py works with explicitly registered target repositories; legacy server.py/app.js remain AutoTest pilot. No automatic remote GitHub sync."
 }
