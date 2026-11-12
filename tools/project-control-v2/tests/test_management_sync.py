@@ -133,7 +133,9 @@ class ManagementSyncTests(unittest.TestCase):
         self.client.remote_source=json.dumps(remote).encode()
         with self.assertRaisesRegex(sync.SyncConflict,"remote management revision is newer"):
             sync.preview(self.root,self.client)
-        self.client.remote_source=self.file.read_bytes()
+        newer=json.loads(self.file.read_text())
+        newer["deliverables"][0]["title"]="conflicting remote edit"
+        self.client.remote_source=json.dumps(newer).encode()
         self.client.blob=self.blob
         with self.assertRaisesRegex(sync.SyncConflict,"same revision has conflicting content"):
             sync.preview(self.root,self.client)
