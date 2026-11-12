@@ -13,6 +13,8 @@ import hashlib
 from receipt_evidence import assess as assess_receipt, verify_test_logs, ReceiptError
 from remote_sync import inspect as inspect_remote, SyncError
 from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS, KINDS as GOVERNANCE_FIELDS
+from module_control import (add_module, assign_work as assign_module_work,
+                            defined_modules, local_source_snapshot, ModuleError)
 from workspace_manager import read_registry as workspace_registry, inspect_one as inspect_workspace, canonical as workspace_origin
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -120,7 +122,8 @@ def empty_management(project_id):
         "schema": SCHEMA, "project_id": project_id, "revision": 1,
         "status": "DRAFT", "deliverables": [], "work": [], "milestones": [],
         "risks": [], "progress": {}, "events": [], "receipts": [],
-        "requirements": [], "plans": [], "changes": [], "gate_reviews": [], "trace_links": []
+        "requirements": [], "plans": [], "changes": [], "gate_reviews": [], "trace_links": [],
+        "modules": []
     }
 
 
@@ -174,6 +177,7 @@ class Target:
         for name in GOVERNANCE_FIELDS:
             if name in value and not isinstance(value[name], list):
                 raise ManagementError("invalid governance collection: " + name)
+        defined_modules(value)
 
     def head_or_none(self):
         # A brand-new, locally initialized Git repository may have no first commit.
@@ -194,6 +198,7 @@ class Target:
             management = load_json(self.data_path)
             self.check_record(management)
             management.setdefault("receipts", [])
+            management.setdefault("modules", [])
             for name in GOVERNANCE_FIELDS:
                 management.setdefault(name, [])
             assets = load_json(self.directory / "assets.json")
@@ -201,8 +206,21 @@ class Target:
             tasks = load_json(self.directory / "tasks.json")
             if any(x.get("project_id") != self.project_id for x in (assets, decisions, tasks)):
                 raise ManagementError("cross-project record mismatch")
+            if management["modules"]:
+                if self.head_or_none():
+                    code_status = local_source_snapshot(self.root, management)
+                else:
+                    code_status = {"source": "NO_COMMITTED_SOURCE",
+                                   "registered_modules": [], "git_head": None,
+                                   "unowned_working_changes": [],
+                                   "note": "A new project has not yet committed a source baseline."}
+            else:
+                code_status = {"source": "MODULE_BOUNDARIES_NOT_REGISTERED",
+                               "registered_modules": [], "git_head": self.head_or_none(),
+                               "unowned_working_changes": [],
+                               "note": "Register module responsibility before reporting module code state."}
             return {
-                "project": project, "management": management,
+                "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
                 "git": {
                     "head": self.head_or_none(),
@@ -366,15 +384,20 @@ class Target:
             if revision != record["revision"]:
                 raise ManagementError("stale revision; refresh and review current changes")
             record.setdefault("receipts", [])
+            record.setdefault("modules", [])
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
                              "create_milestone", "record_receipt", "review_receipt",
-                             "verify_log_evidence"} | GOVERNANCE_ACTIONS
+                             "verify_log_evidence", "create_module", "assign_module_work"} | GOVERNANCE_ACTIONS
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
             works = record["work"]
             if name in GOVERNANCE_ACTIONS:
                 apply_governance(record, name, payload)
+            elif name == "create_module":
+                add_module(record, payload)
+            elif name == "assign_module_work":
+                assign_module_work(record, payload)
             elif name == "create_deliverable":
                 value = {"id": checked_id(payload.get("id"), "deliverable id"),
                          "title": checked_text(payload.get("title"), "title", 240),
