@@ -897,7 +897,7 @@ def handler(targets, owner_token, registry_dir=None, review_token=None):
                     return self.respond({"error": "unknown project"}, 404)
                 try:
                     return self.respond(target.model())
-                except (ManagementError, OSError) as error:
+                except (ManagementError, DeliveryError, OSError) as error:
                     return self.respond({"error": str(error)}, 409)
             item = assets.get(url.path)
             if item is None:
