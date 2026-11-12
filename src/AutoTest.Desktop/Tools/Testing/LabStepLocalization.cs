@@ -44,6 +44,28 @@ public static class LabStepLocalization
             ["finally"] = "始终清理"
         };
 
+    private static readonly IReadOnlyDictionary<string, string> ParameterNames =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["variable"] = "变量名称",
+            ["value"] = "变量值",
+            ["equals"] = "期望值 / 匹配条件",
+            ["milliseconds"] = "等待时间（毫秒）",
+            ["timeoutMs"] = "超时时间（毫秒）",
+            ["count"] = "循环次数",
+            ["message"] = "日志内容",
+            ["name"] = "子程序名称",
+            ["target"] = "目标子程序",
+            ["controllerId"] = "控制器编号",
+            ["stateId"] = "按键状态编号",
+            ["revision"] = "资源修订版本",
+            ["assetId"] = "资源编号",
+            ["assetRevision"] = "资源版本"
+        };
+
+    public static string DisplayParameter(string? key) =>
+        key is not null && ParameterNames.TryGetValue(key, out var display)
+            ? display : key ?? "";
     public static string Display(string? raw) =>
         raw is not null && Names.TryGetValue(raw, out var label)
             ? label
@@ -54,6 +76,15 @@ public sealed class LabStepTypeDisplayConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
         LabStepLocalization.Display(value as string);
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        Binding.DoNothing;
+}
+
+public sealed class LabParameterNameConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        LabStepLocalization.DisplayParameter(value as string);
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         Binding.DoNothing;
