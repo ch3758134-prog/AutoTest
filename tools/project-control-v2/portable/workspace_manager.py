@@ -73,17 +73,20 @@ def run_git(root, *args, missing=False, timeout=25):
 
 
 def ensure_path_inside(path, allowed_root):
-    root = Path(allowed_root).expanduser().resolve(strict=True)
-    if not root.is_dir() or root.is_symlink():
+    selected_root = Path(allowed_root).expanduser().absolute()
+    if selected_root.is_symlink():
+        raise WorkspaceError("authorized workspace parent is unsafe")
+    root = selected_root.resolve(strict=True)
+    if not root.is_dir():
         raise WorkspaceError("authorized workspace parent is unsafe")
     raw = Path(path).expanduser().absolute()
-    if raw == root or not raw.is_relative_to(root):
-        raise WorkspaceError("workspace must be a child of explicitly authorized root")
-    # Resolve each ancestor to reject symlink/junction escape; Windows junctions
-    # are normally resolved by Path.resolve().
+    # On Windows, pathlib.absolute() and pathlib.resolve() can use different
+    # canonical spellings (short names, casing, redirected TEMP directories).
+    # Compare ONLY fully resolved paths; lexical comparisons reject legitimate
+    # children on Windows or can overlook a junction escape.
     destination = raw.resolve(strict=True)
     if destination == root or not destination.is_relative_to(root):
-        raise WorkspaceError("workspace escapes authorized root")
+        raise WorkspaceError("workspace must be a child of explicitly authorized root")
     if not destination.is_dir() or raw.is_symlink():
         raise WorkspaceError("workspace is not a safe real directory")
     return destination, root
