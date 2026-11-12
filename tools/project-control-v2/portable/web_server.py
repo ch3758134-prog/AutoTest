@@ -12,6 +12,8 @@ from contextlib import contextmanager
 import hashlib
 from receipt_evidence import assess as assess_receipt, verify_test_logs, ReceiptError
 from remote_sync import inspect as inspect_remote, SyncError
+from remote_module_status import inspect as inspect_remote_modules
+from github_bridge import GitHub, RemoteError
 from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS, KINDS as GOVERNANCE_FIELDS
 from module_control import (add_module, assign_work as assign_module_work,
                             defined_modules, local_source_snapshot, assess_candidate_paths,
@@ -263,6 +265,18 @@ class Target:
         with self.lock:
             self.check_identity()
             return inspect_remote(self.root, check_remote=True)
+
+    def module_remote_status(self):
+        """User-triggered, strictly read-only GitHub code evidence."""
+        with self.lock:
+            self.check_identity()
+            project = load_json(self.project_path)
+            management = load_json(self.data_path)
+            self.check_record(management)
+            # A public GitHub project can be inspected without an API token.
+            # Private repositories require explicitly configured credentials.
+            client = GitHub(os.environ.get("PROJECT_CONTROL_GITHUB_TOKEN"))
+            return inspect_remote_modules(client, project, management, recent_pr_limit=10)
 
     def collect_local_receipts(self):
         """Import only the registered worktree's locally saved Codex receipts.
@@ -638,6 +652,17 @@ def handler(targets, owner_token):
                 try:
                     return self.respond(target.remote_status())
                 except (ManagementError, SyncError, OSError) as error:
+                    return self.respond({"error": str(error)}, 409)
+            if url.path == "/api/modules/remote":
+                if not secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token):
+                    return self.respond({"error": "owner token required"}, 403)
+                project_id = parse_qs(url.query).get("project_id", [""])[0]
+                target = targets.get(project_id)
+                if target is None:
+                    return self.respond({"error": "unknown project"}, 404)
+                try:
+                    return self.respond(target.module_remote_status())
+                except (ManagementError, ModuleError, RemoteError, OSError, ValueError) as error:
                     return self.respond({"error": str(error)}, 409)
             if url.path == "/api/workspaces":
                 if self.client_address[0] not in ("127.0.0.1", "::1"):
