@@ -44,7 +44,7 @@ public sealed class StepEditTransaction
     public void UpsertMapping(TestTargetMapping mapping)
     {
         mapping.Validate();
-        var index = Current.Mappings.FindIndex(x =>
+        var index = Array.FindIndex(Current.Mappings.ToArray(), x =>
             string.Equals(x.Name, mapping.Name, StringComparison.OrdinalIgnoreCase));
         var next = index < 0 ? Current.Mappings.Add(mapping)
             : Current.Mappings.SetItem(index, mapping);
@@ -57,7 +57,7 @@ public sealed class StepEditTransaction
         if (Current.Walk().Any(n => n.Properties.TryGetValue("target", out var target) &&
             string.Equals(target, name, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException("Mapping is still referenced by a test step.");
-        var index = Current.Mappings.FindIndex(x =>
+        var index = Array.FindIndex(Current.Mappings.ToArray(), x =>
             string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
         if (index < 0) throw new KeyNotFoundException("Mapping not found.");
         Apply(Current with { Mappings = Current.Mappings.RemoveAt(index) });
