@@ -416,7 +416,23 @@ public partial class MainWindow : Window
             Activate();
         }));
         controls.Children.Add(ToolButton("▣  手动台架", () => OpenProfessionalToolWindow("bench")));
-        controls.Children.Add(ToolButton("◫  专业工具", () => OpenProfessionalToolWindow("dbc")));
+        var toolMenu = new Menu { Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
+        var toolRoot = new MenuItem { Header = "◫  专业工具 ▾", FontSize = 13 };
+        foreach (var entry in new[]
+        {
+            ("DBC 数据库编辑", "dbc"), ("UDS 诊断", "uds"),
+            ("CAN 烧录", "flash"), ("波形分析", "wave"),
+            ("控制器与按键配置", "controller"),
+            ("扫码与生产", "scan"), ("运行记录", "records")
+        })
+        {
+            var target = entry.Item2;
+            var item = new MenuItem { Header = entry.Item1 };
+            item.Click += (_, _) => OpenProfessionalToolWindow(target);
+            toolRoot.Items.Add(item);
+        }
+        toolMenu.Items.Add(toolRoot);
+        controls.Children.Add(toolMenu);
         DockPanel.SetDock(controls, Dock.Left);
         bar.Children.Add(controls);
 
@@ -515,8 +531,8 @@ public partial class MainWindow : Window
             Title = "AutoTest · " + _titles[key],
             Width = key == "bench" ? 1560 : 1380,
             Height = key == "bench" ? 900 : 840,
-            MinWidth = key == "bench" ? 1130 : 860,
-            MinHeight = key == "bench" ? 680 : 580,
+            MinWidth = 1220,
+            MinHeight = 680,
             Background = System.Windows.Application.Current.TryFindResource("StudioBg") as Brush ?? Brushes.White,
             FontFamily = new System.Windows.Media.FontFamily("Microsoft YaHei UI"),
             FontSize = 13,
