@@ -64,6 +64,22 @@ public sealed class ControllerConfigurationTests
         Assert.Equal(ObservationOrigin.Manual, fact.Origin);
         Assert.Equal(2.5, editor.Current.Controllers[0].States[0].Windows[0].TargetVolts);
     }
+    [Fact] public void HardwarePolicy_RoundTripAndValidateIdentity()
+    {
+        var (profile, controller, state) = Profile();
+        var policy = new HardwareKeyPolicy(profile.HardwareProfileId, 0xFFFFF,
+            ImmutableArray.Create(new IncompatibleKeyPair(1, 2)));
+        var configured = profile with { KeyHardwarePolicy = policy };
+        var reopened = ControllerRepository.Decode(ControllerRepository.Encode(configured));
+        Assert.Equal(policy, reopened.KeyHardwarePolicy);
+        var stalePolicy = configured with
+        {
+            KeyHardwarePolicy = policy with { HardwareProfileId = Guid.NewGuid() }
+        };
+        Assert.Throws<ProjectDataException>(() => stalePolicy.Validate());
+        Assert.Null(profile.KeyHardwarePolicy); // Existing files remain readable.
+    }
+
     [Fact] public void HardwarePolicy_RejectsUnsupportedAndIncompatibleKeys()
     {
         var (profile, controller, state) = Profile();

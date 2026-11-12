@@ -117,6 +117,12 @@ public sealed record EcuControlProfile(Guid ProfileId, Guid EcuId, string EcuNam
     Guid HardwareProfileId, string HardwareModel, int Revision,
     ImmutableArray<ControllerDefinition> Controllers)
 {
+    /// <summary>
+    /// Explicit station-key resource policy for this ECU configuration. Null keeps
+    /// old files readable, but prevents physical button execution until configured.
+    /// </summary>
+    public HardwareKeyPolicy? KeyHardwarePolicy { get; init; }
+
     public static EcuControlProfile Create(string ecuName, string hardwareModel, Guid hardwareProfileId) =>
         new EcuControlProfile(Guid.NewGuid(), Guid.NewGuid(), ecuName, hardwareProfileId, hardwareModel, 1,
             ImmutableArray<ControllerDefinition>.Empty).Validate();
@@ -127,6 +133,13 @@ public sealed record EcuControlProfile(Guid ProfileId, Guid EcuId, string EcuNam
             string.IsNullOrWhiteSpace(EcuName) || string.IsNullOrWhiteSpace(HardwareModel) ||
             Revision < 1 || Controllers.IsDefault || Controllers.Any(c => c is null))
             throw new ProjectDataException("CTRL_PROFILE", "ECU or board binding is missing or invalid.");
+        if (KeyHardwarePolicy is { } policy)
+        {
+            policy.Validate();
+            if (policy.HardwareProfileId != HardwareProfileId)
+                throw new ProjectDataException("CTRL_HARDWARE_STALE",
+                    "Key hardware policy belongs to a different hardware profile.");
+        }
         foreach (var controller in Controllers) controller.Validate();
         if (Controllers.GroupBy(c => c.Id).Any(g => g.Count() > 1) ||
             Controllers.GroupBy(c => c.Order).Any(g => g.Count() > 1) ||

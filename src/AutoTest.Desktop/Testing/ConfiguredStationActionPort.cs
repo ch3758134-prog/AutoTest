@@ -73,8 +73,9 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                     target.StateId, profile.Revision);
                 _ = reference.Resolve(profile);
                 _activeProfile = profile;
-                _policy = new HardwareKeyPolicy(profile.HardwareProfileId, 0xFFFFF,
-                    ImmutableArray<IncompatibleKeyPair>.Empty).Validate();
+                _policy = profile.KeyHardwarePolicy?.Validate() ??
+                    throw new ProjectDataException("CTRL_HARDWARE_NOT_CONFIGURED",
+                        "真实按键执行要求工程师先配置可用 Key 和禁止组合规则。");
                 _buttons.Add(target.Name, (profile, reference));
             }
             else if (target.Kind == TestTargetKind.CanMessage)

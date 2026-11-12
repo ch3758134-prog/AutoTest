@@ -207,6 +207,15 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                     "修改名称不会改变实际 USB/CAN 硬件。");
                 AddField("boardId", "硬件配置标识（只读）", ctrl.HardwareProfileId.ToString(),
                     "用于标识按键模拟板的配置版本。", readOnly: true);
+                AddField("supportedKeys", "可用底层 Key 掩码（HEX）",
+                    ctrl.KeyHardwarePolicy is null ? "" :
+                        "0x" + ctrl.KeyHardwarePolicy.SupportedMask.ToString("X5"),
+                    "首次实测前必须配置；20 Key 是电阻网络资源，并非功能按键个数。");
+                AddField("keyConflicts", "禁止同时闭合的 Key 组合",
+                    ctrl.KeyHardwarePolicy is null ? "" :
+                        string.Join("; ", ctrl.KeyHardwarePolicy.ForbiddenPairs.Select(
+                            pair => "0x" + pair.A.ToString("X") + "+0x" + pair.B.ToString("X"))),
+                    "每项格式 0x1+0x2；多个以分号分隔。空值表示没有额外禁止组合，需工程师实际确认。");
             }
             else if (key.StartsWith("controller|", StringComparison.Ordinal))
             {
@@ -355,6 +364,30 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         return matches[0].Id.Value;
     }
 
+    private static HardwareKeyPolicy? ParseHardwarePolicy(
+        string supportedText, string conflictText, Guid hardwareId)
+    {
+        if (string.IsNullOrWhiteSpace(supportedText))
+        {
+            if (!string.IsNullOrWhiteSpace(conflictText))
+                throw new ProjectDataException("CTRL_HARDWARE",
+                    "必须先设置可用硬件 Key 掩码，才能设置互斥组合。");
+            return null;
+        }
+        var forbidden = ImmutableArray.CreateBuilder<IncompatibleKeyPair>();
+        foreach (var pair in conflictText.Split(';',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var keys = pair.Split('+', StringSplitOptions.TrimEntries);
+            if (keys.Length != 2)
+                throw new ProjectDataException("CTRL_KEY_CONFLICT",
+                    "禁止组合格式应为 0x1+0x2; 0x4+0x8。");
+            forbidden.Add(new IncompatibleKeyPair(ParseCan(keys[0]), ParseCan(keys[1])));
+        }
+        return new HardwareKeyPolicy(hardwareId, ParseCan(supportedText),
+            forbidden.ToImmutable()).Validate();
+    }
+
     private static int ParseIndex(string key) =>
         int.Parse(key.Split('|')[1], CultureInfo.InvariantCulture);
 
@@ -369,6 +402,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             {
                 if (key == "profile")
                     next = profile with { EcuName = F("ecu"), HardwareModel = F("board"),
+                        KeyHardwarePolicy = ParseHardwarePolicy(
+                            F("supportedKeys"), F("keyConflicts"), profile.HardwareProfileId),
                         Revision = checked(profile.Revision + 1) };
                 else if (key.StartsWith("controller|", StringComparison.Ordinal))
                 {
