@@ -539,6 +539,14 @@ def handler(targets, owner_token):
     }
 
     class Handler(BaseHTTPRequestHandler):
+        def local_host_valid(self):
+            # Reject DNS-rebinding Host headers. Binding to loopback alone does
+            # not protect GET endpoints from an attacker-controlled hostname.
+            port = str(self.server.server_port)
+            allowed = {"127.0.0.1:" + port, "localhost:" + port}
+            return (self.client_address[0] in ("127.0.0.1", "::1")
+                    and self.headers.get("Host", "") in allowed)
+
         def respond(self, value, status=200):
             body = json.dumps(value, ensure_ascii=False).encode("utf-8")
             self.send_bytes(body, "application/json; charset=utf-8", status)
@@ -556,6 +564,8 @@ def handler(targets, owner_token):
             self.wfile.write(raw)
 
         def do_GET(self):
+            if not self.local_host_valid():
+                return self.respond({"error": "invalid localhost host"}, 403)
             url = urlsplit(self.path)
             if url.path == "/api/projects":
                 return self.respond({
@@ -610,8 +620,8 @@ def handler(targets, owner_token):
                 return self.respond({"error": "UI asset missing"}, 500)
 
         def do_POST(self):
-            if self.client_address[0] not in ("127.0.0.1", "::1"):
-                return self.respond({"error": "localhost only"}, 403)
+            if not self.local_host_valid():
+                return self.respond({"error": "invalid localhost host"}, 403)
             origin = self.headers.get("Origin", "")
             valid = {"http://127.0.0.1:" + str(self.server.server_port),
                      "http://localhost:" + str(self.server.server_port)}
