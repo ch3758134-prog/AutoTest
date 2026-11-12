@@ -44,17 +44,25 @@ def check_collections(record):
         raise ContextWorkflowError("invalid context review collections")
     if len(reviews) > 32 or len(links) > 256:
         raise ContextWorkflowError("context history needs archival review")
-    if len({v.get("id") for v in reviews if isinstance(v, dict)}) != len(reviews):
+    if any(not isinstance(v, dict) or not isinstance(v.get("id"), str)
+           or not v["id"].startswith("CTX-") or not ID.fullmatch(v["id"])
+           for v in reviews):
+        raise ContextWorkflowError("invalid review identifier")
+    if len({v["id"] for v in reviews}) != len(reviews):
         raise ContextWorkflowError("duplicate context review")
-    if any(not isinstance(v, dict) or not isinstance(v.get("assessment"), dict)
+    if any(not isinstance(v.get("assessment"), dict)
            or not isinstance(v.get("digest"), str)
            or digest(v["assessment"]) != v["digest"] for v in reviews):
         raise ContextWorkflowError("context review digest mismatch")
     known_reviews = {x["id"] for x in reviews}
     known_works = {w.get("id") for w in record.get("work", []) if isinstance(w, dict)}
+    work_by_id = {w["id"]: w for w in record.get("work", []) if isinstance(w, dict)}
     if any(not isinstance(v, dict) or v.get("review_id") not in known_reviews
            or v.get("work_id") not in known_works
            or v.get("status") != "PROPOSED_NOT_AUTHORIZED"
+           or not isinstance(v.get("action_id"), str)
+           or work_by_id[v["work_id"]].get("context_review_id") != v["review_id"]
+           or work_by_id[v["work_id"]].get("context_action_id") != v["action_id"]
            for v in links):
         raise ContextWorkflowError("invalid context work link")
     if len({(v["review_id"], v["action_id"]) for v in links}) != len(links):
