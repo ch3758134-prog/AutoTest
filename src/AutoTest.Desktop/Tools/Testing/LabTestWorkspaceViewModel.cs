@@ -380,7 +380,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     // Its stable PROJECT identity is independent of disk location or file names.
     public bool IsReviewSample => _project?.Project.Id.Value ==
         new Guid("33333333-1111-4111-8111-333333333333");
-    public string SourceLabel => "工程测试程序 · 运行前核对设备、DBC 与物理授权";
+    public string SourceLabel => "工程测试程序 · 真实设备执行前须核对 DBC、设备与物理授权";
     public string ProjectAssetStatus => _project is null
         ? "未保存工程 · 可以编辑测试程序，正式执行前需保存到工程"
         : _project.LabProgramAssetId is { } id
