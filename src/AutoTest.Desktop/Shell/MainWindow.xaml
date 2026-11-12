@@ -76,7 +76,7 @@
             <DockPanel LastChildFill="False">
               <TextBlock DockPanel.Dock="Left" Text="工程资源" FontSize="{StaticResource SectionTitleSize}"
                          FontWeight="SemiBold" VerticalAlignment="Center"/>
-              <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount,StringFormat='{0} 项'}"
+              <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount, StringFormat='{}{0} 项'}"
                          FontSize="11" Foreground="{StaticResource Subtle}"
                          VerticalAlignment="Center"/>
             </DockPanel>
