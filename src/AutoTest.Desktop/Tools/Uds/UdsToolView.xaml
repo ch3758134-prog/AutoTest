@@ -56,7 +56,11 @@
   <DockPanel Margin="3,0,3,11">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
     <TextBlock Text="通信来源" Foreground="{StaticResource UdsMuted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
-    <ComboBox Width="105" ItemsSource="{Binding SourceModes}" SelectedItem="{Binding SourceMode,Mode=TwoWay}" Margin="0,0,7,0"/>
+    <ComboBox Width="125" ItemsSource="{Binding SourceModes}" SelectedItem="{Binding SourceMode,Mode=TwoWay}" Margin="0,0,7,0">
+      <ComboBox.ItemTemplate>
+       <DataTemplate><TextBlock Text="{Binding Converter={StaticResource OperatorStatusConverter}}"/></DataTemplate>
+      </ComboBox.ItemTemplate>
+     </ComboBox>
 
    </StackPanel>
    <StackPanel>
@@ -160,7 +164,7 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <TextBlock Text="结果：" Foreground="{StaticResource UdsMuted}" Margin="0,0,10,7"/>
-        <TextBlock Grid.Column="1" Text="{Binding Status}" FontWeight="SemiBold"/>
+        <TextBlock Grid.Column="1" Text="{Binding Status,Converter={StaticResource OperatorStatusConverter}}" FontWeight="SemiBold"/>
         <TextBlock Grid.Row="1" Text="NRC：" Foreground="{StaticResource UdsMuted}" Margin="0,0,10,7"/>
         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Nrc}"/>
         <TextBlock Grid.Row="2" Text="预期比对：" Foreground="{StaticResource UdsMuted}"/>
