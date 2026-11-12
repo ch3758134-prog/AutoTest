@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "2.2-portable-clean-export-candidate",
+  "version": "2.3-execution-evidence-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -21,7 +21,8 @@
     "portable/web/index.html",
     "portable/web/app.js",
     "portable/web/app.css",
-    "portable/export_package.py"
+    "portable/export_package.py",
+    "portable/receipt_evidence.py"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
