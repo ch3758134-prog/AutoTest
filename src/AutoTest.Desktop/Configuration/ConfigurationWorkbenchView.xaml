@@ -107,7 +107,7 @@
                     <TextBlock Text="{Binding Title}" FontWeight="Medium" Margin="0,0,0,6"/>
                     <Grid>
                       <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                               Padding="8,7">
+                               IsReadOnly="{Binding IsReadOnly}" Padding="8,7">
                         <TextBox.Style>
                           <Style TargetType="TextBox">
                             <Setter Property="Visibility" Value="Visible"/>

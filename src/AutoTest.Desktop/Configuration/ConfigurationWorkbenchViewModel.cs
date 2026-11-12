@@ -25,13 +25,17 @@ public sealed class ConfigurationField : BindableBase
 {
     private string _value;
     public ConfigurationField(string key, string title, string value, string hint,
-        IReadOnlyList<string>? options = null)
-    { Key = key; Title = title; _value = value; Hint = hint; Options = options ?? Array.Empty<string>(); }
+        IReadOnlyList<string>? options = null, bool readOnly = false)
+    {
+        Key = key; Title = title; _value = value; Hint = hint;
+        Options = options ?? Array.Empty<string>(); IsReadOnly = readOnly;
+    }
     public string Key { get; }
     public string Title { get; }
     public string Hint { get; }
     public IReadOnlyList<string> Options { get; }
     public bool HasOptions => Options.Count > 0;
+    public bool IsReadOnly { get; }
     public string Value
     {
         get => _value;
@@ -113,7 +117,11 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         set
         {
             if (ReferenceEquals(_selectedNode, value)) return;
-            if (_fieldEdited && !ApplyFields()) return;
+            if (_fieldEdited && !ApplyFields())
+            {
+                RaisePropertyChanged(nameof(SelectedNode));
+                return;
+            }
             if (SetProperty(ref _selectedNode, value))
             {
                 PopulateFields();
@@ -151,9 +159,9 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public DelegateCommand RemoveEntryCommand { get; }
 
     private void AddField(string key, string label, string? value, string hint = "",
-        IReadOnlyList<string>? options = null)
+        IReadOnlyList<string>? options = null, bool readOnly = false)
     {
-        var f = new ConfigurationField(key, label, value ?? "", hint, options);
+        var f = new ConfigurationField(key, label, value ?? "", hint, options, readOnly);
         f.PropertyChanged += FieldChanged;
         Fields.Add(f);
     }
@@ -195,7 +203,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 AddField("ecu", "ECU 名称", ctrl.EcuName);
                 AddField("board", "按键模拟板型号", ctrl.HardwareModel,
                     "修改名称不会改变实际 USB/CAN 硬件。");
-                AddField("boardId", "硬件配置标识（只读）", ctrl.HardwareProfileId.ToString(), "用于标识按键模拟板的配置版本。");
+                AddField("boardId", "硬件配置标识（只读）", ctrl.HardwareProfileId.ToString(),
+                    "用于标识按键模拟板的配置版本。", readOnly: true);
             }
             else if (key.StartsWith("controller|", StringComparison.Ordinal))
             {
@@ -203,7 +212,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 AddField("name", "控制器名称", c.Name);
                 AddField("presentation", "操作展示方式", c.Presentation);
                 AddField("default", "默认状态", c.States.Single(x => x.Id == c.DefaultStateId).Name,
-                    "通过“设为默认”按钮切换。");
+                    "通过“设为默认”按钮切换。", readOnly: true);
             }
             else if (key.StartsWith("state|", StringComparison.Ordinal))
             {
