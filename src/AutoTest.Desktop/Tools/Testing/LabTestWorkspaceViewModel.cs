@@ -335,6 +335,16 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
               "（修改后需重新提交工程版本）"
             : "当前工程尚未登记测试程序；请先保存测试程序作为工程版本资源";
     public string DocumentName => _editor.Snapshot.Name;
+    public string StepCountLabel
+    {
+        get
+        {
+            var document = Snapshot;
+            var total = document.Walk().Count();
+            var cases = document.Walk().Count(node => node.Type == "TestCase");
+            return $"{total} 步骤 · {cases} 测试用例";
+        }
+    }
     public ICommand InsertCommand { get; }
     public ICommand DeleteCommand { get; }
     public ICommand CopyCommand { get; }
@@ -430,7 +440,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         }
         // Keep an inspector populated when opening a real program. No synthetic step is added.
         _selected = null;
-        RefreshTestCases(); RefreshRunStepRows(); Changed(nameof(DocumentName));
+        RefreshTestCases(); RefreshRunStepRows(); Changed(nameof(DocumentName)); Changed(nameof(StepCountLabel));
         static LabTreeRow? FindStep(IEnumerable<LabTreeRow> roots, Guid id)
         {
             foreach (var row in roots)
