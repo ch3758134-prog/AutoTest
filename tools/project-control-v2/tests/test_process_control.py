@@ -127,6 +127,9 @@ class ProcessControlTests(unittest.TestCase):
             apply(self.record,'record_ai_work_report',{'id':'report-1','intake_id':'intake-001',
               'summary':'调查完成','evidence_refs':[], 'next_action':'继续'})
         apply(self.record,'record_ai_work_report',{'id':'report-1','intake_id':'intake-001',
+          'focus':'重建立项的业务动因','why_this_work':'需要先确认项目为何存在再进行设计',
+          'judgement':'已有资料能支持候选目标，但新范围尚需重新核对',
+          'owner_action':'REVIEW','owner_request':'审阅立项目的候选',
           'summary':'调查完成','evidence_refs':['source.md'],'unfinished':['审批'], 'next_action':'提交候审'})
         self.assertEqual(self.record['process_control']['reports'][0]['state'],'REPORTED_NOT_ACCEPTED')
 

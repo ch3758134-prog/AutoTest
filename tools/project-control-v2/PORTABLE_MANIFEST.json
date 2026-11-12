@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "4.0-ai-process-contracts-candidate",
+  "version": "4.1-owner-first-reporting-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -38,7 +38,8 @@
     "portable/remote_module_status.py",
     "portable/process_catalog.json",
     "portable/process_control.py",
-    "portable/PROCESS_SYSTEM.md"
+    "portable/PROCESS_SYSTEM.md",
+    "portable/REPORTING_PROTOCOL.md"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -74,7 +75,8 @@
     "ci_policy": "NO_AUTOMATIC_PUSH_OR_PR_RUNS_MANUAL_ONLY",
     "ai_process_contracts": "CANDIDATE_STRUCTURAL_AND_SEMANTIC_GUIDANCE",
     "ai_intake_reporting": "CANDIDATE_NO_IMPLICIT_AUTHORITY",
-    "obligation_tailoring": "PROPOSAL_ONLY_NOT_SELF_APPROVED"
+    "obligation_tailoring": "PROPOSAL_ONLY_NOT_SELF_APPROVED",
+    "owner_first_reporting": "CANDIDATE_WITH_SEMANTIC_STRUCTURE_VALIDATION_AND_OWNER_FIRST_UI"
   },
   "separation": {
     "package_source": "Project Control system files",

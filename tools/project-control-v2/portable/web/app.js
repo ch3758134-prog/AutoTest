@@ -147,13 +147,35 @@ async function registerTarget(event){
 async function loadModel(){remoteSnapshot=null;workspaceSnapshot=null;moduleRemoteSnapshot=null;model=await read("/api/model?project_id="+encodeURIComponent(selected));$("#project-source").textContent=model.project.repo_url;$("#sync-pill").textContent=model.git.dirty?"本地有未提交变更":"本地 HEAD · 远端未核对";render();}
 const count=(collection)=>management()[collection]?.length||0;
 const mstatus=()=>management().status;
+function ownerBriefingPanel(){
+ const m=management(),state=m.process_control||{},reports=state.reports||[],intakes=state.intakes||[],activities=state.activities||[];
+ const last=reports.length?reports[reports.length-1]:null, intake=intakes.length?intakes[intakes.length-1]:null;
+ const activity=activities.length?activities[activities.length-1]:null;
+ const proc=(model.process_catalog?.processes||[]).find(p=>p.id===activity?.process_id);
+ const focus=last?.focus||activity?.objective||"尚未登记当前最重要的项目工作问题";
+ const why=last?.why_this_work||proc?.purpose||"当前工作的必要性尚未形成有依据的说明";
+ const judgement=last?.judgement||(last?"旧格式报告尚未说明成果对项目的意义，需要补充判断":"尚无本轮可供负责人审查的实质判断");
+ const next=last?.next_action||intake?.next_action||"首先调查项目现状与负责人目标，提交有依据的下一步建议";
+ const attention=!last?"尚未收到新版正式报告，待决事项不能推定为无":last.owner_action==="NONE"?"本报告没有提出需要负责人立即决定的事项（不等于已经验收）":last.owner_request||"旧格式报告未明确负责人需要处理的问题";
+ const refs=last?.evidence_refs||intake?.source_refs||[];
+ const details='<details><summary>查看依据、未完成事项与内部记录</summary><p>报告状态：'+e(last?.state||"尚无记录")+'</p>'+
+   (refs.length?'<p>来源：'+refs.map(e).join('；')+'</p>':'<p>尚无可显示的报告证据引用</p>')+
+   (last?.unfinished?.length?'<p>未完成：'+last.unfinished.map(e).join('；')+'</p>':'')+'</details>';
+ return '<section class="section"><div class="heading"><div><div class="eyebrow">给项目负责人的说明</div><h2>目前最重要的事</h2></div></div>'+
+   '<h3>'+e(focus)+'</h3><p><strong>为什么现在做：</strong>'+e(why)+'</p>'+
+   '<p><strong>重要判断：</strong>'+e(judgement)+'</p>'+
+   '<p><strong>下一步：</strong>'+e(next)+'</p>'+
+   '<p><strong>需要你处理：</strong>'+e(attention)+'</p>'+details+'</section>';
+}
 function overview(){
  const p=project(),m=management(),a=model.assets,t=model.tasks,git=model.git;
- let html=head("PROJECT OVERVIEW",p.display_name||p.project_id,"根据真实项目登记和本地 Git 状态汇总；未知或未批准内容不会自动变成正式完成。");
+ let html=head("PROJECT OVERVIEW",p.display_name||p.project_id,"项目现状首先按实际工作与判断汇报；内部账本可展开查看。");
+ html+=ownerBriefingPanel();
+ html+='<details class="section"><summary>展开：版本、资产与管理账本</summary>';
  html+='<div class="hero"><div><div class="eyebrow">当前管理事实</div><h2>'+e(p.initialization_state)+'</h2><p>项目来源 '+e(p.intake_mode||"UNKNOWN")+' · 项目目标和范围的正式状态由工程依据和审批记录决定；初始化不表示 Gate 通过。</p></div><div class="mini"><strong>目标仓库</strong><p class="source-row">'+e(p.repo_url)+'</p><br><strong>本地 HEAD</strong><p class="mono">'+e(git.head)+'</p></div></div>';
  html+='<section class="section"><div class="grid">'+[['交付成果',count("deliverables"),"均按候选与批准分别管理"],['研发任务',count("work"),"不自动获得编码权限"],['源码模块',count("modules"),"与源码实际提交分别核对"],['风险与问题',count("risks"),"以真实证据核对"],['已记录决策',model.decisions.decisions?.length||0,"不代表所有决策已核实"],['登记 Codex 任务',t.tasks?.length||0,"READY 仍需真实授权"],['Git 跟踪资产',a.tracked_file_count??0,"仅为索引快照"]].map(x=>'<div class="panel stat"><label>'+e(x[0])+'</label><strong>'+e(x[1])+'</strong><p>'+e(x[2])+'</p></div>').join("")+'</div></section>';
  html+='<section class="section pair">'+panel("近期工作",m.work.length?'<div class="list">'+m.work.slice(0,6).map(w=>line(w.title,w.kind+" · "+w.expected_result,pill(m.progress[w.id]?.state||w.state))).join("")+'</div>':empty("尚未建立研发工作。先确认目标与交付，再建立任务。"))+panel("正式性与来源",'<div class="details"><span>项目标识</span><strong>'+e(p.project_id)+'</strong></div><div class="details"><span>产品定义</span>'+pill(p.formal_product_identity||"UNKNOWN")+'</div><div class="details"><span>范围决定</span>'+pill(p.scope_decision||"UNKNOWN")+'</div><div class="details"><span>Gate</span>'+pill(p.phase_gate||"UNKNOWN")+'</div><div class="details"><span>本地分支</span><span class="mono">'+e(git.branch)+'</span></div>')+'</section>';
- return html;
+ return html+'</details>';
 }
 function deliverables(){
  const m=management();
@@ -274,6 +296,7 @@ function processView(){
  const state=management().process_control||{activities:[],intakes:[],reports:[],review_requests:[]};
  const catalog=model.process_catalog||{version:"未知",processes:[]};
  let html=head("PROCESS & AI WORK","工程过程与 AI 接管","工作责任、技术审查、负责人决定和正式实施互不等价；这里仅记录候选，不自动批准或派发代码。",action("创建工程活动","open_process_activity"));
+ html+=ownerBriefingPanel();
  html+='<section class="section pair">'+panel("当前制度版本",'<div class="details"><span>过程规范</span><strong>'+e(catalog.version)+'</strong></div><div class="details"><span>项目 Profile</span><strong>'+e(state.profile_id||"未建立")+'</strong></div><div class="details"><span>已登记活动</span><strong>'+e((state.activities||[]).length)+'</strong></div><p>过程是工程工作的目的和方法，阶段是项目的组织和审查点。初始责任不会因为文件、代码或旧 PASS 而自动完成。</p>')+
  panel("新 AI 接管与报告",'<p>先自行读取仓库身份、有效依据、当前授权与过程说明，再向负责人汇报来源、角色、冲突和下一步。</p>'+action("记录 AI 接管","record_ai_intake")+' '+action("提交 AI 工作报告","record_ai_work_report")+'<p class="hint">接管或报告均不授予任务、审批、合并或真实硬件权限。</p>')+'</section>';
  html+='<section class="section">'+panel("工程活动及责任履行",(state.activities||[]).length?(state.activities||[]).map(a=>{
@@ -293,7 +316,7 @@ const definitions={
  review_process_activity:{title:"技术内容审查",desc:"记录内容质量意见，不授予项目正式批准；原作者不可自称独立审查。",fields:[["reviewer_role","审查岗位","ai-review-role"],["outcome","审查结论","technical-review"],["evidence_refs","审查依据（逐行）","textarea"]]},
  request_process_review:{title:"提交负责人审查请求",desc:"只有全部责任有候选证据且当前技术审查一致时才能提交；状态仍为待批准。",fields:[["id","审核请求 ID","text"],["purpose","需要负责人决定什么","textarea"]]},
  record_ai_intake:{title:"AI 入场与理解汇报",desc:"读取事实、角色来源和任务后再登记；入场不等于工作授权。",fields:[["id","接管 ID","text"],["role","岗位","ai-role"],["role_source","岗位依据","role-source"],["task_ref","任务引用（可空）","optional-text"],["observed_head","核实的 Git HEAD（可空）","optional-text"],["source_refs","已读依据（逐行）","textarea"],["verified_facts","已核实的事实（逐行）","textarea"],["conflicts","冲突（可空）","optional-textarea"],["unknowns","未知事项（可空）","optional-textarea"],["next_action","下一项工作","textarea"]]},
- record_ai_work_report:{title:"AI 正式工作报告",desc:"基于已有接管登记提交实际成果、证据、未完成事项和下一步，不自动验收。",fields:[["id","报告 ID","text"],["intake_id","接管记录","intake-id"],["summary","本次实际完成","textarea"],["evidence_refs","证据引用（逐行）","textarea"],["unfinished","尚未完成（可空）","optional-textarea"],["next_action","下一步建议","textarea"]]},
+  record_ai_work_report:{title:"AI 工作报告 · 负责人优先",desc:"先解释项目问题和工作意义，再报告实际进展、判断、下一步和真正待决事项。仅保存候选，不代表审批。",fields:[["id","报告 ID","text"],["intake_id","接管记录","intake-id"],["focus","当前在解决的项目问题","textarea"],["why_this_work","为什么现在做这项工作","textarea"],["judgement","有依据的重要判断","textarea"],["summary","真实完成的工作","textarea"],["next_action","下一步行动","textarea"],["owner_action","需要负责人采取的动作","owner-action"],["owner_request","需要负责人处理的具体问题（无则留空）","optional-textarea"],["evidence_refs","证据来源（逐行）","textarea"],["unfinished","尚未完成事项（可空）","optional-textarea"]]},
  create_deliverable:{title:"新增候选交付成果",desc:"此操作仅保存候选，不批准产品范围。",fields:[["id","交付 ID","text"],["title","交付名称","text"],["success_condition","完成或验收条件","textarea"]]},
  create_work:{title:"新增研发工作",desc:"实施授权不会因此自动产生。",fields:[["id","工作 ID","text"],["title","工作名称","text"],["deliverable_id","对应交付","delivery"],["kind","工作性质","kind"],["expected_result","预期成果","textarea"]]},
  raise_risk:{title:"登记风险",desc:"风险关闭需要后续证据与审查。",fields:[["id","风险 ID","text"],["title","风险标题","text"],["description","风险情况","textarea"],["mitigation","建议处置","textarea"]]},
@@ -320,7 +343,8 @@ else if(type==="ai-review-role")control='<select name="'+field+'">'+["reviewer",
 else if(type==="role-source")control='<select name="'+field+'">'+["USER_EXPLICIT","RECORDED_APPOINTMENT","UNCONFIRMED"].map(x=>'<option>'+x+'</option>').join("")+'</select>';
 else if(type==="technical-review")control='<select name="'+field+'">'+["ADEQUATE_CANDIDATE","REWORK_REQUIRED","INSUFFICIENT_EVIDENCE"].map(x=>'<option>'+x+'</option>').join("")+'</select>';
 else if(type==="obligation-state")control='<select name="'+field+'">'+["SATISFIED_CANDIDATE","NOT_APPLICABLE_PROPOSED","DEFERRED_PROPOSED","EXCEPTION_REQUESTED","OPEN","CONFLICT"].map(x=>'<option>'+x+'</option>').join("")+'</select>';
-else if(type==="intake-id")control='<select name="'+field+'">'+(management().process_control?.intakes||[]).map(i=>'<option value="'+e(i.id)+'">'+e(i.id+" · "+i.role)+'</option>').join("")+'</select>';
+else if(type==="owner-action")control='<select name="'+field+'">'+[["NONE","当前无需决定"],["REVIEW","需要审阅"],["DECIDE","需要决策"],["PROVIDE_INFORMATION","需要提供关键事实"]].map(x=>'<option value="'+x[0]+'">'+e(x[1])+'</option>').join("")+'</select>';
+ else if(type==="intake-id")control='<select name="'+field+'">'+(management().process_control?.intakes||[]).map(i=>'<option value="'+e(i.id)+'">'+e(i.id+" · "+i.role)+'</option>').join("")+'</select>';
 else if(type==="optional-textarea")control='<textarea name="'+field+'"></textarea>';
 else if(type==="optional-text")control='<input name="'+field+'" maxlength="240">';
 else if(type==="module-role")control='<select name="'+field+'">'+["unassigned","specialist","integration","coordinator"].map(x=>'<option>'+x+'</option>').join("")+'</select>';else control='<input name="'+field+'" required maxlength="240">';content+='<label>'+e(label)+control+'</label>';}content+='<label>记录原因<textarea name="reason" required></textarea></label>';$("#form-fields").innerHTML=content;if(name==="revise_plan"){const item=(management().plans||[]).find(x=>x.id===id);if(item){$("#edit-form").elements.namedItem("objective").value=item.objective;$("#edit-form").elements.namedItem("work_ids").value=item.work_ids.join("\n");$("#edit-form").elements.namedItem("exit_condition").value=item.exit_condition;}}$("#edit-dialog").showModal();}

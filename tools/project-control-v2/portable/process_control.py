@@ -229,8 +229,22 @@ def apply(record, action, payload):
     elif action == "record_ai_work_report":
         id = identifier(payload.get("id"), "report id")
         unique(state["reports"], id)
+        focus = word(payload.get("focus"), "project focus", 500)
+        why = word(payload.get("why_this_work"), "why this work matters", 1200)
+        judgement = word(payload.get("judgement"), "project judgement", 1600)
+        owner_action = payload.get("owner_action")
+        if owner_action not in ("NONE", "REVIEW", "DECIDE", "PROVIDE_INFORMATION"):
+            raise ProcessError("invalid owner action")
+        owner_request = payload.get("owner_request") or ""
+        if owner_action == "NONE":
+            if not isinstance(owner_request, str) or owner_request.strip():
+                raise ProcessError("NONE owner action cannot request a decision")
+        else:
+            owner_request = word(owner_request, "specific owner request", 1000)
         state["reports"].append({"id": id,
             "intake_id": locate(state["intakes"], identifier(payload.get("intake_id"), "intake id"), "intake")["id"],
+            "focus": focus, "why_this_work": why, "judgement": judgement,
+            "owner_action": owner_action, "owner_request": owner_request.strip(),
             "summary": word(payload.get("summary"), "completed work"),
             "evidence_refs": strings(payload.get("evidence_refs"), "report evidence", required=True),
             "unfinished": strings(payload.get("unfinished", []), "unfinished"),
