@@ -32,7 +32,7 @@
      </WrapPanel>
     </StackPanel>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,9">
-      <TextBlock Text="DBC Revision " FontWeight="SemiBold"/><TextBlock Text="{Binding Revision}" FontWeight="SemiBold"/>
+      <TextBlock Text="DBC 修订版本 " FontWeight="SemiBold"/><TextBlock Text="{Binding Revision}" FontWeight="SemiBold"/>
       <TextBlock Text=" · " Margin="5,0"/><TextBlock Text="{Binding ProjectStatus}" Foreground="#167B5A" Margin="4,0,8,0" TextWrapping="Wrap"/>
       <TextBlock Text=" · " Margin="5,0"/><TextBlock Text="{Binding SupportSummary}" Foreground="#8F611B" TextWrapping="Wrap"/>
     </StackPanel>
@@ -60,7 +60,7 @@
             <Button Content="删除信号" Command="{Binding DeleteSignalCommand}" Margin="4,0" Padding="8,3"/></WrapPanel>
         </StackPanel><ListBox ItemsSource="{Binding Signals}" SelectedItem="{Binding SelectedSignal}" DisplayMemberPath="Name"/>
       </DockPanel></GroupBox>
-      <GroupBox Grid.Column="2" Header="属性 / 值表 / Replay"><Grid Margin="8">
+      <GroupBox Grid.Column="2" Header="信号属性、值表与离线解码"><Grid Margin="8">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <UniformGrid Grid.Row="0" Columns="4">
           <StackPanel Margin="3"><TextBlock Text="起始位"/><TextBox Text="{Binding StartBit, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
@@ -71,7 +71,7 @@
           <StackPanel Margin="3"><TextBlock Text="最大值"/><TextBox Text="{Binding Maximum, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
           <StackPanel Margin="3"><TextBlock Text="单位"/><TextBox Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
           <StackPanel Margin="3"><TextBlock Text="接收节点"/><TextBox Text="{Binding Receiver, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
-          <StackPanel Margin="3"><CheckBox Content="Intel 小端" IsChecked="{Binding Intel}"/></StackPanel>
+          <StackPanel Margin="3"><CheckBox Content="小端字节序（Intel）" IsChecked="{Binding Intel}"/></StackPanel>
           <StackPanel Margin="3"><CheckBox Content="有符号" IsChecked="{Binding Signed}"/></StackPanel>
           <StackPanel Margin="3"><TextBlock Text="Mux (M/mN)"/><TextBox Text="{Binding Mux, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
           <Button Content="更新信号属性" Command="{Binding UpdateSignalCommand}" Margin="3" Padding="8,4"/>
@@ -82,7 +82,7 @@
           <Button Content="设置值表" Command="{Binding LabelCommand}" Padding="8,3"/>
         </WrapPanel>
         <StackPanel Grid.Row="2" Margin="0,5,0,6">
-          <TextBlock Text="CAN Replay（只解码离线帧，不发送 CAN）" FontWeight="SemiBold"/>
+          <TextBlock Text="离线 CAN 报文解码（不发送报文）" FontWeight="SemiBold"/>
           <WrapPanel Margin="0,5"><TextBlock Text="Frame ID" VerticalAlignment="Center"/>
             <TextBox Width="80" Text="{Binding ReplayFrameId, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,8,0"/>
             <TextBox Width="240" Text="{Binding ReplayHex, UpdateSourceTrigger=PropertyChanged}"/>
@@ -100,6 +100,6 @@
     </Grid>
     <StackPanel Grid.Row="3" Margin="0,8,0,0"><TextBlock Text="{Binding Status}"/>
       <TextBlock Text="{Binding Error}" Foreground="Crimson" TextWrapping="Wrap"/>
-      <TextBlock Text="当前界面仅提供 Replay 解码；不执行真实 CAN 发送。复杂 DBC 语法采用只读保护，不自动删节。" Foreground="#8F611B"/></StackPanel>
+      <TextBlock Text="本区域用于离线解码。需要发送 CAN 报文，请打开手动台架；复杂 DBC 语法会受到只读保护。" Foreground="#8F611B"/></StackPanel>
   </Grid>
 </UserControl>
