@@ -12,7 +12,7 @@
 | 多项目数据模型 | 仍以 AutoTest 单项目为主 | 需从 server.py、app.js、process.json 等解除固定关联 |
 | 通用本地 Web UI | 未完成 | 当前启动默认加载 AutoTest 样例 |
 | 正式计划/变更/风险 | 现有 V2 AutoTest 工作台支持部分操作 | 尚未对任意项目数据完成隔离与迁移 |
-| Codex 远程任务发现 | 原试点 CODEX_START_HERE+dispatch+resolve | 原试点锁定 AutoTest，目标仓库需独立任务合同 |
+| Codex 远程任务发现 | 原试点 CODEX_START_HERE+dispatch+resolve；本候选新增目标仓库通用 resolve.py | 目标仓库仍需独立任务合同与真实授权；通用校验器仅做本地检查 |
 | 空目录工作区创建/清理 | 原任务已有研发规格 | 生命周期内核及 Windows 真机验收尚未完成 |
 | GitHub 多仓库支持与安全写入 | 无完整通用接线 | 应增加目标仓库配置、CAS/PR、权限和执行回执 |
 | 测试与验证 | 本候选新增初始化工具回归 | 未提供实际 Windows + 真实新/旧项目全链路验收 |
