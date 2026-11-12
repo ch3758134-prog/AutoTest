@@ -12,7 +12,7 @@ import json
 import re
 
 SCHEMA = "project-control-delivery-review/1"
-MAX_BODY = 30000
+MAX_BODY = 60000
 MAX_RECORDS = 64
 MAX_HISTORY = 12
 ID = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{1,99}$")
