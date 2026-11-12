@@ -228,6 +228,137 @@ public sealed class ProjectWorkspaceService
         finally { _writeLock.Release(); }
     }
 
+
+    /// <summary>Read a formal TEST resource with exact project and file hashes.</summary>
+    public async Task<TestEditorSession> OpenTestEditorAsync(AssetId assetId, CancellationToken ct = default)
+    {
+        var current = Current ?? throw new InvalidOperationException("请先打开工程。");
+        var asset = current.Definition.Assets.FirstOrDefault(x => x.Id == assetId)
+            ?? throw new ProjectDataException("ASSET_NOT_FOUND", "TEST 资源不存在。");
+        if (!string.Equals(asset.Kind, TestProgramKind, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("选中资源不是测试程序。");
+        return await Task.Run(async () =>
+        {
+            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+            var hash = Convert.ToHexString(SHA256.HashData(bytes));
+            if (!hash.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("TEST_ASSET_CHANGED",
+                    "TEST 文件与工程登记指纹不符，不能直接编辑。请检查外部修改。");
+            var document = TestDocumentCodec.Deserialize(new UTF8Encoding(false, true).GetString(bytes));
+            return new TestEditorSession(current.Definition.Id, current.ManifestPath,
+                asset.Id, asset.Revision, asset.Name, path, hash, document);
+        }, ct);
+    }
+
+    /// <summary>Save a TEST document through its canonical codec and update the project asset.</summary>
+    public async Task<TestEditorSession> SaveTestEditorAsync(
+        TestEditorSession opened, TestDocument edited, CancellationToken ct = default)
+    {
+        // Validate the candidate before making *any* disk changes.
+        var serialized = TestDocumentCodec.Serialize(edited);
+        var decoded = TestDocumentCodec.Deserialize(serialized);
+        if (opened.Document.Id != decoded.Id)
+            throw new ProjectDataException("TEST_ID_CHANGED", "不能替换测试程序的持久身份。");
+        if (TestDocumentCodec.Serialize(opened.Document) == serialized)
+            return opened;
+        var bytes = new UTF8Encoding(false).GetBytes(serialized);
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("工程已经关闭。");
+            if (current.Definition.Id != opened.ProjectId ||
+                !string.Equals(current.ManifestPath, opened.ManifestPath, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("TEST_PROJECT_CHANGED", "工程已切换，请重新打开测试程序。");
+            var index = -1;
+            for (var i = 0; i < current.Definition.Assets.Length; i++)
+                if (current.Definition.Assets[i].Id == opened.AssetId) { index = i; break; }
+            if (index < 0) throw new ProjectDataException("TEST_ASSET_MISSING", "测试程序已不在工程清单内。");
+            var asset = current.Definition.Assets[index];
+            if (!string.Equals(asset.Kind, TestProgramKind, StringComparison.OrdinalIgnoreCase) ||
+                asset.Revision != opened.AssetRevision ||
+                !asset.Sha256.Equals(opened.FileHash, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("TEST_REVISION_CONFLICT",
+                    "测试资源已被另一编辑操作修改，不能覆盖旧版本。");
+
+            var result = await Task.Run(async () =>
+            {
+                await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+                var fileHash = await HashFileAsync(path, ct).ConfigureAwait(false);
+                if (!fileHash.Equals(opened.FileHash, StringComparison.OrdinalIgnoreCase))
+                    throw new ProjectDataException("TEST_FILE_CONFLICT",
+                        "TEST 文件在磁盘上发生变化，已拒绝覆盖。");
+                var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                var backup = path + ".bak";
+                var manifestAttempted = false;
+                try
+                {
+                    await File.WriteAllBytesAsync(temporary, bytes, ct).ConfigureAwait(false);
+                    var staged = TestDocumentCodec.Deserialize(
+                        new UTF8Encoding(false, true).GetString(
+                            await File.ReadAllBytesAsync(temporary, ct).ConfigureAwait(false)));
+                    if (staged.Id != edited.Id)
+                        throw new ProjectDataException("TEST_SAVE_VERIFY", "暂存测试程序复核失败。");
+
+                    ct.ThrowIfCancellationRequested();
+                    if (!File.Exists(path))
+                        throw new ProjectDataException("TEST_FILE_CONFLICT", "原测试文件已丢失，不能覆盖。");
+                    if (!string.Equals(await HashFileAsync(path, ct).ConfigureAwait(false),
+                        opened.FileHash, StringComparison.OrdinalIgnoreCase))
+                        throw new ProjectDataException("TEST_FILE_CONFLICT", "保存前测试文件被外部修改。");
+                    File.Replace(temporary, path, backup);
+                    var newHash = await HashFileAsync(path, ct).ConfigureAwait(false);
+                    var reloaded = TestDocumentCodec.Deserialize(
+                        new UTF8Encoding(false, true).GetString(
+                            await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false)));
+                    if (reloaded.Id != edited.Id || !newHash.Equals(
+                        Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+                        throw new ProjectDataException("TEST_SAVE_VERIFY", "写入测试文件后复核失败。");
+
+                    var nextAsset = asset with
+                    {
+                        Sha256 = newHash,
+                        Revision = checked(asset.Revision + 1)
+                    };
+                    var next = (current.Definition with
+                    {
+                        Assets = current.Definition.Assets.SetItem(index, nextAsset)
+                    }).WithRevision().Validate();
+
+                    await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                    manifestAttempted = true;
+                    await ProjectRepository.SaveDefinitionAsync(next, current.ManifestPath, ct)
+                        .ConfigureAwait(false);
+                    var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct)
+                        .ConfigureAwait(false);
+                    var manifestHash = await HashFileAsync(current.ManifestPath, ct).ConfigureAwait(false);
+                    return (Context: new OpenProjectContext(verified, current.ManifestPath, manifestHash),
+                        Session: new TestEditorSession(verified.Id, current.ManifestPath, asset.Id,
+                            nextAsset.Revision, asset.Name, path, newHash, reloaded));
+                }
+                catch
+                {
+                    // If manifest write has not been attempted, restore the original from
+                    // File.Replace backup, provided this process still owns the changed file.
+                    if (!manifestAttempted && File.Exists(backup) && File.Exists(path) &&
+                        string.Equals(await HashFileAsync(path, CancellationToken.None).ConfigureAwait(false),
+                            Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+                        File.Copy(backup, path, overwrite: true);
+                    throw;
+                }
+                finally
+                {
+                    if (File.Exists(temporary)) File.Delete(temporary);
+                }
+            }, ct);
+            Current = result.Context;
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return result.Session;
+        }
+        finally { _writeLock.Release(); }
+    }
+
     public async Task<AssetEntry> ImportDbcAsync(string sourcePath, CancellationToken ct = default)
     {
         if (!string.Equals(Path.GetExtension(sourcePath), ".dbc", StringComparison.OrdinalIgnoreCase))
