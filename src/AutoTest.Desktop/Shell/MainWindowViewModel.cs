@@ -3,6 +3,8 @@ using System.IO;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Dbc;
+using AutoTest.Desktop.Testing;
+using System.Text.Json;
 using AutoTest.Projects.Resources;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -16,6 +18,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly NewProjectDialogService _newDialog;
     private readonly ProjectFileDialogService _fileDialogs;
     private readonly DbcWorkbenchWindowService _dbcWindows;
+    private readonly TestEditorWindowService _testWindows;
     private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
@@ -24,12 +27,13 @@ public sealed class MainWindowViewModel : BindableBase
     public MainWindowViewModel(
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
         ProjectFileDialogService fileDialogs, DbcWorkbenchWindowService dbcWindows,
-        RecentProjectStore recentProjects)
+        TestEditorWindowService testWindows, RecentProjectStore recentProjects)
     {
         _workspace = workspace;
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
         _dbcWindows = dbcWindows;
+        _testWindows = testWindows;
         _recentProjects = recentProjects;
         NewProjectCommand = new DelegateCommand(OpenNewProject, () => !IsBusy);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
@@ -39,6 +43,8 @@ public sealed class MainWindowViewModel : BindableBase
             () => HasProject && !IsBusy);
         OpenDbcCommand = new DelegateCommand(async () => await OpenSelectedDbcAsync(),
             () => SelectedResourceIsDbc && !IsBusy);
+        OpenTestProgramCommand = new DelegateCommand(async () => await OpenSelectedTestProgramAsync(),
+            () => SelectedResourceIsTestProgram && !IsBusy);
         RenameResourceCommand = new DelegateCommand(async () => await RenameResourceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
@@ -76,6 +82,8 @@ public sealed class MainWindowViewModel : BindableBase
     public bool SelectedResourceIsAsset => _selectedResource?.Asset is not null;
     public bool SelectedResourceIsDbc => string.Equals(_selectedResource?.Asset?.Kind,
         ProjectWorkspaceService.DbcKind, StringComparison.OrdinalIgnoreCase);
+    public bool SelectedResourceIsTestProgram => string.Equals(_selectedResource?.Asset?.Kind,
+        ProjectWorkspaceService.TestProgramKind, StringComparison.OrdinalIgnoreCase);
     public string SelectedResourceTitle => _selectedResource?.Label ?? "";
     public string SelectedResourceDescription => _selectedResource?.Description ?? "";
     public string SelectedResourcePath => _selectedResource?.Asset?.RelativePath ?? "";
@@ -101,6 +109,7 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand NewTestProgramCommand { get; }
     public DelegateCommand ImportDbcCommand { get; }
     public DelegateCommand OpenDbcCommand { get; }
+    public DelegateCommand OpenTestProgramCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
     public DelegateCommand RemoveReferenceCommand { get; }
 
@@ -150,6 +159,7 @@ public sealed class MainWindowViewModel : BindableBase
         RaisePropertyChanged(nameof(HasSelectedResource));
         RaisePropertyChanged(nameof(SelectedResourceIsAsset));
         RaisePropertyChanged(nameof(SelectedResourceIsDbc));
+        RaisePropertyChanged(nameof(SelectedResourceIsTestProgram));
         RaisePropertyChanged(nameof(SelectedResourceTitle));
         RaisePropertyChanged(nameof(SelectedResourceDescription));
         RaisePropertyChanged(nameof(SelectedResourcePath));
@@ -253,7 +263,9 @@ public sealed class MainWindowViewModel : BindableBase
         {
             var entry = await _workspace.CreateTestProgramAsync(name);
             SelectAsset(entry.Id);
-            StatusMessage = "测试程序已创建：" + entry.Name;
+            var session = await _workspace.OpenTestEditorAsync(entry.Id);
+            _testWindows.Show(session);
+            StatusMessage = "测试程序已创建并打开：" + entry.Name;
         });
     }
 
@@ -269,6 +281,17 @@ public sealed class MainWindowViewModel : BindableBase
             var opened = await _workspace.OpenDbcEditorAsync(entry.Id);
             _dbcWindows.Show(opened);
             StatusMessage = "DBC 已导入并打开：" + entry.Name;
+        });
+    }
+
+    private async Task OpenSelectedTestProgramAsync()
+    {
+        if (!SelectedResourceIsTestProgram || _selectedResource?.Asset is not { } asset) return;
+        await RunOperationAsync(async () =>
+        {
+            var session = await _workspace.OpenTestEditorAsync(asset.Id);
+            _testWindows.Show(session);
+            StatusMessage = "已打开测试程序：" + asset.Name;
         });
     }
 
@@ -337,6 +360,7 @@ public sealed class MainWindowViewModel : BindableBase
         NewTestProgramCommand?.RaiseCanExecuteChanged();
         ImportDbcCommand?.RaiseCanExecuteChanged();
         OpenDbcCommand?.RaiseCanExecuteChanged();
+        OpenTestProgramCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();
         RemoveReferenceCommand?.RaiseCanExecuteChanged();
     }

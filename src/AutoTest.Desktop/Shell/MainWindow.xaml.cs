@@ -26,6 +26,13 @@ public partial class MainWindow : Window
 
     private void ResourceTree_DoubleClick(object sender, MouseButtonEventArgs e)
     {
+        if (_viewModel.SelectedResourceIsTestProgram &&
+            ((ICommand)_viewModel.OpenTestProgramCommand).CanExecute(null))
+        {
+            ((ICommand)_viewModel.OpenTestProgramCommand).Execute(null);
+            e.Handled = true;
+            return;
+        }
         if (_viewModel.SelectedResourceIsDbc &&
             ((ICommand)_viewModel.OpenDbcCommand).CanExecute(null))
         {
