@@ -13,6 +13,7 @@ import hashlib
 from receipt_evidence import assess as assess_receipt, ReceiptError
 from remote_sync import inspect as inspect_remote, SyncError
 from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS, KINDS as GOVERNANCE_FIELDS
+from workspace_manager import read_registry as workspace_registry, inspect_one as inspect_workspace, canonical as workspace_origin
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -263,6 +264,80 @@ class Target:
                     "skipped": skipped, "held": held,
                     "scope": "CURRENT_REGISTERED_WORKTREE_ONLY"}
 
+    def workspace_status(self, registry_dir=None):
+        """Registered local workspaces, not arbitrary disk search."""
+        with self.lock:
+            self.check_identity()
+            registry = workspace_registry(registry_dir)
+            matches = [x for x in registry["workspaces"]
+                       if x.get("project_id") == self.project_id
+                       and x.get("repo_url") == workspace_origin(self.initial["repo_url"])]
+            return {"project_id": self.project_id, "registry_revision": registry["revision"],
+                    "workspaces": [inspect_workspace(x) for x in matches],
+                    "note": "Sensitive local paths are returned only to an authenticated localhost client."}
+
+    def collect_registered_receipts(self, registry_dir=None):
+        """Read reports from EXPLICITLY registered workspaces only.
+
+        No fetch/prune/cleanup and no recursive search. The manager may not
+        hold the candidate commit, in which case the receipt stays unverified.
+        """
+        with self.lock:
+            self.check_identity()
+            data = workspace_registry(registry_dir)
+            candidates = [x for x in data["workspaces"]
+                          if x.get("project_id") == self.project_id
+                          and x.get("repo_url") == workspace_origin(self.initial["repo_url"])
+                          and x.get("state") == "ACTIVE"]
+            imported, skipped, held = [], [], []
+            for registered in candidates:
+                observation = inspect_workspace(registered)
+                if any("MISMATCH" in s or s in ("WRONG_REPOSITORY", "MISSING_OR_UNSAFE_PATH")
+                       for s in observation.get("issues", [])):
+                    held.append({"workspace_id": registered["workspace_id"],
+                                 "reason": "unsafe or mismatching registered Git workspace"})
+                    continue
+                root = Path(registered["canonical_path"])
+                try:
+                    sub = git(root, "rev-parse", "--git-path", "project-control")
+                    folder = Path(sub)
+                    if not folder.is_absolute():
+                        folder = root / folder
+                    if folder.is_symlink() or not folder.is_dir():
+                        continue
+                    files = sorted(folder.glob("receipt-*.json"))
+                    if len(files) > 100:
+                        raise ManagementError("too many local receipts for review")
+                    for path in files:
+                        if path.is_symlink() or not path.is_file() or path.stat().st_size > 65536:
+                            held.append({"workspace_id": registered["workspace_id"],
+                                         "reason": "unsafe evidence file"})
+                            continue
+                        try:
+                            report = json.loads(path.read_text(encoding="utf-8"))
+                            rid = report.get("receipt_id")
+                            if not isinstance(rid, str) or not ID.fullmatch(rid):
+                                raise ManagementError("invalid local receipt")
+                            current = load_json(self.data_path)
+                            if any(x.get("id") == rid for x in current.get("receipts", [])):
+                                skipped.append(rid)
+                                continue
+                            self.apply("record_receipt", {
+                                "expected_revision": current["revision"],
+                                "reason": "导入已登记工作区的 Codex 候选结果",
+                                "receipt": report
+                            })
+                            imported.append(rid)
+                        except (OSError, ValueError, TypeError, ManagementError) as err:
+                            held.append({"workspace_id": registered["workspace_id"],
+                                         "reason": str(err)[:200]})
+                except (OSError, ValueError, ManagementError) as err:
+                    held.append({"workspace_id": registered["workspace_id"],
+                                 "reason": str(err)[:200]})
+            return {"project_id": self.project_id, "registered_examined": len(candidates),
+                    "imported": imported, "skipped": skipped, "held": held,
+                    "scope": "EXPLICIT_LOCAL_REGISTRY_ONLY"}
+
     def apply(self, name, payload):
         if not isinstance(payload, dict):
             raise ManagementError("action payload must be a JSON object")
@@ -456,6 +531,19 @@ def handler(targets, owner_token):
                     return self.respond(target.remote_status())
                 except (ManagementError, SyncError, OSError) as error:
                     return self.respond({"error": str(error)}, 409)
+            if url.path == "/api/workspaces":
+                if self.client_address[0] not in ("127.0.0.1", "::1"):
+                    return self.respond({"error": "localhost only"}, 403)
+                if not secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token):
+                    return self.respond({"error": "owner token required"}, 403)
+                project_id = parse_qs(url.query).get("project_id", [""])[0]
+                target = targets.get(project_id)
+                if target is None:
+                    return self.respond({"error": "unknown project"}, 404)
+                try:
+                    return self.respond(target.workspace_status())
+                except (ManagementError, OSError, ValueError) as err:
+                    return self.respond({"error": str(err)}, 409)
             if url.path == "/api/model":
                 project_id = parse_qs(url.query).get("project_id", [""])[0]
                 target = targets.get(project_id)
@@ -489,7 +577,8 @@ def handler(targets, owner_token):
             if not length.isdigit() or not (1 <= int(length) <= MAX_BODY):
                 return self.respond({"error": "invalid body size"}, 413)
             operation = urlsplit(self.path).path
-            if operation not in ("/api/action", "/api/collect-local-receipts"):
+            if operation not in ("/api/action", "/api/collect-local-receipts",
+                                  "/api/collect-registered-receipts"):
                 return self.respond({"error": "unknown operation"}, 404)
             try:
                 payload = json.loads(self.rfile.read(int(length)).decode("utf-8"))
@@ -500,6 +589,8 @@ def handler(targets, owner_token):
                     raise ManagementError("project not registered")
                 if operation == "/api/collect-local-receipts":
                     return self.respond(target.collect_local_receipts())
+                if operation == "/api/collect-registered-receipts":
+                    return self.respond(target.collect_registered_receipts())
                 return self.respond(target.apply(payload.get("action"), payload.get("payload")))
             except (OSError, ManagementError, ValueError, TypeError) as error:
                 return self.respond({"error": str(error)}, 400)
