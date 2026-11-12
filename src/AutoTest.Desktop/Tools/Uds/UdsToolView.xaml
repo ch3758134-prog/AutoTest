@@ -67,7 +67,7 @@
   </DockPanel>
   <Border Grid.Row="1" Background="#FFF6E8" BorderBrush="#C9A271"
           BorderThickness="1" CornerRadius="4" Padding="11,7" Margin="0,0,0,12">
-   <TextBlock Text="R1 仅支持真实 CAN1 只读 UDS 及离线档案 Replay。真实请求仅允许 0x19/0x22，其他服务不执行物理发送。"
+   <TextBlock Text="当前实机诊断只允许读取故障码（0x19）和数据标识（0x22）。其他服务可编辑，但不能向真实 ECU 发送；可通过已保存记录离线查看。"
               Foreground="#744611" TextWrapping="Wrap"/>
   </Border>
   <Grid Grid.Row="2">
@@ -176,14 +176,14 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
       <TextBlock Text="通信配置" Style="{StaticResource UdsSection}"/>
-      <TextBlock Text="通信来源：Physical Read / Replay。真实请求共用 P02 主控板会话。"
+      <TextBlock Text="实机请求与手动台架共用同一主控连接；离线记录不会向 ECU 发送数据。"
                  Foreground="{StaticResource UdsMuted}" TextWrapping="Wrap" Margin="0,0,0,10"/>
       <WrapPanel Margin="0,0,0,7">
        <Button Content="导入 CanTool XML" Click="ImportCanTool_Click"/>
        <Button Content="使用 APP 地址" Click="UseCanToolApp_Click"/>
        <Button Content="使用 Boot 地址" Click="UseCanToolBoot_Click"/>
       </WrapPanel>
-      <TextBlock Text="ECU Profile 名称" Style="{StaticResource UdsCaption}"/>
+      <TextBlock Text="ECU 诊断配置名称" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ProfileName,UpdateSourceTrigger=PropertyChanged}"/>
       <Grid>
        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -198,9 +198,9 @@
       <TextBlock Text="会话状态" Style="{StaticResource UdsCaption}"/>
       <TextBlock Text="{Binding Session}" FontWeight="SemiBold" Margin="0,0,0,9"/>
       <Separator Background="{DynamicResource StudioLine}" Margin="0,10"/>
-      <TextBlock Text="Replay 记录文件" Style="{StaticResource UdsCaption}"/>
+      <TextBlock Text="离线诊断记录文件" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ReplayPath,UpdateSourceTrigger=PropertyChanged}"/>
-      <Button Content="加载 Replay JSON" Command="{Binding LoadReplayCommand}"/>
+      <Button Content="加载离线诊断记录" Command="{Binding LoadReplayCommand}"/>
      </StackPanel>
     </ScrollViewer>
    </Border>
