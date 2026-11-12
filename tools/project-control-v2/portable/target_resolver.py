@@ -145,6 +145,9 @@ def pick(project, registry, task_id=None):
     if mode not in ("EXPLORATORY", "CONTROLLED"):
         raise TaskError("task requires explicit EXPLORATORY or CONTROLLED mode")
     if mode == "CONTROLLED":
+        if (project.get("formal_product_identity") != "APPROVED"
+                or project.get("scope_decision") != "APPROVED"):
+            raise TaskError("formal project identity/scope not yet approved for controlled work")
         # Do not treat a bare path or claimed stage as approved design.
         decisions = json.loads((STATE / "decisions.json").read_text(encoding="utf-8"))
         if (decisions.get("schema") != "project-control-target-decisions/1"
