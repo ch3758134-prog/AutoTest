@@ -9,6 +9,7 @@ public static class PrismRegistration
 {
     public static void RegisterTypes(IContainerRegistry registry)
     {
+        registry.RegisterSingleton<RecentProjectStore>();
         registry.RegisterSingleton<ProjectWorkspaceService>();
         registry.RegisterSingleton<NewProjectDialogService>();
         registry.RegisterSingleton<ProjectFileDialogService>();

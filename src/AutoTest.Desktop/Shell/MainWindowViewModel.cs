@@ -16,18 +16,21 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly NewProjectDialogService _newDialog;
     private readonly ProjectFileDialogService _fileDialogs;
     private readonly DbcWorkbenchWindowService _dbcWindows;
+    private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
     private ResourceTreeNode? _selectedResource;
 
     public MainWindowViewModel(
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
-        ProjectFileDialogService fileDialogs, DbcWorkbenchWindowService dbcWindows)
+        ProjectFileDialogService fileDialogs, DbcWorkbenchWindowService dbcWindows,
+        RecentProjectStore recentProjects)
     {
         _workspace = workspace;
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
         _dbcWindows = dbcWindows;
+        _recentProjects = recentProjects;
         NewProjectCommand = new DelegateCommand(OpenNewProject, () => !IsBusy);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
@@ -50,6 +53,15 @@ public sealed class MainWindowViewModel : BindableBase
             StatusMessage = _workspace.Current is { } current
                 ? "工程已载入：" + current.ManifestPath
                 : "尚未打开工程";
+            if (_workspace.Current is { } opened)
+            {
+                try { _recentProjects.Remember(opened.ManifestPath); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                                   ArgumentException or JsonException)
+                {
+                    StatusMessage = "工程已打开，但无法保存最近工程记录：" + error.Message;
+                }
+            }
             RefreshCommands();
         };
         RebuildResourceTree();
@@ -91,6 +103,38 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenDbcCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
     public DelegateCommand RemoveReferenceCommand { get; }
+
+    public async Task RestoreLastProjectAsync()
+    {
+        if (HasProject || IsBusy) return;
+        string? path;
+        try { path = _recentProjects.GetLastProjectManifest(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                          ArgumentException or JsonException)
+        {
+            StatusMessage = "无法读取上次工程记录：" + error.Message;
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(path)) return;
+        if (!File.Exists(path))
+        {
+            StatusMessage = "上次工程文件不存在，请手动打开：" + path;
+            return;
+        }
+        IsBusy = true;
+        try
+        {
+            await _workspace.OpenAsync(path);
+            StatusMessage = "已自动打开上次工程：" + path;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                          ArgumentException or ProjectDataException or
+                                          InvalidDataException or JsonException)
+        {
+            StatusMessage = "上次工程打开失败，可手动选择：" + error.Message;
+        }
+        finally { IsBusy = false; }
+    }
 
     public void SelectResource(ResourceTreeNode? item)
     {

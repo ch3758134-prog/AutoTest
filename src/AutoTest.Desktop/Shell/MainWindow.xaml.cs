@@ -15,6 +15,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
+        Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
     }
 
     private void ResourceTree_SelectedItemChanged(
