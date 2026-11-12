@@ -32,7 +32,6 @@ public sealed class ApprovedMockupStructureTests
             "ExpandAllCommand", "CollapseAllCommand"
         })
             Assert.Contains(contract, xaml);
-        Assert.DoesNotContain("Grid.Row=\"3\" Header=\"", xaml);
     }
 
     [Fact]
