@@ -93,7 +93,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                              Margin="1,8,1,8" Foreground="{DynamicResource StudioText}" ToolTip="DBC Revision 已固定；修改后需要重新刷新信号" />
+                                              Margin="1,8,1,8" Foreground="{DynamicResource StudioText}" ToolTip="信号来自当前工程 DBC。工程修改后请刷新信号列表。" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -214,7 +214,7 @@
                                Foreground="#167B5A" TextWrapping="Wrap"/>
                     <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource StudioMuted}" />
                 </StackPanel>
-                <TextBlock DockPanel.Dock="Right" Text="Physical / Replay 原始事实分别记录" Foreground="{DynamicResource StudioMuted}" />
+                <TextBlock DockPanel.Dock="Right" Text="实时采集和离线回放的数据来源分别记录" Foreground="{DynamicResource StudioMuted}" />
             </DockPanel>
         </Border>
     </Grid>
