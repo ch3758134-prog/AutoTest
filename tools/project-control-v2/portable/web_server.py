@@ -598,7 +598,10 @@ class Target:
                     "result": "LOCAL_DRAFT_SAVED_NOT_REMOTE_PUBLISHED"}
 
 
-def handler(targets, owner_token):
+def handler(targets, owner_token, registry_dir=None):
+    # The local console may start before any managed project exists. Register
+    # initialized projects explicitly after opening the application.
+    target_lock = threading.RLock()
     assets = {
         "/": ("index.html", "text/html; charset=utf-8"),
         "/app.css": ("app.css", "text/css; charset=utf-8"),
@@ -635,13 +638,16 @@ def handler(targets, owner_token):
                 return self.respond({"error": "invalid localhost host"}, 403)
             url = urlsplit(self.path)
             if url.path == "/api/projects":
-                return self.respond({
-                    "projects": [
+                with target_lock:
+                    projects = [
                         {"project_id": t.project_id, "display_name": t.initial.get("display_name"),
                          "repo_url": t.initial.get("repo_url"), "intake_mode": t.initial.get("intake_mode")}
                         for t in targets.values()
-                    ],
-                    "note": "Only explicitly registered local projects are shown.",
+                    ]
+                return self.respond({
+                    "projects": projects, "can_register_target": True,
+                    "status": "READY" if projects else "READY_NO_PROJECTS",
+                    "note": "The management application can run without projects. Registration never initializes or modifies the target.",
                 })
             if url.path == "/api/remote-status":
                 if self.client_address[0] not in ("127.0.0.1", "::1"):
@@ -714,12 +720,27 @@ def handler(targets, owner_token):
                 return self.respond({"error": "invalid body size"}, 413)
             operation = urlsplit(self.path).path
             if operation not in ("/api/action", "/api/collect-local-receipts",
-                                  "/api/collect-registered-receipts"):
+                                  "/api/collect-registered-receipts", "/api/register-target"):
                 return self.respond({"error": "unknown operation"}, 404)
             try:
                 payload = json.loads(self.rfile.read(int(length)).decode("utf-8"))
                 if not isinstance(payload, dict):
                     raise ManagementError("JSON object required")
+                if operation == "/api/register-target":
+                    raw_path = checked_text(payload.get("path"), "target directory", 4096)
+                    target = Target(Path(raw_path), registry_dir=registry_dir)
+                    with target_lock:
+                        if target.project_id in targets or any(
+                                existing.root == target.root for existing in targets.values()):
+                            raise ManagementError("project already registered in this session")
+                        targets[target.project_id] = target
+                    return self.respond({
+                        "status": "EXISTING_PROJECT_REGISTERED_NOT_INITIALIZED",
+                        "project_id": target.project_id,
+                        "display_name": target.initial.get("display_name"),
+                        "repo_url": target.initial.get("repo_url"),
+                        "note": "No files were changed; this is a running-server registration only.",
+                    })
                 target = targets.get(payload.get("project_id"))
                 if target is None:
                     raise ManagementError("project not registered")
@@ -746,8 +767,8 @@ def main(argv=None):
         if hasattr(output, "reconfigure"):
             output.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Project Control: explicit multi-project local manager")
-    parser.add_argument("--target", type=Path, action="append", required=True,
-                        help="Local Git checkout containing .project-control/management.json; repeat for more projects")
+    parser.add_argument("--target", type=Path, action="append", default=[],
+                        help="Optional existing initialized Git checkout; repeat for more projects. Omit to start empty.")
     parser.add_argument("--port", type=int, default=8791)
     parser.add_argument("--registry-dir", type=Path,
                         help="Optional user-authorized durable local workspace registry")
@@ -764,10 +785,10 @@ def main(argv=None):
     except (OSError, ManagementError) as error:
         parser.exit(2, "Cannot load projects: " + str(error) + "\n")
     token = os.environ.get("PROJECT_CONTROL_OWNER_TOKEN") or secrets.token_urlsafe(32)
-    web = ThreadingHTTPServer(("127.0.0.1", options.port), handler(found, token))
+    web = ThreadingHTTPServer(("127.0.0.1", options.port), handler(found, token, registry_dir=options.registry_dir))
     print("Project Control portable → http://127.0.0.1:" + str(web.server_port), flush=True)
     print("Owner token (this process only): " + token, flush=True)
-    print("Registered projects: " + ", ".join(found), flush=True)
+    print("Registered projects: " + (", ".join(found) if found else "(none; add from the browser)"), flush=True)
     try:
         web.serve_forever()
     except KeyboardInterrupt:
