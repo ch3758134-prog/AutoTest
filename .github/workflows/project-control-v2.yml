@@ -1,16 +1,9 @@
 name: Project Control V2
 
+# Project Control tooling intentionally has no automatic push/PR CI.
+# Owner invokes this only for explicit candidate/release validation.
+# This does not change validation rules for the ECU product.
 on:
-  push:
-    branches:
-      - management/project-control-redesign-20261111
-    paths:
-      - 'tools/project-control-v2/**'
-      - '.github/workflows/project-control-v2.yml'
-  pull_request:
-    paths:
-      - 'tools/project-control-v2/**'
-      - '.github/workflows/project-control-v2.yml'
   workflow_dispatch:
 
 jobs:
