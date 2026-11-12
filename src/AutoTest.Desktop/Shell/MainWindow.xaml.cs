@@ -811,8 +811,8 @@ public partial class MainWindow : Window
             else
                 await model.ConnectFromShellAsync(ChoosePhysicalController, () =>
                     MessageBox.Show(this,
-                        "请确认主控、按键板和 ECU 的接线以及外部供电状态安全。\\n" +
-                        "连接只建立 USB/CAN 会话，不自动控制 IGN、按键、夹具或发送 CAN。\\n" +
+                        "请确认主控、按键板和 ECU 的接线以及外部供电状态安全。\n" +
+                        "连接只建立 USB/CAN 会话，不自动控制 IGN、按键、夹具或发送 CAN。\n" +
                         "是否连接当前主控板？",
                         "连接设备前的安全确认", MessageBoxButton.YesNo,
                         MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
@@ -823,7 +823,7 @@ public partial class MainWindow : Window
             StationConnectButton.IsEnabled = true;
             StationConnectButton.Content = model.IsConnected ? "断开设备" : "连接设备";
             StationStatus.Text = model.StatusText;
-            if (!model.IsConnected && model.ResultText.Contains("失败", StringComparison.Ordinal))
+            if (!model.IsConnected && model.StatusText.Contains("操作失败", StringComparison.Ordinal))
                 MessageBox.Show(this, model.ResultText, "设备连接失败",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
         }
