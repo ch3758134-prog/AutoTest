@@ -207,6 +207,12 @@ def publish(client, plan, *, apply=False, atomic=False):
 
 
 def main(argv=None):
+    # Python on Windows may inherit a legacy charmap console. Every management
+    # command writes UTF-8 Chinese project names and JSON, without requiring
+    # users to change the system code page.
+    for output in (sys.stdout, sys.stderr):
+        if hasattr(output, "reconfigure"):
+            output.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(description="Publish one reviewed local management draft with GitHub CAS")
     p.add_argument("--target", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
