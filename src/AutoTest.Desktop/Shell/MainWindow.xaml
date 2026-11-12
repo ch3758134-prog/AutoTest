@@ -106,6 +106,17 @@
                       ScrollViewer.CanContentScroll="True"
                       SelectedItemChanged="ResourceTree_SelectedItemChanged"
                       PreviewMouseRightButtonDown="ResourceTree_RightClick">
+              <!-- Override Windows theme selection brushes with AutoTest light theme. -->
+              <TreeView.Resources>
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"
+                                 Color="{StaticResource SelectedSurfaceColor}"/>
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}"
+                                 Color="{StaticResource InkColor}"/>
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}"
+                                 Color="{StaticResource InactiveSelectionColor}"/>
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}"
+                                 Color="{StaticResource InkColor}"/>
+              </TreeView.Resources>
               <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                   <StackPanel Orientation="Horizontal">

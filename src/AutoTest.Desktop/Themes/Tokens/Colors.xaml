@@ -13,7 +13,9 @@
   <SolidColorBrush x:Key="Subtle" Color="{StaticResource SubtleColor}"/>
   <SolidColorBrush x:Key="Line" Color="{StaticResource LineColor}"/>
   <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}"/>
-  <SolidColorBrush x:Key="SelectedSurface" Color="#E6F1FF"/>
+  <Color x:Key="SelectedSurfaceColor">#E6F1FF</Color>
+  <Color x:Key="InactiveSelectionColor">#EDF4FD</Color>
+  <SolidColorBrush x:Key="SelectedSurface" Color="{StaticResource SelectedSurfaceColor}"/>
   <SolidColorBrush x:Key="HoverSurface" Color="#EDF4FD"/>
   <SolidColorBrush x:Key="ToolbarSurface" Color="#F8FAFD"/>
   <SolidColorBrush x:Key="MutedSurface" Color="#F0F4FA"/>
