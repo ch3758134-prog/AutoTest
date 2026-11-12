@@ -203,8 +203,13 @@ public partial class MainWindow : Window
     {
         if (_scannerView?.DataContext is not R1ProductionScannerViewModel scan) return;
         var number = string.IsNullOrWhiteSpace(scan.ScanInput) ? "等待编号" : scan.ScanInput;
-        ScannerStatus.Text = "扫码：" + number + " · " + scan.MatchDetail;
-        ScannerStatus.ToolTip = ScannerStatus.Text;
+        var rawDetail = scan.MatchDetail ?? "";
+        var readable = rawDetail.Contains("CATALOG_NOT_READY", StringComparison.OrdinalIgnoreCase)
+            ? "请先设置扫码编号规则"
+            : rawDetail;
+        ScannerStatus.Text = "扫码：" + number + (string.IsNullOrWhiteSpace(readable) ? "" : " · " + readable);
+        // Keep the raw diagnostic for service and offline trace analysis.
+        ScannerStatus.ToolTip = "扫码状态：" + rawDetail;
     }
 
     private void OnAssetsChanged(object? sender, EventArgs e)
@@ -773,7 +778,7 @@ public partial class MainWindow : Window
     private void ToggleExplorer_Click(object sender, RoutedEventArgs e)
     {
         _explorerHidden = !_explorerHidden;
-        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 245);
+        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 270);
         ExplorerSplitterColumn.Width = new GridLength(_explorerHidden ? 0 : 5);
         ExplorerPanel.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
         ExplorerSplitter.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
