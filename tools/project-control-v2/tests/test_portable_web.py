@@ -103,6 +103,21 @@ class PortableWebTests(unittest.TestCase):
     def revision(self, project_id):
         return self.get("/api/model?project_id=" + project_id)["management"]["revision"]
 
+    def test_new_unborn_git_checkout_does_not_forge_head(self):
+        root = Path(self.temp.name) / "brand-new"
+        root.mkdir()
+        url = "https://github.com/example-org/unborn.git"
+        git(root, "init", "-b", "main")
+        git(root, "remote", "add", "origin", url)
+        inspection = initialization.inspect_target(root, url)
+        candidate = initialization.create_preview(inspection, "new", project_id="unborn-project")
+        initialization.apply_preview(root, inspection, candidate)
+        target = service.Target(root)
+        data = target.model()
+        self.assertIsNone(data["git"]["head"])
+        self.assertTrue(data["git"]["dirty"])
+        self.assertEqual(data["project"]["initialization_state"], "CANDIDATE_NOT_APPROVED")
+
     def test_projects_are_explicit_and_isolated(self):
         listed = self.get("/api/projects")["projects"]
         self.assertEqual({x["project_id"] for x in listed}, {"project-1", "project-2"})
