@@ -29,6 +29,8 @@ jobs:
         run: |
           node --check tools/project-control-v2/app.js
           node --check tools/project-control-v2/actions.js
+      - name: Check portable manager browser script
+        run: node --check tools/project-control-v2/portable/web/app.js
       - name: Verify interactive project-management semantics
         run: node tools/project-control-v2/tests/ui_behavior.js
       - name: Run domain, authorization and real-project tests
