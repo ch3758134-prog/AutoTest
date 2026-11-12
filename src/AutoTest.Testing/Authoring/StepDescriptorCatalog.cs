@@ -35,6 +35,16 @@ public sealed class StepDescriptorCatalog
         Add("MockObserve", true, [], ["variable", "value", "quality"]);
         Add("Assert", true, [], ["variable", "equals"]);
         Add("Wait", true, [], ["milliseconds"]);
+        // Real runtime actions use typed, version-pinned Mapping references.
+        // They must not be executed by the legacy MockStation coordinator.
+        Add("Write", false, [], ["target", "value"]);
+        Add("Read", false, [], ["target", "variable", "mode", "timeoutMs", "maxAgeMs"]);
+        Add("WaitUntil", false, [], ["target", "variable", "operator", "expected", "timeoutMs"]);
+        Add("Calculate", false, [], ["variable", "left", "operator", "right"]);
+        Add("Expect", false, [], ["left", "operator", "right"]);
+        Add("WaveStart", false, [], ["target", "captureKey", "durationMs"]);
+        Add("WaveStop", false, [], ["captureKey", "variable"]);
+        Add("WaveAnalyze", false, [], ["captureKey", "reference", "variable"]);
         // Explicitly modeled future capabilities; never claim V1 runtime support.
         foreach (var name in new[] { "PowerSet", "KeySet", "CanSend", "CanWait", "UdsRequest",
             "Flash", "WaveCapture", "WaveCompare", "Log", "Fail", "Skip" }) Add(name, false);

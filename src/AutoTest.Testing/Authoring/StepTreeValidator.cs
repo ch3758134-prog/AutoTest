@@ -9,6 +9,7 @@ public static class StepTreeValidator
         StepDescriptorCatalog catalog, ISet<string>? availableAssets = null)
     {
         var errors = ImmutableArray.CreateBuilder<string>();
+        errors.AddRange(TestTargetMappings.Validate(document.Mappings));
         if (document.FormatVersion != TestDocument.CurrentFormat) errors.Add("Unsupported format version");
         if (document.Id.Value == Guid.Empty) errors.Add("Invalid document identity");
         var ids = new HashSet<StepId>();
@@ -29,6 +30,10 @@ public static class StepTreeValidator
                     if (!n.Properties.TryGetValue(key, out var v) || string.IsNullOrWhiteSpace(v))
                         errors.Add($"{location}: missing property {key}");
             }
+            if (n.Properties.TryGetValue("target", out var targetName) &&
+                !document.Mappings.Any(m => string.Equals(m.Name, targetName,
+                    StringComparison.OrdinalIgnoreCase)))
+                errors.Add($"{location}: unmapped target {targetName}");
             if (n.Type == "Case" && parent != "Switch") errors.Add($"{location}: Case outside Switch");
             if (n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
                 !int.TryParse(count, out var loops) || loops < 0 || loops > 1000))

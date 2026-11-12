@@ -41,6 +41,27 @@ public sealed class StepEditTransaction
     public void Copy(StepId id, TestPhase targetPhase, StepId? parent, string? slot, int index) =>
         Insert(targetPhase, parent, slot, index,
             Current.Walk().First(x => x.Id == id).CloneNewIds());
+    public void UpsertMapping(TestTargetMapping mapping)
+    {
+        mapping.Validate();
+        var index = Current.Mappings.FindIndex(x =>
+            string.Equals(x.Name, mapping.Name, StringComparison.OrdinalIgnoreCase));
+        var next = index < 0 ? Current.Mappings.Add(mapping)
+            : Current.Mappings.SetItem(index, mapping);
+        var errors = TestTargetMappings.Validate(next);
+        if (errors.Length > 0) throw new ArgumentException(string.Join("; ", errors));
+        Apply(Current with { Mappings = next });
+    }
+    public void RemoveMapping(string name)
+    {
+        if (Current.Walk().Any(n => n.Properties.TryGetValue("target", out var target) &&
+            string.Equals(target, name, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("Mapping is still referenced by a test step.");
+        var index = Current.Mappings.FindIndex(x =>
+            string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (index < 0) throw new KeyNotFoundException("Mapping not found.");
+        Apply(Current with { Mappings = Current.Mappings.RemoveAt(index) });
+    }
     public void Rename(StepId id, string name) => Update(id, x => x with { Name = name });
     public void SetProperty(StepId id, string key, string value) =>
         Update(id, x => x.WithProperty(key, value));

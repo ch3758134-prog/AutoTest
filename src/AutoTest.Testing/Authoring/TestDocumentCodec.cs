@@ -9,7 +9,7 @@ public static class TestDocumentCodec
     private sealed record NodeData(string Id, string Type, string Name,
         Dictionary<string, string> Properties, Dictionary<string, NodeData[]> Slots);
     private sealed record DocumentData(int FormatVersion, string Id, string Name,
-        Dictionary<string, NodeData[]> Phases);
+        Dictionary<string, NodeData[]> Phases, TestTargetMapping[]? Mappings = null);
     private static NodeData Encode(StepNode node) => new(node.Id.ToString(), node.Type, node.Name,
         node.Properties.ToDictionary(), node.Slots.ToDictionary(s => s.Key,
             s => s.Value.Select(Encode).ToArray()));
@@ -20,7 +20,8 @@ public static class TestDocumentCodec
             s => s.Value.Select(Decode).ToImmutableArray()));
     public static string Serialize(TestDocument doc) => JsonSerializer.Serialize(new DocumentData(
         doc.FormatVersion, doc.Id.ToString(), doc.Name,
-        Enum.GetValues<TestPhase>().ToDictionary(p => p.ToString(), p => doc.Get(p).Select(Encode).ToArray())),
+        Enum.GetValues<TestPhase>().ToDictionary(p => p.ToString(), p => doc.Get(p).Select(Encode).ToArray()),
+        doc.Mappings.IsDefault ? [] : doc.Mappings.ToArray()),
         new JsonSerializerOptions { WriteIndented = true });
     public static TestDocument Deserialize(string json)
     {
@@ -35,7 +36,10 @@ public static class TestDocumentCodec
             p => data.Phases.TryGetValue(p.ToString(), out var nodes)
                 ? nodes.Select(Decode).ToImmutableArray()
                 : throw new FormatException($"Missing phase {p}"));
-        var doc = new TestDocument(id, data.Name, data.FormatVersion, phases);
+        var doc = new TestDocument(id, data.Name, data.FormatVersion, phases)
+        {
+            Mappings = (data.Mappings ?? []).ToImmutableArray()
+        };
         var issues = StepTreeValidator.ValidateTree(doc, StepDescriptorCatalog.Builtins());
         // Asset references may be resolved only at preparation, but structural errors block loading.
         var structural = issues.Where(x => !x.Contains("unresolved asset", StringComparison.Ordinal));
