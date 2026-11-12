@@ -4,7 +4,7 @@
  Title="从工程 DBC 选择 CAN 发送报文"
  Width="700" Height="530" MinWidth="580" MinHeight="430"
  WindowStartupLocation="CenterOwner"
- FontFamily="Segoe UI" FontSize="13" Background="{DynamicResource StudioBg}"
+ FontFamily="Microsoft YaHei UI" FontSize="13" Background="{DynamicResource StudioBg}"
  Foreground="{DynamicResource StudioText}" UseLayoutRounding="True">
  <Window.Resources>
   
@@ -40,7 +40,7 @@
       <StackPanel>
        <DockPanel>
         <TextBlock DockPanel.Dock="Right" Text="{Binding IdText}"
-         Foreground="#176AB2" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+         Foreground="#3188ED" FontWeight="SemiBold" HorizontalAlignment="Right"/>
         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
        </DockPanel>
        <TextBlock Text="{Binding Detail}" Foreground="#607992"
@@ -56,7 +56,7 @@
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
     <Button Content="取消" Click="Cancel_Click"/>
     <Button Content="添加到发送表" Click="Confirm_Click"
-     Background="#176AB2" Foreground="White" Margin="0"/>
+     Background="#3188ED" Foreground="White" Margin="0"/>
    </StackPanel>
   </DockPanel>
  </Grid>
