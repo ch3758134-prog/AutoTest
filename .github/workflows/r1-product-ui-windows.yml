@@ -85,7 +85,10 @@ jobs:
           $exe = Join-Path (Resolve-Path 'output/AutoTest.R1').Path 'AutoTest.Desktop.exe'
           $stdErr = Join-Path $env:RUNNER_TEMP 'r1-startup-stderr.log'
           $stdOut = Join-Path $env:RUNNER_TEMP 'r1-startup-stdout.log'
-          $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru -RedirectStandardError $stdErr -RedirectStandardOutput $stdOut
+          $fixture = Join-Path (Resolve-Path 'output/AutoTest.R1').Path 'samples/ui-review-epb/EPB-UI-review.autotest-project.json'
+          if (-not (Test-Path $fixture)) { throw "UI_REVIEW_PROJECT_NOT_PACKAGED" }
+          Write-Host "UI_REVIEW_PROJECT_PACKAGED"
+          $proc = Start-Process -FilePath $exe -ArgumentList '--ui-review' -WorkingDirectory (Split-Path $exe) -PassThru -RedirectStandardError $stdErr -RedirectStandardOutput $stdOut
           try {
             Start-Sleep -Seconds 6
             $proc.Refresh()
@@ -95,7 +98,7 @@ jobs:
               if (Test-Path $stdOut) { Get-Content $stdOut }
               throw "R1 WPF process exited before startup smoke window."
             }
-            Write-Host "R1_WPF_STARTUP_SURVIVED_6_SECONDS"
+            Write-Host "R1_WPF_UI_REVIEW_STARTUP_SURVIVED_6_SECONDS"
           }
           finally {
             $proc.Refresh()
