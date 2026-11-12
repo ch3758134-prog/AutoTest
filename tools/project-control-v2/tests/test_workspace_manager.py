@@ -179,6 +179,42 @@ class WorkspaceLifecycleTests(unittest.TestCase):
             wm.close("TEMP-001", None, "Owner", True,
                      location=self.registry, apply=True)
 
+    def test_register_existing_codex_clone_does_not_move_or_delete_files(self):
+        result=subprocess.run(["git","clone","--branch","main",str(self.source),str(self.work)],
+                              capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        git(self.work,"remote","set-url","origin",self.remote)
+        options={**self.args,"workspace_id":"TASK-EXISTING","kind":"TASK",
+                 "parent_repo":None}
+        preview=wm.register_existing(
+            options["workspace_id"],options["project_id"],options["task_id"],
+            options["kind"],options["purpose"],options["path"],options["allowed_root"],
+            options["repo_url"],options["source_ref"],options["pinned_sha"],
+            self.registry)
+        self.assertEqual(preview["status"],"REGISTRATION_PREVIEW_ONLY")
+        self.assertEqual(wm.read_registry(self.registry)["workspaces"],[])
+        created=wm.register_existing(
+            options["workspace_id"],options["project_id"],options["task_id"],
+            options["kind"],options["purpose"],options["path"],options["allowed_root"],
+            options["repo_url"],options["source_ref"],options["pinned_sha"],
+            self.registry,apply=True)
+        self.assertEqual(created["status"],"ACTIVE_EXISTING_REGISTERED")
+        self.assertEqual(wm.read_registry(self.registry)["workspaces"][0]["cleanup_policy"],
+                         "NEVER_AUTO_DELETE_EXISTING")
+        hold=wm.close("TASK-EXISTING",None,None,False,location=self.registry)
+        self.assertEqual(hold["status"],"HOLD_FOR_REVIEW")
+        self.assertTrue((self.work/"README.md").is_file())
+
+    def test_existing_checkout_wrong_remote_is_not_registered(self):
+        result=subprocess.run(["git","clone",str(self.source),str(self.work)],
+                              capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        with self.assertRaisesRegex(wm.WorkspaceError,"another remote"):
+            wm.register_existing("TASK-EXISTING","project","TASK-1","TASK",
+                                 "Check source",self.work,self.allowed,self.remote,"main",
+                                 self.pin,self.registry,apply=True)
+        self.assertEqual(wm.read_registry(self.registry)["workspaces"],[])
+
     def test_creation_failure_is_registered_not_silently_deleted(self):
         original = wm.run_git
         def failed(parent, *args, **kwargs):
