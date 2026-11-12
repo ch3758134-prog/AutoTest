@@ -36,7 +36,7 @@
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,14">
-   <TextBlock Text="按键动作编辑" FontSize="24" FontWeight="SemiBold"/>
+   <TextBlock Text="编辑按键动作" Style="{StaticResource AtPageTitle}"/>
    <TextBlock Text="选择动作、编排步骤并用按钮设置本步骤的 20 路开关；编辑不会自动操作设备。"
     Foreground="{StaticResource Muted}" FontSize="12" Margin="0,4,0,0"/>
   </StackPanel>
@@ -51,8 +51,8 @@
     BorderThickness="1" CornerRadius="6" Padding="12">
     <DockPanel>
      <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
-      <Button Content="+ 新建动作" Command="{Binding NewActionCommand}"
-       Background="#176AB2" Foreground="White" FontWeight="SemiBold" Margin="0,0,0,6"/>
+      <Button Content="＋ 新建动作" Command="{Binding NewActionCommand}"
+       Style="{StaticResource AtPrimaryButton}" Margin="0,0,0,6"/>
       <WrapPanel>
        <Button Content="复制" Command="{Binding CopyActionCommand}"/>
        <Button Content="删除" Command="{Binding DeleteActionCommand}" Margin="0"/>
@@ -155,9 +155,10 @@
           </ItemsControl.ItemTemplate>
          </ItemsControl>
          <WrapPanel Margin="0,10,0,5">
-          <Button Content="试发这一组按键" Command="{Binding SendSelectedStepCommand}"
-           Background="#176AB2" Foreground="White"/>
-          <Button Content="全部取消勾选" Command="{Binding ClearMaskCommand}" Margin="0"/>
+          <Button Content="现场试发当前开关组合" Command="{Binding SendSelectedStepCommand}"
+           ToolTip="真实改变按键板开关组合，需连接主控并确认；配置页面中的勾选本身不会发送"/>
+          <Button Content="清空当前步骤选择" Command="{Binding ClearMaskCommand}" Margin="0"
+           ToolTip="仅修改当前步骤的编辑草稿，不会松开真实设备按键"/>
          </WrapPanel>
          <TextBlock Text="{Binding SelectedStepResult}" Foreground="#536F89"
           TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
@@ -187,11 +188,14 @@
     <TextBlock Text="{Binding Progress}" Foreground="#8B6733" TextWrapping="Wrap" FontSize="11"/>
    </StackPanel>
    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-    <Button Content="试运行整个动作" Command="{Binding RunActionCommand}"
-     Background="#176AB2" Foreground="White"/>
-    <Button Content="停止动作" Command="{Binding StopActionCommand}"/>
-    <Button Content="保存到工程" Command="{Binding SaveActionsCommand}"/>
-    <Button Content="关闭编辑窗口" Click="CloseEditor_Click" Margin="0"/>
+    <Button Content="保存动作配置" Style="{StaticResource AtPrimaryButton}"
+      Command="{Binding SaveActionsCommand}"
+      ToolTip="将当前动作配置保存到当前工程，不会向真实主控发送指令"/>
+    <Button Content="关闭" Click="CloseEditor_Click"/>
+    <Button Content="现场试运行整个动作" Command="{Binding RunActionCommand}"
+      ToolTip="向真实按键板发送多步骤操作，需要主控连接和人工确认"/>
+    <Button Content="停止动作" Style="{StaticResource AtDangerButton}"
+      IsEnabled="{Binding IsActionRunning}" Command="{Binding StopActionCommand}" Margin="0"/>
    </WrapPanel>
   </Grid>
  </Grid>
