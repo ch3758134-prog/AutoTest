@@ -16,5 +16,5 @@
 - SCAN：main 中 `BarcodeInputRouter`、`KeyboardWedgeCapture`、`SerialBarcodeCapture`、`LabScannerAdmission`、匹配/规则模型是**已有基础**；主 Shell 之前暴露的仅是 G4 Mock 扫码页，不是 PR #41 的新物理扫码入口。扫码后续单独接入，禁止以 Mock 演示冒充实扫放行。
 - 现有 `AutoTest.LabLinkGui` 独立 USB 诊断工具未删除；它不等于已删除的 DeviceLab。
 
-## 验收门禁
-Windows 上 Release 构建 Desktop + 运行 Desktop.Tests + 全部后端测试；不得因删除旧展示层测试后计数减少而宣称产品功能增长。必须确保没有残留入口，也不能将任何未授权硬件输出引入 main。CI 完成前仅为 Draft，主线不变。
+## 核对范围
+本批清理以文件/项目引用、窗口入口和保留模块边界的源码核对为主；不再额外配置清理专用 CI。不得因删除旧展示层测试后计数减少而宣称产品功能增长，不能引入未经授权的硬件输出。首次提交已有的 Windows 检查结果保留在 PR 历史中，后续不以重复跑 CI 作为清理推进条件。合并仍单独审查 main 的变更范围。
