@@ -12,23 +12,35 @@
   <UserControl.Resources>
     <local:LabStepTypeDisplayConverter x:Key="StepTypeText"/>
     <HierarchicalDataTemplate DataType="{x:Type local:LabTreeRow}" ItemsSource="{Binding Children}">
-      <TextBlock Text="{Binding Caption}" FontSize="12.5" Margin="3,4"/>
+      <Border x:Name="StepRow" Background="Transparent" CornerRadius="5" Padding="8,7" Margin="1,2">
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="2.3*" MinWidth="155"/><ColumnDefinition Width="1.2*" MinWidth="90"/></Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Text="{Binding OrderLabel}" Foreground="{DynamicResource StudioMuted}" FontSize="11"/>
+          <TextBlock Grid.Column="1" Text="{Binding StepName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Grid.Column="2" Text="{Binding TypeLabel}" FontSize="12" Foreground="{DynamicResource StudioMuted}" TextTrimming="CharacterEllipsis"/>
+        </Grid>
+      </Border>
+      <HierarchicalDataTemplate.Triggers>
+        <DataTrigger Binding="{Binding IsPhase}" Value="True">
+          <Setter TargetName="StepRow" Property="Background" Value="{DynamicResource StudioLightBlue}"/>
+        </DataTrigger>
+      </HierarchicalDataTemplate.Triggers>
     </HierarchicalDataTemplate>
     
-    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#203249"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+    <Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource StudioText}"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
       
     
   </UserControl.Resources>
-  <Grid Margin="12">
+  <Grid Margin="12,10,12,10">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/><RowDefinition Height="150"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="*" MinHeight="280"/><RowDefinition Height="178"/><RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <DockPanel Grid.Row="0" LastChildFill="True" Margin="3,0,3,9">
       <TextBlock DockPanel.Dock="Left" Text="测试程序编辑" Style="{StaticResource AtPageTitle}" Margin="0,0,18,0"/>
       <Border DockPanel.Dock="Right" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1"
               CornerRadius="5" Padding="10,5">
-        <TextBlock Text="{Binding SourceLabel}" Foreground="{DynamicResource StudioMuted}" FontWeight="Bold" FontSize="11"/>
+        <TextBlock Text="测试程序 · 当前工程" Foreground="{DynamicResource StudioMuted}" FontWeight="Bold" FontSize="11"/>
       </Border>
       <StackPanel>
        <TextBlock Text="{Binding DocumentName}" Foreground="{DynamicResource StudioMuted}" FontSize="13"/>
@@ -75,7 +87,7 @@
             <DockPanel Margin="0,0,0,8">
               <TextBlock DockPanel.Dock="Right" Text="右键步骤查看更多操作"
                Style="{StaticResource AtHint}" VerticalAlignment="Center"/>
-              <TextBlock Text="程序步骤" Style="{StaticResource AtSectionTitle}"/>
+              <TextBlock Text="测试步骤" Style="{StaticResource AtSectionTitle}"/>
             </DockPanel>
             <WrapPanel>
               <TextBlock Text="步骤类型" VerticalAlignment="Center" Margin="0,0,7,0"/>
@@ -97,9 +109,16 @@
               </Menu>
             </WrapPanel>
           </StackPanel>
+          <Border DockPanel.Dock="Top" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="0,0,0,1" Padding="20,9,10,9">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="2.3*" MinWidth="155"/><ColumnDefinition Width="1.2*" MinWidth="90"/></Grid.ColumnDefinitions>
+              <TextBlock Text="序号" Grid.Column="0" Style="{StaticResource AtFieldLabel}" Margin="0"/>
+              <TextBlock Text="步骤名称" Grid.Column="1" Style="{StaticResource AtFieldLabel}" Margin="0"/>
+              <TextBlock Text="步骤类型" Grid.Column="2" Style="{StaticResource AtFieldLabel}" Margin="0"/>
+            </Grid>
+          </Border>
           <TreeView x:Name="ProgramTree" ItemsSource="{Binding Tree}"
                     SelectedItemChanged="ProgramTree_OnSelectedItemChanged" PreviewMouseRightButtonDown="ProgramTree_OnRightClick"
-                    BorderThickness="0" Padding="8,3">
+                    BorderThickness="0" Padding="8,3" Background="{DynamicResource StudioPanel}">
             <TreeView.ContextMenu>
               <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                 <MenuItem Header="插入新步骤" Command="{Binding InsertCommand}"/>
@@ -120,7 +139,7 @@
       <Border Grid.Column="2" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Padding="12">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
          <StackPanel>
-          <TextBlock Text="步骤设置" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
+          <TextBlock Text="步骤设置" Style="{StaticResource AtEditorHeading}" Margin="0,0,0,13"/>
           <TextBlock Text="步骤名称" Foreground="{DynamicResource StudioMuted}"/>
           <TextBox Text="{Binding SelectedName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
           <Button Content="更新步骤名称" Command="{Binding RenameCommand}" HorizontalAlignment="Left" Margin="0,0,0,15"/>
@@ -137,7 +156,7 @@
           <TextBox Text="{Binding ParameterName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8"/>
           <TextBlock Text="参数值" Foreground="{DynamicResource StudioMuted}"/>
           <TextBox Text="{Binding ParameterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
-          <Button Content="应用参数" Command="{Binding SetParameterCommand}" HorizontalAlignment="Left"/>
+          <Button Content="保存参数" Style="{StaticResource AtPrimaryButton}" Command="{Binding SetParameterCommand}" HorizontalAlignment="Left"/>
           <Separator Margin="0,14,0,10" Background="{DynamicResource StudioLine}"/>
           <TextBlock Text="控制器按键状态" FontWeight="SemiBold" Margin="0,0,0,7"/>
           <Button Content="刷新工程中的按键状态" Command="{Binding RefreshControllerStatesCommand}"
@@ -160,7 +179,7 @@
     <Border Grid.Row="3" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Margin="0,9,0,0">
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="9,5,9,5">
-          <TextBlock DockPanel.Dock="Left" Text="测试结果与执行记录" FontWeight="SemiBold"/>
+          <TextBlock DockPanel.Dock="Left" Text="执行结果与日志" FontWeight="SemiBold"/>
           <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}" FontWeight="SemiBold" Foreground="#35506B"/>
         </DockPanel>
         <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
