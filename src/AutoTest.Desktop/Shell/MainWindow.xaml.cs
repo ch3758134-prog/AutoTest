@@ -64,6 +64,13 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
+        if (_viewModel.SelectedResourceIsConfiguration &&
+            ((ICommand)_viewModel.OpenConfigurationCommand).CanExecute(null))
+        {
+            ((ICommand)_viewModel.OpenConfigurationCommand).Execute(null);
+            e.Handled = true;
+            return;
+        }
         if (_viewModel.SelectedResourceIsDbc &&
             ((ICommand)_viewModel.OpenDbcCommand).CanExecute(null))
         {

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using AutoTest.Desktop.Hardware;
+using AutoTest.Desktop.Configuration;
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
 using System.Globalization;
@@ -85,6 +86,20 @@ public sealed class MainWindowViewModel : BindableBase
             () => HasProject && !IsBusy);
         ImportWaveCommand = new DelegateCommand(async () => await ImportWaveAsync(),
             () => HasProject && !IsBusy);
+        CreateControllerConfigCommand = new DelegateCommand(
+            async () => await CreateConfigurationAsync(ProjectWorkspaceService.ControllerKind),
+            () => HasProject && !IsBusy);
+        CreateWaveConfigCommand = new DelegateCommand(
+            async () => await CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
+            () => HasProject && !IsBusy);
+        CreateFlashConfigCommand = new DelegateCommand(
+            async () => await CreateConfigurationAsync(ProjectWorkspaceService.FlashSettingsKind),
+            () => HasProject && !IsBusy);
+        CreateScanConfigCommand = new DelegateCommand(
+            async () => await CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind),
+            () => HasProject && !IsBusy);
+        OpenConfigurationCommand = new DelegateCommand(async () => await OpenSelectedConfigurationAsync(),
+            () => SelectedResourceIsConfiguration && !IsBusy);
         OpenDbcCommand = new DelegateCommand(async () => await OpenSelectedDbcAsync(),
             () => SelectedResourceIsDbc && !IsBusy);
         OpenTestProgramCommand = new DelegateCommand(async () => await OpenSelectedTestProgramAsync(),
@@ -328,6 +343,8 @@ public sealed class MainWindowViewModel : BindableBase
         ProjectWorkspaceService.DbcKind, StringComparison.OrdinalIgnoreCase);
     public bool SelectedResourceIsTestProgram => string.Equals(_selectedResource?.Asset?.Kind,
         ProjectWorkspaceService.TestProgramKind, StringComparison.OrdinalIgnoreCase);
+    public bool SelectedResourceIsConfiguration => _selectedResource?.Asset is { } asset &&
+        ProjectConfigurationCodec.IsConfiguration(asset.Kind);
     public string SelectedResourceTitle => _selectedResource?.Label ?? "";
     public string SelectedResourceDescription => _selectedResource?.Description ?? "";
     public string SelectedResourcePath => _selectedResource?.Asset?.RelativePath ?? "";
@@ -354,6 +371,11 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand ImportDbcCommand { get; }
     public DelegateCommand ImportFirmwareCommand { get; }
     public DelegateCommand ImportWaveCommand { get; }
+    public DelegateCommand CreateControllerConfigCommand { get; }
+    public DelegateCommand CreateWaveConfigCommand { get; }
+    public DelegateCommand CreateFlashConfigCommand { get; }
+    public DelegateCommand CreateScanConfigCommand { get; }
+    public DelegateCommand OpenConfigurationCommand { get; }
     public DelegateCommand OpenDbcCommand { get; }
     public DelegateCommand OpenTestProgramCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
@@ -406,6 +428,7 @@ public sealed class MainWindowViewModel : BindableBase
         RaisePropertyChanged(nameof(SelectedResourceIsAsset));
         RaisePropertyChanged(nameof(SelectedResourceIsDbc));
         RaisePropertyChanged(nameof(SelectedResourceIsTestProgram));
+        RaisePropertyChanged(nameof(SelectedResourceIsConfiguration));
         RaisePropertyChanged(nameof(SelectedResourceTitle));
         RaisePropertyChanged(nameof(SelectedResourceDescription));
         RaisePropertyChanged(nameof(SelectedResourcePath));
@@ -432,12 +455,18 @@ public sealed class MainWindowViewModel : BindableBase
              Icon: "▤", Empty: "尚未添加测试程序"),
             (Key: ProjectWorkspaceService.DbcKind, Title: "DBC 数据库",
              Icon: "▥", Empty: "尚未导入 DBC"),
-            (Key: "controller", Title: "控制器与按键配置",
+            (Key: ProjectWorkspaceService.ControllerKind, Title: "控制器与按键配置",
              Icon: "⚙", Empty: "尚无控制器配置"),
+            (Key: ProjectWorkspaceService.WaveSettingsKind, Title: "波形判定配置",
+             Icon: "⌁", Empty: "尚无波形判定配置"),
             (Key: ProjectWorkspaceService.WaveKind, Title: "波形证据",
-             Icon: "⌁", Empty: "尚无参考波形"),
+             Icon: "⌁", Empty: "尚无波形证据"),
+            (Key: ProjectWorkspaceService.FlashSettingsKind, Title: "烧录配置",
+             Icon: "◫", Empty: "尚无烧录配置"),
             (Key: ProjectWorkspaceService.FirmwareKind, Title: "固件资源",
-             Icon: "◫", Empty: "尚无固件资源")
+             Icon: "◫", Empty: "尚无固件资源"),
+            (Key: ProjectWorkspaceService.ScanSettingsKind, Title: "扫码匹配配置",
+             Icon: "▤", Empty: "尚无扫码匹配配置")
         };
         var assets = current.Definition.Assets;
         foreach (var category in groups)
@@ -447,8 +476,8 @@ public sealed class MainWindowViewModel : BindableBase
             var group = new ResourceTreeNode(category.Title + " (" + entries.Length + ")",
                 category.Icon,
                 category.Key == ProjectWorkspaceService.TestProgramKind
-                    ? "测试用例属于测试程序。编辑器将在后续阶段接入。"
-                    : "工程资源分类；空分类不产生磁盘资源。", category.Key);
+                    ? "测试程序内部管理测试阶段和步骤。"
+                    : "工程资源分类；通过资源菜单或右键创建，配置会写入工程文件。", category.Key);
             if (entries.Length == 0)
                 group.Children.Add(new ResourceTreeNode(category.Empty, "·",
                     "这是空分类提示，不是已保存的资源。", category.Key, isPlaceholder: true));
@@ -562,6 +591,45 @@ public sealed class MainWindowViewModel : BindableBase
         });
     }
 
+    private async Task CreateConfigurationAsync(string kind)
+    {
+        if (!HasProject) return;
+        var display = kind switch
+        {
+            ProjectWorkspaceService.ControllerKind => "控制器与按键配置",
+            ProjectWorkspaceService.WaveSettingsKind => "波形判定配置",
+            ProjectWorkspaceService.FlashSettingsKind => "烧录配置",
+            ProjectWorkspaceService.ScanSettingsKind => "扫码匹配配置",
+            _ => "工程配置"
+        };
+        var name = _fileDialogs.AskResourceName("新建" + display, "新建" + display);
+        if (name is null || !ConfirmCloseActiveEditor()) return;
+        await RunOperationAsync(async () =>
+        {
+            var asset = await _workspace.CreateConfigurationAsync(kind, name);
+            SelectAsset(asset.Id);
+            var opened = await _workspace.OpenConfigurationAsync(asset.Id);
+            var editor = new ConfigurationWorkbenchViewModel(_workspace, _fileDialogs, opened);
+            ActivateEditor("config|" + asset.Id, new ConfigurationWorkbenchView(editor),
+                display + " · " + name, editor.ConfirmClose);
+            StatusMessage = "已创建并打开" + display + "：" + name;
+        });
+    }
+
+    private async Task OpenSelectedConfigurationAsync()
+    {
+        if (!SelectedResourceIsConfiguration || _selectedResource?.Asset is not { } asset) return;
+        if (IsAlreadyOpen("config|" + asset.Id) || !ConfirmCloseActiveEditor()) return;
+        await RunOperationAsync(async () =>
+        {
+            var opened = await _workspace.OpenConfigurationAsync(asset.Id);
+            var editor = new ConfigurationWorkbenchViewModel(_workspace, _fileDialogs, opened);
+            ActivateEditor("config|" + asset.Id, new ConfigurationWorkbenchView(editor),
+                editor.TypeLabel + " · " + asset.Name, editor.ConfirmClose);
+            StatusMessage = "已打开工程配置：" + asset.Name;
+        });
+    }
+
     private async Task OpenSelectedTestProgramAsync()
     {
         if (!SelectedResourceIsTestProgram || _selectedResource?.Asset is not { } asset) return;
@@ -651,6 +719,11 @@ public sealed class MainWindowViewModel : BindableBase
         ImportDbcCommand?.RaiseCanExecuteChanged();
         ImportFirmwareCommand?.RaiseCanExecuteChanged();
         ImportWaveCommand?.RaiseCanExecuteChanged();
+        CreateControllerConfigCommand?.RaiseCanExecuteChanged();
+        CreateWaveConfigCommand?.RaiseCanExecuteChanged();
+        CreateFlashConfigCommand?.RaiseCanExecuteChanged();
+        CreateScanConfigCommand?.RaiseCanExecuteChanged();
+        OpenConfigurationCommand?.RaiseCanExecuteChanged();
         OpenDbcCommand?.RaiseCanExecuteChanged();
         OpenTestProgramCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();

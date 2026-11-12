@@ -38,6 +38,12 @@
             <MenuItem Header="导入固件…" Command="{Binding ImportFirmwareCommand}"/>
             <MenuItem Header="导入波形证据…" Command="{Binding ImportWaveCommand}"/>
             <Separator/>
+            <MenuItem Header="新建控制器与按键配置…" Command="{Binding CreateControllerConfigCommand}"/>
+            <MenuItem Header="新建波形判定配置…" Command="{Binding CreateWaveConfigCommand}"/>
+            <MenuItem Header="新建烧录配置…" Command="{Binding CreateFlashConfigCommand}"/>
+            <MenuItem Header="新建扫码匹配配置…" Command="{Binding CreateScanConfigCommand}"/>
+            <MenuItem Header="打开选中的配置…" Command="{Binding OpenConfigurationCommand}"/>
+            <Separator/>
             <MenuItem Header="重命名资源…" Command="{Binding RenameResourceCommand}" InputGestureText="F2"/>
             <MenuItem Header="移除资源引用…" Command="{Binding RemoveReferenceCommand}"/>
           </MenuItem>
@@ -175,6 +181,12 @@
                   <MenuItem Header="导入 DBC…" Command="{Binding ImportDbcCommand}"/>
                   <MenuItem Header="导入固件…" Command="{Binding ImportFirmwareCommand}"/>
                   <MenuItem Header="导入波形证据…" Command="{Binding ImportWaveCommand}"/>
+                  <Separator/>
+                  <MenuItem Header="新建控制器与按键配置…" Command="{Binding CreateControllerConfigCommand}"/>
+                  <MenuItem Header="新建波形判定配置…" Command="{Binding CreateWaveConfigCommand}"/>
+                  <MenuItem Header="新建烧录配置…" Command="{Binding CreateFlashConfigCommand}"/>
+                  <MenuItem Header="新建扫码匹配配置…" Command="{Binding CreateScanConfigCommand}"/>
+                  <MenuItem Header="打开选中的配置…" Command="{Binding OpenConfigurationCommand}"/>
                   <MenuItem Header="打开选中的 DBC…" Command="{Binding OpenDbcCommand}"/>
                   <MenuItem Header="打开选中的测试程序…" Command="{Binding OpenTestProgramCommand}"/>
                   <Separator/>
@@ -259,6 +271,19 @@
                     <Setter Property="Visibility" Value="Collapsed"/>
                     <Style.Triggers>
                       <DataTrigger Binding="{Binding SelectedResourceIsTestProgram}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Button.Style>
+              </Button>
+              <Button Content="打开配置编辑器" Command="{Binding OpenConfigurationCommand}"
+                      HorizontalAlignment="Left" Margin="0,0,0,14">
+                <Button.Style>
+                  <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding SelectedResourceIsConfiguration}" Value="True">
                         <Setter Property="Visibility" Value="Visible"/>
                       </DataTrigger>
                     </Style.Triggers>
