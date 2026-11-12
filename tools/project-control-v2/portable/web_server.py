@@ -2,7 +2,7 @@
 """Portable Project Control management server.
 
 Serve several explicitly registered local Git workspaces without importing the
-AutoTest demonstration data.  No Git checkout, push, merge, reset or cleanup.
+pilot-project data. No Git checkout, push, merge, reset or cleanup.
 All writes are local draft management records and require the session owner token.
 """
 from __future__ import annotations
