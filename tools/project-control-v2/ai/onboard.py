@@ -71,7 +71,7 @@ def main(argv=None):
     roles = json.loads((HERE / "roles.json").read_text(encoding="utf-8"))
     appointments = {}
     for project in projects["projects"]:
-        path = HERE.parents[0] / "appointments" / (project["id"] + ".json")
+        path = HERE / "appointments" / (project["id"] + ".json")
         if path.is_file():
             appointments[project["id"]] = json.loads(path.read_text(encoding="utf-8"))
     result = decide(projects, roles, appointments, project_id=args.project,
