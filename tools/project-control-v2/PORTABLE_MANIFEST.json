@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "4.6-owner-reviewed-delivery-candidate",
+  "version": "4.6.1-owner-review-and-evidence-scope-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -99,13 +99,15 @@
     "missing_artifact_remediation": "PROPOSED_NOT_AUTHORIZED",
     "legacy_discovery_v1": "READ_ONLY_NEEDS_REASSESSMENT",
     "full_web_workbench_evidence_integration": "LOCAL_CAS_RECORD_AND_PROPOSED_WBS_LINKS_NO_TASK_DISPATCH",
-    "real_agent_intake_e2e": "NOT_VERIFIED",
+    "real_agent_intake_e2e": "ROLEPLAY_ONLY_NOT_INDEPENDENT_SESSION",
     "context_remediation_ledger": "REVISIONED_LOCAL_CANDIDATE_WITH_WORK_LINKS",
-    "owner_first_delivery": "PRIVATE_LOCAL_STAGING_EXACT_VERSION_OWNER_REVIEW_CANDIDATE_ONLY",
+    "owner_first_delivery": "PRIVATE_LOCAL_AI_DRAFT_IMPORT_FULL_PREVIEW_EXACT_REVIEW_AND_INTERNAL_ACK",
     "owner_review_authority": "SEPARATE_LOCAL_TOKEN_NOT_VERIFIED_FORMAL_IDENTITY",
     "external_candidate_publication": "NOT_AUTOMATED",
-    "formal_human_approval": "EXTERNAL_CHANNEL_REQUIRED",
-    "delivery_end_to_end_windows": "NOT_VERIFIED"
+    "formal_human_approval": "EXTERNAL_VERIFIABLE_DECISION_STILL_REQUIRED",
+    "delivery_end_to_end_windows": "NOT_VERIFIED",
+    "evidence_change_propagation": "TOPIC_SCOPED_WITH_UNRELATED_WORK_PRESERVATION",
+    "delivery_core_local_tests": "15_EXACT_GIT_BLOB_TESTS_PASS_NOT_FULL_SUITE"
   },
   "separation": {
     "package_source": "Project Control system files",
