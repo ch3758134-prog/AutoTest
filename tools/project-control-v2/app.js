@@ -10,6 +10,11 @@ const a=(name)=>esc(name);
 const obj=id=>data.objects.find(x=>x.id===id);
 const issueCount=(id)=>data.assessment.issues.filter(x=>x.at===id).length;
 const workById=id=>data.plan.work.find(x=>x.id===id);
+const aiEntryUrl='https://github.com/ch3758134-prog/AutoTest/blob/management/project-control-redesign-20261111/AI_START_HERE.md';
+const aiEntryMessage=()=>['请自行读取以下 GitHub 工程项目管理系统统一 AI 入口：',aiEntryUrl,
+ '按入口中的规则自行读取角色、项目索引、有效工作依据，并据此明确当前项目管理/研发职责。',
+ '如果这个对话的身份或项目目标尚未确定，请你主动向我问一个必要的问题；不要让我编写角色提示词。',
+ '不要将自身默认为工程总协调，也不要把研究任务自动当成编码实施授权。'].join('\n\n');
 const statusOf=w=>data.assessment.work.find(x=>x.id===w.id)?.assessment || 'UNKNOWN';
 const phaseStatus=s=>{
  const found=(data?.control?.phase_reviews||[]).filter(r=>r.phase_id===s.id);
@@ -94,8 +99,8 @@ function reviews(){
  return html;
 }
 function handoff(){
- let html=heading('项目管理 / 协作交接','协作交接','你在 ChatGPT 网页端自行决定何时切换专业对话或触发本地 Codex；GitHub 负责共享任务背景和实际工作结果。系统不自动运行 Agent。');
- html+='<div class="hero"><div class="hero-main"><div class="eyebrow">目前可生成的交接材料</div><h2>把同一项工作交给不同对话</h2><p>交接文字只引用明确的计划候选、工程版本及当前未解决事项。该操作不会创建 GitHub Issue、自动调用模型或授权 Codex 开始修改源码。</p><div class="actions">'+btn('复制 G1 研究交接','data-handoff','w-g1-review','primary')+btn('查看全部工作','data-go','plan')+'</div></div><div class="hero-side"><h3>真实执行回执</h3><p>当前已记录 '+(data.control?.receipts?.length||0)+' 份本地执行回执。登记回执、核实证据、GitHub 共享和产品验收必须分别判断。</p></div></div>';
+ let html=heading('项目管理 / 协作交接','协作交接','你只需要让新 ChatGPT 对话读取 GitHub 统一入口。AI 先自行核对项目与角色；身份未明确时由它主动提问。你决定何时切换对话与触发 Codex，系统不运行后台 Agent。');
+ html+='<div class="hero"><div class="hero-main"><div class="eyebrow">目前可生成的交接材料</div><h2>把同一项工作交给不同对话</h2><p>交接文字只引用明确的计划候选、工程版本及当前未解决事项。该操作不会创建 GitHub Issue、自动调用模型或授权 Codex 开始修改源码。</p><div class="actions">'+btn('复制统一 AI 阅读入口','data-ai-entry','','primary')+btn('复制 G1 任务交接','data-handoff','w-g1-review')+btn('查看全部工作','data-go','plan')+'</div></div><div class="hero-side"><h3>真实执行回执</h3><p>当前已记录 '+(data.control?.receipts?.length||0)+' 份本地执行回执。登记回执、核实证据、GitHub 共享和产品验收必须分别判断。</p></div></div>';
  html+='<section class="section">'+sectionHead('工作交接入口')+'<div class="kanban"><div class="kanban-col"><h3>近期研究</h3>'+data.plan.work.filter(w=>w.horizon==='CURRENT').map(w=>'<div class="kanban-item" data-work="'+a(w.id)+'"><strong>'+a(w.title)+'</strong><small>可查看任务与复制交接说明</small></div>').join('')+'</div><div class="kanban-col"><h3>后续受控工作</h3>'+data.plan.work.filter(w=>w.horizon==='NEXT').map(w=>'<div class="kanban-item" data-work="'+a(w.id)+'"><strong>'+a(w.title)+'</strong><small>需要有效上游输入才能转入正式工作</small></div>').join('')+'</div><div class="kanban-col"><h3>更远期规划</h3>'+data.plan.work.filter(w=>w.horizon==='LATER').map(w=>'<div class="kanban-item" data-work="'+a(w.id)+'"><strong>'+a(w.title)+'</strong><small>尚未具备执行授权</small></div>').join('')+'</div></div></section>';
  html+='<section class="section panel"><h2>GitHub 当前事实来源</h2><p class="subtitle">当前工作区 HEAD：'+a(data.source.git_head||'未能读取')+'。浏览器展示的是本地当前文件，不保证已同步远端最新提交。新候选设计未把本地执行状态与 GitHub 缓存混同。</p></section>';
  return html;
@@ -168,8 +173,9 @@ async function refresh(){
  }catch(e){$('#main').innerHTML='<div class="empty"><h2>无法读取当前工程资料</h2><p>'+a(e.message)+'</p><p>请核对 Git 版本、工程快照和规划示例是否完整；不会为缺失的数据生成假的进度。</p></div>'}
 }
 document.addEventListener('click',async e=>{
- const b=e.target.closest('[data-go],[data-stage],[data-open-doc],[data-work],[data-filter],[data-handoff]');
+ const b=e.target.closest('[data-go],[data-stage],[data-open-doc],[data-work],[data-filter],[data-handoff],[data-ai-entry]');
  if(!b)return;
+ if(b.hasAttribute('data-ai-entry')){await copy(aiEntryMessage());return}
  if(b.dataset.go){navigate(b.dataset.go);return}
  if(b.dataset.stage){selectedStage=b.dataset.stage;navigate('process');return}
  if(b.dataset.openDoc){window.currentDoc=b.dataset.openDoc;navigate('document');return}
