@@ -41,12 +41,12 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void ScannerEntry_KeyDown(object sender, KeyEventArgs e)
+    private async void ScannerEntry_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key is not (Key.Enter or Key.Return)) return;
-        _viewModel.FinishScannerInput();
-        ScannerEntry.Clear();
         e.Handled = true;
+        ScannerEntry.Clear();
+        await _viewModel.FinishScannerInputAsync();
     }
 
     private void ResourceTree_SelectedItemChanged(

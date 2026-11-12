@@ -74,6 +74,8 @@ public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, b
             Recipes.GroupBy(x => x.RecipeId, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
             throw new ProjectDataException("SCAN_CONFIG_DUPLICATE", "扫码规则或配方编号不能重复。");
         if (!Published) return; // Drafts can be saved but may never select a production recipe.
+        if (!Rules.Any(r => r.Published))
+            throw new ProjectDataException("SCAN_RULE_MISSING", "发布前至少需要一条已发布的有效规则。");
         var rules = ToRules();
         var errors = rules.Validate();
         if (errors.Length > 0)

@@ -27,6 +27,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly HardwareConnectionService _hardware;
     private readonly KeyboardWedgeCapture _scanCapture;
+    private readonly ProjectScanMatcher _scanMatcher;
     private readonly CancellationTokenSource _scanStop = new();
     private readonly Task _scanReader;
     private string? _activeEditorProjectPath;
@@ -62,6 +63,7 @@ public sealed class MainWindowViewModel : BindableBase
         router.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
         router.SetAdmissionGate(() => !_hardwareBusy);
         _scanCapture = new KeyboardWedgeCapture(router);
+        _scanMatcher = new ProjectScanMatcher(_workspace);
         _scanReader = Task.Run(async () =>
         {
             try
@@ -253,12 +255,29 @@ public sealed class MainWindowViewModel : BindableBase
             if (result is { Accepted: false }) ScanStatus = "扫码拒绝：" + result.Code;
         }
     }
-    public void FinishScannerInput()
+    public async Task FinishScannerInputAsync()
     {
         var result = _scanCapture.CompleteScan();
-        ScanStatus = result.Accepted
-            ? "已采集：" + result.Event!.Scan.Text + "（尚未匹配配置）"
-            : "扫码拒绝：" + result.Code;
+        if (!result.Accepted || result.Event is null)
+        {
+            ScanStatus = "扫码拒绝：" + result.Code;
+            return;
+        }
+        ScanStatus = "已采集：" + result.Event.Scan.Text + "，正在匹配工程配置…";
+        try
+        {
+            var matched = await _scanMatcher.MatchAsync(result.Event);
+            ScanStatus = matched.Accepted
+                ? "匹配成功：" + matched.RecipeId + " · " + matched.Identity +
+                    "（仅匹配，未执行测试）"
+                : matched.Explanation;
+        }
+        catch (Exception error) when (error is ProjectDataException or IOException or
+                                      UnauthorizedAccessException or ArgumentException or
+                                      InvalidDataException or FormatException)
+        {
+            ScanStatus = "匹配拒绝：" + error.Message;
+        }
     }
     private async Task ToggleHardwareAsync()
     {
