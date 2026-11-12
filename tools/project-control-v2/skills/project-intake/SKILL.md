@@ -5,6 +5,8 @@ description: Discover and understand an existing or new project, including its p
 
 # Project intake and project context recovery
 
+Do not publish findings as GitHub issues or official handoffs before explaining the completed candidate, evidence quality, limitations and intended destination to the owner. Read portable/DELIVERY_REVIEW_PROTOCOL.md for any reviewable output. A discovered historical document is not automatically current, and an AI-authored report is not automatically a delivered project artifact.
+
 Use when receiving a project for the first time, continuing a previously managed project with incomplete context, or recovering from a large project change.
 
 1. Read START_HERE.md, portable/AI_WORK_MODES.md and portable/CONTEXT_DISCOVERY.md from the ProjectControl package. Confirm the exact target repository and the role assigned by the user; do not appoint yourself.
