@@ -168,6 +168,7 @@ public sealed class BenchWorkbenchViewModel : BindableBase
         DirectResult = "仅清除了界面勾选；未发送任何释放帧。若需释放真实按键，请执行「释放全部按键」。";
     }
     public ObservableCollection<WorkbenchMessage> Messages { get; } = new();
+    public ObservableCollection<string> OperationLines { get; } = new(); // Readable view of actual workbench events
 
     public ICommand ConnectCommand { get; }
     public ICommand RefreshCommand { get; }
@@ -681,7 +682,11 @@ public sealed class BenchWorkbenchViewModel : BindableBase
     private void Append(WorkbenchSeverity severity, string heading, string details,
         string? operationId = null, string? traceRef = null)
     {
-        Messages.Insert(0, new WorkbenchMessage(DateTimeOffset.Now, severity, heading, details, operationId, traceRef));
+        var occurredAt = DateTimeOffset.Now;
+        Messages.Insert(0, new WorkbenchMessage(occurredAt, severity, heading, details, operationId, traceRef));
         if (Messages.Count > 200) Messages.RemoveAt(Messages.Count - 1);
+        // Exactly the same real operation evidence, formatted for the lower IDE log pane.
+        OperationLines.Insert(0, $"{occurredAt:HH:mm:ss.fff}  |  {heading}  |  {details}");
+        if (OperationLines.Count > 500) OperationLines.RemoveAt(OperationLines.Count - 1);
     }
 }
