@@ -1,5 +1,7 @@
 # Codex｜远程任务发现与本地空目录执行协议（候选 V1）
 
+> **本文件仅用于原 AutoTest/Project Control 试点任务。** 将管理系统移植到其他目标 GitHub 项目时，Codex 应优先读取**目标仓库**的 `PROJECT_START_HERE.md` 和 `.project-control/tasks.json`；通用结构见 `tools/project-control-v2/portable/TASK_CONTRACT.md`。
+
 目标：用户主动打开 Codex，指定一个空目录，Codex 通过已绑定的 GitHub 管理仓库发现自己应执行的任务，核对后直接准备本地源码并工作。
 
 ## 关键区别
