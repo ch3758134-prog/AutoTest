@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
@@ -335,5 +336,6 @@ public sealed class TestEditorViewModel : BindableBase
     private static bool IsEditorError(Exception e) =>
         e is IOException or UnauthorizedAccessException or ProjectDataException or
         InvalidOperationException or InvalidDataException or FormatException or
-        ArgumentException or KeyNotFoundException or NotSupportedException;
+        ArgumentException or KeyNotFoundException or NotSupportedException or
+        JsonException or OverflowException;
 }

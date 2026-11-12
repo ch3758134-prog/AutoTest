@@ -345,6 +345,7 @@ public sealed class MainWindowViewModel : BindableBase
         try { await operation(); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or
                                      InvalidDataException or FormatException or NotSupportedException or
+                                     JsonException or OverflowException or
                                      AutoTest.Projects.Project.ProjectDataException)
         {
             StatusMessage = "操作失败：" + e.Message;
