@@ -10,6 +10,10 @@ python tools/project-control-v2/portable/export_package.py --out "ProjectControl
 
 其内容只有 `PORTABLE_MANIFEST.json` 列出的通用系统文件及逐文件 SHA-256 校验单；不会打包 AutoTest 专用 `sources/`、`workspace/`、旧 `app.js`、Git 元数据和本地日志。上传/解压文件夹后，新的 ChatGPT 工程协调 AI 从 `START_HERE.md` 启动。
 
+## GitHub 协作
+
+当管理 AI 需要从新建/接管推进到向 Codex 正式交付任务时，先读取 [REMOTE_HANDOFF.md](REMOTE_HANDOFF.md)。其中规定：先记录独立人类授权、再做任务发布预检、用 GitHub Contents 当前 blob SHA 受控写入、确认目标仓库当前 HEAD，然后让 Codex 在本地执行。其 PR 成果需要按最新 Head/CI/变更范围核对，不能把本地管理界面保存视为远端已发布。
+
 ## 使用定位
 
 管理 AI 在 ChatGPT 网页端首先读取本文件夹的 `START_HERE.md`，用户同时提供一个**目标 GitHub 仓库地址**。管理 AI 按 `portable/INITIALIZATION_PROTOCOL.md` 研究目标仓库，建立或接管**目标仓库自己的** `.project-control/`，不把 AutoTest 的产品资料复制过去。
