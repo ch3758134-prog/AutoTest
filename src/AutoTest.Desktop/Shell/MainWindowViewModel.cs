@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
+using AutoTest.Desktop.Dbc;
 using AutoTest.Projects.Resources;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -14,23 +15,27 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly NewProjectDialogService _newDialog;
     private readonly ProjectFileDialogService _fileDialogs;
+    private readonly DbcWorkbenchWindowService _dbcWindows;
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
     private ResourceTreeNode? _selectedResource;
 
     public MainWindowViewModel(
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
-        ProjectFileDialogService fileDialogs)
+        ProjectFileDialogService fileDialogs, DbcWorkbenchWindowService dbcWindows)
     {
         _workspace = workspace;
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
+        _dbcWindows = dbcWindows;
         NewProjectCommand = new DelegateCommand(OpenNewProject, () => !IsBusy);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
             () => HasProject && !IsBusy);
         ImportDbcCommand = new DelegateCommand(async () => await ImportDbcAsync(),
             () => HasProject && !IsBusy);
+        OpenDbcCommand = new DelegateCommand(async () => await OpenSelectedDbcAsync(),
+            () => SelectedResourceIsDbc && !IsBusy);
         RenameResourceCommand = new DelegateCommand(async () => await RenameResourceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
@@ -57,6 +62,8 @@ public sealed class MainWindowViewModel : BindableBase
     public int AssetCount => _workspace.Current?.Definition.Assets.Length ?? 0;
     public bool HasSelectedResource => _selectedResource is not null && HasProject;
     public bool SelectedResourceIsAsset => _selectedResource?.Asset is not null;
+    public bool SelectedResourceIsDbc => string.Equals(_selectedResource?.Asset?.Kind,
+        ProjectWorkspaceService.DbcKind, StringComparison.OrdinalIgnoreCase);
     public string SelectedResourceTitle => _selectedResource?.Label ?? "";
     public string SelectedResourceDescription => _selectedResource?.Description ?? "";
     public string SelectedResourcePath => _selectedResource?.Asset?.RelativePath ?? "";
@@ -81,6 +88,7 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenProjectCommand { get; }
     public DelegateCommand NewTestProgramCommand { get; }
     public DelegateCommand ImportDbcCommand { get; }
+    public DelegateCommand OpenDbcCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
     public DelegateCommand RemoveReferenceCommand { get; }
 
@@ -97,6 +105,7 @@ public sealed class MainWindowViewModel : BindableBase
     {
         RaisePropertyChanged(nameof(HasSelectedResource));
         RaisePropertyChanged(nameof(SelectedResourceIsAsset));
+        RaisePropertyChanged(nameof(SelectedResourceIsDbc));
         RaisePropertyChanged(nameof(SelectedResourceTitle));
         RaisePropertyChanged(nameof(SelectedResourceDescription));
         RaisePropertyChanged(nameof(SelectedResourcePath));
@@ -217,6 +226,17 @@ public sealed class MainWindowViewModel : BindableBase
         });
     }
 
+    private async Task OpenSelectedDbcAsync()
+    {
+        if (!SelectedResourceIsDbc || _selectedResource?.Asset is not { } asset) return;
+        await RunOperationAsync(async () =>
+        {
+            var opened = await _workspace.OpenDbcEditorAsync(asset.Id);
+            _dbcWindows.Show(opened);
+            StatusMessage = "已打开 DBC：" + asset.Name;
+        });
+    }
+
     private async Task RenameResourceAsync()
     {
         var asset = _selectedResource?.Asset;
@@ -270,6 +290,7 @@ public sealed class MainWindowViewModel : BindableBase
         OpenProjectCommand?.RaiseCanExecuteChanged();
         NewTestProgramCommand?.RaiseCanExecuteChanged();
         ImportDbcCommand?.RaiseCanExecuteChanged();
+        OpenDbcCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();
         RemoveReferenceCommand?.RaiseCanExecuteChanged();
     }

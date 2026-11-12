@@ -234,8 +234,8 @@ public sealed class ProjectWorkspaceService
         var source = Path.GetFullPath(sourcePath);
         var info = new FileInfo(source);
         if (!info.Exists) throw new FileNotFoundException("找不到所选 DBC 文件。", source);
-        if (info.Length > 32 * 1024 * 1024)
-            throw new InvalidDataException("DBC 文件超过当前 32 MB 导入上限。");
+        if (info.Length > 4 * 1024 * 1024)
+            throw new InvalidDataException("现有 DBC 工作台仅支持打开最大 4 MB 的文件。请先精简或拆分 DBC。");
         var bytes = await File.ReadAllBytesAsync(source, ct);
         var name = Path.GetFileNameWithoutExtension(source);
         return await AddAssetAsync(DbcKind, name, ".dbc", bytes, ct);

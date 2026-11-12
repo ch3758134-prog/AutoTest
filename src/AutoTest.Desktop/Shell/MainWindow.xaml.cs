@@ -23,6 +23,15 @@ public partial class MainWindow : Window
         _viewModel.SelectResource(e.NewValue as ResourceTreeNode);
     }
 
+    private void ResourceTree_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_viewModel.OpenDbcCommand.CanExecute())
+        {
+            _viewModel.OpenDbcCommand.Execute();
+            e.Handled = true;
+        }
+    }
+
     private void ResourceTree_RightClick(object sender, MouseButtonEventArgs e)
     {
         DependencyObject? node = e.OriginalSource as DependencyObject;

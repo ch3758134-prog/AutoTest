@@ -31,6 +31,7 @@
             <MenuItem Header="打开工程…" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O"/>
           </MenuItem>
           <MenuItem Header="资源(_R)">
+            <MenuItem Header="打开选中的 DBC…" Command="{Binding OpenDbcCommand}"/>
             <MenuItem Header="新建测试程序…" Command="{Binding NewTestProgramCommand}"/>
             <MenuItem Header="导入 DBC…" Command="{Binding ImportDbcCommand}"/>
             <Separator/>
@@ -59,6 +60,8 @@
                   Style="{StaticResource AtButton}" ToolTip="创建真实空 TEST 文档并加入工程资源"/>
           <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"
                   Style="{StaticResource AtButton}" ToolTip="把所选 DBC 复制到当前工程并登记资源"/>
+          <Button Content="打开 DBC" Command="{Binding OpenDbcCommand}"
+                  Style="{StaticResource AtButton}" ToolTip="打开选中的 DBC 工作台"/>
         </StackPanel>
       </DockPanel>
     </Border>
@@ -105,7 +108,8 @@
                       VirtualizingStackPanel.VirtualizationMode="Recycling"
                       ScrollViewer.CanContentScroll="True"
                       SelectedItemChanged="ResourceTree_SelectedItemChanged"
-                      PreviewMouseRightButtonDown="ResourceTree_RightClick">
+                      PreviewMouseRightButtonDown="ResourceTree_RightClick"
+                      MouseDoubleClick="ResourceTree_DoubleClick">
               <!-- Override Windows theme selection brushes with AutoTest light theme. -->
               <TreeView.Resources>
                 <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"
@@ -139,6 +143,7 @@
                 <ContextMenu DataContext="{Binding PlacementTarget.Tag,RelativeSource={RelativeSource Self}}">
                   <MenuItem Header="新建测试程序…" Command="{Binding NewTestProgramCommand}"/>
                   <MenuItem Header="导入 DBC…" Command="{Binding ImportDbcCommand}"/>
+                  <MenuItem Header="打开选中的 DBC…" Command="{Binding OpenDbcCommand}"/>
                   <Separator/>
                   <MenuItem Header="重命名资源…" Command="{Binding RenameResourceCommand}"/>
                   <MenuItem Header="移除引用（保留磁盘文件）" Command="{Binding RemoveReferenceCommand}"/>
@@ -214,6 +219,19 @@
                          Foreground="{StaticResource Subtle}" Margin="0,0,0,7"/>
               <TextBlock Text="{Binding SelectedResourceRevision,StringFormat='修订版本：{0}'}"
                          Foreground="{StaticResource Subtle}" Margin="0,0,0,15"/>
+              <Button Content="打开 DBC 工作台" Command="{Binding OpenDbcCommand}"
+                      HorizontalAlignment="Left" Margin="0,0,0,14">
+                <Button.Style>
+                  <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding SelectedResourceIsDbc}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Button.Style>
+              </Button>
               <StackPanel Orientation="Horizontal">
                 <Button Content="重命名" Command="{Binding RenameResourceCommand}"/>
                 <Button Content="移除引用" Command="{Binding RemoveReferenceCommand}"
