@@ -5,6 +5,7 @@ using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Dbc;
 using AutoTest.Desktop.Testing;
 using System.Text.Json;
+using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
 using Prism.Commands;
 using Prism.Mvvm;

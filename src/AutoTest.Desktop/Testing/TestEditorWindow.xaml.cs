@@ -50,9 +50,9 @@ public partial class TestEditorWindow : Window
     private void StepsTree_DoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject) is not null &&
-            _viewModel.CanEditSelectedStep)
+            _viewModel.EditParametersCommand.CanExecute())
         {
-            _viewModel.EditParameters();
+            _viewModel.EditParametersCommand.Execute();
             e.Handled = true;
         }
     }
