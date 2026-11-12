@@ -8,6 +8,7 @@ All writes are local draft management records and require the session owner toke
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 from receipt_evidence import assess as assess_receipt, ReceiptError
 from remote_sync import inspect as inspect_remote, SyncError
@@ -84,6 +85,32 @@ def load_json(file):
     if not isinstance(data, dict):
         raise ManagementError("invalid management JSON: " + file.name)
     return data
+
+
+@contextmanager
+def manager_file_lock(root):
+    """Cooperative cross-process lock stored in Git metadata, not tracked files.
+
+    A stale lock is never silently deleted; a human inspects the old process.
+    This is not protection from processes that ignore the protocol.
+    """
+    raw = git(root, "rev-parse", "--git-path", "project-control/management.lock")
+    path = Path(raw)
+    if not path.is_absolute():
+        path = Path(root) / path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise ManagementError("project management is locked by another process; no overwrite") from exc
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write("pid=" + str(os.getpid()) + " at=" + stamp() + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        yield
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def empty_management(project_id):
@@ -236,9 +263,13 @@ class Target:
         revision = payload.get("expected_revision")
         if type(revision) is not int:
             raise ManagementError("integer expected_revision required")
-        with self.lock:
+        with self.lock, manager_file_lock(self.root):
             self.check_identity()
-            record = load_json(self.data_path)
+            original_bytes = self.data_path.read_bytes()
+            try:
+                record = json.loads(original_bytes.decode("utf-8"))
+            except (ValueError, UnicodeDecodeError) as exc:
+                raise ManagementError("unreadable management record") from exc
             self.check_record(record)
             if revision != record["revision"]:
                 raise ManagementError("stale revision; refresh and review current changes")
@@ -359,6 +390,8 @@ class Target:
                     os.fsync(stream.fileno())
                 if self.data_path.is_symlink():
                     raise ManagementError("record unexpectedly changed to symlink")
+                if self.data_path.read_bytes() != original_bytes:
+                    raise ManagementError("management file was edited externally; refresh before saving")
                 os.replace(tmp, self.data_path)
             finally:
                 tmp.unlink(missing_ok=True)
