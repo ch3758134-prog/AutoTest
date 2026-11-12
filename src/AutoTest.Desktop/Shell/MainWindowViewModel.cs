@@ -86,7 +86,10 @@ public sealed class MainWindowViewModel : BindableBase
 
     public void SelectResource(ResourceTreeNode? item)
     {
+        if (ReferenceEquals(_selectedResource, item)) return;
+        if (_selectedResource is not null) _selectedResource.IsSelected = false;
         _selectedResource = item;
+        if (item is not null) item.IsSelected = true;
         RaiseSelectedResourceChanges();
     }
 
@@ -158,6 +161,7 @@ public sealed class MainWindowViewModel : BindableBase
         {
             _selectedResource = root.Children.SelectMany(x => x.Children)
                 .FirstOrDefault(x => x.Asset?.Id == id);
+            if (_selectedResource is not null) _selectedResource.IsSelected = true;
         }
         RaiseSelectedResourceChanges();
     }
@@ -253,7 +257,10 @@ public sealed class MainWindowViewModel : BindableBase
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or
                                      InvalidDataException or FormatException or NotSupportedException or
                                      AutoTest.Projects.Project.ProjectDataException)
-        { StatusMessage = "操作失败：" + e.Message; }
+        {
+            StatusMessage = "操作失败：" + e.Message;
+            _fileDialogs.ShowError(e.Message);
+        }
         finally { IsBusy = false; }
     }
 

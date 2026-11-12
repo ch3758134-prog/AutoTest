@@ -45,7 +45,7 @@
     <Border Grid.Row="1" Background="{StaticResource Panel}"
             BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
       <DockPanel Margin="12,0,13,0" LastChildFill="True">
-        <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount,StringFormat=工程资源 {0} 项}"
+        <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount,StringFormat='工程资源 {0} 项'}"
                    FontSize="11" Foreground="{StaticResource Subtle}"
                    VerticalAlignment="Center" Margin="0,0,0,0"/>
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
@@ -76,7 +76,7 @@
             <DockPanel LastChildFill="False">
               <TextBlock DockPanel.Dock="Left" Text="工程资源" FontSize="{StaticResource SectionTitleSize}"
                          FontWeight="SemiBold" VerticalAlignment="Center"/>
-              <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount,StringFormat={}{0} 项}"
+              <TextBlock DockPanel.Dock="Right" Text="{Binding AssetCount,StringFormat='{0} 项'}"
                          FontSize="11" Foreground="{StaticResource Subtle}"
                          VerticalAlignment="Center"/>
             </DockPanel>
@@ -101,6 +101,9 @@
                       Tag="{Binding}" BorderThickness="0"
                       Margin="0,3" ScrollViewer.VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding HasProject,Converter={StaticResource BoolToVisibility}}"
+                      VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
                       SelectedItemChanged="ResourceTree_SelectedItemChanged"
                       PreviewMouseRightButtonDown="ResourceTree_RightClick">
               <TreeView.ItemTemplate>
@@ -116,6 +119,7 @@
               <TreeView.ItemContainerStyle>
                 <Style TargetType="TreeViewItem">
                   <Setter Property="IsExpanded" Value="True"/>
+                  <Setter Property="IsSelected" Value="{Binding IsSelected,Mode=TwoWay}"/>
                   <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                   <Setter Property="Padding" Value="2,5"/>
                 </Style>
@@ -195,9 +199,9 @@
                          Margin="0,0,0,7"/>
               <TextBlock Text="{Binding SelectedResourcePath}" TextWrapping="Wrap"
                          Margin="0,0,0,15"/>
-              <TextBlock Text="{Binding SelectedResourceKind,StringFormat=资源类型：{0}}"
+              <TextBlock Text="{Binding SelectedResourceKind,StringFormat='资源类型：{0}'}"
                          Foreground="{StaticResource Subtle}" Margin="0,0,0,7"/>
-              <TextBlock Text="{Binding SelectedResourceRevision,StringFormat=修订版本：{0}}"
+              <TextBlock Text="{Binding SelectedResourceRevision,StringFormat='修订版本：{0}'}"
                          Foreground="{StaticResource Subtle}" Margin="0,0,0,15"/>
               <StackPanel Orientation="Horizontal">
                 <Button Content="重命名" Command="{Binding RenameResourceCommand}"/>
@@ -229,7 +233,7 @@
             <TextBlock Text="工程清单路径" Foreground="{StaticResource Subtle}" Margin="0,0,0,6"/>
             <TextBlock Text="{Binding CurrentProjectPath}" TextWrapping="Wrap"
                        FontSize="12" Margin="0,0,0,16"/>
-            <TextBlock Text="{Binding AssetCount,StringFormat=已登记资源：{0} 项}"
+            <TextBlock Text="{Binding AssetCount,StringFormat='已登记资源：{0} 项'}"
                        Margin="0,0,0,17"/>
             <Border Background="{StaticResource MutedSurface}" CornerRadius="4"
                     Padding="12,11" MaxWidth="700" HorizontalAlignment="Left">

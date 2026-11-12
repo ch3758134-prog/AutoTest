@@ -41,6 +41,15 @@ public sealed class ProjectFileDialogService
         return dialog.ShowDialog() == true ? dialog.ResourceName : null;
     }
 
+    public void ShowError(string message)
+    {
+        var owner = Owner;
+        if (owner is not null)
+            MessageBox.Show(owner, message, "工程操作未完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+        else
+            MessageBox.Show(message, "工程操作未完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
     public bool ConfirmRemoveReference(string name)
     {
         var result = MessageBox.Show(Owner,
