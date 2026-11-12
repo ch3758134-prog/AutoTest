@@ -143,6 +143,11 @@ class IndependentPortableWorkflowTests(unittest.TestCase):
             record=target.model()["management"]["receipts"][0]
             self.assertEqual(record["git_assessment"],"LOCAL_COMMIT_SCOPE_VERIFIED")
             self.assertNotEqual(record["review_status"],"ACCEPTED")
+            # A Web-managed candidate is a real local modification. The manager
+            # must review and commit it before preparing the remote PR task
+            # transition, rather than silently ignoring a dirty source tree.
+            git(manager,"add",".project-control/management.json")
+            git(manager,"commit","-m","record reviewed candidate receipt")
             pr={"number":1,"url":"https://github.com/example-org/target-project/pull/1",
                 "head_repo_full_name":"example-org/target-project",
                 "base":"main","head":"feature/impl-001","head_sha":candidate_sha,
