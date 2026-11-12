@@ -182,17 +182,19 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
         if (mode == TestReadMode.Latest) return Latest(target, maxAge);
         if (!_hardware.IsConnected)
             return new(TestSignalStatus.Disconnected, null, "Main controller disconnected");
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        wait.CancelAfter(timeout);
         try
         {
-            await foreach (var sample in ObserveAsync(target, ct).WithCancellation(ct))
-            {
-                if (sample.Status != TestSignalStatus.Valid) return sample;
+            await foreach (var sample in ObserveAsync(target, wait.Token).WithCancellation(wait.Token))
                 return sample;
-            }
             return new(TestSignalStatus.Disconnected, null, "Signal stream ended");
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
-        return new(TestSignalStatus.Timeout, null, "No next signal frame");
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return new(TestSignalStatus.Timeout, null, "No next signal frame within timeout");
+        }
+        throw new InvalidOperationException("Unreachable observation state");
     }
 
     public async IAsyncEnumerable<TestSignalResult> ObserveAsync(TestTargetMapping target,

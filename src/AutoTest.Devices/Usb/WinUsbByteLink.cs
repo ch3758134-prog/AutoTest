@@ -71,6 +71,22 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    public void AuthorizePhysicalTestRun(string fingerprint, string typedConfirmation,
+        IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Physical run requires an existing connected USB session.");
+            _fence.AuthorizePhysicalRun(fingerprint, typedConfirmation, allowedCan, allowIgn, _epoch);
+        }
+    }
+
+    public void RevokePhysicalTestRun()
+    {
+        lock (_sync) _fence.RevokePhysicalRun();
+    }
+
     public ValueTask OpenAsync(CancellationToken ct)
         => new(Task.Run(() => OpenCore(ct), ct));
 

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 namespace AutoTest.Devices.Usb;
 
 /// <summary>Transport-level fail-closed guard. It applies even when a caller bypasses the debug UI
@@ -8,6 +9,56 @@ public sealed class PhysicalCommandFence
     private byte[]? _singleCanPayload;
     private DateTimeOffset _canExpiry;
     private long _authorizedConnection;
+    private HashSet<(byte Port, bool Extended, uint Id)>? _runCan;
+    private bool _runIgn;
+    private int _remainingWrites;
+    private DateTimeOffset _runExpiry;
+    private long _runGeneration;
+    private string? _runFingerprint;
+
+    /// <summary>
+    /// One deliberate physical-run authorization. Limited to the exact CAN arbitration
+    /// IDs chosen at preparation, a single live USB generation and a bounded duration.
+    /// No implicit approval by a software configuration or a CAN lease.
+    /// </summary>
+    public void AuthorizePhysicalRun(string fingerprint, string typedConfirmation,
+        IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan,
+        bool allowIgn, long generation, int maxWrites = 1000)
+    {
+        if (string.IsNullOrWhiteSpace(fingerprint) || fingerprint.Length != 64 ||
+            !fingerprint.All(Uri.IsHexDigit) ||
+            typedConfirmation != "AUTHORIZE TEST RUN " + fingerprint)
+            throw new UnauthorizedAccessException("Exact plan SHA256 consent is required.");
+        if (generation <= 0 || maxWrites is < 1 or > 10000)
+            throw new ArgumentOutOfRangeException(nameof(maxWrites));
+        var entries = allowedCan.ToHashSet();
+        if (entries.Any(x => x.Port > 1 || x.Id > (x.Extended ? 0x1FFFFFFFu : 0x7FFu)))
+            throw new ArgumentException("Invalid allowed CAN frame.");
+        lock (_sync)
+        {
+            if (_runFingerprint is not null)
+                throw new InvalidOperationException("Another physical run already authorized.");
+            _runCan = entries;
+            _runIgn = allowIgn;
+            _remainingWrites = maxWrites;
+            _runExpiry = DateTimeOffset.UtcNow.AddMinutes(10);
+            _runGeneration = generation;
+            _runFingerprint = fingerprint;
+        }
+    }
+
+    public void RevokePhysicalRun()
+    {
+        lock (_sync)
+        {
+            _runCan = null;
+            _runIgn = false;
+            _runGeneration = 0;
+            _runExpiry = default;
+            _runFingerprint = null;
+            _remainingWrites = 0;
+        }
+    }
 
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is 0xF0 or 0xF1 or 0x11 or 0x13 or 0x15 or 0x17 or 0x1F);
@@ -48,11 +99,36 @@ public sealed class PhysicalCommandFence
                 return;
             }
         }
+        lock (_sync)
+        {
+            if (_runFingerprint is not null && _runCan is not null &&
+                _runGeneration == connectionGeneration &&
+                DateTimeOffset.UtcNow < _runExpiry && _remainingWrites > 0)
+            {
+                bool allowed = false;
+                if (request.Command == MainControllerCodec.CanSend && request.Payload.Length == 15 &&
+                    request.Payload[0] <= 1 && request.Payload[1] <= 1 &&
+                    request.Payload[6] <= 8)
+                {
+                    uint id = BinaryPrimitives.ReadUInt32LittleEndian(request.Payload.AsSpan(2, 4));
+                    allowed = _runCan.Contains((request.Payload[0], request.Payload[1] == 1, id));
+                }
+                else if (request.Command == MainControllerCodec.SetIgn &&
+                    request.Payload.Length == 1 && request.Payload[0] <= 1)
+                    allowed = _runIgn;
+                if (allowed) { _remainingWrites--; return; }
+            }
+        }
         throw new UnauthorizedAccessException($"USB command 0x{request.Command:X2} is physically blocked by default.");
     }
 
     public void Reset()
     {
-        lock (_sync) { _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default; }
+        lock (_sync)
+        {
+            _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
+            _runCan = null; _runIgn = false; _remainingWrites = 0;
+            _runExpiry = default; _runGeneration = 0; _runFingerprint = null;
+        }
     }
 }

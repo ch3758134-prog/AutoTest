@@ -25,6 +25,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;
+    private bool _testRunApproved;
+    private string? _approvedPlan;
 
     private void Record(string text) =>
         EvidenceRecorded?.Invoke(DateTimeOffset.Now.ToString("HH:mm:ss.fff") + "  " + text);
@@ -121,11 +123,83 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
+    /// <summary>Explicit operator approval for a pinned run; never issued on USB connect.</summary>
+    public async Task AuthorizeTestRunAsync(string fingerprint, string confirmation,
+        IReadOnlyCollection<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn,
+        CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_testRunApproved || _usb?.State != UsbSessionState.Connected || _link is null)
+                throw new InvalidOperationException("Test run requires an idle connected session.");
+            _link.AuthorizePhysicalTestRun(fingerprint, confirmation, allowedCan, allowIgn);
+            _testRunApproved = true;
+            _approvedPlan = fingerprint;
+            Record("已人工批准物理测试运行 SHA=" + fingerprint + "，设备会话内有效。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task RevokeTestRunAsync()
+    {
+        await _lifecycle.WaitAsync();
+        try
+        {
+            _link?.RevokePhysicalTestRun();
+            _testRunApproved = false;
+            _approvedPlan = null;
+            Record("物理测试运行授权已撤销。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Only a run with a previous explicit typed operator authorization can write.</summary>
+    public async Task SendTestCanAsync(CanFrame frame, string fingerprint,
+        CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!_testRunApproved || _approvedPlan != fingerprint ||
+                _usb?.State != UsbSessionState.Connected)
+                throw new UnauthorizedAccessException("No live approved test plan.");
+            var payload = CanFrameCodec.ToUsbPayload(frame,
+                new BusRoleMap(default, DutPort: 1, KeypadPort: 0));
+            await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
+                TimeSpan.FromSeconds(3), ct);
+            Record("测试 CAN 写入设备 ACK：CAN" + payload[0] + " 0x" +
+                frame.Id.ToString("X") + "；尚不能证明 DUT 已响应。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SendTestIgnAsync(bool on, string fingerprint,
+        CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!_testRunApproved || _approvedPlan != fingerprint ||
+                _usb?.State != UsbSessionState.Connected)
+                throw new UnauthorizedAccessException("No live approved test plan.");
+            await _usb.RequestAsync(MainControllerCodec.SetIgn,
+                new byte[] { on ? (byte)1 : (byte)0 },
+                TimeSpan.FromSeconds(3), ct);
+            Record("测试 IGN " + (on ? "ON" : "OFF") +
+                " 设备 ACK；实际 ECU 电气状态须另行观测。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
+            _link?.RevokePhysicalTestRun();
+            _testRunApproved = false;
+            _approvedPlan = null;
             _monitorStop?.Cancel();
             if (_bridge is not null) await _bridge.DisposeAsync();
             _bridge = null;
