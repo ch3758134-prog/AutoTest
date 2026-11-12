@@ -17,6 +17,13 @@
 | GitHub 多仓库支持与安全写入 | 已提供登记项目的显式只读 `ls-remote` 检查与候选 Codex 回执复核 | **远端 PR 发布/接收、跨机器同步和 CAS 冲突治理未完成** |
 | 测试与验证 | 新增跨项目回执、Git 文件核验、远端只读版本检查、写入锁、项目隔离及 HTTP 授权回归 | 未提供实际 Windows + 真实新/旧项目全链路验收 |
 
+## 最近推进的 GitHub 任务交接候选
+
+- `portable/task_publication.py`：读取本地已核对目标 Git 快照，对任务设计、独立人类批准、任务唯一性、来源 SHA 与文件范围作只读预检，并生成带原文件 blob SHA 的候选 GitHub Contents 更新计划；真正远端发布需要管理 AI 的 GitHub 写连接及最新文件并发核对。
+- `portable/pr_evidence.py`：接受通过 GitHub 连接取得的 PR 元数据，检查目标仓库、分支和候选提交是否与 Codex 回执相符；该检查**不等于 PR 内容审查、CI 验收或项目 Gate**。
+- `portable/REMOTE_HANDOFF.md`：管理 AI 主动读取的完整任务发布、Codex 领取及远端 PR 复核协议。
+- 仍缺少实际跨机器 GitHub 写入/PR 端到端验证以及可靠 Windows 工作区回收。要避免把受控协作的文本约束当成系统级权限。
+
 ## 分发包边界
 
 `portable/export_package.py` 依据清单只打包通用入口、初始化/任务工具及 Web 服务，明确排除 AutoTest 试点数据。导出包不带完整源码仓库历史，也不代表目标项目被创建、GitHub 已同步或正式审批已通过。实际分享时仍需将目标仓库地址作为单独输入。
