@@ -29,7 +29,7 @@
 通用包中的 \`portable/task_publication.py\` 在有目标仓库本地干净检出时可以执行只读预检：
 
 \`\`\`powershell
-python portable/task_publication.py --target "D:\Projects\TargetProject" --task-id "IMPL-001"
+python portable/task_publication.py --target "<用户指定的目标项目目录>" --task-id "IMPL-001"
 \`\`\`
 
 它不执行写入，而是生成 \`project-control-task-publication-plan/1\`，包含 \`source_commit\`、\`preflight_branch_head\`、\`expected_tasks_blob_sha\`、目标相对文件 \`.project-control/tasks.json\` 及新的候选内容。它只能证明一份**本地已取得的 Git 源码快照**通过预检，不能伪装成已经看到 GitHub 远端实时版本。
