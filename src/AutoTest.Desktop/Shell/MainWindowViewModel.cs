@@ -32,7 +32,7 @@ public sealed class MainWindowViewModel : BindableBase
     private string _hardwareStatus = "USB 未连接";
     private string _scanStatus = "扫码未开始";
     private bool _hardwareBusy;
-    private string _canId = "701";
+    private string _canId = "";
     private string _canData = "";
     private string _canConfirmation = "";
     private string _canTxStatus = "仅允许操作员逐帧确认发送；发送结果以设备 ACK 为准。";
