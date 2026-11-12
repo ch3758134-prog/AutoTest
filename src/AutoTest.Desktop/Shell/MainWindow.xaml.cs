@@ -41,7 +41,7 @@ public partial class MainWindow : Window
     {
         ["run"] = "自动测试",
         ["program"] = "测试程序编辑",
-        ["station"] = "设备连接与 CAN",
+        ["station"] = "设备与 CAN 诊断",
         ["dbc"] = "DBC 数据库",
         ["controller"] = "控制器与按键配置",
         ["bench"] = "手动台架",
@@ -471,7 +471,13 @@ public partial class MainWindow : Window
                         }));
                 };
                 var bench = new BenchWorkbenchView(_benchModel);
-                bench.OpenStationRequested += (_, _) => OpenDocument("station");
+                bench.OpenStationRequested += (_, _) =>
+                {
+                    // Use the same direct device discovery from the main toolbar,
+                    // never replace the operator bench with a device-debug page.
+                    if (_device?.ViewModel.IsConnected != true)
+                        OpenStation_Click(this, new RoutedEventArgs());
+                };
                 bench.OpenCanRequested += (_, _) => OpenDocument("can");
                 bench.OpenDbcRequested += (_, _) => OpenDocument("dbc");
                 view = bench;
@@ -574,7 +580,7 @@ public partial class MainWindow : Window
         void Led()
         {
             var state = _device.ViewModel.StatusText;
-            StationLed.Fill = _device.ViewModel.IsConnected ? Brushes.MediumSeaGreen : Brushes.SlateGray;
+            StationLed.Fill = _device.ViewModel.IsConnected ? Brushes.DodgerBlue : Brushes.SlateGray;
             StationConnectButton.Content = _device.ViewModel.IsConnected ? "断开设备" : "连接设备";
             StationConnectButton.IsEnabled = !_connectionBusy;
         }
