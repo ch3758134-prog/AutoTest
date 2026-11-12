@@ -1,0 +1,24 @@
+name: Export Project Control Initial ZIP Once
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/project-control-export-once.yml'
+permissions:
+  contents: read
+jobs:
+  export-package:
+    if: github.repository == 'ch3758134-prog/AutoTest' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export only generic standalone manager files (no CI tests)
+        run: python tools/project-control-v2/portable/export_package.py --out ProjectControl_Initial_Reusable.zip
+      - name: Upload generated standalone package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProjectControl-Initial-Reusable
+          path: ProjectControl_Initial_Reusable.zip
+          retention-days: 7
+          if-no-files-found: error
