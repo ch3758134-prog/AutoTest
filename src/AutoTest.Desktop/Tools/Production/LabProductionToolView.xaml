@@ -2,7 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              MinWidth="650" MinHeight="420"
-             Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Segoe UI" FontSize="13">
+             Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}" FontFamily="Microsoft YaHei UI" FontSize="13">
     <UserControl.Resources>
         
         
@@ -10,7 +10,7 @@
     </UserControl.Resources>
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <TextBlock FontSize="23" FontWeight="SemiBold" Text="扫码与生产配置"/>
+            <TextBlock FontSize="23" FontWeight="SemiBold" Text="扫码与生产"/>
             <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#697C8E"
                        Text="扫描编号 → 匹配工程规则 → 执行已发布测试程序 → 保存真实结果"/>
         </StackPanel>
@@ -31,7 +31,7 @@
                 </WrapPanel>
                 <TextBlock x:Name="R1ScannerState" Text="选择真实扫码枪 COM 和波特率后连接；不需键盘焦点。"
                            Foreground="#697C8E" TextWrapping="Wrap" Margin="0,7,0,0"/>
-                <Border Background="{DynamicResource StudioSurface}" CornerRadius="5"
+                <Border Background="{DynamicResource StudioSurface}" CornerRadius="7"
                     Padding="10" Margin="0,10,0,6">
                     <TextBlock x:Name="R1ScannerBarcode" Text="最近扫码 —"
                         Foreground="{DynamicResource StudioText}" FontFamily="Consolas"
@@ -58,7 +58,7 @@
                 <TextBlock FontWeight="SemiBold" Text="生产状态" Margin="0,0,0,6"/>
                 <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding LastRun}" TextWrapping="Wrap" Foreground="#127B91" Margin="0,6,0,0"/>
-                <TextBlock Text="{Binding LastEvidence}" TextWrapping="Wrap" Foreground="#177D65" Margin="0,3,0,0"/>
+                <TextBlock Text="{Binding LastEvidence}" TextWrapping="Wrap" Foreground="#2B7BCB" Margin="0,3,0,0"/>
                 <TextBlock Text="扫码后按已发布的工程规则匹配并运行测试。生产统计仅使用实际测试结果；测试通过不等于产品已获发货放行。"
                            TextWrapping="Wrap" Foreground="#90611A" Margin="0,6,0,0"/>
             </StackPanel>
