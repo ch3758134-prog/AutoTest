@@ -177,6 +177,55 @@ class GitHubBridgeTests(unittest.TestCase):
             bridge.publish_plan(self.client,self.plan,"https://github.com/acme/demo.git",apply=True)
         self.assertEqual(self.client.writes,[])
 
+    def submitted_plan(self):
+        self.client.original_task["state"]="READY_FOR_LOCAL_IMPLEMENTATION"
+        self.client.original_task["published_source_sha"]=self.client.pin
+        registry={"schema":"project-control-target-tasks/1",
+                  "project_id":"demo","tasks":[self.client.original_task]}
+        self.client.content=json.dumps(registry).encode()
+        submission={
+            "pr_number":9,"pr_url":"https://github.com/acme/demo/pull/9",
+            "candidate_head":self.client.pr_head,
+            "pr_branch":"feature/impl","base_branch":"main",
+            "changed_paths":["src/feature.py"],
+            "status":"CANDIDATE_REQUIRES_INDEPENDENT_REVIEW",
+            "code_review":"NOT_APPROVED","ci_review":"NOT_CHECKED",
+            "tests":"NOT_INDEPENDENTLY_VERIFIED",
+        }
+        updated={**self.client.original_task, "state":"SUBMITTED_FOR_REVIEW",
+                 "submission":submission}
+        proposal={**registry,"tasks":[updated],"events":[{
+            "kind":"TASK_SUBMITTED_CANDIDATE_PR","task_id":"IMPL-001",
+            "candidate_head":self.client.pr_head,"gate":"NOT_CHANGED"
+        }]}
+        return {
+            "schema":"project-control-submission-plan/1",
+            "project_id":"demo","task_id":"IMPL-001",
+            "target_repo":"https://github.com/acme/demo.git",
+            "target_branch":"main","observed_source_branch_head":self.client.head,
+            "expected_tasks_blob_sha":self.client.old_blob,
+            "desired_path":".project-control/tasks.json",
+            "proposed_content":json.dumps(proposal),
+        }
+
+    def test_pr_submission_live_branch_and_changed_files_rechecked_before_cas(self):
+        plan=self.submitted_plan()
+        result=bridge.publish_plan(self.client,plan,"https://github.com/acme/demo.git",apply=True)
+        self.assertEqual(result["status"],"GITHUB_WRITE_VERIFIED_PENDING_INDEPENDENT_REVIEW")
+        self.assertEqual(json.loads(self.client.content)["tasks"][0]["state"],"SUBMITTED_FOR_REVIEW")
+
+    def test_pr_submission_rejects_moved_head_and_file_scope_without_write(self):
+        plan=self.submitted_plan()
+        self.client.pr_head="f"*40
+        with self.assertRaisesRegex(bridge.RemoteError,"live GitHub PR differs"):
+            bridge.publish_plan(self.client,plan,"https://github.com/acme/demo.git",apply=True)
+        self.assertEqual(self.client.writes,[])
+        self.client.pr_head="d"*40
+        self.client.remote_files=["README.md"]
+        with self.assertRaisesRegex(bridge.RemoteError,"live PR files"):
+            bridge.publish_plan(self.client,plan,"https://github.com/acme/demo.git",apply=True)
+        self.assertEqual(self.client.writes,[])
+
     def test_actual_pr_files_match_receipt_before_review(self):
         project={"project_id":"demo","repo_url":"https://github.com/acme/demo.git"}
         task={"id":"IMPL-001","project_id":"demo",
