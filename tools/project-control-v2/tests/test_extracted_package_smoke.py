@@ -86,8 +86,9 @@ class ExtractedPackageTests(unittest.TestCase):
                    "assert r['result']=='LOCAL_DRAFT_SAVED_NOT_REMOTE_PUBLISHED';"
                    "print(json.dumps({'revision':t.model()['management']['revision'],"
                    "'product':m['project']['formal_product_identity']}))")
-        ran = self.script(sys.executable, "-c", command, str(manager_script.parent),
-                          str(folder))
+        runner = self.home / "portable_smoke.py"
+        runner.write_text(command + "\n", encoding="utf-8")
+        ran = self.script(runner, str(manager_script.parent), str(folder))
         self.assertEqual(ran["revision"], 2)
         self.assertEqual(ran["product"], "UNDECIDED")
         self.assertTrue((folder / ".project-control/workspace_manager.py").is_file())
