@@ -57,3 +57,7 @@ python tools/project-control-v2/portable/export_package.py --out ProjectControl.
 本轮真实 AutoTest 管理 AI 试验发现，过去缺少“完整成果正文向负责人展示→明确决定→候选发布”的受控环节；AI 曾直接写 GitHub Issue 并称已交付。新增 [portable/DELIVERY_REVIEW_PROTOCOL.md](portable/DELIVERY_REVIEW_PROTOCOL.md) 和 `portable/delivery_review.py`，用独立本地私有审阅区及两个不同令牌管理全文、差异、范围和准确版本。
 
 **重要**：正式研究/设计/需求批准与仅允许候审公开仍独立。源码保存在本分支/待审 PR，不自动合入 main。详见单独审查报告；GitHub 直接宽权限、Windows 完整端到端、正式人类身份认证仍不能仅靠本地令牌实现。
+
+## 4.6.1 系统审查与主线候选集成
+
+本轮系统级复核覆盖接管、岗位、证据、治理、候审交付、远端同步、任务交接与用户界面。候审包现在能够通过本地 UI 导入/全文预览/修订；负责人可选择只确认内部阅读或精确版本候审公开；项目证据变化按受影响主题传播，不全局重置。完整审查及实际验证范围见 `SYSTEM_AUDIT_20261112.md`。本系统代码进入 main 的权限来自用户明确的管理工具研发要求，**并不构成 AutoTest 需求/设计或 Project Control 正式发行验收**。
