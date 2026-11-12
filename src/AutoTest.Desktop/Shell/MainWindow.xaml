@@ -96,6 +96,7 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="打开工程" Command="{Binding OpenProjectCommand}" ToolTip="Ctrl+O 打开本地工程"/>
+                    <Button Content="载入示例工程" Click="OpenReviewSample_Click" ToolTip="直接打开随软件提供的 EPB 评审工程，仅用于编辑和界面检查；不是实测记录"/>
                     <Button Content="保存工程" Command="{Binding SaveCommand}" ToolTip="Ctrl+S 保存工程"/>
                     <Border Height="22" Width="1" Background="{DynamicResource StudioLine}" Margin="1,0,12,0"/>
                     <Button Content="✎ 编辑测试程序" Style="{StaticResource AtPrimaryButton}" Click="OpenTest_Click"/>
