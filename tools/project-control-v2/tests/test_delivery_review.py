@@ -94,6 +94,39 @@ class DeliveryLifecycleTests(unittest.TestCase):
         self.assertFalse(m.candidate_publication_permitted(r,"ART-01","a"*64))
         self.assertFalse(m.candidate_publication_permitted(r,"OTHER",out["sha256"]))
 
+    def test_private_only_document_cannot_be_publication_approved(self):
+        data=payload()
+        data["publication_type"]="NO_EXTERNAL_PUBLICATION"
+        data["publication_target"]="internal owner review only"
+        r,_=stage(data)
+        offer(r)
+        with self.assertRaises(m.DeliveryError):
+            decide(r, "ALLOW_CANDIDATE_PUBLICATION")
+        result=decide(r, "ACKNOWLEDGE_INTERNAL_REVIEW")
+        self.assertEqual(result["status"], "REVIEWED_INTERNAL_ONLY")
+        self.assertFalse(result["formal_product_approval"])
+        self.assertFalse(m.candidate_publication_permitted(
+            r,"ART-01",r["delivery_reviews"][0]["sha256"]))
+
+    def test_owner_can_acknowledge_without_approving_or_publishing(self):
+        r,_=stage()
+        offer(r)
+        self.assertEqual(decide(r, "ACKNOWLEDGE_INTERNAL_REVIEW")["status"],
+                         "REVIEWED_INTERNAL_ONLY")
+        self.assertFalse(r["delivery_reviews"][0]["owner_release"])
+        self.assertFalse(m.candidate_publication_permitted(
+            r,"ART-01",r["delivery_reviews"][0]["sha256"]))
+
+    def test_review_history_limit_prevents_poisoning_store(self):
+        r,_=stage()
+        offer(r)
+        row=r["delivery_reviews"][0]
+        row["review_history"]=[{"previous":"review"} for _ in range(32)]
+        with self.assertRaises(m.DeliveryError):
+            decide(r, "ACKNOWLEDGE_INTERNAL_REVIEW")
+        self.assertEqual(len(row["review_history"]),32)
+        self.assertEqual(row["status"],"AWAITING_OWNER_REVIEW")
+
     def test_return_for_changes_never_allows_publication(self):
         r,out=stage();offer(r)
         result=decide(r,"REQUEST_CHANGES")
