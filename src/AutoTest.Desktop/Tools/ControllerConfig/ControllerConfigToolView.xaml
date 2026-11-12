@@ -38,7 +38,7 @@
       <TextBlock Text="{Binding CurrentRevision}" VerticalAlignment="Center" FontWeight="SemiBold"/>
     </WrapPanel>
     <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <GroupBox Header="控制器" Grid.Column="0" Margin="0,0,8,0">
+      <GroupBox Header="ECU 控制器" Grid.Column="0" Margin="0,0,8,0">
         <DockPanel Margin="6"><StackPanel DockPanel.Dock="Bottom">
           <TextBox Text="{Binding ControllerName, UpdateSourceTrigger=PropertyChanged}" ToolTip="控制器名称" Margin="0,4"/>
           <WrapPanel><Button Content="添加" Command="{Binding AddControllerCommand}" Padding="8,3"/>
@@ -47,7 +47,7 @@
         </StackPanel><ListBox ItemsSource="{Binding Controllers}" SelectedItem="{Binding SelectedController}" DisplayMemberPath="Name"/>
         </DockPanel>
       </GroupBox>
-      <GroupBox Header="状态（任意数量）" Grid.Column="1" Margin="0,0,8,0"><DockPanel Margin="6">
+      <GroupBox Header="按键状态与动作规则" Grid.Column="1" Margin="0,0,8,0"><DockPanel Margin="6">
         <StackPanel DockPanel.Dock="Bottom">
           <TextBlock Text="按键状态 · K01～K20 开关组合（十六进制）" Foreground="{DynamicResource StudioMuted}"/>
           <TextBox Text="{Binding StateName, UpdateSourceTrigger=PropertyChanged}" Margin="0,3"/>
@@ -62,22 +62,40 @@
         </StackPanel>
         <ListBox ItemsSource="{Binding States}" SelectedItem="{Binding SelectedState}" DisplayMemberPath="Name"/>
       </DockPanel></GroupBox>
-      <GroupBox Grid.Column="2" Header="五路电压窗口 / 人工测量事实"><Grid Margin="8">
-        <Grid.RowDefinitions><RowDefinition Height="2*"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-        <DataGrid Grid.Row="0" ItemsSource="{Binding VoltageWindows}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+      <GroupBox Grid.Column="2" Header="按键组合与五路模拟电压"><Grid Margin="8">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="2*"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+          <DockPanel Margin="1,0,0,7">
+            <TextBlock Text="按键状态矩阵（K01～K20）" Style="{StaticResource AtSectionTitle}"/>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding StateMaskHex, StringFormat=开关组合：{0}}" Style="{StaticResource AtHint}"/>
+          </DockPanel>
+          <Border Background="{DynamicResource StudioLightBlue}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" CornerRadius="7" Padding="8">
+            <ItemsControl ItemsSource="{Binding KeyBits}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate><DataTemplate>
+                <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                  ToolTip="编辑一个开关位，不会立即向按键板发送输出"
+                  Margin="3" Padding="5,4" MinWidth="66"/>
+              </DataTemplate></ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+          <TextBlock Text="按键可以同时闭合。该组合经 KEY_SIM 电阻网络形成五路模拟电压；配置值不是实测输出。" 
+                     Style="{StaticResource AtHint}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+         </StackPanel>
+        <DataGrid Grid.Row="1" ItemsSource="{Binding VoltageWindows}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
           <DataGrid.Columns><DataGridTextColumn Header="通道" Binding="{Binding Channel}"/>
             <DataGridTextColumn Header="目标 V" Binding="{Binding TargetVolts}"/>
             <DataGridTextColumn Header="最低 V" Binding="{Binding MinimumVolts}"/>
             <DataGridTextColumn Header="最高 V" Binding="{Binding MaximumVolts}"/></DataGrid.Columns>
         </DataGrid>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,7"><TextBlock Text="CH" VerticalAlignment="Center"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,7"><TextBlock Text="CH" VerticalAlignment="Center"/>
           <TextBox Width="35" Text="{Binding VoltageChannel, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
           <TextBlock Text="目标" VerticalAlignment="Center"/><TextBox Width="55" Text="{Binding TargetVolts, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
           <TextBlock Text="下限" VerticalAlignment="Center"/><TextBox Width="55" Text="{Binding MinVolts, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
           <TextBlock Text="上限" VerticalAlignment="Center"/><TextBox Width="55" Text="{Binding MaxVolts, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
           <Button Content="设置窗口" Command="{Binding SetWindowCommand}" Padding="9,3"/>
         </StackPanel>
-        <DataGrid Grid.Row="2" ItemsSource="{Binding Measurements}" AutoGenerateColumns="False" IsReadOnly="True">
+        <DataGrid Grid.Row="3" ItemsSource="{Binding Measurements}" AutoGenerateColumns="False" IsReadOnly="True">
           <DataGrid.Columns><DataGridTextColumn Header="CH" Binding="{Binding Channel}"/>
             <DataGridTextColumn Header="实测 V" Binding="{Binding ValueVolts}"/>
             <DataGridTextColumn Header="来源" Binding="{Binding Origin}"/>
@@ -85,7 +103,7 @@
             <DataGridTextColumn Header="证据" Binding="{Binding EvidenceRef}" Width="*"/>
             <DataGridTextColumn Header="Rev" Binding="{Binding ConfigurationRevision}"/></DataGrid.Columns>
         </DataGrid>
-        <WrapPanel Grid.Row="3" Margin="0,6"><TextBlock Text="录入 V" VerticalAlignment="Center"/>
+        <WrapPanel Grid.Row="4" Margin="0,6"><TextBlock Text="录入 V" VerticalAlignment="Center"/>
           <TextBox Width="60" Text="{Binding MeasuredVolts, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,8,0"/>
           <TextBlock Text="操作员" VerticalAlignment="Center"/><TextBox Width="70" Text="{Binding OperatorId, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
           <TextBlock Text="证据引用" VerticalAlignment="Center"/><TextBox Width="110" Text="{Binding EvidenceRef, UpdateSourceTrigger=PropertyChanged}" Margin="4,0,8,0"/>
@@ -95,6 +113,6 @@
     </Grid>
     <StackPanel Grid.Row="3" Margin="0,8,0,0"><TextBlock Text="{Binding Status}"/>
       <TextBlock Text="{Binding Error}" Foreground="Crimson" TextWrapping="Wrap"/>
-      <TextBlock Foreground="#78623D" Text="K01～K20 为组合开关，形成五路模拟电压输出。配置不等于实测电压；实际输出须通过台架安全确认。"/></StackPanel>
+      <TextBlock Foreground="#78623D" Text="保存的是控制器配置。真实按键输出须在独立手动台架中授权操作，电压是否正确以物理测量为准。"/></StackPanel>
   </Grid>
 </UserControl>
