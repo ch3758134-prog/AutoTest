@@ -156,7 +156,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
         var result = DbcReplayDecoder.Decode(Document, ParseId(ReplayFrameId), DbcReplayDecoder.ParseHex(ReplayHex), DateTimeOffset.UtcNow);
         foreach (var signal in result.Signals) Decoded.Add(signal);
         DecodeSummary = $"{result.Source} / DBC {result.RevisionQuality} / Lost {result.LostCount} / {result.TimeQuality}";
-        Status = "Replay 解码完成（没有采集任何真实 ECU 帧）";
+        Status = "离线解码已完成；这并不是从真实 ECU 新采集的数据。";
     }
     public async Task ImportToProjectAsync()
     {
@@ -176,7 +176,7 @@ public sealed class DbcToolViewModel : INotifyPropertyChanged
             ProjectDbcImported?.Invoke(this, EventArgs.Empty);
             Changed(nameof(Revision));
             Changed(nameof(ProjectStatus));
-            Status = "DBC 已纳入当前工程资源库；Wave 可刷新信号。请保存工程以持久化 Revision。";
+            Status = "DBC 已加入当前工程；波形工具可刷新信号。请保存工程，以保留本次资源版本。";
         }
         catch (Exception e)
         {
