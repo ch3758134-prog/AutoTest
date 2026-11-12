@@ -1,0 +1,28 @@
+<Window x:Class="AutoTest.Desktop.Projects.ResourceNameDialog"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="资源名称" Width="470" Height="230" MinWidth="420"
+ WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+ ShowInTaskbar="False" FontFamily="{StaticResource UiFont}"
+ Background="{StaticResource Panel}" Foreground="{StaticResource Ink}">
+  <Grid Margin="18,14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <TextBlock x:Name="Prompt" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
+    <StackPanel Grid.Row="1">
+      <TextBlock Text="资源名称" Margin="0,0,0,7"/>
+      <TextBox x:Name="ResourceNameInput" MaxLength="100"
+               KeyDown="NameInput_KeyDown"/>
+      <TextBlock x:Name="ErrorText" Foreground="{StaticResource Danger}"
+                 TextWrapping="Wrap" Margin="0,7,0,0"/>
+    </StackPanel>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="取消" IsCancel="True"/>
+      <Button Content="确定" Style="{StaticResource AtPrimaryButton}"
+              IsDefault="True" Click="Confirm_Click" Margin="0"/>
+    </StackPanel>
+  </Grid>
+</Window>

@@ -10,6 +10,7 @@ public static class PrismRegistration
     {
         registry.RegisterSingleton<ProjectWorkspaceService>();
         registry.RegisterSingleton<NewProjectDialogService>();
+        registry.RegisterSingleton<ProjectFileDialogService>();
         registry.Register<MainWindowViewModel>();
         registry.Register<MainWindow>();
     }
