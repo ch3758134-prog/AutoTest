@@ -69,18 +69,20 @@
                Foreground="{StaticResource UdsMuted}" FontSize="11" Margin="0,4,0,0"/>
    </StackPanel>
   </DockPanel>
-  <Border Grid.Row="1" Background="#FFF6E8" BorderBrush="#C9A271"
+  <Border Grid.Row="1" Background="#EFF5FC" BorderBrush="#D4E5F8"
           BorderThickness="1" CornerRadius="7" Padding="11,7" Margin="0,0,0,12">
    <TextBlock Text="当前实机诊断只允许读取故障码（0x19）和数据标识（0x22）。其他服务可编辑，但不能向真实 ECU 发送；可通过已保存记录离线查看。"
-              Foreground="#744611" TextWrapping="Wrap"/>
+              Foreground="#5D748D" TextWrapping="Wrap"/>
   </Border>
   <Grid Grid.Row="2">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="240" MinWidth="190"/>
-    <ColumnDefinition Width="10"/>
-    <ColumnDefinition Width="*" MinWidth="300"/>
-    <ColumnDefinition Width="10"/>
-    <ColumnDefinition Width="275" MinWidth="235"/>
+    <ColumnDefinition Width="192" MinWidth="160"/>
+    <ColumnDefinition Width="6"/>
+    <ColumnDefinition Width="1.2*" MinWidth="275"/>
+    <ColumnDefinition Width="6"/>
+    <ColumnDefinition Width="1.1*" MinWidth="265"/>
+    <ColumnDefinition Width="6"/>
+    <ColumnDefinition Width="255" MinWidth="215"/>
    </Grid.ColumnDefinitions>
    <!-- Services / definitions -->
    <Border Style="{StaticResource UdsCard}">
@@ -123,9 +125,11 @@
     </DockPanel>
    </Border>
    <!-- Request builder and response -->
-   <Grid Grid.Column="2">
-    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="11"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border Style="{StaticResource UdsCard}">
+   <Border Grid.Column="2" Style="{StaticResource UdsCard}" Padding="12">
+    <DockPanel>
+     <TextBlock DockPanel.Dock="Top" Text="✎  请求报文（发送）" Style="{StaticResource UdsSection}"/>
+     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      
      <StackPanel>
       <TextBlock Text="请求报文（发送）" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="服务名称" Style="{StaticResource UdsCaption}"/>
@@ -151,8 +155,14 @@
        <Button Content="取消" Command="{Binding CancelCommand}"/>
       </WrapPanel>
      </StackPanel>
-    </Border>
-    <Border Grid.Row="2" Style="{StaticResource UdsCard}">
+     </ScrollViewer>
+    </DockPanel>
+   </Border>
+   <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+   <Border Grid.Column="4" Style="{StaticResource UdsCard}" Padding="12">
+    <DockPanel>
+     <TextBlock DockPanel.Dock="Top" Text="▤  响应报文与解析" Style="{StaticResource UdsSection}"/>
+     
      <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel>
        <TextBlock Text="响应报文与解析" Style="{StaticResource UdsSection}"/>
@@ -173,10 +183,11 @@
        <TextBlock Text="{Binding Error}" Foreground="#BD4052" TextWrapping="Wrap" Margin="0,11,0,0"/>
       </StackPanel>
      </ScrollViewer>
-    </Border>
-   </Grid>
+    </DockPanel>
+   </Border>
+   <GridSplitter Grid.Column="5" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
    <!-- Profile / inspector -->
-   <Border Grid.Column="4" Style="{StaticResource UdsCard}">
+   <Border Grid.Column="6" Style="{StaticResource UdsCard}">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel>
       <TextBlock Text="诊断上下文" Style="{StaticResource UdsSection}"/>
