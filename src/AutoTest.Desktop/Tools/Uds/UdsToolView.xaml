@@ -209,22 +209,43 @@
     </ScrollViewer>
    </Border>
   </Grid>
-  <Border Grid.Row="3" Style="{StaticResource UdsCard}" Margin="0,11,0,0" Padding="10">
-   <DockPanel>
-    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-     <TextBlock Text="报文追踪与诊断日志" FontWeight="SemiBold"/>
-     <TextBlock Text="    ISO-TP · TX/RX · NRC · 时间线" Foreground="{StaticResource UdsMuted}"/>
-     <TextBlock Text="    源=" Foreground="{StaticResource UdsMuted}"/>
-     <TextBlock Text="{Binding SourceLabel}" Foreground="#78623D"/>
-    </StackPanel>
-    <DataGrid ItemsSource="{Binding TraceRows}" IsReadOnly="True" AutoGenerateColumns="False"
-              HeadersVisibility="Column" CanUserAddRows="False" RowHeaderWidth="0">
-     <DataGrid.Columns>
-      <DataGridTextColumn Header="Direction" Binding="{Binding Direction}" Width="150"/>
-      <DataGridTextColumn Header="ISO-TP CAN DATA (HEX)" Binding="{Binding Hex}" Width="*"/>
-     </DataGrid.Columns>
-    </DataGrid>
-   </DockPanel>
+  <Border Grid.Row="3" Style="{StaticResource UdsCard}" Margin="0,11,0,0" Padding="0">
+   <TabControl Background="{DynamicResource StudioPanel}">
+    <TabItem Header="报文追踪">
+     <DockPanel>
+      <Border DockPanel.Dock="Top" Style="{StaticResource AtBlueHeading}">
+       <DockPanel>
+        <TextBlock Text="诊断收发记录" Style="{StaticResource AtEditorHeading}"/>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding SourceLabel}" Style="{StaticResource AtHint}"/>
+       </DockPanel>
+      </Border>
+      <DataGrid ItemsSource="{Binding TraceRows}" IsReadOnly="True" AutoGenerateColumns="False"
+       CanUserAddRows="False" HeadersVisibility="Column" BorderThickness="0" RowHeaderWidth="0">
+       <DataGrid.Columns>
+        <DataGridTextColumn Header="方向 / 来源" Binding="{Binding Direction}" Width="210"/>
+        <DataGridTextColumn Header="UDS / ISO-TP 数据（十六进制）" Binding="{Binding Hex}" Width="*"/>
+       </DataGrid.Columns>
+      </DataGrid>
+     </DockPanel>
+    </TabItem>
+    <TabItem Header="本次诊断结果">
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="16,13">
+       <TextBlock Text="当前诊断状态" Style="{StaticResource AtFieldLabel}"/>
+       <TextBlock Text="{Binding Status,Converter={StaticResource OperatorStatusConverter}}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+       <TextBlock Text="ECU 响应说明" Style="{StaticResource AtFieldLabel}"/>
+       <TextBlock Text="{Binding ResponseSummary}" TextWrapping="Wrap"/>
+       <WrapPanel Margin="0,8,0,0">
+        <TextBlock Text="负响应码：" Style="{StaticResource AtFieldLabel}"/>
+        <TextBlock Text="{Binding Nrc}" Margin="8,5,20,0"/>
+        <TextBlock Text="预期响应比对：" Style="{StaticResource AtFieldLabel}"/>
+        <TextBlock Text="{Binding ExpectedMatch}" Margin="8,5,0,0"/>
+       </WrapPanel>
+       <TextBlock Text="{Binding Error}" Foreground="{DynamicResource StudioRed}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+      </StackPanel>
+     </ScrollViewer>
+    </TabItem>
+   </TabControl>
   </Border>
  </Grid>
 </UserControl>
