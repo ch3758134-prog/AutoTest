@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "2.8-managed-workspace-github-cas-governance",
+  "version": "2.9-self-contained-project-manager-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -29,7 +29,9 @@
     "portable/task_submission.py",
     "portable/workspace_manager.py",
     "portable/github_bridge.py",
-    "portable/governance.py"
+    "portable/governance.py",
+    "portable/WORKSPACE_LIFECYCLE.md",
+    "portable/GOVERNANCE.md"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -48,7 +50,10 @@
     "workspace_lifecycle": "REGISTERED_CREATE_INSPECT_ARCHIVE_REVIEWED_TEMP_RETIREMENT",
     "github_cas_transport": "OPTIONAL_EXPLICIT_APPLY_WITH_REMOTE_RECHECK",
     "plan_and_change_governance": "LOCAL_CANDIDATE_GRAPH_AND_REVIEW_NOT_FORMAL_GATE",
-    "test_log_hashes": "LOCAL_LOG_BYTES_HASHED_EXECUTION_NOT_INDEPENDENTLY_VERIFIED"
+    "test_log_hashes": "LOCAL_LOG_BYTES_HASHED_EXECUTION_NOT_INDEPENDENTLY_VERIFIED",
+    "target_runtime_migration": "HASH_PINNED_BACKUP_PROTECTED",
+    "cross_worktree_receipts": "EXPLICIT_REGISTRY_ONLY",
+    "local_end_to_end_fixture": "NEW_ADOPT_CODEX_RECEIPT_PR_REVIEW_TESTED"
   },
   "separation": {
     "package_source": "Project Control system files",
