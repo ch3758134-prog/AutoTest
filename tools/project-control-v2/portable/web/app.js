@@ -2,7 +2,7 @@
 const $=s=>document.querySelector(s);
 const e=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const txt=v=>e(String(v??""));
-let reviewToken="", activeDeliveryId="", projects=[],model=null,selected=null,page="overview",ownerToken="",remoteSnapshot=null,workspaceSnapshot=null,moduleRemoteSnapshot=null,intakeReviewToken=null;
+let reviewToken="", activeDeliveryId="", privateDeliveryState=null, projects=[],model=null,selected=null,page="overview",ownerToken="",remoteSnapshot=null,workspaceSnapshot=null,moduleRemoteSnapshot=null,intakeReviewToken=null;
 const labels={deliveries:"成果审阅与交付",process:"工程过程与 AI",overview:"项目总览",deliverables:"目标与交付",work:"研发工作",modules:"模块与实际代码",requirements:"需求与依据",plans:"计划与依赖",changes:"变更与阶段审查",risks:"风险与里程碑",evidence:"资产与正式依据",handoff:"AI 与 Codex 交接",workspace:"本地工作区"};
 const escapeJSON=s=>JSON.stringify(s).replace(/</g,"\\u003c");
 const pill=(value,tone="")=>'<span class="pill '+tone+'">'+e(value)+'</span>';
@@ -312,9 +312,15 @@ function evidence(){
  return html;
 }
 function deliveryView(){
- const items=model.delivery_state?.delivery_reviews||[];
+ const items=(privateDeliveryState?.project_id===selected?privateDeliveryState.delivery_reviews:[])||[];
  let html=head("OWNER REVIEW & CANDIDATE DELIVERY","成果审阅与交付",
  "管理 AI 可以先保存内部草稿，但必须向负责人呈现完整成果、修改差异和拟发布范围；负责人允许发布候审也不代表正式批准。");
+ if(!privateDeliveryState||privateDeliveryState.project_id!==selected){
+  return html+panel("独立审阅收件箱",
+   '<p>已有 '+e(model.delivery_summary?.count||0)+' 份本机候审记录。全文存放在本地 Git 元数据中，不属于 Git 跟踪文件、也不会随项目管理 JSON 远端同步。</p>'+
+   '<p><button class="primary" id="open-private-deliveries">使用审阅令牌打开完整成果</button></p>'+
+   '<p class="hint">这不是正式人类身份认证。服务终端单独生成审阅令牌；普通管理令牌不能代替。</p>');
+ }
  html+='<section class="section">'+panel("目前需要审阅的成果",
    items.length?items.map(d=>{
       const state=pill(d.status, d.status==="RELEASED_FOR_CANDIDATE_PUBLICATION"?"blue":"pending");
@@ -343,8 +349,21 @@ function deliveryView(){
  html+='<section class="section info">交付状态与正式审批分开：DRAFT_INTERNAL 是内部候选；AWAITING_OWNER_REVIEW 仅表示待读；RELEASED_FOR_CANDIDATE_PUBLICATION 仅允许候审发布。此本地工作台不自动写 GitHub，也不签发产品定义、计划、Gate 或 Codex 执行许可。</section>';
  return html;
 }
+async function loadPrivateDeliveries(promptIfMissing=true){
+ if(!selected)return;
+ if(!reviewToken&&promptIfMissing)
+   reviewToken=prompt("输入本机服务终端显示的【候选交付审阅令牌】以查看完整待审成果")||"";
+ if(!reviewToken)return;
+ try{
+   const res=await fetch("/api/delivery-reviews?project_id="+encodeURIComponent(selected),
+                         {headers:{"X-Review-Token":reviewToken},cache:"no-store"});
+   const value=await res.json();
+   if(!res.ok){if(res.status===403)reviewToken="";throw Error(value.error||"无法读取私人候审正文");}
+   privateDeliveryState=value;render();
+ }catch(err){privateDeliveryState=null;notify(err.message,true);}
+}
 function openOwnerDeliveryReview(id){
- const d=(model.delivery_state?.delivery_reviews||[]).find(x=>x.id===id);
+ const d=(privateDeliveryState?.delivery_reviews||[]).find(x=>x.id===id);
  if(!d||d.status!=="AWAITING_OWNER_REVIEW"){notify("当前版本不在待审状态，请刷新",true);return;}
  activeDeliveryId=id;
  $("#owner-review-content").innerHTML=
@@ -363,23 +382,23 @@ function openOwnerDeliveryReview(id){
  $("#owner-review-dialog").showModal();
 }
 async function offerDelivery(id){
- const d=(model.delivery_state?.delivery_reviews||[]).find(x=>x.id===id);
+ const d=(privateDeliveryState?.delivery_reviews||[]).find(x=>x.id===id);
  if(!d||d.status!=="DRAFT_INTERNAL")return;
  if(!confirm("提交为本地负责人待审候选？不会发布到 GitHub，也不会批准内容。"))return;
  if(!await getOwnerToken())return;
  try{
   const response=await fetch("/api/delivery-draft-action",{method:"POST",headers:{"Content-Type":"application/json",
      "X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected,action:"offer_delivery_review",
-     payload:{id,delivery_revision:d.revision,expected_sha256:d.sha256,expected_store_revision:model.delivery_state.revision,
+     payload:{id,delivery_revision:d.revision,expected_sha256:d.sha256,expected_store_revision:privateDeliveryState.revision,
               reason:"准备完整候选成果供负责人审阅；未授权发布"}})});
   const data=await response.json();
   if(!response.ok){if(response.status===403)ownerToken="";throw Error(data.error||"无法准备审阅");}
-  await loadModel();notify("已准备为待审稿，未发布或批准。");
+  await loadModel();await loadPrivateDeliveries(false);notify("已准备为待审稿，未发布或批准。");
  }catch(err){notify(err.message,true);}
 }
 async function decideOwnerDelivery(event){
  event.preventDefault();
- const d=(model.delivery_state?.delivery_reviews||[]).find(x=>x.id===activeDeliveryId);
+ const d=(privateDeliveryState?.delivery_reviews||[]).find(x=>x.id===activeDeliveryId);
  if(!d||d.status!=="AWAITING_OWNER_REVIEW"){notify("待审稿已变化，请刷新",true);return;}
  if(!$("#owner-review-confirm").checked){notify("必须先确认准确的版本和审查范围",true);return;}
  const decision=$("#owner-review-decision").value, reason=$("#owner-review-reason").value.trim();
@@ -393,11 +412,11 @@ async function decideOwnerDelivery(event){
     headers:{"Content-Type":"application/json","X-Review-Token":reviewToken},
     body:JSON.stringify({project_id:selected,action:"owner_decide_delivery",
        payload:{id:d.id,delivery_revision:d.revision,expected_sha256:d.sha256,
-                expected_store_revision:model.delivery_state.revision,decision,reason,confirm_exact_content:true}})});
+                expected_store_revision:privateDeliveryState.revision,decision,reason,confirm_exact_content:true}})});
   const result=await response.json();
   if(!response.ok){if(response.status===403)reviewToken="";throw Error(result.error||"审阅决定未记录");}
   $("#owner-review-dialog").close();activeDeliveryId="";
-  await loadModel();notify(decision==="ALLOW_CANDIDATE_PUBLICATION"?
+  await loadModel();await loadPrivateDeliveries(false);notify(decision==="ALLOW_CANDIDATE_PUBLICATION"?
        "只记录了候审发布许可；尚未发布 GitHub，也未正式批准工程成果":
        "审阅结果已记录；内容未获发布许可。");
  }catch(err){notify(err.message,true);}
@@ -518,6 +537,7 @@ async function fetchRemoteModules(){
 }
 async function collectRegisteredReceipts(){if(!await getOwnerToken())return;try{const r=await fetch("/api/collect-registered-receipts",{method:"POST",headers:{"Content-Type":"application/json","X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected})});const data=await r.json();if(!r.ok){if(r.status===403)ownerToken="";throw Error(data.error||"登记工作区回执收集失败");}await loadModel();notify("已登记工作区："+data.registered_examined+"；导入："+data.imported.length+"；待审："+data.held.length,Boolean(data.held.length));}catch(err){notify(err.message,true);}}
 document.addEventListener("click",event=>{
+ if(event.target.closest("#open-private-deliveries")){loadPrivateDeliveries();return;}
  const ownerDelivery=event.target.closest("[data-delivery-review]");
  if(ownerDelivery){openOwnerDeliveryReview(ownerDelivery.dataset.deliveryReview);return;}
  const offer=event.target.closest("[data-delivery-offer]");
@@ -537,7 +557,7 @@ $("#initialize-cancel").addEventListener("click",()=>$("#initialize-dialog").clo
 $("#register-form").addEventListener("submit",registerTarget);
 $("#register-close").addEventListener("click",()=>$("#register-dialog").close());
 $("#register-cancel").addEventListener("click",()=>$("#register-dialog").close());
-$("#project-select").addEventListener("change",async event=>{selected=event.target.value;page="overview";try{await loadModel();}catch(err){notify(err.message,true);$("#main").textContent=err.message;}});
+$("#project-select").addEventListener("change",async event=>{selected=event.target.value;privateDeliveryState=null;activeDeliveryId="";page="overview";try{await loadModel();}catch(err){notify(err.message,true);$("#main").textContent=err.message;}});
 $("#refresh").addEventListener("click",()=>loadProjects().catch(err=>notify(err.message,true)));
 $("#form-close").addEventListener("click",()=>$("#edit-dialog").close());$("#form-cancel").addEventListener("click",()=>$("#edit-dialog").close());$("#edit-form").addEventListener("submit",submitForm);
 loadProjects().catch(err=>{$("#main").innerHTML='<div class="panel error">'+e(err.message)+'</div>';notify(err.message,true);});
