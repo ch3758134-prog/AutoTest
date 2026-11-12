@@ -7,7 +7,7 @@ using System.Windows.Media;
 
 namespace AutoTest.Desktop.Tools;
 
-/// <summary>UI-only actions. G4-INTEGRATION binds these to WaveCaptureService / recorded evidence.</summary>
+/// <summary>UI-only actions. The composition root binds these to WaveCaptureService / recorded evidence.</summary>
 public interface IWaveToolActions
 {
     Task StartAsync(CancellationToken ct);

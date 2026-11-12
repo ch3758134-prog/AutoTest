@@ -43,7 +43,7 @@
                     <TextBlock Text="{Binding Quality}" />
                 </StackPanel>
             </StackPanel>
-            <TextBlock Grid.Column="1" Text="WAVE / G4" VerticalAlignment="Top"
+            <TextBlock Grid.Column="1" Text="WAVE" VerticalAlignment="Top"
                        FontWeight="SemiBold" Foreground="#69BCDD" />
         </Grid>
         <Border Grid.Row="1" Background="{StaticResource Panel}" CornerRadius="7"

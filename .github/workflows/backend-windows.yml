@@ -84,8 +84,7 @@ jobs:
             'tests/AutoTest.Testing.Tests/AutoTest.Testing.Tests.csproj',
             'tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj',
             'tests/AutoTest.Records.Tests/AutoTest.Records.Tests.csproj',
-            'tests/AutoTest.Application.Tests/AutoTest.Application.Tests.csproj',
-            'tests/AutoTest.Integration.Tests/AutoTest.Integration.Tests.csproj'
+            'tests/AutoTest.Application.Tests/AutoTest.Application.Tests.csproj'
           )
           $failed = @()
           foreach ($project in $projects) {

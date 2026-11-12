@@ -38,7 +38,7 @@ public sealed record WaveResultRow(string Signal, string Verdict, string Detail,
 
 /// <summary>
 /// The professional WAVE UI model. No USB/CAN receiver, no fake PONG and no production PASS.
-/// The Replay path operates only through the supplied G4 CAN Hub/DBC backend.
+/// Replay requires an explicitly attached CAN Hub/DBC backend.
 /// </summary>
 public sealed class WaveWorkbenchViewModel : INotifyPropertyChanged
 {

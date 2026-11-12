@@ -31,7 +31,7 @@ public interface IWaveArchiveSource
     void OpenArchiveFile(string path);
 }
 
-/// <summary>Generated G4 CAN examples are Mock, not saved-frame Replay.</summary>
+/// <summary>Generated CAN examples are Mock, not saved-frame Replay.</summary>
 public interface IWaveMockGenerator
 {
     Task<WaveWorkbenchCapture> RunMockAsync(SignalRef signal, int samples, CancellationToken ct);

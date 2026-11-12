@@ -49,7 +49,7 @@ public sealed class ProductionResultCoordinator
         if (test.Verdict != Verdict.Pass)
             return new(job.Run, ProductionState.Unknown, test.Verdict,
                 true, false, "RUN_NOT_PASS");
-        // No physical-release authority is issued in G4. Mock PASS is never DUT PASS.
+        // Mock PASS is never a physical DUT PASS and cannot grant release authority.
         if (job.IsMock || test.SimulationOnly)
             return new(job.Run, ProductionState.Completed, Verdict.Inconclusive,
                 true, false, "MOCK_COMPLETE_NOT_DUT_PASS");
