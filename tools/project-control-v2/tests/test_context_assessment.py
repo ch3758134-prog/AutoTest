@@ -81,6 +81,13 @@ class ContextAssessmentTests(unittest.TestCase):
                  work_prerequisite_topics=["purpose"],readiness_rationale="scope limited")
         with self.assertRaises(mod.AssessmentError):mod.audit(v)
 
+    def test_bundled_example_is_structurally_valid(self):
+        import json
+        ex=Path(__file__).resolve().parents[1]/"portable"/"context_assessment_example.json"
+        result=mod.audit(json.loads(ex.read_text(encoding="utf-8")))
+        self.assertEqual(result["found_not_assessed"],["purpose"])
+        self.assertFalse(result["authorization_granted"])
+
     def test_no_discovery_approval_or_unauthorized_remediation(self):
         v=sample()
         v["claims"]=[{"id":"c1","statement":"a","assessment":"UNKNOWN","source_ids":[],
