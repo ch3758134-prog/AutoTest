@@ -27,6 +27,7 @@ SCAFFOLD = (
     ".project-control/assets.json",
     ".project-control/decisions.json",
     ".project-control/tasks.json",
+    ".project-control/resolve.py",
 )
 
 
@@ -153,7 +154,7 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
 
 **ChatGPT 工程协调 AI：**先读取 \`.project-control/README.md\`、\`project.json\`、\`assets.json\`、\`decisions.json\`、\`tasks.json\`；自行调查此仓库的真实源码、分支、PR、CI、正式审批资料和现有资产。已有项目先做接管审查，新项目先与负责人确定目标和范围。不得把文件存在当作 Gate PASS。
 
-**本地 Codex：**在用户指定的工作目录中确认本仓库与准确分支/HEAD；读取 \`.project-control/tasks.json\`。仅在存在唯一 READY 且明确授权的任务（或者用户明确指定的已授权任务）时，才读取工作范围、有效设计输入及验收标准并执行。若任务为空/冲突/设计缺失，停止并报告。不得擅自 push、merge、reset、删除其他本地目录或修改正式批准状态。
+**本地 Codex：**在用户指定的工作目录中确认本仓库与准确分支/HEAD；读取 \`.project-control/tasks.json\` 并运行 \`python .project-control/resolve.py select\`。仅在存在唯一 READY 且明确授权的任务（或者用户明确指定的已授权任务）时，才读取工作范围、有效设计输入及验收标准并执行。若任务为空/冲突/设计缺失，停止并报告。不得擅自 push、merge、reset、删除其他本地目录或修改正式批准状态。
 
 本项目的源码和管理软件的通用发行包相互独立。
 """
@@ -170,6 +171,7 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
 """
     def json_text(value):
         return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+    resolver_source = (Path(__file__).resolve().parent / "target_resolver.py").read_text(encoding="utf-8")
     return {
         "repo": inspected["repo_url"], "mode": mode.upper(), "project_id": project_id,
         "source_head": inspected["git_head"], "source_branch": inspected["branch"],
@@ -180,6 +182,7 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
             ".project-control/assets.json": json_text(asset),
             ".project-control/decisions.json": json_text(decisions),
             ".project-control/tasks.json": json_text(tasks),
+            ".project-control/resolve.py": resolver_source,
         },
         "warning": "Candidate only. Requires human authorization for actual Git/GitHub changes.",
     }
