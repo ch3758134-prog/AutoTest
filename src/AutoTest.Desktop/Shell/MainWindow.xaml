@@ -58,7 +58,7 @@
             <RowDefinition Height="0"/>
             <RowDefinition Height="55"/>
             <RowDefinition Height="*" MinHeight="330"/>
-            <RowDefinition x:Name="LogRow" Height="29" MinHeight="29"/>
+            <RowDefinition x:Name="LogRow" Height="0" MinHeight="0"/>
             <RowDefinition Height="27"/>
         </Grid.RowDefinitions>
 
@@ -132,7 +132,7 @@
         <Grid Grid.Row="3" Background="#F6F9FE">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="50"/>
-                <ColumnDefinition x:Name="ExplorerColumn" Width="273" MinWidth="0"/>
+                <ColumnDefinition x:Name="ExplorerColumn" Width="255" MinWidth="0"/>
                 <ColumnDefinition x:Name="ExplorerSplitterColumn" Width="5"/>
                 <ColumnDefinition Width="*" MinWidth="620"/>
             </Grid.ColumnDefinitions>
@@ -150,21 +150,12 @@
             <Border x:Name="ExplorerPanel" Grid.Column="1" Background="White"
                 BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#F5F9FF" Padding="12,10"
-                        BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Content="‹" Click="ToggleExplorer_Click"
-                                Padding="6,0" MinHeight="20" Margin="0" Background="Transparent"
-                                BorderThickness="0" ToolTip="收起工程树"/>
-                            <TextBlock Text="工程资源" FontSize="13" FontWeight="SemiBold"/>
-                        </DockPanel>
-                    </Border>
-                    <ContentControl x:Name="ExplorerDocumentHost" Background="{DynamicResource StudioPanel}" Margin="4,6,4,0"/>
+                    <ContentControl x:Name="ExplorerDocumentHost" Background="{DynamicResource StudioPanel}" Margin="0"/>
 
                 </DockPanel>
             </Border>
             <GridSplitter x:Name="ExplorerSplitter" Grid.Column="2" Width="5"
-                HorizontalAlignment="Stretch" Background="#EDF2F8"/>
+                HorizontalAlignment="Stretch" Background="#E9EFF7"/>
             <!-- The ONE document host. The operator TEST is its first permanent document. -->
             <TabControl x:Name="DocumentTabs" Grid.Column="3" Style="{StaticResource IdeDocuments}" Background="#F6F9FE"
                 BorderBrush="{StaticResource Border}" BorderThickness="0"
@@ -200,8 +191,8 @@
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="#526C87"
                     FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="700"/>
-                <TextBlock Text="主控连接不等于 ECU 测试通过" FontSize="11"
-                    Foreground="#355B81"/>
+                <TextBlock Text="AutoTest  ·  工程编辑工作区" FontSize="11"
+                    Foreground="#6D8095"/>
             </DockPanel>
         </Border>
     </Grid>
