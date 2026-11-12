@@ -98,6 +98,8 @@ public sealed class NewProjectDialogViewModel : BindableBase
         try
         {
             await _workspace.CreateAsync(ProjectName, ParentDirectory);
+            // Allow WPF Window.Closing to complete before setting DialogResult.
+            IsCreating = false;
             CloseRequested?.Invoke(true);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or
