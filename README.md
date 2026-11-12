@@ -15,6 +15,6 @@
 
 ## 当前状态
 
-当前为 **主线整理候选**，正式前端和物理会话尚需按模块接入。后端的 API、测试工程与物理硬件通过情况应逐项确认；演示/Mock 结果不能作为实体 ECU 或出厂判定证据。详见 `docs/engineering/MAIN_CLEANUP_SCOPE_20261112.md`。
+当前为 **主线整理候选**，正式前端和物理会话尚需按模块接入。后端的 API、测试工程与物理硬件通过情况应逐项确认；演示/Mock 结果不能作为实体 ECU 或出厂判定证据。当前实际源码状态、真实入口、模块责任以及首个 PROJECT/DBC 主界面接线退出条件，详见 [`docs/engineering/MAIN_SOURCE_STATUS_20261111.md`](docs/engineering/MAIN_SOURCE_STATUS_20261111.md)；历史清理决策详见 `docs/engineering/MAIN_CLEANUP_SCOPE_20261112.md`。
 
 本仓库旧阶段文件可通过 Git 历史检索，不再将历史交付包说明作为本次产品的正式 README。
