@@ -2,9 +2,13 @@
 
 > 本文件属于交给 ChatGPT 网页端管理 AI 的**独立项目管理系统文件夹**，不是被管理项目自身的数据。通用多项目管理工作台见 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)。
 
+## 当前关键文件：先分清资料存在、当前有效与需要补全
+
+开始项目接管时先读 [portable/EVIDENCE_AND_REMEDIATION.md](portable/EVIDENCE_AND_REMEDIATION.md)：一次 GitHub 关键词搜索无结果不能说明项目缺少产品定义；找到历史设计和批准也不能默认当前有效。协调 AI 对确实缺少的必要工程依据负责组织补写候选、审查和决定，不得仅报告 UNKNOWN 后放弃。新证据评估器为 [portable/context_assessment.py](portable/context_assessment.py)；旧 `context_discovery.py` 与 `COVERED` 状态只供历史阅读，不能用于实际接管的充分性判定。
+
 ## 首次入场：先建立项目认识，再决定工程工作
 
-**接管项目不能从当前代码表和最新提交直接倒推项目目的。** 先读取 [portable/CONTEXT_DISCOVERY.md](portable/CONTEXT_DISCOVERY.md)，依岗位/任务建立资料发现地图，广度搜索产品背景、用户场景、需求历史、研究、设计理由、决定变化与真实证据，再追踪需要深挖的矛盾。读取 [portable/AI_WORK_MODES.md](portable/AI_WORK_MODES.md) 区分岗位、工作方法、项目知识和执行授权。覆盖记录可以用 [portable/context_discovery.py](portable/context_discovery.py) 审查结构，但这不是 AI 理解或审批证明。
+**接管项目不能从当前代码表和最新提交直接倒推项目目的。** 先读取 [portable/CONTEXT_DISCOVERY.md](portable/CONTEXT_DISCOVERY.md)，依岗位/任务建立资料发现地图，广度搜索产品背景、用户场景、需求历史、研究、设计理由、决定变化与真实证据，再追踪需要深挖的矛盾。读取 [portable/AI_WORK_MODES.md](portable/AI_WORK_MODES.md) 区分岗位、工作方法、项目知识和执行授权。新的证据评价记录可用 [portable/context_assessment.py](portable/context_assessment.py) 做结构检查；这不是 AI 理解或审批证明。
 
 只有发现任务所需的关键依据，才能提出项目计划或专业工作候选；不能因源码存在就宣布已经完成存量项目接管。遇到重要未知继续调查，不让负责人重复整理 GitHub 已有资料。GitHub 文档并非 ChatGPT 自动安装的原生 Skill，新 AI 必须确认实际读取成功。
 
