@@ -70,3 +70,15 @@
 5. 如后续需要从候选补全动作直接进入现有 WBS/需求/工作，则另外设计审批、CAS 写入和事务关联；当前**没有**这条自动持久化/自动任务派发闭环。
 
 审查结论：**已完成通用候选修订，正式产品验收尚未完成。** 不因一轮真实接管失败增加 AutoTest 专用硬编码或新的固定阶段，也不将任何项目旧批准静默迁移。
+
+## 七、4.5 后续修订：从只读评价到真实管理台账
+
+4.4 原审查结论保留作为历史快照，**不能再把当时“尚未实现 Web 保存或 WBS 关联”理解为 4.5 的当前情况**。
+
+- 新增 `portable/context_workflow.py`：将评价候选追加到目标项目 `management.json.context_reviews`，保留内容摘要和历史版本，使用既有本地修订号/CAS 与项目身份校验；不会自动升级旧 `COVERED`。
+- `propose_context_remediation_work` 把已登记的评价行动与现有交付候选、WBS 工作联系起来，工作仍为 `PROPOSED`、`execution_authorized=false`，不下发 Codex 任务。
+- 新评价会标记依赖旧评价的工作为过期，重新审查相关提交中的计划，并提醒已请求 Gate 的历史证据发生变化；`governance.py` 拒绝用过期上下文支撑新计划提交或 Gate 审查。
+- Web 负责人视图增加候选评价登记与“组织为候选工作”操作，并在首页展示尚未检索或未完成评价的项目认识，不要求负责人替 AI 填资料。独立 `context_assessment.json` 保持可选兼容只读来源；有新版 CAS 评价时优先以 `management.json` 记录为准。
+- 新增 `tests/test_context_workflow.py`、`tests/test_context_governance.py` 和缺失资料误判相关回归用例。
+
+**验证边界**：本轮 GitHub 文件与发行清单复查、前端 JavaScript 语法解析完成；另在隔离环境对与新工作流一致的本地镜像执行了 Python 语法检查、候选记录/补全关联/证据过期的冒烟测试，以及八项发现语义单元测试。完整远端源码回归、真实 Web 浏览器及 Windows 使用测试未执行；不把本地镜像测试等同于 GitHub 精确 HEAD 的完整测试。正式发布仍为 `CANDIDATE_NOT_RELEASED`。
