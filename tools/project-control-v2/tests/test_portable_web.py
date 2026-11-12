@@ -240,6 +240,28 @@ class PortableWebTests(unittest.TestCase):
             self.assertEqual(data["registry_revision"], 3)
             self.assertEqual(data["workspaces"], [])
 
+    def test_dns_rebinding_host_header_is_rejected_for_reads_and_writes(self):
+        request = Request(self.base + "/api/model?project_id=project-1",
+                          headers={"Host": "attacker.example"})
+        with self.assertRaises(HTTPError) as blocked:
+            urlopen(request, timeout=5)
+        self.assertEqual(blocked.exception.code, 403)
+        self.assertEqual(self.revision("project-1"), 1)
+
+        payload = json.dumps({"project_id": "project-1", "action": "create_deliverable",
+                              "payload": {"id": "BAD", "title": "Rejected",
+                                          "success_condition": "Never written",
+                                          "reason": "DNS rebinding test",
+                                          "expected_revision": 1}}).encode()
+        request = Request(self.base + "/api/action", data=payload, method="POST",
+                          headers={"Host": "attacker.example",
+                                   "Content-Type": "application/json",
+                                   "X-Owner-Token": "test-owner-secret"})
+        with self.assertRaises(HTTPError) as blocked:
+            urlopen(request, timeout=5)
+        self.assertEqual(blocked.exception.code, 403)
+        self.assertEqual(self.revision("project-1"), 1)
+
     def test_auth_stale_revision_and_unapproved_operations_blocked(self):
         revision = self.revision("project-1")
         payload = {"id": "d-1", "title": "Risk", "success_condition": "Evidence",
