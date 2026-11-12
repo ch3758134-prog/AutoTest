@@ -29,7 +29,11 @@
       <TextBlock Text="搜索" VerticalAlignment="Center" Margin="0,0,4,0"/>
       <TextBox Width="200" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索事件类别、错误阶段、概要" Margin="0,0,8,0"/>
       <TextBlock Text="来源" VerticalAlignment="Center" Margin="0,0,4,0"/>
-      <ComboBox Width="104" ItemsSource="{Binding OriginOptions}" SelectedItem="{Binding OriginFilter}" Margin="0,0,8,0"/>
+      <ComboBox Width="120" ItemsSource="{Binding OriginOptions}" SelectedItem="{Binding OriginFilter}" Margin="0,0,8,0">
+       <ComboBox.ItemTemplate><DataTemplate>
+        <TextBlock Text="{Binding Converter={StaticResource OperatorStatusConverter}}"/>
+       </DataTemplate></ComboBox.ItemTemplate>
+      </ComboBox>
       <CheckBox Content="仅错误" IsChecked="{Binding OnlyFailures}" VerticalAlignment="Center" Margin="0,0,10,0"/>
       <CheckBox Content="有关联 Trace" IsChecked="{Binding OnlyWithTrace}" VerticalAlignment="Center" Margin="0,0,10,0"/>
       <Button Content="_查询" Style="{StaticResource AtPrimaryButton}" Command="{Binding RefreshCommand}" Padding="12,3" IsDefault="True" Margin="0,0,8,0"/>
