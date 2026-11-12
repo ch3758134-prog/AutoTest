@@ -56,7 +56,7 @@ public sealed class TestEditorWorkflowTests
             var checkProject = await ProjectRepository.OpenDefinitionAsync(project.ManifestPath);
             var updatedAsset = Assert.Single(checkProject.Assets);
             Assert.Equal(2, updatedAsset.Revision);
-            Assert.Equal(saved.FileHash, updatedAsset.Sha256, ignoreCase: true);
+            Assert.True(string.Equals(saved.FileHash, updatedAsset.Sha256, StringComparison.OrdinalIgnoreCase));
 
             var anotherWorkspace = new ProjectWorkspaceService();
             await anotherWorkspace.OpenAsync(project.ManifestPath);

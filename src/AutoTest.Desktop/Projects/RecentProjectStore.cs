@@ -30,8 +30,16 @@ public sealed class RecentProjectStore
     {
         var path = Path.GetFullPath(manifest);
         if (!Path.IsPathFullyQualified(path)) throw new ArgumentException("工程清单必须为绝对路径。");
-        if (string.Equals(GetLastProjectManifest(), path, StringComparison.OrdinalIgnoreCase))
-            return;
+        try
+        {
+            if (string.Equals(GetLastProjectManifest(), path, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+        {
+            // A corrupt/stale preference must not prevent a successfully opened
+            // real project from replacing the remembered path.
+        }
         var parent = Path.GetDirectoryName(_settingsFile)!;
         Directory.CreateDirectory(parent);
         var temporary = Path.Combine(parent, ".recent-" + Guid.NewGuid().ToString("N") + ".tmp");

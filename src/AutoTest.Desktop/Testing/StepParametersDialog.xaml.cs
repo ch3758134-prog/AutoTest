@@ -30,8 +30,8 @@ public partial class StepParametersDialog : Window
         TypeInfo.Text = StepUiCatalog.Label(node.Type) + " · " + node.Type;
         NameInput.Text = node.Name;
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(node.Type);
-        var keys = (descriptor?.RequiredProperties ?? [])
-            .Concat(node.Properties.Keys)
+        var required = descriptor is null ? Enumerable.Empty<string>() : descriptor.RequiredProperties.AsEnumerable();
+        var keys = required.Concat(node.Properties.Keys)
             .Distinct(StringComparer.Ordinal);
         foreach (var key in keys)
             Fields.Add(new StepPropertyField(key, node.Properties.GetValueOrDefault(key, "")));
