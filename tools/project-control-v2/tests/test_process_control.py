@@ -77,7 +77,8 @@ class ProcessControlTests(unittest.TestCase):
         self.assertEqual(assessment(a)['state'],'READY_FOR_OWNER_DECISION_WITH_PROPOSALS')
         apply(self.record,'request_process_review',{'id':'owner-1','activity_id':a['id'],'purpose':'裁剪须确认'})
         req=self.record['process_control']['review_requests'][0]
-        self.assertEqual(req['state'],'REQUESTED_NOT_APPROVED')
+        self.assertEqual(req['state'],'PREPARED_NOT_PRESENTED')
+        self.assertFalse(req['owner_read_confirmed'])
         self.assertTrue(req['pending_decisions'])
 
     def test_deferral_exception_need_owner_closure(self):
@@ -102,7 +103,8 @@ class ProcessControlTests(unittest.TestCase):
         self.assertEqual(assessment(a)['state'],'READY_FOR_OWNER_REVIEW')
         apply(self.record,'request_process_review',{'id':'review-1','activity_id':a['id'],'purpose':'请负责人审查'})
         req=self.record['process_control']['review_requests'][0]
-        self.assertEqual(req['state'],'REQUESTED_NOT_APPROVED')
+        self.assertEqual(req['state'],'PREPARED_NOT_PRESENTED')
+        self.assertFalse(req['owner_read_confirmed'])
         apply(self.record,'set_process_obligation',{'activity_id':a['id'],'obligation_id':'purpose',
           'disposition':'CONFLICT','reason':'旧定义被撤回','impact':'必须重审目的'})
         self.assertEqual(assessment(a)['state'],'NOT_READY')
