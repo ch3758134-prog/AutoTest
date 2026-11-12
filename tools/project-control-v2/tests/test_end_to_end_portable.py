@@ -135,14 +135,19 @@ class IndependentPortableWorkflowTests(unittest.TestCase):
             self.assertEqual(receipt["candidate_head"],candidate_sha)
             self.assertEqual(len(receipt["test_evidence"]),1)
             # Shared git objects allow manager to verify code across linked worktrees.
-            target=management.Target(manager)
-            collected=target.apply("record_receipt",{
-                "expected_revision":1,"reason":"Independent code review candidate",
-                "receipt":receipt})
-            self.assertEqual(collected["result"],"LOCAL_DRAFT_SAVED_NOT_REMOTE_PUBLISHED")
+            target=management.Target(manager,registry_dir=registry_root)
+            collected=target.collect_registered_receipts()
+            self.assertEqual(collected["imported"],[receipt["receipt_id"]])
+            self.assertEqual(collected["held"],[])
             record=target.model()["management"]["receipts"][0]
             self.assertEqual(record["git_assessment"],"LOCAL_COMMIT_SCOPE_VERIFIED")
+            self.assertEqual(record["test_assessment"],
+                             "LOCAL_LOG_HASHES_VERIFIED_EXIT_CODES_SELF_REPORTED")
+            self.assertEqual(record["log_verified_workspace_id"],"TARGET-TASK")
             self.assertNotEqual(record["review_status"],"ACCEPTED")
+            again=target.collect_registered_receipts()
+            self.assertEqual(again["skipped"],[receipt["receipt_id"]])
+            self.assertEqual(len(target.model()["management"]["receipts"]),1)
             # A Web-managed candidate is a real local modification. The manager
             # must review and commit it before preparing the remote PR task
             # transition, rather than silently ignoring a dirty source tree.
