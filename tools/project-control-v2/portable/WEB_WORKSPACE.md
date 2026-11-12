@@ -16,7 +16,7 @@ python tools/project-control-v2/portable/export_package.py --out "ProjectControl
 
 ## 管理记录 GitHub 同步
 
-通用 Web 对 `.project-control/management.json` 的修改是**本地候选**，不等于 GitHub 已同步。需要发布时，管理 AI 应使用已连接的 GitHub 工具核对目标仓库、HEAD、文件 SHA、草案审查与审批范围，再做受控远端更新；可选的 `portable/management_sync.py` 提供**仅限该管理文件**的本机 GitHub SHA-CAS 传输。它要求当前本地基线 HEAD 与远端分支一致、远端文件 blob 没有变化、管理事件历史保持前缀一致、没有额外未审本地改动；默认只预览，只有显式 `--apply` 及外部环境 GitHub token 才能写入。发布后本地工作区仍需受控拉取和核对，不能自动清理。它不能跨多个文件形成事务，也不能签发正式批准。
+通用 Web 对 `.project-control/management.json` 的修改是**本地候选**，不等于 GitHub 已同步。需要发布时，管理 AI 应使用已连接的 GitHub 工具核对目标仓库、HEAD、文件 SHA、草案审查与审批范围，再做受控远端更新；可选的 `portable/management_sync.py` 提供**仅限该管理文件**的本机 GitHub 非强制引用更新（默认）或显式兼容 Contents SHA-CAS 传输。它要求当前本地基线 HEAD 与远端分支一致、远端文件 blob 没有变化、管理事件历史保持前缀一致、没有额外未审本地改动；默认只预览，只有显式 `--apply` 及外部环境 GitHub token 才能写入；默认 `--transport git-ref-cas` 防止同一分支并发推进，兼容 Contents 方式必须额外指定 `--transport contents-file-cas`。发布后本地工作区仍需受控拉取和核对，不能自动清理。它不能跨多个文件形成事务，也不能签发正式批准。
 
 ## 最新受控能力
 
