@@ -7,7 +7,7 @@
     MinWidth="1150" MinHeight="720" WindowState="Maximized"
     WindowStartupLocation="CenterScreen"
     Background="{DynamicResource StudioBg}" Foreground="{DynamicResource StudioText}"
-    FontFamily="Microsoft YaHei UI" FontSize="13"
+    FontFamily="Microsoft YaHei UI" FontSize="13.5"
     SnapsToDevicePixels="True" UseLayoutRounding="True"
     Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown">
     <Window.Resources>
@@ -42,9 +42,16 @@
             </Setter>
         </Style>
         <Style TargetType="TabItem">
-            <Setter Property="Padding" Value="13,8"/>
+            <Setter Property="Padding" Value="16,10"/>
             <Setter Property="Foreground" Value="#4A627B"/>
             <Setter Property="Background" Value="#F4F8FE"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="#246FC5"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Background" Value="#FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
     <Window.InputBindings>
@@ -54,16 +61,16 @@
     </Window.InputBindings>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="41"/>
+            <RowDefinition Height="48"/>
             <RowDefinition Height="0"/>
-            <RowDefinition Height="55"/>
+            <RowDefinition Height="58"/>
             <RowDefinition Height="*" MinHeight="330"/>
             <RowDefinition x:Name="LogRow" Height="0" MinHeight="0"/>
             <RowDefinition Height="27"/>
         </Grid.RowDefinitions>
 
         <!-- Single coherent application chrome. No nested operator/developer shells. -->
-        <Border Grid.Row="0" Background="#F8FAFF" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="#EAF3FF" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
             <DockPanel Margin="13,0,13,0">
                 <TextBlock DockPanel.Dock="Right" Text="ECU 测试工作台"
                     FontSize="11" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
@@ -72,7 +79,7 @@
                     <TextBlock Text="A" Foreground="White" FontWeight="Bold" FontSize="16"
                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
-                <TextBlock Text="AutoTest" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
+                <TextBlock Text="AutoTest" FontWeight="Bold" FontSize="18" VerticalAlignment="Center"/>
                 <TextBlock Text="   /   " Foreground="#94A4B7" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding ProjectLabel}" Foreground="#5D7087" VerticalAlignment="Center"/>
             </DockPanel>
@@ -132,8 +139,8 @@
 
         <Grid Grid.Row="3" Background="#F6F9FE">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="50"/>
-                <ColumnDefinition x:Name="ExplorerColumn" Width="245" MinWidth="0"/>
+                <ColumnDefinition Width="53"/>
+                <ColumnDefinition x:Name="ExplorerColumn" Width="270" MinWidth="0"/>
                 <ColumnDefinition x:Name="ExplorerSplitterColumn" Width="5"/>
                 <ColumnDefinition Width="*" MinWidth="620"/>
             </Grid.ColumnDefinitions>
