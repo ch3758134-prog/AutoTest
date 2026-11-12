@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "3.3-module-source-ledger-manual-validation",
+  "version": "4.0-ai-process-contracts-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -35,7 +35,10 @@
     "portable/management_sync.py",
     "portable/git_ref_atomic.py",
     "portable/module_control.py",
-    "portable/remote_module_status.py"
+    "portable/remote_module_status.py",
+    "portable/process_catalog.json",
+    "portable/process_control.py",
+    "portable/PROCESS_SYSTEM.md"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -68,7 +71,10 @@
     "module_status": "LOCAL_GIT_OBJECTS_WITH_EXPLICIT_REMOTE_GITHUB_READ_ONLY",
     "module_boundary_enforcement": "CODEX_TASK_MODULE_SCOPE_AND_PUBLIC_INTERFACE_REVIEW_REQUIRED",
     "module_pr_scope": "CROSS_MODULE_PR_FILE_CHANGE_REVIEW_REQUIRED",
-    "ci_policy": "NO_AUTOMATIC_PUSH_OR_PR_RUNS_MANUAL_ONLY"
+    "ci_policy": "NO_AUTOMATIC_PUSH_OR_PR_RUNS_MANUAL_ONLY",
+    "ai_process_contracts": "CANDIDATE_STRUCTURAL_AND_SEMANTIC_GUIDANCE",
+    "ai_intake_reporting": "CANDIDATE_NO_IMPLICIT_AUTHORITY",
+    "obligation_tailoring": "PROPOSAL_ONLY_NOT_SELF_APPROVED"
   },
   "separation": {
     "package_source": "Project Control system files",

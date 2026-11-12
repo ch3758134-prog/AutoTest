@@ -15,6 +15,9 @@ from remote_sync import inspect as inspect_remote, SyncError
 from remote_module_status import inspect as inspect_remote_modules
 from github_bridge import GitHub, RemoteError
 from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS, KINDS as GOVERNANCE_FIELDS
+from process_control import (apply as apply_process, ACTIONS as PROCESS_ACTIONS,
+                             catalog as process_catalog, initial_state as initial_process_state,
+                             state_for as process_state_for, ProcessError)
 from module_control import (add_module, assign_work as assign_module_work,
                             defined_modules, local_source_snapshot, assess_candidate_paths,
                             ModuleError)
@@ -129,7 +132,7 @@ def empty_management(project_id):
         "status": "DRAFT", "deliverables": [], "work": [], "milestones": [],
         "risks": [], "progress": {}, "events": [], "receipts": [],
         "requirements": [], "plans": [], "changes": [], "gate_reviews": [], "trace_links": [],
-        "modules": []
+        "modules": [], "process_control": initial_process_state()
     }
 
 
@@ -231,6 +234,10 @@ class Target:
             if name in value and not isinstance(value[name], list):
                 raise ManagementError("invalid governance collection: " + name)
         try:
+            process_state_for(value)
+        except ProcessError as error:
+            raise ManagementError("invalid process state: " + str(error)) from error
+        try:
             defined_modules(value)
         except ModuleError as error:
             raise ManagementError("invalid module boundary registry: " + str(error)) from error
@@ -257,6 +264,7 @@ class Target:
             management.setdefault("modules", [])
             for name in GOVERNANCE_FIELDS:
                 management.setdefault(name, [])
+            process_state_for(management)
             assets = load_json(self.directory / "assets.json")
             decisions = load_json(self.directory / "decisions.json")
             tasks = load_json(self.directory / "tasks.json")
@@ -304,6 +312,7 @@ class Target:
             return {
                 "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
+                "process_catalog": process_catalog(),
                 "git": {
                     "head": self.head_or_none(),
                     "branch": git(self.root, "branch", "--show-current") or "(detached)",
@@ -481,12 +490,14 @@ class Target:
             record.setdefault("modules", [])
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
                              "create_milestone", "record_receipt", "review_receipt",
-                             "verify_log_evidence", "create_module", "assign_module_work"} | GOVERNANCE_ACTIONS
+                             "verify_log_evidence", "create_module", "assign_module_work"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
             works = record["work"]
-            if name in GOVERNANCE_ACTIONS:
+            if name in PROCESS_ACTIONS:
+                apply_process(record, name, payload)
+            elif name in GOVERNANCE_ACTIONS:
                 apply_governance(record, name, payload)
             elif name == "create_module":
                 add_module(record, payload)

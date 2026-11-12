@@ -1,0 +1,40 @@
+{
+  "schema": "project-control-process-catalog/1",
+  "version": "1.0.0",
+  "principles": [
+    "过程与阶段不同：项目可裁剪组织节奏，过程责任不能因更名消失",
+    "一个成果可以满足多个责任，不强制固定文档数量",
+    "负责人批准、技术审查、执行权限和验证事实分别管理",
+    "过程责任的自动化检查仅确认结构和证据链接，不能替代专业语义审查"
+  ],
+  "profiles": [
+    {"id": "general-rd", "name": "通用研发", "process_ids": ["initiation", "current-state", "needs", "architecture", "detailed-design", "implementation", "verification", "continuous-governance"]},
+    {"id": "software", "name": "纯软件研发", "process_ids": ["initiation", "current-state", "needs", "architecture", "detailed-design", "implementation", "verification", "continuous-governance"]},
+    {"id": "research", "name": "研究与实验", "process_ids": ["initiation", "current-state", "needs", "verification", "continuous-governance"]}
+  ],
+  "processes": [
+    {
+      "id": "initiation", "name": "立项与高层治理", "purpose": "决定为什么投入资源、目标边界和谁有权决策，而不是定义接口和模块",
+      "responsible_roles": ["coordinator"], "review_guidance": "核对目的、目标、范围与治理是否自洽；不能把技术功能列表当作项目目标",
+      "activities": ["调查业务动因与现有资料", "区分产品定义、项目目标、范围和方案", "分析冲突并向负责人提交真正的取舍", "组织总体路线与治理方案"],
+      "out_of_scope": ["详细系统需求", "技术架构与接口", "文件/类级实施计划", "实机验收声明"],
+      "obligations": [
+        {"id":"purpose","title":"立项目的和价值","kind":"CORE","guidance":"解释问题、机会及为何需要项目，列明来源与重大假设"},
+        {"id":"identity","title":"产品或研究对象定位","kind":"CORE","guidance":"简洁明确对象和主要使用方，不将某一型号或某个迭代写成产品身份"},
+        {"id":"objectives","title":"项目目标与成功边界","kind":"CORE","guidance":"说明预期业务结果以及如何判断方向正确，不伪造量化指标"},
+        {"id":"scope","title":"高层范围、排除与交付责任","kind":"CORE","guidance":"明确交付边界和主要不做项，不提前指定模块及协议实现"},
+        {"id":"stakeholders","title":"主要利益相关者与决策权限","kind":"CORE","guidance":"辨明使用方、负责人、批准权及必要协作责任"},
+        {"id":"strategy","title":"总体研发与交付策略","kind":"CORE","guidance":"说明过程组织、交付增量、审查方法及高层依赖，不虚构日期"},
+        {"id":"constraints","title":"主要约束、未知和风险","kind":"CORE","guidance":"揭示影响立项的现实限制，并给出后续处理位置和责任"},
+        {"id":"external-commercial","title":"对外商务交付条件","kind":"CONDITIONAL","guidance":"存在对外商业交付承诺时核对；内部项目可说明不适用及原因"}
+      ]
+    },
+    {"id":"current-state","name":"现状、证据与可行性","purpose":"识别既有系统、技术资产、现实能力、限制和未知","responsible_roles":["coordinator","specialist"],"review_guidance":"区分来源事实、用户报告、推断与未实测","activities":["调查原始资产和配置","核对约束和证据等级","提出可行性及必要验证"],"out_of_scope":["直接把源代码存在认定为功能通过"],"obligations":[{"id":"inventory","title":"资产与现状来源","kind":"CORE","guidance":"每项关键资产绑定来源和版本"},{"id":"gaps","title":"限制、冲突和待验证事实","kind":"CORE","guidance":"未证实不可当作事实"}]},
+    {"id":"needs","name":"利益相关者需要与系统需求","purpose":"将实际使用活动转化为可评审可验证的需求","responsible_roles":["coordinator","specialist"],"review_guidance":"来源、需求与技术解法分离","activities":["使用情境调查","形成必要的功能、质量与接口要求","追踪和验证设计"],"out_of_scope":["把当前代码结构当作需求"],"obligations":[{"id":"scenarios","title":"使用情境和需要","kind":"CORE","guidance":"从真实用户任务建立来源"},{"id":"requirements","title":"可验证的需求与边界","kind":"CORE","guidance":"明确验证方式及未知条件"}]},
+    {"id":"architecture","name":"系统架构与方案评估","purpose":"用需求和现实约束支持系统级设计取舍","responsible_roles":["specialist","coordinator"],"review_guidance":"说明候选、权衡、责任与接口依据","activities":["比较候选方案","分配系统职责","识别跨系统接口和风险"],"out_of_scope":["未经审批就将方案作为代码实施命令"],"obligations":[{"id":"options","title":"方案比较和理由","kind":"CORE","guidance":"比较备选和取舍"},{"id":"contracts","title":"系统职责及接口边界","kind":"CORE","guidance":"职责与依赖可审查"}]},
+    {"id":"detailed-design","name":"可实施详细设计","purpose":"提供执行者无需猜测的重要行为、接口、失败与验证合同","responsible_roles":["specialist"],"review_guidance":"当前实现范围与有效上游依据一致","activities":["细化具体模块和数据","描述异常、测试及回滚"],"out_of_scope":["无依据的自主实现"],"obligations":[{"id":"design","title":"受控详细设计","kind":"CORE","guidance":"可定位、可实现、可核对"},{"id":"verification-plan","title":"验证及失败处理合同","kind":"CORE","guidance":"涵盖正常与异常及恢复"}]},
+    {"id":"implementation","name":"实施与集成","purpose":"按照有效设计、授权范围及真实输入开展制作与集成","responsible_roles":["specialist","integration","local_executor"],"review_guidance":"代码、实际执行与审查状态分离","activities":["核对设计和任务授权","实施并形成提交","收集构建/测试原始证据"],"out_of_scope":["把 CI 通过当作产品验收"],"obligations":[{"id":"authorization","title":"实施授权与输入身份","kind":"CORE","guidance":"任务、范围、批准和来源 SHA 匹配"},{"id":"execution","title":"实际执行与验证证据","kind":"CORE","guidance":"提交与真实日志可追踪"}]},
+    {"id":"verification","name":"系统验证与交付","purpose":"在指定环境确认交付满足有效需求和接受条件","responsible_roles":["integration","reviewer","coordinator"],"review_guidance":"真实环境和失败情形有明确证据","activities":["确定对象与环境","执行验证和差异处理","形成交付及剩余风险说明"],"out_of_scope":["将模拟当作实物验收"],"obligations":[{"id":"coverage","title":"需求与场景覆盖","kind":"CORE","guidance":"验证依据与目标版本明确"},{"id":"evidence","title":"真实结果与风险","kind":"CORE","guidance":"未执行的测试不可记为通过"}]},
+    {"id":"continuous-governance","name":"全周期治理","purpose":"持续管理变化、计划、风险、证据、角色与版本","responsible_roles":["coordinator"],"review_guidance":"保持事实和决策可追踪，不全局无差别重置","activities":["计划和进展协调","变更影响与风险管理","版本及责任保持"],"out_of_scope":["替负责人签发批准"],"obligations":[{"id":"trace","title":"配置、变化和风险可追踪","kind":"CORE","guidance":"从实际依赖与版本开展影响分析"},{"id":"authority","title":"职责、审查与授权边界","kind":"CORE","guidance":"正式决定与操作权限分开"}]}
+  ]
+}

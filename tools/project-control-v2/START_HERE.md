@@ -2,6 +2,12 @@
 
 > 本文件属于交给 ChatGPT 网页端管理 AI 的**独立项目管理系统文件夹**，不是被管理项目自身的数据。通用多项目管理工作台见 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)。
 
+## VNext 首先读取：工程过程与 AI 接管
+
+- [portable/PROCESS_SYSTEM.md](portable/PROCESS_SYSTEM.md)：完整的过程、责任履行、AI 接管报告与正式批准边界。
+- [portable/process_catalog.json](portable/process_catalog.json)：立项、现状、需求、架构、详细设计、实施、验证及全程治理的目标、职责和审查工作说明。
+- [portable/process_control.py](portable/process_control.py)：只生成过程责任候选和审核请求，不具有 Gate 或执行授权权力。
+
 ## 必读：完整工程协作与本地工作区
 
 - [portable/GOVERNANCE.md](portable/GOVERNANCE.md)：通用工程实体、WBS、计划、变更影响、阶段审查与正式批准的职责边界。

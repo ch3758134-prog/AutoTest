@@ -156,7 +156,7 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
 本文件属于目标 GitHub 仓库：`{inspected["repo_url"]}`。
 这是一个**候选管理初始化**，不是正式立项、需求/设计批准或编码授权。
 
-**ChatGPT 工程协调 AI：**先读取 `.project-control/README.md`、`project.json`、`assets.json`、`decisions.json`、`tasks.json`；自行调查此仓库的真实源码、分支、PR、CI、正式审批资料和现有资产。已有项目先做接管审查，新项目先与负责人确定目标和范围。不得把文件存在当作 Gate PASS。
+**ChatGPT 工程协调 AI：**先读取 `.project-control/README.md`、`project.json`、`assets.json`、`decisions.json`、`management.json`、`tasks.json`，按管理系统的 `portable/PROCESS_SYSTEM.md` 形成入场与当前工作汇报；自行调查此仓库的真实源码、分支、PR、CI、正式审批资料和现有资产。已有项目先做接管审查，新项目先与负责人确定目标和范围。不得把文件存在当作 Gate PASS。
 
 **本地 Codex：**由用户指定唯一的本地工作目录。该目录如果尚为空，直接检出已确认的目标仓库，不要擅自另建文件夹；检出后读取 `.project-control/tasks.json`，运行 `python .project-control/workspace_manager.py register-existing --help`，自行从项目管理记录获得目录登记所需参数并登记此目录。然后运行 `python .project-control/resolve.py select`。仅在存在唯一 READY 且明确授权的任务（或者用户明确指定的已授权任务）时，才读取工作范围、有效设计输入及验收标准并执行。若任务为空/冲突/设计缺失，停止并报告。不得擅自 push、merge、reset、删除其他本地目录或修改正式批准状态。
 
@@ -167,7 +167,8 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
 项目 ID：`{project_id}`。接管模式：`{mode.upper()}`。
 本目录的全部初始文件都是 **CANDIDATE_NOT_APPROVED**。
 
-阅读顺序：`project.json` → `assets.json` → `decisions.json` → `tasks.json` → 仓库中实际工程资产。
+阅读顺序：`project.json` → `assets.json` → `decisions.json` → `management.json` 的 `process_control` → `tasks.json` → 仓库中实际工程资产。
+工程过程及 AI 汇报的通用方法见 Project Control 发行包 `portable/PROCESS_SYSTEM.md` 与 `portable/process_catalog.json`；它们不会自行批准项目。
 `assets.json` 只来自当前本地 Git 索引，远端 PR/Issues/CI 和未入 Git 的资产需管理 AI 继续调查。发现已有 `.project-control` 时不能覆盖。
 `tasks.json` 初始为空：后续必须由工程协调者记录可审查的任务合同和授权状态，不能把整个项目初始化当成一条编码指令。
 
@@ -178,6 +179,8 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
     management = {"schema": "project-control-target-management/1", "project_id": project_id,
                   "revision": 1, "status": "DRAFT", "deliverables": [], "work": [],
                   "milestones": [], "risks": [], "progress": {}, "events": [], "modules": []}
+    from process_control import initial_state
+    management["process_control"] = initial_state()
     resolver_source = (Path(__file__).resolve().parent / "target_resolver.py").read_text(encoding="utf-8")
     workspace_source = (Path(__file__).resolve().parent / "workspace_manager.py").read_text(encoding="utf-8")
     return {
