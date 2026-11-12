@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "2.3-execution-evidence-candidate",
+  "version": "2.4-evidence-sync-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -22,7 +22,8 @@
     "portable/web/app.js",
     "portable/web/app.css",
     "portable/export_package.py",
-    "portable/receipt_evidence.py"
+    "portable/receipt_evidence.py",
+    "portable/remote_sync.py"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -31,12 +32,14 @@
     "codex_target_dispatch": "GENERIC_RESOLVER_CANDIDATE_WITH_TARGET_TASK_RECORD",
     "generic_web_ui": "CANDIDATE_LOCAL_GENERIC",
     "multi_project_store": "CANDIDATE_LOCAL_REPOSITORY_RECORDS",
-    "windows_end_to_end": "NOT_VERIFIED"
+    "windows_end_to_end": "NOT_VERIFIED",
+    "local_codex_receipts": "CANDIDATE_LOCAL_SCOPE_CHECKED",
+    "remote_sync": "EXPLICIT_READ_ONLY_CHECK"
   },
   "separation": {
     "package_source": "Project Control system files",
     "target_repo": "User-provided GitHub repository",
     "local_workspace": "User-selected folder for Codex execution"
   },
-  "warning": "Export only manifest-listed generic files. Legacy AutoTest server, project data and pilot bootstrap must not be included."
+  "warning": "Local Git receipt checking and explicit ls-remote do not independently verify test logs or publish data. Cross-worktree collection and Windows E2E are not verified."
 }
