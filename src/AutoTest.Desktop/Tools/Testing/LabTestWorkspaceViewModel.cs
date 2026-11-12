@@ -303,7 +303,25 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     public string[] StepTypes { get; } = LabPlanCompiler.ExecutableNodes.Where(x => x != "MockObserve").OrderBy(x => x).ToArray();
     public string SelectedInsertType { get => _insertType; set { _insertType = value; Changed(); } }
     public string SelectedName { get => _name; set { _name = value; Changed(); } }
-    public string ParameterName { get => _parameterName; set { _parameterName = value; Changed(); } }
+    public string ParameterName
+    {
+        get => _parameterName;
+        set { _parameterName = value; Changed(); Changed(nameof(SelectedParameterLabel)); }
+    }
+    public string SelectedParameterLabel => LabStepLocalization.DisplayParameter(ParameterName);
+    private KeyValuePair<string, string> _selectedParameterRow;
+    public KeyValuePair<string, string> SelectedParameterRow
+    {
+        get => _selectedParameterRow;
+        set
+        {
+            _selectedParameterRow = value;
+            Changed();
+            if (string.IsNullOrWhiteSpace(value.Key)) return;
+            ParameterName = value.Key;
+            ParameterValue = value.Value;
+        }
+    }
     public string ParameterValue { get => _parameterValue; set { _parameterValue = value; Changed(); } }
     public string Status { get => _status; private set { _status = value; Changed(); } }
     public string Verdict { get => _verdict; private set { _verdict = value; Changed(); } }
@@ -354,11 +372,17 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 foreach (var p in node.Parameters.OrderBy(x => x.Key, StringComparer.Ordinal))
                     ParameterRows.Add(p);
                 var firstParameter = ParameterRows.FirstOrDefault();
-                ParameterName = firstParameter.Key ?? "";
-                ParameterValue = firstParameter.Value ?? "";
+                SelectedParameterRow = firstParameter;
             }
         }
-        else { SelectedName = ""; SelectedStepTypeLabel = "选择左侧步骤查看设置"; ParameterRows.Clear(); ParameterName = ""; ParameterValue = ""; }
+        else
+        {
+            SelectedName = "";
+            SelectedStepTypeLabel = "选择左侧步骤查看设置";
+            ParameterRows.Clear();
+            SelectedParameterRow = default;
+            ParameterName = ""; ParameterValue = "";
+        }
         RefreshCommands();
     }
     public LabDocument Snapshot => _editor.Snapshot;
