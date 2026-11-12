@@ -44,6 +44,19 @@ class ContextAssessmentTests(unittest.TestCase):
         self.assertEqual(x["confirmed_gaps"],["purpose"])
         self.assertFalse(x["formal_approval_granted"])
 
+    def test_two_found_results_are_not_missing_evidence(self):
+        v=sample()
+        v["search_attempts"]=[{"id":"q1","domain":"product","method":"directory",
+                                "query_or_path":"docs/","outcome":"FOUND"},
+                               {"id":"q2","domain":"product","method":"history",
+                                "query_or_path":"history/","outcome":"FOUND"}]
+        v["proposed_actions"]=[{"id":"a1","topic":"purpose","kind":"RESEARCH_SOURCE",
+                        "reason":"need review","expected_output":"context analysis",
+                        "status":"PROPOSED_NOT_AUTHORIZED"}]
+        v["topics"]["purpose"].update(status="GAP_CONFIRMED",
+                   search_attempt_ids=["q1","q2"],action_ids=["a1"],gap_rationale="claimed missing")
+        with self.assertRaises(mod.AssessmentError):mod.audit(v)
+
     def test_search_error_is_not_absence(self):
         v=sample()
         v["search_attempts"]=[{"id":"q1","domain":"p","method":"search","query_or_path":"p",
