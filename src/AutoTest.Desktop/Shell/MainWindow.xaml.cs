@@ -352,6 +352,11 @@ public partial class MainWindow : Window
     private Window DialogOwnerFor(string toolKey) =>
         _floating.TryGetValue(toolKey, out var window) ? window : this;
 
+    // Confirmation must belong to the window the operator is using. A modal
+    // dialog owned by the hidden shell can be inaccessible behind the bench.
+    private Window ActiveConnectionOwner() =>
+        _floating.TryGetValue("bench", out var bench) && bench.IsActive ? bench : this;
+
     private FrameworkElement? GetOrCreateView(string key)
     {
         if (_views.TryGetValue(key, out var cached)) return cached;
@@ -799,7 +804,7 @@ public partial class MainWindow : Window
                 await model.DisconnectFromShellAsync();
             else
                 await model.ConnectFromShellAsync(ChoosePhysicalController, () =>
-                    MessageBox.Show(this,
+                    MessageBox.Show(ActiveConnectionOwner(),
                         "请确认主控、按键板和 ECU 的接线以及外部供电状态安全。\n" +
                         "连接只建立 USB/CAN 会话，不自动控制 IGN、按键、夹具或发送 CAN。\n" +
                         "是否连接当前主控板？",
@@ -813,7 +818,7 @@ public partial class MainWindow : Window
             StationConnectButton.Content = model.IsConnected ? "断开设备" : "连接设备";
             StationStatus.Text = model.StatusText;
             if (!model.IsConnected && model.StatusText.Contains("操作失败", StringComparison.Ordinal))
-                MessageBox.Show(this, model.ResultText, "设备连接失败",
+                MessageBox.Show(ActiveConnectionOwner(), model.ResultText, "设备连接失败",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -823,7 +828,7 @@ public partial class MainWindow : Window
     {
         var dialog = new Window
         {
-            Title = "选择主控设备", Owner = this, Width = 540, Height = 300,
+            Title = "选择主控设备", Owner = ActiveConnectionOwner(), Width = 540, Height = 300,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ResizeMode = ResizeMode.NoResize
         };
