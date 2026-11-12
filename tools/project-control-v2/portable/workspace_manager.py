@@ -471,6 +471,12 @@ def archive(workspace_id, reason, location=None, apply=False):
 
 
 def cli(argv=None):
+    # Python on Windows may inherit a legacy charmap console. Every management
+    # command writes UTF-8 Chinese project names and JSON, without requiring
+    # users to change the system code page.
+    for output in (sys.stdout, sys.stderr):
+        if hasattr(output, "reconfigure"):
+            output.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(description="Registered Codex Git workspaces; safe retirement")
     p.add_argument("action", choices=["create", "register-existing", "inspect", "scan", "close", "archive"])
     p.add_argument("--registry-dir")
