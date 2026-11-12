@@ -147,7 +147,7 @@
      </StackPanel>
 
      <DataGrid x:Name="TransmitGrid" Grid.Row="1" ItemsSource="{Binding Messages}"
-      SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
+      SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" IsReadOnly="{Binding IsSendTableReadOnly}"
       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
       HeadersVisibility="Column" RowHeaderWidth="0" Margin="0,0,0,8"
       ScrollViewer.HorizontalScrollBarVisibility="Auto" SelectionUnit="FullRow">
@@ -156,6 +156,7 @@
         <DataGridTemplateColumn.CellTemplate>
          <DataTemplate>
           <CheckBox IsChecked="{Binding IsChecked,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+           IsEnabled="{Binding DataContext.CanEdit,RelativeSource={RelativeSource AncestorType=DataGrid}}"
            VerticalAlignment="Center" HorizontalAlignment="Center"
            ToolTip="勾选此行：参与周期发送；未勾选不发送"/>
          </DataTemplate>
