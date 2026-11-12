@@ -12,7 +12,15 @@ python tools/project-control-v2/portable/export_package.py --out "ProjectControl
 
 ## GitHub 协作
 
-当管理 AI 需要从新建/接管推进到向 Codex 正式交付任务时，先读取 [REMOTE_HANDOFF.md](REMOTE_HANDOFF.md)。通用包的 \`task_publication.py\` 只生成 READY 发布候选，\`task_submission.py\` 则校验 PR 与回执后生成 SUBMITTED_FOR_REVIEW 候选，二者均不直接写 GitHub。其中规定：先记录独立人类授权、再做任务发布预检、用 GitHub Contents 当前 blob SHA 受控写入、确认目标仓库当前 HEAD，然后让 Codex 在本地执行。其 PR 成果需要按最新 Head/CI/变更范围核对，不能把本地管理界面保存视为远端已发布。
+当管理 AI 需要从新建/接管推进到向 Codex 正式交付任务时，先读取 [REMOTE_HANDOFF.md](REMOTE_HANDOFF.md)。通用包的 `task_publication.py` 只生成 READY 发布候选，`task_submission.py` 则校验 PR 与回执后生成 SUBMITTED_FOR_REVIEW 候选，二者均不直接写 GitHub。其中规定：先记录独立人类授权、再做任务发布预检、用 GitHub Contents 当前 blob SHA 受控写入、确认目标仓库当前 HEAD，然后让 Codex 在本地执行。其 PR 成果需要按最新 Head/CI/变更范围核对，不能把本地管理界面保存视为远端已发布。
+
+## 最新受控能力
+
+- 在当前已登记的真实项目目录中，通用 UI 已有候选需求、WBS、依赖、计划提交/修订、变更影响、阶段审查请求以及 Codex 回执查看；所有正式通过状态仍要求外部授权。
+- 本机只读工作区登记簿视图和跨已登记 worktree 的回执收集，不搜索未知磁盘目录。
+- `workspace_manager.py` 管理独立工作区登记、临时 linked worktree 的审查和非强制退出；仅用户指定目录，默认保留。
+- `github_bridge.py` 是**可选本地 GitHub Contents 传输工具**：默认只预览；只有明确 `--apply` 且进程环境设置 GitHub token 时才尝试远端写入，并重新核验实时分支、文件 blob、任务批准、设计内容和 PR 文件清单。网页端管理 AI 优先使用自身已连接 GitHub，不能要求用户手动整理计划文件。
+- 若已有项目使用旧版 `.project-control/resolve.py`，使用 `project_init.py upgrade-runtime-preview` 确认原始 SHA 后实施 `upgrade-runtime`，旧文件保存在本地 Git 元数据备份，不默认覆盖。
 
 ## 使用定位
 
