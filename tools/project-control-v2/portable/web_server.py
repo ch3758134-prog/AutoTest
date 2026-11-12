@@ -12,6 +12,7 @@ from contextlib import contextmanager
 import hashlib
 from receipt_evidence import assess as assess_receipt, ReceiptError
 from remote_sync import inspect as inspect_remote, SyncError
+from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS, KINDS as GOVERNANCE_FIELDS
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -117,7 +118,8 @@ def empty_management(project_id):
     return {
         "schema": SCHEMA, "project_id": project_id, "revision": 1,
         "status": "DRAFT", "deliverables": [], "work": [], "milestones": [],
-        "risks": [], "progress": {}, "events": [], "receipts": []
+        "risks": [], "progress": {}, "events": [], "receipts": [],
+        "requirements": [], "plans": [], "changes": [], "gate_reviews": [], "trace_links": []
     }
 
 
@@ -167,6 +169,9 @@ class Target:
             raise ManagementError("invalid progress map")
         if "receipts" in value and not isinstance(value["receipts"], list):
             raise ManagementError("invalid receipt collection")
+        for name in GOVERNANCE_FIELDS:
+            if name in value and not isinstance(value[name], list):
+                raise ManagementError("invalid governance collection: " + name)
 
     def head_or_none(self):
         # A brand-new, locally initialized Git repository may have no first commit.
@@ -186,6 +191,8 @@ class Target:
             management = load_json(self.data_path)
             self.check_record(management)
             management.setdefault("receipts", [])
+            for name in GOVERNANCE_FIELDS:
+                management.setdefault(name, [])
             assets = load_json(self.directory / "assets.json")
             decisions = load_json(self.directory / "decisions.json")
             tasks = load_json(self.directory / "tasks.json")
@@ -275,12 +282,14 @@ class Target:
                 raise ManagementError("stale revision; refresh and review current changes")
             record.setdefault("receipts", [])
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
-                             "create_milestone", "record_receipt", "review_receipt"}
+                             "create_milestone", "record_receipt", "review_receipt"} | GOVERNANCE_ACTIONS
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
             works = record["work"]
-            if name == "create_deliverable":
+            if name in GOVERNANCE_ACTIONS:
+                apply_governance(record, name, payload)
+            elif name == "create_deliverable":
                 value = {"id": checked_id(payload.get("id"), "deliverable id"),
                          "title": checked_text(payload.get("title"), "title", 240),
                          "success_condition": checked_text(payload.get("success_condition"), "success condition"),
