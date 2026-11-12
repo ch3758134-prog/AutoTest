@@ -183,7 +183,7 @@
       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" MaxWidth="720"/>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
      <Ellipse Width="7" Height="7" Fill="#3387E4" Margin="0,0,8,0"/>
-     <TextBlock Text="就绪" Foreground="#54718F" FontSize="11" Margin="0,0,16,0"/>
+     <TextBlock Text="工程工作区" Foreground="#54718F" FontSize="11" Margin="0,0,16,0"/>
      <TextBlock Text="{Binding ProjectLabel}" FontSize="11" Foreground="#72849A" MaxWidth="600"
        TextTrimming="CharacterEllipsis"/>
     </StackPanel>
