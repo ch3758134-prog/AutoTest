@@ -143,6 +143,40 @@ class PortableInitializationTests(unittest.TestCase):
         with self.assertRaises(init.InitError):
             init.upgrade_management(self.root, self.inspect(), apply=True)
 
+    def test_existing_project_runtime_upgrade_uses_cas_and_local_backup(self):
+        self.add_asset()
+        before = self.inspect()
+        preview = init.create_preview(before, "adopt", project_id="existing-project")
+        init.apply_preview(self.root, before, preview)
+        git(self.root, "add", ".")
+        git(self.root, "commit", "-m", "initial management")
+        resolver = self.root / ".project-control/resolve.py"
+        workspace = self.root / ".project-control/workspace_manager.py"
+        resolver.write_text("# old resolver\n", encoding="utf-8")
+        workspace.unlink()
+        git(self.root, "add", ".")
+        git(self.root, "commit", "-m", "old runtime version")
+        clean = self.inspect()
+        plan = init.upgrade_runtime(self.root, clean)
+        self.assertEqual(plan["status"], "RUNTIME_UPGRADE_PREVIEW")
+        by_name = {x["name"]: x for x in plan["actions"]}
+        self.assertEqual(by_name["resolve.py"]["operation"], "REPLACE_WITH_BACKUP")
+        self.assertEqual(by_name["workspace_manager.py"]["operation"], "CREATE")
+        with self.assertRaisesRegex(init.InitError, "hash mismatch"):
+            init.upgrade_runtime(self.root, clean, apply=True,
+                                 expected_resolver_sha="0" * 64)
+        self.assertEqual(resolver.read_text(encoding="utf-8"), "# old resolver\n")
+        result = init.upgrade_runtime(
+            self.root, clean, apply=True,
+            expected_resolver_sha=by_name["resolve.py"]["current_sha256"])
+        self.assertEqual(result["status"], "LOCAL_RUNTIME_UPGRADED_NOT_COMMITTED")
+        self.assertTrue(workspace.is_file())
+        self.assertIn("TASK_EXECUTION_APPROVAL", resolver.read_text(encoding="utf-8"))
+        backup = Path(result["backup_dir"]) / (
+            "resolve.py." + by_name["resolve.py"]["current_sha256"] + ".bak")
+        self.assertEqual(backup.read_text(encoding="utf-8"), "# old resolver\n")
+        self.assertTrue((self.root / "README.md").is_file())
+
     def test_adopt_without_history_requires_more_investigation(self):
         with self.assertRaises(init.InitError):
             init.create_preview(self.inspect(), "adopt")
