@@ -155,7 +155,7 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
             if (_b0Acknowledged == value) return;
             if (_session.State != UsbSessionState.Disconnected) return;
             try { _session.SetB0IsolationConfirmed(value); _b0Acknowledged = value; Notify(); RefreshButtons(); }
-            catch (Exception ex) { ShowError("B0 确认", ex); }
+            catch (Exception ex) { ShowError("接线安全确认", ex); }
         }
     }
     public string StatusText { get => _statusText; private set { _statusText = value; Notify(); } }
@@ -269,7 +269,7 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
     private void OnConnection(UsbSessionState state)
         => SwitchToUi(() =>
         {
-            StatusText = $"USB 状态：{state} · 世代 {_session.Generation}";
+            StatusText = $"主控连接：{state} · 会话 {_session.Generation}";
             if (state != UsbSessionState.Connected) ClearStationEvidence();
             RefreshButtons();
         });
@@ -314,7 +314,7 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
             _exportGeneration = _session.Generation;
             _b0Acknowledged = false; Notify(nameof(B0Acknowledged));
         }
-        ResultText = "WinUSB 会话已建立。只执行 PING/版本/只读 GPIO，CAN 仅被动接收。";
+        ResultText = "主控已连接。当前窗口支持固件状态读取与 CAN 被动接收；不主动发送报文。";
     }
     private async Task DisconnectAsync()
     {
@@ -325,8 +325,8 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
         _exportHubLost = _session.HubDropped;
         _exportGeneration = _session.Generation; // active generation, before disconnect invalidates it
         await _session.DisconnectAsync();
-        StatusText = "已断开。再次连接需重新确认 B0 隔离。";
-        ResultText = "断开完成；没有自动重连或 CAN 发送。";
+        StatusText = "已断开。再次连接前请重新确认接线与供电安全。";
+        ResultText = "已断开主控，不会自动重连或发送 CAN 报文。";
     }
     private async Task ReadAsync()
     {
