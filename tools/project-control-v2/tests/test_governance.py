@@ -94,10 +94,17 @@ class GovernanceTests(unittest.TestCase):
                   objective="Verify mechanism",work_ids=["W1"],exit_condition="Evidence")
         self.call("submit_plan",id="PLAN1",reason="Proposal")
         self.record["work"][0]["title"]="Modified outside plan review"
-        with self.assertRaisesRegex(g.GovernanceError,"re-evaluation"):
-            self.call("record_plan_review",id="PLAN1",decision="REVIEWED_PENDING_FORMAL_APPROVAL",
-                      reviewer="Owner",evidence_refs=["record-1"],reason="Changed")
+        self.call("record_plan_review",id="PLAN1",decision="REVIEWED_PENDING_FORMAL_APPROVAL",
+                  reviewer="Owner",evidence_refs=["record-1"],reason="Changed")
         self.assertEqual(self.record["plans"][0]["state"],"REASSESSMENT_REQUIRED")
+        self.assertEqual(self.record["plans"][0]["review_history"][-1]["result"],
+                         "SOURCE_CHANGED_REASSESSMENT_REQUIRED")
+        self.call("revise_plan",id="PLAN1",objective="Reconcile new evidence",
+                  work_ids=["W1"],exit_condition="Revalidated evidence",reason="Updated input")
+        self.assertEqual(self.record["plans"][0]["state"],"DRAFT")
+        self.assertIsNone(self.record["plans"][0]["submission_hash"])
+        self.call("submit_plan",id="PLAN1",reason="Resubmitted")
+        self.assertEqual(self.record["plans"][0]["state"],"SUBMITTED_FOR_HUMAN_REVIEW")
 
     def test_dependency_change_reopens_affected_plan_only(self):
         self.call("create_plan",id="A",title="Plan A",objective="A",work_ids=["W2"],exit_condition="A")
