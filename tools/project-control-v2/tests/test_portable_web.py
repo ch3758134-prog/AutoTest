@@ -15,6 +15,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 HERE = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(HERE / "portable"))
 
 
 def load_module(name, path):
