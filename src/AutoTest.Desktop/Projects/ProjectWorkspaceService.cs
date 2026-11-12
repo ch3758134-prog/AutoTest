@@ -1,6 +1,7 @@
 using System.IO;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
+using AutoTest.Projects.Dbc.Editing;
 using AutoTest.Core;
 using AutoTest.Testing.Authoring;
 using System.Security.Cryptography;
@@ -134,6 +135,96 @@ public sealed class ProjectWorkspaceService
         Current = result;
         CurrentChanged?.Invoke(this, EventArgs.Empty);
         return result;
+    }
+
+    /// <summary>Open a DBC asset through the existing, fail-closed Projects workbench.</summary>
+    public async Task<DbcEditorSession> OpenDbcEditorAsync(AssetId id, CancellationToken ct = default)
+    {
+        var current = Current ?? throw new InvalidOperationException("请先打开工程。");
+        var asset = current.Definition.Assets.FirstOrDefault(x => x.Id == id)
+            ?? throw new ProjectDataException("ASSET_NOT_FOUND", "DBC 工程资源已不存在。");
+        if (!string.Equals(asset.Kind, DbcKind, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("该工程资源不是 DBC。");
+
+        return await Task.Run(async () =>
+        {
+            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            var loaded = await DbcDocumentStore.OpenAsync(path, ct).ConfigureAwait(false);
+            if (!string.Equals(loaded.Receipt.Sha256, asset.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("DBC_ASSET_CHANGED",
+                    "DBC 文件与工程登记的 SHA256 不一致。为避免覆盖外部修改，已阻止编辑，请先核对文件和工程清单。");
+            return new DbcEditorSession(current.Definition.Id, current.ManifestPath,
+                current.ManifestSha256, asset.Id, asset.Revision, asset.Name,
+                loaded.Document, loaded.Receipt);
+        }, ct);
+    }
+
+    /// <summary>Persist edited DBC, verify reread, then advance project asset SHA and revision.</summary>
+    public async Task<DbcEditorSession> SaveDbcEditorAsync(
+        DbcEditorSession opened, CancellationToken ct = default)
+    {
+        if (!opened.Document.CanEdit)
+            throw new ProjectDataException("DBC_UNSUPPORTED_READONLY", "该 DBC 包含当前写入器不支持的结构，不能编辑保存。");
+        if (!opened.Document.IsDirty)
+            return opened;
+
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("工程已关闭。");
+            if (current.Definition.Id != opened.ProjectId ||
+                !string.Equals(current.ManifestPath, opened.ManifestPath, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("DBC_PROJECT_CHANGED", "当前工程已切换，请重新打开 DBC。");
+            var assetIndex = -1;
+            for (var i = 0; i < current.Definition.Assets.Length; i++)
+                if (current.Definition.Assets[i].Id == opened.AssetId) { assetIndex = i; break; }
+            if (assetIndex < 0) throw new ProjectDataException("DBC_ASSET_MISSING", "DBC 资源已从工程移除。");
+            var asset = current.Definition.Assets[assetIndex];
+            if (asset.Revision != opened.AssetRevision ||
+                !string.Equals(asset.Sha256, opened.FileReceipt.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("DBC_REVISION_CONFLICT", "DBC 资源修订已变化，请重新加载后再保存。");
+
+            // The workbench file store handles unchanged-file conflict and atomic replacement.
+            // The project manifest is updated only after verified re-read of the stored DBC.
+            var result = await Task.Run(async () =>
+            {
+                await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+                var receipt = await DbcDocumentStore.SaveAsync(
+                    opened.Document, path, opened.FileReceipt.Sha256, ct).ConfigureAwait(false);
+                var check = await DbcDocumentStore.OpenAsync(path, ct).ConfigureAwait(false);
+                if (!string.Equals(check.Receipt.Sha256, receipt.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new ProjectDataException("DBC_SAVE_VERIFY", "DBC 文件保存后复核失败，请检查备份文件。");
+
+                var updated = asset with
+                {
+                    Sha256 = receipt.Sha256,
+                    Revision = checked(asset.Revision + 1)
+                };
+                var newProject = (current.Definition with
+                {
+                    Assets = current.Definition.Assets.SetItem(assetIndex, updated)
+                }).WithRevision().Validate();
+
+                // If the manifest save fails, DbcDocumentStore has retained a .bak copy.
+                // Never silently claim success when file and manifest revisions differ.
+                await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                await ProjectRepository.SaveDefinitionAsync(newProject, current.ManifestPath, ct)
+                    .ConfigureAwait(false);
+                var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct)
+                    .ConfigureAwait(false);
+                var manifestHash = await HashFileAsync(current.ManifestPath, ct).ConfigureAwait(false);
+                return (Context: new OpenProjectContext(verified, current.ManifestPath, manifestHash),
+                    Document: check.Document, Receipt: check.Receipt, Revision: updated.Revision);
+            }, ct);
+
+            Current = result.Context;
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return new DbcEditorSession(result.Context.Definition.Id, result.Context.ManifestPath,
+                result.Context.ManifestSha256, opened.AssetId, result.Revision, asset.Name,
+                result.Document, result.Receipt);
+        }
+        finally { _writeLock.Release(); }
     }
 
     public async Task<AssetEntry> ImportDbcAsync(string sourcePath, CancellationToken ct = default)
