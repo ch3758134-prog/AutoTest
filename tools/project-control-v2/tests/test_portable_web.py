@@ -168,6 +168,29 @@ class PortableWebTests(unittest.TestCase):
         self.assertEqual(one["decisions"]["decisions"], [])
         self.assertEqual(one["project"]["formal_product_identity"], "UNDECIDED")
 
+    def test_cross_process_lock_refuses_overwrite_and_preserves_foreign_lock(self):
+        root = self.roots[0]
+        raw = git(root, "rev-parse", "--git-path", "project-control/management.lock")
+        lock = Path(raw)
+        if not lock.is_absolute():
+            lock = root / lock
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        lock.write_text("owned by another process", encoding="utf-8")
+        revision = self.revision("project-1")
+        payload = {"id": "d-blocked", "title": "Should not save",
+                   "success_condition": "No accidental overwrite",
+                   "reason": "Lock safety test", "expected_revision": revision}
+        code, response = self.post(payload=payload)
+        self.assertEqual(code, 400)
+        self.assertIn("locked by another process", response["error"])
+        self.assertEqual(lock.read_text(encoding="utf-8"), "owned by another process")
+        self.assertEqual(self.revision("project-1"), revision)
+        lock.unlink()
+        code, response = self.post(payload=payload)
+        self.assertEqual(code, 200, response)
+        self.assertEqual(self.revision("project-1"), revision + 1)
+        self.assertFalse(lock.exists())
+
     def test_auth_stale_revision_and_unapproved_operations_blocked(self):
         revision = self.revision("project-1")
         payload = {"id": "d-1", "title": "Risk", "success_condition": "Evidence",
