@@ -11,4 +11,12 @@
     <ProjectReference Include="../AutoTest.Flash/AutoTest.Flash.csproj" />
   </ItemGroup>
   <ItemGroup><PackageReference Include="Prism.DryIoc" /><PackageReference Include="System.IO.Ports" /></ItemGroup>
+  <!-- Keep the actual hash-verified PROJECT manifest, TEST program and DBC together.
+       They are genuine project files for UI review, never synthetic execution data. -->
+  <ItemGroup>
+    <Content Include="../../samples/ui-review-epb/**/*">
+      <Link>samples/ui-review-epb/%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
