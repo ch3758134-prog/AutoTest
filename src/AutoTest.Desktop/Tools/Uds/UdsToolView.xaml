@@ -131,7 +131,6 @@
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       
      <StackPanel>
-      <TextBlock Text="请求报文（发送）" Style="{StaticResource UdsSection}"/>
       <TextBlock Text="服务名称" Style="{StaticResource UdsCaption}"/>
       <TextBox Text="{Binding ServiceName,UpdateSourceTrigger=PropertyChanged}"/>
       <TextBlock Text="服务参数" Style="{StaticResource UdsCaption}"/>
@@ -165,7 +164,6 @@
      
      <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel>
-       <TextBlock Text="响应报文与解析" Style="{StaticResource UdsSection}"/>
        <TextBlock Text="原始 UDS PDU" Style="{StaticResource UdsCaption}"/>
        <TextBox Text="{Binding ResponseHex,Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas"/>
        <TextBlock Text="诊断解释 / NRC" Style="{StaticResource UdsCaption}"/>
