@@ -27,6 +27,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly HardwareConnectionService _hardware;
     private readonly RealTestWorkbenchService _realTest;
+    private readonly LiveDbcSignalService _liveSignals;
     private readonly KeyboardWedgeCapture _scanCapture;
     private readonly ProjectScanMatcher _scanMatcher;
     private readonly CancellationTokenSource _scanStop = new();
@@ -56,11 +57,13 @@ public sealed class MainWindowViewModel : BindableBase
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
         ProjectFileDialogService fileDialogs, DbcEditorDialogs dbcDialogs,
         TestEditorDialogs testDialogs, RecentProjectStore recentProjects,
-        HardwareConnectionService hardware, RealTestWorkbenchService realTest)
+        HardwareConnectionService hardware, RealTestWorkbenchService realTest,
+        LiveDbcSignalService liveSignals)
     {
         _workspace = workspace;
         _hardware = hardware;
         _realTest = realTest;
+        _liveSignals = liveSignals;
         var router = new BarcodeInputRouter();
         router.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
         router.SetAdmissionGate(() => !_hardwareBusy);
@@ -114,13 +117,22 @@ public sealed class MainWindowViewModel : BindableBase
             () => _selectedResource?.Asset is not null && !IsBusy);
         ConnectHardwareCommand = new DelegateCommand(async () => await ToggleHardwareAsync(),
             () => !_hardwareBusy);
-        OpenCanMonitorCommand = new DelegateCommand(OpenCanMonitor);
+        OpenCanMonitorCommand = new DelegateCommand(async () => await OpenCanMonitorAsync());
         TransmitCanCommand = new DelegateCommand(async () => await TransmitCanAsync(), () => !_hardwareBusy);
         _hardware.EvidenceRecorded += line =>
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
                 HardwareStatus = line;
                 StatusMessage = line;
+            }));
+        _liveSignals.SignalReceived += (name, value) =>
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var time = value.Observation?.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff") ?? "";
+                var reading = value.Observation?.Value?.ToString("R", CultureInfo.InvariantCulture) ?? "";
+                DecodedCanRecords.Add(new DecodedCanRow(time, name, reading,
+                    value.Observation?.Unit ?? "", value.Status.ToString()));
+                if (DecodedCanRecords.Count > 500) DecodedCanRecords.RemoveAt(0);
             }));
         _hardware.FrameObserved += frame =>
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
@@ -163,7 +175,10 @@ public sealed class MainWindowViewModel : BindableBase
 
     public sealed record CanMonitorRow(string Time, string Port, string Id, string Format,
         byte Dlc, string Data, long Lost);
+    public sealed record DecodedCanRow(string Time, string Target, string Value,
+        string Unit, string Status);
     public ObservableCollection<CanMonitorRow> CanRecords { get; } = new();
+    public ObservableCollection<DecodedCanRow> DecodedCanRecords { get; } = new();
     public ObservableCollection<ResourceTreeNode> ResourceNodes { get; } = new();
     public string HardwareStatus
     {
@@ -315,9 +330,25 @@ public sealed class MainWindowViewModel : BindableBase
         catch (Exception error) { StatusMessage = "程序关闭期间主控断开失败：" + error.Message; }
     }
 
-    private void OpenCanMonitor()
+    private async Task OpenCanMonitorAsync()
     {
         if (IsAlreadyOpen("can|monitor") || !ConfirmCloseActiveEditor()) return;
+        if (!_realTest.IsRunning && _workspace.Current is not null)
+        {
+            try
+            {
+                var targets = await TestTargetCatalog.LoadAsync(_workspace);
+                await _liveSignals.BindAsync(targets.Select(x => x.Mapping)
+                    .Where(x => x.Kind == AutoTest.Testing.Authoring.TestTargetKind.Signal)
+                    .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(x => x.First()));
+                DecodedCanRecords.Clear();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "DBC 实时解析未启用：" + ex.Message;
+            }
+        }
         ActivateEditor("can|monitor", new CanMonitorView(this), "CAN 监视", () => true);
     }
 
