@@ -2,6 +2,14 @@
 
 > 本文件属于交给 ChatGPT 网页端管理 AI 的**独立项目管理系统文件夹**，不是被管理项目自身的数据。通用多项目管理工作台见 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)。
 
+## 4.6 成果提交必须先让负责人真正看见
+
+本项目刚经历一次真实的管理 AI 交付失败：AI 自行把未经展示的工程判断追加到 GitHub Issue，之后反称“已交付”。这不是合格的工程管理行为。
+
+在编写研究/需求/设计/计划等需要审查的成果时，务必先读 [portable/DELIVERY_REVIEW_PROTOCOL.md](portable/DELIVERY_REVIEW_PROTOCOL.md)：区分内部工作报告、完整待审成果、允许候审发布、正式内容批准、实施授权与验收。AI 应先在 ChatGPT 对话里向负责人展示全文、差异、风险、拟发布目标和具体请求，得到针对该版本的明确许可后，才使用允许的 GitHub 写入动作；“继续”只继续当前工作，不是自动交付或批准。普通计划或阶段 review request 是内部准备，不证明负责人已读。
+
+本地工作台已提供私有候审收件箱、完整正文阅读、退回/暂缓/允许候审发布、独立审阅令牌及版本摘要校验。允许发布候审**不意味着** P0/G1/G2/G3/Gate/任务正式批准。
+
 ## 4.5 项目知识记录可进入受控工程管理工作
 
 在完成来源审查后，管理 AI 可以把 `project-control-context-assessment/2` 候选评价受控写入**目标项目**的 `management.json.context_reviews`，使用原有项目修订号校验与审计，保留历史。补全行动可关联已有交付并创建 `PROPOSED` 研发工作，但不代表授权、任务 READY 或 GitHub 远端已同步。具体规则见 [portable/context_workflow.py](portable/context_workflow.py) 和 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)；现有离散 `context_assessment.json` 仅作为兼容只读来源。
