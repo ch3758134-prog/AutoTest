@@ -1,0 +1,500 @@
+{
+  "Id": "33333333-5555-4555-8555-333333333333",
+  "FormatVersion": 1,
+  "Name": "EPB ECU · 通信与功能检验（界面评审工程）",
+  "Phases": {
+    "Prepare": [
+      {
+        "Id": "33333333-0000-4000-8000-000000000001",
+        "Type": "Log",
+        "Name": "开始测试准备",
+        "Parameters": {
+          "message": "【界面评审样例】本程序仅展示工程与步骤编辑结构；未经设备配置、实机核对，不允许作为出厂放行依据"
+        },
+        "Slots": {}
+      },
+      {
+        "Id": "33333333-0000-4000-8000-000000000002",
+        "Type": "SetVariable",
+        "Name": "记录执行模式",
+        "Parameters": {
+          "variable": "test_mode",
+          "value": "engineering_review"
+        },
+        "Slots": {}
+      },
+      {
+        "Id": "33333333-0000-4000-8000-000000000003",
+        "Type": "SetVariable",
+        "Name": "设定初始目标状态",
+        "Parameters": {
+          "variable": "expected_parking",
+          "value": "released"
+        },
+        "Slots": {}
+      },
+      {
+        "Id": "33333333-0000-4000-8000-000000000004",
+        "Type": "Wait",
+        "Name": "等待 250 毫秒",
+        "Parameters": {
+          "milliseconds": "250"
+        },
+        "Slots": {}
+      },
+      {
+        "Id": "33333333-0000-4000-8000-000000000005",
+        "Type": "Observe",
+        "Name": "读取 ECU 在线状态",
+        "Parameters": {
+          "variable": "ecu_alive"
+        },
+        "Slots": {}
+      },
+      {
+        "Id": "33333333-0000-4000-8000-000000000008",
+        "Type": "If",
+        "Name": "确认在线状态",
+        "Parameters": {
+          "variable": "ecu_alive",
+          "equals": "1"
+        },
+        "Slots": {
+          "then": [
+            {
+              "Id": "33333333-0000-4000-8000-000000000006",
+              "Type": "Log",
+              "Name": "通信正常",
+              "Parameters": {
+                "message": "已获取 ECU 在线状态，继续测试"
+              },
+              "Slots": {}
+            }
+          ],
+          "else": [
+            {
+              "Id": "33333333-0000-4000-8000-000000000007",
+              "Type": "Log",
+              "Name": "等待故障排查",
+              "Parameters": {
+                "message": "ECU 未在线；请检查 CAN1 和设备配置"
+              },
+              "Slots": {}
+            }
+          ]
+        }
+      }
+    ],
+    "Test": [
+      {
+        "Id": "33333333-0000-4000-8000-000000000010",
+        "Type": "TestCase",
+        "Name": "01 · 通信与身份信息",
+        "Parameters": {},
+        "Slots": {
+          "body": [
+            {
+              "Id": "33333333-0000-4000-8000-000000000009",
+              "Type": "Observe",
+              "Name": "检查 ECU 在线响应",
+              "Parameters": {
+                "variable": "ecu_alive"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-00000000000a",
+              "Type": "Assert",
+              "Name": "ECU 在线判定",
+              "Parameters": {
+                "variable": "ecu_alive",
+                "equals": "1"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-00000000000b",
+              "Type": "Observe",
+              "Name": "读取软件版本标识",
+              "Parameters": {
+                "variable": "software_version"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-00000000000c",
+              "Type": "Observe",
+              "Name": "读取硬件版本标识",
+              "Parameters": {
+                "variable": "hardware_version"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-00000000000f",
+              "Type": "If",
+              "Name": "判断诊断通讯是否就绪",
+              "Parameters": {
+                "variable": "ecu_alive",
+                "equals": "1"
+              },
+              "Slots": {
+                "then": [
+                  {
+                    "Id": "33333333-0000-4000-8000-00000000000d",
+                    "Type": "Log",
+                    "Name": "通信确认",
+                    "Parameters": {
+                      "message": "继续后续测试"
+                    },
+                    "Slots": {}
+                  }
+                ],
+                "else": [
+                  {
+                    "Id": "33333333-0000-4000-8000-00000000000e",
+                    "Type": "Log",
+                    "Name": "通信失败处理",
+                    "Parameters": {
+                      "message": "记录问题并检查 CAN1 链路"
+                    },
+                    "Slots": {}
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "Id": "33333333-0000-4000-8000-00000000001a",
+        "Type": "TestCase",
+        "Name": "02 · 驻车状态与反馈",
+        "Parameters": {},
+        "Slots": {
+          "body": [
+            {
+              "Id": "33333333-0000-4000-8000-000000000011",
+              "Type": "Log",
+              "Name": "驻车测试说明",
+              "Parameters": {
+                "message": "实际按键动作必须关联工程中真实控制器状态，不在样例中直接发送物理输出"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-000000000012",
+              "Type": "Observe",
+              "Name": "读取当前驻车状态",
+              "Parameters": {
+                "variable": "parking_state"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-000000000013",
+              "Type": "Assert",
+              "Name": "驻车初态检查",
+              "Parameters": {
+                "variable": "parking_state",
+                "equals": "released"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-000000000014",
+              "Type": "Wait",
+              "Name": "等待 500 毫秒",
+              "Parameters": {
+                "milliseconds": "500"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-000000000018",
+              "Type": "When",
+              "Name": "等待驻车状态变化",
+              "Parameters": {
+                "variable": "parking_state",
+                "equals": "applied",
+                "timeoutMs": "3000"
+              },
+              "Slots": {
+                "body": [
+                  {
+                    "Id": "33333333-0000-4000-8000-000000000015",
+                    "Type": "Observe",
+                    "Name": "观察电机电流",
+                    "Parameters": {
+                      "variable": "motor_current"
+                    },
+                    "Slots": {}
+                  },
+                  {
+                    "Id": "33333333-0000-4000-8000-000000000016",
+                    "Type": "Observe",
+                    "Name": "观察驻车完成状态",
+                    "Parameters": {
+                      "variable": "parking_state"
+                    },
+                    "Slots": {}
+                  },
+                  {
+                    "Id": "33333333-0000-4000-8000-000000000017",
+                    "Type": "Assert",
+                    "Name": "驻车反馈检查",
+                    "Parameters": {
+                      "variable": "parking_state",
+                      "equals": "applied"
+                    },
+                    "Slots": {}
+                  }
+                ]
+              }
+            },
+            {
+              "Id": "33333333-0000-4000-8000-000000000019",
+              "Type": "Log",
+              "Name": "记录驻车观察",
+              "Parameters": {
+                "message": "留存实际反馈、时间和 CAN 报文证据"
+              },
+              "Slots": {}
+            }
+          ]
+        }
+      },
+      {
+        "Id": "33333333-0000-4000-8000-000000000021",
+        "Type": "TestCase",
+        "Name": "03 · 释放状态与反馈",
+        "Parameters": {},
+        "Slots": {
+          "body": [
+            {
+              "Id": "33333333-0000-4000-8000-00000000001b",
+              "Type": "Observe",
+              "Name": "确认当前驻车状态",
+              "Parameters": {
+                "variable": "parking_state"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-00000000001c",
+              "Type": "SetVariable",
+              "Name": "定义释放目标",
+              "Parameters": {
+                "variable": "expected_parking",
+                "value": "released"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-00000000001f",
+              "Type": "When",
+              "Name": "等待释放完成",
+              "Parameters": {
+                "variable": "parking_state",
+                "equals": "released",
+                "timeoutMs": "3000"
+              },
+              "Slots": {
+                "body": [
+                  {
+                    "Id": "33333333-0000-4000-8000-00000000001d",
+                    "Type": "Observe",
+                    "Name": "读取释放反馈",
+                    "Parameters": {
+                      "variable": "parking_state"
+                    },
+                    "Slots": {}
+                  },
+                  {
+                    "Id": "33333333-0000-4000-8000-00000000001e",
+                    "Type": "Assert",
+                    "Name": "释放状态检查",
+                    "Parameters": {
+                      "variable": "parking_state",
+                      "equals": "released"
+                    },
+                    "Slots": {}
+                  }
+                ]
+              }
+            },
+            {
+              "Id": "33333333-0000-4000-8000-000000000020",
+              "Type": "Log",
+              "Name": "保存释放结果",
+              "Parameters": {
+                "message": "记录释放动作结果与异常"
+              },
+              "Slots": {}
+            }
+          ]
+        }
+      },
+      {
+        "Id": "33333333-0000-4000-8000-00000000002a",
+        "Type": "TestCase",
+        "Name": "04 · 连续观测和异常处理",
+        "Parameters": {},
+        "Slots": {
+          "body": [
+            {
+              "Id": "33333333-0000-4000-8000-000000000025",
+              "Type": "Loop",
+              "Name": "重复采集两次",
+              "Parameters": {
+                "count": "2"
+              },
+              "Slots": {
+                "body": [
+                  {
+                    "Id": "33333333-0000-4000-8000-000000000022",
+                    "Type": "Observe",
+                    "Name": "采集供电电压",
+                    "Parameters": {
+                      "variable": "supply_voltage"
+                    },
+                    "Slots": {}
+                  },
+                  {
+                    "Id": "33333333-0000-4000-8000-000000000023",
+                    "Type": "Observe",
+                    "Name": "采集故障信息",
+                    "Parameters": {
+                      "variable": "fault_code"
+                    },
+                    "Slots": {}
+                  },
+                  {
+                    "Id": "33333333-0000-4000-8000-000000000024",
+                    "Type": "Wait",
+                    "Name": "等待 200 毫秒",
+                    "Parameters": {
+                      "milliseconds": "200"
+                    },
+                    "Slots": {}
+                  }
+                ]
+              }
+            },
+            {
+              "Id": "33333333-0000-4000-8000-000000000028",
+              "Type": "If",
+              "Name": "检查 ECU 状态",
+              "Parameters": {
+                "variable": "ecu_alive",
+                "equals": "1"
+              },
+              "Slots": {
+                "then": [
+                  {
+                    "Id": "33333333-0000-4000-8000-000000000026",
+                    "Type": "Log",
+                    "Name": "状态正常",
+                    "Parameters": {
+                      "message": "进入结束检查"
+                    },
+                    "Slots": {}
+                  }
+                ],
+                "else": [
+                  {
+                    "Id": "33333333-0000-4000-8000-000000000027",
+                    "Type": "Log",
+                    "Name": "状态异常",
+                    "Parameters": {
+                      "message": "保留日志并停止放行"
+                    },
+                    "Slots": {}
+                  }
+                ]
+              }
+            },
+            {
+              "Id": "33333333-0000-4000-8000-000000000029",
+              "Type": "CallSubroutine",
+              "Name": "调用通用收尾检查",
+              "Parameters": {
+                "target": "final_check"
+              },
+              "Slots": {}
+            }
+          ]
+        }
+      },
+      {
+        "Id": "33333333-0000-4000-8000-00000000002d",
+        "Type": "Subroutine",
+        "Name": "通用收尾检查",
+        "Parameters": {
+          "name": "final_check"
+        },
+        "Slots": {
+          "body": [
+            {
+              "Id": "33333333-0000-4000-8000-00000000002b",
+              "Type": "Observe",
+              "Name": "读取最终故障状态",
+              "Parameters": {
+                "variable": "fault_code"
+              },
+              "Slots": {}
+            },
+            {
+              "Id": "33333333-0000-4000-8000-00000000002c",
+              "Type": "Log",
+              "Name": "形成报告提示",
+              "Parameters": {
+                "message": "只有真实采样与完整预检通过，才能进行测试判定"
+              },
+              "Slots": {}
+            }
+          ]
+        }
+      }
+    ],
+    "Cleanup": [
+      {
+        "Id": "33333333-0000-4000-8000-00000000002e",
+        "Type": "Log",
+        "Name": "进入清理阶段",
+        "Parameters": {
+          "message": "正式设备运行必须安全解除按键、IGN 和夹具；本样例不自动操作"
+        },
+        "Slots": {}
+      },
+      {
+        "Id": "33333333-0000-4000-8000-00000000002f",
+        "Type": "SetVariable",
+        "Name": "清除临时目标状态",
+        "Parameters": {
+          "variable": "expected_parking",
+          "value": "released"
+        },
+        "Slots": {}
+      },
+      {
+        "Id": "33333333-0000-4000-8000-000000000030",
+        "Type": "Wait",
+        "Name": "等待 200 毫秒",
+        "Parameters": {
+          "milliseconds": "200"
+        },
+        "Slots": {}
+      },
+      {
+        "Id": "33333333-0000-4000-8000-000000000031",
+        "Type": "Log",
+        "Name": "结束测试",
+        "Parameters": {
+          "message": "测试结束；检查真实执行记录、未完成事项和异常"
+        },
+        "Slots": {}
+      }
+    ]
+  }
+}
