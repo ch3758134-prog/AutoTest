@@ -312,7 +312,7 @@ function evidence(){
  return html;
 }
 function deliveryView(){
- const items=management().delivery_reviews||[];
+ const items=model.delivery_state?.delivery_reviews||[];
  let html=head("OWNER REVIEW & CANDIDATE DELIVERY","成果审阅与交付",
  "管理 AI 可以先保存内部草稿，但必须向负责人呈现完整成果、修改差异和拟发布范围；负责人允许发布候审也不代表正式批准。");
  html+='<section class="section">'+panel("目前需要审阅的成果",
@@ -344,7 +344,7 @@ function deliveryView(){
  return html;
 }
 function openOwnerDeliveryReview(id){
- const d=(management().delivery_reviews||[]).find(x=>x.id===id);
+ const d=(model.delivery_state?.delivery_reviews||[]).find(x=>x.id===id);
  if(!d||d.status!=="AWAITING_OWNER_REVIEW"){notify("当前版本不在待审状态，请刷新",true);return;}
  activeDeliveryId=id;
  $("#owner-review-content").innerHTML=
@@ -363,14 +363,14 @@ function openOwnerDeliveryReview(id){
  $("#owner-review-dialog").showModal();
 }
 async function offerDelivery(id){
- const d=(management().delivery_reviews||[]).find(x=>x.id===id);
+ const d=(model.delivery_state?.delivery_reviews||[]).find(x=>x.id===id);
  if(!d||d.status!=="DRAFT_INTERNAL")return;
  if(!confirm("提交为本地负责人待审候选？不会发布到 GitHub，也不会批准内容。"))return;
  if(!await getOwnerToken())return;
  try{
-  const response=await fetch("/api/action",{method:"POST",headers:{"Content-Type":"application/json",
+  const response=await fetch("/api/delivery-draft-action",{method:"POST",headers:{"Content-Type":"application/json",
      "X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected,action:"offer_delivery_review",
-     payload:{id,delivery_revision:d.revision,expected_sha256:d.sha256,expected_revision:management().revision,
+     payload:{id,delivery_revision:d.revision,expected_sha256:d.sha256,expected_store_revision:model.delivery_state.revision,
               reason:"准备完整候选成果供负责人审阅；未授权发布"}})});
   const data=await response.json();
   if(!response.ok){if(response.status===403)ownerToken="";throw Error(data.error||"无法准备审阅");}
@@ -379,7 +379,7 @@ async function offerDelivery(id){
 }
 async function decideOwnerDelivery(event){
  event.preventDefault();
- const d=(management().delivery_reviews||[]).find(x=>x.id===activeDeliveryId);
+ const d=(model.delivery_state?.delivery_reviews||[]).find(x=>x.id===activeDeliveryId);
  if(!d||d.status!=="AWAITING_OWNER_REVIEW"){notify("待审稿已变化，请刷新",true);return;}
  if(!$("#owner-review-confirm").checked){notify("必须先确认准确的版本和审查范围",true);return;}
  const decision=$("#owner-review-decision").value, reason=$("#owner-review-reason").value.trim();
@@ -393,7 +393,7 @@ async function decideOwnerDelivery(event){
     headers:{"Content-Type":"application/json","X-Review-Token":reviewToken},
     body:JSON.stringify({project_id:selected,action:"owner_decide_delivery",
        payload:{id:d.id,delivery_revision:d.revision,expected_sha256:d.sha256,
-                expected_revision:management().revision,decision,reason,confirm_exact_content:true}})});
+                expected_store_revision:model.delivery_state.revision,decision,reason,confirm_exact_content:true}})});
   const result=await response.json();
   if(!response.ok){if(response.status===403)reviewToken="";throw Error(result.error||"审阅决定未记录");}
   $("#owner-review-dialog").close();activeDeliveryId="";
