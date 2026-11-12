@@ -356,6 +356,9 @@ public partial class MainWindow : Window
         tool.Show();
     }
 
+    private Window DialogOwnerFor(string toolKey) =>
+        _floating.TryGetValue(toolKey, out var window) ? window : this;
+
     private FrameworkElement? GetOrCreateView(string key)
     {
         if (_views.TryGetValue(key, out var cached)) return cached;
@@ -398,68 +401,63 @@ public partial class MainWindow : Window
                 _benchModel ??= new BenchWorkbenchViewModel(
                     new R1BenchWorkspacePort(() => _controllerConfig,
                         () => station.Controller, approveKeySim: (mask, generation) =>
-                            MessageBox.Show(this,
-                                $"真实按键板操作：CAN0 / KEY_SIM / 20 Key 掩码 0x{mask:X5}\n" +
-                                $"USB Generation：{generation}\n" +
-                                (mask == 0 ? "将释放全部按键组合。\n" :
-                                     "将闭合并保持对应电阻网络开关。\n") +
-                                "USB CAN_SEND ACK 不代表 DUT 已确认。是否执行？",
-                                "真实 KEY_SIM 操作确认",
+                            MessageBox.Show(DialogOwnerFor("bench"),
+                                (mask == 0 ? "松开全部真实按键？\n" : "发送当前真实按键开关组合？\n") +
+                                $"按键板开关组合：0x{mask:X5}\n" +
+                                "这会改变当前按键板输出；主控确认不代表 ECU 已识别。\n" +
+                                "请确认接线安全后执行。",
+                                "确认按键板操作",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes,
                         approveIgn: (on, generation) =>
-                            MessageBox.Show(this,
-                                "真实主控 IGN 物理输出切换：" + (on ? "ON（高边输出导通）" : "OFF（高边输出断开）") + "\n" +
-                                "USB 命令 SET_IGN=0x12，Payload=" + (on ? "01" : "00") + "\n" +
-                                "Session Generation=" + generation + "\n" +
-                                "注意：主控 ACK 不等于实际电压已确认；请确保负载接线安全，是否发出单次命令？",
-                                "确认真实 IGN 输出",
+                            MessageBox.Show(DialogOwnerFor("bench"),
+                                (on ? "打开" : "关闭") + "真实点火信号（IGN）？\n" +
+                                "此操作会改变主控的点火控制输出。\n" +
+                                "主控确认不等于实际电压已测量，请确认接线和负载安全。",
+                                "确认 IGN 输出",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes,
                         testRunning: () => _test?.Busy == true,
                         approveSolenoid: (action, generation) =>
-                            MessageBox.Show(this,
-                                "正在请求真实夹具电磁阀动作：" +
-                                (action == 0 ? "升起（命令 00）" : "下落（命令 01）") + "\n" +
-                                "USB CMD SET_SOL=0x16，Session Generation=" + generation + "\n" +
-                                "当前动作会改变夹具机械状态。主控 ACK 与 GET_SOL 不证明机械压紧到位，" +
-                                "请核对工装、人员与 DUT 位置。是否执行本次单次命令？",
-                                "真实夹具电磁阀操作确认",
+                            MessageBox.Show(DialogOwnerFor("bench"),
+                                "确认真实夹具电磁阀" + (action == 0 ? "升起" : "下落") + "？\n" +
+                                "动作会改变夹具机械状态，请检查人员、工装与 ECU 位置。\n" +
+                                "主控确认或回读不代表夹具机械位置已经验证。",
+                                "确认夹具操作",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes,
                         projectPath: () => host.Workspace.ProjectPath,
                         projectId: () => host.Workspace.Project.Id.Value.ToString("D"),
                         approveKeyAction: (action, generation) =>
-                            MessageBox.Show(this,
-                                $"执行当前工程的按键动作：{action.Name}\n" +
-                                $"步骤数：{action.Steps.Count}\n" +
-                                $"会按步骤发送真实 KEY_SIM 开关状态并保持指定时间。\n" +
-                                $"主控 Session：{generation}\n" +
-                                "结束或停止时均不自动复位；请核对现场接线。是否执行？",
-                                "确认真实连续按键动作",
+                            MessageBox.Show(DialogOwnerFor("bench"),
+                                $"执行按键动作“{action.Name}”？\n" +
+                                $"动作包含 {action.Steps.Count} 个步骤，按顺序向实际按键板发送开关组合。\n" +
+                                "完成或取消后不会自动松开按键；实际输出电压仍需实测。",
+                                "确认执行按键动作",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes,
                         approveCan: (message, generation, periodic) =>
-                            MessageBox.Show(this,
-                                $"向真实 ECU CAN1 发送报文：{message.Name}\n" +
-                                $"ID=0x{message.ArbitrationId:X} / { (message.Extended ? "扩展帧" : "标准帧") }\n" +
-                                $"DATA={message.DataHex} / USB Generation={generation}\n" +
-                                (periodic ? $"PC 定时重复发送，每 {message.PeriodMs} ms。非板端硬实时周期，最大 10000 帧/30 分钟。\\n" :
-                                            "只发送一帧。\\n") +
-                                "这是实际硬件 CAN1 发送，不代表 ECU 已收到。是否授权？",
-                                "确认真实 DUT CAN1 发送",
+                            MessageBox.Show(DialogOwnerFor("bench"),
+                                $"向真实 ECU CAN1 发送报文“{message.Name}”？\n" +
+                                $"CAN ID：0x{message.ArbitrationId:X}（{(message.Extended ? "扩展帧" : "标准帧")}）\n" +
+                                $"数据：{message.DataHex}\n" +
+                                (periodic
+                                    ? $"按 {message.PeriodMs} ms 配置周期重复发送；主机计时，非硬实时，最多 10000 帧或 30 分钟。\n"
+                                    : "只发送一次。\n") +
+                                "请确认 ECU 接线及报文内容。主控确认不代表 ECU 已接收。",
+                                "确认 CAN1 实际发送",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes,
                         projectName: () => host.Workspace.Project.Name,
                         approveCanBatch: (selected, generation) =>
-                            MessageBox.Show(this,
-                                $"真实 DUT CAN1 周期发送：选中 {selected.Count} 条报文。\n" +
-                                string.Join("\\n", selected.Select(f =>
-                                    $"ID=0x{f.ArbitrationId:X} { (f.Extended ? "扩展" : "标准") } " +
-                                    $"DATA={f.DataHex} / {f.PeriodMs} ms")) +
-                                $"\\nSession={generation}，PC 定时发送，非硬实时周期。\n" +
-                                "发送前确认现场 ECU 接线；是否启动整组周期发送？",
-                                "确认真实多报文周期发送",
+                            MessageBox.Show(DialogOwnerFor("bench"),
+                                $"向真实 ECU CAN1 周期发送 {selected.Count} 条已勾选报文？\n\n" +
+                                string.Join("\n", selected.Take(6).Select(f =>
+                                    $"0x{f.ArbitrationId:X} · {f.DataHex} · {f.PeriodMs} ms")) +
+                                (selected.Count > 6 ? $"\n其余 {selected.Count - 6} 条已勾选报文也将发送。" : "") +
+                                "\n\n全部报文按各自周期发送，由 Windows 主机计时，非硬实时。\n" +
+                                "请确认报文配置和 ECU 接线；停止发送后不会改变按键或 IGN 状态。",
+                                "确认开始 CAN1 周期发送",
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning,
                                 MessageBoxResult.No) == MessageBoxResult.Yes,
                         projectDbc: () => host.Workspace.Database,
@@ -513,7 +511,7 @@ public partial class MainWindow : Window
                 if (uds.DataContext is UdsToolViewModel model)
                 {
                     model.AttachPhysicalLink(() => _device?.Controller,
-                        request => MessageBox.Show(this, request,
+                        request => MessageBox.Show(DialogOwnerFor("uds"), request,
                             "实际 CAN1 UDS 诊断确认",
                             MessageBoxButton.YesNo, MessageBoxImage.Question,
                             MessageBoxResult.No) == MessageBoxResult.Yes);
