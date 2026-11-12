@@ -141,6 +141,39 @@ def pick(project, registry, task_id=None):
             raise TaskError("task cannot rewrite its own governance entry")
     if not t.get("inputs") or not t.get("acceptance"):
         raise TaskError("missing engineering inputs or acceptance")
+    mode = t.get("mode")
+    if mode not in ("EXPLORATORY", "CONTROLLED"):
+        raise TaskError("task requires explicit EXPLORATORY or CONTROLLED mode")
+    if mode == "CONTROLLED":
+        # Do not treat a bare path or claimed stage as approved design.
+        decisions = json.loads((STATE / "decisions.json").read_text(encoding="utf-8"))
+        if (decisions.get("schema") != "project-control-target-decisions/1"
+                or decisions.get("project_id") != project.get("project_id")
+                or not isinstance(decisions.get("decisions"), list)):
+            raise TaskError("valid formal decision history is required")
+        candidates = []
+        for entry in t["inputs"]:
+            if not isinstance(entry, dict) or entry.get("type") != "DESIGN_BASELINE":
+                continue
+            path, blob = entry.get("path"), entry.get("blob_sha")
+            if (not isinstance(path, str) or not path or path.startswith("/")
+                    or ".." in path.split("/") or ":" in path or "\\" in path
+                    or not SHA.fullmatch(str(blob))):
+                raise TaskError("invalid approved design reference")
+            actual = git("rev-parse", "--verify",
+                         source["pinned_sha"] + ":" + path, allow_failure=True)
+            if actual != blob:
+                raise TaskError("design source blob mismatches pinned Git commit")
+            approved = any(
+                isinstance(d, dict) and d.get("kind") == "DESIGN_APPROVAL"
+                and d.get("state") == "APPROVED" and d.get("path") == path
+                and d.get("blob_sha") == blob and d.get("approved_by")
+                and d.get("approval_reference")
+                for d in decisions["decisions"])
+            if approved:
+                candidates.append(path)
+        if not candidates:
+            raise TaskError("CONTROLLED task lacks a matching approved design baseline")
     return t
 
 
