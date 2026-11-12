@@ -153,23 +153,23 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
     }
     instruction = f"""# PROJECT_START_HERE｜{project_name.strip()}（项目实例入口）
 
-本文件属于目标 GitHub 仓库：\`{inspected["repo_url"]}\`。
+本文件属于目标 GitHub 仓库：`{inspected["repo_url"]}`。
 这是一个**候选管理初始化**，不是正式立项、需求/设计批准或编码授权。
 
-**ChatGPT 工程协调 AI：**先读取 \`.project-control/README.md\`、\`project.json\`、\`assets.json\`、\`decisions.json\`、\`tasks.json\`；自行调查此仓库的真实源码、分支、PR、CI、正式审批资料和现有资产。已有项目先做接管审查，新项目先与负责人确定目标和范围。不得把文件存在当作 Gate PASS。
+**ChatGPT 工程协调 AI：**先读取 `.project-control/README.md`、`project.json`、`assets.json`、`decisions.json`、`tasks.json`；自行调查此仓库的真实源码、分支、PR、CI、正式审批资料和现有资产。已有项目先做接管审查，新项目先与负责人确定目标和范围。不得把文件存在当作 Gate PASS。
 
-**本地 Codex：**在用户指定的工作目录中确认本仓库与准确分支/HEAD；读取 \`.project-control/tasks.json\` 并运行 \`python .project-control/resolve.py select\`。仅在存在唯一 READY 且明确授权的任务（或者用户明确指定的已授权任务）时，才读取工作范围、有效设计输入及验收标准并执行。若任务为空/冲突/设计缺失，停止并报告。不得擅自 push、merge、reset、删除其他本地目录或修改正式批准状态。
+**本地 Codex：**由用户指定唯一的本地工作目录。该目录如果尚为空，直接检出已确认的目标仓库，不要擅自另建文件夹；检出后读取 `.project-control/tasks.json`，运行 `python .project-control/workspace_manager.py register-existing --help`，自行从项目管理记录获得目录登记所需参数并登记此目录。然后运行 `python .project-control/resolve.py select`。仅在存在唯一 READY 且明确授权的任务（或者用户明确指定的已授权任务）时，才读取工作范围、有效设计输入及验收标准并执行。若任务为空/冲突/设计缺失，停止并报告。不得擅自 push、merge、reset、删除其他本地目录或修改正式批准状态。
 
 本项目的源码和管理软件的通用发行包相互独立。
 """
     readme = f"""# 项目管理登记（候选）
 
-项目 ID：\`{project_id}\`。接管模式：\`{mode.upper()}\`。
+项目 ID：`{project_id}`。接管模式：`{mode.upper()}`。
 本目录的全部初始文件都是 **CANDIDATE_NOT_APPROVED**。
 
-阅读顺序：\`project.json\` → \`assets.json\` → \`decisions.json\` → \`tasks.json\` → 仓库中实际工程资产。
-\`assets.json\` 只来自当前本地 Git 索引，远端 PR/Issues/CI 和未入 Git 的资产需管理 AI 继续调查。发现已有 \`.project-control\` 时不能覆盖。
-\`tasks.json\` 初始为空：后续必须由工程协调者记录可审查的任务合同和授权状态，不能把整个项目初始化当成一条编码指令。
+阅读顺序：`project.json` → `assets.json` → `decisions.json` → `tasks.json` → 仓库中实际工程资产。
+`assets.json` 只来自当前本地 Git 索引，远端 PR/Issues/CI 和未入 Git 的资产需管理 AI 继续调查。发现已有 `.project-control` 时不能覆盖。
+`tasks.json` 初始为空：后续必须由工程协调者记录可审查的任务合同和授权状态，不能把整个项目初始化当成一条编码指令。
 
 本目录的本地绝对路径、个人 token、原始日志不应默认被提交 GitHub。
 """
