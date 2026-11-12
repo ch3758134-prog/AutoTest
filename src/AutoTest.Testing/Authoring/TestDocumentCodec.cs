@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using AutoTest.Core;
+using AutoTest.Contracts;
 
 namespace AutoTest.Testing.Authoring;
 
@@ -8,8 +9,22 @@ public static class TestDocumentCodec
 {
     private sealed record NodeData(string Id, string Type, string Name,
         Dictionary<string, string> Properties, Dictionary<string, NodeData[]> Slots);
+    // Explicit primitive storage: strongly typed AssetId has no public JSON constructor.
+    private sealed record MappingData(string Name, string Kind, Guid AssetId, int Revision,
+        string Sha256, string Role, uint CanId, bool Extended, string SignalName, string Unit,
+        Guid ControllerId, Guid StateId);
     private sealed record DocumentData(int FormatVersion, string Id, string Name,
-        Dictionary<string, NodeData[]> Phases, TestTargetMapping[]? Mappings = null);
+        Dictionary<string, NodeData[]> Phases, MappingData[]? Mappings = null);
+    private static MappingData EncodeMapping(TestTargetMapping x) => new(
+        x.Name, x.Kind.ToString(), x.Asset.Value, x.AssetRevision, x.AssetSha256,
+        x.Role.ToString(), x.CanId, x.Extended, x.SignalName, x.Unit,
+        x.ControllerId, x.StateId);
+    private static TestTargetMapping DecodeMapping(MappingData x) =>
+        new(x.Name, Enum.Parse<TestTargetKind>(x.Kind, false),
+            x.Kind == nameof(TestTargetKind.Ignition) && x.AssetId == Guid.Empty
+                ? default : AssetId.Create(x.AssetId),
+            x.Revision, x.Sha256, Enum.Parse<BusRole>(x.Role, false),
+            x.CanId, x.Extended, x.SignalName, x.Unit, x.ControllerId, x.StateId).Validate();
     private static NodeData Encode(StepNode node) => new(node.Id.ToString(), node.Type, node.Name,
         node.Properties.ToDictionary(), node.Slots.ToDictionary(s => s.Key,
             s => s.Value.Select(Encode).ToArray()));
@@ -21,7 +36,7 @@ public static class TestDocumentCodec
     public static string Serialize(TestDocument doc) => JsonSerializer.Serialize(new DocumentData(
         doc.FormatVersion, doc.Id.ToString(), doc.Name,
         Enum.GetValues<TestPhase>().ToDictionary(p => p.ToString(), p => doc.Get(p).Select(Encode).ToArray()),
-        doc.Mappings.IsDefault ? [] : doc.Mappings.ToArray()),
+        doc.Mappings.IsDefault ? [] : doc.Mappings.Select(EncodeMapping).ToArray()),
         new JsonSerializerOptions { WriteIndented = true });
     public static TestDocument Deserialize(string json)
     {
@@ -38,7 +53,7 @@ public static class TestDocumentCodec
                 : throw new FormatException($"Missing phase {p}"));
         var doc = new TestDocument(id, data.Name, data.FormatVersion, phases)
         {
-            Mappings = (data.Mappings ?? []).ToImmutableArray()
+            Mappings = (data.Mappings ?? []).Select(DecodeMapping).ToImmutableArray()
         };
         var issues = StepTreeValidator.ValidateTree(doc, StepDescriptorCatalog.Builtins());
         // Asset references may be resolved only at preparation, but structural errors block loading.
