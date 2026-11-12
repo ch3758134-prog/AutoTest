@@ -1,0 +1,25 @@
+{
+  "SchemaVersion": 1,
+  "Id": "33333333-1111-4111-8111-333333333333",
+  "Revision": 1,
+  "Name": "EPB ECU 综合检验 · UI 评审样例工程",
+  "Assets": [
+    {
+      "Id": "33333333-2222-4222-8222-333333333331",
+      "Revision": 1,
+      "Kind": "test-program",
+      "Name": "EPB ECU · 通信与功能检验（界面评审工程）",
+      "RelativePath": "assets/epb-review.lab.json",
+      "Sha256": "4f8627fb973001db65dcb4b0eb0ad9f89355536a3a0a61ca2655eedbf134008e"
+    },
+    {
+      "Id": "33333333-2222-4222-8222-333333333332",
+      "Revision": 1,
+      "Kind": "dbc",
+      "Name": "EPB 示例网络信号",
+      "RelativePath": "assets/epb-review.dbc",
+      "Sha256": "b0a9327b0e3872a1640d088b14faffd0c3ea492f3ac5b328e9785a57bcfa1761"
+    }
+  ],
+  "Dependencies": []
+}
