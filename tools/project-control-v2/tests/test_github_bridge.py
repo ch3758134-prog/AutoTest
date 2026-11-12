@@ -3,6 +3,7 @@ import base64
 import hashlib
 import importlib.util
 import json
+from unittest.mock import patch
 from pathlib import Path
 import sys
 import unittest
@@ -117,6 +118,33 @@ class GitHubBridgeTests(unittest.TestCase):
         self.assertEqual(len(self.client.writes),1)
         self.assertEqual(json.loads(self.client.content)["tasks"][0]["state"],
                          "READY_FOR_LOCAL_IMPLEMENTATION")
+
+    def test_branch_ref_atomic_transport_receives_exact_reviewed_plan(self):
+        with patch("git_ref_atomic.commit_exact_file",
+                   return_value={"status": "ATOMIC_GIT_REF_CAS_PUBLISHED_AND_VERIFIED",
+                                 "commit_sha": "c" * 40}) as commit:
+            result=bridge.publish_plan(self.client,self.plan,
+                "https://github.com/acme/demo.git",apply=True,atomic=True)
+        self.assertEqual(result["status"],"ATOMIC_GIT_REF_CAS_PUBLISHED_AND_VERIFIED")
+        self.assertEqual(self.client.writes,[])
+        args=commit.call_args.args
+        self.assertEqual(args[1],("acme","demo"))
+        self.assertEqual(args[2],"main")
+        self.assertEqual(args[3],self.client.head)
+        self.assertEqual(args[4],".project-control/tasks.json")
+        self.assertEqual(args[5],self.plan["proposed_content"])
+
+    def test_atomic_transport_does_not_bypass_remote_approval(self):
+        import git_ref_atomic
+        data=json.loads(self.client.decisions_data)
+        data["decisions"]=[x for x in data["decisions"]
+                           if x.get("kind")!="TASK_EXECUTION_APPROVAL"]
+        self.client.decisions_data=json.dumps(data).encode()
+        with patch.object(git_ref_atomic,"commit_exact_file") as commit:
+            with self.assertRaisesRegex(bridge.RemoteError,"separately authorized"):
+                bridge.publish_plan(self.client,self.plan,
+                    "https://github.com/acme/demo.git",apply=True,atomic=True)
+            commit.assert_not_called()
 
     def test_stale_branch_head_fails_without_writes(self):
         self.plan["preflight_branch_head"]="f"*40
