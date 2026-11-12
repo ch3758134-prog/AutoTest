@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.IO;
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
 using AutoTest.Devices.Usb;

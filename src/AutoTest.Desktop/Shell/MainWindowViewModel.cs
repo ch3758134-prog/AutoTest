@@ -146,6 +146,7 @@ public sealed class MainWindowViewModel : BindableBase
     public sealed record CanMonitorRow(string Time, string Port, string Id, string Format,
         byte Dlc, string Data, long Lost);
     public ObservableCollection<CanMonitorRow> CanRecords { get; } = new();
+    public ObservableCollection<ResourceTreeNode> ResourceNodes { get; } = new();
     public string HardwareStatus
     {
         get => _hardwareStatus;
