@@ -17,6 +17,19 @@
             <Setter Property="BorderBrush" Value="#CAD9E8"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+        <Style x:Key="ConnectPrimary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#176CB5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#176CB5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinHeight" Value="36"/>
+        </Style>
+        <Style x:Key="DisconnectDanger" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Foreground" Value="#9F3440"/>
+            <Setter Property="Background" Value="#FFF2F1"/>
+            <Setter Property="BorderBrush" Value="#E6C6C6"/>
+            <Setter Property="MinHeight" Value="36"/>
+        </Style>
         <Style TargetType="GroupBox">
             <Setter Property="Margin" Value="0,0,0,12"/>
             <Setter Property="BorderBrush" Value="{StaticResource Outline}"/>
@@ -79,8 +92,8 @@
                                       Content="已确认 DUT 与执行机构安全隔离，已核对 IGN 和供电初始状态"
                                       FontWeight="SemiBold" Margin="0,3,0,13"/>
                             <StackPanel Orientation="Horizontal">
-                                <Button Content="连接主控" Command="{Binding ConnectCommand}"/>
-                                <Button Content="断开" Command="{Binding DisconnectCommand}"/>
+                                <Button Content="连接主控" Style="{StaticResource ConnectPrimary}" Command="{Binding ConnectCommand}"/>
+                                <Button Content="断开" Style="{StaticResource DisconnectDanger}" Command="{Binding DisconnectCommand}"/>
                             </StackPanel>
                             <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" Margin="0,12,0,5"/>
                             <TextBlock Text="自动重连已禁用。连接失败会保留故障阶段及日志路径。"
