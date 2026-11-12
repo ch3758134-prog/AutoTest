@@ -70,6 +70,15 @@ class ReceiptIntegrationTests(unittest.TestCase):
         git(self.root, "add", ".")
         git(self.root, "commit", "-m", "owner decisions")
         pinned = git(self.root, "rev-parse", "HEAD")
+        approved = json.loads(decisions.read_text(encoding="utf-8"))
+        approved["decisions"].append({
+            "kind": "TASK_EXECUTION_APPROVAL", "state": "APPROVED",
+            "task_id": "IMPL-001", "source_sha": pinned,
+            "approved_by": "Owner", "approval_reference": "task-decision"
+        })
+        decisions.write_text(json.dumps(approved, indent=2), encoding="utf-8")
+        git(self.root, "add", ".project-control/decisions.json")
+        git(self.root, "commit", "-m", "approve task execution")
         self.tasks_path = self.root / ".project-control/tasks.json"
         registry = json.loads(self.tasks_path.read_text(encoding="utf-8"))
         registry["tasks"] = [{
