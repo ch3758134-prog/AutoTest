@@ -190,6 +190,17 @@ class ReceiptIntegrationTests(unittest.TestCase):
                 "id": receipt["receipt_id"], "decision": "CODE_SCOPE_REVIEWED"
             })
 
+    def test_local_collector_imports_without_manual_copy_and_is_idempotent(self):
+        reported = self.candidate()
+        result = self.target.collect_local_receipts()
+        self.assertEqual(result["imported"], [reported["receipt_id"]])
+        self.assertEqual(result["held"], [])
+        self.assertEqual(len(self.target.model()["management"]["receipts"]), 1)
+        again = self.target.collect_local_receipts()
+        self.assertEqual(again["imported"], [])
+        self.assertEqual(again["skipped"], [reported["receipt_id"]])
+        self.assertEqual(len(self.target.model()["management"]["receipts"]), 1)
+
     def test_self_reported_test_hash_does_not_become_verified(self):
         receipt = self.candidate()
         receipt["test_evidence"] = [{"name": "unit tests", "exit_code": 0,
