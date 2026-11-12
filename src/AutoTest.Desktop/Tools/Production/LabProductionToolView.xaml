@@ -59,7 +59,7 @@
                 <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding LastRun}" TextWrapping="Wrap" Foreground="#127B91" Margin="0,6,0,0"/>
                 <TextBlock Text="{Binding LastEvidence}" TextWrapping="Wrap" Foreground="#177D65" Margin="0,3,0,0"/>
-                <TextBlock Text="扫码后执行当前工程的唯一真实 TEST，绑定 DUT、Revision 和 RunId。已发布配方若启用出厂检测统计，则按真实 TEST 结果保存生产 PASS/FAIL；测试结果不等同于发货放行。"
+                <TextBlock Text="扫码后按已发布的工程规则匹配并运行测试。生产统计仅使用实际测试结果；测试通过不等于产品已获发货放行。"
                            TextWrapping="Wrap" Foreground="#90611A" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
@@ -96,12 +96,12 @@
                         <TextBlock Text="配方名称"/>
                         <TextBox Text="{Binding RecipeId,UpdateSourceTrigger=PropertyChanged}" Width="410"
                                  HorizontalAlignment="Left" Margin="0,3,0,10"/>
-                        <TextBlock Text="当前工位 Profile 文件（原始真实配置文件，使用 SHA256 固定）"/>
+                        <TextBlock Text="工位配置文件（用于核对文件内容与版本）"/>
                         <DockPanel HorizontalAlignment="Left" Width="610" Margin="0,3,0,10">
                             <Button Content="浏览…" DockPanel.Dock="Right" Click="BrowseStationProfile_Click"/>
                             <TextBox Text="{Binding StationProfileFile,UpdateSourceTrigger=PropertyChanged}"/>
                         </DockPanel>
-                        <TextBlock Text="工位 Profile Revision（由操作者配置）"/>
+                        <TextBlock Text="工位配置版本"/>
                         <TextBox Text="{Binding StationProfileRevision,UpdateSourceTrigger=PropertyChanged}"
                                  Width="180" HorizontalAlignment="Left" Margin="0,3,0,10"/>
                         <CheckBox IsChecked="{Binding ProductionTestEnabled,Mode=TwoWay}"
@@ -115,7 +115,7 @@
                             <Button Content="发布到当前工程" Style="{StaticResource AtPrimaryButton}" Command="{Binding PublishRuleCommand}" Padding="14,8"/>
                             <Button Content="重新加载已发布规则" Command="{Binding LoadCommand}"/>
                         </WrapPanel>
-                        <TextBlock Text="只有明确的物理配方且 TestProgram ID/Revision/SHA256 与当前工程完全一致时才进入真实执行；工位文件哈希本身不证明硬件连接或设备动作。"
+                        <TextBlock Text="只有编号规则、测试程序和工位配置与当前工程版本一致时才允许正式运行。配置文件校验不能替代主控连接及真实执行确认。"
                                    TextWrapping="Wrap" Foreground="#90611A" Margin="0,12,0,0"/>
                     </StackPanel>
                 </ScrollViewer>
