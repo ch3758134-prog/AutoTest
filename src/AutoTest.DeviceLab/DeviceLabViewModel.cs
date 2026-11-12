@@ -269,7 +269,7 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
     private void OnConnection(UsbSessionState state)
         => SwitchToUi(() =>
         {
-            StatusText = $"主控连接：{state} · 会话 {_session.Generation}";
+            StatusText = $"主控{(state == UsbSessionState.Connected ? "已连接" : state == UsbSessionState.Disconnected ? "未连接" : "连接状态变化")} · 会话 {_session.Generation}";
             if (state != UsbSessionState.Connected) ClearStationEvidence();
             Notify(nameof(IsConnected));
             RefreshButtons();
@@ -455,8 +455,8 @@ public sealed class DeviceLabViewModel : INotifyPropertyChanged, IAsyncDisposabl
     }
     private void ShowError(string action, Exception ex)
     {
-        StatusText = $"{action}：{ex.GetType().Name}";
-        ResultText = ex.ToString(); // includes native WinUsbStageException stage and Win32 code
+        StatusText = $"{action}：{ex.Message}";
+        ResultText = ex.Message; // full native stage and Win32 details remain in Timeline
         AddLine(Timeline, "ERROR", ex.ToString());
         RefreshButtons();
     }
