@@ -323,6 +323,6 @@ $("#register-form").addEventListener("submit",registerTarget);
 $("#register-close").addEventListener("click",()=>$("#register-dialog").close());
 $("#register-cancel").addEventListener("click",()=>$("#register-dialog").close());
 $("#project-select").addEventListener("change",async event=>{selected=event.target.value;page="overview";try{await loadModel();}catch(err){notify(err.message,true);$("#main").textContent=err.message;}});
-$("#refresh").addEventListener("click",()=>loadModel().catch(err=>notify(err.message,true)));
+$("#refresh").addEventListener("click",()=>loadProjects().catch(err=>notify(err.message,true)));
 $("#form-close").addEventListener("click",()=>$("#edit-dialog").close());$("#form-cancel").addEventListener("click",()=>$("#edit-dialog").close());$("#edit-form").addEventListener("submit",submitForm);
 loadProjects().catch(err=>{$("#main").innerHTML='<div class="panel error">'+e(err.message)+'</div>';notify(err.message,true);});
