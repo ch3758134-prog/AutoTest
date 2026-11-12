@@ -110,7 +110,7 @@ public sealed class DeviceEvidenceArchiveWriterTests
     {
         var backend = new AuditedBackend();
         bool healthy = true;
-        await using var session = new DeviceLabSession(backend, () => "unused.jsonl", () => healthy);
+        await using var session = new DeviceDiagnosticSession(backend, () => "unused.jsonl", () => healthy);
         session.Select(backend.Candidates[0]);
         session.SetB0IsolationConfirmed(true);
         session.OperationRecorded += evt =>
@@ -128,7 +128,7 @@ public sealed class DeviceEvidenceArchiveWriterTests
     {
         var backend = new AuditedBackend();
         bool healthy = true;
-        await using var session = new DeviceLabSession(backend, () => "unused.jsonl", () => healthy);
+        await using var session = new DeviceDiagnosticSession(backend, () => "unused.jsonl", () => healthy);
         session.Select(backend.Candidates[0]);
         session.SetB0IsolationConfirmed(true);
         await session.ConnectAsync();
@@ -142,7 +142,7 @@ public sealed class DeviceEvidenceArchiveWriterTests
         await session.DisconnectAsync();
     }
 
-    private sealed class AuditedBackend : IDeviceLabBackend
+    private sealed class AuditedBackend : IDeviceDiagnosticBackend
     {
         public readonly WinUsbCandidate[] Candidates =
             { new("mock-path", "USB\\VID_1183&PID_5850\\TEST", "WinUSB") };
