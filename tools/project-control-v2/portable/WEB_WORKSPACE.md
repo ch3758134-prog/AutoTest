@@ -1,5 +1,15 @@
 # Project Control Portable｜真正独立于 AutoTest 的多项目工作台（候选）
 
+## 将通用管理系统文件夹交给新的 ChatGPT 对话
+
+在管理系统研发仓库执行：
+
+```powershell
+python tools/project-control-v2/portable/export_package.py --out "ProjectControl.zip"
+```
+
+其内容只有 `PORTABLE_MANIFEST.json` 列出的通用系统文件及逐文件 SHA-256 校验单；不会打包 AutoTest 专用 `sources/`、`workspace/`、旧 `app.js`、Git 元数据和本地日志。上传/解压文件夹后，新的 ChatGPT 工程协调 AI 从 `START_HERE.md` 启动。
+
 ## 使用定位
 
 管理 AI 在 ChatGPT 网页端首先读取本文件夹的 `START_HERE.md`，用户同时提供一个**目标 GitHub 仓库地址**。管理 AI 按 `portable/INITIALIZATION_PROTOCOL.md` 研究目标仓库，建立或接管**目标仓库自己的** `.project-control/`，不把 AutoTest 的产品资料复制过去。
