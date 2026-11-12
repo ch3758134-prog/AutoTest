@@ -101,6 +101,16 @@ def affected_graph(works, roots):
     return sorted(affected)
 
 
+def reject_stale_context(work, work_ids):
+    """Prevent an obsolete AI context claim from supporting new review requests."""
+    selected = [find(work, wid, "work item") for wid in work_ids]
+    stale = [w["id"] for w in selected
+             if w.get("context_evidence_status") == "STALE_AFTER_NEW_ASSESSMENT"]
+    if stale:
+        raise GovernanceError("stale context evidence requires review before submission: " +
+                              ", ".join(stale))
+
+
 def apply(record, action, payload):
     if action not in ACTIONS:
         raise GovernanceError("unsupported project governance operation")
@@ -172,6 +182,7 @@ def apply(record, action, payload):
         if plan["state"] not in ("DRAFT", "REASSESSMENT_REQUIRED"):
             raise GovernanceError("plan is not eligible for submission")
         dependency_cycle(work)
+        reject_stale_context(work, plan["work_ids"])
         plan["submission_hash"] = snapshot(record, plan["work_ids"])
         plan["state"] = "SUBMITTED_FOR_HUMAN_REVIEW"
         plan["review_history"].append({"result": "SUBMITTED", "comment": text(payload.get("reason"), "reason")})
@@ -179,6 +190,7 @@ def apply(record, action, payload):
         plan = find(record["plans"], ident(payload.get("id"), "plan ID"), "plan")
         if plan["state"] != "SUBMITTED_FOR_HUMAN_REVIEW":
             raise GovernanceError("plan has not been submitted for review")
+        reject_stale_context(work, plan["work_ids"])
         if plan["submission_hash"] != snapshot(record, plan["work_ids"]):
             plan["state"] = "REASSESSMENT_REQUIRED"
             plan["review_history"].append({
@@ -239,6 +251,7 @@ def apply(record, action, payload):
         scope = ids(payload.get("work_ids"), "review work IDs")
         for wid in scope:
             find(work, wid, "work for Gate review")
+        reject_stale_context(work, scope)
         record["gate_reviews"].append({
             "id": identifier, "stage": text(payload.get("stage"), "stage", 100),
             "purpose": text(payload.get("purpose"), "review purpose"),
