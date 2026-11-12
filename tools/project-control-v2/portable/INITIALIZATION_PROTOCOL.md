@@ -49,6 +49,7 @@ PROJECT_START_HERE.md
   assets.json
   decisions.json
   tasks.json
+  resolve.py
 ```
 
 - `PROJECT_START_HERE.md`：此目标项目的 ChatGPT/Codex 入口；
