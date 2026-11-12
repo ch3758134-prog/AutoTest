@@ -24,14 +24,14 @@ jobs:
           set -euo pipefail
           object=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$ARCHIVE_SHA")
           echo "$object" | jq -e --arg sha "$BASE_TREE_SHA" '.tree.sha == $sha and (.parents | length) == 22' >/dev/null
-          existing=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$ARCHIVE_TAG" --jq '.object.sha' 2>/dev/null || true)
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$ARCHIVE_TAG" --jq '.[] | select(.ref == "refs/tags/archive/retired-branches-20261111") | .object.sha' 2>/dev/null || true)
           if [[ -z "$existing" ]]; then
             gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$ARCHIVE_TAG" -f "sha=$ARCHIVE_SHA" >/dev/null
           elif [[ "$existing" != "$ARCHIVE_SHA" ]]; then
             echo 'Tag exists but does not point to the approved archive commit. Refusing deletion.' >&2
             exit 1
           fi
-          actual=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$ARCHIVE_TAG" --jq '.object.sha')
+          actual=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$ARCHIVE_TAG" --jq '.[] | select(.ref == "refs/tags/archive/retired-branches-20261111") | .object.sha')
           [[ "$actual" == "$ARCHIVE_SHA" ]] || { echo 'Archive tag verification failed' >&2; exit 1; }
           echo "Verified tag $ARCHIVE_TAG -> $actual, all legacy heads reachable"
       - name: Delete only exact unchanged obsolete branch refs
