@@ -11,6 +11,7 @@ import argparse
 from contextlib import contextmanager
 import hashlib
 from receipt_evidence import assess as assess_receipt, verify_test_logs, ReceiptError
+from context_assessment import audit as audit_context_assessment, AssessmentError
 from remote_sync import inspect as inspect_remote, SyncError
 from remote_module_status import inspect as inspect_remote_modules
 from github_bridge import GitHub, RemoteError
@@ -270,6 +271,31 @@ class Target:
             tasks = load_json(self.directory / "tasks.json")
             if any(x.get("project_id") != self.project_id for x in (assets, decisions, tasks)):
                 raise ManagementError("cross-project record mismatch")
+            # Optional, strictly read-only candidate evidence record. Never creates
+            # tasks, approval, a management revision or a target project file.
+            context_view = {"status": "NOT_RECORDED",
+                            "note": "没有登记当前适用性审查；资产存在不等于当前有效。"}
+            evidence_file = self.directory / "context_assessment.json"
+            if evidence_file.exists() or evidence_file.is_symlink():
+                try:
+                    if (evidence_file.is_symlink() or not evidence_file.is_file()
+                            or evidence_file.stat().st_size > 262144
+                            or evidence_file.resolve().parent != self.directory):
+                        raise AssessmentError("unsafe or oversized assessment file")
+                    candidate = load_json(evidence_file)
+                    if candidate.get("project_ref") not in (self.project_id, project.get("repo_url")):
+                        raise AssessmentError("assessment project identity does not match")
+                    checked = audit_context_assessment(candidate)
+                    context_view = {"status": "CANDIDATE_STRUCTURAL_REVIEW",
+                                    "audit": checked,
+                                    "proposed_actions": [
+                                        {"topic": a["topic"], "kind": a["kind"],
+                                         "reason": a["reason"], "expected_output": a["expected_output"]}
+                                        for a in candidate["proposed_actions"][:40]],
+                                    "note": "只有候选结构校验；不证明当前资料真实或具有审批权。"}
+                except (OSError, ValueError, ManagementError, AssessmentError) as error:
+                    context_view = {"status": "INVALID_RECORD",
+                                    "note": "资料评价记录无效，不能作为项目依据："+str(error)}
             if management["modules"]:
                 if self.head_or_none():
                     code_status = local_source_snapshot(self.root, management)
@@ -312,6 +338,7 @@ class Target:
             return {
                 "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
+                "context_assessment": context_view,
                 "process_catalog": process_catalog(),
                 "process_policy_current": policy_is_current(management["process_control"]),
                 "git": {
