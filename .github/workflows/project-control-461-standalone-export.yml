@@ -1,4 +1,4 @@
-name: Export Project Control 4.6.1 ZIP Once
+name: Export Project Control 4.6.1 Standalone Package
 on:
   push:
     branches: [packaging/project-control-461-standalone]
