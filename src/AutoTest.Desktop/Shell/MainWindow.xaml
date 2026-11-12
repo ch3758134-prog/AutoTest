@@ -55,7 +55,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="41"/>
-            <RowDefinition Height="29"/>
+            <RowDefinition Height="0"/>
             <RowDefinition Height="55"/>
             <RowDefinition Height="*" MinHeight="330"/>
             <RowDefinition x:Name="LogRow" Height="29" MinHeight="29"/>
@@ -78,48 +78,7 @@
             </DockPanel>
         </Border>
 
-        <Menu Grid.Row="1" Background="#FFFFFF" Foreground="#25364A">
-            <MenuItem Header="文件">
-                <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
-                <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}"/>
-                <MenuItem Header="保存工程" Command="{Binding SaveCommand}"/>
-                <Separator/>
-                <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
-                <MenuItem Header="退出" Click="Close_Click"/>
-            </MenuItem>
-            <MenuItem Header="测试">
-                <MenuItem Header="自动测试" Click="OpenRun_Click"/>
-                <MenuItem Header="测试程序编辑" Click="OpenTest_Click"/>
-                <MenuItem Header="检查工程与引用" Command="{Binding ValidateCommand}"/>
-            </MenuItem>
-            <MenuItem Header="专业工具">
-                <MenuItem Header="UDS 诊断" Click="OpenUds_Click"/>
-                <MenuItem Header="CAN 烧录" Click="OpenFlash_Click"/>
-                <MenuItem Header="波形分析" Click="OpenWave_Click"/>
-                <MenuItem Header="DBC 编辑器" Click="OpenDbc_Click"/>
-            </MenuItem>
-            <MenuItem Header="设备与工位">
-                <MenuItem Header="手动台架" Click="OpenBench_Click"/>
-                <MenuItem Header="连接或断开设备" Click="OpenStation_Click"/>
-                <MenuItem Header="CAN 监视" Click="OpenCan_Click"/>
-                <MenuItem Header="控制器与按键配置" Click="OpenController_Click"/>
-                <Separator/>
-                <MenuItem Header="扫码与生产配置" Click="OpenProduction_Click"/>
-                <MenuItem Header="运行记录与报告" Click="OpenRecords_Click"/>
-                <MenuItem Header="操作审计" Click="OpenAudit_Click"/>
-            </MenuItem>
-            <MenuItem Header="视图">
-                <MenuItem Header="显示 / 隐藏工程树" Click="ToggleExplorer_Click"/>
-                <MenuItem Header="显示 / 隐藏运行日志" Click="ToggleBottom_Click"/>
-                <MenuItem Header="命令搜索 Ctrl+K" Click="CommandPalette_Click"/>
-            </MenuItem>
-            <MenuItem Header="窗口">
-                <MenuItem Header="浮动 TEST 编辑器" Click="FloatTest_Click"/>
-                <MenuItem Header="打开 DBC 独立窗口" Click="FloatDbc_Click"/>
-                <MenuItem Header="打开波形独立窗口" Click="FloatWave_Click"/>
-                <MenuItem Header="返回自动测试" Click="OpenRun_Click"/>
-            </MenuItem>
-        </Menu>
+
 
         <!-- Test is the primary action. Scanner is only a small station input status. -->
         <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
@@ -133,27 +92,40 @@
                     <Border Height="23" Width="1" Background="#DCE6F3" Margin="6,0,12,0"/>
                     <TextBlock x:Name="ScannerStatus" Text="扫码：等待编号" VerticalAlignment="Center"
                         Foreground="#63758A" FontSize="11" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
-                    <Button Content="扫码设置" Click="OpenProduction_Click" Padding="7,3" MinHeight="27" Margin="9,0,0,0"/>
+
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="运行测试"
-                        FontWeight="SemiBold" Click="OpenRun_Click"/>
-                    <Button Content="编辑测试程序" Style="{StaticResource AtPrimaryButton}" Click="OpenTest_Click"/>
-                    <Button Content="手动台架" Click="OpenBench_Click"
-                        ToolTip="打开独立的真实 KEY_SIM / IGN / 夹具台架窗口"/>
-                    <Menu Background="Transparent" Foreground="#364B62" VerticalAlignment="Center"
-                          Margin="0,0,7,0">
-                        <MenuItem Header="专业工具 ▾"
-                            ToolTip="UDS、烧录、波形与 DBC 以独立可调整窗口打开">
+                    <Button Content="打开工程" Command="{Binding OpenProjectCommand}" ToolTip="Ctrl+O 打开本地工程"/>
+                    <Button Content="保存工程" Command="{Binding SaveCommand}" ToolTip="Ctrl+S 保存工程"/>
+                    <Border Height="22" Width="1" Background="{DynamicResource StudioLine}" Margin="1,0,12,0"/>
+                    <Button Content="✎ 编辑测试程序" Style="{StaticResource AtPrimaryButton}" Click="OpenTest_Click"/>
+                    <Button Content="▷ 运行测试" Click="OpenRun_Click"/>
+                    <Button Content="▣ 手动台架" Click="OpenBench_Click"
+                            ToolTip="在独立窗口打开真实 CAN1 发送、按键动作、IGN 与夹具"/>
+                    <Menu Background="Transparent" Foreground="{DynamicResource StudioText}" VerticalAlignment="Center" Margin="0,0,7,0">
+                        <MenuItem Header="专业工具 ▾" ToolTip="所有专业工具均在独立窗口打开">
                             <MenuItem Header="UDS 诊断" Click="OpenUds_Click"/>
                             <MenuItem Header="CAN 烧录" Click="OpenFlash_Click"/>
                             <MenuItem Header="波形分析" Click="OpenWave_Click"/>
                             <MenuItem Header="DBC 编辑器" Click="OpenDbc_Click"/>
+                            <Separator/>
+                            <MenuItem Header="控制器与按键配置" Click="OpenController_Click"/>
+                            <MenuItem Header="CAN 接收监视" Click="OpenCan_Click"/>
+                            <MenuItem Header="扫码与生产" Click="OpenProduction_Click"/>
+                            <MenuItem Header="运行记录与报告" Click="OpenRecords_Click"/>
+                            <MenuItem Header="操作审计" Click="OpenAudit_Click"/>
+                            <MenuItem Header="设备高级诊断" Click="OpenStationDetails_Click"/>
+                        </MenuItem>
+                        <MenuItem Header="更多 ▾">
+                            <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}"/>
+                            <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
+                            <MenuItem Header="检查工程与引用" Command="{Binding ValidateCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="显示或隐藏工程资源" Click="ToggleExplorer_Click"/>
+                            <MenuItem Header="显示或隐藏通信日志" Click="ToggleBottom_Click"/>
+                            <MenuItem Header="命令搜索（Ctrl+K）" Click="CommandPalette_Click"/>
                         </MenuItem>
                     </Menu>
-                    <Button Content="打开工程" Command="{Binding OpenProjectCommand}"/>
-                    <Button Content="保存工程" Command="{Binding SaveCommand}"/>
-                    <Button Content="⌕ 命令搜索" Click="CommandPalette_Click" Margin="1,0,0,0"/>
                 </StackPanel>
             </DockPanel>
         </Border>
