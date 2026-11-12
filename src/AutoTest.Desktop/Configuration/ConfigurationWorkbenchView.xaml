@@ -3,6 +3,9 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  FontFamily="{StaticResource UiFont}" FontSize="13"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}">
+  <UserControl.InputBindings>
+    <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
+  </UserControl.InputBindings>
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="74"/>

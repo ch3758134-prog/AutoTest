@@ -40,7 +40,7 @@ public sealed class ConfigurationField : BindableBase
     public string Value
     {
         get => _value;
-        set => SetProperty(ref _value, value);
+        set => SetProperty(ref _value, value ?? "");
     }
 }
 
