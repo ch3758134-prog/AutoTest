@@ -165,7 +165,15 @@ public sealed class RealRunCoordinator
                         break;
                     case "If":
                     {
-                        var actual = Evaluate("$" + Property(node, "variable"));
+                        var sourceName = Property(node, "variable");
+                        if (!variables.TryGetValue(sourceName, out var source) || source.Value is null)
+                        {
+                            incomplete = true;
+                            Fact(node, RealStepStatus.NoData, detail:
+                                "Branch source unavailable: " + sourceName);
+                            break; // Never treat missing DUT feedback as the else branch.
+                        }
+                        var actual = source.Value;
                         var expected = Evaluate(Property(node, "equals"));
                         var pass = Compare(actual, "==", expected);
                         Fact(node, RealStepStatus.Completed, expected, actual, "Branch: " + (pass ? "then" : "else"));
@@ -208,9 +216,12 @@ public sealed class RealRunCoordinator
                         var value = result.HasUsableValue
                             ? result.Observation!.Value!.Value.ToString("R", CultureInfo.InvariantCulture)
                             : null;
-                        variables[Property(node, "variable")] = new TestDatum(value, result.Status,
+                        var variableName = Property(node, "variable");
+                        variables[variableName] = new TestDatum(value, result.Status,
                             result.Observation?.Time.Utc ?? DateTimeOffset.UtcNow,
                             result.Observation?.Evidence.ToString());
+                        variables[variableName + ".status"] = new TestDatum(result.Status.ToString(),
+                            null, DateTimeOffset.UtcNow);
                         Fact(node, result.Status == TestSignalStatus.Valid ? RealStepStatus.Completed
                             : result.Status is TestSignalStatus.NoFrame or TestSignalStatus.Stale or TestSignalStatus.Timeout
                                 ? RealStepStatus.NoData : RealStepStatus.InvalidData,
@@ -253,6 +264,9 @@ public sealed class RealRunCoordinator
                         variables[varName + ".met"] = new TestDatum(matched ? "true" : "false",
                             sawValid ? TestSignalStatus.Valid : TestSignalStatus.NoFrame,
                             DateTimeOffset.UtcNow);
+                        variables[varName + ".status"] = new TestDatum(matched ? "Met" :
+                            sawValid ? "ConditionNotMet" : "NoFrame",
+                            null, DateTimeOffset.UtcNow);
                         Fact(node, matched ? RealStepStatus.Completed :
                             sawValid ? RealStepStatus.ConditionFalse : RealStepStatus.NoData,
                             op + " " + expected, actual, matched ? "Condition observed" :
