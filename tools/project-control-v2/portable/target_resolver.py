@@ -365,6 +365,12 @@ def report_result(state, task, digest, project):
 
 
 def main(argv=None):
+    # Python on Windows may inherit a legacy charmap console. Every management
+    # command writes UTF-8 Chinese project names and JSON, without requiring
+    # users to change the system code page.
+    for output in (sys.stdout, sys.stderr):
+        if hasattr(output, "reconfigure"):
+            output.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(description="Validate the target project's remote Codex task")
     p.add_argument("action", choices=["select", "claim", "verify-scope", "report"])
     p.add_argument("--task")
