@@ -40,7 +40,8 @@ class IsolatedPackageTests(unittest.TestCase):
         self.assertEqual(manifest["capabilities"]["multi_project_store"], "CANDIDATE_LOCAL_REPOSITORY_RECORDS")
         audit = (HERE / "portable/COMPLETENESS_AUDIT.md").read_text(encoding="utf-8")
         self.assertIn("server.py", audit)
-        self.assertIn("AutoTest", audit)
+        self.assertNotIn("AutoTest", audit)
+        self.assertIn("旧单项目试点", audit)
         self.assertIn("Windows", audit)
 
 
