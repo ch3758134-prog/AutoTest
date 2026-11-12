@@ -43,7 +43,9 @@
     "portable/POLICY_MIGRATION.md",
     "portable/CONTEXT_DISCOVERY.md",
     "portable/AI_WORK_MODES.md",
-    "portable/context_discovery.py"
+    "portable/context_discovery.py",
+    "skills/project-intake/SKILL.md",
+    "skills/engineering-coordinator/SKILL.md"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -85,7 +87,8 @@
     "explicit_owner_focus": "CANDIDATE_ACTIVITY_REPORT_BINDING_WITH_STALENESS",
     "old_process_policy": "READ_ONLY_NO_SILENT_MIGRATION",
     "context_discovery": "ROLE_SCOPED_CANDIDATE_WITH_SOURCE_COVERAGE_AUDIT",
-    "skill_adapter": "DOCUMENTED_NOT_AUTO_INSTALLED"
+    "skill_adapter": "DOCUMENTED_NOT_AUTO_INSTALLED",
+    "agent_skill_source_files": "PORTABLE_NOT_AUTO_INSTALLED"
   },
   "separation": {
     "package_source": "Project Control system files",
