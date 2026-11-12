@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Prism.DryIoc" />
+    <ProjectReference Include="../AutoTest.Projects/AutoTest.Projects.csproj" />
   </ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Shell;
 using Prism.Ioc;
 
@@ -7,6 +8,9 @@ public static class PrismRegistration
 {
     public static void RegisterTypes(IContainerRegistry registry)
     {
+        registry.RegisterSingleton<ProjectWorkspaceService>();
+        registry.RegisterSingleton<NewProjectDialogService>();
+        registry.Register<MainWindowViewModel>();
         registry.Register<MainWindow>();
     }
 }

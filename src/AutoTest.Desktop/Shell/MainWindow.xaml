@@ -1,26 +1,171 @@
 <Window x:Class="AutoTest.Desktop.Shell.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AutoTest" Width="1280" Height="800" MinWidth="800" MinHeight="500"
-        WindowStartupLocation="CenterScreen" WindowState="Maximized"
-        Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
-        FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True">
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="AutoTest · ECU 测试与开发" Width="1360" Height="850"
+ MinWidth="1100" MinHeight="680" WindowStartupLocation="CenterScreen"
+ WindowState="Maximized" Background="{StaticResource Canvas}"
+ Foreground="{StaticResource Ink}" FontFamily="{StaticResource UiFont}" FontSize="13"
+ UseLayoutRounding="True" SnapsToDevicePixels="True">
+  <Window.InputBindings>
+    <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewProjectCommand}"/>
+  </Window.InputBindings>
   <Grid>
     <Grid.RowDefinitions>
-      <RowDefinition Height="52"/>
-      <RowDefinition Height="*"/>
+      <RowDefinition Height="{StaticResource MenuHeight}"/>
+      <RowDefinition Height="{StaticResource ToolbarHeight}"/>
+      <RowDefinition Height="*" MinHeight="350"/>
+      <RowDefinition Height="{StaticResource StatusHeight}"/>
     </Grid.RowDefinitions>
-    <Border Grid.Row="0" Background="{StaticResource Panel}"
+    <!-- Standard Windows menu, not a second competing toolbar. -->
+    <Border Grid.Row="0" Background="{StaticResource ToolbarSurface}"
             BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
-      <TextBlock Text="AutoTest" FontSize="18" FontWeight="SemiBold"
-                 Margin="20,0" VerticalAlignment="Center"/>
+      <DockPanel LastChildFill="True">
+        <TextBlock DockPanel.Dock="Right" Text="{Binding CurrentProjectName}"
+                   FontSize="11" Foreground="{StaticResource Subtle}"
+                   VerticalAlignment="Center" Margin="0,0,17,0"
+                   TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+        <Menu Margin="8,1,0,0" VerticalAlignment="Stretch">
+          <MenuItem Header="文件(_F)">
+            <MenuItem Header="新建工程…" Command="{Binding NewProjectCommand}"
+                      InputGestureText="Ctrl+N"/>
+            <Separator/>
+            <MenuItem Header="打开工程…" IsEnabled="False"
+                      ToolTip="将在下一阶段接入"/>
+          </MenuItem>
+          <MenuItem Header="编辑(_E)" IsEnabled="False"/>
+          <MenuItem Header="视图(_V)" IsEnabled="False"/>
+        </Menu>
+      </DockPanel>
     </Border>
-    <StackPanel Grid.Row="1" Width="500" HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-      <TextBlock Text="工作区尚未接入" FontSize="20" FontWeight="SemiBold"
-                 Margin="0,0,0,12"/>
-      <TextBlock Text="已移除旧版本的工程编辑适配器和模拟运行工作台。此窗口不提供设备控制、测试执行或生产判定。"
-                 TextWrapping="Wrap" Foreground="{StaticResource Subtle}"/>
-    </StackPanel>
+    <!-- Only actions implemented in this stage are enabled. -->
+    <Border Grid.Row="1" Background="{StaticResource Panel}"
+            BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+      <DockPanel Margin="13,0,13,0">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" DockPanel.Dock="Left">
+          <Button Content="＋ 新建工程" Command="{Binding NewProjectCommand}"
+                  Style="{StaticResource AtPrimaryButton}" ToolTip="新建并保存一个真实 AutoTest 工程 (Ctrl+N)"/>
+          <Button Content="打开工程" IsEnabled="False"
+                  ToolTip="下一阶段实现工程打开与切换"/>
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Right" Text="工程管理"
+                   FontSize="12" FontWeight="SemiBold"
+                   VerticalAlignment="Center" Foreground="{StaticResource Subtle}"/>
+      </DockPanel>
+    </Border>
+    <!-- Explorer width is independently adjustable; editor area always receives remaining width. -->
+    <Grid Grid.Row="2" Background="{StaticResource Canvas}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="{StaticResource ExplorerWidth}" MinWidth="185" MaxWidth="460"/>
+        <ColumnDefinition Width="5"/>
+        <ColumnDefinition Width="*" MinWidth="500"/>
+      </Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Background="{StaticResource Panel}"
+              BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+        <DockPanel>
+          <Border DockPanel.Dock="Top" Padding="13,12,12,12"
+                  BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+            <DockPanel>
+              <TextBlock Text="工程资源" FontSize="{StaticResource SectionTitleSize}"
+                         FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <TextBlock DockPanel.Dock="Right" Text="项目"
+                         FontSize="11" Foreground="{StaticResource Subtle}"
+                         VerticalAlignment="Center"/>
+            </DockPanel>
+          </Border>
+          <Grid Margin="8">
+            <TextBlock Text="暂无工程。请点击“新建工程”。"
+                       Margin="8,12" Foreground="{StaticResource Subtle}"
+                       TextWrapping="Wrap">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Visibility" Value="Visible"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasProject}" Value="True">
+                      <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+            <TreeView Visibility="{Binding HasProject, Converter={StaticResource BoolToVisibility}}"
+                      Margin="0,3" ScrollViewer.VerticalScrollBarVisibility="Auto">
+              <TreeViewItem IsExpanded="True">
+                <TreeViewItem.Header>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="▣" Foreground="{StaticResource Accent}" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"/>
+                  </StackPanel>
+                </TreeViewItem.Header>
+              </TreeViewItem>
+            </TreeView>
+          </Grid>
+        </DockPanel>
+      </Border>
+      <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                    Background="{StaticResource Line}" ResizeDirection="Columns"/>
+      <Grid Grid.Column="2" Margin="14,13,14,13">
+        <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}"
+                BorderThickness="1" CornerRadius="4" Padding="18">
+          <Grid>
+            <!-- Welcome is a real empty-project state, not a mock workspace. -->
+            <StackPanel Width="480" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                  <Setter Property="Visibility" Value="Visible"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasProject}" Value="True">
+                      <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </StackPanel.Style>
+              <TextBlock Text="开始使用 AutoTest" FontSize="22" FontWeight="SemiBold"
+                         HorizontalAlignment="Center" Margin="0,0,0,12"/>
+              <TextBlock Text="新建工程后，测试程序、DBC 和控制器配置将统一保存在工程中。"
+                         Foreground="{StaticResource Subtle}" TextAlignment="Center"
+                         TextWrapping="Wrap" Margin="0,0,0,22"/>
+              <Button Content="＋ 新建工程" Style="{StaticResource AtPrimaryButton}"
+                      Command="{Binding NewProjectCommand}" HorizontalAlignment="Center"
+                      MinWidth="145" MinHeight="36"/>
+            </StackPanel>
+            <StackPanel VerticalAlignment="Top" Margin="12,9,12,0">
+              <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                  <Setter Property="Visibility" Value="Collapsed"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasProject}" Value="True">
+                      <Setter Property="Visibility" Value="Visible"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </StackPanel.Style>
+              <TextBlock Text="工程概览" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,18"/>
+              <TextBlock Text="工程名称" Foreground="{StaticResource Subtle}" Margin="0,0,0,6"/>
+              <TextBlock Text="{Binding CurrentProjectName}" FontSize="17"
+                         FontWeight="SemiBold" Margin="0,0,0,18"/>
+              <TextBlock Text="工程文件" Foreground="{StaticResource Subtle}" Margin="0,0,0,6"/>
+              <TextBlock Text="{Binding CurrentProjectPath}" TextWrapping="Wrap"
+                         FontSize="12" Margin="0,0,0,18"/>
+              <Border Background="{StaticResource MutedSurface}" CornerRadius="4"
+                      Padding="12,11" HorizontalAlignment="Left" MaxWidth="650">
+                <TextBlock Text="工程已经写入磁盘并经过重新读取校验。资源导入、DBC 和测试程序编辑将在后续阶段接入。"
+                           Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
+              </Border>
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+    <Border Grid.Row="3" Background="{StaticResource ToolbarSurface}"
+            BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
+      <DockPanel Margin="13,0">
+        <TextBlock Text="{Binding StatusMessage}" FontSize="11"
+                   Foreground="{StaticResource Subtle}" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"/>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding CurrentProjectName}"
+                   Foreground="{StaticResource Subtle}" FontSize="11"
+                   VerticalAlignment="Center" MaxWidth="380" TextTrimming="CharacterEllipsis"/>
+      </DockPanel>
+    </Border>
   </Grid>
 </Window>
