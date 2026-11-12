@@ -37,3 +37,12 @@ jobs:
         run: node tools/project-control-v2/tests/ui_behavior.js
       - name: Run domain, authorization and real-project tests
         run: python -m unittest discover -s tools/project-control-v2/tests -v
+      - name: Export verified generic management package
+        run: python tools/project-control-v2/portable/export_package.py --out ProjectControl_Portable.zip
+      - name: Upload portable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProjectControl-Portable-Candidate
+          path: ProjectControl_Portable.zip
+          if-no-files-found: error
+          retention-days: 30
