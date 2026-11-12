@@ -125,10 +125,18 @@ def audit(record):
             text_field(row,"assessment_summary")
         elif status=="GAP_CONFIRMED":
             methods={attempts[x]["method"] for x in attempts_used}
-            if len(attempts_used)<2 or len(methods)<2:
-                raise AssessmentError("one empty search does not establish missing artifact")
+            no_matches=[x for x in attempts_used if attempts[x]["outcome"]=="NO_MATCH"]
+            if len(no_matches)<2 or len({attempts[x]["method"] for x in no_matches})<2:
+                raise AssessmentError("gap requires two distinct negative discovery routes")
             if any(attempts[x]["outcome"] in ("ERROR","INACCESSIBLE") for x in attempts_used):
                 raise AssessmentError("search failure is not artifact absence")
+            if src:
+                # Existing historical sources may lack a currently applicable
+                # artifact; state that scoped gap rather than claiming absence.
+                if row.get("gap_type")!="CURRENT_APPLICABLE_ARTIFACT" or not clm:
+                    raise AssessmentError("existing sources need scoped validity gap and claim review")
+                if any(claims[x]["assessment"]=="SUPPORTED_CANDIDATE" for x in clm):
+                    raise AssessmentError("current candidate exists; examine the remaining gap")
             if not act:
                 raise AssessmentError("gap needs proposed remediation")
             text_field(row,"gap_rationale")
