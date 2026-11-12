@@ -14,13 +14,14 @@
 | 正式计划/变更/风险 | 通用 UI 已有成果、工作、进度、风险和里程碑本地草案；正式审批禁止 | 与旧 V2 复杂计划、依赖、变更、Gate 审查的完整功能差距仍存在 |
 | Codex 远程任务发现 | 原试点 CODEX_START_HERE+dispatch+resolve；本候选新增目标仓库通用 resolve.py | 目标仓库仍需独立任务合同与真实授权；通用校验器仅做本地检查 |
 | 空目录工作区创建/清理 | 已能识别当前工作区的本地 Codex 回执 | 临时 clone/worktree 登记、跨工作区自动归集和安全清理仍未完成 |
-| GitHub 多仓库支持与安全写入 | 已提供登记项目的显式只读 `ls-remote` 检查与候选 Codex 回执复核 | **远端 PR 发布/接收、跨机器同步和 CAS 冲突治理未完成** |
+| GitHub 多仓库支持与安全写入 | 已提供登记项目的显式只读 `ls-remote` 检查与候选 Codex 回执复核 | 已有受控任务发布与 PR 接收状态的版本比对候选；**真正跨 GitHub PR 发布/接收、CAS 竞态与跨机器同步未作实测** |
 | 测试与验证 | 新增跨项目回执、Git 文件核验、远端只读版本检查、写入锁、项目隔离及 HTTP 授权回归 | 未提供实际 Windows + 真实新/旧项目全链路验收 |
 
 ## 最近推进的 GitHub 任务交接候选
 
 - `portable/task_publication.py`：读取本地已核对目标 Git 快照，对任务设计、独立人类批准、任务唯一性、来源 SHA 与文件范围作只读预检，并生成带原文件 blob SHA 的候选 GitHub Contents 更新计划；真正远端发布需要管理 AI 的 GitHub 写连接及最新文件并发核对。
 - `portable/pr_evidence.py`：接受通过 GitHub 连接取得的 PR 元数据，检查目标仓库、分支和候选提交是否与 Codex 回执相符；该检查**不等于 PR 内容审查、CI 验收或项目 Gate**。
+- `portable/task_submission.py`：将取得正确 PR 与 Codex 回执的 READY 任务转为 `SUBMITTED_FOR_REVIEW` 的候选 GitHub 文件修改，保留独立审查与 Gate 边界；本身不自动提交远端。
 - `portable/REMOTE_HANDOFF.md`：管理 AI 主动读取的完整任务发布、Codex 领取及远端 PR 复核协议。
 - 仍缺少实际跨机器 GitHub 写入/PR 端到端验证以及可靠 Windows 工作区回收。要避免把受控协作的文本约束当成系统级权限。
 
