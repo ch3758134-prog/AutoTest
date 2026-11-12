@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+"""Explicit GitHub Contents CAS and PR evidence reader for a target project.
+
+This is an optional LOCAL bridge when a connected ChatGPT GitHub writer cannot
+be used. It never clones, fetches, merges, deletes, pushes branches or approves
+work. A token is read from the process environment only for --apply.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import sys
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, urlsplit
+from urllib.request import Request, urlopen
+
+HEX40 = re.compile(r"^[0-9a-f]{40}$")
+EXPECTED_FILE = ".project-control/tasks.json"
+HEADINGS = ("project-control-task-publication-plan/1", "project-control-submission-plan/1")
+API = "https://api.github.com"
+
+
+class RemoteError(ValueError):
+    pass
+
+
+def repo_parts(url):
+    if not isinstance(url, str):
+        raise RemoteError("target repo URL missing")
+    u = urlsplit(url)
+    if (u.scheme != "https" or u.hostname != "github.com"
+            or u.username or u.password or u.port or u.query or u.fragment):
+        raise RemoteError("expected exact HTTPS github.com owner/repository URL")
+    parts = u.path.strip("/").removesuffix(".git").split("/")
+    if len(parts) != 2 or not all(re.fullmatch("[A-Za-z0-9_.-]+", p) for p in parts):
+        raise RemoteError("invalid target repository identity")
+    return tuple(parts)
+
+
+def assert_sha(value):
+    if not isinstance(value, str) or not HEX40.fullmatch(value):
+        raise RemoteError("expected exact Git SHA-1")
+    return value
+
+
+def ref_component(value):
+    if not isinstance(value, str) or not value or value.startswith("-") or ".." in value or "@{" in value:
+        raise RemoteError("invalid branch or Git reference")
+    return quote(value, safe="")
+
+
+class GitHub:
+    def __init__(self, token=None, exchange=None):
+        self.token = token
+        self.exchange = exchange
+
+    def request(self, method, resource, data=None):
+        if not resource.startswith("/repos/") or ".." in resource.split("?")[0].split("/"):
+            raise RemoteError("unsafe GitHub API resource")
+        if self.exchange:
+            return self.exchange(method, resource, data)
+        if not self.token:
+            raise RemoteError("GitHub token missing; use a connected ChatGPT writer or environment token")
+        payload = json.dumps(data, ensure_ascii=False).encode("utf-8") if data is not None else None
+        req = Request(
+            API + resource, data=payload, method=method,
+            headers={"Authorization": "Bearer " + self.token,
+                     "Accept": "application/vnd.github+json",
+                     "X-GitHub-Api-Version": "2022-11-28",
+                     "Content-Type": "application/json",
+                     "User-Agent": "ProjectControl-Candidate"},
+        )
+        try:
+            with urlopen(req, timeout=25) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as err:
+            # Avoid printing request headers/token or raw errors, which can
+            # contain private data. Surface stable HTTP status only.
+            raise RemoteError("GitHub API rejected operation HTTP " + str(err.code)) from err
+        except (URLError, OSError, ValueError) as err:
+            raise RemoteError("GitHub API unavailable or returned invalid JSON") from err
+
+    def branch_head(self, parts, branch):
+        owner, repo = parts
+        x = self.request("GET", "/repos/" + quote(owner) + "/" + quote(repo)
+                         + "/branches/" + ref_component(branch))
+        try:
+            return assert_sha(x["commit"]["sha"])
+        except (KeyError, TypeError) as err:
+            raise RemoteError("GitHub branch response incomplete") from err
+
+    def file(self, parts, path, branch):
+        owner, repo = parts
+        suffix = "?ref=" + ref_component(branch)
+        data = self.request("GET", "/repos/" + quote(owner) + "/" + quote(repo)
+                            + "/contents/" + quote(path, safe="/") + suffix)
+        if not isinstance(data, dict) or data.get("type") != "file":
+            raise RemoteError("expected GitHub file record")
+        sha = assert_sha(data.get("sha"))
+        try:
+            if data.get("encoding") != "base64":
+                raise ValueError("not base64")
+            raw = base64.b64decode(data["content"], validate=False)
+        except (ValueError, TypeError, KeyError) as err:
+            raise RemoteError("GitHub content unavailable as base64") from err
+        return sha, raw
+
+    def commit_parents(self, parts, sha):
+        owner, repo = parts
+        item = self.request("GET", "/repos/" + quote(owner) + "/" + quote(repo)
+                            + "/commits/" + assert_sha(sha))
+        try:
+            return [assert_sha(x["sha"]) for x in item["parents"]]
+        except (KeyError, TypeError) as err:
+            raise RemoteError("commit parent evidence unavailable") from err
+
+    def pr(self, parts, number):
+        if type(number) is not int or number < 1:
+            raise RemoteError("invalid PR number")
+        owner, repo = parts
+        raw = self.request("GET", "/repos/" + quote(owner) + "/" + quote(repo)
+                           + "/pulls/" + str(number))
+        try:
+            return {
+                "number": number, "url": raw["html_url"],
+                "head_repo_full_name": raw["head"]["repo"]["full_name"],
+                "head": raw["head"]["ref"], "head_sha": assert_sha(raw["head"]["sha"]),
+                "base": raw["base"]["ref"], "state": raw["state"],
+                "draft": raw["draft"], "merged": bool(raw.get("merged_at")),
+            }
+        except (KeyError, TypeError) as err:
+            raise RemoteError("GitHub PR metadata incomplete") from err
+
+    def pr_files(self, parts, number, max_pages=20):
+        owner, repo = parts
+        files = []
+        for page in range(1, max_pages + 1):
+            batch = self.request(
+                "GET", "/repos/" + quote(owner) + "/" + quote(repo)
+                + "/pulls/" + str(number) + "/files?per_page=100&page=" + str(page))
+            if not isinstance(batch, list):
+                raise RemoteError("PR changed file response incomplete")
+            files += batch
+            if len(batch) < 100:
+                return files
+        raise RemoteError("PR contains too many changed files to verify exhaustively")
+
+
+def validate_plan(plan, repo_url):
+    if not isinstance(plan, dict) or plan.get("schema") not in HEADINGS:
+        raise RemoteError("unrecognized publication plan")
+    parts = repo_parts(repo_url)
+    if repo_parts(plan.get("repo_url") or plan.get("target_repo")) != parts:
+        raise RemoteError("publication plan is for a different target repository")
+    branch = plan.get("source_branch") or plan.get("target_branch")
+    if not isinstance(branch, str) or not branch or branch in ("(detached)",):
+        raise RemoteError("invalid publication branch")
+    path = plan.get("desired_file") or plan.get("desired_path")
+    if path != EXPECTED_FILE:
+        raise RemoteError("only target project tasks.json may be published")
+    expected_blob = assert_sha(plan.get("expected_tasks_blob_sha"))
+    expected_head = assert_sha(plan.get("preflight_branch_head") or plan.get("observed_source_branch_head"))
+    content = plan.get("proposed_content")
+    if not isinstance(content, str) or len(content.encode("utf-8")) > 200000:
+        raise RemoteError("invalid or oversize tasks content")
+    candidate = json.loads(content)
+    if (candidate.get("schema") != "project-control-target-tasks/1"
+            or candidate.get("project_id") != plan.get("project_id")):
+        raise RemoteError("candidate task registry does not match project")
+    target = [x for x in candidate.get("tasks", [])
+              if isinstance(x, dict) and x.get("id") == plan.get("task_id")]
+    if len(target) != 1:
+        raise RemoteError("candidate task ID mismatch")
+    required = ("READY_FOR_LOCAL_IMPLEMENTATION" if plan["schema"] == HEADINGS[0]
+                else "SUBMITTED_FOR_REVIEW")
+    if target[0].get("state") != required:
+        raise RemoteError("candidate state does not match plan type")
+    return parts, branch, expected_blob, expected_head, content
+
+
+def publish_plan(client, plan, repo_url, *, apply=False):
+    parts, branch, blob, head, content = validate_plan(plan, repo_url)
+    result = {
+        "operation": "TARGET_TASK_RECORD_CAS",
+        "repository": "/".join(parts),
+        "branch": branch, "expected_branch_head": head,
+        "expected_file_blob": blob, "content_sha256": hashlib.sha256(content.encode()).hexdigest(),
+        "status": "PREVIEW_NOT_PUBLISHED",
+    }
+    if not apply:
+        return result
+    # A branch-head check is a guard, not a multi-file transaction.
+    remote_head = client.branch_head(parts, branch)
+    if remote_head != head:
+        raise RemoteError("remote branch HEAD changed; review source and approvals again")
+    live_blob, _ = client.file(parts, EXPECTED_FILE, branch)
+    if live_blob != blob:
+        raise RemoteError("tasks.json changed; refuse to overwrite concurrent edits")
+    owner, name = parts
+    payload = {
+        "message": "chore(project-control): update authorized task " + plan["task_id"],
+        "branch": branch, "sha": blob,
+        "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
+    }
+    response = client.request("PUT", "/repos/" + quote(owner) + "/" + quote(name)
+                              + "/contents/" + EXPECTED_FILE, payload)
+    try:
+        committed_sha = assert_sha(response["commit"]["sha"])
+    except (KeyError, TypeError) as exc:
+        raise RemoteError("GitHub write did not return a verifiable commit; check remote manually") from exc
+    live_sha, live_data = client.file(parts, EXPECTED_FILE, branch)
+    if live_data != content.encode("utf-8"):
+        raise RemoteError("remote tasks.json after write differs from candidate; review remote manually")
+    # Verify whether the new commit's sole parent is the reviewed branch
+    # version. If GitHub performed a concurrent rebase/branch update, do not
+    # call it a verified atomic transaction.
+    parents = client.commit_parents(parts, committed_sha)
+    if parents != [head]:
+        raise RemoteError("GitHub branch changed during file write; commit requires manual reconciliation")
+    result.update({"status": "GITHUB_WRITE_VERIFIED_PENDING_INDEPENDENT_REVIEW",
+                   "commit_sha": committed_sha, "content_blob_sha": live_sha})
+    return result
+
+
+def verify_remote_pr(client, project, task, receipt, number):
+    """Check PR head and actual changed paths. Does not approve CI or review."""
+    from pr_evidence import validate as validate_metadata, PrEvidenceError
+    parts = repo_parts(project.get("repo_url"))
+    meta = client.pr(parts, number)
+    try:
+        observation = validate_metadata(project, task, receipt, meta)
+    except PrEvidenceError as err:
+        raise RemoteError(str(err)) from err
+    files = client.pr_files(parts, number)
+    changed = []
+    for item in files:
+        path = item.get("filename")
+        if not isinstance(path, str):
+            raise RemoteError("PR file item missing filename")
+        if item.get("status") == "renamed":
+            raise RemoteError("renamed PR paths require additional mapping and review")
+        changed.append(path)
+    if sorted(changed) != sorted(receipt.get("changed_paths", [])):
+        raise RemoteError("GitHub PR file list does not match the Codex result")
+    observation["changed_paths"] = sorted(changed)
+    observation["pr_files_checked"] = True
+    observation["reviewed_head_sha"] = meta["head_sha"]
+    observation["status"] = "PR_FILES_AND_IDENTITY_MATCHED_PENDING_CI_AND_REVIEW"
+    # Do not trust purported CI results/approvals without fetching provider
+    # data for the same SHA and explicit reviewer decisions.
+    return observation
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description="Explicit target GitHub Contents CAS tool")
+    p.add_argument("--plan", required=True, type=Path)
+    p.add_argument("--repo-url", required=True)
+    p.add_argument("--apply", action="store_true")
+    args = p.parse_args(argv)
+    try:
+        plan = json.loads(args.plan.read_text(encoding="utf-8"))
+        client = GitHub(token=os.environ.get("PROJECT_CONTROL_GITHUB_TOKEN") if args.apply else None)
+        result = publish_plan(client, plan, args.repo_url, apply=args.apply)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    except (RemoteError, OSError, KeyError, ValueError, TypeError) as err:
+        print(json.dumps({"status": "BLOCKED", "error": str(err)}, ensure_ascii=False), file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
