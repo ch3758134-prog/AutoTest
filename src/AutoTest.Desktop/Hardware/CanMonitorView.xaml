@@ -8,6 +8,31 @@
      <TextBlock Text="真实 USB 0x41 接收，CAN1 为 DUT、CAN0 为按键板。时间戳为主机到达时间；断线后记录保留。"
                 Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,5,0,0"/>
    </StackPanel>
+   <Border DockPanel.Dock="Top" Background="{StaticResource MutedSurface}"
+           BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="10" Margin="0,0,0,10">
+     <StackPanel>
+       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+         <TextBlock Text="发送 CAN1 · 标准帧（单帧诊断）" FontWeight="SemiBold"
+                    VerticalAlignment="Center" Margin="0,0,12,0"/>
+         <TextBlock Text="ID (HEX)" VerticalAlignment="Center" Margin="0,0,5,0"/>
+         <TextBox Text="{Binding CanId,UpdateSourceTrigger=PropertyChanged}" Width="85"
+                  VerticalContentAlignment="Center" Margin="0,0,12,0"/>
+         <TextBlock Text="数据 HEX" VerticalAlignment="Center" Margin="0,0,5,0"/>
+         <TextBox Text="{Binding CanData,UpdateSourceTrigger=PropertyChanged}" Width="190"
+                  VerticalContentAlignment="Center" Margin="0,0,12,0"/>
+         <Button Content="发送一帧" Command="{Binding TransmitCanCommand}"
+                 Style="{StaticResource AtButton}"/>
+       </StackPanel>
+       <TextBlock Text="底层物理安全门禁要求逐帧确认；在下框输入完全一致的授权文字后才能发送。"
+                  Foreground="{StaticResource Subtle}" Margin="0,8,0,4"/>
+       <TextBlock Text="{Binding ExpectedCanConfirmation}" FontFamily="Consolas"
+                  TextWrapping="Wrap" Margin="0,0,0,4"/>
+       <TextBox Text="{Binding CanConfirmation,UpdateSourceTrigger=PropertyChanged}"
+                FontFamily="Consolas" />
+       <TextBlock Text="{Binding CanTxStatus}" Foreground="{StaticResource Subtle}"
+                  Margin="0,6,0,0" TextWrapping="Wrap"/>
+     </StackPanel>
+   </Border>
    <DataGrid ItemsSource="{Binding CanRecords}" AutoGenerateColumns="False"
              IsReadOnly="True" HeadersVisibility="Column"
              CanUserAddRows="False" RowHeaderWidth="0"

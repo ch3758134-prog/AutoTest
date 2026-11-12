@@ -97,6 +97,28 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         catch (Exception e) { Record("CAN 监视异常：" + e.Message); }
     }
 
+    /// <summary>One physically authorized classic CAN frame. The transport fence consumes
+    /// the consent before native USB write; firmware ACK is not proof of DUT receipt.</summary>
+    public async Task SendCanOnceAsync(CanFrame frame, string exactConfirmation,
+        CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _link is null)
+                throw new IOException("USB 主控未连接，禁止 CAN 发送。");
+            var map = new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
+            var payload = CanFrameCodec.ToUsbPayload(frame, map);
+            _link.AuthorizeOneCanTransmission(payload, exactConfirmation);
+            Record("CAN TX 授权：" + frame.Role + " ID=0x" + frame.Id.ToString("X") +
+                " data=" + Convert.ToHexString(frame.Data.ToArray()));
+            await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
+                TimeSpan.FromSeconds(3), cancellationToken);
+            Record("CAN TX 设备 ACK；不能据此认定 DUT 已收到该帧。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         await _lifecycle.WaitAsync(cancellationToken);

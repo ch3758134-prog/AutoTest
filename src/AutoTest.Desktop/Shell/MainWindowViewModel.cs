@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Input;
 using AutoTest.Desktop.Hardware;
 using AutoTest.Contracts;
+using AutoTest.Devices.Can;
+using System.Globalization;
 using AutoTest.Specialists.Scan;
 using System.IO;
 using System.Windows.Controls;
@@ -27,6 +29,10 @@ public sealed class MainWindowViewModel : BindableBase
     private string _hardwareStatus = "USB 未连接";
     private string _scanStatus = "扫码未开始";
     private bool _hardwareBusy;
+    private string _canId = "701";
+    private string _canData = "";
+    private string _canConfirmation = "";
+    private string _canTxStatus = "仅允许操作员逐帧确认发送；发送结果以设备 ACK 为准。";
     private readonly NewProjectDialogService _newDialog;
     private readonly ProjectFileDialogService _fileDialogs;
     private readonly DbcEditorDialogs _dbcDialogs;
@@ -79,6 +85,7 @@ public sealed class MainWindowViewModel : BindableBase
         ConnectHardwareCommand = new DelegateCommand(async () => await ToggleHardwareAsync(),
             () => !_hardwareBusy);
         OpenCanMonitorCommand = new DelegateCommand(OpenCanMonitor);
+        TransmitCanCommand = new DelegateCommand(async () => await TransmitCanAsync(), () => !_hardwareBusy);
         _hardware.EvidenceRecorded += line =>
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -137,6 +144,75 @@ public sealed class MainWindowViewModel : BindableBase
         _hardware.IsConnected ? "断开" : "连接";
     public DelegateCommand ConnectHardwareCommand { get; }
     public DelegateCommand OpenCanMonitorCommand { get; }
+    public DelegateCommand TransmitCanCommand { get; }
+    public string CanId
+    {
+        get => _canId;
+        set { if (SetProperty(ref _canId, value)) RaisePropertyChanged(nameof(ExpectedCanConfirmation)); }
+    }
+    public string CanData
+    {
+        get => _canData;
+        set { if (SetProperty(ref _canData, value)) RaisePropertyChanged(nameof(ExpectedCanConfirmation)); }
+    }
+    public string CanConfirmation
+    {
+        get => _canConfirmation;
+        set => SetProperty(ref _canConfirmation, value);
+    }
+    public string CanTxStatus
+    {
+        get => _canTxStatus;
+        private set => SetProperty(ref _canTxStatus, value);
+    }
+    public string ExpectedCanConfirmation
+    {
+        get
+        {
+            try { return "AUTHORIZE CAN TX " +
+                Convert.ToHexString(CanFrameCodec.ToUsbPayload(BuildCanFrame(),
+                    new BusRoleMap(default, DutPort: 1, KeypadPort: 0))); }
+            catch (Exception error) when (error is FormatException or ArgumentException or OverflowException)
+            { return "请输入合法的标准帧 ID 和最多 8 字节 HEX 数据。"; }
+        }
+    }
+    private CanFrame BuildCanFrame()
+    {
+        var text = CanId.Trim().Replace("0x", "", StringComparison.OrdinalIgnoreCase);
+        if (!uint.TryParse(text, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var id))
+            throw new FormatException("CAN ID 必须是十六进制整数。");
+        var bytes = Convert.FromHexString(string.Concat(CanData.Where(c => !char.IsWhiteSpace(c))));
+        return CanFrame.Create(BusRole.DutCan, extended: false, id, bytes);
+    }
+    private async Task TransmitCanAsync()
+    {
+        if (_hardwareBusy) return;
+        try
+        {
+            var frame = BuildCanFrame();
+            if (CanConfirmation != ExpectedCanConfirmation)
+            {
+                CanTxStatus = "确认文本不匹配，物理发送已拦截。";
+                return;
+            }
+            _hardwareBusy = true;
+            ConnectHardwareCommand.RaiseCanExecuteChanged();
+            TransmitCanCommand.RaiseCanExecuteChanged();
+            await _hardware.SendCanOnceAsync(frame, CanConfirmation);
+            CanTxStatus = "设备已 ACK；请核对 CAN 接收和 DUT 响应。";
+        }
+        catch (Exception error)
+        {
+            CanTxStatus = "发送失败或状态未知：" + error.Message;
+        }
+        finally
+        {
+            CanConfirmation = "";
+            _hardwareBusy = false;
+            ConnectHardwareCommand.RaiseCanExecuteChanged();
+            TransmitCanCommand.RaiseCanExecuteChanged();
+        }
+    }
 
     public void CaptureScannerText(string text)
     {
