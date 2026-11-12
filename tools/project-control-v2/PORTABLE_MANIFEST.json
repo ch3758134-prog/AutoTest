@@ -1,0 +1,34 @@
+{
+  "schema": "project-control-portable-manifest/1",
+  "package_id": "project-control-v2",
+  "version": "2.0-portable-init-candidate",
+  "entrypoint": "START_HERE.md",
+  "scope": "GENERIC_MANAGER_ONBOARDING",
+  "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
+  "example_project": "autotest",
+  "status": "CANDIDATE_NOT_RELEASED",
+  "required_files": [
+    "START_HERE.md",
+    "PORTABLE_MANIFEST.json",
+    "portable/INITIALIZATION_PROTOCOL.md",
+    "portable/COMPLETENESS_AUDIT.md",
+    "portable/project_init.py",
+    "ai/roles.json",
+    "ai/BOOTSTRAP.md"
+  ],
+  "capabilities": {
+    "manager_read_first": "CANDIDATE",
+    "new_project_bootstrap": "CANDIDATE",
+    "existing_project_adoption": "CANDIDATE",
+    "codex_target_dispatch": "REQUIRES_TARGET_TASK_RECORD",
+    "generic_web_ui": "NOT_IMPLEMENTED",
+    "multi_project_store": "NOT_IMPLEMENTED",
+    "windows_end_to_end": "NOT_VERIFIED"
+  },
+  "separation": {
+    "package_source": "Project Control system files",
+    "target_repo": "User-provided GitHub repository",
+    "local_workspace": "User-selected folder for Codex execution"
+  },
+  "warning": "Existing server/app.js/process.json/AutoTest samples are not yet generic."
+}
