@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Control · 工程管理</title><link href="/app.css" rel="stylesheet"></head>
+<body><div class="shell">
+<aside class="sidebar">
+  <div class="brand"><div class="mark">P</div><div><strong>Project Control</strong><small>工程研发管理</small></div></div>
+  <label for="project-select" class="label">当前管理项目</label>
+  <select id="project-select" aria-label="选择项目"><option>读取中…</option></select>
+  <div id="project-source" class="source"></div>
+  <div class="nav-label">工作区</div>
+  <nav id="navigation" aria-label="导航">
+    <button data-page="overview" class="active">◫ &nbsp; 项目总览</button>
+    <button data-page="deliverables">◇ &nbsp; 目标与交付</button>
+    <button data-page="work">☷ &nbsp; 研发工作</button>
+    <button data-page="risks">⚑ &nbsp; 风险与里程碑</button>
+    <button data-page="evidence">▤ &nbsp; 资产与正式依据</button>
+    <button data-page="handoff">↗ &nbsp; AI 与 Codex 交接</button>
+  </nav>
+  <div class="side-footer"><span class="dot"></span> 本地项目记录 · 非远端实时状态<br><span>不自动批准、不自动推送或清理</span></div>
+</aside>
+<section class="content"><header class="top"><div class="crumb"><span>工程管理</span> / <b id="crumb-current">总览</b></div>
+<div class="top-actions"><span id="sync-pill" class="small-pill">本地数据</span><button id="refresh" class="tertiary">刷新</button></div></header>
+<main id="main" tabindex="-1"><p class="loading">正在读取已登记的项目…</p></main></section>
+</div>
+<dialog id="edit-dialog"><form id="edit-form"><header><h2 id="form-title"></h2><button type="button" id="form-close" class="close" aria-label="关闭">×</button></header><p id="form-desc" class="hint"></p><div id="form-fields"></div><footer><button type="button" id="form-cancel" class="secondary">取消</button><button type="submit" class="primary">保存本地候选</button></footer></form></dialog>
+<div id="toast" class="toast" aria-live="polite" role="status"></div>
+<script defer src="/app.js"></script></body></html>
