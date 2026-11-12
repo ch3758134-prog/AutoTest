@@ -6,7 +6,7 @@
 
 ## 开始使用
 
-管理 AI 首先阅读 [START_HERE.md](START_HERE.md) 和 [PORTABLE_MANIFEST.json](PORTABLE_MANIFEST.json)。使用时，用户提供本文件夹和目标 GitHub 仓库地址。Codex 的本地目录由用户自己指定，其余工作来源、任务和 Git 版本由管理 AI 与 Codex 从目标仓库读取。
+管理 AI 首先阅读 [START_HERE.md](START_HERE.md)、[portable/CONTEXT_DISCOVERY.md](portable/CONTEXT_DISCOVERY.md)、[portable/AI_WORK_MODES.md](portable/AI_WORK_MODES.md) 和 [PORTABLE_MANIFEST.json](PORTABLE_MANIFEST.json)。使用时，用户提供本文件夹和目标 GitHub 仓库地址。Codex 的本地目录由用户自己指定，其余工作来源、任务和 Git 版本由管理 AI 与 Codex 从目标仓库读取。
 
 本机管理界面（Python 3.11+，Git）：
 
