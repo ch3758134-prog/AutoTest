@@ -16,6 +16,11 @@ public sealed class LabTreeRow
 {
     public required string Caption { get; init; }
     public required LabPhase Phase { get; init; }
+    // View-only projection of the persisted TEST node, not a second program model.
+    public string OrderLabel { get; init; } = "";
+    public string StepName { get; init; } = "";
+    public string TypeLabel { get; init; } = "";
+    public bool IsPhase { get; init; }
     public Guid? StepId { get; init; }
     public Guid? ParentId { get; init; }
     public string? Slot { get; init; }
@@ -374,7 +379,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         var doc = Snapshot;
         foreach (var phase in Enum.GetValues<LabPhase>())
         {
-            var root = new LabTreeRow { Caption = LabStepLocalization.Display(phase.ToString()), Phase = phase };
+            var root = new LabTreeRow { Caption = LabStepLocalization.Display(phase.ToString()), StepName = LabStepLocalization.Display(phase.ToString()), Phase = phase, IsPhase = true };
             AddNodes(root.Children, doc.Phases[phase], phase, null, null);
             Tree.Add(root);
         }
@@ -389,6 +394,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             var row = new LabTreeRow
             {
                 Caption = $"{i + 1:D2}  {LabStepLocalization.Display(n.Type)}  ·  {n.Name}", Phase = phase,
+                OrderLabel = (i + 1).ToString("D2"), StepName = n.Name,
+                TypeLabel = LabStepLocalization.Display(n.Type),
                 StepId = n.Id, ParentId = parent, Slot = slot, Index = i
             };
             foreach (var branch in n.Slots)
@@ -396,6 +403,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 var slotRow = new LabTreeRow
                 {
                     Caption = LabStepLocalization.Display(branch.Key), Phase = phase,
+                    StepName = LabStepLocalization.Display(branch.Key),
                     ParentId = n.Id, Slot = branch.Key
                 };
                 AddNodes(slotRow.Children, branch.Value, phase, n.Id, branch.Key);
