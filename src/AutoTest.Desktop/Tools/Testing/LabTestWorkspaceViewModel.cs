@@ -12,8 +12,20 @@ using AutoTest.Application.V1;
 
 namespace AutoTest.Desktop.Tools.Testing;
 
-public sealed class LabTreeRow
+public sealed class LabTreeRow : INotifyPropertyChanged
 {
+    private bool _isExpanded = true;
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (_isExpanded == value) return;
+            _isExpanded = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExpanded)));
+        }
+    }
+    public event PropertyChangedEventHandler? PropertyChanged;
     public required string Caption { get; init; }
     public required LabPhase Phase { get; init; }
     // View-only projection of the persisted TEST node, not a second program model.
@@ -170,6 +182,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                     Facts.Add(fact);
             });
         };
+        ExpandAllCommand = new LabCommand(() => SetTreeExpansion(true));
+        CollapseAllCommand = new LabCommand(() => SetTreeExpansion(false));
         InsertCommand = new LabCommand(Insert, () => !Busy);
         DeleteCommand = new LabCommand(Delete, () => !Busy && _selected?.StepId is not null);
         CopyCommand = new LabCommand(Copy, () => !Busy && _selected?.StepId is not null);
@@ -349,6 +363,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             return $"{total} 步骤 · {cases} 测试用例";
         }
     }
+    public ICommand ExpandAllCommand { get; }
+    public ICommand CollapseAllCommand { get; }
     public ICommand InsertCommand { get; }
     public ICommand DeleteCommand { get; }
     public ICommand CopyCommand { get; }
@@ -408,10 +424,24 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         Rebuild();
         Status = "已打开测试程序；正式运行前请重新检查工程资源与设备状态";
     }
+    private void SetTreeExpansion(bool expand)
+    {
+        static void Set(IEnumerable<LabTreeRow> rows, bool value)
+        {
+            foreach (var row in rows)
+            {
+                row.IsExpanded = value;
+                Set(row.Children, value);
+            }
+        }
+        Set(Tree, expand);
+    }
+
     private void RefreshCommands()
     {
         foreach (var command in new[] { InsertCommand, DeleteCommand, CopyCommand, UpCommand,
             DownCommand, RenameCommand, SetParameterCommand, UndoCommand, RedoCommand,
+            ExpandAllCommand, CollapseAllCommand,
             PreflightCommand, RunPhysicalReadOnlyCommand, RunSelectedPhysicalCommand,
             SelectAllCasesCommand, ClearCasesCommand, PauseCommand, ResumeCommand, StepCommand,
             SkipCommand, RunToCommand, StopCommand, SaveCommand, OpenCommand,
