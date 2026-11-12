@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="AutoTest · 主控板连接" Width="1360" Height="880"
         MinWidth="1050" MinHeight="650" WindowStartupLocation="CenterScreen"
-        Background="#F2F5F9" Foreground="#1F2C3D" FontFamily="Segoe UI" FontSize="13"
+        Background="#F2F5F9" Foreground="#1F2C3D" FontFamily="Microsoft YaHei UI" FontSize="13"
         Closing="Window_Closing">
     <Window.Resources>
         <SolidColorBrush x:Key="Surface" Color="#FFFFFF" />
@@ -18,9 +18,9 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
         <Style x:Key="ConnectPrimary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#176CB5"/>
+            <Setter Property="Background" Value="#3188ED"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#176CB5"/>
+            <Setter Property="BorderBrush" Value="#3188ED"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="MinHeight" Value="36"/>
         </Style>
@@ -70,7 +70,7 @@
             </StackPanel>
         </DockPanel>
         <Border Grid.Row="1" Background="#FFF2DC" BorderBrush="#DFB96C" BorderThickness="1"
-                CornerRadius="5" Padding="12" Margin="0,0,0,14">
+                CornerRadius="7" Padding="12" Margin="0,0,0,14">
             <StackPanel>
                 <TextBlock FontWeight="Bold" Foreground="#835014" FontSize="14"
                            Text="安全提示：主控板上电初始 GPIO 可能使 IGN 或电源控制输出为高，软件回读不能代替实测电压。"/>
@@ -144,7 +144,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Border Background="White" BorderBrush="{StaticResource Outline}" BorderThickness="1" CornerRadius="5"
+                <Border Background="White" BorderBrush="{StaticResource Outline}" BorderThickness="1" CornerRadius="7"
                         Padding="14" Margin="0,0,0,12">
                     <StackPanel>
                         <TextBlock Text="连接状态与操作反馈" FontWeight="Bold" FontSize="14" Margin="0,0,0,7"/>
@@ -238,7 +238,7 @@
                 </TabControl>
             </Grid>
         </Grid>
-        <Border Grid.Row="3" Margin="0,12,0,0" Background="#E5ECF4" CornerRadius="4" Padding="9">
+        <Border Grid.Row="3" Margin="0,12,0,0" Background="#E5ECF4" CornerRadius="7" Padding="9">
             <TextBlock Text="CAN0：按键板 · CAN1：被测 ECU · GPIO 回读仅供诊断，不能替代电气实测"
                        Foreground="#3B516A" FontSize="12"/>
         </Border>
