@@ -33,3 +33,10 @@ python tools/project-control-v2/portable/export_package.py --out ProjectControl.
 - 不动 AutoTest ECU 产品其他目录；不要把旧试点 UI、示例产品数据或旧工作区带入通用发行包。
 - 已有工作区和正式工程默认保留，严禁自动清理。
 - **候选状态**：真实目标 GitHub 仓库的端到端交付、完整人类授权、Windows 实际现场验收尚未完成。不能把本地脚本测试等同正式交付。
+
+
+## 4.4 候选｜证据评价与主动补全
+
+首次项目接管不能把关键词搜索无结果直接当作资料不存在，也不能把找到的历史文档当作当前生效的产品定义。新方法 [portable/EVIDENCE_AND_REMEDIATION.md](portable/EVIDENCE_AND_REMEDIATION.md) 将来源发现、当前适用性审查、历史变更和缺失工程依据的补全责任分开。[portable/context_assessment.py](portable/context_assessment.py) 校验新版结构化调查记录，旧 `context_discovery.py` 仅保留历史格式的可读性。
+
+当前仍为候选：源文件和文档存在不等于 ChatGPT 网页原生 Skill 已安装，结构审查通过不等于系统理解/批准；所有真实工作授权仍使用现有 Task Contract/人类批准机制。
