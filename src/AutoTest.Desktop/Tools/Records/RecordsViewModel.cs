@@ -13,7 +13,7 @@ public sealed class RecordsViewModel : BindableBase
     private string _dutId = "";
     private string _mode = "All";
     private string _reportPath = "";
-    private string _status = "等待查询 · 不将 Mock 或 Replay 视为实际出厂记录";
+    private string _status = "等待查询 · 离线数据不会计入实际出厂统计";
     private string _error = "";
     private string _summary = "尚未加载生产统计";
     private string _snapshot = "选择一次执行，查看当次冻结快照";
