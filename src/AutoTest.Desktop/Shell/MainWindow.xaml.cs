@@ -394,13 +394,13 @@ public partial class MainWindow : Window
         {
             var open = ToolButton("打开工程", () =>
             {
-                if (vm.OpenProjectCommand.CanExecute(null))
-                    vm.OpenProjectCommand.Execute(null);
+                if (vm.OpenProjectCommand.CanExecute())
+                    vm.OpenProjectCommand.Execute();
             });
             var save = ToolButton("保存工程", () =>
             {
-                if (vm.SaveCommand.CanExecute(null))
-                    vm.SaveCommand.Execute(null);
+                if (vm.SaveCommand.CanExecute())
+                    vm.SaveCommand.Execute();
             });
             controls.Children.Add(open);
             controls.Children.Add(save);
