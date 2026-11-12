@@ -1,7 +1,7 @@
 <Window x:Class="AutoTest.DeviceLab.DeviceLabWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AutoTest · DEVICE 联机诊断" Width="1360" Height="880"
+        Title="AutoTest · 主控板连接" Width="1360" Height="880"
         MinWidth="1050" MinHeight="650" WindowStartupLocation="CenterScreen"
         Background="#F2F5F9" Foreground="#1F2C3D" FontFamily="Segoe UI" FontSize="13"
         Closing="Window_Closing">
@@ -50,9 +50,9 @@
         </Grid.RowDefinitions>
         <DockPanel Grid.Row="0" Margin="0,0,0,12">
             <StackPanel DockPanel.Dock="Left">
-                <TextBlock Text="DEVICE  /  主控板通信诊断" FontSize="23" FontWeight="Bold"/>
-                <TextBlock Text="Windows WinUSB · 双路 CAN 被动监视 · 独立工作台" Foreground="{StaticResource Subtle}" Margin="0,5,0,0"/>
-                <TextBlock Text="来源：Physical（只读） · Project / DUT Profile / Resource Revision：未绑定 · 不提供 Mock/Replay 伪装"
+                <TextBlock Text="主控板连接" FontSize="23" FontWeight="Bold"/>
+                <TextBlock Text="连接实际主控，确认设备状态，查看 CAN0 / CAN1 接收信息" Foreground="{StaticResource Subtle}" Margin="0,5,0,0"/>
+                <TextBlock Text="本窗口用于设备连接及只读诊断；按键、IGN、夹具和 CAN 发送请到手动台架操作"
                            Foreground="{StaticResource Subtle}" Margin="0,4,0,0"/>
             </StackPanel>
         </DockPanel>
@@ -60,7 +60,7 @@
                 CornerRadius="5" Padding="12" Margin="0,0,0,14">
             <StackPanel>
                 <TextBlock FontWeight="Bold" Foreground="#835014" FontSize="14"
-                           Text="B0 安全前置条件：主控固件上电初态可能使 IGN / 电源控制 GPIO 为高。软件回读不是电压测量。"/>
+                           Text="安全提示：主控板上电初始 GPIO 可能使 IGN 或电源控制输出为高，软件回读不能代替实测电压。"/>
                 <TextBlock Margin="0,5,0,0" Foreground="#715225"
                            Text="首次接线应物理隔离 DUT 和执行机构、独立确认供电与 IGN 电压；本工具不执行 IGN、夹具、按键输出、CAN 发送或烧录。每次连接（含重试）均须重新勾选确认。"/>
             </StackPanel>
@@ -73,7 +73,21 @@
             </Grid.ColumnDefinitions>
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
-                    <GroupBox Header="1 · 主控板枚举与驱动">
+                    <GroupBox Header="连接主控">
+                        <StackPanel>
+                            <CheckBox IsChecked="{Binding B0Acknowledged,Mode=TwoWay}"
+                                      Content="已确认 DUT 与执行机构安全隔离，已核对 IGN 和供电初始状态"
+                                      FontWeight="SemiBold" Margin="0,3,0,13"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="连接主控" Command="{Binding ConnectCommand}"/>
+                                <Button Content="断开" Command="{Binding DisconnectCommand}"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" Margin="0,12,0,5"/>
+                            <TextBlock Text="自动重连已禁用。连接失败会保留故障阶段及日志路径。"
+                                       Foreground="{StaticResource Subtle}"/>
+                        </StackPanel>
+                    </GroupBox>
+                    <GroupBox Header="识别主控设备">
                         <StackPanel>
                             <TextBlock Text="仅识别固件接口 GUID + VID_1183/PID_5850" Foreground="{StaticResource Subtle}" Margin="0,0,0,10"/>
                             <Button Content="重新枚举设备" Command="{Binding RefreshCommand}" HorizontalAlignment="Left" Margin="0,0,0,10"/>
@@ -85,21 +99,8 @@
                                        Foreground="{StaticResource Subtle}" Margin="0,9,0,0"/>
                         </StackPanel>
                     </GroupBox>
-                    <GroupBox Header="2 · 人工隔离与 USB 会话">
-                        <StackPanel>
-                            <CheckBox IsChecked="{Binding B0Acknowledged,Mode=TwoWay}"
-                                      Content="我已完成本次 B0 物理隔离和 IGN/供电初态核查"
-                                      FontWeight="SemiBold" Margin="0,3,0,13"/>
-                            <StackPanel Orientation="Horizontal">
-                                <Button Content="连接 / 人工重连" Command="{Binding ConnectCommand}"/>
-                                <Button Content="断开" Command="{Binding DisconnectCommand}"/>
-                            </StackPanel>
-                            <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" Margin="0,12,0,5"/>
-                            <TextBlock Text="自动重连已禁用。连接失败会保留故障阶段及日志路径。"
-                                       Foreground="{StaticResource Subtle}"/>
-                        </StackPanel>
-                    </GroupBox>
-                    <GroupBox Header="3 · PING / 只读固件诊断">
+                    <Expander Header="高级诊断 · 固件回读和连接故障" IsExpanded="False" Margin="0,0,0,10">
+                        <StackPanel Margin="6,8,0,0"><GroupBox Header="主控只读诊断">
                         <StackPanel>
                             <TextBlock Text="命令白名单固定；不允许任意 CMD / 原始写入 / CAN TX" Foreground="{StaticResource Subtle}" Margin="0,0,0,8"/>
                             <ComboBox ItemsSource="{Binding ReadOnlyCommands}" SelectedItem="{Binding SelectedReadOnlyCommand,Mode=TwoWay}"
@@ -114,14 +115,15 @@
                                        Foreground="{StaticResource Subtle}" Margin="0,10,0,0"/>
                         </StackPanel>
                     </GroupBox>
-                    <GroupBox Header="4 · 原生调用诊断">
+<GroupBox Header="连接故障详情">
                         <StackPanel>
                             <TextBlock Text="最近阶段" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding LastNativeStage}" Margin="0,3,0,9" FontFamily="Consolas"/>
                             <TextBlock Text="Win32 失败码 / 详情" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding NativeFailure}" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,3,0,0"/>
                         </StackPanel>
-                    </GroupBox>
+                    </GroupBox></StackPanel>
+                    </Expander>
                 </StackPanel>
             </ScrollViewer>
             <Grid Grid.Column="2">
@@ -132,14 +134,14 @@
                 <Border Background="White" BorderBrush="{StaticResource Outline}" BorderThickness="1" CornerRadius="5"
                         Padding="14" Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock Text="操作结果 / 连接诊断" FontWeight="Bold" FontSize="14" Margin="0,0,0,7"/>
+                        <TextBlock Text="连接状态与操作反馈" FontWeight="Bold" FontSize="14" Margin="0,0,0,7"/>
                         <TextBox Text="{Binding ResultText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
                                  Background="#F7F9FC" BorderThickness="0" MinHeight="65" MaxHeight="105"
                                  VerticalScrollBarVisibility="Auto"/>
                     </StackPanel>
                 </Border>
                 <TabControl Grid.Row="1" BorderBrush="{StaticResource Outline}" Background="White">
-                    <TabItem Header="USB 原始帧 / 结构化事件">
+                    <TabItem Header="USB 连接事件">
                         <Grid Margin="12">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
@@ -156,7 +158,7 @@
                             <TextBlock Grid.Row="2" Text="{Binding TraceStats}" Foreground="{StaticResource Subtle}" Margin="0,8,0,0"/>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="双路 CAN 被动接收">
+                    <TabItem Header="CAN0 / CAN1 接收流水">
                         <Grid Margin="12">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
@@ -173,10 +175,10 @@
                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="Station GPIO 只读状态">
+                    <TabItem Header="GPIO 回读（仅供诊断）">
                         <ScrollViewer Margin="20" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="Station · 只读固件回读，不是台架电压、夹具实际位置或 ECU 上电证明"
+                                <TextBlock Text="仅显示主控固件回读值，不代表实际电压、夹具位置或 ECU 已上电"
                                            FontSize="15" FontWeight="Bold" Margin="0,0,0,16"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="145"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -196,20 +198,20 @@
                                     <TextBlock Grid.Row="4" Text="电源汇总 GPIO" FontWeight="SemiBold" Margin="0,0,0,14"/>
                                     <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding AllPowerReadback}" Margin="0,0,0,14"/>
                                 </Grid>
-                                <TextBlock Text="使用左侧的固定只读命令逐项回读。任意断连后旧回读立即失效。B0 物理测量只能由操作员独立记录，软件 GPIO 返回值不能替代万用表。"
+                                <TextBlock Text="使用左侧的固定只读命令逐项回读。任意断连后旧回读立即失效。实际电压必须由操作者独立测量，软件 GPIO 返回值不能替代万用表。"
                                            Foreground="{StaticResource Subtle}" Margin="0,17,0,0"/>
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
-                    <TabItem Header="日志文件与证据边界">
+                    <TabItem Header="诊断记录与导出">
                         <StackPanel Margin="20">
                             <TextBlock Text="主控原始 WinUSB / USB SEQ / CAN JSONL" FontWeight="Bold"/>
                             <TextBox Text="{Binding TraceFile, Mode=OneWay}" IsReadOnly="True" Margin="0,7,0,18" TextWrapping="Wrap"/>
-                            <TextBlock Text="界面结构化操作 JSONL（包含预连接 B0 确认、设备选择、手动操作）" FontWeight="Bold"/>
+                            <TextBlock Text="连接与操作记录（JSONL）" FontWeight="Bold"/>
                             <TextBox Text="{Binding OperationLogFile, Mode=OneWay}" IsReadOnly="True" Margin="0,7,0,18" TextWrapping="Wrap"/>
-                            <TextBlock Text="两份 JSONL 可按 UTC / 设备实例 ID / 连接世代 / TraceFile 字段合并到统一日志。日志中的时间均为 Host 到达时间；主控不上报 CAN 硬件时间戳。"
+                            <TextBlock Text="导出的设备日志与操作记录可按时间和会话进行关联。时间为电脑接收时间，非 CAN 硬件时间戳。"
                                        Foreground="{StaticResource Subtle}"/>
-                            <TextBlock Text="完整原始证据导出（必须先断开 USB）" FontWeight="Bold" Margin="0,18,0,5"/>
+                            <TextBlock Text="导出完整诊断记录（需先断开主控连接）" FontWeight="Bold" Margin="0,18,0,5"/>
                             <TextBox Text="{Binding ExportPath,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
                                      Padding="7" TextWrapping="Wrap"/>
                             <Button Content="导出 ZIP + SHA-256 完整诊断包" Command="{Binding ExportCommand}"
@@ -224,7 +226,7 @@
             </Grid>
         </Grid>
         <Border Grid.Row="3" Margin="0,12,0,0" Background="#E5ECF4" CornerRadius="4" Padding="9">
-            <TextBlock Text="DEVICE LAB · 只读 WinUSB / CAN RX · CAN0=Keypad，CAN1=DUT · 固件 EPB_TEST_CTRL v0.3 · 本工具不签发 B0/B1/B2 物理 PASS"
+            <TextBlock Text="CAN0：按键板 · CAN1：被测 ECU · GPIO 回读仅供诊断，不能替代电气实测"
                        Foreground="#3B516A" FontSize="12"/>
         </Border>
     </Grid>
