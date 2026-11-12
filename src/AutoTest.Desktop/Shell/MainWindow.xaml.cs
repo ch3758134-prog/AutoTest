@@ -327,6 +327,168 @@ public partial class MainWindow : Window
     /// and tool ViewModels held by this Shell. Closing a window never creates a
     /// new WinUSB owner, changes TEST documents or disposes the COM scanner.
     /// </summary>
+    /// <summary>
+    /// Independent tools receive the SAME visual IDE chrome, not a separate
+    /// hardware session, project model, or editor tab. The tool itself remains
+    /// a maximized top-level Window and retains all its native controls.
+    /// </summary>
+    private FrameworkElement BuildProfessionalChrome(string key, FrameworkElement view)
+    {
+        var vm = DataContext as MainWindowViewModel;
+        Brush Brush(string color) => new SolidColorBrush(
+            (Color)ColorConverter.ConvertFromString(color));
+        var root = new Grid { Background = Brush("#F4F8FD") };
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(45) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(52) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+
+        var header = new DockPanel
+        {
+            Background = Brush("#F6FAFF"),
+            LastChildFill = true,
+            Margin = new Thickness(0)
+        };
+        var brand = new TextBlock
+        {
+            Text = "▣  AutoTest", FontSize = 17, FontWeight = FontWeights.Bold,
+            Foreground = Brush("#263A54"), Margin = new Thickness(17, 0, 16, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        DockPanel.SetDock(brand, Dock.Left);
+        header.Children.Add(brand);
+        var breadcrumb = new TextBlock
+        {
+            Text = " /  " + _titles[key], FontSize = 13, Foreground = Brush("#617B97"),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        header.Children.Add(breadcrumb);
+        Grid.SetRow(header, 0); root.Children.Add(header);
+
+        Button ToolButton(string label, Action action, bool important = false)
+        {
+            var b = new Button
+            {
+                Content = label, MinHeight = 34, Padding = new Thickness(13, 6, 13, 6),
+                Margin = new Thickness(0, 0, 5, 0),
+                FontSize = 13
+            };
+            if (System.Windows.Application.Current.TryFindResource(
+                important ? "AtPrimaryButton" : "AtQuietButton") is Style style)
+                b.Style = style;
+            b.Click += (_, _) => action();
+            return b;
+        }
+        var bar = new DockPanel
+        {
+            Background = Brushes.White,
+            LastChildFill = false,
+            Margin = new Thickness(13, 0, 13, 0)
+        };
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        if (vm is not null)
+        {
+            var open = ToolButton("打开工程", () =>
+            {
+                if (vm.OpenProjectCommand.CanExecute(null))
+                    vm.OpenProjectCommand.Execute(null);
+            });
+            var save = ToolButton("保存工程", () =>
+            {
+                if (vm.SaveCommand.CanExecute(null))
+                    vm.SaveCommand.Execute(null);
+            });
+            controls.Children.Add(open);
+            controls.Children.Add(save);
+        }
+        controls.Children.Add(ToolButton("✎  编辑测试程序", () =>
+        {
+            OpenDocument("program");
+            Activate();
+        }, true));
+        controls.Children.Add(ToolButton("▷  运行测试", () =>
+        {
+            OpenDocument("run");
+            Activate();
+        }));
+        controls.Children.Add(ToolButton("▣  手动台架", () => OpenProfessionalToolWindow("bench")));
+        controls.Children.Add(ToolButton("◫  专业工具", () => OpenProfessionalToolWindow("dbc")));
+        DockPanel.SetDock(controls, Dock.Left);
+        bar.Children.Add(controls);
+
+        var right = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var indicator = new TextBlock
+        {
+            FontSize = 12, Foreground = Brush("#657D96"),
+            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0)
+        };
+        indicator.SetBinding(TextBlock.TextProperty,
+            new Binding("Text") { Source = StationStatus, Mode = BindingMode.OneWay });
+        right.Children.Add(indicator);
+        right.Children.Add(ToolButton("连接设备", () =>
+            OpenStation_Click(this, new RoutedEventArgs())));
+        DockPanel.SetDock(right, Dock.Right);
+        bar.Children.Add(right);
+        Grid.SetRow(bar, 1); root.Children.Add(bar);
+
+        var main = new Grid();
+        main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+        main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(275) });
+        main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(5) });
+        main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var rail = new StackPanel
+        {
+            Background = Brush("#F7FAFF"), Margin = new Thickness(4, 11, 4, 0)
+        };
+        rail.Children.Add(ToolButton("⌂", () => { Activate(); ShowExplorer(); }));
+        rail.Children.Add(ToolButton("▤", () => { OpenDocument("program"); Activate(); }));
+        rail.Children.Add(ToolButton("▷", () => { OpenDocument("run"); Activate(); }));
+        rail.Children.Add(ToolButton("▣", () => OpenProfessionalToolWindow("bench")));
+        rail.Children.Add(ToolButton("⌁", () => OpenProfessionalToolWindow("wave")));
+        Grid.SetColumn(rail, 0); main.Children.Add(rail);
+
+        if (vm is not null)
+        {
+            var explorer = new ProjectExplorerView(vm);
+            explorer.OpenRequested += OpenDocument;
+            Grid.SetColumn(explorer, 1);
+            main.Children.Add(explorer);
+        }
+        var separator = new Border { Background = Brush("#E6EDF6") };
+        Grid.SetColumn(separator, 2); main.Children.Add(separator);
+        var toolFrame = new Border
+        {
+            Background = Brush("#F4F8FD"),
+            BorderBrush = Brush("#E1EAF5"),
+            BorderThickness = new Thickness(1, 0, 0, 0),
+            Child = view
+        };
+        Grid.SetColumn(toolFrame, 3); main.Children.Add(toolFrame);
+        Grid.SetRow(main, 2); root.Children.Add(main);
+
+        var footer = new DockPanel
+        {
+            Background = Brushes.White, Margin = new Thickness(15, 0, 15, 0)
+        };
+        var footerLeft = new TextBlock
+        {
+            Text = "AutoTest  ·  独立专业工具窗口  ·  与主工作台共享当前工程和设备",
+            Foreground = Brush("#778DA5"), FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        footer.Children.Add(footerLeft);
+        Grid.SetRow(footer, 3); root.Children.Add(footer);
+        return root;
+    }
+
     private void OpenProfessionalToolWindow(string key)
     {
         key = R1ToolWindowPolicy.Normalize(key);
@@ -364,7 +526,7 @@ public partial class MainWindow : Window
             ShowInTaskbar = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             WindowState = WindowState.Maximized,
-            Content = view
+            Content = BuildProfessionalChrome(key, view)
         };
         tool.Closing += (_, e) =>
         {
@@ -405,7 +567,7 @@ public partial class MainWindow : Window
     // Confirmation must belong to the window the operator is using. A modal
     // dialog owned by the hidden shell can be inaccessible behind the bench.
     private Window ActiveConnectionOwner() =>
-        _floating.TryGetValue("bench", out var bench) && bench.IsActive ? bench : this;
+        _floating.Values.FirstOrDefault(window => window.IsActive) ?? this;
 
     private FrameworkElement? GetOrCreateView(string key)
     {
