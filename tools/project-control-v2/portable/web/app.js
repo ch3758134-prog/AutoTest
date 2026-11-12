@@ -370,6 +370,15 @@ async function loadPrivateDeliveries(promptIfMissing=true){
    privateDeliveryState=value;render();
  }catch(err){privateDeliveryState=null;notify(err.message,true);}
 }
+async function beginAIDeliveryImport(){
+ if(!privateDeliveryState||privateDeliveryState.project_id!==selected){
+   await loadPrivateDeliveries();
+ }
+ if(!privateDeliveryState||privateDeliveryState.project_id!==selected){
+   notify("先使用管理或审阅令牌打开本机候审收件箱",true);return;
+ }
+ openAIDeliveryImport();
+}
 function openAIDeliveryImport(){
  stagedDeliveryInput=null;
  $("#delivery-draft-json").value="";
@@ -607,7 +616,7 @@ async function fetchRemoteModules(){
 async function collectRegisteredReceipts(){if(!await getOwnerToken())return;try{const r=await fetch("/api/collect-registered-receipts",{method:"POST",headers:{"Content-Type":"application/json","X-Owner-Token":ownerToken},body:JSON.stringify({project_id:selected})});const data=await r.json();if(!r.ok){if(r.status===403)ownerToken="";throw Error(data.error||"登记工作区回执收集失败");}await loadModel();notify("已登记工作区："+data.registered_examined+"；导入："+data.imported.length+"；待审："+data.held.length,Boolean(data.held.length));}catch(err){notify(err.message,true);}}
 document.addEventListener("click",event=>{
  if(event.target.closest("#open-private-deliveries")){loadPrivateDeliveries();return;}
- if(event.target.closest("#import-ai-delivery")){openAIDeliveryImport();return;}
+ if(event.target.closest("#import-ai-delivery")){beginAIDeliveryImport();return;}
  const ownerDelivery=event.target.closest("[data-delivery-review]");
  if(ownerDelivery){openOwnerDeliveryReview(ownerDelivery.dataset.deliveryReview);return;}
  const offer=event.target.closest("[data-delivery-offer]");
