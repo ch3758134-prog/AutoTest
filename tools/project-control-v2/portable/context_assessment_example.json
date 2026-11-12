@@ -1,0 +1,100 @@
+{
+  "schema": "project-control-context-assessment/2",
+  "role": "coordinator",
+  "project_ref": "example/repository",
+  "task_focus": "Example of existing project context discovery",
+  "source_revision": "EXAMPLE_NOT_A_REAL_COMMIT",
+  "sources": [
+    {
+      "id": "s1",
+      "locator": "docs/historical-charter.md@example-revision",
+      "type": "historical-document"
+    }
+  ],
+  "search_attempts": [
+    {
+      "id": "q1",
+      "domain": "project-purpose",
+      "method": "repository-directory-walk",
+      "query_or_path": "docs/",
+      "outcome": "FOUND"
+    }
+  ],
+  "claims": [],
+  "topics": {
+    "purpose": {
+      "status": "SOURCES_FOUND",
+      "source_ids": [
+        "s1"
+      ],
+      "claim_ids": [],
+      "search_attempt_ids": [
+        "q1"
+      ],
+      "action_ids": [
+        "a1"
+      ],
+      "limitation": "Historic text located, but changes and current applicability have not been reviewed."
+    },
+    "users_scenarios": {
+      "status": "NOT_SEARCHED",
+      "source_ids": [],
+      "claim_ids": [],
+      "search_attempt_ids": [],
+      "action_ids": [],
+      "limitation": "Example only; no project evidence collected."
+    },
+    "scope_constraints": {
+      "status": "NOT_SEARCHED",
+      "source_ids": [],
+      "claim_ids": [],
+      "search_attempt_ids": [],
+      "action_ids": [],
+      "limitation": "Example only; no project evidence collected."
+    },
+    "history_decisions": {
+      "status": "NOT_SEARCHED",
+      "source_ids": [],
+      "claim_ids": [],
+      "search_attempt_ids": [],
+      "action_ids": [],
+      "limitation": "Example only; no project evidence collected."
+    },
+    "requirements_design": {
+      "status": "NOT_SEARCHED",
+      "source_ids": [],
+      "claim_ids": [],
+      "search_attempt_ids": [],
+      "action_ids": [],
+      "limitation": "Example only; no project evidence collected."
+    },
+    "evidence_validation": {
+      "status": "NOT_SEARCHED",
+      "source_ids": [],
+      "claim_ids": [],
+      "search_attempt_ids": [],
+      "action_ids": [],
+      "limitation": "Example only; no project evidence collected."
+    },
+    "current_work_risks": {
+      "status": "NOT_SEARCHED",
+      "source_ids": [],
+      "claim_ids": [],
+      "search_attempt_ids": [],
+      "action_ids": [],
+      "limitation": "Example only; no project evidence collected."
+    }
+  },
+  "proposed_actions": [
+    {
+      "id": "a1",
+      "topic": "purpose",
+      "kind": "REVIEW_EXISTING_ARTIFACT",
+      "reason": "Determine whether historical project purpose still applies.",
+      "expected_output": "Candidate present-day purpose assessment with sources and contradictions.",
+      "status": "PROPOSED_NOT_AUTHORIZED"
+    }
+  ],
+  "next_disposition": "CONTINUE_DISCOVERY",
+  "claims_project_complete": false
+}
