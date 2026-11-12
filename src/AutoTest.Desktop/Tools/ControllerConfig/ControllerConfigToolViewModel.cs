@@ -97,7 +97,8 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
         if (!uint.TryParse(input, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var mask))
         {
             Error = "请先修正十六进制按键掩码，再编辑开关组合。";
-            UpdateKeySelections();
+            var attempted = KeyBits.FirstOrDefault(bit => bit.Number == number);
+            attempted?.SetFromMask(!selected); // Invalid input must not make UI lie about stored bit state.
             return;
         }
         var flag = 1u << (number - 1);
