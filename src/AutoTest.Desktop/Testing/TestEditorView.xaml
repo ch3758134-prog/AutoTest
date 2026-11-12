@@ -3,12 +3,12 @@
   <!-- Selection and creation live above the tree. Structural operations
        remain available by right-clicking an individual step. -->
   <Border DockPanel.Dock="Top" Style="{StaticResource AtSurface}"
-   Padding="12,11" Margin="0,0,0,10">
+   Padding="12,11" Margin="0,0,0,12">
    <StackPanel>
     <DockPanel Margin="0,0,0,9">
-     <TextBlock DockPanel.Dock="Right" Text="右键步骤可插入、复制、移动或删除"
+     <TextBlock DockPanel.Dock="Right" Text="右键步骤查看更多操作"
       Style="{StaticResource AtHint}" VerticalAlignment="Center"/>
-     <TextBlock Text="编辑测试步骤" Style="{StaticResource AtSectionTitle}"/>
+     <TextBlock Text="测试步骤编辑" Style="{StaticResource AtSectionTitle}"/>
     </DockPanel>
     <WrapPanel Margin="0,0,0,5">
      <TextBlock Text="步骤类型" VerticalAlignment="Center" Margin="0,0,7,0"/>
@@ -17,9 +17,9 @@
      <TextBlock Text="阶段" VerticalAlignment="Center" Margin="0,0,7,0"/>
      <ComboBox ItemsSource="{Binding AvailablePhases}" SelectedItem="{Binding NewStepPhase,Mode=TwoWay}"
       Width="104" Margin="0,0,12,0"/>
-     <Button Content="＋ 插入步骤" Command="{Binding InsertAfterCommand}"
+     <Button Content="＋ 添加步骤" Command="{Binding InsertAfterCommand}"
       Style="{StaticResource AtPrimaryButton}" ToolTip="在选中步骤后插入"/>
-     <Button Content="＋ 子步骤" Command="{Binding InsertChildCommand}"
+     <Button Content="＋ 添加子步骤" Command="{Binding InsertChildCommand}"
       ToolTip="在选中步骤内部插入"/>
     </WrapPanel>
     <WrapPanel>
@@ -53,7 +53,7 @@
    </Grid></DataTemplate></ListBox.ItemTemplate>
    <ListBox.ContextMenu><ContextMenu>
     <MenuItem Header="前插" Click="InsertBefore_Click"/><MenuItem Header="后插" Click="InsertAfter_Click"/>
-    <MenuItem Header="插入子步骤" Click="InsertChild_Click"/><MenuItem Header="插入 IF ELSE" Click="InsertElse_Click"/>
+    <MenuItem Header="插入子步骤" Click="InsertChild_Click"/><MenuItem Header="插入条件分支（IF / ELSE）" Click="InsertElse_Click"/>
     <MenuItem Header="复制步骤及子树" Click="Copy_Click"/>
     <Separator/><MenuItem Header="上移" Click="MoveUp_Click"/><MenuItem Header="下移" Click="MoveDown_Click"/>
     <MenuItem Header="删除" Click="Delete_Click"/>
