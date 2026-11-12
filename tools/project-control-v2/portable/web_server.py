@@ -12,6 +12,7 @@ from contextlib import contextmanager
 import hashlib
 from receipt_evidence import assess as assess_receipt, verify_test_logs, ReceiptError
 from context_assessment import audit as audit_context_assessment, AssessmentError
+from delivery_review import (apply as apply_delivery, items as delivery_items, DeliveryError)
 from context_workflow import (apply as apply_context_workflow, current_view as context_current_view,
                               check_collections as check_context_collections,
                               ContextWorkflowError)
@@ -46,7 +47,7 @@ UI = HERE / "web"
 ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 SCHEMA = "project-control-target-management/1"
-MAX_BODY = 65_536
+MAX_BODY = 262_144
 
 
 class ManagementError(ValueError):
@@ -136,7 +137,7 @@ def empty_management(project_id):
         "status": "DRAFT", "deliverables": [], "work": [], "milestones": [],
         "risks": [], "progress": {}, "events": [], "receipts": [],
         "requirements": [], "plans": [], "changes": [], "gate_reviews": [], "trace_links": [],
-        "modules": [], "process_control": initial_process_state()
+        "modules": [], "process_control": initial_process_state(), "delivery_reviews": []
     }
 
 
@@ -242,6 +243,7 @@ class Target:
         except ProcessError as error:
             raise ManagementError("invalid process state: " + str(error)) from error
         check_context_collections(value)
+        delivery_items(value)
         try:
             defined_modules(value)
         except ModuleError as error:
@@ -347,6 +349,7 @@ class Target:
                 "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
                 "context_assessment": context_view,
+                "delivery_review_boundary": "STAGED_LOCAL_NOT_PUBLISHED; OWNER_RELEASE_IS_NOT_FORMAL_APPROVAL",
                 "process_catalog": process_catalog(),
                 "process_policy_current": policy_is_current(management["process_control"]),
                 "git": {
@@ -356,7 +359,8 @@ class Target:
                     "source": "LOCAL_WORKTREE_NOT_REMOTE_VERIFIED",
                 },
                 "limits": {"formal_approval": False, "remote_write": False,
-                           "task_ready_promotion": False, "local_cleanup": False},
+                           "task_ready_promotion": False, "local_cleanup": False,
+                            "delivery_release": "SEPARATE_LOCAL_REVIEW_TOKEN_NOT_VERIFIED_HUMAN_IDENTITY"},
             }
 
     def remote_status(self):
@@ -505,7 +509,7 @@ class Target:
                     "imported": imported, "skipped": skipped, "held": held,
                     "scope": "EXPLICIT_LOCAL_REGISTRY_ONLY"}
 
-    def apply(self, name, payload):
+    def apply(self, name, payload, *, owner_review_authorized=False):
         if not isinstance(payload, dict):
             raise ManagementError("action payload must be a JSON object")
         reason = checked_text(payload.get("reason"), "change reason", 2000)
@@ -524,15 +528,23 @@ class Target:
                 raise ManagementError("stale revision; refresh and review current changes")
             record.setdefault("receipts", [])
             record.setdefault("modules", [])
+            record.setdefault("delivery_reviews", [])
+            if name == "owner_decide_delivery" and not owner_review_authorized:
+                raise ManagementError("owner review decision is not a general manager action")
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
                              "create_milestone", "record_receipt", "review_receipt",
                              "verify_log_evidence", "create_module", "assign_module_work",
-                             "record_context_assessment", "propose_context_remediation_work"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
+                             "record_context_assessment", "propose_context_remediation_work",
+                             "stage_delivery", "revise_delivery", "offer_delivery_review",
+                             "owner_decide_delivery"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
             works = record["work"]
-            if name in ("record_context_assessment", "propose_context_remediation_work"):
+            if name in ("stage_delivery", "revise_delivery", "offer_delivery_review",
+                        "owner_decide_delivery"):
+                apply_delivery(record, name, payload, at=stamp(), owner_channel=owner_review_authorized)
+            elif name in ("record_context_assessment", "propose_context_remediation_work"):
                 apply_context_workflow(record, name, payload, project_id=self.project_id,
                                        repo_url=self.initial["repo_url"], recorded_at=stamp())
             elif name in PROCESS_ACTIONS:
@@ -699,7 +711,7 @@ class Target:
                     "result": "LOCAL_DRAFT_SAVED_NOT_REMOTE_PUBLISHED"}
 
 
-def handler(targets, owner_token, registry_dir=None):
+def handler(targets, owner_token, registry_dir=None, review_token=None):
     # The local console may start before any managed project exists. Register
     # initialized projects explicitly after opening the application.
     target_lock = threading.RLock()
@@ -815,7 +827,12 @@ def handler(targets, owner_token, registry_dir=None):
                      "http://localhost:" + str(self.server.server_port)}
             if origin and origin not in valid:
                 return self.respond({"error": "cross-origin writes blocked"}, 403)
-            if not secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token):
+            is_owner_review = urlsplit(self.path).path == "/api/owner-delivery-decision"
+            if is_owner_review:
+                if not review_token or not secrets.compare_digest(
+                        self.headers.get("X-Review-Token", ""), review_token):
+                    return self.respond({"error": "separate local review token required"}, 403)
+            elif not secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token):
                 return self.respond({"error": "owner token required"}, 403)
             if self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 return self.respond({"error": "JSON body required"}, 415)
@@ -825,7 +842,8 @@ def handler(targets, owner_token, registry_dir=None):
             operation = urlsplit(self.path).path
             if operation not in ("/api/action", "/api/collect-local-receipts",
                                   "/api/collect-registered-receipts", "/api/register-target",
-                                  "/api/project-preview", "/api/project-apply"):
+                                  "/api/project-preview", "/api/project-apply",
+                                  "/api/owner-delivery-decision"):
                 return self.respond({"error": "unknown operation"}, 404)
             try:
                 payload = json.loads(self.rfile.read(int(length)).decode("utf-8"))
@@ -903,6 +921,11 @@ def handler(targets, owner_token, registry_dir=None):
                     return self.respond(target.collect_local_receipts())
                 if operation == "/api/collect-registered-receipts":
                     return self.respond(target.collect_registered_receipts())
+                if operation == "/api/owner-delivery-decision":
+                    if payload.get("action") != "owner_decide_delivery":
+                        raise ManagementError("owner review endpoint only accepts exact delivery decisions")
+                    return self.respond(target.apply(payload["action"], payload.get("payload"),
+                                                     owner_review_authorized=True))
                 return self.respond(target.apply(payload.get("action"), payload.get("payload")))
             except (OSError, ManagementError, InitError, ValueError, TypeError) as error:
                 return self.respond({"error": str(error)}, 400)
@@ -955,9 +978,15 @@ def main(argv=None):
     except (OSError, ManagementError) as error:
         parser.exit(2, "Cannot load projects: " + str(error) + "\n")
     token = os.environ.get("PROJECT_CONTROL_OWNER_TOKEN") or secrets.token_urlsafe(32)
-    web = ThreadingHTTPServer(("127.0.0.1", options.port), handler(found, token, registry_dir=options.registry_dir))
+    review_token = os.environ.get("PROJECT_CONTROL_REVIEW_TOKEN") or secrets.token_urlsafe(32)
+    if review_token == token:
+        parser.exit(2, "Review token must be distinct from management token\n")
+    web = ThreadingHTTPServer(("127.0.0.1", options.port),
+                              handler(found, token, registry_dir=options.registry_dir,
+                                      review_token=review_token))
     print("Project Control portable → http://127.0.0.1:" + str(web.server_port), flush=True)
-    print("Owner token (this process only): " + token, flush=True)
+    print("Management token (this process only): " + token, flush=True)
+    print("Candidate delivery review token (separate; not a formal identity): " + review_token, flush=True)
     print("Registered projects: " + (", ".join(found) if found else "(none; add from the browser)"), flush=True)
     try:
         web.serve_forever()
