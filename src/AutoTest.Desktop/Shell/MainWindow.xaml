@@ -100,7 +100,7 @@
             </MenuItem>
             <MenuItem Header="设备与工位">
                 <MenuItem Header="手动台架" Click="OpenBench_Click"/>
-                <MenuItem Header="设备连接" Click="OpenStation_Click"/>
+                <MenuItem Header="连接或断开设备" Click="OpenStation_Click"/>
                 <MenuItem Header="CAN 监视" Click="OpenCan_Click"/>
                 <MenuItem Header="控制器与按键配置" Click="OpenController_Click"/>
                 <Separator/>
@@ -128,17 +128,17 @@
                     <Ellipse x:Name="StationLed" Width="8" Height="8" Fill="#8A9CAF" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <TextBlock x:Name="StationStatus" Text="设备未连接" VerticalAlignment="Center"
                         Foreground="#59738D" FontSize="11" Margin="0,0,10,0"/>
-                    <Button Content="连接设备" Click="OpenStation_Click" ToolTip="打开设备连接工具；不会在未经确认时自动连接硬件"
+                    <Button Content="连接设备" x:Name="StationConnectButton" Click="OpenStation_Click" ToolTip="自动发现设备并连接；不执行任何物理输出"
                         Padding="7,3" MinHeight="27"/>
                     <Border Height="23" Width="1" Background="#DCE4EE" Margin="6,0,12,0"/>
                     <TextBlock x:Name="ScannerStatus" Text="扫码：等待编号" VerticalAlignment="Center"
                         Foreground="#536D87" FontSize="11" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
-                    <Button Content="COM" Click="OpenProduction_Click" Padding="7,3" MinHeight="27" Margin="9,0,0,0"/>
+                    <Button Content="扫码设置" Click="OpenProduction_Click" Padding="7,3" MinHeight="27" Margin="9,0,0,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="自动测试" Style="{StaticResource AtPrimaryButton}"
+                    <Button Content="测试运行"
                         FontWeight="SemiBold" Click="OpenRun_Click"/>
-                    <Button Content="程序编辑" Click="OpenTest_Click"/>
+                    <Button Content="编辑测试程序" Style="{StaticResource AtPrimaryButton}" Click="OpenTest_Click"/>
                     <Button Content="手动台架" Click="OpenBench_Click"
                         ToolTip="打开独立的真实 KEY_SIM / IGN / 夹具台架窗口"/>
                     <Menu Background="Transparent" Foreground="#254461" VerticalAlignment="Center"
@@ -174,11 +174,11 @@
                             <Button DockPanel.Dock="Right" Content="‹" Click="ToggleExplorer_Click"
                                 Padding="6,0" MinHeight="20" Margin="0" Background="Transparent"
                                 BorderThickness="0" ToolTip="收起工程树"/>
-                            <TextBlock Text="工程与测试结构" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="工程资源" FontSize="13" FontWeight="SemiBold"/>
                         </DockPanel>
                     </Border>
                     <TabControl x:Name="ExplorerTabs" Background="White" BorderThickness="0">
-                        <TabItem Header="测试结构">
+                        <TabItem Header="本次执行">
                             <Grid Margin="7">
                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                                 <DockPanel Grid.Row="0" Margin="5,7,1,6" LastChildFill="True">
@@ -262,7 +262,7 @@
                                 </Border>
                             </Grid>
                         </TabItem>
-                        <TabItem Header="工程文件">
+                        <TabItem Header="工程文件" IsSelected="True">
                             <ContentControl x:Name="ExplorerDocumentHost" Background="White"/>
                         </TabItem>
                     </TabControl>
@@ -301,11 +301,11 @@
             </DockPanel>
         </Border>
 
-        <Border Grid.Row="5" Background="#EAF2FC" Padding="12,5">
+        <Border Grid.Row="5" Background="#F1F3F5" Padding="12,5">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="#56708B"
                     FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="700"/>
-                <TextBlock Text="实际设备状态与测试执行结果分别记录；连接状态不代表 ECU 通过测试" FontSize="11"
+                <TextBlock Text="设备连接状态和 ECU 测试结果分别记录" FontSize="11"
                     Foreground="#345976"/>
             </DockPanel>
         </Border>
