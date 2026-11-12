@@ -22,6 +22,23 @@ public sealed class DbcEditorWorkflowTests
          SG_ Temp : 23|16@0- (0.5,-40) [-16424|16343.5] "degC" Tester
         """;
 
+    [Fact]
+    public async Task InvalidDbc_RejectsImportWithoutCreatingFakeAsset()
+    {
+        var parent = NewParent();
+        try
+        {
+            var source = Path.Combine(parent, "invalid.dbc");
+            await File.WriteAllTextAsync(source, "NOT A VALID DBC FILE");
+            var workspace = new ProjectWorkspaceService();
+            await workspace.CreateAsync("ECU", parent);
+            var error = await Assert.ThrowsAsync<ProjectDataException>(() => workspace.ImportDbcAsync(source));
+            Assert.Equal("DBC_PARSE", error.Code);
+            Assert.Empty(workspace.Current!.Definition.Assets);
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
+
     private static string NewParent()
     {
         var parent = Path.Combine(Path.GetTempPath(), "autotest-dbc-ui-" + Guid.NewGuid().ToString("N"));

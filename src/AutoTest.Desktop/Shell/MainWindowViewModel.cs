@@ -222,7 +222,9 @@ public sealed class MainWindowViewModel : BindableBase
         {
             var entry = await _workspace.ImportDbcAsync(path);
             SelectAsset(entry.Id);
-            StatusMessage = "DBC 已导入工程：" + entry.Name;
+            var opened = await _workspace.OpenDbcEditorAsync(entry.Id);
+            _dbcWindows.Show(opened);
+            StatusMessage = "DBC 已导入并打开：" + entry.Name;
         });
     }
 
