@@ -738,7 +738,7 @@ public partial class MainWindow : Window
     private void ToggleExplorer_Click(object sender, RoutedEventArgs e)
     {
         _explorerHidden = !_explorerHidden;
-        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 273);
+        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 255);
         ExplorerSplitterColumn.Width = new GridLength(_explorerHidden ? 0 : 5);
         ExplorerPanel.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
         ExplorerSplitter.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
@@ -746,8 +746,8 @@ public partial class MainWindow : Window
     private void ToggleBottom_Click(object sender, RoutedEventArgs e)
     {
         _logsExpanded = !_logsExpanded;
-        LogRow.MinHeight = _logsExpanded ? 110 : 29;
-        LogRow.Height = new GridLength(_logsExpanded ? 175 : 29);
+        LogRow.MinHeight = _logsExpanded ? 110 : 0;
+        LogRow.Height = new GridLength(_logsExpanded ? 175 : 0);
         EvidenceTabs.Visibility = _logsExpanded ? Visibility.Visible : Visibility.Collapsed;
     }
 
