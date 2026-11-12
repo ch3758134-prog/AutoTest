@@ -1,5 +1,7 @@
 # AI_START_HERE｜工程项目管理系统统一 AI 入口
 
+**入口区分：本文件供 ChatGPT 网页端工程角色使用；本地 Codex 应自行读取仓库根目录 [CODEX_START_HERE.md](CODEX_START_HERE.md)，再通过任务登记发现唯一授权工作。用户无需复制实施指令。**
+
 **这是所有 ChatGPT 网页端工程对话（无论是第一次进入、总协调、专业研发、集成、审查）的统一入口。** 不需要用户先给你复制角色说明书、指定阶段或填写 AI 身份表。
 
 本入口目前位于 **Project Control V2 候选分支** `management/project-control-redesign-20261111`（PR #34）。**未合并 main，不能把它描述为已经发布的正式管理制度。** 开始前先核对仓库和实际 ref；不要默认 main 中已有这些文件。
