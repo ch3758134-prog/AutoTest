@@ -106,6 +106,55 @@ class ExtractedPackageTests(unittest.TestCase):
         self.assertEqual(json.loads((folder / ".project-control/project.json").read_text())[
                          "initialization_state"], "CANDIDATE_NOT_APPROVED")
 
+    def test_extracted_zip_starts_real_local_http_api_with_owner_auth(self):
+        folder, remote = self.make_target("web-fixture", False)
+        self.script(self.init_script, "apply", "--target", folder,
+                    "--repo-url", remote, "--mode", "new",
+                    "--project-id", "web-fixture")
+        harness = self.home / "portable_http_smoke.py"
+        harness.write_text(
+            "import json,sys,threading,urllib.request,urllib.error\n"
+            "sys.path.insert(0,sys.argv[1])\n"
+            "from web_server import Target,handler,ThreadingHTTPServer\n"
+            "target=Target(sys.argv[2])\n"
+            "server=ThreadingHTTPServer(('127.0.0.1',0),handler({target.project_id:target},'fixture-token'))\n"
+            "thread=threading.Thread(target=server.serve_forever,daemon=True)\n"
+            "thread.start()\n"
+            "try:\n"
+            "    base='http://127.0.0.1:'+str(server.server_port)\n"
+            "    with urllib.request.urlopen(base+'/api/projects',timeout=5) as r:\n"
+            "        projects=json.load(r)['projects']\n"
+            "    assert len(projects)==1 and projects[0]['project_id']=='web-fixture'\n"
+            "    body=json.dumps({'project_id':'web-fixture','action':'create_requirement',"
+            "'payload':{'expected_revision':1,'reason':'Actual local API smoke',"
+            "'id':'REQ1','title':'Verified study','statement':'Collect original sources',"
+            "'source_refs':['source:fixture'],'acceptance':'Review complete'}}).encode()\n"
+            "    def post(auth):\n"
+            "        headers={'Content-Type':'application/json'}\n"
+            "        if auth: headers['X-Owner-Token']='fixture-token'\n"
+            "        return urllib.request.Request(base+'/api/action',data=body,"
+            "headers=headers,method='POST')\n"
+            "    try:\n"
+            "        urllib.request.urlopen(post(False),timeout=5)\n"
+            "        raise AssertionError('unauthorized mutation succeeded')\n"
+            "    except urllib.error.HTTPError as error:\n"
+            "        assert error.code==403\n"
+            "    with urllib.request.urlopen(post(True),timeout=5) as r:\n"
+            "        changed=json.load(r)\n"
+            "    assert changed['result']=='LOCAL_DRAFT_SAVED_NOT_REMOTE_PUBLISHED'\n"
+            "    with urllib.request.urlopen(base+'/api/model?project_id=web-fixture',timeout=5) as r:\n"
+            "        data=json.load(r)\n"
+            "    assert data['management']['requirements'][0]['state']=='PROPOSED_NOT_APPROVED'\n"
+            "    print(json.dumps({'status':'EXTRACTED_HTTP_E2E_PASS',"
+            "'revision':data['management']['revision']}))\n"
+            "finally:\n"
+            "    server.shutdown();server.server_close();thread.join(5)\n",
+            encoding="utf-8",
+        )
+        result = self.script(harness, str(self.web_script.parent), str(folder))
+        self.assertEqual(result["status"], "EXTRACTED_HTTP_E2E_PASS")
+        self.assertEqual(result["revision"], 2)
+
     def test_wrong_repo_and_duplicate_init_are_blocked_without_asset_removal(self):
         folder, remote = self.make_target("protected-project", True)
         wrong = "https://github.com/another/other-project.git"
