@@ -355,7 +355,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         if (Busy) throw new InvalidOperationException("Cannot replace document during run");
         _editor = new LabDocumentEditor(LabDocumentCodec.Open(json));
         Rebuild();
-        Status = "Document loaded — re-run preflight before execution";
+        Status = "已打开测试程序；正式运行前请重新检查工程资源与设备状态";
     }
     private void RefreshCommands()
     {
@@ -527,7 +527,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         // Move() target is an insertion index BEFORE removal (adjusted internally).
         var destination = delta < 0 ? row.Index - 1 : row.Index + 2;
         if (destination < 0 || (delta > 0 && row.Index >= count - 1))
-        { Status = "Step is at the edge"; return; }
+        { Status = "该步骤已在当前位置的最前或最后，无法继续移动"; return; }
         Edit(() => _editor.Move(id, row.Phase, row.ParentId, row.Slot, destination));
     }
     private void Rename() => Edit(() => _editor.Rename(SelectedStepId(), SelectedName));
@@ -540,7 +540,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             Status = plan.Ready ? $"工程 TEST 预检通过 · SHA256 {plan.Digest[..12]} · 尚未执行" :
                 "Preflight blocked: " + string.Join(" | ", plan.Diagnostics.Take(4));
         }
-        catch (Exception ex) { Status = "Preflight error: " + ex.Message; }
+        catch (Exception ex) { Status = "运行前检查失败：" + ex.Message; }
     }
     /// <summary>Formal R1 physical read-only run of the pinned PROJECT TEST resource.</summary>
     public Task<LabRunReport?> RunPhysicalReadOnlyAsync(CancellationToken ct = default)
@@ -566,7 +566,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     {
         if (!_physicalRunGate.Wait(0))
         {
-            Status = "RUN_ALREADY_IN_PROGRESS: 一个工位只能执行一份工程 TEST。";
+            Status = "当前工位已有测试正在执行，请先结束当前运行。";
             return null;
         }
         Busy = true;
@@ -575,16 +575,16 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             ct.ThrowIfCancellationRequested();
             var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
             var saved = project.LabProgram ??
-                throw new InvalidOperationException("PROJECT_TEST_NOT_REGISTERED: 请先在 P10 纳入工程。");
+                throw new InvalidOperationException("工程没有已保存的测试程序；请在程序编辑器点击“保存到当前工程”。");
             // A production scan must match the exact current saved TEST asset
             // before any operator confirmation, device access or run event.
             scanned?.Verify(project);
             if (project.LabProgramAssetId is null)
                 throw new InvalidOperationException("PROJECT_TEST_ASSET_REQUIRED");
             if (!string.Equals(LabDocumentCodec.Save(saved), ExportJson(), StringComparison.Ordinal))
-                throw new InvalidOperationException("TEST_UNSAVED_CHANGES: 请先将 P10 修改登记到工程。");
+                throw new InvalidOperationException("当前测试程序存在未保存的修改；请先保存到当前工程。");
             if (project.ProjectPath is null)
-                throw new InvalidOperationException("PROJECT_NOT_SAVED: 请先将工程保存到磁盘。");
+                throw new InvalidOperationException("工程尚未保存到磁盘，请先保存工程。");
             if (project.Database is null || project.DbcAssetId is null)
                 throw new InvalidOperationException("PROJECT_DBC_REQUIRED");
             if (project.StaleDependencies.Count != 0)
@@ -599,7 +599,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             if (saved.Walk().Any(n => n.Type == "MockObserve"))
                 throw new UnauthorizedAccessException("R1_PHYSICAL_TEST_HAS_MOCK_STEP");
             var controller = _physicalController?.Invoke() ??
-                throw new InvalidOperationException("STATION_NOT_INITIALIZED: 请在 P02 连接主控板。");
+                throw new InvalidOperationException("主控尚未连接，请从“设备连接”窗口完成接线确认并连接设备。");
             var keySteps = plan.ControllerBindings.Distinct().ToArray();
             var hasKeyActions = keySteps.Length > 0;
             Func<bool> controllerProfileCurrent = () => true;
@@ -734,7 +734,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             Verdict = "ERROR / NOT_PRODUCTION";
-            Status = "真实 TEST 被拒绝或运行失败：" + ex.Message;
+            Status = "测试未能执行：" + FriendlyTestFailure(ex.Message);
             return null;
         }
         finally
@@ -746,7 +746,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
 
     private void Control(Action action)
     {
-        try { action(); Status = "Run control requested"; }
+        try { action(); Status = "运行控制请求已提交"; }
         catch (Exception ex) { Status = "操作已拒绝：" + ex.Message; }
     }
     private void Post(Action action)
@@ -754,11 +754,21 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         if (_ui is null || SynchronizationContext.Current == _ui) action();
         else _ui.Post(_ => action(), null);
     }
+    private static string FriendlyTestFailure(string message) => message switch
+    {
+        "PROJECT_NOT_BOUND" => "当前没有工程，请新建或打开工程。",
+        "P05_CONTROLLER_PROFILE_REQUIRED" => "请先创建当前 ECU 的控制器与按键配置。",
+        "P05_CONTROLLER_PROFILE_NOT_SAVED" => "请先保存控制器与按键配置文件。",
+        "P05_CONTROLLER_PROFILE_UNSAVED_CHANGES" => "控制器配置存在未保存修改，请先保存。",
+        "P05_CONTROLLER_PROFILE_CHANGED_BEFORE_RUN" => "控制器配置在运行前发生变化，请重新加载并检查测试程序。",
+        _ => message
+    };
+
     private void SaveToProject()
     {
         try
         {
-            if (Busy) throw new InvalidOperationException("Cannot publish a program during execution");
+            if (Busy) throw new InvalidOperationException("测试执行期间不能保存或发布测试程序");
             var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
             var json = ExportJson();
             if (project.LabProgramAssetId is { } id)
@@ -770,14 +780,14 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             Changed(nameof(ProjectAssetStatus));
             Status = "测试程序已加入当前工程；请保存工程文件。控制器按键步骤仍需有效配置与执行授权。";
         }
-        catch (Exception ex) { Status = "工程 TEST 登记失败：" + ex.Message; }
+        catch (Exception ex) { Status = "保存测试程序到工程失败：" + ex.Message; }
     }
 
     public void ReloadFromProject()
     {
         try
         {
-            if (Busy) throw new InvalidOperationException("Cannot reload a program during execution");
+            if (Busy) throw new InvalidOperationException("测试执行期间不能重新加载测试程序");
             var project = _project ?? throw new InvalidOperationException("PROJECT_NOT_BOUND");
             var program = project.LabProgram ?? LabDocument.New("新建测试程序");
             ImportJson(LabDocumentCodec.Save(program));
@@ -786,7 +796,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 : "已从当前工程加载测试程序；修改后需要保存新的资源版本。";
             Changed(nameof(ProjectAssetStatus));
         }
-        catch (Exception ex) { Status = "重新加载工程 TEST 失败：" + ex.Message; }
+        catch (Exception ex) { Status = "从工程重新加载测试程序失败：" + ex.Message; }
     }
 
     private void SaveFile()
