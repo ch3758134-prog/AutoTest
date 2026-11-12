@@ -34,7 +34,7 @@ python tools/project-control-v2/portable/export_package.py --out "ProjectControl
 
 ## 本地启动
 
-需要 Python 3.11+、Git，并已在目标 Git 仓库中完成初始化。**不需要安装 Python 第三方依赖**。
+需要 Python 3.11+、Git。**可以在没有任何已初始化目标项目的情况下启动工作台**，且不需要安装第三方 Python 库。
 
 新项目/已有项目的首次候选初始化（如已存在管理目录，请使用 upgrade-preview 判断，不要重置）：
 
@@ -54,13 +54,13 @@ python portable/project_init.py upgrade --target "<用户指定的目标项目�
 
 上述命令**仅修改本地项目文件**，从不 commit、push、merge 或签发任何工程批准。运行前请先核实文件差异和 Git origin。管理 AI 可以使用 GitHub 连接在目标远端准备这些候选文件；没有写权限时不能谎称远端已完成初始化。
 
-Web 启动示例（在**Project Control 管理系统文件夹根目录**运行，`--target` 可重复）：
+Web 首次启动（在**Project Control 管理系统文件夹根目录**运行，不必指定 `--target`）：
 
 ```powershell
-python portable/web_server.py --target "<用户指定的目标项目目录>" --target "<用户指定的另一个目标项目目录>" --port 8791
+python portable/web_server.py --port 8791
 ```
 
-浏览器访问 `http://127.0.0.1:8791`。本地服务监听环回地址；第一次保存候选记录需输入服务终端打印的一次性负责人令牌，不保存进仓库。
+浏览器访问 `http://127.0.0.1:8791`。没有项目时会显示独立的项目接入首页：可选择“新建 / 接管”，显式输入已有本地 Git 仓库根目录、实际 GitHub origin 和 new/adopt 模式；先**只读预检**，核对来源和新增文件后，必须再次确认才会创建本地候选管理记录。已经初始化的项目可以选择“登记已有项目”，不会修改工程文件。以上操作不会自动提交、推送或批准任何项目。登记路径默认保存到本机用户目录 `.project-control-local/targets.json`，服务重启后读取并重新校验，失效目录不自动修改。也可在启动时使用可重复的 `--target` 显式提供已初始化项目；第一次本地保存时才需输入服务终端显示的负责人令牌。
 
 ## 实际提供的能力
 
