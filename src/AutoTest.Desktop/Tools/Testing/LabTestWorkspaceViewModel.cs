@@ -21,6 +21,8 @@ public sealed class LabTreeRow
     public string StepName { get; init; } = "";
     public string TypeLabel { get; init; } = "";
     public bool IsPhase { get; init; }
+    public bool IsSlot { get; init; }
+    public string Summary { get; init; } = "";
     public Guid? StepId { get; init; }
     public Guid? ParentId { get; init; }
     public string? Slot { get; init; }
@@ -80,6 +82,8 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
     private LabPlanCompiler _compiler;
     private readonly SynchronizationContext? _ui;
     private LabTreeRow? _selected;
+    private string _selectedStepTypeLabel = "选择左侧步骤查看设置";
+    public string SelectedStepTypeLabel { get => _selectedStepTypeLabel; private set { _selectedStepTypeLabel = value; Changed(); } }
     private string _name = "";
     private string _parameterName = "variable", _parameterValue = "";
     private string _insertType = "Observe";
@@ -345,12 +349,13 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             if (node is not null)
             {
                 SelectedName = node.Name;
+                SelectedStepTypeLabel = LabStepLocalization.Display(node.Type) + " · " + LabStepLocalization.Display(row.Phase.ToString());
                 ParameterRows.Clear();
                 foreach (var p in node.Parameters.OrderBy(x => x.Key, StringComparer.Ordinal))
                     ParameterRows.Add(p);
             }
         }
-        else { SelectedName = ""; ParameterRows.Clear(); }
+        else { SelectedName = ""; SelectedStepTypeLabel = "选择左侧步骤查看设置"; ParameterRows.Clear(); }
         RefreshCommands();
     }
     public LabDocument Snapshot => _editor.Snapshot;
@@ -379,11 +384,28 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
         var doc = Snapshot;
         foreach (var phase in Enum.GetValues<LabPhase>())
         {
-            var root = new LabTreeRow { Caption = LabStepLocalization.Display(phase.ToString()), StepName = LabStepLocalization.Display(phase.ToString()), Phase = phase, IsPhase = true };
+            var root = new LabTreeRow
+            {
+                Caption = LabStepLocalization.Display(phase.ToString()),
+                StepName = LabStepLocalization.Display(phase.ToString()),
+                Phase = phase, IsPhase = true,
+                Summary = phase switch
+                {
+                    LabPhase.Prepare => "初始化与运行前条件",
+                    LabPhase.Test => "功能与结果判定",
+                    _ => "恢复安全状态与结束"
+                }
+            };
             AddNodes(root.Children, doc.Phases[phase], phase, null, null);
             Tree.Add(root);
         }
-        _selected = null; RefreshTestCases(); RefreshRunStepRows(); Changed(nameof(DocumentName)); RefreshCommands();
+        // Keep an inspector populated when opening a real program. No synthetic step is added.
+        _selected = null;
+        RefreshTestCases(); RefreshRunStepRows(); Changed(nameof(DocumentName));
+        var first = Tree.FirstOrDefault(p => p.Phase == LabPhase.Test)?.Children.FirstOrDefault()
+            ?? Tree.SelectMany(p => p.Children).FirstOrDefault();
+        Select(first);
+        RefreshCommands();
     }
     private static void AddNodes(ObservableCollection<LabTreeRow> rows, List<LabNode> nodes,
         LabPhase phase, Guid? parent, string? slot)
@@ -396,6 +418,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 Caption = $"{i + 1:D2}  {LabStepLocalization.Display(n.Type)}  ·  {n.Name}", Phase = phase,
                 OrderLabel = (i + 1).ToString("D2"), StepName = n.Name,
                 TypeLabel = LabStepLocalization.Display(n.Type),
+                Summary = DescribeStep(n),
                 StepId = n.Id, ParentId = parent, Slot = slot, Index = i
             };
             foreach (var branch in n.Slots)
@@ -404,6 +427,7 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
                 {
                     Caption = LabStepLocalization.Display(branch.Key), Phase = phase,
                     StepName = LabStepLocalization.Display(branch.Key),
+                    IsSlot = true, Summary = branch.Value.Count + " 个步骤",
                     ParentId = n.Id, Slot = branch.Key
                 };
                 AddNodes(slotRow.Children, branch.Value, phase, n.Id, branch.Key);
@@ -412,6 +436,31 @@ public sealed class LabTestWorkspaceViewModel : INotifyPropertyChanged
             rows.Add(row);
         }
     }
+    private static string DescribeStep(LabNode node)
+    {
+        // A readable summary of the persisted parameters; no separate editable representation.
+        string? Get(string key) => node.Parameters.GetValueOrDefault(key);
+        return node.Type switch
+        {
+            "Wait" => "等待 " + (Get("milliseconds") ?? "未配置") + " 毫秒",
+            "When" => (Get("variable") ?? "变量") + " = " + (Get("equals") ?? "目标值")
+                + "，超时 " + (Get("timeoutMs") ?? "未配置") + " 毫秒",
+            "Assert" => (Get("variable") ?? "变量") + " = " + (Get("equals") ?? "未配置"),
+            "If" => (Get("variable") ?? "变量") + " = " + (Get("equals") ?? "未配置"),
+            "Switch" => "判断变量：" + (Get("variable") ?? "未配置"),
+            "Case" => "匹配：" + (Get("equals") ?? "未配置"),
+            "Loop" => "重复 " + (Get("count") ?? "未配置") + " 次",
+            "SetVariable" => (Get("variable") ?? "变量") + " ← " + (Get("value") ?? ""),
+            "Observe" => "读取：" + (Get("variable") ?? "未配置"),
+            "TestCase" => node.Slots.GetValueOrDefault("body")?.Count + " 个直接子步骤",
+            "Subroutine" => "子程序：" + (Get("name") ?? node.Name),
+            "CallSubroutine" => "调用：" + (Get("target") ?? "未配置"),
+            "ControllerState" => "已配置状态：" + (Get("stateId") ?? "未关联硬件"),
+            "Log" => Get("message") ?? "运行信息",
+            _ => string.Join(" · ", node.Parameters.Take(2).Select(pair => pair.Key + "=" + pair.Value))
+        };
+    }
+
     public void RefreshControllerStates()
     {
         ControllerStateChoices.Clear();
