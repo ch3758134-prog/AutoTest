@@ -66,9 +66,13 @@ python portable/web_server.py --port 8791
 
 在目标项目根目录 `.project-control/context_assessment.json` 存放按 `context_assessment.py` 校验的 `project-control-context-assessment/2` **候选**记录（可参考通用示例 `portable/context_assessment_example.json`；必须替换项目身份和所有示例来源）。此文件不是初始化必需项；没有文件时“资产与正式依据”页显示 **NOT_RECORDED**，不能假设项目已经查明。
 
-Web 工作台仅在用户已登记的当前目标 Git 仓库中**只读**载入该文件，校验项目身份、拒绝符号链接和过大的数据，显示未查明领域、只找到来源尚未评估的领域、资料缺口候选及补全行动。无写入按钮、无自动生成候选、无审批或任务授权。文件内容有错误则呈现 INVALID_RECORD，而不是伪造通过。
+旧版的可选 `.project-control/context_assessment.json` 仍只读载入，但**不是新的可编辑权威记录**。4.5 版本将新调查候选作为 `management.json.context_reviews` 保存，记录包含具体调查 JSON、结构校验摘要、内容摘要和历史记录。原有 `context_assessment.json` 在没有新记录时才作为兼容来源读取，**绝不自动迁移其权限**。同一项目的新记录优先展示在“资产与正式依据”页。
 
-原有 Web 的需求、工作、计划等操作还没有和 v2 的资料补全行动形成持久化闭环，不能声称已经实现自动派发。协调者要根据实际任务把补全提案提交到既有候选工作与审查机制，并独立取得实施许可。
+Web 工作台新增“登记 AI 调查候选（JSON）”和“组织为候选工作”操作：AI 应负责调查和生成 JSON，负责人不需要自行填资料。提交必须使用原有负责人本地令牌、目标 Git 仓库身份及 `management.json.revision` CAS，拒绝旧修订和重复材料。每份补全提案只可绑定当前评价版本中的同一 action_id 一次；需选择已有交付目标、明确责任性质与预期结果，最终在 `management.work` 中生成 `PROPOSED` / `execution_authorized: false` 工作。**不会生成 Codex READY**。
+
+后续新评价会把此前引用旧评价的候选工作标记 `STALE_AFTER_NEW_ASSESSMENT`，而不删除历史。只有完成外部独立审查与授权，才能进入实施。本地写入不代表 GitHub 已同步。
+
+证据候选到 WBS 候选工作已建立本地 CAS 关联，但**仍没有**自动审批、完整的远端发布事务或真实的独立用户批准验证。不得把 `PROPOSED` 工作视为已获实施授权。
 
 ## 实际提供的能力
 
