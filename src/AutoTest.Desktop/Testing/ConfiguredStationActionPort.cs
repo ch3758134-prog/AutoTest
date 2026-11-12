@@ -27,7 +27,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     private readonly SemaphoreSlim _serial = new(1, 1);
     private readonly Dictionary<string, (EcuControlProfile Profile, StateReference State)>
         _buttons = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, (TestTargetMapping Target, int Dlc)> _can =
+    private readonly Dictionary<string, (TestTargetMapping Target, DbcMessage Message)> _can =
         new(StringComparer.OrdinalIgnoreCase);
     private ImmutableArray<StateReference> _active = ImmutableArray<StateReference>.Empty;
     private EcuControlProfile? _activeProfile;
@@ -85,7 +85,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 if (message.IsExtended != target.Extended ||
                     message.ArbitrationId != target.CanId)
                     throw new ProjectDataException("CAN_MAPPING_FORMAT", target.Name);
-                _can.Add(target.Name, (target, message.Dlc));
+                _can.Add(target.Name, (target, message));
             }
         }
     }
@@ -140,9 +140,9 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             {
                 if (!_can.TryGetValue(target.Name, out var bound) || bound.Target != target)
                     throw new InvalidOperationException("CAN mapping was changed during run.");
-                byte[] data = Convert.FromHexString(string.Concat(action.Where(c => !char.IsWhiteSpace(c))));
-                if (data.Length != bound.Dlc)
-                    throw new ArgumentException("Frame payload must match the mapped DBC DLC.");
+                // The full mapped DBC message is the source of truth for physical-value
+                // writes. HEX remains an explicitly recognizable engineering option.
+                byte[] data = DbcCanMessageEncoder.Encode(bound.Message, action);
                 var frame = CanFrame.Create(target.Role, target.Extended, target.CanId, data);
                 await _hardware.SendTestCanAsync(frame, _fingerprint, ct);
                 return Ack("CAN_TX_ACK");
