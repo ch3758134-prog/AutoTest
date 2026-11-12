@@ -184,17 +184,7 @@
                        FontSize="11" Margin="0,16,0,6"/>
             <TextBlock Text="{Binding SelectedId}" TextWrapping="Wrap" FontSize="11"
                        Margin="0,0,0,17"/>
-            <Border Background="{StaticResource MutedSurface}" CornerRadius="4"
-                    Padding="12,12" MaxWidth="620" HorizontalAlignment="Left">
-              <StackPanel>
-                <TextBlock Text="IF / ELSE 使用方式" FontWeight="SemiBold" Margin="0,0,0,7"/>
-                <TextBlock Text="先选择“条件判断”，插入后展开 THEN 与 ELSE 两个分支；选中对应分支，再添加子步骤。循环的步骤添加到“循环体”分支。"
-                           Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
-                <TextBlock Text="本界面仅用于编辑，不进行 Mock 运行或硬件执行。"
-                           Foreground="{StaticResource Subtle}" FontSize="11"
-                           Margin="0,9,0,0" TextWrapping="Wrap"/>
-              </StackPanel>
-            </Border>
+
           </StackPanel>
         </ScrollViewer>
       </Border>

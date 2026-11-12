@@ -471,21 +471,21 @@ public sealed class MainWindowViewModel : BindableBase
         var groups = new[]
         {
             (Key: ProjectWorkspaceService.TestProgramKind, Title: "测试程序与用例",
-             Icon: "▤", Empty: "尚未添加测试程序"),
+             Icon: "▤"),
             (Key: ProjectWorkspaceService.DbcKind, Title: "DBC 数据库",
-             Icon: "▥", Empty: "尚未导入 DBC"),
+             Icon: "▥"),
             (Key: ProjectWorkspaceService.ControllerKind, Title: "控制器与按键配置",
-             Icon: "⚙", Empty: "尚无控制器配置"),
+             Icon: "⚙"),
             (Key: ProjectWorkspaceService.WaveSettingsKind, Title: "波形判定配置",
-             Icon: "⌁", Empty: "尚无波形判定配置"),
+             Icon: "⌁"),
             (Key: ProjectWorkspaceService.WaveKind, Title: "波形证据",
-             Icon: "⌁", Empty: "尚无波形证据"),
+             Icon: "⌁"),
             (Key: ProjectWorkspaceService.FlashSettingsKind, Title: "烧录配置",
-             Icon: "◫", Empty: "尚无烧录配置"),
+             Icon: "◫"),
             (Key: ProjectWorkspaceService.FirmwareKind, Title: "固件资源",
-             Icon: "◫", Empty: "尚无固件资源"),
+             Icon: "◫"),
             (Key: ProjectWorkspaceService.ScanSettingsKind, Title: "扫码匹配配置",
-             Icon: "▤", Empty: "尚无扫码匹配配置")
+             Icon: "▤")
         };
         var assets = current.Definition.Assets;
         foreach (var category in groups)
