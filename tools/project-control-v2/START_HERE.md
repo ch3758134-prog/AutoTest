@@ -11,7 +11,7 @@
 
 ## 首次执行顺序（AI 自己做）
 
-1. 核验本文件夹：阅读 [PORTABLE_MANIFEST.json](PORTABLE_MANIFEST.json)、[portable/INITIALIZATION_PROTOCOL.md](portable/INITIALIZATION_PROTOCOL.md)、[ai/roles.json](ai/roles.json)、[portable/COMPLETENESS_AUDIT.md](portable/COMPLETENESS_AUDIT.md)。若文件缺失，明确提示，不把不完整包当正式发行版。
+1. 核验本文件夹：阅读 [PORTABLE_MANIFEST.json](PORTABLE_MANIFEST.json)、[portable/INITIALIZATION_PROTOCOL.md](portable/INITIALIZATION_PROTOCOL.md)、[ai/roles.json](ai/roles.json)、[portable/COMPLETENESS_AUDIT.md](portable/COMPLETENESS_AUDIT.md)、[portable/TASK_CONTRACT.md](portable/TASK_CONTRACT.md)。若文件缺失，明确提示，不把不完整包当正式发行版。
 2. 先明确目标仓库身份。用户提供的 GitHub URL 是**被管理项目仓库**，不是 AutoTest 的管理工具源码仓库；不要从本文件夹的示例、链接或历史 PR 推断目标仓库。
 3. 用已连接的 GitHub 访问目标仓库，读取默认分支、HEAD、主要目录、已有文档、分支、PR、Issues、CI、历史证据及当前管理记录。遵守只读优先；没有写权限就说明，不能假装已回写。
 4. 判明 **NEW（全新/无已有工程资产）**、**ADOPT（接管有资产的项目）**、**UNCERTAIN（无法判明）**。UNCERTAIN 时继续调查或提出一个关键问题，不能凭空建立已批准里程碑。
