@@ -35,6 +35,30 @@ public sealed class ProjectFileDialogService
         return picker.ShowDialog(Owner) == true ? picker.FileName : null;
     }
 
+    public string? PickFirmwareFile(string? projectDirectory)
+    {
+        var picker = new OpenFileDialog
+        {
+            Title = "导入固件资源（仅注册文件，不执行烧录）",
+            Filter = "固件文件 (*.hex;*.s19;*.s28;*.s37)|*.hex;*.s19;*.s28;*.s37",
+            InitialDirectory = Directory.Exists(projectDirectory) ? projectDirectory! : AppContext.BaseDirectory,
+            CheckFileExists = true, Multiselect = false
+        };
+        return picker.ShowDialog(Owner) == true ? picker.FileName : null;
+    }
+
+    public string? PickWaveEvidenceFile(string? projectDirectory)
+    {
+        var picker = new OpenFileDialog
+        {
+            Title = "导入 AutoTest 波形证据",
+            Filter = "波形证据 JSON (*.json)|*.json",
+            InitialDirectory = Directory.Exists(projectDirectory) ? projectDirectory! : AppContext.BaseDirectory,
+            CheckFileExists = true, Multiselect = false
+        };
+        return picker.ShowDialog(Owner) == true ? picker.FileName : null;
+    }
+
     public string? AskResourceName(string title, string initialName)
     {
         var dialog = new ResourceNameDialog(title, initialName);

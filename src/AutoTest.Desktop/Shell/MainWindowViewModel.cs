@@ -63,6 +63,10 @@ public sealed class MainWindowViewModel : BindableBase
             () => HasProject && !IsBusy);
         ImportDbcCommand = new DelegateCommand(async () => await ImportDbcAsync(),
             () => HasProject && !IsBusy);
+        ImportFirmwareCommand = new DelegateCommand(async () => await ImportFirmwareAsync(),
+            () => HasProject && !IsBusy);
+        ImportWaveCommand = new DelegateCommand(async () => await ImportWaveAsync(),
+            () => HasProject && !IsBusy);
         OpenDbcCommand = new DelegateCommand(async () => await OpenSelectedDbcAsync(),
             () => SelectedResourceIsDbc && !IsBusy);
         OpenTestProgramCommand = new DelegateCommand(async () => await OpenSelectedTestProgramAsync(),
@@ -250,6 +254,8 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenProjectCommand { get; }
     public DelegateCommand NewTestProgramCommand { get; }
     public DelegateCommand ImportDbcCommand { get; }
+    public DelegateCommand ImportFirmwareCommand { get; }
+    public DelegateCommand ImportWaveCommand { get; }
     public DelegateCommand OpenDbcCommand { get; }
     public DelegateCommand OpenTestProgramCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
@@ -331,9 +337,9 @@ public sealed class MainWindowViewModel : BindableBase
              Icon: "▥", Empty: "尚未导入 DBC"),
             (Key: "controller", Title: "控制器与按键配置",
              Icon: "⚙", Empty: "尚无控制器配置"),
-            (Key: "wave", Title: "波形参考",
+            (Key: ProjectWorkspaceService.WaveKind, Title: "波形证据",
              Icon: "⌁", Empty: "尚无参考波形"),
-            (Key: "firmware", Title: "固件与烧录资源",
+            (Key: ProjectWorkspaceService.FirmwareKind, Title: "固件资源",
              Icon: "◫", Empty: "尚无固件资源")
         };
         var assets = current.Definition.Assets;
@@ -433,6 +439,32 @@ public sealed class MainWindowViewModel : BindableBase
         });
     }
 
+    private async Task ImportFirmwareAsync()
+    {
+        if (!HasProject) return;
+        var path = _fileDialogs.PickFirmwareFile(_workspace.Current?.RootDirectory);
+        if (path is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var entry = await _workspace.ImportFirmwareAsync(path);
+            SelectAsset(entry.Id);
+            StatusMessage = "固件校验并登记为工程资源：" + entry.Name + "（尚未配置烧录流程）";
+        });
+    }
+
+    private async Task ImportWaveAsync()
+    {
+        if (!HasProject) return;
+        var path = _fileDialogs.PickWaveEvidenceFile(_workspace.Current?.RootDirectory);
+        if (path is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var entry = await _workspace.ImportWaveEvidenceAsync(path);
+            SelectAsset(entry.Id);
+            StatusMessage = "波形证据校验并登记：" + entry.Name + "（不自动标为参考波形）";
+        });
+    }
+
     private async Task OpenSelectedTestProgramAsync()
     {
         if (!SelectedResourceIsTestProgram || _selectedResource?.Asset is not { } asset) return;
@@ -520,6 +552,8 @@ public sealed class MainWindowViewModel : BindableBase
         OpenProjectCommand?.RaiseCanExecuteChanged();
         NewTestProgramCommand?.RaiseCanExecuteChanged();
         ImportDbcCommand?.RaiseCanExecuteChanged();
+        ImportFirmwareCommand?.RaiseCanExecuteChanged();
+        ImportWaveCommand?.RaiseCanExecuteChanged();
         OpenDbcCommand?.RaiseCanExecuteChanged();
         OpenTestProgramCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();

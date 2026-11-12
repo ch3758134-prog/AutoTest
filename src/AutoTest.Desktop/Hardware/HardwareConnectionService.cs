@@ -43,7 +43,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             var link = new WinUsbByteLink(candidate.DeviceInstanceId);
             link.OperationRecorded += ev =>
                 Record("USB " + ev.Operation + "/" + ev.Stage + " " + ev.Outcome +
-                    (ev.ErrorHex is null ? "" : " " + ev.ErrorHex));
+                    (ev.NativeErrorHex is null ? "" : " " + ev.NativeErrorHex));
             pending = new UsbSessionService(link);
             pending.TraceRecorded += trace =>
             {

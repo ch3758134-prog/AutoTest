@@ -35,6 +35,8 @@
             <MenuItem Header="打开选中的 DBC…" Command="{Binding OpenDbcCommand}"/>
             <MenuItem Header="新建测试程序…" Command="{Binding NewTestProgramCommand}"/>
             <MenuItem Header="导入 DBC…" Command="{Binding ImportDbcCommand}"/>
+            <MenuItem Header="导入固件…" Command="{Binding ImportFirmwareCommand}"/>
+            <MenuItem Header="导入波形证据…" Command="{Binding ImportWaveCommand}"/>
             <Separator/>
             <MenuItem Header="重命名资源…" Command="{Binding RenameResourceCommand}" InputGestureText="F2"/>
             <MenuItem Header="移除资源引用…" Command="{Binding RemoveReferenceCommand}"/>
@@ -164,6 +166,8 @@
                 <ContextMenu DataContext="{Binding PlacementTarget.Tag,RelativeSource={RelativeSource Self}}">
                   <MenuItem Header="新建测试程序…" Command="{Binding NewTestProgramCommand}"/>
                   <MenuItem Header="导入 DBC…" Command="{Binding ImportDbcCommand}"/>
+                  <MenuItem Header="导入固件…" Command="{Binding ImportFirmwareCommand}"/>
+                  <MenuItem Header="导入波形证据…" Command="{Binding ImportWaveCommand}"/>
                   <MenuItem Header="打开选中的 DBC…" Command="{Binding OpenDbcCommand}"/>
                   <MenuItem Header="打开选中的测试程序…" Command="{Binding OpenTestProgramCommand}"/>
                   <Separator/>
