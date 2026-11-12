@@ -129,7 +129,9 @@ class ManagementSyncTests(unittest.TestCase):
     def test_remote_revision_or_events_conflict(self):
         remote=dict(self.base)
         remote["revision"]=5
-        remote["events"]=[{"revision":5,"operation":"unrelated"}]
+        remote["events"]=[
+            {"revision":revision,"operation":"unrelated"} for revision in range(2,6)
+        ]
         self.client.remote_source=json.dumps(remote).encode()
         with self.assertRaisesRegex(sync.SyncConflict,"remote management revision is newer"):
             sync.preview(self.root,self.client)
