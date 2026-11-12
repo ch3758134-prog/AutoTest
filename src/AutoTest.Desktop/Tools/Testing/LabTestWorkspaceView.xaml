@@ -13,6 +13,7 @@
  <UserControl.Resources>
   <local:LabStepTypeDisplayConverter x:Key="StepTypeText"/>
   <local:LabParameterNameConverter x:Key="ParameterLabelText"/>
+  <BooleanToVisibilityConverter x:Key="ReviewVisibility"/>
   <SolidColorBrush x:Key="EditorBlue" Color="#317FD6"/>
   <SolidColorBrush x:Key="EditorLine" Color="#DAE4F0"/>
   <SolidColorBrush x:Key="EditorSoft" Color="#EFF5FD"/>
@@ -64,227 +65,168 @@
    </HierarchicalDataTemplate.Triggers>
   </HierarchicalDataTemplate>
  </UserControl.Resources>
- <Grid Margin="14,11,14,11">
+ <Grid Margin="10,8,10,10">
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
-   <RowDefinition Height="*" MinHeight="300"/>
-   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*" MinHeight="275"/>
+   <RowDefinition Height="6"/>
+   <RowDefinition Height="207" MinHeight="140"/>
   </Grid.RowDefinitions>
-
-  <!-- Clear IDE document title; no duplicate page-specific navigation toolbar. -->
-  <Grid Grid.Row="0" Margin="1,0,1,12">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <StackPanel>
-    <TextBlock Text="工作区  /  测试程序" Foreground="#71859C" FontSize="12"/>
-    <DockPanel Margin="0,4,0,0">
-     <TextBlock Text="{Binding DocumentName}" Foreground="#23344A" FontSize="23" FontWeight="SemiBold" VerticalAlignment="Center"/>
-     <TextBlock Text="  ·  自动测试编辑器" Foreground="#8B9AAF" FontSize="12" VerticalAlignment="Bottom" Margin="8,0,0,4"/>
+  <!-- Exact mockup hierarchy: document header, large sequence + inspector, and visible results. -->
+  <Grid Grid.Row="0" Margin="1,0,1,9">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <TextBlock Text="✎" FontSize="25" Foreground="#3385DF" Margin="6,2,16,0" VerticalAlignment="Top"/>
+   <StackPanel Grid.Column="1">
+    <DockPanel>
+     <TextBlock Text="测试程序编辑" FontSize="22" FontWeight="SemiBold" Foreground="#1F344C" VerticalAlignment="Center"/>
+     <TextBlock Text="{Binding DocumentName}" FontSize="12" Foreground="#536D87" VerticalAlignment="Center" Margin="18,5,0,0" TextTrimming="CharacterEllipsis"/>
     </DockPanel>
-    <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#73859A" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,5,0,0"/>
+    <TextBlock Text="{Binding ProjectAssetStatus}" FontSize="11" Foreground="#74879C" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+    <TextBlock Text="界面评审工程：只用于编辑与检查，不允许操作真实设备"
+      Visibility="{Binding IsReviewSample,Converter={StaticResource ReviewVisibility}}"
+      Foreground="#8A643E" FontSize="11" Margin="0,5,0,0"/>
    </StackPanel>
-   <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-    <Border Background="#ECF4FF" BorderBrush="#D4E6FA" BorderThickness="1" CornerRadius="7" Padding="12,8" Margin="0,0,12,0">
-     <StackPanel Orientation="Horizontal">
-      <TextBlock Text="{Binding StepCountLabel}" FontWeight="SemiBold" Foreground="#3973B3" FontSize="12"/>
-      <TextBlock Text="  ·  编辑中" Foreground="#5F7F9F" FontSize="12"/>
-     </StackPanel>
-    </Border>
-    <Button Content="保存到工程" Command="{Binding SaveToProjectCommand}" Style="{StaticResource AtPrimaryButton}" Margin="0,0,7,0"/>
-    <Button Content="运行前检查" Command="{Binding PreflightCommand}" Style="{StaticResource EditorAction}"/>
-    <Button Content="▶ 运行" Command="{Binding RunPhysicalReadOnlyCommand}" Style="{StaticResource EditorAction}"/>
+   <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+    <TextBlock Text="{Binding StepCountLabel}" Foreground="#3478C0" FontWeight="SemiBold"
+     VerticalAlignment="Center" Margin="0,0,18,0"/>
+    <Button Content="保存到工程" Command="{Binding SaveToProjectCommand}" Style="{StaticResource AtPrimaryButton}"/>
+    <Button Content="检查程序" Command="{Binding PreflightCommand}"/>
    </StackPanel>
   </Grid>
-
   <Grid Grid.Row="1">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="*" MinWidth="495"/>
-    <ColumnDefinition Width="8"/>
-    <ColumnDefinition Width="350" MinWidth="310" MaxWidth="455"/>
+    <ColumnDefinition Width="*" MinWidth="485"/>
+    <ColumnDefinition Width="6"/>
+    <ColumnDefinition Width="390" MinWidth="315" MaxWidth="490"/>
    </Grid.ColumnDefinitions>
-
-   <!-- Editorial center dominates: real hierarchical test steps, no unused giant canvas. -->
-   <Border Grid.Column="0" Style="{StaticResource EditorCard}" Padding="0">
-    <TabControl BorderThickness="0" Background="White" Padding="0" SelectedIndex="0">
-     <TabItem Header="程序编辑">
+   <!-- Main editor: 2/3 of the space, actual grouped and nested TEST steps. -->
+   <Border Grid.Column="0" Background="White" BorderBrush="#D7E3F1" BorderThickness="1" CornerRadius="9">
     <DockPanel LastChildFill="True">
-     <Border DockPanel.Dock="Top" Background="White" Padding="16,12,14,9" BorderBrush="{StaticResource EditorLine}" BorderThickness="0,0,0,1" CornerRadius="8,8,0,0">
+     <Border DockPanel.Dock="Top" Background="#F8FBFF" BorderBrush="#DEE8F4" BorderThickness="0,0,0,1"
+       Padding="12,5">
       <StackPanel>
-       <DockPanel LastChildFill="False" Margin="0,0,0,12">
-        <TextBlock Text="测试步骤" Style="{StaticResource EditorSection}"/>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-         <Button Content="↶" Command="{Binding UndoCommand}" Style="{StaticResource EditorAction}" ToolTip="撤销 (Ctrl+Z)"/>
-         <Button Content="↷" Command="{Binding RedoCommand}" Style="{StaticResource EditorAction}" ToolTip="重做 (Ctrl+Y)"/>
-         <Menu Background="Transparent" Margin="6,0,0,0">
-          <MenuItem Header="程序与调试 ▾">
-           <MenuItem Header="打开独立测试程序" Command="{Binding OpenCommand}"/>
-           <MenuItem Header="保存独立程序副本" Command="{Binding SaveCommand}"/>
-           <MenuItem Header="从当前工程重新加载" Command="{Binding ReloadProjectCommand}"/>
-           <Separator/>
-           <MenuItem Header="暂停" Command="{Binding PauseCommand}"/>
-           <MenuItem Header="继续" Command="{Binding ResumeCommand}"/>
-           <MenuItem Header="单步执行 F10" Command="{Binding StepCommand}"/>
-           <MenuItem Header="运行到选中步骤" Command="{Binding RunToCommand}"/>
-           <MenuItem Header="停止" Command="{Binding StopCommand}"/>
-          </MenuItem>
-         </Menu>
-        </StackPanel>
-       </DockPanel>
-       <WrapPanel>
-        <ComboBox Width="180" MinHeight="31" ItemsSource="{Binding StepTypes}" SelectedItem="{Binding SelectedInsertType,Mode=TwoWay}" Margin="0,0,8,0">
-         <ComboBox.ItemTemplate>
-          <DataTemplate><TextBlock Text="{Binding Converter={StaticResource StepTypeText}}"/></DataTemplate>
-         </ComboBox.ItemTemplate>
-        </ComboBox>
-        <Button Content="＋ 添加步骤" Style="{StaticResource AtPrimaryButton}" Command="{Binding InsertCommand}" Margin="0,0,14,0"/>
-        <Button Content="上移" Style="{StaticResource EditorAction}" Command="{Binding UpCommand}"/>
-        <Button Content="下移" Style="{StaticResource EditorAction}" Command="{Binding DownCommand}"/>
-        <Button Content="复制" Style="{StaticResource EditorAction}" Command="{Binding CopyCommand}"/>
-        <Button Content="删除" Style="{StaticResource EditorAction}" Command="{Binding DeleteCommand}"/>
-       </WrapPanel>
+       <TabControl Background="#F8FBFF" BorderThickness="0" Height="37">
+        <TabItem Header="☷  程序编辑" IsSelected="True"/>
+        <TabItem Header="⚙  运行配置"/>
+        <TabItem Header="ⓘ  程序属性"/>
+       </TabControl>
       </StackPanel>
      </Border>
-     <Border DockPanel.Dock="Top" Background="#F6F9FD" Padding="31,10,12,9" BorderBrush="{StaticResource EditorLine}" BorderThickness="0,0,0,1">
+     <Border DockPanel.Dock="Top" Background="White" Padding="12,9,10,10"
+       BorderBrush="#E0E9F5" BorderThickness="0,0,0,1">
+      <DockPanel LastChildFill="True">
+       <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+        <Button Content="展开全部" Command="{Binding ExpandAllCommand}" Style="{StaticResource AtQuietButton}"/>
+        <Button Content="折叠全部" Command="{Binding CollapseAllCommand}" Style="{StaticResource AtQuietButton}"/>
+       </StackPanel>
+       <StackPanel Orientation="Horizontal">
+        <Button Content="＋ 添加步骤" Command="{Binding InsertCommand}" Style="{StaticResource AtPrimaryButton}" Margin="0,0,5,0"/>
+        <ComboBox Width="155" MinHeight="30" Margin="0,0,10,0" ItemsSource="{Binding StepTypes}"
+          SelectedItem="{Binding SelectedInsertType,Mode=TwoWay}">
+         <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Converter={StaticResource StepTypeText}}"/></DataTemplate></ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Content="上移" Command="{Binding UpCommand}" Style="{StaticResource AtQuietButton}"/>
+        <Button Content="下移" Command="{Binding DownCommand}" Style="{StaticResource AtQuietButton}"/>
+        <Button Content="删除" Command="{Binding DeleteCommand}" Style="{StaticResource AtQuietButton}"/>
+        <Menu Background="Transparent" VerticalAlignment="Center">
+         <MenuItem Header="···" ToolTip="复制、撤销、重做及调试">
+          <MenuItem Header="复制步骤" Command="{Binding CopyCommand}"/>
+          <MenuItem Header="撤销" Command="{Binding UndoCommand}"/>
+          <MenuItem Header="重做" Command="{Binding RedoCommand}"/>
+          <Separator/>
+          <MenuItem Header="从工程重新加载" Command="{Binding ReloadProjectCommand}"/>
+          <MenuItem Header="另存程序副本" Command="{Binding SaveCommand}"/>
+         </MenuItem>
+        </Menu>
+       </StackPanel>
+      </DockPanel>
+     </Border>
+     <Border DockPanel.Dock="Top" Background="#EDF3FB" BorderBrush="#DEE8F4" BorderThickness="0,0,0,1" Padding="32,8,10,8">
       <Grid>
        <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="47"/>
-        <ColumnDefinition Width="2.5*" MinWidth="180"/>
-        <ColumnDefinition Width="1.1*" MinWidth="95"/>
-        <ColumnDefinition Width="2*" MinWidth="150"/>
+        <ColumnDefinition Width="55"/>
+        <ColumnDefinition Width="2.4*" MinWidth="155"/>
+        <ColumnDefinition Width="1.2*" MinWidth="100"/>
+        <ColumnDefinition Width="2*" MinWidth="135"/>
        </Grid.ColumnDefinitions>
-       <TextBlock Grid.Column="0" Text="序号" Style="{StaticResource EditorCaption}" Margin="0"/>
-       <TextBlock Grid.Column="1" Text="步骤名称" Style="{StaticResource EditorCaption}" Margin="0"/>
-       <TextBlock Grid.Column="2" Text="步骤类型" Style="{StaticResource EditorCaption}" Margin="0"/>
-       <TextBlock Grid.Column="3" Text="步骤说明 / 条件" Style="{StaticResource EditorCaption}" Margin="0"/>
+       <TextBlock Grid.Column="0" Text="序号" Foreground="#62758C" FontSize="12" FontWeight="SemiBold"/>
+       <TextBlock Grid.Column="1" Text="步骤名称" Foreground="#62758C" FontSize="12" FontWeight="SemiBold"/>
+       <TextBlock Grid.Column="2" Text="步骤类型" Foreground="#62758C" FontSize="12" FontWeight="SemiBold"/>
+       <TextBlock Grid.Column="3" Text="简要说明" Foreground="#62758C" FontSize="12" FontWeight="SemiBold"/>
       </Grid>
      </Border>
-     <TreeView x:Name="ProgramTree" ItemsSource="{Binding Tree}"
-        SelectedItemChanged="ProgramTree_OnSelectedItemChanged"
-        PreviewMouseRightButtonDown="ProgramTree_OnRightClick"
-        Background="White" BorderThickness="0" Padding="7,8"
-        HorizontalContentAlignment="Stretch">
+     <TreeView x:Name="ProgramTree" ItemsSource="{Binding Tree}" Tag="{Binding}"
+       SelectedItemChanged="ProgramTree_OnSelectedItemChanged"
+       PreviewMouseRightButtonDown="ProgramTree_OnRightClick" Background="White"
+       BorderThickness="0" HorizontalContentAlignment="Stretch" Padding="7,7">
       <TreeView.ItemContainerStyle>
        <Style TargetType="{x:Type TreeViewItem}">
-        <Setter Property="IsExpanded" Value="True"/>
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Margin" Value="0,1"/>
-        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="IsExpanded" Value="{Binding IsExpanded,Mode=TwoWay}"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Margin" Value="0,1"/>
        </Style>
       </TreeView.ItemContainerStyle>
       <TreeView.ContextMenu>
-       <ContextMenu DataContext="{Binding PlacementTarget.DataContext,RelativeSource={RelativeSource Self}}">
+       <ContextMenu DataContext="{Binding PlacementTarget.Tag,RelativeSource={RelativeSource Self}}">
         <MenuItem Header="在此添加步骤" Command="{Binding InsertCommand}"/>
-        <MenuItem Header="复制步骤" Command="{Binding CopyCommand}"/>
-        <MenuItem Header="上移步骤" Command="{Binding UpCommand}"/>
-        <MenuItem Header="下移步骤" Command="{Binding DownCommand}"/>
-        <MenuItem Header="删除步骤" Command="{Binding DeleteCommand}"/>
+        <MenuItem Header="复制" Command="{Binding CopyCommand}"/>
+        <MenuItem Header="上移" Command="{Binding UpCommand}"/>
+        <MenuItem Header="下移" Command="{Binding DownCommand}"/>
+        <MenuItem Header="删除" Command="{Binding DeleteCommand}"/>
         <Separator/>
-        <MenuItem Header="运行到这里" Command="{Binding RunToCommand}"/>
-        <MenuItem Header="跳过选中步骤" Command="{Binding SkipCommand}"/>
+        <MenuItem Header="运行到此步" Command="{Binding RunToCommand}"/>
+        <MenuItem Header="跳过当前步骤" Command="{Binding SkipCommand}"/>
        </ContextMenu>
       </TreeView.ContextMenu>
      </TreeView>
     </DockPanel>
-     </TabItem>
-     <TabItem Header="运行配置">
-      <Grid Background="White" Margin="18,18,18,12">
-       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <TextBlock Text="本次执行的测试用例" FontWeight="SemiBold" FontSize="18" Foreground="#23364B"/>
-       <TextBlock Grid.Row="1" Margin="0,8,0,14" Text="选择本次手动执行的用例。扫码生产流程仍然执行已发布的完整测试程序，二者不会混用。" Foreground="#688097" FontSize="12" TextWrapping="Wrap"/>
-       <Border Grid.Row="2" BorderBrush="#DCE8F5" BorderThickness="1" CornerRadius="8" Background="#F9FBFE">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-         <ItemsControl ItemsSource="{Binding TestCases}" Margin="12,9">
-          <ItemsControl.ItemTemplate>
-           <DataTemplate>
-            <Border BorderBrush="#DFE8F3" BorderThickness="0,0,0,1" Padding="10,12">
-             <CheckBox IsChecked="{Binding IsSelected,Mode=TwoWay}">
-              <DockPanel>
-               <TextBlock DockPanel.Dock="Right" Text="{Binding StepCount,StringFormat={}{0} 个步骤}" Foreground="#7B8CA1" FontSize="12"/>
-               <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="#2B425C"/>
-              </DockPanel>
-             </CheckBox>
-            </Border>
-           </DataTemplate>
-          </ItemsControl.ItemTemplate>
-         </ItemsControl>
-        </ScrollViewer>
-       </Border>
-       <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,13,0,0">
-        <Button Content="全部选中" Command="{Binding SelectAllCasesCommand}" Style="{StaticResource EditorAction}"/>
-        <Button Content="清空选择" Command="{Binding ClearCasesCommand}" Style="{StaticResource EditorAction}"/>
-        <Button Content="运行所选用例" Command="{Binding RunSelectedPhysicalCommand}" Style="{StaticResource AtPrimaryButton}"/>
-       </StackPanel>
-      </Grid>
-     </TabItem>
-     <TabItem Header="程序属性">
-      <ScrollViewer Background="White" Padding="22,18">
-       <StackPanel>
-        <TextBlock Text="测试程序信息" FontWeight="SemiBold" FontSize="18" Foreground="#243950"/>
-        <Border Background="#EEF5FF" BorderBrush="#D8E7FA" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,14,0,18">
-         <StackPanel>
-          <TextBlock Text="程序名称" Style="{StaticResource EditorCaption}"/>
-          <TextBlock Text="{Binding DocumentName}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,11"/>
-          <TextBlock Text="程序内容" Style="{StaticResource EditorCaption}"/>
-          <TextBlock Text="{Binding StepCountLabel}" FontSize="13"/>
-         </StackPanel>
-        </Border>
-        <TextBlock Text="工程资产与修订" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,9"/>
-        <TextBlock Text="{Binding ProjectAssetStatus}" TextWrapping="Wrap" Foreground="#526C86" Margin="0,0,0,14"/>
-        <TextBlock Text="最近的编辑与检查状态" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,9"/>
-        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#526C86" Margin="0,0,0,16"/>
-        <StackPanel Orientation="Horizontal">
-         <Button Content="保存到工程" Style="{StaticResource AtPrimaryButton}" Command="{Binding SaveToProjectCommand}" Margin="0,0,8,0"/>
-         <Button Content="重新加载工程程序" Style="{StaticResource EditorAction}" Command="{Binding ReloadProjectCommand}"/>
-        </StackPanel>
-       </StackPanel>
-      </ScrollViewer>
-     </TabItem>
-    </TabControl>
    </Border>
-   <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent"/>
-
-   <!-- Inspector is narrow and contextual; advanced configuration is collapsed. -->
-   <Border Grid.Column="2" Style="{StaticResource EditorCard}" Padding="0">
+   <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+   <!-- Right panel: narrow dedicated inspector, identical vertical alignment to mockup. -->
+   <Border Grid.Column="2" Background="#FFFFFF" BorderBrush="#D7E3F1" BorderThickness="1" CornerRadius="9">
     <DockPanel>
-     <Border DockPanel.Dock="Top" Background="#F8FAFD" Padding="15,13" BorderBrush="{StaticResource EditorLine}" BorderThickness="0,0,0,1" CornerRadius="8,8,0,0">
+     <Border DockPanel.Dock="Top" Background="#F5F9FF" BorderBrush="#DEE8F4" BorderThickness="0,0,0,1" Padding="15,12">
       <StackPanel>
-       <TextBlock Text="步骤设置" Style="{StaticResource EditorSection}"/>
-       <TextBlock Text="{Binding SelectedStepTypeLabel}" Foreground="#6F849B" FontSize="11" Margin="0,6,0,0"/>
+       <TextBlock Text="⚙  步骤设置" FontSize="16" FontWeight="SemiBold" Foreground="#243A52"/>
+       <TextBlock Text="{Binding SelectedStepTypeLabel}" FontSize="12" Foreground="#73889F" Margin="0,5,0,0"/>
       </StackPanel>
      </Border>
-     <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="15,15,15,18">
-       <TextBlock Text="步骤名称" Style="{StaticResource EditorCaption}"/>
-       <TextBox Text="{Binding SelectedName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MinHeight="31" Margin="0,0,0,8"/>
-       <Button Content="更新名称" Command="{Binding RenameCommand}" Style="{StaticResource EditorAction}" HorizontalAlignment="Left" Margin="0,0,0,15"/>
-
-       <TextBlock Text="当前参数" Style="{StaticResource EditorSection}" Margin="0,0,0,8"/>
-       <DataGrid ItemsSource="{Binding ParameterRows}" SelectedItem="{Binding SelectedParameterRow,Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True"
-           CanUserAddRows="False" CanUserDeleteRows="False" RowHeaderWidth="0" Height="116"
-           BorderBrush="{StaticResource EditorLine}" FontSize="12" HeadersVisibility="Column">
+     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="15,12,15,18">
+       <TextBlock Text="步骤名称" Foreground="#526D88" Margin="0,4,0,6"/>
+       <TextBox Text="{Binding SelectedName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+       <Button Content="保存名称" Command="{Binding RenameCommand}" HorizontalAlignment="Right"
+         Style="{StaticResource AtQuietButton}" Margin="0,5,0,12"/>
+       <DockPanel Margin="0,0,0,9">
+        <TextBlock Text="参数设置" FontWeight="SemiBold" FontSize="14" Foreground="#263B51"/>
+        <Button DockPanel.Dock="Right" Content="＋" Style="{StaticResource AtQuietButton}" ToolTip="添加参数字段：展开下方高级参数"/>
+       </DockPanel>
+       <DataGrid ItemsSource="{Binding ParameterRows}" SelectedItem="{Binding SelectedParameterRow,Mode=TwoWay}"
+        AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" Height="145"
+        RowHeaderWidth="0" BorderBrush="#DCE7F4" Background="White" FontSize="12">
         <DataGrid.Columns>
-         <DataGridTextColumn Header="参数" Binding="{Binding Key,Converter={StaticResource ParameterLabelText}}" Width="1.3*"/>
-         <DataGridTextColumn Header="取值" Binding="{Binding Value}" Width="1.4*"/>
+         <DataGridTextColumn Header="参数" Binding="{Binding Key,Converter={StaticResource ParameterLabelText}}" Width="*"/>
+         <DataGridTextColumn Header="参数值" Binding="{Binding Value}" Width="1.3*"/>
         </DataGrid.Columns>
        </DataGrid>
-       <TextBlock Text="选择上方参数行后编辑取值" Foreground="#8294A8" FontSize="11" Margin="0,12,0,9"/>
-       <TextBlock Text="{Binding SelectedParameterLabel}" Style="{StaticResource EditorCaption}" Margin="0,0,0,5"/>
-       <TextBox Text="{Binding ParameterValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MinHeight="30"/>
-       <Button Content="保存参数取值" Command="{Binding SetParameterCommand}" Style="{StaticResource AtPrimaryButton}" HorizontalAlignment="Left" Margin="0,12,0,14"/>
-       <Expander Header="高级 · 设置参数键" IsExpanded="False" Foreground="#6985A3" Margin="0,0,0,11">
-        <StackPanel Margin="0,8,0,6">
-         <TextBlock Text="参数键（用于新增或自定义参数）" Style="{StaticResource EditorCaption}"/>
-         <TextBox Text="{Binding ParameterName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MinHeight="30"/>
-         <TextBlock Text="这里使用测试执行器识别的实际字段名，保存后不会改变业务数据格式。" FontSize="11" Foreground="#8294A8" TextWrapping="Wrap" Margin="0,6,0,0"/>
+       <TextBlock Text="{Binding SelectedParameterLabel}" Foreground="#526D88" Margin="0,14,0,5"/>
+       <TextBox Text="{Binding ParameterValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+       <Button Content="保存参数" Command="{Binding SetParameterCommand}" Style="{StaticResource AtPrimaryButton}"
+        HorizontalAlignment="Right" Margin="0,9,0,14"/>
+       <Expander Header="高级参数键" Foreground="#577592" Margin="0,0,0,11">
+        <StackPanel Margin="0,9,0,7">
+         <TextBlock Text="参数名称" Foreground="#6F8399"/>
+         <TextBox Text="{Binding ParameterName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
         </StackPanel>
        </Expander>
-
-       <Expander Header="按键动作与控制器状态" Margin="0,4,0,0" IsExpanded="False" Foreground="#466B98">
-        <StackPanel Margin="0,10,0,8">
-         <Button Content="刷新工程按键状态" Command="{Binding RefreshControllerStatesCommand}" Style="{StaticResource EditorAction}" HorizontalAlignment="Left"/>
-         <ComboBox ItemsSource="{Binding ControllerStateChoices}" SelectedItem="{Binding SelectedControllerChoice,Mode=TwoWay}" DisplayMemberPath="Label" MinHeight="30" Margin="0,9,0,9"/>
-         <Button Content="关联当前按键动作" Command="{Binding ApplyControllerStateCommand}" Style="{StaticResource AtPrimaryButton}" HorizontalAlignment="Left"/>
-         <TextBlock Text="只写入测试程序配置，不会直接输出按键电压。" Foreground="{StaticResource EditorMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0"/>
+       <Expander Header="按键动作 / 控制器状态" Foreground="#577592">
+        <StackPanel Margin="0,9,0,7">
+         <ComboBox ItemsSource="{Binding ControllerStateChoices}" SelectedItem="{Binding SelectedControllerChoice,Mode=TwoWay}"
+           DisplayMemberPath="Label" MinHeight="30"/>
+         <Button Content="刷新状态" Command="{Binding RefreshControllerStatesCommand}" Margin="0,7,0,7"/>
+         <Button Content="关联当前步骤" Command="{Binding ApplyControllerStateCommand}" Style="{StaticResource AtPrimaryButton}"/>
+         <TextBlock Text="仅编辑工程绑定，不触发真实按键输出。" FontSize="11" Foreground="#8294A9" TextWrapping="Wrap" Margin="0,7,0,0"/>
         </StackPanel>
        </Expander>
       </StackPanel>
@@ -292,43 +234,35 @@
     </DockPanel>
    </Border>
   </Grid>
-
-  <!-- A compact, collapsible analysis dock, not a huge empty bottom table. -->
-  <Expander Grid.Row="2" Header="执行结果与诊断   ·   未执行时默认收起"
-            IsExpanded="False" Background="#FFFFFF" BorderBrush="{StaticResource EditorLine}"
-            BorderThickness="1" Margin="0,10,0,0" Padding="0" FontSize="12">
-   <TabControl Background="White" BorderThickness="0" Height="215">
-    <TabItem Header="执行结果">
-     <DockPanel>
-      <Border DockPanel.Dock="Top" Background="#F8FAFD" Padding="12,5" BorderBrush="{StaticResource EditorLine}" BorderThickness="0,0,0,1">
-       <DockPanel>
-        <TextBlock Text="{Binding Verdict, StringFormat=运行判定：{0}}" Foreground="#4C6C93" FontSize="11"/>
-        <TextBlock DockPanel.Dock="Right" Text="{Binding RunFactsText}" Foreground="#788BA0" FontSize="11"/>
-       </DockPanel>
-      </Border>
-      <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
-       RowHeaderWidth="0" HeadersVisibility="Column" BorderThickness="0" FontSize="12">
-       <DataGrid.Columns>
-        <DataGridTextColumn Header="阶段" Binding="{Binding Phase}" Width="80"/>
-        <DataGridTextColumn Header="步骤" Binding="{Binding NodeType}" Width="130"/>
-        <DataGridTextColumn Header="预期" Binding="{Binding Expected}" Width="*"/>
-        <DataGridTextColumn Header="实际" Binding="{Binding Actual}" Width="*"/>
-        <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="90"/>
-        <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="1.2*"/>
-       </DataGrid.Columns>
-      </DataGrid>
-     </DockPanel>
-    </TabItem>
-    <TabItem Header="运行日志与诊断">
-     <ScrollViewer Padding="13,10">
-      <StackPanel>
-       <TextBlock Text="{Binding Status}" Foreground="#344E69" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"/>
-       <TextBlock Text="{Binding PhysicalEvidencePath}" Foreground="#7A8DA0" TextWrapping="Wrap" FontSize="11"/>
-       <TextBlock Text="真实 ECU 响应与主控确认分别记录；尚未执行时不显示虚构的通过结果。" Foreground="#7A8DA0" TextWrapping="Wrap" FontSize="11" Margin="0,8,0,0"/>
-      </StackPanel>
-     </ScrollViewer>
-    </TabItem>
-   </TabControl>
-  </Expander>
+  <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+  <!-- Visible results dock, same bottom hierarchy as the approved illustration. -->
+  <Border Grid.Row="3" Background="White" BorderBrush="#D7E3F1" BorderThickness="1" CornerRadius="9" Padding="0">
+   <DockPanel>
+    <DockPanel DockPanel.Dock="Top" Background="#F8FAFE" LastChildFill="True">
+     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,5,0">
+      <TextBlock Text="{Binding Verdict,StringFormat=当前判定：{0}}" Foreground="#577494" FontSize="11"
+       VerticalAlignment="Center" Margin="0,0,12,0"/>
+     </StackPanel>
+     <TabControl Background="#F8FAFE" BorderThickness="0" Height="38">
+      <TabItem Header="✔  执行结果" IsSelected="True"/>
+      <TabItem Header="▤  日志"/>
+      <TabItem Header="⌁  追踪记录"/>
+     </TabControl>
+    </DockPanel>
+    <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
+      CanUserAddRows="False" CanUserDeleteRows="False" Background="White"
+      HeadersVisibility="Column" RowHeaderWidth="0" BorderThickness="0" FontSize="12">
+     <DataGrid.Columns>
+      <DataGridTextColumn Header="阶段" Binding="{Binding Phase}" Width="78"/>
+      <DataGridTextColumn Header="步骤" Binding="{Binding NodeType}" Width="150"/>
+      <DataGridTextColumn Header="预期结果" Binding="{Binding Expected}" Width="*"/>
+      <DataGridTextColumn Header="实际结果" Binding="{Binding Actual}" Width="*"/>
+      <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="100"/>
+      <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="115"/>
+      <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="1.2*"/>
+     </DataGrid.Columns>
+    </DataGrid>
+   </DockPanel>
+  </Border>
  </Grid>
 </UserControl>
