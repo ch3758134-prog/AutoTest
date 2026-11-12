@@ -70,9 +70,13 @@ public sealed class ConfiguredWavePort : ITestWavePort
     }
 
     public async Task<TestWaveResult> AnalyzeAsync(string captureKey, string referenceKey,
-        CancellationToken ct)
+        double tolerance, double minimumCoverage, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+        if (!double.IsFinite(tolerance) || tolerance < 0 ||
+            !double.IsFinite(minimumCoverage) ||
+            minimumCoverage < 0 || minimumCoverage > 1)
+            throw new ArgumentOutOfRangeException(nameof(tolerance), "Wave criteria invalid.");
         if (!_completed.TryGetValue(captureKey, out var evidence))
             return new(false, "CAPTURE_NOT_AVAILABLE", null, null, "Complete capture before analysis.");
         var actual = _capture.ReadEvidence(evidence.Evidence).Actual;
@@ -82,7 +86,7 @@ public sealed class ConfiguredWavePort : ITestWavePort
             return new(false, "REFERENCE_NOT_UNIQUE", null, evidence.Evidence.ToString(),
                 "Choose one existing named reference for this exact DBC signal revision.");
         var evaluated = await _capture.CompareAsync(evidence, matches[0].Reference,
-            new CompareProfile(0.05, 0.95));
+            new CompareProfile(tolerance, minimumCoverage));
         var available = evaluated.Verdict is Verdict.Pass or Verdict.Fail or Verdict.Inconclusive;
         return new(available, evaluated.Verdict.ToString(), evaluated.Verdict.ToString(),
             string.Join(",", evaluated.Evidence.Select(x => x.ToString())), evaluated.Reason);

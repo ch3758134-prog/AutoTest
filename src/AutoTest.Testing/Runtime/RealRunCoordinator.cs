@@ -29,7 +29,8 @@ public interface ITestWavePort
 {
     Task StartAsync(TestTargetMapping target, string captureKey, int durationMs, CancellationToken ct);
     Task<TestWaveResult> StopAsync(string captureKey, CancellationToken ct);
-    Task<TestWaveResult> AnalyzeAsync(string captureKey, string referenceKey, CancellationToken ct);
+    Task<TestWaveResult> AnalyzeAsync(string captureKey, string referenceKey,
+        double tolerance, double minimumCoverage, CancellationToken ct);
     Task CleanupAsync(CancellationToken ct);
 }
 
@@ -121,7 +122,7 @@ public sealed class RealRunCoordinator
         var facts = ImmutableArray.CreateBuilder<RealStepFact>();
         var variables = new Dictionary<string, TestDatum>(StringComparer.OrdinalIgnoreCase);
         var verdict = RealTestVerdict.Inconclusive;
-        bool asserted = false, failed = false, error = false, aborted = false;
+        bool asserted = false, failed = false, error = false, aborted = false, incomplete = false;
         string Evaluate(string input) =>
             input.StartsWith("$", StringComparison.Ordinal) &&
                 variables.TryGetValue(input[1..], out var datum) ? datum.Value ?? "" : input;
@@ -291,7 +292,7 @@ public sealed class RealRunCoordinator
                         if (missing)
                         {
                             Fact(node, RealStepStatus.NoData, expected, "", "Missing or invalid observation");
-                            error = true;
+                            incomplete = true;
                             break;
                         }
                         var pass = Compare(value, Property(node, "operator"), expected);
@@ -320,7 +321,9 @@ public sealed class RealRunCoordinator
                     case "WaveAnalyze":
                     {
                         var analysis = await _waves.AnalyzeAsync(Property(node, "captureKey"),
-                            Property(node, "reference"), ct);
+                            Property(node, "reference"),
+                            double.Parse(Property(node, "tolerance"), CultureInfo.InvariantCulture),
+                            double.Parse(Property(node, "coverage"), CultureInfo.InvariantCulture), ct);
                         variables[Property(node, "variable")] = new TestDatum(analysis.Value,
                             analysis.Available ? TestSignalStatus.Valid : TestSignalStatus.DecodeError,
                             DateTimeOffset.UtcNow, analysis.Evidence);
@@ -381,7 +384,7 @@ public sealed class RealRunCoordinator
             verdict = aborted ? RealTestVerdict.Aborted :
                 error ? RealTestVerdict.Error :
                 failed ? RealTestVerdict.Failed :
-                asserted ? RealTestVerdict.Passed : RealTestVerdict.Inconclusive;
+                asserted && !incomplete ? RealTestVerdict.Passed : RealTestVerdict.Inconclusive;
         }
         finally
         {

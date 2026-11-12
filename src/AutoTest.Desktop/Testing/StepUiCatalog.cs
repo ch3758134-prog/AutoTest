@@ -66,6 +66,8 @@ public static class StepUiCatalog
         "captureKey" => "采集名称",
         "durationMs" => "最长记录时间（毫秒）",
         "reference" => "参考波形名称",
+        "tolerance" => "比较绝对容差",
+        "coverage" => "最低有效覆盖率（0-1）",
         _ => key
     };
 
@@ -94,6 +96,8 @@ public static class StepUiCatalog
                 "captureKey" => "capture1",
                 "durationMs" => "3000",
                 "reference" => "",
+                "tolerance" => "0.05",
+                "coverage" => "0.95",
                 "operator" => type == "Calculate" ? "+" : "==",
                 "expected" => "1",
                 "left" => "$response",
