@@ -40,7 +40,7 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, string> _titles = new(StringComparer.Ordinal)
     {
         ["run"] = "自动测试",
-        ["program"] = "TEST 程序编辑",
+        ["program"] = "测试程序编辑",
         ["station"] = "设备连接与 CAN",
         ["dbc"] = "DBC 数据库",
         ["controller"] = "控制器与按键配置",
@@ -105,7 +105,7 @@ public partial class MainWindow : Window
         }
         EnsureTestModel(vm.G4.Workspace);
         EnsureScanner(vm);
-        ExplorerTabs.SelectedIndex = 1;
+        
         OpenDocument("program");
     }
 
@@ -130,15 +130,6 @@ public partial class MainWindow : Window
                     MessageBoxButton.YesNo, MessageBoxImage.Warning,
                     MessageBoxResult.No) == MessageBoxResult.Yes);
             _testProjectId = workspace.Project.Id.Value;
-            ExplorerTabs.DataContext = _test;
-            TestCasesList.ItemsSource = _test.TestCases;
-            PlannedStepsList.DataContext = _test;
-            // A separate grouped view avoids grouping the main execution
-            // DataGrid and preserves one shared SelectedRunStep across panes.
-            var groupedSteps = new ListCollectionView(_test.RunStepRows);
-            groupedSteps.GroupDescriptions.Add(
-                new PropertyGroupDescription(nameof(R1RunStepRow.Phase)));
-            PlannedStepsList.ItemsSource = groupedSteps;
         }
         else if (_testProjectId != workspace.Project.Id.Value && !_test.Busy)
         {
@@ -216,7 +207,7 @@ public partial class MainWindow : Window
         if (key == "project")
         {
             ShowExplorer();
-            ExplorerTabs.SelectedIndex = 1;
+            
             return;
         }
         if (key == "can" || key == "station")
@@ -315,14 +306,14 @@ public partial class MainWindow : Window
             MinWidth = key == "bench" ? 1130 : 860,
             MinHeight = key == "bench" ? 680 : 580,
             Background = System.Windows.Application.Current.TryFindResource("StudioBg") as Brush ?? Brushes.White,
-            FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
+            FontFamily = new System.Windows.Media.FontFamily("Microsoft YaHei UI"),
             FontSize = 13,
             UseLayoutRounding = true,
             SnapsToDevicePixels = true,
             Owner = this,
             ShowInTaskbar = true,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            WindowState = key == "bench" ? WindowState.Maximized : WindowState.Normal,
+            WindowState = WindowState.Maximized,
             Content = view
         };
         tool.Closing += (_, e) =>
@@ -728,14 +719,6 @@ public partial class MainWindow : Window
         // a TEST runner, rebind an active device or change the running program.
         if (!ReferenceEquals(e.Source, DocumentTabs)) return;
     }
-    private void PlannedSteps_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_test is not null && PlannedStepsList.SelectedItem is R1RunStepRow step)
-        {
-            _test.SelectedRunStep = step;
-            PlannedStepsList.ScrollIntoView(step);
-        }
-    }
     private void ShowExplorer()
     {
         if (!_explorerHidden) return;
@@ -744,7 +727,7 @@ public partial class MainWindow : Window
     private void ToggleExplorer_Click(object sender, RoutedEventArgs e)
     {
         _explorerHidden = !_explorerHidden;
-        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 257);
+        ExplorerColumn.Width = new GridLength(_explorerHidden ? 0 : 273);
         ExplorerSplitterColumn.Width = new GridLength(_explorerHidden ? 0 : 5);
         ExplorerPanel.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
         ExplorerSplitter.Visibility = _explorerHidden ? Visibility.Collapsed : Visibility.Visible;
