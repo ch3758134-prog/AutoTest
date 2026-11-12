@@ -92,7 +92,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         ProjectConfigurationCodec.ControllerKind =>
             "按键定义会保存真实 20 位 KeyMask 与五路目标电压窗口；尚未获得现场测量数据时，不得宣称电压已达到目标。",
         ProjectConfigurationCodec.WaveSettingsKind =>
-            "该资源定义信号与比较阈值，不会自行采集或生成参考波形。",
+            "该配置保存信号、判定阈值及关联波形证据；证据不自动成为参考波形，也不会进行采集或判定。",
         ProjectConfigurationCodec.FlashSettingsKind =>
             "这里只保存 ECU/UDS/固件与安全参数，不执行烧录；真实 UDS/Flash 现场执行需另行接通验证。",
         ProjectConfigurationCodec.ScanSettingsKind =>
@@ -195,7 +195,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 AddField("ecu", "ECU 名称", ctrl.EcuName);
                 AddField("board", "按键模拟板型号", ctrl.HardwareModel,
                     "修改名称不会改变实际 USB/CAN 硬件。");
-                AddField("boardId", "硬件配置标识（只读）", ctrl.HardwareProfileId.ToString());
+                AddField("boardId", "硬件配置标识（只读）", ctrl.HardwareProfileId.ToString(), "用于标识按键模拟板的配置版本。");
             }
             else if (key.StartsWith("controller|", StringComparison.Ordinal))
             {
@@ -236,8 +236,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 "DBC 报文 ID 与帧类型须保持一致；实际执行时还需再核对。");
             AddField("signal", "DBC 信号名称", wave.SignalName);
             AddField("unit", "信号单位", wave.Unit);
-            AddField("reference", "参考波形资源", AssetNameFor(wave.ReferenceAssetId),
-                "可选。必须来自工程中已验证的波形证据", AssetNames(ProjectWorkspaceService.WaveKind));
+            AddField("reference", "关联波形证据（非参考波形）", AssetNameFor(wave.EvidenceAssetId),
+                "可选。用于关联已验证的波形证据；正式参考波形需另行采集并明确保存。", AssetNames(ProjectWorkspaceService.WaveKind));
             AddField("abs", "绝对容差", Format(wave.Comparison.AbsoluteTolerance));
             AddField("rel", "相对容差", Format(wave.Comparison.RelativeTolerance));
             AddField("coverage", "最小覆盖率（0~1）", Format(wave.Comparison.MinimumCoverage));
@@ -402,11 +402,11 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 {
                     Name = F("name"), DbcAssetId = dbc.Id,
                     DbcAssetRevision = dbc.Revision, DbcAssetFingerprint = dbc.Sha256,
-                    ReferenceAssetRevision = reference.Revision,
-                    ReferenceAssetFingerprint = reference.Sha256,
+                    EvidenceAssetRevision = reference.Revision,
+                    EvidenceAssetFingerprint = reference.Sha256,
                     Bus = Enum.Parse<BusRole>(F("role"), true),
                     CanId = ParseCan(F("id")), SignalName = F("signal"), Unit = F("unit"),
-                    ReferenceAssetId = reference.Id,
+                    EvidenceAssetId = reference.Id,
                     Comparison = new WaveComparisonConfig(
                         Number(F("abs")) ?? 0, Number(F("rel")) ?? 0, Number(F("coverage")) ?? 0,
                         Number(F("ratio")) ?? 0, Number(F("shift")) ?? 0, Number(F("gap")) ?? 0,

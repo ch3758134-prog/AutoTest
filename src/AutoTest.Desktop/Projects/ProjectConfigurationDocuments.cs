@@ -12,9 +12,9 @@ namespace AutoTest.Desktop.Projects;
 /// <summary>Project-authored records: not hardware measurements, permissions or executable procedures.</summary>
 public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
     Guid? DbcAssetId, BusRole Bus, uint CanId, string SignalName, string Unit,
-    Guid? ReferenceAssetId, WaveComparisonConfig Comparison,
+    Guid? EvidenceAssetId, WaveComparisonConfig Comparison,
     int? DbcAssetRevision = null, string? DbcAssetFingerprint = null,
-    int? ReferenceAssetRevision = null, string? ReferenceAssetFingerprint = null)
+    int? EvidenceAssetRevision = null, string? EvidenceAssetFingerprint = null)
 {
     public static WaveSettingsDocument Create(string name) => new(1, name, null,
         BusRole.DutCan, 0, "", "", null,
@@ -30,9 +30,9 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
                 "波形判定参数无效：" + (Comparison?.ValidateThresholds() ?? "缺少参数"));
         if (DbcAssetId.HasValue && !ProjectConfigurationCodec.ValidPin(DbcAssetRevision, DbcAssetFingerprint))
             throw new ProjectDataException("WAVE_DBC_PIN", "已选择的 DBC 缺少资源修订与哈希。");
-        if (ReferenceAssetId.HasValue &&
-            !ProjectConfigurationCodec.ValidPin(ReferenceAssetRevision, ReferenceAssetFingerprint))
-            throw new ProjectDataException("WAVE_REF_PIN", "参考波形缺少资源修订与哈希。");
+        if (EvidenceAssetId.HasValue &&
+            !ProjectConfigurationCodec.ValidPin(EvidenceAssetRevision, EvidenceAssetFingerprint))
+            throw new ProjectDataException("WAVE_REF_PIN", "关联波形证据缺少资源修订与哈希。");
         // Drafts may remain unbound; no physical waveform capture is implied.
     }
 }

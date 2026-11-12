@@ -66,7 +66,21 @@
                       Visibility="{Binding IsScan,Converter={StaticResource BoolToVisibility}}"
                       Margin="0,0,5,6"/>
               <Button Content="删除选中项" Command="{Binding RemoveEntryCommand}"
-                      Margin="0,0,5,6"/>
+                      Margin="0,0,5,6">
+                <Button.Style>
+                  <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsController}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding IsScan}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Button.Style>
+              </Button>
             </WrapPanel>
           </StackPanel>
           <ListBox ItemsSource="{Binding Nodes}"

@@ -478,7 +478,7 @@ public sealed class ProjectWorkspaceService
         if (kind == WaveSettingsKind && document is WaveSettingsDocument wave)
         {
             Check(wave.DbcAssetId, DbcKind, wave.DbcAssetRevision, wave.DbcAssetFingerprint);
-            Check(wave.ReferenceAssetId, WaveKind, wave.ReferenceAssetRevision, wave.ReferenceAssetFingerprint);
+            Check(wave.EvidenceAssetId, WaveKind, wave.EvidenceAssetRevision, wave.EvidenceAssetFingerprint);
         }
         else if (kind == FlashSettingsKind && document is FlashSettingsDocument flash)
             Check(flash.FirmwareAssetId, FirmwareKind, flash.FirmwareRevision, flash.FirmwareFingerprint);
