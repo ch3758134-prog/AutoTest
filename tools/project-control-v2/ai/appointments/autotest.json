@@ -1,0 +1,24 @@
+{
+  "schema": "project-control-ai-appointments/1",
+  "project_id": "autotest",
+  "description": "记录被负责人明确确认的角色/专业工作席位，而非自动识别 ChatGPT 网页对话 ID。此表为空代表尚无经本机制确认的席位，不代表历史项目没有专业分工。",
+  "appointments": [],
+  "identity_policy": {
+    "no_auto_first_reader_role": true,
+    "no_assumptions_from_bare_chat": true,
+    "confirm_with_user_when_ambiguous": true,
+    "user_confirmation_required_before_record": true,
+    "role_slot_is_not_chat_session_binding": true,
+    "task_id_can_resolve_role_only_if_explicitly_appointed": true,
+    "formal_code_authority_separate_from_role": true,
+    "record_fields_when_confirmed": [
+      "appointment_id",
+      "role_id",
+      "scope",
+      "task_ids",
+      "human_confirmation_reference",
+      "recorded_at",
+      "recorded_by"
+    ]
+  }
+}
