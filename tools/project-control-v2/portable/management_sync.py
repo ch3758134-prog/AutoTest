@@ -142,7 +142,7 @@ def preview(root, client):
     }
 
 
-def publish(client, plan, *, apply=False):
+def publish(client, plan, *, apply=False, atomic=False):
     if plan.get("schema") != "project-control-management-sync/1":
         raise SyncConflict("unknown management publication plan")
     parts = repo_parts(plan.get("repo_url"))
@@ -168,6 +168,19 @@ def publish(client, plan, *, apply=False):
         raise SyncConflict("remote management event history changed")
     if previous["revision"] >= record["revision"]:
         raise SyncConflict("management revision must advance")
+    if atomic:
+        from git_ref_atomic import commit_exact_file, AtomicGitError
+        try:
+            outcome = commit_exact_file(
+                client, parts, branch, head, MANAGED_PATH, data,
+                "chore(project-control): publish reviewed management draft "
+                + str(record["revision"]))
+        except AtomicGitError as exc:
+            raise SyncConflict("atomic management ref update blocked: " + str(exc)) from exc
+        return {**outcome,
+                "status": "ATOMIC_REMOTE_MANAGEMENT_DRAFT_PUBLISHED_VERIFIED",
+                "project_id": plan["project_id"], "revision": record["revision"],
+                "note": "No Gate or task approval; local checkout must be reconciled."}
     owner, repo = parts
     payload = {
         "message": "chore(project-control): publish candidate management revision "
@@ -197,6 +210,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="Publish one reviewed local management draft with GitHub CAS")
     p.add_argument("--target", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
+    p.add_argument("--transport", choices=["git-ref-cas", "contents-file-cas"],
+                   default="git-ref-cas")
     args = p.parse_args(argv)
     try:
         token = os.environ.get("PROJECT_CONTROL_GITHUB_TOKEN")
@@ -204,7 +219,8 @@ def main(argv=None):
             raise SyncConflict("GitHub token missing; a connected manager AI writer may be used instead")
         client = GitHub(token)
         plan = preview(args.target, client)
-        result = publish(client, plan, apply=args.apply) if "schema" in plan else plan
+        result = publish(client, plan, apply=args.apply,
+                         atomic=args.transport == "git-ref-cas") if "schema" in plan else plan
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (SyncConflict, RemoteError, OSError, TypeError, KeyError, ValueError) as error:
