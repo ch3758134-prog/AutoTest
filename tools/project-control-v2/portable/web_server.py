@@ -137,6 +137,15 @@ class Target:
         if not isinstance(value.get("progress"), dict):
             raise ManagementError("invalid progress map")
 
+    def head_or_none(self):
+        # A brand-new, locally initialized Git repository may have no first commit.
+        check = subprocess.run(["git", "-C", str(self.root), "rev-parse", "--verify", "HEAD"],
+                               capture_output=True, text=True, timeout=12)
+        if check.returncode == 0 and SHA.fullmatch(check.stdout.strip()):
+            return check.stdout.strip()
+        # Do not interpret missing HEAD as remote synchronization or approved setup.
+        return None
+
     def model(self):
         with self.lock:
             self.check_identity()
@@ -154,7 +163,7 @@ class Target:
                 "project": project, "management": management,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
                 "git": {
-                    "head": git(self.root, "rev-parse", "HEAD"),
+                    "head": self.head_or_none(),
                     "branch": git(self.root, "branch", "--show-current") or "(detached)",
                     "dirty": bool(git(self.root, "status", "--porcelain", "--untracked-files=normal")),
                     "source": "LOCAL_WORKTREE_NOT_REMOTE_VERIFIED",
