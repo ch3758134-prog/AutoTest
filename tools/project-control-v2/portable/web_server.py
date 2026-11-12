@@ -18,7 +18,8 @@ from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS,
 from module_control import (add_module, assign_work as assign_module_work,
                             defined_modules, local_source_snapshot, assess_candidate_paths,
                             ModuleError)
-from workspace_manager import read_registry as workspace_registry, inspect_one as inspect_workspace, canonical as workspace_origin
+from workspace_manager import (read_registry as workspace_registry, inspect_one as inspect_workspace,
+                               canonical as workspace_origin, registry_location, registry_lock)
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -128,6 +129,53 @@ def empty_management(project_id):
         "requirements": [], "plans": [], "changes": [], "gate_reviews": [], "trace_links": [],
         "modules": []
     }
+
+
+def project_catalog_file(registry_dir=None):
+    """Persistent local application registration, separate from target projects."""
+    return registry_location(registry_dir) / "targets.json"
+
+
+def read_project_catalog(registry_dir=None):
+    path = project_catalog_file(registry_dir)
+    if not path.exists():
+        return []
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 65536:
+        raise ManagementError("unsafe local project registration catalog")
+    value = load_json(path)
+    paths = value.get("paths")
+    if (value.get("schema") != "project-control-local-targets/1"
+            or not isinstance(paths, list) or len(paths) > 64
+            or any(not isinstance(p, str) or not p or not Path(p).is_absolute()
+                   for p in paths) or len(paths) != len(set(paths))):
+        raise ManagementError("invalid locally registered project paths")
+    return paths
+
+
+def persist_registered_target(path, registry_dir=None):
+    """After an authenticated explicit registration only; never touch target Git."""
+    with registry_lock(registry_dir):
+        current = read_project_catalog(registry_dir)
+        target = str(Path(path).resolve(strict=True))
+        if target in current:
+            return
+        if len(current) >= 64:
+            raise ManagementError("too many saved target registrations")
+        destination = project_catalog_file(registry_dir)
+        raw = json.dumps(
+            {"schema": "project-control-local-targets/1", "paths": current + [target]},
+            ensure_ascii=False, indent=2).encode("utf-8") + b"\n"
+        tmp = destination.with_name(".targets." + secrets.token_hex(8) + ".tmp")
+        try:
+            with tmp.open("xb") as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if destination.is_symlink():
+                raise ManagementError("unsafe local target registration file")
+            os.replace(tmp, destination)
+        finally:
+            tmp.unlink(missing_ok=True)
 
 
 class Target:
@@ -733,6 +781,7 @@ def handler(targets, owner_token, registry_dir=None):
                         if target.project_id in targets or any(
                                 existing.root == target.root for existing in targets.values()):
                             raise ManagementError("project already registered in this session")
+                        persist_registered_target(target.root, registry_dir)
                         targets[target.project_id] = target
                     return self.respond({
                         "status": "EXISTING_PROJECT_REGISTERED_NOT_INITIALIZED",
@@ -776,12 +825,27 @@ def main(argv=None):
     try:
         found = {}
         roots = set()
-        for directory in options.target:
+        explicit_paths = options.target
+        for directory in explicit_paths:
             target = Target(directory, registry_dir=options.registry_dir)
             if target.project_id in found or str(target.root) in roots:
                 raise ManagementError("duplicate project ID or directory")
             found[target.project_id] = target
             roots.add(str(target.root))
+        # Restore only projects previously explicitly registered in this app.
+        # Stale/deleted projects are skipped and never recreated or overwritten.
+        for directory in read_project_catalog(options.registry_dir):
+            if str(Path(directory)) in roots:
+                continue
+            try:
+                target = Target(directory, registry_dir=options.registry_dir)
+                if target.project_id in found:
+                    print("Skipped duplicate saved project: " + target.project_id, file=sys.stderr)
+                    continue
+                found[target.project_id] = target
+                roots.add(str(target.root))
+            except (OSError, ManagementError) as error:
+                print("Saved target requires review (not modified): " + str(error), file=sys.stderr)
     except (OSError, ManagementError) as error:
         parser.exit(2, "Cannot load projects: " + str(error) + "\n")
     token = os.environ.get("PROJECT_CONTROL_OWNER_TOKEN") or secrets.token_urlsafe(32)
