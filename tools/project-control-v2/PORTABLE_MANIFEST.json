@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "4.5-context-remediation-ledger-candidate",
+  "version": "4.6-owner-reviewed-delivery-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -49,7 +49,9 @@
     "portable/EVIDENCE_AND_REMEDIATION.md",
     "portable/context_assessment.py",
     "portable/context_assessment_example.json",
-    "portable/context_workflow.py"
+    "portable/context_workflow.py",
+    "portable/DELIVERY_REVIEW_PROTOCOL.md",
+    "portable/delivery_review.py"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -98,7 +100,12 @@
     "legacy_discovery_v1": "READ_ONLY_NEEDS_REASSESSMENT",
     "full_web_workbench_evidence_integration": "LOCAL_CAS_RECORD_AND_PROPOSED_WBS_LINKS_NO_TASK_DISPATCH",
     "real_agent_intake_e2e": "NOT_VERIFIED",
-    "context_remediation_ledger": "REVISIONED_LOCAL_CANDIDATE_WITH_WORK_LINKS"
+    "context_remediation_ledger": "REVISIONED_LOCAL_CANDIDATE_WITH_WORK_LINKS",
+    "owner_first_delivery": "PRIVATE_LOCAL_STAGING_EXACT_VERSION_OWNER_REVIEW_CANDIDATE_ONLY",
+    "owner_review_authority": "SEPARATE_LOCAL_TOKEN_NOT_VERIFIED_FORMAL_IDENTITY",
+    "external_candidate_publication": "NOT_AUTOMATED",
+    "formal_human_approval": "EXTERNAL_CHANNEL_REQUIRED",
+    "delivery_end_to_end_windows": "NOT_VERIFIED"
   },
   "separation": {
     "package_source": "Project Control system files",
