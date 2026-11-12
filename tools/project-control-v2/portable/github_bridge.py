@@ -338,7 +338,7 @@ def validate_remote_authority(client, parts, branch, plan, proposed, current):
         if key not in ("tasks","events") and proposed.get(key) != value:
             raise RemoteError("candidate changed unrelated registry properties")
 
-def publish_plan(client, plan, repo_url, *, apply=False):
+def publish_plan(client, plan, repo_url, *, apply=False, atomic=False):
     parts, branch, blob, head, content = validate_plan(plan, repo_url)
     result = {
         "operation": "TARGET_TASK_RECORD_CAS",
@@ -362,6 +362,15 @@ def publish_plan(client, plan, repo_url, *, apply=False):
     except (ValueError, UnicodeDecodeError) as exc:
         raise RemoteError("unreadable remote or proposed task JSON") from exc
     validate_remote_authority(client, parts, branch, plan, proposed, remote_current)
+    if atomic:
+        from git_ref_atomic import commit_exact_file, AtomicGitError
+        try:
+            updated = commit_exact_file(
+                client, parts, branch, head, EXPECTED_FILE, content,
+                "chore(project-control): publish reviewed task " + plan["task_id"])
+        except AtomicGitError as err:
+            raise RemoteError("atomic Git ref update blocked: " + str(err)) from err
+        return {**result, **updated, "task_status": "PUBLISHED_PENDING_REVIEW"}
     owner, name = parts
     payload = {
         "message": "chore(project-control): update authorized task " + plan["task_id"],
@@ -422,11 +431,15 @@ def main(argv=None):
     p.add_argument("--plan", required=True, type=Path)
     p.add_argument("--repo-url", required=True)
     p.add_argument("--apply", action="store_true")
+    p.add_argument("--transport", choices=["git-ref-cas", "contents-file-cas"],
+                   default="git-ref-cas",
+                   help="Default non-force Git branch-ref CAS avoids concurrent HEAD overwrite")
     args = p.parse_args(argv)
     try:
         plan = json.loads(args.plan.read_text(encoding="utf-8"))
         client = GitHub(token=os.environ.get("PROJECT_CONTROL_GITHUB_TOKEN") if args.apply else None)
-        result = publish_plan(client, plan, args.repo_url, apply=args.apply)
+        result = publish_plan(client, plan, args.repo_url, apply=args.apply,
+                              atomic=args.transport == "git-ref-cas")
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (RemoteError, OSError, KeyError, ValueError, TypeError) as err:
