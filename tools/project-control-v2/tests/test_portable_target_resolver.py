@@ -76,11 +76,21 @@ class PortableTargetResolverTests(unittest.TestCase):
                              "NO_UNAUTHORIZED_DELETE"],
         }
 
-    def write_task(self, task):
+    def write_task(self, task, include_execution_approval=True):
+        if include_execution_approval:
+            decisions = json.loads(self.decisions_path.read_text(encoding="utf-8"))
+            decisions["decisions"].append({
+                "kind": "TASK_EXECUTION_APPROVAL",
+                "state": "APPROVED", "task_id": task["id"],
+                "source_sha": task["source"]["pinned_sha"],
+                "approved_by": task["authorization"]["approved_by"],
+                "approval_reference": task["authorization"]["approval_reference"]
+            })
+            self.decisions_path.write_text(json.dumps(decisions, indent=2), encoding="utf-8")
         data = json.loads(self.tasks_path.read_text(encoding="utf-8"))
         data["tasks"] = [task]
         self.tasks_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        git(self.root, "add", ".project-control/tasks.json")
+        git(self.root, "add", ".project-control/tasks.json", ".project-control/decisions.json")
         git(self.root, "commit", "-m", "task candidate")
 
     def approve(self):
@@ -140,6 +150,13 @@ class PortableTargetResolverTests(unittest.TestCase):
         git(self.root, "remote", "set-url", "origin", self.repo_url)
         git(self.root, "switch", "-c", "feature/unrelated")
         self.assertEqual(self.invoke("select").returncode, 2)
+
+    def test_task_cannot_self_authorize_without_separate_approval(self):
+        self.approve()
+        self.write_task(self.task(), include_execution_approval=False)
+        blocked = self.invoke("select")
+        self.assertEqual(blocked.returncode, 2)
+        self.assertIn("separately recorded execution approval", blocked.stderr)
 
     def test_exploratory_task_without_formal_design_but_with_authorization(self):
         self.write_task(self.task("EXPLORATORY"))
