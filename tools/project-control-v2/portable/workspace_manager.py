@@ -212,7 +212,7 @@ def create(workspace_id, project_id, task_id, kind, purpose, path, allowed_root,
     """
     target, root = ensure_path_inside(path, allowed_root)
     ensure_empty(target)
-    register_at = registry_location(location)
+    register_at = registry_location(location).resolve()
     if register_at == target or register_at.is_relative_to(target):
         raise WorkspaceError("registry must live outside the selected workspace")
     relation = "LINKED_WORKTREE" if parent_repo else "INDEPENDENT_CLONE"
@@ -223,7 +223,8 @@ def create(workspace_id, project_id, task_id, kind, purpose, path, allowed_root,
     parent = None
     if parent_repo:
         parent = Path(parent_repo).expanduser().resolve(strict=True)
-        if not parent.is_dir() or run_git(parent, "rev-parse", "--show-toplevel") != str(parent):
+        if (not parent.is_dir() or
+                Path(run_git(parent, "rev-parse", "--show-toplevel")).resolve() != parent):
             raise WorkspaceError("invalid parent Git repository")
         if canonical(run_git(parent, "remote", "get-url", "origin")) != canonical(repo_url):
             raise WorkspaceError("parent Git origin mismatches requested repository")
@@ -296,10 +297,10 @@ def register_existing(workspace_id, project_id, task_id, kind, purpose,
     if kind == "TEMP":
         raise WorkspaceError("existing checkouts cannot silently become disposable TEMP")
     target, root = ensure_path_inside(path, allowed_root)
-    registry_home = registry_location(location)
+    registry_home = registry_location(location).resolve()
     if registry_home == target or registry_home.is_relative_to(target):
         raise WorkspaceError("local registry must be outside the existing checkout")
-    if str(target) != run_git(target, "rev-parse", "--show-toplevel"):
+    if Path(run_git(target, "rev-parse", "--show-toplevel")).resolve() != target:
         raise WorkspaceError("existing folder is not its Git repository root")
     if canonical(run_git(target, "remote", "get-url", "origin")) != canonical(repo_url):
         raise WorkspaceError("existing checkout belongs to another remote")
@@ -367,7 +368,14 @@ def inspect_one(record):
                 observed["issues"].append("PARENT_REPOSITORY_MISSING")
             else:
                 active = run_git(parent, "worktree", "list", "--porcelain")
-                if ("worktree " + str(root)) not in active.splitlines():
+                linked = []
+                for line in active.splitlines():
+                    if line.startswith("worktree "):
+                        try:
+                            linked.append(Path(line[len("worktree "):]).resolve())
+                        except (OSError, ValueError):
+                            pass
+                if root.resolve() not in linked:
                     observed["issues"].append("GIT_WORKTREE_METADATA_MISMATCH")
     except WorkspaceError as exc:
         observed["issues"].append("GIT_INSPECTION_FAILED: " + str(exc))
