@@ -1,0 +1,24 @@
+name: Export Project Control 4.6.1 ZIP Once
+on:
+  push:
+    branches: [packaging/project-control-461-standalone]
+    paths:
+      - '.github/workflows/project-control-461-standalone-export.yml'
+permissions:
+  contents: read
+jobs:
+  export-only:
+    if: github.repository == 'ch3758134-prog/AutoTest' && github.ref == 'refs/heads/packaging/project-control-461-standalone'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export standalone files, without CI tests
+        run: python tools/project-control-v2/portable/export_package.py --out ProjectControl_4.6.1_Standalone.zip
+      - name: Upload standalone ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProjectControl-4.6.1-Standalone
+          path: ProjectControl_4.6.1_Standalone.zip
+          retention-days: 7
+          if-no-files-found: error
