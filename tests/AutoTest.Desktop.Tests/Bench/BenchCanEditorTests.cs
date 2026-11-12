@@ -66,10 +66,16 @@ public sealed class BenchCanEditorTests
         vm.SelectedMessage!.IsChecked = true;
         var running = vm.StartPeriodicAsync();
         Assert.True(vm.IsPeriodicRunning);
+        Assert.True(vm.IsSendTableReadOnly); // frozen data, but DataGrid itself stays selectable
+        Assert.False(vm.CanEdit);
+        Assert.False(vm.CanStartPeriodic);
+        Assert.False(vm.CanSendOnce);
         vm.StopPeriodicCommand.Execute();
         await running;
         Assert.Equal(1, port.PeriodicCount);
         Assert.False(vm.IsPeriodicRunning);
+        Assert.False(vm.IsSendTableReadOnly);
+        Assert.True(vm.CanEdit);
         Assert.Contains("取消", vm.Status);
     }
 
