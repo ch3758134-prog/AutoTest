@@ -75,18 +75,12 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContextChanged += (_, _) => BindWorkspace();
-        Loaded += async (_, _) =>
+        Loaded += (_, _) =>
         {
             BindWorkspace();
             if (DataContext is MainWindowViewModel vm)
                 SetupWorkspace(vm);
-            // UI review is opt-in and cannot silently replace a production project.
-            if (!_reviewSampleAttempted && Environment.GetCommandLineArgs()
-                    .Any(arg => string.Equals(arg, "--ui-review", StringComparison.OrdinalIgnoreCase)))
-            {
-                _reviewSampleAttempted = true;
-                await LoadReviewSampleAsync();
-            }
+            TryLoadReviewSampleOnStartup();
         };
     }
 
@@ -98,10 +92,26 @@ public partial class MainWindow : Window
         if (_workspaceEventsOwner is not null)
             _workspaceEventsOwner.WorkspaceAssetsChanged += OnAssetsChanged;
         if (IsLoaded && _workspaceEventsOwner is not null)
+        {
             SetupWorkspace(_workspaceEventsOwner);
+            TryLoadReviewSampleOnStartup();
+        }
     }
 
     private bool _reviewSampleAttempted;
+
+    private void TryLoadReviewSampleOnStartup()
+    {
+        // Prism can attach DataContext after Loaded. Start only after its real
+        // PROJECT/G4 workspace exists, once, and only by explicit review flag.
+        if (_reviewSampleAttempted || !IsLoaded ||
+            DataContext is not MainWindowViewModel { G4: not null } ||
+            !Environment.GetCommandLineArgs().Any(arg =>
+                string.Equals(arg, "--ui-review", StringComparison.OrdinalIgnoreCase)))
+            return;
+        _reviewSampleAttempted = true;
+        _ = LoadReviewSampleAsync();
+    }
 
     private async Task LoadReviewSampleAsync()
     {
