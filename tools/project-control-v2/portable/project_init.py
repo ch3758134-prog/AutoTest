@@ -177,7 +177,7 @@ def create_preview(inspected, mode, project_id=None, project_name=None):
         return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
     management = {"schema": "project-control-target-management/1", "project_id": project_id,
                   "revision": 1, "status": "DRAFT", "deliverables": [], "work": [],
-                  "milestones": [], "risks": [], "progress": {}, "events": []}
+                  "milestones": [], "risks": [], "progress": {}, "events": [], "modules": []}
     resolver_source = (Path(__file__).resolve().parent / "target_resolver.py").read_text(encoding="utf-8")
     workspace_source = (Path(__file__).resolve().parent / "workspace_manager.py").read_text(encoding="utf-8")
     return {
