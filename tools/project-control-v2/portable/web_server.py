@@ -125,7 +125,8 @@ def empty_management(project_id):
 
 
 class Target:
-    def __init__(self, root):
+    def __init__(self, root, registry_dir=None):
+        self.registry_dir = registry_dir
         self.root = Path(root).resolve(strict=True)
         if not self.root.is_dir():
             raise ManagementError("target path must be a directory")
@@ -268,7 +269,7 @@ class Target:
         """Registered local workspaces, not arbitrary disk search."""
         with self.lock:
             self.check_identity()
-            registry = workspace_registry(registry_dir)
+            registry = workspace_registry(registry_dir or self.registry_dir)
             matches = [x for x in registry["workspaces"]
                        if x.get("project_id") == self.project_id
                        and x.get("repo_url") == workspace_origin(self.initial["repo_url"])]
@@ -284,7 +285,7 @@ class Target:
         """
         with self.lock:
             self.check_identity()
-            data = workspace_registry(registry_dir)
+            data = workspace_registry(registry_dir or self.registry_dir)
             candidates = [x for x in data["workspaces"]
                           if x.get("project_id") == self.project_id
                           and x.get("repo_url") == workspace_origin(self.initial["repo_url"])
@@ -443,7 +444,7 @@ class Target:
                 found = [x for x in record["receipts"] if x.get("id") == rid]
                 if len(found) != 1:
                     raise ManagementError("receipt must already be imported uniquely")
-                registry = workspace_registry()
+                registry = workspace_registry(self.registry_dir)
                 matches = [x for x in registry["workspaces"] if
                            x.get("workspace_id") == workspace_id
                            and x.get("project_id") == self.project_id
@@ -653,12 +654,14 @@ def main(argv=None):
     parser.add_argument("--target", type=Path, action="append", required=True,
                         help="Local Git checkout containing .project-control/management.json; repeat for more projects")
     parser.add_argument("--port", type=int, default=8791)
+    parser.add_argument("--registry-dir", type=Path,
+                        help="Optional user-authorized durable local workspace registry")
     options = parser.parse_args(argv)
     try:
         found = {}
         roots = set()
         for directory in options.target:
-            target = Target(directory)
+            target = Target(directory, registry_dir=options.registry_dir)
             if target.project_id in found or str(target.root) in roots:
                 raise ManagementError("duplicate project ID or directory")
             found[target.project_id] = target
