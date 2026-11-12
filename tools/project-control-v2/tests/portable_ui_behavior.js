@@ -17,6 +17,13 @@ assert.match(vm.runInContext("overview()",context),/Generic Battery Research/);
 assert.match(vm.runInContext("deliverables()",context),/First evidence/);
 assert.match(vm.runInContext("work()",context),/Measure signals/);
 assert.match(vm.runInContext("handoff()",context),/PROJECT_START_HERE.md/);
+assert.match(vm.runInContext("requirements()",context),/需求与依据/);
+assert.match(vm.runInContext("plans()",context),/计划与依赖/);
+assert.match(vm.runInContext("changes()",context),/变更与阶段审查/);
+assert.match(vm.runInContext("workspaceView()",context),/本地工作区/);
+assert.equal(vm.runInContext("typeof definitions.create_plan",context),"object");
+assert.equal(vm.runInContext("typeof definitions.assess_change",context),"object");
+
 assert.doesNotMatch(vm.runInContext("handoff()",context),/唯一已授权任务已存在/);
 context.fixture=two;vm.runInContext("model=fixture",context);
 assert.match(vm.runInContext("overview()",context),/Laboratory Metrology/);
