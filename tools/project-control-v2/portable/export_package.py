@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Export only the self-contained Project Control portable manager.
 
-Avoids copying AutoTest demonstration state, old UI, .git, caches and local logs.
+Avoids copying any pilot-project state, old UI, .git, caches and local logs.
 Never overwrites any existing destination. No network or Git writes.
 """
 from __future__ import annotations
