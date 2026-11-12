@@ -99,7 +99,7 @@
    <Grid.ColumnDefinitions>
     <ColumnDefinition Width="*" MinWidth="495"/>
     <ColumnDefinition Width="8"/>
-    <ColumnDefinition Width="300" MinWidth="260" MaxWidth="410"/>
+    <ColumnDefinition Width="350" MinWidth="310" MaxWidth="455"/>
    </Grid.ColumnDefinitions>
 
    <!-- Editorial center dominates: real hierarchical test steps, no unused giant canvas. -->
