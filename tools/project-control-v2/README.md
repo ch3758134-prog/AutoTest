@@ -51,3 +51,9 @@ python tools/project-control-v2/portable/export_package.py --out ProjectControl.
 `portable/context_workflow.py` 允许 AI 的证据评价通过工作台受控导入 `management.json.context_reviews`（保留历史/校验摘要/版本）；补全提案经审查可关联到 `management.work` 中的 `PROPOSED` 工作，准确保留来源评价 ID、补全 action ID，且 `execution_authorized=false`。本地 CAS 检查和审批/执行权限保持独立，旧的离散候选 JSON 不会自动获得批准或迁移。参见 `portable/WEB_WORKSPACE.md`。
 
 新增 `tests/test_context_workflow.py`，需在真实发行包环境执行回归及 Windows UI 试验；本次 GitHub 修改本身不等于单测已通过。
+
+## 4.6 候选｜成果提交与负责人审阅
+
+本轮真实 AutoTest 管理 AI 试验发现，过去缺少“完整成果正文向负责人展示→明确决定→候选发布”的受控环节；AI 曾直接写 GitHub Issue 并称已交付。新增 [portable/DELIVERY_REVIEW_PROTOCOL.md](portable/DELIVERY_REVIEW_PROTOCOL.md) 和 `portable/delivery_review.py`，用独立本地私有审阅区及两个不同令牌管理全文、差异、范围和准确版本。
+
+**重要**：正式研究/设计/需求批准与仅允许候审公开仍独立。源码保存在本分支/待审 PR，不自动合入 main。详见单独审查报告；GitHub 直接宽权限、Windows 完整端到端、正式人类身份认证仍不能仅靠本地令牌实现。
