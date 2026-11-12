@@ -23,7 +23,7 @@ def import_file(name, file):
 
 init = import_file("portable_receipt_init", HERE / "portable/project_init.py")
 server = import_file("portable_receipt_server", HERE / "portable/web_server.py")
-proof = import_file("portable_receipt_evidence", HERE / "portable/receipt_evidence.py")
+import receipt_evidence as proof
 
 
 def git(root, *args):
