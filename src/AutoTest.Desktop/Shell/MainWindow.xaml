@@ -285,7 +285,7 @@
                     VerticalAlignment="Center" FontSize="11" Margin="13,0,9,0"/>
                 <TabControl x:Name="EvidenceTabs" Visibility="Collapsed"
                     Background="White" BorderThickness="0" TabStripPlacement="Top">
-                    <TabItem Header="CAN TRACE">
+                    <TabItem Header="CAN 接收记录">
                         <DataGrid x:Name="CanTraceGrid" AutoGenerateColumns="True" IsReadOnly="True"
                             CanUserAddRows="False" RowHeaderWidth="0"/>
                     </TabItem>
@@ -305,7 +305,7 @@
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="#56708B"
                     FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="700"/>
-                <TextBlock Text="R1 · TEST 为主 · 真实硬件状态和执行事实独立记录" FontSize="11"
+                <TextBlock Text="实际设备状态与测试执行结果分别记录；连接状态不代表 ECU 通过测试" FontSize="11"
                     Foreground="#345976"/>
             </DockPanel>
         </Border>
