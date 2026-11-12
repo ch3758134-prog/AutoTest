@@ -14,7 +14,8 @@ from receipt_evidence import assess as assess_receipt, verify_test_logs, Receipt
 from remote_sync import inspect as inspect_remote, SyncError
 from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS, KINDS as GOVERNANCE_FIELDS
 from module_control import (add_module, assign_work as assign_module_work,
-                            defined_modules, local_source_snapshot, ModuleError)
+                            defined_modules, local_source_snapshot, assess_candidate_paths,
+                            ModuleError)
 from workspace_manager import read_registry as workspace_registry, inspect_one as inspect_workspace, canonical as workspace_origin
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -219,6 +220,32 @@ class Target:
                                "registered_modules": [], "git_head": self.head_or_none(),
                                "unowned_working_changes": [],
                                "note": "Register module responsibility before reporting module code state."}
+            code_status["candidates"] = []
+            for receipt in management["receipts"]:
+                if not receipt.get("changed_paths") or not management["modules"]:
+                    continue
+                task = next((item for item in tasks.get("tasks", [])
+                             if item.get("id") == receipt.get("task_id")), None)
+                task_module = task.get("module_id") if task else None
+                try:
+                    boundary = assess_candidate_paths(management,
+                                                      receipt["changed_paths"], task_module)
+                except ModuleError:
+                    continue
+                code_status["candidates"].append({
+                    "task_id": receipt.get("task_id"),
+                    "receipt_id": receipt.get("id"),
+                    "candidate_head": receipt.get("candidate_head"),
+                    "git_assessment": receipt.get("git_assessment"),
+                    "review_status": receipt.get("review_status"),
+                    "boundary_assessment": boundary["result"],
+                    "touched_modules": boundary["affected_module_ids"],
+                    "cross_module_paths": boundary["cross_module_paths"],
+                    "unowned_paths": boundary["unowned_paths"],
+                    "interface_changes": boundary["interface_changes"],
+                    "remote_pr_verified": False, "ci_verified": False,
+                    "integrated": "UNKNOWN",
+                })
             return {
                 "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
