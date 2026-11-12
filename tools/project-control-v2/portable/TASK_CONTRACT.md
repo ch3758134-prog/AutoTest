@@ -2,6 +2,10 @@
 
 目标仓库初始化后的 `.project-control/tasks.json` 初始为空；**不等于任务已批准**。
 
+## 资料发现不是实施授权
+
+项目接管调查产生的 `SOURCES_FOUND`、`ASSESSED`、`GAP_CONFIRMED`、`SUPPORTED_CANDIDATE` 和补全提案均不是正式设计批准或任务执行许可。资料不完整时可组织具备明确责任的研究/需求/设计工作，但仍按其工作性质取得必要许可；不得仅因 `context_assessment.py` 返回 `structurally_valid` 就发布 Codex READY。历史资料的批准状态必须独立核对当前适用性与真实审批来源。
+
 ## 就绪任务示例（仅结构示例，不得原样发布为 READY）
 
 ```json
