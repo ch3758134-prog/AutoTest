@@ -159,6 +159,15 @@ class ContextWorkflowTests(unittest.TestCase):
         with self.assertRaises(m.ContextWorkflowError):
             m.check_collections(r)
 
+    def test_work_link_must_reference_actual_originating_action(self):
+        r=record()
+        first=submit(r,assessment())
+        link(r,first["review_id"])
+        r["context_action_links"][0]["action_id"]="made-up-action"
+        r["work"][0]["context_action_id"]="made-up-action"
+        with self.assertRaises(m.ContextWorkflowError):
+            m.check_collections(r)
+
     def test_no_update_of_old_project_state(self):
         r=record()
         original=copy.deepcopy(r)
