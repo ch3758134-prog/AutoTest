@@ -254,6 +254,44 @@ class GitHubBridgeTests(unittest.TestCase):
             bridge.publish_plan(self.client,plan,"https://github.com/acme/demo.git",apply=True)
         self.assertEqual(self.client.writes,[])
 
+    def test_exact_commit_check_runs_are_observed_not_accepted(self):
+        project={"project_id":"demo","repo_url":"https://github.com/acme/demo.git"}
+        task={"id":"IMPL-001","project_id":"demo",
+              "source":{"repo_url":project["repo_url"],"branch":"main",
+                        "work_branch":"feature/impl"}}
+        receipt={"project_id":"demo","task_id":"IMPL-001","repo_url":project["repo_url"],
+                 "candidate_head":self.client.pr_head,"source_head":"a"*40,
+                 "scope_status":"SCOPE_OK","workspace_clean":True,
+                 "changed_paths":["src/feature.py"]}
+        self.client.check_runs=lambda parts,sha:[
+            {"name":"unit tests","status":"completed","conclusion":"success","head_sha":sha}]
+        result=bridge.verify_remote_pr(self.client,project,task,receipt,9,include_ci=True)
+        self.assertEqual(result["ci_observation"],
+                         "ALL_OBSERVED_CHECK_RUNS_SUCCESS_NOT_FORMAL_CI_APPROVAL")
+        self.assertFalse(result["task_accepted"])
+        self.assertFalse(result["gate_approved"])
+        self.client.check_runs=lambda parts,sha:[
+            {"name":"unit tests","status":"in_progress","conclusion":None,"head_sha":sha}]
+        result=bridge.verify_remote_pr(self.client,project,task,receipt,9,include_ci=True)
+        self.assertEqual(result["ci_observation"],"CHECKS_PENDING")
+
+    def test_live_pr_head_change_during_ci_review_aborts_evidence(self):
+        project={"project_id":"demo","repo_url":"https://github.com/acme/demo.git"}
+        task={"id":"IMPL-001","project_id":"demo",
+              "source":{"repo_url":project["repo_url"],"branch":"main",
+                        "work_branch":"feature/impl"}}
+        receipt={"project_id":"demo","task_id":"IMPL-001","repo_url":project["repo_url"],
+                 "candidate_head":self.client.pr_head,"source_head":"a"*40,
+                 "scope_status":"SCOPE_OK","workspace_clean":True,
+                 "changed_paths":["src/feature.py"]}
+        def move_head(parts,sha):
+            self.client.pr_head="e"*40
+            return [{"name":"unit tests","status":"completed",
+                     "conclusion":"success","head_sha":sha}]
+        self.client.check_runs=move_head
+        with self.assertRaisesRegex(bridge.RemoteError,"changed while collecting"):
+            bridge.verify_remote_pr(self.client,project,task,receipt,9,include_ci=True)
+
     def test_actual_pr_files_match_receipt_before_review(self):
         project={"project_id":"demo","repo_url":"https://github.com/acme/demo.git"}
         task={"id":"IMPL-001","project_id":"demo",
