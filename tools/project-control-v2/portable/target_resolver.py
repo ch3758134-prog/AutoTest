@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import sys
 from urllib.parse import urlsplit
@@ -270,9 +271,48 @@ def verify(state, task, digest):
             "note": "Scope check does not approve results, merges or local cleanup."}
 
 
+def report_result(state, task, digest, project):
+    """Create an unreviewed local receipt without mutating governance files."""
+    checked = verify(state, task, digest)
+    if checked["status"] != "SCOPE_OK" or not checked["modified_paths"]:
+        raise TaskError("result has no scoped committed changes or is out of scope")
+    # A completion report cannot include dirty/untracked changes. Ignored material
+    # may remain and must NOT be considered safe for automatic directory deletion.
+    if git("status", "--porcelain", "--untracked-files=all"):
+        raise TaskError("uncommitted or untracked files remain; cannot report complete result")
+    evidence = {
+        "schema": "project-control-codex-result/1",
+        "receipt_id": "receipt-" + secrets.token_hex(8),
+        "project_id": project["project_id"],
+        "repo_url": project["repo_url"],
+        "task_id": task["id"],
+        "task_registry_sha256": digest,
+        "source_head": checked["start_head"],
+        "candidate_head": checked["current_head"],
+        "work_branch": state["branch"],
+        "changed_paths": checked["modified_paths"],
+        "scope_status": "SCOPE_OK",
+        "workspace_clean": True,
+        "test_evidence": [],
+        "result_status": "REPORTED_NOT_VERIFIED",
+        "ignored_files_not_covered_by_clean_check": True,
+        "issued_at": datetime.now(timezone.utc).isoformat(),
+    }
+    raw = git("rev-parse", "--git-path", "project-control/" + evidence["receipt_id"] + ".json")
+    path = Path(raw)
+    if not path.is_absolute():
+        path = ROOT / path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with os.fdopen(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600),
+                   "w", encoding="utf-8") as writer:
+        json.dump(evidence, writer, ensure_ascii=False, indent=2)
+        writer.write("\n")
+    return evidence
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Validate the target project's remote Codex task")
-    p.add_argument("action", choices=["select", "claim", "verify-scope"])
+    p.add_argument("action", choices=["select", "claim", "verify-scope", "report"])
     p.add_argument("--task")
     args = p.parse_args(argv)
     try:
@@ -284,6 +324,8 @@ def main(argv=None):
             result = {"task": task, "state": state, "registry_sha256": digest}
         elif args.action == "claim":
             result = claim(state, task, digest)
+        elif args.action == "report":
+            result = report_result(state, task, digest, project)
         else:
             result = verify(state, task, digest)
         print(json.dumps(result, ensure_ascii=False, indent=2))
