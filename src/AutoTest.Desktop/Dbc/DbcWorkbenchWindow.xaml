@@ -253,6 +253,10 @@
                          Margin="0,0,0,6"/>
               <TextBlock Text="{Binding SelectedSignal.Multiplexer,StringFormat='复用：{0}'}"
                          Margin="0,0,0,8"/>
+              <TextBlock Text="枚举值说明（VAL_）" Foreground="{StaticResource Subtle}"
+                         FontSize="11" Margin="0,9,0,6"/>
+              <TextBlock Text="{Binding SelectedValueDescriptions}" TextWrapping="Wrap"
+                         Margin="0,0,0,10"/>
               <Button Content="编辑信号参数…" Command="{Binding EditSignalCommand}"
                       HorizontalAlignment="Left" Margin="0,7,0,12"/>
               <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,13"/>

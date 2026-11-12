@@ -68,6 +68,18 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     public int AssetRevision => _session.AssetRevision;
     public string MessageCount => Messages.Count.ToString();
     public string SignalCount => SelectedMessage?.Message.Signals.Length.ToString() ?? "0";
+    public string SelectedValueDescriptions
+    {
+        get
+        {
+            if (SelectedMessage is null || SelectedSignal is null) return "未选择信号";
+            var table = _session.Document.ValueTables.FirstOrDefault(
+                t => t.MessageId == SelectedMessage.Message.Id && t.SignalName == SelectedSignal.Name);
+            return table is null ? "（无枚举值说明）"
+                : string.Join("、", table.Labels.OrderBy(x => x.Key)
+                    .Select(x => x.Key + " = " + x.Value));
+        }
+    }
     public string StateDescription => _session.Document.CanEdit
         ? "可编辑 · 只修改已支持的 DBC 字段"
         : "只读 · 存在不支持安全回写的 DBC 语法";
@@ -99,6 +111,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             var signalName = _selectedSignal?.Name;
             RefreshSignals(signalName);
             RaisePropertyChanged(nameof(SignalCount));
+            RaisePropertyChanged(nameof(SelectedValueDescriptions));
             RefreshCommands();
         }
     }
@@ -107,7 +120,11 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         get => _selectedSignal;
         set
         {
-            if (SetProperty(ref _selectedSignal, value)) RefreshCommands();
+            if (SetProperty(ref _selectedSignal, value))
+            {
+                RaisePropertyChanged(nameof(SelectedValueDescriptions));
+                RefreshCommands();
+            }
         }
     }
 
@@ -214,6 +231,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(AssetName));
         RaisePropertyChanged(nameof(FilePath));
         RaisePropertyChanged(nameof(AssetRevision));
+        RaisePropertyChanged(nameof(SelectedValueDescriptions));
         RaisePropertyChanged(nameof(CanEdit));
         RaisePropertyChanged(nameof(StateDescription));
         RaisePropertyChanged(nameof(UnsupportedDescription));
