@@ -2,6 +2,10 @@
 
 > 本文件属于交给 ChatGPT 网页端管理 AI 的**独立项目管理系统文件夹**，不是被管理项目自身的数据。通用多项目管理工作台见 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)。
 
+## 4.5 项目知识记录可进入受控工程管理工作
+
+在完成来源审查后，管理 AI 可以把 `project-control-context-assessment/2` 候选评价受控写入**目标项目**的 `management.json.context_reviews`，使用原有项目修订号校验与审计，保留历史。补全行动可关联已有交付并创建 `PROPOSED` 研发工作，但不代表授权、任务 READY 或 GitHub 远端已同步。具体规则见 [portable/context_workflow.py](portable/context_workflow.py) 和 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)；现有离散 `context_assessment.json` 仅作为兼容只读来源。
+
 ## 当前关键文件：先分清资料存在、当前有效与需要补全
 
 开始项目接管时先读 [portable/EVIDENCE_AND_REMEDIATION.md](portable/EVIDENCE_AND_REMEDIATION.md)：一次 GitHub 关键词搜索无结果不能说明项目缺少产品定义；找到历史设计和批准也不能默认当前有效。协调 AI 对确实缺少的必要工程依据负责组织补写候选、审查和决定，不得仅报告 UNKNOWN 后放弃。新证据评估器为 [portable/context_assessment.py](portable/context_assessment.py)；旧 `context_discovery.py` 与 `COVERED` 状态只供历史阅读，不能用于实际接管的充分性判定。
