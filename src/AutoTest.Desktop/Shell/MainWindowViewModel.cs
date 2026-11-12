@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows.Controls;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Dbc;
@@ -18,8 +19,12 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly NewProjectDialogService _newDialog;
     private readonly ProjectFileDialogService _fileDialogs;
-    private readonly DbcWorkbenchWindowService _dbcWindows;
-    private readonly TestEditorWindowService _testWindows;
+    private readonly DbcEditorDialogs _dbcDialogs;
+    private readonly TestEditorDialogs _testDialogs;
+    private UserControl? _activeEditorView;
+    private Func<bool>? _confirmEditorClose;
+    private string? _activeEditorKey;
+    private string _activeEditorTitle = "";
     private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
@@ -27,14 +32,14 @@ public sealed class MainWindowViewModel : BindableBase
 
     public MainWindowViewModel(
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
-        ProjectFileDialogService fileDialogs, DbcWorkbenchWindowService dbcWindows,
-        TestEditorWindowService testWindows, RecentProjectStore recentProjects)
+        ProjectFileDialogService fileDialogs, DbcEditorDialogs dbcDialogs,
+        TestEditorDialogs testDialogs, RecentProjectStore recentProjects)
     {
         _workspace = workspace;
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
-        _dbcWindows = dbcWindows;
-        _testWindows = testWindows;
+        _dbcDialogs = dbcDialogs;
+        _testDialogs = testDialogs;
         _recentProjects = recentProjects;
         NewProjectCommand = new DelegateCommand(OpenNewProject, () => !IsBusy);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
@@ -50,6 +55,7 @@ public sealed class MainWindowViewModel : BindableBase
             () => _selectedResource?.Asset is not null && !IsBusy);
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
+        CloseEditorCommand = new DelegateCommand(CloseActiveEditor, () => HasActiveEditor && !IsBusy);
         _workspace.CurrentChanged += (_, _) =>
         {
             RaisePropertyChanged(nameof(HasProject));
@@ -75,6 +81,43 @@ public sealed class MainWindowViewModel : BindableBase
     }
 
     public ObservableCollection<ResourceTreeNode> ResourceNodes { get; } = new();
+    public UserControl? ActiveEditorView
+    {
+        get => _activeEditorView;
+        private set
+        {
+            if (!SetProperty(ref _activeEditorView, value)) return;
+            RaisePropertyChanged(nameof(HasActiveEditor));
+            CloseEditorCommand?.RaiseCanExecuteChanged();
+        }
+    }
+    public bool HasActiveEditor => ActiveEditorView is not null;
+    public string ActiveEditorTitle
+    {
+        get => _activeEditorTitle;
+        private set => SetProperty(ref _activeEditorTitle, value);
+    }
+    public bool ConfirmCloseActiveEditor() => _confirmEditorClose?.Invoke() ?? true;
+    private bool IsAlreadyOpen(string key) => HasActiveEditor && _activeEditorKey == key;
+    private void ActivateEditor(string key, UserControl editor, string title, Func<bool> confirmClose)
+    {
+        _activeEditorKey = key;
+        _confirmEditorClose = confirmClose;
+        ActiveEditorTitle = title;
+        ActiveEditorView = editor;
+    }
+    private void CloseActiveEditor()
+    {
+        if (!ConfirmCloseActiveEditor()) return;
+        ClearEditor();
+    }
+    private void ClearEditor()
+    {
+        ActiveEditorView = null;
+        ActiveEditorTitle = "";
+        _activeEditorKey = null;
+        _confirmEditorClose = null;
+    }
     public bool HasProject => _workspace.Current is not null;
     public string CurrentProjectName => _workspace.Current?.Definition.Name ?? "未打开工程";
     public string CurrentProjectPath => _workspace.Current?.ManifestPath ?? "";
@@ -113,6 +156,7 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenTestProgramCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
     public DelegateCommand RemoveReferenceCommand { get; }
+    public DelegateCommand CloseEditorCommand { get; }
 
     public async Task RestoreLastProjectAsync()
     {
@@ -238,6 +282,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void OpenNewProject()
     {
         if (IsBusy) return;
+        if (!ConfirmCloseActiveEditor()) return;
         IsBusy = true;
         try { _newDialog.ShowDialog(); }
         catch (Exception e) { StatusMessage = "新建工程窗口打开失败：" + e.Message; }
@@ -247,9 +292,10 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenProjectAsync()
     {
         var path = _fileDialogs.PickProjectManifest();
-        if (path is null) return;
+        if (path is null || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
+            ClearEditor();
             await _workspace.OpenAsync(path);
             StatusMessage = "工程已打开：" + path;
         });
@@ -259,13 +305,15 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (!HasProject) return;
         var name = _fileDialogs.AskResourceName("新建测试程序", "新建测试程序");
-        if (name is null) return;
+        if (name is null || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
             var entry = await _workspace.CreateTestProgramAsync(name);
             SelectAsset(entry.Id);
             var session = await _workspace.OpenTestEditorAsync(entry.Id);
-            _testWindows.Show(session);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, session);
+            ActivateEditor("test|" + entry.Id, new TestEditorView(editor),
+                "测试程序 · " + entry.Name, editor.ConfirmClose);
             StatusMessage = "测试程序已创建并打开：" + entry.Name;
         });
     }
@@ -274,13 +322,15 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (!HasProject) return;
         var path = _fileDialogs.PickDbcFile(_workspace.Current?.RootDirectory);
-        if (path is null) return;
+        if (path is null || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
             var entry = await _workspace.ImportDbcAsync(path);
             SelectAsset(entry.Id);
             var opened = await _workspace.OpenDbcEditorAsync(entry.Id);
-            _dbcWindows.Show(opened);
+            var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
+            ActivateEditor("dbc|" + entry.Id, new DbcWorkbenchView(editor),
+                "DBC · " + entry.Name, editor.ConfirmClose);
             StatusMessage = "DBC 已导入并打开：" + entry.Name;
         });
     }
@@ -288,10 +338,13 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenSelectedTestProgramAsync()
     {
         if (!SelectedResourceIsTestProgram || _selectedResource?.Asset is not { } asset) return;
+        if (IsAlreadyOpen("test|" + asset.Id) || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
             var session = await _workspace.OpenTestEditorAsync(asset.Id);
-            _testWindows.Show(session);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, session);
+            ActivateEditor("test|" + asset.Id, new TestEditorView(editor),
+                "测试程序 · " + asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试程序：" + asset.Name;
         });
     }
@@ -299,10 +352,13 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenSelectedDbcAsync()
     {
         if (!SelectedResourceIsDbc || _selectedResource?.Asset is not { } asset) return;
+        if (IsAlreadyOpen("dbc|" + asset.Id) || !ConfirmCloseActiveEditor()) return;
         await RunOperationAsync(async () =>
         {
             var opened = await _workspace.OpenDbcEditorAsync(asset.Id);
-            _dbcWindows.Show(opened);
+            var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
+            ActivateEditor("dbc|" + asset.Id, new DbcWorkbenchView(editor),
+                "DBC · " + asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开 DBC：" + asset.Name;
         });
     }
@@ -324,10 +380,15 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task RemoveReferenceAsync()
     {
         var asset = _selectedResource?.Asset;
-        if (asset is null || !_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
+        if (asset is null) return;
+        var editorUsesAsset = _activeEditorKey is not null &&
+            _activeEditorKey.EndsWith("|" + asset.Id, StringComparison.Ordinal);
+        if (editorUsesAsset && !ConfirmCloseActiveEditor()) return;
+        if (!_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
         await RunOperationAsync(async () =>
         {
             await _workspace.RemoveAssetReferenceAsync(asset.Id);
+            if (editorUsesAsset) ClearEditor();
             SelectResource(null);
             StatusMessage = "已移除工程资源引用，磁盘原文件保留：" + asset.Name;
         });
@@ -365,5 +426,6 @@ public sealed class MainWindowViewModel : BindableBase
         OpenTestProgramCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();
         RemoveReferenceCommand?.RaiseCanExecuteChanged();
+        CloseEditorCommand?.RaiseCanExecuteChanged();
     }
 }

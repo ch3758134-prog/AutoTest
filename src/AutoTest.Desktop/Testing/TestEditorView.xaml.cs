@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -6,21 +5,17 @@ using System.Windows.Media;
 
 namespace AutoTest.Desktop.Testing;
 
-public partial class TestEditorWindow : Window
+public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
 
-    public TestEditorWindow(TestEditorViewModel viewModel)
+    public TestEditorView(TestEditorViewModel viewModel)
     {
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
     }
 
-    private void Window_Closing(object? sender, CancelEventArgs e)
-    {
-        if (!_viewModel.ConfirmClose()) e.Cancel = true;
-    }
 
     private static T? FindAncestor<T>(DependencyObject? from) where T : DependencyObject
     {

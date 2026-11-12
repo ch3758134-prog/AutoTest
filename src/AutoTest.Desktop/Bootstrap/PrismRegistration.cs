@@ -15,9 +15,7 @@ public static class PrismRegistration
         registry.RegisterSingleton<NewProjectDialogService>();
         registry.RegisterSingleton<ProjectFileDialogService>();
         registry.RegisterSingleton<DbcEditorDialogs>();
-        registry.RegisterSingleton<DbcWorkbenchWindowService>();
         registry.RegisterSingleton<TestEditorDialogs>();
-        registry.RegisterSingleton<TestEditorWindowService>();
         registry.Register<MainWindowViewModel>();
         registry.Register<MainWindow>();
     }

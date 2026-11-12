@@ -1,13 +1,10 @@
-<Window x:Class="AutoTest.Desktop.Dbc.DbcWorkbenchWindow"
+<UserControl x:Class="AutoTest.Desktop.Dbc.DbcWorkbenchView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="AutoTest · DBC 工作台" Width="1360" Height="800"
- MinWidth="1100" MinHeight="640" WindowStartupLocation="CenterOwner"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
  FontFamily="{StaticResource UiFont}" FontSize="13"
- UseLayoutRounding="True" SnapsToDevicePixels="True"
- Closing="Window_Closing">
-  <Window.Resources>
+ UseLayoutRounding="True" SnapsToDevicePixels="True">
+  <UserControl.Resources>
     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"
                      Color="{StaticResource SelectedSurfaceColor}"/>
     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}"
@@ -61,11 +58,11 @@
         </Trigger>
       </Style.Triggers>
     </Style>
-  </Window.Resources>
-  <Window.InputBindings>
+  </UserControl.Resources>
+  <UserControl.InputBindings>
     <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
     <KeyBinding Key="F5" Command="{Binding ReloadCommand}"/>
-  </Window.InputBindings>
+  </UserControl.InputBindings>
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="69"/>
@@ -280,4 +277,4 @@
       </DockPanel>
     </Border>
   </Grid>
-</Window>
+</UserControl>

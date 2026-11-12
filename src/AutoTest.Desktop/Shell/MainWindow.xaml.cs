@@ -16,6 +16,10 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
+        Closing += (_, e) =>
+        {
+            if (!_viewModel.ConfirmCloseActiveEditor()) e.Cancel = true;
+        };
     }
 
     private void ResourceTree_SelectedItemChanged(

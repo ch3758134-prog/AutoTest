@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -6,21 +5,17 @@ using System.Windows.Media;
 
 namespace AutoTest.Desktop.Dbc;
 
-public partial class DbcWorkbenchWindow : Window
+public partial class DbcWorkbenchView : UserControl
 {
     private readonly DbcWorkbenchViewModel _viewModel;
 
-    public DbcWorkbenchWindow(DbcWorkbenchViewModel viewModel)
+    public DbcWorkbenchView(DbcWorkbenchViewModel viewModel)
     {
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
     }
 
-    private void Window_Closing(object? sender, CancelEventArgs e)
-    {
-        if (!_viewModel.ConfirmClose()) e.Cancel = true;
-    }
 
     private static T? FindAncestor<T>(DependencyObject? source) where T : DependencyObject
     {

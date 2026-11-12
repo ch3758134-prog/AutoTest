@@ -1,19 +1,16 @@
-<Window x:Class="AutoTest.Desktop.Testing.TestEditorWindow"
+<UserControl x:Class="AutoTest.Desktop.Testing.TestEditorView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="AutoTest · 测试程序编辑器" Width="1330" Height="810"
- MinWidth="1090" MinHeight="630" WindowStartupLocation="CenterOwner"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
  FontFamily="{StaticResource UiFont}" FontSize="13"
- SnapsToDevicePixels="True" UseLayoutRounding="True"
- Closing="Window_Closing">
-  <Window.InputBindings>
+ SnapsToDevicePixels="True" UseLayoutRounding="True">
+  <UserControl.InputBindings>
     <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
     <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
     <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}"/>
     <KeyBinding Key="F2" Command="{Binding EditParametersCommand}"/>
     <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
-  </Window.InputBindings>
+  </UserControl.InputBindings>
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="69"/>
@@ -211,4 +208,4 @@
       </DockPanel>
     </Border>
   </Grid>
-</Window>
+</UserControl>
