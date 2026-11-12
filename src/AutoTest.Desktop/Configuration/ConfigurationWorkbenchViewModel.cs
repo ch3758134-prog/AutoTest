@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.ControllerConfig;
@@ -458,13 +459,13 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 {
                     var recipes = scan.Recipes.ToList();
                     var test = ResolvePinnedAsset(F("test"), ProjectWorkspaceService.TestProgramKind);
-                    var flash = ResolvePinnedAsset(F("flash"), ProjectWorkspaceService.FirmwareKind);
+                    var firmware = ResolvePinnedAsset(F("flash"), ProjectWorkspaceService.FirmwareKind);
                     var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
                     recipes[ParseIndex(key)] = new ScanRecipeDraft(F("id"), F("model"),
-                        F("customer"), test.Id, flash.Id, dbc.Id,
+                        F("customer"), test.Id, firmware.Id, dbc.Id,
                         Yes(F("requiresFlash")), Yes(F("published")),
                         test.Revision, test.Sha256,
-                        flash.Revision, flash.Sha256, dbc.Revision, dbc.Sha256);
+                        firmware.Revision, firmware.Sha256, dbc.Revision, dbc.Sha256);
                     next = scan with { Recipes = recipes };
                 }
             }
