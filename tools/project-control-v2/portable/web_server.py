@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 from contextlib import contextmanager
 import hashlib
-from receipt_evidence import assess as assess_receipt, ReceiptError
+from receipt_evidence import assess as assess_receipt, verify_test_logs, ReceiptError
 from remote_sync import inspect as inspect_remote, SyncError
 from governance import apply as apply_governance, ACTIONS as GOVERNANCE_ACTIONS, KINDS as GOVERNANCE_FIELDS
 from workspace_manager import read_registry as workspace_registry, inspect_one as inspect_workspace, canonical as workspace_origin
@@ -327,6 +327,14 @@ class Target:
                                 "reason": "导入已登记工作区的 Codex 候选结果",
                                 "receipt": report
                             })
+                            if report.get("test_evidence"):
+                                latest = load_json(self.data_path)
+                                self.apply("verify_log_evidence", {
+                                    "expected_revision": latest["revision"],
+                                    "reason": "复核已登记工作区中的原始日志 SHA-256",
+                                    "id": rid,
+                                    "workspace_id": registered["workspace_id"]
+                                })
                             imported.append(rid)
                         except (OSError, ValueError, TypeError, ManagementError) as err:
                             held.append({"workspace_id": registered["workspace_id"],
@@ -357,7 +365,8 @@ class Target:
                 raise ManagementError("stale revision; refresh and review current changes")
             record.setdefault("receipts", [])
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
-                             "create_milestone", "record_receipt", "review_receipt"} | GOVERNANCE_ACTIONS
+                             "create_milestone", "record_receipt", "review_receipt",
+                             "verify_log_evidence"} | GOVERNANCE_ACTIONS
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
@@ -428,6 +437,43 @@ class Target:
                 receipt["recorded_at"] = stamp()
                 receipt["import_reason"] = reason
                 record["receipts"].append(receipt)
+            elif name == "verify_log_evidence":
+                rid = checked_id(payload.get("id"), "receipt ID")
+                workspace_id = checked_id(payload.get("workspace_id"), "workspace ID")
+                found = [x for x in record["receipts"] if x.get("id") == rid]
+                if len(found) != 1:
+                    raise ManagementError("receipt must already be imported uniquely")
+                registry = workspace_registry()
+                matches = [x for x in registry["workspaces"] if
+                           x.get("workspace_id") == workspace_id
+                           and x.get("project_id") == self.project_id
+                           and x.get("repo_url") == workspace_origin(self.initial["repo_url"])
+                           and x.get("state") == "ACTIVE"]
+                if len(matches) != 1:
+                    raise ManagementError("receipt worktree is not registered as active")
+                source_root = Path(matches[0]["canonical_path"])
+                observed = inspect_workspace(matches[0])
+                if ("WRONG_REPOSITORY" in observed["issues"]
+                        or "MISSING_OR_UNSAFE_PATH" in observed["issues"]):
+                    raise ManagementError("registered receipt workspace cannot be trusted")
+                sub = git(source_root, "rev-parse", "--git-path", "project-control")
+                folder = Path(sub)
+                if not folder.is_absolute():
+                    folder = source_root / folder
+                file = folder / (rid + ".json")
+                if file.is_symlink() or not file.is_file() or file.stat().st_size > 65536:
+                    raise ManagementError("original Codex receipt unavailable")
+                original = json.loads(file.read_text(encoding="utf-8"))
+                entry = found[0]
+                if (original.get("project_id") != self.project_id or
+                        original.get("candidate_head") != entry["candidate_head"] or
+                        original.get("test_evidence") != entry.get("test_evidence")):
+                    raise ManagementError("local receipt differs from recorded evidence")
+                status = verify_test_logs(source_root, original)
+                entry["test_assessment"] = status
+                entry["log_verified_at"] = stamp()
+                entry["log_verified_workspace_id"] = workspace_id
+                # Verifying the raw log SHA is NOT a test/CI/Gate approval.
             elif name == "review_receipt":
                 rid = checked_id(payload.get("id"), "receipt id")
                 found = [x for x in record["receipts"] if x.get("id") == rid]
