@@ -56,8 +56,10 @@ def build_zip(destination, root=ROOT):
     checksums = {}
     # Zip is a convenient single artifact to upload to ChatGPT; contents are
     # deterministic except the original source files changing.
+    created = False
     try:
         with destination.open("xb") as stream:
+            created = True
             with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED,
                                  compresslevel=8) as archive:
                 for name, source in entries:
@@ -73,8 +75,9 @@ def build_zip(destination, root=ROOT):
                 zi.compress_type = zipfile.ZIP_DEFLATED
                 archive.writestr(zi, proof.encode("utf-8"))
     except BaseException:
-        # Only remove a file just opened by this invocation; never remove an existing one.
-        destination.unlink(missing_ok=True)
+        # Only remove a file successfully created by this invocation.
+        if created:
+            destination.unlink(missing_ok=True)
         raise
     return {"status": "PORTABLE_PACKAGE_EXPORTED", "archive": str(destination),
             "files": len(entries), "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
