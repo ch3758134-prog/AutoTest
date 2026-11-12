@@ -91,7 +91,7 @@ public sealed class R1RealKeySimTestPlanTests
         Assert.Equal(data.Controller.ToString("D"), applied.Parameters["controllerId"]);
         Assert.Equal(data.Active.ToString("D"), applied.Parameters["stateId"]);
         Assert.Equal(data.Profile.Revision.ToString(), applied.Parameters["revision"]);
-        Assert.Contains("已绑定", vm.Status);
+        Assert.Contains("已关联控制器按键状态", vm.Status);
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public sealed class R1RealKeySimTestPlanTests
         vm.SelectedControllerChoice = state;
         current = current with { Revision = current.Revision + 1 };
         vm.ApplyControllerState();
-        Assert.Contains("状态已经变化", vm.Status);
+        Assert.Contains("控制器按键配置已经变化", vm.Status);
         Assert.Equal("", vm.Snapshot.Phases[LabPhase.Test][0].Parameters["controllerId"]);
     }
 
