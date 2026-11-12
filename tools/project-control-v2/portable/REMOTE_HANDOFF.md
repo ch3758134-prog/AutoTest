@@ -61,7 +61,7 @@ Codex 验证目录为空、仓库 origin、分支和来源 SHA；使用 `python 
 
 1. 核对 PR URL/编号与目标仓库一致、PR 源仓库/工作分支/目标分支、`head_sha` 与 Codex 回执的 `candidate_head` 完全一致，且 PR 尚未合并/关闭。
 2. 利用 `portable/pr_evidence.py` 的规则对这些元数据做一致性检查；它只判断**提供的 PR 信息**是否相互匹配，若未通过连接真实获取，则不能宣布远程核对成功。
-3. 检查**准确 head_sha** 的 GitHub PR 文件清单/补丁、必要 CI 运行及日志；CI 成功只能证明对应检查已成功，不等于目标 ECU/硬件/项目成果已真实验收。任何 PR HEAD 变化都要求重新比对及重审。
+3. 检查**准确 head_sha** 的 GitHub PR 文件清单/补丁、必要 CI 运行及日志；可调用 `github_bridge.verify_remote_pr(..., include_ci=True)` 从 GitHub 读取与该 SHA 一致的 check-runs，区分未发现、运行中、失败和所见检查全部成功。**这仍不证明必需检查的完整清单、审批或产品验收**。再次读取 PR，任何 HEAD 变化都中止证据审查。
 4. 区分 `REPORTED`、`PR_METADATA_MATCHED`、`SUBMITTED_FOR_REVIEW`、`CODE_SCOPE_REVIEWED`、`CI_CHECKED`、`ACCEPTED` 和 `MERGED`。`portable/task_submission.py` 已能校验一份真实来源的 Codex 回执与最新 PR 信息，在本地目标仓库生成只读的 `tasks.json` 提交审核候选（包含原文件 blob SHA，供 GitHub CAS 写入）。这**只标记已提交待审**，并不会接受测试或 Gate。
 5. 变更和决定应回写**目标项目** `.project-control` 管理记录，并优先使用目标仓库最新 HEAD 的非强制 Git 引用条件和文件 blob 校验；不可把一个工作项自报完成视为产品 Gate 通过。
 
