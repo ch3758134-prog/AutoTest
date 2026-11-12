@@ -10,6 +10,7 @@
     <KeyBinding Key="F10" Command="{Binding StepCommand}"/>
   </UserControl.InputBindings>
   <UserControl.Resources>
+    <local:LabStepTypeDisplayConverter x:Key="StepTypeText"/>
     <HierarchicalDataTemplate DataType="{x:Type local:LabTreeRow}" ItemsSource="{Binding Children}">
       <TextBlock Text="{Binding Caption}" FontSize="12.5" Margin="3,4"/>
     </HierarchicalDataTemplate>
@@ -79,7 +80,11 @@
             <WrapPanel>
               <TextBlock Text="新步骤类型" VerticalAlignment="Center" Margin="0,0,7,0"/>
               <ComboBox Width="180" Margin="0,0,8,0" ItemsSource="{Binding StepTypes}"
-                SelectedItem="{Binding SelectedInsertType,Mode=TwoWay}"/>
+                SelectedItem="{Binding SelectedInsertType,Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate><TextBlock Text="{Binding Converter={StaticResource StepTypeText}}"/></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
               <Button Content="＋ 插入步骤" Style="{StaticResource AtPrimaryButton}" Command="{Binding InsertCommand}"/>
               <Menu Background="Transparent" VerticalAlignment="Center">
                 <MenuItem Header="步骤操作 ▾">
