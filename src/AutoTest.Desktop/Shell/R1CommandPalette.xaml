@@ -17,7 +17,7 @@
    <DockPanel>
     <Button Content="✕" DockPanel.Dock="Right" Click="Close_Click" FontSize="15"
             Foreground="#637A90" Background="Transparent" BorderThickness="0" Padding="6,0"/>
-    <TextBlock Text="COMMAND PALETTE / 命令搜索" FontWeight="SemiBold" FontSize="14" Margin="0,4,0,12"/>
+    <TextBlock Text="查找命令与工具" FontWeight="SemiBold" FontSize="14" Margin="0,4,0,12"/>
    </DockPanel>
    <TextBox x:Name="Query" Grid.Row="1" MinHeight="38" Padding="10,8"
             Foreground="#203249" Background="#F5F7FA" BorderBrush="#D6E1EC"
@@ -40,7 +40,7 @@
    </ListBox>
    <DockPanel Grid.Row="3" Margin="0,12,0,0">
     <TextBlock Text="↑↓ 选择   Enter 打开   Esc 关闭" Foreground="#637A90" FontSize="11"/>
-    <TextBlock DockPanel.Dock="Right" Text="AutoTest / R1" Foreground="#65798F" FontSize="11"/>
+    <TextBlock DockPanel.Dock="Right" Text="Ctrl+K 打开" Foreground="#65798F" FontSize="11"/>
    </DockPanel>
   </Grid>
  </Border>
