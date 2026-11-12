@@ -22,17 +22,17 @@
   <Grid Margin="12">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/><RowDefinition Height="180"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/><RowDefinition Height="150"/><RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <DockPanel Grid.Row="0" LastChildFill="True" Margin="3,0,3,9">
-      <TextBlock DockPanel.Dock="Left" Text="TEST 程序编辑" Style="{StaticResource AtPageTitle}" Margin="0,0,18,0"/>
+      <TextBlock DockPanel.Dock="Left" Text="测试程序编辑" Style="{StaticResource AtPageTitle}" Margin="0,0,18,0"/>
       <Border DockPanel.Dock="Right" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1"
               CornerRadius="5" Padding="10,5">
         <TextBlock Text="{Binding SourceLabel}" Foreground="{DynamicResource StudioMuted}" FontWeight="Bold" FontSize="11"/>
       </Border>
       <StackPanel>
-       <TextBlock Text="{Binding DocumentName}" Foreground="#667C92" FontSize="13"/>
-       <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#13836B" FontSize="11" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding DocumentName}" Foreground="{DynamicResource StudioMuted}" FontSize="13"/>
+       <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="{DynamicResource StudioMuted}" FontSize="11" TextWrapping="Wrap"/>
       </StackPanel>
     </DockPanel>
     <Border Grid.Row="1" Background="{DynamicResource StudioPanel}"
@@ -40,10 +40,10 @@
       Padding="4,2,4,10" Margin="0,0,0,9">
       <StackPanel>
         <WrapPanel Margin="0,0,0,7">
-          <TextBlock Text="程序文件" VerticalAlignment="Center" Margin="0,0,10,0" Style="{StaticResource AtHint}"/>
+          <TextBlock Text="测试程序" VerticalAlignment="Center" Margin="0,0,10,0" Style="{StaticResource AtHint}"/>
           <Button Content="打开" Command="{Binding OpenCommand}"/>
-          <Button Content="保存文件" Command="{Binding SaveCommand}"/>
-          <Button Content="保存到当前工程" Command="{Binding SaveToProjectCommand}" Style="{StaticResource AtPrimaryButton}"
+          <Button Content="保存副本" Command="{Binding SaveCommand}"/>
+          <Button Content="保存至工程" Command="{Binding SaveToProjectCommand}" Style="{StaticResource AtPrimaryButton}"
            ToolTip="发布当前测试程序的工程资源版本，用于正式执行"/>
           <Menu Background="Transparent" VerticalAlignment="Center">
             <MenuItem Header="编辑管理 ▾">
@@ -55,37 +55,37 @@
           </Menu>
         </WrapPanel>
         <WrapPanel>
-          <TextBlock Text="当前程序" VerticalAlignment="Center" Margin="0,0,10,0" Style="{StaticResource AtHint}"/>
-          <Button Content="运行前检查" Command="{Binding PreflightCommand}"/>
-          <Button Content="执行当前测试" Style="{StaticResource AtPrimaryButton}"
+          <TextBlock Text="执行与调试" VerticalAlignment="Center" Margin="0,0,10,0" Style="{StaticResource AtHint}"/>
+          <Button Content="检查" Command="{Binding PreflightCommand}"/>
+          <Button Content="运行测试" Style="{StaticResource AtPrimaryButton}"
            Command="{Binding RunPhysicalReadOnlyCommand}"
            ToolTip="执行已保存并通过设备授权的真实测试；按键步骤需有效控制器配置和清理步骤"/>
           <Button Content="暂停" Command="{Binding PauseCommand}"/>
           <Button Content="继续" Command="{Binding ResumeCommand}"/>
-          <Button Content="单步（F10）" Command="{Binding StepCommand}"/>
-          <Button Content="停止测试" Style="{StaticResource AtDangerButton}" Command="{Binding StopCommand}"/>
+          <Button Content="单步 F10" Command="{Binding StepCommand}"/>
+          <Button Content="停止" Style="{StaticResource AtDangerButton}" Command="{Binding StopCommand}"/>
         </WrapPanel>
       </StackPanel>
     </Border>
     <Grid Grid.Row="2">
       <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="5"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
-      <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1">
+      <Border Grid.Column="0" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Margin="10,9,10,8">
             <DockPanel Margin="0,0,0,8">
-              <TextBlock DockPanel.Dock="Right" Text="右键步骤：复制、调整顺序或调试执行"
+              <TextBlock DockPanel.Dock="Right" Text="右键步骤查看更多操作"
                Style="{StaticResource AtHint}" VerticalAlignment="Center"/>
               <TextBlock Text="程序步骤" Style="{StaticResource AtSectionTitle}"/>
             </DockPanel>
             <WrapPanel>
-              <TextBlock Text="新步骤类型" VerticalAlignment="Center" Margin="0,0,7,0"/>
+              <TextBlock Text="步骤类型" VerticalAlignment="Center" Margin="0,0,7,0"/>
               <ComboBox Width="180" Margin="0,0,8,0" ItemsSource="{Binding StepTypes}"
                 SelectedItem="{Binding SelectedInsertType,Mode=TwoWay}">
                 <ComboBox.ItemTemplate>
                   <DataTemplate><TextBlock Text="{Binding Converter={StaticResource StepTypeText}}"/></DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <Button Content="＋ 插入步骤" Style="{StaticResource AtPrimaryButton}" Command="{Binding InsertCommand}"/>
+              <Button Content="＋ 添加步骤" Style="{StaticResource AtPrimaryButton}" Command="{Binding InsertCommand}"/>
               <Menu Background="Transparent" VerticalAlignment="Center">
                 <MenuItem Header="步骤操作 ▾">
                   <MenuItem Header="复制所选步骤" Command="{Binding CopyCommand}"/>
@@ -117,14 +117,14 @@
         </DockPanel>
       </Border>
       <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="Transparent"/>
-      <Border Grid.Column="2" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Padding="12">
+      <Border Grid.Column="2" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Padding="12">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
          <StackPanel>
-          <TextBlock Text="步骤属性" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
-          <TextBlock Text="步骤名称" Foreground="#667C92"/>
+          <TextBlock Text="步骤设置" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
+          <TextBlock Text="步骤名称" Foreground="{DynamicResource StudioMuted}"/>
           <TextBox Text="{Binding SelectedName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
           <Button Content="更新步骤名称" Command="{Binding RenameCommand}" HorizontalAlignment="Left" Margin="0,0,0,15"/>
-          <TextBlock Text="当前参数" Foreground="#667C92" Margin="0,0,0,4"/>
+          <TextBlock Text="已设置的参数" Foreground="{DynamicResource StudioMuted}" Margin="0,0,0,4"/>
           <DataGrid ItemsSource="{Binding ParameterRows}" AutoGenerateColumns="False" IsReadOnly="True"
                     Height="110" RowHeaderWidth="0" HeadersVisibility="Column" CanUserAddRows="False"
                     Margin="0,0,0,12" FontSize="12">
@@ -133,9 +133,9 @@
               <DataGridTextColumn Header="取值" Binding="{Binding Value}" Width="*"/>
             </DataGrid.Columns>
           </DataGrid>
-          <TextBlock Text="参数名称" Foreground="#667C92"/>
+          <TextBlock Text="参数名称" Foreground="{DynamicResource StudioMuted}"/>
           <TextBox Text="{Binding ParameterName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8"/>
-          <TextBlock Text="参数值" Foreground="#667C92"/>
+          <TextBlock Text="参数值" Foreground="{DynamicResource StudioMuted}"/>
           <TextBox Text="{Binding ParameterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
           <Button Content="应用参数" Command="{Binding SetParameterCommand}" HorizontalAlignment="Left"/>
           <Separator Margin="0,14,0,10" Background="{DynamicResource StudioLine}"/>
@@ -150,18 +150,18 @@
                   Command="{Binding ApplyControllerStateCommand}"
                   HorizontalAlignment="Left"/>
           <TextBlock Text="开关组合全断开表示松开所有按键。执行前需要保存控制器配置和测试程序，并在清理阶段明确恢复安全状态。"
-                     TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#90611A"/>
-          <TextBlock TextWrapping="Wrap" Margin="0,14,0,0" Foreground="#667C92" FontSize="11"
+                     TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource StudioMuted}"/>
+          <TextBlock TextWrapping="Wrap" Margin="0,14,0,0" Foreground="{DynamicResource StudioMuted}" FontSize="11"
                      Text="选中的按键状态必须来自当前工程的控制器配置。未配置或不受设备支持的动作不会执行。"/>
          </StackPanel>
         </ScrollViewer>
       </Border>
     </Grid>
-    <Border Grid.Row="3" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Margin="0,9,0,0">
+    <Border Grid.Row="3" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Margin="0,9,0,0">
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="9,5,9,5">
-          <TextBlock DockPanel.Dock="Left" Text="执行事实 · 预期与实际结果" FontWeight="SemiBold"/>
-          <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}" FontWeight="SemiBold" Foreground="#087D9C"/>
+          <TextBlock DockPanel.Dock="Left" Text="测试结果与执行记录" FontWeight="SemiBold"/>
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}" FontWeight="SemiBold" Foreground="#35506B"/>
         </DockPanel>
         <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
                   CanUserAddRows="False" CanUserDeleteRows="False" BorderThickness="0"
@@ -177,7 +177,7 @@
             <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="2*"/>
             <DataGridTextColumn Header="追踪记录" Binding="{Binding TraceReference}" Width="140"/>
             <DataGridTextColumn Header="会话" Binding="{Binding SessionGeneration}" Width="70"/>
-            <DataGridTextColumn Header="OperationId" Binding="{Binding OperationId}" Width="155"/>
+            <DataGridTextColumn Header="操作编号" Binding="{Binding OperationId}" Width="155"/>
           </DataGrid.Columns>
         </DataGrid>
       </DockPanel>
@@ -185,8 +185,8 @@
     <Border Grid.Row="4" BorderBrush="{DynamicResource StudioLine}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="4,6">
       <StackPanel>
         <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource StudioText}"/>
-        <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="#13836B"/>
-        <TextBlock Text="按键状态通过 CAN0 主控向按键板下发，ECU 响应由 CAN1 独立观测。主控确认不等于实际电压或 ECU 判定通过；软件不直接控制 DUT 供电。" TextWrapping="Wrap" Foreground="#90611A"/>
+        <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="{DynamicResource StudioMuted}"/>
+        <TextBlock Text="真实输出和 ECU 响应分别记录。设备确认不等于测试通过。" TextWrapping="Wrap" Foreground="{DynamicResource StudioMuted}"/>
       </StackPanel>
     </Border>
   </Grid>
