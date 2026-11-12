@@ -25,62 +25,87 @@
     </Grid.RowDefinitions>
     <DockPanel Grid.Row="0" LastChildFill="True" Margin="3,0,3,9">
       <TextBlock DockPanel.Dock="Left" Text="TEST 程序编辑" Style="{StaticResource AtPageTitle}" Margin="0,0,18,0"/>
-      <Border DockPanel.Dock="Right" Background="#493425" BorderBrush="#876038" BorderThickness="1"
-              CornerRadius="3" Padding="9,4">
-        <TextBlock Text="{Binding SourceLabel}" Foreground="#90611A" FontWeight="Bold" FontSize="11"/>
+      <Border DockPanel.Dock="Right" Background="{DynamicResource StudioSurface}" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1"
+              CornerRadius="5" Padding="10,5">
+        <TextBlock Text="{Binding SourceLabel}" Foreground="{DynamicResource StudioMuted}" FontWeight="Bold" FontSize="11"/>
       </Border>
       <StackPanel>
        <TextBlock Text="{Binding DocumentName}" Foreground="#667C92" FontSize="13"/>
        <TextBlock Text="{Binding ProjectAssetStatus}" Foreground="#13836B" FontSize="11" TextWrapping="Wrap"/>
       </StackPanel>
     </DockPanel>
-    <WrapPanel Grid.Row="1" Margin="0,0,0,9">
-      <Button Content="打开" Command="{Binding OpenCommand}"/>
-      <Button Content="保存文件" Command="{Binding SaveCommand}"/>
-      <Button Content="纳入当前工程 / 新 Revision" Command="{Binding SaveToProjectCommand}" Background="#176A8C"/>
-      <Button Content="从工程重新加载" Command="{Binding ReloadProjectCommand}"/>
-      <Button Content="撤销" Command="{Binding UndoCommand}"/>
-      <Button Content="重做" Command="{Binding RedoCommand}"/>
-      <Separator Width="12"/>
-      <Button Content="运行前检查" Command="{Binding PreflightCommand}"/>
-      <Button Content="执行当前测试" Style="{StaticResource AtPrimaryButton}" Command="{Binding RunPhysicalReadOnlyCommand}" FontWeight="SemiBold" Background="#176A8C" ToolTip="执行当前已保存 TEST；只调用已接通的实际硬件能力，KEY_SIM 需 P05 配置、完整计划授权与 Cleanup 释放"/>
-      <Button Content="暂停" Command="{Binding PauseCommand}"/>
-      <Button Content="继续" Command="{Binding ResumeCommand}"/>
-      <Button Content="单步" Command="{Binding StepCommand}"/>
-      <Button Content="Skip selected" Command="{Binding SkipCommand}"/>
-      <Button Content="Run to selected" Command="{Binding RunToCommand}"/>
-      <Button Content="STOP" Command="{Binding StopCommand}" Foreground="#BC3C50" FontWeight="Bold"/>
-    </WrapPanel>
+    <Border Grid.Row="1" Background="{DynamicResource StudioPanel}"
+      BorderBrush="{DynamicResource StudioLine}" BorderThickness="0,0,0,1"
+      Padding="4,2,4,10" Margin="0,0,0,9">
+      <StackPanel>
+        <WrapPanel Margin="0,0,0,7">
+          <TextBlock Text="程序文件" VerticalAlignment="Center" Margin="0,0,10,0" Style="{StaticResource AtHint}"/>
+          <Button Content="打开" Command="{Binding OpenCommand}"/>
+          <Button Content="保存文件" Command="{Binding SaveCommand}"/>
+          <Button Content="保存到当前工程" Command="{Binding SaveToProjectCommand}" Style="{StaticResource AtPrimaryButton}"
+           ToolTip="发布当前测试程序的工程资源版本，用于正式执行"/>
+          <Menu Background="Transparent" VerticalAlignment="Center">
+            <MenuItem Header="编辑管理 ▾">
+              <MenuItem Header="从工程重新加载" Command="{Binding ReloadProjectCommand}"/>
+              <Separator/>
+              <MenuItem Header="撤销（Ctrl+Z）" Command="{Binding UndoCommand}"/>
+              <MenuItem Header="重做（Ctrl+Y）" Command="{Binding RedoCommand}"/>
+            </MenuItem>
+          </Menu>
+        </WrapPanel>
+        <WrapPanel>
+          <TextBlock Text="当前程序" VerticalAlignment="Center" Margin="0,0,10,0" Style="{StaticResource AtHint}"/>
+          <Button Content="运行前检查" Command="{Binding PreflightCommand}"/>
+          <Button Content="执行当前测试" Style="{StaticResource AtPrimaryButton}"
+           Command="{Binding RunPhysicalReadOnlyCommand}"
+           ToolTip="执行已保存并通过设备授权的真实测试；按键步骤需有效控制器配置和清理步骤"/>
+          <Button Content="暂停" Command="{Binding PauseCommand}"/>
+          <Button Content="继续" Command="{Binding ResumeCommand}"/>
+          <Button Content="单步（F10）" Command="{Binding StepCommand}"/>
+          <Button Content="停止测试" Style="{StaticResource AtDangerButton}" Command="{Binding StopCommand}"/>
+        </WrapPanel>
+      </StackPanel>
+    </Border>
     <Grid Grid.Row="2">
       <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="5"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
       <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1">
         <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Margin="8,7,8,4">
-            <TextBlock Text="Steps · Prepare / Test / Cleanup" FontWeight="SemiBold" Margin="0,0,0,5"/>
+          <StackPanel DockPanel.Dock="Top" Margin="10,9,10,8">
+            <DockPanel Margin="0,0,0,8">
+              <TextBlock DockPanel.Dock="Right" Text="右键步骤：复制、调整顺序或调试执行"
+               Style="{StaticResource AtHint}" VerticalAlignment="Center"/>
+              <TextBlock Text="程序步骤" Style="{StaticResource AtSectionTitle}"/>
+            </DockPanel>
             <WrapPanel>
-              <ComboBox Width="145" Margin="2" ItemsSource="{Binding StepTypes}"
-                        SelectedItem="{Binding SelectedInsertType, Mode=TwoWay}"/>
-              <Button Content="Insert" Command="{Binding InsertCommand}"/>
-              <Button Content="Copy" Command="{Binding CopyCommand}"/>
-              <Button Content="Delete" Command="{Binding DeleteCommand}"/>
-              <Button Content="↑" Width="30" Command="{Binding UpCommand}"/>
-              <Button Content="↓" Width="30" Command="{Binding DownCommand}"/>
+              <TextBlock Text="新步骤类型" VerticalAlignment="Center" Margin="0,0,7,0"/>
+              <ComboBox Width="180" Margin="0,0,8,0" ItemsSource="{Binding StepTypes}"
+                SelectedItem="{Binding SelectedInsertType,Mode=TwoWay}"/>
+              <Button Content="＋ 插入步骤" Style="{StaticResource AtPrimaryButton}" Command="{Binding InsertCommand}"/>
+              <Menu Background="Transparent" VerticalAlignment="Center">
+                <MenuItem Header="步骤操作 ▾">
+                  <MenuItem Header="复制所选步骤" Command="{Binding CopyCommand}"/>
+                  <MenuItem Header="上移" Command="{Binding UpCommand}"/>
+                  <MenuItem Header="下移" Command="{Binding DownCommand}"/>
+                  <Separator/>
+                  <MenuItem Header="删除所选步骤" Command="{Binding DeleteCommand}"/>
+                </MenuItem>
+              </Menu>
             </WrapPanel>
           </StackPanel>
           <TreeView x:Name="ProgramTree" ItemsSource="{Binding Tree}"
-                    SelectedItemChanged="ProgramTree_OnSelectedItemChanged"
+                    SelectedItemChanged="ProgramTree_OnSelectedItemChanged" PreviewMouseRightButtonDown="ProgramTree_OnRightClick"
                     BorderThickness="0" Padding="8,3">
             <TreeView.ContextMenu>
               <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                <MenuItem Header="Insert step" Command="{Binding InsertCommand}"/>
-                <MenuItem Header="Copy step" Command="{Binding CopyCommand}"/>
-                <MenuItem Header="Delete step" Command="{Binding DeleteCommand}"/>
+                <MenuItem Header="插入新步骤" Command="{Binding InsertCommand}"/>
+                <MenuItem Header="复制步骤" Command="{Binding CopyCommand}"/>
+                <MenuItem Header="删除步骤" Command="{Binding DeleteCommand}"/>
                 <Separator/>
-                <MenuItem Header="Move up" Command="{Binding UpCommand}"/>
-                <MenuItem Header="Move down" Command="{Binding DownCommand}"/>
+                <MenuItem Header="上移步骤" Command="{Binding UpCommand}"/>
+                <MenuItem Header="下移步骤" Command="{Binding DownCommand}"/>
                 <Separator/>
-                <MenuItem Header="Run to selected" Command="{Binding RunToCommand}"/>
-                <MenuItem Header="Skip selected" Command="{Binding SkipCommand}"/>
+                <MenuItem Header="运行到选中步骤" Command="{Binding RunToCommand}"/>
+                <MenuItem Header="跳过选中步骤" Command="{Binding SkipCommand}"/>
               </ContextMenu>
             </TreeView.ContextMenu>
           </TreeView>
@@ -90,39 +115,39 @@
       <Border Grid.Column="2" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Padding="12">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
          <StackPanel>
-          <TextBlock Text="Step properties" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
-          <TextBlock Text="Name" Foreground="#667C92"/>
+          <TextBlock Text="步骤属性" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,13"/>
+          <TextBlock Text="步骤名称" Foreground="#667C92"/>
           <TextBox Text="{Binding SelectedName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
-          <Button Content="Rename selected step" Command="{Binding RenameCommand}" HorizontalAlignment="Left" Margin="0,0,0,15"/>
-          <TextBlock Text="Current parameters" Foreground="#667C92" Margin="0,0,0,4"/>
+          <Button Content="更新步骤名称" Command="{Binding RenameCommand}" HorizontalAlignment="Left" Margin="0,0,0,15"/>
+          <TextBlock Text="当前参数" Foreground="#667C92" Margin="0,0,0,4"/>
           <DataGrid ItemsSource="{Binding ParameterRows}" AutoGenerateColumns="False" IsReadOnly="True"
                     Height="110" RowHeaderWidth="0" HeadersVisibility="Column" CanUserAddRows="False"
                     Margin="0,0,0,12" FontSize="12">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="*"/>
-              <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*"/>
+              <DataGridTextColumn Header="参数" Binding="{Binding Key}" Width="*"/>
+              <DataGridTextColumn Header="取值" Binding="{Binding Value}" Width="*"/>
             </DataGrid.Columns>
           </DataGrid>
-          <TextBlock Text="Parameter key" Foreground="#667C92"/>
+          <TextBlock Text="参数名称" Foreground="#667C92"/>
           <TextBox Text="{Binding ParameterName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8"/>
-          <TextBlock Text="Parameter value" Foreground="#667C92"/>
+          <TextBlock Text="参数值" Foreground="#667C92"/>
           <TextBox Text="{Binding ParameterValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,5"/>
-          <Button Content="Set parameter" Command="{Binding SetParameterCommand}" HorizontalAlignment="Left"/>
+          <Button Content="应用参数" Command="{Binding SetParameterCommand}" HorizontalAlignment="Left"/>
           <Separator Margin="0,14,0,10" Background="{DynamicResource StudioLine}"/>
-          <TextBlock Text="真实 KEY_SIM / P05 控制器状态" FontWeight="SemiBold" Margin="0,0,0,7"/>
-          <Button Content="从 P05 刷新状态列表" Command="{Binding RefreshControllerStatesCommand}"
+          <TextBlock Text="控制器按键状态" FontWeight="SemiBold" Margin="0,0,0,7"/>
+          <Button Content="刷新工程中的按键状态" Command="{Binding RefreshControllerStatesCommand}"
                   HorizontalAlignment="Left"/>
           <ComboBox ItemsSource="{Binding ControllerStateChoices}"
                     SelectedItem="{Binding SelectedControllerChoice,Mode=TwoWay}"
                     DisplayMemberPath="Label" Margin="0,7,0,5" MinHeight="30"
                     ToolTip="选择真实控制器的状态；20 位掩码合成 KEY_SIM 五路电阻网络输出"/>
-          <Button Content="绑定到选中 ControllerState 步骤"
+          <Button Content="关联至当前控制器状态步骤"
                   Command="{Binding ApplyControllerStateCommand}"
                   HorizontalAlignment="Left"/>
-          <TextBlock Text="配置中掩码 0=释放全部按键。实际动作需 P05 已保存、TEST 已保存，以及 Cleanup 定义全部释放状态。"
+          <TextBlock Text="开关组合全断开表示松开所有按键。执行前需要保存控制器配置和测试程序，并在清理阶段明确恢复安全状态。"
                      TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#90611A"/>
           <TextBlock TextWrapping="Wrap" Margin="0,14,0,0" Foreground="#667C92" FontSize="11"
-                     Text="ControllerState 必须引用工程 ControllerId/StateId/Revision。只允许设备与步骤合同支持的真实操作；没有配置的硬件行为不予执行。"/>
+                     Text="选中的按键状态必须来自当前工程的控制器配置。未配置或不受设备支持的动作不会执行。"/>
          </StackPanel>
         </ScrollViewer>
       </Border>
@@ -130,23 +155,23 @@
     <Border Grid.Row="3" Background="#FFFFFF" BorderBrush="{DynamicResource StudioLine}" BorderThickness="1" Margin="0,9,0,0">
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="9,5,9,5">
-          <TextBlock DockPanel.Dock="Left" Text="Execution facts · Expected / Actual / Quality" FontWeight="SemiBold"/>
+          <TextBlock DockPanel.Dock="Left" Text="执行事实 · 预期与实际结果" FontWeight="SemiBold"/>
           <TextBlock DockPanel.Dock="Right" Text="{Binding Verdict}" FontWeight="SemiBold" Foreground="#087D9C"/>
         </DockPanel>
         <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
                   CanUserAddRows="False" CanUserDeleteRows="False" BorderThickness="0"
                   RowHeaderWidth="0" HeadersVisibility="Column" FontSize="12">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="70"/>
-            <DataGridTextColumn Header="Step" Binding="{Binding NodeType}" Width="110"/>
-            <DataGridTextColumn Header="Expected" Binding="{Binding Expected}" Width="*"/>
-            <DataGridTextColumn Header="Actual" Binding="{Binding Actual}" Width="*"/>
-            <DataGridTextColumn Header="Quality" Binding="{Binding Quality}" Width="90"/>
-            <DataGridTextColumn Header="Verdict" Binding="{Binding Verdict}" Width="100"/>
-            <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="80"/>
-            <DataGridTextColumn Header="Diagnostic" Binding="{Binding Diagnostic}" Width="2*"/>
-            <DataGridTextColumn Header="Trace" Binding="{Binding TraceReference}" Width="140"/>
-            <DataGridTextColumn Header="Session" Binding="{Binding SessionGeneration}" Width="70"/>
+            <DataGridTextColumn Header="阶段" Binding="{Binding Phase}" Width="70"/>
+            <DataGridTextColumn Header="步骤" Binding="{Binding NodeType}" Width="110"/>
+            <DataGridTextColumn Header="预期" Binding="{Binding Expected}" Width="*"/>
+            <DataGridTextColumn Header="实际" Binding="{Binding Actual}" Width="*"/>
+            <DataGridTextColumn Header="质量" Binding="{Binding Quality}" Width="90"/>
+            <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="100"/>
+            <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="80"/>
+            <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="2*"/>
+            <DataGridTextColumn Header="追踪记录" Binding="{Binding TraceReference}" Width="140"/>
+            <DataGridTextColumn Header="会话" Binding="{Binding SessionGeneration}" Width="70"/>
             <DataGridTextColumn Header="OperationId" Binding="{Binding OperationId}" Width="155"/>
           </DataGrid.Columns>
         </DataGrid>
@@ -156,7 +181,7 @@
       <StackPanel>
         <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource StudioText}"/>
         <TextBlock Text="{Binding PhysicalEvidencePath}" TextWrapping="Wrap" Foreground="#13836B"/>
-        <TextBlock Text="真实 KEY_SIM 状态由现役 CAN0 协议发送，CAN1 观测独立判定；主控 ACK 不代表电压/ECU 已响应。DUT 供电不由软件控制；当前为诊断证据，未签发出厂 PASS。" TextWrapping="Wrap" Foreground="#90611A"/>
+        <TextBlock Text="按键状态通过 CAN0 主控向按键板下发，ECU 响应由 CAN1 独立观测。主控确认不等于实际电压或 ECU 判定通过；软件不直接控制 DUT 供电。" TextWrapping="Wrap" Foreground="#90611A"/>
       </StackPanel>
     </Border>
   </Grid>
