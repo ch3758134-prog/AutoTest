@@ -101,17 +101,9 @@
    </Grid.ColumnDefinitions>
    <!-- Main editor: 2/3 of the space, actual grouped and nested TEST steps. -->
    <Border Grid.Column="0" Background="White" BorderBrush="#D7E3F1" BorderThickness="1" CornerRadius="9">
-    <DockPanel LastChildFill="True">
-     <Border DockPanel.Dock="Top" Background="#F8FBFF" BorderBrush="#DEE8F4" BorderThickness="0,0,0,1"
-       Padding="12,5">
-      <StackPanel>
-       <TabControl Background="#F8FBFF" BorderThickness="0" Height="37">
-        <TabItem Header="☷  程序编辑" IsSelected="True"/>
-        <TabItem Header="⚙  运行配置"/>
-        <TabItem Header="ⓘ  程序属性"/>
-       </TabControl>
-      </StackPanel>
-     </Border>
+    <TabControl Background="White" BorderThickness="0">
+     <TabItem Header="☷  程序编辑">
+      <DockPanel LastChildFill="True">
      <Border DockPanel.Dock="Top" Background="White" Padding="12,9,10,10"
        BorderBrush="#E0E9F5" BorderThickness="0,0,0,1">
       <DockPanel LastChildFill="True">
@@ -180,7 +172,57 @@
        </ContextMenu>
       </TreeView.ContextMenu>
      </TreeView>
-    </DockPanel>
+      </DockPanel>
+     </TabItem>
+     <TabItem Header="⚙  运行配置">
+      <Grid Background="White" Margin="17">
+       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <TextBlock Text="测试执行范围" FontSize="19" FontWeight="SemiBold" Foreground="#253B54"/>
+       <TextBlock Grid.Row="1" Text="勾选本次工程调试用例；扫码生产始终使用已批准的完整测试程序。"
+         FontSize="12" Foreground="#6B829B" TextWrapping="Wrap" Margin="0,9,0,14"/>
+       <Border Grid.Row="2" BorderBrush="#DFE9F4" BorderThickness="1" CornerRadius="8">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+         <ItemsControl ItemsSource="{Binding TestCases}" Margin="12,7">
+          <ItemsControl.ItemTemplate><DataTemplate>
+           <Border BorderBrush="#E1EAF5" BorderThickness="0,0,0,1" Padding="9,12">
+            <CheckBox IsChecked="{Binding IsSelected,Mode=TwoWay}">
+             <DockPanel>
+              <TextBlock DockPanel.Dock="Right" Text="{Binding StepCount,StringFormat={}{0} 个步骤}" Foreground="#7E90A5"/>
+              <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
+             </DockPanel>
+            </CheckBox>
+           </Border>
+          </DataTemplate></ItemsControl.ItemTemplate>
+         </ItemsControl>
+        </ScrollViewer>
+       </Border>
+       <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+        <Button Content="全选" Command="{Binding SelectAllCasesCommand}"/>
+        <Button Content="清空" Command="{Binding ClearCasesCommand}"/>
+        <Button Content="执行所选用例" Command="{Binding RunSelectedPhysicalCommand}" Style="{StaticResource AtPrimaryButton}"/>
+       </StackPanel>
+      </Grid>
+     </TabItem>
+     <TabItem Header="ⓘ  程序属性">
+      <ScrollViewer Background="White" Padding="19,17">
+       <StackPanel>
+        <TextBlock Text="测试程序属性" FontSize="18" FontWeight="SemiBold" Foreground="#243A52"/>
+        <TextBlock Text="程序名称" Margin="0,17,0,6" Foreground="#75879C"/>
+        <TextBlock Text="{Binding DocumentName}" FontSize="15" FontWeight="SemiBold"/>
+        <TextBlock Text="步骤与用例" Margin="0,17,0,6" Foreground="#75879C"/>
+        <TextBlock Text="{Binding StepCountLabel}"/>
+        <TextBlock Text="工程版本" Margin="0,17,0,6" Foreground="#75879C"/>
+        <TextBlock Text="{Binding ProjectAssetStatus}" TextWrapping="Wrap"/>
+        <TextBlock Text="上一次编辑 / 检查" Margin="0,17,0,6" Foreground="#75879C"/>
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#526D8A"/>
+        <StackPanel Orientation="Horizontal" Margin="0,19,0,0">
+         <Button Content="保存至工程" Command="{Binding SaveToProjectCommand}" Style="{StaticResource AtPrimaryButton}"/>
+         <Button Content="重载程序" Command="{Binding ReloadProjectCommand}"/>
+        </StackPanel>
+       </StackPanel>
+      </ScrollViewer>
+     </TabItem>
+    </TabControl>
    </Border>
    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
    <!-- Right panel: narrow dedicated inspector, identical vertical alignment to mockup. -->
@@ -236,33 +278,44 @@
   </Grid>
   <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" Background="Transparent"/>
   <!-- Visible results dock, same bottom hierarchy as the approved illustration. -->
-  <Border Grid.Row="3" Background="White" BorderBrush="#D7E3F1" BorderThickness="1" CornerRadius="9" Padding="0">
-   <DockPanel>
-    <DockPanel DockPanel.Dock="Top" Background="#F8FAFE" LastChildFill="True">
-     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,5,0">
-      <TextBlock Text="{Binding Verdict,StringFormat=当前判定：{0}}" Foreground="#577494" FontSize="11"
-       VerticalAlignment="Center" Margin="0,0,12,0"/>
-     </StackPanel>
-     <TabControl Background="#F8FAFE" BorderThickness="0" Height="38">
-      <TabItem Header="✔  执行结果" IsSelected="True"/>
-      <TabItem Header="▤  日志"/>
-      <TabItem Header="⌁  追踪记录"/>
-     </TabControl>
-    </DockPanel>
-    <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
-      CanUserAddRows="False" CanUserDeleteRows="False" Background="White"
-      HeadersVisibility="Column" RowHeaderWidth="0" BorderThickness="0" FontSize="12">
-     <DataGrid.Columns>
-      <DataGridTextColumn Header="阶段" Binding="{Binding Phase}" Width="78"/>
-      <DataGridTextColumn Header="步骤" Binding="{Binding NodeType}" Width="150"/>
-      <DataGridTextColumn Header="预期结果" Binding="{Binding Expected}" Width="*"/>
-      <DataGridTextColumn Header="实际结果" Binding="{Binding Actual}" Width="*"/>
-      <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="100"/>
-      <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="115"/>
-      <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="1.2*"/>
-     </DataGrid.Columns>
-    </DataGrid>
-   </DockPanel>
+  <Border Grid.Row="3" Background="White" BorderBrush="#D7E3F1" BorderThickness="1" CornerRadius="9">
+   <TabControl Background="White" BorderThickness="0">
+    <TabItem Header="✔  执行结果">
+     <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
+       CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+       RowHeaderWidth="0" BorderThickness="0" FontSize="12">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="阶段" Binding="{Binding Phase}" Width="72"/>
+       <DataGridTextColumn Header="步骤" Binding="{Binding NodeType}" Width="150"/>
+       <DataGridTextColumn Header="预期结果" Binding="{Binding Expected}" Width="*"/>
+       <DataGridTextColumn Header="实际结果" Binding="{Binding Actual}" Width="*"/>
+       <DataGridTextColumn Header="判定" Binding="{Binding Verdict}" Width="90"/>
+       <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="105"/>
+       <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="1.2*"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </TabItem>
+    <TabItem Header="▤  日志">
+     <ScrollViewer Padding="15,10" Background="White">
+      <StackPanel>
+       <TextBlock Text="最近运行或编辑状态" FontWeight="SemiBold" FontSize="13" Foreground="#3D5976" Margin="0,0,0,7"/>
+       <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#526F8D"/>
+       <TextBlock Text="{Binding PhysicalEvidencePath}" FontSize="11" Foreground="#758DA5" TextWrapping="Wrap" Margin="0,9,0,0"/>
+      </StackPanel>
+     </ScrollViewer>
+    </TabItem>
+    <TabItem Header="⌁  追踪记录">
+     <DataGrid ItemsSource="{Binding Facts}" AutoGenerateColumns="False" IsReadOnly="True"
+       CanUserAddRows="False" RowHeaderWidth="0" BorderThickness="0" FontSize="12">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="步骤" Binding="{Binding NodeType}" Width="145"/>
+       <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="140"/>
+       <DataGridTextColumn Header="操作或追踪" Binding="{Binding TraceRef}" Width="*"/>
+       <DataGridTextColumn Header="诊断" Binding="{Binding Diagnostic}" Width="*"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </TabItem>
+   </TabControl>
   </Border>
  </Grid>
 </UserControl>
