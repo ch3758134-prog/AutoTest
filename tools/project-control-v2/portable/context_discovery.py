@@ -70,7 +70,8 @@ def audit(record):
         raise DiscoveryError("missing scope rationale")
     if record.get("claims_project_complete") and unresolved:
         raise DiscoveryError("false complete claim")
-    return {"schema": "project-control-context-audit/1", "structurally_valid": True,\n            "legacy_read_only": True, "needs_current_assessment_v2": True,
+    return {"schema": "project-control-context-audit/1", "structurally_valid": True,
+            "legacy_read_only": True, "needs_current_assessment_v2": True,
             "unresolved_topics": unresolved, "next_disposition": disposition,
             "authorization_granted": False, "formal_approval_granted": False,
             "warning": "Legacy COVERED only tracks source presence. Reassess validity using context_assessment.py; no authority granted."}
