@@ -62,3 +62,9 @@ CI 在 Linux 与 Windows runner 执行 Python 回归测试、前端脚本语法/
 新增 `delivery_review.py`，为内部候选、待负责人审阅、退回、暂缓、允许发布候审提供精确版本和摘要管理；`web_server.py` 将候审全文存进私有 Git 元数据，公开项目模型只保留数量；`web/app.js` 和 `index.html` 提供全文审阅与独立令牌确认。旧 `process_control.review_requests` 仅算准备提案，不能冒充已向负责人提交。程序拒绝普通管理接口直接签候审发布。新反例测试为 `test_delivery_review.py` 和 `test_delivery_review_server.py`。
 
 **仍不等于验收**：完整 GitHub 精确源码回归、Windows 浏览器和真实 Owner 操作未执行；尚未实现本地候审包与 GitHub 的可信、受控跨环境发布、强身份批准及统一的正式工程审批链。当前宽 GitHub 写入权限可以绕开本机审阅器，须用真实仓库规则/受限发布端点落实强制控制。
+
+## 4.6.1｜本次系统级复核结果
+
+已审查初始化/接管、岗位和 Skill、历史证据、过程目录、WBS/变更、候审交付、GitHub 同步、Codex READY、Web 体验、发行包。重点修复：候审包无法从工作台导入或修订；内部专用成果误获得公开候审许可；已读与正式批准混淆；资料更新误影响无关工作；候审工作关联来源被伪造的风险。
+
+新增定向测试及审核记录见 `SYSTEM_AUDIT_20261112.md`。精确 Git blob 的 `delivery_review.py` 已在隔离 Python 3.13 环境运行 15 项定向单元测试，全部通过；它不覆盖 `web_server.py`、Windows Web 前端、GitHub 远端写入和正式真人身份。完整仓库 unittest 和 UI 实测仍未执行，不得将静态检查提升为系统验收 PASS。
