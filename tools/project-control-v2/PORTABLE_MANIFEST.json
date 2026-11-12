@@ -1,7 +1,7 @@
 {
   "schema": "project-control-portable-manifest/1",
   "package_id": "project-control-v2",
-  "version": "4.4-evidence-remediation-candidate",
+  "version": "4.5-context-remediation-ledger-candidate",
   "entrypoint": "START_HERE.md",
   "scope": "GENERIC_MANAGER_ONBOARDING_AND_LOCAL_WORKSPACE",
   "project_source_rule": "USER_SUPPLIES_TARGET_GITHUB_REPO",
@@ -48,7 +48,8 @@
     "skills/engineering-coordinator/SKILL.md",
     "portable/EVIDENCE_AND_REMEDIATION.md",
     "portable/context_assessment.py",
-    "portable/context_assessment_example.json"
+    "portable/context_assessment_example.json",
+    "portable/context_workflow.py"
   ],
   "capabilities": {
     "manager_read_first": "CANDIDATE",
@@ -95,8 +96,9 @@
     "evidence_assessment": "V2_CURRENT_APPLICABILITY_CANDIDATE_STRUCTURAL_ONLY",
     "missing_artifact_remediation": "PROPOSED_NOT_AUTHORIZED",
     "legacy_discovery_v1": "READ_ONLY_NEEDS_REASSESSMENT",
-    "full_web_workbench_evidence_integration": "OPTIONAL_READ_ONLY_CANDIDATE_VIEW_NO_WRITE_WORKFLOW",
-    "real_agent_intake_e2e": "NOT_VERIFIED"
+    "full_web_workbench_evidence_integration": "LOCAL_CAS_RECORD_AND_PROPOSED_WBS_LINKS_NO_TASK_DISPATCH",
+    "real_agent_intake_e2e": "NOT_VERIFIED",
+    "context_remediation_ledger": "REVISIONED_LOCAL_CANDIDATE_WITH_WORK_LINKS"
   },
   "separation": {
     "package_source": "Project Control system files",
