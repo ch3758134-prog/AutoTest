@@ -178,7 +178,7 @@ public sealed class ControllerConfigToolViewModel : INotifyPropertyChanged
         SelectedController = Controllers.FirstOrDefault(c => c.Id == controllerId) ?? Controllers.FirstOrDefault();
         SelectedState = States.FirstOrDefault(s => s.Id == stateId) ?? States.FirstOrDefault();
         Changed(nameof(CurrentProfile)); Changed(nameof(CurrentRevision));
-        Status = $"Revision {CurrentRevision} / 配置编辑（Physical 未执行）";
+        Status = $"配置修订版本 {CurrentRevision} · 当前仅修改配置，未操作实际设备";
     }
     private void LoadController()
     {
