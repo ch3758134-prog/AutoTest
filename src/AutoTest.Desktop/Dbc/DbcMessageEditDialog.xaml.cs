@@ -14,7 +14,9 @@ public partial class DbcMessageEditDialog : Window
     {
         InitializeComponent();
         _existing = existing;
-        IdBox.Text = "0x" + existing.Id.ToString("X");
+        IdBox.Text = "0x" + existing.ArbitrationId.ToString("X") +
+            (existing.IsExtended ? "（29 位扩展帧）" : "（11 位标准帧）");
+        IdBox.IsReadOnly = true;
         NameBox.Text = existing.Name;
         DlcBox.Text = existing.Dlc.ToString(CultureInfo.InvariantCulture);
         TransmitterBox.Text = existing.Transmitter;
@@ -23,16 +25,6 @@ public partial class DbcMessageEditDialog : Window
 
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
-        var text = IdBox.Text.Trim();
-        uint parsed;
-        var isValidId = text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
-            ? uint.TryParse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out parsed)
-            : uint.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out parsed);
-        if (!isValidId || parsed > 0x7FF)
-        {
-            ErrorText.Text = "当前 DBC 写入器仅允许标准 11 位 CAN ID（0–0x7FF）。";
-            return;
-        }
         if (!int.TryParse(DlcBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dlc) ||
             dlc is < 0 or > 8)
         {
@@ -46,7 +38,7 @@ public partial class DbcMessageEditDialog : Window
             ErrorText.Text = "报文名称和发送节点必须是非空、无空格的 DBC 标识符。";
             return;
         }
-        Result = _existing with { Id = parsed, Name = name, Dlc = dlc, Transmitter = senderName };
+        Result = _existing with { Name = name, Dlc = dlc, Transmitter = senderName };
         DialogResult = true;
     }
 }

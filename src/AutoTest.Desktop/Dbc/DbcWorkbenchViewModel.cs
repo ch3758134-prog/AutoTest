@@ -10,12 +10,13 @@ namespace AutoTest.Desktop.Dbc;
 
 public sealed record DbcMessageRow(DbcMessage Message)
 {
-    public string HexId => "0x" + Message.Id.ToString("X");
+    public string HexId => "0x" + Message.ArbitrationId.ToString("X");
+    public string FrameType => Message.IsExtended ? "扩展帧" : "标准帧";
     public string DecimalId => Message.Id.ToString();
     public string Name => Message.Name;
     public string Dlc => Message.Dlc.ToString();
     public string Transmitter => Message.Transmitter;
-    public string Caption => HexId + "   " + Name + "   (" + Message.Signals.Length + " 信号)";
+    public string Caption => HexId + " " + FrameType + " · " + Name + " (" + Message.Signals.Length + " 信号)";
 }
 public sealed record DbcSignalRow(DbcSignal Signal)
 {
@@ -80,10 +81,14 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                     .Select(x => x.Key + " = " + x.Value));
         }
     }
-    public string StateDescription => _session.Document.CanEdit
+    public string StateDescription => _session.Document.IsSourcePreserving
+        ? "可编辑 · 保留原文注释/属性 · CAN ID 不可改"
+        : _session.Document.CanEdit
         ? "可编辑 · 只修改已支持的 DBC 字段"
         : "只读 · 存在不支持安全回写的 DBC 语法";
-    public string UnsupportedDescription => _session.Document.CanEdit ? ""
+    public string UnsupportedDescription => _session.Document.IsSourcePreserving
+        ? "原始注释、属性、枚举值和其他记录会在保存时保留；本模式禁止改 CAN ID、信号名称及结构。"
+        : _session.Document.CanEdit ? ""
         : "保留原始 DBC 内容，禁止覆盖保存。原因：" +
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
     public bool CanEdit => _session.Document.CanEdit;

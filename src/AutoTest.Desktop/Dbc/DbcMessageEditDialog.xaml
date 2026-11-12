@@ -22,7 +22,7 @@
     <StackPanel Grid.Row="1" Margin="19,15">
       <primitives:UniformGrid Columns="2">
         <StackPanel Margin="0,0,12,14">
-          <TextBlock Text="CAN ID（十进制或 0x 十六进制）" Margin="0,0,0,6"/>
+          <TextBlock Text="CAN ID（只读，保留完整 DBC 引用）" Margin="0,0,0,6"/>
           <TextBox x:Name="IdBox"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,14">

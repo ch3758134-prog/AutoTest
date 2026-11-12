@@ -101,18 +101,74 @@ public sealed class DbcEditorWorkflowTests
         try
         {
             var source = Path.Combine(parent, "readonly.dbc");
-            var original = Basic + "\nCM_ SG_ 291 Speed \"notes\";\n";
+            var original = Basic + "\nSG_MUL_VAL_ 291 Speed Other 1-2;\n";
             await File.WriteAllTextAsync(source, original);
             var workspace = new ProjectWorkspaceService();
             await workspace.CreateAsync("ECU", parent);
             var asset = await workspace.ImportDbcAsync(source);
             var opened = await workspace.OpenDbcEditorAsync(asset.Id);
             Assert.False(opened.Document.CanEdit);
-            Assert.Contains("CM_", opened.Document.UnsupportedDirectives);
+            Assert.Contains("SG_MUL_VAL_", opened.Document.UnsupportedDirectives);
             Assert.Equal(original, opened.Document.ExportText());
             var error = await Assert.ThrowsAsync<ProjectDataException>(() => workspace.SaveDbcEditorAsync(opened));
             Assert.Equal("DBC_UNSUPPORTED_READONLY", error.Code);
             Assert.Equal(original, await File.ReadAllTextAsync(opened.FileReceipt.Path));
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
+
+    [Fact]
+    public async Task VectorExtendedFrame_WithCommentsAttributesAndEnums_ParameterSavePreservesOriginalLines()
+    {
+        // Representative subset of the real 绿通 communication matrix, not the private whole file.
+        const string rich = """
+            VERSION "绿通通信矩阵_来源整理_未实机校验_v1"
+            NS_ :
+                CM_
+                BA_DEF_
+                BA_
+                VAL_
+            BS_:
+            BU_: VCU EPB AutoTest
+
+            BO_ 2566869031 VCU_EPB_Command1: 8 VCU
+             SG_ VCU_EPB_Check : 0|8@1+ (1,0) [0|255] "" EPB
+             SG_ VCU_EPB_HeartBit : 8|4@1+ (1,0) [0|15] "" EPB
+            BA_DEF_ BO_ "GenMsgCycleTime" INT 0 10000;
+            BA_ "GenMsgCycleTime" BO_ 2566869031 65;
+            CM_ BO_ 2566869031 "VCU-1; FrameId=0x18FF5027";
+            VAL_ 2566869031 VCU_EPB_HeartBit 0 "Idle" 1 "Active";
+            """;
+        var parent = NewParent();
+        try
+        {
+            var path = Path.Combine(parent, "LvTong.dbc");
+            await File.WriteAllTextAsync(path, rich);
+            var service = new ProjectWorkspaceService();
+            var project = await service.CreateAsync("ECU", parent);
+            var asset = await service.ImportDbcAsync(path);
+            var opened = await service.OpenDbcEditorAsync(asset.Id);
+            Assert.True(opened.Document.CanEdit);
+            Assert.True(opened.Document.IsSourcePreserving);
+            var msg = opened.Document.Model.FindMessage(2566869031u);
+            Assert.True(msg.IsExtended);
+            Assert.Equal(0x18FF5027u, msg.ArbitrationId);
+            Assert.Equal("VCU_EPB_Command1", opened.Document.Model.FindMessage(0x18FF5027u).Name);
+            var signal = opened.Document.Model.FindSignal(msg.Id, "VCU_EPB_Check");
+            opened.Document.UpdateSignal(msg.Id, signal.Name,
+                signal with { Factor = 0.5, Offset = 1 });
+            var saved = await service.SaveDbcEditorAsync(opened);
+            var newSource = await File.ReadAllTextAsync(saved.FileReceipt.Path);
+            Assert.Contains("BA_ \"GenMsgCycleTime\" BO_ 2566869031 65;", newSource);
+            Assert.Contains("CM_ BO_ 2566869031 \"VCU-1; FrameId=0x18FF5027\";", newSource);
+            Assert.Contains("VAL_ 2566869031 VCU_EPB_HeartBit 0 \"Idle\" 1 \"Active\";", newSource);
+            Assert.Contains("BO_ 2566869031 VCU_EPB_Command1: 8 VCU", newSource);
+            var reopenedService = new ProjectWorkspaceService();
+            await reopenedService.OpenAsync(project.ManifestPath);
+            var reopened = await reopenedService.OpenDbcEditorAsync(asset.Id);
+            Assert.Equal(0.5, reopened.Document.Model.FindSignal(2566869031u, "VCU_EPB_Check").Factor);
+            Assert.Equal(1, reopened.Document.Model.FindSignal(2566869031u, "VCU_EPB_Check").Offset);
+            Assert.Equal(2, reopened.AssetRevision);
         }
         finally { Directory.Delete(parent, recursive: true); }
     }
