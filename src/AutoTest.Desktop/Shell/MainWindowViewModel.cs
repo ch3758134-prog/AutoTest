@@ -400,19 +400,19 @@ public sealed class MainWindowViewModel : BindableBase
         ResourceLines.Add("正式 TEST：" + (Workspace.LabProgram?.Name ?? "尚未登记测试程序"));
         ResourceNodes.Clear();
         var root = new WorkbenchResourceNode(
-            $"工程 / {Workspace.Project.Name} / r{Workspace.Project.Revision}", "project");
-        var testsGroup = new WorkbenchResourceNode("测试程序 / TEST");
+            Workspace.Project.Name, "project");
+        var testsGroup = new WorkbenchResourceNode("测试程序");
         if (Workspace.LabProgram is { } formalProgram)
             testsGroup.Children.Add(new WorkbenchResourceNode(
                 formalProgram.Name + $" · {formalProgram.Walk().Count()} 步骤", "test"));
         else
             testsGroup.Children.Add(new WorkbenchResourceNode(
-                "未登记正式 TEST · 双击进入编辑器", "test"));
+                "新建测试程序", "test"));
         root.Children.Add(testsGroup);
-        var dbcGroup = new WorkbenchResourceNode("DBC / 网络信号");
-        var controllerGroup = new WorkbenchResourceNode("Controller / 工位");
-        var waveGroup = new WorkbenchResourceNode("Wave / 参考波形");
-        var flashGroup = new WorkbenchResourceNode("Flash / 固件与配置");
+        var dbcGroup = new WorkbenchResourceNode("DBC 数据库");
+        var controllerGroup = new WorkbenchResourceNode("控制器与按键");
+        var waveGroup = new WorkbenchResourceNode("波形参考");
+        var flashGroup = new WorkbenchResourceNode("固件与烧录");
         var otherGroup = new WorkbenchResourceNode("其他工程资产");
         foreach (var asset in Workspace.Assets)
         {
@@ -435,8 +435,8 @@ public sealed class MainWindowViewModel : BindableBase
         root.Children.Add(controllerGroup);
         root.Children.Add(waveGroup);
         root.Children.Add(flashGroup);
-        root.Children.Add(new WorkbenchResourceNode("编号规则 / 工位绑定", "scan"));
-        root.Children.Add(new WorkbenchResourceNode("运行记录 / 报告", "records"));
+        root.Children.Add(new WorkbenchResourceNode("扫码与编号规则", "scan"));
+        root.Children.Add(new WorkbenchResourceNode("运行记录与报告", "records"));
         if (otherGroup.Children.Count != 0) root.Children.Add(otherGroup);
         ResourceNodes.Add(root);
         EditableProjectName = Workspace.Project.Name;
