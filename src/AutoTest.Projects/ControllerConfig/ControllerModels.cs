@@ -8,6 +8,23 @@ public enum ControlInteraction { Momentary, Latched, SpringReturn, Exclusive }
 public enum MeasurementStatus { NotMeasured, Valid, OutOfRange, Invalid, Unqualified }
 public enum ObservationOrigin { Manual, Mock, Replay, Physical }
 
+/// <summary>
+/// Fixed operator-like button timing. These are configuration values, not device
+/// measurements. Zero hold duration means a pulse must supply a duration at the
+/// test-step call site; it never authorizes an instantaneous physical operation.
+/// </summary>
+public sealed record ButtonActionTiming(int DelayBeforePressMs, int DefaultPressDurationMs,
+    int DelayAfterReleaseMs)
+{
+    public static ButtonActionTiming Unspecified { get; } = new(0, 0, 0);
+    public ButtonActionTiming Validate()
+    {
+        if (DelayBeforePressMs < 0 || DefaultPressDurationMs < 0 || DelayAfterReleaseMs < 0)
+            throw new ProjectDataException("CTRL_ACTION_TIMING", "Button timing must be nonnegative.");
+        return this;
+    }
+}
+
 public sealed record VoltageWindow(int Channel, double? TargetVolts, double? MinimumVolts, double? MaximumVolts)
 {
     public VoltageWindow Validate()
@@ -46,6 +63,9 @@ public sealed record ControllerState(Guid Id, string Name, int Order, ControlInt
     uint KeyMask, Guid? ReturnStateId, string? ExclusiveGroup,
     ImmutableArray<VoltageWindow> Windows, ImmutableArray<VoltageMeasurement> Measurements)
 {
+    /// <summary>Optional for backwards-compatible controller configuration files.</summary>
+    public ButtonActionTiming ActionTiming { get; init; } = ButtonActionTiming.Unspecified;
+
     public static ControllerState Create(string name, uint mask, int order) =>
         new ControllerState(Guid.NewGuid(), name, order, ControlInteraction.Momentary, mask, null, null,
             ImmutableArray<VoltageWindow>.Empty, ImmutableArray<VoltageMeasurement>.Empty).Validate();
@@ -57,6 +77,7 @@ public sealed record ControllerState(Guid Id, string Name, int Order, ControlInt
             throw new ProjectDataException("CTRL_STATE", "State identity, order, mask or collection is invalid.");
         if (Windows.Any(w => w is null) || Measurements.Any(m => m is null))
             throw new ProjectDataException("CTRL_STATE", "Null channel data is invalid.");
+        (ActionTiming ?? throw new ProjectDataException("CTRL_ACTION_TIMING", "Button timing is missing.")).Validate();
         foreach (var window in Windows) window.Validate();
         foreach (var measurement in Measurements) measurement.Validate();
         if (Windows.GroupBy(w => w.Channel).Any(g => g.Count() > 1))

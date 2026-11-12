@@ -128,4 +128,94 @@ public sealed class ControllerConfigurationTests
         }
         finally { File.Delete(path); }
     }
+
+
+    [Fact] public void ButtonTiming_StoredWithConfiguredStateAndRoundTrips()
+    {
+        var (profile, controller, stateId) = Profile();
+        var state = profile.Controllers[0].States[0] with
+        {
+            ActionTiming = new ButtonActionTiming(150, 350, 80)
+        };
+        profile = profile with
+        {
+            Controllers = ImmutableArray.Create(profile.Controllers[0] with
+            { States = ImmutableArray.Create(state) })
+        };
+        var reloaded = ControllerRepository.Decode(ControllerRepository.Encode(profile));
+        var actual = reloaded.ResolveState(controller, stateId, reloaded.Revision);
+        Assert.Equal(new ButtonActionTiming(150, 350, 80), actual.ActionTiming);
+        Assert.Throws<ProjectDataException>(() =>
+            (state with { ActionTiming = new ButtonActionTiming(-1, 0, 0) }).Validate());
+    }
+
+    [Fact] public void ButtonPulse_CombinesKeyStatesAndRestoresPriorActiveMask()
+    {
+        var (profile, controller, stateId) = Profile();
+        var editor = new ControllerEditSession(profile);
+        editor.AddState(controller, "Secondary", 0x2);
+        var updated = editor.Current;
+        var targetId = updated.Controllers[0].States.Single(x => x.Name == "Secondary").Id;
+        var initial = new StateReference(updated.ProfileId, controller, stateId, updated.Revision);
+        var target = new StateReference(updated.ProfileId, controller, targetId, updated.Revision);
+        var policy = new HardwareKeyPolicy(updated.HardwareProfileId, 0xFFFFF,
+            ImmutableArray<IncompatibleKeyPair>.Empty);
+        var plan = ButtonActionPlanner.Resolve(updated, policy, [initial],
+            new ButtonActionRequest(target, ButtonActuation.Pulse,
+                new ButtonActionTiming(120, 250, 60)));
+        Assert.Equal(1u, plan.MaskBefore);
+        Assert.Equal(3u, plan.MaskDuringOperation);
+        Assert.Equal(1u, plan.MaskAfterOperation);
+        Assert.Equal(120, plan.Timing.DelayBeforePressMs);
+        Assert.Equal(250, plan.Timing.DefaultPressDurationMs);
+        Assert.Single(plan.ActiveAfterOperation);
+        Assert.Equal(initial, plan.ActiveAfterOperation[0]);
+    }
+
+    [Fact] public void ButtonHoldAndRelease_PreserveUnrelatedActiveStates()
+    {
+        var (profile, controller, stateId) = Profile();
+        var editor = new ControllerEditSession(profile);
+        editor.AddState(controller, "Other", 0x4);
+        var updated = editor.Current;
+        var id = updated.Controllers[0].States.Single(x => x.Name == "Other").Id;
+        var first = new StateReference(updated.ProfileId, controller, stateId, updated.Revision);
+        var second = new StateReference(updated.ProfileId, controller, id, updated.Revision);
+        var hardware = new HardwareKeyPolicy(updated.HardwareProfileId, 0xFFFFF,
+            ImmutableArray<IncompatibleKeyPair>.Empty);
+        var hold = ButtonActionPlanner.Resolve(updated, hardware, [first],
+            new ButtonActionRequest(second, ButtonActuation.Hold,
+                new ButtonActionTiming(50, 0, 20)));
+        Assert.Equal(5u, hold.MaskAfterOperation);
+        Assert.Equal(0, hold.Timing.DelayAfterReleaseMs);
+        var release = ButtonActionPlanner.Resolve(updated, hardware, hold.ActiveAfterOperation,
+            new ButtonActionRequest(second, ButtonActuation.Release,
+                new ButtonActionTiming(50, 0, 20)));
+        Assert.Equal(1u, release.MaskAfterOperation);
+        Assert.Equal(0, release.Timing.DelayBeforePressMs);
+        Assert.Equal(20, release.Timing.DelayAfterReleaseMs);
+    }
+
+    [Fact] public void ButtonPlanning_RejectsConflictStaleMappingAndUntimedPulse()
+    {
+        var (profile, controller, stateId) = Profile();
+        var editor = new ControllerEditSession(profile);
+        editor.AddState(controller, "Other", 0x2);
+        var updated = editor.Current;
+        var targetId = updated.Controllers[0].States.Last().Id;
+        var first = new StateReference(updated.ProfileId, controller, stateId, updated.Revision);
+        var target = new StateReference(updated.ProfileId, controller, targetId, updated.Revision);
+        var blocked = new HardwareKeyPolicy(updated.HardwareProfileId, 0xFFFFF,
+            ImmutableArray.Create(new IncompatibleKeyPair(1, 2)));
+        Assert.Throws<ProjectDataException>(() => ButtonActionPlanner.Resolve(
+            updated, blocked, [first],
+            new ButtonActionRequest(target, ButtonActuation.Hold)));
+        var available = blocked with { ForbiddenPairs = ImmutableArray<IncompatibleKeyPair>.Empty };
+        Assert.Throws<ProjectDataException>(() => ButtonActionPlanner.Resolve(
+            updated, available, [], new ButtonActionRequest(target, ButtonActuation.Pulse)));
+        var stale = target with { Revision = profile.Revision };
+        Assert.Throws<ProjectDataException>(() => ButtonActionPlanner.Resolve(
+            updated, available, [], new ButtonActionRequest(stale, ButtonActuation.Hold)));
+    }
+
 }
