@@ -1,0 +1,20 @@
+VERSION ""
+
+NS_ :
+
+BS_:
+
+BU_: ECU Tester
+
+BO_ 384 EPB_Status: 8 ECU
+ SG_ EPB_Mode : 0|8@1+ (1,0) [0|4] "" Tester
+ SG_ Motor_Current : 8|16@1+ (0.1,0) [0|6553.5] "A" Tester
+ SG_ Supply_Voltage : 24|16@1+ (0.01,0) [0|655.35] "V" Tester
+
+BO_ 385 EPB_Requests: 8 Tester
+ SG_ Park_Request : 0|8@1+ (1,0) [0|1] "" ECU
+ SG_ Release_Request : 8|8@1+ (1,0) [0|1] "" ECU
+
+BO_ 386 EPB_Diagnostics: 8 ECU
+ SG_ Fault_Code : 0|16@1+ (1,0) [0|65535] "" Tester
+ SG_ Ign_Status : 16|8@1+ (1,0) [0|1] "" Tester
