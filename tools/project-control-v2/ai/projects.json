@@ -1,0 +1,29 @@
+{
+  "schema": "project-control-project-index/1",
+  "scope": "PROJECT_CONTROL_V2_CANDIDATE",
+  "description": "仅登记可读取的项目和真实管理资料位置，不表明该项目已完成任何 Gate；未找到项目时由读取的 AI 主动发起简短的建立项目交流。",
+  "project_selection": {
+    "default_project": null,
+    "if_user_not_specific": "ASK_WHICH_PROJECT_IF_MULTIPLE_OR_NO_CONTEXT",
+    "if_empty": "ASK_PROJECT_NAME_AND_PURPOSE",
+    "if_only_one": "CAN_IDENTIFY_FROM_REPO_BUT_MUST_NOT_INFER_CHAT_ROLE"
+  },
+  "projects": [
+    {
+      "id": "autotest",
+      "name": "AutoTest",
+      "status": "EXISTING_PILOT_WITH_CANDIDATE_V2_MANAGEMENT",
+      "management_record": "tools/project-control-v2/workspace/autotest.json",
+      "engineering_source": "tools/project-control-v2/sources/autotest_engineering.json",
+      "process_reference": "tools/project-control-v2/process.json",
+      "role_appointments": "tools/project-control-v2/ai/appointments/autotest.json",
+      "notes": [
+        "P0 产品定义有正式批准版本",
+        "G1 整理报告尚未正式批准",
+        "候选开发计划不是正式任务派发",
+        "角色登记为空时不能猜测本 ChatGPT 对话的身份",
+        "不要将 V2 候选制度称为已合并 main 的正式项目管理系统"
+      ]
+    }
+  ]
+}
