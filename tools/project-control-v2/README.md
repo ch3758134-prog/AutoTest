@@ -1,5 +1,7 @@
 # Project Control V2｜项目研发管理工作台
 
+> **用于其他新/已有工程项目时，请首先阅读本文件夹内的 [START_HERE.md](START_HERE.md) 和 [PORTABLE_MANIFEST.json](PORTABLE_MANIFEST.json)。以下原有 Web 工作台使用说明属于 AutoTest 试点，不代表直接复制文件夹后即可管理任意项目。通用初始化候选的流程见 [portable/INITIALIZATION_PROTOCOL.md](portable/INITIALIZATION_PROTOCOL.md)，已知缺口见 [portable/COMPLETENESS_AUDIT.md](portable/COMPLETENESS_AUDIT.md)。**
+
 这是**从项目管理目标重新设计的独立系统**。它不调用旧 Engineering Workbench 的 UI、对象存储、弹窗或业务路由。设计目标是让负责人在 **ChatGPT 网页端 + 专业对话 + GitHub + 本地 Codex** 的 Vibe Coding 工作方式下，有效管理项目目标、交付、计划、执行、风险、变更、工程阶段和审查。
 
 
