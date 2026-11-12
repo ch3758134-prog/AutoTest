@@ -11,7 +11,7 @@
 - `AutoTest.Specialists`：扫码、UDS、烧录、波形领域能力。
 - `AutoTest.Records`：执行事实、SQLite 记录、统计及报告。
 - `AutoTest.Application`：生产业务编排。旧 G4/V1 组合器及 V0 模拟网关已经退出主线候选。
-- `AutoTest.Desktop`：最小 WPF 启动壳；现阶段**不提供已接线的工程编辑、自动测试或设备控制**。不得将启动成功误认为业务闭环通过。
+- `AutoTest.Desktop`：最小 WPF 启动壳（旧未接线的 Tools UI 已退出）；现阶段**不提供已接线的工程编辑、自动测试或设备控制**。不得将启动成功误认为业务闭环通过。
 
 ## 当前状态
 

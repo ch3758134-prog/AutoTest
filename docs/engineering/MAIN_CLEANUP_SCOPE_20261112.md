@@ -34,3 +34,11 @@
 - 删除早期 V0 源码交付包遗留的六个仓库根目录文件（Codex 旧执行合同、哈希清单、文件树、回传单、增补路径、初始验证报告）；历史仍可通过 Git 查看。
 - 不修改工程文件外部格式、DBC 语义、扫码策略或设备协议。
 - 按维护者要求此批不运行 CI；提交信息标记 `[skip ci]`，尚不声称本地 Windows 编译或实体联机已验收。
+
+## 第三批：未接线 UI 和 Mock 烧录链（2026-11-12）
+- 移除未注册到最小 Shell 的整组 `Desktop/Tools`、`Desktop/Production`、`Desktop/Workbench` 与对应旧 UI 测试；保留主程序、Prism Shell、主题、以及针对独立真实 LabLinkGui 的诊断测试。
+- 移除 Flash 的 `MockBootloader`、`MockProgrammingWorkflow`、`ProgrammingJobCoordinator`（只接受 V0 Mock 授权）、`ProgrammingStageHandlers`（Mock 特定请求）和 `FlashDryRunWorkspace`，以及模拟烧录专属测试。
+- 将原测试文件中实际可复用的 HEX/S19/BIN 镜像解析测试提取为 `FirmwareImageParserTests`；保留镜像解析、通用刷写计划/预检/配置/块传输领域源文件。真实刷写执行器尚未接入。
+- 去掉旧 `UdsDiagnosticWorkspace` 模拟 ECU，保留 UDS 服务文档类型/文件读写及 Replay。通用 `UdsClient` 现对所有非只读服务拒绝，直到物理授权链单独集成；改用受控测试通道验证只读响应、NRC 及超时。
+- Desktop 当前是干净的最小 WPF Prism Shell，不包含任何已接线的工程/DBC/自动测试界面；后续按正式产品职责重新构建。
+- 不主动运行 CI，未做 Windows 本地编译/实机测试；审核以本次源码差异和依赖关系为依据。

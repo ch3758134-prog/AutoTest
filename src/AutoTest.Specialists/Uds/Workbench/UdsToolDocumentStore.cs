@@ -1,13 +1,11 @@
-using System.Collections.Immutable;
 using System.Text.Json;
 using AutoTest.Contracts;
-using AutoTest.Specialists.Flash;
 
 namespace AutoTest.Specialists.Uds.Workbench;
 
 // A document is a diagnostic resource, not a DBC resource. This is a local
 // import/export boundary; PROJECT/INTEGRATION may store the same JSON as an asset.
-public sealed record UdsToolProfile(string Name, string MockIdentity, uint TxId, uint RxId,
+public sealed record UdsToolProfile(string Name, string EcuIdentity, uint TxId, uint RxId,
     int P2Ms, int P2StarMs, string Addressing = "Normal");
 public sealed record UdsServiceDefinition(string Name, string RequestHex, string ExpectedHex);
 public sealed record UdsToolDocument(int Schema, UdsToolProfile Profile,
@@ -41,7 +39,7 @@ public static class UdsToolDocumentStore
     {
         if (document.Schema != 1 || document.Profile is null || document.Services is null ||
             document.Services.Count > 200 || string.IsNullOrWhiteSpace(document.Profile.Name) ||
-            string.IsNullOrWhiteSpace(document.Profile.MockIdentity))
+            string.IsNullOrWhiteSpace(document.Profile.EcuIdentity))
             throw new InvalidDataException("Invalid UDS service document schema/profile.");
         _ = ToEndpoint(document.Profile);
         var catalog = new UdsServiceCatalog();
@@ -95,77 +93,3 @@ public static class UdsToolDocumentStore
     }
 }
 
-// MOCK ONLY, by construction: no ICanFrameHub / physical transport can enter
-// this service. Its host and simulated ECU use the production ISO-TP codec.
-public sealed class UdsDiagnosticWorkspace : IAsyncDisposable
-{
-    private readonly SemaphoreSlim _exclusive = new(1, 1);
-    private MockBootloader _ecu;
-    private MockUdsMessageChannel _channel;
-    private UdsClient _client;
-    private bool _disposed;
-    public string MockIdentity { get; private set; }
-    public UdsDiagnosticWorkspace(string identity = "MOCK_ECU_A")
-    {
-        MockIdentity = identity;
-        _ecu = new MockBootloader(identity);
-        _channel = new MockUdsMessageChannel(_ecu);
-        _client = new UdsClient(_channel);
-    }
-    public async Task ResetMockAsync(string identity, CancellationToken ct = default)
-    {
-        await _exclusive.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            if (string.IsNullOrWhiteSpace(identity)) throw new ArgumentException("Mock ECU identity required.");
-            await _channel.DisposeAsync().ConfigureAwait(false);
-            _ecu = new MockBootloader(identity);
-            _channel = new MockUdsMessageChannel(_ecu);
-            _client = new UdsClient(_channel);
-            MockIdentity = identity;
-        }
-        finally { _exclusive.Release(); }
-    }
-    public void InjectNextNrc(byte sid, byte nrc) => _ecu.SimulateNrc(sid, nrc);
-    public void InjectNextPending(byte sid) => _ecu.SimulatePendingOnce(sid);
-    public void SetNoResponse(bool enabled) => _ecu.IgnoreRequests = enabled;
-    public void SimulateDisconnect() => _ecu.Disconnect();
-
-    public async Task<UdsToolExchange> SendMockAsync(UdsToolProfile profile, string requestText,
-        string expectedHex = "", CancellationToken ct = default)
-    {
-        if (_disposed) throw new ObjectDisposedException(nameof(UdsDiagnosticWorkspace));
-        byte[] request = UdsHex.Parse(requestText);
-        var endpoint = UdsToolDocumentStore.ToEndpoint(profile);
-        if (!string.Equals(profile.MockIdentity, MockIdentity, StringComparison.Ordinal))
-            throw new InvalidOperationException("Mock ECU identity differs. Reset Mock explicitly.");
-        byte[]? expected = string.IsNullOrWhiteSpace(expectedHex) ? null : UdsHex.Parse(expectedHex);
-        await _exclusive.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            int h = _channel.HostFrames().Length;
-            int e = _channel.EcuFrames().Length;
-            var id = Guid.NewGuid();
-            var result = await _client.RequestAsync(new UdsRequest(request.ToImmutableArray(), id),
-                endpoint, ct).ConfigureAwait(false);
-            byte[] response = result.ResponsePdu.ToArray();
-            var trace = _channel.HostFrames().Skip(h)
-                .Select(x => new UdsCanTraceRow("HOST TX", UdsHex.Format(x)))
-                .Concat(_channel.EcuFrames().Skip(e)
-                    .Select(x => new UdsCanTraceRow("MOCK ECU TX", UdsHex.Format(x))))
-                .ToArray();
-            return new("Mock", UdsHex.Format(request), UdsHex.Format(response),
-                result.Outcome.ToString(), result.NegativeResponseCode is byte n ? $"0x{n:X2}" : "—",
-                expected is null ? null : response.SequenceEqual(expected), id, trace,
-                result.Outcome == AutoTest.Core.Outcome.Uncertain ? "NO_CONFIRMED_RESPONSE" : "");
-        }
-        finally { _exclusive.Release(); }
-    }
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed) return;
-        await _exclusive.WaitAsync().ConfigureAwait(false);
-        try { if (!_disposed) { _disposed = true; await _channel.DisposeAsync().ConfigureAwait(false); } }
-        finally { _exclusive.Release(); }
-    }
-}

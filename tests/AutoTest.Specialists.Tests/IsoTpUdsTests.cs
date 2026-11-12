@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using System.Threading.Channels;
 using AutoTest.Contracts;
 using AutoTest.Core;
-using AutoTest.Specialists.Flash;
 using AutoTest.Specialists.Uds;
 using Xunit;
 
@@ -80,35 +79,47 @@ public sealed class IsoTpUdsContractTests
         await Assert.ThrowsAsync<IsoTpProtocolException>(async()=>{ await new IsoTpConversation(overflow)
             .SendPduAsync(new byte[20]); });
     }
-    [Fact]
-    public async Task Verify_E2_T03_ResponsePendingAndBusyNrc()
+    private sealed class ScriptedChannel(params byte[][] responses) : IUdsMessageChannel
     {
-        var ecu=new MockBootloader("UNIT-TEST");
-        ecu.SimulatePendingOnce(0x22);
-        await using var channel=new MockUdsMessageChannel(ecu);
-        var uds=new UdsClient(channel);
-        var result=await uds.RequestAsync(Request(0x22,0xF1,0x90),Profile,default);
-        Assert.Equal(Outcome.Accepted,result.Outcome);
-        Assert.Equal((byte)0x62,result.ResponsePdu[0]);
-        Assert.Equal(2,uds.Trace.Snapshot().Count(x=>x.Direction==UdsTraceDirection.Response));
-        Assert.Contains(channel.EcuFrames(),f=>IsoTpFrameCodec.Kind(f)==IsoTpFrameKind.First);
-        ecu.SimulateNrc(0x22,0x21);
-        var busy=await uds.RequestAsync(Request(0x22,0xF1,0x90),Profile,default);
-        Assert.Equal(Outcome.Rejected,busy.Outcome); Assert.Equal((byte)0x21,busy.NegativeResponseCode);
+        private readonly Queue<byte[]> _queue = new(responses);
+        public ValueTask SendPduAsync(ReadOnlyMemory<byte> data, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            return ValueTask.CompletedTask;
+        }
+        public ValueTask<byte[]> ReceivePduAsync(TimeSpan timeout, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            return _queue.Count == 0
+                ? ValueTask.FromException<byte[]>(new TimeoutException("No queued UDS response"))
+                : ValueTask.FromResult(_queue.Dequeue());
+        }
     }
     [Fact]
-    public async Task Verify_E2_T04_NoResponseAndWrongSid()
+    public async Task ReadOnlyRequestHandlesResponsePendingAndNegativeResponse()
     {
-        var boot=new MockBootloader("UNIT-TEST"){IgnoreRequests=true};
-        await using var channel=new MockUdsMessageChannel(boot);
-        var uds=new UdsClient(channel);
-        Assert.Equal(Outcome.Uncertain,(await uds.RequestAsync(Request(0x22,0xF1,0x90),
-            Profile with{P2=TimeSpan.FromMilliseconds(15)},default)).Outcome);
-        var wrong=new UdsClient(new WrongSidChannel());
-        Assert.Equal(Outcome.Uncertain,(await wrong.RequestAsync(Request(0x22,0xF1,0x90),Profile,default)).Outcome);
-        Assert.Equal(Outcome.Rejected,(await wrong.RequestAsync(Request(0x10,0x02),Profile,default)).Outcome);
-        Assert.Throws<NotSupportedException>(()=>UdsEndpointProfileValidator.ValidateAddressing(
-            Profile with{Addressing="Extended"}));
+        var uds = new UdsClient(new ScriptedChannel(
+            [0x7F, 0x22, 0x78], [0x62, 0xF1, 0x90, 0x45], [0x7F, 0x22, 0x21]));
+        var positive = await uds.RequestAsync(Request(0x22, 0xF1, 0x90), Profile, default);
+        Assert.Equal(Outcome.Accepted, positive.Outcome);
+        Assert.Equal(2, uds.Trace.Snapshot().Count(x => x.Direction == UdsTraceDirection.Response));
+        var negative = await uds.RequestAsync(Request(0x22, 0xF1, 0x90), Profile, default);
+        Assert.Equal(Outcome.Rejected, negative.Outcome);
+        Assert.Equal((byte)0x21, negative.NegativeResponseCode);
+    }
+    [Fact]
+    public async Task MissingResponseAndWrongSidCannotConfirmReadOnlyOrWrite()
+    {
+        var noResponse = new UdsClient(new ScriptedChannel());
+        Assert.Equal(Outcome.Uncertain, (await noResponse.RequestAsync(
+            Request(0x22, 0xF1, 0x90), Profile, default)).Outcome);
+        var wrong = new UdsClient(new WrongSidChannel());
+        Assert.Equal(Outcome.Uncertain, (await wrong.RequestAsync(
+            Request(0x22, 0xF1, 0x90), Profile, default)).Outcome);
+        Assert.Equal(Outcome.Rejected, (await wrong.RequestAsync(
+            Request(0x10, 0x02), Profile, default)).Outcome);
+        Assert.Throws<NotSupportedException>(() => UdsEndpointProfileValidator.ValidateAddressing(
+            Profile with { Addressing = "Extended" }));
     }
     private sealed class WrongSidChannel : IUdsMessageChannel
     {

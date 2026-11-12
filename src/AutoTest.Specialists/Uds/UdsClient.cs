@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using AutoTest.Contracts;
 using AutoTest.Core;
-using AutoTest.Specialists.Flash;
 
 namespace AutoTest.Specialists.Uds;
 
@@ -17,8 +16,8 @@ public sealed class IsoTpUdsMessageChannel(IsoTpConversation conversation) : IUd
     public ValueTask<byte[]> ReceivePduAsync(TimeSpan timeout, CancellationToken ct) => conversation.ReceivePduAsync(timeout,ct);
 }
 
-// Physical transports are read-only by construction. State-changing requests are
-// accepted only by the sealed in-process MockUdsMessageChannel (no CAN/USB handle).
+// Read-only UDS boundary. State-changing requests remain denied until an explicitly
+// reviewed physical programming transport and authorization path is integrated.
 public sealed class UdsClient : IUdsClient
 {
     private readonly IUdsMessageChannel _channel;
@@ -42,12 +41,12 @@ public sealed class UdsClient : IUdsClient
         if (pdu.Length < service.MinimumRequestLength)
             throw new ArgumentException($"Malformed {service.Name} request.");
         if (MaxResponsePending < 0) throw new InvalidOperationException("Invalid pending limit.");
-        if (service.Risk != UdsRiskLevel.ReadOnly && _channel is not MockUdsMessageChannel)
-            return Result(Outcome.Rejected,pdu,[],null,_channel);
+        if (service.Risk != UdsRiskLevel.ReadOnly)
+            return Result(Outcome.Rejected,pdu,[],null);
         if (!await _exchangeLock.WaitAsync(0,ct).ConfigureAwait(false))
         {
             Trace.AppendError(request.CorrelationId,"UDS_ENDPOINT_BUSY");
-            return Result(Outcome.Rejected,pdu,[],null,_channel);
+            return Result(Outcome.Rejected,pdu,[],null);
         }
         try
         {
@@ -67,30 +66,27 @@ public sealed class UdsClient : IUdsClient
                         timeout = profile.P2Star;
                         continue;
                     }
-                    return Result(Outcome.Rejected,pdu,response,response[2],_channel);
+                    return Result(Outcome.Rejected,pdu,response,response[2]);
                 }
                 // Suppressed positive responses require an explicit separate no-response
                 // policy; never misinterpret timeout as an acknowledged ECU response.
                 if (response.Length < 1 || response[0] != (byte)(pdu[0]+0x40))
                     throw new IsoTpProtocolException("Response SID/NRC does not match request.");
-                return Result(Outcome.Accepted,pdu,response,null,_channel);
+                return Result(Outcome.Accepted,pdu,response,null);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is TimeoutException or IOException or InvalidOperationException)
         {
             Trace.AppendError(request.CorrelationId,ex.GetType().Name + ": " + ex.Message);
-            return Result(Outcome.Uncertain,pdu,[],null,_channel);
+            return Result(Outcome.Uncertain,pdu,[],null);
         }
         finally { _exchangeLock.Release(); }
     }
-    private static UdsExchangeResult Result(Outcome outcome, byte[] request, byte[] response,
-        byte? nrc, IUdsMessageChannel channel)
+    private static UdsExchangeResult Result(Outcome outcome, byte[] request, byte[] response, byte? nrc)
     {
-        var utc = DateTimeOffset.UtcNow;
-        var point = channel is MockUdsMessageChannel
-            ? TimePoint.FromSimulation(utc,0) : TimePoint.FromHostArrival(utc,0);
-        return new(outcome,request.ToImmutableArray(),response.ToImmutableArray(),nrc,
-            ImmutableArray<EvidenceRef>.Empty,point);
+        var point = TimePoint.FromHostArrival(DateTimeOffset.UtcNow, 0);
+        return new(outcome, request.ToImmutableArray(), response.ToImmutableArray(), nrc,
+            ImmutableArray<EvidenceRef>.Empty, point);
     }
 }

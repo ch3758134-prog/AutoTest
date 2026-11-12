@@ -6,7 +6,7 @@ namespace AutoTest.Specialists.Tests.Uds;
 public sealed class UdsWorkbenchTests
 {
     private static UdsToolProfile Profile(int p2 = 1000) =>
-        new("Mock ECU", "MOCK_ECU_A", 0x7E0, 0x7E8, p2, Math.Max(p2, 1000));
+        new("ECU", "ECU_A", 0x7E0, 0x7E8, p2, Math.Max(p2, 1000));
 
     [Theory]
     [InlineData("22 F1 90")]
@@ -21,59 +21,6 @@ public sealed class UdsWorkbenchTests
     [InlineData("")]
     public void MalformedHexIsRejected(string text) =>
         Assert.Throws<FormatException>(() => UdsHex.Parse(text));
-
-    [Fact]
-    public async Task ReadVinUsesMockAndProducesActualIsoTpFrames()
-    {
-        await using var workspace = new UdsDiagnosticWorkspace();
-        var result = await workspace.SendMockAsync(Profile(),"22 F1 90");
-        Assert.Equal("Mock",result.Source);
-        Assert.Equal("Accepted",result.Outcome);
-        Assert.StartsWith("62 F1 90",result.ResponseHex);
-        Assert.Contains(result.Frames,x=>x.Direction=="HOST TX");
-        Assert.Contains(result.Frames,x=>x.Direction=="MOCK ECU TX");
-        Assert.NotEmpty(result.CorrelationId.ToString());
-    }
-
-    [Fact]
-    public async Task UnknownDidReturnsRealNegativeResponseNotFabricatedSuccess()
-    {
-        await using var workspace = new UdsDiagnosticWorkspace();
-        var result = await workspace.SendMockAsync(Profile(),"22 AA BB");
-        Assert.Equal("Rejected",result.Outcome);
-        Assert.Equal("0x31",result.Nrc);
-        Assert.Equal("7F 22 31",result.ResponseHex);
-    }
-
-    [Fact]
-    public async Task PendingIsConsumedBeforePositiveResponse()
-    {
-        await using var workspace = new UdsDiagnosticWorkspace();
-        workspace.InjectNextPending(0x22);
-        var result = await workspace.SendMockAsync(Profile(),"22 F1 90");
-        Assert.Equal("Accepted",result.Outcome);
-        Assert.True(result.Frames.Count >= 4);
-    }
-
-    [Fact]
-    public async Task BoundedTimeoutIsNotPositiveConfirmation()
-    {
-        await using var workspace = new UdsDiagnosticWorkspace();
-        workspace.SetNoResponse(true);
-        var result = await workspace.SendMockAsync(Profile(25),"22 F1 90");
-        Assert.Equal("Uncertain",result.Outcome);
-        Assert.Equal("NO_CONFIRMED_RESPONSE",result.ErrorCode);
-        Assert.Empty(result.ResponseHex);
-    }
-
-    [Fact]
-    public async Task ExpectedResponseMismatchIsExplicit()
-    {
-        await using var workspace = new UdsDiagnosticWorkspace();
-        var result = await workspace.SendMockAsync(Profile(),"22 F1 90","62 F1 90 00");
-        Assert.False(result.ExpectedMatched);
-        Assert.Equal("Accepted",result.Outcome);
-    }
 
     [Fact]
     public async Task ServiceFileReopensAndRejectsInvalidEndpoint()
