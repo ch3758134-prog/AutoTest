@@ -49,3 +49,14 @@ AI 应优先检查适当的替代路径：目录/树遍历、历史版本、来�
 项目负责人参与影响目标、范围、成本、风险、对外承诺、重要技术取舍和正式批准的决定；**不应被要求代替 AI 完成日常 GitHub 搜索**。协调 AI 主动判断信息断点并协调对应专业；专业 AI 形成研究或设计候选；审查岗位寻找反证和影响；本地 Codex 仅执行已获授权的具体任务。
 
 对负责人优先说：现在的项目问题、为何重要、已经能认定什么、哪项仍不能认定、将如何补齐、需要哪项真实决定。复杂来源和版本可以作为证据附录。
+
+## F. 最小可执行使用方式
+
+1. 使用 `context_assessment_example.json` 了解 v2 字段，按照实际目标项目创建独立调查记录。示例是虚构的，不得复制为真实项目证据。
+2. 每个主题可标 `NOT_SEARCHED`、`SEARCH_INCOMPLETE`、`SOURCES_FOUND`、`ASSESSED`、`GAP_CONFIRMED` 或 `NOT_APPLICABLE`。一个主题的 `SOURCES_FOUND` 不能视为工程依据已成立；`ASSESSED` 仍仅是当前候选专业判断。
+3. `claims` 中 `SUPPORTED_CANDIDATE` 须有来源、论证、历史变更检查和当前适用性理由。无法查证时写 `UNKNOWN` 或 `CONFLICT`，不补造理由。
+4. 缺口候选至少记录两种独立发现方法、没有把工具错误当资料不存在，并给出状态为 `PROPOSED_NOT_AUTHORIZED` 的补全行动。这个最低结构检查不替代专业充分性审查。
+5. 在管理系统包根目录运行 `python portable/context_assessment.py portable/context_assessment_example.json` 测试通用样例；真实项目记录可保存到目标 `.project-control/context_assessment.json`。**CLI 不写入文件、不批准、不给任务 READY**。
+6. 负责人本地 Web 工作台的“资产与正式依据”页只读展示该记录；不需要为了测试用户自行填写管理表格，AI 应当负责建立候选、说明来源并安排适用审查。
+
+当前未提供跨 GitHub 和本地 Web 的自动证据同步事务，不假称编辑一次报告就已回写远端。
