@@ -87,10 +87,12 @@ def items(record):
         seen.add(rid)
         if row.get("status") not in STATES or type(row.get("revision")) is not int or row["revision"] < 1:
             raise DeliveryError("invalid delivery revision/state")
-        if len(row.get("history", [])) > MAX_HISTORY or not isinstance(row.get("history"), list):
+        if not isinstance(row.get("history"), list) or len(row["history"]) > MAX_HISTORY:
             raise DeliveryError("invalid delivery history")
         if not isinstance(row.get("review_history"), list) or len(row["review_history"]) > 32:
             raise DeliveryError("invalid owner review history")
+        if any(field not in row for field in CONTENT_FIELDS):
+            raise DeliveryError("delivery missing immutable content field")
         if content_digest(row) != row.get("sha256"):
             raise DeliveryError("delivery content differs from recorded review fingerprint")
         if row.get("status") == "RELEASED_FOR_CANDIDATE_PUBLICATION":
