@@ -25,6 +25,12 @@ public sealed class ResourceTreeNode : INotifyPropertyChanged
     public string Category { get; }
     public AssetEntry? Asset { get; }
     public bool IsPlaceholder { get; }
+    /// <summary>Show a compact add action on resource category headers, never on assets.</summary>
+    public bool IsCreatableCategory => Asset is null && !IsPlaceholder &&
+        Category is (ProjectWorkspaceService.TestProgramKind or ProjectWorkspaceService.DbcKind or
+        ProjectWorkspaceService.ControllerKind or ProjectWorkspaceService.WaveSettingsKind or
+        ProjectWorkspaceService.WaveKind or ProjectWorkspaceService.FlashSettingsKind or
+        ProjectWorkspaceService.FirmwareKind or ProjectWorkspaceService.ScanSettingsKind);
     public ObservableCollection<ResourceTreeNode> Children { get; } = new();
 
     public ResourceTreeNode(string label, string icon, string description, string category = "",

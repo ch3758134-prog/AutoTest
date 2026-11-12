@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -18,19 +20,34 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
-        Closing += async (_, e) =>
+        Closing += OnWindowClosing;
+    }
+
+    private async void OnWindowClosing(object? sender, CancelEventArgs e)
+    {
+        if (_shutdownComplete) return;
+        e.Cancel = true;
+        if (_shutdownStarted || !_viewModel.ConfirmCloseActiveEditor()) return;
+        _shutdownStarted = true;
+        try
         {
-            if (_shutdownComplete) return;
-            e.Cancel = true;
-            if (_shutdownStarted || !_viewModel.ConfirmCloseActiveEditor()) return;
-            _shutdownStarted = true;
-            try { await _viewModel.ShutdownAsync(); }
-            finally
-            {
-                _shutdownComplete = true;
-                Close();
-            }
-        };
+            // Blocking USB/native cleanup must never leave the WPF shell permanently open.
+            await _viewModel.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(6));
+        }
+        catch (TimeoutException error)
+        {
+            Trace.TraceError("AutoTest shutdown timed out: " + error);
+        }
+        catch (Exception error)
+        {
+            Trace.TraceError("AutoTest shutdown failed: " + error);
+        }
+        finally
+        {
+            _shutdownComplete = true;
+            // Close owned WPF windows even if a device's cleanup exceeded the deadline.
+            Application.Current.Shutdown(0);
+        }
     }
 
     private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
@@ -47,6 +64,13 @@ public partial class MainWindow : Window
         e.Handled = true;
         ScannerEntry.Clear();
         await _viewModel.FinishScannerInputAsync();
+    }
+
+    private async void ResourceTree_Create_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is Button { DataContext: ResourceTreeNode node })
+            await _viewModel.CreateFromCategoryAsync(node);
     }
 
     private void ResourceTree_SelectedItemChanged(

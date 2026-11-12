@@ -47,8 +47,7 @@
             <MenuItem Header="重命名资源…" Command="{Binding RenameResourceCommand}" InputGestureText="F2"/>
             <MenuItem Header="移除资源引用…" Command="{Binding RemoveReferenceCommand}"/>
           </MenuItem>
-          <MenuItem Header="视图(_V)" IsEnabled="False"
-                    ToolTip="后续阶段开放视图管理"/>
+
         </Menu>
       </DockPanel>
     </Border>
@@ -161,9 +160,23 @@
                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding Icon}" Margin="0,0,7,0"
-                               Foreground="{StaticResource Subtle}"/>
+                               Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Description}"/>
+                               ToolTip="{Binding Description}" VerticalAlignment="Center"/>
+                    <Button Content="＋" Click="ResourceTree_Create_Click" Focusable="False"
+                            ToolTip="新建或导入此类资源" Margin="7,0,0,0"
+                            MinWidth="23" MinHeight="23" Padding="1,0" VerticalAlignment="Center">
+                      <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
+                          <Setter Property="Visibility" Value="Collapsed"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCreatableCategory}" Value="True">
+                              <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Button.Style>
+                    </Button>
                   </StackPanel>
                 </HierarchicalDataTemplate>
               </TreeView.ItemTemplate>
@@ -204,143 +217,6 @@
               BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4"
               Padding="0">
         <Grid>
-          <StackPanel Width="480" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <StackPanel.Style>
-              <Style TargetType="StackPanel">
-                <Setter Property="Visibility" Value="Visible"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasProject}" Value="True">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </StackPanel.Style>
-            <TextBlock Text="开始使用 AutoTest" FontSize="20" FontWeight="SemiBold"
-                       HorizontalAlignment="Center" Margin="0,0,0,12"/>
-            <TextBlock Text="创建新工程，或从本机打开已有的 AutoTest 工程文件。"
-                       Foreground="{StaticResource Subtle}" TextAlignment="Center"
-                       TextWrapping="Wrap" Margin="0,0,0,20"/>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-              <Button Content="新建工程" Command="{Binding NewProjectCommand}"
-                      Style="{StaticResource AtButton}" MinWidth="125"/>
-              <Button Content="打开工程" Command="{Binding OpenProjectCommand}"
-                      Style="{StaticResource AtButton}" MinWidth="125"/>
-            </StackPanel>
-          </StackPanel>
-
-          <!-- Details for the selected asset/group, without opening a second editor. -->
-          <StackPanel VerticalAlignment="Top" Margin="27,25,27,0">
-            <StackPanel.Style>
-              <Style TargetType="StackPanel">
-                <Setter Property="Visibility" Value="Collapsed"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasSelectedResource}" Value="True">
-                    <Setter Property="Visibility" Value="Visible"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </StackPanel.Style>
-            <TextBlock Text="资源详情" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,18"/>
-            <TextBlock Text="{Binding SelectedResourceTitle}" FontSize="16"
-                       FontWeight="SemiBold" Margin="0,0,0,10"/>
-            <TextBlock Text="{Binding SelectedResourceDescription}" TextWrapping="Wrap"
-                       Foreground="{StaticResource Subtle}" Margin="0,0,0,18"/>
-            <StackPanel>
-              <StackPanel.Style>
-                <Style TargetType="StackPanel">
-                  <Setter Property="Visibility" Value="Collapsed"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding SelectedResourceIsAsset}" Value="True">
-                      <Setter Property="Visibility" Value="Visible"/>
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </StackPanel.Style>
-              <TextBlock Text="工程内相对路径" Foreground="{StaticResource Subtle}"
-                         Margin="0,0,0,7"/>
-              <TextBlock Text="{Binding SelectedResourcePath}" TextWrapping="Wrap"
-                         Margin="0,0,0,15"/>
-              <TextBlock Text="{Binding SelectedResourceKind,StringFormat='资源类型：{0}'}"
-                         Foreground="{StaticResource Subtle}" Margin="0,0,0,7"/>
-              <TextBlock Text="{Binding SelectedResourceRevision,StringFormat='修订版本：{0}'}"
-                         Foreground="{StaticResource Subtle}" Margin="0,0,0,15"/>
-              <Button Content="打开测试程序编辑器" Command="{Binding OpenTestProgramCommand}"
-                      HorizontalAlignment="Left" Margin="0,0,0,14">
-                <Button.Style>
-                  <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding SelectedResourceIsTestProgram}" Value="True">
-                        <Setter Property="Visibility" Value="Visible"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </Button.Style>
-              </Button>
-              <Button Content="打开配置编辑器" Command="{Binding OpenConfigurationCommand}"
-                      HorizontalAlignment="Left" Margin="0,0,0,14">
-                <Button.Style>
-                  <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding SelectedResourceIsConfiguration}" Value="True">
-                        <Setter Property="Visibility" Value="Visible"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </Button.Style>
-              </Button>
-              <Button Content="打开 DBC 工作台" Command="{Binding OpenDbcCommand}"
-                      HorizontalAlignment="Left" Margin="0,0,0,14">
-                <Button.Style>
-                  <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding SelectedResourceIsDbc}" Value="True">
-                        <Setter Property="Visibility" Value="Visible"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </Button.Style>
-              </Button>
-              <StackPanel Orientation="Horizontal">
-                <Button Content="重命名" Command="{Binding RenameResourceCommand}"/>
-                <Button Content="移除引用" Command="{Binding RemoveReferenceCommand}"
-                        ToolTip="不删除磁盘中的 DBC / TEST 文件"/>
-              </StackPanel>
-            </StackPanel>
-          </StackPanel>
-
-          <StackPanel VerticalAlignment="Top" Margin="27,25,27,0">
-            <StackPanel.Style>
-              <Style TargetType="StackPanel">
-                <Setter Property="Visibility" Value="Collapsed"/>
-                <Style.Triggers>
-                  <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                      <Condition Binding="{Binding HasProject}" Value="True"/>
-                      <Condition Binding="{Binding HasSelectedResource}" Value="False"/>
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Visibility" Value="Visible"/>
-                  </MultiDataTrigger>
-                </Style.Triggers>
-              </Style>
-            </StackPanel.Style>
-            <TextBlock Text="工程概览" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,17"/>
-            <TextBlock Text="工程名称" Foreground="{StaticResource Subtle}" Margin="0,0,0,6"/>
-            <TextBlock Text="{Binding CurrentProjectName}" FontSize="16"
-                       FontWeight="SemiBold" Margin="0,0,0,16"/>
-            <TextBlock Text="工程清单路径" Foreground="{StaticResource Subtle}" Margin="0,0,0,6"/>
-            <TextBlock Text="{Binding CurrentProjectPath}" TextWrapping="Wrap"
-                       FontSize="12" Margin="0,0,0,16"/>
-            <TextBlock Text="{Binding AssetCount,StringFormat='已登记资源：{0} 项'}"
-                       Margin="0,0,0,17"/>
-            <Border Background="{StaticResource MutedSurface}" CornerRadius="4"
-                    Padding="12,11" MaxWidth="700" HorizontalAlignment="Left">
-              <TextBlock Text="左侧已展示 TEST、DBC、控制器和波形等资源分类。空分类只是提示，没有写入虚假的资产；点击上方“新建测试程序”或“导入 DBC”可创建真实工程资源。"
-                         TextWrapping="Wrap" Foreground="{StaticResource Subtle}"/>
-            </Border>
-          </StackPanel>
           <DockPanel LastChildFill="True" Background="{StaticResource Panel}"
                      Visibility="{Binding HasActiveEditor,Converter={StaticResource BoolToVisibility}}">
             <Border DockPanel.Dock="Top" Background="{StaticResource ToolbarSurface}"

@@ -494,13 +494,8 @@ public sealed class MainWindowViewModel : BindableBase
                 .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
             var group = new ResourceTreeNode(category.Title + " (" + entries.Length + ")",
                 category.Icon,
-                category.Key == ProjectWorkspaceService.TestProgramKind
-                    ? "测试程序内部管理测试阶段和步骤。"
-                    : "工程资源分类；通过资源菜单或右键创建，配置会写入工程文件。", category.Key);
-            if (entries.Length == 0)
-                group.Children.Add(new ResourceTreeNode(category.Empty, "·",
-                    "这是空分类提示，不是已保存的资源。", category.Key, isPlaceholder: true));
-            else foreach (var entry in entries)
+                "工程资源分类", category.Key);
+            foreach (var entry in entries)
                 group.Children.Add(ToAssetNode(entry));
             root.Children.Add(group);
         }
@@ -608,6 +603,25 @@ public sealed class MainWindowViewModel : BindableBase
             SelectAsset(entry.Id);
             StatusMessage = "波形证据校验并登记：" + entry.Name + "（不自动标为参考波形）";
         });
+    }
+
+    /// <summary>Shared real create/import path for the resource tree inline add action.</summary>
+    public Task CreateFromCategoryAsync(ResourceTreeNode? node)
+    {
+        if (node is null || !node.IsCreatableCategory || !HasProject || IsBusy)
+            return Task.CompletedTask;
+        return node.Category switch
+        {
+            ProjectWorkspaceService.TestProgramKind => CreateTestProgramAsync(),
+            ProjectWorkspaceService.DbcKind => ImportDbcAsync(),
+            ProjectWorkspaceService.FirmwareKind => ImportFirmwareAsync(),
+            ProjectWorkspaceService.WaveKind => ImportWaveAsync(),
+            ProjectWorkspaceService.ControllerKind => CreateConfigurationAsync(ProjectWorkspaceService.ControllerKind),
+            ProjectWorkspaceService.WaveSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
+            ProjectWorkspaceService.FlashSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.FlashSettingsKind),
+            ProjectWorkspaceService.ScanSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind),
+            _ => Task.CompletedTask
+        };
     }
 
     private async Task CreateConfigurationAsync(string kind)
