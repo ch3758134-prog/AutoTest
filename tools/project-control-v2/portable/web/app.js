@@ -155,6 +155,21 @@ function ownerBriefingPanel(){
  const report=candidates.length?candidates[candidates.length-1]:null;
  let html='<section class="section"><div class="heading"><div><div class="eyebrow">项目负责人视图 · 候选信息</div><h2>当前最值得关注的事</h2></div></div>';
  if(model.process_policy_current===false)html+='<div class="warning">本项目旧过程版本仅供只读核对；新过程写入需要单独迁移审查，不能沿用旧批准。</div>';
+ const ctx=model.context_assessment||{status:"NOT_RECORDED"};
+ if(ctx.status==="NOT_RECORDED"){
+   html+='<p class="hint">项目背景与历史资料尚无当前有效性评价；不能从代码或旧文档直接形成产品结论。管理 AI 应先组织资料调查。</p>';
+ }else if(ctx.status==="CANDIDATE_STRUCTURAL_REVIEW"){
+   const uncovered=(ctx.audit?.not_searched_or_incomplete||[]).length;
+   const unassessed=(ctx.audit?.found_not_assessed||[]).length;
+   const gaps=(ctx.audit?.confirmed_gaps||[]).length;
+   if(uncovered||unassessed||gaps){
+     html+='<p class="hint">项目资料仍有待核查事项：检索不足 '+e(uncovered)+' 项、已找到但未评价 '+e(unassessed)+' 项、缺口候选 '+e(gaps)+' 项。详情见“资产与正式依据”；这是候选评价，不是正式批准。</p>';
+   }else{
+     html+='<p class="hint">已有候选资料评价，但结构检查不证明内容正确或获得正式批准。</p>';
+   }
+ }else if(ctx.status==="INVALID_RECORD"){
+   html+='<p class="warning">项目证据评价记录无效，应由管理 AI 复核，不得采用其结论。</p>';
+ }
  html+='<h3>'+e(report?.focus||activity?.objective||"尚未指定当前项目关注的工作")+'</h3>';
  html+='<p><strong>为什么现在做：</strong>'+e(report?.why_this_work||proc?.owner_guidance?.why||"当前工作的必要性尚未说明")+'</p>';
  html+='<p><strong>重要判断：</strong>'+e(report?.judgement||"暂无本轮可向负责人报告的实质判断；不能推断工作已完成")+'</p>';
