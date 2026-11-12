@@ -111,6 +111,19 @@ class ContextWorkflowTests(unittest.TestCase):
             link(r,v["review_id"],work_id="WORK-2")
         self.assertNotEqual(v2["review_id"],v["review_id"])
 
+    def test_new_evidence_requires_plan_and_gate_reassessment(self):
+        r=record()
+        v=submit(r,assessment())
+        link(r,v["review_id"])
+        r["plans"]=[{"id":"PLAN-1","work_ids":["WORK-1"],
+                      "state":"SUBMITTED_FOR_HUMAN_REVIEW"}]
+        r["gate_reviews"]=[{"id":"GATE-1","work_ids":["WORK-1"],
+                            "state":"REQUESTED_NOT_APPROVED"}]
+        submit(r,assessment("changed"))
+        self.assertEqual(r["plans"][0]["state"],"REASSESSMENT_REQUIRED")
+        self.assertEqual(r["gate_reviews"][0]["context_source_warning"],
+                         "EVIDENCE_REASSESSMENT_REQUIRED")
+
     def test_missing_deliverable_refused(self):
         r=record()
         v=submit(r,assessment())
