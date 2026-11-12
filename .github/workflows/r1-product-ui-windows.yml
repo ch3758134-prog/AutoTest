@@ -99,6 +99,24 @@ jobs:
               throw "R1 WPF process exited before startup smoke window."
             }
             Write-Host "R1_WPF_UI_REVIEW_STARTUP_SURVIVED_6_SECONDS"
+            # Best-effort artifact: a hosted runner may not expose a visible
+            # interactive desktop. Failure to screenshot is not a build failure.
+            try {
+              Add-Type -AssemblyName System.Drawing
+              Add-Type -AssemblyName System.Windows.Forms
+              $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+              $image = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
+              $graphics = [System.Drawing.Graphics]::FromImage($image)
+              $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $image.Size)
+              $path = Join-Path (Resolve-Path 'output/AutoTest.R1').Path 'UI-Review-Startup.png'
+              $image.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+              Write-Host "R1_WPF_SCREENSHOT_ARTIFACT_CREATED"
+              $graphics.Dispose()
+              $image.Dispose()
+            }
+            catch {
+              Write-Host "R1_WPF_SCREENSHOT_UNAVAILABLE: $($_.Exception.Message)"
+            }
           }
           finally {
             $proc.Refresh()
