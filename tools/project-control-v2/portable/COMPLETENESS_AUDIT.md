@@ -23,7 +23,7 @@
 - `portable/pr_evidence.py`：接受通过 GitHub 连接取得的 PR 元数据，检查目标仓库、分支和候选提交是否与 Codex 回执相符；该检查**不等于 PR 内容审查、CI 验收或项目 Gate**。
 - `portable/task_submission.py`：将取得正确 PR 与 Codex 回执的 READY 任务转为 `SUBMITTED_FOR_REVIEW` 的候选 GitHub 文件修改，保留独立审查与 Gate 边界；本身不自动提交远端。
 - `portable/REMOTE_HANDOFF.md`：管理 AI 主动读取的完整任务发布、Codex 领取及远端 PR 复核协议。
-- 新增 `portable/github_bridge.py` 可选显式 HTTPS GitHub Contents SHA-CAS 工具，可重新核对真实批准记录、设计 blob、任务版本与最新 PR 文件范围；端到端真实 GitHub 写入仍未通过实际目标仓库实测。
+- 新增 `portable/github_bridge.py` 可选显式 HTTPS GitHub 非强制 Git ref-CAS 工具（保留显式兼容 Contents SHA-CAS），可重新核对真实批准记录、设计 blob、任务版本与最新 PR 文件范围；端到端真实 GitHub 写入仍未通过实际目标仓库实测。
 - 新增 `portable/workspace_manager.py` 本机工作区登记与审查退出，和 `portable/governance.py` 通用计划/变更候选；所有未能确认的旧目录仍保留。
 - 已增加无网络的 NEW/ADOPT→授权→本地 Codex→回执→PR 候选的完整测试夹具，但这并非真实 Windows 或 Github 账号级别的验收。
 - 仍缺少实际跨机器 GitHub 写入/PR 端到端验证以及可靠 Windows 工作区回收。要避免把受控协作的文本约束当成系统级权限。
