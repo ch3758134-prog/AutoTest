@@ -1,0 +1,40 @@
+name: Main cleanup Windows application validation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/AutoTest.Desktop/**'
+      - 'src/AutoTest.DeviceLab/**'
+      - 'tests/AutoTest.Desktop.Tests/**'
+      - 'AutoTest.sln'
+      - '.github/workflows/main-cleanup-windows.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop-build-and-tests:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.400'
+      - name: Verify no legacy application entry remains
+        shell: pwsh
+        run: |
+          $shell = Get-Content src/AutoTest.Desktop/Shell/MainWindow.xaml -Raw -Encoding utf8
+          $code = Get-Content src/AutoTest.Desktop/Shell/MainWindow.xaml.cs -Raw -Encoding utf8
+          if (Test-Path 'src/AutoTest.DeviceLab/AutoTest.DeviceLab.csproj') { throw 'DEVICE_LAB_STILL_PRESENT' }
+          if (Test-Path 'src/AutoTest.Desktop/Bench/BenchWorkbenchView.xaml') { throw 'OLD_BENCH_STILL_PRESENT' }
+          foreach ($word in @('G4Tools_Click','Modules_Click','DeviceLab_Click','Content="▶ TEST Mock"','RunMonitorRegion')) {
+            if ($shell.Contains($word) -or $code.Contains($word)) { throw "LEGACY_ENTRY_STILL_PRESENT: $word" }
+          }
+      - name: Restore Desktop tests
+        run: dotnet restore tests/AutoTest.Desktop.Tests/AutoTest.Desktop.Tests.csproj
+      - name: Build Desktop Release
+        run: dotnet build src/AutoTest.Desktop/AutoTest.Desktop.csproj -c Release --no-restore
+      - name: Desktop tests
+        run: dotnet test tests/AutoTest.Desktop.Tests/AutoTest.Desktop.Tests.csproj -c Release --no-restore
+      - name: Publish Desktop
+        run: dotnet publish src/AutoTest.Desktop/AutoTest.Desktop.csproj -c Release -r win-x64 --self-contained false

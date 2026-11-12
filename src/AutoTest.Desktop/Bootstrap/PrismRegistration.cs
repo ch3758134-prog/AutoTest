@@ -1,6 +1,5 @@
 using AutoTest.Application.Composition;
 using AutoTest.Application.V1;
-using AutoTest.Application.G4;
 using AutoTest.Contracts;
 using AutoTest.Desktop.Shell;
 using AutoTest.Desktop.Project;
@@ -16,13 +15,11 @@ public static class PrismRegistration
   var mock = ApplicationComposition.RegisterMock();
   registry.RegisterInstance<IApplicationCommandGateway>(mock.Gateway);
   registry.RegisterSingleton<V1Workspace>();
-  registry.RegisterSingleton<G4IntegrationHost>();
   registry.RegisterSingleton<MainWindowViewModel>();
   registry.Register<MainWindow>();
   registry.Register<ProjectExplorerView>();
   registry.Register<TestEditorView>();
   registry.Register<StepInspectorView>();
-  registry.Register<RunMonitorView>();
   ViewModelLocationProvider.Register<MainWindow, MainWindowViewModel>();
  }
  public static void AttachRegions(IRegionManager manager)
@@ -30,6 +27,5 @@ public static class PrismRegistration
   manager.RegisterViewWithRegion("ProjectExplorerRegion", typeof(ProjectExplorerView));
   manager.RegisterViewWithRegion("TestEditorRegion", typeof(TestEditorView));
   manager.RegisterViewWithRegion("StepInspectorRegion", typeof(StepInspectorView));
-  manager.RegisterViewWithRegion("RunMonitorRegion", typeof(RunMonitorView));
  }
 }

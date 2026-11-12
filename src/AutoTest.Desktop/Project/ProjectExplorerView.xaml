@@ -20,7 +20,6 @@
     DisplayMemberPath="Label" MaxDropDownHeight="220" Margin="0,0,0,4"/>
    <TextBox Text="{Binding DbcFactor,UpdateSourceTrigger=PropertyChanged}" ToolTip="Factor 数值 (InvariantCulture)" Margin="0,0,0,5"/>
    <Button Content="应用 DbcEditSession → 新 Revision" Command="{Binding EditDbcCommand}"/>
-   <Button Content="创建可编辑 TEST Mock 示例" Command="{Binding AddExampleCommand}" Margin="0,8,0,4"/>
    <TextBlock Text="▾ TEST 步骤检索" FontWeight="SemiBold" Margin="4,8,0,4"/>
   </StackPanel>
   <ListBox ItemsSource="{Binding FilteredSteps}" SelectedItem="{Binding SelectedStep,Mode=TwoWay}" DisplayMemberPath="TreeLabel"/>

@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:prism="http://prismlibrary.com/"
  prism:ViewModelLocator.AutoWireViewModel="True"
- Title="AutoTest · V1 工程工作台 · MOCK ONLY" Width="1440" Height="880"
+ Title="AutoTest · 工程与测试程序编辑" Width="1440" Height="880"
  MinWidth="1030" MinHeight="650" WindowStartupLocation="CenterScreen"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
  FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True">
@@ -13,7 +13,6 @@
   <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewProjectCommand}"/>
   <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}"/>
   <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}"/>
-  <KeyBinding Key="F5" Command="{Binding RunCommand}"/>
   <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
   <KeyBinding Key="F2" Command="{Binding FocusNameCommand}"/>
  </Window.InputBindings>
@@ -33,24 +32,13 @@
    <MenuItem Header="复制步骤" Command="{Binding CopyCommand}"/>
    <MenuItem Header="插入子步骤" Command="{Binding InsertChildCommand}"/>
    <MenuItem Header="删除" Command="{Binding DeleteCommand}"/></MenuItem>
-  <MenuItem Header="_运行"><MenuItem Header="校验 TEST 文档和工程资源" Command="{Binding ValidateCommand}"/>
-   <MenuItem Header="运行实际步骤（Mock Only）" Command="{Binding RunCommand}" InputGestureText="F5"/>
-   <MenuItem Header="停止并清理" Command="{Binding StopCommand}"/></MenuItem>
-  <MenuItem Header="_工具"><MenuItem Header="八方向 Mock 专项工作台（扫码 / 记录 / Wave / UDS / Flash）" Click="G4Tools_Click"/>
-   <MenuItem Header="G4-LAB 模块工作台（配置 / DBC / TEST / Records / Operations / UDS / Flash / Wave）" Click="Modules_Click"/>
-   <MenuItem Header="DEVICE B0/B1/B2 只读诊断（手动连接）" Click="DeviceLab_Click"/>
-   <Separator/><MenuItem Header="CAN（当前仅 Mock，未开放真实操作）" IsEnabled="False"/>
-   <MenuItem Header="DBC（仅基础导入与编辑）" Command="{Binding ImportDbcCommand}"/>
-   <MenuItem Header="UDS · ISO-TP Mock 诊断" Click="G4Tools_Click"/>
-   <MenuItem Header="Flash · Mock Bootloader" Click="G4Tools_Click"/>
-   <MenuItem Header="Wave · CAN/DBC 回放" Click="G4Tools_Click"/></MenuItem>
  </Menu>
  <Border Grid.Row="1" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}"
   BorderThickness="0,0,0,1" Padding="10,7">
   <DockPanel>
    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-    <TextBlock Text="●  MOCK / SIMULATED" Foreground="{StaticResource Warning}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-    <TextBlock Text="    NO DEVICE OUTPUT / NOT PRODUCTION PASS" Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
+    <TextBlock Text="当前：工程 / TEST 编辑" Foreground="{StaticResource Warning}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+    <TextBlock Text="    未接入真实自动测试执行 · 不产生出厂结论" Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
    </StackPanel>
    <StackPanel Orientation="Horizontal">
     <Button Content="新建" Command="{Binding NewProjectCommand}"/>
@@ -59,8 +47,6 @@
     <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"/>
     <Button Content="撤销" Command="{Binding UndoCommand}"/>
     <Button Content="验证" Command="{Binding ValidateCommand}"/>
-    <Button Content="▶ TEST Mock" Background="#14644E" Command="{Binding RunCommand}"/>
-    <Button Content="■ 停止" Command="{Binding StopCommand}"/>
    </StackPanel>
   </DockPanel>
  </Border>
@@ -76,21 +62,15 @@
    </Border><ContentControl prism:RegionManager.RegionName="ProjectExplorerRegion"/></DockPanel>
   </Border>
   <GridSplitter Grid.Column="1" Background="{StaticResource Line}" HorizontalAlignment="Stretch"/>
-  <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="*" MinHeight="260"/>
-   <RowDefinition Height="5"/><RowDefinition Height="240" MinHeight="140"/></Grid.RowDefinitions>
-   <Border Grid.Row="0" Background="{StaticResource Canvas}"><DockPanel>
+  <Border Grid.Column="2" Background="{StaticResource Canvas}">
+   <DockPanel>
     <Border DockPanel.Dock="Top" Background="#27364A" Padding="12,9">
-     <StackPanel Orientation="Horizontal"><TextBlock Text="测试程序 · TEST 文档事务 / Prepare · Test · Cleanup" FontWeight="SemiBold"/>
-      <TextBlock Text="    ● 编辑后可保存重开" Foreground="{StaticResource Warning}"/></StackPanel></Border>
+     <StackPanel Orientation="Horizontal"><TextBlock Text="测试程序 · 准备 / 测试 / 清理" FontWeight="SemiBold"/>
+      <TextBlock Text="    编辑、保存与预检可用；运行待真实设备接线" Foreground="{StaticResource Warning}"/></StackPanel>
+    </Border>
     <ContentControl prism:RegionManager.RegionName="TestEditorRegion"/>
-   </DockPanel></Border>
-   <GridSplitter Grid.Row="1" Background="{StaticResource Line}"/>
-   <Border Grid.Row="2" Background="{StaticResource Panel}"><DockPanel>
-    <Border DockPanel.Dock="Top" Padding="12,8" Background="#29384A">
-     <TextBlock Text="RunCoordinator · StepFact / 模拟质量 / 预期-实际" FontWeight="SemiBold"/></Border>
-    <ContentControl prism:RegionManager.RegionName="RunMonitorRegion"/>
-   </DockPanel></Border>
-  </Grid>
+   </DockPanel>
+  </Border>
   <GridSplitter Grid.Column="3" Background="{StaticResource Line}" HorizontalAlignment="Stretch"/>
   <Border Grid.Column="4" Background="{StaticResource Panel}"><DockPanel>
    <Border DockPanel.Dock="Top" Background="#29384A" Padding="12,10">
@@ -99,7 +79,7 @@
   </DockPanel></Border>
  </Grid>
  <Border Grid.Row="3" Background="#173650" Padding="11,3"><DockPanel>
-  <TextBlock Text="G4-V1  ·  SIMULATED ONLY" FontWeight="SemiBold"/>
+  <TextBlock Text="main 基线 · 工程 / DBC / TEST 编辑" FontWeight="SemiBold"/>
   <TextBlock Text="{Binding Status}" DockPanel.Dock="Right" HorizontalAlignment="Right" Foreground="{StaticResource Ink}"/>
  </DockPanel></Border>
  </Grid>

@@ -3,7 +3,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Globalization;
 using AutoTest.Application.V1;
-using AutoTest.Application.G4;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Testing.Authoring;
@@ -59,7 +58,6 @@ public sealed class MainWindowViewModel : BindableBase
 {
     private readonly IApplicationCommandGateway _gateway;
     public V1Workspace Workspace { get; }
-    public G4IntegrationHost? G4 { get; }
     private WorkbenchStepItem? _selectedStep;
     private StepId? _selectionAfterEdit;
     private string _searchText = "";
@@ -70,10 +68,10 @@ public sealed class MainWindowViewModel : BindableBase
     private string _editedQuality = "Observed";
     private string _editedCount = "2";
     private string _editedMilliseconds = "0";
-    private string _newStepType = "MockObserve";
+    private string _newStepType = "SetVariable";
     private string _newStepPhase = "Test";
     private string _diagnostic = "请选择节点，所有改动写入 TEST 事务模型。";
-    private string _status = "G4-V1 · 离线工程编辑 · MOCK ONLY";
+    private string _status = "主线工程编辑基线 · 实体运行未接入";
     private string _requestStatus = "NOT_STARTED";
     private string _ackStatus = "NO_HARDWARE_ACK";
     private string _observationStatus = "NO_OBSERVATION";
@@ -85,11 +83,9 @@ public sealed class MainWindowViewModel : BindableBase
     private WorkbenchDbcSignal? _selectedDbcSignal;
     private bool _busy;
 
-    public MainWindowViewModel(IApplicationCommandGateway gateway) : this(gateway, new V1Workspace(), null) { }
-    public MainWindowViewModel(IApplicationCommandGateway gateway, V1Workspace workspace) : this(gateway, workspace, null) { }
-    public MainWindowViewModel(IApplicationCommandGateway gateway, V1Workspace workspace, G4IntegrationHost? g4)
+    public MainWindowViewModel(IApplicationCommandGateway gateway) : this(gateway, new V1Workspace()) { }
+    public MainWindowViewModel(IApplicationCommandGateway gateway, V1Workspace workspace)
     {
-        G4 = g4;
         _gateway = gateway;
         Workspace = workspace;
         InsertRootCommand = new DelegateCommand(() => Edit(InsertRoot), () => !_busy);
@@ -147,7 +143,7 @@ public sealed class MainWindowViewModel : BindableBase
     }
     public ObservableCollection<string> FactLines { get; } = new();
     public ObservableCollection<string> AvailableTypes { get; } = new(new[]
-        { "MockObserve", "Assert", "SetVariable", "Wait", "Sequence", "If", "Loop" });
+        { "SetVariable", "Assert", "Wait", "Sequence", "If", "Loop" });
     public WorkbenchStepItem? SelectedStep
     {
         get => _selectedStep;
@@ -228,7 +224,7 @@ public sealed class MainWindowViewModel : BindableBase
 
     private DelegateCommand Tool(string label) => new(() =>
     {
-        Diagnostic = $"{label} 专业工具未注册；当前仅有 DBC 导入/基础编辑及 TEST Mock 执行。";
+        Diagnostic = $"{label} 专业工具未注册；当前仅有工程、DBC 和 TEST 编辑；真实执行待集成。";
         Status = "无真实设备连接或输出";
     });
     private void Edit(Action work)
@@ -397,7 +393,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void Validate()
     {
         var errors = Workspace.Diagnostics();
-        Diagnostic = errors.Count == 0 ? "Prepare READY · 测试文档及资源引用有效（仅可 Mock 执行）"
+        Diagnostic = errors.Count == 0 ? "Prepare READY · 测试文档及资源引用有效（仅完成预检，不执行测试）"
             : "Prepare BLOCKED: " + string.Join("; ", errors);
     }
     private void NewProject()
@@ -418,7 +414,7 @@ public sealed class MainWindowViewModel : BindableBase
         {
             await Workspace.OpenProjectAsync(path);
             Refresh(); FactLines.Clear(); FailureReason = "";
-            Status = "真实工程和 TEST 文档已从磁盘重开（MOCK ONLY）";
+            Status = "工程和 TEST 文档已从磁盘重开（未启动执行）";
             Validate();
         }
         catch (Exception ex) { Diagnostic = "打开工程失败：" + ex.Message; }
