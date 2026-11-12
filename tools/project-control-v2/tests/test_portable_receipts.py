@@ -210,6 +210,39 @@ class ReceiptIntegrationTests(unittest.TestCase):
         self.assertEqual(again["skipped"], [reported["receipt_id"]])
         self.assertEqual(len(self.target.model()["management"]["receipts"]), 1)
 
+    def test_local_log_hash_verified_but_execution_not_automatically_approved(self):
+        self.assertEqual(self.call("claim").returncode, 0)
+        git(self.root, "switch", "-c", "feature/impl-001")
+        folder = self.root / "src"
+        folder.mkdir()
+        (folder / "actual.py").write_text("value = 11\n", encoding="utf-8")
+        git(self.root, "add", "src/actual.py")
+        git(self.root, "commit", "-m", "candidate source")
+        rel = git(self.root, "rev-parse", "--git-path", "project-control")
+        metadata = Path(rel)
+        if not metadata.is_absolute():
+            metadata = self.root / metadata
+        logs = metadata / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        (logs / "unit.txt").write_text("2 passed\n", encoding="utf-8")
+        (metadata / "test-runs.json").write_text(
+            json.dumps([{"name": "unit tests", "exit_code": 0,
+                         "log_file": "logs/unit.txt"}]), encoding="utf-8")
+        output = self.call("report")
+        self.assertEqual(output.returncode, 0, output.stderr)
+        report = json.loads(output.stdout)
+        self.assertEqual(len(report["test_evidence"]), 1)
+        self.assertEqual(report["test_evidence"][0]["log_ref"], "logs/unit.txt")
+        self.record(report)
+        record = self.target.model()["management"]["receipts"][0]
+        self.assertEqual(record["test_assessment"],
+                         "LOCAL_LOG_HASHES_VERIFIED_EXIT_CODES_SELF_REPORTED")
+        self.assertEqual(record["review_status"], "PENDING_INDEPENDENT_REVIEW")
+        (logs / "unit.txt").write_text("changed log contents\n", encoding="utf-8")
+        with self.assertRaisesRegex(proof.ReceiptError, "content changed"):
+            self.record({**report, "receipt_id": "receipt-tampered"})
+        self.assertEqual(len(self.target.model()["management"]["receipts"]), 1)
+
     def test_self_reported_test_hash_does_not_become_verified(self):
         receipt = self.candidate()
         receipt["test_evidence"] = [{"name": "unit tests", "exit_code": 0,
