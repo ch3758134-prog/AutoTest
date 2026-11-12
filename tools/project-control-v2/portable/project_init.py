@@ -224,9 +224,61 @@ def apply_preview(directory, inspected, preview):
             "note": "No Git commits, push or approval have been performed."}
 
 
+def upgrade_management(directory, inspected, *, apply=False):
+    """Add only management.json to a previously bootstrapped project."""
+    root = Path(directory).resolve(strict=True)
+    latest = inspect_target(root, inspected["repo_url"])
+    for key in ("git_head", "branch", "tracked_files_count", "worktree_dirty", "repo_url"):
+        if latest[key] != inspected[key]:
+            raise InitError("project changed during upgrade review: " + key)
+    if latest["worktree_dirty"]:
+        raise InitError("cannot upgrade a worktree with uncommitted changes")
+    directory = root / ".project-control"
+    if directory.is_symlink() or not directory.is_dir():
+        raise InitError("missing or unsafe project record directory")
+    existing = directory / "project.json"
+    if existing.is_symlink() or not existing.is_file():
+        raise InitError("not a previously initialized portable project")
+    try:
+        record = json.loads(existing.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise InitError("unreadable prior project identity") from e
+    if (record.get("schema") != "project-control-target-project/1"
+            or record.get("repo_url") != inspected["repo_url"]
+            or not ID_RE.fullmatch(str(record.get("project_id", "")))):
+        raise InitError("project record/schema/remote mismatch")
+    for item in ("assets.json", "tasks.json", "decisions.json"):
+        path = directory / item
+        if path.is_symlink() or not path.is_file():
+            raise InitError("incomplete previous records: " + item)
+        source = json.loads(path.read_text(encoding="utf-8"))
+        if source.get("project_id") != record["project_id"]:
+            raise InitError("conflicting project identity: " + item)
+    management = directory / "management.json"
+    if management.exists() or management.is_symlink():
+        raise InitError("management.json already exists; refuse to replace")
+    proposed = {
+        "schema": "project-control-target-management/1",
+        "project_id": record["project_id"], "revision": 1, "status": "DRAFT",
+        "deliverables": [], "work": [], "milestones": [], "risks": [],
+        "progress": {}, "events": []
+    }
+    if not apply:
+        return {"status": "UPGRADE_PREVIEW", "project_id": record["project_id"],
+                "would_create": ".project-control/management.json",
+                "warning": "No existing management data or approvals will be changed."}
+    # Exclusive creation protects historical assets. This is still uncommitted local data.
+    with management.open("x", encoding="utf-8", newline="\n") as stream:
+        json.dump(proposed, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+    return {"status": "LOCAL_UPGRADE_WRITTEN_NOT_COMMITTED",
+            "project_id": record["project_id"],
+            "created": ".project-control/management.json"}
+
+
 def cli(argv=None):
     parser = argparse.ArgumentParser(description="Safe target GitHub project initialization (candidate)")
-    parser.add_argument("action", choices=["inspect", "preview", "apply"])
+    parser.add_argument("action", choices=["inspect", "preview", "apply", "upgrade-preview", "upgrade"])
     parser.add_argument("--target", required=True, help="Root of already-existing target Git checkout")
     parser.add_argument("--repo-url", required=True, help="User-supplied GitHub repository URL")
     parser.add_argument("--mode", choices=["new", "adopt"])
@@ -237,6 +289,8 @@ def cli(argv=None):
         inspected = inspect_target(args.target, args.repo_url)
         if args.action == "inspect":
             result = inspected
+        elif args.action in ("upgrade-preview", "upgrade"):
+            result = upgrade_management(args.target, inspected, apply=args.action == "upgrade")
         else:
             if not args.mode:
                 raise InitError("--mode must be explicitly chosen after project investigation")
