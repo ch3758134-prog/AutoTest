@@ -12,6 +12,7 @@
  </UserControl.InputBindings>
  <UserControl.Resources>
   <local:LabStepTypeDisplayConverter x:Key="StepTypeText"/>
+  <local:LabParameterNameConverter x:Key="ParameterLabelText"/>
   <SolidColorBrush x:Key="EditorBlue" Color="#317FD6"/>
   <SolidColorBrush x:Key="EditorLine" Color="#DAE4F0"/>
   <SolidColorBrush x:Key="EditorSoft" Color="#EFF5FD"/>
@@ -207,19 +208,25 @@
        <Button Content="更新名称" Command="{Binding RenameCommand}" Style="{StaticResource EditorAction}" HorizontalAlignment="Left" Margin="0,0,0,15"/>
 
        <TextBlock Text="当前参数" Style="{StaticResource EditorSection}" Margin="0,0,0,8"/>
-       <DataGrid ItemsSource="{Binding ParameterRows}" AutoGenerateColumns="False" IsReadOnly="True"
+       <DataGrid ItemsSource="{Binding ParameterRows}" SelectedItem="{Binding SelectedParameterRow,Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True"
            CanUserAddRows="False" CanUserDeleteRows="False" RowHeaderWidth="0" Height="116"
            BorderBrush="{StaticResource EditorLine}" FontSize="12" HeadersVisibility="Column">
         <DataGrid.Columns>
-         <DataGridTextColumn Header="参数" Binding="{Binding Key}" Width="*"/>
+         <DataGridTextColumn Header="参数" Binding="{Binding Key,Converter={StaticResource ParameterLabelText}}" Width="1.3*"/>
          <DataGridTextColumn Header="取值" Binding="{Binding Value}" Width="1.4*"/>
         </DataGrid.Columns>
        </DataGrid>
-       <TextBlock Text="参数名称" Style="{StaticResource EditorCaption}" Margin="0,12,0,4"/>
-       <TextBox Text="{Binding ParameterName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MinHeight="30"/>
-       <TextBlock Text="参数值" Style="{StaticResource EditorCaption}" Margin="0,11,0,4"/>
+       <TextBlock Text="选择上方参数行后编辑取值" Foreground="#8294A8" FontSize="11" Margin="0,12,0,9"/>
+       <TextBlock Text="{Binding SelectedParameterLabel}" Style="{StaticResource EditorCaption}" Margin="0,0,0,5"/>
        <TextBox Text="{Binding ParameterValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MinHeight="30"/>
-       <Button Content="应用参数" Command="{Binding SetParameterCommand}" Style="{StaticResource AtPrimaryButton}" HorizontalAlignment="Left" Margin="0,12,0,14"/>
+       <Button Content="保存参数取值" Command="{Binding SetParameterCommand}" Style="{StaticResource AtPrimaryButton}" HorizontalAlignment="Left" Margin="0,12,0,14"/>
+       <Expander Header="高级 · 设置参数键" IsExpanded="False" Foreground="#6985A3" Margin="0,0,0,11">
+        <StackPanel Margin="0,8,0,6">
+         <TextBlock Text="参数键（用于新增或自定义参数）" Style="{StaticResource EditorCaption}"/>
+         <TextBox Text="{Binding ParameterName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MinHeight="30"/>
+         <TextBlock Text="这里使用测试执行器识别的实际字段名，保存后不会改变业务数据格式。" FontSize="11" Foreground="#8294A8" TextWrapping="Wrap" Margin="0,6,0,0"/>
+        </StackPanel>
+       </Expander>
 
        <Expander Header="按键动作与控制器状态" Margin="0,4,0,0" IsExpanded="False" Foreground="#466B98">
         <StackPanel Margin="0,10,0,8">
