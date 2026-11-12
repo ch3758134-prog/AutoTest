@@ -1,6 +1,6 @@
 # START_HERE｜可移植项目管理系统入场入口（候选）
 
-> 本文件属于交付给 ChatGPT 网页端的**项目管理系统文件夹本身**。它不是某个被管理项目的数据，不要求先打开 AutoTest 仓库。通用本地多项目工作台已具备候选实现（[portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)），原先的 server.py/app.js 仍为 AutoTest 试点，不可混用。
+> 本文件属于交给 ChatGPT 网页端管理 AI 的**独立项目管理系统文件夹**，不是被管理项目自身的数据。通用多项目管理工作台见 [portable/WEB_WORKSPACE.md](portable/WEB_WORKSPACE.md)。
 
 ## 必读：完整工程协作与本地工作区
 
@@ -14,7 +14,7 @@
 
 ## 独立管理系统包
 
-从管理系统研发仓库运行 `python tools/project-control-v2/portable/export_package.py --out ProjectControl.zip`，生成单独的 `ProjectControl/` ZIP。发行包只包含通用工作所需的文件、Web UI、脚本和校验清单；不包括旧 AutoTest 的项目数据、旧 UI、Git 历史或本地日志。用户把这个 ZIP 解压后的文件夹提供给新的管理 AI 对话即可。ZIP 不是项目本身，也不会凭空拥有目标 GitHub 仓库写权限。
+从管理系统研发仓库运行 `python tools/project-control-v2/portable/export_package.py --out ProjectControl.zip`，生成单独的 `ProjectControl/` ZIP。发行包只包含通用工作所需的文件、Web UI、脚本和校验清单；不包括任何试点工程的项目数据、旧 UI、Git 历史或本地日志。用户把这个 ZIP 解压后的文件夹提供给新的管理 AI 对话即可。ZIP 不是项目本身，也不会凭空拥有目标 GitHub 仓库写权限。
 
 ## 交给管理 AI 的实际输入
 
@@ -26,13 +26,13 @@
 ## 首次执行顺序（AI 自己做）
 
 1. 核验本文件夹：阅读 [PORTABLE_MANIFEST.json](PORTABLE_MANIFEST.json)、[portable/INITIALIZATION_PROTOCOL.md](portable/INITIALIZATION_PROTOCOL.md)、[ai/roles.json](ai/roles.json)、[portable/COMPLETENESS_AUDIT.md](portable/COMPLETENESS_AUDIT.md)、[portable/TASK_CONTRACT.md](portable/TASK_CONTRACT.md)。若文件缺失，明确提示，不把不完整包当正式发行版。
-2. 先明确目标仓库身份。用户提供的 GitHub URL 是**被管理项目仓库**，不是 AutoTest 的管理工具源码仓库；不要从本文件夹的示例、链接或历史 PR 推断目标仓库。
+2. 先明确目标仓库身份。用户提供的 GitHub URL 是**被管理项目仓库**，不是管理工具的源码仓库；不要从本文件夹的示例、链接或历史 PR 推断目标仓库。
 3. 用已连接的 GitHub 访问目标仓库，读取默认分支、HEAD、主要目录、已有文档、分支、PR、Issues、CI、历史证据及当前管理记录。遵守只读优先；没有写权限就说明，不能假装已回写。
 4. 判明 **NEW（全新/无已有工程资产）**、**ADOPT（接管有资产的项目）**、**UNCERTAIN（无法判明）**。UNCERTAIN 时继续调查或提出一个关键问题，不能凭空建立已批准里程碑。
 5. 对 ADOPT：先形成现有资产及来源清单、已知正式决定/未知状态、技术与版本分歧，保护旧 Git 历史和文件；不能以新管理模板覆盖已有工程。
 6. 对 NEW：与用户讨论目标、范围、近期成果，先建立候选项目身份及研究任务；不能预先把候选 P0 标为已批准。
 7. 提出**最小可逆初始化方案**并说明将添加到目标仓库的文件。需要用户正式决策/仓库写授权时再申请，不自行创建正式 Gate 或发布基线。
-8. 在目标仓库获授权分支写入轻量级项目管理数据：根目录 `PROJECT_START_HERE.md` 和 `.project-control/`，不是整套 AutoTest 试点程序。任何已有同名文件都必须逐项核对，不覆盖。
+8. 在目标仓库获授权分支写入轻量级项目管理数据：根目录 `PROJECT_START_HERE.md` 和 `.project-control/`，不是整套项目管理软件或任何旧试点程序。任何已有同名文件都必须逐项核对，不覆盖。
 9. 只有任务性质、输入、范围、验收条件和执行权明确后，才在目标仓库登记可执行任务；管理 AI 再输出**简短 Codex 启动指令**。
 10. Codex 由用户选定本地空目录后，自己从**目标仓库**读取 `PROJECT_START_HERE.md` 和任务合同，在该目录创建/检出工程，核对 HEAD 后实施。任务缺失、多个任务、设计输入未批准或仓库身份冲突时停止并报告。
 
@@ -50,11 +50,12 @@
 
 如果目标仓库尚为空且管理 AI 没有写入权限，**Codex 不可能读取不存在的远程任务**。这时先完成一次受控 bootstrap（将明确的目标仓库 URL 和系统模板交给 Codex），之后才能使用上面的极简指令；不能假称“从空仓库自行发现任务”。
 
-## 当前成熟度
+## 当前能力和安全边界
 
-- 通用管理 AI 入口与初始化协议：候选，已写入本文件夹；
-- 新/旧项目本地模板生成：`portable/project_init.py` 提供受控初始化和只读盘点；
-- 通用 Web 候选：`portable/web_server.py` 可加载多个已显式登记的目标 Git 工作区，管理当地候选成果、计划、风险及任务证据；原 V2 `server.py` 仍固定 AutoTest；
-- 本地数据变更不自动推送 GitHub，正式审批、任务发布和跨机器同步继续受控；
-- Codex 可以生成自报告的 Git 结果回执，管理服务独立核对本地代码范围、审查记录和显式只读远端版本；测试日志及真实交付仍不能自动宣称已验收；
-- Codex 自助读取：目前仅在试点管理分支已有固定任务模型；项目实例必须先建立自己的 `.project-control/tasks.json` 和远端入口。
+- 通用管理 AI 入口：读取本包、用户给定仓库、真实工程资产和明确管理身份；不依赖旧工程。
+- 目标项目 NEW/ADOPT 初始化、已存在目标项目的安全迁移、独立 Codex 任务准入。
+- 本地多项目中文工作台：交付、需求、WBS、依赖、计划、风险、变更影响、审查请求、Codex 回执和已登记工作区。
+- GitHub 交接：受控任务发布候选、PR/提交/文件范围校验、原始日志哈希核对，显式发布采用非强制 Git 分支提交校验。
+- 临时 linked worktree：用户授权根目录内建立、登记、检查、仅在审查后退出；原有目录默认保留。
+- **仍为候选**：项目相关真实人类批准、目标仓库 GitHub 远端全链路、Windows 用户实测和正式研发交付仍需要独立验证。任何软件检查不得自行作出 Gate PASS。
+
