@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using AutoTest.Projects.Project;
 
-namespace AutoTest.Projects.Dbc.Lab;
+namespace AutoTest.Projects.Dbc.Editing;
 
 public sealed record DbcDecodedValue(uint MessageId, string MessageName, string SignalName,
     double PhysicalValue, string Unit, ulong RawValue, string? ValueDescription);

@@ -26,3 +26,11 @@
 本批属于**源码边界整理和依赖删除**，不包括将 PR #41 的大型前端候选直接合入。根据要求不额外配置 CI，不主动将 CI 通过解释为用户实测；编译、WPF 启动和实物接线仍待本地核验。
 
 后续必须按工程生命周期、DBC、TEST、连接、扫码、手动台架、UDS、Flash、Wave、Records 的实际产品行为，逐模块实现并由人工审查。不得将模拟、回放、真实证据混为一谈。
+
+## 第二批：并行 LAB 与 V0 根目录交付残留（2026-11-12）
+- 删除 `AutoTest.Testing/Lab` 第二套文档/编译/执行实现及专属测试。保留权威 `Testing/Authoring`、`Preparation`、`Runtime`。
+- 删除 `AutoTest.Specialists/Scan/Lab` 独立模拟扫码生产系统及专属测试。保留 `IdentityRuleSet`、`ConfigMatchService`、`BarcodeInputRouter`、`KeyboardWedgeCapture`、`SerialBarcodeCapture` 与 `Application/Production`。
+- `AutoTest.Projects/Dbc/Lab` 的三个实际 DBC 文件编辑/回放类，原样迁至 `Dbc/Editing` 并只变更命名空间；相应测试与未接线 DBC 工具引用同步更新。这不是保留第二套 LAB 测试框架。
+- 删除早期 V0 源码交付包遗留的六个仓库根目录文件（Codex 旧执行合同、哈希清单、文件树、回传单、增补路径、初始验证报告）；历史仍可通过 Git 查看。
+- 不修改工程文件外部格式、DBC 语义、扫码策略或设备协议。
+- 按维护者要求此批不运行 CI；提交信息标记 `[skip ci]`，尚不声称本地 Windows 编译或实体联机已验收。

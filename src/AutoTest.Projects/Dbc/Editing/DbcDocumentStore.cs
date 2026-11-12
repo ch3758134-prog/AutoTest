@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using AutoTest.Projects.Project;
 
-namespace AutoTest.Projects.Dbc.Lab;
+namespace AutoTest.Projects.Dbc.Editing;
 
 public sealed record DbcFileReceipt(string Path, string Sha256, int Revision);
 public static class DbcDocumentStore

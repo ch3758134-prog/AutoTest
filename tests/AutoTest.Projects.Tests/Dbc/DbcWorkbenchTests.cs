@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using AutoTest.Projects.Dbc;
-using AutoTest.Projects.Dbc.Lab;
+using AutoTest.Projects.Dbc.Editing;
 using AutoTest.Projects.Project;
 using Xunit;
 
-namespace AutoTest.Projects.Tests.Dbc.Lab;
+namespace AutoTest.Projects.Tests.Dbc;
 
 public sealed class DbcWorkbenchTests
 {

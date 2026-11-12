@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using AutoTest.Projects.Dbc;
-using AutoTest.Projects.Dbc.Lab;
+using AutoTest.Projects.Dbc.Editing;
 using AutoTest.Projects.Project;
 
 namespace AutoTest.Desktop.Tools.Dbc;

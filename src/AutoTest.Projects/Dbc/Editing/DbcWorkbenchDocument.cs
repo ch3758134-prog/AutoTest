@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using AutoTest.Projects.Project;
 
-namespace AutoTest.Projects.Dbc.Lab;
+namespace AutoTest.Projects.Dbc.Editing;
 
 public sealed record DbcValueTable(uint MessageId, string SignalName, ImmutableDictionary<long, string> Labels)
 {
