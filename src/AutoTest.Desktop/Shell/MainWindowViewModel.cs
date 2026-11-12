@@ -77,7 +77,7 @@ public sealed class MainWindowViewModel : BindableBase
     private string _newStepType = "MockObserve";
     private string _newStepPhase = "Test";
     private string _diagnostic = "请选择节点，所有改动写入 TEST 事务模型。";
-    private string _status = "R1 · 工程未运行 · 实际设备状态与测试结果请以实时观测为准";
+    private string _status = "工程已就绪 · 请连接真实设备并检查当前测试程序";
     private string _requestStatus = "NOT_STARTED";
     private string _ackStatus = "NO_HARDWARE_ACK";
     private string _observationStatus = "NO_OBSERVATION";
@@ -237,8 +237,8 @@ public sealed class MainWindowViewModel : BindableBase
 
     private DelegateCommand Tool(string label) => new(() =>
     {
-        Diagnostic = $"{label} 专业工具未注册；当前仅有 DBC 导入/基础编辑及 TEST Mock 执行。";
-        Status = "无真实设备连接或输出";
+        Diagnostic = $"{label} 未注册为当前界面的操作命令，请从“专业工具”菜单打开对应窗口。";
+        Status = "该操作没有向真实设备发送指令";
     });
     private void Edit(Action work)
     {
@@ -473,7 +473,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void Validate()
     {
         var errors = Workspace.Diagnostics();
-        Diagnostic = errors.Count == 0 ? "Prepare READY · 测试文档及资源引用有效（仅可 Mock 执行）"
+        Diagnostic = errors.Count == 0 ? "工程资源和测试文档引用检查通过（尚未检查真实设备）"
             : "Prepare BLOCKED: " + string.Join("; ", errors);
     }
     private void PrepareR2()
@@ -520,7 +520,7 @@ public sealed class MainWindowViewModel : BindableBase
         {
             await Workspace.OpenProjectAsync(path);
             Refresh(); FactLines.Clear(); FailureReason = "";
-            Status = "真实工程和 TEST 文档已从磁盘重开（MOCK ONLY）";
+            Status = "工程与测试资源已从磁盘加载，请进行工程检查和真实设备预检";
             Validate();
         }
         catch (Exception ex) { Diagnostic = "打开工程失败：" + ex.Message; }
@@ -546,7 +546,7 @@ public sealed class MainWindowViewModel : BindableBase
         try
         {
             await Workspace.SaveProjectAsync(path);
-            Refresh(); Status = "工程图、DBC、TEST 文档均已落盘（非生产记录）";
+            Refresh(); Status = "工程和测试资源已保存到磁盘；这不是一次真实测试记录";
         }
         catch (Exception ex) { Diagnostic = "保存工程失败：" + ex.Message; }
         finally { _busy = false; UpdateCommands(); }
