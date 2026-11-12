@@ -75,11 +75,18 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContextChanged += (_, _) => BindWorkspace();
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
             BindWorkspace();
             if (DataContext is MainWindowViewModel vm)
                 SetupWorkspace(vm);
+            // UI review is opt-in and cannot silently replace a production project.
+            if (!_reviewSampleAttempted && Environment.GetCommandLineArgs()
+                    .Any(arg => string.Equals(arg, "--ui-review", StringComparison.OrdinalIgnoreCase)))
+            {
+                _reviewSampleAttempted = true;
+                await LoadReviewSampleAsync();
+            }
         };
     }
 
@@ -93,6 +100,34 @@ public partial class MainWindow : Window
         if (IsLoaded && _workspaceEventsOwner is not null)
             SetupWorkspace(_workspaceEventsOwner);
     }
+
+    private bool _reviewSampleAttempted;
+
+    private async Task LoadReviewSampleAsync()
+    {
+        if (DataContext is not MainWindowViewModel vm || vm.G4 is null) return;
+        var reviewPath = Path.Combine(AppContext.BaseDirectory, "samples",
+            "ui-review-epb", "EPB-UI-review.autotest-project.json");
+        if (!File.Exists(reviewPath))
+        {
+            MessageBox.Show(this, "当前程序未包含配套示例工程。请核对编译输出中的 samples/ui-review-epb 文件夹；本次不会打开其他目录的旧工程。",
+                "示例工程缺失", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        await vm.OpenProjectAsync(reviewPath);
+        if (!string.Equals(vm.Workspace.ProjectPath, Path.GetFullPath(reviewPath), StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show(this, vm.Diagnostic, "示例工程打开失败",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        // Same real PROJECT / LAB TEST / DBC data model, not an in-memory imitation.
+        EnsureTestModel(vm.G4.Workspace).ReloadFromProject();
+        OpenDocument("program");
+    }
+
+    private async void OpenReviewSample_Click(object sender, RoutedEventArgs e)
+        => await LoadReviewSampleAsync();
 
     private void SetupWorkspace(MainWindowViewModel vm)
     {
