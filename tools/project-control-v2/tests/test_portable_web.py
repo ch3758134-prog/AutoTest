@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
 import json
 import subprocess
 import sys
@@ -194,6 +195,33 @@ class PortableWebTests(unittest.TestCase):
         })
         self.assertEqual(code, 400)
         self.assertIn("unknown work", result["error"])
+
+    def test_explicit_remote_read_requires_token_and_never_changes_git(self):
+        path = self.base + "/api/remote-status?project_id=project-1"
+        with self.assertRaises(HTTPError) as missing:
+            urlopen(path, timeout=5)
+        self.assertEqual(missing.exception.code, 403)
+        expected = {"project_id": "project-1", "remote_checked": True,
+                    "relation": "SAME_HEAD", "remote_head": "f" * 40,
+                    "local_head": "f" * 40, "note": "fixture"}
+        request = Request(path, headers={"X-Owner-Token": "test-owner-secret"})
+        with patch.object(service, "inspect_remote", return_value=expected):
+            with urlopen(request, timeout=5) as response:
+                data = json.loads(response.read())
+        self.assertEqual(data["relation"], "SAME_HEAD")
+        self.assertEqual(self.revision("project-1"), 1)
+
+    def test_collector_endpoint_only_reads_current_registered_worktree(self):
+        request = Request(self.base + "/api/collect-local-receipts",
+                          method="POST",
+                          data=json.dumps({"project_id": "project-1"}).encode(),
+                          headers={"Content-Type": "application/json",
+                                   "X-Owner-Token": "test-owner-secret"})
+        with urlopen(request, timeout=5) as response:
+            value = json.loads(response.read())
+        self.assertEqual(value["imported"], [])
+        self.assertEqual(value["scope"], "CURRENT_REGISTERED_WORKTREE_ONLY")
+        self.assertEqual(self.revision("project-1"), 1)
 
     def test_wrong_origin_or_schema_is_fail_closed(self):
         git(self.roots[0], "remote", "set-url", "origin",
