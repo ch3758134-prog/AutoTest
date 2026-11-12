@@ -49,7 +49,7 @@ public sealed class FlashToolViewModel : BindableBase
     public bool PhysicalProgrammingEnabled => false;
     public CanToolConfigurationSnapshot? CurrentConfiguration => _canTool;
     public FirmwareImage? CurrentImage => _image;
-    public string SourceLabel => "真实镜像和配置预检；物理烧录由 P09 独立授权作业执行，预检不能放行";
+    public string SourceLabel => "配置与固件检查不会自动烧录；实机写入必须经过独立授权和逐项确认。";
     public bool IsBusy
     {
         get => _busy;
@@ -178,7 +178,7 @@ public sealed class FlashToolViewModel : BindableBase
             Preflight = "PHYSICAL_WRITE_BLOCKED";
             Failure = string.Join("; ", result.Items.Where(x => !x.Passed).Select(x => x.Category));
         }
-        Status = "本项为只读预检；如需物理烧录，必须在 P09 单独执行实机授权。";
+        Status = "已完成只读检查。要向 ECU 实际烧录，请在实机烧录区完成授权确认。";
     }
 
     public void EvaluatePhysicalPreflight(HardwareBenchController? controller)
