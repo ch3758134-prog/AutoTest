@@ -132,7 +132,7 @@
         <Grid Grid.Row="3" Background="#F6F9FE">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="50"/>
-                <ColumnDefinition x:Name="ExplorerColumn" Width="255" MinWidth="0"/>
+                <ColumnDefinition x:Name="ExplorerColumn" Width="245" MinWidth="0"/>
                 <ColumnDefinition x:Name="ExplorerSplitterColumn" Width="5"/>
                 <ColumnDefinition Width="*" MinWidth="620"/>
             </Grid.ColumnDefinitions>
