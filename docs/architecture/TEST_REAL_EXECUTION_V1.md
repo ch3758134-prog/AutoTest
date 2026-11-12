@@ -32,6 +32,7 @@ AutoTest 是离线 Windows ECU 测试与开发环境，面向不同被测对象�
 - **功能对象层**：测试工程师可以在 EcuControlProfile 中创建任意数量的 Controller 和 State；其中 State 是被测 ECU 的功能操作或输入状态，不是物理 KEY 编号。
 - **台架实现层**：每个功能 State 可绑定具体电阻网络 KeyMask 和相应电压目标/窗口。KEY_SIM 采用 20 Key 电阻网络，合成最多五路模拟电压输出。20 Key 是当前硬件实现资源，不是 ECU 业务操作个数限制。
 - TEST Mapping 引用已配置的状态，ButtonActionPlanner 才在操作时生成实际组合 mask。
+- EcuControlProfile 可单独保存 KeyHardwarePolicy：当前设备可用 Key 掩码及禁止同时闭合的组合（例如 0x1+0x2）。老文件没有该策略仍可读取，但真实按键执行明确拒绝，必须由测试工程师检查台架资源并配置；不会默认放行全部 20 Key。策略是配置约束，不代表真实模拟电压已测量或验证。
 
 ### 3.2 时间与生命周期
 
@@ -62,7 +63,7 @@ Main controller USB 0x41 CAN indications
 
 读取模式区分 Latest（取得未超龄的最近一次有效观测）与 Next（等待新报文）；后者使用固定超时；无数据、超时和断连是不同状态。
 
-CAN 发送的报文 ID 与帧格式通过 DBC 绑定；目前已支持按已映射的 DBC 报文发送完整数据 HEX，**逐信号的完整报文组合编码仍需后续在真实 ECU 上验证后开放**，不能无条件将其他未指定信号编码为零。
+CAN 发送的报文 ID 与帧格式通过 DBC 绑定。写入值可使用 `HEX:001122...` 指定完整原始报文，或使用 `SignalA=12.5;SignalB=3` 对非多路复用消息的**全部** DBC 信号指定物理值，由 DbcSignalCodec 组帧。缺少任意一个信号、值超出 DBC 范围或不能精确编码均拒绝发送。多路复用报文暂不允许这种自动组帧方式，必须以完整 HEX 显式发送；不把其他未指定信号默认为零。此功能是编码能力，仍需实际 DUT 验证。
 
 ## 5. 显式的物理运行授权
 
@@ -122,7 +123,7 @@ TestDocument 和 StepNode 不替换。TEST 文档新增可选 Mapping 列表；T
 
 本次 local 分支交付的是六项能力对应的**首个贯通实施候选**，而不是经验证的 R1 完成证明：
 
-1. Windows .NET SDK 构建尚未运行；本环境缺少 dotnet，不能虚报编译/单测成功。
+1. Windows .NET SDK 构建尚未运行；本环境缺少 dotnet，不能虚报编译/单测成功。2026-11-12 的 `local` 新增了完整 DBC 物理信号编码和明确的 Key 硬件策略绑定，仍待本地编译验证。
 2. WinUSB、CAN0 Keypad 电阻组合输出、IGN 等物理动作必须现场测量和确认；设备 ACK 不能代替实测。
 3. ECU DBC 特别是复杂多路复用、周期 CAN 发送、实际信号刷新率和时间基准需要原始报文实测。
 4. 波形参考管理的图形化建立/修改、波形判据校准仍需依据实际采样继续完善。
@@ -132,3 +133,21 @@ TestDocument 和 StepNode 不替换。TEST 文档新增可选 Mapping 列表；T
 最低现场验收：打开工程和 DBC → 配置 ECU 功能状态到 KEY_SIM → 将功能对象和 CAN1 信号映射到 TEST → 显式授权运行 → 执行固定延迟按键动作 → 从真实 CAN1 得到 DBC 信号数据 → 利用 IF/Calculate/Expect 使用响应 → 完成 Cleanup → 查阅原始 CAN、信号和步骤证据；再用同一信号完成一次波形记录和独立分析。
 
 **任何一步失败，均应记录原始错误和证据，停止声称该链路已通过验收。**
+
+## 10. 工程化分阶段验收矩阵（未验证前不得标 PASS）
+
+| 阶段 | 验收内容 | 当前源码事实 | 必须取得的结果 |
+|---|---|---|---|
+| 1 契约 | 原 TEST 兼容读取/保存，Mapping 身份+修订+SHA，明确 Read 与 Expect 分离 | 已有源代码与单元测试 | 本机 Build/Test，旧项目与新项目回归 |
+| 2 DBC 数据链 | WinUSB CAN1 → Hub → DBC → Read/监视/波形同源，区分缺帧/过期/丢帧/解码失败/断连 | 已有共享服务；物理时间为主机到达 | 真实报文日志与解码值逐项核对 |
+| 3 真实刺激 | KEY_SIM 功能状态映射到 KeyMask，按固定延迟 Pulse/Hold/Release，IGN 和 CAN 写入 | 已有物理门禁、配置策略、受控动作端口 | CAN0 的设备响应、示波器/电压表与 DUT 实测 |
+| 4 真实执行 | Prepare/Test/Cleanup，Write/Read/WaitUntil/Calculate/Expect/IF/Loop，数据与判定分离 | 已有 RealRunCoordinator；无 Mock 回退 | 完整的一次实机 Run，证据、错误和清理记录齐全 |
+| 5 WPF | TEST 编辑器映射对象、编辑步骤、显式运行授权和步骤结果 | 已有界面入口 | Windows 本地 UI 逐项操作且流程无阻塞 |
+| 6 波形 | 同源 DBC 观测、Start/Stop/Analyze、结果交由 Expect 决定 | 已有 WaveCaptureService 及分析端口 | 实际样本时间质量、参考波形和判据的现场复核 |
+
+### 当前明确限制
+
+- 配置中的电压窗口是工程要求，不是当前 KEY_SIM 已经测得的电压事实。硬件策略需要工程师配置及现场验证。
+- 对 CAN DBC 发送，完整报文物理组帧只支持无多路复用且列出全部信号的情况；其它情况拒绝或显式使用完整 HEX。
+- 持续 CAN 周期发送、复杂波形参考 UI、完整 UDS/Flash 测试步骤、扫码生产自动运行、硬件同步时间不属于本轮已验证内容。
+- 未经 Windows Build/Tests、实机验证及用户验收，不得合并 main 或把候选标为 R1 完成。

@@ -9,16 +9,17 @@ public sealed class StepPropertyField : BindableBase
 {
     private string _value;
     public StepPropertyField(string key, string value,
-        IReadOnlyList<string>? options = null)
+        IReadOnlyList<string>? options = null, string? displayName = null)
     {
         Key = key;
         _value = value;
         Options = options ?? Array.Empty<string>();
+        DisplayName = displayName ?? StepUiCatalog.PropertyLabel(key);
     }
     public string Key { get; }
     public IReadOnlyList<string> Options { get; }
     public bool HasOptions => Options.Count > 0;
-    public string DisplayName => StepUiCatalog.PropertyLabel(Key);
+    public string DisplayName { get; }
     public string Value { get => _value; set => SetProperty(ref _value, value); }
 }
 
@@ -39,7 +40,10 @@ public partial class StepParametersDialog : Window
             .Distinct(StringComparer.Ordinal);
         foreach (var key in keys)
             Fields.Add(new StepPropertyField(key, node.Properties.GetValueOrDefault(key, ""),
-                key == "target" ? targetNames : null));
+                key == "target" ? targetNames : null,
+                node.Type == "Write" && key == "value"
+                    ? "按键：Pulse / Pulse:毫秒 / Hold / Release；IGN：ON/OFF；CAN：HEX:完整帧 或 信号=物理值;..."
+                    : null));
         Loaded += (_, _) => { NameInput.Focus(); NameInput.SelectAll(); };
     }
 
