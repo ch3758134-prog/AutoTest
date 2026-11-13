@@ -1,0 +1,32 @@
+<Window x:Class="AutoTest.Desktop.Configuration.WaveReferencePickerDialog"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="从采集证据建立命名参考" Width="760" Height="490" MinWidth="580" MinHeight="380"
+ WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+ Background="{StaticResource Panel}" Foreground="{StaticResource Ink}"
+ FontFamily="{StaticResource UiFont}" FontSize="13">
+ <Grid Margin="18">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+  <TextBlock Grid.Row="0" FontSize="18" FontWeight="SemiBold"
+             Text="选择已经采集并验证质量的波形" Margin="0,0,0,10"/>
+  <TextBlock Grid.Row="1" TextWrapping="Wrap" Margin="0,0,0,12"
+   Foreground="{StaticResource Subtle}"
+   Text="此操作会将选定的原始波形明确登记为参考。参考独立存储、不会覆盖已有参考；建立参考不意味着测试已通过。"/>
+  <ListBox x:Name="CaptureList" Grid.Row="2" ItemsSource="{Binding Choices}"
+      DisplayMemberPath="Label" BorderBrush="{StaticResource Line}" BorderThickness="1"/>
+  <StackPanel Grid.Row="3" Margin="0,12,0,5">
+   <TextBlock Text="新参考名称（在同一 DBC 信号内不得重复）" Margin="0,0,0,5"/>
+   <TextBox x:Name="ReferenceInput"/>
+   <TextBlock x:Name="ErrorText" Foreground="{StaticResource Danger}" Margin="0,5,0,0"/>
+  </StackPanel>
+  <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+   <Button Content="取消" IsCancel="True"/>
+   <Button Content="确认建立参考" IsDefault="True" Style="{StaticResource AtPrimaryButton}"
+           Click="Approve_Click"/>
+  </StackPanel>
+ </Grid>
+</Window>

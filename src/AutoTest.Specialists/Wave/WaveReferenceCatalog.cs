@@ -43,6 +43,9 @@ public sealed class WaveReferenceCatalog
         lock (_gate)
         {
             var existing = ReadIndex();
+            if (existing.Any(x => x.Signal == captured.Signal &&
+                string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("A reference with this name already exists for the selected DBC signal.");
             var created = _repository.SaveReference(AssetId.New(), AssetRevision.Create(1), name, captured);
             existing.Add(new WaveReferenceEntry(created.Reference, captured.Signal, name, DateTimeOffset.UtcNow));
             PersistIndex(existing);

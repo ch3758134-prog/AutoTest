@@ -39,6 +39,9 @@
         <Button Content="从工程 DBC 选择信号…" Command="{Binding PickWaveSignalCommand}"
                 Visibility="{Binding IsWave,Converter={StaticResource BoolToVisibility}}"
                 Style="{StaticResource AtPrimaryButton}" Margin="10,0,0,0"/>
+        <Button Content="从采集证据建立参考…" Command="{Binding CreateWaveReferenceCommand}"
+                Visibility="{Binding IsWave,Converter={StaticResource BoolToVisibility}}"
+                Margin="5,0,0,0"/>
         <TextBlock Text="● 未保存" Foreground="{StaticResource Warning}"
                    Visibility="{Binding IsDirty,Converter={StaticResource BoolToVisibility}}"
                    VerticalAlignment="Center" Margin="16,0,0,0"/>

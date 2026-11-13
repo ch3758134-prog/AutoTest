@@ -70,6 +70,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         AddControllerCommand = new DelegateCommand(AddController, () => IsController && !IsBusy);
         AddButtonActionCommand = new DelegateCommand(AddButtonAction, () => IsController && !IsBusy);
         PickWaveSignalCommand = new DelegateCommand(async () => await PickWaveSignalAsync(), () => IsWave && !IsBusy);
+        CreateWaveReferenceCommand = new DelegateCommand(async () => await CreateWaveReferenceAsync(),
+            () => IsWave && !IsBusy);
         PickKeyCombinationCommand = new DelegateCommand(() => PickKeys("mask"),
             () => IsControllerState && !IsBusy);
         PickSupportedKeysCommand = new DelegateCommand(() => PickKeys("supportedKeys"),
@@ -167,6 +169,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public DelegateCommand AddControllerCommand { get; }
     public DelegateCommand AddButtonActionCommand { get; }
     public DelegateCommand PickWaveSignalCommand { get; }
+    public DelegateCommand CreateWaveReferenceCommand { get; }
     public DelegateCommand PickKeyCombinationCommand { get; }
     public DelegateCommand PickSupportedKeysCommand { get; }
     public DelegateCommand AddStateCommand { get; }
@@ -283,7 +286,10 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 "由所选 DBC 信号确定，不手工输入。", readOnly: true);
             AddField("signal", "DBC 信号名称", wave.SignalName, readOnly: true);
             AddField("unit", "信号单位", wave.Unit, readOnly: true);
-            AddField("reference", "关联波形证据（非参考波形）", AssetNameFor(wave.EvidenceAssetId),
+            AddField("referenceName", "用于比较的命名参考波形", wave.ReferenceName,
+                "参考必须由已采集波形明确建立，不会由一次 TEST 运行自动覆盖。",
+                WaveReferenceWorkspaceService.ReferenceNames(_workspace, wave));
+            AddField("reference", "关联原始波形证据（不是参考）", AssetNameFor(wave.EvidenceAssetId),
                 "可选。用于关联已验证的波形证据；正式参考波形需另行采集并明确保存。", AssetNames(ProjectWorkspaceService.WaveKind));
             AddField("abs", "绝对容差", Format(wave.Comparison.AbsoluteTolerance));
             AddField("rel", "相对容差", Format(wave.Comparison.RelativeTolerance));
@@ -477,7 +483,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 var reference = ResolvePinnedAsset(F("reference"), ProjectWorkspaceService.WaveKind);
                 next = wave with
                 {
-                    Name = F("name"), DbcAssetId = dbc.Id,
+                    Name = F("name"), ReferenceName = F("referenceName"), DbcAssetId = dbc.Id,
                     DbcAssetRevision = dbc.Revision, DbcAssetFingerprint = dbc.Sha256,
                     EvidenceAssetRevision = reference.Revision,
                     EvidenceAssetFingerprint = reference.Sha256,
@@ -574,6 +580,45 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         Nodes.Clear();
         foreach (var entry in items) Nodes.Add(entry);
         SelectedNode = Nodes.FirstOrDefault(x => x.Key == key) ?? Nodes[0];
+    }
+
+    private async Task CreateWaveReferenceAsync()
+    {
+        if (!IsWave || IsBusy || !ApplyFields() || _working is not WaveSettingsDocument settings)
+            return;
+        IsBusy = true;
+        try
+        {
+            var options = await Task.Run(() =>
+                WaveReferenceWorkspaceService.FindCandidates(_workspace, settings));
+            if (options.Count == 0)
+            {
+                StatusMessage = "没有找到与当前 DBC 信号匹配、质量足以建立参考的已完成波形。"
+                    + " 请先从真实测试中采集该信号。";
+                return;
+            }
+            var dialog = new WaveReferencePickerDialog(options);
+            var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                ?? Application.Current.MainWindow;
+            if (owner is { IsLoaded: true }) dialog.Owner = owner;
+            if (dialog.ShowDialog() != true || dialog.SelectedEvidence is not Guid id) return;
+            var name = dialog.ReferenceName;
+            await Task.Run(() =>
+                WaveReferenceWorkspaceService.Promote(_workspace, settings, id, name));
+            _working = settings with { ReferenceName = name };
+            RebuildNodes("profile");
+            RaisePropertyChanged(nameof(IsDirty));
+            StatusMessage = "已明确建立命名参考“" + name +
+                "”。参考证据单独持久化，请保存本配置以便 WaveAnalyze 自动选用。";
+        }
+        catch (Exception error) when (error is ProjectDataException or IOException or
+                                      InvalidDataException or UnauthorizedAccessException or
+                                      ArgumentException or InvalidOperationException)
+        {
+            StatusMessage = "建立波形参考失败：" + error.Message;
+            _dialogs.ShowError(StatusMessage);
+        }
+        finally { IsBusy = false; }
     }
 
     private void PickKeys(string fieldKey)
@@ -818,6 +863,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         AddControllerCommand.RaiseCanExecuteChanged();
         AddButtonActionCommand.RaiseCanExecuteChanged();
         PickWaveSignalCommand.RaiseCanExecuteChanged();
+        CreateWaveReferenceCommand.RaiseCanExecuteChanged();
         PickKeyCombinationCommand.RaiseCanExecuteChanged();
         PickSupportedKeysCommand.RaiseCanExecuteChanged();
         AddStateCommand.RaiseCanExecuteChanged();
