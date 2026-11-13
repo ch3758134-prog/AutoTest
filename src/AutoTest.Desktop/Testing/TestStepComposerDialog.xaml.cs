@@ -88,6 +88,8 @@ public partial class TestStepComposerDialog : Window
     private TestActionOption? _selected;
     private MappingChoice? _selectedTarget;
     private readonly List<MappingChoice> _allTargets = [];
+    private string _targetInstruction = "";
+    private string _targetRevisionWarning = "";
     private uint _selectedMask;
 
     public ObservableCollection<TestActionOption> FilteredActions { get; } = new();
@@ -184,6 +186,7 @@ public partial class TestStepComposerDialog : Window
         _allTargets.Clear();
         AvailableTargets.Clear();
         _selectedTarget = null;
+        _targetRevisionWarning = "";
         TargetSearch.Text = "";
         TargetPanel.Visibility = string.IsNullOrEmpty(action.TargetCategory)
             ? Visibility.Collapsed : Visibility.Visible;
@@ -214,7 +217,7 @@ public partial class TestStepComposerDialog : Window
             if (!_allTargets.Any(x => x.Mapping == mapping))
                 _allTargets.Add(new MappingChoice("已绑定 / " + mapping.Name,
                     mapping));
-        TargetHint.Text = action.TargetCategory switch
+        _targetInstruction = action.TargetCategory switch
         {
             "can" => "选 DBC 报文可直接编辑所有信号；没有 DBC 可选原始 CAN1 报文。发送只会在明确运行授权后发生。",
             "button" => "推荐在 ECU 输入配置中先定义功能按键；也可以直接选择底层 20 Key 操作。",
@@ -234,8 +237,9 @@ public partial class TestStepComposerDialog : Window
             !_catalog.Any(x => x.Mapping == originallyBound) &&
             originallyBound.Kind is not (TestTargetKind.RawCan or TestTargetKind.RawKey or
                 TestTargetKind.Ignition))
-            TargetHint.Text += "  注意：原步骤绑定的资源版本不在当前 TCF/DBC 中，"
+            _targetRevisionWarning = "  注意：原步骤绑定的资源版本不在当前 TCF/DBC 中，"
                 + "软件不会自动换版本。请确认并显式重新选择有效对象。";
+        TargetHint.Text = _targetInstruction + _targetRevisionWarning;
     }
 
     private void TargetSearch_Changed(object sender, TextChangedEventArgs e)
@@ -257,8 +261,9 @@ public partial class TestStepComposerDialog : Window
         preferred ??= AvailableTargets.FirstOrDefault(x => x.Mapping.Name == preferredName);
         TargetPicker.SelectedItem = preferred ?? AvailableTargets.FirstOrDefault();
         UpdateTarget();
-        if (AvailableTargets.Count == 0)
-            TargetHint.Text = "没有匹配的对象。请调整搜索词，或先在工程中导入相应 DBC / 功能配置。";
+        TargetHint.Text = AvailableTargets.Count == 0
+            ? "没有匹配的对象。请调整搜索词，或先在工程中导入相应 DBC / 功能配置。"
+            : _targetInstruction + _targetRevisionWarning;
     }
 
     private void TargetPicker_Changed(object sender, SelectionChangedEventArgs e)
