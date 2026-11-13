@@ -49,6 +49,14 @@ public sealed class RealExecutionTests
         public Task<TestWaveResult> AnalyzeAsync(string key, string reference,
             double tolerance, double minimumCoverage, CancellationToken ct)
             => Task.FromResult(new TestWaveResult(true, "FAIL", "Fail", "evidence", ""));
+        public TestTargetMapping? SelectedProfile { get; private set; }
+        public Task<TestWaveResult> AnalyzeWithProfileAsync(string key, TestTargetMapping profile,
+            string reference, CancellationToken ct)
+        {
+            SelectedProfile = profile;
+            return Task.FromResult(new TestWaveResult(true, "FAIL", "Fail", "profile-evidence",
+                "Analysis result is data, not a test verdict."));
+        }
         public Task CleanupAsync(CancellationToken ct) => Task.CompletedTask;
     }
 
@@ -127,4 +135,46 @@ public sealed class RealExecutionTests
         Assert.Empty(new PlanCompiler().Prepare(tx.Current).Diagnostics);
         Assert.NotEmpty(new PlanCompiler().Prepare(tx.Current, allowRealOperations: true).Diagnostics);
     }
+    [Fact]
+    public async Task PinnedWaveProfileAnalysis_ProducesDataUntilExplicitExpect()
+    {
+        var profile = new TestTargetMapping("MyWaveCriteria", TestTargetKind.WaveProfile,
+            AssetId.New(), 2, new string('b', 64));
+        var tx = new StepEditTransaction(TestDocument.Create("Wave") with
+        { Mappings = ImmutableArray.Create(profile) });
+        tx.Insert(TestPhase.Test, null, null, 0, N("WaveAnalyze",
+            ("captureKey", "capture1"), ("reference", "approved-reference"),
+            ("profile", profile.Name), ("variable", "analysis"),
+            ("tolerance", "0.5"), ("coverage", "0.90")));
+        var prepared = new PlanCompiler().Prepare(tx.Current, allowRealOperations: true);
+        Assert.Empty(prepared.Diagnostics);
+        var wave = new WavePort();
+        var signals = new SignalPort(new TestSignalResult(TestSignalStatus.NoFrame, null, "No data"));
+        var observed = await new RealRunCoordinator(signals, new ActuationPort(), wave)
+            .StartAsync(prepared);
+        Assert.Equal(RealTestVerdict.Inconclusive, observed.Verdict);
+        Assert.Equal("Fail", observed.Variables["analysis"].Value);
+        Assert.Equal(profile, wave.SelectedProfile);
+        tx.Insert(TestPhase.Test, null, null, 1, N("Expect",
+            ("left", "$analysis"), ("operator", "=="), ("right", "Fail")));
+        var decided = await new RealRunCoordinator(signals, new ActuationPort(), new WavePort())
+            .StartAsync(new PlanCompiler().Prepare(tx.Current, allowRealOperations: true));
+        Assert.Equal(RealTestVerdict.Passed, decided.Verdict);
+    }
+
+    [Fact]
+    public void WaveProfileStep_RejectsUnmappedOrWrongKindAnalysisResource()
+    {
+        var signal = Target();
+        var tx = new StepEditTransaction(TestDocument.Create("Wave") with
+        { Mappings = ImmutableArray.Create(signal) });
+        tx.Insert(TestPhase.Test, null, null, 0, N("WaveAnalyze",
+            ("captureKey", "capture1"), ("reference", "reference"),
+            ("profile", signal.Name), ("variable", "analysis"),
+            ("tolerance", "0.5"), ("coverage", "0.90")));
+        Assert.Contains(new PlanCompiler().Prepare(tx.Current, allowRealOperations: true).Diagnostics,
+            x => x.Contains("unmapped wave analysis profile", StringComparison.Ordinal));
+    }
+
+
 }
