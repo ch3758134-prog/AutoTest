@@ -7,6 +7,7 @@ using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Runtime;
 using AutoTest.Testing.Preparation;
+using AutoTest.Specialists.Wave;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -218,7 +219,22 @@ public sealed class TestEditorViewModel : BindableBase
             }).Select(x => x.Name).ToArray();
         var profiles = Mappings.Where(x => x.Kind == TestTargetKind.WaveProfile)
             .Select(x => x.Name).ToArray();
-        var result = _dialogs.EditParameters(node, targets, profiles);
+        string[] references;
+        try
+        {
+            var root = _workspace.Current?.RootDirectory;
+            references = node.Type != "WaveAnalyze" || root is null ? [] :
+                new WaveReferenceCatalog(Path.Combine(root, "wave-records", "references"))
+                    .List().Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+                                      UnauthorizedAccessException or ArgumentException)
+        {
+            StatusMessage = "参考波形索引不可读取：" + error.Message;
+            return;
+        }
+        var result = _dialogs.EditParameters(node, targets, profiles, references,
+            Mappings.ToDictionary(x => x.Name, x => x.Kind, StringComparer.OrdinalIgnoreCase));
         if (result is null) return;
         Mutate(() =>
         {

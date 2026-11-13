@@ -32,8 +32,8 @@
             <DataTemplate>
               <StackPanel Margin="0,0,0,14">
                 <TextBlock Text="{Binding DisplayName}" Margin="0,0,0,6"/>
-                <ComboBox ItemsSource="{Binding Options}"
-                    SelectedItem="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
+                <ComboBox ItemsSource="{Binding Options}" IsEditable="True"
+                    Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
                   <ComboBox.Style>
                     <Style TargetType="ComboBox">
                       <Setter Property="Visibility" Value="Collapsed"/>

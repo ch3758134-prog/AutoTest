@@ -14,9 +14,12 @@ public sealed class TestEditorDialogs
 
     public StepParametersResult? EditParameters(StepNode step,
         IReadOnlyList<string>? mappedTargets = null,
-        IReadOnlyList<string>? waveProfiles = null)
+        IReadOnlyList<string>? waveProfiles = null,
+        IReadOnlyList<string>? referenceNames = null,
+        IReadOnlyDictionary<string, TestTargetKind>? targetKinds = null)
     {
-        var dialog = new StepParametersDialog(step, mappedTargets, waveProfiles);
+        var dialog = new StepParametersDialog(step, mappedTargets, waveProfiles,
+            referenceNames, targetKinds);
         if (ActiveOwner is { IsLoaded: true } owner) dialog.Owner = owner;
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }
