@@ -31,6 +31,24 @@ public sealed class ProjectWorkspaceService
     public const string WaveSettingsKind = ProjectConfigurationCodec.WaveSettingsKind;
     public const string FlashSettingsKind = ProjectConfigurationCodec.FlashSettingsKind;
     public const string ScanSettingsKind = ProjectConfigurationCodec.ScanSettingsKind;
+    public const string TestConfigurationKind = ProjectConfigurationCodec.TestConfigurationKind;
+    public const string BenchConfigurationKind = ProjectConfigurationCodec.BenchConfigurationKind;
+    private AssetId? _selectedTestConfiguration;
+    private AssetId? _selectedBenchConfiguration;
+    private string? _configurationProjectPath;
+    public event EventHandler? SelectedConfigurationsChanged;
+    public AssetId? SelectedTestConfiguration =>
+        string.Equals(_configurationProjectPath, Current?.ManifestPath,
+            StringComparison.OrdinalIgnoreCase) ? _selectedTestConfiguration : null;
+    public AssetId? SelectedBenchConfiguration =>
+        string.Equals(_configurationProjectPath, Current?.ManifestPath,
+            StringComparison.OrdinalIgnoreCase) ? _selectedBenchConfiguration : null;
+    public string SelectedTestConfigurationName =>
+        Current?.Definition.Assets.FirstOrDefault(x => x.Id == SelectedTestConfiguration)?.Name
+            ?? "未选择 TCF";
+    public string SelectedBenchConfigurationName =>
+        Current?.Definition.Assets.FirstOrDefault(x => x.Id == SelectedBenchConfiguration)?.Name
+            ?? "固定台架（尚未选择 TBC）";
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     public string SuggestedDirectory => Current?.RootDirectory ?? AppContext.BaseDirectory;
     public OpenProjectContext? Current { get; private set; }
@@ -435,7 +453,13 @@ public sealed class ProjectWorkspaceService
     {
         if (!ProjectConfigurationCodec.IsConfiguration(kind))
             throw new ArgumentException("不支持的配置资源类型：" + kind);
-        return AddAssetAsync(kind, name, ".settings.json",
+        var extension = kind switch
+        {
+            TestConfigurationKind => ".tcf.json",
+            BenchConfigurationKind => ".tbc.json",
+            _ => ".settings.json"
+        };
+        return AddAssetAsync(kind, name, extension,
             ProjectConfigurationCodec.Create(kind, name), ct);
     }
 
@@ -461,6 +485,41 @@ public sealed class ProjectWorkspaceService
         }, ct);
     }
 
+    /// <summary>
+    /// Selection is a functional editing context. It does NOT connect USB, assert IGN,
+    /// change KEY_SIM outputs, or authorize a test. TBC always describes the fixed station.
+    /// </summary>
+    public async Task SelectConfigurationAsync(AssetId id, CancellationToken ct = default)
+    {
+        var session = await OpenConfigurationAsync(id, ct);
+        var project = Current ?? throw new InvalidOperationException("请先打开工程。");
+        ValidateConfigurationReferences(session.Kind, session.Document, project.Definition);
+        if (session.Kind is not (TestConfigurationKind or BenchConfigurationKind))
+            throw new ArgumentException("只能选择 TCF 被测系统或 TBC 台架配置。");
+        if (!string.Equals(_configurationProjectPath, project.ManifestPath,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            _selectedTestConfiguration = null;
+            _selectedBenchConfiguration = null;
+        }
+        _configurationProjectPath = project.ManifestPath;
+        if (session.Kind == TestConfigurationKind) _selectedTestConfiguration = id;
+        else _selectedBenchConfiguration = id;
+        SelectedConfigurationsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task<TestSystemConfigurationDocument?> ReadSelectedTestConfigurationAsync(
+        CancellationToken ct = default)
+    {
+        if (SelectedTestConfiguration is not { } id) return null;
+        var selected = await OpenConfigurationAsync(id, ct);
+        if (selected.Kind != TestConfigurationKind)
+            throw new ProjectDataException("TCF_SELECTION_INVALID", "当前 TCF 资源类型已变化。");
+        var document = (TestSystemConfigurationDocument)selected.Document;
+        ValidateConfigurationReferences(selected.Kind, document, Current!.Definition);
+        return document;
+    }
+
     /// <summary>Prevent a config from silently following a different version of its referenced resource.</summary>
     private static void ValidateConfigurationReferences(string kind, object document, ProjectDefinition project)
     {
@@ -475,7 +534,12 @@ public sealed class ProjectWorkspaceService
                     "引用资源已不存在或发生版本变更，请重新选择并确认：" + expectedKind);
         }
 
-        if (kind == WaveSettingsKind && document is WaveSettingsDocument wave)
+        if (kind == TestConfigurationKind && document is TestSystemConfigurationDocument tcf)
+        {
+            Check(tcf.DbcAssetId, DbcKind, tcf.DbcRevision, tcf.DbcFingerprint);
+            Check(tcf.ButtonAssetId, ControllerKind, tcf.ButtonRevision, tcf.ButtonFingerprint);
+        }
+        else if (kind == WaveSettingsKind && document is WaveSettingsDocument wave)
         {
             Check(wave.DbcAssetId, DbcKind, wave.DbcAssetRevision, wave.DbcAssetFingerprint);
             Check(wave.EvidenceAssetId, WaveKind, wave.EvidenceAssetRevision, wave.EvidenceAssetFingerprint);
