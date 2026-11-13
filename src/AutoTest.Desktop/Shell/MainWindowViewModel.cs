@@ -512,13 +512,35 @@ public sealed class MainWindowViewModel : BindableBase
         finally { IsBusy = false; }
     }
 
+    // Resource selection can change while an editor is loading from disk.
+    // Queue the last selected asset instead of dropping the single-click navigation.
+    private bool _openingSelectedResource;
+    private bool _selectedResourceChangedDuringOpen;
     public async Task OpenSelectedResourceAsync()
     {
-        if (_selectedResource?.Asset is null || IsBusy) return;
-        if (SelectedResourceIsTestProgram) await OpenSelectedTestProgramAsync();
-        else if (SelectedResourceIsTestProject) await OpenSelectedTestProjectAsync();
-        else if (SelectedResourceIsDbc) await OpenSelectedDbcAsync();
-        else if (SelectedResourceIsConfiguration) await OpenSelectedConfigurationAsync();
+        if (_openingSelectedResource)
+        {
+            _selectedResourceChangedDuringOpen = true;
+            return;
+        }
+        if (IsBusy) return;
+        _openingSelectedResource = true;
+        try
+        {
+            do
+            {
+                _selectedResourceChangedDuringOpen = false;
+                var assetId = _selectedResource?.Asset?.Id;
+                if (assetId is null) return;
+                if (SelectedResourceIsTestProgram) await OpenSelectedTestProgramAsync();
+                else if (SelectedResourceIsTestProject) await OpenSelectedTestProjectAsync();
+                else if (SelectedResourceIsDbc) await OpenSelectedDbcAsync();
+                else if (SelectedResourceIsConfiguration) await OpenSelectedConfigurationAsync();
+                if (_selectedResource?.Asset?.Id != assetId)
+                    _selectedResourceChangedDuringOpen = true;
+            } while (_selectedResourceChangedDuringOpen);
+        }
+        finally { _openingSelectedResource = false; }
     }
 
     public void SelectResource(ResourceTreeNode? item)
