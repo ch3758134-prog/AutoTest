@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Testing;
 using AutoTest.Testing.Authoring;
@@ -19,7 +20,7 @@ public sealed class WaveProfileMappingTests
             var saved = await workspace.CreateConfigurationAsync(
                 ProjectWorkspaceService.WaveSettingsKind, "CurrentLimit");
             var choices = await TestTargetCatalog.LoadAsync(workspace);
-            var wave = Assert.Single(choices.Where(x => x.Mapping.Kind == TestTargetKind.WaveProfile));
+            var wave = Assert.Single(choices, x => x.Mapping.Kind == TestTargetKind.WaveProfile);
             Assert.Equal(saved.Id, wave.Mapping.Asset);
             Assert.Equal(saved.Revision, wave.Mapping.AssetRevision);
             Assert.Equal(saved.Sha256, wave.Mapping.AssetSha256);

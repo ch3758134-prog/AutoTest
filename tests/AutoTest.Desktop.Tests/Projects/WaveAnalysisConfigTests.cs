@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Specialists.Wave;
