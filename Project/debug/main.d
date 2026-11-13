@@ -1,0 +1,9 @@
+debug\main.o: source\main.c
+debug\main.o: .\source\BSW\EAL\GPIO\EAL_GPIO.h
+debug\main.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\main.o: .\source\MCAL/Gpio/MCAL_GPIO.h
+debug\main.o: .\source\BSW\EAL\Can\EAL_CAN.h
+debug\main.o: .\source\BSW\EAL\Time\EAL_TIME.h
+debug\main.o: .\source\BSW\EAL\USB\EAL_USB.h
+debug\main.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdbool.h
+debug\main.o: .\source\ASW\UsbSvc\ASW_UsbSvc.h

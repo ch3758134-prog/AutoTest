@@ -1,0 +1,12 @@
+debug\can_transmit_app.o: source\BSW\EAL\TEST\Can_Transmit_App.c
+debug\can_transmit_app.o: source\BSW\EAL\TEST\CAN_Transmit_App.h
+debug\can_transmit_app.o: .\source\BSW/EAL/DRV/types_compat.h
+debug\can_transmit_app.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\can_transmit_app.o: .\source\BSW/EAL/DRV/Drv_Can.h
+debug\can_transmit_app.o: .\startup\MK20D10.h
+debug\can_transmit_app.o: .\.cmsis\include\core_cm4.h
+debug\can_transmit_app.o: .\.cmsis\include\cmsis_version.h
+debug\can_transmit_app.o: .\.cmsis\include\cmsis_compiler.h
+debug\can_transmit_app.o: .\.cmsis\include\cmsis_armcc.h
+debug\can_transmit_app.o: .\startup\system_MK20D10.h
+debug\can_transmit_app.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\string.h

@@ -1,0 +1,11 @@
+debug\usb.o: source\USB\common\usb.c
+debug\usb.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stddef.h
+debug\usb.o: .\startup\derivative.h
+debug\usb.o: .\startup\MK20D10.h
+debug\usb.o: .\.cmsis\include\core_cm4.h
+debug\usb.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\usb.o: .\.cmsis\include\cmsis_version.h
+debug\usb.o: .\.cmsis\include\cmsis_compiler.h
+debug\usb.o: .\.cmsis\include\cmsis_armcc.h
+debug\usb.o: .\startup\system_MK20D10.h
+debug\usb.o: source\USB\common\usb.h

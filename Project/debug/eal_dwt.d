@@ -1,0 +1,10 @@
+debug\eal_dwt.o: source\BSW\EAL\GPIO\EAL_DWT.c
+debug\eal_dwt.o: source\BSW\EAL\GPIO\EAL_DWT.h
+debug\eal_dwt.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\eal_dwt.o: .\startup\derivative.h
+debug\eal_dwt.o: .\startup\MK20D10.h
+debug\eal_dwt.o: .\.cmsis\include\core_cm4.h
+debug\eal_dwt.o: .\.cmsis\include\cmsis_version.h
+debug\eal_dwt.o: .\.cmsis\include\cmsis_compiler.h
+debug\eal_dwt.o: .\.cmsis\include\cmsis_armcc.h
+debug\eal_dwt.o: .\startup\system_MK20D10.h

@@ -1,0 +1,12 @@
+debug\drv_can_test.o: source\BSW\EAL\TEST\Drv_Can_Test.c
+debug\drv_can_test.o: .\startup\derivative.h
+debug\drv_can_test.o: .\startup\MK20D10.h
+debug\drv_can_test.o: .\.cmsis\include\core_cm4.h
+debug\drv_can_test.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\drv_can_test.o: .\.cmsis\include\cmsis_version.h
+debug\drv_can_test.o: .\.cmsis\include\cmsis_compiler.h
+debug\drv_can_test.o: .\.cmsis\include\cmsis_armcc.h
+debug\drv_can_test.o: .\startup\system_MK20D10.h
+debug\drv_can_test.o: .\source\MCAL\Can\Drv_Can.h
+debug\drv_can_test.o: .\source\BSW\EAL\GPIO\EAL_DWT.h
+debug\drv_can_test.o: .\source\BSW\CDD\KeySim\CDD_KeySim_Protocol.h

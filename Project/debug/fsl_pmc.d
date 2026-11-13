@@ -1,0 +1,17 @@
+debug\fsl_pmc.o: source\MCAL\fsl_pmc.c
+debug\fsl_pmc.o: source\MCAL\fsl_pmc.h
+debug\fsl_pmc.o: source\MCAL\fsl_common.h
+debug\fsl_pmc.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\assert.h
+debug\fsl_pmc.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdbool.h
+debug\fsl_pmc.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\fsl_pmc.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\string.h
+debug\fsl_pmc.o: .\startup\fsl_device_registers.h
+debug\fsl_pmc.o: .\startup\MK20D10.h
+debug\fsl_pmc.o: .\.cmsis\include\core_cm4.h
+debug\fsl_pmc.o: .\.cmsis\include\cmsis_version.h
+debug\fsl_pmc.o: .\.cmsis\include\cmsis_compiler.h
+debug\fsl_pmc.o: .\.cmsis\include\cmsis_armcc.h
+debug\fsl_pmc.o: .\startup\system_MK20D10.h
+debug\fsl_pmc.o: .\startup\MK20D10_features.h
+debug\fsl_pmc.o: source\MCAL\fsl_clock.h
+debug\fsl_pmc.o: source\MCAL\fsl_common.h

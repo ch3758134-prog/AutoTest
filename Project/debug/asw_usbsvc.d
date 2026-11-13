@@ -1,0 +1,11 @@
+debug\asw_usbsvc.o: source\ASW\UsbSvc\ASW_UsbSvc.c
+debug\asw_usbsvc.o: source\ASW\UsbSvc\ASW_UsbSvc.h
+debug\asw_usbsvc.o: .\source\BSW\CDD\USB\CDD_USB.h
+debug\asw_usbsvc.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\asw_usbsvc.o: .\source\ASW\PwrCtrl\ASW_PwrCtrl.h
+debug\asw_usbsvc.o: .\source\ASW\BusProxy\ASW_BusProxy.h
+debug\asw_usbsvc.o: .\source\BSW\EAL\Can\EAL_CAN.h
+debug\asw_usbsvc.o: .\source\ASW\EcuEmu\ASW_EcuEmu.h
+debug\asw_usbsvc.o: .\source\BSW\EAL\USB\EAL_USB.h
+debug\asw_usbsvc.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdbool.h
+debug\asw_usbsvc.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stddef.h

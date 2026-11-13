@@ -1,0 +1,17 @@
+debug\usb_driver.o: source\USB\driver\usb_driver.c
+debug\usb_driver.o: source\USB\driver\usb_devapi.h
+debug\usb_driver.o: .\source\USB\common\types.h
+debug\usb_driver.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stddef.h
+debug\usb_driver.o: .\source\USB\common\hidef.h
+debug\usb_driver.o: .\startup\derivative.h
+debug\usb_driver.o: .\startup\MK20D10.h
+debug\usb_driver.o: .\.cmsis\include\core_cm4.h
+debug\usb_driver.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\usb_driver.o: .\.cmsis\include\cmsis_version.h
+debug\usb_driver.o: .\.cmsis\include\cmsis_compiler.h
+debug\usb_driver.o: .\.cmsis\include\cmsis_armcc.h
+debug\usb_driver.o: .\startup\system_MK20D10.h
+debug\usb_driver.o: .\source\USB\USB_App\user_config.h
+debug\usb_driver.o: .\startup\derivative.h
+debug\usb_driver.o: source\USB\driver\usb_dciapi.h
+debug\usb_driver.o: .\source\USB\USB_App\USB_Config.h

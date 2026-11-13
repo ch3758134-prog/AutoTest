@@ -1,0 +1,850 @@
+Dependencies for Project 'Template', Target 'Template': (DO NOT MODIFY !)
+CompilerVersion: 5060960::V5.06 update 7 (build 960)::.\ARMCC
+F (.\source\BSW\EAL\GPIO\EAL_GPIO.c)(0x6A990513)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\eal_gpio.o --omf_browse debug\eal_gpio.crf --depend debug\eal_gpio.d)
+I (source\BSW\EAL\GPIO\EAL_GPIO.h)(0x6A98F71F)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\MCAL/Gpio/MCAL_GPIO.h)(0x6A701AB4)
+F (.\source\BSW\EAL\Can\EAL_CAN.c)(0x6A632C6C)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\eal_can.o --omf_browse debug\eal_can.crf --depend debug\eal_can.d)
+I (source\BSW\EAL\Can\EAL_CAN.h)(0x6A632C56)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\MCAL/Can/MCAL_CAN.h)(0x6A8D4E3E)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+F (.\source\BSW\EAL\Time\EAL_TIME.c)(0x6A795B2D)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\eal_time.o --omf_browse debug\eal_time.crf --depend debug\eal_time.d)
+I (source\BSW\EAL\Time\EAL_TIME.h)(0x6A795B2D)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\MCAL/Dwt/MCAL_DWT.h)(0x6A701CE4)
+F (.\source\BSW\EAL\USB\EAL_USB.c)(0x6A8D5C24)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\eal_usb.o --omf_browse debug\eal_usb.crf --depend debug\eal_usb.d)
+I (source\BSW\EAL\USB\EAL_USB.h)(0x6A8D5ABD)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (.\source\USB/common/usb.h)(0x54F44EE2)
+I (.\source\USB/common/usb_class.h)(0x553474CA)
+I (.\source\USB/common/types.h)(0x55347518)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+I (.\source\USB\driver\usb_devapi.h)(0x56514F3E)
+I (.\source\USB\common\hidef.h)(0x55275CCE)
+I (.\startup\derivative.h)(0x56839AEE)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\source\USB\USB_App\user_config.h)(0x6A715DD2)
+I (.\source\USB/class/usb_bulk.h)(0x5653DDF0)
+I (.\source\USB\USB_App\usb_descriptor.h)(0x6A7193C4)
+F (.\source\BSW\CDD\USB\CDD_USB.c)(0x6A8D5A7C)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\cdd_usb.o --omf_browse debug\cdd_usb.crf --depend debug\cdd_usb.d)
+I (source\BSW\CDD\USB\CDD_USB.h)(0x6A97EB27)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\BSW\EAL\USB\EAL_USB.h)(0x6A8D5ABD)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+F (.\source\ASW\UsbSvc\ASW_UsbSvc.c)(0x6A97EB27)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\asw_usbsvc.o --omf_browse debug\asw_usbsvc.crf --depend debug\asw_usbsvc.d)
+I (source\ASW\UsbSvc\ASW_UsbSvc.h)(0x6A79660D)
+I (.\source\BSW\CDD\USB\CDD_USB.h)(0x6A97EB27)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\ASW\PwrCtrl\ASW_PwrCtrl.h)(0x6A98F74A)
+I (.\source\ASW\BusProxy\ASW_BusProxy.h)(0x6A79660D)
+I (.\source\BSW\EAL\Can\EAL_CAN.h)(0x6A632C56)
+I (.\source\ASW\EcuEmu\ASW_EcuEmu.h)(0x6A79660D)
+I (.\source\BSW\EAL\USB\EAL_USB.h)(0x6A8D5ABD)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+F (.\source\ASW\PwrCtrl\ASW_PwrCtrl.c)(0x6A98F71F)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\asw_pwrctrl.o --omf_browse debug\asw_pwrctrl.crf --depend debug\asw_pwrctrl.d)
+I (source\ASW\PwrCtrl\ASW_PwrCtrl.h)(0x6A98F74A)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\BSW\CDD\USB\CDD_USB.h)(0x6A97EB27)
+I (.\source\BSW\EAL\GPIO\EAL_GPIO.h)(0x6A98F71F)
+I (.\source\MCAL/Gpio/MCAL_GPIO.h)(0x6A701AB4)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+F (.\source\ASW\BusProxy\ASW_BusProxy.c)(0x6A79660D)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\asw_busproxy.o --omf_browse debug\asw_busproxy.crf --depend debug\asw_busproxy.d)
+I (source\ASW\BusProxy\ASW_BusProxy.h)(0x6A79660D)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\BSW\EAL\Can\EAL_CAN.h)(0x6A632C56)
+I (.\source\BSW\CDD\USB\CDD_USB.h)(0x6A97EB27)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+F (.\source\ASW\EcuEmu\ASW_EcuEmu.c)(0x6A79660D)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\asw_ecuemu.o --omf_browse debug\asw_ecuemu.crf --depend debug\asw_ecuemu.d)
+I (source\ASW\EcuEmu\ASW_EcuEmu.h)(0x6A79660D)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\BSW\CDD\USB\CDD_USB.h)(0x6A97EB27)
+I (.\source\BSW\EAL\Can\EAL_CAN.h)(0x6A632C56)
+I (.\source\BSW\EAL\Time\EAL_TIME.h)(0x6A795B2D)
+I (.\source\BSW\EAL\USB\EAL_USB.h)(0x6A8D5ABD)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+F (.\source\utilities\fsl_debug_console.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_debug_console.o --omf_browse debug\fsl_debug_console.crf --depend debug\fsl_debug_console.d)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdarg.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdlib.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdio.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\math.h)(0x5E8E3CC2)
+I (source\utilities\fsl_debug_console.h)(0x6A55AA35)
+I (.\source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_uart.h)(0x6A55AA34)
+F (.\source\PROJ_CFG\Clock_Config.c)(0x6A714A76)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\clock_config.o --omf_browse debug\clock_config.crf --depend debug\clock_config.d)
+I (.\source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+F (.\source\main.c)(0x6A98FD6A)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\main.o --omf_browse debug\main.crf --depend debug\main.d)
+I (.\source\BSW\EAL\GPIO\EAL_GPIO.h)(0x6A98F71F)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\MCAL/Gpio/MCAL_GPIO.h)(0x6A701AB4)
+I (.\source\BSW\EAL\Can\EAL_CAN.h)(0x6A632C56)
+I (.\source\BSW\EAL\Time\EAL_TIME.h)(0x6A795B2D)
+I (.\source\BSW\EAL\USB\EAL_USB.h)(0x6A8D5ABD)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (.\source\ASW\UsbSvc\ASW_UsbSvc.h)(0x6A79660D)
+F (.\source\MCAL\fsl_adc16.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_adc16.o --omf_browse debug\fsl_adc16.crf --depend debug\fsl_adc16.d)
+I (source\MCAL\fsl_adc16.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_clock.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_clock.o --omf_browse debug\fsl_clock.crf --depend debug\fsl_clock.d)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_cmp.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_cmp.o --omf_browse debug\fsl_cmp.crf --depend debug\fsl_cmp.d)
+I (source\MCAL\fsl_cmp.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_cmt.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_cmt.o --omf_browse debug\fsl_cmt.crf --depend debug\fsl_cmt.d)
+I (source\MCAL\fsl_cmt.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_common.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_common.o --omf_browse debug\fsl_common.crf --depend debug\fsl_common.d)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (.\source\utilities\fsl_debug_console.h)(0x6A55AA35)
+F (.\source\MCAL\fsl_crc.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_crc.o --omf_browse debug\fsl_crc.crf --depend debug\fsl_crc.d)
+I (source\MCAL\fsl_crc.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_dac.c)(0x6A55AA34)()
+F (.\source\MCAL\fsl_dmamux.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_dmamux.o --omf_browse debug\fsl_dmamux.crf --depend debug\fsl_dmamux.d)
+I (source\MCAL\fsl_dmamux.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_dspi.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_dspi.o --omf_browse debug\fsl_dspi.crf --depend debug\fsl_dspi.d)
+I (source\MCAL\fsl_dspi.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_dspi_edma.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_dspi_edma.o --omf_browse debug\fsl_dspi_edma.crf --depend debug\fsl_dspi_edma.d)
+I (source\MCAL\fsl_dspi_edma.h)(0x6A55AA35)
+I (source\MCAL\fsl_dspi.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (source\MCAL\fsl_edma.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_edma.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_edma.o --omf_browse debug\fsl_edma.crf --depend debug\fsl_edma.d)
+I (source\MCAL\fsl_edma.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_ewm.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_ewm.o --omf_browse debug\fsl_ewm.crf --depend debug\fsl_ewm.d)
+I (source\MCAL\fsl_ewm.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_flash.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_flash.o --omf_browse debug\fsl_flash.crf --depend debug\fsl_flash.d)
+I (source\MCAL\fsl_flash.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_ftm.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_ftm.o --omf_browse debug\fsl_ftm.crf --depend debug\fsl_ftm.d)
+I (source\MCAL\fsl_ftm.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_gpio.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_gpio.o --omf_browse debug\fsl_gpio.crf --depend debug\fsl_gpio.d)
+I (source\MCAL\fsl_gpio.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_i2c.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_i2c.o --omf_browse debug\fsl_i2c.crf --depend debug\fsl_i2c.d)
+I (source\MCAL\fsl_i2c.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_i2c_edma.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_i2c_edma.o --omf_browse debug\fsl_i2c_edma.crf --depend debug\fsl_i2c_edma.d)
+I (source\MCAL\fsl_i2c_edma.h)(0x6A55AA34)
+I (source\MCAL\fsl_i2c.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (source\MCAL\fsl_dmamux.h)(0x6A55AA34)
+I (source\MCAL\fsl_edma.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_llwu.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_llwu.o --omf_browse debug\fsl_llwu.crf --depend debug\fsl_llwu.d)
+I (source\MCAL\fsl_llwu.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_lptmr.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_lptmr.o --omf_browse debug\fsl_lptmr.crf --depend debug\fsl_lptmr.d)
+I (source\MCAL\fsl_lptmr.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_pdb.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_pdb.o --omf_browse debug\fsl_pdb.crf --depend debug\fsl_pdb.d)
+I (source\MCAL\fsl_pdb.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_pit.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_pit.o --omf_browse debug\fsl_pit.crf --depend debug\fsl_pit.d)
+I (source\MCAL\fsl_pit.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_pmc.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_pmc.o --omf_browse debug\fsl_pmc.crf --depend debug\fsl_pmc.d)
+I (source\MCAL\fsl_pmc.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_rcm.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_rcm.o --omf_browse debug\fsl_rcm.crf --depend debug\fsl_rcm.d)
+I (source\MCAL\fsl_rcm.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_rtc.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_rtc.o --omf_browse debug\fsl_rtc.crf --depend debug\fsl_rtc.d)
+I (source\MCAL\fsl_rtc.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_sdhc.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_sdhc.o --omf_browse debug\fsl_sdhc.crf --depend debug\fsl_sdhc.d)
+I (source\MCAL\fsl_sdhc.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_sim.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_sim.o --omf_browse debug\fsl_sim.crf --depend debug\fsl_sim.d)
+I (source\MCAL\fsl_sim.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_smc.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_smc.o --omf_browse debug\fsl_smc.crf --depend debug\fsl_smc.d)
+I (source\MCAL\fsl_smc.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (source\MCAL\fsl_flash.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_sysmpu.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_sysmpu.o --omf_browse debug\fsl_sysmpu.crf --depend debug\fsl_sysmpu.d)
+I (source\MCAL\fsl_sysmpu.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_tsi_v2.c)(0x6A55AA35)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_tsi_v2.o --omf_browse debug\fsl_tsi_v2.crf --depend debug\fsl_tsi_v2.d)
+I (source\MCAL\fsl_tsi_v2.h)(0x6A55AA35)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_uart.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_uart.o --omf_browse debug\fsl_uart.crf --depend debug\fsl_uart.d)
+I (source\MCAL\fsl_uart.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_uart_edma.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_uart_edma.o --omf_browse debug\fsl_uart_edma.crf --depend debug\fsl_uart_edma.d)
+I (source\MCAL\fsl_uart_edma.h)(0x6A55AA34)
+I (source\MCAL\fsl_uart.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (source\MCAL\fsl_dmamux.h)(0x6A55AA34)
+I (source\MCAL\fsl_edma.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_vref.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_vref.o --omf_browse debug\fsl_vref.crf --depend debug\fsl_vref.d)
+I (source\MCAL\fsl_vref.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_wdog.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_wdog.o --omf_browse debug\fsl_wdog.crf --depend debug\fsl_wdog.d)
+I (source\MCAL\fsl_wdog.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\fsl_flexcan.c)(0x6A6FF3BF)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\fsl_flexcan.o --omf_browse debug\fsl_flexcan.crf --depend debug\fsl_flexcan.d)
+I (source\MCAL\fsl_flexcan.h)(0x6A55AA34)
+I (source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\Can\MCAL_CAN.c)(0x6A8D4FDE)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\mcal_can.o --omf_browse debug\mcal_can.crf --depend debug\mcal_can.d)
+I (source\MCAL\Can\MCAL_CAN.h)(0x6A8D4E3E)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\MCAL\fsl_flexcan.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_port.h)(0x6A55AA35)
+F (.\source\MCAL\Gpio\MCAL_GPIO.c)(0x6A701ABC)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\mcal_gpio.o --omf_browse debug\mcal_gpio.crf --depend debug\mcal_gpio.d)
+I (source\MCAL\Gpio\MCAL_GPIO.h)(0x6A701AB4)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\MCAL\fsl_clock.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_port.h)(0x6A55AA35)
+I (.\source\MCAL\fsl_gpio.h)(0x6A55AA35)
+F (.\source\MCAL\Dwt\MCAL_DWT.c)(0x6A701CE5)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\mcal_dwt.o --omf_browse debug\mcal_dwt.crf --depend debug\mcal_dwt.d)
+I (source\MCAL\Dwt\MCAL_DWT.h)(0x6A701CE4)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\source\MCAL\Pit\MCAL_PIT.c)(0x6A701B5C)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\mcal_pit.o --omf_browse debug\mcal_pit.crf --depend debug\mcal_pit.d)
+I (source\MCAL\Pit\MCAL_PIT.h)(0x6A701B51)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\source\MCAL\fsl_pit.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_common.h)(0x6A55AA34)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\assert.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdbool.h)(0x5E8E3CC2)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\fsl_device_registers.h)(0x6A55AA34)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\startup\MK20D10_features.h)(0x6A55AA34)
+I (.\source\MCAL\fsl_clock.h)(0x6A55AA34)
+F (.\startup\startup_MK20D10.s)(0x6A4E0256)(--cpu Cortex-M4 --pd "__EVAL SETA 1" -g --apcs=interwork --pd "__MICROLIB SETA 1" -I .\BSW\MCAL\inc -I .\source\BSW\MCAL\src -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\UTIL -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL\inc-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include--pd "__UVISION_VERSION SETA 543" --pd "MK20DN512xxx10 SETA 1" --pd "CPU_MK64FN1M0VMD12 SETA 1" --pd "DEBUG SETA 1" --pd "__CC_ARM SETA 1" --pd "KEIL SETA 1" --pd "TWR_K64F120M SETA 1" --pd "TOWER SETA 1" --pd "DEBUG SETA 1"--list .\output\startup_mk20d10.lst -o debug\startup_mk20d10.o --depend debug\startup_mk20d10.d)
+F (.\startup\system_MK20D10.c)(0x6A55AA34)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\system_mk20d10.o --omf_browse debug\system_mk20d10.crf --depend debug\system_mk20d10.d)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (startup\fsl_device_registers.h)(0x6A55AA34)
+I (startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (startup\system_MK20D10.h)(0x6A55AA34)
+I (startup\MK20D10_features.h)(0x6A55AA34)
+F (.\source\USB\common\usb.c)(0x56839AAA)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\usb.o --omf_browse debug\usb.crf --depend debug\usb.d)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+I (.\startup\derivative.h)(0x56839AEE)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (source\USB\common\usb.h)(0x54F44EE2)
+F (.\source\USB\common\usb_class.c)(0x56501BAA)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\usb_class.o --omf_browse debug\usb_class.crf --depend debug\usb_class.d)
+I (source\USB\common\usb_class.h)(0x553474CA)
+I (source\USB\common\types.h)(0x55347518)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+I (.\source\USB\driver\usb_devapi.h)(0x56514F3E)
+I (.\source\USB\common\hidef.h)(0x55275CCE)
+I (.\startup\derivative.h)(0x56839AEE)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\source\USB\USB_App\user_config.h)(0x6A715DD2)
+I (source\USB\common\usb_framework.h)(0x51093582)
+I (.\source\USB\USB_App\usb_descriptor.h)(0x6A7193C4)
+F (.\source\USB\common\usb_framework.c)(0x51769E78)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\usb_framework.o --omf_browse debug\usb_framework.crf --depend debug\usb_framework.d)
+I (source\USB\common\types.h)(0x55347518)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+I (source\USB\common\usb_class.h)(0x553474CA)
+I (.\source\USB\driver\usb_devapi.h)(0x56514F3E)
+I (.\source\USB\common\hidef.h)(0x55275CCE)
+I (.\startup\derivative.h)(0x56839AEE)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\source\USB\USB_App\user_config.h)(0x6A715DD2)
+I (source\USB\common\usb_framework.h)(0x51093582)
+I (.\source\USB\USB_App\usb_descriptor.h)(0x6A7193C4)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+F (.\source\USB\class\usb_bulk.c)(0x6A715DCE)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\usb_bulk.o --omf_browse debug\usb_bulk.crf --depend debug\usb_bulk.d)
+I (source\USB\class\usb_bulk.h)(0x5653DDF0)
+I (.\source\USB\common\types.h)(0x55347518)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+I (.\source\USB\USB_App\usb_descriptor.h)(0x6A7193C4)
+I (.\source\USB\common\usb_class.h)(0x553474CA)
+I (.\source\USB\driver\usb_devapi.h)(0x56514F3E)
+I (.\source\USB\common\hidef.h)(0x55275CCE)
+I (.\startup\derivative.h)(0x56839AEE)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\source\USB\USB_App\user_config.h)(0x6A715DD2)
+F (.\source\USB\driver\usb_dci_kinetis.c)(0x644B39B4)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\usb_dci_kinetis.o --omf_browse debug\usb_dci_kinetis.crf --depend debug\usb_dci_kinetis.d)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\string.h)(0x5E8E3CC2)
+I (.\startup\derivative.h)(0x56839AEE)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (source\USB\driver\usb_dciapi.h)(0x514B1DAE)
+I (.\source\USB\common\types.h)(0x55347518)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+I (source\USB\driver\usb_devapi.h)(0x56514F3E)
+I (.\source\USB\common\hidef.h)(0x55275CCE)
+I (.\source\USB\USB_App\user_config.h)(0x6A715DD2)
+I (source\USB\driver\usb_dci_kinetis.h)(0x54F44FE2)
+I (source\USB\driver\usb_bdt_kinetis.h)(0x516FAFE8)
+I (.\source\USB\common\usb_class.h)(0x553474CA)
+F (.\source\USB\driver\usb_driver.c)(0x55275CCE)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\usb_driver.o --omf_browse debug\usb_driver.crf --depend debug\usb_driver.d)
+I (source\USB\driver\usb_devapi.h)(0x56514F3E)
+I (.\source\USB\common\types.h)(0x55347518)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+I (.\source\USB\common\hidef.h)(0x55275CCE)
+I (.\startup\derivative.h)(0x56839AEE)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\source\USB\USB_App\user_config.h)(0x6A715DD2)
+I (source\USB\driver\usb_dciapi.h)(0x514B1DAE)
+I (.\source\USB\USB_App\USB_Config.h)(0x6A71AF55)
+F (.\source\USB\USB_App\usb_descriptor.c)(0x6A71AF45)(--c99 -c --cpu Cortex-M4 -D__EVAL -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I .\source\MCAL\Can -I .\source\MCAL\Pit -I .\source\USB\USB_App -I .\source\USB\common -I .\source\USB\class -I .\source\USB\driver -I .\source\BSW\EAL\GPIO -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\Time -I .\source\BSW\EAL\USB -I .\source\BSW\CDD\USB -I .\source\ASW\UsbSvc -I .\source\ASW\PwrCtrl -I .\source\ASW\BusProxy -I .\source\ASW\EcuEmu -I .\source\ASW -I .\startup -I .\source\PROJ_CFG -I .\source\MCAL -I .\source -I .\.cmsis\include -I .\source\utilities -I .\source\BSW\EAL\TEST -I .\source\BSW\EAL\Can -I .\source\BSW\EAL\DRV -I .\source\BSW\CDD\KeySim --library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186-IC:\Users\ming\Desktop\E04_Editor\Keil\keil\Keil\Kinetis_K20_DFP\1.7.1\Device\Include-D__UVISION_VERSION="543" -DMK20DN512xxx10 -DDEBUG -DCPU_MK20DN512VLL10 -DPRINTF_ADVANCED_ENABLE="1" -DSCANF_ADVANCED_ENABLE="1"-o debug\usb_descriptor.o --omf_browse debug\usb_descriptor.crf --depend debug\usb_descriptor.d)
+I (.\startup\derivative.h)(0x56839AEE)
+I (.\startup\MK20D10.h)(0x6A71467B)
+I (.\.cmsis\include\core_cm4.h)(0x626FB8EC)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stdint.h)(0x5E8E3CC2)
+I (.\.cmsis\include\cmsis_version.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_compiler.h)(0x626FB8EC)
+I (.\.cmsis\include\cmsis_armcc.h)(0x626FB8EC)
+I (.\startup\system_MK20D10.h)(0x6A55AA34)
+I (.\source\USB\common\types.h)(0x55347518)
+I (C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\include\stddef.h)(0x5E8E3CC2)
+I (.\source\USB\common\usb_class.h)(0x553474CA)
+I (.\source\USB\driver\usb_devapi.h)(0x56514F3E)
+I (.\source\USB\common\hidef.h)(0x55275CCE)
+I (.\source\USB\USB_App\user_config.h)(0x6A715DD2)
+I (source\USB\USB_App\usb_descriptor.h)(0x6A7193C4)

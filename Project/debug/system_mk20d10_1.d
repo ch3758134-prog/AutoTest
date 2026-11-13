@@ -1,0 +1,10 @@
+debug\system_mk20d10_1.o: startup\system_MK20D10.c
+debug\system_mk20d10_1.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\system_mk20d10_1.o: startup\fsl_device_registers.h
+debug\system_mk20d10_1.o: startup\MK20D10.h
+debug\system_mk20d10_1.o: .\.cmsis\include\core_cm4.h
+debug\system_mk20d10_1.o: .\.cmsis\include\cmsis_version.h
+debug\system_mk20d10_1.o: .\.cmsis\include\cmsis_compiler.h
+debug\system_mk20d10_1.o: .\.cmsis\include\cmsis_armcc.h
+debug\system_mk20d10_1.o: startup\system_MK20D10.h
+debug\system_mk20d10_1.o: startup\MK20D10_features.h

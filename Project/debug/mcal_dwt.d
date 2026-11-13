@@ -1,0 +1,17 @@
+debug\mcal_dwt.o: source\MCAL\Dwt\MCAL_DWT.c
+debug\mcal_dwt.o: source\MCAL\Dwt\MCAL_DWT.h
+debug\mcal_dwt.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\mcal_dwt.o: .\source\MCAL\fsl_common.h
+debug\mcal_dwt.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\assert.h
+debug\mcal_dwt.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdbool.h
+debug\mcal_dwt.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\string.h
+debug\mcal_dwt.o: .\startup\fsl_device_registers.h
+debug\mcal_dwt.o: .\startup\MK20D10.h
+debug\mcal_dwt.o: .\.cmsis\include\core_cm4.h
+debug\mcal_dwt.o: .\.cmsis\include\cmsis_version.h
+debug\mcal_dwt.o: .\.cmsis\include\cmsis_compiler.h
+debug\mcal_dwt.o: .\.cmsis\include\cmsis_armcc.h
+debug\mcal_dwt.o: .\startup\system_MK20D10.h
+debug\mcal_dwt.o: .\startup\MK20D10_features.h
+debug\mcal_dwt.o: .\source\MCAL\fsl_clock.h
+debug\mcal_dwt.o: .\source\MCAL\fsl_common.h

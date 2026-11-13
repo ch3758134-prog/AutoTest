@@ -1,0 +1,10 @@
+debug\drv_can.o: source\MCAL\Can\Drv_Can.c
+debug\drv_can.o: .\startup\derivative.h
+debug\drv_can.o: .\startup\MK20D10.h
+debug\drv_can.o: .\.cmsis\include\core_cm4.h
+debug\drv_can.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\drv_can.o: .\.cmsis\include\cmsis_version.h
+debug\drv_can.o: .\.cmsis\include\cmsis_compiler.h
+debug\drv_can.o: .\.cmsis\include\cmsis_armcc.h
+debug\drv_can.o: .\startup\system_MK20D10.h
+debug\drv_can.o: source\MCAL\Can\Drv_Can.h

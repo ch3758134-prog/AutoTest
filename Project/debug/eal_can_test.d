@@ -1,0 +1,12 @@
+debug\eal_can_test.o: source\BSW\EAL\TEST\EAL_CAN_Test.c
+debug\eal_can_test.o: .\startup\derivative.h
+debug\eal_can_test.o: .\startup\MK20D10.h
+debug\eal_can_test.o: .\.cmsis\include\core_cm4.h
+debug\eal_can_test.o: C:\Users\ming\Desktop\E04_Editor\Keil\keil\ARM\ARMCC\Bin\..\include\stdint.h
+debug\eal_can_test.o: .\.cmsis\include\cmsis_version.h
+debug\eal_can_test.o: .\.cmsis\include\cmsis_compiler.h
+debug\eal_can_test.o: .\.cmsis\include\cmsis_armcc.h
+debug\eal_can_test.o: .\startup\system_MK20D10.h
+debug\eal_can_test.o: .\source\BSW\EAL\Can\EAL_CAN.h
+debug\eal_can_test.o: .\source\BSW\EAL\GPIO\EAL_DWT.h
+debug\eal_can_test.o: .\source\BSW\CDD\KeySim\CDD_KeySim_Protocol.h
