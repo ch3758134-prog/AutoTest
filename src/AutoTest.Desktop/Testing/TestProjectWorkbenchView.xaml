@@ -1,0 +1,93 @@
+<UserControl x:Class="AutoTest.Desktop.Testing.TestProjectWorkbenchView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
+ FontFamily="{StaticResource UiFont}" FontSize="13">
+ <UserControl.InputBindings>
+  <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCommand}"/>
+ </UserControl.InputBindings>
+ <Grid>
+  <Grid.RowDefinitions>
+   <RowDefinition Height="76"/><RowDefinition Height="50"/>
+   <RowDefinition Height="*"/><RowDefinition Height="40"/>
+  </Grid.RowDefinitions>
+  <Border Grid.Row="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}"
+          BorderThickness="0,0,0,1" Padding="17,12">
+   <StackPanel>
+    <TextBlock Text="测试项目 · Project" FontSize="20" FontWeight="SemiBold"/>
+    <TextBlock Text="{Binding FilePath}" FontSize="11" Foreground="{StaticResource Subtle}"
+               TextTrimming="CharacterEllipsis" Margin="0,6,0,0"/>
+   </StackPanel>
+  </Border>
+  <Border Grid.Row="1" Background="{StaticResource ToolbarSurface}"
+          BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+   <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+    <Button Content="保存测试项目" Command="{Binding SaveCommand}"
+            Style="{StaticResource AtPrimaryButton}"/>
+    <Button Content="重新加载" Command="{Binding ReloadCommand}"/>
+    <TextBlock Text="这是测试用例执行计划，不是另一套测试步骤模型；当前仅编辑与验证编排。"
+               Foreground="{StaticResource Subtle}" VerticalAlignment="Center" Margin="16,0,0,0"/>
+   </StackPanel>
+  </Border>
+  <Grid Grid.Row="2" Margin="14">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+   </Grid.ColumnDefinitions>
+   <Border Grid.Column="0" BorderBrush="{StaticResource Line}" BorderThickness="1"
+           Background="{StaticResource Panel}" Padding="13">
+    <DockPanel>
+     <StackPanel DockPanel.Dock="Top">
+      <TextBlock Text="项目名称" FontWeight="SemiBold" Margin="0,0,0,5"/>
+      <TextBox Text="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+               Margin="0,0,0,15"/>
+      <TextBlock Text="依次执行的测试用例" FontWeight="SemiBold" FontSize="15"
+                 Margin="0,0,0,7"/>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+       <Button Content="上移" Command="{Binding UpCommand}"/>
+       <Button Content="下移" Command="{Binding DownCommand}"/>
+       <Button Content="从项目移除" Command="{Binding RemoveCommand}"/>
+      </StackPanel>
+     </StackPanel>
+     <ListBox ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedPackage,Mode=TwoWay}"
+              BorderThickness="0">
+      <ListBox.ItemTemplate>
+       <DataTemplate>
+        <DockPanel Margin="3,5">
+         <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Enabled,Mode=TwoWay}"
+                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+         <StackPanel>
+          <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding Revision,StringFormat='固定修订 {0}'}"
+                     FontSize="11" Foreground="{StaticResource Subtle}"/>
+         </StackPanel>
+        </DockPanel>
+       </DataTemplate>
+      </ListBox.ItemTemplate>
+     </ListBox>
+    </DockPanel>
+   </Border>
+   <Border Grid.Column="2" BorderBrush="{StaticResource Line}" BorderThickness="1"
+           Background="{StaticResource Panel}" Padding="13">
+    <DockPanel>
+     <StackPanel DockPanel.Dock="Top">
+      <TextBlock Text="工作空间中的测试用例" FontWeight="SemiBold" FontSize="15"
+                 Margin="0,0,0,9"/>
+      <Button Content="＋ 添加到测试项目" Command="{Binding AddCommand}"
+              Style="{StaticResource AtPrimaryButton}" Margin="0,0,0,10"/>
+     </StackPanel>
+     <ListBox ItemsSource="{Binding AvailablePackages}"
+              SelectedItem="{Binding SelectedAvailable,Mode=TwoWay}"
+              DisplayMemberPath="Label" BorderThickness="0"/>
+    </DockPanel>
+   </Border>
+  </Grid>
+  <Border Grid.Row="3" Background="{StaticResource ToolbarSurface}"
+          BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
+   <DockPanel Margin="13,0">
+    <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
+               FontSize="11" Foreground="{StaticResource Subtle}"
+               TextTrimming="CharacterEllipsis"/>
+   </DockPanel>
+  </Border>
+ </Grid>
+</UserControl>
