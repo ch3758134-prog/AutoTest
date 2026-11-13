@@ -222,8 +222,20 @@ public partial class TestStepComposerDialog : Window
         };
         var oldTargetName = _editing?.Properties.GetValueOrDefault(
             action.TargetCategory == "wave" ? "profile" : "target", "");
-        var preferred = AvailableTargets.FirstOrDefault(x => x.Mapping.Name == oldTargetName);
+        // Editing must keep the exact mapping revision/identity, never silently
+        // replace it with a newer catalog resource sharing the same display name.
+        var originallyBound = _boundMappings.FirstOrDefault(x =>
+            string.Equals(x.Name, oldTargetName, StringComparison.OrdinalIgnoreCase));
+        var preferred = originallyBound is null ? null :
+            AvailableTargets.FirstOrDefault(x => x.Mapping == originallyBound);
+        preferred ??= AvailableTargets.FirstOrDefault(x => x.Mapping.Name == oldTargetName);
         TargetPicker.SelectedItem = preferred ?? AvailableTargets.FirstOrDefault();
+        if (originallyBound is not null &&
+            !_catalog.Any(x => x.Mapping == originallyBound) &&
+            originallyBound.Kind is not (TestTargetKind.RawCan or TestTargetKind.RawKey or
+                TestTargetKind.Ignition))
+            TargetHint.Text += "  注意：原步骤绑定的资源版本不在当前 TCF/DBC 中，"
+                + "软件不会自动换版本。请确认并显式重新选择有效对象。";
         UpdateTarget();
     }
 
