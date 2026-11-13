@@ -13,9 +13,10 @@ public sealed class TestEditorDialogs
         ?? Application.Current.MainWindow;
 
     public StepCompositionResult? ComposeStep(IReadOnlyList<MappingChoice> choices,
-        IReadOnlyList<TestTargetMapping> existing, StepNode? original = null)
+        IReadOnlyList<TestTargetMapping> existing, StepNode? original = null,
+        string? initialActionKey = null)
     {
-        var dialog = new TestStepComposerDialog(choices, existing, original);
+        var dialog = new TestStepComposerDialog(choices, existing, original, initialActionKey);
         if (ActiveOwner is { IsLoaded: true } owner) dialog.Owner = owner;
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }

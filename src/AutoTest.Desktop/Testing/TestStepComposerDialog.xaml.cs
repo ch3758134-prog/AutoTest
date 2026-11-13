@@ -97,7 +97,8 @@ public partial class TestStepComposerDialog : Window
     public StepCompositionResult? Result { get; private set; }
 
     public TestStepComposerDialog(IReadOnlyList<MappingChoice> catalog,
-        IReadOnlyList<TestTargetMapping> boundMappings, StepNode? editing = null)
+        IReadOnlyList<TestTargetMapping> boundMappings, StepNode? editing = null,
+        string? initialActionKey = null)
     {
         _catalog = catalog;
         _boundMappings = boundMappings;
@@ -124,7 +125,14 @@ public partial class TestStepComposerDialog : Window
                 })) ?? Options.FirstOrDefault(a => a.StepType == editing.Type);
             if (chosen is not null) ActionList.SelectedItem = chosen;
         }
-        else if (FilteredActions.Count > 0) ActionList.SelectedIndex = 0;
+        else if (FilteredActions.Count > 0)
+            ActionList.SelectedItem = FilteredActions.FirstOrDefault(a => a.Key == initialActionKey)
+                ?? FilteredActions[0];
+        Loaded += (_, _) =>
+        {
+            if (editing is null && initialActionKey is null) ActionSearch.Focus();
+            else NameInput.Focus();
+        };
     }
 
     private void RefreshActionList(string query)

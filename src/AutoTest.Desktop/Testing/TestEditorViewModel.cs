@@ -42,6 +42,9 @@ public sealed class TestEditorViewModel : BindableBase
 
         AddChildCommand = new DelegateCommand(async () => await InsertComposedStepAsync(false),
             () => !IsBusy && SelectedItem is not null);
+        QuickAddCommand = new DelegateCommand<string>(async action =>
+            await InsertComposedStepAsync(false, action),
+            _ => !IsBusy && SelectedItem is not null);
         AddAfterCommand = new DelegateCommand(async () => await InsertComposedStepAsync(true),
             () => CanEditSelectedStep);
         EditParametersCommand = new DelegateCommand(async () => await EditComposedStepAsync(),
@@ -132,6 +135,7 @@ public sealed class TestEditorViewModel : BindableBase
     public StepTreeItem? SelectedItem => _selectedItem;
 
     public DelegateCommand AddChildCommand { get; }
+    public DelegateCommand<string> QuickAddCommand { get; }
     public DelegateCommand AddAfterCommand { get; }
     public DelegateCommand EditParametersCommand { get; }
     public DelegateCommand DuplicateCommand { get; }
@@ -197,7 +201,7 @@ public sealed class TestEditorViewModel : BindableBase
         }
     }
 
-    private async Task InsertComposedStepAsync(bool after)
+    private async Task InsertComposedStepAsync(bool after, string? actionKey = null)
     {
         if (IsBusy || _selectedItem is not { } position) return;
         if (after && position.Kind != StepTreeItemKind.Step) return;
@@ -205,7 +209,8 @@ public sealed class TestEditorViewModel : BindableBase
         IReadOnlyList<MappingChoice> choices;
         try { choices = await AvailableObjectsAsync(); }
         finally { IsBusy = false; }
-        var composed = _dialogs.ComposeStep(choices, _transaction.Current.Mappings.ToArray());
+        var composed = _dialogs.ComposeStep(choices, _transaction.Current.Mappings.ToArray(),
+            initialActionKey: actionKey);
         if (composed is null) return;
         var coordinates = position.Kind == StepTreeItemKind.Step
             ? position.CoordinatesForSibling() : position.CoordinatesForAppend();
@@ -496,6 +501,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         RaisePropertyChanged(nameof(IsDirty));
         AddChildCommand?.RaiseCanExecuteChanged();
+        QuickAddCommand?.RaiseCanExecuteChanged();
         AddAfterCommand?.RaiseCanExecuteChanged();
         EditParametersCommand?.RaiseCanExecuteChanged();
         DuplicateCommand?.RaiseCanExecuteChanged();
