@@ -13,6 +13,7 @@ using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Dbc;
 using AutoTest.Desktop.Testing;
+using AutoTest.Desktop.Diagnostics;
 using System.Text.Json;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
@@ -766,13 +767,21 @@ public sealed class MainWindowViewModel : BindableBase
         if (IsBusy) return;
         IsBusy = true;
         try { await operation(); }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or
-                                     InvalidDataException or FormatException or NotSupportedException or
-                                     JsonException or OverflowException or
-                                     AutoTest.Projects.Project.ProjectDataException)
+        catch (Exception e) when (e is not OutOfMemoryException)
         {
+            // A WPF view constructor can throw XamlParseException/InvalidOperationException.
+            // The previous narrow filter let those exceptions escape an async-void
+            // DelegateCommand and terminate the whole desktop process.
+            var log = UiExceptionReporter.Record("Resource operation / editor opening", e);
             StatusMessage = "操作失败：" + e.Message;
-            _fileDialogs.ShowError(e.Message);
+            var detail = "操作失败：" + e.Message +
+                (log is null ? "\n异常日志无法写入，请保留该错误信息。" :
+                    "\n完整异常堆栈已保存：" + log);
+            try { _fileDialogs.ShowError(detail); }
+            catch (Exception dialogError)
+            {
+                UiExceptionReporter.Record("Failed to display resource error dialog", dialogError);
+            }
         }
         finally { IsBusy = false; }
     }
