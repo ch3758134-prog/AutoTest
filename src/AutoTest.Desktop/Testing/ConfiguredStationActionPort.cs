@@ -34,6 +34,8 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     private HardwareKeyPolicy? _policy;
     private string? _fingerprint;
     private bool _unknown;
+    private bool _hasRawKey;
+    private uint _rawMask;
 
     public ConfiguredStationActionPort(HardwareConnectionService hardware,
         ProjectWorkspaceService projects)
@@ -46,12 +48,19 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     public async Task PrepareAsync(IEnumerable<TestTargetMapping> mappings, CancellationToken ct)
     {
         var project = _projects.Current ?? throw new InvalidOperationException("工程未打开。");
-        _buttons.Clear(); _can.Clear(); _active = []; _activeProfile = null; _unknown = false;
+        _buttons.Clear(); _can.Clear(); _active = []; _activeProfile = null;
+        _unknown = false; _hasRawKey = false; _rawMask = 0;
         foreach (var target in mappings)
         {
             ct.ThrowIfCancellationRequested();
-            if (target.Kind == TestTargetKind.Ignition) continue;
             target.Validate();
+            if (target.Kind == TestTargetKind.Ignition) continue;
+            if (target.Kind == TestTargetKind.RawCan) continue;
+            if (target.Kind == TestTargetKind.RawKey)
+            {
+                _hasRawKey = true;
+                continue;
+            }
             var asset = project.Definition.Assets.SingleOrDefault(a => a.Id == target.Asset)
                 ?? throw new ProjectDataException("MAPPING_ASSET_MISSING", target.Name);
             if (asset.Revision != target.AssetRevision ||
@@ -89,14 +98,19 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 _can.Add(target.Name, (target, message));
             }
         }
+        if (_hasRawKey && _buttons.Count > 0)
+            throw new ProjectDataException("KEY_CONTROL_MODE_CONFLICT",
+                "一个测试程序不能同时使用原始 20 Key 操作和已配置功能按键，以免覆盖保持状态。");
     }
 
     public IReadOnlyCollection<(byte Port, bool Extended, uint Id)> AuthorizedCanFrames(
         IReadOnlyList<TestTargetMapping> mappings)
     {
         var frames = new HashSet<(byte Port, bool Extended, uint Id)>();
-        if (_buttons.Count > 0)
+        if (_buttons.Count > 0 || _hasRawKey)
             frames.Add((0, false, KeypadCommandCodec.KeypadId));
+        foreach (var raw in mappings.Where(x => x.Kind == TestTargetKind.RawCan))
+            frames.Add((1, raw.Extended, raw.CanId));
         foreach (var item in _can.Values)
         {
             var map = item.Target;
@@ -136,6 +150,73 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                     throw new FormatException("IGN value must be ON/OFF.");
                 await _hardware.SendTestIgnAsync(on, _fingerprint, ct);
                 return Ack("IGN_" + (on ? "ON" : "OFF"));
+            }
+            if (target.Kind == TestTargetKind.RawCan)
+            {
+                target.Validate();
+                if (!action.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
+                    throw new FormatException("原始 CAN 报文必须以 HEX: 指定完整数据。");
+                byte[] payload;
+                try { payload = Convert.FromHexString(
+                    string.Concat(action[4..].Where(c => !char.IsWhiteSpace(c)))); }
+                catch (FormatException ex)
+                { throw new FormatException("原始 CAN 数据不是合法的十六进制字节。", ex); }
+                if (payload.Length > 8)
+                    throw new FormatException("当前固定台架仅支持经典 CAN，最多 8 字节。");
+                await _hardware.SendTestCanAsync(
+                    CanFrame.Create(BusRole.DutCan, target.Extended, target.CanId, payload),
+                    _fingerprint, ct);
+                return Ack("RAW_CAN_TX_ACK");
+            }
+            if (target.Kind == TestTargetKind.RawKey)
+            {
+                if (!_hasRawKey || _buttons.Count > 0)
+                    throw new InvalidOperationException("原始 20 Key 模式未授权或与功能按键冲突。");
+                var request = RawKeyAction.Parse(action);
+                if (request.Action == RawKeyOperation.Pulse && _rawMask != 0)
+                    throw new InvalidOperationException("原始 Key 正在保持，先释放后再短按。");
+                bool attempted = false;
+                try
+                {
+                    attempted = true;
+                    if (request.Action == RawKeyOperation.Release)
+                    {
+                        await _hardware.SendTestCanAsync(
+                            KeypadCommandCodec.EncodeReleaseAll(), _fingerprint, ct);
+                        _rawMask = 0;
+                    }
+                    else
+                    {
+                        await _hardware.SendTestCanAsync(
+                            KeypadCommandCodec.EncodeMask(request.Mask), _fingerprint, ct);
+                        _rawMask = request.Mask;
+                        if (request.Action == RawKeyOperation.Pulse)
+                        {
+                            await Task.Delay(request.DurationMs, ct);
+                            using var release = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                            await _hardware.SendTestCanAsync(
+                                KeypadCommandCodec.EncodeReleaseAll(), _fingerprint, release.Token);
+                            _rawMask = 0;
+                        }
+                    }
+                    return Ack("RAW_KEY_" + request.Action.ToString().ToUpperInvariant());
+                }
+                catch
+                {
+                    if (attempted)
+                    {
+                        _unknown = true;
+                        try
+                        {
+                            using var release = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                            await _hardware.SendTestCanAsync(
+                                KeypadCommandCodec.EncodeReleaseAll(), _fingerprint, release.Token);
+                            _rawMask = 0; _unknown = false;
+                        }
+                        catch { /* Physical state remains UNKNOWN. */ }
+                    }
+                    throw;
+                }
             }
             if (target.Kind == TestTargetKind.CanMessage)
             {
@@ -225,11 +306,11 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             {
                 // Release regardless of our last ACK: a timed-out physical command can
                 // have affected the board even if the host did not receive confirmation.
-                if (_buttons.Count > 0)
+                if (_buttons.Count > 0 || _hasRawKey)
                 {
                     await _hardware.SendTestCanAsync(KeypadCommandCodec.EncodeReleaseAll(),
                         _fingerprint, ct);
-                    _active = [];
+                    _active = []; _rawMask = 0;
                 }
             }
             finally

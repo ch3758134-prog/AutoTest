@@ -5,7 +5,7 @@ using AutoTest.Core;
 namespace AutoTest.Testing.Authoring;
 
 /// <summary>Names used by a TEST program; hardware IDs remain in version-pinned mappings.</summary>
-public enum TestTargetKind { Signal, Button, CanMessage, Ignition, WaveProfile }
+public enum TestTargetKind { Signal, Button, CanMessage, Ignition, WaveProfile, RawCan, RawKey }
 
 /// <summary>
 /// A mapping belongs to the TEST document and can be rebound without rewriting
@@ -25,6 +25,19 @@ public sealed record TestTargetMapping(
             !Enum.IsDefined(Kind) || !Enum.IsDefined(Role))
             throw new ArgumentException("Invalid target mapping identity.");
         if (Kind == TestTargetKind.Ignition) return this;
+        if (Kind == TestTargetKind.RawCan)
+        {
+            if (Role != BusRole.DutCan || CanId > (Extended ? 0x1FFFFFFFu : 0x7FFu) ||
+                Asset.Value != Guid.Empty)
+                throw new ArgumentException("Raw CAN target must identify a valid DUT CAN1 frame without a DBC asset.");
+            return this;
+        }
+        if (Kind == TestTargetKind.RawKey)
+        {
+            if (Role != BusRole.KeypadCan || Asset.Value != Guid.Empty)
+                throw new ArgumentException("Raw KEY_SIM operation must use CAN0 without an ECU profile asset.");
+            return this;
+        }
         if (Asset.Value == Guid.Empty || AssetRevision < 1 || AssetSha256 is not { Length: 64 } ||
             !AssetSha256.All(Uri.IsHexDigit))
             throw new ArgumentException("Target mapping must pin an existing project asset revision and SHA256.");
