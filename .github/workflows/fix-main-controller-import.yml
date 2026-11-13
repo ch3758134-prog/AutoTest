@@ -1,0 +1,66 @@
+name: One-time fix main-controller source import
+on:
+  push:
+    branches: [Main_Control]
+    paths: ['.github/workflows/fix-main-controller-import.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated firmware branch
+        uses: actions/checkout@v4
+      - name: Restore verified source files from main baseline archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin main
+          git rm -f --cached Project
+          rm -rf Project
+          python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          from hashlib import sha256
+          from subprocess import run
+          import shutil, zipfile
+          
+          dst=Path('/tmp/autotest-main-controller-source.zip')
+          h=sha256()
+          count=0
+          with dst.open('wb') as out:
+              for i in range(12):
+                  path='SAEF/engineering/assets/firmware/chunks/FW-MAIN-Project.zip.part'+str(i).zfill(3)
+                  r=run(['git','show','origin/main:'+path],capture_output=True,check=True)
+                  data=r.stdout
+                  count+=len(data)
+                  h.update(data)
+                  out.write(data)
+          expected='34b7e11b7d5d0fbb7b2178070f52e41febd88c15033a215516084ca294900239'
+          if count!=17529847 or h.hexdigest()!=expected:
+              raise RuntimeError('Source ZIP verification failed: '+str(count)+' '+h.hexdigest())
+          with zipfile.ZipFile(dst) as z:
+              for f in z.infolist():
+                  p=PurePosixPath(f.filename.replace('\\','/'))
+                  if p.is_absolute() or '..' in p.parts or not (p.parts and p.parts[0]=='Project'):
+                      raise RuntimeError('Unexpected path: '+f.filename)
+              z.extractall('.')
+              print('VERIFIED_ARCHIVE_ENTRIES',len(z.infolist()))
+          # The source ZIP contains historical Git metadata. It is not a source folder:
+          # remove nested repositories so Git tracks regular files instead of a gitlink.
+          nested=sorted(Path('Project').rglob('.git'),key=lambda p:len(p.parts),reverse=True)
+          for p in nested:
+              if p.is_dir() and not p.is_symlink():
+                  shutil.rmtree(p)
+              else:
+                  p.unlink()
+          if not Path('Project/Template.uvprojx').is_file():
+              raise RuntimeError('Keil entry Project/Template.uvprojx missing')
+          print('SOURCE_PROJECT_READY',len([p for p in Path('Project').rglob('*') if p.is_file()]),'regular files; removed',len(nested),'nested git metadata paths')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -q .github/workflows/fix-main-controller-import.yml
+          git add -f -A -- Project
+          git add -A
+          git commit -m "fix(firmware): track actual main-controller source files instead of gitlink [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
