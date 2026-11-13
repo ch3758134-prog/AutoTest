@@ -32,7 +32,7 @@ public sealed class TestEditorWorkflowTests
             var condition = StepUiCatalog.NewNode("If");
             var loop = StepUiCatalog.NewNode("Loop");
             var wait = StepUiCatalog.NewNode("Wait");
-            var fallback = StepUiCatalog.NewNode("Assert");
+            var fallback = StepUiCatalog.NewNode("Expect");
 
             tx.Insert(TestPhase.Prepare, null, null, 0, setup);
             tx.Insert(TestPhase.Test, null, null, 0, condition);
@@ -67,6 +67,7 @@ public sealed class TestEditorWorkflowTests
             Assert.Equal("If", actualIf.Type);
             Assert.Single(actualIf.Slots["then"]);
             Assert.Single(actualIf.Slots["else"]);
+            Assert.Equal("Expect", actualIf.Slots["else"][0].Type);
             var savedLoop = Assert.Single(actualIf.Slots["then"]);
             Assert.Equal("Loop", savedLoop.Type);
             Assert.Equal("300", Assert.Single(savedLoop.Slots["body"]).Properties["milliseconds"]);
