@@ -8,6 +8,7 @@ using System.Windows;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
+using AutoTest.Desktop.Testing;
 using AutoTest.Projects.ControllerConfig;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
@@ -67,6 +68,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
         ApplyCommand = new DelegateCommand(() => ApplyFields(), () => !IsBusy);
         AddControllerCommand = new DelegateCommand(AddController, () => IsController && !IsBusy);
+        AddButtonActionCommand = new DelegateCommand(AddButtonAction, () => IsController && !IsBusy);
+        PickWaveSignalCommand = new DelegateCommand(async () => await PickWaveSignalAsync(), () => IsWave && !IsBusy);
         AddStateCommand = new DelegateCommand(AddState, () => IsController && SelectedControllerId.HasValue && !IsBusy);
         SetDefaultCommand = new DelegateCommand(SetDefault, () => IsController && SelectedStateId.HasValue && !IsBusy);
         AddRuleCommand = new DelegateCommand(AddRule, () => IsScan && !IsBusy);
@@ -96,9 +99,9 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public string ExecutionBoundary => _session.Kind switch
     {
         ProjectConfigurationCodec.ControllerKind =>
-            "按键定义会保存真实 20 位 KeyMask 与五路目标电压窗口；尚未获得现场测量数据时，不得宣称电压已达到目标。",
+            "先建立 ECU 的功能操作，再编辑各状态的电压要求、Key 组合和动作时序；配置不等于真实电压已测量。",
         ProjectConfigurationCodec.WaveSettingsKind =>
-            "该配置保存信号、判定阈值及关联波形证据；证据不自动成为参考波形，也不会进行采集或判定。",
+            "从 DBC 选择信号，再填写波形分析条件；采集、分析、判定由测试步骤明确组织，证据不会自动变成参考。",
         ProjectConfigurationCodec.FlashSettingsKind =>
             "这里只保存 ECU/UDS/固件与安全参数，不执行烧录；真实 UDS/Flash 现场执行需另行接通验证。",
         ProjectConfigurationCodec.ScanSettingsKind =>
@@ -154,6 +157,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public DelegateCommand ReloadCommand { get; }
     public DelegateCommand ApplyCommand { get; }
     public DelegateCommand AddControllerCommand { get; }
+    public DelegateCommand AddButtonActionCommand { get; }
+    public DelegateCommand PickWaveSignalCommand { get; }
     public DelegateCommand AddStateCommand { get; }
     public DelegateCommand SetDefaultCommand { get; }
     public DelegateCommand AddRuleCommand { get; }
@@ -258,13 +263,13 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         {
             AddField("name", "配置名称", wave.Name);
             AddField("dbc", "DBC 工程资源", AssetNameFor(wave.DbcAssetId),
-                "选择已经导入工程的 DBC", AssetNames(ProjectWorkspaceService.DbcKind));
+                "使用上方“从 DBC 选择信号”按钮自动绑定资源、报文及信号。", readOnly: true);
             AddField("role", "CAN 通道", wave.Bus.ToString(), "CAN1 为 DUT，CAN0 为按键板",
                 Enum.GetNames<BusRole>());
             AddField("id", "报文 ID（HEX）", "0x" + wave.CanId.ToString("X"),
-                "DBC 报文 ID 与帧类型须保持一致；实际执行时还需再核对。");
-            AddField("signal", "DBC 信号名称", wave.SignalName);
-            AddField("unit", "信号单位", wave.Unit);
+                "由所选 DBC 信号确定，不手工输入。", readOnly: true);
+            AddField("signal", "DBC 信号名称", wave.SignalName, readOnly: true);
+            AddField("unit", "信号单位", wave.Unit, readOnly: true);
             AddField("reference", "关联波形证据（非参考波形）", AssetNameFor(wave.EvidenceAssetId),
                 "可选。用于关联已验证的波形证据；正式参考波形需另行采集并明确保存。", AssetNames(ProjectWorkspaceService.WaveKind));
             AddField("abs", "绝对容差", Format(wave.Comparison.AbsoluteTolerance));
@@ -558,6 +563,67 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         SelectedNode = Nodes.FirstOrDefault(x => x.Key == key) ?? Nodes[0];
     }
 
+    private void AddButtonAction()
+    {
+        if (!ApplyFields()) return;
+        try
+        {
+            var edit = new ControllerEditSession((EcuControlProfile)_working);
+            var name = "模拟按键" + (edit.Current.Controllers.Length + 1);
+            edit.AddController(name, "Buttons");
+            var controller = edit.Current.Controllers[^1];
+            edit.EditState(controller.Id, controller.States[0] with
+            { Name = "松开", Interaction = ControlInteraction.Latched });
+            edit.AddState(controller.Id, "按下", 0);
+            _working = edit.Current;
+            var pressed = edit.Current.Controllers[^1].States[^1];
+            RebuildNodes("state|" + controller.Id + "|" + pressed.Id);
+            StatusMessage = "已创建“" + name +
+                "”的松开/按下状态。请配置按下状态的 Key 组合、电压窗口和固定延迟，再保存工程。";
+            RaisePropertyChanged(nameof(IsDirty));
+        }
+        catch (ProjectDataException error) { StatusMessage = error.Message; }
+    }
+
+    private async Task PickWaveSignalAsync()
+    {
+        if (!IsWave || IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            var all = await TestTargetCatalog.LoadAsync(_workspace);
+            var available = all.Where(x => x.Mapping.Kind == AutoTest.Testing.Authoring.TestTargetKind.Signal)
+                .ToArray();
+            if (available.Length == 0)
+            {
+                StatusMessage = "工程还没有可选的 DBC 信号。请先导入有效 DBC。";
+                return;
+            }
+            var dialog = new WaveSignalPickerDialog(available);
+            var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                ?? Application.Current.MainWindow;
+            if (owner is { IsLoaded: true }) dialog.Owner = owner;
+            if (dialog.ShowDialog() != true || dialog.Selected is not { } mapping) return;
+            var asset = _workspace.Current?.Definition.Assets.SingleOrDefault(a => a.Id == mapping.Asset)
+                ?? throw new ProjectDataException("WAVE_DBC_MISSING", "DBC 工程资源已切换。");
+            void Assign(string key, string value) => Fields.Single(f => f.Key == key).Value = value;
+            Assign("dbc", asset.Name);
+            Assign("role", mapping.Role.ToString());
+            Assign("id", "0x" + mapping.CanId.ToString("X"));
+            Assign("signal", mapping.SignalName);
+            Assign("unit", mapping.Unit);
+            StatusMessage = "已选择 DBC 信号：" + mapping.Name +
+                "。请配置观察和分析参数，点击“应用参数”后保存。";
+        }
+        catch (Exception error) when (error is ProjectDataException or IOException or
+                                      UnauthorizedAccessException or ArgumentException or InvalidDataException)
+        {
+            StatusMessage = "选择 DBC 信号失败：" + error.Message;
+            _dialogs.ShowError(StatusMessage);
+        }
+        finally { IsBusy = false; }
+    }
+
     private void AddController()
     {
         if (!ApplyFields()) return;
@@ -710,6 +776,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         ReloadCommand.RaiseCanExecuteChanged();
         ApplyCommand.RaiseCanExecuteChanged();
         AddControllerCommand.RaiseCanExecuteChanged();
+        AddButtonActionCommand.RaiseCanExecuteChanged();
+        PickWaveSignalCommand.RaiseCanExecuteChanged();
         AddStateCommand.RaiseCanExecuteChanged();
         SetDefaultCommand.RaiseCanExecuteChanged();
         AddRuleCommand.RaiseCanExecuteChanged();
