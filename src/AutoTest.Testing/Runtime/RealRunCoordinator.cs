@@ -34,6 +34,12 @@ public interface ITestWavePort
     Task<TestWaveResult> StopAsync(string captureKey, CancellationToken ct);
     Task<TestWaveResult> AnalyzeAsync(string captureKey, string referenceKey,
         double tolerance, double minimumCoverage, CancellationToken ct);
+    // Source-compatible default for existing wave-port tests; the physical Desktop
+    // adapter provides the version-pinned implementation.
+    Task<TestWaveResult> AnalyzeWithProfileAsync(string captureKey, TestTargetMapping profile,
+        string referenceKey, CancellationToken ct) =>
+        Task.FromResult(new TestWaveResult(false, "PROFILE_NOT_IMPLEMENTED", null, null,
+            "This wave port cannot apply a configured analysis profile."));
     Task CleanupAsync(CancellationToken ct);
 }
 
@@ -337,10 +343,24 @@ public sealed class RealRunCoordinator
                     }
                     case "WaveAnalyze":
                     {
-                        var analysis = await _waves.AnalyzeAsync(Property(node, "captureKey"),
-                            Property(node, "reference"),
-                            double.Parse(Property(node, "tolerance"), CultureInfo.InvariantCulture),
-                            double.Parse(Property(node, "coverage"), CultureInfo.InvariantCulture), ct);
+                        var profileName = Property(node, "profile");
+                        TestWaveResult analysis;
+                        if (!string.IsNullOrWhiteSpace(profileName))
+                        {
+                            if (!mappings.TryGetValue(profileName, out var mapping) ||
+                                mapping.Kind != TestTargetKind.WaveProfile)
+                                throw new InvalidOperationException("Wave analysis profile is not mapped: " + profileName);
+                            analysis = await _waves.AnalyzeWithProfileAsync(
+                                Property(node, "captureKey"), mapping,
+                                Property(node, "reference"), ct);
+                        }
+                        else
+                        {
+                            analysis = await _waves.AnalyzeAsync(Property(node, "captureKey"),
+                                Property(node, "reference"),
+                                double.Parse(Property(node, "tolerance"), CultureInfo.InvariantCulture),
+                                double.Parse(Property(node, "coverage"), CultureInfo.InvariantCulture), ct);
+                        }
                         variables[Property(node, "variable")] = new TestDatum(analysis.Value,
                             analysis.Available ? TestSignalStatus.Valid : TestSignalStatus.DecodeError,
                             DateTimeOffset.UtcNow, analysis.Evidence);

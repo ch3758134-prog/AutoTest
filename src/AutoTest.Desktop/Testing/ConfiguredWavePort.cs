@@ -3,6 +3,7 @@ using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Desktop.Hardware;
 using AutoTest.Desktop.Projects;
+using AutoTest.Projects.Project;
 using AutoTest.Specialists.Wave;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Runtime;
@@ -90,6 +91,61 @@ public sealed class ConfiguredWavePort : ITestWavePort
         var available = evaluated.Verdict is Verdict.Pass or Verdict.Fail or Verdict.Inconclusive;
         return new(available, evaluated.Verdict.ToString(), evaluated.Verdict.ToString(),
             string.Join(",", evaluated.Evidence.Select(x => x.ToString())), evaluated.Reason);
+    }
+
+    /// <summary>
+    /// Evaluate using one pinned wave-settings resource from the active project.
+    /// This produces a measurement result, never an implicit TEST verdict.
+    /// </summary>
+    public async Task<TestWaveResult> AnalyzeWithProfileAsync(string captureKey,
+        TestTargetMapping profile, string referenceKey, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (profile.Kind != TestTargetKind.WaveProfile)
+            throw new ArgumentException("Selected mapping is not a wave analysis profile.");
+        profile.Validate();
+        if (!_completed.TryGetValue(captureKey, out var evidence))
+            return new(false, "CAPTURE_NOT_AVAILABLE", null, null,
+                "Complete the signal recording before applying its analysis profile.");
+
+        var project = _projects.Current ?? throw new InvalidOperationException("Project is closed.");
+        var asset = project.Definition.Assets.SingleOrDefault(a => a.Id == profile.Asset)
+            ?? throw new InvalidDataException("The mapped waveform configuration asset is missing.");
+        if (asset.Kind != ProjectWorkspaceService.WaveSettingsKind ||
+            asset.Revision != profile.AssetRevision ||
+            !string.Equals(asset.Sha256, profile.AssetSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Wave analysis configuration changed after TEST mapping.");
+
+        var file = ProjectPathPolicy.Normalize(project.RootDirectory, asset.RelativePath);
+        var bytes = await File.ReadAllBytesAsync(file, ct);
+        if (!asset.VerifyHash(bytes))
+            throw new InvalidDataException("Wave analysis configuration content differs from project revision.");
+        var settings = (WaveSettingsDocument)ProjectConfigurationCodec.Decode(asset.Kind, bytes);
+        var actual = _capture.ReadEvidence(evidence.Evidence).Actual;
+        var signal = actual.Signal;
+        if (!settings.DbcAssetId.HasValue ||
+            settings.DbcAssetId.Value != signal.DbcAsset.Id.Value ||
+            settings.DbcAssetRevision != signal.DbcAsset.Revision.Value ||
+            !string.Equals(settings.DbcAssetFingerprint,
+                signal.DbcAsset.Fingerprint.Sha256, StringComparison.OrdinalIgnoreCase) ||
+            settings.Bus != signal.Role || settings.CanId != signal.FrameId ||
+            settings.SignalName != signal.SignalName || settings.Unit != signal.Unit)
+            return new(false, "PROFILE_SIGNAL_MISMATCH", null, evidence.Evidence.ToString(),
+                "Wave profile must refer to the exact captured DBC signal, revision, bus and unit.");
+        if (_projects.Current?.ManifestPath != project.ManifestPath)
+            throw new InvalidOperationException("Project changed during waveform analysis.");
+        var matches = _catalog.List().Where(x =>
+            x.Name == referenceKey && x.Signal == signal).ToArray();
+        if (matches.Length != 1)
+            return new(false, "REFERENCE_NOT_UNIQUE", null, evidence.Evidence.ToString(),
+                "Select one explicitly approved named reference for this DBC signal revision.");
+
+        var evaluated = await _capture.CompareWithConfigForRunAsync(
+            evidence, matches[0].Reference, settings.Comparison);
+        var usable = evaluated.Verdict is Verdict.Pass or Verdict.Fail or Verdict.Inconclusive;
+        return new(usable, evaluated.Verdict.ToString(), evaluated.Verdict.ToString(),
+            string.Join(",", evaluated.Evidence.Select(x => x.ToString())),
+            "Profile " + asset.Name + ": " + evaluated.Reason);
     }
 
     /// <summary>Explicit user action only; never silently bless a failed DUT trace as a reference.</summary>
