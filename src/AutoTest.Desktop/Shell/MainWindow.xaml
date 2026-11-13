@@ -144,7 +144,7 @@
                       ScrollViewer.CanContentScroll="True"
                       SelectedItemChanged="ResourceTree_SelectedItemChanged"
                       PreviewMouseRightButtonDown="ResourceTree_RightClick"
-                      MouseDoubleClick="ResourceTree_DoubleClick">
+                      >
               <!-- Override Windows theme selection brushes with AutoTest light theme. -->
               <TreeView.Resources>
                 <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"
@@ -214,19 +214,42 @@
       <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
                     Background="{StaticResource Line}" ResizeDirection="Columns"/>
       <Border Grid.Column="2" Margin="10,10,10,9" Background="{StaticResource Panel}"
-              BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4"
-              Padding="0">
+              BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4">
         <Grid>
-          <DockPanel LastChildFill="True" Background="{StaticResource Panel}"
-                     Visibility="{Binding HasActiveEditor,Converter={StaticResource BoolToVisibility}}">
-            <Border DockPanel.Dock="Top" Background="{StaticResource ToolbarSurface}"
-                    BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
-                    Padding="12,7">
-              <TextBlock Text="{Binding ActiveEditorTitle}" FontWeight="SemiBold"
-                         VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-            </Border>
-            <ContentControl Content="{Binding ActiveEditorView}" />
-          </DockPanel>
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Visibility="{Binding NoOpenEditors,Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="打开资源，开始编辑" FontSize="22" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" Margin="0,0,0,12"/>
+            <TextBlock Text="单击左侧测试用例、DBC 或配置，直接进入正式编辑页面。"
+                       Foreground="{StaticResource Subtle}" HorizontalAlignment="Center"
+                       Margin="0,0,0,18"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+              <Button Content="新建测试用例" Command="{Binding NewTestProgramCommand}"
+                      Style="{StaticResource AtPrimaryButton}"/>
+              <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"/>
+            </StackPanel>
+          </StackPanel>
+          <TabControl ItemsSource="{Binding OpenEditors}"
+                      SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
+                      Visibility="{Binding HasActiveEditor,Converter={StaticResource BoolToVisibility}}"
+                      BorderThickness="0" Background="{StaticResource Panel}">
+            <TabControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center"
+                             MaxWidth="250" TextTrimming="CharacterEllipsis"/>
+                  <Button Content="×" Tag="{Binding}" Click="CloseEditorTab_Click" Focusable="False"
+                          Width="24" Height="23" Margin="8,0,0,0" Padding="0"
+                          ToolTip="关闭当前编辑标签"/>
+                </StackPanel>
+              </DataTemplate>
+            </TabControl.ItemTemplate>
+            <TabControl.ContentTemplate>
+              <DataTemplate>
+                <ContentControl Content="{Binding View}"/>
+              </DataTemplate>
+            </TabControl.ContentTemplate>
+          </TabControl>
         </Grid>
       </Border>
     </Grid>

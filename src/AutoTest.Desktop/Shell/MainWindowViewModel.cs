@@ -22,6 +22,14 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Shell;
 
+public sealed class EditorTabModel(string key, string title, UserControl view, Func<bool> confirmClose)
+{
+    public string Key { get; } = key;
+    public string Title { get; set; } = title;
+    public UserControl View { get; } = view;
+    public Func<bool> ConfirmClose { get; } = confirmClose;
+}
+
 /// <summary>Only presentation state and UX commands. Project data remains in ProjectWorkspaceService.</summary>
 public sealed class MainWindowViewModel : BindableBase
 {
@@ -45,10 +53,8 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly ProjectFileDialogService _fileDialogs;
     private readonly DbcEditorDialogs _dbcDialogs;
     private readonly TestEditorDialogs _testDialogs;
-    private UserControl? _activeEditorView;
-    private Func<bool>? _confirmEditorClose;
-    private string? _activeEditorKey;
-    private string _activeEditorTitle = "";
+    private EditorTabModel? _activeEditorTab;
+    public ObservableCollection<EditorTabModel> OpenEditors { get; } = new();
     private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
@@ -333,7 +339,7 @@ public sealed class MainWindowViewModel : BindableBase
 
     private async Task OpenCanMonitorAsync()
     {
-        if (IsAlreadyOpen("can|monitor") || !ConfirmCloseActiveEditor()) return;
+        if (IsAlreadyOpen("can|monitor")) return;
         if (!_realTest.IsRunning && _workspace.Current is not null)
         {
             try
@@ -353,38 +359,59 @@ public sealed class MainWindowViewModel : BindableBase
         ActivateEditor("can|monitor", new CanMonitorView(this), "CAN 监视", () => true);
     }
 
-    public UserControl? ActiveEditorView
+    public EditorTabModel? ActiveEditorTab
     {
-        get => _activeEditorView;
-        private set
+        get => _activeEditorTab;
+        set
         {
-            if (!SetProperty(ref _activeEditorView, value)) return;
-            RaisePropertyChanged(nameof(HasActiveEditor));
+            if (SetProperty(ref _activeEditorTab, value))
+            {
+                RaisePropertyChanged(nameof(ActiveEditorView));
+                RaisePropertyChanged(nameof(ActiveEditorTitle));
+            }
         }
     }
-    public bool HasActiveEditor => ActiveEditorView is not null;
-    public string ActiveEditorTitle
+    public UserControl? ActiveEditorView => ActiveEditorTab?.View;
+    public bool HasActiveEditor => OpenEditors.Count > 0;
+    public bool NoOpenEditors => OpenEditors.Count == 0;
+    public string ActiveEditorTitle => ActiveEditorTab?.Title ?? "";
+    public bool ConfirmCloseActiveEditor() => OpenEditors.All(tab => tab.ConfirmClose());
+    public bool CloseEditor(EditorTabModel tab)
     {
-        get => _activeEditorTitle;
-        private set => SetProperty(ref _activeEditorTitle, value);
+        if (!OpenEditors.Contains(tab) || !tab.ConfirmClose()) return false;
+        var index = OpenEditors.IndexOf(tab);
+        OpenEditors.Remove(tab);
+        if (ReferenceEquals(ActiveEditorTab, tab))
+            ActiveEditorTab = OpenEditors.Count == 0 ? null :
+                OpenEditors[Math.Min(index, OpenEditors.Count - 1)];
+        RaisePropertyChanged(nameof(HasActiveEditor));
+        RaisePropertyChanged(nameof(NoOpenEditors));
+        return true;
     }
-    public bool ConfirmCloseActiveEditor() => _confirmEditorClose?.Invoke() ?? true;
-    private bool IsAlreadyOpen(string key) => HasActiveEditor && _activeEditorKey == key;
+    private bool IsAlreadyOpen(string key)
+    {
+        var opened = OpenEditors.FirstOrDefault(tab => tab.Key == key);
+        if (opened is null) return false;
+        ActiveEditorTab = opened;
+        return true;
+    }
     private void ActivateEditor(string key, UserControl editor, string title, Func<bool> confirmClose)
     {
-        _activeEditorKey = key;
+        if (IsAlreadyOpen(key)) return;
         _activeEditorProjectPath = _workspace.Current?.ManifestPath;
-        _confirmEditorClose = confirmClose;
-        ActiveEditorTitle = title;
-        ActiveEditorView = editor;
+        var tab = new EditorTabModel(key, title, editor, confirmClose);
+        OpenEditors.Add(tab);
+        ActiveEditorTab = tab;
+        RaisePropertyChanged(nameof(HasActiveEditor));
+        RaisePropertyChanged(nameof(NoOpenEditors));
     }
     private void ClearEditor()
     {
-        ActiveEditorView = null;
-        ActiveEditorTitle = "";
-        _activeEditorKey = null;
+        OpenEditors.Clear();
+        ActiveEditorTab = null;
         _activeEditorProjectPath = null;
-        _confirmEditorClose = null;
+        RaisePropertyChanged(nameof(HasActiveEditor));
+        RaisePropertyChanged(nameof(NoOpenEditors));
     }
     public bool HasProject => _workspace.Current is not null;
     public string CurrentProjectName => _workspace.Current?.Definition.Name ?? "未打开工程";
@@ -464,6 +491,14 @@ public sealed class MainWindowViewModel : BindableBase
             StatusMessage = "上次工程打开失败，可手动选择：" + error.Message;
         }
         finally { IsBusy = false; }
+    }
+
+    public async Task OpenSelectedResourceAsync()
+    {
+        if (_selectedResource?.Asset is null || IsBusy) return;
+        if (SelectedResourceIsTestProgram) await OpenSelectedTestProgramAsync();
+        else if (SelectedResourceIsDbc) await OpenSelectedDbcAsync();
+        else if (SelectedResourceIsConfiguration) await OpenSelectedConfigurationAsync();
     }
 
     public void SelectResource(ResourceTreeNode? item)
@@ -583,7 +618,7 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (!HasProject) return;
         var name = _fileDialogs.AskResourceName("新建测试程序", "新建测试程序");
-        if (name is null || !ConfirmCloseActiveEditor()) return;
+        if (name is null) return;
         await RunOperationAsync(async () =>
         {
             var entry = await _workspace.CreateTestProgramAsync(name);
@@ -600,7 +635,7 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (!HasProject) return;
         var path = _fileDialogs.PickDbcFile(_workspace.Current?.RootDirectory);
-        if (path is null || !ConfirmCloseActiveEditor()) return;
+        if (path is null) return;
         await RunOperationAsync(async () =>
         {
             var entry = await _workspace.ImportDbcAsync(path);
@@ -670,7 +705,7 @@ public sealed class MainWindowViewModel : BindableBase
             _ => "工程配置"
         };
         var name = _fileDialogs.AskResourceName("新建" + display, "新建" + display);
-        if (name is null || !ConfirmCloseActiveEditor()) return;
+        if (name is null) return;
         await RunOperationAsync(async () =>
         {
             var asset = await _workspace.CreateConfigurationAsync(kind, name);
@@ -686,7 +721,7 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenSelectedConfigurationAsync()
     {
         if (!SelectedResourceIsConfiguration || _selectedResource?.Asset is not { } asset) return;
-        if (IsAlreadyOpen("config|" + asset.Id) || !ConfirmCloseActiveEditor()) return;
+        if (IsAlreadyOpen("config|" + asset.Id)) return;
         await RunOperationAsync(async () =>
         {
             var opened = await _workspace.OpenConfigurationAsync(asset.Id);
@@ -700,7 +735,7 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenSelectedTestProgramAsync()
     {
         if (!SelectedResourceIsTestProgram || _selectedResource?.Asset is not { } asset) return;
-        if (IsAlreadyOpen("test|" + asset.Id) || !ConfirmCloseActiveEditor()) return;
+        if (IsAlreadyOpen("test|" + asset.Id)) return;
         await RunOperationAsync(async () =>
         {
             var session = await _workspace.OpenTestEditorAsync(asset.Id);
@@ -714,7 +749,7 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenSelectedDbcAsync()
     {
         if (!SelectedResourceIsDbc || _selectedResource?.Asset is not { } asset) return;
-        if (IsAlreadyOpen("dbc|" + asset.Id) || !ConfirmCloseActiveEditor()) return;
+        if (IsAlreadyOpen("dbc|" + asset.Id)) return;
         await RunOperationAsync(async () =>
         {
             var opened = await _workspace.OpenDbcEditorAsync(asset.Id);
@@ -743,14 +778,15 @@ public sealed class MainWindowViewModel : BindableBase
     {
         var asset = _selectedResource?.Asset;
         if (asset is null) return;
-        var editorUsesAsset = _activeEditorKey is not null &&
-            _activeEditorKey.EndsWith("|" + asset.Id, StringComparison.Ordinal);
-        if (editorUsesAsset && !ConfirmCloseActiveEditor()) return;
+        var editorsUsingAsset = OpenEditors.Where(tab =>
+            tab.Key.EndsWith("|" + asset.Id, StringComparison.Ordinal)).ToArray();
+        if (editorsUsingAsset.Any(tab => !tab.ConfirmClose())) return;
         if (!_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
         await RunOperationAsync(async () =>
         {
             await _workspace.RemoveAssetReferenceAsync(asset.Id);
-            if (editorUsesAsset) ClearEditor();
+            foreach (var tab in editorsUsingAsset)
+                CloseEditor(tab);
             SelectResource(null);
             StatusMessage = "已移除工程资源引用，磁盘原文件保留：" + asset.Name;
         });

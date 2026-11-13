@@ -73,34 +73,23 @@ public partial class MainWindow : Window
             await _viewModel.CreateFromCategoryAsync(node);
     }
 
-    private void ResourceTree_SelectedItemChanged(
+    private async void ResourceTree_SelectedItemChanged(
         object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         _viewModel.SelectResource(e.NewValue as ResourceTreeNode);
+        try { await _viewModel.OpenSelectedResourceAsync(); }
+        catch (Exception error)
+        {
+            AutoTest.Desktop.Diagnostics.UiExceptionReporter.Record(
+                "Resource selection / opening", error);
+        }
     }
 
-    private void ResourceTree_DoubleClick(object sender, MouseButtonEventArgs e)
+    private void CloseEditorTab_Click(object sender, RoutedEventArgs e)
     {
-        if (_viewModel.SelectedResourceIsTestProgram &&
-            ((ICommand)_viewModel.OpenTestProgramCommand).CanExecute(null))
-        {
-            ((ICommand)_viewModel.OpenTestProgramCommand).Execute(null);
-            e.Handled = true;
-            return;
-        }
-        if (_viewModel.SelectedResourceIsConfiguration &&
-            ((ICommand)_viewModel.OpenConfigurationCommand).CanExecute(null))
-        {
-            ((ICommand)_viewModel.OpenConfigurationCommand).Execute(null);
-            e.Handled = true;
-            return;
-        }
-        if (_viewModel.SelectedResourceIsDbc &&
-            ((ICommand)_viewModel.OpenDbcCommand).CanExecute(null))
-        {
-            ((ICommand)_viewModel.OpenDbcCommand).Execute(null);
-            e.Handled = true;
-        }
+        e.Handled = true;
+        if (sender is Button { Tag: EditorTabModel tab })
+            _viewModel.CloseEditor(tab);
     }
 
     private void ResourceTree_RightClick(object sender, MouseButtonEventArgs e)
