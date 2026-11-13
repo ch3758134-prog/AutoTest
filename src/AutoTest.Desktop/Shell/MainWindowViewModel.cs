@@ -387,9 +387,9 @@ public sealed class MainWindowViewModel : BindableBase
     public bool NoOpenEditors => OpenEditors.Count == 0;
     public string ActiveEditorTitle => ActiveEditorTab?.Title ?? "";
     public bool ConfirmCloseActiveEditor() => OpenEditors.All(tab => tab.ConfirmClose());
-    public bool CloseEditor(EditorTabModel tab)
+    public bool CloseEditor(EditorTabModel tab, bool alreadyConfirmed = false)
     {
-        if (!OpenEditors.Contains(tab) || !tab.ConfirmClose()) return false;
+        if (!OpenEditors.Contains(tab) || (!alreadyConfirmed && !tab.ConfirmClose())) return false;
         var index = OpenEditors.IndexOf(tab);
         OpenEditors.Remove(tab);
         if (ReferenceEquals(ActiveEditorTab, tab))
@@ -849,7 +849,7 @@ public sealed class MainWindowViewModel : BindableBase
         {
             await _workspace.RemoveAssetReferenceAsync(asset.Id);
             foreach (var tab in editorsUsingAsset)
-                CloseEditor(tab);
+                CloseEditor(tab, alreadyConfirmed: true);
             SelectResource(null);
             StatusMessage = "已移除工程资源引用，磁盘原文件保留：" + asset.Name;
         });
