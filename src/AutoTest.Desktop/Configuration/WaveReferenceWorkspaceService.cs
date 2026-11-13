@@ -1,4 +1,5 @@
 using System.IO;
+using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Specialists.Wave;

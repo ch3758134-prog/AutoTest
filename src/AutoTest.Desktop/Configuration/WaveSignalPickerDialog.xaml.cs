@@ -34,8 +34,12 @@ public partial class WaveSignalPickerDialog : Window
             " 个信号。选择后会同步 DBC 资源、报文 ID、信号名及物理单位。";
     }
 
-    private void Search_Changed(object sender, TextChangedEventArgs e) =>
+    private void Search_Changed(object sender, TextChangedEventArgs e)
+    {
+        // XAML may raise a TextChanged event before later named controls exist.
+        if (SignalList is null || CountLabel is null) return;
         Refresh(SearchBox.Text.Trim());
+    }
 
     private void SignalList_DoubleClick(object sender, MouseButtonEventArgs e) =>
         Confirm();
