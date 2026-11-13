@@ -13,7 +13,7 @@
    - 批准范围：对已批准 P0-01～P0-08、P0 Gate 及其版本、角色、审批状态的集中整理、导航与分类；说明产品定义、项目目标和研发过程之间的关系。该汇总**不是替换历史已批准工作产品的新版本**。
 
 2. **Project Control 产品定义与研发生命周期分离：系统行为规则（2026-11-13）**  
-   - 文件：[PRODUCT_DEFINITION_LIFECYCLE_RULES_20261113.md](../../tools/project-control-v2/portable/PRODUCT_DEFINITION_LIFECYCLE_RULES_20261113.md)
+   - 文件：[PRODUCT_DEFINITION_LIFECYCLE_RULES_20261113.md](../../../tools/project-control-v2/portable/PRODUCT_DEFINITION_LIFECYCLE_RULES_20261113.md)
    - SHA-256：`79afbf3828189d15040f151dcade07a7f80fd192fad0d3a8b03ecc233a889345`
    - Git Blob：`c03f2f9e4ab51d84d7186c5686e6fc9bfbfd240c`
    - 批准范围：Project Control 系统应分别管理产品定义、项目章程与研发生命周期活动；正式内容批准在对话进行；批准后同轮落档并回读；未批准稿默认不提交 GitHub；管理工具普通代码在 `Project_Management` 分支直接研发。此项属于**治理及系统行为规则的批准**，不是软件已经实现/验收的证明。
