@@ -82,8 +82,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         get => _busy;
         private set { if (SetProperty(ref _busy, value)) RefreshCommands(); }
     }
-    public bool IsDirty => !TestProjectCodec.Encode(Compose())
-        .AsSpan().SequenceEqual(TestProjectCodec.Encode(_session.Document));
+    // Dirty detection is valid even while the user is midway through typing a name.
+    // Never serialize+validate on each TextBox keystroke.
+    public bool IsDirty => !string.Equals(Name, _session.Document.Name, StringComparison.Ordinal) ||
+        !Packages.Select(x => x.ToEntry()).SequenceEqual(_session.Document.Packages);
     public TestProjectPackageChoice? SelectedAvailable
     {
         get => _selectedAvailable;
@@ -129,7 +131,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
 
     private TestProjectDocument Compose() =>
-        new(_session.Document.SchemaVersion, _session.Document.Id, Name.Trim(),
+        new(_session.Document.SchemaVersion, _session.Document.Id, (Name ?? "").Trim(),
             Packages.Select(x => x.ToEntry()).ToList());
 
     private void Add()

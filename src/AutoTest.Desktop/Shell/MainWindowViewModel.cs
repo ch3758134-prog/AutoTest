@@ -94,6 +94,8 @@ public sealed class MainWindowViewModel : BindableBase
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
             () => HasProject && !IsBusy);
+        NewTestProjectCommand = new DelegateCommand(async () => await CreateTestProjectAsync(),
+            () => HasProject && !IsBusy);
         ImportDbcCommand = new DelegateCommand(async () => await ImportDbcAsync(),
             () => HasProject && !IsBusy);
         ImportFirmwareCommand = new DelegateCommand(async () => await ImportFirmwareAsync(),
@@ -435,6 +437,8 @@ public sealed class MainWindowViewModel : BindableBase
         ProjectWorkspaceService.DbcKind, StringComparison.OrdinalIgnoreCase);
     public bool SelectedResourceIsTestProgram => string.Equals(_selectedResource?.Asset?.Kind,
         ProjectWorkspaceService.TestProgramKind, StringComparison.OrdinalIgnoreCase);
+    public bool SelectedResourceIsTestProject => string.Equals(_selectedResource?.Asset?.Kind,
+        ProjectWorkspaceService.TestProjectKind, StringComparison.OrdinalIgnoreCase);
     public bool SelectedResourceIsConfiguration => _selectedResource?.Asset is { } asset &&
         ProjectConfigurationCodec.IsConfiguration(asset.Kind);
     public string SelectedResourceTitle => _selectedResource?.Label ?? "";
@@ -460,6 +464,7 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand NewProjectCommand { get; }
     public DelegateCommand OpenProjectCommand { get; }
     public DelegateCommand NewTestProgramCommand { get; }
+    public DelegateCommand NewTestProjectCommand { get; }
     public DelegateCommand ImportDbcCommand { get; }
     public DelegateCommand ImportFirmwareCommand { get; }
     public DelegateCommand ImportWaveCommand { get; }
@@ -511,6 +516,7 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (_selectedResource?.Asset is null || IsBusy) return;
         if (SelectedResourceIsTestProgram) await OpenSelectedTestProgramAsync();
+        else if (SelectedResourceIsTestProject) await OpenSelectedTestProjectAsync();
         else if (SelectedResourceIsDbc) await OpenSelectedDbcAsync();
         else if (SelectedResourceIsConfiguration) await OpenSelectedConfigurationAsync();
     }
@@ -530,6 +536,7 @@ public sealed class MainWindowViewModel : BindableBase
         RaisePropertyChanged(nameof(SelectedResourceIsAsset));
         RaisePropertyChanged(nameof(SelectedResourceIsDbc));
         RaisePropertyChanged(nameof(SelectedResourceIsTestProgram));
+        RaisePropertyChanged(nameof(SelectedResourceIsTestProject));
         RaisePropertyChanged(nameof(SelectedResourceIsConfiguration));
         RaisePropertyChanged(nameof(SelectedResourceTitle));
         RaisePropertyChanged(nameof(SelectedResourceDescription));
@@ -553,8 +560,10 @@ public sealed class MainWindowViewModel : BindableBase
         var root = new ResourceTreeNode(current.Definition.Name, "▣", "当前工程的实际资源清单");
         var groups = new[]
         {
-            (Key: ProjectWorkspaceService.TestProgramKind, Title: "测试程序与用例",
+            (Key: ProjectWorkspaceService.TestProgramKind, Title: "测试用例 · Package",
              Icon: "▤"),
+            (Key: ProjectWorkspaceService.TestProjectKind, Title: "测试项目 · Project",
+             Icon: "▥"),
             (Key: ProjectWorkspaceService.TestConfigurationKind, Title: "被测系统配置 · TCF",
              Icon: "⚙"),
             (Key: ProjectWorkspaceService.BenchConfigurationKind, Title: "台架配置 · TBC",
@@ -649,6 +658,23 @@ public sealed class MainWindowViewModel : BindableBase
         });
     }
 
+    private async Task CreateTestProjectAsync()
+    {
+        if (!HasProject) return;
+        var name = _fileDialogs.AskResourceName("新建测试项目（Project）", "新建测试项目");
+        if (name is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var entry = await _workspace.CreateTestProjectAsync(name);
+            SelectAsset(entry.Id);
+            var session = await _workspace.OpenTestProjectEditorAsync(entry.Id);
+            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session);
+            ActivateEditor("project|" + entry.Id, new TestProjectWorkbenchView(editor),
+                "测试项目 · " + entry.Name, editor.ConfirmClose);
+            StatusMessage = "测试项目已创建，请添加测试用例并设置顺序：" + entry.Name;
+        });
+    }
+
     private async Task ImportDbcAsync()
     {
         if (!HasProject) return;
@@ -700,6 +726,7 @@ public sealed class MainWindowViewModel : BindableBase
         return node.Category switch
         {
             ProjectWorkspaceService.TestProgramKind => CreateTestProgramAsync(),
+            ProjectWorkspaceService.TestProjectKind => CreateTestProjectAsync(),
             ProjectWorkspaceService.DbcKind => ImportDbcAsync(),
             ProjectWorkspaceService.FirmwareKind => ImportFirmwareAsync(),
             ProjectWorkspaceService.WaveKind => ImportWaveAsync(),
@@ -751,6 +778,20 @@ public sealed class MainWindowViewModel : BindableBase
             ActivateEditor("config|" + asset.Id, new ConfigurationWorkbenchView(editor),
                 editor.TypeLabel + " · " + asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开工程配置：" + asset.Name;
+        });
+    }
+
+    private async Task OpenSelectedTestProjectAsync()
+    {
+        if (!SelectedResourceIsTestProject || _selectedResource?.Asset is not { } asset) return;
+        if (IsAlreadyOpen("project|" + asset.Id)) return;
+        await RunOperationAsync(async () =>
+        {
+            var session = await _workspace.OpenTestProjectEditorAsync(asset.Id);
+            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session);
+            ActivateEditor("project|" + asset.Id, new TestProjectWorkbenchView(editor),
+                "测试项目 · " + asset.Name, editor.ConfirmClose);
+            StatusMessage = "已打开测试项目：" + asset.Name;
         });
     }
 
@@ -849,6 +890,7 @@ public sealed class MainWindowViewModel : BindableBase
         NewProjectCommand?.RaiseCanExecuteChanged();
         OpenProjectCommand?.RaiseCanExecuteChanged();
         NewTestProgramCommand?.RaiseCanExecuteChanged();
+        NewTestProjectCommand?.RaiseCanExecuteChanged();
         ImportDbcCommand?.RaiseCanExecuteChanged();
         ImportFirmwareCommand?.RaiseCanExecuteChanged();
         ImportWaveCommand?.RaiseCanExecuteChanged();
