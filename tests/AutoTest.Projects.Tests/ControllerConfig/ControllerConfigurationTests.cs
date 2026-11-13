@@ -64,6 +64,18 @@ public sealed class ControllerConfigurationTests
         Assert.Equal(ObservationOrigin.Manual, fact.Origin);
         Assert.Equal(2.5, editor.Current.Controllers[0].States[0].Windows[0].TargetVolts);
     }
+    [Fact] public void ControllerProfileRejectsConfiguredStateOutsideSupportedKeyMask()
+    {
+        var (profile, controller, stateId) = Profile();
+        var policy = new HardwareKeyPolicy(profile.HardwareProfileId, 0x2,
+            ImmutableArray<IncompatibleKeyPair>.Empty);
+        var error = Assert.Throws<ProjectDataException>(() =>
+            (profile with { KeyHardwarePolicy = policy }).Validate());
+        Assert.Equal("CTRL_STATE_UNSUPPORTED_KEY", error.Code);
+        // A draft without active hardware policy remains loadable and editable.
+        Assert.Null(profile.KeyHardwarePolicy);
+    }
+
     [Fact] public void HardwarePolicy_RoundTripAndValidateIdentity()
     {
         var (profile, controller, state) = Profile();

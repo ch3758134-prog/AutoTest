@@ -141,6 +141,11 @@ public sealed record EcuControlProfile(Guid ProfileId, Guid EcuId, string EcuNam
                     "Key hardware policy belongs to a different hardware profile.");
         }
         foreach (var controller in Controllers) controller.Validate();
+        if (KeyHardwarePolicy is { } activePolicy)
+            foreach (var state in Controllers.SelectMany(c => c.States))
+                if ((state.KeyMask & ~activePolicy.SupportedMask) != 0)
+                    throw new ProjectDataException("CTRL_STATE_UNSUPPORTED_KEY",
+                        "Configured ECU operation uses a Key outside the available hardware policy: " + state.Name);
         if (Controllers.GroupBy(c => c.Id).Any(g => g.Count() > 1) ||
             Controllers.GroupBy(c => c.Order).Any(g => g.Count() > 1) ||
             Controllers.GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
