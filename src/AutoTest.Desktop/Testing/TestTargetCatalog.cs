@@ -9,7 +9,7 @@ using AutoTest.Testing.Authoring;
 
 namespace AutoTest.Desktop.Testing;
 
-public sealed record MappingChoice(string Label, TestTargetMapping Mapping)
+public sealed record MappingChoice(string Label, TestTargetMapping Mapping, DbcMessage? Message = null)
 {
     public override string ToString() => Label;
 }
@@ -52,7 +52,7 @@ public static class TestTargetCatalog
                             frameId.ToString("X") + "]", new TestTargetMapping(
                                 msgAlias, TestTargetKind.CanMessage, asset.Id,
                                 asset.Revision, asset.Sha256, BusRole.DutCan,
-                                frameId, msg.IsExtended)));
+                                frameId, msg.IsExtended), msg));
                         foreach (var signal in msg.Signals)
                         {
                             var alias = msgAlias + "." + signal.Name;

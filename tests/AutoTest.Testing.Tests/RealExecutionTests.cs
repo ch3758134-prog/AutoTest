@@ -177,4 +177,41 @@ public sealed class RealExecutionTests
     }
 
 
+    [Fact]
+    public void StepAndAutomaticObjectMapping_InsertAndUndoTogether()
+    {
+        var doc = TestDocument.Create("Action");
+        var tx = new StepEditTransaction(doc);
+        var mapping = new TestTargetMapping("RAW_CAN1_0x123", TestTargetKind.RawCan,
+            default, 0, "", BusRole.DutCan, 0x123);
+        var node = StepNode.Create("Write").WithProperty("target", mapping.Name)
+            .WithProperty("value", "HEX:001122");
+        tx.InsertWithMapping(TestPhase.Test, null, null, 0, node, mapping);
+        Assert.Single(tx.Current.Mappings);
+        Assert.Single(tx.Current.Get(TestPhase.Test));
+        tx.Undo();
+        Assert.Empty(tx.Current.Mappings);
+        Assert.Empty(tx.Current.Get(TestPhase.Test));
+        tx.Redo();
+        Assert.Single(tx.Current.Mappings);
+        Assert.Single(tx.Current.Get(TestPhase.Test));
+    }
+
+    [Fact]
+    public void AutomaticallyResolvedObject_RefusesSilentRevisionReplacement()
+    {
+        var original = new TestTargetMapping("Frame", TestTargetKind.RawCan,
+            default, 0, "", BusRole.DutCan, 0x123);
+        var changed = original with { CanId = 0x124 };
+        var tx = new StepEditTransaction(TestDocument.Create("Mapping"));
+        tx.InsertWithMapping(TestPhase.Test, null, null, 0,
+            StepNode.Create("Write").WithProperty("target", original.Name)
+                .WithProperty("value", "HEX:00"), original);
+        Assert.Throws<InvalidOperationException>(() =>
+            tx.InsertWithMapping(TestPhase.Test, null, null, 1,
+                StepNode.Create("Write").WithProperty("target", changed.Name)
+                    .WithProperty("value", "HEX:00"), changed));
+        Assert.Single(tx.Current.Get(TestPhase.Test));
+    }
+
 }

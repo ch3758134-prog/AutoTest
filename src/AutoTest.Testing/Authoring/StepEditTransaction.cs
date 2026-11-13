@@ -33,6 +33,52 @@ public sealed class StepEditTransaction
                 throw new InvalidOperationException("StepId already exists; use Copy");
             return nodes.Insert(index, node);
         });
+    /// <summary>
+    /// Insert a user-selected operation and its automatically resolved object mapping
+    /// as ONE undoable transaction. Never silently replace an existing binding revision.
+    /// </summary>
+    public void InsertWithMapping(TestPhase phase, StepId? parent, string? slot, int index,
+        StepNode node, TestTargetMapping? mapping)
+    {
+        var baseDocument = WithMapping(Current, mapping);
+        var existingIds = Current.Walk().Select(n => n.Id).ToHashSet();
+        if (TestDocument.WalkNodes([node]).Any(n => existingIds.Contains(n.Id)))
+            throw new InvalidOperationException("StepId already exists.");
+        Apply(EditList(baseDocument, phase, parent, slot, nodes =>
+        {
+            if (index < 0 || index > nodes.Length) throw new ArgumentOutOfRangeException(nameof(index));
+            return nodes.Insert(index, node);
+        }));
+    }
+
+    /// <summary>Existing step edit and a newly selected object use the same atomic history entry.</summary>
+    public void ReplaceWithMapping(StepId id, StepNode edited, TestTargetMapping? mapping)
+    {
+        if (id != edited.Id) throw new ArgumentException("Step identity changed.");
+        var baseDocument = WithMapping(Current, mapping);
+        var (phase, parent, slot, index) = Find(id);
+        Apply(EditList(baseDocument, phase, parent, slot, nodes => nodes.SetItem(index, edited)));
+    }
+
+    private static TestDocument WithMapping(TestDocument doc, TestTargetMapping? mapping)
+    {
+        if (mapping is null) return doc;
+        mapping.Validate();
+        var existing = doc.Mappings.FirstOrDefault(m =>
+            string.Equals(m.Name, mapping.Name, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            if (existing != mapping)
+                throw new InvalidOperationException(
+                    "同名操作对象引用的资源或修订不同。请先在对象管理中明确重新绑定：" + mapping.Name);
+            return doc;
+        }
+        var updated = doc.Mappings.Add(mapping);
+        var errors = TestTargetMappings.Validate(updated);
+        if (errors.Length != 0) throw new ArgumentException(string.Join("; ", errors));
+        return doc with { Mappings = updated };
+    }
+
     public void Delete(StepId id)
     {
         var (phase, parent, slot, index) = Find(id);
@@ -54,7 +100,9 @@ public sealed class StepEditTransaction
     }
     public void RemoveMapping(string name)
     {
-        if (Current.Walk().Any(n => n.Properties.TryGetValue("target", out var target) &&
+        if (Current.Walk().Any(n =>
+            (n.Properties.TryGetValue("target", out var target) ||
+             n.Properties.TryGetValue("profile", out target)) &&
             string.Equals(target, name, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException("Mapping is still referenced by a test step.");
         var index = Array.FindIndex(Current.Mappings.ToArray(), x =>
