@@ -134,8 +134,13 @@ public sealed class ConfiguredWavePort : ITestWavePort
                 "Wave profile must refer to the exact captured DBC signal, revision, bus and unit.");
         if (_projects.Current?.ManifestPath != project.ManifestPath)
             throw new InvalidOperationException("Project changed during waveform analysis.");
+        var effectiveReference = string.IsNullOrWhiteSpace(referenceKey)
+            ? settings.ReferenceName : referenceKey;
+        if (string.IsNullOrWhiteSpace(effectiveReference))
+            return new(false, "REFERENCE_NOT_SELECTED", null, evidence.Evidence.ToString(),
+                "Select an approved named reference in the waveform configuration or analysis step.");
         var matches = _catalog.List().Where(x =>
-            x.Name == referenceKey && x.Signal == signal).ToArray();
+            x.Name == effectiveReference && x.Signal == signal).ToArray();
         if (matches.Length != 1)
             return new(false, "REFERENCE_NOT_UNIQUE", null, evidence.Evidence.ToString(),
                 "Select one explicitly approved named reference for this DBC signal revision.");

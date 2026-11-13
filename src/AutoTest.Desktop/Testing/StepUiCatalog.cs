@@ -108,7 +108,7 @@ public static class StepUiCatalog
             node = node.WithProperty(property, value);
         }
         if (type == "WaveAnalyze")
-            node = node.WithProperty("profile", "");
+            node = node.WithProperty("profile", "").WithProperty("reference", "");
         return node;
     }
 }

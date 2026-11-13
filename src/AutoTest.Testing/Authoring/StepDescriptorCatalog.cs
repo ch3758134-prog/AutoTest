@@ -44,7 +44,7 @@ public sealed class StepDescriptorCatalog
         Add("Expect", false, [], ["left", "operator", "right"]);
         Add("WaveStart", false, [], ["target", "captureKey", "durationMs"]);
         Add("WaveStop", false, [], ["captureKey", "variable"]);
-        Add("WaveAnalyze", false, [], ["captureKey", "reference", "variable", "tolerance", "coverage"]);
+        Add("WaveAnalyze", false, [], ["captureKey", "variable", "tolerance", "coverage"]);
         // Explicitly modeled future capabilities; never claim V1 runtime support.
         foreach (var name in new[] { "PowerSet", "KeySet", "CanSend", "CanWait", "UdsRequest",
             "Flash", "WaveCapture", "WaveCompare", "Log", "Fail", "Skip" }) Add(name, false);

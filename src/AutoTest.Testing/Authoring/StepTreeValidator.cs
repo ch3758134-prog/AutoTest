@@ -35,6 +35,10 @@ public static class StepTreeValidator
                     StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped target {targetName}");
             if (n.Type == "WaveAnalyze" &&
+                string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("profile", "")) &&
+                string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("reference", "")))
+                errors.Add($"{location}: wave analysis requires a named reference or mapped profile");
+            if (n.Type == "WaveAnalyze" &&
                 n.Properties.TryGetValue("profile", out var profileName) &&
                 !string.IsNullOrWhiteSpace(profileName) &&
                 !document.Mappings.Any(m => m.Kind == TestTargetKind.WaveProfile &&

@@ -16,6 +16,9 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
     int? DbcAssetRevision = null, string? DbcAssetFingerprint = null,
     int? EvidenceAssetRevision = null, string? EvidenceAssetFingerprint = null)
 {
+    /// <summary>Optional, explicitly approved named reference; empty means not selected.</summary>
+    public string ReferenceName { get; init; } = "";
+
     public static WaveSettingsDocument Create(string name) => new(1, name, null,
         BusRole.DutCan, 0, "", "", null,
         new WaveComparisonConfig(0, 0, 0.95, 1, 0.05, 1.6, 0, 0));
@@ -25,6 +28,11 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
         if (SchemaVersion != 1 || string.IsNullOrWhiteSpace(Name) || !Enum.IsDefined(Bus) ||
             CanId > 0x1FFFFFFF)
             throw new ProjectDataException("WAVE_SETTINGS", "波形配置数据或 CAN ID 无效。");
+        if (ReferenceName is null || ReferenceName.Length > 128 ||
+            (!string.IsNullOrWhiteSpace(ReferenceName) &&
+             (!DbcAssetId.HasValue || string.IsNullOrWhiteSpace(SignalName))))
+            throw new ProjectDataException("WAVE_REFERENCE",
+                "必须先绑定 DBC 信号，才能选择命名参考波形；名称最多 128 字。");
         if (Comparison is null || Comparison.ValidateThresholds() is { } issue)
             throw new ProjectDataException("WAVE_THRESHOLDS",
                 "波形判定参数无效：" + (Comparison?.ValidateThresholds() ?? "缺少参数"));
