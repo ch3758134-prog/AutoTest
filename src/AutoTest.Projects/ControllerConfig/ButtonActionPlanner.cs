@@ -36,6 +36,10 @@ public static class ButtonActionPlanner
         profile.Validate();
         hardware.Validate();
         var target = request.State.Resolve(profile);
+        if (request.Actuation is ButtonActuation.Pulse or ButtonActuation.Hold &&
+            target.KeyMask == 0)
+            throw new ProjectDataException("CTRL_ACTION_NO_STIMULUS",
+                "The configured press/hold state has no resistor combination. Configure KeyMask before physical execution.");
         var timing = (request.TimingOverride ?? target.ActionTiming).Validate();
         if (request.Actuation == ButtonActuation.Pulse && timing.DefaultPressDurationMs == 0)
             throw new ProjectDataException("CTRL_ACTION_TIMING",

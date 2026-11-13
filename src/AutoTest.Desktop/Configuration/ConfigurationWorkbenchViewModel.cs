@@ -70,6 +70,10 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         AddControllerCommand = new DelegateCommand(AddController, () => IsController && !IsBusy);
         AddButtonActionCommand = new DelegateCommand(AddButtonAction, () => IsController && !IsBusy);
         PickWaveSignalCommand = new DelegateCommand(async () => await PickWaveSignalAsync(), () => IsWave && !IsBusy);
+        PickKeyCombinationCommand = new DelegateCommand(() => PickKeys("mask"),
+            () => IsControllerState && !IsBusy);
+        PickSupportedKeysCommand = new DelegateCommand(() => PickKeys("supportedKeys"),
+            () => IsControllerOverview && !IsBusy);
         AddStateCommand = new DelegateCommand(AddState, () => IsController && SelectedControllerId.HasValue && !IsBusy);
         SetDefaultCommand = new DelegateCommand(SetDefault, () => IsController && SelectedStateId.HasValue && !IsBusy);
         AddRuleCommand = new DelegateCommand(AddRule, () => IsScan && !IsBusy);
@@ -85,6 +89,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public string DocumentPath => _session.FilePath;
     public int Revision => _session.AssetRevision;
     public bool IsController => _session.Kind == ProjectConfigurationCodec.ControllerKind;
+    public bool IsControllerOverview => IsController && _selectedNode?.Key == "profile";
+    public bool IsControllerState => IsController && SelectedStateId.HasValue;
     public bool IsScan => _session.Kind == ProjectConfigurationCodec.ScanSettingsKind;
     public bool IsWave => _session.Kind == ProjectConfigurationCodec.WaveSettingsKind;
     public bool IsFlash => _session.Kind == ProjectConfigurationCodec.FlashSettingsKind;
@@ -130,6 +136,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             if (SetProperty(ref _selectedNode, value))
             {
                 PopulateFields();
+                RaisePropertyChanged(nameof(IsControllerOverview));
+                RaisePropertyChanged(nameof(IsControllerState));
                 RefreshCommands();
             }
         }
@@ -159,6 +167,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public DelegateCommand AddControllerCommand { get; }
     public DelegateCommand AddButtonActionCommand { get; }
     public DelegateCommand PickWaveSignalCommand { get; }
+    public DelegateCommand PickKeyCombinationCommand { get; }
+    public DelegateCommand PickSupportedKeysCommand { get; }
     public DelegateCommand AddStateCommand { get; }
     public DelegateCommand SetDefaultCommand { get; }
     public DelegateCommand AddRuleCommand { get; }
@@ -212,10 +222,11 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                     "修改名称不会改变实际 USB/CAN 硬件。");
                 AddField("boardId", "硬件配置标识（只读）", ctrl.HardwareProfileId.ToString(),
                     "用于标识按键模拟板的配置版本。", readOnly: true);
-                AddField("supportedKeys", "可用底层 Key 掩码（HEX）",
+                AddField("supportedKeys", "已确认可用的电阻开关组合",
                     ctrl.KeyHardwarePolicy is null ? "" :
                         "0x" + ctrl.KeyHardwarePolicy.SupportedMask.ToString("X5"),
-                    "首次实测前必须配置；20 Key 是电阻网络资源，并非功能按键个数。");
+                    "点击上方“选择硬件可用 Key”勾选硬件资源；未经确认不能进行真实按键操作。",
+                    readOnly: true);
                 AddField("keyConflicts", "禁止同时闭合的 Key 组合",
                     ctrl.KeyHardwarePolicy is null ? "" :
                         string.Join("; ", ctrl.KeyHardwarePolicy.ForbiddenPairs.Select(
@@ -235,8 +246,10 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 var c = ctrl.Controllers.Single(x => x.Id == SelectedControllerId);
                 var state = c.States.Single(x => x.Id == SelectedStateId);
                 AddField("name", "状态名称", state.Name);
-                AddField("mask", "底层 20 位 KeyMask（HEX）", "0x" + state.KeyMask.ToString("X5"),
-                    "仅用于将真实业务状态映射到 KEY_SIM 电阻网络，不表示五路输出已测量。");
+                AddField("mask", "模拟此状态的电阻开关组合",
+                    "0x" + state.KeyMask.ToString("X5"),
+                    "点击上方“选择电阻组合”，勾选用于形成该状态模拟电压的 Key。"
+                    + " 所填目标电压仍需现场测量验证。", readOnly: true);
                 AddField("interaction", "交互方式", state.Interaction.ToString(), "", Interactions);
                 AddField("return", "弹回目标状态 ID", state.ReturnStateId?.ToString(),
                     "仅 SpringReturn 状态需要目标 State ID。");
@@ -563,6 +576,33 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         SelectedNode = Nodes.FirstOrDefault(x => x.Key == key) ?? Nodes[0];
     }
 
+    private void PickKeys(string fieldKey)
+    {
+        if (!IsController || IsBusy || !ApplyFields()) return;
+        try
+        {
+            var field = Fields.Single(f => f.Key == fieldKey);
+            var initial = string.IsNullOrWhiteSpace(field.Value)
+                ? (fieldKey == "supportedKeys" ? 0xFFFFFu : 0u)
+                : ParseCan(field.Value);
+            var dialog = new KeyMaskPickerDialog(initial,
+                fieldKey == "supportedKeys" ? "选择硬件已确认可用的 Key" : "选择模拟状态的电阻组合");
+            var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                ?? Application.Current.MainWindow;
+            if (owner is { IsLoaded: true }) dialog.Owner = owner;
+            if (dialog.ShowDialog() != true) return;
+            field.Value = "0x" + dialog.SelectedMask.ToString("X5");
+            StatusMessage = fieldKey == "supportedKeys"
+                ? "已选择硬件可用 Key；请核对真实硬件限制，再应用并保存。"
+                : "已配置此功能状态的 Key 组合；需核对模拟输出电压及识别区间。";
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or
+                                      ProjectDataException or FormatException)
+        {
+            StatusMessage = "选择 Key 组合失败：" + error.Message;
+        }
+    }
+
     private void AddButtonAction()
     {
         if (!ApplyFields()) return;
@@ -778,6 +818,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         AddControllerCommand.RaiseCanExecuteChanged();
         AddButtonActionCommand.RaiseCanExecuteChanged();
         PickWaveSignalCommand.RaiseCanExecuteChanged();
+        PickKeyCombinationCommand.RaiseCanExecuteChanged();
+        PickSupportedKeysCommand.RaiseCanExecuteChanged();
         AddStateCommand.RaiseCanExecuteChanged();
         SetDefaultCommand.RaiseCanExecuteChanged();
         AddRuleCommand.RaiseCanExecuteChanged();

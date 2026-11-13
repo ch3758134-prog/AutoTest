@@ -62,6 +62,12 @@
               <Button Content="新增通用控制器" Command="{Binding AddControllerCommand}"
                       Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"
                       Margin="0,0,5,6"/>
+              <Button Content="选择硬件可用 Key…" Command="{Binding PickSupportedKeysCommand}"
+                      Visibility="{Binding IsControllerOverview,Converter={StaticResource BoolToVisibility}}"
+                      Margin="0,0,5,6"/>
+              <Button Content="选择电阻组合…" Command="{Binding PickKeyCombinationCommand}"
+                      Visibility="{Binding IsControllerState,Converter={StaticResource BoolToVisibility}}"
+                      Margin="0,0,5,6"/>
               <Button Content="新增状态" Command="{Binding AddStateCommand}"
                       Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"
                       Margin="0,0,5,6"/>
