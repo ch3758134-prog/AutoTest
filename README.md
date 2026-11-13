@@ -2,6 +2,14 @@
 
 这里是同一 GitHub 仓库中**独立的项目管理分支**，不是 AutoTest 上位机源码分支，也不是对现有产品的重新立项。
 
+## 已批准的 P 阶段整理与产品定义边界（2026-11-13）
+
+- [P 阶段一次性交付汇总（获准归档原文）](docs/project-management/approved-20261113/AutoTest_P阶段_一次性交付总览_20261113.md)：只作 P0-01～P0-08 与 P0 Gate 已批准事实的分类导航，不构成新的 P0/P1/G0 或产品功能批准。
+- [本次对话批准记录](docs/project-management/approved-20261113/APPROVAL_RECORD.md)：负责人针对上述汇总及下列系统分类规则明确答复“批准”。
+- [产品定义与生命周期分离规则（获准原文）](tools/project-control-v2/portable/PRODUCT_DEFINITION_LIFECYCLE_RULES_20261113.md)：产品定义、项目章程、工程生命周期是相互引用但相互独立的对象。管理工具实施状态仍以实际代码和测试证据为准。
+
+已获准原文保持内容不变；未经批准的 G0-01 v0.3 不在本次落档范围内。
+
 ## 从哪里开始
 
 - **项目管理 AI / 新接手 AI**：首先阅读 [Project Control 的 START_HERE](tools/project-control-v2/START_HERE.md)，再阅读 [便携上下文发现](tools/project-control-v2/portable/CONTEXT_DISCOVERY.md)、[AI 工作模式](tools/project-control-v2/portable/AI_WORK_MODES.md) 和 [发行清单](tools/project-control-v2/PORTABLE_MANIFEST.json)。按系统原有机制确认身份、职责与用户授权；不要直接假设有项目决策或源码合并权限。

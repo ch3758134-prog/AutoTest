@@ -39,6 +39,7 @@
     "portable/process_catalog.json",
     "portable/process_control.py",
     "portable/PROCESS_SYSTEM.md",
+    "portable/PRODUCT_DEFINITION_LIFECYCLE_RULES_20261113.md",
     "portable/REPORTING_PROTOCOL.md",
     "portable/POLICY_MIGRATION.md",
     "portable/CONTEXT_DISCOVERY.md",
