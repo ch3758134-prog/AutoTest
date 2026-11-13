@@ -54,6 +54,25 @@ public sealed class RealTestWorkbenchService
             if (!plan.Diagnostics.IsEmpty)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Diagnostics));
             var mappings = document.Mappings.ToArray();
+            var tcf = await _projects.ReadSelectedTestConfigurationAsync(ct);
+            if (tcf is not null)
+                foreach (var mapping in mappings)
+                {
+                    if (mapping.Kind is TestTargetKind.Signal or TestTargetKind.CanMessage &&
+                        (tcf.DbcAssetId != mapping.Asset.Value ||
+                         tcf.DbcRevision != mapping.AssetRevision ||
+                         !string.Equals(tcf.DbcFingerprint, mapping.AssetSha256,
+                             StringComparison.OrdinalIgnoreCase)))
+                        throw new InvalidOperationException(
+                            "测试步骤引用的 DBC 不属于当前选定 TCF，需重新确认：" + mapping.Name);
+                    if (mapping.Kind == TestTargetKind.Button &&
+                        (tcf.ButtonAssetId != mapping.Asset.Value ||
+                         tcf.ButtonRevision != mapping.AssetRevision ||
+                         !string.Equals(tcf.ButtonFingerprint, mapping.AssetSha256,
+                             StringComparison.OrdinalIgnoreCase)))
+                        throw new InvalidOperationException(
+                            "测试步骤引用的 ECU 功能按键不属于当前 TCF：" + mapping.Name);
+                }
             await _signals.BindAsync(mappings, ct);
             actions = new ConfiguredStationActionPort(_hardware, _projects);
             await actions.PrepareAsync(mappings, ct);
