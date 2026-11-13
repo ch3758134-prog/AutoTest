@@ -1,3 +1,6 @@
+using AutoTest.Contracts;
+using AutoTest.Core;
+using AutoTest.Specialists.Wave;
 using AutoTest.Desktop.Configuration;
 using AutoTest.Desktop.Projects;
 using Xunit;
@@ -57,4 +60,55 @@ public sealed class WaveAnalysisConfigTests
         }
         finally { Directory.Delete(root, recursive: true); }
     }
+    [Fact]
+    public async Task CapturedWave_RequiresExplicitReferencePromotionAndPreservesIdentity()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "at-wave-evidence-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var workspace = new ProjectWorkspaceService();
+            await workspace.CreateAsync("WaveReference", directory);
+            var signal = new SignalRef(new AssetRef(AssetId.New(), AssetRevision.Create(1),
+                RevisionFingerprint.FromSha256(new string('a', 64))),
+                BusRole.DutCan, 0x123, "Current", "A");
+            var origin = new TimePoint(DateTimeOffset.UtcNow, 0,
+                TimeSource.Replay, TimeQuality.ReplayDerived);
+            var buffer = new WaveSampleBuffer(signal, origin, 32);
+            for (var i = 1; i <= 4; i++)
+            {
+                buffer.Append(new SignalObservation(signal, i, "A",
+                    new TimePoint(origin.Utc.AddMilliseconds(100 * i), i,
+                        TimeSource.Replay, TimeQuality.ReplayDerived),
+                    EvidenceQuality.Derived, EvidenceRef.New(), false));
+            }
+            var evidence = new WaveEvidenceDocument(EvidenceRef.New(), "Capture",
+                buffer.Snapshot(), null, null, null, null, null, null,
+                null, null, DateTimeOffset.UtcNow);
+            var store = new WaveEvidenceStore(Path.Combine(
+                workspace.Current!.RootDirectory, "wave-records", "evidence"));
+            store.Write(evidence);
+            var configured = WaveSettingsDocument.Create("Current") with
+            {
+                DbcAssetId = signal.DbcAsset.Id.Value,
+                DbcAssetRevision = signal.DbcAsset.Revision.Value,
+                DbcAssetFingerprint = signal.DbcAsset.Fingerprint.Sha256,
+                Bus = signal.Role, CanId = signal.FrameId,
+                SignalName = signal.SignalName, Unit = signal.Unit
+            };
+            var choices = WaveReferenceWorkspaceService.FindCandidates(workspace, configured);
+            Assert.Single(choices);
+            Assert.Equal(evidence.Id.Value, choices[0].Evidence);
+            Assert.DoesNotContain("confirmed",
+                WaveReferenceWorkspaceService.ReferenceNames(workspace, configured));
+            WaveReferenceWorkspaceService.Promote(workspace, configured, evidence.Id.Value, "confirmed");
+            Assert.Contains("confirmed",
+                WaveReferenceWorkspaceService.ReferenceNames(workspace, configured));
+            Assert.Throws<InvalidDataException>(() =>
+                WaveReferenceWorkspaceService.Promote(workspace, configured,
+                    evidence.Id.Value, "confirmed"));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
 }

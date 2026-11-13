@@ -291,4 +291,27 @@ public sealed class WaveComparatorTests
         finally { if (Directory.Exists(location)) Directory.Delete(location, true); }
     }
 
+    [Fact]
+    public async Task CompleteConfiguredCriteria_AreUsedAndPersistedInWaveAnalysisEvidence()
+    {
+        var series = Series();
+        var (service, evidence, references, directory) = MakeService(series);
+        try
+        {
+            var reference = references.SaveReference(AssetId.New(),
+                AssetRevision.Create(1), "approved", series);
+            var captured = await service.CaptureAsync(Signal,
+                new WaveCaptureConfig(TimeSpan.FromSeconds(1), 64), CancellationToken.None);
+            var configured = Strict with
+            { MaximumOutOfToleranceSeconds = 0, RequireSynchronizedHardwareTime = false };
+            var result = await service.CompareWithConfigForRunAsync(
+                captured, reference.Reference, configured);
+            Assert.Equal(Verdict.Pass, result.Verdict);
+            var comparison = evidence.Read(result.Evidence[1]);
+            Assert.Equal(configured, comparison.Configuration);
+            Assert.True(evidence.Verify(result.Evidence[1]));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
 }
