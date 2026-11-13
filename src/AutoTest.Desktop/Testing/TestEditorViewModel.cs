@@ -40,9 +40,12 @@ public sealed class TestEditorViewModel : BindableBase
         _session = session;
         _transaction = new StepEditTransaction(session.Document);
 
-        AddChildCommand = new DelegateCommand(AddChild, () => CanAddChild);
-        AddAfterCommand = new DelegateCommand(AddAfter, () => CanEditSelectedStep);
-        EditParametersCommand = new DelegateCommand(EditParameters, () => CanEditSelectedStep);
+        AddChildCommand = new DelegateCommand(async () => await InsertComposedStepAsync(false),
+            () => !IsBusy && SelectedItem is not null);
+        AddAfterCommand = new DelegateCommand(async () => await InsertComposedStepAsync(true),
+            () => CanEditSelectedStep);
+        EditParametersCommand = new DelegateCommand(async () => await EditComposedStepAsync(),
+            () => CanEditSelectedStep);
         DuplicateCommand = new DelegateCommand(Duplicate, () => CanEditSelectedStep);
         DeleteCommand = new DelegateCommand(Delete, () => CanEditSelectedStep);
         MoveUpCommand = new DelegateCommand(() => Move(-1), () => CanMoveUp);
@@ -113,8 +116,8 @@ public sealed class TestEditorViewModel : BindableBase
     public string SelectedId => _selectedItem?.Step?.Id.ToString() ?? "";
     public string SelectedDescription => _selectedItem switch
     {
-        { Kind: StepTreeItemKind.Phase } => "阶段内的步骤按顺序执行。选择步骤类型后点击“添加到阶段”。",
-        { Kind: StepTreeItemKind.Slot } => "这是条件或循环的真实子步骤列表。点击“添加到此分支”。",
+        { Kind: StepTreeItemKind.Phase } => "此阶段的步骤按顺序执行。点击“＋ 添加步骤”并直接配置。",
+        { Kind: StepTreeItemKind.Slot } => "这是条件/循环的子分支；点击“＋ 添加步骤”将动作加入此分支。",
         { Kind: StepTreeItemKind.Step, Step: { } n } =>
             StepUiCatalog.Choices.FirstOrDefault(x => x.Type == n.Type)?.Summary
             ?? "当前步骤的参数和子分支由正式数据模型管理。",
@@ -181,70 +184,76 @@ public sealed class TestEditorViewModel : BindableBase
             ?? Mappings.FirstOrDefault(Suitable)?.Name ?? "";
     }
 
-    private void AddChild()
+    private async Task<IReadOnlyList<MappingChoice>> AvailableObjectsAsync()
     {
-        if (!CanAddChild || _selectedItem is null) return;
-        var target = _selectedItem;
-        var next = StepUiCatalog.NewNode(SelectedStepType.Type, DefaultTargetName(SelectedStepType.Type));
-        Mutate(() =>
+        try { return await TestTargetCatalog.LoadAsync(_workspace); }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+                                      UnauthorizedAccessException or ArgumentException or ProjectDataException)
         {
-            var coordinates = target.CoordinatesForAppend();
-            _transaction.Insert(target.Phase, coordinates.ParentId, coordinates.Slot,
-                coordinates.Index, next);
-        }, next.Id, "已添加 " + next.Name);
+            StatusMessage = "部分工程操作对象无法加载：" + error.Message +
+                "；仍可添加等待、条件和无 DBC 的原始 CAN 操作。";
+            return [new MappingChoice("台架 / IGN", new TestTargetMapping("IGN",
+                TestTargetKind.Ignition, default, 0, ""))];
+        }
     }
 
-    private void AddAfter()
+    private async Task InsertComposedStepAsync(bool after)
     {
-        if (!CanEditSelectedStep || _selectedItem is null) return;
-        var target = _selectedItem;
-        var node = StepUiCatalog.NewNode(SelectedStepType.Type, DefaultTargetName(SelectedStepType.Type));
-        Mutate(() =>
-        {
-            var coordinates = target.CoordinatesForSibling();
-            _transaction.Insert(target.Phase, coordinates.ParentId, coordinates.Slot,
-                coordinates.Index, node);
-        }, node.Id, "已在选中步骤后插入 " + node.Name);
-    }
-
-    private void EditParameters()
-    {
-        var node = _selectedItem?.Step;
-        if (!CanEditSelectedStep || node is null) return;
-        var targets = Mappings.Where(x => node.Type switch
-            {
-                "Read" or "WaitUntil" or "WaveStart" => x.Kind == TestTargetKind.Signal,
-                "Write" => x.Kind is TestTargetKind.Button or TestTargetKind.CanMessage or TestTargetKind.Ignition,
-                _ => false
-            }).Select(x => x.Name).ToArray();
-        var profiles = Mappings.Where(x => x.Kind == TestTargetKind.WaveProfile)
-            .Select(x => x.Name).ToArray();
-        string[] references;
+        if (IsBusy || _selectedItem is not { } position) return;
+        if (after && position.Kind != StepTreeItemKind.Step) return;
+        IsBusy = true;
+        IReadOnlyList<MappingChoice> choices;
+        try { choices = await AvailableObjectsAsync(); }
+        finally { IsBusy = false; }
+        var composed = _dialogs.ComposeStep(choices, _transaction.Current.Mappings.ToArray());
+        if (composed is null) return;
+        var coordinates = position.Kind == StepTreeItemKind.Step
+            ? position.CoordinatesForSibling() : position.CoordinatesForAppend();
         try
         {
-            var root = _workspace.Current?.RootDirectory;
-            references = node.Type != "WaveAnalyze" || root is null ? [] :
-                new WaveReferenceCatalog(Path.Combine(root, "wave-records", "references"))
-                    .List().Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            _transaction.InsertWithMapping(position.Phase, coordinates.ParentId,
+                coordinates.Slot, coordinates.Index, composed.Step, composed.Mapping);
+            RefreshMappings();
+            RefreshTree(composed.Step.Id);
+            StatusMessage = "已添加“" + composed.Step.Name +
+                "”，参数与资源绑定已写入测试用例草稿。请保存文档。";
         }
-        catch (Exception error) when (error is IOException or InvalidDataException or
-                                      UnauthorizedAccessException or ArgumentException)
+        catch (Exception error) when (IsEditorError(error))
+        { _dialogs.ShowError("无法添加步骤：" + error.Message); }
+    }
+
+    private async Task EditComposedStepAsync()
+    {
+        if (!CanEditSelectedStep || _selectedItem?.Step is not { } original) return;
+        IsBusy = true;
+        IReadOnlyList<MappingChoice> choices;
+        try { choices = await AvailableObjectsAsync(); }
+        finally { IsBusy = false; }
+        // Preserve specialist/legacy step editing without introducing another file model.
+        if (!StepUiCatalog.Choices.Any(x => x.Type == original.Type))
         {
-            StatusMessage = "参考波形索引不可读取：" + error.Message;
+            EditLegacyParameters(original);
             return;
         }
-        var result = _dialogs.EditParameters(node, targets, profiles, references,
-            Mappings.ToDictionary(x => x.Name, x => x.Kind, StringComparer.OrdinalIgnoreCase));
-        if (result is null) return;
-        Mutate(() =>
+        var composed = _dialogs.ComposeStep(choices, _transaction.Current.Mappings.ToArray(), original);
+        if (composed is null) return;
+        try
         {
-            var preview = new StepEditTransaction(_transaction.Current);
-            preview.ApplyProperties(node.Id, result.Value.Name, result.Value.Properties);
-            var issues = StepTreeValidator.ValidateTree(preview.Current, _catalog)
-                .Where(x => !x.Contains("unresolved asset", StringComparison.Ordinal)).ToArray();
-            if (issues.Length > 0) throw new ArgumentException(string.Join("\n", issues.Take(8)));
-            _transaction.ApplyProperties(node.Id, result.Value.Name, result.Value.Properties);
-        }, node.Id, "已应用步骤参数（尚未保存）");
+            _transaction.ReplaceWithMapping(original.Id, composed.Step, composed.Mapping);
+            RefreshMappings();
+            RefreshTree(original.Id);
+            StatusMessage = "已修改步骤“" + composed.Step.Name + "”（未保存）。";
+        }
+        catch (Exception error) when (IsEditorError(error))
+        { _dialogs.ShowError("无法应用步骤参数：" + error.Message); }
+    }
+
+    private void EditLegacyParameters(StepNode node)
+    {
+        var result = _dialogs.EditParameters(node, Mappings.Select(x => x.Name).ToArray());
+        if (result is null) return;
+        Mutate(() => _transaction.ApplyProperties(node.Id,
+            result.Value.Name, result.Value.Properties), node.Id, "已修改已有步骤参数");
     }
 
     private void Duplicate()
@@ -419,9 +428,18 @@ public sealed class TestEditorViewModel : BindableBase
                     step.Properties.GetValueOrDefault("equals", ""),
                 "Loop" => step.Properties.GetValueOrDefault("count", "") + " 次",
                 "Wait" => step.Properties.GetValueOrDefault("milliseconds", "") + " ms",
+                "Write" => step.Properties.GetValueOrDefault("target", "") + "  ←  " +
+                    step.Properties.GetValueOrDefault("value", ""),
+                "Read" or "WaitUntil" or "WaveStart" =>
+                    step.Properties.GetValueOrDefault("target", ""),
+                "WaveAnalyze" => step.Properties.GetValueOrDefault("profile", ""),
+                "Expect" => step.Properties.GetValueOrDefault("left", "") + " " +
+                    step.Properties.GetValueOrDefault("operator", "") + " " +
+                    step.Properties.GetValueOrDefault("right", ""),
                 _ => ""
             };
-            var caption = step.Name + (summary.Length > 0 ? " · " + summary : "");
+            var caption = step.Name + (summary.Length > 0 ? "  ·  " +
+                (summary.Length > 100 ? summary[..100] + "…" : summary) : "");
             var current = new StepTreeItem(StepTreeItemKind.Step, parent.Phase, caption,
                 parent, step, index: i);
             parent.Children.Add(current);

@@ -12,6 +12,14 @@ public sealed class TestEditorDialogs
         Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
         ?? Application.Current.MainWindow;
 
+    public StepCompositionResult? ComposeStep(IReadOnlyList<MappingChoice> choices,
+        IReadOnlyList<TestTargetMapping> existing, StepNode? original = null)
+    {
+        var dialog = new TestStepComposerDialog(choices, existing, original);
+        if (ActiveOwner is { IsLoaded: true } owner) dialog.Owner = owner;
+        return dialog.ShowDialog() == true ? dialog.Result : null;
+    }
+
     public StepParametersResult? EditParameters(StepNode step,
         IReadOnlyList<string>? mappedTargets = null,
         IReadOnlyList<string>? waveProfiles = null,
