@@ -24,6 +24,7 @@ public sealed class ProjectWorkspaceService
 {
     public const string ManifestFileName = "project.autotest-project.json";
     public const string TestProgramKind = "test-program";
+    public const string TestProjectKind = "test-project";
     public const string DbcKind = "dbc";
     public const string FirmwareKind = "firmware";
     public const string WaveKind = "wave";
@@ -381,6 +382,109 @@ public sealed class ProjectWorkspaceService
             Current = result.Context;
             CurrentChanged?.Invoke(this, EventArgs.Empty);
             return result.Session;
+        }
+        finally { _writeLock.Release(); }
+    }
+
+    /// <summary>New formal execution Project, holding references to existing Packages only.</summary>
+    public Task<AssetEntry> CreateTestProjectAsync(string name, CancellationToken ct = default)
+    {
+        ValidateResourceName(name);
+        return AddAssetAsync(TestProjectKind, name, ".prj.json",
+            TestProjectCodec.Encode(TestProjectDocument.Create(name)), ct);
+    }
+
+    public async Task<TestProjectEditorSession> OpenTestProjectEditorAsync(
+        AssetId id, CancellationToken ct = default)
+    {
+        var current = Current ?? throw new InvalidOperationException("请先打开工作空间。");
+        var asset = current.Definition.Assets.SingleOrDefault(x => x.Id == id &&
+            x.Kind == TestProjectKind)
+            ?? throw new ProjectDataException("PROJECT_PLAN_MISSING", "测试项目资源不存在。");
+        var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+        var bytes = await File.ReadAllBytesAsync(path, ct);
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        if (!string.Equals(hash, asset.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new ProjectDataException("PROJECT_PLAN_STALE", "测试项目文件与资源清单不一致。");
+        return new TestProjectEditorSession(current.Definition.Id, current.ManifestPath,
+            asset.Id, asset.Revision, asset.Name, path, hash, TestProjectCodec.Decode(bytes));
+    }
+
+    /// <summary>Transactional, content-hashed project-plan save without executing packages.</summary>
+    public async Task<TestProjectEditorSession> SaveTestProjectEditorAsync(
+        TestProjectEditorSession opened, TestProjectDocument document,
+        CancellationToken ct = default)
+    {
+        var bytes = TestProjectCodec.Encode(document);
+        if (document.Id != opened.Document.Id)
+            throw new ProjectDataException("PROJECT_PLAN_ID", "测试项目持久身份不允许改变。");
+        if (string.Equals(opened.FileSha256,
+            Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+            return opened;
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("工作空间已关闭。");
+            if (current.Definition.Id != opened.ProjectId ||
+                !string.Equals(current.ManifestPath, opened.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("PROJECT_PLAN_SWITCH", "工作空间已切换。");
+            var index = Array.FindIndex(current.Definition.Assets.ToArray(), x => x.Id == opened.AssetId);
+            if (index < 0) throw new ProjectDataException("PROJECT_PLAN_MISSING", "测试项目已被移除。");
+            var asset = current.Definition.Assets[index];
+            if (asset.Kind != TestProjectKind || asset.Revision != opened.AssetRevision ||
+                !string.Equals(asset.Sha256, opened.FileSha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("PROJECT_PLAN_CONFLICT", "测试项目版本已变化，请重新打开。");
+            foreach (var reference in document.Packages)
+            {
+                if (!current.Definition.Assets.Any(x => x.Id.Value == reference.PackageAssetId &&
+                    x.Kind == TestProgramKind && x.Revision == reference.PackageRevision &&
+                    string.Equals(x.Sha256, reference.PackageSha256, StringComparison.OrdinalIgnoreCase)))
+                    throw new ProjectDataException("PROJECT_PACKAGE_STALE",
+                        "测试用例资源或修订发生变化，请重新确认：" + reference.DisplayName);
+            }
+            await EnsureManifestUnchangedAsync(current, ct);
+            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            if (!string.Equals(await HashFileAsync(path, ct), opened.FileSha256,
+                StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("PROJECT_PLAN_FILE_CHANGED", "测试项目文件已被外部修改。");
+            var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            var backup = path + ".bak";
+            var manifestAttempted = false;
+            try
+            {
+                await File.WriteAllBytesAsync(temp, bytes, ct);
+                _ = TestProjectCodec.Decode(await File.ReadAllBytesAsync(temp, ct));
+                if (!string.Equals(await HashFileAsync(path, ct), opened.FileSha256,
+                    StringComparison.OrdinalIgnoreCase))
+                    throw new ProjectDataException("PROJECT_PLAN_FILE_CHANGED", "写入前测试项目文件变化。");
+                File.Replace(temp, path, backup);
+                var hash = await HashFileAsync(path, ct);
+                var verifiedDocument = TestProjectCodec.Decode(await File.ReadAllBytesAsync(path, ct));
+                var updatedAsset = asset with { Revision = checked(asset.Revision + 1), Sha256 = hash };
+                var next = (current.Definition with
+                {
+                    Assets = current.Definition.Assets.SetItem(index, updatedAsset)
+                }).WithRevision().Validate();
+                await EnsureManifestUnchangedAsync(current, ct);
+                manifestAttempted = true;
+                await ProjectRepository.SaveDefinitionAsync(next, current.ManifestPath, ct);
+                var reread = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct);
+                var manifestSha = await HashFileAsync(current.ManifestPath, ct);
+                Current = new OpenProjectContext(reread, current.ManifestPath, manifestSha);
+                CurrentChanged?.Invoke(this, EventArgs.Empty);
+                return new TestProjectEditorSession(reread.Id, current.ManifestPath,
+                    asset.Id, updatedAsset.Revision, asset.Name, path, hash, verifiedDocument);
+            }
+            catch
+            {
+                if (!manifestAttempted && File.Exists(backup) && File.Exists(path) &&
+                    string.Equals(await HashFileAsync(path, CancellationToken.None),
+                        Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+                    File.Copy(backup, path, overwrite: true);
+                throw;
+            }
+            finally { if (File.Exists(temp)) File.Delete(temp); }
         }
         finally { _writeLock.Release(); }
     }
