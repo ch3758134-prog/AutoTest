@@ -11,13 +11,17 @@
 - 历史 Git commit `f9f3f6d648a8391c1707c3688b9190eb06a3af57`（G3 内容批准归档）等可从当前远端查到。
 - 2026-11-09 新增 ADR/CR 分别位于 `engineering/decisions` 和 `engineering/change-requests`；这些**仅登记受控设计补录**，尚未走原生 SAEF 工作产品修订审批或 `eng.py check`。
 
-## 不能宣称 GitHub 已完全恢复的内容
+## 资产现状（2026-11-13 管理分支建立后）
 
-`engineering/control/assets.json` 登记了四份原始资产及 SHA-256，但它们的**原始字节目前未在仓库内**：两份 PCB 原理图 PDF、两份签发固件 ZIP。用户已经明确同意将**两份原理图 PDF** 作为 Git 正式资产上传，`SAEF/.gitignore` 已为两个准确路径放行；PDF 原始文件入库和远端复验完成之前仍标为 `PENDING_UPLOAD`。固件原始 ZIP 和源码另走冻结版本管理方案；登记哈希不等于已备份文件。
+本目录由 `main@e34fc57b3c9e915545c50ec02d7566b92c50a122` 导入 `Project_Management`，并已在该分支 Git 树回读确认：
 
-历史独立 SAEF 工具 `eng.py`、FRAMEWORK/catalog 和获批 HTML/原始 ZIP 的完整字节，**未在当前仓库树中查见**。故 GitHub 当前可恢复的是**已提交的正式文本记录 + HOST 源码和 Git 历史**，不能承诺“包含所有原始工程资产、SAEF 工具和现场日志的完整归档”。
+- 两份原理图 PDF 已存在于 `engineering/assets/hardware/`，其文件大小和冻结 SHA-256 可在 `engineering/control/assets.json` 中查找。本次确认了远端 Git 文件的存在，但**没有重新下载 PDF 独立计算 SHA-256**；因此不把本次目录核查冒充完整恢复演练。
+- 两份冻结固件源子工程 ZIP 以 `engineering/assets/firmware/chunks/` 下的原始二进制分片保留，有恢复说明与登记的原 ZIP SHA-256；可编辑源码已分别落入同仓 `Main_Control`（`Project/`）和 `Key_Sim`（`WS/`）分支。这不证明现场板卡当前烧录镜像的身份。
+- `engineering/control/assets.json` 中 ZIP 的原始逻辑路径仍是冻结资产身份标识；实际远端以分片方式保存，恢复前必须按说明拼接并校验。
+- `engineering/control/ASSET_AND_RECOVERY_STATUS_20261109.md` 及 `engineering/assets/RECOVERY_EVIDENCE_20261112.md` 是各自日期的审计快照，不能把其当时的“尚未上传”叙述视作当前 Git 状态。
+- 历史 SAEF `eng.py`、FRAMEWORK/catalog、全部原始批准 HTML/ZIP、现场日志与真实 Windows 端到端验证仍未确认完整恢复；**不能据此宣布整个项目档案已完整备份或 Gate PASS**。
 
-见 `engineering/control/ASSET_AND_RECOVERY_STATUS_20261109.md`。原始资产进入安全、可恢复的存储前，不要把旧本地原始文件全部不可逆删除；现场日志也应独立保存。软件本体可重新克隆，资产缺口不阻止已准入的 DEVICE 软件验证。
+使用时，当前正式主控/按键**研发**来源是两条固件分支；此处的原件及原理图负责工程身份追溯、设计输入和治理。新管理 AI 首先阅读 `../tools/project-control-v2/START_HERE.md`，不能因为从 `main` 拆出分支就推断审批状态发生了变化。
 
 ## 源码与设计责任
 
