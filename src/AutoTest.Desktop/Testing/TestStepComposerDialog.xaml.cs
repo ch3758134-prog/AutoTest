@@ -87,6 +87,7 @@ public partial class TestStepComposerDialog : Window
     private bool _ready;
     private TestActionOption? _selected;
     private MappingChoice? _selectedTarget;
+    private readonly List<MappingChoice> _allTargets = [];
     private uint _selectedMask;
 
     public ObservableCollection<TestActionOption> FilteredActions { get; } = new();
@@ -180,8 +181,10 @@ public partial class TestStepComposerDialog : Window
 
     private void BuildTargets(TestActionOption action)
     {
+        _allTargets.Clear();
         AvailableTargets.Clear();
         _selectedTarget = null;
+        TargetSearch.Text = "";
         TargetPanel.Visibility = string.IsNullOrEmpty(action.TargetCategory)
             ? Visibility.Collapsed : Visibility.Visible;
         RawCanPanel.Visibility = DbcCanPanel.Visibility =
@@ -197,19 +200,19 @@ public partial class TestStepComposerDialog : Window
             "wave" => mapping.Kind == TestTargetKind.WaveProfile,
             _ => false
         };
-        foreach (var item in _catalog.Where(x => Eligible(x.Mapping))) AvailableTargets.Add(item);
+        foreach (var item in _catalog.Where(x => Eligible(x.Mapping))) _allTargets.Add(item);
         if (action.TargetCategory == "can")
-            AvailableTargets.Add(new MappingChoice("CAN1 / 原始报文（无需 DBC）",
+            _allTargets.Add(new MappingChoice("CAN1 / 原始报文（无需 DBC）",
                 new TestTargetMapping("原始 CAN1", TestTargetKind.RawCan, default, 0, "",
                     BusRole.DutCan, 0)));
         else if (action.TargetCategory == "button")
-            AvailableTargets.Add(new MappingChoice("KEY_SIM / 直接操作 20 Key（高级）",
+            _allTargets.Add(new MappingChoice("KEY_SIM / 直接操作 20 Key（高级）",
                 new TestTargetMapping("原始 KEY_SIM 20 Key", TestTargetKind.RawKey,
                     default, 0, "", BusRole.KeypadCan)));
 
         foreach (var mapping in _boundMappings.Where(Eligible))
-            if (!AvailableTargets.Any(x => x.Mapping == mapping))
-                AvailableTargets.Add(new MappingChoice("已绑定 / " + mapping.Name,
+            if (!_allTargets.Any(x => x.Mapping == mapping))
+                _allTargets.Add(new MappingChoice("已绑定 / " + mapping.Name,
                     mapping));
         TargetHint.Text = action.TargetCategory switch
         {
@@ -222,21 +225,40 @@ public partial class TestStepComposerDialog : Window
         };
         var oldTargetName = _editing?.Properties.GetValueOrDefault(
             action.TargetCategory == "wave" ? "profile" : "target", "");
-        // Editing must keep the exact mapping revision/identity, never silently
-        // replace it with a newer catalog resource sharing the same display name.
+        // A pinned mapping must be preferred over a catalog object with the same
+        // display name but a newer asset revision.
         var originallyBound = _boundMappings.FirstOrDefault(x =>
             string.Equals(x.Name, oldTargetName, StringComparison.OrdinalIgnoreCase));
-        var preferred = originallyBound is null ? null :
-            AvailableTargets.FirstOrDefault(x => x.Mapping == originallyBound);
-        preferred ??= AvailableTargets.FirstOrDefault(x => x.Mapping.Name == oldTargetName);
-        TargetPicker.SelectedItem = preferred ?? AvailableTargets.FirstOrDefault();
+        ApplyTargetFilter("", originallyBound, oldTargetName);
         if (originallyBound is not null &&
             !_catalog.Any(x => x.Mapping == originallyBound) &&
             originallyBound.Kind is not (TestTargetKind.RawCan or TestTargetKind.RawKey or
                 TestTargetKind.Ignition))
             TargetHint.Text += "  注意：原步骤绑定的资源版本不在当前 TCF/DBC 中，"
                 + "软件不会自动换版本。请确认并显式重新选择有效对象。";
+    }
+
+    private void TargetSearch_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (!_ready || TargetPicker is null || _selected is null) return;
+        ApplyTargetFilter(TargetSearch.Text.Trim(), _selectedTarget?.Mapping);
+    }
+
+    private void ApplyTargetFilter(string query, TestTargetMapping? preferredMapping,
+        string? preferredName = null)
+    {
+        AvailableTargets.Clear();
+        foreach (var item in _allTargets.Where(x =>
+            x.Label.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            x.Mapping.Name.Contains(query, StringComparison.OrdinalIgnoreCase)))
+            AvailableTargets.Add(item);
+        var preferred = preferredMapping is null ? null :
+            AvailableTargets.FirstOrDefault(x => x.Mapping == preferredMapping);
+        preferred ??= AvailableTargets.FirstOrDefault(x => x.Mapping.Name == preferredName);
+        TargetPicker.SelectedItem = preferred ?? AvailableTargets.FirstOrDefault();
         UpdateTarget();
+        if (AvailableTargets.Count == 0)
+            TargetHint.Text = "没有匹配的对象。请调整搜索词，或先在工程中导入相应 DBC / 功能配置。";
     }
 
     private void TargetPicker_Changed(object sender, SelectionChangedEventArgs e)

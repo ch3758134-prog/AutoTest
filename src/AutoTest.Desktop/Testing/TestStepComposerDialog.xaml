@@ -47,6 +47,9 @@
       <TextBox x:Name="NameInput" Margin="0,0,0,15"/>
       <StackPanel x:Name="TargetPanel" Margin="0,0,0,13">
        <TextBlock Text="操作对象" FontWeight="SemiBold" Margin="0,0,0,6"/>
+       <TextBox x:Name="TargetSearch" TextChanged="TargetSearch_Changed"
+                ToolTip="搜索 DBC、报文名称、CAN ID、信号或已配置按键"
+                Margin="0,0,0,7"/>
        <ComboBox x:Name="TargetPicker" ItemsSource="{Binding AvailableTargets}"
                  DisplayMemberPath="Label" MinHeight="33"
                  SelectionChanged="TargetPicker_Changed"/>
