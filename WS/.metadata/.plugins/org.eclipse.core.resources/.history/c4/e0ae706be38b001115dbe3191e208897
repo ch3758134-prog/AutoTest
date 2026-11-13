@@ -1,0 +1,137 @@
+//#include "sys_include.h"
+//
+//
+//volatile uint8_t adc_conversion_complete = 0;// ����ADCת����ɱ�־λ
+//static Drv_Adc_State_Typedef ADC_CurState = DRV_ADC_Disable_And_Low_Power;
+//static Drv_Adc_Sample_Mode   ADC_CurMode;
+//const  u8 Adc_channel_select[DRV_ADC_DATA_LENGTH] = {0,1,2,3,4,5,6};
+///*********************************************************************************************
+//*������    :
+//*����      :AD�жϴ��?��
+//*����      :
+//*����      :
+//*��ע      :
+//*����      :
+//**********************************************************************************************/
+//ISR(AD1_Interrupt)
+//{
+//	// ��ȡADC���
+//	u16 adc_value = (u16)(ADCRH << 8) | ADCRL;
+//	// ���ñ�־λ����ʾ�����׼����
+//	adc_conversion_complete = 1;
+//	// ����жϱ�־λ
+//	(void)ADCRL;
+//	(void)ADCRH;
+//	// ת����ɺ�ת��ֹͣ״̬
+//	ADC_CurState = DRV_ADC_STOP;
+//	return;    
+//}
+//
+//
+///*********************************************************************************************
+//*������    :
+//*����      :ADC������ֹͣ
+//*����      :vState:  DRV_ADC_START-��ʼ����
+//                     DRV_ADC_STOP-ֹͣ����ͬʱAdc����͹���
+//*����      :
+//*��ע      :
+//*����      :
+//**********************************************************************************************/
+//void Drv_Adc_Set_State(Drv_Adc_State_Typedef vState) 
+//{
+//   ADC_CurState = vState;
+//   if(ADC_CurState == DRV_ADC_Enable) 
+//   {
+//	 ADCSC1 = 0x60;//adģ��ʹ��
+//   }
+//   else if(ADC_CurState == DRV_ADC_Disable_And_Low_Power) 
+//   {
+//     ADCSC1 = 0x1f;//adģ���ֹ
+//   }
+//}
+///*********************************************************************************************
+//*������    :
+//*����      :��ͨ�� ADC����
+//*����      : veAdcChannel��ADͨ�� 0~11 ,pDrvAdcValue:����ֵ���λ��
+//*����      : ERR_BUSY��ADͨ������æ RR_OK������OK
+//*��ע      :
+//*����      :
+//**********************************************************************************************/
+// Drv_Std_ReturnType Drv_Adc_Get_One(Drv_Adc_Channel_TypeDef vDrvAdcChannel,u16 *pDrvAdcValue)
+//{
+//	 // ���ADC��ǰ���ڽ��ú͵͹���״̬�����ش�����ERR_DISABLED
+//	     if (ADC_CurState == DRV_ADC_Disable_And_Low_Power)
+//	         return ERR_DISABLED;
+//	     // ���ADC��ǰ��æ�����ش�����ERR_BUSY
+//	     if (ADC_CurState == DRV_ADC_BUSY)
+//	         return ERR_BUSY; 
+//	     
+//	     // ����ADC״̬Ϊæµ
+//	     ADC_CurState = DRV_ADC_BUSY;
+//	     // ����ADC����ģʽΪ���β���
+//	     ADC_CurMode = DRV_ADC_Sample_Single;
+//	     // ����ADCת��������ͨ��ΪvDrvAdcChannel
+//	     ADCSC1 = 0x40 | (u8)vDrvAdcChannel;  
+//
+//	     // �ȴ�ADCת�����
+//	     while (ADC_CurState != DRV_ADC_STOP);
+//	     // ����־λ
+//		 adc_conversion_complete = 0;
+//		 // ��ADCת�����洢��pDrvAdcValueָ����ڴ��ַ
+//		 *pDrvAdcValue = (u16)(ADCRH << 8) | ADCRL;   
+//		 // ���ش�����ERR_OK����ʾ�����ɹ�
+//		 return ERR_OK;         
+//} 
+//
+///*********************************************************************************************
+//*������    :
+//*����      : ��ͨ��ADC����ɼ�������
+//*����      : Adc_Inf_t
+//*����      : ERR_BUSY��ADͨ������æ RR_OK������OK
+//*��ע      :
+//*����      :
+//**********************************************************************************************/
+//
+// Drv_Std_ReturnType Drv_Adc_Get_All(Drv_Adc_Data_TypeDef  *pDrvAdcValue)
+//{
+//  u8 i = 0;
+//  u16 temp = 0;
+//  Drv_Std_ReturnType Err_State; 
+//  if(ADC_CurState == DRV_ADC_Disable_And_Low_Power)//ad���ڽ���
+//  return ERR_DISABLED;
+//  if(ADC_CurState == DRV_ADC_BUSY)//AD��æ
+//  return ERR_BUSY; 
+//  for(i=0; i <DRV_ADC_DATA_LENGTH ;i++)  //�����ȡ����ͨ�����
+//  {
+//    Err_State = Drv_Adc_Get_One((Drv_Adc_Channel_TypeDef)Adc_channel_select[i],&temp);//ָ��ͨ��ADC�ɼ����
+//    if(Err_State == ERR_OK)
+//      pDrvAdcValue->Data[i] = temp;
+//    else
+//      return Err_State; //AD����ֱ�ӷ��ش���״̬��   
+//  }
+//    return ERR_OK;        
+//}
+//
+///*********************************************************************************************
+//*������    :
+//*����      :AD��ʼ��
+//*����      :
+//*����      :
+//*��ע      :
+//*����      :
+//**********************************************************************************************/
+//void Drv_Adc_Init(Drv_Adc_Sample_Mode vAdcSampleMode) 
+//{
+//  /* APCTL1: AADPC0-6=1 */
+//  setReg8Bits(APCTL1, 0x7f);            
+//  /* APCTL2: ADPC9=1,ADPC8=1 */
+//  setReg8Bits(APCTL2, 0x03); 
+//   setReg8(ADCSC1, 0x1F);//ADת�����ر�
+//   setReg8(ADCSC2, 0x00);         //ת��δ���������ܽ�ֹ     
+//	setReg8(ADCCFG, 0xB4); //  12λģʽ��2��Ƶ
+//  // setReg8(ADCCFG, 0x94); //  12λģʽ������Ƶ
+//   clrReg8Bits(ADCSC1, 0x20);//ADת�������������������ת��
+//   ADC_CurMode  = vAdcSampleMode;//(���λ��β���)
+//   ADC_CurState = DRV_ADC_Enable;   //ʹ��
+//}
+//

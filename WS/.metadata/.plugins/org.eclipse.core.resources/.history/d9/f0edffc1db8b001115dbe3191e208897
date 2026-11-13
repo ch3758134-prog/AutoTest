@@ -1,0 +1,126 @@
+#include "sys_include.h"
+
+
+
+
+u16 last_period,last_ch0_duty,last_ch1_duty;
+
+
+
+//功能:设置TPM1的CH0和CH1的周期和占空比
+//参数:period:0-0xFFFF 对应 周期0-8191.875(65535*0.125)us
+//	   duty  :0-0xFFFF 对应 0-100%
+//注:pwm时钟为8MHZ(0.125us),
+//   每次更改占空比后，mcu不会立即写入对应寄存器,只会在计数值=0时(即当前周期完成后)更新寄存器的值
+void Set_PWM_Prd_Dty(u16 period,u16 dty_ch0,u16 dty_ch1)
+{
+#if 1
+	float duty;
+	u32 temp;
+
+	TPM1MOD = period;  //PER
+	last_period = period;
+
+	if(dty_ch0==100)
+	{
+		TPM1C0V = period + 1;
+	}
+	else
+	{
+		temp = (u32)period*dty_ch0; 
+		duty = (float)temp*0.01;
+		TPM1C0V = (u16)duty;
+	}
+	
+	last_ch0_duty = dty_ch0;
+	
+	if(dty_ch1==100)
+	{
+		TPM1C1V = period + 1;  //只有该寄存器的值大于周期才能实现占空比百分之百
+	}
+	else
+	{
+		temp = (u32)period*dty_ch1; 
+		duty = (float)temp*0.01;
+		TPM1C1V = (u16)duty;
+	}
+	last_ch0_duty = (u16)dty_ch1;
+	
+#else
+	u32 d_tmp;	  
+
+	TPM1MOD = period;  //PER
+	last_period = period;
+
+	
+	d_tmp = (u32)period * (u32)dty_ch0;
+	d_tmp += 32768;  //四舍五入
+	d_tmp = d_tmp /65536;
+	TPM1C0V = (u16)d_tmp; 
+	last_ch0_duty = (u16)d_tmp;
+
+	
+	d_tmp = (u32)period * (u32)dty_ch1;
+	d_tmp += 32768;  //四舍五入
+	d_tmp = d_tmp /65536;
+	TPM1C1V = (u16)d_tmp; 
+	last_ch1_duty = (u16)d_tmp;
+	#endif
+}
+
+
+
+//功能:pwm初始化
+void PWM_INIT(void)
+{	
+	TPM1SC = 0x08;   //禁止溢出中断  非中央对齐pwm(CPWMS=0)  时钟:busclock(8MHZ)  分频系数:1 
+
+	//TPM1C0SC = 0x28; //禁止ch0中断 边沿对齐pwm(MSnB:A=10b,ELSnB:A=10b)  占空比内的电平为1
+	//TPM1C1SC = 0x28; //禁止ch1中断 边沿对齐pwm  占空比内的电平为1
+
+	TPM1C0SC = 0x24; //禁止ch0中断 边沿对齐pwm  (MSnB:A=10b,ELSnB:A=01b)占空比内的电平为0
+	TPM1C1SC = 0x24; //禁止ch1中断 边沿对齐pwm  占空比内的电平为0
+	
+	TPM1CNT = 0;  //计数值清零
+	
+	PTDDD = 0xFF;  //输出
+	PTDD = 0x00; 
+	Set_PWM_Prd_Dty(0,0,0);  //初始周期和占空比设置为0
+	
+}
+
+
+//功能:使能PWM功能
+//注:  由于每次操作TPM1CxSC_ELSxB后，周期和占空比都会被自动清零，
+//	   所以每次使能后需要重新设置周期占空比
+void PWM_Enable(void)  
+{
+	TPM1C0SC_ELS0A= 1;
+	TPM1C1SC_ELS1A= 1;  //每次设置完该位，占空比
+
+	//TPM1C0SC_ELS0B= 1;
+	//TPM1C1SC_ELS1B= 1;
+	TPM1CNT = 0;  //计数值清零
+	Set_PWM_Prd_Dty(last_period,last_ch0_duty,last_ch1_duty);
+	
+}
+
+void PWM_Disable(void)
+{
+	TPM1C0SC_ELS0A= 0;
+	TPM1C1SC_ELS1A= 0;
+	
+	//TPM1C0SC_ELS0B= 0;
+	//TPM1C1SC_ELS1B= 0;
+	TPM1CNT = 0;  //计数值清零	
+}
+
+
+
+
+
+
+
+
+
+

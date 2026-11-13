@@ -1,0 +1,27 @@
+#ifndef _DRV_DAC_H_
+#define _DRV_DAC_H_
+
+
+#define DAC_Normal              0x0000  //	DAC正常输出	
+#define DAC_Output_1K_To_GND    0x1000  //	DAC输出1K至GND	
+#define DAC_Output_100K_To_GND  0x2000  //	DAC输出100K至GND	
+#define DAC_Output_High_Z       0x3000  //	DAC输出高阻	
+
+
+
+#define DAC_DATA_CODE_MASK  0x1FFF
+#define REF_VOL  1000   //参考电压3.3V
+
+#define DAC_CS_High()    PTED_PTED0 = 1
+#define DAC_CS_Low()     PTED_PTED0 = 0
+
+#define DAC_CLK_High()    PTED_PTED3 = 1
+#define DAC_CLK_Low()     PTED_PTED3 = 0
+
+#define DAC_IN_HI()			PTED_PTED4 = 1
+#define DAC_IN_LOW()		PTED_PTED4 = 0
+
+
+void EAL_DAC_Set_Out_Vol(u16 vol);
+
+#endif

@@ -1,0 +1,36 @@
+#include "sys_include.h"
+ #include "Driver_Gpio.h"
+
+extern volatile u8 canMessageReceivedFlag;
+extern CanMsgInf CanMsg;
+
+ void main(void)
+  {
+      u8 tx1[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C};
+      u8 tx2[8] = {0x00, 0x20, 0x00, 0x32, 0x00, 0x00, 0x00, 0x00};
+
+      sys_clk_Init();
+      PE_low_level_init();
+      Drv_Gpio_Init();
+      Timer_1ms_Init();
+      Drv_CAN_Init();
+      Drv_CAN_Enable();
+      
+      Drv_Gpio_AllKeyHigh();
+      
+      KEY10_OFF();
+      KEY12_OFF();
+
+      for (;;) {
+//    	  if(timer_100ms_flag)
+//    	  {
+//    		  Drv_CAN_SendFrame(0x18FFF327, rsp_data);
+//    	  }
+//    	  Drv_CAN_SendFrame(0x180, rsp_data);
+//    	  
+//          if (canMessageReceivedFlag) {
+//              canMessageReceivedFlag = 0;
+//              
+//          }
+      }
+  }

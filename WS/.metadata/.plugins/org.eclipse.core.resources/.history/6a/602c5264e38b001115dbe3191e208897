@@ -1,0 +1,64 @@
+///*
+// * Logic.h
+// *
+// *  Created on: Jul 5, 2019
+// *      Author: tty0
+// */
+//
+//#ifndef LOGIC_H_
+//#define LOGIC_H_
+//
+//
+//
+//
+//
+//typedef enum{
+//    work_idle = 0,                    // ����״̬
+//    work_check_epb =1,				  // ���epb��Դ
+//    work_check_ign =2 ,         	  // ���ign��ѹ
+//    work_set_park = 3,                // ��̬�ֶ�פ��
+//    work_set_release = 4,             // ��̬�ֶ��ͷ�
+//    work_anti_forget_park = 5,        // ������פ����Ϩ��פ����
+//    work_ramp_start = 6,              // �µ��𲽸������Զ��ͷţ�
+//    work_emergency_brake = 7,         // Ӧ���ƶ�����
+//    work_autohold_park = 8,     	  // �Զ�פ��-1 
+//    work_autohold_release = 9,        // �Զ��ͷ�-2 
+//    work_autohold_anti_slip = 10,     // �Զ�פ��-3 (������)
+//    work_fault_increase_park = 11,    // ��������פ��
+//    work_child_lock = 12,             // ͯ����
+//    work_low_voltage_release = 13,    // ��ѹ�����ͷ�
+//    work_maintenance_mode = 14,       // ά��ģʽ
+//    work_external_command_control = 15,// �ⲿָ�����
+//    work_diagnostic_test = 16,        // ������ϲ���
+//    work_wait_next = 17               // �ȴ���һ������״̬
+//} _gWork_Status;
+//
+//
+//extern  _Pcs_AdcInfor  Pcs_AdcInfor;
+//#define LimtLow_24v				1800
+//#define LimtHi_24v				2600
+//#define LimtLow_Key				1600
+//#define LimtHi_Key				2500
+//#define LimtLow_PRESSPOW		375
+//#define LimtHi_PRESSPOW			625
+//#define LimtLow_IGN    			1500
+//#define limtHi_IGN     			2800
+//#define limtLow_BUAD250k		800
+//#define limtHi_BUAD250k			1400
+//#define limtLow_BUAD500k		2000
+//#define limtHi_BUAD500k			2600
+//
+//
+//
+//#define get_DevicePower				Pcs_AdcInfor.AD_Bat24V
+//#define get_EPBPower				Pcs_AdcInfor.AD_EPB_POW
+//#define get_EPBPressPow				Pcs_AdcInfor.AD_PressPow
+//#define get_EPBKeyPow				Pcs_AdcInfor.AD_KeyPow
+//#define get_EPBPress1				Pcs_AdcInfor.AD_Press1
+//#define get_EPBPress2				Pcs_AdcInfor.AD_Press2
+//#define get_EPBIgn				    Pcs_AdcInfor.AD_IGN
+//#define get_EPBBaud					Pcs_AdcInfor.AD_BAUD
+//#define get_EPBVcc				    Pcs_AdcInfor.AD_VCC5V
+//
+//void Logic_Task_100ms(void);
+//#endif /* LOGIC_H_ */

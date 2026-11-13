@@ -1,0 +1,66 @@
+#ifndef _Sys_diag_H_
+#define _Sys_diag_H_
+
+
+// extern void record_fault_fun(void);
+
+
+//extern void can_online_test(void);
+
+extern void diag_Init(void);
+extern void turn_on_ack_test(void);
+extern u8 Can_bus_stata(void);
+extern void Do_diag(void);
+extern u8 Get_Eol_stataus(void);
+extern  void Write_diag_eeprom(void);
+extern u8 Diag_delay_Vover(void) ;
+extern void Diag_delay_set(void) ;
+
+
+extern void SendTimeCnt_set(u8 time) ;
+#define Senser_ass_fault					Sys_fault_code[0]
+#define Senser_IC_fault						Sys_fault_code[1] 
+#define Bat_H_fault				    	  Sys_fault_code[2]
+#define Bat_L_fault					      Sys_fault_code[3]
+
+#define Sensor_Unit_fault					Sys_fault_code[4]
+#define BUSoff_fault				      Sys_fault_code[5]
+#define EOL_stataus						    Sys_fault_code[6]
+//#define BCM_fault						      Sys_fault_code[7]
+//#define IGN_fault                 Sys_fault_code[8]
+
+
+
+//Senser_ass_fault;	1 17B0 00
+//Senser_IC_fault;	2 17C0 00
+//Bat_H_fault;	 3      17B1 00
+//Bat_L_fault;	 4      17B2 00
+	
+//Sensor_Unit_fault;	 5      17D0 00	
+                              
+//BUSoff_fault;	  6           C073 00
+//EOL_stataus;	 7            17E0 00
+
+
+ #define BATV_low_threshold   1191 //8V
+ #define BATV_over_threshold  2681//18V
+
+
+ #define BATV_CANlow_threshold   1415 //2458//1415 //9.5V = 1.727272  =   16.5V  = 3   =  2458
+ #define BATV_CANover_threshold  2458//1415// 2458   16.5V
+ 
+ #define BATV_low_start_send   1117 //7.5  * 149
+ #define BATV_over_start_send   2831//19
+ 
+ #define BATV_low_stop_send   1043 //7
+ #define BATV_over_stop_send   2979//20
+ 
+ #define BATV_low_shutdown   1100   //6.5
+ 
+ #define IGN_low_shutdown  800   //6.0 
+ 
+//BCM_fault;	  8
+//IGN_fault;	 9
+
+////////////////////////////////////////////
+#endif  // ifndef _GPT1_H_

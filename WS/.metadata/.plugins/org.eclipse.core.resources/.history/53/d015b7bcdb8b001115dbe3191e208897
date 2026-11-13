@@ -1,0 +1,94 @@
+/*
+ * Drv_beep.c
+ *
+ *  Created on: Jul 5, 2019
+ *      Author: tty0
+ */
+#include "sys_include.h"
+#include "Drv_beep.h"
+_Buzz_Atrri gBeepinfor;
+
+u8 Beep_Param1;
+u8 Beep_Param2;
+u8 Beep_Param3;
+u8 Beep_Param4;
+u8 Beep_Param5;
+u8 Beep_Param6;
+
+void Set_Beep_Param(u8 param1,u8 param2,u8 param3,u8 param4,u8 param5,u8 param6,u8 times)
+{
+	if(gBeepinfor.busy_flag)
+		return;
+	gBeepinfor.busy_flag =1;
+	gBeepinfor.loop_times = times;
+	gBeepinfor.first_on = param1;
+	gBeepinfor.first_off = param2;
+	gBeepinfor.second_on = param3;
+	gBeepinfor.second_off = param4;
+	gBeepinfor.three_on = param5;
+	gBeepinfor.three_off = param6;
+	
+	Beep_Param1 = param1;
+	Beep_Param2 = param2;
+	Beep_Param3 = param3;
+	Beep_Param4 = param4;
+	Beep_Param5 = param5;
+	Beep_Param6 = param6;
+}
+void Beep_Task_10ms(void)
+{
+	if(gBeepinfor.busy_flag)
+	{
+		if(gBeepinfor.loop_times)
+		{
+			if(gBeepinfor.first_on)
+			{
+				gBeepinfor.first_on --;
+				Buzz_on();
+			}
+			else if(gBeepinfor.first_off)
+			{
+				gBeepinfor.first_off -- ;
+				Buzz_off();
+			}
+			else if(gBeepinfor.second_on)
+			{
+				gBeepinfor.second_on --;
+				Buzz_on();
+			}
+			else if(gBeepinfor.second_off)
+			{
+				gBeepinfor.second_off --;
+				Buzz_off();
+			}
+			else if(gBeepinfor.three_on)
+			{
+				gBeepinfor.three_on -- ;
+				Buzz_on();
+			}
+			else if(gBeepinfor.three_off)
+			{
+				gBeepinfor.three_off -- ;
+				Buzz_off();
+			}
+			else
+			{
+				gBeepinfor.loop_times --;
+				Buzz_off();
+				if(gBeepinfor.loop_times)
+				{
+					gBeepinfor.first_on = Beep_Param1;
+					gBeepinfor.first_off = Beep_Param2;
+					gBeepinfor.second_on = Beep_Param3;
+					gBeepinfor.second_off = Beep_Param4;
+					gBeepinfor.three_on = Beep_Param5;
+					gBeepinfor.three_off = Beep_Param6;
+				}
+			}
+		}
+		else
+		{
+			gBeepinfor.busy_flag =0;
+		}
+	}
+}

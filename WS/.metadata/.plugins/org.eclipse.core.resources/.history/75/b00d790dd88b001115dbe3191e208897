@@ -1,0 +1,344 @@
+/*
+ * Logic.c
+ *
+ *  Created on: Jul 5, 2019
+ *      Author: tty0
+ */
+#include "sys_include.h"
+#include "Logic.h"
+#include "EAL_CAN.h"
+#include "EAL_DAC.H"
+
+_gWork_Status Work_Sta=0;
+
+
+extern void delay(u16 count);
+
+// 添加电压常量定义
+#define EXHAUST_VOL 800  // 对应驻车压力信号
+#define INTAKE_VOL  200  // 对应释放压力信号
+//#define TEST_VOL 
+
+void Logic_Task_100ms(void)
+{
+    static u8 cnt_24v, cnt_ign, cnt_park, cnt_reles, cnt_ramp, cnt_autopark, cnt_autoreles, cnt_forgetpark, cnt_antislip,
+    cnt_emerbrak80,cnt_emerbrak60;// 定义静态变量，用于计数
+    u8 t_epb_24v, t_epb_ign; // 定义标志位，用于存储电源状态
+    
+			switch (Work_Sta) // 根据工作状态进行切换,初始化默认为0，则默认是空闲状态
+			{
+			
+				case work_idle://空闲状态
+					
+					cnt_24v++;
+					
+					if(get_DevicePower <= LimtHi_24v && get_DevicePower >= LimtLow_24v)
+					{
+						t_epb_24v = 1;
+						
+					}	
+					else
+					{
+						t_epb_24v = 0;
+					}
+					if(cnt_24v >=3  &&	t_epb_24v == 1)
+					{
+						cnt_24v =0;
+						
+						Work_Sta = work_check_ign;
+					}	
+					break;
+					
+				case work_check_ign:  //检测IGN是否上电
+				 	PARK_NC_SW_OFF();	//驻车按键关
+				 	RELE_NC_SW_OFF();	//释放按键关
+				 	EPB_MODE_NO_OFF();	//自动按键关
+				    SOL1_EN_OFF();		//驻车阀关
+				    SOL2_EN_OFF();		//释放阀关
+				    cnt_ign++;
+					if (get_EPBIgn<= limtHi_IGN && get_EPBIgn >= LimtLow_IGN) // 如果IGN上电
+				    {
+						t_epb_ign =1;
+				    }
+					else
+					{
+						t_epb_ign =0;
+					}
+					if(cnt_ign >=3  &&	t_epb_ign == 1)
+					Work_Sta = work_set_park; // 切换到设置驻车状态
+					
+					if(cnt_ign >=3  &&	t_epb_ign == 0)
+					Work_Sta =work_anti_forget_park;//切换到遗忘驻车状态
+					
+					break;
+	
+//	    	    case work_check_epb: // 检查EPB电源状态
+//	
+//	    	    	if (get_EPBKeyPow <= LimtHi_Key && get_EPBKeyPow >= LimtLow_Key) // 如果EPB按键电源24V在限制范围内
+//	    	    		t_epb_key = 1; // 设置标志位
+//	    	        else
+//	    	        	t_epb_key = 0;
+//	
+//	//    	        if (gEPBPressPow <= LimtHi_5v && gEPBPressPow >= LimtLow_5v) // 如果EPB压力电源5v在限制范围内
+//	//    	            t_epb_5v = 1; // 设置标志位
+//	//    	        else
+//	//    	            t_epb_5v = 0;
+//	//
+//	    	        if (t_epb_24v == 1 && t_epb_key == 1 ) // 如果所有电源状态都正常
+//	    	        	Can_Rx_OK = 1;
+//	    	        	Work_Sta = work_check_ign; // 切换到检测ign状态
+//	
+			 
+				case work_set_park: // 设置驻车状态
+								
+						cnt_park++; 		//计数器加1
+						if (cnt_park >= 3 ) // 如果计数器达到3 
+						{
+							
+							//发送轮速报文
+							t_Wheel_Speed[2]=0x7D;
+							t_Wheel_Speed[3]=0x7D;
+							t_Wheel_Speed[4]=0x7D;
+							t_Wheel_Speed[5]=0x7D;
+							
+							// 发送车速为0的报文
+							t_Vehicle_Speed[2]=0x00;
+							PARK_NO_SW_ON();	//驻车按键开
+							SOL1_EN_ON();		//驻车阀开
+							EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+							
+						}
+						if(cnt_park >5)
+						{
+							cnt_park = 0; // 计数器清零
+							Work_Sta = work_set_release; // 切换到设置释放状态
+						}
+				
+					break;
+			
+				case work_set_release: // 设置释放状态
+					
+
+					PARK_NC_SW_OFF();//驻车按键关
+					SOL1_EN_OFF();		//驻车阀关
+					
+					cnt_reles++; // 计数器加1
+					if (cnt_reles >= 3) // 如果计数器达到3
+					{
+						//发送制动踏板报文(制动踏板踩下)
+						t_BrakeSta[0]=0X40;
+						//发送储气罐压力报文(800kpa)
+						t_Tank_Pressure[0]=0X50;
+						t_Tank_Pressure[1]=0X50;
+						
+						RELE_NO_SW_ON();//释放按键开
+						SOL2_EN_ON();
+						EAL_DAC_Set_Out_Vol(INTAKE_VOL);
+
+					}
+					if(cnt_reles >5)
+					{
+						cnt_park = 0; // 计数器清零
+						Work_Sta = work_idle;
+						//Work_Sta = work_autohold_park;//切换到自动驻车状态	
+					}
+					break;		
+					
+				
+				case work_autohold_park: // 自动驻车状态
+					
+					RELE_NC_SW_OFF();	//释放按键关
+					SOL2_EN_OFF();
+					
+					EPB_MODE_NO_ON();
+					cnt_autopark++; // 计数器加1
+					if (cnt_autopark >= 3) // 如果计数器达到3
+					{
+						 
+						// 发送车速报文(0)
+						t_Vehicle_Speed[2]=0x00;
+						//Drv_CAN_SendFrame(Can_Speed_ID,t_Vehicle_Speed1);
+						//发送加速踏板报文(油门开度0%)
+						t_Accelerator[1]=0x00;
+						t_Gear[3]=0X7F;//挡位非空档
+						//发送制动踏板报文(制动踏板踩下)
+						t_BrakeSta[0]=0X40;
+						//发送档位报文(空档)
+						t_Gear[3]=0X7D;
+						//驻车
+						SOL1_EN_ON();
+						EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+	
+					}
+					
+					if(cnt_autopark >5)
+					{
+						cnt_autopark = 0; // 计数器清零
+						Work_Sta = work_autohold_release; // 切换到自动释放状态
+					}
+							
+					
+					break;
+	
+				case work_autohold_release: // 自动释放状态
+						
+					SOL1_EN_OFF();
+					
+					cnt_autoreles++; // 计数器加1
+					if (cnt_autoreles >= 3) // 如果计数器达到3
+					{
+
+						//发送档位报文(非空档)
+						t_Gear[3]=0X7F;
+						
+						//(油门开度30%)
+						t_Accelerator[1]=0X4B;
+						
+						//释放
+						SOL2_EN_ON();
+						EAL_DAC_Set_Out_Vol(INTAKE_VOL);
+	
+					}
+					
+					if(cnt_autoreles >5)
+					{
+						cnt_autoreles = 0; // 计数器清零
+						Work_Sta = work_autohold_anti_slip; // 切换到自动驻车防溜坡状态
+					}
+
+				break;
+				
+				case work_autohold_anti_slip: // 自动驻车防溜坡状态
+								 
+					SOL2_EN_OFF();
+					EPB_MODE_NO_OFF();
+					cnt_antislip++;
+					if(cnt_antislip >=3)
+					{
+						PARK_NO_SW_ON();
+						// 发送车速报文(0)
+						t_Vehicle_Speed[2]=0x00;
+						//Drv_CAN_SendFrame(Can_Speed_ID,t_Vehicle_Speed1);
+						//控制器倾斜大于4°，p灯点亮,因为板子在工装上固定，角度为1.69°不符合要求，现在模拟驻车过程
+						PARK_NO_SW_ON();
+						//驻车
+						SOL1_EN_ON();
+						EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+
+					}
+					if(cnt_antislip >5)
+					{
+						cnt_antislip = 0; // 计数器清零
+						Work_Sta = work_ramp_start;
+					}
+				
+				break;
+				
+				case  work_ramp_start:  // 坡道起步状态
+					
+					PARK_NC_SW_OFF();   //驻车开关关
+					SOL1_EN_OFF();		//驻车阀关
+					RELE_NO_SW_ON();	//释放按键开
+					SOL2_EN_ON();		//释放阀开
+					cnt_ramp++; //计数器加1
+					if(cnt_ramp >= 3)// 如果计数器达到3
+					{
+						cnt_ramp = 0;
+						RELE_NC_SW_OFF();
+						SOL2_EN_OFF();//释放状态
+						//控制器倾斜10°左右（下坡），p灯点亮排气驻车，因为板子在工装上固定，角度为1.69°不符合要求，现在模拟驻车过程
+						PARK_NO_SW_ON();
+						SOL1_EN_ON();
+						EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+					}
+					cnt_ramp ++;
+					PARK_NC_SW_OFF();
+					SOL1_EN_OFF();//驻车状态
+					if(cnt_ramp >= 3)// 如果计数器达到3
+					{
+						cnt_ramp = 0;
+						//发送转速扭矩报文(不为0)
+						t_Torque[1]=0x40;
+						t_Torque[2]=0x06;
+						t_Torque[3]=0x2E;
+
+						//发送档位报文(非空档)
+						t_Gear[3]=0x7F;
+						
+						//发送车速报文(不为0)
+						t_Vehicle_Speed[2]=0X02;
+					
+						//发送加速踏板报文(油门开度50%)
+						t_Accelerator[1]=0X7D;
+						//释放
+						SOL2_EN_ON();
+						EAL_DAC_Set_Out_Vol(INTAKE_VOL);
+						//Work_Sta = work_idle ;
+						Work_Sta = work_emergency_brake ;					
+					}
+					
+				break;
+	
+				case  work_emergency_brake://应急制动
+						
+						SOL2_EN_OFF();
+						cnt_emerbrak80++; // 计数器加1
+						//车速80km/h
+						t_Vehicle_Speed[2]=0x50;
+
+						PARK_NO_SW_ON(); //按键驻车启动 (按键拉起)
+						
+
+						if (cnt_emerbrak80 >10) // 如果计数器超过1秒
+						{
+							cnt_emerbrak80= 0; // 计数器清零
+							PARK_NC_SW_OFF();//驻车按键关
+							//车速60km/h
+							t_Vehicle_Speed[2]=0X3C;
+							//Drv_CAN_SendFrame(Can_Speed_ID,t_Vehicle_Speed3);
+							//发送加速踏板报文(油门开度0%)
+							t_Accelerator[1]=0x00;
+							//Drv_CAN_SendFrame(Can_Accelerator_ID,t_Accelerator1);
+							PARK_NO_SW_ON();
+						}
+						cnt_emerbrak60++; // 计数器加1
+						
+						if (cnt_emerbrak60 >10) // 如果计数器超过1秒
+						{			
+							cnt_emerbrak60 = 0;
+							//驻车
+							SOL1_EN_ON();
+							EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+							Work_Sta = work_idle;
+						}
+
+				break;
+
+					
+				case work_anti_forget_park: // 熄火驻车(遗忘驻车)
+				  
+					//if (get_EPBIgn < limtLow_IGN && get_EPBIgn > LimtHi_IGN) // 如果IGN未上电
+
+						cnt_forgetpark++;
+						if(cnt_forgetpark >=3)
+						{
+							// 发送车速报文(0)
+							t_Vehicle_Speed[2]=0x00;
+							//IGN下电
+							//驻车
+							SOL1_EN_ON();
+							//delay(1);	
+						}
+						if(cnt_forgetpark >5)
+						{
+							cnt_forgetpark = 0; // 计数器清零
+							Work_Sta = work_idle;
+						}
+						
+					break;
+					
+				default:
+						break;
+			}
+
+}

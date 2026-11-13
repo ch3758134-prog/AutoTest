@@ -1,0 +1,28 @@
+"$(ProjDirPath)/Project_Settings/Linker_Files/Project.prm"
+-M
+-ViewHidden
+-WmsgFob"%f%e:%l:%k:%d %m\n"
+-WmsgSd1100
+-WmsgSd1912 
+-Add("$(ProjDirPath)/FLASH/Lib/mc9s08dz32_c.obj"
+"$(ProjDirPath)/FLASH/Project_Settings/Startup_Code/start08_c.obj"
+"$(ProjDirPath)/FLASH/Sources/APP/Logic_c.obj"
+"$(ProjDirPath)/FLASH/Sources/APP/Sys_diag_C.obj"
+"$(ProjDirPath)/FLASH/Sources/APP/Timer_C.obj"
+"$(ProjDirPath)/FLASH/Sources/APP/main_c.obj"
+"$(ProjDirPath)/FLASH/Sources/APP/motor_regulate_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/ADC/Driver_ADC_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/ADC/EAL_ADC_C.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/BEEP/Drv_beep_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/CAN/Driver_CAN_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/CAN/EAL_CAN_C.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/Cpu_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/DAC/EAL_DAC_C.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/Driver_pwm_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/IEE1_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/IO/Driver_Gpio_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/SPI/Driver_SPI_c.obj"
+"$(ProjDirPath)/FLASH/Sources/BSW/Vectors_c.obj"
+"$(ProjDirPath)/FLASH/.metadata/.plugins/org.eclipse.cdt.make.core/specs_c.obj"
+"$(ProjDirPath)/FLASH/.metadata/.plugins/org.eclipse.cdt.make.core/specs_cpp.obj"
+"$(MCUToolsBaseDirEnv)/lib/hc08c/lib/ansifs.lib" )

@@ -1,0 +1,117 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+################################################################################
+
+-include ../../makefile.local
+
+# Add inputs and outputs from these tool invocations to the build variables 
+C_SRCS_QUOTED += \
+"../Sources/APP/Logic.c" \
+"../Sources/APP/main.c" \
+"../Sources/APP/motor_regulate.c" \
+
+C_UPPER_SRCS += \
+../Sources/APP/Sys_diag.C \
+../Sources/APP/Timer.C \
+
+C_UPPER_SRCS_QUOTED += \
+"../Sources/APP/Sys_diag.C" \
+"../Sources/APP/Timer.C" \
+
+C_SRCS += \
+../Sources/APP/Logic.c \
+../Sources/APP/main.c \
+../Sources/APP/motor_regulate.c \
+
+OBJS += \
+./Sources/APP/Logic_c.obj \
+./Sources/APP/Sys_diag_C.obj \
+./Sources/APP/Timer_C.obj \
+./Sources/APP/main_c.obj \
+./Sources/APP/motor_regulate_c.obj \
+
+OBJS_QUOTED += \
+"./Sources/APP/Logic_c.obj" \
+"./Sources/APP/Sys_diag_C.obj" \
+"./Sources/APP/Timer_C.obj" \
+"./Sources/APP/main_c.obj" \
+"./Sources/APP/motor_regulate_c.obj" \
+
+C_DEPS += \
+./Sources/APP/Logic_c.d \
+./Sources/APP/main_c.d \
+./Sources/APP/motor_regulate_c.d \
+
+C_UPPER_DEPS_QUOTED += \
+"./Sources/APP/Sys_diag_C.d" \
+"./Sources/APP/Timer_C.d" \
+
+C_UPPER_DEPS += \
+./Sources/APP/Sys_diag_C.d \
+./Sources/APP/Timer_C.d \
+
+C_DEPS_QUOTED += \
+"./Sources/APP/Logic_c.d" \
+"./Sources/APP/main_c.d" \
+"./Sources/APP/motor_regulate_c.d" \
+
+OBJS_OS_FORMAT += \
+./Sources/APP/Logic_c.obj \
+./Sources/APP/Sys_diag_C.obj \
+./Sources/APP/Timer_C.obj \
+./Sources/APP/main_c.obj \
+./Sources/APP/motor_regulate_c.obj \
+
+
+# Each subdirectory must supply rules for building sources it contributes
+Sources/APP/Logic_c.obj: ../Sources/APP/Logic.c
+	@echo 'Building file: $<'
+	@echo 'Executing target #11 $<'
+	@echo 'Invoking: HCS08 Compiler'
+	"$(HC08ToolsEnv)/chc08" -ArgFile"Sources/APP/Logic.args" -ObjN="Sources/APP/Logic_c.obj" "$<" -Lm="$(@:%.obj=%.d)" -LmCfg=xilmou
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Sources/APP/%.d: ../Sources/APP/%.c
+	@echo 'Regenerating dependency file: $@'
+	
+	@echo ' '
+
+Sources/APP/Sys_diag_C.obj: ../Sources/APP/Sys_diag.C
+	@echo 'Building file: $<'
+	@echo 'Executing target #12 $<'
+	@echo 'Invoking: HCS08 Compiler'
+	"$(HC08ToolsEnv)/chc08" -ArgFile"Sources/APP/Sys_diag.args" -ObjN="Sources/APP/Sys_diag_C.obj" "$<" -Lm="$(@:%.obj=%.d)" -LmCfg=xilmou
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Sources/APP/%.d: ../Sources/APP/%.C
+	@echo 'Regenerating dependency file: $@'
+	
+	@echo ' '
+
+Sources/APP/Timer_C.obj: ../Sources/APP/Timer.C
+	@echo 'Building file: $<'
+	@echo 'Executing target #13 $<'
+	@echo 'Invoking: HCS08 Compiler'
+	"$(HC08ToolsEnv)/chc08" -ArgFile"Sources/APP/Timer.args" -ObjN="Sources/APP/Timer_C.obj" "$<" -Lm="$(@:%.obj=%.d)" -LmCfg=xilmou
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Sources/APP/main_c.obj: ../Sources/APP/main.c
+	@echo 'Building file: $<'
+	@echo 'Executing target #14 $<'
+	@echo 'Invoking: HCS08 Compiler'
+	"$(HC08ToolsEnv)/chc08" -ArgFile"Sources/APP/main.args" -ObjN="Sources/APP/main_c.obj" "$<" -Lm="$(@:%.obj=%.d)" -LmCfg=xilmou
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Sources/APP/motor_regulate_c.obj: ../Sources/APP/motor_regulate.c
+	@echo 'Building file: $<'
+	@echo 'Executing target #15 $<'
+	@echo 'Invoking: HCS08 Compiler'
+	"$(HC08ToolsEnv)/chc08" -ArgFile"Sources/APP/motor_regulate.args" -ObjN="Sources/APP/motor_regulate_c.obj" "$<" -Lm="$(@:%.obj=%.d)" -LmCfg=xilmou
+	@echo 'Finished building: $<'
+	@echo ' '
+
+

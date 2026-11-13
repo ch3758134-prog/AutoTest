@@ -1,0 +1,541 @@
+#include "sys_include.h"
+
+// #define Motorola  
+
+volatile u8 canMessageReceivedFlag = 0;
+ u8  sDrvCan_Busoff;//CAN总线状态标志位
+ u8  DLC_LN =8;//CAN帧长度
+ extern u8  Can_Counter; //用以CAN报文计数
+ extern u8  BUAD_status; //波特率状态
+ u8 ExtendedFrame;//拓展帧标志位
+ u8 StandardFrame;//标准帧标志位
+ 
+byte Drv_CAN_SendFrame(u32 CanID, byte *MSG) //发送CAN帧
+{
+	  u8 i;                              
+	  TMsgBuff *MsgBuff;
+	  u32 tmpId = CanID;
+	// EnterCritical();                     /* Disable global interrupts */
+	  if (!(CANTFLG & 0x07)) {             /* Are all transmit buffers full? */
+	   // ExitCritical();                    /* Enable global interrupts */
+	    return ERR_TXFULL;                 /* If yes then error */
+	  }
+	  CANTBSEL = CANTFLG;
+	  MsgBuff = (TMsgBuff *)&CANTIDR0;
+
+	  tmpId = (((tmpId & 0x1FFC0000UL) << 3) | 0x00180000UL | ((tmpId & 0x0003FFFFUL) << 1));//扩展帧
+	  //tmpId = tmpId << 21; 
+	  MsgBuff->IDR3 = ((DwordSwap *)&tmpId)->b.b3;//加载消息ID到发送缓冲区
+	  MsgBuff->IDR2 = ((DwordSwap *)&tmpId)->b.b2;
+	  MsgBuff->IDR1 = ((DwordSwap *)&tmpId)->b.b1;
+	  MsgBuff->IDR0 = ((DwordSwap *)&tmpId)->b.b0;
+
+	#ifdef Motorola   
+	//////     Motorola
+	  for (i=0; i<8; i++) 
+	    {
+	      MsgBuff->Data[7-i] = MSG[i];     
+	    }//加载数据到发送缓冲区 
+	#else   //Intel
+	////  
+	  for (i=0; i<8; i++) 
+	    {
+	      MsgBuff->Data[i] = MSG[i];     
+	    }
+	//////////////////////////////////
+	#endif
+	  MsgBuff->IDR3 &= 0xFEU; //扩展帧 IDR3 BIT0设为0       
+	  //MsgBuff->IDR3 |= 0x01;
+
+	  //MsgBuff->IDR1 &= 0xEFU; //数据帧 IDR1 BIT4设为0
+
+	  MsgBuff->DLR = 8;      //消息长度0~8字节             
+	  MsgBuff->TBPR = 0x00U;      //发送缓冲区优先级                        
+	  CANTFLG = 1;        //0 发送缓冲区满   1 发送缓冲区空 写该寄存器可以清零 
+	  //ExitCritical();    
+	  //while(!(CANTFLG));                        
+	  return ERR_OK;     
+}
+
+//{    u8 i;
+//    TMsgBuff *MsgBuff; //发送缓冲区指针
+//    u32 tmpId = CanID; //临时变量，存储CAN消息ID
+//
+//
+//    // 检查是否有可用的发送缓冲区（CANTFLG寄存器的低3位表示3个发送缓冲区的状态）
+//    while (!(CANTFLG & 0x07)) { // 判断是否有空的发送缓冲区
+//        // ExitCritical(); // 启用全局中断（注释掉，可能需要根据实际情况启用）
+//    	wait_ms(100);
+//    	break;
+//    }
+//		// 选择可用的发送缓冲区
+//		CANTBSEL = CANTFLG;
+//		// 将发送缓冲区的地址赋值给MsgBuff指针
+//		MsgBuff = (TMsgBuff *)&CANTIDR0; // 发送缓冲区指针
+//	
+//		// 将CAN消息ID转换为扩展帧格式（扩展帧ID的最高位为1）
+//		tmpId = (((tmpId & 0x1FFC0000UL) << 3) | 0x00180000UL | ((tmpId & 0x0003FFFFUL) << 1)); // 扩展帧ID
+//		// 将消息ID加载到发送缓冲区的IDR寄存器
+//		MsgBuff->IDR3 = ((DwordSwap *)&tmpId)->b.b3; // 加载消息ID到发送缓冲区
+//		MsgBuff->IDR2 = ((DwordSwap *)&tmpId)->b.b2;
+//		MsgBuff->IDR1 = ((DwordSwap *)&tmpId)->b.b1;
+//		MsgBuff->IDR0 = ((DwordSwap *)&tmpId)->b.b0;
+//	
+//	#ifdef Motorola
+//		// 如果定义了Motorola宏（可能用于字节序转换），则按Motorola字节序加载数据
+//		for (i = 0; i < 8; i++) {
+//			MsgBuff->Data[7 - i] = MSG[i]; // 加载数据到发送缓冲区（Motorola字节序）
+//		}
+//	#else
+//		// 如果未定义Motorola宏，则按Intel字节序加载数据
+//		for (i = 0; i < 8; i++) {
+//			MsgBuff->Data[i] = MSG[i]; // 加载数据到发送缓冲区（Intel字节序）
+//		}
+//	#endif
+//	
+//		// 设置扩展帧标志位（IDR3的最低位为0表示扩展帧）
+//		MsgBuff->IDR3 &= 0xFEU; // 扩展帧 IDR3 BIT0设为0
+//	
+//		// 设置数据帧标志位（IDR1的第4位为0表示数据帧）
+//		MsgBuff->IDR1 &= 0xEFU; // 数据帧 IDR1 BIT4设为0
+//	
+//		// 设置消息长度（DLR寄存器的低4位表示消息长度，0~8字节）
+//		MsgBuff->DLR = 8; // 消息长度0~8字节
+//	
+//		// 设置发送缓冲区的优先级（TBPR寄存器的低3位表示优先级，0为最高优先级）
+//		MsgBuff->TBPR = 0x00U; // 发送缓冲区优先级
+//	
+//		// 清除发送缓冲区的标志位，以启动发送过程（写CANTFLG寄存器可以清零）
+//		CANTFLG = CANTBSEL; // 0 发送缓冲区满 1 发送缓冲区空 写该寄存器可以清零 
+//		return ERR_OK;
+//}
+
+
+
+/*********************************************************************************************
+*函数名    :
+*功能      : 读一帧数据
+*输入      : MSG：读取的消息指针
+*返回      : ERR_OK
+*备注      :
+*日期      :
+**********************************************************************************************/
+void Drv_CAN_ReadFrame(CanMsgInf *Msg)//读取CAN帧
+{
+  byte i,Length;
+  u32  tmpId =0;
+  ((DwordSwap*)&tmpId)->b.b0 = CANRIDR0;//CAN接收缓冲区寄存器指针
+  ((DwordSwap*)&tmpId)->b.b1 = CANRIDR1;
+  ((DwordSwap*)&tmpId)->b.b2 = CANRIDR2;
+  ((DwordSwap*)&tmpId)->b.b3 = CANRIDR3;
+  if (tmpId & MB_ID_IDE)//判断是否为扩展帧 
+  {
+    Msg->CanId = ((tmpId >> 1) & 0x3FFFFUL) | ((tmpId >> 3) & 0x1FFC0000UL); //扩展帧
+    ExtendedFrame = 1;
+  }
+  else {
+    Msg->CanId  = tmpId >> 21;         //标准帧
+    StandardFrame = 1;
+  }
+  
+  if(ExtendedFrame) 
+  {
+	  if(CANRIDR3 & 0x01)
+	  {
+		  Msg->FrameType = 1;//远程帧  
+	  }
+	  else
+	  {
+	    Msg->FrameType = 0;//数据帧
+	  }
+	  ExtendedFrame = 0;
+  }
+  
+  
+  if(StandardFrame)
+  {
+	  if(CANRIDR1 & 0x10) 	//判断是否为远程帧
+	  {
+		Msg->FrameType = 1;//远程帧
+	  } 
+	  else 
+	  {
+		Msg->FrameType = 0;//数据帧
+	  }
+	  StandardFrame = 0;
+  }
+	
+  Length = (byte)(CANRDLR & 0x0F); //获取数据长度
+  Msg->MsgLth  = (byte)(CANRDLR & 0x0F);
+ 
+  
+ #ifdef Motorola   
+   //////  Motorola
+  for (i=0U; i<Length; i++) 
+  {
+    Msg->Data[7-i] = *((byte *)&CANRDSR0 + i); //CAN接收缓冲区指针
+  }
+  #else  
+  //////////////////////Intel//////////////
+    for (i=0U; i<Length; i++) 
+  {
+    Msg->Data[i] = *((byte *)&CANRDSR0 + i); //CAN接收缓冲区指针
+  }
+  
+  #endif  
+  
+    CANRFLG = 1;//清接收中断标志位          
+  //CANRFLG = CANRFLG_RXF_MASK;//清接收中断标志位                     
+}
+
+
+void Drv_CAN_Init(void)
+{                 
+  u32 AcFilterId=0;
+  //MSCAN模块使能
+  CANCTL1 = 0x80U;                    
+  //MSCAN处于初始化模式
+  CANCTL0 = 0x01U;
+
+ #if 1
+  /* 婊ゆ尝鍣ㄥ叏寮� - 鎺ユ敹鎵�鏈夋墿灞曞抚鍜屾爣鍑嗗抚 */
+  CANIDAC_IDAM = 0x00U;
+  CANIDAR0 = 0x00U;
+  CANIDAR1 = 0x00U;
+  CANIDAR2 = 0x00U;
+  CANIDAR3 = 0x00U;
+  CANIDMR0 = 0xFFU;
+  CANIDMR1 = 0xFFU;
+  CANIDMR2 = 0xFFU;
+  CANIDMR3 = 0xFFU;
+  CANIDAR4 = 0x00U;
+  CANIDAR5 = 0x00U;
+  CANIDAR6 = 0x00U;
+  CANIDAR7 = 0x00U;
+  CANIDMR4 = 0xFFU;
+  CANIDMR5 = 0xFFU;
+  CANIDMR6 = 0xFFU;
+  CANIDMR7 = 0xFFU;
+ #else
+  
+
+  CANIDAC_IDAM = 0x01U; //4个16位接收滤波器    
+//  AcFilterId =(u16)(DBUG_CAN1 << 5)|0x0000;
+//  //标准帧
+//  CANIDAR0 = ((DwordSwap *)&AcFilterId)->b.b3;                    
+//  CANIDAR1 = ((DwordSwap *)&AcFilterId)->b.b2;                    
+//  CANIDAR3 = ((DwordSwap *)&AcFilterId)->b.b0;
+  
+  
+  CANIDAR0 = (u8)((DBUG_CAN1 << 5) >> 8) & 0xF7;  // ID[10:3] → bit15-8                  
+  CANIDAR1 = (u8)((DBUG_CAN1 << 5)& 0xFF); // ID[2:0] → bit7-5 + RTR=0, IDE=0               
+  CANIDAR2 = (u8)((DBUG_CAN2 << 5) >> 8) & 0xF7;  // ID[10:3] → bit15-8                  
+  CANIDAR3 = (u8)((DBUG_CAN2 << 5)& 0xFF); // ID[2:0] → bit7-5 + RTR=0, IDE=0
+  
+//  CANIDAR4 = (u8)(Diag_Fun_Rsp_FilterId>>3);                   
+//  CANIDAR5 = (u8)(Diag_Fun_Rsp_FilterId<<5);             
+//  CANIDAR6 = (u8)(Diag_GSNR_RQ_FilterId>>3);                   
+//  CANIDAR7 = (u8)(Diag_GSNR_RQ_FilterId<<5); 
+
+  CANIDMR0 = 0x00U;                   
+  CANIDMR1 = 0x1FU;                   
+  CANIDMR2 = 0x00U;                   
+  CANIDMR3 = 0x1FU; 
+  
+//  CANIDMR4 = 0x00U;                   
+//  CANIDMR5 = 0x1FU; 
+//  CANIDMR6 = 0x00U;                   
+//  CANIDMR7 = 0x1FU; 
+ #endif 
+
+	//系统时钟8M，进行2分频。
+	CANBTR0 = 0x43U;                     
+	//时间段1：7Tq 时钟周期  时间段2：8Tq 时钟周期
+	//CAN线Bit Time=4M/1/(7+8+1)
+	CANBTR1 = 0x3AU;
+
+  if(BUAD_status == 1)
+  {
+	//系统时钟8M，进行2分频。
+	CANBTR0 = 0x43U;                     
+	//时间段1：4Tq 时钟周期  时间段2：3Tq 时钟周期
+	//CAN线Bit Time=4M/1/(4 + 3 + 1)
+	CANBTR1 = 0x23U;
+  }
+  CANCTL1_CLKSRC = 0x01U;              
+  CANCTL0_INITRQ = 0x00U;//CAN正常运行
+
+  while(CANCTL1_INITAK) {} 
+            
+  CANRFLG_RXF = 1;//清接收中断标志                    
+  // CANRIER_RXFIE = 0x01U; // RX interrupt disabled for polling mode
+  CANRFLG_TSTAT0 =1;
+  CANRFLG_TSTAT1 =1;                     
+  CANRFLG_RSTAT0 =1;
+  CANRFLG_RSTAT1 =1;
+  
+   /* Busoff中断使能 */
+ 	CANRIER_TSTATE0 = 1; //01:Generate CSCIF interrupt only if the transmitter enters or leaves “bus-off” state. 
+ 	CANRIER_TSTATE1 = 0; //Discard other transmitter state changes for generating CSCIF interrupt.
+ 	CANRFLG_CSCIF = 1;
+ 	CANRIER_CSCIE = 1;  //1:A CAN Status Change event causes an error interrupt request.
+	sDrvCan_Busoff =  0;                     
+}
+
+
+
+//void Drv_CAN_Init(void)
+//{
+//    u32 AcFilterId = 0; // 接收滤波器ID
+//
+//    // MSCAN模块使能
+//    CANCTL1 = 0x80U;
+//
+//    // MSCAN处于初始化模式
+//    CANCTL0 = 0x01U;
+//
+//    // 设置成2个32BIT接收滤波器
+//    CANIDAC_IDAM = 0x00U;
+//
+//    // 设置接收滤波器为通配符，接收所有消息
+//    CANIDAR0 = 0x00U;
+//    CANIDAR1 = 0x00U;
+//    CANIDAR2 = 0x00U;
+//    CANIDAR3 = 0x00U;
+//
+//    // 设置屏蔽寄存器为0x00，允许所有位的匹配
+//    CANIDMR0 = 0x00U;
+//    CANIDMR1 = 0x00U;
+//    CANIDMR2 = 0x00U;
+//    CANIDMR3 = 0x00U;
+//
+//    // 其他初始化代码...
+//
+//    // 系统时钟8M，进行2分频。
+//    CANBTR0 = 0x43U;
+//
+//    // 时间段1：7Tq 时钟周期  时间段2：8Tq 时钟周期
+//    // CAN线Bit Time=4M/1/(7+8+1)
+//    CANBTR1 = 0x3AU;
+//
+//    CANCTL1_CLKSRC = 0x01U;
+//    CANCTL0_INITRQ = 0x00U; // CAN正常运行
+//    while (CANCTL1_INITAK) {}
+//
+//    CANRFLG_RXF = 1; // 清接收中断标志
+//    CANRIER_RXFIE = 1; // 接收器已满中断使能
+//    CANRFLG_TSTAT0 = 1;
+//    CANRFLG_TSTAT1 = 1; // 清发送器状态标志位
+//    CANRFLG_RSTAT0 = 1;
+//    CANRFLG_RSTAT1 = 1; // 清接收器状态标志位
+//
+//
+//    
+//    /* Busoff中断使能 */
+//    CANRIER_TSTATE0 = 1;
+//    CANRIER_TSTATE1 = 0; // 发送状态中断使能
+//    CANRIER_RSTATE0 = 0;
+//    CANRIER_RSTATE1 = 1; // 接收状态中断使能
+//    CANRFLG_CSCIF = 1; // 清除CAN状态变化中断标志位
+//    CANRIER_CSCIE = 1; // CAN状态变化中断使能
+//    sDrvCan_Busoff = 0; // 总线工作中断标志位
+//    
+//
+//}
+
+
+
+
+
+
+
+
+/*void Drv_CAN_Init(void)
+{                 
+  u32 AcFilterId=0;//接收滤波器ID
+  //MSCAN模块使能
+  CANCTL1 = 0x80U;                    
+  //MSCAN处于初始化模式
+  CANCTL0 = 0x01U;
+
+ #if 1
+
+  CANIDAC_IDAM = 0x00U; //设置成2个32BIT接收滤波器              
+  AcFilterId =  (((Can_RcvID_EPB & 0x1FFC0000UL) << 3) | 0x00180000UL | ((Can_RcvID_EPB & 0x0003FFFFUL) << 1));//扩展帧，32位的过滤器标识符
+  CANIDAR0 = ((DwordSwap *)&AcFilterId)->b.b3;    //CAN接收滤波器ID寄存器0                
+  CANIDAR1 = ((DwordSwap *)&AcFilterId)->b.b2;    //CAN接收滤波器ID寄存器1                
+  CANIDAR2 = ((DwordSwap *)&AcFilterId)->b.b1;    //CAN接收滤波器ID寄存器2                
+  CANIDAR3 = ((DwordSwap *)&AcFilterId)->b.b0;	 //CAN接收滤波器ID寄存器3
+
+ //对于扩展标识符，要应用所有四个接收和掩码寄存器
+ 
+  CANIDMR0 = 0x00U;                   
+  CANIDMR1 = 0x18U;   //屏蔽 SRR IDE                
+  CANIDMR2 = 0x00U;                   
+  CANIDMR3 = 0x01U;   //屏蔽 RTR
+  //SRR（替代远程请求位）和IDE（标识符扩展位）
+  // MSCAN 标识符掩码寄存器 (CANIDMR0-CANIDMR7)                   
+
+
+                  
+  
+ #else
+
+  CANIDAC_IDAM = 0x01U; //4个16位接收滤波器              
+  CANIDAR0 = (u8)(Diag_GSNR_Rsp_CanId>>3);   //CAN接收滤波器ID寄存器0                 
+  CANIDAR1 = (u8)(Diag_GSNR_Rsp_CanId<<5);    //CAN接收滤波器ID寄存器1     
+  CANIDAR2 = (u8)(Diag_GSNR_RQ_FilterId>>3);   //CAN接收滤波器ID寄存器2                
+  CANIDAR3 = (u8)(Diag_GSNR_RQ_FilterId<<5);    //CAN接收滤波器ID寄存器3                
+  CANIDAR4 = (u8)(BCM_PO_1_FilterId>>3);        //CAN接收滤波器ID寄存器4                 					
+  CANIDAR5 = (u8)(BCM_PO_1_FilterId<<5);         //CAN接收滤波器ID寄存器5
+  CANIDAR6 = (u8)(Diag_Fun_Rsp_FilterId>>3);    //CAN接收滤波器ID寄存器6                 
+  CANIDAR7 = (u8)(Diag_Fun_Rsp_FilterId<<5);    //CAN接收滤波器ID寄存器7           					
+                					
+  CANIDMR0 = 0x00U;                   
+  CANIDMR1 = 0x1fU;                   
+  CANIDMR2 = 0x00U;                   
+  CANIDMR3 = 0x1fU;                   
+  CANIDMR4 = 0x00U;				   
+  CANIDMR5 = 0x1fU;                   
+  CANIDMR6 = 0x00U;                   
+  CANIDMR7 = 0x1fU;			
+
+ #endif 
+  
+//  	adcValue  = Get_BAUDRATE();
+//	// 根据AD信号的值设置波特率
+//  	if (adcValue  < 2048) //250KHZ
+//	{
+//		CANBTR0 = 0x43U;
+//		CANBTR1 = 0x3AU;
+//	} 
+//	else if (adcValue  >= 2048) //500KHZ
+//	{
+//		CANBTR0 = 0x43U;
+//		CANBTR1 = 0x23U;
+//	}
+
+  //系统时钟8M，进行2分频。
+  CANBTR0 = 0x43U;                     
+  //时间段1：4Tq 时钟周期  时间段2：3Tq 时钟周期
+  //CAN线Bit Time=4M/1/(4 + 3 + 1)
+  CANBTR1 = 0x3AU;                    
+  CANCTL1_CLKSRC = 0x01U;              
+  CANCTL0_INITRQ = 0x00U;//CAN正常运行
+
+
+  while(CANCTL1_INITAK) {} 
+            
+  CANRFLG_RXF = 1;//清接收中断标志                    
+  CANRIER_RXFIE = 1;//接收器已满中断使能 
+  CANRFLG_TSTAT0 =1;
+  CANRFLG_TSTAT1 =1;//清发送器状态标志位                     
+  CANRFLG_RSTAT0 =1;
+  CANRFLG_RSTAT1 =1;//清接收器状态标志位
+  
+    //Busoff中断使能 
+ 	CANRIER_TSTATE0 = 1; 
+ 	CANRIER_TSTATE1 = 0; //	发送状态中断使能		
+ 	CANRIER_RSTATE0 = 0; 
+	CANRIER_RSTATE1 = 1; //	接收状态中断使能		
+ 	CANRFLG_CSCIF = 1;	//清除CAN状态变化中断标志位
+ 	CANRIER_CSCIE = 1;  //	CAN状态变化中断使能		
+	sDrvCan_Busoff =  0;   // 总线工作中断标志位                  */
+
+
+
+
+
+
+
+
+
+/*********************************************************************************************
+*函数名    :
+*功能      :处理CAN错误中断
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+ISR(Drv_CAN_Err_ISR) //CAN错误中断
+{
+  // 清除CAN状态变化中断标志位
+  CANRFLG_CSCIF  =  1; 
+  
+  // 清除所有发送缓冲区的请求
+  CANTARQ_ABTRQ0=1;
+  CANTARQ_ABTRQ1=1;
+  CANTARQ_ABTRQ2=1;  
+  
+  // 设置总线关闭标志位
+  sDrvCan_Busoff =  1;
+}
+
+u8 BusOff_stata(void)//CAN 总线是否关闭
+  {
+     /*
+      if( (CANRFLG_TSTAT0 ==1 && CANRFLG_TSTAT1 ==1)||                     
+          (CANRFLG_RSTAT0 ==1 && CANRFLG_RSTAT1 ==1) )
+        {
+          CANTARQ_ABTRQ0=1;
+          CANTARQ_ABTRQ1=1;
+          CANTARQ_ABTRQ2=1;
+          return 1;
+        }
+      else return 0;   */
+      return sDrvCan_Busoff;// 返回CAN总线关闭标志位的值
+    
+  }
+
+  /*********************************************************************************************
+*函数名    :
+*功能      :CAN使能
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+void Drv_CAN_Enable(void)
+{ 
+    // 将INITRQ位设置为0，请求CAN模块进入正常运行模式
+    CANCTL0_INITRQ = 0x00;             
+    // 等待INITAK位变为0，表示CAN模块已经进入正常运行模式
+    while(CANCTL1_INITAK) {}  
+}
+
+/*********************************************************************************************
+*函数名    :
+*功能      :CAN禁止
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+void Drv_CAN_Disable(void)
+{ 
+    // 将INITRQ位设置为1，请求CAN模块进入初始化模式
+    CANCTL0_INITRQ = 0x01;             
+    // 等待INITAK位变为1，表示CAN模块已经进入初始化模式
+    while(!CANCTL1_INITAK) {}   
+}
+
+/*********************************************************************************************
+*函数名    :
+*功能      :CAN RX 中断
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+CanMsgInf CanMsg;
+ISR(Drv_CAN_RX_ISR) //CAN RX中断
+{
+    while(CANRFLG_RXF == 1) {
+        
+        // 调用 Drv_CAN_ReadFrame 函数读取 CAN 总线上的一帧数据，并将读取到的数据存储在 CanMsg 结构体中
+        Drv_CAN_ReadFrame(&CanMsg);
+        canMessageReceivedFlag = 1;
+    }
+}
+

@@ -1,0 +1,19 @@
+#ifndef __SPI
+#define __SPI
+
+
+
+//#define AccHold_High()    PTED_PTED0 = 1
+//#define AccHold_Low()     PTED_PTED0 = 0
+
+#define Power_CS_High()    PTED_PTED2 = 1
+#define Power_CS_Low()     PTED_PTED2 = 0
+
+
+
+void Drv_Spi_Init(void);
+u8 Drv_Spi_Data_TxByte(u8 wdata) ;
+u8 Drv_Spi_Data_TxRxWord(u16 wdata,u16 *rdata) ;
+ISR(Drv_Spi_Interrupt);
+
+#endif

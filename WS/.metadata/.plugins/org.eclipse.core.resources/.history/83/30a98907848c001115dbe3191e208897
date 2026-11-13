@@ -1,0 +1,72 @@
+#include "sys_include.h"
+#include "Driver_Gpio.h"
+
+extern volatile u8 canMessageReceivedFlag;
+extern CanMsgInf CanMsg;
+
+void SetDefault(void)
+{
+    Drv_Gpio_AllKeyHigh();
+    KEY5_OFF();
+    KEY11_OFF();
+}
+
+void SetPark(void)
+{
+    Drv_Gpio_AllKeyHigh();
+    KEY7_OFF();
+    KEY8_OFF();
+    SetDefault();
+}
+
+void SetRele(void)
+{
+    Drv_Gpio_AllKeyHigh();
+    KEY12_OFF();
+    KEY13_OFF();
+    SetDefault();
+}
+
+void main(void)
+{
+    u8 tx1[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C};
+    u8 tx2[8] = {0x00, 0x20, 0x00, 0x32, 0x00, 0x00, 0x00, 0x00};
+    u8 rsp_data[8] = {0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+    sys_clk_Init();
+    PE_low_level_init();
+    Drv_Gpio_Init();
+    Timer_1ms_Init();
+    Drv_CAN_Init();
+    Drv_CAN_Enable();
+
+    SetDefault();
+
+    for (;;) {
+
+//        if (timer_100ms_flag) {
+//            timer_100ms_flag = 0;
+//            Drv_CAN_SendFrame(0x18FFF327, tx1);
+//            Drv_CAN_SendFrame(0x18FF5027, tx2);
+//        }
+//
+//        if (canMessageReceivedFlag) {
+//            canMessageReceivedFlag = 0;
+//
+//            /* 只解析 ID = 0x123 标准帧 */
+//            if (CanMsg.CanId == 0x123) {
+//                u8 cmd = CanMsg.Data[7];
+//
+//                if (cmd == 0x00) {
+//                    SetDefault();
+//                } else if (cmd == 0x01) {
+//                    SetPark();
+//                } else if (cmd == 0x02) {
+//                    SetRele();
+//                }
+//            }
+//
+//            Drv_CAN_SendFrame(0x777, rsp_data);
+//        }
+    }
+}

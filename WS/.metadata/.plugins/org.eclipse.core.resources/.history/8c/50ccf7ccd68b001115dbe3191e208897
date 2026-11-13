@@ -1,0 +1,52 @@
+#ifndef __SYS_INCLUDE_H
+#define __SYS_INCLUDE_H
+#pragma MESSAGE DISABLE C2705
+#pragma MESSAGE DISABLE C1420
+//typedef unsigned char bool;
+typedef  signed char  s8;
+typedef  signed int s16;
+typedef  signed long int s32;
+typedef  unsigned char  u8 ;
+typedef  unsigned short u16;
+typedef  unsigned long int u32;
+typedef u8 Drv_Std_ReturnType;				//�����ֵ����
+
+
+// �ض����ж������?���ӳ���ĵ�ַ
+#define InterruptVectorsNum     31U 
+#define FLASH_USERSTART_ADDRESS 0x7C00U  
+#define FLASH_PROTECTED_ADDRESS 0xE800U
+#define USER_ENTRY_ADDRESS      FLASH_PROTECTED_ADDRESS -3U - 4U
+#define VectorAddressTableTopAddress  (FLASH_PROTECTED_ADDRESS - 3U*(InterruptVectorsNum+1) -4U)
+
+ 	// �ж���ת�ṹ��
+	typedef struct _JumpVect
+    {
+        volatile const unsigned char JumpOpCode;
+        void (* volatile const Addr)();             
+    } JumpVect;  
+
+
+#include <hidef.h>
+#include "PE_Types.h"
+#include "PE_Error.h"
+#include "PE_Const.h"
+#include "derivative.h"
+    
+    
+//mcu�ײ���
+//#include   "Driver_SPI.h"
+//#include   "Driver_CAN_Test.h"
+//#include   "EAL_CAN.h"
+//#include   "EAL_ADC.H"
+//
+#include "IEE1.h"
+//
+//#include "Sys_diag.H"
+//#include "Motor_regulate.h"
+//#include "logic.h"
+//#include "Timer.h"
+//#include "Driver_ADC.h"
+//#include "Driver_Gpio.h"
+//#include "EAL_ADC.h"
+#endif

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;EPB_EOL/Sources/APP/Timer.C&apos; to &apos;Timer.c&apos;" description="Rename resource &apos;Timer.C&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="Sources/APP/Timer.C" name="Timer.c" stamp="1785393023098" updateReferences="true"/>
+</session>

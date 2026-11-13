@@ -1,0 +1,39 @@
+/*
+ * main.c - KEY_SIM 项目 CAN 接收回发测试
+ * 使用轮询接收，不走中断
+ */
+
+#include "sys_include.h"
+#include "Driver_Gpio.h"
+
+extern volatile u8 canMessageReceivedFlag;
+extern CanMsgInf CanMsg;
+
+void main(void)
+{
+    u8 rsp_data[8] = {0xAA, 0x55, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC};
+
+    sys_clk_Init();
+    PE_low_level_init();
+    Drv_Gpio_Init();
+    Timer_1ms_Init();
+    Drv_CAN_Init();
+    Drv_CAN_Enable();
+
+    for (;;) {
+    	Drv_CAN_SendFrame(0x18FEFA50, rsp_data);
+    	wait_ms(100);
+    	
+        /* 轮询检查是否收到帧（RX中断已关闭，手动查标志） */
+        if (CANRFLG_RXF) {
+            Drv_CAN_ReadFrame(&CanMsg);
+            canMessageReceivedFlag = 1;
+        }
+
+        if (canMessageReceivedFlag) {
+            canMessageReceivedFlag = 0;
+            /* 收到任意帧后，回发一帧响应 */
+            Drv_CAN_SendFrame(0x18FEFA50, rsp_data);
+        }
+    }
+}

@@ -1,0 +1,82 @@
+//#include "sys_include.h"
+//
+//
+//void motor_duty_ctl(char motor_temp,char motor_ctl_temp)
+//{
+//	u16 speed1,speed2;
+//	float speed_temp1,speed_temp2;
+//	 
+//	
+//	if(motor_temp<motor_temp_mix)
+//	{
+//		speed1 = 0;
+//	}
+//	else if(motor_temp==motor_temp_mix) 
+//	{
+//		speed1 = 10;
+//	}
+//	else if((motor_temp_mix<motor_temp)&&(motor_temp<motor_temp_max))
+//	{
+//		speed_temp1 = ((float)(motor_temp-motor_temp_mix))*motor_temp_factor;
+//		speed_temp1 = speed_temp1*90+10+0.5;
+//		speed1 = (u16)speed_temp1;
+//	}
+//	else if(motor_temp>=motor_temp_max)
+//	{
+//		speed1 = 100;
+//	}
+//
+//	
+//	if(motor_ctl_temp<motor_ctl_temp_mix)
+//	{
+//		speed2 = 0;
+//	}
+//	else if(motor_ctl_temp==motor_ctl_temp_mix) 
+//	{
+//		speed2 = 10;
+//	}
+//	else if((motor_ctl_temp_mix<motor_ctl_temp)&&(motor_ctl_temp<motor_ctl_temp_max))
+//	{
+//		speed_temp2= ((float)(motor_ctl_temp-motor_ctl_temp_mix))*motor_ctl_temp_factor;
+//		speed_temp2 = speed_temp2*90+10+0.5;
+//		speed2 = (u16)speed_temp2;
+//	}
+//	else if(motor_ctl_temp>=motor_ctl_temp_max)
+//	{
+//		speed2 = 100;
+//	}
+//
+//
+//	if(speed1>=speed2)
+//	{
+//		Set_PWM_Prd_Dty(500,speed1,speed1);
+//	}
+//	else
+//	{
+//		Set_PWM_Prd_Dty(500,speed2,speed2);
+//	}	
+//}
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//

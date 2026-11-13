@@ -1,0 +1,73 @@
+#include "sys_include.h"
+#include "Driver_Gpio.h"
+
+extern volatile u8 canMessageReceivedFlag;
+extern CanMsgInf CanMsg;
+
+/* 心跳帧：1s 周期发送，主控板经 0x41 回传上位机，用于判断按键板在线。
+ * ID=0x1A0 标准帧；数据[0]=特征字节 0x5A，数据[1]=递增计数（上位机看跳变判断活着）。 */
+#define HB_CAN_ID   0x1A0U
+
+void SetDefault(void)
+{
+    Drv_Gpio_AllKeyHigh();
+    KEY7_OFF();
+    KEY10_OFF();
+}
+
+void SetPark(void)
+{
+    Drv_Gpio_AllKeyHigh();
+    KEY7_OFF();
+    KEY8_OFF();
+    wait_ms(200);
+    SetDefault();
+}
+
+void SetRele(void)
+{
+    Drv_Gpio_AllKeyHigh();
+    KEY12_OFF();
+    KEY13_OFF();
+    wait_ms(200);
+    SetDefault();
+}
+
+void main(void)
+{
+    u8 hb_cnt = 0;
+    sys_clk_Init();
+    PE_low_level_init();
+    Drv_Gpio_Init();
+    Timer_1ms_Init();
+    Drv_CAN_Init();
+    Drv_CAN_Enable();
+    SetDefault();
+
+    for (;;) {
+        /* 心跳帧：1s 一次，ID=0x1A0，数据=特征字节+递增计数 */
+        if (timer_1000ms_flag) {
+            u8 hb[8] = { 0x5A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+            timer_1000ms_flag = 0;
+            hb[1] = hb_cnt++;
+            Drv_CAN_SendFrame(HB_CAN_ID, hb);
+        }
+
+        if (canMessageReceivedFlag) {
+            canMessageReceivedFlag = 0;
+
+            /* 只解析 ID = 0x123 标准帧 */
+            if (CanMsg.CanId == 0x730) {
+                u8 cmd = CanMsg.Data[7];
+
+                if (cmd == 0x00) {
+                    SetDefault();
+                } else if (cmd == 0x01) {
+                    SetPark();
+                } else if (cmd == 0x02) {
+                    SetRele();
+                }
+            }
+        }
+    }
+}

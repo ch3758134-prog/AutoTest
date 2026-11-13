@@ -1,0 +1,26 @@
+/*
+ * main.c - KEY_SIM 项目 CAN 发送测试
+ */
+
+#include "sys_include.h"
+#include "Driver_Gpio.h"
+#include "Driver_CAN.h"
+
+void main(void)
+{
+	u8 tx_data[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+    sys_clk_Init();
+    PE_low_level_init();
+    Drv_Gpio_Init();
+    Drv_CAN_Init();
+    Drv_CAN_Enable();
+
+    /* 测试：上电后立即发送一帧 */
+    Drv_CAN_SendFrame(0x12345678, tx_data);  /* 扩展帧 ID */
+
+    for (;;) {
+    	wait_ms(100);
+    	Drv_CAN_SendFrame(0x12345678, tx_data);  /* 扩展帧 ID */
+        /* 等待 */
+    }
+}

@@ -1,0 +1,45 @@
+/*
+ * Driver_CAN_Test.h
+ *
+ * CAN 测试驱动 - 轮询接收模式
+ * 芯片: MC9S08DZ32
+ */
+
+#ifndef DRIVER_CAN_TEST_H_
+#define DRIVER_CAN_TEST_H_
+
+#include "sys_include.h"
+
+/* CAN 消息结构 */
+typedef struct {
+    u32 CanId;
+    u8  FrameType;  /* 0=数据帧, 1=远程帧 */
+    u8  Data[8];
+    u8  MsgLth;
+} CanMsgInf_Test;
+
+/* CAN 扩展帧/标准帧标志 */
+#define CAN_EXTENDED_FRAME    1
+#define CAN_STANDARD_FRAME    0
+
+/* 标准帧最大ID */
+#define CAN_STANDARD_FRAME_MAX_ID    0x07FFU
+
+/* ============================================
+ * 函数声明
+ * ============================================ */
+
+/* CAN 初始化 - 250Kbps，接受所有帧，轮询模式（不开中断） */
+void Drv_CAN_Test_Init(void);
+
+/* CAN 发送一帧扩展帧 */
+byte Drv_CAN_Test_SendFrame(u32 CanID, u8 *MSG);
+
+/* CAN 轮询接收 - 返回1表示收到一帧，0表示无帧
+ * 调用后数据存入全局 CanMsg_Test */
+u8 Drv_CAN_Test_ReceiveFrame(void);
+
+/* 全局接收缓冲 */
+extern CanMsgInf_Test CanMsg_Test;
+
+#endif /* DRIVER_CAN_TEST_H_ */

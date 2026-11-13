@@ -1,0 +1,27 @@
+#include "sys_include.h"
+ #include "Driver_Gpio.h"
+
+extern volatile u8 canMessageReceivedFlag;
+extern CanMsgInf CanMsg;
+
+ void main(void)
+  {
+      u8 rsp_data[8] = {0xAA, 0x55, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC};
+
+      sys_clk_Init();
+      PE_low_level_init();
+      Drv_Gpio_Init();
+      Timer_1ms_Init();
+      Drv_CAN_Init();
+      Drv_CAN_Enable();
+
+      for (;;) {
+    	  Drv_CAN_SendFrame(0x180, rsp_data);
+    	  wait_ms(100);
+          if (canMessageReceivedFlag) {
+              canMessageReceivedFlag = 0;
+              /* 收到任意帧后，回发一帧响应 */
+              Drv_CAN_SendFrame(0x18FEFA50, rsp_data);
+          }
+      }
+  }

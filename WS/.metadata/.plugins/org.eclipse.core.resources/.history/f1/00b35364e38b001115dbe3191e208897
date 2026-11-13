@@ -1,0 +1,14 @@
+#ifndef _MOTOR_REGULATE_H_
+#define _MOTOR_REGULATE_H_
+
+#define motor_temp_max  110
+#define motor_temp_mix   70
+#define motor_temp_factor 0.025  //  1/40=0.025
+
+#define motor_ctl_temp_max  70
+#define motor_ctl_temp_mix   50
+#define motor_ctl_temp_factor 0.05
+
+void motor_duty_ctl(u8 motor_temp,u8 motor_ctl_temp);
+
+#endif

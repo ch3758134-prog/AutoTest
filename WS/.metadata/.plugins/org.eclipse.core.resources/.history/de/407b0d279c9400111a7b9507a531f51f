@@ -1,0 +1,213 @@
+#ifndef _EAL_CAN_H_
+#define _EAL_CAN_H_
+//#define C99
+
+#define Vehicle_Type	(1)
+#define TYBYD (0)
+#define SZJL  (1)
+#define ZHYL  (2)
+#define TEST  (3)
+
+#if Vehicle_Type == TYBYD
+#define Can_Brake_ID			0x18FEF100	//制动踏板
+#define Can_Speed_ID			0x18FEF100	//车速
+#define Can_Tank_Pressure_ID	0x18FEAE30	//储气罐压力
+
+#elif Vehicle_Type == SZJL
+#define Can_Brake_ID			0x18F001D0	//制动踏板
+#define Can_Speed_ID			0x18FEF117	//车速
+#define Can_Tank_Pressure_ID	0x0C41D017	//储气罐压力
+#define Can_Wheel_Speed_ID		0X18FEBF0B  //轮速信号
+#define Can_Torque_ID			0X18FF20EF  //扭矩信号
+#define Can_Gear_ID				0X18F00503  //档位信号
+#define Can_Accelerator_ID		0X0CF00300 	//油门信号
+#define Can_Test1_ID			0x0c000001 	//调试报文1
+#define Can_Test2_ID			0x0c000002 	//调试报文2
+#define Can_Test3_ID			0x0c000003 	//调试报文3
+
+#elif Vehicle_Type == TEST
+#define Can_Brake_ID			0x18000000	//制动踏板
+#define Can_Speed_ID			0x18000001	//车速
+#define Can_Tank_Pressure_ID	0x18000002	//储气罐压力
+#define Can_Gear_ID				0x18000003  //挡位
+
+#elif Vehicle_Type == ZHYL
+#define Can_Brake_ID			0x1004FF1E	//制动踏板
+#define Can_Speed_ID			0x1002FF1E	//车速
+#endif
+
+
+// 定义全局变量
+extern  u8 t_BrakeSta[8];//制动踏板
+extern 	u8 t_Vehicle_Speed[8];//车速
+extern	u8 t_Tank_Pressure[8];//气罐压力
+extern	u8 t_Wheel_Speed[8];//轮速
+extern	u8 t_Torque[8];//扭矩
+extern	u8 t_Gear[8];//挡位
+extern  u8 t_Accelerator[8];//加速踏板
+extern  u8 t_test1[8];//调试报文1
+extern  u8 t_test2[8];//调试报文2
+extern  u8 t_test3[8];//调试报文3
+
+
+//#if Vehicle_Type == TYBYD
+//CanMsg canMessage_TYBYD = {
+//	CanMsg.BrakeSta = {0xff, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00},
+//	CanMsg.Vehicle_Speed1 = {0xff, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00},
+//	CanMsg.Tank_Pressure = {0x00, 0x00, 0x7D, 0x7D, 0x00, 0x00, 0x00, 0x00}
+//};
+//
+//#elif Vehicle_Type == SZJL
+//CanMsg canMessage_SZJL = {
+//	    .BrakeSta = {0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},//制动踏板
+//	    .Wheel_Speed = {0x00, 0x00, 0x7D, 0x7D, 0x7D, 0x7D, 0x00, 0x00},//轮速
+//	    .Tank_Pressure = {0x50, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},//气罐压力
+//	    .Vehicle_Speed1 = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},//车速1
+//	    .Vehicle_Speed2 = {0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00},//车速2
+//	    .Vehicle_Speed3 = {0x00, 0x00, 0x3C, 0x00, 0x00, 0x00, 0x00, 0x00},//车速3
+//	    .Vehicle_Speed4 = {0x00, 0x00, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00},//车速4
+//	    .Torque = {0x00, 0x50, 0x06, 0x2E, 0x00, 0x00, 0x00, 0x00},//扭矩
+//	    .Gear1 = {0x00, 0x00, 0x00, 0x7F, 0x00, 0x00, 0x00, 0x00},//挡位非空档
+//	    .Gear2 = {0x00, 0x00, 0x00, 0x7D, 0x00, 0x00, 0x00, 0x00},//挡位空档
+//	    .Accelerator1 = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},//加速踏板0%
+//	    .Accelerator2 = {0x00, 0x7D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},//加速踏板50%
+//	    .Accelerator3 = {0x00, 0x4B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}//加速踏板30%
+//};
+//
+//#elif Vehicle_Type == ZHYL
+//CanMsg canMessage_ZHYL = {
+//	CanMsg.BrakeSta = {0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x02, 0x00},
+//	CanMsg.Vehicle_Speed 1= {0x00, 0xf0, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00}
+//};
+//
+//#elif Vehicle_Type == TEST
+//	CanMsg canMessage_TEST = {
+//	CanMsg .BrakeSta = {0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+//	CanMsg.Vehicle_Speed1 = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+//	CanMsg.Tank_Pressure = {0x7D, 0x7D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+//};
+//
+//#endif
+
+//typedef struct {
+//	u8 BatHigh;       	 	//ECU电压高一般性故障 
+//	u8 BatLow;				//ECU电压低一般性故障 
+//	u8 BatOverHigh;			//ECU电压过高故障 
+//	u8 BatOverLow;			//ECU电压过低故障 
+//	u8 IgnHigh;				//IGN点火信号电压高故障
+//	u8 IgnLow;				//IGN点火信号电压低故障
+//	u8 PressPowerHigh;		//压力传感器供电高故障 
+//	u8 PressPowerLow;		//压力传感器供电低故障 
+//	u8 PressSignalErr;		//压力传感器信号故障 
+//	u8 ValveOpen;			//电磁阀开路故障 
+//	u8 ParkValveOpen;		//驻车电磁阀开路故障 
+//	u8 ReleaseValveOpen;	//释放电磁阀开路故障
+//	u8 ReleaseKeyOpen;		//释放按键开路故障
+//	u8 ParkKeyOpen;			//驻车按键开路故障 
+//	u8 AKeyOpen;			//A键开路故障 
+//	u8 ReleaseLongPress;	//释放按键长按下故障 
+//	u8 ParkKeyLongPull;		//驻车按键长拉起故障 
+//	u8 AKeyLongPress;		//A键长按下故障 
+//	u8 BusOff;				//CAN总线BUSOFF故障 
+//	u8 BrakeSigFault;		//CAN输入刹车信号故障
+//	u8 SpeedSigFault;		//CAN输入车速信号故障
+//	u8 AccelSigFault;		//CAN输入油门信号故障 
+//	u8 ReverseSigFault;		//CAN输入倒挡信号故障 
+//	u8 NeutralSigFault;		//CAN输入空挡信号故障 
+//	u8 MotorTorqFault;		//CAN输入电机扭矩信号故障 
+//	u8 MotorSpdFault;		//CAN输入电机转速信号故障 
+//}EPB_Fault_Status;
+
+typedef enum
+{
+		NOfault=0,				//无故障
+		BatHigh=1,      	 	//ECU电压高一般性故障 
+		BatLow=2,				//ECU电压低一般性故障 
+		BatOverHigh=3,			//ECU电压过高故障 
+		BatOverLow=4,			//ECU电压过低故障 
+		IgnHigh=5,				//IGN点火信号电压高故障
+		IgnLow=6,				//IGN点火信号电压低故障
+		PressPowerHigh=7,		//压力传感器供电高故障 
+		PressPowerLow=8,		//压力传感器供电低故障 
+		PressSignalErr=9,		//压力传感器信号故障 
+		ValveOpen=10,			//电磁阀开路故障 
+		ParkValveOpen=11,		//驻车电磁阀开路故障 
+		ReleaseValveOpen=12,	//释放电磁阀开路故障
+		ReleaseKeyOpen=13,		//释放按键开路故障
+		ParkKeyOpen=14,			//驻车按键开路故障 
+		AKeyOpen=15,			//A键开路故障 
+		ReleaseLongPress=16,	//释放按键长按下故障 
+		ParkKeyLongPull=17,		//驻车按键长拉起故障 
+		AKeyLongPress=18,		//A键长按下故障 
+		BusOff=19,				//CAN总线BUSOFF故障 
+		BrakeSigFault=20,		//CAN输入刹车信号故障
+		SpeedSigFault=21,		//CAN输入车速信号故障
+		AccelSigFault=22,		//CAN输入油门信号故障 
+		ReverseSigFault=23,		//CAN输入倒挡信号故障 
+		NeutralSigFault=24,		//CAN输入空挡信号故障 
+		MotorTorqFault=25,		//CAN输入电机扭矩信号故障 
+		MotorSpdFault=26		//CAN输入电机转速信号故障
+}g_EPBFaultStatus;
+
+typedef enum
+{
+	no_status=0,				//无状态
+	park_off=1,					//驻车按键关
+	park_on=2,					//驻车按键开
+	park_error=3,				//驻车按键故障
+	rele_off=4,					//释放按键关
+	rele_on=5,					//释放按键开
+	rele_error=6,				//释放按键故障
+	epb_park=7,					//epb驻车状态
+	epb_rele=8,					//epb释放状态
+	epb_error=9,				//epb故障状态
+	static_park=10,				//静态驻车
+	static_rele=11,				//静态释放
+	dynamic_park=12,			//动态驻车
+	dynamic_rele=13,			//动态释放
+	dynamic_park_end=14,		//动态驻车结束
+	driving_park=15,			//行驶驻车
+	car_uphill=16,				//车辆上坡
+	car_downhill=17,			//车辆下坡
+	car_levelup=18,				//水平向上
+	car_leveldown=19,			//水平向下
+	car_slopeup=20,				//斜坡向上
+	car_slopedown=21,			//斜坡向下
+	forward_gear=22,			//前进档
+	car_neutral=23,				//空挡
+	reverse_gear=24,			//倒挡
+	break_switch_on=25,			//制动踏板踩下		
+    break_switch_off=26			//制动踏板未踩下
+}g_DBUGStatus;
+
+
+typedef struct {
+	g_EPBFaultStatus ECUFaultstatus;
+	g_EPBFaultStatus IGNFaultstatus;
+	g_EPBFaultStatus ValveFaultstatus;
+	g_EPBFaultStatus KEYFaultstatus;
+	g_EPBFaultStatus CANFaultstatus;
+	g_EPBFaultStatus EPB_status;
+}EPB_Fault_Status;
+
+typedef struct {
+	g_DBUGStatus park_status;
+	g_DBUGStatus rele_status;
+	g_DBUGStatus epb_status;
+	g_DBUGStatus dys_status;
+	g_DBUGStatus hill_status;
+	g_DBUGStatus level_status;
+	g_DBUGStatus neutral_status;
+	g_DBUGStatus gear_status;
+	g_DBUGStatus break_status;
+}DEBUG_Can_Status;
+
+
+
+void CanRcvdEPB_Handle(void);
+DEBUG_Can_Status* CanRcvDBUG_Handle(void);
+void Can_SendMsg_Task_10ms(void); 
+
+
+#endif
+

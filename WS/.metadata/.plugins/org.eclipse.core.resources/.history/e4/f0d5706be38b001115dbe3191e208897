@@ -1,0 +1,57 @@
+#ifndef __DRIVER_ADC__H
+#define __DRIVER_ADC__H
+
+#define DRV_ADC_DATA_LENGTH			7		//AD信号总数
+typedef union
+{
+	u16 Data[DRV_ADC_DATA_LENGTH];
+	struct
+	{
+	  u16 DRV_AD_BATIN;			//电源电压
+	  u16 DRV_AD_POW5V;  		//供电电压5v
+	  u16 DRV_AD_BAUDRATE;		//波特率
+	  u16 DRV_AD_IGN;			//点火信号
+	  u16 DRV_AD_Press_POW;		//压力电源
+	  u16 DRV_AD_kEY_POW;		//按键电源
+	  u16 DRV_AD_EPB_POW; 		//EPB（电子驻车制动）电源
+	  
+	  //u16 DRV_AD_Press1;		//压力传感器1
+	  //u16 DRV_AD_Press2;		//压力传感器2
+	}S;
+} Drv_Adc_Data_TypeDef;
+      
+typedef enum
+{
+   DRV_AD_CH0 = 0x00,
+   DRV_AD_CH1 = 0x01, 
+   DRV_AD_CH2 = 0x02,  
+   DRV_AD_CH3 = 0x03, 
+   DRV_AD_CH4 = 0x04,
+   DRV_AD_CH5 = 0x05,
+   DRV_AD_CH6 = 0x06,
+   DRV_AD_CH7 = 0x08,
+   DRV_AD_CH8 = 0x09
+
+} Drv_Adc_Channel_TypeDef;
+
+typedef enum
+{
+	DRV_ADC_Enable,				 //AD采集使能
+	DRV_ADC_BUSY,                   //AD采集正忙
+	DRV_ADC_STOP,                     //AD采集OK
+	DRV_ADC_Disable_And_Low_Power		//AD采集关闭，同时进入低功耗
+} Drv_Adc_State_Typedef;	//AD状态定义
+
+typedef enum
+{
+	DRV_ADC_Sample_Continuous,	//连续采样 
+	DRV_ADC_Sample_Single		//单次采样
+} Drv_Adc_Sample_Mode;	//AD采样模式定义
+
+__interrupt void AD1_Interrupt(void);
+void Drv_Adc_Init(Drv_Adc_Sample_Mode vAdcSampleMode);
+void Drv_Adc_Set_State(Drv_Adc_State_Typedef vState);
+Drv_Std_ReturnType Drv_Adc_Get_One(Drv_Adc_Channel_TypeDef vDrvAdcChannel,u16 *pDrvAdcValue);
+Drv_Std_ReturnType Drv_Adc_Get_All(Drv_Adc_Data_TypeDef  *pDrvAdcValue);
+
+#endif

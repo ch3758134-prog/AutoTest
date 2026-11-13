@@ -1,0 +1,27 @@
+/*
+ * Drv_beep.h
+ *
+ *  Created on: Jul 5, 2019
+ *      Author: tty0
+ */
+
+#ifndef DRV_BEEP_H_
+#define DRV_BEEP_H_
+
+typedef struct{
+	u8 loop_times;
+	u8 first_on;
+	u8 first_off;
+	u8 second_on;
+	u8 second_off;
+	u8 three_on;
+	u8 three_off;
+	u8 busy_flag;
+}_Buzz_Atrri;
+
+#define Buzz_on()	PTAD_PTAD7 = 1
+#define Buzz_off()	PTAD_PTAD7 = 0
+
+void Set_Beep_Param(u8 param1,u8 param2,u8 param3,u8 param4,u8 param5,u8 param6,u8 times);
+void Beep_Task_10ms(void);
+#endif /* DRV_BEEP_H_ */

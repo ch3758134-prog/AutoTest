@@ -1,0 +1,373 @@
+#include "sys_include.h"
+
+// #define Motorola  
+
+volatile u8 canMessageReceivedFlag = 0;
+ u8  sDrvCan_Busoff;//CAN����״̬��־λ
+ u8  DLC_LN =8;//CAN֡����
+ extern u8  Can_Counter; //����CAN���ļ���
+ extern u8  BUAD_status; //������״̬
+ u8 ExtendedFrame;//��չ֡��־λ
+ u8 StandardFrame;//��׼֡��־λ
+ 
+byte Drv_CAN_SendFrame(u32 CanID, byte *MSG) //����CAN֡
+{
+	  u8 i;                              
+	  TMsgBuff *MsgBuff;
+	  u32 tmpId = CanID;
+	// EnterCritical();                     /* Disable global interrupts */
+	  if (!(CANTFLG & 0x07)) {             /* Are all transmit buffers full? */
+	   // ExitCritical();                    /* Enable global interrupts */
+	    return ERR_TXFULL;                 /* If yes then error */
+	  }
+	  CANTBSEL = CANTFLG;
+	  MsgBuff = (TMsgBuff *)&CANTIDR0;
+
+	  tmpId = (((tmpId & 0x1FFC0000UL) << 3) | 0x00180000UL | ((tmpId & 0x0003FFFFUL) << 1));//��չ֡
+	  //tmpId = tmpId << 21; 
+	  MsgBuff->IDR3 = ((DwordSwap *)&tmpId)->b.b3;//������ϢID�����ͻ�����
+	  MsgBuff->IDR2 = ((DwordSwap *)&tmpId)->b.b2;
+	  MsgBuff->IDR1 = ((DwordSwap *)&tmpId)->b.b1;
+	  MsgBuff->IDR0 = ((DwordSwap *)&tmpId)->b.b0;
+
+	#ifdef Motorola   
+	//////     Motorola
+	  for (i=0; i<8; i++) 
+	    {
+	      MsgBuff->Data[7-i] = MSG[i];     
+	    }//������ݵ����ͻ����� 
+	#else   //Intel
+	////  
+	  for (i=0; i<8; i++) 
+	    {
+	      MsgBuff->Data[i] = MSG[i];     
+	    }
+	//////////////////////////////////
+	#endif
+	  MsgBuff->IDR3 &= 0xFEU; //��չ֡ IDR3 BIT0��Ϊ0       
+	  //MsgBuff->IDR3 |= 0x01;
+
+	  //MsgBuff->IDR1 &= 0xEFU; //���֡ IDR1 BIT4��Ϊ0
+
+	  MsgBuff->DLR = 8;      //��Ϣ����0~8�ֽ�             
+	  MsgBuff->TBPR = 0x00U;      //���ͻ��������ȼ�                        
+	  CANTFLG = 1;        //0 ���ͻ�������   1 ���ͻ������ д�üĴ����������� 
+	  //ExitCritical();    
+	  //while(!(CANTFLG));                        
+	  return ERR_OK;     
+}
+
+//{    u8 i;
+//    TMsgBuff *MsgBuff; //���ͻ�����ָ��
+//    u32 tmpId = CanID; //��ʱ�������洢CAN��ϢID
+//
+//
+//    // ����Ƿ��п��õķ��ͻ�����CANTFLG�Ĵ����ĵ�3λ��ʾ3�����ͻ������״̬��
+//    while (!(CANTFLG & 0x07)) { // �ж��Ƿ��пյķ��ͻ�����
+//        // ExitCritical(); // ����ȫ���жϣ�ע�͵���������Ҫ���ʵ��������ã�
+//    	wait_ms(100);
+//    	break;
+//    }
+//		// ѡ����õķ��ͻ�����
+//		CANTBSEL = CANTFLG;
+//		// �����ͻ�����ĵ�ַ��ֵ��MsgBuffָ��
+//		MsgBuff = (TMsgBuff *)&CANTIDR0; // ���ͻ�����ָ��
+//	
+//		// ��CAN��ϢIDת��Ϊ��չ֡��ʽ����չ֡ID�����λΪ1��
+//		tmpId = (((tmpId & 0x1FFC0000UL) << 3) | 0x00180000UL | ((tmpId & 0x0003FFFFUL) << 1)); // ��չ֡ID
+//		// ����ϢID���ص����ͻ������IDR�Ĵ���
+//		MsgBuff->IDR3 = ((DwordSwap *)&tmpId)->b.b3; // ������ϢID�����ͻ�����
+//		MsgBuff->IDR2 = ((DwordSwap *)&tmpId)->b.b2;
+//		MsgBuff->IDR1 = ((DwordSwap *)&tmpId)->b.b1;
+//		MsgBuff->IDR0 = ((DwordSwap *)&tmpId)->b.b0;
+//	
+//	#ifdef Motorola
+//		// �������Motorola�꣨���������ֽ���ת��������Motorola�ֽ���������
+//		for (i = 0; i < 8; i++) {
+//			MsgBuff->Data[7 - i] = MSG[i]; // ������ݵ����ͻ�����Motorola�ֽ���
+//		}
+//	#else
+//		// ���δ����Motorola�꣬��Intel�ֽ���������
+//		for (i = 0; i < 8; i++) {
+//			MsgBuff->Data[i] = MSG[i]; // ������ݵ����ͻ�����Intel�ֽ���
+//		}
+//	#endif
+//	
+//		// ������չ֡��־λ��IDR3�����λΪ0��ʾ��չ֡��
+//		MsgBuff->IDR3 &= 0xFEU; // ��չ֡ IDR3 BIT0��Ϊ0
+//	
+//		// �������֡��־λ��IDR1�ĵ�4λΪ0��ʾ���֡��
+//		MsgBuff->IDR1 &= 0xEFU; // ���֡ IDR1 BIT4��Ϊ0
+//	
+//		// ������Ϣ���ȣ�DLR�Ĵ����ĵ�4λ��ʾ��Ϣ���ȣ�0~8�ֽڣ�
+//		MsgBuff->DLR = 8; // ��Ϣ����0~8�ֽ�
+//	
+//		// ���÷��ͻ���������ȼ���TBPR�Ĵ����ĵ�3λ��ʾ���ȼ���0Ϊ������ȼ���
+//		MsgBuff->TBPR = 0x00U; // ���ͻ��������ȼ�
+//	
+//		// ����ͻ�����ı�־λ�����������͹�̣�дCANTFLG�Ĵ����������㣩
+//		CANTFLG = CANTBSEL; // 0 ���ͻ������� 1 ���ͻ������ д�üĴ����������� 
+//		return ERR_OK;
+//}
+
+
+
+/*********************************************************************************************
+*������    :
+*����      : ��һ֡���
+*����      : MSG����ȡ����Ϣָ��
+*����      : ERR_OK
+*��ע      :
+*����      :
+**********************************************************************************************/
+void Drv_CAN_ReadFrame(CanMsgInf *Msg)//��ȡCAN֡
+{
+  byte i,Length;
+  u32  tmpId =0;
+  ((DwordSwap*)&tmpId)->b.b0 = CANRIDR0;//CAN���ջ�����Ĵ���ָ��
+  ((DwordSwap*)&tmpId)->b.b1 = CANRIDR1;
+  ((DwordSwap*)&tmpId)->b.b2 = CANRIDR2;
+  ((DwordSwap*)&tmpId)->b.b3 = CANRIDR3;
+  if (tmpId & MB_ID_IDE)//�ж��Ƿ�Ϊ��չ֡ 
+  {
+    Msg->CanId = ((tmpId >> 1) & 0x3FFFFUL) | ((tmpId >> 3) & 0x1FFC0000UL); //��չ֡
+    ExtendedFrame = 1;
+  }
+  else {
+    Msg->CanId  = tmpId >> 21;         //��׼֡
+    StandardFrame = 1;
+  }
+  
+  if(ExtendedFrame) 
+  {
+	  if(CANRIDR3 & 0x01)
+	  {
+		  Msg->FrameType = 1;//Զ��֡  
+	  }
+	  else
+	  {
+	    Msg->FrameType = 0;//���֡
+	  }
+	  ExtendedFrame = 0;
+  }
+  
+  
+  if(StandardFrame)
+  {
+	  if(CANRIDR1 & 0x10) 	//�ж��Ƿ�ΪԶ��֡
+	  {
+		Msg->FrameType = 1;//Զ��֡
+	  } 
+	  else 
+	  {
+		Msg->FrameType = 0;//���֡
+	  }
+	  StandardFrame = 0;
+  }
+	
+  Length = (byte)(CANRDLR & 0x0F); //��ȡ��ݳ���
+  Msg->MsgLth  = (byte)(CANRDLR & 0x0F);
+ 
+  
+ #ifdef Motorola   
+   //////  Motorola
+  for (i=0U; i<Length; i++) 
+  {
+    Msg->Data[7-i] = *((byte *)&CANRDSR0 + i); //CAN���ջ�����ָ��
+  }
+  #else  
+  //////////////////////Intel//////////////
+    for (i=0U; i<Length; i++) 
+  {
+    Msg->Data[i] = *((byte *)&CANRDSR0 + i); //CAN���ջ�����ָ��
+  }
+  
+  #endif  
+  
+    CANRFLG = 1;//������жϱ�־λ          
+  //CANRFLG = CANRFLG_RXF_MASK;//������жϱ�־λ                     
+}
+
+
+void Drv_CAN_Init(void)
+{                 
+  u32 AcFilterId=0;
+  //MSCANģ��ʹ��
+  CANCTL1 = 0x80U;                    
+  //MSCAN���ڳ�ʼ��ģʽ
+  CANCTL0 = 0x01U;
+
+ #if 1
+  /* 滤波器全开 - 接收所有扩展帧和标准帧 */
+  CANIDAC_IDAM = 0x00U;
+  CANIDAR0 = 0x00U;
+  CANIDAR1 = 0x00U;
+  CANIDAR2 = 0x00U;
+  CANIDAR3 = 0x00U;
+  CANIDMR0 = 0xFFU;
+  CANIDMR1 = 0xFFU;
+  CANIDMR2 = 0xFFU;
+  CANIDMR3 = 0xFFU;
+  CANIDAR4 = 0x00U;
+  CANIDAR5 = 0x00U;
+  CANIDAR6 = 0x00U;
+  CANIDAR7 = 0x00U;
+  CANIDMR4 = 0xFFU;
+  CANIDMR5 = 0xFFU;
+  CANIDMR6 = 0xFFU;
+  CANIDMR7 = 0xFFU;
+ #else
+  
+
+  CANIDAC_IDAM = 0x01U; //4��16λ�����˲���    
+//  AcFilterId =(u16)(DBUG_CAN1 << 5)|0x0000;
+//  //��׼֡
+//  CANIDAR0 = ((DwordSwap *)&AcFilterId)->b.b3;                    
+//  CANIDAR1 = ((DwordSwap *)&AcFilterId)->b.b2;                    
+//  CANIDAR3 = ((DwordSwap *)&AcFilterId)->b.b0;
+  
+  
+  CANIDAR0 = (u8)((DBUG_CAN1 << 5) >> 8) & 0xF7;  // ID[10:3] �� bit15-8                  
+  CANIDAR1 = (u8)((DBUG_CAN1 << 5)& 0xFF); // ID[2:0] �� bit7-5 + RTR=0, IDE=0               
+  CANIDAR2 = (u8)((DBUG_CAN2 << 5) >> 8) & 0xF7;  // ID[10:3] �� bit15-8                  
+  CANIDAR3 = (u8)((DBUG_CAN2 << 5)& 0xFF); // ID[2:0] �� bit7-5 + RTR=0, IDE=0
+  
+//  CANIDAR4 = (u8)(Diag_Fun_Rsp_FilterId>>3);                   
+//  CANIDAR5 = (u8)(Diag_Fun_Rsp_FilterId<<5);             
+//  CANIDAR6 = (u8)(Diag_GSNR_RQ_FilterId>>3);                   
+//  CANIDAR7 = (u8)(Diag_GSNR_RQ_FilterId<<5); 
+
+  CANIDMR0 = 0x00U;                   
+  CANIDMR1 = 0x1FU;                   
+  CANIDMR2 = 0x00U;                   
+  CANIDMR3 = 0x1FU; 
+  
+//  CANIDMR4 = 0x00U;                   
+//  CANIDMR5 = 0x1FU; 
+//  CANIDMR6 = 0x00U;                   
+//  CANIDMR7 = 0x1FU; 
+ #endif 
+
+	//ϵͳʱ��8M������2��Ƶ��
+	CANBTR0 = 0x43U;                     
+	//ʱ���1��7Tq ʱ������  ʱ���2��8Tq ʱ������
+	//CAN��Bit Time=4M/1/(7+8+1)
+	CANBTR1 = 0x3AU;
+
+  if(BUAD_status == 1)
+  {
+	//ϵͳʱ��8M������2��Ƶ��
+	CANBTR0 = 0x43U;                     
+	//ʱ���1��4Tq ʱ������  ʱ���2��3Tq ʱ������
+	//CAN��Bit Time=4M/1/(4 + 3 + 1)
+	CANBTR1 = 0x23U;
+  }
+  CANCTL1_CLKSRC = 0x01U;              
+  CANCTL0_INITRQ = 0x00U;//CAN������
+
+  while(CANCTL1_INITAK) {} 
+            
+  CANRFLG_RXF = 1;//������жϱ�־                    
+  CANRIER_RXFIE  = 0x01U;// �����������ж�ʹ�� 
+  CANRFLG_TSTAT0 =1;
+  CANRFLG_TSTAT1 =1;                     
+  CANRFLG_RSTAT0 =1;
+  CANRFLG_RSTAT1 =1;
+  
+   /* Busoff�ж�ʹ�� */
+ 	CANRIER_TSTATE0 = 1; //01:Generate CSCIF interrupt only if the transmitter enters or leaves ��bus-off�� state. 
+ 	CANRIER_TSTATE1 = 0; //Discard other transmitter state changes for generating CSCIF interrupt.
+ 	CANRFLG_CSCIF = 1;
+ 	CANRIER_CSCIE = 1;  //1:A CAN Status Change event causes an error interrupt request.
+	sDrvCan_Busoff =  0;                     
+}
+
+/*********************************************************************************************
+*������    :
+*����      :����CAN�����ж�
+*����      :
+*����      :
+*��ע      :
+*����      :
+**********************************************************************************************/
+ISR(Drv_CAN_Err_ISR) //CAN�����ж�
+{
+  // ���CAN״̬�仯�жϱ�־λ
+  CANRFLG_CSCIF  =  1; 
+  
+  // ������з��ͻ����������
+  CANTARQ_ABTRQ0=1;
+  CANTARQ_ABTRQ1=1;
+  CANTARQ_ABTRQ2=1;  
+  
+  // �������߹رձ�־λ
+  sDrvCan_Busoff =  1;
+}
+
+u8 BusOff_stata(void)//CAN �����Ƿ�ر�
+  {
+     /*
+      if( (CANRFLG_TSTAT0 ==1 && CANRFLG_TSTAT1 ==1)||                     
+          (CANRFLG_RSTAT0 ==1 && CANRFLG_RSTAT1 ==1) )
+        {
+          CANTARQ_ABTRQ0=1;
+          CANTARQ_ABTRQ1=1;
+          CANTARQ_ABTRQ2=1;
+          return 1;
+        }
+      else return 0;   */
+      return sDrvCan_Busoff;// ����CAN���߹رձ�־λ��ֵ
+    
+  }
+
+  /*********************************************************************************************
+*������    :
+*����      :CANʹ��
+*����      :
+*����      :
+*��ע      :
+*����      :
+**********************************************************************************************/
+void Drv_CAN_Enable(void)
+{ 
+    // ��INITRQλ����Ϊ0������CANģ�����������ģʽ
+    CANCTL0_INITRQ = 0x00;             
+    // �ȴ�INITAKλ��Ϊ0����ʾCANģ���Ѿ�����������ģʽ
+    while(CANCTL1_INITAK) {}  
+}
+
+/*********************************************************************************************
+*������    :
+*����      :CAN��ֹ
+*����      :
+*����      :
+*��ע      :
+*����      :
+**********************************************************************************************/
+void Drv_CAN_Disable(void)
+{ 
+    // ��INITRQλ����Ϊ1������CANģ������ʼ��ģʽ
+    CANCTL0_INITRQ = 0x01;             
+    // �ȴ�INITAKλ��Ϊ1����ʾCANģ���Ѿ������ʼ��ģʽ
+    while(!CANCTL1_INITAK) {}   
+}
+
+/*********************************************************************************************
+*������    :
+*����      :CAN RX �ж�
+*����      :
+*����      :
+*��ע      :
+*����      :
+**********************************************************************************************/
+CanMsgInf CanMsg;
+ISR(Drv_CAN_RX_ISR) //CAN RX�ж�
+{
+    while(CANRFLG_RXF == 1) {
+        
+        // ���� Drv_CAN_ReadFrame �����ȡ CAN �����ϵ�һ֡��ݣ�������ȡ������ݴ洢�� CanMsg �ṹ����
+        Drv_CAN_ReadFrame(&CanMsg);
+        canMessageReceivedFlag = 1;
+    }
+}
+

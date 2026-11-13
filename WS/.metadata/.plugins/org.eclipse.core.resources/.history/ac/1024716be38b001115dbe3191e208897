@@ -1,0 +1,158 @@
+//#include "sys_include.h"
+//#include "EAL_ADC.h"
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// static Drv_Adc_Data_TypeDef ADC_Info;
+// _Pcs_AdcInfor  Pcs_AdcInfor;//AD���
+// u8  BUAD_status=0;
+// 
+// 
+// 
+// 
+///**
+//  ��ȡADC��ݲ����д���
+// * 
+// * �ú������ȡADC��ݣ����Զ�ȡ������ݽ��д���͸��¡�
+// * ���崦�?ʽΪ����ǰADC�����֮ǰ��7����ݽ��м�Ȩƽ��
+// * �Լ���������������ȶ��ԡ�
+// */
+//void AD_Read(void)
+//{
+//    // ����һ����ʱ��ADC��ݽṹ�壬���ڴ洢��ȡ����ADC���
+//    Drv_Adc_Data_TypeDef Adc_Inf;
+//
+//    // ���������ȡ����ADCͨ�������
+//    Drv_Adc_Get_All(&Adc_Inf);
+//
+////    // ��ÿ��ADCͨ������ݽ��м�Ȩƽ����
+////    ADC_Info.S.DRV_AD_BATIN = ((ADC_Info.S.DRV_AD_BATIN * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_BATIN + 4) >> 3);
+////    ADC_Info.S.DRV_AD_Press_POW = ((ADC_Info.S.DRV_AD_Press_POW * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_Press_POW + 4) >> 3);
+////    ADC_Info.S.DRV_AD_kEY_POW = ((ADC_Info.S.DRV_AD_kEY_POW * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_kEY_POW + 4) >> 3);
+////    ADC_Info.S.DRV_AD_EPB_POW = ((ADC_Info.S.DRV_AD_EPB_POW * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_EPB_POW + 4) >> 3);
+////    //ADC_Info.S.DRV_AD_Press1 = ((ADC_Info.S.DRV_AD_Press1 * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_Press1 + 4) >> 3);
+////    //ADC_Info.S.DRV_AD_Press2 = ((ADC_Info.S.DRV_AD_Press2 * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_Press2 + 4) >> 3);
+////    ADC_Info.S.DRV_AD_POW5V = ((ADC_Info.S.DRV_AD_POW5V * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_POW5V + 4) >> 3);
+////    ADC_Info.S.DRV_AD_IGN = ((ADC_Info.S.DRV_AD_IGN * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_IGN + 4) >> 3);
+////	ADC_Info.S.DRV_AD_BAUDRATE = ((ADC_Info.S.DRV_AD_BAUDRATE * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_BAUDRATE + 4) >> 3);
+//	
+//    // ��ÿ��ADCͨ������ݽ��м�Ȩƽ����
+//    ADC_Info.S.DRV_AD_BATIN = ((ADC_Info.S.DRV_AD_BATIN * 4 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_BATIN * 4 + 4) >> 3);
+//    ADC_Info.S.DRV_AD_Press_POW = ((ADC_Info.S.DRV_AD_Press_POW * 4 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_Press_POW * 4 + 4) >> 3);
+//    ADC_Info.S.DRV_AD_kEY_POW = ((ADC_Info.S.DRV_AD_kEY_POW * 4 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_kEY_POW * 4 + 4) >> 3);
+//    ADC_Info.S.DRV_AD_EPB_POW = ((ADC_Info.S.DRV_AD_EPB_POW * 4 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_EPB_POW * 4 + 4) >> 3);
+//    //ADC_Info.S.DRV_AD_Press1 = ((ADC_Info.S.DRV_AD_Press1 * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_Press1 + 4) >> 3);
+//    //ADC_Info.S.DRV_AD_Press2 = ((ADC_Info.S.DRV_AD_Press2 * 7 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_Press2 + 4) >> 3);
+//    ADC_Info.S.DRV_AD_POW5V = ((ADC_Info.S.DRV_AD_POW5V * 4 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_POW5V * 4 + 4) >> 3);
+//    ADC_Info.S.DRV_AD_IGN = ((ADC_Info.S.DRV_AD_IGN * 4 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_IGN * 4 + 4) >> 3);
+//	ADC_Info.S.DRV_AD_BAUDRATE = ((ADC_Info.S.DRV_AD_BAUDRATE * 4 + 4) >> 3) + ((Adc_Inf.S.DRV_AD_BAUDRATE * 4 + 4) >> 3);
+//    // ����ADCΪʹ��״̬
+//    Drv_Adc_Set_State(DRV_ADC_Enable);
+//}
+//
+//
+//
+//u16 Get_KeyPow(void)
+//{
+//	u16 temp;
+//	temp = (u16)((float)ADC_Info.S.DRV_AD_kEY_POW*AD_KEY_Ratio + 0.5);
+//	return temp;
+//}
+//
+//u16 Get_BAT(void)
+//{
+//	u16 temp;
+//	temp = (u16)((float)ADC_Info.S.DRV_AD_BATIN*AD_24V_Ratio + 0.5);
+//	return temp;
+//}
+//
+//
+//
+////u16 Get_Press1(void)
+////{
+////	u16 temp;
+////	temp = (u16)((float)ADC_Info.S.DRV_AD_Press1*AD_Press1_Ratio + 0.5);
+////	return temp;
+////}
+//
+////
+////u16 Get_Press2(void)
+////{
+////	u16 temp;
+////	temp = (u16)((float)ADC_Info.S.DRV_AD_Press2*AD_Press2_Ratio + 0.5);
+////
+////	return temp;
+////}
+//
+//u16 Get_IGN(void)//��ȡIGN��Դ��ѹֵ
+//{
+//	u16 temp;
+//	temp = (u16)((float)ADC_Info.S.DRV_AD_IGN*AD_IGN_Ratio + 0.5);
+//
+//	return temp;
+//}
+//
+//u16 Get_PressPow()//��ȡѹ����Դ��ѹֵ
+//{
+//	u16 temp;
+//	temp = (u16)((float)ADC_Info.S.DRV_AD_Press_POW*AD_PressPow_Ratio + 0.5);
+//
+//	return temp;
+//}
+//
+//u16 Get_EPB_Pow()//��ȡ EPB ��Դ��ѹֵ
+//{
+//	u16 temp;
+//	temp = (u16)((float)ADC_Info.S.DRV_AD_EPB_POW*AD_EPBPow_Ratio + 0.5);
+//	return temp;
+//}
+//
+//u16 Get_5V_Pow()
+//{
+//	u16 temp;
+//	temp = (u16)((float)ADC_Info.S.DRV_AD_POW5V*AD_5VPow_Ratio + 0.5);
+//
+//	return temp;
+//}
+//
+//u16 Get_BAUDRATE()
+//{
+//	u16 temp;
+//	//temp = (u16)((float)ADC_Info.S.DRV_AD_BAUDRATE*AD_BAUDRATE_Ratio + 0.5);
+//	float value = ADC_Info.S.DRV_AD_BAUDRATE*AD_BAUDRATE_Ratio + 0.5;
+//	temp = (u16)value;
+//	return temp;
+//}
+//
+//void Adc_GetData_10ms(void)
+//{
+//	// ��ȡ��ص�ѹ��ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    Pcs_AdcInfor.AD_Bat24V = Get_BAT();
+//    // ��ȡѹ����Դ��ѹ��ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    Pcs_AdcInfor.AD_PressPow = Get_PressPow();
+//    // ��ȡ�����Դ��ѹ��ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    Pcs_AdcInfor.AD_KeyPow = Get_KeyPow();
+//    // ��ȡ EPB ��Դ��ѹ��ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    Pcs_AdcInfor.AD_EPBPOW = Get_EPB_Pow();
+//    // ��ȡѹ��1��ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    //Pcs_AdcInfor.AD_Press1 = Get_Press1();
+//    // ��ȡѹ��2��ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    //Pcs_AdcInfor.AD_Press2 = Get_Press2();
+//    // ��ȡ5V��Դ��ѹ��ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    Pcs_AdcInfor.AD_VCC5V = Get_5V_Pow();
+//    // ��ȡIGN��Դ��ѹ��ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    Pcs_AdcInfor.AD_IGN = Get_IGN();
+//    // ��ȡ��������ݣ����洢�� Pcs_AdcInfor �ṹ����
+//    Pcs_AdcInfor.AD_BAUD = Get_BAUDRATE();
+//}
+//
+//
+//
+//void Buad_change(void)
+//{
+//	if(get_EPBBaud<= limtHi_BUAD500k && get_EPBBaud >= limtLow_BUAD500k)//500khz
+//	{
+//			BUAD_status = 1;//�����ʰ����л���
+//			Drv_CAN_Init();
+//	}
+//}

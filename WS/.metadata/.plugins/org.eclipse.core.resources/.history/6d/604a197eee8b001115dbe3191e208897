@@ -1,0 +1,45 @@
+#include "sys_include.h"
+#include "Driver_Gpio.h"
+
+extern volatile u8 canMessageReceivedFlag;
+extern CanMsgInf CanMsg;
+
+void main(void)
+{
+    u8 rsp_data[8] = {0xAA, 0x55, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC};
+
+    sys_clk_Init();
+    PE_low_level_init();
+    Drv_Gpio_Init();
+    Timer_1ms_Init();
+    Drv_CAN_Init();
+    Drv_CAN_Enable();
+
+    Drv_Gpio_AllKeyHigh();
+
+    for (;;) {
+        if (canMessageReceivedFlag) {
+            canMessageReceivedFlag = 0;
+
+            /* 只解析 ID = 0x123 标准帧 */
+            if (CanMsg.CanId == 0x123) {
+                u8 cmd = CanMsg.Data[7];
+
+                if (cmd == 0x00) {
+                    /* 默认：所有 KEY 拉高 */
+                    Drv_Gpio_AllKeyHigh();
+                } else if (cmd == 0x01) {
+                    /* 驻车：KEY11 拉低，其余拉高 */
+                    Drv_Gpio_AllKeyHigh();
+                    KEY11_OFF();
+                } else if (cmd == 0x02) {
+                    /* 释放：所有 KEY 拉高 */
+                    Drv_Gpio_AllKeyHigh();
+                }
+            }
+
+            /* 收到任意帧后回一帧响应 */
+            Drv_CAN_SendFrame(0x18FEFA50, rsp_data);
+        }
+    }
+}

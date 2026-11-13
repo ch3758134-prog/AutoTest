@@ -1,0 +1,344 @@
+///*
+// * Logic.c
+// *
+// *  Created on: Jul 5, 2019
+// *      Author: tty0
+// */
+//#include "sys_include.h"
+//#include "Logic.h"
+//#include "EAL_CAN.h"
+//#include "EAL_DAC.H"
+//
+//_gWork_Status Work_Sta=0;
+//
+//
+//extern void delay(u16 count);
+//
+//// ��ӵ�ѹ��������
+//#define EXHAUST_VOL 800  // ��Ӧפ��ѹ���ź�
+//#define INTAKE_VOL  200  // ��Ӧ�ͷ�ѹ���ź�
+////#define TEST_VOL 
+//
+//void Logic_Task_100ms(void)
+//{
+//    static u8 cnt_24v, cnt_ign, cnt_park, cnt_reles, cnt_ramp, cnt_autopark, cnt_autoreles, cnt_forgetpark, cnt_antislip,
+//    cnt_emerbrak80,cnt_emerbrak60;// ���徲̬���������ڼ���
+//    u8 t_epb_24v, t_epb_ign; // �����־λ�����ڴ洢��Դ״̬
+//    
+//			switch (Work_Sta) // ��ݹ���״̬�����л�,��ʼ��Ĭ��Ϊ0����Ĭ���ǿ���״̬
+//			{
+//			
+//				case work_idle://����״̬
+//					
+//					cnt_24v++;
+//					
+//					if(get_DevicePower <= LimtHi_24v && get_DevicePower >= LimtLow_24v)
+//					{
+//						t_epb_24v = 1;
+//						
+//					}	
+//					else
+//					{
+//						t_epb_24v = 0;
+//					}
+//					if(cnt_24v >=3  &&	t_epb_24v == 1)
+//					{
+//						cnt_24v =0;
+//						
+//						Work_Sta = work_check_ign;
+//					}	
+//					break;
+//					
+//				case work_check_ign:  //���IGN�Ƿ��ϵ�
+//				 	PARK_NC_SW_OFF();	//פ�������
+//				 	RELE_NC_SW_OFF();	//�ͷŰ����
+//				 	EPB_MODE_NO_OFF();	//�Զ������
+//				    SOL1_EN_OFF();		//פ������
+//				    SOL2_EN_OFF();		//�ͷŷ���
+//				    cnt_ign++;
+//					if (get_EPBIgn<= limtHi_IGN && get_EPBIgn >= LimtLow_IGN) // ���IGN�ϵ�
+//				    {
+//						t_epb_ign =1;
+//				    }
+//					else
+//					{
+//						t_epb_ign =0;
+//					}
+//					if(cnt_ign >=3  &&	t_epb_ign == 1)
+//					Work_Sta = work_set_park; // �л�������פ��״̬
+//					
+//					if(cnt_ign >=3  &&	t_epb_ign == 0)
+//					Work_Sta =work_anti_forget_park;//�л�������פ��״̬
+//					
+//					break;
+//	
+////	    	    case work_check_epb: // ���EPB��Դ״̬
+////	
+////	    	    	if (get_EPBKeyPow <= LimtHi_Key && get_EPBKeyPow >= LimtLow_Key) // ���EPB�����Դ24V�����Ʒ�Χ��
+////	    	    		t_epb_key = 1; // ���ñ�־λ
+////	    	        else
+////	    	        	t_epb_key = 0;
+////	
+////	//    	        if (gEPBPressPow <= LimtHi_5v && gEPBPressPow >= LimtLow_5v) // ���EPBѹ����Դ5v�����Ʒ�Χ��
+////	//    	            t_epb_5v = 1; // ���ñ�־λ
+////	//    	        else
+////	//    	            t_epb_5v = 0;
+////	//
+////	    	        if (t_epb_24v == 1 && t_epb_key == 1 ) // ������е�Դ״̬����
+////	    	        	Can_Rx_OK = 1;
+////	    	        	Work_Sta = work_check_ign; // �л������ign״̬
+////	
+//			 
+//				case work_set_park: // ����פ��״̬
+//								
+//						cnt_park++; 		//��������1
+//						if (cnt_park >= 3 ) // ���������ﵽ3 
+//						{
+//							
+//							//�������ٱ���
+//							t_Wheel_Speed[2]=0x7D;
+//							t_Wheel_Speed[3]=0x7D;
+//							t_Wheel_Speed[4]=0x7D;
+//							t_Wheel_Speed[5]=0x7D;
+//							
+//							// ���ͳ���Ϊ0�ı���
+//							t_Vehicle_Speed[2]=0x00;
+//							PARK_NO_SW_ON();	//פ������
+//							SOL1_EN_ON();		//פ������
+//							EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+//							
+//						}
+//						if(cnt_park >5)
+//						{
+//							cnt_park = 0; // ����������
+//							Work_Sta = work_set_release; // �л��������ͷ�״̬
+//						}
+//				
+//					break;
+//			
+//				case work_set_release: // �����ͷ�״̬
+//					
+//
+//					PARK_NC_SW_OFF();//פ�������
+//					SOL1_EN_OFF();		//פ������
+//					
+//					cnt_reles++; // ��������1
+//					if (cnt_reles >= 3) // ���������ﵽ3
+//					{
+//						//�����ƶ�̤�屨��(�ƶ�̤�����)
+//						t_BrakeSta[0]=0X40;
+//						//���ʹ����ѹ������(800kpa)
+//						t_Tank_Pressure[0]=0X50;
+//						t_Tank_Pressure[1]=0X50;
+//						
+//						RELE_NO_SW_ON();//�ͷŰ���
+//						SOL2_EN_ON();
+//						EAL_DAC_Set_Out_Vol(INTAKE_VOL);
+//
+//					}
+//					if(cnt_reles >5)
+//					{
+//						cnt_park = 0; // ����������
+//						Work_Sta = work_idle;
+//						//Work_Sta = work_autohold_park;//�л����Զ�פ��״̬	
+//					}
+//					break;		
+//					
+//				
+//				case work_autohold_park: // �Զ�פ��״̬
+//					
+//					RELE_NC_SW_OFF();	//�ͷŰ����
+//					SOL2_EN_OFF();
+//					
+//					EPB_MODE_NO_ON();
+//					cnt_autopark++; // ��������1
+//					if (cnt_autopark >= 3) // ���������ﵽ3
+//					{
+//						 
+//						// ���ͳ��ٱ���(0)
+//						t_Vehicle_Speed[2]=0x00;
+//						//Drv_CAN_SendFrame(Can_Speed_ID,t_Vehicle_Speed1);
+//						//���ͼ���̤�屨��(���ſ���0%)
+//						t_Accelerator[1]=0x00;
+//						t_Gear[3]=0X7F;//��λ�ǿյ�
+//						//�����ƶ�̤�屨��(�ƶ�̤�����)
+//						t_BrakeSta[0]=0X40;
+//						//���͵�λ����(�յ�)
+//						t_Gear[3]=0X7D;
+//						//פ��
+//						SOL1_EN_ON();
+//						EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+//	
+//					}
+//					
+//					if(cnt_autopark >5)
+//					{
+//						cnt_autopark = 0; // ����������
+//						Work_Sta = work_autohold_release; // �л����Զ��ͷ�״̬
+//					}
+//							
+//					
+//					break;
+//	
+//				case work_autohold_release: // �Զ��ͷ�״̬
+//						
+//					SOL1_EN_OFF();
+//					
+//					cnt_autoreles++; // ��������1
+//					if (cnt_autoreles >= 3) // ���������ﵽ3
+//					{
+//
+//						//���͵�λ����(�ǿյ�)
+//						t_Gear[3]=0X7F;
+//						
+//						//(���ſ���30%)
+//						t_Accelerator[1]=0X4B;
+//						
+//						//�ͷ�
+//						SOL2_EN_ON();
+//						EAL_DAC_Set_Out_Vol(INTAKE_VOL);
+//	
+//					}
+//					
+//					if(cnt_autoreles >5)
+//					{
+//						cnt_autoreles = 0; // ����������
+//						Work_Sta = work_autohold_anti_slip; // �л����Զ�פ��������״̬
+//					}
+//
+//				break;
+//				
+//				case work_autohold_anti_slip: // �Զ�פ��������״̬
+//								 
+//					SOL2_EN_OFF();
+//					EPB_MODE_NO_OFF();
+//					cnt_antislip++;
+//					if(cnt_antislip >=3)
+//					{
+//						PARK_NO_SW_ON();
+//						// ���ͳ��ٱ���(0)
+//						t_Vehicle_Speed[2]=0x00;
+//						//Drv_CAN_SendFrame(Can_Speed_ID,t_Vehicle_Speed1);
+//						//��������б����4�㣬p�Ƶ���,��Ϊ�����ڹ�װ�Ϲ̶����Ƕ�Ϊ1.69�㲻���Ҫ������ģ��פ�����
+//						PARK_NO_SW_ON();
+//						//פ��
+//						SOL1_EN_ON();
+//						EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+//
+//					}
+//					if(cnt_antislip >5)
+//					{
+//						cnt_antislip = 0; // ����������
+//						Work_Sta = work_ramp_start;
+//					}
+//				
+//				break;
+//				
+//				case  work_ramp_start:  // �µ���״̬
+//					
+//					PARK_NC_SW_OFF();   //פ�����ع�
+//					SOL1_EN_OFF();		//פ������
+//					RELE_NO_SW_ON();	//�ͷŰ���
+//					SOL2_EN_ON();		//�ͷŷ���
+//					cnt_ramp++; //��������1
+//					if(cnt_ramp >= 3)// ���������ﵽ3
+//					{
+//						cnt_ramp = 0;
+//						RELE_NC_SW_OFF();
+//						SOL2_EN_OFF();//�ͷ�״̬
+//						//��������б10�����ң����£���p�Ƶ�������פ������Ϊ�����ڹ�װ�Ϲ̶����Ƕ�Ϊ1.69�㲻���Ҫ������ģ��פ�����
+//						PARK_NO_SW_ON();
+//						SOL1_EN_ON();
+//						EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+//					}
+//					cnt_ramp ++;
+//					PARK_NC_SW_OFF();
+//					SOL1_EN_OFF();//פ��״̬
+//					if(cnt_ramp >= 3)// ���������ﵽ3
+//					{
+//						cnt_ramp = 0;
+//						//����ת��Ť�ر���(��Ϊ0)
+//						t_Torque[1]=0x40;
+//						t_Torque[2]=0x06;
+//						t_Torque[3]=0x2E;
+//
+//						//���͵�λ����(�ǿյ�)
+//						t_Gear[3]=0x7F;
+//						
+//						//���ͳ��ٱ���(��Ϊ0)
+//						t_Vehicle_Speed[2]=0X02;
+//					
+//						//���ͼ���̤�屨��(���ſ���50%)
+//						t_Accelerator[1]=0X7D;
+//						//�ͷ�
+//						SOL2_EN_ON();
+//						EAL_DAC_Set_Out_Vol(INTAKE_VOL);
+//						//Work_Sta = work_idle ;
+//						Work_Sta = work_emergency_brake ;					
+//					}
+//					
+//				break;
+//	
+//				case  work_emergency_brake://Ӧ���ƶ�
+//						
+//						SOL2_EN_OFF();
+//						cnt_emerbrak80++; // ��������1
+//						//����80km/h
+//						t_Vehicle_Speed[2]=0x50;
+//
+//						PARK_NO_SW_ON(); //����פ������ (��������)
+//						
+//
+//						if (cnt_emerbrak80 >10) // ������������1��
+//						{
+//							cnt_emerbrak80= 0; // ����������
+//							PARK_NC_SW_OFF();//פ�������
+//							//����60km/h
+//							t_Vehicle_Speed[2]=0X3C;
+//							//Drv_CAN_SendFrame(Can_Speed_ID,t_Vehicle_Speed3);
+//							//���ͼ���̤�屨��(���ſ���0%)
+//							t_Accelerator[1]=0x00;
+//							//Drv_CAN_SendFrame(Can_Accelerator_ID,t_Accelerator1);
+//							PARK_NO_SW_ON();
+//						}
+//						cnt_emerbrak60++; // ��������1
+//						
+//						if (cnt_emerbrak60 >10) // ������������1��
+//						{			
+//							cnt_emerbrak60 = 0;
+//							//פ��
+//							SOL1_EN_ON();
+//							EAL_DAC_Set_Out_Vol(EXHAUST_VOL);
+//							Work_Sta = work_idle;
+//						}
+//
+//				break;
+//
+//					
+//				case work_anti_forget_park: // Ϩ��פ��(����פ��)
+//				  
+//					//if (get_EPBIgn < limtLow_IGN && get_EPBIgn > LimtHi_IGN) // ���IGNδ�ϵ�
+//
+//						cnt_forgetpark++;
+//						if(cnt_forgetpark >=3)
+//						{
+//							// ���ͳ��ٱ���(0)
+//							t_Vehicle_Speed[2]=0x00;
+//							//IGN�µ�
+//							//פ��
+//							SOL1_EN_ON();
+//							//delay(1);	
+//						}
+//						if(cnt_forgetpark >5)
+//						{
+//							cnt_forgetpark = 0; // ����������
+//							Work_Sta = work_idle;
+//						}
+//						
+//					break;
+//					
+//				default:
+//						break;
+//			}
+//
+//}

@@ -1,0 +1,137 @@
+#include "sys_include.h"
+
+
+volatile uint8_t adc_conversion_complete = 0;// 定义ADC转换完成标志位
+static Drv_Adc_State_Typedef ADC_CurState = DRV_ADC_Disable_And_Low_Power;
+static Drv_Adc_Sample_Mode   ADC_CurMode;
+const  u8 Adc_channel_select[DRV_ADC_DATA_LENGTH] = {0,1,2,3,4,5,6};
+/*********************************************************************************************
+*函数名    :
+*功能      :AD中断处理函数
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+ISR(AD1_Interrupt)
+{
+	// 读取ADC数据
+	u16 adc_value = (u16)(ADCRH << 8) | ADCRL;
+	// 设置标志位，表示数据已准备好
+	adc_conversion_complete = 1;
+	// 清除中断标志位
+	(void)ADCRL;
+	(void)ADCRH;
+	// 转换完成后转入停止状态
+	ADC_CurState = DRV_ADC_STOP;
+	return;    
+}
+
+
+/*********************************************************************************************
+*函数名    :
+*功能      :ADC启动或停止
+*输入      :vState:  DRV_ADC_START-开始采样；
+                     DRV_ADC_STOP-停止采样，同时Adc进入低功耗
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+void Drv_Adc_Set_State(Drv_Adc_State_Typedef vState) 
+{
+   ADC_CurState = vState;
+   if(ADC_CurState == DRV_ADC_Enable) 
+   {
+	 ADCSC1 = 0x60;//ad模块使能
+   }
+   else if(ADC_CurState == DRV_ADC_Disable_And_Low_Power) 
+   {
+     ADCSC1 = 0x1f;//ad模块禁止
+   }
+}
+/*********************************************************************************************
+*函数名    :
+*功能      :单通道 ADC函数
+*输入      : veAdcChannel：AD通道 0~11 ,pDrvAdcValue:采样值存放位置
+*返回      : ERR_BUSY：AD通道正在忙 RR_OK：采样OK
+*备注      :
+*日期      :
+**********************************************************************************************/
+ Drv_Std_ReturnType Drv_Adc_Get_One(Drv_Adc_Channel_TypeDef vDrvAdcChannel,u16 *pDrvAdcValue)
+{
+	 // 如果ADC当前处于禁用和低功耗状态，返回错误码ERR_DISABLED
+	     if (ADC_CurState == DRV_ADC_Disable_And_Low_Power)
+	         return ERR_DISABLED;
+	     // 如果ADC当前正忙，返回错误码ERR_BUSY
+	     if (ADC_CurState == DRV_ADC_BUSY)
+	         return ERR_BUSY; 
+	     
+	     // 设置ADC状态为忙碌
+	     ADC_CurState = DRV_ADC_BUSY;
+	     // 设置ADC采样模式为单次采样
+	     ADC_CurMode = DRV_ADC_Sample_Single;
+	     // 启动ADC转换，设置通道为vDrvAdcChannel
+	     ADCSC1 = 0x40 | (u8)vDrvAdcChannel;  
+
+	     // 等待ADC转换完成
+	     while (ADC_CurState != DRV_ADC_STOP);
+	     // 清除标志位
+		 adc_conversion_complete = 0;
+		 // 将ADC转换结果存储到pDrvAdcValue指向的内存地址
+		 *pDrvAdcValue = (u16)(ADCRH << 8) | ADCRL;   
+		 // 返回错误码ERR_OK，表示操作成功
+		 return ERR_OK;         
+} 
+
+/*********************************************************************************************
+*函数名    :
+*功能      : 多通道ADC连续采集采样函数
+*输入      : Adc_Inf_t
+*返回      : ERR_BUSY：AD通道正在忙 RR_OK：采样OK
+*备注      :
+*日期      :
+**********************************************************************************************/
+
+ Drv_Std_ReturnType Drv_Adc_Get_All(Drv_Adc_Data_TypeDef  *pDrvAdcValue)
+{
+  u8 i = 0;
+  u16 temp = 0;
+  Drv_Std_ReturnType Err_State; 
+  if(ADC_CurState == DRV_ADC_Disable_And_Low_Power)//ad处于禁能
+  return ERR_DISABLED;
+  if(ADC_CurState == DRV_ADC_BUSY)//AD正忙
+  return ERR_BUSY; 
+  for(i=0; i <DRV_ADC_DATA_LENGTH ;i++)  //连续读取所有通道数据
+  {
+    Err_State = Drv_Adc_Get_One((Drv_Adc_Channel_TypeDef)Adc_channel_select[i],&temp);//指定通道ADC采集数据
+    if(Err_State == ERR_OK)
+      pDrvAdcValue->Data[i] = temp;
+    else
+      return Err_State; //AD错误，直接返回错误状态。   
+  }
+    return ERR_OK;        
+}
+
+/*********************************************************************************************
+*函数名    :
+*功能      :AD初始化
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+void Drv_Adc_Init(Drv_Adc_Sample_Mode vAdcSampleMode) 
+{
+  /* APCTL1: AADPC0-6=1 */
+  setReg8Bits(APCTL1, 0x7f);            
+  /* APCTL2: ADPC9=1,ADPC8=1 */
+  setReg8Bits(APCTL2, 0x03); 
+   setReg8(ADCSC1, 0x1F);//AD转换器关闭
+   setReg8(ADCSC2, 0x00);         //转换未触发，功能禁止     
+	setReg8(ADCCFG, 0xB4); //  12位模式，2分频
+  // setReg8(ADCCFG, 0x94); //  12位模式，不分频
+   clrReg8Bits(ADCSC1, 0x20);//AD转换开启，软件触发连续转换
+   ADC_CurMode  = vAdcSampleMode;//(单次或多次采样)
+   ADC_CurState = DRV_ADC_Enable;   //使能
+}
+

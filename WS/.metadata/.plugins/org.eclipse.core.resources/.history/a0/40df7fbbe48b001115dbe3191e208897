@@ -1,0 +1,44 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+################################################################################
+
+-include ../../../makefile.local
+
+# Add inputs and outputs from these tool invocations to the build variables 
+C_SRCS_QUOTED += \
+"../Sources/BSW/IO/Driver_Gpio.c" \
+
+C_SRCS += \
+../Sources/BSW/IO/Driver_Gpio.c \
+
+OBJS += \
+./Sources/BSW/IO/Driver_Gpio_c.obj \
+
+OBJS_QUOTED += \
+"./Sources/BSW/IO/Driver_Gpio_c.obj" \
+
+C_DEPS += \
+./Sources/BSW/IO/Driver_Gpio_c.d \
+
+C_DEPS_QUOTED += \
+"./Sources/BSW/IO/Driver_Gpio_c.d" \
+
+OBJS_OS_FORMAT += \
+./Sources/BSW/IO/Driver_Gpio_c.obj \
+
+
+# Each subdirectory must supply rules for building sources it contributes
+Sources/BSW/IO/Driver_Gpio_c.obj: ../Sources/BSW/IO/Driver_Gpio.c
+	@echo 'Building file: $<'
+	@echo 'Executing target #4 $<'
+	@echo 'Invoking: HCS08 Compiler'
+	"$(HC08ToolsEnv)/chc08" -ArgFile"Sources/BSW/IO/Driver_Gpio.args" -ObjN="Sources/BSW/IO/Driver_Gpio_c.obj" "$<" -Lm="$(@:%.obj=%.d)" -LmCfg=xilmou
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Sources/BSW/IO/%.d: ../Sources/BSW/IO/%.c
+	@echo 'Regenerating dependency file: $@'
+	
+	@echo ' '
+
+

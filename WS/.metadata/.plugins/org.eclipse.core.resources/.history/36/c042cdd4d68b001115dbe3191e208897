@@ -1,0 +1,15 @@
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Sources/APP\Logic.h:37:error:C2450 Expected:  ; = , 
+or:C1815 motor_temp_mix not declared (or typename)
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:18:error:C1815 motor_temp_max not declared (or typename)
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:20:error:C1815 motor_temp_factor not declared (or typename)
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:22:error:C1815 u16 not declared (or typename)
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:22:error:C2801 ';' missing
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:30:error:C1815 motor_ctl_temp_mix not declared (or typename)
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:38:error:C1815 motor_ctl_temp_max not declared (or typename)
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:40:error:C1815 motor_ctl_temp_factor not declared (or typename)
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:42:error:C1815 u16 not declared (or typename)
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:42:error:C2801 ';' missing
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:52:error:C2801 ';' missing
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:52:error:C2801 ';' missing
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:56:error:C2801 ';' missing
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/APP\motor_regulate.c:56:error:C2801 ';' missing

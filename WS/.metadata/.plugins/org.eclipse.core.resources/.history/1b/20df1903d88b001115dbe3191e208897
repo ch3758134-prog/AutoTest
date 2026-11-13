@@ -1,0 +1,72 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+################################################################################
+
+-include ../../../makefile.local
+
+# Add inputs and outputs from these tool invocations to the build variables 
+C_SRCS_QUOTED += \
+"../Sources/BSW/ADC/Driver_ADC.c" \
+
+C_UPPER_SRCS += \
+../Sources/BSW/ADC/EAL_ADC.C \
+
+C_UPPER_SRCS_QUOTED += \
+"../Sources/BSW/ADC/EAL_ADC.C" \
+
+C_SRCS += \
+../Sources/BSW/ADC/Driver_ADC.c \
+
+OBJS += \
+./Sources/BSW/ADC/Driver_ADC_c.obj \
+./Sources/BSW/ADC/EAL_ADC_C.obj \
+
+OBJS_QUOTED += \
+"./Sources/BSW/ADC/Driver_ADC_c.obj" \
+"./Sources/BSW/ADC/EAL_ADC_C.obj" \
+
+C_DEPS += \
+./Sources/BSW/ADC/Driver_ADC_c.d \
+
+C_UPPER_DEPS_QUOTED += \
+"./Sources/BSW/ADC/EAL_ADC_C.d" \
+
+C_UPPER_DEPS += \
+./Sources/BSW/ADC/EAL_ADC_C.d \
+
+C_DEPS_QUOTED += \
+"./Sources/BSW/ADC/Driver_ADC_c.d" \
+
+OBJS_OS_FORMAT += \
+./Sources/BSW/ADC/Driver_ADC_c.obj \
+./Sources/BSW/ADC/EAL_ADC_C.obj \
+
+
+# Each subdirectory must supply rules for building sources it contributes
+Sources/BSW/ADC/Driver_ADC_c.obj: ../Sources/BSW/ADC/Driver_ADC.c
+	@echo 'Building file: $<'
+	@echo 'Executing target #11 $<'
+	@echo 'Invoking: HCS08 Compiler'
+	"$(HC08ToolsEnv)/chc08" -ArgFile"Sources/BSW/ADC/Driver_ADC.args" -ObjN="Sources/BSW/ADC/Driver_ADC_c.obj" "$<" -Lm="$(@:%.obj=%.d)" -LmCfg=xilmou
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Sources/BSW/ADC/%.d: ../Sources/BSW/ADC/%.c
+	@echo 'Regenerating dependency file: $@'
+	
+	@echo ' '
+
+Sources/BSW/ADC/EAL_ADC_C.obj: ../Sources/BSW/ADC/EAL_ADC.C
+	@echo 'Building file: $<'
+	@echo 'Executing target #12 $<'
+	@echo 'Invoking: HCS08 Compiler'
+	"$(HC08ToolsEnv)/chc08" -ArgFile"Sources/BSW/ADC/EAL_ADC.args" -ObjN="Sources/BSW/ADC/EAL_ADC_C.obj" "$<" -Lm="$(@:%.obj=%.d)" -LmCfg=xilmou
+	@echo 'Finished building: $<'
+	@echo ' '
+
+Sources/BSW/ADC/%.d: ../Sources/BSW/ADC/%.C
+	@echo 'Regenerating dependency file: $@'
+	
+	@echo ' '
+
+

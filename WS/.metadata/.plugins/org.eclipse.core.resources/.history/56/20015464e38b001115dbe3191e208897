@@ -1,0 +1,177 @@
+
+
+#include "sys_include.h"
+
+extern u16  BCM_time_over;	    //执行器与控制器通信超时
+extern u8 EEPROM_ERR_STATA;
+extern u32  timecounter;
+extern u8  sDrvCan_Busoff;
+
+extern u8 MSG_sent_ok ;
+
+u8 Bufoff_delay =0;
+u8 Last_canbusoff_stata = 0;
+u8 This_canbusoff_stata = 0;
+u8 Last_canbusoff_counter = 0;
+u8 Last_canbusoff_timer = 0;
+u8 Busoff_2s_counter = 0;
+
+u8 canbusoff_timer = 0;
+u8 Diag_delay = 95;
+u8 Last_busoff_mask = 0;
+u8 This_busoff_mask = 0;
+u8 read_data_temp[8] = {0,0,0,0, 0,0,0,0};
+u8 no_fault_mask[7] = {0,0,0,0, 0,0,0};
+
+u16 Busoff_record[10] = {0,0,0,0,0,0,0,0,0,0} ;
+u8 Busoff_record_n = 0;
+u16 no_busoff_conter = 0;
+
+void write_record_busoff(u16 timers)
+  {
+      Busoff_record[Busoff_record_n] = timers;
+      if(Busoff_record_n<9)Busoff_record_n++;
+      else if(Busoff_record_n==9) Busoff_record_n = 0;
+  }
+  
+  
+u16 read_busoff_record(void)
+  {
+      u16 return_temp = 0;
+      if( Busoff_record_n>9) return 0;
+      if(Busoff_record_n==0) 
+        {
+            return_temp =  Busoff_record[9] -Busoff_record[0];
+        }
+      else 
+        {
+            return_temp =  Busoff_record[Busoff_record_n-1] -Busoff_record[Busoff_record_n];
+        }
+      return   return_temp;
+    
+  }
+ 
+void clear_busoff_record(void)
+  {
+        u8 n = 0;
+        for(n= 0;n<10;n++)
+          {
+            Busoff_record[n] = 0;
+          }
+        Busoff_record_n = 0;
+    
+    
+  }
+
+u8 Diag_delay_Vover(void) 
+{
+   return Diag_delay;
+  
+}
+
+void Clear_last_busoff_pending(void) 
+{
+   u8 record_n=0;
+   for(record_n=0;record_n<8;record_n++)  no_fault_mask[record_n] = 0;
+   Last_busoff_mask = 0;
+   This_busoff_mask = 0;
+   
+}
+u8 Get_last_busoff_pending(void) 
+{
+  
+    return Last_busoff_mask;
+}
+void Diag_delay_set(void) 
+{
+   Diag_delay = 100;
+  
+}
+void turn_on_ack_test(void)
+{	 
+	  ;
+
+}
+
+u8 Can_bus_stata(void)
+  {
+     if(Bufoff_delay>0) return 1;
+      else return 0;
+  }
+  
+  
+void can_online_test_fast(void)
+{	  
+  
+   
+    
+}
+
+void can_online_test(void) 
+{
+    
+   
+         
+  
+  
+}
+void diag_Init(void)
+  {
+  
+      
+  }
+  
+  
+
+                   
+ 
+void Eol_diag_online(void) 
+{
+     
+  
+  
+}
+void SysDiag_Testfailed(void) 
+{
+  
+
+  
+}
+  
+  
+void Votage_diag_online(void) 
+{
+     
+  
+  
+  
+}
+void Sys_main_diag(void)
+  {        
+       
+       
+  }
+  
+
+  
+  
+  
+void record_faultfun(void)
+  {
+     
+    
+		     
+  }
+  
+
+  void Write_diag_eeprom(void)
+    {
+    
+        
+      
+    }
+  
+  void Do_diag(void)     // T = 20MS
+  {
+  
+  }

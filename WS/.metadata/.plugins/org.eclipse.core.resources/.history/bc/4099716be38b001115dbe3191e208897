@@ -1,0 +1,81 @@
+#include "sys_include.h"
+#include "EAL_DAC.H"
+
+u8 t_eeprom_data_dac[8]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+u16 timeout;
+
+
+/*********************************************************************************************
+*函数名    :
+*功能      :
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+void FUN_reset_eeprom_data_dac(void)//重置EEPROM数据数组t_eeprom_data_dac的值
+{
+    // 初始化循环变量i为0
+    u8 i = 0;
+    // 循环遍历t_eeprom_data_dac数组的每个元素
+    for (i = 0; i < 8; i++) {
+        // 将当前元素设置为0xFF
+        t_eeprom_data_dac[i] = 0xFF;
+    }
+}
+/*********************************************************************************************
+*函数名    :
+*功能      :
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+u8 DAC_Write(u8 wdata) //向SPI设备写入一个字节的数据
+{
+	u8 temp = wdata;
+	while (SPIS_SPTEF == 0U) 
+	{           
+		// 添加超时机制
+		if (++timeout > 1000) {
+			return ERR_TXFULL;
+		}             
+	}
+	SPID = temp; 
+	while(SPIS_SPTEF!=1);
+	return ERR_OK;  
+}
+/*********************************************************************************************
+*函数名    :
+*功能      :
+*输入      :
+*返回      :
+*备注      :
+*日期      :
+**********************************************************************************************/
+extern void delay(u16 count);
+void EAL_DAC_Set_Out_Vol(u16 vol)
+{
+    // 定义一个临时变量temp，用于存储计算得到的DAC数据码
+    u16 temp = 0;
+    // 定义一个变量vol_data，用于存储计算得到的DAC数据码的低12位
+    u16 vol_data;
+    // 将片选信号PowerCs拉低，选中DAC芯片
+    DAC_CS_Low();
+    // 延时1ms，等待芯片稳定
+    delay(1);
+    // 根据输入的电压值计算对应的DAC数据码，公式为：vol_data = (vol * 4096) / REF_VOL
+    vol_data = (u16)(((u32)vol * 4096) / REF_VOL);
+    // 将DAC数据码的高4位设置为正常模式（DAC_Normal），低12位设置为计算得到的vol_data，并将结果存储在temp中
+    temp = DAC_Normal | (vol_data & DAC_DATA_CODE_MASK);
+    // 将temp的高8位写入SPI设备
+    DAC_Write(temp >> 8);
+    // 将temp的低8位写入SPI设备
+    DAC_Write(temp);
+    // 延时1ms，等待数据写入完成
+    delay(1);
+    // 将片选信号PowerCs拉高，取消选中DAC芯片
+    DAC_CS_High();
+}
+
+

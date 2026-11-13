@@ -1,0 +1,42 @@
+#ifndef _DRIVER_PWM_H_
+#define _DRIVER_PWM_H_
+
+
+#define error 1
+#define ok    0
+
+
+void Set_PWM_Prd_Dty(u16 period,u16 dty_ch0,u16 dty_ch1);
+
+
+void PWM_INIT(void);
+void PWM_Enable(void);
+void PWM_Disable(void);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,56 @@
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:15:error:C4402 Redefinition of existing macro 'CANCTL0'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5155:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:16:error:C4402 Redefinition of existing macro 'CANCTL1'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5192:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:17:error:C4402 Redefinition of existing macro 'CANBTR0'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5231:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:18:error:C4402 Redefinition of existing macro 'CANBTR1'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5279:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:19:error:C4402 Redefinition of existing macro 'CANRFLG'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5329:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:20:error:C4402 Redefinition of existing macro 'CANRIER'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5378:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:21:error:C4402 Redefinition of existing macro 'CANIDAR0'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5732:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:22:error:C4402 Redefinition of existing macro 'CANIDAR1'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5769:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:23:error:C4402 Redefinition of existing macro 'CANIDAR2'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5804:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:24:error:C4402 Redefinition of existing macro 'CANIDAR3'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5839:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:25:error:C4402 Redefinition of existing macro 'CANIDAR4'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:6016:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:26:error:C4402 Redefinition of existing macro 'CANIDAR5'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:6051:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:27:error:C4402 Redefinition of existing macro 'CANIDAR6'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:6086:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:28:error:C4402 Redefinition of existing macro 'CANIDAR7'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:6121:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:29:error:C4402 Redefinition of existing macro 'CANIDMR0'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5874:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:30:error:C4402 Redefinition of existing macro 'CANIDMR1'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5911:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:31:error:C4402 Redefinition of existing macro 'CANIDMR2'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5946:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:32:error:C4402 Redefinition of existing macro 'CANIDMR3'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5981:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:33:error:C4402 Redefinition of existing macro 'CANIDMR4'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:6156:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:34:error:C4402 Redefinition of existing macro 'CANIDMR5'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:6191:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:35:error:C4402 Redefinition of existing macro 'CANIDMR6'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:6226:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:36:error:C4402 Redefinition of existing macro 'CANIDMR7'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:6261:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:65:error:C4402 Redefinition of existing macro 'CANRXERR'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5662:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:66:error:C4402 Redefinition of existing macro 'CANTXERR'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5697:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:69:error:C4402 Redefinition of existing macro 'CANRFLG_RXF'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5330:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:71:error:C4402 Redefinition of existing macro 'CANCTL0_INITRQ'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5156:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:72:error:C4402 Redefinition of existing macro 'CANCTL1_INITAK'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5193:information:C1440 This is causing previous message 4402
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\../Sources/BSW/CAN\Driver_CAN_Test.c:73:error:C4402 Redefinition of existing macro 'CANCTL1_CLKSRC'
+C:/Users/ming/Desktop/E02_DeveCode/TestCtr/KEY_SIM/WS/EPB_EOL/Project_Headers\mc9s08dz32.h:5199:information:C1440 This is causing previous message 4402

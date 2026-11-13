@@ -1,0 +1,98 @@
+/*
+ * EAL_ADC.H
+ *
+ *  Created on: Jun 17, 2019
+ *      Author: tty0
+ */
+
+#ifndef EAL_ADC_H_
+#define EAL_ADC_H_
+
+typedef struct{
+	u16 AD_Bat24V;
+	u16 AD_VCC5V;
+	u16 AD_BAUD;
+	u16 AD_IGN;
+	u16 AD_PressPow;
+	u16 AD_KeyPow;
+	u16 AD_EPBPOW;
+
+	//u16 AD_Press1;
+	//u16 AD_Press2;
+}_Pcs_AdcInfor;
+
+#define Voltage_ratio               (100.0)//电压信号的放大倍数
+#define AD_Bits                     (4095.0)//AD采样位数
+#define ADvoltage              		(5.0)//AD采样电压(V)
+#define ADperV                      (AD_Bits/ADvoltage)//每V对应的AD值
+
+#define AD_24V_Resratio             ((100.0+15.0)/15.0) //
+#define AD_24V_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_24V_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_24V_Ratio                (((AD_24V_Resratio*AD_24V_Enlarge)*AD_24V_SV_Ratio)/ADperV)    //////// 1.88779355		
+#define AD_24V_Offset                (u16)((0.0*AD_BLS_Enlarge*AD_BLS_SV_Ratio)+0.5)   ///// 这里的值用来信号源的电压与之相乘
+
+
+#define AD_KEY_Resratio             ((60.0+10.0)/10.0) //
+#define AD_KEY_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_KEY_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_KEY_Ratio                (((AD_KEY_Resratio*AD_KEY_Enlarge)*AD_KEY_SV_Ratio)/ADperV)    //////// 1.88779355		
+#define AD_KEY_Offset                (u16)((0.0*AD_KEY_Enlarge*AD_KEY_SV_Ratio)+0.5)   /////  这里的值用来信号源的电压与之相乘
+
+#define AD_IGN_Resratio             ((100.0+15.0)/15.0) //
+#define AD_IGN_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_IGN_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_IGN_Ratio                (((AD_IGN_Resratio*AD_IGN_Enlarge)*AD_IGN_SV_Ratio)/ADperV)    //////// 
+#define AD_IGN_Offset                (u16)((0.0*AD_IGN_Enlarge*AD_IGN_SV_Ratio)+0.5)   /////  这里的值用来信号源的电压与之相乘
+
+#define AD_PressPow_Resratio             ((10.0+10.0)/10.0) //
+#define AD_PressPow_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_PressPow_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_PressPow_Ratio                (((AD_PressPow_Resratio*AD_PressPow_Enlarge)*AD_PressPow_SV_Ratio)/ADperV)    ////////
+#define AD_PressPow_Offset                (u16)((0.0*AD_PressPow_Enlarge*AD_PressPow_SV_Ratio)+0.5)  
+
+#define AD_EPBPow_Resratio             ((100.0+15.0)/15.0) //
+#define AD_EPBPow_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_EPBPow_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_EPBPow_Ratio                (((AD_EPBPow_Resratio*AD_EPBPow_Enlarge)*AD_EPBPow_SV_Ratio)/ADperV)    ////////
+#define AD_EPBPow_Offset                (u16)((0.0*AD_EPBPow_Enlarge*AD_EPBPow_SV_Ratio)+0.5) 
+
+#define AD_5VPow_Resratio             ((10.0+10.0)/10.0) //
+#define AD_5VPow_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_5VPow_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_5VPow_Ratio                (((AD_5VPow_Resratio*AD_5VPow_Enlarge)*AD_5VPow_SV_Ratio)/ADperV)    ////////
+#define AD_5VPow_Offset                (u16)((0.0*AD_5VPow_Enlarge*AD_5VPow_SV_Ratio)+0.5) 
+
+#define AD_Press1_Resratio             ((100.0+15.0)/15.0) //
+#define AD_Press1_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_Press1_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_Press1_Ratio                (((AD_Press1_Resratio*AD_Press1_Enlarge)*AD_Press1_SV_Ratio)/ADperV)    //////// 1.88779355		
+#define AD_Press1_Offset                (u16)((0.0*AD_Press1_Enlarge*AD_Press1_SV_Ratio)+0.5)
+
+#define AD_Press2_Resratio             ((100.0+15.0)/15.0) //
+#define AD_Press2_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_Press2_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_Press2_Ratio                (((AD_Press2_Resratio*AD_Press2_Enlarge)*AD_Press2_SV_Ratio)/ADperV)    //////// 1.88779355		
+#define AD_Press2_Offset                (u16)((0.0*AD_Press2_Enlarge*AD_Press2_SV_Ratio)+0.5)
+
+#define AD_BAUDRATE_Resratio             ((100.0+15.0)/15.0) //
+#define AD_BAUDRATE_SV_Ratio             (1.0/1.0)//信号与物理电压的关系/V
+#define AD_BAUDRATE_Enlarge              Voltage_ratio// (1.0) //放大倍数，如果是电压信号则Voltage_ratio =100
+#define AD_BAUDRATE_Ratio                (((AD_BAUDRATE_Resratio*AD_BAUDRATE_Enlarge)*AD_BAUDRATE_SV_Ratio)/ADperV)    ////////
+#define AD_BAUDRATE_Offset               (u16)((0.0*AD_BAUDRATE_Enlarge*AD_BAUDRATE_SV_Ratio)+0.5)
+
+
+extern void AD_Read(void);
+extern void Adc_GetData_10ms(void);	
+u16 Get_KeyPow(void);
+u16 Get_BAUDRATE();
+u16 Get_BAT(void);
+u16 Get_Press1(void);
+u16 Get_Press2(void);
+u16 Get_IGN(void);
+u16 Get_PressPow();
+u16 Get_EPB_Pow();
+u16 Get_5V_Pow();
+void Buad_change(void);
+
+#endif /* EAL_ADC_H_ */
