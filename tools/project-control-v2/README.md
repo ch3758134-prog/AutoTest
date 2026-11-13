@@ -1,6 +1,6 @@
 # Project Control｜通用项目研发管理系统
 
-**管理系统在 `Project_Management` 分支研发，不再直接向 AutoTest HOST `main` 提交管理工具源码。** 本仓库同时保存受管理项目，但不同分支承担不同职责。
+**管理系统在 `Project_Management` 分支直接研发和提交，不为普通修改额外创建分支或 PR；不再向 AutoTest HOST `main` 提交管理工具源码。** 本仓库同时保存受管理项目，但不同分支承担不同职责。
 
 本目录与 AutoTest ECU 产品源码彼此独立：AutoTest 是可被管理的项目之一，不是管理系统的固定业务模型。
 
@@ -28,7 +28,7 @@ python tools/project-control-v2/portable/export_package.py --out ProjectControl.
 
 ## 工作规则
 
-- **管理工具只改 `Project_Management`**：不要把本目录的后续变更写入 AutoTest HOST `main`。管理工具修改仍需按已明确的审阅、批准与交付边界执行，不因为分支独立而自动获批。
+- **管理工具只改 `Project_Management`**：普通工具代码可直接在本分支研发提交，不额外建立分支或 PR，不写入 HOST `main`。**正式研究/需求/设计/阶段成果先在对话展示全文**；用户批准准确版本后同轮直接正式落档并远端回读，不二次索要“允许上传”许可。未获批准的正式成果默认不提交 GitHub 草稿。代码提交不等于工程内容批准。
 - **不自动跑管理工具 CI**：需要时人工执行 `python -m unittest discover -s tools/project-control-v2/tests -v`。
 - 不动 AutoTest ECU 产品其他目录；不要把旧试点 UI、示例产品数据或旧工作区带入通用发行包。
 - 已有工作区和正式工程默认保留，严禁自动清理。
