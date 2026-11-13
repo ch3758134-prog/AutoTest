@@ -34,7 +34,8 @@ public static class TestTargetCatalog
             foreach (var asset in context.Definition.Assets)
             {
                 if (asset.Kind is not (ProjectWorkspaceService.DbcKind or
-                    ProjectWorkspaceService.ControllerKind)) continue;
+                    ProjectWorkspaceService.ControllerKind or
+                    ProjectWorkspaceService.WaveSettingsKind)) continue;
                 ct.ThrowIfCancellationRequested();
                 var path = ProjectPathPolicy.Normalize(context.RootDirectory, asset.RelativePath);
                 var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
@@ -61,6 +62,15 @@ public static class TestTargetCatalog
                                     frameId, msg.IsExtended, signal.Name, signal.Unit)));
                         }
                     }
+                }
+                else if (asset.Kind == ProjectWorkspaceService.WaveSettingsKind)
+                {
+                    var analysis = (WaveSettingsDocument)ProjectConfigurationCodec.Decode(asset.Kind, bytes);
+                    choices.Add(new MappingChoice("波形分析方案 / " + asset.Name +
+                        (string.IsNullOrWhiteSpace(analysis.SignalName) ? "（未配置信号）" :
+                        " · " + analysis.SignalName),
+                        new TestTargetMapping(asset.Name, TestTargetKind.WaveProfile,
+                            asset.Id, asset.Revision, asset.Sha256)));
                 }
                 else
                 {

@@ -28,7 +28,8 @@ public partial class StepParametersDialog : Window
     public ObservableCollection<StepPropertyField> Fields { get; } = new();
     public StepParametersResult? Result { get; private set; }
 
-    public StepParametersDialog(StepNode node, IReadOnlyList<string>? targetNames = null)
+    public StepParametersDialog(StepNode node, IReadOnlyList<string>? targetNames = null,
+        IReadOnlyList<string>? waveProfileNames = null)
     {
         InitializeComponent();
         DataContext = this;
@@ -40,7 +41,9 @@ public partial class StepParametersDialog : Window
             .Distinct(StringComparer.Ordinal);
         foreach (var key in keys)
             Fields.Add(new StepPropertyField(key, node.Properties.GetValueOrDefault(key, ""),
-                key == "target" ? targetNames : null,
+                key == "target" ? targetNames :
+                    key == "profile" && waveProfileNames?.Count > 0
+                        ? new[] { "" }.Concat(waveProfileNames).ToArray() : null,
                 node.Type == "Write" && key == "value"
                     ? "按键：Pulse / Pulse:毫秒 / Hold / Release；IGN：ON/OFF；CAN：HEX:完整帧 或 信号=物理值;..."
                     : null));

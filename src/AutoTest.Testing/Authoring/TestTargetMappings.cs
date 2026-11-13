@@ -5,7 +5,7 @@ using AutoTest.Core;
 namespace AutoTest.Testing.Authoring;
 
 /// <summary>Names used by a TEST program; hardware IDs remain in version-pinned mappings.</summary>
-public enum TestTargetKind { Signal, Button, CanMessage, Ignition }
+public enum TestTargetKind { Signal, Button, CanMessage, Ignition, WaveProfile }
 
 /// <summary>
 /// A mapping belongs to the TEST document and can be rebound without rewriting

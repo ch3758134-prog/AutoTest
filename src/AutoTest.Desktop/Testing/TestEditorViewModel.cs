@@ -168,12 +168,23 @@ public sealed class TestEditorViewModel : BindableBase
         RefreshCommands();
     }
 
+    private string DefaultTargetName(string stepType)
+    {
+        bool Suitable(TestTargetMapping m) => stepType switch
+        {
+            "Read" or "WaitUntil" or "WaveStart" => m.Kind == TestTargetKind.Signal,
+            "Write" => m.Kind is TestTargetKind.Button or TestTargetKind.CanMessage or TestTargetKind.Ignition,
+            _ => false
+        };
+        return Mappings.FirstOrDefault(x => x.Name == SelectedMapping?.Name && Suitable(x))?.Name
+            ?? Mappings.FirstOrDefault(Suitable)?.Name ?? "";
+    }
+
     private void AddChild()
     {
         if (!CanAddChild || _selectedItem is null) return;
         var target = _selectedItem;
-        var next = StepUiCatalog.NewNode(SelectedStepType.Type, SelectedMapping?.Name ??
-            Mappings.FirstOrDefault()?.Name ?? "");
+        var next = StepUiCatalog.NewNode(SelectedStepType.Type, DefaultTargetName(SelectedStepType.Type));
         Mutate(() =>
         {
             var coordinates = target.CoordinatesForAppend();
@@ -186,8 +197,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         if (!CanEditSelectedStep || _selectedItem is null) return;
         var target = _selectedItem;
-        var node = StepUiCatalog.NewNode(SelectedStepType.Type, SelectedMapping?.Name ??
-            Mappings.FirstOrDefault()?.Name ?? "");
+        var node = StepUiCatalog.NewNode(SelectedStepType.Type, DefaultTargetName(SelectedStepType.Type));
         Mutate(() =>
         {
             var coordinates = target.CoordinatesForSibling();
@@ -200,7 +210,15 @@ public sealed class TestEditorViewModel : BindableBase
     {
         var node = _selectedItem?.Step;
         if (!CanEditSelectedStep || node is null) return;
-        var result = _dialogs.EditParameters(node, Mappings.Select(x => x.Name).ToArray());
+        var targets = Mappings.Where(x => node.Type switch
+            {
+                "Read" or "WaitUntil" or "WaveStart" => x.Kind == TestTargetKind.Signal,
+                "Write" => x.Kind is TestTargetKind.Button or TestTargetKind.CanMessage or TestTargetKind.Ignition,
+                _ => false
+            }).Select(x => x.Name).ToArray();
+        var profiles = Mappings.Where(x => x.Kind == TestTargetKind.WaveProfile)
+            .Select(x => x.Name).ToArray();
+        var result = _dialogs.EditParameters(node, targets, profiles);
         if (result is null) return;
         Mutate(() =>
         {

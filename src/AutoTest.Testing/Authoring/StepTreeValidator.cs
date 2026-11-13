@@ -34,6 +34,12 @@ public static class StepTreeValidator
                 !document.Mappings.Any(m => string.Equals(m.Name, targetName,
                     StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped target {targetName}");
+            if (n.Type == "WaveAnalyze" &&
+                n.Properties.TryGetValue("profile", out var profileName) &&
+                !string.IsNullOrWhiteSpace(profileName) &&
+                !document.Mappings.Any(m => m.Kind == TestTargetKind.WaveProfile &&
+                    string.Equals(m.Name, profileName, StringComparison.OrdinalIgnoreCase)))
+                errors.Add($"{location}: unmapped wave analysis profile {profileName}");
             if (n.Type == "Case" && parent != "Switch") errors.Add($"{location}: Case outside Switch");
             if (n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
                 !int.TryParse(count, out var loops) || loops < 0 || loops > 1000))

@@ -65,7 +65,8 @@ public static class StepUiCatalog
         "right" => "右操作数（$变量 或数值）",
         "captureKey" => "采集名称",
         "durationMs" => "最长记录时间（毫秒）",
-        "reference" => "参考波形名称",
+        "reference" => "已建立的参考波形名称（非普通证据）",
+        "profile" => "波形分析配置（可选，来自工程 Mapping）",
         "tolerance" => "比较绝对容差",
         "coverage" => "最低有效覆盖率（0-1）",
         _ => key
@@ -106,6 +107,8 @@ public static class StepUiCatalog
             };
             node = node.WithProperty(property, value);
         }
+        if (type == "WaveAnalyze")
+            node = node.WithProperty("profile", "");
         return node;
     }
 }
