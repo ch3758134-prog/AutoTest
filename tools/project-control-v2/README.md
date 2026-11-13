@@ -1,6 +1,6 @@
 # Project Control｜通用项目研发管理系统
 
-**当前 GitHub `main` 直接维护本目录，不再使用管理系统研发分支作为交付中心。**
+**管理系统在 `Project_Management` 分支研发，不再直接向 AutoTest HOST `main` 提交管理工具源码。** 本仓库同时保存受管理项目，但不同分支承担不同职责。
 
 本目录与 AutoTest ECU 产品源码彼此独立：AutoTest 是可被管理的项目之一，不是管理系统的固定业务模型。
 
@@ -28,7 +28,7 @@ python tools/project-control-v2/portable/export_package.py --out ProjectControl.
 
 ## 工作规则
 
-- **只改 main**：管理工具后续变动直接提交本目录到 main。禁止为普通改动继续堆叠新分支/PR。
+- **管理工具只改 `Project_Management`**：不要把本目录的后续变更写入 AutoTest HOST `main`。管理工具修改仍需按已明确的审阅、批准与交付边界执行，不因为分支独立而自动获批。
 - **不自动跑管理工具 CI**：需要时人工执行 `python -m unittest discover -s tools/project-control-v2/tests -v`。
 - 不动 AutoTest ECU 产品其他目录；不要把旧试点 UI、示例产品数据或旧工作区带入通用发行包。
 - 已有工作区和正式工程默认保留，严禁自动清理。
@@ -56,8 +56,8 @@ python tools/project-control-v2/portable/export_package.py --out ProjectControl.
 
 本轮真实 AutoTest 管理 AI 试验发现，过去缺少“完整成果正文向负责人展示→明确决定→候选发布”的受控环节；AI 曾直接写 GitHub Issue 并称已交付。新增 [portable/DELIVERY_REVIEW_PROTOCOL.md](portable/DELIVERY_REVIEW_PROTOCOL.md) 和 `portable/delivery_review.py`，用独立本地私有审阅区及两个不同令牌管理全文、差异、范围和准确版本。
 
-**重要**：正式研究/设计/需求批准与仅允许候审公开仍独立。源码保存在本分支/待审 PR，不自动合入 main。详见单独审查报告；GitHub 直接宽权限、Windows 完整端到端、正式人类身份认证仍不能仅靠本地令牌实现。
+**重要**：正式研究/设计/需求批准与仅允许候审公开仍独立。管理工具源码保存在 `Project_Management` 或其已明确授权的候审分支，不自动合入 HOST `main`。详见单独审查报告；GitHub 直接宽权限、Windows 完整端到端、正式人类身份认证仍不能仅靠本地令牌实现。
 
 ## 4.6.1 系统审查与主线候选集成
 
-本轮系统级复核覆盖接管、岗位、证据、治理、候审交付、远端同步、任务交接与用户界面。候审包现在能够通过本地 UI 导入/全文预览/修订；负责人可选择只确认内部阅读或精确版本候审公开；项目证据变化按受影响主题传播，不全局重置。完整审查及实际验证范围见 `SYSTEM_AUDIT_20261112.md`。本系统代码进入 main 的权限来自用户明确的管理工具研发要求，**并不构成 AutoTest 需求/设计或 Project Control 正式发行验收**。
+本轮系统级复核覆盖接管、岗位、证据、治理、候审交付、远端同步、任务交接与用户界面。候审包现在能够通过本地 UI 导入/全文预览/修订；负责人可选择只确认内部阅读或精确版本候审公开；项目证据变化按受影响主题传播，不全局重置。完整审查及实际验证范围见 `SYSTEM_AUDIT_20261112.md`。历史版本的本系统代码曾经进入 main，权限来自用户当时明确的管理工具研发要求，**并不构成 AutoTest 需求/设计或 Project Control 正式发行验收**。
