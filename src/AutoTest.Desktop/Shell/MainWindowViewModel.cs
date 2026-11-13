@@ -112,6 +112,12 @@ public sealed class MainWindowViewModel : BindableBase
         CreateScanConfigCommand = new DelegateCommand(
             async () => await CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind),
             () => HasProject && !IsBusy);
+        CreateTcfCommand = new DelegateCommand(
+            async () => await CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind),
+            () => HasProject && !IsBusy);
+        CreateTbcCommand = new DelegateCommand(
+            async () => await CreateConfigurationAsync(ProjectWorkspaceService.BenchConfigurationKind),
+            () => HasProject && !IsBusy);
         OpenConfigurationCommand = new DelegateCommand(async () => await OpenSelectedConfigurationAsync(),
             () => SelectedResourceIsConfiguration && !IsBusy);
         OpenDbcCommand = new DelegateCommand(async () => await OpenSelectedDbcAsync(),
@@ -152,8 +158,11 @@ public sealed class MainWindowViewModel : BindableBase
                     f.Dlc, Convert.ToHexString(f.Data.ToArray()), frame.LostFrames));
                 if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
             }));
+        _workspace.SelectedConfigurationsChanged += (_, _) =>
+            RaisePropertyChanged(nameof(SelectedConfigurationSummary));
         _workspace.CurrentChanged += (_, _) =>
         {
+            RaisePropertyChanged(nameof(SelectedConfigurationSummary));
             if (_activeEditorProjectPath is not null &&
                 !string.Equals(_activeEditorProjectPath, _workspace.Current?.ManifestPath,
                     StringComparison.OrdinalIgnoreCase))
@@ -417,6 +426,9 @@ public sealed class MainWindowViewModel : BindableBase
     public string CurrentProjectName => _workspace.Current?.Definition.Name ?? "未打开工程";
     public string CurrentProjectPath => _workspace.Current?.ManifestPath ?? "";
     public int AssetCount => _workspace.Current?.Definition.Assets.Length ?? 0;
+    public string SelectedConfigurationSummary => "TCF: " +
+        _workspace.SelectedTestConfigurationName + "  ·  TBC: " +
+        _workspace.SelectedBenchConfigurationName;
     public bool HasSelectedResource => _selectedResource is not null && HasProject;
     public bool SelectedResourceIsAsset => _selectedResource?.Asset is not null;
     public bool SelectedResourceIsDbc => string.Equals(_selectedResource?.Asset?.Kind,
@@ -455,6 +467,8 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand CreateWaveConfigCommand { get; }
     public DelegateCommand CreateFlashConfigCommand { get; }
     public DelegateCommand CreateScanConfigCommand { get; }
+    public DelegateCommand CreateTcfCommand { get; }
+    public DelegateCommand CreateTbcCommand { get; }
     public DelegateCommand OpenConfigurationCommand { get; }
     public DelegateCommand OpenDbcCommand { get; }
     public DelegateCommand OpenTestProgramCommand { get; }
@@ -541,6 +555,10 @@ public sealed class MainWindowViewModel : BindableBase
         {
             (Key: ProjectWorkspaceService.TestProgramKind, Title: "测试程序与用例",
              Icon: "▤"),
+            (Key: ProjectWorkspaceService.TestConfigurationKind, Title: "被测系统配置 · TCF",
+             Icon: "⚙"),
+            (Key: ProjectWorkspaceService.BenchConfigurationKind, Title: "台架配置 · TBC",
+             Icon: "◈"),
             (Key: ProjectWorkspaceService.DbcKind, Title: "DBC 数据库",
              Icon: "▥"),
             (Key: ProjectWorkspaceService.ControllerKind, Title: "控制器与按键配置",
@@ -689,6 +707,8 @@ public sealed class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
             ProjectWorkspaceService.FlashSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.FlashSettingsKind),
             ProjectWorkspaceService.ScanSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind),
+            ProjectWorkspaceService.TestConfigurationKind => CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind),
+            ProjectWorkspaceService.BenchConfigurationKind => CreateConfigurationAsync(ProjectWorkspaceService.BenchConfigurationKind),
             _ => Task.CompletedTask
         };
     }
@@ -702,6 +722,8 @@ public sealed class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind => "波形判定配置",
             ProjectWorkspaceService.FlashSettingsKind => "烧录配置",
             ProjectWorkspaceService.ScanSettingsKind => "扫码匹配配置",
+            ProjectWorkspaceService.TestConfigurationKind => "TCF 被测系统配置",
+            ProjectWorkspaceService.BenchConfigurationKind => "TBC 固定台架配置",
             _ => "工程配置"
         };
         var name = _fileDialogs.AskResourceName("新建" + display, "新建" + display);
@@ -834,6 +856,8 @@ public sealed class MainWindowViewModel : BindableBase
         CreateWaveConfigCommand?.RaiseCanExecuteChanged();
         CreateFlashConfigCommand?.RaiseCanExecuteChanged();
         CreateScanConfigCommand?.RaiseCanExecuteChanged();
+        CreateTcfCommand?.RaiseCanExecuteChanged();
+        CreateTbcCommand?.RaiseCanExecuteChanged();
         OpenConfigurationCommand?.RaiseCanExecuteChanged();
         OpenDbcCommand?.RaiseCanExecuteChanged();
         OpenTestProgramCommand?.RaiseCanExecuteChanged();

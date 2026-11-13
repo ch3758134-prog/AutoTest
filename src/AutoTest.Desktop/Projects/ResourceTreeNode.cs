@@ -30,7 +30,8 @@ public sealed class ResourceTreeNode : INotifyPropertyChanged
         Category is (ProjectWorkspaceService.TestProgramKind or ProjectWorkspaceService.DbcKind or
         ProjectWorkspaceService.ControllerKind or ProjectWorkspaceService.WaveSettingsKind or
         ProjectWorkspaceService.WaveKind or ProjectWorkspaceService.FlashSettingsKind or
-        ProjectWorkspaceService.FirmwareKind or ProjectWorkspaceService.ScanSettingsKind);
+        ProjectWorkspaceService.FirmwareKind or ProjectWorkspaceService.ScanSettingsKind or
+        ProjectWorkspaceService.TestConfigurationKind or ProjectWorkspaceService.BenchConfigurationKind);
     public ObservableCollection<ResourceTreeNode> Children { get; } = new();
 
     public ResourceTreeNode(string label, string icon, string description, string category = "",

@@ -33,7 +33,9 @@
           <MenuItem Header="资源(_R)">
             <MenuItem Header="打开选中的测试程序…" Command="{Binding OpenTestProgramCommand}"/>
             <MenuItem Header="打开选中的 DBC…" Command="{Binding OpenDbcCommand}"/>
-            <MenuItem Header="新建测试程序…" Command="{Binding NewTestProgramCommand}"/>
+            <MenuItem Header="新建测试用例（Package）…" Command="{Binding NewTestProgramCommand}"/>
+            <MenuItem Header="新建 TCF 被测系统配置…" Command="{Binding CreateTcfCommand}"/>
+            <MenuItem Header="新建 TBC 固定台架配置…" Command="{Binding CreateTbcCommand}"/>
             <MenuItem Header="导入 DBC…" Command="{Binding ImportDbcCommand}"/>
             <MenuItem Header="导入固件…" Command="{Binding ImportFirmwareCommand}"/>
             <MenuItem Header="导入波形证据…" Command="{Binding ImportWaveCommand}"/>
@@ -94,9 +96,12 @@
                        Margin="9,0,0,0" FontSize="11" Foreground="{StaticResource Subtle}"
                        TextTrimming="CharacterEllipsis" ToolTip="{Binding ScanStatus}"/>
           </StackPanel>
-          <TextBlock Text="{Binding HardwareStatus}" VerticalAlignment="Center"
-                     HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"
+          <TextBlock Text="{Binding HardwareStatus}" DockPanel.Dock="Right"
+                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                      FontSize="11" Foreground="{StaticResource Subtle}" Margin="12,0,0,0"/>
+          <TextBlock Text="{Binding SelectedConfigurationSummary}" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" FontSize="11"
+                     Foreground="{StaticResource Subtle}" Margin="10,0,0,0"/>
         </DockPanel>
       </Grid>
     </Border>
@@ -190,7 +195,9 @@
               </TreeView.ItemContainerStyle>
               <TreeView.ContextMenu>
                 <ContextMenu DataContext="{Binding PlacementTarget.Tag,RelativeSource={RelativeSource Self}}">
-                  <MenuItem Header="新建测试程序…" Command="{Binding NewTestProgramCommand}"/>
+                  <MenuItem Header="新建测试用例（Package）…" Command="{Binding NewTestProgramCommand}"/>
+            <MenuItem Header="新建 TCF 被测系统配置…" Command="{Binding CreateTcfCommand}"/>
+            <MenuItem Header="新建 TBC 固定台架配置…" Command="{Binding CreateTbcCommand}"/>
                   <MenuItem Header="导入 DBC…" Command="{Binding ImportDbcCommand}"/>
                   <MenuItem Header="导入固件…" Command="{Binding ImportFirmwareCommand}"/>
                   <MenuItem Header="导入波形证据…" Command="{Binding ImportWaveCommand}"/>
