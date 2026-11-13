@@ -30,7 +30,8 @@
         <ItemsControl ItemsSource="{Binding Fields}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <StackPanel Margin="0,0,0,14">
+              <StackPanel Margin="0,0,0,14"
+                Visibility="{Binding IsVisible,Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="{Binding DisplayName}" Margin="0,0,0,6"/>
                 <ComboBox ItemsSource="{Binding Options}" IsEditable="True"
                     Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">

@@ -11,6 +11,7 @@ public sealed class StepPropertyField : BindableBase
     private string _value;
     private IReadOnlyList<string> _options;
     private string _displayName;
+    private bool _isVisible = true;
     public StepPropertyField(string key, string value,
         IReadOnlyList<string>? options = null, string? displayName = null)
     {
@@ -31,6 +32,7 @@ public sealed class StepPropertyField : BindableBase
     }
     public bool HasOptions => Options.Count > 0;
     public string DisplayName { get => _displayName; set => SetProperty(ref _displayName, value); }
+    public bool IsVisible { get => _isVisible; set => SetProperty(ref _isVisible, value); }
     public string Value { get => _value; set => SetProperty(ref _value, value ?? ""); }
 }
 
@@ -67,6 +69,22 @@ public partial class StepParametersDialog : Window
                         ["==", "!=", ">", ">=", "<", "<="],
                     _ => null
                 }));
+        if (node.Type == "WaveAnalyze" &&
+            Fields.FirstOrDefault(x => x.Key == "profile") is { } profileField)
+        {
+            void UpdateAnalysisFields()
+            {
+                var usingProfile = !string.IsNullOrWhiteSpace(profileField.Value);
+                foreach (var field in Fields.Where(f => f.Key is "tolerance" or "coverage"))
+                    field.IsVisible = !usingProfile;
+            }
+            profileField.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(StepPropertyField.Value))
+                    UpdateAnalysisFields();
+            };
+            UpdateAnalysisFields();
+        }
         if (node.Type == "Write" && targetKinds is not null &&
             Fields.FirstOrDefault(x => x.Key == "target") is { } targetField &&
             Fields.FirstOrDefault(x => x.Key == "value") is { } valueField)

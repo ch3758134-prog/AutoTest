@@ -80,7 +80,8 @@ public static class WaveReferenceWorkspaceService
             x.Signal.SignalName == config.SignalName && x.Signal.Unit == config.Unit)
             .Select(x => x.Name);
         return new[] { "" }.Concat(matches).Concat(
-            string.IsNullOrWhiteSpace(config.ReferenceName) ? [] : [config.ReferenceName])
+            string.IsNullOrWhiteSpace(config.ReferenceName)
+                ? Array.Empty<string>() : new[] { config.ReferenceName })
             .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 

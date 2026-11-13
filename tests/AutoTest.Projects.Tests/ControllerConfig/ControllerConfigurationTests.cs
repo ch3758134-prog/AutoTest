@@ -151,6 +151,25 @@ public sealed class ControllerConfigurationTests
     }
 
 
+    [Fact] public void ButtonPressWithNoConfiguredResistorCombination_IsRejected()
+    {
+        var (profile, controller, stateId) = Profile();
+        var state = profile.Controllers[0].States[0] with { KeyMask = 0 };
+        profile = profile with
+        {
+            Controllers = ImmutableArray.Create(profile.Controllers[0] with
+            { States = ImmutableArray.Create(state) })
+        };
+        var reference = new StateReference(profile.ProfileId, controller, stateId, profile.Revision);
+        var policy = new HardwareKeyPolicy(profile.HardwareProfileId, 0xFFFFF,
+            ImmutableArray<IncompatibleKeyPair>.Empty);
+        var error = Assert.Throws<ProjectDataException>(() =>
+            ButtonActionPlanner.Resolve(profile, policy, [],
+                new ButtonActionRequest(reference, ButtonActuation.Pulse,
+                    new ButtonActionTiming(0, 200, 0))));
+        Assert.Equal("CTRL_ACTION_NO_STIMULUS", error.Code);
+    }
+
     [Fact] public void ButtonTiming_StoredWithConfiguredStateAndRoundTrips()
     {
         var (profile, controller, stateId) = Profile();
