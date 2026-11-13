@@ -123,9 +123,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     private void RefreshAvailable()
     {
         AvailablePackages.Clear();
-        foreach (var asset in _workspace.Current?.Definition.Assets
+        var assets = _workspace.Current?.Definition.Assets
             .Where(x => x.Kind == ProjectWorkspaceService.TestProgramKind)
-            .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase) ?? [])
+            .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray() ?? Array.Empty<AssetEntry>();
+        foreach (var asset in assets)
             AvailablePackages.Add(new TestProjectPackageChoice(asset));
         SelectedAvailable = AvailablePackages.FirstOrDefault();
     }
