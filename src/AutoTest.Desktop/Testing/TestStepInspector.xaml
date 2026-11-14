@@ -87,11 +87,11 @@
        </ComboBox>
        <StackPanel x:Name="RawKeyMaskPanel" Visibility="Collapsed">
         <TextBlock Text="KEY_SIM 电阻网络组合" Margin="0,0,0,5"/>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-         <TextBox x:Name="RawKeyMaskInput" Width="170" IsReadOnly="True"
-                  FontFamily="Consolas" Margin="0,0,8,0"/>
-         <Button Content="选择 20 Key…" Click="PickRawKeys_Click"/>
-        </StackPanel>
+        <TextBox x:Name="RawKeyMaskInput" IsReadOnly="True"
+                 FontFamily="Consolas" Margin="0,0,0,7"/>
+        <UniformGrid x:Name="RawKeyGrid" Columns="5" Rows="4" Margin="0,0,0,8"/>
+        <Button Content="清空选择" Click="ClearRawKeys_Click"
+                HorizontalAlignment="Left" Margin="0,0,0,9"/>
         <TextBlock Text="直接控制开关不会保证 ECU 实际识别电压；推荐先配置有含义的 ECU 功能按键。"
                    Foreground="{StaticResource Subtle}" TextWrapping="Wrap"
                    FontSize="11" Margin="0,0,0,10"/>
