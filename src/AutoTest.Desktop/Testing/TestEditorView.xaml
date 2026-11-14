@@ -91,7 +91,8 @@
                   Padding="14,11">
             <DockPanel>
               <TextBlock Text="测试程序 · 步骤序列" FontSize="15" FontWeight="SemiBold"/>
-              <Button DockPanel.Dock="Right" Content="＋ 插入步骤" Command="{Binding AddChildCommand}" ToolTip="在当前阶段或步骤后插入"/>
+              <TextBlock DockPanel.Dock="Right" Text="右键调整步骤与分支"
+                         FontSize="11" Foreground="{StaticResource Subtle}"/>
             </DockPanel>
           </Border>
           <Expander DockPanel.Dock="Bottom" Header="高级：操作对象绑定（添加步骤时自动建立）"
