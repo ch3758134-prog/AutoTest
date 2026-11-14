@@ -58,7 +58,11 @@ public sealed class TestEditorViewModel : BindableBase
             if (!StepUiCatalog.Choices.Any(x => x.Type == original.Type))
                 EditLegacyParameters(original);
             else
+            {
+                _inspectorAdding = false;
+                _inspectorInsertionTarget = _selectedItem;
                 _ = PublishInspectorAsync(original, null);
+            }
         }, () => CanEditSelectedStep);
         DuplicateCommand = new DelegateCommand(Duplicate, () => CanEditSelectedStep);
         DeleteCommand = new DelegateCommand(Delete, () => CanEditSelectedStep);
