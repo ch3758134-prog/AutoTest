@@ -2,6 +2,8 @@
 
 离线 Windows ECU 集成测试与开发上位机，采用 .NET 10、WPF、Prism。当前仓库以 **真实设备能力、工程数据模型、测试文档模型、诊断与记录领域层** 为研发基础。
 
+**开始研发或 UI 设计前先阅读：** [现行业务与产品职责决策](docs/project-management/new-baseline-20261112/PM-BUSINESS-DECISIONS-20261114.md)（手动台架功能按键、取消独立 CAN 工作台、扫码生产自动运行等）和 [项目管理入口](docs/project-management/README.md)。
+
 ## 主线边界
 
 - `AutoTest.Core` / `Contracts`：领域基础类型及跨模块契约。
@@ -27,4 +29,4 @@
 - [`Key_Sim`](https://github.com/ch3758134-prog/AutoTest/tree/Key_Sim)：按键板固件，`WS/EPB_EOL/`。
 - [`Project_Management`](https://github.com/ch3758134-prog/AutoTest/tree/Project_Management)：独立项目管理系统、工程决策与受控档案；首次入场从该分支 [`tools/project-control-v2/START_HERE.md`](https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/tools/project-control-v2/START_HERE.md) 阅读。
 
-**过渡说明**：主线中原有 `tools/project-control-v2/`、`SAEF/` 与部分管理文档暂不物理删除，以免在跨分支启动和审批流程实测前破坏已有入口。管理工具后续研发应在 `Project_Management` 进行；此处的旧副本不是第二个独立的管理权威。原理图由管理档案保管，可编辑固件源码以各固件分支为准。任何管理分支的发布或 Gate 变更仍须独立审批。
+**当前有效产品决策入口：** [`docs/project-management/README.md`](docs/project-management/README.md)。2026-11-14 按项目负责人要求清除 `main` 的历史 `SAEF/` 目录；其中旧 Gate/工作产品不再作为当前产品批准依据。历史存档仍可从 Git 历史及 `Project_Management` 分支查找；工程原始资产应按实际来源与版本辨别。`main` 的新 P0～G3 批准文件保留。
