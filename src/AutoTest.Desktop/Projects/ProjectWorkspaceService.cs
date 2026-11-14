@@ -778,6 +778,9 @@ public sealed class ProjectWorkspaceService
                 {
                     DbcKind => "dbc",
                     TestProgramKind => "tests",
+                    TestProjectKind => "projects",
+                    TestConfigurationKind => "tcf",
+                    BenchConfigurationKind => "tbc",
                     FirmwareKind => "firmware",
                     WaveKind => "wave",
                     ControllerKind => "controller",
