@@ -59,9 +59,9 @@
           <Button Content="保存" Command="{Binding SaveCommand}" ToolTip="Ctrl+S"/>
           <Button Content="重新加载" Command="{Binding ReloadCommand}" ToolTip="放弃草稿，重新读取文件"/>
           <Border Width="1" Height="25" Background="{StaticResource Line}" Margin="2,0,10,0"/>
-          <Button Content="＋ 所有操作…" Command="{Binding AddChildCommand}"
+          <Button Content="＋ 添加步骤" Command="{Binding AddChildCommand}"
                   Style="{StaticResource AtPrimaryButton}" MinWidth="110"
-                  ToolTip="Ctrl+Space · 搜索全部测试动作和流程控制，并直接编辑参数"/>
+                  ToolTip="Ctrl+Space · 在右侧属性栏选择和配置新步骤"/>
           <Button Content="发送 CAN" Command="{Binding QuickAddCommand}"
                   CommandParameter="can" ToolTip="添加 CAN 发送并立即编辑报文"/>
           <Button Content="模拟按键" Command="{Binding QuickAddCommand}"
@@ -70,8 +70,7 @@
                   CommandParameter="read" ToolTip="从 DBC 选择 ECU 信号并设置变量"/>
           <Button Content="期望判定" Command="{Binding QuickAddCommand}"
                   CommandParameter="expect" ToolTip="添加独立的显式判定"/>
-          <Button Content="流程控制…" Command="{Binding AddChildCommand}"
-                  ToolTip="从操作列表中选择 IF、循环等流程控制"/>
+          
           <Border Width="1" Height="25" Background="{StaticResource Line}" Margin="2,0,10,0"/>
           <Button Content="撤销" Command="{Binding UndoCommand}" ToolTip="Ctrl+Z"/>
           <Button Content="重做" Command="{Binding RedoCommand}" ToolTip="Ctrl+Y"/>
@@ -81,9 +80,9 @@
 
     <Grid Grid.Row="2" Margin="10">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="480" MinWidth="330" MaxWidth="660"/>
+        <ColumnDefinition Width="1.45*" MinWidth="360"/>
         <ColumnDefinition Width="5"/>
-        <ColumnDefinition Width="*" MinWidth="460"/>
+        <ColumnDefinition Width="1*" MinWidth="360"/>
       </Grid.ColumnDefinitions>
       <Border Grid.Column="0" Style="{StaticResource AtPanel}">
         <DockPanel LastChildFill="True">
@@ -91,9 +90,8 @@
                   BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
                   Padding="14,11">
             <DockPanel>
-              <TextBlock Text="步骤树" FontSize="15" FontWeight="SemiBold"/>
-              <TextBlock DockPanel.Dock="Right" Text="右键管理步骤"
-                         FontSize="11" Foreground="{StaticResource Subtle}"/>
+              <TextBlock Text="测试程序 · 步骤序列" FontSize="15" FontWeight="SemiBold"/>
+              <Button DockPanel.Dock="Right" Content="＋ 插入步骤" Command="{Binding AddChildCommand}" ToolTip="在当前阶段或步骤后插入"/>
             </DockPanel>
           </Border>
           <Expander DockPanel.Dock="Bottom" Header="高级：操作对象绑定（添加步骤时自动建立）"
@@ -109,6 +107,36 @@
               </StackPanel>
             </StackPanel>
           </Expander>
+          <Expander Header="运行与调试 · 真实台架" DockPanel.Dock="Bottom" MaxHeight="390" IsExpanded="False"
+                      Margin="0,0,0,10">
+              <StackPanel Margin="9,12,9,4">
+              <TextBlock Text="真实测试执行 · 不会运行 Mock 设备"
+                         Foreground="{StaticResource Subtle}"
+                         TextWrapping="Wrap" Margin="0,0,0,10"/>
+            <TextBlock Text="运行授权文本（仅对包含物理写入的 TEST 必填）"
+                       Foreground="{StaticResource Subtle}" Margin="0,0,0,5"/>
+            <TextBox Text="{Binding ExpectedApproval,Mode=OneWay}" IsReadOnly="True"
+                     FontFamily="Consolas" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <TextBox Text="{Binding RunApproval,UpdateSourceTrigger=PropertyChanged}"
+                     FontFamily="Consolas" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+              <Button Content="开始真实测试" Command="{Binding RunCommand}"
+                      Style="{StaticResource AtPrimaryButton}"/>
+              <Button Content="停止" Command="{Binding StopRunCommand}"/>
+            </StackPanel>
+            <TextBlock Text="{Binding RunSummary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+            <DataGrid ItemsSource="{Binding RunFacts}" IsReadOnly="True" AutoGenerateColumns="False"
+                      MaxHeight="220" HeadersVisibility="Column" RowHeaderWidth="0"
+                      CanUserAddRows="False">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="步骤" Binding="{Binding Type}" Width="85"/>
+                <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="95"/>
+                <DataGridTextColumn Header="实际数据" Binding="{Binding Actual}" Width="100"/>
+                <DataGridTextColumn Header="说明" Binding="{Binding Detail}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+              </StackPanel>
+            </Expander>
           <TreeView x:Name="StepsTree" ItemsSource="{Binding StepRoots}"
                     Tag="{Binding}" BorderThickness="0" Margin="5,7"
                     SelectedItemChanged="StepsTree_SelectedItemChanged"
@@ -149,7 +177,7 @@
                 <MenuItem Header="添加步骤…" Command="{Binding AddChildCommand}"/>
                 <MenuItem Header="在此步骤后插入" Command="{Binding AddAfterCommand}"/>
                 <Separator/>
-                <MenuItem Header="编辑名称和参数…（F2）" Command="{Binding EditParametersCommand}"/>
+                <MenuItem Header="显示步骤属性（F2）" Command="{Binding EditParametersCommand}"/>
                 <MenuItem Header="复制步骤及子步骤" Command="{Binding DuplicateCommand}"/>
                 <MenuItem Header="上移" Command="{Binding MoveUpCommand}"/>
                 <MenuItem Header="下移" Command="{Binding MoveDownCommand}"/>
@@ -165,86 +193,9 @@
       </Border>
       <GridSplitter Grid.Column="1" Width="5" ResizeDirection="Columns"
                     HorizontalAlignment="Stretch" Background="{StaticResource Line}"/>
-      <Border Grid.Column="2" Style="{StaticResource AtPanel}" Padding="18,16">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel>
-            <DockPanel Margin="0,0,0,16">
-              <Button Content="＋ 添加到此处" Command="{Binding AddChildCommand}"
-                      Style="{StaticResource AtPrimaryButton}" DockPanel.Dock="Right"
-                      ToolTip="在选中阶段或分支内，或当前步骤之后添加"/>
-              <TextBlock Text="步骤编辑" FontSize="18" FontWeight="SemiBold"
-                         VerticalAlignment="Center"/>
-            </DockPanel>
-            <TextBlock Text="当前选择" Foreground="{StaticResource Subtle}"
-                       FontSize="11" Margin="0,0,0,7"/>
-            <TextBlock Text="{Binding SelectedTitle}" FontWeight="SemiBold" FontSize="17"
-                       TextWrapping="Wrap" Margin="0,0,0,10"/>
-            <TextBlock Text="{Binding SelectedTypeLabel}" Foreground="{StaticResource Subtle}"
-                       Margin="0,0,0,10"/>
-            <TextBlock Text="{Binding SelectedDescription}" TextWrapping="Wrap" Margin="0,0,0,19"/>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
-              <Button Content="编辑此步骤…" Command="{Binding EditParametersCommand}"
-                      Style="{StaticResource AtPrimaryButton}"
-                      ToolTip="打开该动作专用的对象与参数编辑器（F2）"/>
-              <Button Content="复制步骤" Command="{Binding DuplicateCommand}"/>
-              <Button Content="删除" Command="{Binding DeleteCommand}"/>
-            </StackPanel>
-            <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,17"/>
-            <TextBlock Text="参数" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
-            <ItemsControl ItemsSource="{Binding InspectorProperties}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Grid Margin="0,0,0,13">
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="180"/>
-                      <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="{Binding Key}"
-                               Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Expander Header="高级：步骤内部标识" IsExpanded="False"
-                      Margin="0,12,0,12">
-              <TextBlock Text="{Binding SelectedId}" TextWrapping="Wrap"
-                         FontFamily="Consolas" FontSize="11" Margin="8,7"/>
-            </Expander>
-            <Border Height="1" Background="{StaticResource Line}" Margin="0,6,0,14"/>
-            <Expander Header="运行与调试（需要连接真实台架）" IsExpanded="False"
-                      Margin="0,0,0,10">
-              <StackPanel Margin="9,12,9,4">
-              <TextBlock Text="真实测试执行 · 不会运行 Mock 设备"
-                         Foreground="{StaticResource Subtle}"
-                         TextWrapping="Wrap" Margin="0,0,0,10"/>
-            <TextBlock Text="运行授权文本（仅对包含物理写入的 TEST 必填）"
-                       Foreground="{StaticResource Subtle}" Margin="0,0,0,5"/>
-            <TextBox Text="{Binding ExpectedApproval,Mode=OneWay}" IsReadOnly="True"
-                     FontFamily="Consolas" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,6"/>
-            <TextBox Text="{Binding RunApproval,UpdateSourceTrigger=PropertyChanged}"
-                     FontFamily="Consolas" Margin="0,0,0,8"/>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-              <Button Content="开始真实测试" Command="{Binding RunCommand}"
-                      Style="{StaticResource AtPrimaryButton}"/>
-              <Button Content="停止" Command="{Binding StopRunCommand}"/>
-            </StackPanel>
-            <TextBlock Text="{Binding RunSummary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
-            <DataGrid ItemsSource="{Binding RunFacts}" IsReadOnly="True" AutoGenerateColumns="False"
-                      MaxHeight="220" HeadersVisibility="Column" RowHeaderWidth="0"
-                      CanUserAddRows="False">
-              <DataGrid.Columns>
-                <DataGridTextColumn Header="步骤" Binding="{Binding Type}" Width="85"/>
-                <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="95"/>
-                <DataGridTextColumn Header="实际数据" Binding="{Binding Actual}" Width="100"/>
-                <DataGridTextColumn Header="说明" Binding="{Binding Detail}" Width="*"/>
-              </DataGrid.Columns>
-            </DataGrid>
-              </StackPanel>
-            </Expander>
-
-          </StackPanel>
-        </ScrollViewer>
+      <Border Grid.Column="2" Style="{StaticResource AtPanel}" Padding="0">
+        <ContentControl x:Name="InspectorHost" HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch"/>
       </Border>
     </Grid>
 
