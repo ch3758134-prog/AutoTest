@@ -474,6 +474,21 @@ public sealed class TestEditorViewModel : BindableBase
         RefreshCommands();
     }
 
+    private static string DescribeWrite(StepNode step)
+    {
+        var target = step.Properties.GetValueOrDefault("target", "");
+        var value = step.Properties.GetValueOrDefault("value", "");
+        if (value.Contains('='))
+        {
+            var fields = value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return target + " · " + string.Join("; ", fields.Take(2)) +
+                (fields.Length > 2 ? " · 另 " + (fields.Length - 2) + " 个信号" : "");
+        }
+        if (value.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
+            return target + " · 原始报文 " + value;
+        return target + " · " + value;
+    }
+
     private static void AddNodes(StepTreeItem parent, System.Collections.Immutable.ImmutableArray<StepNode> nodes)
     {
         for (var i = 0; i < nodes.Length; i++)
@@ -485,10 +500,15 @@ public sealed class TestEditorViewModel : BindableBase
                     step.Properties.GetValueOrDefault("equals", ""),
                 "Loop" => step.Properties.GetValueOrDefault("count", "") + " 次",
                 "Wait" => step.Properties.GetValueOrDefault("milliseconds", "") + " ms",
-                "Write" => step.Properties.GetValueOrDefault("target", "") + "  ←  " +
-                    step.Properties.GetValueOrDefault("value", ""),
-                "Read" or "WaitUntil" or "WaveStart" =>
-                    step.Properties.GetValueOrDefault("target", ""),
+                "Write" => DescribeWrite(step),
+                "Read" => step.Properties.GetValueOrDefault("target", "") + " → $" +
+                    step.Properties.GetValueOrDefault("variable", ""),
+                "WaitUntil" => step.Properties.GetValueOrDefault("target", "") + " " +
+                    step.Properties.GetValueOrDefault("operator", "") + " " +
+                    step.Properties.GetValueOrDefault("expected", "") + " · 超时 " +
+                    step.Properties.GetValueOrDefault("timeoutMs", "") + " ms",
+                "WaveStart" => step.Properties.GetValueOrDefault("target", "") + " · " +
+                    step.Properties.GetValueOrDefault("captureKey", ""),
                 "WaveAnalyze" => step.Properties.GetValueOrDefault("profile", ""),
                 "Expect" => step.Properties.GetValueOrDefault("left", "") + " " +
                     step.Properties.GetValueOrDefault("operator", "") + " " +
