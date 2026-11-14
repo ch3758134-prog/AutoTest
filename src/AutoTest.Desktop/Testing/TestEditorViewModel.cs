@@ -29,6 +29,11 @@ public sealed class TestEditorViewModel : BindableBase
     private string _approval = "";
     private string _runSummary = "未运行真实测试";
     private readonly StepDescriptorCatalog _catalog = StepDescriptorCatalog.Builtins();
+    private OpenProjectContext? _choiceContext;
+    private AssetId? _choiceTcf;
+    private IReadOnlyList<MappingChoice>? _choiceCache;
+    private Task<IReadOnlyList<MappingChoice>>? _choiceLoading;
+
     private TestEditorSession _session;
     private StepEditTransaction _transaction;
     private StepTreeItem? _selectedItem;
@@ -270,12 +275,31 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task<IReadOnlyList<MappingChoice>> AvailableObjectsAsync()
     {
-        try { return await TestTargetCatalog.LoadAsync(_workspace); }
+        var context = _workspace.Current;
+        var tcf = _workspace.SelectedTestConfiguration;
+        if (!ReferenceEquals(context, _choiceContext) || tcf != _choiceTcf)
+        {
+            _choiceContext = context;
+            _choiceTcf = tcf;
+            _choiceCache = null;
+            _choiceLoading = null;
+        }
+        if (_choiceCache is not null) return _choiceCache;
+        try
+        {
+            var loading = _choiceLoading ??= TestTargetCatalog.LoadAsync(_workspace);
+            var choices = await loading;
+            if (ReferenceEquals(context, _workspace.Current) &&
+                tcf == _workspace.SelectedTestConfiguration)
+                _choiceCache = choices;
+            return choices;
+        }
         catch (Exception error) when (error is IOException or InvalidDataException or
                                       UnauthorizedAccessException or ArgumentException or ProjectDataException)
         {
+            _choiceLoading = null;
             StatusMessage = "部分工程操作对象无法加载：" + error.Message +
-                "；仍可添加等待、条件和无 DBC 的原始 CAN 操作。";
+                "；仍可使用等待、条件、IGN 和无 DBC 的原始 CAN 操作。";
             return [new MappingChoice("台架 / IGN", new TestTargetMapping("IGN",
                 TestTargetKind.Ignition, default, 0, ""))];
         }
