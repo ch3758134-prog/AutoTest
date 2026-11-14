@@ -33,9 +33,6 @@ public static class StepTreeValidator
             if (n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
                 !int.TryParse(count, out var loops) || loops < 0 || loops > 1000))
                 errors.Add($"{location}: Loop count outside 0..1000");
-            if (n.Type == "MockObserve" && n.Properties.TryGetValue("quality", out var quality) &&
-                !Enum.TryParse<AutoTest.Testing.Runtime.MockQuality>(quality, out _))
-                errors.Add($"{location}: invalid observation quality");
             if (n.Type == "Wait" && (!n.Properties.TryGetValue("milliseconds", out var ms) ||
                 !int.TryParse(ms, out var delay) || delay < 0 || delay > 60000))
                 errors.Add($"{location}: Wait outside 0..60000ms");

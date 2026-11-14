@@ -32,8 +32,6 @@ public sealed class StepDescriptorCatalog
         Add("CallSubroutine", false, [], ["target"]);
         Add("Parallel", false, ["branches"]);
         Add("SetVariable", true, [], ["variable", "value"]);
-        Add("MockObserve", true, [], ["variable", "value", "quality"]);
-        Add("Assert", true, [], ["variable", "equals"]);
         Add("Wait", true, [], ["milliseconds"]);
         // Explicitly modeled future capabilities; never claim V1 runtime support.
         foreach (var name in new[] { "PowerSet", "KeySet", "CanSend", "CanWait", "UdsRequest",

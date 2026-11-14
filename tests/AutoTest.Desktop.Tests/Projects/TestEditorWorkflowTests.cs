@@ -32,7 +32,7 @@ public sealed class TestEditorWorkflowTests
             var condition = StepUiCatalog.NewNode("If");
             var loop = StepUiCatalog.NewNode("Loop");
             var wait = StepUiCatalog.NewNode("Wait");
-            var fallback = StepUiCatalog.NewNode("Assert");
+            var fallback = StepUiCatalog.NewNode("SetVariable");
 
             tx.Insert(TestPhase.Prepare, null, null, 0, setup);
             tx.Insert(TestPhase.Test, null, null, 0, condition);

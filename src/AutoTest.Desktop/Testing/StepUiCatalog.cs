@@ -17,7 +17,6 @@ public static class StepUiCatalog
         new("Loop", "循环", "重复执行指定次数（0–1000）", true),
         new("Sequence", "步骤分组", "包含有顺序的子步骤", true),
         new("SetVariable", "设置变量", "设置测试程序变量", true),
-        new("Assert", "条件断言", "比较测试程序变量", true),
         new("When", "等待条件", "等待变量满足条件（仅编辑，运行能力未接入）", false)
     ];
     public static string Label(string type) =>
