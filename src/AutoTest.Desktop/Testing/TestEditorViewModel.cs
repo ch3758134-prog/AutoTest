@@ -174,9 +174,9 @@ public sealed class TestEditorViewModel : BindableBase
             choices, _transaction.Current.Mappings.ToArray()));
     }
 
-    public void ApplyInspector(StepCompositionResult result)
+    public bool ApplyInspector(StepCompositionResult result)
     {
-        if (IsBusy || _selectedItem is null) return;
+        if (IsBusy || _selectedItem is null) return false;
         try
         {
             if (!_inspectorAdding && _selectedItem.Step is { } original)
@@ -197,10 +197,12 @@ public sealed class TestEditorViewModel : BindableBase
                 RefreshTree(result.Step.Id);
                 StatusMessage = "新步骤已插入测试序列；Ctrl+S 保存。";
             }
+            return true;
         }
         catch (Exception error) when (IsEditorError(error))
         {
-            _dialogs.ShowError("无法应用步骤属性：" + error.Message);
+            StatusMessage = "无法应用步骤属性：" + error.Message;
+            return false;
         }
     }
 
