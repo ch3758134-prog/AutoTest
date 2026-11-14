@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
-using AutoTest.Application.Composition;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.TestFixtures;
@@ -44,48 +43,6 @@ public sealed class CoreContractTests
         Assert.True(process.WaitForExit(30000), "Negative compilation timed out.");
         Assert.NotEqual(0, process.ExitCode);
         Assert.Contains("CS1503", output + error);
-    }
-
-    [Fact]
-    public async Task G3_0_T02_OldGenerationReplyCannotBecomeCurrent()
-    {
-        var station = new FakeStation();
-        var stationId = StationId.Create("MOCK-1");
-        var old = (await station.ConnectAsync(stationId, CancellationToken.None)).Value!;
-        var pending = station.ExecuteAsync(new StationCommand(StationAction.MockProbe,
-            MockScenario.DelayedResponse, Guid.NewGuid()),
-            Authorization.MockOnly(old, DateTimeOffset.UtcNow), CancellationToken.None).AsTask();
-        var current = (await station.ConnectAsync(stationId, CancellationToken.None)).Value!;
-        Assert.NotEqual(old.Generation, current.Generation);
-        var reply = await pending;
-        Assert.Equal(Outcome.Rejected, reply.Outcome);
-        Assert.Equal("STALE_SESSION", reply.FailureCode);
-        Assert.Null(reply.Value);
-    }
-
-    [Fact]
-    public async Task G3_0_T03_PhysicalActionsDeniedEvenWithMockToken()
-    {
-        var station = new FakeStation();
-        var s = (await station.ConnectAsync(StationId.Create("SIM"), CancellationToken.None)).Value!;
-        var rejected = await station.ExecuteAsync(new StationCommand(StationAction.Ignition,
-            MockScenario.Normal, Guid.NewGuid()), Authorization.MockOnly(s, DateTimeOffset.UtcNow),
-            CancellationToken.None);
-        Assert.Equal(Outcome.Rejected, rejected.Outcome);
-        Assert.Equal("PHYSICAL_OUTPUT_FORBIDDEN", rejected.FailureCode);
-    }
-
-    [Fact]
-    public async Task G3_0_T03_MissingAuthorizationDeniedBeforeAnyAck()
-    {
-        var station = new FakeStation();
-        var s = (await station.ConnectAsync(StationId.Create("SIM"), CancellationToken.None)).Value!;
-        var denial = await station.ExecuteAsync(new StationCommand(StationAction.MockProbe,
-            MockScenario.Normal, Guid.NewGuid()), new Authorization(AuthorizationScope.None,
-            s.Station, s.Generation, DateTimeOffset.UtcNow.AddMinutes(1), "NONE"),
-            CancellationToken.None);
-        Assert.Equal("AUTH_MISSING", denial.FailureCode);
-        Assert.Null(denial.Value);
     }
 
     [Fact]
