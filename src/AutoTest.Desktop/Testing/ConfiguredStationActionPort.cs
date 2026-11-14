@@ -175,10 +175,10 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 var request = RawKeyAction.Parse(action);
                 if (request.Action == RawKeyOperation.Pulse && _rawMask != 0)
                     throw new InvalidOperationException("原始 Key 正在保持，先释放后再短按。");
-                bool attempted = false;
+                bool rawKeyAttempted = false;
                 try
                 {
-                    attempted = true;
+                    rawKeyAttempted = true;
                     if (request.Action == RawKeyOperation.Release)
                     {
                         await _hardware.SendTestCanAsync(
@@ -203,7 +203,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 }
                 catch
                 {
-                    if (attempted)
+                    if (rawKeyAttempted)
                     {
                         _unknown = true;
                         try
