@@ -13,6 +13,12 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Testing;
 
+public sealed record StepInspectorContext(
+    StepNode? Original, string? InitialActionKey,
+    IReadOnlyList<MappingChoice> Choices,
+    IReadOnlyList<TestTargetMapping> ExistingMappings);
+
+
 /// <summary>One StepEditTransaction per TEST document; no alternate authoring model.</summary>
 public sealed class TestEditorViewModel : BindableBase
 {
@@ -40,15 +46,20 @@ public sealed class TestEditorViewModel : BindableBase
         _session = session;
         _transaction = new StepEditTransaction(session.Document);
 
-        AddChildCommand = new DelegateCommand(async () => await InsertComposedStepAsync(false),
+        AddChildCommand = new DelegateCommand(() => BeginInsert(null),
             () => !IsBusy && SelectedItem is not null);
-        QuickAddCommand = new DelegateCommand<string>(async action =>
-            await InsertComposedStepAsync(false, action),
+        QuickAddCommand = new DelegateCommand<string>(BeginInsert,
             _ => !IsBusy && SelectedItem is not null);
-        AddAfterCommand = new DelegateCommand(async () => await InsertComposedStepAsync(true),
+        AddAfterCommand = new DelegateCommand(() => BeginInsert(null),
             () => CanEditSelectedStep);
-        EditParametersCommand = new DelegateCommand(async () => await EditComposedStepAsync(),
-            () => CanEditSelectedStep);
+        EditParametersCommand = new DelegateCommand(() =>
+        {
+            if (_selectedItem?.Step is not { } original) return;
+            if (!StepUiCatalog.Choices.Any(x => x.Type == original.Type))
+                EditLegacyParameters(original);
+            else
+                _ = PublishInspectorAsync(original, null);
+        }, () => CanEditSelectedStep);
         DuplicateCommand = new DelegateCommand(Duplicate, () => CanEditSelectedStep);
         DeleteCommand = new DelegateCommand(Delete, () => CanEditSelectedStep);
         MoveUpCommand = new DelegateCommand(() => Move(-1), () => CanMoveUp);
@@ -133,6 +144,66 @@ public sealed class TestEditorViewModel : BindableBase
         private set { if (SetProperty(ref _isBusy, value)) RefreshCommands(); }
     }
     public StepTreeItem? SelectedItem => _selectedItem;
+    public event Action<StepInspectorContext>? InspectorRequested;
+    private StepTreeItem? _inspectorInsertionTarget;
+    private bool _inspectorAdding;
+    private int _inspectorRequestVersion;
+
+    private void BeginInsert(string? actionKey)
+    {
+        if (IsBusy || _selectedItem is null) return;
+        _inspectorInsertionTarget = _selectedItem;
+        _inspectorAdding = true;
+        StatusMessage = "在右侧步骤属性中选择操作、编辑参数，再点击“插入步骤”。";
+        _ = PublishInspectorAsync(null, actionKey);
+    }
+
+    public void ResetInspector()
+    {
+        _inspectorAdding = _selectedItem?.Kind != StepTreeItemKind.Step;
+        _inspectorInsertionTarget = _selectedItem;
+        _ = PublishInspectorAsync(_inspectorAdding ? null : _selectedItem?.Step, null);
+    }
+
+    private async Task PublishInspectorAsync(StepNode? original, string? initialActionKey)
+    {
+        var request = ++_inspectorRequestVersion;
+        var choices = await AvailableObjectsAsync();
+        if (request != _inspectorRequestVersion) return;
+        InspectorRequested?.Invoke(new StepInspectorContext(original, initialActionKey,
+            choices, _transaction.Current.Mappings.ToArray()));
+    }
+
+    public void ApplyInspector(StepCompositionResult result)
+    {
+        if (IsBusy || _selectedItem is null) return;
+        try
+        {
+            if (!_inspectorAdding && _selectedItem.Step is { } original)
+            {
+                _transaction.ReplaceWithMapping(original.Id, result.Step, result.Mapping);
+                RefreshMappings();
+                RefreshTree(original.Id);
+                StatusMessage = "步骤属性已应用到测试程序草稿；Ctrl+S 保存。";
+            }
+            else
+            {
+                var position = _inspectorInsertionTarget ?? _selectedItem;
+                var coords = position.Kind == StepTreeItemKind.Step
+                    ? position.CoordinatesForSibling() : position.CoordinatesForAppend();
+                _transaction.InsertWithMapping(position.Phase, coords.ParentId,
+                    coords.Slot, coords.Index, result.Step, result.Mapping);
+                RefreshMappings();
+                RefreshTree(result.Step.Id);
+                StatusMessage = "新步骤已插入测试序列；Ctrl+S 保存。";
+            }
+        }
+        catch (Exception error) when (IsEditorError(error))
+        {
+            _dialogs.ShowError("无法应用步骤属性：" + error.Message);
+        }
+    }
+
 
     public DelegateCommand AddChildCommand { get; }
     public DelegateCommand<string> QuickAddCommand { get; }
@@ -158,6 +229,9 @@ public sealed class TestEditorViewModel : BindableBase
         _selectedItem = item;
         if (item is not null) item.IsSelected = true;
         UpdateInspector();
+        _inspectorInsertionTarget = item;
+        _inspectorAdding = item?.Kind != StepTreeItemKind.Step;
+        _ = PublishInspectorAsync(_inspectorAdding ? null : item?.Step, null);
     }
 
     private void UpdateInspector()
@@ -199,58 +273,6 @@ public sealed class TestEditorViewModel : BindableBase
             return [new MappingChoice("台架 / IGN", new TestTargetMapping("IGN",
                 TestTargetKind.Ignition, default, 0, ""))];
         }
-    }
-
-    private async Task InsertComposedStepAsync(bool after, string? actionKey = null)
-    {
-        if (IsBusy || _selectedItem is not { } position) return;
-        if (after && position.Kind != StepTreeItemKind.Step) return;
-        IsBusy = true;
-        IReadOnlyList<MappingChoice> choices;
-        try { choices = await AvailableObjectsAsync(); }
-        finally { IsBusy = false; }
-        var composed = _dialogs.ComposeStep(choices, _transaction.Current.Mappings.ToArray(),
-            initialActionKey: actionKey);
-        if (composed is null) return;
-        var coordinates = position.Kind == StepTreeItemKind.Step
-            ? position.CoordinatesForSibling() : position.CoordinatesForAppend();
-        try
-        {
-            _transaction.InsertWithMapping(position.Phase, coordinates.ParentId,
-                coordinates.Slot, coordinates.Index, composed.Step, composed.Mapping);
-            RefreshMappings();
-            RefreshTree(composed.Step.Id);
-            StatusMessage = "已添加“" + composed.Step.Name +
-                "”，参数与资源绑定已写入测试用例草稿。请保存文档。";
-        }
-        catch (Exception error) when (IsEditorError(error))
-        { _dialogs.ShowError("无法添加步骤：" + error.Message); }
-    }
-
-    private async Task EditComposedStepAsync()
-    {
-        if (!CanEditSelectedStep || _selectedItem?.Step is not { } original) return;
-        IsBusy = true;
-        IReadOnlyList<MappingChoice> choices;
-        try { choices = await AvailableObjectsAsync(); }
-        finally { IsBusy = false; }
-        // Preserve specialist/legacy step editing without introducing another file model.
-        if (!StepUiCatalog.Choices.Any(x => x.Type == original.Type))
-        {
-            EditLegacyParameters(original);
-            return;
-        }
-        var composed = _dialogs.ComposeStep(choices, _transaction.Current.Mappings.ToArray(), original);
-        if (composed is null) return;
-        try
-        {
-            _transaction.ReplaceWithMapping(original.Id, composed.Step, composed.Mapping);
-            RefreshMappings();
-            RefreshTree(original.Id);
-            StatusMessage = "已修改步骤“" + composed.Step.Name + "”（未保存）。";
-        }
-        catch (Exception error) when (IsEditorError(error))
-        { _dialogs.ShowError("无法应用步骤参数：" + error.Message); }
     }
 
     private void EditLegacyParameters(StepNode node)
