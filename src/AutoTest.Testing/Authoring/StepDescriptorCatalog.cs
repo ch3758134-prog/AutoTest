@@ -32,11 +32,9 @@ public sealed class StepDescriptorCatalog
         Add("CallSubroutine", false, [], ["target"]);
         Add("Parallel", false, ["branches"]);
         Add("SetVariable", true, [], ["variable", "value"]);
-        Add("MockObserve", true, [], ["variable", "value", "quality"]);
-        Add("Assert", true, [], ["variable", "equals"]);
         Add("Wait", true, [], ["milliseconds"]);
         // Real runtime actions use typed, version-pinned Mapping references.
-        // They must not be executed by the legacy MockStation coordinator.
+        // Only RealRunCoordinator executes these physical operations.
         Add("Write", false, [], ["target", "value"]);
         Add("Read", false, [], ["target", "variable", "mode", "timeoutMs", "maxAgeMs"]);
         Add("WaitUntil", false, [], ["target", "variable", "operator", "expected", "timeoutMs"]);

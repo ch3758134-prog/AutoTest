@@ -127,15 +127,6 @@ public sealed class RealExecutionTests
     }
 
     [Fact]
-    public void RealPlanRejectsMockObservationEvenWhenMockPlanWouldAccept()
-    {
-        var tx = new StepEditTransaction(TestDocument.Create("Legacy"));
-        tx.Insert(TestPhase.Test, null, null, 0, N("MockObserve",
-            ("variable", "state"), ("value", "1"), ("quality", "Observed")));
-        Assert.Empty(new PlanCompiler().Prepare(tx.Current).Diagnostics);
-        Assert.NotEmpty(new PlanCompiler().Prepare(tx.Current, allowRealOperations: true).Diagnostics);
-    }
-    [Fact]
     public async Task PinnedWaveProfileAnalysis_ProducesDataUntilExplicitExpect()
     {
         var profile = new TestTargetMapping("MyWaveCriteria", TestTargetKind.WaveProfile,

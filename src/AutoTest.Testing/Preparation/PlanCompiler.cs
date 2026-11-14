@@ -30,10 +30,6 @@ public sealed class PlanCompiler
         bool allowRealOperations = false)
     {
         var errors = StepTreeValidator.ValidateTree(document, _catalog, availableAssets).ToBuilder();
-        if (allowRealOperations)
-            foreach (var node in document.Walk())
-                if (node.Type is "MockObserve" or "Assert")
-                    errors.Add($"{node.Id}: legacy mock step {node.Type} is not a real observation.");
         foreach (var node in document.Walk())
             if (_catalog.Lookup(node.Type) is { ExecutableV1: false } &&
                 !(allowRealOperations && RealTypes.Contains(node.Type)))
