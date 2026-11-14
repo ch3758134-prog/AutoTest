@@ -92,6 +92,9 @@ public partial class TestStepInspector : UserControl
     private string _targetInstruction = "";
     private string _targetRevisionWarning = "";
     private uint _selectedMask;
+    private readonly CheckBox[] _rawKeys = new CheckBox[20];
+    private bool _updatingRawKeys;
+
 
     public ObservableCollection<TestActionOption> FilteredActions { get; } = new();
     public ObservableCollection<MappingChoice> AvailableTargets { get; } = new();
@@ -129,6 +132,7 @@ public partial class TestStepInspector : UserControl
         _editing = editing;
         InitializeComponent();
         DataContext = this;
+        BuildRawKeyGrid();
         _ready = true;
         Heading.Text = editing is null ? "新步骤 · 属性配置" : "步骤属性 · 直接编辑";
         ActionSelectorPanel.Visibility = editing is null ? Visibility.Visible : Visibility.Collapsed;
@@ -362,11 +366,11 @@ public partial class TestStepInspector : UserControl
             var operation = parts[0] is "Hold" or "Release" ? parts[0] : "Pulse";
             KeyActionInput.SelectedItem = KeyActionInput.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(x => (string?)x.Tag == operation);
-            _selectedMask = mapping.Kind == TestTargetKind.RawKey && parts.Length > 1 &&
+            var selectedMask = mapping.Kind == TestTargetKind.RawKey && parts.Length > 1 &&
                 parts[1].StartsWith("0x", StringComparison.OrdinalIgnoreCase) &&
                 uint.TryParse(parts[1][2..], NumberStyles.HexNumber,
                     CultureInfo.InvariantCulture, out var mask) ? mask : 0;
-            RawKeyMaskInput.Text = "0x" + _selectedMask.ToString("X5");
+            SetRawKeyMask(selectedMask);
             KeyDurationInput.Text = operation == "Pulse" && mapping.Kind == TestTargetKind.RawKey &&
                 parts.Length == 3 ? parts[2] :
                 operation == "Pulse" && mapping.Kind == TestTargetKind.Button &&
@@ -407,14 +411,48 @@ public partial class TestStepInspector : UserControl
             RawKeyMaskPanel.Visibility = Visibility.Visible;
     }
 
-    private void PickRawKeys_Click(object sender, RoutedEventArgs e)
+    private void BuildRawKeyGrid()
     {
-        var dialog = new KeyMaskPickerDialog(_selectedMask, "直接选择 KEY_SIM 电阻开关");
-        dialog.Owner = Window.GetWindow(this) ?? Application.Current.MainWindow;
-        if (dialog.ShowDialog() != true) return;
-        _selectedMask = dialog.SelectedMask;
-        RawKeyMaskInput.Text = "0x" + _selectedMask.ToString("X5");
+        for (var i = 0; i < _rawKeys.Length; i++)
+        {
+            var item = new CheckBox
+            {
+                Content = "Key " + (i + 1).ToString("D2", CultureInfo.InvariantCulture),
+                Margin = new Thickness(3, 6, 3, 6),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            item.Checked += (_, _) => UpdateRawKeyMaskFromControls();
+            item.Unchecked += (_, _) => UpdateRawKeyMaskFromControls();
+            _rawKeys[i] = item;
+            RawKeyGrid.Children.Add(item);
+        }
+        SetRawKeyMask(0);
     }
+
+    private void SetRawKeyMask(uint mask)
+    {
+        _updatingRawKeys = true;
+        try
+        {
+            _selectedMask = mask & 0xFFFFF;
+            for (var i = 0; i < _rawKeys.Length; i++)
+                _rawKeys[i].IsChecked = (_selectedMask & (1u << i)) != 0;
+            RawKeyMaskInput.Text = "0x" + _selectedMask.ToString("X5", CultureInfo.InvariantCulture);
+        }
+        finally { _updatingRawKeys = false; }
+    }
+
+    private void UpdateRawKeyMaskFromControls()
+    {
+        if (_updatingRawKeys) return;
+        uint mask = 0;
+        for (var i = 0; i < _rawKeys.Length; i++)
+            if (_rawKeys[i].IsChecked == true) mask |= 1u << i;
+        _selectedMask = mask;
+        RawKeyMaskInput.Text = "0x" + mask.ToString("X5", CultureInfo.InvariantCulture);
+    }
+
+    private void ClearRawKeys_Click(object sender, RoutedEventArgs e) => SetRawKeyMask(0);
 
     private void Confirm_Click(object sender, RoutedEventArgs e)
     {
