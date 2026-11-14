@@ -59,7 +59,7 @@ public sealed class TestEditorViewModel : BindableBase
             () => CanEditSelectedStep);
         EditParametersCommand = new DelegateCommand(() =>
         {
-            if (_selectedItem?.Step is not { } original) return;
+            if (_selectedItem?.Step is not { } original || !CanProceed()) return;
             if (!StepUiCatalog.Choices.Any(x => x.Type == original.Type))
                 EditLegacyParameters(original);
             else
@@ -154,13 +154,16 @@ public sealed class TestEditorViewModel : BindableBase
     }
     public StepTreeItem? SelectedItem => _selectedItem;
     public event Action<StepInspectorContext>? InspectorRequested;
+    public Func<bool>? AllowEditorAction { get; set; }
+    private bool CanProceed() => AllowEditorAction?.Invoke() ?? true;
+
     private StepTreeItem? _inspectorInsertionTarget;
     private bool _inspectorAdding;
     private int _inspectorRequestVersion;
 
     private void BeginInsert(string? actionKey)
     {
-        if (IsBusy || _selectedItem is null) return;
+        if (IsBusy || _selectedItem is null || !CanProceed()) return;
         _inspectorInsertionTarget = _selectedItem;
         _inspectorAdding = true;
         StatusMessage = "在右侧步骤属性中选择操作、编辑参数，再点击“插入步骤”。";
@@ -315,7 +318,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void Duplicate()
     {
-        if (!CanEditSelectedStep || _selectedItem?.Step is not { } node) return;
+        if (!CanEditSelectedStep || _selectedItem?.Step is not { } node || !CanProceed()) return;
         var selected = _selectedItem;
         var before = _transaction.Current.Walk().Select(x => x.Id).ToHashSet();
         try
@@ -331,7 +334,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void Delete()
     {
-        if (!CanEditSelectedStep || _selectedItem?.Step is not { } node) return;
+        if (!CanEditSelectedStep || _selectedItem?.Step is not { } node || !CanProceed()) return;
         if (!_dialogs.Confirm("删除此步骤及其全部子步骤？可通过撤销恢复。")) return;
         Mutate(() => _transaction.Delete(node.Id), null, "步骤已删除（可撤销）");
     }
@@ -339,7 +342,7 @@ public sealed class TestEditorViewModel : BindableBase
     private void Move(int direction)
     {
         if (!CanEditSelectedStep || _selectedItem?.Step is not { } node) return;
-        if (direction == -1 && !CanMoveUp || direction == 1 && !CanMoveDown) return;
+        if (direction == -1 && !CanMoveUp || direction == 1 && !CanMoveDown || !CanProceed()) return;
         var selected = _selectedItem;
         var sibling = selected.CoordinatesForSibling(0);
         var destination = direction < 0 ? selected.Index - 1 : selected.Index + 2;
@@ -349,14 +352,14 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void Undo()
     {
-        if (!_transaction.CanUndo || IsBusy) return;
+        if (!_transaction.CanUndo || IsBusy || !CanProceed()) return;
         _transaction.Undo();
         RefreshTree(_selectedItem?.Step?.Id);
         StatusMessage = "已撤销";
     }
     private void Redo()
     {
-        if (!_transaction.CanRedo || IsBusy) return;
+        if (!_transaction.CanRedo || IsBusy || !CanProceed()) return;
         _transaction.Redo();
         RefreshTree(_selectedItem?.Step?.Id);
         StatusMessage = "已重做";
@@ -421,7 +424,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task RunRealAsync()
     {
-        if (IsBusy || IsDirty) return;
+        if (IsBusy || IsDirty || !CanProceed()) return;
         IsBusy = true;
         RunFacts.Clear();
         RunSummary = "正在执行真实测试…";
@@ -532,11 +535,11 @@ public sealed class TestEditorViewModel : BindableBase
     }
 
     public bool ConfirmClose() =>
-        !IsBusy && (!IsDirty || _dialogs.Confirm("测试程序有未保存修改，确定放弃并关闭吗？"));
+        !IsBusy && CanProceed() && (!IsDirty || _dialogs.Confirm("测试程序有未保存修改，确定放弃并关闭吗？"));
 
     private async Task SaveAsync()
     {
-        if (!IsDirty || IsBusy) return;
+        if (!IsDirty || IsBusy || !CanProceed()) return;
         IsBusy = true;
         try
         {
@@ -553,7 +556,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task ReloadAsync()
     {
-        if (IsBusy) return;
+        if (IsBusy || !CanProceed()) return;
         if (IsDirty && !_dialogs.Confirm("重新加载会放弃尚未保存的步骤修改，确定继续？")) return;
         IsBusy = true;
         try
