@@ -34,7 +34,8 @@ public sealed class CoreContractTests
         };
         process.StartInfo.ArgumentList.Add("build");
         process.StartInfo.ArgumentList.Add("tests/negative/StrongIdMisuse/StrongIdMisuse.csproj");
-        process.StartInfo.ArgumentList.Add("--no-restore");
+        // This negative sample is outside AutoTest.sln and may lack restored assets.
+        // Build must restore before verifying the expected CS1503 type error.
         process.StartInfo.ArgumentList.Add("--nologo");
         process.StartInfo.ArgumentList.Add("-v:q");
         Assert.True(process.Start());
@@ -42,7 +43,8 @@ public sealed class CoreContractTests
         var error = process.StandardError.ReadToEnd();
         Assert.True(process.WaitForExit(30000), "Negative compilation timed out.");
         Assert.NotEqual(0, process.ExitCode);
-        Assert.Contains("CS1503", output + error);
+        Assert.True((output + error).Contains("CS1503", StringComparison.Ordinal),
+            $"Expected CS1503 from negative sample, but got:\nSTDOUT:\n{output}\nSTDERR:\n{error}");
     }
 
     [Fact]
