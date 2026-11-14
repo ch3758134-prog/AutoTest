@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using AutoTest.Contracts;
 using AutoTest.Core;
@@ -98,10 +99,26 @@ public partial class TestStepInspector : UserControl
     public ObservableCollection<TestSignalInputField> SignalValues { get; } = new();
     public TestActionOption? SelectedAction { get; set; }
     public StepCompositionResult? Result { get; private set; }
-    public event Action<StepCompositionResult>? Applied;
+    public Func<StepCompositionResult, bool>? ApplyRequested { get; set; }
     public event Action? Cancelled;
+    public bool HasPendingEdits { get; private set; }
+    private bool _trackEdits;
 
-    private void Cancel_Click(object sender, RoutedEventArgs e) => Cancelled?.Invoke();
+    public void ShowPendingWarning() =>
+        ErrorText.Text = "本步骤有未应用的属性。请先点击“应用属性”或“取消编辑”，再切换步骤。";
+
+    private void MarkDraftChanged()
+    {
+        if (!_trackEdits) return;
+        HasPendingEdits = true;
+        ErrorText.Text = "属性已修改，尚未应用到测试程序。";
+    }
+
+    private void Cancel_Click(object sender, RoutedEventArgs e)
+    {
+        HasPendingEdits = false;
+        Cancelled?.Invoke();
+    }
 
     public TestStepInspector(IReadOnlyList<MappingChoice> catalog,
         IReadOnlyList<TestTargetMapping> boundMappings, StepNode? editing = null,
@@ -136,10 +153,22 @@ public partial class TestStepInspector : UserControl
         else if (FilteredActions.Count > 0)
             ActionList.SelectedItem = FilteredActions.FirstOrDefault(a => a.Key == initialActionKey)
                 ?? FilteredActions[0];
+        AddHandler(TextBox.TextChangedEvent,
+            new TextChangedEventHandler((sender, e) =>
+            {
+                if (ReferenceEquals(e.OriginalSource, ActionSearch) ||
+                    ReferenceEquals(e.OriginalSource, TargetSearch)) return;
+                MarkDraftChanged();
+            }), true);
+        AddHandler(Selector.SelectionChangedEvent,
+            new SelectionChangedEventHandler((sender, e) => MarkDraftChanged()), true);
+        AddHandler(ToggleButton.CheckedEvent,
+            new RoutedEventHandler((sender, e) => MarkDraftChanged()), true);
+        AddHandler(ToggleButton.UncheckedEvent,
+            new RoutedEventHandler((sender, e) => MarkDraftChanged()), true);
         Loaded += (_, _) =>
         {
-            if (editing is null && initialActionKey is null) ActionSearch.Focus();
-            else NameInput.Focus();
+            _trackEdits = true;
         };
     }
 
@@ -483,7 +512,12 @@ public partial class TestStepInspector : UserControl
 
             mapping?.Validate();
             Result = new StepCompositionResult(node, mapping);
-            if (Result is { } completed) Applied?.Invoke(completed);
+            HasPendingEdits = false;
+            if (Result is { } completed && ApplyRequested?.Invoke(completed) != true)
+            {
+                HasPendingEdits = true;
+                ErrorText.Text = "步骤属性未应用。请检查测试程序状态栏中的错误，修改后重试。";
+            }
         }
         catch (Exception error) when (error is ArgumentException or FormatException or
                                       OverflowException or AutoTest.Projects.Project.ProjectDataException)
