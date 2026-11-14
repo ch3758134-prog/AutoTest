@@ -8,12 +8,27 @@ namespace AutoTest.Desktop.Testing;
 public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
+    private TestStepInspector? _inspector;
+    private bool _revertingSelection;
+
 
     public TestEditorView(TestEditorViewModel viewModel)
     {
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
+        _viewModel.InspectorRequested += ShowInspector;
+        Loaded += (_, _) => _viewModel.ResetInspector();
+    }
+
+    private void ShowInspector(StepInspectorContext context)
+    {
+        var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
+            context.Original, context.InitialActionKey);
+        editor.ApplyRequested = _viewModel.ApplyInspector;
+        editor.Cancelled += _viewModel.ResetInspector;
+        _inspector = editor;
+        InspectorHost.Content = editor;
     }
 
 
@@ -30,8 +45,22 @@ public partial class TestEditorView : UserControl
     }
 
     private void StepsTree_SelectedItemChanged(object sender,
-        RoutedPropertyChangedEventArgs<object> e) =>
+        RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (_revertingSelection) return;
+        if (_inspector?.HasPendingEdits == true && e.OldValue is StepTreeItem previous)
+        {
+            _inspector.ShowPendingWarning();
+            _revertingSelection = true;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                previous.IsSelected = true;
+                _revertingSelection = false;
+            }), System.Windows.Threading.DispatcherPriority.Input);
+            return;
+        }
         _viewModel.SelectItem(e.NewValue as StepTreeItem);
+    }
 
     private void StepsTree_RightClick(object sender, MouseButtonEventArgs e)
     {
