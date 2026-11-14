@@ -18,6 +18,12 @@ public partial class TestEditorView : UserControl
         _viewModel = viewModel;
         DataContext = viewModel;
         _viewModel.InspectorRequested += ShowInspector;
+        _viewModel.AllowEditorAction = () =>
+        {
+            if (_inspector?.HasPendingEdits != true) return true;
+            _inspector.ShowPendingWarning();
+            return false;
+        };
         Loaded += (_, _) => _viewModel.ResetInspector();
     }
 
