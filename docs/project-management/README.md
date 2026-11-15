@@ -9,6 +9,8 @@
 3. [G2 系统架构 v0.1](new-baseline-20261112/G2-GATE-REVIEW-v0.1.md) 与 [G2 批准记录](new-baseline-20261112/G2-APPROVAL_RECORD.md) —— G2 `PASS_WITH_LIMITATIONS`；
 4. [G3 DEVICE/WAVE/TECH 专项设计批准记录](new-baseline-20261112/G3-TECH-APPROVAL-20261114.md) —— 仅这三份设计获批，**整个 G3 未准出、G4 未授权**。
 
+- [G3-UX v3 实测反馈与领域/接口复核（2026-11-14）](new-baseline-20261112/G3-UX-V3-PM-REVIEW-20261114.md) —— 专项六类问题、对应实际 Controller/TCF/TBC/WAVE/UDS 合同；v3 未获 UI 设计批准，G3 技术研究继续推进。
+
 ## 本轮阶段与协作
 
 - `main`：现行产品决策/阶段批准与经审查的集成版本；
