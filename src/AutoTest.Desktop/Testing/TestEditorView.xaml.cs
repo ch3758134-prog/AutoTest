@@ -1,16 +1,20 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace AutoTest.Desktop.Testing;
 
+/// <summary>Native high-density TEST rows; inspector is hosted in the ONE Shell right rail.</summary>
 public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
     private TestStepInspector? _inspector;
-    private bool _revertingSelection;
-
+    public ContentControl InspectorHost { get; } = new()
+    {
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        VerticalContentAlignment = VerticalAlignment.Stretch
+    };
 
     public TestEditorView(TestEditorViewModel viewModel)
     {
@@ -37,53 +41,74 @@ public partial class TestEditorView : UserControl
         InspectorHost.Content = editor;
     }
 
-
-    private static T? FindAncestor<T>(DependencyObject? from) where T : DependencyObject
+    private void StepsList_RightClick(object sender, MouseButtonEventArgs e)
     {
-        var item = from;
-        while (item is not null)
+        var source = e.OriginalSource as DependencyObject;
+        var container = source is null ? null :
+            ItemsControl.ContainerFromElement(StepsList, source) as ListBoxItem;
+        if (container is null) return;
+        StepsList.SelectedItem = container.DataContext;
+        var menu = new ContextMenu();
+        void Item(string title, ICommand command)
         {
-            if (item is T match) return match;
-            item = item is Visual || item is System.Windows.Media.Media3D.Visual3D
-                ? VisualTreeHelper.GetParent(item) : LogicalTreeHelper.GetParent(item);
+            menu.Items.Add(new MenuItem { Header = title, Command = command });
         }
-        return null;
+        Item("＋ 添加步骤 / 子步骤", _viewModel.AddChildCommand);
+        Item("在该步骤下方插入", _viewModel.AddAfterCommand);
+        menu.Items.Add(new Separator());
+        Item("编辑步骤属性", _viewModel.EditParametersCommand);
+        Item("复制步骤及子分支", _viewModel.DuplicateCommand);
+        Item("上移", _viewModel.MoveUpCommand);
+        Item("下移", _viewModel.MoveDownCommand);
+        Item("删除", _viewModel.DeleteCommand);
+        menu.Items.Add(new Separator());
+        Item("撤销", _viewModel.UndoCommand);
+        Item("重做", _viewModel.RedoCommand);
+        Item("保存", _viewModel.SaveCommand);
+        container.ContextMenu = menu;
     }
 
-    private void StepsTree_SelectedItemChanged(object sender,
-        RoutedPropertyChangedEventArgs<object> e)
+    private void StepsList_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (_revertingSelection) return;
-        if (_inspector?.HasPendingEdits == true && e.OldValue is StepTreeItem previous)
-        {
-            _inspector.ShowPendingWarning();
-            _revertingSelection = true;
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                previous.IsSelected = true;
-                _revertingSelection = false;
-            }), System.Windows.Threading.DispatcherPriority.Input);
-            return;
-        }
-        _viewModel.SelectItem(e.NewValue as StepTreeItem);
+        if (_viewModel.SelectedRow?.IsStep != true || e.ChangedButton != MouseButton.Left) return;
+        _viewModel.EditParametersCommand.Execute();
+        _inspector?.FocusName();
+        e.Handled = true;
     }
 
-    private void StepsTree_RightClick(object sender, MouseButtonEventArgs e)
+    private void Editor_KeyDown(object sender, KeyEventArgs e)
     {
-        if (FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject) is { } item)
+        if (e.Handled) return;
+        var focused = Keyboard.FocusedElement;
+        bool typing = focused is TextBoxBase or PasswordBox or ComboBox;
+        bool ctrl = Keyboard.Modifiers == ModifierKeys.Control;
+        if (ctrl && e.Key == Key.F && !typing)
         {
-            item.IsSelected = true;
-            item.Focus();
+            StepSearch.Focus(); StepSearch.SelectAll(); e.Handled = true; return;
         }
-    }
-
-    private void StepsTree_DoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        if (FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject) is not null &&
-            _viewModel.EditParametersCommand.CanExecute())
+        if (typing) return; // text editing owns Delete and text Undo/Redo
+        ICommand? command = null;
+        if (ctrl && e.Key == Key.S) command = _viewModel.SaveCommand;
+        else if (ctrl && e.Key == Key.Z) command = _viewModel.UndoCommand;
+        else if (ctrl && e.Key == Key.Y) command = _viewModel.RedoCommand;
+        else if (ctrl && e.Key == Key.Space) command = _viewModel.AddChildCommand;
+        else if (e.Key == Key.Delete) command = _viewModel.DeleteCommand;
+        else if (e.Key == Key.F9)
         {
-            _viewModel.EditParametersCommand.Execute();
-            e.Handled = true;
+            _viewModel.ToggleBreakpoint(); e.Handled = true; return;
+        }
+        else if (e.Key == Key.F2)
+        {
+            _viewModel.EditParametersCommand.Execute(); _inspector?.FocusName();
+            e.Handled = true; return;
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Up)
+            command = _viewModel.MoveUpCommand;
+        else if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Down)
+            command = _viewModel.MoveDownCommand;
+        if (command?.CanExecute(null) == true)
+        {
+            command.Execute(null); e.Handled = true;
         }
     }
 }
