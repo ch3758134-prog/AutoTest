@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using AutoTest.Desktop.Projects;
+using AutoTest.Core;
 using AutoTest.Projects.Resources;
 using AutoTest.Testing.Authoring;
 using Prism.Commands;
@@ -20,6 +21,8 @@ public sealed class TestProjectPackageRow : BindableBase
     private bool _enabled;
     private bool _runSelected;
     private int _order;
+    private string _stepCountLabel = "读取中";
+    public string StepCountLabel { get => _stepCountLabel; set => SetProperty(ref _stepCountLabel, value); }
     public int Order { get => _order; set => SetProperty(ref _order, value); }
     public Guid ItemId { get; }
     public Guid AssetId { get; }
@@ -83,6 +86,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         PreflightSelectedCommand = new DelegateCommand(PreflightSelected);
         LoadRows(session.Document);
         RefreshAvailable();
+        _ = RefreshStepCountsAsync();
     }
 
     public ObservableCollection<TestProjectPackageChoice> AvailablePackages { get; } = new();
@@ -186,6 +190,38 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             : "BLOCKED_BY_BACKEND: 当前只有真实资源身份检查，尚无项目级 Run/设备租约预检；未启动 ECU，未生成测试结论。";
     }
 
+    private async Task RefreshStepCountsAsync()
+    {
+        var current = _workspace.Current;
+        if (current is null) return;
+        foreach (var row in Packages.ToArray())
+        {
+            if (!Packages.Contains(row)) continue;
+            try
+            {
+                var asset = current.Definition.Assets.FirstOrDefault(x =>
+                    x.Id.Value == row.AssetId &&
+                    x.Kind == ProjectWorkspaceService.TestProgramKind);
+                if (asset is null ||
+                    asset.Revision != row.Revision ||
+                    !asset.Sha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    row.StepCountLabel = "引用失效";
+                    continue;
+                }
+                var document = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
+                if (!Packages.Contains(row)) continue;
+                row.StepCountLabel = document.Document.Walk().Count().ToString();
+            }
+            catch (Exception error) when (error is IOException or InvalidDataException or
+                                          ArgumentException or UnauthorizedAccessException or
+                                          AutoTest.Projects.Project.ProjectDataException)
+            {
+                row.StepCountLabel = "读取失败";
+            }
+        }
+    }
+
     private void RefreshAvailable()
     {
         AvailablePackages.Clear();
@@ -217,6 +253,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         StatusMessage = "已加入测试用例：" + asset.Name + "。重复引用会形成独立的执行条目。";
         RefreshCommands();
         PackageRowsChanged?.Invoke();
+        _ = RefreshStepCountsAsync();
     }
     private void Remove()
     {
@@ -270,6 +307,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             foreach (var row in Packages)
                 if (selection.TryGetValue(row.ItemId, out var selected)) row.RunSelected = selected;
             RefreshAvailable();
+            _ = RefreshStepCountsAsync();
             RaisePropertyChanged(nameof(Revision));
             StatusMessage = "测试项目已保存。用例列表引用当前修订；不会自动运行或连接台架。";
         }
@@ -292,6 +330,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             Name = _session.Document.Name;
             LoadRows(_session.Document);
             RefreshAvailable();
+            _ = RefreshStepCountsAsync();
             RaisePropertyChanged(nameof(Revision));
             StatusMessage = "测试项目已从工程重新读取。";
         }

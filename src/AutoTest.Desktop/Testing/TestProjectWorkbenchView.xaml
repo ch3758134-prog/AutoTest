@@ -70,6 +70,7 @@
         VerticalAlignment="Center" HorizontalAlignment="Center"/>
       </DataTemplate></DataGridTemplateColumn.CellTemplate>
      </DataGridTemplateColumn>
+     <DataGridTextColumn Header="步骤" Binding="{Binding StepCountLabel}" Width="65" IsReadOnly="True"/>
      <DataGridTextColumn Header="固定修订" Binding="{Binding Revision}" Width="73" IsReadOnly="True"/>
      <DataGridTextColumn Header="SHA256" Binding="{Binding Sha256}" Width="135" IsReadOnly="True"/>
     </DataGrid.Columns>
