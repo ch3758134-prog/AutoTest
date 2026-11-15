@@ -33,6 +33,7 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
     {
         TestEditorView test => test.InspectorHost,
         TestProjectWorkbenchView project => project.InspectorHost,
+        ProjectOverviewView home => home.InspectorHost,
         _ => null
     };
     public object? Editor => View.DataContext;
@@ -147,6 +148,21 @@ public sealed class MainWindowViewModel : BindableBase
         RedoActiveCommand = new DelegateCommand(RedoActive);
         CheckActiveCommand = new DelegateCommand(CheckActive);
         OpenDbcToolCommand = new DelegateCommand(async () => await OpenDbcToolAsync());
+        OpenFirstTestProjectCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
+            ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync));
+        OpenFirstTestProgramCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
+            ProjectWorkspaceService.TestProgramKind, CreateTestProgramAsync));
+        OpenFirstConfigurationCommand = new DelegateCommand(async () =>
+        {
+            if (_workspace.Current is null) return;
+            var first = _workspace.Current.Definition.Assets.FirstOrDefault(a =>
+                a.Kind == ProjectWorkspaceService.TestConfigurationKind ||
+                a.Kind == ProjectWorkspaceService.ControllerKind ||
+                a.Kind == ProjectWorkspaceService.BenchConfigurationKind);
+            if (first is null) { await CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind); return; }
+            SelectAsset(first.Id);
+            await OpenSelectedConfigurationAsync();
+        });
         HelpCommand = new DelegateCommand(() =>
             MessageBox.Show(
                 "工程资源：左侧点击打开。测试用例：Ctrl+Space 新增、F2 编辑名称、F9 断点、" +
@@ -193,7 +209,11 @@ public sealed class MainWindowViewModel : BindableBase
             RaisePropertyChanged(nameof(CurrentProjectName));
             RaisePropertyChanged(nameof(CurrentProjectPath));
             RaisePropertyChanged(nameof(AssetCount));
+            RaisePropertyChanged(nameof(TestProjectCount));
+            RaisePropertyChanged(nameof(TestProgramCount));
+            RaisePropertyChanged(nameof(ConfigurationCount));
             RebuildResourceTree();
+            EnsureOverview();
             StatusMessage = _workspace.Current is { } current
                 ? "工程已载入：" + current.ManifestPath
                 : "尚未打开工程";
@@ -209,6 +229,7 @@ public sealed class MainWindowViewModel : BindableBase
             RefreshCommands();
         };
         RebuildResourceTree();
+        EnsureOverview();
     }
 
     public sealed record CanMonitorRow(string Time, string Port, string Id, string Format,
@@ -239,6 +260,30 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand CheckActiveCommand { get; }
     public DelegateCommand OpenDbcToolCommand { get; }
     public DelegateCommand HelpCommand { get; }
+    public DelegateCommand OpenFirstTestProjectCommand { get; }
+    public DelegateCommand OpenFirstTestProgramCommand { get; }
+    public DelegateCommand OpenFirstConfigurationCommand { get; }
+    public int TestProjectCount => _workspace.Current?.Definition.Assets.Count(x =>
+        x.Kind == ProjectWorkspaceService.TestProjectKind) ?? 0;
+    public int TestProgramCount => _workspace.Current?.Definition.Assets.Count(x =>
+        x.Kind == ProjectWorkspaceService.TestProgramKind) ?? 0;
+    public int ConfigurationCount => _workspace.Current?.Definition.Assets.Count(x =>
+        x.Kind is ProjectWorkspaceService.TestConfigurationKind or ProjectWorkspaceService.BenchConfigurationKind
+            or ProjectWorkspaceService.ControllerKind or ProjectWorkspaceService.DbcKind) ?? 0;
+    private async Task OpenFirstAssetAsync(string kind, Func<Task> create)
+    {
+        if (_workspace.Current is null) return;
+        var first = _workspace.Current.Definition.Assets.FirstOrDefault(a => a.Kind == kind);
+        if (first is null) { await create(); return; }
+        SelectAsset(first.Id);
+        if (kind == ProjectWorkspaceService.TestProjectKind) await OpenSelectedTestProjectAsync();
+        else await OpenSelectedTestProgramAsync();
+    }
+    private void EnsureOverview()
+    {
+        if (_workspace.Current is null || OpenEditors.Any(x => x.Key == "home")) return;
+        ActivateEditor("home", new ProjectOverviewView(this), "工程概览", () => true);
+    }
     private async Task OpenDbcToolAsync()
     {
         if (_workspace.Current is null)
