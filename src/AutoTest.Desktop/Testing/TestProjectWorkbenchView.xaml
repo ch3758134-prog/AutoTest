@@ -37,8 +37,8 @@
    <Border Grid.Row="0" Background="#FCFDFF" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
     <DockPanel Margin="10,0">
      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-      <Button Content="↑" Command="{Binding UpCommand}" Width="27" Margin="0,0,3,0"/>
-      <Button Content="↓" Command="{Binding DownCommand}" Width="27" Margin="0,0,3,0"/>
+      <Button Content="↑" Command="{Binding UpCommand}" Width="27" MinWidth="0" Margin="0,0,3,0"/>
+      <Button Content="↓" Command="{Binding DownCommand}" Width="27" MinWidth="0" Margin="0,0,3,0"/>
       <Button Content="移除引用" Command="{Binding RemoveCommand}"/>
      </StackPanel>
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

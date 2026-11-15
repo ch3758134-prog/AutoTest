@@ -90,6 +90,7 @@
        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
         Margin="{Binding Indent}">
         <Button Content="{Binding ExpandMark}" Click="StepExpand_Click" Width="17" Height="22"
+         MinWidth="0" MinHeight="0" Margin="0"
          Padding="0" BorderThickness="0" Background="Transparent" FontSize="11"
          Foreground="#64758C" Focusable="False" ToolTip="展开 / 收起阶段与流程子分支"/>
         <TextBlock Text="{Binding Icon}" FontSize="12" Foreground="#2368BD"

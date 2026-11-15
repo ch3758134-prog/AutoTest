@@ -85,8 +85,8 @@
       MaxWidth="155" TextTrimming="CharacterEllipsis" ToolTip="{Binding CurrentProjectPath}"/>
      <Border Width="1" Height="18" Background="#DBE3ED" Margin="9,0"/>
      <Button Content="▣ 保存" Command="{Binding SaveActiveCommand}" FontSize="11" Margin="0,0,4,0"/>
-     <Button Content="↶" Command="{Binding UndoActiveCommand}" ToolTip="撤销步骤 Ctrl+Z" FontSize="13" Width="28" Margin="0,0,3,0"/>
-     <Button Content="↷" Command="{Binding RedoActiveCommand}" ToolTip="重做步骤 Ctrl+Y" FontSize="13" Width="28" Margin="0,0,5,0"/>
+     <Button Content="↶" Command="{Binding UndoActiveCommand}" ToolTip="撤销步骤 Ctrl+Z" FontSize="13" Width="28" MinWidth="0" Margin="0,0,3,0"/>
+     <Button Content="↷" Command="{Binding RedoActiveCommand}" ToolTip="重做步骤 Ctrl+Y" FontSize="13" Width="28" MinWidth="0" Margin="0,0,5,0"/>
      <Button Content="▷ 所选用例检查" Command="{Binding CheckActiveCommand}"
       Style="{StaticResource AtPrimaryButton}" FontSize="11" Margin="0,0,6,0"/>
      <TextBox x:Name="ScannerEntry" Width="112" Height="27" Padding="5,3"
@@ -130,7 +130,7 @@
         <StackPanel Orientation="Horizontal">
          <TextBlock Text="{Binding Icon}" Margin="0,0,6,0" Foreground="#64758C"/>
          <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Description}"/>
-         <Button Content="＋" Click="ResourceTree_Create_Click" Focusable="False" Width="23" Height="23"
+         <Button Content="＋" Click="ResourceTree_Create_Click" Focusable="False" Width="23" Height="23" MinHeight="0" MinWidth="0"
           ToolTip="新建或导入对应资源" Margin="6,0,0,0">
           <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AtButton}">
            <Setter Property="Visibility" Value="Collapsed"/>
@@ -181,7 +181,7 @@
           <TextBlock Text="{Binding Title}" MaxWidth="180" TextTrimming="CharacterEllipsis"
            VerticalAlignment="Center" FontSize="11"/>
           <Button Content="×" Tag="{Binding}" Click="CloseEditorTab_Click"
-           Width="21" Height="20" Padding="0" Margin="5,0,0,0" Focusable="False"/>
+           Width="21" Height="20" MinHeight="0" MinWidth="0" Padding="0" Margin="5,0,0,0" Focusable="False"/>
          </StackPanel>
         </DataTemplate>
        </TabControl.ItemTemplate>
@@ -224,7 +224,7 @@
       <Grid Grid.Row="2" Background="#F8FAFC">
        <Grid.RowDefinitions><RowDefinition Height="29"/><RowDefinition Height="*"/></Grid.RowDefinitions>
        <DockPanel Grid.Row="0" Background="White" LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="×" Click="ToggleBottom_Click" Width="25"
+        <Button DockPanel.Dock="Right" Content="×" Click="ToggleBottom_Click" Width="25" MinHeight="0" MinWidth="0"
          FontSize="11" ToolTip="隐藏观察区"/>
         <TextBlock Text="运行／观察" Margin="11,0" FontWeight="SemiBold"
          VerticalAlignment="Center" Foreground="#435B74" FontSize="11"/>
@@ -280,7 +280,7 @@
       <Border Grid.Row="0" Background="#FBFCFF" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
        <DockPanel Margin="10,0">
         <Button DockPanel.Dock="Right" Content="×" Click="ToggleInspector_Click"
-         Width="24" Height="24" FontSize="11" VerticalAlignment="Center" ToolTip="隐藏属性"/>
+         Width="24" Height="24" MinHeight="0" MinWidth="0" FontSize="11" VerticalAlignment="Center" ToolTip="隐藏属性"/>
         <TextBlock Text="步骤属性" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
        </DockPanel>
       </Border>
