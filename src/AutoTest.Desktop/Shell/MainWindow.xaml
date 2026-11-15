@@ -69,7 +69,7 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="手动台架" IsEnabled="False" ToolTip="完整专业工作台待单独实施，此入口不发送物理命令。"
       FontSize="11" Margin="0,0,4,0"/>
-     <Button Content="DBC" Command="{Binding OpenDbcCommand}" FontSize="11" Margin="0,0,4,0"/>
+     <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" FontSize="11" Margin="0,0,4,0"/>
      <Button Content="UDS" IsEnabled="False" ToolTip="独立 UDS 工具在 FlashLab 后实施。" FontSize="11" Margin="0,0,4,0"/>
      <Button Content="波形" IsEnabled="False" ToolTip="当前波形专项未接统一工作区。" FontSize="11" Margin="0,0,4,0"/>
      <Button Content="Flash" IsEnabled="False" ToolTip="独立 FlashLab，不在此窗口启动刷写。" FontSize="11" Margin="0,0,4,0"/>

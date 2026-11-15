@@ -30,7 +30,10 @@ public static class StepTreeValidator
                     if (!n.Properties.TryGetValue(key, out var v) || string.IsNullOrWhiteSpace(v))
                         errors.Add($"{location}: missing property {key}");
             }
-            if (n.Properties.TryGetValue("target", out var targetName) &&
+            // CallSubroutine.target is a TEST subroutine identity, not an asset mapping.
+            // Only physical/signal operations use TestTargetMapping.
+            if (n.Type is "Write" or "Read" or "WaitUntil" or "WaveStart" &&
+                n.Properties.TryGetValue("target", out var targetName) &&
                 !document.Mappings.Any(m => string.Equals(m.Name, targetName,
                     StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped target {targetName}");

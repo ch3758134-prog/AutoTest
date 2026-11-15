@@ -251,9 +251,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         {
             var changed = Compose();
             changed.Validate();
+            var selection = Packages.ToDictionary(x => x.ItemId, x => x.RunSelected);
             _session = await _workspace.SaveTestProjectEditorAsync(_session, changed);
             Name = _session.Document.Name;
             LoadRows(_session.Document);
+            foreach (var row in Packages)
+                if (selection.TryGetValue(row.ItemId, out var selected)) row.RunSelected = selected;
             RefreshAvailable();
             RaisePropertyChanged(nameof(Revision));
             StatusMessage = "测试项目已保存。用例列表引用当前修订；不会自动运行或连接台架。";

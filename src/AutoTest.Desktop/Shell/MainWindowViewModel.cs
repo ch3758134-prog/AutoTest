@@ -146,6 +146,7 @@ public sealed class MainWindowViewModel : BindableBase
         UndoActiveCommand = new DelegateCommand(UndoActive);
         RedoActiveCommand = new DelegateCommand(RedoActive);
         CheckActiveCommand = new DelegateCommand(CheckActive);
+        OpenDbcToolCommand = new DelegateCommand(async () => await OpenDbcToolAsync());
         _hardware.EvidenceRecorded += line =>
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -229,6 +230,23 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand UndoActiveCommand { get; }
     public DelegateCommand RedoActiveCommand { get; }
     public DelegateCommand CheckActiveCommand { get; }
+    public DelegateCommand OpenDbcToolCommand { get; }
+    private async Task OpenDbcToolAsync()
+    {
+        if (_workspace.Current is null)
+        {
+            StatusMessage = "请先打开测试工程，然后导入或编辑 DBC。";
+            return;
+        }
+        if (!SelectedResourceIsDbc)
+        {
+            var first = _workspace.Current.Definition.Assets
+                .FirstOrDefault(a => a.Kind == ProjectWorkspaceService.DbcKind);
+            if (first is null) { await ImportDbcAsync(); return; }
+            SelectAsset(first.Id);
+        }
+        await OpenSelectedDbcAsync();
+    }
     private void SaveActive()
     {
         switch (ActiveEditorTab?.Editor)

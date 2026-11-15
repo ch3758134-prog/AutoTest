@@ -22,8 +22,8 @@ public sealed record TestActionOption(string Key, string Category, string Title,
 public sealed class TestStepInputField : BindableBase
 {
     private string _value;
-    public TestStepInputField(string key, string value)
-    { Key = key; Label = StepUiCatalog.PropertyLabel(key); _value = value; }
+    public TestStepInputField(string key, string value, string? label = null)
+    { Key = key; Label = label ?? StepUiCatalog.PropertyLabel(key); _value = value; }
     public string Key { get; }
     public string Label { get; }
     public string Value { get => _value; set => SetProperty(ref _value, value ?? ""); }
@@ -246,7 +246,10 @@ public partial class TestStepInspector : UserControl
             if ((item.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) ||
                 (item.Key == "value" && action.StepType == "Write") ||
                 (item.Key == "profile" && action.StepType == "WaveAnalyze")) continue;
-            ParameterFields.Add(new TestStepInputField(item.Key, item.Value));
+            if (item.Key == "editor.breakpoint") continue;
+            var label = item.Key == "target" && action.StepType == "CallSubroutine"
+                ? "目标子程序引用（显式标识）" : null;
+            ParameterFields.Add(new TestStepInputField(item.Key, item.Value, label));
         }
     }
 

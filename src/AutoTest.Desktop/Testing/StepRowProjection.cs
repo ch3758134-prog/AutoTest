@@ -17,6 +17,8 @@ public sealed class StepRowProjection
     public bool IsSlot => Item.Kind == StepTreeItemKind.Slot;
     public bool IsStep => Item.Kind == StepTreeItemKind.Step;
     public string Icon => Item.Icon;
+    public string BreakpointMark => Item.Step?.Properties.GetValueOrDefault("editor.breakpoint", "false")
+        == "true" ? "●" : "";
     public string Name => Item.Step?.Name ?? Item.Label;
     public string Kind => Item.Step is { } n ? StepUiCatalog.Label(n.Type) : "";
     public string Summary { get; }
