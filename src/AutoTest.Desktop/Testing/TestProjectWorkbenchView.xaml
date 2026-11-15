@@ -62,7 +62,7 @@
         Content="选中" HorizontalAlignment="Center" VerticalAlignment="Center"/>
       </DataTemplate></DataGridTemplateColumn.CellTemplate>
      </DataGridTemplateColumn>
-     <DataGridTextColumn Header="顺序" Binding="{Binding ItemId}" Width="0" Visibility="Collapsed"/>
+     <DataGridTextColumn Header="顺序" Binding="{Binding Order}" Width="55" IsReadOnly="True"/>
      <DataGridTextColumn Header="测试用例" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
      <DataGridTemplateColumn Header="工程默认" Width="105">
       <DataGridTemplateColumn.CellTemplate><DataTemplate>

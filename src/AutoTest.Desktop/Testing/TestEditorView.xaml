@@ -80,7 +80,7 @@
         <ColumnDefinition Width="36"/><ColumnDefinition Width="29*" MinWidth="185"/>
         <ColumnDefinition Width="71*" MinWidth="220"/><ColumnDefinition Width="126"/><ColumnDefinition Width="72"/>
        </Grid.ColumnDefinitions>
-       <TextBlock Grid.Column="0" Text="{Binding Sequence}" FontSize="10" Foreground="#8798AB"
+       <TextBlock Grid.Column="0" Text="{Binding SequenceText}" FontSize="10" Foreground="#8798AB"
         VerticalAlignment="Center" HorizontalAlignment="Center"/>
        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
         Margin="{Binding Indent}">

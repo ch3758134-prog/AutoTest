@@ -19,6 +19,8 @@ public sealed class TestProjectPackageRow : BindableBase
 {
     private bool _enabled;
     private bool _runSelected;
+    private int _order;
+    public int Order { get => _order; set => SetProperty(ref _order, value); }
     public Guid ItemId { get; }
     public Guid AssetId { get; }
     public int Revision { get; }
@@ -121,6 +123,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     public int TotalCount => Packages.Count;
     public string SelectionSummary => SelectedCount + " / " + TotalCount + " 个用例（只作用于本次检查）";
 
+    private void Renumber()
+    {
+        for (var i = 0; i < Packages.Count; i++) Packages[i].Order = i + 1;
+    }
     private void LoadRows(TestProjectDocument doc)
     {
         foreach (var row in Packages) row.PropertyChanged -= RowChanged;
@@ -131,6 +137,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             row.PropertyChanged += RowChanged;
             Packages.Add(row);
         }
+        Renumber();
         SelectedPackage = null;
         RaisePropertyChanged(nameof(SelectedCount));
         RaisePropertyChanged(nameof(TotalCount));
@@ -194,6 +201,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             Guid.NewGuid(), asset.Id.Value, asset.Revision, asset.Sha256, asset.Name, true));
         row.PropertyChanged += RowChanged;
         Packages.Add(row);
+        Renumber();
         SelectedPackage = row;
         RaisePropertyChanged(nameof(SelectionSummary));
         RaisePropertyChanged(nameof(TotalCount));
@@ -206,6 +214,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         row.PropertyChanged -= RowChanged;
         var index = Packages.IndexOf(row);
         Packages.Remove(row);
+        Renumber();
         RaisePropertyChanged(nameof(SelectedCount));
         RaisePropertyChanged(nameof(TotalCount));
         RaisePropertyChanged(nameof(SelectionSummary));
@@ -220,6 +229,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         if (!CanMove(direction) || SelectedPackage is not { } row) return;
         var index = Packages.IndexOf(row);
         Packages.Move(index, index + direction);
+        Renumber();
         SelectedPackage = row;
         RefreshCommands();
     }

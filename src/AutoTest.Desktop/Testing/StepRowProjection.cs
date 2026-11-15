@@ -12,6 +12,7 @@ public sealed class StepRowProjection
     public StepTreeItem Item { get; }
     public int Depth { get; }
     public int Sequence { get; }
+    public string SequenceText => Sequence == 0 ? "" : Sequence.ToString("D2");
     public bool IsPhase => Item.Kind == StepTreeItemKind.Phase;
     public bool IsSlot => Item.Kind == StepTreeItemKind.Slot;
     public bool IsStep => Item.Kind == StepTreeItemKind.Step;
@@ -55,6 +56,8 @@ public sealed class StepRowProjection
             step.Properties.GetValueOrDefault("profile", "—"));
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(step.Type);
         State = descriptor is null ? "未知类型" :
-            descriptor.ExecutableV1 ? "待预检" : "执行未接线";
+            descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or
+                "Calculate" or "Expect" or "WaveStart" or "WaveStop" or "WaveAnalyze"
+                ? "待预检" : "执行未接线";
     }
 }
