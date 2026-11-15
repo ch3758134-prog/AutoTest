@@ -2,6 +2,8 @@
 
 > **当前入口（2026-11-14）。** 新项目管理 AI、G3 研究/设计 AI、UI 专项和代码实施 AI 应先从这里核对最新产品事实，不要从旧 `SAEF/`、历史 G4/V1 目录或未经批准的 HTML 原型推导当前产品范围。
 
+> **2026-11-15 G3 详细设计交付候审：** [G3-R1-20261115 全量交付](new-baseline-20261112/G3-R1-20261115/README.md)（严格冻结 HTML→WPF、删除旧 UI、保留并补后端、A2/TEST-FLOW、DEVICE/SCAN/RECORD、Flash 独立 EXE、G4 工作包和 G3-L01～10）。**尚待负责人批准 G3 Gate 和 G4 首批任务。**冻结 HTML 见 [UI-AUTO-G3 快照](../ui/archive/auto-test-20261115-ec75a9fe/AutoTest_UI.html)；UI 专项继续研究其工作 HTML 而不改变快照。Flash F0 已在独立分支开始，独立 UDS 工具研究后置。现行产品决策和手动台架勘误仍为技术约束。
+
 ## 首先阅读
 
 **第一优先纠偏：** [手动台架 / DUT 输入模拟勘误](new-baseline-20261112/PM-INPUT-SEMANTICS-20261114.md) —— 防止新 AI 将通用上位机错误缩为 EPB/按键工具，或将 Pulse/Hold/Release 当成全局主操作。
