@@ -13,6 +13,8 @@
 
 - [G3-UX v3 实测反馈与领域/接口复核（2026-11-14）](new-baseline-20261112/G3-UX-V3-PM-REVIEW-20261114.md) —— 专项六类问题、对应实际 Controller/TCF/TBC/WAVE/UDS 合同；v3 未获 UI 设计批准，G3 技术研究继续推进。
 
+- [G3 自动测试 UI 兼容性审查与 G4 映射（2026-11-15）](new-baseline-20261112/G3-UX-AUTO-REVIEW-20261115.md) —— 对 `ui/ide-design@ec75a9fe` 精确 HTML 的自动测试操作方向作审查；允许按此推进 G3-A1/A2，明确 TEST FLOW、资源映射、选择性执行与真实设备缺口；非整体 G3/G4 批准。
+
 ## 本轮阶段与协作
 
 - `main`：现行产品决策/阶段批准与经审查的集成版本；
