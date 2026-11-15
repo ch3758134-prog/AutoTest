@@ -10,6 +10,7 @@ public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
     private TestStepInspector? _inspector;
+    private bool _focusNameOnNextInspector;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
     public ContentControl InspectorHost { get; } = new()
@@ -41,6 +42,11 @@ public partial class TestEditorView : UserControl
         editor.Cancelled += _viewModel.ResetInspector;
         _inspector = editor;
         InspectorHost.Content = editor;
+        if (_focusNameOnNextInspector)
+        {
+            _focusNameOnNextInspector = false;
+            editor.Loaded += (_, _) => editor.FocusName();
+        }
     }
 
     private void QuickField_LostFocus(object sender, RoutedEventArgs e)
@@ -139,9 +145,12 @@ public partial class TestEditorView : UserControl
     private void StepsList_DoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (_viewModel.SelectedRow?.IsStep != true || e.ChangedButton != MouseButton.Left) return;
-        _viewModel.EditParametersCommand.Execute();
-        _inspector?.FocusName();
-        e.Handled = true;
+        if (_viewModel.EditParametersCommand.CanExecute())
+        {
+            _focusNameOnNextInspector = true;
+            _viewModel.EditParametersCommand.Execute();
+            e.Handled = true;
+        }
     }
 
     private void Editor_KeyDown(object sender, KeyEventArgs e)
@@ -167,8 +176,13 @@ public partial class TestEditorView : UserControl
         }
         else if (e.Key == Key.F2)
         {
-            _viewModel.EditParametersCommand.Execute(); _inspector?.FocusName();
-            e.Handled = true; return;
+            if (_viewModel.EditParametersCommand.CanExecute())
+            {
+                _focusNameOnNextInspector = true;
+                _viewModel.EditParametersCommand.Execute();
+                e.Handled = true;
+            }
+            return;
         }
         else if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Up)
             command = _viewModel.MoveUpCommand;

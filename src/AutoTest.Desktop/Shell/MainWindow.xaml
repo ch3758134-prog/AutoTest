@@ -52,6 +52,7 @@
      <MenuItem Header="运行">
       <MenuItem Header="所选用例／当前用例预检" Command="{Binding CheckActiveCommand}"/>
      </MenuItem>
+     <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
      <MenuItem Header="工程资源">
       <MenuItem Header="新建测试项目" Command="{Binding NewTestProjectCommand}"/>
       <MenuItem Header="新建测试用例" Command="{Binding NewTestProgramCommand}"/>
