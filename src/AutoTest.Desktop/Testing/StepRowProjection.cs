@@ -16,6 +16,9 @@ public sealed class StepRowProjection
     public bool IsPhase => Item.Kind == StepTreeItemKind.Phase;
     public bool IsSlot => Item.Kind == StepTreeItemKind.Slot;
     public bool IsStep => Item.Kind == StepTreeItemKind.Step;
+    public bool IsCollapsed { get; }
+    public string ExpandMark => Item.Kind is StepTreeItemKind.Phase or StepTreeItemKind.Slot ||
+        Item.Children.Count > 0 ? (IsCollapsed ? "▸" : "▾") : "";
     public string Icon => Item.Icon;
     public bool IsQuickEditable => Item.Step?.Type is "Wait" or "Loop";
     public bool IsNotQuickEditable => !IsQuickEditable;
@@ -34,9 +37,10 @@ public sealed class StepRowProjection
     public string Resource { get; }
     public string State { get; }
     public Thickness Indent => new(9 + Depth * 18, 0, 0, 0);
-    public StepRowProjection(StepTreeItem item, int depth)
+    public StepRowProjection(StepTreeItem item, int depth, bool collapsed = false)
     {
         Item = item;
+        IsCollapsed = collapsed;
         Depth = depth;
         Sequence = item.Kind == StepTreeItemKind.Step ? item.Index + 1 : 0;
         var step = item.Step;

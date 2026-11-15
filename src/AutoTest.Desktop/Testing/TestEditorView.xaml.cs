@@ -49,6 +49,16 @@ public partial class TestEditorView : UserControl
         }
     }
 
+    private void StepExpand_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: StepRowProjection row } &&
+            row.ExpandMark.Length > 0)
+        {
+            _viewModel.ToggleExpansion(row);
+            e.Handled = true;
+        }
+    }
+
     private void QuickField_LostFocus(object sender, RoutedEventArgs e)
     {
         if (sender is TextBox { DataContext: StepRowProjection row })
@@ -132,6 +142,8 @@ public partial class TestEditorView : UserControl
         menu.Items.Add(new Separator());
         Item("编辑步骤属性", _viewModel.EditParametersCommand);
         Item("复制步骤及子分支", _viewModel.DuplicateCommand);
+        Item("复制到当前用例剪贴板（Ctrl+C）", _viewModel.CopyStepCommand);
+        Item("粘贴到当前位置（Ctrl+V）", _viewModel.PasteStepCommand);
         Item("上移", _viewModel.MoveUpCommand);
         Item("下移", _viewModel.MoveDownCommand);
         Item("删除", _viewModel.DeleteCommand);
@@ -168,6 +180,8 @@ public partial class TestEditorView : UserControl
         if (ctrl && e.Key == Key.S) command = _viewModel.SaveCommand;
         else if (ctrl && e.Key == Key.Z) command = _viewModel.UndoCommand;
         else if (ctrl && e.Key == Key.Y) command = _viewModel.RedoCommand;
+        else if (ctrl && e.Key == Key.C) command = _viewModel.CopyStepCommand;
+        else if (ctrl && e.Key == Key.V) command = _viewModel.PasteStepCommand;
         else if (ctrl && e.Key == Key.Space) command = _viewModel.AddChildCommand;
         else if (e.Key == Key.Delete) command = _viewModel.DeleteCommand;
         else if (e.Key == Key.F9)

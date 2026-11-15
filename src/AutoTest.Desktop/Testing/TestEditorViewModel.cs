@@ -78,6 +78,9 @@ public sealed class TestEditorViewModel : BindableBase
         SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => IsDirty && !IsBusy);
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
         PreflightCommand = new DelegateCommand(PreflightOnly, () => !IsBusy);
+        CopyStepCommand = new DelegateCommand(CopyToClipboard, () => CanEditSelectedStep);
+        PasteStepCommand = new DelegateCommand(PasteFromClipboard,
+            () => !IsBusy && SelectedItem is not null && _clipboardStepId is not null);
         AddMappingCommand = new DelegateCommand(async () => await AddMappingAsync(), () => !IsBusy);
         RemoveMappingCommand = new DelegateCommand(RemoveMapping, () => SelectedMapping is not null && !IsBusy);
         RunCommand = new DelegateCommand(async () => await RunRealAsync(), () => !IsBusy && !IsDirty);
@@ -105,6 +108,21 @@ public sealed class TestEditorViewModel : BindableBase
         set { if (SetProperty(ref _stepFind, value ?? "")) RefreshRows(); }
     }
     private string _stepFind = "";
+    private readonly HashSet<string> _collapsed = new(StringComparer.Ordinal);
+    private StepId? _clipboardStepId;
+    private static string ExpandKey(StepTreeItem item) => item.Kind switch
+    {
+        StepTreeItemKind.Phase => "phase:" + item.Phase,
+        StepTreeItemKind.Slot => "slot:" + item.Parent?.Step?.Id + ":" + item.SlotName,
+        _ => "step:" + item.Step?.Id
+    };
+    public void ToggleExpansion(StepRowProjection row)
+    {
+        var key = ExpandKey(row.Item);
+        if (!_collapsed.Add(key)) _collapsed.Remove(key);
+        SelectItem(row.Item);
+        RefreshRows();
+    }
     public ObservableCollection<TestTargetMapping> Mappings { get; } = new();
     public ObservableCollection<RealStepFact> RunFacts { get; } = new();
     public TestTargetMapping? SelectedMapping
@@ -251,6 +269,41 @@ public sealed class TestEditorViewModel : BindableBase
     public DelegateCommand SaveCommand { get; }
     public DelegateCommand ReloadCommand { get; }
     public DelegateCommand PreflightCommand { get; }
+    public DelegateCommand CopyStepCommand { get; }
+    public DelegateCommand PasteStepCommand { get; }
+    private void CopyToClipboard()
+    {
+        if (_selectedItem?.Step is not { } step) return;
+        _clipboardStepId = step.Id;
+        StatusMessage = "已复制所选步骤（当前测试用例内）；选择目标阶段、分支或步骤后 Ctrl+V 粘贴。";
+        PasteStepCommand.RaiseCanExecuteChanged();
+    }
+    private void PasteFromClipboard()
+    {
+        if (IsBusy || !CanProceed() || _clipboardStepId is not { } source ||
+            _selectedItem is not { } selected) return;
+        if (!_transaction.Current.Walk().Any(x => x.Id == source))
+        {
+            StatusMessage = "复制的原步骤已经不存在，无法在本用例中粘贴。";
+            _clipboardStepId = null;
+            PasteStepCommand.RaiseCanExecuteChanged();
+            return;
+        }
+        try
+        {
+            var before = _transaction.Current.Walk().Select(x => x.Id).ToHashSet();
+            var coords = selected.Kind == StepTreeItemKind.Step
+                ? selected.CoordinatesForSibling() : selected.CoordinatesForAppend();
+            _transaction.Copy(source, selected.Phase, coords.ParentId, coords.Slot, coords.Index);
+            var clone = _transaction.Current.Walk().First(x => !before.Contains(x.Id));
+            RefreshTree(clone.Id);
+            StatusMessage = "步骤及子分支已复制到目标位置，所有 StepId 已更新；Ctrl+S 保存。";
+        }
+        catch (Exception error) when (IsEditorError(error))
+        {
+            StatusMessage = "无法粘贴到该分支：" + error.Message;
+        }
+    }
     public DelegateCommand AddMappingCommand { get; }
     public DelegateCommand RemoveMappingCommand { get; }
     public DelegateCommand RunCommand { get; }
@@ -550,13 +603,15 @@ public sealed class TestEditorViewModel : BindableBase
         StepRows.Clear();
         void Append(StepTreeItem item, int depth)
         {
-            var row = new StepRowProjection(item, depth);
+            var collapsed = _collapsed.Contains(ExpandKey(item));
+            var row = new StepRowProjection(item, depth, collapsed);
             if (string.IsNullOrWhiteSpace(_stepFind) ||
                 !row.IsStep || (row.Name + " " + row.Summary + " " + row.Resource)
                     .Contains(_stepFind, StringComparison.CurrentCultureIgnoreCase))
                 StepRows.Add(row);
-            foreach (var child in item.Children)
-                Append(child, depth + (item.Kind == StepTreeItemKind.Phase ? 0 : 1));
+            if (!collapsed)
+                foreach (var child in item.Children)
+                    Append(child, depth + (item.Kind == StepTreeItemKind.Phase ? 0 : 1));
         }
         foreach (var root in StepRoots) Append(root, 0);
         _syncingRowSelection = true;
@@ -675,6 +730,8 @@ public sealed class TestEditorViewModel : BindableBase
         SaveCommand?.RaiseCanExecuteChanged();
         ReloadCommand?.RaiseCanExecuteChanged();
         PreflightCommand?.RaiseCanExecuteChanged();
+        CopyStepCommand?.RaiseCanExecuteChanged();
+        PasteStepCommand?.RaiseCanExecuteChanged();
         AddMappingCommand?.RaiseCanExecuteChanged();
         RemoveMappingCommand?.RaiseCanExecuteChanged();
         RunCommand?.RaiseCanExecuteChanged();
