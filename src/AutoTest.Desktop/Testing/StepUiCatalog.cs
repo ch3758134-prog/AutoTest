@@ -24,7 +24,19 @@ public static class StepUiCatalog
         new("Expect", "期望判定", "在指定位置用表达式作出测试判定", true),
         new("WaveStart", "开始波形记录", "开始记录所选的实时 DBC 信号", true),
         new("WaveStop", "结束波形记录", "结束采集并将样本数保存为数据", true),
-        new("WaveAnalyze", "波形分析", "独立分析已采集波形，将分析结果保存为数据", true)
+        new("WaveAnalyze", "波形分析", "独立分析已采集波形，将分析结果保存为数据", true),
+        new("Switch", "SWITCH 分支", "分派表达式与 Case 子分支；运行器尚未实现", false),
+        new("Case", "CASE / 默认分支", "SWITCH 子分支；运行器尚未实现", false),
+        new("When", "WHEN 条件等待", "条件与超时、嵌套步骤；运行器尚未实现", false),
+        new("TryCatch", "TRY / CATCH / FINALLY", "异常处理分支；运行器尚未实现", false),
+        new("Subroutine", "子程序", "有名子步骤容器；运行器尚未实现", false),
+        new("CallSubroutine", "调用子程序", "以明确引用调用；运行器尚未实现", false),
+        new("CanSend", "CAN 发送", "需绑定正式 DBC / CAN 配置，执行未接线", false),
+        new("CanWait", "CAN 接收等待", "需绑定 CAN 目标和超时，执行未接线", false),
+        new("UdsRequest", "UDS 请求", "运行需实体诊断授权，执行未接线", false),
+        new("Flash", "ECU 烧录", "实体编程未获授权，执行禁用", false),
+        new("WaveCapture", "波形采集", "记录服务尚未完成该步骤适配", false),
+        new("WaveCompare", "波形判定", "需要真实参考资源与三态比较", false)
     ];
     public static string Label(string type) =>
         Choices.FirstOrDefault(c => c.Type == type)?.Label ?? type;
@@ -37,6 +49,8 @@ public static class StepUiCatalog
         "try" => "尝试执行",
         "catch" => "异常处理",
         "finally" => "清理",
+        "cases" => "CASE 分派",
+        "branches" => "分支",
         _ => slot
     };
 
@@ -109,6 +123,21 @@ public static class StepUiCatalog
         }
         if (type == "WaveAnalyze")
             node = node.WithProperty("profile", "").WithProperty("reference", "");
+        // Editing schemas are deliberately not executable; invalid/absent resource
+        // references must be reported at preflight, not silently defaulted.
+        node = type switch
+        {
+            "Switch" => node.WithProperty("variable", ""),
+            "When" => node.WithProperty("variable", "").WithProperty("equals", "")
+                .WithProperty("timeoutMs", "1000"),
+            "CanSend" => node.WithProperty("dbcMessage", "").WithProperty("signals", ""),
+            "CanWait" => node.WithProperty("dbcMessage", "").WithProperty("timeoutMs", "1000"),
+            "UdsRequest" => node.WithProperty("service", "").WithProperty("requestHex", ""),
+            "Flash" => node.WithProperty("programmingProfile", ""),
+            "WaveCapture" => node.WithProperty("captureKey", ""),
+            "WaveCompare" => node.WithProperty("reference", ""),
+            _ => node
+        };
         return node;
     }
 }

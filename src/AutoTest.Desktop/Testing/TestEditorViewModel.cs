@@ -60,14 +60,14 @@ public sealed class TestEditorViewModel : BindableBase
         EditParametersCommand = new DelegateCommand(() =>
         {
             if (_selectedItem?.Step is not { } original || !CanProceed()) return;
-            if (!StepUiCatalog.Choices.Any(x => x.Type == original.Type))
-                EditLegacyParameters(original);
-            else
+            if (_catalog.Lookup(original.Type) is null)
             {
-                _inspectorAdding = false;
-                _inspectorInsertionTarget = _selectedItem;
-                _ = PublishInspectorAsync(original, null);
+                StatusMessage = "该未知步骤类型尚不能编辑：" + original.Type;
+                return;
             }
+            _inspectorAdding = false;
+            _inspectorInsertionTarget = _selectedItem;
+            _ = PublishInspectorAsync(original, null);
         }, () => CanEditSelectedStep);
         DuplicateCommand = new DelegateCommand(Duplicate, () => CanEditSelectedStep);
         DeleteCommand = new DelegateCommand(Delete, () => CanEditSelectedStep);
@@ -86,6 +86,24 @@ public sealed class TestEditorViewModel : BindableBase
     }
 
     public ObservableCollection<StepTreeItem> StepRoots { get; } = new();
+    public ObservableCollection<StepRowProjection> StepRows { get; } = new();
+    private StepRowProjection? _selectedRow;
+    private bool _syncingRowSelection;
+    public StepRowProjection? SelectedRow
+    {
+        get => _selectedRow;
+        set
+        {
+            if (!SetProperty(ref _selectedRow, value) || _syncingRowSelection) return;
+            SelectItem(value?.Item);
+        }
+    }
+    public string StepFind
+    {
+        get => _stepFind;
+        set { if (SetProperty(ref _stepFind, value ?? "")) RefreshRows(); }
+    }
+    private string _stepFind = "";
     public ObservableCollection<TestTargetMapping> Mappings { get; } = new();
     public ObservableCollection<RealStepFact> RunFacts { get; } = new();
     public TestTargetMapping? SelectedMapping
@@ -242,6 +260,9 @@ public sealed class TestEditorViewModel : BindableBase
         if (_selectedItem is not null) _selectedItem.IsSelected = false;
         _selectedItem = item;
         if (item is not null) item.IsSelected = true;
+        _syncingRowSelection = true;
+        try { SelectedRow = StepRows.FirstOrDefault(x => ReferenceEquals(x.Item, item)); }
+        finally { _syncingRowSelection = false; }
         UpdateInspector();
         _inspectorInsertionTarget = item;
         _inspectorAdding = item?.Kind != StepTreeItemKind.Step;
@@ -306,14 +327,6 @@ public sealed class TestEditorViewModel : BindableBase
             return [new MappingChoice("台架 / IGN", new TestTargetMapping("IGN",
                 TestTargetKind.Ignition, default, 0, ""))];
         }
-    }
-
-    private void EditLegacyParameters(StepNode node)
-    {
-        var result = _dialogs.EditParameters(node, Mappings.Select(x => x.Name).ToArray());
-        if (result is null) return;
-        Mutate(() => _transaction.ApplyProperties(node.Id,
-            result.Value.Name, result.Value.Properties), node.Id, "已修改已有步骤参数");
     }
 
     private void Duplicate()
@@ -386,27 +399,10 @@ public sealed class TestEditorViewModel : BindableBase
         RaisePropertyChanged(nameof(ExpectedApproval));
     }
 
-    private async Task AddMappingAsync()
+    private Task AddMappingAsync()
     {
-        if (IsBusy) return;
-        IsBusy = true;
-        try
-        {
-            var choices = await TestTargetCatalog.LoadAsync(_workspace);
-            var selected = _dialogs.ChooseMapping(choices);
-            if (selected is null) return;
-            _transaction.UpsertMapping(selected);
-            RefreshMappings();
-            SelectedMapping = Mappings.First(x => x.Name == selected.Name);
-            RefreshTree(_selectedItem?.Step?.Id);
-            StatusMessage = "已添加或更新映射：" + selected.Name + "，请保存测试程序。";
-        }
-        catch (Exception e) when (IsEditorError(e))
-        {
-            StatusMessage = "绑定失败：" + e.Message;
-            _dialogs.ShowError(StatusMessage);
-        }
-        finally { IsBusy = false; }
+        StatusMessage = "在右侧步骤属性中选择当前工程的 DBC / Controller 对象；应用属性会原子建立修订绑定。";
+        return Task.CompletedTask;
     }
 
     private void RemoveMapping()
@@ -472,9 +468,50 @@ public sealed class TestEditorViewModel : BindableBase
                 x.Parent?.Step?.Id == parent.Id && x.SlotName == previous.SlotName);
         if (selected is null && previous is { Kind: StepTreeItemKind.Phase })
             selected = StepRoots.First(x => x.Phase == previous.Phase);
+        RefreshRows();
         SelectItem(selected ?? StepRoots[1]);
         RaisePropertyChanged(nameof(ExpectedApproval));
         RefreshCommands();
+    }
+
+    public void ToggleBreakpoint()
+    {
+        if (_selectedItem?.Step is not { } step || IsBusy || !CanProceed()) return;
+        var next = step.Properties.GetValueOrDefault("editor.breakpoint", "false") == "true"
+            ? "false" : "true";
+        Mutate(() => _transaction.SetProperty(step.Id, "editor.breakpoint", next),
+            step.Id, next == "true" ? "已设置步骤断点（只影响编辑标记，运行器尚未接线）" : "已清除断点");
+    }
+
+    public void RenameSelected(string name)
+    {
+        if (_selectedItem?.Step is not { } step || IsBusy || !CanProceed()) return;
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 120)
+        {
+            StatusMessage = "步骤名称不能为空且不能超过 120 字符。";
+            return;
+        }
+        Mutate(() => _transaction.Rename(step.Id, name.Trim()), step.Id, "步骤已重命名；保存后写入正式资源。");
+    }
+
+    private void RefreshRows()
+    {
+        var selected = _selectedItem?.Step?.Id;
+        StepRows.Clear();
+        void Append(StepTreeItem item, int depth)
+        {
+            var row = new StepRowProjection(item, depth);
+            if (string.IsNullOrWhiteSpace(_stepFind) ||
+                !row.IsStep || (row.Name + " " + row.Summary + " " + row.Resource)
+                    .Contains(_stepFind, StringComparison.CurrentCultureIgnoreCase))
+                StepRows.Add(row);
+            foreach (var child in item.Children)
+                Append(child, depth + (item.Kind == StepTreeItemKind.Phase ? 0 : 1));
+        }
+        foreach (var root in StepRoots) Append(root, 0);
+        _syncingRowSelection = true;
+        try { SelectedRow = StepRows.FirstOrDefault(x => x.Item.Step?.Id == selected); }
+        finally { _syncingRowSelection = false; }
     }
 
     private static string DescribeWrite(StepNode step)

@@ -79,7 +79,31 @@ public partial class TestStepInspector : UserControl
             "根据已获得的变量值选择条件分支。"),
         new("loop", "流程控制", "循环", "Loop", "", "有界次数循环，循环体可以继续添加步骤。"),
         new("sequence", "流程控制", "步骤分组", "Sequence", "", "按照顺序执行子步骤。"),
-        new("wait", "流程控制", "固定等待", "Wait", "", "固定等待指定毫秒数。")
+        new("wait", "流程控制", "固定等待", "Wait", "", "固定等待指定毫秒数。"),
+        new("switch", "流程控制", "SWITCH / CASE", "Switch", "",
+            "创建真实 CASE Slot；当前运行器尚未实现，运行前阻断。"),
+        new("case", "流程控制", "CASE 分支", "Case", "",
+            "在 SWITCH 子分支中填写匹配值并加入步骤。"),
+        new("when", "流程控制", "WHEN 等待条件", "When", "",
+            "条件等待与超时，运行前阻断。"),
+        new("try", "流程控制", "TRY / CATCH / FINALLY", "TryCatch", "",
+            "异常处理树结构可编辑；执行未接线。"),
+        new("subroutine", "流程控制", "子程序", "Subroutine", "",
+            "具名子程序容器，执行未接线。"),
+        new("call", "流程控制", "调用子程序", "CallSubroutine", "",
+            "必须明确填写子程序引用，执行未接线。"),
+        new("can-send", "外部操作", "CAN 发送（扩展步骤）", "CanSend", "",
+            "编辑占位字段，运行前必须正式绑定 DBC / CAN 资源。"),
+        new("can-wait", "读取与观察", "CAN 等待（扩展步骤）", "CanWait", "",
+            "编辑目标报文和超时，未接线时不能运行。"),
+        new("uds", "外部操作", "UDS 请求", "UdsRequest", "",
+            "编辑服务和请求，实体诊断执行必须独立授权。"),
+        new("flash", "外部操作", "Flash 烧录", "Flash", "",
+            "仅编辑配置引用，当前禁止真实刷写。"),
+        new("wave-capture", "读取与观察", "波形采集（扩展步骤）", "WaveCapture", "",
+            "编辑采集资源，运行前需要真实采集服务。"),
+        new("wave-compare", "分析与判断", "波形判定（扩展步骤）", "WaveCompare", "",
+            "编辑参考资源，真实比较须三态证据。")
     ];
 
     private readonly StepNode? _editing;
@@ -106,6 +130,12 @@ public partial class TestStepInspector : UserControl
     public event Action? Cancelled;
     public bool HasPendingEdits { get; private set; }
     private bool _trackEdits;
+
+    public void FocusName()
+    {
+        NameInput.Focus();
+        NameInput.SelectAll();
+    }
 
     public void ShowPendingWarning() =>
         ErrorText.Text = "本步骤有未应用的属性。请先点击“应用属性”或“取消编辑”，再切换步骤。";
@@ -213,7 +243,8 @@ public partial class TestStepInspector : UserControl
         var node = _editing ?? StepUiCatalog.NewNode(action.StepType);
         foreach (var item in node.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
         {
-            if (item.Key == "target" || (item.Key == "value" && action.StepType == "Write") ||
+            if ((item.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) ||
+                (item.Key == "value" && action.StepType == "Write") ||
                 (item.Key == "profile" && action.StepType == "WaveAnalyze")) continue;
             ParameterFields.Add(new TestStepInputField(item.Key, item.Value));
         }

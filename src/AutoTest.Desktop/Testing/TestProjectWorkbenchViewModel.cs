@@ -18,6 +18,7 @@ public sealed record TestProjectPackageChoice(AssetEntry Asset)
 public sealed class TestProjectPackageRow : BindableBase
 {
     private bool _enabled;
+    private bool _runSelected;
     public Guid ItemId { get; }
     public Guid AssetId { get; }
     public int Revision { get; }
@@ -31,6 +32,13 @@ public sealed class TestProjectPackageRow : BindableBase
         Sha256 = item.PackageSha256;
         Name = item.DisplayName;
         _enabled = item.Enabled;
+        _runSelected = item.Enabled;
+    }
+    /// <summary>Engineer-only selection: never serialized as production Enabled.</summary>
+    public bool RunSelected
+    {
+        get => _runSelected;
+        set => SetProperty(ref _runSelected, value);
     }
     public bool Enabled
     {
@@ -62,6 +70,9 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         DownCommand = new DelegateCommand(() => Move(1), () => CanMove(1));
         SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => !IsBusy && IsDirty);
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
+        SelectAllCommand = new DelegateCommand(() => SetSelection(true));
+        ClearSelectionCommand = new DelegateCommand(() => SetSelection(false));
+        PreflightSelectedCommand = new DelegateCommand(PreflightSelected);
         LoadRows(session.Document);
         RefreshAvailable();
     }
@@ -103,6 +114,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     public DelegateCommand DownCommand { get; }
     public DelegateCommand SaveCommand { get; }
     public DelegateCommand ReloadCommand { get; }
+    public DelegateCommand SelectAllCommand { get; }
+    public DelegateCommand ClearSelectionCommand { get; }
+    public DelegateCommand PreflightSelectedCommand { get; }
+    public int SelectedCount => Packages.Count(x => x.RunSelected);
+    public int TotalCount => Packages.Count;
+    public string SelectionSummary => SelectedCount + " / " + TotalCount + " 个用例（只作用于本次检查）";
 
     private void LoadRows(TestProjectDocument doc)
     {
@@ -115,10 +132,43 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             Packages.Add(row);
         }
         SelectedPackage = null;
+        RaisePropertyChanged(nameof(SelectedCount));
+        RaisePropertyChanged(nameof(TotalCount));
+        RaisePropertyChanged(nameof(SelectionSummary));
         RaisePropertyChanged(nameof(IsDirty));
     }
-    private void RowChanged(object? sender, PropertyChangedEventArgs e) =>
+    private void RowChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TestProjectPackageRow.RunSelected))
+        {
+            RaisePropertyChanged(nameof(SelectedCount));
+            RaisePropertyChanged(nameof(SelectionSummary));
+        }
         RefreshCommands();
+    }
+    private void SetSelection(bool select)
+    {
+        foreach (var row in Packages) row.RunSelected = select;
+        StatusMessage = select ? "已选择本项目所有用例，仅影响本次检查。" :
+            "已清空本次检查选择；工程默认未修改。";
+    }
+    private void PreflightSelected()
+    {
+        var selected = Packages.Where(x => x.RunSelected).ToArray();
+        if (selected.Length == 0)
+        {
+            StatusMessage = "无法检查：请先勾选至少一个测试用例。";
+            return;
+        }
+        var assets = _workspace.Current?.Definition.Assets;
+        if (assets is null) { StatusMessage = "无法检查：未打开真实工程。"; return; }
+        var missing = selected.Where(row => !assets.Any(a =>
+            a.Id.Value == row.AssetId && a.Revision == row.Revision &&
+            a.Sha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))).ToArray();
+        StatusMessage = missing.Length > 0
+            ? "BLOCKED_RESOURCE: " + missing.Length + " 条用例的固定资产修订或 SHA 已失效。"
+            : "BLOCKED_BY_BACKEND: 当前只有真实资源身份检查，尚无项目级 Run/设备租约预检；未启动 ECU，未生成测试结论。";
+    }
 
     private void RefreshAvailable()
     {
@@ -145,6 +195,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         row.PropertyChanged += RowChanged;
         Packages.Add(row);
         SelectedPackage = row;
+        RaisePropertyChanged(nameof(SelectionSummary));
+        RaisePropertyChanged(nameof(TotalCount));
         StatusMessage = "已加入测试用例：" + asset.Name + "。重复引用会形成独立的执行条目。";
         RefreshCommands();
     }
@@ -154,6 +206,9 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         row.PropertyChanged -= RowChanged;
         var index = Packages.IndexOf(row);
         Packages.Remove(row);
+        RaisePropertyChanged(nameof(SelectedCount));
+        RaisePropertyChanged(nameof(TotalCount));
+        RaisePropertyChanged(nameof(SelectionSummary));
         SelectedPackage = Packages.Count == 0 ? null : Packages[Math.Min(index, Packages.Count - 1)];
         RefreshCommands();
     }
