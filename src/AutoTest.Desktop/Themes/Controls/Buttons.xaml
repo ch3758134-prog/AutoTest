@@ -7,10 +7,10 @@
     <Setter Property="Background" Value="{StaticResource Panel}"/>
     <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="Padding" Value="13,6"/>
-    <Setter Property="Margin" Value="0,0,8,0"/>
-    <Setter Property="MinHeight" Value="32"/>
-    <Setter Property="MinWidth" Value="72"/>
+    <Setter Property="Padding" Value="9,4"/>
+    <Setter Property="Margin" Value="0,0,4,0"/>
+    <Setter Property="MinHeight" Value="27"/>
+    <Setter Property="MinWidth" Value="48"/>
     <Setter Property="Cursor" Value="Hand"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -47,10 +47,10 @@
   </Style>
   <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}"/>
   <Style x:Key="AtPrimaryButton" TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">
-    <Setter Property="Background" Value="{StaticResource MutedSurface}"/>
-    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-    <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-    <Setter Property="MinHeight" Value="34"/>
+    <Setter Property="Background" Value="{StaticResource Accent}"/>
+    <Setter Property="Foreground" Value="{StaticResource White}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+    <Setter Property="MinHeight" Value="27"/>
   </Style>
   <Style x:Key="AtQuietButton" TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">
     <Setter Property="Background" Value="Transparent"/>

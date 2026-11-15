@@ -296,8 +296,10 @@
      <TextBlock Text="{Binding HardwareStatus}" Foreground="White" FontSize="10"
       MaxWidth="300" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
      <Button Content="▣ 观察" Click="ToggleBottom_Click" FontSize="10" Padding="3,0"
+      MinHeight="20" MinWidth="48" Height="20"
       Foreground="White" Background="Transparent" BorderThickness="0"/>
      <Button Content="▥ 属性" Click="ToggleInspector_Click" FontSize="10" Padding="3,0"
+      MinHeight="20" MinWidth="48" Height="20"
       Foreground="White" Background="Transparent" BorderThickness="0"/>
     </StackPanel>
     <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="10"

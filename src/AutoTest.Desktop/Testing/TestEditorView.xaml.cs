@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace AutoTest.Desktop.Testing;
 
@@ -83,10 +84,22 @@ public partial class TestEditorView : UserControl
         }
     }
 
+    private static bool IsTextEditorHit(DependencyObject? start)
+    {
+        var parent = start;
+        while (parent is not null && parent is not ListBoxItem)
+        {
+            if (parent is TextBoxBase) return true;
+            parent = VisualTreeHelper.GetParent(parent);
+        }
+        return false;
+    }
+
     private void StepsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _dragStart = e.GetPosition(StepsList);
         var origin = e.OriginalSource as DependencyObject;
+        if (IsTextEditorHit(origin)) { _dragSource = null; return; }
         var container = origin is null ? null :
             ItemsControl.ContainerFromElement(StepsList, origin) as ListBoxItem;
         _dragSource = (container?.DataContext as StepRowProjection) is { IsStep: true } row
