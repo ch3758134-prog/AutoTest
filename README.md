@@ -4,6 +4,10 @@
 
 **开始研发或 UI 设计前先阅读：** [现行业务与产品职责决策](docs/project-management/new-baseline-20261112/PM-BUSINESS-DECISIONS-20261114.md)（手动台架功能按键、取消独立 CAN 工作台、扫码生产自动运行等）和 [项目管理入口](docs/project-management/README.md)。
 
+## 唯一 UI 设计源（G3-UX）
+
+UI/UX 专项在专用分支 [`ui/ide-design`](https://github.com/ch3758134-prog/AutoTest/tree/ui/ide-design) 持续更新**唯一现行交互 HTML** `docs/ui/AutoTest_UI.html`。**当前 HTML 尚待 UI 专项首次上传；G3-UX v3 未获验收，不是现行 WPF 实施基线。**用户负责实际交互/视觉验收，项目管理在 UI 候选交付后审查产品、硬件与后端接口一致性。已接受版本才准进入 `main`，并按精确 commit SHA 指导后续 WPF UI 实施。详见 [UI 设计源与交接规则](docs/ui/README.md) 和 [Issue #51](https://github.com/ch3758134-prog/AutoTest/issues/51)。旧 `docs/ui-r1/reference/` 属历史参考，不与现行设计争夺权威。
+
 ## 主线边界
 
 - `AutoTest.Core` / `Contracts`：领域基础类型及跨模块契约。
