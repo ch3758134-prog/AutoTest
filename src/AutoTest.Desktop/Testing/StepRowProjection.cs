@@ -17,6 +17,15 @@ public sealed class StepRowProjection
     public bool IsSlot => Item.Kind == StepTreeItemKind.Slot;
     public bool IsStep => Item.Kind == StepTreeItemKind.Step;
     public string Icon => Item.Icon;
+    public bool IsQuickEditable => Item.Step?.Type is "Wait" or "Loop";
+    public bool IsNotQuickEditable => !IsQuickEditable;
+    public string OriginalQuickValue => Item.Step?.Type switch
+    {
+        "Wait" => Item.Step.Properties.GetValueOrDefault("milliseconds", ""),
+        "Loop" => Item.Step.Properties.GetValueOrDefault("count", ""),
+        _ => ""
+    };
+    public string QuickValue { get; set; } = "";
     public string BreakpointMark => Item.Step?.Properties.GetValueOrDefault("editor.breakpoint", "false")
         == "true" ? "●" : "";
     public string Name => Item.Step?.Name ?? Item.Label;
@@ -31,6 +40,7 @@ public sealed class StepRowProjection
         Depth = depth;
         Sequence = item.Kind == StepTreeItemKind.Step ? item.Index + 1 : 0;
         var step = item.Step;
+        QuickValue = OriginalQuickValue;
         if (step is null)
         {
             Summary = "";

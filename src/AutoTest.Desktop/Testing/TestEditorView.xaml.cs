@@ -43,6 +43,30 @@ public partial class TestEditorView : UserControl
         InspectorHost.Content = editor;
     }
 
+    private void QuickField_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: StepRowProjection row })
+            _viewModel.CommitQuickValue(row);
+    }
+
+    private void QuickField_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+        if (e.Key is Key.Enter or Key.Return)
+        {
+            Keyboard.ClearFocus(); e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            if (box.DataContext is StepRowProjection row)
+            {
+                row.QuickValue = row.OriginalQuickValue;
+                box.Text = row.OriginalQuickValue;
+            }
+            Keyboard.ClearFocus(); e.Handled = true;
+        }
+    }
+
     private void StepsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _dragStart = e.GetPosition(StepsList);

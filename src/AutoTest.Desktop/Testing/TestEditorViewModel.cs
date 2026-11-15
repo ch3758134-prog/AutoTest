@@ -497,6 +497,22 @@ public sealed class TestEditorViewModel : BindableBase
         RefreshCommands();
     }
 
+    public void CommitQuickValue(StepRowProjection row)
+    {
+        if (IsBusy || !CanProceed() || row.Item.Step is not { } step || !row.IsQuickEditable) return;
+        var key = step.Type == "Wait" ? "milliseconds" : "count";
+        var upper = step.Type == "Wait" ? 60000 : 1000;
+        if (!int.TryParse(row.QuickValue, out var value) || value < 0 || value > upper)
+        {
+            StatusMessage = "步骤参数拒绝：请填写 0～" + upper + " 范围内的整数。";
+            RefreshRows();
+            return;
+        }
+        if (row.OriginalQuickValue == value.ToString()) return;
+        Mutate(() => _transaction.SetProperty(step.Id, key, value.ToString()),
+            step.Id, "已直接修改参数；保存后写入 TEST 文档。");
+    }
+
     /// <summary>Move canonical StepNode, preserving StepId, Slots and transaction undo.</summary>
     public void MoveStepAfter(StepRowProjection source, StepRowProjection target)
     {

@@ -97,9 +97,19 @@
          <TextBlock Text="{Binding Kind}" Foreground="#7D8EA2" FontSize="10" TextTrimming="CharacterEllipsis"/>
         </StackPanel>
        </StackPanel>
-       <TextBlock Grid.Column="2" Text="{Binding Summary}" TextTrimming="CharacterEllipsis"
-        Foreground="#405F7B" VerticalAlignment="Center" FontSize="12" Margin="6,0"
-        ToolTip="{Binding Summary}"/>
+       <Grid Grid.Column="2" Margin="6,0">
+        <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis"
+         Foreground="#405F7B" VerticalAlignment="Center" FontSize="12"
+         Visibility="{Binding IsNotQuickEditable,Converter={StaticResource BoolToVisibility}}"
+         ToolTip="{Binding Summary}"/>
+        <TextBox Text="{Binding QuickValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+         Visibility="{Binding IsQuickEditable,Converter={StaticResource BoolToVisibility}}"
+         Background="Transparent" BorderThickness="0,0,0,1" BorderBrush="#C9D8E9"
+         Padding="1,2" FontSize="12" Foreground="#405F7B" VerticalAlignment="Center"
+         HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
+         ToolTip="直接编辑毫秒数或循环次数，Enter 确定 / Esc 取消"
+         LostFocus="QuickField_LostFocus" KeyDown="QuickField_KeyDown"/>
+       </Grid>
        <TextBlock Grid.Column="3" Text="{Binding Resource}" TextTrimming="CharacterEllipsis"
         Foreground="#6D829A" VerticalAlignment="Center" FontSize="11" Margin="6,0"
         ToolTip="{Binding Resource}"/>
