@@ -1,5 +1,8 @@
 # AutoTest Flash Lab｜F0 真实源码调查与独立上位机交付基线
 
+> **2026-11-15 项目负责人最新范围澄清（优先阅读）**：本 F0 调查中关于“新共享设备会话框架/重新研究 UDS 和 ISO-TP”的表述**不得直接转为实施义务**。烧录专项主要做 CanTool 配置和独立 WPF 前端，复用已经存在的 UDS/ISO-TP/Flash 后端，仅修补已证明的真实连接/烧录过程缺口。完整决定见 [FLASH-SCOPE-CORRECTION-20261115.md](FLASH-SCOPE-CORRECTION-20261115.md)。本调查旧正文保留以供追溯，不代表用户认可从头重建通信架构。**不因本澄清直接授权实体 ECU 编程。**
+
+
 **工作分支：** `feature/flash-lab-20261114`，起点 `local@a9a26ebfba1efcf032ff8ec8c435336a89469647`。  
 **状态：F0_SOURCE_AUDIT_COMPLETE / G3_F1_DESIGN_CANDIDATE / G4_CODE_NOT_YET_AUTHORIZED。**
 **2026-11-15 用户决定：** 单独烧录研究并实现**独立 Windows 上位机**；烧录链路研究和可运行工具先于独立 UDS 专业工具研究。自动测试 UI 在其他工作包并行按冻结 HTML 实施，F0 不修改其 XAML/TEST VM。
