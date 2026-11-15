@@ -4,6 +4,8 @@
 
 ## 首先阅读
 
+**第一优先纠偏：** [手动台架 / DUT 输入模拟勘误](new-baseline-20261112/PM-INPUT-SEMANTICS-20261114.md) —— 防止新 AI 将通用上位机错误缩为 EPB/按键工具，或将 Pulse/Hold/Release 当成全局主操作。
+
 1. [现行业务与产品职责决策（PM-BIZ-20261114-01）](new-baseline-20261112/PM-BUSINESS-DECISIONS-20261114.md) —— 用户已经直接澄清的产品事实、工具职责、工程师与生产运行区别、手动台架、CAN 工具范围和剩余冲突；
 2. [G1 已批准需求 v0.3](new-baseline-20261112/G1-REVIEW-v0.3.md) 和 [正式批准记录](new-baseline-20261112/G1-APPROVAL_RECORD.md) —— 保留已批准的历史版本；存在冲突时按上述业务决策追踪局部变更；
 3. [G2 系统架构 v0.1](new-baseline-20261112/G2-GATE-REVIEW-v0.1.md) 与 [G2 批准记录](new-baseline-20261112/G2-APPROVAL_RECORD.md) —— G2 `PASS_WITH_LIMITATIONS`；

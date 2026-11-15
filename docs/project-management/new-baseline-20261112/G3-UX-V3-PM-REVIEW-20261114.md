@@ -6,6 +6,8 @@
 **当前状态：** `FEEDBACK_RECEIVED / PM_ACTIONS_CLASSIFIED / UX_DESIGN_NOT_APPROVED`。**不改变 P0～G2、已批准 G3 DEVICE/WAVE/TECH 原文；不授权 G4、Codex 代码修改或实体操作。**  
 **先前业务基线：** [PM-BUSINESS-DECISIONS-20261114.md](PM-BUSINESS-DECISIONS-20261114.md) BIZ-01～12；G1-REVIEW-v0.3、G2 Gate、G3 TECH 专项批准记录。
 
+> **后续 PM 自查勘误**：本报告虽然指出 EPB 语义不应硬编码，仍沿用“手动台架以功能按键为中心”的错误抽象。真正业务定义和四层语义区分请先读 [PM-INPUT-SEMANTICS-20261114.md](PM-INPUT-SEMANTICS-20261114.md)。该勘误优先于此处容易导致按键专用 UI 的概括，原文仅保留作历史反馈与归因。
+
 ## 一、专项结论及 PM 处理（六类问题逐项闭环）
 
 | UX 专项错误 | 本轮结论 | 处理负责人 | G3/G4 验收与接口边界 |
