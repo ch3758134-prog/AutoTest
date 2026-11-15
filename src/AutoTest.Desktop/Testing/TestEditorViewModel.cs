@@ -497,6 +497,17 @@ public sealed class TestEditorViewModel : BindableBase
         RefreshCommands();
     }
 
+    /// <summary>Move canonical StepNode, preserving StepId, Slots and transaction undo.</summary>
+    public void MoveStepAfter(StepRowProjection source, StepRowProjection target)
+    {
+        if (IsBusy || !CanProceed() || source.Item.Step is not { } moving ||
+            target.Item.Step is not { } destination || moving.Id == destination.Id) return;
+        var coords = target.Item.CoordinatesForSibling();
+        Mutate(() => _transaction.Move(moving.Id, target.Item.Phase, coords.ParentId,
+            coords.Slot, coords.Index), moving.Id,
+            "步骤已移动；可通过 Ctrl+Z 撤销，Ctrl+S 保存。");
+    }
+
     public void ToggleBreakpoint()
     {
         if (_selectedItem?.Step is not { } step || IsBusy || !CanProceed()) return;

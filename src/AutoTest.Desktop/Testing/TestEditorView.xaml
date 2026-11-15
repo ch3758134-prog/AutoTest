@@ -58,7 +58,10 @@
    ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
    ScrollViewer.CanContentScroll="True" VirtualizingStackPanel.IsVirtualizing="True"
    VirtualizingStackPanel.VirtualizationMode="Recycling"
-   PreviewMouseRightButtonDown="StepsList_RightClick" MouseDoubleClick="StepsList_DoubleClick">
+   PreviewMouseRightButtonDown="StepsList_RightClick" MouseDoubleClick="StepsList_DoubleClick"
+   PreviewMouseLeftButtonDown="StepsList_PreviewMouseLeftButtonDown"
+   PreviewMouseMove="StepsList_PreviewMouseMove"
+   AllowDrop="True" DragOver="StepsList_DragOver" Drop="StepsList_Drop">
    <ListBox.ItemContainerStyle>
     <Style TargetType="ListBoxItem">
      <Setter Property="Padding" Value="0"/>

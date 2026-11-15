@@ -10,6 +10,8 @@ public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
     private TestStepInspector? _inspector;
+    private Point _dragStart;
+    private StepRowProjection? _dragSource;
     public ContentControl InspectorHost { get; } = new()
     {
         HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -39,6 +41,48 @@ public partial class TestEditorView : UserControl
         editor.Cancelled += _viewModel.ResetInspector;
         _inspector = editor;
         InspectorHost.Content = editor;
+    }
+
+    private void StepsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragStart = e.GetPosition(StepsList);
+        var origin = e.OriginalSource as DependencyObject;
+        var container = origin is null ? null :
+            ItemsControl.ContainerFromElement(StepsList, origin) as ListBoxItem;
+        _dragSource = (container?.DataContext as StepRowProjection) is { IsStep: true } row
+            ? row : null;
+    }
+
+    private void StepsList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_dragSource is null || e.LeftButton != MouseButtonState.Pressed) return;
+        var now = e.GetPosition(StepsList);
+        if (Math.Abs(now.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(now.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        var source = _dragSource;
+        _dragSource = null;
+        DragDrop.DoDragDrop(StepsList, new DataObject("AutoTest.StepRow", source),
+            DragDropEffects.Move);
+    }
+
+    private void StepsList_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent("AutoTest.StepRow") ?
+            DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void StepsList_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData("AutoTest.StepRow") is not StepRowProjection moving) return;
+        var origin = e.OriginalSource as DependencyObject;
+        var container = origin is null ? null :
+            ItemsControl.ContainerFromElement(StepsList, origin) as ListBoxItem;
+        if (container?.DataContext is StepRowProjection target)
+        {
+            _viewModel.MoveStepAfter(moving, target);
+            e.Handled = true;
+        }
     }
 
     private void StepsList_RightClick(object sender, MouseButtonEventArgs e)
