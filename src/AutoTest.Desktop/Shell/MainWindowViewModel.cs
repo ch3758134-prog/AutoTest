@@ -638,6 +638,48 @@ public sealed class MainWindowViewModel : BindableBase
         RefreshCommands();
     }
 
+    private static IEnumerable<ResourceTreeNode> AllNodes(IEnumerable<ResourceTreeNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            yield return node;
+            foreach (var child in AllNodes(node.Children)) yield return child;
+        }
+    }
+
+    private void BindProjectNavigation(AssetEntry projectAsset, TestProjectWorkbenchViewModel editor)
+    {
+        void UpdateTree()
+        {
+            var node = AllNodes(ResourceNodes).FirstOrDefault(x => x.Asset?.Id == projectAsset.Id);
+            if (node is null) return;
+            node.Children.Clear();
+            foreach (var row in editor.Packages)
+            {
+                var asset = _workspace.Current?.Definition.Assets.FirstOrDefault(x =>
+                    x.Id.Value == row.AssetId && x.Kind == ProjectWorkspaceService.TestProgramKind);
+                if (asset is null) continue;
+                node.Children.Add(new ResourceTreeNode(
+                    (row.RunSelected ? "☑ " : "☐ ") + row.Order.ToString("D2") + "  " + row.Name,
+                    "▤", "项目引用 · " + row.Revision + " · " + row.Sha256,
+                    ProjectWorkspaceService.TestProgramKind, asset));
+            }
+        }
+        editor.OpenPackageRequested = packageId =>
+        {
+            if (_workspace.Current?.Definition.Assets.Any(x =>
+                x.Id.Value == packageId && x.Kind == ProjectWorkspaceService.TestProgramKind) != true)
+            {
+                StatusMessage = "BLOCKED_RESOURCE：项目引用的测试用例已不存在于当前工程。";
+                return;
+            }
+            SelectAsset(AssetId.Create(packageId));
+            _ = OpenSelectedTestProgramAsync();
+        };
+        editor.PackageRowsChanged = UpdateTree;
+        UpdateTree();
+    }
+
     private void RebuildResourceTree()
     {
         var selectedId = _selectedResource?.Asset?.Id;
@@ -650,6 +692,7 @@ public sealed class MainWindowViewModel : BindableBase
         }
 
         var root = new ResourceTreeNode(current.Definition.Name, "▣", "当前工程的实际资源清单");
+        var automatic = new ResourceTreeNode("自动测试", "▣", "测试项目与用例由正式工程资源组织");
         var groups = new[]
         {
             (Key: ProjectWorkspaceService.TestProgramKind, Title: "测试用例",
@@ -685,8 +728,11 @@ public sealed class MainWindowViewModel : BindableBase
                 "工程资源分类", category.Key);
             foreach (var entry in entries)
                 group.Children.Add(ToAssetNode(entry));
-            root.Children.Add(group);
+            if (category.Key is ProjectWorkspaceService.TestProgramKind or ProjectWorkspaceService.TestProjectKind)
+                automatic.Children.Add(group);
+            else root.Children.Add(group);
         }
+        root.Children.Insert(0, automatic);
         var defined = groups.Select(x => x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var extras = assets.Where(x => !defined.Contains(x.Kind)).ToArray();
         if (extras.Length > 0)
@@ -699,7 +745,7 @@ public sealed class MainWindowViewModel : BindableBase
         ResourceNodes.Add(root);
         if (selectedId is { } id)
         {
-            _selectedResource = root.Children.SelectMany(x => x.Children)
+            _selectedResource = AllNodes(root.Children)
                 .FirstOrDefault(x => x.Asset?.Id == id);
             if (_selectedResource is not null) _selectedResource.IsSelected = true;
         }
@@ -761,6 +807,7 @@ public sealed class MainWindowViewModel : BindableBase
             SelectAsset(entry.Id);
             var session = await _workspace.OpenTestProjectEditorAsync(entry.Id);
             var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session);
+            BindProjectNavigation(entry, editor);
             ActivateEditor("project|" + entry.Id, new TestProjectWorkbenchView(editor),
                 "测试项目 · " + entry.Name, editor.ConfirmClose);
             StatusMessage = "测试项目已创建，请添加测试用例并设置顺序：" + entry.Name;
@@ -881,6 +928,7 @@ public sealed class MainWindowViewModel : BindableBase
         {
             var session = await _workspace.OpenTestProjectEditorAsync(asset.Id);
             var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session);
+            BindProjectNavigation(asset, editor);
             ActivateEditor("project|" + asset.Id, new TestProjectWorkbenchView(editor),
                 asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试项目：" + asset.Name;
@@ -950,7 +998,8 @@ public sealed class MainWindowViewModel : BindableBase
     private void SelectAsset(AssetId id)
     {
         var root = ResourceNodes.FirstOrDefault();
-        SelectResource(root?.Children.SelectMany(x => x.Children).FirstOrDefault(x => x.Asset?.Id == id));
+        SelectResource(root is null ? null :
+            AllNodes(root.Children).FirstOrDefault(x => x.Asset?.Id == id));
     }
 
     private async Task RunOperationAsync(Func<Task> operation)

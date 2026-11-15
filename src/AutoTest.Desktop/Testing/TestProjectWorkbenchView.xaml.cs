@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace AutoTest.Desktop.Testing;
 
@@ -10,6 +11,13 @@ public partial class TestProjectWorkbenchView : UserControl
         HorizontalContentAlignment = HorizontalAlignment.Stretch,
         VerticalContentAlignment = VerticalAlignment.Stretch
     };
+    private void PackagesGrid_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        if (DataContext is TestProjectWorkbenchViewModel vm)
+            vm.OpenSelectedPackage();
+    }
+
     public TestProjectWorkbenchView(TestProjectWorkbenchViewModel viewModel)
     {
         InitializeComponent();

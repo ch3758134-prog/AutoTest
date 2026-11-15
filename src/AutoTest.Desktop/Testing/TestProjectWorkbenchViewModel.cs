@@ -60,6 +60,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     private string _status = "从右侧选择测试用例并加入执行列表。";
     private TestProjectPackageChoice? _selectedAvailable;
     private TestProjectPackageRow? _selectedPackage;
+    public Action<Guid>? OpenPackageRequested { get; set; }
+    public Action? PackageRowsChanged { get; set; }
+    public void OpenSelectedPackage()
+    {
+        if (SelectedPackage is { } row) OpenPackageRequested?.Invoke(row.AssetId);
+    }
 
     public TestProjectWorkbenchViewModel(ProjectWorkspaceService workspace,
         TestEditorDialogs dialogs, TestProjectEditorSession session)
@@ -143,6 +149,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(TotalCount));
         RaisePropertyChanged(nameof(SelectionSummary));
         RaisePropertyChanged(nameof(IsDirty));
+        PackageRowsChanged?.Invoke();
     }
     private void RowChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -152,12 +159,14 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             RaisePropertyChanged(nameof(SelectionSummary));
         }
         RefreshCommands();
+        PackageRowsChanged?.Invoke();
     }
     private void SetSelection(bool select)
     {
         foreach (var row in Packages) row.RunSelected = select;
         StatusMessage = select ? "已选择本项目所有用例，仅影响本次检查。" :
             "已清空本次检查选择；工程默认未修改。";
+        PackageRowsChanged?.Invoke();
     }
     private void PreflightSelected()
     {
@@ -207,6 +216,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(TotalCount));
         StatusMessage = "已加入测试用例：" + asset.Name + "。重复引用会形成独立的执行条目。";
         RefreshCommands();
+        PackageRowsChanged?.Invoke();
     }
     private void Remove()
     {
@@ -220,6 +230,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(SelectionSummary));
         SelectedPackage = Packages.Count == 0 ? null : Packages[Math.Min(index, Packages.Count - 1)];
         RefreshCommands();
+        PackageRowsChanged?.Invoke();
     }
     private bool CanMove(int direction) => !IsBusy && SelectedPackage is { } row &&
         Packages.IndexOf(row) + direction >= 0 &&
@@ -232,6 +243,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         Renumber();
         SelectedPackage = row;
         RefreshCommands();
+        PackageRowsChanged?.Invoke();
     }
     private void RefreshCommands()
     {

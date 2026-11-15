@@ -54,7 +54,7 @@
     AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
     HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal"
     RowHeight="37" ColumnHeaderHeight="30" BorderThickness="0"
-    EnableRowVirtualization="True" SelectionUnit="FullRow">
+    EnableRowVirtualization="True" SelectionUnit="FullRow" MouseDoubleClick="PackagesGrid_DoubleClick">
     <DataGrid.Columns>
      <DataGridTemplateColumn Header="本次执行" Width="85">
       <DataGridTemplateColumn.CellTemplate><DataTemplate>
