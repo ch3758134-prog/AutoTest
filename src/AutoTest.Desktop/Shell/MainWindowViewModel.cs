@@ -28,6 +28,14 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
     public string Title { get; set; } = title;
     public UserControl View { get; } = view;
     public Func<bool> ConfirmClose { get; } = confirmClose;
+    /// <summary>Right rail is the editor's only inspector, never a second copy.</summary>
+    public ContentControl? Inspector => View switch
+    {
+        TestEditorView test => test.InspectorHost,
+        TestProjectWorkbenchView project => project.InspectorHost,
+        _ => null
+    };
+    public object? Editor => View.DataContext;
 }
 
 /// <summary>Only presentation state and UX commands. Project data remains in ProjectWorkspaceService.</summary>
@@ -134,6 +142,10 @@ public sealed class MainWindowViewModel : BindableBase
             () => !_hardwareBusy);
         OpenCanMonitorCommand = new DelegateCommand(async () => await OpenCanMonitorAsync());
         TransmitCanCommand = new DelegateCommand(async () => await TransmitCanAsync(), () => !_hardwareBusy);
+        SaveActiveCommand = new DelegateCommand(SaveActive);
+        UndoActiveCommand = new DelegateCommand(UndoActive);
+        RedoActiveCommand = new DelegateCommand(RedoActive);
+        CheckActiveCommand = new DelegateCommand(CheckActive);
         _hardware.EvidenceRecorded += line =>
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -213,6 +225,44 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand ConnectHardwareCommand { get; }
     public DelegateCommand OpenCanMonitorCommand { get; }
     public DelegateCommand TransmitCanCommand { get; }
+    public DelegateCommand SaveActiveCommand { get; }
+    public DelegateCommand UndoActiveCommand { get; }
+    public DelegateCommand RedoActiveCommand { get; }
+    public DelegateCommand CheckActiveCommand { get; }
+    private void SaveActive()
+    {
+        switch (ActiveEditorTab?.Editor)
+        {
+            case TestEditorViewModel editor when editor.SaveCommand.CanExecute():
+                editor.SaveCommand.Execute(); break;
+            case TestProjectWorkbenchViewModel project when project.SaveCommand.CanExecute():
+                project.SaveCommand.Execute(); break;
+            default: StatusMessage = "请先打开已修改的测试用例或测试项目；其他资源可在自身编辑器内保存。"; break;
+        }
+    }
+    private void UndoActive()
+    {
+        if (ActiveEditorTab?.Editor is TestEditorViewModel editor &&
+            editor.UndoCommand.CanExecute()) editor.UndoCommand.Execute();
+        else StatusMessage = "此编辑页当前没有可撤销的步骤操作。";
+    }
+    private void RedoActive()
+    {
+        if (ActiveEditorTab?.Editor is TestEditorViewModel editor &&
+            editor.RedoCommand.CanExecute()) editor.RedoCommand.Execute();
+        else StatusMessage = "此编辑页当前没有可重做的步骤操作。";
+    }
+    private void CheckActive()
+    {
+        switch (ActiveEditorTab?.Editor)
+        {
+            case TestProjectWorkbenchViewModel project:
+                project.PreflightSelectedCommand.Execute(); break;
+            case TestEditorViewModel editor:
+                editor.PreflightCommand.Execute(); break;
+            default: StatusMessage = "请先打开测试项目或用例，再检查真实工程资源与 TEST 结构。"; break;
+        }
+    }
     public string CanId
     {
         get => _canId;
@@ -379,10 +429,12 @@ public sealed class MainWindowViewModel : BindableBase
             {
                 RaisePropertyChanged(nameof(ActiveEditorView));
                 RaisePropertyChanged(nameof(ActiveEditorTitle));
+                RaisePropertyChanged(nameof(ActiveEditorInspector));
             }
         }
     }
     public UserControl? ActiveEditorView => ActiveEditorTab?.View;
+    public ContentControl? ActiveEditorInspector => ActiveEditorTab?.Inspector;
     public bool HasActiveEditor => OpenEditors.Count > 0;
     public bool NoOpenEditors => OpenEditors.Count == 0;
     public string ActiveEditorTitle => ActiveEditorTab?.Title ?? "";
@@ -582,9 +634,9 @@ public sealed class MainWindowViewModel : BindableBase
         var root = new ResourceTreeNode(current.Definition.Name, "▣", "当前工程的实际资源清单");
         var groups = new[]
         {
-            (Key: ProjectWorkspaceService.TestProgramKind, Title: "测试用例 · Package",
+            (Key: ProjectWorkspaceService.TestProgramKind, Title: "测试用例",
              Icon: "▤"),
-            (Key: ProjectWorkspaceService.TestProjectKind, Title: "测试项目 · Project",
+            (Key: ProjectWorkspaceService.TestProjectKind, Title: "测试项目",
              Icon: "▥"),
             (Key: ProjectWorkspaceService.TestConfigurationKind, Title: "被测系统配置 · TCF",
              Icon: "⚙"),
@@ -812,7 +864,7 @@ public sealed class MainWindowViewModel : BindableBase
             var session = await _workspace.OpenTestProjectEditorAsync(asset.Id);
             var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session);
             ActivateEditor("project|" + asset.Id, new TestProjectWorkbenchView(editor),
-                "测试项目 · " + asset.Name, editor.ConfirmClose);
+                asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试项目：" + asset.Name;
         });
     }
@@ -826,7 +878,7 @@ public sealed class MainWindowViewModel : BindableBase
             var session = await _workspace.OpenTestEditorAsync(asset.Id);
             var editor = new TestEditorViewModel(_workspace, _testDialogs, session, _realTest);
             ActivateEditor("test|" + asset.Id, new TestEditorView(editor),
-                "测试程序 · " + asset.Name, editor.ConfirmClose);
+                asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试程序：" + asset.Name;
         });
     }

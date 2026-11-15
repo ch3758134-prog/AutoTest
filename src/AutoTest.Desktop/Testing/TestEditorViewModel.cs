@@ -77,6 +77,7 @@ public sealed class TestEditorViewModel : BindableBase
         RedoCommand = new DelegateCommand(Redo, () => _transaction.CanRedo && !IsBusy);
         SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => IsDirty && !IsBusy);
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
+        PreflightCommand = new DelegateCommand(PreflightOnly, () => !IsBusy);
         AddMappingCommand = new DelegateCommand(async () => await AddMappingAsync(), () => !IsBusy);
         RemoveMappingCommand = new DelegateCommand(RemoveMapping, () => SelectedMapping is not null && !IsBusy);
         RunCommand = new DelegateCommand(async () => await RunRealAsync(), () => !IsBusy && !IsDirty);
@@ -249,6 +250,7 @@ public sealed class TestEditorViewModel : BindableBase
     public DelegateCommand RedoCommand { get; }
     public DelegateCommand SaveCommand { get; }
     public DelegateCommand ReloadCommand { get; }
+    public DelegateCommand PreflightCommand { get; }
     public DelegateCommand AddMappingCommand { get; }
     public DelegateCommand RemoveMappingCommand { get; }
     public DelegateCommand RunCommand { get; }
@@ -416,6 +418,27 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = "已移除映射：" + choice.Name;
         }
         catch (Exception e) when (IsEditorError(e)) { _dialogs.ShowError(e.Message); }
+    }
+
+    private void PreflightOnly()
+    {
+        if (IsBusy) return;
+        try
+        {
+            var plan = _realTest.Prepare(_transaction.Current);
+            if (!plan.Diagnostics.IsEmpty)
+            {
+                StatusMessage = "BLOCKED_PREFLIGHT: " + plan.Diagnostics.Length +
+                    " 项问题；首项：" + plan.Diagnostics[0];
+                return;
+            }
+            StatusMessage = "本地测试用例结构与静态计划检查无错误；未完成项目级 Run、设备身份、授权和资源快照预检，" +
+                "尚不可在此按钮触发实体测试。未生成 PASS。";
+        }
+        catch (Exception error)
+        {
+            StatusMessage = "BLOCKED_PREFLIGHT: " + error.Message;
+        }
     }
 
     private async Task RunRealAsync()
@@ -624,6 +647,7 @@ public sealed class TestEditorViewModel : BindableBase
         RedoCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged();
         ReloadCommand?.RaiseCanExecuteChanged();
+        PreflightCommand?.RaiseCanExecuteChanged();
         AddMappingCommand?.RaiseCanExecuteChanged();
         RemoveMappingCommand?.RaiseCanExecuteChanged();
         RunCommand?.RaiseCanExecuteChanged();

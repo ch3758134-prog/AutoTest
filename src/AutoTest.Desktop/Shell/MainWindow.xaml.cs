@@ -13,6 +13,8 @@ public partial class MainWindow : Window
     private readonly MainWindowViewModel _viewModel;
     private bool _shutdownStarted;
     private bool _shutdownComplete;
+    private bool _bottomVisible = true;
+    private bool _inspectorVisible = true;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -90,6 +92,20 @@ public partial class MainWindow : Window
         e.Handled = true;
         if (sender is Button { Tag: EditorTabModel tab })
             _viewModel.CloseEditor(tab);
+    }
+
+    private void ToggleBottom_Click(object sender, RoutedEventArgs e)
+    {
+        _bottomVisible = !_bottomVisible;
+        BottomRow.Height = _bottomVisible ? new GridLength(180) : new GridLength(0);
+        BottomSplitterRow.Height = _bottomVisible ? new GridLength(5) : new GridLength(0);
+    }
+
+    private void ToggleInspector_Click(object sender, RoutedEventArgs e)
+    {
+        _inspectorVisible = !_inspectorVisible;
+        InspectorColumn.Width = _inspectorVisible ? new GridLength(320) : new GridLength(0);
+        InspectorSplitterColumn.Width = _inspectorVisible ? new GridLength(5) : new GridLength(0);
     }
 
     private void ResourceTree_RightClick(object sender, MouseButtonEventArgs e)
