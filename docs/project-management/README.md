@@ -2,7 +2,7 @@
 
 > **当前入口（2026-11-14）。** 新项目管理 AI、G3 研究/设计 AI、UI 专项和代码实施 AI 应先从这里核对最新产品事实，不要从旧 `SAEF/`、历史 G4/V1 目录或未经批准的 HTML 原型推导当前产品范围。
 
-> **2026-11-15 G3 详细设计交付候审：** [G3-R1-20261115 全量交付](new-baseline-20261112/G3-R1-20261115/README.md)（严格冻结 HTML→WPF、删除旧 UI、保留并补后端、A2/TEST-FLOW、DEVICE/SCAN/RECORD、Flash 独立 EXE、G4 工作包和 G3-L01～10）。**尚待负责人批准 G3 Gate 和 G4 首批任务。**冻结 HTML 见 [UI-AUTO-G3 快照](../ui/archive/auto-test-20261115-ec75a9fe/AutoTest_UI.html)；UI 专项继续研究其工作 HTML 而不改变快照。Flash F0 已在独立分支开始，独立 UDS 工具研究后置。现行产品决策和手动台架勘误仍为技术约束。
+> **2026-11-15 阶段最新状态：G3 已正式批准 PASS_WITH_LIMITATIONS**。审批记录：[G3-APPROVAL-20261115](new-baseline-20261112/G3-APPROVAL-20261115.md)；精确获批包 [G3-00～05](new-baseline-20261112/G3-R1-20261115/README.md)。**G4-UI-00～03 已获准由单一执行 AI 一次性完成**，执行指令 [G4-UI-ONE-SHOT](../delivery/g4/G4-UI-ONE-SHOT-EXECUTION-20261115.md)，专用分支 `feature/g4-html-parity-20261115`。允许自主编码并删除旧 UI，不能擅自合并 main 或操作未经许可的实体 ECU/Flash。其他 G4 功能与已知 G3-L01～10 限制继续受控。旧文件中“G3 候审/G4 未授权”均为审批前历史时点，不可覆盖本记录。
 
 ## 首先阅读
 
@@ -11,7 +11,7 @@
 1. [现行业务与产品职责决策（PM-BIZ-20261114-01）](new-baseline-20261112/PM-BUSINESS-DECISIONS-20261114.md) —— 用户已经直接澄清的产品事实、工具职责、工程师与生产运行区别、手动台架、CAN 工具范围和剩余冲突；
 2. [G1 已批准需求 v0.3](new-baseline-20261112/G1-REVIEW-v0.3.md) 和 [正式批准记录](new-baseline-20261112/G1-APPROVAL_RECORD.md) —— 保留已批准的历史版本；存在冲突时按上述业务决策追踪局部变更；
 3. [G2 系统架构 v0.1](new-baseline-20261112/G2-GATE-REVIEW-v0.1.md) 与 [G2 批准记录](new-baseline-20261112/G2-APPROVAL_RECORD.md) —— G2 `PASS_WITH_LIMITATIONS`；
-4. [G3 DEVICE/WAVE/TECH 专项设计批准记录](new-baseline-20261112/G3-TECH-APPROVAL-20261114.md) —— 仅这三份设计获批，**整个 G3 未准出、G4 未授权**。
+4. [G3 总体批准记录](new-baseline-20261112/G3-APPROVAL-20261115.md) —— G3 全包已准出，附 G3-L01～10；另 [G3 DEVICE/WAVE/TECH 专项原批准记录](new-baseline-20261112/G3-TECH-APPROVAL-20261114.md) 继续有效。
 
 - [G3-UX v3 实测反馈与领域/接口复核（2026-11-14）](new-baseline-20261112/G3-UX-V3-PM-REVIEW-20261114.md) —— 专项六类问题、对应实际 Controller/TCF/TBC/WAVE/UDS 合同；v3 未获 UI 设计批准，G3 技术研究继续推进。
 

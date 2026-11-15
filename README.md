@@ -1,5 +1,8 @@
 # AutoTest
 
+> **2026-11-15 最新研发阶段：** G3 已批准 `PASS_WITH_LIMITATIONS`，单一执行 AI 的 G4 自动测试 WPF 一次性实现任务已获授权；详见 [G3 批准记录](docs/project-management/new-baseline-20261112/G3-APPROVAL-20261115.md) 与 [执行指令](docs/delivery/g4/G4-UI-ONE-SHOT-EXECUTION-20261115.md)。`main` 暂不含新 WPF 源码，候选分支 `feature/g4-html-parity-20261115`；用户 Windows 实测前不合并。
+
+
 离线 Windows ECU 集成测试与开发上位机，采用 .NET 10、WPF、Prism。当前仓库以 **真实设备能力、工程数据模型、测试文档模型、诊断与记录领域层** 为研发基础。
 
 **开始研发或 UI 设计前先阅读：** [现行业务与产品职责决策](docs/project-management/new-baseline-20261112/PM-BUSINESS-DECISIONS-20261114.md)（手动台架功能按键、取消独立 CAN 工作台、扫码生产自动运行等）和 [项目管理入口](docs/project-management/README.md)。
