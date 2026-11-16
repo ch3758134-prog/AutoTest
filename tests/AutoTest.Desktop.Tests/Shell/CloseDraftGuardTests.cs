@@ -85,6 +85,28 @@ public sealed class CloseDraftGuardTests
     }
 
     [Fact]
+    public async Task SaveCallbackThatClaimsSuccessButLeavesDirtyData_BlocksExit()
+    {
+        var message = "";
+        var document = Document("步骤属性", () => false, () => true,
+            () => Task.FromResult(true));
+        Assert.False(await CloseDraftGuard.PrepareAsync([document],
+            _ => CloseDraftDecision.Save, value => message = value));
+        Assert.Contains("步骤属性", message);
+    }
+
+    [Fact]
+    public async Task SaveExceptionNeverTurnsIntoSilentDiscard()
+    {
+        var message = "";
+        var document = Document("DBC", () => false, () => true,
+            () => throw new InvalidOperationException("磁盘写入异常"));
+        Assert.False(await CloseDraftGuard.PrepareAsync([document],
+            _ => CloseDraftDecision.Save, value => message = value));
+        Assert.Contains("磁盘写入异常", message);
+    }
+
+    [Fact]
     public async Task CleanEditorsCloseWithoutPrompt()
     {
         Assert.True(await CloseDraftGuard.PrepareAsync([

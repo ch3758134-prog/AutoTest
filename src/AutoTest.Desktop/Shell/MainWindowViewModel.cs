@@ -42,15 +42,15 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
 
     public CloseDraftDocument CloseDraft => View switch
     {
-        TestEditorView view when Editor is TestEditorViewModel model =>
-            new(Title, () => model.IsBusy, () => model.IsDirty || view.HasPendingInspectorDraft,
+        TestEditorView view when Editor is TestEditorViewModel testVm =>
+            new(Title, () => testVm.IsBusy, () => testVm.IsDirty || view.HasPendingInspectorDraft,
                 view.SaveForCloseAsync),
-        TestProjectWorkbenchView when Editor is TestProjectWorkbenchViewModel model =>
-            new(Title, () => model.IsBusy, () => model.IsDirty, model.SaveForCloseAsync),
-        DbcWorkbenchView when Editor is DbcWorkbenchViewModel model =>
-            new(Title, () => model.IsBusy, () => model.IsDirty, model.SaveForCloseAsync),
-        ConfigurationWorkbenchView when Editor is ConfigurationWorkbenchViewModel model =>
-            new(Title, () => model.IsBusy, () => model.IsDirty, model.SaveForCloseAsync),
+        TestProjectWorkbenchView when Editor is TestProjectWorkbenchViewModel projectVm =>
+            new(Title, () => projectVm.IsBusy, () => projectVm.IsDirty, projectVm.SaveForCloseAsync),
+        DbcWorkbenchView when Editor is DbcWorkbenchViewModel dbcVm =>
+            new(Title, () => dbcVm.IsBusy, () => dbcVm.IsDirty, dbcVm.SaveForCloseAsync),
+        ConfigurationWorkbenchView when Editor is ConfigurationWorkbenchViewModel configVm =>
+            new(Title, () => configVm.IsBusy, () => configVm.IsDirty, configVm.SaveForCloseAsync),
         ProjectConfigurationOverviewView view =>
             new(Title, () => view.IsBusy, () => view.HasUnsavedDrafts, view.SaveForCloseAsync),
         _ => new(Title, () => false, () => false, () => Task.FromResult(true))
