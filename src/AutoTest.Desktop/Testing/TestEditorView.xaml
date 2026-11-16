@@ -4,14 +4,15 @@
  FontFamily="{StaticResource UiFont}" FontSize="12" Background="White" Foreground="#1E2C41"
  PreviewKeyDown="Editor_KeyDown">
  <Grid>
-  <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="29"/>
+  <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="45"/>
    <RowDefinition Height="*"/><RowDefinition Height="24"/></Grid.RowDefinitions>
   <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
    <DockPanel Margin="15,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBox x:Name="StepSearch" Width="146" Height="26" VerticalContentAlignment="Center"
       Text="{Binding StepFind,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-      ToolTip="查找步骤 Ctrl+F" Margin="0,0,6,0"/>
+      ToolTip="查找并高亮步骤；Enter 下一条，Shift+Enter 上一条"
+      KeyDown="StepSearch_KeyDown" Margin="0,0,6,0"/>
      <Button Content="＋ 添加步骤" Command="{Binding AddStepCommand}"
       Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"
       ToolTip="选中阶段/分支：追加；选中步骤：插入其下方"/>
@@ -95,18 +96,36 @@
      <Setter Property="BorderThickness" Value="0"/>
      <Setter Property="Background" Value="White"/>
      <Style.Triggers>
-      <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#F5F9FE"/></Trigger>
-      <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#E8F2FF"/></Trigger>
+      <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#F4F8FD"/></Trigger>
+      <DataTrigger Binding="{Binding IsSearchMatch}" Value="True">
+       <Setter Property="Background" Value="#FFF5DE"/>
+      </DataTrigger>
+      <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#E3F1FF"/></Trigger>
      </Style.Triggers>
     </Style>
    </ListBox.ItemContainerStyle>
    <ListBox.ItemTemplate>
     <DataTemplate>
      <Grid MinWidth="580">
-      <!-- Approved HTML uses distinct 29px phase, 25px branch, and 35px step rows. -->
-      <Border x:Name="PhaseRow" Background="#F3F6FA" BorderBrush="#DBE3ED"
-       BorderThickness="0,1,0,1" Height="29"
+      <!-- HTML final override: color-coded phases and compact 35-DIP steps. -->
+      <Border x:Name="PhaseRow" BorderThickness="4,1,0,1" Height="34"
        Visibility="{Binding IsPhase,Converter={StaticResource BoolToVisibility}}">
+       <Border.Style>
+        <Style TargetType="{x:Type Border}">
+         <Setter Property="Background" Value="#EDF5FC"/>
+         <Setter Property="BorderBrush" Value="#397FBB"/>
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding PhaseKind}" Value="Test">
+           <Setter Property="Background" Value="#EDF7F4"/>
+           <Setter Property="BorderBrush" Value="#238A7A"/>
+          </DataTrigger>
+          <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup">
+           <Setter Property="Background" Value="#FFF6E9"/>
+           <Setter Property="BorderBrush" Value="#CA8B2E"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style>
+       </Border.Style>
        <DockPanel Margin="10,0">
         <Button DockPanel.Dock="Right" Content="＋ 添加" Tag="{Binding}" Click="AddAtRow_Click"
          Focusable="False" Height="23" MinHeight="0" Padding="6,0"
@@ -118,8 +137,16 @@
          <Button Content="{Binding ExpandMark}" Click="StepExpand_Click" Tag="{Binding}"
           Width="19" Height="23" MinWidth="0" MinHeight="0" Padding="0"
           Style="{StaticResource AtQuietButton}" Foreground="#4C6687" FontWeight="Bold"/>
-         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11"
-          Foreground="#285F9D" VerticalAlignment="Center" Margin="5,0,0,0"/>
+         <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12"
+          VerticalAlignment="Center" Margin="5,0,0,0">
+          <TextBlock.Style><Style TargetType="{x:Type TextBlock}">
+           <Setter Property="Foreground" Value="#27649A"/>
+           <Style.Triggers>
+            <DataTrigger Binding="{Binding PhaseKind}" Value="Test"><Setter Property="Foreground" Value="#177669"/></DataTrigger>
+            <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup"><Setter Property="Foreground" Value="#9A671F"/></DataTrigger>
+           </Style.Triggers>
+          </Style></TextBlock.Style>
+         </TextBlock>
         </StackPanel>
        </DockPanel>
       </Border>
@@ -140,6 +167,22 @@
        BorderThickness="0,0,0,1" Height="35"
        Visibility="{Binding IsStep,Converter={StaticResource BoolToVisibility}}">
        <Grid>
+        <Border Width="3" HorizontalAlignment="Left" Panel.ZIndex="2">
+         <Border.Style><Style TargetType="{x:Type Border}">
+          <Setter Property="Visibility" Value="Collapsed"/>
+          <Setter Property="Background" Value="#2477CD"/>
+          <Style.Triggers>
+           <DataTrigger Binding="{Binding IsSearchMatch}" Value="True">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Setter Property="Background" Value="#D89826"/>
+           </DataTrigger>
+           <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem},Path=IsSelected}" Value="True">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Setter Property="Background" Value="#2477CD"/>
+           </DataTrigger>
+          </Style.Triggers>
+         </Style></Border.Style>
+        </Border>
         <Grid.ColumnDefinitions><ColumnDefinition Width="36"/>
          <ColumnDefinition Width="29*" MinWidth="185"/>
          <ColumnDefinition Width="71*" MinWidth="220"/>
@@ -157,10 +200,35 @@
           Height="23" Width="18" MinWidth="0" MinHeight="0" Padding="0"
           Style="{StaticResource AtQuietButton}" Foreground="#64758C"
           Focusable="False" ToolTip="展开／收起子步骤"/>
-         <Border Grid.Column="1" Width="19" Height="19" CornerRadius="4"
-          Background="#EAF2FC" VerticalAlignment="Center" Margin="1,0">
-          <TextBlock Text="{Binding Icon}" FontSize="10" Foreground="#3F76B8"
-           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+         <Border Grid.Column="1" Width="21" Height="21" CornerRadius="4"
+          VerticalAlignment="Center" Margin="1,0">
+          <Border.Style>
+           <Style TargetType="{x:Type Border}">
+            <Setter Property="Background" Value="#E9EEF5"/>
+            <Style.Triggers>
+             <DataTrigger Binding="{Binding Category}" Value="Can"><Setter Property="Background" Value="#E5F1FF"/></DataTrigger>
+             <DataTrigger Binding="{Binding Category}" Value="Hardware"><Setter Property="Background" Value="#FFF0DA"/></DataTrigger>
+             <DataTrigger Binding="{Binding Category}" Value="Uds"><Setter Property="Background" Value="#EEE7FA"/></DataTrigger>
+             <DataTrigger Binding="{Binding Category}" Value="Flow"><Setter Property="Background" Value="#EEE7FA"/></DataTrigger>
+             <DataTrigger Binding="{Binding Category}" Value="Wave"><Setter Property="Background" Value="#DFF5F0"/></DataTrigger>
+            </Style.Triggers>
+           </Style>
+          </Border.Style>
+          <TextBlock Text="{Binding Icon}" FontSize="12"
+           VerticalAlignment="Center" HorizontalAlignment="Center">
+           <TextBlock.Style>
+            <Style TargetType="{x:Type TextBlock}">
+             <Setter Property="Foreground" Value="#66788E"/>
+             <Style.Triggers>
+              <DataTrigger Binding="{Binding Category}" Value="Can"><Setter Property="Foreground" Value="#2368BD"/></DataTrigger>
+              <DataTrigger Binding="{Binding Category}" Value="Hardware"><Setter Property="Foreground" Value="#A26319"/></DataTrigger>
+              <DataTrigger Binding="{Binding Category}" Value="Uds"><Setter Property="Foreground" Value="#7050A6"/></DataTrigger>
+              <DataTrigger Binding="{Binding Category}" Value="Flow"><Setter Property="Foreground" Value="#7050A6"/></DataTrigger>
+              <DataTrigger Binding="{Binding Category}" Value="Wave"><Setter Property="Foreground" Value="#147E72"/></DataTrigger>
+             </Style.Triggers>
+            </Style>
+           </TextBlock.Style>
+          </TextBlock>
          </Border>
          <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="SemiBold"
           TextTrimming="CharacterEllipsis" FontSize="12" Foreground="#1E2C41"
@@ -183,8 +251,18 @@
          Foreground="#7A8DA4" VerticalAlignment="Center" FontSize="10" Margin="7,0"
          ToolTip="{Binding Resource}"/>
         <TextBlock Grid.Column="4" Text="{Binding State}" TextTrimming="CharacterEllipsis"
-         Foreground="#748399" VerticalAlignment="Center" FontSize="11" Margin="6,0"
-         ToolTip="{Binding State}"/>
+         VerticalAlignment="Center" FontSize="11" Margin="6,0" ToolTip="{Binding State}">
+         <TextBlock.Style><Style TargetType="{x:Type TextBlock}">
+          <Setter Property="Foreground" Value="#748399"/>
+          <Style.Triggers>
+           <DataTrigger Binding="{Binding IsNewDraft}" Value="True">
+            <Setter Property="Foreground" Value="#A96D20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+           </DataTrigger>
+           <DataTrigger Binding="{Binding IsUnavailable}" Value="True"><Setter Property="Foreground" Value="#B05D47"/></DataTrigger>
+          </Style.Triggers>
+         </Style></TextBlock.Style>
+        </TextBlock>
        </Grid>
       </Border>
      </Grid>
