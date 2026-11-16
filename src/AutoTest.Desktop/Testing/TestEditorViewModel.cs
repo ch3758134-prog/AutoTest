@@ -107,10 +107,17 @@ public sealed class TestEditorViewModel : BindableBase
                 return;
             }
             if (!_syncingRowSelection && value is not null)
-                value = StepRows.FirstOrDefault(row =>
-                    row.Item.Step?.Id == value.Item.Step?.Id &&
-                    row.Item.Kind == value.Item.Kind &&
-                    row.Item.Phase == value.Item.Phase) ?? value;
+            {
+                var wanted = value.Item;
+                value = StepRows.FirstOrDefault(row => ReferenceEquals(row.Item, wanted) ||
+                    (wanted.Kind == StepTreeItemKind.Step && row.Item.Step?.Id == wanted.Step?.Id) ||
+                    (wanted.Kind == StepTreeItemKind.Phase &&
+                        row.Item.Kind == StepTreeItemKind.Phase && row.Item.Phase == wanted.Phase) ||
+                    (wanted.Kind == StepTreeItemKind.Slot &&
+                        row.Item.Kind == StepTreeItemKind.Slot &&
+                        row.Item.Parent?.Step?.Id == wanted.Parent?.Step?.Id &&
+                        row.Item.SlotName == wanted.SlotName)) ?? value;
+            }
             if (!SetProperty(ref _selectedRow, value) || _syncingRowSelection) return;
             SelectItem(value?.Item);
         }
