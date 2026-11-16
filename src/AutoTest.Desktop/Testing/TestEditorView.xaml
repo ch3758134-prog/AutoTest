@@ -165,13 +165,21 @@
       <Border x:Name="SlotRow" Background="#FAFBFF" BorderBrush="#EDF1F6"
        BorderThickness="0,0,0,1" Height="25"
        Visibility="{Binding IsSlot,Converter={StaticResource BoolToVisibility}}">
-       <StackPanel Orientation="Horizontal" Margin="{Binding Indent}" VerticalAlignment="Center">
-        <Button Content="{Binding ExpandMark}" Click="StepExpand_Click"
-         Width="18" Height="22" MinWidth="0" MinHeight="0" Padding="0"
-         Style="{StaticResource AtQuietButton}" Foreground="#7550AB"/>
-        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="10"
-         Foreground="#7550AB" VerticalAlignment="Center" Margin="5,0,0,0"/>
-       </StackPanel>
+       <DockPanel LastChildFill="True" Margin="8,0,7,0">
+        <Button DockPanel.Dock="Right" Content="＋ 插入" Tag="{Binding}"
+         Click="AddAtRow_Click" Focusable="False" Height="22" MinHeight="0"
+         Padding="6,0" FontSize="10" Foreground="#7550AB"
+         Style="{StaticResource AtQuietButton}"
+         ToolTip="直接向此 THEN／ELSE／CASE／循环子分支末尾添加步骤"/>
+        <StackPanel Orientation="Horizontal" Margin="{Binding Indent}"
+         VerticalAlignment="Center">
+         <Button Content="{Binding ExpandMark}" Click="StepExpand_Click"
+          Width="18" Height="22" MinWidth="0" MinHeight="0" Padding="0"
+          Style="{StaticResource AtQuietButton}" Foreground="#7550AB"/>
+         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11"
+          Foreground="#7550AB" VerticalAlignment="Center" Margin="5,0,0,0"/>
+        </StackPanel>
+       </DockPanel>
       </Border>
 
       <Border x:Name="StepRow" Background="Transparent" BorderBrush="#E7EDF5"

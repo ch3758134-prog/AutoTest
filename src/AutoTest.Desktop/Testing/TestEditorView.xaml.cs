@@ -300,10 +300,11 @@ public partial class TestEditorView : UserControl
     private void AddAtRow_Click(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
-        if (sender is not Button { Tag: StepRowProjection row } || !row.IsPhase) return;
+        if (sender is not Button { Tag: StepRowProjection row } ||
+            !(row.IsPhase || row.IsSlot)) return;
+        var expected = StepSelectionKey.Of(row.Item);
         _viewModel.SelectItem(row.Item);
-        if (_viewModel.SelectedItem?.Phase != row.Item.Phase ||
-            _viewModel.SelectedItem?.Kind != row.Item.Kind) return;
+        if (StepSelectionKey.Of(_viewModel.SelectedItem) != expected) return;
         if (_viewModel.AddChildCommand.CanExecute())
             _viewModel.AddChildCommand.Execute();
     }
@@ -461,9 +462,8 @@ public partial class TestEditorView : UserControl
         if (container.DataContext is not StepRowProjection clicked) return;
         // If the previous Inspector contains invalid inputs, the selection is
         // deliberately rejected. The context menu must never edit a stale row.
-        if (_viewModel.SelectedItem?.Step?.Id != clicked.Item.Step?.Id ||
-            _viewModel.SelectedItem?.Kind != clicked.Item.Kind ||
-            _viewModel.SelectedItem?.Phase != clicked.Item.Phase) return;
+        if (StepSelectionKey.Of(_viewModel.SelectedItem) !=
+            StepSelectionKey.Of(clicked.Item)) return;
         var menu = new ContextMenu();
         void Item(string title, ICommand command)
         {
