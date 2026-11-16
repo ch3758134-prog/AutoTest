@@ -27,10 +27,11 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
     private CanTransmitGate? _gate;
     private HardwareCanReceiveBridge? _bridge;
     private HardwareTraceRecorder? _recorder;
+    private string? _lastEvidencePath;
     private bool _disposed;
 
     public bool IsConnected => _usb?.State==UsbSessionState.Connected;
-    public string? EvidencePath => _recorder?.FilePath;
+    public string? EvidencePath => _recorder?.FilePath ?? _lastEvidencePath;
     public event Action<string>? Message;
     private void Emit(string text)
     {
@@ -55,6 +56,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             string file=Path.Combine(folder,$"FlashLab_{DateTime.Now:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid():N}.jsonl");
             var recorder=new HardwareTraceRecorder(file);
             _recorder=recorder;
+            _lastEvidencePath=recorder.FilePath;
             var link=new WinUsbByteLink(candidate.DeviceInstanceId);
             _link=link;
             link.OperationRecorded += e=>
@@ -124,8 +126,15 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             Emit($"现场授权：CAN1 TX=0x{requestId:X} RX=0x{responseId:X} DID=0x{did:X4}，限一次读取。");
             try
             {
+                int listenersBefore=_hub.SubscriberCount;
                 await using var uds=await new UdsSessionService(_gate,_hub)
                     .StartSessionAsync(endpoint,"FlashLab-0x22-DID",ct).ConfigureAwait(false);
+                // UDS link starts its RX pump asynchronously. Do not transmit before
+                // the real CAN1 subscription exists or fast ECU frames can be lost.
+                for(int attempts=0;attempts<100 && _hub.SubscriberCount<=listenersBefore;attempts++)
+                    await Task.Delay(10,ct).ConfigureAwait(false);
+                if(_hub.SubscriberCount<=listenersBefore)
+                    throw new IOException("CAN1 UDS 接收订阅未就绪；未发送 DID。");
                 byte[] pdu=[0x22,(byte)(did>>8),(byte)did];
                 var result=await uds.RequestAsync(pdu,ct).ConfigureAwait(false);
                 foreach(var trace in uds.Client.Trace.Snapshot())
