@@ -158,12 +158,20 @@ public partial class FlashLabWindow : Window
             _vm.Candidates.Clear();
             foreach(var item in candidates) _vm.Candidates.Add(item);
             _vm.SelectedDevice=candidates.Count==1?candidates[0]:null;
-            _vm.Status=candidates.Count==0?"未发现符合主控 VID/PID/接口 GUID 的 WinUSB 设备。"
+            _vm.Status=candidates.Count==0?"未发现专用 WinUSB 接口，正在检查 Windows PnP…"
                 : candidates.Count==1?"识别到一台主控，等待手动连接。":
                     $"找到 {candidates.Count} 台主控，请明确选择设备。";
-            UsbStatusLabel.Text=candidates.Count==0
-                ?"未找到主控（VID 1183 / PID 5850）；检查 USB、主控供电及 WinUSB 驱动"
-                :_vm.Status;
+            if(candidates.Count==0)
+            {
+                // Old src relied on libusb VID/PID, new WinUSB requires GUID.
+                // This diagnostics-only lookup never opens or changes a device.
+                var report=await Task.Run(ControllerUsbDetectionService.Probe);
+                if(_closingInProgress || _closingApproved)return;
+                _vm.Status=report.Summary;
+                UsbStatusLabel.Text=report.Summary;
+                AddLog("USB 枚举诊断："+report.Detail);
+            }
+            else UsbStatusLabel.Text=_vm.Status;
             AddLog($"{DateTimeOffset.Now:HH:mm:ss.fff}  USB 枚举：{_vm.Status}");
         }
         catch(Exception ex) { Error("刷新 WinUSB 主控",ex); }
