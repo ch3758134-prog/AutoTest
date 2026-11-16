@@ -226,7 +226,9 @@
        <Button Content="工程配置" Style="{StaticResource WorkspaceConfigButton}"
         Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
       </StackPanel>
-      <TabControl ItemsSource="{Binding OpenEditors}" SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
+      <TabControl x:Name="DocumentTabs" ItemsSource="{Binding OpenEditors}"
+       SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
+       SelectionChanged="DocumentTabs_SelectionChanged"
        Background="Transparent" BorderThickness="0" Margin="0" Padding="0"
        ItemContainerStyle="{StaticResource DocumentTabItem}">
        <TabControl.Template>

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace AutoTest.Desktop.Shell;
 
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
     private bool _closeAttemptPending;
     private bool _bottomVisible = true;
     private bool _inspectorVisible = true;
+    private bool _restoringDocumentTab;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -101,6 +103,21 @@ public partial class MainWindow : Window
         e.Handled = true;
         ScannerEntry.Clear();
         await _viewModel.FinishScannerInputAsync();
+    }
+
+    private void DocumentTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_restoringDocumentTab || !ReferenceEquals(e.OriginalSource, DocumentTabs)) return;
+        // Binding can optimistically change the selected TabItem even when
+        // the edit session rejects navigation due to invalid pending input.
+        // Restore the visual selection after WPF has completed its binding pass.
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (ReferenceEquals(DocumentTabs.SelectedItem, _viewModel.ActiveEditorTab)) return;
+            _restoringDocumentTab = true;
+            try { DocumentTabs.SelectedItem = _viewModel.ActiveEditorTab; }
+            finally { _restoringDocumentTab = false; }
+        }), DispatcherPriority.Background);
     }
 
     private async void CloseEditorTab_Click(object sender, RoutedEventArgs e)
