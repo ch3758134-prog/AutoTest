@@ -127,7 +127,8 @@ public static class CanToolSecurityProvider
         public byte[] Calculate(byte[] seed)
         {
             if(_method is null)throw new ObjectDisposedException(nameof(ManagedSafetyFileProvider));
-            if(seed.Length is < 1 or > 128)throw new FormatException("ECU Seed 长度无效。");
+            // The supplied SafetyFile.dll IL reads seed[0] through seed[3].
+            if(seed.Length is < 4 or > 128)throw new FormatException("SafetyFile Seed 必须至少4字节。");
             // No logging of seed, key or intermediate values; no fallback provider.
             try
             {
