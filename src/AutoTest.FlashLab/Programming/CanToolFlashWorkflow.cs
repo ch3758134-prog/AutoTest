@@ -52,10 +52,10 @@ public sealed class CanToolFlashWorkflow(
         catch { await link.DisposeAsync().ConfigureAwait(false);throw; }
     }
 
-    private async Task<byte[]> RequestAsync(EndpointSession session,ReadOnlyMemory<byte> request,
+    private async Task<byte[]> RequestAsync(EndpointSession session,byte[] request,
         string step,TimeSpan timeout,CancellationToken ct)
     {
-        byte sid=request.Span[0];
+        byte sid=request[0];
         if(sid is not (0x10 or 0x11 or 0x27 or 0x31 or 0x34 or 0x36 or 0x37))
             throw new UnauthorizedAccessException($"F2 不允许其它 SID 0x{sid:X2}。");
         log($"UDS {step} 请求 SID=0x{sid:X2}，长度={request.Length}B");
@@ -154,17 +154,20 @@ public sealed class CanToolFlashWorkflow(
                 byte[] key;
                 try { key=keyProvider.Calculate(seed); }
                 finally { CryptographicOperations.ZeroMemory(seed); }
+                byte[] answer=new byte[2+key.Length];
                 try
                 {
-                    byte[] answer=new byte[2+key.Length];
                     answer[0]=0x27;answer[1]=0x02;key.CopyTo(answer,2);
                     var granted=await RequestAsync(boot,answer,"Key 27 02",p2,ct)
                         .ConfigureAwait(false);
-                    CryptographicOperations.ZeroMemory(answer);
                     if(granted.Length<2 || granted[1]!=0x02)
                         throw new InvalidDataException("27 02 未得到 67 02 解锁应答。");
                 }
-                finally { CryptographicOperations.ZeroMemory(key); }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(answer);
+                    CryptographicOperations.ZeroMemory(key);
+                }
             }
             finally { sensitive(false); }
             log("S3 ECU 返回 67 02；不代表烧录完成。");

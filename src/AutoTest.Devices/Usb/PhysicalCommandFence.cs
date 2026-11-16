@@ -129,8 +129,8 @@ public sealed class PhysicalCommandFence
             throw new UnauthorizedAccessException("Exact DID/ID/CAN1 physical consent is required.");
         lock (_sync)
         {
-            if (_didGrant is not null)
-                throw new InvalidOperationException("A DID read already has a physical grant.");
+            if (_didGrant is not null || _programming is not null)
+                throw new InvalidOperationException("A DID read or flash job already has a physical grant.");
             _didGrant = new DidGrant { TxId=txId, RxId=rxId, Did=did,
                 Generation=generation, Expires=DateTimeOffset.UtcNow.AddSeconds(30) };
         }
@@ -221,8 +221,8 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("Invalid allowed CAN frame.");
         lock (_sync)
         {
-            if (_runFingerprint is not null)
-                throw new InvalidOperationException("Another physical run already authorized.");
+            if (_runFingerprint is not null || _programming is not null)
+                throw new InvalidOperationException("Another physical run or flash job already authorized.");
             _runCan = entries;
             _runIgn = allowIgn;
             _remainingWrites = maxWrites;
