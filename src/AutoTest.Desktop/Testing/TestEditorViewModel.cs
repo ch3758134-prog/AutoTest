@@ -761,6 +761,14 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void RefreshTree(StepId? preferred)
     {
+        // Any changed TEST revision makes previous-run StepId evidence stale.
+        // Clear it before rebuilding; never display old PASS/error facts against
+        // a newly edited document. Historical evidence remains in its own audit.
+        if (RunFacts.Count > 0)
+        {
+            RunFacts.Clear();
+            RunSummary = "测试程序已更改；此前执行事实不再对应当前编辑版本。";
+        }
         // StepEditTransaction replaces immutable nodes; the UI keeps a stable
         // StepId/Phase/Slot selection while refreshing only its projections.
         var previousKey = _interaction.Selection;
