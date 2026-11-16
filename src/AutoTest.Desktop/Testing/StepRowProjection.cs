@@ -63,7 +63,8 @@ public sealed class StepRowProjection
     public bool IsUnavailable => State == "执行未接线" || State == "未知类型";
     public bool HasRealExecutionError { get; }
     public string StateDetail { get; }
-    public bool IsQuickEditable => !IsNewDraft && Item.Step?.Type is "Wait" or "Loop";
+    public bool IsQuickEditable =>
+        !IsNewDraft && Item.Step?.Type is ("Wait" or "Loop");
     public bool IsNotQuickEditable => !IsQuickEditable;
     public string OriginalQuickValue => Item.Step?.Type switch
     {
@@ -101,10 +102,11 @@ public sealed class StepRowProjection
         HasRealExecutionError = realFact?.Status is
             RealStepStatus.Timeout or RealStepStatus.InvalidData or RealStepStatus.DeviceError;
         StateDetail = realFact?.Detail ?? "";
-        IsSearchMatch = !string.IsNullOrWhiteSpace(search) &&
-            (Name + " " + Kind + " " + item.Step?.Properties.GetValueOrDefault("target", "") +
-             " " + string.Join(" ", item.Step is { } currentStep
-                 ? currentStep.Properties.Values : Enumerable.Empty<string>()))
+        // Match the same fields as TestEditorViewModel.MatchesSearch so the
+        // count, Enter navigation and yellow row highlight cannot disagree.
+        IsSearchMatch = !string.IsNullOrWhiteSpace(search) && step is not null &&
+            (step.Name + " " + StepUiCatalog.Label(step.Type) + " " +
+             string.Join(" ", step.Properties.Select(x => x.Key + " " + x.Value)))
                 .Contains(search.Trim(), StringComparison.CurrentCultureIgnoreCase);
         if (step is null)
         {
