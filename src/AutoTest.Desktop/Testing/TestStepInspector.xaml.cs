@@ -132,6 +132,7 @@ public partial class TestStepInspector : UserControl
     public TestActionOption? SelectedAction { get; set; }
     public StepCompositionResult? Result { get; private set; }
     public Func<StepCompositionResult, bool>? ApplyRequested { get; set; }
+    public Action<string>? StepActionRequested { get; set; }
     public event Action? Cancelled;
     /// <summary>
     /// Raised only after the canonical TEST transaction was accepted and the
@@ -176,6 +177,7 @@ public partial class TestStepInspector : UserControl
         BuildRawKeyGrid();
         _ready = true;
         Heading.Text = editing is null ? "新步骤 · 属性配置" : "步骤属性 · 直接编辑";
+        StepActionsPanel.Visibility = editing is null ? Visibility.Collapsed : Visibility.Visible;
         ActionSelectorPanel.Visibility = editing is null ? Visibility.Visible : Visibility.Collapsed;
         ConfirmButton.Content = editing is null ? "插入步骤" : "应用属性";
         ActionSearch.IsEnabled = editing is null;
@@ -502,6 +504,13 @@ public partial class TestStepInspector : UserControl
     }
 
     private void ClearRawKeys_Click(object sender, RoutedEventArgs e) => SetRawKeyMask(0);
+
+    private void StepAction_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is Button { Tag: string action })
+            StepActionRequested?.Invoke(action);
+    }
 
     private void Confirm_Click(object sender, RoutedEventArgs e) => TryApplyChanges();
 

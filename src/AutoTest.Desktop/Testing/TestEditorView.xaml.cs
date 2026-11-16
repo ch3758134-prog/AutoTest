@@ -90,6 +90,24 @@ public partial class TestEditorView : UserControl
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
             context.Original, context.InitialActionKey, context.CaseOnly);
         editor.ApplyRequested = _viewModel.ApplyInspector;
+        editor.StepActionRequested = action =>
+        {
+            if (action == "breakpoint")
+            {
+                _viewModel.ToggleBreakpoint();
+                return;
+            }
+            System.Windows.Input.ICommand? command = action switch
+            {
+                "after" => _viewModel.AddAfterCommand,
+                "duplicate" => _viewModel.DuplicateCommand,
+                "up" => _viewModel.MoveUpCommand,
+                "down" => _viewModel.MoveDownCommand,
+                "delete" => _viewModel.DeleteCommand,
+                _ => null
+            };
+            if (command?.CanExecute(null) == true) command.Execute(null);
+        };
         editor.Cancelled += _viewModel.CancelInspectorEdit;
         editor.AppliedSuccessfully += () =>
         {
