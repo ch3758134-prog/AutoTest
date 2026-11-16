@@ -383,6 +383,7 @@ public partial class FlashLabWindow : Window
         _seedKeyFilePath=ResolveAndInspect("SeedToKeyDll_Path",
             CanToolSecurityKind.NativeZlgKey,SeedKeyDllStatusLabel);
         UpdateSecuritySelection();
+        UpdateButtons();
     }
     private void UpdateSecuritySelection()
     {
@@ -517,6 +518,11 @@ public partial class FlashLabWindow : Window
                     if(Dispatcher.CheckAccess())Refresh();
                     else _=Dispatcher.BeginInvoke(new Action(Refresh));
                 },_flashStop.Token);
+            if(outcome.TransferAcknowledged!=frozen.PlannedBytes ||
+               outcome.VerifiedBytes!=frozen.PlannedBytes ||
+               !outcome.ResetAcknowledged || !outcome.AppSessionObserved)
+                throw new InvalidDataException(
+                    "ECU 烧录流程返回但缺少完整传输、校验、复位或 APP 应答证据；不能判定成功。");
             FlashStageLabel.Text=
                 $"参考流程执行结果：{outcome.Outcome}\n"+
                 $"ACK={outcome.TransferAcknowledged:N0}B, 校验={outcome.VerifiedBytes:N0}B, "+
