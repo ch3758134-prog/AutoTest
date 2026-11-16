@@ -5,6 +5,7 @@ using AutoTest.Devices.Can;
 using AutoTest.Devices.Diagnostics;
 using AutoTest.Devices.Usb;
 using AutoTest.Specialists.Uds;
+using AutoTest.FlashLab.Programming;
 
 namespace AutoTest.FlashLab.Hardware;
 
@@ -30,6 +31,8 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
     private HardwareTraceRecorder? _recorder;
     private string? _lastEvidencePath;
     private bool _disposed;
+    private Guid _activeFlashPermit;
+    private int _sensitiveTrace;
 
     public bool IsConnected => _usb?.State==UsbSessionState.Connected;
     public string? EvidencePath => _recorder?.FilePath ?? _lastEvidencePath;
@@ -70,7 +73,10 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             _usb=usb;
             usb.TraceRecorded += e =>
             {
-                recorder.Record(e);
+                // SecurityAccess seed/key must never be persisted in raw USB traces.
+                recorder.Record(Volatile.Read(ref _sensitiveTrace)!=0
+                    ? e with { RawHex="[REDACTED_SECURITYACCESS]", Detail="SecurityAccess bytes redacted" }
+                    : e);
                 if(e.Kind is "REQUEST_TIMEOUT" or "REQUEST_ERROR" or "CONNECT_ERROR" or "READ_FAULT")
                     Emit($"USB {e.Kind} {e.Detail}");
             };
@@ -84,14 +90,31 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             var gate=new CanTransmitGate(usb.Generation);
             _gate=gate;
             var transmitter=new Can1ReadOnlyDiagnosticTransmitter(usb,gate);
-            var hub=new CanFrameHub(transmitter.TransmitAsync);
+            var hub=new CanFrameHub(async (tx,lease,token) =>
+            {
+                // F2 uses EXACT one-frame permits, never the broad TEST RUN whitelist.
+                Guid flashPermit=_activeFlashPermit;
+                if(flashPermit!=Guid.Empty)
+                {
+                    if(!gate.Validate(BusRole.DutCan,lease) ||
+                        lease.SessionGeneration!=usb.Generation)
+                        return OperationResult<CanTxReceipt>.Rejected("F2_LEASE_INVALID",
+                            "Current-generation CAN1 programming lease required.");
+                    var framePayload=CanFrameCodec.ToUsbPayload(tx.Frame,
+                        new BusRoleMap(default,DutPort:1,KeypadPort:0));
+                    link.PrepareExactFlashFrame(flashPermit,framePayload);
+                }
+                return await transmitter.TransmitAsync(tx,lease,token).ConfigureAwait(false);
+            });
             _hub=hub;
             var bridge=new HardwareCanReceiveBridge(usb,hub);
             _bridge=bridge;
             bridge.Trace += evt=>
             {
-                recorder.Record(evt);
-                if(evt.PhysicalPort==1 && evt.Valid)
+                recorder.Record(Volatile.Read(ref _sensitiveTrace)!=0
+                    ? evt with { RawUsbPayloadHex="[REDACTED_SECURITYACCESS]" }
+                    : evt);
+                if(evt.PhysicalPort==1 && evt.Valid && Volatile.Read(ref _sensitiveTrace)==0)
                     Emit($"CAN1 RX 原始帧 {evt.RawUsbPayloadHex} [HostArrival]");
                 else if(!evt.Valid) Emit("CAN RX 数据异常：" +evt.Detail);
             };
@@ -167,6 +190,82 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
         finally { _operation.Release(); }
     }
 
+
+    /// <summary>One explicitly consented, immutable CanTool programming job on
+    /// physical CAN1. Not invoked by importing XML or choosing a HEX file.</summary>
+    public async Task<FlashExecutionResult> ProgramCanToolAsync(CanToolFlashJob job,
+        string typedConsent,bool stationBitrateVerified,
+        Action<long,long> progress,CancellationToken ct)
+    {
+        await _operation.WaitAsync(ct).ConfigureAwait(false);
+        Guid permit=Guid.Empty;
+        try
+        {
+            if(_usb?.State!=UsbSessionState.Connected || _link is null ||
+                _hub is null || _gate is null || _recorder is null)
+                throw new IOException("必须先建立独占 WinUSB/CAN1 主控会话。");
+            if(!stationBitrateVerified)
+                throw new UnauthorizedAccessException(
+                    "主控 CAN1 实际比特率未被现场确认与 XML 一致，禁止擦写。");
+            if(!string.Equals(typedConsent,job.Consent,StringComparison.Ordinal))
+                throw new UnauthorizedAccessException(
+                    "必须由现场人员输入与完整配置/固件/DLL SHA256 绑定的准确授权字符串。");
+            if(!string.Equals(Convert.ToHexString(
+                    System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(job.FirmwarePath))),
+                    job.FirmwareSha256,StringComparison.OrdinalIgnoreCase))
+                throw new IOException("烧录镜像在创建冻结任务后改变。");
+            var key=NativeZlgKeyProvider.Inspect(job.SecurityLibraryPath);
+            if(!string.Equals(key.Sha256,job.SecuritySha256,StringComparison.OrdinalIgnoreCase))
+                throw new IOException("Key DLL 在创建冻结任务后改变。");
+            long frames=(job.PlannedBytes/6L)*3L+5000L+job.Blocks.Length*50L;
+            if(frames is < 1 or > 500000L)
+                throw new FormatException("计划 CAN 帧预算超限；需拆分镜像和重新审批。");
+            permit=_link.AuthorizeFlashJob(job.Fingerprint,typedConsent,
+                job.App.RequestCanId,job.Boot.RequestCanId,checked((int)frames));
+            _activeFlashPermit=permit;
+            _recorder.RecordMessage("FLASH_PLAN_APPROVED",
+                $"SHA={job.Fingerprint} target={job.TargetLabel} image={job.FirmwareSha256} "+
+                $"keyDllSha={job.SecuritySha256} CAN1 bitrate=operator_verified "+
+                $"erase=0x{job.FlashStart:X8}..0x{job.FlashEndInclusive:X8}");
+            Emit($"真实烧录许可已生效 SHA={job.Fingerprint}；CAN1；禁自动副作用重试。");
+            try
+            {
+                var work=new CanToolFlashWorkflow(_hub,_gate,job,
+                    line =>
+                    {
+                        // Protocol stage log intentionally excludes Seed/Key bytes.
+                        _recorder?.RecordMessage("FLASH_STAGE",line);
+                        Emit(line);
+                    },
+                    (tx,verified) =>
+                    {
+                        _recorder?.RecordMessage("FLASH_PROGRESS",
+                            $"TransferAcked={tx} Verified={verified} Planned={job.PlannedBytes}");
+                        progress(tx,verified);
+                    },
+                    isSensitive => Interlocked.Exchange(ref _sensitiveTrace,isSensitive?1:0));
+                var outcome=await work.ExecuteAsync(ct).ConfigureAwait(false);
+                _recorder.RecordMessage("FLASH_TERMINAL",outcome.Outcome);
+                return outcome;
+            }
+            catch(Exception ex)
+            {
+                _recorder?.RecordMessage("FLASH_UNCERTAIN",
+                    ex.GetType().Name+" "+ex.Message+
+                    "；可能已发生 ECU 擦写。禁止未经审查重复烧录。");
+                Emit("烧录中止/失败，物理效果可能未知："+ex.Message);
+                throw;
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _sensitiveTrace,0);
+            _activeFlashPermit=Guid.Empty;
+            if(permit!=Guid.Empty)_link?.RevokeFlashJob(permit);
+            _operation.Release();
+        }
+    }
+
     public async Task DisconnectAsync()
     {
         await _operation.WaitAsync().ConfigureAwait(false);
@@ -176,6 +275,9 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
     private async Task CloseCoreAsync()
     {
         _link?.RevokeReadOnlyDid();
+        if(_activeFlashPermit!=Guid.Empty) _link?.RevokeFlashJob(_activeFlashPermit);
+        _activeFlashPermit=Guid.Empty;
+        Interlocked.Exchange(ref _sensitiveTrace,0);
         if(_bridge is not null)
         {
             await _bridge.DisposeAsync().ConfigureAwait(false);
