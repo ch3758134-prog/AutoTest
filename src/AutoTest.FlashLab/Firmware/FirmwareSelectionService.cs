@@ -1,3 +1,4 @@
+using System.IO;
 using System.Security.Cryptography;
 using AutoTest.Specialists.Flash;
 using AutoTest.FlashLab.Configuration;
