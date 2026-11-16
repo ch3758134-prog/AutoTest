@@ -44,16 +44,32 @@
        <Setter Property="Opacity" Value="0.45"/>
       </Trigger>
      </ControlTemplate.Triggers>
-    </Setter.Value></Setter>
+    </ControlTemplate></Setter.Value></Setter>
    </Setter>
   </Style>
   <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
    <Setter Property="Background" Value="#2368BD"/>
    <Setter Property="Foreground" Value="White"/>
    <Setter Property="BorderBrush" Value="#2368BD"/>
-   <Style.Resources>
-    <SolidColorBrush x:Key="TextColor" Color="White"/>
-   </Style.Resources>
+   <Setter Property="Template">
+    <Setter.Value>
+     <ControlTemplate TargetType="Button">
+      <Border x:Name="PrimaryBorder" Background="{TemplateBinding Background}"
+       CornerRadius="4" BorderBrush="{TemplateBinding BorderBrush}"
+       BorderThickness="1" Padding="{TemplateBinding Padding}">
+       <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Border>
+      <ControlTemplate.Triggers>
+       <Trigger Property="IsMouseOver" Value="True">
+        <Setter TargetName="PrimaryBorder" Property="Background" Value="#1F5BA7"/>
+       </Trigger>
+       <Trigger Property="IsPressed" Value="True">
+        <Setter TargetName="PrimaryBorder" Property="Background" Value="#17477F"/>
+       </Trigger>
+      </ControlTemplate.Triggers>
+     </ControlTemplate>
+    </Setter.Value>
+   </Setter>
   </Style>
   <Style x:Key="BareBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
    <Setter Property="Background" Value="Transparent"/>
@@ -110,7 +126,7 @@
       <DataTrigger Binding="{Binding IsMatch}" Value="True"><Setter TargetName="Container" Property="Background" Value="#FFF4DC"/></DataTrigger>
       <Trigger Property="IsSelected" Value="True"><Setter TargetName="Container" Property="Background" Value="#EAF3FF"/><Setter TargetName="Container" Property="BorderBrush" Value="#91B9E9"/></Trigger>
      </ControlTemplate.Triggers>
-    </Setter.Value></Setter>
+    </ControlTemplate></Setter.Value></Setter>
    </Setter>
   </Style>
  </Window.Resources>
@@ -193,7 +209,7 @@
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*"/>
     <ColumnDefinition Width="4"/>
-    <ColumnDefinition x:Name="InspectorColumn" Width="302" MinWidth="225"/>
+    <ColumnDefinition x:Name="InspectorColumn" Width="302" MinWidth="0"/>
    </Grid.ColumnDefinitions>
    <!-- Left explorer -->
    <Border Grid.Column="0" Background="#FBFCFE" BorderBrush="#DBE3ED" BorderThickness="0,0,1,0">
