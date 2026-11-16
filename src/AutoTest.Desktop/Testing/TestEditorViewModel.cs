@@ -251,6 +251,10 @@ public sealed class TestEditorViewModel : BindableBase
     private bool _inspectorAdding;
     private StepId? _newDraftId;
     private string? _newDraftActionKey;
+    // If the user cancels an insertion by Undo, Ctrl+Y must restore the
+    // provisional state rather than silently reintroducing a saveable step.
+    private StepId? _cancelledDraftId;
+    private string? _cancelledDraftActionKey;
     public bool HasNewStepDraft => _newDraftId is not null;
     public event Action<bool>? ActionPaletteRequested;
     // Inspector request versions are owned by TestEditorInteractionState.
@@ -315,6 +319,8 @@ public sealed class TestEditorViewModel : BindableBase
             var node = StepUiCatalog.NewNode(chosen.StepType) with { Name = chosen.Title };
             place.ValidateNode(node);
             _transaction.Insert(place.Phase, place.ParentId, place.Slot, place.Index, node);
+            _cancelledDraftId = null;
+            _cancelledDraftActionKey = null;
             _newDraftId = node.Id;
             _newDraftActionKey = chosen.Key;
             _inspectorAdding = false;
@@ -336,12 +342,22 @@ public sealed class TestEditorViewModel : BindableBase
         {
             try
             {
+                // This provisional insertion is the latest operation: the
+                // editor disallows unrelated mutations until it is applied.
+                // Undo restores the prior document and history without an
+                // extra compensating Delete operation in the undo stack.
                 if (_transaction.Current.Walk().Any(x => x.Id == provisional))
-                    _transaction.Delete(provisional);
+                {
+                    if (!_transaction.CanUndo)
+                        throw new InvalidOperationException("缺少可撤销的新步骤插入事务。");
+                    _transaction.Undo();
+                }
+                _cancelledDraftId = provisional;
+                _cancelledDraftActionKey = _newDraftActionKey;
                 _newDraftId = null;
                 _newDraftActionKey = null;
                 RefreshTree(null);
-                StatusMessage = "已取消新步骤，正式 TEST 文档未保存任何未完成参数。";
+                StatusMessage = "已取消新步骤；Ctrl+Y 可恢复该未完成草稿。";
                 return;
             }
             catch (Exception error) when (IsEditorError(error))
@@ -388,6 +404,8 @@ public sealed class TestEditorViewModel : BindableBase
                 {
                     _newDraftId = null;
                     _newDraftActionKey = null;
+                    _cancelledDraftId = null;
+                    _cancelledDraftActionKey = null;
                 }
                 RefreshMappings();
                 RefreshTree(original.Id);
@@ -610,8 +628,16 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void Undo()
     {
-        if (!_transaction.CanUndo || IsBusy || !CanProceed()) return;
+        if (IsBusy) return;
+        if (HasNewStepDraft)
+        {
+            CancelInspectorEdit();
+            return;
+        }
+        if (!_transaction.CanUndo || !CanProceed()) return;
         _transaction.Undo();
+        _cancelledDraftId = null;
+        _cancelledDraftActionKey = null;
         RefreshTree(_selectedItem?.Step?.Id);
         StatusMessage = "已撤销";
     }
@@ -619,6 +645,19 @@ public sealed class TestEditorViewModel : BindableBase
     {
         if (!_transaction.CanRedo || IsBusy || !CanProceed()) return;
         _transaction.Redo();
+        if (_cancelledDraftId is { } cancelled &&
+            _transaction.Current.Walk().Any(x => x.Id == cancelled))
+        {
+            _newDraftId = cancelled;
+            _newDraftActionKey = _cancelledDraftActionKey;
+            _cancelledDraftId = null;
+            _cancelledDraftActionKey = null;
+            RefreshTree(cancelled);
+            StatusMessage = "已恢复未完成的新步骤；请先应用右侧属性。";
+            return;
+        }
+        _cancelledDraftId = null;
+        _cancelledDraftActionKey = null;
         RefreshTree(_selectedItem?.Step?.Id);
         StatusMessage = "已重做";
     }
@@ -938,6 +977,10 @@ public sealed class TestEditorViewModel : BindableBase
         {
             _session = await _workspace.OpenTestEditorAsync(_session.AssetId);
             _transaction = new StepEditTransaction(_session.Document);
+            _newDraftId = null;
+            _newDraftActionKey = null;
+            _cancelledDraftId = null;
+            _cancelledDraftActionKey = null;
             RefreshMappings();
             RefreshTree(null);
             RaisePropertyChanged(nameof(AssetRevision));
