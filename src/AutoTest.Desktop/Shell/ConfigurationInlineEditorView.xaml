@@ -81,7 +81,21 @@
        Visibility="{Binding IsControllerOverview,Converter={StaticResource BoolToVisibility}}"
        Margin="0,0,6,5"/>
       <Button Content="选择此 TCF/TBC" Command="{Binding SelectConfigurationCommand}"
-       Margin="0,0,6,5"/>
+       Margin="0,0,6,5">
+       <Button.Style>
+        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">
+         <Setter Property="Visibility" Value="Collapsed"/>
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding IsTcf}" Value="True">
+           <Setter Property="Visibility" Value="Visible"/>
+          </DataTrigger>
+          <DataTrigger Binding="{Binding IsTbc}" Value="True">
+           <Setter Property="Visibility" Value="Visible"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style>
+       </Button.Style>
+      </Button>
      </WrapPanel>
      <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="#A96D20"
       TextWrapping="Wrap"/>

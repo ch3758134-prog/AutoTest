@@ -59,8 +59,7 @@ public partial class ProjectConfigurationOverviewView : UserControl
                 _opened.Add(editor);
                 host.Content = new ConfigurationInlineEditorView(editor);
             }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException or
-                InvalidDataException or ArgumentException or InvalidOperationException)
+            catch (Exception error) when (error is not OutOfMemoryException)
             {
                 UiExceptionReporter.Record("Project config / " + kind, error);
                 host.Content = new TextBlock
