@@ -810,7 +810,7 @@ public sealed class TestEditorViewModel : BindableBase
             {
                 var collapsed = _interaction.IsCollapsed(item);
                 var row = new StepRowProjection(item, depth, collapsed, _stepFind,
-                    item.Step?.Id == _newDraftId);
+                    item.Step?.Id == _newDraftId, _transaction.Current.Mappings);
                 StepRows.Add(row);
                 if (!collapsed)
                     foreach (var child in item.Children)

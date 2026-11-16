@@ -10,6 +10,7 @@ namespace AutoTest.Desktop.Testing;
 public sealed class StepRowProjection
 {
     public StepTreeItem Item { get; }
+    private readonly TestTargetKind? _targetKind;
     public int Depth { get; }
     public int Sequence { get; }
     public string SequenceText => Sequence == 0 ? "" : Sequence.ToString("D2");
@@ -21,6 +22,8 @@ public sealed class StepRowProjection
         Item.Children.Count > 0 ? (IsCollapsed ? "▸" : "▾") : "";
     public string Icon => Item.Step?.Type switch
     {
+        "Write" when _targetKind == TestTargetKind.Ignition => "◈",
+        "Write" when _targetKind is TestTargetKind.Button or TestTargetKind.RawKey => "⌁",
         "Write" or "CanSend" => "⇄",
         "Read" => "↧",
         "WaitUntil" or "CanWait" or "Wait" or "When" => "◷",
@@ -40,10 +43,8 @@ public sealed class StepRowProjection
     public string PhaseKind => Item.Phase.ToString();
     public string Category => Item.Step?.Type switch
     {
-        "Write" when Item.Step.Properties.GetValueOrDefault("target", "")
-            .Contains("IGN", StringComparison.OrdinalIgnoreCase) => "Hardware",
-        "Write" when Item.Step.Properties.GetValueOrDefault("target", "")
-            .Contains("KEY", StringComparison.OrdinalIgnoreCase) => "Hardware",
+        "Write" when _targetKind is TestTargetKind.Ignition or
+            TestTargetKind.Button or TestTargetKind.RawKey => "Hardware",
         "Write" or "CanSend" or "CanWait" or "Read" or "WaitUntil" => "Can",
         "UdsRequest" or "Flash" => "Uds",
         "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCapture" or "WaveCompare" => "Wave",
@@ -75,13 +76,17 @@ public sealed class StepRowProjection
     public string State { get; }
     public Thickness Indent => new(9 + Depth * 18, 0, 0, 0);
     public StepRowProjection(StepTreeItem item, int depth, bool collapsed = false,
-        string? search = null, bool newDraft = false)
+        string? search = null, bool newDraft = false,
+        IReadOnlyList<TestTargetMapping>? mappings = null)
     {
         Item = item;
         IsCollapsed = collapsed;
         Depth = depth;
         Sequence = item.Kind == StepTreeItemKind.Step ? item.Index + 1 : 0;
         var step = item.Step;
+        var targetName = step?.Properties.GetValueOrDefault("target", "");
+        _targetKind = mappings?.FirstOrDefault(x =>
+            string.Equals(x.Name, targetName, StringComparison.OrdinalIgnoreCase))?.Kind;
         QuickValue = OriginalQuickValue;
         IsNewDraft = newDraft;
         IsSearchMatch = !string.IsNullOrWhiteSpace(search) &&
@@ -106,7 +111,7 @@ public sealed class StepRowProjection
                 " · 超时 " + Prop("timeoutMs") + " ms",
             "Switch" => "按变量 " + Prop("variable") + " 分派",
             "Case" => "匹配值 " + Prop("equals"),
-            "Write" => HumanWriteSummary(Prop("target"), Prop("value")),
+            "Write" => HumanWriteSummary(Prop("target"), Prop("value"), _targetKind),
             "CanSend" => "报文 " + (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : "未选择") +
                 " · CAN 发送（未接线）",
             "CanWait" => "等待报文 " + (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : "未选择") +
@@ -141,12 +146,13 @@ public sealed class StepRowProjection
                 ? "待预检" : "执行未接线";
     }
 
-    private static string HumanWriteSummary(string target, string value)
+    private static string HumanWriteSummary(string target, string value, TestTargetKind? kind)
     {
-        if (target.Contains("IGN", StringComparison.OrdinalIgnoreCase))
+        if (kind == TestTargetKind.Ignition || target.Contains("IGN", StringComparison.OrdinalIgnoreCase))
             return "IGN " + (value.Equals("ON", StringComparison.OrdinalIgnoreCase) ? "开启" :
                 value.Equals("OFF", StringComparison.OrdinalIgnoreCase) ? "关闭" : value);
-        if (target.Contains("KEY", StringComparison.OrdinalIgnoreCase))
+        if (kind is TestTargetKind.Button or TestTargetKind.RawKey ||
+            target.Contains("KEY", StringComparison.OrdinalIgnoreCase))
             return "按键 " + target + " · " + (value.Length > 0 ? value : "待配置");
         if (value.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
             return "原始 CAN 帧 · " + Math.Max(0, (value.Length - 4) / 2) + " 字节";
