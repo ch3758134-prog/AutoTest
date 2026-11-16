@@ -946,6 +946,7 @@ public sealed class MainWindowViewModel : BindableBase
             UpdateProjectCount(node);
             RefreshUnassignedCases();
         }
+        editor.CreateNewPackageRequested = async () => await CreateCaseInsideProjectAsync(editor);
         editor.OpenPackageRequested = packageId =>
         {
             if (_workspace.Current?.Definition.Assets.Any(x =>
@@ -1105,6 +1106,29 @@ public sealed class MainWindowViewModel : BindableBase
             // CurrentChanged clears the old tabs only after successful switch.
             await _workspace.OpenAsync(path);
             StatusMessage = "工程已打开：" + path;
+        });
+    }
+
+    private async Task CreateCaseInsideProjectAsync(TestProjectWorkbenchViewModel projectEditor)
+    {
+        if (!HasProject || projectEditor.IsBusy) return;
+        var name = _fileDialogs.AskResourceName("在测试项目中新建空白用例", "新建测试用例");
+        if (name is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var caseAsset = await _workspace.CreateTestProgramAsync(name);
+            projectEditor.AddNewFormalPackage(caseAsset);
+            if (!await projectEditor.SaveForCloseAsync())
+            {
+                StatusMessage = "TEST 资产已创建，但项目关联尚未保存；请先解决项目错误后再打开。";
+                return;
+            }
+            var opened = await _workspace.OpenTestEditorAsync(caseAsset.Id);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, opened, _realTest);
+            ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor),
+                "测试用例 · " + caseAsset.Name, editor.ConfirmClose);
+            SelectAsset(caseAsset.Id);
+            StatusMessage = "已将空白用例加入当前项目并保存固定引用，可直接编写步骤。";
         });
     }
 
