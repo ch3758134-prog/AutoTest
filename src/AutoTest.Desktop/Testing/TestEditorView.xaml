@@ -14,6 +14,20 @@
       ToolTip="查找步骤 Ctrl+F" Margin="0,0,6,0"/>
      <Button Content="＋ 添加步骤" Command="{Binding AddChildCommand}"
       Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"/>
+     <Menu Background="Transparent" Height="28" Margin="0,0,6,0">
+      <MenuItem Header="常用步骤 ▾" Padding="7,3" FontSize="11"
+       ToolTip="先选阶段或明确的子分支，再直接选择步骤类型">
+       <MenuItem Header="发送 CAN 报文" Command="{Binding QuickAddCommand}" CommandParameter="can"/>
+       <MenuItem Header="模拟 ECU 按键" Command="{Binding QuickAddCommand}" CommandParameter="key"/>
+       <MenuItem Header="切换 IGN" Command="{Binding QuickAddCommand}" CommandParameter="ign"/>
+       <MenuItem Header="读取 CAN 信号" Command="{Binding QuickAddCommand}" CommandParameter="read"/>
+       <MenuItem Header="固定等待" Command="{Binding QuickAddCommand}" CommandParameter="wait"/>
+       <Separator/>
+       <MenuItem Header="IF / ELSE" Command="{Binding QuickAddCommand}" CommandParameter="if"/>
+       <MenuItem Header="循环" Command="{Binding QuickAddCommand}" CommandParameter="loop"/>
+       <MenuItem Header="期望判定" Command="{Binding QuickAddCommand}" CommandParameter="expect"/>
+      </MenuItem>
+     </Menu>
      <Button Content="检查问题" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
      <Button Content="保存" Click="SaveEditor_Click"/>
     </StackPanel>

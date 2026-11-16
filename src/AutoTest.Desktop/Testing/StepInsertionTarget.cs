@@ -15,7 +15,7 @@ public sealed record StepInsertionTarget(
 {
     public static bool CanAppend(StepTreeItem? node) =>
         node?.Kind is StepTreeItemKind.Phase or StepTreeItemKind.Slot ||
-        node is { Kind: StepTreeItemKind.Step, Children.Count: 1 };
+        node is { Kind: StepTreeItemKind.Step, Children: { Count: 1 } };
 
     public static StepInsertionTarget Resolve(StepTreeItem node, StepInsertionMode mode)
     {
