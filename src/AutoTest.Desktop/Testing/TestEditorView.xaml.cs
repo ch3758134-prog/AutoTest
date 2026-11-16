@@ -14,6 +14,7 @@ public partial class TestEditorView : UserControl
     private TestStepInspector? _inspector;
     private bool _inspectorInitialized;
     private bool _restoringStepRow;
+    private IReadOnlyList<TestActionOption> _paletteActions = Array.Empty<TestActionOption>();
     private bool _focusNameOnNextInspector;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
@@ -106,6 +107,73 @@ public partial class TestEditorView : UserControl
             _focusNameOnNextInspector = false;
             editor.Loaded += (_, _) => editor.FocusName();
         }
+    }
+
+    private void OpenActionPalette(bool caseOnly)
+    {
+        _paletteActions = TestStepInspector.PaletteActions(caseOnly);
+        PaletteHint.Text = caseOnly ? "SWITCH 的 CASE 区只能插入 CASE 分支" :
+            "选择后立即加入可撤销的正式 TEST 草稿；右侧完成参数";
+        PaletteSearch.Text = "";
+        PaletteList.ItemsSource = _paletteActions;
+        PaletteList.SelectedIndex = _paletteActions.Count > 0 ? 0 : -1;
+        ActionPalette.IsOpen = true;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            PaletteSearch.Focus();
+            PaletteSearch.SelectAll();
+        }), DispatcherPriority.Input);
+    }
+
+    private void PaletteSearch_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (PaletteList is null) return;
+        var query = PaletteSearch.Text.Trim();
+        var filtered = _paletteActions.Where(x => query.Length == 0 ||
+            (x.Title + " " + x.Category + " " + x.Description)
+                .Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        PaletteList.ItemsSource = filtered;
+        PaletteList.SelectedIndex = filtered.Length > 0 ? 0 : -1;
+    }
+
+    private void PaletteSearch_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) { ActionPalette.IsOpen = false; e.Handled = true; }
+        else if (e.Key == Key.Enter && TryChoosePaletteItem()) e.Handled = true;
+        else if (e.Key == Key.Down) { PaletteList.Focus(); e.Handled = true; }
+    }
+
+    private void PaletteList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && TryChoosePaletteItem()) e.Handled = true;
+        else if (e.Key == Key.Escape) { ActionPalette.IsOpen = false; e.Handled = true; }
+    }
+
+    private void PaletteList_DoubleClick(object sender, MouseButtonEventArgs e) =>
+        TryChoosePaletteItem();
+
+    private void PaletteSelect_Click(object sender, RoutedEventArgs e) =>
+        TryChoosePaletteItem();
+
+    private void PaletteCancel_Click(object sender, RoutedEventArgs e) =>
+        ActionPalette.IsOpen = false;
+
+    private bool TryChoosePaletteItem()
+    {
+        if (PaletteList.SelectedItem is not TestActionOption chosen) return false;
+        if (!_viewModel.ChooseNewStepAction(chosen.Key)) return false;
+        ActionPalette.IsOpen = false;
+        return true;
+    }
+
+    private void StepSearch_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Return)) return;
+        e.Handled = true;
+        if (_viewModel.NavigateSearch(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) &&
+            _viewModel.SelectedRow is { } row)
+            StepsList.ScrollIntoView(row);
+        StepSearch.Focus();
     }
 
     private async void SaveEditor_Click(object sender, RoutedEventArgs e)
