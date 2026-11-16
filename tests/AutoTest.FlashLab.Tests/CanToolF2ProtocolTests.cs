@@ -45,6 +45,23 @@ public sealed class CanToolF2ProtocolTests
         CanToolProgrammingProtocol.CheckVerify(Convert.FromHexString("7101FF01FFF9"),checksum);
     }
     [Fact]
+    public void SecurityDllWithoutRealCanToolAbiMustNotBeAssumedCompatible()
+    {
+        // The test assembly is a CLR DLL, but does NOT expose SafetyVerificate.
+        // No mock ECU, no seed calculation and no physical operations.
+        Assert.Throws<NotSupportedException>(()=>
+            CanToolSecurityProvider.Inspect(typeof(CanToolF2ProtocolTests).Assembly.Location));
+    }
+
+    [Fact]
+    public void MissingSecurityLibraryFailsBeforeAnyProgrammingAction()
+    {
+        string missing=Path.Combine(Path.GetTempPath(),
+            Guid.NewGuid().ToString("N")+".dll");
+        Assert.Throws<FileNotFoundException>(()=>CanToolSecurityProvider.Inspect(missing));
+    }
+
+    [Fact]
     public void TransferDataCarriesExactSequenceAndImageBytes()
     {
         Assert.Equal("3601010203",

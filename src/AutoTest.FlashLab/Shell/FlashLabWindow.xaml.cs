@@ -48,7 +48,8 @@ public partial class FlashLabWindow : Window
     {
         _vm.Status=title+"失败："+ex.Message;
         AddLog($"{DateTimeOffset.Now:HH:mm:ss.fff}  {title}失败：{ex}");
-        MessageBox.Show(this,ex.Message,title+"失败",MessageBoxButton.OK,MessageBoxImage.Warning);
+        if(!_closingInProgress && !_closingApproved)
+            MessageBox.Show(this,ex.Message,title+"失败",MessageBoxButton.OK,MessageBoxImage.Warning);
     }
     private void Busy(bool value)
     {
@@ -57,14 +58,14 @@ public partial class FlashLabWindow : Window
     private void UpdateButtons()
     {
         if(ConnectButton is null) return;
-        ConnectButton.IsEnabled=!_vm.IsBusy && !_device.IsConnected && _vm.SelectedDevice is not null;
-        DisconnectButton.IsEnabled=!_vm.IsBusy && _device.IsConnected;
-        RefreshButton.IsEnabled=!_vm.IsBusy && !_device.IsConnected;
-        ReadDidButton.IsEnabled=!_vm.IsBusy && _device.IsConnected;
-        CancelDidButton.IsEnabled=_didStop is not null;
-        PrepareFlashButton.IsEnabled=!_vm.IsBusy;
-        StartFlashButton.IsEnabled=!_vm.IsBusy && _device.IsConnected && _previewFlash is not null;
-        AbortFlashButton.IsEnabled=_flashStop is not null;
+        ConnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected && _vm.SelectedDevice is not null;
+        DisconnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected;
+        RefreshButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected;
+        ReadDidButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected;
+        CancelDidButton.IsEnabled=!_closingInProgress && _didStop is not null;
+        PrepareFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy;
+        StartFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected && _previewFlash is not null;
+        AbortFlashButton.IsEnabled=!_closingInProgress && _flashStop is not null;
     }
     private async Task RefreshDevicesAsync()
     {
