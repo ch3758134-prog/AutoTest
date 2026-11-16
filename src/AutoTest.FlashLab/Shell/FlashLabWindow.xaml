@@ -87,6 +87,10 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
       HorizontalScrollBarVisibility="Disabled">
      <StackPanel Margin="1">
+      <Button Content="一键导入三文件所在目录…" Click="ImportThreeFiles_Click"
+        Background="#D9EDFD" FontWeight="SemiBold" Margin="3,3,3,8"
+        ToolTip="选择包含 Configuration.xml、HEX/S19/BIN 固件、SafetyFile.dll 的文件夹（包括常见子目录）。只读取并验证文件，不连接或擦写 ECU。"
+        HorizontalAlignment="Stretch"/>
       <TextBlock Text="CanTool 配置文件" FontWeight="SemiBold" Margin="4,4,4,2"/>
       <StackPanel Orientation="Horizontal">
        <Button Content="打开 XML" Click="LoadXml_Click" Padding="9,5"/>

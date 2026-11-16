@@ -212,6 +212,60 @@ public partial class FlashLabWindow : Window
         catch(Exception ex) { Error("主控断开",ex); }
         finally { Busy(false); }
     }
+    /// <summary>One offline action imports the three actual CanTool inputs
+    /// together; the alternate native Seed/Key DLL is never mandatory when
+    /// the selected provider is the managed SafetyFile.dll.</summary>
+    private async void ImportThreeFiles_Click(object sender,RoutedEventArgs e)
+    {
+        if(_vm.IsBusy || _closingInProgress || _closingApproved)return;
+        var dialog=new OpenFolderDialog
+        {
+            Title="选择包含 CanTool XML、ECU 固件、SafetyFile.dll 的烧录资料目录",
+            Multiselect=false
+        };
+        if(dialog.ShowDialog(this)!=true)return;
+        Busy(true);
+        try
+        {
+            var files=await Task.Run(()=>
+                CanToolBundleDiscovery.Discover(dialog.FolderName));
+            var checkedFiles=await Task.Run(()=>
+            {
+                var cfg=CanToolXmlProfileReader.Load(files.ConfigurationXml);
+                var library=CanToolSecurityProvider.Inspect(files.ManagedSafetyFile);
+                if(library.Kind!=CanToolSecurityKind.ManagedSafetyFile)
+                    throw new FormatException("SafetyFile.dll 并非支持的托管安全文件接口。");
+                var image=FirmwareSelectionService.Load(files.FirmwareImage,
+                    BinBaseBox.Text,cfg);
+                return (cfg,library,image);
+            });
+            if(_closingInProgress || _closingApproved)return;
+            var decision=MessageBox.Show(this,
+                "找到并验证以下烧录文件（尚未发送 ECU 指令）：\n\n"+
+                "XML："+files.ConfigurationXml+"\n\n"+
+                "固件："+files.FirmwareImage+"\n\n"+
+                "安全文件："+checkedFiles.library.Path+"\n\n"+
+                $"镜像地址：0x{checkedFiles.image.Start:X8}.."+
+                $"0x{checkedFiles.image.EndExclusive-1:X8}\n"+
+                "采用 SafetyFile.dll 托管算法，不需要另外导入 Seed/Key DLL。\n\n"+
+                "确认将这些文件载入当前烧录配置？",
+                "确认三文件导入",MessageBoxButton.YesNo,
+                MessageBoxImage.Question,MessageBoxResult.No);
+            if(decision!=MessageBoxResult.Yes)return;
+            checkedFiles.cfg.Set("SafetyFilePath",checkedFiles.library.Path);
+            _vm.ApplyConfiguration(checkedFiles.cfg);
+            _vm.SetImage(files.FirmwareImage,checkedFiles.image);
+            SecuritySourceSelector.SelectedIndex=0;
+            ApplySecurityFilesFromConfiguration();
+            InvalidateFlashPreview();
+            _vm.Status="三文件已经一次载入并通过离线检查；请核对目标 ECU 后检查烧录参数。";
+            AddLog($"三文件导入成功：XML={files.ConfigurationXml}，"+
+                $"固件={files.FirmwareImage}，SafetyFile={checkedFiles.library.Path}");
+        }
+        catch(Exception ex){Error("导入三文件烧录资料",ex);}
+        finally {Busy(false);}
+    }
+
     private void LoadXml_Click(object sender,RoutedEventArgs e)
     {
         var dialog=new OpenFileDialog
