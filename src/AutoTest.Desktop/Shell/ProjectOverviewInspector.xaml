@@ -1,24 +1,19 @@
 <UserControl x:Class="AutoTest.Desktop.Shell.ProjectOverviewInspector"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Background="White" FontFamily="{StaticResource UiFont}" FontSize="12">
+ Background="#FBFCFF" FontFamily="{StaticResource UiFont}" FontSize="12">
  <ScrollViewer VerticalScrollBarVisibility="Auto">
-  <StackPanel Margin="12,14">
-   <TextBlock Text="当前工程" FontSize="11" Foreground="#64758C" Margin="0,0,0,7"/>
+  <StackPanel Margin="12">
+   <TextBlock Text="当前工程" Foreground="#64758C" FontSize="11" Margin="0,0,0,7"/>
    <TextBlock Text="{Binding CurrentProjectName}" FontSize="14" FontWeight="SemiBold"
-    TextWrapping="Wrap" Margin="0,0,0,9"/>
-   <TextBlock Text="{Binding CurrentProjectPath}" Foreground="#64758C"
-    TextWrapping="Wrap" FontSize="11" Margin="0,0,0,14"/>
-   <Border BorderBrush="#DBE3ED" BorderThickness="0,0,0,1" Margin="0,0,0,11"/>
-   <TextBlock Text="工程操作" FontWeight="SemiBold" Margin="0,0,0,7"/>
-   <Button Content="打开测试项目" Command="{Binding OpenFirstTestProjectCommand}" Margin="0,0,0,6"/>
-   <Button Content="打开测试用例" Command="{Binding OpenFirstTestProgramCommand}" Margin="0,0,0,6"/>
-   <Button Content="工程资源／DBC" Command="{Binding OpenFirstConfigurationCommand}" Margin="0,0,0,12"/>
-   <TextBlock Text="当前配置" FontWeight="SemiBold" Margin="0,0,0,5"/>
+    Foreground="#283A53" TextWrapping="Wrap" Margin="0,0,0,9"/>
+   <Border Height="1" Background="#E9EEF5" Margin="0,0,0,12"/>
+   <TextBlock Text="{Binding TestProgramCount,StringFormat='测试用例  {0} 个'}"
+    Foreground="#64758C" FontSize="11" Margin="0,0,0,8"/>
+   <TextBlock Text="{Binding ConfigurationCount,StringFormat='配置资源  {0} 项'}"
+    Foreground="#64758C" FontSize="11" Margin="0,0,0,10"/>
    <TextBlock Text="{Binding SelectedConfigurationSummary}" Foreground="#64758C"
-    TextWrapping="Wrap" Margin="0,0,0,11"/>
-   <TextBlock Text="USB 状态" FontWeight="SemiBold" Margin="0,0,0,5"/>
-   <TextBlock Text="{Binding HardwareStatus}" Foreground="#A96D20" TextWrapping="Wrap"/>
+    TextWrapping="Wrap" FontSize="11"/>
   </StackPanel>
  </ScrollViewer>
 </UserControl>
