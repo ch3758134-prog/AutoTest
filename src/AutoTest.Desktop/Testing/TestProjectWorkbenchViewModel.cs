@@ -57,6 +57,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
 {
     private readonly ProjectWorkspaceService _workspace;
     private readonly TestEditorDialogs _dialogs;
+    private readonly ProjectRunSelectionState? _selection;
     private TestProjectEditorSession _session;
     private bool _busy;
     private string _name;
@@ -71,9 +72,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
 
     public TestProjectWorkbenchViewModel(ProjectWorkspaceService workspace,
-        TestEditorDialogs dialogs, TestProjectEditorSession session)
+        TestEditorDialogs dialogs, TestProjectEditorSession session,
+        ProjectRunSelectionState? selection = null)
     {
         _workspace = workspace; _dialogs = dialogs; _session = session;
+        _selection = selection;
+        if (_selection is not null) _selection.Changed += OnNavigationSelectionChanged;
         _name = session.Document.Name;
         AddCommand = new DelegateCommand(Add, () => SelectedAvailable is not null && !IsBusy);
         RemoveCommand = new DelegateCommand(Remove, () => SelectedPackage is not null && !IsBusy);
@@ -137,6 +141,16 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     {
         for (var i = 0; i < Packages.Count; i++) Packages[i].Order = i + 1;
     }
+    private void OnNavigationSelectionChanged(Guid projectId)
+    {
+        if (projectId != _session.AssetId.Value) return;
+        foreach (var row in Packages)
+        {
+            var value = _selection!.Get(projectId, row.ItemId, row.Enabled).IsSelected;
+            if (row.RunSelected != value) row.RunSelected = value;
+        }
+    }
+
     private void LoadRows(TestProjectDocument doc)
     {
         foreach (var row in Packages) row.PropertyChanged -= RowChanged;
@@ -144,6 +158,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         foreach (var item in doc.Packages)
         {
             var row = new TestProjectPackageRow(item);
+            if (_selection is not null)
+                row.RunSelected = _selection.Get(_session.AssetId.Value, row.ItemId, row.Enabled).IsSelected;
             row.PropertyChanged += RowChanged;
             Packages.Add(row);
         }
@@ -159,6 +175,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     {
         if (e.PropertyName == nameof(TestProjectPackageRow.RunSelected))
         {
+            if (sender is TestProjectPackageRow row && _selection is not null)
+                _selection.Get(_session.AssetId.Value, row.ItemId, row.Enabled).IsSelected = row.RunSelected;
             RaisePropertyChanged(nameof(SelectedCount));
             RaisePropertyChanged(nameof(SelectionSummary));
         }
@@ -245,6 +263,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         var asset = choice.Asset;
         var row = new TestProjectPackageRow(new TestProjectEntry(
             Guid.NewGuid(), asset.Id.Value, asset.Revision, asset.Sha256, asset.Name, true));
+        if (_selection is not null)
+            row.RunSelected = _selection.Get(_session.AssetId.Value, row.ItemId, row.Enabled).IsSelected;
         row.PropertyChanged += RowChanged;
         Packages.Add(row);
         Renumber();
