@@ -230,9 +230,31 @@ public sealed class TestEditorViewModel : BindableBase
     public void BeginInsertInto(StepTreeItem slot) =>
         StartInsert(slot, null, StepInsertionMode.Append);
 
+    private StepTreeItem? ResolveLiveTreeItem(StepTreeItem? requested)
+    {
+        if (requested is null) return null;
+        if (requested.Kind == StepTreeItemKind.Phase)
+            return StepRoots.FirstOrDefault(x => x.Phase == requested.Phase);
+        if (requested.Kind == StepTreeItemKind.Step && requested.Step is { } step)
+            return StepTreeItem.Walk(StepRoots).FirstOrDefault(x => x.Step?.Id == step.Id);
+        if (requested is { Kind: StepTreeItemKind.Slot, Parent.Step: { } parent })
+            return StepTreeItem.Walk(StepRoots).FirstOrDefault(x =>
+                x.Kind == StepTreeItemKind.Slot && x.Parent?.Step?.Id == parent.Id &&
+                x.SlotName == requested.SlotName);
+        return null;
+    }
+
     private void StartInsert(StepTreeItem? location, string? actionKey, StepInsertionMode mode)
     {
         if (IsBusy || location is null || !CanProceed()) return;
+        // Applying pending edits may reconstruct the tree or insert a sibling.
+        // Capture new coordinates only after resolving the live location.
+        location = ResolveLiveTreeItem(location);
+        if (location is null)
+        {
+            StatusMessage = "目标分支已经变化，请重新选择插入位置。";
+            return;
+        }
         try { _pendingInsertion = StepInsertionTarget.Resolve(location, mode); }
         catch (InvalidOperationException error)
         {
