@@ -48,32 +48,67 @@ public sealed class CanToolXmlProfileReader
         ("ForceMinInterval","参考 CF 间隔毫秒（F1 不主动覆盖 ECU FC）")
     ];
 
+    // Physical CanTool Configuration.xml uses these Chinese names, not the English UI keys.
+    // Do not invent controller baud-rate support: mapping only imports reference data.
+    private static readonly IReadOnlyDictionary<string, string[]> XmlAliases =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["FlashStartAddr"] = ["FLASH起始地址"],
+            ["FlashEndAddr"] = ["FLASH结束地址"],
+            ["BaudRate"] = ["波特率"]
+        };
+
     public List<CanToolParameter> Parameters { get; } =
         Known.Select(x=>new CanToolParameter(x.Name,x.Description)).ToList();
     public string? SourcePath { get; private set; }
     public IReadOnlyList<string> UnmappedNames { get; private set; } = [];
+    public IReadOnlyList<string> UnmappedEntries { get; private set; } = [];
     public CanToolXmlProfileReader() { }
     private CanToolXmlProfileReader(XDocument document,string source)
     { _document=document; SourcePath=source; LoadKnown(); }
 
-    private static XElement? Find(XContainer doc,string name) =>
-        doc.Descendants().FirstOrDefault(x =>
-            string.Equals(x.Name.LocalName,name,StringComparison.OrdinalIgnoreCase) ||
-            string.Equals((string?)x.Attribute("name"),name,StringComparison.OrdinalIgnoreCase) ||
-            string.Equals((string?)x.Attribute("Name"),name,StringComparison.OrdinalIgnoreCase));
+    private static bool Matches(XElement element,string name) =>
+        string.Equals(element.Name.LocalName,name,StringComparison.OrdinalIgnoreCase) ||
+        string.Equals((string?)element.Attribute("name"),name,StringComparison.OrdinalIgnoreCase) ||
+        string.Equals((string?)element.Attribute("Name"),name,StringComparison.OrdinalIgnoreCase);
+
+    private static XElement? Find(XContainer doc,string name)
+    {
+        // Explicit aliases only. A conflicting canonical + localized pair is ambiguous:
+        // fail closed rather than silently using whichever element occurs first.
+        var names = XmlAliases.TryGetValue(name,out var aliases)
+            ? new[] { name }.Concat(aliases).ToArray()
+            : [name];
+        var matches=doc.Descendants().Where(e=>names.Any(n=>Matches(e,n))).ToArray();
+        if(matches.Length>1)
+            throw new FormatException($"配置项 {name} 存在多个英文/中文重复定义，无法确定有效值。");
+        return matches.FirstOrDefault();
+    }
+
+    private static string RelativePath(XElement element) =>
+        string.Join("/",element.AncestorsAndSelf().Reverse()
+            .Skip(1).Select(e=>e.Name.LocalName));
 
     private void LoadKnown()
     {
         if (_document is null) return;
+        var mapped=new HashSet<XElement>();
         foreach(var item in Parameters)
         {
             var e=Find(_document,item.Name);
-            if(e is not null) item.Restore(e.Value.Trim(),"CanTool XML");
+            if(e is not null)
+            {
+                item.Restore(e.Value.Trim(),"CanTool XML（"+e.Name.LocalName+"）");
+                mapped.Add(e);
+            }
         }
-        var names=Parameters.Select(p=>p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        UnmappedNames=_document.Descendants().Where(e=>!e.HasElements)
-            .Select(e=>e.Name.LocalName).Where(n=>!names.Contains(n))
-            .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x=>x).ToArray();
+        // Keep nested feature fields distinctly named: BootFeature/item and
+        // APPFeature/item must not collapse into a misleading single "item".
+        var unrecognized=_document.Descendants().Where(e=>!e.HasElements && !mapped.Contains(e))
+            .Select(e=>new {Path=RelativePath(e),Value=e.Value.Trim()}).ToArray();
+        UnmappedNames=unrecognized.Select(x=>x.Path).Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x=>x,StringComparer.OrdinalIgnoreCase).ToArray();
+        UnmappedEntries=unrecognized.Select(x=>x.Path+" = "+x.Value).ToArray();
     }
 
     public static CanToolXmlProfileReader Load(string path)
