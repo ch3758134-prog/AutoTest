@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>AutoTest.UiPreview</AssemblyName>
+    <RootNamespace>AutoTest.UiPreview</RootNamespace>
+    <ApplicationIcon></ApplicationIcon>
+  </PropertyGroup>
+  <!-- Deliberately no ProjectReference and no PackageReference:
+       this executable has ZERO linkage to TEST, DBC, ECU, Devices, Flash or the old Desktop Shell. -->
+</Project>
