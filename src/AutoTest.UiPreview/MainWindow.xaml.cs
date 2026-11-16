@@ -51,7 +51,7 @@ public partial class MainWindow : Window
         SeedHtmlSampleData();
         RebuildRows();
         SelectStep(_phases[0].Steps[0]);
-        SetMessage("独立 UI 预览已启动：所有数据仅在本窗口内存中，禁止实际执行、保存、连接设备。");
+        SetMessage("就绪");
     }
 
     private static IReadOnlyList<PaletteKind> MakePalette() =>
@@ -325,7 +325,7 @@ public partial class MainWindow : Window
         if (_updatingInspector || _selectedStep is null)return;
         _selectedStep.Name=StepNameField.Text;
         _selectedRow?.Notify();
-        SetMessage("界面样例已更新：步骤名称只存在于内存中。");
+        SetMessage("已修改步骤名称");
     }
     private void EnabledBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
@@ -437,7 +437,7 @@ public partial class MainWindow : Window
         RebuildRows();
         SelectStep(added);
         Dispatcher.BeginInvoke(new Action(()=>{StepNameField.Focus();StepNameField.SelectAll();}),DispatcherPriority.Input);
-        SetMessage("已添加纯内存步骤“"+added.Name+"”。右侧直接编辑；不保存工程、不执行设备。");
+        SetMessage("已添加步骤：“"+added.Name+"”");
     }
 
     private (ObservableCollection<DemoStep> Items,int Index)? Locate(DemoStep selected)
@@ -472,7 +472,7 @@ public partial class MainWindow : Window
         var clone=_selectedStep.Copy();
         located.Value.Items.Insert(located.Value.Index+1,clone);
         _selectedStep=clone;RebuildRows();SelectStep(clone);
-        SetMessage("已在内存中复制步骤（包含子分支），无业务存储。");
+        SetMessage("已复制步骤");
     }
     private void Delete_Click(object sender,RoutedEventArgs e)
     {
@@ -483,7 +483,7 @@ public partial class MainWindow : Window
         located.Value.Items.RemoveAt(located.Value.Index);
         _selectedStep=located.Value.Items.ElementAtOrDefault(Math.Min(located.Value.Index,located.Value.Items.Count-1));
         RebuildRows();
-        SetMessage("已删除内存步骤；可使用 Ctrl+Z 撤销。");
+        SetMessage("已删除步骤；Ctrl+Z 可撤销");
     }
     private void MoveUp_Click(object sender,RoutedEventArgs e)=>MoveSelected(-1);
     private void MoveDown_Click(object sender,RoutedEventArgs e)=>MoveSelected(+1);
@@ -535,12 +535,12 @@ public partial class MainWindow : Window
     private void Undo_Click(object sender,RoutedEventArgs e)
     {
         if(_undo.Count==0){SetMessage("当前没有可撤销的 UI 操作。");return;}
-        _redo.Push(Capture());Restore(_undo.Pop());SetMessage("已撤销 UI 内存操作。");
+        _redo.Push(Capture());Restore(_undo.Pop());SetMessage("已撤销");
     }
     private void Redo_Click(object sender,RoutedEventArgs e)
     {
         if(_redo.Count==0){SetMessage("当前没有可重做的 UI 操作。");return;}
-        _undo.Push(Capture());Restore(_redo.Pop());SetMessage("已重做 UI 内存操作。");
+        _undo.Push(Capture());Restore(_redo.Pop());SetMessage("已重做");
     }
 
     private void SearchText_Changed(object sender,TextChangedEventArgs e)
@@ -555,7 +555,7 @@ public partial class MainWindow : Window
         if(query.Length==0)return;
         var found=AllSteps().Where(x=>(x.Name+" "+x.Summary+" "+x.Resource)
             .Contains(query,StringComparison.CurrentCultureIgnoreCase)).ToList();
-        if(found.Count==0){SetMessage("当前预览样例没有匹配的步骤。");return;}
+        if(found.Count==0){SetMessage("没有匹配的步骤");return;}
         var position=found.FindIndex(x=>x.Id==_selectedStep?.Id);
         var direction=(Keyboard.Modifiers & ModifierKeys.Shift)!=0?-1:1;
         var index=position<0 ? (direction==1?0:found.Count-1):
@@ -598,16 +598,16 @@ public partial class MainWindow : Window
 
     private void OpenDemoCase_Click(object sender,RoutedEventArgs e)
     {
-        SetMessage("当前仅复刻冻结 HTML 的“通信与状态检查”样例；不打开真实工程。");
+        SetMessage("已打开通信与状态检查");
     }
     private void RenameCase_Click(object sender,RoutedEventArgs e)
     {
-        SetMessage("UI 独立预览：测试用例重命名不写入任何工程资产。");
+        SetMessage("重命名功能尚未接入");
     }
     private void BottomTab_Click(object sender,RoutedEventArgs e)
     {
         if(sender is Button button)
-            BottomEmpty.Text=button.Content+" · UI 预览无设备运行、CAN 或测试结果";
+            BottomEmpty.Text=button.Content+" · 暂无记录";
     }
     private void ApplyDockLayout()
     {
@@ -644,7 +644,7 @@ public partial class MainWindow : Window
 
     private void PreviewOnly_Click(object sender,RoutedEventArgs e)
     {
-        SetMessage("这是独立 WPF UI 预览；该入口尚未接任何工程/设备/运行服务。");
+        SetMessage("功能尚未接入");
     }
     private void SetMessage(string text)=>StatusText.Text=text;
 
@@ -660,7 +660,7 @@ public partial class MainWindow : Window
             if(e.Key==Key.Y && Keyboard.FocusedElement is not TextBox)
             {Redo_Click(sender,new RoutedEventArgs());e.Handled=true;}
             if(e.Key==Key.I){ToggleInspector_Click(sender,new RoutedEventArgs());e.Handled=true;}
-            if(e.Key==Key.S){SetMessage("独立 UI 预览没有保存功能，所有修改仅保存在内存中。");e.Handled=true;}
+            if(e.Key==Key.S){SetMessage("保存功能尚未接入");e.Handled=true;}
         }
         if(e.Key==Key.F2 && _selectedStep is not null)
         {StepNameField.Focus();StepNameField.SelectAll();e.Handled=true;}

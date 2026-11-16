@@ -1,4 +1,4 @@
-# AutoTest · G4 原生 WPF 独立 UI 预览
+# AutoTest · 阶段 1：视觉原型与交互
 
 **状态：UI_ONLY / STATIC_SAMPLE / NO_BACKEND_WIRING / WINDOWS_BUILD_UNVERIFIED / VISUAL_PARITY_OPEN**
 
@@ -19,7 +19,7 @@ dotnet run --project src/AutoTest.UiPreview/AutoTest.UiPreview.csproj -c Debug -
 
 ## 从冻结 HTML 复现的 UI 范畴
 
-- IDE 顶部菜单、工具栏、动态工作区域；左工程树，中央测试用例，右常驻步骤属性，底部观察，蓝色状态条。
+- 顶部菜单、工具栏、动态工作区域；左工程树，中央测试用例，右常驻步骤属性，底部观察，蓝色状态条。
 - 三阶段准备/测试/清理不同的色带，35 DIP 步骤行、45 DIP 表头；显示原始 HTML 的 11 步示例，包括 IF 的 THEN/ELSE 嵌套。
 - STEP 图标、资源、参数摘要、选中、搜索高亮、运行勾选及右侧属性的内容联动。
 - 添加步骤：阶段/分支“＋添加”或顶栏“＋添加步骤” → 分组搜索选择类型 → **单击类型即出现行并自动选中，右侧直接填写属性**。没有右侧创建向导。
@@ -37,3 +37,14 @@ dotnet run --project src/AutoTest.UiPreview/AutoTest.UiPreview.csproj -c Debug -
 当前由 GitHub 代码静态检查；**Windows 编译和运行、浏览器 HTML 与 WPF 的同屏截图对照、100/125/150% DPI、键鼠连续操作均未在当前执行环境测试**。这些必须由本地 Codex 机械启动与截图后才能关闭。源码未触碰冻结 HTML 和原有正式业务模块。
 
 **目标**：先冻结用户看到的 UI 和操作链，再独立审批正式业务适配；不能由旧 ViewModel 反向决定 UI。
+
+## 六阶段交付约束
+
+1. **阶段 1（当前）**：视觉原型与交互；清理 UI 自我说明和冗余术语，用户 Windows 视觉/操作验收。全部测试内容为内存示例。
+2. **阶段 2（待批准进入）**：统一控件、XAML ResourceDictionary 与样式 Token，不新增任何设备能力。
+3. **阶段 3**：正式 UI ViewModel、Binding、Command、页面状态、编辑草稿/校验，仍不接后端。
+4. **阶段 4**：复用真实 ProjectWorkspaceService、TestDocument、StepEditTransaction、DBC/Controller 的离线编辑与存储。
+5. **阶段 5**：应用服务接线；USB/WinUSB 先行，随后经批准接 CAN/KEY/IGN/夹具/UDS/波形。不直通硬件协议。
+6. **阶段 6**：真实 Windows/DUT 端到端操作、视觉差异、设备证据与版本审查。
+
+每一阶段必须提供精确 Git SHA、可复现操作、结果和未关闭差异，由用户确认后进入下一阶段。**阶段 1 严禁引用 AutoTest.Devices，之前提前写入的 USB Controller 已撤销。**
