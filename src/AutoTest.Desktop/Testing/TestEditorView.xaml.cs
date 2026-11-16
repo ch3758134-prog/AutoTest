@@ -71,7 +71,7 @@ public partial class TestEditorView : UserControl
         if (_inspector?.HasPendingEdits == true && !_viewModel.IsApplyingInspector)
             return; // stale async completion may not overwrite an active draft
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
-            context.Original, context.InitialActionKey);
+            context.Original, context.InitialActionKey, context.CaseOnly);
         editor.ApplyRequested = _viewModel.ApplyInspector;
         editor.Cancelled += _viewModel.ResetInspector;
         _inspector = editor;

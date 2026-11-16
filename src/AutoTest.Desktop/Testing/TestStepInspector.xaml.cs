@@ -107,6 +107,7 @@ public partial class TestStepInspector : UserControl
     ];
 
     private readonly StepNode? _editing;
+    private readonly bool _caseOnly;
     private readonly IReadOnlyList<MappingChoice> _catalog;
     private readonly IReadOnlyList<TestTargetMapping> _boundMappings;
     private bool _ready;
@@ -155,8 +156,9 @@ public partial class TestStepInspector : UserControl
 
     public TestStepInspector(IReadOnlyList<MappingChoice> catalog,
         IReadOnlyList<TestTargetMapping> boundMappings, StepNode? editing = null,
-        string? initialActionKey = null)
+        string? initialActionKey = null, bool caseOnly = false)
     {
+        _caseOnly = caseOnly;
         _catalog = catalog;
         _boundMappings = boundMappings;
         _editing = editing;
@@ -210,8 +212,10 @@ public partial class TestStepInspector : UserControl
     {
         var previous = ActionList.SelectedItem as TestActionOption;
         FilteredActions.Clear();
-        var filtered = _editing is null ? Options :
-            Options.Where(a => a.StepType == _editing.Type);
+        var filtered = _editing is not null
+            ? Options.Where(a => a.StepType == _editing.Type)
+            : _caseOnly ? Options.Where(a => a.StepType == "Case")
+            : Options.Where(a => a.StepType != "Case");
         foreach (var action in filtered.Where(a =>
             a.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
             a.Description.Contains(query, StringComparison.OrdinalIgnoreCase)))

@@ -16,7 +16,8 @@ namespace AutoTest.Desktop.Testing;
 public sealed record StepInspectorContext(
     StepNode? Original, string? InitialActionKey,
     IReadOnlyList<MappingChoice> Choices,
-    IReadOnlyList<TestTargetMapping> ExistingMappings);
+    IReadOnlyList<TestTargetMapping> ExistingMappings,
+    bool CaseOnly = false);
 
 
 /// <summary>One StepEditTransaction per TEST document; no alternate authoring model.</summary>
@@ -52,10 +53,10 @@ public sealed class TestEditorViewModel : BindableBase
         _transaction = new StepEditTransaction(session.Document);
 
         AddChildCommand = new DelegateCommand(() => BeginInsert(null),
-            () => !IsBusy && SelectedItem is not null);
+            () => !IsBusy && StepInsertionTarget.CanAppend(SelectedItem));
         QuickAddCommand = new DelegateCommand<string>(BeginInsert,
-            _ => !IsBusy && SelectedItem is not null);
-        AddAfterCommand = new DelegateCommand(() => BeginInsert(null),
+            _ => !IsBusy && StepInsertionTarget.CanAppend(SelectedItem));
+        AddAfterCommand = new DelegateCommand(BeginInsertAfter,
             () => CanEditSelectedStep);
         EditParametersCommand = new DelegateCommand(() =>
         {
@@ -174,8 +175,7 @@ public sealed class TestEditorViewModel : BindableBase
     public bool IsDirty => !string.Equals(
         TestDocumentCodec.Serialize(_transaction.Current),
         TestDocumentCodec.Serialize(_session.Document), StringComparison.Ordinal);
-    public bool CanAddChild => !IsBusy && SelectedItem?.Kind is
-        StepTreeItemKind.Phase or StepTreeItemKind.Slot;
+    public bool CanAddChild => !IsBusy && StepInsertionTarget.CanAppend(SelectedItem);
     public bool CanEditSelectedStep => !IsBusy &&
         SelectedItem?.Kind == StepTreeItemKind.Step;
     public bool CanMoveUp => CanEditSelectedStep && SelectedItem!.Index > 0;
@@ -209,15 +209,34 @@ public sealed class TestEditorViewModel : BindableBase
     private bool CanProceed() => _applyingInspector || (AllowEditorAction?.Invoke() ?? true);
 
     private StepTreeItem? _inspectorInsertionTarget;
+    private StepInsertionTarget? _pendingInsertion;
     private bool _inspectorAdding;
     private int _inspectorRequestVersion;
 
-    private void BeginInsert(string? actionKey)
+    private void BeginInsert(string? actionKey) =>
+        StartInsert(_selectedItem, actionKey, StepInsertionMode.Append);
+
+    private void BeginInsertAfter() =>
+        StartInsert(_selectedItem, null, StepInsertionMode.After);
+
+    /// <summary>Used by each explicit THEN/ELSE/CASE/Loop context-menu command.</summary>
+    public void BeginInsertInto(StepTreeItem slot) =>
+        StartInsert(slot, null, StepInsertionMode.Append);
+
+    private void StartInsert(StepTreeItem? location, string? actionKey, StepInsertionMode mode)
     {
-        if (IsBusy || _selectedItem is null || !CanProceed()) return;
-        _inspectorInsertionTarget = _selectedItem;
+        if (IsBusy || location is null || !CanProceed()) return;
+        try { _pendingInsertion = StepInsertionTarget.Resolve(location, mode); }
+        catch (InvalidOperationException error)
+        {
+            StatusMessage = error.Message;
+            return;
+        }
+        _inspectorInsertionTarget = location;
         _inspectorAdding = true;
-        StatusMessage = "在右侧步骤属性中选择操作、编辑参数，再点击“插入步骤”。";
+        StatusMessage = _pendingInsertion.RequiresCase
+            ? "在右侧编辑 CASE 分支，保存后再进入 CASE 的 BODY 添加动作。"
+            : "向指定阶段／分支插入步骤：右侧配置参数后点击“插入步骤”。";
         _ = PublishInspectorAsync(null, actionKey);
     }
 
@@ -225,6 +244,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         _inspectorAdding = _selectedItem?.Kind != StepTreeItemKind.Step;
         _inspectorInsertionTarget = _selectedItem;
+        _pendingInsertion = null;
         _ = PublishInspectorAsync(_inspectorAdding ? null : _selectedItem?.Step, null);
     }
 
@@ -233,8 +253,12 @@ public sealed class TestEditorViewModel : BindableBase
         var request = ++_inspectorRequestVersion;
         var choices = await AvailableObjectsAsync();
         if (request != _inspectorRequestVersion) return;
+        var insertion = _pendingInsertion;
+        if (insertion is null && _inspectorAdding && _selectedItem is { } selected &&
+            StepInsertionTarget.CanAppend(selected))
+            insertion = StepInsertionTarget.Resolve(selected, StepInsertionMode.Append);
         InspectorRequested?.Invoke(new StepInspectorContext(original, initialActionKey,
-            choices, _transaction.Current.Mappings.ToArray()));
+            choices, _transaction.Current.Mappings.ToArray(), insertion?.RequiresCase == true));
     }
 
     public bool ApplyInspector(StepCompositionResult result)
@@ -252,11 +276,11 @@ public sealed class TestEditorViewModel : BindableBase
             }
             else
             {
-                var position = _inspectorInsertionTarget ?? _selectedItem;
-                var coords = position.Kind == StepTreeItemKind.Step
-                    ? position.CoordinatesForSibling() : position.CoordinatesForAppend();
-                _transaction.InsertWithMapping(position.Phase, coords.ParentId,
-                    coords.Slot, coords.Index, result.Step, result.Mapping);
+                var insertion = _pendingInsertion ??
+                    StepInsertionTarget.Resolve(_selectedItem, StepInsertionMode.Append);
+                insertion.ValidateNode(result.Step);
+                _transaction.InsertWithMapping(insertion.Phase, insertion.ParentId,
+                    insertion.Slot, insertion.Index, result.Step, result.Mapping);
                 RefreshMappings();
                 RefreshTree(result.Step.Id);
                 StatusMessage = "新步骤已插入测试序列；Ctrl+S 保存。";
@@ -349,6 +373,7 @@ public sealed class TestEditorViewModel : BindableBase
         finally { _syncingRowSelection = false; }
         UpdateInspector();
         _inspectorInsertionTarget = item;
+        _pendingInsertion = null;
         _inspectorAdding = item?.Kind != StepTreeItemKind.Step;
         _ = PublishInspectorAsync(_inspectorAdding ? null : item?.Step, null);
     }
