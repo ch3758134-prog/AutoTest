@@ -7,6 +7,23 @@ using AutoTest.FlashLab.Firmware;
 
 namespace AutoTest.FlashLab.Presentation;
 
+
+public sealed record CanLogRow(string Time,string Direction,string CanId,string Dlc,
+    string Data,string Result);
+
+public sealed class FlashStageRow(string step)
+    : INotifyPropertyChanged
+{
+    private string _state="待执行";
+    public string Step { get; }=step;
+    public string State
+    {
+        get=>_state;
+        set {if(_state==value)return;_state=value;PropertyChanged?.Invoke(this,new(nameof(State)));}
+    }
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
 public sealed class FlashLabViewModel : INotifyPropertyChanged
 {
     private string _status="离线：无现场发送许可", _configPath="未载入配置",
@@ -19,6 +36,38 @@ public sealed class FlashLabViewModel : INotifyPropertyChanged
     public ObservableCollection<CanToolParameter> Parameters { get; } = [];
     public ObservableCollection<WinUsbCandidate> Candidates { get; } = [];
     public ObservableCollection<string> Logs { get; } = [];
+    public ObservableCollection<CanLogRow> CanLogs { get; } = [];
+    public ObservableCollection<FlashStageRow> Stages { get; } =
+    [
+        new("01  Boot/APP 模式探测"),
+        new("02  Boot 编程会话"),
+        new("03  Seed / Key 解锁"),
+        new("04  擦除 Flash"),
+        new("05  请求下载 (0x34)"),
+        new("06  数据传输 (0x36)"),
+        new("07  退出传输 (0x37)"),
+        new("08  ECU 校验"),
+        new("09  ECU 复位"),
+        new("10  APP 应答复查")
+    ];
+    public void ResetStages()
+    {
+        foreach(var item in Stages)item.State="待执行";
+    }
+    public void MarkStage(int index,string state)
+    {
+        if(index<0 || index>=Stages.Count)return;
+        for(int i=0;i<index;i++)
+            if(Stages[i].State=="进行中")Stages[i].State="已结束";
+        Stages[index].State=state;
+    }
+    public void AddCanLog(CanLogRow line)
+    {
+        CanLogs.Add(line);
+        // Keep actual host data bounded during long high-rate transfers.
+        if(CanLogs.Count>5000)
+            for(int i=0;i<250;i++)CanLogs.RemoveAt(0);
+    }
     public CanToolXmlProfileReader Configuration { get; private set; } = new();
     public FirmwareSelection? Image { get; private set; }
     public event PropertyChangedEventHandler? PropertyChanged;

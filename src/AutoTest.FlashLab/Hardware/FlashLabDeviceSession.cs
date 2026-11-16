@@ -41,6 +41,18 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
         _bridge is not null || _recorder is not null;
     public string? EvidencePath => _recorder?.FilePath ?? _lastEvidencePath;
     public event Action<string>? Message;
+    public sealed record Can1FrameEvent(DateTimeOffset Timestamp,string Direction,
+        uint Id,int Dlc,string Data,string Result);
+    public event Action<Can1FrameEvent>? Can1Frame;
+    private void PublishCan1Frame(string direction,CanFrame frame,string result)
+    {
+        string data=Volatile.Read(ref _sensitiveTrace)!=0
+            ? "[SecurityAccess 数据已隐藏]"
+            : Convert.ToHexString(frame.Data.AsSpan());
+        try {Can1Frame?.Invoke(new(DateTimeOffset.Now,direction,frame.Id,
+            frame.Dlc,data,result));}
+        catch { /* visible monitoring never changes physical CAN operation */ }
+    }
     private void Emit(string text)
     {
         try { Message?.Invoke($"{DateTimeOffset.Now:HH:mm:ss.fff}  {text}"); }
@@ -97,7 +109,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             // All CanTool requests and ECU response filtering now share exactly
             // one real CAN1 transport, regardless of APP 11-bit or BOOT 29-bit IDs.
             var transmitter=new CanToolCan1Transport(usb,link,gate,
-                ()=>_activeFlashPermit);
+                ()=>_activeFlashPermit,PublishCan1Frame);
             var hub=new CanFrameHub(transmitter.TransmitAsync);
             _hub=hub;
             var bridge=new HardwareCanReceiveBridge(usb,hub);
@@ -107,9 +119,12 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                 recorder.Record(Volatile.Read(ref _sensitiveTrace)!=0
                     ? evt with { RawUsbPayloadHex="[REDACTED_SECURITYACCESS]" }
                     : evt);
-                if(evt.PhysicalPort==1 && evt.Valid && Volatile.Read(ref _sensitiveTrace)==0 &&
-                    Volatile.Read(ref _programmingActive)==0)
-                    Emit($"CAN1 RX 原始帧 {evt.RawUsbPayloadHex} [HostArrival]");
+                if(evt.PhysicalPort==1 && evt.Valid)
+                {
+                    if(CanFrameCodec.FromUsbPayload(Convert.FromHexString(evt.RawUsbPayloadHex),
+                        new BusRoleMap(default,1,0),out var can) && can is not null)
+                        PublishCan1Frame("RX",can,"主控 0x41 实际接收");
+                }
                 else if(!evt.Valid) Emit("CAN RX 数据异常：" +evt.Detail);
             };
             Emit("主控 PING 正常。CAN1=DUT；仅 RX 监听，尚无 DID 物理授权。");

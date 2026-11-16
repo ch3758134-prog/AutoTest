@@ -16,7 +16,8 @@ namespace AutoTest.FlashLab.Hardware;
 /// </summary>
 public sealed class CanToolCan1Transport(
     UsbSessionService session,WinUsbByteLink physical,CanTransmitGate leases,
-    Func<Guid> activeProgrammingPermit)
+    Func<Guid> activeProgrammingPermit,
+    Action<string,CanFrame,string> trace)
 {
     private static readonly BusRoleMap Ports=new(default,1,0);
 
@@ -37,6 +38,7 @@ public sealed class CanToolCan1Transport(
 
         try
         {
+            trace("TX",request.Frame,"发送请求");
             // During a flash, each physical USB frame must have one exact,
             // single-use grant. Outside flash, the F1 one-DID physical fence
             // remains the only path, and it independently rejects other SIDs.
@@ -45,17 +47,22 @@ public sealed class CanToolCan1Transport(
                 physical.PrepareExactFlashFrame(token,data);
             await session.RequestAsync(MainControllerCodec.CanSend,data,
                 TimeSpan.FromSeconds(3),ct).ConfigureAwait(false);
+            trace("TX ACK",request.Frame,"主控 USB ACK（非 ECU ACK）");
             return OperationResult<CanTxReceipt>.Accepted(new CanTxReceipt(
                 request.CorrelationId,AckKind.DeviceAcknowledged,
                 TimePoint.FromHostArrival(DateTimeOffset.UtcNow,0),EvidenceRef.New()));
         }
         catch(OperationCanceledException) when(ct.IsCancellationRequested) {throw;}
         catch(UnauthorizedAccessException ex)
-        {return OperationResult<CanTxReceipt>.Rejected("CANTOOL_PHYSICAL_FENCE",ex.Message);}
+        {
+            trace("TX 拒绝",request.Frame,ex.Message);
+            return OperationResult<CanTxReceipt>.Rejected("CANTOOL_PHYSICAL_FENCE",ex.Message);
+        }
         catch(Exception ex) when(ex is IOException or TimeoutException or InvalidOperationException
             or OperationCanceledException)
         {
             // USB ACK unknown does not prove that CAN1 never transmitted.
+            trace("TX 未知",request.Frame,ex.GetType().Name+": "+ex.Message);
             return OperationResult<CanTxReceipt>.Uncertain("CANTOOL_TX_EFFECT_UNKNOWN",
                 ex.Message);
         }
