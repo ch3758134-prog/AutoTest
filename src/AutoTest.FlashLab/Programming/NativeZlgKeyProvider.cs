@@ -23,6 +23,9 @@ public sealed class NativeZlgKeyProvider : IDisposable
     {
         var full=Path.GetFullPath(path);
         if(!File.Exists(full))throw new FileNotFoundException("Seed/Key DLL 不存在。",full);
+        var fileInfo=new FileInfo(full);
+        if(fileInfo.Length>16*1024*1024)
+            throw new FormatException("Seed/Key DLL 体积超过16MiB离线检查上限。");
         var bytes=File.ReadAllBytes(full);
         string hash=Convert.ToHexString(SHA256.HashData(bytes));
         if(bytes.Length<512 || bytes[0]!='M' || bytes[1]!='Z')

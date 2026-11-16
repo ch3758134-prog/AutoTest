@@ -33,6 +33,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
     private bool _disposed;
     private Guid _activeFlashPermit;
     private int _sensitiveTrace;
+    private int _programmingActive;
 
     public bool IsConnected => _usb?.State==UsbSessionState.Connected;
     public string? EvidencePath => _recorder?.FilePath ?? _lastEvidencePath;
@@ -114,7 +115,8 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                 recorder.Record(Volatile.Read(ref _sensitiveTrace)!=0
                     ? evt with { RawUsbPayloadHex="[REDACTED_SECURITYACCESS]" }
                     : evt);
-                if(evt.PhysicalPort==1 && evt.Valid && Volatile.Read(ref _sensitiveTrace)==0)
+                if(evt.PhysicalPort==1 && evt.Valid && Volatile.Read(ref _sensitiveTrace)==0 &&
+                    Volatile.Read(ref _programmingActive)==0)
                     Emit($"CAN1 RX 原始帧 {evt.RawUsbPayloadHex} [HostArrival]");
                 else if(!evt.Valid) Emit("CAN RX 数据异常：" +evt.Detail);
             };
@@ -223,6 +225,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             permit=_link.AuthorizeFlashJob(job.Fingerprint,typedConsent,
                 job.App.RequestCanId,job.Boot.RequestCanId,checked((int)frames));
             _activeFlashPermit=permit;
+            Interlocked.Exchange(ref _programmingActive,1);
             _recorder.RecordMessage("FLASH_PLAN_APPROVED",
                 $"SHA={job.Fingerprint} target={job.TargetLabel} image={job.FirmwareSha256} "+
                 $"keyDllSha={job.SecuritySha256} CAN1 bitrate=operator_verified "+
@@ -260,6 +263,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
         finally
         {
             Interlocked.Exchange(ref _sensitiveTrace,0);
+            Interlocked.Exchange(ref _programmingActive,0);
             _activeFlashPermit=Guid.Empty;
             if(permit!=Guid.Empty)_link?.RevokeFlashJob(permit);
             _operation.Release();
@@ -277,6 +281,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
         _link?.RevokeReadOnlyDid();
         if(_activeFlashPermit!=Guid.Empty) _link?.RevokeFlashJob(_activeFlashPermit);
         _activeFlashPermit=Guid.Empty;
+        Interlocked.Exchange(ref _programmingActive,0);
         Interlocked.Exchange(ref _sensitiveTrace,0);
         if(_bridge is not null)
         {

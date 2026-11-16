@@ -47,7 +47,7 @@ public sealed class CanToolFlashWorkflow(
                 await Task.Delay(10,ct).ConfigureAwait(false);
             if(hub.SubscriberCount<=before)
                 throw new IOException("ISO-TP CAN1 接收订阅未就绪，禁止发送。");
-            return new(link,new IsoTpConversation(link));
+            return new(link,new IsoTpConversation(link,new IsoTpOptions(TimeSpan.FromSeconds(2))));
         }
         catch { await link.DisposeAsync().ConfigureAwait(false);throw; }
     }
@@ -151,6 +151,7 @@ public sealed class CanToolFlashWorkflow(
                 if(seedResponse.Length<6 || seedResponse[1]!=0x01)
                     throw new InvalidDataException("27 01 未返回有效 Seed（最少4字节）。");
                 byte[] seed=seedResponse.AsSpan(2).ToArray();
+                CryptographicOperations.ZeroMemory(seedResponse);
                 byte[] key;
                 try { key=keyProvider.Calculate(seed); }
                 finally { CryptographicOperations.ZeroMemory(seed); }
