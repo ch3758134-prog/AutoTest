@@ -129,6 +129,11 @@ public partial class TestStepInspector : UserControl
     public StepCompositionResult? Result { get; private set; }
     public Func<StepCompositionResult, bool>? ApplyRequested { get; set; }
     public event Action? Cancelled;
+    /// <summary>
+    /// Raised only after the canonical TEST transaction was accepted and the
+    /// Inspector dirty flag was cleared, not during the applying callback.
+    /// </summary>
+    public event Action? AppliedSuccessfully;
     public bool HasPendingEdits { get; private set; }
     private bool _trackEdits;
 
@@ -605,6 +610,7 @@ public partial class TestStepInspector : UserControl
                 return false;
             }
             HasPendingEdits = false;
+            AppliedSuccessfully?.Invoke();
             return true;
         }
         catch (Exception error) when (error is ArgumentException or FormatException or

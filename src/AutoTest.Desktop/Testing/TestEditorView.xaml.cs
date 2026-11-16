@@ -11,6 +11,7 @@ public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
     private TestStepInspector? _inspector;
+    private bool _inspectorInitialized;
     private bool _focusNameOnNextInspector;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
@@ -27,7 +28,14 @@ public partial class TestEditorView : UserControl
         DataContext = viewModel;
         _viewModel.InspectorRequested += ShowInspector;
         _viewModel.AllowEditorAction = TryLeaveInspector;
-        Loaded += (_, _) => _viewModel.ResetInspector();
+        Loaded += (_, _) =>
+        {
+            // A document tab can be unloaded/reloaded whenever the user switches
+            // workspaces. Re-loading must NEVER reset an in-progress Inspector.
+            if (_inspectorInitialized) return;
+            _inspectorInitialized = true;
+            _viewModel.ResetInspector();
+        };
     }
 
     public bool HasPendingInspectorDraft => _inspector?.HasPendingEdits == true;
@@ -74,6 +82,15 @@ public partial class TestEditorView : UserControl
             context.Original, context.InitialActionKey, context.CaseOnly);
         editor.ApplyRequested = _viewModel.ApplyInspector;
         editor.Cancelled += _viewModel.ResetInspector;
+        editor.AppliedSuccessfully += () =>
+        {
+            // The VM may have rebuilt the STEP tree during Apply. Its early
+            // request was correctly rejected while HasPendingEdits was true.
+            // Issue a fresh request NOW that the draft was accepted, ensuring
+            // the selected StepId and visible Inspector always agree.
+            if (ReferenceEquals(_inspector, editor))
+                _viewModel.ResetInspector();
+        };
         _inspector = editor;
         InspectorHost.Content = editor;
         if (_focusNameOnNextInspector)
