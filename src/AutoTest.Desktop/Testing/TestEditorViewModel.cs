@@ -37,7 +37,8 @@ public sealed class TestEditorViewModel : BindableBase
 
     private TestEditorSession _session;
     private StepEditTransaction _transaction;
-    private StepTreeItem? _selectedItem;
+    private StepTreeItem? _selectedItem; // transient projection; stable identity lives in _interaction
+    private readonly TestEditorInteractionState _interaction = new();
     private StepUiChoice _selectedType = StepUiCatalog.Choices[0];
     private bool _isBusy;
     private string _status = "请选择阶段或步骤进行编辑。";
@@ -100,26 +101,20 @@ public sealed class TestEditorViewModel : BindableBase
         get => _selectedRow;
         set
         {
+            if (_syncingRowSelection)
+            {
+                SetProperty(ref _selectedRow, value);
+                return;
+            }
             if (ReferenceEquals(_selectedRow, value)) return;
-            if (!_syncingRowSelection && _selectedItem is not null && !CanProceed())
+            // WPF temporarily clears selection while filtering/rebuilding rows.
+            // Do not erase the canonical StepId or call an Inspector leave guard.
+            if (value is null)
             {
                 RaisePropertyChanged(nameof(SelectedRow));
                 return;
             }
-            if (!_syncingRowSelection && value is not null)
-            {
-                var wanted = value.Item;
-                value = StepRows.FirstOrDefault(row => ReferenceEquals(row.Item, wanted) ||
-                    (wanted.Kind == StepTreeItemKind.Step && row.Item.Step?.Id == wanted.Step?.Id) ||
-                    (wanted.Kind == StepTreeItemKind.Phase &&
-                        row.Item.Kind == StepTreeItemKind.Phase && row.Item.Phase == wanted.Phase) ||
-                    (wanted.Kind == StepTreeItemKind.Slot &&
-                        row.Item.Kind == StepTreeItemKind.Slot &&
-                        row.Item.Parent?.Step?.Id == wanted.Parent?.Step?.Id &&
-                        row.Item.SlotName == wanted.SlotName)) ?? value;
-            }
-            if (!SetProperty(ref _selectedRow, value) || _syncingRowSelection) return;
-            SelectItem(value?.Item);
+            SelectItem(value.Item);
         }
     }
     public string StepFind
@@ -128,19 +123,16 @@ public sealed class TestEditorViewModel : BindableBase
         set { if (SetProperty(ref _stepFind, value ?? "")) RefreshRows(); }
     }
     private string _stepFind = "";
-    private readonly HashSet<string> _collapsed = new(StringComparer.Ordinal);
     private StepId? _clipboardStepId;
-    private static string ExpandKey(StepTreeItem item) => item.Kind switch
-    {
-        StepTreeItemKind.Phase => "phase:" + item.Phase,
-        StepTreeItemKind.Slot => "slot:" + item.Parent?.Step?.Id + ":" + item.SlotName,
-        _ => "step:" + item.Step?.Id
-    };
     public void ToggleExpansion(StepRowProjection row)
     {
-        var key = ExpandKey(row.Item);
-        if (!_collapsed.Add(key)) _collapsed.Remove(key);
+        var wanted = StepSelectionKey.Of(row.Item);
+        if (wanted is null) return;
         SelectItem(row.Item);
+        if (_interaction.Selection != wanted) return; // rejected leave: do not fold
+        var current = wanted.Value.FindIn(StepRoots);
+        if (current is null) return;
+        _interaction.ToggleCollapsed(current);
         RefreshRows();
     }
     public ObservableCollection<TestTargetMapping> Mappings { get; } = new();
@@ -218,7 +210,7 @@ public sealed class TestEditorViewModel : BindableBase
     private StepTreeItem? _inspectorInsertionTarget;
     private StepInsertionTarget? _pendingInsertion;
     private bool _inspectorAdding;
-    private int _inspectorRequestVersion;
+    // Inspector request versions are owned by TestEditorInteractionState.
 
     private void BeginInsert(string? actionKey) =>
         StartInsert(_selectedItem, actionKey, StepInsertionMode.Append);
@@ -230,19 +222,8 @@ public sealed class TestEditorViewModel : BindableBase
     public void BeginInsertInto(StepTreeItem slot) =>
         StartInsert(slot, null, StepInsertionMode.Append);
 
-    private StepTreeItem? ResolveLiveTreeItem(StepTreeItem? requested)
-    {
-        if (requested is null) return null;
-        if (requested.Kind == StepTreeItemKind.Phase)
-            return StepRoots.FirstOrDefault(x => x.Phase == requested.Phase);
-        if (requested.Kind == StepTreeItemKind.Step && requested.Step is { } step)
-            return StepTreeItem.Walk(StepRoots).FirstOrDefault(x => x.Step?.Id == step.Id);
-        if (requested is { Kind: StepTreeItemKind.Slot, Parent.Step: { } parent })
-            return StepTreeItem.Walk(StepRoots).FirstOrDefault(x =>
-                x.Kind == StepTreeItemKind.Slot && x.Parent?.Step?.Id == parent.Id &&
-                x.SlotName == requested.SlotName);
-        return null;
-    }
+    private StepTreeItem? ResolveLiveTreeItem(StepTreeItem? requested) =>
+        StepSelectionKey.Of(requested) is { } key ? key.FindIn(StepRoots) : null;
 
     private void StartInsert(StepTreeItem? location, string? actionKey, StepInsertionMode mode)
     {
@@ -279,9 +260,9 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task PublishInspectorAsync(StepNode? original, string? initialActionKey)
     {
-        var request = ++_inspectorRequestVersion;
+        var request = _interaction.NextInspectorRequest();
         var choices = await AvailableObjectsAsync();
-        if (request != _inspectorRequestVersion) return;
+        if (!_interaction.IsCurrentInspectorRequest(request)) return;
         var insertion = _pendingInsertion;
         if (insertion is null && _inspectorAdding && _selectedItem is { } selected &&
             StepInsertionTarget.CanAppend(selected))
@@ -378,28 +359,45 @@ public sealed class TestEditorViewModel : BindableBase
     public DelegateCommand RunCommand { get; }
     public DelegateCommand StopRunCommand { get; }
 
-    public void SelectItem(StepTreeItem? item)
+    /// <summary>
+    /// Single entry for mouse, keyboard and programmatic STEP navigation.
+    /// Never publish a new Inspector until the previous draft is validated.
+    /// The identity is stable across immutable TEST tree rebuilds.
+    /// </summary>
+    public void SelectItem(StepTreeItem? requested)
     {
-        if (ReferenceEquals(_selectedItem, item)) return;
-        if (_selectedItem is not null && !CanProceed()) return;
-        // Resolving by canonical identity protects selection after Inspector Apply
-        // regenerates StepTreeItem instances.
-        if (item is { Step: { } targetStep })
-            item = StepTreeItem.Walk(StepRoots).FirstOrDefault(x =>
-                x.Step?.Id == targetStep.Id) ?? item;
-        else if (item is { Kind: StepTreeItemKind.Phase })
-            item = StepRoots.FirstOrDefault(x => x.Phase == item.Phase) ?? item;
-        else if (item is { Kind: StepTreeItemKind.Slot, Parent.Step: { } parentStep })
-            item = StepTreeItem.Walk(StepRoots).FirstOrDefault(x =>
-                x.Kind == StepTreeItemKind.Slot &&
-                x.Parent?.Step?.Id == parentStep.Id &&
-                x.SlotName == item.SlotName) ?? item;
+        var desired = StepSelectionKey.Of(requested);
+        if (desired is null) return;
+        if (desired == _interaction.Selection && ReferenceEquals(_selectedItem, requested))
+            return;
+        if (!_interaction.TryNavigate(desired, () => _selectedItem is null || CanProceed()))
+        {
+            RaisePropertyChanged(nameof(SelectedRow));
+            return;
+        }
+        var live = desired.Value.FindIn(StepRoots);
+        if (live is null)
+        {
+            _interaction.Restore(StepSelectionKey.Of(_selectedItem));
+            RaisePropertyChanged(nameof(SelectedRow));
+            StatusMessage = "步骤位置已变化，请重新选择。";
+            return;
+        }
+        SelectProjection(live);
+    }
+
+    private void SelectProjection(StepTreeItem? item)
+    {
         if (_selectedItem is not null) _selectedItem.IsSelected = false;
         _selectedItem = item;
         if (item is not null) item.IsSelected = true;
+        var wasSyncing = _syncingRowSelection;
         _syncingRowSelection = true;
-        try { SelectedRow = StepRows.FirstOrDefault(x => ReferenceEquals(x.Item, item)); }
-        finally { _syncingRowSelection = false; }
+        try
+        {
+            SelectedRow = StepRows.FirstOrDefault(x => ReferenceEquals(x.Item, item));
+        }
+        finally { _syncingRowSelection = wasSyncing; }
         UpdateInspector();
         _inspectorInsertionTarget = item;
         _pendingInsertion = null;
@@ -608,27 +606,32 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void RefreshTree(StepId? preferred)
     {
-        var previous = _selectedItem;
-        StepRoots.Clear();
-        _selectedItem = null;
-        foreach (var phase in Enum.GetValues<TestPhase>())
+        // StepEditTransaction replaces immutable nodes; the UI keeps a stable
+        // StepId/Phase/Slot selection while refreshing only its projections.
+        var previousKey = _interaction.Selection;
+        var wasSyncing = _syncingRowSelection;
+        _syncingRowSelection = true;
+        try
         {
-            var root = new StepTreeItem(StepTreeItemKind.Phase, phase,
-                StepUiCatalog.PhaseLabel(phase) + " (" + _transaction.Current.Get(phase).Length + ")");
-            StepRoots.Add(root);
-            AddNodes(root, _transaction.Current.Get(phase));
+            StepRoots.Clear();
+            foreach (var phase in Enum.GetValues<TestPhase>())
+            {
+                var root = new StepTreeItem(StepTreeItemKind.Phase, phase,
+                    StepUiCatalog.PhaseLabel(phase) + " (" +
+                    _transaction.Current.Get(phase).Length + ")");
+                StepRoots.Add(root);
+                AddNodes(root, _transaction.Current.Get(phase));
+            }
+            StepTreeItem? selected = null;
+            if (preferred is { } id)
+                selected = StepTreeItem.Walk(StepRoots).FirstOrDefault(x => x.Step?.Id == id);
+            selected ??= previousKey?.FindIn(StepRoots);
+            selected ??= StepRoots.First(x => x.Phase == TestPhase.Test);
+            _interaction.Restore(StepSelectionKey.Of(selected));
+            RefreshRows();
+            SelectProjection(selected);
         }
-        var all = StepTreeItem.Walk(StepRoots).ToArray();
-        StepTreeItem? selected = null;
-        if (preferred is { } id)
-            selected = all.FirstOrDefault(x => x.Step?.Id == id);
-        if (selected is null && previous is { Kind: StepTreeItemKind.Slot, Parent.Step: { } parent })
-            selected = all.FirstOrDefault(x => x.Kind == StepTreeItemKind.Slot &&
-                x.Parent?.Step?.Id == parent.Id && x.SlotName == previous.SlotName);
-        if (selected is null && previous is { Kind: StepTreeItemKind.Phase })
-            selected = StepRoots.First(x => x.Phase == previous.Phase);
-        RefreshRows();
-        SelectItem(selected ?? StepRoots[1]);
+        finally { _syncingRowSelection = wasSyncing; }
         RaisePropertyChanged(nameof(ExpectedApproval));
         RefreshCommands();
     }
@@ -682,25 +685,31 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void RefreshRows()
     {
-        var selected = _selectedItem?.Step?.Id;
-        StepRows.Clear();
-        void Append(StepTreeItem item, int depth)
-        {
-            var collapsed = _collapsed.Contains(ExpandKey(item));
-            var row = new StepRowProjection(item, depth, collapsed);
-            if (string.IsNullOrWhiteSpace(_stepFind) ||
-                !row.IsStep || (row.Name + " " + row.Summary + " " + row.Resource)
-                    .Contains(_stepFind, StringComparison.CurrentCultureIgnoreCase))
-                StepRows.Add(row);
-            if (!collapsed)
-                foreach (var child in item.Children)
-                    Append(child, depth + (item.Kind == StepTreeItemKind.Phase ? 0 : 1));
-        }
-        foreach (var root in StepRoots) Append(root, 0);
-        RaisePropertyChanged(nameof(StepCountLabel));
+        var wasSyncing = _syncingRowSelection;
         _syncingRowSelection = true;
-        try { SelectedRow = StepRows.FirstOrDefault(x => x.Item.Step?.Id == selected); }
-        finally { _syncingRowSelection = false; }
+        try
+        {
+            // The ListBox may emit SelectedItem=null during collection reset.
+            // Keep the UI session's identity and never treat that as navigation.
+            StepRows.Clear();
+            void Append(StepTreeItem item, int depth)
+            {
+                var collapsed = _interaction.IsCollapsed(item);
+                var row = new StepRowProjection(item, depth, collapsed);
+                if (string.IsNullOrWhiteSpace(_stepFind) ||
+                    !row.IsStep || (row.Name + " " + row.Summary + " " + row.Resource)
+                        .Contains(_stepFind, StringComparison.CurrentCultureIgnoreCase))
+                    StepRows.Add(row);
+                if (!collapsed)
+                    foreach (var child in item.Children)
+                        Append(child, depth + (item.Kind == StepTreeItemKind.Phase ? 0 : 1));
+            }
+            foreach (var root in StepRoots) Append(root, 0);
+            SelectedRow = StepRows.FirstOrDefault(x =>
+                StepSelectionKey.Of(x.Item) == _interaction.Selection);
+        }
+        finally { _syncingRowSelection = wasSyncing; }
+        RaisePropertyChanged(nameof(StepCountLabel));
     }
 
     private static string DescribeWrite(StepNode step)
