@@ -34,6 +34,7 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
         TestEditorView test => test.InspectorHost,
         TestProjectWorkbenchView project => project.InspectorHost,
         ProjectOverviewView home => home.InspectorHost,
+        ProjectConfigurationOverviewView config => config.InspectorHost,
         _ => null
     };
     public object? Editor => View.DataContext;
@@ -154,6 +155,13 @@ public sealed class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync));
         OpenFirstTestProgramCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProgramKind, CreateTestProgramAsync));
+        OpenProjectConfigurationOverviewCommand = new DelegateCommand(ShowProjectConfiguration);
+        OpenTcfCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
+            ProjectWorkspaceService.TestConfigurationKind));
+        OpenControllerCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
+            ProjectWorkspaceService.ControllerKind));
+        OpenTbcCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
+            ProjectWorkspaceService.BenchConfigurationKind));
         OpenFirstConfigurationCommand = new DelegateCommand(async () =>
         {
             if (_workspace.Current is null) return;
@@ -265,6 +273,10 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenFirstTestProjectCommand { get; }
     public DelegateCommand OpenFirstTestProgramCommand { get; }
     public DelegateCommand OpenFirstConfigurationCommand { get; }
+    public DelegateCommand OpenProjectConfigurationOverviewCommand { get; }
+    public DelegateCommand OpenTcfCommand { get; }
+    public DelegateCommand OpenControllerCommand { get; }
+    public DelegateCommand OpenTbcCommand { get; }
     public int TestProjectCount => _workspace.Current?.Definition.Assets.Count(x =>
         x.Kind == ProjectWorkspaceService.TestProjectKind) ?? 0;
     public int TestProgramCount => _workspace.Current?.Definition.Assets.Count(x =>
@@ -287,6 +299,26 @@ public sealed class MainWindowViewModel : BindableBase
         EnsureOverview();
         var home = OpenEditors.FirstOrDefault(x => x.Key == "home");
         if (home is not null) ActiveEditorTab = home;
+    }
+
+    public void ShowProjectConfiguration()
+    {
+        if (_workspace.Current is null)
+        {
+            StatusMessage = "请先打开测试工程再编辑配置。";
+            return;
+        }
+        if (IsAlreadyOpen("config-overview")) return;
+        var view = new ProjectConfigurationOverviewView(this, _workspace, _fileDialogs);
+        ActivateEditor("config-overview", view, "工程配置", view.ConfirmClose);
+    }
+
+    private async Task OpenConfigurationKindAsync(string kind)
+    {
+        var asset = _workspace.Current?.Definition.Assets.FirstOrDefault(x => x.Kind == kind);
+        if (asset is null) { await CreateConfigurationAsync(kind); return; }
+        SelectAsset(asset.Id);
+        await OpenSelectedConfigurationAsync();
     }
 
     private void EnsureOverview()
@@ -523,6 +555,7 @@ public sealed class MainWindowViewModel : BindableBase
         TestProjectWorkbenchView => "运行选择",
         ProjectOverviewView => "对象信息",
         ConfigurationWorkbenchView => "配置关联",
+        ProjectConfigurationOverviewView => "配置关联",
         _ => "对象信息"
     };
     public bool HasActiveEditor => OpenEditors.Count > 0;

@@ -193,7 +193,7 @@
        <Button Content="测试用例" Style="{StaticResource TopWorkspaceButton}"
         Command="{Binding OpenFirstTestProgramCommand}"/>
        <Button Content="工程配置" Style="{StaticResource TopWorkspaceButton}"
-        Command="{Binding OpenFirstConfigurationCommand}"/>
+        Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
       </StackPanel>
       <TabControl ItemsSource="{Binding OpenEditors}" SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
        Background="Transparent" BorderThickness="0" Margin="0" Padding="0"
