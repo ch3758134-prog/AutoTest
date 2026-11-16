@@ -576,6 +576,13 @@ public sealed class MainWindowViewModel : BindableBase
         get => _activeEditorTab;
         set
         {
+            if (!ReferenceEquals(_activeEditorTab, value) &&
+                _activeEditorTab?.View is TestEditorView departing &&
+                !departing.TryLeaveInspector())
+            {
+                RaisePropertyChanged(nameof(ActiveEditorTab));
+                return;
+            }
             if (SetProperty(ref _activeEditorTab, value))
             {
                 RaisePropertyChanged(nameof(ActiveEditorView));

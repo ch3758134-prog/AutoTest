@@ -26,16 +26,22 @@ public partial class TestEditorView : UserControl
         _viewModel = viewModel;
         DataContext = viewModel;
         _viewModel.InspectorRequested += ShowInspector;
-        _viewModel.AllowEditorAction = () =>
-        {
-            if (_inspector?.HasPendingEdits != true) return true;
-            _inspector.ShowPendingWarning();
-            return false;
-        };
+        _viewModel.AllowEditorAction = TryLeaveInspector;
         Loaded += (_, _) => _viewModel.ResetInspector();
     }
 
     public bool HasPendingInspectorDraft => _inspector?.HasPendingEdits == true;
+
+    /// <summary>
+    /// Every navigation/command leaves this inspector only after its input is
+    /// validated and applied to the undoable TEST draft. Invalid input remains
+    /// visible and the previous step selection is preserved.
+    /// </summary>
+    public bool TryLeaveInspector()
+    {
+        if (_viewModel.IsApplyingInspector || _inspector?.HasPendingEdits != true) return true;
+        return _inspector.TryApplyChanges();
+    }
 
     /// <summary>
     /// Explicit save-on-close first validates/applies pending Inspector edits, then
@@ -62,6 +68,8 @@ public partial class TestEditorView : UserControl
 
     private void ShowInspector(StepInspectorContext context)
     {
+        if (_inspector?.HasPendingEdits == true && !_viewModel.IsApplyingInspector)
+            return; // stale async completion may not overwrite an active draft
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
             context.Original, context.InitialActionKey);
         editor.ApplyRequested = _viewModel.ApplyInspector;
