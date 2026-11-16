@@ -53,9 +53,37 @@
   <Setter Property="Background" Value="#2368BD"/>
   <Setter Property="Foreground" Value="White"/>
   <Setter Property="BorderBrush" Value="#2368BD"/>
-  <Style.Triggers>
-   <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#18569E"/></Trigger>
-  </Style.Triggers>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="{x:Type Button}">
+     <Border x:Name="Surface" Background="{TemplateBinding Background}"
+      BorderBrush="{TemplateBinding BorderBrush}"
+      BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5"
+      SnapsToDevicePixels="True">
+      <ContentPresenter Margin="{TemplateBinding Padding}"
+       HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+       RecognizesAccessKey="True"/>
+     </Border>
+     <ControlTemplate.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+       <Setter TargetName="Surface" Property="Background" Value="#18569E"/>
+       <Setter TargetName="Surface" Property="BorderBrush" Value="#18569E"/>
+      </Trigger>
+      <Trigger Property="IsPressed" Value="True">
+       <Setter TargetName="Surface" Property="Background" Value="#144A88"/>
+      </Trigger>
+      <Trigger Property="IsEnabled" Value="False">
+       <Setter Property="Cursor" Value="Arrow"/>
+       <Setter TargetName="Surface" Property="Opacity" Value="0.45"/>
+      </Trigger>
+      <Trigger Property="IsKeyboardFocused" Value="True">
+       <Setter TargetName="Surface" Property="BorderBrush" Value="#80BBFC"/>
+      </Trigger>
+     </ControlTemplate.Triggers>
+    </ControlTemplate>
+   </Setter.Value>
+  </Setter>
  </Style>
  <Style x:Key="AtQuietButton" TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">
   <Setter Property="Background" Value="Transparent"/>

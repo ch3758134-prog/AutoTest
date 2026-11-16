@@ -90,7 +90,13 @@
     <CheckBox x:Name="RunCheck" Grid.Column="0" VerticalAlignment="Center"
      IsChecked="{Binding RunSelection.IsSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
      Width="17" Height="17" Margin="0,0,4,0" Focusable="False"
-     ToolTip="本次执行选择（不修改工程默认）" Visibility="Collapsed"/>
+     ToolTip="本次执行选择（不修改工程默认）">
+     <CheckBox.Style>
+      <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource {x:Type CheckBox}}">
+       <Setter Property="Visibility" Value="Collapsed"/>
+      </Style>
+     </CheckBox.Style>
+    </CheckBox>
     <Viewbox x:Name="NodeIcon" Grid.Column="1" Width="16" Height="16"
      VerticalAlignment="Center" Stretch="Uniform" Margin="0,0,4,0">
      <Canvas Width="24" Height="24">
@@ -107,8 +113,14 @@
     <Button x:Name="AddResource" Grid.Column="4" Content="＋"
      Click="AddResource_Click" Focusable="False" Height="24" Width="24"
      MinHeight="0" MinWidth="0" FontSize="16" Padding="0" Margin="0,0,2,0"
-     ToolTip="新建／导入此类工程资源" Style="{StaticResource AtQuietButton}"
-     Visibility="Collapsed"/>
+     ToolTip="新建／导入此类工程资源"
+>
+     <Button.Style>
+      <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
+       <Setter Property="Visibility" Value="Collapsed"/>
+      </Style>
+     </Button.Style>
+    </Button>
    </Grid>
    <HierarchicalDataTemplate.Triggers>
     <DataTrigger Binding="{Binding IsRunSelectable}" Value="True">
