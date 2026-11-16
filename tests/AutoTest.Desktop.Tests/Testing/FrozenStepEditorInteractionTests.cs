@@ -27,7 +27,8 @@ public sealed class FrozenStepEditorInteractionTests
 
         editor.Delete(draft.Id); // Cancel removes the only provisional STEP.
         Assert.Empty(editor.Current.Get(TestPhase.Test));
-        Assert.Equal(original, editor.Current);
+        Assert.Equal(TestDocumentCodec.Serialize(original),
+            TestDocumentCodec.Serialize(editor.Current));
     }
 
     [Fact]
