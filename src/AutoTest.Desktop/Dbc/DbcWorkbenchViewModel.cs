@@ -176,6 +176,14 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     public bool ConfirmClose() =>
         !IsBusy && (!IsDirty || _dialogs.ConfirmDiscard("DBC 尚有未保存修改。确定关闭并放弃这些修改吗？"));
 
+    public async Task<bool> SaveForCloseAsync()
+    {
+        if (IsBusy) return false;
+        if (!IsDirty) return true;
+        await SaveAsync();
+        return !IsBusy && !IsDirty;
+    }
+
     private async Task SaveAsync()
     {
         if (!CanEdit || !IsDirty || IsBusy) return;

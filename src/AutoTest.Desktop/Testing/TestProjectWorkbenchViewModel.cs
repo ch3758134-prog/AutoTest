@@ -329,6 +329,14 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     public bool ConfirmClose() =>
         !IsBusy && (!IsDirty || _dialogs.Confirm("测试项目有未保存的用例顺序修改。确定放弃吗？"));
 
+    public async Task<bool> SaveForCloseAsync()
+    {
+        if (IsBusy) return false;
+        if (!IsDirty) return true;
+        await SaveAsync();
+        return !IsBusy && !IsDirty;
+    }
+
     private async Task SaveAsync()
     {
         if (IsBusy) return;

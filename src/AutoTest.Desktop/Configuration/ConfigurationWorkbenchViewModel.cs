@@ -864,6 +864,14 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             "工程配置还有未保存的修改。确定放弃并切换吗？", "未保存配置",
             MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes);
 
+    public async Task<bool> SaveForCloseAsync()
+    {
+        if (IsBusy) return false;
+        if (!IsDirty) return true;
+        await SaveAsync();
+        return !IsBusy && !IsDirty;
+    }
+
     private async Task SelectConfigurationAsync()
     {
         if ((!IsTcf && !IsTbc) || IsBusy || !ApplyFields()) return;

@@ -128,5 +128,16 @@ public partial class ProjectConfigurationOverviewView : UserControl
         }
     }
 
+    public bool HasUnsavedDrafts => _opened.Any(x => x.IsDirty);
+    public bool IsBusy => _opened.Any(x => x.IsBusy);
+
+    public async Task<bool> SaveForCloseAsync()
+    {
+        if (IsBusy) return false;
+        foreach (var editor in _opened)
+            if (!await editor.SaveForCloseAsync()) return false;
+        return !HasUnsavedDrafts;
+    }
+
     public bool ConfirmClose() => _opened.All(x => x.ConfirmClose());
 }
