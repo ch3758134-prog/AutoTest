@@ -154,11 +154,16 @@
      </Border>
     </StackPanel>
     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="文件" Style="{StaticResource BareBtn}" Click="PreviewOnly_Click"/>
-     <Button Content="编辑" Style="{StaticResource BareBtn}" Click="PreviewOnly_Click"/>
-     <Button Content="视图" Style="{StaticResource BareBtn}" Click="PreviewOnly_Click"/>
-     <Button Content="运行" Style="{StaticResource BareBtn}" Click="PreviewOnly_Click"/>
-     <Button Content="帮助" Style="{StaticResource BareBtn}" Click="PreviewOnly_Click"/>
+     <Button Content="文件" Style="{StaticResource BareBtn}"
+      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
+     <Button Content="编辑" Style="{StaticResource BareBtn}"
+      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
+     <Button Content="视图" Style="{StaticResource BareBtn}"
+      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
+     <Button Content="运行" Style="{StaticResource BareBtn}"
+      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
+     <Button Content="帮助" Style="{StaticResource BareBtn}"
+      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
     </StackPanel>
     <TextBlock Grid.Column="2" Text="UI 独立预览 · 无工程、TEST、DBC、设备接线"
      HorizontalAlignment="Right" Foreground="#A06E2F" FontSize="10"
@@ -403,7 +408,7 @@
           VerticalAlignment="Center" Margin="0,0,10,0" FontSize="10" Foreground="#8A99AD"
           FontFamily="Consolas"/>
          <StackPanel Grid.Column="1" Margin="{Binding Indent}" Orientation="Horizontal"
-          VerticalAlignment="Center">
+          VerticalAlignment="Center" ClipToBounds="True">
           <Border Background="{Binding CategoryBackground}" CornerRadius="3"
            Width="21" Height="21" Margin="0,0,7,0">
            <TextBlock Text="{Binding Icon}" Foreground="{Binding CategoryForeground}"
