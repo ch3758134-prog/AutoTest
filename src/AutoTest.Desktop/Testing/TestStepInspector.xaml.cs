@@ -67,7 +67,7 @@ public partial class TestStepInspector : UserControl
     [
         new("can", "外部操作", "发送 CAN 报文", "Write", "can",
             "选 DBC 报文后逐个编辑物理信号；没有 DBC 可直接填写 CAN1 原始帧。"),
-        new("key", "外部操作", "模拟 ECU 按键", "Write", "button",
+        new("key", "外部操作", "按键动作", "Write", "button",
             "可使用已配置功能按键，或直接操作 KEY_SIM 的 20 个电阻开关。"),
         new("ign", "外部操作", "切换 IGN", "Write", "ign", "切换固定台架的 IGN 输出。"),
         new("read", "读取与观察", "读取 CAN 信号", "Read", "signal",
@@ -105,7 +105,7 @@ public partial class TestStepInspector : UserControl
             "必须明确填写子程序引用，执行未接线。"),
         new("can-send", "外部操作", "CAN 发送（扩展步骤）", "CanSend", "",
             "编辑占位字段，运行前必须正式绑定 DBC / CAN 资源。"),
-        new("can-wait", "读取与观察", "CAN 等待（扩展步骤）", "CanWait", "",
+        new("can-wait", "读取与观察", "等待 CAN 报文（执行未接线）", "CanWait", "",
             "编辑目标报文和超时，未接线时不能运行。"),
         new("uds", "外部操作", "UDS 服务", "UdsRequest", "",
             "编辑服务和请求，实体诊断执行必须独立授权。"),
@@ -119,7 +119,11 @@ public partial class TestStepInspector : UserControl
 
     public static IReadOnlyList<TestActionOption> PaletteActions(bool caseOnly) =>
         Options.Where(option => caseOnly ? option.StepType == "Case" :
-            option.StepType != "Case").ToArray();
+            // "CanSend" is an obsolete alternate authoring entry. A real
+            // CAN sending operation already exists as Write + DBC/Raw CAN.
+            // Keep it readable for old resources, but do not offer engineers
+            // two misleading "send CAN" actions in the primary palette.
+            option.StepType != "Case" && option.Key != "can-send").ToArray();
 
     private readonly StepNode? _editing;
      private readonly IReadOnlyList<MappingChoice> _catalog;
@@ -204,7 +208,15 @@ public partial class TestStepInspector : UserControl
                 "can" => targetKind is TestTargetKind.CanMessage or TestTargetKind.RawCan,
                 _ => false
             })) ?? Options.FirstOrDefault(a => a.StepType == editing.Type);
-        if (chosen is not null)
+        if (chosen is null)
+        {
+            TypeLabel.Text = "暂不支持的步骤类型";
+            NameInput.Text = editing.Name;
+            StepCode.Text = editing.Id.ToString()[^5..];
+            ConfirmButton.IsEnabled = false;
+            ErrorText.Text = "此 TEST 步骤类型没有已批准的编辑器，原始内容保持不变。";
+        }
+        else
         {
             _selected = chosen;
             TypeIcon.Text = chosen.StepType switch
