@@ -180,8 +180,9 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             StatusMessage = "无法检查：请先勾选至少一个测试用例。";
             return;
         }
-        var assets = _workspace.Current?.Definition.Assets;
-        if (assets is null) { StatusMessage = "无法检查：未打开真实工程。"; return; }
+        var current = _workspace.Current;
+        if (current is null) { StatusMessage = "无法检查：未打开真实工程。"; return; }
+        var assets = current.Definition.Assets;
         var missing = selected.Where(row => !assets.Any(a =>
             a.Id.Value == row.AssetId && a.Revision == row.Revision &&
             a.Sha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))).ToArray();
