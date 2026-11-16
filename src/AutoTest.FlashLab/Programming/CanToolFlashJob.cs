@@ -115,7 +115,7 @@ public sealed record CanToolFlashJob(
             }
             byte[] signature=[0x12,0x34,0x56,0x78];
             for(int i=0;i<signature.Length;i++)
-                bytes[checked((int)(mark+i-aligned))]=signature[i];
+                bytes[checked((int)(mark+(ulong)i-aligned))]=signature[i];
         }
         if(prepared.Count==0)throw new FormatException("镜像没有可烧录的数据块。");
         var blocks=prepared.Select(p=>new FlashAlignedBlock(p.Key,

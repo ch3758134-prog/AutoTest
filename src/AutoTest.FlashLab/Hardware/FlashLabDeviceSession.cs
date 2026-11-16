@@ -198,6 +198,8 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             if(_usb?.State!=UsbSessionState.Connected || _link is null ||
                 _hub is null || _gate is null || _recorder is null)
                 throw new IOException("必须先建立独占 WinUSB/CAN1 主控会话。");
+            // Keep a non-null recorder reference across awaits for mandatory F2 audit.
+            var recorder=_recorder ?? throw new IOException("烧录审计记录器不存在。");
             // EPB_Test_Keil/Project/source/main.c initializes CAN1 at 500K.
             // Without a proven USB CAN baud-rate setter, refuse 250K profiles.
             if(job.ConfiguredBitrate is not ("500K" or "500000"))
@@ -231,7 +233,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                 job.App.RequestCanId,job.Boot.RequestCanId,checked((int)frames));
             _activeFlashPermit=permit;
             Interlocked.Exchange(ref _programmingActive,1);
-            _recorder.RecordMessage("FLASH_PLAN_APPROVED",
+            recorder.RecordMessage("FLASH_PLAN_APPROVED",
                 $"SHA={job.Fingerprint} target={job.TargetLabel} image={job.FirmwareSha256} "+
                 $"keyDllSha={job.SecuritySha256} CAN1 bitrate=operator_verified "+
                 $"erase=0x{job.FlashStart:X8}..0x{job.FlashEndInclusive:X8}");
@@ -253,7 +255,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                     },
                     isSensitive => Interlocked.Exchange(ref _sensitiveTrace,isSensitive?1:0));
                 var outcome=await work.ExecuteAsync(ct).ConfigureAwait(false);
-                _recorder.RecordMessage("FLASH_TERMINAL",outcome.Outcome);
+                recorder.RecordMessage("FLASH_TERMINAL",outcome.Outcome);
                 return outcome;
             }
             catch(Exception ex)
