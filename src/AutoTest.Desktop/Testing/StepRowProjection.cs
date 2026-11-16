@@ -1,5 +1,6 @@
 using System.Windows;
 using AutoTest.Testing.Authoring;
+using AutoTest.Testing.Runtime;
 
 namespace AutoTest.Desktop.Testing;
 
@@ -56,6 +57,8 @@ public sealed class StepRowProjection
     public bool IsNewDraft { get; }
     public bool IsBreakpoint => BreakpointMark.Length > 0;
     public bool IsUnavailable => State == "执行未接线" || State == "未知类型";
+    public bool HasRealExecutionError { get; }
+    public string StateDetail { get; }
     public bool IsQuickEditable => !IsNewDraft && Item.Step?.Type is "Wait" or "Loop";
     public bool IsNotQuickEditable => !IsQuickEditable;
     public string OriginalQuickValue => Item.Step?.Type switch
@@ -77,7 +80,8 @@ public sealed class StepRowProjection
     public Thickness Indent => new(9 + Depth * 18, 0, 0, 0);
     public StepRowProjection(StepTreeItem item, int depth, bool collapsed = false,
         string? search = null, bool newDraft = false,
-        IReadOnlyList<TestTargetMapping>? mappings = null)
+        IReadOnlyList<TestTargetMapping>? mappings = null,
+        RealStepFact? realFact = null)
     {
         Item = item;
         IsCollapsed = collapsed;
@@ -89,6 +93,9 @@ public sealed class StepRowProjection
             string.Equals(x.Name, targetName, StringComparison.OrdinalIgnoreCase))?.Kind;
         QuickValue = OriginalQuickValue;
         IsNewDraft = newDraft;
+        HasRealExecutionError = realFact?.Status is
+            RealStepStatus.Timeout or RealStepStatus.InvalidData or RealStepStatus.DeviceError;
+        StateDetail = realFact?.Detail ?? "";
         IsSearchMatch = !string.IsNullOrWhiteSpace(search) &&
             (Name + " " + Kind + " " + item.Step?.Properties.GetValueOrDefault("target", "") +
              " " + string.Join(" ", item.Step is { } currentStep
@@ -140,7 +147,18 @@ public sealed class StepRowProjection
         Resource = step.Properties.GetValueOrDefault("target",
             step.Properties.GetValueOrDefault("profile", "—"));
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(step.Type);
-        State = newDraft ? "待完善" : descriptor is null ? "未知类型" :
+        State = newDraft ? "待完善" :
+            realFact is not null ? realFact.Status switch
+            {
+                RealStepStatus.Completed => "已执行",
+                RealStepStatus.ConditionFalse => "条件不成立",
+                RealStepStatus.NoData => "无数据",
+                RealStepStatus.Timeout => "超时",
+                RealStepStatus.InvalidData => "数据无效",
+                RealStepStatus.DeviceError => "设备错误",
+                RealStepStatus.Cancelled => "已取消",
+                _ => "结果待核查"
+            } : descriptor is null ? "未知类型" :
             descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or
                 "Calculate" or "Expect" or "WaveStart" or "WaveStop" or "WaveAnalyze"
                 ? "待预检" : "执行未接线";

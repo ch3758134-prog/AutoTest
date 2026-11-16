@@ -694,12 +694,14 @@ public sealed class TestEditorViewModel : BindableBase
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
         IsBusy = true;
         RunFacts.Clear();
+        RefreshRows(); // Remove previous-run statuses before starting real execution.
         RunSummary = "正在执行真实测试…";
         StopRunCommand.RaiseCanExecuteChanged();
         try
         {
             var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval);
             foreach (var fact in result.Facts) RunFacts.Add(fact);
+            RefreshRows(); // Apply only actual backend StepId evidence.
             RunSummary = "执行完成 · " + result.Verdict + " · " + result.Facts.Length +
                 " 条步骤记录" + (result.EvidencePath is null ? "" :
                 " · 证据：" + result.EvidencePath);
@@ -806,11 +808,15 @@ public sealed class TestEditorViewModel : BindableBase
             // The ListBox may emit SelectedItem=null during collection reset.
             // Keep the UI session's identity and never treat that as navigation.
             StepRows.Clear();
+            var evidenceByStep = RunFacts.GroupBy(x => x.Step)
+                .ToDictionary(x => x.Key, x => x.Last());
             void Append(StepTreeItem item, int depth)
             {
                 var collapsed = _interaction.IsCollapsed(item);
+                RealStepFact? fact = null;
+                if (item.Step is { } node) evidenceByStep.TryGetValue(node.Id, out fact);
                 var row = new StepRowProjection(item, depth, collapsed, _stepFind,
-                    item.Step?.Id == _newDraftId, _transaction.Current.Mappings);
+                    item.Step?.Id == _newDraftId, _transaction.Current.Mappings, fact);
                 StepRows.Add(row);
                 if (!collapsed)
                     foreach (var child in item.Children)
