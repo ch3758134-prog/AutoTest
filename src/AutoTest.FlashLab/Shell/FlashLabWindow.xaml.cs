@@ -39,12 +39,75 @@ public partial class FlashLabWindow : Window
         DataContext=_vm;
         _device.Message+=line=>
         {
-            if(Dispatcher.CheckAccess()) AddLog(line);
-            else _=Dispatcher.BeginInvoke(new Action(()=>AddLog(line)));
+            void Render()
+            {
+                if(_closingApproved || _closingInProgress)return;
+                AddLog(line);
+                AdvanceStage(line);
+            }
+            if(Dispatcher.CheckAccess())Render();
+            else if(!Dispatcher.HasShutdownStarted)
+                _=Dispatcher.BeginInvoke(new Action(Render));
+        };
+        _device.Can1Frame+=frame=>
+        {
+            if(_closingApproved || _closingInProgress)return;
+            if(Interlocked.Increment(ref _pendingCount)>10000)
+            {Interlocked.Decrement(ref _pendingCount);return;}
+            _pendingCan.Enqueue(new CanLogRow(frame.Timestamp.ToString("HH:mm:ss.fff"),
+                frame.Direction,"0x"+frame.Id.ToString(frame.Id>0x7FF?"X8":"X3"),
+                frame.Dlc.ToString(),frame.Data,frame.Result));
+            ScheduleCanFlush();
         };
         Loaded+=async (_,_)=>await RefreshDevicesAsync();
         UpdateButtons();
         AddLog("F2 源码候选已启动：可准备并现场批准 CanTool 实体烧录；当前未经 ECU 端到端验证。");
+    }
+
+    private void ScheduleCanFlush()
+    {
+        if(Interlocked.CompareExchange(ref _flushRunning,1,0)!=0)return;
+        if(Dispatcher.HasShutdownStarted){Interlocked.Exchange(ref _flushRunning,0);return;}
+        _=Dispatcher.BeginInvoke(new Action(()=>
+        {
+            if(!_closingApproved && !_closingInProgress)
+            {
+                int count=0;
+                while(count<200 && _pendingCan.TryDequeue(out var item))
+                {
+                    Interlocked.Decrement(ref _pendingCount);
+                    _vm.AddCanLog(item);
+                    count++;
+                }
+                if(count>0 && _vm.CanLogs.Count>0)
+                    CanLogTable.ScrollIntoView(_vm.CanLogs[^1]);
+            }
+            Interlocked.Exchange(ref _flushRunning,0);
+            if(!_pendingCan.IsEmpty && !_closingInProgress && !_closingApproved)ScheduleCanFlush();
+        }),DispatcherPriority.Background);
+    }
+
+    private void AdvanceStage(string line)
+    {
+        int step=-1;
+        if(line.Contains("S1 检查 Boot",StringComparison.Ordinal))step=0;
+        else if(line.Contains("S1/S2 APP",StringComparison.Ordinal) ||
+                line.Contains("S2 进入 Boot",StringComparison.Ordinal))step=1;
+        else if(line.Contains("S3 SecurityAccess",StringComparison.Ordinal))step=2;
+        else if(line.Contains("S4 擦除",StringComparison.Ordinal))step=3;
+        else if(line.Contains("S5 Block",StringComparison.Ordinal))step=4;
+        else if(line.Contains("UDS Transfer 36 请求",StringComparison.Ordinal))step=5;
+        else if(line.Contains("UDS TransferExit 37 请求",StringComparison.Ordinal))step=6;
+        else if(line.Contains("S8 校验",StringComparison.Ordinal) ||
+                line.Contains("UDS Verify FF01 请求",StringComparison.Ordinal))step=7;
+        else if(line.Contains("S9 Boot",StringComparison.Ordinal))step=8;
+        else if(line.Contains("S10 复位后",StringComparison.Ordinal))step=9;
+        if(step>=0)
+        {
+            _vm.MarkStage(step,"进行中");
+            _activeStage=step;
+            WorkflowStatusLabel.Text="当前步骤："+_vm.Stages[step].Step;
+        }
     }
 
     private void Device_SelectionChanged(object sender,
@@ -96,6 +159,9 @@ public partial class FlashLabWindow : Window
             _vm.Status=candidates.Count==0?"未发现符合主控 VID/PID/接口 GUID 的 WinUSB 设备。"
                 : candidates.Count==1?"识别到一台主控，等待手动连接。":
                     $"找到 {candidates.Count} 台主控，请明确选择设备。";
+            UsbStatusLabel.Text=candidates.Count==0
+                ?"未找到主控（VID 1183 / PID 5850）；检查 USB、主控供电及 WinUSB 驱动"
+                :_vm.Status;
             AddLog($"{DateTimeOffset.Now:HH:mm:ss.fff}  USB 枚举：{_vm.Status}");
         }
         catch(Exception ex) { Error("刷新 WinUSB 主控",ex); }
@@ -112,7 +178,9 @@ public partial class FlashLabWindow : Window
         try
         {
             await _device.ConnectAsync(device,_connectStop.Token);
-            _vm.Status="真实主控已连接：CAN1=DUT；未执行现场 DID 授权。";
+            _vm.Status="USB 主控连接成功，开始监听 CAN1。";
+            UsbStatusLabel.Text="USB 已连接 · CAN1 / DUT";
+            WorkflowStatusLabel.Text="USB 已连接；请选择完整烧录配置并检查。";
         }
         catch(Exception ex) { Error("主控连接",ex); }
         finally
@@ -128,7 +196,9 @@ public partial class FlashLabWindow : Window
         {
             await _device.DisconnectAsync();
             _vm.TypedConfirmation="";
-            _vm.Status="主控已断开，诊断许可已撤销。";
+            _vm.Status="USB 已断开，CAN1 监听已停止。";
+            UsbStatusLabel.Text="USB 已断开";
+            WorkflowStatusLabel.Text="USB 已断开，无法开始烧录。";
         }
         catch(Exception ex) { Error("主控断开",ex); }
         finally { Busy(false); }
