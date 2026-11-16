@@ -553,7 +553,7 @@ public partial class MainWindow : Window
         var index=position<0 ? (direction==1?0:found.Count-1):
             (position+direction+found.Count)%found.Count;
         var step=found[index];
-        var phase=_phases.First(x=>Traverse(x.Steps).Any(x=>x.Id==step.Id));
+        var phase=_phases.First(p=>Traverse(p.Steps).Any(item=>item.Id==step.Id));
         phase.Collapsed=false;
         RebuildRows();SelectStep(step);
         SetMessage("搜索匹配 "+found.Count+" 条，已定位第 "+(index+1)+" 条。");
