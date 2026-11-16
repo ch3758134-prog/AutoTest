@@ -137,7 +137,9 @@ public partial class FlashLabWindow : Window
     }
     private void UpdateButtons()
     {
-        if(ConnectButton is null) return;
+        // SelectionChanged can fire while InitializeComponent creates controls.
+        if(ConnectButton is null || DisconnectButton is null || RefreshButton is null ||
+           PrepareFlashButton is null || StartFlashButton is null || AbortFlashButton is null) return;
         ConnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected && _vm.SelectedDevice is not null;
         DisconnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected;
         RefreshButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected;
