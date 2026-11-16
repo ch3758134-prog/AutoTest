@@ -17,12 +17,14 @@ public partial class ProjectExplorerView : UserControl
     {
         if (DataContext is not MainWindowViewModel vm ||
             e.NewValue is not ResourceTreeNode node) return;
-        if (node.Role == "Root")
+        if (node.Asset is null)
         {
-            vm.ShowOverview();
+            // Section/root selections must not leave a stale asset selected:
+            // the context menu could otherwise rename/remove the previous resource.
+            vm.SelectResource(null);
+            if (node.Role == "Root") vm.ShowOverview();
             return;
         }
-        if (node.Asset is null) return;
         vm.SelectResource(node);
         try { await vm.OpenSelectedResourceAsync(); }
         catch (Exception ex) { UiExceptionReporter.Record("Explorer / open asset", ex); }
