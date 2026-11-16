@@ -249,14 +249,15 @@
         <Grid Grid.Column="2" Margin="6,0">
          <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis"
           Foreground="#607B98" VerticalAlignment="Center" FontSize="12"
-          Visibility="{Binding IsNotQuickEditable,Converter={StaticResource BoolToVisibility}}"
-          ToolTip="{Binding Summary}"/>
+          Visibility="{Binding ShowQuickSummary,Converter={StaticResource BoolToVisibility}}"
+          MouseLeftButtonDown="QuickSummary_MouseLeftButtonDown"
+          ToolTip="步骤摘要；等待时间与循环次数可双击直接修改"/>
          <TextBox Text="{Binding QuickValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-          Visibility="{Binding IsQuickEditable,Converter={StaticResource BoolToVisibility}}"
-          Background="Transparent" BorderBrush="#C9D8E9" BorderThickness="0,0,0,1"
-          Padding="2,1" Height="25" MinHeight="0" FontSize="12" Foreground="#405F7B"
+          Visibility="{Binding ShowInlineEditor,Converter={StaticResource BoolToVisibility}}"
+          Background="White" BorderBrush="#5A9BD2" BorderThickness="1"
+          Padding="4,1" Height="25" MinHeight="0" FontSize="12" Foreground="#264D74"
           VerticalAlignment="Center" VerticalContentAlignment="Center"
-          ToolTip="直接编辑等待毫秒数或循环次数，Enter 确定、Esc 取消"
+          ToolTip="Enter 应用到 TEST 草稿；Esc 恢复原值"
           LostFocus="QuickField_LostFocus" KeyDown="QuickField_KeyDown"/>
         </Grid>
         <TextBlock Grid.Column="3" Text="{Binding Resource}" TextTrimming="CharacterEllipsis"

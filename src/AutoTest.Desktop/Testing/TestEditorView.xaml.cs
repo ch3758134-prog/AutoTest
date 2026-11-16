@@ -17,6 +17,7 @@ public partial class TestEditorView : UserControl
     private bool _restoringStepRow;
     private IReadOnlyList<TestActionOption> _paletteActions = Array.Empty<TestActionOption>();
     private bool _focusNameOnNextInspector;
+    private bool _committingQuickValue;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
     public ContentControl InspectorHost { get; } = new()
@@ -320,27 +321,59 @@ public partial class TestEditorView : UserControl
         }
     }
 
+    private void QuickSummary_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2 || sender is not TextBlock text ||
+            text.DataContext is not StepRowProjection row || !row.IsQuickEditable) return;
+        _viewModel.SelectItem(row.Item);
+        if (_viewModel.SelectedItem?.Step?.Id != row.Item.Step?.Id) return;
+        row.IsInlineEditing = true;
+        e.Handled = true;
+        if (VisualTreeHelper.GetParent(text) is Grid grid)
+        {
+            var box = grid.Children.OfType<TextBox>().FirstOrDefault();
+            if (box is not null)
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    box.Focus();
+                    box.SelectAll();
+                }), DispatcherPriority.Input);
+        }
+    }
+
+    private bool CommitInlineQuickValue(StepRowProjection row)
+    {
+        if (_committingQuickValue || !row.IsInlineEditing) return false;
+        _committingQuickValue = true;
+        try
+        {
+            if (!_viewModel.TryCommitQuickValue(row)) return false;
+            row.IsInlineEditing = false;
+            return true;
+        }
+        finally { _committingQuickValue = false; }
+    }
+
     private void QuickField_LostFocus(object sender, RoutedEventArgs e)
     {
-        if (sender is TextBox { DataContext: StepRowProjection row })
-            _viewModel.CommitQuickValue(row);
+        if (sender is TextBox { DataContext: StepRowProjection row } &&
+            row.IsInlineEditing && !_committingQuickValue)
+            CommitInlineQuickValue(row);
     }
 
     private void QuickField_KeyDown(object sender, KeyEventArgs e)
     {
-        if (sender is not TextBox box) return;
+        if (sender is not TextBox box || box.DataContext is not StepRowProjection row) return;
         if (e.Key is Key.Enter or Key.Return)
         {
-            Keyboard.ClearFocus(); e.Handled = true;
+            if (CommitInlineQuickValue(row)) Keyboard.ClearFocus();
+            e.Handled = true;
         }
         else if (e.Key == Key.Escape)
         {
-            if (box.DataContext is StepRowProjection row)
-            {
-                row.QuickValue = row.OriginalQuickValue;
-                box.Text = row.OriginalQuickValue;
-            }
-            Keyboard.ClearFocus(); e.Handled = true;
+            row.CancelQuickEdit();
+            Keyboard.ClearFocus();
+            e.Handled = true;
         }
     }
 

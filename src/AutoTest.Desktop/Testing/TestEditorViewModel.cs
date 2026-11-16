@@ -809,20 +809,33 @@ public sealed class TestEditorViewModel : BindableBase
         RefreshCommands();
     }
 
-    public void CommitQuickValue(StepRowProjection row)
+    public void CommitQuickValue(StepRowProjection row) => TryCommitQuickValue(row);
+
+    /// <summary>Both inline and Inspector edits update the one formal TEST transaction.</summary>
+    public bool TryCommitQuickValue(StepRowProjection row)
     {
-        if (IsBusy || !CanProceed() || row.Item.Step is not { } step || !row.IsQuickEditable) return;
+        if (IsBusy || !CanProceed() || row.Item.Step is not { } step ||
+            !row.IsQuickEditable) return false;
         var key = step.Type == "Wait" ? "milliseconds" : "count";
         var upper = step.Type == "Wait" ? 60000 : 1000;
         if (!int.TryParse(row.QuickValue, out var value) || value < 0 || value > upper)
         {
-            StatusMessage = "步骤参数拒绝：请填写 0～" + upper + " 范围内的整数。";
-            RefreshRows();
-            return;
+            StatusMessage = "行内参数无效：请输入 0～" + upper + " 的整数；原输入仍保留，可修正或 Esc 取消。";
+            return false;
         }
-        if (row.OriginalQuickValue == value.ToString()) return;
-        Mutate(() => _transaction.SetProperty(step.Id, key, value.ToString()),
-            step.Id, "已直接修改参数；保存后写入 TEST 文档。");
+        if (row.OriginalQuickValue == value.ToString()) return true;
+        try
+        {
+            _transaction.SetProperty(step.Id, key, value.ToString());
+            RefreshTree(step.Id);
+            StatusMessage = "已在当前 TEST 草稿中修改参数；右侧属性与中央摘要已同步。";
+            return true;
+        }
+        catch (Exception error) when (IsEditorError(error))
+        {
+            StatusMessage = "行内编辑未应用：" + error.Message;
+            return false;
+        }
     }
 
     /// <summary>Move canonical StepNode, preserving StepId, Slots and transaction undo.</summary>

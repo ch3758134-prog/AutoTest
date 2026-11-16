@@ -1,6 +1,7 @@
 using System.Windows;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Runtime;
+using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Testing;
 
@@ -8,7 +9,7 @@ namespace AutoTest.Desktop.Testing;
 /// One display row per formal StepNode, branch, or phase. No second TEST document,
 /// no independent IDs, and no persisted UI-only execution facts.
 /// </summary>
-public sealed class StepRowProjection
+public sealed class StepRowProjection : BindableBase
 {
     public StepTreeItem Item { get; }
     private readonly TestTargetKind? _targetKind;
@@ -66,6 +67,24 @@ public sealed class StepRowProjection
     public bool IsQuickEditable =>
         !IsNewDraft && Item.Step?.Type is ("Wait" or "Loop");
     public bool IsNotQuickEditable => !IsQuickEditable;
+    private bool _inlineEditing;
+    public bool IsInlineEditing
+    {
+        get => _inlineEditing;
+        set
+        {
+            if (!SetProperty(ref _inlineEditing, value)) return;
+            RaisePropertyChanged(nameof(ShowQuickSummary));
+            RaisePropertyChanged(nameof(ShowInlineEditor));
+        }
+    }
+    public bool ShowQuickSummary => !IsInlineEditing;
+    public bool ShowInlineEditor => IsInlineEditing && IsQuickEditable;
+    public void CancelQuickEdit()
+    {
+        QuickValue = OriginalQuickValue;
+        IsInlineEditing = false;
+    }
     public string OriginalQuickValue => Item.Step?.Type switch
     {
         "Wait" => Item.Step.Properties.GetValueOrDefault("milliseconds", ""),
