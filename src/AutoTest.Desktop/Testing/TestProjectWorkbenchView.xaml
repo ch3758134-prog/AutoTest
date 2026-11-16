@@ -77,6 +77,19 @@
        MinHeight="100" MaxHeight="1300" BorderThickness="0"
        EnableRowVirtualization="True" SelectionUnit="FullRow"
        MouseDoubleClick="PackagesGrid_DoubleClick">
+       <DataGrid.RowStyle>
+        <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource {x:Type DataGridRow}}">
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding RunSelected}" Value="True">
+           <Setter Property="Background" Value="#F1F7FF"/>
+          </DataTrigger>
+          <DataTrigger Binding="{Binding RunSelected}" Value="False">
+           <Setter Property="Background" Value="#FBFCFD"/>
+           <Setter Property="Foreground" Value="#778598"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style>
+       </DataGrid.RowStyle>
        <DataGrid.Columns>
         <DataGridTemplateColumn Header="本次执行" Width="80">
          <DataGridTemplateColumn.CellTemplate>
@@ -84,7 +97,19 @@
            <CheckBox IsChecked="{Binding RunSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
             HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="只影响本次执行选择">
             <CheckBox.Content>
-             <TextBlock Text="已选" FontSize="11" Foreground="#245F9D"/>
+             <TextBlock FontSize="11" Foreground="#245F9D">
+              <TextBlock.Style>
+               <Style TargetType="{x:Type TextBlock}">
+                <Setter Property="Text" Value="已选"/>
+                <Style.Triggers>
+                 <DataTrigger Binding="{Binding RunSelected}" Value="False">
+                  <Setter Property="Text" Value="—"/>
+                  <Setter Property="Foreground" Value="#9AA7B6"/>
+                 </DataTrigger>
+                </Style.Triggers>
+               </Style>
+              </TextBlock.Style>
+             </TextBlock>
             </CheckBox.Content>
            </CheckBox>
           </DataTemplate>
