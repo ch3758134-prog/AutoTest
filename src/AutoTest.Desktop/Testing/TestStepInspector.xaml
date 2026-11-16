@@ -1,140 +1,166 @@
 <UserControl x:Class="AutoTest.Desktop.Testing.TestStepInspector"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Background="White" Foreground="{StaticResource Ink}"
- FontFamily="{StaticResource UiFont}" FontSize="13" UseLayoutRounding="True">
+ Background="#FBFCFF" Foreground="#1E2C41" FontFamily="{StaticResource UiFont}"
+ FontSize="12" UseLayoutRounding="True">
  <Grid>
-  <Grid.RowDefinitions><RowDefinition Height="0"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <Border Grid.Row="0" Visibility="Collapsed" Background="{StaticResource ToolbarSurface}"
-          BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="13,11">
-   <StackPanel>
-    <TextBlock x:Name="Heading" Text="步骤属性" FontSize="18" FontWeight="SemiBold"/>
-    <TextBlock Text="在这里直接选择操作并编辑步骤参数，不会触发硬件操作。"
-               Foreground="{StaticResource Subtle}" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
-   </StackPanel>
-  </Border>
-  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-   <StackPanel Margin="12,12,12,14">
-    <StackPanel x:Name="ActionSelectorPanel" Margin="0,0,0,14">
-     <TextBlock Text="操作类型" FontWeight="SemiBold" Margin="0,0,0,6"/>
-     <TextBox x:Name="ActionSearch" ToolTip="搜索 CAN、按键、读取、判断和流程控制"
-              TextChanged="ActionSearch_Changed" Margin="0,0,0,7"/>
+  <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+   <StackPanel Margin="12,11,12,13">
+    <DockPanel Margin="0,0,0,11">
+     <Border DockPanel.Dock="Left" Background="#EAF2FC" CornerRadius="4"
+      Width="22" Height="22" Margin="0,0,7,0">
+      <TextBlock Text="▣" Foreground="#3F76B8" FontSize="10"
+       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+     </Border>
+     <TextBlock x:Name="Heading" Text="步骤属性" VerticalAlignment="Center"
+      FontWeight="SemiBold" FontSize="12"/>
+    </DockPanel>
+    <!-- Only adding a NEW step displays the type catalogue; editing an existing
+         step starts immediately at the frequently-used properties. -->
+    <StackPanel x:Name="ActionSelectorPanel" Margin="0,0,0,12">
+     <TextBlock Text="操作类型" FontWeight="SemiBold" Foreground="#61738B"
+      FontSize="11" Margin="0,0,0,5"/>
+     <TextBox x:Name="ActionSearch" TextChanged="ActionSearch_Changed"
+      ToolTip="输入 CAN、读取、按键、判断、流程、波形等搜索步骤类型"
+      Margin="0,0,0,6"/>
      <ListBox x:Name="ActionList" ItemsSource="{Binding FilteredActions}"
-              SelectedItem="{Binding SelectedAction,Mode=TwoWay}"
-              DisplayMemberPath="DisplayName" MinHeight="80" MaxHeight="160"
-              SelectionChanged="ActionList_Changed"/>
+      SelectedItem="{Binding SelectedAction,Mode=TwoWay}"
+      DisplayMemberPath="DisplayName" MinHeight="90" MaxHeight="150"
+      SelectionChanged="ActionList_Changed" FontSize="11" BorderBrush="#DBE3ED"/>
     </StackPanel>
 
-      <TextBlock x:Name="ActionDescription" TextWrapping="Wrap"
-                 Foreground="{StaticResource Subtle}" Margin="0,0,0,15"/>
-      <TextBlock Text="步骤名称" FontWeight="SemiBold" Margin="0,0,0,6"/>
-      <TextBox x:Name="NameInput" Margin="0,0,0,15"/>
-      <StackPanel x:Name="TargetPanel" Margin="0,0,0,13">
-       <TextBlock Text="操作对象" FontWeight="SemiBold" Margin="0,0,0,6"/>
-       <TextBox x:Name="TargetSearch" TextChanged="TargetSearch_Changed"
-                ToolTip="搜索 DBC、报文名称、CAN ID、信号或已配置按键"
-                Margin="0,0,0,7"/>
-       <ComboBox x:Name="TargetPicker" ItemsSource="{Binding AvailableTargets}"
-                 DisplayMemberPath="Label" MinHeight="33"
-                 SelectionChanged="TargetPicker_Changed"/>
-       <TextBlock x:Name="TargetHint" Foreground="{StaticResource Subtle}"
-                  TextWrapping="Wrap" Margin="0,6,0,0"/>
-      </StackPanel>
-      <StackPanel x:Name="RawCanPanel" Visibility="Collapsed" Margin="0,0,0,14">
-       <TextBlock Text="原始 CAN1 报文（不依赖 DBC）" FontWeight="SemiBold" Margin="0,0,0,8"/>
-       <TextBlock Text="报文 ID（十六进制）" Margin="0,0,0,5"/>
-       <TextBox x:Name="FrameIdInput" Margin="0,0,0,8" ToolTip="例如 0x123"/>
-       <CheckBox x:Name="ExtendedFrame" Content="扩展 29 位帧" Margin="0,0,0,11"/>
-       <TextBlock Text="完整数据字节（HEX，最多 8 字节）" Margin="0,0,0,5"/>
-       <TextBox x:Name="RawCanDataInput" FontFamily="Consolas"
-                ToolTip="例如 0102030405060708"/>
-       <TextBlock Text="此操作只发送一次经典 CAN 帧；不推断信号含义。"
-                  Foreground="{StaticResource Subtle}" FontSize="11"
-                  TextWrapping="Wrap" Margin="0,7,0,0"/>
-      </StackPanel>
-      <StackPanel x:Name="DbcCanPanel" Visibility="Collapsed" Margin="0,0,0,13">
-       <TextBlock Text="按 DBC 信号编辑发送内容" FontSize="15"
-                  FontWeight="SemiBold" Margin="0,0,0,8"/>
-       <TextBlock x:Name="DbcMessageInfo" Foreground="{StaticResource Subtle}"
-                  Margin="0,0,0,8" TextWrapping="Wrap"/>
-       <DataGrid x:Name="SignalGrid" ItemsSource="{Binding SignalValues}"
-                 AutoGenerateColumns="False" RowHeaderWidth="0"
-                 CanUserAddRows="False" CanUserDeleteRows="False"
-                 HeadersVisibility="Column" MinHeight="150" MaxHeight="380">
-        <DataGrid.Columns>
-         <DataGridTextColumn Header="信号" Binding="{Binding Name}" IsReadOnly="True" Width="2*"/>
-         <DataGridTextColumn Header="物理值" Binding="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" Width="*"/>
-         <DataGridTextColumn Header="单位" Binding="{Binding Unit}" IsReadOnly="True" Width="65"/>
-         <DataGridTextColumn Header="定义范围" Binding="{Binding Range}" IsReadOnly="True" Width="130"/>
-        </DataGrid.Columns>
-       </DataGrid>
-       <CheckBox x:Name="DbcRawMode" Content="改为填写整帧原始 HEX 数据"
-                 Checked="DbcRawMode_Changed" Unchecked="DbcRawMode_Changed"
-                 Margin="0,12,0,8"/>
-       <TextBox x:Name="DbcRawDataInput" Visibility="Collapsed"
-                FontFamily="Consolas" ToolTip="HEX:后面的完整字节；须与DBC定义的DLC一致"/>
-       <TextBlock Text="发送前必须给全部非复用信号赋值。复用报文暂使用完整原始帧编辑，避免错误编码。"
-                  FontSize="11" Foreground="{StaticResource Subtle}"
-                  TextWrapping="Wrap" Margin="0,7,0,0"/>
-      </StackPanel>
-      <StackPanel x:Name="KeyPanel" Visibility="Collapsed" Margin="0,0,0,14">
-       <TextBlock Text="按键操作" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,7"/>
-       <ComboBox x:Name="KeyActionInput" SelectionChanged="KeyAction_Changed"
-                 MinHeight="30" Margin="0,0,0,9">
-        <ComboBoxItem Content="短按后释放" Tag="Pulse"/>
-        <ComboBoxItem Content="保持按下" Tag="Hold"/>
-        <ComboBoxItem Content="释放" Tag="Release"/>
-       </ComboBox>
-       <StackPanel x:Name="RawKeyMaskPanel" Visibility="Collapsed">
-        <TextBlock Text="KEY_SIM 电阻网络组合" Margin="0,0,0,5"/>
-        <TextBox x:Name="RawKeyMaskInput" IsReadOnly="True"
-                 FontFamily="Consolas" Margin="0,0,0,7"/>
-        <UniformGrid x:Name="RawKeyGrid" Columns="5" Rows="4" Margin="0,0,0,8"/>
-        <Button Content="清空选择" Click="ClearRawKeys_Click"
-                HorizontalAlignment="Left" Margin="0,0,0,9"/>
-        <TextBlock Text="直接控制开关不会保证 ECU 实际识别电压；推荐先配置有含义的 ECU 功能按键。"
-                   Foreground="{StaticResource Subtle}" TextWrapping="Wrap"
-                   FontSize="11" Margin="0,0,0,10"/>
-       </StackPanel>
-       <StackPanel x:Name="KeyDurationPanel">
-        <TextBlock Text="短按保持时间（ms）" Margin="0,0,0,5"/>
-        <TextBox x:Name="KeyDurationInput" Width="170" HorizontalAlignment="Left"/>
-        <TextBlock Text="配置好的功能按键可以留空，使用动作配置的默认保持时间。"
-                   Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,5,0,0"/>
-       </StackPanel>
-      </StackPanel>
-      <StackPanel x:Name="IgnitionPanel" Visibility="Collapsed" Margin="0,0,0,14">
-       <TextBlock Text="IGN 目标状态" FontWeight="SemiBold" Margin="0,0,0,6"/>
-       <ComboBox x:Name="IgnitionState" Width="180" HorizontalAlignment="Left">
-        <ComboBoxItem Content="开启 IGN" Tag="ON"/>
-        <ComboBoxItem Content="关闭 IGN" Tag="OFF"/>
-       </ComboBox>
-      </StackPanel>
-      <ItemsControl x:Name="ParameterList" ItemsSource="{Binding ParameterFields}">
-       <ItemsControl.ItemTemplate>
-        <DataTemplate>
-         <StackPanel Margin="0,0,0,13">
-          <TextBlock Text="{Binding Label}" Margin="0,0,0,6" FontWeight="Medium"/>
-          <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                   Padding="8,6"/>
-         </StackPanel>
-        </DataTemplate>
-       </ItemsControl.ItemTemplate>
-      </ItemsControl>
+    <TextBlock x:Name="ActionDescription" TextWrapping="Wrap" Foreground="#64758C"
+     FontSize="11" Margin="0,0,0,13"/>
+    <TextBlock Text="步骤名称" Foreground="#61738B" FontWeight="SemiBold"
+     FontSize="11" Margin="0,0,0,5"/>
+    <TextBox x:Name="NameInput" Margin="0,0,0,13"/>
 
+    <StackPanel x:Name="TargetPanel" Margin="0,0,0,13">
+     <TextBlock Text="操作对象 / 正式资源" Foreground="#61738B"
+      FontWeight="SemiBold" FontSize="11" Margin="0,0,0,5"/>
+     <TextBox x:Name="TargetSearch" TextChanged="TargetSearch_Changed"
+      ToolTip="搜索工程 DBC、报文 ID、信号、控制器按键"
+      Margin="0,0,0,5"/>
+     <ComboBox x:Name="TargetPicker" ItemsSource="{Binding AvailableTargets}"
+      DisplayMemberPath="Label" MinHeight="28"
+      SelectionChanged="TargetPicker_Changed"/>
+     <TextBlock x:Name="TargetHint" Foreground="#64758C" FontSize="10"
+      TextWrapping="Wrap" Margin="0,6,0,0"/>
+    </StackPanel>
+
+    <StackPanel x:Name="RawCanPanel" Visibility="Collapsed" Margin="0,0,0,13">
+     <TextBlock Text="CAN1 原始帧" Foreground="#4B6382" FontWeight="SemiBold"
+      FontSize="11" Margin="0,0,0,8"/>
+     <TextBlock Text="CAN ID · 16 进制" Foreground="#61738B" FontSize="11" Margin="0,0,0,5"/>
+     <TextBox x:Name="FrameIdInput" Margin="0,0,0,8" ToolTip="例如 0x123"/>
+     <CheckBox x:Name="ExtendedFrame" Content="29 位扩展 ID" Margin="0,0,0,9"/>
+     <TextBlock Text="整帧数据 · HEX（最大 8 字节）" Foreground="#61738B"
+      FontSize="11" Margin="0,0,0,5"/>
+     <TextBox x:Name="RawCanDataInput" FontFamily="Consolas"
+      ToolTip="例如 0102030405060708"/>
+    </StackPanel>
+
+    <StackPanel x:Name="DbcCanPanel" Visibility="Collapsed" Margin="0,0,0,13">
+     <TextBlock Text="按 DBC 信号编辑发送内容" FontSize="11"
+      FontWeight="SemiBold" Foreground="#285F9D" Margin="0,0,0,7"/>
+     <Border Background="#F5F8FC" CornerRadius="5" BorderBrush="#E6ECF4"
+      BorderThickness="1" Padding="7" Margin="0,0,0,10">
+      <TextBlock x:Name="DbcMessageInfo" TextWrapping="Wrap"
+       Foreground="#64758C" FontSize="10"/>
+     </Border>
+     <!-- A 320px Inspector cannot present a four-column native DataGrid clearly.
+          Same real SignalValues; direct physical value editing, no hidden table. -->
+     <ItemsControl x:Name="SignalGrid" ItemsSource="{Binding SignalValues}">
+      <ItemsControl.ItemTemplate>
+       <DataTemplate>
+        <StackPanel Margin="0,0,0,10">
+         <DockPanel Margin="0,0,0,4">
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Unit}"
+           Foreground="#64758C" FontSize="10" Margin="6,0,0,0"/>
+          <TextBlock Text="{Binding Name}" Foreground="#61738B" FontSize="11"
+           FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+         </DockPanel>
+         <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+          FontFamily="Consolas" ToolTip="{Binding Range}"/>
+         <TextBlock Text="{Binding Range,StringFormat='有效范围：{0}'}"
+          Foreground="#8B9BAE" FontSize="10" Margin="0,3,0,0"/>
+        </StackPanel>
+       </DataTemplate>
+      </ItemsControl.ItemTemplate>
+     </ItemsControl>
+     <CheckBox x:Name="DbcRawMode" Content="改用完整原始帧 HEX"
+      Checked="DbcRawMode_Changed" Unchecked="DbcRawMode_Changed"
+      Margin="0,9,0,6"/>
+     <TextBox x:Name="DbcRawDataInput" Visibility="Collapsed" FontFamily="Consolas"
+      ToolTip="需与当前 DBC DLC 匹配"/>
+     <TextBlock Text="按实际 DBC 定义编码。缺失物理值、复用帧和无效资源会被拒绝，不自动填零。"
+      TextWrapping="Wrap" Foreground="#64758C" FontSize="10" Margin="0,7,0,0"/>
+    </StackPanel>
+
+    <StackPanel x:Name="KeyPanel" Visibility="Collapsed" Margin="0,0,0,13">
+     <TextBlock Text="按键动作" Foreground="#4B6382" FontWeight="SemiBold"
+      FontSize="11" Margin="0,0,0,6"/>
+     <ComboBox x:Name="KeyActionInput" SelectionChanged="KeyAction_Changed"
+      MinHeight="28" Margin="0,0,0,8">
+      <ComboBoxItem Content="按下后释放" Tag="Pulse"/>
+      <ComboBoxItem Content="保持按下" Tag="Hold"/>
+      <ComboBoxItem Content="恢复／释放" Tag="Release"/>
+     </ComboBox>
+     <StackPanel x:Name="RawKeyMaskPanel" Visibility="Collapsed">
+      <TextBlock Text="KEY_SIM · 20 路电阻开关组合" Foreground="#61738B"
+       FontSize="11" Margin="0,0,0,5"/>
+      <TextBox x:Name="RawKeyMaskInput" IsReadOnly="True" FontFamily="Consolas"
+       Margin="0,0,0,8"/>
+      <UniformGrid x:Name="RawKeyGrid" Columns="5" Rows="4" Margin="0,0,0,7"/>
+      <Button Content="清空选择" Click="ClearRawKeys_Click"
+       HorizontalAlignment="Left" Margin="0,0,0,8"/>
+      <TextBlock Text="这些是电阻组合开关，不是 20 路独立模拟电压源。"
+       FontSize="10" Foreground="#64758C" TextWrapping="Wrap" Margin="0,0,0,8"/>
+     </StackPanel>
+     <StackPanel x:Name="KeyDurationPanel">
+      <TextBlock Text="保持时间（ms）" Foreground="#61738B" FontSize="11"
+       Margin="0,0,0,5"/>
+      <TextBox x:Name="KeyDurationInput" Width="150"
+       HorizontalAlignment="Left"/>
+     </StackPanel>
+    </StackPanel>
+
+    <StackPanel x:Name="IgnitionPanel" Visibility="Collapsed" Margin="0,0,0,13">
+     <TextBlock Text="IGN 目标状态" FontWeight="SemiBold" Foreground="#61738B"
+      FontSize="11" Margin="0,0,0,6"/>
+     <ComboBox x:Name="IgnitionState">
+      <ComboBoxItem Content="开启 IGN" Tag="ON"/>
+      <ComboBoxItem Content="关闭 IGN" Tag="OFF"/>
+     </ComboBox>
+    </StackPanel>
+
+    <ItemsControl x:Name="ParameterList" ItemsSource="{Binding ParameterFields}">
+     <ItemsControl.ItemTemplate>
+      <DataTemplate>
+       <StackPanel Margin="0,0,0,11">
+        <TextBlock Text="{Binding Label}" Foreground="#61738B" FontSize="11"
+         FontWeight="SemiBold" Margin="0,0,0,5"/>
+        <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+       </StackPanel>
+      </DataTemplate>
+     </ItemsControl.ItemTemplate>
+    </ItemsControl>
    </StackPanel>
   </ScrollViewer>
-  <Border Grid.Row="2" Background="{StaticResource ToolbarSurface}"
-          BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="12,11">
-   <DockPanel LastChildFill="True">
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="{StaticResource Danger}"
-               TextWrapping="Wrap" Margin="0,0,0,7" FontSize="11"/>
+  <!-- Sticky apply/cancel at the bottom; edits stay transactional and cancellable. -->
+  <Border Grid.Row="1" Background="#FBFCFF" BorderBrush="#DBE3ED"
+   BorderThickness="0,1,0,0" Padding="12,8">
+   <StackPanel>
+    <TextBlock x:Name="ErrorText" Foreground="#C04A57" FontSize="10"
+     TextWrapping="Wrap" Margin="0,0,0,7"/>
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-     <Button x:Name="CancelButton" Content="取消编辑" Click="Cancel_Click" MinWidth="80" Margin="0,0,7,0"/>
-     <Button x:Name="ConfirmButton" Content="应用属性" Style="{StaticResource AtPrimaryButton}"
-             Click="Confirm_Click" MinWidth="100"/>
+     <Button x:Name="CancelButton" Content="取消" Click="Cancel_Click"
+      MinWidth="70" Margin="0,0,7,0"/>
+     <Button x:Name="ConfirmButton" Content="应用属性"
+      Style="{StaticResource AtPrimaryButton}" Click="Confirm_Click" MinWidth="92"/>
     </StackPanel>
-   </DockPanel>
+   </StackPanel>
   </Border>
  </Grid>
 </UserControl>
