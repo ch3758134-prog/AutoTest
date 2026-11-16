@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Collections.Concurrent;
+using System.Windows.Threading;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -19,9 +21,14 @@ public partial class FlashLabWindow : Window
     private readonly FlashLabViewModel _vm = new();
     private readonly FlashLabDeviceSession _device = new();
     private CancellationTokenSource? _connectStop;
-    private CancellationTokenSource? _didStop;
     private CancellationTokenSource? _flashStop;
     private string? _seedDllPath;
+    private string? _safetyFilePath;
+    private string? _seedKeyFilePath;
+    private readonly ConcurrentQueue<CanLogRow> _pendingCan=new();
+    private int _pendingCount;
+    private int _flushRunning;
+    private int _activeStage=-1;
     private CanToolFlashJob? _previewFlash;
     private bool _closingApproved;
     private bool _closingInProgress;
@@ -39,6 +46,16 @@ public partial class FlashLabWindow : Window
         UpdateButtons();
         AddLog("F2 源码候选已启动：可准备并现场批准 CanTool 实体烧录；当前未经 ECU 端到端验证。");
     }
+
+    private void Device_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)=>UpdateButtons();
+
+    private void ClearCan_Click(object sender,RoutedEventArgs e)
+    {
+        _vm.CanLogs.Clear();
+        AddLog("已清空 CAN 显示表格；原始证据仍保留。");
+    }
+
     private void AddLog(string text)
     {
         _vm.AddLog(text);
@@ -61,8 +78,6 @@ public partial class FlashLabWindow : Window
         ConnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected && _vm.SelectedDevice is not null;
         DisconnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected;
         RefreshButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected;
-        ReadDidButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected;
-        CancelDidButton.IsEnabled=!_closingInProgress && _didStop is not null;
         PrepareFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy;
         StartFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected && _previewFlash is not null;
         AbortFlashButton.IsEnabled=!_closingInProgress && _flashStop is not null;
@@ -108,7 +123,6 @@ public partial class FlashLabWindow : Window
     }
     private async void Disconnect_Click(object sender,RoutedEventArgs e)
     {
-        _didStop?.Cancel();
         Busy(true);
         try
         {
@@ -132,7 +146,6 @@ public partial class FlashLabWindow : Window
             ApplySafetyLibraryFromConfiguration();
             _vm.Status="已加载 CanTool XML；字段与未知项已保留。";
             AddLog("XML 配置载入："+dialog.FileName);
-            ApplyEndpointFromConfiguration(logError:false);
         }
         catch(Exception ex) { Error("读取配置 XML",ex); }
     }
@@ -184,75 +197,6 @@ public partial class FlashLabWindow : Window
         }
         catch(Exception ex) { Error("固件镜像校验",ex); }
     }
-    private void Endpoint_SelectionChanged(object sender,
-        System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        // Never rewrite operator edits simply because a mode tab changed.
-    }
-    private void ApplyEndpoint_Click(object sender,RoutedEventArgs e) =>
-        ApplyEndpointFromConfiguration(logError:true);
-    private void ApplyEndpointFromConfiguration(bool logError)
-    {
-        try
-        {
-            bool boot=EndpointSelector.SelectedIndex==1;
-            var ep=_vm.Configuration.GetEndpoint(boot);
-            _vm.RequestId=$"0x{ep.Request:X}";
-            _vm.ResponseId=$"0x{ep.Response:X}";
-            _vm.TypedConfirmation="";
-            AddLog($"只从配置填入 CAN1 {(boot?"Boot":"APP")} 地址：TX=0x{ep.Request:X}, RX=0x{ep.Response:X}；未发送");
-        }
-        catch(Exception ex)
-        {
-            if(logError) Error("载入诊断地址",ex);
-            // Missing or invalid reference fields are not filled with sample IDs.
-        }
-    }
-    private async void ReadDid_Click(object sender,RoutedEventArgs e)
-    {
-        if(!_device.IsConnected || _vm.IsBusy)return;
-        try
-        {
-            uint tx=CanToolXmlProfileReader.ParseHexUInt(_vm.RequestId,"CAN1 请求 ID");
-            uint rx=CanToolXmlProfileReader.ParseHexUInt(_vm.ResponseId,"CAN1 响应 ID");
-            ushort did=CanToolXmlProfileReader.ParseDid(_vm.Did);
-            string expected=PhysicalCommandFence.ReadDidConfirmation(tx,rx,did);
-            if(!string.Equals(_vm.TypedConfirmation,expected,StringComparison.Ordinal))
-                throw new UnauthorizedAccessException(
-                    "尚未取得本次现场单独许可：必须手动输入完整精确确认字符串。");
-            if(MessageBox.Show(this,
-                $"将向实体 DUT 的 CAN1 发送一次 0x22 DID 查询。\n\nTX=0x{tx:X}  RX=0x{rx:X}  DID=0x{did:X4}\n\nF1 开发批准不等于现场授权；确认此刻已获准诊断发送？",
-                "再次确认实体 CAN1 发送",MessageBoxButton.YesNo,MessageBoxImage.Warning,
-                MessageBoxResult.No)!=MessageBoxResult.Yes)return;
-            _didStop=new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            Busy(true);
-            _vm.DidResult="现场 0x22 只读请求进行中（并非烧录）…";
-            var result=await _device.ReadOneDidAsync(tx,rx,did,_vm.TypedConfirmation,
-                _didStop.Token);
-            _vm.DidResult=result.Display;
-            _vm.Status=result.Outcome==Outcome.Accepted
-                ?"DID 有正响应；USB/CAN/UDS 原始记录可导出。"
-                :"DID 未取得可确认成功的正响应；请查看原始证据。";
-        }
-        catch(OperationCanceledException)
-        {
-            _vm.DidResult="本次 DID 操作已取消；物理发送是否发生需检查日志。";
-            _vm.Status="读取已取消，物理效果 UNKNOWN。";
-            AddLog(_vm.DidResult);
-        }
-        catch(Exception ex) { _vm.DidResult="失败："+ex.Message;Error("读取只读 DID",ex); }
-        finally
-        {
-            _didStop?.Dispose();_didStop=null;Busy(false);
-            _vm.TypedConfirmation=""; // One-shot consent is never carried to the next read.
-        }
-    }
-    private void CancelDid_Click(object sender,RoutedEventArgs e)
-    {
-        _didStop?.Cancel();
-        AddLog("操作员请求取消 DID；底层物理许可在本操作结束时撤销。");
-    }
-
     private void InvalidateFlashPreview()
     {
         _previewFlash=null;
@@ -478,11 +422,10 @@ public partial class FlashLabWindow : Window
         if(_closingApproved)return;
         if(_closingInProgress) { e.Cancel=true; return; }
         _connectStop?.Cancel();
-        _didStop?.Cancel();
         _flashStop?.Cancel();
         // No WinUSB handle / CAN worker / trace writer exists: close immediately.
         if(!_device.HasActiveResources && _flashStop is null &&
-           _didStop is null && _connectStop is null)
+           _connectStop is null)
         {
             _closingApproved=true;
             return;
