@@ -296,7 +296,7 @@
   <!-- Native WPF searchable palette. Choice creates the undoable formal TEST draft. -->
   <Popup x:Name="ActionPalette" Placement="Center"
    PlacementTarget="{Binding ElementName=StepsList}" StaysOpen="False" AllowsTransparency="True">
-   <Border Width="410" MaxHeight="455" Background="White" CornerRadius="8"
+   <Border Width="490" MaxHeight="560" Background="White" CornerRadius="8"
     BorderBrush="#CAD7E7" BorderThickness="1" Padding="14">
     <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.22"/></Border.Effect>
     <DockPanel LastChildFill="True">
@@ -315,15 +315,51 @@
       <Button Content="添加所选步骤" Click="PaletteSelect_Click"
        Style="{StaticResource AtPrimaryButton}" MinWidth="110"/>
      </StackPanel>
-     <ListBox x:Name="PaletteList" MaxHeight="270" MinHeight="170"
+     <ListBox x:Name="PaletteList" MaxHeight="355" MinHeight="160"
       MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
+      PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"
+      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
       BorderBrush="#DBE3ED" FontSize="12">
+      <ListBox.GroupStyle>
+       <GroupStyle>
+        <GroupStyle.HeaderTemplate>
+         <DataTemplate>
+          <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="Bold"
+           Foreground="#48617E" Margin="8,10,2,4"/>
+         </DataTemplate>
+        </GroupStyle.HeaderTemplate>
+        <GroupStyle.Panel>
+         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+        </GroupStyle.Panel>
+       </GroupStyle>
+      </ListBox.GroupStyle>
+      <ListBox.ItemContainerStyle>
+       <Style TargetType="{x:Type ListBoxItem}">
+        <Setter Property="Width" Value="202"/>
+        <Setter Property="MinHeight" Value="43"/>
+        <Setter Property="Margin" Value="4,3"/>
+        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#D7E2EF"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Style.Triggers>
+         <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="#EDF5FF"/>
+          <Setter Property="BorderBrush" Value="#74A6DF"/>
+         </Trigger>
+         <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Background" Value="#E5F1FF"/>
+          <Setter Property="BorderBrush" Value="#4C8BC9"/>
+         </Trigger>
+        </Style.Triggers>
+       </Style>
+      </ListBox.ItemContainerStyle>
       <ListBox.ItemTemplate><DataTemplate>
-       <StackPanel Margin="4,5">
-        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12"/>
-        <TextBlock Text="{Binding Category}" Foreground="#61738B" FontSize="10"/>
-        <TextBlock Text="{Binding Description}" Foreground="#71839A" FontSize="10"
-         TextWrapping="Wrap" MaxWidth="350"/>
+       <StackPanel ToolTip="{Binding Description}">
+        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12"
+         TextTrimming="CharacterEllipsis"/>
+        <TextBlock Text="{Binding Category}" Foreground="#71849D" FontSize="10"
+         TextTrimming="CharacterEllipsis"/>
        </StackPanel>
       </DataTemplate></ListBox.ItemTemplate>
      </ListBox>

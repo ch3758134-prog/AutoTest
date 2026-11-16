@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -132,8 +133,8 @@ public partial class TestEditorView : UserControl
         PaletteHint.Text = caseOnly ? "SWITCH 的 CASE 区只能插入 CASE 分支" :
             "选择后立即加入可撤销的正式 TEST 草稿；右侧完成参数";
         PaletteSearch.Text = "";
-        PaletteList.ItemsSource = _paletteActions;
-        PaletteList.SelectedIndex = _paletteActions.Count > 0 ? 0 : -1;
+        RefreshPaletteItems("");
+        PaletteList.SelectedItem = _paletteActions.FirstOrDefault();
         ActionPalette.IsOpen = true;
         Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -146,11 +147,30 @@ public partial class TestEditorView : UserControl
     {
         if (PaletteList is null) return;
         var query = PaletteSearch.Text.Trim();
+        RefreshPaletteItems(query);
+    }
+
+    private void RefreshPaletteItems(string query)
+    {
         var filtered = _paletteActions.Where(x => query.Length == 0 ||
-            (x.Title + " " + x.Category + " " + x.Description)
+            (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
                 .Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray();
-        PaletteList.ItemsSource = filtered;
-        PaletteList.SelectedIndex = filtered.Length > 0 ? 0 : -1;
+        var grouped = new ListCollectionView(filtered);
+        grouped.GroupDescriptions.Add(new PropertyGroupDescription(nameof(TestActionOption.Group)));
+        PaletteList.ItemsSource = grouped;
+        PaletteList.SelectedItem = filtered.FirstOrDefault();
+    }
+
+    // HTML palette selects a type in one click; the optional confirm button
+    // remains for keyboard users. Keyboard arrow selection does not insert.
+    private void PaletteList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var origin = e.OriginalSource as DependencyObject;
+        var item = origin is null ? null :
+            ItemsControl.ContainerFromElement(PaletteList, origin) as ListBoxItem;
+        if (item?.DataContext is not TestActionOption option) return;
+        PaletteList.SelectedItem = option;
+        if (TryChoosePaletteItem()) e.Handled = true;
     }
 
     private void PaletteSearch_KeyDown(object sender, KeyEventArgs e)

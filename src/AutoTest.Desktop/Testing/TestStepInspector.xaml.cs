@@ -17,6 +17,17 @@ public sealed record TestActionOption(string Key, string Category, string Title,
     string TargetCategory, string Description)
 {
     public string DisplayName => Category + "  /  " + Title;
+    public string Group => Key switch
+    {
+        "can" or "can-send" or "can-wait" or "read" or "wait-signal" or "expect"
+            => "CAN 与数据",
+        "key" or "ign" => "工位操作",
+        "uds" => "UDS 服务",
+        "wave-start" or "wave-stop" or "wave-analyze" or "wave-capture" or "wave-compare"
+            => "波形分析",
+        "flash" => "专业工具",
+        _ => "流程与计算"
+    };
 }
 
 public sealed class TestStepInputField : BindableBase
