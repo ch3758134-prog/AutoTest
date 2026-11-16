@@ -39,6 +39,22 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
         _ => null
     };
     public object? Editor => View.DataContext;
+
+    public CloseDraftDocument CloseDraft => View switch
+    {
+        TestEditorView view when Editor is TestEditorViewModel model =>
+            new(Title, () => model.IsBusy, () => model.IsDirty || view.HasPendingInspectorDraft,
+                view.SaveForCloseAsync),
+        TestProjectWorkbenchView when Editor is TestProjectWorkbenchViewModel model =>
+            new(Title, () => model.IsBusy, () => model.IsDirty, model.SaveForCloseAsync),
+        DbcWorkbenchView when Editor is DbcWorkbenchViewModel model =>
+            new(Title, () => model.IsBusy, () => model.IsDirty, model.SaveForCloseAsync),
+        ConfigurationWorkbenchView when Editor is ConfigurationWorkbenchViewModel model =>
+            new(Title, () => model.IsBusy, () => model.IsDirty, model.SaveForCloseAsync),
+        ProjectConfigurationOverviewView view =>
+            new(Title, () => view.IsBusy, () => view.HasUnsavedDrafts, view.SaveForCloseAsync),
+        _ => new(Title, () => false, () => false, () => Task.FromResult(true))
+    };
 }
 
 /// <summary>Only presentation state and UX commands. Project data remains in ProjectWorkspaceService.</summary>
@@ -103,7 +119,7 @@ public sealed class MainWindowViewModel : BindableBase
         _dbcDialogs = dbcDialogs;
         _testDialogs = testDialogs;
         _recentProjects = recentProjects;
-        NewProjectCommand = new DelegateCommand(OpenNewProject, () => !IsBusy);
+        NewProjectCommand = new DelegateCommand(async () => await OpenNewProjectAsync(), () => !IsBusy);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
             () => HasProject && !IsBusy);
@@ -572,7 +588,53 @@ public sealed class MainWindowViewModel : BindableBase
     public bool HasActiveEditor => OpenEditors.Count > 0;
     public bool NoOpenEditors => OpenEditors.Count == 0;
     public string ActiveEditorTitle => ActiveEditorTab?.Title ?? "";
-    public bool ConfirmCloseActiveEditor() => OpenEditors.All(tab => tab.ConfirmClose());
+    /// <summary>
+    /// One Save/Discard/Cancel gate for app exit, document close and project switch.
+    /// A pending TEST inspector is counted as a draft even when its StepNode has not
+    /// yet been applied to the formal TEST document.
+    /// </summary>
+    public Task<bool> PrepareEditorsForCloseAsync(IEnumerable<EditorTabModel>? subset = null)
+    {
+        var documents = (subset ?? OpenEditors).Select(x => x.CloseDraft).ToList();
+        documents.Insert(0, new CloseDraftDocument("当前工程/设备操作",
+            () => IsBusy || _hardwareBusy || _realTest.IsRunning,
+            () => false, () => Task.FromResult(true)));
+        return CloseDraftGuard.PrepareAsync(documents, PromptDraftClose, ReportCloseBlocked);
+    }
+
+    private static CloseDraftDecision PromptDraftClose(IReadOnlyList<string> names)
+    {
+        var lines = string.Join("\n", names.Take(8).Select(x => "  • " + x));
+        if (names.Count > 8) lines += "\n  …及另外 " + (names.Count - 8) + " 个文档";
+        var answer = MessageBox.Show(Application.Current.MainWindow,
+            "以下内容尚未保存（包括右侧尚未应用的步骤属性）：\n\n" + lines +
+            "\n\n【是】应用并保存全部修改，再继续关闭" +
+            "\n【否】放弃这些草稿，直接继续关闭" +
+            "\n【取消】留在当前窗口继续编辑" +
+            "\n\n保存失败或校验未通过时不会退出，也不会丢弃草稿。",
+            "未保存修改 · 保存 / 放弃 / 取消",
+            MessageBoxButton.YesNoCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+        return answer switch
+        {
+            MessageBoxResult.Yes => CloseDraftDecision.Save,
+            MessageBoxResult.No => CloseDraftDecision.Discard,
+            _ => CloseDraftDecision.Cancel
+        };
+    }
+
+    private void ReportCloseBlocked(string message)
+    {
+        StatusMessage = message;
+        MessageBox.Show(Application.Current.MainWindow, message, "关闭已取消",
+            MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    public async Task<bool> CloseEditorAsync(EditorTabModel tab)
+    {
+        if (!OpenEditors.Contains(tab) || !await PrepareEditorsForCloseAsync([tab])) return false;
+        return CloseEditor(tab, alreadyConfirmed: true);
+    }
+
     public bool CloseEditor(EditorTabModel tab, bool alreadyConfirmed = false)
     {
         if (!OpenEditors.Contains(tab) || (!alreadyConfirmed && !tab.ConfirmClose())) return false;
@@ -963,10 +1025,9 @@ public sealed class MainWindowViewModel : BindableBase
         entry.Name, "", "正式工程资源 · " + entry.RelativePath + " · Revision " + entry.Revision,
         entry.Kind, entry, role: "Asset");
 
-    private void OpenNewProject()
+    private async Task OpenNewProjectAsync()
     {
-        if (IsBusy) return;
-        if (!ConfirmCloseActiveEditor()) return;
+        if (IsBusy || !await PrepareEditorsForCloseAsync()) return;
         IsBusy = true;
         try { _newDialog.ShowDialog(); }
         catch (Exception e) { StatusMessage = "新建工程窗口打开失败：" + e.Message; }
@@ -976,7 +1037,7 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenProjectAsync()
     {
         var path = _fileDialogs.PickProjectManifest();
-        if (path is null || !ConfirmCloseActiveEditor()) return;
+        if (path is null || !await PrepareEditorsForCloseAsync()) return;
         await RunOperationAsync(async () =>
         {
             ClearEditor();
@@ -1214,7 +1275,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (asset is null) return;
         var editorsUsingAsset = OpenEditors.Where(tab =>
             tab.Key.EndsWith("|" + asset.Id, StringComparison.Ordinal)).ToArray();
-        if (editorsUsingAsset.Any(tab => !tab.ConfirmClose())) return;
+        if (!await PrepareEditorsForCloseAsync(editorsUsingAsset)) return;
         if (!_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
         await RunOperationAsync(async () =>
         {
