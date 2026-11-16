@@ -91,6 +91,9 @@ public sealed class UsbSessionService : IAsyncDisposable
                             response.Status, response.Payload)), response.Sequence, response.Command, response.Status);
                     if (response.Sequence == 0)
                     {
+                        if (response.Command == MainControllerCodec.CanRxIndication && response.Status == 0 &&
+                            _link is WinUsbByteLink physical)
+                            physical.ObserveAuthenticatedCanIndication(response.Payload);
                         foreach (Action<UsbResponse> subscriber in AsynchronousResponse?.GetInvocationList()
                                      .Cast<Action<UsbResponse>>() ?? Enumerable.Empty<Action<UsbResponse>>())
                         { try { subscriber(response); } catch (Exception e) { Trace("SUBSCRIBER_ERROR", generation, detail:e.Message); } }
