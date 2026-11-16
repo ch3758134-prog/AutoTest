@@ -143,7 +143,7 @@ public partial class FlashLabWindow : Window
             var cfg=CanToolXmlProfileReader.Load(dialog.FileName);
             _vm.ApplyConfiguration(cfg);
             InvalidateFlashPreview();
-            ApplySafetyLibraryFromConfiguration();
+            ApplySecurityFilesFromConfiguration();
             _vm.Status="已加载 CanTool XML；字段与未知项已保留。";
             AddLog("XML 配置载入："+dialog.FileName);
         }
@@ -160,7 +160,7 @@ public partial class FlashLabWindow : Window
             _vm.Configuration.LoadRelatedJson(dialog.FileName);
             _vm.ApplyConfiguration(_vm.Configuration);
             InvalidateFlashPreview();
-            ApplySafetyLibraryFromConfiguration();
+            ApplySecurityFilesFromConfiguration();
             _vm.Status="已导入 settings.json 非冲突字段；未知字段不驱动硬件。";
             AddLog("JSON 参考配置："+dialog.FileName);
         }
@@ -200,70 +200,112 @@ public partial class FlashLabWindow : Window
     private void InvalidateFlashPreview()
     {
         _previewFlash=null;
-        if(ExpectedFlashConsentBox is not null) ExpectedFlashConsentBox.Text="";
-        if(TypedFlashConsentBox is not null) TypedFlashConsentBox.Text="";
         if(FlashPlanSummary is not null)
-            FlashPlanSummary.Text="配置/镜像已改变，请重新生成冻结任务。";
+            FlashPlanSummary.Text="配置或文件已更改，请重新检查烧录参数。";
+        if(WorkflowStatusLabel is not null)
+            WorkflowStatusLabel.Text="等待检查本次配置、固件和安全算法。";
         UpdateButtons();
     }
 
-    /// <summary>CanTool settings.json can supply SafetyFilePath, but we still
-    /// inspect the actual DLL; choosing XML alone never executes any DLL.</summary>
-    private void ApplySafetyLibraryFromConfiguration()
+    private string? ResolveReferenceFile(string configValue)
     {
-        string candidate=_vm.Configuration.Get("SafetyFilePath");
-        if(string.IsNullOrWhiteSpace(candidate))
-            candidate=_vm.Configuration.Get("SeedToKeyDll_Path");
-        if(string.IsNullOrWhiteSpace(candidate))return;
-        _seedDllPath=null;
-        if(!File.Exists(candidate))
+        if(string.IsNullOrWhiteSpace(configValue))return null;
+        string path=Environment.ExpandEnvironmentVariables(configValue.Trim().Trim('"'));
+        string? source=_vm.Configuration.SourcePath;
+        if(!Path.IsPathRooted(path) && !string.IsNullOrWhiteSpace(source))
+            path=Path.Combine(Path.GetDirectoryName(source)!,path);
+        return Path.GetFullPath(path);
+    }
+    private string? ResolveAndInspect(string field,CanToolSecurityKind expected,
+        System.Windows.Controls.TextBlock display)
+    {
+        string? path;
+        try {path=ResolveReferenceFile(_vm.Configuration.Get(field));}
+        catch(Exception ex){display.Text="配置路径无效："+ex.Message;return null;}
+        if(string.IsNullOrWhiteSpace(path)){display.Text="未选择文件";return null;}
+        if(!File.Exists(path))
         {
-            KeyDllPathLabel.Text="配置指向的安全文件不存在："+candidate;
-            KeyDllInfoLabel.Text="请核对配置路径，或手工选择现有 DLL。";
-            AddLog("安全库配置路径无效："+candidate);
-            return;
+            display.Text="找不到："+Path.GetFileName(path);
+            display.ToolTip=path;
+            AddLog(field+" 文件不存在："+path);
+            return null;
         }
         try
         {
-            var d=CanToolSecurityProvider.Inspect(candidate);
-            _seedDllPath=d.Path;
-            KeyDllPathLabel.Text=d.Path;
-            KeyDllInfoLabel.Text=d.Summary+"；SHA256="+d.Sha256;
-            AddLog("来自配置的安全 DLL 已识别："+d.Summary+
-                "（仅静态解析，未执行；ECU 是否兼容待实测）");
+            var value=CanToolSecurityProvider.Inspect(path);
+            if(value.Kind!=expected)
+            {
+                display.Text="接口类型不匹配："+Path.GetFileName(path);
+                AddLog(field+" 使用了 "+value.Kind+"；请放入对应的安全算法入口。");
+                return null;
+            }
+            display.Text=Path.GetFileName(path)+" · 已识别";
+            display.ToolTip=value.Path+" / SHA256="+value.Sha256;
+            AddLog(field+" 已识别："+value.Summary+"；路径="+path);
+            return value.Path;
         }
         catch(Exception ex)
         {
-            KeyDllPathLabel.Text="安全库接口不兼容："+candidate;
-            KeyDllInfoLabel.Text=ex.Message;
-            AddLog("安全库导入失败："+ex.Message);
+            display.Text="DLL 检查失败："+Path.GetFileName(path);
+            display.ToolTip=ex.Message;
+            AddLog(field+" 检查失败："+ex.Message);
+            return null;
         }
     }
-
-    private void ChooseKeyDll_Click(object sender,RoutedEventArgs e)
+    private void ApplySecurityFilesFromConfiguration()
+    {
+        // The user's TWO independent CanTool file settings are never collapsed.
+        _safetyFilePath=ResolveAndInspect("SafetyFilePath",
+            CanToolSecurityKind.ManagedSafetyFile,SafetyDllStatusLabel);
+        _seedKeyFilePath=ResolveAndInspect("SeedToKeyDll_Path",
+            CanToolSecurityKind.NativeZlgKey,SeedKeyDllStatusLabel);
+        UpdateSecuritySelection();
+    }
+    private void UpdateSecuritySelection()
+    {
+        if(SecuritySourceSelector is null)return;
+        bool managed=SecuritySourceSelector.SelectedIndex!=1;
+        _seedDllPath=managed?_safetyFilePath:_seedKeyFilePath;
+        if(SecurityProviderStatusLabel is not null)
+            SecurityProviderStatusLabel.Text=managed
+                ? "本次使用 SafetyFile.dll 托管算法"+(_seedDllPath is null?"（尚未就绪）":"（已识别）")
+                : "本次使用 Seed/Key 原生 DLL 算法"+(_seedDllPath is null?"（尚未就绪）":"（已识别）");
+    }
+    private void SecuritySource_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if(PrepareFlashButton is null)return;
+        UpdateSecuritySelection();InvalidateFlashPreview();
+    }
+    private void ChooseSafetyFile_Click(object sender,RoutedEventArgs e)=>
+        SelectSecurityFile("SafetyFilePath","选择安全文件 SafetyFile.dll");
+    private void ChooseSeedKey_Click(object sender,RoutedEventArgs e)=>
+        SelectSecurityFile("SeedToKeyDll_Path","选择 Seed/Key 原生 DLL");
+    private void SelectSecurityFile(string field,string title)
     {
         var dialog=new OpenFileDialog
         {
-            Title="选择安全算法文件：SafetyFile.dll（托管）或 ZLGKey（原生）（此步骤不执行）",
-            Filter="Windows DLL (*.dll)|*.dll|全部文件 (*.*)|*.*"
+            Title=title,Filter="DLL 安全文件 (*.dll)|*.dll|所有文件 (*.*)|*.*"
         };
         if(dialog.ShowDialog(this)!=true)return;
         try
         {
-            var inspection=CanToolSecurityProvider.Inspect(dialog.FileName);
-            _seedDllPath=inspection.Path;
+            var info=CanToolSecurityProvider.Inspect(dialog.FileName);
+            var expected=field=="SafetyFilePath"
+                ? CanToolSecurityKind.ManagedSafetyFile : CanToolSecurityKind.NativeZlgKey;
+            if(info.Kind!=expected)
+                throw new FormatException("所选文件是 "+info.Kind+"；请使用对应的另一个导入入口。");
+            _vm.Configuration.Set(field,info.Path);
+            ApplySecurityFilesFromConfiguration();
             InvalidateFlashPreview();
-            KeyDllPathLabel.Text=inspection.Path;
-            KeyDllInfoLabel.Text=$"{inspection.Summary}\nSHA256={inspection.Sha256}";
-            AddLog("算法库仅静态检查："+inspection.Path+"，SHA="+inspection.Sha256);
-            // Managed SafetyFile and native ZLGKey use different verified APIs.
-            // They are both selectable; this does not automatically prove ECU compatibility.
-            if(inspection.KnownDemo)
+            AddLog("已更新配置 "+field+"："+info.Path);
+            if(info.KnownDemo)
                 MessageBox.Show(this,
-                    "已识别 sa_demo.dll 为演示 Seed/Key 算法。仅证明 ZLGKey 接口匹配，不证明 ECU 接受。\n未经真实 ECU 匹配验证不要尝试解锁。",
-                    "演示算法提醒",MessageBoxButton.OK,MessageBoxImage.Warning);
+                    "该 DLL 为 Seed/Key 演示算法，接口匹配不代表目标 ECU 接受。"+
+                    "请现场核对算法来源。","算法匹配提醒",
+                    MessageBoxButton.OK,MessageBoxImage.Information);
         }
-        catch(Exception ex){ Error("静态检查 Seed/Key DLL",ex); }
+        catch(Exception ex){Error("导入安全算法文件",ex);}
     }
 
     private void PrepareFlash_Click(object sender,RoutedEventArgs e)
@@ -274,7 +316,7 @@ public partial class FlashLabWindow : Window
                 throw new InvalidOperationException("请先选择并离线校验 HEX/S19/BIN 镜像。");
             // Also honor SafetyFilePath edited directly in the CanTool grid.
             if(string.IsNullOrWhiteSpace(_seedDllPath))
-                ApplySafetyLibraryFromConfiguration();
+                ApplySecurityFilesFromConfiguration();
             if(string.IsNullOrWhiteSpace(_seedDllPath))
                 throw new InvalidOperationException(
                     "请在配置中指定 SafetyFilePath，或使用上方按钮选择实际安全算法 DLL。");
