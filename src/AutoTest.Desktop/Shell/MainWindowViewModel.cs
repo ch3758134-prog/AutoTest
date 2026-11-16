@@ -511,11 +511,20 @@ public sealed class MainWindowViewModel : BindableBase
                 RaisePropertyChanged(nameof(ActiveEditorView));
                 RaisePropertyChanged(nameof(ActiveEditorTitle));
                 RaisePropertyChanged(nameof(ActiveEditorInspector));
+                RaisePropertyChanged(nameof(InspectorHeading));
             }
         }
     }
     public UserControl? ActiveEditorView => ActiveEditorTab?.View;
     public ContentControl? ActiveEditorInspector => ActiveEditorTab?.Inspector;
+    public string InspectorHeading => ActiveEditorTab?.View switch
+    {
+        TestEditorView => "步骤属性",
+        TestProjectWorkbenchView => "运行选择",
+        ProjectOverviewView => "对象信息",
+        ConfigurationWorkbenchView => "配置关联",
+        _ => "对象信息"
+    };
     public bool HasActiveEditor => OpenEditors.Count > 0;
     public bool NoOpenEditors => OpenEditors.Count == 0;
     public string ActiveEditorTitle => ActiveEditorTab?.Title ?? "";

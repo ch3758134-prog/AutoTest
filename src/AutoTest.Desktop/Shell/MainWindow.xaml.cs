@@ -3,11 +3,13 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using AutoTest.Desktop.Projects;
 
 namespace AutoTest.Desktop.Shell;
 
+/// <summary>
+/// One WPF shell and one real device session. Chrome, keyboard focus, dock sizing and
+/// shutdown are presentation concerns; service authorization remains in the VM.
+/// </summary>
 public partial class MainWindow : Window
 {
     private readonly MainWindowViewModel _viewModel;
@@ -31,26 +33,22 @@ public partial class MainWindow : Window
         e.Cancel = true;
         if (_shutdownStarted || !_viewModel.ConfirmCloseActiveEditor()) return;
         _shutdownStarted = true;
-        try
-        {
-            // Blocking USB/native cleanup must never leave the WPF shell permanently open.
-            await _viewModel.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(6));
-        }
-        catch (TimeoutException error)
-        {
-            Trace.TraceError("AutoTest shutdown timed out: " + error);
-        }
-        catch (Exception error)
-        {
-            Trace.TraceError("AutoTest shutdown failed: " + error);
-        }
+        try { await _viewModel.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(6)); }
+        catch (TimeoutException ex) { Trace.TraceError("AutoTest shutdown timed out: " + ex); }
+        catch (Exception ex) { Trace.TraceError("AutoTest shutdown failed: " + ex); }
         finally
         {
             _shutdownComplete = true;
-            // Close owned WPF windows even if a device's cleanup exceeded the deadline.
             Application.Current.Shutdown(0);
         }
     }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Maximize_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void ShowOverview_Click(object sender, RoutedEventArgs e) => _viewModel.ShowOverview();
 
     private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
     {
@@ -59,32 +57,12 @@ public partial class MainWindow : Window
         ScannerEntry.CaretIndex = ScannerEntry.Text.Length;
         e.Handled = true;
     }
-
     private async void ScannerEntry_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key is not (Key.Enter or Key.Return)) return;
         e.Handled = true;
         ScannerEntry.Clear();
         await _viewModel.FinishScannerInputAsync();
-    }
-
-    private async void ResourceTree_Create_Click(object sender, RoutedEventArgs e)
-    {
-        e.Handled = true;
-        if (sender is Button { DataContext: ResourceTreeNode node })
-            await _viewModel.CreateFromCategoryAsync(node);
-    }
-
-    private async void ResourceTree_SelectedItemChanged(
-        object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-        _viewModel.SelectResource(e.NewValue as ResourceTreeNode);
-        try { await _viewModel.OpenSelectedResourceAsync(); }
-        catch (Exception error)
-        {
-            AutoTest.Desktop.Diagnostics.UiExceptionReporter.Record(
-                "Resource selection / opening", error);
-        }
     }
 
     private void CloseEditorTab_Click(object sender, RoutedEventArgs e)
@@ -97,26 +75,13 @@ public partial class MainWindow : Window
     private void ToggleBottom_Click(object sender, RoutedEventArgs e)
     {
         _bottomVisible = !_bottomVisible;
-        BottomRow.Height = _bottomVisible ? new GridLength(180) : new GridLength(0);
-        BottomSplitterRow.Height = _bottomVisible ? new GridLength(5) : new GridLength(0);
+        BottomRow.Height = new GridLength(_bottomVisible ? 180 : 0);
+        BottomSplitterRow.Height = new GridLength(_bottomVisible ? 4 : 0);
     }
-
     private void ToggleInspector_Click(object sender, RoutedEventArgs e)
     {
         _inspectorVisible = !_inspectorVisible;
-        InspectorColumn.Width = _inspectorVisible ? new GridLength(320) : new GridLength(0);
-        InspectorSplitterColumn.Width = _inspectorVisible ? new GridLength(5) : new GridLength(0);
-    }
-
-    private void ResourceTree_RightClick(object sender, MouseButtonEventArgs e)
-    {
-        DependencyObject? node = e.OriginalSource as DependencyObject;
-        while (node is not null && node is not TreeViewItem)
-            node = node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);
-        if (node is TreeViewItem item)
-        {
-            item.IsSelected = true;
-            item.Focus();
-        }
+        InspectorColumn.Width = new GridLength(_inspectorVisible ? 320 : 0);
+        InspectorSplitterColumn.Width = new GridLength(_inspectorVisible ? 4 : 0);
     }
 }
