@@ -16,12 +16,45 @@
   <TabControl Grid.Row="1" Background="White" BorderThickness="0" Padding="0">
    <TabControl.Resources>
     <Style TargetType="{x:Type TabItem}">
+     <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
      <Setter Property="FontSize" Value="11"/>
-     <Setter Property="Padding" Value="14,7"/>
-     <Setter Property="Background" Value="#FBFCFF"/>
-     <Setter Property="BorderBrush" Value="#DBE3ED"/>
+     <Setter Property="Foreground" Value="#64758C"/>
+     <Setter Property="Template">
+      <Setter.Value>
+       <ControlTemplate TargetType="{x:Type TabItem}">
+        <Border x:Name="TabLine" Height="35" Background="#FBFCFF"
+         BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="13,0">
+         <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
+        </Border>
+        <ControlTemplate.Triggers>
+         <Trigger Property="IsSelected" Value="True">
+          <Setter TargetName="TabLine" Property="BorderBrush" Value="#2368BD"/>
+          <Setter TargetName="TabLine" Property="Background" Value="White"/>
+          <Setter Property="Foreground" Value="#1C5DA8"/>
+          <Setter Property="FontWeight" Value="SemiBold"/>
+         </Trigger>
+         <Trigger Property="IsMouseOver" Value="True">
+          <Setter TargetName="TabLine" Property="Background" Value="#F0F5FB"/>
+         </Trigger>
+        </ControlTemplate.Triggers>
+       </ControlTemplate>
+      </Setter.Value>
+     </Setter>
     </Style>
    </TabControl.Resources>
+   <TabControl.Template>
+    <ControlTemplate TargetType="{x:Type TabControl}">
+     <Grid>
+      <Grid.RowDefinitions><RowDefinition Height="35"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Border Grid.Row="0" Background="#FBFCFF" BorderBrush="#DBE3ED"
+       BorderThickness="0,0,0,1">
+       <TabPanel IsItemsHost="True" HorizontalAlignment="Left"/>
+      </Border>
+      <ContentPresenter Grid.Row="1" x:Name="PART_SelectedContentHost"
+       ContentSource="SelectedContent"/>
+     </Grid>
+    </ControlTemplate>
+   </TabControl.Template>
    <TabItem Header="DUT 配置">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="37"/><RowDefinition Height="*"/></Grid.RowDefinitions>
