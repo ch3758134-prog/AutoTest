@@ -124,6 +124,11 @@ public sealed class TestEditorViewModel : BindableBase
         get => _stepFind;
         set
         {
+            if (!CanProceed())
+            {
+                RaisePropertyChanged(nameof(StepFind));
+                return;
+            }
             if (SetProperty(ref _stepFind, value ?? ""))
             {
                 RefreshRows();

@@ -18,6 +18,7 @@ public partial class TestEditorView : UserControl
     private IReadOnlyList<TestActionOption> _paletteActions = Array.Empty<TestActionOption>();
     private bool _focusNameOnNextInspector;
     private bool _committingQuickValue;
+    private StepRowProjection? _activeQuickRow;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
     public ContentControl InspectorHost { get; } = new()
@@ -56,6 +57,11 @@ public partial class TestEditorView : UserControl
     public bool TryLeaveInspector()
     {
         if (_viewModel.IsApplyingInspector) return true;
+        // An invalid inline value must block changing rows, tabs or searching;
+        // the edit remains visibly in place instead of silently disappearing.
+        if (!_committingQuickValue && _activeQuickRow is { IsInlineEditing: true } row &&
+            !CommitInlineQuickValue(row))
+            return false;
         if (_viewModel.HasNewStepDraft || _inspector?.HasPendingEdits == true)
             return _inspector?.TryApplyChanges() == true;
         return true;
@@ -69,6 +75,9 @@ public partial class TestEditorView : UserControl
     {
         try
         {
+            if (_activeQuickRow is { IsInlineEditing: true } row &&
+                !CommitInlineQuickValue(row))
+                return false;
             if ((_inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft) &&
                 _inspector?.TryApplyChanges() != true)
                 return false;
@@ -328,6 +337,7 @@ public partial class TestEditorView : UserControl
         _viewModel.SelectItem(row.Item);
         if (_viewModel.SelectedItem?.Step?.Id != row.Item.Step?.Id) return;
         row.IsInlineEditing = true;
+        _activeQuickRow = row;
         e.Handled = true;
         if (VisualTreeHelper.GetParent(text) is Grid grid)
         {
@@ -349,6 +359,7 @@ public partial class TestEditorView : UserControl
         {
             if (!_viewModel.TryCommitQuickValue(row)) return false;
             row.IsInlineEditing = false;
+            if (ReferenceEquals(_activeQuickRow, row)) _activeQuickRow = null;
             return true;
         }
         finally { _committingQuickValue = false; }
@@ -372,6 +383,7 @@ public partial class TestEditorView : UserControl
         else if (e.Key == Key.Escape)
         {
             row.CancelQuickEdit();
+            if (ReferenceEquals(_activeQuickRow, row)) _activeQuickRow = null;
             Keyboard.ClearFocus();
             e.Handled = true;
         }
