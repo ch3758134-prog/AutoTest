@@ -1,5 +1,7 @@
 # AutoTest｜当前项目管理与产品决策入口
 
+> **2026-11-15 HW/FW 新调查入口：** [主控/按键板硬件构型、MCU/连接器/模块引脚与 HOST 能力边界管理档案](new-baseline-20261112/HW-FW-BASELINE-20261115/README.md)。已保存两份校验过的原理图原件、63 条主控 MCU 信号映射、20 条 KEY_SIM 映射、模块及协议差异。**该档案是研究基线，不是现场 PCB、现役固件或 SOL 改线的验收通过**；HW/FW 专职 AI 单独调查，PM 审查，现有 G4 WPF/FLASH 不受阻。
+
 > **当前入口（2026-11-14）。** 新项目管理 AI、G3 研究/设计 AI、UI 专项和代码实施 AI 应先从这里核对最新产品事实，不要从旧 `SAEF/`、历史 G4/V1 目录或未经批准的 HTML 原型推导当前产品范围。
 
 > **2026-11-15 阶段最新状态：G3 已正式批准 PASS_WITH_LIMITATIONS**。审批记录：[G3-APPROVAL-20261115](new-baseline-20261112/G3-APPROVAL-20261115.md)；精确获批包 [G3-00～05](new-baseline-20261112/G3-R1-20261115/README.md)。**G4-UI-00～03 已获准由单一执行 AI 一次性完成**，执行指令 [G4-UI-ONE-SHOT](../delivery/g4/G4-UI-ONE-SHOT-EXECUTION-20261115.md)，专用分支 `feature/g4-html-parity-20261115`。允许自主编码并删除旧 UI，不能擅自合并 main 或操作未经许可的实体 ECU/Flash。其他 G4 功能与已知 G3-L01～10 限制继续受控。旧文件中“G3 候审/G4 未授权”均为审批前历史时点，不可覆盖本记录。
