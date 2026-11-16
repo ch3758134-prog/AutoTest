@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -26,8 +28,67 @@ public partial class MainWindow : Window
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
+        SourceInitialized += OnSourceInitialized;
         Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
         Closing += OnWindowClosing;
+    }
+
+    // WindowStyle=None + WindowChrome does not guarantee work-area maximization
+    // on every DPI/taskbar configuration. Windows supplies physical monitor
+    // coordinates here, so never convert them to WPF DIPs.
+    private const int WmGetMinMaxInfo = 0x0024;
+    private const int MonitorDefaultToNearest = 2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint { public int X; public int Y; }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect { public int Left; public int Top; public int Right; public int Bottom; }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeMinMaxInfo
+    {
+        public NativePoint Reserved;
+        public NativePoint MaxSize;
+        public NativePoint MaxPosition;
+        public NativePoint MinTrackSize;
+        public NativePoint MaxTrackSize;
+    }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct NativeMonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect Work;
+        public int Flags;
+    }
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr window, int flags);
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref NativeMonitorInfo info);
+
+    private HwndSource? _windowSource;
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        _windowSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        _windowSource?.AddHook(WorkAreaWindowProc);
+    }
+
+    private IntPtr WorkAreaWindowProc(IntPtr hwnd, int message, IntPtr wParam,
+        IntPtr lParam, ref bool handled)
+    {
+        if (message != WmGetMinMaxInfo) return IntPtr.Zero;
+        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero) return IntPtr.Zero;
+        var info = new NativeMonitorInfo { Size = Marshal.SizeOf<NativeMonitorInfo>() };
+        if (!GetMonitorInfo(monitor, ref info)) return IntPtr.Zero;
+        var target = Marshal.PtrToStructure<NativeMinMaxInfo>(lParam);
+        target.MaxPosition.X = info.Work.Left - info.Monitor.Left;
+        target.MaxPosition.Y = info.Work.Top - info.Monitor.Top;
+        target.MaxSize.X = info.Work.Right - info.Work.Left;
+        target.MaxSize.Y = info.Work.Bottom - info.Work.Top;
+        Marshal.StructureToPtr(target, lParam, false);
+        handled = true;
+        return IntPtr.Zero;
     }
 
     private async void OnWindowClosing(object? sender, CancelEventArgs e)
