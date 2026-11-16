@@ -35,11 +35,9 @@
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
-   <RowDefinition Height="*" MinHeight="260"/>
-   <RowDefinition Height="255"/>
+   <RowDefinition Height="*" MinHeight="330"/>
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
-
   <Border Grid.Row="0" Background="White" BorderBrush="#D6E1EE"
     BorderThickness="1" CornerRadius="5" Margin="2,0,2,5" Padding="13,9">
    <DockPanel LastChildFill="True">
@@ -73,191 +71,221 @@
    </DockPanel>
   </Border>
 
-  <Grid Grid.Row="2">
+
+  <!-- 三栏：小型配置区 / 烧录步骤 / 全高度 CAN1 帧监视 -->
+  <Grid Grid.Row="2" Margin="0,3,0,3">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="1.02*" MinWidth="380"/>
-    <ColumnDefinition Width="1.23*" MinWidth="460"/>
+    <ColumnDefinition Width="286" MinWidth="260"/>
+    <ColumnDefinition Width="6"/>
+    <ColumnDefinition Width="420" MinWidth="365"/>
+    <ColumnDefinition Width="6"/>
+    <ColumnDefinition Width="*" MinWidth="360"/>
    </Grid.ColumnDefinitions>
 
-   <GroupBox Grid.Column="0" Header="烧录配置 · 所有文件在这里选择">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-     <StackPanel Margin="3">
-      <TextBlock Text="配置文件" FontWeight="SemiBold" Margin="5,3,5,1"/>
-      <DockPanel LastChildFill="True">
-       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-        <Button Content="导入 XML" Click="LoadXml_Click"/>
-        <Button Content="导入 JSON" Click="LoadJson_Click"/>
-        <Button Content="保存配置" Click="SaveXml_Click"/>
-       </StackPanel>
-       <TextBlock Text="{Binding ConfigurationPath}" TextTrimming="CharacterEllipsis"
-         VerticalAlignment="Center" Margin="6,0" Foreground="#5C7188"/>
-      </DockPanel>
+   <!-- A：导入文件是配置信息，不是主工作区 -->
+   <GroupBox Grid.Column="0" Header="烧录配置">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+      HorizontalScrollBarVisibility="Disabled">
+     <StackPanel Margin="1">
+      <TextBlock Text="CanTool 配置文件" FontWeight="SemiBold" Margin="4,4,4,2"/>
+      <StackPanel Orientation="Horizontal">
+       <Button Content="打开 XML" Click="LoadXml_Click" Padding="9,5"/>
+       <Button Content="导入 JSON" Click="LoadJson_Click" Padding="9,5"/>
+       <Button Content="保存" Click="SaveXml_Click" Padding="9,5"/>
+      </StackPanel>
+      <TextBlock Text="{Binding ConfigurationPath}" ToolTip="{Binding ConfigurationPath}"
+        TextTrimming="CharacterEllipsis" Margin="7,1,7,5" FontSize="11"
+        Foreground="#62768B"/>
 
-      <Separator Margin="5,7"/>
-      <TextBlock Text="待烧录固件" FontWeight="SemiBold" Margin="5,3,5,1"/>
-      <DockPanel LastChildFill="True">
-       <Button DockPanel.Dock="Right" Content="选择固件..." Click="ChooseImage_Click"/>
-       <TextBlock Text="{Binding FirmwarePath}" TextTrimming="CharacterEllipsis"
-         VerticalAlignment="Center" Margin="6,0"/>
+      <Separator Margin="5,3"/>
+      <DockPanel LastChildFill="True" Margin="2,4,2,1">
+       <Button DockPanel.Dock="Right" Content="选择..." Click="ChooseImage_Click"
+         Padding="10,5"/>
+       <TextBlock Text="烧录固件" FontWeight="SemiBold" VerticalAlignment="Center"
+         Margin="4,0"/>
       </DockPanel>
-      <TextBlock Text="{Binding ImageSummary}" Margin="8,2,8,1" TextWrapping="Wrap"
-        FontSize="11" Foreground="#5B718B"/>
+      <TextBlock Text="{Binding FirmwarePath}" ToolTip="{Binding FirmwarePath}"
+        TextTrimming="CharacterEllipsis" Margin="7,0,7,2" FontSize="11"/>
+      <TextBlock Text="{Binding ImageSummary}" TextTrimming="CharacterEllipsis"
+        ToolTip="{Binding ImageSummary}" Margin="7,0,7,3"
+        FontSize="11" Foreground="#657B94"/>
 
-      <Separator Margin="5,7"/>
-      <TextBlock Text="安全文件（SafetyFile.dll）" FontWeight="SemiBold" Margin="5,3,5,1"/>
-      <DockPanel LastChildFill="True">
-       <Button DockPanel.Dock="Right" Content="选择安全文件..." Click="ChooseSafetyFile_Click"/>
-       <TextBlock x:Name="SafetyDllStatusLabel" Text="未选择安全文件"
-         TextTrimming="CharacterEllipsis" Margin="6,0" VerticalAlignment="Center"/>
+      <Separator Margin="5,4"/>
+      <DockPanel LastChildFill="True" Margin="2,4,2,1">
+       <Button DockPanel.Dock="Right" Content="选择..." Click="ChooseSafetyFile_Click"
+         Padding="10,5"/>
+       <TextBlock Text="安全文件" FontWeight="SemiBold" VerticalAlignment="Center"
+         Margin="4,0"/>
       </DockPanel>
+      <TextBlock x:Name="SafetyDllStatusLabel" Text="未选择 SafetyFile.dll"
+        TextTrimming="CharacterEllipsis" Margin="7,0,7,4"
+        FontSize="11" Foreground="#62768B"/>
 
-      <TextBlock Text="Seed/Key 算法文件（例如 sa_demo.dll）"
-        FontWeight="SemiBold" Margin="5,9,5,1"/>
-      <DockPanel LastChildFill="True">
-       <Button DockPanel.Dock="Right" Content="选择 Seed/Key..." Click="ChooseSeedKey_Click"/>
-       <TextBlock x:Name="SeedKeyDllStatusLabel" Text="未选择 Seed/Key 文件"
-         TextTrimming="CharacterEllipsis" Margin="6,0" VerticalAlignment="Center"/>
+      <DockPanel LastChildFill="True" Margin="2,4,2,1">
+       <Button DockPanel.Dock="Right" Content="选择..." Click="ChooseSeedKey_Click"
+         Padding="10,5"/>
+       <TextBlock Text="Seed/Key DLL" FontWeight="SemiBold"
+         VerticalAlignment="Center" Margin="4,0"/>
       </DockPanel>
-      <DockPanel Margin="5,6,5,2">
-       <TextBlock DockPanel.Dock="Left" Text="本次采用的算法：" VerticalAlignment="Center"/>
-       <ComboBox x:Name="SecuritySourceSelector" Width="205" Height="30"
-         SelectedIndex="0" SelectionChanged="SecuritySource_SelectionChanged">
-        <ComboBoxItem Content="SafetyFile.dll 托管算法"/>
-        <ComboBoxItem Content="Seed/Key 原生 DLL 算法"/>
-       </ComboBox>
-      </DockPanel>
+      <TextBlock x:Name="SeedKeyDllStatusLabel" Text="未选择 Seed/Key DLL"
+        TextTrimming="CharacterEllipsis" Margin="7,0,7,4"
+        FontSize="11" Foreground="#62768B"/>
+
+      <TextBlock Text="本次采用的算法" FontWeight="SemiBold" Margin="6,8,6,2"/>
+      <ComboBox x:Name="SecuritySourceSelector"
+        SelectedIndex="0" SelectionChanged="SecuritySource_SelectionChanged"
+        Height="31" Margin="5,0,5,2">
+       <ComboBoxItem Content="SafetyFile.dll 托管算法"/>
+       <ComboBoxItem Content="Seed/Key 原生 DLL 算法"/>
+      </ComboBox>
       <TextBlock x:Name="SecurityProviderStatusLabel"
-        Text="两个文件分别导入；当前实际采用的算法以上方选择为准"
-        TextWrapping="Wrap" Margin="8,2,8,3" FontSize="11" Foreground="#687D92"/>
+        Text="按配置选择实际使用的安全算法"
+        FontSize="11" TextWrapping="Wrap" Margin="7,2,7,6"
+        Foreground="#61768D"/>
 
-      <Separator Margin="5,7"/>
-      <DockPanel Margin="4,3">
-       <TextBlock DockPanel.Dock="Left" Text="目标 ECU：" Width="94" VerticalAlignment="Center"/>
-       <TextBox x:Name="TargetEcuBox" MinWidth="190" ToolTip="现场识别的目标 ECU 型号与版本"/>
-      </DockPanel>
+      <Separator Margin="5,5"/>
+      <TextBlock Text="目标 ECU" FontWeight="SemiBold" Margin="6,4,6,1"/>
+      <TextBox x:Name="TargetEcuBox" Margin="4,2,4,4"
+        ToolTip="本次实测的 ECU 型号、固件版本或工程标识"/>
 
-      <Expander Header="详细参数（CAN ID、Flash 地址、镜像参数）" Margin="5,5,5,2">
+      <Expander Header="详细参数 · CAN ID / 地址 / 镜像"
+        IsExpanded="False" Margin="5,8,5,2">
        <StackPanel>
-        <TextBlock Text="导入的 XML 可以直接编辑；修改后需重新检查烧录文件。" 
-          Margin="6,4" FontSize="11" Foreground="#61768D"/>
-        <DataGrid Margin="4,2" Height="220" ItemsSource="{Binding Parameters}"
+        <TextBlock Text="配置参数可双击编辑；修改后重新检查。"
+          FontSize="11" Margin="3,5" TextWrapping="Wrap"/>
+        <DataGrid ItemsSource="{Binding Parameters}"
           AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-          HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeaderWidth="0"
-          EnableRowVirtualization="True">
+          HeadersVisibility="Column" RowHeaderWidth="0"
+          Margin="1,2" Height="235" EnableRowVirtualization="True"
+          ScrollViewer.HorizontalScrollBarVisibility="Auto">
          <DataGrid.Columns>
           <DataGridTextColumn Header="配置项" Binding="{Binding Name,Mode=OneWay}"
-            Width="140" IsReadOnly="True"/>
-          <DataGridTextColumn Header="值（双击编辑）" Binding="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-            Width="170"/>
+            Width="135" IsReadOnly="True"/>
+          <DataGridTextColumn Header="值" Binding="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+            Width="140"/>
           <DataGridTextColumn Header="来源" Binding="{Binding Source,Mode=OneWay}"
-            Width="110" IsReadOnly="True"/>
+            Width="120" IsReadOnly="True"/>
           <DataGridTextColumn Header="说明" Binding="{Binding Description,Mode=OneWay}"
-            Width="220" IsReadOnly="True"/>
+            Width="215" IsReadOnly="True"/>
          </DataGrid.Columns>
         </DataGrid>
-        <TextBlock Text="{Binding Unknown}" Margin="8,3" TextWrapping="Wrap" FontSize="11"/>
-        <DockPanel Margin="4,3">
-         <TextBlock DockPanel.Dock="Left" Text="BIN 起始地址（16进制）："
-           VerticalAlignment="Center"/>
-         <TextBox x:Name="BinBaseBox" Width="125" HorizontalAlignment="Left" Text=""/>
-        </DockPanel>
-        <CheckBox x:Name="LegacyTailSignatureCheck" Margin="8,5"
-          Content="兼容 CanTool 末尾 12 34 56 78 签名（可能覆盖固件最后4字节）"
-          ToolTip="仅明确知道目标 ECU 需要此行为时才勾选"/>
+        <TextBlock Text="{Binding Unknown}" TextWrapping="Wrap"
+          Margin="5,4" FontSize="11"/>
+        <TextBlock Text="BIN 起始地址（十六进制）" FontSize="11" Margin="5,5,5,1"/>
+        <TextBox x:Name="BinBaseBox" Margin="4,2"/>
+        <CheckBox x:Name="LegacyTailSignatureCheck" Margin="4,5"
+          Content="使用 CanTool 末尾 12 34 56 78 签名"
+          ToolTip="会覆盖镜像末尾4字节。仅目标 ECU 确认要求时勾选"/>
        </StackPanel>
       </Expander>
-      <CheckBox x:Name="BitrateVerifiedCheck" Margin="9,5"
-        Content="现场确认主控 CAN1 为 500K，与 XML 配置一致"/>
-      <Button x:Name="PrepareFlashButton" Content="检查烧录文件及参数"
-        Click="PrepareFlash_Click" Margin="7,5" Background="#DFEFFD"
-        FontWeight="SemiBold" HorizontalAlignment="Stretch"/>
-      <TextBlock x:Name="FlashPlanSummary" Text="尚未检查。导入 XML、固件和安全文件后检查。"
-        TextWrapping="Wrap" Margin="8,3" FontSize="11" Foreground="#405B76"/>
      </StackPanel>
     </ScrollViewer>
    </GroupBox>
 
-   <GroupBox Grid.Column="1" Header="烧录执行 · 逐阶段观察 ECU 响应">
-    <Grid Margin="3">
+   <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+     Background="#D7E2EF" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"/>
+
+   <!-- B：烧录过程作为工作区 -->
+   <GroupBox Grid.Column="2" Header="烧录流程 · UDS 调试">
+    <Grid Margin="2">
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*" MinHeight="140"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="135"/>
+      <RowDefinition Height="*" MinHeight="180"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="160"/>
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0">
       <TextBlock x:Name="WorkflowStatusLabel"
-        Text="等待配置。导入文件、连接主控并检查参数后即可准备烧录。"
-        TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#2A5B85" Margin="6,3"/>
-      <CheckBox x:Name="FlashSafetyCheck" Margin="7,3"
-        Content="我已核对目标 ECU、镜像、安全算法、擦除地址和稳定供电"/>
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-       <Button x:Name="StartFlashButton" Content="开始烧录"
-         Click="StartFlash_Click" Background="#CEE8FC" FontWeight="Bold"
-         Padding="28,7"/>
-       <Button x:Name="AbortFlashButton" Content="停止烧录"
-         Click="AbortFlash_Click" IsEnabled="False"/>
+        Text="等待完整配置与 USB 连接" TextWrapping="Wrap"
+        Margin="5,3,5,6" FontWeight="SemiBold" Foreground="#235A85"/>
+      <Button x:Name="PrepareFlashButton" Content="检查烧录文件和参数"
+        Click="PrepareFlash_Click" Margin="3,0,3,4"
+        Background="#E0EEFB" FontWeight="SemiBold"
+        HorizontalAlignment="Stretch"/>
+      <TextBlock x:Name="FlashPlanSummary" Text="尚未检查配置"
+        TextWrapping="Wrap" FontSize="11" Margin="7,2,7,6"
+        Foreground="#516B85" MaxHeight="105"/>
+      <CheckBox x:Name="BitrateVerifiedCheck"
+        Content="已确认 CAN1 为 500K，与 XML 配置一致"
+        Margin="5,4,4,3"/>
+      <CheckBox x:Name="FlashSafetyCheck"
+        Content="已核对 ECU、固件、安全算法、地址与供电"
+        Margin="5,2,4,5"/>
+      <StackPanel Orientation="Horizontal" Margin="0,1,0,2">
+       <Button x:Name="StartFlashButton" Content="开始烧录" Click="StartFlash_Click"
+         Background="#CFE7FC" FontWeight="Bold" Padding="20,7"/>
+       <Button x:Name="AbortFlashButton" Content="停止烧录" Click="AbortFlash_Click"
+         IsEnabled="False" Padding="20,7"/>
       </StackPanel>
-      <ProgressBar x:Name="FlashProgressBar" Minimum="0" Maximum="100"
-        Value="0" Height="14" Margin="7,5"/>
-      <TextBlock x:Name="FlashStageLabel" Text="待命。"
-        TextWrapping="Wrap" Margin="7,2,7,4" FontSize="11"/>
+      <ProgressBar x:Name="FlashProgressBar" Height="13"
+        Minimum="0" Maximum="100" Value="0" Margin="5,4,5,2"/>
+      <TextBlock x:Name="FlashStageLabel" Text="待命" TextWrapping="Wrap"
+        Margin="6,1,6,7" FontSize="11"/>
      </StackPanel>
 
-     <DataGrid Grid.Row="1" ItemsSource="{Binding Stages}" Margin="5,1"
-       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-       IsReadOnly="True" HeadersVisibility="Column" RowHeaderWidth="0"
-       GridLinesVisibility="Horizontal" EnableRowVirtualization="True">
+     <TextBlock Grid.Row="1" Text="执行阶段" FontWeight="SemiBold"
+       Foreground="#3D5772" Margin="7,5,0,3"/>
+     <DataGrid Grid.Row="2" ItemsSource="{Binding Stages}"
+       AutoGenerateColumns="False" CanUserAddRows="False"
+       CanUserDeleteRows="False" IsReadOnly="True" Margin="4,0,4,4"
+       HeadersVisibility="Column" RowHeaderWidth="0"
+       EnableRowVirtualization="True">
       <DataGrid.Columns>
-       <DataGridTextColumn Header="流程步骤" Binding="{Binding Step,Mode=OneWay}" Width="*"/>
-       <DataGridTextColumn Header="执行状态" Binding="{Binding State,Mode=OneWay}" Width="125"/>
+       <DataGridTextColumn Header="步骤" Binding="{Binding Step,Mode=OneWay}" Width="*"/>
+       <DataGridTextColumn Header="结果" Binding="{Binding State,Mode=OneWay}" Width="96"/>
       </DataGrid.Columns>
      </DataGrid>
-
-     <TextBlock Grid.Row="2" Text="UDS 阶段消息与失败信息（包含 NRC / 响应确认）"
-       Margin="8,5,8,2" FontWeight="SemiBold" Foreground="#405C77"/>
-     <ListBox Grid.Row="3" x:Name="LogList" ItemsSource="{Binding Logs}"
-       FontFamily="Consolas" FontSize="12" Margin="5,0,5,3"
+     <TextBlock Grid.Row="3" Text="UDS 请求 / 响应 / NRC 与失败原因"
+       FontWeight="SemiBold" Margin="7,5,2,4" Foreground="#3D5772"/>
+     <ListBox Grid.Row="4" x:Name="LogList" ItemsSource="{Binding Logs}"
+       FontFamily="Consolas" FontSize="11" Margin="4,0,4,3"
        ScrollViewer.HorizontalScrollBarVisibility="Auto"
-       ScrollViewer.VerticalScrollBarVisibility="Auto" Background="#FCFDFE"/>
-     <TextBlock Grid.Row="4"
-       Text="开始前会再次确认真实擦除范围；取消、超时或断连后不会自动重刷。"
-       Margin="7,3" FontSize="11" Foreground="#8E582B" TextWrapping="Wrap"/>
+       ScrollViewer.VerticalScrollBarVisibility="Auto"
+       Background="#FCFDFE"/>
+    </Grid>
+   </GroupBox>
+
+   <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch"
+     Background="#D7E2EF" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"/>
+
+   <!-- C：实测主观察区，全高度 CAN1 收发日志 -->
+   <GroupBox Grid.Column="4" Header="CAN1 实时报文 · ECU 收发">
+    <Grid Margin="2">
+     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+     </Grid.RowDefinitions>
+     <DockPanel Grid.Row="0" Margin="2,0,2,6" LastChildFill="True">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+       <Button Content="导出日志" Click="Export_Click" Padding="10,5"/>
+       <Button Content="清空显示" Click="ClearCan_Click" Padding="10,5"/>
+      </StackPanel>
+      <TextBlock Text="实时 TX / RX · USB ACK 区别于 ECU 响应"
+        VerticalAlignment="Center" Margin="5,0,3,0"
+        Foreground="#617B96" FontSize="11" TextTrimming="CharacterEllipsis"/>
+     </DockPanel>
+     <DataGrid x:Name="CanLogTable" Grid.Row="1"
+       ItemsSource="{Binding CanLogs}" AutoGenerateColumns="False"
+       CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
+       EnableRowVirtualization="True" EnableColumnVirtualization="True"
+       GridLinesVisibility="Horizontal" RowHeaderWidth="0"
+       HeadersVisibility="Column" Margin="2,0,2,2"
+       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+       ScrollViewer.VerticalScrollBarVisibility="Auto">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="时间" Binding="{Binding Time,Mode=OneWay}" Width="108"/>
+       <DataGridTextColumn Header="方向" Binding="{Binding Direction,Mode=OneWay}" Width="76"/>
+       <DataGridTextColumn Header="CAN ID" Binding="{Binding CanId,Mode=OneWay}" Width="95"/>
+       <DataGridTextColumn Header="DLC" Binding="{Binding Dlc,Mode=OneWay}" Width="42"/>
+       <DataGridTextColumn Header="CAN 数据（HEX）" Binding="{Binding Data,Mode=OneWay}" Width="*"/>
+       <DataGridTextColumn Header="结果" Binding="{Binding Result,Mode=OneWay}" Width="195"/>
+      </DataGrid.Columns>
+     </DataGrid>
     </Grid>
    </GroupBox>
   </Grid>
-
-  <GroupBox Grid.Row="3" Header="实时 CAN1 报文 · TX / RX（主控 USB 通道）" Margin="6,5,6,2">
-   <Grid>
-    <Grid.RowDefinitions>
-     <RowDefinition Height="Auto"/>
-     <RowDefinition Height="*"/>
-    </Grid.RowDefinitions>
-    <DockPanel Grid.Row="0" LastChildFill="True">
-     <Button DockPanel.Dock="Right" Content="清空 CAN 表格" Click="ClearCan_Click"/>
-     <Button DockPanel.Dock="Right" Content="导出完整诊断 ZIP" Click="Export_Click"/>
-     <TextBlock Text="时刻 · 方向 · 报文 ID · DLC · 原始数据 · USB/ECU 结果；Seed/Key 字节脱敏"
-       Margin="8,4" Foreground="#59748B" FontSize="11"/>
-    </DockPanel>
-    <DataGrid x:Name="CanLogTable" Grid.Row="1" Margin="5,2"
-      ItemsSource="{Binding CanLogs}" AutoGenerateColumns="False"
-      CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
-      EnableRowVirtualization="True" EnableColumnVirtualization="True"
-      GridLinesVisibility="Horizontal" RowHeaderWidth="0" HeadersVisibility="Column">
-     <DataGrid.Columns>
-      <DataGridTextColumn Header="时间" Binding="{Binding Time,Mode=OneWay}" Width="112"/>
-      <DataGridTextColumn Header="方向" Binding="{Binding Direction,Mode=OneWay}" Width="88"/>
-      <DataGridTextColumn Header="CAN ID" Binding="{Binding CanId,Mode=OneWay}" Width="110"/>
-      <DataGridTextColumn Header="DLC" Binding="{Binding Dlc,Mode=OneWay}" Width="48"/>
-      <DataGridTextColumn Header="CAN 数据" Binding="{Binding Data,Mode=OneWay}" Width="*"/>
-      <DataGridTextColumn Header="结果" Binding="{Binding Result,Mode=OneWay}" Width="245"/>
-     </DataGrid.Columns>
-    </DataGrid>
-   </Grid>
-  </GroupBox>
-
-  <Border Grid.Row="4" Background="#F4F7FB" BorderBrush="#D7E1EC"
+  <Border Grid.Row="3" Background="#F4F7FB" BorderBrush="#D7E1EC"
     BorderThickness="0,1,0,0" Padding="7" Margin="4,3,4,0">
    <TextBlock Text="{Binding Status}" FontWeight="SemiBold" Foreground="#30567B"
      TextTrimming="CharacterEllipsis"/>
