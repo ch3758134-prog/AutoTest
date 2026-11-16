@@ -172,4 +172,35 @@ public sealed class ConfigurationAndImageTests
         finally { File.Delete(path); }
     }
 
+
+    [Fact]
+    public void SafetyFileAndSeedKeyDllRemainSeparateCanToolConfigAssets()
+    {
+        string source=Path.Combine(Path.GetTempPath(),Guid.NewGuid().ToString("N")+".xml");
+        string saved=Path.Combine(Path.GetTempPath(),Guid.NewGuid().ToString("N")+".xml");
+        try
+        {
+            File.WriteAllText(source,
+                "<Configuration><SafetyFilePath>SafetyFile.dll</SafetyFilePath>"+
+                "<SeedToKeyDll_Path>sa_demo.dll</SeedToKeyDll_Path></Configuration>");
+            var config=CanToolXmlProfileReader.Load(source);
+            Assert.Equal("SafetyFile.dll",config.Get("SafetyFilePath"));
+            Assert.Equal("sa_demo.dll",config.Get("SeedToKeyDll_Path"));
+            config.Set("SafetyFilePath","actual_safety.dll");
+            Assert.Equal("sa_demo.dll",config.Get("SeedToKeyDll_Path"));
+            config.SaveAs(saved);
+            var restored=CanToolXmlProfileReader.Load(saved);
+            Assert.Equal("actual_safety.dll",restored.Get("SafetyFilePath"));
+            Assert.Equal("sa_demo.dll",restored.Get("SeedToKeyDll_Path"));
+            var xml=XDocument.Load(saved);
+            Assert.Single(xml.Descendants("SafetyFilePath"));
+            Assert.Single(xml.Descendants("SeedToKeyDll_Path"));
+        }
+        finally
+        {
+            if(File.Exists(source))File.Delete(source);
+            if(File.Exists(saved))File.Delete(saved);
+        }
+    }
+
 }
