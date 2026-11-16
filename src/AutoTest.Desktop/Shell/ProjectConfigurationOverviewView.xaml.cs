@@ -109,7 +109,11 @@ public partial class ProjectConfigurationOverviewView : UserControl
         {
             var session = await _workspace.OpenConfigurationAsync(asset.Id);
             if (!ReferenceEquals(current, _workspace.Current)) return;
+            // The initial background loading of all three configuration assets
+            // must never force navigation away from the user's active subtab.
+            var previousTabIndex = ConfigTabs.SelectedIndex;
             ShowSession(kind, session);
+            ConfigTabs.SelectedIndex = previousTabIndex;
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
