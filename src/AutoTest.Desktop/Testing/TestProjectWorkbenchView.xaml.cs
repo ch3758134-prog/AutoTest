@@ -11,17 +11,40 @@ public partial class TestProjectWorkbenchView : UserControl
         HorizontalContentAlignment = HorizontalAlignment.Stretch,
         VerticalContentAlignment = VerticalAlignment.Stretch
     };
-    private void PackagesGrid_DoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton != MouseButton.Left) return;
-        if (DataContext is TestProjectWorkbenchViewModel vm)
-            vm.OpenSelectedPackage();
-    }
 
     public TestProjectWorkbenchView(TestProjectWorkbenchViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
         InspectorHost.Content = new TestProjectSelectionInspector(viewModel);
+    }
+    private void PackagesGrid_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left &&
+            DataContext is TestProjectWorkbenchViewModel vm)
+            vm.OpenSelectedPackage();
+    }
+    private void OpenPackage_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (DataContext is TestProjectWorkbenchViewModel vm &&
+            sender is Button { Tag: TestProjectPackageRow row })
+            vm.OpenPackage(row);
+    }
+    private void MoveRowUp_Click(object sender, RoutedEventArgs e) => Move(sender, -1, e);
+    private void MoveRowDown_Click(object sender, RoutedEventArgs e) => Move(sender, 1, e);
+    private void Move(object sender, int direction, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (DataContext is TestProjectWorkbenchViewModel vm &&
+            sender is Button { Tag: TestProjectPackageRow row })
+            vm.MoveRow(row, direction);
+    }
+    private void RemoveRow_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (DataContext is TestProjectWorkbenchViewModel vm &&
+            sender is Button { Tag: TestProjectPackageRow row })
+            vm.RemoveRow(row);
     }
 }

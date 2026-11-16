@@ -70,6 +70,22 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     {
         if (SelectedPackage is { } row) OpenPackageRequested?.Invoke(row.AssetId);
     }
+    public void OpenPackage(TestProjectPackageRow row)
+    {
+        if (Packages.Contains(row)) OpenPackageRequested?.Invoke(row.AssetId);
+    }
+    public void MoveRow(TestProjectPackageRow row, int direction)
+    {
+        if (!Packages.Contains(row)) return;
+        SelectedPackage = row;
+        Move(direction);
+    }
+    public void RemoveRow(TestProjectPackageRow row)
+    {
+        if (!Packages.Contains(row)) return;
+        SelectedPackage = row;
+        Remove();
+    }
 
     public TestProjectWorkbenchViewModel(ProjectWorkspaceService workspace,
         TestEditorDialogs dialogs, TestProjectEditorSession session,
