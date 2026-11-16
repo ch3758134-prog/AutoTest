@@ -79,8 +79,8 @@ public sealed class ConfigurationAndImageTests
         try
         {
             File.WriteAllText(file,":0400000001020304F3\n:00000001FF\n");
-            Assert.Throws<FormatException>(()=>FirmwareSelectionService.Load(file,null,
-                new CanToolXmlProfileReader()));
+            Assert.Throws<AutoTest.Specialists.Flash.FirmwareFormatException>(()=>
+                FirmwareSelectionService.Load(file,null,new CanToolXmlProfileReader()));
         }
         finally { File.Delete(file); }
     }
