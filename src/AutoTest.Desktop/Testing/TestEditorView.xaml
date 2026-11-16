@@ -108,6 +108,9 @@
       <DataTrigger Binding="{Binding IsSearchMatch}" Value="True">
        <Setter Property="Background" Value="#FFF5DE"/>
       </DataTrigger>
+      <DataTrigger Binding="{Binding IsNewDraft}" Value="True">
+       <Setter Property="Background" Value="#FFF9EC"/>
+      </DataTrigger>
       <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#E3F1FF"/></Trigger>
      </Style.Triggers>
     </Style>
