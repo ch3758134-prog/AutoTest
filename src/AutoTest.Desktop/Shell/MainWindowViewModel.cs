@@ -83,11 +83,10 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly ProjectFileDialogService _fileDialogs;
     private readonly DbcEditorDialogs _dbcDialogs;
     private readonly TestEditorDialogs _testDialogs;
-    private EditorTabModel? _activeEditorTab;
+    private readonly DocumentWorkspaceState<EditorTabModel> _documents = new();
     private bool _closeGuardActive;
-    private bool _suppressNavigationDraftGuard;
     private bool _savingActive;
-    public ObservableCollection<EditorTabModel> OpenEditors { get; } = new();
+    public ObservableCollection<EditorTabModel> OpenEditors => _documents.Tabs;
     private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
@@ -579,33 +578,39 @@ public sealed class MainWindowViewModel : BindableBase
         ActivateEditor("can|monitor", new CanMonitorView(this), "CAN 监视", () => true);
     }
 
+    /// <summary>Only navigation state; TEST editing and persistence stay in their sessions.</summary>
     public EditorTabModel? ActiveEditorTab
     {
-        get => _activeEditorTab;
+        get => _documents.Active;
         set
         {
-            if (!_suppressNavigationDraftGuard &&
-                !ReferenceEquals(_activeEditorTab, value) &&
-                _activeEditorTab?.View is TestEditorView departing &&
-                !departing.TryLeaveInspector())
+            if (ReferenceEquals(_documents.Active, value)) return;
+            if (!_documents.TryActivate(value, CanLeaveActiveDocument))
             {
+                StatusMessage = "当前步骤属性尚未通过检查；保留原文档与修改，请先修正字段或取消编辑。";
                 RaisePropertyChanged(nameof(ActiveEditorTab));
                 return;
             }
-            if (SetProperty(ref _activeEditorTab, value))
-            {
-                if (value?.Editor is TestProjectWorkbenchViewModel projectEditor)
-                    projectEditor.RefreshReferences();
-                RaisePropertyChanged(nameof(ActiveEditorView));
-                RaisePropertyChanged(nameof(ActiveEditorTitle));
-                RaisePropertyChanged(nameof(ActiveEditorInspector));
-                RaisePropertyChanged(nameof(InspectorHeading));
-                RaisePropertyChanged(nameof(IsOverviewActive));
-                RaisePropertyChanged(nameof(IsProjectActive));
-                RaisePropertyChanged(nameof(IsCaseActive));
-                RaisePropertyChanged(nameof(IsConfigurationActive));
-            }
+            RaiseActiveEditorChanged();
         }
+    }
+
+    private static bool CanLeaveActiveDocument(EditorTabModel? from) =>
+        from?.View is not TestEditorView test || test.TryLeaveInspector();
+
+    private void RaiseActiveEditorChanged()
+    {
+        RaisePropertyChanged(nameof(ActiveEditorTab));
+        if (ActiveEditorTab?.Editor is TestProjectWorkbenchViewModel projectEditor)
+            projectEditor.RefreshReferences();
+        RaisePropertyChanged(nameof(ActiveEditorView));
+        RaisePropertyChanged(nameof(ActiveEditorTitle));
+        RaisePropertyChanged(nameof(ActiveEditorInspector));
+        RaisePropertyChanged(nameof(InspectorHeading));
+        RaisePropertyChanged(nameof(IsOverviewActive));
+        RaisePropertyChanged(nameof(IsProjectActive));
+        RaisePropertyChanged(nameof(IsCaseActive));
+        RaisePropertyChanged(nameof(IsConfigurationActive));
     }
     public UserControl? ActiveEditorView => ActiveEditorTab?.View;
     public ContentControl? ActiveEditorInspector => ActiveEditorTab?.Inspector;
@@ -687,17 +692,10 @@ public sealed class MainWindowViewModel : BindableBase
     public bool CloseEditor(EditorTabModel tab, bool alreadyConfirmed = false)
     {
         if (!OpenEditors.Contains(tab) || (!alreadyConfirmed && !tab.ConfirmClose())) return false;
-        var index = OpenEditors.IndexOf(tab);
-        var selected = ReferenceEquals(ActiveEditorTab, tab);
-        _suppressNavigationDraftGuard = true;
-        try
-        {
-            OpenEditors.Remove(tab);
-            if (selected)
-                ActiveEditorTab = OpenEditors.Count == 0 ? null :
-                    OpenEditors[Math.Min(index, OpenEditors.Count - 1)];
-        }
-        finally { _suppressNavigationDraftGuard = false; }
+        // The save/discard decision has already been made. Never run the leave
+        // guard again while removing a closed tab.
+        if (!_documents.RemoveApproved(tab)) return false;
+        RaiseActiveEditorChanged();
         RaisePropertyChanged(nameof(HasActiveEditor));
         RaisePropertyChanged(nameof(NoOpenEditors));
         return true;
@@ -712,23 +710,26 @@ public sealed class MainWindowViewModel : BindableBase
     private void ActivateEditor(string key, UserControl editor, string title, Func<bool> confirmClose)
     {
         if (IsAlreadyOpen(key)) return;
-        _activeEditorProjectPath = _workspace.Current?.ManifestPath;
         var tab = new EditorTabModel(key, title, editor, confirmClose);
-        OpenEditors.Add(tab);
-        ActiveEditorTab = tab;
+        if (!_documents.TryOpen(tab, CanLeaveActiveDocument))
+        {
+            StatusMessage = "未能切换：请先完成或取消当前步骤属性编辑。新编辑页未被打开。";
+            RaisePropertyChanged(nameof(ActiveEditorTab));
+            return;
+        }
+        _activeEditorProjectPath = _workspace.Current?.ManifestPath;
+        RaiseActiveEditorChanged();
         RaisePropertyChanged(nameof(HasActiveEditor));
         RaisePropertyChanged(nameof(NoOpenEditors));
     }
+
     private void ClearEditor()
     {
-        _suppressNavigationDraftGuard = true;
-        try
-        {
-            OpenEditors.Clear();
-            ActiveEditorTab = null;
-        }
-        finally { _suppressNavigationDraftGuard = false; }
+        // CurrentChanged only calls this after an explicitly approved project
+        // switch; all tabs and their drafts belong to the old project.
+        _documents.ClearApproved();
         _activeEditorProjectPath = null;
+        RaiseActiveEditorChanged();
         RaisePropertyChanged(nameof(HasActiveEditor));
         RaisePropertyChanged(nameof(NoOpenEditors));
     }
