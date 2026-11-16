@@ -104,6 +104,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     private TestProjectPackageChoice? _selectedAvailable;
     private TestProjectPackageRow? _selectedPackage;
     public Action<Guid>? OpenPackageRequested { get; set; }
+    public Func<Task>? CreateNewPackageRequested { get; set; }
     public Action? PackageRowsChanged { get; set; }
     public void OpenSelectedPackage()
     {
@@ -135,6 +136,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         if (_selection is not null) _selection.Changed += OnNavigationSelectionChanged;
         _name = session.Document.Name;
         AddCommand = new DelegateCommand(Add, () => SelectedAvailable is not null && !IsBusy);
+        CreateNewPackageCommand = new DelegateCommand(async () =>
+        {
+            if (!IsBusy && CreateNewPackageRequested is { } create) await create();
+        }, () => !IsBusy);
         RemoveCommand = new DelegateCommand(Remove, () => SelectedPackage is not null && !IsBusy);
         UpCommand = new DelegateCommand(() => Move(-1), () => CanMove(-1));
         DownCommand = new DelegateCommand(() => Move(1), () => CanMove(1));
@@ -180,6 +185,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
 
     public DelegateCommand AddCommand { get; }
+    public DelegateCommand CreateNewPackageCommand { get; }
     public DelegateCommand RemoveCommand { get; }
     public DelegateCommand UpCommand { get; }
     public DelegateCommand DownCommand { get; }
@@ -378,6 +384,16 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         PackageRowsChanged?.Invoke();
         _ = RefreshStepCountsAsync();
     }
+    public void AddNewFormalPackage(AssetEntry asset)
+    {
+        if (IsBusy || asset.Kind != ProjectWorkspaceService.TestProgramKind)
+            throw new InvalidOperationException("无法关联非 TEST 资产或忙碌的项目编辑器。");
+        RefreshAvailable();
+        SelectedAvailable = AvailablePackages.FirstOrDefault(x => x.Asset.Id == asset.Id)
+            ?? throw new InvalidOperationException("新 TEST 资产尚未登记在当前工程。");
+        Add();
+    }
+
     private void Remove()
     {
         if (SelectedPackage is not { } row || IsBusy) return;
@@ -409,7 +425,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     {
         RaisePropertyChanged(nameof(IsDirty));
         RaisePropertyChanged(nameof(HasStaleReferences));
-        AddCommand?.RaiseCanExecuteChanged(); RemoveCommand?.RaiseCanExecuteChanged();
+        AddCommand?.RaiseCanExecuteChanged(); CreateNewPackageCommand?.RaiseCanExecuteChanged();
+        RemoveCommand?.RaiseCanExecuteChanged();
         UpCommand?.RaiseCanExecuteChanged(); DownCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged(); ReloadCommand?.RaiseCanExecuteChanged();
     }
