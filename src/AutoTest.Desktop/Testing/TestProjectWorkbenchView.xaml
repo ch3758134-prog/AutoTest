@@ -139,6 +139,32 @@
         </DataGridTemplateColumn>
         <DataGridTextColumn Header="步骤" Binding="{Binding StepCountLabel}"
          IsReadOnly="True" Width="66"/>
+        <DataGridTemplateColumn Header="TEST 引用修订" Width="190">
+         <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate>
+           <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+            ToolTip="{Binding PinDetail}">
+            <TextBlock Text="{Binding PinStatus}" FontSize="10" Foreground="#556F8B"
+             TextTrimming="CharacterEllipsis" MaxWidth="116" VerticalAlignment="Center"/>
+            <Button Content="采用" Tag="{Binding}" Click="AdoptCurrentRevision_Click"
+             FontSize="10" Margin="5,0,0,0" Padding="5,1" MinHeight="22"
+             ToolTip="审阅当前 TEST Revision/SHA，再决定是否更新本条项目固定引用">
+             <Button.Style>
+              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
+               <Setter Property="Visibility" Value="Collapsed"/>
+               <Style.Triggers>
+                <DataTrigger Binding="{Binding CanAdoptLatest}" Value="True">
+                 <Setter Property="Visibility" Value="Visible"/>
+                 <Setter Property="Foreground" Value="#2167B8"/>
+                </DataTrigger>
+               </Style.Triggers>
+              </Style>
+             </Button.Style>
+            </Button>
+           </StackPanel>
+          </DataTemplate>
+         </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="调整" Width="118">
          <DataGridTemplateColumn.CellTemplate>
           <DataTemplate>

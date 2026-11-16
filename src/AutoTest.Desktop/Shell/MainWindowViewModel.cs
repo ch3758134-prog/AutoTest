@@ -243,6 +243,9 @@ public sealed class MainWindowViewModel : BindableBase
             RaisePropertyChanged(nameof(TestProjectCount));
             RaisePropertyChanged(nameof(TestProgramCount));
             RaisePropertyChanged(nameof(ConfigurationCount));
+            foreach (var projectTab in OpenEditors)
+                if (projectTab.Editor is TestProjectWorkbenchViewModel projectEditor)
+                    projectEditor.RefreshReferences();
             RebuildResourceTree();
             EnsureOverview();
             StatusMessage = _workspace.Current is { } current
@@ -576,6 +579,8 @@ public sealed class MainWindowViewModel : BindableBase
         get => _activeEditorTab;
         set
         {
+            if (value?.Editor is TestProjectWorkbenchViewModel projectEditor)
+                projectEditor.RefreshReferences();
             if (!ReferenceEquals(_activeEditorTab, value) &&
                 _activeEditorTab?.View is TestEditorView departing &&
                 !departing.TryLeaveInspector())

@@ -273,10 +273,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     /// </summary>
     public void RefreshReferences()
     {
-        var assets = _workspace.Current?.Definition.Assets;
+        var project = _workspace.Current;
         foreach (var row in Packages)
         {
-            var current = assets?.FirstOrDefault(asset => asset.Id.Value == row.AssetId &&
+            var current = project is null ? null : project.Definition.Assets.FirstOrDefault(asset =>
+                asset.Id.Value == row.AssetId &&
                 asset.Kind == ProjectWorkspaceService.TestProgramKind);
             row.RefreshAvailableRevision(current?.Revision, current?.Sha256);
         }

@@ -31,6 +31,33 @@ public partial class TestProjectWorkbenchView : UserControl
             sender is Button { Tag: TestProjectPackageRow row })
             vm.OpenPackage(row);
     }
+    private void AdoptCurrentRevision_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (DataContext is not TestProjectWorkbenchViewModel vm ||
+            sender is not Button { Tag: TestProjectPackageRow row } ||
+            !row.CanAdoptLatest) return;
+        var asset = vm.CurrentAssetFor(row);
+        if (asset is null)
+        {
+            MessageBox.Show(Window.GetWindow(this), "原 TEST 资产已经不存在，不能采用最新版本。",
+                "资源已失效", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var answer = MessageBox.Show(Window.GetWindow(this),
+            "测试用例：" + row.Name +
+            "\n\n项目当前固定引用：" +
+            "\n  Revision " + row.Revision + "\n  SHA256 " + row.Sha256 +
+            "\n\n当前正式 TEST 资源：" +
+            "\n  Revision " + asset.Revision + "\n  SHA256 " + asset.Sha256 +
+            "\n\n只更新当前这一条执行条目，不修改其他条目或历史记录。" +
+            "\n需要保存测试项目，修改才会持久化。\n\n是否采用当前修订？",
+            "检查并更新本条 TEST 引用", MessageBoxButton.YesNo,
+            MessageBoxImage.Question, MessageBoxResult.No);
+        if (answer == MessageBoxResult.Yes)
+            vm.AdoptCurrentRevision(row, asset.Revision, asset.Sha256);
+    }
+
     private void MoveRowUp_Click(object sender, RoutedEventArgs e) => Move(sender, -1, e);
     private void MoveRowDown_Click(object sender, RoutedEventArgs e) => Move(sender, 1, e);
     private void Move(object sender, int direction, RoutedEventArgs e)
