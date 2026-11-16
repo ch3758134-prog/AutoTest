@@ -149,7 +149,7 @@ public sealed class StepRowProjection
         if (target.Contains("KEY", StringComparison.OrdinalIgnoreCase))
             return "按键 " + target + " · " + (value.Length > 0 ? value : "待配置");
         if (value.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
-            return "原始 CAN 数据 · " + value.Length / 2 + " 字符";
+            return "原始 CAN 帧 · " + Math.Max(0, (value.Length - 4) / 2) + " 字节";
         if (value.Contains('='))
         {
             var fields = value.Split(';', StringSplitOptions.RemoveEmptyEntries);

@@ -96,7 +96,7 @@ public partial class TestStepInspector : UserControl
             "编辑占位字段，运行前必须正式绑定 DBC / CAN 资源。"),
         new("can-wait", "读取与观察", "CAN 等待（扩展步骤）", "CanWait", "",
             "编辑目标报文和超时，未接线时不能运行。"),
-        new("uds", "外部操作", "UDS 请求", "UdsRequest", "",
+        new("uds", "外部操作", "UDS 服务", "UdsRequest", "",
             "编辑服务和请求，实体诊断执行必须独立授权。"),
         new("flash", "外部操作", "Flash 烧录", "Flash", "",
             "仅编辑配置引用，当前禁止真实刷写。"),

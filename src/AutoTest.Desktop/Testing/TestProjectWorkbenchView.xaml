@@ -48,7 +48,7 @@
         VerticalAlignment="Center"/>
        <TextBlock Text="{Binding SelectedCount}" Foreground="#2368BD" FontSize="19"
         FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,2,0"/>
-       <TextBlock Text="{Binding TotalCount,StringFormat='{}{0}'}" FontSize="12"
+       <TextBlock Text="{Binding TotalCount,StringFormat=' / {0} 个用例'}" FontSize="12"
         Foreground="#6983A2" VerticalAlignment="Center">
         <TextBlock.LayoutTransform><ScaleTransform ScaleX="1" ScaleY="1"/></TextBlock.LayoutTransform>
        </TextBlock>
@@ -157,6 +157,7 @@
          <DataGridTemplateColumn.CellTemplate>
           <DataTemplate>
            <CheckBox Content="默认启用" IsChecked="{Binding Enabled,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+            FontSize="10" Foreground="#7D8DA0"
             VerticalAlignment="Center" HorizontalAlignment="Center"
             ToolTip="保存至正式项目；不等于本次选择"/>
           </DataTemplate>

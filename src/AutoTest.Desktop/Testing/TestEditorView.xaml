@@ -12,7 +12,15 @@
      <TextBox x:Name="StepSearch" Width="146" Height="26" VerticalContentAlignment="Center"
       Text="{Binding StepFind,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       ToolTip="查找并高亮步骤；Enter 下一条，Shift+Enter 上一条"
-      KeyDown="StepSearch_KeyDown" Margin="0,0,6,0"/>
+      KeyDown="StepSearch_KeyDown" Margin="0,0,4,0"/>
+     <TextBlock Text="{Binding SearchMatchCount,StringFormat='{}{0} 命中'}"
+      Foreground="#A96D20" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0">
+      <TextBlock.Style><Style TargetType="{x:Type TextBlock}">
+       <Style.Triggers><DataTrigger Binding="{Binding StepFind}" Value="">
+        <Setter Property="Visibility" Value="Collapsed"/>
+       </DataTrigger></Style.Triggers>
+      </Style></TextBlock.Style>
+     </TextBlock>
      <Button Content="＋ 添加步骤" Command="{Binding AddStepCommand}"
       Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"
       ToolTip="选中阶段/分支：追加；选中步骤：插入其下方"/>

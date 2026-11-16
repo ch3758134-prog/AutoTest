@@ -122,8 +122,10 @@
     </StackPanel>
 
     <StackPanel x:Name="KeyPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="按键动作" Foreground="#4B6382" FontWeight="SemiBold"
+     <TextBlock Text="按键动作 · 已接入的控制协议" Foreground="#4B6382" FontWeight="SemiBold"
       FontSize="11" Margin="0,0,0,6"/>
+     <TextBlock Text="当前正式执行支持单次短按、保持、释放。任意数量 KEY 控制段须待 KEY-SEQ-01 审批接线，不在此假装支持。"
+      TextWrapping="Wrap" FontSize="10" Foreground="#957037" Margin="0,0,0,8"/>
      <ComboBox x:Name="KeyActionInput" SelectionChanged="KeyAction_Changed"
       MinHeight="28" Margin="0,0,0,8">
       <ComboBoxItem Content="按下后释放" Tag="Pulse"/>

@@ -33,7 +33,7 @@ public static class StepUiCatalog
         new("CallSubroutine", "调用子程序", "以明确引用调用；运行器尚未实现", false),
         new("CanSend", "CAN 发送", "需绑定正式 DBC / CAN 配置，执行未接线", false),
         new("CanWait", "CAN 接收等待", "需绑定 CAN 目标和超时，执行未接线", false),
-        new("UdsRequest", "UDS 请求", "运行需实体诊断授权，执行未接线", false),
+        new("UdsRequest", "UDS 服务", "运行需实体诊断授权，执行未接线", false),
         new("Flash", "ECU 烧录", "实体编程未获授权，执行禁用", false),
         new("WaveCapture", "波形采集", "记录服务尚未完成该步骤适配", false),
         new("WaveCompare", "波形判定", "需要真实参考资源与三态比较", false)
