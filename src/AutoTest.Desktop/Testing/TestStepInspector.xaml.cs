@@ -106,6 +106,10 @@ public partial class TestStepInspector : UserControl
             "编辑参考资源，真实比较须三态证据。")
     ];
 
+    public static IReadOnlyList<TestActionOption> PaletteActions(bool caseOnly) =>
+        Options.Where(option => caseOnly ? option.StepType == "Case" :
+            option.StepType != "Case").ToArray();
+
     private readonly StepNode? _editing;
     private readonly bool _caseOnly;
     private readonly IReadOnlyList<MappingChoice> _catalog;
@@ -181,7 +185,9 @@ public partial class TestStepInspector : UserControl
             var mapping = boundMappings.FirstOrDefault(m =>
                 m.Name == editing.Properties.GetValueOrDefault("target", ""));
             var targetKind = mapping?.Kind;
-            var chosen = Options.FirstOrDefault(a => a.StepType == editing.Type &&
+            var chosen = Options.FirstOrDefault(a => a.Key == initialActionKey &&
+                a.StepType == editing.Type) ??
+                Options.FirstOrDefault(a => a.StepType == editing.Type &&
                 (editing.Type != "Write" || a.TargetCategory switch
                 {
                     "button" => targetKind is TestTargetKind.Button or TestTargetKind.RawKey,

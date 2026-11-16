@@ -29,6 +29,7 @@ public partial class TestEditorView : UserControl
         _viewModel = viewModel;
         DataContext = viewModel;
         _viewModel.InspectorRequested += ShowInspector;
+        _viewModel.ActionPaletteRequested += OpenActionPalette;
         _viewModel.AllowEditorAction = TryLeaveInspector;
         Loaded += (_, _) =>
         {
@@ -40,7 +41,8 @@ public partial class TestEditorView : UserControl
         };
     }
 
-    public bool HasPendingInspectorDraft => _inspector?.HasPendingEdits == true;
+    public bool HasPendingInspectorDraft =>
+        _inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft;
 
     /// <summary>
     /// Every navigation/command leaves this inspector only after its input is
@@ -49,7 +51,10 @@ public partial class TestEditorView : UserControl
     /// </summary>
     public bool TryLeaveInspector()
     {
-        if (_viewModel.IsApplyingInspector || _inspector?.HasPendingEdits != true) return true;
+        if (_viewModel.IsApplyingInspector) return true;
+        if (_viewModel.HasNewStepDraft || _inspector?.HasPendingEdits == true)
+            return _inspector?.TryApplyChanges() == true;
+        return true;
         return _inspector.TryApplyChanges();
     }
 
@@ -61,7 +66,8 @@ public partial class TestEditorView : UserControl
     {
         try
         {
-            if (_inspector?.HasPendingEdits == true && !_inspector.TryApplyChanges())
+            if ((_inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft) &&
+                _inspector?.TryApplyChanges() != true)
                 return false;
             return await _viewModel.SaveForCloseAsync();
         }
@@ -83,7 +89,7 @@ public partial class TestEditorView : UserControl
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
             context.Original, context.InitialActionKey, context.CaseOnly);
         editor.ApplyRequested = _viewModel.ApplyInspector;
-        editor.Cancelled += _viewModel.ResetInspector;
+        editor.Cancelled += _viewModel.CancelInspectorEdit;
         editor.AppliedSuccessfully += () =>
         {
             // The VM may have rebuilt the STEP tree during Apply. Its early

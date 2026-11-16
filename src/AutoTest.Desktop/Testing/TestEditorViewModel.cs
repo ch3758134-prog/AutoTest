@@ -211,6 +211,10 @@ public sealed class TestEditorViewModel : BindableBase
 
     private StepInsertionTarget? _pendingInsertion;
     private bool _inspectorAdding;
+    private StepId? _newDraftId;
+    private string? _newDraftActionKey;
+    public bool HasNewStepDraft => _newDraftId is not null;
+    public event Action<bool>? ActionPaletteRequested;
     // Inspector request versions are owned by TestEditorInteractionState.
 
     private void BeginInsert(string? actionKey) =>
@@ -248,10 +252,67 @@ public sealed class TestEditorViewModel : BindableBase
             return;
         }
         _inspectorAdding = true;
-        StatusMessage = _pendingInsertion.RequiresCase
-            ? "在右侧编辑 CASE 分支，保存后再进入 CASE 的 BODY 添加动作。"
-            : "向指定阶段／分支插入步骤：右侧配置参数后点击“插入步骤”。";
-        _ = PublishInspectorAsync(null, actionKey);
+        if (string.IsNullOrWhiteSpace(actionKey))
+        {
+            ActionPaletteRequested?.Invoke(_pendingInsertion.RequiresCase);
+            StatusMessage = "选择操作类型后将立即加入可撤销草稿；右侧直接配置。";
+            return;
+        }
+        ChooseNewStepAction(actionKey);
+    }
+
+    /// <summary>
+    /// The palette creates ONE real, undoable TEST transaction immediately.
+    /// The inserted node remains an unsaved editor draft until its Inspector
+    /// completes required mapping/field validation. No second persistent model.
+    /// </summary>
+    public bool ChooseNewStepAction(string actionKey)
+    {
+        var place = _pendingInsertion;
+        var chosen = TestStepInspector.PaletteActions(place?.RequiresCase == true)
+            .FirstOrDefault(x => x.Key == actionKey);
+        if (place is null || chosen is null || IsBusy) return false;
+        try
+        {
+            var node = StepUiCatalog.NewNode(chosen.StepType) with { Name = chosen.Title };
+            place.ValidateNode(node);
+            _transaction.Insert(place.Phase, place.ParentId, place.Slot, place.Index, node);
+            _newDraftId = node.Id;
+            _newDraftActionKey = chosen.Key;
+            _inspectorAdding = false;
+            _pendingInsertion = null;
+            RefreshTree(node.Id);
+            StatusMessage = "已插入可撤销草稿步骤。请在右侧填写必要参数并应用；未完成前不得保存资源或执行。";
+            return true;
+        }
+        catch (Exception error) when (IsEditorError(error))
+        {
+            StatusMessage = "无法插入步骤：" + error.Message;
+            return false;
+        }
+    }
+
+    public void CancelInspectorEdit()
+    {
+        if (_newDraftId is { } provisional)
+        {
+            try
+            {
+                if (_transaction.Current.Walk().Any(x => x.Id == provisional))
+                    _transaction.Delete(provisional);
+                _newDraftId = null;
+                _newDraftActionKey = null;
+                RefreshTree(null);
+                StatusMessage = "已取消新步骤，正式 TEST 文档未保存任何未完成参数。";
+                return;
+            }
+            catch (Exception error) when (IsEditorError(error))
+            {
+                StatusMessage = "取消草稿失败：" + error.Message;
+                return;
+            }
+        }
+        ResetInspector();
     }
 
     public void ResetInspector()
@@ -270,6 +331,8 @@ public sealed class TestEditorViewModel : BindableBase
         if (insertion is null && _inspectorAdding && _selectedItem is { } selected &&
             StepInsertionTarget.CanAppend(selected))
             insertion = StepInsertionTarget.Resolve(selected, StepInsertionMode.Append);
+        if (original?.Id == _newDraftId && initialActionKey is null)
+            initialActionKey = _newDraftActionKey;
         InspectorRequested?.Invoke(new StepInspectorContext(original, initialActionKey,
             choices, _transaction.Current.Mappings.ToArray(), insertion?.RequiresCase == true));
     }
@@ -283,6 +346,11 @@ public sealed class TestEditorViewModel : BindableBase
             if (!_inspectorAdding && _selectedItem.Step is { } original)
             {
                 _transaction.ReplaceWithMapping(original.Id, result.Step, result.Mapping);
+                if (_newDraftId == original.Id)
+                {
+                    _newDraftId = null;
+                    _newDraftActionKey = null;
+                }
                 RefreshMappings();
                 RefreshTree(original.Id);
                 StatusMessage = "步骤属性已应用到测试程序草稿；Ctrl+S 保存。";
@@ -559,6 +627,11 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void PreflightOnly()
     {
+        if (HasNewStepDraft)
+        {
+            StatusMessage = "步骤草稿尚未完善，不能预检或运行。";
+            return;
+        }
         if (IsBusy) return;
         try
         {
@@ -580,7 +653,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task RunRealAsync()
     {
-        if (IsBusy || IsDirty || !CanProceed()) return;
+        if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
         IsBusy = true;
         RunFacts.Clear();
         RunSummary = "正在执行真实测试…";
@@ -698,7 +771,8 @@ public sealed class TestEditorViewModel : BindableBase
             void Append(StepTreeItem item, int depth)
             {
                 var collapsed = _interaction.IsCollapsed(item);
-                var row = new StepRowProjection(item, depth, collapsed);
+                var row = new StepRowProjection(item, depth, collapsed, _stepFind,
+                item.Step?.Id == _newDraftId);
                 if (string.IsNullOrWhiteSpace(_stepFind) ||
                     !row.IsStep || (row.Name + " " + row.Summary + " " + row.Resource)
                         .Contains(_stepFind, StringComparison.CurrentCultureIgnoreCase))
@@ -777,7 +851,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     public async Task<bool> SaveForCloseAsync()
     {
-        if (IsBusy) return false;
+        if (IsBusy || HasNewStepDraft) return false;
         if (!IsDirty) return true;
         if (!CanProceed()) return false;
         var previousRevision = AssetRevision;
@@ -787,6 +861,11 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task SaveAsync()
     {
+        if (HasNewStepDraft)
+        {
+            StatusMessage = "仍有未完成的新步骤；先在右侧应用属性，或取消该新增。";
+            return;
+        }
         if (!IsDirty || IsBusy || !CanProceed()) return;
         IsBusy = true;
         try
