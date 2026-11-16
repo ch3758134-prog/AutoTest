@@ -681,6 +681,15 @@ public sealed class TestEditorViewModel : BindableBase
     public bool ConfirmClose() =>
         !IsBusy && CanProceed() && (!IsDirty || _dialogs.Confirm("测试程序有未保存修改，确定放弃并关闭吗？"));
 
+    public async Task<bool> SaveForCloseAsync()
+    {
+        if (IsBusy) return false;
+        if (!IsDirty) return true;
+        if (!CanProceed()) return false;
+        await SaveAsync();
+        return !IsBusy && !IsDirty;
+    }
+
     private async Task SaveAsync()
     {
         if (!IsDirty || IsBusy || !CanProceed()) return;

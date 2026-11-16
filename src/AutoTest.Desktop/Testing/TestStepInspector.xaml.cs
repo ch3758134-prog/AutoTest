@@ -488,9 +488,19 @@ public partial class TestStepInspector : UserControl
 
     private void ClearRawKeys_Click(object sender, RoutedEventArgs e) => SetRawKeyMask(0);
 
-    private void Confirm_Click(object sender, RoutedEventArgs e)
+    private void Confirm_Click(object sender, RoutedEventArgs e) => TryApplyChanges();
+
+    /// <summary>
+    /// Apply the inspector draft to the canonical StepEditTransaction. Returns false
+    /// without discarding inputs when a required field or target is invalid.
+    /// </summary>
+    public bool TryApplyChanges()
     {
-        if (_selected is null) return;
+        if (_selected is null)
+        {
+            ErrorText.Text = "请选择有效的步骤操作类型，然后重试保存。";
+            return false;
+        }
         try
         {
             var name = NameInput.Text.Trim();
@@ -584,17 +594,21 @@ public partial class TestStepInspector : UserControl
 
             mapping?.Validate();
             Result = new StepCompositionResult(node, mapping);
-            HasPendingEdits = false;
-            if (Result is { } completed && ApplyRequested?.Invoke(completed) != true)
+            if (ApplyRequested?.Invoke(Result) != true)
             {
                 HasPendingEdits = true;
                 ErrorText.Text = "步骤属性未应用。请检查测试程序状态栏中的错误，修改后重试。";
+                return false;
             }
+            HasPendingEdits = false;
+            return true;
         }
         catch (Exception error) when (error is ArgumentException or FormatException or
                                       OverflowException or AutoTest.Projects.Project.ProjectDataException)
         {
+            HasPendingEdits = true;
             ErrorText.Text = "参数未完成：" + error.Message;
+            return false;
         }
     }
 

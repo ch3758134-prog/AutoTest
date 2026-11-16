@@ -35,6 +35,19 @@ public partial class TestEditorView : UserControl
         Loaded += (_, _) => _viewModel.ResetInspector();
     }
 
+    public bool HasPendingInspectorDraft => _inspector?.HasPendingEdits == true;
+
+    /// <summary>
+    /// Explicit save-on-close first validates/applies pending Inspector edits, then
+    /// awaits real TEST document persistence. On failure both drafts stay in place.
+    /// </summary>
+    public async Task<bool> SaveForCloseAsync()
+    {
+        if (_inspector?.HasPendingEdits == true && !_inspector.TryApplyChanges())
+            return false;
+        return await _viewModel.SaveForCloseAsync();
+    }
+
     private void ShowInspector(StepInspectorContext context)
     {
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
