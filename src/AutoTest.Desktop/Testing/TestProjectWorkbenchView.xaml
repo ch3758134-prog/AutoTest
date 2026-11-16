@@ -12,8 +12,11 @@
   <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
    <DockPanel Margin="15,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="＋ 添加用例" Command="{Binding AddCommand}" Margin="0,0,6,0"
-      ToolTip="选择下方可用用例后加入当前测试项目"/>
+     <Button Content="＋ 新建用例" Command="{Binding CreateNewPackageCommand}"
+      Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"
+      ToolTip="创建空白真实 TEST，加入当前项目并打开步骤编辑器"/>
+     <Button Content="添加已有用例" Command="{Binding AddCommand}" Margin="0,0,6,0"
+      ToolTip="从现有工程 TEST 资产中添加到本测试项目"/>
      <Button Content="保存" Command="{Binding SaveCommand}" Margin="0"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
