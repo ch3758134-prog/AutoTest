@@ -55,8 +55,11 @@ public sealed class TestEditorViewModel : BindableBase
 
         AddChildCommand = new DelegateCommand(() => BeginInsert(null),
             () => !IsBusy && StepInsertionTarget.CanAppend(SelectedItem));
-        QuickAddCommand = new DelegateCommand<string>(BeginInsert,
-            _ => !IsBusy && StepInsertionTarget.CanAppend(SelectedItem));
+        // Main action: phase/slot -> append; existing step -> insert below.
+        AddStepCommand = new DelegateCommand(() => BeginInsertAtSelection(null),
+            () => !IsBusy && SelectedItem is not null);
+        QuickAddCommand = new DelegateCommand<string>(BeginInsertAtSelection,
+            _ => !IsBusy && SelectedItem is not null);
         AddAfterCommand = new DelegateCommand(BeginInsertAfter,
             () => CanEditSelectedStep);
         EditParametersCommand = new DelegateCommand(() =>
@@ -215,6 +218,10 @@ public sealed class TestEditorViewModel : BindableBase
     private void BeginInsert(string? actionKey) =>
         StartInsert(_selectedItem, actionKey, StepInsertionMode.Append);
 
+    private void BeginInsertAtSelection(string? actionKey) =>
+        StartInsert(_selectedItem, actionKey, _selectedItem?.Kind == StepTreeItemKind.Step
+            ? StepInsertionMode.After : StepInsertionMode.Append);
+
     private void BeginInsertAfter() =>
         StartInsert(_selectedItem, null, StepInsertionMode.After);
 
@@ -307,6 +314,7 @@ public sealed class TestEditorViewModel : BindableBase
 
 
     public DelegateCommand AddChildCommand { get; }
+    public DelegateCommand AddStepCommand { get; }
     public DelegateCommand<string> QuickAddCommand { get; }
     public DelegateCommand AddAfterCommand { get; }
     public DelegateCommand EditParametersCommand { get; }
@@ -821,6 +829,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         RaisePropertyChanged(nameof(IsDirty));
         AddChildCommand?.RaiseCanExecuteChanged();
+        AddStepCommand?.RaiseCanExecuteChanged();
         QuickAddCommand?.RaiseCanExecuteChanged();
         AddAfterCommand?.RaiseCanExecuteChanged();
         EditParametersCommand?.RaiseCanExecuteChanged();

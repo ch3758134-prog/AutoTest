@@ -12,8 +12,9 @@
      <TextBox x:Name="StepSearch" Width="146" Height="26" VerticalContentAlignment="Center"
       Text="{Binding StepFind,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       ToolTip="查找步骤 Ctrl+F" Margin="0,0,6,0"/>
-     <Button Content="＋ 添加步骤" Command="{Binding AddChildCommand}"
-      Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"/>
+     <Button Content="＋ 添加步骤" Command="{Binding AddStepCommand}"
+      Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"
+      ToolTip="选中阶段/分支：追加；选中步骤：插入其下方"/>
      <Menu Background="Transparent" Height="28" Margin="0,0,6,0">
       <MenuItem Header="常用步骤 ▾" Padding="7,3" FontSize="11"
        ToolTip="先选阶段或明确的子分支，再直接选择步骤类型">
