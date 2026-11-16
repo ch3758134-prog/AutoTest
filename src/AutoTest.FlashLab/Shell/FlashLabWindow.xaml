@@ -191,9 +191,9 @@
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*" MinHeight="180"/>
+      <RowDefinition Height="*" MinHeight="125"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="160"/>
+      <RowDefinition Height="120"/>
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0">
       <TextBlock x:Name="WorkflowStatusLabel"
