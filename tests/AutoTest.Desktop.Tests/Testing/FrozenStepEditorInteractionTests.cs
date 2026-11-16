@@ -25,10 +25,13 @@ public sealed class FrozenStepEditorInteractionTests
         Assert.Equal("待完善", visual.State);
         Assert.Equal("500 ms", visual.Summary);
 
-        editor.Delete(draft.Id); // Cancel removes the only provisional STEP.
+        editor.Undo(); // Cancel must undo insertion, not create a second Delete.
         Assert.Empty(editor.Current.Get(TestPhase.Test));
+        Assert.True(editor.CanRedo);
         Assert.Equal(TestDocumentCodec.Serialize(original),
             TestDocumentCodec.Serialize(editor.Current));
+        editor.Redo(); // The caller must still mark the restored node provisional.
+        Assert.Equal(draft.Id, Assert.Single(editor.Current.Get(TestPhase.Test)).Id);
     }
 
     [Fact]
@@ -54,6 +57,35 @@ public sealed class FrozenStepEditorInteractionTests
             option => Assert.Equal("Case", option.StepType));
         Assert.DoesNotContain(TestStepInspector.PaletteActions(false),
             option => option.StepType == "Case");
+    }
+
+    [Fact]
+    public void InlineQuickEditIsOptInAndCanRestoreOriginalDraftWithoutMutation()
+    {
+        var phase = new StepTreeItem(StepTreeItemKind.Phase, TestPhase.Test, "测试");
+        var wait = StepUiCatalog.NewNode("Wait");
+        var row = new StepRowProjection(new StepTreeItem(StepTreeItemKind.Step,
+            TestPhase.Test, wait.Name, phase, wait), 0);
+        Assert.True(row.IsQuickEditable);
+        Assert.True(row.ShowQuickSummary);
+        Assert.False(row.ShowInlineEditor);
+        row.IsInlineEditing = true;
+        Assert.True(row.ShowInlineEditor);
+        row.QuickValue = "invalid";
+        row.CancelQuickEdit();
+        Assert.Equal(row.OriginalQuickValue, row.QuickValue);
+        Assert.True(row.ShowQuickSummary);
+        Assert.False(row.ShowInlineEditor);
+    }
+
+    [Fact]
+    public void PaletteAvoidsSecondCanSendActionButStillCanEditLegacyCanSend()
+    {
+        var choices = TestStepInspector.PaletteActions(false);
+        Assert.Single(choices.Where(option => option.Key == "can"));
+        Assert.DoesNotContain(choices, option => option.Key == "can-send");
+        Assert.Contains(choices, option => option.Key == "can-wait");
+        Assert.Contains(choices, option => option.Key == "key" && option.Title == "按键动作");
     }
 
     [Fact]
