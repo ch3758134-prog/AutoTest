@@ -56,7 +56,7 @@ public sealed class StepRowProjection
     public bool IsNewDraft { get; }
     public bool IsBreakpoint => BreakpointMark.Length > 0;
     public bool IsUnavailable => State == "执行未接线" || State == "未知类型";
-    public bool IsQuickEditable => Item.Step?.Type is "Wait" or "Loop";
+    public bool IsQuickEditable => !IsNewDraft && Item.Step?.Type is "Wait" or "Loop";
     public bool IsNotQuickEditable => !IsQuickEditable;
     public string OriginalQuickValue => Item.Step?.Type switch
     {

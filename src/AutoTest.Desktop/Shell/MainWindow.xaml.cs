@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private bool _restoringDocumentTab;
     private bool _inspectorManualLayout;
     private bool _bottomManualLayout;
+    private bool _treeAutoNarrow;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -197,8 +198,16 @@ public partial class MainWindow : Window
         // Preserve the editing surface instead of squeezing controls/fonts.
         if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
         if (!_bottomManualLayout) _bottomVisible = ActualHeight >= 650;
-        if (ActualWidth < 1050 && TreeColumn.Width.Value > 235)
+        if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 235)
+        {
             TreeColumn.Width = new GridLength(225);
+            _treeAutoNarrow = true;
+        }
+        else if (ActualWidth >= 1150 && _treeAutoNarrow)
+        {
+            TreeColumn.Width = new GridLength(270);
+            _treeAutoNarrow = false;
+        }
         ApplyPanelLayout();
     }
 
