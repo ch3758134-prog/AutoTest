@@ -32,6 +32,40 @@ public sealed class TestEditorInteractionStateTests
     }
 
     [Fact]
+    public void ThenAndElseHaveDifferentInsertionAndSelectionIdentities()
+    {
+        var phase = new StepTreeItem(StepTreeItemKind.Phase, TestPhase.Test, "测试");
+        var parent = StepNode.Create("If", "条件").WithSlot("then").WithSlot("else");
+        var conditional = new StepTreeItem(StepTreeItemKind.Step, TestPhase.Test,
+            "IF", phase, parent, index: 0);
+        phase.Children.Add(conditional);
+        var then = new StepTreeItem(StepTreeItemKind.Slot, TestPhase.Test,
+            "THEN", conditional, slot: "then");
+        var otherwise = new StepTreeItem(StepTreeItemKind.Slot, TestPhase.Test,
+            "ELSE", conditional, slot: "else");
+        conditional.Children.Add(then);
+        conditional.Children.Add(otherwise);
+
+        var thenKey = StepSelectionKey.Of(then);
+        var elseKey = StepSelectionKey.Of(otherwise);
+        Assert.NotEqual(thenKey, elseKey);
+        Assert.Same(then, thenKey!.Value.FindIn([phase]));
+        Assert.Same(otherwise, elseKey!.Value.FindIn([phase]));
+
+        var thenInsertion = StepInsertionTarget.Resolve(then, StepInsertionMode.Append);
+        var elseInsertion = StepInsertionTarget.Resolve(otherwise, StepInsertionMode.Append);
+        Assert.Equal(parent.Id, thenInsertion.ParentId);
+        Assert.Equal(parent.Id, elseInsertion.ParentId);
+        Assert.Equal("then", thenInsertion.Slot);
+        Assert.Equal("else", elseInsertion.Slot);
+
+        var state = new TestEditorInteractionState();
+        Assert.True(state.TryNavigate(thenKey, () => true));
+        Assert.False(state.TryNavigate(elseKey, () => false));
+        Assert.Equal(thenKey, state.Selection);
+    }
+
+    [Fact]
     public void ValidationFailureDoesNotMoveSelection()
     {
         var state = new TestEditorInteractionState();
