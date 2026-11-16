@@ -78,7 +78,7 @@ public sealed class CanToolXmlProfileReader
         // fail closed rather than silently using whichever element occurs first.
         var names = XmlAliases.TryGetValue(name,out var aliases)
             ? new[] { name }.Concat(aliases).ToArray()
-            : [name];
+            : new[] { name };
         var matches=doc.Descendants().Where(e=>names.Any(n=>Matches(e,n))).ToArray();
         if(matches.Length>1)
             throw new FormatException($"配置项 {name} 存在多个英文/中文重复定义，无法确定有效值。");
@@ -98,7 +98,9 @@ public sealed class CanToolXmlProfileReader
             var e=Find(_document,item.Name);
             if(e is not null)
             {
-                item.Restore(e.Value.Trim(),"CanTool XML（"+e.Name.LocalName+"）");
+                string source=string.Equals(e.Name.LocalName,item.Name,StringComparison.OrdinalIgnoreCase)
+                    ? "CanTool XML" : "XML："+e.Name.LocalName;
+                item.Restore(e.Value.Trim(),source);
                 mapped.Add(e);
             }
         }
