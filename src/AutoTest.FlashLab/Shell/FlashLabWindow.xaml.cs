@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using AutoTest.Core;
 using AutoTest.Devices.Usb;
@@ -16,11 +18,13 @@ public partial class FlashLabWindow : Window
 {
     private readonly FlashLabViewModel _vm = new();
     private readonly FlashLabDeviceSession _device = new();
+    private CancellationTokenSource? _connectStop;
     private CancellationTokenSource? _didStop;
     private CancellationTokenSource? _flashStop;
     private string? _seedDllPath;
     private CanToolFlashJob? _previewFlash;
     private bool _closingApproved;
+    private bool _closingInProgress;
 
     public FlashLabWindow()
     {
@@ -64,11 +68,12 @@ public partial class FlashLabWindow : Window
     }
     private async Task RefreshDevicesAsync()
     {
-        if(_device.IsConnected || _vm.IsBusy) return;
+        if(_device.IsConnected || _vm.IsBusy || _closingInProgress || _closingApproved) return;
         Busy(true);
         try
         {
             var candidates=await Task.Run(FlashLabDeviceSession.Discover);
+            if(_closingInProgress || _closingApproved)return;
             _vm.Candidates.Clear();
             foreach(var item in candidates) _vm.Candidates.Add(item);
             _vm.SelectedDevice=candidates.Count==1?candidates[0]:null;
@@ -85,15 +90,20 @@ public partial class FlashLabWindow : Window
 
     private async void Connect_Click(object sender,RoutedEventArgs e)
     {
-        if(_vm.SelectedDevice is not { } device) return;
+        if(_vm.SelectedDevice is not { } device || _closingInProgress) return;
+        _connectStop=new CancellationTokenSource();
         Busy(true);
         try
         {
-            await _device.ConnectAsync(device,CancellationToken.None);
+            await _device.ConnectAsync(device,_connectStop.Token);
             _vm.Status="真实主控已连接：CAN1=DUT；未执行现场 DID 授权。";
         }
         catch(Exception ex) { Error("主控连接",ex); }
-        finally { Busy(false); }
+        finally
+        {
+            _connectStop?.Dispose();_connectStop=null;
+            Busy(false);
+        }
     }
     private async void Disconnect_Click(object sender,RoutedEventArgs e)
     {
@@ -118,6 +128,7 @@ public partial class FlashLabWindow : Window
             var cfg=CanToolXmlProfileReader.Load(dialog.FileName);
             _vm.ApplyConfiguration(cfg);
             InvalidateFlashPreview();
+            ApplySafetyLibraryFromConfiguration();
             _vm.Status="已加载 CanTool XML；字段与未知项已保留。";
             AddLog("XML 配置载入："+dialog.FileName);
             ApplyEndpointFromConfiguration(logError:false);
@@ -135,6 +146,7 @@ public partial class FlashLabWindow : Window
             _vm.Configuration.LoadRelatedJson(dialog.FileName);
             _vm.ApplyConfiguration(_vm.Configuration);
             InvalidateFlashPreview();
+            ApplySafetyLibraryFromConfiguration();
             _vm.Status="已导入 settings.json 非冲突字段；未知字段不驱动硬件。";
             AddLog("JSON 参考配置："+dialog.FileName);
         }
@@ -248,6 +260,39 @@ public partial class FlashLabWindow : Window
         if(FlashPlanSummary is not null)
             FlashPlanSummary.Text="配置/镜像已改变，请重新生成冻结任务。";
         UpdateButtons();
+    }
+
+    /// <summary>CanTool settings.json can supply SafetyFilePath, but we still
+    /// inspect the actual DLL; choosing XML alone never executes any DLL.</summary>
+    private void ApplySafetyLibraryFromConfiguration()
+    {
+        string candidate=_vm.Configuration.Get("SafetyFilePath");
+        if(string.IsNullOrWhiteSpace(candidate))
+            candidate=_vm.Configuration.Get("SeedToKeyDll_Path");
+        if(string.IsNullOrWhiteSpace(candidate))return;
+        _seedDllPath=null;
+        if(!File.Exists(candidate))
+        {
+            KeyDllPathLabel.Text="配置指向的安全文件不存在："+candidate;
+            KeyDllInfoLabel.Text="请核对配置路径，或手工选择现有 DLL。";
+            AddLog("安全库配置路径无效："+candidate);
+            return;
+        }
+        try
+        {
+            var d=CanToolSecurityProvider.Inspect(candidate);
+            _seedDllPath=d.Path;
+            KeyDllPathLabel.Text=d.Path;
+            KeyDllInfoLabel.Text=d.Summary+"；SHA256="+d.Sha256;
+            AddLog("来自配置的安全 DLL 已识别："+d.Summary+
+                "（仅静态解析，未执行；ECU 是否兼容待实测）");
+        }
+        catch(Exception ex)
+        {
+            KeyDllPathLabel.Text="安全库接口不兼容："+candidate;
+            KeyDllInfoLabel.Text=ex.Message;
+            AddLog("安全库导入失败："+ex.Message);
+        }
     }
 
     private void ChooseKeyDll_Click(object sender,RoutedEventArgs e)
@@ -423,15 +468,47 @@ public partial class FlashLabWindow : Window
         _vm.Logs.Clear();
         AddLog("界面日志已清空；硬件原始 JSONL 证据仍保留，不会删除。");
     }
-    private async void Window_Closing(object sender,CancelEventArgs e)
+    private void Window_Closing(object sender,CancelEventArgs e)
     {
         if(_closingApproved)return;
+        if(_closingInProgress) { e.Cancel=true; return; }
+        _connectStop?.Cancel();
+        _didStop?.Cancel();
+        _flashStop?.Cancel();
+        // No WinUSB handle / CAN worker / trace writer exists: close immediately.
+        if(!_device.HasActiveResources && _flashStop is null &&
+           _didStop is null && _connectStop is null)
+        {
+            _closingApproved=true;
+            return;
+        }
         e.Cancel=true;
-        if(_didStop is not null) _didStop.Cancel();
-        if(_flashStop is not null) _flashStop.Cancel();
-        try { await _device.DisposeAsync(); }
-        catch(Exception ex) { AddLog("关闭清理异常："+ex.Message); }
-        _closingApproved=true;
-        Close();
+        _closingInProgress=true;
+        _vm.Status="正在安全退出：取消请求、关闭 USB/CAN1、保存诊断日志…";
+        Title="Flash Lab · 正在安全退出";
+        Busy(true);
+        _=CloseAfterCleanupAsync();
+    }
+    private async Task CloseAfterCleanupAsync()
+    {
+        var timer=Stopwatch.StartNew();
+        try
+        {
+            AddLog("开始安全退出；取消仍在执行的诊断/编程任务。");
+            await _device.DisposeAsync();
+            AddLog($"设备资源已清理，总耗时 {timer.ElapsedMilliseconds} ms。");
+        }
+        catch(Exception ex)
+        {
+            AddLog("退出清理失败："+ex);
+            Trace.WriteLine("FlashLab close cleanup failure: "+ex);
+            // Never claim a successful programming outcome after a cleanup fault.
+        }
+        finally
+        {
+            _closingApproved=true;
+            _closingInProgress=false;
+            Close();
+        }
     }
 }

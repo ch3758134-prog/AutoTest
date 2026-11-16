@@ -125,51 +125,6 @@
         Foreground="#677B94" TextWrapping="Wrap"/>
       </StackPanel>
      </GroupBox>
-     <GroupBox Header="ECU 信息 · 限定一次 UDS 0x22 DID">
-      <StackPanel>
-       <TextBlock Text="未经现场单独授权不得发送。仅 CAN1；不自动进入会话、解锁或复位。"
-         Foreground="#9C5D20" FontSize="11" TextWrapping="Wrap" Margin="4,3"/>
-       <DockPanel Margin="4,3">
-        <TextBlock Text="地址来源：" Margin="0,0,5,0"/>
-        <ComboBox x:Name="EndpointSelector" Width="140" Height="27" SelectionChanged="Endpoint_SelectionChanged"
-          SelectedIndex="0">
-         <ComboBoxItem Content="APP 地址"/>
-         <ComboBoxItem Content="Boot 地址"/>
-        </ComboBox>
-        <Button Content="从配置填入" Click="ApplyEndpoint_Click"/>
-       </DockPanel>
-       <Grid Margin="3,3">
-        <Grid.ColumnDefinitions>
-         <ColumnDefinition Width="Auto"/>
-         <ColumnDefinition Width="*"/>
-         <ColumnDefinition Width="Auto"/>
-         <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        <TextBlock Grid.Column="0" Text="TX ID：" VerticalAlignment="Center"/>
-        <TextBox Grid.Column="1" Text="{Binding RequestId,UpdateSourceTrigger=PropertyChanged}"/>
-        <TextBlock Grid.Column="2" Text="RX ID：" VerticalAlignment="Center"/>
-        <TextBox Grid.Column="3" Text="{Binding ResponseId,UpdateSourceTrigger=PropertyChanged}"/>
-       </Grid>
-       <DockPanel Margin="3,3">
-        <TextBlock DockPanel.Dock="Left" Text="DID（16进制）：" VerticalAlignment="Center"/>
-        <TextBox Text="{Binding Did,UpdateSourceTrigger=PropertyChanged}" Width="150"
-         HorizontalAlignment="Left"/>
-       </DockPanel>
-       <TextBlock Text="本次物理许可的精确确认字符串：" Margin="5,6,5,2" FontSize="11"/>
-       <TextBox Text="{Binding ExpectedConsent,Mode=OneWay}" IsReadOnly="True"
-         Foreground="#63758B" TextWrapping="Wrap" MinHeight="28"/>
-       <TextBlock Text="现场人员手工输入以上整串后才允许一次读取：" Margin="5,6,5,2" FontSize="11"/>
-       <TextBox x:Name="ConfirmationBox" Text="{Binding TypedConfirmation,UpdateSourceTrigger=PropertyChanged}"
-         MinHeight="30"/>
-       <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-        <Button x:Name="ReadDidButton" Content="读取指定 DID（0x22）" Click="ReadDid_Click"
-          Background="#DCECFD" FontWeight="Bold"/>
-        <Button x:Name="CancelDidButton" Content="取消读取" Click="CancelDid_Click"/>
-       </StackPanel>
-       <TextBlock Text="{Binding DidResult}" Margin="7,5" TextWrapping="Wrap"
-         FontWeight="SemiBold" Foreground="#295379"/>
-      </StackPanel>
-     </GroupBox>
      <GroupBox Header="CanTool 完整烧录（F2 · 真实 ECU，独立许可）">
       <StackPanel>
        <TextBlock Text="先准备 XML + 固件 + 目标 ECU + Seed/Key DLL，再生成冻结任务。"
@@ -215,6 +170,52 @@
          TextWrapping="Wrap" Foreground="#A24F24" Margin="7,5" FontSize="11"/>
       </StackPanel>
      </GroupBox>
+     <GroupBox Header="ECU 信息 · 限定一次 UDS 0x22 DID">
+      <StackPanel>
+       <TextBlock Text="未经现场单独授权不得发送。仅 CAN1；不自动进入会话、解锁或复位。"
+         Foreground="#9C5D20" FontSize="11" TextWrapping="Wrap" Margin="4,3"/>
+       <DockPanel Margin="4,3">
+        <TextBlock Text="地址来源：" Margin="0,0,5,0"/>
+        <ComboBox x:Name="EndpointSelector" Width="140" Height="27" SelectionChanged="Endpoint_SelectionChanged"
+          SelectedIndex="0">
+         <ComboBoxItem Content="APP 地址"/>
+         <ComboBoxItem Content="Boot 地址"/>
+        </ComboBox>
+        <Button Content="从配置填入" Click="ApplyEndpoint_Click"/>
+       </DockPanel>
+       <Grid Margin="3,3">
+        <Grid.ColumnDefinitions>
+         <ColumnDefinition Width="Auto"/>
+         <ColumnDefinition Width="*"/>
+         <ColumnDefinition Width="Auto"/>
+         <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Column="0" Text="TX ID：" VerticalAlignment="Center"/>
+        <TextBox Grid.Column="1" Text="{Binding RequestId,UpdateSourceTrigger=PropertyChanged}"/>
+        <TextBlock Grid.Column="2" Text="RX ID：" VerticalAlignment="Center"/>
+        <TextBox Grid.Column="3" Text="{Binding ResponseId,UpdateSourceTrigger=PropertyChanged}"/>
+       </Grid>
+       <DockPanel Margin="3,3">
+        <TextBlock DockPanel.Dock="Left" Text="DID（16进制）：" VerticalAlignment="Center"/>
+        <TextBox Text="{Binding Did,UpdateSourceTrigger=PropertyChanged}" Width="150"
+         HorizontalAlignment="Left"/>
+       </DockPanel>
+       <TextBlock Text="本次物理许可的精确确认字符串：" Margin="5,6,5,2" FontSize="11"/>
+       <TextBox Text="{Binding ExpectedConsent,Mode=OneWay}" IsReadOnly="True"
+         Foreground="#63758B" TextWrapping="Wrap" MinHeight="28"/>
+       <TextBlock Text="现场人员手工输入以上整串后才允许一次读取：" Margin="5,6,5,2" FontSize="11"/>
+       <TextBox x:Name="ConfirmationBox" Text="{Binding TypedConfirmation,UpdateSourceTrigger=PropertyChanged}"
+         MinHeight="30"/>
+       <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+        <Button x:Name="ReadDidButton" Content="读取指定 DID（0x22）" Click="ReadDid_Click"
+          Background="#DCECFD" FontWeight="Bold"/>
+        <Button x:Name="CancelDidButton" Content="取消读取" Click="CancelDid_Click"/>
+       </StackPanel>
+       <TextBlock Text="{Binding DidResult}" Margin="7,5" TextWrapping="Wrap"
+         FontWeight="SemiBold" Foreground="#295379"/>
+      </StackPanel>
+     </GroupBox>
+
     </StackPanel>
    </ScrollViewer>
   </Grid>

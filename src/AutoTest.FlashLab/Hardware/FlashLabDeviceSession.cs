@@ -36,6 +36,9 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
     private int _programmingActive;
 
     public bool IsConnected => _usb?.State==UsbSessionState.Connected;
+    // An offline window must not wait for native WinUSB/trace cleanup.
+    public bool HasActiveResources => _usb is not null || _link is not null ||
+        _bridge is not null || _recorder is not null;
     public string? EvidencePath => _recorder?.FilePath ?? _lastEvidencePath;
     public event Action<string>? Message;
     private void Emit(string text)
@@ -81,7 +84,8 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                 if(e.Kind is "REQUEST_TIMEOUT" or "REQUEST_ERROR" or "CONNECT_ERROR" or "READ_FAULT")
                     Emit($"USB {e.Kind} {e.Detail}");
             };
-            recorder.RecordMessage("F1_SCOPE","WinUSB CAN1 read-only DID; F2 write prohibited.");
+            recorder.RecordMessage("FLASH_SCOPE",
+                "CanTool protocol -> existing ISO-TP -> real USB CAN1; write requires exact physical job consent.");
             Emit("打开主控：" +candidate.DisplayIdentity);
             await usb.ConnectAsync(ct).ConfigureAwait(false);
             var pong=await usb.RequestAsync(MainControllerCodec.Ping,ReadOnlyMemory<byte>.Empty,
