@@ -99,6 +99,17 @@ public sealed class TestEditorViewModel : BindableBase
         get => _selectedRow;
         set
         {
+            if (ReferenceEquals(_selectedRow, value)) return;
+            if (!_syncingRowSelection && _selectedItem is not null && !CanProceed())
+            {
+                RaisePropertyChanged(nameof(SelectedRow));
+                return;
+            }
+            if (!_syncingRowSelection && value is not null)
+                value = StepRows.FirstOrDefault(row =>
+                    row.Item.Step?.Id == value.Item.Step?.Id &&
+                    row.Item.Kind == value.Item.Kind &&
+                    row.Item.Phase == value.Item.Phase) ?? value;
             if (!SetProperty(ref _selectedRow, value) || _syncingRowSelection) return;
             SelectItem(value?.Item);
         }
@@ -193,7 +204,9 @@ public sealed class TestEditorViewModel : BindableBase
     public StepTreeItem? SelectedItem => _selectedItem;
     public event Action<StepInspectorContext>? InspectorRequested;
     public Func<bool>? AllowEditorAction { get; set; }
-    private bool CanProceed() => AllowEditorAction?.Invoke() ?? true;
+    private bool _applyingInspector;
+    public bool IsApplyingInspector => _applyingInspector;
+    private bool CanProceed() => _applyingInspector || (AllowEditorAction?.Invoke() ?? true);
 
     private StepTreeItem? _inspectorInsertionTarget;
     private bool _inspectorAdding;
@@ -226,7 +239,8 @@ public sealed class TestEditorViewModel : BindableBase
 
     public bool ApplyInspector(StepCompositionResult result)
     {
-        if (IsBusy || _selectedItem is null) return false;
+        if (IsBusy || _selectedItem is null || _applyingInspector) return false;
+        _applyingInspector = true;
         try
         {
             if (!_inspectorAdding && _selectedItem.Step is { } original)
@@ -254,6 +268,7 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = "无法应用步骤属性：" + error.Message;
             return false;
         }
+        finally { _applyingInspector = false; }
     }
 
 
@@ -313,6 +328,19 @@ public sealed class TestEditorViewModel : BindableBase
     public void SelectItem(StepTreeItem? item)
     {
         if (ReferenceEquals(_selectedItem, item)) return;
+        if (_selectedItem is not null && !CanProceed()) return;
+        // Resolving by canonical identity protects selection after Inspector Apply
+        // regenerates StepTreeItem instances.
+        if (item is { Step: { } targetStep })
+            item = StepTreeItem.Walk(StepRoots).FirstOrDefault(x =>
+                x.Step?.Id == targetStep.Id) ?? item;
+        else if (item is { Kind: StepTreeItemKind.Phase })
+            item = StepRoots.FirstOrDefault(x => x.Phase == item.Phase) ?? item;
+        else if (item is { Kind: StepTreeItemKind.Slot, Parent.Step: { } parentStep })
+            item = StepTreeItem.Walk(StepRoots).FirstOrDefault(x =>
+                x.Kind == StepTreeItemKind.Slot &&
+                x.Parent?.Step?.Id == parentStep.Id &&
+                x.SlotName == item.SlotName) ?? item;
         if (_selectedItem is not null) _selectedItem.IsSelected = false;
         _selectedItem = item;
         if (item is not null) item.IsSelected = true;
