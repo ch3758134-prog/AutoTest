@@ -44,7 +44,7 @@
        <Setter Property="Opacity" Value="0.45"/>
       </Trigger>
      </ControlTemplate.Triggers>
-    </ControlTemplate></Setter.Value></Setter>
+    </ControlTemplate></Setter.Value>
    </Setter>
   </Style>
   <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
@@ -126,7 +126,7 @@
       <DataTrigger Binding="{Binding IsMatch}" Value="True"><Setter TargetName="Container" Property="Background" Value="#FFF4DC"/></DataTrigger>
       <Trigger Property="IsSelected" Value="True"><Setter TargetName="Container" Property="Background" Value="#EAF3FF"/><Setter TargetName="Container" Property="BorderBrush" Value="#91B9E9"/></Trigger>
      </ControlTemplate.Triggers>
-    </ControlTemplate></Setter.Value></Setter>
+    </ControlTemplate></Setter.Value>
    </Setter>
   </Style>
  </Window.Resources>
