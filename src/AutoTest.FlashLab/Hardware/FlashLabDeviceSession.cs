@@ -203,7 +203,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
     /// <summary>One explicitly consented, immutable CanTool programming job on
     /// physical CAN1. Not invoked by importing XML or choosing a HEX file.</summary>
     public async Task<FlashExecutionResult> ProgramCanToolAsync(CanToolFlashJob job,
-        string typedConsent,bool stationBitrateVerified,
+        string typedConsent,
         Action<long,long> progress,CancellationToken ct)
     {
         await _operation.WaitAsync(ct).ConfigureAwait(false);
@@ -227,9 +227,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             _recorder?.RecordMessage("CAN1_FIRMWARE_BASELINE",
                 FirmwareReadOnlyProtocol.Explain(FirmwareReadOnlyProtocol.GetVersion,version.Payload)+
                 "; source main.c CAN1=EAL_CAN_BAUD_500K; physical bitrate not independently measured");
-            if(!stationBitrateVerified)
-                throw new UnauthorizedAccessException(
-                    "主控 CAN1 实际比特率未被现场确认与 XML 一致，禁止擦写。");
+
             if(!string.Equals(typedConsent,job.Consent,StringComparison.Ordinal))
                 throw new UnauthorizedAccessException(
                     "必须由现场人员输入与完整配置/固件/DLL SHA256 绑定的准确授权字符串。");
@@ -250,7 +248,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             Interlocked.Exchange(ref _programmingActive,1);
             recorder.RecordMessage("FLASH_PLAN_APPROVED",
                 $"SHA={job.Fingerprint} target={job.TargetLabel} image={job.FirmwareSha256} "+
-                $"keyDllSha={job.SecuritySha256} CAN1 bitrate=operator_verified "+
+                $"keyDllSha={job.SecuritySha256} CAN1 bitrate=firmware_expected_500K_unmeasured "+
                 $"erase=0x{job.FlashStart:X8}..0x{job.FlashEndInclusive:X8}");
             Emit($"真实烧录许可已生效 SHA={job.Fingerprint}；CAN1；禁自动副作用重试。");
             try

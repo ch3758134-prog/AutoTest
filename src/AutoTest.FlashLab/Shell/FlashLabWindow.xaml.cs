@@ -139,12 +139,12 @@ public partial class FlashLabWindow : Window
     {
         // SelectionChanged can fire while InitializeComponent creates controls.
         if(ConnectButton is null || DisconnectButton is null || RefreshButton is null ||
-           PrepareFlashButton is null || StartFlashButton is null || AbortFlashButton is null) return;
+           StartFlashButton is null || AbortFlashButton is null) return;
         ConnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected && _vm.SelectedDevice is not null;
         DisconnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected;
         RefreshButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected;
-        PrepareFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy;
-        StartFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected && _previewFlash is not null;
+        StartFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected &&
+            _vm.Image is not null && !string.IsNullOrWhiteSpace(_seedDllPath);
         AbortFlashButton.IsEnabled=!_closingInProgress && _flashStop is not null;
     }
     private async Task RefreshDevicesAsync()
@@ -242,25 +242,13 @@ public partial class FlashLabWindow : Window
                 return (cfg,library,image);
             });
             if(_closingInProgress || _closingApproved)return;
-            var decision=MessageBox.Show(this,
-                "找到并验证以下烧录文件（尚未发送 ECU 指令）：\n\n"+
-                "XML："+files.ConfigurationXml+"\n\n"+
-                "固件："+files.FirmwareImage+"\n\n"+
-                "安全文件："+checkedFiles.library.Path+"\n\n"+
-                $"镜像地址：0x{checkedFiles.image.Start:X8}.."+
-                $"0x{checkedFiles.image.EndExclusive-1:X8}\n"+
-                "采用 SafetyFile.dll 托管算法，不需要另外导入 Seed/Key DLL。\n\n"+
-                "确认将这些文件载入当前烧录配置？",
-                "确认三文件导入",MessageBoxButton.YesNo,
-                MessageBoxImage.Question,MessageBoxResult.No);
-            if(decision!=MessageBoxResult.Yes)return;
             checkedFiles.cfg.Set("SafetyFilePath",checkedFiles.library.Path);
             _vm.ApplyConfiguration(checkedFiles.cfg);
             _vm.SetImage(files.FirmwareImage,checkedFiles.image);
             SecuritySourceSelector.SelectedIndex=0;
             ApplySecurityFilesFromConfiguration();
             InvalidateFlashPreview();
-            _vm.Status="三文件已经一次载入并通过离线检查；请核对目标 ECU 后检查烧录参数。";
+            _vm.Status="已导入烧录文件；USB 连接后直接点击开始烧录。";
             AddLog($"三文件导入成功：XML={files.ConfigurationXml}，"+
                 $"固件={files.FirmwareImage}，SafetyFile={checkedFiles.library.Path}");
         }
@@ -336,9 +324,9 @@ public partial class FlashLabWindow : Window
     {
         _previewFlash=null;
         if(FlashPlanSummary is not null)
-            FlashPlanSummary.Text="配置或文件已更改，请重新检查烧录参数。";
+            FlashPlanSummary.Text="文件已更新；点击开始烧录时将自动校验配置和镜像。";
         if(WorkflowStatusLabel is not null)
-            WorkflowStatusLabel.Text="等待检查本次配置、固件和安全算法。";
+            WorkflowStatusLabel.Text="文件就绪后直接开始烧录；程序自动校验参数。";
         UpdateButtons();
     }
 
@@ -409,7 +397,7 @@ public partial class FlashLabWindow : Window
     private void SecuritySource_SelectionChanged(object sender,
         System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if(PrepareFlashButton is null)return;
+        if(SecurityProviderStatusLabel is null)return;
         UpdateSecuritySelection();InvalidateFlashPreview();
     }
     private void ChooseSafetyFile_Click(object sender,RoutedEventArgs e)=>
@@ -443,10 +431,8 @@ public partial class FlashLabWindow : Window
         catch(Exception ex){Error("导入安全算法文件",ex);}
     }
 
-    private void PrepareFlash_Click(object sender,RoutedEventArgs e)
+    private CanToolFlashJob BuildFlashJob()
     {
-        try
-        {
             if(_vm.Image is null || string.IsNullOrWhiteSpace(_vm.FirmwarePath))
                 throw new InvalidOperationException("请先选择并离线校验 HEX/S19/BIN 镜像。");
             // Always reload both visible configuration file paths before freezing.
@@ -458,14 +444,14 @@ public partial class FlashLabWindow : Window
             // Rebuild immutable on-wire snapshot using current config, current file
             // and current DLL; no stale UI values or automatic hardware actions.
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,TargetEcuBox.Text,
+                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,"",
                 LegacyTailSignatureCheck.IsChecked==true);
             _previewFlash=plan;
             _vm.ResetStages();
             _activeStage=-1;
             FlashProgressBar.Value=0;
             FlashPlanSummary.Text=
-                $"ECU（人工标识）: {plan.TargetLabel}\n"+
+                $"ECU（配置身份未自动核验）: {plan.TargetLabel}\n"+
                 $"APP TX/RX=0x{plan.App.RequestCanId:X}/0x{plan.App.ResponseCanId:X}\n"+
                 $"BOOT TX/RX=0x{plan.Boot.RequestCanId:X}/0x{plan.Boot.ResponseCanId:X}\n"+
                 $"CAN1 XML 波特率={plan.ConfiguredBitrate}（未自动配置）\n"+
@@ -476,43 +462,32 @@ public partial class FlashLabWindow : Window
                 $"参考末端签名={(plan.LegacyTailSignature ? "启用：12 34 56 78，可能覆盖原字节" : "未启用")}\n"+
                 $"固件 SHA={plan.FirmwareSha256}\n安全算法类型={plan.SecurityProviderKind}\n算法文件 SHA={plan.SecuritySha256}";
             FlashStageLabel.Text="文件及烧录地址检查完成；尚未向 ECU 发送请求。";
-            WorkflowStatusLabel.Text="准备就绪 · 请连接主控并核对本次擦除地址后开始烧录。";
-            _vm.Status="烧录参数已冻结并生成 SHA256，等待实体台架单独授权。";
+            WorkflowStatusLabel.Text="已自动检查；请核对实体 ECU、供电与擦除地址。";
+            _vm.Status="开始烧录：配置已自动检查，等待最终确认。";
             AddLog("F2 冻结任务已生成 SHA="+plan.Fingerprint+
                 "，擦除范围 0x"+plan.FlashStart.ToString("X8")+"..0x"+
                 plan.FlashEndInclusive.ToString("X8")+"；当前没有 CAN 发送。");
-            UpdateButtons();
-        }
-        catch(Exception ex)
-        {
-            InvalidateFlashPreview();
-            Error("建立 CanTool 烧录计划",ex);
-        }
+            return plan;
     }
 
     private async void StartFlash_Click(object sender,RoutedEventArgs e)
     {
-        if(_vm.IsBusy || !_device.IsConnected || _previewFlash is null)return;
+        if(_vm.IsBusy || !_device.IsConnected)return;
         try
         {
-            var frozen=_previewFlash;
-            if(string.IsNullOrWhiteSpace(_seedDllPath))
-                throw new InvalidOperationException("Seed/Key DLL 未选择。");
+            var frozen=BuildFlashJob();
             // Any edited XML field, new disk bytes, DLL or selected BIN base MUST
             // invalidate the displayed physical consent fingerprint.
             var fresh=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,TargetEcuBox.Text,
+                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,"",
                 LegacyTailSignatureCheck.IsChecked==true);
             if(!string.Equals(frozen.Fingerprint,fresh.Fingerprint,StringComparison.Ordinal))
                 throw new InvalidOperationException("配置、固件或算法库在生成计划后已改变。请重新生成烧录计划。");
-            if(BitrateVerifiedCheck.IsChecked!=true)
-                throw new UnauthorizedAccessException("必须先在现场核实主控 CAN1 实际波特率。");
-            if(FlashSafetyCheck.IsChecked!=true)
-                throw new UnauthorizedAccessException(
-                    "请先核对 ECU、镜像、安全算法、擦除范围及供电，并勾选确认。");
             var choice=MessageBox.Show(this,
                 "这是实体 ECU 编程操作，不是仿真。\n\n"+
-                $"型号/版本（人工核对）：{frozen.TargetLabel}\n"+
+                $"镜像：{Path.GetFileName(frozen.FirmwarePath)}\n"+
+                $"ECU 身份未自动识别；请核对目标实物与配置。\n"+
+                $"XML 波特率：{frozen.ConfiguredBitrate}；主控固件预期 500K，实际物理速率未测量。\n"+
                 $"擦除全部地址：0x{frozen.FlashStart:X8}..0x{frozen.FlashEndInclusive:X8}\n"+
                 $"固件 SHA256：{frozen.FirmwareSha256}\n"+
                 $"DLL SHA256：{frozen.SecuritySha256}\n"+
@@ -530,7 +505,6 @@ public partial class FlashLabWindow : Window
             // Physical frame gate still binds exactly to this frozen job SHA;
             // the operator no longer has to type a 64-byte fingerprint.
             var outcome=await _device.ProgramCanToolAsync(frozen,frozen.Consent,
-                stationBitrateVerified:true,
                 (tx,verified) =>
                 {
                     void Refresh()
@@ -570,8 +544,9 @@ public partial class FlashLabWindow : Window
         finally
         {
             _flashStop?.Dispose();_flashStop=null;
-            _previewFlash=null; // every physical run must be prepared again
+            _previewFlash=null;
             Busy(false);
+            UpdateButtons();
         }
     }
     private void AbortFlash_Click(object sender,RoutedEventArgs e)

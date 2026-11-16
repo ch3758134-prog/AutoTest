@@ -148,10 +148,6 @@
         Foreground="#61768D"/>
 
       <Separator Margin="5,5"/>
-      <TextBlock Text="目标 ECU" FontWeight="SemiBold" Margin="6,4,6,1"/>
-      <TextBox x:Name="TargetEcuBox" Margin="4,2,4,4"
-        ToolTip="本次实测的 ECU 型号、固件版本或工程标识"/>
-
       <Expander Header="详细参数 · CAN ID / 地址 / 镜像"
         IsExpanded="False" Margin="5,8,5,2">
        <StackPanel>
@@ -201,21 +197,11 @@
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0">
       <TextBlock x:Name="WorkflowStatusLabel"
-        Text="等待完整配置与 USB 连接" TextWrapping="Wrap"
+        Text="连接 USB、导入文件后直接开始烧录" TextWrapping="Wrap"
         Margin="5,3,5,6" FontWeight="SemiBold" Foreground="#235A85"/>
-      <Button x:Name="PrepareFlashButton" Content="检查烧录文件和参数"
-        Click="PrepareFlash_Click" Margin="3,0,3,4"
-        Background="#E0EEFB" FontWeight="SemiBold"
-        HorizontalAlignment="Stretch"/>
-      <TextBlock x:Name="FlashPlanSummary" Text="尚未检查配置"
+      <TextBlock x:Name="FlashPlanSummary" Text="开始时自动检查 CAN 地址、固件、算法和 Flash 范围"
         TextWrapping="Wrap" FontSize="11" Margin="7,2,7,6"
         Foreground="#516B85" MaxHeight="105"/>
-      <CheckBox x:Name="BitrateVerifiedCheck"
-        Content="已确认 CAN1 为 500K，与 XML 配置一致"
-        Margin="5,4,4,3"/>
-      <CheckBox x:Name="FlashSafetyCheck"
-        Content="已核对 ECU、固件、安全算法、地址与供电"
-        Margin="5,2,4,5"/>
       <StackPanel Orientation="Horizontal" Margin="0,1,0,2">
        <Button x:Name="StartFlashButton" Content="开始烧录" Click="StartFlash_Click"
          Background="#CFE7FC" FontWeight="Bold" Padding="20,7"/>

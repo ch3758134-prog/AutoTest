@@ -33,8 +33,9 @@ public sealed record CanToolFlashJob(
     {
         ArgumentNullException.ThrowIfNull(config);
         config.ValidateConfiguredRange();
-        if(string.IsNullOrWhiteSpace(targetLabel))
-            throw new FormatException("必须填写现场 ECU 型号/版本标识，不能自动采用示例 ECU。");
+        // The imported CanTool files do not guarantee a verified ECU identity.
+        targetLabel=string.IsNullOrWhiteSpace(targetLabel)
+            ?"ECU 身份未自动核验" :targetLabel.Trim();
         var (appTx,appRx)=config.GetEndpoint(false);
         var (bootTx,bootRx)=config.GetEndpoint(true);
         if(appTx==0 || appRx==0 || bootTx==0 || bootRx==0)
