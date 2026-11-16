@@ -64,6 +64,11 @@ public sealed class TestEditorInteractionState
         _ => "step:" + item.Step?.Id
     };
     public bool IsCollapsed(StepTreeItem item) => _collapsed.Contains(FoldKey(item));
+    public void ExpandAncestors(StepTreeItem item)
+    {
+        for (var parent = item.Parent; parent is not null; parent = parent.Parent)
+            _collapsed.Remove(FoldKey(parent));
+    }
     public void ToggleCollapsed(StepTreeItem item)
     {
         var key = FoldKey(item);

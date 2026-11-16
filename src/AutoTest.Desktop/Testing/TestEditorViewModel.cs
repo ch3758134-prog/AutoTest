@@ -122,7 +122,45 @@ public sealed class TestEditorViewModel : BindableBase
     public string StepFind
     {
         get => _stepFind;
-        set { if (SetProperty(ref _stepFind, value ?? "")) RefreshRows(); }
+        set
+        {
+            if (SetProperty(ref _stepFind, value ?? ""))
+            {
+                RefreshRows();
+                RaisePropertyChanged(nameof(SearchMatchCount));
+            }
+        }
+    }
+    public int SearchMatchCount => StepTreeItem.Walk(StepRoots).Count(MatchesSearch);
+    private bool MatchesSearch(StepTreeItem item)
+    {
+        var query = _stepFind.Trim();
+        if (query.Length == 0 || item.Step is not { } node) return false;
+        return (node.Name + " " + StepUiCatalog.Label(node.Type) + " " +
+            string.Join(" ", node.Properties.Select(x => x.Key + " " + x.Value)))
+            .Contains(query, StringComparison.CurrentCultureIgnoreCase);
+    }
+    public bool NavigateSearch(bool reverse = false)
+    {
+        if (string.IsNullOrWhiteSpace(_stepFind)) return false;
+        var matches = StepTreeItem.Walk(StepRoots).Where(MatchesSearch).ToArray();
+        if (matches.Length == 0)
+        {
+            StatusMessage = "没有找到匹配的步骤。";
+            return false;
+        }
+        var currentId = _selectedItem?.Step?.Id;
+        var current = Array.FindIndex(matches, x => x.Step?.Id == currentId);
+        var next = reverse
+            ? (current < 0 ? matches.Length - 1 : (current - 1 + matches.Length) % matches.Length)
+            : (current + 1) % matches.Length;
+        if (!CanProceed()) return false;
+        var target = matches[next];
+        _interaction.ExpandAncestors(target);
+        RefreshRows();
+        SelectItem(target);
+        StatusMessage = "已定位第 " + (next + 1) + "/" + matches.Length + " 条搜索结果。";
+        return true;
     }
     private string _stepFind = "";
     private StepId? _clipboardStepId;
@@ -772,11 +810,8 @@ public sealed class TestEditorViewModel : BindableBase
             {
                 var collapsed = _interaction.IsCollapsed(item);
                 var row = new StepRowProjection(item, depth, collapsed, _stepFind,
-                item.Step?.Id == _newDraftId);
-                if (string.IsNullOrWhiteSpace(_stepFind) ||
-                    !row.IsStep || (row.Name + " " + row.Summary + " " + row.Resource)
-                        .Contains(_stepFind, StringComparison.CurrentCultureIgnoreCase))
-                    StepRows.Add(row);
+                    item.Step?.Id == _newDraftId);
+                StepRows.Add(row);
                 if (!collapsed)
                     foreach (var child in item.Children)
                         Append(child, depth + (item.Kind == StepTreeItemKind.Phase ? 0 : 1));
@@ -787,6 +822,7 @@ public sealed class TestEditorViewModel : BindableBase
         }
         finally { _syncingRowSelection = wasSyncing; }
         RaisePropertyChanged(nameof(StepCountLabel));
+        RaisePropertyChanged(nameof(SearchMatchCount));
     }
 
     private static string DescribeWrite(StepNode step)

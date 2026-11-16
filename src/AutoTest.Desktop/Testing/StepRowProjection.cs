@@ -86,7 +86,8 @@ public sealed class StepRowProjection
         IsNewDraft = newDraft;
         IsSearchMatch = !string.IsNullOrWhiteSpace(search) &&
             (Name + " " + Kind + " " + item.Step?.Properties.GetValueOrDefault("target", "") +
-             " " + string.Join(" ", item.Step?.Properties.Values ?? []))
+             " " + string.Join(" ", item.Step is { } currentStep
+                 ? currentStep.Properties.Values : Enumerable.Empty<string>()))
                 .Contains(search.Trim(), StringComparison.CurrentCultureIgnoreCase);
         if (step is null)
         {
