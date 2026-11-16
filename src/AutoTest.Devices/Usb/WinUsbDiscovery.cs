@@ -123,9 +123,9 @@ public static class ControllerUsbDetectionService
     private const uint AllClasses=0x04, Present=0x02;
     private static class PnpNative
     {
-        [DllImport("setupapi.dll", EntryPoint="SetupDiGetClassDevsW", CharSet=CharSet.Unicode, SetLastError=true)]
+        [DllImport("setupapi.dll", EntryPoint="SetupDiGetClassDevsW", CharSet=CharSet.Unicode, SetLastError=true, ExactSpelling=true)]
         internal static extern IntPtr GetAll(IntPtr classGuid,string? enumerator,IntPtr hwnd,uint flags);
-        [DllImport("setupapi.dll", EntryPoint="SetupDiEnumDeviceInfo", SetLastError=true)]
+        [DllImport("setupapi.dll", EntryPoint="SetupDiEnumDeviceInfo", SetLastError=true, ExactSpelling=true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool EnumInfo(IntPtr set,uint index,ref WinUsbNative.SP_DEVINFO_DATA data);
     }
