@@ -22,19 +22,58 @@ public sealed class TestProjectPackageRow : BindableBase
     private bool _runSelected;
     private int _order;
     private string _stepCountLabel = "读取中";
+    private int _revision;
+    private string _sha256;
+    private int? _latestRevision;
+    private string? _latestSha256;
     public string StepCountLabel { get => _stepCountLabel; set => SetProperty(ref _stepCountLabel, value); }
     public int Order { get => _order; set => SetProperty(ref _order, value); }
     public Guid ItemId { get; }
     public Guid AssetId { get; }
-    public int Revision { get; }
-    public string Sha256 { get; }
+    public int Revision { get => _revision; private set => SetProperty(ref _revision, value); }
+    public string Sha256 { get => _sha256; private set => SetProperty(ref _sha256, value); }
+    public int? LatestRevision => _latestRevision;
+    public string? LatestSha256 => _latestSha256;
+    public bool CanAdoptLatest => _latestRevision is { } latest &&
+        (latest != Revision || !string.Equals(_latestSha256, Sha256, StringComparison.OrdinalIgnoreCase));
+    public string PinStatus => _latestRevision is not { } latest ? "资源已移除" :
+        CanAdoptLatest ? "绑定 r" + Revision + " → 当前 r" + latest :
+        "已绑定 r" + Revision;
+    public string PinDetail => "项目固定 SHA: " + Sha256 +
+        "\n工程当前 SHA: " + (_latestSha256 ?? "资源缺失");
+
+    /// <summary>
+    /// Refresh source metadata without changing the persisted reference. Adopting
+    /// current Revision/SHA requires a separate engineer-confirmed action.
+    /// </summary>
+    public void RefreshAvailableRevision(int? revision, string? sha256)
+    {
+        _latestRevision = revision;
+        _latestSha256 = sha256;
+        RaisePropertyChanged(nameof(LatestRevision));
+        RaisePropertyChanged(nameof(LatestSha256));
+        RaisePropertyChanged(nameof(CanAdoptLatest));
+        RaisePropertyChanged(nameof(PinStatus));
+        RaisePropertyChanged(nameof(PinDetail));
+    }
+
+    public void AdoptCurrentRevision()
+    {
+        if (!CanAdoptLatest || _latestRevision is not { } revision ||
+            string.IsNullOrWhiteSpace(_latestSha256)) return;
+        Revision = revision;
+        Sha256 = _latestSha256;
+        RaisePropertyChanged(nameof(CanAdoptLatest));
+        RaisePropertyChanged(nameof(PinStatus));
+        RaisePropertyChanged(nameof(PinDetail));
+    }
     public string Name { get; }
     public TestProjectPackageRow(TestProjectEntry item)
     {
         ItemId = item.ItemId;
         AssetId = item.PackageAssetId;
-        Revision = item.PackageRevision;
-        Sha256 = item.PackageSha256;
+        _revision = item.PackageRevision;
+        _sha256 = item.PackageSha256;
         Name = item.DisplayName;
         _enabled = item.Enabled;
         _runSelected = item.Enabled;
@@ -106,7 +145,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         PreflightSelectedCommand = new DelegateCommand(PreflightSelected);
         LoadRows(session.Document);
         RefreshAvailable();
-        _ = RefreshStepCountsAsync();
+        RefreshReferences();
     }
 
     public ObservableCollection<TestProjectPackageChoice> AvailablePackages { get; } = new();
@@ -186,6 +225,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(SelectionSummary));
         RaisePropertyChanged(nameof(IsDirty));
         PackageRowsChanged?.Invoke();
+        RefreshReferences();
     }
     private void RowChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -214,6 +254,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             StatusMessage = "无法检查：请先勾选至少一个测试用例。";
             return;
         }
+        RefreshReferences();
         var current = _workspace.Current;
         if (current is null) { StatusMessage = "无法检查：未打开真实工程。"; return; }
         var assets = current.Definition.Assets;
@@ -221,8 +262,51 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             a.Id.Value == row.AssetId && a.Revision == row.Revision &&
             a.Sha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))).ToArray();
         StatusMessage = missing.Length > 0
-            ? "BLOCKED_RESOURCE: " + missing.Length + " 条用例的固定资产修订或 SHA 已失效。"
+            ? "BLOCKED_RESOURCE: " + missing.Length +
+                " 条用例的固定修订或 SHA 已失效。请逐条审阅并选择“采用当前修订”，然后保存项目。"
             : "BLOCKED_BY_BACKEND: 当前只有真实资源身份检查，尚无项目级 Run/设备租约预检；未启动 ECU，未生成测试结论。";
+    }
+
+    /// <summary>
+    /// Called when TEST assets change or when returning to the project tab.
+    /// Never silently rewrites TestProjectEntry.PackageRevision/PackageSha256.
+    /// </summary>
+    public void RefreshReferences()
+    {
+        var assets = _workspace.Current?.Definition.Assets;
+        foreach (var row in Packages)
+        {
+            var current = assets?.FirstOrDefault(asset => asset.Id.Value == row.AssetId &&
+                asset.Kind == ProjectWorkspaceService.TestProgramKind);
+            row.RefreshAvailableRevision(current?.Revision, current?.Sha256);
+        }
+        RaisePropertyChanged(nameof(HasStaleReferences));
+        _ = RefreshStepCountsAsync();
+    }
+
+    public bool HasStaleReferences => Packages.Any(x => x.CanAdoptLatest);
+
+    public AssetEntry? CurrentAssetFor(TestProjectPackageRow row) =>
+        _workspace.Current?.Definition.Assets.FirstOrDefault(x =>
+            x.Id.Value == row.AssetId && x.Kind == ProjectWorkspaceService.TestProgramKind);
+
+    public void AdoptCurrentRevision(TestProjectPackageRow row, int expectedRevision, string expectedSha)
+    {
+        if (!Packages.Contains(row) || IsBusy) return;
+        var current = CurrentAssetFor(row);
+        if (current is null || current.Revision != expectedRevision ||
+            !current.Sha256.Equals(expectedSha, StringComparison.OrdinalIgnoreCase))
+        {
+            StatusMessage = "TEST 修订已经变化，未更新引用；请重新查看最新版本。";
+            RefreshReferences();
+            return;
+        }
+        row.RefreshAvailableRevision(current.Revision, current.Sha256);
+        row.AdoptCurrentRevision();
+        StatusMessage = "已选择采用测试用例最新修订 r" + current.Revision +
+            "。保存测试项目后才会正式更新固定引用；历史运行记录不会改变。";
+        RefreshCommands();
+        _ = RefreshStepCountsAsync();
     }
 
     private async Task RefreshStepCountsAsync()
@@ -287,6 +371,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         SelectedPackage = row;
         RaisePropertyChanged(nameof(SelectionSummary));
         RaisePropertyChanged(nameof(TotalCount));
+        row.RefreshAvailableRevision(asset.Revision, asset.Sha256);
         StatusMessage = "已加入测试用例：" + asset.Name + "。重复引用会形成独立的执行条目。";
         RefreshCommands();
         PackageRowsChanged?.Invoke();
@@ -322,6 +407,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     private void RefreshCommands()
     {
         RaisePropertyChanged(nameof(IsDirty));
+        RaisePropertyChanged(nameof(HasStaleReferences));
         AddCommand?.RaiseCanExecuteChanged(); RemoveCommand?.RaiseCanExecuteChanged();
         UpCommand?.RaiseCanExecuteChanged(); DownCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged(); ReloadCommand?.RaiseCanExecuteChanged();
