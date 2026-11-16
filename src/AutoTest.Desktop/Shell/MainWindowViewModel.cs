@@ -85,6 +85,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly TestEditorDialogs _testDialogs;
     private EditorTabModel? _activeEditorTab;
     private bool _closeGuardActive;
+    private bool _suppressNavigationDraftGuard;
     private bool _savingActive;
     public ObservableCollection<EditorTabModel> OpenEditors { get; } = new();
     private readonly RecentProjectStore _recentProjects;
@@ -583,9 +584,8 @@ public sealed class MainWindowViewModel : BindableBase
         get => _activeEditorTab;
         set
         {
-            if (value?.Editor is TestProjectWorkbenchViewModel projectEditor)
-                projectEditor.RefreshReferences();
-            if (!ReferenceEquals(_activeEditorTab, value) &&
+            if (!_suppressNavigationDraftGuard &&
+                !ReferenceEquals(_activeEditorTab, value) &&
                 _activeEditorTab?.View is TestEditorView departing &&
                 !departing.TryLeaveInspector())
             {
@@ -594,6 +594,8 @@ public sealed class MainWindowViewModel : BindableBase
             }
             if (SetProperty(ref _activeEditorTab, value))
             {
+                if (value?.Editor is TestProjectWorkbenchViewModel projectEditor)
+                    projectEditor.RefreshReferences();
                 RaisePropertyChanged(nameof(ActiveEditorView));
                 RaisePropertyChanged(nameof(ActiveEditorTitle));
                 RaisePropertyChanged(nameof(ActiveEditorInspector));
@@ -686,10 +688,16 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (!OpenEditors.Contains(tab) || (!alreadyConfirmed && !tab.ConfirmClose())) return false;
         var index = OpenEditors.IndexOf(tab);
-        OpenEditors.Remove(tab);
-        if (ReferenceEquals(ActiveEditorTab, tab))
-            ActiveEditorTab = OpenEditors.Count == 0 ? null :
-                OpenEditors[Math.Min(index, OpenEditors.Count - 1)];
+        var selected = ReferenceEquals(ActiveEditorTab, tab);
+        _suppressNavigationDraftGuard = true;
+        try
+        {
+            OpenEditors.Remove(tab);
+            if (selected)
+                ActiveEditorTab = OpenEditors.Count == 0 ? null :
+                    OpenEditors[Math.Min(index, OpenEditors.Count - 1)];
+        }
+        finally { _suppressNavigationDraftGuard = false; }
         RaisePropertyChanged(nameof(HasActiveEditor));
         RaisePropertyChanged(nameof(NoOpenEditors));
         return true;
@@ -713,8 +721,13 @@ public sealed class MainWindowViewModel : BindableBase
     }
     private void ClearEditor()
     {
-        OpenEditors.Clear();
-        ActiveEditorTab = null;
+        _suppressNavigationDraftGuard = true;
+        try
+        {
+            OpenEditors.Clear();
+            ActiveEditorTab = null;
+        }
+        finally { _suppressNavigationDraftGuard = false; }
         _activeEditorProjectPath = null;
         RaisePropertyChanged(nameof(HasActiveEditor));
         RaisePropertyChanged(nameof(NoOpenEditors));
