@@ -242,6 +242,7 @@ public sealed class TestEditorViewModel : BindableBase
     }
     public StepTreeItem? SelectedItem => _selectedItem;
     public event Action<StepInspectorContext>? InspectorRequested;
+    public event Action<string>? InspectorLoading;
     public Func<bool>? AllowEditorAction { get; set; }
     private bool _applyingInspector;
     public bool IsApplyingInspector => _applyingInspector;
@@ -379,6 +380,15 @@ public sealed class TestEditorViewModel : BindableBase
     private async Task PublishInspectorAsync(StepNode? original, string? initialActionKey)
     {
         var request = _interaction.NextInspectorRequest();
+        if (original is null)
+        {
+            // Phase/slot navigation must be immediate and independent of DBC I/O.
+            InspectorRequested?.Invoke(new StepInspectorContext(null, null,
+                Array.Empty<MappingChoice>(), _transaction.Current.Mappings.ToArray(), false));
+            return;
+        }
+        if (!_applyingInspector)
+            InspectorLoading?.Invoke(original.Name);
         var choices = await AvailableObjectsAsync();
         if (!_interaction.IsCurrentInspectorRequest(request)) return;
         var insertion = _pendingInsertion;

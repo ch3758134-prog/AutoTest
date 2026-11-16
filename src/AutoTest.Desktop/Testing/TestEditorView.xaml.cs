@@ -31,6 +31,7 @@ public partial class TestEditorView : UserControl
         _viewModel = viewModel;
         DataContext = viewModel;
         _viewModel.InspectorRequested += ShowInspector;
+        _viewModel.InspectorLoading += ShowInspectorLoading;
         _viewModel.ActionPaletteRequested += OpenActionPalette;
         _viewModel.AllowEditorAction = TryLeaveInspector;
         Loaded += (_, _) =>
@@ -81,6 +82,19 @@ public partial class TestEditorView : UserControl
                 error.Message, "保存未完成", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
+    }
+
+    private void ShowInspectorLoading(string selectedStepName)
+    {
+        _inspector = null;
+        InspectorHost.Content = new TextBlock
+        {
+            Text = selectedStepName + "\n\n正在载入这条步骤的工程参数…",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Color.FromRgb(91, 112, 138)),
+            Margin = new Thickness(14, 20, 14, 0)
+        };
     }
 
     private void ShowInspector(StepInspectorContext context)
