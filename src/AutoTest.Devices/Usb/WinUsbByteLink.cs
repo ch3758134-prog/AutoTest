@@ -71,6 +71,30 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+
+    /// <summary>Grant one exact 0x22 DID operation after a separate, explicit
+    /// physical consent. This is not an unlock for any other UDS service.</summary>
+    public void AuthorizeReadOnlyDid(uint txId,uint rxId,ushort did,string exactConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state!=WinUsbLinkState.Connected)
+                throw new IOException("Connect first; DID permission cannot survive reconnect.");
+            _fence.AuthorizeReadOnlyDid(txId,rxId,did,exactConfirmation,_epoch);
+        }
+    }
+    public void RevokeReadOnlyDid() { lock (_sync) _fence.RevokeReadOnlyDid(); }
+
+    // Called exclusively by UsbSessionService's actual decoded USB receive loop.
+    internal void ObserveAuthenticatedCanIndication(ReadOnlySpan<byte> payload)
+    {
+        lock (_sync)
+        {
+            if (_state==WinUsbLinkState.Connected)
+                _fence.ObserveAuthenticatedCanRx(payload,_epoch);
+        }
+    }
+
     public void AuthorizePhysicalTestRun(string fingerprint, string typedConfirmation,
         IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn)
     {
@@ -122,7 +146,7 @@ public sealed class WinUsbByteLink : IUsbByteLink
 
             stage = "CreateFileW";
             Operation("CONNECT", stage, "BEGIN", selectedPath,
-                detail: $"access=GENERIC_READ|GENERIC_WRITE share=READ|WRITE disposition=OPEN_EXISTING flags=0x{OpenFileFlags:X8}");
+                detail: $"access=GENERIC_READ|GENERIC_WRITE share=NONE disposition=OPEN_EXISTING flags=0x{OpenFileFlags:X8}");
             openedFile = _native.Open(selectedPath, OpenFileFlags);
             if (openedFile.IsInvalid) throw NativeError(stage);
             Operation("CONNECT", stage, "OK", selectedPath);
