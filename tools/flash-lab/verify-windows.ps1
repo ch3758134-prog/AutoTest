@@ -21,7 +21,7 @@ function Run-Recorded {
 }
 Run-Recorded "01-flashlab-build" @("build","src/AutoTest.FlashLab/AutoTest.FlashLab.csproj","-c",$Configuration,"--nologo")
 Run-Recorded "02-flashlab-file-tests" @("test","tests/AutoTest.FlashLab.Tests/AutoTest.FlashLab.Tests.csproj","-c",$Configuration,"--nologo")
-Run-Recorded "03-physical-fence-tests" @("test","tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj","-c",$Configuration,"--nologo","--filter","FullyQualifiedName~ReadOnlyDidPhysicalFenceTests|FullyQualifiedName~PhysicalTestRunFenceTests|FullyQualifiedName~WinUsbConnectFailureRecoveryTests")
+Run-Recorded "03-physical-fence-tests" @("test","tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj","-c",$Configuration,"--nologo","--filter","FullyQualifiedName~ReadOnlyDidPhysicalFenceTests|FullyQualifiedName~PhysicalTestRunFenceTests|FullyQualifiedName~WinUsbConnectFailureRecoveryTests|FullyQualifiedName~PhysicalCan1FlashFenceTests")
 Run-Recorded "04-host-desktop-build" @("build","src/AutoTest.Desktop/AutoTest.Desktop.csproj","-c",$Configuration,"--nologo")
 if($AllHostTests) {
     Run-Recorded "05-all-device-tests" @("test","tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj","-c",$Configuration,"--nologo")
