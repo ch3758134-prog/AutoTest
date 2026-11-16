@@ -71,7 +71,6 @@ public sealed class TestEditorViewModel : BindableBase
                 return;
             }
             _inspectorAdding = false;
-            _inspectorInsertionTarget = _selectedItem;
             _ = PublishInspectorAsync(original, null);
         }, () => CanEditSelectedStep);
         DuplicateCommand = new DelegateCommand(Duplicate, () => CanEditSelectedStep);
@@ -210,7 +209,6 @@ public sealed class TestEditorViewModel : BindableBase
     public bool IsApplyingInspector => _applyingInspector;
     private bool CanProceed() => _applyingInspector || (AllowEditorAction?.Invoke() ?? true);
 
-    private StepTreeItem? _inspectorInsertionTarget;
     private StepInsertionTarget? _pendingInsertion;
     private bool _inspectorAdding;
     // Inspector request versions are owned by TestEditorInteractionState.
@@ -249,7 +247,6 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = error.Message;
             return;
         }
-        _inspectorInsertionTarget = location;
         _inspectorAdding = true;
         StatusMessage = _pendingInsertion.RequiresCase
             ? "在右侧编辑 CASE 分支，保存后再进入 CASE 的 BODY 添加动作。"
@@ -260,7 +257,6 @@ public sealed class TestEditorViewModel : BindableBase
     public void ResetInspector()
     {
         _inspectorAdding = _selectedItem?.Kind != StepTreeItemKind.Step;
-        _inspectorInsertionTarget = _selectedItem;
         _pendingInsertion = null;
         _ = PublishInspectorAsync(_inspectorAdding ? null : _selectedItem?.Step, null);
     }
@@ -407,7 +403,6 @@ public sealed class TestEditorViewModel : BindableBase
         }
         finally { _syncingRowSelection = wasSyncing; }
         UpdateInspector();
-        _inspectorInsertionTarget = item;
         _pendingInsertion = null;
         _inspectorAdding = item?.Kind != StepTreeItemKind.Step;
         _ = PublishInspectorAsync(_inspectorAdding ? null : item?.Step, null);
