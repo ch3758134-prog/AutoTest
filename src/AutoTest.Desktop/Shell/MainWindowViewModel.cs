@@ -84,6 +84,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly TestEditorDialogs _testDialogs;
     private EditorTabModel? _activeEditorTab;
     private bool _closeGuardActive;
+    private bool _savingActive;
     public ObservableCollection<EditorTabModel> OpenEditors { get; } = new();
     private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
@@ -166,7 +167,7 @@ public sealed class MainWindowViewModel : BindableBase
             () => !_hardwareBusy);
         OpenCanMonitorCommand = new DelegateCommand(async () => await OpenCanMonitorAsync());
         TransmitCanCommand = new DelegateCommand(async () => await TransmitCanAsync(), () => !_hardwareBusy);
-        SaveActiveCommand = new DelegateCommand(SaveActive);
+        SaveActiveCommand = new DelegateCommand(async () => await SaveActiveAsync());
         UndoActiveCommand = new DelegateCommand(UndoActive);
         RedoActiveCommand = new DelegateCommand(RedoActive);
         CheckActiveCommand = new DelegateCommand(CheckActive);
@@ -362,16 +363,33 @@ public sealed class MainWindowViewModel : BindableBase
         }
         await OpenSelectedDbcAsync();
     }
-    private void SaveActive()
+    private async Task SaveActiveAsync()
     {
-        switch (ActiveEditorTab?.Editor)
+        if (_savingActive) return;
+        _savingActive = true;
+        try
         {
-            case TestEditorViewModel editor when editor.SaveCommand.CanExecute():
-                editor.SaveCommand.Execute(); break;
-            case TestProjectWorkbenchViewModel project when project.SaveCommand.CanExecute():
-                project.SaveCommand.Execute(); break;
-            default: StatusMessage = "请先打开已修改的测试用例或测试项目；其他资源可在自身编辑器内保存。"; break;
+            bool saved = ActiveEditorTab?.View switch
+            {
+                TestEditorView editor => await editor.SaveForCloseAsync(),
+                TestProjectWorkbenchView project when project.DataContext is TestProjectWorkbenchViewModel model
+                    => await model.SaveForCloseAsync(),
+                DbcWorkbenchView dbc when dbc.DataContext is DbcWorkbenchViewModel model
+                    => await model.SaveForCloseAsync(),
+                ConfigurationWorkbenchView config when config.DataContext is ConfigurationWorkbenchViewModel model
+                    => await model.SaveForCloseAsync(),
+                ProjectConfigurationOverviewView overview => await overview.SaveForCloseAsync(),
+                _ => false
+            };
+            StatusMessage = saved ? "当前文档的正式保存检查已通过。"
+                : "保存未完成：请检查当前步骤属性、配置字段或编辑器错误提示。草稿已保留。";
         }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            StatusMessage = "保存异常，草稿已保留：" + error.Message;
+            _fileDialogs.ShowError(StatusMessage);
+        }
+        finally { _savingActive = false; }
     }
     private void UndoActive()
     {
@@ -608,7 +626,7 @@ public sealed class MainWindowViewModel : BindableBase
         {
             var documents = (subset ?? OpenEditors).Select(x => x.CloseDraft).ToList();
             documents.Insert(0, new CloseDraftDocument("当前工程/设备操作",
-                () => IsBusy || _hardwareBusy || _realTest.IsRunning,
+                () => IsBusy || _savingActive || _hardwareBusy || _realTest.IsRunning,
                 () => false, () => Task.FromResult(true)));
             return await CloseDraftGuard.PrepareAsync(documents, PromptDraftClose, ReportCloseBlocked);
         }
@@ -1053,7 +1071,9 @@ public sealed class MainWindowViewModel : BindableBase
         if (path is null || !await PrepareEditorsForCloseAsync()) return;
         await RunOperationAsync(async () =>
         {
-            ClearEditor();
+            // Do not drop the old editor tabs before the new manifest has
+            // actually passed ProjectWorkspaceService validation/opening.
+            // CurrentChanged clears the old tabs only after successful switch.
             await _workspace.OpenAsync(path);
             StatusMessage = "工程已打开：" + path;
         });

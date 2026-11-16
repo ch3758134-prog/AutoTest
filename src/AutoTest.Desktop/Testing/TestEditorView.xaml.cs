@@ -63,6 +63,12 @@ public partial class TestEditorView : UserControl
         }
     }
 
+    private async void SaveEditor_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        await SaveForCloseAsync();
+    }
+
     private void AddAtRow_Click(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
@@ -200,9 +206,15 @@ public partial class TestEditorView : UserControl
         }
     }
 
-    private void Editor_KeyDown(object sender, KeyEventArgs e)
+    private async void Editor_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Handled) return;
+        if (e.Key == Key.S && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            e.Handled = true;
+            await SaveForCloseAsync(); // Ctrl+S applies the right-side Inspector first.
+            return;
+        }
         var focused = Keyboard.FocusedElement;
         bool typing = focused is TextBoxBase or PasswordBox or ComboBox;
         bool ctrl = Keyboard.Modifiers == ModifierKeys.Control;
@@ -212,8 +224,7 @@ public partial class TestEditorView : UserControl
         }
         if (typing) return; // text editing owns Delete and text Undo/Redo
         ICommand? command = null;
-        if (ctrl && e.Key == Key.S) command = _viewModel.SaveCommand;
-        else if (ctrl && e.Key == Key.Z) command = _viewModel.UndoCommand;
+        if (ctrl && e.Key == Key.Z) command = _viewModel.UndoCommand;
         else if (ctrl && e.Key == Key.Y) command = _viewModel.RedoCommand;
         else if (ctrl && e.Key == Key.C) command = _viewModel.CopyStepCommand;
         else if (ctrl && e.Key == Key.V) command = _viewModel.PasteStepCommand;

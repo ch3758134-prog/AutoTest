@@ -15,7 +15,7 @@
      <Button Content="＋ 添加步骤" Command="{Binding AddChildCommand}"
       Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"/>
      <Button Content="检查问题" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
-     <Button Content="保存" Command="{Binding SaveCommand}"/>
+     <Button Content="保存" Click="SaveEditor_Click"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="{Binding DocumentName}" FontSize="14" FontWeight="SemiBold"
