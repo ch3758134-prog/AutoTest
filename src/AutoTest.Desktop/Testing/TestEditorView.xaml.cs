@@ -43,9 +43,21 @@ public partial class TestEditorView : UserControl
     /// </summary>
     public async Task<bool> SaveForCloseAsync()
     {
-        if (_inspector?.HasPendingEdits == true && !_inspector.TryApplyChanges())
+        try
+        {
+            if (_inspector?.HasPendingEdits == true && !_inspector.TryApplyChanges())
+                return false;
+            return await _viewModel.SaveForCloseAsync();
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // An unexpected persistence or editor exception must never crash a
+            // WPF async-void Save button/keyboard handler or silently exit.
+            System.Diagnostics.Trace.TraceError("TEST SaveForClose failed: " + error);
+            MessageBox.Show(Window.GetWindow(this), "步骤或测试程序保存失败，草稿仍在本窗口中：\n" +
+                error.Message, "保存未完成", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
-        return await _viewModel.SaveForCloseAsync();
+        }
     }
 
     private void ShowInspector(StepInspectorContext context)
