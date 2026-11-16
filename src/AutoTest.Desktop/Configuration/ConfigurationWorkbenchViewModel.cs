@@ -90,6 +90,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public ObservableCollection<ConfigurationNode> Nodes { get; } = new();
     public ObservableCollection<ConfigurationField> Fields { get; } = new();
     public string AssetName => _session.AssetName;
+    public Guid AssetGuid => _session.AssetId.Value;
     public string DocumentPath => _session.FilePath;
     public int Revision => _session.AssetRevision;
     public bool IsController => _session.Kind == ProjectConfigurationCodec.ControllerKind;

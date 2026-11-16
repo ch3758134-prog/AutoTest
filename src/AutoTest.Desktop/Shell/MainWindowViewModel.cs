@@ -1085,6 +1085,11 @@ public sealed class MainWindowViewModel : BindableBase
         };
     }
 
+    private static bool IsInlineConfiguration(string kind) =>
+        kind is ProjectWorkspaceService.TestConfigurationKind or
+            ProjectWorkspaceService.ControllerKind or
+            ProjectWorkspaceService.BenchConfigurationKind;
+
     private async Task CreateConfigurationAsync(string kind)
     {
         if (!HasProject) return;
@@ -1105,9 +1110,19 @@ public sealed class MainWindowViewModel : BindableBase
             var asset = await _workspace.CreateConfigurationAsync(kind, name);
             SelectAsset(asset.Id);
             var opened = await _workspace.OpenConfigurationAsync(asset.Id);
-            var editor = new ConfigurationWorkbenchViewModel(_workspace, _fileDialogs, opened);
-            ActivateEditor("config|" + asset.Id, new ConfigurationWorkbenchView(editor),
-                display + " · " + name, editor.ConfirmClose);
+            if (IsInlineConfiguration(kind))
+            {
+                ShowProjectConfiguration();
+                var overview = OpenEditors.First(x => x.Key == "config-overview").View
+                    as ProjectConfigurationOverviewView;
+                overview!.ShowSession(kind, opened);
+            }
+            else
+            {
+                var editor = new ConfigurationWorkbenchViewModel(_workspace, _fileDialogs, opened);
+                ActivateEditor("config|" + asset.Id, new ConfigurationWorkbenchView(editor),
+                    display + " · " + name, editor.ConfirmClose);
+            }
             StatusMessage = "已创建并打开" + display + "：" + name;
         });
     }
@@ -1115,13 +1130,23 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenSelectedConfigurationAsync()
     {
         if (!SelectedResourceIsConfiguration || _selectedResource?.Asset is not { } asset) return;
-        if (IsAlreadyOpen("config|" + asset.Id)) return;
+        if (!IsInlineConfiguration(asset.Kind) && IsAlreadyOpen("config|" + asset.Id)) return;
         await RunOperationAsync(async () =>
         {
             var opened = await _workspace.OpenConfigurationAsync(asset.Id);
-            var editor = new ConfigurationWorkbenchViewModel(_workspace, _fileDialogs, opened);
-            ActivateEditor("config|" + asset.Id, new ConfigurationWorkbenchView(editor),
-                editor.TypeLabel + " · " + asset.Name, editor.ConfirmClose);
+            if (IsInlineConfiguration(asset.Kind))
+            {
+                ShowProjectConfiguration();
+                var overview = OpenEditors.First(x => x.Key == "config-overview").View
+                    as ProjectConfigurationOverviewView;
+                overview!.ShowSession(asset.Kind, opened);
+            }
+            else
+            {
+                var editor = new ConfigurationWorkbenchViewModel(_workspace, _fileDialogs, opened);
+                ActivateEditor("config|" + asset.Id, new ConfigurationWorkbenchView(editor),
+                    editor.TypeLabel + " · " + asset.Name, editor.ConfirmClose);
+            }
             StatusMessage = "已打开工程配置：" + asset.Name;
         });
     }

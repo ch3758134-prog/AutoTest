@@ -13,7 +13,7 @@
      VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
-  <TabControl Grid.Row="1" Background="White" BorderThickness="0" Padding="0">
+  <TabControl x:Name="ConfigTabs" Grid.Row="1" Background="White" BorderThickness="0" Padding="0">
    <TabControl.Resources>
     <Style TargetType="{x:Type TabItem}">
      <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
