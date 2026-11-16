@@ -372,12 +372,12 @@ public sealed class MainWindowViewModel : BindableBase
             bool saved = ActiveEditorTab?.View switch
             {
                 TestEditorView editor => await editor.SaveForCloseAsync(),
-                TestProjectWorkbenchView project when project.DataContext is TestProjectWorkbenchViewModel model
-                    => await model.SaveForCloseAsync(),
-                DbcWorkbenchView dbc when dbc.DataContext is DbcWorkbenchViewModel model
-                    => await model.SaveForCloseAsync(),
-                ConfigurationWorkbenchView config when config.DataContext is ConfigurationWorkbenchViewModel model
-                    => await model.SaveForCloseAsync(),
+                TestProjectWorkbenchView project when project.DataContext is TestProjectWorkbenchViewModel projectModel
+                    => await projectModel.SaveForCloseAsync(),
+                DbcWorkbenchView dbc when dbc.DataContext is DbcWorkbenchViewModel dbcModel
+                    => await dbcModel.SaveForCloseAsync(),
+                ConfigurationWorkbenchView config when config.DataContext is ConfigurationWorkbenchViewModel configModel
+                    => await configModel.SaveForCloseAsync(),
                 ProjectConfigurationOverviewView overview => await overview.SaveForCloseAsync(),
                 _ => false
             };
