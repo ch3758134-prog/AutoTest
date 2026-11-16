@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:chrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
  xmlns:navigation="clr-namespace:AutoTest.Desktop.Shell.Navigation"
- Title="AutoTest · ECU 测试 IDE" Width="1440" Height="900" MinWidth="800" MinHeight="560"
+ Title="AutoTest · ECU 测试 IDE" Width="1440" Height="900" MinWidth="780" MinHeight="420"
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
  PreviewKeyDown="Window_PreviewKeyDown"
  ResizeMode="CanResize" Background="#EEF2F8" Foreground="#1E2C41"
@@ -206,7 +206,7 @@
 
   <Grid Grid.Row="2" Background="#F9FBFD">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="270" MinWidth="220" MaxWidth="500"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="270" MinWidth="220" MaxWidth="500"/>
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*" MinWidth="520"/>
    </Grid.ColumnDefinitions>

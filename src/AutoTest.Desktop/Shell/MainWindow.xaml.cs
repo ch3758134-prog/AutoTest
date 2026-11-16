@@ -22,6 +22,8 @@ public partial class MainWindow : Window
     private bool _bottomVisible = true;
     private bool _inspectorVisible = true;
     private bool _restoringDocumentTab;
+    private bool _inspectorManualLayout;
+    private bool _bottomManualLayout;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -29,6 +31,7 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         SourceInitialized += OnSourceInitialized;
+        SizeChanged += OnShellSizeChanged;
         Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
         Closing += OnWindowClosing;
     }
@@ -188,16 +191,35 @@ public partial class MainWindow : Window
             await _viewModel.CloseEditorAsync(tab);
     }
 
-    private void ToggleBottom_Click(object sender, RoutedEventArgs e)
+    private void OnShellSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        _bottomVisible = !_bottomVisible;
+        // 1366×768 at 150% provides fewer than 920×500 effective DIPs.
+        // Preserve the editing surface instead of squeezing controls/fonts.
+        if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
+        if (!_bottomManualLayout) _bottomVisible = ActualHeight >= 650;
+        if (ActualWidth < 1050 && TreeColumn.Width.Value > 235)
+            TreeColumn.Width = new GridLength(225);
+        ApplyPanelLayout();
+    }
+
+    private void ApplyPanelLayout()
+    {
+        InspectorColumn.Width = new GridLength(_inspectorVisible ? 320 : 0);
+        InspectorSplitterColumn.Width = new GridLength(_inspectorVisible ? 4 : 0);
         BottomRow.Height = new GridLength(_bottomVisible ? 180 : 0);
         BottomSplitterRow.Height = new GridLength(_bottomVisible ? 4 : 0);
     }
+
+    private void ToggleBottom_Click(object sender, RoutedEventArgs e)
+    {
+        _bottomManualLayout = true;
+        _bottomVisible = !_bottomVisible;
+        ApplyPanelLayout();
+    }
     private void ToggleInspector_Click(object sender, RoutedEventArgs e)
     {
+        _inspectorManualLayout = true;
         _inspectorVisible = !_inspectorVisible;
-        InspectorColumn.Width = new GridLength(_inspectorVisible ? 320 : 0);
-        InspectorSplitterColumn.Width = new GridLength(_inspectorVisible ? 4 : 0);
+        ApplyPanelLayout();
     }
 }
