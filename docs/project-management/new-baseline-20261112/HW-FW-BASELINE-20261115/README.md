@@ -7,9 +7,18 @@
 本档案保存两份原始可核验 PDF、主控 63 条已在原理图 U7 右侧明确命名的 MCU→Net 信号、KEY_SIM 的 20 个开关引脚、模块清单、连接器证据子集、主控命令及 HOST 能力边界、硬件变更模板和专职 AI 交接。**63 不是 MCU 全部 100 个引脚**，仅是图纸已明确标注的功能映射；其余 Pin、PCB pad、BOM/Netlist 与实物线束由 HW 专项继续补录，不得推算填满。
 
 
-## 面向项目负责人的优先审查入口（HTML）
-**请优先打开 [HW-PIN-REVIEW.html](HW-PIN-REVIEW.html)**：主控100针环形可点击索引（其中63条为已录图纸网络）、KEY_SIM 32针索引（20条开关映射）、连接器、模块、HOST物理能力、差异定位和可导出审查意见。CSV仅作为AI读取与追溯的底层索引，不作为项目负责人的主审查界面。
-GitHub源码浏览页面不会执行HTML；在仓库点击 **Download raw file** 后用浏览器打开。另一份带原图页面图像和63+20处实图热点标注的完整离线HTML，已由本轮PM会话交付，适合直接现场审查；两种HTML都不具备真实PCB/现役HEX自动验证能力。
+## 面向项目负责人的正式审查入口（真实原理图 Cross-Probe）
+
+**2026-11-15 整改：旧的“芯片环形引脚索引/大表格 HTML”已被替换。** 请从 [HW-PIN-REVIEW.html](HW-PIN-REVIEW.html) 进入**以九页原始原理图为中心**的可视化审查工作台；支持真实 PDF 文字坐标定位、主控 U7 的 63 条已记录引脚、KEY_SIM U3 的 20 条按键控制脚、跨页同名 Net 定位、器件标号、系统模块关系、连接器局部针位、源码/HOST 差异、缩放平移与导出审查意见。
+
+GitHub 存档的 HTML 与九张来源图像是**同一组版本化文件**：
+- [主审查 HTML](HW-PIN-REVIEW.html)；
+- `assets/rendered/main-1.webp`～`main-5.webp`（源于原始主控 PDF）；
+- `assets/rendered/key-1.webp`～`key-4.webp`（源于原始 KEY PDF）。
+
+GitHub 默认显示的是 HTML 源码而非执行页面；**克隆仓库或下载包含 HTML 与 `assets/rendered/` 的目录后，在浏览器打开 HTML**。如果只下载一个 HTML，关联图像会缺失。本轮还另向项目负责人交付了**将全部 9 张图像直接内嵌的单文件离线 HTML**，无需任何额外文件即可查看。
+
+**验证分层**：当前完成的是历史 PDF 设计图 + 静态固件源码的交叉定位；其中“相同 Net 名称跨页出现”是图纸证据，**不等于现役 PCB 铜箔、器件 Pin-to-Pin、线束或实际负载已证实**。尚缺 PCB 原生 CAD/Netlist、板卡 Revision、线束和现场 FW/HEX。CSV 仍是 AI 检索辅助而非用户主要审查界面。
 
 ### 原始图纸（Git Blob 与 SHA256 双重确认）
 - [主控原理图 TestCtr V1.5 / 5 页](assets/HW-MAIN-TestCtr-V1.5.pdf)：Git Blob `67fe395bfb18ef6aa52f68fde299dbc648866f8c`，SHA256 `44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353`。
