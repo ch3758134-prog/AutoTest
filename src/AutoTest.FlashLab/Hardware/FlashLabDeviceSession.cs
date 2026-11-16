@@ -206,6 +206,18 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             if(_usb?.State!=UsbSessionState.Connected || _link is null ||
                 _hub is null || _gate is null || _recorder is null)
                 throw new IOException("必须先建立独占 WinUSB/CAN1 主控会话。");
+            // EPB_Test_Keil/Project/source/main.c initializes CAN1 at 500K.
+            // Without a proven USB CAN baud-rate setter, refuse 250K profiles.
+            if(job.ConfiguredBitrate is not ("500K" or "500000"))
+                throw new NotSupportedException("当前主控固件 CAN1 初始化固定500K；250K 尚无已验证切换协议。");
+            var version=await _usb.RequestAsync(FirmwareReadOnlyProtocol.GetVersion,
+                ReadOnlyMemory<byte>.Empty,TimeSpan.FromSeconds(3),ct).ConfigureAwait(false);
+            if(!FirmwareReadOnlyProtocol.ValidReadOnlyPayload(
+                FirmwareReadOnlyProtocol.GetVersion,version.Payload))
+                throw new IOException("主控固件版本与当前源代码基线不匹配；禁止 F2 擦写。");
+            _recorder?.RecordMessage("CAN1_FIRMWARE_BASELINE",
+                FirmwareReadOnlyProtocol.Explain(FirmwareReadOnlyProtocol.GetVersion,version.Payload)+
+                "; source main.c CAN1=EAL_CAN_BAUD_500K; physical bitrate not independently measured");
             if(!stationBitrateVerified)
                 throw new UnauthorizedAccessException(
                     "主控 CAN1 实际比特率未被现场确认与 XML 一致，禁止擦写。");
