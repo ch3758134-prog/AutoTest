@@ -435,7 +435,7 @@
     <GridSplitter Grid.Row="4" Height="4" Background="#E8EEF6"
      ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch"/>
 
-    <Grid Grid.Row="5" Background="#FBFCFF">
+    <Grid x:Name="BottomDock" Grid.Row="5" Background="#FBFCFF">
      <Grid.RowDefinitions><RowDefinition Height="30"/><RowDefinition Height="28"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED"
       BorderThickness="0,0,0,1">
@@ -472,7 +472,7 @@
     ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch"/>
 
    <!-- Fixed right Inspector. Always the currently selected row, never a duplicate creation wizard. -->
-   <Border Grid.Column="4" Background="#FCFDFF" BorderBrush="#DBE3ED" BorderThickness="1,0,0,0">
+   <Border x:Name="InspectorDock" Grid.Column="4" Background="#FCFDFF" BorderBrush="#DBE3ED" BorderThickness="1,0,0,0">
     <DockPanel LastChildFill="True">
      <Border DockPanel.Dock="Top" Background="White" Height="35"
       BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">

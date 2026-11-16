@@ -28,9 +28,9 @@ public partial class MainWindow : Window
     private bool _syncingChecks;
     private bool _bottomVisible = true;
     private bool _inspectorVisible = true;
-    private int _selectedCaseIndex;
+    private bool _manualInspectorLayout;
+    private bool _manualBottomLayout;
     private static readonly Brush InkMuted = PreviewRow.Solid("#607891");
-    private static readonly Brush Alert = PreviewRow.Solid("#A06E2F");
 
     public MainWindow()
     {
@@ -41,6 +41,7 @@ public partial class MainWindow : Window
             var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             source?.AddHook(MonitorWorkAreaHook);
         };
+        SizeChanged += (_, _) => AdaptDocksToViewport();
         SeedHtmlSampleData();
         RebuildRows();
         SelectStep(_phases[0].Steps[0]);
@@ -600,16 +601,36 @@ public partial class MainWindow : Window
         if(sender is Button button)
             BottomEmpty.Text=button.Content+" · UI 预览无设备运行、CAN 或测试结果";
     }
+    private void ApplyDockLayout()
+    {
+        if (InspectorColumn is null || BottomRow is null) return;
+        InspectorColumn.Width=new GridLength(_inspectorVisible?302:0);
+        InspectorDock.Visibility=_inspectorVisible?Visibility.Visible:Visibility.Collapsed;
+        BottomRow.Height=new GridLength(_bottomVisible?165:0);
+        BottomDock.Visibility=_bottomVisible?Visibility.Visible:Visibility.Collapsed;
+    }
+
+    private void AdaptDocksToViewport()
+    {
+        // Physical 1366×768 at 150% gives only ~911×512 DIPs.
+        // Keep steps readable; do not shrink fonts or cover the taskbar.
+        if(!_manualInspectorLayout) _inspectorVisible=ActualWidth>=1120;
+        if(!_manualBottomLayout) _bottomVisible=ActualHeight>=640;
+        ApplyDockLayout();
+    }
+
     private void ToggleBottom_Click(object sender,RoutedEventArgs e)
     {
+        _manualBottomLayout=true;
         _bottomVisible=!_bottomVisible;
-        BottomRow.Height=new GridLength(_bottomVisible?165:0);
+        ApplyDockLayout();
         SetMessage(_bottomVisible?"已展开底部观察区。":"已折叠底部观察区。");
     }
     private void ToggleInspector_Click(object sender,RoutedEventArgs e)
     {
+        _manualInspectorLayout=true;
         _inspectorVisible=!_inspectorVisible;
-        InspectorColumn.Width=new GridLength(_inspectorVisible?302:0);
+        ApplyDockLayout();
         SetMessage(_inspectorVisible?"已打开步骤属性。":"已折叠步骤属性；按 Ctrl+I 可恢复。");
     }
 
