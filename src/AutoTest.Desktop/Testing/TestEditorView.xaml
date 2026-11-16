@@ -44,8 +44,8 @@
   <Border Grid.Row="1" Background="#F3F7FB" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
    <Grid Margin="0,0,8,0">
     <Grid.ColumnDefinitions><ColumnDefinition Width="36"/>
-     <ColumnDefinition Width="38*" MinWidth="185"/>
-     <ColumnDefinition Width="62*" MinWidth="220"/>
+     <ColumnDefinition Width="29*" MinWidth="185"/>
+     <ColumnDefinition Width="71*" MinWidth="220"/>
      <ColumnDefinition Width="126"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
     <TextBlock Grid.Column="0" Text="序号" FontSize="11" Foreground="#435B74"
      VerticalAlignment="Center" HorizontalAlignment="Center"/>
@@ -124,8 +124,8 @@
        Visibility="{Binding IsStep,Converter={StaticResource BoolToVisibility}}">
        <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="36"/>
-         <ColumnDefinition Width="38*" MinWidth="185"/>
-         <ColumnDefinition Width="62*" MinWidth="220"/>
+         <ColumnDefinition Width="29*" MinWidth="185"/>
+         <ColumnDefinition Width="71*" MinWidth="220"/>
          <ColumnDefinition Width="126"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
         <TextBlock Grid.Column="0" Text="{Binding SequenceText}" FontSize="10"
          Foreground="#8798AB" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -146,18 +146,18 @@
            VerticalAlignment="Center" HorizontalAlignment="Center"/>
          </Border>
          <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="SemiBold"
-          TextTrimming="CharacterEllipsis" FontSize="11" Foreground="#1E2C41"
+          TextTrimming="CharacterEllipsis" FontSize="12" Foreground="#1E2C41"
           VerticalAlignment="Center" ToolTip="{Binding Kind}" Margin="5,0,7,0"/>
         </Grid>
         <Grid Grid.Column="2" Margin="6,0">
          <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis"
-          Foreground="#607B98" VerticalAlignment="Center" FontSize="11"
+          Foreground="#607B98" VerticalAlignment="Center" FontSize="12"
           Visibility="{Binding IsNotQuickEditable,Converter={StaticResource BoolToVisibility}}"
           ToolTip="{Binding Summary}"/>
          <TextBox Text="{Binding QuickValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
           Visibility="{Binding IsQuickEditable,Converter={StaticResource BoolToVisibility}}"
           Background="Transparent" BorderBrush="#C9D8E9" BorderThickness="0,0,0,1"
-          Padding="2,1" Height="25" MinHeight="0" FontSize="11" Foreground="#405F7B"
+          Padding="2,1" Height="25" MinHeight="0" FontSize="12" Foreground="#405F7B"
           VerticalAlignment="Center" VerticalContentAlignment="Center"
           ToolTip="直接编辑等待毫秒数或循环次数，Enter 确定、Esc 取消"
           LostFocus="QuickField_LostFocus" KeyDown="QuickField_KeyDown"/>
@@ -166,7 +166,7 @@
          Foreground="#7A8DA4" VerticalAlignment="Center" FontSize="10" Margin="7,0"
          ToolTip="{Binding Resource}"/>
         <TextBlock Grid.Column="4" Text="{Binding State}" TextTrimming="CharacterEllipsis"
-         Foreground="#748399" VerticalAlignment="Center" FontSize="10" Margin="6,0"
+         Foreground="#748399" VerticalAlignment="Center" FontSize="11" Margin="6,0"
          ToolTip="{Binding State}"/>
        </Grid>
       </Border>
