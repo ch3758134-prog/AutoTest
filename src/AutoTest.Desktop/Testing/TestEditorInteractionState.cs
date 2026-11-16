@@ -17,9 +17,9 @@ public readonly record struct StepSelectionKey(
         if (item is null) return null;
         return item.Kind switch
         {
-            StepTreeItemKind.Phase => new(item.Phase, item.Kind),
-            StepTreeItemKind.Step => new(item.Phase, item.Kind, item.Step?.Id),
-            StepTreeItemKind.Slot => new(item.Phase, item.Kind,
+            StepTreeItemKind.Phase => new StepSelectionKey(item.Phase, item.Kind),
+            StepTreeItemKind.Step => new StepSelectionKey(item.Phase, item.Kind, item.Step?.Id),
+            StepTreeItemKind.Slot => new StepSelectionKey(item.Phase, item.Kind,
                 null, item.Parent?.Step?.Id, item.SlotName),
             _ => null
         };
