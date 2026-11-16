@@ -6,6 +6,11 @@
 ## 首次建立了什么
 本档案保存两份原始可核验 PDF、主控 63 条已在原理图 U7 右侧明确命名的 MCU→Net 信号、KEY_SIM 的 20 个开关引脚、模块清单、连接器证据子集、主控命令及 HOST 能力边界、硬件变更模板和专职 AI 交接。**63 不是 MCU 全部 100 个引脚**，仅是图纸已明确标注的功能映射；其余 Pin、PCB pad、BOM/Netlist 与实物线束由 HW 专项继续补录，不得推算填满。
 
+
+## 面向项目负责人的优先审查入口（HTML）
+**请优先打开 [HW-PIN-REVIEW.html](HW-PIN-REVIEW.html)**：主控100针环形可点击索引（其中63条为已录图纸网络）、KEY_SIM 32针索引（20条开关映射）、连接器、模块、HOST物理能力、差异定位和可导出审查意见。CSV仅作为AI读取与追溯的底层索引，不作为项目负责人的主审查界面。
+GitHub源码浏览页面不会执行HTML；在仓库点击 **Download raw file** 后用浏览器打开。另一份带原图页面图像和63+20处实图热点标注的完整离线HTML，已由本轮PM会话交付，适合直接现场审查；两种HTML都不具备真实PCB/现役HEX自动验证能力。
+
 ### 原始图纸（Git Blob 与 SHA256 双重确认）
 - [主控原理图 TestCtr V1.5 / 5 页](assets/HW-MAIN-TestCtr-V1.5.pdf)：Git Blob `67fe395bfb18ef6aa52f68fde299dbc648866f8c`，SHA256 `44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353`。
 - [按键板原理图 EPB_ODD V1.1 / 4 页](assets/HW-KEY-EPB_ODD-V1.1.pdf)：Git Blob `ee00af0b25aacc16629661a25bef30a735924dbf`，SHA256 `2f642b559ddcb4c325e872a67b0d74e0472f0db5bcb9021c1cbb4ff8596a6b2d`。

@@ -2,6 +2,9 @@
 
 **角色：** AutoTest `HW-FW-MAIN-01` 主控板硬件/嵌入式系统专职研究与实施负责人。你不是 PM，也不是 G4 WPF、Flash Lab 或测试运行引擎的所有者。项目负责人明确要求由一个独立 AI 研究主控板，PM 管理跨硬件/固件/HOST 的构型及接口审批。
 
+## 优先阅读的可视化审查入口
+从 [HW-PIN-REVIEW.html](HW-PIN-REVIEW.html) 开始核对 100-pin / 32-pin 索引、模块及疑点；CSV是派生表。PM已另交付将9页原理图内嵌、支持63+20原图热点标记的离线HTML，便于负责人看图逐针审查。任何HTML标记仅是原理图/源码证据，仍需现场PCB与固件核实。
+
 ## 第一轮必须执行的研究，不修改实体
 先读此目录原始 [TestCtr V1.5](assets/HW-MAIN-TestCtr-V1.5.pdf)、[KEY V1.1](assets/HW-KEY-EPB_ODD-V1.1.pdf)，[主控代码](https://github.com/ch3758134-prog/AutoTest/tree/Main_Control/Project/source) `Main_Control@c830dbcd`，以及 `Key_Sim@313ed34e`。复核 CSV 每行来源、完整 **100-pin MCU 封装表**、p1 J1 全部 64 位、全部电气模块、连接器/端子及芯片引脚复用；不能只读 README 就声称完成 PDF 检查。
 
