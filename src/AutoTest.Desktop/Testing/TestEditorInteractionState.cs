@@ -25,8 +25,12 @@ public readonly record struct StepSelectionKey(
         };
     }
 
-    public StepTreeItem? FindIn(IEnumerable<StepTreeItem> roots) =>
-        StepTreeItem.Walk(roots).FirstOrDefault(node => Of(node) == this);
+    public StepTreeItem? FindIn(IEnumerable<StepTreeItem> roots)
+    {
+        // A lambda cannot capture struct 'this' (CS1673). Capture a value copy.
+        var key = this;
+        return StepTreeItem.Walk(roots).FirstOrDefault(node => Of(node) == key);
+    }
 }
 
 /// <summary>
