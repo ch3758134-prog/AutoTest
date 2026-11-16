@@ -33,10 +33,13 @@ public sealed class DemoStep : INotifyPropertyChanged
         "wavecheck" => "参考 " + Param("reference", "参考记录01"),
         "uds" => Param("job", "读取标识信息"),
         "input" => Param("button", "未选择按键动作"),
-        "sol" => Param("state", "CLAMP") == "CLAMP" ? "请求压紧" : "请求打开",
         "when" => "等待条件 " + Param("condition", "$ready"),
         "switch" => "SWITCH " + Param("expression", "$state"),
         "comment" => Param("text", "备注"),
+        "var" => Param("variable", "$value") + " = " + Param("expression", "0"),
+        "try" => "异常时：" + Param("onError", "停止并记录"),
+        "sub" => "调用 " + Param("target", "未选择子程序"),
+        "sol" => Param("state", "CLAMP") == "CLAMP" ? "请求压紧" : "请求打开",
         _ => Param("text", "待配置")
     };
     public string Resource => Kind switch

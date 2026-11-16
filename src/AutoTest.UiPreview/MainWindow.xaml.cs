@@ -36,6 +36,12 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = this;
+        StepNameField.GotKeyboardFocus += (_, _) =>
+        {
+            if (_selectedStep is not null && !_updatingInspector) RememberUndo();
+        };
+        EnabledBox.DropDownOpened += (_, _) => RememberUndo();
+        BreakpointBox.DropDownOpened += (_, _) => RememberUndo();
         SourceInitialized += (_, _) =>
         {
             var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
@@ -279,6 +285,7 @@ public partial class MainWindow : Window
             Margin=new Thickness(0,0,0,10),Padding=new Thickness(7,4,7,4),
             BorderBrush=PreviewRow.Solid("#CDD9E8"),BorderThickness=new Thickness(1)};
         var editingStep=_selectedStep;
+        input.GotKeyboardFocus+=(_,_)=>RememberUndo();
         input.TextChanged+=(_,_)=>{
             if (_updatingInspector)return;
             editingStep.SetParam(key,input.Text);
@@ -295,6 +302,7 @@ public partial class MainWindow : Window
         var box=new ComboBox{Height=27,FontSize=11,Margin=new Thickness(0,0,0,10),
             BorderBrush=PreviewRow.Solid("#CDD9E8"),ItemsSource=options};
         var editingStep=_selectedStep;
+        box.DropDownOpened+=(_,_)=>RememberUndo();
         box.SelectedItem=editingStep.Param(key,options[0]);
         if (box.SelectedItem is null) box.SelectedIndex=0;
         box.SelectionChanged+=(_,_)=>{
