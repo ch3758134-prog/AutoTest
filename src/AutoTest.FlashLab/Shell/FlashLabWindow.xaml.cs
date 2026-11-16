@@ -224,11 +224,13 @@ public partial class FlashLabWindow : Window
             Multiselect=false
         };
         if(dialog.ShowDialog(this)!=true)return;
+        string selectedFolder=dialog.FolderName;
+        string binBase=BinBaseBox.Text; // Capture WPF value on UI thread.
         Busy(true);
         try
         {
             var files=await Task.Run(()=>
-                CanToolBundleDiscovery.Discover(dialog.FolderName));
+                CanToolBundleDiscovery.Discover(selectedFolder));
             var checkedFiles=await Task.Run(()=>
             {
                 var cfg=CanToolXmlProfileReader.Load(files.ConfigurationXml);
@@ -236,7 +238,7 @@ public partial class FlashLabWindow : Window
                 if(library.Kind!=CanToolSecurityKind.ManagedSafetyFile)
                     throw new FormatException("SafetyFile.dll 并非支持的托管安全文件接口。");
                 var image=FirmwareSelectionService.Load(files.FirmwareImage,
-                    BinBaseBox.Text,cfg);
+                    binBase,cfg);
                 return (cfg,library,image);
             });
             if(_closingInProgress || _closingApproved)return;
