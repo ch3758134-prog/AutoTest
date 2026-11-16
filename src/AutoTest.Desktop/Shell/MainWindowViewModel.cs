@@ -26,6 +26,7 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
 {
     public string Key { get; } = key;
     public string Title { get; set; } = title;
+    public bool IsPrimaryTab => Key is "home" or "config-overview";
     public UserControl View { get; } = view;
     public Func<bool> ConfirmClose { get; } = confirmClose;
     /// <summary>Right rail is the editor's only inspector, never a second copy.</summary>
@@ -544,11 +545,21 @@ public sealed class MainWindowViewModel : BindableBase
                 RaisePropertyChanged(nameof(ActiveEditorTitle));
                 RaisePropertyChanged(nameof(ActiveEditorInspector));
                 RaisePropertyChanged(nameof(InspectorHeading));
+                RaisePropertyChanged(nameof(IsOverviewActive));
+                RaisePropertyChanged(nameof(IsProjectActive));
+                RaisePropertyChanged(nameof(IsCaseActive));
+                RaisePropertyChanged(nameof(IsConfigurationActive));
             }
         }
     }
     public UserControl? ActiveEditorView => ActiveEditorTab?.View;
     public ContentControl? ActiveEditorInspector => ActiveEditorTab?.Inspector;
+    public bool IsOverviewActive => ActiveEditorTab?.Key == "home";
+    public bool IsProjectActive => ActiveEditorTab?.Key.StartsWith("project|", StringComparison.Ordinal) == true;
+    public bool IsCaseActive => ActiveEditorTab?.Key.StartsWith("test|", StringComparison.Ordinal) == true;
+    public bool IsConfigurationActive => ActiveEditorTab?.Key == "config-overview" ||
+        ActiveEditorTab?.Key.StartsWith("config|", StringComparison.Ordinal) == true;
+
     public string InspectorHeading => ActiveEditorTab?.View switch
     {
         TestEditorView => "步骤属性",

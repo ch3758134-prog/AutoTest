@@ -31,6 +31,30 @@
    <Setter Property="FontSize" Value="11"/><Setter Property="Foreground" Value="#536D8B"/>
    <Setter Property="BorderThickness" Value="0,0,1,0"/><Setter Property="BorderBrush" Value="#DBE3ED"/>
   </Style>
+  <Style x:Key="WorkspaceHomeButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopWorkspaceButton}">
+   <Style.Triggers><DataTrigger Binding="{Binding IsOverviewActive}" Value="True">
+    <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#1E5DA7"/>
+    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#2368BD"/>
+   </DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="WorkspaceProjectButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopWorkspaceButton}">
+   <Style.Triggers><DataTrigger Binding="{Binding IsProjectActive}" Value="True">
+    <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#1E5DA7"/>
+    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#2368BD"/>
+   </DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="WorkspaceCaseButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopWorkspaceButton}">
+   <Style.Triggers><DataTrigger Binding="{Binding IsCaseActive}" Value="True">
+    <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#1E5DA7"/>
+    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#2368BD"/>
+   </DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="WorkspaceConfigButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopWorkspaceButton}">
+   <Style.Triggers><DataTrigger Binding="{Binding IsConfigurationActive}" Value="True">
+    <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#1E5DA7"/>
+    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#2368BD"/>
+   </DataTrigger></Style.Triggers>
+  </Style>
   <Style x:Key="DocumentTabItem" TargetType="{x:Type TabItem}">
    <Setter Property="MinWidth" Value="100"/><Setter Property="MaxWidth" Value="220"/>
    <Setter Property="Background" Value="Transparent"/>
@@ -52,6 +76,9 @@
      </ControlTemplate.Triggers>
     </ControlTemplate></Setter.Value>
    </Setter>
+   <Style.Triggers><DataTrigger Binding="{Binding IsPrimaryTab}" Value="True">
+    <Setter Property="Visibility" Value="Collapsed"/>
+   </DataTrigger></Style.Triggers>
   </Style>
   <Style x:Key="ObservationTabItem" TargetType="{x:Type TabItem}">
    <Setter Property="Padding" Value="9,0"/><Setter Property="Height" Value="29"/>
@@ -187,12 +214,12 @@
     <Border Grid.Row="0" Background="#EDF2F8" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
      <DockPanel LastChildFill="True">
       <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-       <Button Content="工程概览" Style="{StaticResource TopWorkspaceButton}" Click="ShowOverview_Click"/>
-       <Button Content="测试项目" Style="{StaticResource TopWorkspaceButton}"
+       <Button Content="工程概览" Style="{StaticResource WorkspaceHomeButton}" Click="ShowOverview_Click"/>
+       <Button Content="测试项目" Style="{StaticResource WorkspaceProjectButton}"
         Command="{Binding OpenFirstTestProjectCommand}"/>
-       <Button Content="测试用例" Style="{StaticResource TopWorkspaceButton}"
+       <Button Content="测试用例" Style="{StaticResource WorkspaceCaseButton}"
         Command="{Binding OpenFirstTestProgramCommand}"/>
-       <Button Content="工程配置" Style="{StaticResource TopWorkspaceButton}"
+       <Button Content="工程配置" Style="{StaticResource WorkspaceConfigButton}"
         Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
       </StackPanel>
       <TabControl ItemsSource="{Binding OpenEditors}" SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
