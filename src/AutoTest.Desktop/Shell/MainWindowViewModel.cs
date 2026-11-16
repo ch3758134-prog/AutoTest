@@ -759,6 +759,27 @@ public sealed class MainWindowViewModel : BindableBase
         if (node is not null) UpdateProjectCount(node);
     }
 
+    private void RefreshUnassignedCases()
+    {
+        var current = _workspace.Current;
+        var group = ResourceNodes.FirstOrDefault(x => x.Role == "Folder" &&
+            x.Label == "未加入项目的用例");
+        if (current is null || group is null) return;
+        var assigned = ResourceNodes.Where(x => x.Role == "Project")
+            .SelectMany(x => x.Children)
+            .Where(x => x.Asset is not null).Select(x => x.Asset!.Id)
+            .ToHashSet();
+        var missing = current.Definition.Assets
+            .Where(x => x.Kind == ProjectWorkspaceService.TestProgramKind &&
+                !assigned.Contains(x.Id))
+            .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        group.Children.Clear();
+        foreach (var entry in missing)
+            group.Children.Add(new ResourceTreeNode(entry.Name, "", entry.RelativePath,
+                entry.Kind, entry, role: "Case"));
+        group.CountLabel = missing.Length.ToString();
+    }
+
     private static void UpdateProjectCount(ResourceTreeNode node)
     {
         var rows = node.Children.Where(n => n.IsRunSelectable).ToArray();
@@ -790,6 +811,7 @@ public sealed class MainWindowViewModel : BindableBase
                     row.Name, row.Enabled, row.Order));
             }
             UpdateProjectCount(node);
+            RefreshUnassignedCases();
         }
         editor.OpenPackageRequested = packageId =>
         {
@@ -826,6 +848,7 @@ public sealed class MainWindowViewModel : BindableBase
                     asset?.Name ?? entry.DisplayName, entry.Enabled, ++order));
             }
             UpdateProjectCount(node);
+            RefreshUnassignedCases();
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
             UnauthorizedAccessException or ArgumentException or ProjectDataException)

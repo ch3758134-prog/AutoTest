@@ -80,7 +80,8 @@
     </Setter.Value>
    </Setter>
   </Style>
-  <HierarchicalDataTemplate x:Key="ExplorerNodeTemplate" ItemsSource="{Binding Children}">
+  <HierarchicalDataTemplate x:Key="ExplorerNodeTemplate" ItemsSource="{Binding Children}"
+   ItemContainerStyle="{StaticResource ExplorerTreeItem}">
    <Grid Height="29" HorizontalAlignment="Stretch" ToolTip="{Binding Description}">
     <Grid.ColumnDefinitions>
      <ColumnDefinition Width="Auto"/><ColumnDefinition Width="18"/>
