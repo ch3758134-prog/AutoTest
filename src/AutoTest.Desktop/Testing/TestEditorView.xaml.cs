@@ -56,7 +56,6 @@ public partial class TestEditorView : UserControl
         if (_viewModel.HasNewStepDraft || _inspector?.HasPendingEdits == true)
             return _inspector?.TryApplyChanges() == true;
         return true;
-        return _inspector.TryApplyChanges();
     }
 
     /// <summary>
