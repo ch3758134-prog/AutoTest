@@ -328,8 +328,12 @@ public partial class FlashLabWindow : Window
         {
             if(_vm.Image is null || string.IsNullOrWhiteSpace(_vm.FirmwarePath))
                 throw new InvalidOperationException("请先选择并离线校验 HEX/S19/BIN 镜像。");
+            // Also honor SafetyFilePath edited directly in the CanTool grid.
             if(string.IsNullOrWhiteSpace(_seedDllPath))
-                throw new InvalidOperationException("必须选择 Seed/Key DLL。");
+                ApplySafetyLibraryFromConfiguration();
+            if(string.IsNullOrWhiteSpace(_seedDllPath))
+                throw new InvalidOperationException(
+                    "请在配置中指定 SafetyFilePath，或使用上方按钮选择实际安全算法 DLL。");
             // Rebuild immutable on-wire snapshot using current config, current file
             // and current DLL; no stale UI values or automatic hardware actions.
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
