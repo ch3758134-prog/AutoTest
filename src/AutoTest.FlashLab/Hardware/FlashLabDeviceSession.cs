@@ -90,23 +90,11 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                 throw new IOException("主控 PING 响应内容不匹配，拒绝进入诊断状态。");
             var gate=new CanTransmitGate(usb.Generation);
             _gate=gate;
-            var transmitter=new Can1ReadOnlyDiagnosticTransmitter(usb,gate);
-            var hub=new CanFrameHub(async (tx,lease,token) =>
-            {
-                // F2 uses EXACT one-frame permits, never the broad TEST RUN whitelist.
-                Guid flashPermit=_activeFlashPermit;
-                if(flashPermit!=Guid.Empty)
-                {
-                    if(!gate.Validate(BusRole.DutCan,lease) ||
-                        lease.SessionGeneration!=usb.Generation)
-                        return OperationResult<CanTxReceipt>.Rejected("F2_LEASE_INVALID",
-                            "Current-generation CAN1 programming lease required.");
-                    var framePayload=CanFrameCodec.ToUsbPayload(tx.Frame,
-                        new BusRoleMap(default,DutPort:1,KeypadPort:0));
-                    link.PrepareExactFlashFrame(flashPermit,framePayload);
-                }
-                return await transmitter.TransmitAsync(tx,lease,token).ConfigureAwait(false);
-            });
+            // All CanTool requests and ECU response filtering now share exactly
+            // one real CAN1 transport, regardless of APP 11-bit or BOOT 29-bit IDs.
+            var transmitter=new CanToolCan1Transport(usb,link,gate,
+                ()=>_activeFlashPermit);
+            var hub=new CanFrameHub(transmitter.TransmitAsync);
             _hub=hub;
             var bridge=new HardwareCanReceiveBridge(usb,hub);
             _bridge=bridge;
