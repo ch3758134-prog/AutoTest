@@ -112,7 +112,7 @@ public sealed class FlashLabViewModel : INotifyPropertyChanged
         Parameters.Clear();
         foreach(var p in configuration.Parameters) Parameters.Add(p);
         ConfigurationPath=configuration.SourcePath??"未载入配置（可编辑后另存为 XML）";
-        Unknown="原始 XML 扩展项（保留但 F1 不使用）："+(configuration.UnmappedEntries.Count==0
+        Unknown="原始 XML 扩展项（结构和值保留）："+(configuration.UnmappedEntries.Count==0
             ?"无 / 尚未导入":string.Join("；",configuration.UnmappedEntries));
     }
     public void SetImage(string file,FirmwareSelection image)

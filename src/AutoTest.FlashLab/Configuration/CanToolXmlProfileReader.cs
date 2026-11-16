@@ -43,9 +43,9 @@ public sealed class CanToolXmlProfileReader
         ("FlashEndAddr","参考 Flash 结束地址（含）"),
         ("BaudRate","参考波特率；不能据此确认主控真实速率"),
         ("BlockLength","参考块长（不等于0x74与ISO-TP BS）"),
-        ("SafetyFilePath","参考 DLL 路径（F1 禁止加载/运行）"),
-        ("SeedToKeyDll_Path","参考 DLL 别名（F1 禁止加载/运行）"),
-        ("ForceMinInterval","参考 CF 间隔毫秒（F1 不主动覆盖 ECU FC）")
+        ("SafetyFilePath","安全文件 SafetyFile.dll：独立的托管算法配置路径"),
+        ("SeedToKeyDll_Path","Seed/Key 原生 ZLGKey 算法 DLL：独立配置路径"),
+        ("ForceMinInterval","CanTool CF 参考间隔；是否应用须依据 ECU FC")
     ];
 
     // Physical CanTool Configuration.xml uses these Chinese names, not the English UI keys.

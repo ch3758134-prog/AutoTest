@@ -127,7 +127,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                 }
                 else if(!evt.Valid) Emit("CAN RX 数据异常：" +evt.Detail);
             };
-            Emit("主控 PING 正常。CAN1=DUT；仅 RX 监听，尚无 DID 物理授权。");
+            Emit("主控 PING 正常：CAN1=DUT，真实 CAN 报文监听已连接；实体烧录须按窗口确认。");
         }
         catch
         {

@@ -61,7 +61,7 @@ public partial class FlashLabWindow : Window
         };
         Loaded+=async (_,_)=>await RefreshDevicesAsync();
         UpdateButtons();
-        AddLog("F2 源码候选已启动：可准备并现场批准 CanTool 实体烧录；当前未经 ECU 端到端验证。");
+        AddLog("CAN1 烧录工作台已启动。先导入配置与固件，选择安全算法文件，连接 USB，检查后执行。");
     }
 
     private void ScheduleCanFlush()
@@ -197,7 +197,6 @@ public partial class FlashLabWindow : Window
         try
         {
             await _device.DisconnectAsync();
-            _vm.TypedConfirmation="";
             _vm.Status="USB 已断开，CAN1 监听已停止。";
             UsbStatusLabel.Text="USB 已断开";
             WorkflowStatusLabel.Text="USB 已断开，无法开始烧录。";
@@ -521,9 +520,9 @@ public partial class FlashLabWindow : Window
     private void Export_Click(object sender,RoutedEventArgs e)
     {
         var dlg=new SaveFileDialog
-        { Title="导出 FlashLab F1 原始诊断 ZIP",
+        { Title="导出 FlashLab USB/CAN/UDS 原始诊断 ZIP",
           Filter="ZIP 证据档案 (*.zip)|*.zip",
-          FileName=$"FlashLab_F1_{DateTime.Now:yyyyMMdd_HHmmss}.zip",
+          FileName=$"FlashLab_CAN_UDS_{DateTime.Now:yyyyMMdd_HHmmss}.zip",
           OverwritePrompt=true };
         if(dlg.ShowDialog(this)!=true)return;
         try
