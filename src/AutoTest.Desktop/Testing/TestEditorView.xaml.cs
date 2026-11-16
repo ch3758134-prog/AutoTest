@@ -94,6 +94,8 @@ public partial class TestEditorView : UserControl
         e.Handled = true;
         if (sender is not Button { Tag: StepRowProjection row } || !row.IsPhase) return;
         _viewModel.SelectItem(row.Item);
+        if (_viewModel.SelectedItem?.Phase != row.Item.Phase ||
+            _viewModel.SelectedItem?.Kind != row.Item.Kind) return;
         if (_viewModel.AddChildCommand.CanExecute())
             _viewModel.AddChildCommand.Execute();
     }
@@ -193,13 +195,38 @@ public partial class TestEditorView : UserControl
             ItemsControl.ContainerFromElement(StepsList, source) as ListBoxItem;
         if (container is null) return;
         StepsList.SelectedItem = container.DataContext;
+        if (container.DataContext is not StepRowProjection clicked) return;
+        // If the previous Inspector contains invalid inputs, the selection is
+        // deliberately rejected. The context menu must never edit a stale row.
+        if (_viewModel.SelectedItem?.Step?.Id != clicked.Item.Step?.Id ||
+            _viewModel.SelectedItem?.Kind != clicked.Item.Kind ||
+            _viewModel.SelectedItem?.Phase != clicked.Item.Phase) return;
         var menu = new ContextMenu();
         void Item(string title, ICommand command)
         {
             menu.Items.Add(new MenuItem { Header = title, Command = command });
         }
-        Item("＋ 添加步骤 / 子步骤", _viewModel.AddChildCommand);
-        Item("在该步骤下方插入", _viewModel.AddAfterCommand);
+        var target = clicked.Item;
+        if (target.Kind is StepTreeItemKind.Phase or StepTreeItemKind.Slot)
+            Item("＋ 在此阶段／分支末尾添加", _viewModel.AddChildCommand);
+        if (target.Kind == StepTreeItemKind.Step)
+        {
+            Item("在当前步骤下方插入", _viewModel.AddAfterCommand);
+            if (target.Children.Count > 0)
+            {
+                menu.Items.Add(new Separator());
+                foreach (var branch in target.Children.Where(x => x.Kind == StepTreeItemKind.Slot))
+                {
+                    var slot = branch;
+                    var item = new MenuItem
+                    {
+                        Header = "＋ 在 " + StepUiCatalog.SlotLabel(slot.SlotName ?? "") + " 中添加"
+                    };
+                    item.Click += (_, _) => _viewModel.BeginInsertInto(slot);
+                    menu.Items.Add(item);
+                }
+            }
+        }
         menu.Items.Add(new Separator());
         Item("编辑步骤属性", _viewModel.EditParametersCommand);
         Item("复制步骤及子分支", _viewModel.DuplicateCommand);
