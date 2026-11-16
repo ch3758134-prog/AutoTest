@@ -122,8 +122,7 @@ public partial class TestStepInspector : UserControl
             option.StepType != "Case").ToArray();
 
     private readonly StepNode? _editing;
-    private readonly bool _caseOnly;
-    private readonly IReadOnlyList<MappingChoice> _catalog;
+     private readonly IReadOnlyList<MappingChoice> _catalog;
     private readonly IReadOnlyList<TestTargetMapping> _boundMappings;
     private bool _ready;
     private TestActionOption? _selected;
@@ -136,12 +135,10 @@ public partial class TestStepInspector : UserControl
     private bool _updatingRawKeys;
 
 
-    public ObservableCollection<TestActionOption> FilteredActions { get; } = new();
-    public ObservableCollection<MappingChoice> AvailableTargets { get; } = new();
+     public ObservableCollection<MappingChoice> AvailableTargets { get; } = new();
     public ObservableCollection<TestStepInputField> ParameterFields { get; } = new();
     public ObservableCollection<TestSignalInputField> SignalValues { get; } = new();
-    public TestActionOption? SelectedAction { get; set; }
-    public StepCompositionResult? Result { get; private set; }
+     public StepCompositionResult? Result { get; private set; }
     public Func<StepCompositionResult, bool>? ApplyRequested { get; set; }
     public Action<string>? StepActionRequested { get; set; }
     public event Action? Cancelled;
@@ -179,45 +176,46 @@ public partial class TestStepInspector : UserControl
         IReadOnlyList<TestTargetMapping> boundMappings, StepNode? editing = null,
         string? initialActionKey = null, bool caseOnly = false)
     {
-        _caseOnly = caseOnly;
-        _catalog = catalog;
+         _catalog = catalog;
         _boundMappings = boundMappings;
         _editing = editing;
         InitializeComponent();
         DataContext = this;
         BuildRawKeyGrid();
         _ready = true;
-        Heading.Text = editing is null ? "新步骤 · 属性配置" : "步骤属性 · 直接编辑";
-        StepActionsPanel.Visibility = editing is null ? Visibility.Collapsed : Visibility.Visible;
-        ActionSelectorPanel.Visibility = editing is null ? Visibility.Visible : Visibility.Collapsed;
-        ConfirmButton.Content = editing is null ? "插入步骤" : "应用属性";
-        ActionSearch.IsEnabled = editing is null;
-        RefreshActionList("");
-        if (editing is not null)
+        // A STEP Inspector is never the place to create a new node.
+        // The only creation path is ActionPalette -> transaction.Insert -> StepId.
+        if (editing is null)
+            throw new ArgumentNullException(nameof(editing),
+                "先从中央步骤列表选择操作类型，不能在 Inspector 内直接新增。");
+        Heading.Text = "步骤属性";
+        StepActionsPanel.Visibility = Visibility.Visible;
+        ConfirmButton.Content = "应用属性";
+        var mapping = boundMappings.FirstOrDefault(m =>
+            m.Name == editing.Properties.GetValueOrDefault("target", ""));
+        var targetKind = mapping?.Kind;
+        var chosen = Options.FirstOrDefault(a => a.Key == initialActionKey &&
+            a.StepType == editing.Type) ??
+            Options.FirstOrDefault(a => a.StepType == editing.Type &&
+            (editing.Type != "Write" || a.TargetCategory switch
+            {
+                "button" => targetKind is TestTargetKind.Button or TestTargetKind.RawKey,
+                "ign" => targetKind == TestTargetKind.Ignition,
+                "can" => targetKind is TestTargetKind.CanMessage or TestTargetKind.RawCan,
+                _ => false
+            })) ?? Options.FirstOrDefault(a => a.StepType == editing.Type);
+        if (chosen is not null)
         {
-            var mapping = boundMappings.FirstOrDefault(m =>
-                m.Name == editing.Properties.GetValueOrDefault("target", ""));
-            var targetKind = mapping?.Kind;
-            var chosen = Options.FirstOrDefault(a => a.Key == initialActionKey &&
-                a.StepType == editing.Type) ??
-                Options.FirstOrDefault(a => a.StepType == editing.Type &&
-                (editing.Type != "Write" || a.TargetCategory switch
-                {
-                    "button" => targetKind is TestTargetKind.Button or TestTargetKind.RawKey,
-                    "ign" => targetKind == TestTargetKind.Ignition,
-                    "can" => targetKind is TestTargetKind.CanMessage or TestTargetKind.RawCan,
-                    _ => false
-                })) ?? Options.FirstOrDefault(a => a.StepType == editing.Type);
-            if (chosen is not null) ActionList.SelectedItem = chosen;
+            _selected = chosen;
+            ActionDescription.Text = chosen.Description;
+            NameInput.Text = editing.Name;
+            BuildParameters(chosen);
+            BuildTargets(chosen);
         }
-        else if (FilteredActions.Count > 0)
-            ActionList.SelectedItem = FilteredActions.FirstOrDefault(a => a.Key == initialActionKey)
-                ?? FilteredActions[0];
         AddHandler(TextBox.TextChangedEvent,
             new TextChangedEventHandler((sender, e) =>
             {
-                if (ReferenceEquals(e.OriginalSource, ActionSearch) ||
-                    ReferenceEquals(e.OriginalSource, TargetSearch)) return;
+                if (ReferenceEquals(e.OriginalSource, TargetSearch)) return;
                 MarkDraftChanged();
             }), true);
         AddHandler(Selector.SelectionChangedEvent,
@@ -232,43 +230,10 @@ public partial class TestStepInspector : UserControl
         };
     }
 
-    private void RefreshActionList(string query)
-    {
-        var previous = ActionList.SelectedItem as TestActionOption;
-        FilteredActions.Clear();
-        var filtered = _editing is not null
-            ? Options.Where(a => a.StepType == _editing.Type)
-            : _caseOnly ? Options.Where(a => a.StepType == "Case")
-            : Options.Where(a => a.StepType != "Case");
-        foreach (var action in filtered.Where(a =>
-            a.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-            a.Description.Contains(query, StringComparison.OrdinalIgnoreCase)))
-            FilteredActions.Add(action);
-        ActionList.SelectedItem = FilteredActions.FirstOrDefault(x => x == previous);
-        if (ActionList.SelectedItem is null && FilteredActions.Count > 0)
-            ActionList.SelectedIndex = 0;
-    }
-
-    private void ActionSearch_Changed(object sender, TextChangedEventArgs e)
-    {
-        if (!_ready || ActionList is null) return;
-        RefreshActionList(ActionSearch.Text.Trim());
-    }
-
-    private void ActionList_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_ready || ActionList.SelectedItem is not TestActionOption option) return;
-        _selected = option;
-        ActionDescription.Text = option.Description;
-        NameInput.Text = _editing?.Name ?? option.Title;
-        BuildParameters(option);
-        BuildTargets(option);
-    }
-
     private void BuildParameters(TestActionOption action)
     {
         ParameterFields.Clear();
-        var node = _editing ?? StepUiCatalog.NewNode(action.StepType);
+        var node = _editing ?? throw new InvalidOperationException("步骤编辑器需要真实 StepId。");
         foreach (var item in node.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
         {
             if ((item.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) ||

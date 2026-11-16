@@ -16,20 +16,8 @@
      <TextBlock x:Name="Heading" Text="步骤属性" VerticalAlignment="Center"
       FontWeight="SemiBold" FontSize="12"/>
     </DockPanel>
-    <!-- Only adding a NEW step displays the type catalogue; editing an existing
-         step starts immediately at the frequently-used properties. -->
-    <StackPanel x:Name="ActionSelectorPanel" Margin="0,0,0,12">
-     <TextBlock Text="操作类型" FontWeight="SemiBold" Foreground="#61738B"
-      FontSize="11" Margin="0,0,0,5"/>
-     <TextBox x:Name="ActionSearch" TextChanged="ActionSearch_Changed"
-      ToolTip="输入 CAN、读取、按键、判断、流程、波形等搜索步骤类型"
-      Margin="0,0,0,6"/>
-     <ListBox x:Name="ActionList" ItemsSource="{Binding FilteredActions}"
-      SelectedItem="{Binding SelectedAction,Mode=TwoWay}"
-      DisplayMemberPath="DisplayName" MinHeight="90" MaxHeight="150"
-      SelectionChanged="ActionList_Changed" FontSize="11" BorderBrush="#DBE3ED"/>
-    </StackPanel>
-
+    <!-- Editing existing StepId only. New action selection belongs exclusively to
+         the central editor's grouped ActionPalette; no second type list here. -->
     <TextBlock x:Name="ActionDescription" TextWrapping="Wrap" Foreground="#64758C"
      FontSize="11" Margin="0,0,0,13"/>
     <TextBlock Text="步骤名称" Foreground="#61738B" FontWeight="SemiBold"

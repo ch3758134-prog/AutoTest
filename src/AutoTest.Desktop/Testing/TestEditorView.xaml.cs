@@ -87,6 +87,12 @@ public partial class TestEditorView : UserControl
     {
         if (_inspector?.HasPendingEdits == true && !_viewModel.IsApplyingInspector)
             return; // stale async completion may not overwrite an active draft
+        if (context.Original is null)
+        {
+            _inspector = null;
+            InspectorHost.Content = BuildPhaseInspector();
+            return;
+        }
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
             context.Original, context.InitialActionKey, context.CaseOnly);
         editor.ApplyRequested = _viewModel.ApplyInspector;
@@ -125,6 +131,45 @@ public partial class TestEditorView : UserControl
             _focusNameOnNextInspector = false;
             editor.Loaded += (_, _) => editor.FocusName();
         }
+    }
+
+    private UIElement BuildPhaseInspector()
+    {
+        var phaseOrSlot = _viewModel.SelectedItem?.Kind == StepTreeItemKind.Slot;
+        var name = _viewModel.SelectedItem?.Label ?? "测试阶段";
+        var panel = new StackPanel { Margin = new Thickness(14, 16, 14, 12) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = phaseOrSlot ? "流程分支" : "测试阶段",
+            Foreground = new SolidColorBrush(Color.FromRgb(76, 98, 127)),
+            FontSize = 11
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = name,
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 7, 0, 12),
+            TextWrapping = TextWrapping.Wrap
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "在中间步骤表点击该阶段或分支的“＋添加”，选择类型后步骤会立即出现，右侧自动切换为实际参数。",
+            Foreground = new SolidColorBrush(Color.FromRgb(96, 115, 140)),
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 13)
+        });
+        var add = new Button
+        {
+            Content = "＋ 添加步骤",
+            Command = _viewModel.AddStepCommand,
+            Padding = new Thickness(10, 7, 10, 7),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            MinWidth = 110
+        };
+        panel.Children.Add(add);
+        return new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = panel };
     }
 
     private void OpenActionPalette(bool caseOnly)
