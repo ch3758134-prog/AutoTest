@@ -152,6 +152,14 @@ public partial class TestEditorView : UserControl
         if (IsTextEditorHit(origin)) { _dragSource = null; return; }
         var container = origin is null ? null :
             ItemsControl.ContainerFromElement(StepsList, origin) as ListBoxItem;
+        if (container?.DataContext is StepRowProjection clicked &&
+            !ReferenceEquals(_viewModel.SelectedItem, clicked.Item) &&
+            !TryLeaveInspector())
+        {
+            _dragSource = null;
+            e.Handled = true; // stop WPF visually selecting a row that failed validation
+            return;
+        }
         _dragSource = (container?.DataContext as StepRowProjection) is { IsStep: true } row
             ? row : null;
     }
