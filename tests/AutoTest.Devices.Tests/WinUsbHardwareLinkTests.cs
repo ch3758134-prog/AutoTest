@@ -27,6 +27,30 @@ public sealed class WinUsbHardwareLinkTests
         Assert.False(MainControllerUsbIdentity.IsControllerInstance("USB\\VID_1183&PID_58501\\A"));
     }
     [Fact]
+    public void HW_USB_DiscoveryDiagnosticsDistinguishOldDriverFromMissingPhysicalDevice()
+    {
+        const string instance="USB\\VID_1183&PID_5850\\BOARD";
+        var notVisible=ControllerUsbDetectionService.Explain(
+            Array.Empty<WinUsbCandidate>(),Array.Empty<ControllerPnPInstance>());
+        Assert.Equal(0,notVisible.Devices);
+        Assert.Contains("PnP",notVisible.Detail);
+        var oldDriver=ControllerUsbDetectionService.Explain(
+            Array.Empty<WinUsbCandidate>(),[new ControllerPnPInstance(instance,"libusb0")]);
+        Assert.Equal(1,oldDriver.Devices);
+        Assert.Equal(0,oldDriver.Interfaces);
+        Assert.Contains("libusb0",oldDriver.Detail);
+        Assert.Contains("GUID",oldDriver.Summary);
+        var guidMissing=ControllerUsbDetectionService.Explain(
+            Array.Empty<WinUsbCandidate>(),[new ControllerPnPInstance(instance,"WinUSB")]);
+        Assert.Contains("WCID",guidMissing.Detail);
+        var ready=ControllerUsbDetectionService.Explain(
+            [new WinUsbCandidate("verified-device-path",instance)],
+            [new ControllerPnPInstance(instance,"WinUSB")]);
+        Assert.Equal(1,ready.Interfaces);
+        Assert.Contains("可选择主控连接",ready.Detail);
+    }
+
+    [Fact]
     public void HW_USB_02_ExactInstanceSelectionFailsClosedOnMissingOrAmbiguous()
     {
         const string id = "USB\\VID_1183&PID_5850\\INSTANCE_001";
