@@ -17,6 +17,7 @@ using AutoTest.Desktop.Diagnostics;
 using System.Text.Json;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
+using AutoTest.Testing.Authoring;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -128,6 +129,8 @@ public sealed class MainWindowViewModel : BindableBase
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
             () => HasProject && !IsBusy);
         NewTestProjectCommand = new DelegateCommand(async () => await CreateTestProjectAsync(),
+            () => HasProject && !IsBusy);
+        CreateStarterProjectCommand = new DelegateCommand(async () => await CreateStarterProjectAsync(),
             () => HasProject && !IsBusy);
         ImportDbcCommand = new DelegateCommand(async () => await ImportDbcAsync(),
             () => HasProject && !IsBusy);
@@ -295,6 +298,7 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenDbcToolCommand { get; }
     public DelegateCommand HelpCommand { get; }
     public DelegateCommand OpenFirstTestProjectCommand { get; }
+    public DelegateCommand CreateStarterProjectCommand { get; }
     public DelegateCommand OpenFirstTestProgramCommand { get; }
     public DelegateCommand OpenFirstConfigurationCommand { get; }
     public DelegateCommand OpenProjectConfigurationOverviewCommand { get; }
@@ -1105,6 +1109,52 @@ public sealed class MainWindowViewModel : BindableBase
             ActivateEditor("test|" + entry.Id, new TestEditorView(editor),
                 "测试程序 · " + entry.Name, editor.ConfirmClose);
             StatusMessage = "测试程序已创建并打开：" + entry.Name;
+        });
+    }
+
+    /// <summary>
+    /// Explicit one-click creation of a genuine, blank first test project and
+    /// first TEST document; never seeds fake ECU instructions or run results.
+    /// Each resource and the project entry use the existing formal codecs and
+    /// version-pinned project workspace service.
+    /// </summary>
+    private async Task CreateStarterProjectAsync()
+    {
+        if (!HasProject) return;
+        if (TestProjectCount > 0)
+        {
+            await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync);
+            return;
+        }
+        var name = _fileDialogs.AskResourceName("建立首个测试项目和空白用例", "自动测试项目");
+        if (name is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var projectAsset = await _workspace.CreateTestProjectAsync(name);
+            var names = _workspace.Current?.Definition.Assets.Select(x => x.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var number = 1;
+            while (names.Contains("测试用例 " + number.ToString("D2"))) number++;
+            var caseAsset = await _workspace.CreateTestProgramAsync("测试用例 " + number.ToString("D2"));
+            var projectSession = await _workspace.OpenTestProjectEditorAsync(projectAsset.Id);
+            var entry = new TestProjectEntry(Guid.NewGuid(), caseAsset.Id.Value,
+                caseAsset.Revision, caseAsset.Sha256, caseAsset.Name, true);
+            var linked = new TestProjectDocument(projectSession.Document.SchemaVersion,
+                projectSession.Document.Id, projectSession.Document.Name, [entry]);
+            projectSession = await _workspace.SaveTestProjectEditorAsync(projectSession, linked);
+
+            var projectEditor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs,
+                projectSession, _runSelections);
+            BindProjectNavigation(projectAsset, projectEditor);
+            ActivateEditor("project|" + projectAsset.Id, new TestProjectWorkbenchView(projectEditor),
+                "测试项目 · " + projectAsset.Name, projectEditor.ConfirmClose);
+
+            var opened = await _workspace.OpenTestEditorAsync(caseAsset.Id);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, opened, _realTest);
+            ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor),
+                "测试用例 · " + caseAsset.Name, editor.ConfirmClose);
+            SelectAsset(caseAsset.Id);
+            StatusMessage = "已建立正式测试项目与空白用例。可直接在准备／测试／清理阶段添加真实步骤。";
         });
     }
 

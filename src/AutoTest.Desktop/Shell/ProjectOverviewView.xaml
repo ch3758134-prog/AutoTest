@@ -56,6 +56,31 @@
       </StackPanel>
      </Button>
     </Grid>
+    <Border Background="#EDF5FF" BorderBrush="#CBDEF5" BorderThickness="1"
+     CornerRadius="7" Padding="14,12" Margin="0,14,0,0">
+     <Border.Style>
+      <Style TargetType="{x:Type Border}">
+       <Setter Property="Visibility" Value="Collapsed"/>
+       <Style.Triggers>
+        <DataTrigger Binding="{Binding TestProjectCount}" Value="0">
+         <Setter Property="Visibility" Value="Visible"/>
+        </DataTrigger>
+       </Style.Triggers>
+      </Style>
+     </Border.Style>
+     <DockPanel>
+      <Button DockPanel.Dock="Right" Content="建立项目并直接编辑空白用例"
+       Command="{Binding CreateStarterProjectCommand}"
+       Style="{StaticResource AtPrimaryButton}" Margin="12,0,0,0"
+       VerticalAlignment="Center"/>
+      <StackPanel>
+       <TextBlock Text="开始编写第一个自动测试" FontWeight="SemiBold" FontSize="13"
+        Foreground="#245B96" Margin="0,0,0,5"/>
+       <TextBlock Text="创建真实测试项目和一条空白 TEST 用例，直接进入准备／测试／清理编辑器；不会生成任何模拟步骤。"
+        Foreground="#597491" FontSize="11" TextWrapping="Wrap"/>
+      </StackPanel>
+     </DockPanel>
+    </Border>
     <WrapPanel Margin="0,15,0,0">
      <Button Content="打开手动台架" IsEnabled="False"
       ToolTip="完整手动工位界面尚未接入实体安全服务" Margin="0,0,8,7"/>
