@@ -146,7 +146,8 @@
                 </DataTrigger>
                </Style.Triggers>
               </Style>
-             </Button>
+             </Button.Style>
+            </Button>
            </StackPanel>
           </StackPanel>
          </DataTemplate>
