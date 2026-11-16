@@ -51,8 +51,10 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
             new(Title, () => dbcVm.IsBusy, () => dbcVm.IsDirty, dbcVm.SaveForCloseAsync),
         ConfigurationWorkbenchView when Editor is ConfigurationWorkbenchViewModel configVm =>
             new(Title, () => configVm.IsBusy, () => configVm.IsDirty, configVm.SaveForCloseAsync),
-        ProjectConfigurationOverviewView view =>
-            new(Title, () => view.IsBusy, () => view.HasUnsavedDrafts, view.SaveForCloseAsync),
+        ProjectConfigurationOverviewView configurationOverview =>
+            new(Title, () => configurationOverview.IsBusy,
+                () => configurationOverview.HasUnsavedDrafts,
+                configurationOverview.SaveForCloseAsync),
         _ => new(Title, () => false, () => false, () => Task.FromResult(true))
     };
 }
