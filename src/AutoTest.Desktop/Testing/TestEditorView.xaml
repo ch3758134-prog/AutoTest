@@ -76,7 +76,9 @@
   </Border>
 
   <ListBox x:Name="StepsList" Grid.Row="2" ItemsSource="{Binding StepRows}"
-   SelectedItem="{Binding SelectedRow,Mode=TwoWay}" BorderThickness="0" Background="White"
+   SelectedItem="{Binding SelectedRow,Mode=TwoWay}"
+   SelectionChanged="StepsList_SelectionChanged"
+   BorderThickness="0" Background="White"
    HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Auto"
    ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True"
    VirtualizingStackPanel.IsVirtualizing="True"

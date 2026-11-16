@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace AutoTest.Desktop.Testing;
 
@@ -12,6 +13,7 @@ public partial class TestEditorView : UserControl
     private readonly TestEditorViewModel _viewModel;
     private TestStepInspector? _inspector;
     private bool _inspectorInitialized;
+    private bool _restoringStepRow;
     private bool _focusNameOnNextInspector;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
@@ -115,6 +117,18 @@ public partial class TestEditorView : UserControl
             _viewModel.SelectedItem?.Kind != row.Item.Kind) return;
         if (_viewModel.AddChildCommand.CanExecute())
             _viewModel.AddChildCommand.Execute();
+    }
+
+    private void StepsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_restoringStepRow || !ReferenceEquals(e.OriginalSource, StepsList)) return;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (ReferenceEquals(StepsList.SelectedItem, _viewModel.SelectedRow)) return;
+            _restoringStepRow = true;
+            try { StepsList.SelectedItem = _viewModel.SelectedRow; }
+            finally { _restoringStepRow = false; }
+        }), DispatcherPriority.Background);
     }
 
     private void StepExpand_Click(object sender, RoutedEventArgs e)
