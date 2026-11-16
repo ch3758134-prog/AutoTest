@@ -95,6 +95,32 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+
+    /// <summary>F2 frozen-job consent. Unlike physical TEST RUN this grants no
+    /// arbitrary CAN ID stream; each actual on-wire frame must be prepared exactly.</summary>
+    public Guid AuthorizeFlashJob(string fingerprint,string typed,uint appId,uint bootId,int maxFrames)
+    {
+        lock(_sync)
+        {
+            if(_state!=WinUsbLinkState.Connected)
+                throw new IOException("Physical flash requires a connected controller.");
+            return _fence.AuthorizeProgrammingJob(fingerprint,typed,appId,bootId,_epoch,maxFrames);
+        }
+    }
+    public void PrepareExactFlashFrame(Guid token,ReadOnlySpan<byte> exactCan15)
+    {
+        lock(_sync)
+        {
+            if(_state!=WinUsbLinkState.Connected)
+                throw new IOException("Physical flash link is not connected.");
+            _fence.PrepareProgrammingCanFrame(token,exactCan15,_epoch);
+        }
+    }
+    public void RevokeFlashJob(Guid token)
+    {
+        lock(_sync) _fence.RevokeProgrammingJob(token);
+    }
+
     public void AuthorizePhysicalTestRun(string fingerprint, string typedConfirmation,
         IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn)
     {

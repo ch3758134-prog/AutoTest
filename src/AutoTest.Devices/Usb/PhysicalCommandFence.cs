@@ -17,6 +17,87 @@ public sealed class PhysicalCommandFence
     private string? _runFingerprint;
 
 
+
+    // Programming is separate from F1 DID and physical TEST RUN authorization.
+    // Only a single, exact CAN1 frame is queued at a time. A matching authorized
+    // job fingerprint alone NEVER permits arbitrary CAN frames or output commands.
+    private sealed class ProgrammingGrant
+    {
+        public required Guid Token;
+        public required long Generation;
+        public required uint AppId, BootId;
+        public required DateTimeOffset Expires;
+        public required int FrameLimit;
+        public int Consumed;
+        public byte[]? NextExact;
+    }
+    private ProgrammingGrant? _programming;
+
+    public static string FlashConfirmation(string planSha256) =>
+        "AUTHORIZE ECU FLASH " + planSha256;
+
+    public Guid AuthorizeProgrammingJob(string planSha256,string typed,
+        uint appId,uint bootId,long generation,int frameLimit)
+    {
+        if(planSha256.Length!=64 || !planSha256.All(Uri.IsHexDigit) ||
+            !string.Equals(typed,FlashConfirmation(planSha256),StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("Exact frozen ECU flash SHA256 authorization required.");
+        if(generation<=0 || frameLimit is < 1 or > 500000 ||
+            appId>0x1FFFFFFF || bootId>0x1FFFFFFF || appId==0 || bootId==0)
+            throw new ArgumentException("Invalid physical flash grant scope.");
+        lock(_sync)
+        {
+            if(_programming is not null || _runFingerprint is not null || _didGrant is not null)
+                throw new InvalidOperationException("Another physical CAN scope is already active.");
+            var token=Guid.NewGuid();
+            _programming=new ProgrammingGrant
+            {
+                Token=token,Generation=generation,AppId=appId,BootId=bootId,
+                FrameLimit=frameLimit,Expires=DateTimeOffset.UtcNow.AddMinutes(40)
+            };
+            return token;
+        }
+    }
+
+    /// <summary>Queues one exact 15-byte CAN1 USB payload, consumed before native WritePipe.
+    /// This is NOT public arbitrary CAN authority: a live approved programming token
+    /// and one of the two frozen APP/BOOT TX IDs are required for every frame.</summary>
+    public void PrepareProgrammingCanFrame(Guid token,ReadOnlySpan<byte> payload,long generation)
+    {
+        lock(_sync)
+        {
+            var g=_programming;
+            if(g is null || token==Guid.Empty || g.Token!=token ||
+                g.Generation!=generation || DateTimeOffset.UtcNow>=g.Expires ||
+                g.Consumed>=g.FrameLimit || g.NextExact is not null)
+                throw new UnauthorizedAccessException("Missing or exhausted physical programming frame permit.");
+            if(payload.Length!=15 || payload[0]!=1 || payload[1]>1 || payload[6]>8 ||
+                payload[6]<1)
+                throw new ArgumentException("Programming transport must use classic CAN1.");
+            uint id=BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(2,4));
+            if((id!=g.AppId && id!=g.BootId) ||
+                payload[1]!=(id>0x7FFu?1:0))
+                throw new UnauthorizedAccessException("Programming CAN frame ID outside approved APP/BOOT TX scope.");
+            g.NextExact=payload.ToArray();
+        }
+    }
+    public void RevokeProgrammingJob(Guid token)
+    {
+        lock(_sync)
+            if(_programming?.Token==token) _programming=null;
+    }
+    private bool TryConsumeProgramming(UsbRequest request,long generation)
+    {
+        var g=_programming;
+        if(g is null || g.Generation!=generation || DateTimeOffset.UtcNow>=g.Expires ||
+            g.Consumed>=g.FrameLimit || g.NextExact is null ||
+            request.Command!=MainControllerCodec.CanSend ||
+            !request.Payload.AsSpan().SequenceEqual(g.NextExact)) return false;
+        g.NextExact=null;
+        g.Consumed++;
+        return true;
+    }
+
     // Separate one-DID grant. Never piggyback on the broad physical test-run whitelist.
     private sealed class DidGrant
     {
@@ -195,6 +276,7 @@ public sealed class PhysicalCommandFence
         if (IsReadOnly(request.Command, request.Payload)) return;
         lock (_sync)
         {
+            if (TryConsumeProgramming(request, connectionGeneration)) return;
             if (TryConsumeReadDid(request, connectionGeneration)) return;
             if (request.Command == MainControllerCodec.CanSend && _singleCanPayload is not null &&
                 _authorizedConnection == connectionGeneration && DateTimeOffset.UtcNow < _canExpiry &&
@@ -231,6 +313,7 @@ public sealed class PhysicalCommandFence
     {
         lock (_sync)
         {
+            _programming = null;
             _didGrant = null;
             _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
             _runCan = null; _runIgn = false; _remainingWrites = 0;
