@@ -868,8 +868,9 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     {
         if (IsBusy) return false;
         if (!IsDirty) return true;
+        var previousRevision = Revision;
         await SaveAsync();
-        return !IsBusy && !IsDirty;
+        return !IsBusy && !IsDirty && Revision > previousRevision;
     }
 
     private async Task SelectConfigurationAsync()

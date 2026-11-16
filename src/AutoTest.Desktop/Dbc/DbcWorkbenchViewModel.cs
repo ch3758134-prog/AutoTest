@@ -180,8 +180,9 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     {
         if (IsBusy) return false;
         if (!IsDirty) return true;
+        var previousRevision = AssetRevision;
         await SaveAsync();
-        return !IsBusy && !IsDirty;
+        return !IsBusy && !IsDirty && AssetRevision > previousRevision;
     }
 
     private async Task SaveAsync()

@@ -333,8 +333,9 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     {
         if (IsBusy) return false;
         if (!IsDirty) return true;
+        var previousRevision = Revision;
         await SaveAsync();
-        return !IsBusy && !IsDirty;
+        return !IsBusy && !IsDirty && Revision > previousRevision;
     }
 
     private async Task SaveAsync()

@@ -81,6 +81,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly DbcEditorDialogs _dbcDialogs;
     private readonly TestEditorDialogs _testDialogs;
     private EditorTabModel? _activeEditorTab;
+    private bool _closeGuardActive;
     public ObservableCollection<EditorTabModel> OpenEditors { get; } = new();
     private readonly RecentProjectStore _recentProjects;
     private string _statusMessage = "尚未打开工程";
@@ -593,13 +594,23 @@ public sealed class MainWindowViewModel : BindableBase
     /// A pending TEST inspector is counted as a draft even when its StepNode has not
     /// yet been applied to the formal TEST document.
     /// </summary>
-    public Task<bool> PrepareEditorsForCloseAsync(IEnumerable<EditorTabModel>? subset = null)
+    public async Task<bool> PrepareEditorsForCloseAsync(IEnumerable<EditorTabModel>? subset = null)
     {
-        var documents = (subset ?? OpenEditors).Select(x => x.CloseDraft).ToList();
-        documents.Insert(0, new CloseDraftDocument("当前工程/设备操作",
-            () => IsBusy || _hardwareBusy || _realTest.IsRunning,
-            () => false, () => Task.FromResult(true)));
-        return CloseDraftGuard.PrepareAsync(documents, PromptDraftClose, ReportCloseBlocked);
+        if (_closeGuardActive)
+        {
+            StatusMessage = "已有关闭确认或保存操作正在进行，请先完成当前操作。";
+            return false;
+        }
+        _closeGuardActive = true;
+        try
+        {
+            var documents = (subset ?? OpenEditors).Select(x => x.CloseDraft).ToList();
+            documents.Insert(0, new CloseDraftDocument("当前工程/设备操作",
+                () => IsBusy || _hardwareBusy || _realTest.IsRunning,
+                () => false, () => Task.FromResult(true)));
+            return await CloseDraftGuard.PrepareAsync(documents, PromptDraftClose, ReportCloseBlocked);
+        }
+        finally { _closeGuardActive = false; }
     }
 
     private static CloseDraftDecision PromptDraftClose(IReadOnlyList<string> names)
