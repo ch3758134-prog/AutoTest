@@ -68,6 +68,7 @@ public sealed class MainWindowViewModel : BindableBase
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
     private ResourceTreeNode? _selectedResource;
+    private readonly ProjectRunSelectionState _runSelections = new();
 
     public MainWindowViewModel(
         ProjectWorkspaceService workspace, NewProjectDialogService newDialog,
@@ -77,6 +78,7 @@ public sealed class MainWindowViewModel : BindableBase
         LiveDbcSignalService liveSignals)
     {
         _workspace = workspace;
+        _runSelections.Changed += RefreshProjectCounts;
         _hardware = hardware;
         _realTest = realTest;
         _liveSignals = liveSignals;
@@ -279,6 +281,14 @@ public sealed class MainWindowViewModel : BindableBase
         if (kind == ProjectWorkspaceService.TestProjectKind) await OpenSelectedTestProjectAsync();
         else await OpenSelectedTestProgramAsync();
     }
+    public void ShowOverview()
+    {
+        if (_workspace.Current is null) return;
+        EnsureOverview();
+        var home = OpenEditors.FirstOrDefault(x => x.Key == "home");
+        if (home is not null) ActiveEditorTab = home;
+    }
+
     private void EnsureOverview()
     {
         if (_workspace.Current is null || OpenEditors.Any(x => x.Key == "home")) return;
@@ -700,30 +710,51 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
+    private void RefreshProjectCounts(Guid projectId)
+    {
+        var node = AllNodes(ResourceNodes).FirstOrDefault(n =>
+            n.Role == "Project" && n.Asset?.Id.Value == projectId);
+        if (node is not null) UpdateProjectCount(node);
+    }
+
+    private static void UpdateProjectCount(ResourceTreeNode node)
+    {
+        var rows = node.Children.Where(n => n.IsRunSelectable).ToArray();
+        node.CountLabel = rows.Count(n => n.RunSelection?.IsSelected == true) +
+            "/" + rows.Length;
+    }
+
+    private ResourceTreeNode CreateCaseLink(AssetEntry project, Guid itemId, AssetEntry? asset,
+        string name, bool enabled, int order)
+    {
+        var choice = _runSelections.Get(project.Id.Value, itemId, enabled);
+        return new ResourceTreeNode(name, "", "项目中的第 " + order + " 条执行引用 · 临时勾选",
+            ProjectWorkspaceService.TestProgramKind, asset, asset is null, "Case", "", choice);
+    }
+
     private void BindProjectNavigation(AssetEntry projectAsset, TestProjectWorkbenchViewModel editor)
     {
         void UpdateTree()
         {
-            var node = AllNodes(ResourceNodes).FirstOrDefault(x => x.Asset?.Id == projectAsset.Id);
+            var node = AllNodes(ResourceNodes).FirstOrDefault(x =>
+                x.Role == "Project" && x.Asset?.Id == projectAsset.Id);
             if (node is null) return;
             node.Children.Clear();
             foreach (var row in editor.Packages)
             {
                 var asset = _workspace.Current?.Definition.Assets.FirstOrDefault(x =>
                     x.Id.Value == row.AssetId && x.Kind == ProjectWorkspaceService.TestProgramKind);
-                if (asset is null) continue;
-                node.Children.Add(new ResourceTreeNode(
-                    (row.RunSelected ? "☑ " : "☐ ") + row.Order.ToString("D2") + "  " + row.Name,
-                    "▤", "项目引用 · " + row.Revision + " · " + row.Sha256,
-                    ProjectWorkspaceService.TestProgramKind, asset));
+                node.Children.Add(CreateCaseLink(projectAsset, row.ItemId, asset,
+                    row.Name, row.Enabled, row.Order));
             }
+            UpdateProjectCount(node);
         }
         editor.OpenPackageRequested = packageId =>
         {
             if (_workspace.Current?.Definition.Assets.Any(x =>
                 x.Id.Value == packageId && x.Kind == ProjectWorkspaceService.TestProgramKind) != true)
             {
-                StatusMessage = "BLOCKED_RESOURCE：项目引用的测试用例已不存在于当前工程。";
+                StatusMessage = "BLOCKED_RESOURCE：项目引用的测试用例不在当前工程中。";
                 return;
             }
             SelectAsset(AssetId.Create(packageId));
@@ -731,6 +762,38 @@ public sealed class MainWindowViewModel : BindableBase
         };
         editor.PackageRowsChanged = UpdateTree;
         UpdateTree();
+    }
+
+    private async Task PopulateProjectCasesAsync(OpenProjectContext snapshot,
+        AssetEntry project, ResourceTreeNode node)
+    {
+        try
+        {
+            var session = await _workspace.OpenTestProjectEditorAsync(project.Id);
+            if (!ReferenceEquals(snapshot, _workspace.Current) ||
+                !AllNodes(ResourceNodes).Contains(node) ||
+                OpenEditors.Any(x => x.Key == "project|" + project.Id)) return;
+            node.Children.Clear();
+            var order = 0;
+            foreach (var entry in session.Document.Packages)
+            {
+                var asset = snapshot.Definition.Assets.FirstOrDefault(x =>
+                    x.Id.Value == entry.PackageAssetId &&
+                    x.Kind == ProjectWorkspaceService.TestProgramKind);
+                node.Children.Add(CreateCaseLink(project, entry.ItemId, asset,
+                    asset?.Name ?? entry.DisplayName, entry.Enabled, ++order));
+            }
+            UpdateProjectCount(node);
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            UnauthorizedAccessException or ArgumentException or ProjectDataException)
+        {
+            if (!ReferenceEquals(snapshot, _workspace.Current)) return;
+            node.Children.Clear();
+            node.Children.Add(new ResourceTreeNode("引用读取失败", "", error.Message,
+                role: "Placeholder", isPlaceholder: true));
+            node.CountLabel = "!";
+        }
     }
 
     private void RebuildResourceTree()
@@ -744,71 +807,85 @@ public sealed class MainWindowViewModel : BindableBase
             return;
         }
 
-        var root = new ResourceTreeNode(current.Definition.Name, "▣", "当前工程的实际资源清单");
-        var automatic = new ResourceTreeNode("自动测试", "▣", "测试项目与用例由正式工程资源组织");
-        var groups = new[]
-        {
-            (Key: ProjectWorkspaceService.TestProgramKind, Title: "测试用例",
-             Icon: "▤"),
-            (Key: ProjectWorkspaceService.TestProjectKind, Title: "测试项目",
-             Icon: "▥"),
-            (Key: ProjectWorkspaceService.TestConfigurationKind, Title: "被测系统配置 · TCF",
-             Icon: "⚙"),
-            (Key: ProjectWorkspaceService.BenchConfigurationKind, Title: "台架配置 · TBC",
-             Icon: "◈"),
-            (Key: ProjectWorkspaceService.DbcKind, Title: "DBC 数据库",
-             Icon: "▥"),
-            (Key: ProjectWorkspaceService.ControllerKind, Title: "控制器与按键配置",
-             Icon: "⚙"),
-            (Key: ProjectWorkspaceService.WaveSettingsKind, Title: "波形判定配置",
-             Icon: "⌁"),
-            (Key: ProjectWorkspaceService.WaveKind, Title: "波形证据",
-             Icon: "⌁"),
-            (Key: ProjectWorkspaceService.FlashSettingsKind, Title: "烧录配置",
-             Icon: "◫"),
-            (Key: ProjectWorkspaceService.FirmwareKind, Title: "固件资源",
-             Icon: "◫"),
-            (Key: ProjectWorkspaceService.ScanSettingsKind, Title: "扫码匹配配置",
-             Icon: "▤")
-        };
+        // HTML navigation has a visible project root, a project-first test section,
+        // and a separate categorized asset section. Do not nest the latter under root.
+        ResourceNodes.Add(new ResourceTreeNode(current.Definition.Name, "", current.ManifestPath,
+            role: "Root"));
+        ResourceNodes.Add(new ResourceTreeNode("自动测试", "", "测试项目与用例",
+            ProjectWorkspaceService.TestProjectKind, role: "Section"));
         var assets = current.Definition.Assets;
-        foreach (var category in groups)
+        var projects = assets.Where(x => x.Kind == ProjectWorkspaceService.TestProjectKind)
+            .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        foreach (var project in projects)
         {
-            var entries = assets.Where(x => x.Kind.Equals(category.Key, StringComparison.OrdinalIgnoreCase))
+            var node = new ResourceTreeNode(project.Name, "", project.RelativePath,
+                ProjectWorkspaceService.TestProjectKind, project, role: "Project", count: "…");
+            ResourceNodes.Add(node);
+            _ = PopulateProjectCasesAsync(current, project, node);
+        }
+        if (projects.Length == 0)
+            ResourceNodes.Add(new ResourceTreeNode("暂无测试项目", "", "点击自动测试分区的＋添加",
+                isPlaceholder: true, role: "Placeholder"));
+
+        // Independently saved TEST assets remain visible without creating duplicate
+        // business entities; case links refer to the exact same AssetId.
+        var allCases = assets.Where(x => x.Kind == ProjectWorkspaceService.TestProgramKind)
+            .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        var unused = new ResourceTreeNode("未加入项目的用例", "", "独立 TEST 资产",
+            role: "Folder", count: allCases.Length.ToString());
+        foreach (var entry in allCases)
+            unused.Children.Add(new ResourceTreeNode(entry.Name, "", entry.RelativePath,
+                entry.Kind, entry, role: "Case"));
+        ResourceNodes.Add(unused);
+        ResourceNodes.Add(new ResourceTreeNode("工程资源", "", "固定工程的配置及资产",
+            role: "Section"));
+
+        var categories = new[]
+        {
+            (ProjectWorkspaceService.DbcKind, "DBC 报文"),
+            (ProjectWorkspaceService.ControllerKind, "按键配置"),
+            (ProjectWorkspaceService.WaveKind, "波形记录"),
+            (ProjectWorkspaceService.WaveSettingsKind, "波形判定配置"),
+            (ProjectWorkspaceService.TestConfigurationKind, "被测系统配置 · TCF"),
+            (ProjectWorkspaceService.BenchConfigurationKind, "台架配置 · TBC"),
+            (ProjectWorkspaceService.FlashSettingsKind, "烧录配置"),
+            (ProjectWorkspaceService.FirmwareKind, "固件资源"),
+            (ProjectWorkspaceService.ScanSettingsKind, "扫码匹配配置")
+        };
+        foreach (var (kind, label) in categories)
+        {
+            var entries = assets.Where(x => x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
-            var group = new ResourceTreeNode(category.Title + " (" + entries.Length + ")",
-                category.Icon,
-                "工程资源分类", category.Key);
+            var group = new ResourceTreeNode(label, "", "实际工程资产", kind,
+                role: "Folder", count: entries.Length.ToString());
             foreach (var entry in entries)
                 group.Children.Add(ToAssetNode(entry));
-            if (category.Key is ProjectWorkspaceService.TestProgramKind or ProjectWorkspaceService.TestProjectKind)
-                automatic.Children.Add(group);
-            else root.Children.Add(group);
+            ResourceNodes.Add(group);
         }
-        root.Children.Insert(0, automatic);
-        var defined = groups.Select(x => x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var defined = categories.Select(x => x.Item1)
+            .Append(ProjectWorkspaceService.TestProjectKind)
+            .Append(ProjectWorkspaceService.TestProgramKind)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var extras = assets.Where(x => !defined.Contains(x.Kind)).ToArray();
         if (extras.Length > 0)
         {
-            var other = new ResourceTreeNode("其他资源 (" + extras.Length + ")", "▦",
-                "来自工程清单的其他资源");
-            foreach (var entry in extras) other.Children.Add(ToAssetNode(entry));
-            root.Children.Add(other);
+            var group = new ResourceTreeNode("其他资源", "", "未归类工程资产",
+                role: "Folder", count: extras.Length.ToString());
+            foreach (var entry in extras) group.Children.Add(ToAssetNode(entry));
+            ResourceNodes.Add(group);
         }
-        ResourceNodes.Add(root);
+
         if (selectedId is { } id)
         {
-            _selectedResource = AllNodes(root.Children)
-                .FirstOrDefault(x => x.Asset?.Id == id);
+            _selectedResource = AllNodes(ResourceNodes).FirstOrDefault(x => x.Asset?.Id == id);
             if (_selectedResource is not null) _selectedResource.IsSelected = true;
         }
         RaiseSelectedResourceChanges();
     }
 
     private static ResourceTreeNode ToAssetNode(AssetEntry entry) => new(
-        entry.Name, "◦",
-        "真实工程资源 · " + entry.RelativePath + " · Revision " + entry.Revision,
-        entry.Kind, entry);
+        entry.Name, "", "正式工程资源 · " + entry.RelativePath + " · Revision " + entry.Revision,
+        entry.Kind, entry, role: "Asset");
 
     private void OpenNewProject()
     {
@@ -859,7 +936,7 @@ public sealed class MainWindowViewModel : BindableBase
             var entry = await _workspace.CreateTestProjectAsync(name);
             SelectAsset(entry.Id);
             var session = await _workspace.OpenTestProjectEditorAsync(entry.Id);
-            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session);
+            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections);
             BindProjectNavigation(entry, editor);
             ActivateEditor("project|" + entry.Id, new TestProjectWorkbenchView(editor),
                 "测试项目 · " + entry.Name, editor.ConfirmClose);
@@ -980,7 +1057,7 @@ public sealed class MainWindowViewModel : BindableBase
         await RunOperationAsync(async () =>
         {
             var session = await _workspace.OpenTestProjectEditorAsync(asset.Id);
-            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session);
+            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections);
             BindProjectNavigation(asset, editor);
             ActivateEditor("project|" + asset.Id, new TestProjectWorkbenchView(editor),
                 asset.Name, editor.ConfirmClose);
@@ -1050,9 +1127,7 @@ public sealed class MainWindowViewModel : BindableBase
 
     private void SelectAsset(AssetId id)
     {
-        var root = ResourceNodes.FirstOrDefault();
-        SelectResource(root is null ? null :
-            AllNodes(root.Children).FirstOrDefault(x => x.Asset?.Id == id));
+        SelectResource(AllNodes(ResourceNodes).FirstOrDefault(x => x.Asset?.Id == id));
     }
 
     private async Task RunOperationAsync(Func<Task> operation)
