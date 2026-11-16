@@ -21,7 +21,7 @@ public sealed record CanToolFlashJob(
     int AlignmentBlockLength,string AlignmentSource,
     ImmutableArray<FlashAlignedBlock> Blocks,
     string FirmwarePath,string FirmwareSha256,string SecurityLibraryPath,
-    string SecuritySha256,string TargetLabel,bool LegacyTailSignature,string Fingerprint,
+    string SecuritySha256,string SecurityProviderKind,string TargetLabel,bool LegacyTailSignature,string Fingerprint,
     long SourceBytes,long PlannedBytes)
 {
     public string Consent => "AUTHORIZE ECU FLASH "+Fingerprint;
@@ -121,19 +121,19 @@ public sealed record CanToolFlashJob(
         var blocks=prepared.Select(p=>new FlashAlignedBlock(p.Key,
             ImmutableArray.CreateRange(p.Value))).ToImmutableArray();
         string dll=Path.GetFullPath(keyDll);
-        var details=NativeZlgKeyProvider.Inspect(dll);
-        if(!details.NativeX64)
-            throw new FormatException("需要带有 ZLGKey 导出的原生 x64 DLL；托管 SafetyFile.dll 不能直接使用。");
+        var details=CanToolSecurityProvider.Inspect(dll);
+        // Both original-source ABIs are supported: the uploaded managed SafetyFile
+        // and the reference CanTool native Cdecl ZLGKey; never silently fallback.
         string effective=string.Join("\n",config.Parameters.Select(p=>p.Name+"="+p.Value.Trim()));
         string bound=$"CANTOOL-FLASH-F2-v1\nCAN1\n{targetLabel.Trim()}\n"+
             $"APP {appTx:X8} {appRx:X8}\nBOOT {bootTx:X8} {bootRx:X8}\n"+
             $"FLASH {first:X8}-{last:X8} BLOCK {blockLength:X8} BAUD {baud}\n"+
-            $"IMAGE {inspected.Sha256}\nDLL {details.Sha256}\nLEGACY_SIGNATURE={legacyTailSignature}\n{effective}\n"+
+            $"IMAGE {inspected.Sha256}\nDLL {details.Sha256}\nPROVIDER={details.Kind}\nLEGACY_SIGNATURE={legacyTailSignature}\n{effective}\n"+
             string.Join("\n",blocks.Select(x=>$"{x.Address:X8}:{Convert.ToHexString(SHA256.HashData(x.Bytes.AsSpan()))}"));
         string hash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(bound)));
         return new(app,boot,first,last,baud,checked((int)blockLength),blockSource,
             blocks,Path.GetFullPath(firmwarePath),inspected.Sha256,dll,details.Sha256,
-            targetLabel.Trim(),legacyTailSignature,hash,image.ByteCount,blocks.Sum(x=>(long)x.Bytes.Length));
+            details.Kind.ToString(),targetLabel.Trim(),legacyTailSignature,hash,image.ByteCount,blocks.Sum(x=>(long)x.Bytes.Length));
     }
 
     private static UdsEndpointProfile Endpoint(uint tx,uint rx)

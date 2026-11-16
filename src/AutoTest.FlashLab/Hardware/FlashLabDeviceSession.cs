@@ -228,8 +228,9 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                     System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(job.FirmwarePath))),
                     job.FirmwareSha256,StringComparison.OrdinalIgnoreCase))
                 throw new IOException("烧录镜像在创建冻结任务后改变。");
-            var key=NativeZlgKeyProvider.Inspect(job.SecurityLibraryPath);
-            if(!string.Equals(key.Sha256,job.SecuritySha256,StringComparison.OrdinalIgnoreCase))
+            var key=CanToolSecurityProvider.Inspect(job.SecurityLibraryPath);
+            if(!string.Equals(key.Sha256,job.SecuritySha256,StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(key.Kind.ToString(),job.SecurityProviderKind,StringComparison.Ordinal))
                 throw new IOException("Key DLL 在创建冻结任务后改变。");
             long frames=(job.PlannedBytes/6L)*3L+5000L+job.Blocks.Length*50L;
             if(frames is < 1 or > 500000L)

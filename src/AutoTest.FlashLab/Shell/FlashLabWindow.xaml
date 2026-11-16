@@ -105,7 +105,7 @@
      </DataGrid>
      <TextBlock Grid.Row="2" Text="{Binding Unknown}" TextWrapping="Wrap" Margin="8,3"
        Foreground="#73839A" FontSize="11"/>
-     <TextBlock Grid.Row="3" Text="参考配置仅供研究；不自动配置主控波特率，不加载 Seed/Key DLL，不触发烧录。"
+     <TextBlock Grid.Row="3" Text="XML 来源参数不会自动改主控波特率；F2 通过独立安全算法选择框载入文件，执行前需冻结任务和现场确认。"
        FontSize="11" Foreground="#A65E20" Margin="8,3" TextWrapping="Wrap"/>
     </Grid>
    </GroupBox>
@@ -179,11 +179,11 @@
         <TextBox x:Name="TargetEcuBox" MinWidth="220" ToolTip="现场确认后手动填写；不允许自动采用 CanTool 样本 ECU"/>
        </DockPanel>
        <DockPanel Margin="5,3">
-        <Button DockPanel.Dock="Right" Content="选择 Seed/Key DLL..." Click="ChooseKeyDll_Click"/>
+        <Button DockPanel.Dock="Right" Content="选择安全/Seed-Key DLL..." Click="ChooseKeyDll_Click"/>
         <TextBlock x:Name="KeyDllPathLabel" Text="未选择算法 DLL" VerticalAlignment="Center"
           TextTrimming="CharacterEllipsis" Margin="5"/>
        </DockPanel>
-       <TextBlock x:Name="KeyDllInfoLabel" Text="SafetyFile.dll 为托管 DLL；仅原生 x64 ZLGKey ABI 可直接用于参考流程。"
+       <TextBlock x:Name="KeyDllInfoLabel" Text="支持 SafetyFile.dll 的托管 SafetyVerificate(byte[]) 接口，或原生 x64 ZLGKey；仅选定库，不自动替换算法。"
          Foreground="#8D5B21" FontSize="11" Margin="7,2" TextWrapping="Wrap"/>
        <CheckBox x:Name="LegacyTailSignatureCheck" Margin="7,5,5,3"
          Content="按原 CanTool 在 Flash 最后4字节写入 12 34 56 78（仅确认目标 ECU 要求时选择）"

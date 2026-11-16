@@ -254,23 +254,21 @@ public partial class FlashLabWindow : Window
     {
         var dialog=new OpenFileDialog
         {
-            Title="选择 CanTool 的原生 x64 ZLGKey 算法 DLL（不会自动执行）",
+            Title="选择安全算法文件：SafetyFile.dll（托管）或 ZLGKey（原生）（此步骤不执行）",
             Filter="Windows DLL (*.dll)|*.dll|全部文件 (*.*)|*.*"
         };
         if(dialog.ShowDialog(this)!=true)return;
         try
         {
-            var inspection=NativeZlgKeyProvider.Inspect(dialog.FileName);
+            var inspection=CanToolSecurityProvider.Inspect(dialog.FileName);
             _seedDllPath=inspection.Path;
             InvalidateFlashPreview();
             KeyDllPathLabel.Text=inspection.Path;
-            KeyDllInfoLabel.Text=$"SHA256={inspection.Sha256}\n{inspection.Detail}";
+            KeyDllInfoLabel.Text=$"{inspection.Summary}\nSHA256={inspection.Sha256}";
             AddLog("算法库仅静态检查："+inspection.Path+"，SHA="+inspection.Sha256);
-            if(!inspection.NativeX64)
-                MessageBox.Show(this,
-                    "此 DLL 不是参考 CanTool 所需的原生 x64 ZLGKey ABI。\n托管 SafetyFile.dll 不能直接按原生接口加载，也不会回退演示算法。",
-                    "算法库不兼容",MessageBoxButton.OK,MessageBoxImage.Warning);
-            if(inspection.KnownDemonstration)
+            // Managed SafetyFile and native ZLGKey use different verified APIs.
+            // They are both selectable; this does not automatically prove ECU compatibility.
+            if(inspection.KnownDemo)
                 MessageBox.Show(this,
                     "已识别 sa_demo.dll 为演示 Seed/Key 算法。仅证明 ZLGKey 接口匹配，不证明 ECU 接受。\n未经真实 ECU 匹配验证不要尝试解锁。",
                     "演示算法提醒",MessageBoxButton.OK,MessageBoxImage.Warning);
@@ -305,7 +303,7 @@ public partial class FlashLabWindow : Window
                 $"镜像源字节={plan.SourceBytes:N0}，实际计划块字节={plan.PlannedBytes:N0}，"+
                 $"对齐块=0x{plan.AlignmentBlockLength:X}（{plan.AlignmentSource}）\n"+
                 $"参考末端签名={(plan.LegacyTailSignature ? "启用：12 34 56 78，可能覆盖原字节" : "未启用")}\n"+
-                $"固件 SHA={plan.FirmwareSha256}\nKey DLL SHA={plan.SecuritySha256}";
+                $"固件 SHA={plan.FirmwareSha256}\n安全算法类型={plan.SecurityProviderKind}\n算法文件 SHA={plan.SecuritySha256}";
             FlashStageLabel.Text="冻结任务已生成；尚未发往 ECU。只有现场完整许可与二次确认后才执行。";
             _vm.Status="烧录参数已冻结并生成 SHA256，等待实体台架单独授权。";
             AddLog("F2 冻结任务已生成 SHA="+plan.Fingerprint+

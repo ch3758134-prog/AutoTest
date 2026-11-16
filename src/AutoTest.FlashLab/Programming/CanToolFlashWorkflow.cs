@@ -92,11 +92,13 @@ public sealed class CanToolFlashWorkflow(
 
         // Load native key only after an explicit physical flash job approval,
         // and before entering any physical session. A CLR SafetyFile fails closed.
-        var inspected=NativeZlgKeyProvider.Inspect(plan.SecurityLibraryPath);
+        var inspected=CanToolSecurityProvider.Inspect(plan.SecurityLibraryPath);
         if(!string.Equals(inspected.Sha256,plan.SecuritySha256,StringComparison.OrdinalIgnoreCase))
             throw new IOException("Seed/Key DLL 在冻结计划后发生修改。");
-        using var keyProvider=new NativeZlgKeyProvider(inspected);
-        log("ZLGKey 原生 DLL 已加载、导出存在；ECU 算法是否兼容待 0x27 实际响应验证。");
+        if(!string.Equals(inspected.Kind.ToString(),plan.SecurityProviderKind,StringComparison.Ordinal))
+            throw new IOException("算法库类型与冻结任务不一致。");
+        using var keyProvider=CanToolSecurityProvider.Open(inspected);
+        log("安全算法接口已验证："+inspected.Api+"；是否匹配 ECU 由 0x27 应答确认。");
 
         bool bootDetected=false;
         log("S1 检查 Boot：10 03");
