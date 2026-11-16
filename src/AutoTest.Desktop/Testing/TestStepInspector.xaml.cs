@@ -207,7 +207,20 @@ public partial class TestStepInspector : UserControl
         if (chosen is not null)
         {
             _selected = chosen;
+            TypeIcon.Text = chosen.StepType switch
+            {
+                "Write" or "CanSend" or "Read" or "CanWait" => "⇄",
+                "UdsRequest" or "Flash" => "◇",
+                "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCompare" => "〰",
+                "If" or "Switch" or "Case" or "TryCatch" => "⑂",
+                "Loop" => "⟳",
+                "Wait" or "When" => "◷",
+                _ => "▣"
+            };
+            TypeLabel.Text = chosen.Title;
+            StepCode.Text = editing.Id.ToString()[^5..];
             ActionDescription.Text = chosen.Description;
+            TypeLabel.ToolTip = chosen.Description;
             NameInput.Text = editing.Name;
             BuildParameters(chosen);
             BuildTargets(chosen);
@@ -324,7 +337,11 @@ public partial class TestStepInspector : UserControl
         var preferred = preferredMapping is null ? null :
             AvailableTargets.FirstOrDefault(x => x.Mapping == preferredMapping);
         preferred ??= AvailableTargets.FirstOrDefault(x => x.Mapping.Name == preferredName);
-        TargetPicker.SelectedItem = preferred ?? AvailableTargets.FirstOrDefault();
+        // Avoid silently binding the first DBC signal/message when a new
+        // STEP has not explicitly chosen its operation object.
+        // A unique IGN / raw-only option may be preselected for convenience.
+        TargetPicker.SelectedItem = preferred ?? (
+            AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
         UpdateTarget();
         TargetHint.Text = AvailableTargets.Count == 0
             ? "没有匹配的对象。请调整搜索词，或先在工程中导入相应 DBC / 功能配置。"

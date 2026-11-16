@@ -7,19 +7,24 @@
   <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
    <StackPanel Margin="12,11,12,13">
-    <DockPanel Margin="0,0,0,11">
-     <Border DockPanel.Dock="Left" Background="#EAF2FC" CornerRadius="4"
-      Width="22" Height="22" Margin="0,0,7,0">
-      <TextBlock Text="▣" Foreground="#3F76B8" FontSize="10"
+    <DockPanel Margin="0,0,0,12" LastChildFill="True">
+     <Border DockPanel.Dock="Left" Background="#E8EFF9" CornerRadius="5"
+      Width="27" Height="27" Margin="0,0,8,0">
+      <TextBlock x:Name="TypeIcon" Text="▣" Foreground="#386EA9" FontSize="13"
        HorizontalAlignment="Center" VerticalAlignment="Center"/>
      </Border>
-     <TextBlock x:Name="Heading" Text="步骤属性" VerticalAlignment="Center"
-      FontWeight="SemiBold" FontSize="12"/>
+     <TextBlock x:Name="StepCode" DockPanel.Dock="Right" Foreground="#8798AC"
+      VerticalAlignment="Center" FontFamily="Consolas" FontSize="10"/>
+     <StackPanel VerticalAlignment="Center">
+      <TextBlock x:Name="Heading" Text="步骤属性" Foreground="#26476D"
+       FontWeight="SemiBold" FontSize="12"/>
+      <TextBlock x:Name="TypeLabel" Foreground="#607992" FontSize="11"/>
+     </StackPanel>
     </DockPanel>
     <!-- Editing existing StepId only. New action selection belongs exclusively to
          the central editor's grouped ActionPalette; no second type list here. -->
     <TextBlock x:Name="ActionDescription" TextWrapping="Wrap" Foreground="#64758C"
-     FontSize="11" Margin="0,0,0,13"/>
+     FontSize="11" Margin="0,0,0,6" Visibility="Collapsed"/>
     <TextBlock Text="步骤名称" Foreground="#61738B" FontWeight="SemiBold"
      FontSize="11" Margin="0,0,0,5"/>
     <TextBox x:Name="NameInput" Margin="0,0,0,13"/>
@@ -42,8 +47,9 @@
        FontSize="10" Margin="0,0,5,6" Padding="7,4"
        ToolTip="断点仅保存在 TEST 编辑元数据；真实执行器尚未支持暂停"/>
      </WrapPanel>
-     <TextBlock Text="执行启用/禁用：当前正式 TEST DSL 暂未提供，不能假装开关生效。"
-      TextWrapping="Wrap" FontSize="10" Foreground="#79899E"/>
+     <TextBlock Text="运行启用开关暂未接入正式 TEST 合同"
+      TextWrapping="Wrap" FontSize="10" Foreground="#8794A7"
+      ToolTip="当前 TEST DSL 没有步骤 Enabled 执行语义，此处不显示无效开关。"/>
     </StackPanel>
 
 
