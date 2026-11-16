@@ -50,6 +50,15 @@ public partial class TestEditorView : UserControl
         }
     }
 
+    private void AddAtRow_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is not Button { Tag: StepRowProjection row } || !row.IsPhase) return;
+        _viewModel.SelectItem(row.Item);
+        if (_viewModel.AddChildCommand.CanExecute())
+            _viewModel.AddChildCommand.Execute();
+    }
+
     private void StepExpand_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { DataContext: StepRowProjection row } &&

@@ -31,7 +31,9 @@ public sealed class StepRowProjection
     public string QuickValue { get; set; } = "";
     public string BreakpointMark => Item.Step?.Properties.GetValueOrDefault("editor.breakpoint", "false")
         == "true" ? "●" : "";
-    public string Name => Item.Step?.Name ?? Item.Label;
+    public string Name => IsPhase ? StepUiCatalog.PhaseLabel(Item.Phase) :
+        Item.Step?.Name ?? Item.Label;
+    public string RowCount => IsPhase ? Item.Children.Count + " 步" : "";
     public string Kind => Item.Step is { } n ? StepUiCatalog.Label(n.Type) : "";
     public string Summary { get; }
     public string Resource { get; }

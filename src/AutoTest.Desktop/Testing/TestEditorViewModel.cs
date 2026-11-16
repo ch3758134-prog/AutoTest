@@ -91,6 +91,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     public ObservableCollection<StepTreeItem> StepRoots { get; } = new();
     public ObservableCollection<StepRowProjection> StepRows { get; } = new();
+    public string StepCountLabel => _transaction.Current.Walk().Count() + " 步";
     private StepRowProjection? _selectedRow;
     private bool _syncingRowSelection;
     public StepRowProjection? SelectedRow
@@ -614,6 +615,7 @@ public sealed class TestEditorViewModel : BindableBase
                     Append(child, depth + (item.Kind == StepTreeItemKind.Phase ? 0 : 1));
         }
         foreach (var root in StepRoots) Append(root, 0);
+        RaisePropertyChanged(nameof(StepCountLabel));
         _syncingRowSelection = true;
         try { SelectedRow = StepRows.FirstOrDefault(x => x.Item.Step?.Id == selected); }
         finally { _syncingRowSelection = false; }
