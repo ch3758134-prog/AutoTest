@@ -894,7 +894,12 @@ public sealed class TestEditorViewModel : BindableBase
 
     public async Task<bool> SaveForCloseAsync()
     {
-        if (IsBusy || HasNewStepDraft) return false;
+        if (IsBusy) return false;
+        if (HasNewStepDraft)
+        {
+            StatusMessage = "新步骤尚未完成配置。请在右侧应用属性，或点击取消新增后再保存。";
+            return false;
+        }
         if (!IsDirty) return true;
         if (!CanProceed()) return false;
         var previousRevision = AssetRevision;
