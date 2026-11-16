@@ -562,16 +562,31 @@ public partial class MainWindow : Window
     {
         if(_syncingChecks||ProjectCase1Check is null||CurrentRunCheck is null)return;
         _syncingChecks=true;
-        try{CurrentRunCheck.IsChecked=ProjectCase1Check.IsChecked;}
+        try
+        {
+            CurrentRunCheck.IsChecked=ProjectCase1Check.IsChecked;
+            UpdateTreeSelectionCount();
+        }
         finally{_syncingChecks=false;}
     }
     private void CaseHeaderCheck_Changed(object sender,RoutedEventArgs e)
     {
         if(_syncingChecks||ProjectCase1Check is null||CurrentRunCheck is null)return;
         _syncingChecks=true;
-        try{ProjectCase1Check.IsChecked=CurrentRunCheck.IsChecked;}
+        try
+        {
+            ProjectCase1Check.IsChecked=CurrentRunCheck.IsChecked;
+            UpdateTreeSelectionCount();
+        }
         finally{_syncingChecks=false;}
     }
+    private void UpdateTreeSelectionCount()
+    {
+        if (TreeSelectionCount is null || ProjectCase1Check is null || ProjectCase2Check is null) return;
+        var count=(ProjectCase1Check.IsChecked==true?1:0)+(ProjectCase2Check.IsChecked==true?1:0);
+        TreeSelectionCount.Text=count+"/2";
+    }
+
     private void OpenDemoCase_Click(object sender,RoutedEventArgs e)
     {
         SetMessage("当前仅复刻冻结 HTML 的“通信与状态检查”样例；不打开真实工程。");
@@ -611,8 +626,10 @@ public partial class MainWindow : Window
         if(Keyboard.Modifiers==ModifierKeys.Control)
         {
             if(e.Key==Key.F){SearchText.Focus();SearchText.SelectAll();e.Handled=true;}
-            if(e.Key==Key.Z){Undo_Click(sender,new RoutedEventArgs());e.Handled=true;}
-            if(e.Key==Key.Y){Redo_Click(sender,new RoutedEventArgs());e.Handled=true;}
+            if(e.Key==Key.Z && Keyboard.FocusedElement is not TextBox)
+            {Undo_Click(sender,new RoutedEventArgs());e.Handled=true;}
+            if(e.Key==Key.Y && Keyboard.FocusedElement is not TextBox)
+            {Redo_Click(sender,new RoutedEventArgs());e.Handled=true;}
             if(e.Key==Key.I){ToggleInspector_Click(sender,new RoutedEventArgs());e.Handled=true;}
             if(e.Key==Key.S){SetMessage("独立 UI 预览没有保存功能，所有修改仅保存在内存中。");e.Handled=true;}
         }

@@ -231,8 +231,12 @@
          Style="{StaticResource BareBtn}" Click="PreviewOnly_Click"/>
        </DockPanel>
        <Border Background="#E8F1FD" CornerRadius="3" Padding="7,5">
-        <TextBlock Text="▾  ▱  研发检查项目                            2/2"
-         Foreground="#335D91" FontWeight="SemiBold" FontSize="11"/>
+        <DockPanel LastChildFill="True">
+         <TextBlock x:Name="TreeSelectionCount" DockPanel.Dock="Right"
+          Text="2/2" Foreground="#335D91" FontSize="11"/>
+         <TextBlock Text="▾  ▱  研发检查项目" Foreground="#335D91"
+          FontWeight="SemiBold" FontSize="11"/>
+        </DockPanel>
        </Border>
        <StackPanel Margin="18,3,0,2">
         <Border Background="#E2EEFE" CornerRadius="3" Padding="4,5" Margin="0,1">
@@ -544,11 +548,17 @@
   </Grid>
 
   <Border Grid.Row="3" Background="#2367AA" Padding="8,0">
-   <DockPanel>
+   <DockPanel LastChildFill="True">
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <TextBlock Text="独立 UI · 无连接 · 无运行 · 无保存"
+      Foreground="#D9E9F9" FontSize="10" VerticalAlignment="Center" Margin="0,0,12,0"/>
+     <Button Content="观察" Style="{StaticResource BareBtn}" Foreground="White"
+      FontSize="10" Padding="5,0" MinHeight="18" Click="ToggleBottom_Click"/>
+     <Button Content="属性" Style="{StaticResource BareBtn}" Foreground="White"
+      FontSize="10" Padding="5,0" MinHeight="18" Click="ToggleInspector_Click"/>
+    </StackPanel>
     <TextBlock x:Name="StatusText" Text="控制器 A · 样例工程 · UI 预览（内存数据，不与设备通信）"
-     Foreground="White" FontSize="10" VerticalAlignment="Center"/>
-    <TextBlock DockPanel.Dock="Right" Text="独立 UI · 无连接 · 无运行 · 无保存"
-     Foreground="#E7F1FC" FontSize="10" VerticalAlignment="Center"/>
+     Foreground="White" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
    </DockPanel>
   </Border>
 
