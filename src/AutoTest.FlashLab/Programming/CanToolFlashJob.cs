@@ -21,14 +21,15 @@ public sealed record CanToolFlashJob(
     int AlignmentBlockLength,string AlignmentSource,
     ImmutableArray<FlashAlignedBlock> Blocks,
     string FirmwarePath,string FirmwareSha256,string SecurityLibraryPath,
-    string SecuritySha256,string TargetLabel,string Fingerprint,
+    string SecuritySha256,string TargetLabel,bool LegacyTailSignature,string Fingerprint,
     long SourceBytes,long PlannedBytes)
 {
     public string Consent => "AUTHORIZE ECU FLASH "+Fingerprint;
     public ulong EraseLength => (ulong)FlashEndInclusive-FlashStart+1UL;
 
     public static CanToolFlashJob Freeze(CanToolXmlProfileReader config,
-        string firmwarePath,string? binBase,string keyDll,string targetLabel)
+        string firmwarePath,string? binBase,string keyDll,string targetLabel,
+        bool legacyTailSignature=false)
     {
         ArgumentNullException.ThrowIfNull(config);
         config.ValidateConfiguredRange();
@@ -92,6 +93,27 @@ public sealed record CanToolFlashJob(
                 dst[checked((int)(addr-aligned))]=segment.Data[i];
             }
         }
+        if(legacyTailSignature)
+        {
+            // Original CanTool stamped 12 34 56 78 at EndInclusive-3.
+            // This OEM-specific behavior is EXPLICITLY OPT-IN, never automatic.
+            if((ulong)last-3UL<first)
+                throw new FormatException("参考签名地址超出 Flash 边界。");
+            ulong mark=(ulong)last-3UL;
+            ulong aligned=(mark/blockLength)*blockLength;
+            if(aligned<first || aligned+blockLength>(ulong)last+1UL)
+                throw new FormatException("参考签名块对齐超出 Flash 范围。");
+            uint key=checked((uint)aligned);
+            if(!prepared.TryGetValue(key,out var bytes))
+            {
+                bytes=new byte[blockLength];
+                Array.Fill(bytes,(byte)0xFF);
+                prepared.Add(key,bytes);
+            }
+            byte[] signature=[0x12,0x34,0x56,0x78];
+            for(int i=0;i<signature.Length;i++)
+                bytes[checked((int)(mark+i-aligned))]=signature[i];
+        }
         if(prepared.Count==0)throw new FormatException("镜像没有可烧录的数据块。");
         var blocks=prepared.Select(p=>new FlashAlignedBlock(p.Key,
             ImmutableArray.CreateRange(p.Value))).ToImmutableArray();
@@ -103,12 +125,12 @@ public sealed record CanToolFlashJob(
         string bound=$"CANTOOL-FLASH-F2-v1\nCAN1\n{targetLabel.Trim()}\n"+
             $"APP {appTx:X8} {appRx:X8}\nBOOT {bootTx:X8} {bootRx:X8}\n"+
             $"FLASH {first:X8}-{last:X8} BLOCK {blockLength:X8} BAUD {baud}\n"+
-            $"IMAGE {inspected.Sha256}\nDLL {details.Sha256}\n{effective}\n"+
+            $"IMAGE {inspected.Sha256}\nDLL {details.Sha256}\nLEGACY_SIGNATURE={legacyTailSignature}\n{effective}\n"+
             string.Join("\n",blocks.Select(x=>$"{x.Address:X8}:{Convert.ToHexString(SHA256.HashData(x.Bytes.AsSpan()))}"));
         string hash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(bound)));
         return new(app,boot,first,last,baud,checked((int)blockLength),blockSource,
             blocks,Path.GetFullPath(firmwarePath),inspected.Sha256,dll,details.Sha256,
-            targetLabel.Trim(),hash,image.ByteCount,blocks.Sum(x=>(long)x.Bytes.Length));
+            targetLabel.Trim(),legacyTailSignature,hash,image.ByteCount,blocks.Sum(x=>(long)x.Bytes.Length));
     }
 
     private static UdsEndpointProfile Endpoint(uint tx,uint rx)

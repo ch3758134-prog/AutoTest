@@ -185,6 +185,9 @@
        </DockPanel>
        <TextBlock x:Name="KeyDllInfoLabel" Text="SafetyFile.dll 为托管 DLL；仅原生 x64 ZLGKey ABI 可直接用于参考流程。"
          Foreground="#8D5B21" FontSize="11" Margin="7,2" TextWrapping="Wrap"/>
+       <CheckBox x:Name="LegacyTailSignatureCheck" Margin="7,5,5,3"
+         Content="按原 CanTool 在 Flash 最后4字节写入 12 34 56 78（仅确认目标 ECU 要求时选择）"
+         ToolTip="可能覆盖固件原有末尾4字节。默认不启用；选择纳入任务哈希。"/>
        <CheckBox x:Name="BitrateVerifiedCheck" Margin="7,7,5,5"
          Content="我已现场确认主控 CAN1 实际速率与 XML 配置一致（非软件自动设定）"/>
        <Button x:Name="PrepareFlashButton" Content="① 检查配置与固件，生成冻结烧录任务"

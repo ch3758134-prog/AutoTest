@@ -289,7 +289,8 @@ public partial class FlashLabWindow : Window
             // Rebuild immutable on-wire snapshot using current config, current file
             // and current DLL; no stale UI values or automatic hardware actions.
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,TargetEcuBox.Text);
+                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,TargetEcuBox.Text,
+                LegacyTailSignatureCheck.IsChecked==true);
             _previewFlash=plan;
             ExpectedFlashConsentBox.Text=plan.Consent;
             TypedFlashConsentBox.Text="";
@@ -303,6 +304,7 @@ public partial class FlashLabWindow : Window
                 $"({plan.EraseLength:N0}B)\n"+
                 $"镜像源字节={plan.SourceBytes:N0}，实际计划块字节={plan.PlannedBytes:N0}，"+
                 $"对齐块=0x{plan.AlignmentBlockLength:X}（{plan.AlignmentSource}）\n"+
+                $"参考末端签名={(plan.LegacyTailSignature ? "启用：12 34 56 78，可能覆盖原字节" : "未启用")}\n"+
                 $"固件 SHA={plan.FirmwareSha256}\nKey DLL SHA={plan.SecuritySha256}";
             FlashStageLabel.Text="冻结任务已生成；尚未发往 ECU。只有现场完整许可与二次确认后才执行。";
             _vm.Status="烧录参数已冻结并生成 SHA256，等待实体台架单独授权。";
@@ -329,7 +331,8 @@ public partial class FlashLabWindow : Window
             // Any edited XML field, new disk bytes, DLL or selected BIN base MUST
             // invalidate the displayed physical consent fingerprint.
             var fresh=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,TargetEcuBox.Text);
+                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,TargetEcuBox.Text,
+                LegacyTailSignatureCheck.IsChecked==true);
             if(!string.Equals(frozen.Fingerprint,fresh.Fingerprint,StringComparison.Ordinal))
                 throw new InvalidOperationException("配置、固件或算法库在生成计划后已改变。请重新生成烧录计划。");
             if(BitrateVerifiedCheck.IsChecked!=true)
@@ -341,7 +344,8 @@ public partial class FlashLabWindow : Window
                 $"型号/版本（人工核对）：{frozen.TargetLabel}\n"+
                 $"擦除全部地址：0x{frozen.FlashStart:X8}..0x{frozen.FlashEndInclusive:X8}\n"+
                 $"固件 SHA256：{frozen.FirmwareSha256}\n"+
-                $"DLL SHA256：{frozen.SecuritySha256}\n\n"+
+                $"DLL SHA256：{frozen.SecuritySha256}\n"+
+                $"末端参考签名：{(frozen.LegacyTailSignature ? "启用（覆盖4字节）" : "未启用")}\n\n"+
                 "操作将执行 Boot 切换、SecurityAccess、实际擦除、下载、校验、复位。\n"+
                 "断连/取消后 ECU 可能处于无法启动状态。已确认供电稳定、镜像/算法/地址"+
                 "与真实 ECU 完全匹配，并允许本次写入吗？",
