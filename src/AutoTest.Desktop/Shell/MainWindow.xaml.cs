@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private readonly MainWindowViewModel _viewModel;
     private bool _shutdownStarted;
     private bool _shutdownComplete;
+    private bool _closeAttemptPending;
     private bool _bottomVisible = true;
     private bool _inspectorVisible = true;
 
@@ -30,16 +31,43 @@ public partial class MainWindow : Window
     private async void OnWindowClosing(object? sender, CancelEventArgs e)
     {
         if (_shutdownComplete) return;
+        // WPF's Closing event is synchronous; cancel this attempt until explicit
+        // draft decisions and real async saves are complete. A second click cannot
+        // race the first prompt or start another hardware shutdown.
         e.Cancel = true;
-        if (_shutdownStarted || !_viewModel.ConfirmCloseActiveEditor()) return;
-        _shutdownStarted = true;
-        try { await _viewModel.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(6)); }
-        catch (TimeoutException ex) { Trace.TraceError("AutoTest shutdown timed out: " + ex); }
-        catch (Exception ex) { Trace.TraceError("AutoTest shutdown failed: " + ex); }
+        if (_shutdownStarted || _closeAttemptPending) return;
+        _closeAttemptPending = true;
+        try
+        {
+            if (!await _viewModel.PrepareEditorsForCloseAsync()) return;
+            _shutdownStarted = true;
+            try
+            {
+                await _viewModel.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(6));
+            }
+            catch (TimeoutException error)
+            {
+                Trace.TraceError("AutoTest shutdown exceeded the bounded wait: " + error);
+            }
+            catch (Exception error)
+            {
+                Trace.TraceError("AutoTest shutdown encountered a cleanup error: " + error);
+            }
+            finally
+            {
+                _shutdownComplete = true;
+                Application.Current.Shutdown(0);
+            }
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            Trace.TraceError("AutoTest exit guard failure: " + error);
+            MessageBox.Show(this, "退出检查发生异常，窗口未关闭：\n" + error.Message,
+                "退出失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
         finally
         {
-            _shutdownComplete = true;
-            Application.Current.Shutdown(0);
+            if (!_shutdownStarted) _closeAttemptPending = false;
         }
     }
 
@@ -47,6 +75,16 @@ public partial class MainWindow : Window
     private void Maximize_Click(object sender, RoutedEventArgs e) =>
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Exit_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.SystemKey == Key.F4 && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        {
+            e.Handled = true;
+            Close();
+        }
+    }
 
     private void ShowOverview_Click(object sender, RoutedEventArgs e) => _viewModel.ShowOverview();
 
@@ -65,11 +103,11 @@ public partial class MainWindow : Window
         await _viewModel.FinishScannerInputAsync();
     }
 
-    private void CloseEditorTab_Click(object sender, RoutedEventArgs e)
+    private async void CloseEditorTab_Click(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
         if (sender is Button { Tag: EditorTabModel tab })
-            _viewModel.CloseEditor(tab);
+            await _viewModel.CloseEditorAsync(tab);
     }
 
     private void ToggleBottom_Click(object sender, RoutedEventArgs e)

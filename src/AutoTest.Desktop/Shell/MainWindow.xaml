@@ -5,6 +5,7 @@
  xmlns:navigation="clr-namespace:AutoTest.Desktop.Shell.Navigation"
  Title="AutoTest · ECU 测试 IDE" Width="1440" Height="900" MinWidth="1100" MinHeight="680"
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
+ PreviewKeyDown="Window_PreviewKeyDown"
  ResizeMode="CanResize" Background="#EEF2F8" Foreground="#1E2C41"
  FontFamily="{StaticResource UiFont}" FontSize="12"
  UseLayoutRounding="True" SnapsToDevicePixels="True">
@@ -147,6 +148,8 @@
       <MenuItem Header="新建测试项目" Command="{Binding NewTestProjectCommand}"/>
       <MenuItem Header="新建测试用例" Command="{Binding NewTestProgramCommand}"/>
       <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
+      <Separator/>
+      <MenuItem Header="退出 AutoTest" Click="Exit_Click" InputGestureText="Alt+F4"/>
      </MenuItem>
      <MenuItem Header="编辑">
       <MenuItem Header="撤销" Command="{Binding UndoActiveCommand}" InputGestureText="Ctrl+Z"/>
