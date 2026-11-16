@@ -12,6 +12,7 @@ public sealed class StepRowProjection
 {
     public StepTreeItem Item { get; }
     private readonly TestTargetKind? _targetKind;
+    private readonly string? _draftActionKey;
     public int Depth { get; }
     public int Sequence { get; }
     public string SequenceText => Sequence == 0 ? "" : Sequence.ToString("D2");
@@ -23,6 +24,8 @@ public sealed class StepRowProjection
         Item.Children.Count > 0 ? (IsCollapsed ? "▸" : "▾") : "";
     public string Icon => Item.Step?.Type switch
     {
+        "Write" when _draftActionKey == "ign" => "◈",
+        "Write" when _draftActionKey == "key" => "⌁",
         "Write" when _targetKind == TestTargetKind.Ignition => "◈",
         "Write" when _targetKind is TestTargetKind.Button or TestTargetKind.RawKey => "⌁",
         "Write" or "CanSend" => "⇄",
@@ -44,6 +47,7 @@ public sealed class StepRowProjection
     public string PhaseKind => Item.Phase.ToString();
     public string Category => Item.Step?.Type switch
     {
+        "Write" when _draftActionKey is "ign" or "key" => "Hardware",
         "Write" when _targetKind is TestTargetKind.Ignition or
             TestTargetKind.Button or TestTargetKind.RawKey => "Hardware",
         "Write" or "CanSend" or "CanWait" or "Read" or "WaitUntil" => "Can",
@@ -81,9 +85,10 @@ public sealed class StepRowProjection
     public StepRowProjection(StepTreeItem item, int depth, bool collapsed = false,
         string? search = null, bool newDraft = false,
         IReadOnlyList<TestTargetMapping>? mappings = null,
-        RealStepFact? realFact = null)
+        RealStepFact? realFact = null, string? draftActionKey = null)
     {
         Item = item;
+        _draftActionKey = draftActionKey;
         IsCollapsed = collapsed;
         Depth = depth;
         Sequence = item.Kind == StepTreeItemKind.Step ? item.Index + 1 : 0;

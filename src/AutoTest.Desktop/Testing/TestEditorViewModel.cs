@@ -816,7 +816,8 @@ public sealed class TestEditorViewModel : BindableBase
                 RealStepFact? fact = null;
                 if (item.Step is { } node) evidenceByStep.TryGetValue(node.Id, out fact);
                 var row = new StepRowProjection(item, depth, collapsed, _stepFind,
-                    item.Step?.Id == _newDraftId, _transaction.Current.Mappings, fact);
+                    item.Step?.Id == _newDraftId, _transaction.Current.Mappings, fact,
+                    item.Step?.Id == _newDraftId ? _newDraftActionKey : null);
                 StepRows.Add(row);
                 if (!collapsed)
                     foreach (var child in item.Children)
