@@ -198,8 +198,17 @@ public partial class TestEditorView : UserControl
     private bool TryChoosePaletteItem()
     {
         if (PaletteList.SelectedItem is not TestActionOption chosen) return false;
-        if (!_viewModel.ChooseNewStepAction(chosen.Key)) return false;
+        // The Inspector can be published synchronously when resource choices
+        // are cached, so request focus BEFORE committing the selected type.
+        _focusNameOnNextInspector = true;
+        if (!_viewModel.ChooseNewStepAction(chosen.Key))
+        {
+            _focusNameOnNextInspector = false;
+            return false;
+        }
         ActionPalette.IsOpen = false;
+        Dispatcher.BeginInvoke(new Action(() => _inspector?.FocusName()),
+            DispatcherPriority.Input);
         return true;
     }
 
