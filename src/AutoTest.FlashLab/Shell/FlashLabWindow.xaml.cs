@@ -384,20 +384,20 @@ public partial class FlashLabWindow : Window
         {
             if(_vm.Image is null || string.IsNullOrWhiteSpace(_vm.FirmwarePath))
                 throw new InvalidOperationException("请先选择并离线校验 HEX/S19/BIN 镜像。");
-            // Also honor SafetyFilePath edited directly in the CanTool grid.
-            if(string.IsNullOrWhiteSpace(_seedDllPath))
-                ApplySecurityFilesFromConfiguration();
+            // Always reload both visible configuration file paths before freezing.
+            ApplySecurityFilesFromConfiguration();
+            UpdateSecuritySelection();
             if(string.IsNullOrWhiteSpace(_seedDllPath))
                 throw new InvalidOperationException(
-                    "请在配置中指定 SafetyFilePath，或使用上方按钮选择实际安全算法 DLL。");
+                    "本次选用的安全算法 DLL 未准备好，请在配置区域选择对应的文件。");
             // Rebuild immutable on-wire snapshot using current config, current file
             // and current DLL; no stale UI values or automatic hardware actions.
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
                 _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,TargetEcuBox.Text,
                 LegacyTailSignatureCheck.IsChecked==true);
             _previewFlash=plan;
-            ExpectedFlashConsentBox.Text=plan.Consent;
-            TypedFlashConsentBox.Text="";
+            _vm.ResetStages();
+            _activeStage=-1;
             FlashProgressBar.Value=0;
             FlashPlanSummary.Text=
                 $"ECU（人工标识）: {plan.TargetLabel}\n"+
@@ -410,7 +410,8 @@ public partial class FlashLabWindow : Window
                 $"对齐块=0x{plan.AlignmentBlockLength:X}（{plan.AlignmentSource}）\n"+
                 $"参考末端签名={(plan.LegacyTailSignature ? "启用：12 34 56 78，可能覆盖原字节" : "未启用")}\n"+
                 $"固件 SHA={plan.FirmwareSha256}\n安全算法类型={plan.SecurityProviderKind}\n算法文件 SHA={plan.SecuritySha256}";
-            FlashStageLabel.Text="冻结任务已生成；尚未发往 ECU。只有现场完整许可与二次确认后才执行。";
+            FlashStageLabel.Text="文件及烧录地址检查完成；尚未向 ECU 发送请求。";
+            WorkflowStatusLabel.Text="准备就绪 · 请连接主控并核对本次擦除地址后开始烧录。";
             _vm.Status="烧录参数已冻结并生成 SHA256，等待实体台架单独授权。";
             AddLog("F2 冻结任务已生成 SHA="+plan.Fingerprint+
                 "，擦除范围 0x"+plan.FlashStart.ToString("X8")+"..0x"+
@@ -441,8 +442,9 @@ public partial class FlashLabWindow : Window
                 throw new InvalidOperationException("配置、固件或算法库在生成计划后已改变。请重新生成烧录计划。");
             if(BitrateVerifiedCheck.IsChecked!=true)
                 throw new UnauthorizedAccessException("必须先在现场核实主控 CAN1 实际波特率。");
-            if(!string.Equals(TypedFlashConsentBox.Text,frozen.Consent,StringComparison.Ordinal))
-                throw new UnauthorizedAccessException("烧录精确 SHA256 许可字符串不一致。");
+            if(FlashSafetyCheck.IsChecked!=true)
+                throw new UnauthorizedAccessException(
+                    "请先核对 ECU、镜像、安全算法、擦除范围及供电，并勾选确认。");
             var choice=MessageBox.Show(this,
                 "这是实体 ECU 编程操作，不是仿真。\n\n"+
                 $"型号/版本（人工核对）：{frozen.TargetLabel}\n"+
@@ -460,7 +462,9 @@ public partial class FlashLabWindow : Window
             _flashStop=new CancellationTokenSource();
             Busy(true);
             FlashStageLabel.Text="真实烧录进行中；请保持稳定供电，不要拔线。";
-            var outcome=await _device.ProgramCanToolAsync(frozen,TypedFlashConsentBox.Text,
+            // Physical frame gate still binds exactly to this frozen job SHA;
+            // the operator no longer has to type a 64-byte fingerprint.
+            var outcome=await _device.ProgramCanToolAsync(frozen,frozen.Consent,
                 stationBitrateVerified:true,
                 (tx,verified) =>
                 {
@@ -479,24 +483,29 @@ public partial class FlashLabWindow : Window
                 $"ACK={outcome.TransferAcknowledged:N0}B, 校验={outcome.VerifiedBytes:N0}B, "+
                 $"复位ACK={outcome.ResetAcknowledged}, APP会话复现={outcome.AppSessionObserved}。"+
                 "新固件版本尚未由身份/版本 DID 证明。";
-            _vm.Status="参考 CanTool 烧录流程已得到阶段响应；最终固件身份仍待独立复验。";
+            _vm.MarkStage(9,"已完成");
+            WorkflowStatusLabel.Text="参考烧录阶段已完成；请检查 APP 固件版本与身份。";
+            _vm.Status="参考烧录阶段已完成；固件版本 DID 尚未复验。";
         }
         catch(OperationCanceledException)
         {
             FlashStageLabel.Text="操作已取消；ECU 物理状态 UNKNOWN。禁止未经诊断直接重刷。";
             _vm.Status=FlashStageLabel.Text;
+            if(_activeStage>=0)_vm.MarkStage(_activeStage,"已取消");
+            WorkflowStatusLabel.Text="烧录已取消，ECU 物理状态可能未知。";
             AddLog(FlashStageLabel.Text);
         }
         catch(Exception ex)
         {
             FlashStageLabel.Text="烧录未确认成功；物理状态可能未知："+ex.Message;
+            if(_activeStage>=0)_vm.MarkStage(_activeStage,"失败");
+            WorkflowStatusLabel.Text="烧录停止于："+(_activeStage>=0?_vm.Stages[_activeStage].Step:"准备阶段");
             Error("实体 CanTool 烧录",ex);
         }
         finally
         {
             _flashStop?.Dispose();_flashStop=null;
-            TypedFlashConsentBox.Text="";
-            InvalidateFlashPreview();
+            _previewFlash=null; // every physical run must be prepared again
             Busy(false);
         }
     }
