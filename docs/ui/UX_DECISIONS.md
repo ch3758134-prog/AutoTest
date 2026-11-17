@@ -48,3 +48,15 @@
 ## 工作规则
 
 UI 专项直接更新 `ui/ide-design/docs/ui/AutoTest_UI.html`，提交每次修改并提供精确 SHA 和仍待验证事项。用户持续试用，PM 仅在交付候选、范围冲突或实施前开展产品/技术兼容审查。未经用户接受与 PM 审查，不把工作 HTML 复制为 `main` 正式 UI 基线。
+
+
+## 2026-11-17｜用户授权 UI 编辑体验独立再研究（候选，不等于冻结）
+
+- 触发反馈：现有 WPF 自动测试仍难以连续编辑，步骤属性应用和校验阻挡切换、空用例大片无意义空白、淡蓝底/彩色阶段卡片视觉疲劳；用户明确要求不再拘泥于旧冻结 HTML 交互布局，并要求每阶段报告、连续推进。
+- 源码调查基线：feature/g4-html-parity-20261115 @ a7fc6351f9fb7f048ff420c18a0280006c520d2a。经核对 TestEditorView.TryLeaveInspector、TestEditorViewModel.PublishInspectorAsync、StepsList_Drop、StepRowProjection 和 Themes/Tokens：底层 TEST 事务可复用，需调整的是 UI 导航、草稿状态与视觉层级。
+- 外部官方设计对照：Vector vTESTstudio Test Table、TraceTronic ecu.test Package Editor、NI TestStand Steps Pane/Settings、Microsoft Visual Studio Tool Window Layout、JetBrains Compact Mode；只采纳适用交互，不以第三方软件推断 AutoTest 硬件能力。
+- 研究结论：高密度三阶段步骤表 + 常驻且无阻塞的 Inspector；字段输入草稿、正式 TEST 事务与持久资源严格分离；按 StepId 保留未完成字段，非法值不阻塞浏览但阻止持久化/真实运行；前/后/容器落点、多选、撤销；中性浅色视觉令牌，减少多层彩色卡片。
+- 详细研究文档：RESEARCH_AUTOTEST_UX_REDESIGN_V3_20261117.md，首轮记录 commit 6eef6a3490f0d4f012c509f616746605b84bf146。
+- **唯一现行 HTML** docs/ui/AutoTest_UI.html 在 commit 9d457dc689bfdfd0305e2974dfbf669d59d90703 完成 **V3 第一轮候选迭代**：中性低装饰色板、紧凑阶段、TEST 空阶段直接 CAN/KEY/IGN/Wait/IF 插入、无选中时右侧帮助入口。继续使用同一工程结构和 UI 原型离线事务；该 HTML 不证明 WPF 或 CAN/USB 运行。
+- 检查证据：GitHub 原文回读、唯一 script 的 JavaScript 语法静态解析成功、新增快捷路由与阶段插入路径存在。**尚无 Chromium 布局/鼠标实际操作试验、Windows WPF Build、实体台架证据**。
+- 当前状态：CONTINUE_ITERATION / 待用户体验审查 / 待 PM 兼容审查。**不得把本轮 V3 HTML 候选视为 main 冻结 UI 或作为直接 G4 实施许可**。
