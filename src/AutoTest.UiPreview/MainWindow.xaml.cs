@@ -15,10 +15,11 @@ namespace AutoTest.UiPreview;
 /// </summary>
 public partial class MainWindow : Window
 {
-    public ObservableCollection<PreviewRow> Rows { get; } = new();
+    private readonly PreviewEditorDocument _document = new();
+    public ObservableCollection<PreviewRow> Rows => _document.Rows;
     public ICommand AddRowCommand { get; }
     public ICommand TogglePhaseCommand { get; }
-    private readonly List<DemoPhase> _phases = new();
+    private List<DemoPhase> _phases => _document.Phases;
     private readonly Stack<DemoSnapshot> _undo = new();
     private readonly Stack<DemoSnapshot> _redo = new();
     private readonly IReadOnlyList<PaletteKind> _palette = MakePalette();
@@ -139,17 +140,8 @@ public partial class MainWindow : Window
         _rebuilding = true;
         try
         {
-            Rows.Clear();
-            foreach (var phase in _phases)
-            {
-                Rows.Add(new PreviewRow { Phase = phase });
-                if (!phase.Collapsed) Append(phase,phase.Steps,null,null,0);
-            }
-            foreach (var row in Rows)
-                row.IsMatch = row.IsStep && !string.IsNullOrWhiteSpace(SearchText.Text) &&
-                    (row.Name+" "+row.Summary+" "+row.Resource)
-                    .Contains(SearchText.Text.Trim(),StringComparison.CurrentCultureIgnoreCase);
-            _selectedRow = Rows.FirstOrDefault(row => row.Step?.Id == selectedId);
+            _document.Rebuild(SearchText.Text);
+            _selectedRow = Rows.FirstOrDefault(row => row.IsStep && row.Step?.Id == selectedId);
             StepRowsList.SelectedItem = _selectedRow;
             StepCountLabel.Text = AllSteps().Count().ToString() + " 步";
         }
@@ -157,35 +149,9 @@ public partial class MainWindow : Window
         ShowInspector();
     }
 
-    private void Append(DemoPhase phase,ObservableCollection<DemoStep> items,
-        DemoBranch? parentBranch,DemoStep? owner,int depth)
-    {
-        for (int i=0; i<items.Count;i++)
-        {
-            var step=items[i];
-            Rows.Add(new PreviewRow { Phase=phase,Step=step,Branch=null,Owner=owner,Depth=depth,Index=i });
-            foreach (var branch in step.Branches)
-            {
-                Rows.Add(new PreviewRow { Phase=phase,Branch=branch,Owner=step,Depth=depth+1 });
-                Append(phase,branch.Steps,branch,step,depth+1);
-            }
-        }
-    }
-
-    private IEnumerable<DemoStep> AllSteps()
-    {
-        foreach (var phase in _phases)
-            foreach (var step in Traverse(phase.Steps)) yield return step;
-    }
-    private static IEnumerable<DemoStep> Traverse(IEnumerable<DemoStep> list)
-    {
-        foreach (var step in list)
-        {
-            yield return step;
-            foreach (var branch in step.Branches)
-                foreach (var child in Traverse(branch.Steps)) yield return child;
-        }
-    }
+    private IEnumerable<DemoStep> AllSteps() => _document.AllSteps();
+    private static IEnumerable<DemoStep> Traverse(IEnumerable<DemoStep> steps) =>
+        PreviewEditorDocument.Traverse(steps);
 
     private void SelectStep(DemoStep? step)
     {
