@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using AutoTest.Contracts;
 using AutoTest.Desktop.Hardware;
@@ -47,13 +48,15 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
             Message.ArbitrationId.ToString("X") + "]" +
             (Message.IsExtended ? " 扩展" : " 标准");
     }
-    public sealed class DbcSignalValue(DbcSignal signal) : BindableBase
+    public sealed class DbcSignalValue : BindableBase
     {
         private string _value = "";
-        public DbcSignal Signal { get; } = signal;
-        public string Name => signal.Name + (signal.Unit.Length == 0 ? "" : " (" + signal.Unit + ")");
-        public string Range => signal.Minimum.ToString("G", CultureInfo.InvariantCulture) +
-            " ～ " + signal.Maximum.ToString("G", CultureInfo.InvariantCulture);
+        public DbcSignalValue(DbcSignal signal) => Signal = signal;
+        public DbcSignal Signal { get; }
+        public string Name => Signal.Name +
+            (Signal.Unit.Length == 0 ? "" : " (" + Signal.Unit + ")");
+        public string Range => Signal.Minimum.ToString("G", CultureInfo.InvariantCulture) +
+            " ～ " + Signal.Maximum.ToString("G", CultureInfo.InvariantCulture);
         public string Value { get => _value; set => SetProperty(ref _value, value ?? ""); }
     }
 
@@ -119,9 +122,9 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
             {
                 foreach (var signal in value.Message.Signals)
                 {
-                    var field = new DbcSignalValue(signal);
-                    field.PropertyChanged += DbcSignalChanged;
-                    DbcSignals.Add(field);
+                    var signalValue = new DbcSignalValue(signal);
+                    signalValue.PropertyChanged += DbcSignalChanged;
+                    DbcSignals.Add(signalValue);
                 }
             }
             CanFrameEdited();
