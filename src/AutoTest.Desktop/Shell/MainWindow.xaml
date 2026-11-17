@@ -25,37 +25,6 @@
    <Setter Property="FontSize" Value="13"/><Setter Property="Padding" Value="0"/>
    <Setter Property="Margin" Value="0"/><Setter Property="Foreground" Value="#64758C"/>
   </Style>
-  <Style x:Key="TopWorkspaceButton" TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
-   <Setter Property="Height" Value="34"/><Setter Property="MinHeight" Value="0"/>
-   <Setter Property="MinWidth" Value="106"/><Setter Property="Padding" Value="10,0"/>
-   <Setter Property="Margin" Value="0"/><Setter Property="Background" Value="Transparent"/>
-   <Setter Property="FontSize" Value="11"/><Setter Property="Foreground" Value="#536D8B"/>
-   <Setter Property="BorderThickness" Value="0,0,1,0"/><Setter Property="BorderBrush" Value="#DBE3ED"/>
-  </Style>
-  <Style x:Key="WorkspaceHomeButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopWorkspaceButton}">
-   <Style.Triggers><DataTrigger Binding="{Binding IsOverviewActive}" Value="True">
-    <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#1E5DA7"/>
-    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#2368BD"/>
-   </DataTrigger></Style.Triggers>
-  </Style>
-  <Style x:Key="WorkspaceProjectButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopWorkspaceButton}">
-   <Style.Triggers><DataTrigger Binding="{Binding IsProjectActive}" Value="True">
-    <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#1E5DA7"/>
-    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#2368BD"/>
-   </DataTrigger></Style.Triggers>
-  </Style>
-  <Style x:Key="WorkspaceCaseButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopWorkspaceButton}">
-   <Style.Triggers><DataTrigger Binding="{Binding IsCaseActive}" Value="True">
-    <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#1E5DA7"/>
-    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#2368BD"/>
-   </DataTrigger></Style.Triggers>
-  </Style>
-  <Style x:Key="WorkspaceConfigButton" TargetType="{x:Type Button}" BasedOn="{StaticResource TopWorkspaceButton}">
-   <Style.Triggers><DataTrigger Binding="{Binding IsConfigurationActive}" Value="True">
-    <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#1E5DA7"/>
-    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderBrush" Value="#2368BD"/>
-   </DataTrigger></Style.Triggers>
-  </Style>
   <Style x:Key="DocumentTabItem" TargetType="{x:Type TabItem}">
    <Setter Property="MinWidth" Value="100"/><Setter Property="MaxWidth" Value="220"/>
    <Setter Property="Background" Value="Transparent"/>
@@ -77,9 +46,7 @@
      </ControlTemplate.Triggers>
     </ControlTemplate></Setter.Value>
    </Setter>
-   <Style.Triggers><DataTrigger Binding="{Binding IsPrimaryTab}" Value="True">
-    <Setter Property="Visibility" Value="Collapsed"/>
-   </DataTrigger></Style.Triggers>
+
   </Style>
   <Style x:Key="ObservationTabItem" TargetType="{x:Type TabItem}">
    <Setter Property="Padding" Value="9,0"/><Setter Property="Height" Value="29"/>
@@ -162,6 +129,9 @@
      <MenuItem Header="视图">
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
+      <Separator/>
+      <MenuItem Header="查看工程信息" Click="ShowOverview_Click"/>
+      <MenuItem Header="工程配置管理" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
      </MenuItem>
      <MenuItem Header="运行">
       <MenuItem Header="当前选择的实际预检" Command="{Binding CheckActiveCommand}"/>
@@ -220,18 +190,11 @@
    <GridSplitter Grid.Column="1" Background="#EDF2F7" ResizeDirection="Columns"
     HorizontalAlignment="Stretch" ShowsPreview="True"/>
    <Grid Grid.Column="2">
-    <Grid.RowDefinitions><RowDefinition Height="35"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border Grid.Row="0" Background="#EDF2F8" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Border Grid.Row="0" Height="35" Background="#EDF2F8"
+     BorderBrush="#DBE3ED" BorderThickness="0,0,0,1"
+     Visibility="{Binding HasActiveEditor,Converter={StaticResource BoolToVisibility}}">
      <DockPanel LastChildFill="True">
-      <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-       <Button Content="工程概览" Style="{StaticResource WorkspaceHomeButton}" Click="ShowOverview_Click"/>
-       <Button Content="测试项目" Style="{StaticResource WorkspaceProjectButton}"
-        Command="{Binding OpenFirstTestProjectCommand}"/>
-       <Button Content="测试用例" Style="{StaticResource WorkspaceCaseButton}"
-        Command="{Binding OpenFirstTestProgramCommand}"/>
-       <Button Content="工程配置" Style="{StaticResource WorkspaceConfigButton}"
-        Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
-      </StackPanel>
       <TabControl x:Name="DocumentTabs" ItemsSource="{Binding OpenEditors}"
        SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
        SelectionChanged="DocumentTabs_SelectionChanged"
@@ -274,12 +237,21 @@
       <Grid Grid.Row="0" Background="White">
        <ContentControl Content="{Binding ActiveEditorView}"
         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+       <!-- Only real project state decides the next action. No fake resources or persisted steps. -->
        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+        MaxWidth="510" Margin="30,22"
         Visibility="{Binding NoOpenEditors,Converter={StaticResource BoolToVisibility}}">
-        <TextBlock Text="打开工程，开始自动测试编辑" FontWeight="SemiBold" FontSize="15"
-         HorizontalAlignment="Center" Margin="0,0,0,11"/>
-        <Button Content="新建测试工程" Command="{Binding NewProjectCommand}"
-         Style="{StaticResource AtPrimaryButton}" HorizontalAlignment="Center"/>
+        <TextBlock Text="{Binding StartTitle}" FontWeight="SemiBold" FontSize="18"
+         Foreground="#294D79" Margin="0,0,0,9"/>
+        <TextBlock Text="{Binding StartDescription}" FontSize="12" Foreground="#647A93"
+         TextWrapping="Wrap" Margin="0,0,0,20"/>
+        <StackPanel Orientation="Horizontal">
+         <Button Content="{Binding StartPrimaryLabel}" Command="{Binding StartPrimaryCommand}"
+          Style="{StaticResource AtPrimaryButton}" Padding="18,9" MinWidth="142" Margin="0,0,12,0"/>
+         <Button Content="{Binding StartSecondaryLabel}" Command="{Binding StartSecondaryCommand}"
+          Visibility="{Binding ShowStartSecondary,Converter={StaticResource BoolToVisibility}}"
+          Padding="14,8" MinWidth="100"/>
+        </StackPanel>
        </StackPanel>
       </Grid>
       <GridSplitter Grid.Row="1" Background="#E5ECF5" HorizontalAlignment="Stretch"

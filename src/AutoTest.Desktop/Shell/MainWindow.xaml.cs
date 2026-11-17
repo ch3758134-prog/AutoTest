@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Collections.Specialized;
+using AutoTest.Desktop.Testing;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
@@ -19,12 +21,13 @@ public partial class MainWindow : Window
     private bool _shutdownStarted;
     private bool _shutdownComplete;
     private bool _closeAttemptPending;
-    private bool _bottomVisible = true;
+    private bool _bottomVisible; // On entry: no real event rows => dock closed, tab remains recoverable.
     private bool _inspectorVisible = true;
     private bool _restoringDocumentTab;
     private bool _inspectorManualLayout;
     private bool _bottomManualLayout;
     private bool _treeAutoNarrow;
+    private TestEditorViewModel? _activeRunFacts;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -35,6 +38,13 @@ public partial class MainWindow : Window
         SizeChanged += OnShellSizeChanged;
         Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
         Closing += OnWindowClosing;
+        _viewModel.PropertyChanged += OnVmPropertyChanged;
+        Closed += (_, _) =>
+        {
+            _viewModel.PropertyChanged -= OnVmPropertyChanged;
+            if (_activeRunFacts is not null)
+                _activeRunFacts.RunFacts.CollectionChanged -= OnRunFactsChanged;
+        };
     }
 
     // WindowStyle=None + WindowChrome does not guarantee work-area maximization
@@ -192,12 +202,42 @@ public partial class MainWindow : Window
             await _viewModel.CloseEditorAsync(tab);
     }
 
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainWindowViewModel.ActiveEditorTab)) return;
+        var current = _viewModel.ActiveEditorTab?.Editor as TestEditorViewModel;
+        if (ReferenceEquals(_activeRunFacts, current)) return;
+        if (_activeRunFacts is not null)
+            _activeRunFacts.RunFacts.CollectionChanged -= OnRunFactsChanged;
+        _activeRunFacts = current;
+        if (current is not null)
+            current.RunFacts.CollectionChanged += OnRunFactsChanged;
+        OpenDockForRealEvents();
+        ApplyPanelLayout(); // no editor: do not reserve an empty 320 DIP Inspector
+    }
+
+    private void OnRunFactsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (Dispatcher.CheckAccess()) OpenDockForRealEvents();
+        else Dispatcher.BeginInvoke(new Action(OpenDockForRealEvents));
+    }
+
+    private void OpenDockForRealEvents()
+    {
+        if (_bottomManualLayout) return; // the operator's explicit choice wins
+        var hasRealFacts = _activeRunFacts?.RunFacts.Count > 0;
+        if (_bottomVisible == hasRealFacts) return;
+        _bottomVisible = hasRealFacts; // only real TEST evidence; no simulated PASS
+        ApplyPanelLayout();
+    }
+
     private void OnShellSizeChanged(object sender, SizeChangedEventArgs e)
     {
         // 1366×768 at 150% provides fewer than 920×500 effective DIPs.
         // Preserve the editing surface instead of squeezing controls/fonts.
         if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
-        if (!_bottomManualLayout) _bottomVisible = ActualHeight >= 650;
+        if (!_bottomManualLayout)
+            _bottomVisible = _activeRunFacts?.RunFacts.Count > 0;
         if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 235)
         {
             TreeColumn.Width = new GridLength(225);
@@ -213,8 +253,9 @@ public partial class MainWindow : Window
 
     private void ApplyPanelLayout()
     {
-        InspectorColumn.Width = new GridLength(_inspectorVisible ? 320 : 0);
-        InspectorSplitterColumn.Width = new GridLength(_inspectorVisible ? 4 : 0);
+        var showInspector = _inspectorVisible && _viewModel.HasActiveEditor;
+        InspectorColumn.Width = new GridLength(showInspector ? 320 : 0);
+        InspectorSplitterColumn.Width = new GridLength(showInspector ? 4 : 0);
         BottomRow.Height = new GridLength(_bottomVisible ? 180 : 0);
         BottomSplitterRow.Height = new GridLength(_bottomVisible ? 4 : 0);
     }

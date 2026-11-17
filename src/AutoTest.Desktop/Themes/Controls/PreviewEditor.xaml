@@ -418,6 +418,9 @@
   <Setter Property="BorderThickness" Value="1"/>
   <Setter Property="SnapsToDevicePixels" Value="True"/>
   <Style.Triggers>
+   <DataTrigger Binding="{Binding IsEmptyPhase}" Value="True">
+    <Setter Property="Height" Value="68"/>
+   </DataTrigger>
    <DataTrigger Binding="{Binding PhaseKind}" Value="Test">
     <Setter Property="Background" Value="#F0F9F6"/>
     <Setter Property="BorderBrush" Value="#CDE9E1"/>

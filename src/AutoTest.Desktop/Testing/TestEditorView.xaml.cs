@@ -159,8 +159,18 @@ public partial class TestEditorView : UserControl
 
     private UIElement BuildPhaseInspector()
     {
-        var phaseOrSlot = _viewModel.SelectedItem?.Kind == StepTreeItemKind.Slot;
-        var name = _viewModel.SelectedItem?.Label ?? "测试阶段";
+        if (_viewModel.SelectedItem is null)
+        {
+            return new TextBlock
+            {
+                Text = "选中步骤后，在这里编辑参数。",
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(106, 126, 151)),
+                Margin = new Thickness(16, 18, 12, 0)
+            };
+        }
+        var phaseOrSlot = _viewModel.SelectedItem.Kind == StepTreeItemKind.Slot;
+        var name = _viewModel.SelectedItem.Label;
         var panel = new StackPanel { Margin = new Thickness(14, 16, 14, 12) };
         panel.Children.Add(new TextBlock
         {
@@ -176,17 +186,9 @@ public partial class TestEditorView : UserControl
             Margin = new Thickness(0, 7, 0, 12),
             TextWrapping = TextWrapping.Wrap
         });
-        panel.Children.Add(new TextBlock
-        {
-            Text = "在中间步骤表点击该阶段或分支的“＋添加”，选择类型后步骤会立即出现，右侧自动切换为实际参数。",
-            Foreground = new SolidColorBrush(Color.FromRgb(96, 115, 140)),
-            FontSize = 12,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 13)
-        });
         var add = new Button
         {
-            Content = "＋ 添加步骤",
+            Content = "＋ 在此处添加步骤",
             Command = _viewModel.AddStepCommand,
             Padding = new Thickness(10, 7, 10, 7),
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -203,11 +205,16 @@ public partial class TestEditorView : UserControl
         var height = shell?.ActualHeight > 0 ? shell.ActualHeight : SystemParameters.WorkArea.Height;
         // Four columns on a normal desktop; narrower windows can fall back to wrapping.
         PaletteSurface.Width = Math.Min(1000, Math.Max(540, width - 120));
-        PaletteSurface.MaxHeight = Math.Min(790, Math.Max(420, height - 120));
-        PaletteList.MaxHeight = Math.Max(220, PaletteSurface.MaxHeight - 170);
+        // Keep the picker inside the usable window even at 1366×768/high DPI.
+        PaletteSurface.MaxHeight = Math.Min(790, Math.Max(280, height - 90));
+        PaletteList.MaxHeight = Math.Max(120, PaletteSurface.MaxHeight - 165);
         _paletteActions = TestStepInspector.PaletteActions(caseOnly);
-        PaletteHint.Text = caseOnly ? "SWITCH 的 CASE 区只能插入 CASE 分支" :
-            "选择后立即加入可撤销的正式 TEST 草稿；右侧完成参数";
+        var target = _viewModel.SelectedItem;
+        PaletteHint.Text = caseOnly
+            ? "插入位置：SWITCH / CASE 分支 · 仅允许插入 CASE"
+            : "插入位置：" + (target is null ? "未选择，需先选中阶段或分支" :
+                  StepUiCatalog.PhaseLabel(target.Phase) + " / " + target.Label) +
+              " · 单击即插入可撤销草稿，右侧立即编辑";
         PaletteSearch.Text = "";
         RefreshPaletteItems("");
         PaletteList.SelectedItem = _paletteActions.FirstOrDefault();

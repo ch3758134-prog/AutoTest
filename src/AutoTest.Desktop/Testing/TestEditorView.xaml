@@ -121,7 +121,8 @@
       <!-- Separate inset phase headers; the canonical TEST phase/slot editing remains unchanged. -->
       <Border x:Name="PhaseRow" Style="{StaticResource AtTestPhaseHeader}"
        Visibility="{Binding IsPhase,Converter={StaticResource BoolToVisibility}}">
-       <DockPanel Margin="11,0,9,0">
+       <StackPanel>
+       <DockPanel Height="42" Margin="11,0,9,0">
         <Button DockPanel.Dock="Right" Content="＋ 添加步骤" Tag="{Binding}" Click="AddAtRow_Click"
          Focusable="False" Style="{StaticResource AtTestPhaseAddButton}"
          ToolTip="直接在这个阶段末尾添加真实 TEST 步骤"/>
@@ -169,6 +170,10 @@
          </TextBlock>
         </StackPanel>
        </DockPanel>
+       <TextBlock Text="本阶段暂无步骤" FontSize="11" Foreground="#7A8DA4"
+        Margin="50,1,0,7"
+        Visibility="{Binding IsEmptyPhase,Converter={StaticResource BoolToVisibility}}"/>
+       </StackPanel>
       </Border>
 
       <Border x:Name="SlotRow" Background="#FAFBFF" BorderBrush="#EDF1F6"

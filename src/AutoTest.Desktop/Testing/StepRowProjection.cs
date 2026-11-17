@@ -18,6 +18,8 @@ public sealed class StepRowProjection : BindableBase
     public int Sequence { get; }
     public string SequenceText => Sequence == 0 ? "" : Sequence.ToString("D2");
     public bool IsPhase => Item.Kind == StepTreeItemKind.Phase;
+    // Presentation-only empty state: no additional StepNode or TEST collection.
+    public bool IsEmptyPhase => IsPhase && Item.Children.Count == 0;
     public bool IsSlot => Item.Kind == StepTreeItemKind.Slot;
     public bool IsStep => Item.Kind == StepTreeItemKind.Step;
     public bool IsCollapsed { get; }

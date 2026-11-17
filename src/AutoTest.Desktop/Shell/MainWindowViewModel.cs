@@ -27,7 +27,6 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
 {
     public string Key { get; } = key;
     public string Title { get; set; } = title;
-    public bool IsPrimaryTab => Key is "home" or "config-overview";
     public UserControl View { get; } = view;
     public Func<bool> ConfirmClose { get; } = confirmClose;
     /// <summary>Right rail is the editor's only inspector, never a second copy.</summary>
@@ -88,6 +87,7 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _savingActive;
     public ObservableCollection<EditorTabModel> OpenEditors => _documents.Tabs;
     private readonly RecentProjectStore _recentProjects;
+    private readonly RecentEditorDocumentStore _recentEditors = new();
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
     private ResourceTreeNode? _selectedResource;
@@ -124,6 +124,8 @@ public sealed class MainWindowViewModel : BindableBase
         _dbcDialogs = dbcDialogs;
         _testDialogs = testDialogs;
         _recentProjects = recentProjects;
+        StartPrimaryCommand = new DelegateCommand(async () => await StartPrimaryAsync());
+        StartSecondaryCommand = new DelegateCommand(async () => await StartSecondaryAsync());
         NewProjectCommand = new DelegateCommand(async () => await OpenNewProjectAsync(), () => !IsBusy);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
@@ -254,7 +256,7 @@ public sealed class MainWindowViewModel : BindableBase
                 if (projectTab.Editor is TestProjectWorkbenchViewModel projectEditor)
                     projectEditor.RefreshReferences();
             RebuildResourceTree();
-            EnsureOverview();
+            RaiseStartStateChanged();
             StatusMessage = _workspace.Current is { } current
                 ? "工程已载入：" + current.ManifestPath
                 : "尚未打开工程";
@@ -270,7 +272,7 @@ public sealed class MainWindowViewModel : BindableBase
             RefreshCommands();
         };
         RebuildResourceTree();
-        EnsureOverview();
+        RaiseStartStateChanged();
     }
 
     public sealed record CanMonitorRow(string Time, string Port, string Id, string Format,
@@ -328,12 +330,33 @@ public sealed class MainWindowViewModel : BindableBase
         if (kind == ProjectWorkspaceService.TestProjectKind) await OpenSelectedTestProjectAsync();
         else await OpenSelectedTestProgramAsync();
     }
+    private Window? _projectInformationWindow;
+
+    /// <summary>Non-persistent project metadata; opening the project never pins a home tab.</summary>
     public void ShowOverview()
     {
         if (_workspace.Current is null) return;
-        EnsureOverview();
-        var home = OpenEditors.FirstOrDefault(x => x.Key == "home");
-        if (home is not null) ActiveEditorTab = home;
+        if (_projectInformationWindow is { IsVisible: true })
+        {
+            _projectInformationWindow.Activate();
+            return;
+        }
+        var panel = new ProjectOverviewView(this);
+        var window = new Window
+        {
+            Title = "工程信息 · " + CurrentProjectName,
+            Owner = Application.Current.MainWindow,
+            Content = panel,
+            Width = Math.Max(640, Math.Min(980, SystemParameters.WorkArea.Width - 36)),
+            Height = Math.Max(440, Math.Min(640, SystemParameters.WorkArea.Height - 36)),
+            MinWidth = 640,
+            MinHeight = 440,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = System.Windows.Media.Brushes.White
+        };
+        _projectInformationWindow = window;
+        window.Closed += (_, _) => _projectInformationWindow = null;
+        window.Show();
     }
 
     public void ShowProjectConfiguration()
@@ -393,10 +416,94 @@ public sealed class MainWindowViewModel : BindableBase
         await OpenSelectedConfigurationAsync();
     }
 
-    private void EnsureOverview()
+    // No EnsureOverview: the empty workspace chooses its action from real assets.
+
+    private bool HasLinkedTestCases => ResourceNodes.Any(n => n.Role == "Project" &&
+        n.Children.Any(c => c.Role == "Case" && c.Asset is not null));
+    private string StartMode => WorkspaceStartPolicy.Choose(
+        HasProject, TestProjectCount, HasLinkedTestCases);
+    public string StartTitle => StartMode switch
     {
-        if (_workspace.Current is null || OpenEditors.Any(x => x.Key == "home")) return;
-        ActivateEditor("home", new ProjectOverviewView(this), "工程概览", () => true);
+        "none" => "打开测试工程",
+        "project" => "创建第一个测试项目",
+        "case" => "向测试项目添加测试用例",
+        _ => "继续编辑测试用例"
+    };
+    public string StartDescription => StartMode switch
+    {
+        "none" => "打开已有工程，或创建新的空白工程。",
+        "project" => "当前工程还没有测试项目。先建立项目，再组织具体测试用例。",
+        "case" => "项目已经建立。进入项目后可新建空白用例或加入已有用例。",
+        _ => "从工程树选择资源，或直接继续编辑现有的测试用例。"
+    };
+    public string StartPrimaryLabel => StartMode switch
+    {
+        "none" => "打开工程",
+        "project" => "新建测试项目",
+        "case" => "进入项目 · 新建或加入用例",
+        _ => "打开测试用例"
+    };
+    public string StartSecondaryLabel => StartMode switch
+    {
+        "none" => "新建工程",
+        "project" when TestProgramCount > 0 => "打开独立用例",
+        "ready" => "管理测试项目",
+        _ => "查看工程信息"
+    };
+    public bool ShowStartSecondary => StartMode is "none" or "ready" ||
+        StartMode == "project" && TestProgramCount > 0;
+    public DelegateCommand StartPrimaryCommand { get; }
+    public DelegateCommand StartSecondaryCommand { get; }
+
+    private void RaiseStartStateChanged()
+    {
+        RaisePropertyChanged(nameof(StartTitle));
+        RaisePropertyChanged(nameof(StartDescription));
+        RaisePropertyChanged(nameof(StartPrimaryLabel));
+        RaisePropertyChanged(nameof(StartSecondaryLabel));
+        RaisePropertyChanged(nameof(ShowStartSecondary));
+    }
+    private async Task StartPrimaryAsync()
+    {
+        if (IsBusy) return;
+        switch (StartMode)
+        {
+            case "none": await OpenProjectAsync(); break;
+            case "project": await CreateTestProjectAsync(); break;
+            case "case": await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+                CreateTestProjectAsync); break;
+            default: await OpenFirstLinkedCaseAsync(); break;
+        }
+    }
+
+    private async Task OpenFirstLinkedCaseAsync()
+    {
+        var linked = ResourceNodes.Where(x => x.Role == "Project")
+            .SelectMany(x => x.Children)
+            .FirstOrDefault(x => x.Role == "Case" && x.Asset is not null);
+        if (linked is null)
+        {
+            await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+                CreateTestProjectAsync);
+            return;
+        }
+        SelectResource(linked);
+        await OpenSelectedResourceAsync();
+    }
+    private async Task StartSecondaryAsync()
+    {
+        if (IsBusy) return;
+        switch (StartMode)
+        {
+            case "none": await OpenNewProjectAsync(); break;
+            case "project" when TestProgramCount > 0:
+                await OpenFirstAssetAsync(ProjectWorkspaceService.TestProgramKind,
+                    CreateTestProgramAsync); break;
+            case "ready":
+                await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+                    CreateTestProjectAsync); break;
+            default: ShowOverview(); break;
+        }
     }
     private async Task OpenDbcToolAsync()
     {
@@ -644,6 +751,16 @@ public sealed class MainWindowViewModel : BindableBase
 
     private void RaiseActiveEditorChanged()
     {
+        if (ActiveEditorTab is { } active && _workspace.Current is { } current)
+        {
+            try { _recentEditors.Remember(current.ManifestPath, active.Key); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                           ArgumentException or JsonException)
+            {
+                // Navigation must remain functional if local UI preferences cannot be written.
+                System.Diagnostics.Trace.TraceWarning("Recent editor not persisted: " + error.Message);
+            }
+        }
         RaisePropertyChanged(nameof(ActiveEditorTab));
         if (ActiveEditorTab?.Editor is TestProjectWorkbenchViewModel projectEditor)
             projectEditor.RefreshReferences();
@@ -655,6 +772,7 @@ public sealed class MainWindowViewModel : BindableBase
         RaisePropertyChanged(nameof(IsProjectActive));
         RaisePropertyChanged(nameof(IsCaseActive));
         RaisePropertyChanged(nameof(IsConfigurationActive));
+        RaiseStartStateChanged();
     }
     public UserControl? ActiveEditorView => ActiveEditorTab?.View;
     public ContentControl? ActiveEditorInspector => ActiveEditorTab?.Inspector;
@@ -851,9 +969,11 @@ public sealed class MainWindowViewModel : BindableBase
             return;
         }
         IsBusy = true;
+        var openedSuccessfully = false;
         try
         {
             await _workspace.OpenAsync(path);
+            openedSuccessfully = true;
             StatusMessage = "已自动打开上次工程：" + path;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
@@ -863,6 +983,43 @@ public sealed class MainWindowViewModel : BindableBase
             StatusMessage = "上次工程打开失败，可手动选择：" + error.Message;
         }
         finally { IsBusy = false; }
+        if (openedSuccessfully) await RestoreRecentEditorAsync();
+    }
+
+    /// <summary>Restore only an existing, validated resource from the opened project.</summary>
+    private async Task RestoreRecentEditorAsync()
+    {
+        if (IsBusy || ActiveEditorTab is not null || _workspace.Current is not { } project) return;
+        string? lastKey;
+        try { lastKey = _recentEditors.Read(project.ManifestPath); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                           ArgumentException or JsonException)
+        {
+            StatusMessage = "最近文档记录无法读取，仍可从工程树打开：" + error.Message;
+            return;
+        }
+        if (lastKey is null) return;
+        var separator = lastKey.LastIndexOf('|');
+        if (separator < 0 || !Guid.TryParse(lastKey[(separator + 1)..], out var guid)) return;
+        var asset = project.Definition.Assets.FirstOrDefault(a => a.Id.Value == guid);
+        if (asset is null) return;
+        var valid = lastKey.StartsWith("test|", StringComparison.Ordinal) &&
+                    asset.Kind == ProjectWorkspaceService.TestProgramKind ||
+                    lastKey.StartsWith("project|", StringComparison.Ordinal) &&
+                    asset.Kind == ProjectWorkspaceService.TestProjectKind ||
+                    lastKey.StartsWith("dbc|", StringComparison.Ordinal) &&
+                    asset.Kind == ProjectWorkspaceService.DbcKind ||
+                    lastKey.StartsWith("config|", StringComparison.Ordinal) &&
+                    ProjectConfigurationCodec.IsConfiguration(asset.Kind);
+        if (!valid || !ReferenceEquals(project, _workspace.Current)) return;
+        // Project-case links are read asynchronously. A valid recent TEST asset
+        // must restore even before the explorer has finished loading those links.
+        // This is only a transient selection over the actual manifest AssetEntry.
+        var node = AllNodes(ResourceNodes).FirstOrDefault(n => n.Asset?.Id == asset.Id) ??
+            new ResourceTreeNode(asset.Name, "", asset.RelativePath, asset.Kind, asset,
+                role: asset.Kind == ProjectWorkspaceService.TestProgramKind ? "Case" : "Asset");
+        SelectResource(node);
+        await OpenSelectedResourceAsync();
     }
 
     // Resource selection can change while an editor is loading from disk.
@@ -942,7 +1099,15 @@ public sealed class MainWindowViewModel : BindableBase
         var current = _workspace.Current;
         var group = ResourceNodes.FirstOrDefault(x => x.Role == "Folder" &&
             x.Label == "未加入项目的用例");
-        if (current is null || group is null) return;
+        if (current is null) return;
+        // A not-yet-loaded or failed PROJECT cannot prove any TEST is unassigned.
+        // Do not briefly present false 'unassigned cases' while references load.
+        if (ResourceNodes.Any(x => x.Role == "Project" &&
+            (x.CountLabel == "…" || x.CountLabel == "!")))
+        {
+            if (group is not null) ResourceNodes.Remove(group);
+            return;
+        }
         var assigned = ResourceNodes.Where(x => x.Role == "Project")
             .SelectMany(x => x.Children)
             .Where(x => x.Asset is not null).Select(x => x.Asset!.Id)
@@ -951,6 +1116,20 @@ public sealed class MainWindowViewModel : BindableBase
             .Where(x => x.Kind == ProjectWorkspaceService.TestProgramKind &&
                 !assigned.Contains(x.Id))
             .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        if (missing.Length == 0)
+        {
+            if (group is not null) ResourceNodes.Remove(group);
+            return;
+        }
+        if (group is null)
+        {
+            group = new ResourceTreeNode("未加入项目的用例", "", "实际未引用的 TEST",
+                role: "Folder");
+            var marker = ResourceNodes.FirstOrDefault(x =>
+                x.Role == "Section" && x.Label == "工程资源");
+            ResourceNodes.Insert(marker is null ? ResourceNodes.Count : ResourceNodes.IndexOf(marker),
+                group);
+        }
         group.Children.Clear();
         foreach (var entry in missing)
             group.Children.Add(new ResourceTreeNode(entry.Name, "", entry.RelativePath,
@@ -990,6 +1169,7 @@ public sealed class MainWindowViewModel : BindableBase
             }
             UpdateProjectCount(node);
             RefreshUnassignedCases();
+            RaiseStartStateChanged();
         }
         editor.CreateNewPackageRequested = async () => await CreateCaseInsideProjectAsync(editor);
         editor.OpenPackageRequested = packageId =>
@@ -1028,6 +1208,7 @@ public sealed class MainWindowViewModel : BindableBase
             }
             UpdateProjectCount(node);
             RefreshUnassignedCases();
+            RaiseStartStateChanged();
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
             UnauthorizedAccessException or ArgumentException or ProjectDataException)
@@ -1037,6 +1218,7 @@ public sealed class MainWindowViewModel : BindableBase
             node.Children.Add(new ResourceTreeNode("引用读取失败", "", error.Message,
                 role: "Placeholder", isPlaceholder: true));
             node.CountLabel = "!";
+            RaiseStartStateChanged();
         }
     }
 
@@ -1075,12 +1257,15 @@ public sealed class MainWindowViewModel : BindableBase
         // business entities; case links refer to the exact same AssetId.
         var allCases = assets.Where(x => x.Kind == ProjectWorkspaceService.TestProgramKind)
             .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
-        var unused = new ResourceTreeNode("未加入项目的用例", "", "独立 TEST 资产",
-            role: "Folder", count: allCases.Length.ToString());
-        foreach (var entry in allCases)
-            unused.Children.Add(new ResourceTreeNode(entry.Name, "", entry.RelativePath,
-                entry.Kind, entry, role: "Case"));
-        ResourceNodes.Add(unused);
+        if (allCases.Length > 0 && projects.Length == 0)
+        {
+            var unused = new ResourceTreeNode("未加入项目的用例", "", "独立 TEST 资产",
+                role: "Folder", count: allCases.Length.ToString());
+            foreach (var entry in allCases)
+                unused.Children.Add(new ResourceTreeNode(entry.Name, "", entry.RelativePath,
+                    entry.Kind, entry, role: "Case"));
+            ResourceNodes.Add(unused);
+        }
         ResourceNodes.Add(new ResourceTreeNode("工程资源", "", "固定工程的配置及资产",
             role: "Section"));
 
@@ -1096,16 +1281,25 @@ public sealed class MainWindowViewModel : BindableBase
             (ProjectWorkspaceService.FirmwareKind, "固件资源"),
             (ProjectWorkspaceService.ScanSettingsKind, "扫码匹配配置")
         };
+        // Frequent resources remain prominent. Empty technical kinds are still
+        // creatable inside one collapsed group, not deleted from the project.
+        var advanced = new ResourceTreeNode("更多资源与配置", "", "可展开创建 TCF、TBC 等资源",
+            role: "Advanced");
         foreach (var (kind, label) in categories)
         {
             var entries = assets.Where(x => x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
             var group = new ResourceTreeNode(label, "", "实际工程资产", kind,
-                role: "Folder", count: entries.Length.ToString());
+                role: "Folder", count: entries.Length == 0 ? "" : entries.Length.ToString());
             foreach (var entry in entries)
                 group.Children.Add(ToAssetNode(entry));
-            ResourceNodes.Add(group);
+            if (entries.Length > 0 || kind is ProjectWorkspaceService.DbcKind or
+                ProjectWorkspaceService.ControllerKind or ProjectWorkspaceService.WaveKind)
+                ResourceNodes.Add(group);
+            else
+                advanced.Children.Add(group);
         }
+        if (advanced.Children.Count > 0) ResourceNodes.Add(advanced);
         var defined = categories.Select(x => x.Item1)
             .Append(ProjectWorkspaceService.TestProjectKind)
             .Append(ProjectWorkspaceService.TestProgramKind)
@@ -1152,6 +1346,7 @@ public sealed class MainWindowViewModel : BindableBase
             await _workspace.OpenAsync(path);
             StatusMessage = "工程已打开：" + path;
         });
+        await RestoreRecentEditorAsync();
     }
 
     private async Task CreateCaseInsideProjectAsync(TestProjectWorkbenchViewModel projectEditor)

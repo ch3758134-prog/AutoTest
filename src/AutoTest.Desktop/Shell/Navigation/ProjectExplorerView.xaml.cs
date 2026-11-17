@@ -30,6 +30,36 @@ public partial class ProjectExplorerView : UserControl
         catch (Exception ex) { UiExceptionReporter.Record("Explorer / open asset", ex); }
     }
 
+    // Only navigates canonical AssetEntry references; never creates search copies.
+    private async void ResourceSearch_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Return or Key.Enter) ||
+            DataContext is not MainWindowViewModel vm) return;
+        e.Handled = true;
+        var query = ResourceSearch.Text.Trim();
+        if (query.Length == 0) return;
+        static IEnumerable<ResourceTreeNode> All(IEnumerable<ResourceTreeNode> roots)
+        {
+            foreach (var root in roots)
+            {
+                yield return root;
+                foreach (var child in All(root.Children)) yield return child;
+            }
+        }
+        var found = All(vm.ResourceNodes).FirstOrDefault(n => n.Asset is not null &&
+            (n.Label.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+             n.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase)));
+        if (found is null)
+        {
+            ResourceSearch.ToolTip = "当前工程中没有匹配的正式资源：" + query;
+            return;
+        }
+        ResourceSearch.ToolTip = found.Label;
+        vm.SelectResource(found);
+        try { await vm.OpenSelectedResourceAsync(); }
+        catch (Exception error) { UiExceptionReporter.Record("Explorer / search resource", error); }
+    }
+
     private async void AddResource_Click(object sender, RoutedEventArgs e)
     {
         e.Handled = true;

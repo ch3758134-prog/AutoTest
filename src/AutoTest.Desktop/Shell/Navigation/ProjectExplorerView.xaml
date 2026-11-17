@@ -71,7 +71,12 @@
         <Setter TargetName="RowChrome" Property="BorderBrush" Value="#E5EBF4"/>
         <Setter TargetName="RowChrome" Property="Margin" Value="3,10,3,2"/>
        </DataTrigger>
-       <DataTrigger Binding="{Binding Role}" Value="Placeholder">
+       <DataTrigger Binding="{Binding Role}" Value="Advanced">
+         <Setter Property="IsExpanded" Value="False"/>
+         <Setter TargetName="RowChrome" Property="Height" Value="30"/>
+         <Setter TargetName="RowChrome" Property="Background" Value="#F7FAFD"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Role}" Value="Placeholder">
         <Setter TargetName="RowChrome" Property="Height" Value="28"/>
         <Setter TargetName="RowChrome" Property="Opacity" Value="0.68"/>
        </DataTrigger>
@@ -158,7 +163,14 @@
  <DockPanel LastChildFill="True">
   <Border DockPanel.Dock="Top" Height="35" BorderBrush="#E9EEF5" BorderThickness="0,0,0,1"
    Padding="11,0" Background="#FBFCFE">
-   <TextBlock Text="工程导航" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+   <DockPanel LastChildFill="True">
+    <TextBox x:Name="ResourceSearch" DockPanel.Dock="Right" Width="132" Height="26"
+     VerticalContentAlignment="Center" Padding="6,3" FontSize="11"
+     KeyDown="ResourceSearch_KeyDown"
+     ToolTip="输入真实资源名或路径并按 Enter 打开；不修改工程资源"/>
+    <TextBlock Text="工程导航" FontSize="12" FontWeight="SemiBold"
+     VerticalAlignment="Center" Margin="0,0,8,0"/>
+   </DockPanel>
   </Border>
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
    Padding="7,6,7,12">
