@@ -621,6 +621,12 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             Convert.ToHexString(frame.Data.AsSpan()), "主控 ACK，不代表 DUT 接收"));
     });
 
+    public async Task ApplyNamedOperationAsync(NamedOperation action)
+    {
+        SelectNamedOperation(action);
+        await ApplyKeysAsync();
+    }
+
     private async Task ApplyKeysAsync() => await Execute("KEY_SIM 电阻组合", async () =>
     {
         if (!_hardware.IsConnected) throw new IOException("USB 未连接");
@@ -645,6 +651,12 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     {
         foreach (var key in Keys) key.Checked = false;
         Status = "已清空 Key 选择；请点击“应用 Key 组合”确认向 CAN0 发送全断开请求。";
+    }
+
+    public async Task ApplyIgnSelectionAsync(bool on)
+    {
+        IgnOn = on;
+        await ApplyIgnAsync();
     }
 
     private async Task ApplyIgnAsync() => await Execute("IGN", async () =>

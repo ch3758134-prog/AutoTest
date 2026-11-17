@@ -57,9 +57,9 @@
 
   <Grid Grid.Row="1" Margin="12,12,12,10">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="1.65*" MinWidth="470"/>
-    <ColumnDefinition Width="1.03*" MinWidth="345"/>
-    <ColumnDefinition Width="1.16*" MinWidth="340"/>
+    <ColumnDefinition Width="40*" MinWidth="475"/>
+    <ColumnDefinition Width="31*" MinWidth="385"/>
+    <ColumnDefinition Width="29*" MinWidth="340"/>
    </Grid.ColumnDefinitions>
 
    <!-- LEFT: CAN1 multi-message table and selected-message inspector. -->
@@ -186,89 +186,126 @@
     </Grid>
    </Border>
 
-   <!-- CENTER: direct KEY_SIM / IGN / two physical clamp controls. -->
+   <!-- CENTER: priority order is real station IO then reusable KEY actions. -->
    <Border Grid.Column="1" Style="{StaticResource BenchCard}" Margin="0,0,9,0">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel>
+    <DockPanel LastChildFill="True">
+     <StackPanel DockPanel.Dock="Top">
       <TextBlock Text="工位控制" Style="{StaticResource BenchHeader}"/>
-      <TextBlock Text="KEY_SIM / IGN / 独立夹具，全部使用当前主控 USB 会话。"
-       Style="{StaticResource BenchHint}" Margin="0,4,0,10"/>
-      <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile,Mode=TwoWay}"
-       MinHeight="30" ToolTip="当前工程的 Controller 配置"/>
-      <TextBlock Text="{Binding ControllerSummary}" Style="{StaticResource BenchHint}" Margin="0,7,0,9"/>
-      <TextBlock Text="KEY_SIM · 20 Key 组合 (CAN0)" FontWeight="SemiBold" Foreground="#264E7C"/>
-      <TextBlock Text="点击选择组合，点击“应用”才会通过 CAN0 发送到按键板；保持/释放不会自动变化。"
-       Style="{StaticResource BenchHint}" Margin="0,4,0,8"/>
-      <ItemsControl ItemsSource="{Binding NamedOperations}">
-       <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-       <ItemsControl.ItemTemplate>
-        <DataTemplate>
-         <Button Content="{Binding Display}" Tag="{Binding}" Click="SelectNamedOperation_Click"
-          Padding="7,5" Margin="0,0,5,5"/>
-        </DataTemplate>
-       </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <ItemsControl ItemsSource="{Binding Keys}" Margin="0,6,0,5">
-       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-       <ItemsControl.ItemTemplate>
-        <DataTemplate>
-         <CheckBox Content="{Binding Label}" IsChecked="{Binding Checked,Mode=TwoWay}"
-          Style="{StaticResource BenchKey}"/>
-        </DataTemplate>
-       </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <TextBlock Text="{Binding DraftMaskLabel}" Foreground="#617D9B" FontSize="11"/>
-      <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-       <Button Content="应用 Key 组合" Command="{Binding SendKeyCommand}"
-        Style="{StaticResource AtPrimaryButton}" Padding="11,6" Margin="0,0,7,0"/>
-       <Button Content="清空选择" Command="{Binding ReleaseKeysCommand}" Padding="10,6"/>
-      </StackPanel>
-      <TextBlock Text="{Binding LastKeyAck}" Style="{StaticResource BenchHint}" Margin="0,7,0,0"/>
-      <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,14,0,11"/>
-      <TextBlock Text="IGN · 点火控制" FontWeight="SemiBold" Foreground="#264E7C"/>
-      <StackPanel Orientation="Horizontal" Margin="0,10,0,7">
-       <RadioButton Content="ON" GroupName="IgnTarget" IsChecked="{Binding IgnOn,Mode=TwoWay}" Margin="0,0,18,0"/>
-       <RadioButton Content="OFF" GroupName="IgnTarget" IsChecked="{Binding IgnOff,Mode=TwoWay}"/>
-      </StackPanel>
-      <StackPanel Orientation="Horizontal">
-       <Button Content="设置 IGN" Command="{Binding SendIgnCommand}"
-        Padding="11,6" Margin="0,0,7,0"/>
-       <Button Content="读取 GPIO" Command="{Binding ReadIgnCommand}" Padding="10,6"/>
-      </StackPanel>
-      <TextBlock Text="{Binding LastIgnAck}" Style="{StaticResource BenchHint}" Margin="0,7,0,0"/>
-      <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,14,0,11"/>
-      <TextBlock Text="两只夹具 · 独立控制" FontWeight="SemiBold" Foreground="#264E7C"/>
-      <TextBlock Text="夹具1=J1 B5，夹具2=J1 B4。请求压紧=1、释放=0；USB 断开可能释放夹具。"
-       Style="{StaticResource BenchHint}" Margin="0,5,0,6"/>
-      <CheckBox IsChecked="{Binding ClampSafetyConfirmed,Mode=TwoWay}" Margin="0,6,0,9">
-       <TextBlock Text="已确认现场线束、气路和夹具区域安全，可执行实体动作"
-        TextWrapping="Wrap" MaxWidth="335"/>
+      <TextBlock Text="同一个 USB 会话 · 独立 IGN 与双夹具 · CAN0 按键板"
+       Style="{StaticResource BenchHint}" Margin="0,4,0,9"/>
+      <CheckBox IsChecked="{Binding ClampSafetyConfirmed,Mode=TwoWay}" Margin="0,0,0,9">
+       <TextBlock Text="已检查夹具和气路安全，可进行夹具实体操作" TextWrapping="Wrap"/>
       </CheckBox>
       <Grid>
        <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="74"/>
         <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="7"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="7"/>
         <ColumnDefinition Width="*"/>
        </Grid.ColumnDefinitions>
-       <Grid.RowDefinitions><RowDefinition Height="40"/><RowDefinition Height="40"/></Grid.RowDefinitions>
-       <TextBlock Grid.Row="0" Grid.Column="0" Text="夹具 1" VerticalAlignment="Center" FontWeight="SemiBold"/>
-       <Button Grid.Row="0" Grid.Column="1" Content="压紧" Click="Clamp1Press_Click"
-        IsEnabled="{Binding CanSendClamp}" Margin="0,3,5,3"/>
-       <Button Grid.Row="0" Grid.Column="2" Content="释放" Click="Clamp1Release_Click"
-        IsEnabled="{Binding CanSendClamp}" Margin="0,3,0,3"/>
-       <TextBlock Grid.Row="1" Grid.Column="0" Text="夹具 2" VerticalAlignment="Center" FontWeight="SemiBold"/>
-       <Button Grid.Row="1" Grid.Column="1" Content="压紧" Click="Clamp2Press_Click"
-        IsEnabled="{Binding CanSendClamp}" Margin="0,3,5,3"/>
-       <Button Grid.Row="1" Grid.Column="2" Content="释放" Click="Clamp2Release_Click"
-        IsEnabled="{Binding CanSendClamp}" Margin="0,3,0,3"/>
+       <Border Grid.Column="0" BorderBrush="#DCE6F2" BorderThickness="1"
+        Background="#F9FBFE" CornerRadius="6" Padding="7">
+        <StackPanel>
+         <TextBlock Text="IGN" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
+         <Button Content="ON" Click="IgnOn_Click" IsEnabled="{Binding CanOperateGpio}" Margin="0,0,0,4" MinHeight="30"/>
+         <Button Content="OFF" Click="IgnOff_Click" IsEnabled="{Binding CanOperateGpio}" MinHeight="30"/>
+        </StackPanel>
+       </Border>
+       <Border Grid.Column="2" BorderBrush="#DCE6F2" BorderThickness="1"
+        Background="#F9FBFE" CornerRadius="6" Padding="7">
+        <StackPanel>
+         <TextBlock Text="夹具 1 · B5" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
+         <Button Content="压紧" Click="Clamp1Press_Click" IsEnabled="{Binding CanSendClamp}" Margin="0,0,0,4" MinHeight="30"/>
+         <Button Content="释放" Click="Clamp1Release_Click" IsEnabled="{Binding CanSendClamp}" MinHeight="30"/>
+        </StackPanel>
+       </Border>
+       <Border Grid.Column="4" BorderBrush="#DCE6F2" BorderThickness="1"
+        Background="#F9FBFE" CornerRadius="6" Padding="7">
+        <StackPanel>
+         <TextBlock Text="夹具 2 · B4" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
+         <Button Content="压紧" Click="Clamp2Press_Click" IsEnabled="{Binding CanSendClamp}" Margin="0,0,0,4" MinHeight="30"/>
+         <Button Content="释放" Click="Clamp2Release_Click" IsEnabled="{Binding CanSendClamp}" MinHeight="30"/>
+        </StackPanel>
+       </Border>
       </Grid>
-      <Button Content="读取两夹具 MCU GPIO" Command="{Binding ReadClampsCommand}"
-       Margin="0,9,0,0" Padding="10,6" HorizontalAlignment="Left"/>
-      <TextBlock Text="{Binding LastClampStatus}" Style="{StaticResource BenchHint}" Margin="0,7,0,0"/>
-      <TextBlock Text="GPIO 回读不是机械到位。KEY_SIM 20 个开关最终合成五路电压，需以实物和 ECU 响应验证。"
-       Style="{StaticResource BenchHint}" Margin="0,12,0,0"/>
+      <DockPanel Margin="0,8,0,0">
+       <Button DockPanel.Dock="Right" Content="读夹具 GPIO" Command="{Binding ReadClampsCommand}"
+        Padding="8,5" Margin="6,0,0,0"/>
+       <Button DockPanel.Dock="Right" Content="读 IGN" Command="{Binding ReadIgnCommand}"
+        Padding="8,5" Margin="6,0,0,0"/>
+       <TextBlock Text="状态仅为 MCU 命令/回读，不代表机械到位"
+        Style="{StaticResource BenchHint}" VerticalAlignment="Center"/>
+      </DockPanel>
+      <TextBlock Text="{Binding LastIgnAck}" Style="{StaticResource BenchHint}" Margin="0,6,0,0" MaxHeight="30"/>
+      <TextBlock Text="{Binding LastClampStatus}" Style="{StaticResource BenchHint}" Margin="0,4,0,0" MaxHeight="38"/>
+      <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
+      <DockPanel Margin="0,0,0,8">
+       <TextBlock DockPanel.Dock="Left" Text="按键动作 · CAN0" Style="{StaticResource BenchHeader}" FontSize="14"/>
+       <TextBlock DockPanel.Dock="Right" Text="K01～K20 / 电阻网络" Style="{StaticResource BenchHint}"/>
+      </DockPanel>
+      <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile,Mode=TwoWay}"
+       MinHeight="28" ToolTip="从工程 Controller 读取真实按键硬件允许组合"/>
+      <TextBlock Text="{Binding ControllerSummary}" Style="{StaticResource BenchHint}" Margin="0,5,0,7"/>
      </StackPanel>
-    </ScrollViewer>
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+       <TextBlock Text="左键：确认下发已有单段组合；右键：载入到下方组合编辑。"
+        Style="{StaticResource BenchHint}" Margin="0,2,0,9"/>
+       <ItemsControl ItemsSource="{Binding NamedOperations}">
+        <ItemsControl.ItemsPanel>
+         <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+         <DataTemplate>
+          <Border BorderBrush="#D9E5F2" BorderThickness="1" CornerRadius="6"
+           Margin="0,0,7,8" Background="#F7FAFF">
+           <Button Tag="{Binding}" Click="ApplyNamedOperation_Click"
+            PreviewMouseRightButtonUp="EditNamedOperation_RightClick"
+            Background="Transparent" BorderThickness="0" Padding="9,12"
+            HorizontalContentAlignment="Stretch" ToolTip="左键确认下发；右键编辑待发掩码">
+            <StackPanel>
+             <TextBlock Text="{Binding Name}" Foreground="#235A94" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+             <TextBlock Text="{Binding Display}" Foreground="#74879A" FontSize="10" Margin="0,3,0,0"
+              TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+           </Button>
+          </Border>
+         </DataTemplate>
+        </ItemsControl.ItemTemplate>
+       </ItemsControl>
+       <Expander Header="编辑当前 20 KEY 组合（本次发送草稿）" IsExpanded="False"
+        Margin="0,6,0,0">
+        <StackPanel Margin="0,8,0,0">
+         <TextBlock Text="组合为内部电阻开关，不是 20 路 ECU 数字输入；未配置有效 Controller 时禁止下发。"
+          Style="{StaticResource BenchHint}"/>
+         <ItemsControl ItemsSource="{Binding Keys}" Margin="0,7,0,6">
+          <ItemsControl.ItemsPanel>
+           <ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+           <DataTemplate>
+            <CheckBox Content="{Binding Label}" IsChecked="{Binding Checked,Mode=TwoWay}"
+             Style="{StaticResource BenchKey}"/>
+           </DataTemplate>
+          </ItemsControl.ItemTemplate>
+         </ItemsControl>
+         <TextBlock Text="{Binding DraftMaskLabel}" Style="{StaticResource BenchHint}" Margin="0,0,0,8"/>
+         <StackPanel Orientation="Horizontal">
+          <Button Content="应用此组合" Command="{Binding SendKeyCommand}"
+           Style="{StaticResource AtPrimaryButton}" Padding="10,6" Margin="0,0,6,0"/>
+          <Button Content="全断开草稿" Command="{Binding ReleaseKeysCommand}" Padding="10,6"/>
+         </StackPanel>
+        </StackPanel>
+       </Expander>
+       <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
+       <TextBlock Text="KEY_SIM 通路状态" FontWeight="SemiBold" Foreground="#2C527D"/>
+       <TextBlock Text="{Binding LastKeyAck}" Style="{StaticResource BenchHint}" Margin="0,5,0,0"/>
+       <TextBlock Text="这批 Controller 命名项是单段掩码；任意长度命名动作序列的工程保存合同仍需独立交付，不能假装已有。"
+        Style="{StaticResource BenchHint}" Margin="0,9,0,0"/>
+      </StackPanel>
+     </ScrollViewer>
+    </DockPanel>
    </Border>
 
    <!-- RIGHT: read-only real-time monitor with USB/ACK/evidence and export. -->
