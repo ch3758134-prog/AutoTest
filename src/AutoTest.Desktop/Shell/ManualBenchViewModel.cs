@@ -298,6 +298,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ReadClampsCommand = new DelegateCommand(async () => await ReadClampsAsync(), () => CanReadGpio);
         ClearLogsCommand = new DelegateCommand(() => Logs.Clear());
         InitializeCanRows();
+        InitializeKeyActions();
         _ = ReloadResourcesAsync();
     }
 
@@ -377,6 +378,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
 
     private void RaiseCommands()
     {
+        NotifyKeyCommands();
         NotifyCanRows();
         RaisePropertyChanged(nameof(CanSendHardware));
         RaisePropertyChanged(nameof(CanSendManualCan1));
@@ -429,9 +431,10 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
 
     public async Task ReloadResourcesAsync()
     {
-        if (IsCanBatchRunning) return;
+        if (IsCanBatchRunning || IsKeyActionRunning) return;
         await ReloadProfilesAsync();
         await ReloadDbcAsync();
+        await ReloadKeyActionsAsync();
     }
 
     private async Task ReloadDbcAsync()
@@ -753,6 +756,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         if (_disposed) return;
         _disposed = true;
         _canBatchStop?.Cancel();
+        DisposeKeyActions();
         _hardware.FrameObserved -= FrameObserved;
         _hardware.EvidenceRecorded -= EvidenceRecorded;
         _hardware.ConnectionChanged -= ConnectionChanged;
