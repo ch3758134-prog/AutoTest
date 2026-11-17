@@ -39,6 +39,8 @@ Windows AutoTest 编辑/自动测试/手动台架
 
 KEY_SIM 固件 `KeySim.c` 已核对 CAN ID `0x730`、DLC=8：`0x01 mask[0..2]` 更新 20-bit K01~K20 开关；`0x80` + 全零释放全部。HOST `KeypadCommandCodec` 与之吻合。未检查现场烧录 image，不做“真有电压”的结论。
 
+**CAN0 速率联调风险：** `Main_Control` 的两路 CAN 初始化均标注 500 kbit/s，但 `Key_Sim` 的 `WS/EPB_EOL/Sources/BSW/CAN/Driver_CAN.c` 通过外部 `BUAD_status` 选择不同的 CANBTR 配置；仅凭主控文档不能证明当前按键板已设为 500 kbit/s。实测前需核对实际 Key_Sim 固件、该状态来源和真实总线速率，否则可能出现 USB 0x40 返回 ACK、KEY_SIM 却没有动作。
+
 ## 本次 HOST 实现修复
 
 - `MainControllerCodec`：引入 v0.2 命令常量和合法 `SET_CLAMP` 二字节编码；不复用 `0x16`。
