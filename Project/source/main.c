@@ -26,7 +26,8 @@ int main(void)
     Clock_Init();
     EAL_TIME_Init();                     /* DWT 循环计数器（供 ASW 广播调度用）*/
 
-    /* 板级 IO：四路 12V 输出（RL_DRV / KEY_PWR / ECU_PWR / IGN）初始低电平 */
+    /* EAL_GPIO_Init：Air1/2 默认 LOW；四路历史 GPIO 默认 HIGH。
+     * GPIO 初态不是阀位或负载安全状态的验证依据，见 EAL_GPIO.c。 */
     EAL_GPIO_Init();
 
     /* CAN：CAN0=模拟按键板 / CAN1=ECU，500kbps；纯轮询（不使能 NVIC，不与 USB 冲突） */

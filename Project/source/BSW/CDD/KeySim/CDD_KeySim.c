@@ -14,10 +14,9 @@
 
 void KeySim_Power(bool on)
 {
-    if (on)
-        KEY_PWR_DRV_HIGH();
-    else
-        KEY_PWR_DRV_LOW();
+    /* 未编入当前 Keil Target 的历史 KeySim 模块：
+     * 仅迁移 GPIO 接口写法，不改变此模块的旧 CAN 协议或启用状态。 */
+    EAL_GPIO_WRITE(KEY_PWR_DRV, (uint8_t)(on ? 1U : 0U));
 }
 
 static void KeySim_SendFrame(Key_Cmd_t cmd, Key_Action_t action, uint16_t t_hold_ms)

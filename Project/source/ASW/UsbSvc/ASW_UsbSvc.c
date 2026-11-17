@@ -71,6 +71,8 @@ static void HandleCommand(uint16_t seq, uint8_t cmd,
         case CDD_USB_CMD_GET_KEYPWR:
         case CDD_USB_CMD_SET_SOL:
         case CDD_USB_CMD_GET_SOL:
+        case CDD_USB_CMD_SET_AIR_ALVE:
+        case CDD_USB_CMD_GET_AIR_ALVE:
         case CDD_USB_CMD_GET_ALL_PWR:
             ASW_PwrCtrl_HandleCmd(seq, cmd, payload, len);
             return;

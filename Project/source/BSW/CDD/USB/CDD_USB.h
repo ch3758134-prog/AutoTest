@@ -52,6 +52,15 @@ extern "C" {
 #define CDD_USB_CMD_GET_KEYPWR      0x15U
 #define CDD_USB_CMD_SET_SOL         0x16U
 #define CDD_USB_CMD_GET_SOL         0x17U
+
+/*
+ * Air_ALVE 原始电气控制，不解释为压紧/释放。
+ * 0x18 SET: payload[0] = 0(双路OFF), 1(仅Air1), 2(仅Air2)。
+ * 0x19 GET: 空请求，1字节应答 bit0/bit1 为 MCU 引脚电平。
+ * 旧 0x16/0x17 的机械动作语义未确认，候选实现明确返回 ERR_HW。
+ */
+#define CDD_USB_CMD_SET_AIR_ALVE    0x18U
+#define CDD_USB_CMD_GET_AIR_ALVE    0x19U
 #define CDD_USB_CMD_GET_ALL_PWR     0x1FU
 /* CAN 发送 / 收帧回传 */
 #define CDD_USB_CMD_CAN_SEND        0x40U

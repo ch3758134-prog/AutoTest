@@ -1,110 +1,110 @@
 /**
  * @file    EAL_GPIO.h
- * @date    2026-07-16
- * @author  TestCtr
- * @brief   EAL 数字IO驱动 - 板级信号层 + 板级引脚宏（RL_DRV / KEY_PWR_DRV / ECU_PWR_DRV / IGN / SOL）
+ * @brief   TestCtr V1.5 主控板固定 GPIO 引脚定义与便捷读写。
  *
- * 调用链路：CDD/ASW → EAL_GPIO → MCAL_GPIO → fsl_gpio / fsl_port
+ * @details
+ * EAL 是板级硬件适配层：只记录本板固定的 Port/Pin 连接。
+ * MCAL_GPIO 负责寄存器、时钟、MUX、方向及电平；ASW 负责业务动作。
  *
- * 两种用法共存：
- *   - 信号级：EAL_GPIO_Init/Set/Get + EAL_GPIO_SIG_xxx（板级语义，映射在 EAL_GPIO.c 查表）
- *   - 引脚级：板级引脚宏 + EAL_GPIO_Config(port, pin)（直接按 MCU 引脚操作）
+ * 数据依据：TestCtr V1.5 原理图第 1、3、5 页。
+ * 注意：图纸网络名称、J1 触点编号、固件业务名称属于不同命名层。
+ *       本文件仅改变 GPIO 的逻辑电平，不保证外部功率输出或机械动作。
  *
- * 命名规范：
- *   - 信号枚举：板级语义（主继电器 / 供电 / 点火）
- *   - 业务宏：与旧版同名，语义不变
+ * 维护规则：修改引脚时必须从 U7 Pad 经过驱动器 IN/OUT 追到 J1，
+ *           并检查同一 Net 的其它负载；不要只对照 MCU Pin 名称。
  */
 #ifndef EAL_GPIO_H
 #define EAL_GPIO_H
 
-#include <stdint.h>
 #include "MCAL/Gpio/MCAL_GPIO.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ============================================
- * 板级引脚宏（直接按 MCU 引脚操作；KEY=PC8 / ECU=PC9 已实测确认）
- * ============================================ */
-#define RL_DRV_PORT        MCAL_GPIO_C   /* 主继电器（总电源） */
-#define RL_DRV_PIN         0
-#define KEY_PWR_DRV_PORT   MCAL_GPIO_C   /* 按键板供电驱动 */
-#define KEY_PWR_DRV_PIN    8
-#define ECU_PWR_DRV_PORT   MCAL_GPIO_C   /* ECU 供电驱动 */
-#define ECU_PWR_DRV_PIN    9
-#define IGN_PORT           MCAL_GPIO_B   /* ECU 点火驱动 */
-#define IGN_PIN            19
-#define SOL_PORT           MCAL_GPIO_B   /* 电磁阀控制：HIGH=升起，LOW=下落/压紧 */
-#define SOL_PIN            18
-
-/* ============================================
- * 板级信号枚举（索引顺序与 EAL_GPIO.c 映射表一一对应）
- * ============================================ */
-typedef enum {
-    EAL_GPIO_SIG_RL_DRV,        /* 主继电器（总电源）  PTC0 */
-    EAL_GPIO_SIG_KEY_PWR_DRV,   /* 按键板供电驱动      PC8  */
-    EAL_GPIO_SIG_ECU_PWR_DRV,   /* ECU 供电驱动        PC9  */
-    EAL_GPIO_SIG_IGN,           /* ECU 点火驱动        PB19 */
-    EAL_GPIO_SIG_SOL,           /* 电磁阀控制          PB18 */
-    EAL_GPIO_SIG_COUNT
-} EAL_GPIO_SignalType;
-
-/* ============================================
- * 接口
- * ============================================ */
+/* --------------------------------------------------------------------------
+ * 1. 固定的板级 GPIO 连接
+ * -------------------------------------------------------------------------- */
 
 /**
- * @brief  配置单个 GPIO 为推挽输出，初始低电平（引脚级，只调一次）
- * @param port  MCAL_GPIO_A~E（用板级引脚宏 RL_DRV_PORT 等）
- * @param pin   引脚号（用板级引脚宏 RL_DRV_PIN 等）
+ * @brief  共用高边输出母线使能。
+ * @details U7 P70/PTC0 → RL_DRV → Q4(2N7002) → U2(BTS50055) → SOL24IN。
+ *          PTC0=HIGH 使 Q4 导通，并拉低 U2 的低有效 IN；
+ *          U2 正常且电源存在时，向 U5/U22/U23 提供共用 Vbb。
+ * @warning 不是某一只 Air 气阀的独立电源；不要在关闭单路气阀时
+ *          无条件关断整个 SOL24IN。
  */
-void EAL_GPIO_Config(MCAL_GPIO_PortType port, uint8_t pin);
+#define RL_DRV_PORT           MCAL_GPIO_C
+#define RL_DRV_PIN            0U
 
 /**
- * @brief  初始化所有板载输出信号（推挽输出，按信号定义设置初始电平，只调一次）
+ * @brief  历史 KEY_PWR_DRV 控制网络。
+ * @details U7 P80/PTC8 → SOL9IN → U22 IN1/OUT1 → HOUT7 → J1 C8。
+ * @note   KEY_PWR_DRV 是历史固件业务名；现场外接负载未独立验证。
+ */
+#define KEY_PWR_DRV_PORT      MCAL_GPIO_C
+#define KEY_PWR_DRV_PIN       8U
+
+/**
+ * @brief  历史 ECU_PWR_DRV 控制网络。
+ * @details U7 P81/PTC9 → SOL10IN → U22 IN2/OUT2 → HOUT6 → J1 C7。
+ * @note   ECU_PWR_DRV 是历史固件业务名；现场外接负载未独立验证。
+ */
+#define ECU_PWR_DRV_PORT      MCAL_GPIO_C
+#define ECU_PWR_DRV_PIN       9U
+
+/**
+ * @brief  IGN 输出控制。
+ * @details U7 P82/PTC10 → SOL11IN → U22 IN3(Pin7) / OUT3(Pin14)
+ *          → HOUT5 → J1 C6。用户确认 J1 C6 作为现场 IGN 接线。
+ * @note   C6 是 J1 连接器触点，不能误认为 MCU 的 PTC6。
+ *          HIGH 请求高边导通，LOW 请求关断；需要 SOL24IN 供电。
+ */
+#define IGN_PORT              MCAL_GPIO_C
+#define IGN_PIN               10U
+
+/**
+ * @brief  Air_ALVE1：气阀功率输出 1。
+ * @details U7 P54/PTB1 → SOL4IN → U23 BTS724G IN4(Pin9)
+ *          → OUT4(Pin13) → Air_ALVE1 → J1 B5。
+ *          相同 SOL4IN 网络还驱动 Q6 / H_SPEED4 的 HALL 模拟支路。
+ * @note   BTS724G 的 IN 为高电平使能；HIGH 不表示气缸已动作。
+ * @warning Air_ALVE1 对应何种机械动作尚未按现场气路确认。
+ */
+#define AIR_ALVE1_PORT        MCAL_GPIO_B
+#define AIR_ALVE1_PIN         1U
+
+/**
+ * @brief  Air_ALVE2：气阀功率输出 2。
+ * @details U7 P72/PTC2 → SOL2IN → U23 BTS724G IN3(Pin7)
+ *          → OUT3(Pin14) → Air_ALVE2 → J1 B4。
+ *          相同 SOL2IN 网络还驱动 Q7 / H_SPEED3 的 HALL 模拟支路。
+ * @note   两路 Air 共用 SOL24IN；本层不定义压紧/释放方向。
+ */
+#define AIR_ALVE2_PORT        MCAL_GPIO_C
+#define AIR_ALVE2_PIN         2U
+
+/* --------------------------------------------------------------------------
+ * 2. 统一操作宏（不再增加信号枚举或 Port/Pin 查表）
+ *
+ * 用法：EAL_GPIO_WRITE(IGN, 1U);  EAL_GPIO_READ(AIR_ALVE1);
+ * signal 只能传上述已定义的板级名称；level 表示 MCU GPIO 的
+ * 0/1 电平，不是 12V/24V 负载状态。单个 level 参数只求值一次。
+ * -------------------------------------------------------------------------- */
+#define EAL_GPIO_WRITE(signal, level) \
+    MCAL_GPIO_Write(signal##_PORT, signal##_PIN, (uint8_t)(level))
+#define EAL_GPIO_READ(signal) \
+    MCAL_GPIO_Read(signal##_PORT, signal##_PIN)
+
+/**
+ * @brief  初始化本文件列出的板级控制信号。
+ * @details 在 Clock_Init() 之后、USB/CAN 业务开始前调用一次。
+ * @warning 此函数包含旧固件四路输出的初始高电平配置；调用前必须
+ *          审查外接负载。它不负责机械动作、反馈诊断或故障恢复。
  */
 void EAL_GPIO_Init(void);
-
-/**
- * @brief  设置板级信号电平
- * @param sig    EAL_GPIO_SIG_xxx
- * @param level  0=LOW, 1=HIGH
- */
-void EAL_GPIO_Set(EAL_GPIO_SignalType sig, uint8_t level);
-
-/**
- * @brief  读取板级信号电平
- * @return 0=LOW, 1=HIGH
- */
-uint8_t EAL_GPIO_Get(EAL_GPIO_SignalType sig);
-
-/* ============================================
- * 业务宏（保留原名，语义不变）
- * ============================================ */
-
-/* 主继电器控制 */
-#define RL_DRV_HIGH()         EAL_GPIO_Set(EAL_GPIO_SIG_RL_DRV, 1)
-#define RL_DRV_LOW()          EAL_GPIO_Set(EAL_GPIO_SIG_RL_DRV, 0)
-
-/* 12V 控制业务宏 */
-#define KEY_PWR_DRV_HIGH()    EAL_GPIO_Set(EAL_GPIO_SIG_KEY_PWR_DRV, 1)
-#define KEY_PWR_DRV_LOW()     EAL_GPIO_Set(EAL_GPIO_SIG_KEY_PWR_DRV, 0)
-
-#define ECU_PWR_DRV_HIGH()    EAL_GPIO_Set(EAL_GPIO_SIG_ECU_PWR_DRV, 1)
-#define ECU_PWR_DRV_LOW()     EAL_GPIO_Set(EAL_GPIO_SIG_ECU_PWR_DRV, 0)
-
-#define IGN_HIGH()            EAL_GPIO_Set(EAL_GPIO_SIG_IGN, 1)
-#define IGN_LOW()             EAL_GPIO_Set(EAL_GPIO_SIG_IGN, 0)
-
-/* 电磁阀控制：MCU HIGH=升起，MCU LOW=下落/压紧 */
-#define SOL_HIGH()            EAL_GPIO_Set(EAL_GPIO_SIG_SOL, 1)
-#define SOL_LOW()             EAL_GPIO_Set(EAL_GPIO_SIG_SOL, 0)
-#define SOL_UP()              SOL_HIGH()
-#define SOL_DOWN()            SOL_LOW()
 
 #ifdef __cplusplus
 }
 #endif
-
 #endif /* EAL_GPIO_H */
