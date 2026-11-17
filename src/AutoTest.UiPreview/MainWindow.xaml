@@ -315,7 +315,9 @@
          Margin="0,0,0,9"/>
         <TextBlock Text="动作参数" Foreground="#536F91" FontWeight="SemiBold"
          FontSize="11" Margin="0,0,0,9"/>
-        <StackPanel x:Name="InspectorParameterFields" Margin="0,0,0,12"/>
+        <ItemsControl x:Name="InspectorParameterFields" ItemsSource="{Binding PropertyFields}"
+         ItemTemplate="{StaticResource AtPreviewPropertyFieldTemplate}" Margin="0,0,0,12"
+         PreviewGotKeyboardFocus="InspectorParameterFields_PreviewGotKeyboardFocus"/>
         <Border BorderBrush="#E4EAF2" BorderThickness="0,1,0,0"
          Margin="0,3,0,10"/>
         <TextBlock Text="当前步骤操作" Foreground="#607891" FontSize="11"

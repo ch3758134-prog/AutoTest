@@ -21,6 +21,8 @@ public partial class MainWindow : Window
     public ICommand TogglePhaseCommand { get; }
     private List<DemoPhase> _phases => _document.Phases;
     private readonly PreviewEditHistory _history = new();
+    private readonly PreviewPropertyEditor _propertyEditor = new();
+    public ObservableCollection<PreviewPropertyField> PropertyFields => _propertyEditor.Fields;
     private readonly IReadOnlyList<PaletteKind> _palette = PreviewSampleFactory.MakePalette();
     private PreviewRow? _targetRow;
     private PreviewRow? _selectedRow;
@@ -133,86 +135,20 @@ public partial class MainWindow : Window
         finally { _updatingInspector=false; }
     }
 
-    private void RenderParameterFields()
-    {
-        if (InspectorParameterFields is null || _selectedStep is null) return;
-        InspectorParameterFields.Children.Clear();
-        var kind=_selectedStep.Kind;
-        if(kind=="ign") AddChoice("请求输出","state",["ON","OFF"]);
-        else if(kind=="sol") AddChoice("夹具请求","state",["CLAMP","OPEN"]);
-        else if(kind=="can")
+    private void RenderParameterFields() =>
+        _propertyEditor.Bind(_selectedStep, (step, field) =>
         {
-            AddChoice("编辑方式","mode",["DBC 报文及信号","原始 CAN 帧"],true);
-            if (_selectedStep.Param("mode","DBC 报文及信号")=="原始 CAN 帧")
-            {
-                AddField("CAN ID","id","0x100");
-                AddField("数据（Hex）","data","00 00 00 00 00 00 00 00");
-            }
-            else
-            {
-                AddChoice("DBC 报文","message",
-                    ["未选择报文","Debug_702 · 0x702","EPB_VCU_Status · 0xCFE2750"]);
-                AddField("KeyState（物理值）","signal1","0");
-                AddField("key.Release_out（物理值）","signal2","1");
-            }
-            AddField("发送周期（ms；0 为单次）","period","0");
-        }
-        else if(kind=="canwait")
-        {
-            AddChoice("目标 CAN 报文","message",["未选择报文","Debug_702 · 0x702","EPB_VCU_Status · 0xCFE2750"]);
-            AddField("超时时间（ms）","timeout","1000");
-        }
-        else if(kind=="input") AddChoice("按键动作","button",["未选择按键动作","驻车按键","释放按键"]);
-        else if(kind=="read") { AddField("DBC 信号名称","signal","Signal_A"); AddField("保存到变量","variable","$actual");}
-        else if(kind=="expect") AddField("判定表达式","expression","$actual >= 0");
-        else if(kind=="if"||kind=="when") {AddField("布尔条件","condition","$actual > 2"); if(kind=="when")AddField("等待超时（ms）","timeout","1000");}
-        else if(kind=="loop") AddField("重复次数","count","3");
-        else if(kind=="wait") AddField("等待时长（ms）","ms","200");
-        else if(kind=="switch") AddField("选择表达式","expression","$state");
-        else if(kind=="wave") {AddField("采集信号","signal","Signal_A");AddField("窗口时长（ms）","duration","1200");}
-        else if(kind=="wavecheck") AddField("参考波形","reference","参考记录01");
-        else if(kind=="uds") AddChoice("UDS 服务配置","job",["未选择","读取标识信息","读取故障码"]);
-        else if(kind=="var") { AddField("变量名称","variable","$value");AddField("表达式","expression","0");}
-        else if(kind=="try") AddChoice("异常处理方式","onError",["停止并记录","继续并记录","转入异常分支"]);
-        else if(kind=="sub") AddField("子程序引用","target","");
-        else AddField("备注或表达式","text","");
-    }
-
-    private void AddField(string label,string key,string fallback)
-    {
-        if (_selectedStep is null) return;
-        var text=new TextBlock{Text=label,Style=(Style)FindResource("AtPreviewDynamicLabel")};
-        InspectorParameterFields.Children.Add(text);
-        var input=new TextBox{
-            Text=_selectedStep.Param(key,fallback),Style=(Style)FindResource("AtPreviewDynamicInput")};
-        var editingStep=_selectedStep;
-        input.GotKeyboardFocus+=(_,_)=>RememberUndo();
-        input.TextChanged+=(_,_)=>{
-            if (_updatingInspector)return;
-            editingStep.SetParam(key,input.Text);
+            if (!ReferenceEquals(_selectedStep, step)) return;
             RefreshSelectedRowSummary();
-        };
-        InspectorParameterFields.Children.Add(input);
-    }
+            if (field.HasError) SetMessage(field.Error);
+        });
 
-    private void AddChoice(string label,string key,string[] options,bool reformat=false)
+    private void InspectorParameterFields_PreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        if (_selectedStep is null)return;
-        InspectorParameterFields.Children.Add(new TextBlock{
-            Text=label,Style=(Style)FindResource("AtPreviewDynamicLabel")});
-        var box=new ComboBox{Style=(Style)FindResource("AtPreviewDynamicChoice"),ItemsSource=options};
-        var editingStep=_selectedStep;
-        box.DropDownOpened+=(_,_)=>RememberUndo();
-        box.SelectedItem=editingStep.Param(key,options[0]);
-        if (box.SelectedItem is null) box.SelectedIndex=0;
-        box.SelectionChanged+=(_,_)=>{
-            if (_updatingInspector || box.SelectedItem is not string choice)return;
-            editingStep.SetParam(key,choice);
-            RefreshSelectedRowSummary();
-            if (reformat && ReferenceEquals(_selectedStep,editingStep))
-                RenderParameterFields();
-        };
-        InspectorParameterFields.Children.Add(box);
+        // One undo checkpoint per field-focus transition, not one per keystroke.
+        if (e.NewFocus is FrameworkElement { DataContext: PreviewPropertyField } &&
+            !_updatingInspector && _selectedStep is not null)
+            RememberUndo();
     }
 
     private void RefreshSelectedRowSummary()

@@ -314,4 +314,49 @@
   <Setter Property="Background" Value="{StaticResource AtUiSurface}"/>
   <Setter Property="BorderBrush" Value="#D8E3EF"/>
  </Style>
+ 
+ <!-- Right-side attribute editor: static template with two-way field binding. -->
+ <DataTemplate x:Key="AtPreviewPropertyFieldTemplate">
+  <StackPanel>
+   <TextBlock Text="{Binding Label}" Style="{StaticResource AtPreviewDynamicLabel}"/>
+   <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+            ToolTip="{Binding Error}">
+    <TextBox.Style>
+     <Style TargetType="TextBox" BasedOn="{StaticResource AtPreviewDynamicInput}">
+      <Style.Triggers>
+       <DataTrigger Binding="{Binding IsText}" Value="False">
+        <Setter Property="Visibility" Value="Collapsed"/>
+       </DataTrigger>
+       <DataTrigger Binding="{Binding HasError}" Value="True">
+        <Setter Property="BorderBrush" Value="#C04A57"/>
+       </DataTrigger>
+      </Style.Triggers>
+     </Style>
+    </TextBox.Style>
+   </TextBox>
+   <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
+    <ComboBox.Style>
+     <Style TargetType="ComboBox" BasedOn="{StaticResource AtPreviewDynamicChoice}">
+      <Style.Triggers>
+       <DataTrigger Binding="{Binding IsChoice}" Value="False">
+        <Setter Property="Visibility" Value="Collapsed"/>
+       </DataTrigger>
+      </Style.Triggers>
+     </Style>
+    </ComboBox.Style>
+   </ComboBox>
+   <TextBlock Text="{Binding Error}" Foreground="#C04A57" FontSize="10" Margin="0,0,0,5">
+    <TextBlock.Style>
+     <Style TargetType="TextBlock">
+      <Setter Property="Visibility" Value="Collapsed"/>
+      <Style.Triggers>
+       <DataTrigger Binding="{Binding HasError}" Value="True">
+        <Setter Property="Visibility" Value="Visible"/>
+       </DataTrigger>
+      </Style.Triggers>
+     </Style>
+    </TextBlock.Style>
+   </TextBlock>
+  </StackPanel>
+ </DataTemplate>
 </ResourceDictionary>
