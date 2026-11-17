@@ -1,90 +1,70 @@
 # AutoTest｜G3 补充变更：主控板 USB 与双夹具接口
 
-- 日期：2026-11-16（PT）
-- 管理状态：**目标产品决定已获负责人批准；现有固件整改/编译/实物验证尚未完成**。
-- 本文件为 Project_Management 单分支的正式受控变更记录，**不是主控板现有固件的已实现接口声明**。
-- 关联：G1 REQ-13/19/21/23/24/26/29/31/43、G2 A-02/A-05、G3-DEVICE、G3-03/04/05，关联公共流程与直接 KEY 变更。
-- 固件事实来源：`Main_Control@5d2ad5b7f3ae54c6b3e08e363229a25349f4f8be`，接口文档 `docs/interfaces/USB_HOST_CONTROL_INTERFACE.md`，该提交**仅增加文档**。接口文件 Blob `67a8fcb0da5eaf4cae1af1a2f7caaeb5e0979007`。
+- 日期：2026-11-16（PT）；**2026-11-16 晚间追踪到固件源代码整改新提交**。
+- 批准：负责人已批准两路独立夹具、供电/旧 SOL 业务取消、RL_DRV 内部化和对外 USB 接口方向。
+- **状态：`SOURCE_UPDATED / KEIL_BUILD_UNVERIFIED / FIELD_UNVERIFIED`**。固件源代码已有新协议，**不代表当前真实板卡已烧录或实际能使用**。
+- 权威固件源快照：`Main_Control@16abba7fec94dc4b7fbdc05b91ee209b5c7efa12`，接口文档 v0.2（Blob `cb9765539d651be551c0e4771f22bca7a00eac1f`）。该分支此前的 `5d2ad5b7` 只是历史调查，已被当前代码证据更新。
+- 相关：G1 REQ-13/19/21/23/24/26/29/31/43，G2 A-02/A-05，G3-DEVICE/TEST 与公共流程/KEY_SIM 设计。
 
-## 1. 已批准的物理与产品边界
+## 1. 已确认的硬件和业务边界
 
-| 对象 | MCU 管脚 | 物理路径/外接 | 业务含义 |
+| 控制对象 | MCU GPIO | 外部连接 | 请求语义 |
 |---|---|---|---|
 | IGN | PTC10 | J1 C6 | 0=OFF，1=ON |
-| 夹具1 / Air_ALVE1 | PTB1 | J1 B5 | 0=释放，1=压紧；独立输出 |
-| 夹具2 / Air_ALVE2 | PTC2 | J1 B4 | 0=释放，1=压紧；独立输出 |
-| RL_DRV | PTC0 | PCB 内部功率电路 | **非 USB/HOST 业务对象** |
+| 夹具1 / Air_ALVE1 | PTB1 | J1 B5 | 0=释放，1=压紧 |
+| 夹具2 / Air_ALVE2 | PTC2 | J1 B4 | 0=释放，1=压紧 |
+| RL_DRV | PTC0 | PCB 内部功率控制 | **没有对外 USB/上位机操作对象** |
 
-主控硬件 TestCtr V1.5，MCU MK20DN512VLL10；USB 至 Windows；业务 CAN0 至 KEY_SIM、CAN1 至 DUT；现有固件两路均初始化 500 kbps。两夹具**不互锁**：改变任何一路不得附带改变另一路。夹具压紧/释放是气路电磁阀的控制**请求与输出电平语义**，不是已测得机械到位。
+硬件 TestCtr V1.5，MCU MK20DN512VLL10；USB 至 Windows；CAN0 至 KEY_SIM、CAN1 至 DUT，现有固件两路 CAN 均初始化为 500 kbit/s。**两夹具独立，不互锁**；修改任一路不能连带强制改动另一路。外部 ECU 主电源及旧 KEY 供电、SOL 均不作为当前 HOST 可控功能。
 
-**已取消的上位机业务能力**：ECU 供电开关、按键板供电开关、原 SOL 电磁阀接口；不创建 RL_DRV 操作。DUT 电源仍由外部独立设备管理。内部 PCB 功率控制仍可能依赖 RL_DRV，取消业务命令**不等于可直接删除/关闭内部功率电路**。
+**GPIO 回读和 USB ACK 只能表示 MCU 层事实，不是 J1 电压、阀门气路或夹具机械到位的独立测量。**
 
-## 2. USB 实际现状与兼容输入
+## 2. 通信层现行事实
 
-| 项 | 当前固件核查值 |
-|---|---|
-| WinUSB | VID `1183`、PID `5850`、接口 GUID `4da6d065-1e3e-47e6-8cc3-c6977351defb` |
-| USB | 接口0，Bulk OUT `0x03`、IN `0x82`，端点最大包 64B |
-| 应用协议 | 请求 SOF `0xA5` / EOF `0x5A`、16位小端 SEQ、CMD/LEN/PAYLOAD、CRC16/MODBUS（SEQ 至 PAYLOAD） |
-| 主动 CAN 上报 | `0x41`，SEQ=0；不与普通请求响应配对 |
-| PING / 版本 | `0xF0` 返回 PONG；`0xF1` 当前固定文本 `EPB_TEST_CTRL v0.3` |
-| CAN | `0x40` CAN_SEND，15B 数据，0=CAN0 KEY_SIM，1=CAN1 DUT；`0x50~0x53` 为旧 CAN1 周期广播实现 |
-| IGN | `0x12` SET_IGN(1字节 0/1)，`0x13` GET_IGN（GPIO 级读回） |
+- WinUSB：VID=`0x1183`、PID=`0x5850`，接口 GUID=`4da6d065-1e3e-47e6-8cc3-c6977351defb`，接口0，Bulk OUT=`0x03` / Bulk IN=`0x82`，64 字节最大包长。
+- 应用层：请求 `SOF 0xA5, SEQ(LE 2B), CMD, LEN, PAYLOAD, CRC16/MODBUS(LE), EOF 0x5A`；响应增加 STATUS；CRC 覆盖 SEQ 到 PAYLOAD；SEQ 非零用于请求响应关联，`0x41 CAN_RX_IND`、SEQ=0 为异步上报。
+- `0xF0 PING` 返回 PONG；`0xF1 GET_VERSION` 在**最新固件源码**中固定返回 `EPB_TEST_CTRL v0.4-dev`。这不是自动从固件镜像生成的可靠身份；实际设备须回读并关联现场已烧录版本。
+- `0x40 CAN_SEND` 固定 15 字节，channel=0 是 KEY_SIM，channel=1 是 DUT；`0x50~0x53` 现仍保留 CAN1 周期广播；未在本变更授权删除。
+- USB 收发按字节流增量处理拆包/粘包和 CRC；0x41 可以与普通命令交错。Windows 枚举到 EPB_Host 不等于 WinUSB 打开/PING 成功。
 
-读写需增量解帧、支持拆包/合包、CRC/超时/异常、异步 0x41 与请求交错；USB 枚举或 PING 成功不证明 ECU、CAN、夹具已可用。当前 CAN1 周期广播是否保留为正式目标能力仍应另行核对，不在此变更中擅自删除。
+## 3. 双夹具协议：现已写入固件源代码
 
-## 3. 双夹具新接口：目标合同与旧版阻断
+以下已在 `Main_Control@16abba7f` 的 `ASW_PwrCtrl.c`、`ASW_UsbSvc.c` 和 `CDD_USB.h` 交叉核对：
 
-当前固件 `0x18 SET_AIR_ALVE` **仅收1字节**：0=两路关、1=开1关2、2=关1开2；其动作与 RL_DRV 耦合。当前 `0x19 GET_AIR_ALVE` 返回 bit0=Air1 GPIO、bit1=Air2 GPIO。**旧 0x18 无法满足任意独立 00/01/10/11 状态，禁止作为目标夹具接口复用。**
-
-供固件与 HOST 实现对齐的新协议字段（当前接口调查文档提出，**现役固件尚不支持**）：
-
-| CMD | 新目标请求 | 目标响应 | 语义 |
+| 命令 | 请求 Payload | 成功响应 | 含义 |
 |---|---|---|---|
-| `0x18 SET_CLAMP` | 2字节 `[clamp, state]`；clamp=1或2，state=0或1 | Status=0，空 Payload | 只改变指定夹具，另一夹具保持原有命令状态 |
-| `0x19 GET_CLAMPS` | 空 | 1字节 bit0/bit1 | 仅主控 GPIO 输出级状态，**不是机械到位确认** |
+| `0x12 SET_IGN` | 1B `[state=0/1]` | Status=0、空 | 仅设置 IGN GPIO |
+| `0x13 GET_IGN` | 空 | Status=0、1B | 读取 IGN GPIO |
+| **`0x18 SET_CLAMP`** | **2B `[clamp=1或2, state=0或1]`** | Status=0、空 | 独立设置指定夹具，另一夹具输出不变 |
+| **`0x19 GET_CLAMPS`** | 空 | Status=0、1B | bit0=夹具1、bit1=夹具2 的 GPIO 电平 |
 
-注意：这份消息层布局是目前双方**目标对齐方案**，不是已经烧录在板上的事实。若固件专业经审查更改编码，须形成新的同版本接口修订，通知 HOST，不能两边悄悄采用不同 Payload。
+非法 Payload 长度、夹具号或状态值：`0x02 ERR_FMT`。未识别命令：`0x03 ERR_CMD`。正常的 GPIO 组合是 00、01、10、11，必须在真实板卡验证其中每个状态，特别确认只设置一个夹具不影响另一夹具。
 
-### 强制能力判定
+**必须区分两种固件：**历史 `v0.3` 旧版 `0x18` 只有 1B 互斥语义；当前 `v0.4-dev` 源码采用 2B 独立语义。HOST 新版必须先确认现场实际部署了兼容的新固件，并通过明确的协议身份/版本与适用联调证据才放开夹具实体操作；**不自动降级到旧一字节 0x18**。固定字符串 `v0.4-dev` 可以作为检查线索，但不能独自证明实际编译/烧录 SHA。
 
-1. HOST 不得只凭 VID/PID、PING 或现有固定版本字符串 `EPB_TEST_CTRL v0.3` 推断新 `SET_CLAMP` 已实现。新的固件应提供可核验的协议/能力版本标识及精确固件身份（方式由固件/DEVICE 对齐后形成明确接口修订）。
-2. 在确认新接口已存在、适配与联机验证前，HOST 可以实现模型、编辑器和预检，但**禁止发送旧0x18或假定生效的新两字节0x18进行夹具动作**；界面显示“固件未支持/未验证”，不要回退到互斥旧协议。
-3. 新固件对不合法 clamp/state/长度须明确报错，不得默默解释为旧行为；HOST 对异常和超时显示失败/UNKNOWN，禁止用 GPIO ACK 推算夹具真实到位。
-4. 主控固件与 HOST 应在更新后完成协议版本兼容测试，覆盖 00、01、10、11 及分别修改一路而保持另一路。
+## 4. 已取消指令和内部供电
 
-## 4. 废弃接口、GPIO 初始化、断连
+最新源码已从 `CDD_USB.h` 与 `ASW_UsbSvc.c` 移除旧 USB 业务定义/路由：`0x10/0x11` ECU 供电、`0x14/0x15` KEY 供电、`0x16/0x17` SOL、`0x1F` GET_ALL_PWR。对这些未知命令，新源码应返回 `ERR_CMD`；HOST 不得再有这些业务控件或调用。
 
-| 当前旧 USB 命令 | 当前代码事实 | 新目标处置 |
-|---|---|---|
-| `0x10/0x11` ECU 供电 | `0x10` 同时影响 ECU_PWR_DRV / RL_DRV 且可能清两路 Air | HOST 禁止调用；固件审查内部依赖后清除旧业务入口 |
-| `0x14/0x15` KEY_PWR | 旧 KEY_PWR_DRV 路径 | HOST 禁止调用；固件审查后撤销业务入口 |
-| `0x16/0x17` SOL | 当前返回 ERR_HW | HOST 禁止调用；撤销旧 SOL 业务入口 |
-| `0x1F` GET_ALL_PWR | 仍返回已取消供电位 | HOST 不作为目标业务使用 |
+当前 `EAL_GPIO_Init`：Air1/2 LOW、IGN HIGH、RL_DRV HIGH；历史 PTC8/PTC9 不再配置为旧供电输出。**RL_DRV HIGH 是 PCB 公共功率链内部初始化，不是给 HOST 的 ECU 电源开关**。不能为删除旧业务功能而关闭 RL_DRV，旧 PTC8/PTC9 的物理复位态须实测核查。
 
-源码现状：Air1/Air2 初始化 LOW；RL_DRV、IGN、旧供电脚初始化 HIGH；USB 枚举状态丢失时可能执行 AirOff。这些是**调查事实，不是正式安全默认值**。固件专业须形成上电、断开、重连、固件复位时夹具和 IGN 的安全策略及证据，并与上位机保持一致；未经批准不得擅自认定“断开自动释放”或“断开保持”。
+`ASW_PwrCtrl_Task` 在 USB **枚举丢失且曾压紧**时将两个夹具输出置 LOW。此行为仍保留在新源码，**并未获得新安全策略或真实气路验证**；不等于应用心跳超时也不等于机械到位反馈。上电、断线、重连和异常的最终安全策略仍须现场审查；HOST 不得自选默认释放、默认保持或声称恢复成功。
 
-USB GET 类命令反映 GPIO 级信息，机械实际位置若无独立传感器/外部测量，保持 UNKNOWN；电平输出/主控 ACK 与夹具动作成功分层记录。
+## 5. 实施责任与验收边界
 
-## 5. 主控固件专业应做
+**MAIN_CONTROL**：确认目标工程编译、固件镜像/板卡版本身份，更新接口文档；提供 Keil Build 日志；测试新命令非法输入、单夹具独立保持、旧命令 ERR_CMD、启动/断连/重连、IGN/J1/RL_DRV 的实际电气效果。当前**仅有源码证据，没有 Build/现场 PASS**。
 
-- 对照具体 MCU、PCB/J1、原理图与现有源码，核实 J1 B5/B4/C6 的实际有效电平。
-- 实现两夹具独立控制、只影响指定 GPIO；解除旧互斥逻辑与错误 RL_DRV 业务耦合，**不破坏内部功率工作条件**。
-- 审查并停用已取消 USB 业务命令；不要未经审查删除内部驱动。
-- 确定启动初态、断连行为、复连与复位安全处理；提供与 HOST 可核验的协议/能力版本。
-- 交付源码精确 SHA、Keil Build 日志、固件镜像身份、协议更新文档、现场 GPIO/J1 和夹具实测；没有以上证据时标记 `NOT_FIELD_VERIFIED`。
+**DEVICE**：在现有 USB/会话/PhysicalCommandFence 上增加 `SET_CLAMP/GET_CLAMPS` 编解码、错误/版本识别与独立输出；必要时提供能力不满足时禁用，不绕过已有真实授权。
 
-## 6. HOST/DEVICE/G4 合同及阶段验收
+**TEST / PROJECT**：支持两个独立夹具作为 TEST 可配置动作、公共流程中可调用动作、正式资源与运行证据；不编造另一套 DSL 或新设备执行器。
 
-- **DEVICE**：协议 Codec、状态/能力识别、USB 连接错误分阶段定位、夹具独立命令/查询、会话及授权/UNKNOWN；禁止绕过 PhysicalCommandFence。
-- **TEST**：两个独立夹具目标和步骤；能用于用例与公共流程，不另生生产身份；不将旧 SOL 语义作为执行入口。
-- **WPF/UI**：手动台架两个独立夹具操作，步骤 Inspector 明确“夹具1/夹具2”“压紧/释放”；禁用原因、请求与 ACK/未知清楚可见；旧供电/SOL 不出现。
-- **INTEGRATION**：连接现有真实设备会话与测试服务，检查固件兼容；禁止另造 USB 驱动与运行器；不因 UI 变更影响 CAN/DBC/USB 原有真实通路。
-- **现场验收分层**：源码实现 ≠ Windows Build ≠ USB/PING ≠ GPIO/J1 实测 ≠ 夹具机械到位。未通过对应层级不得写成 PASS。
+**WPF / INTEGRATION**：手动台架与 Inspector 显示两个夹具独立控制及请求/ACK/UNKNOWN；移除旧供电/旧 SOL 用户入口；保留 USB、CAN0/1、IGN 真实能力。每个操作最终从唯一 DEVICE 端口发出。
 
-## 7. 来源
+**分层验证**：源码提交 → Keil Build → 现场装板识别 → WinUSB/PING → 正式夹具命令 ACK → MCU GPIO/J1 实测 → 气动机械动作实测；任一缺失不得跨层宣称 PASS。
 
-- 主控固件完整接口文档：`https://github.com/ch3758134-prog/AutoTest/blob/Main_Control/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md`
-- 主控原理图和硬件映射：`main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/`（迁移至管理分支前保留引用）
-- 固件分支：`Main_Control@5d2ad5b7f3ae54c6b3e08e363229a25349f4f8be`
-- G1/G2/G3 已批准原文保留，不回写篡改；本变更按补充文件处理。
+## 6. 精确来源
+
+- [固件接口 v0.2](https://github.com/ch3758134-prog/AutoTest/blob/16abba7fec94dc4b7fbdc05b91ee209b5c7efa12/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md)
+- [固件源 ASW_PwrCtrl](https://github.com/ch3758134-prog/AutoTest/blob/16abba7fec94dc4b7fbdc05b91ee209b5c7efa12/Project/source/ASW/PwrCtrl/ASW_PwrCtrl.c)
+- [固件协议头 CDD_USB.h](https://github.com/ch3758134-prog/AutoTest/blob/16abba7fec94dc4b7fbdc05b91ee209b5c7efa12/Project/source/BSW/CDD/USB/CDD_USB.h)
+- [原理图审查档案](https://github.com/ch3758134-prog/AutoTest/tree/main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115)
