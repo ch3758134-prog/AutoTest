@@ -104,7 +104,7 @@ public sealed class PhysicalCommandFence
             _singleCanPayload = null;
             _oneIgnState = null;
             _singleClampPayload = null;
-            _manualBatchCan = payloads.Select(Convert.ToHexString).ToHashSet(StringComparer.Ordinal);
+            _manualBatchCan = payloads.Select(payload => Convert.ToHexString(payload)).ToHashSet(StringComparer.Ordinal);
             _manualBatchGeneration = generation;
             _manualBatchExpiry = DateTimeOffset.UtcNow.AddMinutes(5);
             _manualBatchWrites = maxWrites;

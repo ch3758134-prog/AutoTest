@@ -261,7 +261,7 @@ public sealed partial class ManualBenchViewModel
         }
         await _hardware.AuthorizeManualCanBatchAsync(fingerprint,
             "AUTHORIZE BENCH CAN " + fingerprint, prepared.Select(item => item.Frame).ToArray(),
-            maxWrites: 3000);
+            maxWrites: 8000);
         var stop = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         _canBatchStop = stop;
         foreach (var row in prepared) { row.Row.Sent = 0; row.Row.Result = "运行中"; }
