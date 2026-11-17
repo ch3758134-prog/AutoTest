@@ -1,6 +1,7 @@
 <UserControl x:Class="AutoTest.Desktop.Configuration.ConfigurationWorkbenchView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="clr-namespace:AutoTest.Desktop.Configuration"
  FontFamily="{StaticResource UiFont}" FontSize="13"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}">
   <UserControl.InputBindings>
@@ -31,9 +32,32 @@
             BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="13,0">
         <Button Content="保存配置" Command="{Binding SaveCommand}"
-                Style="{StaticResource AtPrimaryButton}" Margin="0,0,7,0"/>
+                Margin="0,0,7,0">
+         <Button.Style>
+          <Style TargetType="Button" BasedOn="{StaticResource AtPrimaryButton}">
+           <Style.Triggers>
+            <DataTrigger Binding="{Binding IsController}" Value="True">
+             <Setter Property="Background" Value="#E8F2FC"/>
+             <Setter Property="Foreground" Value="#22537D"/>
+             <Setter Property="BorderBrush" Value="#A9CAE9"/>
+            </DataTrigger>
+           </Style.Triggers>
+          </Style>
+         </Button.Style>
+        </Button>
         <Button Content="应用参数" Command="{Binding ApplyCommand}"
-                Style="{StaticResource AtButton}" Margin="0,0,7,0"/>
+                Margin="0,0,7,0">
+         <Button.Style>
+          <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
+           <Setter Property="Visibility" Value="Visible"/>
+           <Style.Triggers>
+            <DataTrigger Binding="{Binding IsController}" Value="True">
+             <Setter Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+           </Style.Triggers>
+          </Style>
+         </Button.Style>
+        </Button>
         <Button Content="重新加载" Command="{Binding ReloadCommand}"
                 Style="{StaticResource AtButton}"/>
         <Button Content="选择此 TCF / TBC" Command="{Binding SelectConfigurationCommand}"
@@ -73,25 +97,30 @@
               Background="{StaticResource Panel}" Padding="9">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top">
-            <TextBlock Text="配置结构" FontWeight="SemiBold" FontSize="15" Margin="3,3,0,11"/>
+            <TextBlock Text="功能与状态" FontWeight="SemiBold" FontSize="15" Margin="3,3,0,11"
+             Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"/>
+            <TextBlock Text="配置结构" FontWeight="SemiBold" FontSize="15" Margin="3,3,0,11">
+             <TextBlock.Style>
+              <Style TargetType="TextBlock">
+               <Setter Property="Visibility" Value="Visible"/>
+               <Style.Triggers>
+                <DataTrigger Binding="{Binding IsController}" Value="True">
+                 <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+               </Style.Triggers>
+              </Style>
+             </TextBlock.Style>
+            </TextBlock>
             <WrapPanel>
-              <Button Content="新增模拟按键" Command="{Binding AddButtonActionCommand}"
+              <Button Content="＋ 新增 ECU 功能键" Command="{Binding AddButtonActionCommand}"
                       Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"
-                      Style="{StaticResource AtPrimaryButton}" Margin="0,0,5,6"/>
+                      Style="{StaticResource AtButton}" Margin="0,0,5,6"/>
               <Button Content="新增通用控制器" Command="{Binding AddControllerCommand}"
-                      Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"
-                      Margin="0,0,5,6"/>
-              <Button Content="选择硬件可用 Key…" Command="{Binding PickSupportedKeysCommand}"
                       Visibility="{Binding IsControllerOverview,Converter={StaticResource BoolToVisibility}}"
                       Margin="0,0,5,6"/>
-              <Button Content="选择电阻组合…" Command="{Binding PickKeyCombinationCommand}"
+
+              <Button Content="＋ 新增状态" Command="{Binding AddStateCommand}"
                       Visibility="{Binding IsControllerState,Converter={StaticResource BoolToVisibility}}"
-                      Margin="0,0,5,6"/>
-              <Button Content="新增状态" Command="{Binding AddStateCommand}"
-                      Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"
-                      Margin="0,0,5,6"/>
-              <Button Content="设为默认" Command="{Binding SetDefaultCommand}"
-                      Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"
                       Margin="0,0,5,6"/>
               <Button Content="新增规则" Command="{Binding AddRuleCommand}"
                       Visibility="{Binding IsScan,Converter={StaticResource BoolToVisibility}}"
@@ -105,7 +134,7 @@
                   <Style TargetType="Button" BasedOn="{StaticResource AtButton}">
                     <Setter Property="Visibility" Value="Collapsed"/>
                     <Style.Triggers>
-                      <DataTrigger Binding="{Binding IsController}" Value="True">
+                      <DataTrigger Binding="{Binding IsControllerSelection}" Value="True">
                         <Setter Property="Visibility" Value="Visible"/>
                       </DataTrigger>
                       <DataTrigger Binding="{Binding IsScan}" Value="True">
@@ -120,13 +149,48 @@
           <ListBox ItemsSource="{Binding Nodes}"
                    SelectedItem="{Binding SelectedNode,Mode=TwoWay}"
                    BorderThickness="0" Margin="0,7,0,0"
-                   ScrollViewer.CanContentScroll="True"/>
+                   ScrollViewer.CanContentScroll="True"
+                   Background="Transparent">
+           <ListBox.ItemTemplate>
+            <DataTemplate>
+             <TextBlock Text="{Binding Label}" Margin="{Binding Indent}"
+              TextTrimming="CharacterEllipsis" FontSize="12"
+              VerticalAlignment="Center" ToolTip="{Binding Label}"/>
+            </DataTemplate>
+           </ListBox.ItemTemplate>
+           <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+             <Setter Property="MinHeight" Value="31"/>
+             <Setter Property="VerticalContentAlignment" Value="Center"/>
+             <Setter Property="Padding" Value="8,4"/>
+             <Setter Property="Margin" Value="0,1"/>
+             <Style.Triggers>
+              <Trigger Property="IsSelected" Value="True">
+               <Setter Property="Background" Value="#E4F0FD"/>
+               <Setter Property="Foreground" Value="#24578B"/>
+              </Trigger>
+             </Style.Triggers>
+            </Style>
+           </ListBox.ItemContainerStyle>
+          </ListBox>
         </DockPanel>
       </Border>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="5"
                     Background="{StaticResource Line}"/>
+      <local:ControllerEditorPane Grid.Column="2"
+       Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"/>
       <Border Grid.Column="2" BorderBrush="{StaticResource Line}" BorderThickness="1"
               Background="{StaticResource Panel}">
+       <Border.Style>
+        <Style TargetType="Border">
+         <Setter Property="Visibility" Value="Visible"/>
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding IsController}" Value="True">
+           <Setter Property="Visibility" Value="Collapsed"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style>
+       </Border.Style>
         <DockPanel>
           <Border DockPanel.Dock="Top" Background="{StaticResource MutedSurface}"
                   Padding="16,13" BorderBrush="{StaticResource Line}"

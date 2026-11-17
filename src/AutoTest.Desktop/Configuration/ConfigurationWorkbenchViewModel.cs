@@ -21,8 +21,40 @@ namespace AutoTest.Desktop.Configuration;
 
 public sealed record ConfigurationNode(string Key, string Label)
 {
+    public bool IsState => Key.StartsWith("state|", StringComparison.Ordinal);
+    public bool IsController => Key.StartsWith("controller|", StringComparison.Ordinal);
+    public Thickness Indent => IsState ? new Thickness(24, 0, 0, 0) :
+        IsController ? new Thickness(9, 0, 0, 0) : new Thickness(0);
     public override string ToString() => Label;
 }
+
+/// <summary>
+/// Presentation-only KEY_SIM switch. It changes the existing state 'mask'
+/// configuration field; no second ControllerState or device action is created.
+/// </summary>
+public sealed class ControllerKeyTile : BindableBase
+{
+    private bool _selected;
+    public ControllerKeyTile(int number, bool selected, bool selectable)
+    {
+        Number = number; _selected = selected; IsSelectable = selectable;
+    }
+    public int Number { get; }
+    public string Label => "Key " + Number.ToString("D2", CultureInfo.InvariantCulture);
+    public uint Bit => 1u << (Number - 1);
+    public bool IsSelectable { get; }
+    public bool IsSelected { get => _selected; set => SetProperty(ref _selected, value); }
+}
+
+/// <summary>Projection of the existing target/min/max ConfigurationField objects.</summary>
+public sealed record ControllerVoltageRow(int Channel, ConfigurationField Target,
+    ConfigurationField Minimum, ConfigurationField Maximum)
+{
+    public string ChannelLabel => "CH" + Channel;
+}
+
+public sealed record ControllerInteractionChoice(string Id, string Label);
+public sealed record ControllerReturnChoice(string Id, string Label);
 
 public sealed class ConfigurationField : BindableBase
 {
@@ -55,6 +87,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     private ConfigurationNode? _selectedNode;
     private bool _fieldEdited;
     private bool _busy;
+    private bool _settingKeyTiles;
     private string _status = "修改参数后选择“应用参数”，再保存到工程。";
 
     public ConfigurationWorkbenchViewModel(ProjectWorkspaceService workspace,
@@ -76,6 +109,10 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             () => IsWave && !IsBusy);
         PickKeyCombinationCommand = new DelegateCommand(() => PickKeys("mask"),
             () => IsControllerState && !IsBusy);
+        ClearKeyMaskCommand = new DelegateCommand(() =>
+        {
+            foreach (var keyTile in KeyTiles) keyTile.IsSelected = false;
+        }, () => IsControllerState && !IsBusy);
         PickSupportedKeysCommand = new DelegateCommand(() => PickKeys("supportedKeys"),
             () => IsControllerOverview && !IsBusy);
         AddStateCommand = new DelegateCommand(AddState, () => IsController && SelectedControllerId.HasValue && !IsBusy);
@@ -89,6 +126,65 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
 
     public ObservableCollection<ConfigurationNode> Nodes { get; } = new();
     public ObservableCollection<ConfigurationField> Fields { get; } = new();
+    public ObservableCollection<ControllerKeyTile> KeyTiles { get; } = new();
+    public ObservableCollection<ControllerVoltageRow> VoltageRows { get; } = new();
+    public ObservableCollection<ControllerReturnChoice> ReturnStateChoices { get; } = new();
+    public IReadOnlyList<ControllerInteractionChoice> InteractionChoices { get; } =
+    [
+        new("Momentary", "短按 / 瞬时"),
+        new("Latched", "保持 / 锁存"),
+        new("SpringReturn", "弹回指定状态"),
+        new("Exclusive", "互斥操作")
+    ];
+
+    public bool IsControllerDefinition => IsController && SelectedControllerId.HasValue &&
+        !SelectedStateId.HasValue;
+    public bool IsControllerSelection => IsController && SelectedControllerId.HasValue;
+    public string ControllerSelectionTitle => _selectedNode?.Label?.Trim() ?? "按键配置";
+    public string KeyMaskSummary
+    {
+        get
+        {
+            var maskField = Fields.FirstOrDefault(x => x.Key == "mask");
+            return maskField is null ? "未选择状态" :
+                "电阻组合 " + maskField.Value + " · " +
+                KeyTiles.Count(x => x.IsSelected) + " 个开关";
+        }
+    }
+    public string HardwareKeySummary
+    {
+        get
+        {
+            if (_working is not EcuControlProfile profile)
+                return "";
+            uint? mask = profile.KeyHardwarePolicy?.SupportedMask;
+            if (IsControllerOverview &&
+                Fields.FirstOrDefault(f => f.Key == "supportedKeys") is { } draft)
+            {
+                var raw = draft.Value.Trim();
+                if (raw.Length == 0) mask = null;
+                else if (uint.TryParse(raw.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                    ? raw[2..] : raw, NumberStyles.HexNumber, CultureInfo.InvariantCulture,
+                    out var parsed))
+                    mask = parsed;
+            }
+            return mask is not { } available
+                ? "硬件可用 Key 尚未确认；此处只能编辑配置，不能下发真实动作。"
+                : "已声明可用 " +
+                    System.Numerics.BitOperations.PopCount(available) +
+                    " / 20 个 Key（" + (IsControllerOverview && _fieldEdited ? "待保存草稿" : "已保存资源") +
+                    "）；实际五路电压仍须测量验证。";
+        }
+    }
+    public ConfigurationField? StateNameField { get; private set; }
+    public ConfigurationField? StateInteractionField { get; private set; }
+    public bool RequiresReturnState => StateInteractionField?.Value == "SpringReturn";
+    public bool RequiresExclusiveGroup => StateInteractionField?.Value == "Exclusive";
+    public ConfigurationField? StateReturnField { get; private set; }
+    public ConfigurationField? StateGroupField { get; private set; }
+    public ConfigurationField? StateBeforeField { get; private set; }
+    public ConfigurationField? StateHoldField { get; private set; }
+    public ConfigurationField? StateAfterField { get; private set; }
     public string AssetName => _session.AssetName;
     public Guid AssetGuid => _session.AssetId.Value;
     public string DocumentPath => _session.FilePath;
@@ -151,6 +247,9 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 PopulateFields();
                 RaisePropertyChanged(nameof(IsControllerOverview));
                 RaisePropertyChanged(nameof(IsControllerState));
+                RaisePropertyChanged(nameof(IsControllerDefinition));
+                RaisePropertyChanged(nameof(IsControllerSelection));
+                RaisePropertyChanged(nameof(ControllerSelectionTitle));
                 RefreshCommands();
             }
         }
@@ -183,6 +282,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public DelegateCommand PickWaveSignalCommand { get; }
     public DelegateCommand CreateWaveReferenceCommand { get; }
     public DelegateCommand PickKeyCombinationCommand { get; }
+    public DelegateCommand ClearKeyMaskCommand { get; }
     public DelegateCommand PickSupportedKeysCommand { get; }
     public DelegateCommand AddStateCommand { get; }
     public DelegateCommand SetDefaultCommand { get; }
@@ -201,7 +301,105 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     {
         if (e.PropertyName != nameof(ConfigurationField.Value)) return;
         _fieldEdited = true;
+        if (sender is ConfigurationField { Key: "mask" } && !_settingKeyTiles)
+            UpdateKeyTilesFromField();
+        if (sender is ConfigurationField { Key: "supportedKeys" })
+            RaisePropertyChanged(nameof(HardwareKeySummary));
+        if (sender is ConfigurationField { Key: "interaction" })
+        {
+            RaisePropertyChanged(nameof(RequiresReturnState));
+            RaisePropertyChanged(nameof(RequiresExclusiveGroup));
+        }
         RaisePropertyChanged(nameof(IsDirty));
+    }
+
+    private void KeyTileChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_settingKeyTiles || e.PropertyName != nameof(ControllerKeyTile.IsSelected) ||
+            !IsControllerState) return;
+        uint mask = 0;
+        foreach (var item in KeyTiles)
+            if (item.IsSelected) mask |= item.Bit;
+        if (_working is EcuControlProfile { KeyHardwarePolicy: { } policy } &&
+            policy.ForbiddenPairs.Any(pair =>
+                (mask & pair.A) == pair.A && (mask & pair.B) == pair.B))
+        {
+            StatusMessage = "该 Key 组合违反已设置的硬件互斥规则；没有修改配置草稿。";
+            UpdateKeyTilesFromField();
+            return;
+        }
+        var maskField = Fields.FirstOrDefault(f => f.Key == "mask");
+        if (maskField is not null)
+            maskField.Value = "0x" + mask.ToString("X5", CultureInfo.InvariantCulture);
+        RaisePropertyChanged(nameof(KeyMaskSummary));
+    }
+
+    private void UpdateKeyTilesFromField()
+    {
+        var raw = Fields.FirstOrDefault(f => f.Key == "mask")?.Value;
+        if (string.IsNullOrWhiteSpace(raw) || !uint.TryParse(
+            raw.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? raw[2..] : raw,
+            NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var mask)) return;
+        _settingKeyTiles = true;
+        try
+        {
+            foreach (var item in KeyTiles) item.IsSelected = (mask & item.Bit) != 0;
+        }
+        finally { _settingKeyTiles = false; }
+        RaisePropertyChanged(nameof(KeyMaskSummary));
+    }
+
+    private void RefreshControllerDesigner()
+    {
+        foreach (var item in KeyTiles) item.PropertyChanged -= KeyTileChanged;
+        KeyTiles.Clear();
+        VoltageRows.Clear();
+        ReturnStateChoices.Clear();
+        ConfigurationField? Find(string key) => Fields.FirstOrDefault(x => x.Key == key);
+        StateNameField = Find("name");
+        StateInteractionField = Find("interaction");
+        StateReturnField = Find("return");
+        StateGroupField = Find("group");
+        StateBeforeField = Find("pressDelay");
+        StateHoldField = Find("pressHold");
+        StateAfterField = Find("releaseDelay");
+
+        if (IsControllerState && _working is EcuControlProfile profile &&
+            Find("mask") is { } field)
+        {
+            var mask = ParseCan(field.Value);
+            var allowed = profile.KeyHardwarePolicy?.SupportedMask;
+            ReturnStateChoices.Add(new ControllerReturnChoice("", "无（不弹回）"));
+            var owner = profile.Controllers.FirstOrDefault(controller =>
+                controller.Id == SelectedControllerId);
+            if (owner is not null)
+                foreach (var state in owner.States.OrderBy(state => state.Order))
+                    ReturnStateChoices.Add(new ControllerReturnChoice(state.Id.ToString(),
+                        state.Name));
+            for (int number = 1; number <= 20; number++)
+            {
+                var bit = 1u << (number - 1);
+                var active = (mask & bit) != 0;
+                var tile = new ControllerKeyTile(number, active,
+                    !allowed.HasValue || (allowed.Value & bit) != 0 || active);
+                tile.PropertyChanged += KeyTileChanged;
+                KeyTiles.Add(tile);
+            }
+            for (int channel = 1; channel <= 5; channel++)
+            {
+                if (Find("target" + channel) is { } target &&
+                    Find("min" + channel) is { } minimum &&
+                    Find("max" + channel) is { } maximum)
+                    VoltageRows.Add(new ControllerVoltageRow(channel, target, minimum, maximum));
+            }
+        }
+        foreach (var name in new[] {
+            nameof(StateNameField), nameof(StateInteractionField),
+            nameof(RequiresReturnState), nameof(RequiresExclusiveGroup),
+            nameof(StateReturnField), nameof(StateGroupField),
+            nameof(StateBeforeField), nameof(StateHoldField), nameof(StateAfterField),
+            nameof(KeyMaskSummary), nameof(HardwareKeySummary), nameof(ControllerSelectionTitle)
+        }) RaisePropertyChanged(name);
     }
     private string F(string key) => Fields.First(x => x.Key == key).Value.Trim();
     private static string Format(double? n) => n?.ToString("R", CultureInfo.InvariantCulture) ?? "";
@@ -394,6 +592,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 AddField("published", "发布此配方", r.Published ? "是" : "否", "", YesNo);
             }
         }
+        RefreshControllerDesigner();
         RaisePropertyChanged(nameof(IsDirty));
     }
 
@@ -616,7 +815,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 items.Add(new("controller|" + controller.Id, controller.Name));
                 foreach (var state in controller.States.OrderBy(x => x.Order))
                     items.Add(new("state|" + controller.Id + "|" + state.Id,
-                        "    " + state.Name + (state.Id == controller.DefaultStateId ? " · 默认" : "")));
+                        state.Name + (state.Id == controller.DefaultStateId ? " · 默认" : "")));
             }
         if (_working is ScanMatchSettingsDocument scan)
         {
@@ -678,9 +877,11 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         try
         {
             var field = Fields.Single(f => f.Key == fieldKey);
+            // Hardware capability is not implicitly approved. A blank policy
+            // starts with NO switches selected; the engineer must explicitly
+            // confirm each supported physical key.
             var initial = string.IsNullOrWhiteSpace(field.Value)
-                ? (fieldKey == "supportedKeys" ? 0xFFFFFu : 0u)
-                : ParseCan(field.Value);
+                ? 0u : ParseCan(field.Value);
             var dialog = new KeyMaskPickerDialog(initial,
                 fieldKey == "supportedKeys" ? "选择硬件已确认可用的 Key" : "选择模拟状态的电阻组合");
             var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
@@ -949,6 +1150,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         PickWaveSignalCommand.RaiseCanExecuteChanged();
         CreateWaveReferenceCommand.RaiseCanExecuteChanged();
         PickKeyCombinationCommand.RaiseCanExecuteChanged();
+        ClearKeyMaskCommand.RaiseCanExecuteChanged();
         PickSupportedKeysCommand.RaiseCanExecuteChanged();
         AddStateCommand.RaiseCanExecuteChanged();
         SetDefaultCommand.RaiseCanExecuteChanged();

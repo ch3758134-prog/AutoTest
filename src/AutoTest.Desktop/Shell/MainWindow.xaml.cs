@@ -253,7 +253,10 @@ public partial class MainWindow : Window
 
     private void ApplyPanelLayout()
     {
-        var showInspector = _inspectorVisible && _viewModel.HasActiveEditor;
+        // DBC and Controller configurations already own their actual editor.
+        // Only reserve the right rail when this document supplies an InspectorHost.
+        var showInspector = _inspectorVisible &&
+            (_viewModel.ActiveEditorTab?.Inspector is not null);
         InspectorColumn.Width = new GridLength(showInspector ? 320 : 0);
         InspectorSplitterColumn.Width = new GridLength(showInspector ? 4 : 0);
         BottomRow.Height = new GridLength(_bottomVisible ? 180 : 0);
