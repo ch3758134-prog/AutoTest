@@ -44,7 +44,8 @@ public sealed partial class ManualBenchViewModel
             Time = newer.Time;
             Data = newer.Data;
             Count += newer.Count;
-            Lost += newer.Lost;
+            // HardwareCanReceiveBridge reports cumulative loss; never sum snapshots.
+            Lost = Math.Max(Lost, newer.Lost);
             RaisePropertyChanged(nameof(Status));
         }
     }
@@ -60,6 +61,8 @@ public sealed partial class ManualBenchViewModel
     private bool _monitorShowTimeline;
     private bool _monitorPaused;
     private long _monitorPauseOverflow;
+    private long _monitorLastObservedLoss;
+    private long _monitorLastGeneration;
     public IReadOnlyList<string> MonitorChannelChoices { get; } = new[] { "全部", "CAN0", "CAN1" };
     public ICollectionView MonitorDisplay => MonitorShowTimeline ? _monitorTimelineView : _monitorGroupView;
     public string MonitorQuery
@@ -127,6 +130,19 @@ public sealed partial class ManualBenchViewModel
     private void RegisterRxMonitor(CanObservation observation)
     {
         var frame = observation.Frame;
+        if (_monitorLastGeneration != observation.SessionGeneration)
+        {
+            _monitorLastGeneration = observation.SessionGeneration;
+            _monitorLastObservedLoss = 0;
+        }
+        if (observation.LostFrames > _monitorLastObservedLoss)
+        {
+            var newLoss = observation.LostFrames - _monitorLastObservedLoss;
+            Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"), "CAN", "LOSS",
+                "0x" + frame.Id.ToString("X"), "",
+                "接收路径新增丢帧约 " + newLoss + "；设备无损日志不可由此证明。"));
+            _monitorLastObservedLoss = observation.LostFrames;
+        }
         var entry = new MonitorEntry(
             frame.Role == BusRole.DutCan ? "CAN1" : "CAN0",
             "RX", frame.ExtendedId, frame.Id,

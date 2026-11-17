@@ -74,6 +74,12 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private string _canDataHex = "";
     private string _canConfirmation = "";
     private string _keyConfirmation = "";
+    private bool _isKeyEditorExpanded;
+    public bool IsKeyEditorExpanded
+    {
+        get => _isKeyEditorExpanded;
+        set => SetProperty(ref _isKeyEditorExpanded, value);
+    }
     private string _ignConfirmation = "";
     private string _clampConfirmation = "";
     private string _lastClampStatus = "夹具状态 UNKNOWN：尚未读取本次 MCU GPIO。";
@@ -352,10 +358,6 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         {
             if (_disposed) return;
             RegisterRxMonitor(observation);
-            if (observation.LostFrames > 0)
-                Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-                    "CAN", "LOSS", "0x" + observation.Frame.Id.ToString("X"), "",
-                    "设备接收事件报告丢帧 " + observation.LostFrames));
         }));
 
     private void EvidenceRecorded(string text) =>
@@ -523,6 +525,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     {
         if (_controller is null) return;
         foreach (var key in Keys) key.Checked = (named.Mask & key.Mask) != 0;
+        IsKeyEditorExpanded = true;
+        Status = "已载入 " + named.Name + " 的本次硬件组合草稿；不会自动修改工程资源。";
     }
 
     private static string ExpectedConsent(Func<CanFrame> create)

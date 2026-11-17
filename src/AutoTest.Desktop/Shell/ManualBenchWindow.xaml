@@ -274,7 +274,7 @@
          </DataTemplate>
         </ItemsControl.ItemTemplate>
        </ItemsControl>
-       <Expander Header="编辑当前 20 KEY 组合（本次发送草稿）" IsExpanded="False"
+       <Expander Header="编辑当前 20 KEY 组合（本次发送草稿）" IsExpanded="{Binding IsKeyEditorExpanded,Mode=TwoWay}"
         Margin="0,6,0,0">
         <StackPanel Margin="0,8,0,0">
          <TextBlock Text="组合为内部电阻开关，不是 20 路 ECU 数字输入；未配置有效 Controller 时禁止下发。"
