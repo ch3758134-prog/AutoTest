@@ -60,3 +60,12 @@ UI 专项直接更新 `ui/ide-design/docs/ui/AutoTest_UI.html`，提交每次修
 - **唯一现行 HTML** docs/ui/AutoTest_UI.html 在 commit 9d457dc689bfdfd0305e2974dfbf669d59d90703 完成 **V3 第一轮候选迭代**：中性低装饰色板、紧凑阶段、TEST 空阶段直接 CAN/KEY/IGN/Wait/IF 插入、无选中时右侧帮助入口。继续使用同一工程结构和 UI 原型离线事务；该 HTML 不证明 WPF 或 CAN/USB 运行。
 - 检查证据：GitHub 原文回读、唯一 script 的 JavaScript 语法静态解析成功、新增快捷路由与阶段插入路径存在。**尚无 Chromium 布局/鼠标实际操作试验、Windows WPF Build、实体台架证据**。
 - 当前状态：CONTINUE_ITERATION / 待用户体验审查 / 待 PM 兼容审查。**不得把本轮 V3 HTML 候选视为 main 冻结 UI 或作为直接 G4 实施许可**。
+
+
+### UI V3 连续研究追加记录（2026-11-17）
+- 交互快捷插入 commit cd48ab1dfec80ef341f739d63abc48058cf4cc26：在非空用例中按当前选择位置添加常用步骤，而不只是空测试阶段有入口。
+- 字段临时草稿 commit 9c01f326cc6d310a2f599155cfd4628fc67fda23：纯 HTML 会话内以当前用例+StepId+字段缓存未提交输入；CAN HEX/物理值/时长/名称按规则标错，不写入项目模型；允许切换回来继续编辑。
+- 保存边界 commit 744525f955f7c8966b483da9b3895f89b5bf2f99：聚焦字段先提交或明确阻断；超出 29-bit 的 CAN ID 拒绝；删除步骤清除该节点及子节点的临时草稿。
+- 退出边界 commit 359a01a8d26989c99f91787637db35a78643cda7：切换演示工程前提示未完成草稿并由用户确认放弃；JSON 导出拒绝遗漏未提交字段。
+- 最新静态确认：唯一内嵌脚本可解析；纯函数字段边界 14/14 检查符合预期；当前 GitHub UI HEAD 为 359a01a8d26989c99f91787637db35a78643cda7。
+- 未完成：WPF 真实 FieldDraft→StepEditTransaction 事务、流程拖拽多落点、多选、DBC 具体元数据字段级编辑、Chromium 视觉与鼠标验证、Windows 构建、真实设备验证。现行 HTML 的本地存储不是正式工程资源存储，不可把此候选提升为 G3/G4 PASS。
