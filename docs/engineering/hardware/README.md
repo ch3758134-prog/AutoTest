@@ -16,7 +16,7 @@
 ## 读取顺序
 
 1. 明确板卡与原理图修订，阅读相应 board README 和 PDF。**主控、KEY_SIM 不合并成一套 MCU 映射**。
-2. 看 MCU 物理 pin、设计 Net、相关功能模块、连接器触点。命名空白不等于未接线。
+2. 先看 MCU Pin → Net → 外围器件 IN/OUT → 输出 Net → 连接器触点的完整链；不能只看 MCU 与 J1 两个端点表就判断业务冲突。命名空白不等于未接线。
 3. 要评估复用/改脚时，单独核对官方 datasheet 的 ALT/MUX、工作电压、驱动能力、板级负载与保护，不得把某个“GPIO”自动判为空闲。
 4. 需要研究控制语义时再看固定固件提交与 [差异表](interfaces/design_source_issues.csv)。
 5. PCB layout/netlist、装配版、线束、运行 HEX、实测均未得到可关联到本版本的证明，全部保持 UNKNOWN；不得推断为现场事实。
@@ -27,7 +27,7 @@
 - 按键板设计图：`docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-KEY-EPB_ODD-V1.1.pdf`，SHA256 `2f642b559ddcb4c325e872a67b0d74e0472f0db5bcb9021c1cbb4ff8596a6b2d`。
 - 历史主控源码：`Main_Control@c830dbcd56b436688437b446d222473a88b85098`。
 - 历史按键板源码：`Key_Sim@313ed34ecc8a6e01529998787c8c870cc2e4db4a`。
-- 不复制 PDF 二进制，不把旧 HTML Cross-Probe 作为本目录数据权威来源。用户阅读版 HTML 的后续版本另行版本化，不以本次 CSV 提交冒称已发布。
+- 不复制 PDF 二进制，不把旧 HTML Cross-Probe 作为本目录数据权威来源。GitHub 已提供主控 [高边输出 HTML 追踪页](boards/testctr-v1.5/high_side_trace_review.html)；完整高清技术手册沿用此前独立交付版本并持续修订，切勿将追踪页误认为全板逐器件网表已经完成。
 
 ## 记录定义
 

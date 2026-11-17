@@ -25,7 +25,7 @@
 
 ## 固件参考不是硬件定义
 
-[历史主控源码固定提交](https://github.com/ch3758134-prog/AutoTest/tree/c830dbcd56b436688437b446d222473a88b85098/Project/source)。例如 U7 P80/PTC8 在原理图中为 SOL9IN，而 `EAL_GPIO.c` 中作为 KEY_PWR_DRV；P81、P82 亦有冲突；`EAL_GPIO.h` 中 IGN=PB19 与 `.c` 表驱动=PC10 不一致。均应保留独立版本事实，不自行修改源码。
+[历史主控源码固定提交](https://github.com/ch3758134-prog/AutoTest/tree/c830dbcd56b436688437b446d222473a88b85098/Project/source)。例如 U7 P80/PTC8（SOL9IN）通过 U22 CH1 输出 HOUT7/J1 C8，对应旧固件的 KEY_PWR_DRV 业务别名，**网络名不同本身不构成冲突**；P81/PTC9 同理通向 HOUT6/J1 C7。P82/PTC10（SOL11IN）经 U22 CH3 输出 HOUT5/J1 C6，用户报告该触点实际用于 IGN。真正的源码内部问题是 `EAL_GPIO.h` 的 IGN=PTB19 与 `.c` 的 PTC10 映射不同。完整数据见 [hardware_software_bindings.csv](hardware_software_bindings.csv)。
 
 设计态缺失：全部 ALT/MUX 表核对、逐器件 Pin-to-Pin 网表、PCB 原生 CAD/装配、线束、现役 HEX 与现场测量。需要改脚时应按 MCU Pad→复用→原理图 Net→外围电路→接口→历史固件逐层审查。
 
@@ -37,3 +37,6 @@
 - [误判撤销与历史源码对照](HARDWARE_TRACE_REVIEW.md) · [7项复核](corrected_issue_register.csv)
 
 PTC10 经 SOL11IN→U22 CH3→HOUT5→J1 C6；用户确认 J1 C6 实际用于 IGN。图纸控制 Net 名称不等于固件业务名称。U22 第4通道未标有 HOUT8，不得推断。
+
+- [硬件到固件 5 路旧业务绑定关系](hardware_software_bindings.csv)
+- [主控全模块硬件—固件覆盖矩阵](module_firmware_matrix.csv)

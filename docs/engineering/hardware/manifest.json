@@ -46,5 +46,21 @@
     "Do not rewrite K8/R18 K13/R25 drawing anomalies",
     "Do not infer unlabelled connector pin as NC",
     "Never modify source code from reference document alone"
-  ]
+  ],
+  "last_hardware_review": "2026-11-17",
+  "high_side_trace": {
+    "board": "MAIN",
+    "channel_count": 11,
+    "driver_pin_count": 60,
+    "edge_count": 55,
+    "source": "TestCtr p1 p3 p5",
+    "reviewed_file": "docs/engineering/hardware/boards/testctr-v1.5/HARDWARE_TRACE_REVIEW.md",
+    "html": "docs/engineering/hardware/boards/testctr-v1.5/high_side_trace_review.html",
+    "field_usage_IGN": {
+      "contact": "J1 C6",
+      "source": "USER_REPORTED",
+      "measured": false
+    },
+    "remaining_incomplete": "other circuitry pin-to-pin netlist not yet complete"
+  }
 }
