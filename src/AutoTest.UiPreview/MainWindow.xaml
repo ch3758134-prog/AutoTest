@@ -220,7 +220,22 @@
      ItemTemplate="{StaticResource AtPreviewRowTemplate}"
      BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
      ScrollViewer.VerticalScrollBarVisibility="Auto" Background="White"
-     SelectionChanged="StepRowsList_SelectionChanged" MouseDoubleClick="StepRowsList_DoubleClick">
+     SelectionChanged="StepRowsList_SelectionChanged" MouseDoubleClick="StepRowsList_DoubleClick"
+     PreviewMouseRightButtonDown="StepRowsList_RightClick">
+     <ListBox.ContextMenu>
+      <ContextMenu>
+       <MenuItem Header="在下方插入步骤" Click="InsertAfter_Click"/>
+       <Separator/>
+       <MenuItem Header="复制步骤" Click="Duplicate_Click"/>
+       <MenuItem Header="向上移动" Click="MoveUp_Click"/>
+       <MenuItem Header="向下移动" Click="MoveDown_Click"/>
+       <Separator/>
+       <MenuItem Header="切换启用状态" Click="ContextToggleEnabled_Click"/>
+       <MenuItem Header="切换断点" Click="ContextToggleBreakpoint_Click"/>
+       <Separator/>
+       <MenuItem Header="删除步骤" Click="Delete_Click"/>
+      </ContextMenu>
+     </ListBox.ContextMenu>
 
     </ListBox>
 

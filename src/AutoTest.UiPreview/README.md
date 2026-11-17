@@ -1,6 +1,6 @@
 # AutoTest · 阶段 1：视觉原型与交互
 
-**状态：UI_ONLY / STATIC_SAMPLE / NO_BACKEND_WIRING / WINDOWS_BUILD_UNVERIFIED / VISUAL_PARITY_OPEN**
+**状态：UI_ONLY / TWO_IN_MEMORY_CASES / SHARED_COMPONENTS / BINDING_STATE / NO_BACKEND_WIRING / WINDOWS_BUILD_UNVERIFIED**
 
 这是一个**新的独立 WinExe**，不是对 `AutoTest.Desktop` 做兼容叠加，不是 WebView2，也没有引用原有 Shell、Project、TEST、DBC、Devices、Flash 或运行服务。其所有步骤、项目、报文名称均为**仅用于 UI 审查的冻结 HTML 样例数据，保存在进程内存中**。
 
@@ -31,6 +31,15 @@ dotnet run --project src/AutoTest.UiPreview/AutoTest.UiPreview.csproj -c Debug -
 **没有任何**自动测试执行/预检/报告、CAN 收发、USB 连接、Ignition/KEY/夹具控制、UDS、Flash、DBC 导入或解析、正式资源保存、STEP DSL 或运行日志绑定。所有专业工具按钮只提示 UI 预览尚未接线，运行按钮禁用。
 
 “待执行”和样例报文名称仅复刻冻结 HTML 的**展示数据**，不是 DUT 已连接、报文已接收、预检通过或测试 PASS。Ctrl+S 不保存，关闭进程即清空内存改动。
+
+## G4 第二、三阶段当前实现（未验收）
+
+- 统一 Preview 和 Desktop 的主题资源、按钮、步骤行、阶段行、工程树与属性字段模板；独立资源 Token。
+- 纯 UI 状态对象：`PreviewEditorDocument`、`PreviewInspectorState`、`PreviewPropertyEditor`、`PreviewWorkspaceState`、`PreviewCaseSelectionState`、`PreviewEditHistory`。
+- 纯内存双测试用例可切换，各自保留步骤修改、当前选中项及 Undo/Redo；编辑区名称、页签与本次执行勾选随当前用例变化。
+- 步骤右键菜单：在下方插入、复制、移动、删除、启用/禁用、切换断点。右键先选择目标行，避免误操作。
+- `PreviewSampleFactory` 独立保存冻结 HTML 样例数据，不属于正式 TEST 文档。
+- 这些功能尚未通过 Windows WPF 编译和鼠标回归，不代表 UI-02/UI-03 验收完成。
 
 ## 验收状态
 

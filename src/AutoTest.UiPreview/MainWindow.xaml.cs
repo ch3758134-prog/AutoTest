@@ -112,6 +112,37 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _document.SelectRow(StepRowsList.SelectedItem as PreviewRow);
         ShowInspector();
     }
+    private void StepRowsList_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject visual) return;
+        while (visual is not ListBoxItem)
+        {
+            visual = VisualTreeHelper.GetParent(visual);
+            if (visual is null) return;
+        }
+        if (visual is not ListBoxItem { DataContext: PreviewRow row }) return;
+        StepRowsList.SelectedItem = row;
+        _targetRow = row;
+    }
+
+    private void ContextToggleEnabled_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedStep is not { } step) return;
+        RememberUndo();
+        step.Enabled = !step.Enabled;
+        _selectedRow?.Notify();
+        ShowInspector();
+    }
+
+    private void ContextToggleBreakpoint_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedStep is not { } step) return;
+        RememberUndo();
+        step.Breakpoint = !step.Breakpoint;
+        _selectedRow?.Notify();
+        ShowInspector();
+    }
+
     private void StepRowsList_DoubleClick(object sender,MouseButtonEventArgs e)
     {
         if (_selectedStep is not null)
