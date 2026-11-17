@@ -174,7 +174,7 @@ public sealed class ConfigurationAndImageTests
 
 
     [Fact]
-    public void SafetyFileAndSeedKeyDllRemainSeparateCanToolConfigAssets()
+    public void SafetyFileIsTheOnlyActiveFlashSecurityInput_LegacyFieldRoundTripsWithoutUse()
     {
         string source=Path.Combine(Path.GetTempPath(),Guid.NewGuid().ToString("N")+".xml");
         string saved=Path.Combine(Path.GetTempPath(),Guid.NewGuid().ToString("N")+".xml");
@@ -185,16 +185,17 @@ public sealed class ConfigurationAndImageTests
                 "<SeedToKeyDll_Path>sa_demo.dll</SeedToKeyDll_Path></Configuration>");
             var config=CanToolXmlProfileReader.Load(source);
             Assert.Equal("SafetyFile.dll",config.Get("SafetyFilePath"));
-            Assert.Equal("sa_demo.dll",config.Get("SeedToKeyDll_Path"));
+            Assert.DoesNotContain(config.Parameters,x=>x.Name=="SeedToKeyDll_Path");
+            Assert.Contains("SeedToKeyDll_Path",config.UnmappedNames);
             config.Set("SafetyFilePath","actual_safety.dll");
-            Assert.Equal("sa_demo.dll",config.Get("SeedToKeyDll_Path"));
             config.SaveAs(saved);
             var restored=CanToolXmlProfileReader.Load(saved);
             Assert.Equal("actual_safety.dll",restored.Get("SafetyFilePath"));
-            Assert.Equal("sa_demo.dll",restored.Get("SeedToKeyDll_Path"));
+            Assert.DoesNotContain(restored.Parameters,x=>x.Name=="SeedToKeyDll_Path");
+            // Preserve unknown historical XML without loading it into FlashLab.
             var xml=XDocument.Load(saved);
             Assert.Single(xml.Descendants("SafetyFilePath"));
-            Assert.Single(xml.Descendants("SeedToKeyDll_Path"));
+            Assert.Equal("sa_demo.dll",xml.Descendants("SeedToKeyDll_Path").Single().Value);
         }
         finally
         {
@@ -202,5 +203,4 @@ public sealed class ConfigurationAndImageTests
             if(File.Exists(saved))File.Delete(saved);
         }
     }
-
 }

@@ -415,6 +415,10 @@ public partial class FlashLabWindow : Window
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
                 _vm.FirmwarePath,BinBaseBox.Text,_safetyFilePath,"",
                 LegacyTailSignatureCheck.IsChecked==true);
+            // Resolve the actual managed entry point BEFORE any physical
+            // permission or ECU request. This never calls Calculate(seed).
+            using(var provider=CanToolSecurityProvider.Open(
+                CanToolSecurityProvider.Inspect(plan.SecurityLibraryPath))) { }
             _previewFlash=plan;
             _vm.ResetStages();
             _activeStage=-1;

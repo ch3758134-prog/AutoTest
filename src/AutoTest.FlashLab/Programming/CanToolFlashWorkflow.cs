@@ -90,8 +90,8 @@ public sealed class CanToolFlashWorkflow(
         bool appObserved=false;
         bool resetAck=false;
 
-        // Load native key only after an explicit physical flash job approval,
-        // and before entering any physical session. A CLR SafetyFile fails closed.
+        // Reopen the same inspected SafetyFile after operator approval but
+        // before sending any CAN frames. No implicit native DLL fallback.
         var inspected=CanToolSecurityProvider.Inspect(plan.SecurityLibraryPath);
         if(!string.Equals(inspected.Sha256,plan.SecuritySha256,StringComparison.OrdinalIgnoreCase))
             throw new IOException("安全文件 SafetyFile.dll 在检查后发生修改。");

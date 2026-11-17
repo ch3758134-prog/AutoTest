@@ -44,7 +44,6 @@ public sealed class CanToolXmlProfileReader
         ("BaudRate","参考波特率；不能据此确认主控真实速率"),
         ("BlockLength","参考块长（不等于0x74与ISO-TP BS）"),
         ("SafetyFilePath","安全文件 SafetyFile.dll：独立的托管算法配置路径"),
-        ("SeedToKeyDll_Path","Seed/Key 原生 ZLGKey 算法 DLL：独立配置路径"),
         ("ForceMinInterval","CanTool CF 参考间隔；是否应用须依据 ECU FC")
     ];
 
