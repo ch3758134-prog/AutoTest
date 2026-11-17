@@ -248,7 +248,8 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             Interlocked.Exchange(ref _programmingActive,1);
             recorder.RecordMessage("FLASH_PLAN_APPROVED",
                 $"SHA={job.Fingerprint} target={job.TargetLabel} image={job.FirmwareSha256} "+
-                $"keyDllSha={job.SecuritySha256} CAN1 bitrate=firmware_expected_500K_unmeasured "+
+                $"securitySource={job.SecurityProviderKind} refFileSha={job.SecuritySha256} "+
+                "CAN1 bitrate=firmware_expected_500K_unmeasured "+
                 $"erase=0x{job.FlashStart:X8}..0x{job.FlashEndInclusive:X8}");
             Emit($"真实烧录许可已生效 SHA={job.Fingerprint}；CAN1；禁自动副作用重试。");
             try

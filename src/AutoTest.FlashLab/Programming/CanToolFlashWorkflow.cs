@@ -144,7 +144,8 @@ public sealed class CanToolFlashWorkflow(
             if(response.Length<2 || response[1]!=0x02)
                 throw new InvalidDataException("Boot 50 02 不完整。");
 
-            log("S3 SecurityAccess：27 01 请求 Seed → 安全文件计算 Key → 27 02");
+            log("S3 SecurityAccess：27 01 → CanTool 参考内置算法（4B Seed）→ 27 02；"+
+                "算法 ECU 兼容性未提前证明");
             sensitive(true);
             try
             {

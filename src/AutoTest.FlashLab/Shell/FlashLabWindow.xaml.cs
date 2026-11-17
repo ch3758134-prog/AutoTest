@@ -351,13 +351,13 @@ public partial class FlashLabWindow : Window
         try
         {
             var value=CanToolSecurityProvider.Inspect(path);
-            if(value.Kind!=expected)
+            if(value.Kind!=CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
             {
-                display.Text="接口类型不匹配："+Path.GetFileName(path);
-                AddLog(field+" 使用了 "+value.Kind+"；请放入对应的安全算法入口。");
+                display.Text="非已核实 CanTool 参考文件";
+                AddLog(field+"：SHA/算法来源未核实；当前不尝试其它 Seed/Key DLL。");
                 return null;
             }
-            display.Text=Path.GetFileName(path)+" · 已识别";
+            display.Text=Path.GetFileName(path)+" · 原版参考内置算法";
             display.ToolTip=value.Path+" / SHA256="+value.Sha256;
             AddLog(field+" 已识别："+value.Summary+"；路径="+path);
             return value.Path;
@@ -390,9 +390,10 @@ public partial class FlashLabWindow : Window
         try
         {
             var info=CanToolSecurityProvider.Inspect(dialog.FileName);
-            if(info.Kind!=CanToolSecurityKind.ManagedSafetyFile)
+            if(info.Kind!=CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
                 throw new NotSupportedException(
-                    "选择的文件不是当前 CanTool 安全文件接口；不会自动切换其他算法库。");
+                    "该安全文件不属于已经静态核实的 CanTool 参考组合。"+
+                    "不会自动加载未知 DLL 或尝试错误 Key。");
             _vm.Configuration.Set("SafetyFilePath",info.Path);
             ApplySafetyFileFromConfiguration();
             InvalidateFlashPreview();
@@ -415,8 +416,8 @@ public partial class FlashLabWindow : Window
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
                 _vm.FirmwarePath,BinBaseBox.Text,_safetyFilePath,"",
                 LegacyTailSignatureCheck.IsChecked==true);
-            // Resolve the actual managed entry point BEFORE any physical
-            // permission or ECU request. This never calls Calculate(seed).
+            // Lock the exact original-reference builtin provider BEFORE any
+            // CAN action. It does not dynamically load sa_demo or KEY.dll.
             using(var provider=CanToolSecurityProvider.Open(
                 CanToolSecurityProvider.Inspect(plan.SecurityLibraryPath))) { }
             _previewFlash=plan;
@@ -433,7 +434,8 @@ public partial class FlashLabWindow : Window
                 $"镜像源字节={plan.SourceBytes:N0}，实际计划块字节={plan.PlannedBytes:N0}，"+
                 $"对齐块=0x{plan.AlignmentBlockLength:X}（{plan.AlignmentSource}）\n"+
                 $"参考末端签名={(plan.LegacyTailSignature ? "启用：12 34 56 78，可能覆盖原字节" : "未启用")}\n"+
-                $"固件 SHA={plan.FirmwareSha256}\n安全算法类型={plan.SecurityProviderKind}\n算法文件 SHA={plan.SecuritySha256}";
+                $"固件 SHA={plan.FirmwareSha256}\n安全算法=CanTool 参考内置 LFSR（未验证目标 ECU 兼容）\n"+
+                $"参考文件 SHA={plan.SecuritySha256}";
             FlashStageLabel.Text="文件及烧录地址检查完成；尚未向 ECU 发送请求。";
             WorkflowStatusLabel.Text="已自动检查；请核对实体 ECU、供电与擦除地址。";
             _vm.Status="开始烧录：配置已自动检查，等待最终确认。";
@@ -464,7 +466,8 @@ public partial class FlashLabWindow : Window
                 $"XML 波特率：{frozen.ConfiguredBitrate}；主控固件预期 500K，实际物理速率未测量。\n"+
                 $"擦除全部地址：0x{frozen.FlashStart:X8}..0x{frozen.FlashEndInclusive:X8}\n"+
                 $"固件 SHA256：{frozen.FirmwareSha256}\n"+
-                $"DLL SHA256：{frozen.SecuritySha256}\n"+
+                $"安全算法：CanTool 参考内置 LFSR（不是外部 DLL，尚未证实 ECU 兼容）\n"+
+                $"参考文件 SHA256：{frozen.SecuritySha256}\n"+
                 $"末端参考签名：{(frozen.LegacyTailSignature ? "启用（覆盖4字节）" : "未启用")}\n\n"+
                 "操作将执行 Boot 切换、SecurityAccess、实际擦除、下载、校验、复位。\n"+
                 "断连/取消后 ECU 可能处于无法启动状态。已确认供电稳定、镜像/算法/地址"+

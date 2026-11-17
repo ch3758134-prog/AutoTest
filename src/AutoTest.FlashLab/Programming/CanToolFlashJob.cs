@@ -125,9 +125,11 @@ public sealed record CanToolFlashJob(
         var details=CanToolSecurityProvider.Inspect(dll);
         // The UI explicitly provides one SafetyFile. Do not silently load a
         // legacy native demo algorithm if an XML field references one.
-        if(details.Kind!=CanToolSecurityKind.ManagedSafetyFile)
+        if(details.Kind!=CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
             throw new NotSupportedException(
-                "当前烧录资料应使用 SafetyFile.dll；不接受另外的 Seed/Key 演示 DLL。");
+                "当前 CanTool 实测资料尚不能证明该安全库的 ECU 算法身份。"+
+                "只对已静态核实 SHA256 的原始 SafetyFile.dll 开放参考内置算法；"+
+                "不加载演示 DLL 或猜测其他算法。");
         string effective=string.Join("\n",config.Parameters.Select(p=>p.Name+"="+p.Value.Trim()));
         string bound=$"CANTOOL-FLASH-F2-v1\nCAN1\n{targetLabel.Trim()}\n"+
             $"APP {appTx:X8} {appRx:X8}\nBOOT {bootTx:X8} {bootRx:X8}\n"+

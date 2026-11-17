@@ -9,14 +9,19 @@ namespace AutoTest.FlashLab.Programming;
 
 /// <summary>CanTool-compatible provider selection. A managed SafetyFile and a native
 /// ZLGKey are TWO different ABIs; never silently substitute one for the other.</summary>
-public enum CanToolSecurityKind { ManagedSafetyFile, NativeZlgKey }
+public enum CanToolSecurityKind { ManagedSafetyFile, NativeZlgKey, CanToolReferenceBuiltInLfsr }
 
 public sealed record CanToolSecurityInspection(
     string Path,string Sha256,CanToolSecurityKind Kind,bool KnownDemo,string Api)
 {
-    public string Summary=>Kind==CanToolSecurityKind.ManagedSafetyFile
-        ? "托管安全库 SafetyVerification.SafetyVerificater.SafetyVerificate(byte[]) → byte[]"
-        : "原生 x64 安全库 ZLGKey(seed, size, level, variant, key, keyLen)";
+    public string Summary=>Kind switch
+    {
+        CanToolSecurityKind.ManagedSafetyFile=>
+            "托管安全库 SafetyVerification.SafetyVerificater.SafetyVerificate(byte[]) → byte[]",
+        CanToolSecurityKind.CanToolReferenceBuiltInLfsr=>
+            "CanTool 参考内置 LFSR（原生加载不兼容后的源码备用算法；ECU 兼容性未验证）",
+        _=>"原生 x64 安全库 ZLGKey(seed, size, level, variant, key, keyLen)"
+    };
 }
 
 public interface ICanToolSecurityProvider : IDisposable
@@ -26,6 +31,13 @@ public interface ICanToolSecurityProvider : IDisposable
 
 public static class CanToolSecurityProvider
 {
+    // Exact SHA of the user's original 4096-byte CLR SafetyFile.dll.
+    // Original CanTool's LoadLibrary/GetProcAddress("ZLGKey") cannot call it.
+    // Issue #25 established that original source's explicit fallback matches
+    // the separately supplied sa_demo.dll static disassembly. Only this exact
+    // known binary permits the deterministic reference-internal provider.
+    public const string KnownReferenceSafetyFileSha256=
+        "EE2C4A2791B88DCE19DB29F308752C8F79BC0654463D43E6880F65C6FDEA3833";
     private const string ManagedType="SafetyVerification.SafetyVerificater";
     private const string ManagedMethod="SafetyVerificate";
     // Signature observed in supplied, unexecuted SafetyFile.dll:
@@ -62,8 +74,19 @@ public static class CanToolSecurityProvider
                            !method.Attributes.HasFlag(MethodAttributes.Public))continue;
                         var signature=md.GetBlobBytes(method.Signature);
                         if(signature.AsSpan().SequenceEqual(ManagedSignature))
-                            return new(full,hash,CanToolSecurityKind.ManagedSafetyFile,false,
-                                ManagedType+"."+ManagedMethod+"(byte[]) -> byte[]");
+                        {
+                            // The original native CanTool entry point would
+                            // not load this CLR-only DLL, so the archived
+                            // reference takes its internal LFSR path.
+                            bool exactReference=hash.Equals(KnownReferenceSafetyFileSha256,
+                                StringComparison.OrdinalIgnoreCase);
+                            return new(full,hash,
+                                exactReference?CanToolSecurityKind.CanToolReferenceBuiltInLfsr:
+                                    CanToolSecurityKind.ManagedSafetyFile,
+                                false,exactReference?
+                                    "CanTool internal 35-round LFSR (reference-source fallback)":
+                                    ManagedType+"."+ManagedMethod+"(byte[]) -> byte[]");
+                        }
                     }
                 }
                 throw new NotSupportedException(
@@ -91,11 +114,25 @@ public static class CanToolSecurityProvider
         return inspection.Kind switch
         {
             CanToolSecurityKind.ManagedSafetyFile=>new ManagedSafetyFileProvider(inspection),
+            CanToolSecurityKind.CanToolReferenceBuiltInLfsr=>
+                new ReferenceLfsrAdapter(inspection),
             CanToolSecurityKind.NativeZlgKey=>
                 new NativeAdapter(new NativeZlgKeyProvider(
                     NativeZlgKeyProvider.Inspect(inspection.Path))),
             _=>throw new NotSupportedException("未知的安全算法库类型。")
         };
+    }
+
+    private sealed class ReferenceLfsrAdapter(CanToolSecurityInspection inspection)
+        : ICanToolSecurityProvider
+    {
+        public byte[] Calculate(byte[] seed)
+        {
+            if(inspection.Kind!=CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
+                throw new InvalidOperationException("参考算法身份不匹配。");
+            return CanToolReferenceLfsr.Calculate(seed);
+        }
+        public void Dispose(){}
     }
 
     private sealed class NativeAdapter(NativeZlgKeyProvider native) : ICanToolSecurityProvider
@@ -148,5 +185,27 @@ public static class CanToolSecurityProvider
             _method=null;
             _context.Unload();
         }
+    }
+}
+
+
+/// <summary>
+/// Exact 35-step algorithm recovered from the provided native sa_demo.dll's
+/// ZLGKey RVA 0x1430 disassembly; Issue #25 traces the same implementation
+/// to CanTool's SOURCE fallback. This does NOT prove the target ECU uses it.
+/// Never use with unknown safety files, and never silently switch on error.
+/// </summary>
+public static class CanToolReferenceLfsr
+{
+    public static byte[] Calculate(byte[] seed)
+    {
+        if(seed is null || seed.Length!=4)
+            throw new FormatException("CanTool 参考内置算法只支持 4 字节 Seed。");
+        uint state=((uint)seed[0]<<24)|((uint)seed[1]<<16)|
+            ((uint)seed[2]<<8)|seed[3];
+        for(int i=0;i<35;i++)
+            state=(state<<1)^((state&0x80000000U)!=0?0xC2DFF1C2U:0U);
+        return [(byte)(state>>24),(byte)(state>>16),
+            (byte)(state>>8),(byte)state];
     }
 }
