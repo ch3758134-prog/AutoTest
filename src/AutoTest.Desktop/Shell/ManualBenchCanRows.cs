@@ -22,6 +22,8 @@ public sealed partial class ManualBenchViewModel
         private string _name;
         private string _idHex = "701", _dataHex = "", _periodText = "100", _result = "待发送";
         private bool _included = true, _extended, _periodic, _useDbc;
+        private bool _lockedToAuthorizedBatch;
+        private bool _batchInProgress;
         private DbcChoice? _dbcChoice;
         private int _sent;
         public event Action? Edited;
@@ -32,6 +34,13 @@ public sealed partial class ManualBenchViewModel
         public string DataHex { get => _dataHex; set { if (SetProperty(ref _dataHex, value ?? "")) Notify(); } }
         public string PeriodText { get => _periodText; set { if (SetProperty(ref _periodText, value ?? "")) Notify(); } }
         public bool Included { get => _included; set { if (SetProperty(ref _included, value)) Notify(); } }
+        public bool CanToggleIncluded => !_batchInProgress || _lockedToAuthorizedBatch;
+        public void SetBatchMembership(bool running, bool authorized)
+        {
+            _batchInProgress = running;
+            _lockedToAuthorizedBatch = authorized;
+            RaisePropertyChanged(nameof(CanToggleIncluded));
+        }
         public bool Extended { get => _extended; set { if (SetProperty(ref _extended, value)) Notify(); } }
         public bool IsPeriodic { get => _periodic; set { if (SetProperty(ref _periodic, value)) Notify(); } }
         public bool UseDbc { get => _useDbc; set { if (SetProperty(ref _useDbc, value)) Notify(); } }
@@ -124,6 +133,8 @@ public sealed partial class ManualBenchViewModel
     public DelegateCommand AddCanRowCommand { get; private set; } = null!;
     public DelegateCommand CopyCanRowCommand { get; private set; } = null!;
     public DelegateCommand DeleteCanRowCommand { get; private set; } = null!;
+    public DelegateCommand MoveCanRowUpCommand { get; private set; } = null!;
+    public DelegateCommand MoveCanRowDownCommand { get; private set; } = null!;
     public DelegateCommand StartCanRowsCommand { get; private set; } = null!;
     public DelegateCommand StopCanRowsCommand { get; private set; } = null!;
 
@@ -132,6 +143,8 @@ public sealed partial class ManualBenchViewModel
         AddCanRowCommand = new DelegateCommand(AddCanRow, () => CanEditCanRows);
         CopyCanRowCommand = new DelegateCommand(CopyCanRow, () => CanEditCanRows && HasSelectedCanRow);
         DeleteCanRowCommand = new DelegateCommand(DeleteCanRow, () => CanEditCanRows && HasSelectedCanRow);
+        MoveCanRowUpCommand = new DelegateCommand(() => MoveCanRow(-1), () => CanEditCanRows && HasSelectedCanRow);
+        MoveCanRowDownCommand = new DelegateCommand(() => MoveCanRow(1), () => CanEditCanRows && HasSelectedCanRow);
         StartCanRowsCommand = new DelegateCommand(async () => await StartCanRowsAsync(), () => CanStartCanRows);
         StopCanRowsCommand = new DelegateCommand(async () => await StopCanRowsAsync(), () => CanStopCanRows);
         AddCanRow();
@@ -145,6 +158,8 @@ public sealed partial class ManualBenchViewModel
         AddCanRowCommand?.RaiseCanExecuteChanged();
         CopyCanRowCommand?.RaiseCanExecuteChanged();
         DeleteCanRowCommand?.RaiseCanExecuteChanged();
+        MoveCanRowUpCommand?.RaiseCanExecuteChanged();
+        MoveCanRowDownCommand?.RaiseCanExecuteChanged();
         StartCanRowsCommand?.RaiseCanExecuteChanged();
         StopCanRowsCommand?.RaiseCanExecuteChanged();
     }
@@ -188,6 +203,17 @@ public sealed partial class ManualBenchViewModel
         CanSendRows.Remove(selected);
         SelectedCanRow = CanSendRows.Count == 0 ? null :
             CanSendRows[Math.Min(index, CanSendRows.Count - 1)];
+        NotifyCanRows();
+    }
+
+    private void MoveCanRow(int delta)
+    {
+        if (SelectedCanRow is not { } selected) return;
+        var current = CanSendRows.IndexOf(selected);
+        var target = current + delta;
+        if (target < 0 || target >= CanSendRows.Count) return;
+        CanSendRows.Move(current, target);
+        SelectedCanRow = selected;
         NotifyCanRows();
     }
 
@@ -264,6 +290,8 @@ public sealed partial class ManualBenchViewModel
             maxWrites: 8000);
         var stop = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         _canBatchStop = stop;
+        var authorized = prepared.Select(x => x.Row).ToHashSet();
+        foreach (var row in CanSendRows) row.SetBatchMembership(true, authorized.Contains(row));
         foreach (var row in prepared) { row.Row.Sent = 0; row.Row.Result = "运行中"; }
         IsCanBatchRunning = true;
         _canBatchTask = RunCanRowsAsync(prepared, fingerprint, stop);
@@ -278,6 +306,12 @@ public sealed partial class ManualBenchViewModel
             {
                 while (!stop.IsCancellationRequested)
                 {
+                    if (!entry.Row.Included)
+                    {
+                        entry.Row.Result = "已暂停 · 本轮不发送";
+                        await Task.Delay(90, stop.Token);
+                        continue;
+                    }
                     try
                     {
                         await _hardware.SendManualBatchCanAsync(entry.Frame, fingerprint, stop.Token);
@@ -323,6 +357,7 @@ public sealed partial class ManualBenchViewModel
                 entry.Row.Result = entry.Row.Sent > 0
                     ? "已停止 · " + entry.Row.Sent + " 次 USB ACK" : "未完成";
             _canBatchStop = null;
+            foreach (var row in CanSendRows) row.SetBatchMembership(false, false);
             IsCanBatchRunning = false;
             stop.Dispose();
         }

@@ -78,7 +78,9 @@
       <DockPanel LastChildFill="False">
        <Button Content="+ 新增" Command="{Binding AddCanRowCommand}" Padding="10,6" Margin="0,0,5,0"/>
        <Button Content="复制" Command="{Binding CopyCanRowCommand}" Padding="9,6" Margin="0,0,5,0"/>
-       <Button Content="删除" Command="{Binding DeleteCanRowCommand}" Padding="9,6" Margin="0,0,10,0"/>
+       <Button Content="删除" Command="{Binding DeleteCanRowCommand}" Padding="9,6" Margin="0,0,5,0"/>
+       <Button Content="↑" Command="{Binding MoveCanRowUpCommand}" Padding="8,6" Margin="0,0,4,0"/>
+       <Button Content="↓" Command="{Binding MoveCanRowDownCommand}" Padding="8,6" Margin="0,0,8,0"/>
        <Button Content="启动勾选" Command="{Binding StartCanRowsCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="11,6" Margin="0,0,5,0"/>
        <Button Content="停止全部" Command="{Binding StopCanRowsCommand}" Padding="11,6"/>
@@ -96,6 +98,9 @@
         <MenuItem Header="新增报文" Command="{Binding AddCanRowCommand}"/>
         <MenuItem Header="复制当前报文" Command="{Binding CopyCanRowCommand}"/>
         <MenuItem Header="删除当前报文" Command="{Binding DeleteCanRowCommand}"/>
+        <Separator/>
+        <MenuItem Header="上移报文" Command="{Binding MoveCanRowUpCommand}"/>
+        <MenuItem Header="下移报文" Command="{Binding MoveCanRowDownCommand}"/>
        </ContextMenu>
       </DataGrid.ContextMenu>
       <DataGrid.Columns>
@@ -103,7 +108,7 @@
         <DataGridTemplateColumn.CellTemplate>
          <DataTemplate>
           <CheckBox IsChecked="{Binding Included,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-           IsEnabled="{Binding DataContext.CanEditCanRows,RelativeSource={RelativeSource AncestorType=DataGrid}}"
+           IsEnabled="{Binding CanToggleIncluded}"
            HorizontalAlignment="Center" VerticalAlignment="Center"/>
          </DataTemplate>
         </DataGridTemplateColumn.CellTemplate>
