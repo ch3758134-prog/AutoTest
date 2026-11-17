@@ -11,7 +11,6 @@
   <SolidColorBrush x:Key="Muted" Color="#64758C"/>
   <SolidColorBrush x:Key="Blue" Color="#2368BD"/>
   <SolidColorBrush x:Key="BorderColor" Color="#DBE3ED"/>
-  <BooleanToVisibilityConverter x:Key="B2V"/>
   </ResourceDictionary>
  </Application.Resources>
 </Application>

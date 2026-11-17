@@ -16,6 +16,8 @@ namespace AutoTest.UiPreview;
 public partial class MainWindow : Window
 {
     public ObservableCollection<PreviewRow> Rows { get; } = new();
+    public ICommand AddRowCommand { get; }
+    public ICommand TogglePhaseCommand { get; }
     private readonly List<DemoPhase> _phases = new();
     private readonly Stack<DemoSnapshot> _undo = new();
     private readonly Stack<DemoSnapshot> _redo = new();
@@ -35,6 +37,16 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AddRowCommand = new PreviewRowCommand(row =>
+        {
+            _targetRow = row;
+            OpenPalette();
+        });
+        TogglePhaseCommand = new PreviewRowCommand(row =>
+        {
+            row.Phase.Collapsed = !row.Phase.Collapsed;
+            RebuildRows();
+        });
         DataContext = this;
         StepNameField.GotKeyboardFocus += (_, _) =>
         {
@@ -706,4 +718,19 @@ public partial class MainWindow : Window
         handled=true;
         return IntPtr.Zero;
     }
+    // Template buttons bind to these UI-only commands. No business layer dependencies.
+    private sealed class PreviewRowCommand(Action<PreviewRow> action) : ICommand
+    {
+        public bool CanExecute(object? parameter) => parameter is PreviewRow;
+        public void Execute(object? parameter)
+        {
+            if (parameter is PreviewRow row) action(row);
+        }
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+    }
+
 }

@@ -218,67 +218,11 @@
          No StepEditTransaction, controller, project or device types referenced. -->
     <ListBox x:Name="StepRowsList" Grid.Row="3" ItemsSource="{Binding Rows}"
      ItemContainerStyle="{StaticResource PreviewListBoxItemStyle}"
+     ItemTemplate="{StaticResource AtPreviewRowTemplate}"
      BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
      ScrollViewer.VerticalScrollBarVisibility="Auto" Background="White"
      SelectionChanged="StepRowsList_SelectionChanged" MouseDoubleClick="StepRowsList_DoubleClick">
-     <ListBox.ItemTemplate>
-      <DataTemplate>
-       <Grid Height="{Binding RowHeight}" Background="Transparent">
-        <Border Style="{StaticResource AtPreviewPhaseRow}" Visibility="{Binding IsPhase,Converter={StaticResource B2V}}"
-         Background="{Binding PhaseBackground}" BorderBrush="{Binding PhaseAccent}"
-         >
-         <DockPanel LastChildFill="True">
-          <Button DockPanel.Dock="Right" Tag="{Binding}" Content="＋ 添加"
-           Height="24" MinHeight="0" Padding="8,2" Margin="4,0,0,0"
-           Style="{StaticResource Btn}" Click="AddAtRow_Click"/>
-          <TextBlock DockPanel.Dock="Right" Text="{Binding CountLabel}"
-           Foreground="#8A9AB0" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-           <Button Tag="{Binding}" Content="{Binding ExpandMark}" Click="TogglePhase_Click"
-            Style="{StaticResource BareBtn}" Width="24" FontSize="11"/>
-           <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{Binding PhaseAccent}"
-            FontSize="11" VerticalAlignment="Center"/>
-          </StackPanel>
-         </DockPanel>
-        </Border>
-        <Border Style="{StaticResource AtPreviewBranchRow}" Visibility="{Binding IsBranch,Converter={StaticResource B2V}}">
-         <DockPanel>
-          <Button DockPanel.Dock="Right" Tag="{Binding}" Content="＋ 插入"
-           Style="{StaticResource BareBtn}" Foreground="#7854A3" Click="AddAtRow_Click"/>
-          <TextBlock Text="{Binding Name}" Margin="{Binding Indent}" VerticalAlignment="Center"
-           FontSize="11" Foreground="#7653A5" FontWeight="SemiBold"/>
-         </DockPanel>
-        </Border>
-        <Grid Visibility="{Binding IsStep,Converter={StaticResource B2V}}" Margin="0">
-         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="42"/>
-          <ColumnDefinition Width="30*"/>
-          <ColumnDefinition Width="46*"/>
-          <ColumnDefinition Width="14*"/>
-          <ColumnDefinition Width="10*"/>
-         </Grid.ColumnDefinitions>
-         <Border Width="3" HorizontalAlignment="Left" Panel.ZIndex="1" Style="{StaticResource AtPreviewMatchRail}"/>
-         <TextBlock Grid.Column="0" Text="{Binding Number}" HorizontalAlignment="Right"
-          VerticalAlignment="Center" Margin="0,0,10,0" FontSize="10" Foreground="#8A99AD"
-          FontFamily="Consolas"/>
-         <StackPanel Grid.Column="1" Margin="{Binding Indent}" Orientation="Horizontal"
-          VerticalAlignment="Center" ClipToBounds="True">
-          <Border Style="{StaticResource AtPreviewStepIcon}" Background="{Binding CategoryBackground}">
-           <TextBlock Text="{Binding Icon}" Foreground="{Binding CategoryForeground}"
-            FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-          </Border>
-          <TextBlock Text="{Binding Name}" Style="{StaticResource AtPreviewStepName}" ToolTip="{Binding Name}"/>
-         </StackPanel>
-         <TextBlock Grid.Column="2" Text="{Binding Summary}" Style="{StaticResource AtPreviewStepSummary}" ToolTip="{Binding Summary}"/>
-         <TextBlock Grid.Column="3" Text="{Binding Resource}" Style="{StaticResource AtPreviewStepResource}" ToolTip="{Binding Resource}"/>
-         <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBlock Text="{Binding BreakpointMark}" Style="{StaticResource AtPreviewBreakpointText}"/>
-          <TextBlock Text="{Binding Status}" Style="{StaticResource AtPreviewStatusText}"/>
-         </StackPanel>
-        </Grid>
-       </Grid>
-      </DataTemplate>
-     </ListBox.ItemTemplate>
+
     </ListBox>
 
     <GridSplitter Grid.Row="4" Height="4" Background="#E8EEF6"
