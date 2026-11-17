@@ -42,6 +42,9 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private string? _approvedPlan;
     private volatile bool _manualCanBatchApproved;
     private string? _manualBatchFingerprint;
+    private volatile bool _manualKeyActionApproved;
+    private string? _manualKeyActionFingerprint;
+    public bool IsManualKeyActionApproved => _manualKeyActionApproved;
     public bool IsManualCanBatchApproved => _manualCanBatchApproved;
     public event Action<bool>? ManualCanBatchChanged;
     private void AnnounceManualBatch(bool active)
@@ -168,7 +171,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             if (_usb?.State != UsbSessionState.Connected || _link is null)
                 throw new IOException("USB 主控未连接，禁止 CAN 发送。");
-            if (_testRunApproved || (_manualCanBatchApproved && frame.Role != BusRole.KeypadCan))
+            if (_testRunApproved || (_manualKeyActionApproved && frame.Role == BusRole.KeypadCan) ||
+                (_manualCanBatchApproved && frame.Role != BusRole.KeypadCan))
                 throw new InvalidOperationException("CAN1 周期任务运行中仅允许同一手动工位的 KEY_SIM CAN0 指令。");
             var map = new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
             var payload = CanFrameCodec.ToUsbPayload(frame, map);
@@ -178,6 +182,61 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), cancellationToken);
             Record("CAN TX 设备 ACK；不能据此认定 DUT 已收到该帧。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>A complete KEY action is authorized once; writes are ordered at USB fence.</summary>
+    public async Task AuthorizeManualKeyActionAsync(string fingerprint, string confirmation,
+        IReadOnlyList<CanFrame> frames, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _link is null ||
+                _testRunApproved || _manualKeyActionApproved)
+                throw new InvalidOperationException("USB 未连接或 KEY/TEST 任务正在运行。");
+            if (frames.Count is < 1 or > 512 || frames.Any(frame => frame.Role != BusRole.KeypadCan))
+                throw new ArgumentException("KEY 动作只能向 CAN0 KEY_SIM 发送帧。");
+            var map = new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
+            var data = frames.Select(frame => CanFrameCodec.ToUsbPayload(frame, map)).ToArray();
+            _link.AuthorizeManualKeySequence(fingerprint, confirmation, data);
+            _manualKeyActionFingerprint = fingerprint;
+            _manualKeyActionApproved = true;
+            Record("KEY_SIM 序列授权，段数=" + frames.Count + " SHA=" + fingerprint);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SendManualKeyStepAsync(CanFrame frame, string fingerprint, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!_manualKeyActionApproved || _manualKeyActionFingerprint != fingerprint ||
+                _usb?.State != UsbSessionState.Connected || _testRunApproved ||
+                frame.Role != BusRole.KeypadCan)
+                throw new UnauthorizedAccessException("当前 USB 会话没有有效 KEY 序列授权。");
+            var payload = CanFrameCodec.ToUsbPayload(frame,
+                new BusRoleMap(default, DutPort: 1, KeypadPort: 0));
+            await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
+                TimeSpan.FromSeconds(3), ct);
+            Record("KEY_SIM CAN0 主控 ACK：0x" + frame.Id.ToString("X") +
+                " DATA=" + Convert.ToHexString(frame.Data.AsSpan()) +
+                "（非五路电压或 ECU 识别确认）");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task RevokeManualKeyActionAsync()
+    {
+        await _lifecycle.WaitAsync();
+        try
+        {
+            _link?.RevokeManualKeySequence();
+            _manualKeyActionApproved = false;
+            _manualKeyActionFingerprint = null;
+            Record("KEY 序列授权撤销；没有自动释放 KEY，实体状态 UNKNOWN。");
         }
         finally { _lifecycle.Release(); }
     }
@@ -333,7 +392,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         await _lifecycle.WaitAsync(ct);
         try
         {
-            if (_testRunApproved || _manualCanBatchApproved ||
+            if (_testRunApproved || _manualCanBatchApproved || _manualKeyActionApproved ||
                 _usb?.State != UsbSessionState.Connected || _link is null)
                 throw new InvalidOperationException("Test run requires an idle connected session.");
             _link.AuthorizePhysicalTestRun(fingerprint, confirmation, allowedCan, allowIgn);
