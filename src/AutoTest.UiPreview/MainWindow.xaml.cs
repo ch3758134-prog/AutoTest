@@ -20,8 +20,7 @@ public partial class MainWindow : Window
     public ICommand AddRowCommand { get; }
     public ICommand TogglePhaseCommand { get; }
     private List<DemoPhase> _phases => _document.Phases;
-    private readonly Stack<DemoSnapshot> _undo = new();
-    private readonly Stack<DemoSnapshot> _redo = new();
+    private readonly PreviewEditHistory _history = new();
     private readonly IReadOnlyList<PaletteKind> _palette = PreviewSampleFactory.MakePalette();
     private PreviewRow? _targetRow;
     private PreviewRow? _selectedRow;
@@ -395,48 +394,30 @@ public partial class MainWindow : Window
         RebuildRows();
     }
 
-    private sealed record DemoSnapshot(List<DemoPhase> Phases,Guid? Selected);
-    private DemoSnapshot Capture()
+    private void RememberUndo() => _history.Remember(_phases, _selectedStep?.Id);
+
+    private void Undo_Click(object sender, RoutedEventArgs e)
     {
-        var phases=new List<DemoPhase>();
-        foreach(var source in _phases)
+        if (!_history.TryUndo(_phases, _selectedStep?.Id, out var selected))
         {
-            var phase=new DemoPhase(source.Key,source.Title){Collapsed=source.Collapsed};
-            foreach(var child in source.Steps)phase.Steps.Add(ClonePreservingId(child));
-            phases.Add(phase);
+            SetMessage("当前没有可撤销的 UI 操作。");
+            return;
         }
-        return new DemoSnapshot(phases,_selectedStep?.Id);
-    }
-    private static DemoStep ClonePreservingId(DemoStep src)
-    {
-        var copy=new DemoStep{Id=src.Id,Kind=src.Kind,Name=src.Name,
-            Enabled=src.Enabled,Breakpoint=src.Breakpoint};
-        foreach(var pair in src.Parameters)copy.Parameters[pair.Key]=pair.Value;
-        foreach(var branch in src.Branches)
-        {
-            var fork=new DemoBranch(branch.Name);
-            foreach(var item in branch.Steps)fork.Steps.Add(ClonePreservingId(item));
-            copy.Branches.Add(fork);
-        }
-        return copy;
-    }
-    private void Restore(DemoSnapshot snapshot)
-    {
-        _phases.Clear();
-        _phases.AddRange(snapshot.Phases);
-        _selectedStep=AllSteps().FirstOrDefault(x=>x.Id==snapshot.Selected);
+        _selectedStep = AllSteps().FirstOrDefault(step => step.Id == selected);
         RebuildRows();
+        SetMessage("已撤销");
     }
-    private void RememberUndo(){_undo.Push(Capture());_redo.Clear();}
-    private void Undo_Click(object sender,RoutedEventArgs e)
+
+    private void Redo_Click(object sender, RoutedEventArgs e)
     {
-        if(_undo.Count==0){SetMessage("当前没有可撤销的 UI 操作。");return;}
-        _redo.Push(Capture());Restore(_undo.Pop());SetMessage("已撤销");
-    }
-    private void Redo_Click(object sender,RoutedEventArgs e)
-    {
-        if(_redo.Count==0){SetMessage("当前没有可重做的 UI 操作。");return;}
-        _undo.Push(Capture());Restore(_redo.Pop());SetMessage("已重做");
+        if (!_history.TryRedo(_phases, _selectedStep?.Id, out var selected))
+        {
+            SetMessage("当前没有可重做的 UI 操作。");
+            return;
+        }
+        _selectedStep = AllSteps().FirstOrDefault(step => step.Id == selected);
+        RebuildRows();
+        SetMessage("已重做");
     }
 
     private void SearchText_Changed(object sender,TextChangedEventArgs e)
