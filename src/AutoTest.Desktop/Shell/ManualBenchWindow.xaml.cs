@@ -81,6 +81,30 @@ public partial class ManualBenchWindow : Window
     private async void IgnOff_Click(object sender, RoutedEventArgs e) =>
         await _model.ApplyIgnSelectionAsync(false);
 
+    private void SelectKeyAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button
+            { Tag: ManualBenchViewModel.KeyActionEditor action })
+            _model.SelectedKeyAction = action;
+    }
+
+    private void EditKeyAction_RightClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button
+            { Tag: ManualBenchViewModel.KeyActionEditor action })
+        {
+            _model.SelectedKeyAction = action;
+            e.Handled = true;
+        }
+    }
+
+    private void RunKeyAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button
+            { Tag: ManualBenchViewModel.KeyActionEditor action })
+            _model.ExecuteKeyActionCommand.Execute(action);
+    }
+
     private async void ApplyNamedOperation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.Button

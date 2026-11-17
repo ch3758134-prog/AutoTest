@@ -325,9 +325,10 @@ public sealed partial class ManualBenchViewModel
     private void SetStepMask(uint mask)
     {
         if (SelectedKeyStep is null) return;
-        SelectedKeyStep.KeyMask = mask;
+        var edited = SelectedKeyStep;
+        edited.KeyMask = mask;
         SelectedKeyStep = null;
-        SelectedKeyStep = SelectedKeyAction?.Steps.FirstOrDefault(x => x.KeyMask == mask);
+        SelectedKeyStep = edited;
     }
     private void CopyPreviousStepKeys()
     {
@@ -402,7 +403,10 @@ public sealed partial class ManualBenchViewModel
         try
         {
             if (_keyCatalogSession is null)
+            {
                 _keyCatalogSession = await _projects.CreateKeyActionsAsync();
+                catalog = catalog with { CatalogId = _keyCatalogSession.Document.CatalogId };
+            }
             _keyCatalogSession = await _projects.SaveKeyActionsAsync(_keyCatalogSession, catalog);
             KeyActionsDirty = false;
             KeyActionRunStatus = "动作库已保存、回读校验通过；没有执行任何硬件动作。";
