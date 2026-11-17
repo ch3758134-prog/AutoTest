@@ -1,0 +1,7 @@
+id,subject,design_source,source_code,issue_type,verification_state
+HW-KEY-01,K8 R18 printed RELE_NC despite nearby RELE_NO group,EPB_ODD V1.1 p3,,SCHEMATIC_LABEL_ANOMALY,UNRESOLVED
+HW-KEY-02,K13 R25 printed RELE_NC despite nearby PARK_NO group,EPB_ODD V1.1 p3,,SCHEMATIC_LABEL_ANOMALY,UNRESOLVED
+HW-KEY-03,Pin 9 network PTB3_9P vs physical pad candidate PTE2,EPB_ODD V1.1 p2,Key_Sim 313ed34e Driver_Gpio.h KEY16 uses PTE2,NET_NAME_NOT_PAD,DATASHEET_CROSSCHECK
+HW-KEY-04,Pin 10 network PTB4_10P vs pad candidate PTE3 and historical KEY19 PTB4,EPB_ODD V1.1 p2,Key_Sim 313ed34e Driver_Gpio.h,PACKAGE_FW_DIFFERENCE,UNRESOLVED
+HW-KEY-05,Pin 12 network PTB6_12P vs pad candidate PTE5 and historical KEY20 PTB6,EPB_ODD V1.1 p2,Key_Sim 313ed34e Driver_Gpio.h,PACKAGE_FW_DIFFERENCE,UNRESOLVED
+HW-KEY-06,Actual five analog output voltages depend on BAT_KEY and ECU input load,"EPB_ODD V1.1 p3,p4",,EXTERNAL_LOAD_DEPENDENCY,UNKNOWN

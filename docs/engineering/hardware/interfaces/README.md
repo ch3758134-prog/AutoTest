@@ -1,32 +1,12 @@
-# 硬件接口、固件绑定及差异
+# 硬件—软件接口索引
 
-此目录记录设计网络与历史源码版本的不同事实；不为某个软件分支追认实装状态。
-
-## 双 CAN 角色层
-
-| 名称层 | 图纸 CAN1 | 图纸 CAN2 |
+| 分类 | 设计依据 | 接口资料 |
 |---|---|---|
-| MCU物理 Pin | U7 P42 PTA12 TX / P43 PTA13 RX | U7 P91 PTC17 TX / P90 PTC16 RX |
-| 收发器 | U9 ADM3054 隔离 | U10 TJA1042T/3 非隔离 |
-| J1 设计触点 | B11 CAN1_H / B1 CAN1_L | A12 CAN2_H / A1 CAN2_L |
-| 历史主控固件 | MCAL_CAN_CH0（称 CAN0） | MCAL_CAN_CH1（称 CAN1） |
-| 对应 HOST 物理角色 | 按实际配置与线路核实；不从名字推导 | 按实际配置与线路核实；不从名字推导 |
+| 主控板 MCU→外围→J1 | TestCtr V1.5 p1～p5 | [设计模型](../boards/testctr-v1.5/design.json)、[固定版本固件绑定](../boards/testctr-v1.5/firmware_bindings.csv) |
+| 按键板 20 Key 与5路电阻网络 | EPB_ODD V1.1 p1～p4 | [KEY_SIM 目录](../boards/key-sim-v1.1/README.md) |
 
-## USB/GPIO 源码路径
+固件是版本化实现，不能改写设计网络名；实际负载用途与软件业务名可以不同于图纸 Net 名称。
 
-静态代码链：`ASW_UsbSvc → ASW_PwrCtrl/BusProxy → EAL_GPIO / MCAL_CAN`。旧源码 `ASW_PwrCtrl.c` 的 `SET_SOL`（0x16）使用逻辑动作 0/1 并写 SOL GPIO；`GET_SOL`（0x17）读 GPIO 逻辑电平，**不构成电磁阀实际机械位置反馈**。固件源码固定 `Main_Control@c830dbcd...`，不代表实际固件。
+CAN 通道注意：历史 Main_Control MCAL CH0 对应图纸 CAN1（U9隔离）而 CH1 对应图纸 CAN2（U10非隔离）；主控 5V 与 CAN1 总线侧供电关联。KEY_SIM 历史源码标准 CAN `0x730`、20bit 开关控制仍以按键板固定源码审查。
 
-KEY_SIM 固定源码 `Key_Sim@313ed34e...`：CAN `0x730` 8-byte 标准帧，`0x01 + 20bit mask` 控制、`0x80` 清零；DIGITAL ON=LOW、OFF=HIGH。没有证明硬件采集五路输出电压。
-
-## 待审查
-
-[设计/历史固件差异清单](design_source_issues.csv)。所有冲突都保留原证据，不因源码或图纸单独一方改写另一方。未经 PM 批准不调整 GPIO、外设、协议、线束或 HOST。
-
-## Air 高边电磁阀接口
-
-- [Air_ALVE1 / Air_ALVE2 控制逻辑分析](AIR_VALVE_CTRL.md)
-- [Air 逐级引脚/电源追踪 CSV](air_valve_trace.csv)
-
-## 主控器件级连接补录
-
-[U5、U22、U23 11路高边输出电气链](../boards/testctr-v1.5/HARDWARE_TRACE_REVIEW.md)。原 HW-MAIN-01/02/03 因比较 Net 名与业务别名而产生的错误冲突判断已撤销，HW-MAIN-04 的头文件与实现不一致仍成立。
+**本目录不提供无独立测量依据的负载电压、气阀位置或PCB线束接通结论。**

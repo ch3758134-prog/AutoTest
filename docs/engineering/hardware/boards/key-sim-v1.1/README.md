@@ -7,7 +7,7 @@
 - [U3 32个物理脚](pins_u3_32.csv)：MC9S08DZ32，原图 p2；将网络名与芯片封装 PAD 分栏记录。
 - [K1～K20 DG411开关和电阻支路](switches_k01_k20.csv)：原图 p3；记录控制脚、DG411 器件/通道、R 元件及图纸标注的输出网络。
 - [JP1/JP2 共20触点](connectors_jp1_jp2.csv)：原图 p1；无网名不等于 NC。
-- [功能模块](modules.csv) · [待核实差异](../../interfaces/design_source_issues.csv)。
+- [功能模块](modules.csv) · [待核实差异](review_issues.csv)。
 
 ## 电路工作链
 

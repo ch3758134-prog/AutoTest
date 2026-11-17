@@ -1,36 +1,13 @@
-# AutoTest｜硬件工程资产（HW Design Reference）
+# AutoTest｜硬件设计资产
 
-**唯一阅读入口**。本目录整理 TestCtr V1.5 主控板和 EPB_ODD V1.1 按键板的**设计态硬件事实**，作为后续固件开发、扩展、硬件审查的持久参考。**不代表现场已验收，也不授权修改源码或设备操作**。
+硬件设计按**主控板 TestCtr V1.5** 与 **按键板 EPB_ODD V1.1** 分目录管理。原始图纸、硬件设计连接、历史源码、现场陈述是不同层次的证据；未验证的内容不升级为已确认事实。
 
-## 从这里开始
-
-| 对象 | 电路分析与资源 | 原始设计证据 |
+| 板卡 | 技术资料 | 原始图纸 |
 |---|---|---|
-| 主控板 | [boards/testctr-v1.5/README.md](boards/testctr-v1.5/README.md) | [TestCtr V1.5 原理图（5页）](../../project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-MAIN-TestCtr-V1.5.pdf) |
-| 按键板 | [boards/key-sim-v1.1/README.md](boards/key-sim-v1.1/README.md) | [EPB_ODD V1.1 原理图（4页）](../../project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-KEY-EPB_ODD-V1.1.pdf) |
-| 跨板/源码差异 | [interfaces/README.md](interfaces/README.md) | [design_source_issues.csv](interfaces/design_source_issues.csv) |
-| 数据索引 | [manifest.json](manifest.json) | 版本、文件、证据状态 |
+| 主控板 | [TestCtr V1.5 设计基线](boards/testctr-v1.5/README.md) | [5页 PDF](https://github.com/ch3758134-prog/AutoTest/blob/main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-MAIN-TestCtr-V1.5.pdf) |
+| 按键板 | [KEY_SIM V1.1 设计基线](boards/key-sim-v1.1/README.md) | [4页 PDF](https://github.com/ch3758134-prog/AutoTest/blob/main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-KEY-EPB_ODD-V1.1.pdf) |
+| 接口 | [两板与固件接口入口](interfaces/README.md) | 通过固定提交对照 |
 
-**原则：原理图和官方手册是设计/芯片能力证据；CSV 是可检索的派生索引；固件源码是特定 SHA 下的实现，不会覆盖设计事实。** AI 和工程师使用同一套 GitHub 数据，不需要下载另一份“AI 专用 ZIP”。
+主控板应先阅读工作原理，再查 `design.json`、100脚、J1和功率通道。不能把“硬件为什么工作”的解释、精确索引和固件实现版本混成一个列表。每项事实须有来源编号，现场接线或缺失信息须另列。
 
-## 读取顺序
-
-1. 明确板卡与原理图修订，阅读相应 board README 和 PDF。**主控、KEY_SIM 不合并成一套 MCU 映射**。
-2. **先阅读板级工作原理**：[TestCtr 工作原理](boards/testctr-v1.5/CIRCUIT_WORKING_PRINCIPLES.md)。再看 MCU Pin → Net → 外围器件 IN/OUT → 输出 Net → 连接器触点的完整链，另外检查信号扇出、共享供电和电平极性；不能只看 MCU 与 J1 两个端点表就判断业务冲突。命名空白不等于未接线。
-3. 要评估复用/改脚时，单独核对官方 datasheet 的 ALT/MUX、工作电压、驱动能力、板级负载与保护，不得把某个“GPIO”自动判为空闲。
-4. 需要研究控制语义时再看固定固件提交与 [差异表](interfaces/design_source_issues.csv)。
-5. PCB layout/netlist、装配版、线束、运行 HEX、实测均未得到可关联到本版本的证明，全部保持 UNKNOWN；不得推断为现场事实。
-
-## 稳定证据源
-
-- 主控设计图：`docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-MAIN-TestCtr-V1.5.pdf`，SHA256 `44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353`。
-- 按键板设计图：`docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-KEY-EPB_ODD-V1.1.pdf`，SHA256 `2f642b559ddcb4c325e872a67b0d74e0472f0db5bcb9021c1cbb4ff8596a6b2d`。
-- 历史主控源码：`Main_Control@c830dbcd56b436688437b446d222473a88b85098`。
-- 历史按键板源码：`Key_Sim@313ed34ecc8a6e01529998787c8c870cc2e4db4a`。
-- 不复制 PDF 二进制，不把旧 HTML Cross-Probe 作为本目录数据权威来源。GitHub 已提供主控 [高边输出 HTML 追踪页](boards/testctr-v1.5/high_side_trace_review.html)；完整高清技术手册沿用此前独立交付版本并持续修订，切勿将追踪页误认为全板逐器件网表已经完成。
-
-## 记录定义
-
-`SCHEMATIC_ONLY` = 仅原理图；`ALT_NOT_FULLY_REVIEWED` = 复用表未完成；`UNKNOWN` = 缺少对应证据；`UNRESOLVED` = 存在矛盾且未裁决；`SOURCE_ONLY` = 仅所指固件 SHA。所有引脚与触点数是设计索引完整度，不是实装验证率。
-
-此仓库目录提供工程参考和候审数据；在项目管理批准前不修改主控、KEY_SIM、HOST 或现场连线。
+**版本边界：** 2026-11-16主控板重新建模，尚未完成全板原生 CAD Pin-to-Pin 网表，也未触及生产固件。旧增补式主控文件已整体替换；按键板资料保持独立原样。

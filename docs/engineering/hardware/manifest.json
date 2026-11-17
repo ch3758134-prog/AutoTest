@@ -1,66 +1,40 @@
 {
-  "schema_version": "1.0.0",
-  "identity": {
-    "project": "AutoTest",
-    "asset": "HW_DESIGN_REFERENCE",
-    "date": "2026-11-16",
-    "authority": "RESEARCH_CANDIDATE",
-    "field_release": false
-  },
+  "schema_version": "2.0.0",
+  "authority": "DESIGN_REFERENCE_NOT_FIELD_RELEASE",
+  "revision": "2026-11-16",
   "boards": [
     {
       "id": "MAIN",
       "design": "TestCtr V1.5",
-      "pdf_path": "docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-MAIN-TestCtr-V1.5.pdf",
-      "sha256": "44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353",
-      "mcu": "MK20DN512VLL10",
-      "pin_records": 100,
-      "connector_records": 64,
-      "firmware_sha": "c830dbcd56b436688437b446d222473a88b85098",
-      "path": "docs/engineering/hardware/boards/testctr-v1.5/"
+      "original_pdf_sha256": "44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353",
+      "source_commit": "c830dbcd56b436688437b446d222473a88b85098",
+      "readme": "boards/testctr-v1.5/README.md",
+      "model": "boards/testctr-v1.5/design.json",
+      "counts": {
+        "mcu_pins": 100,
+        "j1_contacts": 64,
+        "high_side_paths": 11
+      },
+      "verified_field": false
     },
     {
       "id": "KEY_SIM",
       "design": "EPB_ODD V1.1",
-      "pdf_path": "docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-KEY-EPB_ODD-V1.1.pdf",
-      "sha256": "2f642b559ddcb4c325e872a67b0d74e0472f0db5bcb9021c1cbb4ff8596a6b2d",
-      "mcu": "MC9S08DZ32",
-      "pin_records": 32,
-      "switch_records": 20,
-      "connector_records": 20,
-      "firmware_sha": "313ed34ecc8a6e01529998787c8c870cc2e4db4a",
-      "path": "docs/engineering/hardware/boards/key-sim-v1.1/"
+      "original_pdf_sha256": "2f642b559ddcb4c325e872a67b0d74e0472f0db5bcb9021c1cbb4ff8596a6b2d",
+      "source_commit": "313ed34ecc8a6e01529998787c8c870cc2e4db4a",
+      "readme": "boards/key-sim-v1.1/README.md",
+      "status": "UNCHANGED_IN_THIS_MAIN_BOARD_REORGANIZATION"
     }
   ],
-  "statuses": {
-    "SCHEMATIC_ONLY": "design drawing only",
-    "UNKNOWN": "not evidenced",
-    "UNRESOLVED": "conflicting evidence",
-    "SOURCE_ONLY": "versioned source only",
-    "ALT_NOT_FULLY_REVIEWED": "datasheet multiplexer not fully indexed"
+  "standards": {
+    "source_status": [
+      "SCHEMATIC",
+      "FIRMWARE_SOURCE",
+      "USER_REPORTED",
+      "INFERRED_CONDITIONAL",
+      "UNKNOWN"
+    ],
+    "independent_verification": "Board PCB netlist/installed harness/actual HEX not validated"
   },
-  "rules": [
-    "Original schematic PDF is evidence; CSV derives from it",
-    "Don't equate drawing net label with MCU package PAD",
-    "Do not equate design with PCB layout, installed harness or running firmware",
-    "Do not rewrite K8/R18 K13/R25 drawing anomalies",
-    "Do not infer unlabelled connector pin as NC",
-    "Never modify source code from reference document alone"
-  ],
-  "last_hardware_review": "2026-11-17",
-  "high_side_trace": {
-    "board": "MAIN",
-    "channel_count": 11,
-    "driver_pin_count": 60,
-    "edge_count": 55,
-    "source": "TestCtr p1 p3 p5",
-    "reviewed_file": "docs/engineering/hardware/boards/testctr-v1.5/HARDWARE_TRACE_REVIEW.md",
-    "html": "docs/engineering/hardware/boards/testctr-v1.5/high_side_trace_review.html",
-    "field_usage_IGN": {
-      "contact": "J1 C6",
-      "source": "USER_REPORTED",
-      "measured": false
-    },
-    "remaining_incomplete": "other circuitry pin-to-pin netlist not yet complete"
-  }
+  "retired": "Prior duplicate TestCtr appendices removed from this branch, not merged to main"
 }

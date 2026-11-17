@@ -1,0 +1,655 @@
+{
+  "schema_version": "2.0.0",
+  "board": "TestCtr V1.5",
+  "authority": "SCHEMATIC_DESIGN",
+  "document_hash_sha256": "44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353",
+  "evidence": [
+    {
+      "id": "D1",
+      "kind": "SCHEMATIC",
+      "uri": "docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-MAIN-TestCtr-V1.5.pdf",
+      "page": 1,
+      "contents": "J1, input optocouplers"
+    },
+    {
+      "id": "D2",
+      "kind": "SCHEMATIC",
+      "page": 2,
+      "contents": "DAC, operational amplifiers, KEY input voltage dividers"
+    },
+    {
+      "id": "D3",
+      "kind": "SCHEMATIC",
+      "page": 3,
+      "contents": "U7 100pin, JTAG, reset, clock, SPI EEPROM"
+    },
+    {
+      "id": "D4",
+      "kind": "SCHEMATIC",
+      "page": 4,
+      "contents": "power rails, USB, CAN, low-level current monitoring"
+    },
+    {
+      "id": "D5",
+      "kind": "SCHEMATIC",
+      "page": 5,
+      "contents": "BTS724G, HALL fanout, TLE6228, external input filter"
+    },
+    {
+      "id": "S1",
+      "kind": "FIRMWARE_SOURCE",
+      "commit": "c830dbcd56b436688437b446d222473a88b85098",
+      "contents": "Main_Control historical source"
+    },
+    {
+      "id": "O1",
+      "kind": "USER_REPORTED",
+      "contents": "J1 C6 used for IGN; not field measured"
+    }
+  ],
+  "modules": [
+    {
+      "id": "PW1",
+      "name": "电源输入/稳压",
+      "refs": [
+        "D4"
+      ],
+      "elements": [
+        "ESR1",
+        "D28",
+        "D59",
+        "U4",
+        "U8",
+        "U11"
+      ],
+      "explanation": "BAT+ 经保护与浪涌抑制后分别供降压转换与模拟电源模块；U4由SHDN使能，U11提供VCC3P3。",
+      "software_constraint": "USB侧供电参与5V启动，BAT+存在不等于MCU已运行。"
+    },
+    {
+      "id": "PW2",
+      "name": "共享功率母线",
+      "refs": [
+        "D3",
+        "D4",
+        "D5"
+      ],
+      "elements": [
+        "Q4",
+        "U2 BTS50055"
+      ],
+      "explanation": "PTC0/RL_DRV经Q4改变U2的低有效IN，使U2向SOL24IN供电；SOL24IN接U5/U22/U23的Vbb。",
+      "software_constraint": "母线供电与单通道请求必须分别管理，不应关闭Air一路时无条件关闭所有高边母线。"
+    },
+    {
+      "id": "MC1",
+      "name": "MCU/时钟/调试",
+      "refs": [
+        "D3"
+      ],
+      "elements": [
+        "U7 MK20DN512VLL10",
+        "R68",
+        "C69",
+        "U6 M95080"
+      ],
+      "explanation": "数字/模拟供电、复位及晶振构成MCU工作基础，SPI EEPROM占用对应Pad。",
+      "software_constraint": "复位态与GPIO初始化态分开，ALT/MUX和板级外接负载共同决定功能可用性。"
+    },
+    {
+      "id": "CM1",
+      "name": "USB隔离",
+      "refs": [
+        "D4"
+      ],
+      "elements": [
+        "U18 ADuM4160",
+        "P1"
+      ],
+      "explanation": "主机侧PCUSB5V/PCGND与板侧VCC5V/GND通过USB隔离芯片传递D+/D−；VBUS还关联板上使能。",
+      "software_constraint": "枚举成功不等于供电或实体负载反馈；USB拔线可能导致板级失电。"
+    },
+    {
+      "id": "CM2",
+      "name": "设计CAN1",
+      "refs": [
+        "D1",
+        "D3",
+        "D4"
+      ],
+      "elements": [
+        "U9 ADM3054",
+        "L4",
+        "D46"
+      ],
+      "explanation": "MCU PTA12/13经隔离CAN收发器到J1 B11/B1；U9 VDD1由VCC3P3、VDD2由PCUSB5V供电。",
+      "software_constraint": "历史MCAL CH0对应设计CAN1；隔离侧供电失效时控制器初始化成功仍不保证总线正常。"
+    },
+    {
+      "id": "CM3",
+      "name": "设计CAN2",
+      "refs": [
+        "D1",
+        "D3",
+        "D4"
+      ],
+      "elements": [
+        "U10 TJA1042T/3",
+        "L3",
+        "D66"
+      ],
+      "explanation": "MCU PTC17/16经非隔离CAN收发器到J1 A12/A1；VCC=5V VIO=3.3V，STB由图纸固定为低电平。",
+      "software_constraint": "历史MCAL CH1对应设计CAN2；软件不可声称具有独立U10 STB控制。"
+    },
+    {
+      "id": "CM4",
+      "name": "UART收发器",
+      "refs": [
+        "D3",
+        "D4"
+      ],
+      "elements": [
+        "U12 TJA1021/20",
+        "U13 MAX3232"
+      ],
+      "explanation": "U12把KTXD/KRXD与图纸KLINE对应，U13通过电荷泵转换到RS232电平/DB9。",
+      "software_constraint": "UART控制、物理收发器与上层协议须分开；KLINE网络名不能证明实现完整诊断协议。"
+    },
+    {
+      "id": "PO1",
+      "name": "BTS724G多路高边",
+      "refs": [
+        "D1",
+        "D3",
+        "D5"
+      ],
+      "elements": [
+        "U5",
+        "U22",
+        "U23"
+      ],
+      "explanation": "IN高有效，OUT通过内部保护高边开关与SOL24IN/Vbb相连；诊断ST按两路共享。",
+      "software_constraint": "命令HIGH不能证明输出电压/机械动作；所有分支必须审查供电、保护与同时扇出。"
+    },
+    {
+      "id": "PO2",
+      "name": "TLE6228低边灯驱动",
+      "refs": [
+        "D1",
+        "D5"
+      ],
+      "elements": [
+        "JU1",
+        "JU2 TLE6228"
+      ],
+      "explanation": "低边通道导通后对负载吸流到GND，工作还取决于VS、STBY、ENA等引脚状态。",
+      "software_constraint": "不能套用高边输出极性和负载供电假设；红色设计修改批注不是已装配证据。"
+    },
+    {
+      "id": "PO3",
+      "name": "HALL晶体管模拟",
+      "refs": [
+        "D1",
+        "D5"
+      ],
+      "elements": [
+        "Q1",
+        "Q2",
+        "Q7",
+        "Q6",
+        "Q13"
+      ],
+      "explanation": "SOL1IN/SOL3IN/SOL2IN/SOL4IN分别控制Q1/Q2/Q7/Q6，同时也控制U23对应IN1..4。",
+      "software_constraint": "Air1对应SOL4IN还影响H_SPEED4；Air2对应SOL2IN还影响H_SPEED3。"
+    },
+    {
+      "id": "AN1",
+      "name": "DAC/SPEED模拟输出",
+      "refs": [
+        "D2",
+        "D3"
+      ],
+      "elements": [
+        "U3 MAX5715",
+        "U1 TLV4172"
+      ],
+      "explanation": "DAC_1..4 经运放反馈电阻及SP_REF调理形成SPEED1..4。",
+      "software_constraint": "码值与真实输出电压需要参考电压、限幅及标定关系，不是简单比例。"
+    },
+    {
+      "id": "AN2",
+      "name": "SOL/Motor电流采样",
+      "refs": [
+        "D3",
+        "D4"
+      ],
+      "elements": [
+        "R124 20mΩ",
+        "R128 1.3mΩ",
+        "INA190A2"
+      ],
+      "explanation": "分流压降分别经过放大器、RC与ADC；两路电阻数值不同。",
+      "software_constraint": "两路需不同换算系数，并校核量程、饱和、零点及温度。"
+    },
+    {
+      "id": "IN1",
+      "name": "KEY输入滤波分压",
+      "refs": [
+        "D1",
+        "D2",
+        "D3"
+      ],
+      "elements": [
+        "100kΩ串联",
+        "150kΩ下拉",
+        "10nF",
+        "ESD"
+      ],
+      "explanation": "外部KEY1..3经电阻分压/滤波连接U7 PTC7/6/5。",
+      "software_constraint": "输入阈值要以采样芯片和外部电压确认；PTC6≠J1 C6。"
+    },
+    {
+      "id": "IN2",
+      "name": "SOL光耦输入",
+      "refs": [
+        "D1",
+        "D3"
+      ],
+      "elements": [
+        "U14",
+        "U15",
+        "U17",
+        "U20 TLP293-4"
+      ],
+      "explanation": "J1 SOL1..13 LED驱动隔离晶体管，导通时将MCU_SOL1..13拉低；截止由上拉为高。",
+      "software_constraint": "输入逻辑呈反相关系；MCU_SOLx并非高边控制SOLxIN。"
+    }
+  ],
+  "high_side_traces": [
+    {
+      "id": "MAIN-U22-CH1",
+      "mcu_pin": 80,
+      "mcu_pad": "PTC8",
+      "control_net": "SOL9IN",
+      "driver": "U22",
+      "channel": 1,
+      "driver_in_pin": 3,
+      "driver_out_pin": 18,
+      "output_net": "HOUT7",
+      "j1_contact": "C8",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U22-CH2",
+      "mcu_pin": 81,
+      "mcu_pad": "PTC9",
+      "control_net": "SOL10IN",
+      "driver": "U22",
+      "channel": 2,
+      "driver_in_pin": 5,
+      "driver_out_pin": 17,
+      "output_net": "HOUT6",
+      "j1_contact": "C7",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U22-CH3",
+      "mcu_pin": 82,
+      "mcu_pad": "PTC10",
+      "control_net": "SOL11IN",
+      "driver": "U22",
+      "channel": 3,
+      "driver_in_pin": 7,
+      "driver_out_pin": 14,
+      "output_net": "HOUT5",
+      "j1_contact": "C6",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U5-CH1",
+      "mcu_pin": 71,
+      "mcu_pad": "PTC1",
+      "control_net": "SOL8IN",
+      "driver": "U5",
+      "channel": 1,
+      "driver_in_pin": 3,
+      "driver_out_pin": 18,
+      "output_net": "HOUT1",
+      "j1_contact": "C10",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U5-CH2",
+      "mcu_pin": 65,
+      "mcu_pad": "PTB19",
+      "control_net": "SOL7IN",
+      "driver": "U5",
+      "channel": 2,
+      "driver_in_pin": 5,
+      "driver_out_pin": 17,
+      "output_net": "HOUT2",
+      "j1_contact": "C11",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U5-CH3",
+      "mcu_pin": 64,
+      "mcu_pad": "PTB18",
+      "control_net": "SOL6IN",
+      "driver": "U5",
+      "channel": 3,
+      "driver_in_pin": 7,
+      "driver_out_pin": 14,
+      "output_net": "HOUT3",
+      "j1_contact": "C25",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U5-CH4",
+      "mcu_pin": 76,
+      "mcu_pad": "PTC4",
+      "control_net": "SOL5IN",
+      "driver": "U5",
+      "channel": 4,
+      "driver_in_pin": 9,
+      "driver_out_pin": 13,
+      "output_net": "HOUT4",
+      "j1_contact": "C26",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U23-CH1",
+      "mcu_pin": 53,
+      "mcu_pad": "PTB0",
+      "control_net": "SOL1IN",
+      "driver": "U23",
+      "channel": 1,
+      "driver_in_pin": 3,
+      "driver_out_pin": 18,
+      "output_net": "HOUT10",
+      "j1_contact": "B2",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U23-CH2",
+      "mcu_pin": 73,
+      "mcu_pad": "PTC3",
+      "control_net": "SOL3IN",
+      "driver": "U23",
+      "channel": 2,
+      "driver_in_pin": 5,
+      "driver_out_pin": 17,
+      "output_net": "HOUT9",
+      "j1_contact": "B3",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U23-CH3",
+      "mcu_pin": 72,
+      "mcu_pad": "PTC2",
+      "control_net": "SOL2IN",
+      "driver": "U23",
+      "channel": 3,
+      "driver_in_pin": 7,
+      "driver_out_pin": 14,
+      "output_net": "Air_ALVE2",
+      "j1_contact": "B4",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "id": "MAIN-U23-CH4",
+      "mcu_pin": 54,
+      "mcu_pad": "PTB1",
+      "control_net": "SOL4IN",
+      "driver": "U23",
+      "channel": 4,
+      "driver_in_pin": 9,
+      "driver_out_pin": 13,
+      "output_net": "Air_ALVE1",
+      "j1_contact": "B5",
+      "supply_net": "SOL24IN",
+      "status": "SCHEMATIC_TRACED",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    }
+  ],
+  "fanouts": [
+    {
+      "mcu_pad": "PTB0",
+      "net": "SOL1IN",
+      "driver_path": "U23 CH1 → HOUT10 → J1 B2",
+      "hall_path": "Q1 → H_SPEED1 → J1 B16",
+      "shared_gpio": true,
+      "status": "SCHEMATIC",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "mcu_pad": "PTC3",
+      "net": "SOL3IN",
+      "driver_path": "U23 CH2 → HOUT9 → J1 B3",
+      "hall_path": "Q2 → H_SPEED2 → J1 C19",
+      "shared_gpio": true,
+      "status": "SCHEMATIC",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "mcu_pad": "PTC2",
+      "net": "SOL2IN",
+      "driver_path": "U23 CH3 → Air_ALVE2 → J1 B4",
+      "hall_path": "Q7 → H_SPEED3 → J1 C22",
+      "shared_gpio": true,
+      "status": "SCHEMATIC",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    },
+    {
+      "mcu_pad": "PTB1",
+      "net": "SOL4IN",
+      "driver_path": "U23 CH4 → Air_ALVE1 → J1 B5",
+      "hall_path": "Q6 → H_SPEED4 → J1 C23",
+      "shared_gpio": true,
+      "status": "SCHEMATIC",
+      "evidence": [
+        "D1",
+        "D3",
+        "D5"
+      ]
+    }
+  ],
+  "firmware_bindings": [
+    {
+      "symbol": "RL_DRV",
+      "pad": "PTC0",
+      "net": "RL_DRV",
+      "physical_path": "Q4→U2→SOL24IN",
+      "field_use": "",
+      "source": "EAL_GPIO.c",
+      "source_sha": "c830dbcd56b436688437b446d222473a88b85098",
+      "state": "SOURCE_ONLY"
+    },
+    {
+      "symbol": "KEY_PWR_DRV",
+      "pad": "PTC8",
+      "net": "SOL9IN",
+      "physical_path": "U22 CH1→HOUT7→J1 C8",
+      "field_use": "",
+      "source": "EAL_GPIO.c",
+      "source_sha": "c830dbcd56b436688437b446d222473a88b85098",
+      "state": "SOURCE_ALIAS_LOAD_UNKNOWN"
+    },
+    {
+      "symbol": "ECU_PWR_DRV",
+      "pad": "PTC9",
+      "net": "SOL10IN",
+      "physical_path": "U22 CH2→HOUT6→J1 C7",
+      "field_use": "",
+      "source": "EAL_GPIO.c",
+      "source_sha": "c830dbcd56b436688437b446d222473a88b85098",
+      "state": "SOURCE_ALIAS_LOAD_UNKNOWN"
+    },
+    {
+      "symbol": "IGN",
+      "pad": "PTC10",
+      "net": "SOL11IN",
+      "physical_path": "U22 CH3→HOUT5→J1 C6",
+      "field_use": "IGN (user-reported at J1 C6)",
+      "source": "EAL_GPIO.c",
+      "source_sha": "c830dbcd56b436688437b446d222473a88b85098",
+      "state": "DESIGN_TRACE_AND_USER_REPORTED"
+    },
+    {
+      "symbol": "SOL",
+      "pad": "PTB18",
+      "net": "SOL6IN",
+      "physical_path": "U5 CH3→HOUT3→J1 C25",
+      "field_use": "",
+      "source": "EAL_GPIO.c",
+      "source_sha": "c830dbcd56b436688437b446d222473a88b85098",
+      "state": "SOURCE_ALIAS_LOAD_UNKNOWN"
+    }
+  ],
+  "review": [
+    {
+      "id": "R01",
+      "finding": "IGN header PTB19 vs EAL_GPIO.c PTC10",
+      "status": "SOURCE_MISMATCH",
+      "evidence": "S1"
+    },
+    {
+      "id": "R02",
+      "finding": "Five GPIO init values 1U vs LOW comment",
+      "status": "SOURCE_MISMATCH_SAFETY_REVIEW",
+      "evidence": "S1"
+    },
+    {
+      "id": "R03",
+      "finding": "U22 IN4/OUT4 unlabeled; do not infer HOUT8",
+      "status": "UNLABELED_NOT_FREE",
+      "evidence": "D5"
+    },
+    {
+      "id": "R04",
+      "finding": "BTS724G ST signals not proven readable by MCU",
+      "status": "NOT_PROVEN_OBSERVABLE",
+      "evidence": "D3;D5"
+    },
+    {
+      "id": "R05",
+      "finding": "Full 100pin ALT/MUX truth table not audited",
+      "status": "OPEN_RESEARCH",
+      "evidence": "D3"
+    },
+    {
+      "id": "R06",
+      "finding": "J1 C6 field use IGN is user-reported not measured",
+      "status": "USER_REPORTED",
+      "evidence": "O1;D1"
+    },
+    {
+      "id": "R07",
+      "finding": "U23/HALL share SOL1IN..SOL4IN control nets",
+      "status": "DESIGN_FACT",
+      "evidence": "D5"
+    },
+    {
+      "id": "R08",
+      "finding": "PCUSB5V feeds U9 VDD2 and participates in board supply enable",
+      "status": "DESIGN_FACT",
+      "evidence": "D4"
+    },
+    {
+      "id": "R09",
+      "finding": "PCB/harness/installed HEX not authenticated",
+      "status": "UNKNOWN",
+      "evidence": "D1;D2;D3;D4;D5"
+    },
+    {
+      "id": "R10",
+      "finding": "U23 HOUT10/HOUT9 legacy mapping B3/B2 reversed; corrected to B2/B3",
+      "status": "CORRECTED_SOURCE_INDEX",
+      "evidence": "D1;D5"
+    }
+  ],
+  "completeness": {
+    "mcu_physical_pins": 100,
+    "j1_contacts": 64,
+    "high_side_named_paths": 11,
+    "all_components_pin_to_pin_complete": false,
+    "pcb_layout_verified": false,
+    "installed_wiring_verified": false,
+    "live_firmware_verified": false
+  }
+}
