@@ -62,6 +62,27 @@ public sealed class CanToolF2ProtocolTests
     }
 
     [Fact]
+    public void ReferenceCanToolInternalAlgorithmMatchesProvidedDemoStaticLogic()
+    {
+        // Artificial test input, NOT an ECU seed/key trace. The expected value
+        // is derived from the provided sa_demo.dll ZLGKey machine instructions.
+        Assert.Equal("E26D0EF8",Convert.ToHexString(
+            CanToolReferenceLfsr.Calculate([0x11,0x22,0x33,0x44])));
+        Assert.Throws<FormatException>(()=>CanToolReferenceLfsr.Calculate([1,2,3]));
+        Assert.Throws<FormatException>(()=>CanToolReferenceLfsr.Calculate([1,2,3,4,5]));
+        Assert.Throws<FormatException>(()=>CanToolReferenceLfsr.Calculate(null!));
+    }
+    [Fact]
+    public void ReferenceSafetyFileProvenanceIsPinnedToUploadedBinaryHash()
+    {
+        // Do not accept arbitrary SafetyFile or KEY.dll binaries as matching
+        // the original reference without direct provenance.
+        Assert.Equal(
+            "EE2C4A2791B88DCE19DB29F308752C8F79BC0654463D43E6880F65C6FDEA3833",
+            CanToolSecurityProvider.KnownReferenceSafetyFileSha256);
+    }
+
+    [Fact]
     public void TransferDataCarriesExactSequenceAndImageBytes()
     {
         Assert.Equal("3601010203",
