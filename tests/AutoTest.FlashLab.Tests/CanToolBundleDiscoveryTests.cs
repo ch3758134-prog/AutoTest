@@ -46,6 +46,36 @@ public sealed class CanToolBundleDiscoveryTests
     }
 
     [Fact]
+    public void SafetyFileIsAutomaticallyFoundBesideCanToolConfiguration()
+    {
+        var root=Directory.CreateTempSubdirectory("flash-sibling-");
+        try
+        {
+            string cfg=Directory.CreateDirectory(Path.Combine(root.FullName,"Cfg")).FullName;
+            string xml=Path.Combine(cfg,"Configuration.xml");
+            string safety=Path.Combine(cfg,"SafetyFile.dll");
+            File.WriteAllText(xml,"<Configuration/>");
+            File.WriteAllBytes(safety,[0x4D,0x5A]);
+            Assert.Equal(safety,CanToolBundleDiscovery.FindSafetyFileNear(xml,null));
+        }
+        finally{root.Delete(true);}
+    }
+
+    [Fact]
+    public void SafetyFileLookupDoesNotUseUnrelatedDllOrScanArbitraryTree()
+    {
+        var root=Directory.CreateTempSubdirectory("flash-notfound-");
+        try
+        {
+            string xml=Path.Combine(root.FullName,"Configuration.xml");
+            File.WriteAllText(xml,"<Configuration/>");
+            File.WriteAllBytes(Path.Combine(root.FullName,"sa_demo.dll"),[0x4D,0x5A]);
+            Assert.Null(CanToolBundleDiscovery.FindSafetyFileNear(xml,null));
+        }
+        finally{root.Delete(true);}
+    }
+
+    [Fact]
     public void CanToolThreeFileBundle_RequiresAllThreeFiles()
     {
         var folder=Directory.CreateTempSubdirectory("flash-missing-");

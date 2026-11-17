@@ -141,8 +141,11 @@ public partial class FlashLabWindow : Window
         ConnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected && _vm.SelectedDevice is not null;
         DisconnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected;
         RefreshButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected;
+        // Never hide the reason behind a disabled Start button: when config
+        // or safety is incomplete, Start runs offline validation and explains
+        // the exact missing file without transmitting anything to the ECU.
         StartFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected &&
-            _vm.Image is not null && !string.IsNullOrWhiteSpace(_safetyFilePath);
+            _vm.Image is not null;
         AbortFlashButton.IsEnabled=!_closingInProgress && _flashStop is not null;
     }
     private async Task RefreshDevicesAsync()
@@ -188,7 +191,9 @@ public partial class FlashLabWindow : Window
             await _device.ConnectAsync(device,_connectStop.Token);
             _vm.Status="USB 主控连接成功，开始监听 CAN1。";
             UsbStatusLabel.Text="USB 已连接 · CAN1 / DUT";
-            WorkflowStatusLabel.Text="USB 已连接；请选择完整烧录配置并检查。";
+            WorkflowStatusLabel.Text=_vm.Image is not null
+                ? "USB 已连接，固件已选择；点击开始烧录将自动核对文件。"
+                : "USB 已连接，选择 ECU 固件后即可进行烧录预检。";
         }
         catch(Exception ex) { Error("主控连接",ex); }
         finally
@@ -231,8 +236,10 @@ public partial class FlashLabWindow : Window
             {
                 var cfg=CanToolXmlProfileReader.Load(files.ConfigurationXml);
                 var library=CanToolSecurityProvider.Inspect(files.ManagedSafetyFile);
-                if(library.Kind!=CanToolSecurityKind.ManagedSafetyFile)
-                    throw new FormatException("SafetyFile.dll 并非支持的托管安全文件接口。");
+                if(library.Kind!=CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
+                    throw new FormatException(
+                        "SafetyFile.dll 与已核查的 CanTool 参考安全文件不一致；"+
+                        "当前不采用未知算法进行 ECU 解锁。");
                 var image=FirmwareSelectionService.Load(files.FirmwareImage,
                     binBase,cfg);
                 return (cfg,library,image);
@@ -310,6 +317,7 @@ public partial class FlashLabWindow : Window
             var result=FirmwareSelectionService.Load(dialog.FileName,BinBaseBox.Text,_vm.Configuration);
             InvalidateFlashPreview();
             _vm.SetImage(dialog.FileName,result);
+            ApplySafetyFileFromConfiguration();
             _vm.Status="镜像解析及地址边界校验通过（离线）；不代表兼容真实 ECU。";
             AddLog("镜像检查："+result.Summary);
         }
@@ -372,10 +380,62 @@ public partial class FlashLabWindow : Window
     }
     private void ApplySafetyFileFromConfiguration()
     {
-        // This CanTool workflow uses the imported SafetyFile.dll only.
-        // The optional legacy SeedToKeyDll_Path never affects this run.
+        // Internal CanTool reference algorithm; the original SafetyFile.dll
+        // is retained as a source-identity input, not invoked as a CLR DLL.
+        // Never load KEY.dll or sa_demo.dll, and never silently guess a key.
+        string configured=_vm.Configuration.Get("SafetyFilePath");
+        string? explicitPath=null;
+        if(!string.IsNullOrWhiteSpace(configured))
+        {
+            try { explicitPath=ResolveReferenceFile(configured); }
+            catch(Exception ex)
+            {
+                SafetyDllStatusLabel.Text="安全文件路径有误："+ex.Message;
+                _safetyFilePath=null;
+                UpdateButtons();return;
+            }
+        }
+        // An explicit existing file is authoritative, even if its hash is
+        // unsupported: do not silently replace it with a different DLL.
+        bool needsDiscovery=explicitPath is null || !File.Exists(explicitPath);
+        if(needsDiscovery)
+        {
+            string? discovered=CanToolBundleDiscovery.FindSafetyFileNear(
+                _vm.Configuration.SourcePath,
+                _vm.Image is null?null:_vm.FirmwarePath);
+            if(discovered is not null)
+            {
+                var info=CanToolSecurityProvider.Inspect(discovered);
+                if(info.Kind==CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
+                {
+                    if(!string.Equals(explicitPath,info.Path,
+                        StringComparison.OrdinalIgnoreCase))
+                        AddLog("根据 CanTool 配置文件目录自动发现参考安全文件："+info.Path);
+                    _vm.Configuration.Set("SafetyFilePath",info.Path);
+                    explicitPath=info.Path;
+                }
+                else
+                {
+                    SafetyDllStatusLabel.Text="发现 SafetyFile.dll，但文件版本不符合参考证据";
+                    _safetyFilePath=null;
+                    UpdateButtons();return;
+                }
+            }
+        }
         _safetyFilePath=ResolveAndInspect("SafetyFilePath",
-            CanToolSecurityKind.ManagedSafetyFile,SafetyDllStatusLabel);
+            CanToolSecurityKind.CanToolReferenceBuiltInLfsr,SafetyDllStatusLabel);
+        if(_safetyFilePath is null)
+        {
+            SafetyDllStatusLabel.Text=explicitPath is null
+                ? "未找到 SafetyFile.dll；可点击选择，或放在 XML 同目录"
+                : "安全文件未就绪，请检查文件路径 / 文件身份";
+            WorkflowStatusLabel.Text="已加载的资料缺少可用安全文件；请选择或放在 XML 同目录。";
+        }
+        else
+        {
+            SafetyDllStatusLabel.Text="SafetyFile.dll · 已自动匹配参考算法";
+            SafetyDllStatusLabel.ToolTip=_safetyFilePath;
+        }
         UpdateButtons();
     }
 

@@ -42,6 +42,42 @@ public static class CanToolBundleDiscovery
         return new(Path.GetFullPath(xml),Path.GetFullPath(firmware),Path.GetFullPath(safety));
     }
 
+    /// <summary>
+    /// Resolve an already-provided CanTool safety asset from the loaded
+    /// configuration/firmware workspace. Read-only, no recursion, no DLL load.
+    /// In particular, Cfg/Configuration.xml -> Cfg/SafetyFile.dll works.
+    /// </summary>
+    public static string? FindSafetyFileNear(string? configFile,string? firmwareFile)
+    {
+        var bases=new List<string>();
+        void AddLocation(string? file)
+        {
+            if(string.IsNullOrWhiteSpace(file) || !Path.IsPathRooted(file))return;
+            string full=Path.GetFullPath(file);
+            string? dir=Path.GetDirectoryName(full);
+            if(dir is not null && Directory.Exists(dir) &&
+                !bases.Contains(dir,StringComparer.OrdinalIgnoreCase))
+                bases.Add(dir);
+        }
+        // XML has priority: original CanTool stores SafetyFile in Cfg.
+        AddLocation(configFile);
+        AddLocation(firmwareFile);
+        foreach(var folder in bases)
+        {
+            // Do not traverse arbitrary directories or look at unrelated DLLs.
+            foreach(var candidate in new[]
+            {
+                Path.Combine(folder,"SafetyFile.dll"),
+                Path.Combine(folder,"Cfg","SafetyFile.dll"),
+                Path.Combine(folder,"cfg","SafetyFile.dll")
+            })
+            {
+                if(File.Exists(candidate))return Path.GetFullPath(candidate);
+            }
+        }
+        return null;
+    }
+
     private static string One(IEnumerable<string> items,string name)
     {
         var list=items.OrderBy(x=>x,StringComparer.OrdinalIgnoreCase).ToArray();
