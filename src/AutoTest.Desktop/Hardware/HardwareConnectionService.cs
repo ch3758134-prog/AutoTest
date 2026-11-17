@@ -40,6 +40,15 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     public event Action<long>? ConnectionChanged;
     private volatile bool _testRunApproved;
     private string? _approvedPlan;
+    private volatile bool _manualCanBatchApproved;
+    private string? _manualBatchFingerprint;
+    public bool IsManualCanBatchApproved => _manualCanBatchApproved;
+    public event Action<bool>? ManualCanBatchChanged;
+    private void AnnounceManualBatch(bool active)
+    {
+        try { ManualCanBatchChanged?.Invoke(active); }
+        catch (Exception ex) { Record("手动 CAN 任务状态通知失败：" + ex.Message); }
+    }
     public bool IsTestRunApproved => _testRunApproved;
     public event Action<bool>? TestRunAuthorizationChanged;
     private void PublishTestRunAuthorization(bool isApproved)
@@ -74,6 +83,10 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 if (state != UsbSessionState.Faulted) return;
                 Interlocked.Exchange(ref _currentEpoch, 0);
                 _link?.RevokePhysicalTestRun();
+                _link?.RevokeManualCanBatch();
+                _manualCanBatchApproved = false;
+                _manualBatchFingerprint = null;
+                AnnounceManualBatch(false);
                 _testRunApproved = false;
                 _approvedPlan = null;
                 PublishTestRunAuthorization(false);
@@ -155,8 +168,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             if (_usb?.State != UsbSessionState.Connected || _link is null)
                 throw new IOException("USB 主控未连接，禁止 CAN 发送。");
-            if (_testRunApproved)
-                throw new InvalidOperationException("真实测试运行已获授权，手动 CAN 发送被锁定。");
+            if (_testRunApproved || _manualCanBatchApproved)
+                throw new InvalidOperationException("自动测试或手动多报文任务已占用 CAN 发送通路。");
             var map = new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
             var payload = CanFrameCodec.ToUsbPayload(frame, map);
             _link.AuthorizeOneCanTransmission(payload, exactConfirmation);
@@ -165,6 +178,59 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), cancellationToken);
             Record("CAN TX 设备 ACK；不能据此认定 DUT 已收到该帧。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Authorize a bounded snapshot of CAN1 frames, not an open-ended raw CAN route.</summary>
+    public async Task AuthorizeManualCanBatchAsync(string fingerprint, string confirmation,
+        IReadOnlyList<CanFrame> frames, int maxWrites = 3000, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _link is null ||
+                _testRunApproved || _manualCanBatchApproved)
+                throw new InvalidOperationException("USB 未连接或工位正在运行其他 CAN/TEST 任务。");
+            var map = new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
+            var payloads = frames.Select(frame => CanFrameCodec.ToUsbPayload(frame, map)).ToArray();
+            _link.AuthorizeManualCanBatch(fingerprint, confirmation, payloads, maxWrites);
+            _manualBatchFingerprint = fingerprint;
+            _manualCanBatchApproved = true;
+            AnnounceManualBatch(true);
+            Record("手动 CAN1 任务已授权：报文数=" + frames.Count + " SHA=" + fingerprint +
+                "，最多 " + maxWrites + " 次写入 / 5 分钟 / 当前 USB 会话。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SendManualBatchCanAsync(CanFrame frame, string fingerprint, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!_manualCanBatchApproved || _manualBatchFingerprint != fingerprint ||
+                _usb?.State != UsbSessionState.Connected || _testRunApproved ||
+                frame.Role != BusRole.DutCan)
+                throw new UnauthorizedAccessException("No active authorized manual CAN1 batch.");
+            var payload = CanFrameCodec.ToUsbPayload(frame,
+                new BusRoleMap(default, DutPort: 1, KeypadPort: 0));
+            await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
+                TimeSpan.FromSeconds(3), ct);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task RevokeManualCanBatchAsync()
+    {
+        await _lifecycle.WaitAsync();
+        try
+        {
+            _link?.RevokeManualCanBatch();
+            _manualCanBatchApproved = false;
+            _manualBatchFingerprint = null;
+            AnnounceManualBatch(false);
+            Record("手动 CAN1 任务已停止；不代表 ECU 电气状态发生改变。");
         }
         finally { _lifecycle.Release(); }
     }
@@ -222,8 +288,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         try
         {
             RequireV02GpioContract();
-            if (_testRunApproved || _link is null)
-                throw new InvalidOperationException("自动 TEST 已占用工位或实体未连接；禁止手动夹具动作。");
+            if (_testRunApproved || _manualCanBatchApproved || _link is null)
+                throw new InvalidOperationException("工位正在运行 TEST/CAN 任务或无实体连接；禁止手动夹具动作。");
             _link.AuthorizeOneClampChange(clamp, press, exactConfirmation);
             var data = new byte[] { clamp, press ? (byte)1 : (byte)0 };
             Record("夹具" + clamp + " 请求" + (press ? "压紧" : "释放") +
@@ -245,8 +311,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             if (_usb?.State != UsbSessionState.Connected || _link is null)
                 throw new IOException("USB 主控未连接，禁止 IGN 操作。");
-            if (_testRunApproved)
-                throw new InvalidOperationException("真实测试运行已获授权，手动 IGN 操作被锁定。");
+            if (_testRunApproved || _manualCanBatchApproved)
+                throw new InvalidOperationException("真实测试或 CAN 多报文发送进行中，手动 IGN 被锁定。");
             RequireV02GpioContract();
             _link.AuthorizeOneIgnChange(on, exactConfirmation);
             Record("IGN 单次授权：" + (on ? "ON" : "OFF"));
@@ -267,7 +333,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         await _lifecycle.WaitAsync(ct);
         try
         {
-            if (_testRunApproved || _usb?.State != UsbSessionState.Connected || _link is null)
+            if (_testRunApproved || _manualCanBatchApproved ||
+                _usb?.State != UsbSessionState.Connected || _link is null)
                 throw new InvalidOperationException("Test run requires an idle connected session.");
             _link.AuthorizePhysicalTestRun(fingerprint, confirmation, allowedCan, allowIgn);
             _testRunApproved = true;
@@ -339,6 +406,10 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             Interlocked.Exchange(ref _currentEpoch, 0);
             try { ConnectionChanged?.Invoke(0); } catch { }
             _link?.RevokePhysicalTestRun();
+            _link?.RevokeManualCanBatch();
+            _manualCanBatchApproved = false;
+            _manualBatchFingerprint = null;
+            AnnounceManualBatch(false);
             _testRunApproved = false;
             _approvedPlan = null;
             PublishTestRunAuthorization(false);

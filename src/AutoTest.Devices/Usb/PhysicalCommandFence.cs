@@ -21,6 +21,11 @@ public sealed class PhysicalCommandFence
     private DateTimeOffset _runExpiry;
     private long _runGeneration;
     private string? _runFingerprint;
+    private HashSet<string>? _manualBatchCan;
+    private long _manualBatchGeneration;
+    private DateTimeOffset _manualBatchExpiry;
+    private int _manualBatchWrites;
+    private string? _manualBatchFingerprint;
 
     /// <summary>
     /// One deliberate physical-run authorization. Limited to the exact CAN arbitration
@@ -42,8 +47,8 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("Invalid allowed CAN frame.");
         lock (_sync)
         {
-            if (_runFingerprint is not null)
-                throw new InvalidOperationException("Another physical run already authorized.");
+            if (_runFingerprint is not null || _manualBatchCan is not null)
+                throw new InvalidOperationException("Another physical run or manual CAN batch is already authorized.");
             // Test authorization supersedes all pending manual one-shot grants.
             _singleCanPayload = null;
             _authorizedConnection = 0;
@@ -76,6 +81,49 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>Time- and write-limited allowlist of exact CAN1 frames for the manual bench.
+    /// The operator approves a content-fingerprinted snapshot; subsequent UI edits never widen it.</summary>
+    public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
+        IEnumerable<byte[]> exactCanPayloads, long generation, int maxWrites = 3000)
+    {
+        if (fingerprint.Length != 64 || !fingerprint.All(Uri.IsHexDigit) ||
+            confirmation != "AUTHORIZE BENCH CAN " + fingerprint)
+            throw new UnauthorizedAccessException("Exact manual CAN batch fingerprint confirmation required.");
+        if (generation <= 0 || maxWrites is < 1 or > 10000)
+            throw new ArgumentOutOfRangeException(nameof(maxWrites));
+        var payloads = exactCanPayloads.Select(payload => payload.ToArray()).ToArray();
+        if (payloads.Length is < 1 or > 32 || payloads.Any(payload =>
+            payload.Length != 15 || payload[0] != 1 || payload[1] > 1 || payload[6] > 8 ||
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(2, 4)) >
+                (payload[1] == 1 ? 0x1FFFFFFFu : 0x7FFu)))
+            throw new ArgumentException("Manual CAN batch must use 1..32 valid exact CAN1 payloads.");
+        lock (_sync)
+        {
+            if (_runFingerprint is not null || _manualBatchCan is not null)
+                throw new InvalidOperationException("Physical test or manual batch is already authorized.");
+            _singleCanPayload = null;
+            _oneIgnState = null;
+            _singleClampPayload = null;
+            _manualBatchCan = payloads.Select(Convert.ToHexString).ToHashSet(StringComparer.Ordinal);
+            _manualBatchGeneration = generation;
+            _manualBatchExpiry = DateTimeOffset.UtcNow.AddMinutes(5);
+            _manualBatchWrites = maxWrites;
+            _manualBatchFingerprint = fingerprint;
+        }
+    }
+
+    public void RevokeManualCanBatch()
+    {
+        lock (_sync)
+        {
+            _manualBatchCan = null;
+            _manualBatchGeneration = 0;
+            _manualBatchExpiry = default;
+            _manualBatchWrites = 0;
+            _manualBatchFingerprint = null;
+        }
+    }
+
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is MainControllerCodec.Ping or MainControllerCodec.GetVersion
             or MainControllerCodec.GetIgn or MainControllerCodec.GetClamps or 0x53);
@@ -93,8 +141,8 @@ public sealed class PhysicalCommandFence
         if (connectionGeneration <= 0) throw new InvalidOperationException("No live connection.");
         lock (_sync)
         {
-            if (_runFingerprint is not null)
-                throw new InvalidOperationException("Manual CAN is blocked while a test run is authorized.");
+            if (_runFingerprint is not null || _manualBatchCan is not null)
+                throw new InvalidOperationException("Manual CAN is blocked while a test run or manual CAN batch is authorized.");
             _singleCanPayload = exact15Bytes.ToArray();
             _authorizedConnection = connectionGeneration;
             _canExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
@@ -111,8 +159,8 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize IGN without a live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null)
-                throw new InvalidOperationException("Manual IGN is blocked while a test run is authorized.");
+            if (_runFingerprint is not null || _manualBatchCan is not null)
+                throw new InvalidOperationException("Manual IGN is blocked while a test run or manual CAN batch is authorized.");
             _oneIgnState = on;
             _ignGeneration = connectionGeneration;
             _ignExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
@@ -131,8 +179,8 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize a clamp without a live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null)
-                throw new InvalidOperationException("Manual clamp is blocked while a test run is authorized.");
+            if (_runFingerprint is not null || _manualBatchCan is not null)
+                throw new InvalidOperationException("Manual clamp is blocked while a test run or manual CAN batch is authorized.");
             _singleClampPayload = new byte[] { clamp, press ? (byte)1 : (byte)0 };
             _clampGeneration = connectionGeneration;
             _clampExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
@@ -177,6 +225,15 @@ public sealed class PhysicalCommandFence
         }
         lock (_sync)
         {
+            if (request.Command == MainControllerCodec.CanSend &&
+                _manualBatchCan is not null &&
+                _manualBatchGeneration == connectionGeneration &&
+                DateTimeOffset.UtcNow < _manualBatchExpiry && _manualBatchWrites > 0 &&
+                _manualBatchCan.Contains(Convert.ToHexString(request.Payload)))
+            {
+                _manualBatchWrites--;
+                return;
+            }
             if (_runFingerprint is not null && _runCan is not null &&
                 _runGeneration == connectionGeneration &&
                 DateTimeOffset.UtcNow < _runExpiry && _remainingWrites > 0)
@@ -207,6 +264,9 @@ public sealed class PhysicalCommandFence
             _singleClampPayload = null; _clampExpiry = default; _clampGeneration = 0;
             _runCan = null; _runIgn = false; _remainingWrites = 0;
             _runExpiry = default; _runGeneration = 0; _runFingerprint = null;
+            _manualBatchCan = null; _manualBatchGeneration = 0;
+            _manualBatchExpiry = default; _manualBatchWrites = 0;
+            _manualBatchFingerprint = null;
         }
     }
 }

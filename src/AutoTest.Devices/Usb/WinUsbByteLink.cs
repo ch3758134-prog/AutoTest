@@ -71,6 +71,22 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
+        IReadOnlyList<byte[]> exactPayloads, int maxWrites)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect before authorizing a manual CAN batch.");
+            _fence.AuthorizeManualCanBatch(fingerprint, confirmation, exactPayloads, _epoch, maxWrites);
+        }
+    }
+
+    public void RevokeManualCanBatch()
+    {
+        lock (_sync) _fence.RevokeManualCanBatch();
+    }
+
     public void AuthorizeOneIgnChange(bool on, string typedConfirmation)
     {
         lock (_sync)
