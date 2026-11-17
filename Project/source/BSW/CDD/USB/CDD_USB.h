@@ -43,25 +43,20 @@ extern "C" {
 /* 系统 */
 #define CDD_USB_CMD_PING            0xF0U
 #define CDD_USB_CMD_GET_VERSION     0xF1U
-/* 供电与 IGN（0x10~0x1F） */
-#define CDD_USB_CMD_SET_ECU_PWR     0x10U
-#define CDD_USB_CMD_GET_ECU_PWR     0x11U
-#define CDD_USB_CMD_SET_IGN         0x12U
-#define CDD_USB_CMD_GET_IGN         0x13U
-#define CDD_USB_CMD_SET_KEYPWR      0x14U
-#define CDD_USB_CMD_GET_KEYPWR      0x15U
-#define CDD_USB_CMD_SET_SOL         0x16U
-#define CDD_USB_CMD_GET_SOL         0x17U
-
 /*
- * Air_ALVE 原始电气控制，不解释为压紧/释放。
- * 0x18 SET: payload[0] = 0(双路OFF), 1(仅Air1), 2(仅Air2)。
- * 0x19 GET: 空请求，1字节应答 bit0/bit1 为 MCU 引脚电平。
- * 旧 0x16/0x17 的机械动作语义未确认，候选实现明确返回 ERR_HW。
+ * 当前对外 GPIO 命令：IGN、两个独立夹具。
+ * 已废止 0x10/0x11(ECU供电)、0x14~0x17(按键板供电/旧SOL)和0x1F。
+ * RL_DRV 属于内部 PCB 功率电路控制，无 USB 命令。
  */
-#define CDD_USB_CMD_SET_AIR_ALVE    0x18U
-#define CDD_USB_CMD_GET_AIR_ALVE    0x19U
-#define CDD_USB_CMD_GET_ALL_PWR     0x1FU
+#define CDD_USB_CMD_SET_IGN         0x12U /* 单字节0/1 */
+#define CDD_USB_CMD_GET_IGN         0x13U /* 空请求，返回1字节0/1 */
+/*
+ * SET_CLAMP 0x18: [clamp=1/2, state=0释放/1压紧]，共2B；
+ * GET_CLAMPS 0x19: 空请求，返回1字节 bit0夹具1 / bit1夹具2。
+ * 两夹具独立，查询仅是 MCU GPIO 电平，非夹具到位反馈。
+ */
+#define CDD_USB_CMD_SET_CLAMP       0x18U
+#define CDD_USB_CMD_GET_CLAMPS      0x19U
 /* CAN 发送 / 收帧回传 */
 #define CDD_USB_CMD_CAN_SEND        0x40U
 #define CDD_USB_CMD_CAN_RX_IND      0x41U

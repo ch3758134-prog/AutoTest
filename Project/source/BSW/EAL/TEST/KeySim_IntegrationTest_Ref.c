@@ -4,7 +4,7 @@
  *
  * 测试流程：
  *   1. EAL_CAN_Open(CAN0, 500K)
- *   2. KeySim_Power(true)
+ *   2. 按键板外部供电，主控板不控制供电
  *   3. KeySim_Execute(RELEASE, 500) → TX
  *   4. CAN0 进入回环（LPB=1）→ 读取回环帧
  *   5. 循环
@@ -51,7 +51,7 @@ void KeySim_IntegrationTest_Task(void)
             break;
 
         case 1:
-            KeySim_Power(true);
+            /* 按键板由外部供电，此处无 GPIO 电源动作。 */
             step = 2;
             break;
 

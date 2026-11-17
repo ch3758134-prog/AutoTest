@@ -32,7 +32,7 @@ static void on_ping(uint16_t seq)
 
 static void on_get_version(uint16_t seq)
 {
-    static const uint8_t ver[] = "EPB_TEST_CTRL v0.3";
+    static const uint8_t ver[] = "EPB_TEST_CTRL v0.4-dev";
     CDD_USB_SendFrame(seq, CDD_USB_CMD_GET_VERSION,
                       CDD_USB_STS_OK, ver, (uint8_t)(sizeof(ver) - 1));
 }
@@ -62,18 +62,11 @@ static void HandleCommand(uint16_t seq, uint8_t cmd,
     /* 业务级 ——按命令码范围路由到对应 Role */
     switch (cmd)
     {
-        /* 电源(0x10~0x1F) */
-        case CDD_USB_CMD_SET_ECU_PWR:
-        case CDD_USB_CMD_GET_ECU_PWR:
+        /* 仅保留 IGN 和两个独立夹具的 USB 控制。 */
         case CDD_USB_CMD_SET_IGN:
         case CDD_USB_CMD_GET_IGN:
-        case CDD_USB_CMD_SET_KEYPWR:
-        case CDD_USB_CMD_GET_KEYPWR:
-        case CDD_USB_CMD_SET_SOL:
-        case CDD_USB_CMD_GET_SOL:
-        case CDD_USB_CMD_SET_AIR_ALVE:
-        case CDD_USB_CMD_GET_AIR_ALVE:
-        case CDD_USB_CMD_GET_ALL_PWR:
+        case CDD_USB_CMD_SET_CLAMP:
+        case CDD_USB_CMD_GET_CLAMPS:
             ASW_PwrCtrl_HandleCmd(seq, cmd, payload, len);
             return;
 
@@ -116,7 +109,7 @@ void ASW_UsbSvc_Task(void)
     EAL_USB_TxTask();
 
     /* 各 Role 的周期任务 */
-    ASW_PwrCtrl_Task();    /* 当前无任务,接口预留 */
+    ASW_PwrCtrl_Task();    /* USB丢失枚举时撤销夹具压紧输出 */
     ASW_BusProxy_Task();   /* 当前无任务,接口预留 */
     ASW_EcuEmu_Task();     /* 广播帧表调度 + USB 断开停广播 */
 }

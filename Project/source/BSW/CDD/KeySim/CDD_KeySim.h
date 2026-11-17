@@ -3,8 +3,7 @@
  * @brief   模拟按键板业务封装 — 上层 API
  *
  * 封装：
- *   1. 按键板电源控制（KEY_PWR_DRV）
- *   2. CAN0 协议帧发送（BuildFrame → EAL_CAN_Send）
+ *   - CAN0 协议帧发送（BuildFrame → EAL_CAN_Send），不控制按键板供电
  *
  * 协议来源：docs/plan/模拟按键板规格文档.md v0.2
  *
@@ -19,23 +18,11 @@
 #ifndef CDD_KEYSIM_H
 #define CDD_KEYSIM_H
 
-#include <stdbool.h>
 #include "KeySim_Protocol.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* ================================================================
- * 电源控制
- * ================================================================ */
-
-/**
- * @brief  按键板电源开关
- * @param  on  true=上电，false=断电
- * @note   上电后按键板自动进入默认态（K5 LOW + K11 LOW）
- */
-void KeySim_Power(bool on);
 
 /* ================================================================
  * 按键动作

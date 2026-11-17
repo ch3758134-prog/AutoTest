@@ -38,22 +38,6 @@ extern "C" {
 #define RL_DRV_PIN            0U
 
 /**
- * @brief  历史 KEY_PWR_DRV 控制网络。
- * @details U7 P80/PTC8 → SOL9IN → U22 IN1/OUT1 → HOUT7 → J1 C8。
- * @note   KEY_PWR_DRV 是历史固件业务名；现场外接负载未独立验证。
- */
-#define KEY_PWR_DRV_PORT      MCAL_GPIO_C
-#define KEY_PWR_DRV_PIN       8U
-
-/**
- * @brief  历史 ECU_PWR_DRV 控制网络。
- * @details U7 P81/PTC9 → SOL10IN → U22 IN2/OUT2 → HOUT6 → J1 C7。
- * @note   ECU_PWR_DRV 是历史固件业务名；现场外接负载未独立验证。
- */
-#define ECU_PWR_DRV_PORT      MCAL_GPIO_C
-#define ECU_PWR_DRV_PIN       9U
-
-/**
  * @brief  IGN 输出控制。
  * @details U7 P82/PTC10 → SOL11IN → U22 IN3(Pin7) / OUT3(Pin14)
  *          → HOUT5 → J1 C6。用户确认 J1 C6 作为现场 IGN 接线。
@@ -68,8 +52,8 @@ extern "C" {
  * @details U7 P54/PTB1 → SOL4IN → U23 BTS724G IN4(Pin9)
  *          → OUT4(Pin13) → Air_ALVE1 → J1 B5。
  *          相同 SOL4IN 网络还驱动 Q6 / H_SPEED4 的 HALL 模拟支路。
- * @note   BTS724G 的 IN 为高电平使能；HIGH 不表示气缸已动作。
- * @warning Air_ALVE1 对应何种机械动作尚未按现场气路确认。
+ * @note   夹具1：J1高电平请求压紧，低电平请求释放；
+ *          GPIO HIGH 不能证明气缸已经到位。
  */
 #define AIR_ALVE1_PORT        MCAL_GPIO_B
 #define AIR_ALVE1_PIN         1U
@@ -79,7 +63,8 @@ extern "C" {
  * @details U7 P72/PTC2 → SOL2IN → U23 BTS724G IN3(Pin7)
  *          → OUT3(Pin14) → Air_ALVE2 → J1 B4。
  *          相同 SOL2IN 网络还驱动 Q7 / H_SPEED3 的 HALL 模拟支路。
- * @note   两路 Air 共用 SOL24IN；本层不定义压紧/释放方向。
+ * @note   夹具2：J1高电平请求压紧，低电平请求释放。
+ *          两路 Air 独立，共用 SOL24IN 但无业务互锁。
  */
 #define AIR_ALVE2_PORT        MCAL_GPIO_C
 #define AIR_ALVE2_PIN         2U
@@ -99,8 +84,9 @@ extern "C" {
 /**
  * @brief  初始化本文件列出的板级控制信号。
  * @details 在 Clock_Init() 之后、USB/CAN 业务开始前调用一次。
- * @warning 此函数包含旧固件四路输出的初始高电平配置；调用前必须
- *          审查外接负载。它不负责机械动作、反馈诊断或故障恢复。
+ * @note   仅初始化 Air1/2(LOW)、内部 RL_DRV(HIGH)、IGN(HIGH)；
+ *          不初始化已取消的 PTC8/PTC9 供电控制引脚。
+ * @warning 初始化态不是外部电压或机械到位反馈。
  */
 void EAL_GPIO_Init(void);
 
