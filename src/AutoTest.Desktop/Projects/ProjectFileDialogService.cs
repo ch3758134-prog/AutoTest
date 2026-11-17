@@ -1,12 +1,22 @@
 using System.IO;
+using System.Text.Json;
 using Microsoft.Win32;
 using System.Windows;
 
 namespace AutoTest.Desktop.Projects;
 
 /// <summary>Native Windows dialogs only; no project persistence here.</summary>
-public sealed class ProjectFileDialogService
+public sealed class ProjectFileDialogService(RecentProjectStore recent)
 {
+    private string BrowseDirectory(string? preferred = null) =>
+        Directory.Exists(preferred) ? preferred! : recent.GetLastBrowseDirectory() ??
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+    private void RememberSelectedFile(string file)
+    {
+        try { recent.RememberDirectory(Path.GetDirectoryName(file)!); }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException or ArgumentException)
+        { System.Diagnostics.Trace.TraceWarning("Recent browse directory not saved: " + e.Message); }
+    }
     private static Window? Owner => Application.Current?.MainWindow;
 
     public string? PickProjectManifest()
@@ -15,11 +25,13 @@ public sealed class ProjectFileDialogService
         {
             Title = "打开 AutoTest 工程",
             Filter = "AutoTest 工程 (*.autotest-project.json)|*.autotest-project.json|JSON 文件 (*.json)|*.json",
-            InitialDirectory = AppContext.BaseDirectory,
+            InitialDirectory = BrowseDirectory(),
             CheckFileExists = true,
             Multiselect = false
         };
-        return picker.ShowDialog(Owner) == true ? picker.FileName : null;
+        if (picker.ShowDialog(Owner) != true) return null;
+        RememberSelectedFile(picker.FileName);
+        return picker.FileName;
     }
 
     public string? PickDbcFile(string? projectDirectory)
@@ -28,11 +40,13 @@ public sealed class ProjectFileDialogService
         {
             Title = "导入 DBC 文件到当前工程",
             Filter = "DBC 数据库 (*.dbc)|*.dbc",
-            InitialDirectory = Directory.Exists(projectDirectory) ? projectDirectory! : AppContext.BaseDirectory,
+            InitialDirectory = BrowseDirectory(projectDirectory),
             CheckFileExists = true,
             Multiselect = false
         };
-        return picker.ShowDialog(Owner) == true ? picker.FileName : null;
+        if (picker.ShowDialog(Owner) != true) return null;
+        RememberSelectedFile(picker.FileName);
+        return picker.FileName;
     }
 
     public string? PickFirmwareFile(string? projectDirectory)
@@ -41,10 +55,12 @@ public sealed class ProjectFileDialogService
         {
             Title = "导入固件资源（仅注册文件，不执行烧录）",
             Filter = "固件文件 (*.hex;*.s19;*.s28;*.s37)|*.hex;*.s19;*.s28;*.s37",
-            InitialDirectory = Directory.Exists(projectDirectory) ? projectDirectory! : AppContext.BaseDirectory,
+            InitialDirectory = BrowseDirectory(projectDirectory),
             CheckFileExists = true, Multiselect = false
         };
-        return picker.ShowDialog(Owner) == true ? picker.FileName : null;
+        if (picker.ShowDialog(Owner) != true) return null;
+        RememberSelectedFile(picker.FileName);
+        return picker.FileName;
     }
 
     public string? PickWaveEvidenceFile(string? projectDirectory)
@@ -53,10 +69,12 @@ public sealed class ProjectFileDialogService
         {
             Title = "导入 AutoTest 波形证据",
             Filter = "波形证据 JSON (*.json)|*.json",
-            InitialDirectory = Directory.Exists(projectDirectory) ? projectDirectory! : AppContext.BaseDirectory,
+            InitialDirectory = BrowseDirectory(projectDirectory),
             CheckFileExists = true, Multiselect = false
         };
-        return picker.ShowDialog(Owner) == true ? picker.FileName : null;
+        if (picker.ShowDialog(Owner) != true) return null;
+        RememberSelectedFile(picker.FileName);
+        return picker.FileName;
     }
 
     public string? AskResourceName(string title, string initialName)

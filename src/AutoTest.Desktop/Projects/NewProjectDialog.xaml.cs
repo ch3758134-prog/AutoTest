@@ -8,10 +8,10 @@ public partial class NewProjectDialog : Window
 {
     private readonly NewProjectDialogViewModel _viewModel;
 
-    public NewProjectDialog(ProjectWorkspaceService workspace)
+    public NewProjectDialog(ProjectWorkspaceService workspace, RecentProjectStore recent)
     {
         InitializeComponent();
-        _viewModel = new NewProjectDialogViewModel(workspace, PickParentDirectory);
+        _viewModel = new NewProjectDialogViewModel(workspace, PickParentDirectory, recent);
         DataContext = _viewModel;
         _viewModel.CloseRequested += accepted => DialogResult = accepted;
         Loaded += (_, _) => ProjectNameInput.Focus();
@@ -30,6 +30,7 @@ public partial class NewProjectDialog : Window
         };
         if (Directory.Exists(_viewModel.ParentDirectory))
             picker.InitialDirectory = _viewModel.ParentDirectory;
-        return picker.ShowDialog(this) == true ? picker.FolderName : null;
+        if (picker.ShowDialog(this) != true) return null;
+        return picker.FolderName;
     }
 }

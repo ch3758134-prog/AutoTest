@@ -7,7 +7,7 @@ namespace AutoTest.Desktop.Projects;
 /// <summary>Per-Windows-user recent project preference. Never stored in the source repository.</summary>
 public sealed class RecentProjectStore
 {
-    private sealed record Settings(int Version, string? LastProjectManifest);
+    private sealed record Settings(int Version, string? LastProjectManifest, string? LastBrowseDirectory = null);
     private readonly string _settingsFile;
 
     public RecentProjectStore() : this(Path.Combine(
@@ -26,33 +26,60 @@ public sealed class RecentProjectStore
         return Path.GetFullPath(data.LastProjectManifest);
     }
 
+
+    public string? GetLastBrowseDirectory()
+    {
+        var state = LoadSettings();
+        var directory = state?.LastBrowseDirectory;
+        if (string.IsNullOrWhiteSpace(directory) && !string.IsNullOrWhiteSpace(state?.LastProjectManifest))
+            directory = Path.GetDirectoryName(state.LastProjectManifest);
+        if (string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory)) return null;
+        var path = Path.GetFullPath(directory);
+        return Directory.Exists(path) ? path : null;
+    }
+
+    public void RememberDirectory(string directory)
+    {
+        var path = Path.GetFullPath(directory);
+        if (!Path.IsPathFullyQualified(path) || !Directory.Exists(path)) return;
+        var old = LoadSettings();
+        SaveSettings(new Settings(1, old?.LastProjectManifest, path));
+    }
+
     public void Remember(string manifest)
     {
         var path = Path.GetFullPath(manifest);
         if (!Path.IsPathFullyQualified(path)) throw new ArgumentException("工程清单必须为绝对路径。");
+        var old = LoadSettings();
+        if (old?.LastProjectManifest == path && old.LastBrowseDirectory == Path.GetDirectoryName(path)) return;
+        SaveSettings(new Settings(1, path, Path.GetDirectoryName(path)));
+    }
+
+    private Settings? LoadSettings()
+    {
         try
         {
-            if (string.Equals(GetLastProjectManifest(), path, StringComparison.OrdinalIgnoreCase))
-                return;
+            return File.Exists(_settingsFile)
+                ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(_settingsFile, Encoding.UTF8))
+                : null;
         }
-        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+        catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException)
         {
-            // A corrupt/stale preference must not prevent a successfully opened
-            // real project from replacing the remembered path.
+            return null;
         }
+    }
+
+    private void SaveSettings(Settings value)
+    {
         var parent = Path.GetDirectoryName(_settingsFile)!;
         Directory.CreateDirectory(parent);
-        var temporary = Path.Combine(parent, ".recent-" + Guid.NewGuid().ToString("N") + ".tmp");
+        var temp = Path.Combine(parent, ".recent-" + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
-            var json = JsonSerializer.Serialize(new Settings(1, path),
-                new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(temporary, json, new UTF8Encoding(false));
-            File.Move(temporary, _settingsFile, overwrite: true);
+            File.WriteAllText(temp, JsonSerializer.Serialize(value,
+                new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
+            File.Move(temp, _settingsFile, overwrite: true);
         }
-        finally
-        {
-            if (File.Exists(temporary)) File.Delete(temporary);
-        }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 }

@@ -249,8 +249,6 @@
        <TextBlock DockPanel.Dock="Left" Text="按键动作 · CAN0" Style="{StaticResource BenchHeader}" FontSize="14"/>
        <TextBlock DockPanel.Dock="Right" Text="K01～K20 / 电阻网络" Style="{StaticResource BenchHint}"/>
       </DockPanel>
-      <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile,Mode=TwoWay}"
-       MinHeight="28" ToolTip="从工程 Controller 读取真实按键硬件允许组合"/>
       <TextBlock Text="{Binding ControllerSummary}" Style="{StaticResource BenchHint}" Margin="0,5,0,7"/>
      </StackPanel>
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
