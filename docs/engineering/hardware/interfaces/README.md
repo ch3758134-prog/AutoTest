@@ -21,3 +21,8 @@ KEY_SIM 固定源码 `Key_Sim@313ed34e...`：CAN `0x730` 8-byte 标准帧，`0x0
 ## 待审查
 
 [设计/历史固件差异清单](design_source_issues.csv)。所有冲突都保留原证据，不因源码或图纸单独一方改写另一方。未经 PM 批准不调整 GPIO、外设、协议、线束或 HOST。
+
+## Air 高边电磁阀接口
+
+- [Air_ALVE1 / Air_ALVE2 控制逻辑分析](AIR_VALVE_CTRL.md)
+- [Air 逐级引脚/电源追踪 CSV](air_valve_trace.csv)

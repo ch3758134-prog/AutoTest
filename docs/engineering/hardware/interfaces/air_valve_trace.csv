@@ -1,0 +1,3 @@
+design_id,board,net_out,j1_contact,mcu_ref,mcu_pin,mcu_pad,control_net,driver_ref,driver_type,driver_input_pin,driver_channel,driver_output_pin,supply_net,driver_status_pin,source_design,evidence_status,pcb_harness_state,firmware_reference
+AIR-1,TestCtr_V1.5,Air_ALVE1,B5,U7,54,PTB1,SOL4IN,U23,BTS724G,9,4,13,SOL24IN,8,TestCtr_V1.5_p1_p3_p5,SCHEMATIC_ONLY,UNKNOWN,Main_Control_c830dbcd_unbound_in_history
+AIR-2,TestCtr_V1.5,Air_ALVE2,B4,U7,72,PTC2,SOL2IN,U23,BTS724G,7,3,14,SOL24IN,8,TestCtr_V1.5_p1_p3_p5,SCHEMATIC_ONLY,UNKNOWN,Main_Control_c830dbcd_unbound_in_history
