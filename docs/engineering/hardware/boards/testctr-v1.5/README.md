@@ -1,23 +1,17 @@
 # TestCtr V1.5｜主控板硬件设计参考
 
-**原始设计证据：** [五页 TestCtr V1.5 原理图](https://github.com/ch3758134-prog/AutoTest/blob/main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-MAIN-TestCtr-V1.5.pdf)，SHA256 `44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353`。
+**面向固件工程师的统一入口：**
 
-## 读法
+1. [统一硬件资源快速查询 HTML](resource_lookup.html)：搜索业务符号、MCU Port/Pin、设计 Net、J1 触点，单页查看硬件中间器件、工作原理和固件约束
+2. [完整统一模型 design.json](design.json)：`resource_index` 同时包含 100 个 U7 物理引脚、64 个 J1 设计触点和 30 条电路路径。数据可跨端点反向检索，包含设备/网络/源码/未知项
+3. [硬件电路工作原理](THEORY_OF_OPERATION.md)：按电路机理连续解释，适合了解新的板级功能
+4. [MCU 原始端点索引](mcu_pins.csv)、[J1 原始端点索引](j1_contacts.csv)：仅作为底层可核对的明细，不再是两个彼此孤立的人工查找入口
+5. [高边通路源表](high_side_paths.csv)、[历史固件绑定](firmware_bindings.csv)、[未决问题](review.csv)：固定证据链
 
-1. [电路工作原理](THEORY_OF_OPERATION.md)：连续阅读电气工作顺序，理解供电、通信、输出、模拟量和输入调理。
-2. [设计事实模型](design.json)：模块、输入/输出、依赖、电气逻辑、共享控制线与不同证据状态。
-3. [U7 物理脚](mcu_pins.csv)（100）与 [J1 接点](j1_contacts.csv)（64）：设计端点。未列出网名的引脚不能判定 NC 或可复用。
-4. [BTS724G 完整高边输出路径](high_side_paths.csv)（11）：经 MCU / Net / 驱动内部通道 / J1 串联校验。
-5. [固定历史固件映射](firmware_bindings.csv)：固定 `Main_Control@c830dbcd56b436688437b446d222473a88b85098`，不得推断为现场运行 HEX。
-6. [未决项与证据等级](review.csv)：所有未知、未测量、源码内冲突单独保存。
+**例如 IGN：** 从 `IGN`、`PTC10`、`SOL11IN`、`HOUT5` 或 `J1 C6` 可回到同一 U7→U22→J1 通路；J1 C6 的 IGN 用途来自用户报告。**PTC6** 是另一条 `KEY2` 分压输入路径，切勿与 J1 C6 混淆。
 
-## 硬件—固件解释边界
+**重要的中间电路：** Air_ALVE1/PTB1 同时使用 U23 CH4 与 Q6/H_SPEED4；Air_ALVE2/PTC2 同时使用 U23 CH3 与 Q7/H_SPEED3；隔离 CAN1 的总线侧电源来自 PCUSB5V；外部 SOL1..13 经光耦输入为反相信号，且逐路光耦物理脚号仍待补核。
 
-- 原理图 Net 名是电气网名，固件业务符号是某个版本的接口名，不能按字符串不一致判电气冲突。
-- 例如 PTC10 → SOL11IN → U22 CH3 IN7/OUT14 → HOUT5 → J1 C6；现场 IGN 用途属于用户报告，而非图纸原始命名。
-- **J1 C6 不是 MCU PTC6**。PTC6 的图纸网名为 MCU_KEY2。
-- U23 CH1/HOUT10 → J1 **B2**；U23 CH2/HOUT9 → J1 **B3**，已与 J1 64 触点索引交叉核对。
-- U23 四路 SOLxIN 同时连接 HALL 晶体管电路；RL_DRV 控制的 SOL24IN 是 U5、U22、U23 共用母线。
-- 设计态完整引脚、网络片段不等于完整 CAD Netlist；未核实 ALT/MUX、PCB、线束、实际 HEX 和机械负载。
+**原始设计证据：** [TestCtr V1.5 五页原理图](https://github.com/ch3758134-prog/AutoTest/blob/main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-MAIN-TestCtr-V1.5.pdf)，SHA256 `44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353`。历史源码 `Main_Control@c830dbcd56b436688437b446d222473a88b85098`。**没有认定 PCB/线束、实际电压、负载、在机 HEX 已现场验证。**
 
-此目录取代此前主控板的零散补充表、重复审查说明和局部 HTML 索引；不得把历史文件的旧判定作为新事实。
+项目管理审查边界：这是硬件设计档案，不授权固件改写、烧录或现场操作。
