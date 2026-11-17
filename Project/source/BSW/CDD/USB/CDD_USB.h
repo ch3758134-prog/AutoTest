@@ -52,6 +52,10 @@ extern "C" {
 #define CDD_USB_CMD_GET_KEYPWR      0x15U
 #define CDD_USB_CMD_SET_SOL         0x16U
 #define CDD_USB_CMD_GET_SOL         0x17U
+/* Raw board-level Air channels (0=off, 1=Air_ALVE1, 2=Air_ALVE2).
+ * These do NOT define clamp/release actions. */
+#define CDD_USB_CMD_SET_AIR_RAW     0x18U
+#define CDD_USB_CMD_GET_AIR_RAW     0x19U
 #define CDD_USB_CMD_GET_ALL_PWR     0x1FU
 /* CAN 发送 / 收帧回传 */
 #define CDD_USB_CMD_CAN_SEND        0x40U

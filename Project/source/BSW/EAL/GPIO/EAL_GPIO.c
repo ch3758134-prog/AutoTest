@@ -1,82 +1,68 @@
 /**
- * @file    EAL_GPIO.c
- * @date    2026-07-16
- * @author  TestCtr
- * @brief   EAL 数字IO驱动 - 板级信号层实现
- *
- * 调用链路：CDD/ASW → EAL_GPIO → MCAL_GPIO → fsl_gpio / fsl_port
- * 信号 → 引脚映射集中在本文件查表，上层只按信号名操作。
- *
- * 引脚分配（已实测确认，2026-07-13 / 2026-08 实测）：
- *   RL_DRV        PTC0  HIGH=总电开
- *   KEY_PWR_DRV   PC8   HIGH=12V开
- *   ECU_PWR_DRV   PC9   HIGH=12V开
- *   IGN           PB19  HIGH=12V开
- *   SOL           PB18  HIGH=升起，LOW=下落/压紧；上电默认 HIGH=升起
+ * @file EAL_GPIO.c
+ * @brief Safe schematic-based binding for TestCtr V1.5 review candidate.
+ * Only PTB1/PTC2 Air high-side inputs and PTC0 master high-side supply control
+ * are bound. Legacy KEY/ECU/IGN/SOL aliases are not assigned by guessing.
  */
-
 #include "EAL_GPIO.h"
 #include "MCAL/Gpio/MCAL_GPIO.h"
 
-/* ============================================
- * 信号 → 引脚映射（索引与 EAL_GPIO_SignalType 一一对应）
- * ============================================ */
-static const MCAL_GPIO_PortType s_sigPort[EAL_GPIO_SIG_COUNT] = {
-    MCAL_GPIO_C,   /* EAL_GPIO_SIG_RL_DRV      */
-    MCAL_GPIO_C,   /* EAL_GPIO_SIG_KEY_PWR_DRV */
-    MCAL_GPIO_C,   /* EAL_GPIO_SIG_ECU_PWR_DRV */
-    MCAL_GPIO_C,   /* EAL_GPIO_SIG_IGN         */
-    MCAL_GPIO_B,   /* EAL_GPIO_SIG_SOL         */
+typedef struct {
+    MCAL_GPIO_PortType port;
+    uint8_t pin;
+    uint8_t supported;
+    uint8_t initial_level;
+} EAL_GPIO_Binding;
+
+/* All supported outputs initially LOW, before USB/CAN start.
+ * RL_DRV=LOW disconnects U2's high-side SOL24IN feed in the drawing.
+ * AIR1/2=LOW disables both BTS724G inputs. Actual installed wiring UNKNOWN. */
+static const EAL_GPIO_Binding s_binding[EAL_GPIO_SIG_COUNT] = {
+    { MCAL_GPIO_C, 0U, 1U, 0U }, /* RL_DRV: U7 P70 -> U2 enable path */
+    { MCAL_GPIO_C, 0U, 0U, 0U }, /* KEY_PWR_DRV: UNBOUND */
+    { MCAL_GPIO_C, 0U, 0U, 0U }, /* ECU_PWR_DRV: UNBOUND */
+    { MCAL_GPIO_C, 0U, 0U, 0U }, /* IGN: UNBOUND */
+    { MCAL_GPIO_C, 0U, 0U, 0U }, /* SOL (old direct action): UNBOUND */
+    { MCAL_GPIO_B, 1U, 1U, 0U }, /* Air_ALVE1: U7 P54 -> U23 IN4 */
+    { MCAL_GPIO_C, 2U, 1U, 0U }, /* Air_ALVE2: U7 P72 -> U23 IN3 */
 };
 
-static const uint8_t s_sigPin[EAL_GPIO_SIG_COUNT] = {
-    0,     /* EAL_GPIO_SIG_RL_DRV      */
-    8,     /* EAL_GPIO_SIG_KEY_PWR_DRV */
-    9,     /* EAL_GPIO_SIG_ECU_PWR_DRV */
-    10,    /* EAL_GPIO_SIG_IGN         */
-    18,    /* EAL_GPIO_SIG_SOL         */
-};
+uint8_t EAL_GPIO_IsSupported(EAL_GPIO_SignalType sig)
+{
+    if ((uint32_t)sig >= (uint32_t)EAL_GPIO_SIG_COUNT) return 0U;
+    return s_binding[sig].supported;
+}
 
-/* 上电初始电平：四路电源/点火保持 LOW；电磁阀 HIGH=升起 */
-static const uint8_t s_sigInitLevel[EAL_GPIO_SIG_COUNT] = {
-    1U,    /* EAL_GPIO_SIG_RL_DRV      */
-    1U,    /* EAL_GPIO_SIG_KEY_PWR_DRV */
-    1U,    /* EAL_GPIO_SIG_ECU_PWR_DRV */
-    1U,    /* EAL_GPIO_SIG_IGN         */
-    1U,    /* EAL_GPIO_SIG_SOL         */
-};
-
-/* ============================================
- * 配置单个 GPIO 为推挽输出，初始低电平（引脚级）
- * ============================================ */
 void EAL_GPIO_Config(MCAL_GPIO_PortType port, uint8_t pin)
 {
     MCAL_GPIO_Init(port, pin, MCAL_GPIO_OUT, 0U);
 }
 
-/* ============================================
- * 初始化：配置所有板载输出为推挽输出，使用各信号定义的安全初始电平
- * ============================================ */
 void EAL_GPIO_Init(void)
 {
-    for (uint8_t i = 0; i < EAL_GPIO_SIG_COUNT; i++)
-        MCAL_GPIO_Init(s_sigPort[i], s_sigPin[i], MCAL_GPIO_OUT, s_sigInitLevel[i]);
+    uint8_t i;
+    /* Air channels first, master supply last to minimize startup activation. */
+    EAL_GPIO_Config(AIR_ALVE1_PORT, AIR_ALVE1_PIN);
+    EAL_GPIO_Config(AIR_ALVE2_PORT, AIR_ALVE2_PIN);
+    for (i = 0U; i < EAL_GPIO_SIG_COUNT; ++i) {
+        if (s_binding[i].supported != 0U &&
+            i != (uint8_t)EAL_GPIO_SIG_AIR_ALVE1 &&
+            i != (uint8_t)EAL_GPIO_SIG_AIR_ALVE2) {
+            MCAL_GPIO_Init(s_binding[i].port, s_binding[i].pin,
+                           MCAL_GPIO_OUT, s_binding[i].initial_level);
+        }
+    }
 }
 
-/* ============================================
- * 设置板级信号电平
- * ============================================ */
 void EAL_GPIO_Set(EAL_GPIO_SignalType sig, uint8_t level)
 {
-    if ((uint32_t)sig >= (uint32_t)EAL_GPIO_SIG_COUNT) return;
-    MCAL_GPIO_Write(s_sigPort[sig], s_sigPin[sig], level);
+    if (!EAL_GPIO_IsSupported(sig)) return;
+    MCAL_GPIO_Write(s_binding[sig].port, s_binding[sig].pin,
+                    (level != 0U) ? 1U : 0U);
 }
 
-/* ============================================
- * 读取板级信号电平
- * ============================================ */
 uint8_t EAL_GPIO_Get(EAL_GPIO_SignalType sig)
 {
-    if ((uint32_t)sig >= (uint32_t)EAL_GPIO_SIG_COUNT) return 0U;
-    return MCAL_GPIO_Read(s_sigPort[sig], s_sigPin[sig]);
+    if (!EAL_GPIO_IsSupported(sig)) return 0U;
+    return MCAL_GPIO_Read(s_binding[sig].port, s_binding[sig].pin);
 }

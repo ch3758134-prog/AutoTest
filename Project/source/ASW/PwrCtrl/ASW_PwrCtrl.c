@@ -1,134 +1,131 @@
 /**
- * @file    ASW_PwrCtrl.c
- * @brief   主控板电源控制业务 — 实现
+ * @file ASW_PwrCtrl.c
+ * @brief TestCtr V1.5 power/GPIO operations, Air_ALVE1/2 review candidate.
  *
- * 调用链路：ASW/PwrCtrl → EAL/GPIO
+ * Air outputs: U23 BTS724G OUT4/OUT3, from U7 PTB1/PTC2.
+ * Mechanical clamp/release correspondence is NOT established.
+ * Live energization is disabled by default. The source change is not
+ * a license to flash an unknown physical assembly.
  */
-
 #include "ASW_PwrCtrl.h"
 #include "EAL_GPIO.h"
-#include <stddef.h>     /* NULL（CDD_USB_SendFrame 无 payload 时使用）*/
+#include "EAL_USB.h"
+#include <stddef.h>
 
-/* ============================================
- * 内部辅助：读 1B 并按 0/1 判定;非法值返 ERR_FMT
- * ============================================ */
-static int parse_on(const uint8_t *payload, uint8_t len, uint8_t *on_out)
+/* MUST NOT be changed until hardware revision, wiring, output polarity,
+ * mechanical valve action and field test procedure have been approved. */
+#define AIR_LIVE_OUTPUT_AUTHORIZED (0U)
+
+static uint8_t s_air_selected = 0U; /* 0=off;1=Air_ALVE1;2=Air_ALVE2 */
+
+static void send_status(uint16_t seq, uint8_t cmd, uint8_t status)
 {
-    if (len != 1U) return 0;
-    if (payload[0] > 1U) return 0;
-    *on_out = payload[0];
-    return 1;
+    CDD_USB_SendFrame(seq, cmd, status, NULL, 0U);
 }
 
-/* ============================================
- * 接口实现
- * ============================================ */
+/* Disable Air channels before cutting the SOL24IN feed. */
+static void air_off(void)
+{
+    EAL_GPIO_Set(EAL_GPIO_SIG_AIR_ALVE1, 0U);
+    EAL_GPIO_Set(EAL_GPIO_SIG_AIR_ALVE2, 0U);
+    EAL_GPIO_Set(EAL_GPIO_SIG_RL_DRV, 0U);
+    s_air_selected = 0U;
+}
+
+static uint8_t valid_air_select(const uint8_t *payload, uint8_t len)
+{
+    return (len == 1U && payload != NULL && payload[0] <= 2U) ? 1U : 0U;
+}
+
+/* NOT a mechanical action command: 1 and 2 select the raw board outputs.
+ * Both-on (3) is intentionally rejected. Switching removes power first.
+ * There is no implicit mapping of historical SOL up/down semantics. */
+static void handle_set_air(uint16_t seq, uint8_t cmd,
+                           const uint8_t *payload, uint8_t len)
+{
+    uint8_t select;
+    if (!valid_air_select(payload, len)) {
+        send_status(seq, cmd, CDD_USB_STS_ERR_FMT);
+        return;
+    }
+    select = payload[0];
+    if (select == 0U) {
+        air_off();
+        send_status(seq, cmd, CDD_USB_STS_OK);
+        return;
+    }
+    if (AIR_LIVE_OUTPUT_AUTHORIZED == 0U ||
+        !EAL_USB_IsEnumReady() ||
+        !EAL_GPIO_IsSupported(EAL_GPIO_SIG_RL_DRV) ||
+        !EAL_GPIO_IsSupported(EAL_GPIO_SIG_AIR_ALVE1) ||
+        !EAL_GPIO_IsSupported(EAL_GPIO_SIG_AIR_ALVE2)) {
+        send_status(seq, cmd, CDD_USB_STS_ERR_HW);
+        return;
+    }
+
+    /* No overlap of Air1 and Air2. First disable outputs and power. */
+    air_off();
+    EAL_GPIO_Set(EAL_GPIO_SIG_RL_DRV, 1U);
+    if (select == 1U)
+        EAL_GPIO_Set(EAL_GPIO_SIG_AIR_ALVE1, 1U);
+    else
+        EAL_GPIO_Set(EAL_GPIO_SIG_AIR_ALVE2, 1U);
+    s_air_selected = select;
+    send_status(seq, cmd, CDD_USB_STS_OK);
+}
+
+static void handle_get_air(uint16_t seq, uint8_t cmd,
+                           const uint8_t *payload, uint8_t len)
+{
+    uint8_t state[4];
+    (void)payload;
+    if (len != 0U) {
+        send_status(seq, cmd, CDD_USB_STS_ERR_FMT);
+        return;
+    }
+    /* State is commanded GPIO/readback, not proof of voltage or valve position. */
+    state[0] = s_air_selected;
+    state[1] = EAL_GPIO_Get(EAL_GPIO_SIG_AIR_ALVE1);
+    state[2] = EAL_GPIO_Get(EAL_GPIO_SIG_AIR_ALVE2);
+    state[3] = EAL_GPIO_Get(EAL_GPIO_SIG_RL_DRV);
+    CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, state, 4U);
+}
+
 void ASW_PwrCtrl_HandleCmd(uint16_t seq, uint8_t cmd,
                            const uint8_t *payload, uint8_t len)
 {
-    switch (cmd)
-    {
+    switch (cmd) {
+        case CDD_USB_CMD_SET_AIR_RAW:
+            handle_set_air(seq, cmd, payload, len);
+            break;
+        case CDD_USB_CMD_GET_AIR_RAW:
+            handle_get_air(seq, cmd, payload, len);
+            break;
+        /* Historical mappings are unresolved with TestCtr V1.5.
+         * Reject rather than energize unrelated SOLxIN channels or
+         * claim that old SET_SOL = mechanical clamp/release. */
         case CDD_USB_CMD_SET_ECU_PWR:
-        {
-            /* 1=RL_DRV + ECU_PWR_DRV 同开；0=同关（继电器在前避免 ECU 上电但无母线）*/
-            uint8_t on;
-            if (!parse_on(payload, len, &on))
-            {
-                CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_FMT, NULL, 0);
-                break;
-            }
-            if (on) { RL_DRV_HIGH(); ECU_PWR_DRV_HIGH(); }
-            else    { ECU_PWR_DRV_LOW(); RL_DRV_LOW(); }
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, NULL, 0);
-            break;
-        }
-
         case CDD_USB_CMD_GET_ECU_PWR:
-        {
-            uint8_t v = EAL_GPIO_Get(EAL_GPIO_SIG_ECU_PWR_DRV);
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, &v, 1);
-            break;
-        }
-
         case CDD_USB_CMD_SET_IGN:
-        {
-            uint8_t on;
-            if (!parse_on(payload, len, &on))
-            {
-                CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_FMT, NULL, 0);
-                break;
-            }
-            if (on) IGN_HIGH(); else IGN_LOW();
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, NULL, 0);
-            break;
-        }
-
         case CDD_USB_CMD_GET_IGN:
-        {
-            uint8_t v = EAL_GPIO_Get(EAL_GPIO_SIG_IGN);
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, &v, 1);
-            break;
-        }
-
         case CDD_USB_CMD_SET_KEYPWR:
-        {
-            uint8_t on;
-            if (!parse_on(payload, len, &on))
-            {
-                CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_FMT, NULL, 0);
-                break;
-            }
-            if (on) KEY_PWR_DRV_HIGH(); else KEY_PWR_DRV_LOW();
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, NULL, 0);
-            break;
-        }
-
         case CDD_USB_CMD_GET_KEYPWR:
-        {
-            uint8_t v = EAL_GPIO_Get(EAL_GPIO_SIG_KEY_PWR_DRV);
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, &v, 1);
-            break;
-        }
-
         case CDD_USB_CMD_SET_SOL:
-        {
-            uint8_t action;
-            if (!parse_on(payload, len, &action))
-            {
-                CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_FMT, NULL, 0);
-                break;
-            }
-            /* 上位机动作值：0=升起，1=下落；固件通过 SOL_UP/SOL_DOWN 转换为 GPIO 电平 */
-            if (action == 0U) SOL_UP(); else SOL_DOWN();
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, NULL, 0);
-            break;
-        }
-
         case CDD_USB_CMD_GET_SOL:
-        {
-            /* 返回动作值：0=升起，1=下落，而不是直接暴露 GPIO 电平 */
-            uint8_t v = (EAL_GPIO_Get(EAL_GPIO_SIG_SOL) != 0U) ? 0U : 1U;
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, &v, 1);
-            break;
-        }
-
         case CDD_USB_CMD_GET_ALL_PWR:
-        {
-            uint8_t v = 0;
-            if (EAL_GPIO_Get(EAL_GPIO_SIG_ECU_PWR_DRV)) v |= 0x01U;
-            if (EAL_GPIO_Get(EAL_GPIO_SIG_IGN))         v |= 0x02U;
-            if (EAL_GPIO_Get(EAL_GPIO_SIG_KEY_PWR_DRV)) v |= 0x04U;
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, &v, 1);
+            (void)payload;
+            (void)len;
+            send_status(seq, cmd, CDD_USB_STS_ERR_HW);
             break;
-        }
-
         default:
-            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_CMD, NULL, 0);
+            send_status(seq, cmd, CDD_USB_STS_ERR_CMD);
             break;
     }
 }
 
 void ASW_PwrCtrl_Task(void)
 {
-    /* 当前无周期任务（电源仅事件驱动）*/
+    /* A USB bus reset/disconnect removes output authorization. */
+    if (!EAL_USB_IsEnumReady() && s_air_selected != 0U)
+        air_off();
 }
