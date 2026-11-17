@@ -6,7 +6,8 @@
     <RootNamespace>AutoTest.G4Workbench</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../AutoTest.UiPreview/AutoTest.UiPreview.csproj"/>
-    <ProjectReference Include="../AutoTest.Desktop/AutoTest.Desktop.csproj"/>
+    <!-- One canonical Desktop WPF shell and one domain authoring model. -->
+    <PackageReference Include="Prism.DryIoc" />
+    <ProjectReference Include="../AutoTest.Desktop/AutoTest.Desktop.csproj" />
   </ItemGroup>
 </Project>

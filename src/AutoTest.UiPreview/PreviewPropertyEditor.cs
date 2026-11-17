@@ -50,8 +50,7 @@ public sealed class PreviewPropertyField : INotifyPropertyChanged
     private void Validate()
     {
         // A preview-only syntax check, not ECU range validation.
-        if (Key is "ms" or "duration" or "timeout" or "period" or "count"
-            or "milliseconds" or "timeoutMs" or "durationMs" or "maxAgeMs")
+        if (Key is "ms" or "duration" or "timeout" or "period" or "count")
         {
             if (!int.TryParse(_value, NumberStyles.None, CultureInfo.InvariantCulture, out var n)
                 || n < 0 || (Key == "count" && n == 0))
@@ -75,14 +74,11 @@ public sealed class PreviewPropertyEditor
     public ObservableCollection<PreviewPropertyField> Fields { get; } = new();
     private DemoStep? _step;
     private Action<DemoStep, PreviewPropertyField>? _onChanged;
-    private bool _realCanEditor;
 
-    public void Bind(DemoStep? step, Action<DemoStep, PreviewPropertyField> onChanged,
-        bool realCanEditor = false)
+    public void Bind(DemoStep? step, Action<DemoStep, PreviewPropertyField> onChanged)
     {
         _step = step;
         _onChanged = onChanged;
-        _realCanEditor = realCanEditor;
         Rebuild();
     }
 
@@ -97,19 +93,6 @@ public sealed class PreviewPropertyEditor
         void Choice(string label, string key, string[] options, bool rebuild = false) =>
             Fields.Add(new PreviewPropertyField(label, key, step.Param(key, options[0]), options, rebuild, Changed));
 
-
-        // The actual DBC selector renders message/signal editors in the same Inspector.
-        // Never expose serialized editor payloads as two raw text boxes in real mode.
-        if (_realCanEditor && step.Kind == "CanSend")
-        {
-            foreach (var pair in step.Parameters.OrderBy(p => p.Key, StringComparer.Ordinal))
-                if (pair.Key is not ("dbcMessage" or "signals" or "period"))
-                    Text(pair.Key, pair.Key, pair.Value);
-            return;
-        }
-
-        // Formal TEST step types use the exact canonical StepUiCatalog property keys.
-        // Never offer hard-coded sample DBC messages or pretend a target Mapping exists.
         switch (step.Kind)
         {
             case "ign": Choice("请求输出", "state", ["ON", "OFF"]); break;
@@ -146,78 +129,8 @@ public sealed class PreviewPropertyEditor
             case "var": Text("变量名称", "variable", "$value"); Text("表达式", "expression", "0"); break;
             case "try": Choice("异常处理方式", "onError", ["停止并记录", "继续并记录", "转入异常分支"]); break;
             case "sub": Text("子程序引用", "target", ""); break;
-
-            case "Wait": Text("等待时间（毫秒）", "milliseconds", "500"); break;
-            case "SetVariable": Text("变量名称", "variable", "value"); Text("设置值", "value", "1"); break;
-            case "If": Text("条件变量", "variable", "value"); Text("相等比较值", "equals", "1"); break;
-            case "Loop": Text("循环次数", "count", "2"); break;
-            case "Switch": Text("选择变量", "variable", ""); break;
-            case "Case": Text("匹配值", "equals", ""); break;
-            case "When":
-                Text("条件变量", "variable", ""); Text("相等比较值", "equals", "");
-                Text("超时（毫秒）", "timeoutMs", "1000"); break;
-            case "CallSubroutine": Text("子程序引用", "target", ""); break;
-            case "Write":
-                Text("已映射操作对象", "target", "");
-                Text("写入值", "value", "Pulse"); break;
-            case "Read":
-                Text("已映射目标", "target", "");
-                Text("保存变量", "variable", "response");
-                Choice("读取模式", "mode", ["Next", "Latest"]);
-                Text("超时（毫秒）", "timeoutMs", "1000");
-                Text("最新值年龄（毫秒）", "maxAgeMs", "500"); break;
-            case "WaitUntil":
-                Text("已映射目标", "target", "");
-                Text("保存变量", "variable", "response");
-                Text("比较运算符", "operator", "==");
-                Text("期望值", "expected", "1");
-                Text("超时（毫秒）", "timeoutMs", "1000"); break;
-            case "Calculate":
-                Text("保存变量", "variable", "value");
-                Text("左操作数", "left", "$response");
-                Text("运算符", "operator", "+");
-                Text("右操作数", "right", "1"); break;
-            case "Expect":
-                Text("左操作数", "left", "$response");
-                Text("比较运算符", "operator", "==");
-                Text("右操作数", "right", "1"); break;
-            case "WaveStart":
-                Text("已映射信号", "target", "");
-                Text("采集名称", "captureKey", "capture1");
-                Text("最长时长（毫秒）", "durationMs", "3000"); break;
-            case "WaveStop":
-                Text("采集名称", "captureKey", "capture1");
-                Text("样本数保存变量", "variable", "samples"); break;
-            case "WaveAnalyze":
-                Text("采集名称", "captureKey", "capture1");
-                Text("结果保存变量", "variable", "result");
-                Text("参考波形", "reference", "");
-                Text("波形配置", "profile", "");
-                Text("绝对容差", "tolerance", "0.05");
-                Text("最小覆盖率", "coverage", "0.95"); break;
-            case "CanSend":
-                Text("DBC 报文标识", "dbcMessage", "");
-                Text("CAN 信号设置", "signals", ""); break;
-            case "CanWait":
-                Text("CAN 目标", "dbcMessage", "");
-                Text("超时（毫秒）", "timeoutMs", "1000"); break;
-            case "UdsRequest":
-                Text("UDS 服务", "service", "");
-                Text("请求 HEX", "requestHex", ""); break;
-            case "Flash": Text("烧录配置资源", "programmingProfile", ""); break;
-            case "WaveCapture": Text("采集名称", "captureKey", ""); break;
-            case "WaveCompare": Text("参考波形", "reference", ""); break;
-            case "Sequence":
-            case "TryCatch":
-            case "Subroutine":
-            case "Parallel": break;
-            default: break;
+            default: Text("备注或表达式", "text", ""); break;
         }
-        // Preserve every property found in a real TEST file even when it has no
-        // specialized editor yet. Unknown keys must never be silently discarded.
-        var shown = Fields.Select(f => f.Key).ToHashSet(StringComparer.Ordinal);
-        foreach (var pair in step.Parameters.OrderBy(p => p.Key, StringComparer.Ordinal))
-            if (!shown.Contains(pair.Key)) Text(pair.Key, pair.Key, pair.Value);
     }
 
     private void Changed(PreviewPropertyField field)

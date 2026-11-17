@@ -20,7 +20,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private PreviewEditorDocument _document = new();
     private readonly Dictionary<string, (PreviewEditorDocument Document, PreviewEditHistory History)> _cases = new();
     public ObservableCollection<PreviewRow> Rows => _document.Rows;
-    public string CurrentCaseTitle => IsRealWorkspace ? _realActiveTitle : (Selection.IsMainActive ? "通信与状态检查" : "诊断信息读取");
+    public string CurrentCaseTitle => Selection.IsMainActive ? "通信与状态检查" : "诊断信息读取";
     public string CurrentCaseTabTitle => "▤ " + CurrentCaseTitle;
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Raise([CallerMemberName] string? name = null) =>
@@ -32,7 +32,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly PreviewPropertyEditor _propertyEditor = new();
     public ObservableCollection<PreviewPropertyField> PropertyFields => _propertyEditor.Fields;
     public PreviewInspectorState Inspector { get; } = new();
-    private IReadOnlyList<PaletteKind> _palette = PreviewSampleFactory.MakePalette();
+    private readonly IReadOnlyList<PaletteKind> _palette = PreviewSampleFactory.MakePalette();
     private PreviewRow? _targetRow;
     private PreviewRow? _selectedRow => _document.SelectedRow;
     private DemoStep? _selectedStep
@@ -46,16 +46,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly PreviewWorkspaceState _workspace = new();
     private static readonly Brush InkMuted = PreviewRow.Solid("#607891");
 
-    public MainWindow() : this(null) { }
-
-    public MainWindow(IEditorWorkspaceGateway? gateway)
+    public MainWindow()
     {
-        _gateway = gateway;
-        if (gateway is not null)
-        {
-            _palette = gateway.StepTypes;
-            ProjectDisplayName = "未打开工程";
-        }
         InitializeComponent();
         AddRowCommand = new PreviewRowCommand(row =>
         {
@@ -80,25 +72,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             source?.AddHook(MonitorWorkAreaHook);
         };
         SizeChanged += (_, _) => AdaptDocksToViewport();
-        if (_gateway is null)
-        {
-            _phases.AddRange(PreviewSampleFactory.CreatePhases());
-            _cases["main"] = (_document, _history);
-            var diagnostic = new PreviewEditorDocument();
-            diagnostic.Phases.AddRange(PreviewSampleFactory.CreateDiagnosticPhases());
-            _cases["diagnostic"] = (diagnostic, new PreviewEditHistory());
-            InitializePreviewExplorer();
-            RebuildRows();
-            SelectStep(_phases[0].Steps[0]);
-            SetMessage("纯 UI 预览就绪");
-        }
-        else
-        {
-            RefreshRealExplorer();
-            RebuildRows();
-            Closing += RealWorkspace_Closing;
-            SetMessage("真实工程编辑模式：请打开或新建工程");
-        }
+        _phases.AddRange(PreviewSampleFactory.CreatePhases());
+        _cases["main"] = (_document, _history);
+        var diagnostic = new PreviewEditorDocument();
+        diagnostic.Phases.AddRange(PreviewSampleFactory.CreateDiagnosticPhases());
+        _cases["diagnostic"] = (diagnostic, new PreviewEditHistory());
+        RebuildRows();
+        SelectStep(_phases[0].Steps[0]);
+        SetMessage("就绪");
     }
 
     private void RebuildRows()
@@ -156,7 +137,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_selectedStep is not { } step) return;
         RememberUndo();
         step.Enabled = !step.Enabled;
-        _document.MarkDirty();
         _selectedRow?.Notify();
         ShowInspector();
     }
@@ -166,7 +146,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_selectedStep is not { } step) return;
         RememberUndo();
         step.Breakpoint = !step.Breakpoint;
-        _document.MarkDirty();
         _selectedRow?.Notify();
         ShowInspector();
     }
@@ -192,7 +171,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 Inspector.Bind(null, () => { });
                 _propertyEditor.Bind(null, (_, _) => { });
-                CanInspector.Bind(null, _dbcCatalogs, () => { });
                 return;
             }
             var match=_palette.FirstOrDefault(x=>x.Code==_selectedStep.Kind);
@@ -201,18 +179,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             SelectedStepId.Text=_selectedStep.Id.ToString("N")[^5..].ToUpperInvariant();
             SelectedTypeBadge.Background=_selectedRow?.CategoryBackground ?? PreviewRow.Solid("#EEF2F7");
             SelectedTypeIcon.Foreground=_selectedRow?.CategoryForeground ?? InkMuted;
-            Inspector.Bind(_selectedStep, () =>
-            {
-                _selectedRow?.Notify();
-                _document.MarkDirty();
-            });
+            Inspector.Bind(_selectedStep, () => _selectedRow?.Notify());
             RenderParameterFields();
-            CanInspector.Bind(IsRealWorkspace ? _selectedStep : null, _dbcCatalogs, () =>
-            {
-                if (_selectedStep is null) return;
-                _document.MarkDirty();
-                _selectedRow?.Notify();
-            });
         }
         finally { _updatingInspector=false; }
     }
@@ -222,7 +190,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             if (!ReferenceEquals(_selectedStep, step)) return;
             RefreshSelectedRowSummary();
-            _document.MarkDirty();
             if (field.HasError) SetMessage(field.Error);
             if (field.RebuildOnChange)
             {
@@ -233,19 +200,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                         _propertyEditor.Rebuild();
                 }), DispatcherPriority.Background);
             }
-        }, IsRealWorkspace);
+        });
 
     private void InspectorParameterFields_PreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         // One undo checkpoint per field-focus transition, not one per keystroke.
         if (e.NewFocus is FrameworkElement { DataContext: PreviewPropertyField } &&
             !_updatingInspector && _selectedStep is not null)
-            RememberUndo();
-    }
-
-    private void CanInspectorFields_PreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        if (!_updatingInspector && IsRealWorkspace && _selectedStep?.Kind == "CanSend")
             RememberUndo();
     }
 
@@ -263,11 +224,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OpenPalette()
     {
-        if (IsRealWorkspace && _currentRealAsset is null)
-        {
-            SetMessage("请先打开或新建 TEST 程序");
-            return;
-        }
         PaletteSearchText.Text="";
         FillPalette("");
         PaletteOverlay.Visibility=Visibility.Visible;
@@ -287,82 +243,50 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (e.Key==Key.Escape) {PaletteOverlay.Visibility=Visibility.Collapsed;e.Handled=true;}
         if (e.Key==Key.Enter)
         {
-            var query = PaletteSearchText.Text.Trim();
-            var match = _palette.FirstOrDefault(x =>
-                CanOfferPaletteChoice(x) &&
-                (x.Label + " " + x.Group + " " + x.Code)
-                    .Contains(query, StringComparison.CurrentCultureIgnoreCase));
-            if (match is not null) { CreatePreviewStep(match); e.Handled = true; }
+            var match=_palette.FirstOrDefault(x=>x.Label.Contains(PaletteSearchText.Text,StringComparison.CurrentCultureIgnoreCase));
+            if(match is not null){CreatePreviewStep(match);e.Handled=true;}
         }
     }
-    private bool CanOfferPaletteChoice(PaletteKind choice) =>
-        choice.Code != "Case" || _targetRow?.Branch?.Name == "cases";
-
     private void FillPalette(string search)
     {
         PaletteGroupsPanel.Children.Clear();
-        var groups = PreviewPalettePresentation.Groups;
-        foreach (var group in groups)
+        foreach(var group in _palette.Select(x=>x.Group).Distinct())
         {
-            var entries = _palette
-                .Where(choice => CanOfferPaletteChoice(choice) && choice.Group == group &&
-                    (search.Length == 0 ||
-                     (choice.Label + " " + choice.Group + " " + choice.Code)
-                     .Contains(search, StringComparison.CurrentCultureIgnoreCase)))
-                .ToList();
-            if (entries.Count == 0) continue;
+            var kinds=_palette.Where(x=>x.Group==group && (search.Length==0 ||
+                (x.Label+" "+x.Group).Contains(search,StringComparison.CurrentCultureIgnoreCase))).ToList();
+            if(kinds.Count==0)continue;
             PaletteGroupsPanel.Children.Add(new TextBlock
             {
-                Text = group,
-                Style = (Style)FindResource("AtPreviewPaletteGroup")
+                Text=group,
+                Style=(Style)FindResource("AtPreviewPaletteGroup")
             });
-            var wrap = new WrapPanel();
-            foreach (var entry in entries)
+            var wrap=new WrapPanel();
+            foreach(var item in kinds)
             {
-                var button = new Button
+                var button=new Button
                 {
-                    Content = entry.Icon + "  " + entry.Label,
-                    Tag = entry,
-                    Style = (Style)FindResource("AtPreviewPaletteButton"),
-                    ToolTip = "添加 " + entry.Label + " 步骤；选择后在右侧编辑参数"
+                    Content=item.Icon+"  "+item.Label,
+                    Tag=item,
+                    Style=(Style)FindResource("AtPreviewPaletteButton")
                 };
-                button.Margin = new Thickness(0);
-                button.Click += (_, _) => CreatePreviewStep(entry);
-                var accent = new Border
-                {
-                    Child = button,
-                    BorderThickness = new Thickness(3, 0, 0, 0),
-                    BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
-                        PreviewPalettePresentation.Accent(group))),
-                    Margin = new Thickness(0, 0, 7, 6)
-                };
-                wrap.Children.Add(accent);
+                button.Click+=(_,_)=>CreatePreviewStep(item);
+                wrap.Children.Add(button);
             }
             PaletteGroupsPanel.Children.Add(wrap);
         }
-        if (PaletteGroupsPanel.Children.Count == 0)
-            PaletteGroupsPanel.Children.Add(new TextBlock
-            {
-                Text = "没有匹配的步骤类型",
-                Foreground = Brushes.SlateGray,
-                Margin = new Thickness(6, 14, 0, 14)
-            });
     }
 
     private void CreatePreviewStep(PaletteKind option)
     {
-        var added=_gateway?.CreateStep(option.Code)
-            ?? PreviewSampleFactory.CreateStep(option.Code,option.Label);
-        if (_gateway is null)
+        var added=PreviewSampleFactory.CreateStep(option.Code,option.Label);
+        switch(option.Code)
         {
-            switch(option.Code)
-            {
-                case "ign": added.SetParam("state","ON"); break;
-                case "wait": added.SetParam("ms","100"); break;
-                case "can": added.SetParam("message","未选择报文"); added.SetParam("period","0"); break;
-                case "read": added.SetParam("signal","Signal_A"); break;
-            }
+            case "ign": added.SetParam("state","ON"); break;
+            case "wait": added.SetParam("ms","100"); break;
+            case "can": added.SetParam("message","未选择报文"); added.SetParam("period","0"); break;
+            case "read": added.SetParam("signal","Signal_A"); break;
         }
+
         RememberUndo();
         _document.InsertAfter(_targetRow, added);
         PaletteOverlay.Visibility=Visibility.Collapsed;
@@ -412,7 +336,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
         _selectedStep = AllSteps().FirstOrDefault(step => step.Id == selected);
-        _document.MarkDirty();
         RebuildRows();
         SetMessage("已撤销");
     }
@@ -425,7 +348,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
         _selectedStep = AllSteps().FirstOrDefault(step => step.Id == selected);
-        _document.MarkDirty();
         RebuildRows();
         SetMessage("已重做");
     }
@@ -466,7 +388,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _history = session.History;
             _targetRow = null;
             Selection.Activate(key);
-            ActivateExplorerTest(key);
             Raise(nameof(Rows));
             Raise(nameof(CurrentCaseTitle));
             Raise(nameof(CurrentCaseTabTitle));
@@ -478,8 +399,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private void RenameCase_Click(object sender,RoutedEventArgs e)
     {
-        if (IsRealWorkspace) RenameRealTest_Click(sender, e);
-        else SetMessage("预览模式不改写正式项目名称");
+        SetMessage("重命名功能尚未接入");
     }
     private void BottomTab_Click(object sender,RoutedEventArgs e)
     {
@@ -533,7 +453,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if(e.Key==Key.Y && Keyboard.FocusedElement is not TextBox)
             {Redo_Click(sender,new RoutedEventArgs());e.Handled=true;}
             if(e.Key==Key.I){ToggleInspector_Click(sender,new RoutedEventArgs());e.Handled=true;}
-            if(e.Key==Key.S){Save_Click(sender,new RoutedEventArgs());e.Handled=true;}
+            if(e.Key==Key.S){SetMessage("保存功能尚未接入");e.Handled=true;}
         }
         if(e.Key==Key.F2 && _selectedStep is not null)
         {StepNameField.Focus();StepNameField.SelectAll();e.Handled=true;}

@@ -35,7 +35,7 @@
     </StackPanel>
     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="文件" Style="{StaticResource BareBtn}"
-      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="FileMenu_Click"/>
+      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
      <Button Content="编辑" Style="{StaticResource BareBtn}"
       chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
      <Button Content="视图" Style="{StaticResource BareBtn}"
@@ -68,11 +68,10 @@
      <Button Content="生产" Style="{StaticResource Btn}" Click="PreviewOnly_Click"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="新建工程" Style="{StaticResource Btn}" Click="NewProject_Click" Visibility="{Binding IsRealWorkspace,Converter={StaticResource B2V}}" Margin="0,0,5,0"/>
-      <Button Content="▤ 工程" Style="{StaticResource Btn}" Click="Project_Click" Margin="0,0,6,0"/>
-     <TextBlock Text="{Binding ProjectDisplayName}" FontWeight="SemiBold" Margin="3,0,10,0"
+     <Button Content="▤ 工程" Style="{StaticResource Btn}" Click="PreviewOnly_Click" Margin="0,0,6,0"/>
+     <TextBlock Text="控制器 A" FontWeight="SemiBold" Margin="3,0,10,0"
       VerticalAlignment="Center" Foreground="#274363"/>
-     <Button Content="▣ 保存" Style="{StaticResource Btn}" Click="Save_Click" Margin="0,0,5,0"/>
+     <Button Content="▣ 保存" Style="{StaticResource Btn}" Click="PreviewOnly_Click" Margin="0,0,5,0"/>
      <Button Content="↶" Style="{StaticResource Btn}" Click="Undo_Click" Margin="0,0,4,0"/>
      <Button Content="↷" Style="{StaticResource Btn}" Click="Redo_Click" Margin="0,0,7,0"/>
      <Button Content="▶ 所选用例检查" Style="{StaticResource PrimaryBtn}"
@@ -99,90 +98,47 @@
       <TextBlock Text="工程导航" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
      </Border>
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-      <!-- Same explorer UI for preview and real projects; only bound data changes. -->
       <StackPanel Margin="8,9,8,8">
        <Border Style="{StaticResource AtPreviewTreeRoot}">
-        <TextBlock Text="{Binding ProjectDisplayTitle}" FontWeight="SemiBold" Foreground="#244D7D"/>
+        <TextBlock Text="▣  控制器 A" FontWeight="SemiBold" Foreground="#244D7D"/>
        </Border>
        <DockPanel Margin="0,0,0,5">
         <TextBlock Text="自动测试" FontSize="12" FontWeight="SemiBold"
          Foreground="#29486D" VerticalAlignment="Center"/>
-        <Button DockPanel.Dock="Right" Content="＋" Style="{StaticResource BareBtn}"
-         Click="CreateTest_Click" ToolTip="新建测试程序"/>
+        <Button Content="＋" DockPanel.Dock="Right" HorizontalAlignment="Right"
+         Style="{StaticResource BareBtn}" Click="PreviewOnly_Click"/>
        </DockPanel>
        <Border Style="{StaticResource AtPreviewTreeGroup}">
         <DockPanel LastChildFill="True">
-         <TextBlock DockPanel.Dock="Right" Text="{Binding ExplorerCountLabel}" Foreground="#335D91" FontSize="11"/>
-         <TextBlock Text="{Binding TestGroupName}" Foreground="#335D91"
+         <TextBlock x:Name="TreeSelectionCount" DockPanel.Dock="Right"
+          Text="{Binding Selection.CountLabel}" Foreground="#335D91" FontSize="11"/>
+         <TextBlock Text="▾  ▱  研发检查项目" Foreground="#335D91"
           FontWeight="SemiBold" FontSize="11"/>
         </DockPanel>
        </Border>
-       <ItemsControl ItemsSource="{Binding ExplorerTests}" Margin="18,3,0,2">
-        <ItemsControl.ItemTemplate>
-         <DataTemplate>
-          <Border Style="{StaticResource AtPreviewTreeSelectableCase}">
-           <StackPanel Orientation="Horizontal">
-            <CheckBox IsChecked="{Binding Selected,Mode=TwoWay}" VerticalAlignment="Center"/>
-            <Button Content="{Binding Name}" Tag="{Binding}" Style="{StaticResource BareBtn}"
-             Foreground="#1D518F" Click="OpenExplorerTest_Click" Margin="2,0,0,0"/>
-           </StackPanel>
-          </Border>
-         </DataTemplate>
-        </ItemsControl.ItemTemplate>
-       </ItemsControl>
+       <StackPanel Margin="18,3,0,2">
+        <Border Style="{StaticResource AtPreviewTreeMainCase}">
+         <StackPanel Orientation="Horizontal">
+          <CheckBox x:Name="ProjectCase1Check" IsChecked="{Binding Selection.First,Mode=TwoWay}" VerticalAlignment="Center"/>
+          <Button Content="▤ 通信与状态检查" Tag="main" Style="{StaticResource BareBtn}"
+           Foreground="#1D518F" FontWeight="SemiBold"
+           Click="OpenDemoCase_Click" Margin="2,0,0,0"/>
+         </StackPanel>
+        </Border>
+        <Border Style="{StaticResource AtPreviewTreeDiagnosticCase}">
+         <StackPanel Orientation="Horizontal">
+         <CheckBox x:Name="ProjectCase2Check" IsChecked="{Binding Selection.Second,Mode=TwoWay}" VerticalAlignment="Center"/>
+         <Button Content="▤ 诊断信息读取" Tag="diagnostic" Style="{StaticResource BareBtn}"
+          Click="OpenDemoCase_Click" Margin="2,0,0,0"/>
+         </StackPanel>
+        </Border>
+       </StackPanel>
        <Border BorderBrush="#DBE3ED" BorderThickness="0,1,0,0" Margin="0,10,0,8"/>
-       <DockPanel Margin="0,0,0,5">
-        <TextBlock Text="工程资源" FontWeight="SemiBold" Foreground="#29496E"
-         VerticalAlignment="Center" Margin="2,0,0,5"/>
-        <Button DockPanel.Dock="Right" Content="＋ 导入 DBC" Style="{StaticResource Btn}"
-         Visibility="{Binding IsRealWorkspace,Converter={StaticResource B2V}}"
-         Click="ImportDbc_Click" Margin="0,0,0,5"/>
-       </DockPanel>
-       <ItemsControl ItemsSource="{Binding ExplorerResourceGroups}">
-        <ItemsControl.ItemTemplate>
-         <DataTemplate>
-          <Expander Style="{StaticResource AtPreviewExplorerExpander}" Margin="0,2">
-           <Expander.Header>
-            <TextBlock Text="{Binding DisplayName}" FontSize="11" Foreground="#29496E" FontWeight="SemiBold"/>
-           </Expander.Header>
-           <ItemsControl ItemsSource="{Binding Assets}" Margin="10,2,0,3">
-            <ItemsControl.ItemTemplate>
-             <DataTemplate>
-              <Expander Style="{StaticResource AtPreviewExplorerExpander}" Margin="0,2">
-               <Expander.Header>
-                <TextBlock Text="{Binding DisplayName}" FontSize="11" Foreground="#45617D"/>
-               </Expander.Header>
-               <ItemsControl ItemsSource="{Binding Messages}" Margin="10,1,0,2">
-                <ItemsControl.ItemTemplate>
-                 <DataTemplate>
-                  <Expander Style="{StaticResource AtPreviewExplorerExpander}" Margin="0,2">
-                   <Expander.Header>
-                    <TextBlock Text="{Binding TreeLabel}" Foreground="#2D609C" FontSize="11"/>
-                   </Expander.Header>
-                   <StackPanel Margin="10,2,0,3">
-                    <Button Content="用于当前 CAN 步骤" Tag="{Binding}" Style="{StaticResource Btn}"
-                     HorizontalAlignment="Left" Click="SelectDbcMessage_Click" Margin="0,0,0,3"/>
-                    <ItemsControl ItemsSource="{Binding Signals}">
-                     <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                       <TextBlock Text="{Binding DisplayName}" FontSize="10"
-                        Foreground="#7288A0" Margin="7,3,0,1"/>
-                      </DataTemplate>
-                     </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                   </StackPanel>
-                  </Expander>
-                 </DataTemplate>
-                </ItemsControl.ItemTemplate>
-               </ItemsControl>
-              </Expander>
-             </DataTemplate>
-            </ItemsControl.ItemTemplate>
-           </ItemsControl>
-          </Expander>
-         </DataTemplate>
-        </ItemsControl.ItemTemplate>
-       </ItemsControl>
+       <TextBlock Text="工程资源" FontWeight="SemiBold" Foreground="#29496E" Margin="2,0,0,9"/>
+       <Button Content="▸  ▤  DBC 报文                                  13" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click"/>
+       <Button Content="▸  ◈  按键配置                                  2" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click" Margin="0,4"/>
+       <Button Content="▸  〰  波形参考                                  1" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click"/>
+       <Button Content="▸  ◇  UDS 服务                                  2" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click" Margin="0,4"/>
       </StackPanel>
      </ScrollViewer>
     </DockPanel>
@@ -204,15 +160,15 @@
      BorderThickness="0,0,0,1">
      <StackPanel Orientation="Horizontal">
       <Button Content="▥ 工程概览" Style="{StaticResource BareBtn}"
-       Width="112" Click="ProjectOverviewTab_Click"/>
+       Width="112" Click="PreviewOnly_Click"/>
       <Button Content="▤ 研发检查项目" Style="{StaticResource BareBtn}"
-       Width="130" Click="TestProjectTab_Click"/>
+       Width="130" Click="PreviewOnly_Click"/>
       <Border Background="White" BorderBrush="#2368BD" BorderThickness="0,0,0,2">
-       <Button Content="{Binding CurrentCaseTabTitle}" Tag="{Binding ActiveTest}" Style="{StaticResource BareBtn}"
-        Foreground="#235D9E" FontWeight="SemiBold" Width="142" Click="ActiveTestTab_Click"/>
+       <Button Content="{Binding CurrentCaseTabTitle}" Tag="{Binding Selection.ActiveKey}" Style="{StaticResource BareBtn}"
+        Foreground="#235D9E" FontWeight="SemiBold" Width="142" Click="OpenDemoCase_Click"/>
       </Border>
       <Button Content="◈ 工程配置" Style="{StaticResource BareBtn}"
-       Width="100" Click="ProjectConfigurationTab_Click"/>
+       Width="100" Click="PreviewOnly_Click"/>
      </StackPanel>
     </Border>
     <Grid Grid.Row="1" Background="White">
@@ -224,7 +180,7 @@
       </Border>
       <Border BorderBrush="#C4DDF9" BorderThickness="1" Background="#EAF3FF"
        CornerRadius="4" Padding="6,4" Margin="0,0,0,0">
-       <CheckBox x:Name="CurrentRunCheck" Content="本次执行" IsChecked="{Binding ActiveTest.Selected,Mode=TwoWay}"
+       <CheckBox x:Name="CurrentRunCheck" Content="本次执行" IsChecked="{Binding Selection.CurrentSelected,Mode=TwoWay}"
         Foreground="#235B9B" FontWeight="SemiBold" FontSize="11"/>
       </Border>
      </StackPanel>
@@ -236,7 +192,7 @@
       <Button Content="＋ 添加步骤" Style="{StaticResource PrimaryBtn}"
        Click="AddToolbar_Click" Margin="0,0,5,0"/>
       <Button Content="检查问题" Style="{StaticResource Btn}"
-       Click="CheckIssues_Click" Margin="0,0,5,0"/>
+       Click="PreviewOnly_Click" Margin="0,0,5,0"/>
       <Button Content="重命名" Style="{StaticResource Btn}" Click="RenameCase_Click"/>
      </StackPanel>
     </Grid>
@@ -376,35 +332,6 @@
         <ItemsControl x:Name="InspectorParameterFields" ItemsSource="{Binding PropertyFields}"
          ItemTemplate="{StaticResource AtPreviewPropertyFieldTemplate}" Margin="0,0,0,12"
          PreviewGotKeyboardFocus="InspectorParameterFields_PreviewGotKeyboardFocus"/>
-        <StackPanel Visibility="{Binding CanInspector.IsVisible,Converter={StaticResource B2V}}"
-         PreviewGotKeyboardFocus="CanInspectorFields_PreviewGotKeyboardFocus"
-         Margin="0,0,0,11">
-         <TextBlock Text="DBC 报文" Style="{StaticResource FieldLabel}"/>
-         <ComboBox ItemsSource="{Binding CanInspector.Messages}"
-          SelectedItem="{Binding CanInspector.SelectedMessage,Mode=TwoWay}"
-          DisplayMemberPath="Label" Style="{StaticResource UiCombo}" Height="28"
-          Margin="0,0,0,7" ToolTip="从工程中已导入并校验的 DBC 选择报文"/>
-         <TextBlock Text="{Binding CanInspector.Message}" Foreground="#607C99"
-          FontSize="10" TextWrapping="Wrap" Margin="0,0,0,7"/>
-         <Grid Margin="0,2,0,5">
-          <Grid.ColumnDefinitions>
-           <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
-          </Grid.ColumnDefinitions>
-          <TextBlock Text="信号物理值" Style="{StaticResource FieldLabel}"
-           VerticalAlignment="Center"/>
-          <TextBlock Grid.Column="1" Text="{Binding CanInspector.SignalCount}"
-           FontSize="10" Foreground="#7188A0" VerticalAlignment="Center"/>
-         </Grid>
-         <ItemsControl ItemsSource="{Binding CanInspector.Signals}"
-          ItemTemplate="{StaticResource AtPreviewCanSignalTemplate}"/>
-         <TextBlock Text="发送周期（ms，0 为单次）" Style="{StaticResource FieldLabel}"
-          Margin="0,10,0,4"/>
-         <TextBox Text="{Binding CanInspector.PeriodMs,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-          Style="{StaticResource UiInput}" Height="27" Padding="5,3"/>
-         <TextBlock Text="{Binding CanInspector.PeriodError}" Foreground="#C04A57"
-          FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0"
-          Visibility="{Binding CanInspector.HasPeriodError,Converter={StaticResource B2V}}"/>
-        </StackPanel>
         <Border BorderBrush="#E4EAF2" BorderThickness="0,1,0,0"
          Margin="0,3,0,10"/>
         <TextBlock Text="当前步骤操作" Foreground="#607891" FontSize="11"
@@ -448,41 +375,27 @@
   </Border>
 
   <!-- Palette is placed above the full UI; it edits only in-memory sample rows. -->
-  <Grid x:Name="PaletteOverlay" Grid.RowSpan="4" Panel.ZIndex="100"
-  Visibility="Collapsed" Background="#660D2546">
-  <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-   Width="620" MaxHeight="720" Background="White"
-   BorderBrush="#CCD7E6" BorderThickness="1" CornerRadius="10"
-   Margin="12" ClipToBounds="True">
-   <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="6" Opacity="0.23"/></Border.Effect>
-   <DockPanel LastChildFill="True">
-    <Border DockPanel.Dock="Top" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1"
-     Padding="18,12">
-     <DockPanel>
+  <Grid x:Name="PaletteOverlay" Grid.RowSpan="4" Panel.ZIndex="100" Visibility="Collapsed"
+   Background="#660D2546">
+   <Border HorizontalAlignment="Center" VerticalAlignment="Center" Width="520"
+    MaxHeight="620" Background="White" BorderBrush="#BDCBDB" BorderThickness="1"
+    CornerRadius="8" Padding="16" Margin="12">
+    <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="6" Opacity="0.27"/></Border.Effect>
+    <DockPanel>
+     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
       <Button DockPanel.Dock="Right" Content="×" Style="{StaticResource BareBtn}"
-       Click="ClosePalette_Click" ToolTip="关闭步骤选择"/>
-      <TextBlock Text="插入测试步骤" FontSize="14" FontWeight="Bold"
-       Foreground="#27486D" VerticalAlignment="Center"/>
+       Click="ClosePalette_Click"/>
+      <TextBlock Text="插入测试步骤" FontSize="15" FontWeight="Bold" Foreground="#27486D"/>
      </DockPanel>
-    </Border>
-    <Border DockPanel.Dock="Bottom" BorderBrush="#DBE3ED"
-     BorderThickness="0,1,0,0" Background="#F8FBFE" Padding="14,9">
-     <Button Content="关闭" Style="{StaticResource Btn}" HorizontalAlignment="Right"
-      Click="ClosePalette_Click" MinWidth="68"/>
-    </Border>
-    <DockPanel Margin="17,14,17,10">
-     <TextBox x:Name="PaletteSearchText" DockPanel.Dock="Top"
-      Style="{StaticResource UiInput}"
+     <TextBox x:Name="PaletteSearchText" DockPanel.Dock="Top" Style="{StaticResource UiInput}"
       TextChanged="PaletteSearchText_Changed" KeyDown="PaletteSearchText_KeyDown"
-      Margin="0,0,0,9" Height="31" Padding="8,5"
-      ToolTip="按名称搜索；单击步骤后进入右侧属性编辑"/>
+      Margin="0,0,0,8" ToolTip="输入步骤类型，选择后立即进入右侧编辑"/>
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-      MaxHeight="470">
+      MaxHeight="490">
       <StackPanel x:Name="PaletteGroupsPanel"/>
      </ScrollViewer>
     </DockPanel>
-   </DockPanel>
-  </Border>
- </Grid>
+   </Border>
+  </Grid>
  </Grid>
 </Window>
