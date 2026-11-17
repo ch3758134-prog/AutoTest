@@ -130,6 +130,16 @@ public sealed class PhysicalCommandFence
 
     /// <summary>Requires an exact typed confirmation, one payload and a living connection.
     /// Not used by B0/B1/B2 and never called automatically on reconnect.</summary>
+    private static bool IsDocumentedKeySimFrame(ReadOnlySpan<byte> data)
+    {
+        if (data.Length != 15 || data[0] != 0 || data[1] != 0 ||
+            BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(2, 4)) != 0x730 || data[6] != 8 ||
+            (data[10] & 0xF0) != 0 || data.Slice(11, 4).IndexOfAnyExcept((byte)0) >= 0)
+            return false;
+        if (data[7] == 0x01) return true;
+        return data[7] == 0x80 && data[8] == 0 && data[9] == 0 && data[10] == 0;
+    }
+
     public void AuthorizeSingleCanFrame(ReadOnlySpan<byte> exact15Bytes, string typedConfirmation,
         long connectionGeneration)
     {
@@ -141,8 +151,9 @@ public sealed class PhysicalCommandFence
         if (connectionGeneration <= 0) throw new InvalidOperationException("No live connection.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null)
-                throw new InvalidOperationException("Manual CAN is blocked while a test run or manual CAN batch is authorized.");
+            if (_runFingerprint is not null ||
+                (_manualBatchCan is not null && !IsDocumentedKeySimFrame(exact15Bytes)))
+                throw new InvalidOperationException("Active CAN1 task only allows one-shot documented KEY_SIM on CAN0.");
             _singleCanPayload = exact15Bytes.ToArray();
             _authorizedConnection = connectionGeneration;
             _canExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
@@ -159,8 +170,8 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize IGN without a live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null)
-                throw new InvalidOperationException("Manual IGN is blocked while a test run or manual CAN batch is authorized.");
+            if (_runFingerprint is not null)
+                throw new InvalidOperationException("Manual IGN is blocked while an automatic test run is authorized.");
             _oneIgnState = on;
             _ignGeneration = connectionGeneration;
             _ignExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
@@ -179,8 +190,8 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize a clamp without a live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null)
-                throw new InvalidOperationException("Manual clamp is blocked while a test run or manual CAN batch is authorized.");
+            if (_runFingerprint is not null)
+                throw new InvalidOperationException("Manual clamp is blocked while an automatic test run is authorized.");
             _singleClampPayload = new byte[] { clamp, press ? (byte)1 : (byte)0 };
             _clampGeneration = connectionGeneration;
             _clampExpiry = DateTimeOffset.UtcNow.AddSeconds(15);

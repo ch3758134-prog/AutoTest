@@ -127,7 +127,7 @@ public sealed partial class ManualBenchViewModel
         private set { if (SetProperty(ref _canBatchRunning, value)) RaiseCommands(); }
     }
     public bool CanEditCanRows => !IsBusy && !IsCanBatchRunning;
-    public bool CanStartCanRows => CanSendHardware && CanSendRows.Any(x => x.Included);
+    public bool CanStartCanRows => CanSendManualCan1 && CanSendRows.Any(x => x.Included);
     public bool CanStopCanRows => IsCanBatchRunning;
 
     public DelegateCommand AddCanRowCommand { get; private set; } = null!;

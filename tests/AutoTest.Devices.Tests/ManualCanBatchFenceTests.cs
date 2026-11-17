@@ -63,8 +63,10 @@ public sealed class ManualCanBatchFenceTests
         Assert.Throws<InvalidOperationException>(() =>
             fence.AuthorizeSingleCanFrame(payload, "AUTHORIZE CAN TX " +
                 Convert.ToHexString(payload), 3));
-        Assert.Throws<InvalidOperationException>(() =>
-            fence.AuthorizeSingleIgn(true, "AUTHORIZE IGN ON", 3));
+        // The same manual station may change IGN while CAN1 periodic traffic runs.
+        fence.AuthorizeSingleIgn(true, "AUTHORIZE IGN ON", 3);
+        fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(2,
+            MainControllerCodec.SetIgn, new byte[] { 1 }), 3);
         fence.Reset();
         Assert.Throws<UnauthorizedAccessException>(() =>
             fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(1,
@@ -74,6 +76,33 @@ public sealed class ManualCanBatchFenceTests
         Assert.Throws<InvalidOperationException>(() =>
             fence.AuthorizeManualCanBatch(manualHash, "AUTHORIZE BENCH CAN " + manualHash,
                 [payload], 3));
+    }
+
+    [Fact]
+    public void Can1PeriodicBatchAllowsDocumentedKeySimAndIndependentIoButNotOtherCan()
+    {
+        var fence = new PhysicalCommandFence();
+        var hash = new string('e', 64);
+        fence.AuthorizeManualCanBatch(hash, "AUTHORIZE BENCH CAN " + hash,
+            [RawCan(1, 0x701, 0x11)], 9);
+        var keyFrame = RawCan(0, 0x730, 0x01);
+        keyFrame[6] = 8;
+        var keyConsent = "AUTHORIZE CAN TX " + Convert.ToHexString(keyFrame);
+        fence.AuthorizeSingleCanFrame(keyFrame, keyConsent, 9);
+        fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(1,
+            MainControllerCodec.CanSend, keyFrame), 9);
+        fence.AuthorizeSingleIgn(true, "AUTHORIZE IGN ON", 9);
+        fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(2,
+            MainControllerCodec.SetIgn, new byte[] { 1 }), 9);
+        fence.AuthorizeSingleClamp(1, false, "AUTHORIZE CLAMP 1 RELEASE", 9);
+        fence.AssertAllowedAndConsume(MainControllerCodec.EncodeClamp(3, 1, false), 9);
+        var other = RawCan(0, 0x730, 0x02);
+        other[6] = 8;
+        Assert.Throws<InvalidOperationException>(() =>
+            fence.AuthorizeSingleCanFrame(other,
+                "AUTHORIZE CAN TX " + Convert.ToHexString(other), 9));
+        fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(4,
+            MainControllerCodec.CanSend, RawCan(1, 0x701, 0x11)), 9);
     }
 
     [Fact]

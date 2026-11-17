@@ -168,8 +168,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             if (_usb?.State != UsbSessionState.Connected || _link is null)
                 throw new IOException("USB 主控未连接，禁止 CAN 发送。");
-            if (_testRunApproved || _manualCanBatchApproved)
-                throw new InvalidOperationException("自动测试或手动多报文任务已占用 CAN 发送通路。");
+            if (_testRunApproved || (_manualCanBatchApproved && frame.Role != BusRole.KeypadCan))
+                throw new InvalidOperationException("CAN1 周期任务运行中仅允许同一手动工位的 KEY_SIM CAN0 指令。");
             var map = new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
             var payload = CanFrameCodec.ToUsbPayload(frame, map);
             _link.AuthorizeOneCanTransmission(payload, exactConfirmation);
@@ -288,8 +288,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         try
         {
             RequireV02GpioContract();
-            if (_testRunApproved || _manualCanBatchApproved || _link is null)
-                throw new InvalidOperationException("工位正在运行 TEST/CAN 任务或无实体连接；禁止手动夹具动作。");
+            if (_testRunApproved || _link is null)
+                throw new InvalidOperationException("自动测试占用工位或无实体连接；禁止手动夹具动作。");
             _link.AuthorizeOneClampChange(clamp, press, exactConfirmation);
             var data = new byte[] { clamp, press ? (byte)1 : (byte)0 };
             Record("夹具" + clamp + " 请求" + (press ? "压紧" : "释放") +
@@ -311,8 +311,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             if (_usb?.State != UsbSessionState.Connected || _link is null)
                 throw new IOException("USB 主控未连接，禁止 IGN 操作。");
-            if (_testRunApproved || _manualCanBatchApproved)
-                throw new InvalidOperationException("真实测试或 CAN 多报文发送进行中，手动 IGN 被锁定。");
+            if (_testRunApproved)
+                throw new InvalidOperationException("自动 TEST 占用工位，手动 IGN 被锁定。");
             RequireV02GpioContract();
             _link.AuthorizeOneIgnChange(on, exactConfirmation);
             Record("IGN 单次授权：" + (on ? "ON" : "OFF"));

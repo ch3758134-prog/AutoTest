@@ -223,8 +223,9 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     public uint DraftMask => Keys.Aggregate(0u, (mask, key) => key.Checked ? mask | key.Mask : mask);
     public string DraftMaskLabel => "待发送 Key 掩码 0x" + DraftMask.ToString("X5", CultureInfo.InvariantCulture);
     public bool HasConfiguredKeys => _controller?.KeyHardwarePolicy is not null;
-    public bool CanSendHardware => IsConnected && !IsBusy && !IsCanBatchRunning &&
-        !_hardware.IsManualCanBatchApproved && !_hardware.IsTestRunApproved;
+    public bool CanSendHardware => IsConnected && !IsBusy && !_hardware.IsTestRunApproved;
+    public bool CanSendManualCan1 => CanSendHardware && !IsCanBatchRunning &&
+        !_hardware.IsManualCanBatchApproved;
     public bool CanOperateGpio => CanSendHardware && _hardware.HasV02GpioContract;
     public bool CanReadGpio => IsConnected && !IsBusy && _hardware.HasV02GpioContract;
     public bool CanSendClamp => CanOperateGpio && ClampSafetyConfirmed;
@@ -288,7 +289,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ConnectCommand = new DelegateCommand(async () => await ToggleConnectionAsync(),
             () => !IsBusy && !IsCanBatchRunning && !_hardware.IsTestRunApproved);
         ReloadProfilesCommand = new DelegateCommand(async () => await ReloadResourcesAsync(), () => !IsBusy);
-        SendCanCommand = new DelegateCommand(async () => await SendCanAsync(), () => CanSendHardware);
+        SendCanCommand = new DelegateCommand(async () => await SendCanAsync(), () => CanSendManualCan1);
         SendKeyCommand = new DelegateCommand(async () => await ApplyKeysAsync(), () => CanSendHardware && HasConfiguredKeys);
         ReleaseKeysCommand = new DelegateCommand(ReleaseDraftKeys, () => !IsBusy);
         SendIgnCommand = new DelegateCommand(async () => await ApplyIgnAsync(), () => CanOperateGpio);
@@ -378,6 +379,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     {
         NotifyCanRows();
         RaisePropertyChanged(nameof(CanSendHardware));
+        RaisePropertyChanged(nameof(CanSendManualCan1));
         RaisePropertyChanged(nameof(CanOperateGpio));
         RaisePropertyChanged(nameof(CanReadGpio));
         RaisePropertyChanged(nameof(CanSendClamp));
