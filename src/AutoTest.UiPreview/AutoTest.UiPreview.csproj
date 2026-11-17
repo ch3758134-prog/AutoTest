@@ -5,6 +5,10 @@
     <AssemblyName>AutoTest.UiPreview</AssemblyName>
     <RootNamespace>AutoTest.UiPreview</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Same physical XAML resource used by Desktop; no service references. -->
+    <Page Include="../AutoTest.Desktop/Themes/Controls/PreviewEditor.xaml" Link="Themes/Controls/PreviewEditor.xaml" />
+  </ItemGroup>
   <!-- Deliberately no ProjectReference and no PackageReference:
        this executable has ZERO linkage to TEST, DBC, ECU, Devices, Flash or the old Desktop Shell. -->
 </Project>

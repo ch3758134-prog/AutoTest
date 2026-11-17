@@ -3,6 +3,9 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  StartupUri="MainWindow.xaml">
  <Application.Resources>
+  <ResourceDictionary.MergedDictionaries>
+   <ResourceDictionary Source="Themes/Controls/PreviewEditor.xaml"/>
+  </ResourceDictionary.MergedDictionaries>
   <SolidColorBrush x:Key="Ink" Color="#1E2C41"/>
   <SolidColorBrush x:Key="Muted" Color="#64758C"/>
   <SolidColorBrush x:Key="Blue" Color="#2368BD"/>

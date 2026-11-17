@@ -13,123 +13,7 @@
   <chrome:WindowChrome CaptionHeight="32" ResizeBorderThickness="6" GlassFrameThickness="0"
    CornerRadius="0" UseAeroCaptionButtons="False"/>
  </chrome:WindowChrome.WindowChrome>
- <Window.Resources>
-  <Style x:Key="Btn" TargetType="Button">
-   <Setter Property="Background" Value="White"/>
-   <Setter Property="Foreground" Value="#25415F"/>
-   <Setter Property="BorderBrush" Value="#D4DFED"/>
-   <Setter Property="BorderThickness" Value="1"/>
-   <Setter Property="MinHeight" Value="26"/>
-   <Setter Property="Padding" Value="9,3"/>
-   <Setter Property="Cursor" Value="Hand"/>
-   <Setter Property="FontSize" Value="11"/>
-   <Setter Property="VerticalAlignment" Value="Center"/>
-   <Setter Property="Template">
-    <Setter.Value><ControlTemplate TargetType="Button">
-     <Border x:Name="Border" Background="{TemplateBinding Background}"
-      BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-      CornerRadius="4" Padding="{TemplateBinding Padding}">
-      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-       RecognizesAccessKey="True"/>
-     </Border>
-     <ControlTemplate.Triggers>
-      <Trigger Property="IsMouseOver" Value="True">
-       <Setter TargetName="Border" Property="Background" Value="#F1F6FD"/>
-       <Setter TargetName="Border" Property="BorderBrush" Value="#A8C6E8"/>
-      </Trigger>
-      <Trigger Property="IsPressed" Value="True">
-       <Setter TargetName="Border" Property="Background" Value="#DEEAF9"/>
-      </Trigger>
-      <Trigger Property="IsEnabled" Value="False">
-       <Setter Property="Opacity" Value="0.45"/>
-      </Trigger>
-     </ControlTemplate.Triggers>
-    </ControlTemplate></Setter.Value>
-   </Setter>
-  </Style>
-  <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
-   <Setter Property="Background" Value="#2368BD"/>
-   <Setter Property="Foreground" Value="White"/>
-   <Setter Property="BorderBrush" Value="#2368BD"/>
-   <Setter Property="Template">
-    <Setter.Value>
-     <ControlTemplate TargetType="Button">
-      <Border x:Name="PrimaryBorder" Background="{TemplateBinding Background}"
-       CornerRadius="4" BorderBrush="{TemplateBinding BorderBrush}"
-       BorderThickness="1" Padding="{TemplateBinding Padding}">
-       <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-      </Border>
-      <ControlTemplate.Triggers>
-       <Trigger Property="IsMouseOver" Value="True">
-        <Setter TargetName="PrimaryBorder" Property="Background" Value="#1F5BA7"/>
-       </Trigger>
-       <Trigger Property="IsPressed" Value="True">
-        <Setter TargetName="PrimaryBorder" Property="Background" Value="#17477F"/>
-       </Trigger>
-      </ControlTemplate.Triggers>
-     </ControlTemplate>
-    </Setter.Value>
-   </Setter>
-  </Style>
-  <Style x:Key="BareBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
-   <Setter Property="Background" Value="Transparent"/>
-   <Setter Property="BorderThickness" Value="0"/>
-   <Setter Property="Padding" Value="5,2"/>
-  </Style>
-  <Style x:Key="UiInput" TargetType="TextBox">
-   <Setter Property="Background" Value="White"/>
-   <Setter Property="BorderBrush" Value="#CED9E6"/>
-   <Setter Property="BorderThickness" Value="1"/>
-   <Setter Property="Padding" Value="7,5"/>
-   <Setter Property="FontSize" Value="11"/>
-   <Setter Property="VerticalContentAlignment" Value="Center"/>
-   <Setter Property="MinHeight" Value="26"/>
-  </Style>
-  <Style x:Key="UiCombo" TargetType="ComboBox">
-   <Setter Property="Background" Value="White"/>
-   <Setter Property="BorderBrush" Value="#CFD9E6"/>
-   <Setter Property="BorderThickness" Value="1"/>
-   <Setter Property="MinHeight" Value="26"/>
-   <Setter Property="FontSize" Value="11"/>
-  </Style>
-  <Style x:Key="FieldLabel" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#607891"/>
-   <Setter Property="FontSize" Value="11"/>
-   <Setter Property="Margin" Value="0,0,0,5"/>
-  </Style>
-  <Style x:Key="BottomTab" TargetType="Button" BasedOn="{StaticResource BareBtn}">
-   <Setter Property="Foreground" Value="#536983"/>
-   <Setter Property="FontSize" Value="11"/>
-   <Setter Property="Margin" Value="3,0,8,0"/>
-  </Style>
-  <Style x:Key="TreeButton" TargetType="Button" BasedOn="{StaticResource BareBtn}">
-   <Setter Property="HorizontalContentAlignment" Value="Left"/>
-   <Setter Property="HorizontalAlignment" Value="Stretch"/>
-   <Setter Property="FontSize" Value="11"/>
-   <Setter Property="Foreground" Value="#29496E"/>
-  </Style>
-  <Style x:Key="PreviewListBoxItemStyle" TargetType="ListBoxItem">
-   <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-   <Setter Property="Padding" Value="0"/>
-   <Setter Property="Margin" Value="0"/>
-   <Setter Property="BorderThickness" Value="0"/>
-   <Setter Property="Background" Value="White"/>
-   <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-   <Setter Property="Template">
-    <Setter.Value><ControlTemplate TargetType="ListBoxItem">
-     <Border x:Name="Container" Background="{TemplateBinding Background}"
-      BorderBrush="#E9EEF5" BorderThickness="0,0,0,1">
-      <ContentPresenter HorizontalAlignment="Stretch"/>
-     </Border>
-     <ControlTemplate.Triggers>
-      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Container" Property="Background" Value="#F4F8FD"/></Trigger>
-      <DataTrigger Binding="{Binding IsMatch}" Value="True"><Setter TargetName="Container" Property="Background" Value="#FFF4DC"/></DataTrigger>
-      <Trigger Property="IsSelected" Value="True"><Setter TargetName="Container" Property="Background" Value="#EAF3FF"/><Setter TargetName="Container" Property="BorderBrush" Value="#91B9E9"/></Trigger>
-     </ControlTemplate.Triggers>
-    </ControlTemplate></Setter.Value>
-   </Setter>
-  </Style>
- </Window.Resources>
+
  <Grid>
   <Grid.RowDefinitions>
    <RowDefinition Height="32"/>
@@ -341,7 +225,7 @@
      <ListBox.ItemTemplate>
       <DataTemplate>
        <Grid Height="{Binding RowHeight}" Background="Transparent">
-        <Border Visibility="{Binding IsPhase,Converter={StaticResource B2V}}"
+        <Border Style="{StaticResource AtPreviewPhaseRow}" Visibility="{Binding IsPhase,Converter={StaticResource B2V}}"
          Background="{Binding PhaseBackground}" BorderBrush="{Binding PhaseAccent}"
          BorderThickness="3,0,0,1" Padding="8,0">
          <DockPanel LastChildFill="True">
@@ -358,7 +242,7 @@
           </StackPanel>
          </DockPanel>
         </Border>
-        <Border Visibility="{Binding IsBranch,Converter={StaticResource B2V}}"
+        <Border Style="{StaticResource AtPreviewBranchRow}" Visibility="{Binding IsBranch,Converter={StaticResource B2V}}"
          Background="#F5EEFB" BorderBrush="#DECEF3" BorderThickness="3,0,0,1"
          Padding="7,0">
          <DockPanel>
@@ -399,23 +283,15 @@
           FontFamily="Consolas"/>
          <StackPanel Grid.Column="1" Margin="{Binding Indent}" Orientation="Horizontal"
           VerticalAlignment="Center" ClipToBounds="True">
-          <Border Background="{Binding CategoryBackground}" CornerRadius="3"
-           Width="21" Height="21" Margin="0,0,7,0">
+          <Border Style="{StaticResource AtPreviewStepIcon}" Background="{Binding CategoryBackground}">
            <TextBlock Text="{Binding Icon}" Foreground="{Binding CategoryForeground}"
             FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
-          <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
-           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-           ToolTip="{Binding Name}" Foreground="#263D5C"/>
+          <TextBlock Text="{Binding Name}" Style="{StaticResource AtPreviewStepName}" ToolTip="{Binding Name}"/>
          </StackPanel>
-         <TextBlock Grid.Column="2" Text="{Binding Summary}" VerticalAlignment="Center"
-          TextTrimming="CharacterEllipsis" Foreground="#587795" FontSize="11"
-          Margin="3,0,8,0" ToolTip="{Binding Summary}"/>
-         <TextBlock Grid.Column="3" Text="{Binding Resource}" VerticalAlignment="Center"
-          TextTrimming="CharacterEllipsis" Foreground="#8498B0" FontSize="10"
-          Margin="0,0,5,0" ToolTip="{Binding Resource}"/>
-         <TextBlock Grid.Column="4" Text="{Binding Status}" VerticalAlignment="Center"
-          Foreground="#8293A9" FontSize="10" TextTrimming="CharacterEllipsis"/>
+         <TextBlock Grid.Column="2" Text="{Binding Summary}" Style="{StaticResource AtPreviewStepSummary}" ToolTip="{Binding Summary}"/>
+         <TextBlock Grid.Column="3" Text="{Binding Resource}" Style="{StaticResource AtPreviewStepResource}" ToolTip="{Binding Resource}"/>
+         <TextBlock Grid.Column="4" Text="{Binding Status}" Style="{StaticResource AtPreviewStepStatus}"/>
         </Grid>
        </Grid>
       </DataTemplate>
