@@ -297,4 +297,21 @@
         </Grid>
        </Grid>
  </DataTemplate>
+ <!-- Step palette shares the same button and typography system as the editor. -->
+ <Style x:Key="AtPreviewPaletteGroup" TargetType="TextBlock">
+  <Setter Property="Foreground" Value="#547089"/>
+  <Setter Property="FontWeight" Value="SemiBold"/>
+  <Setter Property="FontSize" Value="{StaticResource AtUiCaptionSize}"/>
+  <Setter Property="Margin" Value="0,10,0,6"/>
+ </Style>
+ <Style x:Key="AtPreviewPaletteButton" TargetType="Button" BasedOn="{StaticResource Btn}">
+  <Setter Property="Width" Value="226"/>
+  <Setter Property="MinHeight" Value="30"/>
+  <Setter Property="Margin" Value="0,0,8,6"/>
+  <Setter Property="Padding" Value="8,5,8,5"/>
+  <Setter Property="HorizontalContentAlignment" Value="Left"/>
+  <Setter Property="Foreground" Value="#28486D"/>
+  <Setter Property="Background" Value="{StaticResource AtUiSurface}"/>
+  <Setter Property="BorderBrush" Value="#D8E3EF"/>
+ </Style>
 </ResourceDictionary>

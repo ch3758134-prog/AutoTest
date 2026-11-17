@@ -211,13 +211,6 @@ public partial class MainWindow : Window
             StepNameField.SelectAll();
         }
     }
-    private void TogglePhase_Click(object sender,RoutedEventArgs e)
-    {
-        if (sender is not Button {Tag:PreviewRow row}) return;
-        row.Phase.Collapsed=!row.Phase.Collapsed;
-        RebuildRows();
-        e.Handled=true;
-    }
 
     private void ShowInspector()
     {
@@ -354,12 +347,6 @@ public partial class MainWindow : Window
         _targetRow=_selectedRow ?? Rows.FirstOrDefault(x=>x.IsPhase && x.Phase.Key=="test");
         OpenPalette();
     }
-    private void AddAtRow_Click(object sender,RoutedEventArgs e)
-    {
-        _targetRow=(sender as Button)?.Tag as PreviewRow;
-        OpenPalette();
-        e.Handled=true;
-    }
     private void InsertAfter_Click(object sender,RoutedEventArgs e)=>AddToolbar_Click(sender,e);
 
     private void OpenPalette()
@@ -395,19 +382,20 @@ public partial class MainWindow : Window
             var kinds=_palette.Where(x=>x.Group==group && (search.Length==0 ||
                 (x.Label+" "+x.Group).Contains(search,StringComparison.CurrentCultureIgnoreCase))).ToList();
             if(kinds.Count==0)continue;
-            PaletteGroupsPanel.Children.Add(new TextBlock{Text=group,
-                Foreground=PreviewRow.Solid("#547089"),FontWeight=FontWeights.SemiBold,
-                FontSize=11,Margin=new Thickness(0,10,0,6)});
+            PaletteGroupsPanel.Children.Add(new TextBlock
+            {
+                Text=group,
+                Style=(Style)FindResource("AtPreviewPaletteGroup")
+            });
             var wrap=new WrapPanel();
             foreach(var item in kinds)
             {
-                var button=new Button{Content=item.Icon+"  "+item.Label,Tag=item,
-                    Width=226,MinHeight=30,Margin=new Thickness(0,0,8,6),
-                    Padding=new Thickness(8,5,8,5),FontSize=11,
-                    HorizontalContentAlignment=HorizontalAlignment.Left,
-                    Foreground=PreviewRow.Solid("#28486D"),
-                    Background=Brushes.White,BorderBrush=PreviewRow.Solid("#D8E3EF"),
-                    BorderThickness=new Thickness(1),Cursor=Cursors.Hand};
+                var button=new Button
+                {
+                    Content=item.Icon+"  "+item.Label,
+                    Tag=item,
+                    Style=(Style)FindResource("AtPreviewPaletteButton")
+                };
                 button.Click+=(_,_)=>CreatePreviewStep(item);
                 wrap.Children.Add(button);
             }
