@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0.0",
+  "identity": {
+    "project": "AutoTest",
+    "asset": "HW_DESIGN_REFERENCE",
+    "date": "2026-11-16",
+    "authority": "RESEARCH_CANDIDATE",
+    "field_release": false
+  },
+  "boards": [
+    {
+      "id": "MAIN",
+      "design": "TestCtr V1.5",
+      "pdf_path": "docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-MAIN-TestCtr-V1.5.pdf",
+      "sha256": "44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353",
+      "mcu": "MK20DN512VLL10",
+      "pin_records": 100,
+      "connector_records": 64,
+      "firmware_sha": "c830dbcd56b436688437b446d222473a88b85098",
+      "path": "docs/engineering/hardware/boards/testctr-v1.5/"
+    },
+    {
+      "id": "KEY_SIM",
+      "design": "EPB_ODD V1.1",
+      "pdf_path": "docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/assets/HW-KEY-EPB_ODD-V1.1.pdf",
+      "sha256": "2f642b559ddcb4c325e872a67b0d74e0472f0db5bcb9021c1cbb4ff8596a6b2d",
+      "mcu": "MC9S08DZ32",
+      "pin_records": 32,
+      "switch_records": 20,
+      "connector_records": 20,
+      "firmware_sha": "313ed34ecc8a6e01529998787c8c870cc2e4db4a",
+      "path": "docs/engineering/hardware/boards/key-sim-v1.1/"
+    }
+  ],
+  "statuses": {
+    "SCHEMATIC_ONLY": "design drawing only",
+    "UNKNOWN": "not evidenced",
+    "UNRESOLVED": "conflicting evidence",
+    "SOURCE_ONLY": "versioned source only",
+    "ALT_NOT_FULLY_REVIEWED": "datasheet multiplexer not fully indexed"
+  },
+  "rules": [
+    "Original schematic PDF is evidence; CSV derives from it",
+    "Don't equate drawing net label with MCU package PAD",
+    "Do not equate design with PCB layout, installed harness or running firmware",
+    "Do not rewrite K8/R18 K13/R25 drawing anomalies",
+    "Do not infer unlabelled connector pin as NC",
+    "Never modify source code from reference document alone"
+  ]
+}

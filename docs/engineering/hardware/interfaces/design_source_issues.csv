@@ -1,0 +1,14 @@
+issue_id,board,subject,design_source,source_code,issue_type,verification_state
+HW-MAIN-01,MAIN,U7 P80 PTC8 design SOL9IN vs source KEY_PWR_DRV,"TestCtr V1.5 p3,p5",Main_Control c830dbcd EAL_GPIO.c,FIRMWARE_SCHEMATIC_DIFFERENCE,UNRESOLVED
+HW-MAIN-02,MAIN,U7 P81 PTC9 design SOL10IN vs source ECU_PWR_DRV,"TestCtr V1.5 p3,p5",Main_Control c830dbcd EAL_GPIO.c,FIRMWARE_SCHEMATIC_DIFFERENCE,UNRESOLVED
+HW-MAIN-03,MAIN,U7 P82 PTC10 design SOL11IN vs source IGN,"TestCtr V1.5 p3,p5",Main_Control c830dbcd EAL_GPIO.c,FIRMWARE_SCHEMATIC_DIFFERENCE,UNRESOLVED
+HW-MAIN-04,MAIN,IGN header PB19 differs from source table PC10,TestCtr V1.5 p3,Main_Control c830dbcd EAL_GPIO.h; EAL_GPIO.c,SOURCE_INTERNAL_DIFFERENCE,UNRESOLVED
+HW-MAIN-05,MAIN,SOL PB18 source semantic and drawing SOL6IN require independent chain proof,"TestCtr V1.5 p3,p5",Main_Control c830dbcd EAL_GPIO.c; ASW_PwrCtrl.c,CONTROL_CHAIN_NOT_FIELD_VERIFIED,UNRESOLVED
+HW-MAIN-06,MAIN,All five GPIO source init levels 1U conflict with LOW comments,"TestCtr V1.5 p2,p5",Main_Control c830dbcd EAL_GPIO.c,STARTUP_SAFETY_REVIEW,UNRESOLVED
+HW-MAIN-07,MAIN,Drawn CAN1/CAN2 named differently from firmware CAN0/CAN1,"TestCtr V1.5 p3,p4",Main_Control c830dbcd MCAL_CAN.c,NAMING_LAYER,DOCUMENTED_MAPPING
+HW-KEY-01,KEY_SIM,K8 R18 printed RELE_NC despite nearby RELE_NO group,EPB_ODD V1.1 p3,,SCHEMATIC_LABEL_ANOMALY,UNRESOLVED
+HW-KEY-02,KEY_SIM,K13 R25 printed RELE_NC despite nearby PARK_NO group,EPB_ODD V1.1 p3,,SCHEMATIC_LABEL_ANOMALY,UNRESOLVED
+HW-KEY-03,KEY_SIM,Pin 9 network PTB3_9P vs physical pad candidate PTE2,EPB_ODD V1.1 p2,Key_Sim 313ed34e Driver_Gpio.h KEY16 uses PTE2,NET_NAME_NOT_PAD,DATASHEET_CROSSCHECK
+HW-KEY-04,KEY_SIM,Pin 10 network PTB4_10P vs pad candidate PTE3 and historical KEY19 PTB4,EPB_ODD V1.1 p2,Key_Sim 313ed34e Driver_Gpio.h,PACKAGE_FW_DIFFERENCE,UNRESOLVED
+HW-KEY-05,KEY_SIM,Pin 12 network PTB6_12P vs pad candidate PTE5 and historical KEY20 PTB6,EPB_ODD V1.1 p2,Key_Sim 313ed34e Driver_Gpio.h,PACKAGE_FW_DIFFERENCE,UNRESOLVED
+HW-KEY-06,KEY_SIM,Actual five analog output voltages depend on BAT_KEY and ECU input load,"EPB_ODD V1.1 p3,p4",,EXTERNAL_LOAD_DEPENDENCY,UNKNOWN

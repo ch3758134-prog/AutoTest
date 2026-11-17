@@ -1,0 +1,16 @@
+id,category,key_components,schematic_pages,design_logic,pcb_state
+MAIN-MCU,"MCU,启动与调试","U7, JTAG, crystal, reset","3,5",MK20DN512VLL10; power/clock/JTAG; pin index in pins_u7.csv,UNKNOWN
+MAIN-PWR,主电源及稳压,U4 LMR14203; U8 12V; U11 3.3V,"2,4",BAT+ / SOL24 / VCC12V / VCC5V / VCC3P3; USB optocoupler enable,UNKNOWN
+MAIN-USB,USB及隔离,U18 ADUM4160BRIZ; P1,4,PC USB / D+/D- / isolation; VBUS power constraints,UNKNOWN
+MAIN-CAN1,图纸CAN1隔离通道,U9 ADM3054,4,PTA12/PTA13→TXCAN1/RXCAN1→CAN1_H/CAN1_L→J1 B11/B1,UNKNOWN
+MAIN-CAN2,图纸CAN2通道,U10 TJA1042T/3,4,PTC17/PTC16→TXCAN2/RXCAN2→CAN2_H/CAN2_L→J1 A12/A1,UNKNOWN
+MAIN-KLINE,K-Line,U12 TJA1021/20,4,KTXD/KRXD and external KLINE,UNKNOWN
+MAIN-RS232,RS232,U13 MAX3232,4,UART TTL to 232 electrical levels; DB9,UNKNOWN
+MAIN-MAIN-SWITCH,主供电开关,Q4 2N7002; U2 BTS50055,2,PTC0 RL_DRV→Q4→high-side power switch; DIAG_SOL separate,UNKNOWN
+MAIN-HIGH-SIDE,多路高边输出,U5 U22 U23 BTS724G,5,SOLxIN control groups and HOUTx/Air_ALVE outputs; output driver pin crosscheck required,UNKNOWN
+MAIN-LAMP,灯驱动,JU1 JU2 TLE6228,5,MCU_LAMPx→lamp drivers→J1 lamp nets,UNKNOWN
+MAIN-DAC,DAC及SPEED输出,U3 MAX5715; U1 TLV4172,3,SPI-like DAC input→4 analog buffer channels→SPEED1-4,UNKNOWN
+MAIN-ADC,模拟采集及滤波,ADC input resistors/protectors,4,"AD_L_APPx, AD_L_LAMPx, AD_SOLIN, AD_VCC12V",UNKNOWN
+MAIN-CURRENT,Motor与SOL电流采集,INA190A2 x2,4,Shunt→INA190A2→ADC; resistor/gain/calibration need independent verification,UNKNOWN
+MAIN-HALL,HALL模拟,Q1 Q2 Q6 Q7 Q13,5,H_SPEEDx→transistor output; HALL_5VCTR switch,UNKNOWN
+MAIN-J1,板级输出接口,J1 CON-64,1,64 design contacts; no installed harness assertion,UNKNOWN
