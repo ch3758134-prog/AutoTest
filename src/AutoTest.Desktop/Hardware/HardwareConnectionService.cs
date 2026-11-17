@@ -87,6 +87,9 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 Interlocked.Exchange(ref _currentEpoch, 0);
                 _link?.RevokePhysicalTestRun();
                 _link?.RevokeManualCanBatch();
+                _link?.RevokeManualKeySequence();
+                _manualKeyActionApproved = false;
+                _manualKeyActionFingerprint = null;
                 _manualCanBatchApproved = false;
                 _manualBatchFingerprint = null;
                 AnnounceManualBatch(false);
@@ -286,6 +289,9 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         try
         {
             _link?.RevokeManualCanBatch();
+            _link?.RevokeManualKeySequence();
+            _manualKeyActionApproved = false;
+            _manualKeyActionFingerprint = null;
             _manualCanBatchApproved = false;
             _manualBatchFingerprint = null;
             AnnounceManualBatch(false);
