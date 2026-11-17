@@ -75,6 +75,11 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     private string _canConfirmation = "";
     private string _keyConfirmation = "";
     private string _ignConfirmation = "";
+    private string _clampConfirmation = "";
+    private string _lastClampStatus = "夹具状态 UNKNOWN：尚未读取本次 MCU GPIO。";
+    private bool _clampSafetyConfirmed;
+    private byte _selectedClamp = 1;
+    private bool _clampPress;
     private string _status = "仅操作真实硬件。请先连接主控板并加载工程配置。";
     private string _lastKeyAck = "未知：未收到本会话的 Key 操作 ACK";
     private string _lastIgnAck = "未知：未在本会话下发 IGN";
@@ -122,6 +127,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     public string ConnectionStatus => IsConnected
         ? "USB 已连接 · G" + _hardware.CurrentStationEpoch + " · " +
           (_hardware.ConnectedDeviceIdentity ?? "设备身份未返回") +
+          " · FW " + (_hardware.ConnectedFirmwareVersion ?? "未知") +
           " · CAN1=DUT，CAN0=KEY_SIM"
         : "USB 未连接 · 不继承上次连接的实体状态";
     public bool IsBusy { get => _busy; private set { if (SetProperty(ref _busy, value)) RaiseCommands(); } }
@@ -168,6 +174,37 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     public string CanConfirmation { get => _canConfirmation; set => SetProperty(ref _canConfirmation, value ?? ""); }
     public string KeyConfirmation { get => _keyConfirmation; set => SetProperty(ref _keyConfirmation, value ?? ""); }
     public string IgnConfirmation { get => _ignConfirmation; set => SetProperty(ref _ignConfirmation, value ?? ""); }
+    public string ClampConfirmation { get => _clampConfirmation; set => SetProperty(ref _clampConfirmation, value ?? ""); }
+    public string LastClampStatus { get => _lastClampStatus; private set => SetProperty(ref _lastClampStatus, value); }
+    public bool ClampSafetyConfirmed
+    {
+        get => _clampSafetyConfirmed;
+        set { if (SetProperty(ref _clampSafetyConfirmed, value)) RaiseCommands(); }
+    }
+    public bool Clamp1Selected { get => _selectedClamp == 1; set { if (value) ChooseClamp(1); } }
+    public bool Clamp2Selected { get => _selectedClamp == 2; set { if (value) ChooseClamp(2); } }
+    public bool ClampPress { get => _clampPress; set { if (value) ChooseClampState(true); } }
+    public bool ClampRelease { get => !_clampPress; set { if (value) ChooseClampState(false); } }
+    public string ClampExpectedConsent => "AUTHORIZE CLAMP " + _selectedClamp +
+        (_clampPress ? " PRESS" : " RELEASE");
+    private void ChooseClamp(byte clamp)
+    {
+        if (_selectedClamp == clamp) return;
+        _selectedClamp = clamp;
+        ClampConfirmation = "";
+        RaisePropertyChanged(nameof(Clamp1Selected));
+        RaisePropertyChanged(nameof(Clamp2Selected));
+        RaisePropertyChanged(nameof(ClampExpectedConsent));
+    }
+    private void ChooseClampState(bool press)
+    {
+        if (_clampPress == press) return;
+        _clampPress = press;
+        ClampConfirmation = "";
+        RaisePropertyChanged(nameof(ClampPress));
+        RaisePropertyChanged(nameof(ClampRelease));
+        RaisePropertyChanged(nameof(ClampExpectedConsent));
+    }
     public string LastKeyAck { get => _lastKeyAck; private set => SetProperty(ref _lastKeyAck, value); }
     public string LastIgnAck { get => _lastIgnAck; private set => SetProperty(ref _lastIgnAck, value); }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
@@ -175,6 +212,9 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     public string DraftMaskLabel => "待发送 Key 掩码 0x" + DraftMask.ToString("X5", CultureInfo.InvariantCulture);
     public bool HasConfiguredKeys => _controller?.KeyHardwarePolicy is not null;
     public bool CanSendHardware => IsConnected && !IsBusy && !_hardware.IsTestRunApproved;
+    public bool CanOperateGpio => CanSendHardware && _hardware.HasV02GpioContract;
+    public bool CanReadGpio => IsConnected && !IsBusy && _hardware.HasV02GpioContract;
+    public bool CanSendClamp => CanOperateGpio && ClampSafetyConfirmed;
     public string CanExpectedConsent => ExpectedConsent(TryBuildCanFrame);
     public string KeyExpectedConsent => ExpectedConsent(TryBuildKeyFrame);
     public string IgnExpectedConsent => "AUTHORIZE IGN " + (IgnOn ? "ON" : "OFF");
@@ -213,6 +253,9 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     public DelegateCommand SendKeyCommand { get; }
     public DelegateCommand ReleaseKeysCommand { get; }
     public DelegateCommand SendIgnCommand { get; }
+    public DelegateCommand ReadIgnCommand { get; }
+    public DelegateCommand SendClampCommand { get; }
+    public DelegateCommand ReadClampsCommand { get; }
     public DelegateCommand ClearLogsCommand { get; }
 
     public ManualBenchViewModel(ProjectWorkspaceService projects, HardwareConnectionService hardware)
@@ -234,7 +277,10 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         SendCanCommand = new DelegateCommand(async () => await SendCanAsync(), () => CanSendHardware);
         SendKeyCommand = new DelegateCommand(async () => await ApplyKeysAsync(), () => CanSendHardware && HasConfiguredKeys);
         ReleaseKeysCommand = new DelegateCommand(ReleaseDraftKeys, () => !IsBusy);
-        SendIgnCommand = new DelegateCommand(async () => await ApplyIgnAsync(), () => CanSendHardware);
+        SendIgnCommand = new DelegateCommand(async () => await ApplyIgnAsync(), () => CanOperateGpio);
+        ReadIgnCommand = new DelegateCommand(async () => await ReadIgnAsync(), () => CanReadGpio);
+        SendClampCommand = new DelegateCommand(async () => await ApplyClampAsync(), () => CanSendClamp);
+        ReadClampsCommand = new DelegateCommand(async () => await ReadClampsAsync(), () => CanReadGpio);
         ClearLogsCommand = new DelegateCommand(() => Logs.Clear());
         _ = ReloadResourcesAsync();
     }
@@ -272,6 +318,9 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
             CanConfirmation = "";
             KeyConfirmation = "";
             IgnConfirmation = "";
+            ClampConfirmation = "";
+            ClampSafetyConfirmed = false;
+            LastClampStatus = "连接世代已改变；夹具实体状态 UNKNOWN，需重新核对现场。";
             LastKeyAck = "未知：连接已改变，原状态不可继承";
             LastIgnAck = "未知：连接已改变，原状态不可继承";
             RaisePropertyChanged(nameof(IsConnected));
@@ -314,11 +363,17 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     private void RaiseCommands()
     {
         RaisePropertyChanged(nameof(CanSendHardware));
+        RaisePropertyChanged(nameof(CanOperateGpio));
+        RaisePropertyChanged(nameof(CanReadGpio));
+        RaisePropertyChanged(nameof(CanSendClamp));
         ConnectCommand?.RaiseCanExecuteChanged();
         ReloadProfilesCommand?.RaiseCanExecuteChanged();
         SendCanCommand?.RaiseCanExecuteChanged();
         SendKeyCommand?.RaiseCanExecuteChanged();
         SendIgnCommand?.RaiseCanExecuteChanged();
+        ReadIgnCommand?.RaiseCanExecuteChanged();
+        SendClampCommand?.RaiseCanExecuteChanged();
+        ReadClampsCommand?.RaiseCanExecuteChanged();
         ReleaseKeysCommand?.RaiseCanExecuteChanged();
     }
 
@@ -339,7 +394,12 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     private async Task ToggleConnectionAsync() => await Execute("USB", async () =>
     {
         if (_hardware.IsConnected) await _hardware.DisconnectAsync();
-        else await _hardware.ConnectAsync();
+        else
+        {
+            // Faulted still owns a USB session, even though it is not Connected.
+            if (_hardware.HasSession) await _hardware.DisconnectAsync();
+            await _hardware.ConnectAsync();
+        }
         RaisePropertyChanged(nameof(ConnectionStatus));
     });
 
@@ -567,6 +627,62 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         await _hardware.SendManualIgnAsync(IgnOn, IgnConfirmation);
         LastIgnAck = "主控 ACK · IGN 请求 " + (IgnOn ? "ON" : "OFF") + "，实际 IGN 电平未测量";
         IgnConfirmation = "";
+    });
+
+    private async Task ReadIgnAsync() => await Execute("读取 IGN GPIO", async () =>
+    {
+        bool gpio = await _hardware.ReadIgnLevelAsync();
+        LastIgnAck = "MCU GPIO 读回 " + (gpio ? "HIGH" : "LOW") +
+            "（不是 J1 C6 电压或 ECU IGN 反馈）";
+        Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+            "IO IGN", "READ", "0x13", gpio ? "01" : "00", LastIgnAck));
+    });
+
+    private async Task ReadClampsAsync() => await Execute("读取两夹具 GPIO", async () =>
+    {
+        byte levels = await _hardware.ReadClampLevelsAsync();
+        LastClampStatus = "MCU GPIO · 夹具1=" + ((levels & 1) != 0 ? "HIGH" : "LOW") +
+            "，夹具2=" + ((levels & 2) != 0 ? "HIGH" : "LOW") +
+            "（不是阀位或实际 J1 电压）";
+        Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+            "IO 夹具", "READ", "0x19", levels.ToString("X2"), LastClampStatus));
+    });
+
+    private async Task ApplyClampAsync() => await Execute("夹具" + _selectedClamp, async () =>
+    {
+        byte clamp = _selectedClamp;
+        bool press = _clampPress;
+        if (!ClampSafetyConfirmed)
+            throw new InvalidOperationException("操作前需确认线束、气路与人员安全。");
+        try
+        {
+            await _hardware.SendManualClampAsync(clamp, press, ClampConfirmation);
+            ClampConfirmation = "";
+            LastClampStatus = "夹具" + clamp + " " + (press ? "压紧" : "释放") +
+                " 请求主控 ACK；实际机械到位未测量。";
+            Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+                "IO 夹具", "SET ACK", "0x18",
+                clamp.ToString("X2") + (press ? "01" : "00"), LastClampStatus));
+            try
+            {
+                byte levels = await _hardware.ReadClampLevelsAsync();
+                bool gpio = (levels & (1 << (clamp - 1))) != 0;
+                LastClampStatus += " GPIO读回 0x" + levels.ToString("X2") +
+                    (gpio == press ? "（MCU电平匹配请求）。" : "（MCU电平与请求不一致！）。");
+                Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+                    "IO 夹具", "READ", "0x19", levels.ToString("X2"), LastClampStatus));
+            }
+            catch (Exception readError)
+            {
+                LastClampStatus += " GPIO读回失败：" + readError.Message +
+                    "；实体状态不可推断。";
+            }
+        }
+        catch
+        {
+            LastClampStatus = "夹具" + clamp + " 操作失败或未确认；实体状态 UNKNOWN。";
+            throw;
+        }
     });
 
     public void Dispose()
