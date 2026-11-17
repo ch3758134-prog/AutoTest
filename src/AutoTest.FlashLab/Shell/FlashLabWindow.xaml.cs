@@ -519,20 +519,24 @@ public partial class FlashLabWindow : Window
                 LegacyTailSignatureCheck.IsChecked==true);
             if(!string.Equals(frozen.Fingerprint,fresh.Fingerprint,StringComparison.Ordinal))
                 throw new InvalidOperationException("配置、固件或安全文件已改变；请重新点击开始烧录。");
+            // The operator needs a decision, not a technical audit printout.
+            // Complete hashes, source identity, CAN IDs, alignment and signature
+            // remain in the read-only plan and diagnostics, not this modal.
+            AddLog(
+                $"烧录确认详情：planSHA={frozen.Fingerprint}; "+
+                $"firmwareSHA={frozen.FirmwareSha256}; "+
+                $"securitySource={frozen.SecurityProviderKind}; "+
+                $"securityFileSHA={frozen.SecuritySha256}; "+
+                $"CAN={frozen.ConfiguredBitrate}; "+
+                $"endSignature={(frozen.LegacyTailSignature?"on":"off")}; "+
+                $"erase=0x{frozen.FlashStart:X8}..0x{frozen.FlashEndInclusive:X8}");
             var choice=MessageBox.Show(this,
-                "这是实体 ECU 编程操作，不是仿真。\n\n"+
-                $"镜像：{Path.GetFileName(frozen.FirmwarePath)}\n"+
-                $"ECU 身份未自动识别；请核对目标实物与配置。\n"+
-                $"XML 波特率：{frozen.ConfiguredBitrate}；主控固件预期 500K，实际物理速率未测量。\n"+
-                $"擦除全部地址：0x{frozen.FlashStart:X8}..0x{frozen.FlashEndInclusive:X8}\n"+
-                $"固件 SHA256：{frozen.FirmwareSha256}\n"+
-                $"安全算法：CanTool 参考内置 LFSR（不是外部 DLL，尚未证实 ECU 兼容）\n"+
-                $"参考文件 SHA256：{frozen.SecuritySha256}\n"+
-                $"末端参考签名：{(frozen.LegacyTailSignature ? "启用（覆盖4字节）" : "未启用")}\n\n"+
-                "操作将执行 Boot 切换、SecurityAccess、实际擦除、下载、校验、复位。\n"+
-                "断连/取消后 ECU 可能处于无法启动状态。已确认供电稳定、镜像/算法/地址"+
-                "与真实 ECU 完全匹配，并允许本次写入吗？",
-                "最终确认：真实 ECU Flash 擦写",MessageBoxButton.YesNo,
+                $"固件：{Path.GetFileName(frozen.FirmwarePath)}\n"+
+                $"擦除范围：0x{frozen.FlashStart:X8} - 0x{frozen.FlashEndInclusive:X8}\n\n"+
+                "将对真实 ECU 擦除并写入，请确认型号与固件匹配、供电稳定。\n"+
+                "安全算法尚未经这台 ECU 验证。\n\n"+
+                "确定开始烧录？",
+                "确认开始烧录",MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,MessageBoxResult.No);
             if(choice!=MessageBoxResult.Yes)return;
 
