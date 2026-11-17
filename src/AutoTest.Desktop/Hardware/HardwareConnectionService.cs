@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.IO;
+using System.Text;
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
 using AutoTest.Devices.Usb;
@@ -24,6 +25,12 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     public bool HasSession => _usb is not null;
     /// <summary>Discovery identity for the currently ping-confirmed USB session, not an ECU identity.</summary>
     public string? ConnectedDeviceIdentity { get; private set; }
+    public string? ConnectedFirmwareVersion { get; private set; }
+    /// <summary>Only source-reported v0.4-dev supports the independent clamp protocol.
+    /// This string is not a physical firmware hash or wiring attestation.</summary>
+    public bool HasV02GpioContract => IsConnected &&
+        string.Equals(ConnectedFirmwareVersion, MainControllerCodec.ClampContractVersion,
+            StringComparison.Ordinal);
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;
@@ -62,6 +69,17 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 Record("USB " + ev.Operation + "/" + ev.Stage + " " + ev.Outcome +
                     (ev.NativeErrorHex is null ? "" : " " + ev.NativeErrorHex));
             pending = new UsbSessionService(link);
+            pending.StateChanged += state =>
+            {
+                if (state != UsbSessionState.Faulted) return;
+                Interlocked.Exchange(ref _currentEpoch, 0);
+                _link?.RevokePhysicalTestRun();
+                _testRunApproved = false;
+                _approvedPlan = null;
+                PublishTestRunAuthorization(false);
+                Record("USB RX 已故障；实体状态 UNKNOWN，需断开旧会话后重新连接。");
+                try { ConnectionChanged?.Invoke(0); } catch { }
+            };
             pending.TraceRecorded += trace =>
             {
                 if (trace.Kind is "CONNECT_ERROR" or "READ_FAULT" or "REQUEST_TIMEOUT" or
@@ -71,8 +89,18 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             };
             await pending.ConnectAsync(cancellationToken);
             // An acknowledged F0 ping confirms the protocol path, not CAN bus/ECU power.
-            await pending.RequestAsync(MainControllerCodec.Ping, ReadOnlyMemory<byte>.Empty,
+            var ping = await pending.RequestAsync(MainControllerCodec.Ping, ReadOnlyMemory<byte>.Empty,
                 TimeSpan.FromSeconds(2), cancellationToken);
+            if (!ping.Payload.AsSpan().SequenceEqual("PONG"u8))
+                throw new InvalidDataException("USB PING returned an unexpected payload.");
+            var version = await pending.RequestAsync(MainControllerCodec.GetVersion,
+                ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(2), cancellationToken);
+            if (version.Payload.Length is < 1 or > 80 ||
+                version.Payload.Any(value => value < 0x20 || value > 0x7E))
+                throw new InvalidDataException("GET_VERSION did not return printable ASCII.");
+            ConnectedFirmwareVersion = Encoding.ASCII.GetString(version.Payload);
+            Record("GET_VERSION：" + ConnectedFirmwareVersion +
+                "（设备自报版本，不是固件哈希或烧录内容证据）");
             ConnectedDeviceIdentity = candidate.DisplayIdentity;
             _link = link;
             _usb = pending;
@@ -141,6 +169,72 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
+    private void RequireV02GpioContract()
+    {
+        if (!HasV02GpioContract)
+            throw new InvalidOperationException("GPIO 操作要求主控 GET_VERSION 为 " +
+                MainControllerCodec.ClampContractVersion + "；当前为 " +
+                (ConnectedFirmwareVersion ?? "未知") + "。拒绝旧版 GPIO 映射。");
+    }
+
+    /// <summary>Read MCU GPIO only; not J1 voltage or ECU ignition state.</summary>
+    public async Task<bool> ReadIgnLevelAsync(CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            RequireV02GpioContract();
+            var response = await _usb!.RequestAsync(MainControllerCodec.GetIgn,
+                ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
+            if (response.Payload.Length != 1 || response.Payload[0] > 1)
+                throw new InvalidDataException("GET_IGN must return a single GPIO bit.");
+            Record("GET_IGN MCU GPIO=" + response.Payload[0] + "（非 J1 实测电压）");
+            return response.Payload[0] == 1;
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Two independent clamp GPIO bits; never a mechanical sensor measurement.</summary>
+    public async Task<byte> ReadClampLevelsAsync(CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            RequireV02GpioContract();
+            var response = await _usb!.RequestAsync(MainControllerCodec.GetClamps,
+                ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
+            if (response.Payload.Length != 1 || (response.Payload[0] & 0xFC) != 0)
+                throw new InvalidDataException("GET_CLAMPS may contain only bit0/bit1.");
+            Record("GET_CLAMPS GPIO 0x" + response.Payload[0].ToString("X2") +
+                "（非气阀/机械位置测量）");
+            return response.Payload[0];
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>0x18 [clamp=1/2, state=0/1]. Other clamp is unchanged.
+    /// Transport authorization consumes one exact request before USB writing.</summary>
+    public async Task SendManualClampAsync(byte clamp, bool press, string exactConfirmation,
+        CancellationToken ct = default)
+    {
+        if (clamp is not (1 or 2)) throw new ArgumentOutOfRangeException(nameof(clamp));
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            RequireV02GpioContract();
+            if (_testRunApproved || _link is null)
+                throw new InvalidOperationException("自动 TEST 已占用工位或实体未连接；禁止手动夹具动作。");
+            _link.AuthorizeOneClampChange(clamp, press, exactConfirmation);
+            var data = new byte[] { clamp, press ? (byte)1 : (byte)0 };
+            Record("夹具" + clamp + " 请求" + (press ? "压紧" : "释放") +
+                "，原始请求=" + Convert.ToHexString(data));
+            await _usb!.RequestAsync(MainControllerCodec.SetClamp, data,
+                TimeSpan.FromSeconds(3), ct);
+            Record("夹具" + clamp + " 主控 USB ACK；实际夹具到位未测量。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
     /// <summary>One explicit manual IGN request. Transport consumes the exact
     /// confirmation before the USB write; ACK is not proof of ECU electrical state.</summary>
     public async Task SendManualIgnAsync(bool on, string exactConfirmation,
@@ -153,6 +247,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 throw new IOException("USB 主控未连接，禁止 IGN 操作。");
             if (_testRunApproved)
                 throw new InvalidOperationException("真实测试运行已获授权，手动 IGN 操作被锁定。");
+            RequireV02GpioContract();
             _link.AuthorizeOneIgnChange(on, exactConfirmation);
             Record("IGN 单次授权：" + (on ? "ON" : "OFF"));
             await _usb.RequestAsync(MainControllerCodec.SetIgn,
@@ -226,6 +321,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (!_testRunApproved || _approvedPlan != fingerprint ||
                 _usb?.State != UsbSessionState.Connected)
                 throw new UnauthorizedAccessException("No live approved test plan.");
+            RequireV02GpioContract();
             await _usb.RequestAsync(MainControllerCodec.SetIgn,
                 new byte[] { on ? (byte)1 : (byte)0 },
                 TimeSpan.FromSeconds(3), ct);
@@ -258,6 +354,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _usb = null;
             _link = null;
             ConnectedDeviceIdentity = null;
+            ConnectedFirmwareVersion = null;
             _hub?.Dispose();
             _hub = null;
             Record("主控已断开；旧连接 CAN 订阅已失效。");
