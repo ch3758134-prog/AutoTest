@@ -43,6 +43,48 @@ public sealed class ManualPhysicalSafetyTests
         Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(on, 3));
     }
 
+    [Fact]
+    public void ClampV02_RequiresExactTwoByteConsentAndConsumesOneOperation()
+    {
+        var fence = new PhysicalCommandFence();
+        var firstPress = MainControllerCodec.EncodeClamp(1, 1, true);
+        var secondPress = MainControllerCodec.EncodeClamp(2, 2, true);
+        var firstRelease = MainControllerCodec.EncodeClamp(3, 1, false);
+        Assert.True(UsbWireCodec.TryDecodeRequest(firstPress, out var decoded));
+        Assert.Equal(MainControllerCodec.SetClamp, decoded.Command);
+        Assert.Equal(new byte[] { 1, 1 }, decoded.Payload);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(firstPress, 9));
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AuthorizeSingleClamp(1, true, "AUTHORIZE CLAMP 1 RELEASE", 9));
+        fence.AuthorizeSingleClamp(1, true, "AUTHORIZE CLAMP 1 PRESS", 9);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(secondPress, 9));
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(firstPress, 10));
+        fence.AssertAllowedAndConsume(firstPress, 9);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(firstPress, 9));
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(firstRelease, 9));
+        fence.AuthorizeSingleClamp(2, true, "AUTHORIZE CLAMP 2 PRESS", 9);
+        fence.Reset();
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(secondPress, 9));
+        Assert.Throws<ArgumentOutOfRangeException>(() => MainControllerCodec.EncodeClamp(4, 3, true));
+    }
+
+    [Fact]
+    public void ClampV02_OldReadCommandsForbiddenAndTestRunCannotWriteClamps()
+    {
+        var fence = new PhysicalCommandFence();
+        var old = UsbWireCodec.EncodeRequest(1, 0x17, ReadOnlySpan<byte>.Empty);
+        var read = UsbWireCodec.EncodeRequest(2, MainControllerCodec.GetClamps, ReadOnlySpan<byte>.Empty);
+        var press = MainControllerCodec.EncodeClamp(3, 1, true);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(old, 5));
+        fence.AssertAllowedAndConsume(read, 5);
+        var sha = new string('b', 64);
+        fence.AuthorizePhysicalRun(sha, "AUTHORIZE TEST RUN " + sha,
+            Array.Empty<(byte Port, bool Extended, uint Id)>(), false, 5);
+        Assert.Throws<InvalidOperationException>(() =>
+            fence.AuthorizeSingleClamp(1, true, "AUTHORIZE CLAMP 1 PRESS", 5));
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(press, 5));
+    }
+
     [Theory]
     [InlineData(0x00001u, 0x01, 0x01, 0x00, 0x00)]
     [InlineData(0x12345u, 0x01, 0x45, 0x23, 0x01)]

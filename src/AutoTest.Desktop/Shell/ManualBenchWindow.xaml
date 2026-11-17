@@ -191,13 +191,51 @@
        Margin="0,7,0,4"/>
       <TextBox Text="{Binding IgnConfirmation,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
        Padding="7,6" MinHeight="29"/>
-      <Button Content="下发一次 IGN" Command="{Binding SendIgnCommand}"
-       IsEnabled="{Binding CanSendHardware}" Margin="0,8,0,0"/>
+      <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+       <Button Content="下发一次 IGN" Command="{Binding SendIgnCommand}"
+        IsEnabled="{Binding CanOperateGpio}" Margin="0,0,8,0"/>
+       <Button Content="读取 MCU GPIO" Command="{Binding ReadIgnCommand}"
+        IsEnabled="{Binding CanReadGpio}"/>
+      </StackPanel>
       <Border BorderBrush="#E5EDF6" BorderThickness="0,1,0,0" Margin="0,15,0,10"/>
       <TextBlock Text="夹具电磁阀" Style="{StaticResource BenchSectionTitle}"/>
-      <TextBlock Text="固件命令与现场接线仍待确认。本版本禁用夹具输出，不借用其他 USB 指令。"
+      <TextBlock Text="主控 v0.2：夹具1=J1 B5，夹具2=J1 B4；0请求释放，1请求压紧。两路独立；USB 断连可能使夹具释放。"
        Foreground="#9D6A26" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"/>
-      <Button Content="夹具压紧／释放 · 未开放" IsEnabled="False"/>
+      <TextBlock Text="仅 GET_VERSION 自报 EPB_TEST_CTRL v0.4-dev 时允许 IO 请求；版本字符串不是实物烧录哈希或线束安全证明。"
+       Foreground="#667E96" TextWrapping="Wrap" FontSize="11"/>
+      <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+       <RadioButton Content="夹具1 · B5" GroupName="ClampTarget"
+        IsChecked="{Binding Clamp1Selected,Mode=TwoWay}" Margin="0,0,16,0"/>
+       <RadioButton Content="夹具2 · B4" GroupName="ClampTarget"
+        IsChecked="{Binding Clamp2Selected,Mode=TwoWay}"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+       <RadioButton Content="压紧 (1)" GroupName="ClampAction"
+        IsChecked="{Binding ClampPress,Mode=TwoWay}" Margin="0,0,16,0"/>
+       <RadioButton Content="释放 (0)" GroupName="ClampAction"
+        IsChecked="{Binding ClampRelease,Mode=TwoWay}"/>
+      </StackPanel>
+      <CheckBox IsChecked="{Binding ClampSafetyConfirmed,Mode=TwoWay}" Margin="0,12,0,0">
+       <TextBlock Text="已核对实物接线与气路，夹具动作区域无人且允许本次实测"
+        TextWrapping="Wrap" MaxWidth="370"/>
+      </CheckBox>
+      <TextBlock Text="{Binding LastClampStatus}" TextWrapping="Wrap"
+       Foreground="#607B99" FontSize="11" Margin="0,8,0,0"/>
+      <TextBlock Text="本次夹具授权文字" Style="{StaticResource BenchFieldLabel}"/>
+      <TextBox Text="{Binding ClampExpectedConsent}" IsReadOnly="True"
+       TextWrapping="Wrap" Padding="7,6" FontSize="10" MinHeight="32"/>
+      <DockPanel Margin="0,6,0,0">
+       <Button DockPanel.Dock="Right" Content="复制" Click="CopyClampConfirmation_Click"
+        Margin="6,0,0,0"/>
+       <TextBox Text="{Binding ClampConfirmation,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+        Padding="7,6" MinHeight="29"/>
+      </DockPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+       <Button Content="执行夹具请求" Command="{Binding SendClampCommand}"
+        Style="{StaticResource AtPrimaryButton}" IsEnabled="{Binding CanSendClamp}" Margin="0,0,8,0"/>
+       <Button Content="读取两夹具 GPIO" Command="{Binding ReadClampsCommand}"
+        IsEnabled="{Binding CanReadGpio}"/>
+      </StackPanel>
      </StackPanel>
     </ScrollViewer>
    </Border>

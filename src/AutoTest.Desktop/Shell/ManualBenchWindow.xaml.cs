@@ -46,6 +46,9 @@ public partial class ManualBenchWindow : Window
     private void CopyKeyConfirmation_Click(object sender, RoutedEventArgs e) =>
         Clipboard.SetText(_model.KeyExpectedConsent);
 
+    private void CopyClampConfirmation_Click(object sender, RoutedEventArgs e) =>
+        Clipboard.SetText(_model.ClampExpectedConsent);
+
     private void SelectNamedOperation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.Button
