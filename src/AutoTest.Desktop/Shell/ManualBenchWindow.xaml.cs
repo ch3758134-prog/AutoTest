@@ -2,6 +2,8 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using AutoTest.Desktop.Shell;
 
@@ -11,6 +13,9 @@ public partial class ManualBenchWindow : Window
 {
     private readonly ManualBenchViewModel _model;
     private bool _closeAfterCanStopped;
+    private readonly DispatcherTimer _keyAutosaveTimer = new() { Interval = TimeSpan.FromSeconds(7) };
+    private DateTime _lastInteractionUtc = DateTime.UtcNow;
+    private bool _keyAutosaveBusy;
 
     public ManualBenchWindow(ManualBenchViewModel model)
     {
@@ -18,7 +23,25 @@ public partial class ManualBenchWindow : Window
         DataContext = model;
         InitializeComponent();
         Closing += OnClosing;
-        Closed += (_, _) => _model.Dispose();
+        _keyAutosaveTimer.Tick += OnKeyAutosaveTick;
+        Loaded += (_, _) => _keyAutosaveTimer.Start();
+        PreviewMouseDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
+        PreviewKeyDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
+        PreviewTextInput += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
+        Closed += (_, _) => { _keyAutosaveTimer.Stop(); _model.Dispose(); };
+    }
+
+    private async void OnKeyAutosaveTick(object? sender, EventArgs e)
+    {
+        if (_keyAutosaveBusy || !IsActive || !IsEnabled || _closeAfterCanStopped ||
+            _model.IsKeyActionRunning || !_model.CanSaveKeyActions ||
+            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4) ||
+            Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
+        _keyAutosaveBusy = true;
+        try { await _model.SaveKeyActionsForCloseAsync(); }
+        catch (Exception error)
+        { System.Diagnostics.Trace.TraceWarning("KEY catalog autosave error: " + error); }
+        finally { _keyAutosaveBusy = false; }
     }
 
     private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
