@@ -30,7 +30,12 @@ public partial class ManualBenchWindow : Window
         if (chooser.ShowDialog(this) != true) return;
         try
         {
-            var lines = _model.Logs.Select(entry => JsonSerializer.Serialize(entry)).ToArray();
+            var lines = _model.SnapshotMonitorTimeline()
+                .Select(entry => JsonSerializer.Serialize(new { Kind = "CAN_RX", Entry = entry }))
+                .Concat(_model.Logs.Select(entry => JsonSerializer.Serialize(new
+                {
+                    Kind = "STATION_EVENT", Entry = entry
+                }))).ToArray();
             File.WriteAllLines(chooser.FileName, lines, new UTF8Encoding(false));
         }
         catch (Exception ex)

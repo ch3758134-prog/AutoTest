@@ -271,6 +271,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         _hardware = hardware;
         FilteredLogs = CollectionViewSource.GetDefaultView(Logs);
         FilteredLogs.Filter = MatchesLog;
+        InitializeMonitor();
         _connected = hardware.IsConnected;
         foreach (var key in Keys) key.PropertyChanged += KeyChanged;
         _hardware.FrameObserved += FrameObserved;
@@ -350,11 +351,11 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (_disposed) return;
-            var frame = observation.Frame;
-            Append(new BenchLogEntry(observation.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
-                frame.Role == BusRole.DutCan ? "CAN1 DUT" : "CAN0 KEY_SIM", "RX",
-                "0x" + frame.Id.ToString("X"), Convert.ToHexString(frame.Data.AsSpan()),
-                observation.LostFrames > 0 ? "丢帧 " + observation.LostFrames : "设备接收"));
+            RegisterRxMonitor(observation);
+            if (observation.LostFrames > 0)
+                Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+                    "CAN", "LOSS", "0x" + observation.Frame.Id.ToString("X"), "",
+                    "设备接收事件报告丢帧 " + observation.LostFrames));
         }));
 
     private void EvidenceRecorded(string text) =>
