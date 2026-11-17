@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly PreviewEditHistory _history = new();
     private readonly PreviewPropertyEditor _propertyEditor = new();
     public ObservableCollection<PreviewPropertyField> PropertyFields => _propertyEditor.Fields;
+    public PreviewInspectorState Inspector { get; } = new();
     private readonly IReadOnlyList<PaletteKind> _palette = PreviewSampleFactory.MakePalette();
     private PreviewRow? _targetRow;
     private PreviewRow? _selectedRow => _document.SelectedRow;
@@ -116,16 +117,19 @@ public partial class MainWindow : Window
         {
             InspectorStepPanel.Visibility=_selectedStep is null ? Visibility.Collapsed : Visibility.Visible;
             InspectorEmptyPanel.Visibility=_selectedStep is null ? Visibility.Visible : Visibility.Collapsed;
-            if (_selectedStep is null) return;
+            if (_selectedStep is null)
+            {
+                Inspector.Bind(null, () => { });
+                _propertyEditor.Bind(null, (_, _) => { });
+                return;
+            }
             var match=_palette.FirstOrDefault(x=>x.Code==_selectedStep.Kind);
             SelectedTypeLabel.Text=match?.Label ?? "步骤";
             SelectedTypeIcon.Text=match?.Icon ?? "·";
             SelectedStepId.Text=_selectedStep.Id.ToString("N")[^5..].ToUpperInvariant();
             SelectedTypeBadge.Background=_selectedRow?.CategoryBackground ?? PreviewRow.Solid("#EEF2F7");
             SelectedTypeIcon.Foreground=_selectedRow?.CategoryForeground ?? InkMuted;
-            StepNameField.Text=_selectedStep.Name;
-            EnabledBox.SelectedIndex=_selectedStep.Enabled ? 0:1;
-            BreakpointBox.SelectedIndex=_selectedStep.Breakpoint ? 1:0;
+            Inspector.Bind(_selectedStep, () => _selectedRow?.Notify());
             RenderParameterFields();
         }
         finally { _updatingInspector=false; }
@@ -158,26 +162,6 @@ public partial class MainWindow : Window
 
     private void RefreshSelectedRowSummary()
     {
-        _selectedRow?.Notify();
-    }
-
-    private void StepNameField_TextChanged(object sender,TextChangedEventArgs e)
-    {
-        if (_updatingInspector || _selectedStep is null)return;
-        _selectedStep.Name=StepNameField.Text;
-        _selectedRow?.Notify();
-        SetMessage("已修改步骤名称");
-    }
-    private void EnabledBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
-    {
-        if (_updatingInspector || _selectedStep is null)return;
-        _selectedStep.Enabled=EnabledBox.SelectedIndex!=1;
-        _selectedRow?.Notify();
-    }
-    private void BreakpointBox_SelectionChanged(object sender,SelectionChangedEventArgs e)
-    {
-        if (_updatingInspector || _selectedStep is null)return;
-        _selectedStep.Breakpoint=BreakpointBox.SelectedIndex==1;
         _selectedRow?.Notify();
     }
 
