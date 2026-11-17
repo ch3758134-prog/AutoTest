@@ -22,6 +22,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private Task[] _monitorTasks = Array.Empty<Task>();
     public bool IsConnected => _usb?.State == UsbSessionState.Connected;
     public bool HasSession => _usb is not null;
+    /// <summary>Discovery identity for the currently ping-confirmed USB session, not an ECU identity.</summary>
+    public string? ConnectedDeviceIdentity { get; private set; }
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;
@@ -64,6 +66,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             // An acknowledged F0 ping confirms the protocol path, not CAN bus/ECU power.
             await pending.RequestAsync(MainControllerCodec.Ping, ReadOnlyMemory<byte>.Empty,
                 TimeSpan.FromSeconds(2), cancellationToken);
+            ConnectedDeviceIdentity = candidate.DisplayIdentity;
             _link = link;
             _usb = pending;
             _hub = new CanFrameHub();
@@ -244,6 +247,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (_usb is not null) await _usb.DisposeAsync();
             _usb = null;
             _link = null;
+            ConnectedDeviceIdentity = null;
             _hub?.Dispose();
             _hub = null;
             Record("主控已断开；旧连接 CAN 订阅已失效。");

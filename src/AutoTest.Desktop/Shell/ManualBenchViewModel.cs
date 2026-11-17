@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Data;
 using AutoTest.Contracts;
 using AutoTest.Desktop.Hardware;
 using AutoTest.Desktop.Projects;
@@ -93,9 +94,36 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     public ObservableCollection<DbcChoice> DbcMessages { get; } = new();
     public ObservableCollection<DbcSignalValue> DbcSignals { get; } = new();
     public ObservableCollection<BenchLogEntry> Logs { get; } = new();
+    public ICollectionView FilteredLogs { get; }
+
+    private string _logFilter = "";
+    public string LogFilter
+    {
+        get => _logFilter;
+        set
+        {
+            if (SetProperty(ref _logFilter, value ?? "")) FilteredLogs.Refresh();
+        }
+    }
+
+    private bool MatchesLog(object value)
+    {
+        if (value is not BenchLogEntry entry) return false;
+        var term = LogFilter.Trim();
+        return term.Length == 0 || entry.Time.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            entry.Channel.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            entry.Direction.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            entry.Id.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            entry.Data.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            entry.Detail.Contains(term, StringComparison.OrdinalIgnoreCase);
+    }
 
     public bool IsConnected => _hardware.IsConnected;
-    public string ConnectionStatus => IsConnected ? "USB 已连接（CAN1=DUT，CAN0=KEY_SIM）" : "USB 未连接";
+    public string ConnectionStatus => IsConnected
+        ? "USB 已连接 · G" + _hardware.CurrentStationEpoch + " · " +
+          (_hardware.ConnectedDeviceIdentity ?? "设备身份未返回") +
+          " · CAN1=DUT，CAN0=KEY_SIM"
+        : "USB 未连接 · 不继承上次连接的实体状态";
     public bool IsBusy { get => _busy; private set { if (SetProperty(ref _busy, value)) RaiseCommands(); } }
     public bool IsRawCanMode => !UseDbcMessage;
     public bool UseDbcMessage
@@ -191,6 +219,8 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     {
         _projects = projects;
         _hardware = hardware;
+        FilteredLogs = CollectionViewSource.GetDefaultView(Logs);
+        FilteredLogs.Filter = MatchesLog;
         _connected = hardware.IsConnected;
         foreach (var key in Keys) key.PropertyChanged += KeyChanged;
         _hardware.FrameObserved += FrameObserved;
