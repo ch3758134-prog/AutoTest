@@ -23,21 +23,37 @@ public partial class ManualBenchWindow : Window
 
     private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        if (_closeAfterCanStopped || !_model.IsCanBatchRunning) return;
+        if (_closeAfterCanStopped ||
+            (!_model.IsCanBatchRunning && !_model.IsKeyActionRunning && !_model.KeyActionsDirty)) return;
         e.Cancel = true;
         IsEnabled = false;
         try
         {
+            await _model.StopKeyActionAsync();
             await _model.StopCanBatchForCloseAsync();
+            if (_model.KeyActionsDirty)
+            {
+                var choice = MessageBox.Show(this,
+                    "按键动作有未保存的修改。\n是：保存并关闭；否：放弃草稿；取消：返回编辑。",
+                    "保存 KEY 动作库", MessageBoxButton.YesNoCancel, MessageBoxImage.Question,
+                    MessageBoxResult.Cancel);
+                if (choice == MessageBoxResult.Cancel) { IsEnabled = true; return; }
+                if (choice == MessageBoxResult.Yes)
+                {
+                    await _model.SaveKeyActionsForCloseAsync();
+                    if (_model.KeyActionsDirty)
+                        throw new InvalidOperationException("工程动作库仍未保存，请查看工位日志。");
+                }
+            }
             _closeAfterCanStopped = true;
             Close();
         }
         catch (Exception ex)
         {
             IsEnabled = true;
-            MessageBox.Show(this, "周期发送停机检查失败：" + ex.Message +
-                "\n请先核对主控实际状态再关闭窗口。",
-                "CAN1 停止异常", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "关闭前收尾失败：" + ex.Message +
+                "\n请核对主控真实输出，未确认时视为 UNKNOWN。",
+                "手动台架状态未知", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

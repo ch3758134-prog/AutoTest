@@ -321,7 +321,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (_disposed) return;
-            if (approved) { _canBatchStop?.Cancel(); Status = "自动测试已占用工位：手动发送、IGN 和断连操作被锁定。"; }
+            if (approved) { _canBatchStop?.Cancel(); _keyActionStop?.Cancel(); Status = "自动测试已占用工位：手动发送、IGN 和断连操作被锁定。"; }
             else Status = "自动测试授权已撤销；手动操作前请重新确认硬件实际状态。";
             RaiseCommands();
         }));
@@ -332,7 +332,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         {
             if (_disposed) return;
             _connected = epoch != 0;
-            if (epoch == 0) _canBatchStop?.Cancel();
+            if (epoch == 0) { _canBatchStop?.Cancel(); _keyActionStop?.Cancel(); }
             CanConfirmation = "";
             KeyConfirmation = "";
             IgnConfirmation = "";
@@ -352,6 +352,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
         {
             _canBatchStop?.Cancel();
+            _keyActionStop?.Cancel();
             if (!_disposed) await ReloadResourcesAsync();
         }));
 

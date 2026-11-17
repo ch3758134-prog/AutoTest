@@ -417,11 +417,19 @@ public sealed partial class ManualBenchViewModel
 
     private void StartKeyAction(KeyActionEditor action)
     {
-        if (IsKeyActionRunning || _keyActionTask is { IsCompleted: false }) return;
+        if (!CanRunKeyAction || IsKeyActionRunning || _keyActionTask is { IsCompleted: false }) return;
+        _keyActionStop = new CancellationTokenSource();
+        IsKeyActionRunning = true; // close/stop must work even during resource preflight
         _keyActionTask = RunKeyActionAsync(action);
     }
-    private async Task RunKeyActionAsync(KeyActionEditor action) => await Execute("执行 KEY 动作", async () =>
+    private async Task RunKeyActionAsync(KeyActionEditor action)
     {
+      try
+      {
+       await Execute("执行 KEY 动作", async () =>
+       {
+        var stop = _keyActionStop ?? throw new InvalidOperationException("KEY 动作取消上下文不存在。");
+        stop.Token.ThrowIfCancellationRequested();
         if (_keyCatalogSession is null || KeyActionsDirty)
             throw new InvalidOperationException("动作必须先保存工程资源，且不能有未保存修改。");
         await VerifyControllerFreshAsync();
@@ -469,14 +477,12 @@ public sealed partial class ManualBenchViewModel
             string.Join("|", list.Select(s => s.StepId + ":" + s.KeyMask + ":" + s.HoldMs));
         var sha = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintText)))
             .ToLowerInvariant();
-        var stop = new CancellationTokenSource();
-        _keyActionStop = stop;
+        stop.Token.ThrowIfCancellationRequested();
         int completed = 0;
         try
         {
             await _hardware.AuthorizeManualKeyActionAsync(sha, "AUTHORIZE KEY ACTION " + sha,
                 frames, stop.Token);
-            IsKeyActionRunning = true;
             for (var i = 0; i < list.Length; i++)
             {
                 stop.Token.ThrowIfCancellationRequested();
@@ -516,11 +522,18 @@ public sealed partial class ManualBenchViewModel
             {
                 KeyActionRunStatus += " 撤销授权异常：" + error.Message;
             }
-            _keyActionStop = null;
-            IsKeyActionRunning = false;
-            stop.Dispose();
         }
-    });
+       });
+      }
+      finally
+      {
+        _keyActionStop?.Dispose();
+        _keyActionStop = null;
+        IsKeyActionRunning = false;
+      }
+    }
+
+    public Task SaveKeyActionsForCloseAsync() => SaveKeyActionsAsync();
 
     public async Task StopKeyActionAsync()
     {
