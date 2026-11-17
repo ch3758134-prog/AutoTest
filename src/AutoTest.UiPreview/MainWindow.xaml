@@ -242,9 +242,7 @@
           </StackPanel>
          </DockPanel>
         </Border>
-        <Border Style="{StaticResource AtPreviewBranchRow}" Visibility="{Binding IsBranch,Converter={StaticResource B2V}}"
-         Background="#F5EEFB" BorderBrush="#DECEF3" BorderThickness="3,0,0,1"
-         Padding="7,0">
+        <Border Style="{StaticResource AtPreviewBranchRow}" Visibility="{Binding IsBranch,Converter={StaticResource B2V}}">
          <DockPanel>
           <Button DockPanel.Dock="Right" Tag="{Binding}" Content="＋ 插入"
            Style="{StaticResource BareBtn}" Foreground="#7854A3" Click="AddAtRow_Click"/>
@@ -260,24 +258,7 @@
           <ColumnDefinition Width="14*"/>
           <ColumnDefinition Width="10*"/>
          </Grid.ColumnDefinitions>
-         <Border Width="3" Background="#277BD1" HorizontalAlignment="Left" Panel.ZIndex="1">
-          <Border.Style>
-           <Style TargetType="Border">
-            <Setter Property="Visibility" Value="Collapsed"/>
-            <Setter Property="Background" Value="#277BD1"/>
-            <Style.Triggers>
-             <DataTrigger Binding="{Binding IsMatch}" Value="True">
-              <Setter Property="Visibility" Value="Visible"/>
-              <Setter Property="Background" Value="#E2A43B"/>
-             </DataTrigger>
-             <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem},Path=IsSelected}" Value="True">
-              <Setter Property="Visibility" Value="Visible"/>
-              <Setter Property="Background" Value="#2675CF"/>
-             </DataTrigger>
-            </Style.Triggers>
-           </Style>
-          </Border.Style>
-         </Border>
+         <Border Width="3" HorizontalAlignment="Left" Panel.ZIndex="1" Style="{StaticResource AtPreviewMatchRail}"/>
          <TextBlock Grid.Column="0" Text="{Binding Number}" HorizontalAlignment="Right"
           VerticalAlignment="Center" Margin="0,0,10,0" FontSize="10" Foreground="#8A99AD"
           FontFamily="Consolas"/>

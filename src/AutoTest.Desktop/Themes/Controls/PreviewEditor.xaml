@@ -177,4 +177,19 @@
   <Setter Property="Margin" Value="0,0,0,10"/>
   <Setter Property="BorderBrush" Value="#CDD9E8"/>
  </Style>
+ <!-- Search match / selection rail style for test step rows. -->
+ <Style x:Key="AtPreviewMatchRail" TargetType="Border">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Setter Property="Background" Value="#277BD1"/>
+            <Style.Triggers>
+             <DataTrigger Binding="{Binding IsMatch}" Value="True">
+              <Setter Property="Visibility" Value="Visible"/>
+              <Setter Property="Background" Value="#E2A43B"/>
+             </DataTrigger>
+             <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem},Path=IsSelected}" Value="True">
+              <Setter Property="Visibility" Value="Visible"/>
+              <Setter Property="Background" Value="#2675CF"/>
+             </DataTrigger>
+            </Style.Triggers>
+           </Style>
 </ResourceDictionary>
