@@ -118,45 +118,54 @@
    <ListBox.ItemTemplate>
     <DataTemplate>
      <Grid MinWidth="580">
-      <!-- HTML final override: color-coded phases and compact 35-DIP steps. -->
-      <Border x:Name="PhaseRow" BorderThickness="4,1,0,1" Height="34"
+      <!-- Separate inset phase headers; the canonical TEST phase/slot editing remains unchanged. -->
+      <Border x:Name="PhaseRow" Style="{StaticResource AtTestPhaseHeader}"
        Visibility="{Binding IsPhase,Converter={StaticResource BoolToVisibility}}">
-       <Border.Style>
-        <Style TargetType="{x:Type Border}">
-         <Setter Property="Background" Value="#EDF5FC"/>
-         <Setter Property="BorderBrush" Value="#397FBB"/>
-         <Style.Triggers>
-          <DataTrigger Binding="{Binding PhaseKind}" Value="Test">
-           <Setter Property="Background" Value="#EDF7F4"/>
-           <Setter Property="BorderBrush" Value="#238A7A"/>
-          </DataTrigger>
-          <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup">
-           <Setter Property="Background" Value="#FFF6E9"/>
-           <Setter Property="BorderBrush" Value="#CA8B2E"/>
-          </DataTrigger>
-         </Style.Triggers>
-        </Style>
-       </Border.Style>
-       <DockPanel Margin="10,0">
-        <Button DockPanel.Dock="Right" Content="＋ 添加" Tag="{Binding}" Click="AddAtRow_Click"
-         Focusable="False" Height="23" MinHeight="0" Padding="6,0"
-         Style="{StaticResource AtQuietButton}" Foreground="#2368BD"
-         ToolTip="添加到此阶段末尾"/>
-        <TextBlock DockPanel.Dock="Right" Text="{Binding RowCount}" FontSize="10"
-         Foreground="#8798AB" VerticalAlignment="Center" Margin="0,0,10,0"/>
+       <DockPanel Margin="11,0,9,0">
+        <Button DockPanel.Dock="Right" Content="＋ 添加步骤" Tag="{Binding}" Click="AddAtRow_Click"
+         Focusable="False" Style="{StaticResource AtTestPhaseAddButton}"
+         ToolTip="直接在这个阶段末尾添加真实 TEST 步骤"/>
+        <Border DockPanel.Dock="Right" Background="White" BorderBrush="#E4EAF3"
+         BorderThickness="1" CornerRadius="4" Padding="7,3"
+         VerticalAlignment="Center" Margin="0,0,10,0">
+         <TextBlock Text="{Binding RowCount}" FontSize="10" Foreground="#74869B"/>
+        </Border>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
          <Button Content="{Binding ExpandMark}" Click="StepExpand_Click" Tag="{Binding}"
-          Width="19" Height="23" MinWidth="0" MinHeight="0" Padding="0"
-          Style="{StaticResource AtQuietButton}" Foreground="#4C6687" FontWeight="Bold"/>
-         <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12"
-          VerticalAlignment="Center" Margin="5,0,0,0">
-          <TextBlock.Style><Style TargetType="{x:Type TextBlock}">
-           <Setter Property="Foreground" Value="#27649A"/>
-           <Style.Triggers>
-            <DataTrigger Binding="{Binding PhaseKind}" Value="Test"><Setter Property="Foreground" Value="#177669"/></DataTrigger>
-            <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup"><Setter Property="Foreground" Value="#9A671F"/></DataTrigger>
-           </Style.Triggers>
-          </Style></TextBlock.Style>
+          Width="22" Height="24" MinWidth="0" MinHeight="0" Padding="0"
+          Style="{StaticResource AtQuietButton}" Foreground="#64758C"
+          ToolTip="展开或收起此阶段"/>
+         <Border Width="3" Height="19" CornerRadius="2" Margin="5,0,10,0"
+          VerticalAlignment="Center">
+          <Border.Style>
+           <Style TargetType="Border">
+            <Setter Property="Background" Value="#397FBB"/>
+            <Style.Triggers>
+             <DataTrigger Binding="{Binding PhaseKind}" Value="Test">
+              <Setter Property="Background" Value="#238A7A"/>
+             </DataTrigger>
+             <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup">
+              <Setter Property="Background" Value="#CA8B2E"/>
+             </DataTrigger>
+            </Style.Triggers>
+           </Style>
+          </Border.Style>
+         </Border>
+         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
+          VerticalAlignment="Center">
+          <TextBlock.Style>
+           <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#27649A"/>
+            <Style.Triggers>
+             <DataTrigger Binding="{Binding PhaseKind}" Value="Test">
+              <Setter Property="Foreground" Value="#177669"/>
+             </DataTrigger>
+             <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup">
+              <Setter Property="Foreground" Value="#9A671F"/>
+             </DataTrigger>
+            </Style.Triggers>
+           </Style>
+          </TextBlock.Style>
          </TextBlock>
         </StackPanel>
        </DockPanel>
@@ -302,39 +311,49 @@
      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
-  <!-- Native WPF searchable palette. Choice creates the undoable formal TEST draft. -->
+  <!-- Wide grouped palette: common actions visible together, one click inserts a formal TEST draft. -->
   <Popup x:Name="ActionPalette" Placement="Center"
    PlacementTarget="{Binding ElementName=StepsList}" StaysOpen="False" AllowsTransparency="True">
-   <Border Width="490" MaxHeight="560" Background="White" CornerRadius="8"
-    BorderBrush="#CAD7E7" BorderThickness="1" Padding="14">
-    <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.22"/></Border.Effect>
+   <Border x:Name="PaletteSurface" Width="1000" MaxHeight="790" Background="White"
+    CornerRadius="9" BorderBrush="#C9D8E9" BorderThickness="1" Padding="18,15">
+    <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.24"/></Border.Effect>
     <DockPanel LastChildFill="True">
-     <TextBlock DockPanel.Dock="Top" Text="选择步骤类型" FontSize="15"
-      FontWeight="SemiBold" Foreground="#234F82" Margin="0,0,0,9"/>
-     <TextBlock DockPanel.Dock="Top" x:Name="PaletteHint"
-      Text="选择后立即插入草稿，在右侧配置" FontSize="11"
-      Foreground="#64758C" Margin="0,0,0,9"/>
+     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <Button DockPanel.Dock="Right" Content="✕" Width="28" Height="27" MinWidth="0"
+       Style="{StaticResource AtQuietButton}" Click="PaletteCancel_Click"
+       ToolTip="关闭步骤选择" Margin="12,0,0,0"/>
+      <StackPanel>
+       <TextBlock Text="添加测试步骤" FontSize="16" FontWeight="SemiBold" Foreground="#234F82"/>
+       <TextBlock x:Name="PaletteHint" Text="单击选项即插入，随后在右侧编辑参数"
+        FontSize="11" Foreground="#64758C" Margin="0,5,0,0"/>
+      </StackPanel>
+     </DockPanel>
      <TextBox DockPanel.Dock="Top" x:Name="PaletteSearch"
       TextChanged="PaletteSearch_Changed" KeyDown="PaletteSearch_KeyDown"
-      ToolTip="搜索 CAN、IGN、按键、等待、IF、波形等操作"
-      Height="29" VerticalContentAlignment="Center" Margin="0,0,0,10"/>
-     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
-      HorizontalAlignment="Right" Margin="0,10,0,0">
-      <Button Content="取消" Click="PaletteCancel_Click" Margin="0,0,8,0" MinWidth="64"/>
-      <Button Content="添加所选步骤" Click="PaletteSelect_Click"
-       Style="{StaticResource AtPrimaryButton}" MinWidth="110"/>
-     </StackPanel>
-     <ListBox x:Name="PaletteList" MaxHeight="355" MinHeight="160"
+      ToolTip="输入 CAN、IGN、按键、等待、IF、波形等关键词筛选"
+      Height="33" VerticalContentAlignment="Center" Margin="0,0,0,10" Padding="10,4"/>
+     <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+      <Button DockPanel.Dock="Right" Content="关闭" Click="PaletteCancel_Click"
+       MinWidth="72" HorizontalAlignment="Right"/>
+      <TextBlock Text="单击即添加  ·  Enter 添加所选  ·  Esc 关闭"
+       Foreground="#7A8EA6" FontSize="11" VerticalAlignment="Center"/>
+     </DockPanel>
+     <ListBox x:Name="PaletteList" MaxHeight="600" MinHeight="160"
       MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
       PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"
       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-      BorderBrush="#DBE3ED" FontSize="12">
+      ScrollViewer.VerticalScrollBarVisibility="Auto"
+      Background="#FAFCFF" BorderBrush="#DFE7F1" BorderThickness="1"
+      FontSize="12">
       <ListBox.GroupStyle>
        <GroupStyle>
         <GroupStyle.HeaderTemplate>
          <DataTemplate>
-          <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="Bold"
-           Foreground="#48617E" Margin="8,10,2,4"/>
+          <Border Background="#F0F5FB" CornerRadius="4" Padding="8,6"
+           Margin="4,5,4,3">
+           <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+            Foreground="#335F90"/>
+          </Border>
          </DataTemplate>
         </GroupStyle.HeaderTemplate>
         <GroupStyle.Panel>
@@ -344,13 +363,14 @@
       </ListBox.GroupStyle>
       <ListBox.ItemContainerStyle>
        <Style TargetType="{x:Type ListBoxItem}">
-        <Setter Property="Width" Value="202"/>
-        <Setter Property="MinHeight" Value="43"/>
+        <Setter Property="Width" Value="213"/>
+        <Setter Property="MinHeight" Value="34"/>
         <Setter Property="Margin" Value="4,3"/>
-        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="Padding" Value="10,7"/>
         <Setter Property="Background" Value="White"/>
         <Setter Property="BorderBrush" Value="#D7E2EF"/>
         <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Style.Triggers>
          <Trigger Property="IsMouseOver" Value="True">
           <Setter Property="Background" Value="#EDF5FF"/>
@@ -363,14 +383,12 @@
         </Style.Triggers>
        </Style>
       </ListBox.ItemContainerStyle>
-      <ListBox.ItemTemplate><DataTemplate>
-       <StackPanel ToolTip="{Binding Description}">
+      <ListBox.ItemTemplate>
+       <DataTemplate>
         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12"
-         TextTrimming="CharacterEllipsis"/>
-        <TextBlock Text="{Binding Category}" Foreground="#71849D" FontSize="10"
-         TextTrimming="CharacterEllipsis"/>
-       </StackPanel>
-      </DataTemplate></ListBox.ItemTemplate>
+         ToolTip="{Binding Description}" TextTrimming="CharacterEllipsis"/>
+       </DataTemplate>
+      </ListBox.ItemTemplate>
      </ListBox>
     </DockPanel>
    </Border>

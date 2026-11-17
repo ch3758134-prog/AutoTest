@@ -71,6 +71,16 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    public void AuthorizeOneIgnChange(bool on, string typedConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; IGN consent cannot survive reconnect.");
+            _fence.AuthorizeSingleIgn(on, typedConfirmation, _epoch);
+        }
+    }
+
     public void AuthorizePhysicalTestRun(string fingerprint, string typedConfirmation,
         IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn)
     {

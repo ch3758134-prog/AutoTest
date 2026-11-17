@@ -25,7 +25,7 @@ public sealed record TestActionOption(string Key, string Category, string Title,
         "uds" => "UDS 服务",
         "wave-start" or "wave-stop" or "wave-analyze" or "wave-capture" or "wave-compare"
             => "波形分析",
-        "flash" => "专业工具",
+        "flash" => "UDS 服务",
         _ => "流程与计算"
     };
 }

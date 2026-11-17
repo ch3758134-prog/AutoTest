@@ -117,6 +117,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             if (_usb?.State != UsbSessionState.Connected || _link is null)
                 throw new IOException("USB 主控未连接，禁止 CAN 发送。");
+            if (_testRunApproved)
+                throw new InvalidOperationException("真实测试运行已获授权，手动 CAN 发送被锁定。");
             var map = new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
             var payload = CanFrameCodec.ToUsbPayload(frame, map);
             _link.AuthorizeOneCanTransmission(payload, exactConfirmation);
@@ -125,6 +127,29 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), cancellationToken);
             Record("CAN TX 设备 ACK；不能据此认定 DUT 已收到该帧。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>One explicit manual IGN request. Transport consumes the exact
+    /// confirmation before the USB write; ACK is not proof of ECU electrical state.</summary>
+    public async Task SendManualIgnAsync(bool on, string exactConfirmation,
+        CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _link is null)
+                throw new IOException("USB 主控未连接，禁止 IGN 操作。");
+            if (_testRunApproved)
+                throw new InvalidOperationException("真实测试运行已获授权，手动 IGN 操作被锁定。");
+            _link.AuthorizeOneIgnChange(on, exactConfirmation);
+            Record("IGN 单次授权：" + (on ? "ON" : "OFF"));
+            await _usb.RequestAsync(MainControllerCodec.SetIgn,
+                new byte[] { on ? (byte)1 : (byte)0 },
+                TimeSpan.FromSeconds(3), cancellationToken);
+            Record("IGN 设备 ACK：" + (on ? "ON" : "OFF") +
+                "；实际 ECU 引脚电压及点火状态未测量。");
         }
         finally { _lifecycle.Release(); }
     }

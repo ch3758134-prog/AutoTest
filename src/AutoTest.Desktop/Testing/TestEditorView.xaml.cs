@@ -198,6 +198,13 @@ public partial class TestEditorView : UserControl
 
     private void OpenActionPalette(bool caseOnly)
     {
+        var shell = Window.GetWindow(this);
+        var width = shell?.ActualWidth > 0 ? shell.ActualWidth : SystemParameters.WorkArea.Width;
+        var height = shell?.ActualHeight > 0 ? shell.ActualHeight : SystemParameters.WorkArea.Height;
+        // Four columns on a normal desktop; narrower windows can fall back to wrapping.
+        PaletteSurface.Width = Math.Min(1000, Math.Max(540, width - 120));
+        PaletteSurface.MaxHeight = Math.Min(790, Math.Max(420, height - 120));
+        PaletteList.MaxHeight = Math.Max(220, PaletteSurface.MaxHeight - 170);
         _paletteActions = TestStepInspector.PaletteActions(caseOnly);
         PaletteHint.Text = caseOnly ? "SWITCH 的 CASE 区只能插入 CASE 分支" :
             "选择后立即加入可撤销的正式 TEST 草稿；右侧完成参数";
@@ -221,9 +228,18 @@ public partial class TestEditorView : UserControl
 
     private void RefreshPaletteItems(string query)
     {
-        var filtered = _paletteActions.Where(x => query.Length == 0 ||
-            (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
-                .Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        var filtered = _paletteActions
+            .Where(x => query.Length == 0 ||
+                (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
+                    .Contains(query, StringComparison.CurrentCultureIgnoreCase))
+            .OrderBy(x => x.Group switch
+            {
+                "CAN 与数据" => 0,
+                "工位操作" => 1,
+                "UDS 服务" => 2,
+                "波形分析" => 3,
+                _ => 4
+            }).ToArray();
         var grouped = new ListCollectionView(filtered);
         grouped.GroupDescriptions.Add(new PropertyGroupDescription(nameof(TestActionOption.Group)));
         PaletteList.ItemsSource = grouped;
@@ -256,9 +272,6 @@ public partial class TestEditorView : UserControl
     }
 
     private void PaletteList_DoubleClick(object sender, MouseButtonEventArgs e) =>
-        TryChoosePaletteItem();
-
-    private void PaletteSelect_Click(object sender, RoutedEventArgs e) =>
         TryChoosePaletteItem();
 
     private void PaletteCancel_Click(object sender, RoutedEventArgs e) =>

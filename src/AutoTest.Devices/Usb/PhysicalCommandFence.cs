@@ -8,6 +8,9 @@ public sealed class PhysicalCommandFence
     private readonly object _sync = new();
     private byte[]? _singleCanPayload;
     private DateTimeOffset _canExpiry;
+    private bool? _oneIgnState;
+    private DateTimeOffset _ignExpiry;
+    private long _ignGeneration;
     private long _authorizedConnection;
     private HashSet<(byte Port, bool Extended, uint Id)>? _runCan;
     private bool _runIgn;
@@ -38,6 +41,13 @@ public sealed class PhysicalCommandFence
         {
             if (_runFingerprint is not null)
                 throw new InvalidOperationException("Another physical run already authorized.");
+            // Test authorization supersedes all pending manual one-shot grants.
+            _singleCanPayload = null;
+            _authorizedConnection = 0;
+            _canExpiry = default;
+            _oneIgnState = null;
+            _ignGeneration = 0;
+            _ignExpiry = default;
             _runCan = entries;
             _runIgn = allowIgn;
             _remainingWrites = maxWrites;
@@ -76,9 +86,29 @@ public sealed class PhysicalCommandFence
         if (connectionGeneration <= 0) throw new InvalidOperationException("No live connection.");
         lock (_sync)
         {
+            if (_runFingerprint is not null)
+                throw new InvalidOperationException("Manual CAN is blocked while a test run is authorized.");
             _singleCanPayload = exact15Bytes.ToArray();
             _authorizedConnection = connectionGeneration;
             _canExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
+        }
+    }
+
+    /// <summary>One exact state, one USB generation, 15-second consent window.
+    /// Consumed before USB I/O. Never authorizes fixture or a second IGN write.</summary>
+    public void AuthorizeSingleIgn(bool on, string typedConfirmation, long connectionGeneration)
+    {
+        if (typedConfirmation != "AUTHORIZE IGN " + (on ? "ON" : "OFF"))
+            throw new UnauthorizedAccessException("Exact one-shot IGN consent required.");
+        if (connectionGeneration <= 0)
+            throw new InvalidOperationException("Cannot authorize IGN without a live USB generation.");
+        lock (_sync)
+        {
+            if (_runFingerprint is not null)
+                throw new InvalidOperationException("Manual IGN is blocked while a test run is authorized.");
+            _oneIgnState = on;
+            _ignGeneration = connectionGeneration;
+            _ignExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
         }
     }
 
@@ -91,6 +121,16 @@ public sealed class PhysicalCommandFence
         if (IsReadOnly(request.Command, request.Payload)) return;
         lock (_sync)
         {
+            if (request.Command == MainControllerCodec.SetIgn &&
+                request.Payload.Length == 1 && request.Payload[0] <= 1 &&
+                _oneIgnState.HasValue && _oneIgnState.Value == (request.Payload[0] == 1) &&
+                _ignGeneration == connectionGeneration &&
+                DateTimeOffset.UtcNow < _ignExpiry)
+            {
+                _oneIgnState = null; // consumes consent even when USB write fails
+                _ignGeneration = 0;
+                return;
+            }
             if (request.Command == MainControllerCodec.CanSend && _singleCanPayload is not null &&
                 _authorizedConnection == connectionGeneration && DateTimeOffset.UtcNow < _canExpiry &&
                 request.Payload.AsSpan().SequenceEqual(_singleCanPayload))
@@ -127,6 +167,7 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
+            _oneIgnState = null; _ignExpiry = default; _ignGeneration = 0;
             _runCan = null; _runIgn = false; _remainingWrites = 0;
             _runExpiry = default; _runGeneration = 0; _runFingerprint = null;
         }

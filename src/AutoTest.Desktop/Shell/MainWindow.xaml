@@ -174,10 +174,16 @@
   <Border Grid.Row="1" Background="#FBFCFF" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
    <DockPanel Margin="10,0" LastChildFill="False">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="手动台架" IsEnabled="False" ToolTip="独立工位 UI 尚未集成，不能下发物理命令" Margin="0,0,5,0"/>
+     <Button Content="手动台架" Command="{Binding OpenManualBenchCommand}"
+      ToolTip="独立真实工位；CAN1 DUT / CAN0 KEY_SIM，未连接禁止操作" Margin="0,0,5,0"/>
+     <Button Content="按键配置" Command="{Binding OpenControllerCommand}"
+      ToolTip="打开工程内的 Controller / KEY_SIM 20 Key 配置" Margin="0,0,5,0"/>
      <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" Margin="0,0,5,0"/>
      <Button Content="UDS" IsEnabled="False" ToolTip="独立 UDS 工作台待接入" Margin="0,0,5,0"/>
-     <Button Content="波形" IsEnabled="False" ToolTip="波形分析工作台待接入" Margin="0,0,5,0"/>
+     <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
+      ToolTip="查看实际波形证据、参考及双游标分析" Margin="0,0,5,0"/>
+     <Button Content="波形配置" Command="{Binding OpenWaveConfigCommand}"
+      ToolTip="绑定 DBC 信号、编辑判定条件及建立参考" Margin="0,0,5,0"/>
      <Button Content="Flash" IsEnabled="False" ToolTip="独立 Flash Lab，不从此窗口编程" Margin="0,0,5,0"/>
      <Button Content="生产" IsEnabled="False" ToolTip="生产项目级 Run 后端未接入" Margin="0,0,9,0"/>
      <Border Background="#DBE3ED" Width="1" Height="18" Margin="0,0,8,0"/>

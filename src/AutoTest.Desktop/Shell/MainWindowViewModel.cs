@@ -184,6 +184,10 @@ public sealed class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.TestConfigurationKind));
         OpenControllerCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.ControllerKind));
+        OpenWaveConfigCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
+            ProjectWorkspaceService.WaveSettingsKind));
+        OpenWaveWorkbenchCommand = new DelegateCommand(OpenWaveWorkbench);
+        OpenManualBenchCommand = new DelegateCommand(OpenManualBench);
         OpenTbcCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.BenchConfigurationKind));
         OpenFirstConfigurationCommand = new DelegateCommand(async () =>
@@ -304,6 +308,9 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenProjectConfigurationOverviewCommand { get; }
     public DelegateCommand OpenTcfCommand { get; }
     public DelegateCommand OpenControllerCommand { get; }
+    public DelegateCommand OpenWaveConfigCommand { get; }
+    public DelegateCommand OpenWaveWorkbenchCommand { get; }
+    public DelegateCommand OpenManualBenchCommand { get; }
     public DelegateCommand OpenTbcCommand { get; }
     public int TestProjectCount => _workspace.Current?.Definition.Assets.Count(x =>
         x.Kind == ProjectWorkspaceService.TestProjectKind) ?? 0;
@@ -339,6 +346,43 @@ public sealed class MainWindowViewModel : BindableBase
         if (IsAlreadyOpen("config-overview")) return;
         var view = new ProjectConfigurationOverviewView(this, _workspace, _fileDialogs);
         ActivateEditor("config-overview", view, "工程配置", view.ConfirmClose);
+    }
+
+    private ManualBenchWindow? _manualBenchWindow;
+    private WaveWorkbenchWindow? _waveWorkbenchWindow;
+
+    private void OpenWaveWorkbench()
+    {
+        if (_workspace.Current is null)
+        {
+            StatusMessage = "请先打开工程，再查看真实波形证据。";
+            return;
+        }
+        if (_waveWorkbenchWindow is { IsVisible: true })
+        {
+            _waveWorkbenchWindow.Activate();
+            return;
+        }
+        var view = new WaveWorkbenchWindow(new WaveWorkbenchViewModel(_workspace),
+            () => OpenWaveConfigCommand.Execute());
+        _waveWorkbenchWindow = view;
+        view.Owner = Application.Current.MainWindow;
+        view.Closed += (_, _) => _waveWorkbenchWindow = null;
+        view.Show();
+    }
+
+    private void OpenManualBench()
+    {
+        if (_manualBenchWindow is { IsVisible: true })
+        {
+            _manualBenchWindow.Activate();
+            return;
+        }
+        var view = new ManualBenchWindow(new ManualBenchViewModel(_workspace, _hardware));
+        _manualBenchWindow = view;
+        view.Closed += (_, _) => _manualBenchWindow = null;
+        view.Owner = Application.Current.MainWindow;
+        view.Show();
     }
 
     private async Task OpenConfigurationKindAsync(string kind)

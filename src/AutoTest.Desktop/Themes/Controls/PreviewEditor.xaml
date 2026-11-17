@@ -409,4 +409,32 @@
   <Setter Property="FontSize" Value="{StaticResource AtUiCaptionSize}"/>
   <Setter Property="Foreground" Value="#29496E"/>
  </Style>
+ <Style x:Key="AtTestPhaseHeader" TargetType="{x:Type Border}">
+  <Setter Property="Height" Value="44"/>
+  <Setter Property="Margin" Value="11,11,11,5"/>
+  <Setter Property="CornerRadius" Value="6"/>
+  <Setter Property="Background" Value="#F3F8FE"/>
+  <Setter Property="BorderBrush" Value="#D3E3F4"/>
+  <Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="SnapsToDevicePixels" Value="True"/>
+  <Style.Triggers>
+   <DataTrigger Binding="{Binding PhaseKind}" Value="Test">
+    <Setter Property="Background" Value="#F0F9F6"/>
+    <Setter Property="BorderBrush" Value="#CDE9E1"/>
+   </DataTrigger>
+   <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup">
+    <Setter Property="Background" Value="#FFFAF2"/>
+    <Setter Property="BorderBrush" Value="#F1DFBF"/>
+   </DataTrigger>
+  </Style.Triggers>
+ </Style>
+ <Style x:Key="AtTestPhaseAddButton" TargetType="{x:Type Button}"
+  BasedOn="{StaticResource Btn}">
+  <Setter Property="Background" Value="White"/>
+  <Setter Property="Foreground" Value="#2368BD"/>
+  <Setter Property="BorderBrush" Value="#D0DEEE"/>
+  <Setter Property="Height" Value="27"/>
+  <Setter Property="MinHeight" Value="27"/>
+  <Setter Property="Padding" Value="9,3"/>
+ </Style>
 </ResourceDictionary>
