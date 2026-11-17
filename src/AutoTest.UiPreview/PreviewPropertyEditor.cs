@@ -75,11 +75,14 @@ public sealed class PreviewPropertyEditor
     public ObservableCollection<PreviewPropertyField> Fields { get; } = new();
     private DemoStep? _step;
     private Action<DemoStep, PreviewPropertyField>? _onChanged;
+    private bool _realCanEditor;
 
-    public void Bind(DemoStep? step, Action<DemoStep, PreviewPropertyField> onChanged)
+    public void Bind(DemoStep? step, Action<DemoStep, PreviewPropertyField> onChanged,
+        bool realCanEditor = false)
     {
         _step = step;
         _onChanged = onChanged;
+        _realCanEditor = realCanEditor;
         Rebuild();
     }
 
@@ -94,6 +97,16 @@ public sealed class PreviewPropertyEditor
         void Choice(string label, string key, string[] options, bool rebuild = false) =>
             Fields.Add(new PreviewPropertyField(label, key, step.Param(key, options[0]), options, rebuild, Changed));
 
+
+        // The actual DBC selector renders message/signal editors in the same Inspector.
+        // Never expose serialized editor payloads as two raw text boxes in real mode.
+        if (_realCanEditor && step.Kind == "CanSend")
+        {
+            foreach (var pair in step.Parameters.OrderBy(p => p.Key, StringComparer.Ordinal))
+                if (pair.Key is not ("dbcMessage" or "signals"))
+                    Text(pair.Key, pair.Key, pair.Value);
+            return;
+        }
 
         // Formal TEST step types use the exact canonical StepUiCatalog property keys.
         // Never offer hard-coded sample DBC messages or pretend a target Mapping exists.

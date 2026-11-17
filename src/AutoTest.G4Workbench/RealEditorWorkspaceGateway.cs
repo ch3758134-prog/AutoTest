@@ -16,6 +16,8 @@ public sealed class RealEditorWorkspaceGateway : IEditorWorkspaceGateway
 {
     private readonly ProjectWorkspaceService _workspace = new();
     private readonly Dictionary<string, TestEditorSession> _open = new(StringComparer.Ordinal);
+    private IReadOnlyList<UiDbcCatalog> _dbcCatalogs = [];
+
 
     public IReadOnlyList<PaletteKind> StepTypes { get; } =
         StepUiCatalog.Choices.Select(x => new PaletteKind(
@@ -43,6 +45,7 @@ public sealed class RealEditorWorkspaceGateway : IEditorWorkspaceGateway
     {
         await _workspace.OpenAsync(manifestPath, ct);
         _open.Clear();
+        _dbcCatalogs = [];
         return CurrentProject();
     }
 
@@ -62,7 +65,30 @@ public sealed class RealEditorWorkspaceGateway : IEditorWorkspaceGateway
     public async Task<UiProjectSnapshot> ImportDbcAsync(string filePath, CancellationToken ct = default)
     {
         await _workspace.ImportDbcAsync(filePath, ct);
+        _dbcCatalogs = [];
         return CurrentProject();
+    }
+
+    /// <summary>Read the official DBC editor document after verifying file and manifest hashes.</summary>
+    public async Task<IReadOnlyList<UiDbcCatalog>> LoadDbcCatalogAsync(CancellationToken ct = default)
+    {
+        var project = _workspace.Current ?? throw new InvalidOperationException("请先打开工程。");
+        var result = new List<UiDbcCatalog>();
+        foreach (var asset in project.Definition.Assets.Where(a => a.Kind == ProjectWorkspaceService.DbcKind))
+        {
+            ct.ThrowIfCancellationRequested();
+            var loaded = await _workspace.OpenDbcEditorAsync(asset.Id, ct);
+            result.Add(new UiDbcCatalog(asset.Id.ToString(), asset.Name, asset.Revision,
+                asset.Sha256,
+                loaded.Document.Model.Messages.OrderBy(m => m.Name, StringComparer.CurrentCulture)
+                    .Select(m => new UiDbcMessage(asset.Id.ToString(), asset.Name, asset.Revision,
+                        asset.Sha256, m.Id, m.ArbitrationId, m.IsExtended, m.Name, m.Dlc,
+                        m.Signals.Select(s => new UiDbcSignal(s.Name, s.Unit, s.Minimum, s.Maximum,
+                            s.Factor, s.Offset, s.Signed, s.Multiplexer)).ToArray()))
+                    .ToArray()));
+        }
+        _dbcCatalogs = result;
+        return result;
     }
 
     public async Task<UiProjectSnapshot> RenameTestAsync(string assetId, string name, CancellationToken ct = default)
@@ -88,7 +114,8 @@ public sealed class RealEditorWorkspaceGateway : IEditorWorkspaceGateway
         try
         {
             var candidate = CreateCandidate(session.Document, phases);
-            return StepTreeValidator.ValidateTree(candidate, StepDescriptorCatalog.Builtins()).ToArray();
+            return StepTreeValidator.ValidateTree(candidate, StepDescriptorCatalog.Builtins())
+                .Concat(ValidateDbcBindings(phases)).ToArray();
         }
         catch (Exception e) { return [e.Message]; }
     }
@@ -98,13 +125,23 @@ public sealed class RealEditorWorkspaceGateway : IEditorWorkspaceGateway
         if (!_open.TryGetValue(assetId, out var session))
             throw new InvalidOperationException("当前 TEST 尚未正式打开。");
         var candidate = CreateCandidate(session.Document, phases);
-        var problems = StepTreeValidator.ValidateTree(candidate, StepDescriptorCatalog.Builtins());
+        var problems = StepTreeValidator.ValidateTree(candidate, StepDescriptorCatalog.Builtins())
+            .Concat(ValidateDbcBindings(phases)).ToArray();
         if (problems.Length > 0)
             throw new InvalidOperationException("测试程序检查未通过：" + Environment.NewLine +
                 string.Join(Environment.NewLine, problems.Take(20)));
         var saved = await _workspace.SaveTestEditorAsync(session, candidate, ct);
         _open[assetId] = saved;
         return new UiTestSnapshot(assetId, saved.AssetName, ToUiPhases(saved.Document));
+    }
+
+    private IReadOnlyList<string> ValidateDbcBindings(IReadOnlyList<DemoPhase> phases)
+    {
+        var errors = new List<string>();
+        foreach (var phase in phases)
+            foreach (var node in PreviewEditorDocument.Traverse(phase.Steps))
+                errors.AddRange(CanDbcBinding.Validate(node, _dbcCatalogs));
+        return errors;
     }
 
     private static TestDocument CreateCandidate(TestDocument original, IReadOnlyList<DemoPhase> phases)

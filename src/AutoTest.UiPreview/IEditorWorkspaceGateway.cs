@@ -27,6 +27,7 @@ public interface IEditorWorkspaceGateway
     Task<UiProjectSnapshot> CreateTestAsync(string name, CancellationToken ct = default);
     Task<UiProjectSnapshot> RenameTestAsync(string assetId, string name, CancellationToken ct = default);
     Task<UiProjectSnapshot> ImportDbcAsync(string filePath, CancellationToken ct = default);
+    Task<IReadOnlyList<UiDbcCatalog>> LoadDbcCatalogAsync(CancellationToken ct = default);
     Task<UiTestSnapshot> OpenTestAsync(string assetId, CancellationToken ct = default);
     Task<UiTestSnapshot> SaveTestAsync(string assetId, IReadOnlyList<DemoPhase> phases, CancellationToken ct = default);
     IReadOnlyList<string> Validate(string assetId, IReadOnlyList<DemoPhase> phases);

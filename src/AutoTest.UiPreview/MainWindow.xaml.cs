@@ -87,12 +87,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             var diagnostic = new PreviewEditorDocument();
             diagnostic.Phases.AddRange(PreviewSampleFactory.CreateDiagnosticPhases());
             _cases["diagnostic"] = (diagnostic, new PreviewEditHistory());
+            InitializePreviewExplorer();
             RebuildRows();
             SelectStep(_phases[0].Steps[0]);
             SetMessage("纯 UI 预览就绪");
         }
         else
         {
+            RefreshRealExplorer();
             RebuildRows();
             Closing += RealWorkspace_Closing;
             SetMessage("真实工程编辑模式：请打开或新建工程");
@@ -190,6 +192,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 Inspector.Bind(null, () => { });
                 _propertyEditor.Bind(null, (_, _) => { });
+                CanInspector.Bind(null, _dbcCatalogs, () => { });
                 return;
             }
             var match=_palette.FirstOrDefault(x=>x.Code==_selectedStep.Kind);
@@ -204,6 +207,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 _document.MarkDirty();
             });
             RenderParameterFields();
+            CanInspector.Bind(IsRealWorkspace ? _selectedStep : null, _dbcCatalogs, () =>
+            {
+                if (_selectedStep is null) return;
+                _document.MarkDirty();
+                _selectedRow?.Notify();
+            });
         }
         finally { _updatingInspector=false; }
     }
@@ -224,13 +233,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                         _propertyEditor.Rebuild();
                 }), DispatcherPriority.Background);
             }
-        });
+        }, IsRealWorkspace);
 
     private void InspectorParameterFields_PreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         // One undo checkpoint per field-focus transition, not one per keystroke.
         if (e.NewFocus is FrameworkElement { DataContext: PreviewPropertyField } &&
             !_updatingInspector && _selectedStep is not null)
+            RememberUndo();
+    }
+
+    private void CanInspectorFields_PreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (!_updatingInspector && IsRealWorkspace && _selectedStep?.Kind == "CanSend")
             RememberUndo();
     }
 
@@ -422,6 +437,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _history = session.History;
             _targetRow = null;
             Selection.Activate(key);
+            ActivateExplorerTest(key);
             Raise(nameof(Rows));
             Raise(nameof(CurrentCaseTitle));
             Raise(nameof(CurrentCaseTabTitle));

@@ -29,6 +29,16 @@ public partial class MainWindow
         RealResources.Clear();
         foreach (var resource in project.Resources) RealResources.Add(resource);
         Raise(nameof(ProjectDisplayName));
+        Raise(nameof(ProjectDisplayTitle));
+        RefreshRealExplorer();
+    }
+
+    private async Task LoadVerifiedDbcResourcesAsync()
+    {
+        if (_gateway is null) return;
+        _dbcCatalogs = await _gateway.LoadDbcCatalogAsync();
+        RefreshRealExplorer();
+        ShowInspector();
     }
 
     private async Task<bool> ConfirmLeaveAsync()
@@ -86,8 +96,10 @@ public partial class MainWindow
         _workspaceBusy = true;
         try
         {
+            _dbcCatalogs = [];
             SetProjectOverview(await _gateway.OpenProjectAsync(dialog.FileName));
             ResetRealDocuments();
+            await LoadVerifiedDbcResourcesAsync();
             SetMessage("工程已打开：" + ProjectDisplayName + "；请选择或新建测试程序");
         }
         catch (Exception error) { ShowWorkspaceError("打开工程失败", error); }
@@ -105,8 +117,10 @@ public partial class MainWindow
         _workspaceBusy = true;
         try
         {
+            _dbcCatalogs = [];
             SetProjectOverview(await _gateway.CreateProjectAsync(name, folder.FolderName));
             ResetRealDocuments();
+            await LoadVerifiedDbcResourcesAsync();
             SetMessage("工程已创建：" + ProjectDisplayName + "；可以新建测试程序");
         }
         catch (Exception error) { ShowWorkspaceError("新建工程失败", error); }
@@ -124,6 +138,7 @@ public partial class MainWindow
         Raise(nameof(Rows));
         Raise(nameof(CurrentCaseTitle));
         Raise(nameof(CurrentCaseTabTitle));
+        RefreshRealExplorer();
         RebuildRows();
     }
 
@@ -158,16 +173,23 @@ public partial class MainWindow
         try
         {
             SetProjectOverview(await _gateway.ImportDbcAsync(dialog.FileName));
-            SetMessage("DBC 资源已导入；信号级绑定将在后续接线");
+            await LoadVerifiedDbcResourcesAsync();
+            SetMessage("DBC 已导入，工程树和 CAN 步骤的报文、信号列表已更新");
         }
         catch (Exception error) { ShowWorkspaceError("DBC 导入失败", error); }
         finally { _workspaceBusy = false; }
     }
 
-    private async void OpenRealTest_Click(object sender, RoutedEventArgs e)
+    private void OpenRealTest_Click(object sender, RoutedEventArgs e)
     {
-        if (_gateway is null || _workspaceBusy || sender is not Button { Tag: UiTestAsset asset }) return;
-        if (asset.Id == _currentRealAsset || !await ConfirmLeaveAsync()) return;
+        if (sender is Button { Tag: UiTestAsset asset }) OpenRealTestById(asset.Id);
+    }
+
+    private async void OpenRealTestById(string id)
+    {
+        if (_gateway is null || _workspaceBusy || id == _currentRealAsset) return;
+        var asset = RealTestPrograms.FirstOrDefault(x => x.Id == id);
+        if (asset is null || !await ConfirmLeaveAsync()) return;
         _workspaceBusy = true;
         try { await ActivateRealTestAsync(asset); }
         catch (Exception error) { ShowWorkspaceError("打开 TEST 失败", error); }
@@ -189,6 +211,7 @@ public partial class MainWindow
         _history = session.History;
         _currentRealAsset = asset.Id;
         _realActiveTitle = asset.Name;
+        ActivateExplorerTest(asset.Id);
         _targetRow = null;
         Raise(nameof(Rows));
         Raise(nameof(CurrentCaseTitle));
@@ -235,6 +258,8 @@ public partial class MainWindow
         try
         {
             if (!_document.IsDirty) { SetMessage("测试程序没有未保存的修改"); return true; }
+            // Read and verify the pinned DBC assets before approving any new CAN bindings.
+            await LoadVerifiedDbcResourcesAsync();
             var result = await _gateway.SaveTestAsync(_currentRealAsset, _document.Phases);
             _document.AcceptSaved();
             SetMessage("保存成功：" + result.Name);

@@ -35,7 +35,10 @@ Get-Content .\G4_WORKSPACE_VERIFY.txt
 - 工程资源从真实 Manifest 读取，可通过既有服务导入 DBC；正式 TEST 资源可通过既有服务重命名。
 - 新增步骤来自正式 `StepUiCatalog`，不是旧的 `DemoStep` 示例类型。
   必填映射及参数未配置时，保存应失败并指出问题；不会生成假 DBC/UDS 绑定。
-- 目前还没有图形化 DBC/Controller 对象映射选择，也未接入设备或自动执行。
+- 左侧共享工程树可展开真实 DBC 文件、报文与信号；右侧 CAN 发送步骤可选择已导入的真实
+  DBC 报文，勾选信号并输入物理值。保存时检查 DBC 资产 ID、Revision、SHA256 和数值范围。
+  配置字段不等于可执行的 CAN 发送步骤；真正的执行服务仍待后续单独接线。
+- Controller 对象映射编辑以及设备和自动执行仍未接入。
   右侧的启用/断点属于编辑标记，不应被解释为真实执行引擎已经执行或跳过步骤。
 - `AutoTest.UiPreview` 仍保留冻结 HTML 样例，不包含业务项目依赖。
 - 当前 GitHub 代码提交完成，但 **Windows WPF Build/启动/验证脚本尚未经本环境执行**。
