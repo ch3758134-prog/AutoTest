@@ -2,7 +2,7 @@
  * @file    EAL_GPIO.h
  * @date    2026-07-16
  * @author  TestCtr
- * @brief   EAL 数字IO驱动 - 板级信号层 + 板级引脚宏（RL_DRV / KEY_PWR_DRV / ECU_PWR_DRV / IGN / SOL）
+ * @brief   旧固件 GPIO 信号绑定（板卡实际引脚用途必须独立核对原理图）
  *
  * 调用链路：CDD/ASW → EAL_GPIO → MCAL_GPIO → fsl_gpio / fsl_port
  *
@@ -25,7 +25,9 @@ extern "C" {
 #endif
 
 /* ============================================
- * 板级引脚宏（直接按 MCU 引脚操作；KEY=PC8 / ECU=PC9 已实测确认）
+ * 旧固件有效引脚表：保持当前源码行为，不代表 TestCtr V1.5 的功能分配。
+ * 映射只在此处定义，EAL_GPIO.c 使用同一组宏；后续改脚勿改双份。
+ * 注意：PTC8/9/10/PTB18 在图纸中分别为 SOL9/10/11/6IN。
  * ============================================ */
 #define RL_DRV_PORT        MCAL_GPIO_C   /* 主继电器（总电源） */
 #define RL_DRV_PIN         0
@@ -33,8 +35,8 @@ extern "C" {
 #define KEY_PWR_DRV_PIN    8
 #define ECU_PWR_DRV_PORT   MCAL_GPIO_C   /* ECU 供电驱动 */
 #define ECU_PWR_DRV_PIN    9
-#define IGN_PORT           MCAL_GPIO_B   /* ECU 点火驱动 */
-#define IGN_PIN            19
+#define IGN_PORT           MCAL_GPIO_C   /* 旧固件运行表实际为 PTC10，设计图 SOL11IN，未核准 IGN 用途 */
+#define IGN_PIN            10
 #define SOL_PORT           MCAL_GPIO_B   /* 电磁阀控制：HIGH=升起，LOW=下落/压紧 */
 #define SOL_PIN            18
 
@@ -45,7 +47,7 @@ typedef enum {
     EAL_GPIO_SIG_RL_DRV,        /* 主继电器（总电源）  PTC0 */
     EAL_GPIO_SIG_KEY_PWR_DRV,   /* 按键板供电驱动      PC8  */
     EAL_GPIO_SIG_ECU_PWR_DRV,   /* ECU 供电驱动        PC9  */
-    EAL_GPIO_SIG_IGN,           /* ECU 点火驱动        PB19 */
+    EAL_GPIO_SIG_IGN,           /* 历史 IGN 逻辑名称，源码映射 PTC10，设计图 SOL11IN */
     EAL_GPIO_SIG_SOL,           /* 电磁阀控制          PB18 */
     EAL_GPIO_SIG_COUNT
 } EAL_GPIO_SignalType;
