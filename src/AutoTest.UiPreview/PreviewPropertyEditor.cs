@@ -138,6 +138,6 @@ public sealed class PreviewPropertyEditor
         if (_step is not { } step) return;
         step.SetParam(field.Key, field.Value);
         _onChanged?.Invoke(step, field);
-        if (field.RebuildOnChange) Rebuild();
+        // The view schedules a mode-dependent field rebuild after binding completes.
     }
 }

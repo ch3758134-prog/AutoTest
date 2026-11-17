@@ -141,6 +141,15 @@ public partial class MainWindow : Window
             if (!ReferenceEquals(_selectedStep, step)) return;
             RefreshSelectedRowSummary();
             if (field.HasError) SetMessage(field.Error);
+            if (field.RebuildOnChange)
+            {
+                // Do not remove the active ComboBox while its SelectedItem binding is updating.
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (ReferenceEquals(_selectedStep, step))
+                        _propertyEditor.Rebuild();
+                }), DispatcherPriority.Background);
+            }
         });
 
     private void InspectorParameterFields_PreviewGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
