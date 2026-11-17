@@ -125,7 +125,7 @@
         TextTrimming="CharacterEllipsis" Margin="7,0,7,4"
         FontSize="11" Foreground="#62768B"/>
 
-      <TextBlock Text="安全访问由已导入的安全文件完成，无需另选 Seed/Key DLL。"
+      <TextBlock Text="Seed/Key 在程序内部处理，无需另外选择算法 DLL。"
         TextWrapping="Wrap" Margin="7,5,7,5" FontSize="11" Foreground="#61768D"/>
 
       <Separator Margin="5,5"/>
