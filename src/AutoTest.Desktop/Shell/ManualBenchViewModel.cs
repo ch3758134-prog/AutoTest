@@ -21,7 +21,7 @@ namespace AutoTest.Desktop.Shell;
 /// All physical writes pass the existing WinUSB physical command fence.
 /// No Mock, no second CAN receiver, no simulated ACK or inferred electrical state.
 /// </summary>
-public sealed class ManualBenchViewModel : BindableBase, IDisposable
+public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
 {
     public sealed class KeyChoice(int number) : BindableBase
     {
@@ -211,7 +211,8 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     public uint DraftMask => Keys.Aggregate(0u, (mask, key) => key.Checked ? mask | key.Mask : mask);
     public string DraftMaskLabel => "待发送 Key 掩码 0x" + DraftMask.ToString("X5", CultureInfo.InvariantCulture);
     public bool HasConfiguredKeys => _controller?.KeyHardwarePolicy is not null;
-    public bool CanSendHardware => IsConnected && !IsBusy && !_hardware.IsTestRunApproved;
+    public bool CanSendHardware => IsConnected && !IsBusy && !IsCanBatchRunning &&
+        !_hardware.IsManualCanBatchApproved && !_hardware.IsTestRunApproved;
     public bool CanOperateGpio => CanSendHardware && _hardware.HasV02GpioContract;
     public bool CanReadGpio => IsConnected && !IsBusy && _hardware.HasV02GpioContract;
     public bool CanSendClamp => CanOperateGpio && ClampSafetyConfirmed;
@@ -272,7 +273,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         _hardware.TestRunAuthorizationChanged += TestRunAuthorizationChanged;
         _projects.CurrentChanged += ProjectChanged;
         ConnectCommand = new DelegateCommand(async () => await ToggleConnectionAsync(),
-            () => !IsBusy && !_hardware.IsTestRunApproved);
+            () => !IsBusy && !IsCanBatchRunning && !_hardware.IsTestRunApproved);
         ReloadProfilesCommand = new DelegateCommand(async () => await ReloadResourcesAsync(), () => !IsBusy);
         SendCanCommand = new DelegateCommand(async () => await SendCanAsync(), () => CanSendHardware);
         SendKeyCommand = new DelegateCommand(async () => await ApplyKeysAsync(), () => CanSendHardware && HasConfiguredKeys);
@@ -282,6 +283,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         SendClampCommand = new DelegateCommand(async () => await ApplyClampAsync(), () => CanSendClamp);
         ReadClampsCommand = new DelegateCommand(async () => await ReadClampsAsync(), () => CanReadGpio);
         ClearLogsCommand = new DelegateCommand(() => Logs.Clear());
+        InitializeCanRows();
         _ = ReloadResourcesAsync();
     }
 
@@ -304,7 +306,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (_disposed) return;
-            if (approved) Status = "自动测试已占用工位：手动发送、IGN 和断连操作被锁定。";
+            if (approved) { _canBatchStop?.Cancel(); Status = "自动测试已占用工位：手动发送、IGN 和断连操作被锁定。"; }
             else Status = "自动测试授权已撤销；手动操作前请重新确认硬件实际状态。";
             RaiseCommands();
         }));
@@ -315,6 +317,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         {
             if (_disposed) return;
             _connected = epoch != 0;
+            if (epoch == 0) _canBatchStop?.Cancel();
             CanConfirmation = "";
             KeyConfirmation = "";
             IgnConfirmation = "";
@@ -333,6 +336,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     private void ProjectChanged(object? sender, EventArgs e) =>
         Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
         {
+            _canBatchStop?.Cancel();
             if (!_disposed) await ReloadResourcesAsync();
         }));
 
@@ -362,6 +366,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
 
     private void RaiseCommands()
     {
+        NotifyCanRows();
         RaisePropertyChanged(nameof(CanSendHardware));
         RaisePropertyChanged(nameof(CanOperateGpio));
         RaisePropertyChanged(nameof(CanReadGpio));
@@ -393,6 +398,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
 
     private async Task ToggleConnectionAsync() => await Execute("USB", async () =>
     {
+        if (IsCanBatchRunning) throw new InvalidOperationException("请先停止 CAN1 发送任务。");
         if (_hardware.IsConnected) await _hardware.DisconnectAsync();
         else
         {
@@ -405,6 +411,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
 
     public async Task ReloadResourcesAsync()
     {
+        if (IsCanBatchRunning) return;
         await ReloadProfilesAsync();
         await ReloadDbcAsync();
     }
@@ -689,6 +696,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _canBatchStop?.Cancel();
         _hardware.FrameObserved -= FrameObserved;
         _hardware.EvidenceRecorded -= EvidenceRecorded;
         _hardware.ConnectionChanged -= ConnectionChanged;
