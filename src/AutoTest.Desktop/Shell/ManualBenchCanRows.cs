@@ -363,6 +363,9 @@ public sealed partial class ManualBenchViewModel
         }
     }
 
+    /// <summary>Window closing waits for all CAN1 writers to stop and for the fence to revoke.</summary>
+    public Task StopCanBatchForCloseAsync() => StopCanRowsAsync();
+
     private async Task StopCanRowsAsync()
     {
         var stop = _canBatchStop;

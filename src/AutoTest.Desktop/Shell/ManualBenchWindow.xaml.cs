@@ -10,13 +10,35 @@ namespace AutoTest.Desktop.Shell;
 public partial class ManualBenchWindow : Window
 {
     private readonly ManualBenchViewModel _model;
+    private bool _closeAfterCanStopped;
 
     public ManualBenchWindow(ManualBenchViewModel model)
     {
         _model = model ?? throw new ArgumentNullException(nameof(model));
         DataContext = model;
         InitializeComponent();
+        Closing += OnClosing;
         Closed += (_, _) => _model.Dispose();
+    }
+
+    private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_closeAfterCanStopped || !_model.IsCanBatchRunning) return;
+        e.Cancel = true;
+        IsEnabled = false;
+        try
+        {
+            await _model.StopCanBatchForCloseAsync();
+            _closeAfterCanStopped = true;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            IsEnabled = true;
+            MessageBox.Show(this, "周期发送停机检查失败：" + ex.Message +
+                "\n请先核对主控实际状态再关闭窗口。",
+                "CAN1 停止异常", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void ExportLog_Click(object sender, RoutedEventArgs e)
