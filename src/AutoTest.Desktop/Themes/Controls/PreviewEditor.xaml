@@ -359,4 +359,13 @@
    </TextBlock>
   </StackPanel>
  </DataTemplate>
+
+ <Style x:Key="AtPreviewTreeMainCase" TargetType="Border">
+  <Setter Property="CornerRadius" Value="3"/><Setter Property="Padding" Value="4,5"/><Setter Property="Margin" Value="0,1"/>
+  <Style.Triggers><DataTrigger Binding="{Binding Selection.IsMainActive}" Value="True"><Setter Property="Background" Value="{StaticResource AtPreviewTreeCaseSelected}"/></DataTrigger></Style.Triggers>
+ </Style>
+ <Style x:Key="AtPreviewTreeDiagnosticCase" TargetType="Border">
+  <Setter Property="CornerRadius" Value="3"/><Setter Property="Padding" Value="4,5"/><Setter Property="Margin" Value="0,1"/>
+  <Style.Triggers><DataTrigger Binding="{Binding Selection.IsDiagnosticActive}" Value="True"><Setter Property="Background" Value="{StaticResource AtPreviewTreeCaseSelected}"/></DataTrigger></Style.Triggers>
+ </Style>
 </ResourceDictionary>

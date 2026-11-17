@@ -117,19 +117,21 @@
         </DockPanel>
        </Border>
        <StackPanel Margin="18,3,0,2">
-        <Border Style="{StaticResource AtPreviewTreeCaseSelectedStyle}">
+        <Border Style="{StaticResource AtPreviewTreeMainCase}">
          <StackPanel Orientation="Horizontal">
           <CheckBox x:Name="ProjectCase1Check" IsChecked="{Binding Selection.First,Mode=TwoWay}" VerticalAlignment="Center"/>
-          <Button Content="▤ 通信与状态检查" Style="{StaticResource BareBtn}"
+          <Button Content="▤ 通信与状态检查" Tag="main" Style="{StaticResource BareBtn}"
            Foreground="#1D518F" FontWeight="SemiBold"
            Click="OpenDemoCase_Click" Margin="2,0,0,0"/>
          </StackPanel>
         </Border>
-        <StackPanel Orientation="Horizontal" Margin="4,4">
+        <Border Style="{StaticResource AtPreviewTreeDiagnosticCase}">
+         <StackPanel Orientation="Horizontal">
          <CheckBox x:Name="ProjectCase2Check" IsChecked="{Binding Selection.Second,Mode=TwoWay}" VerticalAlignment="Center"/>
-         <Button Content="▤ 诊断信息读取" Style="{StaticResource BareBtn}"
+         <Button Content="▤ 诊断信息读取" Tag="diagnostic" Style="{StaticResource BareBtn}"
           Click="OpenDemoCase_Click" Margin="2,0,0,0"/>
-        </StackPanel>
+         </StackPanel>
+        </Border>
        </StackPanel>
        <Border BorderBrush="#DBE3ED" BorderThickness="0,1,0,0" Margin="0,10,0,8"/>
        <TextBlock Text="工程资源" FontWeight="SemiBold" Foreground="#29496E" Margin="2,0,0,9"/>
@@ -162,7 +164,7 @@
       <Button Content="▤ 研发检查项目" Style="{StaticResource BareBtn}"
        Width="130" Click="PreviewOnly_Click"/>
       <Border Background="White" BorderBrush="#2368BD" BorderThickness="0,0,0,2">
-       <Button Content="▤ 通信与状态检查" Style="{StaticResource BareBtn}"
+       <Button Content="{Binding CurrentCaseTabTitle}" Tag="{Binding Selection.ActiveKey}" Style="{StaticResource BareBtn}"
         Foreground="#235D9E" FontWeight="SemiBold" Width="142" Click="OpenDemoCase_Click"/>
       </Border>
       <Button Content="◈ 工程配置" Style="{StaticResource BareBtn}"
@@ -172,13 +174,13 @@
     <Grid Grid.Row="1" Background="White">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-      <TextBlock Text="通信与状态检查" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+      <TextBlock Text="{Binding CurrentCaseTitle}" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
       <Border Background="#EEF3F9" CornerRadius="3" Margin="9,0,5,0" Padding="5,3">
        <TextBlock x:Name="StepCountLabel" Text="11 步" FontSize="10" Foreground="#70839A"/>
       </Border>
       <Border BorderBrush="#C4DDF9" BorderThickness="1" Background="#EAF3FF"
        CornerRadius="4" Padding="6,4" Margin="0,0,0,0">
-       <CheckBox x:Name="CurrentRunCheck" Content="本次执行" IsChecked="{Binding Selection.First,Mode=TwoWay}"
+       <CheckBox x:Name="CurrentRunCheck" Content="本次执行" IsChecked="{Binding Selection.CurrentSelected,Mode=TwoWay}"
         Foreground="#235B9B" FontWeight="SemiBold" FontSize="11"/>
       </Border>
      </StackPanel>

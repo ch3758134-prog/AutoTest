@@ -74,4 +74,15 @@ public static class PreviewSampleFactory
     }
 
 
+    public static IReadOnlyList<DemoPhase> CreateDiagnosticPhases()
+    {
+        var prepare = new DemoPhase("prepare", "准备");
+        prepare.Steps.Add(CreateStep("ign", "设置点火输入", ("state", "ON")));
+        var test = new DemoPhase("test", "测试");
+        test.Steps.Add(CreateStep("uds", "读取诊断标识", ("job", "读取标识信息")));
+        test.Steps.Add(CreateStep("uds", "读取故障信息", ("job", "读取故障码")));
+        var cleanup = new DemoPhase("cleanup", "清理");
+        cleanup.Steps.Add(CreateStep("ign", "关闭点火输入", ("state", "OFF")));
+        return [prepare, test, cleanup];
+    }
 }

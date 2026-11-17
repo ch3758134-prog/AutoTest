@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,14 +15,20 @@ namespace AutoTest.UiPreview;
 /// Deliberately UI-only. All data lives in memory; this process does not use
 /// the AutoTest solution's TEST, Project, DBC, USB, CAN, UDS or Device services.
 /// </summary>
-public partial class MainWindow : Window
+public partial class MainWindow : Window, INotifyPropertyChanged
 {
-    private readonly PreviewEditorDocument _document = new();
+    private PreviewEditorDocument _document = new();
+    private readonly Dictionary<string, (PreviewEditorDocument Document, PreviewEditHistory History)> _cases = new();
     public ObservableCollection<PreviewRow> Rows => _document.Rows;
+    public string CurrentCaseTitle => Selection.IsMainActive ? "通信与状态检查" : "诊断信息读取";
+    public string CurrentCaseTabTitle => "▤ " + CurrentCaseTitle;
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void Raise([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     public ICommand AddRowCommand { get; }
     public ICommand TogglePhaseCommand { get; }
     private List<DemoPhase> _phases => _document.Phases;
-    private readonly PreviewEditHistory _history = new();
+    private PreviewEditHistory _history = new();
     private readonly PreviewPropertyEditor _propertyEditor = new();
     public ObservableCollection<PreviewPropertyField> PropertyFields => _propertyEditor.Fields;
     public PreviewInspectorState Inspector { get; } = new();
@@ -65,6 +73,10 @@ public partial class MainWindow : Window
         };
         SizeChanged += (_, _) => AdaptDocksToViewport();
         _phases.AddRange(PreviewSampleFactory.CreatePhases());
+        _cases["main"] = (_document, _history);
+        var diagnostic = new PreviewEditorDocument();
+        diagnostic.Phases.AddRange(PreviewSampleFactory.CreateDiagnosticPhases());
+        _cases["diagnostic"] = (diagnostic, new PreviewEditHistory());
         RebuildRows();
         SelectStep(_phases[0].Steps[0]);
         SetMessage("就绪");
@@ -326,9 +338,26 @@ public partial class MainWindow : Window
         SetMessage("搜索匹配 "+found.Count+" 条，已定位第 "+(index+1)+" 条。");
     }
 
-    private void OpenDemoCase_Click(object sender,RoutedEventArgs e)
+    private void OpenDemoCase_Click(object sender,RoutedEventArgs e) =>
+        SwitchCase((sender as Button)?.Tag as string ?? "main");
+    private void SwitchCase(string key)
     {
-        SetMessage("已打开通信与状态检查");
+        if (key == Selection.ActiveKey || !_cases.TryGetValue(key, out var session)) return;
+        _rebuilding = true;
+        try
+        {
+            _document = session.Document;
+            _history = session.History;
+            _targetRow = null;
+            Selection.Activate(key);
+            Raise(nameof(Rows));
+            Raise(nameof(CurrentCaseTitle));
+            Raise(nameof(CurrentCaseTabTitle));
+        }
+        finally { _rebuilding = false; }
+        RebuildRows();
+        SelectStep(_selectedStep ?? AllSteps().FirstOrDefault());
+        SetMessage("已打开" + CurrentCaseTitle);
     }
     private void RenameCase_Click(object sender,RoutedEventArgs e)
     {

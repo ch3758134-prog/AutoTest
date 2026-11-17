@@ -21,6 +21,7 @@ public sealed class PreviewCaseSelectionState : INotifyPropertyChanged
             _first = value;
             Raise();
             Raise(nameof(CountLabel));
+            if (IsMainActive) Raise(nameof(CurrentSelected));
         }
     }
 
@@ -33,9 +34,28 @@ public sealed class PreviewCaseSelectionState : INotifyPropertyChanged
             _second = value;
             Raise();
             Raise(nameof(CountLabel));
+            if (IsDiagnosticActive) Raise(nameof(CurrentSelected));
         }
     }
 
+    private string _activeKey = "main";
+    public string ActiveKey => _activeKey;
+    public bool IsMainActive => _activeKey == "main";
+    public bool IsDiagnosticActive => _activeKey == "diagnostic";
+    public bool CurrentSelected
+    {
+        get => IsMainActive ? First : Second;
+        set { if (IsMainActive) First = value; else Second = value; }
+    }
+    public void Activate(string key)
+    {
+        if (_activeKey == key || key is not ("main" or "diagnostic")) return;
+        _activeKey = key;
+        Raise(nameof(ActiveKey));
+        Raise(nameof(IsMainActive));
+        Raise(nameof(IsDiagnosticActive));
+        Raise(nameof(CurrentSelected));
+    }
     public string CountLabel => (_first ? 1 : 0) + (_second ? 1 : 0) + "/2";
 
     public event PropertyChangedEventHandler? PropertyChanged;
