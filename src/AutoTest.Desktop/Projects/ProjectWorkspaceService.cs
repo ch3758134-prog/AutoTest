@@ -20,7 +20,7 @@ public sealed record OpenProjectContext(ProjectDefinition Definition, string Man
     public string RootDirectory => Path.GetDirectoryName(ManifestPath)!;
 }
 
-public sealed class ProjectWorkspaceService
+public sealed partial class ProjectWorkspaceService
 {
     public const string ManifestFileName = "project.autotest-project.json";
     public const string TestProgramKind = "test-program";
@@ -34,6 +34,7 @@ public sealed class ProjectWorkspaceService
     public const string ScanSettingsKind = ProjectConfigurationCodec.ScanSettingsKind;
     public const string TestConfigurationKind = ProjectConfigurationCodec.TestConfigurationKind;
     public const string BenchConfigurationKind = ProjectConfigurationCodec.BenchConfigurationKind;
+    public const string KeyActionsKind = "bench-key-actions";
     private AssetId? _selectedTestConfiguration;
     private AssetId? _selectedBenchConfiguration;
     private string? _configurationProjectPath;
@@ -784,6 +785,7 @@ public sealed class ProjectWorkspaceService
                     FirmwareKind => "firmware",
                     WaveKind => "wave",
                     ControllerKind => "controller",
+                    KeyActionsKind => "key-actions",
                     WaveSettingsKind => "wave",
                     FlashSettingsKind => "flash",
                     ScanSettingsKind => "scan",
