@@ -12,9 +12,9 @@
 |---|---|---|
 | `PM-CR-20261116-PF` | `DESIGN_APPROVED / IMPLEMENTATION_PENDING` | 公共流程为可调用工程资源；无生产用例身份；同一 TEST DSL |
 | `PM-CR-20261116-KEY` | `DESIGN_APPROVED / IMPLEMENTATION_PENDING` | 取消独立按键配置用户入口；TEST/手动台架直编 KEY；保留设备硬件约束与旧文件 |
-| `PM-CR-20261116-MC` | `TARGET_APPROVED / FIRMWARE_CHANGE_PENDING / FIELD_UNVERIFIED` | 两独立夹具、IGN 与内部 RL_DRV 边界，取消供电/SOL 业务 |
+| `PM-CR-20261116-MC` | `TARGET_APPROVED / FIRMWARE_SOURCE_UPDATED / KEIL_BUILD_UNVERIFIED / FIELD_UNVERIFIED` | 两独立夹具、IGN 与内部 RL_DRV 边界，取消供电/SOL 业务 |
 
-主控板 0x18 两字节 `[clamp,state]` 与 0x19 位图是固件文档提供的**明确目标接口方案**；现有源码只支持旧互斥 `0x18`，**尚未证明主控固件已经实现新格式**。如后续固件版本协议定稿有差异，先定点修订双方接口再启用，不默默放宽兼容。
+主控板 0x18 两字节 `[clamp,state]` 与 0x19 位图**已在 `Main_Control@16abba7f` 固件源码实现**；旧版 `v0.3` 仍是一字节互斥 0x18。Keil Build、烧录到实际主控板及真实夹具验证**尚未完成**，不能把源码更新当成现场可用。HOST 按新格式开发，但在实际板卡兼容和安全许可确证前阻断实体 0x18 发送，不退回旧协议。
 
 此批准不等于：Keil 编译通过、固件已烧录、HOST Windows 编译启动、USB 连接通过、夹具机械动作/五路 KEY_SIM 电压实测、烧录实体许可、G4 Gate PASS、或批准旧工程静默迁移。
 
@@ -31,13 +31,13 @@
 ## 源码与身份
 
 - 管理分支：`Project_Management`。此归档不写 main、不创建项目管理交付分支/PR。
-- 主控固件调查：`Main_Control@5d2ad5b7f3ae54c6b3e08e363229a25349f4f8be`（仅新增接口文档），源文档 Blob `67a8fcb0da5eaf4cae1af1a2f7caaeb5e0979007`。
+- 主控固件调查：`Main_Control@16abba7fec94dc4b7fbdc05b91ee209b5c7efa12`（已包含实际固件源码修改和接口文档 v0.2），文档 Blob `cb9765539d651be551c0e4771f22bca7a00eac1f`。历史只提交接口调查文档的 `5d2ad5b7` 已非最新基线。
 - HOST 在研核查起点：`feature/g4-html-parity-20261115`；执行前必须回读实时 HEAD 和对应文件事实。 
 - 来源：项目负责人当前对话明确批准；无独立电子签名或现场测试证据，故不伪称外部身份认证/实测通过。
 
 ## 工作任务状态与交付约束
 
-- MAIN_CONTROL：新协议、旧命令处置、安全初态、断线和固件版本；`PENDING`。
+- MAIN_CONTROL：新协议与旧命令撤销已修改源码；Keil 编译、板卡身份、GPIO/J1与安全行为实测仍 `PENDING`。
 - DEVICE/TEST/PROJECT：正式接口、资源合同、验证与旧工程保护；`PENDING`。
 - UI/WPF/INTEGRATION：按合同实施，现有可用 USB/CAN 接口不得回归；`PENDING`。
 - Windows/现场测试：`NOT_VERIFIED`。
