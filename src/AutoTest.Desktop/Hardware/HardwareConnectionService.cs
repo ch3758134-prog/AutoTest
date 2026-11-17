@@ -31,8 +31,15 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private long _currentEpoch;
     public long CurrentStationEpoch => Interlocked.Read(ref _currentEpoch);
     public event Action<long>? ConnectionChanged;
-    private bool _testRunApproved;
+    private volatile bool _testRunApproved;
     private string? _approvedPlan;
+    public bool IsTestRunApproved => _testRunApproved;
+    public event Action<bool>? TestRunAuthorizationChanged;
+    private void PublishTestRunAuthorization(bool isApproved)
+    {
+        try { TestRunAuthorizationChanged?.Invoke(isApproved); }
+        catch (Exception ex) { Record("Test Run 授权状态通知失败：" + ex.Message); }
+    }
 
     private void Record(string text) =>
         EvidenceRecorded?.Invoke(DateTimeOffset.Now.ToString("HH:mm:ss.fff") + "  " + text);
@@ -170,6 +177,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _link.AuthorizePhysicalTestRun(fingerprint, confirmation, allowedCan, allowIgn);
             _testRunApproved = true;
             _approvedPlan = fingerprint;
+            PublishTestRunAuthorization(true);
             Record("已人工批准物理测试运行 SHA=" + fingerprint + "，设备会话内有效。");
         }
         finally { _lifecycle.Release(); }
@@ -183,6 +191,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _link?.RevokePhysicalTestRun();
             _testRunApproved = false;
             _approvedPlan = null;
+            PublishTestRunAuthorization(false);
             Record("物理测试运行授权已撤销。");
         }
         finally { _lifecycle.Release(); }
@@ -236,6 +245,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _link?.RevokePhysicalTestRun();
             _testRunApproved = false;
             _approvedPlan = null;
+            PublishTestRunAuthorization(false);
             _monitorStop?.Cancel();
             if (_bridge is not null) await _bridge.DisposeAsync();
             _bridge = null;

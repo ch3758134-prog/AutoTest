@@ -174,7 +174,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
     public uint DraftMask => Keys.Aggregate(0u, (mask, key) => key.Checked ? mask | key.Mask : mask);
     public string DraftMaskLabel => "待发送 Key 掩码 0x" + DraftMask.ToString("X5", CultureInfo.InvariantCulture);
     public bool HasConfiguredKeys => _controller?.KeyHardwarePolicy is not null;
-    public bool CanSendHardware => IsConnected && !IsBusy;
+    public bool CanSendHardware => IsConnected && !IsBusy && !_hardware.IsTestRunApproved;
     public string CanExpectedConsent => ExpectedConsent(TryBuildCanFrame);
     public string KeyExpectedConsent => ExpectedConsent(TryBuildKeyFrame);
     public string IgnExpectedConsent => "AUTHORIZE IGN " + (IgnOn ? "ON" : "OFF");
@@ -226,8 +226,10 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         _hardware.FrameObserved += FrameObserved;
         _hardware.EvidenceRecorded += EvidenceRecorded;
         _hardware.ConnectionChanged += ConnectionChanged;
+        _hardware.TestRunAuthorizationChanged += TestRunAuthorizationChanged;
         _projects.CurrentChanged += ProjectChanged;
-        ConnectCommand = new DelegateCommand(async () => await ToggleConnectionAsync(), () => !IsBusy);
+        ConnectCommand = new DelegateCommand(async () => await ToggleConnectionAsync(),
+            () => !IsBusy && !_hardware.IsTestRunApproved);
         ReloadProfilesCommand = new DelegateCommand(async () => await ReloadResourcesAsync(), () => !IsBusy);
         SendCanCommand = new DelegateCommand(async () => await SendCanAsync(), () => CanSendHardware);
         SendKeyCommand = new DelegateCommand(async () => await ApplyKeysAsync(), () => CanSendHardware && HasConfiguredKeys);
@@ -251,6 +253,15 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         RaisePropertyChanged(nameof(DraftMaskLabel));
         RaisePropertyChanged(nameof(KeyExpectedConsent));
     }
+
+    private void TestRunAuthorizationChanged(bool approved) =>
+        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_disposed) return;
+            if (approved) Status = "自动测试已占用工位：手动发送、IGN 和断连操作被锁定。";
+            else Status = "自动测试授权已撤销；手动操作前请重新确认硬件实际状态。";
+            RaiseCommands();
+        }));
 
     private void ConnectionChanged(long epoch)
     {
@@ -565,6 +576,7 @@ public sealed class ManualBenchViewModel : BindableBase, IDisposable
         _hardware.FrameObserved -= FrameObserved;
         _hardware.EvidenceRecorded -= EvidenceRecorded;
         _hardware.ConnectionChanged -= ConnectionChanged;
+        _hardware.TestRunAuthorizationChanged -= TestRunAuthorizationChanged;
         _projects.CurrentChanged -= ProjectChanged;
         foreach (var key in Keys) key.PropertyChanged -= KeyChanged;
         foreach (var signal in DbcSignals) signal.PropertyChanged -= DbcSignalChanged;
