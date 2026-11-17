@@ -51,7 +51,7 @@ public sealed class DemoStep : INotifyPropertyChanged
         "uds" => "UDS 服务",
         _ => "—"
     };
-    public string State => Enabled ? (Breakpoint ? "● 待执行" : "待执行") : "禁用";
+    public string State => Enabled ? "待执行" : "禁用";
     public string Param(string key, string fallback = "") =>
         Parameters.TryGetValue(key, out var value) ? value : fallback;
     public void SetParam(string key,string value) { Parameters[key] = value; Changed(nameof(Summary)); }
@@ -99,6 +99,7 @@ public sealed class PreviewRow : INotifyPropertyChanged
     public string Summary => Step?.Summary ?? "";
     public string Resource => Step?.Resource ?? "";
     public string Status => Step?.State ?? "";
+    public string BreakpointMark => Step?.Breakpoint == true ? "●" : "";
     public string CountLabel => IsPhase ? Phase.Steps.Count + " 步" : "";
     public string ExpandMark => Phase.Collapsed ? "▸" : "▾";
     public string Number => IsStep ? (Index+1).ToString() : "";
@@ -132,6 +133,6 @@ public sealed class PreviewRow : INotifyPropertyChanged
     public static Brush Solid(string hex) =>
         (Brush)new BrushConverter().ConvertFromString(hex)!;
     public event PropertyChangedEventHandler? PropertyChanged;
-    public void Notify() { foreach (var key in new[]{nameof(Name),nameof(Summary),nameof(Status),nameof(Resource)}) PropertyChanged?.Invoke(this,new(key)); }
+    public void Notify() { foreach (var key in new[]{nameof(Name),nameof(Summary),nameof(Status),nameof(BreakpointMark),nameof(Resource)}) PropertyChanged?.Invoke(this,new(key)); }
 }
 public sealed record PaletteKind(string Code,string Label,string Group,string Icon);

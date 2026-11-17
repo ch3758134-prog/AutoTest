@@ -2,6 +2,11 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <!-- Shared G4 test editor resources: compiled by both Desktop and UiPreview. -->
  <SolidColorBrush x:Key="AtPreviewSelected" Color="#EAF3FF"/>
+ <SolidColorBrush x:Key="AtPreviewTreeCaseSelected" Color="#E2EEFE"/>
+ <SolidColorBrush x:Key="AtPreviewTreeGroupSelected" Color="#E8F1FD"/>
+ <SolidColorBrush x:Key="AtPreviewTreeText" Color="#29496E"/>
+ <SolidColorBrush x:Key="AtPreviewBreakpoint" Color="#C04A57"/>
+ <SolidColorBrush x:Key="AtPreviewStatusDisabled" Color="#A0ADBE"/>
  <SolidColorBrush x:Key="AtPreviewBranchSurface" Color="#F5EEFB"/>
  <SolidColorBrush x:Key="AtPreviewBranchBorder" Color="#DECEF3"/>
 <Style x:Key="Btn" TargetType="Button">
@@ -192,4 +197,43 @@
              </DataTrigger>
             </Style.Triggers>
            </Style>
+
+ <!-- Explorer rows share interaction chrome across resource types and test cases. -->
+ <Style x:Key="AtPreviewTreeRoot" TargetType="Border">
+  <Setter Property="BorderBrush" Value="#D4E2F0"/>
+  <Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="Background" Value="#F1F6FC"/>
+  <Setter Property="CornerRadius" Value="5"/>
+  <Setter Property="Padding" Value="10,10"/>
+  <Setter Property="Margin" Value="0,0,0,12"/>
+ </Style>
+ <Style x:Key="AtPreviewTreeGroup" TargetType="Border">
+  <Setter Property="Background" Value="{StaticResource AtPreviewTreeGroupSelected}"/>
+  <Setter Property="CornerRadius" Value="3"/>
+  <Setter Property="Padding" Value="7,5"/>
+ </Style>
+ <Style x:Key="AtPreviewTreeCaseSelectedStyle" TargetType="Border">
+  <Setter Property="Background" Value="{StaticResource AtPreviewTreeCaseSelected}"/>
+  <Setter Property="CornerRadius" Value="3"/>
+  <Setter Property="Padding" Value="4,5"/>
+  <Setter Property="Margin" Value="0,1"/>
+ </Style>
+ <Style x:Key="AtPreviewTreeResource" TargetType="Button" BasedOn="{StaticResource TreeButton}">
+  <Setter Property="Foreground" Value="{StaticResource AtPreviewTreeText}"/>
+  <Setter Property="HorizontalContentAlignment" Value="Left"/>
+ </Style>
+ <Style x:Key="AtPreviewStatusText" TargetType="TextBlock" BasedOn="{StaticResource AtPreviewStepStatus}">
+  <Style.Triggers>
+   <DataTrigger Binding="{Binding Step.Enabled}" Value="False">
+    <Setter Property="Foreground" Value="{StaticResource AtPreviewStatusDisabled}"/>
+   </DataTrigger>
+  </Style.Triggers>
+ </Style>
+ <Style x:Key="AtPreviewBreakpointText" TargetType="TextBlock">
+  <Setter Property="Foreground" Value="{StaticResource AtPreviewBreakpoint}"/>
+  <Setter Property="FontSize" Value="11"/>
+  <Setter Property="FontWeight" Value="Bold"/>
+  <Setter Property="VerticalAlignment" Value="Center"/>
+  <Setter Property="Margin" Value="0,0,4,0"/>
+ </Style>
 </ResourceDictionary>
