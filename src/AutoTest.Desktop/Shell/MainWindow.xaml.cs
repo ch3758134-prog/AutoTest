@@ -18,6 +18,9 @@ namespace AutoTest.Desktop.Shell;
 public partial class MainWindow : Window
 {
     private readonly MainWindowViewModel _viewModel;
+    private readonly DispatcherTimer _autosaveTimer = new() { Interval = TimeSpan.FromSeconds(8) };
+    private DateTime _lastInteractionUtc = DateTime.UtcNow;
+    private bool _autosaveTickActive;
     private bool _shutdownStarted;
     private bool _shutdownComplete;
     private bool _closeAttemptPending;
@@ -36,15 +39,36 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         SourceInitialized += OnSourceInitialized;
         SizeChanged += OnShellSizeChanged;
-        Loaded += async (_, _) => await _viewModel.RestoreLastProjectAsync();
+        Loaded += async (_, _) =>
+        {
+            await _viewModel.RestoreLastProjectAsync();
+            _autosaveTimer.Start();
+        };
+        _autosaveTimer.Tick += OnAutosaveTick;
+        PreviewMouseDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
+        PreviewKeyDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
+        PreviewTextInput += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
         Closing += OnWindowClosing;
         _viewModel.PropertyChanged += OnVmPropertyChanged;
         Closed += (_, _) =>
         {
+            _autosaveTimer.Stop();
             _viewModel.PropertyChanged -= OnVmPropertyChanged;
             if (_activeRunFacts is not null)
                 _activeRunFacts.RunFacts.CollectionChanged -= OnRunFactsChanged;
         };
+    }
+
+    private async void OnAutosaveTick(object? sender, EventArgs e)
+    {
+        if (_autosaveTickActive || _shutdownStarted || _closeAttemptPending || !IsActive ||
+            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4) ||
+            Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+            return;
+        _autosaveTickActive = true;
+        try { await _viewModel.AutoSaveOpenEditorsAsync(); }
+        catch (Exception error) { Trace.TraceWarning("AutoSave WPF timer error: " + error); }
+        finally { _autosaveTickActive = false; }
     }
 
     // WindowStyle=None + WindowChrome does not guarantee work-area maximization

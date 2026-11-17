@@ -85,6 +85,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly DocumentWorkspaceState<EditorTabModel> _documents = new();
     private bool _closeGuardActive;
     private bool _savingActive;
+    private bool _autosaveActive;
     public ObservableCollection<EditorTabModel> OpenEditors => _documents.Tabs;
     private readonly RecentProjectStore _recentProjects;
     private readonly RecentEditorDocumentStore _recentEditors = new();
@@ -521,6 +522,37 @@ public sealed class MainWindowViewModel : BindableBase
         }
         await OpenSelectedDbcAsync();
     }
+    /// <summary>Uses existing formal editor save contracts. Never skips Inspector validation,
+    /// never writes when editor/Test is busy, never discards an invalid draft.</summary>
+    public async Task AutoSaveOpenEditorsAsync()
+    {
+        if (_autosaveActive || _savingActive || _closeGuardActive || IsBusy ||
+            _workspace.Current is null || _hardware.IsTestRunApproved) return;
+        _autosaveActive = true;
+        try
+        {
+            foreach (var tab in OpenEditors.ToArray())
+            {
+                if (!OpenEditors.Contains(tab)) continue;
+                var draft = tab.CloseDraft;
+                if (draft.IsBusy() || !draft.IsDirty()) continue;
+                var success = await draft.SaveAsync();
+                if (!success || draft.IsDirty())
+                {
+                    StatusMessage = "自动保存未完成：" + draft.Title + "；草稿保持原样。";
+                    break;
+                }
+                StatusMessage = "已自动保存：" + draft.Title;
+            }
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            StatusMessage = "自动保存失败，草稿仍保留：" + error.Message;
+            System.Diagnostics.Trace.TraceWarning("AutoSave failed: " + error);
+        }
+        finally { _autosaveActive = false; }
+    }
+
     private async Task SaveActiveAsync()
     {
         if (_savingActive) return;
