@@ -446,6 +446,7 @@ public partial class FlashLabWindow : Window
     private async void StartFlash_Click(object sender,RoutedEventArgs e)
     {
         if(_vm.IsBusy || !_device.IsConnected)return;
+        bool physicalCallStarted=false;
         try
         {
             var frozen=BuildFlashJob();
@@ -477,6 +478,7 @@ public partial class FlashLabWindow : Window
             FlashStageLabel.Text="真实烧录进行中；请保持稳定供电，不要拔线。";
             // Physical frame gate still binds exactly to this frozen job SHA;
             // the operator no longer has to type a 64-byte fingerprint.
+            physicalCallStarted=true;
             var outcome=await _device.ProgramCanToolAsync(frozen,frozen.Consent,
                 (tx,verified) =>
                 {
@@ -514,10 +516,19 @@ public partial class FlashLabWindow : Window
         }
         catch(Exception ex)
         {
-            FlashStageLabel.Text="烧录未确认成功；物理状态可能未知："+ex.Message;
-            if(_activeStage>=0)_vm.MarkStage(_activeStage,"失败");
-            WorkflowStatusLabel.Text="烧录停止于："+(_activeStage>=0?_vm.Stages[_activeStage].Step:"准备阶段");
-            Error("实体 CanTool 烧录",ex);
+            if(!physicalCallStarted)
+            {
+                FlashStageLabel.Text="烧录准备失败（尚未开始 CAN 烧录请求）："+ex.Message;
+                WorkflowStatusLabel.Text="准备阶段失败：检查配置、固件和安全文件。";
+                Error("烧录准备",ex);
+            }
+            else
+            {
+                FlashStageLabel.Text="烧录未确认成功；ECU 物理状态可能未知："+ex.Message;
+                if(_activeStage>=0)_vm.MarkStage(_activeStage,"失败");
+                WorkflowStatusLabel.Text="烧录停止于："+(_activeStage>=0?_vm.Stages[_activeStage].Step:"编程请求阶段");
+                Error("实体 CanTool 烧录",ex);
+            }
         }
         finally
         {
