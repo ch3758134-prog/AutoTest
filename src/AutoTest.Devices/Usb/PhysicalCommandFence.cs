@@ -26,6 +26,10 @@ public sealed class PhysicalCommandFence
     private DateTimeOffset _manualBatchExpiry;
     private int _manualBatchWrites;
     private string? _manualBatchFingerprint;
+    private byte[][]? _manualKeySteps;
+    private int _manualKeyIndex;
+    private long _manualKeyGeneration;
+    private DateTimeOffset _manualKeyExpiry;
 
     /// <summary>
     /// One deliberate physical-run authorization. Limited to the exact CAN arbitration
@@ -47,8 +51,8 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("Invalid allowed CAN frame.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null)
-                throw new InvalidOperationException("Another physical run or manual CAN batch is already authorized.");
+            if (_runFingerprint is not null || _manualBatchCan is not null || _manualKeySteps is not null)
+                throw new InvalidOperationException("Another physical run, CAN task or KEY action is active.");
             // Test authorization supersedes all pending manual one-shot grants.
             _singleCanPayload = null;
             _authorizedConnection = 0;
@@ -124,6 +128,38 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>Ordered exact CAN0 frames, at most 512 sends in one current USB generation.
+    /// No implicit KEY release at end or on cancel.</summary>
+    public void AuthorizeManualKeySequence(string sha, string confirmation,
+        IReadOnlyList<byte[]> frames, long generation)
+    {
+        if (sha is null || sha.Length != 64 || !sha.All(Uri.IsHexDigit) ||
+            confirmation != "AUTHORIZE KEY ACTION " + sha)
+            throw new UnauthorizedAccessException("Exact KEY action SHA consent required.");
+        if (generation <= 0 || frames.Count is < 1 or > 512 ||
+            frames.Any(frame => !IsDocumentedKeySimFrame(frame)))
+            throw new ArgumentException("KEY sequence requires 1..512 valid CAN0 0x730 frames.");
+        lock (_sync)
+        {
+            if (_runFingerprint is not null || _manualKeySteps is not null)
+                throw new InvalidOperationException("Physical TEST or KEY action is already authorized.");
+            _singleCanPayload = null;
+            _manualKeySteps = frames.Select(x => x.ToArray()).ToArray();
+            _manualKeyIndex = 0;
+            _manualKeyGeneration = generation;
+            _manualKeyExpiry = DateTimeOffset.UtcNow.AddMinutes(31);
+        }
+    }
+
+    public void RevokeManualKeySequence()
+    {
+        lock (_sync)
+        {
+            _manualKeySteps = null; _manualKeyIndex = 0;
+            _manualKeyGeneration = 0; _manualKeyExpiry = default;
+        }
+    }
+
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is MainControllerCodec.Ping or MainControllerCodec.GetVersion
             or MainControllerCodec.GetIgn or MainControllerCodec.GetClamps or 0x53);
@@ -152,6 +188,7 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             if (_runFingerprint is not null ||
+                (_manualKeySteps is not null && exact15Bytes[0] == 0) ||
                 (_manualBatchCan is not null && !IsDocumentedKeySimFrame(exact15Bytes)))
                 throw new InvalidOperationException("Active CAN1 task only allows one-shot documented KEY_SIM on CAN0.");
             _singleCanPayload = exact15Bytes.ToArray();
@@ -207,6 +244,15 @@ public sealed class PhysicalCommandFence
         if (IsReadOnly(request.Command, request.Payload)) return;
         lock (_sync)
         {
+            if (request.Command == MainControllerCodec.CanSend &&
+                _manualKeySteps is not null && _manualKeyGeneration == connectionGeneration &&
+                DateTimeOffset.UtcNow < _manualKeyExpiry &&
+                _manualKeyIndex < _manualKeySteps.Length &&
+                request.Payload.AsSpan().SequenceEqual(_manualKeySteps[_manualKeyIndex]))
+            {
+                _manualKeyIndex++;
+                return;
+            }
             if (request.Command == MainControllerCodec.SetIgn &&
                 request.Payload.Length == 1 && request.Payload[0] <= 1 &&
                 _oneIgnState.HasValue && _oneIgnState.Value == (request.Payload[0] == 1) &&
@@ -278,6 +324,8 @@ public sealed class PhysicalCommandFence
             _manualBatchCan = null; _manualBatchGeneration = 0;
             _manualBatchExpiry = default; _manualBatchWrites = 0;
             _manualBatchFingerprint = null;
+            _manualKeySteps = null; _manualKeyIndex = 0;
+            _manualKeyGeneration = 0; _manualKeyExpiry = default;
         }
     }
 }

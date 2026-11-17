@@ -87,6 +87,21 @@ public sealed class WinUsbByteLink : IUsbByteLink
         lock (_sync) _fence.RevokeManualCanBatch();
     }
 
+    public void AuthorizeManualKeySequence(string sha, string confirmation, IReadOnlyList<byte[]> frames)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect before authorizing KEY action.");
+            _fence.AuthorizeManualKeySequence(sha, confirmation, frames, _epoch);
+        }
+    }
+
+    public void RevokeManualKeySequence()
+    {
+        lock (_sync) _fence.RevokeManualKeySequence();
+    }
+
     public void AuthorizeOneIgnChange(bool on, string typedConfirmation)
     {
         lock (_sync)
