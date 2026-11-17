@@ -48,7 +48,7 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
     {
         string data=Volatile.Read(ref _sensitiveTrace)!=0
             ? "[SecurityAccess 数据已隐藏]"
-            : Convert.ToHexString(frame.Data.AsSpan());
+            : BitConverter.ToString(frame.Data.ToArray()).Replace("-", " ");
         try {Can1Frame?.Invoke(new(DateTimeOffset.Now,direction,frame.Id,
             frame.Dlc,data,result));}
         catch { /* visible monitoring never changes physical CAN operation */ }
