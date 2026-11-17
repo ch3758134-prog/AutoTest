@@ -117,7 +117,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (e.OriginalSource is not DependencyObject visual) return;
         while (visual is not ListBoxItem)
         {
-            visual = VisualTreeHelper.GetParent(visual);
+            // Text runs can be ContentElements rather than Visuals.
+            visual = visual switch
+            {
+                Visual or System.Windows.Media.Media3D.Visual3D => VisualTreeHelper.GetParent(visual),
+                FrameworkContentElement content => content.Parent,
+                ContentElement content => ContentOperations.GetParent(content),
+                _ => null
+            };
             if (visual is null) return;
         }
         if (visual is not ListBoxItem { DataContext: PreviewRow row }) return;
