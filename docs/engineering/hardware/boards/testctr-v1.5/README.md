@@ -31,6 +31,14 @@
 
 [回到硬件总入口](../../README.md)
 
+## 工作原理与软件要求（2026-11-17）
+
+- [按实际电路解释全板工作逻辑](CIRCUIT_WORKING_PRINCIPLES.md)
+- [17个模块的电气机制和固件约束 CSV](circuit_principles_17_modules.csv)
+- [GPIO多用途扇出/电源依赖 CSV](cross_module_signal_fanout.csv)
+
+**必须关注的硬件资源交叉：** PTB1/SOL4IN 同时控制 U23 Air_ALVE1 和 Q6/H_SPEED4；PTC2/SOL2IN 同时控制 U23 Air_ALVE2 和 Q7/H_SPEED3。PCUSB5V 同时参与 U4 的5V使能和隔离CAN1 U9的VDD2。外部SOLx经光耦转换成反相的MCU_SOLx。
+
 ## U5/U22/U23：器件级高边驱动追踪（2026-11-17）
 - [HTML 快速审查页面](high_side_trace_review.html) · [完整通道列表 CSV](main_high_side_11_channels.csv) · [JSON](main_high_side_11_channels.json)
 - [U5/U22/U23 全 60 个物理脚](bts724g_3x20_physical_pins.csv) · [55 条网络追踪边](main_high_side_edges.csv)

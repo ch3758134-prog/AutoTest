@@ -16,7 +16,7 @@
 ## 读取顺序
 
 1. 明确板卡与原理图修订，阅读相应 board README 和 PDF。**主控、KEY_SIM 不合并成一套 MCU 映射**。
-2. 先看 MCU Pin → Net → 外围器件 IN/OUT → 输出 Net → 连接器触点的完整链；不能只看 MCU 与 J1 两个端点表就判断业务冲突。命名空白不等于未接线。
+2. **先阅读板级工作原理**：[TestCtr 工作原理](boards/testctr-v1.5/CIRCUIT_WORKING_PRINCIPLES.md)。再看 MCU Pin → Net → 外围器件 IN/OUT → 输出 Net → 连接器触点的完整链，另外检查信号扇出、共享供电和电平极性；不能只看 MCU 与 J1 两个端点表就判断业务冲突。命名空白不等于未接线。
 3. 要评估复用/改脚时，单独核对官方 datasheet 的 ALT/MUX、工作电压、驱动能力、板级负载与保护，不得把某个“GPIO”自动判为空闲。
 4. 需要研究控制语义时再看固定固件提交与 [差异表](interfaces/design_source_issues.csv)。
 5. PCB layout/netlist、装配版、线束、运行 HEX、实测均未得到可关联到本版本的证明，全部保持 UNKNOWN；不得推断为现场事实。

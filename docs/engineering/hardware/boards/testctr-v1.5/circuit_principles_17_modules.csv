@@ -1,0 +1,18 @@
+id,module,circuit_construction,operating_condition,firmware_constraint,schematic_evidence,evidence_status
+M01,主供电,BAT+ 经 ESR1/D28/D59 形成 SOL24+；U4 LMR14203 将其转换为 VCC5V；U11 -> VCC3P3；U8产生±VCC12V,U4 SHDN=VCC5V_EN；PCUSB5V 经 U16 TLP291 参与使能,区分供电存在、启动使能与逻辑运行；没有测量的电源轨不表示已验证,p4,SCHEMATIC_AND_DATASHEET
+M02,功率母线,PTC0/RL_DRV经Q4 2N7002拉低U2 BTS50055 IN；U2 OUT形成共用SOL24IN,RL_DRV HIGH→Q4 ON→U2 IN LOW→U2 ON（电源和器件正常时）；U2 IS 经网络形成DIAG_SOL,共用母线不可绑定单路Air OFF；GPIO命令值不等于功率输出电压,"p3,p4,p5",SCHEMATIC_AND_DATASHEET
+M03,USB使能,P1 PCUSB5V同时进入U16 TLP291和CAN1隔离侧U9 VDD2,USB电源变化可能同时改变5V电源使能和CAN1总线侧供电,掉线不是仅软件状态变化；需要处理上电复位和CAN物理层失电,p4,SCHEMATIC
+M04,MCU与时钟,U7 100PIN;RESET上拉及RC、主/低频晶振、SPI EEPROM U6,复位态引脚与固件初始化态不同；外设引脚由MUX决定,不能把GPIO复用能力理解成板级自由引脚；核对时序与DWT溢出,p3,SCHEMATIC
+M05,隔离CAN1,U7 PTA12/PTA13 ↔ U9 ADM3054 ↔ L4/D46 ↔ CAN1_H/L ↔ J1 B11/B1,U9 VDD1=VCC3P3，VDD2=PCUSB5V；GND1/2分隔,区分控制器正常与隔离侧供电/线路正常；不得把MCAL CH0与图纸CAN编号混同,"p1,p3,p4",SCHEMATIC_AND_DATASHEET
+M06,非隔离CAN2,U7 PTC17/PTC16 ↔ U10 TJA1042T/3 ↔ L3/D66 ↔ CAN2_H/L ↔ J1 A12/A1,U10 STB=GND，默认正常模式；VCC=5V，VIO=3.3V,软件不可假设有独立可控STB引脚；区分总线和收发器供电错误,"p1,p3,p4",SCHEMATIC_AND_DATASHEET
+M07,USB隔离,P1↔U18 ADuM4160↔U7 USB0_DP/DM；线缆PCGND与板侧GND隔离,双电源域；仅USB低速/全速的器件能力,上位机枚举不等于板级功率输出就绪；断电与队列复位分开,p4,SCHEMATIC_AND_DATASHEET
+M08,K-Line与RS232,U12 TJA1021/20收发器→KLINE；U13 MAX3232将TTL UART转RS232 DB9,外部电平、波特率、协议与MCU UART不同,不因KLINE名字推断已实现任意诊断协议,"p3,p4",SCHEMATIC_AND_DATASHEET
+M09,BTS724G高边,U5/U22/U23总11路已命名；IN1..4高有效，OUT各经保护MOS接共享SOL24IN,必须Vbb存在、IN高且无故障才可能供电；ST12/ST34分别成对开漏诊断,返回GPIO仅为逻辑电平，不是电压/机械反馈；ST图纸未证实连接MCU,"p1,p3,p5",SCHEMATIC_AND_DATASHEET
+M10,Air与HALL耦合,SOL1IN→U23 CH1/Q1 H_SPEED1；SOL3IN→U23 CH2/Q2 H_SPEED2；SOL2IN→U23 CH3 Air2/Q7 H_SPEED3；SOL4IN→U23 CH4 Air1/Q6 H_SPEED4,同一MCU数字信号分成高边输出+晶体管支路；两电路同时受到电平/PWM变化,Air和HALL不能当成完全独立输出；必须做共用引脚影响评估,"p1,p3,p5",SCHEMATIC
+M11,TLE6228低边,JU1/JU2 TLE6228 接MCU_LAMPx与LAMP输出，并有VS/STBY/ENA/ST,低边通道导通使输出端吸向地；需有外部负载正供电并满足STBY/ENA,不能沿用BTS724G的高边输出电平语义；工程红字改电源仅属设计备注,"p1,p5",SCHEMATIC_AND_DATASHEET
+M12,DAC/SPEED,U3 MAX5715 DAC_1..4→U1 TLV4172运放网络→SPEED1..4,R44=51k/R47=10k/R54=10k/R58=5.1k + SP_REF 形成非直接比例的模拟变换,固件须建立DAC码值→模拟电压标定和运放饱和约束，非直接等比例,"p2,p3",SCHEMATIC_AND_DATASHEET
+M13,电流采样,R124=20mΩ SOL与R128=1.3mΩ Motor→O11/O10 INA190A2→ADC,INA190A2标称增益50V/V；理想每A分别1.0V、0.065V放大输出,分别配置电流比例、量程、饱和及采样滤波；不能共用一个比例,"p3,p4",SCHEMATIC_AND_DATASHEET
+M14,KEY输入,KEY1..3经100k串联+150k下拉+10nF/钳位形成MCU_KEY1..3（PTC7/6/5）,理想分压150/(100+150)=0.6，实际取决于源阻抗和钳位,按输入信号做极性/阈值/滤波；PTC6不是J1 C6,"p1,p2,p3",SCHEMATIC
+M15,SOL光耦输入,J1 SOL1..13→U14/U15/U17/U20 TLP293-4→2k上拉MCU_SOL1..13,LED导通则光敏管使MCU_SOL低电平，通常为反相数字输入,不要把MCU_SOLx误当作SOLxIN高边输出；转换极性并处理光耦延迟,"p1,p3",SCHEMATIC
+M16,J1连接器,J1三组64触点，图纸C6=HOUT5，C18=KEY2,业务外接用途需来自线束/用户报告；网名不是业务角色,固件业务映射需按完整器件连接核对，J1 C6≠PTC6,"p1,p3,p5",SCHEMATIC_USER_REPORTED
+M17,旧固件GPIO,EAL_GPIO.c使用PTC0、PTC8、PTC9、PTC10、PTB18；EAL_GPIO.h IGN宏PB19,IGN软件运行路径指向PTC10；五路初始化数组均为HIGH，与注释LOW矛盾,设计路径+GPIO运行表+业务用途分三层；不能用网名不一致判断冲突,"Main_Control c830dbcd; p1,p3,p5",HISTORICAL_SOURCE_AND_SCHEMATIC
