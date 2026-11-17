@@ -86,16 +86,24 @@
      </StackPanel>
      <DataGrid Grid.Row="1" ItemsSource="{Binding CanSendRows}"
       SelectedItem="{Binding SelectedCanRow,Mode=TwoWay}"
-      IsEnabled="{Binding CanEditCanRows}" AutoGenerateColumns="False"
+      AutoGenerateColumns="False"
       CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
       GridLinesVisibility="None" RowHeight="35" ColumnHeaderHeight="32"
       SelectionMode="Single" EnableRowVirtualization="True" BorderBrush="#E2EAF3"
       Background="#FFFFFF" AlternatingRowBackground="#F8FAFD">
+      <DataGrid.ContextMenu>
+       <ContextMenu DataContext="{Binding PlacementTarget.DataContext,RelativeSource={RelativeSource Self}}">
+        <MenuItem Header="新增报文" Command="{Binding AddCanRowCommand}"/>
+        <MenuItem Header="复制当前报文" Command="{Binding CopyCanRowCommand}"/>
+        <MenuItem Header="删除当前报文" Command="{Binding DeleteCanRowCommand}"/>
+       </ContextMenu>
+      </DataGrid.ContextMenu>
       <DataGrid.Columns>
        <DataGridTemplateColumn Header="发送" Width="48">
         <DataGridTemplateColumn.CellTemplate>
          <DataTemplate>
           <CheckBox IsChecked="{Binding Included,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+           IsEnabled="{Binding DataContext.CanEditCanRows,RelativeSource={RelativeSource AncestorType=DataGrid}}"
            HorizontalAlignment="Center" VerticalAlignment="Center"/>
          </DataTemplate>
         </DataGridTemplateColumn.CellTemplate>
@@ -279,17 +287,25 @@
      </DockPanel>
      <TextBox DockPanel.Dock="Top" Text="{Binding LogFilter,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       ToolTip="按 CAN0/CAN1、ID、数据、状态或说明过滤" Padding="8,6" MinHeight="29" Margin="0,0,0,8"/>
-     <DataGrid ItemsSource="{Binding FilteredLogs}" IsReadOnly="True" AutoGenerateColumns="False"
+     <Border DockPanel.Dock="Bottom" BorderBrush="#E5ECF5" BorderThickness="0,1,0,0"
+      Margin="0,8,0,0" Padding="5,9">
+      <StackPanel>
+       <TextBlock Text="日志详情（选择一条记录查看）" Foreground="#4B6888" FontWeight="SemiBold" FontSize="11"/>
+       <TextBlock Text="{Binding SelectedLog.Detail}" Foreground="#657B94" TextWrapping="Wrap"
+        Margin="0,5,0,0" FontSize="11" MinHeight="42"/>
+      </StackPanel>
+     </Border>
+     <DataGrid ItemsSource="{Binding FilteredLogs}" SelectedItem="{Binding SelectedLog,Mode=TwoWay}"
+      IsReadOnly="True" AutoGenerateColumns="False"
       CanUserAddRows="False" CanUserDeleteRows="False" GridLinesVisibility="Horizontal"
       HeadersVisibility="Column" EnableRowVirtualization="True" BorderBrush="#E6EDF5"
       ColumnHeaderHeight="31" RowHeight="29" ScrollViewer.HorizontalScrollBarVisibility="Auto">
       <DataGrid.Columns>
-       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="85"/>
-       <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="90"/>
-       <DataGridTextColumn Header="方向" Binding="{Binding Direction}" Width="59"/>
-       <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="71"/>
-       <DataGridTextColumn Header="DATA" Binding="{Binding Data}" Width="160"/>
-       <DataGridTextColumn Header="说明/证据" Binding="{Binding Detail}" Width="220"/>
+       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="81"/>
+       <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="83"/>
+       <DataGridTextColumn Header="方向" Binding="{Binding Direction}" Width="56"/>
+       <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="66"/>
+       <DataGridTextColumn Header="DATA" Binding="{Binding Data}" Width="*"/>
       </DataGrid.Columns>
      </DataGrid>
     </DockPanel>

@@ -99,6 +99,12 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     public ObservableCollection<DbcChoice> DbcMessages { get; } = new();
     public ObservableCollection<DbcSignalValue> DbcSignals { get; } = new();
     public ObservableCollection<BenchLogEntry> Logs { get; } = new();
+    private BenchLogEntry? _selectedLog;
+    public BenchLogEntry? SelectedLog
+    {
+        get => _selectedLog;
+        set => SetProperty(ref _selectedLog, value);
+    }
     public ICollectionView FilteredLogs { get; }
 
     private string _logFilter = "";
@@ -361,6 +367,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private void Append(BenchLogEntry record)
     {
         Logs.Add(record);
+        if (SelectedLog is null) SelectedLog = record;
         while (Logs.Count > 700) Logs.RemoveAt(0);
     }
 
