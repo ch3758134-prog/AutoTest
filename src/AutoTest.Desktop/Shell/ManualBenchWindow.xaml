@@ -222,7 +222,7 @@
       <TextBlock Text="{Binding LastClampStatus}" TextWrapping="Wrap"
        Foreground="#607B99" FontSize="11" Margin="0,8,0,0"/>
       <TextBlock Text="本次夹具授权文字" Style="{StaticResource BenchFieldLabel}"/>
-      <TextBox Text="{Binding ClampExpectedConsent}" IsReadOnly="True"
+      <TextBox Text="{Binding ClampExpectedConsent,Mode=OneWay}" IsReadOnly="True"
        TextWrapping="Wrap" Padding="7,6" FontSize="10" MinHeight="32"/>
       <DockPanel Margin="0,6,0,0">
        <Button DockPanel.Dock="Right" Content="复制" Click="CopyClampConfirmation_Click"
