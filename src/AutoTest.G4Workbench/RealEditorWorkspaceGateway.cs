@@ -20,8 +20,9 @@ public sealed class RealEditorWorkspaceGateway : IEditorWorkspaceGateway
 
 
     public IReadOnlyList<PaletteKind> StepTypes { get; } =
-        StepUiCatalog.Choices.Select(x => new PaletteKind(
-            x.Type, x.Label, x.Runnable ? "测试步骤" : "待接入的步骤", "◇")).ToArray();
+        StepUiCatalog.Choices
+            .Select(x => PreviewPalettePresentation.Describe(x.Type, x.Label))
+            .ToArray();
 
     public DemoStep CreateStep(string type) => ToUi(StepUiCatalog.NewNode(type));
 

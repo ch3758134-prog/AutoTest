@@ -287,37 +287,66 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (e.Key==Key.Escape) {PaletteOverlay.Visibility=Visibility.Collapsed;e.Handled=true;}
         if (e.Key==Key.Enter)
         {
-            var match=_palette.FirstOrDefault(x=>x.Label.Contains(PaletteSearchText.Text,StringComparison.CurrentCultureIgnoreCase));
-            if(match is not null){CreatePreviewStep(match);e.Handled=true;}
+            var query = PaletteSearchText.Text.Trim();
+            var match = _palette.FirstOrDefault(x =>
+                CanOfferPaletteChoice(x) &&
+                (x.Label + " " + x.Group + " " + x.Code)
+                    .Contains(query, StringComparison.CurrentCultureIgnoreCase));
+            if (match is not null) { CreatePreviewStep(match); e.Handled = true; }
         }
     }
+    private bool CanOfferPaletteChoice(PaletteKind choice) =>
+        choice.Code != "Case" || _targetRow?.Branch?.Name == "cases";
+
     private void FillPalette(string search)
     {
         PaletteGroupsPanel.Children.Clear();
-        foreach(var group in _palette.Select(x=>x.Group).Distinct())
+        var groups = PreviewPalettePresentation.Groups;
+        foreach (var group in groups)
         {
-            var kinds=_palette.Where(x=>x.Group==group && (search.Length==0 ||
-                (x.Label+" "+x.Group).Contains(search,StringComparison.CurrentCultureIgnoreCase))).ToList();
-            if(kinds.Count==0)continue;
+            var entries = _palette
+                .Where(choice => CanOfferPaletteChoice(choice) && choice.Group == group &&
+                    (search.Length == 0 ||
+                     (choice.Label + " " + choice.Group + " " + choice.Code)
+                     .Contains(search, StringComparison.CurrentCultureIgnoreCase)))
+                .ToList();
+            if (entries.Count == 0) continue;
             PaletteGroupsPanel.Children.Add(new TextBlock
             {
-                Text=group,
-                Style=(Style)FindResource("AtPreviewPaletteGroup")
+                Text = group,
+                Style = (Style)FindResource("AtPreviewPaletteGroup")
             });
-            var wrap=new WrapPanel();
-            foreach(var item in kinds)
+            var wrap = new WrapPanel();
+            foreach (var entry in entries)
             {
-                var button=new Button
+                var button = new Button
                 {
-                    Content=item.Icon+"  "+item.Label,
-                    Tag=item,
-                    Style=(Style)FindResource("AtPreviewPaletteButton")
+                    Content = entry.Icon + "  " + entry.Label,
+                    Tag = entry,
+                    Style = (Style)FindResource("AtPreviewPaletteButton"),
+                    ToolTip = "添加 " + entry.Label + " 步骤；选择后在右侧编辑参数"
                 };
-                button.Click+=(_,_)=>CreatePreviewStep(item);
-                wrap.Children.Add(button);
+                button.Margin = new Thickness(0);
+                button.Click += (_, _) => CreatePreviewStep(entry);
+                var accent = new Border
+                {
+                    Child = button,
+                    BorderThickness = new Thickness(3, 0, 0, 0),
+                    BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+                        PreviewPalettePresentation.Accent(group))),
+                    Margin = new Thickness(0, 0, 7, 6)
+                };
+                wrap.Children.Add(accent);
             }
             PaletteGroupsPanel.Children.Add(wrap);
         }
+        if (PaletteGroupsPanel.Children.Count == 0)
+            PaletteGroupsPanel.Children.Add(new TextBlock
+            {
+                Text = "没有匹配的步骤类型",
+                Foreground = Brushes.SlateGray,
+                Margin = new Thickness(6, 14, 0, 14)
+            });
     }
 
     private void CreatePreviewStep(PaletteKind option)

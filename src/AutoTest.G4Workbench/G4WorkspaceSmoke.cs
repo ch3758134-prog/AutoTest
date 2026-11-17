@@ -60,6 +60,10 @@ public static class G4WorkspaceSmoke
             if (gateway.Validate(asset.Id, loaded.Phases).Count == 0)
                 throw new InvalidDataException("Out-of-range DBC signal value was not rejected.");
             send.SetParam("signals", "{\"Enable\":\"1\"}");
+            send.SetParam("period", "-1");
+            if (gateway.Validate(asset.Id, loaded.Phases).Count == 0)
+                throw new InvalidDataException("Invalid CAN period was not rejected.");
+            send.SetParam("period", "100");
             var stale = send.Copy();
             stale.EditorMetadata["editor.dbcSha256"] = "stale-fingerprint";
             if (CanDbcBinding.Validate(stale, catalogs).Count == 0)
@@ -77,7 +81,8 @@ public static class G4WorkspaceSmoke
             var persistedCan = nodes.Single(n => n.Kind == "CanSend");
             var rereadCatalog = await gateway.LoadDbcCatalogAsync();
             if (CanDbcBinding.Validate(persistedCan, rereadCatalog).Count != 0 ||
-                persistedCan.Id != send.Id || persistedCan.Param("signals") != "{\"Enable\":\"1\"}")
+                persistedCan.Id != send.Id || persistedCan.Param("signals") != "{\"Enable\":\"1\"}" ||
+                persistedCan.Param("period") != "100")
                 throw new InvalidDataException("DBC signal binding did not survive TEST save/reopen.");
             if (actual.Id != wait.Id || actual.Kind != "Wait" || actual.Param("milliseconds") != "125" ||
                 actual.EditorMetadata.GetValueOrDefault("editor.note") != "roundtrip-preserved")

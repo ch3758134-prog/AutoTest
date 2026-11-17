@@ -386,9 +386,24 @@
           Margin="0,0,0,7" ToolTip="从工程中已导入并校验的 DBC 选择报文"/>
          <TextBlock Text="{Binding CanInspector.Message}" Foreground="#607C99"
           FontSize="10" TextWrapping="Wrap" Margin="0,0,0,7"/>
-         <TextBlock Text="信号物理值" Style="{StaticResource FieldLabel}"/>
+         <Grid Margin="0,2,0,5">
+          <Grid.ColumnDefinitions>
+           <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="信号物理值" Style="{StaticResource FieldLabel}"
+           VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="{Binding CanInspector.SignalCount}"
+           FontSize="10" Foreground="#7188A0" VerticalAlignment="Center"/>
+         </Grid>
          <ItemsControl ItemsSource="{Binding CanInspector.Signals}"
           ItemTemplate="{StaticResource AtPreviewCanSignalTemplate}"/>
+         <TextBlock Text="发送周期（ms，0 为单次）" Style="{StaticResource FieldLabel}"
+          Margin="0,10,0,4"/>
+         <TextBox Text="{Binding CanInspector.PeriodMs,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+          Style="{StaticResource UiInput}" Height="27" Padding="5,3"/>
+         <TextBlock Text="{Binding CanInspector.PeriodError}" Foreground="#C04A57"
+          FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0"
+          Visibility="{Binding CanInspector.HasPeriodError,Converter={StaticResource B2V}}"/>
         </StackPanel>
         <Border BorderBrush="#E4EAF2" BorderThickness="0,1,0,0"
          Margin="0,3,0,10"/>
@@ -433,27 +448,41 @@
   </Border>
 
   <!-- Palette is placed above the full UI; it edits only in-memory sample rows. -->
-  <Grid x:Name="PaletteOverlay" Grid.RowSpan="4" Panel.ZIndex="100" Visibility="Collapsed"
-   Background="#660D2546">
-   <Border HorizontalAlignment="Center" VerticalAlignment="Center" Width="520"
-    MaxHeight="620" Background="White" BorderBrush="#BDCBDB" BorderThickness="1"
-    CornerRadius="8" Padding="16" Margin="12">
-    <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="6" Opacity="0.27"/></Border.Effect>
-    <DockPanel>
-     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+  <Grid x:Name="PaletteOverlay" Grid.RowSpan="4" Panel.ZIndex="100"
+  Visibility="Collapsed" Background="#660D2546">
+  <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+   Width="620" MaxHeight="720" Background="White"
+   BorderBrush="#CCD7E6" BorderThickness="1" CornerRadius="10"
+   Margin="12" ClipToBounds="True">
+   <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="6" Opacity="0.23"/></Border.Effect>
+   <DockPanel LastChildFill="True">
+    <Border DockPanel.Dock="Top" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1"
+     Padding="18,12">
+     <DockPanel>
       <Button DockPanel.Dock="Right" Content="×" Style="{StaticResource BareBtn}"
-       Click="ClosePalette_Click"/>
-      <TextBlock Text="插入测试步骤" FontSize="15" FontWeight="Bold" Foreground="#27486D"/>
+       Click="ClosePalette_Click" ToolTip="关闭步骤选择"/>
+      <TextBlock Text="插入测试步骤" FontSize="14" FontWeight="Bold"
+       Foreground="#27486D" VerticalAlignment="Center"/>
      </DockPanel>
-     <TextBox x:Name="PaletteSearchText" DockPanel.Dock="Top" Style="{StaticResource UiInput}"
+    </Border>
+    <Border DockPanel.Dock="Bottom" BorderBrush="#DBE3ED"
+     BorderThickness="0,1,0,0" Background="#F8FBFE" Padding="14,9">
+     <Button Content="关闭" Style="{StaticResource Btn}" HorizontalAlignment="Right"
+      Click="ClosePalette_Click" MinWidth="68"/>
+    </Border>
+    <DockPanel Margin="17,14,17,10">
+     <TextBox x:Name="PaletteSearchText" DockPanel.Dock="Top"
+      Style="{StaticResource UiInput}"
       TextChanged="PaletteSearchText_Changed" KeyDown="PaletteSearchText_KeyDown"
-      Margin="0,0,0,8" ToolTip="输入步骤类型，选择后立即进入右侧编辑"/>
+      Margin="0,0,0,9" Height="31" Padding="8,5"
+      ToolTip="按名称搜索；单击步骤后进入右侧属性编辑"/>
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-      MaxHeight="490">
+      MaxHeight="470">
       <StackPanel x:Name="PaletteGroupsPanel"/>
      </ScrollViewer>
     </DockPanel>
-   </Border>
-  </Grid>
+   </DockPanel>
+  </Border>
+ </Grid>
  </Grid>
 </Window>

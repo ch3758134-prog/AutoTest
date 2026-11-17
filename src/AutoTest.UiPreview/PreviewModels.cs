@@ -51,7 +51,7 @@ public sealed class DemoStep : INotifyPropertyChanged
         "Read" => Param("target", "未映射目标") + " → " + Param("variable", ""),
         "WaitUntil" => Param("target", "") + " " + Param("operator", "") + " " + Param("expected", ""),
         "Expect" => Param("left", "") + " " + Param("operator", "") + " " + Param("right", ""),
-        "CanSend" => Param("dbcMessage", "未绑定 DBC 报文"),
+        "CanSend" => CanSendSummary,
         "CanWait" => Param("dbcMessage", "未绑定报文") + " · " + Param("timeoutMs", "") + " ms",
         "UdsRequest" => Param("service", "未指定服务"),
         "Flash" => Param("programmingProfile", "未选择烧录配置"),
@@ -60,6 +60,18 @@ public sealed class DemoStep : INotifyPropertyChanged
         "CallSubroutine" => Param("target", "未指定子程序"),
         _ => Parameters.Count == 0 ? "—" : string.Join(" · ", Parameters.Select(x => x.Key+"="+x.Value).Take(2))
     };
+    private string CanSendSummary
+    {
+        get
+        {
+            var message = Param("dbcMessage", "未绑定 DBC 报文");
+            var count = CanDbcBinding.TryReadValues(Param("signals"), out var data)
+                ? data.Count : 0;
+            var cycle = Param("period", "0");
+            return message + " · " + count + " 信号 · " +
+                (cycle == "0" ? "单次发送" : "周期 " + cycle + " ms");
+        }
+    }
     public string Resource => Kind switch
     {
         "ign" or "sol" => "工位能力",

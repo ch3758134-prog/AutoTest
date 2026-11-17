@@ -103,7 +103,7 @@ public sealed class PreviewPropertyEditor
         if (_realCanEditor && step.Kind == "CanSend")
         {
             foreach (var pair in step.Parameters.OrderBy(p => p.Key, StringComparer.Ordinal))
-                if (pair.Key is not ("dbcMessage" or "signals"))
+                if (pair.Key is not ("dbcMessage" or "signals" or "period"))
                     Text(pair.Key, pair.Key, pair.Value);
             return;
         }

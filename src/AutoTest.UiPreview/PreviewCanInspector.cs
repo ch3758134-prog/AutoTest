@@ -20,6 +20,7 @@ public sealed class PreviewCanInspector : INotifyPropertyChanged
     private Action? _onEdited;
     private UiDbcMessage? _selected;
     private string _message = "";
+    private string _periodMs = "0";
     private bool _binding;
 
     public ObservableCollection<UiDbcMessage> Messages { get; } = new();
@@ -27,6 +28,28 @@ public sealed class PreviewCanInspector : INotifyPropertyChanged
     public bool IsVisible => _step?.Kind == "CanSend";
     public string Message { get => _message; private set { _message = value; Raise(); } }
     public bool HasMessages => Messages.Count != 0;
+    public string SignalCount => "已选择 " + Signals.Count(s => s.IsSelected) + "/" + Signals.Count + " 路信号";
+    public string PeriodMs
+    {
+        get => _periodMs;
+        set
+        {
+            if (_periodMs == value) return;
+            _periodMs = value;
+            Raise();
+            Raise(nameof(PeriodError));
+            Raise(nameof(HasPeriodError));
+            if (!_binding && _step is not null)
+            {
+                _step.SetParam("period", value);
+                _onEdited?.Invoke();
+            }
+        }
+    }
+    public string PeriodError =>
+        int.TryParse(PeriodMs, NumberStyles.None, CultureInfo.InvariantCulture, out var n) &&
+        n >= 0 ? "" : "请输入非负整数，0 表示单次发送";
+    public bool HasPeriodError => PeriodError.Length > 0;
     public UiDbcMessage? SelectedMessage
     {
         get => _selected;
@@ -68,6 +91,10 @@ public sealed class PreviewCanInspector : INotifyPropertyChanged
         {
             _step = step;
             _onEdited = onEdited;
+            _periodMs = step?.Param("period", "0") ?? "0";
+            Raise(nameof(PeriodMs));
+            Raise(nameof(PeriodError));
+            Raise(nameof(HasPeriodError));
             Messages.Clear();
             foreach (var message in catalogs.SelectMany(c => c.Messages)
                          .OrderBy(m => m.AssetName, StringComparer.CurrentCulture)
@@ -78,6 +105,7 @@ public sealed class PreviewCanInspector : INotifyPropertyChanged
             Raise(nameof(IsVisible));
             Raise(nameof(HasMessages));
             Signals.Clear();
+            Raise(nameof(SignalCount));
 
             if (!IsVisible) { Message = ""; return; }
             if (Messages.Count == 0) { Message = "工程中没有可读取的 DBC 报文，请先导入 DBC。"; return; }
@@ -113,7 +141,11 @@ public sealed class PreviewCanInspector : INotifyPropertyChanged
     private void PopulateSignals(UiDbcMessage? message, IReadOnlyDictionary<string, string>? saved)
     {
         Signals.Clear();
-        if (message is null) return;
+        if (message is null)
+        {
+            Raise(nameof(SignalCount));
+            return;
+        }
         foreach (var signal in message.Signals)
         {
             var physical = "";
@@ -121,11 +153,13 @@ public sealed class PreviewCanInspector : INotifyPropertyChanged
             Signals.Add(new PreviewCanSignalValue(signal, isSelected, isSelected ? physical : "",
                 () => SignalsChanged()));
         }
+        Raise(nameof(SignalCount));
     }
 
     private void SignalsChanged()
     {
         if (_binding || _step is null || _selected is null) return;
+        Raise(nameof(SignalCount));
         var values = Signals.Where(x => x.IsSelected)
             .ToDictionary(x => x.Signal.Name, x => x.PhysicalValue, StringComparer.Ordinal);
         _step.SetParam("signals", JsonSerializer.Serialize(values));
@@ -147,14 +181,36 @@ public sealed class PreviewCanSignalValue : INotifyPropertyChanged
     public bool IsSelected
     {
         get => _selected;
-        set { if (value == _selected) return; _selected = value; Raise(); Raise(nameof(Error)); _onChanged(); }
+        set
+        {
+            if (value == _selected) return;
+            _selected = value;
+            Raise();
+            Raise(nameof(Error));
+            Raise(nameof(HasError));
+            _onChanged();
+        }
     }
     public string PhysicalValue
     {
         get => _physicalValue;
-        set { if (value == _physicalValue) return; _physicalValue = value; Raise(); Raise(nameof(Error)); _onChanged(); }
+        set
+        {
+            if (value == _physicalValue) return;
+            _physicalValue = value;
+            if (!string.IsNullOrWhiteSpace(value) && !_selected)
+            {
+                _selected = true;
+                Raise(nameof(IsSelected));
+            }
+            Raise();
+            Raise(nameof(Error));
+            Raise(nameof(HasError));
+            _onChanged();
+        }
     }
     public string Error => !IsSelected ? "" : CanDbcBinding.CheckValue(Signal, PhysicalValue);
+    public bool HasError => Error.Length != 0;
     public PreviewCanSignalValue(UiDbcSignal signal, bool selected, string value, Action changed)
     { Signal = signal; _selected = selected; _physicalValue = value; _onChanged = changed; }
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -213,6 +269,10 @@ public static class CanDbcBinding
         }
         if (values.Count == 0)
             error.Add(step.Name + "：请至少选择一个 DBC 信号并填写物理值。");
+        if (step.Parameters.TryGetValue("period", out var period) &&
+            (!int.TryParse(period, NumberStyles.None, CultureInfo.InvariantCulture, out var periodValue) ||
+             periodValue < 0))
+            error.Add(step.Name + "：发送周期必须是非负整数，0 表示单次。");
         foreach (var pair in values)
         {
             var signal = message.Signals.FirstOrDefault(s => s.Name == pair.Key);
