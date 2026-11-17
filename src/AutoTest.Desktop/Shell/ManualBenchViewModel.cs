@@ -386,7 +386,13 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     {
         if (IsBusy) return;
         IsBusy = true;
-        try { await action(); Status = operation + "：设备操作已结束（ACK 不代表 ECU 状态）。"; }
+        try
+        {
+            var originalStatus = Status;
+            await action();
+            if (Status == originalStatus)
+                Status = operation + "：操作已完成（主控 ACK 不等于 ECU/机械响应）。";
+        }
         catch (Exception e)
         {
             Status = operation + "失败：" + e.Message;
@@ -613,7 +619,13 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         if (!_hardware.IsConnected) throw new IOException("USB 未连接");
         await VerifyControllerFreshAsync();
         var frame = TryBuildKeyFrame();
-        await _hardware.SendCanOnceAsync(frame, KeyConfirmation);
+        var approved = MessageBox.Show(
+            "将通过 CAN0 向 KEY_SIM 下发当前 20 Key 组合：0x" +
+            DraftMask.ToString("X5", CultureInfo.InvariantCulture) +
+            "\n不自动释放，USB ACK 不代表实际五路电压。确认下发？",
+            "确认按键板真实操作", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (approved != MessageBoxResult.Yes) { Status = "已取消 Key 操作。"; return; }
+        await _hardware.SendCanOnceAsync(frame, ExpectedConsent(() => frame));
         LastKeyAck = "CAN0 ACK · 请求掩码 0x" + DraftMask.ToString("X5") +
             "（实际五路电压未测量）";
         KeyConfirmation = "";
@@ -625,13 +637,18 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private void ReleaseDraftKeys()
     {
         foreach (var key in Keys) key.Checked = false;
-        Status = "已选释放全部。仍需点击“下发 Key 组合”并完成物理授权。";
+        Status = "已清空 Key 选择；请点击“应用 Key 组合”确认向 CAN0 发送全断开请求。";
     }
 
     private async Task ApplyIgnAsync() => await Execute("IGN", async () =>
     {
         if (!_hardware.IsConnected) throw new IOException("USB 未连接");
-        await _hardware.SendManualIgnAsync(IgnOn, IgnConfirmation);
+        var approved = MessageBox.Show(
+            "将向主控发送 IGN " + (IgnOn ? "ON (1)" : "OFF (0)") +
+            "。当前固件需匹配 USB v0.2，确认现场连接安全后继续？",
+            "确认真实 IGN 操作", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (approved != MessageBoxResult.Yes) { Status = "已取消 IGN 操作。"; return; }
+        await _hardware.SendManualIgnAsync(IgnOn, IgnExpectedConsent);
         LastIgnAck = "主控 ACK · IGN 请求 " + (IgnOn ? "ON" : "OFF") + "，实际 IGN 电平未测量";
         IgnConfirmation = "";
     });
@@ -655,15 +672,28 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             "IO 夹具", "READ", "0x19", levels.ToString("X2"), LastClampStatus));
     });
 
+    public async Task ApplyClampSelectionAsync(byte clamp, bool press)
+    {
+        if (clamp is not (1 or 2)) throw new ArgumentOutOfRangeException(nameof(clamp));
+        ChooseClamp(clamp);
+        ChooseClampState(press);
+        await ApplyClampAsync();
+    }
+
     private async Task ApplyClampAsync() => await Execute("夹具" + _selectedClamp, async () =>
     {
         byte clamp = _selectedClamp;
         bool press = _clampPress;
         if (!ClampSafetyConfirmed)
             throw new InvalidOperationException("操作前需确认线束、气路与人员安全。");
+        var approved = MessageBox.Show(
+            "将向主控发送：夹具" + clamp + (press ? " 压紧 (1)" : " 释放 (0)") +
+            "。两只夹具互相独立；USB 断开时固件可能释放已压紧夹具。\n已确认现场机械区域和气路安全？",
+            "确认夹具真实动作", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (approved != MessageBoxResult.Yes) { Status = "已取消夹具操作。"; return; }
         try
         {
-            await _hardware.SendManualClampAsync(clamp, press, ClampConfirmation);
+            await _hardware.SendManualClampAsync(clamp, press, ClampExpectedConsent);
             ClampConfirmation = "";
             LastClampStatus = "夹具" + clamp + " " + (press ? "压紧" : "释放") +
                 " 请求主控 ACK；实际机械到位未测量。";

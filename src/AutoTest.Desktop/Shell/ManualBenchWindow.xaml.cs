@@ -49,6 +49,15 @@ public partial class ManualBenchWindow : Window
     private void CopyClampConfirmation_Click(object sender, RoutedEventArgs e) =>
         Clipboard.SetText(_model.ClampExpectedConsent);
 
+    private async void Clamp1Press_Click(object sender, RoutedEventArgs e) =>
+        await _model.ApplyClampSelectionAsync(1, true);
+    private async void Clamp1Release_Click(object sender, RoutedEventArgs e) =>
+        await _model.ApplyClampSelectionAsync(1, false);
+    private async void Clamp2Press_Click(object sender, RoutedEventArgs e) =>
+        await _model.ApplyClampSelectionAsync(2, true);
+    private async void Clamp2Release_Click(object sender, RoutedEventArgs e) =>
+        await _model.ApplyClampSelectionAsync(2, false);
+
     private void SelectNamedOperation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.Button

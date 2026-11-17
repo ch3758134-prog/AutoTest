@@ -278,7 +278,16 @@ public sealed partial class ManualBenchViewModel
             {
                 while (!stop.IsCancellationRequested)
                 {
-                    await _hardware.SendManualBatchCanAsync(entry.Frame, fingerprint, stop.Token);
+                    try
+                    {
+                        await _hardware.SendManualBatchCanAsync(entry.Frame, fingerprint, stop.Token);
+                    }
+                    catch
+                    {
+                        // A failure on any row must stop every other periodic sender.
+                        stop.Cancel();
+                        throw;
+                    }
                     entry.Row.Sent++;
                     if (entry.Row.Sent == 1 || entry.Row.Sent % 10 == 0)
                     {
