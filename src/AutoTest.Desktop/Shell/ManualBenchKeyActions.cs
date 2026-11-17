@@ -124,7 +124,12 @@ public sealed partial class ManualBenchViewModel
         private set { if (SetProperty(ref _keyActionRunning, value)) { NotifyKeyCommands(); RaiseCommands(); } }
     }
     public bool CanEditKeyActions => !IsBusy && !IsKeyActionRunning && _projects.Current is not null;
-    public bool CanSaveKeyActions => CanEditKeyActions && KeyActionsDirty;
+    public bool ControllerBindingNeedsSave => _loadedControllerAsset != Guid.Empty &&
+        _loadedControllerSha is not null &&
+        (_keyCatalogSession?.Document.Controller is not { } pin ||
+         pin.AssetId != _loadedControllerAsset || pin.Revision != _loadedControllerRevision ||
+         !pin.Sha256.Equals(_loadedControllerSha, StringComparison.OrdinalIgnoreCase));
+    public bool CanSaveKeyActions => CanEditKeyActions && (KeyActionsDirty || ControllerBindingNeedsSave);
     public bool CanRunKeyAction => CanSendHardware && HasConfiguredKeys && !KeyActionsDirty &&
         _keyCatalogSession is not null && !IsKeyActionRunning;
     public string KeyActionRunStatus
@@ -275,7 +280,7 @@ public sealed partial class ManualBenchViewModel
         var idx = KeyActions.IndexOf(action);
         UnwireAction(action);
         KeyActions.Remove(action);
-        SelectedKeyAction = KeyActions.ElementAtOrDefault(Math.Min(idx, KeyActions.Count - 1));
+        SelectedKeyAction = KeyActions.Count == 0 ? null : KeyActions[Math.Min(idx, KeyActions.Count - 1)];
         MarkKeyDirty();
     }
     private void AddKeyStep()
