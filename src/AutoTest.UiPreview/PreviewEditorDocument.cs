@@ -10,6 +10,9 @@ public sealed class PreviewEditorDocument
 {
     public List<DemoPhase> Phases { get; } = new();
     public ObservableCollection<PreviewRow> Rows { get; } = new();
+    public bool IsDirty { get; private set; }
+    public void MarkDirty() => IsDirty = true;
+    public void AcceptSaved() => IsDirty = false;
     public DemoStep? SelectedStep { get; private set; }
     public PreviewRow? SelectedRow { get; private set; }
 
@@ -98,6 +101,7 @@ public sealed class PreviewEditorDocument
         else items.Insert(index, step);
         phase.Collapsed = false;
         SelectStep(step);
+        MarkDirty();
         return step;
     }
 
@@ -133,6 +137,7 @@ public sealed class PreviewEditorDocument
         var copy = selected.Copy();
         found.Value.Items.Insert(found.Value.Index + 1, copy);
         SelectStep(copy);
+        MarkDirty();
         return copy;
     }
 
@@ -144,6 +149,7 @@ public sealed class PreviewEditorDocument
         var replacement = found.Value.Items.ElementAtOrDefault(
             Math.Min(found.Value.Index, found.Value.Items.Count - 1));
         SelectStep(replacement);
+        MarkDirty();
         return replacement;
     }
 
@@ -163,6 +169,7 @@ public sealed class PreviewEditorDocument
         if (next < 0 || next >= found.Value.Items.Count) return;
         found.Value.Items.Move(found.Value.Index, next);
         SelectStep(selected);
+        MarkDirty();
     }
 
 }

@@ -65,6 +65,7 @@ public sealed class PreviewEditHistory
             Enabled = src.Enabled, Breakpoint = src.Breakpoint
         };
         foreach (var pair in src.Parameters) copy.Parameters.Add(pair.Key, pair.Value);
+        foreach (var pair in src.EditorMetadata) copy.EditorMetadata.Add(pair.Key, pair.Value);
         foreach (var branch in src.Branches)
         {
             var fork = new DemoBranch(branch.Name);

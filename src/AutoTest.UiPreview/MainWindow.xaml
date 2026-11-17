@@ -35,7 +35,7 @@
     </StackPanel>
     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="文件" Style="{StaticResource BareBtn}"
-      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
+      chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="FileMenu_Click"/>
      <Button Content="编辑" Style="{StaticResource BareBtn}"
       chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="PreviewOnly_Click"/>
      <Button Content="视图" Style="{StaticResource BareBtn}"
@@ -68,10 +68,11 @@
      <Button Content="生产" Style="{StaticResource Btn}" Click="PreviewOnly_Click"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="▤ 工程" Style="{StaticResource Btn}" Click="PreviewOnly_Click" Margin="0,0,6,0"/>
-     <TextBlock Text="控制器 A" FontWeight="SemiBold" Margin="3,0,10,0"
+     <Button Content="新建工程" Style="{StaticResource Btn}" Click="NewProject_Click" Visibility="{Binding IsRealWorkspace,Converter={StaticResource B2V}}" Margin="0,0,5,0"/>
+      <Button Content="▤ 工程" Style="{StaticResource Btn}" Click="Project_Click" Margin="0,0,6,0"/>
+     <TextBlock Text="{Binding ProjectDisplayName}" FontWeight="SemiBold" Margin="3,0,10,0"
       VerticalAlignment="Center" Foreground="#274363"/>
-     <Button Content="▣ 保存" Style="{StaticResource Btn}" Click="PreviewOnly_Click" Margin="0,0,5,0"/>
+     <Button Content="▣ 保存" Style="{StaticResource Btn}" Click="Save_Click" Margin="0,0,5,0"/>
      <Button Content="↶" Style="{StaticResource Btn}" Click="Undo_Click" Margin="0,0,4,0"/>
      <Button Content="↷" Style="{StaticResource Btn}" Click="Redo_Click" Margin="0,0,7,0"/>
      <Button Content="▶ 所选用例检查" Style="{StaticResource PrimaryBtn}"
@@ -99,6 +100,7 @@
      </Border>
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="8,9,8,8">
+       <StackPanel Visibility="{Binding IsPreviewWorkspace,Converter={StaticResource B2V}}">
        <Border Style="{StaticResource AtPreviewTreeRoot}">
         <TextBlock Text="▣  控制器 A" FontWeight="SemiBold" Foreground="#244D7D"/>
        </Border>
@@ -139,6 +141,40 @@
        <Button Content="▸  ◈  按键配置                                  2" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click" Margin="0,4"/>
        <Button Content="▸  〰  波形参考                                  1" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click"/>
        <Button Content="▸  ◇  UDS 服务                                  2" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click" Margin="0,4"/>
+       </StackPanel>
+       <StackPanel Visibility="{Binding IsRealWorkspace,Converter={StaticResource B2V}}">
+        <Border Style="{StaticResource AtPreviewTreeRoot}">
+         <TextBlock Text="{Binding ProjectDisplayName}" FontWeight="SemiBold" Foreground="#244D7D" TextTrimming="CharacterEllipsis"/>
+        </Border>
+        <DockPanel Margin="0,0,0,5">
+         <TextBlock Text="测试程序" Foreground="#29486D" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+         <Button DockPanel.Dock="Right" Content="＋ 新建" Style="{StaticResource Btn}" Click="CreateTest_Click"/>
+        </DockPanel>
+        <ItemsControl ItemsSource="{Binding RealTestPrograms}">
+         <ItemsControl.ItemTemplate>
+          <DataTemplate>
+           <Button Content="{Binding Name}" Tag="{Binding}" Style="{StaticResource TreeButton}" Click="OpenRealTest_Click" ToolTip="打开正式 TEST 资源" Margin="4,2"/>
+          </DataTemplate>
+         </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border BorderBrush="#DBE3ED" BorderThickness="0,1,0,0" Margin="0,12,0,8"/>
+        <DockPanel Margin="0,0,0,5">
+         <TextBlock Text="工程资源" Foreground="#29486D" FontWeight="SemiBold" VerticalAlignment="Center"/>
+         <Button DockPanel.Dock="Right" Content="＋ 导入 DBC" Style="{StaticResource Btn}" Click="ImportDbc_Click"/>
+        </DockPanel>
+        <ItemsControl ItemsSource="{Binding RealResources}">
+         <ItemsControl.ItemTemplate>
+          <DataTemplate>
+           <StackPanel Orientation="Horizontal" Margin="6,4">
+            <TextBlock Text="{Binding DisplayKind}" FontSize="10" Foreground="#7B8FA5"/>
+            <TextBlock Text="{Binding Name}" FontSize="11" Foreground="#45617D" Margin="6,0,0,0"/>
+           </StackPanel>
+          </DataTemplate>
+         </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="资源清单来自正式工程；DBC/Controller 属性编辑和设备执行尚未接入。"
+         Foreground="#7A8FA7" FontSize="10" TextWrapping="Wrap" Margin="2,14,0,0"/>
+       </StackPanel>
       </StackPanel>
      </ScrollViewer>
     </DockPanel>
@@ -159,15 +195,15 @@
     <Border Grid.Row="0" Background="#F2F5F9" BorderBrush="#DBE3ED"
      BorderThickness="0,0,0,1">
      <StackPanel Orientation="Horizontal">
-      <Button Content="▥ 工程概览" Style="{StaticResource BareBtn}"
+      <Button Content="▥ 工程概览" Visibility="{Binding IsPreviewWorkspace,Converter={StaticResource B2V}}" Style="{StaticResource BareBtn}"
        Width="112" Click="PreviewOnly_Click"/>
-      <Button Content="▤ 研发检查项目" Style="{StaticResource BareBtn}"
+      <Button Content="▤ 研发检查项目" Visibility="{Binding IsPreviewWorkspace,Converter={StaticResource B2V}}" Style="{StaticResource BareBtn}"
        Width="130" Click="PreviewOnly_Click"/>
       <Border Background="White" BorderBrush="#2368BD" BorderThickness="0,0,0,2">
        <Button Content="{Binding CurrentCaseTabTitle}" Tag="{Binding Selection.ActiveKey}" Style="{StaticResource BareBtn}"
         Foreground="#235D9E" FontWeight="SemiBold" Width="142" Click="OpenDemoCase_Click"/>
       </Border>
-      <Button Content="◈ 工程配置" Style="{StaticResource BareBtn}"
+      <Button Content="◈ 工程配置" Visibility="{Binding IsPreviewWorkspace,Converter={StaticResource B2V}}" Style="{StaticResource BareBtn}"
        Width="100" Click="PreviewOnly_Click"/>
      </StackPanel>
     </Border>
@@ -178,9 +214,9 @@
       <Border Background="#EEF3F9" CornerRadius="3" Margin="9,0,5,0" Padding="5,3">
        <TextBlock x:Name="StepCountLabel" Text="11 步" FontSize="10" Foreground="#70839A"/>
       </Border>
-      <Border BorderBrush="#C4DDF9" BorderThickness="1" Background="#EAF3FF"
+      <Border Visibility="{Binding IsPreviewWorkspace,Converter={StaticResource B2V}}" BorderBrush="#C4DDF9" BorderThickness="1" Background="#EAF3FF"
        CornerRadius="4" Padding="6,4" Margin="0,0,0,0">
-       <CheckBox x:Name="CurrentRunCheck" Content="本次执行" IsChecked="{Binding Selection.CurrentSelected,Mode=TwoWay}"
+       <CheckBox x:Name="CurrentRunCheck" Content="本次执行" Visibility="{Binding IsPreviewWorkspace,Converter={StaticResource B2V}}" IsChecked="{Binding Selection.CurrentSelected,Mode=TwoWay}"
         Foreground="#235B9B" FontWeight="SemiBold" FontSize="11"/>
       </Border>
      </StackPanel>
@@ -192,7 +228,7 @@
       <Button Content="＋ 添加步骤" Style="{StaticResource PrimaryBtn}"
        Click="AddToolbar_Click" Margin="0,0,5,0"/>
       <Button Content="检查问题" Style="{StaticResource Btn}"
-       Click="PreviewOnly_Click" Margin="0,0,5,0"/>
+       Click="CheckIssues_Click" Margin="0,0,5,0"/>
       <Button Content="重命名" Style="{StaticResource Btn}" Click="RenameCase_Click"/>
      </StackPanel>
     </Grid>

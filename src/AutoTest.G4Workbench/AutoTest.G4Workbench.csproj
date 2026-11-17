@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>AutoTest.G4Workbench</AssemblyName>
+    <RootNamespace>AutoTest.G4Workbench</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AutoTest.UiPreview/AutoTest.UiPreview.csproj"/>
+    <ProjectReference Include="../AutoTest.Desktop/AutoTest.Desktop.csproj"/>
+  </ItemGroup>
+</Project>

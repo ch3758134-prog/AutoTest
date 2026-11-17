@@ -20,7 +20,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private PreviewEditorDocument _document = new();
     private readonly Dictionary<string, (PreviewEditorDocument Document, PreviewEditHistory History)> _cases = new();
     public ObservableCollection<PreviewRow> Rows => _document.Rows;
-    public string CurrentCaseTitle => Selection.IsMainActive ? "通信与状态检查" : "诊断信息读取";
+    public string CurrentCaseTitle => IsRealWorkspace ? _realActiveTitle : (Selection.IsMainActive ? "通信与状态检查" : "诊断信息读取");
     public string CurrentCaseTabTitle => "▤ " + CurrentCaseTitle;
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Raise([CallerMemberName] string? name = null) =>
@@ -32,7 +32,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly PreviewPropertyEditor _propertyEditor = new();
     public ObservableCollection<PreviewPropertyField> PropertyFields => _propertyEditor.Fields;
     public PreviewInspectorState Inspector { get; } = new();
-    private readonly IReadOnlyList<PaletteKind> _palette = PreviewSampleFactory.MakePalette();
+    private IReadOnlyList<PaletteKind> _palette = PreviewSampleFactory.MakePalette();
     private PreviewRow? _targetRow;
     private PreviewRow? _selectedRow => _document.SelectedRow;
     private DemoStep? _selectedStep
@@ -46,8 +46,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly PreviewWorkspaceState _workspace = new();
     private static readonly Brush InkMuted = PreviewRow.Solid("#607891");
 
-    public MainWindow()
+    public MainWindow() : this(null) { }
+
+    public MainWindow(IEditorWorkspaceGateway? gateway)
     {
+        _gateway = gateway;
+        if (gateway is not null)
+        {
+            _palette = gateway.StepTypes;
+            ProjectDisplayName = "未打开工程";
+        }
         InitializeComponent();
         AddRowCommand = new PreviewRowCommand(row =>
         {
@@ -72,14 +80,23 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             source?.AddHook(MonitorWorkAreaHook);
         };
         SizeChanged += (_, _) => AdaptDocksToViewport();
-        _phases.AddRange(PreviewSampleFactory.CreatePhases());
-        _cases["main"] = (_document, _history);
-        var diagnostic = new PreviewEditorDocument();
-        diagnostic.Phases.AddRange(PreviewSampleFactory.CreateDiagnosticPhases());
-        _cases["diagnostic"] = (diagnostic, new PreviewEditHistory());
-        RebuildRows();
-        SelectStep(_phases[0].Steps[0]);
-        SetMessage("就绪");
+        if (_gateway is null)
+        {
+            _phases.AddRange(PreviewSampleFactory.CreatePhases());
+            _cases["main"] = (_document, _history);
+            var diagnostic = new PreviewEditorDocument();
+            diagnostic.Phases.AddRange(PreviewSampleFactory.CreateDiagnosticPhases());
+            _cases["diagnostic"] = (diagnostic, new PreviewEditHistory());
+            RebuildRows();
+            SelectStep(_phases[0].Steps[0]);
+            SetMessage("纯 UI 预览就绪");
+        }
+        else
+        {
+            RebuildRows();
+            Closing += RealWorkspace_Closing;
+            SetMessage("真实工程编辑模式：请打开或新建工程");
+        }
     }
 
     private void RebuildRows()
@@ -137,6 +154,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_selectedStep is not { } step) return;
         RememberUndo();
         step.Enabled = !step.Enabled;
+        _document.MarkDirty();
         _selectedRow?.Notify();
         ShowInspector();
     }
@@ -146,6 +164,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_selectedStep is not { } step) return;
         RememberUndo();
         step.Breakpoint = !step.Breakpoint;
+        _document.MarkDirty();
         _selectedRow?.Notify();
         ShowInspector();
     }
@@ -179,7 +198,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             SelectedStepId.Text=_selectedStep.Id.ToString("N")[^5..].ToUpperInvariant();
             SelectedTypeBadge.Background=_selectedRow?.CategoryBackground ?? PreviewRow.Solid("#EEF2F7");
             SelectedTypeIcon.Foreground=_selectedRow?.CategoryForeground ?? InkMuted;
-            Inspector.Bind(_selectedStep, () => _selectedRow?.Notify());
+            Inspector.Bind(_selectedStep, () =>
+            {
+                _selectedRow?.Notify();
+                _document.MarkDirty();
+            });
             RenderParameterFields();
         }
         finally { _updatingInspector=false; }
@@ -190,6 +213,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             if (!ReferenceEquals(_selectedStep, step)) return;
             RefreshSelectedRowSummary();
+            _document.MarkDirty();
             if (field.HasError) SetMessage(field.Error);
             if (field.RebuildOnChange)
             {
@@ -224,6 +248,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OpenPalette()
     {
+        if (IsRealWorkspace && _currentRealAsset is null)
+        {
+            SetMessage("请先打开或新建 TEST 程序");
+            return;
+        }
         PaletteSearchText.Text="";
         FillPalette("");
         PaletteOverlay.Visibility=Visibility.Visible;
@@ -278,15 +307,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void CreatePreviewStep(PaletteKind option)
     {
-        var added=PreviewSampleFactory.CreateStep(option.Code,option.Label);
-        switch(option.Code)
+        var added=_gateway?.CreateStep(option.Code)
+            ?? PreviewSampleFactory.CreateStep(option.Code,option.Label);
+        if (_gateway is null)
         {
-            case "ign": added.SetParam("state","ON"); break;
-            case "wait": added.SetParam("ms","100"); break;
-            case "can": added.SetParam("message","未选择报文"); added.SetParam("period","0"); break;
-            case "read": added.SetParam("signal","Signal_A"); break;
+            switch(option.Code)
+            {
+                case "ign": added.SetParam("state","ON"); break;
+                case "wait": added.SetParam("ms","100"); break;
+                case "can": added.SetParam("message","未选择报文"); added.SetParam("period","0"); break;
+                case "read": added.SetParam("signal","Signal_A"); break;
+            }
         }
-
         RememberUndo();
         _document.InsertAfter(_targetRow, added);
         PaletteOverlay.Visibility=Visibility.Collapsed;
@@ -336,6 +368,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
         _selectedStep = AllSteps().FirstOrDefault(step => step.Id == selected);
+        _document.MarkDirty();
         RebuildRows();
         SetMessage("已撤销");
     }
@@ -348,6 +381,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
         _selectedStep = AllSteps().FirstOrDefault(step => step.Id == selected);
+        _document.MarkDirty();
         RebuildRows();
         SetMessage("已重做");
     }
@@ -399,7 +433,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private void RenameCase_Click(object sender,RoutedEventArgs e)
     {
-        SetMessage("重命名功能尚未接入");
+        if (IsRealWorkspace) RenameRealTest_Click(sender, e);
+        else SetMessage("预览模式不改写正式项目名称");
     }
     private void BottomTab_Click(object sender,RoutedEventArgs e)
     {
@@ -453,7 +488,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if(e.Key==Key.Y && Keyboard.FocusedElement is not TextBox)
             {Redo_Click(sender,new RoutedEventArgs());e.Handled=true;}
             if(e.Key==Key.I){ToggleInspector_Click(sender,new RoutedEventArgs());e.Handled=true;}
-            if(e.Key==Key.S){SetMessage("保存功能尚未接入");e.Handled=true;}
+            if(e.Key==Key.S){Save_Click(sender,new RoutedEventArgs());e.Handled=true;}
         }
         if(e.Key==Key.F2 && _selectedStep is not null)
         {StepNameField.Focus();StepNameField.SelectAll();e.Handled=true;}
