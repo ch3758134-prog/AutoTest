@@ -224,6 +224,14 @@ public sealed partial class ManualBenchViewModel
             throw new InvalidOperationException("请选择 1～32 条 CAN1 报文。");
         var entries = chosen.Select(row =>
         {
+            // Main_Control v0.2: 0x50 replaces the ENTIRE CAN1 broadcast table.
+            // Host Task.Delay per-row scheduler from the earlier prototype is NOT an
+            // approved substitute. No periodic physical instruction until TEST/DEVICE
+            // owns the complete 0x50/51/52/53 table, lease and cancel contract.
+            if (row.IsPeriodic)
+                throw new InvalidOperationException(
+                    "CAN1 周期发送暂被真实硬件预检阻断：主控 0x50 会替换全部广播表，" +
+                    "不得用独立上位机周期发送线程代替。请等待 TEST/DEVICE 正式多报文合同接线。");
             var frame = row.BuildFrame();
             int period = 0;
             if (row.IsPeriodic && (!int.TryParse(row.PeriodText, NumberStyles.None,
