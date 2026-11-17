@@ -345,6 +345,13 @@
        <Button Content="反选20路" Command="{Binding InvertStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
        <Button Content="复制上一段" Command="{Binding CopyPreviousStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
       </WrapPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,3,0,6">
+       <TextBlock Text="掩码 HEX" VerticalAlignment="Center" Margin="0,0,8,0"/>
+       <TextBox Text="{Binding SelectedKeyStep.MaskHexText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+        Width="108" Padding="6,5" ToolTip="范围 0x00000～0xFFFFF，输入后同步 20 路 KEY 勾选"/>
+      </StackPanel>
+      <TextBlock Text="{Binding SelectedKeyStep.MaskError}" Foreground="#B34035"
+       FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
       <ItemsControl ItemsSource="{Binding StepKeys}">
        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
        <ItemsControl.ItemTemplate>

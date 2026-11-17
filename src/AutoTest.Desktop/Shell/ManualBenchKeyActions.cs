@@ -20,18 +20,55 @@ public sealed partial class ManualBenchViewModel
     public sealed class KeyActionStepEditor : BindableBase
     {
         private uint _mask;
+        private string _maskHexText;
         private string _holdText;
         public Guid StepId { get; }
         public KeyActionStepEditor(Guid id, uint mask, int holdMs)
         {
             StepId = id;
             _mask = mask;
+            _maskHexText = "0x" + mask.ToString("X5", CultureInfo.InvariantCulture);
             _holdText = holdMs.ToString(CultureInfo.InvariantCulture);
         }
         public uint KeyMask
         {
             get => _mask;
-            set { if (SetProperty(ref _mask, value)) RaisePropertyChanged(nameof(Summary)); }
+            set
+            {
+                if (value > 0xFFFFF) throw new ArgumentOutOfRangeException(nameof(value));
+                if (!SetProperty(ref _mask, value)) return;
+                _maskHexText = "0x" + value.ToString("X5", CultureInfo.InvariantCulture);
+                RaisePropertyChanged(nameof(MaskHexText));
+                RaisePropertyChanged(nameof(MaskError));
+                RaisePropertyChanged(nameof(Summary));
+            }
+        }
+        public string MaskHexText
+        {
+            get => _maskHexText;
+            set
+            {
+                if (!SetProperty(ref _maskHexText, value ?? "")) return;
+                var text = _maskHexText.Trim();
+                if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) text = text[2..];
+                if (uint.TryParse(text, NumberStyles.AllowHexSpecifier,
+                        CultureInfo.InvariantCulture, out var parsed) && parsed <= 0xFFFFF)
+                {
+                    if (SetProperty(ref _mask, parsed)) RaisePropertyChanged(nameof(Summary));
+                }
+                RaisePropertyChanged(nameof(MaskError));
+            }
+        }
+        public string MaskError
+        {
+            get
+            {
+                var value = MaskHexText.Trim();
+                if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) value = value[2..];
+                return uint.TryParse(value, NumberStyles.AllowHexSpecifier,
+                    CultureInfo.InvariantCulture, out var mask) && mask <= 0xFFFFF
+                    ? "" : "请输入 0x00000～0xFFFFF 的十六进制掩码。";
+            }
         }
         public string HoldMsText
         {
@@ -44,6 +81,8 @@ public sealed partial class ManualBenchViewModel
             "   ·   " + HoldMsText + " ms";
         public KeyActionStep Export()
         {
+            if (!string.IsNullOrEmpty(MaskError))
+                throw new InvalidOperationException(MaskError);
             if (!int.TryParse(HoldMsText, NumberStyles.None, CultureInfo.InvariantCulture, out var hold))
                 throw new InvalidOperationException("保持时间必须为非负整数毫秒。");
             return new KeyActionStep(StepId, KeyMask, hold).Validate();
@@ -230,7 +269,19 @@ public sealed partial class ManualBenchViewModel
     }
     private void OnStepEdited(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(KeyActionStepEditor.KeyMask) or nameof(KeyActionStepEditor.HoldMsText))
+        if (sender == SelectedKeyStep && e.PropertyName is
+            nameof(KeyActionStepEditor.KeyMask) or nameof(KeyActionStepEditor.MaskHexText))
+        {
+            _syncingActionKeys = true;
+            try
+            {
+                foreach (var key in StepKeys)
+                    key.Checked = SelectedKeyStep is { } step && (step.KeyMask & key.Mask) != 0;
+            }
+            finally { _syncingActionKeys = false; }
+        }
+        if (e.PropertyName is nameof(KeyActionStepEditor.KeyMask) or
+            nameof(KeyActionStepEditor.MaskHexText) or nameof(KeyActionStepEditor.HoldMsText))
             MarkKeyDirty();
     }
     private void OnActionEdited(object? sender, PropertyChangedEventArgs e)
