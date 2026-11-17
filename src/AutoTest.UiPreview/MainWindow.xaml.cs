@@ -34,7 +34,7 @@ public partial class MainWindow : Window
     }
     private bool _rebuilding;
     private bool _updatingInspector;
-    private bool _syncingChecks;
+    public PreviewCaseSelectionState Selection { get; } = new();
     private readonly PreviewWorkspaceState _workspace = new();
     private static readonly Brush InkMuted = PreviewRow.Solid("#607891");
 
@@ -367,35 +367,6 @@ public partial class MainWindow : Window
         phase.Collapsed=false;
         RebuildRows();SelectStep(step);
         SetMessage("搜索匹配 "+found.Count+" 条，已定位第 "+(index+1)+" 条。");
-    }
-
-    private void RunSelection_Changed(object sender,RoutedEventArgs e)
-    {
-        if(_syncingChecks||ProjectCase1Check is null||CurrentRunCheck is null)return;
-        _syncingChecks=true;
-        try
-        {
-            CurrentRunCheck.IsChecked=ProjectCase1Check.IsChecked;
-            UpdateTreeSelectionCount();
-        }
-        finally{_syncingChecks=false;}
-    }
-    private void CaseHeaderCheck_Changed(object sender,RoutedEventArgs e)
-    {
-        if(_syncingChecks||ProjectCase1Check is null||CurrentRunCheck is null)return;
-        _syncingChecks=true;
-        try
-        {
-            ProjectCase1Check.IsChecked=CurrentRunCheck.IsChecked;
-            UpdateTreeSelectionCount();
-        }
-        finally{_syncingChecks=false;}
-    }
-    private void UpdateTreeSelectionCount()
-    {
-        if (TreeSelectionCount is null || ProjectCase1Check is null || ProjectCase2Check is null) return;
-        var count=(ProjectCase1Check.IsChecked==true?1:0)+(ProjectCase2Check.IsChecked==true?1:0);
-        TreeSelectionCount.Text=count+"/2";
     }
 
     private void OpenDemoCase_Click(object sender,RoutedEventArgs e)

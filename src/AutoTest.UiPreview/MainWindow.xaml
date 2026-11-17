@@ -111,7 +111,7 @@
        <Border Style="{StaticResource AtPreviewTreeGroup}">
         <DockPanel LastChildFill="True">
          <TextBlock x:Name="TreeSelectionCount" DockPanel.Dock="Right"
-          Text="2/2" Foreground="#335D91" FontSize="11"/>
+          Text="{Binding Selection.CountLabel}" Foreground="#335D91" FontSize="11"/>
          <TextBlock Text="▾  ▱  研发检查项目" Foreground="#335D91"
           FontWeight="SemiBold" FontSize="11"/>
         </DockPanel>
@@ -119,16 +119,14 @@
        <StackPanel Margin="18,3,0,2">
         <Border Style="{StaticResource AtPreviewTreeCaseSelectedStyle}">
          <StackPanel Orientation="Horizontal">
-          <CheckBox x:Name="ProjectCase1Check" IsChecked="True" VerticalAlignment="Center"
-           Checked="RunSelection_Changed" Unchecked="RunSelection_Changed"/>
+          <CheckBox x:Name="ProjectCase1Check" IsChecked="{Binding Selection.First,Mode=TwoWay}" VerticalAlignment="Center"/>
           <Button Content="▤ 通信与状态检查" Style="{StaticResource BareBtn}"
            Foreground="#1D518F" FontWeight="SemiBold"
            Click="OpenDemoCase_Click" Margin="2,0,0,0"/>
          </StackPanel>
         </Border>
         <StackPanel Orientation="Horizontal" Margin="4,4">
-         <CheckBox x:Name="ProjectCase2Check" IsChecked="True" VerticalAlignment="Center"
-          Checked="RunSelection_Changed" Unchecked="RunSelection_Changed"/>
+         <CheckBox x:Name="ProjectCase2Check" IsChecked="{Binding Selection.Second,Mode=TwoWay}" VerticalAlignment="Center"/>
          <Button Content="▤ 诊断信息读取" Style="{StaticResource BareBtn}"
           Click="OpenDemoCase_Click" Margin="2,0,0,0"/>
         </StackPanel>
@@ -180,9 +178,8 @@
       </Border>
       <Border BorderBrush="#C4DDF9" BorderThickness="1" Background="#EAF3FF"
        CornerRadius="4" Padding="6,4" Margin="0,0,0,0">
-       <CheckBox x:Name="CurrentRunCheck" Content="本次执行" IsChecked="True"
-        Foreground="#235B9B" FontWeight="SemiBold" FontSize="11" 
-        Checked="CaseHeaderCheck_Changed" Unchecked="CaseHeaderCheck_Changed"/>
+       <CheckBox x:Name="CurrentRunCheck" Content="本次执行" IsChecked="{Binding Selection.First,Mode=TwoWay}"
+        Foreground="#235B9B" FontWeight="SemiBold" FontSize="11"/>
       </Border>
      </StackPanel>
      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
