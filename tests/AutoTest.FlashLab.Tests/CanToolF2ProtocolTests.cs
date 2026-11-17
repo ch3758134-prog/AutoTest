@@ -23,7 +23,7 @@ public sealed class CanToolF2ProtocolTests
         Assert.Equal((byte)3,logical.Dlc);
         var onWire=CanToolCan1Transport.PadProgrammingFrame(logical);
         Assert.Equal((byte)8,onWire.Dlc);
-        Assert.Equal("0210030000000000",Convert.ToHexString(onWire.Data.AsSpan()));
+        Assert.Equal("0210030000000000",Convert.ToHexString(onWire.Data.ToArray()));
         Assert.Equal(id,onWire.Id);
         Assert.Equal(extended,onWire.ExtendedId);
         var usb=CanFrameCodec.ToUsbPayload(onWire,new BusRoleMap(default,1,0));
