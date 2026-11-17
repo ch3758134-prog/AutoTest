@@ -81,6 +81,16 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    public void AuthorizeOneClampChange(byte clamp, bool press, string typedConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; clamp consent cannot survive reconnect.");
+            _fence.AuthorizeSingleClamp(clamp, press, typedConfirmation, _epoch);
+        }
+    }
+
     public void AuthorizePhysicalTestRun(string fingerprint, string typedConfirmation,
         IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn)
     {

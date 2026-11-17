@@ -11,6 +11,9 @@ public sealed class PhysicalCommandFence
     private bool? _oneIgnState;
     private DateTimeOffset _ignExpiry;
     private long _ignGeneration;
+    private byte[]? _singleClampPayload;
+    private long _clampGeneration;
+    private DateTimeOffset _clampExpiry;
     private long _authorizedConnection;
     private HashSet<(byte Port, bool Extended, uint Id)>? _runCan;
     private bool _runIgn;
@@ -48,6 +51,9 @@ public sealed class PhysicalCommandFence
             _oneIgnState = null;
             _ignGeneration = 0;
             _ignExpiry = default;
+            _singleClampPayload = null;
+            _clampGeneration = 0;
+            _clampExpiry = default;
             _runCan = entries;
             _runIgn = allowIgn;
             _remainingWrites = maxWrites;
@@ -71,7 +77,8 @@ public sealed class PhysicalCommandFence
     }
 
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
-        payload.IsEmpty && (command is 0xF0 or 0xF1 or 0x11 or 0x13 or 0x15 or 0x17 or 0x1F);
+        payload.IsEmpty && (command is MainControllerCodec.Ping or MainControllerCodec.GetVersion
+            or MainControllerCodec.GetIgn or MainControllerCodec.GetClamps or 0x53);
 
     /// <summary>Requires an exact typed confirmation, one payload and a living connection.
     /// Not used by B0/B1/B2 and never called automatically on reconnect.</summary>
@@ -112,6 +119,26 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>Exact two-byte independent clamp change; manual one-shot only.
+    /// A CAN/IGN or TEST lease cannot authorize 0x18.</summary>
+    public void AuthorizeSingleClamp(byte clamp, bool press, string typedConfirmation,
+        long connectionGeneration)
+    {
+        if (clamp is not (1 or 2)) throw new ArgumentOutOfRangeException(nameof(clamp));
+        if (typedConfirmation != "AUTHORIZE CLAMP " + clamp + (press ? " PRESS" : " RELEASE"))
+            throw new UnauthorizedAccessException("Exact clamp/action consent required.");
+        if (connectionGeneration <= 0)
+            throw new InvalidOperationException("Cannot authorize a clamp without a live USB generation.");
+        lock (_sync)
+        {
+            if (_runFingerprint is not null)
+                throw new InvalidOperationException("Manual clamp is blocked while a test run is authorized.");
+            _singleClampPayload = new byte[] { clamp, press ? (byte)1 : (byte)0 };
+            _clampGeneration = connectionGeneration;
+            _clampExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
+        }
+    }
+
     public void AssertAllowedAndConsume(ReadOnlySpan<byte> rawRequest, long connectionGeneration)
     {
         if (!UsbWireCodec.TryDecodeRequest(rawRequest, out var request))
@@ -129,6 +156,15 @@ public sealed class PhysicalCommandFence
             {
                 _oneIgnState = null; // consumes consent even when USB write fails
                 _ignGeneration = 0;
+                return;
+            }
+            if (request.Command == MainControllerCodec.SetClamp &&
+                request.Payload.Length == 2 && _singleClampPayload is not null &&
+                _clampGeneration == connectionGeneration && DateTimeOffset.UtcNow < _clampExpiry &&
+                request.Payload.AsSpan().SequenceEqual(_singleClampPayload))
+            {
+                _singleClampPayload = null; // consumed before the USB write
+                _clampGeneration = 0;
                 return;
             }
             if (request.Command == MainControllerCodec.CanSend && _singleCanPayload is not null &&
@@ -168,6 +204,7 @@ public sealed class PhysicalCommandFence
         {
             _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
             _oneIgnState = null; _ignExpiry = default; _ignGeneration = 0;
+            _singleClampPayload = null; _clampExpiry = default; _clampGeneration = 0;
             _runCan = null; _runIgn = false; _remainingWrites = 0;
             _runExpiry = default; _runGeneration = 0; _runFingerprint = null;
         }
