@@ -1,6 +1,9 @@
 using System.Buffers.Binary;
 using System.IO;
 using AutoTest.FlashLab.Programming;
+using AutoTest.FlashLab.Hardware;
+using AutoTest.Devices.Can;
+using AutoTest.Contracts;
 using Xunit;
 
 namespace AutoTest.FlashLab.Tests;
@@ -8,6 +11,49 @@ namespace AutoTest.FlashLab.Tests;
 // Pure CanTool protocol byte layout and rejection-path checks. No fake ECU/ACK.
 public sealed class CanToolF2ProtocolTests
 {
+    [Theory]
+    [InlineData(0x18DA50F1u,true)]
+    [InlineData(0x747u,false)]
+    public void F2PhysicalCAN1SingleFrameIsPaddedToEightAndLoggedAsEight(uint id,bool extended)
+    {
+        // Pure frame/USB encoding only; no mock, hardware or ECU responses.
+        // This reproduces the observed 02 10 03 request for Boot and APP.
+        var logical=CanFrame.Create(BusRole.DutCan,extended,id,
+            new byte[]{0x02,0x10,0x03});
+        Assert.Equal((byte)3,logical.Dlc);
+        var onWire=CanToolCan1Transport.PadProgrammingFrame(logical);
+        Assert.Equal((byte)8,onWire.Dlc);
+        Assert.Equal("0210030000000000",Convert.ToHexString(onWire.Data.AsSpan()));
+        Assert.Equal(id,onWire.Id);
+        Assert.Equal(extended,onWire.ExtendedId);
+        var usb=CanFrameCodec.ToUsbPayload(onWire,new BusRoleMap(default,1,0));
+        Assert.Equal(15,usb.Length);
+        Assert.Equal((byte)1,usb[0]); // Physical CAN1 = ECU
+        Assert.Equal(extended?(byte)1:(byte)0,usb[1]);
+        Assert.Equal((byte)8,usb[6]); // Actual CAN DLC sent to firmware
+        Assert.Equal("0210030000000000",Convert.ToHexString(usb.AsSpan(7,8)));
+        Assert.True(CanFrameCodec.FromUsbPayload(usb,
+            new BusRoleMap(default,1,0),out var decoded));
+        Assert.NotNull(decoded);
+        Assert.Equal((byte)8,decoded!.Dlc);
+    }
+
+    [Fact]
+    public void FlashPaddingDoesNotChangeAlreadyFullCANFrameOrGenericCANCodec()
+    {
+        var existing=CanFrame.Create(BusRole.DutCan,false,0x747,
+            Convert.FromHexString("1011121314151617"));
+        Assert.Same(existing,CanToolCan1Transport.PadProgrammingFrame(existing));
+        var originalShort=CanFrame.Create(BusRole.DutCan,false,0x747,
+            Convert.FromHexString("021003"));
+        // The shared generic CAN codec remains unmodified for other features.
+        var untouched=CanFrameCodec.ToUsbPayload(originalShort,
+            new BusRoleMap(default,1,0));
+        Assert.Equal((byte)3,untouched[6]);
+        Assert.Throws<ArgumentException>(()=>CanToolCan1Transport.PadProgrammingFrame(
+            CanFrame.Create(BusRole.DutCan,false,0x747,Array.Empty<byte>())));
+    }
+
     [Fact]
     public void EraseDownloadVerifyAndResetMatchOriginalCanToolLayout()
     {
