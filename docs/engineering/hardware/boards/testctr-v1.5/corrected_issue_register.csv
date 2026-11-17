@@ -1,0 +1,8 @@
+issue_id,completed_trace,corrected_interpretation,review_status,evidence
+HW-MAIN-01,PTC8→SOL9IN→U22 CH1→HOUT7→J1 C8,"KEY_PWR_DRV is a firmware alias, not schematic-net conflict",TRACE_RESOLVED_EXTERNAL_USE_UNKNOWN,TestCtr p1/p3/p5; Main_Control c830dbcd; user report only for J1 C6
+HW-MAIN-02,PTC9→SOL10IN→U22 CH2→HOUT6→J1 C7,"ECU_PWR_DRV is a firmware alias, not schematic-net conflict",TRACE_RESOLVED_EXTERNAL_USE_UNKNOWN,TestCtr p1/p3/p5; Main_Control c830dbcd; user report only for J1 C6
+HW-MAIN-03,PTC10→SOL11IN→U22 CH3→HOUT5→J1 C6,IGN at J1 C6 USER_REPORTED; former conflict assertion withdrawn,TRACE_RESOLVED_USER_REPORTED_IGN,TestCtr p1/p3/p5; Main_Control c830dbcd; user report only for J1 C6
+HW-MAIN-04,IGN macros PTB19 versus EAL_GPIO.c signal table PTC10,Real source-internal disagreement remains; runtime EAL_GPIO_Set uses .c table,SOURCE_INCONSISTENCY_OPEN,TestCtr p1/p3/p5; Main_Control c830dbcd; user report only for J1 C6
+HW-MAIN-05,PTB18→SOL6IN→U5 CH3→HOUT3→J1 C25,"Trace established, mechanical load unknown",TRACE_RESOLVED_MECHANICAL_UNKNOWN,TestCtr p1/p3/p5; Main_Control c830dbcd; user report only for J1 C6
+HW-MAIN-06,"Five GPIO init levels are 1U, contrary to LOW comment",Initialization and external electrical behavior need separate review,STARTUP_RISK_OPEN,TestCtr p1/p3/p5; Main_Control c830dbcd; user report only for J1 C6
+HW-MAIN-07,Schematic CAN1/2 versus MCU firmware CAN0/1,Different naming layers; mapping documented,NOMENCLATURE_DOCUMENTED,TestCtr p1/p3/p5; Main_Control c830dbcd; user report only for J1 C6

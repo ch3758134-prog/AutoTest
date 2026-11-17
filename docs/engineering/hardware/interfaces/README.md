@@ -26,3 +26,7 @@ KEY_SIM 固定源码 `Key_Sim@313ed34e...`：CAN `0x730` 8-byte 标准帧，`0x0
 
 - [Air_ALVE1 / Air_ALVE2 控制逻辑分析](AIR_VALVE_CTRL.md)
 - [Air 逐级引脚/电源追踪 CSV](air_valve_trace.csv)
+
+## 主控器件级连接补录
+
+[U5、U22、U23 11路高边输出电气链](../boards/testctr-v1.5/HARDWARE_TRACE_REVIEW.md)。原 HW-MAIN-01/02/03 因比较 Net 名与业务别名而产生的错误冲突判断已撤销，HW-MAIN-04 的头文件与实现不一致仍成立。

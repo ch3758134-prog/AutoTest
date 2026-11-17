@@ -30,3 +30,10 @@
 设计态缺失：全部 ALT/MUX 表核对、逐器件 Pin-to-Pin 网表、PCB 原生 CAD/装配、线束、现役 HEX 与现场测量。需要改脚时应按 MCU Pad→复用→原理图 Net→外围电路→接口→历史固件逐层审查。
 
 [回到硬件总入口](../../README.md)
+
+## U5/U22/U23：器件级高边驱动追踪（2026-11-17）
+- [HTML 快速审查页面](high_side_trace_review.html) · [完整通道列表 CSV](main_high_side_11_channels.csv) · [JSON](main_high_side_11_channels.json)
+- [U5/U22/U23 全 60 个物理脚](bts724g_3x20_physical_pins.csv) · [55 条网络追踪边](main_high_side_edges.csv)
+- [误判撤销与历史源码对照](HARDWARE_TRACE_REVIEW.md) · [7项复核](corrected_issue_register.csv)
+
+PTC10 经 SOL11IN→U22 CH3→HOUT5→J1 C6；用户确认 J1 C6 实际用于 IGN。图纸控制 Net 名称不等于固件业务名称。U22 第4通道未标有 HOUT8，不得推断。
