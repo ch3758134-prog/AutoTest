@@ -25,15 +25,16 @@ public partial class MainWindow : Window
     public ObservableCollection<PreviewPropertyField> PropertyFields => _propertyEditor.Fields;
     private readonly IReadOnlyList<PaletteKind> _palette = PreviewSampleFactory.MakePalette();
     private PreviewRow? _targetRow;
-    private PreviewRow? _selectedRow;
-    private DemoStep? _selectedStep;
+    private PreviewRow? _selectedRow => _document.SelectedRow;
+    private DemoStep? _selectedStep
+    {
+        get => _document.SelectedStep;
+        set => _document.SelectStep(value);
+    }
     private bool _rebuilding;
     private bool _updatingInspector;
     private bool _syncingChecks;
-    private bool _bottomVisible = true;
-    private bool _inspectorVisible = true;
-    private bool _manualInspectorLayout;
-    private bool _manualBottomLayout;
+    private readonly PreviewWorkspaceState _workspace = new();
     private static readonly Brush InkMuted = PreviewRow.Solid("#607891");
 
     public MainWindow()
@@ -70,12 +71,10 @@ public partial class MainWindow : Window
 
     private void RebuildRows()
     {
-        var selectedId = _selectedStep?.Id;
         _rebuilding = true;
         try
         {
             _document.Rebuild(SearchText.Text);
-            _selectedRow = Rows.FirstOrDefault(row => row.IsStep && row.Step?.Id == selectedId);
             StepRowsList.SelectedItem = _selectedRow;
             StepCountLabel.Text = AllSteps().Count().ToString() + " 步";
         }
@@ -89,18 +88,15 @@ public partial class MainWindow : Window
 
     private void SelectStep(DemoStep? step)
     {
-        _selectedStep=step;
-        var row=Rows.FirstOrDefault(x=>x.Step?.Id==step?.Id && x.IsStep);
-        _selectedRow=row;
-        StepRowsList.SelectedItem=row;
-        if (row is not null) StepRowsList.ScrollIntoView(row);
+        _document.SelectStep(step);
+        StepRowsList.SelectedItem=_selectedRow;
+        if (_selectedRow is not null) StepRowsList.ScrollIntoView(_selectedRow);
         ShowInspector();
     }
     private void StepRowsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_rebuilding) return;
-        _selectedRow=StepRowsList.SelectedItem as PreviewRow;
-        _selectedStep=_selectedRow?.Step;
+        _document.SelectRow(StepRowsList.SelectedItem as PreviewRow);
         ShowInspector();
     }
     private void StepRowsList_DoubleClick(object sender,MouseButtonEventArgs e)
@@ -434,34 +430,30 @@ public partial class MainWindow : Window
     private void ApplyDockLayout()
     {
         if (InspectorColumn is null || BottomRow is null) return;
-        InspectorColumn.Width=new GridLength(_inspectorVisible?302:0);
-        InspectorDock.Visibility=_inspectorVisible?Visibility.Visible:Visibility.Collapsed;
-        BottomRow.Height=new GridLength(_bottomVisible?165:0);
-        BottomDock.Visibility=_bottomVisible?Visibility.Visible:Visibility.Collapsed;
+        InspectorColumn.Width = new GridLength(_workspace.InspectorVisible ? 302 : 0);
+        InspectorDock.Visibility = _workspace.InspectorVisible ? Visibility.Visible : Visibility.Collapsed;
+        BottomRow.Height = new GridLength(_workspace.BottomVisible ? 165 : 0);
+        BottomDock.Visibility = _workspace.BottomVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void AdaptDocksToViewport()
     {
-        // Physical 1366×768 at 150% gives only ~911×512 DIPs.
-        // Keep steps readable; do not shrink fonts or cover the taskbar.
-        if(!_manualInspectorLayout) _inspectorVisible=ActualWidth>=1120;
-        if(!_manualBottomLayout) _bottomVisible=ActualHeight>=640;
+        _workspace.Adapt(ActualWidth, ActualHeight);
         ApplyDockLayout();
     }
 
-    private void ToggleBottom_Click(object sender,RoutedEventArgs e)
+    private void ToggleBottom_Click(object sender, RoutedEventArgs e)
     {
-        _manualBottomLayout=true;
-        _bottomVisible=!_bottomVisible;
+        _workspace.ToggleBottom();
         ApplyDockLayout();
-        SetMessage(_bottomVisible?"已展开底部观察区。":"已折叠底部观察区。");
+        SetMessage(_workspace.BottomVisible ? "已展开底部观察区。" : "已折叠底部观察区。");
     }
-    private void ToggleInspector_Click(object sender,RoutedEventArgs e)
+
+    private void ToggleInspector_Click(object sender, RoutedEventArgs e)
     {
-        _manualInspectorLayout=true;
-        _inspectorVisible=!_inspectorVisible;
+        _workspace.ToggleInspector();
         ApplyDockLayout();
-        SetMessage(_inspectorVisible?"已打开步骤属性。":"已折叠步骤属性；按 Ctrl+I 可恢复。");
+        SetMessage(_workspace.InspectorVisible ? "已打开步骤属性。" : "已折叠步骤属性；按 Ctrl+I 可恢复。");
     }
 
     private void PreviewOnly_Click(object sender,RoutedEventArgs e)

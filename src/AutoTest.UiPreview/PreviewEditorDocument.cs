@@ -10,6 +10,19 @@ public sealed class PreviewEditorDocument
 {
     public List<DemoPhase> Phases { get; } = new();
     public ObservableCollection<PreviewRow> Rows { get; } = new();
+    public DemoStep? SelectedStep { get; private set; }
+    public PreviewRow? SelectedRow { get; private set; }
+
+    public void SelectStep(DemoStep? step)
+    {
+        SelectedStep = step;
+        SelectedRow = Rows.FirstOrDefault(row => row.IsStep && row.Step?.Id == step?.Id);
+    }
+    public void SelectRow(PreviewRow? row)
+    {
+        SelectedRow = row;
+        SelectedStep = row?.Step;
+    }
 
     public void Rebuild(string? search)
     {
@@ -19,6 +32,8 @@ public sealed class PreviewEditorDocument
             Rows.Add(new PreviewRow { Phase = phase });
             if (!phase.Collapsed) Append(phase, phase.Steps, null, 0);
         }
+        // New projection rows preserve selection through the stable step ID.
+        SelectedRow = Rows.FirstOrDefault(row => row.IsStep && row.Step?.Id == SelectedStep?.Id);
         var query = search?.Trim() ?? string.Empty;
         foreach (var row in Rows)
             row.IsMatch = row.IsStep && query.Length > 0 &&
