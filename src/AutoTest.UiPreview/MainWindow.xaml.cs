@@ -228,94 +228,51 @@ public partial class MainWindow : Window
 
     private void CreatePreviewStep(PaletteKind option)
     {
-        var target=_targetRow;
         var added=PreviewSampleFactory.CreateStep(option.Code,option.Label);
         switch(option.Code)
         {
-            case "ign":added.SetParam("state","ON");break;
-            case "wait":added.SetParam("ms","100");break;
-            case "can":added.SetParam("message","未选择报文");added.SetParam("period","0");break;
-            case "read":added.SetParam("signal","Signal_A");break;
+            case "ign": added.SetParam("state","ON"); break;
+            case "wait": added.SetParam("ms","100"); break;
+            case "can": added.SetParam("message","未选择报文"); added.SetParam("period","0"); break;
+            case "read": added.SetParam("signal","Signal_A"); break;
         }
-        var targetPhase=target?.Phase ?? _phases[1];
-        ObservableCollection<DemoStep> collection;
-        var insertIndex=-1;
-        if(target?.IsBranch==true && target.Branch is not null)collection=target.Branch.Steps;
-        else if(target?.IsStep==true && target.Step is not null)
-        {
-            var found=Locate(target.Step);
-            collection=found?.Items ?? targetPhase.Steps;
-            insertIndex=(found?.Index ?? collection.Count-1)+1;
-        }
-        else collection=targetPhase.Steps;
+
         RememberUndo();
-        if (insertIndex<0 || insertIndex>collection.Count)collection.Add(added);
-        else collection.Insert(insertIndex,added);
-        targetPhase.Collapsed=false;
-        _selectedStep=added;
+        _document.InsertAfter(_targetRow, added);
         PaletteOverlay.Visibility=Visibility.Collapsed;
         RebuildRows();
         SelectStep(added);
-        Dispatcher.BeginInvoke(new Action(()=>{StepNameField.Focus();StepNameField.SelectAll();}),DispatcherPriority.Input);
+        Dispatcher.BeginInvoke(new Action(() => { StepNameField.Focus(); StepNameField.SelectAll(); }),
+            DispatcherPriority.Input);
         SetMessage("已添加步骤：“"+added.Name+"”");
     }
 
-    private (ObservableCollection<DemoStep> Items,int Index)? Locate(DemoStep selected)
+    private void Duplicate_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var phase in _phases)
-        {
-            var found=LocateIn(phase.Steps,selected);
-            if(found is not null)return found;
-        }
-        return null;
-    }
-    private static (ObservableCollection<DemoStep> Items,int Index)? LocateIn(ObservableCollection<DemoStep> list,DemoStep selected)
-    {
-        for(var i=0;i<list.Count;i++)
-        {
-            if(ReferenceEquals(list[i],selected))return(list,i);
-            foreach (var branch in list[i].Branches)
-            {
-                var found=LocateIn(branch.Steps,selected);
-                if(found is not null)return found;
-            }
-        }
-        return null;
-    }
-
-    private void Duplicate_Click(object sender,RoutedEventArgs e)
-    {
-        if(_selectedStep is null)return;
-        var located=Locate(_selectedStep);
-        if(located is null)return;
+        if (_selectedStep is not { } selected || _document.Locate(selected) is null) return;
         RememberUndo();
-        var clone=_selectedStep.Copy();
-        located.Value.Items.Insert(located.Value.Index+1,clone);
-        _selectedStep=clone;RebuildRows();SelectStep(clone);
+        var copy = _document.Duplicate(selected);
+        RebuildRows();
+        if (copy is not null) SelectStep(copy);
         SetMessage("已复制步骤");
     }
-    private void Delete_Click(object sender,RoutedEventArgs e)
+
+    private void Delete_Click(object sender, RoutedEventArgs e)
     {
-        if(_selectedStep is null)return;
-        var located=Locate(_selectedStep);
-        if(located is null)return;
+        if (_selectedStep is not { } selected || _document.Locate(selected) is null) return;
         RememberUndo();
-        located.Value.Items.RemoveAt(located.Value.Index);
-        _selectedStep=located.Value.Items.ElementAtOrDefault(Math.Min(located.Value.Index,located.Value.Items.Count-1));
+        _document.Delete(selected);
         RebuildRows();
         SetMessage("已删除步骤；Ctrl+Z 可撤销");
     }
-    private void MoveUp_Click(object sender,RoutedEventArgs e)=>MoveSelected(-1);
-    private void MoveDown_Click(object sender,RoutedEventArgs e)=>MoveSelected(+1);
+
+    private void MoveUp_Click(object sender, RoutedEventArgs e) => MoveSelected(-1);
+    private void MoveDown_Click(object sender, RoutedEventArgs e) => MoveSelected(1);
     private void MoveSelected(int delta)
     {
-        if(_selectedStep is null)return;
-        var located=Locate(_selectedStep);
-        if(located is null)return;
-        var next=located.Value.Index+delta;
-        if(next<0||next>=located.Value.Items.Count)return;
+        if (_selectedStep is not { } selected || !_document.CanMove(selected, delta)) return;
         RememberUndo();
-        located.Value.Items.Move(located.Value.Index,next);
+        _document.Move(selected, delta);
         RebuildRows();
     }
 

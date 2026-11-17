@@ -77,4 +77,92 @@ public sealed class PreviewEditorDocument
                 foreach (var child in Traverse(branch.Steps)) yield return child;
         }
     }
+    // Editing operations belong to the in-memory document, not the WPF window.
+    public DemoStep InsertAfter(PreviewRow? target, DemoStep step)
+    {
+        var phase = target?.Phase ?? Phases.First(p => p.Key == "test");
+        ObservableCollection<DemoStep> items;
+        var index = -1;
+        if (target?.IsBranch == true && target.Branch is not null)
+            items = target.Branch.Steps;
+        else if (target?.IsStep == true && target.Step is not null)
+        {
+            var found = Locate(target.Step);
+            items = found?.Items ?? phase.Steps;
+            index = (found?.Index ?? items.Count - 1) + 1;
+        }
+        else
+            items = phase.Steps;
+
+        if (index < 0 || index > items.Count) items.Add(step);
+        else items.Insert(index, step);
+        phase.Collapsed = false;
+        SelectStep(step);
+        return step;
+    }
+
+    public (ObservableCollection<DemoStep> Items, int Index)? Locate(DemoStep selected)
+    {
+        foreach (var phase in Phases)
+        {
+            var found = LocateIn(phase.Steps, selected);
+            if (found is not null) return found;
+        }
+        return null;
+    }
+
+    private static (ObservableCollection<DemoStep> Items, int Index)? LocateIn(
+        ObservableCollection<DemoStep> items, DemoStep selected)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (ReferenceEquals(items[i], selected)) return (items, i);
+            foreach (var branch in items[i].Branches)
+            {
+                var found = LocateIn(branch.Steps, selected);
+                if (found is not null) return found;
+            }
+        }
+        return null;
+    }
+
+    public DemoStep? Duplicate(DemoStep selected)
+    {
+        var found = Locate(selected);
+        if (found is null) return null;
+        var copy = selected.Copy();
+        found.Value.Items.Insert(found.Value.Index + 1, copy);
+        SelectStep(copy);
+        return copy;
+    }
+
+    public DemoStep? Delete(DemoStep selected)
+    {
+        var found = Locate(selected);
+        if (found is null) return null;
+        found.Value.Items.RemoveAt(found.Value.Index);
+        var replacement = found.Value.Items.ElementAtOrDefault(
+            Math.Min(found.Value.Index, found.Value.Items.Count - 1));
+        SelectStep(replacement);
+        return replacement;
+    }
+
+    public bool CanMove(DemoStep selected, int delta)
+    {
+        var found = Locate(selected);
+        if (found is null) return false;
+        var next = found.Value.Index + delta;
+        return next >= 0 && next < found.Value.Items.Count;
+    }
+
+    public void Move(DemoStep selected, int delta)
+    {
+        var found = Locate(selected);
+        if (found is null) return;
+        var next = found.Value.Index + delta;
+        if (next < 0 || next >= found.Value.Items.Count) return;
+        found.Value.Items.Move(found.Value.Index, next);
+        SelectStep(selected);
+    }
+
 }
