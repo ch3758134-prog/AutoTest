@@ -22,9 +22,7 @@ public partial class FlashLabWindow : Window
     private readonly FlashLabDeviceSession _device = new();
     private CancellationTokenSource? _connectStop;
     private CancellationTokenSource? _flashStop;
-    private string? _seedDllPath;
     private string? _safetyFilePath;
-    private string? _seedKeyFilePath;
     private readonly ConcurrentQueue<CanLogRow> _pendingCan=new();
     private int _pendingCount;
     private int _flushRunning;
@@ -61,7 +59,7 @@ public partial class FlashLabWindow : Window
         };
         Loaded+=async (_,_)=>await RefreshDevicesAsync();
         UpdateButtons();
-        AddLog("CAN1 烧录工作台已启动。先导入配置与固件，选择安全算法文件，连接 USB，检查后执行。");
+        AddLog("CAN1 烧录工作台已启动。导入 CanTool 配置、固件、安全文件，连接 USB 后开始烧录。");
     }
 
     private void ScheduleCanFlush()
@@ -144,7 +142,7 @@ public partial class FlashLabWindow : Window
         DisconnectButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected;
         RefreshButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && !_device.IsConnected;
         StartFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected &&
-            _vm.Image is not null && !string.IsNullOrWhiteSpace(_seedDllPath);
+            _vm.Image is not null && !string.IsNullOrWhiteSpace(_safetyFilePath);
         AbortFlashButton.IsEnabled=!_closingInProgress && _flashStop is not null;
     }
     private async Task RefreshDevicesAsync()
@@ -212,9 +210,7 @@ public partial class FlashLabWindow : Window
         catch(Exception ex) { Error("主控断开",ex); }
         finally { Busy(false); }
     }
-    /// <summary>One offline action imports the three actual CanTool inputs
-    /// together; the alternate native Seed/Key DLL is never mandatory when
-    /// the selected provider is the managed SafetyFile.dll.</summary>
+    /// <summary>Import CanTool XML, firmware, and the one required safety file.</summary>
     private async void ImportThreeFiles_Click(object sender,RoutedEventArgs e)
     {
         if(_vm.IsBusy || _closingInProgress || _closingApproved)return;
@@ -245,8 +241,7 @@ public partial class FlashLabWindow : Window
             checkedFiles.cfg.Set("SafetyFilePath",checkedFiles.library.Path);
             _vm.ApplyConfiguration(checkedFiles.cfg);
             _vm.SetImage(files.FirmwareImage,checkedFiles.image);
-            SecuritySourceSelector.SelectedIndex=0;
-            ApplySecurityFilesFromConfiguration();
+            ApplySafetyFileFromConfiguration();
             InvalidateFlashPreview();
             _vm.Status="已导入烧录文件；USB 连接后直接点击开始烧录。";
             AddLog($"三文件导入成功：XML={files.ConfigurationXml}，"+
@@ -266,7 +261,7 @@ public partial class FlashLabWindow : Window
             var cfg=CanToolXmlProfileReader.Load(dialog.FileName);
             _vm.ApplyConfiguration(cfg);
             InvalidateFlashPreview();
-            ApplySecurityFilesFromConfiguration();
+            ApplySafetyFileFromConfiguration();
             _vm.Status="已加载 CanTool XML；字段与未知项已保留。";
             AddLog("XML 配置载入："+dialog.FileName);
         }
@@ -283,7 +278,7 @@ public partial class FlashLabWindow : Window
             _vm.Configuration.LoadRelatedJson(dialog.FileName);
             _vm.ApplyConfiguration(_vm.Configuration);
             InvalidateFlashPreview();
-            ApplySecurityFilesFromConfiguration();
+            ApplySafetyFileFromConfiguration();
             _vm.Status="已导入 settings.json 非冲突字段；未知字段不驱动硬件。";
             AddLog("JSON 参考配置："+dialog.FileName);
         }
@@ -375,61 +370,35 @@ public partial class FlashLabWindow : Window
             return null;
         }
     }
-    private void ApplySecurityFilesFromConfiguration()
+    private void ApplySafetyFileFromConfiguration()
     {
-        // The user's TWO independent CanTool file settings are never collapsed.
+        // This CanTool workflow uses the imported SafetyFile.dll only.
+        // The optional legacy SeedToKeyDll_Path never affects this run.
         _safetyFilePath=ResolveAndInspect("SafetyFilePath",
             CanToolSecurityKind.ManagedSafetyFile,SafetyDllStatusLabel);
-        _seedKeyFilePath=ResolveAndInspect("SeedToKeyDll_Path",
-            CanToolSecurityKind.NativeZlgKey,SeedKeyDllStatusLabel);
-        UpdateSecuritySelection();
         UpdateButtons();
     }
-    private void UpdateSecuritySelection()
-    {
-        if(SecuritySourceSelector is null)return;
-        bool managed=SecuritySourceSelector.SelectedIndex!=1;
-        _seedDllPath=managed?_safetyFilePath:_seedKeyFilePath;
-        if(SecurityProviderStatusLabel is not null)
-            SecurityProviderStatusLabel.Text=managed
-                ? "本次使用 SafetyFile.dll 托管算法"+(_seedDllPath is null?"（尚未就绪）":"（已识别）")
-                : "本次使用 Seed/Key 原生 DLL 算法"+(_seedDllPath is null?"（尚未就绪）":"（已识别）");
-    }
-    private void SecuritySource_SelectionChanged(object sender,
-        System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        if(SecurityProviderStatusLabel is null)return;
-        UpdateSecuritySelection();InvalidateFlashPreview();
-    }
-    private void ChooseSafetyFile_Click(object sender,RoutedEventArgs e)=>
-        SelectSecurityFile("SafetyFilePath","选择安全文件 SafetyFile.dll");
-    private void ChooseSeedKey_Click(object sender,RoutedEventArgs e)=>
-        SelectSecurityFile("SeedToKeyDll_Path","选择 Seed/Key 原生 DLL");
-    private void SelectSecurityFile(string field,string title)
+
+    private void ChooseSafetyFile_Click(object sender,RoutedEventArgs e)
     {
         var dialog=new OpenFileDialog
         {
-            Title=title,Filter="DLL 安全文件 (*.dll)|*.dll|所有文件 (*.*)|*.*"
+            Title="选择 CanTool 安全文件 SafetyFile.dll",
+            Filter="安全文件 (*.dll)|*.dll|全部文件 (*.*)|*.*"
         };
         if(dialog.ShowDialog(this)!=true)return;
         try
         {
             var info=CanToolSecurityProvider.Inspect(dialog.FileName);
-            var expected=field=="SafetyFilePath"
-                ? CanToolSecurityKind.ManagedSafetyFile : CanToolSecurityKind.NativeZlgKey;
-            if(info.Kind!=expected)
-                throw new FormatException("所选文件是 "+info.Kind+"；请使用对应的另一个导入入口。");
-            _vm.Configuration.Set(field,info.Path);
-            ApplySecurityFilesFromConfiguration();
+            if(info.Kind!=CanToolSecurityKind.ManagedSafetyFile)
+                throw new NotSupportedException(
+                    "选择的文件不是当前 CanTool 安全文件接口；不会自动切换其他算法库。");
+            _vm.Configuration.Set("SafetyFilePath",info.Path);
+            ApplySafetyFileFromConfiguration();
             InvalidateFlashPreview();
-            AddLog("已更新配置 "+field+"："+info.Path);
-            if(info.KnownDemo)
-                MessageBox.Show(this,
-                    "该 DLL 为 Seed/Key 演示算法，接口匹配不代表目标 ECU 接受。"+
-                    "请现场核对算法来源。","算法匹配提醒",
-                    MessageBoxButton.OK,MessageBoxImage.Information);
+            AddLog("已导入烧录安全文件："+info.Path);
         }
-        catch(Exception ex){Error("导入安全算法文件",ex);}
+        catch(Exception ex){Error("导入烧录安全文件",ex);}
     }
 
     private CanToolFlashJob BuildFlashJob()
@@ -437,15 +406,14 @@ public partial class FlashLabWindow : Window
             if(_vm.Image is null || string.IsNullOrWhiteSpace(_vm.FirmwarePath))
                 throw new InvalidOperationException("请先选择并离线校验 HEX/S19/BIN 镜像。");
             // Always reload both visible configuration file paths before freezing.
-            ApplySecurityFilesFromConfiguration();
-            UpdateSecuritySelection();
-            if(string.IsNullOrWhiteSpace(_seedDllPath))
+            ApplySafetyFileFromConfiguration();
+            if(string.IsNullOrWhiteSpace(_safetyFilePath))
                 throw new InvalidOperationException(
-                    "本次选用的安全算法 DLL 未准备好，请在配置区域选择对应的文件。");
+                    "缺少 CanTool 安全文件 SafetyFile.dll，或其接口检查未通过。");
             // Rebuild immutable on-wire snapshot using current config, current file
             // and current DLL; no stale UI values or automatic hardware actions.
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,"",
+                _vm.FirmwarePath,BinBaseBox.Text,_safetyFilePath,"",
                 LegacyTailSignatureCheck.IsChecked==true);
             _previewFlash=plan;
             _vm.ResetStages();
@@ -480,10 +448,10 @@ public partial class FlashLabWindow : Window
             // Any edited XML field, new disk bytes, DLL or selected BIN base MUST
             // invalidate the displayed physical consent fingerprint.
             var fresh=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,_seedDllPath,"",
+                _vm.FirmwarePath,BinBaseBox.Text,_safetyFilePath,"",
                 LegacyTailSignatureCheck.IsChecked==true);
             if(!string.Equals(frozen.Fingerprint,fresh.Fingerprint,StringComparison.Ordinal))
-                throw new InvalidOperationException("配置、固件或算法库在生成计划后已改变。请重新生成烧录计划。");
+                throw new InvalidOperationException("配置、固件或安全文件已改变；请重新点击开始烧录。");
             var choice=MessageBox.Show(this,
                 "这是实体 ECU 编程操作，不是仿真。\n\n"+
                 $"镜像：{Path.GetFileName(frozen.FirmwarePath)}\n"+

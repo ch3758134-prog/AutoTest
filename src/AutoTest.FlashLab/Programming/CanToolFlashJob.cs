@@ -123,8 +123,11 @@ public sealed record CanToolFlashJob(
             ImmutableArray.CreateRange(p.Value))).ToImmutableArray();
         string dll=Path.GetFullPath(keyDll);
         var details=CanToolSecurityProvider.Inspect(dll);
-        // Both original-source ABIs are supported: the uploaded managed SafetyFile
-        // and the reference CanTool native Cdecl ZLGKey; never silently fallback.
+        // The UI explicitly provides one SafetyFile. Do not silently load a
+        // legacy native demo algorithm if an XML field references one.
+        if(details.Kind!=CanToolSecurityKind.ManagedSafetyFile)
+            throw new NotSupportedException(
+                "当前烧录资料应使用 SafetyFile.dll；不接受另外的 Seed/Key 演示 DLL。");
         string effective=string.Join("\n",config.Parameters.Select(p=>p.Name+"="+p.Value.Trim()));
         string bound=$"CANTOOL-FLASH-F2-v1\nCAN1\n{targetLabel.Trim()}\n"+
             $"APP {appTx:X8} {appRx:X8}\nBOOT {bootTx:X8} {bootRx:X8}\n"+

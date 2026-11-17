@@ -94,7 +94,7 @@ public sealed class CanToolFlashWorkflow(
         // and before entering any physical session. A CLR SafetyFile fails closed.
         var inspected=CanToolSecurityProvider.Inspect(plan.SecurityLibraryPath);
         if(!string.Equals(inspected.Sha256,plan.SecuritySha256,StringComparison.OrdinalIgnoreCase))
-            throw new IOException("Seed/Key DLL 在冻结计划后发生修改。");
+            throw new IOException("安全文件 SafetyFile.dll 在检查后发生修改。");
         if(!string.Equals(inspected.Kind.ToString(),plan.SecurityProviderKind,StringComparison.Ordinal))
             throw new IOException("算法库类型与冻结任务不一致。");
         using var keyProvider=CanToolSecurityProvider.Open(inspected);
@@ -144,7 +144,7 @@ public sealed class CanToolFlashWorkflow(
             if(response.Length<2 || response[1]!=0x02)
                 throw new InvalidDataException("Boot 50 02 不完整。");
 
-            log("S3 SecurityAccess：27 01 请求 Seed → ZLGKey → 27 02");
+            log("S3 SecurityAccess：27 01 请求 Seed → 安全文件计算 Key → 27 02");
             sensitive(true);
             try
             {

@@ -125,27 +125,8 @@
         TextTrimming="CharacterEllipsis" Margin="7,0,7,4"
         FontSize="11" Foreground="#62768B"/>
 
-      <DockPanel LastChildFill="True" Margin="2,4,2,1">
-       <Button DockPanel.Dock="Right" Content="选择..." Click="ChooseSeedKey_Click"
-         Padding="10,5"/>
-       <TextBlock Text="Seed/Key DLL" FontWeight="SemiBold"
-         VerticalAlignment="Center" Margin="4,0"/>
-      </DockPanel>
-      <TextBlock x:Name="SeedKeyDllStatusLabel" Text="未选择 Seed/Key DLL"
-        TextTrimming="CharacterEllipsis" Margin="7,0,7,4"
-        FontSize="11" Foreground="#62768B"/>
-
-      <TextBlock Text="本次采用的算法" FontWeight="SemiBold" Margin="6,8,6,2"/>
-      <ComboBox x:Name="SecuritySourceSelector"
-        SelectedIndex="0" SelectionChanged="SecuritySource_SelectionChanged"
-        Height="31" Margin="5,0,5,2">
-       <ComboBoxItem Content="SafetyFile.dll 托管算法"/>
-       <ComboBoxItem Content="Seed/Key 原生 DLL 算法"/>
-      </ComboBox>
-      <TextBlock x:Name="SecurityProviderStatusLabel"
-        Text="按配置选择实际使用的安全算法"
-        FontSize="11" TextWrapping="Wrap" Margin="7,2,7,6"
-        Foreground="#61768D"/>
+      <TextBlock Text="安全访问由已导入的安全文件完成，无需另选 Seed/Key DLL。"
+        TextWrapping="Wrap" Margin="7,5,7,5" FontSize="11" Foreground="#61768D"/>
 
       <Separator Margin="5,5"/>
       <Expander Header="详细参数 · CAN ID / 地址 / 镜像"
