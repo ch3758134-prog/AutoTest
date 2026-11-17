@@ -227,7 +227,7 @@
        <Grid Height="{Binding RowHeight}" Background="Transparent">
         <Border Style="{StaticResource AtPreviewPhaseRow}" Visibility="{Binding IsPhase,Converter={StaticResource B2V}}"
          Background="{Binding PhaseBackground}" BorderBrush="{Binding PhaseAccent}"
-         BorderThickness="3,0,0,1" Padding="8,0">
+         >
          <DockPanel LastChildFill="True">
           <Button DockPanel.Dock="Right" Tag="{Binding}" Content="＋ 添加"
            Height="24" MinHeight="0" Padding="8,2" Margin="4,0,0,0"

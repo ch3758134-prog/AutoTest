@@ -278,12 +278,10 @@ public partial class MainWindow : Window
     private void AddField(string label,string key,string fallback)
     {
         if (_selectedStep is null) return;
-        var text=new TextBlock{Text=label,FontSize=11,Foreground=InkMuted,Margin=new Thickness(0,3,0,5)};
+        var text=new TextBlock{Text=label,Style=(Style)FindResource("AtPreviewDynamicLabel")};
         InspectorParameterFields.Children.Add(text);
         var input=new TextBox{
-            Text=_selectedStep.Param(key,fallback),MinHeight=27,FontSize=11,
-            Margin=new Thickness(0,0,0,10),Padding=new Thickness(7,4,7,4),
-            BorderBrush=PreviewRow.Solid("#CDD9E8"),BorderThickness=new Thickness(1)};
+            Text=_selectedStep.Param(key,fallback),Style=(Style)FindResource("AtPreviewDynamicInput")};
         var editingStep=_selectedStep;
         input.GotKeyboardFocus+=(_,_)=>RememberUndo();
         input.TextChanged+=(_,_)=>{
@@ -298,9 +296,8 @@ public partial class MainWindow : Window
     {
         if (_selectedStep is null)return;
         InspectorParameterFields.Children.Add(new TextBlock{
-            Text=label,FontSize=11,Foreground=InkMuted,Margin=new Thickness(0,3,0,5)});
-        var box=new ComboBox{Height=27,FontSize=11,Margin=new Thickness(0,0,0,10),
-            BorderBrush=PreviewRow.Solid("#CDD9E8"),ItemsSource=options};
+            Text=label,Style=(Style)FindResource("AtPreviewDynamicLabel")});
+        var box=new ComboBox{Style=(Style)FindResource("AtPreviewDynamicChoice"),ItemsSource=options};
         var editingStep=_selectedStep;
         box.DropDownOpened+=(_,_)=>RememberUndo();
         box.SelectedItem=editingStep.Param(key,options[0]);
