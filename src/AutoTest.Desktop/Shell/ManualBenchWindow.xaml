@@ -249,7 +249,6 @@
        <TextBlock DockPanel.Dock="Left" Text="按键动作 · CAN0" Style="{StaticResource BenchHeader}" FontSize="14"/>
        <TextBlock DockPanel.Dock="Right" Text="K01～K20 / 电阻网络" Style="{StaticResource BenchHint}"/>
       </DockPanel>
-      <TextBlock Text="{Binding ControllerSummary}" Style="{StaticResource BenchHint}" Margin="0,5,0,7"/>
      </StackPanel>
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
   <StackPanel>
