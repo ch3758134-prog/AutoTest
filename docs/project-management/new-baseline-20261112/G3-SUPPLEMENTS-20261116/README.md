@@ -23,14 +23,14 @@
 
 ## 现有固件/软件的高优先级差距
 
-- 双夹具硬件已确认为独立 GPIO，旧固件 0x18 仍互斥；固件需先改并明确功能版本，HOST 禁止用旧/未验证格式驱动夹具。
-- 旧 USB 供电与 SOL 仍留在固件；其原有内部功率耦合必须静态审查，不能粗暴删除 RL_DRV。
+- 双夹具硬件为独立 GPIO；`Main_Control@16abba7f` **源码已改成两字节 0x18**、独立 0x19，Keil 编译/现场固件身份/夹具实测仍待证。HOST 按新协议开发，但在版本与实物验证前不发送 0x18。
+- 新源码已移除旧 ECU/KEY 供电与 SOL 的 USB 路由；RL_DRV 仍为 PCB 内部功率链的 GPIO 初始化，不向 HOST 提供命令。旧 PTC8/PTC9 复位态与现场线束仍须验证。
 - KEY_SIM 直接 mask 的驱动与旧 Controller/RawKey 路径不同；旧 RawKey Pulse 可无条件 ReleaseAll，不等价于新版 Keep。
 - `Subroutine/CallSubroutine` 旧节点存在但实际运行器尚未支持公共流程；需版本/递归/作用域/证据合同。
 - 用户此前报告 G4 USB 连接失败；应保留详细 WinUSB 阶段诊断与真机恢复验证，不能把 UI 预览器当实测 EXE。
 
 ## 外部事实链接
 
-- [主控固件 USB 接口调查](https://github.com/ch3758134-prog/AutoTest/blob/5d2ad5b7f3ae54c6b3e08e363229a25349f4f8be/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md)
+- [主控固件 USB v0.2 接口与整改代码](https://github.com/ch3758134-prog/AutoTest/blob/16abba7fec94dc4b7fbdc05b91ee209b5c7efa12/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md)
 - [冻结自动测试 HTML](https://github.com/ch3758134-prog/AutoTest/blob/main/docs/ui/archive/auto-test-20261115-ec75a9fe/AutoTest_UI.html)
 - [主控/KEY_SIM 图纸审查档案](https://github.com/ch3758134-prog/AutoTest/tree/main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115)（后续集中迁移到 PM 分支；目前不删除 main 原件）。
