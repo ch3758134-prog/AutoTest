@@ -105,7 +105,7 @@
         Padding="7,7" MinHeight="32" TextWrapping="Wrap" AcceptsReturn="False"/>
       </StackPanel>
       <TextBlock Text="需确认的完整 CAN 帧" Style="{StaticResource BenchFieldLabel}"/>
-      <TextBox Text="{Binding CanExpectedConsent}" TextWrapping="Wrap" IsReadOnly="True"
+      <TextBox Text="{Binding CanExpectedConsent,Mode=OneWay}" TextWrapping="Wrap" IsReadOnly="True"
        FontSize="10" Foreground="#55708C" Padding="7,7" MinHeight="64"/>
       <Button Content="复制确认文字" Click="CopyCanConfirmation_Click"
        Margin="0,6,0,0" HorizontalAlignment="Left"/>
@@ -166,7 +166,7 @@
       <TextBlock Text="{Binding LastKeyAck}" FontSize="11" Foreground="#607B99"
        TextWrapping="Wrap" Margin="2,9,0,0"/>
       <TextBlock Text="CAN0 单帧授权文字" Style="{StaticResource BenchFieldLabel}"/>
-      <TextBox Text="{Binding KeyExpectedConsent}" IsReadOnly="True"
+      <TextBox Text="{Binding KeyExpectedConsent,Mode=OneWay}" IsReadOnly="True"
        TextWrapping="Wrap" Padding="7,6" FontSize="10" MinHeight="48"/>
       <DockPanel Margin="0,6,0,0">
        <Button DockPanel.Dock="Right" Content="复制" Click="CopyKeyConfirmation_Click"
