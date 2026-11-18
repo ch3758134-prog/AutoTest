@@ -17,7 +17,7 @@
     <Page Remove="artifacts\**\*" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="LibUsbDotNet" Version="3.0.224" />
+    <PackageReference Include="LibUsbDotNet" />
   </ItemGroup>
   <ItemGroup>
     <!-- 核心模型/序列化/观测解码（无 WPF 依赖），上位机只做薄壳 -->

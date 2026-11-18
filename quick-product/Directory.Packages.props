@@ -1,0 +1,11 @@
+<Project>
+  <!-- QUICK only: inherit existing repository-managed package versions. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Packages.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\Directory.Packages.props')" />
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="LibUsbDotNet" Version="3.0.224" />
+  </ItemGroup>
+</Project>
