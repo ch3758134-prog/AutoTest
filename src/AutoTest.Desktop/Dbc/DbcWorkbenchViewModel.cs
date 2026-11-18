@@ -17,9 +17,10 @@ public sealed record DbcMessageRow(DbcMessage Message, DbcDisplayNames DisplayNa
     public string DisplayName => DisplayNames.MessageLabel(Message);
     public string Dlc => Message.Dlc.ToString();
     public string Transmitter => Message.Transmitter;
+    public string Summary => DisplayNames.MessageSummary(Message.Id);
     public string Caption => DisplayName + " · " + HexId + " · " + Message.Signals.Length + " 个信号";
 }
-public sealed record DbcSignalRow(DbcSignal Signal, string DisplayName)
+public sealed record DbcSignalRow(DbcSignal Signal, string DisplayName, string Summary)
 {
     public string Name => Signal.Name;
     public string StartBit => Signal.StartBit.ToString();
@@ -50,6 +51,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private bool _settingAlias;
     private string _messageAliasText = "";
     private string _signalAliasText = "";
+    private string _messageSummaryText = "";
+    private string _signalSummaryText = "";
     private string _status = "就绪";
 
     public DbcWorkbenchViewModel(
@@ -114,6 +117,42 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             catch (ProjectDataException error) { StatusMessage = error.Message; }
         }
     }
+    public string MessageSummaryText
+    {
+        get => _messageSummaryText;
+        set
+        {
+            if (!SetProperty(ref _messageSummaryText, value ?? "") || _settingAlias ||
+                SelectedMessage is not { } message) return;
+            try
+            {
+                _session.Document.SetMessageSummary(message.Message.Id, value);
+                StatusMessage = "报文功能摘要已修改（与名称及原始 CM_ 定义分开），请保存 DBC。";
+                RefreshCommands();
+            }
+            catch (ProjectDataException error) { StatusMessage = error.Message; }
+        }
+    }
+    public string SignalSummaryText
+    {
+        get => _signalSummaryText;
+        set
+        {
+            if (!SetProperty(ref _signalSummaryText, value ?? "") || _settingAlias ||
+                SelectedMessage is not { } message || SelectedSignal is not { } signal) return;
+            try
+            {
+                _session.Document.SetSignalSummary(message.Message.Id, signal.Name, value);
+                StatusMessage = "信号功能摘要已修改，请保存 DBC。";
+                RefreshCommands();
+            }
+            catch (ProjectDataException error) { StatusMessage = error.Message; }
+        }
+    }
+    public string SelectedMessageDefinition => SelectedMessage is { } m
+        ? _session.Document.DisplayNames.MessageDescription(m.Message.Id) : "";
+    public string SelectedSignalDefinition => SelectedMessage is { } m && SelectedSignal is { } sg
+        ? _session.Document.DisplayNames.SignalDescription(m.Message.Id, sg.Name) : "";
     public string SignalAliasText
     {
         get => _signalAliasText;
@@ -139,6 +178,12 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 ? _session.Document.DisplayNames.MessageAlias(message.Message.Id) : "";
             SignalAliasText = SelectedMessage is { } m && SelectedSignal is { } sig
                 ? _session.Document.DisplayNames.SignalAlias(m.Message.Id, sig.Name) : "";
+            MessageSummaryText = SelectedMessage is { } msg
+                ? _session.Document.DisplayNames.ExplicitMessageSummary(msg.Message.Id) : "";
+            SignalSummaryText = SelectedMessage is { } m2 && SelectedSignal is { } sg2
+                ? _session.Document.DisplayNames.ExplicitSignalSummary(m2.Message.Id, sg2.Name) : "";
+            RaisePropertyChanged(nameof(SelectedMessageDefinition));
+            RaisePropertyChanged(nameof(SelectedSignalDefinition));
         }
         finally { _settingAlias = false; }
     }
@@ -310,7 +355,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         {
             foreach (var signal in message.Message.Signals.OrderBy(s => s.StartBit).ThenBy(s => s.Name))
                 Signals.Add(new DbcSignalRow(signal,
-                    _session.Document.DisplayNames.SignalLabel(message.Message, signal)));
+                    _session.Document.DisplayNames.SignalLabel(message.Message, signal),
+                    _session.Document.DisplayNames.SignalSummary(message.Message.Id, signal.Name)));
         }
         SelectedSignal = Signals.FirstOrDefault(x => x.Name == signalName) ?? Signals.FirstOrDefault();
         RaisePropertyChanged(nameof(SignalCount));
