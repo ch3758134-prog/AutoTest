@@ -7,6 +7,7 @@ using System.Windows.Input;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Desktop.Configuration;
+using AutoTest.Desktop.Dbc;
 using AutoTest.Projects.Dbc;
 using AutoTest.Testing.Authoring;
 using Prism.Mvvm;
@@ -75,21 +76,11 @@ public sealed class TestStepInputField : BindableBase
     public bool HasChoices => Choices.Count > 0;
     public string Value { get => _value; set => SetProperty(ref _value, value ?? ""); }
 }
-public sealed class TestSignalInputField : BindableBase
+public sealed class TestSignalInputField : DbcEditableSignal
 {
-    private string _value;
-    public TestSignalInputField(DbcSignal signal, string value, string? displayName = null)
-    {
-        Name = signal.Name; DisplayName = displayName ?? signal.Name; Unit = signal.Unit;
-        Range = signal.Minimum.ToString("G", CultureInfo.InvariantCulture) +
-            " ～ " + signal.Maximum.ToString("G", CultureInfo.InvariantCulture);
-        _value = value;
-    }
-    public string Name { get; }
-    public string DisplayName { get; }
-    public string Unit { get; }
-    public string Range { get; }
-    public string Value { get => _value; set => SetProperty(ref _value, value ?? ""); }
+    public TestSignalInputField(DbcSignal signal, string value, string? displayName = null,
+        string? description = null, IReadOnlyDictionary<long, string>? rawLabels = null)
+        : base(signal, displayName, description, rawLabels, value) { }
 }
 
 public sealed record StepCompositionResult(StepNode Step, TestTargetMapping? Mapping);
@@ -633,10 +624,44 @@ public partial class TestStepInspector : UserControl
                         var pos = segment.IndexOf('=');
                         if (pos > 0) dict[segment[..pos].Trim()] = segment[(pos + 1)..].Trim();
                     }
+                byte[]? originalBytes = null;
+                if (!old.Contains('='))
+                {
+                    try
+                    {
+                        var hex = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
+                            ? old[4..] : old;
+                        var bytes = Convert.FromHexString(new string(hex.Where(
+                            x => !char.IsWhiteSpace(x) && x != '-').ToArray()));
+                        if (bytes.Length == msg.Dlc) originalBytes = bytes;
+                    }
+                    catch (FormatException) { /* Keep original HEX and require review. */ }
+                }
                 foreach (var signal in msg.Signals)
-                    SignalValues.Add(new TestSignalInputField(signal,
-                        dict.GetValueOrDefault(signal.Name, ""),
-                        _selectedTarget.DisplayNames?.SignalLabel(msg, signal)));
+                {
+                    var alias = _selectedTarget.DisplayNames?.SignalAlias(msg.Id, signal.Name);
+                    var description = _selectedTarget.DisplayNames?.SignalDescription(msg.Id, signal.Name);
+                    var labels = _selectedTarget.MessageValueLabels is not null &&
+                        _selectedTarget.MessageValueLabels.TryGetValue(signal.Name, out var entries)
+                            ? entries : null;
+                    var current = dict.GetValueOrDefault(signal.Name, "");
+                    if (current.Length == 0 && originalBytes is not null)
+                    {
+                        try
+                        {
+                            current = DbcSignalCodec.DecodePhysical(signal, originalBytes)
+                                .ToString("G17", CultureInfo.InvariantCulture);
+                        }
+                        catch (Exception error) when (error is ArgumentException or
+                            IndexOutOfRangeException or AutoTest.Projects.Project.ProjectDataException)
+                        {
+                            current = "";
+                        }
+                    }
+                    SignalValues.Add(new TestSignalInputField(signal, current,
+                        string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
+                        description, labels));
+                }
                 DbcRawMode.IsChecked = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
                     (!old.Contains('=') && old.Length > 0);
                 DbcRawDataInput.Text = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
