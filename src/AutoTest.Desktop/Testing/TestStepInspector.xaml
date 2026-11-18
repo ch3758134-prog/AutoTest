@@ -29,6 +29,10 @@
      Text="该步骤来自旧版文件，尚未完成可执行参数验证。旧文件信息已保留，但不会作为可编辑参数展示；实测前请重新核对操作对象及判定条件。"
      TextWrapping="Wrap" Foreground="#9B6423" FontSize="11"
      Margin="0,0,0,10" Visibility="Collapsed"/>
+    <Button x:Name="ConvertImportedAssertionButton" Content="按当前 DBC 重建 CAN 判定"
+     Click="ConvertImportedAssertion_Click" Visibility="Collapsed"
+     HorizontalAlignment="Left" Margin="0,0,0,12" Padding="10,6"
+     ToolTip="只转换当前旧版 CAN 判定；必须选择 CAN ID 匹配的真实 DBC 信号，并核对原位长、字节序、判定值和超时。转换后此步骤参与执行。"/>
     <TextBlock Text="步骤名称" Foreground="#61738B" FontWeight="SemiBold"
      FontSize="11" Margin="0,0,0,5"/>
     <TextBox x:Name="NameInput" Margin="0,0,0,13"/>
