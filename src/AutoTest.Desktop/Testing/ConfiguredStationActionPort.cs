@@ -190,6 +190,8 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                         await _hardware.SendTestCanAsync(
                             KeypadCommandCodec.EncodeMask(request.Mask), _fingerprint, ct);
                         _rawMask = request.Mask;
+                        if (request.Action == RawKeyOperation.Hold && request.DurationMs > 0)
+                            await Task.Delay(request.DurationMs, ct);
                         if (request.Action == RawKeyOperation.Pulse)
                         {
                             await Task.Delay(request.DurationMs, ct);
