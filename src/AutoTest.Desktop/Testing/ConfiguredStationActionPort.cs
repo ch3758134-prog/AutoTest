@@ -112,14 +112,13 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     {
         var frames = new HashSet<(byte Port, bool Extended, uint Id)>();
         if (_buttons.Count > 0 || _hasRawKey)
-            frames.Add((0, false, KeypadCommandCodec.KeypadId));
+            frames.Add((StationCanWiring.KeypadPort, false, KeypadCommandCodec.KeypadId));
         foreach (var raw in mappings.Where(x => x.Kind == TestTargetKind.RawCan))
-            frames.Add((1, raw.Extended, raw.CanId));
+            frames.Add((StationCanWiring.DutPort, raw.Extended, raw.CanId));
         foreach (var item in _can.Values)
         {
             var map = item.Target;
-            frames.Add((map.Role == BusRole.DutCan ? (byte)1 : (byte)0,
-                map.Extended, map.CanId));
+            frames.Add((StationCanWiring.PortFor(map.Role), map.Extended, map.CanId));
         }
         return frames.ToArray();
     }
@@ -148,7 +147,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             if (action.StartsWith("PERIODIC:", StringComparison.OrdinalIgnoreCase))
             {
                 if (target.Kind is not (TestTargetKind.CanMessage or TestTargetKind.RawCan))
-                    throw new InvalidOperationException("周期报文只能使用 CAN1 的原始帧或 DBC 报文。");
+                    throw new InvalidOperationException("周期报文只能使用 ECU 的 CAN0 原始帧或 DBC 报文。");
                 var fields = action.Split(':', 4);
                 if (fields.Length != 4 ||
                     !int.TryParse(fields[1], NumberStyles.None, CultureInfo.InvariantCulture,
@@ -341,7 +340,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
         finally { _serial.Release(); }
     }
 
-    // Separate scheduler for each active CAN1 frame. This uses host timing rather
+    // Separate scheduler for each active DUT CAN0 frame. This uses host timing rather
     // than pretending that the current host interface configures firmware 0x50.
     // All writes still traverse the same hardware authorization and ACK path.
     private async Task SendPeriodicAsync(CanFrame frame, int periodMs, int durationMs,
@@ -375,7 +374,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 throw new InvalidOperationException("真实自动测试尚未授权。");
             await StopPeriodicWorkersAsync();
             if (_periodicErrors.TryDequeue(out var failure))
-                throw new IOException("CAN1 周期发送发生设备通信错误。", failure);
+                throw new IOException("CAN0 周期发送发生设备通信错误。", failure);
         }
         finally { _serial.Release(); }
     }
@@ -415,7 +414,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 await _hardware.RevokeTestRunAsync();
             }
             if (_periodicErrors.TryDequeue(out var periodicFailure))
-                throw new IOException("CAN1 周期发送期间出现设备错误，测试不能判为通过。",
+                throw new IOException("CAN0 周期发送期间出现设备错误，测试不能判为通过。",
                     periodicFailure);
         }
         finally { _serial.Release(); }
