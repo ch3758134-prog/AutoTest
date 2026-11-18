@@ -19,14 +19,20 @@ public static class TestDocumentCodec
         x.Name, x.Kind.ToString(), x.Asset.Value, x.AssetRevision, x.AssetSha256,
         x.Role.ToString(), x.CanId, x.Extended, x.SignalName, x.Unit,
         x.ControllerId, x.StateId);
-    private static TestTargetMapping DecodeMapping(MappingData x) =>
-        new TestTargetMapping(x.Name, Enum.Parse<TestTargetKind>(x.Kind, false),
-            x.AssetId == Guid.Empty && x.Kind is
-                (nameof(TestTargetKind.Ignition) or nameof(TestTargetKind.RawCan) or
-                 nameof(TestTargetKind.RawKey))
-                ? default : AssetId.Create(x.AssetId),
+    private static TestTargetMapping DecodeMapping(MappingData x)
+    {
+        var kind = Enum.Parse<TestTargetKind>(x.Kind, false);
+        // Physical-only station targets intentionally do not have a file asset.
+        // Every asset-backed target must provide an actual asset identity.
+        var physicalOnly = kind is TestTargetKind.Ignition or TestTargetKind.RawCan or TestTargetKind.RawKey;
+        if (x.AssetId == Guid.Empty && !physicalOnly)
+            throw new FormatException("TEST 工程映射“" + x.Name + "”（" + x.Kind +
+                "）缺少资源 AssetId。请修正对应工程文件，不可自动生成虚构 ID。");
+        return new TestTargetMapping(x.Name, kind,
+            x.AssetId == Guid.Empty ? default : AssetId.Create(x.AssetId),
             x.Revision, x.Sha256, Enum.Parse<BusRole>(x.Role, false),
             x.CanId, x.Extended, x.SignalName, x.Unit, x.ControllerId, x.StateId).Validate();
+    }
     private static NodeData Encode(StepNode node) => new(node.Id.ToString(), node.Type, node.Name,
         node.Properties.ToDictionary(), node.Slots.ToDictionary(s => s.Key,
             s => s.Value.Select(Encode).ToArray()));
