@@ -56,7 +56,12 @@ public sealed partial class ManualBenchViewModel
                 if (value is not null)
                     foreach (var signal in value.Message.Signals)
                     {
-                        var entry = new DbcSignalValue(signal, value.DisplayNames.SignalLabel(value.Message, signal));
+                        var alias = value.DisplayNames.SignalAlias(value.Message.Id, signal.Name);
+                        var labels = value.ValueLabels is not null &&
+                            value.ValueLabels.TryGetValue(signal.Name, out var table) ? table : null;
+                        var entry = new DbcSignalValue(signal,
+                            string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
+                            value.DisplayNames.SignalDescription(value.Message.Id, signal.Name), labels);
                         entry.PropertyChanged += OnSignalChanged;
                         SignalValues.Add(entry);
                     }
@@ -74,7 +79,9 @@ public sealed partial class ManualBenchViewModel
         public string ModeLabel => IsPeriodic ? PeriodText + "ms 周期" : "单次";
         public string DataSummary => UseDbc
             ? "DBC 信号 · " + (DbcMessage is null ? "尚未关联" :
-                DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message))
+                DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message) + " · 已填 " +
+                SignalValues.Count(x => !string.IsNullOrWhiteSpace(x.Value)) + "/" +
+                SignalValues.Count)
             : string.IsNullOrWhiteSpace(DataHex) ? "DATA 空" : "DATA " + DataHex.Trim();
         public string Result { get => _result; set => SetProperty(ref _result, value); }
         public int Sent { get => _sent; set => SetProperty(ref _sent, value); }
