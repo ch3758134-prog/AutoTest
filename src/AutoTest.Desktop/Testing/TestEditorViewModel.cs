@@ -204,6 +204,25 @@ public sealed class TestEditorViewModel : BindableBase
         RealTestVerdict.Aborted => "已中止",
         _ => "状态未知"
     };
+    private static string OperatorExecutionDetail(string detail)
+    {
+        if (detail.StartsWith("Branch source unavailable: ", StringComparison.Ordinal))
+            return "分支判断所需的数据不可用：" + detail["Branch source unavailable: ".Length..];
+        if (detail == "Branch: then") return "条件成立，进入成立分支";
+        if (detail == "Branch: else") return "条件不成立，进入否则分支";
+        if (detail == "Condition observed") return "已观察到满足条件的信号";
+        if (detail == "Condition not observed before timeout") return "等待超时，条件未满足";
+        if (detail == "No valid CAN signal") return "未收到有效的 CAN 信号";
+        if (detail == "Operand unavailable") return "计算所需的数据不可用";
+        if (detail == "Missing or invalid observation") return "缺少有效的测量数据";
+        if (detail == "Expectation met") return "实际结果满足期望";
+        if (detail == "Expectation failed") return "实际结果不满足期望";
+        if (detail == "Capture started") return "已开始采集波形";
+        if (detail == "Operator stopped run") return "已手动停止测试";
+        // Retain unknown device diagnostics intact instead of mistranslating
+        // error codes, CAN identifiers, UDS replies or evidence references.
+        return detail;
+    }
     private static string OperatorExecutionStatus(RealStepStatus status) => status switch
     {
         RealStepStatus.Completed => "已执行",
@@ -797,7 +816,7 @@ public sealed class TestEditorViewModel : BindableBase
                 RunFactRows.Add(new OperatorStepRunRow(
                     OperatorStepType(fact.Type),
                     OperatorExecutionStatus(fact.Status),
-                    fact.Actual, fact.Detail));
+                    fact.Actual, OperatorExecutionDetail(fact.Detail)));
             }
             RefreshRows(); // Apply only actual backend StepId evidence.
             RunSummary = "执行完成 · " + OperatorVerdict(result.Verdict) + " · " + result.Facts.Length +
