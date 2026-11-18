@@ -176,6 +176,9 @@ public sealed class StepRowProjection : BindableBase
             "Sequence" => "按顺序执行子步骤",
             _ => StepUiCatalog.Label(step.Type) + " · 请在右侧查看参数"
         };
+        if (step.Type == "Write" &&
+            int.TryParse(Prop("periodMs"), out var interval) && interval > 0)
+            Summary += " · 每 " + interval + " ms 周期发送";
         if (Summary.Length > 150) Summary = Summary[..150] + "…";
         Resource = step.Properties.GetValueOrDefault("target",
             step.Properties.GetValueOrDefault("profile", "—"));
@@ -207,7 +210,16 @@ public sealed class StepRowProjection : BindableBase
                 value.Equals("OFF", StringComparison.OrdinalIgnoreCase) ? "关闭" : value);
         if (kind is TestTargetKind.Button or TestTargetKind.RawKey ||
             target.Contains("KEY", StringComparison.OrdinalIgnoreCase))
+        {
+            if (value.Equals("Release", StringComparison.OrdinalIgnoreCase))
+                return "松开 KEY 开关 · " + target;
+            var segments = value.Split(':', StringSplitOptions.TrimEntries);
+            if (segments.Length > 0 && segments[0] is "Hold" or "Pulse")
+                return (segments[0] == "Hold" ? "保持按键组合" : "短按按键组合") +
+                    " · " + target + (segments.Length > 1 ? " · " + segments[1] : "") +
+                    (segments.Length > 2 ? " · " + segments[2] + " ms" : "");
             return "按键 " + target + " · " + (value.Length > 0 ? value : "待配置");
+        }
         if (value.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
             return "原始 CAN 帧 · " + Math.Max(0, (value.Length - 4) / 2) + " 字节";
         if (value.Contains('='))
