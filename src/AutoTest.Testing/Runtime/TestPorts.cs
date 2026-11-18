@@ -33,5 +33,9 @@ public interface ITestActuationPort
 {
     ValueTask<TestOperationResult> WriteAsync(TestTargetMapping target, string action,
         CancellationToken ct);
+    // Real station implementations stop all active CAN1 periodic senders.
+    // Other adapters fail explicitly instead of pretending to stop hardware.
+    ValueTask StopPeriodicAsync(CancellationToken ct) =>
+        throw new NotSupportedException("当前台架不支持停止周期 CAN 发送。");
     ValueTask CleanupAsync(CancellationToken ct);
 }
