@@ -353,7 +353,7 @@ public partial class MainWindow : Window
     // 属性编辑器打开时绑定的测试节点。保存资源不能依赖易变的当前树选中项。
     private string? _propertyTestNodeId;
     private string? _path;
-    private int _applyingDefaultPower;
+    private int _checkingUsbProtocol;
     private string? _clipboardStepJson;
     private ConfigurationStep? _deletedStep;
     private ConfigurationSequence? _deletedFromSequence;
@@ -5440,35 +5440,64 @@ public partial class MainWindow : Window
     private void ConnectionChanged(bool connected)
     {
         SetConnection(connected);
-        if (connected) _ = ApplyDefaultPowerAsync();
+        if (connected) _ = VerifyMainControllerProtocolAsync();
+        else AppendLog("主控 USB 已断开；不自动发送任何 KEY/IGN/夹具恢复命令，实体输出状态须现场核对。");
     }
 
-    private async Task ApplyDefaultPowerAsync()
+    /// <summary>
+    /// QUICK 首轮只读联机检查；Open()/重连绝不施加 ECU/KEY 电源或 IGN。
+    /// PING/GET_VERSION 只验证协议层，不代表固件镜像身份或真实夹具到位。
+    /// </summary>
+    private async Task VerifyMainControllerProtocolAsync()
     {
-        if (Interlocked.Exchange(ref _applyingDefaultPower, 1) != 0) return;
+        if (Interlocked.Exchange(ref _checkingUsbProtocol, 1) != 0) return;
         try
         {
-            AppendLog("主控板已连接：默认打开按键板电源、ECU 主电源和 IGN。 ");
-            foreach (var (cmd, name) in new[]
+            AppendLog("USB 已枚举打开，开始 PING / GET_VERSION；没有执行任何输出控制。");
+            var ping = await _usb.SendAndWaitAsync(Frame.CMD_PING, Array.Empty<byte>(), 2000);
+            if (!ping.ok || ping.status != Frame.STS_OK ||
+                System.Text.Encoding.ASCII.GetString(ping.payload) != "PONG")
             {
-                (Frame.CMD_SET_KEYPWR, "按键板电源"),
-                (Frame.CMD_SET_ECU_PWR, "ECU 主电源"),
-                (Frame.CMD_SET_IGN, "IGN")
-            })
-            {
-                var (ok, error, status, _) = await _usb.SendAndWaitAsync(cmd, Frame.PowerPayload(true));
-                if (!ok || status != Frame.STS_OK)
-                {
-                    AppendLog($"默认打开{name}失败：{(error.Length > 0 ? error : Frame.StatusName(status))}");
-                    return;
-                }
+                AppendLog("USB PING 检查失败：" + (ping.err.Length > 0 ? ping.err : Frame.StatusName(ping.status)));
+                if (_usb.IsOpen) SetConnection(false, "主控协议 PING 未通过");
+                return;
             }
-            AppendLog("默认上电完成。");
+            AppendLog("USB PING=PONG（只证明应用层通讯正常）。");
+            var version = await _usb.SendAndWaitAsync(Frame.CMD_GET_VERSION, Array.Empty<byte>(), 2000);
+            if (!version.ok || version.status != Frame.STS_OK || version.payload.Length is < 1 or > 80)
+            {
+                AppendLog("GET_VERSION 失败：" + (version.err.Length > 0 ? version.err : Frame.StatusName(version.status)));
+                if (_usb.IsOpen) SetConnection(false, "主控版本读取失败");
+                return;
+            }
+            var firmware = System.Text.Encoding.ASCII.GetString(version.payload);
+            AppendLog("GET_VERSION=" + firmware);
+            if (firmware != Frame.MAIN_CONTROL_V04_VERSION)
+            {
+                AppendLog("警告：不是预期 v0.4-dev 协议；禁止按新版双夹具协议发送控制命令。版本文字也不能替代固件 SHA 核查。");
+                ConnectionText.ToolTip = "当前固件 " + firmware + "；未确认为新夹具协议";
+                return;
+            }
+            // Only query MCU levels; never toggle actual outputs during connection.
+            var ign = await _usb.SendAndWaitAsync(Frame.CMD_GET_IGN, Array.Empty<byte>(), 2000);
+            if (ign.ok && ign.status == Frame.STS_OK && ign.payload.Length == 1 && ign.payload[0] <= 1)
+                AppendLog("GET_IGN：MCU GPIO=" + ign.payload[0] + "（非 ECU 实测电压）。");
+            else
+                AppendLog("GET_IGN 未确认：" + (ign.err.Length > 0 ? ign.err : Frame.StatusName(ign.status)));
+            var clamps = await _usb.SendAndWaitAsync(Frame.CMD_GET_CLAMPS, Array.Empty<byte>(), 2000);
+            if (clamps.ok && clamps.status == Frame.STS_OK && clamps.payload.Length == 1 && clamps.payload[0] <= 3)
+                AppendLog("GET_CLAMPS：夹具1 GPIO=" + (clamps.payload[0] & 1) +
+                    "，夹具2 GPIO=" + ((clamps.payload[0] >> 1) & 1) + "（非机械到位反馈）。");
+            else
+                AppendLog("GET_CLAMPS 未确认：" + (clamps.err.Length > 0 ? clamps.err : Frame.StatusName(clamps.status)));
+            if (_usb.IsOpen)
+                ConnectionText.ToolTip = "PING 通过，版本=" + firmware + "；GPIO 已读回（不等于物理测量）";
         }
-        finally
+        catch (Exception ex)
         {
-            Interlocked.Exchange(ref _applyingDefaultPower, 0);
+            AppendLog("USB 只读联机检查异常：" + ex.Message);
         }
+        finally { Interlocked.Exchange(ref _checkingUsbProtocol, 0); }
     }
 
     private void SetConnection(bool connected, string? disconnectedText = null)

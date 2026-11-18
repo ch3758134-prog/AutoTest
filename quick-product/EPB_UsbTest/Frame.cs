@@ -16,14 +16,28 @@ public static class Frame
     public const byte CMD_PING = 0xF0;
     public const byte CMD_GET_VERSION = 0xF1;
 
-    /* 供电与 IGN（0x10~0x1F） */
+    /* 旧供电常量只供历史 JSON 兼容读取；实际 USB 发送已在 UsbLink 阻断。 */
     public const byte CMD_SET_ECU_PWR = 0x10;   // {u8 on}，on=1 时 RL_DRV(主继电器)+ECU_PWR 同开
     public const byte CMD_GET_ECU_PWR = 0x11;   // → {u8}
     public const byte CMD_SET_IGN = 0x12;       // {u8 on}
     public const byte CMD_GET_IGN = 0x13;       // → {u8}
     public const byte CMD_SET_KEYPWR = 0x14;    // {u8 on}
     public const byte CMD_GET_KEYPWR = 0x15;    // → {u8}
-    public const byte CMD_GET_ALL_PWR = 0x1F;   // → {u8 bitmap} bit0=ECU bit1=IGN bit2=KEY
+    public const byte CMD_GET_ALL_PWR = 0x1F;   // 已废止，禁止发送
+    // 当前 Main_Control USB v0.2：两只夹具独立设定，不使用旧 SOL 命令。
+    public const byte CMD_SET_CLAMP = 0x18; // payload = [clamp(1/2), state(0/1)]
+    public const byte CMD_GET_CLAMPS = 0x19; // 响应 byte0: bit0/bit1 MCU GPIO 读回
+    public const string MAIN_CONTROL_V04_VERSION = "EPB_TEST_CTRL v0.4-dev";
+
+    // 旧 ECU/KEY 电源、SOL 和综合电源查询都不能用于现役主控。
+    public static bool IsObsoleteControlCommand(byte cmd) =>
+        cmd is 0x10 or 0x11 or 0x14 or 0x15 or 0x16 or 0x17 or 0x1F;
+
+    public static byte[] ClampPayload(byte clamp, bool press)
+    {
+        if (clamp is not (1 or 2)) throw new ArgumentOutOfRangeException(nameof(clamp));
+        return new[] { clamp, press ? (byte)1 : (byte)0 };
+    }
 
     /* CAN 发送（0x40，channel：0=CAN0 按键板 / 1=CAN1 ECU） */
     public const byte CMD_CAN_SEND = 0x40;      // {channel, ide, id(4LE), dlc, data[8]} = 15B

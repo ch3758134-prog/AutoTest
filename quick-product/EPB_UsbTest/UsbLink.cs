@@ -99,6 +99,14 @@ public sealed class UsbLink : IUsbLink, IDisposable
     public async Task<(bool ok, string err, byte status, byte[] payload)> SendAndWaitAsync(
         byte cmd, byte[]? payload, int timeoutMs = 1000)
     {
+        // QUICK: do not transmit removed old ECU/KEY power or SOL commands to new firmware.
+        // Old configs remain readable, but physical writes require an explicit compatible adapter.
+        if (Frame.IsObsoleteControlCommand(cmd))
+        {
+            var warning = $"BLOCKED_LEGACY_USB_CMD 0x{cmd:X2}：新版主控已移除此命令；未发送任何 USB 数据。";
+            Log?.Invoke(warning);
+            return (false, warning, Frame.STS_ERR_CMD, Array.Empty<byte>());
+        }
         await _requestGate.WaitAsync().ConfigureAwait(false);
         try
         {
