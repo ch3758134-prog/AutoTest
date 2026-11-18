@@ -1212,6 +1212,11 @@ public sealed class MainWindowViewModel : BindableBase
                 StatusMessage = "BLOCKED_RESOURCE：项目引用的测试用例不在当前工程中。";
                 return;
             }
+            if (packageId == Guid.Empty)
+            {
+                StatusMessage = "测试项目引用的用例 AssetId 为空，已阻止无效导航。请检查工程包。";
+                return;
+            }
             SelectAsset(AssetId.Create(packageId));
             _ = OpenSelectedTestProgramAsync();
         };
