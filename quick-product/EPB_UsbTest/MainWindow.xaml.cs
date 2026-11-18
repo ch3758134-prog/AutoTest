@@ -2422,6 +2422,11 @@ public partial class MainWindow : Window
             return;
         }
         var menu = new ContextMenu();
+        menu.Items.Add(MenuItem("编辑用例设置（右侧）", (_, _) =>
+        {
+            SwitchTestCase(testCase);
+            OpenQuickCaseSettings(testCase);
+        }));
         menu.Items.Add(MenuItem("新建测试用例", (_, _) => NewTestCase_Click(this, new RoutedEventArgs())));
         menu.Items.Add(MenuItem(testCase.Enabled ? "停用测试用例" : "启用测试用例", (_, _) => { testCase.Enabled = !testCase.Enabled; RebuildTestCaseTree(); }));
         menu.Items.Add(MenuItem("运行当前用例", async (_, _) => await RunTestCaseAsync(testCase)));
@@ -2479,6 +2484,31 @@ public partial class MainWindow : Window
         TestFlowTree.ContextMenu = menu;
     }
 
+
+    private void ShowQuickCaseSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedTestCase is null)
+        {
+            AppendLog("请先选择或新建一个测试用例。");
+            return;
+        }
+        OpenQuickCaseSettings(_selectedTestCase);
+    }
+
+    private void OpenQuickCaseSettings(TestCaseDefinition testCase)
+    {
+        // Clear visual step selection without dispatching a transient inspector update.
+        var wasRestoring = _restoringWorkspaceSelection;
+        _restoringWorkspaceSelection = true;
+        try { FlowEditorList.UnselectAll(); }
+        finally { _restoringWorkspaceSelection = wasRestoring; }
+        _selectedFlowEditorRow = null;
+        _selectedTestNode = null;
+        _selectedTestNodeId = null;
+        _selectedTestNodeIds.Clear();
+        RefreshFlowActionAvailability(null);
+        ShowQuickCaseOverview(testCase);
+    }
 
     private void ShowQuickCaseOverview(TestCaseDefinition testCase)
     {

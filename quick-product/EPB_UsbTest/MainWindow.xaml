@@ -428,6 +428,8 @@
                     <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto"
                                   VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Button Content="保存" Style="{StaticResource BtnToolbarPrimary}" Click="Save_Click"
+                                    ToolTip="保存当前配置及测试用例，不需要连接 USB"/>
                             <Button Content="资源库" Style="{StaticResource BtnToolbar}" Click="ResourceToolbar_Click"
                                     ToolTip="展开测试配置中的共享资源"/>
                             <Button Content="DBC / 通信数据库" Style="{StaticResource BtnToolbar}"
@@ -625,7 +627,9 @@
                             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False" Margin="0,0,0,8">
                                 <Grid HorizontalAlignment="Left">
                                     <StackPanel x:Name="AutomaticHeaderControls" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="判定" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource Text2Brush}" FontSize="11"/>
+                                        <Button x:Name="QuickCaseSettingsButton" Content="用例设置" Style="{StaticResource QuickSecondaryToolbar}"
+                                                Click="ShowQuickCaseSettings_Click" ToolTip="在右侧直接修改用例名称、是否参与计划及用例间等待"/>
+                                        <TextBlock Text="判定" VerticalAlignment="Center" Margin="6,0,5,0" Foreground="{StaticResource Text2Brush}" FontSize="11"/>
                                         <ComboBox x:Name="TestJudgementLogicBox" Width="96" Margin="0,0,10,0" SelectionChanged="TestJudgementLogic_SelectionChanged" ToolTip="多个带期望的报文解析步骤如何合并"/>
                                          <Button x:Name="AddTestFlowNodeButton" Content="＋ 添加步骤" Style="{StaticResource BtnToolbarPrimary}" Click="AddTestFlowNode_Click" ToolTip="在当前步骤下方添加普通操作"/>
                                          <Button x:Name="AddFlowMenuButton" Content="流程控制 ▾" Style="{StaticResource QuickSecondaryToolbar}" Click="FlowControlMenu_Click" ToolTip="条件分支、条件等待、信号分支和循环"/>
