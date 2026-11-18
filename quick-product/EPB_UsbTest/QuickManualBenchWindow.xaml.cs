@@ -300,6 +300,8 @@ public partial class QuickManualBenchWindow : Window
         if (current is not null)
             CanDbcCombo.SelectedItem = _dbcChoices.FirstOrDefault(
                 choice => DbcIdentity(choice.Message) == DbcIdentity(current.Message));
+        if (CanTxGrid.SelectedItem is QuickBenchCanRow row)
+            PopulateCanEditor(row); // Restore signal editor after DBC choices were loaded/refreshed.
     }
 
     private void ReloadDbc_Click(object sender, RoutedEventArgs e)
