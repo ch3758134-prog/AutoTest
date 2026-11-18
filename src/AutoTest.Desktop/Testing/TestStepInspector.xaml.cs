@@ -400,6 +400,42 @@ public partial class TestStepInspector : UserControl
         MarkDraftChanged();
     }
 
+    private static bool TryLegacyMask(StepNode old, out uint mask)
+    {
+        foreach (var key in new[] { "outputMask", "keyMask", "mask", "legacy.outputMask", "legacy.keyMask" })
+        {
+            var text = old.Properties.GetValueOrDefault(key, "").Trim();
+            if (text.Length == 0) continue;
+            if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase) &&
+                uint.TryParse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out mask))
+                return mask <= 0xFFFFF;
+            if (uint.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out mask))
+                return mask <= 0xFFFFF;
+        }
+        mask = 0;
+        return false;
+    }
+
+    private static bool TryLegacyCanId(StepNode old, out uint id)
+    {
+        var keys = new[] { "canId", "frameId", "id", "legacy.canId", "messageRef" };
+        foreach (var key in keys)
+        {
+            var text = old.Properties.GetValueOrDefault(key, "").Trim();
+            if (text.Length == 0) continue;
+            var match = System.Text.RegularExpressions.Regex.Match(text,
+                @"0[xX][0-9a-fA-F]+");
+            if (match.Success &&
+                uint.TryParse(match.Value[2..], NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture, out id))
+                return id <= 0x1FFFFFFF;
+            if (uint.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out id))
+                return id <= 0x1FFFFFFF;
+        }
+        id = 0;
+        return false;
+    }
+
     private void BuildTargets(TestActionOption action)
     {
         _allTargets.Clear();
@@ -493,6 +529,40 @@ public partial class TestStepInspector : UserControl
             }
             else preferred = null;
         }
+        if (_legacySourceType == "KeySet")
+            preferred = AvailableTargets.FirstOrDefault(x => x.Mapping.Kind == TestTargetKind.RawKey);
+        else if (_legacySourceType == "CanSend" && _editing is { } oldCan)
+        {
+            var refName = oldCan.Properties.GetValueOrDefault("messageRef", "");
+            if (TryLegacyCanId(oldCan, out var frame))
+            {
+                var found = AvailableTargets.Where(x =>
+                    x.Mapping.Kind == TestTargetKind.CanMessage && x.Mapping.CanId == frame).ToArray();
+                if (found.Length == 1) preferred = found[0];
+                else preferred = AvailableTargets.FirstOrDefault(x =>
+                    x.Mapping.Kind == TestTargetKind.RawCan);
+            }
+            else if (refName.Length > 0)
+                preferred = AvailableTargets.FirstOrDefault(x =>
+                    x.Mapping.Kind == TestTargetKind.CanMessage &&
+                    (string.Equals(x.Message?.Name, refName, StringComparison.OrdinalIgnoreCase) ||
+                     x.Label.Contains(refName, StringComparison.OrdinalIgnoreCase)));
+        }
+        else if (_convertedLegacy && _selected?.StepType == "AssertSignal")
+        {
+            // Prefer exact old signal identity when a frame contains several signals.
+            if (_editing is { } old && TryLegacyCanId(old, out var frameId))
+            {
+                var signalName = old.Properties.GetValueOrDefault("signalName",
+                    old.Properties.GetValueOrDefault("databaseSignalName", ""));
+                var matches = AvailableTargets.Where(x =>
+                    x.Mapping.Kind == TestTargetKind.Signal && x.Mapping.CanId == frameId &&
+                    (signalName.Length == 0 ||
+                     string.Equals(x.Mapping.SignalName, signalName,
+                         StringComparison.OrdinalIgnoreCase))).ToArray();
+                preferred = matches.Length == 1 ? matches[0] : null;
+            }
+        }
         TargetPicker.SelectedItem = preferred ??
             (_convertedLegacy ? null : AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
         UpdateTarget();
@@ -518,11 +588,15 @@ public partial class TestStepInspector : UserControl
         if (mapping.Kind == TestTargetKind.RawCan)
         {
             RawCanPanel.Visibility = Visibility.Visible;
-            FrameIdInput.Text = _editing is not null && mapping.Name ==
+            FrameIdInput.Text = _legacySourceType == "CanSend" && _editing is { } old &&
+                TryLegacyCanId(old, out var oldId)
+                ? "0x" + oldId.ToString("X") :
+                _editing is not null && mapping.Name ==
                 _editing.Properties.GetValueOrDefault("target", "")
                 ? "0x" + mapping.CanId.ToString("X") : "";
             ExtendedFrame.IsChecked = mapping.Extended;
-            RawCanDataInput.Text = (_editing?.Properties.GetValueOrDefault("value", "") ?? "")
+            RawCanDataInput.Text = (_editing?.Properties.GetValueOrDefault("value",
+                _editing.Properties.GetValueOrDefault("dataHex", "")) ?? "")
                 .Replace("HEX:", "", StringComparison.OrdinalIgnoreCase);
         }
         else if (mapping.Kind == TestTargetKind.CanMessage)
@@ -536,7 +610,8 @@ public partial class TestStepInspector : UserControl
                   " · DLC " + msg.Dlc + " · " + (msg.IsExtended ? "扩展帧" : "标准帧");
             if (msg is not null)
             {
-                var old = _editing?.Properties.GetValueOrDefault("value", "") ?? "";
+                var old = _editing?.Properties.GetValueOrDefault("value",
+                    _editing.Properties.GetValueOrDefault("dataHex", "")) ?? "";
                 var dict = new Dictionary<string, string>(StringComparer.Ordinal);
                 if (old.Contains('='))
                     foreach (var segment in old.Split(';',
@@ -562,18 +637,25 @@ public partial class TestStepInspector : UserControl
                 ? Visibility.Visible : Visibility.Collapsed;
             var old = _editing?.Properties.GetValueOrDefault("value", "") ?? "";
             var parts = old.Split(':', StringSplitOptions.TrimEntries);
-            var operation = parts[0] is "Hold" or "Release" ? parts[0] : "Pulse";
+            var operation = _legacySourceType == "KeySet" ? "Hold" :
+                parts[0] is "Hold" or "Release" ? parts[0] : "Pulse";
             KeyActionInput.SelectedItem = KeyActionInput.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(x => (string?)x.Tag == operation);
             var selectedMask = mapping.Kind == TestTargetKind.RawKey && parts.Length > 1 &&
                 parts[1].StartsWith("0x", StringComparison.OrdinalIgnoreCase) &&
                 uint.TryParse(parts[1][2..], NumberStyles.HexNumber,
                     CultureInfo.InvariantCulture, out var mask) ? mask : 0;
+            if (_legacySourceType == "KeySet" && _editing is { } oldKey &&
+                TryLegacyMask(oldKey, out var legacyMask))
+                selectedMask = legacyMask;
             SetRawKeyMask(selectedMask);
-            KeyDurationInput.Text = operation == "Pulse" && mapping.Kind == TestTargetKind.RawKey &&
+            KeyDurationInput.Text = _legacySourceType == "KeySet" && _editing is { } oldDuration
+                ? oldDuration.Properties.GetValueOrDefault("holdMs",
+                    oldDuration.Properties.GetValueOrDefault("durationMs", ""))
+                : operation is "Pulse" or "Hold" && mapping.Kind == TestTargetKind.RawKey &&
                 parts.Length == 3 ? parts[2] :
                 operation == "Pulse" && mapping.Kind == TestTargetKind.Button &&
-                parts.Length == 2 ? parts[1] : "";
+                parts.Length == 2 ? parts[1] : "1000";
             UpdateKeyTimingVisibility();
         }
         else if (mapping.Kind == TestTargetKind.Ignition)
@@ -602,7 +684,8 @@ public partial class TestStepInspector : UserControl
     private void UpdateKeyTimingVisibility()
     {
         var operation = (KeyActionInput.SelectedItem as ComboBoxItem)?.Tag as string;
-        KeyDurationPanel.Visibility = operation == "Pulse"
+        KeyDurationPanel.Visibility = operation is "Pulse" or "Hold" &&
+            _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey || operation == "Pulse"
             ? Visibility.Visible : Visibility.Collapsed;
         if (operation == "Release" && _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey)
             RawKeyMaskPanel.Visibility = Visibility.Collapsed;
@@ -734,7 +817,8 @@ public partial class TestStepInspector : UserControl
                     {
                         var value = operation == "Release" ? "Release" :
                             operation + ":0x" + _selectedMask.ToString("X5") +
-                            (operation == "Pulse" ? ":" + KeyDurationInput.Text.Trim() : "");
+                            ((operation == "Pulse" || !string.IsNullOrWhiteSpace(KeyDurationInput.Text))
+                                ? ":" + KeyDurationInput.Text.Trim() : "");
                         _ = AutoTest.Devices.Station.RawKeyAction.Parse(value);
                         node = node.WithProperty("value", value);
                     }
@@ -767,10 +851,8 @@ public partial class TestStepInspector : UserControl
             {
                 if (mapping is null || _editing is null)
                     throw new ArgumentException("先选择与旧报文对应的 DBC 信号。");
-                var rawId = _editing.Properties.GetValueOrDefault("canId", "").Trim();
-                if (rawId.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) rawId = rawId[2..];
-                if (!uint.TryParse(rawId, NumberStyles.HexNumber, CultureInfo.InvariantCulture,
-                    out var originalId) || mapping.CanId != originalId)
+                if (TryLegacyCanId(_editing, out var originalId) &&
+                    mapping.CanId != originalId)
                     throw new ArgumentException("所选 DBC 信号的 CAN ID 与旧文件不一致，请先核对。");
                 var sourceMessage = _selectedTarget?.Message;
                 var sourceSignal = sourceMessage?.Signals.FirstOrDefault(x =>
