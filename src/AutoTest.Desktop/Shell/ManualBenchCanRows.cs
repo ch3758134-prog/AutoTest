@@ -71,12 +71,16 @@ public sealed partial class ManualBenchViewModel
         public string Summary => UseDbc && DbcMessage is not null
             ? DbcMessage.Message.Name + " · 0x" + DbcMessage.Message.ArbitrationId.ToString("X")
             : "0x" + IdHex + (Extended ? " 扩展" : " 标准");
-        public string ModeLabel => IsPeriodic ? PeriodText + "ms" : "单次";
+        public string ModeLabel => IsPeriodic ? PeriodText + "ms 周期" : "单次";
+        public string DataSummary => UseDbc
+            ? "DBC 信号 · " + (DbcMessage?.Message.Name ?? "尚未关联")
+            : string.IsNullOrWhiteSpace(DataHex) ? "DATA 空" : "DATA " + DataHex.Trim();
         public string Result { get => _result; set => SetProperty(ref _result, value); }
         public int Sent { get => _sent; set => SetProperty(ref _sent, value); }
         private void Notify()
         {
             RaisePropertyChanged(nameof(Summary));
+            RaisePropertyChanged(nameof(DataSummary));
             RaisePropertyChanged(nameof(ModeLabel));
             RaisePropertyChanged(nameof(IsRaw));
             Edited?.Invoke();
@@ -107,6 +111,12 @@ public sealed partial class ManualBenchViewModel
     private bool _canBatchRunning;
     private int _newCanRowNumber;
     private BenchCanRow? _selectedCanRow;
+    private bool _canEditorExpanded;
+    public bool IsCanEditorExpanded
+    {
+        get => _canEditorExpanded;
+        set => SetProperty(ref _canEditorExpanded, value);
+    }
     public ObservableCollection<BenchCanRow> CanSendRows { get; } = new();
     public BenchCanRow? SelectedCanRow
     {
@@ -137,6 +147,9 @@ public sealed partial class ManualBenchViewModel
     public DelegateCommand MoveCanRowDownCommand { get; private set; } = null!;
     public DelegateCommand StartCanRowsCommand { get; private set; } = null!;
     public DelegateCommand StopCanRowsCommand { get; private set; } = null!;
+    public DelegateCommand<BenchCanRow> EditCanRowCommand { get; private set; } = null!;
+    public DelegateCommand<BenchCanRow> SendCanRowOnceCommand { get; private set; } = null!;
+    public DelegateCommand CloseCanEditorCommand { get; private set; } = null!;
 
     private void InitializeCanRows()
     {
@@ -147,7 +160,18 @@ public sealed partial class ManualBenchViewModel
         MoveCanRowDownCommand = new DelegateCommand(() => MoveCanRow(1), () => CanEditCanRows && HasSelectedCanRow);
         StartCanRowsCommand = new DelegateCommand(async () => await StartCanRowsAsync(), () => CanStartCanRows);
         StopCanRowsCommand = new DelegateCommand(async () => await StopCanRowsAsync(), () => CanStopCanRows);
+        EditCanRowCommand = new DelegateCommand<BenchCanRow>(row =>
+        {
+            if (row is null) return;
+            SelectedCanRow = row;
+            IsCanEditorExpanded = true;
+        }, row => row is not null);
+        SendCanRowOnceCommand = new DelegateCommand<BenchCanRow>(
+            async row => await StartCanRowsAsync(row),
+            row => row is not null && CanSendManualCan1);
+        CloseCanEditorCommand = new DelegateCommand(() => IsCanEditorExpanded = false);
         AddCanRow();
+        IsCanEditorExpanded = false;
     }
 
     private void NotifyCanRows()
@@ -162,6 +186,8 @@ public sealed partial class ManualBenchViewModel
         MoveCanRowDownCommand?.RaiseCanExecuteChanged();
         StartCanRowsCommand?.RaiseCanExecuteChanged();
         StopCanRowsCommand?.RaiseCanExecuteChanged();
+        EditCanRowCommand?.RaiseCanExecuteChanged();
+        SendCanRowOnceCommand?.RaiseCanExecuteChanged();
     }
 
     private void OnCanRowEdited()
@@ -175,6 +201,7 @@ public sealed partial class ManualBenchViewModel
         row.Edited += OnCanRowEdited;
         CanSendRows.Add(row);
         SelectedCanRow = row;
+        IsCanEditorExpanded = true;
         NotifyCanRows();
     }
 
@@ -192,6 +219,7 @@ public sealed partial class ManualBenchViewModel
         row.Edited += OnCanRowEdited;
         CanSendRows.Insert(CanSendRows.IndexOf(source) + 1, row);
         SelectedCanRow = row;
+        IsCanEditorExpanded = true;
         NotifyCanRows();
     }
 
@@ -203,6 +231,7 @@ public sealed partial class ManualBenchViewModel
         CanSendRows.Remove(selected);
         SelectedCanRow = CanSendRows.Count == 0 ? null :
             CanSendRows[Math.Min(index, CanSendRows.Count - 1)];
+        if (SelectedCanRow is null) IsCanEditorExpanded = false;
         NotifyCanRows();
     }
 
@@ -217,9 +246,10 @@ public sealed partial class ManualBenchViewModel
         NotifyCanRows();
     }
 
-    private PreparedCanRow[] PrepareCanRows()
+    private PreparedCanRow[] PrepareCanRows(BenchCanRow? single = null)
     {
-        var chosen = CanSendRows.Where(row => row.Included).ToArray();
+        var chosen = single is null ? CanSendRows.Where(row => row.Included).ToArray() :
+            CanSendRows.Contains(single) ? new[] { single } : Array.Empty<BenchCanRow>();
         if (chosen.Length is < 1 or > 32)
             throw new InvalidOperationException("请选择 1～32 条 CAN1 报文。");
         var entries = chosen.Select(row =>
@@ -228,13 +258,13 @@ public sealed partial class ManualBenchViewModel
             // Host Task.Delay per-row scheduler from the earlier prototype is NOT an
             // approved substitute. No periodic physical instruction until TEST/DEVICE
             // owns the complete 0x50/51/52/53 table, lease and cancel contract.
-            if (row.IsPeriodic)
+            if (row.IsPeriodic && single is null)
                 throw new InvalidOperationException(
                     "CAN1 周期发送暂被真实硬件预检阻断：主控 0x50 会替换全部广播表，" +
                     "不得用独立上位机周期发送线程代替。请等待 TEST/DEVICE 正式多报文合同接线。");
             var frame = row.BuildFrame();
             int period = 0;
-            if (row.IsPeriodic && (!int.TryParse(row.PeriodText, NumberStyles.None,
+            if (row.IsPeriodic && single is null && (!int.TryParse(row.PeriodText, NumberStyles.None,
                     CultureInfo.InvariantCulture, out period) || period is < 50 or > 60000))
                 throw new InvalidOperationException(row.Name + " 的发送周期必须是 50～60000 ms。");
             return new PreparedCanRow(row, frame, period);
@@ -272,11 +302,12 @@ public sealed partial class ManualBenchViewModel
             throw new InvalidDataException(row.Name + " 对应的 DBC 报文不存在。");
     }
 
-    private async Task StartCanRowsAsync() => await Execute("CAN1 多报文", async () =>
+    private async Task StartCanRowsAsync(BenchCanRow? single = null) => await Execute(
+        single is null ? "CAN1 多报文" : "CAN1 单帧", async () =>
     {
         if (!_hardware.IsConnected || IsCanBatchRunning)
             throw new InvalidOperationException("需要空闲的真实主控 USB 会话。");
-        var prepared = PrepareCanRows();
+        var prepared = PrepareCanRows(single);
         foreach (var row in prepared) await VerifyCanRowDbcFreshAsync(row.Row);
         var fingerprint = BatchFingerprint(prepared);
         var detail = string.Join("\n", prepared.Select(item => item.Row.Name + "  ID=0x" +

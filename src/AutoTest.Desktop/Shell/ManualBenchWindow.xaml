@@ -67,13 +67,13 @@
     <Grid>
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="2*"/>
+      <RowDefinition Height="*"/>
       <RowDefinition Height="6"/>
-      <RowDefinition Height="3*"/>
+      <RowDefinition Height="Auto"/>
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0" Margin="0,0,0,10">
-      <TextBlock Text="CAN1 · ECU 报文发送" Style="{StaticResource BenchHeader}"/>
-      <TextBlock Text="勾选多条报文，可混合单次与周期发送。选中一条，下方直接编辑；USB ACK 不等于 ECU 应答。"
+      <TextBlock Text="CAN1 · 多报文发送" Style="{StaticResource BenchHeader}"/>
+      <TextBlock Text="列表直接单发或勾选批量操作；点击“编辑”才展开当前报文，DBC 为可选方式。"
        Style="{StaticResource BenchHint}" Margin="0,3,0,9"/>
       <DockPanel LastChildFill="False">
        <Button Content="+ 新增" Command="{Binding AddCanRowCommand}" Padding="10,6" Margin="0,0,5,0"/>
@@ -81,7 +81,7 @@
        <Button Content="删除" Command="{Binding DeleteCanRowCommand}" Padding="9,6" Margin="0,0,5,0"/>
        <Button Content="↑" Command="{Binding MoveCanRowUpCommand}" Padding="8,6" Margin="0,0,4,0"/>
        <Button Content="↓" Command="{Binding MoveCanRowDownCommand}" Padding="8,6" Margin="0,0,8,0"/>
-       <Button Content="启动勾选" Command="{Binding StartCanRowsCommand}"
+       <Button Content="单发勾选" Command="{Binding StartCanRowsCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="11,6" Margin="0,0,5,0"/>
        <Button Content="停止全部" Command="{Binding StopCanRowsCommand}" Padding="11,6"/>
       </DockPanel>
@@ -90,7 +90,7 @@
       SelectedItem="{Binding SelectedCanRow,Mode=TwoWay}"
       AutoGenerateColumns="False"
       CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
-      GridLinesVisibility="None" RowHeight="35" ColumnHeaderHeight="32"
+      GridLinesVisibility="None" RowHeight="60" ColumnHeaderHeight="30"
       SelectionMode="Single" EnableRowVirtualization="True" BorderBrush="#E2EAF3"
       Background="#FFFFFF" AlternatingRowBackground="#F8FAFD">
       <DataGrid.ContextMenu>
@@ -104,31 +104,64 @@
        </ContextMenu>
       </DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTemplateColumn Header="发送" Width="48">
+       <DataGridTemplateColumn Header="选" Width="35">
         <DataGridTemplateColumn.CellTemplate>
          <DataTemplate>
           <CheckBox IsChecked="{Binding Included,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-           IsEnabled="{Binding CanToggleIncluded}"
-           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+           IsEnabled="{Binding CanToggleIncluded}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
          </DataTemplate>
         </DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="110" IsReadOnly="True"/>
-       <DataGridTextColumn Header="CAN ID / DBC" Binding="{Binding Summary}" Width="*" IsReadOnly="True"/>
-       <DataGridTextColumn Header="发送方式" Binding="{Binding ModeLabel}" Width="84" IsReadOnly="True"/>
-       <DataGridTextColumn Header="状态 / 次数" Binding="{Binding Result}" Width="138" IsReadOnly="True"/>
+       <DataGridTemplateColumn Header="CAN 报文 / 数据 / 周期 / 状态" Width="*">
+        <DataGridTemplateColumn.CellTemplate>
+         <DataTemplate>
+          <StackPanel Margin="3,3,0,3">
+           <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#24405E"
+             TextTrimming="CharacterEllipsis" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding Summary}" Foreground="#58728E" FontSize="11"
+             TextTrimming="CharacterEllipsis" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding ModeLabel}" Foreground="#607A92" FontSize="10"/>
+           </StackPanel>
+           <TextBlock Text="{Binding DataSummary}" FontSize="11" Foreground="#445F7C"
+            TextTrimming="CharacterEllipsis" ToolTip="{Binding DataSummary}"/>
+           <TextBlock Text="{Binding Result}" FontSize="10" Foreground="#72849B"
+            TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
+         </DataTemplate>
+        </DataGridTemplateColumn.CellTemplate>
+       </DataGridTemplateColumn>
+       <DataGridTemplateColumn Header="操作" Width="112">
+        <DataGridTemplateColumn.CellTemplate>
+         <DataTemplate>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+           <Button Content="单发" Padding="6,4" Margin="0,0,4,0"
+            Command="{Binding DataContext.SendCanRowOnceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
+            CommandParameter="{Binding}" ToolTip="单次发送当前报文，经现有 USB 授权及确认"/>
+           <Button Content="编辑" Padding="6,4"
+            Command="{Binding DataContext.EditCanRowCommand,RelativeSource={RelativeSource AncestorType=Window}}"
+            CommandParameter="{Binding}" ToolTip="展开当前报文原始 HEX / DBC 编辑"/>
+          </StackPanel>
+         </DataTemplate>
+        </DataGridTemplateColumn.CellTemplate>
+       </DataGridTemplateColumn>
       </DataGrid.Columns>
      </DataGrid>
      <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch"
-      Background="#ECF1F7" ResizeDirection="Rows" VerticalAlignment="Stretch"/>
+      Background="#ECF1F7" ResizeDirection="Rows" VerticalAlignment="Stretch"
+      Visibility="{Binding IsCanEditorExpanded,Converter={StaticResource BoolToVisibility}}"/>
      <Border Grid.Row="3" BorderBrush="#DFE8F3" BorderThickness="1" CornerRadius="5"
-      Background="#FBFCFE" Padding="12" Margin="0,7,0,0">
+      Background="#FBFCFE" Padding="12" Margin="0,7,0,0" MaxHeight="330"
+      Visibility="{Binding IsCanEditorExpanded,Converter={StaticResource BoolToVisibility}}">
       <DockPanel>
-       <StackPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-        <TextBlock Text="所选 CAN 报文 · 属性编辑" Style="{StaticResource BenchHeader}" FontSize="13"/>
-        <TextBlock Text="左侧列表负责组织与运行；这里负责编辑当前一条报文。"
-         Style="{StaticResource BenchHint}" Margin="0,3,0,0"/>
-       </StackPanel>
+       <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+        <Button Content="收起编辑" DockPanel.Dock="Right" Command="{Binding CloseCanEditorCommand}"
+         Padding="8,4" Margin="8,0,0,0"/>
+        <StackPanel>
+         <TextBlock Text="当前报文 · 详细编辑" Style="{StaticResource BenchHeader}" FontSize="13"/>
+         <TextBlock Text="可直接编辑 HEX；需要时再选择 DBC。" Style="{StaticResource BenchHint}"/>
+        </StackPanel>
+       </DockPanel>
        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel DataContext="{Binding SelectedCanRow}"
          IsEnabled="{Binding DataContext.CanEditCanRows,RelativeSource={RelativeSource AncestorType=Window}}">
