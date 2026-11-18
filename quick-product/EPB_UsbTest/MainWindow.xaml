@@ -328,9 +328,10 @@
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="1,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#EEF2F7"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListViewItem">
@@ -338,8 +339,8 @@
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="FlowRowSurface" Property="Background" Value="#F5F9FD"/></Trigger>
-                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="FlowRowSurface" Property="Background" Value="#E4F0FA"/><Setter TargetName="FlowRowSurface" Property="BorderBrush" Value="#A8CDEB"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="FlowRowSurface" Property="Background" Value="#F4F8FD"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="FlowRowSurface" Property="Background" Value="#EAF2FF"/><Setter TargetName="FlowRowSurface" Property="BorderBrush" Value="#A2C5F1"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -497,9 +498,9 @@
                         <ColumnDefinition Width="*" MinWidth="300"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="4*" MinHeight="260"/>
+                        <RowDefinition Height="*" MinHeight="260"/>
                         <RowDefinition Height="6"/>
-                        <RowDefinition Height="1*" MinHeight="140"/>
+                        <RowDefinition Height="160" MinHeight="34"/>
                     </Grid.RowDefinitions>
                     <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Style="{StaticResource QuickPanel}" Padding="12">
                         <DockPanel>
@@ -531,7 +532,7 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </Grid>
-                            <Border DockPanel.Dock="Top" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,0,6">
+                            <Border DockPanel.Dock="Top" Background="#F6F9FD" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,6">
                                 <TextBlock Text="▾  当前测试套件" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold" FontSize="12"/>
                             </Border>
                             <Expander x:Name="ResourceNavigationExpander" DockPanel.Dock="Bottom" Header="资源库" IsExpanded="False" ExpandDirection="Up" MaxHeight="300" Margin="0,10,0,0" ToolTip="打开资源库；共享资源默认保持引用，复制才会脱钩">
@@ -586,7 +587,7 @@
                             </Grid>
                         </DockPanel>
                     </Border>
-                    <GridSplitter Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Width="8" HorizontalAlignment="Center" Background="#D9E2ED" ShowsPreview="True" Cursor="SizeWE"/>
+                    <GridSplitter Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Width="8" HorizontalAlignment="Center" Background="#E6EDF5" ShowsPreview="True" Cursor="SizeWE"/>
                     <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource QuickPanel}" Padding="14">
                         <Grid>
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*" MinHeight="150"/></Grid.RowDefinitions>
@@ -605,10 +606,10 @@
                             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False" Margin="0,0,0,8">
                                 <Grid HorizontalAlignment="Left">
                                     <StackPanel x:Name="AutomaticHeaderControls" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="判定逻辑" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource Text2Brush}"/>
-                                        <ComboBox x:Name="TestJudgementLogicBox" Width="110" Margin="0,0,10,0" SelectionChanged="TestJudgementLogic_SelectionChanged" ToolTip="多个带期望的报文解析步骤如何合并"/>
-                                         <Button x:Name="AddTestFlowNodeButton" Content="＋ 添加步骤" Style="{StaticResource BtnToolbar}" Click="AddTestFlowNode_Click" ToolTip="在当前步骤下方添加普通操作"/>
-                                         <Button x:Name="AddFlowMenuButton" Content="＋ 流程控制 ▾" Style="{StaticResource BtnToolbar}" Click="FlowControlMenu_Click" ToolTip="条件分支、条件等待、信号分支和循环"/>
+                                        <TextBlock Text="判定" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource Text2Brush}" FontSize="11"/>
+                                        <ComboBox x:Name="TestJudgementLogicBox" Width="96" Margin="0,0,10,0" SelectionChanged="TestJudgementLogic_SelectionChanged" ToolTip="多个带期望的报文解析步骤如何合并"/>
+                                         <Button x:Name="AddTestFlowNodeButton" Content="＋ 添加步骤" Style="{StaticResource BtnToolbarPrimary}" Click="AddTestFlowNode_Click" ToolTip="在当前步骤下方添加普通操作"/>
+                                         <Button x:Name="AddFlowMenuButton" Content="流程控制 ▾" Style="{StaticResource QuickSecondaryToolbar}" Click="FlowControlMenu_Click" ToolTip="条件分支、条件等待、信号分支和循环"/>
                                          <Button x:Name="AddFlowIfButton" Visibility="Collapsed" Content="＋ IF" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="IF" ToolTip="预览 IF 插入位置"/>
                                          <Button x:Name="AddFlowWhenButton" Visibility="Collapsed" Content="＋ WHEN" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="WHEN" ToolTip="预览 WHEN 插入位置"/>
                                          <Button x:Name="AddFlowSwitchButton" Visibility="Collapsed" Content="＋ SWITCH" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="SWITCH" ToolTip="预览 SWITCH 插入位置"/>
@@ -667,15 +668,14 @@
                                             <TextBlock Text="选择测试用例后，可点击“添加步骤”开始编排。" Style="{StaticResource EmptyStateHint}"/>
                                         </StackPanel>
                                     </Border>
-                                     <Grid x:Name="FlowEditorHeader" Height="30" VerticalAlignment="Top" Panel.ZIndex="2" Background="#F5F8FB">
-                                         <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="200"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+                                     <Grid x:Name="FlowEditorHeader" Height="36" VerticalAlignment="Top" Panel.ZIndex="2" Background="#F2F6FB">
+                                         <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="198"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
                                          <TextBlock Grid.Column="0" Text="#" Foreground="{StaticResource Text2Brush}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                         <TextBlock Grid.Column="1" Text="操作 / 名称" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
-                                         <TextBlock Grid.Column="2" Text="参数 / 条件" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
-                                         <TextBlock Grid.Column="3" Text="期望 / 路径" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
-                                         <TextBlock Grid.Column="4" Text="说明" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
+                                         <TextBlock Grid.Column="1" Text="步骤 / 名称" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
+                                         <TextBlock Grid.Column="2" Text="关键参数 / 条件" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
+                                         <TextBlock Grid.Column="3" Text="状态 / 分支" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
                                      </Grid>
-                                     <ListView x:Name="FlowEditorList" Margin="0,30,0,0" ItemContainerStyle="{StaticResource FlowEditorListItemStyle}" Background="White" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                     <ListView x:Name="FlowEditorList" Margin="0,36,0,0" ItemContainerStyle="{StaticResource FlowEditorListItemStyle}" Background="White" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                                SelectionMode="Extended" AllowDrop="True" ContextMenuOpening="FlowEditorList_ContextMenuOpening"
                                                PreviewMouseLeftButtonDown="FlowEditorList_PreviewMouseLeftButtonDown"
                                                PreviewMouseMove="FlowEditorList_PreviewMouseMove"
@@ -685,16 +685,16 @@
                                                VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                                          <ListView.ItemTemplate>
                                              <DataTemplate>
-                                                 <Grid Height="34" HorizontalAlignment="Stretch">
-                                                     <Grid.RowDefinitions><RowDefinition Height="2"/><RowDefinition Height="32"/></Grid.RowDefinitions>
+                                                 <Grid Height="44" HorizontalAlignment="Stretch">
+                                                     <Grid.RowDefinitions><RowDefinition Height="2"/><RowDefinition Height="42"/></Grid.RowDefinitions>
                                                      <Border Grid.Row="0" Height="2" Background="#2F80ED" Visibility="{Binding IsInsertAnchor, Converter={StaticResource BoolToVisibility}}"/>
                                                      <Border Grid.Row="1" Panel.ZIndex="3" Height="2" VerticalAlignment="Bottom" Background="#2F80ED"
                                                              Visibility="{Binding IsDropAfter, Converter={StaticResource BoolToVisibility}}"/>
                                                      <Grid Grid.Row="1">
-                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="200"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="198"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
                                                          <TextBlock Grid.Column="0" Text="{Binding Number}" Foreground="#98A2B3" FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                          <Grid Grid.Column="1">
-                                                             <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                             <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="20"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                              <ItemsControl Grid.Column="0" ItemsSource="{Binding IndentGuides}">
                                                                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                                                  <ItemsControl.ItemTemplate><DataTemplate><Border Width="18" BorderBrush="#D6E1EB" BorderThickness="1,0,0,0"/></DataTemplate></ItemsControl.ItemTemplate>
@@ -704,14 +704,18 @@
                                                                  <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                                  <Border Grid.Column="0" Width="4" Height="16" Background="{Binding KindBrush}" CornerRadius="1" Margin="0,0,6,0"/>
                                                                  <Border Grid.Column="1" Background="{Binding KindBackground}" Padding="4,1" CornerRadius="2" Margin="6,0,6,0">
-                                                                     <TextBlock Text="{Binding DisplayKind}" Foreground="{Binding KindBrush}" FontSize="10"/>
+                                                                     <TextBlock Text="{Binding DisplayKind}" Foreground="{Binding KindBrush}" FontSize="11"/>
                                                                  </Border>
-                                                                 <TextBlock Grid.Column="2" Text="{Binding Name}" ToolTip="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                                 <TextBlock Grid.Column="2" Text="{Binding Name}" ToolTip="{Binding Name}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                              </Grid>
                                                          </Grid>
-                                                         <TextBlock Grid.Column="2" Text="{Binding ParameterText}" ToolTip="{Binding ParameterText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                         <TextBlock Grid.Column="3" Text="{Binding PathText}" ToolTip="{Binding PathText}" Foreground="#667085" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                         <TextBlock Grid.Column="4" Text="{Binding NoteText}" ToolTip="{Binding NoteText}" Foreground="#667085" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                         <TextBlock Grid.Column="2" Text="{Binding ParameterText}" ToolTip="{Binding ParameterText}" Margin="4,0,6,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="12"/>
+                                                         <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="4,0,0,0">
+                                                             <TextBlock Text="{Binding PathText}" ToolTip="{Binding PathText}" Foreground="#3C658D" FontSize="12"
+                                                                        TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                                             <TextBlock Text="{Binding NoteText}" ToolTip="{Binding NoteText}" Foreground="{StaticResource Text2Brush}"
+                                                                        FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                                         </StackPanel>
                                                      </Grid>
                                                  </Grid>
                                              </DataTemplate>
@@ -750,7 +754,7 @@
                             </Border>
                         </Grid>
                     </Border>
-                    <GridSplitter Grid.Row="1" Grid.Column="2" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#B8CDE3" ShowsPreview="True" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS" ToolTip="拖动调整步骤区与日志区高度"/>
+                    <GridSplitter Grid.Row="1" Grid.Column="2" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#DDE6F0" ShowsPreview="True" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS" ToolTip="拖动调整步骤区与日志区高度"/>
                     <!-- 日志只占中间列，左侧用例列表从顶部连续到底部。 -->
                     <Border x:Name="SharedLogPanel" Grid.Row="2" Grid.Column="2" Style="{StaticResource QuickPanel}" Padding="12">
                         <DockPanel>
@@ -764,7 +768,7 @@
                                         <Button x:Name="LogPanelToggleButton" Content="⌄" Click="LogPanelToggle_Click" Padding="6,1" Margin="7,0,0,0" ToolTip="折叠或展开测试日志"/>
                                     </StackPanel>
                                     <Grid>
-                                        <ListView x:Name="LogRows" FontFamily="Consolas" FontSize="12" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                        <ListView x:Name="LogRows" FontFamily="Consolas" FontSize="12" Background="White" AlternationCount="2" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                                             <ListView.View>
                                                 <GridView AllowsColumnReorder="False">
                                                     <GridViewColumn Header="时间" DisplayMemberBinding="{Binding Time}" Width="120"/>
@@ -846,7 +850,7 @@
                     </StackPanel>
                 </DockPanel>
                 <Grid Grid.Row="1">
-                    <DataGrid x:Name="RawGrid" AutoGenerateColumns="False" IsReadOnly="True" ClipboardCopyMode="IncludeHeader" FontFamily="Consolas" FontSize="12" HeadersVisibility="Column" CanUserResizeRows="False" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" GridLinesVisibility="Horizontal" RowHeight="30" Background="White">
+                    <DataGrid x:Name="RawGrid" AutoGenerateColumns="False" IsReadOnly="True" AlternatingRowBackground="#F7F9FD" ClipboardCopyMode="IncludeHeader" FontFamily="Consolas" FontSize="12" HeadersVisibility="Column" CanUserResizeRows="False" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" GridLinesVisibility="Horizontal" RowHeight="30" Background="White">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="105"/>
                             <DataGridTextColumn Header="数据" Binding="{Binding Data}" Width="*"/>
