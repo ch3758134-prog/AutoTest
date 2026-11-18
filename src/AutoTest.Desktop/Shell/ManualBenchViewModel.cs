@@ -368,12 +368,10 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             if (!_disposed) await ReloadResourcesAsync();
         }));
 
-    private void FrameObserved(CanObservation observation) =>
-        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-        {
-            if (_disposed) return;
-            RegisterRxMonitor(observation);
-        }));
+    private void FrameObserved(CanObservation observation)
+    {
+        if (!_disposed) QueueMonitorObservation(observation);
+    }
 
     private void EvidenceRecorded(string text) =>
         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
@@ -774,6 +772,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        StopMonitorDispatch();
         _canBatchStop?.Cancel();
         DisposeKeyActions();
         _hardware.FrameObserved -= FrameObserved;
