@@ -50,6 +50,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         public string Display => AssetName + " / " + DisplayNames.MessageLabel(Message) + " [0x" +
             Message.ArbitrationId.ToString("X") + "]" +
             (Message.IsExtended ? " 扩展" : " 标准");
+        public string Purpose => DisplayNames.MessageSummary(Message.Id);
     }
     public sealed class DbcSignalValue : DbcEditableSignal
     {
