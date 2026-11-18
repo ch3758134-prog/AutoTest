@@ -34,6 +34,8 @@ public sealed class DbcDisplayNames
     private readonly Dictionary<(uint Id, string Signal), string> _explicitSignals = new();
     private readonly Dictionary<uint, string> _commentMessages = new();
     private readonly Dictionary<(uint Id, string Signal), string> _commentSignals = new();
+    private readonly Dictionary<uint, string> _messageDescriptions = new();
+    private readonly Dictionary<(uint Id, string Signal), string> _signalDescriptions = new();
 
     public static DbcDisplayNames Parse(string text)
     {
@@ -45,6 +47,7 @@ public sealed class DbcDisplayNames
             if (match.Success && TryId(match.Groups[1].Value, out var id))
             {
                 var label = Decode(match.Groups[2].Value);
+                names._messageDescriptions[id] = label.Trim();
                 if (ContainsChinese(label)) names._commentMessages[id] = label.Trim();
                 continue;
             }
@@ -52,6 +55,7 @@ public sealed class DbcDisplayNames
             if (match.Success && TryId(match.Groups[1].Value, out id))
             {
                 var label = Decode(match.Groups[3].Value);
+                names._signalDescriptions[(id, match.Groups[2].Value)] = label.Trim();
                 if (ContainsChinese(label))
                     names._commentSignals[(id, match.Groups[2].Value)] = label.Trim();
                 continue;
@@ -69,6 +73,11 @@ public sealed class DbcDisplayNames
         }
         return names;
     }
+
+    public string MessageDescription(uint encodedMessageId) =>
+        _messageDescriptions.GetValueOrDefault(encodedMessageId, "");
+    public string SignalDescription(uint encodedMessageId, string signalName) =>
+        _signalDescriptions.GetValueOrDefault((encodedMessageId, signalName), "");
 
     public string MessageAlias(uint encodedMessageId) =>
         _explicitMessages.TryGetValue(encodedMessageId, out var value) ? value :
