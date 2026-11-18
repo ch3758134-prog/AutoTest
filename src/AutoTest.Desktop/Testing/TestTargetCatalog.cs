@@ -55,7 +55,11 @@ public static class TestTargetCatalog
                 if (asset.Kind == ProjectWorkspaceService.DbcKind)
                 {
                     var source = DbcSource.Load(bytes);
-                    var dbc = source.Parse(asset.Name);
+                    // Present all messages for operator repair/selection, even when an
+                    // imported DBC has overlapping fields. Real decode/encode paths
+                    // continue to use the STRICT parser and reject it before any run.
+                    var dbc = DbcParserAdapter.Parse(source.Text, asset.Name,
+                        allowSignalOverlaps: true);
                     var displayNames = DbcDisplayNames.Parse(source.Text);
                     // Existing DBC VAL_ definitions are the only authoritative
                     // source of symbolic states such as 驻车=2.
