@@ -44,6 +44,7 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
 {
     private bool _isExpanded = true;
     private bool _isInsertAnchor;
+    private bool _isDropAfter;
     private string _number = "";
     private int _depth;
 
@@ -139,6 +140,7 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
         }
     }
     public bool IsInsertAnchor { get => _isInsertAnchor; set => Set(ref _isInsertAnchor, value); }
+    public bool IsDropAfter { get => _isDropAfter; set => Set(ref _isDropAfter, value); }
     public string ExpandGlyph => IsExpanded ? "▾" : "▸";
     public string CollapsedSummary
     {
@@ -385,6 +387,9 @@ public partial class MainWindow : Window
     private int _deletedFlowIndex = -1;
     private Point _stepDragStart;
     private ConfigurationStep? _stepTreeDragCandidate;
+    private Point _flowListDragStart;
+    private FlowEditorRow? _flowListDragCandidate;
+    private FlowEditorRow? _flowDropPreviewRow;
     private Point _testNodeDragStart;
     private TestFlowNode? _testNodeDragCandidate;
     private Point _treeDragStart;
@@ -969,10 +974,232 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+
+    // QUICK: one visible step list owns selection, context actions and drag-and-drop.
+    // The legacy TreeView remains for compatibility but is not used as the editor UI.
+    private FlowEditorRow? FlowRowUnder(DependencyObject? origin)
+        => origin is null ? null
+            : (ItemsControl.ContainerFromElement(FlowEditorList, origin) as ListViewItem)?.DataContext as FlowEditorRow;
+
+    private void ClearFlowDropPreview()
+    {
+        if (_flowDropPreviewRow is null) return;
+        _flowDropPreviewRow.IsInsertAnchor = false;
+        _flowDropPreviewRow.IsDropAfter = false;
+        _flowDropPreviewRow = null;
+    }
+
+    private void FlowEditorList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _flowListDragStart = e.GetPosition(FlowEditorList);
+        var row = FlowRowUnder(e.OriginalSource as DependencyObject);
+        _flowListDragCandidate = row?.SourceNode?.PathKind == TestFlowPathKind.None ? row : null;
+    }
+
+    private void FlowEditorList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _flowListDragCandidate?.SourceNode is not { } source) return;
+        var point = e.GetPosition(FlowEditorList);
+        if (Math.Abs(point.X - _flowListDragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(point.Y - _flowListDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        _flowListDragCandidate = null;
+        try
+        {
+            DragDrop.DoDragDrop(FlowEditorList, new DataObject(typeof(TestFlowNode), source), DragDropEffects.Move);
+        }
+        finally { ClearFlowDropPreview(); }
+        e.Handled = true;
+    }
+
+    private void FlowEditorList_DragOver(object sender, DragEventArgs e)
+    {
+        var source = e.Data.GetData(typeof(TestFlowNode)) as TestFlowNode;
+        var row = FlowRowUnder(e.OriginalSource as DependencyObject);
+        ClearFlowDropPreview();
+        if (_selectedTestCase is null || source is null || source.PathKind != TestFlowPathKind.None ||
+            row?.SourceNode is not { } target || ReferenceEquals(source, target) ||
+            ContainsTestFlowNode(source, target.Id))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+        var container = ItemsControl.ContainerFromElement(FlowEditorList, e.OriginalSource as DependencyObject) as ListViewItem;
+        var relativeY = container is null ? 0 : e.GetPosition(container).Y;
+        var after = target.PathKind != TestFlowPathKind.None || relativeY >= (container?.ActualHeight ?? 1) / 2;
+        if (after) row.IsDropAfter = true; else row.IsInsertAnchor = true;
+        _flowDropPreviewRow = row;
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private void FlowEditorList_DragLeave(object sender, DragEventArgs e) => ClearFlowDropPreview();
+
+    private void FlowEditorList_Drop(object sender, DragEventArgs e)
+    {
+        ClearFlowDropPreview();
+        if (_selectedTestCase is null || e.Data.GetData(typeof(TestFlowNode)) is not TestFlowNode source ||
+            source.PathKind != TestFlowPathKind.None) return;
+        var row = FlowRowUnder(e.OriginalSource as DependencyObject);
+        var target = row?.SourceNode;
+        if (target is null || ReferenceEquals(source, target) || ContainsTestFlowNode(source, target.Id)) return;
+        var sourceOwner = FindTestFlowOwner(_selectedTestCase.Flow, source.Id);
+        if (sourceOwner is null) return;
+
+        // Multi-row drag is supported only when all selected nodes share one owner.
+        // Structural THEN/ELSE/BODY/CASE nodes are not draggable.
+        var selected = FlowEditorList.SelectedItems.OfType<FlowEditorRow>()
+            .Select(x => x.SourceNode).OfType<TestFlowNode>()
+            .Where(x => x.PathKind == TestFlowPathKind.None).ToHashSet();
+        if (!selected.Contains(source)) selected = new HashSet<TestFlowNode> { source };
+        if (selected.Any(x => !ReferenceEquals(FindTestFlowOwner(_selectedTestCase.Flow, x.Id), sourceOwner) ||
+                              ReferenceEquals(x, target) || ContainsTestFlowNode(x, target.Id)))
+        {
+            AppendLog("只能一起拖动同级步骤，不能拖入自己或子节点。");
+            return;
+        }
+        var ordered = sourceOwner.Where(selected.Contains).ToList();
+        var targetOwner = target.PathKind != TestFlowPathKind.None
+            ? target.Children
+            : FindTestFlowOwner(_selectedTestCase.Flow, target.Id);
+        if (targetOwner is null) return;
+        var container = ItemsControl.ContainerFromElement(FlowEditorList, e.OriginalSource as DependencyObject) as ListViewItem;
+        var after = target.PathKind != TestFlowPathKind.None ||
+                    (container is not null && e.GetPosition(container).Y >= container.ActualHeight / 2);
+        var index = target.PathKind != TestFlowPathKind.None
+            ? targetOwner.Count
+            : targetOwner.IndexOf(target) + (after ? 1 : 0);
+        if (ReferenceEquals(targetOwner, sourceOwner))
+            index -= ordered.Count(node => sourceOwner.IndexOf(node) < index);
+        foreach (var node in ordered) sourceOwner.Remove(node);
+        index = Math.Clamp(index, 0, targetOwner.Count);
+        foreach (var node in ordered) targetOwner.Insert(index++, node);
+        var keep = ordered[0];
+        _selectedTestNode = keep;
+        _selectedTestNodeId = keep.Id;
+        RefreshTestFlowTreePreservingSelection(keep.Id);
+        AppendLog("已拖动 " + ordered.Count + " 个真实步骤；执行顺序已更新，尚需保存工程。");
+        e.Handled = true;
+    }
+
+    private void FlowEditorList_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (_selectedTestCase is null) { e.Handled = true; return; }
+        var row = FlowRowUnder(Mouse.DirectlyOver as DependencyObject) ?? FlowEditorList.SelectedItem as FlowEditorRow;
+        if (row is not null && !FlowEditorList.SelectedItems.Contains(row))
+            FlowEditorList.SelectedItem = row;
+        var menu = new ContextMenu();
+        menu.Items.Add(MenuItem("＋ 添加普通步骤", (_, _) => AddTestFlowNode_Click(this, new RoutedEventArgs())));
+        if (row?.ControlKind == FlowEditorKind.If)
+            menu.Items.Add(MenuItem("＋ 添加 ELSE 分支", (_, _) => AddFlowElse_Click(this, new RoutedEventArgs())));
+        if (row?.ControlKind == FlowEditorKind.Switch)
+            menu.Items.Add(MenuItem("＋ 添加 CASE 分支", (_, _) => AddFlowCase_Click(this, new RoutedEventArgs())));
+        if (row?.SourceNode is { } node)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuItem("编辑步骤属性", (_, _) => ShowTestFlowNodeDetails(node)));
+            if (node.PathKind == TestFlowPathKind.None)
+            {
+                var before = new MenuItem { Header = "在此步骤之前插入" };
+                var after = new MenuItem { Header = "在此步骤之后插入" };
+                foreach (var kind in new[] { ConfigurationStepKind.广播报文, ConfigurationStepKind.报文解析,
+                                             ConfigurationStepKind.动作控制, ConfigurationStepKind.等待 })
+                {
+                    var choice = kind;
+                    before.Items.Add(MenuItem(DisplayStepKind(choice), (_, _) => InsertFlowOperationAt(node, choice, true)));
+                    after.Items.Add(MenuItem(DisplayStepKind(choice), (_, _) => InsertFlowOperationAt(node, choice, false)));
+                }
+                menu.Items.Add(before);
+                menu.Items.Add(after);
+                menu.Items.Add(MenuItem("上移一步", (_, _) => MoveFlowNode(node, -1)));
+                menu.Items.Add(MenuItem("下移一步", (_, _) => MoveFlowNode(node, 1)));
+                menu.Items.Add(MenuItem("重命名（F2）", (_, _) => RenameTestNode(node)));
+                menu.Items.Add(MenuItem("运行当前步骤", async (_, _) => await RunSelectedTestFlowNodeAsync(node)));
+                menu.Items.Add(MenuItem("删除节点（Delete）", (_, _) => RemoveTestFlowNode(node)));
+            }
+            if (FlowEditorList.SelectedItems.Count >= 2)
+                menu.Items.Add(MenuItem("组合已选连续步骤", (_, _) => GroupSelectedTestFlowNodes()));
+        }
+        FlowEditorList.ContextMenu = menu;
+    }
+
+    private void InsertFlowOperationAt(TestFlowNode target, ConfigurationStepKind kind, bool before)
+    {
+        if (_selectedTestCase is null) return;
+        var owner = FindTestFlowOwner(_selectedTestCase.Flow, target.Id);
+        if (owner is null || target.PathKind != TestFlowPathKind.None) return;
+        var operation = new ConfigurationStep { Kind = kind, Name = kind.ToString() };
+        var node = new TestFlowNode
+        {
+            Kind = TestFlowNodeKind.原子操作,
+            Name = operation.Name,
+            Operation = operation,
+            ParseAssertion = kind == ConfigurationStepKind.报文解析 ? new ParseAssertion() : null
+        };
+        owner.Insert(owner.IndexOf(target) + (before ? 0 : 1), node);
+        _selectedTestNode = node;
+        _selectedTestNodeId = node.Id;
+        RefreshTestFlowTreePreservingSelection(node.Id);
+        ShowTestFlowNodeDetails(node);
+    }
+
+    private void MoveFlowNode(TestFlowNode node, int direction)
+    {
+        if (_selectedTestCase is null || node.PathKind != TestFlowPathKind.None) return;
+        var owner = FindTestFlowOwner(_selectedTestCase.Flow, node.Id);
+        var index = owner?.IndexOf(node) ?? -1;
+        if (owner is null || index < 0 || index + direction < 0 || index + direction >= owner.Count) return;
+        owner.Move(index, index + direction);
+        RefreshTestFlowTreePreservingSelection(node.Id);
+    }
+
+    private void FlowEditorList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (FlowEditorList.SelectedItems.Count != 1 || _selectedTestNode is not { } node ||
+            node.PathKind != TestFlowPathKind.None) return;
+        if (e.Key == Key.F2) { RenameTestNode(node); e.Handled = true; }
+        else if (e.Key == Key.Delete) { RemoveTestFlowNode(node); e.Handled = true; }
+    }
+
+    private void FlowControlMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedTestCase is null || sender is not Button button) return;
+        var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
+        var inside = _selectedFlowEditorRow?.IsControl == true;
+        foreach (var kind in new[] { "IF", "WHEN", "SWITCH", "LOOP" })
+        {
+            var selectedKind = kind;
+            var item = MenuItem(kind switch
+            {
+                "IF" => "IF · 条件分支",
+                "WHEN" => "WHEN · 条件等待",
+                "SWITCH" => "SWITCH · 信号分支",
+                _ => "LOOP · 循环"
+            }, (_, _) => PrepareFlowInsert_Click(new Button { Tag = selectedKind }, new RoutedEventArgs()));
+            item.IsEnabled = !inside;
+            menu.Items.Add(item);
+        }
+        if (_selectedFlowEditorRow?.ControlKind == FlowEditorKind.If)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuItem("添加 ELSE 分支", (_, _) => AddFlowElse_Click(this, new RoutedEventArgs())));
+        }
+        if (_selectedFlowEditorRow?.ControlKind == FlowEditorKind.Switch)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuItem("添加 CASE 分支", (_, _) => AddFlowCase_Click(this, new RoutedEventArgs())));
+        }
+        menu.IsOpen = true;
+    }
+
     private void FlowEditorList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_restoringWorkspaceSelection || FlowEditorList.SelectedItem is not FlowEditorRow row) return;
         _selectedFlowEditorRow = row;
+        _selectedTestNodeIds.Clear();
+        foreach (var selected in FlowEditorList.SelectedItems.OfType<FlowEditorRow>())
+            if (selected.SourceNode is { } choice && choice.PathKind == TestFlowPathKind.None)
+                _selectedTestNodeIds.Add(choice.Id);
         RefreshFlowActionAvailability(row);
         if (row.SourceNode is { } node)
         {
@@ -1002,6 +1229,7 @@ public partial class MainWindow : Window
         AddFlowWhenButton.IsEnabled = genericAllowed;
         AddFlowSwitchButton.IsEnabled = genericAllowed;
         AddFlowLoopButton.IsEnabled = genericAllowed;
+        AddFlowMenuButton.IsEnabled = genericAllowed || row?.ControlKind is FlowEditorKind.If or FlowEditorKind.Switch;
         AddFlowElseButton.IsEnabled = row?.ControlKind == FlowEditorKind.If &&
             !row.Children.Any(x => x.ControlKind == FlowEditorKind.Else);
         AddFlowCaseButton.IsEnabled = row?.ControlKind == FlowEditorKind.Switch;
