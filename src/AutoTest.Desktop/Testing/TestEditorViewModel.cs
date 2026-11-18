@@ -20,6 +20,9 @@ public sealed record StepInspectorContext(
     bool CaseOnly = false);
 
 
+/// <summary>Operator-only projection; the original runtime evidence remains untouched.</summary>
+public sealed record OperatorStepRunRow(string Type, string Status, string Actual, string Detail);
+
 /// <summary>One StepEditTransaction per TEST document; no alternate authoring model.</summary>
 public sealed class TestEditorViewModel : BindableBase
 {
@@ -183,6 +186,19 @@ public sealed class TestEditorViewModel : BindableBase
     }
     public ObservableCollection<TestTargetMapping> Mappings { get; } = new();
     public ObservableCollection<RealStepFact> RunFacts { get; } = new();
+    public ObservableCollection<OperatorStepRunRow> RunFactRows { get; } = new();
+    private static string OperatorExecutionStatus(RealStepStatus status) => status switch
+    {
+        RealStepStatus.Completed => "已执行",
+        RealStepStatus.ConditionFalse => "条件不成立",
+        RealStepStatus.NoData => "未收到数据",
+        RealStepStatus.Timeout => "超时",
+        RealStepStatus.InvalidData => "数据无效",
+        RealStepStatus.DeviceError => "设备错误",
+        RealStepStatus.Cancelled => "已取消",
+        _ => "结果待核查"
+    };
+
     public TestTargetMapping? SelectedMapping
     {
         get => _selectedMapping;
@@ -733,7 +749,7 @@ public sealed class TestEditorViewModel : BindableBase
             var plan = _realTest.Prepare(_transaction.Current);
             if (!plan.Diagnostics.IsEmpty)
             {
-                StatusMessage = "BLOCKED_PREFLIGHT: " + plan.Diagnostics.Length +
+                StatusMessage = "运行前检查未通过：" + plan.Diagnostics.Length +
                     " 项问题；首项：" + plan.Diagnostics[0];
                 return;
             }
@@ -742,7 +758,7 @@ public sealed class TestEditorViewModel : BindableBase
         }
         catch (Exception error)
         {
-            StatusMessage = "BLOCKED_PREFLIGHT: " + error.Message;
+            StatusMessage = "运行前检查未通过：" + error.Message;
         }
     }
 
@@ -751,13 +767,21 @@ public sealed class TestEditorViewModel : BindableBase
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
         IsBusy = true;
         RunFacts.Clear();
+        RunFactRows.Clear();
         RefreshRows(); // Remove previous-run statuses before starting real execution.
         RunSummary = "正在执行真实测试…";
         StopRunCommand.RaiseCanExecuteChanged();
         try
         {
             var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval);
-            foreach (var fact in result.Facts) RunFacts.Add(fact);
+            foreach (var fact in result.Facts)
+            {
+                RunFacts.Add(fact);
+                RunFactRows.Add(new OperatorStepRunRow(
+                    StepUiCatalog.Label(fact.Type),
+                    OperatorExecutionStatus(fact.Status),
+                    fact.Actual, fact.Detail));
+            }
             RefreshRows(); // Apply only actual backend StepId evidence.
             RunSummary = "执行完成 · " + result.Verdict + " · " + result.Facts.Length +
                 " 条步骤记录" + (result.EvidencePath is null ? "" :
@@ -785,6 +809,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (RunFacts.Count > 0)
         {
             RunFacts.Clear();
+            RunFactRows.Clear();
             RunSummary = "测试程序已更改；此前执行事实不再对应当前编辑版本。";
         }
         // StepEditTransaction replaces immutable nodes; the UI keeps a stable
