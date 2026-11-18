@@ -385,6 +385,16 @@ public partial class TestStepInspector : UserControl
                     ParameterFields.Add(new TestStepInputField(key, defaultValue,
                         stepType: action.StepType));
                 }
+            if (action.Key == "can")
+            {
+                ParameterFields.Clear();
+                ParameterFields.Add(new TestStepInputField("periodMs",
+                    node.Properties.GetValueOrDefault("periodMs", "0"),
+                    "发送周期（毫秒；0 = 单次发送）"));
+                ParameterFields.Add(new TestStepInputField("durationMs",
+                    node.Properties.GetValueOrDefault("durationMs", "0"),
+                    "持续发送（毫秒；0 = 直到测试清理）"));
+            }
         }
     }
 
@@ -819,6 +829,9 @@ public partial class TestStepInspector : UserControl
                             operation + ":0x" + _selectedMask.ToString("X5") +
                             ((operation == "Pulse" || !string.IsNullOrWhiteSpace(KeyDurationInput.Text))
                                 ? ":" + KeyDurationInput.Text.Trim() : "");
+                        if (_legacySourceType == "KeySet" &&
+                            string.IsNullOrWhiteSpace(KeyDurationInput.Text))
+                            throw new ArgumentException("旧版按键步骤必须核对并填写保持时间。");
                         _ = AutoTest.Devices.Station.RawKeyAction.Parse(value);
                         node = node.WithProperty("value", value);
                     }
@@ -873,6 +886,18 @@ public partial class TestStepInspector : UserControl
             }
             if (_convertedLegacy && node.Type == "Write")
             {
+                if (_legacySourceType == "CanSend")
+                {
+                    var periodText = node.Properties.GetValueOrDefault("periodMs", "0");
+                    var durationText = node.Properties.GetValueOrDefault("durationMs", "0");
+                    if (!int.TryParse(periodText, NumberStyles.None,
+                            CultureInfo.InvariantCulture, out var period) ||
+                        period != 0 && period is < 20 or > 600000 ||
+                        !int.TryParse(durationText, NumberStyles.None,
+                            CultureInfo.InvariantCulture, out var duration) ||
+                        duration is < 0 or > 1800000)
+                        throw new ArgumentException("CAN 周期须为 0（单次）或 20～600000ms；持续时间须为 0～1800000ms。");
+                }
                 node = node.WithProperty("legacy.importStatus", "REBOUND_VALIDATED")
                     .WithProperty("legacy.reboundTarget", mapping?.Name ?? "");
             }
