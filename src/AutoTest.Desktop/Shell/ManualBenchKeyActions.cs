@@ -544,7 +544,7 @@ public sealed partial class ManualBenchViewModel
                     "  发送 KEY 0x" + list[i].KeyMask.ToString("X5");
                 await _hardware.SendManualKeyStepAsync(frames[i], sha, stop.Token);
                 completed++;
-                Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"), "CAN0 KEY_SIM",
+                Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"), "CAN1 KEY_SIM",
                     "TX ACK", "0x730", Convert.ToHexString(frames[i].Data.AsSpan()),
                     saved.Name + " · Step " + list[i].StepId + " · " +
                     list[i].HoldMs + "ms；主控 ACK，不是实测电压"));
