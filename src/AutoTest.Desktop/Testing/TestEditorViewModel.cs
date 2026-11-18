@@ -187,6 +187,23 @@ public sealed class TestEditorViewModel : BindableBase
     public ObservableCollection<TestTargetMapping> Mappings { get; } = new();
     public ObservableCollection<RealStepFact> RunFacts { get; } = new();
     public ObservableCollection<OperatorStepRunRow> RunFactRows { get; } = new();
+    private static string OperatorStepType(string type) => type switch
+    {
+        "Run" => "运行",
+        "Cleanup" => "清理",
+        "WaveCleanup" => "波形采集收尾",
+        "StationCleanup" => "台架操作收尾",
+        _ => StepUiCatalog.Label(type)
+    };
+    private static string OperatorVerdict(RealTestVerdict verdict) => verdict switch
+    {
+        RealTestVerdict.Passed => "通过",
+        RealTestVerdict.Failed => "失败",
+        RealTestVerdict.Inconclusive => "无法判定",
+        RealTestVerdict.Error => "执行错误",
+        RealTestVerdict.Aborted => "已中止",
+        _ => "状态未知"
+    };
     private static string OperatorExecutionStatus(RealStepStatus status) => status switch
     {
         RealStepStatus.Completed => "已执行",
@@ -778,12 +795,12 @@ public sealed class TestEditorViewModel : BindableBase
             {
                 RunFacts.Add(fact);
                 RunFactRows.Add(new OperatorStepRunRow(
-                    StepUiCatalog.Label(fact.Type),
+                    OperatorStepType(fact.Type),
                     OperatorExecutionStatus(fact.Status),
                     fact.Actual, fact.Detail));
             }
             RefreshRows(); // Apply only actual backend StepId evidence.
-            RunSummary = "执行完成 · " + result.Verdict + " · " + result.Facts.Length +
+            RunSummary = "执行完成 · " + OperatorVerdict(result.Verdict) + " · " + result.Facts.Length +
                 " 条步骤记录" + (result.EvidencePath is null ? "" :
                 " · 证据：" + result.EvidencePath);
             StatusMessage = RunSummary;
