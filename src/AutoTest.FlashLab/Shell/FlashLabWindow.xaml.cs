@@ -568,19 +568,32 @@ public partial class FlashLabWindow : Window
                     if(Dispatcher.CheckAccess())Refresh();
                     else _=Dispatcher.BeginInvoke(new Action(Refresh));
                 },_flashStop.Token);
+            // The proven CanTool on-wire sequence ends at Boot 51 01.
+            // Do not turn an OPTIONAL post-reset APP 10 03 timeout into an
+            // incorrect claim that the fully ACKed/verified flash failed.
             if(outcome.TransferAcknowledged!=frozen.PlannedBytes ||
                outcome.VerifiedBytes!=frozen.PlannedBytes ||
-               !outcome.ResetAcknowledged || !outcome.AppSessionObserved)
+               !outcome.ResetAcknowledged)
                 throw new InvalidDataException(
-                    "ECU 烧录流程返回但缺少完整传输、校验、复位或 APP 应答证据；不能判定成功。");
+                    "ECU 缺少完整 76/77、逐块 71 或 Boot 51 01 应答；写入未确认完成。");
             FlashStageLabel.Text=
-                $"参考流程执行结果：{outcome.Outcome}\n"+
-                $"ACK={outcome.TransferAcknowledged:N0}B, 校验={outcome.VerifiedBytes:N0}B, "+
-                $"复位ACK={outcome.ResetAcknowledged}, APP会话复现={outcome.AppSessionObserved}。"+
-                "新固件版本尚未由身份/版本 DID 证明。";
-            _vm.MarkStage(9,"已完成");
-            WorkflowStatusLabel.Text="参考烧录阶段已完成；请检查 APP 固件版本与身份。";
-            _vm.Status="参考烧录阶段已完成；固件版本 DID 尚未复验。";
+                $"参考 CanTool 物理烧录结束：{outcome.Outcome}\n"+
+                $"传输确认={outcome.TransferAcknowledged:N0}B, "+
+                $"逐块校验={outcome.VerifiedBytes:N0}B, "+
+                $"Boot复位确认={outcome.ResetAcknowledged}；"+
+                $"APP会话确认={outcome.AppSessionObserved}。";
+            if(outcome.AppSessionObserved)
+            {
+                _vm.MarkStage(9,"已完成");
+                WorkflowStatusLabel.Text="参考烧录完成；APP 已响应，版本及身份仍待核验。";
+            }
+            else
+            {
+                _vm.MarkStage(9,"待核验");
+                WorkflowStatusLabel.Text=
+                    "参考烧录的写入、逐块校验和复位已确认；APP 启动尚未确认，请实测核验。";
+            }
+            _vm.Status=WorkflowStatusLabel.Text;
         }
         catch(OperationCanceledException)
         {
