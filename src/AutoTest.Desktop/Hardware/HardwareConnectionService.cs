@@ -44,6 +44,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         " / 帧格式异常=" + (_bridge?.InvalidFrames ?? 0) +
         " / 桥接队列溢出=" + (_bridge?.DroppedBeforeDecode ?? 0) +
         " / USB解帧异常=" + (_usb?.BadUsbFrameCandidates ?? 0) +
+        " / 接收订阅=" + (_hub?.SubscriberCount ?? 0) +
         " / 监视交付=" + Interlocked.Read(ref _canMonitorDelivered) +
         " / 视图处理异常=" + Interlocked.Read(ref _canMonitorObserverErrors);
     public long RawCanIndicationCount => _usb?.ReceivedCanIndications ?? 0;
@@ -73,8 +74,16 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         catch (Exception ex) { Record("Test Run 授权状态通知失败：" + ex.Message); }
     }
 
-    private void Record(string text) =>
-        EvidenceRecorded?.Invoke(DateTimeOffset.Now.ToString("HH:mm:ss.fff") + "  " + text);
+    private void Record(string text)
+    {
+        var entry = DateTimeOffset.Now.ToString("HH:mm:ss.fff") + "  " + text;
+        // An already-closed window must never bring down the USB or CAN receiver.
+        foreach (Action<string> sink in EvidenceRecorded?.GetInvocationList()
+                     .Cast<Action<string>>() ?? Enumerable.Empty<Action<string>>())
+        {
+            try { sink(entry); } catch { /* Diagnostic observers cannot stop the station. */ }
+        }
+    }
 
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
