@@ -70,6 +70,8 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
             {
                 if (item.Generation != _usb.Generation || _usb.State != UsbSessionState.Connected)
                     continue; // never publish an indication from a previous connection
+                try
+                {
                 var resp = item.Response;
                 int port = resp.Payload.Length > 0 ? resp.Payload[0] : -1;
                 CanFrame? frame = null;
@@ -90,6 +92,18 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
                 foreach (Action<HardwareCanTrace> handler in Trace?.GetInvocationList()
                              .Cast<Action<HardwareCanTrace>>() ?? Enumerable.Empty<Action<HardwareCanTrace>>())
                 { try { handler(line); } catch { /* user log must not block CAN hub */ } }
+                }
+                catch (Exception failure)
+                {
+                    Interlocked.Increment(ref _malformed);
+                    var bad = new HardwareCanTrace(item.Utc, item.Ticks, item.Generation,
+                        Convert.ToHexString(item.Response.Payload),
+                        item.Response.Payload.Length > 0 ? item.Response.Payload[0] : -1,
+                        null, false, "CAN RX bridge processing failed: " + failure.Message);
+                    foreach (Action<HardwareCanTrace> handler in Trace?.GetInvocationList()
+                                 .Cast<Action<HardwareCanTrace>>() ?? Enumerable.Empty<Action<HardwareCanTrace>>())
+                    { try { handler(bad); } catch { /* continue physical receive */ } }
+                }
             }
         }
         catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
