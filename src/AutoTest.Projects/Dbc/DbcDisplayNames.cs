@@ -110,30 +110,38 @@ public sealed class DbcDisplayNames
     public string Rewrite(string source)
     {
         var output = new StringBuilder(source.Length + 256);
-        foreach (var line in source.Replace("\r\n", "\n").Split('\n'))
+        // Preserve the byte-level newline convention and every unrelated line.
+        // Removing an AutoTest-owned attribute never rewrites CM_, VAL_, BO_ or SG_.
+        var newline = source.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        foreach (var segment in Regex.Split(source, @"(?<=\n)"))
         {
+            if (segment.Length == 0) continue;
+            var line = segment.TrimEnd('\r', '\n');
             if (OwnedDefinition.IsMatch(line) ||
                 MessageAliasLine.IsMatch(line) || SignalAliasLine.IsMatch(line))
                 continue;
-            output.AppendLine(line);
+            output.Append(segment);
         }
+        if ((_explicitMessages.Count > 0 || _explicitSignals.Count > 0) &&
+            output.Length > 0 && output[^1] != '\n')
+            output.Append(newline);
         if (_explicitMessages.Count > 0)
         {
-            output.AppendLine("BA_DEF_ BO_ \"AutoTestMessageAlias\" STRING ;");
+            output.Append("BA_DEF_ BO_ \"AutoTestMessageAlias\" STRING ;").Append(newline);
             foreach (var pair in _explicitMessages.OrderBy(x => x.Key))
                 output.Append("BA_ \"").Append(MessageAttribute).Append("\" BO_ ")
                     .Append(pair.Key.ToString(CultureInfo.InvariantCulture)).Append(" \"")
-                    .Append(Encode(pair.Value)).AppendLine("\";");
+                    .Append(Encode(pair.Value)).Append("\";").Append(newline);
         }
         if (_explicitSignals.Count > 0)
         {
-            output.AppendLine("BA_DEF_ SG_ \"AutoTestSignalAlias\" STRING ;");
+            output.Append("BA_DEF_ SG_ \"AutoTestSignalAlias\" STRING ;").Append(newline);
             foreach (var pair in _explicitSignals.OrderBy(x => x.Key.Id).ThenBy(x => x.Key.Signal,
                 StringComparer.Ordinal))
                 output.Append("BA_ \"").Append(SignalAttribute).Append("\" SG_ ")
                     .Append(pair.Key.Id.ToString(CultureInfo.InvariantCulture)).Append(' ')
                     .Append(pair.Key.Signal).Append(" \"").Append(Encode(pair.Value))
-                    .AppendLine("\";");
+                    .Append("\";").Append(newline);
         }
         return output.ToString();
     }
