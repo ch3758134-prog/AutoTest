@@ -55,8 +55,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     {
         public DbcSignalValue(DbcSignal signal, string? label = null,
             string? description = null, IReadOnlyDictionary<long, string>? rawLabels = null,
-            string value = "")
-            : base(signal, label, description, rawLabels, value) { }
+            string value = "", string? summary = null)
+            : base(signal, label, description, rawLabels, value, summary) { }
     }
 
     public sealed record BenchLogEntry(string Time, string Channel, string Direction,
@@ -173,7 +173,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
                         value.ValueLabels.TryGetValue(signal.Name, out var labels) ? labels : null;
                     var signalValue = new DbcSignalValue(signal,
                         string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
-                        value.DisplayNames.SignalDescription(value.Message.Id, signal.Name), rawLabels);
+                        value.DisplayNames.SignalDescription(value.Message.Id, signal.Name),
+                        rawLabels, summary: value.DisplayNames.SignalSummary(value.Message.Id, signal.Name));
                     signalValue.PropertyChanged += DbcSignalChanged;
                     DbcSignals.Add(signalValue);
                 }
