@@ -61,7 +61,8 @@ public sealed partial class ManualBenchViewModel
                             value.ValueLabels.TryGetValue(signal.Name, out var table) ? table : null;
                         var entry = new DbcSignalValue(signal,
                             string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
-                            value.DisplayNames.SignalDescription(value.Message.Id, signal.Name), labels);
+                            value.DisplayNames.SignalDescription(value.Message.Id, signal.Name),
+                            labels, summary: value.DisplayNames.SignalSummary(value.Message.Id, signal.Name));
                         entry.PropertyChanged += OnSignalChanged;
                         SignalValues.Add(entry);
                     }
