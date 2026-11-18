@@ -69,9 +69,13 @@ public static class TestTargetCatalog
                     {
                         var frameId = msg.ArbitrationId;
                         var msgAlias = asset.Name + "." + msg.Name;
+                        var messageSummary = displayNames.MessageSummary(msg.Id);
                         choices.Add(new MappingChoice("CAN 报文 / " +
                             displayNames.MessageLabel(msg) + " · " + asset.Name +
-                            " [0x" + frameId.ToString("X") + "]", new TestTargetMapping(
+                            " [0x" + frameId.ToString("X") + "]" +
+                            (messageSummary.Length == 0 ? "" : " — " +
+                             (messageSummary.Length > 48 ? messageSummary[..48] + "…" : messageSummary)),
+                            new TestTargetMapping(
                                 msgAlias, TestTargetKind.CanMessage, asset.Id,
                                 asset.Revision, asset.Sha256, BusRole.DutCan,
                                 frameId, msg.IsExtended), msg, displayNames, null,
@@ -84,7 +88,9 @@ public static class TestTargetCatalog
                             choices.Add(new MappingChoice("信号 / " +
                                 displayNames.MessageLabel(msg) + " / " +
                                 displayNames.SignalLabel(msg, signal) +
-                                (signal.Unit.Length == 0 ? "" : " (" + signal.Unit + ")"),
+                                (signal.Unit.Length == 0 ? "" : " (" + signal.Unit + ")") +
+                                (string.IsNullOrWhiteSpace(displayNames.SignalSummary(msg.Id, signal.Name))
+                                    ? "" : " — " + displayNames.SignalSummary(msg.Id, signal.Name)),
                                 new TestTargetMapping(alias, TestTargetKind.Signal, asset.Id,
                                     asset.Revision, asset.Sha256, BusRole.DutCan,
                                     frameId, msg.IsExtended, signal.Name, signal.Unit), msg, displayNames,
