@@ -34,6 +34,19 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;
+    private long _canMonitorDelivered;
+    private long _canMonitorObserverErrors;
+    /// <summary>Stage-by-stage live RX diagnostics, including before any DBC parsing.
+    /// USB 0x41 count is hardware notifications, not proof the DUT transmitted.</summary>
+    public string CanReceiveStatus => !IsConnected ? "USB 未连接；无实时接收" :
+        "USB 0x41=" + (_usb?.ReceivedCanIndications ?? 0) +
+        " / CAN有效=" + (_bridge?.Published ?? 0) +
+        " / 帧格式异常=" + (_bridge?.InvalidFrames ?? 0) +
+        " / 桥接队列溢出=" + (_bridge?.DroppedBeforeDecode ?? 0) +
+        " / USB解帧异常=" + (_usb?.BadUsbFrameCandidates ?? 0) +
+        " / 监视交付=" + Interlocked.Read(ref _canMonitorDelivered) +
+        " / 视图处理异常=" + Interlocked.Read(ref _canMonitorObserverErrors);
+    public long RawCanIndicationCount => _usb?.ReceivedCanIndications ?? 0;
     private long _epochCounter;
     private long _currentEpoch;
     public long CurrentStationEpoch => Interlocked.Read(ref _currentEpoch);
@@ -158,7 +171,21 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             var spec = new CanSubscriptionSpec(role, ImmutableArray<uint>.Empty,
                 CanBackpressurePolicy.DropWithLossFact, 1024);
             await foreach (var frame in hub.SubscribeAsync(spec, ct))
-                FrameObserved?.Invoke(frame);
+            {
+                // A closed window or bad UI observer must never terminate the
+                // long-lived CAN receiver for all tools and tests.
+                foreach (Action<CanObservation> observer in FrameObserved?.GetInvocationList()
+                             .Cast<Action<CanObservation>>() ?? Enumerable.Empty<Action<CanObservation>>())
+                {
+                    try { observer(frame); Interlocked.Increment(ref _canMonitorDelivered); }
+                    catch (Exception e)
+                    {
+                        var failures = Interlocked.Increment(ref _canMonitorObserverErrors);
+                        if (failures == 1 || (failures & (failures - 1)) == 0)
+                            Record("CAN 监视视图处理失败 #" + failures + "：" + e.Message);
+                    }
+                }
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception e) { Record("CAN 监视异常：" + e.Message); }
