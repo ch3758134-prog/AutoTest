@@ -233,9 +233,9 @@
                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
                 TextTrimming="CharacterEllipsis" ToolTip="{Binding Definition}"/>
                <TextBlock Text="{Binding Name}" FontSize="10" Foreground="#8393A7"/>
-               <TextBlock Text="{Binding Summary}" FontSize="10" TextWrapping="Wrap"
-                Foreground="#697C91" ToolTip="{Binding Definition}"/>
-               <TextBlock Text="{Binding Range}" FontSize="10" Foreground="#8899AA"/>
+               <TextBlock Text="{Binding Summary}" FontSize="11" TextWrapping="Wrap"
+                Foreground="#536F8C" ToolTip="{Binding Definition}"/>
+               <TextBlock Text="{Binding Range}" FontSize="11" Foreground="#788DA4"/>
               </StackPanel>
               <Grid Grid.Column="1" Margin="7,0,0,0" VerticalAlignment="Center">
                <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
