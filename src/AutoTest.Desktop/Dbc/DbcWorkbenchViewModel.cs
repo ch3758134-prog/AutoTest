@@ -8,17 +8,18 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Dbc;
 
-public sealed record DbcMessageRow(DbcMessage Message)
+public sealed record DbcMessageRow(DbcMessage Message, DbcDisplayNames DisplayNames)
 {
     public string HexId => "0x" + Message.ArbitrationId.ToString("X");
     public string FrameType => Message.IsExtended ? "扩展帧" : "标准帧";
     public string DecimalId => Message.Id.ToString();
     public string Name => Message.Name;
+    public string DisplayName => DisplayNames.MessageLabel(Message);
     public string Dlc => Message.Dlc.ToString();
     public string Transmitter => Message.Transmitter;
-    public string Caption => HexId + " " + FrameType + " · " + Name + " (" + Message.Signals.Length + " 信号)";
+    public string Caption => DisplayName + " · " + HexId + " · " + Message.Signals.Length + " 个信号";
 }
-public sealed record DbcSignalRow(DbcSignal Signal)
+public sealed record DbcSignalRow(DbcSignal Signal, string DisplayName)
 {
     public string Name => Signal.Name;
     public string StartBit => Signal.StartBit.ToString();
@@ -46,6 +47,9 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private DbcMessageRow? _selectedMessage;
     private DbcSignalRow? _selectedSignal;
     private bool _isBusy;
+    private bool _settingAlias;
+    private string _messageAliasText = "";
+    private string _signalAliasText = "";
     private string _status = "就绪";
 
     public DbcWorkbenchViewModel(
@@ -56,7 +60,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         _session = opened;
         EditMessageCommand = new DelegateCommand(EditMessage, () => CanEdit && SelectedMessage is not null && !IsBusy);
         EditSignalCommand = new DelegateCommand(EditSignal, () => CanEdit && SelectedSignal is not null && !IsBusy);
-        SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => CanEdit && IsDirty && !IsBusy);
+        SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => CanSave && IsDirty && !IsBusy);
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
         RefreshDocument(null, null);
     }
@@ -92,7 +96,52 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         : "保留原始 DBC 内容，禁止覆盖保存。原因：" +
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
     public bool CanEdit => _session.Document.CanEdit;
+    public bool CanSave => _session.Document.CanSave;
     public bool IsDirty => _session.Document.IsDirty;
+    public string MessageAliasText
+    {
+        get => _messageAliasText;
+        set
+        {
+            if (!SetProperty(ref _messageAliasText, value ?? "") || _settingAlias ||
+                SelectedMessage is not { } message) return;
+            try
+            {
+                _session.Document.SetMessageAlias(message.Message.Id, value);
+                StatusMessage = "报文中文别名已修改，请保存 DBC。";
+                RefreshCommands();
+            }
+            catch (ProjectDataException error) { StatusMessage = error.Message; }
+        }
+    }
+    public string SignalAliasText
+    {
+        get => _signalAliasText;
+        set
+        {
+            if (!SetProperty(ref _signalAliasText, value ?? "") || _settingAlias ||
+                SelectedMessage is not { } message || SelectedSignal is not { } signal) return;
+            try
+            {
+                _session.Document.SetSignalAlias(message.Message.Id, signal.Name, value);
+                StatusMessage = "信号中文别名已修改，请保存 DBC。";
+                RefreshCommands();
+            }
+            catch (ProjectDataException error) { StatusMessage = error.Message; }
+        }
+    }
+    private void RefreshAliasInputs()
+    {
+        _settingAlias = true;
+        try
+        {
+            MessageAliasText = SelectedMessage is { } message
+                ? _session.Document.DisplayNames.MessageAlias(message.Message.Id) : "";
+            SignalAliasText = SelectedMessage is { } m && SelectedSignal is { } sig
+                ? _session.Document.DisplayNames.SignalAlias(m.Message.Id, sig.Name) : "";
+        }
+        finally { _settingAlias = false; }
+    }
     public bool IsBusy
     {
         get => _isBusy;
@@ -117,6 +166,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             RefreshSignals(signalName);
             RaisePropertyChanged(nameof(SignalCount));
             RaisePropertyChanged(nameof(SelectedValueDescriptions));
+            RefreshAliasInputs();
             RefreshCommands();
         }
     }
@@ -128,6 +178,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             if (SetProperty(ref _selectedSignal, value))
             {
                 RaisePropertyChanged(nameof(SelectedValueDescriptions));
+                RefreshAliasInputs();
                 RefreshCommands();
             }
         }
@@ -187,7 +238,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     private async Task SaveAsync()
     {
-        if (!CanEdit || !IsDirty || IsBusy) return;
+        if (!CanSave || !IsDirty || IsBusy) return;
         IsBusy = true;
         try
         {
@@ -236,7 +287,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     {
         Messages.Clear();
         foreach (var message in _session.Document.Model.Messages.OrderBy(m => m.Id))
-            Messages.Add(new DbcMessageRow(message));
+            Messages.Add(new DbcMessageRow(message, _session.Document.DisplayNames));
         // Keep an explicit selection when possible. Newly opened DBC selects the first message.
         SelectedMessage = Messages.FirstOrDefault(x => x.Message.Id == messageId) ?? Messages.FirstOrDefault();
         RefreshSignals(signalName);
@@ -258,7 +309,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         if (SelectedMessage is { } message)
         {
             foreach (var signal in message.Message.Signals.OrderBy(s => s.StartBit).ThenBy(s => s.Name))
-                Signals.Add(new DbcSignalRow(signal));
+                Signals.Add(new DbcSignalRow(signal,
+                    _session.Document.DisplayNames.SignalLabel(message.Message, signal)));
         }
         SelectedSignal = Signals.FirstOrDefault(x => x.Name == signalName) ?? Signals.FirstOrDefault();
         RaisePropertyChanged(nameof(SignalCount));
@@ -271,5 +323,6 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         EditSignalCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged();
         ReloadCommand?.RaiseCanExecuteChanged();
+        RaisePropertyChanged(nameof(CanSave));
     }
 }
