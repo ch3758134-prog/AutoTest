@@ -132,6 +132,7 @@ public sealed class RealRunCoordinator
         var variables = new Dictionary<string, TestDatum>(StringComparer.OrdinalIgnoreCase);
         var verdict = RealTestVerdict.Inconclusive;
         bool asserted = false, failed = false, error = false, aborted = false, incomplete = false;
+        bool preparing = false;
         // Missing or invalid data must never become an empty string that could
         // accidentally satisfy an equality or be encoded as a hardware command.
         bool TryEvaluate(string input, out string value)
@@ -180,6 +181,10 @@ public sealed class RealRunCoordinator
         {
             foreach (var node in nodes)
             {
+                // A failed preparation prerequisite stops the rest of Prepare,
+                // including nested steps, before any further physical writes.
+                if (!cleanup && preparing && (failed || incomplete))
+                    return;
                 if (!cleanup)
                 {
                     await Boundary(ct);
@@ -421,6 +426,7 @@ public sealed class RealRunCoordinator
                         {
                             variables[Property(node, "variable")] = new TestDatum(null,
                                 TestSignalStatus.NoFrame, DateTimeOffset.UtcNow);
+                            incomplete = true;
                             Fact(node, RealStepStatus.NoData, op, "", "Operand unavailable");
                             break;
                         }
@@ -469,6 +475,7 @@ public sealed class RealRunCoordinator
                         variables[Property(node, "variable")] = new TestDatum(sample.Value,
                             sample.Available ? TestSignalStatus.Valid : TestSignalStatus.NoFrame,
                             DateTimeOffset.UtcNow, sample.Evidence);
+                        if (!sample.Available) incomplete = true;
                         Fact(node, sample.Available ? RealStepStatus.Completed : RealStepStatus.NoData,
                             actual: sample.Value ?? "", detail: sample.Code + ": " + sample.Detail,
                             evidence: sample.Evidence);
@@ -497,6 +504,7 @@ public sealed class RealRunCoordinator
                         variables[Property(node, "variable")] = new TestDatum(analysis.Value,
                             analysis.Available ? TestSignalStatus.Valid : TestSignalStatus.DecodeError,
                             DateTimeOffset.UtcNow, analysis.Evidence);
+                        if (!analysis.Available) incomplete = true;
                         Fact(node, analysis.Available ? RealStepStatus.Completed : RealStepStatus.InvalidData,
                             actual: analysis.Value ?? "", detail: analysis.Code + ": " + analysis.Detail,
                             evidence: analysis.Evidence);
@@ -511,7 +519,9 @@ public sealed class RealRunCoordinator
         {
             try
             {
+                preparing = true;
                 await Execute(document.Get(TestPhase.Prepare), cts.Token);
+                preparing = false;
                 if (failed || incomplete)
                 {
                     // Prepare is an eligibility gate: never physically actuate
