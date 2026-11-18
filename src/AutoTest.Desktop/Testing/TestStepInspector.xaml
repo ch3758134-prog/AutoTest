@@ -82,17 +82,36 @@
      <ItemsControl x:Name="SignalGrid" ItemsSource="{Binding SignalValues}">
       <ItemsControl.ItemTemplate>
        <DataTemplate>
-        <StackPanel Margin="0,0,0,10">
-         <DockPanel Margin="0,0,0,4">
-          <TextBlock DockPanel.Dock="Right" Text="{Binding Unit}"
-           Foreground="#64758C" FontSize="10" Margin="6,0,0,0"/>
-          <TextBlock Text="{Binding DisplayName}" Foreground="#61738B" FontSize="11"
-           FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-         </DockPanel>
-         <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-          FontFamily="Consolas" ToolTip="{Binding Range}"/>
-         <TextBlock Text="{Binding Range,StringFormat='有效范围：{0}'}"
-          Foreground="#8B9BAE" FontSize="10" Margin="0,3,0,0"/>
+        <StackPanel Margin="0,0,0,12">
+         <TextBlock Text="{Binding DisplayName}" Foreground="#344F70" FontSize="11"
+          FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Definition}"/>
+         <TextBlock Text="{Binding Name}" FontSize="10" Foreground="#8597AA" Margin="0,2,0,0"/>
+         <TextBlock Text="{Binding Summary}" FontSize="10" TextWrapping="Wrap"
+          Foreground="#64758C" Margin="0,2,0,5" ToolTip="{Binding Definition}"/>
+         <Grid>
+          <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+           FontFamily="Consolas" ToolTip="{Binding Range}">
+           <TextBox.Style><Style TargetType="TextBox">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers><DataTrigger Binding="{Binding HasChoices}" Value="True">
+             <Setter Property="Visibility" Value="Collapsed"/>
+            </DataTrigger></Style.Triggers>
+           </Style></TextBox.Style>
+          </TextBox>
+          <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Label"
+           SelectedValuePath="Value"
+           SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+           MinHeight="27" ToolTip="{Binding Definition}">
+           <ComboBox.Style><Style TargetType="ComboBox">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers><DataTrigger Binding="{Binding HasChoices}" Value="True">
+             <Setter Property="Visibility" Value="Visible"/>
+            </DataTrigger></Style.Triggers>
+           </Style></ComboBox.Style>
+          </ComboBox>
+         </Grid>
+         <TextBlock Text="{Binding Range,StringFormat='允许范围：{0}'}"
+          Foreground="#8493A6" FontSize="10" Margin="0,3,0,0"/>
         </StackPanel>
        </DataTemplate>
       </ItemsControl.ItemTemplate>
