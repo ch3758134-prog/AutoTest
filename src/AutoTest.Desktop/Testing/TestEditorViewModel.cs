@@ -68,9 +68,10 @@ public sealed class TestEditorViewModel : BindableBase
         EditParametersCommand = new DelegateCommand(() =>
         {
             if (_selectedItem?.Step is not { } original || !CanProceed()) return;
-            if (_catalog.Lookup(original.Type) is null)
+            if (_catalog.Lookup(original.Type) is null &&
+                original.Type is not ("KeySet" or "CanSend" or "CanWait"))
             {
-                StatusMessage = "该未知步骤类型尚不能编辑：" + original.Type;
+                StatusMessage = "该步骤尚无对应的可编辑操作：" + original.Name;
                 return;
             }
             _inspectorAdding = false;
@@ -793,8 +794,7 @@ public sealed class TestEditorViewModel : BindableBase
                     " 项问题；首项：" + plan.Diagnostics[0];
                 return;
             }
-            StatusMessage = "本地测试用例结构与静态计划检查无错误；未完成项目级 Run、设备身份、授权和资源快照预检，" +
-                "尚不可在此按钮触发实体测试。未生成 PASS。";
+            StatusMessage = "当前用例步骤与静态计划检查通过。请先保存，连接 USB 主控，然后点击“确认当前用例”与“运行当前用例”。检查通过不代表 ECU 测试通过。";
         }
         catch (Exception error)
         {
