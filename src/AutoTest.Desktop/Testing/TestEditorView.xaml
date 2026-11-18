@@ -4,8 +4,9 @@
  FontFamily="{StaticResource UiFont}" FontSize="12" Background="White" Foreground="#1E2C41"
  PreviewKeyDown="Editor_KeyDown">
  <Grid>
-  <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="45"/>
-   <RowDefinition Height="*"/><RowDefinition Height="24"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="42"/>
+   <RowDefinition Height="45"/><RowDefinition Height="*"/>
+   <RowDefinition Height="24"/></Grid.RowDefinitions>
   <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
    <DockPanel Margin="15,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -66,7 +67,29 @@
    </DockPanel>
   </Border>
 
-  <Border Grid.Row="1" Background="#F3F7FB" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
+  <!-- Real test execution of the currently open TEST case. -->
+  <Border Grid.Row="1" Background="#F4F8FF" BorderBrush="#C8D9EB"
+   BorderThickness="0,0,0,1">
+   <DockPanel Margin="12,4" LastChildFill="True">
+    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+     <TextBlock Text="真实自动测试" FontWeight="SemiBold" Foreground="#28558A"
+      VerticalAlignment="Center" Margin="0,0,11,0"/>
+     <Button Content="确认当前用例" Command="{Binding PrepareRunApprovalCommand}"
+      Margin="0,0,6,0" Padding="11,5"
+      ToolTip="先检查步骤和资源版本；确认后仍需点击运行，无需手输长串授权码"/>
+     <Button Content="▶ 运行当前用例" Command="{Binding RunCommand}"
+      Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0" Padding="11,5"
+      ToolTip="真实 USB/CAN/KEY/IGN 执行当前用例的准备、测试和清理阶段"/>
+     <Button Content="■ 停止" Command="{Binding StopRunCommand}"
+      Margin="0,0,10,0" Padding="8,5"/>
+    </StackPanel>
+    <TextBlock Text="{Binding RunSummary}" FontSize="10" Foreground="#60758C"
+     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+     ToolTip="{Binding RunSummary}"/>
+   </DockPanel>
+  </Border>
+
+  <Border Grid.Row="2" Background="#F3F7FB" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
    <Grid Margin="0,0,8,0">
     <Grid.ColumnDefinitions><ColumnDefinition Width="36"/>
      <ColumnDefinition Width="29*" MinWidth="185"/>
@@ -85,7 +108,7 @@
    </Grid>
   </Border>
 
-  <ListBox x:Name="StepsList" Grid.Row="2" ItemsSource="{Binding StepRows}"
+  <ListBox x:Name="StepsList" Grid.Row="3" ItemsSource="{Binding StepRows}"
    SelectedItem="{Binding SelectedRow,Mode=TwoWay}"
    SelectionChanged="StepsList_SelectionChanged"
    BorderThickness="0" Background="White"
@@ -309,7 +332,7 @@
     </DataTemplate>
    </ListBox.ItemTemplate>
   </ListBox>
-  <Border Grid.Row="3" Background="#FBFCFF" BorderBrush="#DBE3ED" BorderThickness="0,1,0,0">
+  <Border Grid.Row="4" Background="#FBFCFF" BorderBrush="#DBE3ED" BorderThickness="0,1,0,0">
    <DockPanel Margin="10,0">
     <TextBlock DockPanel.Dock="Right" Text="右键 · F2 · F9 · Ctrl+Space"
      FontSize="10" Foreground="#8B9BAE" VerticalAlignment="Center"/>
