@@ -48,7 +48,7 @@ public static class ProjectBundleContractAudit
                                 throw new InvalidDataException("TEST 对象 " + mapping.Name +
                                     " 指向不存在的工程资源。");
                             if (mapping.AssetRevision != dependency.Revision ||
-                                !mapping.AssetSha256.Equals(dependency.Sha256,
+                                !string.Equals(mapping.AssetSha256, dependency.Sha256,
                                     StringComparison.OrdinalIgnoreCase))
                                 throw new InvalidDataException("TEST 对象 " + mapping.Name +
                                     " 引用的资源修订/指纹已失效。");
