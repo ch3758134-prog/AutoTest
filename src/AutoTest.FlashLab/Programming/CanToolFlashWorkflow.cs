@@ -116,7 +116,6 @@ public sealed class CanToolFlashWorkflow(
     {
         long accepted=0,verified=0;
         TimeSpan p2=plan.Boot.P2;
-        bool appObserved=false;
         bool resetAck=false;
 
         // Reopen the same inspected SafetyFile after operator approval but
