@@ -123,13 +123,15 @@ public sealed class WinUsbByteLink : IUsbByteLink
     }
 
     public void AuthorizePhysicalTestRun(string fingerprint, string typedConfirmation,
-        IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn)
+        IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn,
+        int maxWrites = 1000)
     {
         lock (_sync)
         {
             if (_state != WinUsbLinkState.Connected)
                 throw new IOException("Physical run requires an existing connected USB session.");
-            _fence.AuthorizePhysicalRun(fingerprint, typedConfirmation, allowedCan, allowIgn, _epoch);
+            _fence.AuthorizePhysicalRun(fingerprint, typedConfirmation, allowedCan,
+                allowIgn, _epoch, maxWrites);
         }
     }
 
