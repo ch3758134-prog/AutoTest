@@ -218,13 +218,23 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     }
 
     public async Task AuthorizeAsync(string fingerprint, string typedConfirmation,
-        IReadOnlyList<TestTargetMapping> mappings, CancellationToken ct)
+        IReadOnlyList<TestTargetMapping> mappings, TestDocument document, CancellationToken ct)
     {
         if (_fingerprint is not null)
             throw new InvalidOperationException("A test run is already active.");
+        // The USB fence is intentionally finite. Periodic or looped steps need
+        // a larger, still hardware-bounded quota; otherwise two 65ms VCU frames
+        // exhaust the default 1000 writes during a normal test.
+        var highRate = TestRunStepScope.EnabledSteps(document).Any(node =>
+            node.Type == "Loop" || node.Type == "Write" &&
+                int.TryParse(node.Properties.GetValueOrDefault("periodMs", "0"),
+                    NumberStyles.None, CultureInfo.InvariantCulture, out var period) &&
+                period > 0);
+        var maxWrites = highRate ? 10000 : 1000;
         await _hardware.AuthorizeTestRunAsync(fingerprint, typedConfirmation,
             AuthorizedCanFrames(mappings),
-            mappings.Any(x => x.Kind == TestTargetKind.Ignition), ct);
+            mappings.Any(x => x.Kind == TestTargetKind.Ignition), ct,
+            maxWrites: maxWrites);
         _fingerprint = fingerprint;
     }
 
