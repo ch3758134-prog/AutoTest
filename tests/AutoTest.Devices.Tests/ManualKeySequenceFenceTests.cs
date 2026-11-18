@@ -11,7 +11,7 @@ public sealed class ManualKeySequenceFenceTests
 {
     private static byte[] ToPayload(uint mask) => CanFrameCodec.ToUsbPayload(
         mask == 0 ? KeypadCommandCodec.EncodeReleaseAll() : KeypadCommandCodec.EncodeMask(mask),
-        new BusRoleMap(default, DutPort: 1, KeypadPort: 0));
+        StationCanWiring.Current);
 
     [Fact]
     public void OnlyAuthorizedKeySequenceMayPassInOrderOnce()
@@ -35,7 +35,7 @@ public sealed class ManualKeySequenceFenceTests
     }
 
     [Fact]
-    public void OtherKeyCommandsAreBlockedButCan1PeriodicMayCoexist()
+    public void OtherKeyCommandsAreBlockedButCan0PeriodicMayCoexist()
     {
         var f = new PhysicalCommandFence();
         var one = ToPayload(0x3);
@@ -44,11 +44,11 @@ public sealed class ManualKeySequenceFenceTests
         Assert.Throws<InvalidOperationException>(() => f.AuthorizeSingleCanFrame(
             one, "AUTHORIZE CAN TX " + Convert.ToHexString(one), 12));
 
-        var txCan1 = new byte[15];
-        txCan1[0] = 1; txCan1[2] = 0x01; txCan1[3] = 0x07; txCan1[6] = 1;
-        f.AuthorizeManualCanBatch(sha, "AUTHORIZE BENCH CAN " + sha, [txCan1], 12);
+        var txCan0 = new byte[15];
+        txCan0[0] = StationCanWiring.DutPort; txCan0[2] = 0x01; txCan0[3] = 0x07; txCan0[6] = 1;
+        f.AuthorizeManualCanBatch(sha, "AUTHORIZE BENCH CAN " + sha, [txCan0], 12);
         f.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(1,
-            MainControllerCodec.CanSend, txCan1), 12);
+            MainControllerCodec.CanSend, txCan0), 12);
         f.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(2,
             MainControllerCodec.CanSend, one), 12);
         f.RevokeManualKeySequence();
@@ -76,7 +76,7 @@ public sealed class ManualKeySequenceFenceTests
         var f = new PhysicalCommandFence();
         var hash = new string('d', 64);
         var bad = ToPayload(1);
-        bad[0] = 1;
+        bad[0] = StationCanWiring.DutPort;
         Assert.Throws<ArgumentException>(() => f.AuthorizeManualKeySequence(
             hash, "AUTHORIZE KEY ACTION " + hash, [bad], 7));
         var invalid = ToPayload(1);
