@@ -246,18 +246,17 @@
             </Setter>
         </Style>
         <DataTemplate x:Key="TestCaseTemplate">
-            <Grid MinHeight="34">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" Margin="1,0,7,0" ToolTip="是否参与批量测试"/>
-                <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource TestStatusTextStyle}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                <Border Grid.Column="2" Style="{StaticResource TestStatusBadge}" Margin="8,0,2,0">
-                    <TextBlock Text="{Binding StatusSummary}" Style="{StaticResource TestStatusTextStyle}" FontSize="11"/>
-                </Border>
-                <TextBlock Grid.Column="3" Text="{Binding WaitSummary}" Foreground="#687787" FontSize="11" VerticalAlignment="Center" Margin="8,0,2,0"/>
-                <Button Grid.Column="4" Tag="{Binding}" Click="TestCaseWait_Click" Content="等待" Height="22" Padding="7,0" Margin="4,0,2,0"
-                        Background="Transparent" BorderBrush="#BFD3E6" Foreground="#5D7890" FontSize="11" ToolTip="设置本用例与下一个启用用例之间的等待时间"/>
-                <Button Grid.Column="5" Tag="{Binding}" Click="TestCaseDelete_Click" Content="×" Width="22" Height="22" Padding="0" Margin="2,0,0,0"
-                        Background="Transparent" BorderThickness="0" Foreground="#B34747" FontSize="15" ToolTip="删除测试用例"/>
+            <Grid MinHeight="48" Margin="0,2,3,2">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="24"/><ColumnDefinition Width="*" MinWidth="75"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <CheckBox Grid.RowSpan="2" Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" Margin="2,0,4,0" ToolTip="本用例是否参与批量测试"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" Style="{StaticResource TestStatusTextStyle}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,2,4,0"/>
+                <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource TestStatusBadge}" Margin="2,2,0,0" VerticalAlignment="Center"><TextBlock Text="{Binding StatusSummary}" Style="{StaticResource TestStatusTextStyle}" FontSize="11"/></Border>
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WaitSummary}" Foreground="#687787" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,2,4,0"/>
+                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Tag="{Binding}" Click="TestCaseWait_Click" Content="间隔" Height="22" Padding="6,0" Margin="0,2,4,0" Background="Transparent" BorderBrush="#BFD3E6" Foreground="#5D7890" FontSize="11" ToolTip="设置本用例与下一个启用用例之间的等待时间"/>
+                    <Button Tag="{Binding}" Click="TestCaseDelete_Click" Content="×" Width="22" Height="22" Padding="0" Margin="0,2,0,0" Background="Transparent" BorderThickness="0" Foreground="#B34747" FontSize="15" ToolTip="删除测试用例"/>
+                </StackPanel>
             </Grid>
         </DataTemplate>
         <HierarchicalDataTemplate x:Key="TestFlowTemplate" ItemsSource="{Binding Children}">
@@ -325,6 +324,7 @@
         </HierarchicalDataTemplate>
 
         <Style x:Key="FlowEditorListItemStyle" TargetType="ListViewItem">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -335,7 +335,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListViewItem">
                         <Border x:Name="FlowRowSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter/>
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="FlowRowSurface" Property="Background" Value="#F5F9FD"/></Trigger>
@@ -352,7 +352,7 @@
             <ColumnDefinition Width="280" MinWidth="260"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="8"/>
-            <ColumnDefinition Width="420" MinWidth="360" MaxWidth="560"/>
+            <ColumnDefinition Width="370" MinWidth="330" MaxWidth="510"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
         <RowDefinition Height="64"/>
@@ -596,12 +596,11 @@
                              <Grid>
                                  <Grid.RowDefinitions>
                                      <RowDefinition Height="*" MinHeight="180"/>
-                                     <RowDefinition Height="170" MinHeight="110"/>
                                  </Grid.RowDefinitions>
                                  <Grid.ColumnDefinitions>
-                                     <ColumnDefinition Width="*" MinWidth="300"/>
+                                     <ColumnDefinition Width="*" MinWidth="310"/>
                                      <ColumnDefinition x:Name="InspectorSplitterColumn" Width="0"/>
-                                    <ColumnDefinition x:Name="InspectorColumn" Width="0"/>
+                                     <ColumnDefinition x:Name="InspectorColumn" Width="0" MinWidth="0"/>
                                 </Grid.ColumnDefinitions>
                                  <Grid Grid.Column="0" Grid.Row="0">
                                      <TreeView x:Name="TestFlowTree" Visibility="Collapsed" AllowDrop="True" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both" ItemContainerStyle="{StaticResource TestFlowTreeItemStyle}" ItemTemplate="{StaticResource TestFlowTemplate}" SelectedItemChanged="TestFlowTree_SelectedItemChanged" ContextMenuOpening="TestFlowTree_ContextMenuOpening" PreviewMouseRightButtonDown="TestFlowTree_RightClick" PreviewMouseDoubleClick="TestFlowTree_DoubleClick" PreviewMouseLeftButtonDown="TestFlowTree_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="TestFlowTree_PreviewMouseLeftButtonUp" PreviewMouseMove="TestFlowTree_PreviewMouseMove" DragOver="TestFlowTree_DragOver" Drop="TestFlowTree_Drop" RequestBringIntoView="Tree_RequestBringIntoView"/>
@@ -626,26 +625,26 @@
                                         </StackPanel>
                                     </Border>
                                      <Grid x:Name="FlowEditorHeader" Height="30" VerticalAlignment="Top" Panel.ZIndex="2" Background="#F5F8FB">
-                                         <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="250"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+                                         <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="200"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
                                          <TextBlock Grid.Column="0" Text="#" Foreground="{StaticResource Text2Brush}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                          <TextBlock Grid.Column="1" Text="操作 / 名称" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
                                          <TextBlock Grid.Column="2" Text="参数 / 条件" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
                                          <TextBlock Grid.Column="3" Text="期望 / 路径" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
                                          <TextBlock Grid.Column="4" Text="说明" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
                                      </Grid>
-                                     <ListView x:Name="FlowEditorList" Margin="0,30,0,0" ItemContainerStyle="{StaticResource FlowEditorListItemStyle}" Background="White" BorderThickness="0"
+                                     <ListView x:Name="FlowEditorList" Margin="0,30,0,0" ItemContainerStyle="{StaticResource FlowEditorListItemStyle}" Background="White" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                                SelectionChanged="FlowEditorList_SelectionChanged" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                                          <ListView.ItemTemplate>
                                              <DataTemplate>
-                                                 <Grid Height="30">
-                                                     <Grid.RowDefinitions><RowDefinition Height="2"/><RowDefinition Height="28"/></Grid.RowDefinitions>
+                                                 <Grid Height="34" HorizontalAlignment="Stretch">
+                                                     <Grid.RowDefinitions><RowDefinition Height="2"/><RowDefinition Height="32"/></Grid.RowDefinitions>
                                                      <Border Grid.Row="0" Height="2" Background="#2F80ED" Visibility="{Binding IsInsertAnchor, Converter={StaticResource BoolToVisibility}}"/>
                                                      <Grid Grid.Row="1">
-                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="250"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="200"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
                                                          <TextBlock Grid.Column="0" Text="{Binding Number}" Foreground="#98A2B3" FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                          <Grid Grid.Column="1">
-                                                             <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                             <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                              <ItemsControl Grid.Column="0" ItemsSource="{Binding IndentGuides}">
                                                                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                                                  <ItemsControl.ItemTemplate><DataTemplate><Border Width="18" BorderBrush="#D6E1EB" BorderThickness="1,0,0,0"/></DataTemplate></ItemsControl.ItemTemplate>
@@ -693,9 +692,9 @@
                                         </StackPanel>
                                     </Border>
                                 </Grid>
-                                 <GridSplitter x:Name="InspectorGridSplitter" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Height="6" Background="#D9E2ED" ShowsPreview="True" Visibility="Collapsed" Cursor="SizeNS"/>
+                                 <GridSplitter x:Name="InspectorGridSplitter" Grid.Row="0" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#D9E2ED" ShowsPreview="True" Visibility="Collapsed" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Cursor="SizeWE" ToolTip="左右拖动调整步骤列表与属性编辑器宽度"/>
                                 <!-- 属性编辑器是工作区内可停靠检查器，不再用独立 Popup/HWND 覆盖主窗口。 -->
-                                 <Border x:Name="InspectorHost" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Visibility="Collapsed" Background="#FBFDFF" BorderBrush="#B8CDE3" BorderThickness="1" CornerRadius="5" Margin="0,6,0,0" Padding="10,7">
+                                 <Border x:Name="InspectorHost" Grid.Row="0" Grid.Column="2" Visibility="Collapsed" Background="#FBFDFF" BorderBrush="#B8CDE3" BorderThickness="1" CornerRadius="5" Margin="5,0,0,0" Padding="12,10">
                                     <Grid>
                                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                                         <DockPanel Margin="0,0,0,10">

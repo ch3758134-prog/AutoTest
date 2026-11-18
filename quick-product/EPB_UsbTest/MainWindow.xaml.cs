@@ -2443,7 +2443,7 @@ public partial class MainWindow : Window
         // GridSplitter 调整的宽度，不在每次打开属性时把布局重置。
         if (InspectorColumn.Width.Value <= 0)
         {
-            var targetWidth = Math.Clamp(AutomaticWorkspaceGrid.ActualWidth * 0.34, 400, 560);
+            var targetWidth = Math.Clamp(AutomaticWorkspaceGrid.ActualWidth * 0.30, 330, 420);
             InspectorColumn.Width = new GridLength(targetWidth, GridUnitType.Pixel);
         }
         InspectorSplitterColumn.Width = new GridLength(6, GridUnitType.Pixel);
