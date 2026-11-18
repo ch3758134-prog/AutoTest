@@ -132,9 +132,29 @@ public sealed class RealRunCoordinator
         var variables = new Dictionary<string, TestDatum>(StringComparer.OrdinalIgnoreCase);
         var verdict = RealTestVerdict.Inconclusive;
         bool asserted = false, failed = false, error = false, aborted = false, incomplete = false;
+        // Missing or invalid data must never become an empty string that could
+        // accidentally satisfy an equality or be encoded as a hardware command.
+        bool TryEvaluate(string input, out string value)
+        {
+            if (!input.StartsWith("$", StringComparison.Ordinal))
+            {
+                value = input;
+                return true;
+            }
+            if (input.Length > 1 && variables.TryGetValue(input[1..], out var datum) &&
+                datum.Value is { } actual &&
+                (datum.Quality is null or TestSignalStatus.Valid))
+            {
+                value = actual;
+                return true;
+            }
+            value = "";
+            return false;
+        }
         string Evaluate(string input) =>
-            input.StartsWith("$", StringComparison.Ordinal) &&
-                variables.TryGetValue(input[1..], out var datum) ? datum.Value ?? "" : input;
+            TryEvaluate(input, out var value) ? value
+                : throw new InvalidOperationException(
+                    "步骤引用的变量尚无有效数据：" + input + "；未执行后续硬件写入。");
         static bool Compare(string lhs, string op, string rhs)
         {
             if (double.TryParse(lhs, NumberStyles.Float, CultureInfo.InvariantCulture, out var l) &&
@@ -177,7 +197,8 @@ public sealed class RealRunCoordinator
                     case "If":
                     {
                         var sourceName = Property(node, "variable");
-                        if (!variables.TryGetValue(sourceName, out var source) || source.Value is null)
+                        if (!variables.TryGetValue(sourceName, out var source) || source.Value is null ||
+                            (source.Quality is not null and not TestSignalStatus.Valid))
                         {
                             incomplete = true;
                             Fact(node, RealStepStatus.NoData, detail:
@@ -185,7 +206,12 @@ public sealed class RealRunCoordinator
                             break; // Never treat missing DUT feedback as the else branch.
                         }
                         var actual = source.Value;
-                        var expected = Evaluate(Property(node, "equals"));
+                        if (!TryEvaluate(Property(node, "equals"), out var expected))
+                        {
+                            incomplete = true;
+                            Fact(node, RealStepStatus.NoData, detail: "分支期望值引用了尚无有效数据的变量。");
+                            break;
+                        }
                         var pass = Compare(actual, "==", expected);
                         Fact(node, RealStepStatus.Completed, expected, actual, "Branch: " + (pass ? "then" : "else"));
                         await Execute(node.Slots[pass ? "then" : "else"], ct, cleanup);
@@ -205,7 +231,14 @@ public sealed class RealRunCoordinator
                         break;
                     case "SetVariable":
                     {
-                        var value = Evaluate(Property(node, "value"));
+                        if (!TryEvaluate(Property(node, "value"), out var value))
+                        {
+                            incomplete = true;
+                            variables[Property(node, "variable")] = new TestDatum(null,
+                                TestSignalStatus.NoFrame, DateTimeOffset.UtcNow);
+                            Fact(node, RealStepStatus.NoData, detail: "赋值来源变量没有有效数据。");
+                            break;
+                        }
                         variables[Property(node, "variable")] = new TestDatum(value, null, DateTimeOffset.UtcNow);
                         Fact(node, RealStepStatus.Completed, "", value);
                         break;
@@ -221,7 +254,7 @@ public sealed class RealRunCoordinator
                             if (interval > 0)
                             {
                                 if (target.Kind is not (TestTargetKind.CanMessage or TestTargetKind.RawCan))
-                                    throw new ArgumentException("周期发送只能用于 CAN1 报文。");
+                                    throw new ArgumentException("周期发送只能用于 ECU CAN0 报文。");
                                 if (interval < 20)
                                     throw new ArgumentException("上位机 CAN 周期不能小于 20 毫秒。");
                                 var duration = node.Properties.TryGetValue("durationMs", out var d) &&
@@ -240,7 +273,7 @@ public sealed class RealRunCoordinator
                     case "CanStopPeriodic":
                     {
                         await _actions.StopPeriodicAsync(ct);
-                        Fact(node, RealStepStatus.Completed, "", "", "已停止本次测试的全部 CAN1 周期发送。");
+                        Fact(node, RealStepStatus.Completed, "", "", "已停止本次测试的全部 ECU CAN0 周期发送。");
                         break;
                     }
                     case "Read":
@@ -268,7 +301,12 @@ public sealed class RealRunCoordinator
                     case "WaitUntil":
                     {
                         var match = Target(node);
-                        var expected = Evaluate(Property(node, "expected"));
+                        if (!TryEvaluate(Property(node, "expected"), out var expected))
+                        {
+                            incomplete = true;
+                            Fact(node, RealStepStatus.NoData, detail: "等待条件引用的期望值变量无有效数据。");
+                            break;
+                        }
                         var op = Property(node, "operator");
                         var ms = Milliseconds(node, "timeoutMs");
                         var varName = Property(node, "variable");
@@ -303,6 +341,10 @@ public sealed class RealRunCoordinator
                         variables[varName + ".status"] = new TestDatum(matched ? "Met" :
                             sawValid ? "ConditionNotMet" : "NoFrame",
                             null, DateTimeOffset.UtcNow);
+                        // WaitUntil is a real condition assertion, not merely a delay:
+                        // an observed mismatch must fail the run even if a later Expect passes.
+                        if (sawValid) { asserted = true; failed |= !matched; }
+                        else incomplete = true;
                         Fact(node, matched ? RealStepStatus.Completed :
                             sawValid ? RealStepStatus.ConditionFalse : RealStepStatus.NoData,
                             op + " " + expected, actual, matched ? "Condition observed" :
@@ -317,7 +359,12 @@ public sealed class RealRunCoordinator
                         if (target.Kind != TestTargetKind.Signal)
                             throw new InvalidOperationException("CAN 信号判定必须选择 DBC 信号。");
                         var op = Property(node, "operator");
-                        var expected = Evaluate(Property(node, "expected"));
+                        if (!TryEvaluate(Property(node, "expected"), out var expected))
+                        {
+                            incomplete = true;
+                            Fact(node, RealStepStatus.NoData, detail: "CAN 判定期望值引用的变量无有效数据。");
+                            break;
+                        }
                         var timeout = Milliseconds(node, "timeoutMs");
                         bool sawValid = false, matched = false;
                         string actual = "";
@@ -361,10 +408,11 @@ public sealed class RealRunCoordinator
                     }
                     case "Calculate":
                     {
-                        var left = Evaluate(Property(node, "left"));
-                        var right = Evaluate(Property(node, "right"));
+                        var hasLeft = TryEvaluate(Property(node, "left"), out var left);
+                        var hasRight = TryEvaluate(Property(node, "right"), out var right);
                         var op = Property(node, "operator");
-                        if (!double.TryParse(left, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ||
+                        if (!hasLeft || !hasRight ||
+                            !double.TryParse(left, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ||
                             !double.TryParse(right, NumberStyles.Float, CultureInfo.InvariantCulture, out var y))
                         {
                             variables[Property(node, "variable")] = new TestDatum(null,
@@ -387,14 +435,15 @@ public sealed class RealRunCoordinator
                     case "Expect":
                     {
                         var left = Property(node, "left");
-                        var value = Evaluate(left);
-                        var expected = Evaluate(Property(node, "right"));
-                        // Unavailable data must NOT become a simple false comparison.
-                        var missing = left.StartsWith("$", StringComparison.Ordinal) &&
-                            (!variables.TryGetValue(left[1..], out var datum) || datum.Value is null);
-                        if (missing)
+                        var right = Property(node, "right");
+                        // Both operands must exist and carry usable quality before
+                        // an equality can create a PASS judgement.
+                        var hasLeft = TryEvaluate(left, out var value);
+                        var hasRight = TryEvaluate(right, out var expected);
+                        if (!hasLeft || !hasRight)
                         {
-                            Fact(node, RealStepStatus.NoData, expected, "", "Missing or invalid observation");
+                            Fact(node, RealStepStatus.NoData, hasRight ? expected : right,
+                                hasLeft ? value : "", "Missing or invalid comparison operand");
                             incomplete = true;
                             break;
                         }
