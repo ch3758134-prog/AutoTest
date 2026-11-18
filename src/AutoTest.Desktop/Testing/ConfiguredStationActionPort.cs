@@ -366,6 +366,31 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
         new(true, false, code, "Device acknowledged; ECU physical response remains unverified.",
             DateTimeOffset.UtcNow);
 
+    public async ValueTask StopPeriodicAsync(CancellationToken ct)
+    {
+        await _serial.WaitAsync(ct);
+        try
+        {
+            if (_fingerprint is null)
+                throw new InvalidOperationException("真实自动测试尚未授权。");
+            await StopPeriodicWorkersAsync();
+            if (_periodicErrors.TryDequeue(out var failure))
+                throw new IOException("CAN1 周期发送发生设备通信错误。", failure);
+        }
+        finally { _serial.Release(); }
+    }
+
+    private async Task StopPeriodicWorkersAsync()
+    {
+        foreach (var item in _periodic.Values) item.Stop.Cancel();
+        try { await Task.WhenAll(_periodic.Values.Select(x => x.Worker)); }
+        finally
+        {
+            foreach (var item in _periodic.Values) item.Stop.Dispose();
+            _periodic.Clear();
+        }
+    }
+
     public async ValueTask CleanupAsync(CancellationToken ct)
     {
         await _serial.WaitAsync(ct);
@@ -374,13 +399,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             if (_fingerprint is null) return;
             try
             {
-                foreach (var item in _periodic.Values) item.Stop.Cancel();
-                try { await Task.WhenAll(_periodic.Values.Select(x => x.Worker)); }
-                finally
-                {
-                    foreach (var item in _periodic.Values) item.Stop.Dispose();
-                    _periodic.Clear();
-                }
+                await StopPeriodicWorkersAsync();
                 // Release regardless of our last ACK: a timed-out physical command can
                 // have affected the board even if the host did not receive confirmation.
                 if (_buttons.Count > 0 || _hasRawKey)
