@@ -52,7 +52,7 @@
      <ComboBox x:Name="TargetPicker" ItemsSource="{Binding AvailableTargets}"
       DisplayMemberPath="Label" MinHeight="28"
       SelectionChanged="TargetPicker_Changed"/>
-     <TextBlock x:Name="TargetHint" Foreground="#64758C" FontSize="10"
+     <TextBlock x:Name="TargetHint" Foreground="#64758C" FontSize="11"
       TextWrapping="Wrap" Margin="0,6,0,0"/>
     </StackPanel>
 
@@ -82,10 +82,10 @@
       <ItemsControl.ItemTemplate>
        <DataTemplate>
         <StackPanel Margin="0,0,0,12">
-         <TextBlock Text="{Binding DisplayName}" Foreground="#344F70" FontSize="11"
+         <TextBlock Text="{Binding DisplayName}" Foreground="#344F70" FontSize="12"
           FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Definition}"/>
          <TextBlock Text="{Binding Name}" FontSize="10" Foreground="#8597AA" Margin="0,2,0,0"/>
-         <TextBlock Text="{Binding Summary}" FontSize="10" TextWrapping="Wrap"
+         <TextBlock Text="{Binding Summary}" FontSize="11" TextWrapping="Wrap"
           Foreground="#64758C" Margin="0,2,0,5" ToolTip="{Binding Definition}"/>
          <Grid>
           <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
@@ -110,7 +110,7 @@
           </ComboBox>
          </Grid>
          <TextBlock Text="{Binding Range,StringFormat='允许范围：{0}'}"
-          Foreground="#8493A6" FontSize="10" Margin="0,3,0,0"/>
+          Foreground="#8493A6" FontSize="11" Margin="0,3,0,0"/>
         </StackPanel>
        </DataTemplate>
       </ItemsControl.ItemTemplate>
