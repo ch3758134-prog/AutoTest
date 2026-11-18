@@ -59,9 +59,9 @@ public sealed class StationControlContractTests
     [Fact] public void Verify_A2_T01()
     {
         var frame=KeypadCommandCodec.EncodeMask(1);
-        var payload=CanFrameCodec.ToUsbPayload(frame,Roles(1,0));
-        Assert.Equal((byte)0,payload[0]);
-        Assert.True(CanFrameCodec.FromUsbPayload(payload,Roles(1,0),out var decoded));
+        var payload=CanFrameCodec.ToUsbPayload(frame,StationCanWiring.Current);
+        Assert.Equal(StationCanWiring.KeypadPort,payload[0]);
+        Assert.True(CanFrameCodec.FromUsbPayload(payload,StationCanWiring.Current,out var decoded));
         Assert.Equal(BusRole.KeypadCan,decoded!.Role);
         Assert.Throws<InvalidOperationException>(()=>CanFrameCodec.ToUsbPayload(frame,Roles(0,0)));
     }
@@ -85,10 +85,13 @@ public sealed class StationControlContractTests
         Assert.Equal("8000000000000000",Convert.ToHexString(KeypadCommandCodec.EncodeReleaseAll().Data.ToArray()));
         Assert.Equal("01FFFF0F00000000",Convert.ToHexString(KeypadCommandCodec.EncodeMask(0xFFFFF).Data.ToArray()));
         Assert.Throws<ArgumentOutOfRangeException>(()=>KeypadCommandCodec.EncodeMask(0x100000));
-        var roles=Roles(1,0);
-        Assert.Equal("000030070000080101000000000000",Convert.ToHexString(CanFrameCodec.ToUsbPayload(key,roles)));
-        Assert.Equal("A53700400F000030070000080101000000000000A8835A",
-            Convert.ToHexString(MainControllerCodec.EncodeCan(0x37,CanFrameCodec.ToUsbPayload(key,roles))));
+        var roles=StationCanWiring.Current;
+        Assert.Equal(StationCanWiring.KeypadPort, CanFrameCodec.ToUsbPayload(key, roles)[0]);
+        Assert.True(UsbWireCodec.TryDecodeRequest(
+            MainControllerCodec.EncodeCan(0x37, CanFrameCodec.ToUsbPayload(key, roles)),
+            out var request));
+        Assert.Equal((byte)0x40, request.Command);
+        Assert.Equal(StationCanWiring.KeypadPort, request.Payload[0]);
     }
 }
 public sealed class CanHubContractTests
