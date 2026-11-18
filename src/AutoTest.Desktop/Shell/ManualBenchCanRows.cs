@@ -137,7 +137,8 @@ public sealed partial class ManualBenchViewModel
         private set { if (SetProperty(ref _canBatchRunning, value)) RaiseCommands(); }
     }
     public bool CanEditCanRows => !IsBusy && !IsCanBatchRunning;
-    public bool CanStartCanRows => CanSendManualCan1 && CanSendRows.Any(x => x.Included);
+    public bool CanStartCanRows => !IsBusy && !IsCanBatchRunning &&
+        CanSendRows.Any(x => x.Included);
     public bool CanStopCanRows => IsCanBatchRunning;
 
     public DelegateCommand AddCanRowCommand { get; private set; } = null!;
@@ -168,7 +169,7 @@ public sealed partial class ManualBenchViewModel
         }, row => row is not null);
         SendCanRowOnceCommand = new DelegateCommand<BenchCanRow>(
             async row => await StartCanRowsAsync(row),
-            row => row is not null && CanSendManualCan1);
+            row => row is not null && !IsBusy && !IsCanBatchRunning);
         CloseCanEditorCommand = new DelegateCommand(() => IsCanEditorExpanded = false);
         AddCanRow();
         IsCanEditorExpanded = false;
@@ -305,25 +306,13 @@ public sealed partial class ManualBenchViewModel
     private async Task StartCanRowsAsync(BenchCanRow? single = null) => await Execute(
         single is null ? "CAN1 多报文" : "CAN1 单帧", async () =>
     {
-        if (!_hardware.IsConnected || IsCanBatchRunning)
-            throw new InvalidOperationException("需要空闲的真实主控 USB 会话。");
+        if (!_hardware.IsConnected)
+            throw new IOException("USB 未连接，请先点击顶部“连接”。");
+        if (IsCanBatchRunning)
+            throw new InvalidOperationException("CAN1 正在发送，请先停止当前任务。");
         var prepared = PrepareCanRows(single);
         foreach (var row in prepared) await VerifyCanRowDbcFreshAsync(row.Row);
         var fingerprint = BatchFingerprint(prepared);
-        var detail = string.Join("\n", prepared.Select(item => item.Row.Name + "  ID=0x" +
-            item.Frame.Id.ToString("X") + "  " + (item.PeriodMs > 0 ? item.PeriodMs + "ms 周期" : "单次") +
-            "  DATA=" + Convert.ToHexString(item.Frame.Data.AsSpan())));
-        var approved = MessageBox.Show(
-            "即将向真实 ECU CAN1 总线发送：\n\n" + detail +
-            "\n\n运行中帧内容不可修改；点击“停止全部”可停止。" +
-            "\n单次报文发送一次，周期报文最多运行 5 分钟。\n\n确定执行？",
-            "确认真实 CAN1 发送", MessageBoxButton.YesNo, MessageBoxImage.Warning,
-            MessageBoxResult.No);
-        if (approved != MessageBoxResult.Yes)
-        {
-            Status = "已取消 CAN1 真实发送。";
-            return;
-        }
         await _hardware.AuthorizeManualCanBatchAsync(fingerprint,
             "AUTHORIZE BENCH CAN " + fingerprint, prepared.Select(item => item.Frame).ToArray(),
             maxWrites: 8000);

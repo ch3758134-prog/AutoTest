@@ -169,7 +169,7 @@ public sealed partial class ManualBenchViewModel
          pin.AssetId != _loadedControllerAsset || pin.Revision != _loadedControllerRevision ||
          !pin.Sha256.Equals(_loadedControllerSha, StringComparison.OrdinalIgnoreCase));
     public bool CanSaveKeyActions => CanEditKeyActions && (KeyActionsDirty || ControllerBindingNeedsSave);
-    public bool CanRunKeyAction => CanSendHardware && HasConfiguredKeys && !KeyActionsDirty &&
+    public bool CanRunKeyAction => !IsBusy && HasConfiguredKeys && !KeyActionsDirty &&
         _keyCatalogSession is not null && !IsKeyActionRunning;
     public string KeyActionRunStatus
     {
@@ -489,6 +489,8 @@ public sealed partial class ManualBenchViewModel
        await Execute("执行 KEY 动作", async () =>
        {
         var stop = _keyActionStop ?? throw new InvalidOperationException("KEY 动作取消上下文不存在。");
+        if (!_hardware.IsConnected)
+            throw new IOException("USB 未连接，请先点击顶部“连接”。");
         stop.Token.ThrowIfCancellationRequested();
         if (_keyCatalogSession is null || KeyActionsDirty)
             throw new InvalidOperationException("动作必须先保存工程资源，且不能有未保存修改。");
@@ -521,18 +523,6 @@ public sealed partial class ManualBenchViewModel
             ? KeypadCommandCodec.EncodeReleaseAll() : KeypadCommandCodec.EncodeMask(step.KeyMask)).ToArray();
         var epoch = _hardware.CurrentStationEpoch;
         if (epoch == 0) throw new InvalidOperationException("USB 未连接。");
-        var detail = string.Join("\n", list.Select((step, idx) => (idx + 1) + ". 0x" +
-            step.KeyMask.ToString("X5") + " · " + step.HoldMs + "ms"));
-        var approved = MessageBox.Show(
-            "真实 CAN0 → KEY_SIM：\n" + saved.Name + "\n\n" + detail +
-            "\n\n完整按键组合将依次下发并保持相应时间。最后一段不自动释放。" +
-            "\n主控 ACK 不等于 ECU 响应。是否执行？",
-            "真实 KEY 动作确认", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        if (approved != MessageBoxResult.Yes)
-        {
-            KeyActionRunStatus = "已取消执行，未下发 CAN0 指令。";
-            return;
-        }
         var fingerprintText = reopened.FileSha256 + ":" + saved.ActionId + ":" + epoch + ":" +
             string.Join("|", list.Select(s => s.StepId + ":" + s.KeyMask + ":" + s.HoldMs));
         var sha = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintText)))
