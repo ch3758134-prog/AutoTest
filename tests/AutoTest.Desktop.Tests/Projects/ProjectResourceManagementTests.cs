@@ -95,6 +95,26 @@ public sealed class ProjectResourceManagementTests
         finally { Directory.Delete(parent, true); }
     }
 
+    [Fact]
+    public async Task OpenExternalProject_RejectsAlteredTestAssetBeforeWorkspaceIsPublished()
+    {
+        var parent = TemporaryDirectory();
+        try
+        {
+            var workspace = new ProjectWorkspaceService();
+            var project = await workspace.CreateAsync("ExternalContract", parent);
+            var asset = await workspace.CreateTestProgramAsync("PhysicalTest");
+            var resourcePath = Path.Combine(workspace.Current!.RootDirectory, asset.RelativePath);
+            await File.AppendAllTextAsync(resourcePath, " ");
+            var target = new ProjectWorkspaceService();
+            var error = await Assert.ThrowsAsync<InvalidDataException>(
+                () => target.OpenAsync(project.ManifestPath));
+            Assert.Contains(asset.Name, error.Message);
+            Assert.Null(target.Current);
+        }
+        finally { Directory.Delete(parent, true); }
+    }
+
     private static string TemporaryDirectory()
     {
         var p = Path.Combine(Path.GetTempPath(), "autotest-resources-" + Guid.NewGuid().ToString("N"));
