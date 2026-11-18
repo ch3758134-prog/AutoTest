@@ -456,9 +456,11 @@ public partial class MainWindow : Window
                 if (layout is not null)
                 {
                     if (layout.LeftWidth is >= 210 and <= 600) WorkspaceGrid.ColumnDefinitions[0].Width = new GridLength(layout.LeftWidth);
-                    if (layout.RightWidth is >= 420 and <= 1000) RootGrid().ColumnDefinitions[3].Width = new GridLength(layout.RightWidth);
-                    if (layout.LogHeight is >= 140 and <= 700)
+                    if (layout.RightWidth is >= 350 and <= 600) RootGrid().ColumnDefinitions[3].Width = new GridLength(layout.RightWidth);
+                    if (layout.LogHeight is >= 58 and <= 700)
                         AutomaticWorkspaceGrid.RowDefinitions[2].Height = new GridLength(layout.LogHeight);
+                    if (layout.InspectorHeight is >= 165 and <= 520)
+                        RightInspectorRow.Height = new GridLength(layout.InspectorHeight);
                 }
             }
         }
@@ -476,7 +478,12 @@ public partial class MainWindow : Window
         {
             var directory = Path.GetDirectoryName(_layoutPath)!;
             Directory.CreateDirectory(directory);
-            var layout = new UiLayout(WorkspaceGrid.ColumnDefinitions[0].ActualWidth, RootGrid().ColumnDefinitions[3].ActualWidth, AutomaticWorkspaceGrid.RowDefinitions[2].ActualHeight);
+            var layout = new UiLayout(
+                WorkspaceGrid.ColumnDefinitions[0].ActualWidth,
+                RootGrid().ColumnDefinitions[3].ActualWidth,
+                AutomaticWorkspaceGrid.RowDefinitions[2].ActualHeight,
+                0,
+                QuickRightToolsGrid.RowDefinitions[0].ActualHeight);
             File.WriteAllText(_layoutPath, System.Text.Json.JsonSerializer.Serialize(layout));
         }
         catch { }
@@ -1798,8 +1805,8 @@ public partial class MainWindow : Window
     {
         _logPanelCollapsed = !_logPanelCollapsed;
         AutomaticWorkspaceGrid.RowDefinitions[2].Height = _logPanelCollapsed
-            ? new GridLength(34)
-            : new GridLength(1, GridUnitType.Star);
+            ? new GridLength(58)
+            : new GridLength(160, GridUnitType.Pixel);
         LogRows.Visibility = _logPanelCollapsed ? Visibility.Collapsed : Visibility.Visible;
         LogEmptyState.Visibility = _logPanelCollapsed ? Visibility.Collapsed : Visibility.Visible;
         LogPanelToggleButton.Content = _logPanelCollapsed ? "⌃" : "⌄";
@@ -6511,7 +6518,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private sealed record UiLayout(double LeftWidth, double RightWidth, double LogHeight, double LogWidth = 0);
+    private sealed record UiLayout(double LeftWidth, double RightWidth, double LogHeight,
+        double LogWidth = 0, double InspectorHeight = 280);
     private sealed record LiveRow(string Name, string Value);
     private sealed record SequenceChoice(string Id, string Name);
     private sealed record FolderChoice(ConfigurationTreeItem Item, string Path);
