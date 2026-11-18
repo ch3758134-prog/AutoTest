@@ -14,7 +14,7 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Shell;
 
-/// <summary>Real manual CAN0 transmission list, kept apart from KEY_SIM/CAN0 and TEST execution.</summary>
+/// <summary>Real manual CAN0 transmission list, kept apart from KEY_SIM/CAN1 and TEST execution.</summary>
 public sealed partial class ManualBenchViewModel
 {
     public sealed class BenchCanRow : BindableBase
