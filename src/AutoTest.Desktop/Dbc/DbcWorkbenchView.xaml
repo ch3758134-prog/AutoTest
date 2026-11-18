@@ -118,7 +118,7 @@
                    FontSize="12"/>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
           <Button Content="保存 DBC" Command="{Binding SaveCommand}"
-                  ToolTip="保存文件，复核并更新工程资源 Revision（Ctrl+S）"/>
+                  ToolTip="保存修改并更新工程资源版本（Ctrl+S）；中文别名也保存到 DBC 文件"/>
           <Button Content="重新加载" Command="{Binding ReloadCommand}"
                   ToolTip="重新从磁盘读取 DBC（F5）"/>
           <Border Width="1" Height="24" Background="{StaticResource Line}" Margin="2,0,10,0"/>
@@ -194,7 +194,7 @@
                     EnableRowVirtualization="True" EnableColumnVirtualization="True"
                     MouseDoubleClick="SignalGrid_DoubleClick">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="信号名称" Binding="{Binding Name}" Width="160"/>
+              <DataGridTextColumn Header="信号名称（中文优先）" Binding="{Binding DisplayName}" Width="235"/>
               <DataGridTextColumn Header="起始位" Binding="{Binding StartBit}" Width="65"/>
               <DataGridTextColumn Header="位长" Binding="{Binding BitLength}" Width="55"/>
               <DataGridTextColumn Header="字节序" Binding="{Binding Order}" Width="85"/>
@@ -226,7 +226,13 @@
                          Margin="0,0,0,6"/>
               <TextBlock Text="{Binding SelectedMessage.HexId}" FontWeight="SemiBold"
                          FontSize="16" Margin="0,0,0,7"/>
-              <TextBlock Text="{Binding SelectedMessage.Name}" Margin="0,0,0,5"/>
+              <TextBlock Text="{Binding SelectedMessage.DisplayName}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,5"/>
+              <TextBlock Text="报文中文别名" Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,7,0,4"/>
+              <TextBox Text="{Binding MessageAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="可直接输入中文名称；原始 DBC 报文标识和 CAN ID 不会修改" Margin="0,0,0,5"/>
+              <TextBlock Text="留空表示使用 DBC 原始名称或已有中文注释；保存 DBC 后，自动测试与手动台架同步显示。"
+                         FontSize="10" Foreground="{StaticResource Subtle}" TextWrapping="Wrap"
+                         Margin="0,0,0,8"/>
               <TextBlock Text="{Binding SelectedMessage.Dlc,StringFormat='DLC：{0} 字节'}"
                          Foreground="{StaticResource Subtle}"/>
               <Button Content="编辑报文参数…" Command="{Binding EditMessageCommand}"
@@ -234,8 +240,12 @@
               <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,14"/>
               <TextBlock Text="当前信号" FontSize="11" Foreground="{StaticResource Subtle}"
                          Margin="0,0,0,6"/>
-              <TextBlock Text="{Binding SelectedSignal.Name}" FontSize="16"
-                         FontWeight="SemiBold" Margin="0,0,0,9"/>
+              <TextBlock Text="{Binding SelectedSignal.DisplayName}" FontSize="15"
+                         FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,7"/>
+              <TextBlock Text="信号中文别名" Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,5,0,4"/>
+              <TextBox Text="{Binding SignalAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="中文名称用于界面显示和搜索；发送与解析始终引用 DBC 原始信号名称"
+                       Margin="0,0,0,9"/>
               <TextBlock Text="{Binding SelectedSignal.Order,StringFormat='字节序：{0}'}"
                          Margin="0,0,0,6"/>
               <TextBlock Text="{Binding SelectedSignal.Signed,StringFormat='数值类型：{0}'}"
