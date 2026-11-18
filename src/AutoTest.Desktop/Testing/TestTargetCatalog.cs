@@ -4,13 +4,14 @@ using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.ControllerConfig;
 using AutoTest.Projects.Dbc;
+using AutoTest.Projects.Dbc.Editing;
 using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
 
 namespace AutoTest.Desktop.Testing;
 
 public sealed record MappingChoice(string Label, TestTargetMapping Mapping, DbcMessage? Message = null,
-    DbcDisplayNames? DisplayNames = null)
+    DbcDisplayNames? DisplayNames = null, IReadOnlyDictionary<long, string>? ValueLabels = null)
 {
     public override string ToString() => Label;
 }
@@ -56,6 +57,9 @@ public static class TestTargetCatalog
                     var source = DbcSource.Load(bytes);
                     var dbc = source.Parse(asset.Name);
                     var displayNames = DbcDisplayNames.Parse(source.Text);
+                    // Existing DBC VAL_ definitions are the only authoritative
+                    // source of symbolic states such as 驻车=2.
+                    var valueTables = DbcWorkbenchDocument.Import(asset.Name, source.Text).ValueTables;
                     foreach (var msg in dbc.Messages)
                     {
                         var frameId = msg.ArbitrationId;
@@ -75,7 +79,9 @@ public static class TestTargetCatalog
                                 (signal.Unit.Length == 0 ? "" : " (" + signal.Unit + ")"),
                                 new TestTargetMapping(alias, TestTargetKind.Signal, asset.Id,
                                     asset.Revision, asset.Sha256, BusRole.DutCan,
-                                    frameId, msg.IsExtended, signal.Name, signal.Unit), msg, displayNames));
+                                    frameId, msg.IsExtended, signal.Name, signal.Unit), msg, displayNames,
+                                valueTables.FirstOrDefault(x =>
+                                    x.MessageId == msg.Id && x.SignalName == signal.Name)?.Labels));
                         }
                     }
                 }
