@@ -89,6 +89,9 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private string _status = "仅操作真实硬件。请先连接主控板并加载工程配置。";
     private string _lastKeyAck = "未知：未收到本会话的 Key 操作 ACK";
     private string _lastIgnAck = "未知：未在本会话下发 IGN";
+    private string _ignGpioLabel = "未读取";
+    private string _clamp1GpioLabel = "未读取";
+    private string _clamp2GpioLabel = "未读取";
     private ProfileChoice? _selectedProfile;
     private EcuControlProfile? _controller;
     private bool _useDbcMessage;
@@ -188,6 +191,14 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     public string IgnConfirmation { get => _ignConfirmation; set => SetProperty(ref _ignConfirmation, value ?? ""); }
     public string ClampConfirmation { get => _clampConfirmation; set => SetProperty(ref _clampConfirmation, value ?? ""); }
     public string LastClampStatus { get => _lastClampStatus; private set => SetProperty(ref _lastClampStatus, value); }
+    public string IgnGpioLabel { get => _ignGpioLabel; private set => SetProperty(ref _ignGpioLabel, value); }
+    public string Clamp1GpioLabel { get => _clamp1GpioLabel; private set => SetProperty(ref _clamp1GpioLabel, value); }
+    public string Clamp2GpioLabel { get => _clamp2GpioLabel; private set => SetProperty(ref _clamp2GpioLabel, value); }
+    private void ShowClampGpio(byte levels)
+    {
+        Clamp1GpioLabel = (levels & 1) == 0 ? "GPIO 低" : "GPIO 高";
+        Clamp2GpioLabel = (levels & 2) == 0 ? "GPIO 低" : "GPIO 高";
+    }
     public bool ClampSafetyConfirmed
     {
         get => _clampSafetyConfirmed;
@@ -339,6 +350,9 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             ClampConfirmation = "";
             ClampSafetyConfirmed = false;
             LastClampStatus = "连接世代已改变；夹具实体状态 UNKNOWN，需重新核对现场。";
+            IgnGpioLabel = "未读取";
+            Clamp1GpioLabel = "未读取";
+            Clamp2GpioLabel = "未读取";
             LastKeyAck = "未知：连接已改变，原状态不可继承";
             LastIgnAck = "未知：连接已改变，原状态不可继承";
             RaisePropertyChanged(nameof(IsConnected));
@@ -678,6 +692,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             "。当前固件需匹配 USB v0.2，确认现场连接安全后继续？",
             "确认真实 IGN 操作", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (approved != MessageBoxResult.Yes) { Status = "已取消 IGN 操作。"; return; }
+        IgnGpioLabel = "待回读";
         await _hardware.SendManualIgnAsync(IgnOn, IgnExpectedConsent);
         LastIgnAck = "主控 ACK · IGN 请求 " + (IgnOn ? "ON" : "OFF") + "，实际 IGN 电平未测量";
         IgnConfirmation = "";
@@ -686,6 +701,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private async Task ReadIgnAsync() => await Execute("读取 IGN GPIO", async () =>
     {
         bool gpio = await _hardware.ReadIgnLevelAsync();
+        IgnGpioLabel = gpio ? "GPIO 高" : "GPIO 低";
         LastIgnAck = "MCU GPIO 读回 " + (gpio ? "HIGH" : "LOW") +
             "（不是 J1 C6 电压或 ECU IGN 反馈）";
         Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
@@ -695,6 +711,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private async Task ReadClampsAsync() => await Execute("读取两夹具 GPIO", async () =>
     {
         byte levels = await _hardware.ReadClampLevelsAsync();
+        ShowClampGpio(levels);
         LastClampStatus = "MCU GPIO · 夹具1=" + ((levels & 1) != 0 ? "HIGH" : "LOW") +
             "，夹具2=" + ((levels & 2) != 0 ? "HIGH" : "LOW") +
             "（不是阀位或实际 J1 电压）";
@@ -723,6 +740,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         if (approved != MessageBoxResult.Yes) { Status = "已取消夹具操作。"; return; }
         try
         {
+            if (clamp == 1) Clamp1GpioLabel = "待回读";
+            else Clamp2GpioLabel = "待回读";
             await _hardware.SendManualClampAsync(clamp, press, ClampExpectedConsent);
             ClampConfirmation = "";
             LastClampStatus = "夹具" + clamp + " " + (press ? "压紧" : "释放") +
@@ -733,6 +752,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             try
             {
                 byte levels = await _hardware.ReadClampLevelsAsync();
+                ShowClampGpio(levels);
                 bool gpio = (levels & (1 << (clamp - 1))) != 0;
                 LastClampStatus += " GPIO读回 0x" + levels.ToString("X2") +
                     (gpio == press ? "（MCU电平匹配请求）。" : "（MCU电平与请求不一致！）。");
@@ -741,12 +761,16 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             }
             catch (Exception readError)
             {
+                Clamp1GpioLabel = "未知";
+                Clamp2GpioLabel = "未知";
                 LastClampStatus += " GPIO读回失败：" + readError.Message +
                     "；实体状态不可推断。";
             }
         }
         catch
         {
+            if (clamp == 1) Clamp1GpioLabel = "未知";
+            else Clamp2GpioLabel = "未知";
             LastClampStatus = "夹具" + clamp + " 操作失败或未确认；实体状态 UNKNOWN。";
             throw;
         }

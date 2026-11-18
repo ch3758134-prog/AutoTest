@@ -176,6 +176,9 @@ public sealed partial class ManualBenchViewModel
         get => _keyActionRunStatus;
         private set => SetProperty(ref _keyActionRunStatus, value);
     }
+    public string KeyLibraryState => IsKeyActionRunning ? "执行中" :
+        (KeyActionsDirty || ControllerBindingNeedsSave) ? "未保存" :
+        _keyCatalogSession is null ? "未创建" : "已保存";
     public string KeyCatalogRevisionLabel => _keyCatalogSession is null
         ? "尚未保存到工程" : "工程动作库 · Revision " + _keyCatalogSession.AssetRevision +
         (KeyActionsDirty ? " · 未保存修改" : "");
@@ -236,6 +239,7 @@ public sealed partial class ManualBenchViewModel
         RaisePropertyChanged(nameof(CanSaveKeyActions));
         RaisePropertyChanged(nameof(CanRunKeyAction));
         RaisePropertyChanged(nameof(KeyCatalogRevisionLabel));
+        RaisePropertyChanged(nameof(KeyLibraryState));
         AddKeyActionCommand?.RaiseCanExecuteChanged();
         EditKeyActionCommand?.RaiseCanExecuteChanged();
         ExecuteKeyActionCommand?.RaiseCanExecuteChanged();

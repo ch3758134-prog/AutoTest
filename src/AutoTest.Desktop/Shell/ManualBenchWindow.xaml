@@ -9,11 +9,11 @@
   <Style x:Key="BenchHeader" TargetType="TextBlock">
    <Setter Property="FontSize" Value="15"/>
    <Setter Property="FontWeight" Value="SemiBold"/>
-   <Setter Property="Foreground" Value="#244E7D"/>
+   <Setter Property="Foreground" Value="#263C53"/>
   </Style>
   <Style x:Key="BenchHint" TargetType="TextBlock">
    <Setter Property="FontSize" Value="11"/>
-   <Setter Property="Foreground" Value="#71869D"/>
+   <Setter Property="Foreground" Value="#61758A"/>
    <Setter Property="TextWrapping" Value="Wrap"/>
   </Style>
   <Style x:Key="BenchCard" TargetType="Border">
@@ -36,7 +36,7 @@
  </Window.Resources>
  <Grid>
   <Grid.RowDefinitions>
-   <RowDefinition Height="64"/>
+   <RowDefinition Height="55"/>
    <RowDefinition Height="*"/>
    <RowDefinition Height="37"/>
   </Grid.RowDefinitions>
@@ -45,12 +45,33 @@
    <DockPanel Margin="15,10" LastChildFill="True">
     <Button DockPanel.Dock="Right" Content="连接 / 断开" Command="{Binding ConnectCommand}"
      Style="{StaticResource AtPrimaryButton}" Padding="15,8" Margin="9,0,0,0"/>
-    <Button DockPanel.Dock="Right" Content="刷新工程资源" Command="{Binding ReloadProfilesCommand}"
+    <Button DockPanel.Dock="Right" Content="刷新资源" Command="{Binding ReloadProfilesCommand}"
      Padding="12,7" Margin="9,0,0,0"/>
     <StackPanel>
-     <TextBlock Text="AutoTest · 真实手动台架" Style="{StaticResource BenchHeader}" FontSize="17"/>
-     <TextBlock Text="{Binding ConnectionStatus}" Foreground="#6C8198" Margin="0,3,0,0" FontSize="11"
-      MaxWidth="1150" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConnectionStatus}"/>
+     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+      <TextBlock Text="手动台架" Style="{StaticResource BenchHeader}" FontSize="17"
+       VerticalAlignment="Center" Margin="0,0,12,0"/>
+      <Border Background="#EDF2F7" Padding="10,5" CornerRadius="12" ToolTip="{Binding ConnectionStatus}">
+       <StackPanel Orientation="Horizontal">
+        <TextBlock Text="●" Foreground="#72889F" Margin="0,0,6,0"/>
+        <TextBlock>
+         <TextBlock.Style>
+          <Style TargetType="TextBlock">
+           <Setter Property="Text" Value="USB 未连接"/>
+           <Setter Property="Foreground" Value="#4B6279"/>
+           <Setter Property="FontSize" Value="11"/>
+           <Style.Triggers>
+            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+             <Setter Property="Text" Value="USB 已连接"/>
+             <Setter Property="Foreground" Value="#267850"/>
+            </DataTrigger>
+           </Style.Triggers>
+          </Style>
+         </TextBlock.Style>
+        </TextBlock>
+       </StackPanel>
+      </Border>
+     </StackPanel>
     </StackPanel>
    </DockPanel>
   </Border>
@@ -72,9 +93,8 @@
       <RowDefinition Height="Auto"/>
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0" Margin="0,0,0,10">
-      <TextBlock Text="CAN1 · 多报文发送" Style="{StaticResource BenchHeader}"/>
-      <TextBlock Text="列表直接单发或勾选批量操作；点击“编辑”才展开当前报文，DBC 为可选方式。"
-       Style="{StaticResource BenchHint}" Margin="0,3,0,9"/>
+      <TextBlock Text="CAN1 发送" Style="{StaticResource BenchHeader}"/>
+      
       <DockPanel LastChildFill="False">
        <Button Content="+ 新增" Command="{Binding AddCanRowCommand}" Padding="10,6" Margin="0,0,5,0"/>
        <Button Content="复制" Command="{Binding CopyCanRowCommand}" Padding="9,6" Margin="0,0,5,0"/>
@@ -157,10 +177,29 @@
        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
         <Button Content="收起编辑" DockPanel.Dock="Right" Command="{Binding CloseCanEditorCommand}"
          Padding="8,4" Margin="8,0,0,0"/>
-        <StackPanel>
-         <TextBlock Text="当前报文 · 详细编辑" Style="{StaticResource BenchHeader}" FontSize="13"/>
-         <TextBlock Text="可直接编辑 HEX；需要时再选择 DBC。" Style="{StaticResource BenchHint}"/>
-        </StackPanel>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+      <TextBlock Text="手动台架" Style="{StaticResource BenchHeader}" FontSize="17"
+       VerticalAlignment="Center" Margin="0,0,13,0"/>
+      <Border CornerRadius="12" Padding="9,4" Background="#EDF2F7"
+       ToolTip="{Binding ConnectionStatus}">
+       <StackPanel Orientation="Horizontal">
+        <TextBlock Text="●" Foreground="#8291A1" Margin="0,0,6,0"/>
+        <TextBlock Text="USB 未连接" FontSize="11" Foreground="#445D75">
+         <TextBlock.Style>
+          <Style TargetType="TextBlock">
+           <Setter Property="Text" Value="USB 未连接"/>
+           <Style.Triggers>
+            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+             <Setter Property="Text" Value="USB 已连接"/>
+             <Setter Property="Foreground" Value="#267850"/>
+            </DataTrigger>
+           </Style.Triggers>
+          </Style>
+         </TextBlock.Style>
+        </TextBlock>
+       </StackPanel>
+      </Border>
+     </StackPanel>
        </DockPanel>
        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel DataContext="{Binding SelectedCanRow}"
@@ -215,8 +254,7 @@
           <TextBox Text="{Binding DataHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
            MinHeight="31" Padding="7,5" ToolTip="如 01 02 03 04"/>
          </StackPanel>
-         <TextBlock Text="运行前会核对 ID、DLC、DBC 资源和周期；运行中冻结所选报文快照。"
-          Style="{StaticResource BenchHint}" Margin="0,12,0,0"/>
+         
         </StackPanel>
        </ScrollViewer>
       </DockPanel>
@@ -229,10 +267,9 @@
     <DockPanel LastChildFill="True">
      <StackPanel DockPanel.Dock="Top">
       <TextBlock Text="工位控制" Style="{StaticResource BenchHeader}"/>
-      <TextBlock Text="同一个 USB 会话 · 独立 IGN 与双夹具 · CAN0 按键板"
-       Style="{StaticResource BenchHint}" Margin="0,4,0,9"/>
-      <CheckBox IsChecked="{Binding ClampSafetyConfirmed,Mode=TwoWay}" Margin="0,0,0,9">
-       <TextBlock Text="已检查夹具和气路安全，可进行夹具实体操作" TextWrapping="Wrap"/>
+      
+      <CheckBox IsChecked="{Binding ClampSafetyConfirmed,Mode=TwoWay}" Margin="0,7,0,9" ToolTip="确认线束、气路及机械区域安全后勾选；USB 重连会自动锁定。">
+       <TextBlock Text="解锁夹具" FontWeight="SemiBold"/>
       </CheckBox>
       <Grid>
        <Grid.ColumnDefinitions>
@@ -246,6 +283,7 @@
         Background="#F9FBFE" CornerRadius="6" Padding="7">
         <StackPanel>
          <TextBlock Text="IGN" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
+          <TextBlock Text="{Binding IgnGpioLabel}" FontSize="10" Foreground="#60758C" Margin="0,0,0,6" ToolTip="{Binding LastIgnAck}"/>
          <Button Content="ON" Click="IgnOn_Click" IsEnabled="{Binding CanOperateGpio}" Margin="0,0,0,4" MinHeight="30"/>
          <Button Content="OFF" Click="IgnOff_Click" IsEnabled="{Binding CanOperateGpio}" MinHeight="30"/>
         </StackPanel>
@@ -254,6 +292,7 @@
         Background="#F9FBFE" CornerRadius="6" Padding="7">
         <StackPanel>
          <TextBlock Text="夹具 1 · B5" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
+          <TextBlock Text="{Binding Clamp1GpioLabel}" FontSize="10" Foreground="#60758C" Margin="0,0,0,6" ToolTip="{Binding LastClampStatus}"/>
          <Button Content="压紧" Click="Clamp1Press_Click" IsEnabled="{Binding CanSendClamp}" Margin="0,0,0,4" MinHeight="30"/>
          <Button Content="释放" Click="Clamp1Release_Click" IsEnabled="{Binding CanSendClamp}" MinHeight="30"/>
         </StackPanel>
@@ -262,6 +301,7 @@
         Background="#F9FBFE" CornerRadius="6" Padding="7">
         <StackPanel>
          <TextBlock Text="夹具 2 · B4" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
+          <TextBlock Text="{Binding Clamp2GpioLabel}" FontSize="10" Foreground="#60758C" Margin="0,0,0,6" ToolTip="{Binding LastClampStatus}"/>
          <Button Content="压紧" Click="Clamp2Press_Click" IsEnabled="{Binding CanSendClamp}" Margin="0,0,0,4" MinHeight="30"/>
          <Button Content="释放" Click="Clamp2Release_Click" IsEnabled="{Binding CanSendClamp}" MinHeight="30"/>
         </StackPanel>
@@ -272,15 +312,14 @@
         Padding="8,5" Margin="6,0,0,0"/>
        <Button DockPanel.Dock="Right" Content="读 IGN" Command="{Binding ReadIgnCommand}"
         Padding="8,5" Margin="6,0,0,0"/>
-       <TextBlock Text="状态仅为 MCU 命令/回读，不代表机械到位"
-        Style="{StaticResource BenchHint}" VerticalAlignment="Center"/>
+       
       </DockPanel>
-      <TextBlock Text="{Binding LastIgnAck}" Style="{StaticResource BenchHint}" Margin="0,6,0,0" MaxHeight="30"/>
-      <TextBlock Text="{Binding LastClampStatus}" Style="{StaticResource BenchHint}" Margin="0,4,0,0" MaxHeight="38"/>
+      
+      
       <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
       <DockPanel Margin="0,0,0,8">
        <TextBlock DockPanel.Dock="Left" Text="按键动作 · CAN0" Style="{StaticResource BenchHeader}" FontSize="14"/>
-       <TextBlock DockPanel.Dock="Right" Text="K01～K20 / 电阻网络" Style="{StaticResource BenchHint}"/>
+       
       </DockPanel>
      </StackPanel>
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -290,11 +329,12 @@
      Style="{StaticResource AtPrimaryButton}" Padding="9,6" Margin="6,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="+ 新建动作" Command="{Binding AddKeyActionCommand}"
      Padding="9,6" Margin="6,0,0,0"/>
-    <TextBlock Text="{Binding KeyCatalogRevisionLabel}" Style="{StaticResource BenchHint}"
-     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+    <Border Background="#EDF2F7" CornerRadius="10" Padding="9,4"
+     VerticalAlignment="Center" ToolTip="{Binding KeyCatalogRevisionLabel}">
+     <TextBlock Text="{Binding KeyLibraryState}" FontWeight="SemiBold" Foreground="#425E77" FontSize="11"/>
+    </Border>
    </DockPanel>
-   <TextBlock Text="常用按键动作 · 左键执行，右键编辑" FontWeight="SemiBold"
-    Foreground="#2C527D" Margin="0,3,0,8"/>
+   
    <ItemsControl ItemsSource="{Binding KeyActions}">
     <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
     <ItemsControl.ItemTemplate>
@@ -302,32 +342,29 @@
       <Border BorderThickness="1" BorderBrush="#CFDFF0" Background="#F8FBFF"
        CornerRadius="7" Margin="0,0,6,7" Padding="7">
        <StackPanel>
-        <Button Tag="{Binding}" Click="RunKeyAction_Click"
-         PreviewMouseRightButtonUp="EditKeyAction_RightClick" Background="Transparent"
-         BorderThickness="0" Padding="2,4" HorizontalContentAlignment="Left"
-         ToolTip="左键确认运行整个动作；右键编辑步骤">
-         <StackPanel>
-          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#235B99"
-           TextTrimming="CharacterEllipsis"/>
-          <TextBlock Text="{Binding Summary}" FontSize="10" Foreground="#72889E"
-           Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
-         </StackPanel>
-        </Button>
-        <DockPanel Margin="0,5,0,0">
-         <Button DockPanel.Dock="Right" Content="编辑" Click="SelectKeyAction_Click"
-          Tag="{Binding}" Padding="8,3"/>
-         <TextBlock Text="CAN0 · KEY_SIM" FontSize="10" Foreground="#7992AB"
-          VerticalAlignment="Center"/>
-        </DockPanel>
+        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#244E74"
+         TextTrimming="CharacterEllipsis" Margin="0,0,0,5"/>
+        <TextBlock Text="{Binding Summary}" Foreground="#60758C" FontSize="10"
+         TextTrimming="CharacterEllipsis" Margin="0,0,0,7"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+         <Button Content="运行" Tag="{Binding}" Click="RunKeyAction_Click"
+          PreviewMouseRightButtonUp="EditKeyAction_RightClick"
+          IsEnabled="{Binding DataContext.CanRunKeyAction,RelativeSource={RelativeSource AncestorType=Window}}"
+          Padding="9,4" Margin="0,0,5,0" ToolTip="仅运行已保存动作；真实执行仍需操作确认"/>
+         <Button Content="编辑" Tag="{Binding}" Click="SelectKeyAction_Click" Padding="9,4"/>
+        </StackPanel>
        </StackPanel>
       </Border>
      </DataTemplate>
     </ItemsControl.ItemTemplate>
    </ItemsControl>
-   <TextBlock Text="每个动作由多段 KEY 组合组成；未保存的草稿不能真实执行。"
-    Style="{StaticResource BenchHint}" Margin="0,3,0,8"/>
+   
+   <StackPanel x:Name="KeyEditorSection"
+    Visibility="{Binding IsKeyEditorExpanded,Converter={StaticResource BoolToVisibility}}">
    <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,8,0,10"/>
    <DockPanel Margin="0,0,0,8">
+    <Button DockPanel.Dock="Right" Content="完成" Click="CloseKeyEditor_Click"
+     Padding="8,5" Margin="4,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="复制动作" Command="{Binding CopyKeyActionCommand}"
      Padding="8,5" Margin="4,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="删除动作" Command="{Binding DeleteKeyActionCommand}"
@@ -349,8 +386,8 @@
     </DockPanel>
     <ListBox ItemsSource="{Binding SelectedKeyAction.Steps}"
      SelectedItem="{Binding SelectedKeyStep,Mode=TwoWay}"
-     MinHeight="85" MaxHeight="230" BorderBrush="#E0E9F3" Padding="4"
-     ScrollViewer.VerticalScrollBarVisibility="Auto">
+     MinHeight="60" BorderBrush="#E0E9F3" Padding="4"
+     ScrollViewer.VerticalScrollBarVisibility="Disabled">
      <ListBox.ItemTemplate>
       <DataTemplate>
        <Grid Margin="3,4" MinHeight="30">
@@ -370,18 +407,29 @@
     <Border Background="#F7FAFE" BorderBrush="#DDE8F5" BorderThickness="1"
      CornerRadius="6" Padding="9" Margin="0,9,0,0">
      <StackPanel IsEnabled="{Binding CanEditKeyActions}">
-      <TextBlock Text="所选步骤 · 20 路 KEY 开关组合" Foreground="#315E8E"
+      <TextBlock Text="KEY 组合" Foreground="#315E8E"
        FontWeight="SemiBold" Margin="0,0,0,6"/>
       <WrapPanel Margin="0,0,0,5">
-       <Button Content="全部断开" Command="{Binding ClearStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
-       <Button Content="反选20路" Command="{Binding InvertStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
+       <Button Content="清空" Command="{Binding ClearStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
+       <Button Content="反选" Command="{Binding InvertStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
        <Button Content="复制上一段" Command="{Binding CopyPreviousStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
       </WrapPanel>
-      <StackPanel Orientation="Horizontal" Margin="0,3,0,6">
-       <TextBlock Text="掩码 HEX" VerticalAlignment="Center" Margin="0,0,8,0"/>
-       <TextBox Text="{Binding SelectedKeyStep.MaskHexText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-        Width="108" Padding="6,5" ToolTip="范围 0x00000～0xFFFFF，输入后同步 20 路 KEY 勾选"/>
-      </StackPanel>
+      <Grid Margin="0,3,0,6">
+       <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/><ColumnDefinition Width="105"/>
+        <ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="72"/><ColumnDefinition Width="Auto"/>
+       </Grid.ColumnDefinitions>
+       <TextBlock Grid.Column="0" Text="掩码" VerticalAlignment="Center" Margin="0,0,6,0"/>
+       <TextBox Grid.Column="1" Text="{Binding SelectedKeyStep.MaskHexText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+        Padding="6,5" ToolTip="掩码 0x00000～0xFFFFF；同步勾选 20 KEY"/>
+       <TextBlock Grid.Column="3" Text="保持" VerticalAlignment="Center" Margin="0,0,6,0"/>
+       <TextBox Grid.Column="4" Text="{Binding SelectedKeyStep.HoldMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+        Padding="6,5" MinHeight="28"/>
+       <TextBlock Grid.Column="5" Text="ms" VerticalAlignment="Center" Margin="4,0,0,0"/>
+      </Grid>
+      <TextBlock Text="{Binding SelectedKeyStep.Summary}" Foreground="#516D87"
+       TextTrimming="CharacterEllipsis" FontSize="11" Margin="0,0,0,5"/>
       <TextBlock Text="{Binding SelectedKeyStep.MaskError}" Foreground="#B34035"
        FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
       <ItemsControl ItemsSource="{Binding StepKeys}">
@@ -393,11 +441,7 @@
         </DataTemplate>
        </ItemsControl.ItemTemplate>
       </ItemsControl>
-      <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
-       <TextBlock Text="保持时间 (ms)" VerticalAlignment="Center" Margin="0,0,9,0"/>
-       <TextBox Text="{Binding SelectedKeyStep.HoldMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-        Padding="6,5" Width="100" MinHeight="28"/>
-      </StackPanel>
+      
      </StackPanel>
     </Border>
    </StackPanel>
@@ -409,8 +453,7 @@
      Foreground="#315E8E" VerticalAlignment="Center"/>
    </DockPanel>
    <TextBlock Text="{Binding KeyActionRunStatus}" Style="{StaticResource BenchHint}" Margin="0,6,0,0"/>
-   <TextBlock Text="执行结束不自动释放；每个步骤始终只有 KEY 组合与保持时间。"
-    Style="{StaticResource BenchHint}" Margin="0,6,0,0"/>
+   
   </StackPanel>
  </ScrollViewer>
     </DockPanel>
@@ -426,8 +469,8 @@
       <RowDefinition Height="2*"/>
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0" Margin="0,0,0,9">
-      <TextBlock Text="CAN0 / CAN1 · 实时监控" Style="{StaticResource BenchHeader}"/>
-      <TextBlock Text="{Binding MonitorCountSummary}" Style="{StaticResource BenchHint}" Margin="0,4,0,9"/>
+      <TextBlock Text="CAN 实时监控" Style="{StaticResource BenchHeader}" ToolTip="{Binding MonitorCountSummary}"/>
+      
       <Grid>
        <Grid.ColumnDefinitions>
         <ColumnDefinition Width="86"/><ColumnDefinition Width="*"/>
@@ -446,7 +489,8 @@
        <CheckBox Content="逐帧时间线" IsChecked="{Binding MonitorShowTimeline,Mode=TwoWay}"
         VerticalAlignment="Center"/>
       </DockPanel>
-     </StackPanel>
+      </StackPanel>
+   </StackPanel>
      <DataGrid Grid.Row="1" ItemsSource="{Binding MonitorDisplay}"
       AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
       CanUserDeleteRows="False" HeadersVisibility="Column"

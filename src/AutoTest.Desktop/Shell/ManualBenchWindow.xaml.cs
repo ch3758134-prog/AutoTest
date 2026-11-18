@@ -124,8 +124,16 @@ public partial class ManualBenchWindow : Window
     {
         if (sender is System.Windows.Controls.Button
             { Tag: ManualBenchViewModel.KeyActionEditor action })
+        {
             _model.SelectedKeyAction = action;
+            _model.IsKeyEditorExpanded = true;
+            Dispatcher.BeginInvoke(new Action(() => KeyEditorSection.BringIntoView()),
+                System.Windows.Threading.DispatcherPriority.Background);
+        }
     }
+
+    private void CloseKeyEditor_Click(object sender, RoutedEventArgs e) =>
+        _model.IsKeyEditorExpanded = false;
 
     private void EditKeyAction_RightClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -133,6 +141,9 @@ public partial class ManualBenchWindow : Window
             { Tag: ManualBenchViewModel.KeyActionEditor action })
         {
             _model.SelectedKeyAction = action;
+            _model.IsKeyEditorExpanded = true;
+            Dispatcher.BeginInvoke(new Action(() => KeyEditorSection.BringIntoView()),
+                System.Windows.Threading.DispatcherPriority.Background);
             e.Handled = true;
         }
     }
