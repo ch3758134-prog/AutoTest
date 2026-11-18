@@ -63,7 +63,7 @@ public sealed class StepRowProjection : BindableBase
     public bool IsSearchMatch { get; }
     public bool IsNewDraft { get; }
     public bool IsBreakpoint => BreakpointMark.Length > 0;
-    public bool IsUnavailable => State is "暂不能运行" or "未知类型" or "旧文件待核对";
+    public bool IsUnavailable => State is "暂不能运行" or "旧步骤待转换" or "未知类型" or "旧文件待核对";
     public bool HasRealExecutionError { get; }
     public string StateDetail { get; }
     public bool IsQuickEditable =>
@@ -181,6 +181,8 @@ public sealed class StepRowProjection : BindableBase
             step.Properties.GetValueOrDefault("profile", "—"));
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(step.Type);
         State = newDraft ? "待完善" :
+            step.Type is "KeySet" or "CanSend" or "CanWait" && realFact is null
+                ? "旧步骤待转换" :
             StepUiCatalog.RequiresLegacyReview(step) && realFact is null ? "旧文件待核对" :
             realFact is not null ? realFact.Status switch
             {
