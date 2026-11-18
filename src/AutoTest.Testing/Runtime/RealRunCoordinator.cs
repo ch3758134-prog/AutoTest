@@ -6,7 +6,7 @@ using AutoTest.Testing.Preparation;
 
 namespace AutoTest.Testing.Runtime;
 
-public enum RealStepStatus { Completed, ConditionFalse, NoData, Timeout, InvalidData, DeviceError, Cancelled }
+public enum RealStepStatus { Completed, Skipped, ConditionFalse, NoData, Timeout, InvalidData, DeviceError, Cancelled }
 public enum RealTestVerdict { Passed, Failed, Inconclusive, Error, Aborted }
 
 public sealed record RealStepFact(StepId Step, string Type, RealStepStatus Status,
