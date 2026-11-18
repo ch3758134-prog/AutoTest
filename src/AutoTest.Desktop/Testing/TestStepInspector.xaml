@@ -58,7 +58,7 @@
     </StackPanel>
 
     <StackPanel x:Name="RawCanPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="CAN1 原始帧" Foreground="#4B6382" FontWeight="SemiBold"
+     <TextBlock Text="CAN0 原始帧" Foreground="#4B6382" FontWeight="SemiBold"
       FontSize="11" Margin="0,0,0,8"/>
      <TextBlock Text="CAN ID · 16 进制" Foreground="#61738B" FontSize="11" Margin="0,0,0,5"/>
      <TextBox x:Name="FrameIdInput" Margin="0,0,0,8" ToolTip="例如 0x123"/>
