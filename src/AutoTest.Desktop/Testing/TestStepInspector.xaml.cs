@@ -261,7 +261,7 @@ public partial class TestStepInspector : UserControl
             _selected = chosen;
             TypeIcon.Text = chosen.StepType switch
             {
-                "Write" or "CanSend" or "Read" or "CanWait" => "⇄",
+                "Write" or "CanSend" or "Read" or "CanWait" or "AssertSignal" => "⇄",
                 "UdsRequest" or "Flash" => "◇",
                 "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCompare" => "〰",
                 "If" or "Switch" or "Case" or "TryCatch" => "⑂",
@@ -305,7 +305,7 @@ public partial class TestStepInspector : UserControl
         var needsLegacyReview = StepUiCatalog.RequiresLegacyReview(node);
         ImportWarning.Visibility = needsLegacyReview ? Visibility.Visible : Visibility.Collapsed;
         ConvertImportedAssertionButton.Visibility = needsLegacyReview &&
-            !_convertedLegacy && node.Type is "Read" or "WaitUntil" &&
+            !_convertedLegacy && (node.Type is "Read" or "WaitUntil") &&
             node.Properties.TryGetValue("expectation", out var legacyExpected) &&
             !string.IsNullOrWhiteSpace(legacyExpected)
             ? Visibility.Visible : Visibility.Collapsed;
