@@ -51,6 +51,61 @@ public static class StepTreeValidator
                 !document.Mappings.Any(m => string.Equals(m.Name, targetName,
                     StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped target {targetName}");
+            if (!allowIncompleteSteps && n.Type == "Write")
+            {
+                var targetName = n.Properties.GetValueOrDefault("target", "");
+                var mapping = document.Mappings.FirstOrDefault(m =>
+                    string.Equals(m.Name, targetName, StringComparison.OrdinalIgnoreCase));
+                if (mapping is not null)
+                {
+                    if (mapping.Kind is not (TestTargetKind.RawCan or TestTargetKind.CanMessage or
+                        TestTargetKind.RawKey or TestTargetKind.Button or TestTargetKind.Ignition))
+                        errors.Add($"{location}: Write 目标类型 {mapping.Kind} 不支持真实硬件操作");
+                    if (mapping.Kind == TestTargetKind.CanMessage &&
+                        mapping.Role != AutoTest.Contracts.BusRole.DutCan)
+                        errors.Add($"{location}: DBC 发送报文必须绑定 ECU CAN0");
+                }
+                int period = 0;
+                if (n.Properties.TryGetValue("periodMs", out var periodText) &&
+                    (!int.TryParse(periodText, out period) || period != 0 && period is < 20 or > 600000))
+                    errors.Add($"{location}: CAN 周期必须是 0 或 20～600000ms");
+                if (n.Properties.TryGetValue("durationMs", out var durationText) &&
+                    (!int.TryParse(durationText, out var duration) || duration is < 0 or > 1800000))
+                    errors.Add($"{location}: 周期持续时间必须是 0～1800000ms");
+                if (period > 0 && mapping is not null &&
+                    mapping.Kind is not (TestTargetKind.RawCan or TestTargetKind.CanMessage))
+                    errors.Add($"{location}: 非 CAN 步骤不能设置 CAN 周期");
+            }
+            if (!allowIncompleteSteps && n.Type is "WaitUntil" or "Read")
+            {
+                var targetName = n.Properties.GetValueOrDefault("target", "");
+                var mapping = document.Mappings.FirstOrDefault(m =>
+                    string.Equals(m.Name, targetName, StringComparison.OrdinalIgnoreCase));
+                if (mapping is not null && mapping.Kind != TestTargetKind.Signal)
+                    errors.Add($"{location}: 信号读取/等待必须绑定 DBC Signal");
+                if (!int.TryParse(n.Properties.GetValueOrDefault("timeoutMs", ""), out var timeout) ||
+                    timeout is < 1 or > 600000)
+                    errors.Add($"{location}: 信号等待超时必须是 1～600000ms");
+                if (n.Type == "Read")
+                {
+                    if (n.Properties.GetValueOrDefault("mode", "") is not ("Next" or "Latest" or
+                        "next" or "latest"))
+                        errors.Add($"{location}: Read 模式只能为 Latest 或 Next");
+                    if (!int.TryParse(n.Properties.GetValueOrDefault("maxAgeMs", ""), out var age) ||
+                        age is < 0 or > 600000)
+                        errors.Add($"{location}: Read 最大数据年龄必须是 0～600000ms");
+                }
+            }
+            if (!allowIncompleteSteps && n.Type is "WaitUntil" or "Expect")
+            {
+                if (n.Properties.GetValueOrDefault("operator", "") is not
+                    ("==" or "!=" or "<" or "<=" or ">" or ">="))
+                    errors.Add($"{location}: 比较运算符无效");
+            }
+            if (!allowIncompleteSteps && n.Type == "Calculate" &&
+                n.Properties.GetValueOrDefault("operator", "") is not
+                    ("+" or "-" or "*" or "/"))
+                errors.Add($"{location}: 算术运算符无效");
             if (!allowIncompleteSteps && n.Type == "AssertSignal")
             {
                 var signalTarget = n.Properties.GetValueOrDefault("target", "");
