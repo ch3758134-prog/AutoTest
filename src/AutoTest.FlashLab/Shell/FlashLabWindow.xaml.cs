@@ -480,11 +480,12 @@ public partial class FlashLabWindow : Window
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
                 _vm.FirmwarePath,BinBaseBox.Text,_safetyFilePath,"",
                 LegacyTailSignatureCheck.IsChecked==true);
-            // The exact captured HydEPB profile requires the final signed
-            // 0x1006FE00 block. Reflect the effective frozen behavior in UI
-            // rather than showing an unchecked box while sending signature.
+            // The exact captured HydEPB profile automatically enables its
+            // verified tail. Do NOT mutate the separate manual checkbox:
+            // a later in-place ECU profile edit must never inherit a hidden
+            // manual true value and stamp an unrelated ECU image.
             if(plan.LegacyTailSignature && LegacyTailSignatureCheck.IsChecked!=true)
-                LegacyTailSignatureCheck.IsChecked=true;
+                AddLog("本次 HydEPB 参考配置自动附加已实测签名尾块 0x1006FE00。");
             // Lock the exact original-reference builtin provider BEFORE any
             // CAN action. It does not dynamically load sa_demo or KEY.dll.
             using(var provider=CanToolSecurityProvider.Open(

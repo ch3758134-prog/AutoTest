@@ -155,8 +155,8 @@
         <TextBlock Text="BIN 起始地址（十六进制）" FontSize="11" Margin="5,5,5,1"/>
         <TextBox x:Name="BinBaseBox" Margin="4,2"/>
         <CheckBox x:Name="LegacyTailSignatureCheck" Margin="4,5"
-          Content="使用 CanTool 末尾 12 34 56 78 签名"
-          ToolTip="会覆盖镜像末尾4字节。仅目标 ECU 确认要求时勾选"/>
+          Content="其他 ECU 手动启用尾部 12 34 56 78 签名"
+          ToolTip="实测 HydEPB 配置自动启用并计入任务摘要；其他 ECU 仅在已确认 Bootloader 要求时手动勾选。"/>
        </StackPanel>
       </Expander>
      </StackPanel>
