@@ -129,6 +129,33 @@ public sealed class AuthoringAndRuntimeTests
     }
 
     [Fact]
+    public void ImportedUnverifiedSignalStep_CannotBeRunWithoutExplicitRebind()
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("import review"));
+        var old = N("Read", ("target", "old"), ("legacy.importStatus", "BLOCKED_UNVERIFIED"),
+            ("canId", "0x702"), ("expectation", "=2"));
+        tx.Insert(TestPhase.Test, null, null, 0, old);
+        var errors = new PlanCompiler().Prepare(tx.Current, allowRealOperations: true).Diagnostics;
+        Assert.Contains(errors, item => item.Contains("尚未重新绑定"));
+    }
+
+    [Fact]
+    public void AssertSignal_UsesTheFormalPlanCompiler()
+    {
+        var descriptor = StepDescriptorCatalog.Builtins().Lookup("AssertSignal");
+        Assert.NotNull(descriptor);
+        Assert.Contains("target", descriptor.RequiredProperties);
+        Assert.Contains("expected", descriptor.RequiredProperties);
+        Assert.Contains("timeoutMs", descriptor.RequiredProperties);
+        var tx = new StepEditTransaction(TestDocument.Create("real signal verdict"));
+        tx.Insert(TestPhase.Test, null, null, 0,
+            N("AssertSignal", ("target", "not-mapped"), ("operator", "=="),
+                ("expected", "2"), ("timeoutMs", "5000")));
+        var errors = new PlanCompiler().Prepare(tx.Current, allowRealOperations: true).Diagnostics;
+        Assert.Contains(errors, item => item.Contains("unmapped target"));
+    }
+
+    [Fact]
     public void RemovedOrUnrecognizedStepsAreRejectedRatherThanExecuted()
     {
         var tx = new StepEditTransaction(TestDocument.Create("unknown"));
