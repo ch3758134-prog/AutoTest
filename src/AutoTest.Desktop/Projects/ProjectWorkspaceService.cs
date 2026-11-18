@@ -192,8 +192,9 @@ public sealed partial class ProjectWorkspaceService
     public async Task<DbcEditorSession> SaveDbcEditorAsync(
         DbcEditorSession opened, CancellationToken ct = default)
     {
-        if (!opened.Document.CanEdit)
-            throw new ProjectDataException("DBC_UNSUPPORTED_READONLY", "该 DBC 包含当前写入器不支持的结构，不能编辑保存。");
+        if (!opened.Document.CanSave)
+            throw new ProjectDataException("DBC_UNSUPPORTED_READONLY",
+                "该 DBC 的结构修改暂不支持安全保存。中文别名可独立修改，并保留原文件内容。");
         if (!opened.Document.IsDirty)
             return opened;
 
