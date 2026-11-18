@@ -35,7 +35,7 @@ public static class StepTreeValidator
                 errors.Add($"{location}: 旧版导入步骤“{n.Name}”尚未重新绑定并核对，不能参与真实测试。");
             // CallSubroutine.target is a TEST subroutine identity, not an asset mapping.
             // Only physical/signal operations use TestTargetMapping.
-            if (n.Type is "Write" or "Read" or "WaitUntil" or "WaveStart" &&
+            if (n.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or "WaveStart" &&
                 n.Properties.TryGetValue("target", out var targetName) &&
                 !document.Mappings.Any(m => string.Equals(m.Name, targetName,
                     StringComparison.OrdinalIgnoreCase)))
