@@ -19,7 +19,7 @@ public sealed record TestActionOption(string Key, string Category, string Title,
     public string DisplayName => Category + "  /  " + Title;
     public string Group => Key switch
     {
-        "can" or "can-send" or "can-wait" or "read" or "wait-signal" or "expect"
+        "can" or "can-send" or "can-wait" or "read" or "wait-signal" or "assert-signal" or "expect"
             => "CAN 与数据",
         "key" or "ign" => "工位操作",
         "uds" => "UDS 服务",
@@ -56,7 +56,7 @@ public sealed class TestStepInputField : BindableBase
                 new("*", "乘"),
                 new("/", "除")
             ],
-            "operator" when stepType is "Expect" or "WaitUntil" &&
+            "operator" when stepType is "Expect" or "WaitUntil" or "AssertSignal" &&
                 value is "==" or "!=" or ">" or ">=" or "<" or "<=" =>
             [
                 new("==", "等于"),
@@ -111,6 +111,8 @@ public partial class TestStepInspector : UserControl
             "通过已导入的 DBC 选择信号，将实际读取值保存到变量，不自动判定。"),
         new("wait-signal", "读取与观察", "等待信号条件", "WaitUntil", "signal",
             "持续观察指定 DBC 信号直到满足条件或超时。"),
+        new("assert-signal", "分析与判断", "CAN 信号判定", "AssertSignal", "signal",
+            "选择 DBC 信号及目标值，规定时间内达到条件判定通过；超时且未匹配判定失败，完全无有效数据则无法判定。"),
         new("wave-start", "读取与观察", "开始波形采集", "WaveStart", "signal",
             "从共享 CAN1/DBC 信号流采集真实时序数据。"),
         new("wave-stop", "读取与观察", "结束波形采集", "WaveStop", "",
@@ -174,6 +176,7 @@ public partial class TestStepInspector : UserControl
     private uint _selectedMask;
     private readonly CheckBox[] _rawKeys = new CheckBox[20];
     private bool _updatingRawKeys;
+    private bool _convertedLegacy;
 
 
      public ObservableCollection<MappingChoice> AvailableTargets { get; } = new();
@@ -299,8 +302,20 @@ public partial class TestStepInspector : UserControl
         // The imported source dictionary is not an operator-editable schema.
         // Keep its unrecognised keys in StepNode unchanged; expose only formal
         // TEST parameters that the UI can accurately explain to an engineer.
-        ImportWarning.Visibility = StepUiCatalog.RequiresLegacyReview(node)
+        var needsLegacyReview = StepUiCatalog.RequiresLegacyReview(node);
+        ImportWarning.Visibility = needsLegacyReview ? Visibility.Visible : Visibility.Collapsed;
+        ConvertImportedAssertionButton.Visibility = needsLegacyReview &&
+            !_convertedLegacy && node.Type is "Read" or "WaitUntil" &&
+            node.Properties.TryGetValue("expectation", out var legacyExpected) &&
+            !string.IsNullOrWhiteSpace(legacyExpected)
             ? Visibility.Visible : Visibility.Collapsed;
+        if (needsLegacyReview)
+            ImportWarning.Text = _convertedLegacy
+                ? "正在重建旧版 CAN 解析判定：选择同 CAN ID 的 DBC 信号、核对期望值和超时后应用。旧版启用标记不会自动继承；本次重建完成后，新判定将参与执行。"
+                : "此步骤来自旧测试文件，尚未验证，不能执行。" +
+                  " 原始记录：" + node.Properties.GetValueOrDefault("canId", "未知报文") +
+                  "；信号：" + node.Properties.GetValueOrDefault("displayName", "待核对") +
+                  "；期望：" + node.Properties.GetValueOrDefault("expectation", "未提供") + "。";
         foreach (var item in node.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
         {
             if (!StepUiCatalog.IsOperatorProperty(item.Key) ||
@@ -311,6 +326,49 @@ public partial class TestStepInspector : UserControl
                 ? "要调用的子程序" : null;
             ParameterFields.Add(new TestStepInputField(item.Key, item.Value, label, action.StepType));
         }
+        if (_convertedLegacy && action.StepType == "AssertSignal")
+        {
+            string expected = node.Properties.GetValueOrDefault("expectation", "").Trim();
+            var operators = new[] { ">=", "<=", "!=", "==", ">", "<", "=" };
+            var selected = operators.FirstOrDefault(expected.StartsWith);
+            var compare = selected is null ? "==" : selected == "=" ? "==" : selected;
+            if (selected is not null) expected = expected[selected.Length..].Trim();
+            if (expected.Length == 0) expected = "";
+            var timeout = node.Properties.GetValueOrDefault("timeoutMs",
+                node.Properties.GetValueOrDefault("conditionTimeoutMs", "5000"));
+            ParameterFields.Clear();
+            ParameterFields.Add(new TestStepInputField("operator", compare, stepType: "AssertSignal"));
+            ParameterFields.Add(new TestStepInputField("expected", expected, stepType: "AssertSignal"));
+            ParameterFields.Add(new TestStepInputField("timeoutMs", timeout, stepType: "AssertSignal"));
+        }
+        else
+        {
+            // Imported steps often lack the formally required parameters.
+            // Render them so the engineer can correct the TEST resource, not a raw JSON field.
+            var descriptor = StepDescriptorCatalog.Builtins().Lookup(action.StepType);
+            if (descriptor is not null)
+                foreach (var key in descriptor.RequiredProperties)
+                {
+                    if (key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) continue;
+                    if (key == "value" && action.StepType == "Write") continue;
+                    if (ParameterFields.Any(f => f.Key == key)) continue;
+                    var defaultValue = StepUiCatalog.NewNode(action.StepType)
+                        .Properties.GetValueOrDefault(key, "");
+                    ParameterFields.Add(new TestStepInputField(key, defaultValue,
+                        stepType: action.StepType));
+                }
+        }
+    }
+
+    private void ConvertImportedAssertion_Click(object sender, RoutedEventArgs e)
+    {
+        if (_editing is null || !StepUiCatalog.RequiresLegacyReview(_editing)) return;
+        _convertedLegacy = true;
+        _selected = Options.First(x => x.StepType == "AssertSignal");
+        TypeLabel.Text = "CAN 信号判定 · 旧文件重建";
+        BuildParameters(_selected);
+        BuildTargets(_selected);
+        MarkDraftChanged();
     }
 
     private void BuildTargets(TestActionOption action)
@@ -394,8 +452,20 @@ public partial class TestStepInspector : UserControl
         // Avoid silently binding the first DBC signal/message when a new
         // STEP has not explicitly chosen its operation object.
         // A unique IGN / raw-only option may be preselected for convenience.
-        TargetPicker.SelectedItem = preferred ?? (
-            AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
+        if (_convertedLegacy && _editing is { } imported)
+        {
+            var rawId = imported.Properties.GetValueOrDefault("canId", "").Trim();
+            if (rawId.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) rawId = rawId[2..];
+            if (uint.TryParse(rawId, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var id))
+            {
+                var matches = AvailableTargets.Where(x =>
+                    x.Mapping.Kind == TestTargetKind.Signal && x.Mapping.CanId == id).ToArray();
+                preferred = matches.Length == 1 ? matches[0] : null;
+            }
+            else preferred = null;
+        }
+        TargetPicker.SelectedItem = preferred ??
+            (_convertedLegacy ? null : AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
         UpdateTarget();
         TargetHint.Text = AvailableTargets.Count == 0
             ? "没有匹配的对象。请调整搜索词，或先在工程中导入相应 DBC / 功能配置。"
@@ -579,7 +649,11 @@ public partial class TestStepInspector : UserControl
             var name = NameInput.Text.Trim();
             if (string.IsNullOrWhiteSpace(name) || name.Length > 120)
                 throw new ArgumentException("请填写步骤名称，不超过 120 字符。");
-            var node = (_editing ?? StepUiCatalog.NewNode(_selected.StepType)) with { Name = name };
+            var node = (_editing ?? StepUiCatalog.NewNode(_selected.StepType)) with
+            {
+                Name = name,
+                Type = _convertedLegacy ? "AssertSignal" : _selected.StepType
+            };
             foreach (var field in ParameterFields)
                 node = node.WithProperty(field.Key, field.Value.Trim());
 
@@ -657,6 +731,34 @@ public partial class TestStepInspector : UserControl
                 }
                 else if (mapping is not null)
                     node = node.WithProperty("target", mapping.Name);
+            }
+            if (node.Type == "AssertSignal" && mapping?.Kind != TestTargetKind.Signal)
+                throw new ArgumentException("CAN 信号判定必须选择 DBC 信号。");
+            if (_convertedLegacy)
+            {
+                if (mapping is null || _editing is null)
+                    throw new ArgumentException("先选择与旧报文对应的 DBC 信号。");
+                var rawId = _editing.Properties.GetValueOrDefault("canId", "").Trim();
+                if (rawId.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) rawId = rawId[2..];
+                if (!uint.TryParse(rawId, NumberStyles.HexNumber, CultureInfo.InvariantCulture,
+                    out var originalId) || mapping.CanId != originalId)
+                    throw new ArgumentException("所选 DBC 信号的 CAN ID 与旧文件不一致，请先核对。");
+                var sourceMessage = _selectedTarget?.Message;
+                var sourceSignal = sourceMessage?.Signals.FirstOrDefault(x =>
+                    x.Name == mapping.SignalName);
+                if (sourceSignal is null)
+                    throw new ArgumentException("未找到当前 DBC 中的原始信号定义。");
+                if (_editing.Properties.TryGetValue("bitLength", out var bits) &&
+                    int.TryParse(bits, out var originalBits) &&
+                    sourceSignal.BitLength != originalBits)
+                    throw new ArgumentException("旧文件位长与当前 DBC 不一致，不能直接确认重建。");
+                if (_editing.Properties.TryGetValue("bitOrder", out var order) &&
+                    !string.IsNullOrWhiteSpace(order) &&
+                    ((order.Equals("Intel", StringComparison.OrdinalIgnoreCase) && !sourceSignal.Intel) ||
+                     (order.Equals("Motorola", StringComparison.OrdinalIgnoreCase) && sourceSignal.Intel)))
+                    throw new ArgumentException("旧文件字节序与当前 DBC 不一致，不能直接确认重建。");
+                node = node.WithProperty("legacy.importStatus", "REBOUND_VALIDATED")
+                    .WithProperty("legacy.reboundTarget", mapping.Name);
             }
             if (node.Type == "Write" && mapping is null)
                 throw new ArgumentException("请选择操作对象。");
