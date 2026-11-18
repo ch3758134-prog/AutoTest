@@ -22,7 +22,7 @@ public sealed class PlanCompiler
         _catalog = catalog ?? StepDescriptorCatalog.Builtins();
     private static readonly HashSet<string> RealTypes = new(StringComparer.Ordinal)
     {
-        "Write", "Read", "WaitUntil", "AssertSignal", "Calculate", "Expect",
+        "Write", "Read", "WaitUntil", "AssertSignal", "CanStopPeriodic", "Calculate", "Expect",
         "WaveStart", "WaveStop", "WaveAnalyze"
     };
 
