@@ -65,12 +65,25 @@ public sealed class CanToolF2ProtocolTests
             Convert.ToHexString(CanToolProgrammingProtocol.Verify(0x10008000,0x200)));
         Assert.Equal("37",Convert.ToHexString(CanToolProgrammingProtocol.RequestDownloadExit()));
         Assert.Equal("1101",Convert.ToHexString(CanToolProgrammingProtocol.UdsReset()));
+        // Complete successful CAN1 capture verifies the last FF-padded tail.
+        byte[] tail=Enumerable.Repeat((byte)0xFF,0x200).ToArray();
+        Convert.FromHexString("12345678").CopyTo(tail,0x200-4);
+        Assert.Equal((ushort)0x04E7,CanToolProgrammingProtocol.ComplementOfSum(tail));
+        CanToolProgrammingProtocol.CheckVerify(
+            Convert.FromHexString("7101FF0104E7"),0x04E7);
     }
     [Fact]
     public void DownloadMaximumUsesHighNibbleNotOriginalCanToolBug()
     {
         Assert.Equal(0x102u,CanToolProgrammingProtocol.ParseDownloadMaximum(
             Convert.FromHexString("74200102")));
+        // Successful Boot CAN1 capture: 06 74 20 00 00 02 02 AA.
+        // Only the exact OEM 6-byte PDU is accepted as 0x202.
+        Assert.Equal(0x202u,CanToolProgrammingProtocol.ParseDownloadMaximum(
+            Convert.FromHexString("742000000202")));
+        Assert.Throws<InvalidDataException>(()=>
+            CanToolProgrammingProtocol.ParseDownloadMaximum(
+                Convert.FromHexString("742000000201")));
         Assert.Throws<InvalidDataException>(()=>
             CanToolProgrammingProtocol.ParseDownloadMaximum(Convert.FromHexString("74010102")));
         Assert.Throws<InvalidDataException>(()=>

@@ -76,8 +76,21 @@ public sealed record CanToolFlashJob(
             _ => throw new NotSupportedException("不支持的固件类型")
         };
 
-        // Only align occupied blocks. Fill WITHIN each occupied block with FF,
-        // as traced to CanTool; never insert its hardcoded 12 34 56 78 signature.
+        // The exact HydEPB/CYT2B63 CAN-ID + address + 0x200-block profile
+        // is now backed by a COMPLETE successful physical CAN1 trace. It
+        // always finishes with a 0x1006FE00 block (FF, except the final
+        // 12 34 56 78 bytes), even when HEX has no bytes at that address.
+        // No generic ECU profile gets this OEM-specific marker.
+        bool traceVerifiedTailProfile=
+            appTx==0x747 && appRx==0x74F &&
+            bootTx==0x18DA50F1 && bootRx==0x18DAF150 &&
+            first==0x10008000 && last==0x1006FFFF &&
+            blockLength==0x200;
+        bool effectiveLegacyTailSignature=legacyTailSignature||traceVerifiedTailProfile;
+
+        // Only align occupied blocks. Fill WITHIN each occupied block with FF.
+        // Extra OEM tail is added ONLY on the exact traced profile above or
+        // when explicitly selected, never silently for other ECU variants.
         var prepared=new SortedDictionary<uint,byte[]>();
         foreach(var segment in image.Segments)
         {
@@ -97,7 +110,7 @@ public sealed record CanToolFlashJob(
                 dst[checked((int)(addr-aligned))]=segment.Data[i];
             }
         }
-        if(legacyTailSignature)
+        if(effectiveLegacyTailSignature)
         {
             // Original CanTool stamped 12 34 56 78 at EndInclusive-3.
             // This OEM-specific behavior is EXPLICITLY OPT-IN, never automatic.
@@ -134,12 +147,12 @@ public sealed record CanToolFlashJob(
         string bound=$"CANTOOL-FLASH-F2-v1\nCAN1\n{targetLabel.Trim()}\n"+
             $"APP {appTx:X8} {appRx:X8}\nBOOT {bootTx:X8} {bootRx:X8}\n"+
             $"FLASH {first:X8}-{last:X8} BLOCK {blockLength:X8} BAUD {baud}\n"+
-            $"IMAGE {inspected.Sha256}\nDLL {details.Sha256}\nPROVIDER={details.Kind}\nLEGACY_SIGNATURE={legacyTailSignature}\n{effective}\n"+
+            $"IMAGE {inspected.Sha256}\nDLL {details.Sha256}\nPROVIDER={details.Kind}\nLEGACY_SIGNATURE={effectiveLegacyTailSignature}\n{effective}\n"+
             string.Join("\n",blocks.Select(x=>$"{x.Address:X8}:{Convert.ToHexString(SHA256.HashData(x.Bytes.AsSpan()))}"));
         string hash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(bound)));
         return new(app,boot,first,last,baud,checked((int)blockLength),blockSource,
             blocks,Path.GetFullPath(firmwarePath),inspected.Sha256,dll,details.Sha256,
-            details.Kind.ToString(),targetLabel.Trim(),legacyTailSignature,hash,image.ByteCount,blocks.Sum(x=>(long)x.Bytes.Length));
+            details.Kind.ToString(),targetLabel.Trim(),effectiveLegacyTailSignature,hash,image.ByteCount,blocks.Sum(x=>(long)x.Bytes.Length));
     }
 
     private static UdsEndpointProfile Endpoint(uint tx,uint rx)

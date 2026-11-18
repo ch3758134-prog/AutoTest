@@ -33,6 +33,17 @@ public static class CanToolProgrammingProtocol
     public static uint ParseDownloadMaximum(ReadOnlySpan<byte> response)
     {
         if(response.Length<3 || response[0]!=0x74) throw new InvalidDataException("Missing UDS 74.");
+
+        // On-wire confirmed HydEPB/CYT2B63 BootLoader response, captured at
+        // 2026-11-18: 06 74 20 00 00 02 02 AA.
+        // Unlike a standard 74 20 + 2-byte max, this OEM encodes 0x0202
+        // as FOUR following bytes despite the 0x20 header. The real ECU then
+        // receives a 0x0202-byte 36 PDU (2 headers + 0x200 data) successfully.
+        // Keep the exception exact; do not accept arbitrary malformed replies.
+        if(response.SequenceEqual(new byte[]{0x74,0x20,0x00,0x00,0x02,0x02}))
+            return 0x202u;
+
+        // All other profiles: strict standard lengthFormatIdentifier.
         int n=response[1]>>4;
         if(n is < 1 or > 4 || (response[1]&0x0F)!=0 || response.Length!=n+2)
             throw new InvalidDataException("Invalid 74 lengthFormatIdentifier.");
