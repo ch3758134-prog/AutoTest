@@ -29,13 +29,13 @@ public sealed record TestTargetMapping(
         {
             if (Role != BusRole.DutCan || CanId > (Extended ? 0x1FFFFFFFu : 0x7FFu) ||
                 Asset.Value != Guid.Empty)
-                throw new ArgumentException("Raw CAN target must identify a valid DUT CAN1 frame without a DBC asset.");
+                throw new ArgumentException("Raw CAN target must identify a valid ECU CAN0 frame without a DBC asset.");
             return this;
         }
         if (Kind == TestTargetKind.RawKey)
         {
             if (Role != BusRole.KeypadCan || Asset.Value != Guid.Empty)
-                throw new ArgumentException("Raw KEY_SIM operation must use CAN0 without an ECU profile asset.");
+                throw new ArgumentException("Raw KEY_SIM operation must use physical CAN1 without an ECU profile asset.");
             return this;
         }
         if (Asset.Value == Guid.Empty || AssetRevision < 1 || AssetSha256 is not { Length: 64 } ||
