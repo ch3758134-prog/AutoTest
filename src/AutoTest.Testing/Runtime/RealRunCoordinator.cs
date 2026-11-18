@@ -162,6 +162,11 @@ public sealed class RealRunCoordinator
             {
                 if (!cleanup) await Boundary(ct);
                 else ct.ThrowIfCancellationRequested();
+                if (!StepExecutionPolicy.IsEnabled(node))
+                {
+                    Fact(node, RealStepStatus.Skipped, detail: "步骤已关闭，本次未执行。");
+                    continue;
+                }
                 var kind = node.Type;
                 switch (kind)
                 {
