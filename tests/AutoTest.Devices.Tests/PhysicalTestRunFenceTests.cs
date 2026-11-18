@@ -1,4 +1,5 @@
 using AutoTest.Devices.Usb;
+using AutoTest.Contracts;
 using Xunit;
 
 namespace AutoTest.Devices.Tests;
@@ -10,15 +11,15 @@ public sealed class PhysicalTestRunFenceTests
     {
         var fence = new PhysicalCommandFence();
         var payload = new byte[15];
-        payload[0] = 0; payload[6] = 8;
+        payload[0] = StationCanWiring.KeypadPort; payload[6] = 8;
         payload[2] = 0x30; payload[3] = 0x07;
         var request = UsbWireCodec.EncodeRequest(1, MainControllerCodec.CanSend, payload);
         Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(request, 4));
         var fingerprint = new string('f', 64);
         Assert.Throws<UnauthorizedAccessException>(() =>
-            fence.AuthorizePhysicalRun(fingerprint, "not approved", [(0, false, 0x730)], false, 4));
+            fence.AuthorizePhysicalRun(fingerprint, "not approved", [(StationCanWiring.KeypadPort, false, 0x730)], false, 4));
         fence.AuthorizePhysicalRun(fingerprint, "AUTHORIZE TEST RUN " + fingerprint,
-            [(0, false, 0x730)], false, 4, 1);
+            [(StationCanWiring.KeypadPort, false, 0x730)], false, 4, 1);
         fence.AssertAllowedAndConsume(request, 4);
         Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(request, 4));
         fence.RevokePhysicalRun();
@@ -31,8 +32,8 @@ public sealed class PhysicalTestRunFenceTests
         var fence = new PhysicalCommandFence();
         var fingerprint = new string('e', 64);
         fence.AuthorizePhysicalRun(fingerprint, "AUTHORIZE TEST RUN " + fingerprint,
-            [(0, false, 0x730)], false, 4);
-        var payload = new byte[15]; payload[0] = 1; payload[6] = 8;
+            [(StationCanWiring.KeypadPort, false, 0x730)], false, 4);
+        var payload = new byte[15]; payload[0] = StationCanWiring.DutPort; payload[6] = 8;
         var request = UsbWireCodec.EncodeRequest(1, MainControllerCodec.CanSend, payload);
         Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(request, 4));
         fence.Reset();
