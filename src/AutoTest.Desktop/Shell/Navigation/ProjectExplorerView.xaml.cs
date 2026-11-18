@@ -68,6 +68,28 @@ public partial class ProjectExplorerView : UserControl
             await vm.CreateFromCategoryAsync(node);
     }
 
+    private void NodeText_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || e.ClickCount != 2 ||
+            sender is not FrameworkElement { DataContext: ResourceTreeNode node } ||
+            node.Asset is null ||
+            DataContext is not MainWindowViewModel vm) return;
+        e.Handled = true;
+        vm.SelectResource(node);
+        if (vm.RenameResourceCommand.CanExecute())
+            vm.RenameResourceCommand.Execute();
+    }
+
+    private void Navigator_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F2 || Navigator.SelectedItem is not ResourceTreeNode { Asset: not null } node ||
+            DataContext is not MainWindowViewModel vm) return;
+        e.Handled = true;
+        vm.SelectResource(node);
+        if (vm.RenameResourceCommand.CanExecute())
+            vm.RenameResourceCommand.Execute();
+    }
+
     private void Navigator_RightClick(object sender, MouseButtonEventArgs e)
     {
         DependencyObject? current = e.OriginalSource as DependencyObject;
