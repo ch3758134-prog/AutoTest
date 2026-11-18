@@ -6,7 +6,8 @@ namespace AutoTest.Testing.Authoring;
 public static class StepTreeValidator
 {
     public static ImmutableArray<string> ValidateTree(TestDocument document,
-        StepDescriptorCatalog catalog, ISet<string>? availableAssets = null)
+        StepDescriptorCatalog catalog, ISet<string>? availableAssets = null,
+        bool allowIncompleteSteps = false)
     {
         var errors = ImmutableArray.CreateBuilder<string>();
         errors.AddRange(TestTargetMappings.Validate(document.Mappings));
@@ -33,21 +34,24 @@ public static class StepTreeValidator
                     if (!n.Slots.ContainsKey(slot)) errors.Add($"{location}: missing slot {slot}");
                 foreach (var slot in n.Slots.Keys)
                     if (!d.RequiredSlots.Contains(slot)) errors.Add($"{location}: illegal slot {slot}");
-                foreach (var key in d.RequiredProperties)
-                    if (!n.Properties.TryGetValue(key, out var v) || string.IsNullOrWhiteSpace(v))
-                        errors.Add($"{location}: missing property {key}");
+                if (!allowIncompleteSteps)
+                    foreach (var key in d.RequiredProperties)
+                        if (!n.Properties.TryGetValue(key, out var v) || string.IsNullOrWhiteSpace(v))
+                            errors.Add($"{location}: missing property {key}");
             }
-            if (n.Properties.TryGetValue("legacy.importStatus", out var legacyStatus) &&
+            if (!allowIncompleteSteps &&
+                n.Properties.TryGetValue("legacy.importStatus", out var legacyStatus) &&
                 legacyStatus.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase))
                 errors.Add($"{location}: 旧版导入步骤“{n.Name}”尚未重新绑定并核对，不能参与真实测试。");
             // CallSubroutine.target is a TEST subroutine identity, not an asset mapping.
             // Only physical/signal operations use TestTargetMapping.
-            if (n.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or "WaveStart" &&
+            if (!allowIncompleteSteps &&
+                n.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or "WaveStart" &&
                 n.Properties.TryGetValue("target", out var targetName) &&
                 !document.Mappings.Any(m => string.Equals(m.Name, targetName,
                     StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped target {targetName}");
-            if (n.Type == "AssertSignal")
+            if (!allowIncompleteSteps && n.Type == "AssertSignal")
             {
                 var signalTarget = n.Properties.GetValueOrDefault("target", "");
                 var mapping = document.Mappings.FirstOrDefault(m =>
@@ -61,24 +65,24 @@ public static class StepTreeValidator
                     timeout is < 1 or > 600000)
                     errors.Add($"{location}: CAN 信号判定超时应在 1～600000 毫秒内。");
             }
-            if (n.Type == "WaveAnalyze" &&
+            if (!allowIncompleteSteps && n.Type == "WaveAnalyze" &&
                 string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("profile", "")) &&
                 string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("reference", "")))
                 errors.Add($"{location}: wave analysis requires a named reference or mapped profile");
-            if (n.Type == "WaveAnalyze" &&
+            if (!allowIncompleteSteps && n.Type == "WaveAnalyze" &&
                 n.Properties.TryGetValue("profile", out var profileName) &&
                 !string.IsNullOrWhiteSpace(profileName) &&
                 !document.Mappings.Any(m => m.Kind == TestTargetKind.WaveProfile &&
                     string.Equals(m.Name, profileName, StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped wave analysis profile {profileName}");
             if (n.Type == "Case" && parent != "Switch") errors.Add($"{location}: Case outside Switch");
-            if (n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
+            if (!allowIncompleteSteps && n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
                 !int.TryParse(count, out var loops) || loops < 0 || loops > 1000))
                 errors.Add($"{location}: Loop count outside 0..1000");
-            if (n.Type == "Wait" && (!n.Properties.TryGetValue("milliseconds", out var ms) ||
+            if (!allowIncompleteSteps && n.Type == "Wait" && (!n.Properties.TryGetValue("milliseconds", out var ms) ||
                 !int.TryParse(ms, out var delay) || delay < 0 || delay > 60000))
                 errors.Add($"{location}: Wait outside 0..60000ms");
-            if (n.Properties.TryGetValue("asset", out var asset) &&
+            if (!allowIncompleteSteps && n.Properties.TryGetValue("asset", out var asset) &&
                 (availableAssets is null || !availableAssets.Contains(asset)))
                 errors.Add($"{location}: unresolved asset {asset}");
             foreach (var slot in n.Slots)
