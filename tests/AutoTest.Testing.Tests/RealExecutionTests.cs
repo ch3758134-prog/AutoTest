@@ -254,7 +254,7 @@ public sealed class RealExecutionTests
     {
         var tx = new StepEditTransaction(TestDocument.Create("MissingExpected"));
         tx.Insert(TestPhase.Test, null, null, 0, N("Expect",
-            ("left", ""), ("operator", "=="), ("right", "$unknown")));
+            ("left", "1"), ("operator", "!="), ("right", "$unknown")));
         var result = await new RealRunCoordinator(
             new SignalPort(new TestSignalResult(TestSignalStatus.NoFrame, null, "")),
             new ActuationPort(), new WavePort())
