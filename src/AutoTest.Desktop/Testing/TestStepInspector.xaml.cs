@@ -35,7 +35,8 @@ public sealed record TestStepFieldChoice(string Value, string Label);
 public sealed class TestStepInputField : BindableBase
 {
     private string _value;
-    public TestStepInputField(string key, string value, string? label = null)
+    public TestStepInputField(string key, string value, string? label = null,
+        string stepType = "")
     {
         Key = key;
         Label = label ?? StepUiCatalog.PropertyLabel(key);
@@ -47,19 +48,23 @@ public sealed class TestStepInputField : BindableBase
                 new("Latest", "读取最近一次收到的信号"),
                 new("Next", "等待下一次收到的信号")
             ],
-            "operator" when value is "==" or "!=" or ">" or ">=" or "<" or "<="
-                or "+" or "-" or "*" or "/" =>
+            "operator" when stepType == "Calculate" &&
+                value is "+" or "-" or "*" or "/" =>
+            [
+                new("+", "加"),
+                new("-", "减"),
+                new("*", "乘"),
+                new("/", "除")
+            ],
+            "operator" when stepType is "Expect" or "WaitUntil" &&
+                value is "==" or "!=" or ">" or ">=" or "<" or "<=" =>
             [
                 new("==", "等于"),
                 new("!=", "不等于"),
                 new(">", "大于"),
                 new(">=", "大于等于"),
                 new("<", "小于"),
-                new("<=", "小于等于"),
-                new("+", "加"),
-                new("-", "减"),
-                new("*", "乘"),
-                new("/", "除")
+                new("<=", "小于等于")
             ],
             _ => []
         };
@@ -303,7 +308,7 @@ public partial class TestStepInspector : UserControl
                 (item.Key == "profile" && action.StepType == "WaveAnalyze")) continue;
             var label = item.Key == "target" && action.StepType == "CallSubroutine"
                 ? "要调用的子程序" : null;
-            ParameterFields.Add(new TestStepInputField(item.Key, item.Value, label));
+            ParameterFields.Add(new TestStepInputField(item.Key, item.Value, label, action.StepType));
         }
     }
 
