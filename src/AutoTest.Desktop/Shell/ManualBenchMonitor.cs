@@ -192,7 +192,7 @@ public sealed partial class ManualBenchViewModel
             _monitorLastObservedLoss = observation.LostFrames;
         }
         var entry = new MonitorEntry(
-            frame.Role == BusRole.DutCan ? "CAN1" : "CAN0",
+            frame.Role == BusRole.DutCan ? "CAN0" : "CAN1",
             "RX", frame.ExtendedId, frame.Id,
             observation.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
             Convert.ToHexString(frame.Data.AsSpan()), observation.LostFrames);
