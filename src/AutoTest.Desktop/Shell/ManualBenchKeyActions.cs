@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -104,7 +105,8 @@ public sealed partial class ManualBenchViewModel
             Steps.Sum(x => int.TryParse(x.HoldMsText, out var ms) ? ms : 0) + " ms";
         public void NotifySummary() => RaisePropertyChanged(nameof(Summary));
         public KeyActionDefinition Export(int order) =>
-            new(ActionId, Name.Trim(), order, Steps.Select(step => step.Export()).ToImmutableArray()).Validate();
+            new KeyActionDefinition(ActionId, Name.Trim(), order,
+                Steps.Select(step => step.Export()).ToImmutableArray()).Validate();
     }
 
     private KeyActionCatalogSession? _keyCatalogSession;
