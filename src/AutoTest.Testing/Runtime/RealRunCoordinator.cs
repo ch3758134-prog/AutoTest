@@ -232,6 +232,12 @@ public sealed class RealRunCoordinator
                         if (!result.Acknowledged) throw new IOException("Device did not acknowledge: " + result.Code);
                         break;
                     }
+                    case "CanStopPeriodic":
+                    {
+                        await _actions.StopPeriodicAsync(ct);
+                        Fact(node, RealStepStatus.Completed, "", "", "已停止本次测试的全部 CAN1 周期发送。");
+                        break;
+                    }
                     case "Read":
                     {
                         var mode = Enum.Parse<TestReadMode>(Property(node, "mode"), true);
