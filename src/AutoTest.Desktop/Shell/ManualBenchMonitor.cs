@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
+using System.Windows.Threading;
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
 using Prism.Commands;
@@ -63,6 +64,51 @@ public sealed partial class ManualBenchViewModel
     private long _monitorPauseOverflow;
     private long _monitorLastObservedLoss;
     private long _monitorLastGeneration;
+    private readonly object _incomingMonitorSync = new();
+    private readonly Queue<CanObservation> _incomingMonitor = new();
+    private readonly DispatcherTimer _monitorDispatchTimer = new()
+    { Interval = TimeSpan.FromMilliseconds(100) };
+    private long _uiQueueDropped;
+    public string CanRxReceiveStatus => _hardware.CanReceiveStatus +
+        " / UI排队=" + IncomingMonitorCount + " / UI排队丢弃=" +
+        Interlocked.Read(ref _uiQueueDropped);
+    private int IncomingMonitorCount
+    {
+        get { lock (_incomingMonitorSync) return _incomingMonitor.Count; }
+    }
+    private void QueueMonitorObservation(CanObservation observation)
+    {
+        lock (_incomingMonitorSync)
+        {
+            // Keep native USB receive and TEST processing independent of a busy WPF UI.
+            if (_incomingMonitor.Count >= 5000)
+            {
+                _incomingMonitor.Dequeue();
+                Interlocked.Increment(ref _uiQueueDropped);
+            }
+            _incomingMonitor.Enqueue(observation);
+        }
+    }
+    private void FlushMonitorObservations()
+    {
+        if (_disposed) return;
+        for (var i = 0; i < 250; i++)
+        {
+            CanObservation item;
+            lock (_incomingMonitorSync)
+            {
+                if (_incomingMonitor.Count == 0) break;
+                item = _incomingMonitor.Dequeue();
+            }
+            RegisterRxMonitor(item);
+        }
+        RaisePropertyChanged(nameof(CanRxReceiveStatus));
+    }
+    private void StopMonitorDispatch()
+    {
+        _monitorDispatchTimer.Stop();
+        lock (_incomingMonitorSync) _incomingMonitor.Clear();
+    }
     public IReadOnlyList<string> MonitorChannelChoices { get; } = new[] { "全部", "CAN0", "CAN1" };
     public ICollectionView MonitorDisplay => MonitorShowTimeline ? _monitorTimelineView : _monitorGroupView;
     public string MonitorQuery
@@ -108,6 +154,8 @@ public sealed partial class ManualBenchViewModel
         _monitorTimelineView.Filter = MatchMonitor;
         ToggleMonitorPauseCommand = new DelegateCommand(ToggleMonitorPause);
         ClearMonitorCommand = new DelegateCommand(ClearMonitor);
+        _monitorDispatchTimer.Tick += (_, _) => FlushMonitorObservations();
+        _monitorDispatchTimer.Start();
     }
     private bool MatchMonitor(object item)
     {
@@ -198,6 +246,7 @@ public sealed partial class ManualBenchViewModel
     }
     private void ClearMonitor()
     {
+        lock (_incomingMonitorSync) _incomingMonitor.Clear();
         _monitorIndex.Clear();
         _monitorGrouped.Clear();
         _monitorTimeline.Clear();
