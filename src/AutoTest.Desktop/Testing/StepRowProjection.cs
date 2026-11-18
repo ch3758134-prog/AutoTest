@@ -185,6 +185,7 @@ public sealed class StepRowProjection : BindableBase
             step.Properties.GetValueOrDefault("profile", "—"));
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(step.Type);
         State = newDraft ? "待完善" :
+            !StepExecutionPolicy.IsEnabled(step) && realFact is null ? "已关闭" :
             step.Type is "KeySet" or "CanSend" or "CanWait" && realFact is null
                 ? "旧步骤待转换" :
             StepUiCatalog.RequiresLegacyReview(step) && realFact is null ? "旧文件待核对" :
