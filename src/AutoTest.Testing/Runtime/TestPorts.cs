@@ -33,6 +33,9 @@ public interface ITestActuationPort
 {
     ValueTask<TestOperationResult> WriteAsync(TestTargetMapping target, string action,
         CancellationToken ct);
+    // The real station reports asynchronous physical sender failures before
+    // the next step. Default preserves source compatibility for pure adapters.
+    ValueTask CheckHealthAsync(CancellationToken ct) => ValueTask.CompletedTask;
     // Real station implementations stop all active CAN1 periodic senders.
     // Other adapters fail explicitly instead of pretending to stop hardware.
     ValueTask StopPeriodicAsync(CancellationToken ct) =>
