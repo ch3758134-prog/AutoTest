@@ -142,10 +142,10 @@ public partial class TestStepInspector : UserControl
             "具名子程序容器，执行未接线。"),
         new("call", "流程控制", "调用子程序", "CallSubroutine", "",
             "必须明确填写子程序引用，执行未接线。"),
-        new("can-send", "外部操作", "CAN 发送（扩展步骤）", "CanSend", "",
-            "编辑占位字段，运行前必须正式绑定 DBC / CAN 资源。"),
-        new("can-wait", "读取与观察", "等待 CAN 报文（执行未接线）", "CanWait", "",
-            "编辑目标报文和超时，未接线时不能运行。"),
+        new("can-send", "外部操作", "旧版 CAN 发送（待转换）", "CanSend", "",
+            "原步骤只保留旧配置，尚不能发送到真实 ECU。请在中央步骤列表添加“发送 CAN 报文”，重新选择 DBC 报文并配置每个信号。"),
+        new("can-wait", "读取与观察", "旧版 CAN 等待（待转换）", "CanWait", "",
+            "旧等待节点尚不能参与真实执行。请使用“CAN 信号判定”或“等待信号条件”重新选择正式 DBC 信号。"),
         new("uds", "外部操作", "UDS 服务", "UdsRequest", "",
             "编辑服务和请求，实体诊断执行必须独立授权。"),
         new("flash", "外部操作", "Flash 烧录", "Flash", "",
@@ -250,11 +250,16 @@ public partial class TestStepInspector : UserControl
             })) ?? Options.FirstOrDefault(a => a.StepType == editing.Type);
         if (chosen is null)
         {
-            TypeLabel.Text = "暂不支持的步骤类型";
+            TypeLabel.Text = editing.Type == "KeySet"
+                ? "旧版按键步骤（待转换）" : "暂不支持的步骤";
+            ActionDescription.Visibility = Visibility.Visible;
+            ActionDescription.Text = editing.Type == "KeySet"
+                ? "这条旧按键动作没有接入真实按键执行流程。请使用“添加步骤 → 按键动作”重新选择 20 路电阻开关和动作方式；保留此旧步骤不会让它真正下发命令。"
+                : "此旧步骤当前只能保留原始数据，尚不能参与真实测试。请换用已支持的正式操作步骤。";
             NameInput.Text = editing.Name;
             StepCode.Text = editing.Id.ToString()[^5..];
             ConfirmButton.IsEnabled = false;
-            ErrorText.Text = "此 TEST 步骤类型没有已批准的编辑器，原始内容保持不变。";
+            ErrorText.Text = "此步骤尚不支持编辑为可执行操作；原始数据已保留。";
         }
         else
         {
@@ -272,6 +277,8 @@ public partial class TestStepInspector : UserControl
             TypeLabel.Text = chosen.Title;
             StepCode.Text = editing.Id.ToString()[^5..];
             ActionDescription.Text = chosen.Description;
+            ActionDescription.Visibility = chosen.StepType is "CanSend" or "CanWait"
+                ? Visibility.Visible : Visibility.Collapsed;
             TypeLabel.ToolTip = chosen.Description;
             NameInput.Text = editing.Name;
             BuildParameters(chosen);
