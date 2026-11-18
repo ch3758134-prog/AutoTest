@@ -107,6 +107,8 @@ public partial class TestStepInspector : UserControl
         new("key", "外部操作", "按键动作", "Write", "button",
             "可使用已配置功能按键，或直接操作 KEY_SIM 的 20 个电阻开关。"),
         new("ign", "外部操作", "切换 IGN", "Write", "ign", "切换固定台架的 IGN 输出。"),
+        new("stop-can", "外部操作", "停止全部周期 CAN", "CanStopPeriodic", "",
+            "立即停止当前测试用例中的所有 CAN1 周期发送，不改变已经发送过的 ECU 数据。"),
         new("read", "读取与观察", "读取 CAN 信号", "Read", "signal",
             "通过已导入的 DBC 选择信号，将实际读取值保存到变量，不自动判定。"),
         new("wait-signal", "读取与观察", "等待信号条件", "WaitUntil", "signal",
