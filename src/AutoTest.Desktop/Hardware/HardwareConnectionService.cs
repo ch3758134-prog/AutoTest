@@ -303,9 +303,11 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private void RequireV02GpioContract()
     {
         if (!HasV02GpioContract)
-            throw new InvalidOperationException("GPIO 操作要求主控 GET_VERSION 为 " +
-                MainControllerCodec.ClampContractVersion + "；当前为 " +
-                (ConnectedFirmwareVersion ?? "未知") + "。拒绝旧版 GPIO 映射。");
+            throw new InvalidOperationException(
+                "夹具命令协议尚未确认。此上位机按独立夹具两字节格式 0x18 [夹具号, 压紧/释放] 发令，" +
+                "Main_Control 源码候选自报 " + MainControllerCodec.ClampContractVersion +
+                "，而当前设备自报 " + (ConnectedFirmwareVersion ?? "未知") +
+                "。不能仅凭版本字符串判断是否兼容；为避免错误驱动夹具，本次未发送控制指令。");
     }
 
     /// <summary>Read MCU GPIO only; not J1 voltage or ECU ignition state.</summary>
@@ -314,7 +316,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         await _lifecycle.WaitAsync(ct);
         try
         {
-            RequireV02GpioContract();
+            if (!IsConnected)
+                throw new IOException("USB 主控未连接，无法读取 IGN GPIO。");
             var response = await _usb!.RequestAsync(MainControllerCodec.GetIgn,
                 ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
             if (response.Payload.Length != 1 || response.Payload[0] > 1)
@@ -378,7 +381,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 throw new IOException("USB 主控未连接，禁止 IGN 操作。");
             if (_testRunApproved)
                 throw new InvalidOperationException("自动 TEST 占用工位，手动 IGN 被锁定。");
-            RequireV02GpioContract();
+            // IGN 0x12 predates the experimental independent-clamp version string.
+            // Do not couple established IGN control to the newer clamp payload contract.
             _link.AuthorizeOneIgnChange(on, exactConfirmation);
             Record("IGN 单次授权：" + (on ? "ON" : "OFF"));
             await _usb.RequestAsync(MainControllerCodec.SetIgn,
@@ -453,7 +457,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (!_testRunApproved || _approvedPlan != fingerprint ||
                 _usb?.State != UsbSessionState.Connected)
                 throw new UnauthorizedAccessException("No live approved test plan.");
-            RequireV02GpioContract();
+            // Real TEST IGN uses the established 0x12 path; the clamp-only
+            // firmware identity check must not reject it.
             await _usb.RequestAsync(MainControllerCodec.SetIgn,
                 new byte[] { on ? (byte)1 : (byte)0 },
                 TimeSpan.FromSeconds(3), ct);
