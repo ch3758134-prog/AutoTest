@@ -1252,6 +1252,8 @@ public partial class MainWindow : Window
         {
             _selectedFlowEditorRow = null;
             RefreshFlowActionAvailability(null);
+            if (_selectedTestCase is not null)
+                ShowQuickCaseOverview(_selectedTestCase);
             return;
         }
         _selectedFlowEditorRow = row;
@@ -2453,6 +2455,83 @@ public partial class MainWindow : Window
             RefreshTestFlowTreePreservingSelection(copy.Id);
         }));
         TestFlowTree.ContextMenu = menu;
+    }
+
+
+    private void ShowQuickCaseOverview(TestCaseDefinition testCase)
+    {
+        // Direct case editing uses the same persistent inspector as step editing.
+        // No modal dialogs, no hardware access and no second TEST model.
+        InspectorTitle.Text = "用例设置";
+        var panel = new StackPanel { Margin = new Thickness(4, 6, 4, 8) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "测试用例 · " + testCase.Name, FontSize = 14,
+            FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush"),
+            TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12)
+        });
+
+        panel.Children.Add(new TextBlock { Text = "用例名称", Foreground = (Brush)FindResource("Text2Brush"), Margin = new Thickness(0, 0, 0, 4) });
+        var name = new TextBox { Text = testCase.Name, MinHeight = 32 };
+        void CommitName()
+        {
+            var next = name.Text.Trim();
+            if (string.IsNullOrWhiteSpace(next) || string.Equals(testCase.Name, next, StringComparison.Ordinal)) return;
+            testCase.Name = next;
+            TestCaseTitle.Text = next;
+            RebuildTestCaseTree();
+            RestoreTestCaseSelection(testCase);
+        }
+        name.LostFocus += (_, _) => CommitName();
+        name.KeyDown += (_, e) => { if (e.Key == Key.Enter) { CommitName(); e.Handled = true; } };
+        panel.Children.Add(name);
+
+        var enabled = new CheckBox
+        {
+            Content = "参与测试计划运行", IsChecked = testCase.Enabled,
+            Margin = new Thickness(0, 14, 0, 14)
+        };
+        enabled.Checked += (_, _) => testCase.Enabled = true;
+        enabled.Unchecked += (_, _) => testCase.Enabled = false;
+        panel.Children.Add(enabled);
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "本用例后等待（ms）", Foreground = (Brush)FindResource("Text2Brush"),
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+        var delay = new TextBox { Text = testCase.WaitAfterMs.ToString(CultureInfo.InvariantCulture), MinHeight = 32 };
+        var hint = new TextBlock
+        {
+            Text = "仅影响测试计划中与下一个启用用例之间的间隔；不自动控制 KEY、IGN 或夹具。",
+            Foreground = (Brush)FindResource("Text2Brush"), FontSize = 11,
+            TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0)
+        };
+        void CommitDelay()
+        {
+            if (!int.TryParse(delay.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var ms) || ms is < 0 or > 3600000)
+            {
+                hint.Text = "请输入 0～3600000 ms；非法值没有写入工程。";
+                hint.Foreground = Brushes.Firebrick;
+                return;
+            }
+            testCase.WaitAfterMs = ms;
+            hint.Foreground = (Brush)FindResource("Text2Brush");
+            hint.Text = "已更新等待间隔；保存配置后生效于下次计划运行。不自动修改设备输出。";
+        }
+        delay.LostFocus += (_, _) => CommitDelay();
+        delay.KeyDown += (_, e) => { if (e.Key == Key.Enter) { CommitDelay(); e.Handled = true; } };
+        panel.Children.Add(delay);
+        panel.Children.Add(hint);
+        var add = new Button
+        {
+            Content = "＋ 添加测试步骤", HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 20, 0, 0), Padding = new Thickness(12, 6, 12, 6)
+        };
+        add.Click += (_, _) => AddTestFlowNode_Click(this, new RoutedEventArgs());
+        panel.Children.Add(add);
+        StepEditor.Content = panel;
+        OpenInspector();
     }
 
     private void ShowTestFlowNodeDetails(TestFlowNode node)
@@ -4500,7 +4579,16 @@ public partial class MainWindow : Window
 
     private void CloseInspectorPopup_Click(object sender, RoutedEventArgs e)
     {
-        CloseStepEditor();
+        if (WorkspaceTabs.SelectedIndex == 1 && _selectedTestCase is { } testCase)
+        {
+            FlowEditorList.SelectedItem = null;
+            _selectedFlowEditorRow = null;
+            _selectedTestNode = null;
+            _selectedTestNodeId = null;
+            _selectedTestNodeIds.Clear();
+            ShowQuickCaseOverview(testCase);
+        }
+        else CloseStepEditor();
         e.Handled = true;
     }
 
