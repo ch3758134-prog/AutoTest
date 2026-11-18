@@ -433,7 +433,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     /// <summary>Explicit operator approval for a pinned run; never issued on USB connect.</summary>
     public async Task AuthorizeTestRunAsync(string fingerprint, string confirmation,
         IReadOnlyCollection<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn,
-        CancellationToken ct = default)
+        CancellationToken ct = default, int maxWrites = 1000)
     {
         await _lifecycle.WaitAsync(ct);
         try
@@ -441,11 +441,13 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (_testRunApproved || _manualCanBatchApproved || _manualKeyActionApproved ||
                 _usb?.State != UsbSessionState.Connected || _link is null)
                 throw new InvalidOperationException("Test run requires an idle connected session.");
-            _link.AuthorizePhysicalTestRun(fingerprint, confirmation, allowedCan, allowIgn);
+            _link.AuthorizePhysicalTestRun(fingerprint, confirmation, allowedCan, allowIgn,
+                maxWrites);
             _testRunApproved = true;
             _approvedPlan = fingerprint;
             PublishTestRunAuthorization(true);
-            Record("已人工批准物理测试运行 SHA=" + fingerprint + "，设备会话内有效。");
+            Record("已人工批准物理测试运行 SHA=" + fingerprint +
+                "；最多 " + maxWrites + " 次授权写入 / 10 分钟 / 当前 USB 会话。");
         }
         finally { _lifecycle.Release(); }
     }
