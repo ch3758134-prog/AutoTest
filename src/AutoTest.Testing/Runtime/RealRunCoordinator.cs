@@ -279,6 +279,56 @@ public sealed class RealRunCoordinator
                             sawValid ? "Condition not observed before timeout" : "No valid CAN signal");
                         break;
                     }
+                    case "AssertSignal":
+                    {
+                        // Existing DBC decoder, live CAN observations and real TEST verdict.
+                        // No raw-hex second signal interpreter and no mock fallback.
+                        var target = Target(node);
+                        if (target.Kind != TestTargetKind.Signal)
+                            throw new InvalidOperationException("CAN 信号判定必须选择 DBC 信号。");
+                        var op = Property(node, "operator");
+                        var expected = Evaluate(Property(node, "expected"));
+                        var timeout = Milliseconds(node, "timeoutMs");
+                        bool sawValid = false, matched = false;
+                        string actual = "";
+                        string? evidence = null;
+                        using var timeoutStop = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        timeoutStop.CancelAfter(timeout);
+                        try
+                        {
+                            await foreach (var sample in _signals.ObserveAsync(target, timeoutStop.Token)
+                                .WithCancellation(timeoutStop.Token))
+                            {
+                                if (!sample.HasUsableValue) continue;
+                                sawValid = true;
+                                actual = sample.Observation!.Value!.Value.ToString("R",
+                                    CultureInfo.InvariantCulture);
+                                evidence = sample.Observation.Evidence.ToString();
+                                if (Compare(actual, op, expected))
+                                {
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                        }
+                        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
+                        if (!sawValid)
+                        {
+                            incomplete = true;
+                            Fact(node, RealStepStatus.NoData, op + " " + expected, "",
+                                "等待超时，未收到可用的 DBC 信号数据。", evidence);
+                        }
+                        else
+                        {
+                            asserted = true;
+                            failed |= !matched;
+                            Fact(node, matched ? RealStepStatus.Completed : RealStepStatus.ConditionFalse,
+                                op + " " + expected, actual,
+                                matched ? "CAN 信号判定通过" : "CAN 信号未在规定时间内满足判定条件",
+                                evidence);
+                        }
+                        break;
+                    }
                     case "Calculate":
                     {
                         var left = Evaluate(Property(node, "left"));
