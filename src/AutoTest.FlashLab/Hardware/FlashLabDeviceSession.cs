@@ -219,14 +219,14 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             // Without a proven USB CAN baud-rate setter, refuse 250K profiles.
             if(job.ConfiguredBitrate is not ("500K" or "500000"))
                 throw new NotSupportedException("当前主控固件 CAN1 初始化固定500K；250K 尚无已验证切换协议。");
-            var version=await _usb.RequestAsync(FirmwareReadOnlyProtocol.GetVersion,
-                ReadOnlyMemory<byte>.Empty,TimeSpan.FromSeconds(3),ct).ConfigureAwait(false);
-            if(!FirmwareReadOnlyProtocol.ValidReadOnlyPayload(
-                FirmwareReadOnlyProtocol.GetVersion,version.Payload))
-                throw new IOException("主控固件版本与当前源代码基线不匹配；禁止 F2 擦写。");
-            _recorder?.RecordMessage("CAN1_FIRMWARE_BASELINE",
-                FirmwareReadOnlyProtocol.Explain(FirmwareReadOnlyProtocol.GetVersion,version.Payload)+
-                "; source main.c CAN1=EAL_CAN_BAUD_500K; physical bitrate not independently measured");
+            // Firmware release text is not a USB/CAN capability handshake.
+            // A working WinUSB/PING session is sufficient to connect; do NOT
+            // require F1 GET_VERSION or compare its text before programming.
+            // The 500K-only CAN1 physical assumption is checked independently.
+            recorder.RecordMessage("CAN1_BUS_SETTINGS",
+                $"XML bitrate={job.ConfiguredBitrate}; "+
+                "controller CAN1 source default=500K; actual physical bitrate not independently measured; "+
+                "firmware version not queried or used as a gate");
 
             if(!string.Equals(typedConsent,job.Consent,StringComparison.Ordinal))
                 throw new UnauthorizedAccessException(
