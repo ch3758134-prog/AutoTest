@@ -219,6 +219,9 @@
           <TextBlock Text="DBC 报文" Style="{StaticResource FieldCaption}"/>
           <ComboBox ItemsSource="{Binding DataContext.DbcMessages,RelativeSource={RelativeSource AncestorType=Window}}"
            SelectedItem="{Binding DbcMessage,Mode=TwoWay}" DisplayMemberPath="Display" MinHeight="29"/>
+          <TextBlock Text="{Binding DbcMessage.Purpose}" TextWrapping="Wrap"
+           Foreground="#536D89" FontSize="11" Margin="0,5,0,9"
+           ToolTip="报文功能摘要；信号的具体取值和技术定义见下方"/>
           <TextBlock Text="信号物理值" Style="{StaticResource FieldCaption}"/>
           <ItemsControl ItemsSource="{Binding SignalValues}">
            <ItemsControl.ItemTemplate>
