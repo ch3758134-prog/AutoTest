@@ -69,3 +69,11 @@ UI 专项直接更新 `ui/ide-design/docs/ui/AutoTest_UI.html`，提交每次修
 - 退出边界 commit 359a01a8d26989c99f91787637db35a78643cda7：切换演示工程前提示未完成草稿并由用户确认放弃；JSON 导出拒绝遗漏未提交字段。
 - 最新静态确认：唯一内嵌脚本可解析；纯函数字段边界 14/14 检查符合预期；当前 GitHub UI HEAD 为 359a01a8d26989c99f91787637db35a78643cda7。
 - 未完成：WPF 真实 FieldDraft→StepEditTransaction 事务、流程拖拽多落点、多选、DBC 具体元数据字段级编辑、Chromium 视觉与鼠标验证、Windows 构建、真实设备验证。现行 HTML 的本地存储不是正式工程资源存储，不可把此候选提升为 G3/G4 PASS。
+
+### 2026-11-17｜V3 直接编辑与结构操作迭代（连续研究补充）
+- e2fcafe891659bb939fd0f44346cdadf62a49935：HTML TEST 行新增 Ctrl/Shift 多选、批量复制/粘贴/启停/删除、Ctrl+C/V、Alt+上下；Before/After 与阶段/THEN/ELSE/CASE/循环子槽拖放，保留原有文档撤销链。批量移动限定同一父容器并阻止父节点被拖入其子孙节点。
+- b579dfe791754b5a11eb8337c834e5feff1b986d：切换用例清空上一个用例的临时选区；原有复制/删除/移动命令对多选步骤使用批量事务，防止只操作高亮项。
+- 52f22c29c090af208bac4986132bed24f87f5cb4：新建 KEY 步骤默认直接编辑 20-bit mask 与保持时间；K01～K20 勾选、十进制与 HEX 掩码同步；保留历史命名动作引用的显式切换，不把具体 ECU 的 576 当通用默认。
+- docs/ui/TEST_EDITOR_V3_ACCEPTANCE_AND_HANDOFF_20261117.md：新增浏览器/DPI/交互验收表与 WPF 文件边界和门禁。
+- 在 UI 分支原文件中抽取真实 JS 纯函数，通过 21/21 场景和解析检查：含跨分支批量操作拒绝、克隆 StepId 不重复、父级拖入自身子槽拒绝、嵌套结构复制、原 StepId 保持、6144/192/576 及 20-bit 边界；不等价于真实 Chromium 点击测试。
+- 当前仅 UI 研究稿。未获浏览器实际操作截图、WPF 编译/运行、设备实测；没有批准直接替换 G4 WPF 或覆盖 main。
