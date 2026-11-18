@@ -248,9 +248,10 @@ public partial class QuickManualBenchWindow
     {
         if (_keyRunning || KeyStepsList.SelectedItem is not QuickBenchKeyStep step) return;
         step.Mask = 0;
+        KeyMaskBox.Text = "0x00000";
         KeyStepsList_SelectionChanged(KeyStepsList, new SelectionChangedEventArgs(
             System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
-            new List<object>(), new List<object>()));
+            Array.Empty<object>(), Array.Empty<object>()));
     }
 
     private void CommitKeyEditor()
@@ -298,6 +299,7 @@ public partial class QuickManualBenchWindow
     private async void RunKeyAction_Click(object sender, RoutedEventArgs e)
     {
         if (_keyRunning) { Log("KEY 动作已在运行。"); return; }
+        if (_deviceBusy) { Log("另一个 USB 硬件操作正在执行，KEY 动作暂不能开始。"); return; }
         try
         {
             CommitKeyEditor();
@@ -330,7 +332,8 @@ public partial class QuickManualBenchWindow
                 }
                 Log("KEY 动作完成；最后的完整 Mask 保持，不自动释放。");
             });
-            KeyRunStateText.Text = "动作已结束；最后发送掩码=" +
+            KeyRunStateText.Text = (stop.IsCancellationRequested ? "动作已取消；" : "动作已结束；") +
+                "最后发送掩码=" +
                 (_lastAppliedKeyMask.HasValue ? MaskText(_lastAppliedKeyMask.Value) : "UNKNOWN") +
                 "。未发送 ReleaseAll。";
         }

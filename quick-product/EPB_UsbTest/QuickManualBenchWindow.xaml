@@ -119,7 +119,15 @@
                                         <DataGridTextColumn Header="DBC 信号（中文 / 原名）" Binding="{Binding Display}"
                                                             IsReadOnly="True" Width="*"/>
                                         <DataGridTextColumn Header="物理值" Binding="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                                                            Width="110"/>
+                                                            Width="90"/>
+                                        <DataGridTemplateColumn Header="枚举可选" Width="100">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox ItemsSource="{Binding EnumOptions}" SelectedItem="{Binding SelectedEnum,Mode=TwoWay}"
+                                                              DisplayMemberPath="Label" MinHeight="24"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <TextBlock Text="原始数据 HEX（1～8字节）" Style="{StaticResource FieldLabel}" Margin="0,10,0,5"/>
@@ -189,6 +197,9 @@
                                    Style="{StaticResource FieldLabel}" TextWrapping="Wrap" Margin="0,0,0,6"/>
                         <ListBox x:Name="KeyActionList" Height="102" SelectionChanged="KeyActionList_SelectionChanged"
                                  DisplayMemberPath="Name" HorizontalContentAlignment="Stretch"/>
+                        <TextBox x:Name="KeyActionNameBox" Height="29" Margin="0,6,0,0"
+                                 ToolTip="动作名称直接编辑；按键步骤只包含完整 Key Mask + 保持时间"
+                                 TextChanged="KeyActionName_Changed"/>
                         <DockPanel Margin="0,8,0,10">
                             <TextBlock Text="动作步骤（仅 Mask + 保持时间）" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">

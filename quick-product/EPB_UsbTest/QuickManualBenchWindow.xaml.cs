@@ -24,9 +24,9 @@ public partial class QuickManualBenchWindow : Window
     private readonly ObservableCollection<QuickBenchCanRow> _canRows = new();
     private readonly ObservableCollection<QuickBenchDbcChoice> _dbcChoices = new();
     private readonly ObservableCollection<QuickBenchSignalValue> _signalValues = new();
-    private bool _loadingCan, _verified, _deviceBusy, _periodicOwned, _periodicUncertain, _closed;
+    private bool _loadingCan, _verified, _deviceBusy, _periodicOwned, _periodicUncertain, _lostOwnedPeriodic, _closed;
     private string _knownFirmware = "";
-    public bool HasActiveManualOperation => _periodicOwned || _periodicUncertain || _deviceBusy || _keyRunning;
+    public bool HasActiveManualOperation => _periodicOwned || _lostOwnedPeriodic || _deviceBusy || _keyRunning;
 
     public QuickManualBenchWindow(UsbLink usb, Func<CanDatabase?> database,
         Func<string?> configurationIdentity, Func<bool> manualAllowed, Action<string> mainLog)
@@ -67,7 +67,7 @@ public partial class QuickManualBenchWindow : Window
 
     private void Bench_Closing(object? sender, CancelEventArgs e)
     {
-        if (_periodicOwned || _periodicUncertain || _keyRunning)
+        if (_periodicOwned || _lostOwnedPeriodic || _keyRunning || _deviceBusy)
         {
             Log("手动台架仍有活动或状态未知的真实输出任务。不会通过关闭窗口隐式停止设备。");
             MessageBox.Show(this,
@@ -97,7 +97,13 @@ public partial class QuickManualBenchWindow : Window
             {
                 _periodicOwned = false;
                 _periodicUncertain = true;
+                _lostOwnedPeriodic = true;
                 Log("USB 断开，主控周期广播运行情况 UNKNOWN，恢复连接后需人工读状态/停止。");
+            }
+            if (!connected)
+            {
+                _lastAppliedKeyMask = null;
+                KeyMaskInfo.Text = "USB 已断开：真实 KEY_SIM 开关状态 UNKNOWN，未自动释放。";
             }
             UpdateConnectionText();
         }));
@@ -185,7 +191,7 @@ public partial class QuickManualBenchWindow : Window
             {
                 Log("广播状态：running=" + broadcast.payload[0] +
                     "，count=" + broadcast.payload[1] + "；不自动改变广播。");
-                if (broadcast.payload[0] == 0) { _periodicOwned = false; _periodicUncertain = false; }
+                if (broadcast.payload[0] == 0) { _periodicOwned = false; _periodicUncertain = false; _lostOwnedPeriodic = false; }
                 else if (!_periodicOwned) _periodicUncertain = true;
             }
             else Log("广播状态未知；不要假定主控周期任务已停止。");
@@ -602,6 +608,7 @@ public partial class QuickManualBenchWindow : Window
             }
             _periodicOwned = false;
             _periodicUncertain = false;
+            _lostOwnedPeriodic = false;
             foreach (var row in _canRows.Where(x => x.Periodic)) row.Status = "已停止";
         });
     }
