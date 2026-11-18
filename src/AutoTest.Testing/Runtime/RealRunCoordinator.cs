@@ -207,7 +207,26 @@ public sealed class RealRunCoordinator
                     }
                     case "Write":
                     {
-                        var result = await _actions.WriteAsync(Target(node), Evaluate(Property(node, "value")), ct);
+                        var target = Target(node);
+                        var action = Evaluate(Property(node, "value"));
+                        if (node.Properties.TryGetValue("periodMs", out var intervalText) &&
+                            intervalText.Length > 0)
+                        {
+                            var interval = Milliseconds(node, "periodMs");
+                            if (interval > 0)
+                            {
+                                if (target.Kind is not (TestTargetKind.CanMessage or TestTargetKind.RawCan))
+                                    throw new ArgumentException("周期发送只能用于 CAN1 报文。");
+                                if (interval < 20)
+                                    throw new ArgumentException("上位机 CAN 周期不能小于 20 毫秒。");
+                                var duration = node.Properties.TryGetValue("durationMs", out var d) &&
+                                    !string.IsNullOrWhiteSpace(d)
+                                    ? Milliseconds(node, "durationMs", 1_800_000) : 0;
+                                action = "PERIODIC:" + interval.ToString(CultureInfo.InvariantCulture) +
+                                    ":" + duration.ToString(CultureInfo.InvariantCulture) + ":" + action;
+                            }
+                        }
+                        var result = await _actions.WriteAsync(target, action, ct);
                         Fact(node, result.Acknowledged ? RealStepStatus.Completed : RealStepStatus.DeviceError,
                             Property(node, "value"), result.Code, result.Diagnostic, result.Evidence);
                         if (!result.Acknowledged) throw new IOException("Device did not acknowledge: " + result.Code);
