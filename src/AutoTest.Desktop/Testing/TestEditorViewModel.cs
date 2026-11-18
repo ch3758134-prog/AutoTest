@@ -230,6 +230,7 @@ public sealed class TestEditorViewModel : BindableBase
     private static string OperatorExecutionStatus(RealStepStatus status) => status switch
     {
         RealStepStatus.Completed => "已执行",
+        RealStepStatus.Skipped => "已跳过",
         RealStepStatus.ConditionFalse => "条件不成立",
         RealStepStatus.NoData => "未收到数据",
         RealStepStatus.Timeout => "超时",
