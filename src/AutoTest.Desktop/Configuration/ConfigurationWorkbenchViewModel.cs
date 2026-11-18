@@ -56,6 +56,8 @@ public sealed record ControllerVoltageRow(int Channel, ConfigurationField Target
 public sealed record ControllerInteractionChoice(string Id, string Label);
 public sealed record ControllerReturnChoice(string Id, string Label);
 
+public sealed record ConfigurationDisplayChoice(string Value, string Label);
+
 public sealed class ConfigurationField : BindableBase
 {
     private string _value;
@@ -69,6 +71,26 @@ public sealed class ConfigurationField : BindableBase
     public string Title { get; }
     public string Hint { get; }
     public IReadOnlyList<string> Options { get; }
+    public IReadOnlyList<ConfigurationDisplayChoice> DisplayChoices =>
+        Options.Select(x => new ConfigurationDisplayChoice(x, Key switch
+        {
+            "interaction" => x switch
+            {
+                "Momentary" => "瞬时按下",
+                "Latched" => "持续保持",
+                "SpringReturn" => "释放后弹回",
+                "Exclusive" => "互斥操作",
+                _ => "其他交互方式：" + x
+            },
+            "role" => x switch
+            {
+                "DutCan" => "CAN1 · 被测 ECU",
+                "KeypadCan" => "CAN0 · 按键模拟板",
+                _ => "其他 CAN 通道：" + x
+            },
+            "published" or "extended" or "requiresFlash" or "sync" => x,
+            _ => x
+        })).ToArray();
     public bool HasOptions => Options.Count > 0;
     public bool IsReadOnly { get; }
     public string Value
@@ -203,8 +225,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         ProjectConfigurationCodec.WaveSettingsKind => "波形判定配置",
         ProjectConfigurationCodec.FlashSettingsKind => "烧录配置",
         ProjectConfigurationCodec.ScanSettingsKind => "扫码匹配配置",
-        ProjectConfigurationCodec.TestConfigurationKind => "TCF · 被测系统配置",
-        ProjectConfigurationCodec.BenchConfigurationKind => "TBC · 固定测试台架",
+        ProjectConfigurationCodec.TestConfigurationKind => "被测 ECU 配置（TCF）",
+        ProjectConfigurationCodec.BenchConfigurationKind => "固定台架配置（TBC）",
         _ => "工程配置"
     };
     public string ExecutionBoundary => _session.Kind switch
@@ -218,9 +240,9 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         ProjectConfigurationCodec.ScanSettingsKind =>
             "只有已发布且校验通过的规则和配方才会参与扫码匹配；匹配不自动触发测试或烧录。",
         ProjectConfigurationCodec.TestConfigurationKind =>
-            "TCF 描述当前 ECU 的 DBC 与功能按键。选择仅改变离线编辑上下文，不会发送设备命令。",
+            "为当前 ECU 选择通信数据库和功能按键；切换配置不会发送硬件命令。",
         ProjectConfigurationCodec.BenchConfigurationKind =>
-            "TBC 固定为本机 USB 主控 + CAN0 KEY_SIM + CAN1 DUT；选择本身不连接硬件。",
+            "台架采用本机 USB 主控、CAN0 按键板和 CAN1 被测 ECU；选择配置不会连接硬件。",
         _ => ""
     };
     public bool IsBusy
@@ -465,7 +487,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                     + " 所填目标电压仍需现场测量验证。", readOnly: true);
                 AddField("interaction", "交互方式", state.Interaction.ToString(), "", Interactions);
                 AddField("return", "弹回目标状态 ID", state.ReturnStateId?.ToString(),
-                    "仅 SpringReturn 状态需要目标 State ID。");
+                    "仅设置为“释放后弹回”时需要选择目标状态。");
                 AddField("group", "互斥组", state.ExclusiveGroup);
                 AddField("pressDelay", "按下前固定延迟（ms）",
                     state.ActionTiming.DelayBeforePressMs.ToString(CultureInfo.InvariantCulture),
@@ -487,7 +509,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         }
         else if (_working is TestSystemConfigurationDocument tcf)
         {
-            AddField("name", "TCF 名称", tcf.Name);
+            AddField("name", "被测 ECU 配置名称", tcf.Name);
             AddField("ecu", "被测 ECU 型号", tcf.EcuModel,
                 "用于识别本测试配置，不必与其他型号共用一个工作空间。");
             AddField("hardware", "ECU 硬件版本", tcf.HardwareRevision);
@@ -500,7 +522,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         }
         else if (_working is TestBenchConfigurationDocument tbc)
         {
-            AddField("name", "TBC 名称", tbc.Name);
+            AddField("name", "台架配置名称", tbc.Name);
             AddField("station", "台架名称", tbc.StationLabel);
             AddField("notes", "台架使用备注", tbc.Notes);
             AddField("host", "物理主机", "本地 Windows PC", readOnly: true);
@@ -547,8 +569,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 ? "0x" + flash.RequestCanId.Value.ToString("X") : "");
             AddField("response", "UDS 响应 CAN ID（HEX）", flash.ResponseCanId.HasValue
                 ? "0x" + flash.ResponseCanId.Value.ToString("X") : "");
-            AddField("p2", "P2 超时 ms", flash.P2Milliseconds.ToString(CultureInfo.InvariantCulture));
-            AddField("p2star", "P2* 超时 ms", flash.P2StarMilliseconds.ToString(CultureInfo.InvariantCulture));
+            AddField("p2", "P2 响应超时（毫秒）", flash.P2Milliseconds.ToString(CultureInfo.InvariantCulture));
+            AddField("p2star", "P2* 延长响应超时（毫秒）", flash.P2StarMilliseconds.ToString(CultureInfo.InvariantCulture));
             AddField("session", "诊断会话", flash.Session);
             AddField("security", "SecurityAccess 级别", flash.SecurityLevel);
             AddField("keydll", "Seed/Key 算法或 DLL", flash.SeedKeyProvider,
@@ -571,17 +593,17 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 var r = scan.Rules[ParseIndex(key)];
                 AddField("id", "规则编号", r.RuleId);
                 AddField("regex", "扫码完整匹配正则表达式", r.Pattern,
-                    "使用命名捕获组，例如 (?<model>...)、(?<serial>...)。");
+                    "填写扫码匹配表达式；可使用命名字段 model（车型）和 serial（编号）。");
                 AddField("keys", "身份字段（英文逗号分隔）", r.IdentityFields,
-                    "例如 serial 或 model,serial，字段必须属于命名捕获组。");
+                    "填写需要提取的字段，例如 serial 或 model,serial。字段名称应与扫码匹配规则一致。");
                 AddField("published", "发布此规则", r.Published ? "是" : "否", "", YesNo);
             }
             else if (key.StartsWith("recipe|", StringComparison.Ordinal))
             {
                 var r = scan.Recipes[ParseIndex(key)];
                 AddField("id", "配方编号", r.RecipeId);
-                AddField("model", "要求车型 / model", r.Model);
-                AddField("customer", "要求客户 / customer", r.Customer);
+                AddField("model", "车型标识", r.Model);
+                AddField("customer", "客户标识", r.Customer);
                 AddField("test", "关联测试程序", AssetNameFor(r.TestProgramAssetId),
                     "仅允许已保存的 TEST 资源", AssetNames(ProjectWorkspaceService.TestProgramKind));
                 AddField("dbc", "关联 DBC", AssetNameFor(r.DbcAssetId),
