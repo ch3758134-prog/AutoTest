@@ -145,7 +145,7 @@
    <DockPanel Margin="10,0" LastChildFill="False">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="手动台架" Command="{Binding OpenManualBenchCommand}"
-      ToolTip="独立真实工位；CAN1 DUT / CAN0 KEY_SIM，未连接禁止操作" Margin="0,0,5,0"/>
+      ToolTip="独立真实工位；离线可以编辑，向实体硬件发送命令需要连接 USB" Margin="0,0,5,0"/>
      <Button Content="按键配置" Command="{Binding OpenControllerCommand}"
       ToolTip="打开工程内的 Controller / KEY_SIM 20 Key 配置" Margin="0,0,5,0"/>
      <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" Margin="0,0,5,0"/>
