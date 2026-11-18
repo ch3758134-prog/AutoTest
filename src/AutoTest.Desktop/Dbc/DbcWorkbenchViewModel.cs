@@ -54,6 +54,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private string _messageSummaryText = "";
     private string _signalSummaryText = "";
     private string _status = "就绪";
+    private string _messageSearchText = "";
 
     public DbcWorkbenchViewModel(
         ProjectWorkspaceService workspace, DbcEditorDialogs dialogs, DbcEditorSession opened)
@@ -74,7 +75,20 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     public string AssetName => _session.AssetName;
     public string FilePath => _session.FileReceipt.Path;
     public int AssetRevision => _session.AssetRevision;
-    public string MessageCount => Messages.Count.ToString();
+    public string MessageCount => Messages.Count + "/" +
+        _session.Document.Model.Messages.Length; 
+    public string MessageSearchText
+    {
+        get => _messageSearchText;
+        set
+        {
+            if (!SetProperty(ref _messageSearchText, value ?? "")) return;
+            var keepMessage = SelectedMessage?.Message.Id;
+            var keepSignal = SelectedSignal?.Name;
+            RefreshMessages(keepMessage);
+            RefreshSignals(keepSignal);
+        }
+    }
     public string SignalCount => SelectedMessage?.Message.Signals.Length.ToString() ?? "0";
     public string SelectedValueDescriptions
     {
@@ -330,11 +344,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     private void RefreshDocument(uint? messageId, string? signalName)
     {
-        Messages.Clear();
-        foreach (var message in _session.Document.Model.Messages.OrderBy(m => m.Id))
-            Messages.Add(new DbcMessageRow(message, _session.Document.DisplayNames));
-        // Keep an explicit selection when possible. Newly opened DBC selects the first message.
-        SelectedMessage = Messages.FirstOrDefault(x => x.Message.Id == messageId) ?? Messages.FirstOrDefault();
+        RefreshMessages(messageId);
         RefreshSignals(signalName);
         RaisePropertyChanged(nameof(MessageCount));
         RaisePropertyChanged(nameof(SignalCount));
@@ -346,6 +356,34 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(StateDescription));
         RaisePropertyChanged(nameof(UnsupportedDescription));
         RefreshCommands();
+    }
+
+    private void RefreshMessages(uint? preferredId)
+    {
+        var query = MessageSearchText.Trim();
+        Messages.Clear();
+        foreach (var message in _session.Document.Model.Messages.OrderBy(m => m.Id))
+        {
+            var names = _session.Document.DisplayNames;
+            if (query.Length > 0 && !new[]
+                {
+                    message.Name, names.MessageLabel(message), names.MessageSummary(message.Id),
+                    "0x" + message.ArbitrationId.ToString("X"),
+                    message.ArbitrationId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    message.Transmitter
+                }.Any(value => value.Contains(query, StringComparison.CurrentCultureIgnoreCase)) &&
+                !message.Signals.Any(signal => signal.Name.Contains(query,
+                    StringComparison.CurrentCultureIgnoreCase) ||
+                    names.SignalLabel(message, signal).Contains(query,
+                        StringComparison.CurrentCultureIgnoreCase) ||
+                    names.SignalSummary(message.Id, signal.Name).Contains(query,
+                        StringComparison.CurrentCultureIgnoreCase)))
+                continue;
+            Messages.Add(new DbcMessageRow(message, names));
+        }
+        SelectedMessage = Messages.FirstOrDefault(x => x.Message.Id == preferredId)
+            ?? Messages.FirstOrDefault();
+        RaisePropertyChanged(nameof(MessageCount));
     }
 
     private void RefreshSignals(string? signalName)
