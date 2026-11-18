@@ -19,7 +19,7 @@ public sealed record TestActionOption(string Key, string Category, string Title,
     public string DisplayName => Category + "  /  " + Title;
     public string Group => Key switch
     {
-        "can" or "can-send" or "can-wait" or "read" or "wait-signal" or "assert-signal" or "expect"
+        "can" or "can-send" or "can-wait" or "stop-can" or "read" or "wait-signal" or "assert-signal" or "expect"
             => "CAN 与数据",
         "key" or "ign" => "工位操作",
         "uds" => "UDS 服务",
