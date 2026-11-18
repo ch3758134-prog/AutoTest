@@ -36,12 +36,12 @@ public sealed class TestStepInputField : BindableBase
 {
     private string _value;
     public TestStepInputField(string key, string value, string? label = null,
-        string stepType = "")
+        string stepType = "", IReadOnlyList<TestStepFieldChoice>? customChoices = null)
     {
         Key = key;
         Label = label ?? StepUiCatalog.PropertyLabel(key);
         _value = value;
-        Choices = key switch
+        Choices = customChoices ?? (key switch
         {
             "mode" when value is "Latest" or "Next" =>
             [
@@ -67,7 +67,7 @@ public sealed class TestStepInputField : BindableBase
                 new("<=", "小于等于")
             ],
             _ => []
-        };
+        });
     }
     public string Key { get; }
     public string Label { get; }
@@ -668,6 +668,28 @@ public partial class TestStepInspector : UserControl
                 parts.Length == 2 ? parts[1] : "1000";
             UpdateKeyTimingVisibility();
         }
+        else if (mapping.Kind == TestTargetKind.Signal &&
+            _selected?.StepType == "AssertSignal" && _selectedTarget.ValueLabels is { Count: > 0 } labels)
+        {
+            var index = Array.FindIndex(ParameterFields.ToArray(), x => x.Key == "expected");
+            if (index >= 0)
+            {
+                var current = ParameterFields[index].Value.Trim();
+                if (!double.TryParse(current, NumberStyles.Float, CultureInfo.InvariantCulture, out _) &&
+                    !current.StartsWith("$", StringComparison.Ordinal))
+                {
+                    var matching = labels.Where(x =>
+                        string.Equals(x.Value.Trim(), current, StringComparison.OrdinalIgnoreCase)).ToArray();
+                    if (matching.Length == 1)
+                        current = matching[0].Key.ToString(CultureInfo.InvariantCulture);
+                }
+                var choices = labels.OrderBy(x => x.Key).Select(x =>
+                    new TestStepFieldChoice(x.Key.ToString(CultureInfo.InvariantCulture),
+                        x.Value + "（" + x.Key + "）")).ToArray();
+                ParameterFields[index] = new TestStepInputField("expected", current, "期望信号状态",
+                    "AssertSignal", choices);
+            }
+        }
         else if (mapping.Kind == TestTargetKind.Ignition)
         {
             IgnitionPanel.Visibility = Visibility.Visible;
@@ -860,6 +882,14 @@ public partial class TestStepInspector : UserControl
             }
             if (node.Type == "AssertSignal" && mapping?.Kind != TestTargetKind.Signal)
                 throw new ArgumentException("CAN 信号判定必须选择 DBC 信号。");
+            if (node.Type == "AssertSignal")
+            {
+                var expectation = node.Properties.GetValueOrDefault("expected", "");
+                if (!double.TryParse(expectation, NumberStyles.Float,
+                    CultureInfo.InvariantCulture, out _) &&
+                    !expectation.StartsWith("$", StringComparison.Ordinal))
+                    throw new ArgumentException("期望状态必须是 DBC 枚举值对应的数值，或已定义的数值变量。请核对原始中文状态说明。");
+            }
             if (_convertedLegacy && node.Type == "AssertSignal")
             {
                 if (mapping is null || _editing is null)
@@ -886,6 +916,10 @@ public partial class TestStepInspector : UserControl
             }
             if (_convertedLegacy && node.Type == "Write")
             {
+                if (_legacySourceType == "CanSend" && _editing is { } sourceCan &&
+                    TryLegacyCanId(sourceCan, out var oldFrame) &&
+                    mapping?.CanId != oldFrame)
+                    throw new ArgumentException("当前所选 CAN 报文与旧文件的 CAN ID 不符，请核对后重新选择。");
                 if (_legacySourceType == "CanSend")
                 {
                     var periodText = node.Properties.GetValueOrDefault("periodMs", "0");
