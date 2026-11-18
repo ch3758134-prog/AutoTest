@@ -180,7 +180,11 @@ public sealed class RealRunCoordinator
         {
             foreach (var node in nodes)
             {
-                if (!cleanup) await Boundary(ct);
+                if (!cleanup)
+                {
+                    await Boundary(ct);
+                    await _actions.CheckHealthAsync(ct);
+                }
                 else ct.ThrowIfCancellationRequested();
                 if (!StepExecutionPolicy.IsEnabled(node))
                 {
