@@ -38,24 +38,7 @@
     <TextBox x:Name="NameInput" Margin="0,0,0,13"/>
     <!-- The HTML Inspector keeps frequent step operations beside the fields.
          No fake enable switch: formal TEST runtime currently has no enabled flag. -->
-    <StackPanel x:Name="StepActionsPanel" Margin="0,0,0,12" Visibility="Collapsed">
-     <Border BorderBrush="#E1E8F2" BorderThickness="0,0,0,1" Margin="0,0,0,9"/>
-     <WrapPanel Margin="0,0,0,6">
-      <Button Content="＋ 下方插入" Tag="after" Click="StepAction_Click"
-       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="复制" Tag="duplicate" Click="StepAction_Click"
-       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="↑ 上移" Tag="up" Click="StepAction_Click"
-       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="↓ 下移" Tag="down" Click="StepAction_Click"
-       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="删除" Tag="delete" Click="StepAction_Click"
-       FontSize="11" Foreground="#BD4D5B" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="● 断点（编辑标记）" Tag="breakpoint" Click="StepAction_Click"
-       FontSize="10" Margin="0,0,5,6" Padding="7,4"
-       ToolTip="标记此步骤位置；当前实测运行暂不能在断点处暂停"/>
-     </WrapPanel>
-    </StackPanel>
+
 
 
     <StackPanel x:Name="TargetPanel" Margin="0,0,0,13">
@@ -197,6 +180,25 @@
       </DataTemplate>
      </ItemsControl.ItemTemplate>
     </ItemsControl>
+    <Border BorderBrush="#E1E8F2" BorderThickness="0,1,0,0" Margin="0,12,0,8"/>
+    <StackPanel x:Name="StepActionsPanel" Margin="0,0,0,12" Visibility="Collapsed">
+     <Border BorderBrush="#E1E8F2" BorderThickness="0,0,0,1" Margin="0,0,0,9"/>
+     <WrapPanel Margin="0,0,0,6">
+      <Button Content="＋ 下方插入" Tag="after" Click="StepAction_Click"
+       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
+      <Button Content="复制" Tag="duplicate" Click="StepAction_Click"
+       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
+      <Button Content="↑ 上移" Tag="up" Click="StepAction_Click"
+       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
+      <Button Content="↓ 下移" Tag="down" Click="StepAction_Click"
+       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
+      <Button Content="删除" Tag="delete" Click="StepAction_Click"
+       FontSize="11" Foreground="#BD4D5B" Margin="0,0,5,6" Padding="7,4"/>
+      <Button Content="● 断点（编辑标记）" Tag="breakpoint" Click="StepAction_Click"
+       FontSize="10" Margin="0,0,5,6" Padding="7,4"
+       ToolTip="标记此步骤位置；当前实测运行暂不能在断点处暂停"/>
+     </WrapPanel>
+    </StackPanel>
    </StackPanel>
   </ScrollViewer>
   <!-- Sticky apply/cancel at the bottom; edits stay transactional and cancellable. -->
