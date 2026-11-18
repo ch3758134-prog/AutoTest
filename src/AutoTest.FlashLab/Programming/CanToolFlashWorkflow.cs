@@ -267,30 +267,14 @@ public sealed class CanToolFlashWorkflow(
                 throw new InvalidDataException("Boot 51 01 复位正响应不完整。");
             resetAck=true;
         }
-        // The complete real CanTool trace ends at Boot 51 01. APP 10 03
-        // after reset is an EXTRA verification, not part of its flash sequence.
-        // Failure here must preserve the already-confirmed 76/77/71/51 facts.
-        await Task.Delay(TimeSpan.FromSeconds(2),ct).ConfigureAwait(false);
-        log("S10 可选 APP 10 03 探测；无响应不改变已确认写入结果。");
-        try
-        {
-            await using var app=await OpenAsync(plan.App,lease,ct).ConfigureAwait(false);
-            var reply=await RequestAsync(app,[0x10,0x03],"APP PostFlash 10 03",
-                p2,ct).ConfigureAwait(false);
-            appObserved=reply.Length>=2 && reply[1]==0x03;
-        }
-        catch(Exception ex) when(ex is TimeoutException or IOException)
-        {
-            log("S10 APP 未确认："+ex.GetType().Name+
-                "；逐块校验与Boot复位已确认，但APP启动/版本仍待现场核验。");
-        }
-        log(appObserved
-            ? "参考烧录操作、逐块校验和Boot复位完成；APP会话可响应，版本/身份未核验。"
-            : "参考烧录操作、逐块校验和Boot复位完成；APP会话尚未确认，禁止标记最终应用验收通过。");
-        return new(accepted,verified,resetAck,appObserved,
-            appObserved
-              ? "REFERENCE_FLASH_ACKED_APP_SESSION_OBSERVED_IDENTITY_UNVERIFIED"
-              : "REFERENCE_FLASH_ACKED_POST_RESET_APP_UNVERIFIED");
+        // The complete CanTool run in the supplied 31,441-line capture
+        // stops after Boot 51 01. Do not inject any extra APP 10 03 request
+        // or make a guessed application session part of reference flashing.
+        // Operator can independently verify APP identity/version afterwards.
+        log("S10 参考 CanTool 烧录已结束（Boot 51 01）；"+
+            "APP 实际启动、软件版本与身份未自动核验，请现场单独确认。");
+        return new(accepted,verified,resetAck,false,
+            "REFERENCE_FLASH_ACKED_POST_RESET_APP_UNVERIFIED");
     }
 
     public async Task<FlashExecutionResult> ExecuteAsync(CancellationToken ct)
