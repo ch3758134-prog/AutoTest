@@ -77,6 +77,27 @@ public sealed class DbcWorkbenchTests
         Assert.Equal("Speed", reopened.Model.FindSignal(291, "Speed").Name);
     }
 
+    [Fact] public void ShortSummaries_RoundTripIndependentlyFromNamesAndRawDefinitions()
+    {
+        var source = Basic + "\nCM_ SG_ 291 Speed \"原始定义包含单位、工况和计算依据；不应被摘要覆盖。\";\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        doc.SetMessageAlias(291, "车辆状态");
+        doc.SetMessageSummary(291, "车辆当前行驶反馈");
+        doc.SetSignalAlias(291, "Speed", "车速");
+        doc.SetSignalSummary(291, "用于车速解析和判定");
+        var text = doc.ExportText();
+        Assert.Contains("AutoTestMessageSummary", text);
+        Assert.Contains("AutoTestSignalSummary", text);
+        Assert.Contains("CM_ SG_ 291 Speed \"原始定义包含单位、工况和计算依据；不应被摘要覆盖。\";", text);
+        var loaded = DbcWorkbenchDocument.Import("example", text);
+        Assert.Equal("车辆状态", loaded.DisplayNames.MessageAlias(291));
+        Assert.Equal("车辆当前行驶反馈", loaded.DisplayNames.MessageSummary(291));
+        Assert.Equal("用于车速解析和判定", loaded.DisplayNames.SignalSummary(291, "Speed"));
+        Assert.Contains("计算依据", loaded.DisplayNames.SignalDescription(291, "Speed"));
+        Assert.Equal(doc.Model.FindMessage(291).Signals.ToArray(),
+            loaded.Model.FindMessage(291).Signals.ToArray());
+    }
+
     [Fact] public void AliasOnlyEdit_PreservesUnsupportedDBCContent()
     {
         var extra = "\nSG_MUL_VAL_ 291 Speed 0 1-2 ;\n";
