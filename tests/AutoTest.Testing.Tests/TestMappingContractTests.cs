@@ -72,4 +72,35 @@ public sealed class TestMappingContractTests
         Assert.True(plan.ValidateFingerprint());
     }
 
+
+    [Fact]
+    public void R2StyleAssetlessIgnRawCanAndKeySimMappings_RoundTripWithoutInventingAssetIds()
+    {
+        var doc = TestDocument.Create("R2 Contract") with
+        {
+            Mappings = ImmutableArray.Create(
+                new TestTargetMapping("台架.IGN", TestTargetKind.Ignition, default, 0, ""),
+                new TestTargetMapping("待核.CAN", TestTargetKind.RawCan, default, 0, "",
+                    BusRole.DutCan, 0x7B0),
+                new TestTargetMapping("台架.KEY_SIM.20Key", TestTargetKind.RawKey,
+                    default, 0, "", BusRole.KeypadCan))
+        };
+        var restored = TestDocumentCodec.Deserialize(TestDocumentCodec.Serialize(doc));
+        Assert.Equal(3, restored.Mappings.Length);
+        Assert.All(restored.Mappings, x => Assert.Equal(Guid.Empty, x.Asset.Value));
+    }
+
+    [Fact]
+    public void AssetBackedMappingWithoutAssetId_ReportsItsExactName()
+    {
+        var doc = TestDocument.Create("Bad Generated Project") with
+        {
+            Mappings = ImmutableArray.Create(
+                new TestTargetMapping("绿通.丢失的DBC报文", TestTargetKind.CanMessage,
+                    default, 1, new string('a', 64), BusRole.DutCan, 0x123))
+        };
+        var error = Assert.Throws<FormatException>(() =>
+            TestDocumentCodec.Deserialize(TestDocumentCodec.Serialize(doc)));
+        Assert.Contains("绿通.丢失的DBC报文", error.Message);
+    }
 }
