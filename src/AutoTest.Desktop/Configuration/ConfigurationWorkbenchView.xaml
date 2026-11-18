@@ -217,7 +217,8 @@
                           </Style>
                         </TextBox.Style>
                       </TextBox>
-                      <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Value,Mode=TwoWay}"
+                      <ComboBox ItemsSource="{Binding DisplayChoices}" DisplayMemberPath="Label"
+                                SelectedValuePath="Value" SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
                                 Padding="6,4" MinHeight="30">
                         <ComboBox.Style>
                           <Style TargetType="ComboBox">
