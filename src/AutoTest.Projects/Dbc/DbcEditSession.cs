@@ -3,9 +3,15 @@ using AutoTest.Projects.Project;
 namespace AutoTest.Projects.Dbc;
 public sealed class DbcEditSession
 {
+    private readonly bool _allowSignalOverlaps;
     public DbcDatabase Original { get; }
     public DbcDatabase Draft { get; private set; }
-    public DbcEditSession(DbcDatabase source) { Original = source.Validate(); Draft = Original; }
+    public DbcEditSession(DbcDatabase source, bool allowSignalOverlaps = false)
+    {
+        _allowSignalOverlaps = allowSignalOverlaps;
+        Original = source.Validate(allowSignalOverlaps);
+        Draft = Original;
+    }
     public void AddNode(string node)
     {
         if (string.IsNullOrWhiteSpace(node) || Draft.Nodes.Contains(node)) throw new ProjectDataException("DBC_NODE", "Invalid or duplicate node.");
@@ -41,7 +47,7 @@ public sealed class DbcEditSession
         if (index < 0) throw new ProjectDataException("DBC_MESSAGE_MISSING", "Message missing.");
         Apply(Draft with { Messages = Draft.Messages.SetItem(index, message) });
     }
-    public void Apply(DbcDatabase candidate) { Draft = candidate.Validate(); }
+    public void Apply(DbcDatabase candidate) { Draft = candidate.Validate(_allowSignalOverlaps); }
     public DbcDatabase Commit() => (Draft with { Revision = checked(Original.Revision + 1) }).Validate();
     public string Export() => DbcParserAdapter.Export(Draft);
     public void Reset() => Draft = Original;
