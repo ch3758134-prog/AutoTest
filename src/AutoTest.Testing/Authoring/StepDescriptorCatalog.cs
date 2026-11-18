@@ -38,6 +38,8 @@ public sealed class StepDescriptorCatalog
         Add("Write", false, [], ["target", "value"]);
         Add("Read", false, [], ["target", "variable", "mode", "timeoutMs", "maxAgeMs"]);
         Add("WaitUntil", false, [], ["target", "variable", "operator", "expected", "timeoutMs"]);
+        // Formal CAN signal assertion: waits for matching data, then contributes to TEST verdict.
+        Add("AssertSignal", false, [], ["target", "operator", "expected", "timeoutMs"]);
         Add("Calculate", false, [], ["variable", "left", "operator", "right"]);
         Add("Expect", false, [], ["left", "operator", "right"]);
         Add("WaveStart", false, [], ["target", "captureKey", "durationMs"]);
