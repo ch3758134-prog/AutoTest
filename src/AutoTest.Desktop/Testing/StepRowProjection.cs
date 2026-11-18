@@ -63,7 +63,7 @@ public sealed class StepRowProjection : BindableBase
     public bool IsSearchMatch { get; }
     public bool IsNewDraft { get; }
     public bool IsBreakpoint => BreakpointMark.Length > 0;
-    public bool IsUnavailable => State is "执行未接线" or "未知类型" or "旧文件待核对";
+    public bool IsUnavailable => State is "暂不能运行" or "未知类型" or "旧文件待核对";
     public bool HasRealExecutionError { get; }
     public string StateDetail { get; }
     public bool IsQuickEditable =>
@@ -149,10 +149,10 @@ public sealed class StepRowProjection : BindableBase
             "Switch" => "按变量 " + Prop("variable") + " 分派",
             "Case" => "匹配值 " + Prop("equals"),
             "Write" => HumanWriteSummary(Prop("target"), Prop("value"), _targetKind),
-            "CanSend" => "报文 " + (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : "未选择") +
-                " · CAN 发送（未接线）",
-            "CanWait" => "等待报文 " + (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : "未选择") +
-                " · 超时 " + Prop("timeoutMs") + " ms（未接线）",
+            "CanSend" => "待转换的 CAN 发送 · " +
+                (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : step.Name),
+            "CanWait" => "待转换的 CAN 等待 · " +
+                (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : step.Name),
             "Read" => "读取 " + Prop("target") + " → " + Prop("variable") +
                 " · " + (Prop("mode") == "Latest" ? "最新有效值" : "等待新数据"),
             "WaitUntil" => "信号 " + Prop("target") + " · 超时 " + Prop("timeoutMs") + " ms",
@@ -195,7 +195,7 @@ public sealed class StepRowProjection : BindableBase
             } : descriptor is null ? "未知类型" :
             descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or
                 "Calculate" or "Expect" or "WaveStart" or "WaveStop" or "WaveAnalyze"
-                ? "待预检" : "执行未接线";
+                ? "待预检" : "暂不能运行";
     }
 
     private static string HumanWriteSummary(string target, string value, TestTargetKind? kind)
