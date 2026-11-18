@@ -298,6 +298,39 @@ padding:5px 12px;background:#fbfcfe;border-bottom:1px solid #e4e9ef;font-size:11
 @media(max-width:1200px){.case-quickbar .context{display:none}}
 
 @media(max-width:1300px){:root{--tree:230px;--inspector:335px}.quickstart{margin-left:12px}}
+
+/* Manual bench CAN: operations-first list, source edit on selection only. */
+:root{--toolleft:40%;--toolmid:31%}
+.manualBenchGrid{min-width:995px}
+.benchCanToolbar{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:9px 9px 8px;border-bottom:1px solid #e2e8ef;background:#fff}
+.benchCanToolbar .btn{padding:5px 8px;min-height:27px}
+.benchCanToolbar .taskSummary{margin-left:auto;color:#65778b;font-size:10px;white-space:nowrap}
+.benchCanColumns{display:grid;grid-template-columns:23px minmax(0,1fr) auto;gap:8px;padding:7px 10px;background:#f5f7fa;color:#667c91;font-size:10px;border-bottom:1px solid #e1e7ee}
+.benchCanList{flex:1;overflow:auto;min-height:100px}
+.benchCanRow{padding:8px 9px 9px;border-bottom:1px solid #e6ebf1;background:#fff}
+.benchCanRow:hover{background:#f9fbfd}
+.benchCanRow.edited{background:#f0f6fc;box-shadow:inset 3px 0 #2463a6}
+.benchCanRowTop{display:grid;grid-template-columns:23px minmax(0,1fr) auto;gap:7px;align-items:center}
+.benchCanRowTitle{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap;font-size:11px}
+.benchCanRowTitle strong{color:#223d5a;font-size:12px}
+.benchCanMeta{color:#63768a;font-size:10px;margin:4px 0 6px 30px;display:flex;gap:7px;align-items:center;min-width:0}
+.benchCanMeta .canHex{font-family:Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.benchCanRowOps{display:flex;gap:5px;align-items:center;margin-left:30px;flex-wrap:wrap}
+.benchCanRowOps .btn{padding:3px 8px;min-height:25px}
+.benchCanBadge{font-size:10px;padding:2px 5px;background:#edf2f8;border:1px solid #d8e2ec;border-radius:3px;white-space:nowrap;color:#50667c}
+.benchCanBadge.target{color:#285c9b;background:#eaf3fd;border-color:#bcd2ed}
+.benchCanEditor{border-top:1px solid #d8e2ee;background:#f8fafc;padding:11px;flex-shrink:0;max-height:49%;overflow:auto}
+.benchCanEditor .fields2{gap:8px}
+.benchCanEditor .field{margin:0 0 7px}
+.benchCanEditor .field label{font-size:10px}
+.benchCanEditor .field input,.benchCanEditor .field select{min-height:29px}
+.benchCanEditor .editorTitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.benchCanEditor .editorActions{display:flex;align-items:center;justify-content:space-between;gap:5px;margin:8px 0 0}
+.benchCanEditor .signalRows{max-height:158px;overflow:auto;border:1px solid #e0e6ed;background:#fff}
+.benchCanEditor .signalRows .formatRow{padding:5px 7px}
+.benchCanEditor .signalRows input{max-width:95px}
+.benchCanFoot{border-top:1px solid #e1e7ed;padding:8px 10px;color:#63768a;font-size:10px;line-height:1.5;background:#fafbfd}
+
 </style></head>
 <body>
 <div id="app">
@@ -397,7 +430,7 @@ if(!Array.isArray(ui.openTools))ui.openTools=[];
 if(!Array.isArray(project.buttonActions))project.buttonActions=[];
 try{let data=JSON.parse(localStorage.getItem(KEY)||'null');if(data&&data.project&&data.ui){project=data.project;if(!Array.isArray(project.buttonActions))project.buttonActions=[];ui={...ui,...data.ui,tool:'',runPreview:false,benchActions:[],benchMonitor:[],udsTrace:[],prodResult:''};}}catch{}
 if(!Array.isArray(ui.openTools))ui.openTools=[];
-function save(){try{const x={...ui,tool:'',runPreview:false,benchActions:[],benchMonitor:[],udsTrace:[],runs:[],prodResult:''};localStorage.setItem(KEY,JSON.stringify({project,ui:x}));}catch{}}
+function save(){try{const x={...ui,tool:'',runPreview:false,benchActions:[],benchMonitor:[],benchCanRows:(ui.benchCanRows||[]).map(r=>({...r,previewOn:false})),udsTrace:[],runs:[],prodResult:''};localStorage.setItem(KEY,JSON.stringify({project,ui:x}));}catch{}}
 function transact(fn){history.push(clone(project));if(history.length>50)history.shift();redo.length=0;fn();save();render();}
 function notify(msg,err=false){const div=document.createElement('div');div.className='toast'+(err?' err':'');div.textContent=msg;$('#toastWrap').appendChild(div);setTimeout(()=>div.remove(),3300)}
 function caseById(i){return project.cases.find(c=>c.id===i)};function selectedCase(){return caseById(ui.selectedCase)||project.cases[0]};
@@ -602,7 +635,166 @@ function renderTool(){
  renderTabs();
  if(ui.tool==='wave')setupWaveCanvas();
 }
-function renderManual(){let q=ui.benchFilter.trim().toLowerCase();let frames=ui.benchMonitor.filter(f=>!q||(f.id+f.data+f.dir+f.name).toLowerCase().includes(q));let m=msgById(ui.benchSelectedMsg)||project.dbc[0];return `<div class="workgrid3" id="manualGrid"><section class="workcol"><div class="head"><span>CAN 实时观察 <span class="chip">CAN1 · DUT</span></span><div class="flex gap4"><button class="btn sm" data-act="monitor-example">载入样例帧</button><button class="btn sm" data-act="monitor-clear">清空</button></div></div><div class="pad8"><div class="flex gap4"><input style="flex:1" data-ui="benchFilter" value="${esc(ui.benchFilter)}" placeholder="筛选 ID / 数据 / 信号 / 来源"><select style="width:89px" data-ui="benchView"><option value="id" ${ui.benchView==='id'?'selected':''}>按 ID</option><option value="all" ${ui.benchView==='all'?'selected':''}>逐帧</option></select></div></div><div class="inner scroll"><div class="monitorheader"><span>时间</span><span>方向</span><span>通道</span><span>ID</span><span>数据 / 解码</span></div>${frames.length?frames.map(f=>`<div class="monitorline ${ui.selectedMonitor===f.uid?'sel':''}" data-act="monitor-select" data-arg="${f.uid}"><span>${esc(f.time)}</span><span>${esc(f.dir)}</span><span>${esc(f.ch)}</span><span>${esc(f.id)}</span><span title="${esc(f.data)}">${esc(f.data)} ${f.demo?'· 示例':''}</span></div>`).join(''):`<div class="empty"><div class="glyph">⇄</div><h2>暂无 CAN 事件</h2><p>连接真实设备后在这里持续观察 DUT 报文；可载入离线样例以检查过滤、选择与解码交互。</p></div>`}</div><div class="foot"><div class="rowbetween"><span class="muted">接收 ${frames.length}　·　通道来源：${frames.length?'离线样例':'无数据'}</span><button class="btn sm" data-act="monitor-export">导出所见</button></div>${ui.selectedMonitor?`<div class="contextDetail" style="margin-top:8px">所选帧：${esc(frames.find(x=>x.uid===ui.selectedMonitor)?.id||'—')} · 原始帧来自离线样例</div>`:''}</div></section><div class="toolSplitter" data-split="manual-left"></div><section class="workcol"><div class="head"><span>工位操作</span><span class="chip">人工调试</span></div><div class="inner scroll pad"><div class="sectionlabel">工位控制（独立能力）</div><div class="stationgrid"><div class="stationact"><div class="rowbetween"><strong>IGN</strong><span class="chip">实际 UNKNOWN</span></div><div class="body"><button class="btn sm" data-act="bench-act" data-arg="IGN:ON">ON</button><button class="btn sm" data-act="bench-act" data-arg="IGN:OFF">OFF</button></div></div><div class="stationact"><div class="rowbetween"><strong>夹具</strong><span class="chip">实际 UNKNOWN</span></div><div class="body"><button class="btn sm" data-act="bench-act" data-arg="SOL:CLAMP">请求压紧</button><button class="btn sm" data-act="bench-act" data-arg="SOL:OPEN">请求打开</button></div></div></div><div class="rowbetween" style="margin:13px 0 7px"><span class="sectionlabel">按键动作 <span class="chip">${(project.buttonActions||[]).length}</span></span><button class="btn sm primary" data-act="button-action-new">＋ 新增按键动作</button></div><div class="buttonActionGrid">${(project.buttonActions||[]).map(a=>{let steps=actionSteps(a),valid=steps.length>0;return `<div class="buttonActionTile ${valid?'':'unready'}" data-button-action="${esc(a.id)}"><div class="buttonActionTop"><button class="buttonKey" ${valid?'':'disabled'} data-act="button-action-preview" data-arg="${esc(a.id)}" title="点击：预演动作；右键：编辑配置"><span class="keyglyph">◉</span><strong>${esc(a.name)}</strong></button><button class="btn sm square" data-act="button-action-edit" data-arg="${esc(a.id)}" title="编辑按键模拟配置">⚙</button></div><div class="tiny muted">${valid?`${steps.length} 步 · ${actionDuration(a)} ms · 末步不自动复位`:'还没有控制步骤 · 点击编辑'}</div><div class="buttonTileFoot"><span class="chip ${valid?'blue':'amber'}">${valid?'序列已配置':'待配置'}</span><button class="btn sm" data-act="button-action-sequence" data-arg="${esc(a.id)}" ${valid?'':'disabled'}>加入序列</button></div></div>`}).join('')}${!project.buttonActions?.length?`<button class="buttonActionAdd" data-act="button-action-new"><span style="font-size:22px">＋</span><span>新增按键动作</span><span class="tiny muted">任意 KEY 组合、步骤与保持时间</span></button>`:''}</div><div class="manual-mapping"><span>KEY 控制序列配置</span><button class="btn sm" data-act="open-config" data-arg="inputs" title="新建或编辑可复用的 KEY 控制序列">编辑配置</button></div><div class="rowbetween" style="margin:12px 0 7px"><span class="sectionlabel">按键动作连续序列</span><button class="btn sm" data-act="sequence-add">＋ 添加动作</button></div><div class="panel">${(ui.inputSequence||[]).length?(ui.inputSequence||[]).map((a,i)=>`<div class="runrow"><span class="runnum">${i+1}</span><span class="grow">${esc(a.name)} · ${esc(a.op)} · ${a.ms} ms</span><button class="btn sm" data-act="sequence-move" data-arg="${i}:up">↑</button><button class="btn sm" data-act="sequence-move" data-arg="${i}:down">↓</button><button class="btn sm danger" data-act="sequence-delete" data-arg="${i}">×</button></div>`).join(''):`<div class="pad muted small">暂无连续动作；可从已配置的按键动作中添加。</div>`}</div><div class="flex" style="margin-top:8px"><button class="btn" data-act="sequence-preview">预览输入时序</button><button class="btn sm" data-act="sequence-clear">清空</button></div></div><div class="foot"><div class="rowbetween"><b>人工操作记录</b><button class="btn sm" data-act="bench-log-clear">清空</button></div><div class="scroll" style="max-height:122px;margin-top:6px">${ui.benchActions.length?ui.benchActions.slice(-8).reverse().map(a=>`<div class="formatRow"><span class="muted mono">${esc(a.time)}</span><span class="grow ellipsis">${esc(a.text)}</span><span class="chip">未下发</span></div>`).join(''):`<div class="muted small">尚无人工操作预演记录</div>`}</div></div></section><div class="toolSplitter" data-split="manual-mid"></div><section class="workcol"><div class="head"><span>CAN 发送</span><span class="chip">CAN1 · DUT</span></div><div class="inner scroll pad"><div class="field"><label>发送编辑方式</label><div class="seg"><button class="${ui.benchMsgMode==='dbc'?'active':''}" data-act="bench-sendmode" data-arg="dbc">DBC 信号</button><button class="${ui.benchMsgMode==='raw'?'active':''}" data-act="bench-sendmode" data-arg="raw">原始帧</button></div></div>${ui.benchMsgMode==='dbc'?`<div class="field"><label>选择工程报文</label><select data-ui="benchSelectedMsg">${project.dbc.map(x=>`<option value="${x.id}" ${m?.id===x.id?'selected':''}>${esc(x.name)} · ${esc(x.canid)}</option>`).join('')}${!project.dbc.length?'<option>未导入 DBC</option>':''}</select></div>${m?`<div class="panel"><div class="panelhead">${esc(m.name)} · ${esc(m.canid)} <span class="chip">${m.dlc} Bytes</span></div><table class="datatable"><thead><tr><th>信号名称</th><th>物理值</th><th style="width:65px">单位</th></tr></thead><tbody>${m.signals.map(x=>`<tr><td title="${esc(x.name)}">${esc(x.name)}</td><td><input type="number" data-bench-signal="${esc(x.name)}" value="${esc(ui.benchValues[x.name]??0)}" step="any"></td><td>${esc(x.unit)}</td></tr>`).join('')}</tbody></table></div>`:''}`:`${fld('CAN ID',ui.benchRawId,'benchRawId')}${fld('8 字节数据 Hex',ui.benchRawData,'benchRawData')}`}<div class="divider"></div><div class="fields2">${fld('发送方式',ui.benchPeriod===0?'once':'period','benchPeriodMode','select',[['once','单次'],['period','周期']])}${fld('周期 (ms)',ui.benchPeriod||100,'benchPeriod','number')}</div><div class="flex"><button class="btn primary" data-act="bench-send">预览发送</button><button class="btn" data-act="bench-stop">预览停止</button><button class="btn" data-act="open-tool" data-arg="dbc">编辑 DBC</button></div><div class="divider"></div><div class="sectionlabel">周期发送任务</div><div class="panel pad8"><div class="rowbetween"><span>${esc(m?.name||ui.benchRawId||'未选择报文')}</span><span class="chip">未启动</span></div><div class="muted" style="margin-top:7px">当前原型仅编辑发送配置；不会启动周期 CAN 任务。</div></div></div><div class="foot"><div class="muted">发送预览不生成真实 RX 事件；DUT 是否响应只以实际 CAN 接收为准。</div></div></section></div>`}
+
+function benchCanRows(){
+ if(!Array.isArray(ui.benchCanRows))ui.benchCanRows=[];
+ if(!ui.benchCanRows.length){
+  ui.benchCanRows.push({id:id(),name:'报文 01',selected:true,source:'raw',idText:ui.benchRawId||'',extended:false,
+    data:ui.benchRawData||'',dlc:8,sendMode:'once',periodMs:100,dbcId:'',values:{},previewOn:false});
+ }
+ for(const row of ui.benchCanRows){
+  if(!row.values||typeof row.values!=='object')row.values={};
+  if(typeof row.previewOn!=='boolean')row.previewOn=false;
+ }
+ return ui.benchCanRows;
+}
+function benchCanOne(rid){return benchCanRows().find(r=>r.id===rid)}
+function benchCanCheck(row){
+ const str=String(row.idText||'').trim(),num=/^0x[0-9a-f]{1,8}$/i.test(str)?Number.parseInt(str.slice(2),16):
+  /^[0-9]{1,10}$/.test(str)?Number(str):NaN;
+ if(!Number.isInteger(num)||num<0||num>(row.extended?0x1fffffff:0x7ff))return row.extended?'扩展帧 ID 必须为 0～0x1FFFFFFF':'标准帧 ID 必须为 0～0x7FF';
+ if(!Number.isInteger(Number(row.dlc))||Number(row.dlc)<0||Number(row.dlc)>8)return'DLC 需为 0～8';
+ if(row.source==='raw'){
+  const hex=String(row.data||'').replace(/[\s,\-]/g,'');
+  if(!/^[0-9a-f]*$/i.test(hex)||hex.length%2||hex.length>16)return'DATA 需为 0～8 字节的完整 HEX';
+  if(hex.length/2!==Number(row.dlc))return'DATA 字节数应与 DLC 一致';
+ }else if(!project.dbc.some(m=>m.id===row.dbcId)){
+  return'所选 DBC 报文已不存在，请重新关联';
+ }
+ if(row.sendMode==='period'&&(!Number.isInteger(Number(row.periodMs))||Number(row.periodMs)<1||Number(row.periodMs)>60000))
+  return'周期必须为 1～60000 ms（设计值，实物范围以固件合同为准）';
+ return'';
+}
+function benchCanChange(rid,prop,value){
+ const row=benchCanOne(rid);if(!row)return;
+ if(prop==='selected'||prop==='extended')value=!!value;
+ if(prop==='dlc'||prop==='periodMs')value=Number(value);
+ row[prop]=value;
+ if(prop==='source'&&value==='dbc'&&!row.dbcId&&project.dbc.length)row.dbcId=project.dbc[0].id;
+ if(prop==='dbcId'||(prop==='source'&&value==='dbc')){
+  const msg=project.dbc.find(m=>m.id===row.dbcId);
+  if(msg){row.idText=msg.canid;row.extended=!!msg.extended;row.dlc=msg.dlc;}
+ }
+ if(prop==='data'&&row.source==='raw'){
+  const text=String(value).trim().replace(/[\s,]+/g,'');
+  if(/^[0-9a-f]*$/i.test(text)&&text.length%2===0&&text.length<=16)row.dlc=text.length/2;
+ }
+ save();renderTool();
+}
+function benchCanSignalChange(rid,sid,value){
+ const row=benchCanOne(rid);if(!row)return;
+ row.values[sid]=value;save();renderTool();
+}
+function benchCanAdd(copyId=''){
+ const from=copyId?benchCanOne(copyId):null;
+ if(benchCanRows().length>=64){notify('最多预编辑 64 条 CAN 报文',true);return}
+ const row=from?{...clone(from),id:id(),name:from.name+' 副本',previewOn:false}:
+  {id:id(),name:'报文 '+String(benchCanRows().length+1).padStart(2,'0'),
+   selected:true,source:'raw',idText:'',extended:false,data:'',dlc:0,
+   sendMode:'once',periodMs:100,dbcId:'',values:{},previewOn:false};
+ ui.benchCanRows.push(row);ui.benchCanSelected=row.id;ui.benchCanEditorOpen=true;save();renderTool();
+}
+function benchCanApply(action,rid=''){
+ const rows=rid?[benchCanOne(rid)].filter(Boolean):action==='stop-all'?benchCanRows():benchCanRows().filter(r=>r.selected);
+ if(!rows.length){notify('请先勾选需要操作的报文',true);return}
+ const isStart=action==='start',isStop=action==='stop'||action==='stop-all';
+ const subset=isStart?rows.filter(r=>r.sendMode==='period'):rows;
+ if(!subset.length){notify('所选报文没有周期任务；请在报文编辑中选择周期模式',true);return}
+ if(!isStop){
+  const problems=subset.map(r=>({r,error:benchCanCheck(r)})).filter(x=>x.error);
+  if(problems.length){notify(problems[0].r.name+'：'+problems[0].error,true);ui.benchCanSelected=problems[0].r.id;ui.benchCanEditorOpen=true;renderTool();return}
+ }
+ if(isStart){
+  const active=new Set(benchCanRows().filter(r=>r.previewOn).map(r=>r.id));
+  subset.forEach(r=>active.add(r.id));
+  if(active.size>8){notify('主控 SET_BROADCAST 最多 8 条周期报文；仅预演，未修改任务集',true);return}
+ }
+ if(isStart)subset.forEach(r=>r.previewOn=true);
+ if(isStop)subset.forEach(r=>r.previewOn=false);
+ const label=isStart?'加入周期目标集合':isStop?'停止周期目标':'单次发送请求';
+ const text=subset.map(r=>r.idText||'待配置').join(', ');
+ benchRecord('CAN1 '+label+'（'+subset.length+' 条）：'+text+' · 仅记录预演意图，未发送实体 CAN');
+}
+function renderBenchCanPanel(){
+ const rows=benchCanRows(),active=rows.filter(r=>r.previewOn).length,
+       selected=ui.benchCanSelected?benchCanOne(ui.benchCanSelected):null;
+ const rowMarkup=rows.map(r=>{
+  const problem=benchCanCheck(r),dbc=project.dbc.find(m=>m.id===r.dbcId),
+        descriptor=r.source==='dbc'?'DBC · '+(dbc?.name||'未关联'):'DATA '+(r.data||'—'),
+        badge=r.previewOn?'周期目标 · 未下发':problem?'配置待完善':r.sendMode==='period'?'周期待操作':'单次待操作';
+  return `<div class="benchCanRow ${selected?.id===r.id&&ui.benchCanEditorOpen?'edited':''}">
+   <div class="benchCanRowTop">
+    <input type="checkbox" data-bench-can-id="${esc(r.id)}" data-bench-can-prop="selected" ${r.selected?'checked':''} title="选中参加批量操作">
+    <div class="benchCanRowTitle"><strong>${esc(r.name)}</strong><span class="benchCanBadge">${esc(r.idText||'未设置 ID')}</span>
+      <span class="tiny muted">${r.extended?'29位':'11位'}</span></div>
+    <span class="benchCanBadge ${r.previewOn?'target':''}">${esc(badge)}</span>
+   </div>
+   <div class="benchCanMeta"><span class="canHex" title="${esc(descriptor)}">${esc(descriptor)}</span>
+    <span style="white-space:nowrap">${r.sendMode==='period'?esc(r.periodMs)+' ms 周期':'单次'}</span></div>
+   <div class="benchCanRowOps">
+    <button class="btn sm" data-act="bench-can-once" data-arg="${esc(r.id)}">单发</button>
+    <button class="btn sm ${r.previewOn?'':'primary'}" data-act="bench-can-${r.previewOn?'stop':'start'}"
+     data-arg="${esc(r.id)}" ${r.sendMode==='period'?'':'disabled'}>${r.previewOn?'停止周期':'启动周期'}</button>
+    <button class="btn sm" data-act="bench-can-edit" data-arg="${esc(r.id)}">编辑</button>
+   </div>
+  </div>`;
+ }).join('');
+ let editor='';
+ if(selected&&ui.benchCanEditorOpen){
+  const r=selected,dbc=project.dbc.find(m=>m.id===r.dbcId);
+  const field=(label,prop,value,type='text',options='')=>`<div class="field"><label>${label}</label>${type==='select'? 
+   `<select data-bench-can-id="${esc(r.id)}" data-bench-can-prop="${prop}">${options}</select>`:
+   `<input type="${type}" data-bench-can-id="${esc(r.id)}" data-bench-can-prop="${prop}" value="${esc(value??'')}">`}</div>`;
+  const sourceOptions=`<option value="raw" ${r.source==='raw'?'selected':''}>直接编辑原始 CAN 帧</option><option value="dbc" ${r.source==='dbc'?'selected':''}>通过工程 DBC 编辑</option>`;
+  const modeOptions=`<option value="once" ${r.sendMode==='once'?'selected':''}>单次</option><option value="period" ${r.sendMode==='period'?'selected':''}>周期</option>`;
+  editor=`<div class="benchCanEditor"><div class="editorTitle"><strong>编辑 · ${esc(r.name)}</strong>
+   <button class="btn sm" data-act="bench-can-close-editor">收起编辑</button></div>
+   ${field('报文名称','name',r.name)}
+   ${field('编辑方式','source',r.source,'select',sourceOptions)}
+   ${r.source==='raw'?
+   `<div class="fields2">${field('CAN ID（0x 或十进制）','idText',r.idText)}
+       ${field('帧格式','extended',r.extended?'true':'false','select',
+        `<option value="false" ${!r.extended?'selected':''}>标准 11 位</option><option value="true" ${r.extended?'selected':''}>扩展 29 位</option>`)}</div>
+    ${field('DATA · 十六进制字节','data',r.data)}
+    <div class="muted tiny" style="margin:-2px 0 7px">DLC ${r.dlc} 字节 · 默认随 DATA 长度变化，也可手动调整</div>
+    ${field('DLC（0～8）','dlc',r.dlc,'number')}`:
+   `<div class="field"><label>选择工程 DBC 报文（仅当前条）</label>
+      <select data-bench-can-id="${esc(r.id)}" data-bench-can-prop="dbcId">
+       <option value="">请选择…</option>${project.dbc.map(m=>`<option value="${esc(m.id)}" ${r.dbcId===m.id?'selected':''}>${esc(m.name)} · ${esc(m.canid)}</option>`).join('')}
+      </select></div>
+    ${dbc?`<div class="signalRows">${dbc.signals.map(sig=>`<div class="formatRow"><span class="grow" title="${esc(sig.name)}">${esc(sig.name)}</span>
+      <input type="number" step="any" value="${esc(r.values[sig.id]??0)}" data-bench-can-id="${esc(r.id)}" data-bench-can-signal="${esc(sig.id)}">
+      <span class="tiny muted">${esc(sig.unit||'')}</span></div>`).join('')}</div>`:
+      '<div class="miniError">未选择工程报文。DBC 不是新建 CAN 发送的前提。</div>'}
+    <div class="muted tiny" style="margin:6px 0 8px">这里只编辑物理信号值；正式位编码由现有 DBC 引擎完成，HTML 不伪造原始帧。</div>`}
+   <div class="fields2">${field('发送模式','sendMode',r.sendMode,'select',modeOptions)}
+   ${r.sendMode==='period'?field('周期（ms）','periodMs',r.periodMs,'number'):'<div class="field"><label>发送次数</label><div class="muted small">每次点击单发发送一帧</div></div>'}</div>
+   ${benchCanCheck(r)?`<div class="miniError">${esc(benchCanCheck(r))}</div>`:''}
+   <div class="editorActions"><div class="flex gap4">
+     <button class="btn sm" data-act="bench-can-copy" data-arg="${esc(r.id)}">复制报文</button>
+     <button class="btn sm danger" data-act="bench-can-delete" data-arg="${esc(r.id)}">删除</button></div>
+     <span class="muted tiny">更改后更新本地列表草稿</span></div>
+  </div>`;
+ }
+ return `<section class="workcol"><div class="head"><span>CAN 发送 · 多报文
+   <span class="chip">CAN1 · DUT</span></span>
+   <button class="btn sm primary" data-act="bench-can-add">＋ 新增报文</button></div>
+   <div class="benchCanToolbar">
+    <button class="btn sm" data-act="bench-can-batch-once">单发勾选</button>
+    <button class="btn sm" data-act="bench-can-batch-start">启动勾选周期</button>
+    <button class="btn sm" data-act="bench-can-batch-stop">停止勾选</button>
+    <button class="btn sm" data-act="bench-can-stop-all">全部停止</button>
+    <span class="taskSummary">${rows.length} 条配置 · ${active}/8 周期目标</span>
+   </div>
+   <div class="benchCanColumns"><span>选</span><span>CAN 报文 / 数据 / 周期</span><span>预演状态</span></div>
+   <div class="benchCanList scroll">${rowMarkup}</div>
+   ${editor}
+   <div class="benchCanFoot">主视图是多报文操作列表。点击“编辑”才配置原始帧或选择 DBC。
+   当前仅 HTML 交互预演，不连接真实 CAN。主控 0x50 是整表替换，最多 8 条；正式接线必须统一管理活动集合。</div>
+  </section>`;
+}
+
+function renderManual(){let q=ui.benchFilter.trim().toLowerCase();let frames=ui.benchMonitor.filter(f=>!q||(f.id+f.data+f.dir+f.name).toLowerCase().includes(q));return `<div class="workgrid3 manualBenchGrid" id="manualGrid">${renderBenchCanPanel()}<div class="toolSplitter" data-split="manual-left"></div><section class="workcol"><div class="head"><span>工位操作</span><span class="chip">人工调试</span></div><div class="inner scroll pad"><div class="sectionlabel">工位控制（独立能力）</div><div class="stationgrid"><div class="stationact"><div class="rowbetween"><strong>IGN</strong><span class="chip">实际 UNKNOWN</span></div><div class="body"><button class="btn sm" data-act="bench-act" data-arg="IGN:ON">ON</button><button class="btn sm" data-act="bench-act" data-arg="IGN:OFF">OFF</button></div></div><div class="stationact"><div class="rowbetween"><strong>夹具</strong><span class="chip">实际 UNKNOWN</span></div><div class="body"><button class="btn sm" data-act="bench-act" data-arg="SOL:CLAMP">请求压紧</button><button class="btn sm" data-act="bench-act" data-arg="SOL:OPEN">请求打开</button></div></div></div><div class="rowbetween" style="margin:13px 0 7px"><span class="sectionlabel">按键动作 <span class="chip">${(project.buttonActions||[]).length}</span></span><button class="btn sm primary" data-act="button-action-new">＋ 新增按键动作</button></div><div class="buttonActionGrid">${(project.buttonActions||[]).map(a=>{let steps=actionSteps(a),valid=steps.length>0;return `<div class="buttonActionTile ${valid?'':'unready'}" data-button-action="${esc(a.id)}"><div class="buttonActionTop"><button class="buttonKey" ${valid?'':'disabled'} data-act="button-action-preview" data-arg="${esc(a.id)}" title="点击：预演动作；右键：编辑配置"><span class="keyglyph">◉</span><strong>${esc(a.name)}</strong></button><button class="btn sm square" data-act="button-action-edit" data-arg="${esc(a.id)}" title="编辑按键模拟配置">⚙</button></div><div class="tiny muted">${valid?`${steps.length} 步 · ${actionDuration(a)} ms · 末步不自动复位`:'还没有控制步骤 · 点击编辑'}</div><div class="buttonTileFoot"><span class="chip ${valid?'blue':'amber'}">${valid?'序列已配置':'待配置'}</span><button class="btn sm" data-act="button-action-sequence" data-arg="${esc(a.id)}" ${valid?'':'disabled'}>加入序列</button></div></div>`}).join('')}${!project.buttonActions?.length?`<button class="buttonActionAdd" data-act="button-action-new"><span style="font-size:22px">＋</span><span>新增按键动作</span><span class="tiny muted">任意 KEY 组合、步骤与保持时间</span></button>`:''}</div><div class="manual-mapping"><span>KEY 控制序列配置</span><button class="btn sm" data-act="open-config" data-arg="inputs" title="新建或编辑可复用的 KEY 控制序列">编辑配置</button></div><div class="rowbetween" style="margin:12px 0 7px"><span class="sectionlabel">按键动作连续序列</span><button class="btn sm" data-act="sequence-add">＋ 添加动作</button></div><div class="panel">${(ui.inputSequence||[]).length?(ui.inputSequence||[]).map((a,i)=>`<div class="runrow"><span class="runnum">${i+1}</span><span class="grow">${esc(a.name)} · ${esc(a.op)} · ${a.ms} ms</span><button class="btn sm" data-act="sequence-move" data-arg="${i}:up">↑</button><button class="btn sm" data-act="sequence-move" data-arg="${i}:down">↓</button><button class="btn sm danger" data-act="sequence-delete" data-arg="${i}">×</button></div>`).join(''):`<div class="pad muted small">暂无连续动作；可从已配置的按键动作中添加。</div>`}</div><div class="flex" style="margin-top:8px"><button class="btn" data-act="sequence-preview">预览输入时序</button><button class="btn sm" data-act="sequence-clear">清空</button></div></div><div class="foot"><div class="rowbetween"><b>人工操作记录</b><button class="btn sm" data-act="bench-log-clear">清空</button></div><div class="scroll" style="max-height:122px;margin-top:6px">${ui.benchActions.length?ui.benchActions.slice(-8).reverse().map(a=>`<div class="formatRow"><span class="muted mono">${esc(a.time)}</span><span class="grow ellipsis">${esc(a.text)}</span><span class="chip">未下发</span></div>`).join(''):`<div class="muted small">尚无人工操作预演记录</div>`}</div></div></section><div class="toolSplitter" data-split="manual-mid"></div><section class="workcol"><div class="head"><span>CAN 实时观察 <span class="chip">CAN1 · DUT</span></span><div class="flex gap4"><button class="btn sm" data-act="monitor-example">载入样例帧</button><button class="btn sm" data-act="monitor-clear">清空</button></div></div><div class="pad8"><div class="flex gap4"><input style="flex:1" data-ui="benchFilter" value="${esc(ui.benchFilter)}" placeholder="筛选 ID / 数据 / 信号 / 来源"><select style="width:89px" data-ui="benchView"><option value="id" ${ui.benchView==='id'?'selected':''}>按 ID</option><option value="all" ${ui.benchView==='all'?'selected':''}>逐帧</option></select></div></div><div class="inner scroll"><div class="monitorheader"><span>时间</span><span>方向</span><span>通道</span><span>ID</span><span>数据 / 解码</span></div>${frames.length?frames.map(f=>`<div class="monitorline ${ui.selectedMonitor===f.uid?'sel':''}" data-act="monitor-select" data-arg="${f.uid}"><span>${esc(f.time)}</span><span>${esc(f.dir)}</span><span>${esc(f.ch)}</span><span>${esc(f.id)}</span><span title="${esc(f.data)}">${esc(f.data)} ${f.demo?'· 示例':''}</span></div>`).join(''):`<div class="empty"><div class="glyph">⇄</div><h2>暂无 CAN 事件</h2><p>连接真实设备后在这里持续观察 DUT 报文；可载入离线样例以检查过滤、选择与解码交互。</p></div>`}</div><div class="foot"><div class="rowbetween"><span class="muted">接收 ${frames.length}　·　通道来源：${frames.length?'离线样例':'无数据'}</span><button class="btn sm" data-act="monitor-export">导出所见</button></div>${ui.selectedMonitor?`<div class="contextDetail" style="margin-top:8px">所选帧：${esc(frames.find(x=>x.uid===ui.selectedMonitor)?.id||'—')} · 原始帧来自离线样例</div>`:''}</div></section></div>`}
 function renderDbc(){let m=selectedMsg(),s=m?.signals.find(x=>x.id===ui.selectedSignal)||m?.signals[0];return `<div class="dbclayout"><section class="dbccol"><div class="head flex rowbetween" style="padding:10px;border-bottom:1px solid var(--line)"><strong>报文 <span class="chip">${project.dbc.length}</span> <span class="chip amber">来源未实机验证</span></strong><button class="btn sm" data-act="dbc-add-msg">＋ 报文</button></div><div class="pad8"><input style="width:100%" placeholder="筛选报文名称或 ID" data-ui="dbcFilter" value="${esc(ui.dbcFilter||'')}"></div><div class="scroll">${project.dbc.filter(x=>!ui.dbcFilter||(x.name+x.canid).toLowerCase().includes(ui.dbcFilter.toLowerCase())).map(x=>`<div class="treeitem ${m?.id===x.id?'active':''}" data-act="dbc-select-msg" data-arg="${x.id}"><span class="ic">▤</span><span class="grow ellipsis">${esc(x.name)}<div class="tiny muted mono">${esc(x.canid)} · ${x.dlc} byte · ${x.signals.length} signals</div></span></div>`).join('')}${!project.dbc.length?'<div class="empty"><strong>还没有 DBC 报文</strong><button class="btn" data-act="dbc-add-msg">新增报文</button></div>':''}</div><div class="foot pad8"><div class="key-help-line" style="margin:0 0 6px">${esc(project.dbcInfo?.filename||'当前工程报文')} · ${project.dbc.length} 报文 / ${project.dbc.reduce((n,m)=>n+m.signals.length,0)} 信号</div><button class="btn sm primary" data-act="dbc-import">导入 DBC</button> <button class="btn sm" data-act="dbc-use-lvtong" title="从本页面内置的 LvTong.dbc 样本替换当前报文">载入 LvTong 示例</button><button class="btn sm" data-act="dbc-export">导出</button></div></section><section class="dbccol"><div class="rowbetween" style="padding:9px 11px;border-bottom:1px solid var(--line);min-height:45px"><div><b>${esc(m?.name||'未选择报文')}</b> <span class="chip mono">${esc(m?.canid||'—')}</span> ${m?.extended?'<span class="chip blue">扩展帧 29bit</span>':'<span class="chip">标准帧 11bit</span>'}</div><div class="flex"><button class="btn sm" data-act="dbc-add-signal" ${!m?'disabled':''}>＋ 信号</button><button class="btn sm danger" data-act="dbc-delete-msg" ${!m?'disabled':''}>删除报文</button></div></div>${m?`<div class="scroll" style="flex:1"><table class="datatable"><thead><tr><th style="width:25%">信号</th><th style="width:66px">起始位</th><th style="width:58px">长度</th><th style="width:76px">字节序</th><th style="width:64px">系数</th><th style="width:64px">偏移</th><th>单位</th></tr></thead><tbody>${m.signals.map(x=>`<tr class="${x.id===s?.id?'selected':''}" data-act="dbc-select-signal" data-arg="${x.id}"><td><input data-sig-edit="${x.id}:name" value="${esc(x.name)}"></td><td><input type="number" data-sig-edit="${x.id}:start" value="${x.start}"></td><td><input type="number" data-sig-edit="${x.id}:length" value="${x.length}"></td><td><select data-sig-edit="${x.id}:endian"><option ${x.endian==='Intel'?'selected':''}>Intel</option><option ${x.endian==='Motorola'?'selected':''}>Motorola</option></select></td><td><input type="number" step="any" data-sig-edit="${x.id}:factor" value="${x.factor}"></td><td><input type="number" step="any" data-sig-edit="${x.id}:offset" value="${x.offset}"></td><td><input data-sig-edit="${x.id}:unit" value="${esc(x.unit)}"></td></tr>`).join('')}</tbody></table></div><div class="panel" style="margin:10px 11px;flex-shrink:0"><div class="panelhead">当前报文位分布 · ${m.dlc} 字节 <span class="muted tiny">信号重叠需核查；Motorola 位序仅示意</span></div><div class="bitgrid">${Array.from({length:m.dlc*8},(_,i)=>{let used=m.signals.some(x=>i>=x.start&&i<x.start+x.length),sel=s&&i>=s.start&&i<s.start+s.length;return `<div class="bit ${sel?'selectedbit':used?'used':''}" title="bit ${i}">${i}</div>`}).join('')}</div></div>`:`<div class="empty"><div class="glyph">▤</div><strong>选择或创建报文</strong></div>`}</section><section class="dbccol"><div class="head" style="padding:11px;border-bottom:1px solid var(--line)"><strong>属性与校验</strong></div><div class="scroll pad">${m?`${fld('报文名称',m.name,'dbc.name')}${fld('CAN ID',m.canid,'dbc.canid')}${fld('DLC（Byte）',m.dlc,'dbc.dlc','number')}${s?`<div class="divider"></div><div class="rowbetween"><b>${esc(s.name)}</b><button class="btn sm danger" data-act="dbc-delete-signal" data-arg="${s.id}">删除信号</button></div><div class="fields2" style="margin-top:11px">${fld('最小值',s.min,'sig.min','number')}${fld('最大值',s.max,'sig.max','number')}</div>${fld('符号类型',s.signed?'true':'false','sig.signed','select',[['false','无符号'],['true','有符号']])}${s.comment?`<div class="sectionlabel">信号注释</div><div class="contextDetail">${esc(s.comment)}</div>`:''}${Object.keys(s.values||{}).length?`<div class="sectionlabel" style="margin-top:12px">枚举值 / VAL_</div>${Object.entries(s.values).map(([k,v])=>`<div class="formatRow"><span class="mono">${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}`:''}`:`<div class="muted small">暂无信号</div>`}`:''}<div class="divider"></div><div class="sectionlabel">DBC 来源</div><div class="dbc-file-note">${esc(project.dbcInfo?.filename||'当前工程数据')}<div class="tiny">${esc(project.dbcInfo?.version||'')} · 仅 UI/字段预览，非实机核验；导出为简化格式，不保证原文件无损往返。</div></div><div class="sectionlabel">静态校验</div>${m?dbcWarnings(m).length?dbcWarnings(m).map(x=>`<div class="miniError">${esc(x)}</div>`).join(''):`<span class="chip green">未发现基础范围错误</span>`:'<div class="muted">暂无可校验数据</div>'}<div class="divider"></div><div class="flex"><button class="btn" data-act="dbc-import">导入文件</button><button class="btn primary" data-act="dbc-export">导出 DBC</button></div></div></section></div>`}
 function dbcWarnings(m){let err=[];if(m.dlc<0||m.dlc>8)err.push('当前原型限定经典 CAN 的 DLC 为 0～8');m.signals.forEach(s=>{if(s.start<0||s.length<1||s.start+s.length>m.dlc*8)err.push(s.name+'：位范围超出 DLC');if(s.factor===0)err.push(s.name+'：比例系数不能为零');if(s.min>s.max)err.push(s.name+'：最小值大于最大值')});return err}
 function fakeWave(){const r=[];for(let i=0;i<320;i++){let x=i/319*100;let y=1.25+.03*Math.sin(x/3)+(x>16&&x<45?2.8*Math.exp(-Math.pow((x-29)/8.5,2)):0)+.25*Math.exp(-Math.pow((x-52)/8,2));r.push({x,y,ref:y*(.975+0.008*Math.sin(x/12))})}return r}
@@ -717,7 +909,25 @@ case'button-action-save':{
 case'button-action-remove':transact(()=>{project.buttonActions=project.buttonActions.filter(x=>x.id!==arg);ui.inputSequence=(ui.inputSequence||[]).filter(x=>x.buttonId!==arg)});closeModal();return;
 case'button-action-preview':{let a=project.buttonActions?.find(x=>x.id===arg);if(a)actionPreview(a);return}
 case'button-action-sequence':{let a=project.buttonActions?.find(x=>x.id===arg);if(!a)return;ui.inputSequence=ui.inputSequence||[];ui.inputSequence.push({buttonId:a.id,name:a.name,op:'控制序列',ms:0});save();renderTool();notify('按键动作已添加到短序列');return}
-case'monitor-example':monitorExample();return;case'monitor-clear':ui.benchMonitor=[];ui.selectedMonitor='';renderTool();return;case'monitor-select':ui.selectedMonitor=arg;renderTool();return;case'monitor-export':exportFile('manual_can_visible.json',JSON.stringify(ui.benchMonitor.filter(f=>!ui.benchFilter||(f.id+f.data).includes(ui.benchFilter)),null,2),'application/json');return;case'bench-act':benchRecord(arg.replace('IGN:','IGN 请求 ').replace('SOL:','夹具请求 '));return;case'bench-input':{let [iid,sid]=arg.split(':'),input=project.inputs.find(x=>x.id===iid),state=input?.states.find(x=>x.id===sid);ui.activeInput=sid;benchRecord(`输入条件：${input?.name||'?'} → ${state?.name||'?'}（请求预览）`);return}case'bench-input-reset':{let input=project.inputs.find(x=>x.id===arg);ui.activeInput='';benchRecord(`输入组 ${input?.name||'?'}：恢复配置定义状态（预览）`);return}case'bench-sendmode':ui.benchMsgMode=arg;renderTool();return;case'bench-send':benchRecord(`CAN1 ${ui.benchMsgMode==='dbc'?msgById(ui.benchSelectedMsg)?.name||'报文未选择':ui.benchRawId} 发送请求 · ${ui.benchPeriod===0?'单次':ui.benchPeriod+'ms 周期'}（预演）`);return;case'bench-stop':benchRecord('请求停止周期发送（预演）');return;case'bench-log-clear':ui.benchActions=[];renderTool();return;case'sequence-add':{let options=(project.buttonActions||[]).filter(a=>{return actionSteps(a).length>0}).map(a=>[a.id,a.name]);
+case'monitor-example':monitorExample();return;case'monitor-clear':ui.benchMonitor=[];ui.selectedMonitor='';renderTool();return;case'monitor-select':ui.selectedMonitor=arg;renderTool();return;case'monitor-export':exportFile('manual_can_visible.json',JSON.stringify(ui.benchMonitor.filter(f=>!ui.benchFilter||(f.id+f.data).includes(ui.benchFilter)),null,2),'application/json');return;case'bench-act':benchRecord(arg.replace('IGN:','IGN 请求 ').replace('SOL:','夹具请求 '));return;case'bench-input':{let [iid,sid]=arg.split(':'),input=project.inputs.find(x=>x.id===iid),state=input?.states.find(x=>x.id===sid);ui.activeInput=sid;benchRecord(`输入条件：${input?.name||'?'} → ${state?.name||'?'}（请求预览）`);return}case'bench-input-reset':{let input=project.inputs.find(x=>x.id===arg);ui.activeInput='';benchRecord(`输入组 ${input?.name||'?'}：恢复配置定义状态（预览）`);return}case'bench-can-add':benchCanAdd();return;
+case'bench-can-edit':ui.benchCanSelected=arg;ui.benchCanEditorOpen=true;renderTool();return;
+case'bench-can-close-editor':ui.benchCanEditorOpen=false;renderTool();return;
+case'bench-can-copy':benchCanAdd(arg);return;
+case'bench-can-delete':{
+ const row=benchCanOne(arg);if(!row)return;
+ if(row.previewOn){notify('请先从预演周期目标中停止这条报文',true);return;}
+ ui.benchCanRows=benchCanRows().filter(r=>r.id!==arg);
+ if(ui.benchCanSelected===arg){ui.benchCanSelected='';ui.benchCanEditorOpen=false;}
+ if(!ui.benchCanRows.length)ui.benchCanRows.push({id:id(),name:'报文 01',selected:true,source:'raw',
+ idText:'',extended:false,data:'',dlc:0,sendMode:'once',periodMs:100,dbcId:'',values:{},previewOn:false});
+ save();renderTool();return;}
+case'bench-can-once':benchCanApply('once',arg);return;
+case'bench-can-start':benchCanApply('start',arg);return;
+case'bench-can-stop':benchCanApply('stop',arg);return;
+case'bench-can-batch-once':benchCanApply('once');return;
+case'bench-can-batch-start':benchCanApply('start');return;
+case'bench-can-batch-stop':benchCanApply('stop');return;
+case'bench-can-stop-all':benchCanApply('stop-all');return;case'bench-log-clear':ui.benchActions=[];renderTool();return;case'sequence-add':{let options=(project.buttonActions||[]).filter(a=>{return actionSteps(a).length>0}).map(a=>[a.id,a.name]);
  if(!options.length){notify('先新增并配置一个有效按键动作，再添加到序列',true);return}
  modal('添加连续按键动作',`${fld('已配置按键动作',options[0][0],'seqButton','select',options)}${fld('动作结束后的额外等待 ms',100,'seqMs','number')}`,
  `<button class="btn" data-act="modal-close">取消</button><button class="btn primary" data-act="sequence-add-ok">添加</button>`);return}
@@ -743,7 +953,11 @@ renderCenter();if(sc)sc.scrollTop=y;renderInspector();save();return}}});
 document.addEventListener('dblclick',e=>{let n=e.target.closest('[data-name]');if(!n)return;let s=findStep(selectedCase()?.id,n.dataset.name)?.step;if(!s)return;let input=document.createElement('input');input.className='inlineedit';input.value=s.name;n.replaceWith(input);input.focus();input.select();let done=()=>{if(!input.isConnected)return;let v=input.value.trim();if(v)updateField('name',v);else renderCenter()};input.addEventListener('blur',done,{once:true});input.addEventListener('keydown',ev=>{if(ev.key==='Enter')input.blur();if(ev.key==='Escape'){input.value=s.name;input.blur()}})});
 document.addEventListener('contextmenu',e=>{let tile=e.target.closest('[data-button-action]');if(tile){e.preventDefault();buttonActionDialog(tile.dataset.buttonAction);return}let row=e.target.closest('.steprow');if(!row)return;e.preventDefault();ui.selectedStep=row.dataset.step;ui.selectedPhase=row.dataset.phase;renderInspector();$$('.steprow').forEach(x=>x.classList.toggle('active',x.dataset.step===ui.selectedStep));const f=findStep(selectedCase()?.id,ui.selectedStep);$('#contextHost').innerHTML=`<div class="floatMenu" style="left:${Math.min(e.clientX,window.innerWidth-215)}px;top:${Math.min(e.clientY,window.innerHeight-300)}px"><div class="mi" data-act="insert-step" data-arg="before">在上方插入 <span>Insert</span></div><div class="mi" data-act="insert-step" data-arg="after">在下方插入</div><div class="mi ${f?.step.children?.length?'':'disabled'}" data-act="insert-step" data-arg="inside">插入到首个分支</div><div class="mi" data-act="duplicate-step">复制步骤 <span>Ctrl+D</span></div><div class="mi" data-act="step-toggle-enabled">${f?.step.enabled?'禁用':'启用'}步骤</div><div class="mi" data-act="step-toggle-break">${f?.step.breakpoint?'删除':'添加'}断点 <span>F9</span></div><div style="height:1px;background:#e3e9f1;margin:5px 0"></div><div class="mi" data-act="delete-step">删除步骤 <span>Del</span></div></div>`});
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('#contextHost')&&$('#contextHost').innerHTML)$('#contextHost').innerHTML=''});
-document.addEventListener('change',e=>{let el=e.target;if(el.hasAttribute('data-key-switch')){if(el.dataset.keySwitch==='step-mask'){const mask=maskFromChecked('step-mask'),key=caseFieldKey('mask');if(key){caseFieldDrafts.delete(key);caseFieldErrors.delete(key)}updateField('mask',mask);return}refreshKeyPreview(el.dataset.keySwitch);return}if(el.dataset.field){const key=caseFieldKey(el.dataset.field);const value=eventValue(el);if(key){const error=caseFieldError(el.dataset.field,value);if(error){caseFieldDrafts.set(key,value);caseFieldErrors.set(key,error);el.classList.add('invalid-draft');notify('字段草稿需修改：'+error,true);return}caseFieldDrafts.delete(key);caseFieldErrors.delete(key)}updateField(el.dataset.field,value);return}if(el.dataset.ui){setUiField(el.dataset.ui,eventValue(el));save();renderTool();return}if(el.dataset.selection){ui.temporary[el.dataset.selection]=el.checked;save();renderSidebar();renderCenter();renderInspector();return}if(el.dataset.defaultEnabled){transact(()=>{let item=selectedTP()?.items.find(x=>x.id===el.dataset.defaultEnabled);if(item)item.enabled=el.checked});return}if(el.dataset.inputStateName||el.dataset.inputStateMask){let spec=el.dataset.inputStateName||el.dataset.inputStateMask,[iid,sid]=spec.split(':'),key=el.dataset.inputStateName?'name':'mask';if(key==='mask'&&!/^0x[0-9a-f]{1,5}$/i.test(el.value.trim())){notify('掩码需为 0x + 最多 5 位十六进制数',true);return}transact(()=>{let s=project.inputs.find(i=>i.id===iid)?.states.find(s=>s.id===sid);if(s)s[key]=el.value.trim()});return}if(el.dataset.sigEdit){let [sid,key]=el.dataset.sigEdit.split(':'),m=selectedMsg();transact(()=>{let s=m?.signals.find(s=>s.id===sid);if(s)s[key]=['start','length','factor','offset'].includes(key)?Number(el.value):el.value;ui.selectedSignal=sid});return}if(el.dataset.benchSignal){ui.benchValues[el.dataset.benchSignal]=Number(el.value)||0;save();return}if(el.dataset.udsSeqEnabled){transact(()=>{let x=project.udsSequence.find(x=>x.id===el.dataset.udsSeqEnabled);if(x)x.enabled=el.checked});return}if(el.dataset.udsSeqWait){transact(()=>{let x=project.udsSequence.find(x=>x.id===el.dataset.udsSeqWait);if(x)x.wait=Math.max(0,Number(el.value)||0)});return}
+document.addEventListener('change',e=>{let el=e.target;
+if(el.dataset.benchCanSignal){benchCanSignalChange(el.dataset.benchCanId,el.dataset.benchCanSignal,el.value);return;}
+if(el.dataset.benchCanProp){let value=eventValue(el);
+ if(el.dataset.benchCanProp==='extended')value=value==='true';
+ benchCanChange(el.dataset.benchCanId,el.dataset.benchCanProp,value);return;}if(el.hasAttribute('data-key-switch')){if(el.dataset.keySwitch==='step-mask'){const mask=maskFromChecked('step-mask'),key=caseFieldKey('mask');if(key){caseFieldDrafts.delete(key);caseFieldErrors.delete(key)}updateField('mask',mask);return}refreshKeyPreview(el.dataset.keySwitch);return}if(el.dataset.field){const key=caseFieldKey(el.dataset.field);const value=eventValue(el);if(key){const error=caseFieldError(el.dataset.field,value);if(error){caseFieldDrafts.set(key,value);caseFieldErrors.set(key,error);el.classList.add('invalid-draft');notify('字段草稿需修改：'+error,true);return}caseFieldDrafts.delete(key);caseFieldErrors.delete(key)}updateField(el.dataset.field,value);return}if(el.dataset.ui){setUiField(el.dataset.ui,eventValue(el));save();renderTool();return}if(el.dataset.selection){ui.temporary[el.dataset.selection]=el.checked;save();renderSidebar();renderCenter();renderInspector();return}if(el.dataset.defaultEnabled){transact(()=>{let item=selectedTP()?.items.find(x=>x.id===el.dataset.defaultEnabled);if(item)item.enabled=el.checked});return}if(el.dataset.inputStateName||el.dataset.inputStateMask){let spec=el.dataset.inputStateName||el.dataset.inputStateMask,[iid,sid]=spec.split(':'),key=el.dataset.inputStateName?'name':'mask';if(key==='mask'&&!/^0x[0-9a-f]{1,5}$/i.test(el.value.trim())){notify('掩码需为 0x + 最多 5 位十六进制数',true);return}transact(()=>{let s=project.inputs.find(i=>i.id===iid)?.states.find(s=>s.id===sid);if(s)s[key]=el.value.trim()});return}if(el.dataset.sigEdit){let [sid,key]=el.dataset.sigEdit.split(':'),m=selectedMsg();transact(()=>{let s=m?.signals.find(s=>s.id===sid);if(s)s[key]=['start','length','factor','offset'].includes(key)?Number(el.value):el.value;ui.selectedSignal=sid});return}if(el.dataset.benchSignal){ui.benchValues[el.dataset.benchSignal]=Number(el.value)||0;save();return}if(el.dataset.udsSeqEnabled){transact(()=>{let x=project.udsSequence.find(x=>x.id===el.dataset.udsSeqEnabled);if(x)x.enabled=el.checked});return}if(el.dataset.udsSeqWait){transact(()=>{let x=project.udsSequence.find(x=>x.id===el.dataset.udsSeqWait);if(x)x.wait=Math.max(0,Number(el.value)||0)});return}
 if(el.id==='filePicker'){let f=el.files?.[0],mode=el.dataset.mode;if(!f)return;const reader=new FileReader();reader.onload=()=>{try{if(mode==='dbc')importDBC(String(reader.result),f.name);if(mode==='project'){const v=JSON.parse(reader.result);if(!v.cases||!v.testProjects||!v.dbc||!v.inputs)throw Error('工程 JSON 缺少必要资源集合');project=v;if(!Array.isArray(project.buttonActions))project.buttonActions=[];ui.page='home';ui.tool='';ui.selectedCase=v.cases[0]?.id||'';ui.selectedProject=v.testProjects[0]?.id||'';history=[];redo=[];save();render();notify('导入工程 JSON 成功')}if(mode==='flash'){ui.flashFile=f.name;renderTool();notify('已选择文件名；未解析和验证镜像内容')}}catch(err){notify('文件读取或格式错误：'+err.message,true)}};if(mode==='flash'){ui.flashFile=f.name;renderTool();return}reader.readAsText(f);el.value='';return}});
 document.addEventListener('input',e=>{let el=e.target;if(el.dataset.field&&ui.page==='case'&&ui.selectedStep){const key=caseFieldKey(el.dataset.field);if(key){caseFieldDrafts.set(key,el.value);const error=caseFieldError(el.dataset.field,el.value);if(error)caseFieldErrors.set(key,error);else caseFieldErrors.delete(key);el.classList.toggle('invalid-draft',!!error)}}if(el.id==='paletteFilter'){let q=el.value.toLowerCase();$('#paletteItems')?.querySelectorAll('[data-act=choose-kind]').forEach(b=>b.style.display=b.textContent.toLowerCase().includes(q)?'':'none');return}if(el.dataset.ui&&['benchFilter','dbcFilter','udsFilter','prodBarcode'].includes(el.dataset.ui)){let key=el.dataset.ui,sel=el.selectionStart??el.value.length;ui[key]=el.value;if(key==='prodBarcode')return;renderTool();let f=$(`[data-ui="${key}"]`);if(f){f.focus();try{f.setSelectionRange(sel,sel)}catch{}}return}});
 document.addEventListener('keydown',e=>{const a=document.activeElement,typing=a&&(/INPUT|TEXTAREA|SELECT/.test(a.tagName)||a.isContentEditable);if(e.key==='Escape'){if($('#contextHost').innerHTML)$('#contextHost').innerHTML='';else if($('#modalHost').innerHTML)closeModal();else if(ui.tool){ui.tool='';renderTool()}return}if(e.ctrlKey&&e.key.toLowerCase()==='s'){e.preventDefault();handleAct('save');return}if(e.ctrlKey&&e.key.toLowerCase()==='z'&&!typing){e.preventDefault();handleAct('undo');return}if(e.ctrlKey&&e.key.toLowerCase()==='y'&&!typing){e.preventDefault();handleAct('redo');return}if(e.ctrlKey&&e.code==='Space'&&ui.page==='case'&&!ui.tool){e.preventDefault();palette('after');return}if(e.key==='F9'&&!typing&&ui.page==='case'){e.preventDefault();handleAct('step-toggle-break');return}if(e.key==='Delete'&&!typing&&ui.page==='case'&&!ui.tool){e.preventDefault();handleAct('delete-step');return}if(e.key==='Enter'&&ui.tool==='production'&&a?.dataset.ui==='prodBarcode'){e.preventDefault();handleAct('prod-scan');return}});
