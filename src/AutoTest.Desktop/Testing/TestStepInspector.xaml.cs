@@ -803,6 +803,8 @@ public partial class TestStepInspector : UserControl
             };
             foreach (var field in ParameterFields)
                 node = node.WithProperty(field.Key, field.Value.Trim());
+            node = node.WithProperty("enabled",
+                StepEnabledInput.IsChecked == true ? "true" : "false");
 
             TestTargetMapping? mapping = null;
             if (!string.IsNullOrEmpty(_selected.TargetCategory))
