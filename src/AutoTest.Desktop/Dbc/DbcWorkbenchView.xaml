@@ -134,7 +134,7 @@
         <ColumnDefinition Width="5"/>
         <ColumnDefinition Width="*" MinWidth="410"/>
         <ColumnDefinition Width="5"/>
-        <ColumnDefinition Width="292" MinWidth="235"/>
+        <ColumnDefinition Width="330" MinWidth="270"/>
       </Grid.ColumnDefinitions>
 
       <Border Grid.Column="0" Style="{StaticResource AtPanel}">
@@ -159,6 +159,9 @@
                 <StackPanel Margin="3,5">
                   <TextBlock Text="{Binding Caption}" FontWeight="SemiBold"
                              TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Summary}" FontSize="11" Foreground="#526D8C"
+                             TextTrimming="CharacterEllipsis" Margin="0,4,0,0"
+                             ToolTip="{Binding Summary}"/>
                   <TextBlock Text="{Binding Transmitter,StringFormat='发送节点：{0}'}"
                              FontSize="11" Foreground="{StaticResource Subtle}" Margin="0,5,0,0"/>
                 </StackPanel>
@@ -194,7 +197,8 @@
                     EnableRowVirtualization="True" EnableColumnVirtualization="True"
                     MouseDoubleClick="SignalGrid_DoubleClick">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="信号名称（中文优先）" Binding="{Binding DisplayName}" Width="235"/>
+              <DataGridTextColumn Header="信号名称" Binding="{Binding DisplayName}" Width="190"/>
+              <DataGridTextColumn Header="功能摘要" Binding="{Binding Summary}" Width="210"/>
               <DataGridTextColumn Header="起始位" Binding="{Binding StartBit}" Width="65"/>
               <DataGridTextColumn Header="位长" Binding="{Binding BitLength}" Width="55"/>
               <DataGridTextColumn Header="字节序" Binding="{Binding Order}" Width="85"/>
@@ -230,9 +234,18 @@
               <TextBlock Text="报文中文别名" Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,7,0,4"/>
               <TextBox Text="{Binding MessageAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
                        ToolTip="可直接输入中文名称；原始 DBC 报文标识和 CAN ID 不会修改" Margin="0,0,0,5"/>
-              <TextBlock Text="留空表示使用 DBC 原始名称或已有中文注释；保存 DBC 后，自动测试与手动台架同步显示。"
+              <TextBlock Text="报文用途摘要" Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,7,0,4"/>
+              <TextBox Text="{Binding MessageSummaryText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                       TextWrapping="Wrap" AcceptsReturn="False" MaxLength="180"
+                       ToolTip="一句话说明此 CAN 报文的用途。独立于中文名称与原始定义。"
+                       Margin="0,0,0,5"/>
+              <TextBlock Text="名称只用于识别；摘要用于快速选择。留空时展示原始 CM_ 首句。"
                          FontSize="10" Foreground="{StaticResource Subtle}" TextWrapping="Wrap"
                          Margin="0,0,0,8"/>
+              <Expander Header="原始报文说明（CM_）" Margin="0,0,0,10">
+               <TextBlock Text="{Binding SelectedMessageDefinition}" TextWrapping="Wrap"
+                Padding="5,7" Foreground="#526780" FontSize="11"/>
+              </Expander>
               <TextBlock Text="{Binding SelectedMessage.Dlc,StringFormat='DLC：{0} 字节'}"
                          Foreground="{StaticResource Subtle}"/>
               <Button Content="编辑报文参数…" Command="{Binding EditMessageCommand}"
@@ -245,7 +258,17 @@
               <TextBlock Text="信号中文别名" Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,5,0,4"/>
               <TextBox Text="{Binding SignalAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
                        ToolTip="中文名称用于界面显示和搜索；发送与解析始终引用 DBC 原始信号名称"
-                       Margin="0,0,0,9"/>
+                       Margin="0,0,0,6"/>
+              <TextBlock Text="信号功能摘要" Foreground="{StaticResource Subtle}" FontSize="11"
+                         Margin="0,4,0,4"/>
+              <TextBox Text="{Binding SignalSummaryText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                       TextWrapping="Wrap" AcceptsReturn="False" MaxLength="180"
+                       ToolTip="一句话解释信号含义；枚举、编码范围保留在 DBC 定义中。"
+                       Margin="0,0,0,6"/>
+              <Expander Header="原始信号说明（CM_）" Margin="0,0,0,9">
+               <TextBlock Text="{Binding SelectedSignalDefinition}" TextWrapping="Wrap"
+                Padding="5,7" Foreground="#526780" FontSize="11"/>
+              </Expander>
               <TextBlock Text="{Binding SelectedSignal.Order,StringFormat='字节序：{0}'}"
                          Margin="0,0,0,6"/>
               <TextBlock Text="{Binding SelectedSignal.Signed,StringFormat='数值类型：{0}'}"
