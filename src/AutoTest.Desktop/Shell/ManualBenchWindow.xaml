@@ -83,7 +83,7 @@
     <ColumnDefinition Width="29*" MinWidth="340"/>
    </Grid.ColumnDefinitions>
 
-   <!-- LEFT: CAN1 multi-message table and selected-message inspector. -->
+   <!-- LEFT: CAN0 multi-message table and selected-message inspector. -->
    <Border Grid.Column="0" Style="{StaticResource BenchCard}" Margin="0,0,9,0">
     <Grid>
      <Grid.RowDefinitions>
@@ -93,7 +93,7 @@
       <RowDefinition Height="Auto"/>
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0" Margin="0,0,0,10">
-      <TextBlock Text="CAN1 发送" Style="{StaticResource BenchHeader}"/>
+      <TextBlock Text="CAN0 发送" Style="{StaticResource BenchHeader}"/>
       
       <DockPanel LastChildFill="False">
        <Button Content="+ 新增" Command="{Binding AddCanRowCommand}" Padding="10,6" Margin="0,0,5,0"/>
@@ -337,7 +337,7 @@
       
       <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
       <DockPanel Margin="0,0,0,8">
-       <TextBlock DockPanel.Dock="Left" Text="按键动作 · CAN0" Style="{StaticResource BenchHeader}" FontSize="14"/>
+       <TextBlock DockPanel.Dock="Left" Text="按键动作 · CAN1" Style="{StaticResource BenchHeader}" FontSize="14"/>
        
       </DockPanel>
      </StackPanel>
@@ -468,7 +468,7 @@
    <DockPanel>
     <Button DockPanel.Dock="Right" Content="停止 KEY 动作"
      Command="{Binding StopKeyActionCommand}" Padding="9,6"/>
-    <TextBlock Text="动作运行状态 · CAN0" FontWeight="SemiBold"
+    <TextBlock Text="动作运行状态 · CAN1" FontWeight="SemiBold"
      Foreground="#315E8E" VerticalAlignment="Center"/>
    </DockPanel>
    <TextBlock Text="{Binding KeyActionRunStatus}" Style="{StaticResource BenchHint}"
