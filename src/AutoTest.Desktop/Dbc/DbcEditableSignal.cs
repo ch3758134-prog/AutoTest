@@ -15,14 +15,15 @@ public class DbcEditableSignal : BindableBase
 {
     private string _value;
     public DbcEditableSignal(DbcSignal signal, string? label, string? description,
-        IReadOnlyDictionary<long, string>? definitions, string value = "")
+        IReadOnlyDictionary<long, string>? definitions, string value = "", string? shortSummary = null)
     {
         Signal = signal;
         Name = signal.Name;
         DisplayName = string.IsNullOrWhiteSpace(label) ? signal.Name : label;
         Definition = (description ?? "").Trim();
-        var summary = Definition.Split(['；', '。', '\n'], StringSplitOptions.TrimEntries)
-            .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? "";
+        var summary = !string.IsNullOrWhiteSpace(shortSummary) ? shortSummary.Trim() :
+            Definition.Split(['；', '。', '\n'], StringSplitOptions.TrimEntries)
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? "";
         Summary = summary.Length <= 90 ? summary : summary[..90] + "…";
         Unit = signal.Unit;
         Range = signal.Minimum.ToString("G", CultureInfo.InvariantCulture) + " ～ " +
