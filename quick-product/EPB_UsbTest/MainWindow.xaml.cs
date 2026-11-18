@@ -1246,8 +1246,8 @@ public partial class MainWindow : Window
             {
                 Children =
                 {
-                    new TextBlock { Text = "当前为流程示例行", FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(138, 101, 0)) },
-                    new TextBlock { Text = "该行用于验证流程阅读和插入位置；真实普通操作参数请在已绑定的操作行中编辑。", FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(138, 101, 0)), Margin = new Thickness(0, 4, 0, 0), TextWrapping = TextWrapping.Wrap }
+                    new TextBlock { Text = "未绑定真实步骤", FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(138, 101, 0)) },
+                    new TextBlock { Text = "当前行没有可保存的执行节点，不能参与真实测试。请添加并选择实际步骤。", FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(138, 101, 0)), Margin = new Thickness(0, 4, 0, 0), TextWrapping = TextWrapping.Wrap }
                 }
             }
         };
@@ -2419,12 +2419,35 @@ public partial class MainWindow : Window
         }
         if (node.PathKind != TestFlowPathKind.None)
         {
-            CloseStepEditor();
+            InspectorTitle.Text = "流程分支 · " + node.Name;
+            var branchPanel = new StackPanel { Margin = new Thickness(4) };
+            branchPanel.Children.Add(new TextBlock
+            {
+                Text = "当前是 " + node.Name + " 分支。选择此行后添加操作，步骤将插入该分支内部。",
+                Foreground = Brushes.SlateGray, FontSize = 12, TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+            var addToBranch = new Button { Content = "＋ 向此分支添加操作", HorizontalAlignment = HorizontalAlignment.Left };
+            addToBranch.Click += (_, _) =>
+            {
+                _selectedTestNode = node;
+                _selectedTestNodeId = node.Id;
+                AddTestFlowNode_Click(this, new RoutedEventArgs());
+            };
+            branchPanel.Children.Add(addToBranch);
+            StepEditor.Content = branchPanel;
+            OpenInspector();
             return;
         }
         if (node.Kind == TestFlowNodeKind.组合)
         {
-            CloseStepEditor();
+            InspectorTitle.Text = node.Name;
+            StepEditor.Content = new TextBlock
+            {
+                Text = "当前是步骤组合。选择内部步骤可直接编辑；组合的重命名、解组和删除请使用步骤列表右键菜单。",
+                Foreground = Brushes.SlateGray, FontSize = 12, TextWrapping = TextWrapping.Wrap
+            };
+            OpenInspector();
             return;
         }
         // 资源引用保持 ResourceId/SequenceId。双击只打开资源编辑器，不得隐式复制、重生成
