@@ -62,6 +62,25 @@ public static class StepUiCatalog
         _ => p.ToString()
     };
 
+    // Only formal authoring parameters belong in the operator's step inspector.
+    // Legacy import fingerprints, runtime bookkeeping and unknown keys remain in
+    // the StepNode data so applying an edit never destroys imported evidence.
+    public static bool IsOperatorProperty(string key) => key switch
+    {
+        "milliseconds" or "count" or "variable" or "equals" or "value" or
+        "timeoutMs" or "target" or "mode" or "maxAgeMs" or "operator" or
+        "expected" or "left" or "right" or "captureKey" or "durationMs" or
+        "reference" or "dbcMessage" or "signals" or "requestHex" or
+        "service" or "programmingProfile" or "profile" or "tolerance" or
+        "coverage" => true,
+        _ => false
+    };
+
+    public static bool RequiresLegacyReview(StepNode node) =>
+        node.Properties.Any(pair =>
+            pair.Key.Equals("legacy.importStatus", StringComparison.OrdinalIgnoreCase) &&
+            pair.Value.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase));
+
     public static string PropertyLabel(string key) => key switch
     {
         "milliseconds" => "等待时间（毫秒）",
@@ -71,24 +90,24 @@ public static class StepUiCatalog
         "value" => "变量值",
         "timeoutMs" => "超时（毫秒）",
         "target" => "已映射操作 / DBC 信号",
-        "mode" => "读取模式（Latest / Next）",
-        "maxAgeMs" => "最大数据年龄（毫秒）",
-        "operator" => "运算符 / 比较符",
+        "mode" => "信号读取方式",
+        "maxAgeMs" => "数据有效时间（毫秒）",
+        "operator" => "比较或计算方式",
         "expected" => "目标值或变量",
         "left" => "左操作数（$变量 或数值）",
         "right" => "右操作数（$变量 或数值）",
         "captureKey" => "采集名称",
         "durationMs" => "最长记录时间（毫秒）",
         "reference" => "已建立的参考波形名称（非普通证据）",
-        "dbcMessage" => "DBC 报文标识／CAN ID（预留执行能力）",
-        "signals" => "CAN 信号条件（运行后端未接线）",
+        "dbcMessage" => "CAN 报文",
+        "signals" => "CAN 信号条件",
         "requestHex" => "UDS 请求数据（HEX）",
         "service" => "UDS 服务标识",
-        "programmingProfile" => "烧录配置资源引用（当前禁止执行）",
+        "programmingProfile" => "烧录配置",
         "profile" => "波形分析配置（可选，来自工程 Mapping）",
         "tolerance" => "比较绝对容差",
         "coverage" => "最低有效覆盖率（0-1）",
-        _ => key
+        _ => "内部参数"
     };
 
     public static StepNode NewNode(string type, string defaultTarget = "")
