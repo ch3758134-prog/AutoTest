@@ -35,7 +35,10 @@
      ToolTip="只转换当前旧版 CAN 判定；必须选择 CAN ID 匹配的真实 DBC 信号，并核对原位长、字节序、判定值和超时。转换后此步骤参与执行。"/>
     <TextBlock Text="步骤名称" Foreground="#61738B" FontWeight="SemiBold"
      FontSize="11" Margin="0,0,0,5"/>
-    <TextBox x:Name="NameInput" Margin="0,0,0,13"/>
+    <TextBox x:Name="NameInput" Margin="0,0,0,8"/>
+    <CheckBox x:Name="StepEnabledInput" Content="启用此步骤（取消勾选则运行时跳过）"
+      Margin="0,0,0,12" IsChecked="True"
+      ToolTip="关闭后步骤仍保存在测试程序里，但不执行，也不会发送任何硬件命令。"/>
     <!-- The HTML Inspector keeps frequent step operations beside the fields.
          No fake enable switch: formal TEST runtime currently has no enabled flag. -->
 
