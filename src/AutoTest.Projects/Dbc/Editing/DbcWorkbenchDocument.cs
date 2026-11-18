@@ -58,7 +58,7 @@ public sealed class DbcWorkbenchDocument
     {
         _original = original;
         _name = name;
-        _editing = new DbcEditSession(model);
+        _editing = new DbcEditSession(model, allowSignalOverlaps: true);
         _displayNames = DbcDisplayNames.Parse(original);
         _tables = tables;
         UnsupportedDirectives = unsupported;
@@ -68,7 +68,7 @@ public sealed class DbcWorkbenchDocument
 
     public static DbcWorkbenchDocument Import(string name, string text)
     {
-        var model = DbcParserAdapter.Parse(text, name);
+        var model = DbcParserAdapter.Parse(text, name, allowSignalOverlaps: true);
         var unsupported = new List<string>();
         var tables = ImmutableArray.CreateBuilder<DbcValueTable>();
         var inNs = false;
@@ -206,6 +206,9 @@ public sealed class DbcWorkbenchDocument
     public string ExportText()
     {
         if (!_dirty) return _original;
+        // The repair editor may display overlapping signals; however, no DBC
+        // revision may be saved while a real CAN payload remains ambiguous.
+        Model.Validate();
         if (_dataDirty) RequireEditable();
         var output = !_dataDirty || _sourcePreserving
             ? null : new StringBuilder(DbcParserAdapter.Export(Model));
@@ -238,7 +241,7 @@ public sealed class DbcWorkbenchDocument
     public void Reset()
     {
         var fresh = Import(_name, _original);
-        _editing = new DbcEditSession(fresh.Model);
+        _editing = new DbcEditSession(fresh.Model, allowSignalOverlaps: true);
         _tables = fresh._tables;
         _displayNames = fresh._displayNames;
         _dirty = false;
