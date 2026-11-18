@@ -12,7 +12,7 @@ namespace AutoTest.Projects.KeyActions;
 public sealed record KeyActionStep(Guid StepId, uint KeyMask, int HoldMs)
 {
     public static KeyActionStep Create(uint mask = 0, int holdMs = 100) =>
-        new(Guid.NewGuid(), mask, holdMs).Validate();
+        new KeyActionStep(Guid.NewGuid(), mask, holdMs).Validate();
     public KeyActionStep Validate()
     {
         if (StepId == Guid.Empty || KeyMask > 0xFFFFF || HoldMs is < 0 or > 600_000)
@@ -26,7 +26,7 @@ public sealed record KeyActionDefinition(Guid ActionId, string Name, int Order,
     ImmutableArray<KeyActionStep> Steps)
 {
     public static KeyActionDefinition Create(string name, int order) =>
-        new(Guid.NewGuid(), name, order,
+        new KeyActionDefinition(Guid.NewGuid(), name, order,
             ImmutableArray.Create(KeyActionStep.Create())).Validate();
 
     public KeyActionDefinition Validate()
