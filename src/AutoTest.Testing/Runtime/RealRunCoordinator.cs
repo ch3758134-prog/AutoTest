@@ -512,7 +512,16 @@ public sealed class RealRunCoordinator
             try
             {
                 await Execute(document.Get(TestPhase.Prepare), cts.Token);
-                await Execute(document.Get(TestPhase.Test), cts.Token);
+                if (failed || incomplete)
+                {
+                    // Prepare is an eligibility gate: never physically actuate
+                    // the test phase after a failed/no-data safety prerequisite.
+                    facts.Add(new RealStepFact(default, "PrepareGate",
+                        failed ? RealStepStatus.ConditionFalse : RealStepStatus.NoData,
+                        "", "", "准备阶段未通过，未进入测试阶段；仍将执行清理。",
+                        DateTimeOffset.UtcNow));
+                }
+                else await Execute(document.Get(TestPhase.Test), cts.Token);
                 // An async CAN sender can fail after the last foreground TEST
                 // step. Do not publish a PASS without checking it.
                 await _actions.CheckHealthAsync(cts.Token);
@@ -531,27 +540,41 @@ public sealed class RealRunCoordinator
             }
             finally
             {
-                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(6));
-                try { await Execute(document.Get(TestPhase.Cleanup), cleanup.Token, cleanup: true); }
-                catch (Exception ex)
+                using (var scriptedCleanup = new CancellationTokenSource(TimeSpan.FromSeconds(6)))
                 {
-                    error = true;
-                    facts.Add(new RealStepFact(default, "Cleanup", RealStepStatus.DeviceError,
-                        "", "", ex.Message, DateTimeOffset.UtcNow));
+                    try
+                    {
+                        await Execute(document.Get(TestPhase.Cleanup), scriptedCleanup.Token,
+                            cleanup: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        error = true;
+                        facts.Add(new RealStepFact(default, "Cleanup", RealStepStatus.DeviceError,
+                            "", "", ex.Message, DateTimeOffset.UtcNow));
+                    }
                 }
-                try { await _waves.CleanupAsync(cleanup.Token); }
-                catch (Exception ex)
+                // Physical KEY release and CAN sender cancellation must have their
+                // own timeout budget, even when a scripted cleanup step stalled.
+                using (var stationCleanup = new CancellationTokenSource(TimeSpan.FromSeconds(6)))
                 {
-                    error = true;
-                    facts.Add(new RealStepFact(default, "WaveCleanup", RealStepStatus.DeviceError,
-                        "", "", ex.Message, DateTimeOffset.UtcNow));
+                    try { await _actions.CleanupAsync(stationCleanup.Token); }
+                    catch (Exception ex)
+                    {
+                        error = true;
+                        facts.Add(new RealStepFact(default, "StationCleanup", RealStepStatus.DeviceError,
+                            "", "", ex.Message, DateTimeOffset.UtcNow));
+                    }
                 }
-                try { await _actions.CleanupAsync(cleanup.Token); }
-                catch (Exception ex)
+                using (var waveCleanup = new CancellationTokenSource(TimeSpan.FromSeconds(4)))
                 {
-                    error = true;
-                    facts.Add(new RealStepFact(default, "StationCleanup", RealStepStatus.DeviceError,
-                        "", "", ex.Message, DateTimeOffset.UtcNow));
+                    try { await _waves.CleanupAsync(waveCleanup.Token); }
+                    catch (Exception ex)
+                    {
+                        error = true;
+                        facts.Add(new RealStepFact(default, "WaveCleanup", RealStepStatus.DeviceError,
+                            "", "", ex.Message, DateTimeOffset.UtcNow));
+                    }
                 }
             }
             verdict = aborted ? RealTestVerdict.Aborted :
