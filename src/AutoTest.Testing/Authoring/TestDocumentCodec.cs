@@ -21,7 +21,9 @@ public static class TestDocumentCodec
         x.ControllerId, x.StateId);
     private static TestTargetMapping DecodeMapping(MappingData x) =>
         new TestTargetMapping(x.Name, Enum.Parse<TestTargetKind>(x.Kind, false),
-            x.Kind == nameof(TestTargetKind.Ignition) && x.AssetId == Guid.Empty
+            x.AssetId == Guid.Empty && x.Kind is
+                (nameof(TestTargetKind.Ignition) or nameof(TestTargetKind.RawCan) or
+                 nameof(TestTargetKind.RawKey))
                 ? default : AssetId.Create(x.AssetId),
             x.Revision, x.Sha256, Enum.Parse<BusRole>(x.Role, false),
             x.CanId, x.Extended, x.SignalName, x.Unit, x.ControllerId, x.StateId).Validate();
