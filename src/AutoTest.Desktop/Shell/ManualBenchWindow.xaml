@@ -157,7 +157,7 @@
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
            <Button Content="单发" Padding="6,4" Margin="0,0,4,0"
             Command="{Binding DataContext.SendCanRowOnceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
-            CommandParameter="{Binding}" ToolTip="单次发送当前报文，经现有 USB 授权及确认"/>
+            CommandParameter="{Binding}" ToolTip="单次发送当前报文；未连接 USB 时直接在状态和日志中提示"/>
            <Button Content="编辑" Padding="6,4"
             Command="{Binding DataContext.EditCanRowCommand,RelativeSource={RelativeSource AncestorType=Window}}"
             CommandParameter="{Binding}" ToolTip="展开当前报文原始 HEX / DBC 编辑"/>
@@ -347,7 +347,7 @@
          <Button Content="运行" Tag="{Binding}" Click="RunKeyAction_Click"
           PreviewMouseRightButtonUp="EditKeyAction_RightClick"
           IsEnabled="{Binding DataContext.CanRunKeyAction,RelativeSource={RelativeSource AncestorType=Window}}"
-          Padding="9,4" Margin="0,0,5,0" ToolTip="仅运行已保存动作；真实执行仍需操作确认"/>
+          Padding="9,4" Margin="0,0,5,0" ToolTip="运行已保存的按键动作；未连接 USB 时直接在状态和日志中提示"/>
          <Button Content="编辑" Tag="{Binding}" Click="SelectKeyAction_Click" Padding="9,4"/>
         </StackPanel>
        </StackPanel>
