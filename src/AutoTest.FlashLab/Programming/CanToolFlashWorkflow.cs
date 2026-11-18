@@ -60,6 +60,12 @@ public sealed class CanToolFlashWorkflow(
             throw new UnauthorizedAccessException($"F2 不允许其它 SID 0x{sid:X2}。");
         log($"UDS {step} 请求 SID=0x{sid:X2}，长度={request.Length}B");
         await session.Iso.SendPduAsync(request,ct).ConfigureAwait(false);
+        return await ReceiveExpectedAsync(session,sid,step,timeout,ct).ConfigureAwait(false);
+    }
+
+    private async Task<byte[]> ReceiveExpectedAsync(EndpointSession session,byte sid,
+        string step,TimeSpan timeout,CancellationToken ct)
+    {
         for(int pending=0;;pending++)
         {
             if(pending>=MaxPending)
@@ -79,6 +85,29 @@ public sealed class CanToolFlashWorkflow(
                 throw new InvalidDataException($"UDS {step} 应答 SID 不匹配。");
             log($"UDS {step} 正响应 SID=0x{response[0]:X2}，长度={response.Length}B");
             return response;
+        }
+    }
+
+    // Successful trace: APP 51 01 -> Boot 10 02 within milliseconds;
+    // a single second Boot 10 02 probe after ~30ms if the first times out.
+    // Only session entry is retried, never an erase or write.
+    private async Task<byte[]> EnterBootProgrammingSessionAsync(EndpointSession boot,
+        TimeSpan p2,CancellationToken ct)
+    {
+        byte[] request=[0x10,0x02];
+        log("S2 Boot 10 02：APP 复位后立即探测。");
+        await boot.Iso.SendPduAsync(request,ct).ConfigureAwait(false);
+        try
+        {
+            return await ReceiveExpectedAsync(boot,0x10,"Boot 10 02",
+                TimeSpan.FromMilliseconds(30),ct).ConfigureAwait(false);
+        }
+        catch(TimeoutException) when(!ct.IsCancellationRequested)
+        {
+            log("S2 Boot 首次未应答；约30ms后再次发送10 02（限一次）。");
+            await boot.Iso.SendPduAsync(request,ct).ConfigureAwait(false);
+            return await ReceiveExpectedAsync(boot,0x10,"Boot 10 02 retry",
+                p2,ct).ConfigureAwait(false);
         }
     }
 
@@ -133,13 +162,13 @@ public sealed class CanToolFlashWorkflow(
                 if(reset.Length<2 || reset[1]!=0x01)
                     throw new InvalidDataException("APP 51 01 不完整。");
             }
-            await Task.Delay(TimeSpan.FromSeconds(2),ct).ConfigureAwait(false);
+            // Reference sequence enters Boot immediately after APP 51 01.
         }
 
         await using(var boot=await OpenAsync(plan.Boot,lease,ct).ConfigureAwait(false))
         {
             log("S2 进入 Boot 编程会话：10 02");
-            var response=await RequestAsync(boot,[0x10,0x02],"Boot 10 02",p2,ct)
+            var response=await EnterBootProgrammingSessionAsync(boot,p2,ct)
                 .ConfigureAwait(false);
             if(response.Length<2 || response[1]!=0x02)
                 throw new InvalidDataException("Boot 50 02 不完整。");
