@@ -53,7 +53,7 @@ public sealed class StepRowProjection : BindableBase
         "Write" when _draftActionKey is "ign" or "key" => "Hardware",
         "Write" when _targetKind is TestTargetKind.Ignition or
             TestTargetKind.Button or TestTargetKind.RawKey => "Hardware",
-        "Write" or "CanSend" or "CanWait" or "Read" or "WaitUntil" or "AssertSignal" => "Can",
+        "Write" or "CanSend" or "CanWait" or "CanStopPeriodic" or "Read" or "WaitUntil" or "AssertSignal" => "Can",
         "UdsRequest" or "Flash" => "Uds",
         "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCapture" or "WaveCompare" => "Wave",
         "If" or "Switch" or "Case" or "When" or "Loop" or "TryCatch" or "Sequence" or
