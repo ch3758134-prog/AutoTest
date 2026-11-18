@@ -51,9 +51,6 @@
        FontSize="10" Margin="0,0,5,6" Padding="7,4"
        ToolTip="标记此步骤位置；当前实测运行暂不能在断点处暂停"/>
      </WrapPanel>
-     <TextBlock Text="运行启用开关暂未接入正式 TEST 合同"
-      TextWrapping="Wrap" FontSize="10" Foreground="#8794A7"
-      ToolTip="当前 TEST DSL 没有步骤 Enabled 执行语义，此处不显示无效开关。"/>
     </StackPanel>
 
 
