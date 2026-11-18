@@ -63,7 +63,7 @@ public sealed class StepRowProjection : BindableBase
     public bool IsSearchMatch { get; }
     public bool IsNewDraft { get; }
     public bool IsBreakpoint => BreakpointMark.Length > 0;
-    public bool IsUnavailable => State == "执行未接线" || State == "未知类型";
+    public bool IsUnavailable => State is "执行未接线" or "未知类型" or "旧文件待核对";
     public bool HasRealExecutionError { get; }
     public string StateDetail { get; }
     public bool IsQuickEditable =>
@@ -127,7 +127,9 @@ public sealed class StepRowProjection : BindableBase
         // count, Enter navigation and yellow row highlight cannot disagree.
         IsSearchMatch = !string.IsNullOrWhiteSpace(search) && step is not null &&
             (step.Name + " " + StepUiCatalog.Label(step.Type) + " " +
-             string.Join(" ", step.Properties.Select(x => x.Key + " " + x.Value)))
+             string.Join(" ", step.Properties
+                 .Where(x => StepUiCatalog.IsOperatorProperty(x.Key))
+                 .Select(x => StepUiCatalog.PropertyLabel(x.Key) + " " + x.Value)))
                 .Contains(search.Trim(), StringComparison.CurrentCultureIgnoreCase);
         if (step is null)
         {
@@ -176,6 +178,7 @@ public sealed class StepRowProjection : BindableBase
             step.Properties.GetValueOrDefault("profile", "—"));
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(step.Type);
         State = newDraft ? "待完善" :
+            StepUiCatalog.RequiresLegacyReview(step) && realFact is null ? "旧文件待核对" :
             realFact is not null ? realFact.Status switch
             {
                 RealStepStatus.Completed => "已执行",
