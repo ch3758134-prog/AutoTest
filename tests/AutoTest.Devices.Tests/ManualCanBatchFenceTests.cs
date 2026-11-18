@@ -1,4 +1,5 @@
 using AutoTest.Devices.Usb;
+using AutoTest.Contracts;
 using Xunit;
 
 namespace AutoTest.Devices.Tests;
@@ -18,13 +19,13 @@ public sealed class ManualCanBatchFenceTests
     }
 
     [Fact]
-    public void AllowsOnlyExactCan1FramesInTheApprovedBatchAndConsumesBudget()
+    public void AllowsOnlyExactDutCan0FramesInTheApprovedBatchAndConsumesBudget()
     {
         var fence = new PhysicalCommandFence();
-        var a = RawCan(1, 0x701, 0x10);
-        var b = RawCan(1, 0x702, 0x20);
-        var modified = RawCan(1, 0x701, 0x11);
-        var wrongPort = RawCan(0, 0x701, 0x10);
+        var a = RawCan(StationCanWiring.DutPort, 0x701, 0x10);
+        var b = RawCan(StationCanWiring.DutPort, 0x702, 0x20);
+        var modified = RawCan(StationCanWiring.DutPort, 0x701, 0x11);
+        var wrongPort = RawCan(StationCanWiring.KeypadPort, 0x701, 0x10);
         var fingerprint = new string('a', 64);
         Assert.Throws<UnauthorizedAccessException>(() =>
             fence.AuthorizeManualCanBatch(fingerprint, "wrong", [a, b], 7));
@@ -52,18 +53,18 @@ public sealed class ManualCanBatchFenceTests
     public void ManualBatchAndPhysicalTestAreMutuallyExclusive()
     {
         var fence = new PhysicalCommandFence();
-        var payload = RawCan(1, 0x701, 0x01);
+        var payload = RawCan(StationCanWiring.DutPort, 0x701, 0x01);
         var manualHash = new string('b', 64);
         var testHash = new string('c', 64);
         fence.AuthorizeManualCanBatch(manualHash, "AUTHORIZE BENCH CAN " + manualHash,
             [payload], 3);
         Assert.Throws<InvalidOperationException>(() =>
             fence.AuthorizePhysicalRun(testHash, "AUTHORIZE TEST RUN " + testHash,
-                [(1, false, 0x701)], false, 3));
+                [(StationCanWiring.DutPort, false, 0x701)], false, 3));
         Assert.Throws<InvalidOperationException>(() =>
             fence.AuthorizeSingleCanFrame(payload, "AUTHORIZE CAN TX " +
                 Convert.ToHexString(payload), 3));
-        // The same manual station may change IGN while CAN1 periodic traffic runs.
+        // The same manual station may change IGN while CAN0 periodic traffic runs.
         fence.AuthorizeSingleIgn(true, "AUTHORIZE IGN ON", 3);
         fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(2,
             MainControllerCodec.SetIgn, new byte[] { 1 }), 3);
@@ -72,20 +73,20 @@ public sealed class ManualCanBatchFenceTests
             fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(1,
                 MainControllerCodec.CanSend, payload), 3));
         fence.AuthorizePhysicalRun(testHash, "AUTHORIZE TEST RUN " + testHash,
-            [(1, false, 0x701)], false, 3);
+            [(StationCanWiring.DutPort, false, 0x701)], false, 3);
         Assert.Throws<InvalidOperationException>(() =>
             fence.AuthorizeManualCanBatch(manualHash, "AUTHORIZE BENCH CAN " + manualHash,
                 [payload], 3));
     }
 
     [Fact]
-    public void Can1PeriodicBatchAllowsDocumentedKeySimAndIndependentIoButNotOtherCan()
+    public void Can0PeriodicBatchAllowsDocumentedKeySimAndIndependentIoButNotOtherCan()
     {
         var fence = new PhysicalCommandFence();
         var hash = new string('e', 64);
         fence.AuthorizeManualCanBatch(hash, "AUTHORIZE BENCH CAN " + hash,
-            [RawCan(1, 0x701, 0x11)], 9);
-        var keyFrame = RawCan(0, 0x730, 0x01);
+            [RawCan(StationCanWiring.DutPort, 0x701, 0x11)], 9);
+        var keyFrame = RawCan(StationCanWiring.KeypadPort, 0x730, 0x01);
         keyFrame[6] = 8;
         var keyConsent = "AUTHORIZE CAN TX " + Convert.ToHexString(keyFrame);
         fence.AuthorizeSingleCanFrame(keyFrame, keyConsent, 9);
@@ -96,23 +97,23 @@ public sealed class ManualCanBatchFenceTests
             MainControllerCodec.SetIgn, new byte[] { 1 }), 9);
         fence.AuthorizeSingleClamp(1, false, "AUTHORIZE CLAMP 1 RELEASE", 9);
         fence.AssertAllowedAndConsume(MainControllerCodec.EncodeClamp(3, 1, false), 9);
-        var other = RawCan(0, 0x730, 0x02);
+        var other = RawCan(StationCanWiring.KeypadPort, 0x730, 0x02);
         other[6] = 8;
         Assert.Throws<InvalidOperationException>(() =>
             fence.AuthorizeSingleCanFrame(other,
                 "AUTHORIZE CAN TX " + Convert.ToHexString(other), 9));
         fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(4,
-            MainControllerCodec.CanSend, RawCan(1, 0x701, 0x11)), 9);
+            MainControllerCodec.CanSend, RawCan(StationCanWiring.DutPort, 0x701, 0x11)), 9);
     }
 
     [Fact]
-    public void Can0AndInvalidFramesCannotBeIncludedInManualDutBatch()
+    public void Can1AndInvalidFramesCannotBeIncludedInManualDutBatch()
     {
         var fence = new PhysicalCommandFence();
         var hash = new string('d', 64);
         Assert.Throws<ArgumentException>(() =>
             fence.AuthorizeManualCanBatch(hash, "AUTHORIZE BENCH CAN " + hash,
-                [RawCan(0, 0x730, 0x80)], 1));
+                [RawCan(StationCanWiring.KeypadPort, 0x730, 0x80)], 1));
         Assert.Throws<ArgumentException>(() =>
             fence.AuthorizeManualCanBatch(hash, "AUTHORIZE BENCH CAN " + hash,
                 Array.Empty<byte[]>(), 1));
