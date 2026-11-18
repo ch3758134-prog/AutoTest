@@ -53,7 +53,7 @@ public sealed class StepRowProjection : BindableBase
         "Write" when _draftActionKey is "ign" or "key" => "Hardware",
         "Write" when _targetKind is TestTargetKind.Ignition or
             TestTargetKind.Button or TestTargetKind.RawKey => "Hardware",
-        "Write" or "CanSend" or "CanWait" or "Read" or "WaitUntil" => "Can",
+        "Write" or "CanSend" or "CanWait" or "Read" or "WaitUntil" or "AssertSignal" => "Can",
         "UdsRequest" or "Flash" => "Uds",
         "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCapture" or "WaveCompare" => "Wave",
         "If" or "Switch" or "Case" or "When" or "Loop" or "TryCatch" or "Sequence" or
@@ -156,6 +156,9 @@ public sealed class StepRowProjection : BindableBase
             "Read" => "读取 " + Prop("target") + " → " + Prop("variable") +
                 " · " + (Prop("mode") == "Latest" ? "最新有效值" : "等待新数据"),
             "WaitUntil" => "信号 " + Prop("target") + " · 超时 " + Prop("timeoutMs") + " ms",
+            "AssertSignal" => "判定 " + Prop("target") + " " +
+                Prop("operator") + " " + Prop("expected") + " · " +
+                Prop("timeoutMs") + " 毫秒",
             "Expect" => Prop("left") + " " + Prop("operator") + " " + Prop("right"),
             "SetVariable" => Prop("variable") + " = " + Prop("value"),
             "Calculate" => "计算 " + Prop("variable") + " = " + Prop("left") +
@@ -190,7 +193,7 @@ public sealed class StepRowProjection : BindableBase
                 RealStepStatus.Cancelled => "已取消",
                 _ => "结果待核查"
             } : descriptor is null ? "未知类型" :
-            descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or
+            descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or
                 "Calculate" or "Expect" or "WaveStart" or "WaveStop" or "WaveAnalyze"
                 ? "待预检" : "执行未接线";
     }
