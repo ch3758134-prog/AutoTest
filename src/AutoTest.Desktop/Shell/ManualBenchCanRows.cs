@@ -263,14 +263,15 @@ public sealed partial class ManualBenchViewModel
             throw new InvalidOperationException("请选择 1～32 条 CAN0 报文。");
         var entries = chosen.Select(row =>
         {
-            // Main_Control v0.2: 0x50 replaces the ENTIRE CAN0 broadcast table.
-            // Host Task.Delay per-row scheduler from the earlier prototype is NOT an
-            // approved substitute. No periodic physical instruction until TEST/DEVICE
-            // owns the complete 0x50/51/52/53 table, lease and cancel contract.
+            // Firmware's existing 0x50/51/52/53 scheduler is hard-wired to
+            // physical CAN1 (now KEY_SIM), not the ECU on CAN0. Never enable it
+            // for DUT traffic just because host USB 0x40 and 0x41 are remapped.
+            // Manual periodic mode remains blocked until a separately verified
+            // CAN0 scheduling contract is available.
             if (row.IsPeriodic && single is null)
                 throw new InvalidOperationException(
-                    "CAN0 周期发送暂被真实硬件预检阻断：主控 0x50 会替换全部广播表，" +
-                    "不得用独立上位机周期发送线程代替。请等待 TEST/DEVICE 正式多报文合同接线。");
+                    "手动台架的 ECU CAN0 周期发送暂不可用：当前主控固件 0x50 广播调度器" +
+                    "固定从物理 CAN1 发出（现接 KEY_SIM），不能用于 ECU CAN0。请勿绕过检查。");
             var frame = row.BuildFrame();
             int period = 0;
             if (row.IsPeriodic && single is null && (!int.TryParse(row.PeriodText, NumberStyles.None,
