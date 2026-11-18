@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Data;
 using AutoTest.Contracts;
 using AutoTest.Desktop.Hardware;
+using AutoTest.Desktop.Dbc;
 using AutoTest.Desktop.Projects;
 using AutoTest.Devices.Can;
 using AutoTest.Devices.Station;
@@ -43,27 +44,19 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     }
 
     public sealed record DbcChoice(Guid AssetId, int Revision, string Sha256,
-        string AssetName, DbcMessage Message, DbcDisplayNames DisplayNames)
+        string AssetName, DbcMessage Message, DbcDisplayNames DisplayNames,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<long, string>>? ValueLabels = null)
     {
         public string Display => AssetName + " / " + DisplayNames.MessageLabel(Message) + " [0x" +
             Message.ArbitrationId.ToString("X") + "]" +
             (Message.IsExtended ? " 扩展" : " 标准");
     }
-    public sealed class DbcSignalValue : BindableBase
+    public sealed class DbcSignalValue : DbcEditableSignal
     {
-        private string _value = "";
-        public DbcSignalValue(DbcSignal signal, string? label = null)
-        {
-            Signal = signal;
-            DisplayName = label ?? signal.Name;
-        }
-        public string DisplayName { get; }
-        public DbcSignal Signal { get; }
-        public string Name => DisplayName +
-            (Signal.Unit.Length == 0 ? "" : " (" + Signal.Unit + ")");
-        public string Range => Signal.Minimum.ToString("G", CultureInfo.InvariantCulture) +
-            " ～ " + Signal.Maximum.ToString("G", CultureInfo.InvariantCulture);
-        public string Value { get => _value; set => SetProperty(ref _value, value ?? ""); }
+        public DbcSignalValue(DbcSignal signal, string? label = null,
+            string? description = null, IReadOnlyDictionary<long, string>? rawLabels = null,
+            string value = "")
+            : base(signal, label, description, rawLabels, value) { }
     }
 
     public sealed record BenchLogEntry(string Time, string Channel, string Direction,
@@ -175,8 +168,12 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             {
                 foreach (var signal in value.Message.Signals)
                 {
+                    var alias = value.DisplayNames.SignalAlias(value.Message.Id, signal.Name);
+                    var rawLabels = value.ValueLabels is not null &&
+                        value.ValueLabels.TryGetValue(signal.Name, out var labels) ? labels : null;
                     var signalValue = new DbcSignalValue(signal,
-                        value.DisplayNames.SignalLabel(value.Message, signal));
+                        string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
+                        value.DisplayNames.SignalDescription(value.Message.Id, signal.Name), rawLabels);
                     signalValue.PropertyChanged += DbcSignalChanged;
                     DbcSignals.Add(signalValue);
                 }
@@ -469,8 +466,14 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
                 if (!string.Equals(project.ManifestPath, _projects.Current?.ManifestPath,
                     StringComparison.OrdinalIgnoreCase)) return;
                 foreach (var message in loaded.Document.Model.Messages.OrderBy(x => x.Name))
+                {
+                    var labels = loaded.Document.ValueTables.Where(x => x.MessageId == message.Id)
+                        .ToDictionary(x => x.SignalName,
+                            x => (IReadOnlyDictionary<long, string>)x.Labels,
+                            StringComparer.Ordinal);
                     DbcMessages.Add(new DbcChoice(asset.Id.Value, asset.Revision,
-                        asset.Sha256, asset.Name, message, loaded.Document.DisplayNames));
+                        asset.Sha256, asset.Name, message, loaded.Document.DisplayNames, labels));
+                }
             }
             SelectedDbcMessage = DbcMessages.FirstOrDefault();
             if (SelectedDbcMessage is not null) UseDbcMessage = true;
