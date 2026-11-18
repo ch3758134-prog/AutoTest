@@ -279,8 +279,7 @@ public sealed class CanToolFlashWorkflow(
                 p2,ct).ConfigureAwait(false);
             appObserved=reply.Length>=2 && reply[1]==0x03;
         }
-        catch(Exception ex) when(ex is TimeoutException or FlashEcuNrcException
-            or InvalidDataException or IOException)
+        catch(Exception ex) when(ex is TimeoutException or IOException)
         {
             log("S10 APP 未确认："+ex.GetType().Name+
                 "；逐块校验与Boot复位已确认，但APP启动/版本仍待现场核验。");

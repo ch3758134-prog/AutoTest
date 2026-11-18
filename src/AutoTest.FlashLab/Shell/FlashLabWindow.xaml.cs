@@ -247,6 +247,8 @@ public partial class FlashLabWindow : Window
             if(_closingInProgress || _closingApproved)return;
             checkedFiles.cfg.Set("SafetyFilePath",checkedFiles.library.Path);
             _vm.ApplyConfiguration(checkedFiles.cfg);
+            // A new XML must never inherit the preceding ECU's tail option.
+            LegacyTailSignatureCheck.IsChecked=false;
             _vm.SetImage(files.FirmwareImage,checkedFiles.image);
             ApplySafetyFileFromConfiguration();
             InvalidateFlashPreview();
@@ -267,6 +269,8 @@ public partial class FlashLabWindow : Window
         {
             var cfg=CanToolXmlProfileReader.Load(dialog.FileName);
             _vm.ApplyConfiguration(cfg);
+            // A new ECU profile starts without the old profile's tail choice.
+            LegacyTailSignatureCheck.IsChecked=false;
             InvalidateFlashPreview();
             ApplySafetyFileFromConfiguration();
             _vm.Status="已加载 CanTool XML；字段与未知项已保留。";
@@ -476,6 +480,11 @@ public partial class FlashLabWindow : Window
             var plan=CanToolFlashJob.Freeze(_vm.Configuration,
                 _vm.FirmwarePath,BinBaseBox.Text,_safetyFilePath,"",
                 LegacyTailSignatureCheck.IsChecked==true);
+            // The exact captured HydEPB profile requires the final signed
+            // 0x1006FE00 block. Reflect the effective frozen behavior in UI
+            // rather than showing an unchecked box while sending signature.
+            if(plan.LegacyTailSignature && LegacyTailSignatureCheck.IsChecked!=true)
+                LegacyTailSignatureCheck.IsChecked=true;
             // Lock the exact original-reference builtin provider BEFORE any
             // CAN action. It does not dynamically load sa_demo or KEY.dll.
             using(var provider=CanToolSecurityProvider.Open(
