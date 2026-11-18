@@ -192,6 +192,7 @@ public sealed class StepRowProjection : BindableBase
             realFact is not null ? realFact.Status switch
             {
                 RealStepStatus.Completed => "已执行",
+                RealStepStatus.Skipped => "已跳过",
                 RealStepStatus.ConditionFalse => "条件不成立",
                 RealStepStatus.NoData => "无数据",
                 RealStepStatus.Timeout => "超时",
