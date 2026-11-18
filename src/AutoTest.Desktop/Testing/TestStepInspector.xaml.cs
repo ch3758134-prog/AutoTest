@@ -465,7 +465,7 @@ public partial class TestStepInspector : UserControl
         };
         foreach (var item in _catalog.Where(x => Eligible(x.Mapping))) _allTargets.Add(item);
         if (action.TargetCategory == "can")
-            _allTargets.Add(new MappingChoice("CAN1 / 原始报文（无需 DBC）",
+            _allTargets.Add(new MappingChoice("ECU CAN0 / 原始报文（无需 DBC）",
                 new TestTargetMapping("原始 CAN1", TestTargetKind.RawCan, default, 0, "",
                     BusRole.DutCan, 0)));
         else if (action.TargetCategory == "button")
