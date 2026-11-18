@@ -72,7 +72,8 @@ public sealed class DbcWorkbenchTests
         var reopened = DbcWorkbenchDocument.Import("example", edited);
         Assert.Equal("车辆状态", reopened.DisplayNames.MessageAlias(291));
         Assert.Equal("车速", reopened.DisplayNames.SignalAlias(291, "Speed"));
-        Assert.Equal(doc.Model.FindMessage(291).Signals, reopened.Model.FindMessage(291).Signals);
+        Assert.Equal(doc.Model.FindMessage(291).Signals.ToArray(),
+            reopened.Model.FindMessage(291).Signals.ToArray());
         Assert.Equal("Speed", reopened.Model.FindSignal(291, "Speed").Name);
     }
 
