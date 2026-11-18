@@ -223,19 +223,41 @@
           <ItemsControl ItemsSource="{Binding SignalValues}">
            <ItemsControl.ItemTemplate>
             <DataTemplate>
-             <Grid Margin="0,0,0,7">
-              <Grid.ColumnDefinitions>
-               <ColumnDefinition Width="*"/>
-               <ColumnDefinition Width="130"/>
-              </Grid.ColumnDefinitions>
+             <Grid Margin="0,0,0,9">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/>
+               <ColumnDefinition Width="155"/></Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0">
-               <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+               <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                TextTrimming="CharacterEllipsis" ToolTip="{Binding Definition}"/>
+               <TextBlock Text="{Binding Name}" FontSize="10" Foreground="#8393A7"/>
+               <TextBlock Text="{Binding Summary}" FontSize="10" TextWrapping="Wrap"
+                Foreground="#697C91" ToolTip="{Binding Definition}"/>
                <TextBlock Text="{Binding Range}" FontSize="10" Foreground="#8899AA"/>
               </StackPanel>
-              <TextBox Grid.Column="1" Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-               Padding="6,5" Margin="7,0,0,0" ToolTip="{Binding Range}"/>
+              <Grid Grid.Column="1" Margin="7,0,0,0" VerticalAlignment="Center">
+               <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                Padding="6,5" ToolTip="{Binding Range}">
+                <TextBox.Style><Style TargetType="TextBox">
+                 <Setter Property="Visibility" Value="Visible"/>
+                 <Style.Triggers><DataTrigger Binding="{Binding HasChoices}" Value="True">
+                  <Setter Property="Visibility" Value="Collapsed"/>
+                 </DataTrigger></Style.Triggers>
+                </Style></TextBox.Style>
+               </TextBox>
+               <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Label"
+                SelectedValuePath="Value"
+                SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                MinHeight="28" ToolTip="{Binding Definition}">
+                <ComboBox.Style><Style TargetType="ComboBox">
+                 <Setter Property="Visibility" Value="Collapsed"/>
+                 <Style.Triggers><DataTrigger Binding="{Binding HasChoices}" Value="True">
+                  <Setter Property="Visibility" Value="Visible"/>
+                 </DataTrigger></Style.Triggers>
+                </Style></ComboBox.Style>
+               </ComboBox>
+              </Grid>
              </Grid>
-            </DataTemplate>
+       </DataTemplate>
            </ItemsControl.ItemTemplate>
           </ItemsControl>
          </StackPanel>
