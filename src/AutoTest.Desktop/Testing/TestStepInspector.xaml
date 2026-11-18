@@ -39,8 +39,7 @@
     <CheckBox x:Name="StepEnabledInput" Content="启用此步骤（取消勾选则运行时跳过）"
       Margin="0,0,0,12" IsChecked="True"
       ToolTip="关闭后步骤仍保存在测试程序里，但不执行，也不会发送任何硬件命令。"/>
-    <!-- The HTML Inspector keeps frequent step operations beside the fields.
-         No fake enable switch: formal TEST runtime currently has no enabled flag. -->
+    <!-- The formal TEST enabled flag is persisted and obeyed by the real runner. -->
 
 
 
