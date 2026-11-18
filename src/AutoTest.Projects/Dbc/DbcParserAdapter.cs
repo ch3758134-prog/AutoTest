@@ -9,7 +9,8 @@ public static class DbcParserAdapter
 {
     private static readonly Regex Message = new(@"^BO_\s+(\d+)\s+(\w+)\s*:\s*(\d+)\s+(\w+)", RegexOptions.Compiled);
     private static readonly Regex Signal = new("^SG_\\s+(\\w+)\\s*(M|m\\d+)?\\s*:\\s*(\\d+)\\|(\\d+)@([01])([+-])\\s*\\(([^,]+),([^)]+)\\)\\s*\\[([^|]+)\\|([^]]+)\\]\\s*\"([^\"]*)\"\\s*(.*)$", RegexOptions.Compiled);
-    public static DbcDatabase Parse(string text, string name = "Imported")
+    public static DbcDatabase Parse(string text, string name = "Imported",
+        bool allowSignalOverlaps = false)
     {
         if (string.IsNullOrWhiteSpace(text)) throw new ProjectDataException("DBC_PARSE", "Empty DBC source.");
         var messages = new List<DbcMessage>();
@@ -47,7 +48,8 @@ public static class DbcParserAdapter
             }
         }
         if (messages.Count == 0) throw new ProjectDataException("DBC_PARSE", "No BO_ messages found.");
-        return new DbcDatabase(name, 1, nodes.Distinct().ToImmutableArray(), messages.ToImmutableArray()).Validate();
+        return new DbcDatabase(name, 1, nodes.Distinct().ToImmutableArray(),
+            messages.ToImmutableArray()).Validate(allowSignalOverlaps);
     }
     public static bool TryParse(string text, out DbcDatabase? database, out string? error)
     {
