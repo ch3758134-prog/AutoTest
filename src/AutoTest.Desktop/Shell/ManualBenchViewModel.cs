@@ -665,7 +665,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private void ReleaseDraftKeys()
     {
         foreach (var key in Keys) key.Checked = false;
-        Status = "已清空 Key 选择；请点击“应用 Key 组合”确认向 CAN0 发送全断开请求。";
+        Status = "已清空 Key 选择；点击“应用 Key 组合”可向 CAN0 发送全断开请求（不会自动发送）。";
     }
 
     public async Task ApplyIgnSelectionAsync(bool on)
