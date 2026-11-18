@@ -18,6 +18,13 @@ public static class StepTreeValidator
         {
             if (!active.Add(n)) { errors.Add($"{location}: reference cycle"); return; }
             if (n.Id.Value == Guid.Empty || !ids.Add(n.Id)) errors.Add($"{location}: empty/duplicate StepId");
+            // A disabled legacy step is preserved for editing but cannot block
+            // or participate in a real run. Re-enabling requires full validation.
+            if (!StepExecutionPolicy.IsEnabled(n))
+            {
+                active.Remove(n);
+                return;
+            }
             var d = catalog.Lookup(n.Type);
             if (d is null) errors.Add($"{location}: unknown node {n.Type}");
             else
