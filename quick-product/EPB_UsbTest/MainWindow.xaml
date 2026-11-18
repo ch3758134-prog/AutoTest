@@ -349,10 +349,10 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="280" MinWidth="260"/>
+            <ColumnDefinition Width="248" MinWidth="226"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="8"/>
-            <ColumnDefinition Width="370" MinWidth="330" MaxWidth="510"/>
+            <ColumnDefinition Width="440" MinWidth="390" MaxWidth="540"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
         <RowDefinition Height="64"/>
@@ -462,7 +462,7 @@
             <TabItem Header="自动测试">
                 <Grid x:Name="AutomaticWorkspaceGrid" Margin="0,0,0,0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="280" MinWidth="250"/>
+                        <ColumnDefinition Width="254" MinWidth="230"/>
                         <ColumnDefinition Width="8"/>
                         <ColumnDefinition Width="*" MinWidth="300"/>
                     </Grid.ColumnDefinitions>
@@ -597,11 +597,7 @@
                                  <Grid.RowDefinitions>
                                      <RowDefinition Height="*" MinHeight="180"/>
                                  </Grid.RowDefinitions>
-                                 <Grid.ColumnDefinitions>
-                                     <ColumnDefinition Width="*" MinWidth="310"/>
-                                     <ColumnDefinition x:Name="InspectorSplitterColumn" Width="0"/>
-                                     <ColumnDefinition x:Name="InspectorColumn" Width="0" MinWidth="0"/>
-                                </Grid.ColumnDefinitions>
+                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="310"/></Grid.ColumnDefinitions>
                                  <Grid Grid.Column="0" Grid.Row="0">
                                      <TreeView x:Name="TestFlowTree" Visibility="Collapsed" AllowDrop="True" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both" ItemContainerStyle="{StaticResource TestFlowTreeItemStyle}" ItemTemplate="{StaticResource TestFlowTemplate}" SelectedItemChanged="TestFlowTree_SelectedItemChanged" ContextMenuOpening="TestFlowTree_ContextMenuOpening" PreviewMouseRightButtonDown="TestFlowTree_RightClick" PreviewMouseDoubleClick="TestFlowTree_DoubleClick" PreviewMouseLeftButtonDown="TestFlowTree_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="TestFlowTree_PreviewMouseLeftButtonUp" PreviewMouseMove="TestFlowTree_PreviewMouseMove" DragOver="TestFlowTree_DragOver" Drop="TestFlowTree_Drop" RequestBringIntoView="Tree_RequestBringIntoView"/>
                                      <Border x:Name="TestFlowEmptyState" Visibility="Collapsed" Tag="{Binding ElementName=TestFlowTree, Path=HasItems}" IsEnabled="{Binding ElementName=TestFlowTree, Path=IsVisible}">
@@ -692,21 +688,7 @@
                                         </StackPanel>
                                     </Border>
                                 </Grid>
-                                 <GridSplitter x:Name="InspectorGridSplitter" Grid.Row="0" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#D9E2ED" ShowsPreview="True" Visibility="Collapsed" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Cursor="SizeWE" ToolTip="左右拖动调整步骤列表与属性编辑器宽度"/>
-                                <!-- 属性编辑器是工作区内可停靠检查器，不再用独立 Popup/HWND 覆盖主窗口。 -->
-                                 <Border x:Name="InspectorHost" Grid.Row="0" Grid.Column="2" Visibility="Collapsed" Background="#FBFDFF" BorderBrush="#B8CDE3" BorderThickness="1" CornerRadius="5" Margin="5,0,0,0" Padding="12,10">
-                                    <Grid>
-                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                        <DockPanel Margin="0,0,0,10">
-                                            <Button DockPanel.Dock="Right" Content="×" Click="CloseInspectorPopup_Click" Width="24" Height="24" Padding="0" FontSize="16" Foreground="#6B7B8F" Background="Transparent" BorderThickness="0" ToolTip="关闭属性"/>
-                                            <Button x:Name="BackToReferenceButton" DockPanel.Dock="Right" Content="返回" Click="BackToReference_Click" Visibility="Collapsed" Padding="7,3" Margin="0,0,8,0"/>
-                                            <TextBlock x:Name="InspectorTitle" Text="属性" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                                        </DockPanel>
-                                        <ScrollViewer x:Name="StepInspectorScrollViewer" Grid.Row="1" CanContentScroll="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                            <ContentControl x:Name="StepEditor"><TextBlock Text=""/></ContentControl>
-                                        </ScrollViewer>
-                                    </Grid>
-                                </Border>
+
                             </Grid>
                             </Border>
                         </Grid>
@@ -762,7 +744,31 @@
 
         <Border Grid.Row="1" Grid.Column="3" Margin="0,12,12,12" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="12">
             <Grid>
-                <Grid x:Name="CanPanelContentGrid">
+                <Grid x:Name="QuickRightToolsGrid">
+                    <Grid.RowDefinitions>
+                        <RowDefinition x:Name="RightInspectorRow" Height="0"/>
+                        <RowDefinition x:Name="RightInspectorSplitterRow" Height="0"/>
+                        <RowDefinition Height="*" MinHeight="150"/>
+                    </Grid.RowDefinitions>
+                                 <Border x:Name="InspectorHost" Grid.Row="0" Grid.Column="0" Visibility="Collapsed" Background="#FBFDFF" BorderBrush="#B8CDE3" BorderThickness="1" CornerRadius="5" Margin="0,0,0,4" Padding="12,10">
+                                    <Grid>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                        <DockPanel Margin="0,0,0,10">
+                                            <Button DockPanel.Dock="Right" Content="×" Click="CloseInspectorPopup_Click" Width="24" Height="24" Padding="0" FontSize="16" Foreground="#6B7B8F" Background="Transparent" BorderThickness="0" ToolTip="关闭属性"/>
+                                            <Button x:Name="BackToReferenceButton" DockPanel.Dock="Right" Content="返回" Click="BackToReference_Click" Visibility="Collapsed" Padding="7,3" Margin="0,0,8,0"/>
+                                            <TextBlock x:Name="InspectorTitle" Text="属性" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                        </DockPanel>
+                                        <ScrollViewer x:Name="StepInspectorScrollViewer" Grid.Row="1" CanContentScroll="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                            <ContentControl x:Name="StepEditor"><TextBlock Text=""/></ContentControl>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Border>
+                    <GridSplitter x:Name="InspectorGridSplitter" Grid.Row="1" Height="6"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                  ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
+                                  ShowsPreview="True" Cursor="SizeNS" Background="#D9E2ED"
+                                  Visibility="Collapsed" ToolTip="上下拖动调整步骤属性与 CAN 监控的高度"/>
+                    <Grid x:Name="CanPanelContentGrid" Grid.Row="2">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <DockPanel Margin="0,0,0,6">
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
@@ -798,6 +804,7 @@
                             <TextBlock Text="连接主控板并等待报文接收后，实时数据会显示在这里。" Style="{StaticResource EmptyStateHint}"/>
                         </StackPanel>
                     </Border>
+                </Grid>
                 </Grid>
                 </Grid>
                 <Button x:Name="CanPanelExpandButton" Content="›" Click="CanPanelToggle_Click" Width="24" Height="28" Padding="0" HorizontalAlignment="Center" VerticalAlignment="Top" Visibility="Collapsed" ToolTip="展开 CAN 观察"/>

@@ -2440,13 +2440,13 @@ public partial class MainWindow : Window
     private void OpenInspector()
     {
         // 检查器属于工作区同一视觉树；首次才给默认宽度，随后尊重用户通过
-        // GridSplitter 调整的宽度，不在每次打开属性时把布局重置。
-        if (InspectorColumn.Width.Value <= 0)
+        // GridSplitter 调整的高度，不在每次打开属性时把布局重置。
+        if (RightInspectorRow.Height.Value <= 0)
         {
-            var targetWidth = Math.Clamp(AutomaticWorkspaceGrid.ActualWidth * 0.30, 330, 420);
-            InspectorColumn.Width = new GridLength(targetWidth, GridUnitType.Pixel);
+            var targetHeight = Math.Clamp(QuickRightToolsGrid.ActualHeight * 0.45, 250, 460);
+            RightInspectorRow.Height = new GridLength(targetHeight, GridUnitType.Pixel);
         }
-        InspectorSplitterColumn.Width = new GridLength(6, GridUnitType.Pixel);
+        RightInspectorSplitterRow.Height = new GridLength(6, GridUnitType.Pixel);
         InspectorHost.Visibility = Visibility.Visible;
         InspectorGridSplitter.Visibility = Visibility.Visible;
     }
@@ -2455,8 +2455,8 @@ public partial class MainWindow : Window
     {
         InspectorHost.Visibility = Visibility.Collapsed;
         InspectorGridSplitter.Visibility = Visibility.Collapsed;
-        InspectorSplitterColumn.Width = new GridLength(0);
-        InspectorColumn.Width = new GridLength(0);
+        RightInspectorSplitterRow.Height = new GridLength(0);
+        RightInspectorRow.Height = new GridLength(0);
     }
 
     private void TestFlowTree_RightClick(object sender, MouseButtonEventArgs e)
