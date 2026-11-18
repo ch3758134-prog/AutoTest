@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
@@ -36,6 +37,9 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     private bool _unknown;
     private bool _hasRawKey;
     private uint _rawMask;
+    private readonly Dictionary<(BusRole Role, bool Extended, uint Id),
+        (CancellationTokenSource Stop, Task Worker)> _periodic = new();
+    private readonly ConcurrentQueue<Exception> _periodicErrors = new();
 
     public ConfiguredStationActionPort(HardwareConnectionService hardware,
         ProjectWorkspaceService projects)
@@ -141,6 +145,49 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 throw new InvalidOperationException(_unknown
                     ? "Previous physical output is UNKNOWN; operator intervention required."
                     : "No approved test run.");
+            if (action.StartsWith("PERIODIC:", StringComparison.OrdinalIgnoreCase))
+            {
+                if (target.Kind is not (TestTargetKind.CanMessage or TestTargetKind.RawCan))
+                    throw new InvalidOperationException("周期报文只能使用 CAN1 的原始帧或 DBC 报文。");
+                var fields = action.Split(':', 4);
+                if (fields.Length != 4 ||
+                    !int.TryParse(fields[1], NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var period) || period is < 20 or > 600000 ||
+                    !int.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var duration) || duration is < 0 or > 1_800_000)
+                    throw new FormatException("周期发送须设置 20～600000 毫秒周期，持续时间为 0～1800000 毫秒。");
+                byte[] payload;
+                if (target.Kind == TestTargetKind.CanMessage)
+                {
+                    if (!_can.TryGetValue(target.Name, out var bound) || bound.Target != target)
+                        throw new InvalidOperationException("周期 CAN 报文的 DBC 绑定已失效。");
+                    payload = DbcCanMessageEncoder.Encode(bound.Message, fields[3]);
+                }
+                else
+                {
+                    if (!fields[3].StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
+                        throw new FormatException("原始周期 CAN 报文必须填写 HEX 数据。");
+                    payload = Convert.FromHexString(string.Concat(fields[3][4..]
+                        .Where(c => !char.IsWhiteSpace(c))));
+                    if (payload.Length > 8)
+                        throw new FormatException("当前仅支持经典 CAN 的 8 字节数据。");
+                }
+                var frame = CanFrame.Create(BusRole.DutCan, target.Extended,
+                    target.CanId, payload);
+                // First frame must receive a real device ACK before the step succeeds.
+                await _hardware.SendTestCanAsync(frame, _fingerprint, ct);
+                var key = (target.Role, target.Extended, target.CanId);
+                if (_periodic.Remove(key, out var previous))
+                {
+                    previous.Stop.Cancel();
+                    await previous.Worker;
+                    previous.Stop.Dispose();
+                }
+                var stop = new CancellationTokenSource();
+                var worker = SendPeriodicAsync(frame, period, duration, _fingerprint, stop.Token);
+                _periodic[key] = (stop, worker);
+                return Ack("CAN_PERIODIC_STARTED");
+            }
             if (target.Kind == TestTargetKind.Ignition)
             {
                 var on = action.Equals("ON", StringComparison.OrdinalIgnoreCase) ||
@@ -294,6 +341,27 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
         finally { _serial.Release(); }
     }
 
+    // Separate scheduler for each active CAN1 frame. This uses host timing rather
+    // than pretending that the current host interface configures firmware 0x50.
+    // All writes still traverse the same hardware authorization and ACK path.
+    private async Task SendPeriodicAsync(CanFrame frame, int periodMs, int durationMs,
+        string fingerprint, CancellationToken stop)
+    {
+        using var limited = new CancellationTokenSource();
+        if (durationMs > 0) limited.CancelAfter(durationMs);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(stop, limited.Token);
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(periodMs, linked.Token);
+                await _hardware.SendTestCanAsync(frame, fingerprint, linked.Token);
+            }
+        }
+        catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
+        catch (Exception error) { _periodicErrors.Enqueue(error); }
+    }
+
     private static TestOperationResult Ack(string code) =>
         new(true, false, code, "Device acknowledged; ECU physical response remains unverified.",
             DateTimeOffset.UtcNow);
@@ -306,6 +374,13 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             if (_fingerprint is null) return;
             try
             {
+                foreach (var item in _periodic.Values) item.Stop.Cancel();
+                try { await Task.WhenAll(_periodic.Values.Select(x => x.Worker)); }
+                finally
+                {
+                    foreach (var item in _periodic.Values) item.Stop.Dispose();
+                    _periodic.Clear();
+                }
                 // Release regardless of our last ACK: a timed-out physical command can
                 // have affected the board even if the host did not receive confirmation.
                 if (_buttons.Count > 0 || _hasRawKey)
@@ -320,6 +395,9 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 _fingerprint = null;
                 await _hardware.RevokeTestRunAsync();
             }
+            if (_periodicErrors.TryDequeue(out var periodicFailure))
+                throw new IOException("CAN1 周期发送期间出现设备错误，测试不能判为通过。",
+                    periodicFailure);
         }
         finally { _serial.Release(); }
     }
