@@ -103,4 +103,57 @@ public sealed class TestMappingContractTests
             TestDocumentCodec.Deserialize(TestDocumentCodec.Serialize(doc)));
         Assert.Contains("绿通.丢失的DBC报文", error.Message);
     }
+
+    [Fact]
+    public void EnabledStepScope_ExcludesDisabledSubtreeAndUnusedHardwarePermissions()
+    {
+        var active = new TestTargetMapping("ECU_CAN", TestTargetKind.RawCan,
+            default, 0, "", BusRole.DutCan, 0x123);
+        var unused = new TestTargetMapping("KEY_UNUSED", TestTargetKind.RawKey,
+            default, 0, "", BusRole.KeypadCan);
+        var disabled = StepNode.Create("Sequence").WithProperty("enabled", "false")
+            .WithSlot("body", StepNode.Create("Write")
+                .WithProperty("target", unused.Name)
+                .WithProperty("value", "Hold:0x00001:1000"));
+        var enabled = StepNode.Create("Write")
+            .WithProperty("target", active.Name).WithProperty("value", "HEX:0102");
+        var doc = TestDocument.Create("Scope") with
+        {
+            Mappings = ImmutableArray.Create(active, unused)
+        };
+        doc = doc with { Phases = doc.Phases.SetItem(TestPhase.Test,
+            ImmutableArray.Create(disabled, enabled)) };
+        Assert.Single(TestRunStepScope.RequiredMappings(doc));
+        Assert.Equal(active.Name, TestRunStepScope.RequiredMappings(doc)[0].Name);
+        Assert.True(TestRunStepScope.RequiresPhysicalWrite(doc));
+        var withoutActive = doc with
+        {
+            Phases = doc.Phases.SetItem(TestPhase.Test, ImmutableArray.Create(disabled))
+        };
+        Assert.False(TestRunStepScope.RequiresPhysicalWrite(withoutActive));
+    }
+
+    [Fact]
+    public void RealPreflight_RejectsShortCanCycleAndAccidentalKeypadDbcTransmit()
+    {
+        var raw = new TestTargetMapping("CAN0_ECU", TestTargetKind.RawCan,
+            default, 0, "", BusRole.DutCan, 0x701);
+        var dbcWrongBus = new TestTargetMapping("DBC_TO_KEYPAD", TestTargetKind.CanMessage,
+            AssetId.New(), 1, new string('a', 64), BusRole.KeypadCan, 0x123);
+        var doc = TestDocument.Create("InvalidOperation") with
+        {
+            Mappings = ImmutableArray.Create(raw, dbcWrongBus)
+        };
+        doc = doc with
+        {
+            Phases = doc.Phases.SetItem(TestPhase.Test, ImmutableArray.Create(
+                StepNode.Create("Write").WithProperty("target", raw.Name)
+                    .WithProperty("value", "HEX:01").WithProperty("periodMs", "15"),
+                StepNode.Create("Write").WithProperty("target", dbcWrongBus.Name)
+                    .WithProperty("value", "HEX:0000000000000000")))
+        };
+        var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Contains(plan.Diagnostics, issue => issue.Contains("CAN 周期", StringComparison.Ordinal));
+        Assert.Contains(plan.Diagnostics, issue => issue.Contains("ECU CAN0", StringComparison.Ordinal));
+    }
 }
