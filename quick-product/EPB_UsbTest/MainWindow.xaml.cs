@@ -405,6 +405,7 @@ public partial class MainWindow : Window
     private bool _rebuildingBroadcastEditor;
     private bool _restoredLastConfig;
     private TestCaseDefinition? _selectedTestCase;
+    private string? _preferredQuickCaseId;
     private TestFlowNode? _selectedTestNode;
     private string? _selectedTestNodeId;
     private readonly HashSet<string> _selectedTestNodeIds = [];
@@ -461,13 +462,23 @@ public partial class MainWindow : Window
                         AutomaticWorkspaceGrid.RowDefinitions[2].Height = new GridLength(layout.LogHeight);
                     if (layout.InspectorHeight is >= 165 and <= 520)
                         RightInspectorRow.Height = new GridLength(layout.InspectorHeight);
+                    _preferredQuickCaseId = layout.SelectedCaseId;
                 }
             }
         }
         catch { }
         await RestoreLastConfigAsync();
-        // 启动默认进入自动测试；资源配置仍保留为同一窗口中的后端编辑工作区。
+        // A truly new QUICK workspace starts with one editable case, not an empty canvas.
+        // Never insert a case into an imported/remembered existing configuration.
+        if (_path is null && _configuration.TestPlan.Cases.Count == 0)
+        {
+            var first = new TestCaseDefinition { Name = "测试用例 1", Order = 1 };
+            _configuration.TestPlan.Cases.Add(first);
+            _preferredQuickCaseId = first.Id;
+            RebuildTestCaseTree();
+        }
         WorkspaceTabs.SelectedIndex = 1;
+        EnsureQuickTestCaseSelection();
     }
 
     private Grid RootGrid() => (Grid)Content;
@@ -483,7 +494,8 @@ public partial class MainWindow : Window
                 RootGrid().ColumnDefinitions[3].ActualWidth,
                 AutomaticWorkspaceGrid.RowDefinitions[2].ActualHeight,
                 0,
-                QuickRightToolsGrid.RowDefinitions[0].ActualHeight);
+                QuickRightToolsGrid.RowDefinitions[0].ActualHeight,
+                _selectedTestCase?.Id);
             File.WriteAllText(_layoutPath, System.Text.Json.JsonSerializer.Serialize(layout));
         }
         catch { }
@@ -500,6 +512,31 @@ public partial class MainWindow : Window
         ConfigurationTree.Items.Add(root);
         if (selectedId is not null) SelectTreeItem(root, selectedId);
         RebuildTestCaseTree();
+        EnsureQuickTestCaseSelection();
+    }
+
+    private void EnsureQuickTestCaseSelection()
+    {
+        // Config load, quick switch and restart all converge on one real test case.
+        // Do not create or overwrite cases in an imported configuration.
+        var candidates = _configuration.TestPlan.Cases.OrderBy(x => x.Order).ToList();
+        if (candidates.Count == 0)
+        {
+            _selectedTestCase = null;
+            _selectedTestNode = null;
+            _selectedTestNodeId = null;
+            _selectedTestNodeIds.Clear();
+            TestCaseTitle.Text = "新建测试用例以开始";
+            RebuildFlowEditor();
+            CloseStepEditor();
+            return;
+        }
+        var selected = candidates.FirstOrDefault(x => ReferenceEquals(x, _selectedTestCase))
+            ?? candidates.FirstOrDefault(x => x.Id == _preferredQuickCaseId)
+            ?? candidates[0];
+        if (!ReferenceEquals(selected, _selectedTestCase))
+            SwitchTestCase(selected);
+        RestoreTestCaseSelection(selected);
     }
 
     private static void NormalizeReferenceDisplayNames(ConfigurationTreeItem item)
@@ -728,6 +765,7 @@ public partial class MainWindow : Window
         var changed = !ReferenceEquals(_selectedTestCase, testCase);
         if (changed) CloseStepEditor();
         _selectedTestCase = testCase;
+        _preferredQuickCaseId = testCase.Id;
         var rememberedNodeId = _lastTestNodeByCase.TryGetValue(testCase.Id, out var remembered) ? remembered : null;
         _selectedTestNode = rememberedNodeId is null
             ? testCase.Flow.FirstOrDefault()
@@ -751,6 +789,8 @@ public partial class MainWindow : Window
         }
         if (_selectedTestNode is not null)
             ShowTestFlowNodeDetails(_selectedTestNode);
+        else
+            ShowQuickCaseOverview(testCase);
         AppendLog($"已切换测试用例：{testCase.Name}。");
         if (_runWorkspaceSelection is not null) _runWorkspaceSelection = CaptureWorkspaceSelection();
     }
@@ -5909,6 +5949,12 @@ public partial class MainWindow : Window
     private void New_Click(object sender, RoutedEventArgs e)
     {
         _configuration = EcuConfiguration.CreateNew();
+        var newCase = new TestCaseDefinition { Name = "测试用例 1", Order = 1 };
+        _configuration.TestPlan.Cases.Add(newCase);
+        _preferredQuickCaseId = newCase.Id;
+        _selectedTestCase = null;
+        _selectedTestNode = null;
+        _selectedTestNodeId = null;
         _selectedItem = null; _selectedSequence = null; StepsTree.ItemsSource = null;
         var directory = GetRememberedDirectory();
         _path = Path.Combine(directory, $"新 ECU 配置-{DateTime.Now:yyyyMMdd-HHmmss}.json");
@@ -6520,7 +6566,7 @@ public partial class MainWindow : Window
     }
 
     private sealed record UiLayout(double LeftWidth, double RightWidth, double LogHeight,
-        double LogWidth = 0, double InspectorHeight = 280);
+        double LogWidth = 0, double InspectorHeight = 280, string? SelectedCaseId = null);
     private sealed record LiveRow(string Name, string Value);
     private sealed record SequenceChoice(string Id, string Name);
     private sealed record FolderChoice(ConfigurationTreeItem Item, string Path);
