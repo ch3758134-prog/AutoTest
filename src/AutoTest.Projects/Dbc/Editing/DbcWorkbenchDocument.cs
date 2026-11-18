@@ -33,6 +33,8 @@ public sealed class DbcWorkbenchDocument
     private DbcEditSession _editing;
     private ImmutableArray<DbcValueTable> _tables;
     private bool _dirty;
+    private bool _dataDirty;
+    private DbcDisplayNames _displayNames;
     private readonly bool _sourcePreserving;
     private static readonly HashSet<string> SafeToPreserve = new(StringComparer.Ordinal)
     {
@@ -44,6 +46,10 @@ public sealed class DbcWorkbenchDocument
     public bool CanEdit => UnsupportedDirectives.Count == 0 || _sourcePreserving;
     public bool IsSourcePreserving => _sourcePreserving;
     public bool IsDirty => _dirty;
+    // Alias-only edits can be safely applied to read-only DBC grammars because
+    // they rewrite just the two attributes owned by AutoTest.
+    public bool CanSave => !_dataDirty || CanEdit;
+    public DbcDisplayNames DisplayNames => _displayNames;
     public DbcDatabase Model => _editing.Draft;
     public IReadOnlyList<DbcValueTable> ValueTables => _tables;
 
@@ -53,6 +59,7 @@ public sealed class DbcWorkbenchDocument
         _original = original;
         _name = name;
         _editing = new DbcEditSession(model);
+        _displayNames = DbcDisplayNames.Parse(original);
         _tables = tables;
         UnsupportedDirectives = unsupported;
         _sourcePreserving = unsupported.Count > 0 && unsupported.All(SafeToPreserve.Contains);
@@ -180,12 +187,28 @@ public sealed class DbcWorkbenchDocument
         var next = new DbcValueTable(messageId, name, previous.SetItem(raw, label)).Validate(Model);
         _tables = index < 0 ? _tables.Add(next) : _tables.SetItem(index, next);
         _dirty = true;
+        _dataDirty = true;
     }
+    public void SetMessageAlias(uint messageId, string? alias)
+    {
+        Model.FindMessage(messageId);
+        _displayNames.SetMessageAlias(messageId, alias);
+        _dirty = true;
+    }
+
+    public void SetSignalAlias(uint messageId, string signalName, string? alias)
+    {
+        Model.FindSignal(messageId, signalName);
+        _displayNames.SetSignalAlias(messageId, signalName, alias);
+        _dirty = true;
+    }
+
     public string ExportText()
     {
         if (!_dirty) return _original;
-        RequireEditable();
-        var output = _sourcePreserving ? null : new StringBuilder(DbcParserAdapter.Export(Model));
+        if (_dataDirty) RequireEditable();
+        var output = !_dataDirty || _sourcePreserving
+            ? null : new StringBuilder(DbcParserAdapter.Export(Model));
         if (output is not null)
         foreach (var value in _tables.OrderBy(t => t.MessageId).ThenBy(t => t.SignalName, StringComparer.Ordinal))
         {
@@ -195,13 +218,17 @@ public sealed class DbcWorkbenchDocument
                     .Append("\" ");
             output.AppendLine(";");
         }
-        var serialized = _sourcePreserving
-            ? DbcSourcePreservingExporter.Rewrite(_original, Model)
-            : output!.ToString();
+        var baseSource = !_dataDirty ? _original :
+            _sourcePreserving ? DbcSourcePreservingExporter.Rewrite(_original, Model) :
+            output!.ToString();
+        var serialized = _displayNames.Rewrite(baseSource);
         var roundTrip = Import(_name, serialized);
-        if (!roundTrip.CanEdit || !Equivalent(Model, roundTrip.Model) ||
-            !ValueTablesMatch(ValueTables, roundTrip.ValueTables))
-            throw new ProjectDataException("DBC_ROUNDTRIP", "DBC export changes the supported semantic model.");
+        if ((_dataDirty && !roundTrip.CanEdit) ||
+            !Equivalent(Model, roundTrip.Model) ||
+            !ValueTablesMatch(ValueTables, roundTrip.ValueTables) ||
+            !_displayNames.SameExplicitNames(roundTrip.DisplayNames))
+            throw new ProjectDataException("DBC_ROUNDTRIP",
+                "DBC 别名保存校验失败，原始报文、信号和原有属性均未覆盖。");
         return serialized;
     }
     private static bool ValueTablesMatch(IReadOnlyList<DbcValueTable> a, IReadOnlyList<DbcValueTable> b) =>
@@ -213,7 +240,9 @@ public sealed class DbcWorkbenchDocument
         var fresh = Import(_name, _original);
         _editing = new DbcEditSession(fresh.Model);
         _tables = fresh._tables;
+        _displayNames = fresh._displayNames;
         _dirty = false;
+        _dataDirty = false;
     }
     private static bool Equivalent(DbcDatabase a, DbcDatabase b) =>
         a.Nodes.SequenceEqual(b.Nodes) && a.Messages.Length == b.Messages.Length &&
@@ -226,6 +255,7 @@ public sealed class DbcWorkbenchDocument
         RequireEditable();
         action(_editing);
         _dirty = true;
+        _dataDirty = true;
     }
     private void RejectShapeEdits()
     {
