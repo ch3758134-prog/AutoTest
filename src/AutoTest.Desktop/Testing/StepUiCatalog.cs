@@ -153,6 +153,8 @@ public static class StepUiCatalog
         node = type switch
         {
             "Switch" => node.WithProperty("variable", ""),
+            "AssertSignal" => node.WithProperty("operator", "==")
+                .WithProperty("expected", "").WithProperty("timeoutMs", "5000"),
             "When" => node.WithProperty("variable", "").WithProperty("equals", "")
                 .WithProperty("timeoutMs", "1000"),
             "CanSend" => node.WithProperty("dbcMessage", "").WithProperty("signals", ""),
