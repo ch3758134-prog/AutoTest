@@ -34,7 +34,7 @@ public sealed class RealTestWorkbenchService
         new PlanCompiler().Prepare(document, allowRealOperations: true);
 
     public static bool HasPhysicalWrites(TestDocument document) =>
-        document.Walk().Any(n => n.Type == "Write");
+        TestRunStepScope.RequiresPhysicalWrite(document);
 
     public static string ExpectedApproval(PreparedTestPlan plan) =>
         "AUTHORIZE TEST RUN " + plan.Fingerprint;
@@ -53,7 +53,9 @@ public sealed class RealTestWorkbenchService
             var plan = Prepare(document);
             if (!plan.Diagnostics.IsEmpty)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Diagnostics));
-            var mappings = document.Mappings.ToArray();
+            // An unused or disabled mapping must not widen a physical CAN lease
+            // or break the run because its unrelated historical asset is stale.
+            var mappings = TestRunStepScope.RequiredMappings(document);
             var tcf = await _projects.ReadSelectedTestConfigurationAsync(ct);
             if (tcf is not null)
                 foreach (var mapping in mappings)
@@ -76,6 +78,10 @@ public sealed class RealTestWorkbenchService
             await _signals.BindAsync(mappings, ct);
             actions = new ConfiguredStationActionPort(_hardware, _projects);
             await actions.PrepareAsync(mappings, ct);
+            // Validate literal actions/DBC encoding before requesting physical
+            // consent; avoid discovering malformed frames after earlier steps
+            // have already changed the DUT.
+            actions.ValidateRunSteps(document);
             if (HasPhysicalWrites(document))
                 await actions.AuthorizeAsync(plan.Fingerprint, confirmation, mappings, ct);
             var wave = new ConfiguredWavePort(_projects, _signals);
