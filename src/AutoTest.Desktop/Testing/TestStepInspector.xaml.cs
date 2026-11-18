@@ -236,6 +236,7 @@ public partial class TestStepInspector : UserControl
             throw new ArgumentNullException(nameof(editing),
                 "先从中央步骤列表选择操作类型，不能在 Inspector 内直接新增。");
         Heading.Text = "步骤属性";
+        StepEnabledInput.IsChecked = StepExecutionPolicy.IsEnabled(editing);
         StepActionsPanel.Visibility = Visibility.Visible;
         ConfirmButton.Content = "应用属性";
         var mapping = boundMappings.FirstOrDefault(m =>
