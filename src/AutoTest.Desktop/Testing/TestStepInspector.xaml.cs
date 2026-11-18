@@ -79,8 +79,9 @@ public sealed class TestStepInputField : BindableBase
 public sealed class TestSignalInputField : DbcEditableSignal
 {
     public TestSignalInputField(DbcSignal signal, string value, string? displayName = null,
-        string? description = null, IReadOnlyDictionary<long, string>? rawLabels = null)
-        : base(signal, displayName, description, rawLabels, value) { }
+        string? description = null, IReadOnlyDictionary<long, string>? rawLabels = null,
+        string? summary = null)
+        : base(signal, displayName, description, rawLabels, value, summary) { }
 }
 
 public sealed record StepCompositionResult(StepNode Step, TestTargetMapping? Mapping);
@@ -611,7 +612,9 @@ public partial class TestStepInspector : UserControl
                 ? "DBC 资源已变更或未加载。请重新选择当前工程的报文。"
                 : (_selectedTarget.DisplayNames?.MessageLabel(msg) ?? msg.Name) +
                   " · 0x" + msg.ArbitrationId.ToString("X") +
-                  " · DLC " + msg.Dlc + " · " + (msg.IsExtended ? "扩展帧" : "标准帧");
+                  " · DLC " + msg.Dlc + " · " + (msg.IsExtended ? "扩展帧" : "标准帧") +
+                  (string.IsNullOrWhiteSpace(_selectedTarget.DisplayNames?.MessageSummary(msg.Id))
+                      ? "" : " · " + _selectedTarget.DisplayNames!.MessageSummary(msg.Id));
             if (msg is not null)
             {
                 var old = _editing?.Properties.GetValueOrDefault("value",
@@ -660,7 +663,8 @@ public partial class TestStepInspector : UserControl
                     }
                     SignalValues.Add(new TestSignalInputField(signal, current,
                         string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
-                        description, labels));
+                        description, labels,
+                        _selectedTarget.DisplayNames?.SignalSummary(msg.Id, signal.Name)));
                 }
                 DbcRawMode.IsChecked = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
                     (!old.Contains('=') && old.Length > 0);
