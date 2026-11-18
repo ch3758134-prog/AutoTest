@@ -90,7 +90,10 @@ public sealed class TestEditorViewModel : BindableBase
             () => !IsBusy && SelectedItem is not null && _clipboardStepId is not null);
         AddMappingCommand = new DelegateCommand(async () => await AddMappingAsync(), () => !IsBusy);
         RemoveMappingCommand = new DelegateCommand(RemoveMapping, () => SelectedMapping is not null && !IsBusy);
-        RunCommand = new DelegateCommand(async () => await RunRealAsync(), () => !IsBusy && !IsDirty);
+        PrepareRunApprovalCommand = new DelegateCommand(PrepareRealRunApproval,
+            () => !IsBusy && !IsDirty && !HasNewStepDraft);
+        RunCommand = new DelegateCommand(async () => await RunRealAsync(),
+            () => !IsBusy && !IsDirty && !HasNewStepDraft);
         StopRunCommand = new DelegateCommand(() => _realTest.RequestStop(), () => IsBusy && _realTest.IsRunning);
         RefreshMappings();
         RefreshTree(null);
@@ -552,6 +555,7 @@ public sealed class TestEditorViewModel : BindableBase
     }
     public DelegateCommand AddMappingCommand { get; }
     public DelegateCommand RemoveMappingCommand { get; }
+    public DelegateCommand PrepareRunApprovalCommand { get; }
     public DelegateCommand RunCommand { get; }
     public DelegateCommand StopRunCommand { get; }
 
@@ -798,9 +802,36 @@ public sealed class TestEditorViewModel : BindableBase
         }
     }
 
+    private void PrepareRealRunApproval()
+    {
+        if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        try
+        {
+            var plan = _realTest.Prepare(_transaction.Current);
+            if (!plan.Diagnostics.IsEmpty)
+            {
+                StatusMessage = "无法准备真实运行：" + plan.Diagnostics[0];
+                return;
+            }
+            RunApproval = RealTestWorkbenchService.ExpectedApproval(plan);
+            StatusMessage = "当前用例已确认。点击“运行当前用例”后将按准备、测试、清理顺序对真实硬件执行。";
+            RunSummary = "已确认当前测试用例 · 尚未执行";
+        }
+        catch (Exception error) when (IsEditorError(error))
+        {
+            StatusMessage = "准备真实运行失败：" + error.Message;
+        }
+    }
+
     private async Task RunRealAsync()
     {
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (string.IsNullOrWhiteSpace(RunApproval) ||
+            !string.Equals(RunApproval, ExpectedApproval, StringComparison.Ordinal))
+        {
+            StatusMessage = "请先点击“确认当前用例”，再运行真实测试。";
+            return;
+        }
         IsBusy = true;
         RunFacts.Clear();
         RunFactRows.Clear();
@@ -842,6 +873,7 @@ public sealed class TestEditorViewModel : BindableBase
         // Any changed TEST revision makes previous-run StepId evidence stale.
         // Clear it before rebuilding; never display old PASS/error facts against
         // a newly edited document. Historical evidence remains in its own audit.
+        RunApproval = "";
         if (RunFacts.Count > 0)
         {
             RunFacts.Clear();
@@ -1111,6 +1143,7 @@ public sealed class TestEditorViewModel : BindableBase
         PasteStepCommand?.RaiseCanExecuteChanged();
         AddMappingCommand?.RaiseCanExecuteChanged();
         RemoveMappingCommand?.RaiseCanExecuteChanged();
+        PrepareRunApprovalCommand?.RaiseCanExecuteChanged();
         RunCommand?.RaiseCanExecuteChanged();
         StopRunCommand?.RaiseCanExecuteChanged();
     }
