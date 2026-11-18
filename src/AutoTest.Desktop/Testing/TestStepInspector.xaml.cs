@@ -78,14 +78,15 @@ public sealed class TestStepInputField : BindableBase
 public sealed class TestSignalInputField : BindableBase
 {
     private string _value;
-    public TestSignalInputField(DbcSignal signal, string value)
+    public TestSignalInputField(DbcSignal signal, string value, string? displayName = null)
     {
-        Name = signal.Name; Unit = signal.Unit;
+        Name = signal.Name; DisplayName = displayName ?? signal.Name; Unit = signal.Unit;
         Range = signal.Minimum.ToString("G", CultureInfo.InvariantCulture) +
             " ～ " + signal.Maximum.ToString("G", CultureInfo.InvariantCulture);
         _value = value;
     }
     public string Name { get; }
+    public string DisplayName { get; }
     public string Unit { get; }
     public string Range { get; }
     public string Value { get => _value; set => SetProperty(ref _value, value ?? ""); }
@@ -431,7 +432,8 @@ public partial class TestStepInspector : UserControl
             var msg = _selectedTarget.Message;
             DbcMessageInfo.Text = msg is null
                 ? "DBC 资源已变更或未加载。请重新选择当前工程的报文。"
-                : msg.Name + " · 0x" + msg.ArbitrationId.ToString("X") +
+                : (_selectedTarget.DisplayNames?.MessageLabel(msg) ?? msg.Name) +
+                  " · 0x" + msg.ArbitrationId.ToString("X") +
                   " · DLC " + msg.Dlc + " · " + (msg.IsExtended ? "扩展帧" : "标准帧");
             if (msg is not null)
             {
@@ -446,7 +448,8 @@ public partial class TestStepInspector : UserControl
                     }
                 foreach (var signal in msg.Signals)
                     SignalValues.Add(new TestSignalInputField(signal,
-                        dict.GetValueOrDefault(signal.Name, "")));
+                        dict.GetValueOrDefault(signal.Name, ""),
+                        _selectedTarget.DisplayNames?.SignalLabel(msg, signal)));
                 DbcRawMode.IsChecked = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
                     (!old.Contains('=') && old.Length > 0);
                 DbcRawDataInput.Text = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
