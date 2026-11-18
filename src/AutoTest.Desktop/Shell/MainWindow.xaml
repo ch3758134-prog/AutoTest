@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:chrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
  xmlns:navigation="clr-namespace:AutoTest.Desktop.Shell.Navigation"
- Title="AutoTest · ECU 测试 IDE" Width="1440" Height="900" MinWidth="780" MinHeight="420"
+ Title="AutoTest · ECU 测试 IDE" Width="1440" Height="900" MinWidth="1080" MinHeight="650"
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
  PreviewKeyDown="Window_PreviewKeyDown"
  ResizeMode="CanResize" Background="#EEF2F8" Foreground="#1E2C41"
@@ -100,7 +100,7 @@
       <TextBlock Text="AT" Foreground="White" FontSize="11" FontWeight="Bold"
        VerticalAlignment="Center" HorizontalAlignment="Center"/>
      </Border>
-     <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+     <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
      <Border Margin="6,0,0,0" Background="#E8F1FD" BorderBrush="#C8DEF9"
       BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
       <TextBlock Text="IDE" Foreground="#2368BD" FontSize="10"/>
@@ -136,6 +136,17 @@
      <MenuItem Header="运行">
       <MenuItem Header="当前选择的实际预检" Command="{Binding CheckActiveCommand}"/>
      </MenuItem>
+     <MenuItem Header="工具">
+      <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
+      <MenuItem Header="DBC 工作台" Command="{Binding OpenDbcToolCommand}"/>
+      <MenuItem Header="按键配置" Command="{Binding OpenControllerCommand}"/>
+      <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
+      <MenuItem Header="波形配置" Command="{Binding OpenWaveConfigCommand}"/>
+      <Separator/>
+      <MenuItem Header="UDS 工作台（尚未接入）" IsEnabled="False"/>
+      <MenuItem Header="Flash 工作台（尚未接入）" IsEnabled="False"/>
+      <MenuItem Header="生产运行（尚未接入）" IsEnabled="False"/>
+     </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
     </Menu>
    </DockPanel>
@@ -149,13 +160,10 @@
      <Button Content="按键配置" Command="{Binding OpenControllerCommand}"
       ToolTip="打开工程内的 Controller / KEY_SIM 20 Key 配置" Margin="0,0,5,0"/>
      <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" Margin="0,0,5,0"/>
-     <Button Content="UDS" IsEnabled="False" ToolTip="独立 UDS 工作台待接入" Margin="0,0,5,0"/>
      <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
       ToolTip="查看实际波形证据、参考及双游标分析" Margin="0,0,5,0"/>
      <Button Content="波形配置" Command="{Binding OpenWaveConfigCommand}"
       ToolTip="绑定 DBC 信号、编辑判定条件及建立参考" Margin="0,0,5,0"/>
-     <Button Content="Flash" IsEnabled="False" ToolTip="独立 Flash Lab，不从此窗口编程" Margin="0,0,5,0"/>
-     <Button Content="生产" IsEnabled="False" ToolTip="生产项目级 Run 后端未接入" Margin="0,0,9,0"/>
      <Border Background="#DBE3ED" Width="1" Height="18" Margin="0,0,8,0"/>
      <Button Content="{Binding ConnectionButtonText}" Command="{Binding ConnectHardwareCommand}"
       ToolTip="{Binding HardwareStatus}" Margin="0,0,5,0"/>
@@ -182,7 +190,7 @@
 
   <Grid Grid.Row="2" Background="#F9FBFD">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="TreeColumn" Width="270" MinWidth="220" MaxWidth="500"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="302" MinWidth="250" MaxWidth="500"/>
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*" MinWidth="520"/>
    </Grid.ColumnDefinitions>
@@ -226,13 +234,13 @@
      <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*" MinWidth="330"/>
       <ColumnDefinition x:Name="InspectorSplitterColumn" Width="4"/>
-      <ColumnDefinition x:Name="InspectorColumn" Width="320" MinWidth="0" MaxWidth="510"/>
+      <ColumnDefinition x:Name="InspectorColumn" Width="350" MinWidth="0" MaxWidth="540"/>
      </Grid.ColumnDefinitions>
      <Grid Grid.Column="0">
       <Grid.RowDefinitions>
        <RowDefinition Height="*" MinHeight="180"/>
        <RowDefinition x:Name="BottomSplitterRow" Height="4"/>
-       <RowDefinition x:Name="BottomRow" Height="180" MinHeight="0"/>
+       <RowDefinition x:Name="BottomRow" Height="158" MinHeight="0"/>
       </Grid.RowDefinitions>
       <Grid Grid.Row="0" Background="White">
        <ContentControl Content="{Binding ActiveEditorView}"
@@ -357,7 +365,7 @@
       Foreground="White" Background="Transparent" BorderThickness="0"
       MinWidth="38" MinHeight="20" Height="20" Padding="2,0" FontSize="10" Margin="0"/>
     </StackPanel>
-    <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="10"
+    <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="11"
      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
