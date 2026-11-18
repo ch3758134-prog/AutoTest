@@ -62,8 +62,14 @@ public static class DbcSignalCodec
     public static void EncodePhysical(DbcSignal signal, double physical, Span<byte> bytes)
     {
         var value = (physical - signal.Offset) / signal.Factor;
-        if (!double.IsFinite(value) || value != Math.Round(value))
-            throw new ProjectDataException("DBC_VALUE_RANGE", "Physical value is not representable exactly.");
+        // Factor/offset are decimal DBC definitions represented as doubles.
+        // Permit only floating-point roundoff around a discrete raw integer,
+        // not genuinely fractional raw values (e.g. 1.5 for an integer signal).
+        var nearest = Math.Round(value);
+        if (!double.IsFinite(value) ||
+            Math.Abs(value - nearest) > 1e-9 * Math.Max(1d, Math.Abs(nearest)))
+            throw new ProjectDataException("DBC_VALUE_RANGE", "Physical value is not representable by this signal.");
+        value = nearest;
         var min = signal.Signed ? -Math.Pow(2, signal.BitLength - 1) : 0;
         var max = signal.Signed ? Math.Pow(2, signal.BitLength - 1) - 1 : Math.Pow(2, signal.BitLength) - 1;
         if (value < min || value > max) throw new ProjectDataException("DBC_VALUE_RANGE", "Physical value exceeds raw range.");
