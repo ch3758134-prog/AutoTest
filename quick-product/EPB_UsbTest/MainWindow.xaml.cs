@@ -336,6 +336,7 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
 public partial class MainWindow : Window
 {
     private readonly UsbLink _usb = new();
+    private QuickManualBenchWindow? _quickManualBench;
     // CAN 帧可能远高于 WPF 的安全刷新频率。接收侧只合并最新状态，
     // 由 UI 定时批量取走，不能让每帧都进入 Dispatcher 队列。
     private readonly DispatcherTimer _refresh = new() { Interval = TimeSpan.FromMilliseconds(50) };
@@ -1163,7 +1164,8 @@ public partial class MainWindow : Window
             FlowEditorList.SelectedItem = row;
         var menu = new ContextMenu();
         var addOrdinary = MenuItem("＋ 添加普通步骤", (_, _) => AddTestFlowNode_Click(this, new RoutedEventArgs()));
-        addOrdinary.IsEnabled = row?.IsControl != true;
+        addOrdinary.IsEnabled = row?.IsControl != true ||
+            row.SourceNode?.PathKind != TestFlowPathKind.None;
         menu.Items.Add(addOrdinary);
         if (row?.ControlKind == FlowEditorKind.If)
             menu.Items.Add(MenuItem("＋ 添加 ELSE 分支", (_, _) => AddFlowElse_Click(this, new RoutedEventArgs())));
@@ -1240,7 +1242,8 @@ public partial class MainWindow : Window
     {
         if (_selectedTestCase is null || sender is not Button button) return;
         var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
-        var inside = _selectedFlowEditorRow?.IsControl == true;
+        var inside = _selectedFlowEditorRow?.IsControl == true &&
+            _selectedFlowEditorRow.SourceNode?.PathKind == TestFlowPathKind.None;
         foreach (var kind in new[] { "IF", "WHEN", "SWITCH", "LOOP" })
         {
             var selectedKind = kind;
@@ -1306,7 +1309,8 @@ public partial class MainWindow : Window
 
     private void RefreshFlowActionAvailability(FlowEditorRow? row)
     {
-        var genericAllowed = row?.IsControl != true;
+        var genericAllowed = row?.IsControl != true ||
+            row.SourceNode?.PathKind != TestFlowPathKind.None;
         AddTestFlowNodeButton.IsEnabled = genericAllowed;
         AddFlowIfButton.IsEnabled = genericAllowed;
         AddFlowWhenButton.IsEnabled = genericAllowed;
@@ -1682,27 +1686,25 @@ public partial class MainWindow : Window
             AppendLog("请先选择测试用例，再添加流程控制。");
             return;
         }
-        // Empty TEST program: let the first IF/WHEN/SWITCH/LOOP become a real root node.
-        if (_selectedFlowEditorRow is null)
+        // Branch containers accept nested controls; control headers themselves do not.
+        if (_selectedFlowEditorRow?.IsControl == true &&
+            _selectedFlowEditorRow.SourceNode?.PathKind == TestFlowPathKind.None)
         {
-            var rootControl = CreateTestFlowControlNode(kind);
-            if (rootControl is null) return;
-            InsertTestFlowNode(rootControl);
-            AppendLog($"已在测试用例根流程添加 {kind}；请在右侧配置并在路径内添加步骤。");
+            AppendLog("请先选择 THEN / ELSE / HIT / TIMEOUT / BODY / CASE / DEFAULT 分支或普通步骤，再插入流程控制。");
             return;
         }
-        if (_selectedFlowEditorRow.IsControl)
+        if (_selectedFlowEditorRow?.SourceNode is { } selected)
         {
-            AppendLog("控制主行不能直接插入通用内容，请选择 THEN、ELSE、HIT、TIMEOUT、CASE、DEFAULT 或普通步骤。");
-            return;
+            _selectedTestNode = selected;
+            _selectedTestNodeId = selected.Id;
         }
-        if (_flowInsertAnchor is not null) _flowInsertAnchor.IsInsertAnchor = false;
-        _flowInsertAnchor = _selectedFlowEditorRow;
-        _flowInsertKind = kind;
-        _flowInsertAnchor.IsInsertAnchor = true;
-        FlowInsertPathText.Text = BuildFlowInsertPath(_flowInsertAnchor);
-        FlowInsertKindText.Text = $"＋ {kind}";
-        FlowInsertPreviewPanel.Visibility = Visibility.Visible;
+        var control = CreateTestFlowControlNode(kind);
+        if (control is null) return;
+        // Direct insertion, no preview/confirm click. InsertTestFlowNode chooses a
+        // branch's Children or follows the selected ordinary step in the same owner.
+        InsertTestFlowNode(control);
+        ShowTestFlowNodeDetails(control);
+        AppendLog("已插入 " + kind + "：请在右侧设置条件，然后向对应路径添加真实步骤。");
     }
 
     private void ConfirmFlowInsert_Click(object sender, RoutedEventArgs e)
@@ -2099,9 +2101,10 @@ public partial class MainWindow : Window
 
     private void AddTestFlowNode_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedFlowEditorRow?.IsControl == true)
+        if (_selectedFlowEditorRow?.IsControl == true &&
+            _selectedFlowEditorRow.SourceNode?.PathKind == TestFlowPathKind.None)
         {
-            AppendLog("控制主行不能直接插入通用内容，请选择固定路径或普通步骤。");
+            AppendLog("请先选中 THEN / ELSE / HIT / TIMEOUT / BODY / CASE / DEFAULT，再向分支内部添加步骤。");
             return;
         }
         if (_selectedTestCase is null)
@@ -2109,51 +2112,26 @@ public partial class MainWindow : Window
             AppendLog("请先选择测试用例。");
             return;
         }
+        // QUICK: steps are created and edited directly inside this test case.
+        // Old resource references remain loadable; resource catalog is not a prerequisite.
         var menu = new ContextMenu();
-        foreach (var operationKind in new[]
-                 {
-                     ConfigurationStepKind.广播报文,
-                     ConfigurationStepKind.报文解析,
-                     ConfigurationStepKind.电源控制,
-                     ConfigurationStepKind.动作控制,
-                     ConfigurationStepKind.等待
-                 })
-        {
-            var choices = ResourcesForKind(operationKind).ToList();
-            if (operationKind == ConfigurationStepKind.等待)
-            {
-                var waitItem = new MenuItem { Header = "等待" };
-                waitItem.Click += (_, _) => AddTestAtomicNode(ConfigurationStepKind.等待);
-                menu.Items.Add(waitItem);
-                continue;
-            }
-            var operationItem = new MenuItem
-            {
-                Header = DisplayStepKind(operationKind),
-                IsEnabled = true
-            };
-            // 测试用例可以直接配置原子步骤；资源只是可选的复用入口，不能成为测试用例的前置条件。
-            operationItem.Items.Add(MenuItem($"直接配置{DisplayStepKind(operationKind)}", (_, _) => AddTestAtomicNode(operationKind)));
-            operationItem.Items.Add(new Separator());
-             if (choices.Count == 0)
-                 operationItem.Items.Add(MenuItem($"新建{DisplayStepKind(operationKind)}并加入当前用例", (_, _) => CreateAndAddResource(operationKind)));
-            foreach (var choice in choices)
-            {
-                var resourceItem = new MenuItem { Header = choice.Name, ToolTip = choice.Summary };
-                resourceItem.Click += (_, _) => AddTestResourceNode(operationKind, choice);
-                operationItem.Items.Add(resourceItem);
-            }
-            if (choices.Count > 0)
-            {
-                operationItem.Items.Add(new Separator());
-                 operationItem.Items.Add(MenuItem($"新建{DisplayStepKind(operationKind)}并加入当前用例", (_, _) => CreateAndAddResource(operationKind)));
-            }
-            if (choices.Count > 0) ConstrainMenuDropDown(operationItem);
-            menu.Items.Add(operationItem);
-        }
+        menu.Items.Add(MenuItem("CAN1 发送（原始 HEX / DBC）",
+            (_, _) => AddTestAtomicNode(ConfigurationStepKind.广播报文)));
+        menu.Items.Add(MenuItem("CAN 报文 / 信号判定",
+            (_, _) => AddTestAtomicNode(ConfigurationStepKind.报文解析)));
+        menu.Items.Add(MenuItem("KEY_SIM · 完整 20 Key 组合",
+            (_, _) => AddTestAtomicNode(ConfigurationStepKind.动作控制)));
+        menu.Items.Add(MenuItem("IGN 控制（新主控 0x12）",
+            (_, _) => AddQuickIgnStep()));
+        menu.Items.Add(MenuItem("等待（ms）",
+            (_, _) => AddTestAtomicNode(ConfigurationStepKind.等待)));
+        menu.Items.Add(MenuItem("波形判定",
+            (_, _) => AddTestAtomicNode(ConfigurationStepKind.波形判定)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("选择已有资源", (_, _) => AddTestFlowNode(TestFlowNodeKind.引用序列)));
-        menu.Items.Add(MenuItem("组合当前选中连续步骤", (_, _) => GroupSelectedTestFlowNodes()));
+        menu.Items.Add(MenuItem("IF / WHEN / SWITCH / LOOP",
+            (_, _) => FlowControlMenu_Click(AddFlowMenuButton, new RoutedEventArgs())));
+        menu.Items.Add(MenuItem("组合选中的连续步骤",
+            (_, _) => GroupSelectedTestFlowNodes()));
         menu.PlacementTarget = sender as UIElement ?? AddTestFlowNodeButton;
         menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;
@@ -2400,6 +2378,19 @@ public partial class MainWindow : Window
         }
         InsertTestFlowNode(node);
         AppendLog($"已添加测试流程节点：{node.Name}");
+    }
+
+    private void AddQuickIgnStep()
+    {
+        if (_selectedTestCase is null) return;
+        var operation = new ConfigurationStep { Kind = ConfigurationStepKind.电源控制, Name = "IGN 控制" };
+        operation.Power.Target = PowerTarget.IGN;
+        var node = new TestFlowNode
+        {
+            Kind = TestFlowNodeKind.原子操作, Name = operation.Name, Operation = operation
+        };
+        InsertTestFlowNode(node);
+        ShowTestFlowNodeDetails(node);
     }
 
     private void AddTestAtomicNode(ConfigurationStepKind operationKind)
@@ -5560,6 +5551,11 @@ public partial class MainWindow : Window
     private async void RunSequence_Click(object sender, RoutedEventArgs e) { if (_selectedSequence is not null) await RunSelectedSequenceAsync(); }
     private bool BeginRun()
     {
+        if (_quickManualBench?.HasActiveManualOperation == true)
+        {
+            AppendLog("手动台架仍有实体操作、KEY 动作或主控周期广播；禁止同时运行自动测试。请先在台架确认停止。");
+            return false;
+        }
         lock (_runStateGate)
         {
             if (_runActive)
@@ -6115,6 +6111,36 @@ public partial class MainWindow : Window
     }
 
     // 顶部命令栏只改变工作区可见性，不改变资源引用关系。
+    private void OpenQuickManualBench_Click(object sender, RoutedEventArgs e)
+    {
+        if (_quickManualBench is { IsVisible: true } active)
+        {
+            active.Activate();
+            return;
+        }
+        var bench = new QuickManualBenchWindow(
+            _usb,
+            () => _configuration.CommunicationDatabase,
+            () => _path,
+            () => !_runActive,
+            AppendLog)
+        {
+            Owner = this
+        };
+        _quickManualBench = bench;
+        bench.Closed += (_, _) => { if (ReferenceEquals(_quickManualBench, bench)) _quickManualBench = null; };
+        bench.Show();
+    }
+
+    private void Window_Closing(object? sender, CancelEventArgs e)
+    {
+        if (_quickManualBench?.HasActiveManualOperation != true) return;
+        e.Cancel = true;
+        MessageBox.Show(this,
+            "手动台架仍在执行实体操作、KEY 动作或主控周期广播尚未确认停止。\n请先回到手动台架收尾，不自动释放 KEY、IGN、夹具或停止广播。",
+            "实体输出未收尾", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
     private void ResourceToolbar_Click(object sender, RoutedEventArgs e)
     {
         WorkspaceTabs.SelectedIndex = 1;
