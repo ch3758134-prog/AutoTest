@@ -11,7 +11,8 @@ using AutoTest.Testing.Authoring;
 namespace AutoTest.Desktop.Testing;
 
 public sealed record MappingChoice(string Label, TestTargetMapping Mapping, DbcMessage? Message = null,
-    DbcDisplayNames? DisplayNames = null, IReadOnlyDictionary<long, string>? ValueLabels = null)
+    DbcDisplayNames? DisplayNames = null, IReadOnlyDictionary<long, string>? ValueLabels = null,
+    IReadOnlyDictionary<string, IReadOnlyDictionary<long, string>>? MessageValueLabels = null)
 {
     public override string ToString() => Label;
 }
@@ -73,7 +74,10 @@ public static class TestTargetCatalog
                             " [0x" + frameId.ToString("X") + "]", new TestTargetMapping(
                                 msgAlias, TestTargetKind.CanMessage, asset.Id,
                                 asset.Revision, asset.Sha256, BusRole.DutCan,
-                                frameId, msg.IsExtended), msg, displayNames));
+                                frameId, msg.IsExtended), msg, displayNames, null,
+                            valueTables.Where(x => x.MessageId == msg.Id).ToDictionary(
+                                x => x.SignalName, x => (IReadOnlyDictionary<long, string>)x.Labels,
+                                StringComparer.Ordinal)));
                         foreach (var signal in msg.Signals)
                         {
                             var alias = msgAlias + "." + signal.Name;
