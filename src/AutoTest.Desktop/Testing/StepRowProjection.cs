@@ -199,7 +199,7 @@ public sealed class StepRowProjection : BindableBase
                 RealStepStatus.Cancelled => "已取消",
                 _ => "结果待核查"
             } : descriptor is null ? "未知类型" :
-            descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or
+            descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or "CanStopPeriodic" or
                 "Calculate" or "Expect" or "WaveStart" or "WaveStop" or "WaveAnalyze"
                 ? "待预检" : "暂不能运行";
     }
