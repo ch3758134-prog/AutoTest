@@ -83,7 +83,8 @@ public sealed class RealTestWorkbenchService
             // have already changed the DUT.
             actions.ValidateRunSteps(document);
             if (HasPhysicalWrites(document))
-                await actions.AuthorizeAsync(plan.Fingerprint, confirmation, mappings, ct);
+                await actions.AuthorizeAsync(plan.Fingerprint, confirmation, mappings,
+                    document, ct);
             var wave = new ConfiguredWavePort(_projects, _signals);
             var run = new RealRunCoordinator(_signals, actions, wave);
             evidence = new RealRunEvidenceRecorder(_hardware, _signals);
