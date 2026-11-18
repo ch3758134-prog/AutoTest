@@ -58,6 +58,37 @@ public sealed class DbcWorkbenchTests
         Assert.Throws<ProjectDataException>(() => doc.AddSignal(291, new DbcSignal("Overflow", 63, 2,
             true, false, 1, 0, 0, 255, "", "Tester")));
     }
+    [Fact] public void ChineseAliases_RoundTripWithoutChangingCanIdentifiersOrExistingComments()
+    {
+        var source = Basic + "\nCM_ SG_ 291 Speed \"原来的车速说明\";\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        Assert.Equal("原来的车速说明", doc.DisplayNames.SignalAlias(291, "Speed"));
+        doc.SetMessageAlias(291, "车辆状态");
+        doc.SetSignalAlias(291, "Speed", "车速");
+        var edited = doc.ExportText();
+        Assert.Contains("CM_ SG_ 291 Speed \"原来的车速说明\";", edited);
+        Assert.Contains("AutoTestMessageAlias", edited);
+        Assert.Contains("AutoTestSignalAlias", edited);
+        var reopened = DbcWorkbenchDocument.Import("example", edited);
+        Assert.Equal("车辆状态", reopened.DisplayNames.MessageAlias(291));
+        Assert.Equal("车速", reopened.DisplayNames.SignalAlias(291, "Speed"));
+        Assert.Equal(doc.Model.FindMessage(291).Signals, reopened.Model.FindMessage(291).Signals);
+        Assert.Equal("Speed", reopened.Model.FindSignal(291, "Speed").Name);
+    }
+
+    [Fact] public void AliasOnlyEdit_PreservesUnsupportedDBCContent()
+    {
+        var extra = "\nSG_MUL_VAL_ 291 Speed 0 1-2 ;\n";
+        var doc = DbcWorkbenchDocument.Import("example", Basic + extra);
+        Assert.False(doc.CanEdit);
+        doc.SetSignalAlias(291, "Speed", "车辆速度");
+        Assert.True(doc.CanSave);
+        var saved = doc.ExportText();
+        Assert.Contains("SG_MUL_VAL_ 291 Speed 0 1-2 ;", saved);
+        var reopened = DbcWorkbenchDocument.Import("example", saved);
+        Assert.Equal("车辆速度", reopened.DisplayNames.SignalAlias(291, "Speed"));
+    }
+
     [Fact] public void Replay_CanDecodeIntelAndMotorolaWithValueDescription()
     {
         var doc = DbcWorkbenchDocument.Import("example", Basic);
