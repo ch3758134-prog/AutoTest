@@ -205,4 +205,81 @@ public sealed class RealExecutionTests
         Assert.Single(tx.Current.Get(TestPhase.Test));
     }
 
+
+    [Fact]
+    public async Task FailedPrepareSignalGate_DoesNotSendTestCanAndStillRunsCleanup()
+    {
+        var mapping = Target();
+        var can = new TestTargetMapping("ECU_CAN0", TestTargetKind.RawCan,
+            default, 0, "", BusRole.DutCan, 0x123);
+        var tx = new StepEditTransaction(TestDocument.Create("PrepareGate") with
+        { Mappings = ImmutableArray.Create(mapping, can) });
+        tx.Insert(TestPhase.Prepare, null, null, 0, N("WaitUntil",
+            ("target", mapping.Name), ("variable", "ready"),
+            ("operator", "=="), ("expected", "9"), ("timeoutMs", "100")));
+        tx.Insert(TestPhase.Test, null, null, 0, N("Write",
+            ("target", can.Name), ("value", "HEX:01")));
+        var actions = new ActuationPort();
+        var plan = new PlanCompiler().Prepare(tx.Current, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        var result = await new RealRunCoordinator(new SignalPort(Signal(mapping, 2)),
+            actions, new WavePort()).StartAsync(plan);
+        Assert.Equal(RealTestVerdict.Failed, result.Verdict);
+        Assert.Equal(0, actions.Written);
+        Assert.True(actions.CleanupCalled);
+        Assert.Contains(result.Facts, x => x.Type == "PrepareGate");
+    }
+
+    [Fact]
+    public async Task WaitUntilMismatch_CannotBeOverruledByLaterPassingExpect()
+    {
+        var mapping = Target();
+        var tx = new StepEditTransaction(TestDocument.Create("NoFalsePass") with
+        { Mappings = ImmutableArray.Create(mapping) });
+        tx.Insert(TestPhase.Test, null, null, 0, N("WaitUntil",
+            ("target", mapping.Name), ("variable", "observed"),
+            ("operator", "=="), ("expected", "5"), ("timeoutMs", "100")));
+        tx.Insert(TestPhase.Test, null, null, 1, N("Expect",
+            ("left", "1"), ("operator", "=="), ("right", "1")));
+        var result = await new RealRunCoordinator(
+            new SignalPort(Signal(mapping, 2)), new ActuationPort(), new WavePort())
+            .StartAsync(new PlanCompiler().Prepare(tx.Current, allowRealOperations: true));
+        Assert.Equal(RealTestVerdict.Failed, result.Verdict);
+        Assert.Contains(result.Facts, x => x.Type == "WaitUntil" &&
+            x.Status == RealStepStatus.ConditionFalse);
+    }
+
+    [Fact]
+    public async Task MissingComparisonVariable_IsNoDataRatherThanPassingEmptyString()
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("MissingExpected"));
+        tx.Insert(TestPhase.Test, null, null, 0, N("Expect",
+            ("left", ""), ("operator", "=="), ("right", "$unknown")));
+        var result = await new RealRunCoordinator(
+            new SignalPort(new TestSignalResult(TestSignalStatus.NoFrame, null, "")),
+            new ActuationPort(), new WavePort())
+            .StartAsync(new PlanCompiler().Prepare(tx.Current, allowRealOperations: true));
+        Assert.Equal(RealTestVerdict.Inconclusive, result.Verdict);
+        Assert.Contains(result.Facts, x => x.Type == "Expect" &&
+            x.Status == RealStepStatus.NoData);
+    }
+
+    [Fact]
+    public async Task MissingDynamicCanPayload_NeverReachesPhysicalWritePort()
+    {
+        var can = new TestTargetMapping("ECU_CAN0", TestTargetKind.RawCan,
+            default, 0, "", BusRole.DutCan, 0x123);
+        var tx = new StepEditTransaction(TestDocument.Create("MissingCanPayload") with
+        { Mappings = ImmutableArray.Create(can) });
+        tx.Insert(TestPhase.Test, null, null, 0, N("Write",
+            ("target", can.Name), ("value", "$notCaptured")));
+        var actions = new ActuationPort();
+        var result = await new RealRunCoordinator(
+            new SignalPort(new TestSignalResult(TestSignalStatus.NoFrame, null, "")),
+            actions, new WavePort())
+            .StartAsync(new PlanCompiler().Prepare(tx.Current, allowRealOperations: true));
+        Assert.Equal(RealTestVerdict.Error, result.Verdict);
+        Assert.Equal(0, actions.Written);
+        Assert.True(actions.CleanupCalled);
+    }
 }
