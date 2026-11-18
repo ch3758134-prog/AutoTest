@@ -43,18 +43,23 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     }
 
     public sealed record DbcChoice(Guid AssetId, int Revision, string Sha256,
-        string AssetName, DbcMessage Message)
+        string AssetName, DbcMessage Message, DbcDisplayNames DisplayNames)
     {
-        public string Display => AssetName + " / " + Message.Name + " [0x" +
+        public string Display => AssetName + " / " + DisplayNames.MessageLabel(Message) + " [0x" +
             Message.ArbitrationId.ToString("X") + "]" +
             (Message.IsExtended ? " 扩展" : " 标准");
     }
     public sealed class DbcSignalValue : BindableBase
     {
         private string _value = "";
-        public DbcSignalValue(DbcSignal signal) => Signal = signal;
+        public DbcSignalValue(DbcSignal signal, string? label = null)
+        {
+            Signal = signal;
+            DisplayName = label ?? signal.Name;
+        }
+        public string DisplayName { get; }
         public DbcSignal Signal { get; }
-        public string Name => Signal.Name +
+        public string Name => DisplayName +
             (Signal.Unit.Length == 0 ? "" : " (" + Signal.Unit + ")");
         public string Range => Signal.Minimum.ToString("G", CultureInfo.InvariantCulture) +
             " ～ " + Signal.Maximum.ToString("G", CultureInfo.InvariantCulture);
@@ -170,7 +175,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             {
                 foreach (var signal in value.Message.Signals)
                 {
-                    var signalValue = new DbcSignalValue(signal);
+                    var signalValue = new DbcSignalValue(signal,
+                        value.DisplayNames.SignalLabel(value.Message, signal));
                     signalValue.PropertyChanged += DbcSignalChanged;
                     DbcSignals.Add(signalValue);
                 }
@@ -464,7 +470,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
                     StringComparison.OrdinalIgnoreCase)) return;
                 foreach (var message in loaded.Document.Model.Messages.OrderBy(x => x.Name))
                     DbcMessages.Add(new DbcChoice(asset.Id.Value, asset.Revision,
-                        asset.Sha256, asset.Name, message));
+                        asset.Sha256, asset.Name, message, loaded.Document.DisplayNames));
             }
             SelectedDbcMessage = DbcMessages.FirstOrDefault();
             if (SelectedDbcMessage is not null) UseDbcMessage = true;
