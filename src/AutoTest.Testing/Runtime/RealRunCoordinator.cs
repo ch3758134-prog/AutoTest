@@ -513,6 +513,9 @@ public sealed class RealRunCoordinator
             {
                 await Execute(document.Get(TestPhase.Prepare), cts.Token);
                 await Execute(document.Get(TestPhase.Test), cts.Token);
+                // An async CAN sender can fail after the last foreground TEST
+                // step. Do not publish a PASS without checking it.
+                await _actions.CheckHealthAsync(cts.Token);
             }
             catch (OperationCanceledException) when (cts.IsCancellationRequested)
             {
