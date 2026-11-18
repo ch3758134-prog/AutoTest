@@ -490,6 +490,9 @@
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0" Margin="0,0,0,9">
       <TextBlock Text="CAN 实时监控" Style="{StaticResource BenchHeader}" ToolTip="{Binding MonitorCountSummary}"/>
+      <TextBlock Text="{Binding CanRxReceiveStatus}" FontSize="10"
+       Foreground="#516983" TextWrapping="Wrap" Margin="0,3,0,7"
+       ToolTip="USB 0x41 为主控上报数量；CAN有效为通过帧校验数量；监视交付是派发给界面订阅者的次数。计数每秒更新，不代表 ECU 必然已经发报文。"/>
       
       <Grid>
        <Grid.ColumnDefinitions>
