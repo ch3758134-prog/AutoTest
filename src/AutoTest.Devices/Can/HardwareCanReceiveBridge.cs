@@ -11,7 +11,7 @@ public sealed record HardwareCanTrace(DateTimeOffset HostUtc, long HostMonotonic
     long SessionGeneration, string RawUsbPayloadHex, int PhysicalPort, BusRole? Role,
     bool Valid, string Detail);
 
-/// <summary>Physical CAN0=KeypadCan; CAN1=DutCan per frozen ASW_BusProxy.c/main.c.
+/// <summary>Physical CAN0=DutCan; CAN1=KeypadCan per confirmed station wiring. Firmware reports physical port numbers unchanged.
 /// HostArrivalOnly timestamp; the firmware sends NO controller timestamp in 0x41.
 /// Does not transmit CAN or configure controller channels.</summary>
 public sealed class HardwareCanReceiveBridge : IAsyncDisposable
@@ -37,10 +37,11 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
         if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
         _usb = usb;
         _hub = hub;
-        // Source-proven mapping. Physical connector/harness still requires B0 check.
-        _map = map ?? new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
-        if (_map.DutPort != 1 || _map.KeypadPort != 0)
-            throw new InvalidOperationException("Real firmware mapping is CAN0=keypad, CAN1=DUT; no auto guessing.");
+        // The physical USB port bytes are unchanged; actual station harness is reversed.
+        _map = map ?? StationCanWiring.Current;
+        if (_map.DutPort != StationCanWiring.DutPort ||
+            _map.KeypadPort != StationCanWiring.KeypadPort)
+            throw new InvalidOperationException("真实台架接线为 CAN0=ECU、CAN1=KEY_SIM；不允许使用相反的物理通道映射。");
         _queue = Channel.CreateBounded<Indication>(new BoundedChannelOptions(capacity)
         {
             SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait
