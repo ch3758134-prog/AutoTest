@@ -565,6 +565,7 @@
                                          <Button x:Name="AddFlowIfButton" Content="＋ IF" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="IF" ToolTip="预览 IF 插入位置"/>
                                          <Button x:Name="AddFlowWhenButton" Content="＋ WHEN" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="WHEN" ToolTip="预览 WHEN 插入位置"/>
                                          <Button x:Name="AddFlowSwitchButton" Content="＋ SWITCH" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="SWITCH" ToolTip="预览 SWITCH 插入位置"/>
+                                         <Button x:Name="AddFlowLoopButton" Content="＋ LOOP" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="LOOP" ToolTip="重复执行 BODY 中的步骤，可设置循环次数及间隔"/>
                                          <Button x:Name="AddFlowElseButton" Content="＋ ELSE" Style="{StaticResource BtnToolbar}" Click="AddFlowElse_Click" ToolTip="为当前 IF 添加 ELSE"/>
                                          <Button x:Name="AddFlowCaseButton" Content="＋ CASE" Style="{StaticResource BtnToolbar}" Click="AddFlowCase_Click" ToolTip="为当前 SWITCH 添加 CASE"/>
                                          <Border x:Name="FlowInsertPreviewPanel" Background="#EEF6FF" BorderBrush="#A8CDEB" BorderThickness="1" CornerRadius="4" Padding="7,3" Margin="6,0,0,0" Visibility="Collapsed">

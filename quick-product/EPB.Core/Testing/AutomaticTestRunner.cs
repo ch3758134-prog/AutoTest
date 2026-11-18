@@ -180,7 +180,7 @@ public sealed class AutomaticTestRunner
     }
 
     private static bool IsInlinePeriodicBroadcast(TestFlowNode node) =>
-        node.Operation?.Kind == ConfigurationStepKind.广播报文 &&
+        node.Enabled && node.Operation?.Kind == ConfigurationStepKind.广播报文 &&
         node.Operation.Broadcast.Mode == BroadcastMode.开始周期发送;
 
     private async Task<List<TestNodeResult>> RunInlinePeriodicBroadcastGroupAsync(
@@ -455,6 +455,7 @@ public sealed class AutomaticTestRunner
             TestFlowControlKind.Condition => await RunConditionControlAsync(node, control, result, callStack, scope, cancellationToken, progress).ConfigureAwait(false),
             TestFlowControlKind.WaitForVerdict => await RunWaitForVerdictAsync(node, control, result, callStack, scope, cancellationToken, progress).ConfigureAwait(false),
             TestFlowControlKind.ValueBranch => await RunValueBranchAsync(node, control, result, callStack, scope, cancellationToken, progress).ConfigureAwait(false),
+            TestFlowControlKind.Repeat => await RunRepeatControlAsync(node, control, result, callStack, scope, cancellationToken, progress).ConfigureAwait(false),
             _ => Fail(result, $"不支持的流程控制类型：{control.Kind}。", progress)
         };
     }
@@ -534,7 +535,69 @@ public sealed class AutomaticTestRunner
 
         result.SelectedPath = TestFlowPathKind.Timeout;
         if (latest is not null) result.Children.Add(latest);
+        // With no explicit timeout handling, missing the required verdict is a real
+        // failed assertion, not a neutral branch that could accidentally PASS.
+        if (timeoutPath.Children.Count == 0)
+        {
+            result.HasExpectation = true;
+            result.Expected = $"Verdict={control.RequiredVerdict} within {control.TimeoutMs}ms";
+            result.Error = "WHEN 等待超时，未观察到目标 Verdict。";
+            result.Status = TestResultStatus.判定失败;
+            result.CompletedAt = DateTimeOffset.UtcNow;
+            progress?.Report(result);
+            return result;
+        }
         return await CompleteControlPathAsync(result, timeoutPath, callStack, scope, cancellationToken, progress).ConfigureAwait(false);
+    }
+
+    private async Task<TestNodeResult> RunRepeatControlAsync(
+        TestFlowNode node,
+        TestFlowControlDefinition control,
+        TestNodeResult result,
+        HashSet<string> callStack,
+        ExecutionScope scope,
+        CancellationToken cancellationToken,
+        IProgress<TestNodeResult>? progress)
+    {
+        if (control.RepeatCount is < 1 or > 100 || control.RepeatDelayMs is < 0 or > 60000)
+            return Fail(result, "LOOP 参数无效：次数 1～100，间隔 0～60000ms。", progress);
+        if (node.Children.Count != 1 || node.Children[0].PathKind != TestFlowPathKind.Body)
+            return Fail(result, "LOOP 必须包含唯一 BODY 路径。", progress);
+
+        result.SelectedPath = TestFlowPathKind.Body;
+        var body = node.Children[0];
+        var hasFailedExpectation = false;
+        var hasExpectation = false;
+        for (var iteration = 1; iteration <= control.RepeatCount; iteration++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var iterationResult = await RunNodeAsync(body, callStack, scope, cancellationToken, progress).ConfigureAwait(false);
+            // Child result records the particular occurrence without modifying the persisted NodeId.
+            iterationResult.Occurrence = iteration;
+            result.Children.Add(iterationResult);
+            if (ContainsStatus(iterationResult, TestResultStatus.已取消))
+            {
+                result.Status = TestResultStatus.已取消;
+                result.Error = iterationResult.Error;
+                break;
+            }
+            if (ContainsStatus(iterationResult, TestResultStatus.执行错误))
+            {
+                result.Status = TestResultStatus.执行错误;
+                result.Error = iterationResult.Error;
+                break;
+            }
+            hasFailedExpectation |= ContainsStatus(iterationResult, TestResultStatus.判定失败);
+            hasExpectation |= ContainsExpectation(iterationResult);
+            if (iteration < control.RepeatCount && control.RepeatDelayMs > 0)
+                await Task.Delay(control.RepeatDelayMs, cancellationToken).ConfigureAwait(false);
+        }
+        if (result.Status == TestResultStatus.运行中)
+            result.Status = hasFailedExpectation ? TestResultStatus.判定失败
+                : hasExpectation ? TestResultStatus.通过 : TestResultStatus.仅观察;
+        result.CompletedAt = DateTimeOffset.UtcNow;
+        progress?.Report(result);
+        return result;
     }
 
     private async Task<TestNodeResult> RunValueBranchAsync(
@@ -553,15 +616,31 @@ public sealed class AutomaticTestRunner
             return Fail(result, "值分支引用的通信数据库信号不存在。", progress);
 
         var (message, signal) = definition.Value;
-        var read = _port.ReadSignal(SignalReadDefinition.From(message, signal), DateTimeOffset.UtcNow);
-        if (read.Fault is { } readFault)
+        if (control.TimeoutMs is < 1 or > 60000)
+            return Fail(result, "SWITCH 信号读取超时必须为 1～60000ms。", progress);
+        var startedAt = DateTimeOffset.UtcNow;
+        var deadline = startedAt.AddMilliseconds(control.TimeoutMs);
+        var readDefinition = SignalReadDefinition.From(message, signal);
+        SignalObservation? observation = null;
+        while (DateTimeOffset.UtcNow < deadline)
         {
-            result.ProducedSignal = new ProducedSignalResult(null, null, readFault);
-            return Fail(result, readFault.Message, progress);
+            cancellationToken.ThrowIfCancellationRequested();
+            var read = _port.ReadSignal(readDefinition, startedAt);
+            if (read.Fault is { } readFault && readFault.Code is not SignalFaultCode.NoNewSample and not SignalFaultCode.ReadTimeout)
+            {
+                result.ProducedSignal = new ProducedSignalResult(null, null, readFault);
+                return Fail(result, readFault.Message, progress);
+            }
+            if (read.Observation is { } sample)
+            {
+                observation = sample;
+                break;
+            }
+            await Task.Delay(_observationPollInterval, cancellationToken).ConfigureAwait(false);
         }
-        if (read.Observation is not { } observation)
+        if (observation is null)
         {
-            var fault = new SignalFault(SignalFaultCode.ReadTimeout, $"值分支未读取到信号：{CanDefinitionDisplay.SignalPrimaryName(signal)}。");
+            var fault = new SignalFault(SignalFaultCode.ReadTimeout, $"SWITCH 在 {control.TimeoutMs}ms 内未收到新信号：{CanDefinitionDisplay.SignalPrimaryName(signal)}。");
             result.ProducedSignal = new ProducedSignalResult(null, null, fault);
             return Fail(result, fault.Message, progress);
         }

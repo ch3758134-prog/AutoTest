@@ -29,6 +29,8 @@ public enum FlowEditorKind
     If,
     When,
     Switch,
+    Loop,
+    Body,
     Then,
     Else,
     Hit,
@@ -55,14 +57,16 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
         NoteText = noteText;
         SourceNode = sourceNode;
         IsPresentationOnly = presentationOnly;
-        IsContainer = kind is FlowEditorKind.If or FlowEditorKind.When or FlowEditorKind.Switch or FlowEditorKind.Section || sourceNode?.Children.Count > 0 || sourceNode?.Kind == TestFlowNodeKind.组合;
-        IsControl = kind is FlowEditorKind.If or FlowEditorKind.When or FlowEditorKind.Switch;
+        IsContainer = kind is FlowEditorKind.If or FlowEditorKind.When or FlowEditorKind.Switch or FlowEditorKind.Loop or FlowEditorKind.Section || sourceNode?.Children.Count > 0 || sourceNode?.Kind == TestFlowNodeKind.组合;
+        IsControl = kind is FlowEditorKind.If or FlowEditorKind.When or FlowEditorKind.Switch or FlowEditorKind.Loop;
         DisplayKind = kind switch
         {
             FlowEditorKind.Step => "◆",
             FlowEditorKind.If => "IF",
             FlowEditorKind.When => "WHEN",
             FlowEditorKind.Switch => "SWITCH",
+            FlowEditorKind.Loop => "LOOP",
+            FlowEditorKind.Body => "BODY",
             FlowEditorKind.Then or FlowEditorKind.Else or FlowEditorKind.Hit or FlowEditorKind.Timeout => "└",
             FlowEditorKind.Case => "CASE",
             FlowEditorKind.Default => "DEFAULT",
@@ -74,6 +78,8 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
             FlowEditorKind.If => Brush("#2563EB"),
             FlowEditorKind.When => Brush("#0F8B8D"),
             FlowEditorKind.Switch or FlowEditorKind.Case or FlowEditorKind.Default => Brush("#B7791F"),
+            FlowEditorKind.Loop => Brush("#6D4BA8"),
+            FlowEditorKind.Body => Brush("#8C9AAF"),
             FlowEditorKind.Section => Brush("#0F8B8D"),
             FlowEditorKind.Then or FlowEditorKind.Else or FlowEditorKind.Hit or FlowEditorKind.Timeout => Brush("#8C9AAF"),
             _ => Brush("#4B6B88")
@@ -83,6 +89,7 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
             FlowEditorKind.If => Brush("#EEF5FF"),
             FlowEditorKind.When => Brush("#EAF8F7"),
             FlowEditorKind.Switch or FlowEditorKind.Case or FlowEditorKind.Default => Brush("#FFF7E8"),
+            FlowEditorKind.Loop => Brush("#F5F0FF"),
             FlowEditorKind.Section => Brush("#EAF8F7"),
             _ => Brush("Transparent")
         };
@@ -102,7 +109,7 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
     public bool IsPresentationOnly { get; }
     public bool IsContainer { get; }
     public bool IsControl { get; }
-    public bool IsStructural => ControlKind is FlowEditorKind.Then or FlowEditorKind.Else or FlowEditorKind.Hit or FlowEditorKind.Timeout or FlowEditorKind.Case or FlowEditorKind.Default;
+    public bool IsStructural => ControlKind is FlowEditorKind.Body or FlowEditorKind.Then or FlowEditorKind.Else or FlowEditorKind.Hit or FlowEditorKind.Timeout or FlowEditorKind.Case or FlowEditorKind.Default;
     public Brush KindBrush { get; }
     public Brush KindBackground { get; }
     public ObservableCollection<FlowEditorRow> Children { get; } = [];
@@ -119,6 +126,8 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
     public string SignalDefinitionKey { get; set; } = "";
     public string PeriodMsText { get; set; }
     public string TimeoutMsText { get; set; }
+    public string LoopCountText { get; set; } = "2";
+    public string LoopDelayMsText { get; set; } = "0";
     public bool IsExpanded
     {
         get => _isExpanded;
@@ -193,7 +202,14 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
                 TestFlowControlKind.ValueBranch => new(source.Id, FlowEditorKind.Switch, string.IsNullOrWhiteSpace(source.Name) ? "SWITCH" : source.Name, SwitchDefinitionText(control), "按值分支", source.StatusSummary, source, false)
                 {
                     SignalDefinitionText = SwitchDefinitionText(control),
-                    SignalDefinitionKey = SwitchDefinitionKey(control)
+                    SignalDefinitionKey = SwitchDefinitionKey(control),
+                    TimeoutMsText = control.TimeoutMs.ToString(CultureInfo.InvariantCulture)
+                },
+                TestFlowControlKind.Repeat => new(source.Id, FlowEditorKind.Loop, string.IsNullOrWhiteSpace(source.Name) ? "LOOP" : source.Name,
+                    $"重复 {control.RepeatCount} 次 · 间隔 {control.RepeatDelayMs} ms", "BODY", source.StatusSummary, source, false)
+                {
+                    LoopCountText = control.RepeatCount.ToString(CultureInfo.InvariantCulture),
+                    LoopDelayMsText = control.RepeatDelayMs.ToString(CultureInfo.InvariantCulture)
                 },
                 _ => new(source.Id, FlowEditorKind.Step, source.Name, source.DisplaySummary, "流程控制", source.StatusSummary, source, false)
             };
@@ -209,6 +225,7 @@ public sealed class FlowEditorRow : INotifyPropertyChanged
                 TestFlowPathKind.Timeout => (FlowEditorKind.Timeout, "TIMEOUT", "超时", "结束或失败"),
                 TestFlowPathKind.Case => (FlowEditorKind.Case, $"CASE {source.PathValue}", "", ""),
                 TestFlowPathKind.Default => (FlowEditorKind.Default, "DEFAULT", "", ""),
+                TestFlowPathKind.Body => (FlowEditorKind.Body, "BODY", "循环体", ""),
                 _ => (FlowEditorKind.Step, source.Name, source.DisplaySummary, "")
             };
             return new(source.Id, pathKind, pathName, pathParameter, pathText, source.StatusSummary, source, false);
@@ -829,11 +846,8 @@ public partial class MainWindow : Window
         {
             if (_selectedTestCase is not null)
             {
-                if (string.Equals(_selectedTestCase.Name, "静态驻车", StringComparison.Ordinal) &&
-                    !ContainsFlowControl(_selectedTestCase.Flow))
-                    BuildStaticFlowEditor();
-                else
-                    _flowEditorRoots.AddRange(FlowEditorRow.FromNodeTrees(_selectedTestCase.Flow));
+                // QUICK always renders persisted nodes; synthetic demo rows were not executable.
+                _flowEditorRoots.AddRange(FlowEditorRow.FromNodeTrees(_selectedTestCase.Flow));
             }
             RebuildVisibleFlowEditor();
             FlowEditorList.SelectedItem = _flowEditorRows.FirstOrDefault(x => x.Id == selectedId)
@@ -987,6 +1001,7 @@ public partial class MainWindow : Window
         AddFlowIfButton.IsEnabled = genericAllowed;
         AddFlowWhenButton.IsEnabled = genericAllowed;
         AddFlowSwitchButton.IsEnabled = genericAllowed;
+        AddFlowLoopButton.IsEnabled = genericAllowed;
         AddFlowElseButton.IsEnabled = row?.ControlKind == FlowEditorKind.If &&
             !row.Children.Any(x => x.ControlKind == FlowEditorKind.Else);
         AddFlowCaseButton.IsEnabled = row?.ControlKind == FlowEditorKind.Switch;
@@ -1021,6 +1036,7 @@ public partial class MainWindow : Window
             {
                 FlowEditorKind.If => "IF · 结果引用",
                 FlowEditorKind.When => "WHEN · 重复检查结果",
+                FlowEditorKind.Loop => "LOOP · 重复执行步骤",
                 _ => "SWITCH · 通信数据库信号"
             },
             FontWeight = FontWeights.SemiBold,
@@ -1029,6 +1045,49 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center
         });
         panel.Children.Add(header);
+
+        if (row.ControlKind == FlowEditorKind.Loop)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = "每轮依次执行 BODY 内的真实步骤；循环不自动释放 KEY、复位 IGN 或改变夹具。出现执行错误立即停止，取消可中断等待。",
+                Foreground = Brushes.SlateGray,
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+            var repeatCount = new TextBox { Text = row.LoopCountText, Width = 75 };
+            var repeatDelay = new TextBox { Text = row.LoopDelayMsText, Width = 95 };
+            var error = new TextBlock { Foreground = Brushes.Firebrick, TextWrapping = TextWrapping.Wrap };
+            void CommitLoop()
+            {
+                if (!int.TryParse(repeatCount.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var count) || count is < 1 or > 100 ||
+                    !int.TryParse(repeatDelay.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var delay) || delay is < 0 or > 60000)
+                {
+                    error.Text = "次数必须为 1～100，轮间等待必须为 0～60000 ms。未保存非法值。";
+                    return;
+                }
+                error.Text = "";
+                row.LoopCountText = count.ToString(CultureInfo.InvariantCulture);
+                row.LoopDelayMsText = delay.ToString(CultureInfo.InvariantCulture);
+                row.ParameterText = $"重复 {count} 次 · 间隔 {delay} ms";
+                SyncFlowControlSource(row);
+                InspectorTitle.Text = "LOOP · " + row.ParameterText;
+                FlowEditorList.Items.Refresh();
+            }
+            repeatCount.LostFocus += (_, _) => CommitLoop();
+            repeatDelay.LostFocus += (_, _) => CommitLoop();
+            repeatCount.KeyDown += (_, args) => { if (args.Key == Key.Enter) { CommitLoop(); args.Handled = true; } };
+            repeatDelay.KeyDown += (_, args) => { if (args.Key == Key.Enter) { CommitLoop(); args.Handled = true; } };
+            panel.Children.Add(CreateLabeledControl("循环次数", repeatCount));
+            panel.Children.Add(CreateLabeledControl("轮间等待", repeatDelay,
+                new TextBlock { Text = "ms", VerticalAlignment = VerticalAlignment.Center }));
+            panel.Children.Add(error);
+            InspectorTitle.Text = "LOOP · " + row.ParameterText;
+            StepEditor.Content = panel;
+            OpenInspector();
+            return;
+        }
 
         if (row.ControlKind == FlowEditorKind.Switch)
         {
@@ -1058,6 +1117,24 @@ public partial class MainWindow : Window
                 FlowEditorList.SelectedItem = row;
             };
             panel.Children.Add(CreateLabeledControl("信号定义", signalBox));
+            var switchTimeout = new TextBox { Text = row.TimeoutMsText, Width = 95 };
+            var timeoutError = new TextBlock { Foreground = Brushes.Firebrick, TextWrapping = TextWrapping.Wrap };
+            void CommitSwitchTimeout()
+            {
+                if (!int.TryParse(switchTimeout.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var ms) || ms is < 1 or > 60000)
+                {
+                    timeoutError.Text = "等待时限必须为 1～60000 ms；非法值未保存。";
+                    return;
+                }
+                timeoutError.Text = "";
+                row.TimeoutMsText = ms.ToString(CultureInfo.InvariantCulture);
+                if (row.SourceNode?.FlowControl is { } control) control.TimeoutMs = ms;
+            }
+            switchTimeout.LostFocus += (_, _) => CommitSwitchTimeout();
+            switchTimeout.KeyDown += (_, args) => { if (args.Key == Key.Enter) { CommitSwitchTimeout(); args.Handled = true; } };
+            panel.Children.Add(CreateLabeledControl("等待时限", switchTimeout,
+                new TextBlock { Text = "ms", VerticalAlignment = VerticalAlignment.Center }));
+            panel.Children.Add(timeoutError);
         }
         else
         {
@@ -1197,9 +1274,8 @@ public partial class MainWindow : Window
         {
             if (row.Id == current.Id) break;
             if (row.ControlKind != FlowEditorKind.Step) continue;
-            if ((row.SourceNode?.Operation?.Kind == ConfigurationStepKind.报文解析 &&
-                 !string.IsNullOrWhiteSpace(row.SourceNode.Operation.Parse.Expectation)) ||
-                row.Name is "检测 ECU 通信" or "读取 ECU 调试状态" or "检查 IGN" or "读取卡钳状态" or "按键状态")
+            if (row.SourceNode?.Operation?.Kind == ConfigurationStepKind.报文解析 &&
+                !string.IsNullOrWhiteSpace(row.SourceNode.ParseAssertion?.Expectation ?? row.SourceNode.Operation.Parse.Expectation))
                 Add(row.Name);
         }
         return values.Count == 0 ? ["请选择已有步骤"] : values;
@@ -1225,10 +1301,12 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(current.ResultReferenceKey) &&
             string.Equals(current.ResultReferenceText, display, StringComparison.Ordinal))
             return current.ResultReferenceKey;
-        return EnumerateFlowRows(_flowEditorRoots)
-            .Where(x => x.ControlKind == FlowEditorKind.Step && x.SourceNode is not null)
-            .FirstOrDefault(x => string.Equals(x.Name, display, StringComparison.Ordinal))
-            ?.SourceNode?.Id ?? "";
+        var matches = EnumerateFlowRows(_flowEditorRoots)
+            .Where(x => x.ControlKind == FlowEditorKind.Step && x.SourceNode is not null &&
+                string.Equals(x.Name, display, StringComparison.Ordinal))
+            .Select(x => x.SourceNode!.Id).Distinct(StringComparer.Ordinal).ToArray();
+        // Duplicate display names are ambiguous: fail preflight instead of binding silently.
+        return matches.Length == 1 ? matches[0] : "";
     }
 
     private string FindSignalDefinitionKey(string display)
@@ -1246,7 +1324,14 @@ public partial class MainWindow : Window
     private static void SyncFlowControlSource(FlowEditorRow row)
     {
         if (row.SourceNode?.FlowControl is not { } control) return;
-        if (row.ControlKind is FlowEditorKind.If or FlowEditorKind.When)
+        if (row.ControlKind == FlowEditorKind.Loop)
+        {
+            if (int.TryParse(row.LoopCountText, NumberStyles.None, CultureInfo.InvariantCulture, out var count) && count is >= 1 and <= 100)
+                control.RepeatCount = count;
+            if (int.TryParse(row.LoopDelayMsText, NumberStyles.None, CultureInfo.InvariantCulture, out var delay) && delay is >= 0 and <= 60000)
+                control.RepeatDelayMs = delay;
+        }
+        else if (row.ControlKind is FlowEditorKind.If or FlowEditorKind.When)
         {
             if (!string.IsNullOrWhiteSpace(row.ResultReferenceKey))
                 control.ResultReference = new ResultReference(row.ResultReferenceKey, ResultChannel.Verdict);
@@ -1281,9 +1366,18 @@ public partial class MainWindow : Window
 
     private void PrepareFlowInsert_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedFlowEditorRow is null || sender is not Button { Tag: string kind })
+        if (sender is not Button { Tag: string kind } || _selectedTestCase is null)
         {
-            AppendLog("请先选择流程行，再指定插入的控制结构。");
+            AppendLog("请先选择测试用例，再添加流程控制。");
+            return;
+        }
+        // Empty TEST program: let the first IF/WHEN/SWITCH/LOOP become a real root node.
+        if (_selectedFlowEditorRow is null)
+        {
+            var rootControl = CreateTestFlowControlNode(kind);
+            if (rootControl is null) return;
+            InsertTestFlowNode(rootControl);
+            AppendLog($"已在测试用例根流程添加 {kind}；请在右侧配置并在路径内添加步骤。");
             return;
         }
         if (_selectedFlowEditorRow.IsControl)
@@ -1359,6 +1453,7 @@ public partial class MainWindow : Window
                 "IF" => new TestFlowControlDefinition { Kind = TestFlowControlKind.Condition },
                 "WHEN" => new TestFlowControlDefinition { Kind = TestFlowControlKind.WaitForVerdict },
                 "SWITCH" => new TestFlowControlDefinition { Kind = TestFlowControlKind.ValueBranch },
+                "LOOP" => new TestFlowControlDefinition { Kind = TestFlowControlKind.Repeat, RepeatCount = 2, RepeatDelayMs = 0 },
                 _ => null
             }
         };
@@ -1376,6 +1471,9 @@ public partial class MainWindow : Window
             case "SWITCH":
                 node.Children.Add(new TestFlowNode { Name = "DEFAULT", Kind = TestFlowNodeKind.组合, PathKind = TestFlowPathKind.Default });
                 break;
+            case "LOOP":
+                node.Children.Add(new TestFlowNode { Name = "BODY", Kind = TestFlowNodeKind.组合, PathKind = TestFlowPathKind.Body });
+                break;
         }
         return node;
     }
@@ -1385,6 +1483,7 @@ public partial class MainWindow : Window
         "IF" => FlowEditorRow.If($"ui:new:if:{Guid.NewGuid():N}", "请选择已有步骤", "请选择 Verdict"),
         "WHEN" => FlowEditorRow.When($"ui:new:when:{Guid.NewGuid():N}", "请选择已有步骤", "通过", "20", "1000"),
         "SWITCH" => FlowEditorRow.Switch($"ui:new:switch:{Guid.NewGuid():N}", "请选择通信数据库信号"),
+        "LOOP" => FlowEditorRow.Section($"ui:new:loop:{Guid.NewGuid():N}", "LOOP"),
         _ => FlowEditorRow.Step($"ui:new:step:{Guid.NewGuid():N}", "新建步骤", "未配置", "待配置", "")
     };
 
@@ -1493,7 +1592,6 @@ public partial class MainWindow : Window
     {
         if (FindTreeViewItem(e.OriginalSource as DependencyObject) is { } item && item.DataContext is TestFlowNode node)
         {
-            node.Enabled = true;
             _selectedTestNode = node;
             // 等双击输入完成后再打开属性框，避免第二次鼠标事件把刚打开的框关闭。
             _ = Dispatcher.BeginInvoke(new Action(() => ShowTestFlowNodeDetails(node)), DispatcherPriority.ContextIdle);
@@ -1589,7 +1687,7 @@ public partial class MainWindow : Window
         // Inspector 已固定停靠，单击步骤即打开属性；双击保留为兼容路径。
         if (e.ClickCount >= 1)
         {
-            node.Enabled = true;
+            // Selecting/editing a disabled step must never silently re-enable it.
             _selectedTestNode = node;
             Dispatcher.BeginInvoke(new Action(() => ShowTestFlowNodeDetails(node)), DispatcherPriority.ContextIdle);
             if (e.ClickCount >= 2) e.Handled = true;
@@ -1632,7 +1730,7 @@ public partial class MainWindow : Window
     private void RemoveTestFlowNode(TestFlowNode node)
     {
         if (_selectedTestCase is null) return;
-        if (node.PathKind is TestFlowPathKind.Then or TestFlowPathKind.Hit or TestFlowPathKind.Timeout or TestFlowPathKind.Default)
+        if (node.PathKind is TestFlowPathKind.Body or TestFlowPathKind.Then or TestFlowPathKind.Hit or TestFlowPathKind.Timeout or TestFlowPathKind.Default)
         {
             AppendLog($"{node.Name} 是固定路径，不能删除。");
             return;

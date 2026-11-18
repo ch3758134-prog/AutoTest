@@ -51,9 +51,30 @@ public sealed class ExecutionPreflightService
                 InspectNode(node, testCase.Name, configuration, snapshots, diagnostics, visitedSequences);
 
         foreach (var testCase in plan.Cases.Where(x => x.Enabled).OrderBy(x => x.Order))
+        {
             ValidateFlowControls(testCase.Flow, testCase.Name, configuration, new Dictionary<string, TestFlowNode>(StringComparer.Ordinal), diagnostics);
+            if (ExpandedNodeBudget(testCase.Flow) > 2000)
+                diagnostics.Add(new("ControlBudgetExceeded", testCase.Name, "流程", "流程", "",
+                    "循环展开后超过每用例 2000 个流程节点；请减少循环次数或拆分测试。"));
+        }
 
         return new ExecutionPlan(snapshots, diagnostics);
+    }
+
+    // Conservative expansion bound also protects nested LOOPs before any physical output.
+    private static long ExpandedNodeBudget(IEnumerable<TestFlowNode> nodes)
+    {
+        long total = 0;
+        foreach (var node in nodes)
+        {
+            if (!node.Enabled) continue;
+            long inner = ExpandedNodeBudget(node.Children);
+            long count = node.FlowControl?.Kind == TestFlowControlKind.Repeat
+                ? Math.Clamp((long)node.FlowControl.RepeatCount, 0, 2001) : 1;
+            total = Math.Min(2001, total + 1 + Math.Min(2001, inner * count));
+            if (total > 2000) return total;
+        }
+        return total;
     }
 
     private static void ValidateFlowControls(
@@ -120,7 +141,20 @@ public sealed class ExecutionPreflightService
                 if (node.Children.Any(x => x.PathKind is not TestFlowPathKind.Hit and not TestFlowPathKind.Timeout))
                     Add("ControlPathInvalid", "等待控制只能包含 Hit 或 Timeout 路径。");
                 break;
+            case TestFlowControlKind.Repeat:
+                if (control.RepeatCount is < 1 or > 100)
+                    Add("ControlRepeatInvalid", "LOOP 次数必须为 1～100。");
+                if (control.RepeatDelayMs is < 0 or > 60000)
+                    Add("ControlTimingInvalid", "LOOP 间隔必须为 0～60000 毫秒。");
+                if (paths.GetValueOrDefault(TestFlowPathKind.Body)?.Count != 1 ||
+                    node.Children.Any(x => x.PathKind != TestFlowPathKind.Body))
+                    Add("ControlPathInvalid", "LOOP 必须且只能包含一个 BODY 路径。");
+                if (ContainsPeriodicStart(node.Children))
+                    Add("ControlPeriodicUnsupported", "LOOP 内不可重复启动周期广播；先将周期任务放在循环外，避免替换主控活动报文表。");
+                break;
             case TestFlowControlKind.ValueBranch:
+                if (control.TimeoutMs is < 1 or > 60000)
+                    Add("ControlTimingInvalid", "SWITCH 读取信号超时必须为 1～60000ms。");
                 if (control.SignalDefinition is null ||
                     string.IsNullOrWhiteSpace(control.SignalDefinition.MessageDefinitionId) ||
                     string.IsNullOrWhiteSpace(control.SignalDefinition.SignalDefinitionId))
@@ -145,6 +179,11 @@ public sealed class ExecutionPreflightService
                 break;
         }
     }
+
+    private static bool ContainsPeriodicStart(IEnumerable<TestFlowNode> nodes) =>
+        nodes.Any(node => node.Operation?.Kind == ConfigurationStepKind.广播报文 &&
+                          node.Operation.Broadcast.Mode == BroadcastMode.开始周期发送 ||
+                          ContainsPeriodicStart(node.Children));
 
     private static void ValidateVerdictReference(
         TestFlowControlDefinition control,

@@ -203,6 +203,8 @@ public sealed class TestNodeResult
     public string? Expected { get; set; }
     public string? RawFrame { get; set; }
     public string? Error { get; set; }
+    /// <summary>1-based occurrence within a repeated BODY, null for ordinary nodes.</summary>
+    public int? Occurrence { get; set; }
     public ParseExecutionOutcome? ParseOutcome { get; set; }
     /// <summary>解析步骤产生的后端中间结果；IF/WHEN 只应消费其中的 Verdict。</summary>
     public ProducedSignalResult? ProducedSignal { get; set; }

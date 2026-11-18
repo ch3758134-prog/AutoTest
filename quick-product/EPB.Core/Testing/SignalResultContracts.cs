@@ -151,7 +151,8 @@ public enum TestFlowControlKind
 {
     Condition,
     WaitForVerdict,
-    ValueBranch
+    ValueBranch,
+    Repeat
 }
 
 public enum TestFlowPathKind
@@ -162,7 +163,8 @@ public enum TestFlowPathKind
     Hit,
     Timeout,
     Case,
-    Default
+    Default,
+    Body
 }
 
 public sealed record SignalDefinitionReference(string MessageDefinitionId, string SignalDefinitionId);
@@ -177,5 +179,9 @@ public sealed class TestFlowControlDefinition
     public ResultVerdict RequiredVerdict { get; set; } = ResultVerdict.Passed;
     public int PeriodMs { get; set; } = 20;
     public int TimeoutMs { get; set; } = 1000;
+    /// <summary>QUICK bounded repeat: 1..100 iterations, full child-body replay.</summary>
+    public int RepeatCount { get; set; } = 2;
+    /// <summary>Delay between iterations, never an automatic output reset.</summary>
+    public int RepeatDelayMs { get; set; }
     public SignalDefinitionReference? SignalDefinition { get; set; }
 }
