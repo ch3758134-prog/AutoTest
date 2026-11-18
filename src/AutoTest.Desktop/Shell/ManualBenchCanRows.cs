@@ -14,7 +14,7 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Shell;
 
-/// <summary>Real manual CAN1 transmission list, kept apart from KEY_SIM/CAN0 and TEST execution.</summary>
+/// <summary>Real manual CAN0 transmission list, kept apart from KEY_SIM/CAN0 and TEST execution.</summary>
 public sealed partial class ManualBenchViewModel
 {
     public sealed class BenchCanRow : BindableBase
@@ -260,16 +260,16 @@ public sealed partial class ManualBenchViewModel
         var chosen = single is null ? CanSendRows.Where(row => row.Included).ToArray() :
             CanSendRows.Contains(single) ? new[] { single } : Array.Empty<BenchCanRow>();
         if (chosen.Length is < 1 or > 32)
-            throw new InvalidOperationException("请选择 1～32 条 CAN1 报文。");
+            throw new InvalidOperationException("请选择 1～32 条 CAN0 报文。");
         var entries = chosen.Select(row =>
         {
-            // Main_Control v0.2: 0x50 replaces the ENTIRE CAN1 broadcast table.
+            // Main_Control v0.2: 0x50 replaces the ENTIRE CAN0 broadcast table.
             // Host Task.Delay per-row scheduler from the earlier prototype is NOT an
             // approved substitute. No periodic physical instruction until TEST/DEVICE
             // owns the complete 0x50/51/52/53 table, lease and cancel contract.
             if (row.IsPeriodic && single is null)
                 throw new InvalidOperationException(
-                    "CAN1 周期发送暂被真实硬件预检阻断：主控 0x50 会替换全部广播表，" +
+                    "CAN0 周期发送暂被真实硬件预检阻断：主控 0x50 会替换全部广播表，" +
                     "不得用独立上位机周期发送线程代替。请等待 TEST/DEVICE 正式多报文合同接线。");
             var frame = row.BuildFrame();
             int period = 0;
@@ -288,7 +288,7 @@ public sealed partial class ManualBenchViewModel
         var text = string.Join("\n", plan.Select(item =>
         {
             var raw = CanFrameCodec.ToUsbPayload(item.Frame,
-                new BusRoleMap(default, DutPort: 1, KeypadPort: 0));
+                StationCanWiring.Current);
             return Convert.ToHexString(raw) + ":" + item.PeriodMs;
         }));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
@@ -312,12 +312,12 @@ public sealed partial class ManualBenchViewModel
     }
 
     private async Task StartCanRowsAsync(BenchCanRow? single = null) => await Execute(
-        single is null ? "CAN1 多报文" : "CAN1 单帧", async () =>
+        single is null ? "CAN0 多报文" : "CAN0 单帧", async () =>
     {
         if (!_hardware.IsConnected)
             throw new IOException("USB 未连接，请先点击顶部“连接”。");
         if (IsCanBatchRunning)
-            throw new InvalidOperationException("CAN1 正在发送，请先停止当前任务。");
+            throw new InvalidOperationException("CAN0 正在发送，请先停止当前任务。");
         var prepared = PrepareCanRows(single);
         foreach (var row in prepared) await VerifyCanRowDbcFreshAsync(row.Row);
         var fingerprint = BatchFingerprint(prepared);
@@ -364,7 +364,7 @@ public sealed partial class ManualBenchViewModel
                         entry.Row.Result = "已发送 " + entry.Row.Sent + " 次 · USB ACK";
                         if (entry.Row.Sent == 1)
                             Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-                                "CAN1 DUT", "TX ACK", "0x" + entry.Frame.Id.ToString("X"),
+                                "CAN0 DUT", "TX ACK", "0x" + entry.Frame.Id.ToString("X"),
                                 Convert.ToHexString(entry.Frame.Data.AsSpan()),
                                 entry.Row.Name + "：主控 ACK 并非 DUT 应答"));
                     }
@@ -376,9 +376,9 @@ public sealed partial class ManualBenchViewModel
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            Status = "CAN1 多报文异常终止：" + ex.Message;
+            Status = "CAN0 多报文异常终止：" + ex.Message;
             Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-                "CAN1 DUT", "ERROR", "", "", Status));
+                "CAN0 DUT", "ERROR", "", "", Status));
             stop.Cancel();
         }
         finally
@@ -399,7 +399,7 @@ public sealed partial class ManualBenchViewModel
         }
     }
 
-    /// <summary>Window closing waits for all CAN1 writers to stop and for the fence to revoke.</summary>
+    /// <summary>Window closing waits for all CAN0 writers to stop and for the fence to revoke.</summary>
     public Task StopCanBatchForCloseAsync() => StopCanRowsAsync();
 
     private async Task StopCanRowsAsync()
@@ -408,6 +408,6 @@ public sealed partial class ManualBenchViewModel
         if (stop is null) return;
         stop.Cancel();
         if (_canBatchTask is not null) await _canBatchTask;
-        Status = "CAN1 多报文任务已停止。";
+        Status = "CAN0 多报文任务已停止。";
     }
 }
