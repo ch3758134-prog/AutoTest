@@ -202,6 +202,18 @@ public sealed class DbcWorkbenchDocument
         _displayNames.SetSignalAlias(messageId, signalName, alias);
         _dirty = true;
     }
+    public void SetMessageSummary(uint id, string? summary)
+    {
+        Model.FindMessage(id);
+        _displayNames.SetMessageSummary(id, summary);
+        _dirty = true;
+    }
+    public void SetSignalSummary(uint id, string name, string? summary)
+    {
+        Model.FindSignal(id, name);
+        _displayNames.SetSignalSummary(id, name, summary);
+        _dirty = true;
+    }
 
     public string ExportText()
     {
