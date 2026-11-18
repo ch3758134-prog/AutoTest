@@ -1808,7 +1808,8 @@ public partial class MainWindow : Window
             ? new GridLength(58)
             : new GridLength(160, GridUnitType.Pixel);
         LogRows.Visibility = _logPanelCollapsed ? Visibility.Collapsed : Visibility.Visible;
-        LogEmptyState.Visibility = _logPanelCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (_logPanelCollapsed) LogEmptyState.Visibility = Visibility.Collapsed;
+        else LogEmptyState.ClearValue(UIElement.VisibilityProperty); // Return to its true empty/nonempty binding.
         LogPanelToggleButton.Content = _logPanelCollapsed ? "⌃" : "⌄";
     }
 
