@@ -142,7 +142,8 @@ public sealed class TestEditorViewModel : BindableBase
         var query = _stepFind.Trim();
         if (query.Length == 0 || item.Step is not { } node) return false;
         return (node.Name + " " + StepUiCatalog.Label(node.Type) + " " +
-            string.Join(" ", node.Properties.Select(x => x.Key + " " + x.Value)))
+            string.Join(" ", node.Properties.Where(x => StepUiCatalog.IsOperatorProperty(x.Key))
+                .Select(x => StepUiCatalog.PropertyLabel(x.Key) + " " + x.Value)))
             .Contains(query, StringComparison.CurrentCultureIgnoreCase);
     }
     public bool NavigateSearch(bool reverse = false)
@@ -552,7 +553,9 @@ public sealed class TestEditorViewModel : BindableBase
         InspectorProperties.Clear();
         if (_selectedItem?.Step is { } step)
         {
-            foreach (var property in step.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
+            foreach (var property in step.Properties
+                .Where(x => StepUiCatalog.IsOperatorProperty(x.Key))
+                .OrderBy(x => x.Key, StringComparer.Ordinal))
                 InspectorProperties.Add(new KeyValuePair<string, string>(
                     StepUiCatalog.PropertyLabel(property.Key), property.Value));
         }
