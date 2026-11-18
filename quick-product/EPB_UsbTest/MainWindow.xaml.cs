@@ -1497,10 +1497,18 @@ public partial class MainWindow : Window
             {
                 var period = new TextBox { Text = row.PeriodMsText, Width = 80 };
                 var timeout = new TextBox { Text = row.TimeoutMsText, Width = 90 };
+                var whenError = new TextBlock { Foreground = Brushes.Firebrick, FontSize = 11, TextWrapping = TextWrapping.Wrap };
                 void CommitWhen()
                 {
-                    row.PeriodMsText = period.Text.Trim();
-                    row.TimeoutMsText = timeout.Text.Trim();
+                    if (!int.TryParse(period.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var interval) || interval is < 1 or > 60000 ||
+                        !int.TryParse(timeout.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var limit) || limit is < 1 or > 60000)
+                    {
+                        whenError.Text = "检查周期和超时必须为 1～60000 ms；非法值不会保存到流程控制。";
+                        return;
+                    }
+                    whenError.Text = "";
+                    row.PeriodMsText = interval.ToString(CultureInfo.InvariantCulture);
+                    row.TimeoutMsText = limit.ToString(CultureInfo.InvariantCulture);
                     SyncFlowControlSource(row);
                     row.ParameterText = $"{row.ResultReferenceText} · {row.VerdictText} · {row.PeriodMsText} ms";
                     row.PathText = $"超时 {row.TimeoutMsText} ms";
@@ -1522,6 +1530,7 @@ public partial class MainWindow : Window
                     args.Handled = true;
                 };
                 panel.Children.Add(CreateLabeledControl("周期 / 超时", period, new TextBlock { Text = "ms", VerticalAlignment = VerticalAlignment.Center }, timeout, new TextBlock { Text = "ms", VerticalAlignment = VerticalAlignment.Center }));
+                panel.Children.Add(whenError);
             }
         }
 
@@ -2132,7 +2141,7 @@ public partial class MainWindow : Window
             (_, _) => FlowControlMenu_Click(AddFlowMenuButton, new RoutedEventArgs())));
         menu.Items.Add(MenuItem("组合选中的连续步骤",
             (_, _) => GroupSelectedTestFlowNodes()));
-        menu.PlacementTarget = sender as UIElement ?? AddTestFlowNodeButton;
+        menu.PlacementTarget = sender is Button trigger ? trigger : AddTestFlowNodeButton;
         menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;
     }

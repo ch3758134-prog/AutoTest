@@ -286,6 +286,11 @@ public partial class QuickManualBenchWindow : Window
         });
     }
 
+    private static string DbcIdentity(CanMessageDefinition message)
+        => !string.IsNullOrWhiteSpace(message.DefinitionId) ? message.DefinitionId :
+            (message.Extended ? "E:" : "S:") +
+            message.Id.ToString("X", CultureInfo.InvariantCulture) + ":" + message.Name;
+
     private void RefreshDbcChoices()
     {
         var current = CanDbcCombo.SelectedItem as QuickBenchDbcChoice;
@@ -294,7 +299,7 @@ public partial class QuickManualBenchWindow : Window
             _dbcChoices.Add(new QuickBenchDbcChoice(message));
         if (current is not null)
             CanDbcCombo.SelectedItem = _dbcChoices.FirstOrDefault(
-                choice => choice.Message.DefinitionId == current.Message.DefinitionId);
+                choice => DbcIdentity(choice.Message) == DbcIdentity(current.Message));
     }
 
     private void ReloadDbc_Click(object sender, RoutedEventArgs e)
@@ -335,14 +340,16 @@ public partial class QuickManualBenchWindow : Window
     private void AddCan_Click(object sender, RoutedEventArgs e)
     {
         if (_canRows.Count >= 32) { Log("QUICK 最多编辑 32 条 CAN1 报文。"); return; }
-        SaveCanEditor();
+        try { SaveCanEditor(); }
+        catch (Exception ex) { Log("请先修正当前报文：" + ex.Message); return; }
         var row = new QuickBenchCanRow { Name = "CAN 报文 " + (_canRows.Count + 1) };
         _canRows.Add(row);
         CanTxGrid.SelectedItem = row;
     }
     private void CopyCan_Click(object sender, RoutedEventArgs e)
     {
-        SaveCanEditor();
+        try { SaveCanEditor(); }
+        catch (Exception ex) { Log("请先修正当前报文：" + ex.Message); return; }
         if (CanTxGrid.SelectedItem is not QuickBenchCanRow row || _canRows.Count >= 32) return;
         var copy = row.Clone();
         _canRows.Insert(_canRows.IndexOf(row) + 1, copy);
@@ -360,7 +367,10 @@ public partial class QuickManualBenchWindow : Window
     {
         if (_loadingCan || CanIdBox is null) return;
         if (e.RemovedItems.OfType<QuickBenchCanRow>().FirstOrDefault() is { } prior)
-            ReadCanEditor(prior);
+        {
+            try { ReadCanEditor(prior); }
+            catch (Exception ex) { Log("原报文编辑未完成：" + ex.Message); }
+        }
         PopulateCanEditor(CanTxGrid.SelectedItem as QuickBenchCanRow);
     }
 
@@ -377,7 +387,7 @@ public partial class QuickManualBenchWindow : Window
             CanPeriodicCheck.IsChecked = row?.Periodic ?? false;
             CanUseDbcCheck.IsChecked = row?.UseDbc ?? false;
             var match = row is null ? null : _dbcChoices.FirstOrDefault(x =>
-                x.Message.DefinitionId == row.DbcDefinitionId && !string.IsNullOrWhiteSpace(x.Message.DefinitionId));
+                DbcIdentity(x.Message) == row.DbcDefinitionId);
             CanDbcCombo.SelectedItem = match;
             RebuildSignalEditor(row, match?.Message);
             CanSignalsGrid.IsEnabled = row?.UseDbc == true;
@@ -407,7 +417,7 @@ public partial class QuickManualBenchWindow : Window
         row.UseDbc = CanUseDbcCheck.IsChecked == true;
         if (row.UseDbc && CanDbcCombo.SelectedItem is QuickBenchDbcChoice choice)
         {
-            row.DbcDefinitionId = choice.Message.DefinitionId;
+            row.DbcDefinitionId = DbcIdentity(choice.Message);
             row.SignalValues = _signalValues.ToDictionary(x => x.Signal.Name, x => x.Value, StringComparer.Ordinal);
             row.DataText = CanPayloadCodec.Encode(choice.Message, row.SignalValues);
             row.IdText = "0x" + choice.Message.Id.ToString("X", CultureInfo.InvariantCulture);
@@ -448,7 +458,7 @@ public partial class QuickManualBenchWindow : Window
         if (_loadingCan || CanTxGrid?.SelectedItem is not QuickBenchCanRow row) return;
         if (CanDbcCombo.SelectedItem is not QuickBenchDbcChoice selected) return;
         // Selecting another DBC message only clears stale signal values, never period/timeout.
-        row.DbcDefinitionId = selected.Message.DefinitionId;
+        row.DbcDefinitionId = DbcIdentity(selected.Message);
         row.SignalValues.Clear();
         RebuildSignalEditor(row, selected.Message);
         row.IdText = "0x" + selected.Message.Id.ToString("X", CultureInfo.InvariantCulture);
@@ -474,7 +484,7 @@ public partial class QuickManualBenchWindow : Window
         var raw = row.DataText.Trim();
         if (row.UseDbc)
         {
-            var dbc = _dbcChoices.FirstOrDefault(x => x.Message.DefinitionId == row.DbcDefinitionId);
+            var dbc = _dbcChoices.FirstOrDefault(x => DbcIdentity(x.Message) == row.DbcDefinitionId);
             if (dbc is null) throw new InvalidDataException(row.Name + ": DBC 报文引用失效，请重新选择。");
             if (dbc.Message.Dlc != dlc || dbc.Message.Id != id || dbc.Message.Extended != row.Extended)
                 throw new InvalidDataException(row.Name + ": CAN ID/DLC/IDE 与 DBC 不一致，请重新选择。");
