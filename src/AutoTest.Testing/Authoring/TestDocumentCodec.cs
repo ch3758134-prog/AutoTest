@@ -55,7 +55,11 @@ public static class TestDocumentCodec
         {
             Mappings = (data.Mappings ?? []).Select(DecodeMapping).ToImmutableArray()
         };
-        var issues = StepTreeValidator.ValidateTree(doc, StepDescriptorCatalog.Builtins());
+        // Loading and saving a TEST draft must not require every imported step to
+        // be runnable. RealRunCoordinator / PlanCompiler still enforce every
+        // required operand and verified resource before touching hardware.
+        var issues = StepTreeValidator.ValidateTree(doc, StepDescriptorCatalog.Builtins(),
+            allowIncompleteSteps: true);
         // Asset references may be resolved only at preparation, but structural errors block loading.
         var structural = issues.Where(x => !x.Contains("unresolved asset", StringComparison.Ordinal));
         if (structural.Any()) throw new FormatException(string.Join("; ", structural));
