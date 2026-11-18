@@ -5,6 +5,18 @@ namespace AutoTest.Testing.Authoring;
 
 public enum TestPhase { Prepare, Test, Cleanup }
 
+/// <summary>Single persisted TEST step enable state; imported Enabled=false is respected.</summary>
+public static class StepExecutionPolicy
+{
+    public static bool IsEnabled(StepNode node)
+    {
+        var state = node.Properties.GetValueOrDefault("enabled",
+            node.Properties.GetValueOrDefault("Enabled",
+                node.Properties.GetValueOrDefault("legacy.enabled", "true"))).Trim();
+        return state is not ("false" or "False" or "FALSE" or "0" or "off" or "OFF");
+    }
+}
+
 /// <summary>Immutable editor node; ID survives edits and persistence. Slots own child sequences.</summary>
 public sealed record StepNode(StepId Id, string Type, string Name,
     ImmutableDictionary<string, string> Properties,
