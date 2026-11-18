@@ -94,7 +94,7 @@ public sealed class TestEditorViewModel : BindableBase
             () => !IsBusy && !IsDirty && !HasNewStepDraft);
         RunCommand = new DelegateCommand(async () => await RunRealAsync(),
             () => !IsBusy && !IsDirty && !HasNewStepDraft);
-        StopRunCommand = new DelegateCommand(() => _realTest.RequestStop(), () => IsBusy && _realTest.IsRunning);
+        StopRunCommand = new DelegateCommand(() => _realTest.RequestStop(), () => IsBusy);
         RefreshMappings();
         RefreshTree(null);
     }
@@ -859,7 +859,8 @@ public sealed class TestEditorViewModel : BindableBase
         {
             RunSummary = "真实测试未完成：" + e.Message;
             StatusMessage = RunSummary;
-            _dialogs.ShowError(RunSummary);
+            // Keep real-run failures in the visible status/result area, not a modal
+            // dialog that blocks the operator from examining the test evidence.
         }
         finally
         {
