@@ -84,7 +84,7 @@
      <Button Content="■ 停止" Command="{Binding StopRunCommand}"
       Margin="0,0,10,0" Padding="8,5"/>
     </StackPanel>
-    <TextBlock Text="{Binding RunSummary}" FontSize="10" Foreground="#60758C"
+    <TextBlock Text="{Binding RunSummary}" FontSize="11" Foreground="#526C88"
      VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
      ToolTip="{Binding RunSummary}"/>
    </DockPanel>
@@ -308,7 +308,7 @@
           LostFocus="QuickField_LostFocus" KeyDown="QuickField_KeyDown"/>
         </Grid>
         <TextBlock Grid.Column="3" Text="{Binding Resource}" TextTrimming="CharacterEllipsis"
-         Foreground="#7A8DA4" VerticalAlignment="Center" FontSize="10" Margin="7,0"
+         Foreground="#71849A" VerticalAlignment="Center" FontSize="11" Margin="7,0"
          ToolTip="{Binding Resource}"/>
         <TextBlock Grid.Column="4" Text="{Binding State}" TextTrimming="CharacterEllipsis"
          VerticalAlignment="Center" FontSize="11" Margin="6,0" ToolTip="{Binding StateDetail}">
