@@ -1089,7 +1089,9 @@ public partial class MainWindow : Window
         if (row is not null && !FlowEditorList.SelectedItems.Contains(row))
             FlowEditorList.SelectedItem = row;
         var menu = new ContextMenu();
-        menu.Items.Add(MenuItem("＋ 添加普通步骤", (_, _) => AddTestFlowNode_Click(this, new RoutedEventArgs())));
+        var addOrdinary = MenuItem("＋ 添加普通步骤", (_, _) => AddTestFlowNode_Click(this, new RoutedEventArgs()));
+        addOrdinary.IsEnabled = row?.IsControl != true;
+        menu.Items.Add(addOrdinary);
         if (row?.ControlKind == FlowEditorKind.If)
             menu.Items.Add(MenuItem("＋ 添加 ELSE 分支", (_, _) => AddFlowElse_Click(this, new RoutedEventArgs())));
         if (row?.ControlKind == FlowEditorKind.Switch)
@@ -1194,12 +1196,18 @@ public partial class MainWindow : Window
 
     private void FlowEditorList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_restoringWorkspaceSelection || FlowEditorList.SelectedItem is not FlowEditorRow row) return;
-        _selectedFlowEditorRow = row;
+        if (_restoringWorkspaceSelection) return;
         _selectedTestNodeIds.Clear();
         foreach (var selected in FlowEditorList.SelectedItems.OfType<FlowEditorRow>())
             if (selected.SourceNode is { } choice && choice.PathKind == TestFlowPathKind.None)
                 _selectedTestNodeIds.Add(choice.Id);
+        if (FlowEditorList.SelectedItem is not FlowEditorRow row)
+        {
+            _selectedFlowEditorRow = null;
+            RefreshFlowActionAvailability(null);
+            return;
+        }
+        _selectedFlowEditorRow = row;
         RefreshFlowActionAvailability(row);
         if (row.SourceNode is { } node)
         {
