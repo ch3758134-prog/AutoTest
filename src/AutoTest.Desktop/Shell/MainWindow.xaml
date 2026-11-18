@@ -274,7 +274,7 @@
          </ControlTemplate>
         </TabControl.Template>
         <TabItem Header="运行时间线">
-         <DataGrid ItemsSource="{Binding ActiveEditorTab.Editor.RunFacts}" AutoGenerateColumns="False"
+         <DataGrid ItemsSource="{Binding ActiveEditorTab.Editor.RunFactRows}" AutoGenerateColumns="False"
           IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column"
           RowHeaderWidth="0" RowHeight="25" BorderThickness="0">
           <DataGrid.Columns>
