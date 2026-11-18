@@ -40,6 +40,20 @@ public static class StepTreeValidator
                 !document.Mappings.Any(m => string.Equals(m.Name, targetName,
                     StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped target {targetName}");
+            if (n.Type == "AssertSignal")
+            {
+                var signalTarget = n.Properties.GetValueOrDefault("target", "");
+                var mapping = document.Mappings.FirstOrDefault(m =>
+                    string.Equals(m.Name, signalTarget, StringComparison.OrdinalIgnoreCase));
+                if (mapping is not null && mapping.Kind != TestTargetKind.Signal)
+                    errors.Add($"{location}: CAN 信号判定必须选择有效的 DBC 信号。");
+                var comparator = n.Properties.GetValueOrDefault("operator", "");
+                if (comparator is not ("==" or "!=" or "<" or "<=" or ">" or ">="))
+                    errors.Add($"{location}: CAN 信号判定的比较方式无效。");
+                if (!int.TryParse(n.Properties.GetValueOrDefault("timeoutMs", ""), out var timeout) ||
+                    timeout is < 1 or > 600000)
+                    errors.Add($"{location}: CAN 信号判定超时应在 1～600000 毫秒内。");
+            }
             if (n.Type == "WaveAnalyze" &&
                 string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("profile", "")) &&
                 string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("reference", "")))
