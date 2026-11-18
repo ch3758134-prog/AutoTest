@@ -993,6 +993,28 @@ public partial class MainWindow : Window
             FlattenFlowEditorRow(root, rootIndex.ToString(), 0, rootIndex);
             rootIndex++;
         }
+        UpdateQuickFlowEmptyState();
+    }
+
+    private void UpdateQuickFlowEmptyState()
+    {
+        if (QuickFlowEmptyState is null) return;
+        var empty = _flowEditorRows.Count == 0;
+        QuickFlowEmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+        if (!empty) return;
+        var hasCase = _selectedTestCase is not null;
+        QuickFlowEmptyTitle.Text = hasCase ? "这个用例还没有测试步骤" : "先选择一个测试用例";
+        QuickFlowEmptyHint.Text = hasCase
+            ? "点击添加步骤，选择 CAN 发送、报文解析、按键动作或等待；也可直接插入 IF、WHEN、SWITCH、LOOP。"
+            : "从左侧选择已有用例，或新建用例。无需连接 USB 就可以编辑。";
+        QuickFlowEmptyPrimary.Content = hasCase ? "＋ 添加首个步骤" : "＋ 新建测试用例";
+        QuickFlowEmptyFlowButton.IsEnabled = hasCase;
+    }
+
+    private void QuickFlowEmptyPrimary_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedTestCase is null) NewTestCase_Click(sender, e);
+        else AddTestFlowNode_Click(sender, e);
     }
 
     private void FlattenFlowEditorRow(FlowEditorRow row, string prefix, int depth, int rootIndex)
@@ -2049,11 +2071,9 @@ public partial class MainWindow : Window
             Order = _configuration.TestPlan.Cases.Count + 1
         };
         _configuration.TestPlan.Cases.Add(testCase);
-        _selectedTestCase = testCase;
         RebuildTestCaseTree();
+        SwitchTestCase(testCase);
         RestoreTestCaseSelection(testCase);
-        TestFlowTree.ItemsSource = testCase.Flow;
-        TestCaseTitle.Text = testCase.Name;
         AppendLog($"已新建测试用例：{testCase.Name}");
     }
 
@@ -2129,6 +2149,8 @@ public partial class MainWindow : Window
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("选择已有资源", (_, _) => AddTestFlowNode(TestFlowNodeKind.引用序列)));
         menu.Items.Add(MenuItem("组合当前选中连续步骤", (_, _) => GroupSelectedTestFlowNodes()));
+        menu.PlacementTarget = sender as UIElement ?? AddTestFlowNodeButton;
+        menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;
     }
 

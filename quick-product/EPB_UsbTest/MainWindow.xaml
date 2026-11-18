@@ -245,18 +245,37 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- Compact case rows: left-click edits, checkbox controls saved Enabled, right-click has rare actions. -->
         <DataTemplate x:Key="TestCaseTemplate">
-            <Grid MinHeight="48" Margin="0,2,3,2">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="24"/><ColumnDefinition Width="*" MinWidth="75"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <CheckBox Grid.RowSpan="2" Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" Margin="2,0,4,0" ToolTip="本用例是否参与批量测试"/>
-                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" Style="{StaticResource TestStatusTextStyle}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,2,4,0"/>
-                <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource TestStatusBadge}" Margin="2,2,0,0" VerticalAlignment="Center"><TextBlock Text="{Binding StatusSummary}" Style="{StaticResource TestStatusTextStyle}" FontSize="11"/></Border>
-                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WaitSummary}" Foreground="#687787" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,2,4,0"/>
-                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Tag="{Binding}" Click="TestCaseWait_Click" Content="间隔" Height="22" Padding="6,0" Margin="0,2,4,0" Background="Transparent" BorderBrush="#BFD3E6" Foreground="#5D7890" FontSize="11" ToolTip="设置本用例与下一个启用用例之间的等待时间"/>
-                    <Button Tag="{Binding}" Click="TestCaseDelete_Click" Content="×" Width="22" Height="22" Padding="0" Margin="0,2,0,0" Background="Transparent" BorderThickness="0" Foreground="#B34747" FontSize="15" ToolTip="删除测试用例"/>
+            <Grid MinHeight="42" Margin="0,2,2,2" ToolTip="单击打开用例；右键重命名、设置间隔、运行或删除">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="25"/>
+                    <ColumnDefinition Width="*" MinWidth="72"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center"
+                          Margin="2,0,5,0" ToolTip="是否参与完整测试计划"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,5,0">
+                    <TextBlock Text="{Binding Name}" ToolTip="{Binding Name}" Foreground="{StaticResource TextBrush}"
+                               FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                    <TextBlock Text="{Binding WaitSummary}" FontSize="10" Foreground="{StaticResource Text2Brush}"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding WaitSummary}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding WaitAfterMs}" Value="0">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
+                <Border Grid.Column="2" Style="{StaticResource TestStatusBadge}" Margin="2,0,1,0"
+                        VerticalAlignment="Center" Padding="5,2" MinHeight="22">
+                    <TextBlock Text="{Binding StatusSummary}" Style="{StaticResource TestStatusTextStyle}" FontSize="10"/>
+                </Border>
             </Grid>
         </DataTemplate>
         <HierarchicalDataTemplate x:Key="TestFlowTemplate" ItemsSource="{Binding Children}">
@@ -563,7 +582,7 @@
                                 </Border>
                             </Expander>
                             <Grid>
-                                <TreeView x:Name="TestCaseTree" ItemContainerStyle="{StaticResource TestCaseTreeItemStyle}" ItemTemplate="{StaticResource TestCaseTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both" SelectedItemChanged="TestCaseTree_SelectedItemChanged" PreviewMouseLeftButtonDown="TestCaseTree_PreviewMouseLeftButtonDown" ContextMenuOpening="TestCaseTree_ContextMenuOpening" PreviewMouseRightButtonDown="TestCaseTree_RightClick"/>
+                                <TreeView x:Name="TestCaseTree" ItemContainerStyle="{StaticResource TestCaseTreeItemStyle}" ItemTemplate="{StaticResource TestCaseTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both" SelectedItemChanged="TestCaseTree_SelectedItemChanged" PreviewMouseLeftButtonDown="TestCaseTree_PreviewMouseLeftButtonDown" ContextMenuOpening="TestCaseTree_ContextMenuOpening" PreviewMouseRightButtonDown="TestCaseTree_RightClick"/>
                                 <Border x:Name="TestCaseEmptyState" Tag="{Binding ElementName=TestCaseTree, Path=HasItems}" IsEnabled="{Binding ElementName=TestCaseTree, Path=IsVisible}">
                                     <Border.Style>
                                         <Style TargetType="Border" BasedOn="{StaticResource EmptyStateCard}">
@@ -721,6 +740,29 @@
                                              </DataTemplate>
                                          </ListView.ItemTemplate>
                                      </ListView>
+                                     <Border x:Name="QuickFlowEmptyState" Visibility="Collapsed" Panel.ZIndex="3"
+                                             Background="White" Margin="1,36,1,1">
+                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="390">
+                                             <Border Width="48" Height="48" CornerRadius="12" Background="#EEF4FE"
+                                                     HorizontalAlignment="Center" Margin="0,0,0,16">
+                                                 <TextBlock Text="＋" Foreground="#3776C0" FontSize="27"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                             </Border>
+                                             <TextBlock x:Name="QuickFlowEmptyTitle" Text="选择测试用例以开始"
+                                                        FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"
+                                                        HorizontalAlignment="Center" TextAlignment="Center"/>
+                                             <TextBlock x:Name="QuickFlowEmptyHint" Text="选中左侧的测试用例，立即查看和编辑它的真实步骤。"
+                                                        FontSize="12" Foreground="{StaticResource Text2Brush}" TextWrapping="Wrap"
+                                                        TextAlignment="Center" HorizontalAlignment="Center" Margin="0,10,0,20"/>
+                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                 <Button x:Name="QuickFlowEmptyPrimary" Content="＋ 新建测试用例"
+                                                         Style="{StaticResource BtnToolbarPrimary}" Click="QuickFlowEmptyPrimary_Click"/>
+                                                 <Button x:Name="QuickFlowEmptyFlowButton" Content="添加流程控制"
+                                                         Style="{StaticResource QuickSecondaryToolbar}" Click="FlowControlMenu_Click"
+                                                         Margin="6,0,0,0" IsEnabled="False"/>
+                                             </StackPanel>
+                                         </StackPanel>
+                                     </Border>
                                      <TreeView x:Name="StepsTree" Visibility="Collapsed" ItemContainerStyle="{StaticResource StepTreeItemStyle}"
                                           ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both"
                                           AllowDrop="True" SelectedItemChanged="StepsTree_SelectedItemChanged"
