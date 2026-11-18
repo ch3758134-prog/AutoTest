@@ -267,18 +267,31 @@ public sealed class CanToolFlashWorkflow(
                 throw new InvalidDataException("Boot 51 01 复位正响应不完整。");
             resetAck=true;
         }
+        // The complete real CanTool trace ends at Boot 51 01. APP 10 03
+        // after reset is an EXTRA verification, not part of its flash sequence.
+        // Failure here must preserve the already-confirmed 76/77/71/51 facts.
         await Task.Delay(TimeSpan.FromSeconds(2),ct).ConfigureAwait(false);
-        log("S10 复位后 APP 会话探测：10 03（不是固件版本 DID 复验）");
-        await using(var app=await OpenAsync(plan.App,lease,ct).ConfigureAwait(false))
+        log("S10 可选 APP 10 03 探测；无响应不改变已确认写入结果。");
+        try
         {
-            var reply=await RequestAsync(app,[0x10,0x03],"APP PostFlash 10 03",p2,ct)
-                .ConfigureAwait(false);
+            await using var app=await OpenAsync(plan.App,lease,ct).ConfigureAwait(false);
+            var reply=await RequestAsync(app,[0x10,0x03],"APP PostFlash 10 03",
+                p2,ct).ConfigureAwait(false);
             appObserved=reply.Length>=2 && reply[1]==0x03;
-            if(!appObserved)throw new InvalidDataException("复位后没有 APP 50 03 正响应。");
         }
-        log("完成参考 CanTool 烧录链，APP 会话已重新响应；真实软件版本/身份 DID 未验证。");
+        catch(Exception ex) when(ex is TimeoutException or FlashEcuNrcException
+            or InvalidDataException or IOException)
+        {
+            log("S10 APP 未确认："+ex.GetType().Name+
+                "；逐块校验与Boot复位已确认，但APP启动/版本仍待现场核验。");
+        }
+        log(appObserved
+            ? "参考烧录操作、逐块校验和Boot复位完成；APP会话可响应，版本/身份未核验。"
+            : "参考烧录操作、逐块校验和Boot复位完成；APP会话尚未确认，禁止标记最终应用验收通过。");
         return new(accepted,verified,resetAck,appObserved,
-            "REFERENCE_FLOW_COMPLETED_APP_SESSION_OBSERVED_VERSION_UNVERIFIED");
+            appObserved
+              ? "REFERENCE_FLASH_ACKED_APP_SESSION_OBSERVED_IDENTITY_UNVERIFIED"
+              : "REFERENCE_FLASH_ACKED_POST_RESET_APP_UNVERIFIED");
     }
 
     public async Task<FlashExecutionResult> ExecuteAsync(CancellationToken ct)
