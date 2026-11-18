@@ -93,6 +93,9 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             }
             else if (target.Kind == TestTargetKind.CanMessage)
             {
+                if (target.Role != BusRole.DutCan)
+                    throw new ProjectDataException("CAN_TX_ROLE",
+                        "自动测试发送的 DBC 报文必须绑定 ECU CAN0，不能向 KEY_SIM CAN1 发送：" + target.Name);
                 if (asset.Kind != ProjectWorkspaceService.DbcKind)
                     throw new ProjectDataException("CAN_MAPPING_KIND", target.Name);
                 var message = DbcSource.Load(bytes).Parse(asset.Name).FindMessage(target.CanId);
@@ -105,6 +108,97 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
         if (_hasRawKey && _buttons.Count > 0)
             throw new ProjectDataException("KEY_CONTROL_MODE_CONFLICT",
                 "一个测试程序不能同时使用原始 20 Key 操作和已配置功能按键，以免覆盖保持状态。");
+    }
+
+    /// <summary>Full literal TEST operation preflight, before physical authorization.
+    /// Dynamic $variables are verified at their execution boundary, never
+    /// substituted by empty strings or silently encoded as zeros.</summary>
+    public void ValidateRunSteps(TestDocument document)
+    {
+        var mappings = TestRunStepScope.RequiredMappings(document)
+            .ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
+        foreach (var node in TestRunStepScope.EnabledSteps(document))
+        {
+            if (node.Type != "Write") continue;
+            try
+            {
+                var name = node.Properties.GetValueOrDefault("target", "");
+                if (!mappings.TryGetValue(name, out var target))
+                    throw new InvalidOperationException("步骤没有可用的真实操作目标。");
+                string action = node.Properties.GetValueOrDefault("value", "");
+                if (string.IsNullOrWhiteSpace(action))
+                    throw new FormatException("硬件操作值不能为空。");
+
+                var periodText = node.Properties.GetValueOrDefault("periodMs", "0");
+                var durationText = node.Properties.GetValueOrDefault("durationMs", "0");
+                if (!int.TryParse(periodText, NumberStyles.None, CultureInfo.InvariantCulture,
+                    out var period) || period != 0 && period is < 20 or > 600000)
+                    throw new FormatException("CAN 周期必须为 0 或 20～600000ms。");
+                if (!int.TryParse(durationText, NumberStyles.None, CultureInfo.InvariantCulture,
+                    out var duration) || duration is < 0 or > 1800000)
+                    throw new FormatException("周期发送持续时间必须为 0～1800000ms。");
+                if (period > 0 && target.Kind is not (TestTargetKind.RawCan or TestTargetKind.CanMessage))
+                    throw new FormatException("只有 ECU CAN 报文可以进行周期发送。");
+                if (target.Kind == TestTargetKind.CanMessage && target.Role != BusRole.DutCan)
+                    throw new InvalidOperationException("DBC 发送目标必须在 ECU CAN0。");
+                if (period == 0 && duration > 0 &&
+                    target.Kind is TestTargetKind.RawCan or TestTargetKind.CanMessage)
+                    throw new FormatException("需要先设置 CAN 发送周期才能设置持续时间。");
+                if (action.StartsWith("$", StringComparison.Ordinal))
+                    continue; // Runtime rejects an unavailable or invalid variable.
+
+                if (target.Kind == TestTargetKind.RawKey)
+                    _ = RawKeyAction.Parse(action);
+                else if (target.Kind == TestTargetKind.RawCan)
+                {
+                    if (!action.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
+                        throw new FormatException("原始 CAN 数据必须以 HEX: 开头。");
+                    var raw = Convert.FromHexString(string.Concat(action[4..]
+                        .Where(c => !char.IsWhiteSpace(c))));
+                    if (raw.Length > 8)
+                        throw new FormatException("经典 CAN 最多只能发送 8 字节。");
+                }
+                else if (target.Kind == TestTargetKind.CanMessage)
+                {
+                    if (!_can.TryGetValue(target.Name, out var mapping) || mapping.Target != target)
+                        throw new InvalidOperationException("DBC 报文绑定无效。");
+                    _ = DbcCanMessageEncoder.Encode(mapping.Message, action);
+                }
+                else if (target.Kind == TestTargetKind.Ignition)
+                {
+                    if (action is not ("ON" or "OFF" or "on" or "off" or "true" or "false" or "0" or "1"))
+                        throw new FormatException("IGN 仅支持 ON/OFF/true/false/0/1。");
+                }
+                else if (target.Kind == TestTargetKind.Button)
+                {
+                    var parts = action.Split(':', 2);
+                    if (!Enum.TryParse<ButtonActuation>(parts[0], true, out _))
+                        throw new FormatException("功能按键只能选择 Pulse、Hold、Release。");
+                    if (parts.Length == 2 && (!int.TryParse(parts[1],
+                            NumberStyles.None, CultureInfo.InvariantCulture, out var hold) ||
+                        hold is < 1 or > 60000))
+                        throw new FormatException("按键时间必须在 1～60000ms 之间。");
+                }
+                else
+                    throw new InvalidOperationException("目标类型不允许执行硬件 Write：" + target.Kind);
+            }
+            catch (Exception error) when (error is ArgumentException or FormatException or
+                InvalidOperationException or ProjectDataException)
+            {
+                throw new InvalidOperationException("运行前步骤检查失败“" + node.Name +
+                    "”（" + node.Id + "）：" + error.Message, error);
+            }
+        }
+    }
+
+    public ValueTask CheckHealthAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (_periodicErrors.TryPeek(out var fault))
+            throw new IOException("CAN0 周期发送已经发生设备通信故障，已禁止继续执行其他步骤。", fault);
+        if (_unknown)
+            throw new IOException("KEY_SIM 输出状态 UNKNOWN，停止其他真实硬件操作。");
+        return ValueTask.CompletedTask;
     }
 
     public IReadOnlyCollection<(byte Port, bool Extended, uint Id)> AuthorizedCanFrames(
