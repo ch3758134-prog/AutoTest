@@ -89,11 +89,11 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         ? "可编辑 · 保留原文注释/属性 · CAN ID 不可改"
         : _session.Document.CanEdit
         ? "可编辑 · 只修改已支持的 DBC 字段"
-        : "只读 · 存在不支持安全回写的 DBC 语法";
+        : "原始报文参数只读 · 中文别名可以修改和保存";
     public string UnsupportedDescription => _session.Document.IsSourcePreserving
         ? "原始注释、属性、枚举值和其他记录会在保存时保留；本模式禁止改 CAN ID、信号名称及结构。"
         : _session.Document.CanEdit ? ""
-        : "保留原始 DBC 内容，禁止覆盖保存。原因：" +
+        : "原始 DBC 存在暂不支持修改的结构；允许仅保存中文别名，不修改原有报文、信号或注释。原因：" +
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
     public bool CanEdit => _session.Document.CanEdit;
     public bool CanSave => _session.Document.CanSave;
