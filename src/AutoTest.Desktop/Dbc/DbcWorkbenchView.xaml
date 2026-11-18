@@ -149,6 +149,15 @@
                          Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
             </DockPanel>
           </Border>
+          <Border DockPanel.Dock="Top" Padding="9,8" Background="White"
+           BorderBrush="#E3EAF3" BorderThickness="0,0,0,1">
+           <StackPanel>
+            <TextBlock Text="查找报文或信号" Foreground="#607891" FontSize="10" Margin="0,0,0,4"/>
+            <TextBox Text="{Binding MessageSearchText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+             MinHeight="29" Padding="7,4"
+             ToolTip="支持中文名称、功能摘要、原始标识、CAN ID 和信号名称；搜索结果不修改 DBC。"/>
+           </StackPanel>
+          </Border>
           <ListBox ItemsSource="{Binding Messages}" SelectedItem="{Binding SelectedMessage}"
                    BorderThickness="0" Background="Transparent" Margin="5"
                    VirtualizingStackPanel.IsVirtualizing="True"
