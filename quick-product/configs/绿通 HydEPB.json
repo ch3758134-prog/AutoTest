@@ -1,0 +1,4421 @@
+{
+  "schemaVersion": "ecu-configuration-2",
+  "name": "绿通驻车制动 ECU 配置",
+  "root": {
+    "id": "green-root",
+    "name": "绿通 ECU 配置",
+    "kind": 0,
+    "children": [
+      {
+        "id": "5663f74feeb6462287c2409d7b32af1c",
+        "name": "基础动作",
+        "kind": 0,
+        "children": [
+          {
+            "id": "7ca06d2b64904b0798e03e027f52d468",
+            "name": "IGN_ON",
+            "kind": 2,
+            "sequence": {
+              "id": "769211ed34c345b09c4de2394cbe15c4",
+              "name": "IGN_ON",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "id": "afdce8fe4ac14692956e1f43b0974f30",
+                  "name": "IGN_ON",
+                  "kind": 2,
+                  "action": {
+                    "value": "power:0:on"
+                  },
+                  "parseAssertion": {
+                    "expectation": "",
+                    "timeoutMs": 5000
+                  }
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          },
+          {
+            "id": "ab75e2f1d53547f5be3e7a9c072cdc0b",
+            "name": "IGN_OFF",
+            "kind": 2,
+            "sequence": {
+              "id": "a429f2c11111443aab3497df28fd1227",
+              "name": "IGN_OFF",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "id": "1ea333d11d0b44c98cbb77699755e38d",
+                  "name": "IGN_OFF",
+                  "kind": 2,
+                  "action": {
+                    "value": "power:0:off"
+                  }
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          },
+          {
+            "id": "0feeb2e1ddd347b9b051f6d24ab1a6b1",
+            "name": "按键——驻车",
+            "kind": 2,
+            "sequence": {
+              "id": "08001be0ab924aa0a147f0eb78d700ba",
+              "name": "按键——驻车",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "action": {
+                    "outputMask": 6144
+                  },
+                  "id": "ac3f2b9bc1904d0489cc94bbdd31741f",
+                  "name": "按键——驻车",
+                  "kind": 3
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          },
+          {
+            "id": "b7a7a51367074abeb33194838d1e42d8",
+            "name": "按键——释放",
+            "kind": 2,
+            "sequence": {
+              "id": "963d6da5127442788c4d7ed974d4a9a5",
+              "name": "按键——释放",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "action": {
+                    "outputMask": 192
+                  },
+                  "id": "ec064a0451b64337b9950c79383cfd83",
+                  "name": "按键——释放",
+                  "kind": 3
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          },
+          {
+            "id": "9731f83bda5c4fb4a1dd0bd7164e9e13",
+            "name": "按键——无操作",
+            "kind": 2,
+            "sequence": {
+              "id": "bdb09b56499546489e03fb77e9298329",
+              "name": "按键——无操作",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "action": {
+                    "outputMask": 576
+                  },
+                  "id": "cd16d6d2f3c148e5858bbb8ed1a74466",
+                  "name": "按键——无操作",
+                  "kind": 3
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          },
+          {
+            "id": "51b308c610c941b5838a1494406a2c43",
+            "name": "调试报文",
+            "kind": 2,
+            "sequence": {
+              "id": "0f54a91403874c53a59b88a43eeccd56",
+              "name": "调试报文",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 1968,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "FF EE 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "id": "49782270cde7401a8038139fb8465c18",
+                  "name": "调试报文",
+                  "kind": 0
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          },
+          {
+            "id": "19dc72cd830b435dbed3d9cf4048c2c5",
+            "name": "驻车",
+            "kind": 2,
+            "sequence": {
+              "id": "e00d01e63e7b4b408e2d603187a89cda",
+              "name": "驻车",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "action": {
+                    "outputMask": 0
+                  },
+                  "id": "819991e7aaa3484881a89d554c001bfc",
+                  "name": "按键——驻车",
+                  "kind": 3,
+                  "reference": {
+                    "sequenceId": "08001be0ab924aa0a147f0eb78d700ba"
+                  }
+                },
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "wait": {
+                    "durationMs": 1000
+                  },
+                  "id": "d1605c2de16848c3b2ce38661c69c93f",
+                  "name": "等待",
+                  "kind": 4
+                },
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "action": {
+                    "outputMask": 0
+                  },
+                  "id": "490e6339b2ed43bea078844f8c94e780",
+                  "name": "选择资源",
+                  "kind": 3,
+                  "reference": {
+                    "sequenceId": "bdb09b56499546489e03fb77e9298329"
+                  }
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "GroupTemplate"
+          },
+          {
+            "id": "0feedb50af49453e8dda37f8b2d8596c",
+            "name": "释放",
+            "kind": 2,
+            "sequence": {
+              "id": "d49ede9a4cd54f7e9c8112202e852eeb",
+              "name": "释放",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "action": {
+                    "outputMask": 0
+                  },
+                  "id": "ee0964bb3e524456ba8d226bc7eec35d",
+                  "name": "选择资源",
+                  "kind": 3
+                },
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "wait": {
+                    "durationMs": 1000
+                  },
+                  "id": "5e3e4a4f891f44c5b0a9f57bce1763ef",
+                  "name": "等待",
+                  "kind": 4
+                },
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 0,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "action": {
+                    "outputMask": 0
+                  },
+                  "id": "3e71f5e1d1f6411da40a9570eec9ab05",
+                  "name": "选择资源",
+                  "kind": 3
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "GroupTemplate"
+          }
+        ]
+      },
+      {
+        "id": "green-broadcast-folder",
+        "name": "广播报文",
+        "kind": 0,
+        "children": [
+          {
+            "id": "green-debug-enable",
+            "name": "调试使能",
+            "kind": 2,
+            "sequence": {
+              "id": "green-seq-debug-enable",
+              "name": "调试使能",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 0,
+                    "id": 1968,
+                    "extended": false,
+                    "dlc": 8,
+                    "dataHex": "FF EE 00 00 00 00 00 00",
+                    "periodMs": 100,
+                    "mode": 0,
+                    "messageName": ""
+                  },
+                  "id": "green-step-debug-enable",
+                  "name": "发送调试使能",
+                  "kind": 0
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          },
+          {
+            "id": "b2972c780a4d4c9eb12f3715c6fc5dc2",
+            "name": "0x18FF5027",
+            "kind": 2,
+            "sequence": {
+              "id": "423c93279ecc4a91aecc63763cd265d8",
+              "name": "0x18FF5027",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 1,
+                    "messageDefinitionId": "message:x:18FF5027",
+                    "id": 419385383,
+                    "extended": true,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 65,
+                    "mode": 1,
+                    "messageName": "VCU_1"
+                  },
+                  "id": "722ae3cd18d74ff1b72f60b84adf530b",
+                  "name": "0x18FF5027",
+                  "kind": 0
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          },
+          {
+            "id": "f3f4df3c3d764e4aaca20880fd7ff41f",
+            "name": "0x18FFF327",
+            "kind": 2,
+            "sequence": {
+              "id": "cc8f208e7912499087329b5141b0a1a2",
+              "name": "0x18FFF327",
+              "steps": [
+                {
+                  "broadcast": {
+                    "source": 1,
+                    "messageDefinitionId": "message:x:18FFF327",
+                    "id": 419427111,
+                    "extended": true,
+                    "dlc": 8,
+                    "dataHex": "00 00 00 00 00 00 00 00",
+                    "periodMs": 65,
+                    "mode": 1,
+                    "messageName": "VCU_2"
+                  },
+                  "id": "da7e6e2c777745238a4b93d0c1c1a4a3",
+                  "name": "0x18FFF327",
+                  "kind": 0
+                }
+              ]
+            },
+            "children": [],
+            "resourceKind": "StepTemplate"
+          }
+        ]
+      },
+      {
+        "id": "9009d033262f4e559d4425a57227d948",
+        "name": "报文解析",
+        "kind": 0,
+        "children": []
+      }
+    ]
+  },
+  "testPlan": {
+    "id": "green-test-plan",
+    "name": "绿通自动测试",
+    "cases": [
+      {
+        "id": "4a4b493c16f546ecb3afe9b0a2ec160d",
+        "name": "准备",
+        "enabled": true,
+        "order": 1,
+        "waitAfterMs": 0,
+        "judgementLogic": 0,
+        "flow": [
+          {
+            "id": "628682fb3023482880a053bd9d7da1a8",
+            "name": "调试报文",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "a7d27442a592436991a4f32b4bcd6f73",
+              "name": "调试报文",
+              "kind": 0,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 1968,
+                "dlc": 8,
+                "dataHex": "FF EE 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "9529d589630c4376a7a56ddd70bf37aa",
+            "name": "0x18FF5027",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "fdf023a0b9454ef98dc5c1055413e7d0",
+              "name": "0x18FF5027",
+              "kind": 0,
+              "broadcast": {
+                "source": 0,
+                "extended": true,
+                "id": 419385383,
+                "dlc": 8,
+                "dataHex": "00 20 00 32 00 00 00 00",
+                "periodMs": 65,
+                "mode": 1,
+                "messageName": "VCU_1",
+                "signalValues": {
+                  "心跳字节": "0",
+                  "校验位": "0",
+                  "有效轮速": "0",
+                  "制动踏板有效性": "1",
+                  "刹车踏板位置开关（常闭）": "0",
+                  "刹车踏板位置开关（常开）": "0",
+                  "实际油门踏板开度": "0",
+                  "刹车踏板深度": "50",
+                  "维修模式": "0",
+                  "电机当前扭矩": "0",
+                  "后轮速": "0",
+                  "前轮速": "0",
+                  "主驾状态（座椅开关）": "0",
+                  "安全带开关": "0",
+                  "电机当前扭矩有效性": "0",
+                  "电机当前转速有效性": "0",
+                  "保留1": "0",
+                  "车速": "0",
+                  "保留2": "0",
+                  "档位信号": "0",
+                  "保留3": "0",
+                  "VCU_EPB_Check": "0",
+                  "VCU_EPB_HeartBit": "0",
+                  "VCU_EPB_AcceValid": "0",
+                  "VCU_EPB_BrakeEffect": "0",
+                  "VCU_EPB_BrakeSwitch_NC": "0",
+                  "VCU_EPB_BrakeSwitch_NO": "0",
+                  "VCU_EPB_AcceOpening": "0",
+                  "VCU_EPB_BrakeDepth": "0",
+                  "VCU_EPB_ServiceMode": "0",
+                  "VCU_EPB_MotorTorque": "0",
+                  "Rear_Wheel_Speed": "0",
+                  "Front_Wheel_Speed": "0",
+                  "VCU_EPB_DriverSeat": "0",
+                  "VCU_EPB_SeatBelt": "0",
+                  "VCU_EPB_MotorTorqueValid": "0",
+                  "VCU_EPB_MotorSpeedValid": "0"
+                }
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "e9dc4f791f354940bd348ab230d39eca",
+            "name": "0x18FFF327",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "1afb8de5aa7b48eda55aa6dff720ebd5",
+              "name": "0x18FFF327",
+              "kind": 0,
+              "broadcast": {
+                "source": 0,
+                "extended": true,
+                "id": 419427111,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 0C",
+                "periodMs": 65,
+                "mode": 1,
+                "messageName": "VCU_2",
+                "signalValues": {
+                  "校验位": "0",
+                  "心跳字节": "0",
+                  "有效轮速": "0",
+                  "制动踏板有效性": "0",
+                  "刹车踏板位置开关（常闭）": "0",
+                  "刹车踏板位置开关（常开）": "0",
+                  "实际油门踏板开度": "160",
+                  "刹车踏板深度": "0",
+                  "维修模式": "0",
+                  "电机当前扭矩": "0",
+                  "后轮速": "0",
+                  "前轮速": "768",
+                  "主驾状态（座椅开关）": "0",
+                  "安全带开关": "0",
+                  "电机当前扭矩有效性": "0",
+                  "电机当前转速有效性": "0",
+                  "保留1": "0",
+                  "车速": "0",
+                  "保留2": "0",
+                  "档位信号": "2",
+                  "保留3": "1",
+                  "VCU2_Res1": "0",
+                  "VhicleSpeed": "0",
+                  "VCU2_Res2": "0",
+                  "Gear_Position": "0",
+                  "VCU2_Res3": "0"
+                }
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "7009bcc3a6084238b17a5b63580551f2",
+        "name": "静态驻车",
+        "enabled": true,
+        "order": 2,
+        "waitAfterMs": 0,
+        "judgementLogic": 0,
+        "flow": [
+          {
+            "id": "f233458a9d3f4cba85bc3f3721a09a77",
+            "name": "驻车按键",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 0,
+            "operation": {
+              "id": "a1c4e1334ec54dc6904f2ab9444e7ab3",
+              "name": "驻车按键",
+              "kind": 3,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 6144
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "39c751e1db0147829fae4a4412f8ad57",
+            "name": "按键状态驻车",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "b0b8d575e51049409944d2e5f21559cc",
+              "name": "按键状态驻车",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 1,
+                "dataHex": "00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000702"
+              },
+              "parse": {
+                "source": 1,
+                "signalName": "KeyStat",
+                "extended": false,
+                "id": 1794,
+                "startByte": 0,
+                "startBit": 4,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "按键状态 1-正常未操作 2-驻车 3-释放",
+                "databaseSignalName": "KeyStat",
+                "displayName": "按键状态 1-正常未操作 2-驻车 3-释放",
+                "messageDefinitionId": "message:s:00000702",
+                "signalDefinitionId": "signal:message:s:00000702:KeyStat"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=2",
+              "timeoutMs": 5000
+            },
+            "children": []
+          },
+          {
+            "id": "328bf25c884e4d40bfdf7907bcf522e1",
+            "name": "车辆状态——驻车",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "10c0365280144de09d64a2318ce8f2cf",
+              "name": "车辆状态——驻车",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000705"
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000705",
+                "signalDefinitionId": "signal:message:s:00000705:Car_State",
+                "signalName": "Car_State",
+                "extended": false,
+                "id": 1797,
+                "startByte": 7,
+                "startBit": 4,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "0：初始值 1：静默，驻车2：静默，释放3：熄火，驻车4：熄火，释放5：点火，静止，驻车状态6：点火，静止，解锁状态7",
+                "databaseSignalName": "Car_State",
+                "displayName": "车辆状态"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=5",
+              "timeoutMs": 5000
+            },
+            "children": []
+          },
+          {
+            "id": "5d27b4f259dc4c87a0ed9d7acfaee826",
+            "name": "按键正常无操作",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 0,
+            "operation": {
+              "id": "e32d6caf38c0486d8b47ceadb63e83af",
+              "name": "按键正常无操作",
+              "kind": 3,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 576
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "0ee139905e9c428fba5d91234653eaea",
+            "name": "按键状态",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "2b4c31c132ac46a59dfee597c8332889",
+              "name": "按键状态",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000702"
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000702",
+                "signalDefinitionId": "signal:message:s:00000702:KeyStat",
+                "signalName": "KeyStat",
+                "extended": false,
+                "id": 1794,
+                "startByte": 0,
+                "startBit": 4,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "按键状态 1-正常未操作 2-驻车 3-释放",
+                "databaseSignalName": "KeyStat",
+                "displayName": "按键状态 1-正常未操作 2-驻车 3-释放"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=1",
+              "timeoutMs": 5000
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "127f38f24c284f39af938978b7870ff8",
+        "name": "静态释放",
+        "enabled": true,
+        "order": 3,
+        "waitAfterMs": 0,
+        "judgementLogic": 0,
+        "flow": [
+          {
+            "id": "29160c0f06a24492a0bbacfd2a4f3274",
+            "name": "释放按键",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 0,
+            "operation": {
+              "id": "0b291c10845c42b0baacd4e0a1824d73",
+              "name": "释放按键",
+              "kind": 3,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 192
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "5d12ceb6993e4b67899cac21294904e4",
+            "name": "按键状态——释放",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "cb25cf96c31546debae9cc01066bfa1f",
+              "name": "按键状态——释放",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000702"
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000702",
+                "signalDefinitionId": "signal:message:s:00000702:KeyStat",
+                "signalName": "KeyStat",
+                "extended": false,
+                "id": 1794,
+                "startByte": 0,
+                "startBit": 4,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "按键状态 1-正常未操作 2-驻车 3-释放",
+                "databaseSignalName": "KeyStat",
+                "displayName": "按键状态 1-正常未操作 2-驻车 3-释放"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=3",
+              "timeoutMs": 5000
+            },
+            "children": []
+          },
+          {
+            "id": "259fb1bdab1b4781ad406a70207359dd",
+            "name": "车辆状态——释放",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "5cfbd7499cfe40299359a27f294f9f6c",
+              "name": "车辆状态——释放",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000705"
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000705",
+                "signalDefinitionId": "signal:message:s:00000705:Car_State",
+                "signalName": "Car_State",
+                "extended": false,
+                "id": 1797,
+                "startByte": 7,
+                "startBit": 4,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "0：初始值 1：静默，驻车2：静默，释放3：熄火，驻车4：熄火，释放5：点火，静止，驻车状态6：点火，静止，解锁状态7",
+                "databaseSignalName": "Car_State",
+                "displayName": "车辆状态"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=6",
+              "timeoutMs": 5000
+            },
+            "children": []
+          },
+          {
+            "id": "67330b14fff64d2dbdf070e9504bfc07",
+            "name": "按键正常无操作",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 0,
+            "operation": {
+              "id": "97cfc4b846d44234b021a1420a6aaf97",
+              "name": "按键正常无操作",
+              "kind": 3,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 576
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "2b90e97232c44680b92a31b17dbe121c",
+            "name": "按键状态——无操作",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "8f4f764e2fa045769f1dcc7d4820eee1",
+              "name": "按键状态——无操作",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000702"
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000702",
+                "signalDefinitionId": "signal:message:s:00000702:KeyStat",
+                "signalName": "KeyStat",
+                "extended": false,
+                "id": 1794,
+                "startByte": 0,
+                "startBit": 4,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "按键状态 1-正常未操作 2-驻车 3-释放",
+                "databaseSignalName": "KeyStat",
+                "displayName": "按键状态 1-正常未操作 2-驻车 3-释放"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=1",
+              "timeoutMs": 5000
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "e491ee9f24ed42be89b4d9e8739c06db",
+        "name": "维修释放",
+        "enabled": true,
+        "order": 4,
+        "waitAfterMs": 1000,
+        "judgementLogic": 0,
+        "flow": [
+          {
+            "id": "43d9e43d228a4ec18403a15b38fc42a6",
+            "name": "释放按键",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "7a0e20cc186e48fab3c10cff72a547ad",
+              "name": "释放按键",
+              "kind": 3,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 192
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "d69f6964bdc3404783772888a6201b0f",
+            "name": "等待",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "682e4a7c523843baaf69607b8afa5587",
+              "name": "等待",
+              "kind": 4,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 500
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "bf9be70540f94ee58f28b5cea4376adc",
+            "name": "按键正常无操作",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "9f2f09349bab4ad2a26ffde3cf89300f",
+              "name": "按键正常无操作",
+              "kind": 3,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 576
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "232851940bab41ec84eab23bdbee3b73",
+            "name": "等待",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "resourceId": "",
+            "sequenceId": "",
+            "operation": {
+              "id": "682e4a7c523843baaf69607b8afa5587",
+              "name": "等待",
+              "kind": 4,
+              "broadcast": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 500
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "2086f6697cf344ecaccd0f4839bbac28",
+            "name": "释放按键",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "resourceId": "",
+            "sequenceId": "",
+            "operation": {
+              "id": "7a0e20cc186e48fab3c10cff72a547ad",
+              "name": "释放按键",
+              "kind": 3,
+              "broadcast": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 192
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "7409f56761054ed1be39549efef1312e",
+            "name": "等待",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "resourceId": "",
+            "sequenceId": "",
+            "operation": {
+              "id": "682e4a7c523843baaf69607b8afa5587",
+              "name": "等待",
+              "kind": 4,
+              "broadcast": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 500
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "808c33dc0d7d4355aac57140c4b284fa",
+            "name": "按键正常无操作",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "resourceId": "",
+            "sequenceId": "",
+            "operation": {
+              "id": "9f2f09349bab4ad2a26ffde3cf89300f",
+              "name": "按键正常无操作",
+              "kind": 3,
+              "broadcast": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 576
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "e7a3ebca40e94709b6692ae69026b5f7",
+            "name": "电机控制命令维修释放",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "307ab80dabcf478987f278b34cd30ab0",
+              "name": "电机控制命令维修释放",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000706"
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000706",
+                "signalDefinitionId": "signal:message:s:00000706:Mot_L_oldcmd",
+                "signalName": "Mot_R_oldcmd",
+                "extended": false,
+                "id": 1798,
+                "startByte": 3,
+                "startBit": 4,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡再夹紧功能 6-故障状态锁车 7-维修释放 8-电机第二次夹紧 9-动态驻车第一步锁紧 10-动态驻车Park 11-动态驻车Release 12-用于电机锁紧无法正常解除的情况下 13-最大夹紧力驻车 14指定停止电流的park模式 15-进入低功耗之前再夹紧一次，防止温度冷却后溜坡",
+                "databaseSignalName": "Mot_R_oldcmd",
+                "displayName": "右电机旧控制命令"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=7",
+              "timeoutMs": 5000
+            },
+            "children": []
+          },
+          {
+            "id": "1faefb46ad27485d94a6dccb27f245f6",
+            "name": "电机控制命令维修释放",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "resourceId": "",
+            "sequenceId": "",
+            "operation": {
+              "id": "307ab80dabcf478987f278b34cd30ab0",
+              "name": "电机控制命令维修释放",
+              "kind": 1,
+              "broadcast": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000706",
+                "signalDefinitionId": "signal:message:s:00000706:Mot_L_oldcmd",
+                "signalName": "Mot_L_oldcmd",
+                "extended": false,
+                "id": 1798,
+                "startByte": 3,
+                "startBit": 0,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡再夹紧功能 6-故障状态锁车 7-维修释放 8-电机第二次夹紧 9-动态驻车第一步锁紧 10-动态驻车Park 11-动态驻车Release 12-用于电机锁紧无法正常解除的情况下 13-最大夹紧力驻车 14指定停止电流的park模式 15-进入低功耗之前再夹紧一次，防止温度冷却后溜坡",
+                "databaseSignalName": "Mot_L_oldcmd",
+                "displayName": "左电机旧控制命令"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=7",
+              "timeoutMs": 5000
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "ce4a2e0e98dd4befa9c03bdca7e57fb0",
+        "name": "熄火驻车",
+        "enabled": true,
+        "order": 5,
+        "waitAfterMs": 0,
+        "judgementLogic": 0,
+        "flow": [
+          {
+            "id": "15d4a24307d34abab387dd5221eff19b",
+            "name": "IGN_OFF",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 0,
+            "resourceId": "a429f2c11111443aab3497df28fd1227",
+            "sequenceId": "a429f2c11111443aab3497df28fd1227",
+            "children": []
+          },
+          {
+            "id": "e963bea1d6d8400498636af105a9b3d3",
+            "name": "等待",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "0d755c960c7345e7b328fb2140234e0e",
+              "name": "等待",
+              "kind": 4,
+              "broadcast": {
+                "source": 0,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {}
+              },
+              "parse": {
+                "source": 0,
+                "messageDefinitionId": "",
+                "signalDefinitionId": "",
+                "signalName": "",
+                "extended": false,
+                "id": 0,
+                "startByte": 0,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "",
+                "description": "",
+                "databaseSignalName": "",
+                "displayName": ""
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 500
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "children": []
+          },
+          {
+            "id": "fd728f2b18484b97817e863b62809e1f",
+            "name": "点火电压",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "d726f6fff35d49968ac3d2d029b5bd06",
+              "name": "点火电压",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000701"
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000701",
+                "signalDefinitionId": "signal:message:s:00000701:ad_ign",
+                "signalName": "ad_ign",
+                "extended": false,
+                "id": 1793,
+                "startByte": 5,
+                "startBit": 0,
+                "bitLength": 8,
+                "byteOrder": "Intel",
+                "factor": 0.08,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "IGN电压",
+                "databaseSignalName": "ad_ign",
+                "displayName": "IGN电压"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "<10",
+              "timeoutMs": 5000
+            },
+            "children": []
+          },
+          {
+            "id": "7dc78391d5d84f3e865f32c8545f2711",
+            "name": "车辆状态",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 1,
+            "operation": {
+              "id": "caa13af04672447aabc0250e06f643bb",
+              "name": "车辆状态",
+              "kind": 1,
+              "broadcast": {
+                "source": 1,
+                "extended": false,
+                "id": 0,
+                "dlc": 8,
+                "dataHex": "00 00 00 00 00 00 00 00",
+                "periodMs": 100,
+                "mode": 0,
+                "messageName": "",
+                "signalValues": {},
+                "messageDefinitionId": "message:s:00000705"
+              },
+              "parse": {
+                "source": 1,
+                "messageDefinitionId": "message:s:00000705",
+                "signalDefinitionId": "signal:message:s:00000705:Car_State",
+                "signalName": "Car_State",
+                "extended": false,
+                "id": 1797,
+                "startByte": 7,
+                "startBit": 4,
+                "bitLength": 4,
+                "byteOrder": "Intel",
+                "factor": 1,
+                "offset": 0,
+                "unit": "",
+                "displayMode": "波形显示",
+                "alarmType": "上限报警",
+                "description": "0：初始值 1：静默，驻车2：静默，释放3：熄火，驻车4：熄火，释放5：点火，静止，驻车状态6：点火，静止，解锁状态7",
+                "databaseSignalName": "Car_State",
+                "displayName": "车辆状态"
+              },
+              "power": {
+                "target": 0,
+                "on": true
+              },
+              "action": {
+                "outputMask": 0
+              },
+              "wait": {
+                "durationMs": 1000
+              },
+              "reference": {
+                "sequenceId": ""
+              },
+              "children": []
+            },
+            "parseAssertion": {
+              "parseResourceId": "",
+              "expectation": "=3",
+              "timeoutMs": 5000
+            },
+            "children": []
+          },
+          {
+            "id": "f014af23d7274e9cbdc3373e0451377d",
+            "name": "IGN_ON",
+            "nameIsUserDefined": false,
+            "enabled": true,
+            "kind": 0,
+            "resourceId": "769211ed34c345b09c4de2394cbe15c4",
+            "sequenceId": "769211ed34c345b09c4de2394cbe15c4",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "communicationDatabase": {
+    "name": "LVTONG",
+    "sourcePath": "C:\\Users\\ming\\Downloads\\LVTONG.dbc",
+    "messages": [
+      {
+        "definitionId": "message:x:18FF5027",
+        "name": "VCU_1",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 419385383,
+        "extended": true,
+        "dlc": 8,
+        "cycleTimeMs": 65,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_Check",
+            "name": "VCU_EPB_Check",
+            "displayName": "校验位",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 0,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 255
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_HeartBit",
+            "name": "VCU_EPB_HeartBit",
+            "displayName": "心跳字节",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 8,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 15
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_AcceValid",
+            "name": "VCU_EPB_AcceValid",
+            "displayName": "有效轮速",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 12,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_BrakeEffect",
+            "name": "VCU_EPB_BrakeEffect",
+            "displayName": "制动踏板有效性",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 13,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_BrakeSwitch_NC",
+            "name": "VCU_EPB_BrakeSwitch_NC",
+            "displayName": "刹车踏板位置开关（常闭）",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 14,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_BrakeSwitch_NO",
+            "name": "VCU_EPB_BrakeSwitch_NO",
+            "displayName": "刹车踏板位置开关（常开）",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 15,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_AcceOpening",
+            "name": "VCU_EPB_AcceOpening",
+            "displayName": "实际油门踏板开度",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 16,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "%",
+            "minimum": 0,
+            "maximum": 100
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_BrakeDepth",
+            "name": "VCU_EPB_BrakeDepth",
+            "displayName": "刹车踏板深度",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 24,
+            "bitLength": 7,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "%",
+            "minimum": 0,
+            "maximum": 100
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_ServiceMode",
+            "name": "VCU_EPB_ServiceMode",
+            "displayName": "维修模式",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 31,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_MotorTorque",
+            "name": "VCU_EPB_MotorTorque",
+            "displayName": "电机当前扭矩",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 32,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "Nm",
+            "minimum": 0,
+            "maximum": 255
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:Rear_Wheel_Speed",
+            "name": "Rear_Wheel_Speed",
+            "displayName": "后轮速",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 40,
+            "bitLength": 10,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "rpm",
+            "minimum": 0,
+            "maximum": 1023
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:Front_Wheel_Speed",
+            "name": "Front_Wheel_Speed",
+            "displayName": "前轮速",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 50,
+            "bitLength": 10,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "rpm",
+            "minimum": 0,
+            "maximum": 1023
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_DriverSeat",
+            "name": "VCU_EPB_DriverSeat",
+            "displayName": "主驾状态（座椅开关）",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 60,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_SeatBelt",
+            "name": "VCU_EPB_SeatBelt",
+            "displayName": "安全带开关",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 61,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_MotorTorqueValid",
+            "name": "VCU_EPB_MotorTorqueValid",
+            "displayName": "电机当前扭矩有效性",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 62,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:18FF5027:VCU_EPB_MotorSpeedValid",
+            "name": "VCU_EPB_MotorSpeedValid",
+            "displayName": "电机当前转速有效性",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 63,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          }
+        ]
+      },
+      {
+        "definitionId": "message:x:18FFF327",
+        "name": "VCU_2",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 419427111,
+        "extended": true,
+        "dlc": 8,
+        "cycleTimeMs": 65,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:x:18FFF327:VCU2_Res1",
+            "name": "VCU2_Res1",
+            "displayName": "保留1",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 0,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 0
+          },
+          {
+            "definitionId": "signal:message:x:18FFF327:VhicleSpeed",
+            "name": "VhicleSpeed",
+            "displayName": "车速",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 4,
+            "bitLength": 12,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.1,
+            "offset": 0,
+            "unit": "Km/h",
+            "minimum": 0,
+            "maximum": 200
+          },
+          {
+            "definitionId": "signal:message:x:18FFF327:VCU2_Res2",
+            "name": "VCU2_Res2",
+            "displayName": "保留2",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 16,
+            "bitLength": 41,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 0
+          },
+          {
+            "definitionId": "signal:message:x:18FFF327:Gear_Position",
+            "name": "Gear_Position",
+            "displayName": "档位信号",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 57,
+            "bitLength": 2,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 3
+          },
+          {
+            "definitionId": "signal:message:x:18FFF327:VCU2_Res3",
+            "name": "VCU2_Res3",
+            "displayName": "保留3",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 59,
+            "bitLength": 5,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 0
+          }
+        ]
+      },
+      {
+        "definitionId": "message:x:0CFE2750",
+        "name": "EPB_1",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 217982800,
+        "extended": true,
+        "dlc": 8,
+        "cycleTimeMs": 100,
+        "sendType": "开始周期发送",
+        "signals": [
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Status_Check",
+            "name": "EPB_Status_Check",
+            "displayName": "校验位",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 0,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 255
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_HeartBit",
+            "name": "EPB_HeartBit",
+            "displayName": "心跳",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 8,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 15
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Button_Status",
+            "name": "EPB_Button_Status",
+            "displayName": "EPB开关状态",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 16,
+            "bitLength": 2,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 3
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Calipers_Status",
+            "name": "EPB_Calipers_Status",
+            "displayName": "EPB卡钳状态",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 18,
+            "bitLength": 3,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 7
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Red_Lamp",
+            "name": "EPB_Red_Lamp",
+            "displayName": "EPB功能灯",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 21,
+            "bitLength": 2,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 3
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Failure_Lamp",
+            "name": "EPB_Failure_Lamp",
+            "displayName": "EPB故障灯",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 23,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Fault_Num",
+            "name": "EPB_Fault_Num",
+            "displayName": "EPB故障总数",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 24,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 255
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Info_Slope",
+            "name": "EPB_Info_Slope",
+            "displayName": "EPB信息_坡道",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 32,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Info_Driver",
+            "name": "EPB_Info_Driver",
+            "displayName": "EPB信息_驾驶员在位",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 33,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_Service_Status",
+            "name": "EPB_Service_Status",
+            "displayName": "EPB信息_维修模式",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 34,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_RollerBench_Mode",
+            "name": "EPB_RollerBench_Mode",
+            "displayName": "EPB信息_转鼓模式",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 35,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_TexInfo_ClampForce",
+            "name": "EPB_TexInfo_ClampForce",
+            "displayName": "EPB信息_夹紧力",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 36,
+            "bitLength": 1,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 1
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_FaultLevel",
+            "name": "EPB_FaultLevel",
+            "displayName": "故障等级",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 37,
+            "bitLength": 3,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 7
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:EPB_FaultCode",
+            "name": "EPB_FaultCode",
+            "displayName": "故障码",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 40,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "-",
+            "minimum": 0,
+            "maximum": 255
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:Vehicle_Longitudinal_Acc",
+            "name": "Vehicle_Longitudinal_Acc",
+            "displayName": "纵向加速度",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 48,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.1,
+            "offset": -10,
+            "unit": "m/s2",
+            "minimum": -10,
+            "maximum": 15.5
+          },
+          {
+            "definitionId": "signal:message:x:0CFE2750:Vehicle_Lateral_Acc",
+            "name": "Vehicle_Lateral_Acc",
+            "displayName": "横向加速度",
+            "description": "",
+            "comment": "",
+            "displayMode": "数值",
+            "alarmType": "",
+            "startBit": 56,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.1,
+            "offset": -10,
+            "unit": "m/s2",
+            "minimum": -10,
+            "maximum": 15.5
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000701",
+        "name": "报文 0x701",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1793,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "仅发送一次",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000701:ad_release_out",
+            "name": "ad_release_out",
+            "displayName": "release out采样值",
+            "description": "release out采样值",
+            "comment": "release out采样值",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.08,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000701:ad_Rmoto_Pwr_R",
+            "name": "ad_Rmoto_Pwr_R",
+            "displayName": "右电机电压",
+            "description": "右电机电压",
+            "comment": "右电机电压",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 56,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.08,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000701:ad_ign",
+            "name": "ad_ign",
+            "displayName": "IGN电压",
+            "description": "IGN电压",
+            "comment": "IGN电压",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 40,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.08,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000701:ad_release_in",
+            "name": "ad_release_in",
+            "displayName": "release in 采样值",
+            "description": "release in 采样值",
+            "comment": "release in 采样值",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.08,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000701:ad_Lmoto_Pwr_L",
+            "name": "ad_Lmoto_Pwr_L",
+            "displayName": "左电机电压",
+            "description": "左电机电压",
+            "comment": "左电机电压",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 48,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.08,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000701:AD_BAT_Voltage",
+            "name": "AD_BAT_Voltage",
+            "displayName": "电源电压",
+            "description": "电源电压",
+            "comment": "电源电压",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.08,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000701:ad_brake_in",
+            "name": "ad_brake_in",
+            "displayName": "brake in采样值",
+            "description": "brake in采样值",
+            "comment": "brake in采样值",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 8,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.08,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000701:ad_auto",
+            "name": "ad_auto",
+            "displayName": "auto采样值",
+            "description": "auto采样值",
+            "comment": "auto采样值",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 24,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.08,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000702",
+        "name": "报文 0x702",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1794,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "仅发送一次",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000702:Acc_value_x",
+            "name": "Acc_value_x",
+            "displayName": "坡道角度 °",
+            "description": "坡道角度 °",
+            "comment": "坡道角度 °",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 24,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.0584,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:KeyStat",
+            "name": "KeyStat",
+            "displayName": "按键状态 1-正常未操作 2-驻车 3-释放",
+            "description": "按键状态 1-正常未操作 2-驻车 3-释放",
+            "comment": "按键状态 1-正常未操作 2-驻车 3-释放",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 4,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:Acc_value_y",
+            "name": "Acc_value_y",
+            "displayName": "y轴加速度值",
+            "description": "y轴加速度值",
+            "comment": "y轴加速度值",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 40,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.001,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:key_Auto",
+            "name": "key_Auto",
+            "displayName": "auto按键状态",
+            "description": "auto按键状态",
+            "comment": "auto按键状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 20,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:key_Brake_in",
+            "name": "key_Brake_in",
+            "displayName": "release in状态",
+            "description": "release in状态",
+            "comment": "release in状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 12,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:key_Release_out",
+            "name": "key_Release_out",
+            "displayName": "release out状态",
+            "description": "release out状态",
+            "comment": "release out状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:key_release_NC",
+            "name": "key_release_NC",
+            "displayName": "release in状态",
+            "description": "release in状态",
+            "comment": "release in状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 8,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:key_park_NC",
+            "name": "key_park_NC",
+            "displayName": "autoEnable按键状态",
+            "description": "autoEnable按键状态",
+            "comment": "autoEnable按键状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:Acc_direct_y",
+            "name": "Acc_direct_y",
+            "displayName": "y轴加速度方向1向前 0向后",
+            "description": "y轴加速度方向1向前 0向后",
+            "comment": "y轴加速度方向1向前 0向后",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 60,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000702:acc_direct_x",
+            "name": "acc_direct_x",
+            "displayName": "x轴加速度方向1下坡 0上坡",
+            "description": "x轴加速度方向1下坡 0上坡",
+            "comment": "x轴加速度方向1下坡 0上坡",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 56,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000703",
+        "name": "报文 0x703",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1795,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000703:can_ActualTorq",
+            "name": "can_ActualTorq",
+            "displayName": "扭矩",
+            "description": "扭矩",
+            "comment": "扭矩",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000703:can_EngineSpeed_now",
+            "name": "can_EngineSpeed_now",
+            "displayName": "发动机转速",
+            "description": "发动机转速",
+            "comment": "发动机转速",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000703:Clamp_Whole_Force_L",
+            "name": "Clamp_Whole_Force_L",
+            "displayName": "左卡钳夹紧力",
+            "description": "左卡钳夹紧力",
+            "comment": "左卡钳夹紧力",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 6.4,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000703:Clamp_Whole_Force_R",
+            "name": "Clamp_Whole_Force_R",
+            "displayName": "右卡钳夹紧力",
+            "description": "右卡钳夹紧力",
+            "comment": "右卡钳夹紧力",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 40,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 6.4,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000704",
+        "name": "报文 0x704",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1796,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000704:Clamp_Current_Position_L",
+            "name": "Clamp_Current_Position_L",
+            "displayName": "右前轮速",
+            "description": "右前轮速",
+            "comment": "右前轮速",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.001,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000704:Clamp_Current_Position_R",
+            "name": "Clamp_Current_Position_R",
+            "displayName": "左前轮速",
+            "description": "左前轮速",
+            "comment": "左前轮速",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.001,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000704:can_WS_RL",
+            "name": "can_WS_RL",
+            "displayName": "左后轮速",
+            "description": "左后轮速",
+            "comment": "左后轮速",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000705",
+        "name": "报文 0x705",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1797,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000705:ctl_epb_stat",
+            "name": "ctl_epb_stat",
+            "displayName": "epb状态 1驻车 2释放 3一个电机故障另一个电机驻车 4一个电机故障另一个电机释放 5两个电机故障",
+            "description": "epb状态 1驻车 2释放 3一个电机故障另一个电机驻车 4一个电机故障另一个电机释放 5两个电机故障",
+            "comment": "epb状态 1驻车 2释放 3一个电机故障另一个电机驻车 4一个电机故障另一个电机释放 5两个电机故障",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 56,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_AutoLamp",
+            "name": "signal_AutoLamp",
+            "displayName": "Auto灯状态",
+            "description": "Auto灯状态",
+            "comment": "Auto灯状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 40,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_can_Engine_st",
+            "name": "signal_can_Engine_st",
+            "displayName": "整车高压状态",
+            "description": "整车高压状态",
+            "comment": "整车高压状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 8,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_ParkLamp",
+            "name": "signal_ParkLamp",
+            "displayName": "驻车灯状态",
+            "description": "驻车灯状态",
+            "comment": "驻车灯状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 44,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_can_SeatBelt_st",
+            "name": "signal_can_SeatBelt_st",
+            "displayName": "安全带状态",
+            "description": "安全带状态",
+            "comment": "安全带状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 24,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_can_Door_st",
+            "name": "signal_can_Door_st",
+            "displayName": "车门状态",
+            "description": "车门状态",
+            "comment": "车门状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 28,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:Car_State",
+            "name": "Car_State",
+            "displayName": "车辆状态",
+            "description": "0：初始值 1：静默，驻车2：静默，释放3：熄火，驻车4：熄火，释放5：点火，静止，驻车状态6：点火，静止，解锁状态7",
+            "comment": "0：初始值 1：静默，驻车2：静默，释放3：熄火，驻车4：熄火，释放5：点火，静止，驻车状态6：点火，静止，解锁状态7",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 60,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_can_AccPedal",
+            "name": "signal_can_AccPedal",
+            "displayName": "油门踏板开度1-100%",
+            "description": "油门踏板开度1-100%",
+            "comment": "油门踏板开度1-100%",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:ctl_Epb_Fault_st",
+            "name": "ctl_Epb_Fault_st",
+            "displayName": "epb故障状态",
+            "description": "epb故障状态",
+            "comment": "epb故障状态",
+            "displayMode": "波形显示",
+            "alarmType": "限内报警",
+            "startBit": 48,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_can_brake",
+            "name": "signal_can_brake",
+            "displayName": "刹车状态",
+            "description": "刹车状态 1未刹车 2刹车",
+            "comment": "刹车状态 1未刹车 2刹车",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 12,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_can_Neutral_st",
+            "name": "signal_can_Neutral_st",
+            "displayName": "N挡状态",
+            "description": "N挡状态 1N档关 2N档开",
+            "comment": "N挡状态 1N档关 2N档开",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_ign_st",
+            "name": "signal_ign_st",
+            "displayName": "IGN信号状态",
+            "description": "IGN信号状态 1ign关 2ign开",
+            "comment": "IGN信号状态 1ign关 2ign开",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 36,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_can_Reverse_st",
+            "name": "signal_can_Reverse_st",
+            "displayName": "倒挡状态 1倒挡关 2倒挡开",
+            "description": "倒挡状态 1倒挡关 2倒挡开",
+            "comment": "倒挡状态 1倒挡关 2倒挡开",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 20,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:signal_Can_HandBrake_Request",
+            "name": "signal_Can_HandBrake_Request",
+            "displayName": "按键状态",
+            "description": "按键状态",
+            "comment": "按键状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:ctl_uds_st",
+            "name": "ctl_uds_st",
+            "displayName": "uds连接状态",
+            "description": "uds连接状态",
+            "comment": "uds连接状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 52,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000705:Brake_Temperature",
+            "name": "Brake_Temperature",
+            "displayName": "刹车盘温度 X10",
+            "description": "刹车盘温度 X10",
+            "comment": "刹车盘温度 X10",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 40,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000706",
+        "name": "报文 0x706",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1798,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000706:Mot_L_pwmduty",
+            "name": "Mot_L_pwmduty",
+            "displayName": "电机L pwm duty",
+            "description": "电机L pwm duty",
+            "comment": "电机L pwm duty",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 40,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_L_stat",
+            "name": "Mot_L_stat",
+            "displayName": "左电机当前稳定的状态1夹紧 2释放 3错误",
+            "description": "左电机当前稳定的状态1夹紧 2释放 3错误",
+            "comment": "左电机当前稳定的状态1夹紧 2释放 3错误",
+            "displayMode": "虚线显示",
+            "alarmType": "上限报警",
+            "startBit": 8,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_L_step",
+            "name": "Mot_L_step",
+            "displayName": "左电机：1夹紧中 2释放中 3短路刹车中 4驻车电流异常 5释放电流异常 6空闲自检",
+            "description": "左电机：1夹紧中 2释放中 3短路刹车中 4驻车电流异常 5释放电流异常 6空闲自检",
+            "comment": "左电机：1夹紧中 2释放中 3短路刹车中 4驻车电流异常 5释放电流异常 6空闲自检",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_R_newcmd",
+            "name": "Mot_R_newcmd",
+            "displayName": "右电机新控制命令",
+            "description": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡再夹紧功能 6-故障状态锁车 7-维修释放 8-电机第二次夹紧 9-动态驻车第一步锁紧 10-动态驻车Park 11-动态驻车Release 12-用于电机锁紧无法正常解除的情况下 13-最大夹紧力驻车 14指定停止电流的park模式 15-进入低功耗之前再夹紧一次，防止温度冷却后溜坡",
+            "comment": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 20,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_R_oldcmd",
+            "name": "Mot_R_oldcmd",
+            "displayName": "右电机旧控制命令",
+            "description": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡再夹紧功能 6-故障状态锁车 7-维修释放 8-电机第二次夹紧 9-动态驻车第一步锁紧 10-动态驻车Park 11-动态驻车Release 12-用于电机锁紧无法正常解除的情况下 13-最大夹紧力驻车 14指定停止电流的park模式 15-进入低功耗之前再夹紧一次，防止温度冷却后溜坡",
+            "comment": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 28,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:can_WS_RR",
+            "name": "can_WS_RR",
+            "displayName": "右后轮速",
+            "description": "右后轮速",
+            "comment": "右后轮速",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 48,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_R_pwmduty",
+            "name": "Mot_R_pwmduty",
+            "displayName": "电机R pwm duty",
+            "description": "电机R pwm duty",
+            "comment": "电机R pwm duty",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_R_SelfTestStep",
+            "name": "Mot_R_SelfTestStep",
+            "displayName": "电机R自检状态 0-LS1 1-LS1_OFF 2-LS1_Idle 3-LS2 4-LS2_OFF 5-LS2_Idle 6-OC",
+            "description": "电机R自检状态 0-LS1 1-LS1_OFF 2-LS1_Idle 3-LS2 4-LS2_OFF 5-LS2_Idle 6-OC",
+            "comment": "电机R自检状态 0-LS1 1-LS1_OFF 2-LS1_Idle 3-LS2 4-LS2_OFF 5-LS2_Idle 6-OC",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 52,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_R_step",
+            "name": "Mot_R_step",
+            "displayName": "右电机：1夹紧中 2释放中 3短路刹车中 4驻车电流异常 5释放电流异常故障 6电机自检",
+            "description": "右电机：1夹紧中 2释放中 3短路刹车中 4驻车电流异常 5释放电流异常故障 6电机自检",
+            "comment": "右电机：1夹紧中 2释放中 3短路刹车中 4驻车电流异常 5释放电流异常故障 6电机自检",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 4,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_R_stat",
+            "name": "Mot_R_stat",
+            "displayName": "右电机当前稳定的状态 1夹紧 2释放 3错误",
+            "description": "右电机当前稳定的状态 1夹紧 2释放 3错误",
+            "comment": "右电机当前稳定的状态 1夹紧 2释放 3错误",
+            "displayMode": "虚线显示",
+            "alarmType": "上限报警",
+            "startBit": 12,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_R_OC_ErrCnt",
+            "name": "Mot_R_OC_ErrCnt",
+            "displayName": "电机R开路状态计数",
+            "description": "电机R开路状态计数",
+            "comment": "电机R开路状态计数",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 60,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_L_SelfTestStep",
+            "name": "Mot_L_SelfTestStep",
+            "displayName": "电机L自检状态 0-LS1 1-LS1_OFF 2-LS1_Idle 3-LS2 4-LS2_OFF 5-LS2_Idle 6-OC",
+            "description": "电机L自检状态 0-LS1 1-LS1_OFF 2-LS1_Idle 3-LS2 4-LS2_OFF 5-LS2_Idle 6-OC",
+            "comment": "电机L自检状态 0-LS1 1-LS1_OFF 2-LS1_Idle 3-LS2 4-LS2_OFF 5-LS2_Idle 6-OC",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 48,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_L_OC_ErrCnt",
+            "name": "Mot_L_OC_ErrCnt",
+            "displayName": "电机L开路状态计数",
+            "description": "电机L开路状态计数",
+            "comment": "电机L开路状态计数",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 56,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_L_oldcmd",
+            "name": "Mot_L_oldcmd",
+            "displayName": "左电机旧控制命令",
+            "description": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡再夹紧功能 6-故障状态锁车 7-维修释放 8-电机第二次夹紧 9-动态驻车第一步锁紧 10-动态驻车Park 11-动态驻车Release 12-用于电机锁紧无法正常解除的情况下 13-最大夹紧力驻车 14指定停止电流的park模式 15-进入低功耗之前再夹紧一次，防止温度冷却后溜坡",
+            "comment": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 24,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000706:Mot_L_newcmd",
+            "name": "Mot_L_newcmd",
+            "displayName": "左电机新控制命令",
+            "description": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡再夹紧功能 6-故障状态锁车 7-维修释放 8-电机第二次夹紧 9-动态驻车第一步锁紧 10-动态驻车Park 11-动态驻车Release 12-用于电机锁紧无法正常解除的情况下 13-最大夹紧力驻车 14指定停止电流的park模式 15-进入低功耗之前再夹紧一次，防止温度冷却后溜坡",
+            "comment": "电机控制命令：0-不响应 1-电机命令已响应完成，空闲状态 2-电机停止命令 3-电机Release命令 4-电机正常锁紧命令 5-溜坡",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000707",
+        "name": "报文 0x707",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1799,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000707:Mot_R_current",
+            "name": "Mot_R_current",
+            "displayName": "MotR 电流[A] 右电机",
+            "description": "MotR 电流[A] 右电机",
+            "comment": "MotR 电流[A] 右电机",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.001,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000707:Mot_R_current_limit",
+            "name": "Mot_R_current_limit",
+            "displayName": "电机R电流阈值",
+            "description": "电机R电流阈值",
+            "comment": "电机R电流阈值",
+            "displayMode": "虚线显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.001,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000707:Mot_L_current",
+            "name": "Mot_L_current",
+            "displayName": "MotL 电流[A] 左侧电机",
+            "description": "MotL 电流[A] 左侧电机",
+            "comment": "MotL 电流[A] 左侧电机",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.001,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000707:Mot_L_current_limit",
+            "name": "Mot_L_current_limit",
+            "displayName": "电机L电流阈值",
+            "description": "电机L电流阈值",
+            "comment": "电机L电流阈值",
+            "displayMode": "虚线显示",
+            "alarmType": "上限报警",
+            "startBit": 48,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.001,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000708",
+        "name": "报文 0x708",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1800,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Flat_Power_Flag",
+            "name": "ctl_Flat_Power_Flag",
+            "displayName": "平地扭矩做功是否足够",
+            "description": "平地扭矩做功是否足够",
+            "comment": "平地扭矩做功是否足够",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 28,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Key_Excite_Stat",
+            "name": "ctl_Key_Excite_Stat",
+            "displayName": "按键是否执行",
+            "description": "按键是否执行",
+            "comment": "按键是否执行",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 4,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Motor_Work_Cnt",
+            "name": "ctl_Motor_Work_Cnt",
+            "displayName": "电机工作次数计数",
+            "description": "电机工作次数计数",
+            "comment": "电机工作次数计数",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 40,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Second_Park_Flag",
+            "name": "ctl_Second_Park_Flag",
+            "displayName": "二次夹紧标志",
+            "description": "二次夹紧标志",
+            "comment": "二次夹紧标志",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 12,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Slide_Park_Flag",
+            "name": "ctl_Slide_Park_Flag",
+            "displayName": "溜坡再夹紧标志",
+            "description": "溜坡再夹紧标志",
+            "comment": "溜坡再夹紧标志",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 8,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Sys_Sleep_Flag",
+            "name": "ctl_Sys_Sleep_Flag",
+            "displayName": "休眠标志",
+            "description": "休眠标志",
+            "comment": "休眠标志",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Need_Check_Accpedal",
+            "name": "ctl_Need_Check_Accpedal",
+            "displayName": "辅助起步是否判断油门开度",
+            "description": "辅助起步是否判断油门开度",
+            "comment": "辅助起步是否判断油门开度",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Can_Req_Excite_Stat",
+            "name": "ctl_Can_Req_Excite_Stat",
+            "displayName": "esc can请求是否执行",
+            "description": "esc can请求是否执行",
+            "comment": "esc can请求是否执行",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Car_Plane",
+            "name": "ctl_Car_Plane",
+            "displayName": "车身水平方向 0水平上 1水平下 2斜坡上 3斜坡下",
+            "description": "车身水平方向 0水平上 1水平下 2斜坡上 3斜坡下",
+            "comment": "车身水平方向 0水平上 1水平下 2斜坡上 3斜坡下",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 20,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:HandParkStat",
+            "name": "HandParkStat",
+            "displayName": "手刹状态 2-Park 3-Release",
+            "description": "手刹状态 2-Park 3-Release",
+            "comment": "手刹状态 2-Park 3-Release",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 24,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:ctl_Auto_Release_Enable",
+            "name": "ctl_Auto_Release_Enable",
+            "displayName": "辅助起步扭矩是否达到",
+            "description": "辅助起步扭矩是否达到",
+            "comment": "辅助起步扭矩是否达到",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 36,
+            "bitLength": 4,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000708:App_Park_Lamp",
+            "name": "App_Park_Lamp",
+            "displayName": "P灯状态",
+            "description": "P灯状态",
+            "comment": "P灯状态",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 56,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:00000709",
+        "name": "报文 0x709",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1801,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:00000709:Motor_L_WorkTime",
+            "name": "Motor_L_WorkTime",
+            "displayName": "轮边有效扭矩",
+            "description": "轮边有效扭矩",
+            "comment": "轮边有效扭矩",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000709:Motor_L_StopCondition",
+            "name": "Motor_L_StopCondition",
+            "displayName": "左侧电机停止条件",
+            "description": "左侧电机停止条件",
+            "comment": "左侧电机停止条件",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 8,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000709:debug_Torq_power",
+            "name": "debug_Torq_power",
+            "displayName": "有效扭矩做功",
+            "description": "有效扭矩做功",
+            "comment": "有效扭矩做功",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000709:debug_G_power",
+            "name": "debug_G_power",
+            "displayName": "重力做功",
+            "description": "重力做功",
+            "comment": "重力做功",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 48,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:00000709:Motor_L_Count",
+            "name": "Motor_L_Count",
+            "displayName": "消耗扭矩",
+            "description": "消耗扭矩",
+            "comment": "消耗扭矩",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.1,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      },
+      {
+        "definitionId": "message:s:0000070A",
+        "name": "报文 0x70A",
+        "displayName": "",
+        "description": "",
+        "comment": "",
+        "id": 1802,
+        "extended": false,
+        "dlc": 8,
+        "cycleTimeMs": null,
+        "sendType": "",
+        "signals": [
+          {
+            "definitionId": "signal:message:s:0000070A:Motor_R_N_Volt",
+            "name": "Motor_R_N_Volt",
+            "displayName": "MotR 正极电压，V",
+            "description": "MotR 正极电压，V",
+            "comment": "MotR 正极电压，V",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 16,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:0000070A:Motor_R_P_Volt",
+            "name": "Motor_R_P_Volt",
+            "displayName": "MotR负极电压，V",
+            "description": "MotR负极电压，V",
+            "comment": "MotR负极电压，V",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 0,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:0000070A:Motor_L_P_Volt",
+            "name": "Motor_L_P_Volt",
+            "displayName": "MotL 负极电压，V",
+            "description": "MotL 负极电压，V",
+            "comment": "MotL 负极电压，V",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 32,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          },
+          {
+            "definitionId": "signal:message:s:0000070A:Motor_L_N_Volt",
+            "name": "Motor_L_N_Volt",
+            "displayName": "MotL 负极电压，V",
+            "description": "MotL 负极电压，V",
+            "comment": "MotL 负极电压，V",
+            "displayMode": "波形显示",
+            "alarmType": "上限报警",
+            "startBit": 48,
+            "bitLength": 16,
+            "byteOrder": 0,
+            "signed": false,
+            "factor": 0.01,
+            "offset": 0,
+            "unit": "",
+            "minimum": null,
+            "maximum": null
+          }
+        ]
+      }
+    ]
+  }
+}

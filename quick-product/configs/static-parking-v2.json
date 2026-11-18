@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "test-authoring-v2",
+  "id": "reference-static-parking-v2",
+  "name": "静态驻车",
+  "description": "Reference ECU 静态驻车流程。电磁阀压紧由负责人在台架上人工完成；本配置只执行已确认的软件步骤。",
+  "communicationDatabase": {
+    "databaseId": "greenway-lvtong",
+    "source": "product-greenway-reference",
+    "version": "reference-config"
+  },
+  "capabilityBinding": {
+    "bindingId": "reference-bench",
+    "source": "reference-bench",
+    "version": "current"
+  },
+  "setupSequence": {
+    "id": "static-parking-setup",
+    "name": "准备阶段",
+    "type": "Sequence",
+    "metadata": {},
+    "steps": [
+      { "id": "sp-ecu-power-on", "name": "ECU 电源 ON", "type": "Action", "metadata": {}, "intent": { "kind": "Power", "target": "EcuPower", "on": true } },
+      { "id": "sp-ign-on", "name": "IGN ON", "type": "Action", "metadata": {}, "intent": { "kind": "Power", "target": "Ignition", "on": true } },
+      { "id": "sp-keypad-power-on", "name": "按键板电源 ON", "type": "Action", "metadata": {}, "intent": { "kind": "Power", "target": "KeypadPower", "on": true } },
+      { "id": "sp-key-no-op-start", "name": "按键无操作", "type": "Action", "metadata": {}, "intent": { "kind": "KeyInput", "keys": ["K7", "K10"], "durationMs": null } },
+      {
+        "id": "sp-wait-heartbeat",
+        "name": "等待新的 EPB 心跳",
+        "type": "WaitCondition",
+        "metadata": {},
+        "condition": { "kind": "SignalComparison", "measurement": { "messageDefinitionId": "message:x:0CFE2750", "signalDefinitionId": "signal:message:x:0CFE2750:EPB_HeartBit" }, "operator": "GreaterThanOrEqual", "expectedValue": { "kind": "Number", "value": "0" } },
+        "timeoutMs": 5000,
+        "timeoutPolicy": "Fail"
+      },
+      {
+        "id": "sp-if-debug-message",
+        "name": "是否已收到调试状态报文",
+        "type": "Decision",
+        "metadata": {},
+        "condition": { "kind": "MessageAvailable", "messageDefinitionId": "message:s:00000701", "afterActionNodeId": null },
+        "thenBranch": { "id": "sp-debug-already-present", "name": "THEN", "role": "Then", "steps": [] },
+        "elseBranch": {
+          "id": "sp-enter-debug-branch",
+          "name": "ELSE",
+          "role": "Else",
+          "steps": [
+            { "id": "sp-send-debug-frame", "name": "单发调试准备报文 0x7B0", "type": "Action", "metadata": {}, "intent": { "kind": "RawCanSend", "frame": { "id": 1968, "extended": false, "dataHex": "FF EE 00 00 00 00 00 00" } } },
+            {
+              "id": "sp-wait-new-debug-message",
+              "name": "等待新的 0x701",
+              "type": "WaitCondition",
+              "metadata": {},
+              "condition": { "kind": "MessageAvailable", "messageDefinitionId": "message:s:00000701", "afterActionNodeId": "sp-send-debug-frame" },
+              "timeoutMs": 5000,
+              "timeoutPolicy": "Fail"
+            }
+          ]
+        }
+      },
+      { "id": "sp-vcu1-periodic-start", "name": "启动 VCU_1 周期发送", "type": "Action", "metadata": {}, "intent": { "kind": "PeriodicCanStart", "frames": [ { "messageDefinitionId": "message:x:18FF5027", "signalValues": { "VCU_EPB_BrakeEffect": { "kind": "Number", "value": "1" }, "VCU_EPB_BrakeDepth": { "kind": "Number", "value": "50" } }, "periodMs": 65 } ] } },
+      { "id": "sp-vcu2-periodic-start", "name": "启动 VCU_2 周期发送", "type": "Action", "metadata": {}, "intent": { "kind": "PeriodicCanStart", "frames": [ { "messageDefinitionId": "message:x:18FFF327", "signalValues": { "Gear_Position": { "kind": "Number", "value": "2" }, "VCU2_Res3": { "kind": "Number", "value": "1" } }, "periodMs": 65 } ] } },
+      {
+        "id": "sp-wait-car-state-observation",
+        "name": "等待新的车辆状态报文",
+        "type": "WaitCondition",
+        "metadata": {},
+        "condition": { "kind": "SignalObservationAvailable", "measurement": { "messageDefinitionId": "message:s:00000705", "signalDefinitionId": "signal:message:s:00000705:Car_State" } },
+        "timeoutMs": 5000,
+        "timeoutPolicy": "Fail"
+      },
+      {
+        "id": "sp-switch-car-state",
+        "name": "按当前 Car_State 准备环境",
+        "type": "Switch",
+        "metadata": {},
+        "valueSource": { "messageDefinitionId": "message:s:00000705", "signalDefinitionId": "signal:message:s:00000705:Car_State" },
+        "cases": [
+          { "caseValue": { "kind": "Number", "value": "6" }, "branch": { "id": "sp-car-state-6", "name": "Car_State = 6", "role": "Case", "steps": [
+            { "id": "sp-state6-key-noop", "name": "保持按键无操作", "type": "Action", "metadata": {}, "intent": { "kind": "KeyInput", "keys": ["K7", "K10"], "durationMs": null } },
+            { "id": "sp-state6-wait-keystat1", "name": "等待按键状态 = 1", "type": "WaitCondition", "metadata": {}, "condition": { "kind": "SignalComparison", "measurement": { "messageDefinitionId": "message:s:00000702", "signalDefinitionId": "signal:message:s:00000702:KeyStat" }, "operator": "Equal", "expectedValue": { "kind": "Number", "value": "1" } }, "timeoutMs": 5000, "timeoutPolicy": "Fail" }
+          ] } },
+          { "caseValue": { "kind": "Number", "value": "5" }, "branch": { "id": "sp-car-state-5", "name": "Car_State = 5", "role": "Case", "steps": [
+            { "id": "sp-state5-key-release", "name": "按键释放", "type": "Action", "metadata": {}, "intent": { "kind": "KeyInput", "keys": ["K7", "K8"], "durationMs": null } },
+            { "id": "sp-state5-wait-key3", "name": "等待 KeyStat = 3", "type": "WaitCondition", "metadata": {}, "condition": { "kind": "SignalComparison", "measurement": { "messageDefinitionId": "message:s:00000702", "signalDefinitionId": "signal:message:s:00000702:KeyStat" }, "operator": "Equal", "expectedValue": { "kind": "Number", "value": "3" } }, "timeoutMs": 5000, "timeoutPolicy": "Fail" },
+            { "id": "sp-state5-release-hold", "name": "按键释放保持 300ms", "type": "WaitDuration", "metadata": {}, "durationMs": 300 },
+            { "id": "sp-state5-key-noop", "name": "按键无操作", "type": "Action", "metadata": {}, "intent": { "kind": "KeyInput", "keys": ["K7", "K10"], "durationMs": null } },
+            { "id": "sp-state5-wait-key1", "name": "等待 KeyStat = 1", "type": "WaitCondition", "metadata": {}, "condition": { "kind": "SignalComparison", "measurement": { "messageDefinitionId": "message:s:00000702", "signalDefinitionId": "signal:message:s:00000702:KeyStat" }, "operator": "Equal", "expectedValue": { "kind": "Number", "value": "1" } }, "timeoutMs": 5000, "timeoutPolicy": "Fail" },
+            { "id": "sp-state5-wait-unlocked", "name": "等待 Car_State = 6", "type": "WaitCondition", "metadata": {}, "condition": { "kind": "SignalComparison", "measurement": { "messageDefinitionId": "message:s:00000705", "signalDefinitionId": "signal:message:s:00000705:Car_State" }, "operator": "Equal", "expectedValue": { "kind": "Number", "value": "6" } }, "timeoutMs": 5000, "timeoutPolicy": "Fail" }
+          ] } }
+        ],
+        "defaultBranch": { "id": "sp-car-state-default", "name": "未支持的 Car_State", "role": "Default", "steps": [] },
+        "defaultBehavior": "FailCurrentPhase"
+      }
+    ]
+  },
+  "testSequence": {
+    "id": "static-parking-test",
+    "name": "驻车测试",
+    "type": "Sequence",
+    "metadata": {},
+    "steps": [
+      { "id": "sp-test-park-key", "name": "按键驻车", "type": "Action", "metadata": {}, "intent": { "kind": "KeyInput", "keys": ["K12", "K13"], "durationMs": null } },
+      { "id": "sp-test-wait-key2", "name": "等待 KeyStat = 2", "type": "WaitCondition", "metadata": {}, "condition": { "kind": "SignalComparison", "measurement": { "messageDefinitionId": "message:s:00000702", "signalDefinitionId": "signal:message:s:00000702:KeyStat" }, "operator": "Equal", "expectedValue": { "kind": "Number", "value": "2" } }, "timeoutMs": 5000, "timeoutPolicy": "Fail" },
+      { "id": "sp-test-park-hold", "name": "按键驻车保持 300ms", "type": "WaitDuration", "metadata": {}, "durationMs": 300 },
+      { "id": "sp-test-key-noop", "name": "按键无操作", "type": "Action", "metadata": {}, "intent": { "kind": "KeyInput", "keys": ["K7", "K10"], "durationMs": null } },
+      { "id": "sp-test-wait-key1", "name": "等待 KeyStat = 1", "type": "WaitCondition", "metadata": {}, "condition": { "kind": "SignalComparison", "measurement": { "messageDefinitionId": "message:s:00000702", "signalDefinitionId": "signal:message:s:00000702:KeyStat" }, "operator": "Equal", "expectedValue": { "kind": "Number", "value": "1" } }, "timeoutMs": 5000, "timeoutPolicy": "Fail" },
+      { "id": "sp-test-wait-parked", "name": "等待 Car_State = 5", "type": "WaitCondition", "metadata": {}, "condition": { "kind": "SignalComparison", "measurement": { "messageDefinitionId": "message:s:00000705", "signalDefinitionId": "signal:message:s:00000705:Car_State" }, "operator": "Equal", "expectedValue": { "kind": "Number", "value": "5" } }, "timeoutMs": 5000, "timeoutPolicy": "Fail" },
+      { "id": "sp-test-check-clamp-state", "name": "检查 ctl_epb_stat = 1", "type": "Check", "metadata": {}, "measurement": { "messageDefinitionId": "message:s:00000705", "signalDefinitionId": "signal:message:s:00000705:ctl_epb_stat" }, "assertion": { "operator": "Equal", "expectedValue": { "kind": "Number", "value": "1" } }, "failureDescription": "ECU 驻车状态未达到期望值。" }
+    ]
+  },
+  "cleanupSequence": {
+    "id": "static-parking-cleanup",
+    "name": "清理阶段",
+    "type": "Sequence",
+    "metadata": {},
+    "steps": [
+      { "id": "sp-cleanup-periodic-stop", "name": "停止 VCU 周期发送", "type": "Action", "metadata": {}, "intent": { "kind": "PeriodicCanStop" } }
+    ]
+  }
+}

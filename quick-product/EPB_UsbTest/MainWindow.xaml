@@ -1,0 +1,808 @@
+<Window x:Class="EPB_UsbTest.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:config="clr-namespace:EPB.Core.Configuration;assembly=EPB.Core"
+        xmlns:testing="clr-namespace:EPB.Core.Testing;assembly=EPB.Core"
+        Title="EPB 自动测试工作台" MinWidth="1260" MinHeight="720" WindowState="Maximized"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource BgBrush}" FontFamily="Microsoft YaHei UI" FontSize="13"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        Closed="Window_Closed" Loaded="Window_Loaded" KeyDown="Window_KeyDown" StateChanged="Window_StateChanged" IsVisibleChanged="Window_IsVisibleChanged">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <!-- 兼容动态控件的旧资源名；实际颜色全部复用全局浅色主题。 -->
+        <SolidColorBrush x:Key="Blue" Color="{StaticResource Accent}"/>
+        <SolidColorBrush x:Key="Line" Color="{StaticResource Line}"/>
+        <SolidColorBrush x:Key="Muted" Color="{StaticResource Text2}"/>
+        <!-- 按钮外观统一由 App.xaml/Styles.xaml 提供。这里不再声明窗口级隐式 Button，
+             避免主窗口、动态步骤卡片和弹窗各自得到不同的默认样式。 -->
+        <Style x:Key="TestStatusTextStyle" TargetType="TextBlock" BasedOn="{StaticResource StatusBadgeText}">
+            <Setter Property="Foreground" Value="{StaticResource Text2Brush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.通过}"><Setter Property="Foreground" Value="{StaticResource GreenBrush}"/></DataTrigger>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.判定失败}"><Setter Property="Foreground" Value="{StaticResource AmberBrush}"/></DataTrigger>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.执行错误}"><Setter Property="Foreground" Value="{StaticResource RedBrush}"/></DataTrigger>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.运行中}"><Setter Property="Foreground" Value="{StaticResource StatusRunningBrush}"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TestStatusBadge" TargetType="Border" BasedOn="{StaticResource StatusBadge}">
+            <Setter Property="Background" Value="#F4F7FA"/>
+            <Setter Property="BorderBrush" Value="#D9E2EC"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.通过}"><Setter Property="Background" Value="#ECF8F0"/><Setter Property="BorderBrush" Value="#B9DEC5"/></DataTrigger>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.判定失败}"><Setter Property="Background" Value="#FFF7E8"/><Setter Property="BorderBrush" Value="#EBCF92"/></DataTrigger>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.执行错误}"><Setter Property="Background" Value="#FFF0F0"/><Setter Property="BorderBrush" Value="#E6B5B5"/></DataTrigger>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.运行中}"><Setter Property="Background" Value="#EEF7FD"/><Setter Property="BorderBrush" Value="#B9D8ED"/></DataTrigger>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.跳过}"><Setter Property="Background" Value="#F5F6F8"/><Setter Property="BorderBrush" Value="#D8DEE6"/></DataTrigger>
+                <DataTrigger Binding="{Binding LastStatus}" Value="{x:Static testing:TestResultStatus.未进入}"><Setter Property="Background" Value="#F5F6F8"/><Setter Property="BorderBrush" Value="#D8DEE6"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StepExecutionBadgeText" TargetType="TextBlock" BasedOn="{StaticResource StatusBadgeText}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.成功}"><Setter Property="Foreground" Value="{StaticResource GreenBrush}"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.失败}"><Setter Property="Foreground" Value="{StaticResource AmberBrush}"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.错误}"><Setter Property="Foreground" Value="{StaticResource RedBrush}"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.运行中}"><Setter Property="Foreground" Value="{StaticResource StatusRunningBrush}"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StepExecutionBadge" TargetType="Border" BasedOn="{StaticResource StatusBadge}">
+            <Setter Property="Background" Value="#F4F7FA"/>
+            <Setter Property="BorderBrush" Value="#D9E2EC"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.成功}"><Setter Property="Background" Value="#ECF8F0"/><Setter Property="BorderBrush" Value="#B9DEC5"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.失败}"><Setter Property="Background" Value="#FFF7E8"/><Setter Property="BorderBrush" Value="#EBCF92"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.错误}"><Setter Property="Background" Value="#FFF0F0"/><Setter Property="BorderBrush" Value="#E6B5B5"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.运行中}"><Setter Property="Background" Value="#EEF7FD"/><Setter Property="BorderBrush" Value="#B9D8ED"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="BorderBrush" Value="#C9D5E2"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="26"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MaxDropDownHeight" Value="280"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="MinHeight" Value="26"/>
+        </Style>
+        <!-- 属性编辑器使用窄滚动条，保留滚轮和拖动能力，减少视觉占用。 -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="MinWidth" Value="8"/>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="Height" Value="8"/>
+                    <Setter Property="MinHeight" Value="8"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="RowHeight" Value="28"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserResizeColumns" Value="True"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="BorderBrush" Value="#D6E0EB"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="{StaticResource BgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text2Brush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="8,7"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style TargetType="DataGridRow">
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#E3E8EF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F7FBFD"/>
+                    <Setter Property="BorderBrush" Value="#C9DEEF"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SelectionSoftBrush}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource SelectionLineBrush}"/>
+                    <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="TreeViewItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#475766"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style x:Key="TestFlowTreeItemStyle" TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style x:Key="ConfigurationTreeItemStyle" TargetType="TreeViewItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#475766"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <Border x:Name="SelectionSurface" Grid.Row="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="3,0,0,0" CornerRadius="4" Padding="4,2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <ToggleButton x:Name="Expander" Grid.Column="0" Width="15" Height="18"
+                                                  IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                  Focusable="False" ClickMode="Press" Background="Transparent" BorderThickness="0"
+                                                  Foreground="#80909E" Content="▸" Click="ConfigurationTreeExpander_Click"/>
+                                    <ContentPresenter Grid.Column="1" ContentSource="Header" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <ItemsPresenter x:Name="ItemsHost" Grid.Row="1" Margin="16,0,0,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="False"><Setter TargetName="Expander" Property="Visibility" Value="Hidden"/></Trigger>
+                            <Trigger Property="IsExpanded" Value="False"><Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/></Trigger>
+                            <Trigger Property="IsExpanded" Value="True"><Setter TargetName="Expander" Property="Content" Value="▾"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="SelectionSurface" Property="Background" Value="#F7FBFF"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="SelectionSurface" Property="Background" Value="{StaticResource SelectionSoftBrush}"/><Setter TargetName="SelectionSurface" Property="BorderBrush" Value="{StaticResource SelectionLineBrush}"/><Setter Property="Foreground" Value="#3E5366"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ConfigurationAddButtonStyle" TargetType="Button">
+            <Setter Property="Opacity" Value="0.55"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+            <Setter Property="Width" Value="23"/>
+            <Setter Property="Height" Value="23"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#4D99D8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType={x:Type TreeViewItem}}, Path=IsSelected}" Value="True"><Setter Property="Opacity" Value="1"/><Setter Property="IsHitTestVisible" Value="True"/></DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType={x:Type TreeViewItem}}, Path=IsMouseOver}" Value="True"><Setter Property="Opacity" Value="1"/><Setter Property="IsHitTestVisible" Value="True"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ConfigurationDeleteButtonStyle" TargetType="Button">
+            <Setter Property="Opacity" Value="0.55"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#B34747"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType={x:Type TreeViewItem}}, Path=IsSelected}" Value="True"><Setter Property="Opacity" Value="1"/><Setter Property="IsHitTestVisible" Value="True"/></DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType={x:Type TreeViewItem}}, Path=IsMouseOver}" Value="True"><Setter Property="Opacity" Value="1"/><Setter Property="IsHitTestVisible" Value="True"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TestCaseTreeItemStyle" TargetType="TreeViewItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#475766"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <Border x:Name="CaseSurface" Background="Transparent" BorderBrush="Transparent" BorderThickness="3,0,0,0" CornerRadius="4" Padding="4,3">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="CaseSurface" Property="Background" Value="#F7FBFF"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="CaseSurface" Property="Background" Value="{StaticResource SelectionSoftBrush}"/><Setter TargetName="CaseSurface" Property="BorderBrush" Value="{StaticResource SelectionLineBrush}"/><Setter Property="Foreground" Value="#3E5366"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="StepTreeItemStyle" TargetType="TreeViewItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <ToggleButton x:Name="Expander" Grid.Row="0" Grid.Column="0" Width="18" Height="22"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Focusable="False" ClickMode="Press" Background="Transparent" BorderThickness="0"
+                                          Foreground="#6B7B8F" Content="▸"/>
+                            <ContentPresenter Grid.Row="0" Grid.Column="1" ContentSource="Header"
+                                              HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                            <ItemsPresenter x:Name="ItemsHost" Grid.Row="1" Grid.Column="1"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="False"><Setter TargetName="Expander" Property="Visibility" Value="Hidden"/></Trigger>
+                            <Trigger Property="IsExpanded" Value="False"><Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/></Trigger>
+                            <Trigger Property="IsExpanded" Value="True"><Setter TargetName="Expander" Property="Content" Value="▾"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <DataTemplate x:Key="TestCaseTemplate">
+            <Grid MinHeight="34">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" Margin="1,0,7,0" ToolTip="是否参与批量测试"/>
+                <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource TestStatusTextStyle}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                <Border Grid.Column="2" Style="{StaticResource TestStatusBadge}" Margin="8,0,2,0">
+                    <TextBlock Text="{Binding StatusSummary}" Style="{StaticResource TestStatusTextStyle}" FontSize="11"/>
+                </Border>
+                <TextBlock Grid.Column="3" Text="{Binding WaitSummary}" Foreground="#687787" FontSize="11" VerticalAlignment="Center" Margin="8,0,2,0"/>
+                <Button Grid.Column="4" Tag="{Binding}" Click="TestCaseWait_Click" Content="等待" Height="22" Padding="7,0" Margin="4,0,2,0"
+                        Background="Transparent" BorderBrush="#BFD3E6" Foreground="#5D7890" FontSize="11" ToolTip="设置本用例与下一个启用用例之间的等待时间"/>
+                <Button Grid.Column="5" Tag="{Binding}" Click="TestCaseDelete_Click" Content="×" Width="22" Height="22" Padding="0" Margin="2,0,0,0"
+                        Background="Transparent" BorderThickness="0" Foreground="#B34747" FontSize="15" ToolTip="删除测试用例"/>
+            </Grid>
+        </DataTemplate>
+        <HierarchicalDataTemplate x:Key="TestFlowTemplate" ItemsSource="{Binding Children}">
+            <Border x:Name="TestStepCard" Background="White" BorderBrush="#D9DEE7" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,3,4,3" HorizontalAlignment="Stretch" MaxWidth="1200" MinHeight="60" PreviewMouseLeftButtonDown="TestFlowStepCard_MouseLeftButtonDown">
+                             <Grid>
+                                 <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="26"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="28"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" ToolTip="是否启用此测试节点"/>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding DisplaySummary}" Foreground="{StaticResource Text2Brush}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap" TextTrimming="None"/>
+                    </StackPanel>
+                    <Border Grid.Column="2" Style="{StaticResource TestStatusBadge}" Margin="6,0">
+                        <TextBlock Text="{Binding StatusSummary}" Style="{StaticResource TestStatusTextStyle}" FontSize="12"/>
+                    </Border>
+                    <Border x:Name="TestStepTypeBadge" Grid.Column="3" Background="#EAF3FF" CornerRadius="10" Padding="8,2" Margin="6,0">
+                        <TextBlock Text="{Binding DisplayKind}" Foreground="#477A9B" FontSize="12"/>
+                    </Border>
+                    <Button Grid.Column="4" Tag="{Binding}" Click="TestFlowNodeDelete_Click" Content="×" Width="24" Height="24" Padding="0" Margin="2,0,0,0" Visibility="Collapsed"
+                            Background="Transparent" BorderThickness="0" Foreground="#8A98A8" FontSize="16" ToolTip="删除测试节点"/>
+                </Grid>
+            </Border>
+        <HierarchicalDataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type TreeViewItem}}}" Value="True">
+                    <Setter TargetName="TestStepCard" Property="Background" Value="{StaticResource SelectionSoftBrush}"/>
+                    <Setter TargetName="TestStepCard" Property="BorderBrush" Value="{StaticResource SelectionLineBrush}"/>
+                    <Setter TargetName="TestStepCard" Property="BorderThickness" Value="1"/>
+                </DataTrigger>
+            </HierarchicalDataTemplate.Triggers>
+        </HierarchicalDataTemplate>
+        <HierarchicalDataTemplate DataType="{x:Type config:ConfigurationStep}" ItemsSource="{Binding Children}">
+            <Border x:Name="StepCard" Background="White" BorderBrush="#D9DEE7" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,3,4,3" HorizontalAlignment="Stretch" MaxWidth="1200" MinHeight="60">
+                             <Grid>
+                                 <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="26"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="28"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding SelectedForGroup}" Checked="StepGroupCheckBox_Changed" Unchecked="StepGroupCheckBox_Changed" VerticalAlignment="Center" ToolTip="勾选多个同级步骤后创建组合"/>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock x:Name="StepNameText" Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="StepSummaryText" Text="{Binding Summary}" Foreground="{StaticResource Text2Brush}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap" TextTrimming="None"/>
+                    </StackPanel>
+                    <Border Grid.Column="2" Style="{StaticResource StepExecutionBadge}" Margin="6,0">
+                        <TextBlock Text="{Binding ExecutionState}" Style="{StaticResource StepExecutionBadgeText}" FontSize="12"/>
+                    </Border>
+                    <Border x:Name="TypeBadge" Grid.Column="3" Background="#EAF3FF" CornerRadius="10" Padding="8,2" Margin="6,0">
+                        <TextBlock x:Name="TypeText" Text="{Binding DisplayKind}" Foreground="#477A9B" FontSize="12"/>
+                    </Border>
+                    <Button Grid.Column="4" Tag="{Binding}" Click="StepDelete_Click" Content="×" Width="24" Height="24" Padding="0" Margin="2,0,0,0"
+                            Background="Transparent" BorderThickness="0" Foreground="#8A98A8" FontSize="16" ToolTip="删除步骤"/>
+                </Grid>
+            </Border>
+            <HierarchicalDataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type TreeViewItem}}}" Value="True"><Setter TargetName="StepCard" Property="Background" Value="{StaticResource SelectionSoftBrush}"/><Setter TargetName="StepCard" Property="BorderBrush" Value="{StaticResource SelectionLineBrush}"/><Setter TargetName="StepCard" Property="BorderThickness" Value="1"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.运行中}"><Setter TargetName="StepCard" Property="Background" Value="{StaticResource AccentSoftBrush}"/><Setter TargetName="StepCard" Property="BorderBrush" Value="#8FC4E2"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.成功}"><Setter TargetName="StepCard" Property="Background" Value="#ECF9F1"/><Setter TargetName="StepCard" Property="BorderBrush" Value="#43A66A"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.失败}"><Setter TargetName="StepCard" Property="Background" Value="#FFF0F0"/><Setter TargetName="StepCard" Property="BorderBrush" Value="#D95C5C"/></DataTrigger>
+                <DataTrigger Binding="{Binding ExecutionState}" Value="{x:Static config:StepExecutionState.错误}"><Setter TargetName="StepCard" Property="Background" Value="#FFF2E8"/><Setter TargetName="StepCard" Property="BorderBrush" Value="#D97832"/></DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static config:ConfigurationStepKind.等待}"><Setter TargetName="TypeBadge" Property="Background" Value="#FFF5D9"/><Setter TargetName="TypeText" Property="Foreground" Value="#8A6416"/></DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static config:ConfigurationStepKind.动作控制}"><Setter TargetName="TypeBadge" Property="Background" Value="#F3EAFE"/><Setter TargetName="TypeText" Property="Foreground" Value="#7246A8"/></DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static config:ConfigurationStepKind.电源控制}"><Setter TargetName="TypeBadge" Property="Background" Value="#FFECE3"/><Setter TargetName="TypeText" Property="Foreground" Value="#A24F28"/></DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static config:ConfigurationStepKind.引用序列}"><Setter TargetName="TypeBadge" Property="Background" Value="#E7F7F4"/><Setter TargetName="TypeText" Property="Foreground" Value="#247C70"/></DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="{x:Static config:ConfigurationStepKind.组合}"><Setter TargetName="TypeBadge" Property="Background" Value="#EDF0F5"/><Setter TargetName="TypeText" Property="Foreground" Value="#485B73"/></DataTrigger>
+            </HierarchicalDataTemplate.Triggers>
+        </HierarchicalDataTemplate>
+
+        <Style x:Key="FlowEditorListItemStyle" TargetType="ListViewItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border x:Name="FlowRowSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="FlowRowSurface" Property="Background" Value="#F5F9FD"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="FlowRowSurface" Property="Background" Value="#E4F0FA"/><Setter TargetName="FlowRowSurface" Property="BorderBrush" Value="#A8CDEB"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" MinWidth="260"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="8"/>
+            <ColumnDefinition Width="420" MinWidth="360" MaxWidth="560"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+        <RowDefinition Height="64"/>
+            <RowDefinition Height="*" MinHeight="300"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Grid.ColumnSpan="4" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="210"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="EPB 自动测试工作台" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock x:Name="ProjectText" Text="新 ECU 配置（未保存）" FontSize="11" Foreground="{StaticResource Text2Brush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button x:Name="RunTestPlanButton" Content="▶ 运行计划" Style="{StaticResource BtnToolbarPrimary}" Click="RunTestPlan_Click" ToolTip="按用例顺序执行所有启用的测试用例"/>
+                    <Button x:Name="RunTestCaseButton" Content="▶ 运行用例" Style="{StaticResource BtnToolbarPrimary}" Click="RunTestCase_Click" ToolTip="只运行当前测试用例"/>
+                    <Button x:Name="StopTestPlanButton" Content="■ 停止" Style="{StaticResource BtnToolbarDanger}" Click="StopRun_Click" IsEnabled="False" ToolTip="请求停止当前自动测试"/>
+                    <Button x:Name="StopTestCaseButton" Content="■ 停止" Style="{StaticResource BtnToolbarDanger}" Click="StopRun_Click" IsEnabled="False" Visibility="Collapsed" ToolTip="请求停止当前自动测试"/>
+                    <Button Content="↪ 单步" Style="{StaticResource BtnToolbar}" Click="RunCurrent_Click" ToolTip="执行当前选中的步骤"/>
+                    <Button Content="▣ 资源" Style="{StaticResource BtnToolbar}" Click="ResourceToolbar_Click" ToolTip="打开资源浏览器；资源默认保持共享引用"/>
+                    <Button Content="▦ 通信数据库" Style="{StaticResource BtnToolbar}" Click="CommunicationDatabaseToolbar_Click" ToolTip="查看和编辑当前通信数据库"/>
+                    <ComboBox x:Name="RecentConfigSelector" Width="132" Height="32" Margin="3,0" DisplayMemberPath="Name" ToolTip="最近使用的配置" SelectionChanged="RecentConfigSelector_SelectionChanged"/>
+                    <Button x:Name="ConfigFileMenuButton" Content="⋯ 更多" Style="{StaticResource BtnToolbar}" ToolTip="配置文件与更多操作" Click="ConfigFileMenuButton_Click" ContextMenuOpening="ConfigFileMenuButton_ContextMenuOpening"/>
+                </StackPanel>
+                </ScrollViewer>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5" Padding="8,4" Margin="0,0,8,0">
+                        <TextBlock x:Name="DatabaseStatusText" Text="通信数据库：未导入" FontSize="11" Foreground="{StaticResource Text2Brush}" ToolTip="点击查看当前项目内嵌的 DBC 与解析定义" Cursor="Hand" MouseLeftButtonUp="DatabaseStatusText_Click"/>
+                    </Border>
+                    <Ellipse x:Name="ConnectionDot" Width="8" Height="8" Fill="{StaticResource StatusIdleBrush}" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="ConnectionText" Text="主控板未连接" FontSize="12" Foreground="{StaticResource Text2Brush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <Button Content="连接" Style="{StaticResource BtnToolbar}" Click="Connect_Click" ToolTip="连接主控板"/>
+                    <Button Content="断开" Style="{StaticResource BtnToolbar}" Click="Disconnect_Click" ToolTip="断开主控板"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TabControl x:Name="WorkspaceTabs" Grid.Row="1" Grid.ColumnSpan="2" Margin="12,12,8,12" SelectionChanged="WorkspaceTabs_SelectionChanged">
+            <!-- 资源编辑与自动测试共享同一工作台；资源页保留为内部兼容容器，不再作为顶层入口显示。 -->
+            <TabControl.Template>
+                <ControlTemplate TargetType="TabControl">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                        <ContentPresenter ContentSource="SelectedContent"/>
+                    </Border>
+                </ControlTemplate>
+            </TabControl.Template>
+            <TabItem Header="资源配置">
+        <Grid x:Name="WorkspaceGrid">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" MinWidth="270"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*" MinWidth="450"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="8">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Right" Margin="2,0,2,4">
+                        <Button x:Name="UndoDeleteButton" Content="撤销删除" Click="UndoDelete_Click" Visibility="Collapsed" ToolTip="恢复最近一次删除"/>
+                    </StackPanel>
+                    <DockPanel>
+                        <DockPanel>
+                    <!-- 资源树已移动到自动测试工作台左侧底部，避免两个入口产生两份状态。 -->
+                        </DockPanel>
+                    </DockPanel>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Center" Background="#D9E2ED" ShowsPreview="True" Cursor="SizeWE"/>
+
+            <Border Grid.Column="2" Background="#F8FAFC" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*" MinHeight="150"/>
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Margin="0,0,0,8">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock x:Name="SequenceTitle" Text="选择一个配置对象" FontSize="18" FontWeight="SemiBold" Foreground="#34414F"/>
+                            <TextBlock x:Name="SequenceHint" Visibility="Collapsed"/>
+                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="组合已勾选" Click="GroupSelectedSteps_Click" Visibility="Collapsed" ToolTip="勾选两个或多个同级步骤后组合"/>
+                            <Button Content="解组当前" Click="UngroupSelectedStep_Click" Visibility="Collapsed" ToolTip="选中组合后展开其步骤"/>
+                                <Button x:Name="RunCurrentResourceButton" Content="运行当前步骤" Click="RunCurrent_Click" Style="{StaticResource BtnPrimary}" Visibility="Collapsed" ToolTip="只执行当前选中的步骤"/>
+                                <Button x:Name="RunAllResourceButton" Content="运行当前资源" Click="RunAllSequence_Click" Style="{StaticResource BtnPrimary}" Visibility="Collapsed" ToolTip="按当前资源顺序执行全部步骤"/>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="300"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="White" BorderThickness="0" Padding="4,2,8,2"/>
+                    </Grid>
+
+                </Grid>
+            </Border>
+
+        </Grid>
+            </TabItem>
+            <TabItem Header="自动测试">
+                <Grid x:Name="AutomaticWorkspaceGrid" Margin="0,0,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="280" MinWidth="250"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*" MinWidth="300"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="4*" MinHeight="260"/>
+                        <RowDefinition Height="6"/>
+                        <RowDefinition Height="1*" MinHeight="140"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="10">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="＋ 新建" Style="{StaticResource BtnToolbarPrimary}" Click="NewTestCase_Click" ToolTip="在当前测试套件中新建测试用例"/>
+                                    <Button Content="↑" Style="{StaticResource BtnToolbarIcon}" Click="MoveTestCaseUp_Click" ToolTip="上移测试用例"/>
+                                    <Button Content="↓" Style="{StaticResource BtnToolbarIcon}" Click="MoveTestCaseDown_Click" ToolTip="下移测试用例"/>
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="测试套件" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                                    <TextBlock Text="自动测试 · 测试用例" FontSize="11" Foreground="{StaticResource Text2Brush}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <TextBox x:Name="TestCaseSearchBox" DockPanel.Dock="Top" Height="34" Margin="0,0,0,8" Padding="9,5" ToolTip="搜索测试套件或测试用例" TextChanged="TestCaseSearch_TextChanged"/>
+                            <Border DockPanel.Dock="Top" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,0,6">
+                                <TextBlock Text="▾  自动测试套件" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"/>
+                            </Border>
+                            <Expander x:Name="ResourceNavigationExpander" DockPanel.Dock="Bottom" Header="资源库" IsExpanded="False" ExpandDirection="Up" MaxHeight="300" Margin="0,10,0,0" ToolTip="打开资源库；共享资源默认保持引用，复制才会脱钩">
+                                <Border BorderBrush="#D9E2ED" BorderThickness="1" Background="#FBFDFF" Padding="3" MinHeight="150">
+                                    <TreeView x:Name="ConfigurationTree" AllowDrop="True"
+                                              HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both"
+                                              ItemContainerStyle="{StaticResource ConfigurationTreeItemStyle}"
+                                              SelectedItemChanged="TreeSelectionChanged"
+                                              ContextMenuOpening="ConfigurationTree_ContextMenuOpening"
+                                              PreviewMouseRightButtonDown="ConfigurationTree_RightClick"
+                                              PreviewMouseLeftButtonDown="ConfigurationTree_PreviewMouseLeftButtonDown"
+                                              PreviewMouseLeftButtonUp="ConfigurationTree_PreviewMouseLeftButtonUp"
+                                              PreviewMouseMove="ConfigurationTree_PreviewMouseMove"
+                                              MouseDoubleClick="ConfigurationTree_DoubleClick"
+                                              DragOver="ConfigurationTree_DragOver"
+                                              Drop="ConfigurationTree_Drop"
+                                              RequestBringIntoView="Tree_RequestBringIntoView">
+                                         <TreeView.Resources>
+                                             <Style TargetType="TreeViewItem" BasedOn="{StaticResource ConfigurationTreeItemStyle}"/>
+                                             <!-- 资源名称由代码动态生成；在窄列中允许换行，长名称仍可完整阅读。 -->
+                                             <Style TargetType="TextBlock">
+                                                 <Setter Property="TextWrapping" Value="Wrap"/>
+                                                 <Setter Property="TextTrimming" Value="None"/>
+                                                 <Setter Property="MaxWidth" Value="280"/>
+                                             </Style>
+                                         </TreeView.Resources>
+                                    </TreeView>
+                                </Border>
+                            </Expander>
+                            <Grid>
+                                <TreeView x:Name="TestCaseTree" ItemContainerStyle="{StaticResource TestCaseTreeItemStyle}" ItemTemplate="{StaticResource TestCaseTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both" SelectedItemChanged="TestCaseTree_SelectedItemChanged" PreviewMouseLeftButtonDown="TestCaseTree_PreviewMouseLeftButtonDown" ContextMenuOpening="TestCaseTree_ContextMenuOpening" PreviewMouseRightButtonDown="TestCaseTree_RightClick"/>
+                                <Border x:Name="TestCaseEmptyState" Tag="{Binding ElementName=TestCaseTree, Path=HasItems}" IsEnabled="{Binding ElementName=TestCaseTree, Path=IsVisible}">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource EmptyStateCard}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="False"/>
+                                                        <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsEnabled}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <TextBlock Text="暂无测试用例" Style="{StaticResource EmptyStateTitle}"/>
+                                        <TextBlock Text="点击左上角“新建用例”开始编排自动测试。" Style="{StaticResource EmptyStateHint}"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                    <GridSplitter Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Width="8" HorizontalAlignment="Center" Background="#D9E2ED" ShowsPreview="True" Cursor="SizeWE"/>
+                    <Border Grid.Row="0" Grid.Column="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*" MinHeight="150"/></Grid.RowDefinitions>
+                            <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                                <StackPanel DockPanel.Dock="Left">
+                                    <TextBlock x:Name="TestCaseTitle" Text="" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                                    <TextBlock x:Name="TestCaseHint" Visibility="Collapsed"/>
+                                </StackPanel>
+                                <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}" Margin="0,0,0,0" ToolTip="当前自动测试运行状态">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse x:Name="TestRunDot" Width="8" Height="8" Fill="{StaticResource StatusIdleBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TestRunStatusText" Text="未运行" Foreground="{StaticResource Text2Brush}" FontSize="12" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </DockPanel>
+                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False" Margin="0,0,0,8">
+                                <Grid HorizontalAlignment="Left">
+                                    <StackPanel x:Name="AutomaticHeaderControls" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="判定逻辑" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource Text2Brush}"/>
+                                        <ComboBox x:Name="TestJudgementLogicBox" Width="110" Margin="0,0,10,0" SelectionChanged="TestJudgementLogic_SelectionChanged" ToolTip="多个带期望的报文解析步骤如何合并"/>
+                                         <Button x:Name="AddTestFlowNodeButton" Content="＋ 操作" Style="{StaticResource BtnToolbar}" Click="AddTestFlowNode_Click" ToolTip="在当前步骤下方添加普通操作"/>
+                                         <Button x:Name="AddFlowIfButton" Content="＋ IF" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="IF" ToolTip="预览 IF 插入位置"/>
+                                         <Button x:Name="AddFlowWhenButton" Content="＋ WHEN" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="WHEN" ToolTip="预览 WHEN 插入位置"/>
+                                         <Button x:Name="AddFlowSwitchButton" Content="＋ SWITCH" Style="{StaticResource BtnToolbar}" Click="PrepareFlowInsert_Click" Tag="SWITCH" ToolTip="预览 SWITCH 插入位置"/>
+                                         <Button x:Name="AddFlowElseButton" Content="＋ ELSE" Style="{StaticResource BtnToolbar}" Click="AddFlowElse_Click" ToolTip="为当前 IF 添加 ELSE"/>
+                                         <Button x:Name="AddFlowCaseButton" Content="＋ CASE" Style="{StaticResource BtnToolbar}" Click="AddFlowCase_Click" ToolTip="为当前 SWITCH 添加 CASE"/>
+                                         <Border x:Name="FlowInsertPreviewPanel" Background="#EEF6FF" BorderBrush="#A8CDEB" BorderThickness="1" CornerRadius="4" Padding="7,3" Margin="6,0,0,0" Visibility="Collapsed">
+                                             <StackPanel Orientation="Horizontal">
+                                                 <TextBlock Text="将插入到：" Foreground="#28649B" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                 <TextBlock x:Name="FlowInsertPathText" Foreground="#28649B" VerticalAlignment="Center"/>
+                                                 <TextBlock Text=" · 当前步骤下方 · " Foreground="#7E9FBC" VerticalAlignment="Center"/>
+                                                 <TextBlock x:Name="FlowInsertKindText" Foreground="#28649B" VerticalAlignment="Center"/>
+                                                 <Button Content="确认" Click="ConfirmFlowInsert_Click" Padding="6,1" Margin="7,0,0,0" Style="{StaticResource BtnToolbarPrimary}"/>
+                                                 <Button Content="取消" Click="CancelFlowInsert_Click" Padding="6,1" Margin="3,0,0,0"/>
+                                             </StackPanel>
+                                         </Border>
+                                        <!-- 步骤排序、组合与删除统一从步骤右键菜单进入，避免工作区出现第二套编辑入口。 -->
+                                        <Button x:Name="MoveTestNodeUpButton" Content="上移" Style="{StaticResource BtnToolbarIcon}" Click="MoveTestNodeUp_Click" Visibility="Collapsed" ToolTip="上移当前流程节点"/>
+                                        <Button x:Name="MoveTestNodeDownButton" Content="下移" Style="{StaticResource BtnToolbarIcon}" Click="MoveTestNodeDown_Click" Visibility="Collapsed" ToolTip="下移当前流程节点"/>
+                                    </StackPanel>
+                                    <StackPanel x:Name="ResourceHeaderControls" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                                    <TextBlock x:Name="GroupSelectionHint" Text="勾选步骤后组合" Visibility="Collapsed" Foreground="#6B7B8F" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Button x:Name="GroupStepsButton" Content="组合" Style="{StaticResource BtnToolbar}" Click="GroupSelectedSteps_Click" IsEnabled="False" Visibility="Collapsed" ToolTip="将勾选的连续同级步骤收进一个组合"/>
+                                    <Button Content="解组" Style="{StaticResource BtnToolbar}" Click="UngroupSelectedStep_Click" Visibility="Collapsed" ToolTip="展开当前组合，保持原顺序"/>
+                                    <Button x:Name="RunCurrentResourceHeaderButton" Content="运行步骤" Style="{StaticResource BtnToolbarPrimary}" Click="RunCurrent_Click" Visibility="Collapsed" ToolTip="执行当前资源步骤"/>
+                                    <Button x:Name="RunAllResourceHeaderButton" Content="运行资源" Style="{StaticResource BtnToolbarPrimary}" Click="RunAllSequence_Click" Visibility="Collapsed" ToolTip="执行当前资源的全部步骤"/>
+                                    <Button x:Name="StopResourceButton" Content="停止" Style="{StaticResource BtnToolbarDanger}" Click="StopRun_Click" IsEnabled="False" Visibility="Collapsed" ToolTip="请求停止当前资源执行"/>
+                                </StackPanel>
+                                </Grid>
+                            </ScrollViewer>
+                            <Border Grid.Row="2" Background="#FBFCFE" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="8">
+                             <Grid>
+                                 <Grid.RowDefinitions>
+                                     <RowDefinition Height="*" MinHeight="180"/>
+                                     <RowDefinition Height="170" MinHeight="110"/>
+                                 </Grid.RowDefinitions>
+                                 <Grid.ColumnDefinitions>
+                                     <ColumnDefinition Width="*" MinWidth="300"/>
+                                     <ColumnDefinition x:Name="InspectorSplitterColumn" Width="0"/>
+                                    <ColumnDefinition x:Name="InspectorColumn" Width="0"/>
+                                </Grid.ColumnDefinitions>
+                                 <Grid Grid.Column="0" Grid.Row="0">
+                                     <TreeView x:Name="TestFlowTree" Visibility="Collapsed" AllowDrop="True" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both" ItemContainerStyle="{StaticResource TestFlowTreeItemStyle}" ItemTemplate="{StaticResource TestFlowTemplate}" SelectedItemChanged="TestFlowTree_SelectedItemChanged" ContextMenuOpening="TestFlowTree_ContextMenuOpening" PreviewMouseRightButtonDown="TestFlowTree_RightClick" PreviewMouseDoubleClick="TestFlowTree_DoubleClick" PreviewMouseLeftButtonDown="TestFlowTree_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="TestFlowTree_PreviewMouseLeftButtonUp" PreviewMouseMove="TestFlowTree_PreviewMouseMove" DragOver="TestFlowTree_DragOver" Drop="TestFlowTree_Drop" RequestBringIntoView="Tree_RequestBringIntoView"/>
+                                     <Border x:Name="TestFlowEmptyState" Visibility="Collapsed" Tag="{Binding ElementName=TestFlowTree, Path=HasItems}" IsEnabled="{Binding ElementName=TestFlowTree, Path=IsVisible}">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource EmptyStateCard}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="False"/>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsEnabled}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <TextBlock Text="暂无测试步骤" Style="{StaticResource EmptyStateTitle}"/>
+                                            <TextBlock Text="选择测试用例后，可点击“添加步骤”开始编排。" Style="{StaticResource EmptyStateHint}"/>
+                                        </StackPanel>
+                                    </Border>
+                                     <Grid x:Name="FlowEditorHeader" Height="30" VerticalAlignment="Top" Panel.ZIndex="2" Background="#F5F8FB">
+                                         <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="250"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+                                         <TextBlock Grid.Column="0" Text="#" Foreground="{StaticResource Text2Brush}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                         <TextBlock Grid.Column="1" Text="操作 / 名称" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
+                                         <TextBlock Grid.Column="2" Text="参数 / 条件" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
+                                         <TextBlock Grid.Column="3" Text="期望 / 路径" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
+                                         <TextBlock Grid.Column="4" Text="说明" Foreground="{StaticResource Text2Brush}" FontSize="11" VerticalAlignment="Center"/>
+                                     </Grid>
+                                     <ListView x:Name="FlowEditorList" Margin="0,30,0,0" ItemContainerStyle="{StaticResource FlowEditorListItemStyle}" Background="White" BorderThickness="0"
+                                               SelectionChanged="FlowEditorList_SelectionChanged" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                               VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                                         <ListView.ItemTemplate>
+                                             <DataTemplate>
+                                                 <Grid Height="30">
+                                                     <Grid.RowDefinitions><RowDefinition Height="2"/><RowDefinition Height="28"/></Grid.RowDefinitions>
+                                                     <Border Grid.Row="0" Height="2" Background="#2F80ED" Visibility="{Binding IsInsertAnchor, Converter={StaticResource BoolToVisibility}}"/>
+                                                     <Grid Grid.Row="1">
+                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="250"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="1.35*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+                                                         <TextBlock Grid.Column="0" Text="{Binding Number}" Foreground="#98A2B3" FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                         <Grid Grid.Column="1">
+                                                             <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                             <ItemsControl Grid.Column="0" ItemsSource="{Binding IndentGuides}">
+                                                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                                 <ItemsControl.ItemTemplate><DataTemplate><Border Width="18" BorderBrush="#D6E1EB" BorderThickness="1,0,0,0"/></DataTemplate></ItemsControl.ItemTemplate>
+                                                             </ItemsControl>
+                                                             <Button Grid.Column="1" Tag="{Binding}" Content="{Binding ExpandGlyph}" Click="FlowRowToggle_Click" Width="20" Height="22" Padding="0" BorderThickness="0" Background="Transparent" Visibility="{Binding IsContainer, Converter={StaticResource BoolToVisibility}}" ToolTip="展开或折叠结构行"/>
+                                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                 <Border Width="4" Height="16" Background="{Binding KindBrush}" CornerRadius="1" Margin="0,0,6,0"/>
+                                                                 <Border Background="{Binding KindBackground}" Padding="4,1" CornerRadius="2" Margin="0,0,6,0"><TextBlock Text="{Binding DisplayKind}" Foreground="{Binding KindBrush}" FontSize="10"/></Border>
+                                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                             </StackPanel>
+                                                         </Grid>
+                                                         <TextBlock Grid.Column="2" Text="{Binding ParameterText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                         <TextBlock Grid.Column="3" Text="{Binding PathText}" Foreground="#667085" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                         <TextBlock Grid.Column="4" Text="{Binding NoteText}" Foreground="#667085" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                     </Grid>
+                                                 </Grid>
+                                             </DataTemplate>
+                                         </ListView.ItemTemplate>
+                                     </ListView>
+                                     <TreeView x:Name="StepsTree" Visibility="Collapsed" ItemContainerStyle="{StaticResource StepTreeItemStyle}"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.PanningMode="Both"
+                                          AllowDrop="True" SelectedItemChanged="StepsTree_SelectedItemChanged"
+                                          PreviewMouseLeftButtonDown="StepsTree_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="StepsTree_PreviewMouseLeftButtonUp"
+                                          PreviewMouseMove="StepsTree_PreviewMouseMove" DragOver="StepsTree_DragOver" Drop="StepsTree_Drop"
+                                          ContextMenuOpening="StepsTree_ContextMenuOpening" MouseDoubleClick="StepsTree_DoubleClick"
+                                          RequestBringIntoView="Tree_RequestBringIntoView"/>
+                                    <Border x:Name="StepsEmptyState" Tag="{Binding ElementName=StepsTree, Path=HasItems}" IsEnabled="{Binding ElementName=StepsTree, Path=IsVisible}">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource EmptyStateCard}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="False"/>
+                                                            <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsEnabled}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <TextBlock Text="暂无资源步骤" Style="{StaticResource EmptyStateTitle}"/>
+                                            <TextBlock Text="在左侧资源树中选择或新建步骤后即可编辑。" Style="{StaticResource EmptyStateHint}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                                 <GridSplitter x:Name="InspectorGridSplitter" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Height="6" Background="#D9E2ED" ShowsPreview="True" Visibility="Collapsed" Cursor="SizeNS"/>
+                                <!-- 属性编辑器是工作区内可停靠检查器，不再用独立 Popup/HWND 覆盖主窗口。 -->
+                                 <Border x:Name="InspectorHost" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Visibility="Collapsed" Background="#FBFDFF" BorderBrush="#B8CDE3" BorderThickness="1" CornerRadius="5" Margin="0,6,0,0" Padding="10,7">
+                                    <Grid>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                        <DockPanel Margin="0,0,0,10">
+                                            <Button DockPanel.Dock="Right" Content="×" Click="CloseInspectorPopup_Click" Width="24" Height="24" Padding="0" FontSize="16" Foreground="#6B7B8F" Background="Transparent" BorderThickness="0" ToolTip="关闭属性"/>
+                                            <Button x:Name="BackToReferenceButton" DockPanel.Dock="Right" Content="返回" Click="BackToReference_Click" Visibility="Collapsed" Padding="7,3" Margin="0,0,8,0"/>
+                                            <TextBlock x:Name="InspectorTitle" Text="属性" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                        </DockPanel>
+                                        <ScrollViewer x:Name="StepInspectorScrollViewer" Grid.Row="1" CanContentScroll="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                            <ContentControl x:Name="StepEditor"><TextBlock Text=""/></ContentControl>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <GridSplitter Grid.Row="1" Grid.Column="2" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#B8CDE3" ShowsPreview="True" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS" ToolTip="拖动调整步骤区与日志区高度"/>
+                    <!-- 日志只占中间列，左侧用例列表从顶部连续到底部。 -->
+                    <Border x:Name="SharedLogPanel" Grid.Row="2" Grid.Column="2" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="10">
+                        <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="测试日志" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="LogSearch" Width="150" Height="26" Margin="12,0,5,0" ToolTip="筛选执行日志" TextChanged="LogSearch_TextChanged"/>
+                                        <ComboBox x:Name="LogLevelFilter" Width="82" Height="26" SelectedIndex="0" SelectionChanged="LogLevelFilter_SelectionChanged">
+                                            <ComboBoxItem Content="全部"/><ComboBoxItem Content="错误"/><ComboBoxItem Content="信息"/>
+                                        </ComboBox>
+                                        <Button Content="清空" Click="ClearLog_Click" Padding="8,2" Margin="5,0,0,0"/>
+                                        <Button x:Name="LogPanelToggleButton" Content="⌄" Click="LogPanelToggle_Click" Padding="6,1" Margin="7,0,0,0" ToolTip="折叠或展开测试日志"/>
+                                    </StackPanel>
+                                    <Grid>
+                                        <ListView x:Name="LogRows" FontFamily="Consolas" FontSize="12" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                            <ListView.View>
+                                                <GridView AllowsColumnReorder="False">
+                                                    <GridViewColumn Header="时间" DisplayMemberBinding="{Binding Time}" Width="120"/>
+                                                    <GridViewColumn Header="级别" DisplayMemberBinding="{Binding Level}" Width="70"/>
+                                                    <GridViewColumn Header="来源" DisplayMemberBinding="{Binding Source}" Width="120"/>
+                                                    <GridViewColumn Header="消息" DisplayMemberBinding="{Binding Message}" Width="520"/>
+                                                </GridView>
+                                            </ListView.View>
+                                        </ListView>
+                                        <Border x:Name="LogEmptyState" Tag="{Binding ElementName=LogRows, Path=Items.Count}" Panel.ZIndex="1">
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource EmptyStateCard}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel>
+                                                <TextBlock Text="暂无执行日志" Style="{StaticResource EmptyStateTitle}"/>
+                                                <TextBlock Text="运行测试或执行操作后，过程信息会显示在这里。" Style="{StaticResource EmptyStateHint}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <GridSplitter Grid.Row="1" Grid.Column="2" Width="8" HorizontalAlignment="Center" Background="#D9E2ED" ShowsPreview="True" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Cursor="SizeWE"/>
+
+        <Border Grid.Row="1" Grid.Column="3" Margin="0,12,12,12" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="12">
+            <Grid>
+                <Grid x:Name="CanPanelContentGrid">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,6">
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                        <TextBlock Text="CAN1 实时报文" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="ECU · 按 ID 汇总" FontSize="12" Foreground="{StaticResource Text2Brush}" Margin="8,2,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button x:Name="RawPauseButton" Content="Ⅱ 暂停" Click="RawPause_Click" Padding="8,3" Margin="4,0,0,0" ToolTip="冻结右侧显示，不影响 ECU 报文接收和自动测试"/>
+                        <Button Content="清空" Click="RawClear_Click" Padding="8,3" Margin="4,0,0,0" ToolTip="清除当前右侧列表，不影响报文接收"/>
+                    </StackPanel>
+                </DockPanel>
+                <Grid Grid.Row="1">
+                    <DataGrid x:Name="RawGrid" AutoGenerateColumns="False" IsReadOnly="True" ClipboardCopyMode="IncludeHeader" FontFamily="Consolas" FontSize="12" HeadersVisibility="Column" CanUserResizeRows="False" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" GridLinesVisibility="Horizontal" RowHeight="30" Background="White">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="105"/>
+                            <DataGridTextColumn Header="数据" Binding="{Binding Data}" Width="*"/>
+                            <DataGridTextColumn Header="周期" Binding="{Binding Period}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Border x:Name="RawEmptyState" Tag="{Binding ElementName=RawGrid, Path=HasItems}" Panel.ZIndex="1">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource EmptyStateCard}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock Text="暂无 CAN1 报文" Style="{StaticResource EmptyStateTitle}"/>
+                            <TextBlock Text="连接主控板并等待报文接收后，实时数据会显示在这里。" Style="{StaticResource EmptyStateHint}"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                </Grid>
+                <Button x:Name="CanPanelExpandButton" Content="›" Click="CanPanelToggle_Click" Width="24" Height="28" Padding="0" HorizontalAlignment="Center" VerticalAlignment="Top" Visibility="Collapsed" ToolTip="展开 CAN 观察"/>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>

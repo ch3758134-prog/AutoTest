@@ -1,0 +1,389 @@
+{
+  "schemaVersion": "test-authoring-catalog-1",
+  "id": "greenway-test-cases",
+  "name": "EPB Test Cases",
+  "communicationDatabase": {
+    "databaseId": "greenway-lvtong",
+    "source": "product-greenway-reference",
+    "version": "reference-config"
+  },
+  "testCases": [
+    {
+      "schemaVersion": "test-authoring-1",
+      "id": "reference-static-parking-v1-editor",
+      "name": "静态驻车",
+      "communicationDatabase": {
+        "databaseId": "greenway-lvtong",
+        "source": "product-greenway-reference",
+        "version": "reference-config"
+      },
+      "capabilityBinding": {
+        "bindingId": "reference-bench",
+        "source": "reference-bench"
+      },
+      "nodes": [
+        {
+          "id": "sp-editor-ecu-power",
+          "name": "ECU 电源 ON",
+          "role": "Action",
+          "action": { "kind": "Power", "target": "EcuPower", "on": true }
+        },
+        {
+          "id": "sp-editor-ign-on",
+          "name": "IGN ON",
+          "role": "Action",
+          "action": { "kind": "Power", "target": "Ign", "on": true }
+        },
+        {
+          "id": "sp-editor-keypad-power",
+          "name": "按键板电源 ON",
+          "role": "Action",
+          "action": { "kind": "Power", "target": "KeypadPower", "on": true }
+        },
+        {
+          "id": "sp-editor-key-noop",
+          "name": "按键无操作",
+          "role": "Action",
+          "action": { "kind": "KeyInput", "keys": ["K7", "K10"] }
+        },
+        {
+          "id": "sp-editor-wait-heartbeat",
+          "name": "WHEN 等待新的 EPB 心跳",
+          "role": "Control",
+          "control": {
+            "kind": "When",
+            "predicate": {
+              "kind": "Signal",
+              "measurement": {
+                "messageDefinitionId": "message:x:0CFE2750",
+                "signalDefinitionId": "signal:message:x:0CFE2750:EPB_HeartBit"
+              },
+              "operator": ">=",
+              "expectedValue": 0
+            },
+            "timeoutMs": 5000,
+            "matchedNodes": []
+          }
+        },
+        {
+          "id": "sp-editor-if-debug-message",
+          "name": "IF 已观察到 0x701",
+          "role": "Control",
+          "control": {
+            "kind": "If",
+            "predicate": {
+              "kind": "Signal",
+              "measurement": {
+                "messageDefinitionId": "message:s:00000701",
+                "signalDefinitionId": "signal:message:s:00000701:ad_ign"
+              },
+              "operator": ">=",
+              "expectedValue": 0
+            },
+            "thenNodes": [],
+            "elseNodes": [
+              {
+                "id": "sp-editor-debug-frame",
+                "name": "单发调试准备报文 0x7B0",
+                "role": "Action",
+                "action": {
+                  "kind": "RawCanSend",
+                  "frame": {
+                    "id": 1968,
+                    "extended": false,
+                    "dataHex": "FFEE000000000000"
+                  }
+                }
+              },
+              {
+                "id": "sp-editor-wait-debug-confirmation",
+                "name": "WHEN 等待新的 0x701",
+                "role": "Control",
+                "control": {
+                  "kind": "When",
+                  "predicate": {
+                    "kind": "Signal",
+                    "measurement": {
+                      "messageDefinitionId": "message:s:00000701",
+                      "signalDefinitionId": "signal:message:s:00000701:ad_ign"
+                    },
+                    "operator": ">=",
+                    "expectedValue": 0
+                  },
+                  "timeoutMs": 5000,
+                  "matchedNodes": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "sp-editor-vcu1-periodic",
+          "name": "启动 VCU_1 周期发送",
+          "role": "Action",
+          "action": {
+            "kind": "PeriodicCanStart",
+            "frames": [
+              {
+                "frame": { "id": 419385383, "extended": true, "dataHex": "0020003200000000" },
+                "periodMs": 65
+              }
+            ]
+          }
+        },
+        {
+          "id": "sp-editor-vcu2-periodic",
+          "name": "启动 VCU_2 周期发送",
+          "role": "Action",
+          "action": {
+            "kind": "PeriodicCanStart",
+            "frames": [
+              {
+                "frame": { "id": 419427111, "extended": true, "dataHex": "000000000000000C" },
+                "periodMs": 65
+              }
+            ]
+          }
+        },
+        {
+          "id": "sp-editor-wait-car-state",
+          "name": "WHEN 等待 Car_State = 6",
+          "role": "Control",
+          "control": {
+            "kind": "When",
+            "predicate": {
+              "kind": "Signal",
+              "measurement": {
+                "messageDefinitionId": "message:s:00000705",
+                "signalDefinitionId": "signal:message:s:00000705:Car_State"
+              },
+              "operator": "=",
+              "expectedValue": 6
+            },
+            "timeoutMs": 5000,
+            "matchedNodes": []
+          }
+        },
+        {
+          "id": "sp-editor-switch-car-state",
+          "name": "SWITCH 当前 Car_State",
+          "role": "Control",
+          "control": {
+            "kind": "Switch",
+            "valueSource": {
+              "messageDefinitionId": "message:s:00000705",
+              "signalDefinitionId": "signal:message:s:00000705:Car_State"
+            },
+            "cases": [
+              {
+                "value": 6,
+                "nodes": [
+                  {
+                    "id": "sp-editor-state6-wait-key1",
+                    "name": "WHEN 等待 KeyStat = 1",
+                    "role": "Control",
+                    "control": {
+                      "kind": "When",
+                      "predicate": {
+                        "kind": "Signal",
+                        "measurement": {
+                          "messageDefinitionId": "message:s:00000702",
+                          "signalDefinitionId": "signal:message:s:00000702:KeyStat"
+                        },
+                        "operator": "=",
+                        "expectedValue": 1
+                      },
+                      "timeoutMs": 5000,
+                      "matchedNodes": []
+                    }
+                  }
+                ]
+              },
+              {
+                "value": 5,
+                "nodes": [
+                  {
+                    "id": "sp-editor-state5-release-key",
+                    "name": "按键释放",
+                    "role": "Action",
+                    "action": { "kind": "KeyInput", "keys": ["K7", "K8"] }
+                  },
+                  {
+                    "id": "sp-editor-state5-wait-key3",
+                    "name": "WHEN 等待 KeyStat = 3",
+                    "role": "Control",
+                    "control": {
+                      "kind": "When",
+                      "predicate": {
+                        "kind": "Signal",
+                        "measurement": {
+                          "messageDefinitionId": "message:s:00000702",
+                          "signalDefinitionId": "signal:message:s:00000702:KeyStat"
+                        },
+                        "operator": "=",
+                        "expectedValue": 3
+                      },
+                      "timeoutMs": 5000,
+                      "matchedNodes": []
+                    }
+                  },
+                  {
+                    "id": "sp-editor-state5-delay",
+                    "name": "等待 300 ms",
+                    "role": "Delay",
+                    "durationMs": 300
+                  },
+                  {
+                    "id": "sp-editor-state5-key-noop",
+                    "name": "按键无操作",
+                    "role": "Action",
+                    "action": { "kind": "KeyInput", "keys": ["K7", "K10"] }
+                  },
+                  {
+                    "id": "sp-editor-state5-wait-key1",
+                    "name": "WHEN 等待 KeyStat = 1",
+                    "role": "Control",
+                    "control": {
+                      "kind": "When",
+                      "predicate": {
+                        "kind": "Signal",
+                        "measurement": {
+                          "messageDefinitionId": "message:s:00000702",
+                          "signalDefinitionId": "signal:message:s:00000702:KeyStat"
+                        },
+                        "operator": "=",
+                        "expectedValue": 1
+                      },
+                      "timeoutMs": 5000,
+                      "matchedNodes": []
+                    }
+                  },
+                  {
+                    "id": "sp-editor-state5-wait-car6",
+                    "name": "WHEN 等待 Car_State = 6",
+                    "role": "Control",
+                    "control": {
+                      "kind": "When",
+                      "predicate": {
+                        "kind": "Signal",
+                        "measurement": {
+                          "messageDefinitionId": "message:s:00000705",
+                          "signalDefinitionId": "signal:message:s:00000705:Car_State"
+                        },
+                        "operator": "=",
+                        "expectedValue": 6
+                      },
+                      "timeoutMs": 5000,
+                      "matchedNodes": []
+                    }
+                  }
+                ]
+              }
+            ],
+            "defaultNodes": []
+          }
+        },
+        {
+          "id": "sp-editor-park-key",
+          "name": "按键驻车",
+          "role": "Action",
+          "action": { "kind": "KeyInput", "keys": ["K12", "K13"] }
+        },
+        {
+          "id": "sp-editor-wait-key2",
+          "name": "WHEN 等待 KeyStat = 2",
+          "role": "Control",
+          "control": {
+            "kind": "When",
+            "predicate": {
+              "kind": "Signal",
+              "measurement": {
+                "messageDefinitionId": "message:s:00000702",
+                "signalDefinitionId": "signal:message:s:00000702:KeyStat"
+              },
+              "operator": "=",
+              "expectedValue": 2
+            },
+            "timeoutMs": 5000,
+            "matchedNodes": []
+          }
+        },
+        {
+          "id": "sp-editor-park-delay",
+          "name": "等待 300 ms",
+          "role": "Delay",
+          "durationMs": 300
+        },
+        {
+          "id": "sp-editor-park-key-noop",
+          "name": "按键无操作",
+          "role": "Action",
+          "action": { "kind": "KeyInput", "keys": ["K7", "K10"] }
+        },
+        {
+          "id": "sp-editor-wait-key1",
+          "name": "WHEN 等待 KeyStat = 1",
+          "role": "Control",
+          "control": {
+            "kind": "When",
+            "predicate": {
+              "kind": "Signal",
+              "measurement": {
+                "messageDefinitionId": "message:s:00000702",
+                "signalDefinitionId": "signal:message:s:00000702:KeyStat"
+              },
+              "operator": "=",
+              "expectedValue": 1
+            },
+            "timeoutMs": 5000,
+            "matchedNodes": []
+          }
+        },
+        {
+          "id": "sp-editor-wait-car5",
+          "name": "WHEN 等待 Car_State = 5",
+          "role": "Control",
+          "control": {
+            "kind": "When",
+            "predicate": {
+              "kind": "Signal",
+              "measurement": {
+                "messageDefinitionId": "message:s:00000705",
+                "signalDefinitionId": "signal:message:s:00000705:Car_State"
+              },
+              "operator": "=",
+              "expectedValue": 5
+            },
+            "timeoutMs": 5000,
+            "matchedNodes": []
+          }
+        },
+        {
+          "id": "sp-editor-check-parked",
+          "name": "CHECK ctl_epb_stat = 1",
+          "role": "Check",
+          "measurement": {
+            "messageDefinitionId": "message:s:00000705",
+            "signalDefinitionId": "signal:message:s:00000705:ctl_epb_stat"
+          },
+          "predicate": {
+            "kind": "Signal",
+            "measurement": {
+              "messageDefinitionId": "message:s:00000705",
+              "signalDefinitionId": "signal:message:s:00000705:ctl_epb_stat"
+            },
+            "operator": "=",
+            "expectedValue": 1
+          },
+          "timeoutMs": 5000
+        },
+        {
+          "id": "sp-editor-periodic-stop",
+          "name": "停止 VCU 周期发送",
+          "role": "Action",
+          "action": { "kind": "PeriodicCanStop" }
+        }
+      ]
+    }
+  ]
+}

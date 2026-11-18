@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>EPB_UsbTest</RootNamespace>
+    <AssemblyName>EPB_UsbTest</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- 临时验证输出不参与 WPF 默认源码/资源 glob。 -->
+    <Compile Remove="artifacts\**\*.cs" />
+    <EmbeddedResource Remove="artifacts\**\*" />
+    <None Remove="artifacts\**\*" />
+    <Page Remove="artifacts\**\*" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="LibUsbDotNet" Version="3.0.224" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 核心模型/序列化/观测解码（无 WPF 依赖），上位机只做薄壳 -->
+    <ProjectReference Include="..\EPB.Core\EPB.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- native libusb-1.0.dll（x64, libusb v1.0.30）：Link 拍平到输出目录根（exe 旁，
+         Windows DLL 搜索第一优先；P/Invoke 不会去子目录找，不能放进 native\ 子目录） -->
+    <None Update="native\libusb-1.0.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>libusb-1.0.dll</Link>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\configs\绿通 HydEPB.json" Link="configs\绿通 HydEPB.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>
