@@ -232,7 +232,7 @@ public sealed class MainWindowViewModel : BindableBase
                 var f = frame.Frame;
                 CanRecords.Add(new CanMonitorRow(
                     frame.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
-                    f.Role == BusRole.DutCan ? "CAN1 · DUT" : "CAN0 · 按键板",
+                    f.Role == BusRole.DutCan ? "CAN0 · DUT" : "CAN1 · 按键板",
                     "0x" + f.Id.ToString("X"), f.ExtendedId ? "扩展" : "标准",
                     f.Dlc, Convert.ToHexString(f.Data.ToArray()), frame.LostFrames));
                 if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
@@ -630,7 +630,7 @@ public sealed class MainWindowViewModel : BindableBase
         {
             try { return "AUTHORIZE CAN TX " +
                 Convert.ToHexString(CanFrameCodec.ToUsbPayload(BuildCanFrame(),
-                    new BusRoleMap(default, DutPort: 1, KeypadPort: 0))); }
+                    StationCanWiring.Current)); }
             catch (Exception error) when (error is FormatException or ArgumentException or OverflowException)
             { return "请输入合法的标准帧 ID 和最多 8 字节 HEX 数据。"; }
         }
