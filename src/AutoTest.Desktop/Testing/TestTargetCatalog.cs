@@ -9,7 +9,8 @@ using AutoTest.Testing.Authoring;
 
 namespace AutoTest.Desktop.Testing;
 
-public sealed record MappingChoice(string Label, TestTargetMapping Mapping, DbcMessage? Message = null)
+public sealed record MappingChoice(string Label, TestTargetMapping Mapping, DbcMessage? Message = null,
+    DbcDisplayNames? DisplayNames = null)
 {
     public override string ToString() => Label;
 }
@@ -52,23 +53,29 @@ public static class TestTargetCatalog
                     throw new ProjectDataException("MAPPING_ASSET_CHANGED", asset.Name);
                 if (asset.Kind == ProjectWorkspaceService.DbcKind)
                 {
-                    var dbc = DbcSource.Load(bytes).Parse(asset.Name);
+                    var source = DbcSource.Load(bytes);
+                    var dbc = source.Parse(asset.Name);
+                    var displayNames = DbcDisplayNames.Parse(source.Text);
                     foreach (var msg in dbc.Messages)
                     {
                         var frameId = msg.ArbitrationId;
                         var msgAlias = asset.Name + "." + msg.Name;
-                        choices.Add(new MappingChoice("CAN / " + msgAlias + " [0x" +
-                            frameId.ToString("X") + "]", new TestTargetMapping(
+                        choices.Add(new MappingChoice("CAN 报文 / " +
+                            displayNames.MessageLabel(msg) + " · " + asset.Name +
+                            " [0x" + frameId.ToString("X") + "]", new TestTargetMapping(
                                 msgAlias, TestTargetKind.CanMessage, asset.Id,
                                 asset.Revision, asset.Sha256, BusRole.DutCan,
-                                frameId, msg.IsExtended), msg));
+                                frameId, msg.IsExtended), msg, displayNames));
                         foreach (var signal in msg.Signals)
                         {
                             var alias = msgAlias + "." + signal.Name;
-                            choices.Add(new MappingChoice("信号 / " + alias + " (" + signal.Unit + ")",
+                            choices.Add(new MappingChoice("信号 / " +
+                                displayNames.MessageLabel(msg) + " / " +
+                                displayNames.SignalLabel(msg, signal) +
+                                (signal.Unit.Length == 0 ? "" : " (" + signal.Unit + ")"),
                                 new TestTargetMapping(alias, TestTargetKind.Signal, asset.Id,
                                     asset.Revision, asset.Sha256, BusRole.DutCan,
-                                    frameId, msg.IsExtended, signal.Name, signal.Unit)));
+                                    frameId, msg.IsExtended, signal.Name, signal.Unit), msg, displayNames));
                         }
                     }
                 }
