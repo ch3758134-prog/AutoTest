@@ -352,46 +352,76 @@
             <ColumnDefinition Width="248" MinWidth="226"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="8"/>
-            <ColumnDefinition Width="440" MinWidth="390" MaxWidth="540"/>
+            <ColumnDefinition Width="420" MinWidth="350" MaxWidth="535"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-        <RowDefinition Height="64"/>
+        <RowDefinition Height="92"/>
             <RowDefinition Height="*" MinHeight="300"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Grid.ColumnSpan="4" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,6">
+        <!-- QUICK: task-focused two-tier command bar; no physical output is changed by navigation. -->
+        <Border Grid.Row="0" Grid.ColumnSpan="4" Background="#FFFFFF"
+                BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="18,9,18,8">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="210"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="EPB 自动测试工作台" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
-                    <TextBlock x:Name="ProjectText" Text="新 ECU 配置（未保存）" FontSize="11" Foreground="{StaticResource Text2Brush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-                <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Button x:Name="RunTestPlanButton" Content="▶ 运行计划" Style="{StaticResource BtnToolbarPrimary}" Click="RunTestPlan_Click" ToolTip="按用例顺序执行所有启用的测试用例"/>
-                    <Button x:Name="RunTestCaseButton" Content="▶ 运行用例" Style="{StaticResource BtnToolbarPrimary}" Click="RunTestCase_Click" ToolTip="只运行当前测试用例"/>
-                    <Button x:Name="StopTestPlanButton" Content="■ 停止" Style="{StaticResource BtnToolbarDanger}" Click="StopRun_Click" IsEnabled="False" ToolTip="请求停止当前自动测试"/>
-                    <Button x:Name="StopTestCaseButton" Content="■ 停止" Style="{StaticResource BtnToolbarDanger}" Click="StopRun_Click" IsEnabled="False" Visibility="Collapsed" ToolTip="请求停止当前自动测试"/>
-                    <Button Content="↪ 单步" Style="{StaticResource BtnToolbar}" Click="RunCurrent_Click" ToolTip="执行当前选中的步骤"/>
-                    <Button Content="▣ 资源" Style="{StaticResource BtnToolbar}" Click="ResourceToolbar_Click" ToolTip="打开资源浏览器；资源默认保持共享引用"/>
-                    <Button Content="▦ 通信数据库" Style="{StaticResource BtnToolbar}" Click="CommunicationDatabaseToolbar_Click" ToolTip="查看和编辑当前通信数据库"/>
-                    <ComboBox x:Name="RecentConfigSelector" Width="132" Height="32" Margin="3,0" DisplayMemberPath="Name" ToolTip="最近使用的配置" SelectionChanged="RecentConfigSelector_SelectionChanged"/>
-                    <Button x:Name="ConfigFileMenuButton" Content="⋯ 更多" Style="{StaticResource BtnToolbar}" ToolTip="配置文件与更多操作" Click="ConfigFileMenuButton_Click" ContextMenuOpening="ConfigFileMenuButton_ContextMenuOpening"/>
-                </StackPanel>
-                </ScrollViewer>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5" Padding="8,4" Margin="0,0,8,0">
-                        <TextBlock x:Name="DatabaseStatusText" Text="通信数据库：未导入" FontSize="11" Foreground="{StaticResource Text2Brush}" ToolTip="点击查看当前项目内嵌的 DBC 与解析定义" Cursor="Hand" MouseLeftButtonUp="DatabaseStatusText_Click"/>
+                <Grid.RowDefinitions><RowDefinition Height="37"/><RowDefinition Height="38"/></Grid.RowDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="32" Height="32" Background="{StaticResource AccentBrush}" CornerRadius="7" Margin="0,0,10,0">
+                        <TextBlock Text="AT" FontSize="13" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-                    <Ellipse x:Name="ConnectionDot" Width="8" Height="8" Fill="{StaticResource StatusIdleBrush}" Margin="0,0,6,0"/>
-                    <TextBlock x:Name="ConnectionText" Text="主控板未连接" FontSize="12" Foreground="{StaticResource Text2Brush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                    <Button Content="连接" Style="{StaticResource BtnToolbar}" Click="Connect_Click" ToolTip="连接主控板"/>
-                    <Button Content="断开" Style="{StaticResource BtnToolbar}" Click="Disconnect_Click" ToolTip="断开主控板"/>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="EPB 自动测试工作台" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                        <TextBlock x:Name="ProjectText" Text="新 ECU 配置（未保存）" FontSize="11"
+                                   Foreground="{StaticResource Text2Brush}" MaxWidth="320" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <Border Background="#EDF4FD" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                        <TextBlock Text="QUICK · 实测" FontSize="10" FontWeight="SemiBold" Foreground="#2C6CB5"/>
+                    </Border>
                 </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="DatabaseStatusText" Text="通信数据库：未导入" FontSize="11"
+                               Foreground="{StaticResource Text2Brush}" MaxWidth="220" TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center" Margin="0,0,16,0" ToolTip="点击查看当前配置的通信数据库"
+                               Cursor="Hand" MouseLeftButtonUp="DatabaseStatusText_Click"/>
+                    <Ellipse x:Name="ConnectionDot" Width="8" Height="8" Fill="{StaticResource StatusIdleBrush}" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="ConnectionText" Text="主控板未连接" FontSize="12" Foreground="{StaticResource Text2Brush}"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <Button x:Name="QuickUsbToggleButton" Content="连接主控" Click="ToggleUsbConnection_Click"
+                            Style="{StaticResource BtnToolbar}" MinWidth="78"
+                            ToolTip="连接或断开 USB 主控；连接只执行只读协议检查"/>
+                </StackPanel>
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,5,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="RunTestPlanButton" Content="▶ 运行计划" Style="{StaticResource BtnToolbarPrimary}"
+                                Click="RunTestPlan_Click" ToolTip="顺序执行当前已启用测试用例"/>
+                        <Button x:Name="RunTestCaseButton" Content="▶ 运行用例" Style="{StaticResource QuickSecondaryToolbar}"
+                                Click="RunTestCase_Click" ToolTip="仅执行当前用例"/>
+                        <Button x:Name="StopTestPlanButton" Content="■ 停止" Style="{StaticResource BtnToolbarDanger}"
+                                Click="StopRun_Click" IsEnabled="False" ToolTip="停止当前运行"/>
+                        <Button x:Name="StopTestCaseButton" Content="■ 停止" Style="{StaticResource BtnToolbarDanger}"
+                                Click="StopRun_Click" IsEnabled="False" Visibility="Collapsed"/>
+                        <Border Width="1" Height="20" Background="{StaticResource LineBrush}" Margin="10,0,8,0"/>
+                        <Button Content="单步执行" Style="{StaticResource QuickSecondaryToolbar}" Click="RunCurrent_Click"
+                                ToolTip="仅执行当前选择的真实步骤"/>
+                    </StackPanel>
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Button Content="资源库" Style="{StaticResource BtnToolbar}" Click="ResourceToolbar_Click"
+                                    ToolTip="展开测试配置中的共享资源"/>
+                            <Button Content="DBC / 通信数据库" Style="{StaticResource BtnToolbar}"
+                                    Click="CommunicationDatabaseToolbar_Click" ToolTip="编辑或查看 DBC、解析定义"/>
+                            <ComboBox x:Name="RecentConfigSelector" Width="162" Height="32" Margin="8,0,4,0"
+                                      DisplayMemberPath="Name" ToolTip="切换最近配置文件"
+                                      SelectionChanged="RecentConfigSelector_SelectionChanged"/>
+                            <Button x:Name="ConfigFileMenuButton" Content="文件与工具 ▾"
+                                    Style="{StaticResource BtnToolbar}" Click="ConfigFileMenuButton_Click"
+                                    ContextMenuOpening="ConfigFileMenuButton_ContextMenuOpening"
+                                    ToolTip="配置文件、新建、打开、保存和辅助工具"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
             </Grid>
         </Border>
 
@@ -462,7 +492,7 @@
             <TabItem Header="自动测试">
                 <Grid x:Name="AutomaticWorkspaceGrid" Margin="0,0,0,0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="254" MinWidth="230"/>
+                        <ColumnDefinition Width="244" MinWidth="216"/>
                         <ColumnDefinition Width="8"/>
                         <ColumnDefinition Width="*" MinWidth="300"/>
                     </Grid.ColumnDefinitions>
@@ -471,7 +501,7 @@
                         <RowDefinition Height="6"/>
                         <RowDefinition Height="1*" MinHeight="140"/>
                     </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="10">
+                    <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Style="{StaticResource QuickPanel}" Padding="12">
                         <DockPanel>
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -480,13 +510,29 @@
                                     <Button Content="↓" Style="{StaticResource BtnToolbarIcon}" Click="MoveTestCaseDown_Click" ToolTip="下移测试用例"/>
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Text="测试套件" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
-                                    <TextBlock Text="自动测试 · 测试用例" FontSize="11" Foreground="{StaticResource Text2Brush}" Margin="0,2,0,0"/>
+                                    <TextBlock Text="测试用例" Style="{StaticResource QuickSectionTitle}"/>
+                                    <TextBlock Text="勾选后参与计划运行" Style="{StaticResource QuickSectionHint}" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </DockPanel>
-                            <TextBox x:Name="TestCaseSearchBox" DockPanel.Dock="Top" Height="34" Margin="0,0,0,8" Padding="9,5" ToolTip="搜索测试套件或测试用例" TextChanged="TestCaseSearch_TextChanged"/>
+                            <Grid DockPanel.Dock="Top" Height="34" Margin="0,0,0,10">
+                                <TextBox x:Name="TestCaseSearchBox" Height="34" Padding="12,5" VerticalAlignment="Center"
+                                         ToolTip="按名称筛选测试用例" TextChanged="TestCaseSearch_TextChanged"/>
+                                <TextBlock Text="搜索测试用例" FontSize="12" Foreground="#9BA8B7" Margin="12,0,0,0"
+                                           VerticalAlignment="Center" IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=TestCaseSearchBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
                             <Border DockPanel.Dock="Top" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,0,6">
-                                <TextBlock Text="▾  自动测试套件" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"/>
+                                <TextBlock Text="▾  当前测试套件" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold" FontSize="12"/>
                             </Border>
                             <Expander x:Name="ResourceNavigationExpander" DockPanel.Dock="Bottom" Header="资源库" IsExpanded="False" ExpandDirection="Up" MaxHeight="300" Margin="0,10,0,0" ToolTip="打开资源库；共享资源默认保持引用，复制才会脱钩">
                                 <Border BorderBrush="#D9E2ED" BorderThickness="1" Background="#FBFDFF" Padding="3" MinHeight="150">
@@ -541,12 +587,12 @@
                         </DockPanel>
                     </Border>
                     <GridSplitter Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Width="8" HorizontalAlignment="Center" Background="#D9E2ED" ShowsPreview="True" Cursor="SizeWE"/>
-                    <Border Grid.Row="0" Grid.Column="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="12">
+                    <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource QuickPanel}" Padding="14">
                         <Grid>
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*" MinHeight="150"/></Grid.RowDefinitions>
                             <DockPanel Grid.Row="0" Margin="0,0,0,6">
                                 <StackPanel DockPanel.Dock="Left">
-                                    <TextBlock x:Name="TestCaseTitle" Text="" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                                    <TextBlock x:Name="TestCaseTitle" Text="选择测试用例" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
                                     <TextBlock x:Name="TestCaseHint" Visibility="Collapsed"/>
                                 </StackPanel>
                                 <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}" Margin="0,0,0,0" ToolTip="当前自动测试运行状态">
@@ -593,7 +639,7 @@
                                 </StackPanel>
                                 </Grid>
                             </ScrollViewer>
-                            <Border Grid.Row="2" Background="#FBFCFE" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="8">
+                            <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1" CornerRadius="6" Padding="6">
                              <Grid>
                                  <Grid.RowDefinitions>
                                      <RowDefinition Height="*" MinHeight="180"/>
@@ -706,10 +752,10 @@
                     </Border>
                     <GridSplitter Grid.Row="1" Grid.Column="2" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#B8CDE3" ShowsPreview="True" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS" ToolTip="拖动调整步骤区与日志区高度"/>
                     <!-- 日志只占中间列，左侧用例列表从顶部连续到底部。 -->
-                    <Border x:Name="SharedLogPanel" Grid.Row="2" Grid.Column="2" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="10">
+                    <Border x:Name="SharedLogPanel" Grid.Row="2" Grid.Column="2" Style="{StaticResource QuickPanel}" Padding="12">
                         <DockPanel>
                                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                                        <TextBlock Text="测试日志" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="执行日志" Style="{StaticResource QuickSectionTitle}"/>
                                         <TextBox x:Name="LogSearch" Width="150" Height="26" Margin="12,0,5,0" ToolTip="筛选执行日志" TextChanged="LogSearch_TextChanged"/>
                                         <ComboBox x:Name="LogLevelFilter" Width="82" Height="26" SelectedIndex="0" SelectionChanged="LogLevelFilter_SelectionChanged">
                                             <ComboBoxItem Content="全部"/><ComboBoxItem Content="错误"/><ComboBoxItem Content="信息"/>
@@ -753,24 +799,32 @@
 
         <GridSplitter Grid.Row="1" Grid.Column="2" Width="8" HorizontalAlignment="Center" Background="#D9E2ED" ShowsPreview="True" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Cursor="SizeWE"/>
 
-        <Border Grid.Row="1" Grid.Column="3" Margin="0,12,12,12" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="7" Padding="12">
+        <Border Grid.Row="1" Grid.Column="3" Margin="0,12,12,12" Style="{StaticResource QuickPanel}" Padding="12">
             <Grid>
                 <Grid x:Name="QuickRightToolsGrid">
                     <Grid.RowDefinitions>
-                        <RowDefinition x:Name="RightInspectorRow" Height="0"/>
-                        <RowDefinition x:Name="RightInspectorSplitterRow" Height="0"/>
+                        <RowDefinition x:Name="RightInspectorRow" Height="280" MinHeight="165"/>
+                        <RowDefinition x:Name="RightInspectorSplitterRow" Height="6"/>
                         <RowDefinition Height="*" MinHeight="150"/>
                     </Grid.RowDefinitions>
-                                 <Border x:Name="InspectorHost" Grid.Row="0" Grid.Column="0" Visibility="Collapsed" Background="#FBFDFF" BorderBrush="#B8CDE3" BorderThickness="1" CornerRadius="5" Margin="0,0,0,4" Padding="12,10">
+                                 <Border x:Name="InspectorHost" Grid.Row="0" Grid.Column="0" Visibility="Visible" Background="#FAFCFF" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="7" Margin="0,0,0,4" Padding="12,10">
                                     <Grid>
                                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                                         <DockPanel Margin="0,0,0,10">
-                                            <Button DockPanel.Dock="Right" Content="×" Click="CloseInspectorPopup_Click" Width="24" Height="24" Padding="0" FontSize="16" Foreground="#6B7B8F" Background="Transparent" BorderThickness="0" ToolTip="关闭属性"/>
+                                            <Button DockPanel.Dock="Right" Content="清除选择" Click="CloseInspectorPopup_Click" Padding="8,2" FontSize="11" Foreground="#63788F" Background="Transparent" BorderThickness="0" ToolTip="清除当前属性编辑对象，保留右侧面板"/>
                                             <Button x:Name="BackToReferenceButton" DockPanel.Dock="Right" Content="返回" Click="BackToReference_Click" Visibility="Collapsed" Padding="7,3" Margin="0,0,8,0"/>
-                                            <TextBlock x:Name="InspectorTitle" Text="属性" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                            <TextBlock x:Name="InspectorTitle" Text="步骤属性" Style="{StaticResource QuickSectionTitle}" TextWrapping="Wrap"/>
                                         </DockPanel>
                                         <ScrollViewer x:Name="StepInspectorScrollViewer" Grid.Row="1" CanContentScroll="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                            <ContentControl x:Name="StepEditor"><TextBlock Text=""/></ContentControl>
+                                            <ContentControl x:Name="StepEditor">
+                                                <StackPanel Margin="4,12" VerticalAlignment="Top">
+                                                    <TextBlock Text="选择步骤以编辑参数" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                                                    <TextBlock Text="单击中央步骤行，可直接编辑 CAN 报文、判断条件、循环次数、保持时间等。"
+                                                               TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2Brush}" Margin="0,8,0,0"/>
+                                                    <TextBlock Text="右键步骤可插入、移动和重命名。无 USB 连接时仍可编辑并保存。"
+                                                               TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2Brush}" Margin="0,12,0,0"/>
+                                                </StackPanel>
+                                            </ContentControl>
                                         </ScrollViewer>
                                     </Grid>
                                 </Border>
@@ -778,13 +832,13 @@
                                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                   ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                                   ShowsPreview="True" Cursor="SizeNS" Background="#D9E2ED"
-                                  Visibility="Collapsed" ToolTip="上下拖动调整步骤属性与 CAN 监控的高度"/>
+                                  Visibility="Visible" ToolTip="上下拖动调整步骤属性与 CAN 监控的高度"/>
                     <Grid x:Name="CanPanelContentGrid" Grid.Row="2">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <DockPanel Margin="0,0,0,6">
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                        <TextBlock Text="CAN1 实时报文" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="ECU · 按 ID 汇总" FontSize="12" Foreground="{StaticResource Text2Brush}" Margin="8,2,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="CAN1 · 实时监控" Style="{StaticResource QuickSectionTitle}"/>
+                        <TextBlock Text="按 ID 汇总" FontSize="11" Foreground="{StaticResource Text2Brush}" Margin="8,2,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button x:Name="RawPauseButton" Content="Ⅱ 暂停" Click="RawPause_Click" Padding="8,3" Margin="4,0,0,0" ToolTip="冻结右侧显示，不影响 ECU 报文接收和自动测试"/>
