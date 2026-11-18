@@ -452,8 +452,9 @@
     <TextBlock Text="动作运行状态 · CAN0" FontWeight="SemiBold"
      Foreground="#315E8E" VerticalAlignment="Center"/>
    </DockPanel>
-   <TextBlock Text="{Binding KeyActionRunStatus}" Style="{StaticResource BenchHint}" Margin="0,6,0,0"/>
-   
+   <TextBlock Text="{Binding KeyActionRunStatus}" Style="{StaticResource BenchHint}"
+    ToolTip="{Binding KeyActionRunStatus}" TextTrimming="CharacterEllipsis" MaxHeight="21" Margin="0,5,0,0"/>
+  </StackPanel>
   </StackPanel>
  </ScrollViewer>
     </DockPanel>
@@ -489,8 +490,7 @@
        <CheckBox Content="逐帧时间线" IsChecked="{Binding MonitorShowTimeline,Mode=TwoWay}"
         VerticalAlignment="Center"/>
       </DockPanel>
-      </StackPanel>
-   </StackPanel>
+     </StackPanel>
      <DataGrid Grid.Row="1" ItemsSource="{Binding MonitorDisplay}"
       AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
       CanUserDeleteRows="False" HeadersVisibility="Column"
