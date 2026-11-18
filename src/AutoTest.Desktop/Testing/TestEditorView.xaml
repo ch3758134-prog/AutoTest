@@ -31,6 +31,7 @@
        <MenuItem Header="模拟 ECU 按键" Command="{Binding QuickAddCommand}" CommandParameter="key"/>
        <MenuItem Header="切换 IGN" Command="{Binding QuickAddCommand}" CommandParameter="ign"/>
        <MenuItem Header="读取 CAN 信号" Command="{Binding QuickAddCommand}" CommandParameter="read"/>
+          <MenuItem Header="CAN 信号判定" Command="{Binding QuickAddCommand}" CommandParameter="assert-signal"/>
        <MenuItem Header="固定等待" Command="{Binding QuickAddCommand}" CommandParameter="wait"/>
        <Separator/>
        <MenuItem Header="IF / ELSE" Command="{Binding QuickAddCommand}" CommandParameter="if"/>
