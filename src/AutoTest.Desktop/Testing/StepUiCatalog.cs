@@ -73,7 +73,7 @@ public static class StepUiCatalog
         "expected" or "left" or "right" or "captureKey" or "durationMs" or
         "reference" or "dbcMessage" or "signals" or "requestHex" or
         "service" or "programmingProfile" or "profile" or "tolerance" or
-        "coverage" => true,
+        "coverage" or "periodMs" => true,
         _ => false
     };
 
@@ -98,7 +98,8 @@ public static class StepUiCatalog
         "left" => "左操作数（$变量 或数值）",
         "right" => "右操作数（$变量 或数值）",
         "captureKey" => "采集名称",
-        "durationMs" => "最长记录时间（毫秒）",
+        "durationMs" => "持续时间（毫秒；0 表示运行结束时停止）",
+        "periodMs" => "CAN 发送周期（毫秒；0 表示单次）",
         "reference" => "已建立的参考波形名称（非普通证据）",
         "dbcMessage" => "CAN 报文",
         "signals" => "CAN 信号条件",
