@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:chrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
  xmlns:navigation="clr-namespace:AutoTest.Desktop.Shell.Navigation"
- Title="AutoTest · ECU 测试 IDE" Width="1440" Height="900" MinWidth="1080" MinHeight="650"
+ Title="AutoTest · ECU 测试 IDE" Width="1440" Height="900" MinWidth="1180" MinHeight="650"
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
  PreviewKeyDown="Window_PreviewKeyDown"
  ResizeMode="CanResize" Background="#EEF2F8" Foreground="#1E2C41"
