@@ -902,8 +902,12 @@ public partial class MainWindow : Window
                 _flowEditorRoots.AddRange(FlowEditorRow.FromNodeTrees(_selectedTestCase.Flow));
             }
             RebuildVisibleFlowEditor();
-            FlowEditorList.SelectedItem = _flowEditorRows.FirstOrDefault(x => x.Id == selectedId)
+            // The visual list is now the active editor: the selection context must
+            // switch with the case, not retain a row from the previous case.
+            _selectedFlowEditorRow = _flowEditorRows.FirstOrDefault(x => x.Id == selectedId)
                 ?? _flowEditorRows.FirstOrDefault(x => x.SourceNode?.Id == _selectedTestNodeId);
+            FlowEditorList.SelectedItem = _selectedFlowEditorRow;
+            RefreshFlowActionAvailability(_selectedFlowEditorRow);
         }
         finally { _restoringWorkspaceSelection = wasRestoring; }
     }
@@ -2059,6 +2063,7 @@ public partial class MainWindow : Window
         _selectedTestNodeId = next?.Id;
         _pendingTestNodeSelection = next;
         RefreshTestFlowTreePreservingSelection(next?.Id);
+        if (next is null && _selectedTestCase is not null) ShowQuickCaseOverview(_selectedTestCase);
         AppendLog($"已删除流程节点“{node.Name}”，可按 Ctrl+Z 撤销。");
         UndoDeleteButton.Visibility = Visibility.Visible;
     }
