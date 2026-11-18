@@ -2712,10 +2712,35 @@ public partial class MainWindow : Window
 
     private void HideInspector()
     {
-        InspectorHost.Visibility = Visibility.Collapsed;
-        InspectorGridSplitter.Visibility = Visibility.Collapsed;
-        RightInspectorSplitterRow.Height = new GridLength(0);
-        RightInspectorRow.Height = new GridLength(0);
+        // The property pane is a permanent workbench region. Closing the editor clears
+        // only its content; it must not cause the CAN monitor or step table to jump.
+        InspectorTitle.Text = "步骤属性";
+        var idle = new StackPanel { Margin = new Thickness(4, 12, 4, 4) };
+        idle.Children.Add(new TextBlock
+        {
+            Text = "选择步骤以编辑参数",
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 13,
+            Foreground = (Brush)FindResource("TextBrush")
+        });
+        idle.Children.Add(new TextBlock
+        {
+            Text = "在中央步骤表中单击任意真实步骤；这里直接编辑 CAN、DBC 信号、IF 条件、等待时间和循环参数。",
+            Foreground = (Brush)FindResource("Text2Brush"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            Margin = new Thickness(0, 10, 0, 0)
+        });
+        idle.Children.Add(new TextBlock
+        {
+            Text = "无需连接 USB 即可编辑和保存；真正执行硬件操作仍需要连接设备。",
+            Foreground = (Brush)FindResource("Text2Brush"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 11,
+            Margin = new Thickness(0, 12, 0, 0)
+        });
+        StepEditor.Content = idle;
+        OpenInspector();
     }
 
     private void TestFlowTree_RightClick(object sender, MouseButtonEventArgs e)
@@ -4342,12 +4367,11 @@ public partial class MainWindow : Window
 
     private void CloseStepEditor()
     {
-        HideInspector();
-        StepEditor.Content = null;
         _propertyStep = null;
         _propertyAnchorStep = null;
         _propertyTestNodeId = null;
         BackToReferenceButton.Visibility = Visibility.Collapsed;
+        HideInspector();
     }
 
     private TestFlowNode? ResolvePropertyTestNode()
@@ -5794,6 +5818,14 @@ public partial class MainWindow : Window
         }
     }
     private void Disconnect_Click(object sender, RoutedEventArgs e) => _usb.Close();
+
+    // One visible USB control: opening a session only triggers the existing read-only PING/version checks.
+    private void ToggleUsbConnection_Click(object sender, RoutedEventArgs e)
+    {
+        if (_usb.IsOpen) Disconnect_Click(sender, e);
+        else Connect_Click(sender, e);
+        QuickUsbToggleButton.Content = _usb.IsOpen ? "断开主控" : "连接主控";
+    }
     private void ConnectionChanged(bool connected)
     {
         SetConnection(connected);
@@ -5864,6 +5896,7 @@ public partial class MainWindow : Window
             : disconnectedText is null ? Brushes.Gray : Brushes.IndianRed;
         ConnectionText.Text = connected ? "主控板已连接" : disconnectedText ?? "主控板未连接";
         ConnectionText.ToolTip = ConnectionText.Text;
+        QuickUsbToggleButton.Content = _usb.IsOpen ? "断开主控" : "连接主控";
     }
     private void New_Click(object sender, RoutedEventArgs e)
     {

@@ -239,7 +239,11 @@
     </Style>
 
     <!-- 工具栏主动作：只承担当前作用域的运行，不使用深色实底。 -->
-    <Style x:Key="BtnToolbarPrimary" TargetType="Button" BasedOn="{StaticResource BtnToolbar}">
+    <Style x:Key="BtnToolbarPrimary" TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
+        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="Margin" Value="3,0" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="Background" Value="{StaticResource AccentBrush}" />
         <Setter Property="Foreground" Value="White" />
         <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
