@@ -30,13 +30,44 @@ public sealed record TestActionOption(string Key, string Category, string Title,
     };
 }
 
+public sealed record TestStepFieldChoice(string Value, string Label);
+
 public sealed class TestStepInputField : BindableBase
 {
     private string _value;
     public TestStepInputField(string key, string value, string? label = null)
-    { Key = key; Label = label ?? StepUiCatalog.PropertyLabel(key); _value = value; }
+    {
+        Key = key;
+        Label = label ?? StepUiCatalog.PropertyLabel(key);
+        _value = value;
+        Choices = key switch
+        {
+            "mode" when value is "Latest" or "Next" =>
+            [
+                new("Latest", "读取最近一次收到的信号"),
+                new("Next", "等待下一次收到的信号")
+            ],
+            "operator" when value is "==" or "!=" or ">" or ">=" or "<" or "<="
+                or "+" or "-" or "*" or "/" =>
+            [
+                new("==", "等于"),
+                new("!=", "不等于"),
+                new(">", "大于"),
+                new(">=", "大于等于"),
+                new("<", "小于"),
+                new("<=", "小于等于"),
+                new("+", "加"),
+                new("-", "减"),
+                new("*", "乘"),
+                new("/", "除")
+            ],
+            _ => []
+        };
+    }
     public string Key { get; }
     public string Label { get; }
+    public IReadOnlyList<TestStepFieldChoice> Choices { get; }
+    public bool HasChoices => Choices.Count > 0;
     public string Value { get => _value; set => SetProperty(ref _value, value ?? ""); }
 }
 public sealed class TestSignalInputField : BindableBase
@@ -259,14 +290,19 @@ public partial class TestStepInspector : UserControl
     {
         ParameterFields.Clear();
         var node = _editing ?? throw new InvalidOperationException("步骤编辑器需要真实 StepId。");
+        // The imported source dictionary is not an operator-editable schema.
+        // Keep its unrecognised keys in StepNode unchanged; expose only formal
+        // TEST parameters that the UI can accurately explain to an engineer.
+        ImportWarning.Visibility = StepUiCatalog.RequiresLegacyReview(node)
+            ? Visibility.Visible : Visibility.Collapsed;
         foreach (var item in node.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
         {
-            if ((item.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) ||
+            if (!StepUiCatalog.IsOperatorProperty(item.Key) ||
+                (item.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) ||
                 (item.Key == "value" && action.StepType == "Write") ||
                 (item.Key == "profile" && action.StepType == "WaveAnalyze")) continue;
-            if (item.Key == "editor.breakpoint") continue;
             var label = item.Key == "target" && action.StepType == "CallSubroutine"
-                ? "目标子程序引用（显式标识）" : null;
+                ? "要调用的子程序" : null;
             ParameterFields.Add(new TestStepInputField(item.Key, item.Value, label));
         }
     }
