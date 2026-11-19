@@ -44,7 +44,7 @@
 
   <Border Grid.Row="0" Background="White" BorderBrush="#DCE5EF" BorderThickness="0,0,0,1">
    <DockPanel Margin="15,10" LastChildFill="True">
-    <ui:Button DockPanel.Dock="Right" Content="连接 / 断开" Command="{Binding ConnectCommand}"
+    <ui:Button DockPanel.Dock="Right" Content="{Binding ConnectionActionLabel}" Command="{Binding ConnectCommand}"
       Appearance="Primary" Padding="15,8" Margin="9,0,0,0"/>
     <ui:Button DockPanel.Dock="Right" Content="刷新资源" Command="{Binding ReloadProfilesCommand}"
       Padding="12,7" Margin="9,0,0,0"/>
@@ -150,15 +150,70 @@
           </DataTemplate>
          </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-       <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="94"/>
+       <!-- Raw CAN IDs are edited directly; DBC-generated IDs stay read-only. -->
+        <DataGridTemplateColumn Header="CAN ID" Width="98">
+         <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate>
+           <Grid>
+            <TextBox Text="{Binding IdHex,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"
+             IsEnabled="{Binding CanEditFields}" MinHeight="27" BorderThickness="0"
+             Background="Transparent" Padding="3,2" ToolTip="{Binding PreviewError}">
+             <TextBox.Style>
+              <Style TargetType="TextBox">
+               <Setter Property="Visibility" Value="Visible"/>
+               <Style.Triggers><DataTrigger Binding="{Binding UseDbc}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed"/>
+               </DataTrigger></Style.Triggers>
+              </Style>
+             </TextBox.Style>
+            </TextBox>
+            <TextBlock Text="{Binding PreviewId}" VerticalAlignment="Center">
+             <TextBlock.Style>
+              <Style TargetType="TextBlock">
+               <Setter Property="Visibility" Value="Collapsed"/>
+               <Style.Triggers><DataTrigger Binding="{Binding UseDbc}" Value="True">
+                <Setter Property="Visibility" Value="Visible"/>
+               </DataTrigger></Style.Triggers>
+              </Style>
+             </TextBlock.Style>
+            </TextBlock>
+           </Grid>
+          </DataTemplate>
+         </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
        <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="40"/>
        <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="198">
-        <DataGridTemplateColumn.CellTemplate><DataTemplate>
-         <TextBlock Text="{Binding PreviewData}" FontFamily="Consolas"
-          FontSize="13" TextTrimming="None" VerticalAlignment="Center"
-          ToolTip="{Binding PreviewFull}"/>
-        </DataTemplate></DataGridTemplateColumn.CellTemplate>
-       </DataGridTemplateColumn>
+         <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate>
+           <Grid>
+            <TextBox Text="{Binding DataHex,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"
+             IsEnabled="{Binding CanEditFields}" FontFamily="Consolas" FontSize="12"
+             MinHeight="27" BorderThickness="0" Padding="4,2" Background="Transparent"
+             ToolTip="{Binding PreviewError}">
+             <TextBox.Style>
+              <Style TargetType="TextBox">
+               <Setter Property="Visibility" Value="Visible"/>
+               <Style.Triggers><DataTrigger Binding="{Binding UseDbc}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed"/>
+               </DataTrigger></Style.Triggers>
+              </Style>
+             </TextBox.Style>
+            </TextBox>
+            <TextBlock Text="{Binding PreviewData}" FontFamily="Consolas" FontSize="12"
+             VerticalAlignment="Center" ToolTip="{Binding PreviewFull}">
+             <TextBlock.Style>
+              <Style TargetType="TextBlock">
+               <Setter Property="Visibility" Value="Collapsed"/>
+               <Style.Triggers><DataTrigger Binding="{Binding UseDbc}" Value="True">
+                <Setter Property="Visibility" Value="Visible"/>
+               </DataTrigger></Style.Triggers>
+              </Style>
+             </TextBlock.Style>
+            </TextBlock>
+           </Grid>
+          </DataTemplate>
+         </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
        <DataGridTextColumn Header="发送" Binding="{Binding ModeLabel}" Width="66"/>
        <DataGridTemplateColumn Header="操作" Width="100">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
