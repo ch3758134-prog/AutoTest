@@ -53,9 +53,9 @@ public static class StepTreeValidator
                 errors.Add($"{location}: unmapped target {targetName}");
             if (!allowIncompleteSteps && n.Type == "Write")
             {
-                var targetName = n.Properties.GetValueOrDefault("target", "");
+                var writeTargetName = n.Properties.GetValueOrDefault("target", "");
                 var mapping = document.Mappings.FirstOrDefault(m =>
-                    string.Equals(m.Name, targetName, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(m.Name, writeTargetName, StringComparison.OrdinalIgnoreCase));
                 if (mapping is not null)
                 {
                     if (mapping.Kind is not (TestTargetKind.RawCan or TestTargetKind.CanMessage or
@@ -78,9 +78,9 @@ public static class StepTreeValidator
             }
             if (!allowIncompleteSteps && n.Type is "WaitUntil" or "Read")
             {
-                var targetName = n.Properties.GetValueOrDefault("target", "");
+                var readTargetName = n.Properties.GetValueOrDefault("target", "");
                 var mapping = document.Mappings.FirstOrDefault(m =>
-                    string.Equals(m.Name, targetName, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(m.Name, readTargetName, StringComparison.OrdinalIgnoreCase));
                 if (mapping is not null && mapping.Kind != TestTargetKind.Signal)
                     errors.Add($"{location}: 信号读取/等待必须绑定 DBC Signal");
                 if (!int.TryParse(n.Properties.GetValueOrDefault("timeoutMs", ""), out var timeout) ||
