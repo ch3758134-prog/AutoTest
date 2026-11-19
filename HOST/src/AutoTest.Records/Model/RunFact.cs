@@ -36,8 +36,40 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
     AutoTest.Core.TimePoint Time, AutoTest.Core.EvidenceQuality Quality,
     System.Collections.Immutable.ImmutableArray<AutoTest.Core.EvidenceRef> Evidence)
 {
+    // Optional v1 payload extension. Null means a legacy fact, never synthesize IDs.
+    public Guid? StepOccurrenceId { get; init; }
+    public Guid? ParentOccurrenceId { get; init; }
+    public string? Phase { get; init; }
+    public string? ExecutionPath { get; init; }
+    public int? LoopIteration { get; init; }
+    public DateTimeOffset? StartedUtc { get; init; }
+    public DateTimeOffset? CompletedUtc { get; init; }
+    public TimeSpan? Duration { get; init; }
+    public DateTimeOffset? ObservationUtc { get; init; }
+    public string? Unit { get; init; }
+    public string? SignalStatus { get; init; }
+    public string? RequirementId { get; init; }
+    public string? ReportNote { get; init; }
+    public string? AdditionalResultsJson { get; init; }
+    public bool? ShowEvidence { get; init; }
+
     public void Validate()
     {
+        if (StepOccurrenceId == Guid.Empty || ParentOccurrenceId == Guid.Empty ||
+            LoopIteration is < 1 ||
+            Phase is not null and not ("Prepare" or "Test" or "Cleanup") ||
+            (ExecutionPath?.Length ?? 0) > 4096 ||
+            (Unit?.Length ?? 0) > 128 ||
+            (SignalStatus?.Length ?? 0) > 128 ||
+            (RequirementId?.Length ?? 0) > 128 ||
+            (ReportNote?.Length ?? 0) > 2048 ||
+            (AdditionalResultsJson?.Length ?? 0) > 32768 ||
+            StartedUtc is { } started && (started.Offset != TimeSpan.Zero ||
+                CompletedUtc is { } ended && ended < started) ||
+            CompletedUtc is { } completed && completed.Offset != TimeSpan.Zero ||
+            ObservationUtc is { } observation && observation.Offset != TimeSpan.Zero ||
+            Duration is { } duration && duration < TimeSpan.Zero)
+            throw new InvalidDataException("Invalid step occurrence or measurement metadata.");
         if (Run.Value == Guid.Empty || EventId == Guid.Empty || Step.Value == Guid.Empty ||
             Attempt < 1 || string.IsNullOrWhiteSpace(Disposition) ||
             Time.Utc == default || Time.Utc.Offset != TimeSpan.Zero || Evidence.IsDefault ||
