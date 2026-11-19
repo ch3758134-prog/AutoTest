@@ -66,8 +66,8 @@
   </UserControl.InputBindings>
   <Grid>
     <Grid.RowDefinitions>
-      <RowDefinition Height="69"/>
-      <RowDefinition Height="49"/>
+      <RowDefinition Height="60"/>
+      <RowDefinition Height="44"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="30"/>
     </Grid.RowDefinitions>
@@ -81,12 +81,12 @@
         </Grid.ColumnDefinitions>
         <StackPanel>
           <StackPanel Orientation="Horizontal">
-            <TextBlock Text="DBC 工作台" FontSize="19" FontWeight="SemiBold"
+            <TextBlock Text="DBC 编辑器" FontSize="18" FontWeight="SemiBold"
                        Margin="0,0,12,0"/>
             <TextBlock Text="{Binding AssetName}" FontSize="15" Foreground="{StaticResource Subtle}"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="380"/>
           </StackPanel>
-          <TextBlock Text="{Binding FilePath}" Foreground="{StaticResource Subtle}"
+          <TextBlock Text="当前工程内的 DBC 资源 · 悬停查看完整文件位置" Foreground="{StaticResource Subtle}"
                      FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,5,0,0"
                      ToolTip="{Binding FilePath}"/>
         </StackPanel>
