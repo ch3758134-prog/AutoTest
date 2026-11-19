@@ -29,6 +29,7 @@ public sealed partial class ManualBenchViewModel
         private int _sent;
         public event Action? Edited;
 
+        public BenchCanRow(string name) : this(name, new ObservableCollection<DbcChoice>()) { }
         public BenchCanRow(string name, ObservableCollection<DbcChoice> dbcChoices)
         {
             _name = name;
