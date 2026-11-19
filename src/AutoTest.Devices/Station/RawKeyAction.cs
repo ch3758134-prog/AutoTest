@@ -29,6 +29,8 @@ public sealed record RawKeyAction(RawKeyOperation Action, uint Mask, int Duratio
         if (!uint.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var mask) ||
             mask > 0xFFFFFu || operation == RawKeyOperation.Pulse && mask == 0)
             throw new FormatException("KEY 组合必须在 0x00000～0xFFFFF；短按不能使用空组合。");
+        if (operation == RawKeyOperation.Hold && mask == 0 && fields.Length != 3)
+            throw new FormatException("无操作组合必须填写保持时间，如 Hold:0x00000:1000。");
         var duration = 0;
         if (fields.Length == 3 &&
             (!int.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture, out duration) ||
