@@ -82,6 +82,10 @@ public sealed partial class ProjectWorkspaceService
                     throw new ProjectDataException("STALE_REFERENCE",
                         "被调用的公共流程修订已变化；请显式审查并更新调用引用。");
             }
+            // Do not store a flow call graph with unresolved historical pins
+            // or a recursion cycle. The validator is read-only and does no writes.
+            await PublicFlowGraphValidator.ValidateAsync(current, opened.AssetId, edited, ct)
+                .ConfigureAwait(false);
             var result = await Task.Run(async () =>
             {
                 await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
