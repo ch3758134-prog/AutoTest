@@ -209,11 +209,13 @@
           <Expander DockPanel.Dock="Bottom" Header="位布局 · Byte 0—7 / bit 7—0"
                     IsExpanded="True" MinHeight="24" MaxHeight="285"
                     BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
-            <StackPanel Background="{StaticResource ToolbarSurface}" Padding="8,6">
+            <Border Background="{StaticResource ToolbarSurface}" Padding="8,6">
+              <StackPanel>
               <TextBlock Text="点击格子选择信号；字节序和复用关系按 DBC 实际位位置显示。"
                 Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,0,0,5"/>
               <UniformGrid x:Name="BitGrid" Columns="9" Rows="9"/>
-            </StackPanel>
+              </StackPanel>
+            </Border>
           </Expander>
           <Border DockPanel.Dock="Top" Background="White" Padding="10,6"
                   BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
