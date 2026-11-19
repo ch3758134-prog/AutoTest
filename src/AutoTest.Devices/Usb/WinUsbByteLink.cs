@@ -234,7 +234,7 @@ public sealed class WinUsbByteLink : IUsbByteLink
 
             stage = "CreateFileW";
             Operation("CONNECT", stage, "BEGIN", selectedPath,
-                detail: $"access=GENERIC_READ|GENERIC_WRITE share=READ|WRITE disposition=OPEN_EXISTING flags=0x{OpenFileFlags:X8}");
+                detail: $"access=GENERIC_READ|GENERIC_WRITE share=NONE disposition=OPEN_EXISTING flags=0x{OpenFileFlags:X8}");
             openedFile = _native.Open(selectedPath, OpenFileFlags);
             if (openedFile.IsInvalid) throw NativeError(stage);
             Operation("CONNECT", stage, "OK", selectedPath);
