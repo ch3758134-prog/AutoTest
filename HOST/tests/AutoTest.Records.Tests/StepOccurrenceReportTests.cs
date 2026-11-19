@@ -90,6 +90,7 @@ public sealed class StepOccurrenceReportTests
         Assert.Null(reloaded.StepOccurrenceId);
         Assert.Null(reloaded.StartedUtc);
         Assert.Null(reloaded.Phase);
+        Assert.Null(reloaded.SignalProvenance);
         Assert.Equal(fact, reloaded);
     }
 
