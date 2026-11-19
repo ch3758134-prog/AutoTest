@@ -29,7 +29,14 @@ public sealed partial class ManualBenchViewModel
         private int _sent;
         public event Action? Edited;
 
-        public BenchCanRow(string name) => _name = name;
+        public BenchCanRow(string name, ObservableCollection<DbcChoice> dbcChoices)
+        {
+            _name = name;
+            DbcChoices = dbcChoices;
+        }
+        // Share the live project DBC list, rather than duplicate DBC data
+        // inside each editable row or reopen an independent selector window.
+        public ObservableCollection<DbcChoice> DbcChoices { get; }
         public string Name { get => _name; set { if (SetProperty(ref _name, value ?? "")) Notify(); } }
         public string IdHex { get => _idHex; set { if (SetProperty(ref _idHex, value ?? "")) Notify(); } }
         public string DataHex { get => _dataHex; set { if (SetProperty(ref _dataHex, value ?? "")) Notify(); } }
@@ -291,7 +298,7 @@ public sealed partial class ManualBenchViewModel
 
     private void AddCanRow()
     {
-        var row = new BenchCanRow("报文 " + (++_newCanRowNumber).ToString(CultureInfo.InvariantCulture));
+        var row = new BenchCanRow("报文 " + (++_newCanRowNumber).ToString(CultureInfo.InvariantCulture), DbcMessages);
         row.Edited += OnCanRowEdited;
         CanSendRows.Add(row);
         SelectedCanRow = row;
@@ -302,7 +309,7 @@ public sealed partial class ManualBenchViewModel
     private void CopyCanRow()
     {
         if (SelectedCanRow is not { } source) return;
-        var row = new BenchCanRow(source.Name + " 副本")
+        var row = new BenchCanRow(source.Name + " 副本", DbcMessages)
         {
             IdHex = source.IdHex, DataHex = source.DataHex, Extended = source.Extended,
             PeriodText = source.PeriodText, IsPeriodic = source.IsPeriodic,
