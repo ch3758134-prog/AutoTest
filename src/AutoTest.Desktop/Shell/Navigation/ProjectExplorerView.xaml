@@ -113,7 +113,7 @@
      FontSize="12" Foreground="#344962" TextTrimming="CharacterEllipsis"
      VerticalAlignment="Center" Margin="5,0,3,0" Cursor="Hand"
      PreviewMouseLeftButtonDown="NodeText_PreviewMouseLeftButtonDown"
-     ToolTip="单击打开 · 双击名称重命名 · F2 重命名 · 右键更多操作"/>
+     ToolTip="单击选择 · 双击打开 · F2 重命名 · 右键更多操作"/>
     <TextBlock x:Name="NodeCount" Grid.Column="3" Text="{Binding CountLabel}"
      FontSize="10" FontWeight="SemiBold" Foreground="#6D86A6" VerticalAlignment="Center"
      Margin="0,0,5,0"/>
