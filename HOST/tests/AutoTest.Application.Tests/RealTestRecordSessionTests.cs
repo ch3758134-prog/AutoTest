@@ -169,6 +169,12 @@ public sealed class RealTestRecordSessionTests
             Assert.Equal("2", step.Actual);
             Assert.Equal(EvidenceQuality.HostObserved, step.Quality);
             Assert.Single(step.Evidence);
+            Assert.NotNull(step.SignalProvenance);
+            Assert.Equal(mapping.Asset.Value, step.SignalProvenance.DbcAssetId);
+            Assert.Equal(mapping.AssetSha256, step.SignalProvenance.DbcSha256);
+            Assert.Equal(mapping.CanId, step.SignalProvenance.FrameId);
+            Assert.Equal("HostArrival", step.SignalProvenance.TimeSource);
+            Assert.Equal("HostArrivalOnly", step.SignalProvenance.TimeQuality);
         });
         var raw = await fixture.Database.ReadFactsAsync(new RecordQuery(record.RunId, 100));
         Assert.Contains(raw, f => f.Description.StartsWith("STEP_BEGIN", StringComparison.Ordinal));
@@ -178,6 +184,7 @@ public sealed class RealTestRecordSessionTests
         Assert.Contains(assertions[0].StepOccurrenceId!.Value.ToString("D"), html);
         Assert.Contains(assertions[1].StepOccurrenceId!.Value.ToString("D"), html);
         Assert.Contains("证据归档不完整", html);
+        Assert.Contains(mapping.AssetSha256, html);
         var json = await File.ReadAllTextAsync(completed.Reports.JsonPath);
         Assert.Contains("\"evidenceArchiveIncomplete\": true", json);
     }
