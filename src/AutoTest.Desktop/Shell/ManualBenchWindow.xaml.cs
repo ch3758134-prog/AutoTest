@@ -219,7 +219,10 @@ public partial class ManualBenchWindow : Window
         if (Ancestor<DataGridRow>(e.OriginalSource as DependencyObject) is not
             { Item: ManualBenchViewModel.BenchCanRow row } container)
             return;
-        if (Ancestor<ButtonBase>(e.OriginalSource as DependencyObject) is not null) return;
+        // Editing a short text cell must not open the floating editor on double-click.
+        // Complex fields still use the existing row double-click / context actions.
+        if (Ancestor<ButtonBase>(e.OriginalSource as DependencyObject) is not null ||
+            Ancestor<TextBox>(e.OriginalSource as DependencyObject) is not null) return;
         ShowQuickEditor(row, container);
         e.Handled = true;
     }
