@@ -34,3 +34,7 @@
 ## 2026-11-18 UDS 独立实测专项
 
 - [UDS 专用研发分支与独立 WPF 实测上位机及分层验收合同](new-baseline-20261112/research/UDS-DEDICATED-BRANCH-AND-REAL-LAB-20261118.md)：开发分支 `feature/uds-lab-20261118`；独立 EXE 的真实 ECU 验收与 G4 TEST 集成分开管理。
+
+## 2026-11-18 主控 IO / USB 接口更新
+
+- [最新固件 GPIO 初始化、IGN 引脚修订、LED1～6 USB 0x1A～0x1C、RL_DRV 硬件内部化](new-baseline-20261112/research/MAIN-CONTROL-IO-USB-SOURCE-UPDATE-20261118.md)：已回读 `Main_Control@bf81a64e` 源码，Keil 编译和实物验收未完成；旧 IGN=PTC10/J1 C6 映射已废止。
