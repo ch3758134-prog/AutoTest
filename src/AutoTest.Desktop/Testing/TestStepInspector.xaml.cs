@@ -456,7 +456,12 @@ public partial class TestStepInspector : UserControl
         bool Eligible(TestTargetMapping mapping) => action.TargetCategory switch
         {
             "can" => mapping.Kind is TestTargetKind.CanMessage or TestTargetKind.RawCan,
-            "button" => mapping.Kind is TestTargetKind.Button or TestTargetKind.RawKey,
+            // Normal authoring uses the direct 20-Key action; retain legacy
+            // Button target only while editing that exact existing reference.
+            "button" => mapping.Kind == TestTargetKind.RawKey ||
+                mapping.Kind == TestTargetKind.Button && _editing is { } oldStep &&
+                string.Equals(oldStep.Properties.GetValueOrDefault("target", ""), mapping.Name,
+                    StringComparison.OrdinalIgnoreCase),
             "ign" => mapping.Kind == TestTargetKind.Ignition,
             "signal" => mapping.Kind == TestTargetKind.Signal,
             "wave" => mapping.Kind == TestTargetKind.WaveProfile,
@@ -491,6 +496,11 @@ public partial class TestStepInspector : UserControl
                 + "软件不会自动换版本。请确认并显式重新选择有效对象。";
         TargetHint.Text = _targetRevisionWarning.Trim();
         TargetHint.Visibility = TargetHint.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        // No pointless resource picker for the single built-in IGN or direct
+        // 20-Key action. Hardware/DBC-backed choices retain their picker.
+        if (_allTargets.Count == 1 &&
+            _allTargets[0].Mapping.Kind is TestTargetKind.RawKey or TestTargetKind.Ignition)
+            TargetPanel.Visibility = Visibility.Collapsed;
     }
 
     private void TargetSearch_Changed(object sender, TextChangedEventArgs e)
