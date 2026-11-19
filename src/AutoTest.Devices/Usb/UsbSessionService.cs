@@ -106,7 +106,13 @@ public sealed class UsbSessionService : IAsyncDisposable
                     if (response.Sequence == 0)
                     {
                         if (response.Command == MainControllerCodec.CanRxIndication)
+                        {
                             Interlocked.Increment(ref _receivedCanIndications);
+                            // Only an actual, decoded and CRC-checked CAN RX may
+                            // enable a bounded DID flow-control response.
+                            if (response.Status == 0 && _link is WinUsbByteLink physical)
+                                physical.ObserveAuthenticatedCanIndication(response.Payload);
+                        }
                         foreach (Action<UsbResponse> subscriber in AsynchronousResponse?.GetInvocationList()
                                      .Cast<Action<UsbResponse>>() ?? Enumerable.Empty<Action<UsbResponse>>())
                         { try { subscriber(response); } catch (Exception e) { Trace("SUBSCRIBER_ERROR", generation, detail:e.Message); } }
