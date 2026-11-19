@@ -279,4 +279,33 @@ public sealed class RealTestRecordSessionTests
             f.Description.Contains("STEP_END", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task SkippedStepStillHasDurableBeginAndCompletion()
+    {
+        using var fixture = new Fixture();
+        var (_, sample) = Signal(2);
+        var disabled = StepNode.Create("Write").WithProperty("enabled", "false");
+        var empty = TestDocument.Create("Disabled");
+        var doc = empty with
+        {
+            Phases = empty.Phases.SetItem(TestPhase.Test, ImmutableArray.Create(disabled))
+        };
+        var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        var record = fixture.Record(plan);
+        var actions = new Actions();
+        var outcome = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports)
+            .ExecuteAsync(new RealRunCoordinator(new Signals(sample), actions, new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Inconclusive, outcome.Result.Verdict);
+        Assert.Equal(0, actions.Writes);
+        var steps = await fixture.Database.ReadStepFactsAsync(record.RunId);
+        var skipped = Assert.Single(steps);
+        Assert.Equal("Skipped", skipped.Disposition);
+        Assert.NotNull(skipped.StepOccurrenceId);
+        var audit = await fixture.Database.ReadFactsAsync(new RecordQuery(record.RunId, 20));
+        Assert.Contains(audit, f => f.Description.StartsWith("STEP_BEGIN", StringComparison.Ordinal));
+        Assert.Contains(audit, f => f.Description.StartsWith("STEP_END", StringComparison.Ordinal));
+    }
+
 }
