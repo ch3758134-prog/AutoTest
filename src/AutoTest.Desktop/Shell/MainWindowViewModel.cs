@@ -33,6 +33,7 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
     public ContentControl? Inspector => View switch
     {
         TestEditorView test => test.InspectorHost,
+        PublicFlowEditorView flow => flow.InspectorHost,
         TestProjectWorkbenchView project => project.InspectorHost,
         ProjectOverviewView home => home.InspectorHost,
         ProjectConfigurationOverviewView config => config.InspectorHost,
@@ -45,6 +46,8 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
         TestEditorView view when Editor is TestEditorViewModel testVm =>
             new(Title, () => testVm.IsBusy, () => testVm.IsDirty || view.HasPendingInspectorDraft,
                 view.SaveForCloseAsync),
+        PublicFlowEditorView flow =>
+            new(Title, () => flow.IsBusy, () => flow.IsDirty, flow.SaveForCloseAsync),
         TestProjectWorkbenchView when Editor is TestProjectWorkbenchViewModel projectVm =>
             new(Title, () => projectVm.IsBusy, () => projectVm.IsDirty, projectVm.SaveForCloseAsync),
         DbcWorkbenchView when Editor is DbcWorkbenchViewModel dbcVm =>
@@ -562,6 +565,7 @@ public sealed class MainWindowViewModel : BindableBase
             bool saved = ActiveEditorTab?.View switch
             {
                 TestEditorView editor => await editor.SaveForCloseAsync(),
+                PublicFlowEditorView flow => await flow.SaveForCloseAsync(),
                 TestProjectWorkbenchView project when project.DataContext is TestProjectWorkbenchViewModel projectModel
                     => await projectModel.SaveForCloseAsync(),
                 DbcWorkbenchView dbc when dbc.DataContext is DbcWorkbenchViewModel dbcModel
@@ -942,6 +946,8 @@ public sealed class MainWindowViewModel : BindableBase
         ProjectWorkspaceService.TestProgramKind, StringComparison.OrdinalIgnoreCase);
     public bool SelectedResourceIsTestProject => string.Equals(_selectedResource?.Asset?.Kind,
         ProjectWorkspaceService.TestProjectKind, StringComparison.OrdinalIgnoreCase);
+    public bool SelectedResourceIsPublicFlow => string.Equals(_selectedResource?.Asset?.Kind,
+        ProjectWorkspaceService.PublicFlowKind, StringComparison.OrdinalIgnoreCase);
     public bool SelectedResourceIsConfiguration => _selectedResource?.Asset is { } asset &&
         ProjectConfigurationCodec.IsConfiguration(asset.Kind);
     public string SelectedResourceTitle => _selectedResource?.Label ?? "";
@@ -1039,6 +1045,8 @@ public sealed class MainWindowViewModel : BindableBase
                     asset.Kind == ProjectWorkspaceService.TestProgramKind ||
                     lastKey.StartsWith("project|", StringComparison.Ordinal) &&
                     asset.Kind == ProjectWorkspaceService.TestProjectKind ||
+                    lastKey.StartsWith("flow|", StringComparison.Ordinal) &&
+                    asset.Kind == ProjectWorkspaceService.PublicFlowKind ||
                     lastKey.StartsWith("config|", StringComparison.Ordinal) &&
                     ProjectConfigurationCodec.IsConfiguration(asset.Kind);
         if (!valid || !ReferenceEquals(project, _workspace.Current)) return;
@@ -1074,6 +1082,7 @@ public sealed class MainWindowViewModel : BindableBase
                 if (assetId is null) return;
                 if (SelectedResourceIsTestProgram) await OpenSelectedTestProgramAsync();
                 else if (SelectedResourceIsTestProject) await OpenSelectedTestProjectAsync();
+                else if (SelectedResourceIsPublicFlow) await OpenSelectedPublicFlowAsync();
                 else if (SelectedResourceIsDbc) await OpenSelectedDbcAsync();
                 else if (SelectedResourceIsConfiguration) await OpenSelectedConfigurationAsync();
                 if (_selectedResource?.Asset?.Id != assetId)
@@ -1099,6 +1108,7 @@ public sealed class MainWindowViewModel : BindableBase
         RaisePropertyChanged(nameof(SelectedResourceIsDbc));
         RaisePropertyChanged(nameof(SelectedResourceIsTestProgram));
         RaisePropertyChanged(nameof(SelectedResourceIsTestProject));
+        RaisePropertyChanged(nameof(SelectedResourceIsPublicFlow));
         RaisePropertyChanged(nameof(SelectedResourceIsConfiguration));
         RaisePropertyChanged(nameof(SelectedResourceTitle));
         RaisePropertyChanged(nameof(SelectedResourceDescription));
@@ -1301,6 +1311,12 @@ public sealed class MainWindowViewModel : BindableBase
                     entry.Kind, entry, role: "Case"));
             ResourceNodes.Add(unused);
         }
+        // A public flow is a reusable step resource, never a production test case.
+        ResourceNodes.Add(new ResourceTreeNode("公共流程", "", "同一工程可复用的连续步骤",
+            ProjectWorkspaceService.PublicFlowKind, role: "Section"));
+        foreach (var flow in assets.Where(a => a.Kind == ProjectWorkspaceService.PublicFlowKind)
+            .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase))
+            ResourceNodes.Add(ToAssetNode(flow));
         ResourceNodes.Add(new ResourceTreeNode("工程资源", "", "固定工程的配置及资产",
             role: "Section"));
 
@@ -1338,6 +1354,7 @@ public sealed class MainWindowViewModel : BindableBase
         var defined = categories.Select(x => x.Item1)
             .Append(ProjectWorkspaceService.TestProjectKind)
             .Append(ProjectWorkspaceService.TestProgramKind)
+            .Append(ProjectWorkspaceService.PublicFlowKind)
             .Append(ProjectWorkspaceService.ControllerKind)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var extras = assets.Where(x => !defined.Contains(x.Kind)).ToArray();
@@ -1537,6 +1554,7 @@ public sealed class MainWindowViewModel : BindableBase
         return node.Category switch
         {
             ProjectWorkspaceService.TestProgramKind => CreateTestProgramAsync(),
+            ProjectWorkspaceService.PublicFlowKind => CreatePublicFlowAsync(),
             ProjectWorkspaceService.TestProjectKind => CreateTestProjectAsync(),
             ProjectWorkspaceService.DbcKind => ImportDbcAsync(),
             ProjectWorkspaceService.FirmwareKind => ImportFirmwareAsync(),
@@ -1641,6 +1659,37 @@ public sealed class MainWindowViewModel : BindableBase
             ActivateEditor("test|" + asset.Id, new TestEditorView(editor),
                 asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试程序：" + asset.Name;
+        });
+    }
+
+    private async Task CreatePublicFlowAsync()
+    {
+        if (!HasProject) return;
+        var name = _fileDialogs.AskResourceName("新建公共流程", "新建公共流程");
+        if (name is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var asset = await _workspace.CreatePublicFlowAsync(name);
+            SelectAsset(asset.Id);
+            var session = await _workspace.OpenPublicFlowEditorAsync(asset.Id);
+            var view = new PublicFlowEditorView(_workspace, session);
+            ActivateEditor("flow|" + asset.Id, view, "公共流程 · " + asset.Name,
+                view.ConfirmClose);
+            StatusMessage = "公共流程已创建；直接添加连续测试步骤。";
+        });
+    }
+
+    private async Task OpenSelectedPublicFlowAsync()
+    {
+        if (!SelectedResourceIsPublicFlow || _selectedResource?.Asset is not { } asset) return;
+        if (IsAlreadyOpen("flow|" + asset.Id)) return;
+        await RunOperationAsync(async () =>
+        {
+            var session = await _workspace.OpenPublicFlowEditorAsync(asset.Id);
+            var view = new PublicFlowEditorView(_workspace, session);
+            ActivateEditor("flow|" + asset.Id, view, "公共流程 · " + asset.Name,
+                view.ConfirmClose);
+            StatusMessage = "已打开公共流程：" + asset.Name;
         });
     }
 
