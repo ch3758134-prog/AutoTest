@@ -126,7 +126,7 @@ public sealed class RealOccurrenceTests
             Assert.Equal("2", f.AdditionalResults["measured"].Value);
             Assert.NotNull(f.StartedUtc);
             Assert.NotNull(f.CompletedUtc);
-            Assert.True(f.Duration >= TimeSpan.Zero);
+            Assert.True(f.Duration!.Value >= TimeSpan.Zero);
         });
         Assert.Equal(new[] { 1, 2 }, loops.Select(f => f.LoopIteration!.Value));
         Assert.Equal(result.Facts.Length, collector.Ends.Count);
