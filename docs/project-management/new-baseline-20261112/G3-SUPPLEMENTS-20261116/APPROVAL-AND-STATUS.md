@@ -12,7 +12,7 @@
 |---|---|---|
 | `PM-CR-20261116-PF` | `DESIGN_APPROVED / IMPLEMENTATION_PENDING` | 公共流程为可调用工程资源；无生产用例身份；同一 TEST DSL |
 | `PM-CR-20261116-KEY` | `DESIGN_APPROVED / IMPLEMENTATION_PENDING` | 取消独立按键配置用户入口；TEST/手动台架直编 KEY；保留设备硬件约束与旧文件 |
-| `PM-CR-20261116-MC` | `TARGET_APPROVED / FIRMWARE_SOURCE_UPDATED / KEIL_BUILD_UNVERIFIED / FIELD_UNVERIFIED` | 两独立夹具、IGN 与内部 RL_DRV 边界，取消供电/SOL 业务 |
+| `PM-CR-20261116-MC` | `TARGET_APPROVED / FIRMWARE_SOURCE_UPDATED / KEIL_BUILD_UNVERIFIED / FIELD_UNVERIFIED` | 双夹具独立，IGN=HOUT1/PTC1/J1 C10，LED1～6/USB 0x1A～0x1C；外部 GPIO 初始化 LOW，内部 RL_DRV 末尾 HIGH；取消旧供电/SOL |
 
 主控板 0x18 两字节 `[clamp,state]` 与 0x19 位图**已在 `Main_Control@16abba7f` 固件源码实现**；旧版 `v0.3` 仍是一字节互斥 0x18。Keil Build、烧录到实际主控板及真实夹具验证**尚未完成**，不能把源码更新当成现场可用。HOST 按新格式开发，但在实际板卡兼容和安全许可确证前阻断实体 0x18 发送，不退回旧协议。
 
@@ -31,13 +31,14 @@
 ## 源码与身份
 
 - 管理分支：`Project_Management`。此归档不写 main、不创建项目管理交付分支/PR。
-- 主控固件调查：`Main_Control@16abba7fec94dc4b7fbdc05b91ee209b5c7efa12`（已包含实际固件源码修改和接口文档 v0.2），文档 Blob `cb9765539d651be551c0e4771f22bca7a00eac1f`。历史只提交接口调查文档的 `5d2ad5b7` 已非最新基线。
+- 主控最新固件源码：`Main_Control@bf81a64e465aa284155ee73ef44a16e39f739bce`（外部所有识别的高边输出软件初始化 LOW；新增六路 LED 的 0x1A～0x1C 控制；RL_DRV 仅 EAL 内部末尾初始化 HIGH，不受 USB/ASW 读写）。此前 `16abba7f` 和更早 `5d2ad5b7` 为历史版本。
+- [本轮源码与旧档案映射纠正](../research/MAIN-CONTROL-IO-USB-SOURCE-UPDATE-20261118.md)：**旧 IGN=PTC10/J1 C6 已废止，现为 IGN=PTC1/J1 C10；PTC10/J1 C6 为 LED4**。现有 `F1` 字符串仍为 `EPB_TEST_CTRL v0.4-dev`，不可当作本次镜像证明。
 - HOST 在研核查起点：`feature/g4-html-parity-20261115`；执行前必须回读实时 HEAD 和对应文件事实。 
 - 来源：项目负责人当前对话明确批准；无独立电子签名或现场测试证据，故不伪称外部身份认证/实测通过。
 
 ## 工作任务状态与交付约束
 
-- MAIN_CONTROL：新协议与旧命令撤销已修改源码；Keil 编译、板卡身份、GPIO/J1与安全行为实测仍 `PENDING`。
+- MAIN_CONTROL：独立双夹具、LED1～6 USB 与 GPIO 默认状态、内部 RL_DRV 分离均已更新源码；Keil 编译、板卡实装镜像身份、GPIO/J1与断连安全行为实测仍 `PENDING`。
 - DEVICE/TEST/PROJECT：正式接口、资源合同、验证与旧工程保护；`PENDING`。
 - UI/WPF/INTEGRATION：按合同实施，现有可用 USB/CAN 接口不得回归；`PENDING`。
 - Windows/现场测试：`NOT_VERIFIED`。
