@@ -48,6 +48,8 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
     public DateTimeOffset? ObservationUtc { get; init; }
     public string? Unit { get; init; }
     public string? SignalStatus { get; init; }
+    public string? FailureCode { get; init; }
+    public string? Detail { get; init; }
     public string? RequirementId { get; init; }
     public string? ReportNote { get; init; }
     public string? AdditionalResultsJson { get; init; }
@@ -65,6 +67,8 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
             (ExecutionPath?.Length ?? 0) > 4096 ||
             (Unit?.Length ?? 0) > 128 ||
             (SignalStatus?.Length ?? 0) > 128 ||
+            (FailureCode?.Length ?? 0) > 128 ||
+            (Detail?.Length ?? 0) > 4096 ||
             (RequirementId?.Length ?? 0) > 128 ||
             (ReportNote?.Length ?? 0) > 2048 ||
             (AdditionalResultsJson?.Length ?? 0) > 32768 ||
