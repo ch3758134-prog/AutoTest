@@ -30,6 +30,29 @@ public static class RunFactTimeline
     }
 }
 
+
+/// <summary>
+/// A signal observation's immutable DBC binding, not an inferred live workspace reference.
+/// Optional for older runs and for steps unrelated to CAN/DBC.
+/// </summary>
+public sealed record RunSignalProvenance(string BusRole, uint FrameId, string SignalName,
+    string Unit, Guid DbcAssetId, int DbcRevision, string DbcSha256,
+    DateTimeOffset ObservedUtc, long SourceMonotonicTicks,
+    string TimeSource, string TimeQuality)
+{
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(BusRole) || BusRole.Length > 40 ||
+            string.IsNullOrWhiteSpace(SignalName) || SignalName.Length > 256 ||
+            (Unit?.Length ?? 0) > 128 ||
+            DbcAssetId == Guid.Empty || DbcRevision < 1 ||
+            DbcSha256 is not { Length: 64 } || !DbcSha256.All(Uri.IsHexDigit) ||
+            ObservedUtc == default || ObservedUtc.Offset != TimeSpan.Zero ||
+            string.IsNullOrWhiteSpace(TimeSource) || string.IsNullOrWhiteSpace(TimeQuality))
+            throw new InvalidDataException("Incomplete real DBC signal provenance.");
+    }
+}
+
 /// <summary>Record-owned structured step evidence until the shared runtime fact CT carries these fields.</summary>
 public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest.Core.StepId Step,
     int Attempt, string Disposition, string? Expected, string? Actual,
@@ -54,9 +77,11 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
     public string? ReportNote { get; init; }
     public string? AdditionalResultsJson { get; init; }
     public bool? ShowEvidence { get; init; }
+    public RunSignalProvenance? SignalProvenance { get; init; }
 
     public void Validate()
     {
+        SignalProvenance?.Validate();
         if (StepOccurrenceId is not null &&
             (StartedUtc is null || CompletedUtc is null || Duration is null ||
                 Phase is null || string.IsNullOrWhiteSpace(ExecutionPath)))
