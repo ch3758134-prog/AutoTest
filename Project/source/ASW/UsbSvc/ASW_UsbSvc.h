@@ -17,7 +17,7 @@
 /**
  * @brief  初始化上位机通信路由
  * @note   1) 注册 CDD_USB 帧回调(本文件 HandleCommand)
- *         2) 注册 BusProxy 给 EAL_CAN0/CAN1 收帧回调(0x41 上报)
+ *         2) 注册 BusProxy 给 KEY_CAN_PORT / ECU_CAN_PORT 收帧回调(0x41 上报)
  *         3) 调用各 Role 的 Init (当前各 Role 无 Init 需求,留接口对齐)
  */
 void ASW_UsbSvc_Init(void);
