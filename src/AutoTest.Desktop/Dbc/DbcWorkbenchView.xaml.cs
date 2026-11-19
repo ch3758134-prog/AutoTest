@@ -66,7 +66,7 @@ public partial class DbcWorkbenchView : UserControl
     private void BeginInlineRename(DependencyObject container, bool message)
     {
         if (_viewModel.IsBusy) return;
-        if (_inlineEditor is not null) EndInlineRename(true);
+        if (_inlineEditor is not null) return;
         if (message && _viewModel.SelectedMessage is null ||
             !message && _viewModel.SelectedSignal is null) return;
         var textbox = FindDescendant<TextBox>(container,
@@ -115,10 +115,14 @@ public partial class DbcWorkbenchView : UserControl
     private void InlineEditor_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key is not (Key.Enter or Key.Escape)) return;
+        var wasMessage = _inlineIsMessage;
         EndInlineRename(e.Key == Key.Enter);
         e.Handled = true;
-        if (sender is TextBox box) box.MoveFocus(
-            new TraversalRequest(FocusNavigationDirection.Next));
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (wasMessage) MessageList.Focus();
+            else SignalGrid.Focus();
+        }, DispatcherPriority.Input);
     }
 
     private void InlineEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -143,7 +147,8 @@ public partial class DbcWorkbenchView : UserControl
         if (row is null || _viewModel.IsBusy) return;
         SignalGrid.SelectedItem = row.Item;
         var cell = FindAncestor<DataGridCell>(e.OriginalSource as DependencyObject);
-        if (cell?.Column.DisplayIndex == 0)
+        if (cell is null) return; // double-clicking a scrollbar/empty area is not Edit
+        if (cell.Column.DisplayIndex == 0)
             BeginInlineRename(row, message: false);
         else _viewModel.EditSignal();
         e.Handled = true;
