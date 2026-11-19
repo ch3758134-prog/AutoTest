@@ -6,6 +6,7 @@ using AutoTest.Core;
 using AutoTest.Records.Exports;
 using AutoTest.Records.Model;
 using AutoTest.Records.Storage;
+using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Preparation;
 using AutoTest.Testing.Runtime;
 
@@ -52,6 +53,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
     private readonly IRealRunEvidenceFinalizer? _evidenceFinalizer;
     private readonly Dictionary<Guid, RealStepStarted> _active = new();
     private readonly Dictionary<StepId, int> _attempts = new();
+    private readonly Dictionary<StepId, TestTargetMapping> _frozenJudgementTargets = new();
     public Guid CaseAttemptId { get; } = Guid.NewGuid();
     private bool _begun;
     private bool _completed;
@@ -67,6 +69,25 @@ public sealed class RealTestRecordSession : IRealRunEventSink
     }
 
     public RunId RunId => _record.RunId;
+
+    /// <summary>
+    /// A direct ECU judgement can cite only the DBC signal pinned in the same
+    /// compiled TEST document and observed in that exact step occurrence.
+    /// </summary>
+    private bool MatchesFrozenJudgement(RealStepFact fact, SignalObservation observed)
+    {
+        if (!_frozenJudgementTargets.TryGetValue(fact.Step, out var target) ||
+            target.Kind != TestTargetKind.Signal) return false;
+        var signal = observed.Signal;
+        return signal.DbcAsset.Id == target.Asset &&
+            signal.DbcAsset.Revision.Value == target.AssetRevision &&
+            string.Equals(signal.DbcAsset.Fingerprint.Sha256, target.AssetSha256,
+                StringComparison.OrdinalIgnoreCase) &&
+            signal.Role == target.Role && signal.FrameId == target.CanId &&
+            string.Equals(signal.SignalName, target.SignalName, StringComparison.Ordinal) &&
+            string.Equals(signal.Unit, target.Unit, StringComparison.Ordinal) &&
+            string.Equals(observed.Unit, target.Unit, StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// The host must finish device/DBC/plan safety preflight before entering this method.
@@ -103,6 +124,17 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 ct).ConfigureAwait(false);
             var doc = prepared.RestoreDocument();
             var settings = doc.ReportSettings.Validate();
+            var mappingByName = doc.Mappings.ToDictionary(x => x.Name,
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var node in doc.Walk())
+            {
+                if (node.Type is not ("AssertSignal" or "WaitUntil") ||
+                    !StepExecutionPolicy.IsEnabled(node)) continue;
+                if (node.Properties.TryGetValue("target", out var name) &&
+                    mappingByName.TryGetValue(name, out var target) &&
+                    target.Kind == TestTargetKind.Signal)
+                    _frozenJudgementTargets.Add(node.Id, target);
+            }
             await AppendAuditAsync(CaseAttemptId, RunFactKind.RecordWrite,
                 "TEST_CONTEXT " + JsonSerializer.Serialize(new
                 {
@@ -209,6 +241,18 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         var evidence = observed is not null && observed.Evidence.Value != Guid.Empty
             ? ImmutableArray.Create(observed.Evidence) : ImmutableArray<EvidenceRef>.Empty;
         var quality = observed?.Quality ?? EvidenceQuality.Unknown;
+        // An observation in a Read (or an unrelated earlier step) cannot turn an
+        // Expect literal into a proved ECU judgement. Tag only the occurrence
+        // that compared this exact frozen DBC signal and actually passed.
+        var directJudgement = completed.Phase == TestPhase.Test &&
+            completed.Type is "AssertSignal" or "WaitUntil" &&
+            completed.Status == RealStepStatus.Completed &&
+            completed.ObservationStatus == TestSignalStatus.Valid &&
+            observed is { Value: not null, HasGap: false } &&
+            observed.Evidence.Value != Guid.Empty &&
+            (quality is EvidenceQuality.HostObserved or EvidenceQuality.DirectMeasured) &&
+            !string.IsNullOrWhiteSpace(completed.Actual) &&
+            MatchesFrozenJudgement(completed, observed);
         // The audit TimePoint describes persistence acceptance, whereas the
         // step's CompletedUtc is the execution-time boundary recorded separately.
         var instant = TimePoint.FromHostArrival(DateTimeOffset.UtcNow,
@@ -237,6 +281,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 observed.Time.Source.ToString(), observed.Time.Quality.ToString()),
             Unit = observed?.Unit,
             SignalStatus = completed.ObservationStatus?.ToString(),
+            JudgementEvidenceKind = directJudgement ? "DirectDbcSignal" : null,
             FailureCode = completed.Status switch
             {
                 RealStepStatus.NoData when
@@ -283,6 +328,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 occurrence = completed.StepOccurrenceId,
                 attempt,
                 disposition = completed.Status.ToString(),
+                judgementEvidenceKind = step.JudgementEvidenceKind,
                 detail = completed.Detail.Length > 2048 ? completed.Detail[..2048] : completed.Detail
             }), quality, evidence, ct).ConfigureAwait(false);
         _active.Remove(completed.StepOccurrenceId);
@@ -326,13 +372,61 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         var orphaned = referenced.Where(x => !verified.Contains(x)).ToArray();
         var corrupt = evidenceSnapshot.Artifacts.Any(x =>
             x.Integrity != ArtifactIntegrity.Present);
-        var trustedSignal = evidenceSnapshot.StepFacts.Any(x =>
-            x.SignalProvenance is not null && x.SignalStatus == "Valid" &&
-            (x.Quality is EvidenceQuality.HostObserved or EvidenceQuality.DirectMeasured) &&
-            x.Evidence.Any() && x.StepOccurrenceId is not null);
+        // A PASS must be justified by its own successful ECU assertion(s).
+        // Join actual TEST assertions to durable StepFacts using StepOccurrenceId
+        // AND StepId/CaseAttemptId; no global Any(valid signal) is sufficient.
+        // Read -> Expect($variable) lacks a P0 variable-dependency proof chain,
+        // so Expect is deliberately NOT eligible for formal ECU PASS.
+        var successfulAssertions = completed.Facts.Where(f =>
+            f.Phase == TestPhase.Test && f.Status == RealStepStatus.Completed &&
+            (f.Type is "AssertSignal" or "WaitUntil" or "Expect")).ToArray();
+        var byOccurrence = evidenceSnapshot.StepFacts
+            .Where(x => x.StepOccurrenceId.HasValue)
+            .GroupBy(x => x.StepOccurrenceId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToArray());
+
+        bool HasDirectJudgementProof(RealStepFact executed)
+        {
+            if (executed.Type is not ("AssertSignal" or "WaitUntil") ||
+                executed.StepOccurrenceId == Guid.Empty ||
+                executed.ObservationStatus != TestSignalStatus.Valid ||
+                executed.Observation is not { Value: not null, HasGap: false } sample ||
+                sample.Evidence.Value == Guid.Empty ||
+                !MatchesFrozenJudgement(executed, sample) ||
+                !verified.Contains(sample.Evidence.Value) ||
+                !byOccurrence.TryGetValue(executed.StepOccurrenceId, out var rows) ||
+                rows.Length != 1)
+                return false;
+            var persisted = rows[0];
+            return persisted.Step == executed.Step &&
+                persisted.CaseAttemptId == CaseAttemptId &&
+                persisted.Phase == "Test" &&
+                persisted.Disposition == nameof(RealStepStatus.Completed) &&
+                persisted.JudgementEvidenceKind == "DirectDbcSignal" &&
+                persisted.SignalStatus == nameof(TestSignalStatus.Valid) &&
+                persisted.Expected == executed.Expected &&
+                persisted.Actual == executed.Actual &&
+                persisted.ObservationUtc == sample.Time.Utc &&
+                persisted.Quality == sample.Quality &&
+                persisted.Evidence.Length == 1 &&
+                persisted.Evidence[0] == sample.Evidence &&
+                persisted.SignalProvenance is { } origin &&
+                origin.DbcAssetId == sample.Signal.DbcAsset.Id.Value &&
+                origin.DbcRevision == sample.Signal.DbcAsset.Revision.Value &&
+                string.Equals(origin.DbcSha256,
+                    sample.Signal.DbcAsset.Fingerprint.Sha256,
+                    StringComparison.OrdinalIgnoreCase) &&
+                origin.FrameId == sample.Signal.FrameId &&
+                origin.BusRole == sample.Signal.Role.ToString() &&
+                origin.SignalName == sample.Signal.SignalName &&
+                origin.Unit == sample.Unit;
+        }
+        var provenCount = successfulAssertions.Count(HasDirectJudgementProof);
+        var unprovenCount = successfulAssertions.Length - provenCount;
         var formalPassEligible = capture.RecordingComplete &&
             capture.DroppedEvents == 0 && orphaned.Length == 0 && !corrupt &&
-            referenced.Length > 0 && trustedSignal;
+            referenced.Length > 0 &&
+            successfulAssertions.Length > 0 && unprovenCount == 0;
         if (completed.Verdict == RealTestVerdict.Passed && !formalPassEligible)
             await AppendAuditAsync(Guid.NewGuid(), RunFactKind.Uncertainty,
                 "EVIDENCE_GATE_NOT_MET " + JsonSerializer.Serialize(new
@@ -342,7 +436,9 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                     capture.IncompleteReason,
                     unarchivedEvidenceCount = orphaned.Length,
                     corruptArtifact = corrupt,
-                    trustedSignalPresent = trustedSignal
+                    successfulAssertionCount = successfulAssertions.Length,
+                    provenDirectDbcAssertions = provenCount,
+                    unprovenAssertions = unprovenCount
                 }), EvidenceQuality.Unknown, ImmutableArray<EvidenceRef>.Empty, ct)
                 .ConfigureAwait(false);
 
