@@ -187,6 +187,12 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OpenUnboundTestEditor_Click(object sender, RoutedEventArgs e)
+    {
+        var editor = new UnboundTestEditorWindow { Owner = this };
+        editor.Show(); // independent authoring session: no fake PROJECT identity or Run authorization
+    }
+
     private void ShowOverview_Click(object sender, RoutedEventArgs e) => _viewModel.ShowOverview();
 
     private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
