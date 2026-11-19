@@ -23,7 +23,7 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 | LED5 | HOUT6 | PTC9 | SOL10IN | U22 CH2 | C7 | USB控制 (0x1A/0x1B/0x1C) |
 | LED6 | HOUT7 | PTC8 | SOL9IN | U22 CH1 | C8 | USB控制 (0x1A/0x1B/0x1C) |
 
-上述 HOUT 属高边输出，均需共用 `SOL24IN`，GPIO HIGH 并不证明输出端子已有负载电压。**已批准并落实的源码初始化：IGN、LED1~6、Air_ALVE1/2、HOUT9/10、U22 CH4 预留控制输入及 RL_DRV 全部 LOW。** 只有烧录新固件后此行为才生效；复位到 GPIO 初始化前的瞬态仍需硬件检查。现场线束仍需确认从旧 J1 C6 改至 J1 C10。
+上述 HOUT 属高边输出，均需共用 `SOL24IN`，GPIO HIGH 并不证明输出端子已有负载电压。**已批准并落实的源码初始化：IGN、LED1~6、Air_ALVE1/2、HOUT9/10、U22 CH4 预留控制输入全部 LOW；`RL_DRV` 属内部硬件使能，在上述 IO 均设为 LOW 后由 EAL 初始化 HIGH。** 只有烧录新固件后此行为才生效；复位到 GPIO 初始化前的瞬态仍需硬件检查。现场线束仍需确认从旧 J1 C6 改至 J1 C10。
 
 ## 3. 外部 KEY 输入（只定义不启用）
 
@@ -38,17 +38,17 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 ## 4. 未改变的行为与验证边界
 
 - USB 通信驱动与服务、`0x40` CAN 发送及 `0x41` CAN 接收上报的帧格式不变，通道值保持 0/1。
-- Air_ALVE1/2 的 GPIO 映射、USB 操作值不变；RL_DRV 已改为上电 LOW，由 ASW_IoCtrl 在任意合法 ON 请求时先使能、最后一个有效输出请求关闭时断开。
+- Air_ALVE1/2 的 GPIO 映射、USB 操作值不变。`RL_DRV` 仅由 EAL 初始化，是硬件电路内部使能，不归 ASW_IoCtrl 管理，更不会跟随 USB 指令状态变化。
 - 已完成源码映射变更：**IGN 从 HOUT5/PTC10/J1 C6 迁移为 HOUT1/PTC1/J1 C10**；保留现有 IGN 命令号，上电默认改成 LOW。LED1~LED6 占用 HOUT2~HOUT7。未据此宣称已完成现场改线或硬件验证。
 - LED1~LED6 已初始化为 GPIO 输出 LOW；USB CMD 0x1A 单路设置 [index, level]，0x1B 空请求读取六路 GPIO 位图，0x1C 单字节设置六路位图(0x00~0x3F)。LED 位图 bit0..5 分别对应 LED1..LED6。
-- USB OK 只说明 GPIO 设置完成，GET 只读 MCU GPIO 电平；不提供 J1 输出电压或灯状态反馈。USB 断开不自动改变 LED 请求；只要 IGN/LED 仍有 ON 请求，共用母线不会因为夹具请求 OFF 而关闭。MCU 复位后六路重新初始化 LOW。
+- USB OK 只说明业务 GPIO 指令执行，GET 只读 MCU GPIO 电平；不提供 J1 端子电压或灯状态反馈。USB 断开不自动改变 LED 请求，且 USB 不负责 RL_DRV；MCU 复位后 LED 重新初始化 LOW。
 - KEY1~KEY3 仍仅声明固定硬件资源，不提供采样逻辑或 USB 命令。
 - MCU 引脚、驱动器、连接器依据原理图；实际装配、线束及上电输出仍需实体复核。
 
-## 5. 未分配高边输入与公共电源初始策略（2026-11-18 决定）
+## 5. 未分配高边输入与内部硬件初始化（2026-11-18 决定）
 
 - U23 CH2 `HOUT9=PTC3/SOL3IN`、U23 CH1 `HOUT10=PTB0/SOL1IN` 均显式初始化 LOW；不对 USB 暴露控制。
 - U22 CH4 `SOL12IN=PTC11` 亦初始化 LOW；该路板外输出网络尚未确认，不预先命名为 HOUT8。
-- `RL_DRV=PTC0` 的控制请求先初始化 LOW，之后由 ASW_IoCtrl 维护已管理的 IGN(1路)、LED(6路)、Air(2路) 请求位图。任何 ON 请求先开启 RL_DRV；在所有请求为 0 时才关闭 RL_DRV；不会因关闭单路误切断其它路。
-- USB `0x12/0x13、0x18/0x19、0x1A/0x1B/0x1C` 的命令与响应格式不变；硬件公共母线操作是固件内部过程，不新增直接控制 RL_DRV 的 USB 指令。
+- `RL_DRV=PTC0` 是板级电路内部使能（PTC0→Q4→U2→SOL24IN），不属于上位机业务 IO。`EAL_GPIO_Init()` 先关闭各外部受控高边 GPIO，再独立把 RL_DRV 初始化为 HIGH。`ASW_IoCtrl` 不再维护公共母线请求位图或向 RL_DRV 写电平。
+- USB `0x12/0x13、0x18/0x19、0x1A/0x1B/0x1C` 仅控制 IGN、夹具、LED，命令与响应格式不变；不直接或间接控制 RL_DRV，也不增加 RL_DRV 的 USB 指令。
 - GPIO 初始 LOW、GPIO 回读和 USB OK 只描述固件动作；由于实际 PCB/线束、RESET 瞬态、输出电压、气阀机械状态尚无实测，不能据此宣称工位安全性已验证。
