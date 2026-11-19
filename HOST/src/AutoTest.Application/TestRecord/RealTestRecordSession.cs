@@ -133,9 +133,17 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         // One durable STEP row per occurrence. The report consumes this same row.
         await _writer.AppendStepAsync(step, ct).ConfigureAwait(false);
         _attempts[completed.Step] = attempt;
-        await AppendAuditAsync(completed.StepOccurrenceId,
-            completed.Status is RealStepStatus.Completed or RealStepStatus.Skipped
-                ? RunFactKind.Judgement : RunFactKind.Uncertainty,
+        // Device acknowledgement, read completion and delay are NOT DUT verdicts.
+        var isAssertion = completed.Type is "Expect" or "WaitUntil" or "AssertSignal";
+        var eventKind = completed.Status switch
+        {
+            RealStepStatus.ConditionFalse or RealStepStatus.NoData or
+            RealStepStatus.InvalidData or RealStepStatus.Timeout or
+            RealStepStatus.DeviceError or RealStepStatus.Cancelled => RunFactKind.Uncertainty,
+            _ when isAssertion => RunFactKind.Judgement,
+            _ => RunFactKind.RecordWrite
+        };
+        await AppendAuditAsync(completed.StepOccurrenceId, eventKind,
             "STEP_END " + JsonSerializer.Serialize(new
             {
                 stepId = completed.Step.ToString(),
