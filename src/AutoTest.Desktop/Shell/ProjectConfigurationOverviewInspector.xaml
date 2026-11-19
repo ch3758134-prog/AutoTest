@@ -8,7 +8,7 @@
    <TextBlock Text="工程配置" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,13"/>
    <Border Background="#E9EEF5" Height="1" Margin="0,0,0,13"/>
    <Button Content="DUT 资源绑定" Command="{Binding OpenTcfCommand}" Margin="0,0,0,7"/>
-   <Button Content="按键输入配置" Command="{Binding OpenControllerCommand}" Margin="0,0,0,7"/>
+
    <Button Content="工位物理能力" Command="{Binding OpenTbcCommand}" Margin="0,0,0,12"/>
    <TextBlock Text="已关联工程资源" FontWeight="SemiBold" Margin="0,0,0,7"/>
    <TextBlock Text="{Binding SelectedConfigurationSummary}" Foreground="#64758C" TextWrapping="Wrap"
