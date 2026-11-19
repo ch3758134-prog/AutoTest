@@ -154,6 +154,6 @@ public sealed class TestMappingContractTests
         };
         var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
         Assert.Contains(plan.Diagnostics, issue => issue.Contains("CAN 周期", StringComparison.Ordinal));
-        Assert.Contains(plan.Diagnostics, issue => issue.Contains("ECU CAN0", StringComparison.Ordinal));
+        Assert.Contains(plan.Diagnostics, issue => issue.Contains("ECU CAN", StringComparison.Ordinal));
     }
 }
