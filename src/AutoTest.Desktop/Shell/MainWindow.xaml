@@ -7,7 +7,7 @@
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
  PreviewKeyDown="Window_PreviewKeyDown"
  ResizeMode="CanResize" Background="#EEF2F8" Foreground="#1E2C41"
- FontFamily="{StaticResource UiFont}" FontSize="12"
+ FontFamily="{StaticResource UiFont}" FontSize="13"
  UseLayoutRounding="True" SnapsToDevicePixels="True">
  <chrome:WindowChrome.WindowChrome>
   <chrome:WindowChrome CaptionHeight="38" ResizeBorderThickness="6" GlassFrameThickness="0"
@@ -75,8 +75,8 @@
   </Style>
  </Window.Resources>
  <Grid Background="#EEF2F8">
-  <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="39"/>
-   <RowDefinition Height="*"/><RowDefinition Height="23"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="41"/><RowDefinition Height="44"/>
+   <RowDefinition Height="*"/><RowDefinition Height="27"/></Grid.RowDefinitions>
 
   <!-- A single desktop-native 38px caption and IDE menu; no second OS titlebar. -->
   <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
@@ -106,7 +106,7 @@
       <TextBlock Text="IDE" Foreground="#2368BD" FontSize="10"/>
      </Border>
     </StackPanel>
-    <Menu Background="Transparent" VerticalAlignment="Center" FontSize="11"
+    <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
      <MenuItem Header="文件">
       <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N"/>
@@ -189,7 +189,7 @@
 
   <Grid Grid.Row="2" Background="#F9FBFD">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="TreeColumn" Width="302" MinWidth="250" MaxWidth="500"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="322" MinWidth="280" MaxWidth="510"/>
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*" MinWidth="520"/>
    </Grid.ColumnDefinitions>
@@ -217,7 +217,7 @@
        <TabControl.ItemTemplate>
         <DataTemplate>
          <StackPanel Orientation="Horizontal">
-          <TextBlock Text="{Binding Title}" MaxWidth="140" TextTrimming="CharacterEllipsis"
+          <TextBlock Text="{Binding Title}" MaxWidth="190" TextTrimming="CharacterEllipsis"
            VerticalAlignment="Center" Foreground="#2C5F99" FontSize="11"/>
           <Button Content="×" Tag="{Binding}" Click="CloseEditorTab_Click"
            Width="19" Height="19" MinWidth="0" MinHeight="0"
@@ -233,7 +233,7 @@
      <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*" MinWidth="330"/>
       <ColumnDefinition x:Name="InspectorSplitterColumn" Width="4"/>
-      <ColumnDefinition x:Name="InspectorColumn" Width="350" MinWidth="0" MaxWidth="540"/>
+      <ColumnDefinition x:Name="InspectorColumn" Width="390" MinWidth="0" MaxWidth="560"/>
      </Grid.ColumnDefinitions>
      <Grid Grid.Column="0">
       <Grid.RowDefinitions>
