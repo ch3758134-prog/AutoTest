@@ -12,8 +12,8 @@
 | 项目 | 当前固件源码 | 说明 |
 | --- | --- | --- |
 | USB PING/版本查询 | 已实现 | 上电设备识别仍需实测 |
-| CAN0/CAN1 透传 | 已实现，均初始化为500kbit/s | 软件CAN0通往按键板、CAN1通往DUT |
-| CAN1周期广播 | 旧功能仍存在 0x50~0x53 | 是否长期保留作为业务功能未另行批准 |
+| KEY CAN / ECU CAN 透传 | 已实现，均初始化为500kbit/s | KEY CAN=J1 B11/B1（MCU CAN0）；ECU CAN=J1 A12/A1（MCU CAN1） |
+| ECU CAN 周期广播 | 旧功能仍存在 0x50~0x53 | 是否长期保留作为业务功能未另行批准 |
 | IGN/HOUT1/PTC1/J1 C10 | 0x12/0x13设置/查询 | 保留，查询为MCU GPIO电平 |
 | LED1~LED6/HOUT2~HOUT7 | 0x1A单路设置、0x1B六路查询、0x1C位图设置 | 新增；GPIO上电默认LOW |
 | 夹具1/PTB1、J1 B5 | 0x18/0x19，独立控制 | 1=压紧，0=释放 |
@@ -102,7 +102,7 @@
 | 0xF1 GET_VERSION | 主机→板 | 空 | ASCII "EPB_TEST_CTRL v0.4-dev" | 固件当前常量，并非 Keil 构建自动版本 |
 | 0x40 CAN_SEND | 主机→板 | 固定15字节，见下 | 空 | OK 表示驱动接受发送请求，**不代表 DUT 已收到/应答** |
 | 0x41 CAN_RX_IND | 板→主机（主动） | 无请求 | 固定15字节，见下 | SEQ=0；可随时与普通应答交错 |
-| 0x50 SET_BROADCAST | 主机→板 | 1+16*N 字节，见下 | 空 | 装填 CAN1 周期发送表 |
+| 0x50 SET_BROADCAST | 主机→板 | 1+16*N 字节，见下 | 空 | 装填 ECU CAN 周期发送表 |
 | 0x51 BROADCAST_START | 主机→板 | 空 | 空 | 启动发送表；无帧表时当前实现也可能返回 OK |
 | 0x52 BROADCAST_STOP | 主机→板 | 空 | 空 | 停止发送，保留帧表 |
 | 0x53 BROADCAST_STATUS | 主机→板 | 空 | 两字节：[running, count] | running 为 0/1 |
@@ -123,12 +123,12 @@
 
 当前 CAN_SEND 校验 channel、DLC、长度，但未在 ASW_BusProxy 层完整检查 ide、ID 取值；上位机仍应主动校验。CAN 接收上报为低优先级，队列拥堵时存在丢弃风险，不能把 USB 日志当作无损总线记录。
 
-### 4.2 CAN1 周期广播（0x50~0x53）
+### 4.2 ECU CAN 周期广播（0x50~0x53）
 
 0x50 请求：
 - PAYLOAD[0] = count，范围 1~8。
 - 后面 count 个帧，每帧固定16字节：ide(1) + id(4 LE) + period_ms(2 LE) + dlc(1) + data(8)。
-- period_ms 5~60000；dlc 0~8；所有帧**固定从 CAN1**发送。
+- period_ms 5~60000；dlc 0~8；所有帧**固定从 ECU CAN（MCU FlexCAN1）**发送。
 - 发送新的 0x50 成功时，会先停止旧广播、替换帧表，不自动启动；再发 0x51。
 - 0x52 停止但保留帧表；0x53 返回 [running,count]。
 - 当 USB 枚举状态丢失时固件会停止广播；主机重连应明确重新检查状态。USB 断连检测是按枚举状态，不等价于应用层心跳。
@@ -203,7 +203,7 @@
 | 夹具2压紧：[2,1]，SEQ=6 | A5 06 00 18 02 02 01 67 BD 5A |
 | 夹具2释放：[2,0]，SEQ=7 | A5 07 00 18 02 02 00 A7 AC 5A |
 | GET_CLAMPS请求，SEQ=8 | A5 08 00 19 00 09 D4 5A |
-| CAN1发送ID=0x123、DLC=2、DATA=11 22，SEQ=9 | A5 09 00 40 0F 01 00 23 01 00 00 02 11 22 00 00 00 00 00 00 12 5B 5A |
+| ECU CAN发送ID=0x123、DLC=2、DATA=11 22，SEQ=9 | A5 09 00 40 0F 01 00 23 01 00 00 02 11 22 00 00 00 00 00 00 12 5B 5A |
 
 ## 7. 推荐上位机调用模型
 
@@ -212,7 +212,7 @@
 3. 请求事务：非零SEQ分配与超时，响应按SEQ+CMD配对；0x41/SEQ0走CAN异步事件。
 4. CAN服务：0x40发送、0x41收帧；USB OK不代表CAN对端确认。
 5. GPIO服务：IGN使用0x12/0x13；夹具使用0x18/0x19；LED使用0x1A单路、0x1B读回、0x1C整组位图；不提供RL_DRV或旧供电操作。
-6. 新旧固件区分：本次GET_VERSION源码字符串改为EPB_TEST_CTRL v0.4-dev。上位机不得仅按VID/PID判断夹具协议版本。
+6. 新旧固件区分：当前 GET_VERSION 在源码中硬编码为 EPB_TEST_CTRL v0.4-dev，并非构建自动版本号或在机固件校验证据。上位机不得仅按VID/PID判断夹具协议版本。
 
 ## 8. 已知风险与尚未验证项
 
@@ -247,7 +247,7 @@
 - 命令路由：Project/source/ASW/UsbSvc/ASW_UsbSvc.c
 - CAN 透传：Project/source/ASW/BusProxy/ASW_BusProxy.c
 - CAN1 广播：Project/source/ASW/EcuEmu/ASW_EcuEmu.c
-- IGN、夹具、旧供电：Project/source/ASW/IoCtrl/ASW_IoCtrl.c
+- IGN、夹具与六路 LED：Project/source/ASW/IoCtrl/ASW_IoCtrl.c
 - 真实 GPIO 宏及初始化：Project/source/BSW/EAL/GPIO/EAL_GPIO.h、EAL_GPIO.c
 - 固件启动：Project/source/main.c
 
