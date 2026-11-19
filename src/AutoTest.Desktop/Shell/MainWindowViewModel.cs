@@ -1008,6 +1008,8 @@ public sealed class MainWindowViewModel : BindableBase
         }
         IsBusy = true;
         var openedSuccessfully = false;
+        StatusMessage = "正在恢复上次工程：" + Path.GetFileName(path);
+        await Task.Yield();
         try
         {
             await _workspace.OpenAsync(path);
@@ -1391,15 +1393,24 @@ public sealed class MainWindowViewModel : BindableBase
     {
         var path = _fileDialogs.PickProjectManifest();
         if (path is null || !await PrepareEditorsForCloseAsync()) return;
+        var opened = false;
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        StatusMessage = "正在读取工程清单：" + Path.GetFileName(path);
+        // Paint the status before starting potentially slow project I/O.
+        await Task.Yield();
         await RunOperationAsync(async () =>
         {
-            // Do not drop the old editor tabs before the new manifest has
-            // actually passed ProjectWorkspaceService validation/opening.
-            // CurrentChanged clears the old tabs only after successful switch.
+            // Do not drop old editor tabs until the new manifest is verified.
             await _workspace.OpenAsync(path);
-            StatusMessage = "工程已打开：" + path;
+            opened = true;
+            StatusMessage = "工程清单已载入，正在恢复编辑器…";
         });
+        if (!opened) return;
+        // A recent DBC is not auto-opened as a modal window on startup.
         await RestoreRecentEditorAsync();
+        timer.Stop();
+        StatusMessage = "工程打开完成 · " + Path.GetFileName(path) +
+            " · " + timer.ElapsedMilliseconds + " ms";
     }
 
     private async Task CreateCaseInsideProjectAsync(TestProjectWorkbenchViewModel projectEditor)
