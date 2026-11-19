@@ -204,11 +204,11 @@ public partial class TestEditorView : UserControl
         var shell = Window.GetWindow(this);
         var width = shell?.ActualWidth > 0 ? shell.ActualWidth : SystemParameters.WorkArea.Width;
         var height = shell?.ActualHeight > 0 ? shell.ActualHeight : SystemParameters.WorkArea.Height;
-        // Four columns on a normal desktop; narrower windows can fall back to wrapping.
-        PaletteSurface.Width = Math.Min(1000, Math.Max(540, width - 120));
+        // A compact two-column command palette keeps the current TEST context in view.
+        PaletteSurface.Width = Math.Min(640, Math.Max(440, width - 96));
         // Keep the picker inside the usable window even at 1366×768/high DPI.
-        PaletteSurface.MaxHeight = Math.Min(790, Math.Max(280, height - 90));
-        PaletteList.MaxHeight = Math.Max(120, PaletteSurface.MaxHeight - 165);
+        PaletteSurface.MaxHeight = Math.Min(545, Math.Max(260, height - 90));
+        PaletteList.MaxHeight = Math.Max(120, PaletteSurface.MaxHeight - 155);
         _paletteActions = TestStepInspector.PaletteActions(caseOnly);
         var target = _viewModel.SelectedItem;
         PaletteHint.Text = caseOnly
