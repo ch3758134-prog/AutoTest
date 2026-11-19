@@ -130,11 +130,11 @@
 
     <Grid Grid.Row="2" Margin="10,10,10,9">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="250" MinWidth="205"/>
+        <ColumnDefinition Width="285" MinWidth="250"/>
         <ColumnDefinition Width="5"/>
         <ColumnDefinition Width="*" MinWidth="380"/>
         <ColumnDefinition Width="5"/>
-        <ColumnDefinition Width="365" MinWidth="310"/>
+        <ColumnDefinition Width="390" MinWidth="335"/>
       </Grid.ColumnDefinitions>
 
       <Border Grid.Column="0" Style="{StaticResource AtPanel}">
@@ -172,19 +172,22 @@
             </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
               <DataTemplate>
-                <StackPanel Margin="3,4">
-                  <Grid>
-                    <TextBlock x:Name="MessageInlineDisplay" Text="{Binding DisplayName}"
-                      FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis"
-                      ToolTip="{Binding DisplayName}" VerticalAlignment="Center"/>
-                    <TextBox x:Name="MessageInlineEditor" Visibility="Collapsed" MinHeight="27"
-                      KeyDown="InlineEditor_KeyDown"
-                      LostKeyboardFocus="InlineEditor_LostKeyboardFocus"
-                      ToolTip="Enter 确认中文别名 · Esc 取消"/>
-                  </Grid>
-                  <TextBlock Text="{Binding HexId}" FontSize="11" Foreground="{StaticResource Subtle}"
-                    Margin="0,2,0,0" ToolTip="{Binding Summary}"/>
-                </StackPanel>
+                <Grid Margin="2,3">
+                  <StackPanel x:Name="MessageInlineDisplay" Margin="4,3">
+                    <TextBlock Text="{Binding NavTitle}" FontSize="13" FontWeight="SemiBold"
+                      TextTrimming="CharacterEllipsis" ToolTip="{Binding DisplayName}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                      <TextBlock Text="{Binding HexId}" Foreground="{StaticResource Subtle}"
+                        FontSize="11" Margin="0,0,9,0"/>
+                      <TextBlock Text="{Binding Name}" Foreground="{StaticResource Subtle}"
+                        FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </StackPanel>
+                  <TextBox x:Name="MessageInlineEditor" Visibility="Collapsed" MinHeight="30"
+                    Margin="4,3" KeyDown="InlineEditor_KeyDown"
+                    LostKeyboardFocus="InlineEditor_LostKeyboardFocus"
+                    ToolTip="Enter 确认中文别名 · Esc 取消"/>
+                </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
