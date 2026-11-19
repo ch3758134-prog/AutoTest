@@ -30,3 +30,7 @@
 ## 2026-11-18 下一阶段研发顺序
 
 - [G4 自动测试优先、FLASH 独立工作台接入、UDS 即刻研究，WAVE/SCAN 待自动测试基线实测后完整集成](new-baseline-20261112/research/G4-FLASH-UDS-WAVE-SCAN-SEQUENCING-20261118.md)：负责人已确定的推进依赖，不表示 G4 Gate 或 FLASH APP 后验完成。
+
+## 2026-11-18 UDS 独立实测专项
+
+- [UDS 专用研发分支与独立 WPF 实测上位机及分层验收合同](new-baseline-20261112/research/UDS-DEDICATED-BRANCH-AND-REAL-LAB-20261118.md)：开发分支 `feature/uds-lab-20261118`；独立 EXE 的真实 ECU 验收与 G4 TEST 集成分开管理。
