@@ -52,6 +52,11 @@ public sealed class PublicFlowWorkflowTests
                 {
                     References = [new PublicFlowReference(a.Id.Value, a.Revision, a.Sha256)]
                 });
+            // A has an incoming pinned flow call and cannot be silently
+            // removed from the project manifest via the generic resource UI.
+            var deleteError = await Assert.ThrowsAsync<AutoTest.Projects.Project.ProjectDataException>(
+                () => workspace.RemoveAssetReferenceAsync(a.Id));
+            Assert.Equal("ASSET_REFERENCED", deleteError.Code);
             var openA = await workspace.OpenPublicFlowEditorAsync(a.Id);
             var revision = workspace.Current!.Definition.Revision;
             var error = await Assert.ThrowsAsync<AutoTest.Projects.Project.ProjectDataException>(
