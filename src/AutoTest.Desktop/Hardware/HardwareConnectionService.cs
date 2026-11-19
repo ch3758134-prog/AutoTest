@@ -159,7 +159,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             };
             Interlocked.Exchange(ref _currentEpoch, Interlocked.Increment(ref _epochCounter));
             try { ConnectionChanged?.Invoke(CurrentStationEpoch); } catch { }
-            Record("主控连接确认；CAN0=DUT，CAN1=按键板。CAN 接收监视已启动。");
+            Record("主控连接确认；ECU CAN（A1/A12）、KEY CAN（B1/B11）；接收监视已启动。");
         }
         catch
         {
@@ -212,7 +212,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 throw new IOException("USB 主控未连接，禁止 CAN 发送。");
             if (_testRunApproved || (_manualKeyActionApproved && frame.Role == BusRole.KeypadCan) ||
                 (_manualCanBatchApproved && frame.Role != BusRole.KeypadCan))
-                throw new InvalidOperationException("CAN0 周期任务运行中仅允许同一手动工位的 KEY_SIM CAN1 指令。");
+                throw new InvalidOperationException("ECU CAN 周期任务运行期间，仅允许同一工位已授权的 KEY CAN 按键命令。");
             var map = StationCanWiring.Current;
             var payload = CanFrameCodec.ToUsbPayload(frame, map);
             _link.AuthorizeOneCanTransmission(payload, exactConfirmation);
@@ -236,7 +236,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 _testRunApproved || _manualKeyActionApproved)
                 throw new InvalidOperationException("USB 未连接或 KEY/TEST 任务正在运行。");
             if (frames.Count is < 1 or > 512 || frames.Any(frame => frame.Role != BusRole.KeypadCan))
-                throw new ArgumentException("KEY 动作只能向 CAN1 KEY_SIM 发送帧。");
+                throw new ArgumentException("KEY 动作只能使用 KEY CAN 发送帧。");
             var map = StationCanWiring.Current;
             var data = frames.Select(frame => CanFrameCodec.ToUsbPayload(frame, map)).ToArray();
             _link.AuthorizeManualKeySequence(fingerprint, confirmation, data);
@@ -260,7 +260,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 StationCanWiring.Current);
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), ct);
-            Record("KEY_SIM CAN1 主控 ACK：0x" + frame.Id.ToString("X") +
+            Record("KEY CAN 主控 ACK：0x" + frame.Id.ToString("X") +
                 " DATA=" + Convert.ToHexString(frame.Data.AsSpan()) +
                 "（非五路电压或 ECU 识别确认）");
         }
@@ -280,7 +280,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
-    /// <summary>Authorize a bounded snapshot of DUT CAN0 frames, not an open-ended raw CAN route.</summary>
+    /// <summary>Authorize a bounded snapshot of ECU CAN frames, not an open-ended raw CAN route.</summary>
     public async Task AuthorizeManualCanBatchAsync(string fingerprint, string confirmation,
         IReadOnlyList<CanFrame> frames, int maxWrites = 3000, CancellationToken ct = default)
     {
@@ -296,7 +296,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _manualBatchFingerprint = fingerprint;
             _manualCanBatchApproved = true;
             AnnounceManualBatch(true);
-            Record("手动 CAN0 任务已授权：报文数=" + frames.Count + " SHA=" + fingerprint +
+            Record("手动 ECU CAN 任务已授权：报文数=" + frames.Count + " SHA=" + fingerprint +
                 "，最多 " + maxWrites + " 次写入 / 5 分钟 / 当前 USB 会话。");
         }
         finally { _lifecycle.Release(); }
@@ -310,7 +310,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (!_manualCanBatchApproved || _manualBatchFingerprint != fingerprint ||
                 _usb?.State != UsbSessionState.Connected || _testRunApproved ||
                 frame.Role != BusRole.DutCan)
-                throw new UnauthorizedAccessException("No active authorized manual DUT CAN0 batch.");
+                throw new UnauthorizedAccessException("没有当前有效的 ECU CAN 手动发送授权。");
             var payload = CanFrameCodec.ToUsbPayload(frame,
                 StationCanWiring.Current);
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
@@ -331,7 +331,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _manualCanBatchApproved = false;
             _manualBatchFingerprint = null;
             AnnounceManualBatch(false);
-            Record("手动 CAN0 任务已停止；不代表 ECU 电气状态发生改变。");
+            Record("ECU CAN 任务已停止；不代表 ECU 电气状态发生改变。");
         }
         finally { _lifecycle.Release(); }
     }
