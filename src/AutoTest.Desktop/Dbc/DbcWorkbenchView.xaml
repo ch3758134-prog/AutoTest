@@ -298,14 +298,14 @@
                 <TextBlock Text="{Binding SelectedMessage.HexId}" FontSize="12"
                            Foreground="{StaticResource Subtle}" Margin="0,0,0,9"/>
                 <TextBlock Text="中文别名" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding MessageAliasText,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"
+                <TextBox Text="{Binding MessageAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MaxLength="100"
                          MinHeight="30" Margin="0,0,0,9"/>
                 <TextBlock Text="DBC 原始名称（受引用约束）" Foreground="{StaticResource Subtle}" Margin="0,0,0,4"/>
                 <TextBox Text="{Binding SelectedMessage.Name}" IsReadOnly="True"
                          Background="{StaticResource MutedSurface}" Margin="0,0,0,9"/>
                 <TextBlock Text="详细注释 · CM_ BO_" FontWeight="SemiBold"
                            Margin="0,0,0,5"/>
-                <TextBox Text="{Binding MessageCommentText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                <TextBox Text="{Binding MessageCommentText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MaxLength="16000"
                          TextWrapping="Wrap" AcceptsReturn="True" AcceptsTab="False"
                          MinHeight="158" MaxHeight="540" VerticalScrollBarVisibility="Auto"
                          Padding="8,8" Margin="0,0,0,7"
@@ -340,15 +340,16 @@
                 <TextBlock Text="{Binding SelectedSignal.Name}" Foreground="{StaticResource Subtle}"
                            Margin="0,0,0,10"/>
                 <TextBlock Text="中文别名" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding SignalAliasText,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"
+                <TextBox Text="{Binding SignalAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MaxLength="100"
                          MinHeight="30" Margin="0,0,0,11"/>
                 <TextBlock Text="信号注释 · CM_ SG_" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <TextBox Text="{Binding SignalCommentText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                <TextBox Text="{Binding SignalCommentText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MaxLength="16000"
                          TextWrapping="Wrap" AcceptsReturn="True" MinHeight="118" MaxHeight="460"
                          VerticalScrollBarVisibility="Auto" Padding="8,8" Margin="0,0,0,12"
                          ToolTip="说明物理含义、有效性、状态枚举和测试注意事项。"/>
                 <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,10"/>
                 <TextBlock Text="信号编码参数" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <StackPanel IsEnabled="{Binding CanEdit}">
                 <TextBlock Text="修改参数后点击“应用技术参数”，先校验整组数值，再 Ctrl+S 保存文件。"
                            FontSize="11" Foreground="{StaticResource Subtle}"
                            TextWrapping="Wrap" Margin="0,0,0,9"/>
@@ -405,6 +406,7 @@
                 <TextBlock Text="数值枚举 (VAL_)" FontWeight="SemiBold" Margin="0,0,0,5"/>
                 <TextBlock Text="{Binding SelectedValueDescriptions}" TextWrapping="Wrap"
                            Margin="0,0,0,12"/>
+                </StackPanel>
                 <Button Content="高级编辑原始信号…" Command="{Binding EditSignalCommand}"
                         HorizontalAlignment="Left" MinHeight="29" Margin="0,0,0,8"/>
               </StackPanel>
