@@ -2,8 +2,6 @@ using System.ComponentModel;
 using System.Collections.Specialized;
 using AutoTest.Desktop.Testing;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Windows.Interop;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -30,6 +28,7 @@ public partial class MainWindow : Window
     private bool _inspectorManualLayout;
     private bool _bottomManualLayout;
     private bool _treeAutoNarrow;
+    private bool _projectTreeVisible = true;
     private TestEditorViewModel? _activeRunFacts;
 
     public MainWindow(MainWindowViewModel viewModel)
@@ -37,7 +36,6 @@ public partial class MainWindow : Window
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
-        SourceInitialized += OnSourceInitialized;
         SizeChanged += OnShellSizeChanged;
         Loaded += async (_, _) =>
         {
@@ -69,64 +67,6 @@ public partial class MainWindow : Window
         try { await _viewModel.AutoSaveOpenEditorsAsync(); }
         catch (Exception error) { Trace.TraceWarning("AutoSave WPF timer error: " + error); }
         finally { _autosaveTickActive = false; }
-    }
-
-    // WindowStyle=None + WindowChrome does not guarantee work-area maximization
-    // on every DPI/taskbar configuration. Windows supplies physical monitor
-    // coordinates here, so never convert them to WPF DIPs.
-    private const int WmGetMinMaxInfo = 0x0024;
-    private const int MonitorDefaultToNearest = 2;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativePoint { public int X; public int Y; }
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeRect { public int Left; public int Top; public int Right; public int Bottom; }
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeMinMaxInfo
-    {
-        public NativePoint Reserved;
-        public NativePoint MaxSize;
-        public NativePoint MaxPosition;
-        public NativePoint MinTrackSize;
-        public NativePoint MaxTrackSize;
-    }
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct NativeMonitorInfo
-    {
-        public int Size;
-        public NativeRect Monitor;
-        public NativeRect Work;
-        public int Flags;
-    }
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr window, int flags);
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetMonitorInfo(IntPtr monitor, ref NativeMonitorInfo info);
-
-    private HwndSource? _windowSource;
-    private void OnSourceInitialized(object? sender, EventArgs e)
-    {
-        _windowSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
-        _windowSource?.AddHook(WorkAreaWindowProc);
-    }
-
-    private IntPtr WorkAreaWindowProc(IntPtr hwnd, int message, IntPtr wParam,
-        IntPtr lParam, ref bool handled)
-    {
-        if (message != WmGetMinMaxInfo) return IntPtr.Zero;
-        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
-        if (monitor == IntPtr.Zero) return IntPtr.Zero;
-        var info = new NativeMonitorInfo { Size = Marshal.SizeOf<NativeMonitorInfo>() };
-        if (!GetMonitorInfo(monitor, ref info)) return IntPtr.Zero;
-        var target = Marshal.PtrToStructure<NativeMinMaxInfo>(lParam);
-        target.MaxPosition.X = info.Work.Left - info.Monitor.Left;
-        target.MaxPosition.Y = info.Work.Top - info.Monitor.Top;
-        target.MaxSize.X = info.Work.Right - info.Work.Left;
-        target.MaxSize.Y = info.Work.Bottom - info.Work.Top;
-        Marshal.StructureToPtr(target, lParam, false);
-        handled = true;
-        return IntPtr.Zero;
     }
 
     private async void OnWindowClosing(object? sender, CancelEventArgs e)
@@ -172,10 +112,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-    private void Maximize_Click(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -262,14 +198,15 @@ public partial class MainWindow : Window
         if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
         if (!_bottomManualLayout)
             _bottomVisible = _activeRunFacts?.RunFacts.Count > 0;
-        if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 235)
+        if (_projectTreeVisible && ActualWidth < 1050 && !_treeAutoNarrow &&
+            TreeColumn.Width.Value > 235)
         {
             TreeColumn.Width = new GridLength(225);
             _treeAutoNarrow = true;
         }
-        else if (ActualWidth >= 1150 && _treeAutoNarrow)
+        else if (_projectTreeVisible && ActualWidth >= 1150 && _treeAutoNarrow)
         {
-            TreeColumn.Width = new GridLength(270);
+            TreeColumn.Width = new GridLength(280);
             _treeAutoNarrow = false;
         }
         ApplyPanelLayout();
@@ -277,6 +214,11 @@ public partial class MainWindow : Window
 
     private void ApplyPanelLayout()
     {
+        // The workbench has task-first navigation; only the TEST authoring task
+        // needs the engineering resource tree. Other tasks can hide it entirely.
+        TreeColumn.Width = new GridLength(!_projectTreeVisible ? 0 :
+            (_treeAutoNarrow ? 225 : Math.Max(235, TreeColumn.Width.Value)));
+        TreeSplitterColumn.Width = new GridLength(_projectTreeVisible ? 5 : 0);
         // DBC and Controller configurations already own their actual editor.
         // Only reserve the right rail when this document supplies an InspectorHost.
         var showInspector = _inspectorVisible &&
@@ -285,6 +227,25 @@ public partial class MainWindow : Window
         InspectorSplitterColumn.Width = new GridLength(showInspector ? 4 : 0);
         BottomRow.Height = new GridLength(_bottomVisible ? 180 : 0);
         BottomSplitterRow.Height = new GridLength(_bottomVisible ? 4 : 0);
+    }
+
+    private void ShowTestWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        _projectTreeVisible = true;
+        _treeAutoNarrow = ActualWidth < 1050;
+        TreeColumn.Width = new GridLength(_treeAutoNarrow ? 225 : 280);
+        ApplyPanelLayout();
+    }
+
+    private void ToggleProjectTree_Click(object sender, RoutedEventArgs e)
+    {
+        _projectTreeVisible = !_projectTreeVisible;
+        if (_projectTreeVisible)
+        {
+            _treeAutoNarrow = ActualWidth < 1050;
+            TreeColumn.Width = new GridLength(_treeAutoNarrow ? 225 : 280);
+        }
+        ApplyPanelLayout();
     }
 
     private void ToggleBottom_Click(object sender, RoutedEventArgs e)
