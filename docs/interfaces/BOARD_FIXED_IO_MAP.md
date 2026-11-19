@@ -39,7 +39,7 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 
 - USB 通信驱动与服务、`0x40` CAN 发送及 `0x41` CAN 接收上报的帧格式不变，通道值保持 0/1。
 - 夹具 Air_ALVE1/2、RL_DRV 不变。
-- 唯一计划改变的物理输出是 **IGN 从 HOUT5/PTC10/J1 C6 改为 HOUT1/PTC1/J1 C10**；保留现有 IGN 命令号及上电 HIGH 初始化。
+- 已完成源码映射变更：**IGN 从 HOUT5/PTC10/J1 C6 迁移为 HOUT1/PTC1/J1 C10**；保留现有 IGN 命令号及上电 HIGH 初始化。LED1~LED6 现在占用 HOUT2~HOUT7。未据此宣称已完成现场改线或硬件验证。
 - LED1~LED6 已初始化为 GPIO 输出 LOW；USB CMD 0x1A 单路设置 [index, level]，0x1B 空请求读取六路 GPIO 位图，0x1C 单字节设置六路位图(0x00~0x3F)。LED 位图 bit0..5 分别对应 LED1..LED6。
 - USB OK 只说明 GPIO 设置完成，GET 只读 MCU GPIO 电平；不提供 J1 输出电压或灯状态反馈。USB 断开不自动改变 LED，MCU 复位后六路重新初始化LOW。
 - KEY1~KEY3 仍仅声明固定硬件资源，不提供采样逻辑或 USB 命令。
