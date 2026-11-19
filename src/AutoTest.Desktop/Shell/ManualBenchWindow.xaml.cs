@@ -219,7 +219,7 @@ public partial class ManualBenchWindow : Window
         if (Ancestor<DataGridRow>(e.OriginalSource as DependencyObject) is not
             { Item: ManualBenchViewModel.BenchCanRow row } container)
             return;
-        if (Ancestor<Button>(e.OriginalSource as DependencyObject) is not null) return;
+        if (Ancestor<ButtonBase>(e.OriginalSource as DependencyObject) is not null) return;
         ShowQuickEditor(row, container);
         e.Handled = true;
     }
