@@ -1,0 +1,119 @@
+<UserControl x:Class="AutoTest.Frontend.Tools.WaveView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+ Background="{StaticResource AT.Canvas}">
+ <Grid Margin="13">
+  <Grid.ColumnDefinitions>
+   <ColumnDefinition Width="258" MinWidth="220"/>
+   <ColumnDefinition Width="*" MinWidth="415"/>
+   <ColumnDefinition Width="278" MinWidth="235"/>
+  </Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Style="{StaticResource AT.Panel}" Padding="0"
+   Margin="0,0,10,0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="98"/><RowDefinition Height="*"/>
+     <RowDefinition Height="145"/></Grid.RowDefinitions>
+    <StackPanel Margin="14,12">
+     <TextBlock Text="观测信号" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="信号源从工程资源选择，正式接线前只存草稿。"
+      Style="{StaticResource AT.Caption}" Margin="0,5,0,10"/>
+     <WrapPanel>
+      <ui:Button Content="+ 信号" Appearance="Primary"
+       Click="AddSignal_Click" Margin="0,0,7,0"/>
+      <ui:Button Content="删除" Click="RemoveSignal_Click"/>
+     </WrapPanel>
+    </StackPanel>
+    <ListBox Grid.Row="1" x:Name="SignalsList"
+     ItemsSource="{Binding WaveSignals}" SelectedItem="{Binding SelectedWave,Mode=TwoWay}"
+     Margin="10,0">
+     <ListBox.ItemTemplate><DataTemplate>
+      <StackPanel Orientation="Horizontal" Margin="0,5">
+       <CheckBox IsChecked="{Binding Enabled,Mode=TwoWay}" Margin="0,0,8,0"/>
+       <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+      </StackPanel>
+     </DataTemplate></ListBox.ItemTemplate>
+    </ListBox>
+    <StackPanel Grid.Row="2" Margin="14,2">
+     <TextBlock Text="名称" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedWave.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+     <TextBlock Text="信号来源" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedWave.Source,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+    </StackPanel>
+   </Grid>
+  </Border>
+  <Border Grid.Column="1" Style="{StaticResource AT.Panel}" Padding="0"
+   Margin="0,0,10,0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="62"/><RowDefinition Height="*"/>
+     <RowDefinition Height="50"/></Grid.RowDefinitions>
+    <DockPanel Margin="15,0">
+     <TextBlock Text="信号波形" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock DockPanel.Dock="Right" Text="无采样数据"
+      Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center" FontSize="11"/>
+    </DockPanel>
+    <Border Grid.Row="1" Margin="14,0"
+     BorderBrush="{StaticResource AT.Border}" BorderThickness="1" CornerRadius="6"
+     Background="#FCFDFF" ClipToBounds="True">
+     <Grid>
+      <UniformGrid Rows="9" Columns="1" Margin="35,16,15,30">
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+       <Border BorderBrush="#EAF0F7" BorderThickness="0,0,0,1"/>
+      </UniformGrid>
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+       Background="#EEFFFFFF">
+       <TextBlock Text="尚无真实采样波形" FontSize="17" FontWeight="SemiBold"
+        Foreground="{StaticResource AT.Muted}" HorizontalAlignment="Center"/>
+       <TextBlock Text="真实数据接入后，此区域用于多轨曲线、双游标与参考叠加。"
+        Style="{StaticResource AT.Caption}" TextAlignment="Center" Margin="0,10,0,0"/>
+      </StackPanel>
+     </Grid>
+    </Border>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="14,9">
+     <ui:Button Content="开始采集" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+     <ui:Button Content="停止采集" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+     <ui:Button Content="游标 / 缩放" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+     <ui:Button Content="导入证据" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+    </StackPanel>
+   </Grid>
+  </Border>
+  <Border Grid.Column="2" Style="{StaticResource AT.Panel}" Padding="0">
+   <TabControl>
+    <TabItem Header="参考 / 判定">
+     <ScrollViewer Padding="14">
+      <StackPanel>
+       <TextBlock Text="参考波形" Style="{StaticResource AT.PanelTitle}"/>
+       <TextBlock Text="参考名称" Style="{StaticResource AT.FieldLabel}"/>
+       <TextBox Text="{Binding WaveReferenceName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+       <TextBlock Text="信号单位" Style="{StaticResource AT.FieldLabel}"/>
+       <TextBox Text="{Binding SelectedWave.Unit,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+       <TextBlock Text="时间覆盖 / 对齐 / 容差" Style="{StaticResource AT.FieldLabel}"/>
+       <TextBlock Text="判定参数由 WAVE 专项正式合同提供；当前不自行定义有效阈值。"
+        Style="{StaticResource AT.Caption}" Margin="0,5,0,14"/>
+       <ui:Button Content="比较当前波形（未接入）" IsEnabled="False"/>
+       <Border Background="{StaticResource AT.AccentWash}" CornerRadius="8"
+        Padding="10" Margin="0,17,0,0">
+        <TextBlock Text="波形分析不会因界面中存在参考名称就生成 PASS。"
+         Foreground="#326CA8" FontSize="11" TextWrapping="Wrap"/>
+       </Border>
+      </StackPanel>
+     </ScrollViewer>
+    </TabItem>
+    <TabItem Header="采样质量">
+     <Grid Background="White">
+      <TextBlock Text="无真实采样质量与时间同步证据"
+       Foreground="{StaticResource AT.Muted}" TextWrapping="Wrap"
+       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+     </Grid>
+    </TabItem>
+   </TabControl>
+  </Border>
+ </Grid>
+</UserControl>

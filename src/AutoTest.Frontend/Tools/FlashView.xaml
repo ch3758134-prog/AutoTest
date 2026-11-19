@@ -1,0 +1,121 @@
+<UserControl x:Class="AutoTest.Frontend.Tools.FlashView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+ Background="{StaticResource AT.Canvas}">
+ <Grid Margin="13">
+  <Grid.ColumnDefinitions>
+   <ColumnDefinition Width="345" MinWidth="305"/>
+   <ColumnDefinition Width="*" MinWidth="355"/>
+   <ColumnDefinition Width="355" MinWidth="285"/>
+  </Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Style="{StaticResource AT.Panel}"
+   Margin="0,0,10,0">
+   <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel>
+     <TextBlock Text="烧录准备" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="选择镜像和烧录配置，实际校验和 ECU 写入必须由正式烧录模块完成。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,13"/>
+     <TextBlock Text="烧录文件" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding FlashFilePath,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+      IsReadOnly="True" ToolTip="仅记录 UI 草稿的文件路径；尚未检查文件内容"/>
+     <ui:Button Content="选择 HEX / S19 文件" Click="Browse_Click"
+      HorizontalAlignment="Left" Margin="0,8,0,0"/>
+     <TextBlock Text="配置名称" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding FlashProfile,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+      ToolTip="界面草稿字段，不代表已加载有效 OEM 烧录参数"/>
+     <Border Height="1" Background="{StaticResource AT.Border}" Margin="0,19,0,11"/>
+     <TextBlock Text="预检项目" Style="{StaticResource AT.PanelTitle}"/>
+     <CheckBox Content="文件格式 / 地址范围" IsEnabled="False" Margin="0,12,0,7"/>
+     <CheckBox Content="目标 ECU / Boot 会话匹配" IsEnabled="False" Margin="0,0,0,7"/>
+     <CheckBox Content="Seed/Key 配置与授权" IsEnabled="False" Margin="0,0,0,7"/>
+     <CheckBox Content="镜像一致性与传输预算" IsEnabled="False" Margin="0,0,0,7"/>
+     <TextBlock Text="以上项目均未执行验证；不勾选为通过。"
+      Foreground="{StaticResource AT.Warning}" FontSize="11"
+      TextWrapping="Wrap" Margin="0,11,0,0"/>
+    </StackPanel>
+   </ScrollViewer>
+  </Border>
+
+  <Border Grid.Column="1" Style="{StaticResource AT.Panel}"
+   Padding="0" Margin="0,0,10,0">
+   <Grid>
+    <Grid.RowDefinitions>
+     <RowDefinition Height="100"/>
+     <RowDefinition Height="*"/>
+     <RowDefinition Height="140"/>
+    </Grid.RowDefinitions>
+    <StackPanel Margin="15,13">
+     <TextBlock Text="烧录流程" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="阶段与实际 UDS 请求及 ECU 响应一一关联。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,0"/>
+    </StackPanel>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="14,0">
+     <ItemsControl>
+      <ItemsControl.Items>
+       <TextBlock Text="01    前置检查与目标确认" Margin="0,10" FontSize="13"/>
+       <TextBlock Text="02    进入诊断 / Boot 会话" Margin="0,10" FontSize="13"/>
+       <TextBlock Text="03    安全访问" Margin="0,10" FontSize="13"/>
+       <TextBlock Text="04    擦除 / 下载准备" Margin="0,10" FontSize="13"/>
+       <TextBlock Text="05    数据块传输" Margin="0,10" FontSize="13"/>
+       <TextBlock Text="06    校验与完整性检查" Margin="0,10" FontSize="13"/>
+       <TextBlock Text="07    ECU 复位与结束" Margin="0,10" FontSize="13"/>
+      </ItemsControl.Items>
+     </ItemsControl>
+    </ScrollViewer>
+    <Border Grid.Row="2" Background="{StaticResource AT.SubtleSurface}"
+     BorderBrush="{StaticResource AT.Border}" BorderThickness="0,1,0,0"
+     Padding="16,11">
+     <StackPanel>
+      <DockPanel Margin="0,0,0,9">
+       <TextBlock Text="未执行" FontSize="18" FontWeight="SemiBold"
+        Foreground="{StaticResource AT.Muted}"/>
+       <TextBlock DockPanel.Dock="Right" Text="已确认 0 字节"
+        Foreground="{StaticResource AT.Muted}" FontSize="11"/>
+      </DockPanel>
+      <ProgressBar Height="8" Value="0" Maximum="100" IsIndeterminate="False"/>
+      <WrapPanel Margin="0,12,0,0">
+       <ui:Button Content="执行预检" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+       <ui:Button Content="开始烧录" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+       <ui:Button Content="停止" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+      </WrapPanel>
+     </StackPanel>
+    </Border>
+   </Grid>
+  </Border>
+
+  <Border Grid.Column="2" Style="{StaticResource AT.Panel}" Padding="0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="72"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <StackPanel Margin="15,12">
+     <TextBlock Text="诊断与审计记录" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="展示阶段、SID、应答、超时和失败证据。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,0"/>
+    </StackPanel>
+    <TabControl Grid.Row="1">
+     <TabItem Header="过程日志">
+      <Grid Background="White">
+       <TextBlock Text="没有真实烧录任务及日志"
+        Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center"
+        HorizontalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+     <TabItem Header="UDS 明细">
+      <Grid Background="White">
+       <TextBlock Text="等待真实 UDS / ISO-TP 传输事实"
+        Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center"
+        HorizontalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+     <TabItem Header="失败证据">
+      <Grid Background="White">
+       <TextBlock Text="未运行，无法生成错误或成功证据"
+        Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center"
+        HorizontalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+    </TabControl>
+   </Grid>
+  </Border>
+ </Grid>
+</UserControl>
