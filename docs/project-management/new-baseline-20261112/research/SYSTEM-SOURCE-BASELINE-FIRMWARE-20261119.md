@@ -1,3 +1,5 @@
+> **最新目录修订（2026-11-19）**：随后负责人否决 HOST 为仓库默认主体、固件收在 `firmware/` 的布局。正式改为 `HOST/`、`Main_Control/`、`Key_Sim/` **三个平级工程**，`main@ffb23f8c05ec4a64b82cd781db6357685d082c04`，详见 [目录纠正和 Git 校验](PEER-PROJECT-DIRECTORY-BASELINE-20261119.md)。本旧记录的 `firmware/` 路径仅有历史意义。
+
 # AutoTest｜main 整机源码固定基线：HOST + 主控板 + KEY_SIM（2026-11-19）
 
 > **项目负责人决定**：`main` 作为完整项目系统开发的**固定集成基线**，不再只装上位机代码；将当前 Main_Control 和 Key_Sim 的固件源码、工程文件及必要技术资料以清晰层级归档到 main。各专业继续在各自分支开发，待受控验收后再更新固定基线。  
