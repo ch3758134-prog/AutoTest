@@ -8,6 +8,7 @@ public sealed class RawKeyActionTests
     [Theory]
     [InlineData("Pulse:0x00001:300", RawKeyOperation.Pulse, 1u, 300)]
     [InlineData("Hold:0xFFFFF", RawKeyOperation.Hold, 0xFFFFFu, 0)]
+    [InlineData("Hold:0x00000:1000", RawKeyOperation.Hold, 0u, 1000)]
     [InlineData("Release", RawKeyOperation.Release, 0u, 0)]
     public void ParsesExplicitBounded20KeyOperations(string input,
         RawKeyOperation operation, uint mask, int duration)
