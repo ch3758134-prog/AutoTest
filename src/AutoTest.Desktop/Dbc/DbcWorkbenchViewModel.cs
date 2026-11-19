@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Globalization;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Dbc;
 using AutoTest.Projects.Project;
@@ -36,6 +37,44 @@ public sealed record DbcSignalRow(DbcSignal Signal, string DisplayName, string S
     public string Multiplexer => Signal.Multiplexer ?? "—";
 }
 
+/// <summary>Signal parameter form draft. Validate all fields in one transaction.</summary>
+public sealed class DbcSignalEditState : BindableBase
+{
+    private string _startBit = "";
+    public string StartBit { get => _startBit; set => SetProperty(ref _startBit, value); }
+    private string _bitLength = "";
+    public string BitLength { get => _bitLength; set => SetProperty(ref _bitLength, value); }
+    private string _factor = "";
+    public string Factor { get => _factor; set => SetProperty(ref _factor, value); }
+    private string _offset = "";
+    public string Offset { get => _offset; set => SetProperty(ref _offset, value); }
+    private string _minimum = "";
+    public string Minimum { get => _minimum; set => SetProperty(ref _minimum, value); }
+    private string _maximum = "";
+    public string Maximum { get => _maximum; set => SetProperty(ref _maximum, value); }
+    private string _unit = "";
+    public string Unit { get => _unit; set => SetProperty(ref _unit, value); }
+    private string _receiver = "";
+    public string Receiver { get => _receiver; set => SetProperty(ref _receiver, value); }
+    private string _multiplexer = "";
+    public string Multiplexer { get => _multiplexer; set => SetProperty(ref _multiplexer, value); }
+    private bool _intel = false;
+    public bool Intel { get => _intel; set => SetProperty(ref _intel, value); }
+    private bool _signed = false;
+    public bool Signed { get => _signed; set => SetProperty(ref _signed, value); }
+    public static DbcSignalEditState FromSignal(DbcSignal signal) => new()
+    {
+        StartBit = signal.StartBit.ToString(CultureInfo.InvariantCulture),
+        BitLength = signal.BitLength.ToString(CultureInfo.InvariantCulture),
+        Factor = signal.Factor.ToString("R", CultureInfo.InvariantCulture),
+        Offset = signal.Offset.ToString("R", CultureInfo.InvariantCulture),
+        Minimum = signal.Minimum.ToString("R", CultureInfo.InvariantCulture),
+        Maximum = signal.Maximum.ToString("R", CultureInfo.InvariantCulture),
+        Unit = signal.Unit, Receiver = signal.Receiver,
+        Multiplexer = signal.Multiplexer ?? "", Intel = signal.Intel, Signed = signal.Signed
+    };
+}
+
 /// <summary>
 /// WPF state only: parsing, semantic validation and serialization remain in AutoTest.Projects.
 /// Numeric forms are applied explicitly, not on every keystroke.
@@ -55,6 +94,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private string _signalSummaryText = "";
     private string _messageCommentText = "";
     private string _signalCommentText = "";
+    private DbcSignalEditState? _signalDraft;
     private string _status = "就绪";
     private string _messageSearchText = "";
 
@@ -66,6 +106,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         _session = opened;
         EditMessageCommand = new DelegateCommand(EditMessage, () => CanEdit && SelectedMessage is not null && !IsBusy);
         EditSignalCommand = new DelegateCommand(EditSignal, () => CanEdit && SelectedSignal is not null && !IsBusy);
+        ApplySignalParametersCommand = new DelegateCommand(ApplySignalParameters,
+            () => CanEdit && SelectedSignal is not null && !IsBusy);
         SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => CanSave && IsDirty && !IsBusy);
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
         RefreshDocument(null, null);
@@ -94,6 +136,11 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     public string SignalCount => SelectedMessage?.Message.Signals.Length.ToString() ?? "0";
     public bool IsSignalSelected => SelectedMessage is not null && SelectedSignal is not null;
     public bool IsMessageSelected => SelectedMessage is not null && SelectedSignal is null;
+    public DbcSignalEditState? SignalDraft
+    {
+        get => _signalDraft;
+        private set => SetProperty(ref _signalDraft, value);
+    }
     public string SelectedValueDescriptions
     {
         get
@@ -276,6 +323,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 ? _session.Document.DisplayNames.MessageDescription(msg3.Message.Id) : "";
             SignalCommentText = SelectedMessage is { } m3 && SelectedSignal is { } sg3
                 ? _session.Document.DisplayNames.SignalDescription(m3.Message.Id, sg3.Name) : "";
+            SignalDraft = SelectedSignal is { } selected
+                ? DbcSignalEditState.FromSignal(selected.Signal) : null;
             RaisePropertyChanged(nameof(SelectedMessageDefinition));
             RaisePropertyChanged(nameof(SelectedSignalDefinition));
         }
@@ -330,6 +379,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     public DelegateCommand EditMessageCommand { get; }
     public DelegateCommand EditSignalCommand { get; }
+    public DelegateCommand ApplySignalParametersCommand { get; }
     public DelegateCommand SaveCommand { get; }
     public DelegateCommand ReloadCommand { get; }
 
@@ -365,6 +415,52 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         catch (Exception error) when (error is ProjectDataException or ArgumentException)
         {
             _dialogs.ShowError(error.Message);
+        }
+    }
+
+    /// <summary>Apply a complete edited signal shape once, after full validation.</summary>
+    public void ApplySignalParameters()
+    {
+        if (!CanEdit || IsBusy || SelectedMessage is not { } message ||
+            SelectedSignal is not { } signal || SignalDraft is not { } draft) return;
+        try
+        {
+            static int Integer(string input, string label) =>
+                int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+                    ? value : throw new FormatException(label + "须是有效整数。");
+            static double Number(string input, string label) =>
+                double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) &&
+                double.IsFinite(value)
+                    ? value : throw new FormatException(label + "须是有效有限数值（英文小数点）。");
+            var updated = signal.Signal with
+            {
+                StartBit = Integer(draft.StartBit, "起始位"),
+                BitLength = Integer(draft.BitLength, "位长"),
+                Intel = draft.Intel, Signed = draft.Signed,
+                Factor = Number(draft.Factor, "因子"),
+                Offset = Number(draft.Offset, "偏移"),
+                Minimum = Number(draft.Minimum, "最小值"),
+                Maximum = Number(draft.Maximum, "最大值"),
+                Unit = draft.Unit, Receiver = draft.Receiver,
+                Multiplexer = string.IsNullOrWhiteSpace(draft.Multiplexer) ?
+                    null : draft.Multiplexer.Trim()
+            };
+            if (updated == signal.Signal)
+            {
+                StatusMessage = "参数未发生变化。";
+                return;
+            }
+            if (updated.Unit.Contains('"') || updated.Unit.Contains('\n') ||
+                updated.Unit.Contains('\r'))
+                throw new FormatException("单位不得包含引号或换行。");
+            updated.Validate(message.Message.Dlc);
+            _session.Document.UpdateSignal(message.Message.Id, signal.Name, updated);
+            RefreshDocument(message.Message.Id, signal.Name);
+            StatusMessage = "已应用信号技术参数，Ctrl+S 保存 DBC。";
+        }
+        catch (Exception error) when (error is FormatException or ArgumentException or ProjectDataException)
+        {
+            StatusMessage = "技术参数未应用：" + error.Message;
         }
     }
 
@@ -492,6 +588,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(IsDirty));
         EditMessageCommand?.RaiseCanExecuteChanged();
         EditSignalCommand?.RaiseCanExecuteChanged();
+        ApplySignalParametersCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged();
         ReloadCommand?.RaiseCanExecuteChanged();
         RaisePropertyChanged(nameof(CanSave));
