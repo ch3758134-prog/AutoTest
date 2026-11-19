@@ -12,6 +12,16 @@ using AutoTest.Testing.Runtime;
 namespace AutoTest.Application.TestRecord;
 
 /// <summary>
+/// HOST-owned evidence capture must flush durable raw CAN/DBC/DEVICE bytes and
+/// attach content-addressed artifacts before the run is finalized.
+/// A failed finalization must never yield a committed PASS.
+/// </summary>
+public interface IRealRunEvidenceFinalizer
+{
+    ValueTask FinalizeEvidenceAsync(RunId run, CancellationToken ct);
+}
+
+/// <summary>
 /// TEST -> existing RECORD database adapter. This is application orchestration,
 /// not a new interpreter, recorder, result store or device port.
 /// The caller supplies an already-validated real RunRecord (identity, project,
@@ -22,16 +32,19 @@ public sealed class RealTestRecordSession : IRealRunEventSink
     private readonly RunRecordWriter _writer;
     private readonly RunReportExporter _reports;
     private readonly RunRecord _record;
+    private readonly IRealRunEvidenceFinalizer? _evidenceFinalizer;
     private readonly Dictionary<Guid, RealStepStarted> _active = new();
     private readonly Dictionary<StepId, int> _attempts = new();
     private bool _begun;
     private bool _completed;
 
-    public RealTestRecordSession(RunRecord record, RunRecordWriter writer, RunReportExporter reports)
+    public RealTestRecordSession(RunRecord record, RunRecordWriter writer, RunReportExporter reports,
+        IRealRunEvidenceFinalizer? evidenceFinalizer = null)
     {
         _record = record ?? throw new ArgumentNullException(nameof(record));
         _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         _reports = reports ?? throw new ArgumentNullException(nameof(reports));
+        _evidenceFinalizer = evidenceFinalizer;
         record.Validate(); // Never fabricate missing DUT/station/plan identity.
     }
 
@@ -236,6 +249,12 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 "SYSTEM " + systemFact.Type + ": " + systemFact.Detail,
                 EvidenceQuality.Unknown, ImmutableArray<EvidenceRef>.Empty, ct)
                 .ConfigureAwait(false);
+
+        // ArtifactRepository links are immutable and may be attached only while
+        // the run header is Writing. A failed flush/attach aborts normal completion.
+        // The host supplies real capture; this backend never invents evidence bytes.
+        if (_evidenceFinalizer is not null)
+            await _evidenceFinalizer.FinalizeEvidenceAsync(RunId, ct).ConfigureAwait(false);
 
         await AppendAuditAsync(Guid.NewGuid(),
             completed.Verdict is RealTestVerdict.Passed or RealTestVerdict.Failed
