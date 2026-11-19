@@ -114,6 +114,24 @@ public sealed class PublicFlowEditorView : UserControl
         var body = _transaction.Current.Get(TestPhase.Test);
         for (var index = 0; index < body.Length; index++)
             _tree.Items.Add(BuildStep(body[index], null, null, index, focus));
+        // WPF may ignore IsSelected set before an item joins the live tree.
+        // Restore the actual selection after all nested containers are attached.
+        if (focus is not null)
+        {
+            static TreeViewItem? Find(IEnumerable<object> items, StepId id)
+            {
+                foreach (var candidate in items.OfType<TreeViewItem>())
+                {
+                    if (candidate.Tag is Selection { Node: { } node } && node.Id == id)
+                        return candidate;
+                    var nested = Find(candidate.Items.Cast<object>(), id);
+                    if (nested is not null) return nested;
+                }
+                return null;
+            }
+            var selected = Find(_tree.Items.Cast<object>(), focus.Value);
+            if (selected is not null) selected.IsSelected = true;
+        }
         _refreshing = false;
         if (focus is null)
             InspectorHost.Content = new TextBlock
@@ -216,11 +234,16 @@ public sealed class PublicFlowEditorView : UserControl
     {
         var request = ++_requestVersion;
         var assetKind = node.Type;
+        var namedTarget = node.Properties.GetValueOrDefault("target", "");
+        var bound = _transaction.Current.Mappings.FirstOrDefault(mapping =>
+            string.Equals(mapping.Name, namedTarget, StringComparison.OrdinalIgnoreCase));
         var needsCatalog = actionKey is "can" or "read" or "wait-signal" or
-            "wave-start" or "wave-analyze" ||
-            assetKind is "Read" or "WaitUntil" or "WaveStart" or
-                "WaveAnalyze" or "CanWait" or "CanSend" ||
-            assetKind == "Write" && actionKey is not ("ign" or "key");
+            "wave-start" or "wave-analyze" or "assert-signal" ||
+            assetKind is "Read" or "WaitUntil" or "AssertSignal" or
+                "WaveStart" or "WaveAnalyze" or "CanWait" or "CanSend" ||
+            assetKind == "Write" && actionKey is not ("ign" or "key") &&
+                bound?.Kind is not (TestTargetKind.Ignition or TestTargetKind.RawKey or
+                    TestTargetKind.Button);
         IReadOnlyList<MappingChoice> choices = [];
         if (needsCatalog)
         {
