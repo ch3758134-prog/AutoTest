@@ -504,6 +504,10 @@ public sealed class RecordDatabase
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? SignalStatus { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? FailureCode { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Detail { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? RequirementId { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ReportNote { get; init; }
@@ -530,6 +534,8 @@ public sealed class RecordDatabase
             ObservationUtc = fact.ObservationUtc?.ToString("O"),
             Unit = fact.Unit,
             SignalStatus = fact.SignalStatus,
+            FailureCode = fact.FailureCode,
+            Detail = fact.Detail,
             RequirementId = fact.RequirementId,
             ReportNote = fact.ReportNote,
             AdditionalResultsJson = fact.AdditionalResultsJson,
@@ -553,6 +559,8 @@ public sealed class RecordDatabase
             ObservationUtc = ObservationUtc is null ? null : DateTimeOffset.Parse(ObservationUtc, CultureInfo.InvariantCulture),
             Unit = Unit,
             SignalStatus = SignalStatus,
+            FailureCode = FailureCode,
+            Detail = Detail,
             RequirementId = RequirementId,
             ReportNote = ReportNote,
             AdditionalResultsJson = AdditionalResultsJson,
