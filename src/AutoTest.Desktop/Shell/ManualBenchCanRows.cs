@@ -212,12 +212,6 @@ public sealed partial class ManualBenchViewModel
     private bool _canBatchRunning;
     private int _newCanRowNumber;
     private BenchCanRow? _selectedCanRow;
-    private bool _canEditorExpanded;
-    public bool IsCanEditorExpanded
-    {
-        get => _canEditorExpanded;
-        set => SetProperty(ref _canEditorExpanded, value);
-    }
     public ObservableCollection<BenchCanRow> CanSendRows { get; } = new();
     public BenchCanRow? SelectedCanRow
     {
@@ -249,9 +243,7 @@ public sealed partial class ManualBenchViewModel
     public DelegateCommand MoveCanRowDownCommand { get; private set; } = null!;
     public DelegateCommand StartCanRowsCommand { get; private set; } = null!;
     public DelegateCommand StopCanRowsCommand { get; private set; } = null!;
-    public DelegateCommand<BenchCanRow> EditCanRowCommand { get; private set; } = null!;
     public DelegateCommand<BenchCanRow> SendCanRowOnceCommand { get; private set; } = null!;
-    public DelegateCommand CloseCanEditorCommand { get; private set; } = null!;
 
     private void InitializeCanRows()
     {
@@ -262,18 +254,10 @@ public sealed partial class ManualBenchViewModel
         MoveCanRowDownCommand = new DelegateCommand(() => MoveCanRow(1), () => CanEditCanRows && HasSelectedCanRow);
         StartCanRowsCommand = new DelegateCommand(async () => await StartCanRowsAsync(), () => CanStartCanRows);
         StopCanRowsCommand = new DelegateCommand(async () => await StopCanRowsAsync(), () => CanStopCanRows);
-        EditCanRowCommand = new DelegateCommand<BenchCanRow>(row =>
-        {
-            if (row is null) return;
-            SelectedCanRow = row;
-            IsCanEditorExpanded = true;
-        }, row => row is not null);
         SendCanRowOnceCommand = new DelegateCommand<BenchCanRow>(
             async row => await StartCanRowsAsync(row),
             row => row is not null && !IsBusy && !IsCanBatchRunning);
-        CloseCanEditorCommand = new DelegateCommand(() => IsCanEditorExpanded = false);
         AddCanRow();
-        IsCanEditorExpanded = false;
     }
 
     private void NotifyCanRows()
@@ -288,7 +272,6 @@ public sealed partial class ManualBenchViewModel
         MoveCanRowDownCommand?.RaiseCanExecuteChanged();
         StartCanRowsCommand?.RaiseCanExecuteChanged();
         StopCanRowsCommand?.RaiseCanExecuteChanged();
-        EditCanRowCommand?.RaiseCanExecuteChanged();
         SendCanRowOnceCommand?.RaiseCanExecuteChanged();
     }
 
@@ -333,7 +316,6 @@ public sealed partial class ManualBenchViewModel
         CanSendRows.Remove(selected);
         SelectedCanRow = CanSendRows.Count == 0 ? null :
             CanSendRows[Math.Min(index, CanSendRows.Count - 1)];
-        if (SelectedCanRow is null) IsCanEditorExpanded = false;
         NotifyCanRows();
     }
 
