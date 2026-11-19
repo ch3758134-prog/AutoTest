@@ -36,11 +36,13 @@ public sealed partial class ManualBenchViewModel
         public string PeriodText { get => _periodText; set { if (SetProperty(ref _periodText, value ?? "")) Notify(); } }
         public bool Included { get => _included; set { if (SetProperty(ref _included, value)) Notify(); } }
         public bool CanToggleIncluded => !_batchInProgress || _lockedToAuthorizedBatch;
+        public bool CanEditFields => !_batchInProgress;
         public void SetBatchMembership(bool running, bool authorized)
         {
             _batchInProgress = running;
             _lockedToAuthorizedBatch = authorized;
             RaisePropertyChanged(nameof(CanToggleIncluded));
+            RaisePropertyChanged(nameof(CanEditFields));
         }
         public bool Extended { get => _extended; set { if (SetProperty(ref _extended, value)) Notify(); } }
         public bool IsPeriodic { get => _periodic; set { if (SetProperty(ref _periodic, value)) Notify(); } }
