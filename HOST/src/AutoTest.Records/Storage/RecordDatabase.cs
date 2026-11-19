@@ -519,6 +519,8 @@ public sealed class RecordDatabase
         public bool? ShowEvidence { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public RunSignalProvenance? SignalProvenance { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? JudgementEvidenceKind { get; init; }
 
         public static StepPayload FromFact(RunStepFact fact) => new(
             fact.Run.ToString(), fact.EventId, fact.Step.Value, fact.Attempt,
@@ -546,6 +548,7 @@ public sealed class RecordDatabase
             AdditionalResultsJson = fact.AdditionalResultsJson,
             ShowEvidence = fact.ShowEvidence,
             SignalProvenance = fact.SignalProvenance,
+            JudgementEvidenceKind = fact.JudgementEvidenceKind,
         };
         public RunStepFact ToFact() => new(RunId.Create(Guid.Parse(Run)), EventId,
             StepId.Create(Step), Attempt, Disposition, Expected, Actual,
@@ -573,6 +576,7 @@ public sealed class RecordDatabase
             AdditionalResultsJson = AdditionalResultsJson,
             ShowEvidence = ShowEvidence,
             SignalProvenance = SignalProvenance,
+            JudgementEvidenceKind = JudgementEvidenceKind,
         };
     }
 
