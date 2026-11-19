@@ -52,7 +52,7 @@
       Foreground="#A96D20" FontSize="10" Margin="0,5,0,0"/>
     </StackPanel>
     <StackPanel x:Name="TargetPanel" Margin="0,0,0,13">
-     <TextBlock Text="操作对象" Foreground="#61738B"
+     <TextBlock Text="选择报文、信号或资源" Foreground="#61738B"
       FontWeight="SemiBold" FontSize="11" Margin="0,0,0,5"/>
      <TextBox x:Name="TargetSearch" TextChanged="TargetSearch_Changed"
       ToolTip="搜索报文、信号或 KEY 动作"
