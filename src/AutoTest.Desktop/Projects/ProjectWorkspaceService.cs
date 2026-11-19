@@ -24,6 +24,7 @@ public sealed partial class ProjectWorkspaceService
 {
     public const string ManifestFileName = "project.autotest-project.json";
     public const string TestProgramKind = "test-program";
+    public const string PublicFlowKind = "public-flow";
     public const string TestProjectKind = "test-project";
     public const string DbcKind = "dbc";
     public const string FirmwareKind = "firmware";
@@ -782,6 +783,7 @@ public sealed partial class ProjectWorkspaceService
                 {
                     DbcKind => "dbc",
                     TestProgramKind => "tests",
+                    PublicFlowKind => "flows",
                     TestProjectKind => "projects",
                     TestConfigurationKind => "tcf",
                     BenchConfigurationKind => "tbc",
