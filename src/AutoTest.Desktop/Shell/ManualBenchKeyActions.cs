@@ -171,7 +171,7 @@ public sealed partial class ManualBenchViewModel
          pin.AssetId != _loadedControllerAsset || pin.Revision != _loadedControllerRevision ||
          !pin.Sha256.Equals(_loadedControllerSha, StringComparison.OrdinalIgnoreCase));
     public bool CanSaveKeyActions => CanEditKeyActions && (KeyActionsDirty || ControllerBindingNeedsSave);
-    public bool CanRunKeyAction => !IsBusy && HasConfiguredKeys && !KeyActionsDirty &&
+    public bool CanRunKeyAction => !IsBusy && !KeyActionsDirty &&
         _keyCatalogSession is not null && !IsKeyActionRunning;
     public string KeyActionRunStatus
     {
@@ -496,30 +496,36 @@ public sealed partial class ManualBenchViewModel
         stop.Token.ThrowIfCancellationRequested();
         if (_keyCatalogSession is null || KeyActionsDirty)
             throw new InvalidOperationException("动作必须先保存工程资源，且不能有未保存修改。");
-        await VerifyControllerFreshAsync();
         var reopened = await _projects.OpenKeyActionsAsync();
         if (reopened.AssetId != _keyCatalogSession.AssetId ||
             reopened.AssetRevision != _keyCatalogSession.AssetRevision ||
             !reopened.FileSha256.Equals(_keyCatalogSession.FileSha256,
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("动作资源已修订或文件变动，请重新打开。");
-        var pin = reopened.Document.Controller ??
-            throw new InvalidOperationException("动作库未绑定已批准的 Controller 硬件策略，请选择 Controller 并保存。");
-        if (pin.AssetId != _loadedControllerAsset || pin.Revision != _loadedControllerRevision ||
-            !pin.Sha256.Equals(_loadedControllerSha, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("动作库 Controller 绑定过期，请先重新保存动作库。");
         var saved = reopened.Document.Actions.SingleOrDefault(a => a.ActionId == action.ActionId) ??
             throw new InvalidOperationException("该动作已从工程资源移除。");
-        var policy = _controller?.KeyHardwarePolicy ??
-            throw new InvalidOperationException("Controller 尚未配置可用的真实 20 KEY 硬件。");
-        policy.Validate();
         var list = saved.Steps.ToArray();
-        foreach (var step in list)
+        // A catalog without a legacy Controller pin is a direct 20 KEY script.
+        // A pinned catalog must still satisfy the exact saved hardware policy.
+        if (reopened.Document.Controller is { } pin)
         {
-            if ((step.KeyMask & ~policy.SupportedMask) != 0 ||
-                policy.ForbiddenPairs.Any(pair =>
-                    (step.KeyMask & pair.A) == pair.A && (step.KeyMask & pair.B) == pair.B))
-                throw new InvalidOperationException("动作 " + saved.Name + " 有超出硬件限制的 KEY 组合。");
+            await VerifyControllerFreshAsync();
+            if (pin.AssetId != _loadedControllerAsset ||
+                pin.Revision != _loadedControllerRevision ||
+                !string.Equals(pin.Sha256, _loadedControllerSha,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("既有 KEY 限制规则已变更；请重新载入动作库。");
+            var policy = _controller?.KeyHardwarePolicy ??
+                throw new InvalidOperationException("旧工程 KEY 硬件限制未加载，不允许绕过。");
+            policy.Validate();
+            foreach (var step in list)
+            {
+                if ((step.KeyMask & ~policy.SupportedMask) != 0 ||
+                    policy.ForbiddenPairs.Any(pair =>
+                        (step.KeyMask & pair.A) == pair.A && (step.KeyMask & pair.B) == pair.B))
+                    throw new InvalidOperationException("动作 " + saved.Name +
+                        " 超出工程已批准的 KEY 组合限制。");
+            }
         }
         var frames = list.Select(step => step.KeyMask == 0
             ? KeypadCommandCodec.EncodeReleaseAll() : KeypadCommandCodec.EncodeMask(step.KeyMask)).ToArray();
