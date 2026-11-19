@@ -16,14 +16,14 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 | 业务名 | HOUT | MCU Pad | 控制网 | 驱动器 | J1 | 状态 |
 |---|---|---|---|---|---|---|
 | IGN | HOUT1 | PTC1 | SOL8IN | U5 CH1 | C10 | 现有 0x12/0x13 操作此 GPIO |
-| LED1 | HOUT2 | PTB19 | SOL7IN | U5 CH2 | C11 | USB控制 (0x1A/0x1B/0x1C) |
-| LED2 | HOUT3 | PTB18 | SOL6IN | U5 CH3 | C25 | USB控制 (0x1A/0x1B/0x1C) |
-| LED3 | HOUT4 | PTC4 | SOL5IN | U5 CH4 | C26 | USB控制 (0x1A/0x1B/0x1C) |
-| LED4 | HOUT5 | PTC10 | SOL11IN | U22 CH3 | C6 | USB控制，旧IGN已迁出 |
-| LED5 | HOUT6 | PTC9 | SOL10IN | U22 CH2 | C7 | USB控制 (0x1A/0x1B/0x1C) |
-| LED6 | HOUT7 | PTC8 | SOL9IN | U22 CH1 | C8 | USB控制 (0x1A/0x1B/0x1C) |
+| LED_RED1 | HOUT2 | PTB19 | SOL7IN | U5 CH2 | C11 | USB控制 (0x1A/0x1B/0x1C) |
+| LED_YELLOW1 | HOUT3 | PTB18 | SOL6IN | U5 CH3 | C25 | USB控制 (0x1A/0x1B/0x1C) |
+| LED_GREEN1 | HOUT4 | PTC4 | SOL5IN | U5 CH4 | C26 | USB控制 (0x1A/0x1B/0x1C) |
+| LED_RED2 | HOUT5 | PTC10 | SOL11IN | U22 CH3 | C6 | USB控制，旧IGN已迁出 |
+| LED_YELLOW2 | HOUT6 | PTC9 | SOL10IN | U22 CH2 | C7 | USB控制 (0x1A/0x1B/0x1C) |
+| LED_GREEN2 | HOUT7 | PTC8 | SOL9IN | U22 CH1 | C8 | USB控制 (0x1A/0x1B/0x1C) |
 
-上述 HOUT 属高边输出，均需共用 `SOL24IN`，GPIO HIGH 并不证明输出端子已有负载电压。**已批准并落实的源码初始化：IGN、LED1~6、Air_ALVE1/2、HOUT9/10、U22 CH4 预留控制输入全部 LOW；`RL_DRV` 属内部硬件使能，在上述 IO 均设为 LOW 后由 EAL 初始化 HIGH。** 只有烧录新固件后此行为才生效；复位到 GPIO 初始化前的瞬态仍需硬件检查。现场线束仍需确认从旧 J1 C6 改至 J1 C10。
+上述 HOUT 属高边输出，均需共用 `SOL24IN`，GPIO HIGH 并不证明输出端子已有负载电压。**已批准并落实的源码初始化：IGN、六路 LED、Air_ALVE1/2、HOUT9/10、U22 CH4 预留控制输入全部 LOW；`RL_DRV` 属内部硬件使能，在上述 IO 均设为 LOW 后由 EAL 初始化 HIGH。** 只有烧录新固件后此行为才生效；复位到 GPIO 初始化前的瞬态仍需硬件检查。现场线束仍需确认从旧 J1 C6 改至 J1 C10。
 
 ## 3. 外部 KEY 输入（只定义不启用）
 
@@ -39,8 +39,8 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 
 - USB 通信驱动与服务、`0x40` CAN 发送及 `0x41` CAN 接收上报的帧格式不变，通道值保持 0/1。
 - Air_ALVE1/2 的 GPIO 映射、USB 操作值不变。`RL_DRV` 仅由 EAL 初始化，是硬件电路内部使能，不归 ASW_IoCtrl 管理，更不会跟随 USB 指令状态变化。
-- 已完成源码映射变更：**IGN 从 HOUT5/PTC10/J1 C6 迁移为 HOUT1/PTC1/J1 C10**；保留现有 IGN 命令号，上电默认改成 LOW。LED1~LED6 占用 HOUT2~HOUT7。未据此宣称已完成现场改线或硬件验证。
-- LED1~LED6 已初始化为 GPIO 输出 LOW；USB CMD 0x1A 单路设置 [index, level]，0x1B 空请求读取六路 GPIO 位图，0x1C 单字节设置六路位图(0x00~0x3F)。LED 位图 bit0..5 分别对应 LED1..LED6。
+- 已完成源码映射变更：**IGN 从 HOUT5/PTC10/J1 C6 迁移为 HOUT1/PTC1/J1 C10**；保留现有 IGN 命令号，上电默认改成 LOW。六路 LED 按 RED1/YELLOW1/GREEN1/RED2/YELLOW2/GREEN2 顺序占用 HOUT2~HOUT7。未据此宣称已完成现场改线或硬件验证。
+- 六路 LED 已初始化为 GPIO 输出 LOW；USB CMD 0x1A 单路设置 [index, level]，0x1B 读取位图，0x1C 设置六路位图(0x00~0x3F)。USB index 1..6 与位图 bit0..5 依次对应 RED1、YELLOW1、GREEN1、RED2、YELLOW2、GREEN2；协议编号不变。
 - USB OK 只说明业务 GPIO 指令执行，GET 只读 MCU GPIO 电平；不提供 J1 端子电压或灯状态反馈。USB 断开不自动改变 LED 请求，且 USB 不负责 RL_DRV；MCU 复位后 LED 重新初始化 LOW。
 - KEY1~KEY3 仍仅声明固定硬件资源，不提供采样逻辑或 USB 命令。
 - MCU 引脚、驱动器、连接器依据原理图；实际装配、线束及上电输出仍需实体复核。
