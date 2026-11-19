@@ -15,7 +15,7 @@ public static class PublicFlowCodec
         PublicFlowReference[]? References = null,
         PublicFlowParameter[]? Parameters = null);
 
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true
     };
