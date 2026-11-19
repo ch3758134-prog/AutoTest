@@ -71,6 +71,17 @@
 | E49 | WPF DataGrid 有界容器与虚拟化 | https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/sizing-options-in-the-datagrid-control | WPF 架构注意 |
 | E50 | WPF VirtualizingStackPanel 容器回收 | https://learn.microsoft.com/en-us/dotnet/api/system.windows.controls.virtualizationmode?view=windowsdesktop-10.0 | 框架机制 |
 
+## R06 补充技术与产品实现参考
+
+| ID | 已查一手来源 | URL | 使用范围 |
+|---|---|---|---|
+| E51 | Prism WPF View composition / Shell Region 管理 | https://docs.prismlibrary.com/docs/current/platforms/wpf/view-composition/ | UI 结构技术参考，不强制 WPF 具体类名 |
+| E52 | WPF UI Fluent Light 主题字典 | https://wpfui.lepo.co/documentation/themes | 主题机制，非 UX 合格证明 |
+| E53 | WPF DataGrid CellEditingTemplate 与字段编辑 | https://learn.microsoft.com/en-us/dotnet/framework/wpf/controls/datagrid | WPF 直接编辑技术 |
+| E54 | WPF ICommandSource 命令与输入绑定 | https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/commanding-overview | UI 命令一致性 |
+| E55 | Windows 高 DPI 桌面应用开发 | https://learn.microsoft.com/en-us/windows/win32/hidpi/high-dpi-desktop-application-development-on-windows | Per-Monitor DPI 验收 |
+| E56 | AutoTest 正式 TestDocument / StepEditTransaction / ProjectWorkspaceService（main 源码核对） | https://github.com/ch3758134-prog/AutoTest/tree/main/HOST/src | 连接的用户项目事实，随 main 版本变化需重新回读 |
+
 ## 源与判断分离方式
 
 - `FACT-E##`：源明言软件具有何种机制（例如 Portal View 自动进入 Project View）。

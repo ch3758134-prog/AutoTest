@@ -34,6 +34,18 @@
 | UX-H025 | CAN/报告大数据使用虚拟化和后台处理，避免 WPF 主线程阻塞 | R05 E49,E50 | ENGINEERING_DESIGN_CANDIDATE | S01/S09 |
 | UX-H026 | 多 DPI/多屏窗口、焦点/键盘/对比为产品质量要素，不是视觉补丁 | R05 E47,E48 | UX_QUALITY_CANDIDATE | S08 |
 
+| UX-H027 | 任务导向入口 + 可持续工程环境 + 专业对象编辑器 + 真状态与恢复 | R06 / R01~R05 | UX_IMPLEMENTATION_CANDIDATE | UX-I01~UX-I03 |
+| UX-H028 | 无工程编辑重用 TestDocument.Create 与 StepEditTransaction，不伪造 ProjectId/AssetRevision/Hash | R06 main 代码核查 | DOMAIN_ADAPTER_REQUIRED | UX-I01 领域绑定设计 |
+| UX-H029 | WPF-UI Light + Prism 唯一生命周期 + 原生窗口/DPI | R06 E51~E55 | TECHNICAL_DIRECTION_SELECTED / BUILD_NOT_RUN | UX-I01 编译、窗口、键鼠验收 |
+| UX-H030 | 全产品专业交互不能降成统一表格/Inspector，也不能用禁用空壳冒充全功能实现 | R06 / PM-BIZ / PM-INPUT | PRODUCT_WIDE_DESIGN_CANDIDATE | UX-I02 逐工具任务验收 |
+
+## R06 研究准出结论
+
+- R01～R06 已覆盖软件整体架构、用户入口、对象编辑、命令体系、跨工作区状态、恢复、性能与 Windows 专业体验。
+- UX-I01 首批 WPF 实施的核心领域接口已明确：可创建正式的内存 TestDocument + StepEditTransaction，但现有 TestEditorSession 要求正式工程身份，需要 Unbound/Bound 会话展示适配或专业接口协作。
+- 当前没有必须先由用户回答的控件布局问题；允许进入首轮代码实施并通过真实体验微调。
+- 这不是 UI 设计最终冻结，也不是项目 Gate 审批和 Windows/ECU 实测通过。
+
 ## R05 阶段结论
 
 - 已提出跨工具状态和错误恢复合同、真实工位独占 UX 呈现与 S01~S10 验收脚本。
