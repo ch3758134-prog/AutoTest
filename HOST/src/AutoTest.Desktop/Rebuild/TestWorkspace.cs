@@ -23,9 +23,10 @@ public sealed class TestWorkspace : UserControl
     private readonly TextBlock _editorTitle = UiVisual.Text("", 16, true);
     private readonly TextBlock _count = UiVisual.Text("", 12, false, UiVisual.Muted);
     private readonly TextBlock _localStatus = UiVisual.Note("");
-    private readonly List<(string Key, TextBox Field)> _parameterInputs = [];
+    private readonly List<(string Key, Func<string> Value)> _parameterInputs = [];
     private TextBox? _nameField;
     private CheckBox? _enabledField;
+    private CheckBox? _breakpointField;
     private Guid? _caseId;
     private Guid? _flowId;
     private Guid? _stepId;
@@ -102,6 +103,7 @@ public sealed class TestWorkspace : UserControl
         actions.Children.Add(UiVisual.Button("↳ 添加子步骤", () => Insert(true)));
         actions.Children.Add(UiVisual.Button("复制", DuplicateStep));
         actions.Children.Add(UiVisual.Button("删除", DeleteStep));
+        actions.Children.Add(UiVisual.Button("● 断点 F9", ToggleBreakpoint));
         actions.Children.Add(UiVisual.Button("↑", () => MoveStep(-1)));
         actions.Children.Add(UiVisual.Button("↓", () => MoveStep(1)));
         actions.Children.Add(UiVisual.Button("撤销", Undo));
@@ -241,7 +243,7 @@ public sealed class TestWorkspace : UserControl
         var step = list[index];
         var item = new TreeViewItem
         {
-            Header = (step.Enabled ? "" : "○ ") + UiStepTypes.Label(step.Type) + "  ·  " + step.Name,
+            Header = (step.Breakpoint ? "● " : "") + (step.Enabled ? "" : "○ ") + UiStepTypes.Label(step.Type) + "  ·  " + step.Name,
             Tag = new StepLocation(phase, step, list, index),
             IsExpanded = true
         };
@@ -263,7 +265,13 @@ public sealed class TestWorkspace : UserControl
             BuildBranch("条件成立 / THEN", phase, step.Then, item);
             BuildBranch("否则 / ELSE", phase, step.Else, item);
         }
-        else if (step.Type is "Loop" or "Sequence" or "Switch")
+        else if (step.Type == "TryCatch")
+        {
+            BuildBranch("TRY / 尝试", phase, step.Then, item);
+            BuildBranch("CATCH / 异常", phase, step.Else, item);
+            BuildBranch("FINALLY / 清理", phase, step.Body, item);
+        }
+        else if (step.Type is "Loop" or "Sequence" or "Switch" or "Case")
             BuildBranch(step.Type == "Switch" ? "CASE / 分支" : "BODY / 子步骤", phase, step.Body, item);
     }
     private bool FindAndSelect(IEnumerable<TreeViewItem> items, Guid id)
@@ -327,18 +335,29 @@ public sealed class TestWorkspace : UserControl
         _inspector.Children.Add(UiVisual.Field("步骤名称", _nameField));
         _enabledField = new CheckBox { Content = "默认启用此步骤", IsChecked = step.Enabled, Margin = new Thickness(0, 0, 0, 14) };
         _inspector.Children.Add(_enabledField);
+        _breakpointField = new CheckBox { Content = "设置编辑态断点 (F9)", IsChecked = step.Breakpoint,
+            Margin = new Thickness(0, 0, 0, 14) };
+        _inspector.Children.Add(_breakpointField);
         foreach (var key in UiStepTypes.Fields(step.Type).Concat(step.Properties.Keys).Distinct())
         {
-            var field = UiVisual.Input(step.Properties.GetValueOrDefault(key, ""));
-            if (key is "dbcMessage")
+            if (key is "dbcMessage" or "flow")
             {
-                var names = string.Join("、", _store.Current.DbcMessages.Select(x => x.Name));
-                field.ToolTip = names.Length == 0 ? "当前 UI 草稿中没有 DBC 报文，先到 DBC 工具创建" : "可引用的报文：" + names;
+                var box = UiVisual.Combo(248);
+                box.IsEditable = true;
+                box.ItemsSource = key == "dbcMessage"
+                    ? _store.Current.DbcMessages.Select(x => x.Name).ToList()
+                    : _store.Current.PublicFlows.Select(x => x.Name).ToList();
+                box.Text = step.Properties.GetValueOrDefault(key, "");
+                box.ToolTip = "从当前 UI 草稿资源中选择，也可以手工输入未归档引用";
+                _parameterInputs.Add((key, () => box.Text));
+                _inspector.Children.Add(UiVisual.Field(UiStepTypes.FieldName(key), box));
             }
-            if (key == "flow") field.ToolTip = "公共流程：" +
-                string.Join("、", _store.Current.PublicFlows.Select(x => x.Name));
-            _parameterInputs.Add((key, field));
-            _inspector.Children.Add(UiVisual.Field(UiStepTypes.FieldName(key), field));
+            else
+            {
+                var field = UiVisual.Input(step.Properties.GetValueOrDefault(key, ""));
+                _parameterInputs.Add((key, () => field.Text));
+                _inspector.Children.Add(UiVisual.Field(UiStepTypes.FieldName(key), field));
+            }
         }
         _inspector.Children.Add(UiVisual.Button("应用步骤修改", () => CommitInspector(true), true));
         _inspector.Children.Add(UiVisual.Note("Ctrl+Z / Ctrl+Y 撤销或重做步骤事务。"));
@@ -349,14 +368,15 @@ public sealed class TestWorkspace : UserControl
         if (step is null || _nameField is null) return;
         var name = _nameField.Text.Trim();
         if (name.Length == 0) { _localStatus.Text = "步骤名称不能为空。"; return; }
-        var map = _parameterInputs.ToDictionary(x => x.Key, x => x.Field.Text);
+        var map = _parameterInputs.ToDictionary(x => x.Key, x => x.Value());
         bool enabled = _enabledField?.IsChecked == true;
-        if (name == step.Name && enabled == step.Enabled &&
+        bool breakpoint = _breakpointField?.IsChecked == true;
+        if (name == step.Name && enabled == step.Enabled && breakpoint == step.Breakpoint &&
             map.Count == step.Properties.Count &&
             map.All(p => step.Properties.TryGetValue(p.Key, out var v) && v == p.Value)) return;
         var id = step.Id;
         _history.Record(_store.Current);
-        step.Name = name; step.Enabled = enabled; step.Properties = map;
+        step.Name = name; step.Enabled = enabled; step.Breakpoint = breakpoint; step.Properties = map;
         _store.Save();
         _status("已应用 UI 步骤参数");
         _localStatus.Text = "步骤参数已保存至 UI 草稿，不代表正式 TEST 资源";
@@ -375,8 +395,8 @@ public sealed class TestWorkspace : UserControl
         {
             if (child)
             {
-                list = parent.Type is "If" or "When" ? parent.Then :
-                    parent.Type is "Loop" or "Sequence" or "Switch" ? parent.Body : list;
+                list = parent.Type is "If" or "When" or "TryCatch" ? parent.Then :
+                    parent.Type is "Loop" or "Sequence" or "Switch" or "Case" ? parent.Body : list;
                 if (ReferenceEquals(list, loc.Container))
                 {
                     _localStatus.Text = "当前步骤没有子分支；请使用同级插入。";
@@ -386,6 +406,8 @@ public sealed class TestWorkspace : UserControl
             }
             else at = loc.Index + 1;
         }
+        if (child && loc?.Step?.Type == "Switch" && type.Type != "Case")
+        { _localStatus.Text = "SWITCH 的子级请先插入 CASE 分支。"; return; }
         var node = UiStepTypes.New(type.Type);
         Mutate(() => list.Insert(Math.Clamp(at, 0, list.Count), node), "已添加 " + node.Name + " · 纯 UI 编辑");
         _stepId = node.Id;
@@ -459,6 +481,16 @@ public sealed class TestWorkspace : UserControl
             _caseId = cloned.Id;
         }
         _stepId = null; RefreshObjects(); RefreshTree();
+    }
+    public void ToggleBreakpoint()
+    {
+        CommitInspector(false);
+        var loc = ResolveCurrentLocation();
+        if (loc?.Step is null) return;
+        var id = loc.Step.Id;
+        Mutate(() => loc.Step.Breakpoint = !loc.Step.Breakpoint, "已切换编辑态断点");
+        _stepId = id;
+        RefreshTree();
     }
     public void Undo()
     {
