@@ -239,6 +239,9 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             SignalStatus = completed.ObservationStatus?.ToString(),
             FailureCode = completed.Status switch
             {
+                RealStepStatus.NoData when
+                    completed.Detail.Contains("DBC_SNAPSHOT_MISMATCH", StringComparison.Ordinal)
+                    => "DBC_SNAPSHOT_MISMATCH",
                 RealStepStatus.NoData => "NO_DATA",
                 RealStepStatus.Timeout => "TIMEOUT",
                 RealStepStatus.InvalidData when
