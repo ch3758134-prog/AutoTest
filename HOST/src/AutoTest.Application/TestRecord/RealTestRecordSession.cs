@@ -170,6 +170,19 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             ObservationUtc = observed?.Time.Utc,
             Unit = observed?.Unit,
             SignalStatus = completed.ObservationStatus?.ToString(),
+            FailureCode = completed.Status switch
+            {
+                RealStepStatus.NoData => "NO_DATA",
+                RealStepStatus.Timeout => "TIMEOUT",
+                RealStepStatus.InvalidData when
+                    completed.Detail.Contains("SIGNAL_GAP", StringComparison.Ordinal) => "SIGNAL_GAP",
+                RealStepStatus.InvalidData => "INVALID_DATA",
+                RealStepStatus.ConditionFalse => "CONDITION_FALSE",
+                RealStepStatus.DeviceError => "DEVICE_ERROR",
+                RealStepStatus.Cancelled => "CANCELLED",
+                _ => null
+            },
+            Detail = completed.Detail.Length > 4096 ? completed.Detail[..4096] : completed.Detail,
             RequirementId = completed.RequirementId,
             ReportNote = completed.ReportNote,
             ShowEvidence = completed.ShowEvidence,
