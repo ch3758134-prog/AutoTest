@@ -3,7 +3,8 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Background="{StaticResource Canvas}" Foreground="{StaticResource Ink}"
  FontFamily="{StaticResource UiFont}" FontSize="13"
- UseLayoutRounding="True" SnapsToDevicePixels="True">
+ UseLayoutRounding="True" SnapsToDevicePixels="True"
+ PreviewKeyDown="Workbench_PreviewKeyDown">
   <UserControl.Resources>
     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"
                      Color="{StaticResource SelectedSurfaceColor}"/>
@@ -161,7 +162,14 @@
                    BorderThickness="0" Background="Transparent" Margin="5"
                    VirtualizingStackPanel.IsVirtualizing="True"
                    VirtualizingStackPanel.VirtualizationMode="Recycling"
-                   MouseDoubleClick="MessageList_DoubleClick">
+                   MouseDoubleClick="MessageList_DoubleClick"
+                   PreviewMouseRightButtonDown="MessageList_PreviewMouseRightButtonDown">
+            <ListBox.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="重命名中文别名 (F2)" Click="RenameMessageMenu_Click"/>
+                <MenuItem Header="完整编辑原始报文…" Click="EditMessageMenu_Click"/>
+              </ContextMenu>
+            </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
               <DataTemplate>
                 <StackPanel Margin="3,4">
@@ -227,7 +235,14 @@
                     BorderThickness="0" Background="Transparent" AlternatingRowBackground="{StaticResource ToolbarSurface}"
                     RowHeight="35" ColumnHeaderHeight="38"
                     EnableRowVirtualization="True" EnableColumnVirtualization="True"
-                    MouseDoubleClick="SignalGrid_DoubleClick">
+                    MouseDoubleClick="SignalGrid_DoubleClick"
+                    PreviewMouseRightButtonDown="SignalGrid_PreviewMouseRightButtonDown">
+            <DataGrid.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="重命名中文别名 (F2)" Click="RenameSignalMenu_Click"/>
+                <MenuItem Header="高级编辑原始信号…" Click="EditSignalMenu_Click"/>
+              </ContextMenu>
+            </DataGrid.ContextMenu>
             <DataGrid.Columns>
               <DataGridTemplateColumn Header="信号名称（双击改别名）" Width="230">
                 <DataGridTemplateColumn.CellTemplate>
