@@ -30,29 +30,31 @@ static uint8_t ParseOnOff(const uint8_t *payload, uint8_t len, uint8_t *out)
 }
 
 
-/* HIGH 请求对应 HOUT 通道导通，LOW 请求关断；只证明 GPIO 指令。 */
+/* HIGH 请求对应 HOUT 通道导通，LOW 请求关断；只证明 GPIO 指令。
+ * USB index=1..6 顺序：RED1、YELLOW1、GREEN1、RED2、YELLOW2、GREEN2。
+ */
 static void SetLed(uint8_t index, uint8_t level)
 {
     switch (index)
     {
-        case 1U: EAL_GPIO_WRITE(LED1, level); break;
-        case 2U: EAL_GPIO_WRITE(LED2, level); break;
-        case 3U: EAL_GPIO_WRITE(LED3, level); break;
-        case 4U: EAL_GPIO_WRITE(LED4, level); break;
-        case 5U: EAL_GPIO_WRITE(LED5, level); break;
-        case 6U: EAL_GPIO_WRITE(LED6, level); break;
+        case 1U: EAL_GPIO_WRITE(LED_RED1, level); break;
+        case 2U: EAL_GPIO_WRITE(LED_YELLOW1, level); break;
+        case 3U: EAL_GPIO_WRITE(LED_GREEN1, level); break;
+        case 4U: EAL_GPIO_WRITE(LED_RED2, level); break;
+        case 5U: EAL_GPIO_WRITE(LED_YELLOW2, level); break;
+        case 6U: EAL_GPIO_WRITE(LED_GREEN2, level); break;
         default: break; /* 上层已校验 1..6 */
     }
 }
 
 static uint8_t ReadLedMask(void)
 {
-    return (uint8_t)((EAL_GPIO_READ(LED1) << 0U) |
-                     (EAL_GPIO_READ(LED2) << 1U) |
-                     (EAL_GPIO_READ(LED3) << 2U) |
-                     (EAL_GPIO_READ(LED4) << 3U) |
-                     (EAL_GPIO_READ(LED5) << 4U) |
-                     (EAL_GPIO_READ(LED6) << 5U));
+    return (uint8_t)((EAL_GPIO_READ(LED_RED1) << 0U) |
+                     (EAL_GPIO_READ(LED_YELLOW1) << 1U) |
+                     (EAL_GPIO_READ(LED_GREEN1) << 2U) |
+                     (EAL_GPIO_READ(LED_RED2) << 3U) |
+                     (EAL_GPIO_READ(LED_YELLOW2) << 4U) |
+                     (EAL_GPIO_READ(LED_GREEN2) << 5U));
 }
 
 static void WriteLedMask(uint8_t mask)
@@ -167,7 +169,7 @@ void ASW_IoCtrl_HandleCmd(uint16_t seq, uint8_t cmd,
             break;
 
         case CDD_USB_CMD_SET_LEDS:
-            /* [mask] bit0..5=LED1..LED6；bit6/7必须为0。 */
+            /* [mask] bit0..5=RED1、YELLOW1、GREEN1、RED2、YELLOW2、GREEN2；bit6/7必须为0。 */
             if ((payload == NULL) || (len != 1U) || ((payload[0] & 0xC0U) != 0U))
             {
                 ReplyStatus(seq, cmd, CDD_USB_STS_ERR_FMT);
