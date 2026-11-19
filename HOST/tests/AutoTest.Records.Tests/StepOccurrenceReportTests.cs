@@ -91,6 +91,7 @@ public sealed class StepOccurrenceReportTests
         Assert.Null(reloaded.StartedUtc);
         Assert.Null(reloaded.Phase);
         Assert.Null(reloaded.SignalProvenance);
+        Assert.Null(reloaded.JudgementEvidenceKind);
         Assert.Equal(fact, reloaded);
     }
 
@@ -110,4 +111,30 @@ public sealed class StepOccurrenceReportTests
         Assert.Throws<InvalidDataException>(() => (fact with
             { CompletedUtc = at.AddSeconds(1), StepOccurrenceId = Guid.Empty }).Validate());
     }
+    [Fact]
+    public void CannotClaimDirectJudgementWithoutOwnObservationOrEvidence()
+    {
+        var now = new DateTimeOffset(2026, 11, 19, 12, 0, 0, TimeSpan.Zero);
+        var fact = new RunStepFact(RunId.New(), Guid.NewGuid(), StepId.New(), 1,
+            "Completed", "2", "2", TimePoint.FromHostArrival(now, 12),
+            EvidenceQuality.HostObserved, ImmutableArray<EvidenceRef>.Empty)
+        {
+            StepOccurrenceId = Guid.NewGuid(),
+            CaseAttemptId = Guid.NewGuid(),
+            Phase = "Test",
+            ExecutionPath = "/assert",
+            StartedUtc = now.AddSeconds(-1),
+            CompletedUtc = now,
+            Duration = TimeSpan.FromSeconds(1),
+            SignalStatus = "Valid",
+            JudgementEvidenceKind = "DirectDbcSignal"
+        };
+        Assert.Throws<InvalidDataException>(() => fact.Validate());
+        Assert.Throws<InvalidDataException>(() => (fact with
+        {
+            JudgementEvidenceKind = "UnsupportedFutureEvidence",
+            Evidence = ImmutableArray.Create(EvidenceRef.New())
+        }).Validate());
+    }
+
 }
