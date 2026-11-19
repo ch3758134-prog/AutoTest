@@ -171,7 +171,7 @@ public sealed partial class ManualBenchViewModel
          pin.AssetId != _loadedControllerAsset || pin.Revision != _loadedControllerRevision ||
          !pin.Sha256.Equals(_loadedControllerSha, StringComparison.OrdinalIgnoreCase));
     public bool CanSaveKeyActions => CanEditKeyActions && (KeyActionsDirty || ControllerBindingNeedsSave);
-    public bool CanRunKeyAction => !IsBusy && !KeyActionsDirty &&
+    public bool CanRunKeyAction => CanSendHardware && !KeyActionsDirty &&
         _keyCatalogSession is not null && !IsKeyActionRunning;
     public string KeyActionRunStatus
     {
