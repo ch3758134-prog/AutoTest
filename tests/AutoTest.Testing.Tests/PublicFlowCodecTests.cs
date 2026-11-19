@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using AutoTest.Testing.Authoring;
+using AutoTest.Testing.Preparation;
 using Xunit;
 
 namespace AutoTest.Testing.Tests;
@@ -58,6 +59,20 @@ public sealed class PublicFlowCodecTests
                 new PublicFlowReference(Guid.NewGuid(), 1, "NOT_SHA256"))
         };
         Assert.Throws<FormatException>(() => PublicFlowCodec.Serialize(flow));
+    }
+
+    [Fact]
+    public void PublicFlowCallCannotBeMistakenForExecutableOrMockPass()
+    {
+        var call = StepNode.Create("CallPublicFlow", "调用流程")
+            .WithProperty("flowAssetId", Guid.NewGuid().ToString("D"))
+            .WithProperty("flowRevision", "1")
+            .WithProperty("flowSha", new string('A', 64));
+        var doc = TestDocument.Create("root");
+        doc = doc with { Phases = doc.Phases.SetItem(TestPhase.Test, [call]) };
+        var prepared = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Contains(prepared.Diagnostics, error =>
+            error.Contains("CallPublicFlow", StringComparison.Ordinal));
     }
 
     [Fact]
