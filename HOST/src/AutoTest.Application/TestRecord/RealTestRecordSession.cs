@@ -207,10 +207,11 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         var isAssertion = completed.Type is "Expect" or "WaitUntil" or "AssertSignal";
         var eventKind = completed.Status switch
         {
+            RealStepStatus.Completed or RealStepStatus.ConditionFalse when isAssertion
+                => RunFactKind.Judgement,
             RealStepStatus.ConditionFalse or RealStepStatus.NoData or
             RealStepStatus.InvalidData or RealStepStatus.Timeout or
             RealStepStatus.DeviceError or RealStepStatus.Cancelled => RunFactKind.Uncertainty,
-            _ when isAssertion => RunFactKind.Judgement,
             _ => RunFactKind.RecordWrite
         };
         await AppendAuditAsync(completed.StepOccurrenceId, eventKind,
