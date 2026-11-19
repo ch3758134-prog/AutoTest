@@ -132,6 +132,55 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    /// <summary>Grant one exact 0x22 DID operation after a separate, explicit
+    /// physical consent. This is not an unlock for any other UDS service.</summary>
+    public void AuthorizeReadOnlyDid(uint txId,uint rxId,ushort did,string exactConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state!=WinUsbLinkState.Connected)
+                throw new IOException("Connect first; DID permission cannot survive reconnect.");
+            _fence.AuthorizeReadOnlyDid(txId,rxId,did,exactConfirmation,_epoch);
+        }
+    }
+    public void RevokeReadOnlyDid() { lock (_sync) _fence.RevokeReadOnlyDid(); }
+
+    // Called exclusively by UsbSessionService's actual decoded USB receive loop.
+    internal void ObserveAuthenticatedCanIndication(ReadOnlySpan<byte> payload)
+    {
+        lock (_sync)
+        {
+            if (_state==WinUsbLinkState.Connected)
+                _fence.ObserveAuthenticatedCanRx(payload,_epoch);
+        }
+    }
+
+
+    /// <summary>F2 frozen-job consent. Unlike physical TEST RUN this grants no
+    /// arbitrary CAN ID stream; each actual on-wire frame must be prepared exactly.</summary>
+    public Guid AuthorizeFlashJob(string fingerprint,string typed,uint appId,uint bootId,int maxFrames)
+    {
+        lock(_sync)
+        {
+            if(_state!=WinUsbLinkState.Connected)
+                throw new IOException("Physical flash requires a connected controller.");
+            return _fence.AuthorizeProgrammingJob(fingerprint,typed,appId,bootId,_epoch,maxFrames);
+        }
+    }
+    public void PrepareExactFlashFrame(Guid token,ReadOnlySpan<byte> exactCan15)
+    {
+        lock(_sync)
+        {
+            if(_state!=WinUsbLinkState.Connected)
+                throw new IOException("Physical flash link is not connected.");
+            _fence.PrepareProgrammingCanFrame(token,exactCan15,_epoch);
+        }
+    }
+    public void RevokeFlashJob(Guid token)
+    {
+        lock(_sync) _fence.RevokeProgrammingJob(token);
+    }
+
     public void AuthorizePhysicalTestRun(string fingerprint, string typedConfirmation,
         IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn,
         int maxWrites = 1000)
