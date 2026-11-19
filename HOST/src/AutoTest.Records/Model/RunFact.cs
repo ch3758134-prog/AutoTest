@@ -55,6 +55,10 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
 
     public void Validate()
     {
+        if (StepOccurrenceId is not null &&
+            (StartedUtc is null || CompletedUtc is null || Duration is null ||
+                Phase is null || string.IsNullOrWhiteSpace(ExecutionPath)))
+            throw new InvalidDataException("An occurrence requires a phase, execution path and time bounds.");
         if (StepOccurrenceId == Guid.Empty || ParentOccurrenceId == Guid.Empty ||
             LoopIteration is < 1 ||
             Phase is not null and not ("Prepare" or "Test" or "Cleanup") ||
