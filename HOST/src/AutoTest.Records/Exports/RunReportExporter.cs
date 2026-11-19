@@ -70,8 +70,9 @@ public sealed class RunReportExporter
                 step.Phase ?? "", step.LoopIteration?.ToString() ?? "",
                 step.ExecutionPath ?? "", step.StartedUtc?.ToString("O") ?? "",
                 step.CompletedUtc?.ToString("O") ?? "",
-                step.Duration?.TotalMilliseconds.ToString("F3",
-                    System.Globalization.CultureInfo.InvariantCulture) ?? "",
+                step.Duration is { } elapsed
+                    ? elapsed.TotalMilliseconds.ToString("F3",
+                        System.Globalization.CultureInfo.InvariantCulture) : "",
                 step.ObservationUtc?.ToString("O") ?? "", step.Unit ?? "",
                 step.SignalStatus ?? "", step.RequirementId ?? "",
                 step.ReportNote ?? "", step.AdditionalResultsJson ?? "" };
@@ -204,8 +205,10 @@ public sealed class RunReportExporter
                 .Append(" ").Append(H(step.Unit)).Append("</td><td>")
                 .Append(H(step.StartedUtc?.ToString("O"))).Append(" — ")
                 .Append(H(step.CompletedUtc?.ToString("O"))).Append("<div>")
-                .Append(H(step.Duration?.TotalMilliseconds.ToString("F3",
-                    System.Globalization.CultureInfo.InvariantCulture))).Append(" ms</div></td><td>")
+                .Append(H(step.Duration is { } duration
+                    ? duration.TotalMilliseconds.ToString("F3",
+                        System.Globalization.CultureInfo.InvariantCulture) : null))
+                .Append(" ms</div></td><td>")
                 .Append(H(step.RequirementId)).Append("<div>")
                 .Append(H(step.ReportNote)).Append("</div><pre>")
                 .Append(H(step.AdditionalResultsJson)).Append("</pre>")
