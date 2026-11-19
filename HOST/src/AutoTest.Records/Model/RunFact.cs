@@ -61,6 +61,7 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
 {
     // Optional v1 payload extension. Null means a legacy fact, never synthesize IDs.
     public Guid? StepOccurrenceId { get; init; }
+    public Guid? CaseAttemptId { get; init; }
     public Guid? ParentOccurrenceId { get; init; }
     public string? Phase { get; init; }
     public string? ExecutionPath { get; init; }
@@ -86,7 +87,8 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
             (StartedUtc is null || CompletedUtc is null || Duration is null ||
                 Phase is null || string.IsNullOrWhiteSpace(ExecutionPath)))
             throw new InvalidDataException("An occurrence requires a phase, execution path and time bounds.");
-        if (StepOccurrenceId == Guid.Empty || ParentOccurrenceId == Guid.Empty ||
+        if (CaseAttemptId == Guid.Empty ||
+            StepOccurrenceId == Guid.Empty || ParentOccurrenceId == Guid.Empty ||
             LoopIteration is < 1 ||
             Phase is not null and not ("Prepare" or "Test" or "Cleanup") ||
             (ExecutionPath?.Length ?? 0) > 4096 ||
