@@ -25,6 +25,7 @@
 ## 3. 自动测试：以真实编辑器为默认主任务
 - 不重建 G4 已有真实 `TestDocument/StepNode/StepId/StepEditTransaction`、DBC/公共流程工程资源、保存、撤销和预检能力。
 - 常用添加步骤、检查、保存改为 WPF UI 控件，保持正式命令绑定。
+- 添加步骤选择器从最多约 1000×790 DIP 的大面积面板收紧到最多约 640×545 DIP 的双列可搜索浮层；仍能用搜索/键盘 Enter/鼠标选中插入，不改 TEST 步骤模型。
 - 真实执行命令保留，不作 Mock；原常驻实体执行栏改为默认折叠的可展开区域，离线编辑时释放工作区面积。
 - Shell 工具栏主要操作迁移至 WPF UI，减小 Shell 最小宽度并保持工程树自动收窄；保留 G4 已实现的 WindowChrome WM_GETMINMAXINFO 工作区计算，禁止再让任务栏被无边框最大化覆盖。
 - 当前代码依然存在历史 `TryLeaveInspector` 参数无效时阻断切换，以及长 Palette 等交互欠账；未在无 Windows 编译/回归证据下擅改字段事务合同。此问题是接下来 TEST 编辑重点。
