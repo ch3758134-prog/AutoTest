@@ -165,7 +165,6 @@ public partial class TestStepInspector : UserControl
     private TestActionOption? _selected;
     private MappingChoice? _selectedTarget;
     private readonly List<MappingChoice> _allTargets = [];
-    private string _targetInstruction = "";
     private string _targetRevisionWarning = "";
     private uint _selectedMask;
     private readonly CheckBox[] _rawKeys = new CheckBox[20];
@@ -477,15 +476,6 @@ public partial class TestStepInspector : UserControl
             if (!_allTargets.Any(x => x.Mapping == mapping))
                 _allTargets.Add(new MappingChoice("已绑定 / " + mapping.Name,
                     mapping));
-        _targetInstruction = action.TargetCategory switch
-        {
-            "can" => "",
-            "button" => "",
-            "signal" => "需要 DBC 信号。若列表为空，请先在工程资源中导入 DBC，再创建该步骤。",
-            "wave" => "分析方案是可选项；若不选，请在下方填写已建立的命名参考。",
-            "ign" => "当前固定台架的 IGN 控制。配置步骤不会立即操作硬件。",
-            _ => ""
-        };
         var oldTargetName = _editing?.Properties.GetValueOrDefault(
             action.TargetCategory == "wave" ? "profile" : "target", "");
         // A pinned mapping must be preferred over a catalog object with the same
