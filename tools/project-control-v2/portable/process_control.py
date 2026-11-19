@@ -198,7 +198,7 @@ def apply(record, action, payload):
             if r.get("activity_id")==activity["id"]:
                 r["freshness"]="STALE_AFTER_ACTIVITY_REVISION"
         for req in state["review_requests"]:
-            if req["activity_id"] == activity["id"] and req["state"] == "REQUESTED_NOT_APPROVED":
+            if req["activity_id"] == activity["id"] and req["state"] in ("PREPARED_NOT_PRESENTED", "REQUESTED_NOT_APPROVED"):
                 req["state"] = "STALE_AFTER_REVISION"
     elif action == "review_process_activity":
         activity = locate(state["activities"], identifier(payload.get("activity_id"), "activity id"), "activity")
@@ -217,7 +217,7 @@ def apply(record, action, payload):
             "evidence_refs": refs, "activity_revision": activity["revision"],
             "verified_external_identity": False}
         for req in state["review_requests"]:
-            if req["activity_id"] == activity["id"] and req["state"] == "REQUESTED_NOT_APPROVED":
+            if req["activity_id"] == activity["id"] and req["state"] in ("PREPARED_NOT_PRESENTED", "REQUESTED_NOT_APPROVED"):
                 req["state"] = "STALE_AFTER_REVIEW_CHANGE"
         activity["state"] = "TECHNICALLY_REVIEWED_CANDIDATE" if result == "ADEQUATE_CANDIDATE" else "REWORK_REQUIRED"
     elif action == "request_process_review":
@@ -228,11 +228,12 @@ def apply(record, action, payload):
         id = identifier(payload.get("id"), "review request id")
         unique(state["review_requests"], id)
         state["review_requests"].append({"id": id, "activity_id": activity["id"],
-            "activity_revision": activity["revision"], "state": "REQUESTED_NOT_APPROVED",
+            "activity_revision": activity["revision"], "state": "PREPARED_NOT_PRESENTED",
+            "owner_read_confirmed": False, "full_artifact_packet_required": True,
             "pending_decisions": result["pending_decisions"],
             "purpose": word(payload.get("purpose"), "review purpose"),
             "approval_authority": "EXTERNAL_HUMAN_ONLY"})
-        activity["state"] = "AWAITING_OWNER_DECISION"
+        activity["state"] = "PREPARED_FOR_OWNER_PRESENTATION"
     elif action == "record_ai_intake":
         id = identifier(payload.get("id"), "intake id")
         unique(state["intakes"], id)
@@ -289,7 +290,8 @@ def apply(record, action, payload):
             "evidence_refs": strings(payload.get("evidence_refs"), "report evidence", required=True),
             "unfinished": strings(payload.get("unfinished", []), "unfinished"),
             "next_action": word(payload.get("next_action"), "next action"),
-            "state": "REPORTED_NOT_ACCEPTED", "approval": "NONE"})
+            "state": "INTERNAL_REPORT_NOT_DELIVERED", "approval": "NONE",
+            "owner_read_confirmed": False, "external_publication_allowed": False})
     return {"process_control": copy.deepcopy(state),
             "assessment": assessment(state["activities"][-1]) if action == "open_process_activity" else None,
             "authorized": False, "note": "Process activities and reports never grant formal permission."}

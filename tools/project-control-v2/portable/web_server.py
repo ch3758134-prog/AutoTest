@@ -12,6 +12,10 @@ from contextlib import contextmanager
 import hashlib
 from receipt_evidence import assess as assess_receipt, verify_test_logs, ReceiptError
 from context_assessment import audit as audit_context_assessment, AssessmentError
+from delivery_review import (apply as apply_delivery, items as delivery_items, DeliveryError)
+from context_workflow import (apply as apply_context_workflow, current_view as context_current_view,
+                              check_collections as check_context_collections,
+                              ContextWorkflowError)
 from remote_sync import inspect as inspect_remote, SyncError
 from remote_module_status import inspect as inspect_remote_modules
 from github_bridge import GitHub, RemoteError
@@ -43,7 +47,7 @@ UI = HERE / "web"
 ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 SCHEMA = "project-control-target-management/1"
-MAX_BODY = 65_536
+MAX_BODY = 262_144
 
 
 class ManagementError(ValueError):
@@ -238,6 +242,7 @@ class Target:
             process_state_for(value, allow_stale=True)
         except ProcessError as error:
             raise ManagementError("invalid process state: " + str(error)) from error
+        check_context_collections(value)
         try:
             defined_modules(value)
         except ModuleError as error:
@@ -335,10 +340,19 @@ class Target:
                     "remote_pr_verified": False, "ci_verified": False,
                     "integrated": "UNKNOWN",
                 })
+            if management.get("context_reviews"):
+                # Versioned CAS-managed evidence reviews take precedence over the
+                # optional legacy read-only file; no duplicate sources of truth.
+                context_view = context_current_view(management)
             return {
                 "project": project, "management": management, "code_status": code_status,
                 "assets": assets, "decisions": decisions, "tasks": tasks,
                 "context_assessment": context_view,
+                "delivery_review_boundary": "PRIVATE_GIT_METADATA_NOT_PROJECT_HISTORY_OR_REMOTE_PUBLISHED",
+                "delivery_summary": {
+                    "count": len(self.read_delivery_store()["delivery_reviews"]),
+                    "note": "Full private candidate content requires separate local review token."
+                },
                 "process_catalog": process_catalog(),
                 "process_policy_current": policy_is_current(management["process_control"]),
                 "git": {
@@ -348,8 +362,85 @@ class Target:
                     "source": "LOCAL_WORKTREE_NOT_REMOTE_VERIFIED",
                 },
                 "limits": {"formal_approval": False, "remote_write": False,
-                           "task_ready_promotion": False, "local_cleanup": False},
+                           "task_ready_promotion": False, "local_cleanup": False,
+                            "delivery_release": "SEPARATE_LOCAL_REVIEW_TOKEN_NOT_VERIFIED_HUMAN_IDENTITY"},
             }
+
+    def delivery_store_path(self, *, create=False):
+        # Git metadata, including per-worktree gitdir, is intentionally not
+        # tracked or uploaded with management.json. Reject symlink substitutions.
+        raw = git(self.root, "rev-parse", "--git-path", "project-control/deliveries.json")
+        path = Path(raw)
+        if not path.is_absolute():
+            path = self.root / path
+        if path.parent.is_symlink() or path.is_symlink():
+            raise ManagementError("unsafe private delivery store")
+        if create:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def read_delivery_store(self):
+        path = self.delivery_store_path()
+        if not path.exists():
+            return {"schema": "project-control-private-deliveries/1",
+                    "project_id": self.project_id, "revision": 1,
+                    "delivery_reviews": [], "events": []}
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 4_000_000:
+            raise ManagementError("unsafe or oversized private delivery store")
+        value = load_json(path)
+        if (value.get("schema") != "project-control-private-deliveries/1"
+                or value.get("project_id") != self.project_id
+                or type(value.get("revision")) is not int or value["revision"] < 1
+                or not isinstance(value.get("events"), list)
+                or len(value["events"]) != value["revision"] - 1):
+            raise ManagementError("private delivery store revision or identity invalid")
+        delivery_items(value)
+        return value
+
+    def apply_delivery(self, name, payload, *, owner_review_authorized=False):
+        if not isinstance(payload, dict):
+            raise ManagementError("delivery action payload must be an object")
+        if name not in ("stage_delivery", "revise_delivery", "offer_delivery_review",
+                        "owner_decide_delivery"):
+            raise ManagementError("unknown delivery action")
+        if name == "owner_decide_delivery" and not owner_review_authorized:
+            raise ManagementError("owner decision requires the separate review endpoint")
+        if name != "owner_decide_delivery" and owner_review_authorized:
+            raise ManagementError("owner review channel does not edit AI drafts")
+        expected = payload.get("expected_store_revision")
+        if type(expected) is not int:
+            raise ManagementError("expected private store revision required")
+        with self.lock, manager_file_lock(self.root):
+            self.check_identity()
+            path = self.delivery_store_path(create=True)
+            old_bytes = path.read_bytes() if path.exists() else None
+            state = self.read_delivery_store()
+            if expected != state["revision"]:
+                raise ManagementError("stale delivery review store; refresh the exact candidate")
+            output = apply_delivery(state, name, payload, at=stamp(),
+                                    owner_channel=owner_review_authorized)
+            state["revision"] += 1
+            state["events"].append({"revision": state["revision"], "action": name,
+                                    "delivery_id": output["id"], "at": stamp(),
+                                    "state": output["status"],
+                                    "formal_product_approval": False})
+            raw = (json.dumps(state, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+            if len(raw) > 4_000_000:
+                raise ManagementError("private delivery store needs explicit archival")
+            tmp = path.with_name(".deliveries." + secrets.token_hex(8) + ".tmp")
+            try:
+                with tmp.open("xb") as fp:
+                    fp.write(raw)
+                    fp.flush()
+                    os.fsync(fp.fileno())
+                if path.is_symlink() or (path.read_bytes() if path.exists() else None) != old_bytes:
+                    raise ManagementError("private delivery store changed during review; refresh")
+                os.replace(tmp, path)
+            finally:
+                tmp.unlink(missing_ok=True)
+            return {"project_id": self.project_id,
+                    "store_revision": state["revision"], "delivery": output,
+                    "remote_published": False, "formal_project_approval": False}
 
     def remote_status(self):
         with self.lock:
@@ -518,12 +609,16 @@ class Target:
             record.setdefault("modules", [])
             allowed_names = {"create_deliverable", "create_work", "set_progress", "raise_risk",
                              "create_milestone", "record_receipt", "review_receipt",
-                             "verify_log_evidence", "create_module", "assign_module_work"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
+                             "verify_log_evidence", "create_module", "assign_module_work",
+                             "record_context_assessment", "propose_context_remediation_work"} | GOVERNANCE_ACTIONS | PROCESS_ACTIONS
             if name not in allowed_names:
                 raise ManagementError("operation not supported: no approval/push/merge is exposed")
             objects = record["deliverables"]
             works = record["work"]
-            if name in PROCESS_ACTIONS:
+            if name in ("record_context_assessment", "propose_context_remediation_work"):
+                apply_context_workflow(record, name, payload, project_id=self.project_id,
+                                       repo_url=self.initial["repo_url"], recorded_at=stamp())
+            elif name in PROCESS_ACTIONS:
                 apply_process(record, name, payload)
             elif name in GOVERNANCE_ACTIONS:
                 apply_governance(record, name, payload)
@@ -687,7 +782,7 @@ class Target:
                     "result": "LOCAL_DRAFT_SAVED_NOT_REMOTE_PUBLISHED"}
 
 
-def handler(targets, owner_token, registry_dir=None):
+def handler(targets, owner_token, registry_dir=None, review_token=None):
     # The local console may start before any managed project exists. Register
     # initialized projects explicitly after opening the application.
     target_lock = threading.RLock()
@@ -778,6 +873,23 @@ def handler(targets, owner_token, registry_dir=None):
                     return self.respond(target.workspace_status())
                 except (ManagementError, OSError, ValueError) as err:
                     return self.respond({"error": str(err)}, 409)
+            if url.path == "/api/delivery-reviews":
+                authorized_reader = (
+                    secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token)
+                    or (bool(review_token) and secrets.compare_digest(
+                        self.headers.get("X-Review-Token", ""), review_token)))
+                if not authorized_reader:
+                    return self.respond({"error": "private management or review token required"}, 403)
+                project_id = parse_qs(url.query).get("project_id", [""])[0]
+                target = targets.get(project_id)
+                if target is None:
+                    return self.respond({"error": "unknown project"}, 404)
+                try:
+                    with target.lock:
+                        target.check_identity()
+                        return self.respond(target.read_delivery_store())
+                except (ManagementError, DeliveryError, OSError) as error:
+                    return self.respond({"error": str(error)}, 409)
             if url.path == "/api/model":
                 project_id = parse_qs(url.query).get("project_id", [""])[0]
                 target = targets.get(project_id)
@@ -785,7 +897,7 @@ def handler(targets, owner_token, registry_dir=None):
                     return self.respond({"error": "unknown project"}, 404)
                 try:
                     return self.respond(target.model())
-                except (ManagementError, OSError) as error:
+                except (ManagementError, DeliveryError, OSError) as error:
                     return self.respond({"error": str(error)}, 409)
             item = assets.get(url.path)
             if item is None:
@@ -803,7 +915,12 @@ def handler(targets, owner_token, registry_dir=None):
                      "http://localhost:" + str(self.server.server_port)}
             if origin and origin not in valid:
                 return self.respond({"error": "cross-origin writes blocked"}, 403)
-            if not secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token):
+            is_owner_review = urlsplit(self.path).path == "/api/owner-delivery-decision"
+            if is_owner_review:
+                if not review_token or not secrets.compare_digest(
+                        self.headers.get("X-Review-Token", ""), review_token):
+                    return self.respond({"error": "separate local review token required"}, 403)
+            elif not secrets.compare_digest(self.headers.get("X-Owner-Token", ""), owner_token):
                 return self.respond({"error": "owner token required"}, 403)
             if self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 return self.respond({"error": "JSON body required"}, 415)
@@ -813,7 +930,8 @@ def handler(targets, owner_token, registry_dir=None):
             operation = urlsplit(self.path).path
             if operation not in ("/api/action", "/api/collect-local-receipts",
                                   "/api/collect-registered-receipts", "/api/register-target",
-                                  "/api/project-preview", "/api/project-apply"):
+                                  "/api/project-preview", "/api/project-apply",
+                                  "/api/owner-delivery-decision", "/api/delivery-draft-action"):
                 return self.respond({"error": "unknown operation"}, 404)
             try:
                 payload = json.loads(self.rfile.read(int(length)).decode("utf-8"))
@@ -891,6 +1009,16 @@ def handler(targets, owner_token, registry_dir=None):
                     return self.respond(target.collect_local_receipts())
                 if operation == "/api/collect-registered-receipts":
                     return self.respond(target.collect_registered_receipts())
+                if operation in ("/api/owner-delivery-decision", "/api/delivery-draft-action"):
+                    action = payload.get("action")
+                    if operation == "/api/owner-delivery-decision" and action != "owner_decide_delivery":
+                        raise ManagementError("review endpoint requires an exact owner decision")
+                    if operation == "/api/delivery-draft-action" and action not in (
+                            "stage_delivery", "revise_delivery", "offer_delivery_review"):
+                        raise ManagementError("draft endpoint cannot record owner decisions")
+                    return self.respond(target.apply_delivery(
+                        action, payload.get("payload"),
+                        owner_review_authorized=(operation == "/api/owner-delivery-decision")))
                 return self.respond(target.apply(payload.get("action"), payload.get("payload")))
             except (OSError, ManagementError, InitError, ValueError, TypeError) as error:
                 return self.respond({"error": str(error)}, 400)
@@ -943,9 +1071,15 @@ def main(argv=None):
     except (OSError, ManagementError) as error:
         parser.exit(2, "Cannot load projects: " + str(error) + "\n")
     token = os.environ.get("PROJECT_CONTROL_OWNER_TOKEN") or secrets.token_urlsafe(32)
-    web = ThreadingHTTPServer(("127.0.0.1", options.port), handler(found, token, registry_dir=options.registry_dir))
+    review_token = os.environ.get("PROJECT_CONTROL_REVIEW_TOKEN") or secrets.token_urlsafe(32)
+    if review_token == token:
+        parser.exit(2, "Review token must be distinct from management token\n")
+    web = ThreadingHTTPServer(("127.0.0.1", options.port),
+                              handler(found, token, registry_dir=options.registry_dir,
+                                      review_token=review_token))
     print("Project Control portable → http://127.0.0.1:" + str(web.server_port), flush=True)
-    print("Owner token (this process only): " + token, flush=True)
+    print("Management token (this process only): " + token, flush=True)
+    print("Candidate delivery review token (separate; not a formal identity): " + review_token, flush=True)
     print("Registered projects: " + (", ".join(found) if found else "(none; add from the browser)"), flush=True)
     try:
         web.serve_forever()

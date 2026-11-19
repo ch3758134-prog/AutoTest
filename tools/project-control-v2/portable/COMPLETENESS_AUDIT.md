@@ -32,9 +32,9 @@ CI 在 Linux 与 Windows runner 执行 Python 回归测试、前端脚本语法/
 
 ## 3A. 4.4 新增项目认识机制（仍为候选）
 
-新增来源发现/当前适用性审查/缺失资料补全方法与 `context_assessment.py`。和旧 `context_discovery.py` 分离，旧 `COVERED` 不能作为当前有效证据。新版测试覆盖单次空搜索、API 错误、仅发现未审查来源、历史适用性理由、未经授权的补全和局部任务前提。
+新增来源发现/当前适用性审查/缺失资料补全方法与 `context_assessment.py`；整体审查记录见 `AI_CONTEXT_ARCHITECTURE_REVIEW_20261112.md`。和旧 `context_discovery.py` 分离，旧 `COVERED` 不能作为当前有效证据。新版测试覆盖单次空搜索、API 错误、仅发现未审查来源、历史适用性理由、未经授权的补全和局部任务前提。
 
-已增加可选目标项目 `.project-control/context_assessment.json` 的**只读 Web 展示**，明确显示 NOT_RECORDED/INVALID_RECORD 和待办候选；但尚未实现 Web 编辑/保存、与现有工作及决策记录的受控联动、远端同步、旧格式的自动迁移。新 ChatGPT 对话从零接管以及真实 Windows 端到端仍需另行实测。软件结构审计不能证明 AI 的真实理解，也不能证明在各种外部资料缺失情况下都能正确判断。
+4.5 已加入本地管理 `management.json` 中的历史证据评价登记与补全候选工作关联（负责人令牌、CAS 修订、项目身份、证据摘要及明确未授权状态），Web 可输入 AI 生成的记录并组织到现有 WBS；旧版项目的独立 `context_assessment.json` 仅只读显示。**仍未完成**正式审批交接、远端同步事务、旧格式自动迁移及新 AI 接管端到端实测。新 ChatGPT 对话从零接管以及真实 Windows 端到端仍需另行实测。软件结构审计不能证明 AI 的真实理解，也不能证明在各种外部资料缺失情况下都能正确判断。
 
 ## 4. 正式验收前仍须独立证明的项目
 
@@ -55,3 +55,16 @@ CI 在 Linux 与 Windows runner 执行 Python 回归测试、前端脚本语法/
 - `测试夹具全部通过` ≠ 可以合并正式主分支或宣布产品最终交付。
 
 只有正式环境的来源、授权、测试、交付结果全部有证据，才能申请最终发布审批。
+
+
+## 4.6｜成果交付和审批真实性（新增候选）
+
+新增 `delivery_review.py`，为内部候选、待负责人审阅、退回、暂缓、允许发布候审提供精确版本和摘要管理；`web_server.py` 将候审全文存进私有 Git 元数据，公开项目模型只保留数量；`web/app.js` 和 `index.html` 提供全文审阅与独立令牌确认。旧 `process_control.review_requests` 仅算准备提案，不能冒充已向负责人提交。程序拒绝普通管理接口直接签候审发布。新反例测试为 `test_delivery_review.py` 和 `test_delivery_review_server.py`。
+
+**仍不等于验收**：完整 GitHub 精确源码回归、Windows 浏览器和真实 Owner 操作未执行；尚未实现本地候审包与 GitHub 的可信、受控跨环境发布、强身份批准及统一的正式工程审批链。当前宽 GitHub 写入权限可以绕开本机审阅器，须用真实仓库规则/受限发布端点落实强制控制。
+
+## 4.6.1｜本次系统级复核结果
+
+已审查初始化/接管、岗位和 Skill、历史证据、过程目录、WBS/变更、候审交付、GitHub 同步、Codex READY、Web 体验、发行包。重点修复：候审包无法从工作台导入或修订；内部专用成果误获得公开候审许可；已读与正式批准混淆；资料更新误影响无关工作；候审工作关联来源被伪造的风险。
+
+新增定向测试及审核记录见 `SYSTEM_AUDIT_20261112.md`。精确 Git blob 的 `delivery_review.py` 已在隔离 Python 3.13 环境运行 15 项定向单元测试，全部通过；它不覆盖 `web_server.py`、Windows Web 前端、GitHub 远端写入和正式真人身份。完整仓库 unittest 和 UI 实测仍未执行，不得将静态检查提升为系统验收 PASS。
