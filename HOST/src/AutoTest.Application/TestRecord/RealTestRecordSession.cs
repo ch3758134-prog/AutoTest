@@ -35,6 +35,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
     private readonly IRealRunEvidenceFinalizer? _evidenceFinalizer;
     private readonly Dictionary<Guid, RealStepStarted> _active = new();
     private readonly Dictionary<StepId, int> _attempts = new();
+    public Guid CaseAttemptId { get; } = Guid.NewGuid();
     private bool _begun;
     private bool _completed;
 
@@ -74,6 +75,20 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         RealRunResult result;
         try
         {
+            var doc = prepared.RestoreDocument();
+            var settings = doc.ReportSettings.Validate();
+            await AppendAuditAsync(CaseAttemptId, RunFactKind.RecordWrite,
+                "TEST_CONTEXT " + JsonSerializer.Serialize(new
+                {
+                    caseAttemptId = CaseAttemptId,
+                    testDocumentId = doc.Id.ToString(),
+                    testName = doc.Name,
+                    reportTitle = string.IsNullOrWhiteSpace(settings.Title) ? doc.Name : settings.Title,
+                    caseNumber = settings.CaseNumber,
+                    description = settings.Description,
+                    preparedPlanSha256 = prepared.Fingerprint
+                }), EvidenceQuality.HostObserved, ImmutableArray<EvidenceRef>.Empty,
+                ct).ConfigureAwait(false);
             result = await runner.StartAsync(prepared, RunId, this, ct).ConfigureAwait(false);
         }
         catch (Exception runtimeException)
@@ -136,6 +151,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         await AppendAuditAsync(started.StepOccurrenceId, RunFactKind.Request,
             "STEP_BEGIN " + JsonSerializer.Serialize(new
             {
+                caseAttemptId = CaseAttemptId,
                 stepId = started.Step.ToString(),
                 occurrence = started.StepOccurrenceId,
                 parent = started.ParentOccurrenceId,
@@ -176,6 +192,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             instant, quality, evidence)
         {
             StepOccurrenceId = completed.StepOccurrenceId,
+            CaseAttemptId = CaseAttemptId,
             ParentOccurrenceId = completed.ParentOccurrenceId,
             Phase = completed.Phase.ToString(),
             ExecutionPath = completed.ExecutionPath,
