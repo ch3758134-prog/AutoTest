@@ -46,3 +46,7 @@
 ## 2026-11-19 PR #61 实际冲突解决进展
 
 - [G4 PR #61 冲突已消解，待 Windows Build 与正式 main 接收](new-baseline-20261112/research/G4-PR61-MERGE-RESOLVED-20261119.md)：受控 merge 候选 `92c6cb46a35ae11c1ffdefc0e0ece9339906d21a`，GitHub `mergeable=true`，主线尚未修改，实机 G4 Gate 未改变。
+
+## 2026-11-19 G4 已合入正式 HOST main
+
+- [PR #61 正式合并及 main 基线验证记录](new-baseline-20261112/research/G4-PR61-MAIN-MERGED-20261119.md)：`main@eb1b74a3d7eeb6dcbb582d9c04c72f97f5e1204e`；Git 冲突解决，后续仅在 main 上做 Windows 构建和现场实测，G4 整体真实准出仍未判 PASS。
