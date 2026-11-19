@@ -240,7 +240,7 @@ public partial class DbcWorkbenchView : UserControl
             for (var bit = 7; bit >= 0; bit--)
             {
                 var physical = byteIndex * 8 + bit;
-                var matches = message is null ? [] : message.Signals
+                var matches = message is null ? Array.Empty<DbcSignal>() : message.Signals
                     .Where(signal => occupied[signal.Name].Contains(physical))
                     .ToArray();
                 foreach (var owner in matches) namesInByte.Add(owner.Name);
