@@ -11,7 +11,7 @@ public sealed record HardwareCanTrace(DateTimeOffset HostUtc, long HostMonotonic
     long SessionGeneration, string RawUsbPayloadHex, int PhysicalPort, BusRole? Role,
     bool Valid, string Detail);
 
-/// <summary>Physical CAN0=DutCan; CAN1=KeypadCan per confirmed station wiring. Firmware reports physical port numbers unchanged.
+/// <summary>The MCU reports a numeric physical USB CAN port; its station role is assigned only by StationCanWiring.
 /// HostArrivalOnly timestamp; the firmware sends NO controller timestamp in 0x41.
 /// Does not transmit CAN or configure controller channels.</summary>
 public sealed class HardwareCanReceiveBridge : IAsyncDisposable
@@ -41,7 +41,7 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
         _map = map ?? StationCanWiring.Current;
         if (_map.DutPort != StationCanWiring.DutPort ||
             _map.KeypadPort != StationCanWiring.KeypadPort)
-            throw new InvalidOperationException("真实台架接线为 CAN0=ECU、CAN1=KEY_SIM；不允许使用相反的物理通道映射。");
+            throw new InvalidOperationException("台架接口角色不符：ECU CAN 接 A1/A12，KEY CAN 接 B1/B11；不自动猜测接口。");
         _queue = Channel.CreateBounded<Indication>(new BoundedChannelOptions(capacity)
         {
             SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait
