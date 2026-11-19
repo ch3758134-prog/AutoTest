@@ -91,6 +91,18 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _savingActive;
     private bool _autosaveActive;
     public ObservableCollection<EditorTabModel> OpenEditors => _documents.Tabs;
+
+    // The shell reads the existing real authoring VMs; it never schedules a
+    // second TEST run or fabricates results. A project selection can be viewed
+    // while the user is editing a different test case.
+    public TestProjectWorkbenchViewModel? CurrentRunProject =>
+        ActiveEditorTab?.Editor as TestProjectWorkbenchViewModel ??
+        OpenEditors.Select(tab => tab.Editor).OfType<TestProjectWorkbenchViewModel>().LastOrDefault();
+
+    // Only the active formal case is runnable; never silently execute another
+    // open document when the operator is viewing project/configuration tabs.
+    public TestEditorViewModel? CurrentRunCase =>
+        ActiveEditorTab?.Editor as TestEditorViewModel;
     private readonly RecentProjectStore _recentProjects;
     private readonly RecentEditorDocumentStore _recentEditors = new();
     private string _statusMessage = "尚未打开工程";
@@ -866,6 +878,8 @@ public sealed class MainWindowViewModel : BindableBase
             }
         }
         RaisePropertyChanged(nameof(ActiveEditorTab));
+        RaisePropertyChanged(nameof(CurrentRunProject));
+        RaisePropertyChanged(nameof(CurrentRunCase));
         if (ActiveEditorTab?.Editor is TestProjectWorkbenchViewModel projectEditor)
             projectEditor.RefreshReferences();
         RaisePropertyChanged(nameof(ActiveEditorView));

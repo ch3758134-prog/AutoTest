@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private bool _inspectorManualLayout;
     private bool _bottomManualLayout;
     private bool _treeAutoNarrow;
+    private bool _initialProjectRestored;
     private TestEditorViewModel? _activeRunFacts;
 
     public MainWindow(MainWindowViewModel viewModel)
@@ -42,6 +43,8 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             await _viewModel.RestoreLastProjectAsync();
+            _initialProjectRestored = true;
+            PrimaryTabs.SelectedIndex = 0;
             _autosaveTimer.Start();
         };
         _autosaveTimer.Tick += OnAutosaveTick;
@@ -55,7 +58,10 @@ public partial class MainWindow : Window
             _autosaveTimer.Stop();
             _viewModel.PropertyChanged -= OnVmPropertyChanged;
             if (_activeRunFacts is not null)
+            {
                 _activeRunFacts.RunFacts.CollectionChanged -= OnRunFactsChanged;
+                _activeRunFacts.PropertyChanged -= OnActiveCaseChanged;
+            }
         };
     }
 
@@ -187,6 +193,19 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ShowToolsMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (ToolMenuButton.ContextMenu is not { } menu) return;
+        menu.PlacementTarget = ToolMenuButton;
+        menu.IsOpen = true;
+    }
+
+    private void ProjectRunCases_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is DataGrid { SelectedItem: TestProjectPackageRow row })
+            _viewModel.CurrentRunProject?.OpenPackage(row);
+    }
+
     private void ShowOverview_Click(object sender, RoutedEventArgs e) => _viewModel.ShowOverview();
 
     private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
@@ -232,12 +251,32 @@ public partial class MainWindow : Window
         var current = _viewModel.ActiveEditorTab?.Editor as TestEditorViewModel;
         if (ReferenceEquals(_activeRunFacts, current)) return;
         if (_activeRunFacts is not null)
+        {
             _activeRunFacts.RunFacts.CollectionChanged -= OnRunFactsChanged;
+            _activeRunFacts.PropertyChanged -= OnActiveCaseChanged;
+        }
         _activeRunFacts = current;
         if (current is not null)
+        {
             current.RunFacts.CollectionChanged += OnRunFactsChanged;
+            current.PropertyChanged += OnActiveCaseChanged;
+        }
         OpenDockForRealEvents();
+        // Keep the startup focus on Run. Subsequent resource opens enter the
+        // formal editor; a tool window never changes the main task tab.
+        if (_initialProjectRestored && _viewModel.ActiveEditorTab is not null)
+            PrimaryTabs.SelectedIndex = 1;
         ApplyPanelLayout(); // no editor: do not reserve an empty 320 DIP Inspector
+    }
+
+    private void OnActiveCaseChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(TestEditorViewModel.IsBusy) ||
+            sender is not TestEditorViewModel { IsBusy: true }) return;
+        // The running program is frozen by TEST; switch to the read-only
+        // actual-execution dashboard, leaving the editable document intact.
+        if (Dispatcher.CheckAccess()) PrimaryTabs.SelectedIndex = 0;
+        else Dispatcher.BeginInvoke(new Action(() => PrimaryTabs.SelectedIndex = 0));
     }
 
     private void OnRunFactsChanged(object? sender, NotifyCollectionChangedEventArgs e)
