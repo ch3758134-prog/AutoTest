@@ -342,15 +342,15 @@ public partial class MainWindow : Window
                 bool expectedMatches = string.IsNullOrWhiteSpace(action.ExpectedPrefixHex) ||
                     response.AsSpan().StartsWith(UdsHex.Parse(action.ExpectedPrefixHex));
                 bool didMatches = request[0] != 0x22 ||
-                    (response.Length >= request.Length &&
-                     response.AsSpan(1, request.Length - 1).SequenceEqual(request.AsSpan(1)));
+                    (request.Length >= 3 && response.Length >= 3 &&
+                     response[1] == request[1] && response[2] == request[2]);
                 ResultStatus.Text = !expectedMatches || !didMatches
                     ? "ECU 正响应，但数据结构 / 期望不匹配"
                     : "收到 ECU 正响应";
                 ResultStatus.Foreground = expectedMatches && didMatches ? Brushes.ForestGreen : Brushes.DarkOrange;
                 ParsedBox.Text = DiagnosticWorkspace.Decode(action, response);
                 DetailBox.Text = "SID=0x" + response[0].ToString("X2") + " · " + elapsed +
-                    " ms · 期望前缀=" + expectedMatches + " · DID 回显=" + didMatches +
+                    " ms · 期望前缀=" + expectedMatches + " · 首 DID 回显=" + didMatches +
                     "。已收到正响应不代表 ECU 功能状态已产生实际变化。";
                 Audit(expectedMatches && didMatches ? "UDS_POSITIVE" : "UDS_MISMATCH",
                     correlation + " · " + ResultStatus.Text + " · " + elapsed + "ms");
