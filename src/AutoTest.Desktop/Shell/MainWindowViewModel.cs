@@ -215,7 +215,7 @@ public sealed class MainWindowViewModel : BindableBase
                 "工程资源：左侧点击打开。测试用例：Ctrl+Space 新增、F2 编辑名称、F9 断点、" +
                 "Ctrl+F 查找、Ctrl+Z/Y 撤销/重做、Delete 删除、拖动调整顺序。" +
                 "\n测试项目勾选只作用于本次检查，工程默认独立保存。" +
-                "\n真实设备测试、生产与 Flash 尚未通过项目级预检，请勿将结构检查视为 ECU PASS。",
+                "\n烧录专业工具已接入但本版仍需 Windows 和台架验收；尚未接入自动测试步骤，不得将结构检查视为 ECU PASS。",
                 "AutoTest · 编辑帮助", MessageBoxButton.OK, MessageBoxImage.Information));
         _hardware.EvidenceRecorded += line =>
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
