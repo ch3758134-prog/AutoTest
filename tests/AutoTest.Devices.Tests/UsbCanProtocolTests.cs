@@ -63,6 +63,8 @@ public sealed class StationControlContractTests
         Assert.Equal("KEY CAN", StationCanWiring.KeypadDisplayName);
         Assert.Equal("A1/A12", StationCanWiring.DutConnectorPins);
         Assert.Equal("B1/B11", StationCanWiring.KeypadConnectorPins);
+        Assert.Equal((byte)1, StationCanWiring.DutPort);
+        Assert.Equal((byte)0, StationCanWiring.KeypadPort);
         Assert.Equal(StationCanWiring.DutPort, StationCanWiring.PortFor(BusRole.DutCan));
         Assert.Equal(StationCanWiring.KeypadPort, StationCanWiring.PortFor(BusRole.KeypadCan));
         Assert.NotEqual(StationCanWiring.DutPort, StationCanWiring.KeypadPort);
