@@ -27,8 +27,8 @@ public sealed record RawKeyAction(RawKeyOperation Action, uint Mask, int Duratio
         var value = fields[1].StartsWith("0x", StringComparison.OrdinalIgnoreCase)
             ? fields[1][2..] : fields[1];
         if (!uint.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var mask) ||
-            mask is 0 or > 0xFFFFFu)
-            throw new FormatException("KeyMask 必须为非零 20 位 HEX 组合。");
+            mask > 0xFFFFFu || operation == RawKeyOperation.Pulse && mask == 0)
+            throw new FormatException("KEY 组合必须在 0x00000～0xFFFFF；短按不能使用空组合。");
         var duration = 0;
         if (fields.Length == 3 &&
             (!int.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture, out duration) ||
