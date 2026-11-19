@@ -84,8 +84,8 @@ public sealed class ConfigurationField : BindableBase
             },
             "role" => x switch
             {
-                "DutCan" => "CAN1 · 被测 ECU",
-                "KeypadCan" => "CAN0 · 按键模拟板",
+                "DutCan" => "ECU CAN（A1/A12）",
+                "KeypadCan" => "KEY CAN（B1/B11）",
                 _ => "其他 CAN 通道：" + x
             },
             "published" or "extended" or "requiresFlash" or "sync" => x,
@@ -240,9 +240,9 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         ProjectConfigurationCodec.ScanSettingsKind =>
             "只有已发布且校验通过的规则和配方才会参与扫码匹配；匹配不自动触发测试或烧录。",
         ProjectConfigurationCodec.TestConfigurationKind =>
-            "为当前 ECU 选择通信数据库和功能按键；切换配置不会发送硬件命令。",
+            "选择当前 ECU 的 DBC；既有按键资源引用保留在工程内部，不会自动改写。",
         ProjectConfigurationCodec.BenchConfigurationKind =>
-            "台架采用本机 USB 主控、CAN0 按键板和 CAN1 被测 ECU；选择配置不会连接硬件。",
+            "固定台架：ECU CAN 接 A1/A12，KEY CAN 接 B1/B11；选择配置不会连接硬件。",
         _ => ""
     };
     public bool IsBusy
@@ -516,9 +516,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             AddField("dbc", "当前 ECU 通信数据库", AssetNameFor(tcf.DbcAssetId),
                 "选用工程中已导入的 DBC；将锁定当前资源修订。",
                 AssetNames(ProjectWorkspaceService.DbcKind));
-            AddField("buttons", "当前 ECU 功能按键配置", AssetNameFor(tcf.ButtonAssetId),
-                "定义在此 ECU 下使用 KEY_SIM 模拟的功能操作。",
-                AssetNames(ProjectWorkspaceService.ControllerKind));
         }
         else if (_working is TestBenchConfigurationDocument tbc)
         {
@@ -528,15 +525,15 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             AddField("host", "物理主机", "本地 Windows PC", readOnly: true);
             AddField("usb", "主控设备类型", TestBenchConfigurationDocument.StationType,
                 readOnly: true);
-            AddField("keyport", "按键板通道", "CAN0 · KEY_SIM 20 Key 电阻网络", readOnly: true);
-            AddField("dutport", "被测 ECU 通道", "CAN1 · DUT", readOnly: true);
+            AddField("keyport", "KEY CAN 接口", "B1 / B11（KEY_SIM）", readOnly: true);
+            AddField("dutport", "ECU CAN 接口", "A1 / A12（ECU）", readOnly: true);
         }
         else if (_working is WaveSettingsDocument wave)
         {
             AddField("name", "配置名称", wave.Name);
             AddField("dbc", "DBC 工程资源", AssetNameFor(wave.DbcAssetId),
                 "使用上方“从 DBC 选择信号”按钮自动绑定资源、报文及信号。", readOnly: true);
-            AddField("role", "CAN 通道", wave.Bus.ToString(), "CAN1 为 DUT，CAN0 为按键板",
+            AddField("role", "CAN 角色", wave.Bus.ToString(), "ECU CAN 对应 A1/A12，KEY CAN 对应 B1/B11",
                 Enum.GetNames<BusRole>());
             AddField("id", "报文 ID（HEX）", "0x" + wave.CanId.ToString("X"),
                 "由所选 DBC 信号确定，不手工输入。", readOnly: true);
@@ -737,13 +734,13 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             else if (_working is TestSystemConfigurationDocument tcf)
             {
                 var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
-                var buttons = ResolvePinnedAsset(F("buttons"), ProjectWorkspaceService.ControllerKind);
                 next = tcf with
                 {
                     Name = F("name"), EcuModel = F("ecu"), HardwareRevision = F("hardware"),
                     DbcAssetId = dbc.Id, DbcRevision = dbc.Revision,
-                    DbcFingerprint = dbc.Sha256, ButtonAssetId = buttons.Id,
-                    ButtonRevision = buttons.Revision, ButtonFingerprint = buttons.Sha256
+                    DbcFingerprint = dbc.Sha256
+                    // Preserve legacy pinned button resources invisibly.
+                    // New UI edits the actual KEY_SIM mask in the TEST step / bench.
                 };
             }
             else if (_working is TestBenchConfigurationDocument tbc)
