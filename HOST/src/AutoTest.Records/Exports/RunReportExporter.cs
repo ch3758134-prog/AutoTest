@@ -68,7 +68,7 @@ public sealed class RunReportExporter
         var report = await ExportSummaryAsync(run, ct).ConfigureAwait(false);
         var archived = report.Artifacts.Where(a => a.Integrity == ArtifactIntegrity.Present)
             .Select(a => a.ArtifactId).ToHashSet();
-        var output = new StringBuilder("sequence,run_id,event_id,step_id,case_attempt_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json,failure_code,detail,unarchived_evidence_ids,dbc_asset_id,dbc_revision,dbc_sha256,bus_role,frame_id,signal_name,source_ticks,source_clock,source_time_quality\r\n");
+        var output = new StringBuilder("sequence,run_id,event_id,step_id,case_attempt_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json,failure_code,detail,unarchived_evidence_ids,dbc_asset_id,dbc_revision,dbc_sha256,bus_role,frame_id,signal_name,source_ticks,source_clock,source_time_quality,judgement_evidence_kind\r\n");
         for (var i = 0; i < report.StepFacts.Count; i++)
         {
             var step = report.StepFacts[i];
@@ -100,7 +100,8 @@ public sealed class RunReportExporter
                 step.SignalProvenance?.SignalName ?? "",
                 step.SignalProvenance?.SourceMonotonicTicks.ToString() ?? "",
                 step.SignalProvenance?.TimeSource ?? "",
-                step.SignalProvenance?.TimeQuality ?? "" };
+                step.SignalProvenance?.TimeQuality ?? "",
+                step.JudgementEvidenceKind ?? "" };
             output.Append(string.Join(',', cells.Select(Csv))).Append("\r\n");
         }
         return output.ToString();
@@ -153,6 +154,7 @@ public sealed class RunReportExporter
                 durationMilliseconds = f.Duration?.TotalMilliseconds,
                 observationUtc = f.ObservationUtc, unit = f.Unit, signalStatus = f.SignalStatus,
                 failureCode = f.FailureCode, detail = f.Detail,
+                judgementEvidenceKind = f.JudgementEvidenceKind,
                 signalProvenance = f.SignalProvenance,
                 unarchivedEvidenceIds = f.Evidence.Where(e => !archived.Contains(e.Value))
                     .Select(e => e.Value),
@@ -271,6 +273,8 @@ public sealed class RunReportExporter
                 .Append(H(step.Disposition)).Append(" / ").Append(H(step.Quality.ToString()))
                 .Append("<div>Signal: ").Append(H(step.SignalStatus)).Append("</div>")
                 .Append("<div>Failure: ").Append(H(step.FailureCode)).Append("</div>")
+                .Append("<div>ECU 判定证据类型: ")
+                .Append(H(step.JudgementEvidenceKind ?? "无直接判定证据")).Append("</div>")
                 .Append("<div>").Append(H(step.Detail)).Append("</div></td><td>")
                 .Append(H(step.Expected)).Append("</td><td>").Append(H(step.Actual))
                 .Append(" ").Append(H(step.Unit));
