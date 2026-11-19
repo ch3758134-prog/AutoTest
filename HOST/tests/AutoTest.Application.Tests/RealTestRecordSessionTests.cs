@@ -517,7 +517,7 @@ public sealed class RealTestRecordSessionTests
         var rows = (await fixture.Database.ReadStepFactsAsync(record.RunId))
             .Where(x => x.Step == check.Id).ToArray();
         Assert.Equal(2, rows.Length);
-        Assert.All(rows, x => Assert.Equal(session.CaseAttemptId, x.CaseAttemptId));
+        Assert.All(rows, x => Assert.Equal(session.CaseAttemptId, x.CaseAttemptId!.Value));
         var json = await File.ReadAllTextAsync(done.Reports.JsonPath);
         Assert.Contains("EPB-CASE-01", json);
         Assert.Contains("驻车功能测试报告", json);
