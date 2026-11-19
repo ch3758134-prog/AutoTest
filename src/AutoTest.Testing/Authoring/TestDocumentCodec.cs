@@ -7,19 +7,19 @@ namespace AutoTest.Testing.Authoring;
 
 public static class TestDocumentCodec
 {
-    private sealed record NodeData(string Id, string Type, string Name,
+    internal sealed record NodeData(string Id, string Type, string Name,
         Dictionary<string, string> Properties, Dictionary<string, NodeData[]> Slots);
     // Explicit primitive storage: strongly typed AssetId has no public JSON constructor.
-    private sealed record MappingData(string Name, string Kind, Guid AssetId, int Revision,
+    internal sealed record MappingData(string Name, string Kind, Guid AssetId, int Revision,
         string Sha256, string Role, uint CanId, bool Extended, string SignalName, string Unit,
         Guid ControllerId, Guid StateId);
     private sealed record DocumentData(int FormatVersion, string Id, string Name,
         Dictionary<string, NodeData[]> Phases, MappingData[]? Mappings = null);
-    private static MappingData EncodeMapping(TestTargetMapping x) => new(
+    internal static MappingData EncodeMapping(TestTargetMapping x) => new(
         x.Name, x.Kind.ToString(), x.Asset.Value, x.AssetRevision, x.AssetSha256,
         x.Role.ToString(), x.CanId, x.Extended, x.SignalName, x.Unit,
         x.ControllerId, x.StateId);
-    private static TestTargetMapping DecodeMapping(MappingData x)
+    internal static TestTargetMapping DecodeMapping(MappingData x)
     {
         var kind = Enum.Parse<TestTargetKind>(x.Kind, false);
         // Physical-only station targets intentionally do not have a file asset.
@@ -33,10 +33,10 @@ public static class TestDocumentCodec
             x.Revision, x.Sha256, Enum.Parse<BusRole>(x.Role, false),
             x.CanId, x.Extended, x.SignalName, x.Unit, x.ControllerId, x.StateId).Validate();
     }
-    private static NodeData Encode(StepNode node) => new(node.Id.ToString(), node.Type, node.Name,
+    internal static NodeData Encode(StepNode node) => new(node.Id.ToString(), node.Type, node.Name,
         node.Properties.ToDictionary(), node.Slots.ToDictionary(s => s.Key,
             s => s.Value.Select(Encode).ToArray()));
-    private static StepNode Decode(NodeData node) => new(
+    internal static StepNode Decode(NodeData node) => new(
         StepId.TryParse(node.Id, out var id) ? id : throw new FormatException("Invalid StepId"),
         node.Type, node.Name, (node.Properties ?? throw new FormatException("Missing properties")).ToImmutableDictionary(),
         (node.Slots ?? throw new FormatException("Missing slots")).ToImmutableDictionary(s => s.Key,
