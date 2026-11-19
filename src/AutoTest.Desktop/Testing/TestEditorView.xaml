@@ -343,10 +343,10 @@
      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
-  <!-- Wide grouped palette: common actions visible together, one click inserts a formal TEST draft. -->
+  <!-- Compact searchable palette: insertion remains next to the authoring context. -->
   <Popup x:Name="ActionPalette" Placement="Center"
    PlacementTarget="{Binding ElementName=StepsList}" StaysOpen="False" AllowsTransparency="True">
-   <Border x:Name="PaletteSurface" Width="1000" MaxHeight="790" Background="White"
+   <Border x:Name="PaletteSurface" Width="640" MaxHeight="545" Background="White"
     CornerRadius="9" BorderBrush="#C9D8E9" BorderThickness="1" Padding="18,15">
     <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.24"/></Border.Effect>
     <DockPanel LastChildFill="True">
@@ -370,7 +370,7 @@
       <TextBlock Text="单击即添加  ·  Enter 添加所选  ·  Esc 关闭"
        Foreground="#7A8EA6" FontSize="11" VerticalAlignment="Center"/>
      </DockPanel>
-     <ListBox x:Name="PaletteList" MaxHeight="600" MinHeight="160"
+     <ListBox x:Name="PaletteList" MaxHeight="390" MinHeight="160"
       MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
       PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"
       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -395,7 +395,7 @@
       </ListBox.GroupStyle>
       <ListBox.ItemContainerStyle>
        <Style TargetType="{x:Type ListBoxItem}">
-        <Setter Property="Width" Value="213"/>
+        <Setter Property="Width" Value="265"/>
         <Setter Property="MinHeight" Value="34"/>
         <Setter Property="Margin" Value="4,3"/>
         <Setter Property="Padding" Value="10,7"/>
