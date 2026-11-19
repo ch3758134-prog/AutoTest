@@ -229,7 +229,7 @@ public partial class TestStepInspector : UserControl
         Heading.Text = "编辑步骤";
         StepEnabledInput.IsChecked = StepExecutionPolicy.IsEnabled(editing);
         StepActionsPanel.Visibility = Visibility.Collapsed;
-        ConfirmButton.Content = "应用属性";
+        ConfirmButton.Content = "应用";
         var mapping = boundMappings.FirstOrDefault(m =>
             m.Name == editing.Properties.GetValueOrDefault("target", ""));
         var targetKind = mapping?.Kind;
@@ -678,7 +678,8 @@ public partial class TestStepInspector : UserControl
             var old = _editing?.Properties.GetValueOrDefault("value", "") ?? "";
             var parts = old.Split(':', StringSplitOptions.TrimEntries);
             var operation = _legacySourceType == "KeySet" ? "Hold" :
-                parts[0] is "Hold" or "Release" ? parts[0] : "Pulse";
+                parts[0] is "Hold" or "Release" or "Pulse" ? parts[0] :
+                mapping.Kind == TestTargetKind.RawKey ? "Hold" : "Pulse";
             KeyActionInput.SelectedItem = KeyActionInput.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(x => (string?)x.Tag == operation);
             var selectedMask = mapping.Kind == TestTargetKind.RawKey && parts.Length > 1 &&
@@ -746,6 +747,11 @@ public partial class TestStepInspector : UserControl
     private void UpdateKeyTimingVisibility()
     {
         var operation = (KeyActionInput.SelectedItem as ComboBoxItem)?.Tag as string;
+        // New/direct KEY_SIM steps have only two regular inputs: 20 Key mask
+        // and hold time. Keep the operation selector only for existing legacy
+        // Pulse/Release actions, so opening/saving cannot silently change them.
+        KeyActionInput.Visibility = _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey &&
+            operation == "Hold" ? Visibility.Collapsed : Visibility.Visible;
         KeyDurationPanel.Visibility = operation is "Pulse" or "Hold" &&
             _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey || operation == "Pulse"
             ? Visibility.Visible : Visibility.Collapsed;
@@ -879,7 +885,9 @@ public partial class TestStepInspector : UserControl
                         ?? throw new ArgumentException("请选择短按、保持或释放。");
                     if (mapping.Kind == TestTargetKind.RawKey)
                     {
-                        var value = operation == "Release" ? "Release" :
+                        // Empty 20-switch combination is the explicit all-off
+                        // action, represented by the existing Release wire syntax.
+                        var value = operation == "Release" || _selectedMask == 0 ? "Release" :
                             operation + ":0x" + _selectedMask.ToString("X5") +
                             ((operation == "Pulse" || !string.IsNullOrWhiteSpace(KeyDurationInput.Text))
                                 ? ":" + KeyDurationInput.Text.Trim() : "");
