@@ -17,7 +17,8 @@ public sealed record StepInspectorContext(
     StepNode? Original, string? InitialActionKey,
     IReadOnlyList<MappingChoice> Choices,
     IReadOnlyList<TestTargetMapping> ExistingMappings,
-    bool CaseOnly = false);
+    bool CaseOnly = false,
+    IReadOnlyList<PublicFlowChoice>? PublicFlows = null);
 
 
 /// <summary>Operator-only projection; the original runtime evidence remains untouched.</summary>
@@ -480,8 +481,14 @@ public sealed class TestEditorViewModel : BindableBase
             insertion = StepInsertionTarget.Resolve(selected, StepInsertionMode.Append);
         if (original?.Id == _newDraftId && initialActionKey is null)
             initialActionKey = _newDraftActionKey;
+        var flowChoices = _workspace.Current?.Definition.Assets
+            .Where(asset => asset.Kind == ProjectWorkspaceService.PublicFlowKind)
+            .Select(asset => new PublicFlowChoice(asset.Id.Value,
+                asset.Revision, asset.Sha256, asset.Name))
+            .ToArray() ?? [];
         InspectorRequested?.Invoke(new StepInspectorContext(original, initialActionKey,
-            choices, _transaction.Current.Mappings.ToArray(), insertion?.RequiresCase == true));
+            choices, _transaction.Current.Mappings.ToArray(), insertion?.RequiresCase == true,
+            flowChoices));
     }
 
     public bool ApplyInspector(StepCompositionResult result)
