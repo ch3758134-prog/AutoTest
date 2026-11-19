@@ -17,6 +17,7 @@ public partial class MainWindow
         ServiceCombo.ItemsSource = UdsOperationTemplates.All;
         NewServiceCombo.SelectedIndex = 0;
         QueueList.ItemsSource = _manualQueue;
+        WatchIntervalBox.Text = "2000";
     }
 
     private void LoadServiceEditor(DiagnosticAction? action)
@@ -24,6 +25,7 @@ public partial class MainWindow
         if (action is null)
         {
             ServiceCombo.SelectedItem = null;
+            BindSubfunctionPresets(null);
             PrimaryBox.Text = AuxiliaryBox.Text = "";
             ServiceHelp.Text = "先创建或选择一个诊断操作。";
             ComposerStatus.Text = "";
@@ -54,6 +56,7 @@ public partial class MainWindow
                 : (template.PrimaryDefault, template.AuxiliaryDefault);
             PrimaryBox.Text = !string.IsNullOrWhiteSpace(action.PrimaryHex) ? action.PrimaryHex : split.Item1;
             AuxiliaryBox.Text = !string.IsNullOrWhiteSpace(action.AuxiliaryHex) ? action.AuxiliaryHex : split.Item2;
+            BindSubfunctionPresets(template, PrimaryBox.Text);
             PrimaryLabel.Text = template.PrimaryLabel;
             AuxiliaryLabel.Text = template.AuxiliaryLabel;
             ServiceHelp.Text = template.Guidance;
@@ -63,6 +66,7 @@ public partial class MainWindow
         }
         else
         {
+            BindSubfunctionPresets(null);
             PrimaryBox.Text = AuxiliaryBox.Text = "";
             PrimaryLabel.Text = "服务主参数";
             AuxiliaryLabel.Text = "附加数据";
@@ -87,6 +91,36 @@ public partial class MainWindow
         _editing.RawMode = RawModeCheck.IsChecked == true;
     }
 
+    private void BindSubfunctionPresets(UdsOperationTemplate? template, string? primary = null)
+    {
+        var choices = template is null
+            ? Array.Empty<UdsSubfunctionPreset>()
+            : UdsOperationTemplates.PresetsFor(template.Sid).ToArray();
+        SubfunctionPresetCombo.ItemsSource = choices;
+        SubfunctionPresetCombo.Visibility = choices.Length == 0
+            ? Visibility.Collapsed : Visibility.Visible;
+        SubfunctionPresetCombo.SelectedItem = choices.FirstOrDefault(p =>
+            string.Equals(p.PrimaryHex, primary, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void SubfunctionPresetChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingEditor || _editing is null ||
+            SubfunctionPresetCombo.SelectedItem is not UdsSubfunctionPreset choice)
+            return;
+        _loadingEditor = true;
+        try
+        {
+            PrimaryBox.Text = choice.PrimaryHex;
+            // Routine ID / Seed-Key parameters are user-specified. Switching
+            // between subfunctions must not invent or erase OEM data.
+            if (choice.Sid is 0x19 or 0x10 or 0x11 or 0x3E)
+                AuxiliaryBox.Text = choice.AuxiliaryHex;
+        }
+        finally { _loadingEditor = false; }
+        ComposeCurrent();
+    }
+
     private void ServiceChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingEditor || _editing is null) return;
@@ -97,6 +131,7 @@ public partial class MainWindow
         {
             PrimaryBox.Text = template.PrimaryDefault;
             AuxiliaryBox.Text = template.AuxiliaryDefault;
+            BindSubfunctionPresets(template, PrimaryBox.Text);
             PrimaryLabel.Text = template.PrimaryLabel;
             AuxiliaryLabel.Text = template.AuxiliaryLabel;
             ServiceHelp.Text = template.Guidance;
@@ -151,16 +186,11 @@ public partial class MainWindow
             {
                 RequestBox.Text = composed.RequestHex;
                 ExpectedBox.Text = composed.ExpectedPrefixHex;
-                if (template.Sid == 0x22)
-                {
-                    bool vin = composed.Decoder == "Ascii";
-                    // Use raw HEX for newly selected non-VIN DID; keep custom
-                    // decoder choices for explicit manual edits after composing.
-                    if (vin && _editing.Decoder == "Hex")
-                        DecodeBox.SelectedItem = DecodeBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string?)i.Tag == "Ascii");
-                    else if (!vin && _editing.Decoder == "Ascii")
-                        DecodeBox.SelectedItem = DecodeBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string?)i.Tag == "Hex");
-                }
+                // Select a useful default decoder for the service. Preserve
+                // explicitly configured numeric decoders when parameters change.
+                if (_editing.Decoder is "Hex" or "Ascii" or "Dtc")
+                    DecodeBox.SelectedItem = DecodeBox.Items.OfType<ComboBoxItem>()
+                        .FirstOrDefault(i => (string?)i.Tag == composed.Decoder);
                 OffsetBox.Text = composed.DecoderOffset.ToString(CultureInfo.InvariantCulture);
             }
             finally { _loadingEditor = false; }
@@ -205,14 +235,25 @@ public partial class MainWindow
     private void QueueAdd_Click(object sender, RoutedEventArgs e)
     {
         if (_editing is null) return;
+        if (_manualQueue.Count >= 100)
+        {
+            MessageBox.Show(this, "交互清单最多保存 100 项。");
+            return;
+        }
         _manualQueue.Add(_editing);
+        RefreshSendButton();
         Audit("QUEUE", "加入手动连续交互清单：" + _editing.Name);
     }
 
     private void QueueRemove_Click(object sender, RoutedEventArgs e)
     {
         if (QueueList.SelectedItem is DiagnosticAction action)
-            _manualQueue.Remove(action);
+        {
+            int index = QueueList.SelectedIndex;
+            _manualQueue.RemoveAt(index);
+            RefreshSendButton();
+            Audit("QUEUE", "从清单移除一项：" + action.Name);
+        }
     }
 
     // This is presentation/preflight only. The shared UdsClient and the USB
@@ -231,6 +272,7 @@ public partial class MainWindow
             catch (FormatException) { }
         }
         SendButton.IsEnabled = maySend;
+        RefreshSequenceButtons();
     }
 
     private void QueueNext_Click(object sender, RoutedEventArgs e)

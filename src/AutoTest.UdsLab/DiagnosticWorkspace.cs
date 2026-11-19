@@ -9,6 +9,7 @@ namespace AutoTest.UdsLab;
 /// <summary>One user-editable, reusable diagnostic operation. Not a TEST StepNode.</summary>
 public sealed class DiagnosticAction
 {
+    public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "新诊断操作";
     public string Group { get; set; } = "未分类";
     public string RequestHex { get; set; } = "";
@@ -25,6 +26,7 @@ public sealed class DiagnosticAction
 
     public DiagnosticAction Duplicate() => new()
     {
+        Id = Guid.NewGuid(),
         Name = Name + " · 副本", Group = Group, RequestHex = RequestHex,
         ExpectedPrefixHex = ExpectedPrefixHex, ServiceSidHex = ServiceSidHex,
         PrimaryHex = PrimaryHex, AuxiliaryHex = AuxiliaryHex, RawMode = RawMode, Decoder = Decoder,
@@ -40,6 +42,9 @@ public sealed class DiagnosticWorkspaceDocument
     public int P2Ms { get; set; } = 1000;
     public int P2StarMs { get; set; } = 5000;
     public List<DiagnosticAction> Actions { get; set; } = [];
+    // Ordered, user-curated manual-interaction queue (not a TEST program).
+    public List<Guid> ManualSequence { get; set; } = [];
+    public int PollIntervalMs { get; set; } = 2000;
 }
 
 public sealed record AuditRecord(DateTimeOffset Utc, string Kind, string Detail);
@@ -77,19 +82,27 @@ public static class DiagnosticWorkspace
     {
         if (doc.Schema != 1 || doc.Actions is null || doc.Actions.Count > 500)
             throw new InvalidDataException("工作台版本不支持或操作数量超过 500。");
+        if (doc.PollIntervalMs is < 1000 or > 60000)
+            throw new InvalidDataException("连续读取间隔必须为 1000..60000 ms。");
+        if (doc.ManualSequence is null || doc.ManualSequence.Count > 100)
+            throw new InvalidDataException("交互清单最多 100 项。");
+        var actionIds = new HashSet<Guid>();
         foreach (var action in doc.Actions)
         {
-            if (action is null || string.IsNullOrWhiteSpace(action.Name) ||
+            if (action is null || action.Id == Guid.Empty || !actionIds.Add(action.Id) ||
+                string.IsNullOrWhiteSpace(action.Name) ||
                 action.Name.Length > 200 || action.Group.Length > 200 ||
                 action.DataOffset is < 0 or > 4095 ||
                 action.ServiceSidHex.Length > 2 || action.PrimaryHex.Length > 8190 ||
                 action.AuxiliaryHex.Length > 8190 ||
                 !double.IsFinite(action.Scale) || Math.Abs(action.Scale) > 1e12 ||
-                action.Decoder is not ("Hex" or "Ascii" or "UInt16BE" or "UInt16LE" or "UInt8"))
+                action.Decoder is not ("Hex" or "Ascii" or "UInt16BE" or "UInt16LE" or "UInt8" or "Dtc"))
                 throw new InvalidDataException("存在无效的诊断操作参数。");
             if (!string.IsNullOrWhiteSpace(action.RequestHex)) _ = UdsHex.Parse(action.RequestHex);
             if (!string.IsNullOrWhiteSpace(action.ExpectedPrefixHex)) _ = UdsHex.Parse(action.ExpectedPrefixHex);
         }
+        if (doc.ManualSequence.Any(id => !actionIds.Contains(id)))
+            throw new InvalidDataException("交互清单引用了不存在的诊断操作。");
     }
 
     public static string Decode(DiagnosticAction action, byte[] response)
@@ -98,6 +111,7 @@ public static class DiagnosticWorkspace
         var data = response.AsSpan(action.DataOffset);
         return action.Decoder switch
         {
+            "Dtc" => DecodeDtc(response),
             "Ascii" => Encoding.ASCII.GetString(data).TrimEnd('\0', ' ') ,
             "UInt16BE" when data.Length >= 2 =>
                 (System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(data) * action.Scale)
@@ -110,5 +124,33 @@ public static class DiagnosticWorkspace
             "Hex" => UdsHex.Format(data.ToArray()),
             _ => "响应数据不足，或解码类型不支持。"
         };
+    }
+
+    private static string DecodeDtc(ReadOnlySpan<byte> pdu)
+    {
+        if (pdu.Length < 3 || pdu[0] != 0x59 || pdu[1] != 0x02)
+            return "不是可解析的 ReadDTCInformation 0x19/02 正响应；请查看原始报文。";
+        int dataLength = pdu.Length - 3;
+        if (dataLength % 4 != 0)
+            return "0x19/02 DTC 记录长度异常；不能按完整故障码解释。";
+        var statusAvailable = pdu[2];
+        var lines = new List<string>
+        {
+            "ECU DTC 状态可用掩码：0x" + statusAvailable.ToString("X2"),
+            "报告 DTC 数：" + (dataLength / 4)
+        };
+        for (int off = 3; off < pdu.Length; off += 4)
+        {
+            string dtc = "0x" + Convert.ToHexString(pdu.Slice(off, 3));
+            byte status = pdu[off + 3];
+            string[] bits = ["testFailed", "testFailedThisOperationCycle", "pendingDTC",
+                "confirmedDTC", "testNotCompletedSinceLastClear", "testFailedSinceLastClear",
+                "testNotCompletedThisOperationCycle", "warningIndicatorRequested"];
+            var enabled = Enumerable.Range(0, 8).Where(bit => (status & (1 << bit)) != 0)
+                .Select(bit => bits[bit]).ToArray();
+            lines.Add(dtc + "  状态=0x" + status.ToString("X2") + "  " +
+                (enabled.Length == 0 ? "无置位状态" : string.Join(" | ", enabled)));
+        }
+        return string.Join(Environment.NewLine, lines);
     }
 }

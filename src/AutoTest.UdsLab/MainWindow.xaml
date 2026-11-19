@@ -37,6 +37,7 @@
      <Button x:Name="DisconnectButton" Content="断开" IsEnabled="False" Click="Disconnect_Click"/>
     </WrapPanel>
     <TextBlock x:Name="ConnectionStatus" Text="未连接。请按当前 ECU 诊断规范填写请求/响应 CAN ID；连接不会自动发送 UDS。" Foreground="#697B91"/>
+    <TextBlock x:Name="EcuSessionStatus" Text="ECU 诊断会话：未知（连接 USB 不代表进入 ECU 默认会话）。" Foreground="#946927" FontSize="12" Margin="0,3,0,0"/>
    </StackPanel>
   </Border>
   <Grid Grid.Row="2">
@@ -59,8 +60,12 @@
        <Button Content="复制" Click="Copy_Click"/>
        <Button Content="删除" Click="Delete_Click"/>
       </WrapPanel>
+      <Button Content="+ 加入连续交互清单" Click="QueueAdd_Click" HorizontalContentAlignment="Center"
+              Margin="0,6,0,0" Background="#E8F0FA"/>
      </StackPanel>
-     <Border DockPanel.Dock="Bottom" BorderBrush="#E2E8F2" BorderThickness="0,1,0,0" Padding="0,9,0,0" Margin="0,9,0,0">
+     <Expander x:Name="QueueExpander" DockPanel.Dock="Bottom" Header="连续交互与重复读取 · 展开操作" IsExpanded="False" Margin="0,10,0,0" MaxHeight="255">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="224">
+       <Border BorderBrush="#E2E8F2" BorderThickness="0,1,0,0" Padding="0,7,0,0">
       <StackPanel>
        <TextBlock Text="连续交互 · 操作清单" FontWeight="SemiBold" Margin="0,0,0,3"/>
        <TextBlock Text="排列常用操作，逐项运行；不等于自动测试脚本。" FontSize="11" Foreground="#697B91" TextWrapping="Wrap" Margin="0,0,0,6"/>
@@ -69,10 +74,20 @@
         <Button Content="移除" Click="QueueRemove_Click"/>
        </WrapPanel>
        <ListBox x:Name="QueueList" Height="102" FontSize="12" DisplayMemberPath="Name" Margin="0,0,0,6"/>
-       <Button Content="▶ 执行清单下一项" Click="QueueNext_Click" HorizontalContentAlignment="Center"/>
-       <TextBlock Text="当前实体授权仍逐帧确认；批量自动执行和周期观察尚未开放。" Foreground="#B06D2A" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0"/>
+       <Button x:Name="QueueNextButton" Content="▶ 执行下一项" Click="QueueNext_Click" HorizontalContentAlignment="Center"/>
+       <Button x:Name="QueueRunButton" Content="▶ 顺序执行整组一次" Click="QueueRun_Click" HorizontalContentAlignment="Center" Margin="0,6,0,0"/>
+       <Separator Margin="0,8,0,6"/>
+       <TextBlock Text="受控重复读取当前操作" FontWeight="SemiBold" FontSize="12"/>
+       <WrapPanel Margin="0,4,0,2" VerticalAlignment="Center">
+        <TextBlock Text="间隔(ms)" Margin="0,9,5,0" Foreground="#64748B" FontSize="12"/>
+        <TextBox x:Name="WatchIntervalBox" Text="2000" Width="70" ToolTip="1000 到 60000 毫秒"/>
+        <Button x:Name="WatchStartButton" Content="▶ 开始" Click="WatchStart_Click"/>
+       </WrapPanel>
+       <TextBlock x:Name="SeriesStatus" Text="清单和重复读取：每次真实 CAN 帧仍需人工授权。" Foreground="#B06D2A" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"/>
       </StackPanel>
-     </Border>
+       </Border>
+      </ScrollViewer>
+     </Expander>
      <ListBox x:Name="ActionsList" SelectionChanged="ActionsList_SelectionChanged"
               HorizontalContentAlignment="Stretch" BorderThickness="0">
       <ListBox.ItemTemplate>
@@ -98,10 +113,10 @@
        </StackPanel>
        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
         <Button x:Name="SendButton" Content="▶ 发送请求" Padding="16,7" Click="Send_Click" IsEnabled="False" Background="#DCEBFB"/>
-        <Button x:Name="CancelButton" Content="取消" Click="Cancel_Click" IsEnabled="False"/>
+        <Button x:Name="CancelButton" Content="■ 停止执行/等待" Click="Cancel_Click" IsEnabled="False"/>
        </StackPanel>
       </Grid>
-      <TextBlock x:Name="SendHint" Text="发送前请确认 ECU 地址及实际服务参数。仅真实响应才能确定结果。" Foreground="#697B91" FontSize="11" Margin="0,6,0,1" TextWrapping="Wrap"/>
+      <TextBlock x:Name="SendHint" Text="每一步都等待真实 ECU 最终响应；NRC、超时或取消会中止整组执行。逐帧人工授权仍有效。" Foreground="#697B91" FontSize="11" Margin="0,6,0,1" TextWrapping="Wrap"/>
      </StackPanel>
      <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel>
@@ -121,6 +136,9 @@
          <TextBlock Text="服务与参数" FontWeight="SemiBold" Foreground="#20334E" Margin="0,0,0,6"/>
          <ComboBox x:Name="ServiceCombo" DisplayMemberPath="Display" SelectionChanged="ServiceChanged" ToolTip="选服务后自动生成 UDS 请求"/>
          <TextBlock x:Name="ServiceHelp" Foreground="#64748B" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"/>
+         <ComboBox x:Name="SubfunctionPresetCombo" DisplayMemberPath="Display"
+                   SelectionChanged="SubfunctionPresetChanged" Visibility="Collapsed"
+                   ToolTip="选择常用子功能；也可以直接填写自定义十六进制参数"/>
          <TextBlock x:Name="PrimaryLabel" Text="DID / 子功能" Foreground="#52637A"/>
          <TextBox x:Name="PrimaryBox" FontFamily="Consolas" FontSize="15" TextChanged="ServiceParameterChanged"/>
          <TextBlock x:Name="AuxiliaryLabel" Text="附加数据（可选）" Foreground="#52637A"/>
@@ -152,6 +170,7 @@
            <ComboBoxItem Content="UInt16 大端" Tag="UInt16BE"/>
            <ComboBoxItem Content="UInt16 小端" Tag="UInt16LE"/>
            <ComboBoxItem Content="UInt8" Tag="UInt8"/>
+           <ComboBoxItem Content="DTC 故障码列表" Tag="Dtc"/>
           </ComboBox>
           <TextBlock Text="偏移" Margin="2,10,4,0" Foreground="#52637A"/>
           <TextBox x:Name="OffsetBox" Width="46" TextChanged="EditorChanged"/>

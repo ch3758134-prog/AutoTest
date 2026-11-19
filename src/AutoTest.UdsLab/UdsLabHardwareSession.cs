@@ -24,6 +24,7 @@ public sealed class UdsLabHardwareSession : IAsyncDisposable
     private HardwareCanReceiveBridge? _bridge;
     private CanTransmitGate? _leases;
     private UdsSession? _session;
+    private readonly SemaphoreSlim _leaseLifecycle = new(1, 1);
     private bool _disposed;
 
     public UdsLabHardwareSession(UdsEndpointProfile endpoint,
@@ -36,7 +37,11 @@ public sealed class UdsLabHardwareSession : IAsyncDisposable
         _trace = trace;
     }
 
-    public bool IsReady => _usb?.State == UsbSessionState.Connected && _session is not null;
+    public DateTimeOffset? LeaseExpiresUtc => _session?.LeaseExpiresUtc;
+    // USB/ISO-TP availability is not proof of ECU presence. Host CAN lease
+    // renewal occurs before an actual request, never by silently transmitting.
+    public bool IsReady => !_disposed && _usb?.State == UsbSessionState.Connected &&
+        _session is not null;
     public string DeviceIdentity => _link?.DeviceInstanceId ?? "未连接";
 
     public async Task ConnectAsync(CancellationToken ct)
@@ -66,10 +71,25 @@ public sealed class UdsLabHardwareSession : IAsyncDisposable
             _leases = new CanTransmitGate(_usb.Generation);
             _hub = new CanFrameHub(TransmitAsync);
             _bridge = new HardwareCanReceiveBridge(_usb, _hub);
-            _bridge.Trace += fact => _trace(
-                (fact.Valid ? "CAN RX" : "CAN RX INVALID") + " port=" + fact.PhysicalPort +
-                " role=" + fact.Role + " G" + fact.SessionGeneration + " " + fact.RawUsbPayloadHex +
-                " " + fact.Detail);
+            _bridge.Trace += fact =>
+            {
+                if (!fact.Valid)
+                {
+                    _trace("CAN RX INVALID port=" + fact.PhysicalPort + " G" +
+                        fact.SessionGeneration + " " + fact.RawUsbPayloadHex + " " + fact.Detail);
+                    return;
+                }
+                if (fact.Role != _endpoint.Role) return;
+                // Only stream this ECU's diagnostic response frames into the
+                // WPF log; unrelated busy CAN traffic must not flood the UI.
+                var raw = Convert.FromHexString(fact.RawUsbPayloadHex);
+                if (CanFrameCodec.FromUsbPayload(raw,
+                        new BusRoleMap(default, DutPort: 1, KeypadPort: 0), out var observed) &&
+                    observed is not null && observed.Id == _endpoint.ResponseCanId)
+                    _trace("CAN RX ECU ID=0x" + observed.Id.ToString("X") +
+                        " DLC=" + observed.Dlc + " data=" + Convert.ToHexString(observed.Data.ToArray()) +
+                        " G" + fact.SessionGeneration + " " + fact.Detail);
+            };
             _session = await new UdsSessionService(_leases, _hub)
                 .StartSessionAsync(_endpoint, "AutoTest.UdsLab", ct);
 
@@ -117,14 +137,50 @@ public sealed class UdsLabHardwareSession : IAsyncDisposable
             TimePoint.FromHostArrival(DateTimeOffset.UtcNow, 0), EvidenceRef.New()));
     }
 
+    /// <summary>
+    /// Renews only the HOST-side CAN transmit lease. Does not send a UDS
+    /// TesterPresent or claim the ECU entered/remained in any diagnosis session.
+    /// Called between serialized requests; cannot grant physical CAN permission.
+    /// </summary>
+    private async Task EnsureHostLeaseAsync(CancellationToken ct)
+    {
+        await _leaseLifecycle.WaitAsync(ct);
+        try
+        {
+            if (_disposed || _usb?.State != UsbSessionState.Connected ||
+                _leases is null || _hub is null || _session is null)
+                throw new IOException("无法续约：真实 USB/UDS 链路已失效。");
+            if (_session.LeaseExpiresUtc > DateTimeOffset.UtcNow.AddSeconds(12))
+                return;
+            _trace("HOST CAN 租约即将到期：正在无实体发送地重建 ISO-TP 收发订阅。");
+            var old = _session;
+            _session = null;
+            await old.DisposeAsync();
+            ct.ThrowIfCancellationRequested();
+            _session = await new UdsSessionService(_leases, _hub)
+                .StartSessionAsync(_endpoint, "AutoTest.UdsLab", ct);
+            for (int n = 0; _hub.SubscriberCount == 0 && n < 100; n++)
+                await Task.Delay(10, ct);
+            if (_hub.SubscriberCount == 0)
+                throw new IOException("CAN 租约续约后 ISO-TP RX 未就绪。");
+            _trace("HOST CAN 租约已续期；ECU 诊断会话状态仍需单独验证。");
+        }
+        finally { _leaseLifecycle.Release(); }
+    }
+
     public async Task<(UdsExchangeResult Result, IReadOnlyList<UdsTraceEntry> Trace)>
         RequestAsync(byte[] pdu, Guid correlation, CancellationToken ct)
     {
-        if (!IsReady || _session is null)
-            throw new IOException("UDS 诊断会话未就绪。");
-        var result = await _session.Client.RequestAsync(
+        // Defense in depth: a caller that bypasses the WPF parameter editor
+        // must not be able to use 0x2A or any state-changing UDS service via
+        // this read-only standalone lab's real CAN path.
+        if (pdu is null || pdu.Length < 1 || pdu[0] is not (0x19 or 0x22 or 0x23 or 0x24))
+            throw new UnauthorizedAccessException("本版本实体 UDS 通路仅允许已列出的只读服务。");
+        await EnsureHostLeaseAsync(ct);
+        var session = _session ?? throw new IOException("UDS 诊断会话未就绪。");
+        var result = await session.Client.RequestAsync(
             new UdsRequest(ImmutableArray.CreateRange(pdu), correlation), _endpoint, ct);
-        var trace = _session.Client.Trace.Snapshot()
+        var trace = session.Client.Trace.Snapshot()
             .Where(e => e.CorrelationId == correlation).ToArray();
         return (result, trace);
     }
@@ -154,5 +210,6 @@ public sealed class UdsLabHardwareSession : IAsyncDisposable
         _hub?.Dispose();
         _hub = null;
         _link = null;
+        _leaseLifecycle.Dispose();
     }
 }

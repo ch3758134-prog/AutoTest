@@ -17,6 +17,13 @@ public sealed record UdsOperationTemplate(
 public sealed record ComposedUdsOperation(string RequestHex, string ExpectedPrefixHex,
     string Decoder, int DecoderOffset);
 
+/// <summary>UI choices for standard subfunctions; not an ECU capability claim.</summary>
+public sealed record UdsSubfunctionPreset(byte Sid, string Name, string PrimaryHex, string AuxiliaryHex)
+{
+    public string Display => Name + "  ·  " + PrimaryHex;
+}
+
+
 public static class UdsOperationTemplates
 {
     public static IReadOnlyList<UdsOperationTemplate> All { get; } =
@@ -54,6 +61,27 @@ public static class UdsOperationTemplates
     ];
 
     public static UdsOperationTemplate? Find(byte sid) => All.FirstOrDefault(x => x.Sid == sid);
+    public static IReadOnlyList<UdsSubfunctionPreset> PresetsFor(byte sid) =>
+        KnownSubfunctions.Where(p => p.Sid == sid).ToArray();
+
+    private static readonly UdsSubfunctionPreset[] KnownSubfunctions =
+    [
+        new(0x19, "按状态读取 DTC 数量", "01", "FF"),
+        new(0x19, "按状态读取 DTC 列表", "02", "FF"),
+        new(0x10, "默认诊断会话（实体未开放）", "01", ""),
+        new(0x10, "扩展诊断会话（实体未开放）", "03", ""),
+        new(0x10, "编程会话（实体未开放）", "02", ""),
+        new(0x3E, "请求 TesterPresent 正响应（实体未开放）", "00", ""),
+        new(0x11, "硬复位（实体未开放）", "01", ""),
+        new(0x11, "钥匙关开复位（实体未开放）", "02", ""),
+        new(0x11, "软复位（实体未开放）", "03", ""),
+        new(0x31, "启动例程（实体未开放）", "01", ""),
+        new(0x31, "停止例程（实体未开放）", "02", ""),
+        new(0x31, "获取例程结果（实体未开放）", "03", ""),
+        new(0x27, "请求 Seed（实体未开放）", "01", ""),
+        new(0x27, "发送 Key（实体未开放）", "02", "")
+    ];
+
 
     private static byte[] HexPart(string raw, string name, int? requiredLength = null)
     {
@@ -105,6 +133,7 @@ public static class UdsOperationTemplates
         };
         if (sid == 0x31 && b.Length >= 2) prefix = [(byte)(sid + 0x40), a[0], b[0], b[1]];
         return new ComposedUdsOperation(UdsHex.Format(request), UdsHex.Format(prefix),
+            sid == 0x19 && a[0] == 0x02 ? "Dtc" :
             sid == 0x22 && a[0] == 0xF1 && a[1] == 0x90 && b.Length == 0 ? "Ascii" : "Hex",
             sid is 0x22 or 0x24 ? prefix.Length : 0);
     }

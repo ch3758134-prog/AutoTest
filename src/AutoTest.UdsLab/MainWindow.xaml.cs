@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<DiagnosticAction> _actions = [];
     private readonly List<AuditRecord> _audit = [];
     private readonly List<string> _rawLines = [];
+    private readonly DiagnosticEcuSessionTracker _sessionTracker = new();
     private DiagnosticAction? _editing;
     private UdsLabHardwareSession? _hardware;
     private CancellationTokenSource? _operation;
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
         GroupBox.LostFocus += (_, _) => ActionsList.Items.Refresh();
         Closing += OnClosing;
         Audit("WORKSPACE", "UDS Lab 启动。预置操作仅为标准诊断示例，尚未经过本 ECU 实测。");
+        RefreshSendButton();
     }
 
     private void ActionsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -124,6 +126,7 @@ public partial class MainWindow : Window
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         int index = ActionsList.SelectedIndex;
+        while (_manualQueue.Remove(_editing)) { }
         _actions.Remove(_editing);
         if (_actions.Count > 0) ActionsList.SelectedIndex = Math.Min(index, _actions.Count - 1);
         else { _editing = null; LoadEditor(); }
@@ -139,7 +142,9 @@ public partial class MainWindow : Window
             RxIdHex = RxIdBox.Text.Trim(),
             P2Ms = int.TryParse(P2Box.Text, out int p2) ? p2 : 1000,
             P2StarMs = int.TryParse(P2StarBox.Text, out int p2Star) ? p2Star : 5000,
-            Actions = _actions.ToList()
+            Actions = _actions.ToList(),
+            ManualSequence = _manualQueue.Select(a => a.Id).ToList(),
+            PollIntervalMs = int.TryParse(WatchIntervalBox.Text, out int poll) ? poll : 2000
         };
     }
 
@@ -180,14 +185,20 @@ public partial class MainWindow : Window
         try
         {
             var document = await DiagnosticWorkspace.LoadAsync(open.FileName);
+            _manualQueue.Clear();
             _actions.Clear();
             foreach (var action in document.Actions) _actions.Add(action);
+            var lookup = _actions.ToDictionary(a => a.Id);
+            foreach (var id in document.ManualSequence)
+                if (lookup.TryGetValue(id, out var action)) _manualQueue.Add(action);
+            WatchIntervalBox.Text = document.PollIntervalMs.ToString(CultureInfo.InvariantCulture);
             TxIdBox.Text = document.TxIdHex;
             RxIdBox.Text = document.RxIdHex;
             P2Box.Text = document.P2Ms.ToString(CultureInfo.InvariantCulture);
             P2StarBox.Text = document.P2StarMs.ToString(CultureInfo.InvariantCulture);
             ActionsList.SelectedIndex = _actions.Count > 0 ? 0 : -1;
             _workspaceFile = open.FileName;
+            RefreshSendButton();
             Audit("FILE", "已打开工作台：" + open.FileName);
         }
         catch (Exception ex) { ShowFailure("打开失败", ex); }
@@ -227,12 +238,17 @@ public partial class MainWindow : Window
             DisconnectButton.IsEnabled = true;
             RefreshSendButton();
             ConnectionStatus.Text = "主控已连接 · " + _hardware.DeviceIdentity +
-                " · UDS 接收已就绪；未向 ECU 自动发送请求。";
+                " · UDS 接收已就绪；CAN 租约截止 " +
+                _hardware.LeaseExpiresUtc?.ToLocalTime().ToString("HH:mm:ss") + "。";
+            _sessionTracker.Invalidate("仅 USB 主控在线，诊断会话未确认");
+            EcuSessionStatus.Text = _sessionTracker.Description + " 0x10/0x3E 尚未获实体授权。";
             Audit("CONNECT", "主控连接 / USB Ping / ISO-TP RX 已就绪；ECU 在线状态仍未确认。");
         }
         catch (Exception ex)
         {
             ConnectionStatus.Text = "连接失败：" + ex.Message;
+            _sessionTracker.Invalidate("连接失败");
+            EcuSessionStatus.Text = _sessionTracker.Description;
             Audit("CONNECT_ERROR", ex.ToString());
             if (_hardware is not null) await _hardware.DisposeAsync();
             _hardware = null;
@@ -258,6 +274,8 @@ public partial class MainWindow : Window
         }
         _requiresReconnect = false;
         ConnectionStatus.Text = "已断开。旧诊断会话失效，重新连接前不能发送 ECU 请求。";
+        _sessionTracker.Invalidate("断开 USB，不能继承 ECU 会话");
+        EcuSessionStatus.Text = _sessionTracker.Description;
         ConnectButton.IsEnabled = true;
         DisconnectButton.IsEnabled = false;
         SendButton.IsEnabled = false;
@@ -276,6 +294,8 @@ public partial class MainWindow : Window
         var dispatcherOperation = Dispatcher.InvokeAsync(() =>
         {
             var dialog = new FrameConsentDialog(this, expected, description);
+            using var cancellation = ct.Register(() =>
+                Dispatcher.BeginInvoke(new Action(() => { if (dialog.IsVisible) dialog.Close(); })));
             return dialog.ShowDialog() == true ? dialog.Confirmation : null;
         });
         return await dispatcherOperation.Task.WaitAsync(ct);
@@ -294,15 +314,7 @@ public partial class MainWindow : Window
         try
         {
             var action = _editing ?? throw new InvalidOperationException("请先建立或选中诊断操作。");
-            byte[] request = UdsHex.Parse(action.RequestHex);
-            var descriptor = new UdsServiceCatalog().Get(request[0]);
-            if (descriptor.Risk != UdsRiskLevel.ReadOnly || request[0] == 0x2A)
-                throw new UnauthorizedAccessException(
-                    "当前实体版仅允许受审查的只读 UDS 请求（0x19/0x22/0x23/0x24）。会话控制、周期注册、写入、复位、例程和烧录不能由 HEX 输入框绕开授权。");
-            if (request.Length < descriptor.MinimumRequestLength)
-                throw new FormatException("UDS 请求长度不足：" + descriptor.Name);
-            if (request[0] == 0x22 && (request.Length - 1) % 2 != 0)
-                throw new FormatException("0x22 DID 应按两字节成组。");
+            byte[] request = ValidateLiveRead(action, repeated: false);
             var snapshot = action.Duplicate();
             snapshot.Name = action.Name;
             var correlation = Guid.NewGuid();
@@ -323,7 +335,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task RunRequestAsync(DiagnosticAction action, byte[] request,
+    private async Task<bool> RunRequestAsync(DiagnosticAction action, byte[] request,
         Guid correlation, CancellationToken ct)
     {
         LastRequestBox.Text = UdsHex.Format(request);
@@ -336,6 +348,9 @@ public partial class MainWindow : Window
         try
         {
             var (result, trace) = await _hardware!.RequestAsync(request, correlation, ct);
+            ConnectionStatus.Text = "主控已连接 · " + _hardware.DeviceIdentity +
+                " · HOST CAN 租约截止 " + _hardware.LeaseExpiresUtc?.ToLocalTime().ToString("HH:mm:ss") +
+                "；ECU 诊断会话单独判断。";
             foreach (var entry in trace)
                 Audit("UDS_" + entry.Direction.ToString().ToUpperInvariant(),
                     correlation + " · " + entry.Utc.ToString("O") + " · " +
@@ -362,6 +377,9 @@ public partial class MainWindow : Window
                     correlation + " · " + ResultStatus.Text + " · " + elapsed + "ms");
                 RecordExchange(action.Name, request, LastResponseBox.Text, ParsedBox.Text,
                     ResultStatus.Text, DetailBox.Text, started, correlation);
+                _sessionTracker.ObservePositive(request, response);
+                EcuSessionStatus.Text = _sessionTracker.Description;
+                return expectedMatches && didMatches;
             }
             else if (result.NegativeResponseCode is byte nrc)
             {
@@ -372,6 +390,9 @@ public partial class MainWindow : Window
                 Audit("UDS_NEGATIVE", correlation + " · " + DetailBox.Text);
                 RecordExchange(action.Name, request, LastResponseBox.Text, "",
                     ResultStatus.Text, DetailBox.Text, started, correlation);
+                _sessionTracker.ObserveNegative(nrc);
+                EcuSessionStatus.Text = _sessionTracker.Description;
+                return false;
             }
             else
             {
@@ -382,6 +403,9 @@ public partial class MainWindow : Window
                 Audit("UDS_UNCERTAIN", correlation + " · " + DetailBox.Text);
                 RecordExchange(action.Name, request, LastResponseBox.Text, "",
                     ResultStatus.Text, DetailBox.Text, started, correlation);
+                _sessionTracker.Invalidate("链路不确定，必须重新连接");
+                EcuSessionStatus.Text = _sessionTracker.Description;
+                return false;
             }
         }
         catch (OperationCanceledException ex)
@@ -393,6 +417,9 @@ public partial class MainWindow : Window
             Audit("UDS_CANCEL", correlation + " · " + DetailBox.Text);
             RecordExchange(action.Name, request, LastResponseBox.Text, "",
                 ResultStatus.Text, DetailBox.Text, started, correlation);
+            _sessionTracker.Invalidate("用户取消，旧会话不可确认");
+            EcuSessionStatus.Text = _sessionTracker.Description;
+            return false;
         }
         catch (Exception ex)
         {
@@ -404,6 +431,9 @@ public partial class MainWindow : Window
             Audit("UDS_ERROR", correlation + " · " + ex);
             RecordExchange(action.Name, request, LastResponseBox.Text, "",
                 ResultStatus.Text, DetailBox.Text, started, correlation);
+            _sessionTracker.Invalidate("通信异常");
+            EcuSessionStatus.Text = _sessionTracker.Description;
+            return false;
         }
     }
 
