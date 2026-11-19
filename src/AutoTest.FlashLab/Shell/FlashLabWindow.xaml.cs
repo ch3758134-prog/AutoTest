@@ -180,13 +180,12 @@ public partial class FlashLabWindow : Window
                     $"找到 {candidates.Count} 台主控，请明确选择设备。";
             if(candidates.Count==0)
             {
-                // Old src relied on libusb VID/PID, new WinUSB requires GUID.
-                // This diagnostics-only lookup never opens or changes a device.
-                var report=await Task.Run(ControllerUsbDetectionService.Probe);
-                if(_closingInProgress || _closingApproved)return;
-                _vm.Status=report.Summary;
-                UsbStatusLabel.Text=report.Summary;
-                AddLog("USB 枚举诊断："+report.Detail);
+                // WinUsbDiscovery is the single authoritative enumerator.
+                // There is no second PnP probe or generic USB scan here.
+                _vm.Status="未找到主控 WinUSB 接口（VID_1183 / PID_5850）。请检查主控供电、USB 连接及 WinUSB 驱动。";
+                UsbStatusLabel.Text=_vm.Status;
+                AddLog("USB 枚举诊断："+_vm.Status+
+                    " 仅检查主控已注册的 WinUSB 设备接口；未执行其他 USB 设备扫描。");
             }
             else UsbStatusLabel.Text=_vm.Status;
             AddLog($"{DateTimeOffset.Now:HH:mm:ss.fff}  USB 枚举：{_vm.Status}");
@@ -540,8 +539,13 @@ public partial class FlashLabWindow : Window
             var frozen=BuildFlashJob();
             // Any edited XML field, new disk bytes, DLL or selected BIN base MUST
             // invalidate the displayed physical consent fingerprint.
+            // BuildFlashJob already validated the SafetyFile.dll path.
+            // Repeat the non-null guard at the actual freeze call, rather than
+            // silently passing an empty DLL path or suppressing a null warning.
+            var verifiedSecurityFile=_safetyFilePath ??
+                throw new InvalidOperationException("安全文件未就绪，请重新选择并校验 SafetyFile.dll。");
             var fresh=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,_safetyFilePath,"",
+                _vm.FirmwarePath,BinBaseBox.Text,verifiedSecurityFile,"",
                 LegacyTailSignatureCheck.IsChecked==true);
             if(!string.Equals(frozen.Fingerprint,fresh.Fingerprint,StringComparison.Ordinal))
                 throw new InvalidOperationException("配置、固件或安全文件已改变；请重新点击开始烧录。");
