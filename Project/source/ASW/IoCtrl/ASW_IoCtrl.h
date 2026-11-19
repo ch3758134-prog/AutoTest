@@ -1,7 +1,9 @@
 /**
  * @file ASW_IoCtrl.h
  * @brief 主控板 IGN、六路 LED 与两路夹具的 USB 业务接口。
- * @details 不提供 ECU/按键板供电、旧 SOL 或 RL_DRV 业务接口。
+ * @details 复位默认所有高边输出及 RL_DRV 关闭；有效 ON 请求才由
+ *          本模块自动管理公共母线。未提供 ECU/按键板供电、旧 SOL
+ *          或 RL_DRV 独立 USB 业务接口。
  */
 #ifndef ASW_IOCTRL_H
 #define ASW_IOCTRL_H
