@@ -286,7 +286,6 @@ public sealed partial class ManualBenchViewModel
         row.Edited += OnCanRowEdited;
         CanSendRows.Add(row);
         SelectedCanRow = row;
-        IsCanEditorExpanded = false;
         NotifyCanRows();
     }
 
@@ -304,7 +303,6 @@ public sealed partial class ManualBenchViewModel
         row.Edited += OnCanRowEdited;
         CanSendRows.Insert(CanSendRows.IndexOf(source) + 1, row);
         SelectedCanRow = row;
-        IsCanEditorExpanded = false;
         NotifyCanRows();
     }
 
