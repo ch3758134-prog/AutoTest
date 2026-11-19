@@ -151,7 +151,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
 
         var attempt = _attempts.GetValueOrDefault(completed.Step) + 1;
         var observed = completed.Observation;
-        var evidence = observed is { Evidence.Value: var id } && id != Guid.Empty
+        var evidence = observed is not null && observed.Evidence.Value != Guid.Empty
             ? ImmutableArray.Create(observed.Evidence) : ImmutableArray<EvidenceRef>.Empty;
         var quality = observed?.Quality ?? EvidenceQuality.Unknown;
         // The audit TimePoint describes persistence acceptance, whereas the
