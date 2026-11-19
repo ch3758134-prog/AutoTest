@@ -31,8 +31,9 @@ extern "C" {
  * @details U7 P70/PTC0 → RL_DRV → Q4(2N7002) → U2(BTS50055) → SOL24IN。
  *          PTC0=HIGH 使 Q4 导通，并拉低 U2 的低有效 IN；
  *          U2 正常且电源存在时，向 U5/U22/U23 提供共用 Vbb。
- * @warning 内部公共母线启动默认 LOW；业务层在某路请求导通时先使能，
- *          全部已管理输出请求关闭后才撤销公共使能。不可单独关闭某路时误关其它路。
+ * @note   RL_DRV 是 EAL 内部板级硬件支持信号，初始化为 HIGH。
+ *          USB/ASW_IoCtrl 只操作各独立输出控制脚，不读写 RL_DRV。
+ * @warning GPIO HIGH 不代表 SOL24IN 实测电压；须核查上电瞬态。
  */
 #define RL_DRV_PORT           MCAL_GPIO_C
 #define RL_DRV_PIN            0U
@@ -58,8 +59,8 @@ extern "C" {
 #define HOUT7_PIN  8U
 
 /* 业务分配：IGN→HOUT1；LED1~LED6→HOUT2~HOUT7。
- * 全部高边输出请求及公共母线 RL_DRV 均在上电初始化为 LOW。
- * 上电后只有合法 USB 开启请求会经 ASW_IoCtrl 激活公共母线。
+ * 业务高边输出 GPIO 上电初始化为 LOW；RL_DRV 是独立的板级使能，
+ * 在全部外部负载输出 GPIO 设置 LOW 后，由 EAL 初始化为 HIGH。
  * HOUT5/PTC10 从此不再被 IGN 初始化或驱动。
  */
 #define IGN_PORT   HOUT1_PORT
@@ -139,8 +140,8 @@ extern "C" {
 /**
  * @brief  初始化已识别的高边输出控制引脚及公共母线信号。
  * @details 在 Clock_Init() 之后、USB/CAN 业务开始前调用一次。
- * @note   RL_DRV 首先 LOW；其后 IGN、LED1~6、Air1/2、HOUT9/10 及
- *          U22 CH4 未分配控制输入全部 LOW（不得在启动时通电）。
+ * @note   IGN、LED1~6、Air1/2、HOUT9/10 及 U22 CH4 未分配控制输入
+ *          全部 LOW；最后初始化内部 RL_DRV 为 HIGH（不暴露 USB）。
  *          PTC8/PTC9 作为 LED6/LED5 控制引脚，不作为旧供电控制。
  * @warning 初始化态不是外部电压或机械到位反馈。
  */
