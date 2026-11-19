@@ -6,7 +6,7 @@ namespace AutoTest.Projects.ControllerConfig;
 /// <summary>
 /// A test action is an operation on a configured ECU input state, not a raw 20-key
 /// hardware primitive. The station adapter alone may convert this plan to a real
-/// CAN0/KEY_SIM command after validating the active hardware session.
+/// KEY CAN / KEY_SIM command after validating the active hardware session.
 /// </summary>
 public enum ButtonActuation { Pulse, Hold, Release }
 
