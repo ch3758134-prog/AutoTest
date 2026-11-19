@@ -338,6 +338,56 @@
       </DockPanel>
       
       
+      <!-- Six independently addressable high-side outputs. The buttons
+           command exactly one LED; readback is MCU GPIO, not load voltage. -->
+      <Border BorderBrush="#DCE6F2" BorderThickness="1" CornerRadius="7"
+              Background="#F9FBFE" Padding="9" Margin="0,10,0,9">
+       <StackPanel>
+        <DockPanel LastChildFill="True" Margin="0,0,0,7">
+         <Button DockPanel.Dock="Right" Content="读取 LED GPIO"
+                 Command="{Binding ReadLedsCommand}"
+                 Padding="9,5" MinHeight="30" Margin="8,0,0,0"
+                 ToolTip="通过 USB 0x1B 读取六路 MCU GPIO 位图，不会设置任何输出"/>
+         <TextBlock Text="六路 LED / 高边输出" FontSize="13" FontWeight="SemiBold"
+                    Foreground="#2C527D" VerticalAlignment="Center"/>
+        </DockPanel>
+        <TextBlock Text="{Binding LedStatusText}" Foreground="#61758A"
+                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <ItemsControl ItemsSource="{Binding LedChannels}">
+         <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+         </ItemsControl.ItemsPanel>
+         <ItemsControl.ItemTemplate>
+          <DataTemplate>
+           <Border BorderBrush="#D9E5F1" BorderThickness="1" CornerRadius="5"
+                   Padding="6" Margin="2" Background="White">
+            <StackPanel>
+             <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"
+                        Foreground="#244E74"/>
+             <TextBlock Text="{Binding HighSide}" FontSize="10"
+                        Foreground="#60758C"/>
+             <TextBlock Text="{Binding Connector,StringFormat='J1 {0}'}"
+                        FontSize="10" Foreground="#60758C"/>
+             <TextBlock Text="{Binding GpioState}" FontSize="10"
+                        Foreground="#355773" Margin="0,4,0,5"/>
+             <StackPanel Orientation="Horizontal">
+              <Button Content="开" Tag="{Binding Number}" Click="LedOn_Click"
+                      IsEnabled="{Binding DataContext.CanControlLeds,
+                        RelativeSource={RelativeSource AncestorType=Window}}"
+                      MinHeight="29" MinWidth="40" Margin="0,0,4,0"/>
+              <Button Content="关" Tag="{Binding Number}" Click="LedOff_Click"
+                      IsEnabled="{Binding DataContext.CanControlLeds,
+                        RelativeSource={RelativeSource AncestorType=Window}}"
+                      MinHeight="29" MinWidth="40"/>
+             </StackPanel>
+            </StackPanel>
+           </Border>
+          </DataTemplate>
+         </ItemsControl.ItemTemplate>
+        </ItemsControl>
+       </StackPanel>
+      </Border>
+
       <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
       <DockPanel Margin="0,0,0,8">
        <TextBlock DockPanel.Dock="Left" Text="KEY CAN · 按键动作" Style="{StaticResource BenchHeader}" FontSize="14"/>
