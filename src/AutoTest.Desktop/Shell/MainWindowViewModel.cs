@@ -14,6 +14,7 @@ using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Dbc;
 using AutoTest.Desktop.Testing;
 using AutoTest.Desktop.Diagnostics;
+using AutoTest.FlashLab.Shell;
 using System.Text.Json;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
@@ -194,6 +195,8 @@ public sealed class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind));
         OpenWaveWorkbenchCommand = new DelegateCommand(OpenWaveWorkbench);
         OpenManualBenchCommand = new DelegateCommand(OpenManualBench);
+        OpenFlashWorkbenchCommand = new DelegateCommand(async () => await OpenFlashWorkbenchAsync(),
+            () => !_openingFlashLab && !_hardwareBusy);
         OpenTbcCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.BenchConfigurationKind));
         OpenFirstConfigurationCommand = new DelegateCommand(async () =>
@@ -317,6 +320,7 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenWaveConfigCommand { get; }
     public DelegateCommand OpenWaveWorkbenchCommand { get; }
     public DelegateCommand OpenManualBenchCommand { get; }
+    public DelegateCommand OpenFlashWorkbenchCommand { get; }
     public DelegateCommand OpenTbcCommand { get; }
     public int TestProjectCount => _workspace.Current?.Definition.Assets.Count(x =>
         x.Kind == ProjectWorkspaceService.TestProjectKind) ?? 0;
@@ -375,6 +379,7 @@ public sealed class MainWindowViewModel : BindableBase
         ActivateEditor("config-overview", view, "工程配置", view.ConfirmClose);
     }
 
+    private bool _openingFlashLab;
     private ManualBenchWindow? _manualBenchWindow;
     private WaveWorkbenchWindow? _waveWorkbenchWindow;
 
@@ -410,6 +415,69 @@ public sealed class MainWindowViewModel : BindableBase
         view.Closed += (_, _) => _manualBenchWindow = null;
         view.Owner = Application.Current.MainWindow;
         view.Show();
+    }
+
+    /// <summary>Open the verified FlashLab WPF workbench in-process, without
+    /// starting another EXE or duplicating the CanTool/UDS implementation.
+    /// The host session is fully released before FlashLab may open WinUSB.
+    /// After closing, the main IDE stays disconnected until explicit reconnection.</summary>
+    private async Task OpenFlashWorkbenchAsync()
+    {
+        if (_openingFlashLab || _hardwareBusy) return;
+        if (_hardware.IsTestRunApproved || _hardware.IsManualCanBatchApproved ||
+            _hardware.IsManualKeyActionApproved)
+        {
+            MessageBox.Show("自动测试、手动 CAN 或 KEY 操作仍持有工位授权。请先停止相应操作。",
+                "烧录工具不可接管 USB", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (_manualBenchWindow is { IsVisible: true })
+        {
+            MessageBox.Show("请先关闭手动台架窗口，再打开烧录专业工具。防止后台周期发送与烧录争用同一 CAN 总线。",
+                "先关闭手动台架", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (_hardware.HasSession &&
+            MessageBox.Show("烧录工具将独占主控板 USB。当前主界面的连接会先断开，烧录窗口退出后须手动重新连接。继续？",
+                "切换到 ECU 烧录工具", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+        _openingFlashLab = true;
+        _hardwareBusy = true;
+        OpenFlashWorkbenchCommand.RaiseCanExecuteChanged();
+        ConnectHardwareCommand.RaiseCanExecuteChanged();
+        RaisePropertyChanged(nameof(ConnectionButtonText));
+        try
+        {
+            if (_hardware.HasSession) await _hardware.DisconnectAsync();
+            HardwareStatus = "USB 已释放给烧录专业工具";
+            StatusMessage = "烧录工具使用独立的受控会话；原主界面已断开主控板。";
+            // Modal owner prevents concurrent main-window reconnect while the
+            // FlashLab specialist owns the exclusive native WinUSB handle.
+            var window = new FlashLabWindow
+            {
+                Owner = Application.Current.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+            window.ShowDialog();
+            HardwareStatus = "USB 未连接";
+            StatusMessage = "烧录工具已关闭；请根据现场状态主动重新连接主控板。";
+        }
+        catch (Exception error)
+        {
+            HardwareStatus = "烧录工具启动或 USB 移交失败：" + error.Message;
+            StatusMessage = HardwareStatus;
+            MessageBox.Show(error.Message, "烧录专业工具", MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            _hardwareBusy = false;
+            _openingFlashLab = false;
+            OpenFlashWorkbenchCommand.RaiseCanExecuteChanged();
+            ConnectHardwareCommand.RaiseCanExecuteChanged();
+            RaisePropertyChanged(nameof(ConnectionButtonText));
+        }
     }
 
     private async Task OpenConfigurationKindAsync(string kind)
