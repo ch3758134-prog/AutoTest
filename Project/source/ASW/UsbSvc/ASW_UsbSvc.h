@@ -4,12 +4,12 @@
  *
  * 本层职责（拆分后）:
  *   1. 协议级应答（自身处理 PING/GET_VERSION）
- *   2. 命令码 → 业务对象的路由（转交 PwrCtrl / BusProxy / EcuEmu）
+ *   2. 命令码 → 业务对象的路由（转交 IoCtrl / BusProxy / EcuEmu）
  *   3. 初始化：注册 CDD_USB 帧回调 + 注册 BusProxy 给 EAL_CAN 收帧
  *
- * 业务对象（PwrCtrl/BusProxy/EcuEmu）只暴露 HandleCmd 接口,UsbSvc 不感知其内部。
+ * 业务对象（IoCtrl/BusProxy/EcuEmu）只暴露 HandleCmd 接口,UsbSvc 不感知其内部。
  *
- * 调用链：ASW/UsbSvc → CDD/USB + ASW/PwrCtrl + ASW/BusProxy + ASW/EcuEmu
+ * 调用链：ASW/UsbSvc → CDD/USB + ASW/IoCtrl + ASW/BusProxy + ASW/EcuEmu
  */
 #ifndef ASW_USBSVC_H
 #define ASW_USBSVC_H

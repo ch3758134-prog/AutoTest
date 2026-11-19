@@ -521,8 +521,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\source\ASW\PwrCtrl\ASW_PwrCtrl.c</PathWithFileName>
-      <FilenameWithoutPath>ASW_PwrCtrl.c</FilenameWithoutPath>
+      <PathWithFileName>.\source\ASW\IoCtrl\ASW_IoCtrl.c</PathWithFileName>
+      <FilenameWithoutPath>ASW_IoCtrl.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>

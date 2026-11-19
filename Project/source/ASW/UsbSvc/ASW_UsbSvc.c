@@ -2,11 +2,11 @@
  * @file    ASW_UsbSvc.c
  * @brief   上位机通信路由 + 协议应答 — 实现
  *
- * 调用链：ASW/UsbSvc → CDD/USB + ASW/PwrCtrl + ASW/BusProxy + ASW/EcuEmu
+ * 调用链：ASW/UsbSvc → CDD/USB + ASW/IoCtrl + ASW/BusProxy + ASW/EcuEmu
  *
  * 本文件 = 协议路由器：
  *   - 协议级命令（PING/GET_VERSION）自处理
- *   - 业务级命令按 CMD 范围路由到 PwrCtrl/BusProxy/EcuEmu
+ *   - 业务级命令按 CMD 范围路由到 IoCtrl/BusProxy/EcuEmu
  *
  * 历史（2026-08-10 拆分）:
  *   - 原 main.c HandleRequest 拆成 4 个文件
@@ -15,7 +15,7 @@
 
 #include "ASW_UsbSvc.h"
 #include "CDD_USB.h"
-#include "ASW_PwrCtrl.h"
+#include "ASW_IoCtrl.h"
 #include "ASW_BusProxy.h"
 #include "ASW_EcuEmu.h"
 #include "EAL_USB.h"
@@ -70,7 +70,7 @@ static void HandleCommand(uint16_t seq, uint8_t cmd,
         case CDD_USB_CMD_SET_LED:
         case CDD_USB_CMD_GET_LEDS:
         case CDD_USB_CMD_SET_LEDS:
-            ASW_PwrCtrl_HandleCmd(seq, cmd, payload, len);
+            ASW_IoCtrl_HandleCmd(seq, cmd, payload, len);
             return;
 
         /* CAN 透传(0x40) */
@@ -112,7 +112,7 @@ void ASW_UsbSvc_Task(void)
     EAL_USB_TxTask();
 
     /* 各 Role 的周期任务 */
-    ASW_PwrCtrl_Task();    /* USB丢失枚举时撤销夹具压紧输出 */
+    ASW_IoCtrl_Task();    /* USB丢失枚举时撤销夹具压紧输出 */
     ASW_BusProxy_Task();   /* 当前无任务,接口预留 */
     ASW_EcuEmu_Task();     /* 广播帧表调度 + USB 断开停广播 */
 }

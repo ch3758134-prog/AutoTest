@@ -247,7 +247,7 @@
 - 命令路由：Project/source/ASW/UsbSvc/ASW_UsbSvc.c
 - CAN 透传：Project/source/ASW/BusProxy/ASW_BusProxy.c
 - CAN1 广播：Project/source/ASW/EcuEmu/ASW_EcuEmu.c
-- IGN、夹具、旧供电：Project/source/ASW/PwrCtrl/ASW_PwrCtrl.c
+- IGN、夹具、旧供电：Project/source/ASW/IoCtrl/ASW_IoCtrl.c
 - 真实 GPIO 宏及初始化：Project/source/BSW/EAL/GPIO/EAL_GPIO.h、EAL_GPIO.c
 - 固件启动：Project/source/main.c
 

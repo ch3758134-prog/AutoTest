@@ -340,7 +340,7 @@
               <MiscControls>--library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186</MiscControls>
               <Define>DEBUG, CPU_MK20DN512VLL10, PRINTF_ADVANCED_ENABLE=1, SCANF_ADVANCED_ENABLE=1</Define>
               <Undefine></Undefine>
-              <IncludePath>.\source\MCAL\Can;.\source\MCAL\Pit;.\source\USB\USB_App;.\source\USB\common;.\source\USB\class;.\source\USB\driver;.\source\BSW\EAL\GPIO;.\source\BSW\EAL\Can;.\source\BSW\EAL\Time;.\source\BSW\EAL\USB;.\source\BSW\CDD\USB;.\source\ASW\UsbSvc;.\source\ASW\PwrCtrl;.\source\ASW\BusProxy;.\source\ASW\EcuEmu;.\source\ASW;.\startup;.\source\PROJ_CFG;.\source\MCAL;.\source;.\.cmsis\include;.\source\utilities;.\source\BSW\EAL\TEST;.\source\BSW\EAL\Can;.\source\BSW\EAL\DRV;.\source\BSW\CDD\KeySim</IncludePath>
+              <IncludePath>.\source\MCAL\Can;.\source\MCAL\Pit;.\source\USB\USB_App;.\source\USB\common;.\source\USB\class;.\source\USB\driver;.\source\BSW\EAL\GPIO;.\source\BSW\EAL\Can;.\source\BSW\EAL\Time;.\source\BSW\EAL\USB;.\source\BSW\CDD\USB;.\source\ASW\UsbSvc;.\source\ASW\IoCtrl;.\source\ASW\BusProxy;.\source\ASW\EcuEmu;.\source\ASW;.\startup;.\source\PROJ_CFG;.\source\MCAL;.\source;.\.cmsis\include;.\source\utilities;.\source\BSW\EAL\TEST;.\source\BSW\EAL\Can;.\source\BSW\EAL\DRV;.\source\BSW\CDD\KeySim</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -425,9 +425,9 @@
               <FilePath>.\source\ASW\UsbSvc\ASW_UsbSvc.c</FilePath>
             </File>
             <File>
-              <FileName>ASW_PwrCtrl.c</FileName>
+              <FileName>ASW_IoCtrl.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\source\ASW\PwrCtrl\ASW_PwrCtrl.c</FilePath>
+              <FilePath>.\source\ASW\IoCtrl\ASW_IoCtrl.c</FilePath>
             </File>
             <File>
               <FileName>ASW_BusProxy.c</FileName>
@@ -1057,7 +1057,7 @@
               <MiscControls>--library_interface=armcc --library_type=standardlib --diag_suppress=66,1296,186</MiscControls>
               <Define>NDEBUG, CPU_MK20DN512VLL10, PRINTF_ADVANCED_ENABLE=1, SCANF_ADVANCED_ENABLE=1</Define>
               <Undefine></Undefine>
-              <IncludePath>.\source\MCAL\Can;.\source\MCAL\Pit;.\source\USB\USB_App;.\source\USB\common;.\source\USB\class;.\source\USB\driver;.\source\BSW\EAL\DRV;.\source\BSW\EAL\Time;.\source\BSW\EAL\USB;.\source\BSW\CDD\USB;.\source\ASW\UsbSvc;.\source\ASW\PwrCtrl;.\source\ASW\BusProxy;.\source\ASW\EcuEmu;.\BSW\MCAL\inc;.\source\BSW\MCAL\src;.\source\BSW\EAL\GPIO;.\source\BSW\EAL\Can;.\source\BSW\UTIL;.\source\ASW;.\startup;.\source\PROJ_CFG;.\source\MCAL\inc;.\source\utilities;.\source\BSW\EAL\TEST;.\source\.cmsis\include</IncludePath>
+              <IncludePath>.\source\MCAL\Can;.\source\MCAL\Pit;.\source\USB\USB_App;.\source\USB\common;.\source\USB\class;.\source\USB\driver;.\source\BSW\EAL\DRV;.\source\BSW\EAL\Time;.\source\BSW\EAL\USB;.\source\BSW\CDD\USB;.\source\ASW\UsbSvc;.\source\ASW\IoCtrl;.\source\ASW\BusProxy;.\source\ASW\EcuEmu;.\BSW\MCAL\inc;.\source\BSW\MCAL\src;.\source\BSW\EAL\GPIO;.\source\BSW\EAL\Can;.\source\BSW\UTIL;.\source\ASW;.\startup;.\source\PROJ_CFG;.\source\MCAL\inc;.\source\utilities;.\source\BSW\EAL\TEST;.\source\.cmsis\include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1142,9 +1142,9 @@
               <FilePath>.\source\ASW\UsbSvc\ASW_UsbSvc.c</FilePath>
             </File>
             <File>
-              <FileName>ASW_PwrCtrl.c</FileName>
+              <FileName>ASW_IoCtrl.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\source\ASW\PwrCtrl\ASW_PwrCtrl.c</FilePath>
+              <FilePath>.\source\ASW\IoCtrl\ASW_IoCtrl.c</FilePath>
             </File>
             <File>
               <FileName>ASW_BusProxy.c</FileName>

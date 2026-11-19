@@ -1,5 +1,5 @@
 /**
- * @file ASW_PwrCtrl.c
+ * @file ASW_IoCtrl.c
  * @brief USB 对外 IGN(HOUT1)、六路 LED(HOUT2~HOUT7) 与两个独立夹具控制。
  *
  * 夹具1：PTB1 → U23 CH4 → Air_ALVE1 → J1 B5。
@@ -8,7 +8,7 @@
  * RL_DRV 是板内公共功率电路控制，不对 USB 暴露。
  * @warning OK 仅表示 MCU 已执行 GPIO 命令，不代表外部阀位。
  */
-#include "ASW_PwrCtrl.h"
+#include "ASW_IoCtrl.h"
 #include "EAL_GPIO.h"
 #include "EAL_USB.h"
 #include <stddef.h>
@@ -93,7 +93,7 @@ static void SetClamp(uint8_t clamp, uint8_t state)
         s_clampRequestMask &= (uint8_t)~bit;
 }
 
-void ASW_PwrCtrl_HandleCmd(uint16_t seq, uint8_t cmd,
+void ASW_IoCtrl_HandleCmd(uint16_t seq, uint8_t cmd,
                           const uint8_t *payload, uint8_t len)
 {
     uint8_t value;
@@ -188,7 +188,7 @@ void ASW_PwrCtrl_HandleCmd(uint16_t seq, uint8_t cmd,
  * @note 保留上一版本已存在的断连释放策略，尚待现场验证。
  *       不等于主机应用层心跳、气缸位置反馈或机械急停。
  */
-void ASW_PwrCtrl_Task(void)
+void ASW_IoCtrl_Task(void)
 {
     if ((s_clampRequestMask != 0U) && !EAL_USB_IsEnumReady())
         ReleaseBothClamps();
