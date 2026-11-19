@@ -196,6 +196,14 @@ public partial class ManualBenchWindow : Window
         CanQuickPopup.IsOpen = true;
     }
 
+    private void AddCanRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_model.AddCanRowCommand.CanExecute()) return;
+        _model.AddCanRowCommand.Execute();
+        if (_model.SelectedCanRow is { } row && sender is Button button)
+            ShowQuickEditor(row, button);
+    }
+
     private void OpenCanQuickEdit_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: ManualBenchViewModel.BenchCanRow row } button)
