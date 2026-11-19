@@ -311,7 +311,6 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ClearLogsCommand = new DelegateCommand(() => Logs.Clear());
         InitializeCanRows();
         InitializeKeyActions();
-        InitializeLedControls();
         _ = ReloadResourcesAsync();
     }
 
@@ -354,7 +353,6 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             IgnGpioLabel = "未读取";
             Clamp1GpioLabel = "未读取";
             Clamp2GpioLabel = "未读取";
-            ResetLedReadback();
             LastKeyAck = "未知：连接已改变，原状态不可继承";
             LastIgnAck = "未知：连接已改变，原状态不可继承";
             RaisePropertyChanged(nameof(IsConnected));
@@ -409,7 +407,6 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ReadIgnCommand?.RaiseCanExecuteChanged();
         SendClampCommand?.RaiseCanExecuteChanged();
         ReadClampsCommand?.RaiseCanExecuteChanged();
-        NotifyLedCommands();
         ReleaseKeysCommand?.RaiseCanExecuteChanged();
     }
 
