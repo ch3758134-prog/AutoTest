@@ -172,6 +172,18 @@ public partial class ManualBenchWindow : Window
         }
     }
 
+    private async void LedOn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: byte index })
+            await _model.ApplyLedSelectionAsync(index, true);
+    }
+
+    private async void LedOff_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: byte index })
+            await _model.ApplyLedSelectionAsync(index, false);
+    }
+
     private async void Clamp1Press_Click(object sender, RoutedEventArgs e) =>
         await _model.ApplyClampSelectionAsync(1, true);
     private async void Clamp1Release_Click(object sender, RoutedEventArgs e) =>
