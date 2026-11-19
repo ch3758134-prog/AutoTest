@@ -22,6 +22,17 @@
 | UX-H015 | 工程师常用入口不每次弹出欢迎页；第一次和错误状态明确任务引导 | R03 E18,E19,E20 | DESIGN_CANDIDATE | 对比入口三种原型 |
 | UX-H016 | 实体命令风险分级、不将本地撤销机制套给真实输出 | R03 E25+已确认 DEVICE/TEST 边界 | DOMAIN_BOUNDARY / UX_CANDIDATE | 专业合同审查 |
 
+| UX-H017 | 直接编辑/持续对象详情/结构画布/编辑-执行四种交互模型按对象匹配，不固定三栏 | R04 E26~E39 | DESIGN_CANDIDATE | O01~O12 |
+| UX-H018 | NavigationSelection、EditorSelection、RunSelection、StationTarget、TraceSelection 各自独立 | R04 E28,E29,E36 | DESIGN_CANDIDATE | O01/O09 与 T11 |
+| UX-H019 | 字段缓冲/对象草稿/领域事务/正式保存/真实 Run 快照分层，半成品草稿可跨选择恢复 | R04 E32,E39 + R03 | DESIGN_CANDIDATE / BACKEND_REVIEW_REQUIRED | O03/O04/O10 |
+| UX-H020 | 命令需明确目标、作用域、可用条件、副作用、撤销、错误与证据，右键非唯一入口 | R04 E38 | DESIGN_CANDIDATE | O01/O06/O07 |
+| UX-H021 | 编辑与实体发送分离，普通快捷键不直接执行高风险物理动作 | R04 E38 + BIZ-10 | UX_CANDIDATE / DOMAIN_SAFETY | O07/O08 |
+
+## R04 阶段结论
+
+- 已提交对象类型与交互类型映射、统一命令合同、草稿/保存区分、O01~O12 可操作任务。
+- 没有修改 WPF 或后端；R05 继续跨任务与异常研究。
+
 ## R03 阶段结论
 
 - 完成启动、空工程、工程恢复、编辑/运行、跨工具和失败追溯的产品级候选。

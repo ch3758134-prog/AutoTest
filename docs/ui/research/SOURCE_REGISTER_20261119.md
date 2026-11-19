@@ -36,6 +36,25 @@
 | E24 | Windows 导航并无统一模式；层级不宜无限嵌套 | https://learn.microsoft.com/en-us/windows/apps/design/basics/navigation-basics | Microsoft 设计建议，不是必须采用 NavigationView |
 | E25 | NI TestStand Process Model 负责 UUT 识别、日志、报告与执行周边操作 | https://www.ni.com/docs/en-US/bundle/teststand/page/process-models.html | 厂商 2026-09 更新；不直接变更 AutoTest 运行合同 |
 
+## R04 补充一手来源
+
+| ID | 来源内容 | URL | 边界 |
+|---|---|---|---|
+| E26 | Visual Studio Solution Explorer preview tabs、搜索与文档分类 | https://learn.microsoft.com/en-us/visualstudio/ide/productivity-features?view=visualstudio | 厂商 UI 机制 |
+| E27 | Visual Studio 文档与工具窗口布局、固定预览页签 | https://learn.microsoft.com/en-us/visualstudio/ide/customizing-window-layouts-in-visual-studio?view=visualstudio | 厂商机制，具体交互因版本不同 |
+| E28 | Visual Studio Error List 双击跳转到源问题，支持过滤/查找 | https://learn.microsoft.com/en-us/visualstudio/ide/error-list-window?view=visualstudio | 厂商机制 |
+| E29 | NI TestStand Step Settings 编辑所选步骤的内置与类型专用参数 | https://www.ni.com/docs/en-US/bundle/teststand-api-ref/page/tsref/step-settings-pane.html | NI 官方 |
+| E30 | NI TestStand Steps Pane 结构化步骤与列表操作 | https://www.ni.com/docs/ar-EG/bundle/teststand-api-reference/page/tsref/steps-pane-sequence-file-tab.html | NI 官方，语言页面 ar-EG 但英文内容 |
+| E31 | Ignition 8.3 资源类型决定编辑器，选择与属性联动 | https://docs.inductiveautomation.com/docs/8.3/platform/designer/designer-user-interface | 厂商 |
+| E32 | Ignition 8.3 保存工程的版本/冲突检查 | https://www.docs.inductiveautomation.com/docs/8.3/platform/designer/saving-projects | 厂商，不是单机 AutoTest 必须实现多人协作 |
+| E33 | Ignition Designer Find/Replace 支持项目范围查找与选择替换 | https://docs.inductiveautomation.com/docs/8.3/platform/designer/find-and-replace | 厂商 |
+| E34 | Fusion 参数表与直接特征编辑两种入口 | https://help.autodesk.com/cloudhelp/ENU/Fusion-Model/files/SLD-MODIFY-PARAMETERS.htm | 厂商，设计类比不是电气技术事实 |
+| E35 | Fusion Timeline 可编辑/排序/组织具体特征 | https://help.autodesk.com/cloudhelp/ENU/Fusion-Designs/files/ASM-USE-TIMELINE.htm | 厂商 |
+| E36 | ecu.test Action Window 按当前位置插入步骤 | https://docs.tracetronic.com/help/ecu.test/2026.2/en/Main-program/Action-window/Inserting-test-steps.html | ecu.test 2026.2 |
+| E37 | ecu.test Package Editor Problems 双击导航相关步骤 | https://docs.tracetronic.com/help/ecu.test/en/Main-program/Editor/Test-case-editor/Toolbar.html | ecu.test 当前文档，版本可能指向 2026.2 |
+| E38 | Windows 命令设计强调操作上下文、快捷键、菜单和 undo | https://learn.microsoft.com/en-us/windows/apps/design/basics/commanding-basics | WinUI 设计参考，WPF 控件须自行实现 |
+| E39 | WPF 数据绑定 ValidationRules / INotifyDataErrorInfo | https://learn.microsoft.com/en-us/dotnet/desktop/wpf/data | 框架支持事实，不能取代业务级交叉验证 |
+
 ## 源与判断分离方式
 
 - `FACT-E##`：源明言软件具有何种机制（例如 Portal View 自动进入 Project View）。
