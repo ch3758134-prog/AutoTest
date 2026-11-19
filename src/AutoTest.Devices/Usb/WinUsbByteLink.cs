@@ -112,6 +112,16 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    public void AuthorizeOneLedChange(byte index, bool on, string exactConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; LED authorization cannot survive reconnect.");
+            _fence.AuthorizeSingleLed(index, on, exactConfirmation, _epoch);
+        }
+    }
+
     public void AuthorizeOneClampChange(byte clamp, bool press, string typedConfirmation)
     {
         lock (_sync)
