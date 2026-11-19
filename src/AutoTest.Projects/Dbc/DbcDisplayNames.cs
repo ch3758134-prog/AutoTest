@@ -121,6 +121,10 @@ public sealed class DbcDisplayNames
         var content = NormalizeComment(comment);
         _messageDescriptions[id] = content;
         _editedMessageComments[id] = content;
+        // A long description is not a name. Remove stale legacy CM_ alias
+        // fallback and retain it only for short, name-like imported comments.
+        if (LooksLikeAlias(content)) _commentMessages[id] = content.Trim();
+        else _commentMessages.Remove(id);
     }
 
     public void SetSignalDescription(uint id, string signalName, string? comment)
@@ -130,6 +134,8 @@ public sealed class DbcDisplayNames
         var content = NormalizeComment(comment);
         _signalDescriptions[(id, signalName)] = content;
         _editedSignalComments[(id, signalName)] = content;
+        if (LooksLikeAlias(content)) _commentSignals[(id, signalName)] = content.Trim();
+        else _commentSignals.Remove((id, signalName));
     }
 
     public bool SameEditedComments(DbcDisplayNames other) =>
