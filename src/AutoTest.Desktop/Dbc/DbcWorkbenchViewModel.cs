@@ -16,6 +16,8 @@ public sealed record DbcMessageRow(DbcMessage Message, DbcDisplayNames DisplayNa
     public string DecimalId => Message.Id.ToString();
     public string Name => Message.Name;
     public string DisplayName => DisplayNames.MessageLabel(Message);
+    public string NavTitle => string.IsNullOrWhiteSpace(DisplayNames.MessageAlias(Message.Id))
+        ? Message.Name : DisplayNames.MessageAlias(Message.Id);
     public string Dlc => Message.Dlc.ToString();
     public string Transmitter => Message.Transmitter;
     public string Summary => DisplayNames.MessageCommentPreview(Message.Id);
@@ -24,6 +26,9 @@ public sealed record DbcMessageRow(DbcMessage Message, DbcDisplayNames DisplayNa
 public sealed record DbcSignalRow(DbcSignal Signal, string DisplayName, string Summary)
 {
     public string Name => Signal.Name;
+    public string NavTitle => DisplayName.Contains(" · ", StringComparison.Ordinal)
+        ? DisplayName[..DisplayName.LastIndexOf(" · ", StringComparison.Ordinal)]
+        : DisplayName;
     public string StartBit => Signal.StartBit.ToString();
     public string BitLength => Signal.BitLength.ToString();
     public string Order => Signal.Intel ? "Intel" : "Motorola";
