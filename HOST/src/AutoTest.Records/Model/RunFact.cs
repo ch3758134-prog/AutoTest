@@ -79,10 +79,25 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
     public string? AdditionalResultsJson { get; init; }
     public bool? ShowEvidence { get; init; }
     public RunSignalProvenance? SignalProvenance { get; init; }
+    /// <summary>
+    /// Explicit P0 proof class for a direct, successful DBC ECU assertion.
+    /// Null for reads, pure literals, legacy rows and unsupported derived assertions.
+    /// This is not a claim that ArtifactRepository alone proves physical provenance.
+    /// </summary>
+    public string? JudgementEvidenceKind { get; init; }
 
     public void Validate()
     {
         SignalProvenance?.Validate();
+        if (JudgementEvidenceKind is not null &&
+            (JudgementEvidenceKind != "DirectDbcSignal" ||
+             StepOccurrenceId is null || CaseAttemptId is null ||
+             Phase != "Test" || Disposition != "Completed" ||
+             SignalStatus != "Valid" || SignalProvenance is null ||
+             Evidence.IsDefaultOrEmpty ||
+             (Quality is not (AutoTest.Core.EvidenceQuality.HostObserved or
+                 AutoTest.Core.EvidenceQuality.DirectMeasured))))
+            throw new InvalidDataException("A direct ECU judgement requires its own valid, evidenced DBC occurrence.");
         if (StepOccurrenceId is not null &&
             (StartedUtc is null || CompletedUtc is null || Duration is null ||
                 Phase is null || string.IsNullOrWhiteSpace(ExecutionPath)))
