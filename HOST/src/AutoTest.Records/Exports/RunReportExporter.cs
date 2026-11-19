@@ -230,6 +230,7 @@ public sealed class RunReportExporter
                 .Append(" 个证据 ID 未绑定可验证的归档附件；这些 ID 不能作为完整原始 CAN/DBC 证据。</p>");
         html.Append("<h2>逐步执行事实</h2><table><thead><tr><th>StepId / Occurrence</th><th>阶段 / 循环</th><th>结果 / 质量</th><th>预期</th><th>实测值 / 单位</th><th>时间范围 / 耗时</th><th>附加结果 / 备注</th></tr></thead><tbody>");
         foreach (var step in stepFacts)
+        {
             html.Append("<tr><td>").Append(H(step.Step.ToString())).Append("<div>Occurrence: ")
                 .Append(H(step.StepOccurrenceId?.ToString("D") ?? "Legacy (not recorded)"))
                 .Append("</div><div>Parent: ").Append(H(step.ParentOccurrenceId?.ToString("D")))
@@ -267,6 +268,7 @@ public sealed class RunReportExporter
                 .Append(step.Evidence.Any(e => !archived.Contains(e.Value))
                     ? "<div>证据归档：未验证</div>" : "")
                 .Append("</td></tr>");
+        }
         html.Append("</tbody></table><h2>证据附件</h2><table><thead><tr><th>类型</th><th>来源</th><th>完整性</th><th>SHA-256</th><th>相对路径</th></tr></thead><tbody>");
         foreach (var a in artifacts)
             html.Append("<tr><td>").Append(H(a.Kind)).Append("</td><td>").Append(H(a.Provenance))
