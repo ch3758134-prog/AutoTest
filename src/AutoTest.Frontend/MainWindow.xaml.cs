@@ -54,6 +54,12 @@ public partial class MainWindow : Window
         tool.Show();
     }
 
+    private void SaveDraft_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        _state.SaveNow();
+        e.Handled = true;
+    }
+
     private void AddCase_Click(object sender, RoutedEventArgs e)
     {
         var entry = new CaseDraft { Name = $"新测试用例 {(_state.Cases.Count + 1)}" };
@@ -91,7 +97,7 @@ public partial class MainWindow : Window
 
     private void FileSearch_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (FileSearchBox is null) return;
+        if (FileSearchBox is null || FileTree is null) return;
         var term = FileSearchBox.Text.Trim();
         foreach (var category in FileTree.Items)
         {
