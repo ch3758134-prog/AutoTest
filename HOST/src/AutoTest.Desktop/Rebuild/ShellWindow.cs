@@ -289,6 +289,8 @@ public sealed class MainWindow : Window
     }
     private void OnShortcut(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F9 && _activeTest is not null)
+        { _activeTest.ToggleBreakpoint(); e.Handled = true; return; }
         if (Keyboard.Modifiers != ModifierKeys.Control) return;
         if (e.Key == Key.S) { Persist(); e.Handled = true; }
         if (_activeTest is not null && e.Key == Key.Z) { _activeTest.Undo(); e.Handled = true; }
