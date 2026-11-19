@@ -150,7 +150,7 @@ public partial class DbcWorkbenchView : UserControl
         if (cell is null) return; // double-clicking a scrollbar/empty area is not Edit
         if (cell.Column.DisplayIndex == 0)
             BeginInlineRename(row, message: false);
-        else _viewModel.EditSignal();
+        else SignalTabs.SelectedIndex = 1;
         e.Handled = true;
     }
 
