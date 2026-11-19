@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -120,9 +121,22 @@ public sealed partial class ProjectWorkspaceService
                         Sha256 = hash,
                         Revision = checked(asset.Revision + 1)
                     };
+                    // Synchronize the canonical manifest dependency index with
+                    // the pinned call graph. This prevents deleting a flow still
+                    // referenced by another flow, while retaining other kinds
+                    // of dependencies and their original historical revisions.
+                    var preserved = current.Definition.Dependencies
+                        .Where(dep => dep.From != opened.AssetId ||
+                            !string.Equals(dep.Purpose, "public-flow-call",
+                                StringComparison.Ordinal))
+                        .ToImmutableArray();
+                    var linked = edited.References.Select(reference =>
+                        new AssetDependency(opened.AssetId, AssetId.Create(reference.AssetId),
+                            reference.Revision, "public-flow-call"));
                     var next = (current.Definition with
                     {
-                        Assets = current.Definition.Assets.SetItem(index, updated)
+                        Assets = current.Definition.Assets.SetItem(index, updated),
+                        Dependencies = preserved.AddRange(linked)
                     }).WithRevision().Validate();
                     await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
                     manifestAttempted = true;
