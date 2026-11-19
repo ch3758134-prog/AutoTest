@@ -311,6 +311,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ClearLogsCommand = new DelegateCommand(() => Logs.Clear());
         InitializeCanRows();
         InitializeKeyActions();
+        InitializeLedControls();
         _ = ReloadResourcesAsync();
     }
 
@@ -353,6 +354,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             IgnGpioLabel = "未读取";
             Clamp1GpioLabel = "未读取";
             Clamp2GpioLabel = "未读取";
+            ResetLedReadback();
             LastKeyAck = "未知：连接已改变，原状态不可继承";
             LastIgnAck = "未知：连接已改变，原状态不可继承";
             RaisePropertyChanged(nameof(IsConnected));
@@ -407,6 +409,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ReadIgnCommand?.RaiseCanExecuteChanged();
         SendClampCommand?.RaiseCanExecuteChanged();
         ReadClampsCommand?.RaiseCanExecuteChanged();
+        NotifyLedCommands();
         ReleaseKeysCommand?.RaiseCanExecuteChanged();
     }
 
@@ -707,7 +710,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         bool gpio = await _hardware.ReadIgnLevelAsync();
         IgnGpioLabel = gpio ? "GPIO 高" : "GPIO 低";
         LastIgnAck = "MCU GPIO 读回 " + (gpio ? "HIGH" : "LOW") +
-            "（不是 J1 C6 电压或 ECU IGN 反馈）";
+            "（不是 J1 C10 电压或 ECU IGN 反馈）";
         Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
             "IO IGN", "READ", "0x13", gpio ? "01" : "00", LastIgnAck));
     });
