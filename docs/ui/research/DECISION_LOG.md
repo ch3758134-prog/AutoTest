@@ -28,6 +28,17 @@
 | UX-H020 | 命令需明确目标、作用域、可用条件、副作用、撤销、错误与证据，右键非唯一入口 | R04 E38 | DESIGN_CANDIDATE | O01/O06/O07 |
 | UX-H021 | 编辑与实体发送分离，普通快捷键不直接执行高风险物理动作 | R04 E38 + BIZ-10 | UX_CANDIDATE / DOMAIN_SAFETY | O07/O08 |
 
+| UX-H022 | 全应用任务中心区分可后台编辑任务与不可绕过独占的实体长任务 | R05 E40,E41 | DESIGN_CANDIDATE | S01/S05/S10 |
+| UX-H023 | ResourceSaved/ResourceChanged 与未保存草稿互不替代，跨工具共享修订、显式确认 | R05 E45 | DESIGN_CANDIDATE / PROJECT_REVIEW | S02 |
+| UX-H024 | 请求/主控 ACK/ECU 响应/测量/判定/报告分层，状态与实际事件关联 | R05 E42,E43 + DOMAIN | DOMAIN_BOUNDARY / UI_CONTRACT | S03~S06 |
+| UX-H025 | CAN/报告大数据使用虚拟化和后台处理，避免 WPF 主线程阻塞 | R05 E49,E50 | ENGINEERING_DESIGN_CANDIDATE | S01/S09 |
+| UX-H026 | 多 DPI/多屏窗口、焦点/键盘/对比为产品质量要素，不是视觉补丁 | R05 E47,E48 | UX_QUALITY_CANDIDATE | S08 |
+
+## R05 阶段结论
+
+- 已提出跨工具状态和错误恢复合同、真实工位独占 UX 呈现与 S01~S10 验收脚本。
+- R06 将汇总为首轮真正可实现的 WPF 原型合同；未修改业务源码。
+
 ## R04 阶段结论
 
 - 已提交对象类型与交互类型映射、统一命令合同、草稿/保存区分、O01~O12 可操作任务。

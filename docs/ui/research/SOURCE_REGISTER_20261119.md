@@ -55,6 +55,22 @@
 | E38 | Windows 命令设计强调操作上下文、快捷键、菜单和 undo | https://learn.microsoft.com/en-us/windows/apps/design/basics/commanding-basics | WinUI 设计参考，WPF 控件须自行实现 |
 | E39 | WPF 数据绑定 ValidationRules / INotifyDataErrorInfo | https://learn.microsoft.com/en-us/dotnet/desktop/wpf/data | 框架支持事实，不能取代业务级交叉验证 |
 
+## R05 补充一手来源
+
+| ID | 来源内容 | URL | 边界 |
+|---|---|---|---|
+| E40 | NN/g：复杂应用中长任务、中断和重新进入工作状态 | https://www.nngroup.com/articles/designing-for-waits-and-interruptions/ | UX 研究建议，不是定量性能阈值 |
+| E41 | Windows 进度控件及不确定/确定性进度 | https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/progress-controls | WinUI 设计参考，WPF 实施需适配 |
+| E42 | NI TestStand 失败后的报告恢复/运行中报告落档 | https://www.ni.com/docs/en-US/bundle/teststand/page/supporting-post-failure-information-recovery.html | 厂商机制，不能照搬未证实的时间/性能约束 |
+| E43 | ecu.test Report Viewer 报告与步骤定位 | https://docs.tracetronic.com/help/ecu.test/en/Main-program/Reportviewer.html | 厂商报告工具 |
+| E44 | ecu.test 2026.3 Test execution 三阶段与报告 | https://docs.tracetronic.com/help/ecu.test/2026.3/en/Test-execution/index.html | 版本明确 |
+| E45 | Ignition 8.3 resource 保存、冲突解决 | https://www.docs.inductiveautomation.com/docs/8.3/platform/designer/saving-projects | 多人平台行为仅作冲突类比 |
+| E46 | ETAS INCA Experiment Environment 选变量/仪表、持续观察 | https://docs.etas.com/inca/docs/V7.6/EN/Subsystems/exp/Content/Topics/Experiment_Environment__Ove.htm | 厂商文档，不能据此定义 AutoTest 时钟 |
+| E47 | Microsoft Windows 无障碍、高 DPI、高对比、焦点 | https://learn.microsoft.com/en-us/windows/apps/design/accessibility/designing-inclusive-software | 系统 UX 基础 |
+| E48 | Windows 无障碍测试：Tab 顺序、键盘、缩放 | https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessibility-testing | 非业务功能合同 |
+| E49 | WPF DataGrid 有界容器与虚拟化 | https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/sizing-options-in-the-datagrid-control | WPF 架构注意 |
+| E50 | WPF VirtualizingStackPanel 容器回收 | https://learn.microsoft.com/en-us/dotnet/api/system.windows.controls.virtualizationmode?view=windowsdesktop-10.0 | 框架机制 |
+
 ## 源与判断分离方式
 
 - `FACT-E##`：源明言软件具有何种机制（例如 Portal View 自动进入 Project View）。

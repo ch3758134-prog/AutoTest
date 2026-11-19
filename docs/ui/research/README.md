@@ -16,7 +16,8 @@
 | R02 | [R02_WORKFLOW_AND_WORKSPACE_20261119.md](R02_WORKFLOW_AND_WORKSPACE_20261119.md) | 从成熟软件操作链推导产品会话、工程、文档、工具、运行与恢复架构 | RESEARCH_COMPLETE / DESIGN_CANDIDATE / USER_UX_NOT_VERIFIED |
 | R03 | [R03_ENTRY_AND_CONTINUITY_20261119.md](R03_ENTRY_AND_CONTINUITY_20261119.md) | 首次启动、恢复、跨任务工作区和交互状态模型 | RESEARCH_COMPLETE / UX_CANDIDATE |
 | R04 | [R04_OBJECT_INTERACTION_AND_COMMANDS_20261119.md](R04_OBJECT_INTERACTION_AND_COMMANDS_20261119.md) | 对象直接编辑、命令体系、撤销与校验模型 | RESEARCH_COMPLETE / UX_CANDIDATE |
-| R05 | 待启动 | 跨工作区状态与执行证据、后台任务、恢复/异常 | NOT_STARTED |
+| R05 | [R05_CROSS_TOOL_STATES_AND_RECOVERY_20261119.md](R05_CROSS_TOOL_STATES_AND_RECOVERY_20261119.md) | 跨工作区协作、真实状态、后台任务、异常与恢复 | RESEARCH_COMPLETE / UX_CANDIDATE |
+| R06 | 待启动 | 全产品可实施的 UX 规格、首轮 WPF 原型和验收合同 | NOT_STARTED |
 
 配套： [证据登记表](SOURCE_REGISTER_20261119.md) · [决策与待验假设](DECISION_LOG.md)
 
@@ -30,7 +31,7 @@
 
 ## 接手本系列的研究 AI 应如何工作
 
-1. 按顺序读本目录的 R01、R02、R03、R04、SOURCE_REGISTER、DECISION_LOG，再读项目管理最新合同。
+1. 按顺序读本目录的 R01、R02、R03、R04、R05、SOURCE_REGISTER、DECISION_LOG，再读项目管理最新合同。
 2. 分清已核实的一手产品事实、我们自己的设计候选和用户明确选择。
-3. 下轮在同一分支新增完整 `R05_*.md`，同步索引与决策状态，不覆盖历史研究。
+3. 下轮在同一分支新增完整 `R06_*.md`，同步索引与决策状态，不覆盖历史研究。
 4. 应优先研究行业成熟做法；只有真正无法由研究和原有明确事实决定的用户场景，再集中提问。不要要求用户决定控件布局或格式技术约束。
