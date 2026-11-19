@@ -66,6 +66,21 @@ public static class PublicFlowCodec
             flow.Parameters.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count() != flow.Parameters.Length)
             throw new FormatException("公共流程参数名称或类型不合法。");
+        // Every call in the STEP tree must be backed by exactly the pinned
+        // asset revision in this document. A missing References[] entry must
+        // not bypass transitive cycle and file-hash validation at save time.
+        foreach (var call in flow.Walk().Where(node => node.Type == "CallPublicFlow"))
+        {
+            if (!Guid.TryParse(call.Properties.GetValueOrDefault("flowAssetId", ""), out var id) ||
+                !int.TryParse(call.Properties.GetValueOrDefault("flowRevision", ""), out var revision) ||
+                revision < 1)
+                throw new FormatException("公共流程调用步骤缺少资源身份或修订：" + call.Name);
+            var sha = call.Properties.GetValueOrDefault("flowSha", "");
+            if (!flow.References.Any(reference => reference.AssetId == id &&
+                reference.Revision == revision &&
+                string.Equals(reference.Sha256, sha, StringComparison.OrdinalIgnoreCase)))
+                throw new FormatException("公共流程调用步骤的固定引用未登记：" + call.Name);
+        }
 
         // Use the existing tree validator for STRUCTURE only. Executability,
         // transitive references, hardware policy and recursion are run-preflight
