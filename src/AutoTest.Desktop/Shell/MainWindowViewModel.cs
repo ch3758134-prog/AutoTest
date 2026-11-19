@@ -1546,7 +1546,6 @@ public sealed class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.DbcKind => ImportDbcAsync(),
             ProjectWorkspaceService.FirmwareKind => ImportFirmwareAsync(),
             ProjectWorkspaceService.WaveKind => ImportWaveAsync(),
-            ProjectWorkspaceService.ControllerKind => CreateConfigurationAsync(ProjectWorkspaceService.ControllerKind),
             ProjectWorkspaceService.WaveSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
             ProjectWorkspaceService.FlashSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.FlashSettingsKind),
             ProjectWorkspaceService.ScanSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind),
@@ -1565,7 +1564,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (!HasProject) return;
         var display = kind switch
         {
-            ProjectWorkspaceService.ControllerKind => "控制器与按键配置",
+            ProjectWorkspaceService.ControllerKind => "旧控制器资源",
             ProjectWorkspaceService.WaveSettingsKind => "波形判定配置",
             ProjectWorkspaceService.FlashSettingsKind => "烧录配置",
             ProjectWorkspaceService.ScanSettingsKind => "扫码匹配配置",
