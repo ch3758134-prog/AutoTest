@@ -369,6 +369,11 @@ public sealed class RealTestRecordSessionTests
         Assert.Contains("\"evidenceArchiveIncomplete\": false", reportJson);
         var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(runRecord.RunId);
         Assert.Equal(RecordPersistenceState.Committed, history!.Persistence);
+        Assert.Equal("Completed", history.TerminalState);
+        Assert.Equal(Verdict.Pass, history.Verdict);
+        var onlyJudgement = Assert.Single(await fixture.Database.ReadStepFactsAsync(runRecord.RunId));
+        Assert.Equal("DirectDbcSignal", onlyJudgement.JudgementEvidenceKind);
+        Assert.Contains("DirectDbcSignal", reportJson);
     }
 
     [Fact]
@@ -537,5 +542,166 @@ public sealed class RealTestRecordSessionTests
         Assert.Equal(unchanged, TestDocumentCodec.Serialize(
             TestDocumentCodec.Deserialize(unchanged)));
     }
+
+    private static PreparedTestPlan ReadAndExpectPlan(TestTargetMapping mapping, string left)
+    {
+        var read = StepNode.Create("Read")
+            .WithProperty("target", mapping.Name)
+            .WithProperty("variable", "observed")
+            .WithProperty("mode", "Latest")
+            .WithProperty("timeoutMs", "100")
+            .WithProperty("maxAgeMs", "100");
+        var expect = StepNode.Create("Expect")
+            .WithProperty("left", left)
+            .WithProperty("operator", "==")
+            .WithProperty("right", left == "$observed" ? "2" : "1");
+        var doc = TestDocument.Create("B-01 synthetic mixed proof") with
+        {
+            Mappings = ImmutableArray.Create(mapping)
+        };
+        doc = doc with { Phases = doc.Phases.SetItem(TestPhase.Test,
+            ImmutableArray.Create(read, expect)) };
+        var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        return plan;
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("$observed")]
+    public async Task UnrelatedValidReadDoesNotProveAnExpectJudgement(string operand)
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var plan = ReadAndExpectPlan(mapping, operand);
+        var record = fixture.Record(plan);
+        // Synthetic byte attachment deliberately makes the *old* global Any()
+        // pass. Only the actual deciding occurrence must count after B-01.
+        var finalizer = new EvidenceFinalizer(fixture.Writer, fixture.Artifacts,
+            sample.Observation!.Evidence);
+        var done = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports,
+            finalizer).ExecuteAsync(
+                new RealRunCoordinator(new Signals(sample), new Actions(), new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Passed, done.Result.Verdict);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.NotNull(history);
+        Assert.Equal("Unknown", history.TerminalState);
+        Assert.Equal(Verdict.Inconclusive, history.Verdict);
+        Assert.Equal("EVIDENCE_GATE_NOT_MET", history.FailureReason);
+        var facts = await fixture.Database.ReadStepFactsAsync(record.RunId);
+        Assert.Equal(2, facts.Length);
+        Assert.Contains(facts, f => f.SignalStatus == "Valid" &&
+            f.Evidence.Length == 1 && f.JudgementEvidenceKind is null);
+        Assert.Contains(facts, f => f.Disposition == "Completed" &&
+            f.Evidence.IsEmpty && f.JudgementEvidenceKind is null);
+        var json = await File.ReadAllTextAsync(done.Reports.JsonPath);
+        Assert.Contains("EVIDENCE_GATE_NOT_MET", json);
+        Assert.DoesNotContain("\\"judgementEvidenceKind\\": \\"DirectDbcSignal\\"", json);
+    }
+
+    [Fact]
+    public async Task DirectAssertSignalDoesNotLaunderAdditionalLiteralExpect()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var direct = StepNode.Create("AssertSignal")
+            .WithProperty("target", mapping.Name)
+            .WithProperty("operator", "==")
+            .WithProperty("expected", "2")
+            .WithProperty("timeoutMs", "100");
+        var unrelated = StepNode.Create("Expect")
+            .WithProperty("left", "1").WithProperty("operator", "==")
+            .WithProperty("right", "1");
+        var doc = TestDocument.Create("B-01 all assertions must be causal") with
+        {
+            Mappings = ImmutableArray.Create(mapping)
+        };
+        doc = doc with { Phases = doc.Phases.SetItem(TestPhase.Test,
+            ImmutableArray.Create(direct, unrelated)) };
+        var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        var record = fixture.Record(plan);
+        var finalizer = new EvidenceFinalizer(fixture.Writer, fixture.Artifacts,
+            sample.Observation!.Evidence);
+        var done = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports,
+            finalizer).ExecuteAsync(
+                new RealRunCoordinator(new Signals(sample), new Actions(), new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Passed, done.Result.Verdict);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.Equal("Unknown", history!.TerminalState);
+        Assert.Equal(Verdict.Inconclusive, history.Verdict);
+        var rows = await fixture.Database.ReadStepFactsAsync(record.RunId);
+        Assert.Contains(rows, f => f.Step == direct.Id &&
+            f.JudgementEvidenceKind == "DirectDbcSignal");
+        Assert.Contains(rows, f => f.Step == unrelated.Id &&
+            f.JudgementEvidenceKind is null);
+    }
+
+    [Fact]
+    public async Task DirectWaitUntilIsEligibleWithItsOwnPinnedSignalAndArchivedEvidence()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var waiting = StepNode.Create("WaitUntil")
+            .WithProperty("target", mapping.Name)
+            .WithProperty("variable", "observed")
+            .WithProperty("operator", "==")
+            .WithProperty("expected", "2")
+            .WithProperty("timeoutMs", "100");
+        var doc = TestDocument.Create("DirectWaitUntil") with
+        {
+            Mappings = ImmutableArray.Create(mapping)
+        };
+        doc = doc with { Phases = doc.Phases.SetItem(TestPhase.Test,
+            ImmutableArray.Create(waiting)) };
+        var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        var record = fixture.Record(plan);
+        var finalizer = new EvidenceFinalizer(fixture.Writer, fixture.Artifacts,
+            sample.Observation!.Evidence);
+        var done = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports,
+            finalizer).ExecuteAsync(
+                new RealRunCoordinator(new Signals(sample), new Actions(), new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Passed, done.Result.Verdict);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.Equal("Completed", history!.TerminalState);
+        Assert.Equal(Verdict.Pass, history.Verdict);
+        var row = Assert.Single(await fixture.Database.ReadStepFactsAsync(record.RunId));
+        Assert.Equal(waiting.Id, row.Step);
+        Assert.Equal("DirectDbcSignal", row.JudgementEvidenceKind);
+        Assert.Single(row.Evidence);
+        Assert.Equal(sample.Observation.Evidence, row.Evidence[0]);
+    }
+
+    [Fact]
+    public async Task MismatchedDbcSignalCanNeverBecomeCausalProof()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var bad = sample.Observation! with
+        {
+            Signal = sample.Observation!.Signal with { FrameId = 0x456 }
+        };
+        var wrong = new TestSignalResult(TestSignalStatus.Valid, bad,
+            "SYNTHETIC_WRONG_FRAME");
+        var plan = Plan(mapping, "2");
+        var record = fixture.Record(plan);
+        var finalizer = new EvidenceFinalizer(fixture.Writer, fixture.Artifacts,
+            bad.Evidence);
+        var done = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports,
+            finalizer).ExecuteAsync(
+                new RealRunCoordinator(new Signals(wrong), new Actions(), new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Inconclusive, done.Result.Verdict);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.NotEqual(Verdict.Pass, history!.Verdict);
+        var row = Assert.Single(await fixture.Database.ReadStepFactsAsync(record.RunId));
+        Assert.Null(row.JudgementEvidenceKind);
+        Assert.Equal("DBC_SNAPSHOT_MISMATCH", row.FailureCode);
+    }
+
 
 }
