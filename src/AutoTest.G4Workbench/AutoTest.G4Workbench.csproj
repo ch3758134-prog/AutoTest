@@ -8,6 +8,7 @@
   <ItemGroup>
     <!-- One canonical Desktop WPF shell and one domain authoring model. -->
     <PackageReference Include="Prism.DryIoc" />
+    <PackageReference Include="WPF-UI" />
     <ProjectReference Include="../AutoTest.Desktop/AutoTest.Desktop.csproj" />
   </ItemGroup>
 </Project>
