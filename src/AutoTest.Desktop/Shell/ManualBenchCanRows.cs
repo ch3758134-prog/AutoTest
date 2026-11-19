@@ -14,7 +14,7 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Shell;
 
-/// <summary>Real manual CAN0 transmission list, kept apart from KEY_SIM/CAN1 and TEST execution.</summary>
+/// <summary>Real ECU CAN transmission list, isolated from KEY CAN and TEST execution.</summary>
 public sealed partial class ManualBenchViewModel
 {
     public sealed class BenchCanRow : BindableBase
@@ -261,7 +261,7 @@ public sealed partial class ManualBenchViewModel
         var chosen = single is null ? CanSendRows.Where(row => row.Included).ToArray() :
             CanSendRows.Contains(single) ? new[] { single } : Array.Empty<BenchCanRow>();
         if (chosen.Length is < 1 or > 32)
-            throw new InvalidOperationException("请选择 1～32 条 CAN0 报文。");
+            throw new InvalidOperationException("请选择 1～32 条 ECU CAN 报文。");
         var entries = chosen.Select(row =>
         {
             // Firmware's existing 0x50/51/52/53 scheduler is hard-wired to
@@ -271,8 +271,8 @@ public sealed partial class ManualBenchViewModel
             // CAN0 scheduling contract is available.
             if (row.IsPeriodic && single is null)
                 throw new InvalidOperationException(
-                    "手动台架的 ECU CAN0 周期发送暂不可用：当前主控固件 0x50 广播调度器" +
-                    "固定从物理 CAN1 发出（现接 KEY_SIM），不能用于 ECU CAN0。请勿绕过检查。");
+                    "手动台架周期发送暂不可用：固件 0x50 广播功能连接 KEY CAN（B1/B11），" +
+                    "不能用于 ECU CAN（A1/A12）。");
             var frame = row.BuildFrame();
             int period = 0;
             if (row.IsPeriodic && single is null && (!int.TryParse(row.PeriodText, NumberStyles.None,
@@ -314,12 +314,12 @@ public sealed partial class ManualBenchViewModel
     }
 
     private async Task StartCanRowsAsync(BenchCanRow? single = null) => await Execute(
-        single is null ? "CAN0 多报文" : "CAN0 单帧", async () =>
+        single is null ? "ECU CAN 多报文" : "ECU CAN 单帧", async () =>
     {
         if (!_hardware.IsConnected)
             throw new IOException("USB 未连接，请先点击顶部“连接”。");
         if (IsCanBatchRunning)
-            throw new InvalidOperationException("CAN0 正在发送，请先停止当前任务。");
+            throw new InvalidOperationException("ECU CAN 正在发送，请先停止当前任务。");
         var prepared = PrepareCanRows(single);
         foreach (var row in prepared) await VerifyCanRowDbcFreshAsync(row.Row);
         var fingerprint = BatchFingerprint(prepared);
@@ -366,7 +366,7 @@ public sealed partial class ManualBenchViewModel
                         entry.Row.Result = "已发送 " + entry.Row.Sent + " 次 · USB ACK";
                         if (entry.Row.Sent == 1)
                             Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-                                "CAN0 DUT", "TX ACK", "0x" + entry.Frame.Id.ToString("X"),
+                                "ECU CAN", "TX ACK", "0x" + entry.Frame.Id.ToString("X"),
                                 Convert.ToHexString(entry.Frame.Data.AsSpan()),
                                 entry.Row.Name + "：主控 ACK 并非 DUT 应答"));
                     }
@@ -378,9 +378,9 @@ public sealed partial class ManualBenchViewModel
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            Status = "CAN0 多报文异常终止：" + ex.Message;
+            Status = "ECU CAN 多报文异常终止：" + ex.Message;
             Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-                "CAN0 DUT", "ERROR", "", "", Status));
+                "ECU CAN", "ERROR", "", "", Status));
             stop.Cancel();
         }
         finally
@@ -401,7 +401,7 @@ public sealed partial class ManualBenchViewModel
         }
     }
 
-    /// <summary>Window closing waits for all CAN0 writers to stop and for the fence to revoke.</summary>
+    /// <summary>Window closing waits for all ECU CAN writers to stop and for the fence to revoke.</summary>
     public Task StopCanBatchForCloseAsync() => StopCanRowsAsync();
 
     private async Task StopCanRowsAsync()
@@ -410,6 +410,6 @@ public sealed partial class ManualBenchViewModel
         if (stop is null) return;
         stop.Cancel();
         if (_canBatchTask is not null) await _canBatchTask;
-        Status = "CAN0 多报文任务已停止。";
+        Status = "ECU CAN 多报文任务已停止。";
     }
 }
