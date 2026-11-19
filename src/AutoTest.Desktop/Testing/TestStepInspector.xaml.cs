@@ -95,12 +95,12 @@ public partial class TestStepInspector : UserControl
     private static readonly IReadOnlyList<TestActionOption> Options =
     [
         new("can", "外部操作", "发送 CAN 报文", "Write", "can",
-            "选 DBC 报文后逐个编辑物理信号；没有 DBC 可直接填写 CAN1 原始帧。"),
+            "选择 DBC 报文并填写信号值；也可发送原始帧。"),
         new("key", "外部操作", "按键动作", "Write", "button",
             "可使用已配置功能按键，或直接操作 KEY_SIM 的 20 个电阻开关。"),
         new("ign", "外部操作", "切换 IGN", "Write", "ign", "切换固定台架的 IGN 输出。"),
         new("stop-can", "外部操作", "停止全部周期 CAN", "CanStopPeriodic", "",
-            "立即停止当前测试用例中的所有 CAN1 周期发送，不改变已经发送过的 ECU 数据。"),
+            "停止本次测试启动的 ECU CAN 周期发送。"),
         new("read", "读取与观察", "读取 CAN 信号", "Read", "signal",
             "通过已导入的 DBC 选择信号，将实际读取值保存到变量，不自动判定。"),
         new("wait-signal", "读取与观察", "等待信号条件", "WaitUntil", "signal",
@@ -108,7 +108,7 @@ public partial class TestStepInspector : UserControl
         new("assert-signal", "分析与判断", "CAN 信号判定", "AssertSignal", "signal",
             "选择 DBC 信号及目标值，规定时间内达到条件判定通过；超时且未匹配判定失败，完全无有效数据则无法判定。"),
         new("wave-start", "读取与观察", "开始波形采集", "WaveStart", "signal",
-            "从共享 CAN1/DBC 信号流采集真实时序数据。"),
+            "从 ECU CAN 采集波形信号。"),
         new("wave-stop", "读取与观察", "结束波形采集", "WaveStop", "",
             "停止指定采集，保存测量证据。"),
         new("wave-analyze", "分析与判断", "分析波形", "WaveAnalyze", "wave",
@@ -227,7 +227,7 @@ public partial class TestStepInspector : UserControl
         if (editing is null)
             throw new ArgumentNullException(nameof(editing),
                 "先从中央步骤列表选择操作类型，不能在 Inspector 内直接新增。");
-        Heading.Text = "步骤属性";
+        Heading.Text = "编辑步骤";
         StepEnabledInput.IsChecked = StepExecutionPolicy.IsEnabled(editing);
         StepActionsPanel.Visibility = Visibility.Visible;
         ConfirmButton.Content = "应用属性";
@@ -331,7 +331,7 @@ public partial class TestStepInspector : UserControl
                     ? "旧版 CAN 解析：核对目标 DBC 信号、比较值和超时后，点击应用属性，将转换为正式的信号判定。"
                     : _legacySourceType == "KeySet"
                     ? "旧版按键：核对 20 路 KEY 开关组合和持续时间。应用后将转为真实 KEY_SIM 操作，状态保持到下一次按键操作或测试清理。"
-                    : "旧版 CAN 发送：必须确认目标报文、各信号物理值及周期方式。应用后使用真实 CAN1 发送。")
+                    : "旧版 CAN 发送：核对报文、信号值和周期后应用。")
                 : "此步骤来自旧测试文件，尚未验证，不能执行。" +
                   " 原始记录：" + node.Properties.GetValueOrDefault("canId", "未知报文") +
                   "；信号：" + node.Properties.GetValueOrDefault("displayName", "待核对") +
@@ -465,8 +465,8 @@ public partial class TestStepInspector : UserControl
         };
         foreach (var item in _catalog.Where(x => Eligible(x.Mapping))) _allTargets.Add(item);
         if (action.TargetCategory == "can")
-            _allTargets.Add(new MappingChoice("ECU CAN0 / 原始报文（无需 DBC）",
-                new TestTargetMapping("原始 CAN1", TestTargetKind.RawCan, default, 0, "",
+            _allTargets.Add(new MappingChoice("ECU CAN / 原始报文（无需 DBC）",
+                new TestTargetMapping("原始 ECU CAN", TestTargetKind.RawCan, default, 0, "",
                     BusRole.DutCan, 0)));
         else if (action.TargetCategory == "button")
             _allTargets.Add(new MappingChoice("KEY_SIM / 直接操作 20 Key（高级）",
@@ -479,7 +479,7 @@ public partial class TestStepInspector : UserControl
                     mapping));
         _targetInstruction = action.TargetCategory switch
         {
-            "can" => "选 DBC 报文可直接编辑所有信号；没有 DBC 可选原始 CAN1 报文。发送只会在明确运行授权后发生。",
+            "can" => "",
             "button" => "推荐在 ECU 输入配置中先定义功能按键；也可以直接选择底层 20 Key 操作。",
             "signal" => "需要 DBC 信号。若列表为空，请先在工程资源中导入 DBC，再创建该步骤。",
             "wave" => "分析方案是可选项；若不选，请在下方填写已建立的命名参考。",
@@ -499,7 +499,8 @@ public partial class TestStepInspector : UserControl
                 TestTargetKind.Ignition))
             _targetRevisionWarning = "  注意：原步骤绑定的资源版本不在当前 TCF/DBC 中，"
                 + "软件不会自动换版本。请确认并显式重新选择有效对象。";
-        TargetHint.Text = _targetInstruction + _targetRevisionWarning;
+        TargetHint.Text = _targetRevisionWarning.Trim();
+        TargetHint.Visibility = TargetHint.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void TargetSearch_Changed(object sender, TextChangedEventArgs e)
@@ -572,8 +573,9 @@ public partial class TestStepInspector : UserControl
             (_convertedLegacy ? null : AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
         UpdateTarget();
         TargetHint.Text = AvailableTargets.Count == 0
-            ? "没有匹配的对象。请调整搜索词，或先在工程中导入相应 DBC / 功能配置。"
-            : _targetInstruction + _targetRevisionWarning;
+            ? "没有可用对象：请检查搜索内容或导入 DBC。"
+            : _targetRevisionWarning.Trim();
+        TargetHint.Visibility = TargetHint.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void TargetPicker_Changed(object sender, SelectionChangedEventArgs e)
@@ -853,7 +855,7 @@ public partial class TestStepInspector : UserControl
                     if (id > (ext ? 0x1FFFFFFFu : 0x7FFu))
                         throw new ArgumentException("CAN ID 超出所选标准/扩展帧范围。");
                     var bytes = ParseHex(RawCanDataInput.Text, 8);
-                    mapping = mapping with { Name = "RAW-CAN1-0x" + id.ToString("X") +
+                    mapping = mapping with { Name = "RAW-ECU-CAN-0x" + id.ToString("X") +
                         (ext ? "-EXT" : "-STD"), CanId = id, Extended = ext };
                     node = node.WithProperty("value", "HEX:" + Convert.ToHexString(bytes));
                 }
