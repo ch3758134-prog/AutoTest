@@ -450,9 +450,29 @@ public sealed class TestEditorViewModel : BindableBase
                 Array.Empty<MappingChoice>(), _transaction.Current.Mappings.ToArray(), false));
             return;
         }
-        if (!_applyingInspector)
-            InspectorLoading?.Invoke(original.Name);
-        var choices = await AvailableObjectsAsync();
+        // The inspector must remain responsive when a user selects IGN, KEY,
+        // Wait, a control-flow node or a public-flow call. Resolving all DBC
+        // messages and signals for every click makes ordinary authoring look hung.
+        // Resource-heavy catalog loading is restricted to steps that actually
+        // select DBC signals, CAN messages or wave analysis profiles.
+        var mappedTargetName = original.Properties.GetValueOrDefault("target", "");
+        var mappedTarget = _transaction.Current.Mappings.FirstOrDefault(x =>
+            string.Equals(x.Name, mappedTargetName, StringComparison.OrdinalIgnoreCase));
+        var requiresCatalog = initialActionKey is "can" or "read" or "wait-signal" or
+            "wave-start" or "wave-analyze" or "can-wait" or "can-send" or "wave-capture" or
+            "wave-compare" ||
+            original.Type is "Read" or "WaitUntil" or "AssertSignal" or "CanSend" or
+                "CanWait" or "WaveStart" or "WaveAnalyze" or "WaveCapture" or "WaveCompare" ||
+            (original.Type == "Write" && initialActionKey is not ("ign" or "key") &&
+             mappedTarget?.Kind is not (TestTargetKind.Ignition or TestTargetKind.RawKey or
+                 TestTargetKind.Button));
+        IReadOnlyList<MappingChoice> choices;
+        if (requiresCatalog)
+        {
+            if (!_applyingInspector) InspectorLoading?.Invoke(original.Name);
+            choices = await AvailableObjectsAsync();
+        }
+        else choices = Array.Empty<MappingChoice>();
         if (!_interaction.IsCurrentInspectorRequest(request)) return;
         var insertion = _pendingInsertion;
         if (insertion is null && _inspectorAdding && _selectedItem is { } selected &&
