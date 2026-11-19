@@ -179,7 +179,7 @@ public sealed class RealTestRecordSessionTests
         Assert.Contains(assertions[1].StepOccurrenceId!.Value.ToString("D"), html);
         Assert.Contains("证据归档不完整", html);
         var json = await File.ReadAllTextAsync(completed.Reports.JsonPath);
-        Assert.Contains("\\"evidenceArchiveIncomplete\\": true", json);
+        Assert.Contains("\"evidenceArchiveIncomplete\": true", json);
     }
 
     [Theory]
