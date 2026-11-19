@@ -314,6 +314,15 @@
      </TabItem>
      <TabItem Header="编辑 · 工程文件">
    <Grid>
+    <Grid.Style>
+     <Style TargetType="{x:Type Grid}">
+      <Style.Triggers>
+       <DataTrigger Binding="{Binding CurrentRunCase.IsBusy}" Value="True">
+        <Setter Property="IsEnabled" Value="False"/>
+       </DataTrigger>
+      </Style.Triggers>
+     </Style>
+    </Grid.Style>
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <Border Grid.Row="0" Height="35" Background="#EDF2F8"
      BorderBrush="#DBE3ED" BorderThickness="0,0,0,1"
