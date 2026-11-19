@@ -29,11 +29,11 @@ public static class UdsOperationTemplates
     public static IReadOnlyList<UdsOperationTemplate> All { get; } =
     [
         new(0x22,"读取数据标识符 (DID)","ECU 信息","DID（两字节 HEX）","其他 DID（可选）",
-            "F190","","选择或填写 ECU 支持的 DID。F190 常用作 VIN，但不保证目标 ECU 实现。",true),
+            "","","填写 ECU 诊断规范中的 DID（两字节），可额外读取其他 DID。F190 常用于 VIN，但不假设每台 ECU 支持。",true),
         new(0x19,"读取故障码 (DTC)","故障诊断","子功能（HEX）","子功能参数（HEX）",
             "02","FF","02=按状态掩码查询 DTC，FF=状态掩码；其他子功能须依 ECU 规范编辑。",true),
         new(0x24,"读取 DID 缩放信息","ECU 信息","DID（两字节 HEX）","其他参数（HEX）",
-            "F190","","根据 ECU 规范确定 DID 是否支持缩放信息。",true),
+            "","","根据 ECU 规范确定 DID 是否支持缩放信息。",true),
         new(0x23,"读取内存地址","高级诊断","地址及长度格式等完整参数（HEX）","追加数据（HEX）",
             "","", "0x23 需按 ECU 规范填写地址与长度格式；不会自动猜测内存布局。",true),
         new(0x10,"切换诊断会话","诊断会话","会话子功能（HEX）","追加数据（HEX）",

@@ -1,176 +1,25 @@
-# AutoTest · UDS Lab (L1 candidate)
+# AutoTest UDS 诊断工具 · L3 简化版
 
-Branch: feature/uds-lab-20261118. Independent WPF program `AutoTest.UdsLab.exe`; does not modify G4 TEST or FlashLab.
+本程序用于同一真实 ECU 上：**编辑 UDS 请求 → 发送 → 查看真实响应 → 修改重发**，不是复杂的工程管理系统。
 
-## Build and start on Windows
+## 使用方式
 
-```powershell
-dotnet build src/AutoTest.UdsLab/AutoTest.UdsLab.csproj -c Debug
-dotnet run --project src/AutoTest.UdsLab/AutoTest.UdsLab.csproj -c Debug
-```
+1. 展开顶部通信参数，填写目标 ECU 诊断请求/响应 CAN ID 和 P2/P2*，连接实际主控板。USB Ping 不证明 ECU 在线。
+2. 左侧始终是请求编辑器。选择 SID 服务并填写 DID/子功能/数据，自动生成实际 UDS PDU；切到“原始 HEX”时直接编辑请求字节，无需创建操作、命名或先保存。
+3. 点击发送/重发。右侧请求/响应记录逐条累积，点击旧记录查看 NRC、解析结果、耗时和原始 PDU；“回填到左侧”可继续修改重发。
+4. 可选收藏请求、保存/打开诊断配置 JSON、导出真实证据，底层 CAN/ISO-TP/USB 日志按需展开。
+5. Ctrl+Enter 发送，Ctrl+S 保存配置。不生成虚拟 ECU 响应或伪造成功。
 
-Requires the solution's .NET 10 SDK and a recognized real main-control board with WinUSB driver. **This commit has not been Windows-built, launched, or verified with a real ECU.** The project owner/Codex should report build and live results separately.
+## 当前技术限制
 
-## Usage
+- 共享真实 UDS Client/DEVICE 通路仅开放 0x19、0x22、0x23、0x24 只读请求；0x10 会话切换、0x3E TesterPresent、清故障、复位、I/O 控制、写入、例程、烧录等尚未获实体发送许可。原始 HEX 不得越权。
+- WinUSB PhysicalCommandFence 仍要求对每一帧 CAN TX 单独人工准确输入授权文本，包括 ISO-TP 流控；此限制会阻碍无人值守连续通信与严格多帧时序。本次没有绕过或修改 DEVICE 门禁。受限事务授权方案见 docs/uds-lab/UDS-L12-CONTINUOUS-INTERACTION-DEVICE-REVIEW.md，待项目管理及 DEVICE 批准。
+- ECU 专有 DID、故障名称和参数格式需要 ECU 规范或用户定义；不能宣称自动发现全部诊断能力。
+- 超时、取消、失联或不确定结果后须重新建立链路。
+- 删除旧 L1/L2 诊断操作管理、序列、固定观察与旧 partial UI；JSON 中既有 Actions 可作为收藏导入。
 
-1. Do **not** run AutoTest.Desktop, FlashLab, or any other USB/CAN controller program at the same time.
-2. Enter the ECU diagnostic request/response CAN IDs (hex; do not guess from a different ECU), P2 and P2*. ISO-TP **Normal** addressing on DUT external connector is currently supported.
-3. Connect. A read-only USB Ping and ISO-TP receive subscription are started; no ECU diagnostic requests are sent automatically.
-4. Add/edit/copy a named diagnostic action. Enter the UDS **PDU** only (e.g. `22 F1 90` **if your ECU actually supports this DID**), optional response prefix, decoding offset/type/scale/unit. The included VIN action is **an unverified example**, not a claim of support.
-5. Select "Execute once". Only approved read-only services 0x19/0x22/0x23/0x24 pass the L1 UI preflight and shared UdsClient read-only gate. In particular, 0x2A is disabled because it can activate ongoing ECU behavior. A human must type the full exact 15-byte CAN frame authorization string for **every** physical CAN TX, including ISO-TP flow-control frames. The WinUSB PhysicalCommandFence enforces this token and consumes it before writing.
-6. Inspect status, raw response, decoded value, negative NRC and trace. Preserve the exported JSON evidence when reporting issues.
-7. Cancelled, interrupted, uncertain or protocol-exception sessions require disconnect/reconnect before another request, to avoid treating stale ISO-TP bytes as new ECU responses.
-8. Save/open the diagnostic workspace JSON. It is a **diagnostic action collection**, not a TEST StepNode document or ODX import.
+## 本地验证分工
 
-## Current technical limits
+分支 feature/uds-lab-20261118；工程 src/AutoTest.UdsLab/AutoTest.UdsLab.csproj。网页端专业 AI 负责 GitHub 代码，Codex 只负责拉取、Windows 编译和启动，真实 ECU 操作由用户实测。
 
-- Manual exact-frame confirmation is deliberately cumbersome: it is the **existing hardware safety contract**, not an AutoTest UdsLab invention. Multi-frame interaction and tight ECU timing can fail while waiting for consent, especially for a flow-control response. Do not silently auto-authorize expected frames. A reviewed, bounded read-only UDS operation-level physical permit must be designed with DEVICE/PM before smooth multi-frame/continuous monitoring can be offered.
-- The shared `UdsClient` does not yet offer managed diagnostic sessions, state changing SIDs, ECU reset, security access, writes, routine execution, continuous polling, ODX import, or arbitrary unknown SIDs. Never bypass that with the raw editor.
-- 0x22 positive DID echo is checked as currently implemented for simple DID requests; multi-DID composite decoding and a complete DTC/ODX parser are not implemented. Custom decoder currently supports ASCII, uint8, uint16 LE/BE, raw hex; offsets are into the full response PDU.
-- The HOST CAN transmit lease lasts 2 minutes per lease; L1.2 renews it **between requests only**, reestablishing the ISO-TP RX subscription without sending UDS. This is not ECU diagnostic-session renewal or TesterPresent. A cancelled/uncertain request still requires disconnect/reconnect. USB ACK is **not** proof of ECU reception.
-- The screenshot-like UI and error/event traces do **not** constitute field pass. Live-service matrix and ECU-specific IDs must be recorded from the real test.
-
-## Scope / governance
-
-- Source: `src/AutoTest.UdsLab/` and a .sln project entry only.
-- Reuses `src/AutoTest.Specialists/Uds` and `src/AutoTest.Devices` unchanged.
-- No mock device success path, no duplicate CAN/ISO-TP/UDS interpreter, no G4 step edits, no FLASH image/programming.
-- Contract: `docs/uds-lab/START_HERE.md`, management branch `Project_Management` -> `UDS-DEDICATED-BRANCH-AND-REAL-LAB-20261118.md`.
-- Candidate status: **SOURCE_IMPLEMENTED / WINDOWS_BUILD_NOT_RUN / FIELD_NOT_VERIFIED**.
-
-## L1.1 — service-driven interaction and manual sequence candidate
-
-The first screenshot from field UI review exposed a usability defect: the L1 window
-required users to enter SID/DID/PDU by hand and did not offer an organized path
-for consecutive diagnostic operations. The revised *candidate* adds:
-
-- Create a named user operation directly from a built-in UDS service selection.
-  Currently includes DID read, DTC read, scaling read, memory read, session
-  control, TesterPresent, ECU reset, clear DTC, write DID, I/O control, routine,
-  security access, communication control, periodic identifier and DTC setting.
-- A structured editor with service-specific parameter labels and automatic
-  UDS PDU / expected-prefix construction. Advanced raw HEX editing is still
-  available, and raw requests do not silently get rewritten by the template.
-- A persistent (in-memory) manual sequence of user actions: add/remove actions,
-  invoke the next one, rotate the queue and keep the same connected ECU context.
-- A request/response history list that retains all attempted exchanges and lets
-  the user inspect a previous outcome without sending another request. Exchange
-  entries are included in the evidence JSON.
-- Diagnostic workspace JSON stores service-editor fields while remaining able
-  to load earlier L1 action documents. Still no proprietary DID database or
-  full DTC/ODX decoder.
-
-**This is not automatic continuous UDS communication.** The physical
-`PhysicalCommandFence` currently requires exact manual approval for **every**
-CAN frame, including flow-control frames. It cannot meet the timing and UX of
-automatic polling or multi-frame diagnostic sequences. The GUI is honest about
-this limitation; operation-level bounded authorization would require an explicit
-DEVICE/PM reviewed contract. No implicit token fabrication or fence bypass.
-
-Only the already approved read-only SID path is physically enabled. Templates
-for session control, write, routine, reset, security and other potentially
-state-changing services are **editing/inspection only**, not live ECU execution.
-The L1.1 source has not been Windows-built/ECU-validated until local Codex and
-the field user report results for this commit.
-
-## L1.2 — reviewed screenshot feedback: usable service selection and bounded interaction (pending real validation)
-
-The latest UDS specialist revision now implements:
-
-- Standard service templates and **Chinese subfunction presets** (e.g. 0x19 DTC count/list; 0x10 default/extended; 0x31 start/stop/results). OEM-specific DID/Routine IDs remain configurable by the human. Service selection automatically constructs request PDU and a basic expected response prefix. The raw HEX mode remains available.
-- Named operations, groups and a **saved ordered manual-interaction list**. One-click "execute once" performs a finite, serial pass through selected actions (at most 100); each request waits for its real final ECU response. A negative NRC, mismatch, timeout or user stop aborts the sequence. This is a diagnostic interaction convenience, **not** a parallel TEST executor.
-- A deliberately bounded **repeat single DID 0x22** command: 1000–60000 ms between final response and next request, up to 30 attempts or 90 seconds, no overlapping bus requests. All physical frames still require user confirmation under DEVICE's existing fence; therefore this is not unattended background polling.
-- One-click stop also closes the pending physical-frame consent dialog; cancellation does not imply any ECU operation was reversed, and stale ISO-TP data requires reconnect.
-- Host CAN lease expiry displayed; the UDS Lab automatically renews only that host-side lease between serialized requests. This **does not** switch ECU session or send TesterPresent.
-- ECU session status is evidence-based: USB/Ping does not identify the ECU diagnostic session; 0x10/0x50 response parsing exists for later approved use, but 0x10 and 0x3E remain physically prohibited.
-- Built-in 0x19/02 DTC 24-bit identifiers with status-mask text decoding; no invented OEM fault names. Request/response history is preserved and exported.
-- Default UI prioritizes direct Send/Stop, service params and editable operations; raw PDU/decoder is collapsed and the sequence controls are an optional expander so the action list is not crowded.
-
-### Physical restrictions / review dependency
-
-Exact user-typed one-shot CAN-frame authorization is still mandatory; the UDS specialist did **not** change `src/AutoTest.Devices/Usb/PhysicalCommandFence.cs` or auto-type tokens. Long ISO-TP multi-frame receiving may fail timing while a human is authorizing flow control. Meaningful unattended continuous polling and accepted 0x10/0x3E session maintenance **require DEVICE + project management review** of a tightly scoped diagnostic operation authorization. See `docs/uds-lab/UDS-L12-CONTINUOUS-INTERACTION-DEVICE-REVIEW.md`.
-
-### Codex verification and user live-test split
-
-```powershell
-dotnet build src/AutoTest.UdsLab/AutoTest.UdsLab.csproj -c Debug
-dotnet run --project src/AutoTest.UdsLab/AutoTest.UdsLab.csproj -c Debug --no-build
-```
-
-Only user-authorized real ECU tests establish FIELD_PASS. Codex should first check WPF launch, service composition, DTC decoding, action JSON save/open, sequence controls, real connect/disconnect (if hardware available), and that unapproved SIDs still cannot physically send. Do not run mock ECU or external CI. The branch is a **candidate until Windows build and real ECU evidence are returned**.
-
-## L2 UI rebuild — diagnostic console (field screenshot review)
-
-The screenshot review found that L1/L1.2 remained a configuration form and made users
-create or edit a named operation before they could communicate with an ECU. L2
-replaces that daily-use workflow, **without** rewriting USB, CAN, ISO-TP or UDS:
-
-1. **Quick UDS request is ready on launch** as an unsaved scratch action. Choose
-   a service, edit the DID/subfunction/parameters and send immediately after
-   connecting. No save, operation name or test step is a precondition. Sample
-   F190 is a standard example **not** a claim that a connected ECU implements it.
-2. **Actual request/response timeline is the center workspace**, not a bottom
-   secondary tab. Every real request attempt retains UTC, correlation, request,
-   response, outcome, decode and elapsed time. Selecting an earlier row inspects
-   evidence without sending anything.
-3. **Named actions are shortcuts** on the left: direct run, search, context
-   menu execute/edit/copy/delete and optional promotion of a quick request to
-   a named saved action. Editing and raw HEX decoding are collapsed.
-4. **Pinned observations** on the right only contain confirmed real ECU positive
-   responses; their displayed value/time update on subsequent exchanges with
-   the same operation name and exact request PDU. Pinning does not silently
-   issue CAN requests or fabricate a signal stream.
-5. **CAN addresses, P2/P2*** are moved into expandable connection settings,
-   but still validated before a real USB connection. Detailed USB/CAN event
-   traces are expandable, never replaced by decoded values.
-6. The previously available bounded manual sequence and repeated DID remain
-   as optional tools in a collapsed section; they are not the main interaction
-   path and never bypass the DEVICE physical gate.
-
-Do not confuse **source UI rebuilt** with Windows Build PASS, real-ECU validation
-or unrestricted continuous interaction. The L2 code has not been Windows-built
-or started by this contributor; local Codex should build/start from the **exact
-specialist branch HEAD**, report full build/XAML errors, verify quick request
-creation/selection/save/open/history/pinning/context menu, then hand real ECU
-send tests to the field user. No mock device, CI or main-branch changes.
-
-The existing per-frame exact typed physical authorization remains, including
-ISO-TP flow-control CAN TX; automatic repeated sessions can block or time out.
-Review the dedicated DEVICE authorization proposal before claiming unattended
-continuous diagnostics or state-changing 0x10/0x3E services.
-
-## L2.1 — Live edit + repeat debug UI correction
-
-The prior L2 screenshot exposed a mismatch with the owner's workflow:
-the center was mostly an empty history table, with a small request composer
-at the bottom and editing/response parsing behind a collapsed Expander.
-
-L2.1 corrects that behavior:
-
-- The **editable request is permanently visible in the upper center** and
-  the chronological request/response history is directly below it. Drag the
-  horizontal splitter to allocate height to either panel.
-- One selected saved diagnostic action immediately loads into the same editor,
-  without modal dialogs or edit/saving prerequisites. Name, group, service,
-  DID/subfunction, extra bytes, HEX request, expected prefix, decoder, offset,
-  scale and unit are available in this editing workflow. Response
-  options are **expanded by default**, not hidden.
-- Structured service parameters automatically compose a UDS PDU; selecting
-  "direct HEX edit" permits changes to the actual PDU without the service
-  template silently overwriting it. Changes are reflected in the request
-  used for **the next** Send/Resend, not any immutable previous exchange.
-- Sending can be repeated from the pinned top toolbar while retaining the
-  underlying ECU/USB context and complete, immutable real exchange history.
-  A request snapshots the current action, so in-flight user edits are not
-  retroactively applied to that transmission.
-- Saved action names and groups update visibly on the left as they are typed
-  (WPF INotifyPropertyChanged), instead of only after a focus change.
-- Shortcuts: Ctrl+Enter to send the current request (subject to real-device
-  preflight and physical consent), Ctrl+S to save the configuration.
-- Existing per-frame, exact user typed CAN authorization and service SID
-  restrictions are unchanged. This change does **not** approve state-changing
-  UDS services or claim unattended continuous monitoring.
-
-**Status:** GitHub specialist source candidate; awaiting local Windows Build,
-WPF launch, screenshot review and owner-authorized live ECU verification.
-Do not use mock tests or call static checks a successful ECU run.
+状态：SOURCE_CANDIDATE / WINDOWS_BUILD_PENDING / FIELD_PENDING。
