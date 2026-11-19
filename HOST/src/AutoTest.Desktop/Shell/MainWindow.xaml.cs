@@ -187,6 +187,13 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ShowToolsMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (ToolMenuButton.ContextMenu is not { } menu) return;
+        menu.PlacementTarget = ToolMenuButton;
+        menu.IsOpen = true;
+    }
+
     private void ShowOverview_Click(object sender, RoutedEventArgs e) => _viewModel.ShowOverview();
 
     private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
