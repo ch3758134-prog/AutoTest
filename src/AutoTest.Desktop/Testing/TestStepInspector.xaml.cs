@@ -97,7 +97,7 @@ public partial class TestStepInspector : UserControl
         new("can", "外部操作", "发送 CAN 报文", "Write", "can",
             "选择 DBC 报文并填写信号值；也可发送原始帧。"),
         new("key", "外部操作", "按键动作", "Write", "button",
-            "可使用已配置功能按键，或直接操作 KEY_SIM 的 20 个电阻开关。"),
+            "选择 KEY 组合与保持时间。"),
         new("ign", "外部操作", "切换 IGN", "Write", "ign", "切换固定台架的 IGN 输出。"),
         new("stop-can", "外部操作", "停止全部周期 CAN", "CanStopPeriodic", "",
             "停止本次测试启动的 ECU CAN 周期发送。"),
@@ -229,7 +229,7 @@ public partial class TestStepInspector : UserControl
                 "先从中央步骤列表选择操作类型，不能在 Inspector 内直接新增。");
         Heading.Text = "编辑步骤";
         StepEnabledInput.IsChecked = StepExecutionPolicy.IsEnabled(editing);
-        StepActionsPanel.Visibility = Visibility.Visible;
+        StepActionsPanel.Visibility = Visibility.Collapsed;
         ConfirmButton.Content = "应用属性";
         var mapping = boundMappings.FirstOrDefault(m =>
             m.Name == editing.Properties.GetValueOrDefault("target", ""));
@@ -469,7 +469,7 @@ public partial class TestStepInspector : UserControl
                 new TestTargetMapping("原始 ECU CAN", TestTargetKind.RawCan, default, 0, "",
                     BusRole.DutCan, 0)));
         else if (action.TargetCategory == "button")
-            _allTargets.Add(new MappingChoice("KEY_SIM / 直接操作 20 Key（高级）",
+            _allTargets.Add(new MappingChoice("KEY CAN · 20 Key 组合",
                 new TestTargetMapping("原始 KEY_SIM 20 Key", TestTargetKind.RawKey,
                     default, 0, "", BusRole.KeypadCan)));
 
@@ -480,7 +480,7 @@ public partial class TestStepInspector : UserControl
         _targetInstruction = action.TargetCategory switch
         {
             "can" => "",
-            "button" => "推荐在 ECU 输入配置中先定义功能按键；也可以直接选择底层 20 Key 操作。",
+            "button" => "",
             "signal" => "需要 DBC 信号。若列表为空，请先在工程资源中导入 DBC，再创建该步骤。",
             "wave" => "分析方案是可选项；若不选，请在下方填写已建立的命名参考。",
             "ign" => "当前固定台架的 IGN 控制。配置步骤不会立即操作硬件。",
@@ -520,6 +520,12 @@ public partial class TestStepInspector : UserControl
         var preferred = preferredMapping is null ? null :
             AvailableTargets.FirstOrDefault(x => x.Mapping == preferredMapping);
         preferred ??= AvailableTargets.FirstOrDefault(x => x.Mapping.Name == preferredName);
+        // For a new KEY step, prefer direct 20-switch control; legacy
+        // asset-backed button mappings remain available to existing files.
+        if (preferred is null && _selected?.TargetCategory == "button" &&
+            string.IsNullOrWhiteSpace(preferredName) && query.Length == 0)
+            preferred = AvailableTargets.FirstOrDefault(x =>
+                x.Mapping.Kind == TestTargetKind.RawKey);
         // Avoid silently binding the first DBC signal/message when a new
         // STEP has not explicitly chosen its operation object.
         // A unique IGN / raw-only option may be preselected for convenience.
