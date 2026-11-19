@@ -1,3 +1,5 @@
+> **后续复审提示（B-01，2026-11-19，晚于本文件）**：TEST-RECORD 已提交修复 `5ade1bd9e94d3240e9d931d43005caac5778f515`，项目管理复核确认本文件 B-01 因果关联逻辑已得到**静态修正**。但另发现新增回归测试的 C# 引号转义错误 `C-01`，所以 PR 仍 `CHANGES_REQUIRED`，Windows Build/Test/实机继续 `NOT_VERIFIED`。后续状态以 [B-01 技术复审](TEST-RECORD-PR65-B01-REVIEW-20261119.md) 为准；本文件保留原首次审查的历史结论。
+
 # AutoTest｜TEST-RECORD Draft PR #65 项目管理技术审查（2026-11-19）
 
 **审查身份**：项目管理 / 技术架构审查，不代替 Windows 编译或 ECU 实测。  
