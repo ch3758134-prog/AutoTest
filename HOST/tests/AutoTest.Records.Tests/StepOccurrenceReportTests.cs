@@ -50,7 +50,7 @@ public sealed class StepOccurrenceReportTests
         Assert.Equal(stepId, reloaded[0].Step);
         Assert.Equal(stepId, reloaded[1].Step);
         Assert.NotEqual(reloaded[0].StepOccurrenceId, reloaded[1].StepOccurrenceId);
-        Assert.Equal(new[] { 1, 2 }, reloaded.Select(x => x.LoopIteration));
+        Assert.Equal(new[] { 1, 2 }, reloaded.Select(x => x.LoopIteration!.Value));
         Assert.Equal("REQ-SIGNAL-01", reloaded[0].RequirementId);
         Assert.Equal(TimeSpan.FromSeconds(1), reloaded[0].Duration);
 
