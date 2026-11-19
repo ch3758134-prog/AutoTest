@@ -198,8 +198,9 @@ public partial class ManualBenchWindow : Window
 
     private void AddCanRow_Click(object sender, RoutedEventArgs e)
     {
-        if (!_model.AddCanRowCommand.CanExecute()) return;
-        _model.AddCanRowCommand.Execute();
+        var add = (ICommand)_model.AddCanRowCommand;
+        if (!add.CanExecute(null)) return;
+        add.Execute(null);
         if (_model.SelectedCanRow is { } row && sender is Button button)
             ShowQuickEditor(row, button);
     }
