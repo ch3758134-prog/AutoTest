@@ -1,0 +1,54 @@
+{
+  "record_id": "UX-FOUNDATION-RESEARCH-20261119-01",
+  "report_title": "现代复杂工业级 PC 软件的产品与交互设计理念研究报告",
+  "version": "v1.0",
+  "report_date": "2026-11-19",
+  "archive_date": "2026-11-19",
+  "archival_branch": "Project_Management",
+  "archive_kind": "UX_FOUNDATION_RESEARCH_NON_NORMATIVE",
+  "approval_scope": "RESEARCH_ARCHIVE_ONLY",
+  "status": [
+    "RESEARCH_COMPLETED",
+    "ARCHIVED",
+    "PRODUCT_UI_NOT_FROZEN"
+  ],
+  "source": {
+    "type": "Original user-provided ZIP, verified in user Library, not itself copied to GitHub",
+    "filename": "现代工业级PC软件_UI设计研究报告_v1.0_归档包.zip",
+    "size_bytes": 29530,
+    "sha256": "f86e7075abeb333b9d80b7d225203e966a20c94abeca0bf411996fe7fb58c0ee",
+    "git_blob_sha1": "6d485aaffb48539b5443e2cb5a3c36cf3906dd0a",
+    "zip_integrity": "CRC_OK",
+    "count": 2,
+    "raw_zip_not_stored_in_github": true
+  },
+  "original_files": [
+    {
+      "name": "现代复杂工业级PC软件产品设计理念研究报告_v1.0.md",
+      "path": "docs/project-management/new-baseline-20261112/research/UI-UX-FOUNDATION-20261119/original/现代复杂工业级PC软件产品设计理念研究报告_v1.0.md",
+      "size_bytes": 28940,
+      "sha256": "50567075c29a2c89359b26552ef0a7a3f1e97d3e4a80cadcb29539d3b0644a63",
+      "git_blob_sha1": "a8684a4dd3cfcd11316112a9ef604cfe7ef555ec",
+      "zip_member_crc32": "1c8336c4"
+    },
+    {
+      "name": "现代复杂工业级PC软件产品设计理念研究报告_v1.0.html",
+      "path": "docs/project-management/new-baseline-20261112/research/UI-UX-FOUNDATION-20261119/original/现代复杂工业级PC软件产品设计理念研究报告_v1.0.html",
+      "size_bytes": 40345,
+      "sha256": "4abe8e669ac10dd4932726b58aa541d7d366359db309366c4fa97ea45f1a1128",
+      "git_blob_sha1": "c26b91658876bdc01e83dcf3cd7a06ea98f35e16",
+      "zip_member_crc32": "874ef6df"
+    }
+  ],
+  "content_audit": {
+    "headings_equal_between_versions": true,
+    "report_sections": 14,
+    "source_links": 17,
+    "reference_ids": "S01-S17",
+    "all_originals_git_blob_sha_matched": true,
+    "external_standard_full_text_verified": false,
+    "vendor_software_hands_on_verified": false,
+    "usability_experiments_verified": false
+  },
+  "scope_boundary": "Research input; not an AutoTest UI design freeze, technical approval, implementation order, or new G-Gate requirement."
+}
