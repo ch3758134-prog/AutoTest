@@ -388,4 +388,35 @@ public sealed class RealTestRecordSessionTests
             record.RunId.Value.ToString("N") + ".html")));
     }
 
+    [Theory]
+    [InlineData(TestSignalStatus.Timeout)]
+    [InlineData(TestSignalStatus.Disconnected)]
+    [InlineData(TestSignalStatus.DecodeError)]
+    public async Task MissingOrDisconnectedSignalCannotCommitPassAndRetainsQuality(
+        TestSignalStatus failure)
+    {
+        using var fixture = new Fixture();
+        var (mapping, _) = Signal(null);
+        var plan = Plan(mapping, "2");
+        var record = fixture.Record(plan);
+        var completed = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports)
+            .ExecuteAsync(new RealRunCoordinator(
+                new Signals(new TestSignalResult(failure, null, "REAL_SAMPLE_NOT_AVAILABLE")),
+                new Actions(), new Waves()), plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Inconclusive, completed.Result.Verdict);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.NotNull(history);
+        Assert.Equal("Unknown", history.TerminalState);
+        Assert.Equal(Verdict.Inconclusive, history.Verdict);
+        var fact = Assert.Single(await fixture.Database.ReadStepFactsAsync(record.RunId));
+        Assert.Equal("NoData", fact.Disposition);
+        Assert.Equal("NO_DATA", fact.FailureCode);
+        Assert.Equal(failure.ToString(), fact.SignalStatus);
+        Assert.Null(fact.SignalProvenance);
+        Assert.Empty(fact.Evidence);
+        var json = await File.ReadAllTextAsync(completed.Reports.JsonPath);
+        Assert.Contains(failure.ToString(), json);
+    }
+
+
 }
