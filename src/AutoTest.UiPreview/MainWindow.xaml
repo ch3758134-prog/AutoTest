@@ -136,7 +136,7 @@
        <Border BorderBrush="#DBE3ED" BorderThickness="0,1,0,0" Margin="0,10,0,8"/>
        <TextBlock Text="工程资源" FontWeight="SemiBold" Foreground="#29496E" Margin="2,0,0,9"/>
        <Button Content="▸  ▤  DBC 报文                                  13" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click"/>
-       <Button Content="▸  ◈  按键配置                                  2" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click" Margin="0,4"/>
+       
        <Button Content="▸  〰  波形参考                                  1" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click"/>
        <Button Content="▸  ◇  UDS 服务                                  2" Style="{StaticResource AtPreviewTreeResource}" Click="PreviewOnly_Click" Margin="0,4"/>
       </StackPanel>
