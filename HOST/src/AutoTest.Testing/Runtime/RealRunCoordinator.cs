@@ -223,6 +223,9 @@ public sealed class RealRunCoordinator
                 var occurrence = Guid.NewGuid();
                 var path = parentPath + "/" + node.Id.Value.ToString("N") +
                     (loopIteration is { } iteration ? "[iteration=" + iteration + "]" : "");
+                var start = new RealStepStarted(run, node.Id, occurrence, parentOccurrenceId,
+                    phase, node.Type, node.Name, path, loopIteration, startedUtc);
+                if (events is not null) await events.StepStartedAsync(start, ct);
                 if (!StepExecutionPolicy.IsEnabled(node))
                 {
                     var skipped = new RealStepFact(node.Id, node.Type, RealStepStatus.Skipped,
@@ -242,9 +245,6 @@ public sealed class RealRunCoordinator
                         await events.StepCompletedAsync(run, skipped, CancellationToken.None);
                     continue;
                 }
-                var start = new RealStepStarted(run, node.Id, occurrence, parentOccurrenceId,
-                    phase, node.Type, node.Name, path, loopIteration, startedUtc);
-                if (events is not null) await events.StepStartedAsync(start, ct);
                 var firstFact = facts.Count;
                 TestSignalResult? observationForStep = null;
                 bool gapObserved = false;
