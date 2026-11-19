@@ -26,7 +26,7 @@ public sealed partial class ManualBenchViewModel
             Extended = extended;
             Id = "0x" + id.ToString(extended ? "X8" : "X3");
             _lastTime = time;
-            _data = data;
+            _data = FormatBytes(data);
             _lost = lost;
             _count = 1;
         }
@@ -36,7 +36,21 @@ public sealed partial class ManualBenchViewModel
         public string Format => Extended ? "扩展" : "标准";
         public string Id { get; }
         public string Time { get => _lastTime; private set => SetProperty(ref _lastTime, value); }
-        public string Data { get => _data; private set => SetProperty(ref _data, value); }
+        public string Data { get => _data; private set
+            {
+                if (SetProperty(ref _data, value)) RaisePropertyChanged(nameof(Dlc));
+            }
+        }
+        public int Dlc => Data.Count(c => c == ' ') + (Data.Length == 0 ? 0 : 1);
+        public string FullFrame => Time + "  " + Channel + " " + Direction + "  " +
+            Id + "  DLC " + Dlc + "  " + Data;
+        private static string FormatBytes(string raw)
+        {
+            var hex = new string(raw.Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
+            if (hex.Length % 2 != 0) return raw;
+            return string.Join(" ", Enumerable.Range(0, hex.Length / 2)
+                .Select(i => hex.Substring(i * 2, 2)));
+        }
         public long Count { get => _count; private set => SetProperty(ref _count, value); }
         public long Lost { get => _lost; private set => SetProperty(ref _lost, value); }
         public string Status => Lost > 0 ? "丢帧 " + Lost : "接收";
@@ -44,6 +58,7 @@ public sealed partial class ManualBenchViewModel
         {
             Time = newer.Time;
             Data = newer.Data;
+            RaisePropertyChanged(nameof(FullFrame));
             Count += newer.Count;
             // HardwareCanReceiveBridge reports cumulative loss; never sum snapshots.
             Lost = Math.Max(Lost, newer.Lost);
@@ -165,6 +180,8 @@ public sealed partial class ManualBenchViewModel
         return term.Length == 0 ||
             entry.Id.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             entry.Data.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            entry.Data.Replace(" ", "").Contains(term.Replace(" ", ""),
+                StringComparison.OrdinalIgnoreCase) ||
             entry.Channel.Contains(term, StringComparison.OrdinalIgnoreCase) ||
             entry.Format.Contains(term, StringComparison.OrdinalIgnoreCase);
     }
