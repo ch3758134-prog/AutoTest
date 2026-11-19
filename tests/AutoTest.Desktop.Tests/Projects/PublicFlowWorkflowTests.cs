@@ -36,6 +36,38 @@ public sealed class PublicFlowWorkflowTests
     }
 
     [Fact]
+    public async Task TransitiveCycleIsRejectedBeforeAnyFileWrite()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "at-flow-cycle-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var workspace = new ProjectWorkspaceService();
+            await workspace.CreateAsync("Cycles", root);
+            var a = await workspace.CreatePublicFlowAsync("A");
+            var b = await workspace.CreatePublicFlowAsync("B");
+            var openB = await workspace.OpenPublicFlowEditorAsync(b.Id);
+            var bSaved = await workspace.SavePublicFlowEditorAsync(openB,
+                openB.Document with
+                {
+                    References = [new PublicFlowReference(a.Id.Value, a.Revision, a.Sha256)]
+                });
+            var openA = await workspace.OpenPublicFlowEditorAsync(a.Id);
+            var revision = workspace.Current!.Definition.Revision;
+            var error = await Assert.ThrowsAsync<AutoTest.Projects.Project.ProjectDataException>(
+                () => workspace.SavePublicFlowEditorAsync(openA,
+                    openA.Document with
+                    {
+                        References = [new PublicFlowReference(
+                            b.Id.Value, bSaved.AssetRevision, bSaved.FileHash)]
+                    }));
+            Assert.Equal("FLOW_CALL_CYCLE", error.Code);
+            Assert.Equal(revision, workspace.Current!.Definition.Revision);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
     public async Task ExternalFileChangeRejectsStaleSave()
     {
         var root = Path.Combine(Path.GetTempPath(), "at-public-flow-" + Guid.NewGuid().ToString("N"));
