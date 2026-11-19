@@ -4,7 +4,7 @@
  xmlns:local="clr-namespace:AutoTest.Desktop.Shell"
  Title="AutoTest · 手动台架" Width="1700" Height="900" MinWidth="1500" MinHeight="750"
  WindowStartupLocation="CenterOwner" WindowState="Maximized" Background="#F4F7FC"
- FontFamily="{StaticResource UiFont}" FontSize="12" Foreground="#223A57">
+ FontFamily="{StaticResource UiFont}" FontSize="13" Foreground="#223A57">
  <Window.Resources>
   <Style x:Key="BenchHeader" TargetType="TextBlock">
    <Setter Property="FontSize" Value="15"/>
@@ -115,7 +115,7 @@
       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
       IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
       GridLinesVisibility="Horizontal" BorderBrush="#E2EAF3"
-      RowHeight="43" ColumnHeaderHeight="36" FontSize="12"
+      RowHeight="46" ColumnHeaderHeight="37" FontSize="13"
       EnableRowVirtualization="True" EnableColumnVirtualization="True"
       Background="White" AlternatingRowBackground="#F7FAFD"
       MouseDoubleClick="CanSendGrid_MouseDoubleClick"
@@ -144,7 +144,7 @@
        <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="198">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <TextBlock Text="{Binding PreviewData}" FontFamily="Consolas"
-          FontSize="12" TextTrimming="None" VerticalAlignment="Center"
+          FontSize="13" TextTrimming="None" VerticalAlignment="Center"
           ToolTip="{Binding PreviewFull}"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
@@ -483,7 +483,7 @@
       ItemsSource="{Binding MonitorDisplay}" AutoGenerateColumns="False"
       CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
       HeadersVisibility="Column" SelectionMode="Single"
-      ColumnHeaderHeight="35" RowHeight="34" FontSize="12"
+      ColumnHeaderHeight="37" RowHeight="38" FontSize="13"
       GridLinesVisibility="Horizontal" BorderBrush="#E6EDF5"
       EnableRowVirtualization="True"
       ScrollViewer.HorizontalScrollBarVisibility="Auto"
