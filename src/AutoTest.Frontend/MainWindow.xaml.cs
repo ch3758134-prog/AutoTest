@@ -1,213 +1,163 @@
-using System.Collections.ObjectModel;
-using System.ComponentModel;
+using System.Collections.Generic;
 using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Win32;
 
 namespace AutoTest.Frontend;
 
-public partial class MainWindow : Window, INotifyPropertyChanged
+public partial class MainWindow : Window
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
-    private void Changed([CallerMemberName] string? name = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
-    public ObservableCollection<CaseDraft> Cases { get; } = [];
-    public ObservableCollection<CanDraft> CanRows { get; } = [];
-    public ObservableCollection<KeyActionDraft> KeyActions { get; } = [];
-
-    private CaseDraft? _selectedCase;
-    public CaseDraft? SelectedCase
-    {
-        get => _selectedCase;
-        set { _selectedCase = value; Changed(); SelectedStep = null; }
-    }
-    private StepDraft? _selectedStep;
-    public StepDraft? SelectedStep
-    {
-        get => _selectedStep;
-        set { _selectedStep = value; Changed(); }
-    }
-    private CanDraft? _selectedCan;
-    public CanDraft? SelectedCan
-    {
-        get => _selectedCan;
-        set { _selectedCan = value; Changed(); }
-    }
-    private KeyActionDraft? _selectedAction;
-    public KeyActionDraft? SelectedAction
-    {
-        get => _selectedAction;
-        set { _selectedAction = value; Changed(); SelectedKeyStep = null; }
-    }
-    private KeyStepDraft? _selectedKeyStep;
-    public KeyStepDraft? SelectedKeyStep
-    {
-        get => _selectedKeyStep;
-        set { _selectedKeyStep = value; Changed(); }
-    }
-
+    private readonly UiWorkbenchState _state;
+    private readonly Dictionary<string, ToolWindow> _toolWindows = new(StringComparer.Ordinal);
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = this;
-        ShowTest_Click(this, new RoutedEventArgs());
+        _state = UiWorkbenchState.Load();
+        DataContext = _state;
+        RunWorkspaceView.RequestEdit += (_, _) => WorkTabs.SelectedIndex = 1;
+        EditorWorkspaceView.RequestRun += (_, _) => WorkTabs.SelectedIndex = 0;
+        Closing += (_, _) => _state.SaveNow();
     }
 
-    private void ShowTest_Click(object sender, RoutedEventArgs e)
+    private void ShowTools_Click(object sender, RoutedEventArgs e)
     {
-        TestWorkspace.Visibility = Visibility.Visible;
-        BenchWorkspace.Visibility = Visibility.Collapsed;
-        TestNavButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
-        BenchNavButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
-        WorkspaceHeading.Text = "自动测试";
-        WorkspaceSubheading.Text = "真实操作体验设计 · 暂无执行器";
-        StatusText.Text = "自动测试编辑器为 UI 草稿，不属于正式 TEST 工程。";
+        ToolsMenu.PlacementTarget = ToolsButton;
+        ToolsMenu.IsOpen = true;
     }
 
-    private void ShowBench_Click(object sender, RoutedEventArgs e)
+    private void OpenTool_Click(object sender, RoutedEventArgs e)
     {
-        TestWorkspace.Visibility = Visibility.Collapsed;
-        BenchWorkspace.Visibility = Visibility.Visible;
-        TestNavButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
-        BenchNavButton.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
-        WorkspaceHeading.Text = "手动台架";
-        WorkspaceSubheading.Text = "CAN 发送 / KEY 动作 / 真实监视工作区设计";
-        StatusText.Text = "手动台架当前只可编辑界面草稿，不会发送 CAN、KEY 或 GPIO 控制。";
+        if (sender is MenuItem { Tag: string key }) OpenTool(key);
+    }
+    private void OpenRecords_Click(object sender, RoutedEventArgs e) => OpenTool("records");
+    private void OpenProduction_Click(object sender, RoutedEventArgs e) => OpenTool("production");
+
+    private void OpenTool(string key)
+    {
+        if (_toolWindows.TryGetValue(key, out var existing) && existing.IsVisible)
+        {
+            if (existing.WindowState == WindowState.Minimized)
+                existing.WindowState = WindowState.Normal;
+            existing.Activate();
+            return;
+        }
+        var tool = new ToolWindow(key, _state)
+        {
+            Owner = this,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        _toolWindows[key] = tool;
+        tool.Closed += (_, _) => _toolWindows.Remove(key);
+        tool.Show();
     }
 
     private void AddCase_Click(object sender, RoutedEventArgs e)
     {
-        var entry = new CaseDraft { Name = "测试用例 " + (Cases.Count + 1) };
-        Cases.Add(entry);
-        SelectedCase = entry;
-        CaseList.ScrollIntoView(entry);
+        var entry = new CaseDraft { Name = $"新测试用例 {(_state.Cases.Count + 1)}" };
+        _state.Cases.Add(entry);
+        _state.SelectedCase = entry;
+        WorkTabs.SelectedIndex = 1;
     }
 
-    private void AddStep_Click(object sender, RoutedEventArgs e)
+    private void FileTree_SelectedItemChanged(object sender,
+        RoutedPropertyChangedEventArgs<object> e)
     {
-        if (SelectedCase is null) AddCase_Click(sender, e);
-        if (SelectedCase is null) return;
-        var phase = (PhasePicker.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "测试";
-        var step = new StepDraft { Phase = phase, Name = "新步骤 " + (SelectedCase.Steps.Count + 1) };
-        SelectedCase.Steps.Add(step);
-        SelectedStep = step;
-        StepsGrid.ScrollIntoView(step);
-    }
-    private void CopyStep_Click(object sender, RoutedEventArgs e)
-    {
-        if (SelectedCase is null || SelectedStep is null) return;
-        var source = SelectedStep;
-        var copy = new StepDraft {
-            Phase = source.Phase, Kind = source.Kind, Name = source.Name + " - 副本",
-            Target = source.Target, Value = source.Value, Note = source.Note, Enabled = source.Enabled
-        };
-        SelectedCase.Steps.Insert(SelectedCase.Steps.IndexOf(source) + 1, copy);
-        SelectedStep = copy;
-    }
-    private void DeleteStep_Click(object sender, RoutedEventArgs e)
-    {
-        if (SelectedCase is null || SelectedStep is null) return;
-        SelectedCase.Steps.Remove(SelectedStep);
-        SelectedStep = null;
+        if (e.NewValue is CaseDraft c) _state.SelectedCase = c;
+        else if (e.NewValue is DbcMessageDraft) { /* single click only selects resource */ }
     }
 
-    private void AddCan_Click(object sender, RoutedEventArgs e)
+    private void FileTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        var row = new CanDraft { Name = "报文 " + (CanRows.Count + 1) };
-        CanRows.Add(row);
-        SelectedCan = row;
-        CanGrid.ScrollIntoView(row);
-    }
-    private void CopyCan_Click(object sender, RoutedEventArgs e)
-    {
-        if (SelectedCan is null) return;
-        var copy = new CanDraft
+        switch (FileTree.SelectedItem)
         {
-            Name = SelectedCan.Name + " - 副本", Id = SelectedCan.Id,
-            Data = SelectedCan.Data, Included = SelectedCan.Included
-        };
-        CanRows.Insert(CanRows.IndexOf(SelectedCan) + 1, copy);
-        SelectedCan = copy;
-    }
-    private void DeleteCan_Click(object sender, RoutedEventArgs e)
-    {
-        if (SelectedCan is null) return;
-        CanRows.Remove(SelectedCan);
-        SelectedCan = null;
-    }
-
-    private void AddKeyAction_Click(object sender, RoutedEventArgs e)
-    {
-        var action = new KeyActionDraft { Name = "按键动作 " + (KeyActions.Count + 1) };
-        KeyActions.Add(action);
-        SelectedAction = action;
-        ActionList.ScrollIntoView(action);
-    }
-    private void AddKeyStep_Click(object sender, RoutedEventArgs e)
-    {
-        if (SelectedAction is null) AddKeyAction_Click(sender, e);
-        if (SelectedAction is null) return;
-        var step = new KeyStepDraft();
-        SelectedAction.Steps.Add(step);
-        SelectedKeyStep = step;
-    }
-
-    private static JsonSerializerOptions JsonOptions => new() { WriteIndented = true };
-    private void SaveDraft_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new SaveFileDialog
-        {
-            Title = "保存纯前端界面草稿（非正式 AutoTest 工程）",
-            Filter = "前端界面草稿 (*.ui-draft.json)|*.ui-draft.json",
-            FileName = "AutoTest.UI.ui-draft.json"
-        };
-        if (dialog.ShowDialog(this) != true) return;
-        try
-        {
-            var doc = new FrontendDraftDocument
-            {
-                Cases = Cases.ToList(),
-                CanRows = CanRows.ToList(),
-                KeyActions = KeyActions.ToList()
-            };
-            File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(doc, JsonOptions));
-            StatusText.Text = "界面草稿已保存；不是正式 ECU 项目文件，也没有任何实体执行。";
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
-        {
-            MessageBox.Show(this, ex.Message, "草稿保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            case CaseDraft test:
+                _state.SelectedCase = test;
+                WorkTabs.SelectedIndex = 1;
+                break;
+            case DbcMessageDraft:
+                OpenTool("dbc");
+                break;
+            case WaveSignalDraft:
+                OpenTool("wave");
+                break;
+            case InputStateDraft:
+                OpenTool("inputs");
+                break;
         }
     }
-    private void OpenDraft_Click(object sender, RoutedEventArgs e)
+
+    private void FileSearch_TextChanged(object sender, TextChangedEventArgs e)
     {
-        var dialog = new OpenFileDialog
+        if (FileSearchBox is null) return;
+        var term = FileSearchBox.Text.Trim();
+        foreach (var category in FileTree.Items)
         {
-            Title = "打开纯前端界面草稿",
-            Filter = "前端界面草稿 (*.ui-draft.json)|*.ui-draft.json"
-        };
-        if (dialog.ShowDialog(this) != true) return;
-        try
-        {
-            var doc = JsonSerializer.Deserialize<FrontendDraftDocument>(File.ReadAllText(dialog.FileName));
-            if (doc is null) throw new InvalidDataException("空界面草稿。");
-            Cases.Clear();
-            CanRows.Clear();
-            KeyActions.Clear();
-            foreach (var entry in doc.Cases) Cases.Add(entry);
-            foreach (var row in doc.CanRows) CanRows.Add(row);
-            foreach (var action in doc.KeyActions) KeyActions.Add(action);
-            SelectedCase = Cases.FirstOrDefault();
-            SelectedAction = KeyActions.FirstOrDefault();
-            SelectedCan = CanRows.FirstOrDefault();
-            StatusText.Text = "界面草稿已载入。未连接 PROJECT、TEST 或硬件服务。";
+            if (category is not TreeViewItem tree) continue;
+            ApplyFilter(tree, term);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+    }
+    private static bool ApplyFilter(TreeViewItem node, string term)
+    {
+        if (string.IsNullOrWhiteSpace(term))
         {
-            MessageBox.Show(this, ex.Message, "界面草稿打开失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            node.Visibility = Visibility.Visible;
+            foreach (var item in node.Items)
+                if (item is TreeViewItem child) ApplyFilter(child, term);
+            return true;
+        }
+        var self = (node.Header?.ToString() ?? "").Contains(term, StringComparison.OrdinalIgnoreCase);
+        var desc = false;
+        foreach (var entry in node.Items)
+        {
+            if (entry is TreeViewItem child) desc |= ApplyFilter(child, term);
+            else if (entry is CaseDraft c) desc |= c.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
+            else if (entry is DbcMessageDraft d) desc |= d.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
+            else if (entry is WaveSignalDraft w) desc |= w.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
+            else if (entry is InputStateDraft x) desc |= x.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
+        }
+        node.Visibility = self || desc ? Visibility.Visible : Visibility.Collapsed;
+        if (desc) node.IsExpanded = true;
+        return self || desc;
+    }
+
+    private void Import_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = "导入前端界面草稿（非正式工程）",
+            Filter = "AutoTest 界面草稿 (*.ui-draft.json)|*.ui-draft.json"
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        if (MessageBox.Show(this,
+                "此操作会替换当前 UI 设计草稿，不会打开正式 ECU 工程。是否继续？",
+                "导入界面草稿", MessageBoxButton.YesNo, MessageBoxImage.Question)
+            != MessageBoxResult.Yes) return;
+        try { _state.Import(dlg.FileName); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                        or System.Text.Json.JsonException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, "草稿读取失败",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void Export_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Title = "导出前端界面草稿（非正式工程）",
+            Filter = "AutoTest 界面草稿 (*.ui-draft.json)|*.ui-draft.json",
+            FileName = "AutoTest-UI.ui-draft.json"
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        try { _state.Export(dlg.FileName); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, ex.Message, "草稿导出失败",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }
