@@ -93,9 +93,9 @@ public sealed class TestEditorViewModel : BindableBase
         AddMappingCommand = new DelegateCommand(async () => await AddMappingAsync(), () => !IsBusy);
         RemoveMappingCommand = new DelegateCommand(RemoveMapping, () => SelectedMapping is not null && !IsBusy);
         PrepareRunApprovalCommand = new DelegateCommand(PrepareRealRunApproval,
-            () => !IsBusy && !IsDirty && !HasNewStepDraft);
+            () => !IsBusy && !IsDirty && !HasUnappliedDrafts);
         RunCommand = new DelegateCommand(async () => await RunRealAsync(),
-            () => !IsBusy && !IsDirty && !HasNewStepDraft);
+            () => !IsBusy && !IsDirty && !HasUnappliedDrafts);
         StopRunCommand = new DelegateCommand(() => _realTest.RequestStop(), () => IsBusy);
         RefreshMappings();
         RefreshTree(null);
@@ -132,7 +132,7 @@ public sealed class TestEditorViewModel : BindableBase
         get => _stepFind;
         set
         {
-            if (!CanProceed())
+            if (!CanNavigate())
             {
                 RaisePropertyChanged(nameof(StepFind));
                 return;
@@ -168,11 +168,12 @@ public sealed class TestEditorViewModel : BindableBase
         var next = reverse
             ? (current < 0 ? matches.Length - 1 : (current - 1 + matches.Length) % matches.Length)
             : (current + 1) % matches.Length;
-        if (!CanProceed()) return false;
+        if (!CanNavigate()) return false;
         var target = matches[next];
         _interaction.ExpandAncestors(target);
         RefreshRows();
         SelectItem(target);
+        if (_interaction.Selection != StepSelectionKey.Of(target)) return false;
         StatusMessage = "已定位第 " + (next + 1) + "/" + matches.Length + " 条搜索结果。";
         return true;
     }
@@ -308,9 +309,32 @@ public sealed class TestEditorViewModel : BindableBase
     public event Action<StepInspectorContext>? InspectorRequested;
     public event Action<string>? InspectorLoading;
     public Func<bool>? AllowEditorAction { get; set; }
+    // Navigation can park an invalid Inspector draft in memory.
+    // Domain mutations, saving and hardware execution continue to use strict guards.
+    public Func<bool>? AllowStepNavigation { get; set; }
+    public Func<bool>? HasPendingVisualDrafts { get; set; }
+    private int _parkedInspectorCount;
+    public int ParkedInspectorCount
+    {
+        get => _parkedInspectorCount;
+        private set
+        {
+            if (SetProperty(ref _parkedInspectorCount, value))
+                RaisePropertyChanged(nameof(ParkedInspectorNote));
+        }
+    }
+    public string ParkedInspectorNote => ParkedInspectorCount == 0 ? "" :
+        "有 " + ParkedInspectorCount + " 条未应用步骤属性暂存（仅内存，不能保存/执行）";
+    public void UpdateParkedInspectorCount(int count)
+    {
+        ParkedInspectorCount = count;
+        RefreshCommands();
+    }
     private bool _applyingInspector;
     public bool IsApplyingInspector => _applyingInspector;
+    private bool HasUnappliedDrafts => HasNewStepDraft || (HasPendingVisualDrafts?.Invoke() ?? false);
     private bool CanProceed() => _applyingInspector || (AllowEditorAction?.Invoke() ?? true);
+    private bool CanNavigate() => _applyingInspector || (AllowStepNavigation?.Invoke() ?? CanProceed());
 
     private StepInsertionTarget? _pendingInsertion;
     private bool _inspectorAdding;
@@ -499,6 +523,11 @@ public sealed class TestEditorViewModel : BindableBase
     public bool ApplyInspector(StepCompositionResult result)
     {
         if (IsBusy || _selectedItem is null || _applyingInspector) return false;
+        if (HasNewStepDraft && _selectedItem.Step?.Id != _newDraftId)
+        {
+            StatusMessage = "已有尚未配置完成的新步骤。可以浏览其他步骤，但必须先返回完成或取消该新增。";
+            return false;
+        }
         _applyingInspector = true;
         try
         {
@@ -604,7 +633,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (desired is null) return;
         if (desired == _interaction.Selection && ReferenceEquals(_selectedItem, requested))
             return;
-        if (!_interaction.TryNavigate(desired, () => _selectedItem is null || CanProceed()))
+        if (!_interaction.TryNavigate(desired, () => _selectedItem is null || CanNavigate()))
         {
             RaisePropertyChanged(nameof(SelectedRow));
             return;
@@ -812,9 +841,9 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void PreflightOnly()
     {
-        if (HasNewStepDraft)
+        if (HasUnappliedDrafts)
         {
-            StatusMessage = "步骤草稿尚未完善，不能预检或运行。";
+            StatusMessage = "还有未应用的步骤参数，请返回完成编辑后再预检或运行。";
             return;
         }
         if (IsBusy) return;
@@ -837,7 +866,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void PrepareRealRunApproval()
     {
-        if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (IsBusy || IsDirty || HasUnappliedDrafts || !CanProceed()) return;
         try
         {
             var plan = _realTest.Prepare(_transaction.Current);
@@ -858,7 +887,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task RunRealAsync()
     {
-        if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (IsBusy || IsDirty || HasUnappliedDrafts || !CanProceed()) return;
         if (string.IsNullOrWhiteSpace(RunApproval) ||
             !string.Equals(RunApproval, ExpectedApproval, StringComparison.Ordinal))
         {
@@ -1095,14 +1124,14 @@ public sealed class TestEditorViewModel : BindableBase
     }
 
     public bool ConfirmClose() =>
-        !IsBusy && CanProceed() && (!IsDirty || _dialogs.Confirm("测试程序有未保存修改，确定放弃并关闭吗？"));
+        !IsBusy && !HasUnappliedDrafts && CanProceed() && (!IsDirty || _dialogs.Confirm("测试程序有未保存修改，确定放弃并关闭吗？"));
 
     public async Task<bool> SaveForCloseAsync()
     {
         if (IsBusy) return false;
-        if (HasNewStepDraft)
+        if (HasUnappliedDrafts)
         {
-            StatusMessage = "新步骤尚未完成配置。请在右侧应用属性，或点击取消新增后再保存。";
+            StatusMessage = "仍有未应用的步骤参数，请返回对应步骤应用或取消后再保存。";
             return false;
         }
         if (!IsDirty) return true;
@@ -1114,9 +1143,9 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task SaveAsync()
     {
-        if (HasNewStepDraft)
+        if (HasUnappliedDrafts)
         {
-            StatusMessage = "仍有未完成的新步骤；先在右侧应用属性，或取消该新增。";
+            StatusMessage = "还有暂存的步骤参数未应用，不能保存正式工程。";
             return;
         }
         if (!IsDirty || IsBusy || !CanProceed()) return;
