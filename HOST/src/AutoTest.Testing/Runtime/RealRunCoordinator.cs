@@ -349,6 +349,9 @@ public sealed class RealRunCoordinator
                             TimeSpan.FromMilliseconds(Milliseconds(node, "timeoutMs")),
                             TimeSpan.FromMilliseconds(Milliseconds(node, "maxAgeMs")), ct);
                         observationForStep = result;
+                        // A failed read is a real test-data gap. A later unrelated
+                        // successful assertion must not make the overall run PASS.
+                        if (!result.HasUsableValue) incomplete = true;
                         if (result.Status == TestSignalStatus.LostFrames)
                         {
                             incomplete = true;
