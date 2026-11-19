@@ -39,7 +39,8 @@ public sealed class TestWorkspace : UserControl
 
     public TestWorkspace(UiStudyStore store, Guid? preferredCase, Action<string> status)
     {
-        _store = store; _status = status; _caseId = preferredCase;
+        _store = store; _status = status;
+        _caseId = preferredCase ?? store.Current.TestCases.FirstOrDefault()?.Id;
         var layout = UiVisual.Columns(new GridLength(224), new GridLength(5), UiVisual.Star());
         Content = layout;
         var left = UiVisual.Stack();
@@ -53,7 +54,9 @@ public sealed class TestWorkspace : UserControl
         _mode.SelectionChanged += (_, _) =>
         {
             if (_refreshing) return;
-            _flowId = null; _stepId = null;
+            _flowId = IsFlowMode ? _store.Current.PublicFlows.FirstOrDefault()?.Id : null;
+            if (!IsFlowMode && _caseId is null) _caseId = _store.Current.TestCases.FirstOrDefault()?.Id;
+            _stepId = null;
             RefreshObjects(); RefreshTree();
         };
         left.Children.Add(_mode);
@@ -83,6 +86,11 @@ public sealed class TestWorkspace : UserControl
         var editor = new TabItem { Header = "程序编辑", Padding = new Thickness(14, 6, 14, 6) };
         var run = new TabItem { Header = "运行准备 / 调试", Padding = new Thickness(14, 6, 14, 6) };
         tabs.Items.Add(editor); tabs.Items.Add(run); tabs.SelectedIndex = 0;
+        tabs.SelectionChanged += (_, e) =>
+        {
+            if (ReferenceEquals(e.OriginalSource, tabs) && ReferenceEquals(tabs.SelectedItem, run))
+                run.Content = BuildRunView();
+        };
         var editRoot = new DockPanel { LastChildFill = true };
         var actions = UiVisual.Stack(true);
         actions.Margin = new Thickness(5, 3, 0, 4);
