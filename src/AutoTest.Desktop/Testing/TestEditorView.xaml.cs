@@ -118,7 +118,8 @@ public partial class TestEditorView : UserControl
             return;
         }
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
-            context.Original, context.InitialActionKey, context.CaseOnly);
+            context.Original, context.InitialActionKey, context.CaseOnly,
+            context.PublicFlows);
         editor.ApplyRequested = _viewModel.ApplyInspector;
         editor.StepActionRequested = action =>
         {
