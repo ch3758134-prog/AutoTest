@@ -479,11 +479,10 @@ public sealed class RealTestRecordSessionTests
         var data = TestDocumentCodec.Serialize(original);
         var restored = TestDocumentCodec.Deserialize(data);
         Assert.Equal(original.ReportSettings, restored.ReportSettings);
-        var legacy = data.Replace(
-            ",\\n  \\"ReportSettings\\": {\\n    \\"Title\\": \\"电控测试报告\\",\\n    \\"CaseNumber\\": \\"EPB-01\\",\\n    \\"Description\\": \\"校验驻车状态\\"\\n  }", "");
-        // Nullable settings explicitly use defaults, rather than inventing metadata.
-        Assert.Equal(TestReportSettings.Default, TestDocumentCodec.Deserialize(
-            legacy.Replace("\\"ReportSettings\\": {", "\\"LegacyUnusedReportSettings\\": {")).ReportSettings);
+        var document = System.Text.Json.Nodes.JsonNode.Parse(data)!.AsObject();
+        Assert.True(document.Remove("ReportSettings"));
+        var legacy = TestDocumentCodec.Deserialize(document.ToJsonString());
+        Assert.Equal(TestReportSettings.Default, legacy.ReportSettings);
     }
 
 }
