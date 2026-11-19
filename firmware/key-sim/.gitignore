@@ -1,0 +1,15 @@
+# CodeWarrior/Eclipse local workspace and build output
+.metadata/
+**/.metadata/
+EPB_EOL/FLASH/
+EPB_EOL/SI/
+EPB_EOL/Project_Headers/SI/
+EPB_EOL/RemoteLaunch/
+EPB_EOL/RemoteSystemsTempFiles/
+EPB_EOL/*.traceConfig
+EPB_EOL/.cwGeneratedFileSetLog
+*.log
+*.obj
+*.o
+*.d
+*.args
