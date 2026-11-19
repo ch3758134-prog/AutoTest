@@ -485,4 +485,57 @@ public sealed class RealTestRecordSessionTests
         Assert.Equal(TestReportSettings.Default, legacy.ReportSettings);
     }
 
+    [Fact]
+    public async Task ReportUsesFrozenCaseMetadataAndSameCaseAttemptAcrossOccurrences()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var check = StepNode.Create("AssertSignal")
+            .WithProperty("target", mapping.Name)
+            .WithProperty("operator", "==")
+            .WithProperty("expected", "2")
+            .WithProperty("timeoutMs", "30");
+        var loop = StepNode.Create("Loop").WithProperty("count", "2")
+            .WithSlot("body", check);
+        var original = TestDocument.Create("冻结前名称") with
+        {
+            Mappings = ImmutableArray.Create(mapping),
+            ReportSettings = new TestReportSettings(
+                "驻车功能测试报告", "EPB-CASE-01", "验证驻车信号正确响应")
+        };
+        var doc = original with { Phases = original.Phases.SetItem(
+            TestPhase.Test, ImmutableArray.Create(loop)) };
+        var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        var record = fixture.Record(plan);
+        var session = new RealTestRecordSession(record, fixture.Writer, fixture.Reports,
+            new EvidenceFinalizer(fixture.Writer, fixture.Artifacts, sample.Observation!.Evidence));
+        var done = await session.ExecuteAsync(
+            new RealRunCoordinator(new Signals(sample), new Actions(), new Waves()),
+            plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Passed, done.Result.Verdict);
+        var rows = (await fixture.Database.ReadStepFactsAsync(record.RunId))
+            .Where(x => x.Step == check.Id).ToArray();
+        Assert.Equal(2, rows.Length);
+        Assert.All(rows, x => Assert.Equal(session.CaseAttemptId, x.CaseAttemptId));
+        var json = await File.ReadAllTextAsync(done.Reports.JsonPath);
+        Assert.Contains("EPB-CASE-01", json);
+        Assert.Contains("驻车功能测试报告", json);
+        Assert.Contains(session.CaseAttemptId.ToString("D"), json);
+        var html = await File.ReadAllTextAsync(done.Reports.HtmlPath);
+        Assert.Contains("驻车功能测试报告", html);
+        Assert.Contains("EPB-CASE-01", html);
+        Assert.Contains("验证驻车信号正确响应", html);
+    }
+
+    [Fact]
+    public void LegacyProgramWithNoReportSettingsKeepsCanonicalSerialization()
+    {
+        var previous = TestDocument.Create("旧测试程序");
+        var unchanged = TestDocumentCodec.Serialize(previous);
+        Assert.DoesNotContain("ReportSettings", unchanged);
+        Assert.Equal(unchanged, TestDocumentCodec.Serialize(
+            TestDocumentCodec.Deserialize(unchanged)));
+    }
+
 }
