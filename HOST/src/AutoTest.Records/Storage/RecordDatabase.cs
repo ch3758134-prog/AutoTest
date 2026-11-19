@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Records.Model;
@@ -479,18 +480,84 @@ public sealed class RecordDatabase
         string Disposition, string? Expected, string? Actual, string Utc, long Ticks,
         string Source, string TimeQuality, string Quality, Guid[] Evidence)
     {
+        // Null extension fields are omitted: legacy schema-1 hashes stay stable.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Guid? OccurrenceId { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Guid? ParentOccurrenceId { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Phase { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ExecutionPath { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? LoopIteration { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? StartedUtc { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? CompletedUtc { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public long? DurationTicks { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ObservationUtc { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Unit { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? SignalStatus { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? RequirementId { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ReportNote { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AdditionalResultsJson { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? ShowEvidence { get; init; }
+
         public static StepPayload FromFact(RunStepFact fact) => new(
             fact.Run.ToString(), fact.EventId, fact.Step.Value, fact.Attempt,
             fact.Disposition, fact.Expected, fact.Actual, fact.Time.Utc.ToString("O"),
             fact.Time.MonotonicTicks, fact.Time.Source.ToString(),
             fact.Time.Quality.ToString(), fact.Quality.ToString(),
-            fact.Evidence.Select(e => e.Value).ToArray());
+            fact.Evidence.Select(e => e.Value).ToArray())
+        {
+            OccurrenceId = fact.StepOccurrenceId,
+            ParentOccurrenceId = fact.ParentOccurrenceId,
+            Phase = fact.Phase,
+            ExecutionPath = fact.ExecutionPath,
+            LoopIteration = fact.LoopIteration,
+            StartedUtc = fact.StartedUtc?.ToString("O"),
+            CompletedUtc = fact.CompletedUtc?.ToString("O"),
+            DurationTicks = fact.Duration?.Ticks,
+            ObservationUtc = fact.ObservationUtc?.ToString("O"),
+            Unit = fact.Unit,
+            SignalStatus = fact.SignalStatus,
+            RequirementId = fact.RequirementId,
+            ReportNote = fact.ReportNote,
+            AdditionalResultsJson = fact.AdditionalResultsJson,
+            ShowEvidence = fact.ShowEvidence,
+        };
         public RunStepFact ToFact() => new(RunId.Create(Guid.Parse(Run)), EventId,
             StepId.Create(Step), Attempt, Disposition, Expected, Actual,
             new TimePoint(DateTimeOffset.Parse(Utc, CultureInfo.InvariantCulture), Ticks,
                 Enum.Parse<TimeSource>(Source), Enum.Parse<TimeQuality>(TimeQuality)),
             Enum.Parse<EvidenceQuality>(Quality),
-            Evidence.Select(e => new EvidenceRef(e)).ToImmutableArray());
+            Evidence.Select(e => new EvidenceRef(e)).ToImmutableArray())
+        {
+            StepOccurrenceId = OccurrenceId,
+            ParentOccurrenceId = ParentOccurrenceId,
+            Phase = Phase,
+            ExecutionPath = ExecutionPath,
+            LoopIteration = LoopIteration,
+            StartedUtc = StartedUtc is null ? null : DateTimeOffset.Parse(StartedUtc, CultureInfo.InvariantCulture),
+            CompletedUtc = CompletedUtc is null ? null : DateTimeOffset.Parse(CompletedUtc, CultureInfo.InvariantCulture),
+            Duration = DurationTicks is null ? null : TimeSpan.FromTicks(DurationTicks.Value),
+            ObservationUtc = ObservationUtc is null ? null : DateTimeOffset.Parse(ObservationUtc, CultureInfo.InvariantCulture),
+            Unit = Unit,
+            SignalStatus = SignalStatus,
+            RequirementId = RequirementId,
+            ReportNote = ReportNote,
+            AdditionalResultsJson = AdditionalResultsJson,
+            ShowEvidence = ShowEvidence,
+        };
     }
 
     private sealed record FactPayload(string Run, Guid EventId, Guid OperationId, string Kind,
