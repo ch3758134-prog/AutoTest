@@ -16,9 +16,26 @@ namespace AutoTest.Application.TestRecord;
 /// attach content-addressed artifacts before the run is finalized.
 /// A failed finalization must never yield a committed PASS.
 /// </summary>
+/// <summary>Actual recording health, not a claim inferred from a filename or ACK.</summary>
+public sealed record RunEvidenceCaptureResult(bool RecordingComplete, long DroppedEvents,
+    string? IncompleteReason)
+{
+    public void Validate()
+    {
+        if (DroppedEvents < 0 || (RecordingComplete && DroppedEvents != 0) ||
+            (IncompleteReason?.Length ?? 0) > 1024)
+            throw new InvalidDataException("Invalid raw evidence capture health.");
+    }
+}
+
 public interface IRealRunEvidenceFinalizer
 {
-    ValueTask FinalizeEvidenceAsync(RunId run, CancellationToken ct);
+    /// <summary>
+    /// Finish the real raw capture, fsync its bytes and attach each referenced
+    /// EvidenceRef via ArtifactRepository before the run is committed.
+    /// Do not claim complete unless the capture was active for the entire run.
+    /// </summary>
+    ValueTask<RunEvidenceCaptureResult> FinalizeEvidenceAsync(RunId run, CancellationToken ct);
 }
 
 /// <summary>
@@ -270,8 +287,49 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         // ArtifactRepository links are immutable and may be attached only while
         // the run header is Writing. A failed flush/attach aborts normal completion.
         // The host supplies real capture; this backend never invents evidence bytes.
-        if (_evidenceFinalizer is not null)
-            await _evidenceFinalizer.FinalizeEvidenceAsync(RunId, ct).ConfigureAwait(false);
+        var capture = _evidenceFinalizer is null
+            ? new RunEvidenceCaptureResult(false, 0, "RAW_CAPTURE_FINALIZER_NOT_CONNECTED")
+            : await _evidenceFinalizer.FinalizeEvidenceAsync(RunId, ct)
+                .ConfigureAwait(false);
+        capture.Validate();
+        await AppendAuditAsync(Guid.NewGuid(), RunFactKind.RecordWrite,
+            "EVIDENCE_CAPTURE " + JsonSerializer.Serialize(capture),
+            capture.RecordingComplete ? EvidenceQuality.HostObserved : EvidenceQuality.Unknown,
+            ImmutableArray<EvidenceRef>.Empty, ct).ConfigureAwait(false);
+
+        // The TEST verdict is a fact about the configured assertions.
+        // A formal recorded ECU PASS additionally requires an actual trace and
+        // all referenced evidence bytes, verified from the original artifact store.
+        var evidenceSnapshot = await _reports.ExportSummaryAsync(RunId, ct)
+            .ConfigureAwait(false);
+        var referenced = evidenceSnapshot.StepFacts.SelectMany(x => x.Evidence)
+            .Concat(evidenceSnapshot.Facts.SelectMany(x => x.Evidence))
+            .Select(x => x.Value).Distinct().ToArray();
+        var verified = evidenceSnapshot.Artifacts.Where(x =>
+            x.Integrity == ArtifactIntegrity.Present).Select(x => x.ArtifactId)
+            .ToHashSet();
+        var orphaned = referenced.Where(x => !verified.Contains(x)).ToArray();
+        var corrupt = evidenceSnapshot.Artifacts.Any(x =>
+            x.Integrity != ArtifactIntegrity.Present);
+        var trustedSignal = evidenceSnapshot.StepFacts.Any(x =>
+            x.SignalProvenance is not null && x.SignalStatus == "Valid" &&
+            x.Quality is EvidenceQuality.HostObserved or EvidenceQuality.DirectMeasured &&
+            x.Evidence.Any() && x.StepOccurrenceId is not null);
+        var formalPassEligible = capture.RecordingComplete &&
+            capture.DroppedEvents == 0 && orphaned.Length == 0 && !corrupt &&
+            referenced.Length > 0 && trustedSignal;
+        if (completed.Verdict == RealTestVerdict.Passed && !formalPassEligible)
+            await AppendAuditAsync(Guid.NewGuid(), RunFactKind.Uncertainty,
+                "EVIDENCE_GATE_NOT_MET " + JsonSerializer.Serialize(new
+                {
+                    capture.RecordingComplete,
+                    capture.DroppedEvents,
+                    capture.IncompleteReason,
+                    unarchivedEvidenceCount = orphaned.Length,
+                    corruptArtifact = corrupt,
+                    trustedSignalPresent = trustedSignal
+                }), EvidenceQuality.Unknown, ImmutableArray<EvidenceRef>.Empty, ct)
+                .ConfigureAwait(false);
 
         await AppendAuditAsync(Guid.NewGuid(),
             completed.Verdict is RealTestVerdict.Passed or RealTestVerdict.Failed
@@ -279,21 +337,24 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             "RUN_TERMINAL " + completed.Verdict,
             EvidenceQuality.Unknown, ImmutableArray<EvidenceRef>.Empty, ct).ConfigureAwait(false);
 
-        var terminal = completed.Verdict switch
+        var terminal = completed.Verdict == RealTestVerdict.Passed && !formalPassEligible
+            ? RunState.Unknown : completed.Verdict switch
         {
             RealTestVerdict.Passed => RunState.Completed,
             RealTestVerdict.Failed => RunState.Failed,
             RealTestVerdict.Aborted => RunState.Aborted,
             _ => RunState.Unknown
         };
-        var verdict = completed.Verdict switch
+        var verdict = completed.Verdict == RealTestVerdict.Passed && !formalPassEligible
+            ? Verdict.Inconclusive : completed.Verdict switch
         {
             RealTestVerdict.Passed => Verdict.Pass,
             RealTestVerdict.Failed => Verdict.Fail,
             RealTestVerdict.Error => Verdict.Error,
             _ => Verdict.Inconclusive
         };
-        var reason = completed.Verdict switch
+        var reason = completed.Verdict == RealTestVerdict.Passed && !formalPassEligible
+            ? "EVIDENCE_GATE_NOT_MET" : completed.Verdict switch
         {
             RealTestVerdict.Passed => null,
             RealTestVerdict.Failed => "TEST_ASSERTION_FAILED",
