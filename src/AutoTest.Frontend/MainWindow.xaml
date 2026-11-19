@@ -12,6 +12,10 @@
  <Window.InputBindings>
   <KeyBinding Key="S" Modifiers="Control" Command="{x:Static ApplicationCommands.Save}"/>
  </Window.InputBindings>
+ <Window.CommandBindings>
+  <CommandBinding Command="{x:Static ApplicationCommands.Save}"
+   Executed="SaveDraft_Executed"/>
+ </Window.CommandBindings>
  <Grid>
   <Grid.RowDefinitions>
    <RowDefinition Height="65"/>
