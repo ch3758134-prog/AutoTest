@@ -58,25 +58,25 @@ extern "C" {
 #define HOUT7_PORT MCAL_GPIO_C  /* PTC8  → SOL9IN  → U22 CH1 → J1 C8 */
 #define HOUT7_PIN  8U
 
-/* 业务分配：IGN→HOUT1；LED1~LED6→HOUT2~HOUT7。
+/* 业务分配：IGN→HOUT1；HOUT2/5=红灯1/2，HOUT3/6=黄灯1/2，HOUT4/7=绿灯1/2。
  * 业务高边输出 GPIO 上电初始化为 LOW；RL_DRV 是独立的板级使能，
  * 在全部外部负载输出 GPIO 设置 LOW 后，由 EAL 初始化为 HIGH。
  * HOUT5/PTC10 从此不再被 IGN 初始化或驱动。
  */
 #define IGN_PORT   HOUT1_PORT
 #define IGN_PIN    HOUT1_PIN
-#define LED1_PORT  HOUT2_PORT
-#define LED1_PIN   HOUT2_PIN
-#define LED2_PORT  HOUT3_PORT
-#define LED2_PIN   HOUT3_PIN
-#define LED3_PORT  HOUT4_PORT
-#define LED3_PIN   HOUT4_PIN
-#define LED4_PORT  HOUT5_PORT
-#define LED4_PIN   HOUT5_PIN
-#define LED5_PORT  HOUT6_PORT
-#define LED5_PIN   HOUT6_PIN
-#define LED6_PORT  HOUT7_PORT
-#define LED6_PIN   HOUT7_PIN
+#define LED_RED1_PORT  HOUT2_PORT
+#define LED_RED1_PIN   HOUT2_PIN
+#define LED_YELLOW1_PORT  HOUT3_PORT
+#define LED_YELLOW1_PIN   HOUT3_PIN
+#define LED_GREEN1_PORT  HOUT4_PORT
+#define LED_GREEN1_PIN   HOUT4_PIN
+#define LED_RED2_PORT  HOUT5_PORT
+#define LED_RED2_PIN   HOUT5_PIN
+#define LED_YELLOW2_PORT  HOUT6_PORT
+#define LED_YELLOW2_PIN   HOUT6_PIN
+#define LED_GREEN2_PORT  HOUT7_PORT
+#define LED_GREEN2_PIN   HOUT7_PIN
 
 /* 其余 BTS724G 控制输入：不向 USB 暴露，明确保持默认 LOW。
  * U23 CH1/CH2 外部输出分别为 HOUT10 / HOUT9；
@@ -128,7 +128,7 @@ extern "C" {
  * 2. 统一操作宏（不再增加信号枚举或 Port/Pin 查表）
  *
  * 用法：EAL_GPIO_WRITE(IGN, 1U);  EAL_GPIO_READ(AIR_ALVE1);
- * LED1~LED6 由 USB 业务使用；KEY1~KEY3 仍仅预留。
+ * LED_RED/YELLOW/GREEN1/2 由 USB 业务使用；KEY1~KEY3 仍仅预留。
  * signal 只能传上述已定义的板级名称；level 表示 MCU GPIO 的
  * 0/1 电平，不是 12V/24V 负载状态。单个 level 参数只求值一次。
  * -------------------------------------------------------------------------- */
@@ -140,9 +140,9 @@ extern "C" {
 /**
  * @brief  初始化已识别的高边输出控制引脚及公共母线信号。
  * @details 在 Clock_Init() 之后、USB/CAN 业务开始前调用一次。
- * @note   IGN、LED1~6、Air1/2、HOUT9/10 及 U22 CH4 未分配控制输入
+ * @note   IGN、六路 LED_RED/YELLOW/GREEN1/2、Air1/2、HOUT9/10 及 U22 CH4 未分配控制输入
  *          全部 LOW；最后初始化内部 RL_DRV 为 HIGH（不暴露 USB）。
- *          PTC8/PTC9 作为 LED6/LED5 控制引脚，不作为旧供电控制。
+ *          PTC8/PTC9 作为 LED_GREEN2/LED_YELLOW2 控制脚，不作为旧供电控制。
  * @warning 初始化态不是外部电压或机械到位反馈。
  */
 void EAL_GPIO_Init(void);
