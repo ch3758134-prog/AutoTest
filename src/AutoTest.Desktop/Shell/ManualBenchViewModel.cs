@@ -137,6 +137,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     }
 
     public bool IsConnected => _hardware.IsConnected;
+    // One action, two explicit labels: the operator never guesses whether it will connect or disconnect.
+    public string ConnectionActionLabel => IsConnected ? "断开主控" : "连接主控";
     public string ConnectionStatus => IsConnected
         ? "USB 已连接 · G" + _hardware.CurrentStationEpoch + " · " +
           (_hardware.ConnectedDeviceIdentity ?? "设备身份未返回") +
@@ -356,6 +358,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             LastKeyAck = "未知：连接已改变，原状态不可继承";
             LastIgnAck = "未知：连接已改变，原状态不可继承";
             RaisePropertyChanged(nameof(IsConnected));
+            RaisePropertyChanged(nameof(ConnectionActionLabel));
             RaisePropertyChanged(nameof(ConnectionStatus));
             RaisePropertyChanged(nameof(CanSendHardware));
             RaiseCommands();
@@ -440,6 +443,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             if (_hardware.HasSession) await _hardware.DisconnectAsync();
             await _hardware.ConnectAsync();
         }
+        RaisePropertyChanged(nameof(ConnectionActionLabel));
         RaisePropertyChanged(nameof(ConnectionStatus));
     });
 
