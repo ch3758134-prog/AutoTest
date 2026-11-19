@@ -265,10 +265,10 @@ public sealed partial class ManualBenchViewModel
         var entries = chosen.Select(row =>
         {
             // Firmware's existing 0x50/51/52/53 scheduler is hard-wired to
-            // physical CAN1 (now KEY_SIM), not the ECU on CAN0. Never enable it
+            // KEY CAN (not ECU CAN). Never enable it
             // for DUT traffic just because host USB 0x40 and 0x41 are remapped.
             // Manual periodic mode remains blocked until a separately verified
-            // CAN0 scheduling contract is available.
+            // ECU CAN scheduling contract is available.
             if (row.IsPeriodic && single is null)
                 throw new InvalidOperationException(
                     "手动台架周期发送暂不可用：固件 0x50 广播功能连接 KEY CAN（B1/B11），" +
