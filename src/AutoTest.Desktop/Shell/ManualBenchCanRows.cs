@@ -232,7 +232,7 @@ public sealed partial class ManualBenchViewModel
         private set { if (SetProperty(ref _canBatchRunning, value)) RaiseCommands(); }
     }
     public bool CanEditCanRows => !IsBusy && !IsCanBatchRunning;
-    public bool CanStartCanRows => !IsBusy && !IsCanBatchRunning &&
+    public bool CanStartCanRows => CanSendManualEcuCan &&
         CanSendRows.Any(x => x.Included);
     public bool CanStopCanRows => IsCanBatchRunning;
 
@@ -256,7 +256,7 @@ public sealed partial class ManualBenchViewModel
         StopCanRowsCommand = new DelegateCommand(async () => await StopCanRowsAsync(), () => CanStopCanRows);
         SendCanRowOnceCommand = new DelegateCommand<BenchCanRow>(
             async row => await StartCanRowsAsync(row),
-            row => row is not null && !IsBusy && !IsCanBatchRunning);
+            row => row is not null && CanSendManualEcuCan);
         AddCanRow();
     }
 
