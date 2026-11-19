@@ -8,6 +8,7 @@ using System.Windows;
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
 using AutoTest.Projects.Dbc;
+using AutoTest.Projects.Project;
 using AutoTest.Desktop.Projects;
 using Prism.Commands;
 using Prism.Mvvm;
