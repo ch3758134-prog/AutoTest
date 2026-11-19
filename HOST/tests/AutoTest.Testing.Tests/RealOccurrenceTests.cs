@@ -246,4 +246,32 @@ public sealed class RealOccurrenceTests
             x.Status == RealStepStatus.Completed);
     }
 
+    [Fact]
+    public async Task MatchingValueFromDifferentDbcFrameCannotPassFrozenAssertion()
+    {
+        var target = new TestTargetMapping("PinnedStatus", TestTargetKind.Signal,
+            AssetId.New(), 3, new string('f', 64), BusRole.DutCan, 0x123,
+            SignalName: "Status", Unit: "count");
+        var stale = new SignalRef(new AssetRef(target.Asset,
+            AssetRevision.Create(2),
+            RevisionFingerprint.FromSha256(new string('e', 64))),
+            target.Role, 0x124, target.SignalName, target.Unit);
+        var wrong = new SignalObservation(stale, 2, "count",
+            TimePoint.FromHostArrival(DateTimeOffset.UtcNow, 10),
+            EvidenceQuality.HostObserved, EvidenceRef.New(), false);
+        var test = StepNode.Create("AssertSignal").WithProperty("target", target.Name)
+            .WithProperty("operator", "==").WithProperty("expected", "2")
+            .WithProperty("timeoutMs", "100");
+        var plan = Prepare(WithTest(TestDocument.Create("DbcPinned") with
+            { Mappings = ImmutableArray.Create(target) }, test));
+        var output = await new RealRunCoordinator(
+            new Signals(new TestSignalResult(TestSignalStatus.Valid, wrong, "InputValid")),
+            new Actions(), new Waves()).StartAsync(plan);
+        Assert.Equal(RealTestVerdict.Inconclusive, output.Verdict);
+        var fact = Assert.Single(output.Facts);
+        Assert.Contains("DBC_SNAPSHOT_MISMATCH", fact.Detail);
+        Assert.NotEqual(RealStepStatus.Completed, fact.Status);
+        Assert.Equal(TestSignalStatus.DecodeError, fact.ObservationStatus);
+    }
+
 }
