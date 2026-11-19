@@ -61,23 +61,10 @@
      <DockPanel Grid.Row="0" Margin="12,4">
       <Button DockPanel.Dock="Right" Content="创建／打开 TCF"
        Command="{Binding OpenTcfCommand}"/>
-      <TextBlock Text="当前 ECU / DBC / 功能按键资源（正式 TCF）"
+      <TextBlock Text="ECU 与 DBC 资源"
        FontSize="11" Foreground="#64758C" VerticalAlignment="Center"/>
      </DockPanel>
      <ContentControl x:Name="DutFormHost" Grid.Row="1"
-      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-    </Grid>
-   </TabItem>
-   <TabItem Header="按键输入配置">
-    <Grid>
-     <Grid.RowDefinitions><RowDefinition Height="37"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <DockPanel Grid.Row="0" Margin="12,4">
-      <Button DockPanel.Dock="Right" Content="创建／打开输入配置"
-       Command="{Binding OpenControllerCommand}"/>
-      <TextBlock Text="ECU 输入状态与 KEY_SIM 电阻开关组合"
-       Foreground="#64758C" FontSize="11" VerticalAlignment="Center"/>
-     </DockPanel>
-     <ContentControl x:Name="InputFormHost" Grid.Row="1"
       HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
     </Grid>
    </TabItem>
@@ -87,7 +74,7 @@
      <DockPanel Grid.Row="0" Margin="12,4">
       <Button DockPanel.Dock="Right" Content="创建／打开 TBC"
        Command="{Binding OpenTbcCommand}"/>
-      <TextBlock Text="固定台架：USB 主控 / CAN0 KEY_SIM / CAN1 DUT"
+      <TextBlock Text="固定台架：ECU CAN（A1/A12）／KEY CAN（B1/B11）"
        Foreground="#64758C" FontSize="11" VerticalAlignment="Center"/>
      </DockPanel>
      <ContentControl x:Name="BenchFormHost" Grid.Row="1"
