@@ -50,3 +50,7 @@
 ## 2026-11-19 G4 已合入正式 HOST main
 
 - [PR #61 正式合并及 main 基线验证记录](new-baseline-20261112/research/G4-PR61-MAIN-MERGED-20261119.md)：`main@eb1b74a3d7eeb6dcbb582d9c04c72f97f5e1204e`；Git 冲突解决，后续仅在 main 上做 Windows 构建和现场实测，G4 整体真实准出仍未判 PASS。
+
+## 2026-11-19 整机系统 main 固定基线
+
+- [HOST、Main_Control、KEY_SIM 三套源码归档到 main 的目录及版本清单](new-baseline-20261112/research/SYSTEM-SOURCE-BASELINE-FIRMWARE-20261119.md)：正式 `main@f00289f3e141f265211f6cf236b55ca435c01f44`，`HOST` 已快进至相同版本；原固件分支保留。Keil、CodeWarrior 与实体硬件验证仍分开进行。
