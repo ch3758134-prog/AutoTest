@@ -72,7 +72,9 @@ public partial class MainWindow
         bool rawMode = action.RawMode || template is null;
         RawModeCheck.IsChecked = rawMode;
         RequestBox.IsReadOnly = !rawMode;
+        AdvancedEditExpander.IsExpanded = rawMode;
         PrimaryBox.IsEnabled = AuxiliaryBox.IsEnabled = template is not null && !rawMode;
+        RefreshSendButton();
     }
 
     private void SaveServiceEditorState()
@@ -100,6 +102,7 @@ public partial class MainWindow
             ServiceHelp.Text = template.Guidance;
             RawModeCheck.IsChecked = false;
             RequestBox.IsReadOnly = true;
+            AdvancedEditExpander.IsExpanded = false;
             PrimaryBox.IsEnabled = AuxiliaryBox.IsEnabled = true;
         }
         finally { _loadingEditor = false; }
@@ -128,6 +131,8 @@ public partial class MainWindow
             ComposerStatus.Text = "自由 HEX 编辑已启用；改动原始 PDU 不会被服务模板自动覆盖。";
             ComposerStatus.Foreground = Brushes.SteelBlue;
             SaveServiceEditorState();
+            AdvancedEditExpander.IsExpanded = true;
+            RefreshSendButton();
         }
         else
             ComposeCurrent();
@@ -164,6 +169,7 @@ public partial class MainWindow
                 ? "请求已自动生成 · 当前服务属于受限只读候选；按下发送仍需逐帧实体授权。"
                 : "请求已自动生成 · 实体发送暂未开放；可先编辑参数与响应解析规则。";
             ComposerStatus.Foreground = template.PhysicalEnabled ? Brushes.SeaGreen : Brushes.DarkOrange;
+            RefreshSendButton();
         }
         catch (FormatException ex)
         {
@@ -173,6 +179,7 @@ public partial class MainWindow
             UpdateActionFromEditor();
             ComposerStatus.Text = "参数待补充：" + ex.Message;
             ComposerStatus.Foreground = Brushes.DarkOrange;
+            RefreshSendButton();
         }
     }
 
@@ -206,6 +213,24 @@ public partial class MainWindow
     {
         if (QueueList.SelectedItem is DiagnosticAction action)
             _manualQueue.Remove(action);
+    }
+
+    // This is presentation/preflight only. The shared UdsClient and the USB
+    // PhysicalCommandFence remain the final security authorities.
+    private void RefreshSendButton()
+    {
+        bool maySend = false;
+        if (_editing is not null && _hardware?.IsReady == true &&
+            !_requiresReconnect && _operation is null && _pendingRequest is null)
+        {
+            try
+            {
+                byte[] pdu = UdsHex.Parse(_editing.RequestHex);
+                maySend = pdu[0] is 0x19 or 0x22 or 0x23 or 0x24;
+            }
+            catch (FormatException) { }
+        }
+        SendButton.IsEnabled = maySend;
     }
 
     private void QueueNext_Click(object sender, RoutedEventArgs e)

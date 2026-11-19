@@ -94,6 +94,7 @@ public partial class MainWindow : Window
                 CultureInfo.InvariantCulture, out var scale))
             _editing.Scale = scale;
         SaveServiceEditorState();
+        RefreshSendButton();
     }
 
     private void Add_Click(object sender, RoutedEventArgs e)
@@ -224,7 +225,7 @@ public partial class MainWindow : Window
             _requiresReconnect = false;
             TxIdBox.IsEnabled = RxIdBox.IsEnabled = P2Box.IsEnabled = P2StarBox.IsEnabled = false;
             DisconnectButton.IsEnabled = true;
-            SendButton.IsEnabled = true;
+            RefreshSendButton();
             ConnectionStatus.Text = "主控已连接 · " + _hardware.DeviceIdentity +
                 " · UDS 接收已就绪；未向 ECU 自动发送请求。";
             Audit("CONNECT", "主控连接 / USB Ping / ISO-TP RX 已就绪；ECU 在线状态仍未确认。");
@@ -317,7 +318,7 @@ public partial class MainWindow : Window
             _pendingRequest = null;
             _operation?.Dispose();
             _operation = null;
-            SendButton.IsEnabled = _hardware?.IsReady == true && !_requiresReconnect;
+            RefreshSendButton();
             CancelButton.IsEnabled = false;
         }
     }

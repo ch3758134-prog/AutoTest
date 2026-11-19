@@ -87,57 +87,85 @@
     </DockPanel>
    </Border>
    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
-   <Border Grid.Column="2" Background="White" BorderBrush="#DCE4EF" BorderThickness="1" CornerRadius="8" Padding="16">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel>
-      <TextBlock Text="操作编辑 · 即时请求" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,9"/>
-      <TextBlock Text="名称" Foreground="#52637A"/>
-      <TextBox x:Name="NameBox" TextChanged="EditorChanged"/>
-      <TextBlock Text="操作组（用于整理，不是自动流程）" Foreground="#52637A"/>
-      <TextBox x:Name="GroupBox" TextChanged="EditorChanged"/>
-      <Border Background="#F0F5FC" Padding="11,10" CornerRadius="6" Margin="0,0,0,10">
-       <StackPanel>
-        <TextBlock Text="UDS 服务 · 参数化操作" FontWeight="SemiBold" Foreground="#20334E" Margin="0,0,0,6"/>
-        <ComboBox x:Name="ServiceCombo" DisplayMemberPath="Display" SelectionChanged="ServiceChanged" ToolTip="从服务目录选择协议服务，不需要手写 SID"/>
-        <TextBlock x:Name="ServiceHelp" Foreground="#64748B" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"/>
-        <TextBlock x:Name="PrimaryLabel" Text="DID / 子功能" Foreground="#52637A"/>
-        <TextBox x:Name="PrimaryBox" FontFamily="Consolas" FontSize="15" TextChanged="ServiceParameterChanged"/>
-        <TextBlock x:Name="AuxiliaryLabel" Text="附加数据（可选）" Foreground="#52637A"/>
-        <TextBox x:Name="AuxiliaryBox" FontFamily="Consolas" FontSize="15" TextChanged="ServiceParameterChanged"/>
-        <TextBlock x:Name="ComposerStatus" Foreground="#256C4C" FontSize="12" TextWrapping="Wrap" Margin="0,1,0,3"/>
+   <Border Grid.Column="2" Background="White" BorderBrush="#DCE4EF" BorderThickness="1" CornerRadius="8" Padding="14">
+    <DockPanel>
+     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <StackPanel VerticalAlignment="Center">
+        <TextBlock Text="当前诊断操作" FontWeight="SemiBold" FontSize="16" Foreground="#20334E"/>
+        <TextBlock Text="选择服务 → 修改参数 → 立即执行" Foreground="#697B91" FontSize="12" Margin="0,3,0,0"/>
        </StackPanel>
-      </Border>
-      <CheckBox x:Name="RawModeCheck" Content="高级模式：直接编辑完整 UDS 请求 HEX" Margin="0,0,0,6"
-                Checked="RawModeChanged" Unchecked="RawModeChanged"/>
-      <TextBlock Text="将要发送的 UDS PDU（不包含 CAN ID / ISO-TP 帧头）" Foreground="#52637A"/>
-      <TextBox x:Name="RequestBox" FontFamily="Consolas" FontSize="16" TextChanged="EditorChanged"
-               ToolTip="结构化模式下自动组帧；勾选高级模式后可自行修改请求 HEX" IsReadOnly="True"/>
-      <TextBlock Text="响应匹配前缀（由服务自动生成，可在高级模式修改）" Foreground="#52637A"/>
-      <TextBox x:Name="ExpectedBox" FontFamily="Consolas" TextChanged="EditorChanged"/>
-      <TextBlock Text="响应解析：读取字节偏移后按类型解析；可不配置" Foreground="#52637A" TextWrapping="Wrap"/>
-      <WrapPanel Margin="0,3,0,6">
-       <ComboBox x:Name="DecodeBox" Width="160" SelectionChanged="EditorChangedSelection">
-        <ComboBoxItem Content="原始 HEX" Tag="Hex"/>
-        <ComboBoxItem Content="ASCII 字符串" Tag="Ascii"/>
-        <ComboBoxItem Content="UInt16 大端" Tag="UInt16BE"/>
-        <ComboBoxItem Content="UInt16 小端" Tag="UInt16LE"/>
-        <ComboBoxItem Content="UInt8" Tag="UInt8"/>
-       </ComboBox>
-       <TextBlock Text="偏移" Margin="2,10,4,0" Foreground="#52637A"/>
-       <TextBox x:Name="OffsetBox" Width="46" TextChanged="EditorChanged"/>
-       <TextBlock Text="比例" Margin="2,10,4,0" Foreground="#52637A"/>
-       <TextBox x:Name="ScaleBox" Width="55" TextChanged="EditorChanged"/>
-       <TextBlock Text="单位" Margin="2,10,4,0" Foreground="#52637A"/>
-       <TextBox x:Name="UnitBox" Width="68" TextChanged="EditorChanged"/>
-      </WrapPanel>
-      <TextBlock Text="服务选择和组帧不等于实体发送授权；修改会话、清故障、复位等请求可编辑，但当前不能发送。" TextWrapping="Wrap" Foreground="#697B91" Margin="0,0,0,10"/>
-      <WrapPanel>
-       <Button x:Name="SendButton" Content="▶ 立即发送当前操作" Padding="20,9" Click="Send_Click" IsEnabled="False"/>
-       <Button x:Name="CancelButton" Content="停止等待" Click="Cancel_Click" IsEnabled="False"/>
-      </WrapPanel>
-      <TextBlock x:Name="SendHint" Text="选择 UDS 服务后直接编辑参数。未经 ECU 实际响应确认，不把请求发送视为成功。" Foreground="#64748B" Margin="0,10,0,0" TextWrapping="Wrap"/>
+       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="SendButton" Content="▶ 发送请求" Padding="16,7" Click="Send_Click" IsEnabled="False" Background="#DCEBFB"/>
+        <Button x:Name="CancelButton" Content="取消" Click="Cancel_Click" IsEnabled="False"/>
+       </StackPanel>
+      </Grid>
+      <TextBlock x:Name="SendHint" Text="发送前请确认 ECU 地址及实际服务参数。仅真实响应才能确定结果。" Foreground="#697B91" FontSize="11" Margin="0,6,0,1" TextWrapping="Wrap"/>
      </StackPanel>
-    </ScrollViewer>
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+       <Grid Margin="0,0,0,5">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0">
+         <TextBlock Text="操作名称" Foreground="#52637A"/>
+         <TextBox x:Name="NameBox" TextChanged="EditorChanged"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+         <TextBlock Text="所属组" Foreground="#52637A"/>
+         <TextBox x:Name="GroupBox" TextChanged="EditorChanged"/>
+        </StackPanel>
+       </Grid>
+       <Border Background="#F0F5FC" Padding="11,10" CornerRadius="6" Margin="0,0,0,10">
+        <StackPanel>
+         <TextBlock Text="服务与参数" FontWeight="SemiBold" Foreground="#20334E" Margin="0,0,0,6"/>
+         <ComboBox x:Name="ServiceCombo" DisplayMemberPath="Display" SelectionChanged="ServiceChanged" ToolTip="选服务后自动生成 UDS 请求"/>
+         <TextBlock x:Name="ServiceHelp" Foreground="#64748B" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"/>
+         <TextBlock x:Name="PrimaryLabel" Text="DID / 子功能" Foreground="#52637A"/>
+         <TextBox x:Name="PrimaryBox" FontFamily="Consolas" FontSize="15" TextChanged="ServiceParameterChanged"/>
+         <TextBlock x:Name="AuxiliaryLabel" Text="附加数据（可选）" Foreground="#52637A"/>
+         <TextBox x:Name="AuxiliaryBox" FontFamily="Consolas" FontSize="15" TextChanged="ServiceParameterChanged"/>
+         <TextBlock x:Name="ComposerStatus" Foreground="#256C4C" FontSize="12" TextWrapping="Wrap" Margin="0,1,0,3"/>
+        </StackPanel>
+       </Border>
+       <Border BorderBrush="#DCE4EF" BorderThickness="1" CornerRadius="5" Padding="9,6" Margin="0,0,0,8">
+        <StackPanel>
+         <TextBlock Text="当前请求预览（自动组帧）" Foreground="#697B91" FontSize="11"/>
+         <TextBlock Text="{Binding ElementName=RequestBox, Path=Text, FallbackValue=尚无请求}" Foreground="#20334E"
+                    FontFamily="Consolas" FontSize="15" TextWrapping="Wrap" Margin="0,4,0,1"/>
+        </StackPanel>
+       </Border>
+       <Expander x:Name="AdvancedEditExpander" Header="高级编辑 · 原始 UDS HEX 与响应解析" IsExpanded="False" Margin="0,0,0,8">
+        <StackPanel Margin="0,8,0,0">
+         <CheckBox x:Name="RawModeCheck" Content="直接编辑完整 UDS 请求 HEX" Margin="0,0,0,6"
+                   Checked="RawModeChanged" Unchecked="RawModeChanged"/>
+         <TextBlock Text="UDS 请求 PDU（不包括 CAN / ISO-TP 帧头）" Foreground="#52637A"/>
+         <TextBox x:Name="RequestBox" FontFamily="Consolas" FontSize="16" TextChanged="EditorChanged"
+                  ToolTip="结构化模式会自动生成。勾选高级模式后可以直接修改。" IsReadOnly="True"/>
+         <TextBlock Text="期望响应前缀（HEX，可自行修改）" Foreground="#52637A"/>
+         <TextBox x:Name="ExpectedBox" FontFamily="Consolas" TextChanged="EditorChanged"/>
+         <TextBlock Text="响应解析规则（可选）" Foreground="#52637A"/>
+         <WrapPanel Margin="0,3,0,6">
+          <ComboBox x:Name="DecodeBox" Width="155" SelectionChanged="EditorChangedSelection">
+           <ComboBoxItem Content="原始 HEX" Tag="Hex"/>
+           <ComboBoxItem Content="ASCII 字符串" Tag="Ascii"/>
+           <ComboBoxItem Content="UInt16 大端" Tag="UInt16BE"/>
+           <ComboBoxItem Content="UInt16 小端" Tag="UInt16LE"/>
+           <ComboBoxItem Content="UInt8" Tag="UInt8"/>
+          </ComboBox>
+          <TextBlock Text="偏移" Margin="2,10,4,0" Foreground="#52637A"/>
+          <TextBox x:Name="OffsetBox" Width="46" TextChanged="EditorChanged"/>
+          <TextBlock Text="比例" Margin="2,10,4,0" Foreground="#52637A"/>
+          <TextBox x:Name="ScaleBox" Width="55" TextChanged="EditorChanged"/>
+          <TextBlock Text="单位" Margin="2,10,4,0" Foreground="#52637A"/>
+          <TextBox x:Name="UnitBox" Width="68" TextChanged="EditorChanged"/>
+         </WrapPanel>
+        </StackPanel>
+       </Expander>
+       <TextBlock Text="真实 ECU 状态变更类请求当前仅支持编辑和查看，不开放实体发送；批量自动交互与周期观察等待受限物理授权合同。" Foreground="#996B36" FontSize="12" TextWrapping="Wrap"/>
+      </StackPanel>
+     </ScrollViewer>
+    </DockPanel>
    </Border>
    <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
    <Border Grid.Column="4" Background="White" BorderBrush="#DCE4EF" BorderThickness="1" CornerRadius="8" Padding="14">
