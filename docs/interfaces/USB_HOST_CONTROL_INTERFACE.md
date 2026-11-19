@@ -143,7 +143,7 @@
 | 0x12 SET_IGN | 1B：0关闭/1开启 | 空 | 设置PTC1 GPIO（HOUT1） |
 | 0x13 GET_IGN | 空 | 1B：0/1 | 读取PTC1 GPIO电平（HOUT1） |
 
-物理路径 PTC1→SOL8IN→U5 CH1→HOUT1→J1 C10。旧HOUT5现为LED4。查询仅表示MCU电平，不表示J1实测电压或DUT点火反馈。固件初始化时 IGN 默认为 LOW/OFF（2026-11-18 已批准的源码行为）；显式 SET_IGN=1 才开启对应 GPIO，不改变内部 RL_DRV。
+物理路径 PTC1→SOL8IN→U5 CH1→HOUT1→J1 C10。旧HOUT5现为 LED_RED2。查询仅表示MCU电平，不表示J1实测电压或DUT点火反馈。固件初始化时 IGN 默认为 LOW/OFF（2026-11-18 已批准的源码行为）；显式 SET_IGN=1 才开启对应 GPIO，不改变内部 RL_DRV。
 
 ### 5.2 两路独立夹具
 
@@ -176,7 +176,18 @@
 | 0x1B GET_LEDS | 空 | 1B: bit0..5 = LED1..LED6 MCU GPIO电平 | bit6/7=0，不是负载端电压反馈 |
 | 0x1C SET_LEDS | 1B: [bitmap=0x00..0x3F] | 空 | 一次要求六路状态，按 GPIO 依次写入 |
 
-物理对应：LED1=HOUT2/PTB19/J1 C11；LED2=HOUT3/PTB18/J1 C25；LED3=HOUT4/PTC4/J1 C26；LED4=HOUT5/PTC10/J1 C6；LED5=HOUT6/PTC9/J1 C7；LED6=HOUT7/PTC8/J1 C8。
+物理对应：LED_RED1=HOUT2/PTB19/J1 C11；LED_YELLOW1=HOUT3/PTB18/J1 C25；LED_GREEN1=HOUT4/PTC4/J1 C26；LED_RED2=HOUT5/PTC10/J1 C6；LED_YELLOW2=HOUT6/PTC9/J1 C7；LED_GREEN2=HOUT7/PTC8/J1 C8。
+
+| USB index | 位图 bit | 业务宏 | HOUT |
+|---|---|---|---|
+| 1 | 0 | LED_RED1 | HOUT2 |
+| 2 | 1 | LED_YELLOW1 | HOUT3 |
+| 3 | 2 | LED_GREEN1 | HOUT4 |
+| 4 | 3 | LED_RED2 | HOUT5 |
+| 5 | 4 | LED_YELLOW2 | HOUT6 |
+| 6 | 5 | LED_GREEN2 | HOUT7 |
+
+以上只是 GPIO 语义命名变化；原有 USB 0x1A/0x1B/0x1C 的 index、bit 位次及帧格式不变。
 
 - 上电六路初始化为 LOW；HIGH 请求高边输出导通，依赖 SOL24IN，共用高边电源。GPIO HIGH 与 USB OK 不等于 J1 端子已输出电压、更不等于 LED 实际点亮。
 - 不合法 index、level、长度以及 bitmap 的 bit6/bit7 非零，返回 ERR_FMT，不执行 GPIO 操作。
@@ -198,7 +209,7 @@
 
 旧命令0x10/0x11(ECU供电)、0x14/0x15(按键板供电)、0x16/0x17(旧SOL)和0x1F(GET_ALL_PWR)均不再定义或路由。发送上述命令应得到 **0x03 ERR_CMD**，上位机不应发出这些请求，也不应保留其业务操作。
 
-**内部电路：** RL_DRV/PTC0 控制公共 SOL24IN 高边母线，EAL 在所有外部输出 GPIO 初始 LOW 后独立初始化 RL_DRV 为 HIGH。USB/ASW 不修改 RL_DRV。PTC8/PTC9 分别用于 LED6/LED5，不再是历史供电输出。
+**内部电路：** RL_DRV/PTC0 控制公共 SOL24IN 高边母线，EAL 在所有外部输出 GPIO 初始 LOW 后独立初始化 RL_DRV 为 HIGH。USB/ASW 不修改 RL_DRV。PTC8/PTC9 分别用于 LED_GREEN2 / LED_YELLOW2，不再是历史供电输出。
 
 ## 6. 已核算的收发十六进制示例
 
@@ -228,7 +239,7 @@
 ## 8. 已知风险与尚未验证项
 
 - R01：两夹具独立设置逻辑已写入源码；尚无Keil编译/真实夹具J1电压/气路实测证据。
-- R02：旧供电与SOL USB命令已移除；PTC8/PTC9分别为LED6/LED5，外接线束和输出状态仍须核查。
+- R02：旧供电与SOL USB命令已移除；PTC8/PTC9分别为 LED_GREEN2 / LED_YELLOW2，外接线束和输出状态仍须核查。
 - R03：批准的源码初始值为 Air1/2 LOW、LED1~6 LOW、IGN LOW、HOUT9/10 LOW、U22 CH4 未分配控制输入 LOW；板内 RL_DRV 在最后初始化为 HIGH。上电至 GPIO 初始化完成前的波形和实际负载安全仍待核。
 - R04：沿用USB枚举丢失时清除已压紧夹具的既有代码；是否符合实际夹具安全尚未确认。
 - R05：GET_CLAMPS/GET_IGN只回读MCU GPIO，非高边输出电压/机械位置反馈。
