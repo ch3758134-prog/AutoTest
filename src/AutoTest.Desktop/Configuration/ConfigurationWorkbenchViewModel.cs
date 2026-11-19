@@ -162,7 +162,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public bool IsControllerDefinition => IsController && SelectedControllerId.HasValue &&
         !SelectedStateId.HasValue;
     public bool IsControllerSelection => IsController && SelectedControllerId.HasValue;
-    public string ControllerSelectionTitle => _selectedNode?.Label?.Trim() ?? "按键配置";
+    public string ControllerSelectionTitle => _selectedNode?.Label?.Trim() ?? "旧控制器资源";
     public string KeyMaskSummary
     {
         get
@@ -221,7 +221,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public bool IsTbc => _session.Kind == ProjectConfigurationCodec.BenchConfigurationKind;
     public string TypeLabel => _session.Kind switch
     {
-        ProjectConfigurationCodec.ControllerKind => "控制器与按键配置",
+        ProjectConfigurationCodec.ControllerKind => "旧控制器资源（仅兼容既有工程）",
         ProjectConfigurationCodec.WaveSettingsKind => "波形判定配置",
         ProjectConfigurationCodec.FlashSettingsKind => "烧录配置",
         ProjectConfigurationCodec.ScanSettingsKind => "扫码匹配配置",
