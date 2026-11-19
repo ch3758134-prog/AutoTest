@@ -269,7 +269,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
                 _ = LoadSelectedProfileAsync();
         }
     }
-    public string ControllerSummary => _controller is null ? "未选择已验证的 Controller 配置" :
+    public string ControllerSummary => _controller is null ? "20 Key 直接操作 · 不依赖旧配置资源" :
         _controller.EcuName + " / " + _controller.HardwareModel + " / " +
         (_controller.KeyHardwarePolicy is null ? "未配置可用 Key" :
         "可用 Key 0x" + _controller.KeyHardwarePolicy.SupportedMask.ToString("X5"));
@@ -302,7 +302,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             () => !IsBusy && !IsCanBatchRunning && !_hardware.IsTestRunApproved);
         ReloadProfilesCommand = new DelegateCommand(async () => await ReloadResourcesAsync(), () => !IsBusy);
         SendCanCommand = new DelegateCommand(async () => await SendCanAsync(), () => !IsBusy);
-        SendKeyCommand = new DelegateCommand(async () => await ApplyKeysAsync(), () => !IsBusy && HasConfiguredKeys);
+        SendKeyCommand = new DelegateCommand(async () => await ApplyKeysAsync(), () => !IsBusy);
         ReleaseKeysCommand = new DelegateCommand(ReleaseDraftKeys, () => !IsBusy);
         SendIgnCommand = new DelegateCommand(async () => await ApplyIgnAsync(), () => CanInvokeManualIo);
         ReadIgnCommand = new DelegateCommand(async () => await ReadIgnAsync(), () => CanInvokeManualIo);
@@ -609,14 +609,20 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
 
     private CanFrame TryBuildKeyFrame()
     {
-        var policy = _controller?.KeyHardwarePolicy ??
-            throw new InvalidOperationException("先在工程中配置并保存 20 Key 的可用硬件资源。");
-        policy.Validate();
+        // Every physical command is an explicit, 20-bit KEY_SIM switch mask.
+        // Existing project restrictions stay effective; a separate Controller
+        // editor is no longer required merely to operate these switches.
         var mask = DraftMask;
-        if ((mask & ~policy.SupportedMask) != 0)
-            throw new InvalidOperationException("所选 Key 不在已确认的硬件资源配置中。");
-        if (policy.ForbiddenPairs.Any(p => (mask & p.A) == p.A && (mask & p.B) == p.B))
-            throw new InvalidOperationException("所选 Key 包含硬件配置禁止的组合。");
+        if (mask > 0xFFFFFu)
+            throw new InvalidOperationException("KEY 组合必须在 20 位范围内。");
+        if (_controller?.KeyHardwarePolicy is { } policy)
+        {
+            policy.Validate();
+            if ((mask & ~policy.SupportedMask) != 0)
+                throw new InvalidOperationException("所选 Key 超出工程已确认的硬件可用范围。");
+            if (policy.ForbiddenPairs.Any(p => (mask & p.A) == p.A && (mask & p.B) == p.B))
+                throw new InvalidOperationException("所选 Key 包含已禁止的组合。");
+        }
         return mask == 0 ? KeypadCommandCodec.EncodeReleaseAll() : KeypadCommandCodec.EncodeMask(mask);
     }
 
@@ -660,7 +666,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private async Task ApplyKeysAsync() => await Execute("KEY_SIM 电阻组合", async () =>
     {
         if (!_hardware.IsConnected) throw new IOException("USB 未连接");
-        await VerifyControllerFreshAsync();
+        if (_loadedControllerAsset != Guid.Empty)
+            await VerifyControllerFreshAsync();
         var frame = TryBuildKeyFrame();
         await _hardware.SendCanOnceAsync(frame, ExpectedConsent(() => frame));
         LastKeyAck = "KEY CAN ACK · 请求掩码 0x" + DraftMask.ToString("X5") +
