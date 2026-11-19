@@ -18,6 +18,16 @@ public sealed record RunReportDocument(RunHistoryEntry Header,
 
 public sealed record ExportedRunReportFiles(string HtmlPath, string JsonPath, string CsvPath);
 
+/// <summary>Frozen TEST identity copied into immutable RunFact before any TEST steps.</summary>
+public sealed record ReportCaseContext(Guid CaseAttemptId, string TestDocumentId,
+    string TestName, string ReportTitle, string? CaseNumber,
+    string? Description, string PreparedPlanSha256);
+
+/// <summary>Capture health is independent of the TEST assertion verdict.</summary>
+public sealed record ReportCaptureHealth(bool RecordingComplete, long DroppedEvents,
+    string? IncompleteReason);
+
+
 public sealed class RunReportExporter
 {
     private readonly RecordDatabase _db;
@@ -58,12 +68,13 @@ public sealed class RunReportExporter
         var report = await ExportSummaryAsync(run, ct).ConfigureAwait(false);
         var archived = report.Artifacts.Where(a => a.Integrity == ArtifactIntegrity.Present)
             .Select(a => a.ArtifactId).ToHashSet();
-        var output = new StringBuilder("sequence,run_id,event_id,step_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json,failure_code,detail,unarchived_evidence_ids,dbc_asset_id,dbc_revision,dbc_sha256,bus_role,frame_id,signal_name,source_ticks,source_clock,source_time_quality\r\n");
+        var output = new StringBuilder("sequence,run_id,event_id,step_id,case_attempt_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json,failure_code,detail,unarchived_evidence_ids,dbc_asset_id,dbc_revision,dbc_sha256,bus_role,frame_id,signal_name,source_ticks,source_clock,source_time_quality\r\n");
         for (var i = 0; i < report.StepFacts.Count; i++)
         {
             var step = report.StepFacts[i];
             var cells = new[] { (i + 1).ToString(), step.Run.ToString(),
-                step.EventId.ToString("D"), step.Step.ToString(), step.Attempt.ToString(),
+                step.EventId.ToString("D"), step.Step.ToString(),
+                step.CaseAttemptId?.ToString("D") ?? "", step.Attempt.ToString(),
                 step.Disposition, step.Expected ?? "", step.Actual ?? "", step.Time.Utc.ToString("O"),
                 step.Time.Source.ToString(), step.Time.Quality.ToString(), step.Quality.ToString(),
                 string.Join(";", step.Evidence.Select(e => e.ToString())),
@@ -118,7 +129,11 @@ public sealed class RunReportExporter
             completed = report.Header.CompletedUtc,
             snapshotHash = report.Header.SnapshotSha256,
             snapshot = snapshotDocument.RootElement,
-            evidenceArchiveIncomplete = missingArchive.Length > 0,
+            evidenceArchiveIncomplete = missingArchive.Length > 0 ||
+                ReadCaptureHealth(report.Facts) is not { RecordingComplete: true } ||
+                report.Artifacts.Any(a => a.Integrity != ArtifactIntegrity.Present),
+            captureHealth = ReadCaptureHealth(report.Facts),
+            testCase = ReadCaseContext(report.Facts),
             unarchivedEvidenceIds = missingArchive,
             facts = report.Facts.Select((f, i) => new
             {
@@ -129,7 +144,8 @@ public sealed class RunReportExporter
             }),
             stepFacts = report.StepFacts.Select((f, i) => new
             {
-                sequence = i + 1, eventId = f.EventId, stepId = f.Step.ToString(), attempt = f.Attempt,
+                sequence = i + 1, eventId = f.EventId, stepId = f.Step.ToString(),
+                caseAttemptId = f.CaseAttemptId, attempt = f.Attempt,
                 disposition = f.Disposition, expected = f.Expected, actual = f.Actual,
                 occurrenceId = f.StepOccurrenceId, parentOccurrenceId = f.ParentOccurrenceId,
                 phase = f.Phase, loopIteration = f.LoopIteration, path = f.ExecutionPath,
@@ -203,6 +219,18 @@ public sealed class RunReportExporter
         html.Append("<h1>AutoTest 执行报告</h1><p>运行状态、测试结论和归档状态相互独立；没有物理观测时不推定物理动作成功。</p>");
         html.Append("<table><tbody>");
         Row("RunId", header.Run.ToString()); Row("ECU 身份", header.DutId);
+        var testCase = ReadCaseContext(facts);
+        var capture = ReadCaptureHealth(facts);
+        Row("测试用例", testCase?.TestName);
+        Row("测试用例编号", testCase?.CaseNumber);
+        Row("报告标题", testCase?.ReportTitle);
+        Row("执行尝试 ID", testCase?.CaseAttemptId.ToString("D"));
+        Row("测试程序指纹", testCase?.PreparedPlanSha256);
+        Row("测试目的", testCase?.Description);
+        Row("原始记录是否完整", capture is null ? "未记录" :
+            capture.RecordingComplete ? "是" : "否");
+        Row("丢失事件数", capture?.DroppedEvents.ToString());
+        Row("采集问题", capture?.IncompleteReason);
         Row("运行模式", header.Mode.ToString()); Row("存储提交状态", header.Persistence.ToString());
         Row("终态", header.TerminalState); Row("Verdict", header.Verdict?.ToString());
         Row("开始 UTC", header.StartedUtc.ToString("O")); Row("结束 UTC", header.CompletedUtc?.ToString("O"));
@@ -224,7 +252,8 @@ public sealed class RunReportExporter
             .Where(e => !archived.Contains(e.Value))
             .Select(e => e.Value).Distinct().ToArray();
         html.Append("</tbody></table>");
-        if (unresolved.Length > 0)
+        if (unresolved.Length > 0 || capture is not { RecordingComplete: true } ||
+            artifacts.Any(a => a.Integrity != ArtifactIntegrity.Present))
             html.Append("<p><strong>证据归档不完整：</strong>本次运行有 ")
                 .Append(unresolved.Length)
                 .Append(" 个证据 ID 未绑定可验证的归档附件；这些 ID 不能作为完整原始 CAN/DBC 证据。</p>");
@@ -233,6 +262,8 @@ public sealed class RunReportExporter
         {
             html.Append("<tr><td>").Append(H(step.Step.ToString())).Append("<div>Occurrence: ")
                 .Append(H(step.StepOccurrenceId?.ToString("D") ?? "Legacy (not recorded)"))
+                .Append("<div>CaseAttempt: ").Append(H(step.CaseAttemptId?.ToString("D")))
+                .Append("</div>")
                 .Append("</div><div>Parent: ").Append(H(step.ParentOccurrenceId?.ToString("D")))
                 .Append("</div></td><td>").Append(H(step.Phase))
                 .Append(" / ").Append(H(step.LoopIteration?.ToString()))
@@ -280,6 +311,41 @@ public sealed class RunReportExporter
 
         void Row(string label, string? value) => html.Append("<tr><th>").Append(H(label))
             .Append("</th><td>").Append(H(value)).Append("</td></tr>");
+    }
+
+
+    private static ReportCaseContext? ReadCaseContext(IEnumerable<RunFact> facts)
+    {
+        foreach (var fact in facts)
+        {
+            const string prefix = "TEST_CONTEXT ";
+            if (!fact.Description.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            try
+            {
+                return JsonSerializer.Deserialize<ReportCaseContext>(
+                    fact.Description[prefix.Length..],
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (JsonException) { return null; }
+        }
+        return null;
+    }
+
+    private static ReportCaptureHealth? ReadCaptureHealth(IEnumerable<RunFact> facts)
+    {
+        foreach (var fact in facts)
+        {
+            const string prefix = "EVIDENCE_CAPTURE ";
+            if (!fact.Description.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            try
+            {
+                return JsonSerializer.Deserialize<ReportCaptureHealth>(
+                    fact.Description[prefix.Length..],
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (JsonException) { return null; }
+        }
+        return null;
     }
 
     private static string Csv(string text)
