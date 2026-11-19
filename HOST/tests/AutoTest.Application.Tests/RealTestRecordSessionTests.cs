@@ -26,13 +26,14 @@ public sealed class RealTestRecordSessionTests
         public RecordDatabase Database { get; }
         public RunRecordWriter Writer { get; }
         public RunReportExporter Reports { get; }
+        public ArtifactRepository Artifacts { get; }
         public string ReportFolder => Path.Combine(_root, "reports");
         public Fixture()
         {
             Database = new RecordDatabase(Path.Combine(_root, "runs.db"));
             Writer = new RunRecordWriter(Database);
-            Reports = new RunReportExporter(Database,
-                new ArtifactRepository(Path.Combine(_root, "objects")));
+            Artifacts = new ArtifactRepository(Path.Combine(_root, "objects"));
+            Reports = new RunReportExporter(Database, Artifacts);
         }
         public RunRecord Record(PreparedTestPlan plan)
         {
@@ -53,6 +54,23 @@ public sealed class RealTestRecordSessionTests
             catch (IOException) { /* best effort */ }
         }
     }
+    private sealed class EvidenceFinalizer(
+        RunRecordWriter writer, ArtifactRepository artifacts, EvidenceRef evidence,
+        bool reject = false) : IRealRunEvidenceFinalizer
+    {
+        public int Calls;
+        public async ValueTask FinalizeEvidenceAsync(RunId run, CancellationToken ct)
+        {
+            Calls++;
+            if (reject) throw new IOException("UNIT_TEST_ARTIFACT_FLUSH_FAILED");
+            // Synthetic test bytes; no real CAN frame or ECU measurement claim.
+            await using var bytes = new MemoryStream(new byte[] { 0x12, 0x34, 0x56 });
+            var artifact = await artifacts.PutAsync(bytes, "UnitTestCanBytes",
+                "application/octet-stream", "SYNTHETIC_UNIT_TEST", evidence, ct);
+            await writer.AttachArtifactAsync(run, artifact, ct);
+        }
+    }
+
     private sealed class Signals : ITestSignalPort
     {
         private readonly TestSignalResult _result;
@@ -324,6 +342,50 @@ public sealed class RealTestRecordSessionTests
         var audit = await fixture.Database.ReadFactsAsync(new RecordQuery(record.RunId, 20));
         Assert.Contains(audit, f => f.Description.StartsWith("STEP_BEGIN", StringComparison.Ordinal));
         Assert.Contains(audit, f => f.Description.StartsWith("STEP_END", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task EvidenceMustBeAttachedBeforeCommitToCountAsArchived()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var plan = Plan(mapping, "2");
+        var runRecord = fixture.Record(plan);
+        var evidence = sample.Observation!.Evidence;
+        var finalizer = new EvidenceFinalizer(fixture.Writer, fixture.Artifacts, evidence);
+        var done = await new RealTestRecordSession(
+            runRecord, fixture.Writer, fixture.Reports, finalizer)
+            .ExecuteAsync(new RealRunCoordinator(new Signals(sample), new Actions(), new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Passed, done.Result.Verdict);
+        Assert.Equal(1, finalizer.Calls);
+        var reportJson = await File.ReadAllTextAsync(done.Reports.JsonPath);
+        Assert.Contains("\"evidenceArchiveIncomplete\": false", reportJson);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(runRecord.RunId);
+        Assert.Equal(RecordPersistenceState.Committed, history!.Persistence);
+    }
+
+    [Fact]
+    public async Task FailedEvidenceFinalizationCannotCommitAConfirmedPass()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var plan = Plan(mapping, "2");
+        var record = fixture.Record(plan);
+        var finalizer = new EvidenceFinalizer(fixture.Writer, fixture.Artifacts,
+            sample.Observation!.Evidence, reject: true);
+        await Assert.ThrowsAsync<IOException>(() =>
+            new RealTestRecordSession(record, fixture.Writer, fixture.Reports, finalizer)
+                .ExecuteAsync(new RealRunCoordinator(new Signals(sample), new Actions(), new Waves()),
+                    plan, fixture.ReportFolder));
+        Assert.Equal(1, finalizer.Calls);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.NotNull(history);
+        Assert.Equal(RecordPersistenceState.Committed, history.Persistence);
+        Assert.Equal("Unknown", history.TerminalState);
+        Assert.Equal(Verdict.Error, history.Verdict);
+        Assert.True(File.Exists(Path.Combine(fixture.ReportFolder,
+            record.RunId.Value.ToString("N") + ".html")));
     }
 
 }
