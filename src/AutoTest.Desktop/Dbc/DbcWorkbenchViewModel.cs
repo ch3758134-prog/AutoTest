@@ -17,8 +17,8 @@ public sealed record DbcMessageRow(DbcMessage Message, DbcDisplayNames DisplayNa
     public string DisplayName => DisplayNames.MessageLabel(Message);
     public string Dlc => Message.Dlc.ToString();
     public string Transmitter => Message.Transmitter;
-    public string Summary => DisplayNames.MessageSummary(Message.Id);
-    public string Caption => DisplayName + " · " + HexId + " · " + Message.Signals.Length + " 个信号";
+    public string Summary => DisplayNames.MessageCommentPreview(Message.Id);
+    public string Caption => DisplayName + " · " + HexId;
 }
 public sealed record DbcSignalRow(DbcSignal Signal, string DisplayName, string Summary)
 {
@@ -53,6 +53,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private string _signalAliasText = "";
     private string _messageSummaryText = "";
     private string _signalSummaryText = "";
+    private string _messageCommentText = "";
+    private string _signalCommentText = "";
     private string _status = "就绪";
     private string _messageSearchText = "";
 
@@ -90,6 +92,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         }
     }
     public string SignalCount => SelectedMessage?.Message.Signals.Length.ToString() ?? "0";
+    public bool IsSignalSelected => SelectedMessage is not null && SelectedSignal is not null;
+    public bool IsMessageSelected => SelectedMessage is not null && SelectedSignal is null;
     public string SelectedValueDescriptions
     {
         get
@@ -103,14 +107,14 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         }
     }
     public string StateDescription => _session.Document.IsSourcePreserving
-        ? "可编辑 · 保留原文注释/属性 · CAN ID 不可改"
+        ? "保留原始 DBC · 可编辑标准 CM_ 注释和中文别名 · 原始标识受保护"
         : _session.Document.CanEdit
         ? "可编辑 · 只修改已支持的 DBC 字段"
-        : "原始报文参数只读 · 中文别名可以修改和保存";
+        : "原始结构只读 · 中文别名与标准 CM_ 注释仍可安全编辑";
     public string UnsupportedDescription => _session.Document.IsSourcePreserving
-        ? "原始注释、属性、枚举值和其他记录会在保存时保留；本模式禁止改 CAN ID、信号名称及结构。"
+        ? "保留其他属性、枚举值和原文；允许编辑原始 CM_ 注释，CAN ID 和原始信号名称受保护。"
         : _session.Document.CanEdit ? ""
-        : "原始 DBC 存在暂不支持修改的结构；允许仅保存中文别名，不修改原有报文、信号或注释。原因：" +
+        : "原始 DBC 存在不支持的结构；只允许安全修改中文别名和可识别 CM_ 注释。原因：" +
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
     public bool CanEdit => _session.Document.CanEdit;
     public bool CanSave => _session.Document.CanSave;
@@ -163,6 +167,78 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             catch (ProjectDataException error) { StatusMessage = error.Message; }
         }
     }
+    public string MessageCommentText
+    {
+        get => _messageCommentText;
+        set
+        {
+            if (!SetProperty(ref _messageCommentText, value ?? "") || _settingAlias ||
+                SelectedMessage is not { } message) return;
+            try
+            {
+                _session.Document.SetMessageComment(message.Message.Id, value);
+                StatusMessage = "报文详细注释已修改 · 保存后写回标准 CM_ BO_。";
+                RefreshCommands();
+            }
+            catch (ProjectDataException error) { StatusMessage = error.Message; }
+        }
+    }
+
+    public string SignalCommentText
+    {
+        get => _signalCommentText;
+        set
+        {
+            if (!SetProperty(ref _signalCommentText, value ?? "") || _settingAlias ||
+                SelectedMessage is not { } message || SelectedSignal is not { } signal) return;
+            try
+            {
+                _session.Document.SetSignalComment(message.Message.Id, signal.Name, value);
+                StatusMessage = "信号详细注释已修改 · 保存后写回标准 CM_ SG_。";
+                RefreshCommands();
+            }
+            catch (ProjectDataException error) { StatusMessage = error.Message; }
+        }
+    }
+
+    // F2 / double-click edits the display alias, never the DBC BO_/SG_ identifier.
+    public bool RenameSelectedMessage(string alias)
+    {
+        if (IsBusy || SelectedMessage is not { } message) return false;
+        try
+        {
+            _session.Document.SetMessageAlias(message.Message.Id, alias);
+            RefreshMessages(message.Message.Id);
+            StatusMessage = "报文中文别名已修改 · Ctrl+S 保存。";
+            RefreshCommands();
+            return true;
+        }
+        catch (Exception e) when (e is ProjectDataException or ArgumentException)
+        {
+            StatusMessage = "重命名失败：" + e.Message;
+            return false;
+        }
+    }
+
+    public bool RenameSelectedSignal(string alias)
+    {
+        if (IsBusy || SelectedMessage is not { } message || SelectedSignal is not { } signal)
+            return false;
+        try
+        {
+            _session.Document.SetSignalAlias(message.Message.Id, signal.Name, alias);
+            RefreshSignals(signal.Name);
+            StatusMessage = "信号中文别名已修改 · Ctrl+S 保存。";
+            RefreshCommands();
+            return true;
+        }
+        catch (Exception e) when (e is ProjectDataException or ArgumentException)
+        {
+            StatusMessage = "重命名失败：" + e.Message;
+            return false;
+        }
+    }
+
     public string SelectedMessageDefinition => SelectedMessage is { } m
         ? _session.Document.DisplayNames.MessageDescription(m.Message.Id) : "";
     public string SelectedSignalDefinition => SelectedMessage is { } m && SelectedSignal is { } sg
@@ -196,6 +272,10 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 ? _session.Document.DisplayNames.ExplicitMessageSummary(msg.Message.Id) : "";
             SignalSummaryText = SelectedMessage is { } m2 && SelectedSignal is { } sg2
                 ? _session.Document.DisplayNames.ExplicitSignalSummary(m2.Message.Id, sg2.Name) : "";
+            MessageCommentText = SelectedMessage is { } msg3
+                ? _session.Document.DisplayNames.MessageDescription(msg3.Message.Id) : "";
+            SignalCommentText = SelectedMessage is { } m3 && SelectedSignal is { } sg3
+                ? _session.Document.DisplayNames.SignalDescription(m3.Message.Id, sg3.Name) : "";
             RaisePropertyChanged(nameof(SelectedMessageDefinition));
             RaisePropertyChanged(nameof(SelectedSignalDefinition));
         }
@@ -221,11 +301,14 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         set
         {
             if (!SetProperty(ref _selectedMessage, value)) return;
-            var signalName = _selectedSignal?.Name;
+            var signalName = _selectedMessage?.Message.Id == value?.Message.Id
+                ? _selectedSignal?.Name : null;
             RefreshSignals(signalName);
             RaisePropertyChanged(nameof(SignalCount));
             RaisePropertyChanged(nameof(SelectedValueDescriptions));
             RefreshAliasInputs();
+            RaisePropertyChanged(nameof(IsSignalSelected));
+            RaisePropertyChanged(nameof(IsMessageSelected));
             RefreshCommands();
         }
     }
@@ -237,6 +320,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             if (SetProperty(ref _selectedSignal, value))
             {
                 RaisePropertyChanged(nameof(SelectedValueDescriptions));
+                RaisePropertyChanged(nameof(IsSignalSelected));
+                RaisePropertyChanged(nameof(IsMessageSelected));
                 RefreshAliasInputs();
                 RefreshCommands();
             }
@@ -368,6 +453,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             if (query.Length > 0 && !new[]
                 {
                     message.Name, names.MessageLabel(message), names.MessageSummary(message.Id),
+                    names.MessageDescription(message.Id),
                     "0x" + message.ArbitrationId.ToString("X"),
                     message.ArbitrationId.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     message.Transmitter
@@ -376,7 +462,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                     StringComparison.CurrentCultureIgnoreCase) ||
                     names.SignalLabel(message, signal).Contains(query,
                         StringComparison.CurrentCultureIgnoreCase) ||
-                    names.SignalSummary(message.Id, signal.Name).Contains(query,
+                    names.SignalCommentPreview(message.Id, signal.Name).Contains(query,
                         StringComparison.CurrentCultureIgnoreCase)))
                 continue;
             Messages.Add(new DbcMessageRow(message, names));
@@ -394,9 +480,10 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             foreach (var signal in message.Message.Signals.OrderBy(s => s.StartBit).ThenBy(s => s.Name))
                 Signals.Add(new DbcSignalRow(signal,
                     _session.Document.DisplayNames.SignalLabel(message.Message, signal),
-                    _session.Document.DisplayNames.SignalSummary(message.Message.Id, signal.Name)));
+                    _session.Document.DisplayNames.SignalCommentPreview(message.Message.Id, signal.Name)));
         }
-        SelectedSignal = Signals.FirstOrDefault(x => x.Name == signalName) ?? Signals.FirstOrDefault();
+        SelectedSignal = signalName is null ? null :
+            Signals.FirstOrDefault(x => x.Name == signalName);
         RaisePropertyChanged(nameof(SignalCount));
     }
 
