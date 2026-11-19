@@ -84,7 +84,7 @@ public sealed class DbcWorkbenchTests
         doc.SetMessageAlias(291, "车辆状态");
         doc.SetMessageSummary(291, "车辆当前行驶反馈");
         doc.SetSignalAlias(291, "Speed", "车速");
-        doc.SetSignalSummary(291, "用于车速解析和判定");
+        doc.SetSignalSummary(291, "Speed", "用于车速解析和判定");
         var text = doc.ExportText();
         Assert.Contains("AutoTestMessageSummary", text);
         Assert.Contains("AutoTestSignalSummary", text);
