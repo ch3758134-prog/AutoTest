@@ -26,6 +26,9 @@ public partial class ProjectExplorerView : UserControl
             return;
         }
         vm.SelectResource(node);
+        // The standalone DBC editor is deliberately opened on double-click or
+        // explicit command. A single tree selection must not spawn a modal tool.
+        if (node.Asset.Kind == ProjectWorkspaceService.DbcKind) return;
         try { await vm.OpenSelectedResourceAsync(); }
         catch (Exception ex) { UiExceptionReporter.Record("Explorer / open asset", ex); }
     }
@@ -68,7 +71,7 @@ public partial class ProjectExplorerView : UserControl
             await vm.CreateFromCategoryAsync(node);
     }
 
-    private void NodeText_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private async void NodeText_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left || e.ClickCount != 2 ||
             sender is not FrameworkElement { DataContext: ResourceTreeNode node } ||
@@ -76,8 +79,8 @@ public partial class ProjectExplorerView : UserControl
             DataContext is not MainWindowViewModel vm) return;
         e.Handled = true;
         vm.SelectResource(node);
-        if (vm.RenameResourceCommand.CanExecute())
-            vm.RenameResourceCommand.Execute();
+        try { await vm.OpenSelectedResourceAsync(); }
+        catch (Exception error) { UiExceptionReporter.Record("Explorer / double-click open", error); }
     }
 
     private void Navigator_PreviewKeyDown(object sender, KeyEventArgs e)
