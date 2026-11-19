@@ -27,3 +27,6 @@
 
 - [指定 HydEPB ECU 真实写入/FF01 校验/Boot 复位阶段结果与 APP 后验限制](new-baseline-20261112/research/FLASH-REFERENCE-VALIDATION-INTAKE-20261118.md)：已核对 FlashLab 源码和 PR #55，记录专项现场报告、确切 Profile、待补原始证据及 FLASH 责任范围；**不是 G4 总体验收或 PR 合并批准**。
 
+## 2026-11-18 下一阶段研发顺序
+
+- [G4 自动测试优先、FLASH 独立工作台接入、UDS 即刻研究，WAVE/SCAN 待自动测试基线实测后完整集成](new-baseline-20261112/research/G4-FLASH-UDS-WAVE-SCAN-SEQUENCING-20261118.md)：负责人已确定的推进依赖，不表示 G4 Gate 或 FLASH APP 后验完成。
