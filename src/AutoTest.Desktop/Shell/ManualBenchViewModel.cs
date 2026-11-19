@@ -241,7 +241,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     public bool CanOperateGpio => CanSendHardware && _hardware.HasV02GpioContract;
     public bool CanReadGpio => IsConnected && !IsBusy && _hardware.HasV02GpioContract;
     // Interactive controls are enabled without USB; actual writes are still checked by the hardware service.
-    public bool CanInvokeManualIo => !IsBusy;
+    public bool CanInvokeManualIo => CanSendHardware;
     public bool CanSendClamp => CanInvokeManualIo;
     public string CanExpectedConsent => ExpectedConsent(TryBuildCanFrame);
     public string KeyExpectedConsent => ExpectedConsent(TryBuildKeyFrame);
