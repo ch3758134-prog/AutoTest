@@ -148,7 +148,7 @@
    </DockPanel>
   </Border>
 
-  <Grid Grid.Row="2" Background="#F9FBFD">
+  <Grid Grid.Row="2" Background="{StaticResource AT.Canvas}">
    <Grid.ColumnDefinitions>
     <ColumnDefinition x:Name="TreeColumn" Width="322" MinWidth="280" MaxWidth="510"/>
     <ColumnDefinition Width="4"/>
@@ -157,7 +157,155 @@
    <navigation:ProjectExplorerView Grid.Column="0"/>
    <GridSplitter Grid.Column="1" Background="#EDF2F7" ResizeDirection="Columns"
     HorizontalAlignment="Stretch" ShowsPreview="True"/>
-   <Grid Grid.Column="2">
+   <TabControl x:Name="PrimaryTabs" Grid.Column="2" SelectedIndex="0"
+    Background="Transparent" BorderThickness="0" FontSize="13">
+     <TabItem Header="运行 · 当前任务">
+<Grid Background="#F4F6FA" Margin="12">
+ <Grid.RowDefinitions>
+  <RowDefinition Height="60"/><RowDefinition Height="*" MinHeight="150"/>
+ </Grid.RowDefinitions>
+ <DockPanel Margin="6,0">
+  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+   <Button Content="打开测试项目" Command="{Binding OpenFirstTestProjectCommand}"
+    Padding="11,7" Margin="0,0,7,0"/>
+   <Button Content="检查选测" Command="{Binding CurrentRunProject.PreflightSelectedCommand}"
+    Padding="11,7" Margin="0,0,7,0" ToolTip="检查测试项目已勾选用例，不代表项目级真实执行"/>
+   <Button Content="准备当前用例" Command="{Binding CurrentRunCase.PrepareRunApprovalCommand}"
+    Margin="0,0,7,0" Padding="11,7" ToolTip="当前打开用例的正式实体测试授权"/>
+   <ui:Button Content="▶ 运行当前用例" Appearance="Primary"
+    Command="{Binding CurrentRunCase.RunCommand}" Padding="16,8"
+    ToolTip="运行当前打开单个用例；项目级批量运行尚未正式接入"/>
+   <Button Content="停止" Command="{Binding CurrentRunCase.StopRunCommand}"
+    Margin="7,0,0,0"/>
+  </StackPanel>
+  <StackPanel>
+   <TextBlock Text="自动测试 · 运行" FontSize="20" FontWeight="SemiBold" Foreground="#203147"/>
+   <TextBlock Text="真实 TEST / DEVICE 运行事实，当前项目选择与编辑页同步" FontSize="11"
+    Foreground="#697D94" Margin="0,5,0,0"/>
+  </StackPanel>
+ </DockPanel>
+ <Grid Grid.Row="1">
+  <Grid.ColumnDefinitions>
+   <ColumnDefinition Width="360" MinWidth="280" MaxWidth="490"/>
+   <ColumnDefinition Width="7"/><ColumnDefinition Width="*" MinWidth="300"/>
+  </Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Style="{StaticResource AT.Panel}" Padding="0" Margin="0,0,4,0">
+   <Grid>
+    <Grid.RowDefinitions>
+     <RowDefinition Height="78"/><RowDefinition Height="*"/><RowDefinition Height="91"/>
+    </Grid.RowDefinitions>
+    <StackPanel Margin="15,13">
+     <TextBlock Text="测试项目 · 本次选择" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="从左侧工程树打开测试项目后，直接勾选需要执行的用例。"
+      Style="{StaticResource AT.Caption}" Margin="0,7,0,0"/>
+    </StackPanel>
+    <DataGrid x:Name="ProjectRunCases" Grid.Row="1"
+     ItemsSource="{Binding CurrentRunProject.Packages}"
+     SelectedItem="{Binding CurrentRunProject.SelectedPackage,Mode=TwoWay}"
+     MouseDoubleClick="ProjectRunCases_DoubleClick" AutoGenerateColumns="False"
+     CanUserAddRows="False" CanUserDeleteRows="False"
+     IsReadOnly="False" RowHeaderWidth="0" HeadersVisibility="Column" BorderThickness="0"
+     GridLinesVisibility="Horizontal" SelectionMode="Single">
+     <DataGrid.Columns>
+      <DataGridTemplateColumn Header="选" Width="42">
+       <DataGridTemplateColumn.CellTemplate>
+        <DataTemplate>
+         <CheckBox IsChecked="{Binding RunSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+          VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        </DataTemplate>
+       </DataGridTemplateColumn.CellTemplate>
+      </DataGridTemplateColumn>
+      <DataGridTextColumn Header="测试用例" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
+      <DataGridTextColumn Header="步骤" Binding="{Binding StepCountLabel}" Width="88" IsReadOnly="True"/>
+     </DataGrid.Columns>
+    </DataGrid>
+    <Border Grid.Row="2" Background="{StaticResource AT.SubtleSurface}"
+     BorderBrush="{StaticResource AT.Border}" BorderThickness="0,1,0,0" Padding="14,12">
+     <StackPanel>
+      <TextBlock Text="{Binding CurrentRunProject.SelectedCount,StringFormat=本次选择：{0} 个用例}"
+       FontWeight="SemiBold" FontSize="12"/>
+      <TextBlock Text="双击用例进入正式编辑；项目级整组运行仍待 TEST 接线。"
+       Style="{StaticResource AT.Caption}" Margin="0,6,0,0"/>
+     </StackPanel>
+    </Border>
+   </Grid>
+  </Border>
+  <GridSplitter Grid.Column="1" ResizeDirection="Columns" ShowsPreview="True"
+   Background="Transparent"/>
+  <Grid Grid.Column="2">
+   <Grid.RowDefinitions>
+    <RowDefinition Height="120"/><RowDefinition Height="*" MinHeight="110"/>
+    <RowDefinition Height="220"/>
+   </Grid.RowDefinitions>
+   <Border Grid.Row="0" Style="{StaticResource AT.Panel}" Margin="0,0,0,9">
+    <Grid>
+     <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+     </Grid.ColumnDefinitions>
+     <StackPanel Grid.Column="0" Margin="3">
+      <TextBlock Text="真实工位状态" Style="{StaticResource AT.Caption}"/>
+      <TextBlock Text="{Binding HardwareStatus}" FontSize="13" FontWeight="SemiBold"
+       TextWrapping="Wrap" Margin="0,14,10,0"/>
+     </StackPanel>
+     <StackPanel Grid.Column="1" Margin="3">
+      <TextBlock Text="当前打开文件" Style="{StaticResource AT.Caption}"/>
+      <TextBlock Text="{Binding ActiveEditorTitle}" FontSize="14" FontWeight="SemiBold"
+       TextWrapping="Wrap" Margin="0,14,10,0"/>
+     </StackPanel>
+     <StackPanel Grid.Column="2" Margin="3">
+      <TextBlock Text="运行消息" Style="{StaticResource AT.Caption}"/>
+      <TextBlock Text="{Binding CurrentRunCase.StatusMessage}" FontSize="11"
+       TextWrapping="Wrap" Margin="0,14,10,0"/>
+     </StackPanel>
+    </Grid>
+   </Border>
+   <Border Grid.Row="1" Style="{StaticResource AT.Panel}" Padding="0" Margin="0,0,0,9">
+    <Grid>
+     <Grid.RowDefinitions><RowDefinition Height="40"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <TextBlock Text="真实步骤执行记录" Style="{StaticResource AT.PanelTitle}"
+      Margin="14,0" VerticalAlignment="Center"/>
+     <DataGrid Grid.Row="1" ItemsSource="{Binding CurrentRunCase.RunFactRows}"
+      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+      RowHeaderWidth="0" HeadersVisibility="Column" IsReadOnly="True" BorderThickness="0">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="步骤" Binding="{Binding Type}" Width="112"/>
+       <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="90"/>
+       <DataGridTextColumn Header="实际数据" Binding="{Binding Actual}" Width="155"/>
+       <DataGridTextColumn Header="执行证据" Binding="{Binding Detail}" Width="*"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </Grid>
+   </Border>
+   <Border Grid.Row="2" Style="{StaticResource AT.Panel}" Padding="0">
+    <TabControl BorderThickness="0" Background="White">
+     <TabItem Header="CAN 实时事件">
+      <DataGrid ItemsSource="{Binding CanRecords}" AutoGenerateColumns="False"
+       CanUserAddRows="False" CanUserDeleteRows="False" RowHeaderWidth="0"
+       IsReadOnly="True" BorderThickness="0">
+       <DataGrid.Columns>
+        <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="105"/>
+        <DataGridTextColumn Header="通路" Binding="{Binding Port}" Width="115"/>
+        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="90"/>
+        <DataGridTextColumn Header="DATA" Binding="{Binding Data}" Width="*"/>
+       </DataGrid.Columns>
+      </DataGrid>
+     </TabItem>
+     <TabItem Header="运行问题">
+      <TextBlock Text="{Binding CurrentRunCase.StatusMessage}" Foreground="{StaticResource AT.Warning}"
+       Margin="14" TextWrapping="Wrap"/>
+     </TabItem>
+     <TabItem Header="报告">
+      <TextBlock Text="本次仅展示实际执行步骤与日志；正式可追溯报告的完整集成尚未完成。"
+       Foreground="{StaticResource AT.Muted}" Margin="14" TextWrapping="Wrap"/>
+     </TabItem>
+    </TabControl>
+   </Border>
+  </Grid>
+ </Grid>
+</Grid>
+     </TabItem>
+     <TabItem Header="编辑 · 工程文件">
+   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <Border Grid.Row="0" Height="35" Background="#EDF2F8"
      BorderBrush="#DBE3ED" BorderThickness="0,0,0,1"
@@ -305,6 +453,8 @@
      </Grid>
     </Grid>
    </Grid>
+     </TabItem>
+   </TabControl>
   </Grid>
 
   <Border Grid.Row="3" Background="White" BorderBrush="{StaticResource AT.Border}" BorderThickness="0,1,0,0">
