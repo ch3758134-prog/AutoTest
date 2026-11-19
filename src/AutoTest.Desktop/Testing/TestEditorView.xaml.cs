@@ -42,6 +42,7 @@ public partial class TestEditorView : UserControl
         _viewModel.AllowStepNavigation = TryNavigateWithDraft;
         _viewModel.HasPendingVisualDrafts =
             () => _parkedInspectors.Count > 0 || _inspector?.HasPendingEdits == true;
+        _viewModel.DocumentRebuilt += PruneParkedDrafts;
         Loaded += (_, _) =>
         {
             // A document tab can be unloaded/reloaded whenever the user switches
@@ -99,6 +100,23 @@ public partial class TestEditorView : UserControl
         return true;
     }
 
+    private void PruneParkedDrafts()
+    {
+        // Cancel/Undo may remove a provisional node while its Inspector was parked.
+        // Never keep a hidden control that no longer refers to a real StepId.
+        var existing = StepTreeItem.Walk(_viewModel.StepRoots)
+            .Where(item => item.Step is not null)
+            .Select(item => item.Step!.Id.ToString())
+            .ToHashSet(StringComparer.Ordinal);
+        var removed = false;
+        foreach (var key in _parkedInspectors.Keys.Where(key => !existing.Contains(key)).ToArray())
+        {
+            _parkedInspectors.Remove(key);
+            removed = true;
+        }
+        if (removed) _viewModel.UpdateParkedInspectorCount(_parkedInspectors.Count);
+    }
+
     /// <summary>
     /// Explicit save-on-close first validates/applies pending Inspector edits, then
     /// awaits real TEST document persistence. On failure both drafts stay in place.
@@ -113,12 +131,13 @@ public partial class TestEditorView : UserControl
             if (_parkedInspectors.Count > 0)
             {
                 // Navigate to the first unfinished step instead of silently losing its controls.
+                var pendingCount = _parkedInspectors.Count;
                 var pending = _parkedInspectors.Keys.First();
                 var target = StepTreeItem.Walk(_viewModel.StepRoots).FirstOrDefault(item =>
                     item.Step?.Id.ToString() == pending);
                 if (target is not null) _viewModel.SelectItem(target);
                 MessageBox.Show(Window.GetWindow(this),
-                    "还有 " + _parkedInspectors.Count +
+                    "还有 " + pendingCount +
                     " 条步骤的参数未应用。已尝试定位到第一条，请修正或取消后再保存。",
                     "仍有暂存的步骤参数", MessageBoxButton.OK, MessageBoxImage.Information);
                 return false;
