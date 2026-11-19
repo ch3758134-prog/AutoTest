@@ -73,7 +73,7 @@
       <TextBlock Text="{Binding ProjectLabel}" FontSize="13" FontWeight="SemiBold"
        Foreground="{StaticResource AT.Text}" TextTrimming="CharacterEllipsis"
        MaxWidth="345"/>
-      <TextBlock Text="上次界面草稿已自动恢复 · 不是真实 ECU 工程"
+      <TextBlock Text="可编辑界面草稿 · 正式工程尚未接入"
        FontSize="10" Foreground="{StaticResource AT.Muted}"/>
      </StackPanel>
     </StackPanel>
