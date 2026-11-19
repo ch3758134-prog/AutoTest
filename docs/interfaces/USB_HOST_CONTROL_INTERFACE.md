@@ -1,8 +1,8 @@
 # AutoTest 主控板 ↔ Windows 上位机 USB 外部接口说明
 
 > **文档类型：主控板对外通信接口 / 上位机开发交接**  
-> **版本：v0.2（固件控制接口已整改，待 Keil 编译和真实台架验证）**  
-> **源码基线：ch3758134-prog/AutoTest，Main_Control @ a2ef6912561828adf6a945cad0f102872458d007**  
+> **接口修订：2026-11-18（LED1~LED6 USB 控制已接入源码，待 Keil 编译和真实台架验证）**  
+> **源码基线：ch3758134-prog/AutoTest，Main_Control 当前 LED 控制候选**  
 > **约束：本文描述源码当前行为，不等同于实物验证通过；“目标需求/建议”不得冒充已实现协议。**
 
 ## 1. 对外边界与状态
@@ -14,7 +14,8 @@
 | USB PING/版本查询 | 已实现 | 上电设备识别仍需实测 |
 | CAN0/CAN1 透传 | 已实现，均初始化为500kbit/s | 软件CAN0通往按键板、CAN1通往DUT |
 | CAN1周期广播 | 旧功能仍存在 0x50~0x53 | 是否长期保留作为业务功能未另行批准 |
-| IGN/PTC10 | 0x12/0x13设置/查询 | 保留，查询为MCU GPIO电平 |
+| IGN/HOUT1/PTC1/J1 C10 | 0x12/0x13设置/查询 | 保留，查询为MCU GPIO电平 |
+| LED1~LED6/HOUT2~HOUT7 | 0x1A单路设置、0x1B六路查询、0x1C位图设置 | 新增；GPIO上电默认LOW |
 | 夹具1/PTB1、J1 B5 | 0x18/0x19，独立控制 | 1=压紧，0=释放 |
 | 夹具2/PTC2、J1 B4 | 0x18/0x19，独立控制 | 1=压紧，0=释放 |
 | ECU/按键板供电控制 | 已从USB命令和业务代码删除 | 不对上位机提供接口 |
@@ -139,10 +140,10 @@
 
 | CMD | 请求PAYLOAD | 成功应答PAYLOAD | 实际行为 |
 | --- | --- | --- | --- |
-| 0x12 SET_IGN | 1B：0关闭/1开启 | 空 | 设置PTC10 GPIO |
-| 0x13 GET_IGN | 空 | 1B：0/1 | 读取PTC10 GPIO电平 |
+| 0x12 SET_IGN | 1B：0关闭/1开启 | 空 | 设置PTC1 GPIO（HOUT1） |
+| 0x13 GET_IGN | 空 | 1B：0/1 | 读取PTC1 GPIO电平（HOUT1） |
 
-物理路径 PTC10→SOL11IN→U22 CH3→HOUT5→J1 C6。查询仅表示MCU电平，不表示J1实测电压或DUT点火反馈。固件初始化时IGN仍为HIGH（保留原代码默认行为，未做安全性批准）。
+物理路径 PTC1→SOL8IN→U5 CH1→HOUT1→J1 C10。旧HOUT5现为LED4。查询仅表示MCU电平，不表示J1实测电压或DUT点火反馈。固件初始化时IGN仍为HIGH（保留原代码默认行为，未做安全性批准）。
 
 ### 5.2 两路独立夹具
 
@@ -167,11 +168,26 @@
 
 **当前上电/断连源码行为：** 两路夹具初始化LOW（请求释放）；若此前已收到压紧请求，USB枚举丢失时固件会将两路输出置LOW。这是保留上一版逻辑，不是新的业务安全策略。**该断连释放行为仍须现场检查，尤其注意夹具突然释放的风险。** 不能把USB枚举状态当成应用层心跳。
 
-### 5.3 已取消的旧USB指令
+### 5.3 LED1~LED6（HOUT2~HOUT7）
+
+| CMD | 请求PAYLOAD | 成功应答PAYLOAD | 说明 |
+|---|---|---|---|
+| 0x1A SET_LED | 2B: [index=1..6, level=0/1] | 空 | 单路GPIO设置，不影响其他五路 |
+| 0x1B GET_LEDS | 空 | 1B: bit0..5 = LED1..LED6 MCU GPIO电平 | bit6/7=0，不是负载端电压反馈 |
+| 0x1C SET_LEDS | 1B: [bitmap=0x00..0x3F] | 空 | 一次要求六路状态，按 GPIO 依次写入 |
+
+物理对应：LED1=HOUT2/PTB19/J1 C11；LED2=HOUT3/PTB18/J1 C25；LED3=HOUT4/PTC4/J1 C26；LED4=HOUT5/PTC10/J1 C6；LED5=HOUT6/PTC9/J1 C7；LED6=HOUT7/PTC8/J1 C8。
+
+- 上电六路初始化为 LOW；HIGH 请求高边输出导通，依赖 SOL24IN，共用高边电源。GPIO HIGH 与 USB OK 不等于 J1 端子已输出电压、更不等于 LED 实际点亮。
+- 不合法 index、level、长度以及 bitmap 的 bit6/bit7 非零，返回 ERR_FMT，不执行 GPIO 操作。
+- USB 断连不会自动清零 LED；仍保持最后一次 GPIO 输出请求，MCU 重新初始化时恢复LOW。
+- 0x1C 六路逐个写入，不保证严格同时翻转。全部命令继续使用现有 0xA5/SEQ/CRC 协议。
+
+### 5.4 已取消的旧USB指令
 
 旧命令0x10/0x11(ECU供电)、0x14/0x15(按键板供电)、0x16/0x17(旧SOL)和0x1F(GET_ALL_PWR)均不再定义或路由。发送上述命令应得到 **0x03 ERR_CMD**，上位机不应发出这些请求，也不应保留其业务操作。
 
-**内部电路：** RL_DRV/PTC0控制公共SOL24IN供电，当前仅在EAL_GPIO_Init内初始化HIGH；USB不提供单独操作。原PTC8/PTC9历史供电控制引脚不再初始化和驱动，物理状态需按实际线路核查。
+**内部电路：** RL_DRV/PTC0控制公共SOL24IN供电，当前仅在EAL_GPIO_Init内初始化HIGH；USB不提供单独操作。PTC8/PTC9 已分别用于 LED6/LED5，现由 GPIO 初始化和 USB 命令控制，不再作为历史供电输出。
 
 ## 6. 已核算的收发十六进制示例
 
@@ -195,14 +211,14 @@
 2. 字节流解析：后台持续读取，按SOF、LEN、EOF、CRC组合完整帧，容忍拆包/连包/0x00填充。
 3. 请求事务：非零SEQ分配与超时，响应按SEQ+CMD配对；0x41/SEQ0走CAN异步事件。
 4. CAN服务：0x40发送、0x41收帧；USB OK不代表CAN对端确认。
-5. GPIO服务：IGN使用0x12/0x13；**夹具使用已修订的两字节0x18和空请求0x19**；不提供RL_DRV或旧供电操作。
+5. GPIO服务：IGN使用0x12/0x13；夹具使用0x18/0x19；LED使用0x1A单路、0x1B读回、0x1C整组位图；不提供RL_DRV或旧供电操作。
 6. 新旧固件区分：本次GET_VERSION源码字符串改为EPB_TEST_CTRL v0.4-dev。上位机不得仅按VID/PID判断夹具协议版本。
 
 ## 8. 已知风险与尚未验证项
 
 - R01：两夹具独立设置逻辑已写入源码；尚无Keil编译/真实夹具J1电压/气路实测证据。
-- R02：旧供电与SOL USB命令已移除；旧PTC8/PTC9不再配置，外接线束及引脚复位状态须核查。
-- R03：上电GPIO默认是Air1/2 LOW、RL_DRV HIGH、IGN HIGH；上电瞬态与真实负载安全待核。
+- R02：旧供电与SOL USB命令已移除；PTC8/PTC9分别为LED6/LED5，外接线束和输出状态仍须核查。
+- R03：上电GPIO默认是Air1/2 LOW、LED1~6 LOW、RL_DRV HIGH、IGN HIGH；上电瞬态与真实负载安全待核。
 - R04：沿用USB枚举丢失时清除已压紧夹具的既有代码；是否符合实际夹具安全尚未确认。
 - R05：GET_CLAMPS/GET_IGN只回读MCU GPIO，非高边输出电压/机械位置反馈。
 - R06：USB TX低优先级队列拥堵可能丢CAN_RX_IND，不能视为无损日志。
@@ -216,11 +232,12 @@
 - [ ] WinUSB按GUID枚举、打开0x03/0x82、PING和CRC响应验证。
 - [ ] CAN0/CAN1双通道各发送/接收一帧，检查500kbit/s和通道实际线束。
 - [ ] CAN_RX_IND(SEQ=0)与正常响应交错、USB拆包/连包及64B尾填充。
-- [ ] IGN=0/1和GET，核对J1 C6真实电平。
+- [ ] IGN=0/1和GET，核对J1 C10真实电平。
+- [ ] LED1~LED6 分别设置、读取、整组位图 0x00/0x3F/交替、非法参数ERR_FMT、上电LOW 和 J1 输出实测。
 - [ ] 分别控制夹具1/2，测试00、01、10、11四种组合；确认动作一路不会改动另一路。
 - [ ] 夹具上电、USB断开/重连、设备复位及RL_DRV供电链实测。
 - [ ] 验证旧供电/SOL指令返回ERR_CMD，且不会驱动实体硬件。
-- [ ] 验证旧PTC8/PTC9物理输出状态符合现场线束要求。
+- [ ] 验证PTC8/PTC9为LED6/LED5；USB断连保留输出，MCU重启恢复LOW。
 
 ## 10. 源码依据（本仓库相对路径）
 

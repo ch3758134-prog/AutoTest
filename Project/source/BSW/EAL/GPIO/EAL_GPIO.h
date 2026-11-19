@@ -58,7 +58,7 @@ extern "C" {
 #define HOUT7_PIN  8U
 
 /* 业务分配：IGN→HOUT1；LED1~LED6→HOUT2~HOUT7。
- * 只保留现有 IGN 命令的实际 GPIO 路由；LED 不初始化、不控制。
+ * 保留 IGN 命令；LED 通过 USB 命令控制，上电默认 LOW。
  * HOUT5/PTC10 从此不再被 IGN 初始化或驱动。
  */
 #define IGN_PORT   HOUT1_PORT
@@ -113,7 +113,7 @@ extern "C" {
  * 2. 统一操作宏（不再增加信号枚举或 Port/Pin 查表）
  *
  * 用法：EAL_GPIO_WRITE(IGN, 1U);  EAL_GPIO_READ(AIR_ALVE1);
- * 现役输出只调用 IGN、AIR_ALVE1/2 和 RL_DRV；LED/KEY 仅预留。
+ * LED1~LED6 由 USB 业务使用；KEY1~KEY3 仍仅预留。
  * signal 只能传上述已定义的板级名称；level 表示 MCU GPIO 的
  * 0/1 电平，不是 12V/24V 负载状态。单个 level 参数只求值一次。
  * -------------------------------------------------------------------------- */
@@ -125,8 +125,8 @@ extern "C" {
 /**
  * @brief  初始化本文件列出的板级控制信号。
  * @details 在 Clock_Init() 之后、USB/CAN 业务开始前调用一次。
- * @note   仅初始化 Air1/2(LOW)、内部 RL_DRV(HIGH)、IGN(HIGH)；
- *          不初始化已取消的 PTC8/PTC9 供电控制引脚。
+ * @note   初始化 Air1/2(LOW)、LED1~LED6(LOW)、RL_DRV(HIGH)、IGN(HIGH)；
+ *          PTC8/PTC9 已作为 LED6/LED5 控制引脚，不作为旧供电控制。
  * @warning 初始化态不是外部电压或机械到位反馈。
  */
 void EAL_GPIO_Init(void);

@@ -16,12 +16,12 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 | 业务名 | HOUT | MCU Pad | 控制网 | 驱动器 | J1 | 状态 |
 |---|---|---|---|---|---|---|
 | IGN | HOUT1 | PTC1 | SOL8IN | U5 CH1 | C10 | 现有 0x12/0x13 操作此 GPIO |
-| LED1 | HOUT2 | PTB19 | SOL7IN | U5 CH2 | C11 | 仅定义宏，未启用 |
-| LED2 | HOUT3 | PTB18 | SOL6IN | U5 CH3 | C25 | 仅定义宏，未启用 |
-| LED3 | HOUT4 | PTC4 | SOL5IN | U5 CH4 | C26 | 仅定义宏，未启用 |
-| LED4 | HOUT5 | PTC10 | SOL11IN | U22 CH3 | C6 | 仅定义宏，未启用；原 IGN 从此移除 |
-| LED5 | HOUT6 | PTC9 | SOL10IN | U22 CH2 | C7 | 仅定义宏，未启用 |
-| LED6 | HOUT7 | PTC8 | SOL9IN | U22 CH1 | C8 | 仅定义宏，未启用 |
+| LED1 | HOUT2 | PTB19 | SOL7IN | U5 CH2 | C11 | USB控制 (0x1A/0x1B/0x1C) |
+| LED2 | HOUT3 | PTB18 | SOL6IN | U5 CH3 | C25 | USB控制 (0x1A/0x1B/0x1C) |
+| LED3 | HOUT4 | PTC4 | SOL5IN | U5 CH4 | C26 | USB控制 (0x1A/0x1B/0x1C) |
+| LED4 | HOUT5 | PTC10 | SOL11IN | U22 CH3 | C6 | USB控制，旧IGN已迁出 |
+| LED5 | HOUT6 | PTC9 | SOL10IN | U22 CH2 | C7 | USB控制 (0x1A/0x1B/0x1C) |
+| LED6 | HOUT7 | PTC8 | SOL9IN | U22 CH1 | C8 | USB控制 (0x1A/0x1B/0x1C) |
 
 上述 HOUT 属高边输出，均需共用 `SOL24IN`，GPIO HIGH 并不证明输出端子已有负载电压。IGN 旧 HIGH 上电态暂予保留，但该初始化会作用于**新端子 J1 C10**。烧录实测前必须检查实体线束是否已经从旧 J1 C6 改至 J1 C10。
 
@@ -40,5 +40,7 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 - USB 通信驱动与服务、`0x40` CAN 发送及 `0x41` CAN 接收上报的帧格式不变，通道值保持 0/1。
 - 夹具 Air_ALVE1/2、RL_DRV 不变。
 - 唯一计划改变的物理输出是 **IGN 从 HOUT5/PTC10/J1 C6 改为 HOUT1/PTC1/J1 C10**；保留现有 IGN 命令号及上电 HIGH 初始化。
-- LED/KEY 仅声明固定硬件资源，不提供逻辑或命令。
+- LED1~LED6 已初始化为 GPIO 输出 LOW；USB CMD 0x1A 单路设置 [index, level]，0x1B 空请求读取六路 GPIO 位图，0x1C 单字节设置六路位图(0x00~0x3F)。LED 位图 bit0..5 分别对应 LED1..LED6。
+- USB OK 只说明 GPIO 设置完成，GET 只读 MCU GPIO 电平；不提供 J1 输出电压或灯状态反馈。USB 断开不自动改变 LED，MCU 复位后六路重新初始化LOW。
+- KEY1~KEY3 仍仅声明固定硬件资源，不提供采样逻辑或 USB 命令。
 - MCU 引脚、驱动器、连接器依据原理图；实际装配、线束及上电输出仍需实体复核。

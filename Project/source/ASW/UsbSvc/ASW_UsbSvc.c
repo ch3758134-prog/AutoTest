@@ -62,11 +62,14 @@ static void HandleCommand(uint16_t seq, uint8_t cmd,
     /* 业务级 ——按命令码范围路由到对应 Role */
     switch (cmd)
     {
-        /* 仅保留 IGN 和两个独立夹具的 USB 控制。 */
+        /* IGN、六路LED与两个独立夹具的 USB 控制。 */
         case CDD_USB_CMD_SET_IGN:
         case CDD_USB_CMD_GET_IGN:
         case CDD_USB_CMD_SET_CLAMP:
         case CDD_USB_CMD_GET_CLAMPS:
+        case CDD_USB_CMD_SET_LED:
+        case CDD_USB_CMD_GET_LEDS:
+        case CDD_USB_CMD_SET_LEDS:
             ASW_PwrCtrl_HandleCmd(seq, cmd, payload, len);
             return;
 
@@ -98,8 +101,8 @@ void ASW_UsbSvc_Init(void)
     CDD_USB_RegisterFrameHandler(HandleCommand);
 
     /* CAN 收帧 → BusProxy 透传(0x41 上报) */
-    EAL_CAN_RegisterRxCallback(EAL_CAN0, ASW_BusProxy_OnCanRx);
-    EAL_CAN_RegisterRxCallback(EAL_CAN1, ASW_BusProxy_OnCanRx);
+    EAL_CAN_RegisterRxCallback(KEY_CAN_PORT, ASW_BusProxy_OnCanRx);
+    EAL_CAN_RegisterRxCallback(ECU_CAN_PORT, ASW_BusProxy_OnCanRx);
 }
 
 void ASW_UsbSvc_Task(void)

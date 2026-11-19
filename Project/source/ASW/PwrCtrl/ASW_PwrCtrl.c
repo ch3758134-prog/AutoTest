@@ -1,6 +1,6 @@
 /**
  * @file ASW_PwrCtrl.c
- * @brief USB 对外 IGN(HOUT1/J1 C10) 与两个独立夹具控制。
+ * @brief USB 对外 IGN(HOUT1)、六路 LED(HOUT2~HOUT7) 与两个独立夹具控制。
  *
  * 夹具1：PTB1 → U23 CH4 → Air_ALVE1 → J1 B5。
  * 夹具2：PTC2 → U23 CH3 → Air_ALVE2 → J1 B4。
@@ -27,6 +27,43 @@ static uint8_t ParseOnOff(const uint8_t *payload, uint8_t len, uint8_t *out)
         return 0U;
     *out = payload[0];
     return 1U;
+}
+
+
+/* HIGH 请求对应 HOUT 通道导通，LOW 请求关断；只证明 GPIO 指令。 */
+static void SetLed(uint8_t index, uint8_t level)
+{
+    switch (index)
+    {
+        case 1U: EAL_GPIO_WRITE(LED1, level); break;
+        case 2U: EAL_GPIO_WRITE(LED2, level); break;
+        case 3U: EAL_GPIO_WRITE(LED3, level); break;
+        case 4U: EAL_GPIO_WRITE(LED4, level); break;
+        case 5U: EAL_GPIO_WRITE(LED5, level); break;
+        case 6U: EAL_GPIO_WRITE(LED6, level); break;
+        default: break; /* 上层已校验 1..6 */
+    }
+}
+
+static uint8_t ReadLedMask(void)
+{
+    return (uint8_t)((EAL_GPIO_READ(LED1) << 0U) |
+                     (EAL_GPIO_READ(LED2) << 1U) |
+                     (EAL_GPIO_READ(LED3) << 2U) |
+                     (EAL_GPIO_READ(LED4) << 3U) |
+                     (EAL_GPIO_READ(LED5) << 4U) |
+                     (EAL_GPIO_READ(LED6) << 5U));
+}
+
+static void WriteLedMask(uint8_t mask)
+{
+    /* 六路依次写入：不承诺跨 GPIOB/GPIOC 的硬件同时切换。 */
+    SetLed(1U, (uint8_t)((mask >> 0U) & 1U));
+    SetLed(2U, (uint8_t)((mask >> 1U) & 1U));
+    SetLed(3U, (uint8_t)((mask >> 2U) & 1U));
+    SetLed(4U, (uint8_t)((mask >> 3U) & 1U));
+    SetLed(5U, (uint8_t)((mask >> 4U) & 1U));
+    SetLed(6U, (uint8_t)((mask >> 5U) & 1U));
 }
 
 /** @brief 两只夹具请求释放；不切断内部 SOL24IN 共用功率母线。 */
@@ -105,6 +142,39 @@ void ASW_PwrCtrl_HandleCmd(uint16_t seq, uint8_t cmd,
             value = (uint8_t)(EAL_GPIO_READ(AIR_ALVE1) |
                               (uint8_t)(EAL_GPIO_READ(AIR_ALVE2) << 1U));
             CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, &value, 1U);
+            break;
+
+        case CDD_USB_CMD_SET_LED:
+            /* [index=1..6, level=0/1]；只改变指定 LED。 */
+            if ((payload == NULL) || (len != 2U) ||
+                (payload[0] < 1U) || (payload[0] > 6U) || (payload[1] > 1U))
+            {
+                ReplyStatus(seq, cmd, CDD_USB_STS_ERR_FMT);
+                break;
+            }
+            SetLed(payload[0], payload[1]);
+            ReplyStatus(seq, cmd, CDD_USB_STS_OK);
+            break;
+
+        case CDD_USB_CMD_GET_LEDS:
+            if (len != 0U)
+            {
+                ReplyStatus(seq, cmd, CDD_USB_STS_ERR_FMT);
+                break;
+            }
+            value = ReadLedMask();
+            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, &value, 1U);
+            break;
+
+        case CDD_USB_CMD_SET_LEDS:
+            /* [mask] bit0..5=LED1..LED6；bit6/7必须为0。 */
+            if ((payload == NULL) || (len != 1U) || ((payload[0] & 0xC0U) != 0U))
+            {
+                ReplyStatus(seq, cmd, CDD_USB_STS_ERR_FMT);
+                break;
+            }
+            WriteLedMask(payload[0]);
+            ReplyStatus(seq, cmd, CDD_USB_STS_OK);
             break;
 
         default:

@@ -44,7 +44,7 @@ extern "C" {
 #define CDD_USB_CMD_PING            0xF0U
 #define CDD_USB_CMD_GET_VERSION     0xF1U
 /*
- * 当前对外 GPIO 命令：IGN、两个独立夹具。
+ * 当前对外 GPIO 命令：IGN、两个独立夹具、六路LED。
  * 已废止 0x10/0x11(ECU供电)、0x14~0x17(按键板供电/旧SOL)和0x1F。
  * RL_DRV 属于内部 PCB 功率电路控制，无 USB 命令。
  */
@@ -57,6 +57,16 @@ extern "C" {
  */
 #define CDD_USB_CMD_SET_CLAMP       0x18U
 #define CDD_USB_CMD_GET_CLAMPS      0x19U
+/*
+ * HOUT2~HOUT7 LED1~LED6：
+ * SET_LED  0x1A: [index=1..6, level=0/1] 2B；仅控制指定一路。
+ * GET_LEDS 0x1B: 无参数；响应1B位图 bit0..5 = LED1..LED6 GPIO电平。
+ * SET_LEDS 0x1C: [bitmap] 1B；必须 0x00..0x3F。
+ * STATUS=OK仅表示MCU GPIO已更新，不证明负载电压/LED实际亮灭。
+ */
+#define CDD_USB_CMD_SET_LED         0x1AU
+#define CDD_USB_CMD_GET_LEDS        0x1BU
+#define CDD_USB_CMD_SET_LEDS        0x1CU
 /* CAN 发送 / 收帧回传 */
 #define CDD_USB_CMD_CAN_SEND        0x40U
 #define CDD_USB_CMD_CAN_RX_IND      0x41U

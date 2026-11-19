@@ -1,6 +1,6 @@
 /**
  * @file ASW_PwrCtrl.h
- * @brief 主控板 IGN 与两路夹具的 USB 业务接口。
+ * @brief 主控板 IGN、六路 LED 与两路夹具的 USB 业务接口。
  * @details 不提供 ECU/按键板供电、旧 SOL 或 RL_DRV 业务接口。
  */
 #ifndef ASW_PWRCTRL_H
