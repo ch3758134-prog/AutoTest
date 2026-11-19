@@ -306,16 +306,20 @@
                     ResizeDirection="Columns" Background="{StaticResource Line}"/>
 
       <Border Grid.Column="4" Style="{StaticResource AtPanel}">
-        <DockPanel>
-          <Border DockPanel.Dock="Top" Padding="12,10"
-                  Background="{StaticResource ToolbarSurface}"
+        <DockPanel Background="White">
+          <Border DockPanel.Dock="Top" Padding="14,11" Background="{StaticResource ToolbarSurface}"
                   BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
-            <TextBlock Text="当前对象 · 属性与注释" Style="{StaticResource DbcSectionTitle}"/>
+            <DockPanel>
+              <TextBlock Text="属性" Style="{StaticResource DbcSectionTitle}"
+                         VerticalAlignment="Center"/>
+              <TextBlock DockPanel.Dock="Right" Text="当前选中对象"
+                         Foreground="{StaticResource Subtle}" FontSize="11"
+                         VerticalAlignment="Center"/>
+            </DockPanel>
           </Border>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="12,10,12,15">
-              <!-- Do not repeat the full message and signal properties at once. -->
-              <StackPanel>
+            <StackPanel>
+              <StackPanel Margin="14,12">
                 <StackPanel.Style>
                   <Style TargetType="StackPanel">
                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -326,36 +330,45 @@
                     </Style.Triggers>
                   </Style>
                 </StackPanel.Style>
-                <TextBlock Text="报文定义" FontSize="15" FontWeight="SemiBold"
-                           Margin="0,0,0,5"/>
-                <TextBlock Text="{Binding SelectedMessage.HexId}" FontSize="12"
-                           Foreground="{StaticResource Subtle}" Margin="0,0,0,9"/>
-                <TextBlock Text="中文别名" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding MessageAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MaxLength="100"
-                         MinHeight="30" Margin="0,0,0,9"/>
-                <TextBlock Text="DBC 原始名称（受引用约束）" Foreground="{StaticResource Subtle}" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding SelectedMessage.Name,Mode=OneWay}" IsReadOnly="True"
-                         Background="{StaticResource MutedSurface}" Margin="0,0,0,9"/>
-                <TextBlock Text="详细注释 · CM_ BO_" FontWeight="SemiBold"
-                           Margin="0,0,0,5"/>
-                <TextBox Text="{Binding MessageCommentText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MaxLength="16000"
-                         TextWrapping="Wrap" AcceptsReturn="True" AcceptsTab="False"
-                         MinHeight="158" MaxHeight="540" VerticalScrollBarVisibility="Auto"
-                         Padding="8,8" Margin="0,0,0,7"
-                         ToolTip="直接编辑报文详细定义、发送条件和使用说明；Ctrl+S 保存到 DBC。"/>
-                <TextBlock Text="注释可多行编写，保存至 DBC 标准 CM_，不是另建一份摘要。"
-                           FontSize="11" Foreground="{StaticResource Subtle}"
-                           TextWrapping="Wrap" Margin="0,0,0,13"/>
-                <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,10"/>
-                <TextBlock Text="通信参数" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                <TextBlock Text="{Binding SelectedMessage.Dlc,StringFormat='数据长度：{0} Byte'}"
-                           Margin="0,0,0,5"/>
-                <TextBlock Text="{Binding SelectedMessage.FrameType}" Margin="0,0,0,5"/>
+                <TextBlock Text="{Binding SelectedMessage.NavTitle}"
+                           FontSize="16" FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,0,5"/>
+                <TextBlock Text="{Binding SelectedMessage.Name}" FontSize="12"
+                           Foreground="{StaticResource Subtle}" Margin="0,0,0,12"/>
+                <TextBlock Text="中文别名" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <TextBox Text="{Binding MessageAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                         MaxLength="100" MinHeight="33" Margin="0,0,0,15"/>
+                <TextBlock Text="报文详细定义与注释" FontSize="13"
+                           FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <TextBlock Text="CM_ BO_ · 支持多行" Foreground="{StaticResource Subtle}"
+                           FontSize="11" Margin="0,0,0,7"/>
+                <TextBox Text="{Binding MessageCommentText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                         MaxLength="16000" TextWrapping="Wrap" AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto" MinHeight="215" MaxHeight="500"
+                         Padding="9,8" Margin="0,0,0,16"
+                         ToolTip="填写完整的报文定义、发送条件、信号说明及注意事项，Ctrl+S 保存。"/>
+                <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,13"/>
+                <TextBlock Text="通信参数" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,11"/>
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <StackPanel Grid.Column="0">
+                    <TextBlock Text="CAN ID" Foreground="{StaticResource Subtle}" FontSize="11"/>
+                    <TextBlock Text="{Binding SelectedMessage.HexId}" FontSize="13" FontWeight="SemiBold"/>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="DLC" Foreground="{StaticResource Subtle}" FontSize="11"/>
+                    <TextBlock Text="{Binding SelectedMessage.Dlc,StringFormat='{}{0} Byte'}"
+                               FontSize="13" FontWeight="SemiBold"/>
+                  </StackPanel>
+                </Grid>
+                <TextBlock Text="{Binding SelectedMessage.FrameType}" Margin="0,0,0,4"/>
                 <TextBlock Text="{Binding SelectedMessage.Transmitter,StringFormat='发送节点：{0}'}"
-                           Margin="0,0,0,10"/>
-                <Button Content="完整编辑报文参数…" Command="{Binding EditMessageCommand}"
-                        HorizontalAlignment="Left" MinHeight="29"
-                        ToolTip="修改报文原始名称、DLC、发送节点等结构字段，按原文保留策略校验。"/>
+                           Margin="0,0,0,14"/>
+                <Button Content="编辑报文结构…" Command="{Binding EditMessageCommand}"
+                        HorizontalAlignment="Left" MinHeight="30"
+                        ToolTip="编辑原始名称、DLC、发送节点；若源文不支持安全改写则明确拒绝。"/>
               </StackPanel>
               <StackPanel>
                 <StackPanel.Style>
@@ -368,88 +381,137 @@
                     </Style.Triggers>
                   </Style>
                 </StackPanel.Style>
-                <TextBlock Text="信号定义" FontSize="15" FontWeight="SemiBold"
-                           Margin="0,0,0,5"/>
-                <TextBlock Text="{Binding SelectedSignal.Name}" Foreground="{StaticResource Subtle}"
-                           Margin="0,0,0,10"/>
-                <TextBlock Text="中文别名" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding SignalAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MaxLength="100"
-                         MinHeight="30" Margin="0,0,0,11"/>
-                <TextBlock Text="信号注释 · CM_ SG_" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <TextBox Text="{Binding SignalCommentText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" MaxLength="16000"
-                         TextWrapping="Wrap" AcceptsReturn="True" MinHeight="118" MaxHeight="460"
-                         VerticalScrollBarVisibility="Auto" Padding="8,8" Margin="0,0,0,12"
-                         ToolTip="说明物理含义、有效性、状态枚举和测试注意事项。"/>
-                <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,10"/>
-                <TextBlock Text="信号编码参数" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                <StackPanel IsEnabled="{Binding CanEdit}">
-                <TextBlock Text="修改参数后点击“应用技术参数”，先校验整组数值，再 Ctrl+S 保存文件。"
-                           FontSize="11" Foreground="{StaticResource Subtle}"
-                           TextWrapping="Wrap" Margin="0,0,0,9"/>
-                <Grid Margin="0,0,0,9">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <StackPanel Grid.Column="0">
-                    <TextBlock Text="起始位" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding SignalDraft.StartBit,UpdateSourceTrigger=PropertyChanged}"/>
-                  </StackPanel>
-                  <StackPanel Grid.Column="2">
-                    <TextBlock Text="位长" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding SignalDraft.BitLength,UpdateSourceTrigger=PropertyChanged}"/>
-                  </StackPanel>
-                </Grid>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,9">
-                  <CheckBox Content="Intel (小端)" IsChecked="{Binding SignalDraft.Intel}"
-                            Margin="0,0,15,0"/>
-                  <CheckBox Content="有符号" IsChecked="{Binding SignalDraft.Signed}"/>
+                <StackPanel Margin="14,12,14,8">
+                  <TextBlock Text="{Binding SelectedSignal.NavTitle}"
+                             FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding SelectedSignal.Name}" FontSize="11"
+                             Foreground="{StaticResource Subtle}" Margin="0,5,0,0"/>
                 </StackPanel>
-                <Grid Margin="0,0,0,9">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <StackPanel Grid.Column="0">
-                    <TextBlock Text="因子 (Factor)" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding SignalDraft.Factor,UpdateSourceTrigger=PropertyChanged}"/>
-                  </StackPanel>
-                  <StackPanel Grid.Column="2">
-                    <TextBlock Text="偏移 (Offset)" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding SignalDraft.Offset,UpdateSourceTrigger=PropertyChanged}"/>
-                  </StackPanel>
-                </Grid>
-                <Grid Margin="0,0,0,9">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <StackPanel Grid.Column="0">
-                    <TextBlock Text="最小物理值" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding SignalDraft.Minimum,UpdateSourceTrigger=PropertyChanged}"/>
-                  </StackPanel>
-                  <StackPanel Grid.Column="2">
-                    <TextBlock Text="最大物理值" Margin="0,0,0,4"/>
-                    <TextBox Text="{Binding SignalDraft.Maximum,UpdateSourceTrigger=PropertyChanged}"/>
-                  </StackPanel>
-                </Grid>
-                <TextBlock Text="单位" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding SignalDraft.Unit,UpdateSourceTrigger=PropertyChanged}"
-                         Margin="0,0,0,9"/>
-                <TextBlock Text="接收节点" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding SignalDraft.Receiver,UpdateSourceTrigger=PropertyChanged}"
-                         Margin="0,0,0,9"/>
-                <TextBlock Text="复用标记 (空 / M / m数字)" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding SignalDraft.Multiplexer,UpdateSourceTrigger=PropertyChanged}"
-                         Margin="0,0,0,11"/>
-                <Button Content="应用技术参数" Command="{Binding ApplySignalParametersCommand}"
-                        MinHeight="32" HorizontalAlignment="Stretch"
-                        Margin="0,0,0,10"/>
-                <TextBlock Text="数值枚举 (VAL_)" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <TextBlock Text="{Binding SelectedValueDescriptions}" TextWrapping="Wrap"
-                           Margin="0,0,0,12"/>
-                </StackPanel>
-                <Button Content="高级编辑原始信号…" Command="{Binding EditSignalCommand}"
-                        HorizontalAlignment="Left" MinHeight="29" Margin="0,0,0,8"/>
+                <TabControl Margin="8,0,8,8" BorderThickness="0" Padding="0">
+                  <TabItem Header="定义 / 注释">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                      <StackPanel Margin="8,12,8,16">
+                        <TextBlock Text="中文别名" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox Text="{Binding SignalAliasText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                                 MaxLength="100" MinHeight="33" Margin="0,0,0,15"/>
+                        <TextBlock Text="信号详细定义与注释" FontSize="13"
+                                   FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBlock Text="CM_ SG_ · 支持多行" Foreground="{StaticResource Subtle}"
+                                   FontSize="11" Margin="0,0,0,7"/>
+                        <TextBox Text="{Binding SignalCommentText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                                 MaxLength="16000" TextWrapping="Wrap" AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto" MinHeight="220" MaxHeight="500"
+                                 Padding="9,8" Margin="0,0,0,13"/>
+                        <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,12"/>
+                        <TextBlock Text="编码概况" FontWeight="SemiBold" FontSize="13"
+                                   Margin="0,0,0,9"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                          <TextBlock Text="起始位 " Foreground="{StaticResource Subtle}"/>
+                          <TextBlock Text="{Binding SelectedSignal.StartBit}" Margin="0,0,16,0"/>
+                          <TextBlock Text="位长 " Foreground="{StaticResource Subtle}"/>
+                          <TextBlock Text="{Binding SelectedSignal.BitLength,StringFormat='{}{0} bit'}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                          <TextBlock Text="因子 " Foreground="{StaticResource Subtle}"/>
+                          <TextBlock Text="{Binding SelectedSignal.Factor}" Margin="0,0,16,0"/>
+                          <TextBlock Text="单位 " Foreground="{StaticResource Subtle}"/>
+                          <TextBlock Text="{Binding SelectedSignal.Unit}"/>
+                        </StackPanel>
+                      </StackPanel>
+                    </ScrollViewer>
+                  </TabItem>
+                  <TabItem Header="编码参数">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                      <StackPanel Margin="8,12,8,15" IsEnabled="{Binding CanEdit}">
+                        <TextBlock Text="位位置与类型" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,9"/>
+                        <Grid Margin="0,0,0,11">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                          </Grid.ColumnDefinitions>
+                          <StackPanel Grid.Column="0">
+                            <TextBlock Text="起始位" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding SignalDraft.StartBit,UpdateSourceTrigger=PropertyChanged}"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2">
+                            <TextBlock Text="位长" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding SignalDraft.BitLength,UpdateSourceTrigger=PropertyChanged}"/>
+                          </StackPanel>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                          <CheckBox Content="Intel 小端" IsChecked="{Binding SignalDraft.Intel}" Margin="0,0,15,0"/>
+                          <CheckBox Content="有符号" IsChecked="{Binding SignalDraft.Signed}"/>
+                        </StackPanel>
+                        <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,12"/>
+                        <TextBlock Text="物理值转换" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,9"/>
+                        <Grid Margin="0,0,0,11">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                          </Grid.ColumnDefinitions>
+                          <StackPanel Grid.Column="0">
+                            <TextBlock Text="因子" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding SignalDraft.Factor,UpdateSourceTrigger=PropertyChanged}"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2">
+                            <TextBlock Text="偏移" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding SignalDraft.Offset,UpdateSourceTrigger=PropertyChanged}"/>
+                          </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,0,0,11">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                          </Grid.ColumnDefinitions>
+                          <StackPanel Grid.Column="0">
+                            <TextBlock Text="最小物理值" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding SignalDraft.Minimum,UpdateSourceTrigger=PropertyChanged}"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2">
+                            <TextBlock Text="最大物理值" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding SignalDraft.Maximum,UpdateSourceTrigger=PropertyChanged}"/>
+                          </StackPanel>
+                        </Grid>
+                        <TextBlock Text="单位" Margin="0,0,0,5"/>
+                        <TextBox Text="{Binding SignalDraft.Unit,UpdateSourceTrigger=PropertyChanged}"
+                                 Margin="0,0,0,11"/>
+                        <Expander Header="节点与复用设置" IsExpanded="False" Margin="0,0,0,11">
+                          <StackPanel Margin="0,9,0,0">
+                            <TextBlock Text="接收节点" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding SignalDraft.Receiver,UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,0,0,11"/>
+                            <TextBlock Text="复用标记（空 / M / m数字）" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding SignalDraft.Multiplexer,UpdateSourceTrigger=PropertyChanged}"/>
+                          </StackPanel>
+                        </Expander>
+                        <Button Content="应用编码参数" Command="{Binding ApplySignalParametersCommand}"
+                                HorizontalAlignment="Stretch" MinHeight="33"
+                                ToolTip="整组校验后更新当前 DBC 文档；Ctrl+S 可直接保存有效修改。"/>
+                      </StackPanel>
+                    </ScrollViewer>
+                  </TabItem>
+                  <TabItem Header="数值定义">
+                    <StackPanel Margin="8,13,8,16">
+                      <TextBlock Text="数值枚举 (VAL_)" FontSize="13"
+                                 FontWeight="SemiBold" Margin="0,0,0,9"/>
+                      <TextBlock Text="{Binding SelectedValueDescriptions}" TextWrapping="Wrap"
+                                 Margin="0,0,0,15"/>
+                      <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,13"/>
+                      <Button Content="高级编辑信号…" Command="{Binding EditSignalCommand}"
+                              MinHeight="32" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                  </TabItem>
+                </TabControl>
               </StackPanel>
-              <Border Height="1" Background="{StaticResource Line}" Margin="0,12,0,10"/>
-              <TextBlock Text="{Binding UnsupportedDescription}"
-                         Foreground="{StaticResource Warning}" TextWrapping="Wrap"
-                         FontSize="11" Margin="0,0,0,10"/>
-              <TextBlock Text="未保存修改不会写入磁盘。Ctrl+S 保存时执行 DBC 解析与修订回读验证。"
-                         Foreground="{StaticResource Subtle}" TextWrapping="Wrap"
-                         FontSize="11"/>
+              <Expander Header="DBC 文件限制与保存说明" IsExpanded="False" Margin="14,5,14,14">
+                <StackPanel Margin="0,8,0,0">
+                  <TextBlock Text="{Binding UnsupportedDescription}" TextWrapping="Wrap"
+                             Foreground="{StaticResource Subtle}" FontSize="11"/>
+                  <TextBlock Text="保存时回读验证原始定义和工程修订；无法安全修改的字段会明确拒绝。"
+                             TextWrapping="Wrap" Foreground="{StaticResource Subtle}"
+                             FontSize="11" Margin="0,6,0,0"/>
+                </StackPanel>
+              </Expander>
             </StackPanel>
           </ScrollViewer>
         </DockPanel>
