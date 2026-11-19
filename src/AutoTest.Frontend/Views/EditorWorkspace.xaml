@@ -34,8 +34,11 @@
      <DockPanel Grid.Row="0" Margin="15,0">
       <TextBlock DockPanel.Dock="Left" Text="当前用例" Style="{StaticResource AT.PanelTitle}"
        Margin="0,0,15,0"/>
-      <ComboBox Width="310" ItemsSource="{Binding Cases}" DisplayMemberPath="Name"
-       SelectedItem="{Binding SelectedCase,Mode=TwoWay}" VerticalAlignment="Center"/>
+      <ComboBox Width="240" ItemsSource="{Binding Cases}" DisplayMemberPath="Name"
+       SelectedItem="{Binding SelectedCase,Mode=TwoWay}" VerticalAlignment="Center"
+       Margin="0,0,10,0"/>
+      <TextBox Width="230" Text="{Binding SelectedCase.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+       VerticalAlignment="Center" ToolTip="直接修改当前用例名称，界面草稿自动保存"/>
      </DockPanel>
      <Border Grid.Row="1" Background="{StaticResource AT.SubtleSurface}"
       BorderBrush="{StaticResource AT.Border}" BorderThickness="0,1,0,1">

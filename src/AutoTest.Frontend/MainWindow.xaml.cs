@@ -97,36 +97,20 @@ public partial class MainWindow : Window
 
     private void FileSearch_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (FileSearchBox is null || FileTree is null) return;
-        var term = FileSearchBox.Text.Trim();
-        foreach (var category in FileTree.Items)
-        {
-            if (category is not TreeViewItem tree) continue;
-            ApplyFilter(tree, term);
-        }
+        if (_state is null || FileSearchBox is null) return;
+        _state.FilterResources(FileSearchBox.Text);
     }
-    private static bool ApplyFilter(TreeViewItem node, string term)
+
+    private void DeleteCase_Click(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(term))
-        {
-            node.Visibility = Visibility.Visible;
-            foreach (var item in node.Items)
-                if (item is TreeViewItem child) ApplyFilter(child, term);
-            return true;
-        }
-        var self = (node.Header?.ToString() ?? "").Contains(term, StringComparison.OrdinalIgnoreCase);
-        var desc = false;
-        foreach (var entry in node.Items)
-        {
-            if (entry is TreeViewItem child) desc |= ApplyFilter(child, term);
-            else if (entry is CaseDraft c) desc |= c.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
-            else if (entry is DbcMessageDraft d) desc |= d.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
-            else if (entry is WaveSignalDraft w) desc |= w.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
-            else if (entry is InputStateDraft x) desc |= x.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
-        }
-        node.Visibility = self || desc ? Visibility.Visible : Visibility.Collapsed;
-        if (desc) node.IsExpanded = true;
-        return self || desc;
+        if (FileTree.SelectedItem is not CaseDraft row) return;
+        if (MessageBox.Show(this,
+                $"仅删除 UI 草稿中的“{row.Name}”？不会修改正式工程。",
+                "删除示例用例", MessageBoxButton.YesNo, MessageBoxImage.Question)
+            != MessageBoxResult.Yes) return;
+        _state.Cases.Remove(row);
+        if (ReferenceEquals(_state.SelectedCase, row))
+            _state.SelectedCase = _state.Cases.FirstOrDefault();
     }
 
     private void Import_Click(object sender, RoutedEventArgs e)

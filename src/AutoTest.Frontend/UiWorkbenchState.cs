@@ -38,6 +38,33 @@ public sealed class UiWorkbenchState : INotifyPropertyChanged
     public ObservableCollection<WaveSignalDraft> WaveSignals => Document.WaveSignals;
     public ObservableCollection<InputStateDraft> InputStates => Document.InputStates;
 
+    // Explorer-only projections: filtering the project tree never changes the
+    // run selection or the original UI draft collections.
+    public ObservableCollection<CaseDraft> ExplorerCases { get; } = [];
+    public ObservableCollection<DbcMessageDraft> ExplorerDbc { get; } = [];
+    public ObservableCollection<WaveSignalDraft> ExplorerWaves { get; } = [];
+    public ObservableCollection<InputStateDraft> ExplorerInputs { get; } = [];
+    private string _resourceFilter = "";
+    public void FilterResources(string value)
+    {
+        _resourceFilter = value?.Trim() ?? "";
+        RefreshResourceViews();
+    }
+    private void RefreshResourceViews()
+    {
+        static void Apply<T>(ObservableCollection<T> target, IEnumerable<T> source)
+        {
+            target.Clear();
+            foreach (var entry in source) target.Add(entry);
+        }
+        bool Match(string? name) => string.IsNullOrWhiteSpace(_resourceFilter) ||
+            (name?.Contains(_resourceFilter, StringComparison.OrdinalIgnoreCase) ?? false);
+        Apply(ExplorerCases, Cases.Where(x => Match(x.Name)));
+        Apply(ExplorerDbc, DbcMessages.Where(x => Match(x.Name)));
+        Apply(ExplorerWaves, WaveSignals.Where(x => Match(x.Name)));
+        Apply(ExplorerInputs, InputStates.Where(x => Match(x.Name)));
+    }
+
     public string ProjectLabel
     {
         get => Document.ProjectLabel;
@@ -180,6 +207,7 @@ public sealed class UiWorkbenchState : INotifyPropertyChanged
         }
         state.NormalizeCollections();
         state.ObserveAll();
+        state.RefreshResourceViews();
         state.SelectedCase = state.Cases.FirstOrDefault();
         state.SelectedCan = state.CanRows.FirstOrDefault();
         state.SelectedAction = state.KeyActions.FirstOrDefault();
@@ -221,6 +249,7 @@ public sealed class UiWorkbenchState : INotifyPropertyChanged
         NormalizeCollections();
         _observed.Clear();
         ObserveAll();
+        RefreshResourceViews();
         foreach (var name in new[] { nameof(Cases), nameof(CanRows), nameof(KeyActions),
                      nameof(UdsRequests), nameof(DbcMessages), nameof(WaveSignals),
                      nameof(InputStates), nameof(ProjectLabel), nameof(FlashFilePath),
@@ -247,6 +276,7 @@ public sealed class UiWorkbenchState : INotifyPropertyChanged
         if (_hydrating) return;
         Changed(nameof(RunSelectionSummary));
         Changed(nameof(StepCountSummary));
+        RefreshResourceViews();
         SaveStatus = "界面草稿正在自动保存…";
         _saveTimer.Stop();
         _saveTimer.Start();

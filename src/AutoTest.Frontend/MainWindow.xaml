@@ -128,6 +128,12 @@
       Background="Transparent" Padding="5,9"
       SelectedItemChanged="FileTree_SelectedItemChanged"
       MouseDoubleClick="FileTree_MouseDoubleClick">
+      <TreeView.ContextMenu>
+       <ContextMenu>
+        <MenuItem Header="新建测试用例" Click="AddCase_Click"/>
+        <MenuItem Header="删除选中的测试用例" Click="DeleteCase_Click"/>
+       </ContextMenu>
+      </TreeView.ContextMenu>
       <TreeView.Resources>
        <DataTemplate DataType="{x:Type local:CaseDraft}"
         xmlns:local="clr-namespace:AutoTest.Frontend">
@@ -147,12 +153,12 @@
        </DataTemplate>
       </TreeView.Resources>
       <TreeViewItem Header="测试项目" IsExpanded="True">
-       <TreeViewItem Header="当前测试项目" IsExpanded="True" ItemsSource="{Binding Cases}"/>
+       <TreeViewItem Header="当前测试项目" IsExpanded="True" ItemsSource="{Binding ExplorerCases}"/>
       </TreeViewItem>
       <TreeViewItem Header="公共流程"/>
-      <TreeViewItem Header="DBC 资源" ItemsSource="{Binding DbcMessages}"/>
-      <TreeViewItem Header="波形资源" ItemsSource="{Binding WaveSignals}"/>
-      <TreeViewItem Header="输入模拟配置" ItemsSource="{Binding InputStates}"/>
+      <TreeViewItem Header="DBC 资源" ItemsSource="{Binding ExplorerDbc}"/>
+      <TreeViewItem Header="波形资源" ItemsSource="{Binding ExplorerWaves}"/>
+      <TreeViewItem Header="输入模拟配置" ItemsSource="{Binding ExplorerInputs}"/>
       <TreeViewItem Header="烧录配置"/>
      </TreeView>
      <Border Grid.Row="3" BorderBrush="{StaticResource AT.Border}"
