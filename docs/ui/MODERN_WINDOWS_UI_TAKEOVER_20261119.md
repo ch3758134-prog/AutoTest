@@ -7,7 +7,7 @@
 - 接受目前 feature/g4-html-parity-20261115 的阶段性开发成果；先接入正式上位机 main，再推进新一轮 UI 设计。
 - 用户明确要求直接改为现代 Windows 风格、浅色主题，保留现有 Windows 原生 WPF/Prism 与正式领域后端。
 - 当前新的 UI 专项由本研究对话接管 ui/ide-design，先设计并让用户可操作验收，再由后续受控任务实施真实后端接线。
-- 当前功能优先级仍为手动台架与自动测试；UDS 用作现代交互组件先行试验，DBC、波形随后协同研究。
+- 当前功能优先级为手动台架和自动测试，需并行组织不同验收：手动台架必须真实设备接线实测；自动测试先完成真实工程文件/TEST 模型的全量编辑及保存验收，允许执行器后续接入；UDS 交互实验不阻断前两项。
 
 ## 二、GitHub 整合依赖
 - G4→main 源/目标：feature/g4-html-parity-20261115 → main。
@@ -17,7 +17,7 @@
 - 项目负责人对 G4 阶段性成果的认可不能自动转为 FIELD_G4_PASS。G4 保留未验的正式执行、KEY、公共流程、USB/FLASH 行为限制。
 
 ## 三、现代 UI 设计目标（候选技术方案）
-- 统一 Windows 11 Fluent Light 风格，优先评估 .NET 10 WPF 内置 Fluent Theme；若有必需的现代组件缺口，按明确兼容性与许可证审查选择 WPF-UI 4.x 的单项控件/服务，不叠加多套 UI 基础库。
+- 已由用户确认直接选择 WPF UI 4.3.0 作为 Windows 11 Fluent Light 主视觉/控件库，不采用并列的 .NET 原生 Fluent ThemeMode 全局主题，不替换现有 Prism 导航与 TEST/DEVICE 领域层；见 WPF_UI_DUAL_TRACK_IMPLEMENTATION_RESEARCH_20261119.md。
 - 以任务为中心采用高密度 IDE 布局，不堆叠大面积彩色卡片，专业工具保持自身工作区。
 - 建立统一交互合同：Inline Edit（单元格快速改）、Context Popover（锚定临时编辑）、Inspector（持续复杂参数编辑）、Context Menu（右键对象命令）、Command Search、字段草稿/撤销/校验/持久化状态。
 - 不把右键固定为属性对话框，也不强制所有编辑都进入浮窗。根据字段复杂度和连续操作情境选择，并避免嵌套弹窗。
@@ -33,8 +33,8 @@
 5. 使用 Windows Codex 机械构建/启动；实机验证只能由明确实体权限与现场证据支持，不以 Mock 或编译通过冒充真实行为。
 
 ## 五、待验及不越界事项
-- 尚未建立新 Fluent HTML 或 WPF UI 候选；本文件不是视觉设计最终冻结。
-- 未批准第三方 UI 依赖直接进入 main；需要兼容性、集中包管理、离线安装与许可证核对。
+- WPF UI 4.3.0 已在 ui/ide-design 的中央版本、Desktop 项目引用和 App.xaml Light 主题中最小引入（提交 0e49dfd）；尚未 Windows 编译或完成全套现代 UI，更不意味着 G4/main 已集成。
+- 当前 UI 专项分支引入依赖已获用户技术方向授权，但进入 main 仍需先解决 G4 PR #61 冲突，并完成 Windows 构建、控件/主题兼容、离线包和许可证复核。
 - 现有 AutoTest_UI.html、用户已批准的手动台架 CAN 发送区界面不在本记录中被自动替换。
 
 后续 UI 研究的每次变更以本分支精确 commit 及用户真实操作反馈追踪。
