@@ -172,10 +172,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         }
     }
     public string StateDescription => _session.Document.IsSourcePreserving
-        ? "保留原始 DBC · 可编辑标准 CM_ 注释和中文别名 · 原始标识受保护"
-        : _session.Document.CanEdit
-        ? "可编辑 · 只修改已支持的 DBC 字段"
-        : "原始结构只读 · 中文别名与标准 CM_ 注释仍可安全编辑";
+        ? "原文保护模式"
+        : _session.Document.CanEdit ? "结构可编辑" : "原始结构只读";
     public string UnsupportedDescription => _session.Document.IsSourcePreserving
         ? "保留其他属性、枚举值和原文；允许编辑原始 CM_ 注释，CAN ID 和原始信号名称受保护。"
         : _session.Document.CanEdit ? ""
