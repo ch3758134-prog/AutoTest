@@ -263,7 +263,7 @@ public sealed class RealRunCoordinator
                             if (interval > 0)
                             {
                                 if (target.Kind is not (TestTargetKind.CanMessage or TestTargetKind.RawCan))
-                                    throw new ArgumentException("周期发送只能用于 ECU CAN0 报文。");
+                                    throw new ArgumentException("周期发送只能用于 ECU CAN 报文。");
                                 if (interval < 20)
                                     throw new ArgumentException("上位机 CAN 周期不能小于 20 毫秒。");
                                 var duration = node.Properties.TryGetValue("durationMs", out var d) &&
@@ -282,7 +282,7 @@ public sealed class RealRunCoordinator
                     case "CanStopPeriodic":
                     {
                         await _actions.StopPeriodicAsync(ct);
-                        Fact(node, RealStepStatus.Completed, "", "", "已停止本次测试的全部 ECU CAN0 周期发送。");
+                        Fact(node, RealStepStatus.Completed, "", "", "已停止本次测试的全部 ECU CAN 周期发送。");
                         break;
                     }
                     case "Read":
