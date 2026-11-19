@@ -1,3 +1,5 @@
+> **2026-11-19 后续状态更新（不覆盖本次历史发现）**：C-01 已由 PR #65 的 `655e1bfe0d95a4a885574450faa79fcf1cff49ef` 单行修复并经 GitHub 源码回读，**不再是静态阻断**。后续应转入 Windows Restore / Release Build / 三层专项测试，详见 [C-01 复核和 Codex 门禁移交](TEST-RECORD-PR65-C01-CLEARANCE-20261119.md)。PR 仍 Draft / 未批准合并，HOST 入口和 ECU 验收未完成。
+
 # AutoTest｜TEST-RECORD PR #65 B-01 定点修复项目管理复审（2026-11-19）
 
 **审查对象**：[PR #65](https://github.com/ch3758134-prog/AutoTest/pull/65)、[Issue #64](https://github.com/ch3758134-prog/AutoTest/issues/64)；`feature/test-record-backend-20261119@5ade1bd9e94d3240e9d931d43005caac5778f515`（目标 `HOST@ffb23f8c05ec4a64b82cd781db6357685d082c04`）。  
