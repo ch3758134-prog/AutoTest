@@ -109,7 +109,7 @@ public sealed partial class ManualBenchViewModel
         _monitorDispatchTimer.Stop();
         lock (_incomingMonitorSync) _incomingMonitor.Clear();
     }
-    public IReadOnlyList<string> MonitorChannelChoices { get; } = new[] { "全部", "CAN0", "CAN1" };
+    public IReadOnlyList<string> MonitorChannelChoices { get; } = new[] { "全部", "ECU CAN", "KEY CAN" };
     public ICollectionView MonitorDisplay => MonitorShowTimeline ? _monitorTimelineView : _monitorGroupView;
     public string MonitorQuery
     {
@@ -192,7 +192,7 @@ public sealed partial class ManualBenchViewModel
             _monitorLastObservedLoss = observation.LostFrames;
         }
         var entry = new MonitorEntry(
-            frame.Role == BusRole.DutCan ? "CAN0" : "CAN1",
+            frame.Role == BusRole.DutCan ? "ECU CAN" : "KEY CAN",
             "RX", frame.ExtendedId, frame.Id,
             observation.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
             Convert.ToHexString(frame.Data.AsSpan()), observation.LostFrames);
