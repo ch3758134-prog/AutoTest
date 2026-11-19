@@ -36,13 +36,11 @@ public partial class ProjectConfigurationOverviewView : UserControl
 
     private static bool IsInlineKind(string kind) =>
         kind is ProjectWorkspaceService.TestConfigurationKind or
-            ProjectWorkspaceService.ControllerKind or
             ProjectWorkspaceService.BenchConfigurationKind;
 
     private ContentControl HostFor(string kind) => kind switch
     {
         ProjectWorkspaceService.TestConfigurationKind => DutFormHost,
-        ProjectWorkspaceService.ControllerKind => InputFormHost,
         ProjectWorkspaceService.BenchConfigurationKind => BenchFormHost,
         _ => throw new ArgumentException("该资源属于独立专业工具，不是自动测试工程配置。")
     };
@@ -52,8 +50,7 @@ public partial class ProjectConfigurationOverviewView : UserControl
         ConfigTabs.SelectedIndex = kind switch
         {
             ProjectWorkspaceService.TestConfigurationKind => 0,
-            ProjectWorkspaceService.ControllerKind => 1,
-            ProjectWorkspaceService.BenchConfigurationKind => 2,
+                ProjectWorkspaceService.BenchConfigurationKind => 1,
             _ => ConfigTabs.SelectedIndex
         };
     }
@@ -83,7 +80,6 @@ public partial class ProjectConfigurationOverviewView : UserControl
     {
         Loaded -= OnLoaded;
         await LoadKindAsync(ProjectWorkspaceService.TestConfigurationKind);
-        await LoadKindAsync(ProjectWorkspaceService.ControllerKind);
         await LoadKindAsync(ProjectWorkspaceService.BenchConfigurationKind);
     }
 
