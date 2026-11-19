@@ -82,3 +82,12 @@
 - `feature/flash-lab-20261114@aafc2099793d2eb3c9b98e375168ff04aed4760d`，PR #55 open/draft/未合并。
 
 后续各专业开始时仍须回读最新 SHA，不把本文件的静态记录误认成永远不变的 HEAD。
+
+## 8. 2026-11-18 UDS 专项分支与独立实测程序补充（后续决定优先）
+
+负责人进一步明确：**UDS 研究必须有专用开发分支，且必须开发独立 WPF 上位机进行真实 ECU 实测验收**，不能仅形成研究文档、依赖 G4 主界面的 UDS 工具或等待 G4 TEST 全链完成后才实测。
+
+- 已创建 `feature/uds-lab-20261118`，从 `main@1d6eeba8561a779640b20c5a3f384327a0018079` 建立；开发分支入口 `docs/uds-lab/START_HERE.md`。
+- 独立验收可执行目标 `AutoTest.UdsLab.exe`，通过现有真实 DEVICE/UDS/ISO-TP 服务做诊断实测，**不得以静态 UI 或 Mock 验收**。
+- UDS 研究和独立工具实现可先于 G4 自动测试整体现场通过；而 UDS 的正式自动 TEST 步骤接入仍要求遵守 G4 已批准运行合同及相应实测结果。
+- 详细正式合同：[UDS 专用分支和独立 WPF 实测验收](UDS-DEDICATED-BRANCH-AND-REAL-LAB-20261118.md)。本节是对原推进顺序的**补充与优先解释**，不重置 G4 或 WAVE/SCAN 的依赖。
