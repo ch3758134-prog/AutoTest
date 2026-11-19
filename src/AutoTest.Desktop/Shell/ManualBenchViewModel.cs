@@ -141,7 +141,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ? "USB 已连接 · G" + _hardware.CurrentStationEpoch + " · " +
           (_hardware.ConnectedDeviceIdentity ?? "设备身份未返回") +
           " · FW " + (_hardware.ConnectedFirmwareVersion ?? "未知") +
-          " · CAN0=DUT，CAN1=KEY_SIM"
+          " · ECU CAN：A1/A12 · KEY CAN：B1/B11"
         : "USB 未连接 · 不继承上次连接的实体状态";
     public bool IsBusy { get => _busy; private set { if (SetProperty(ref _busy, value)) RaiseCommands(); } }
     public bool IsRawCanMode => !UseDbcMessage;
@@ -234,7 +234,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     public string DraftMaskLabel => "待发送 Key 掩码 0x" + DraftMask.ToString("X5", CultureInfo.InvariantCulture);
     public bool HasConfiguredKeys => _controller?.KeyHardwarePolicy is not null;
     public bool CanSendHardware => IsConnected && !IsBusy && !_hardware.IsTestRunApproved;
-    public bool CanSendManualCan1 => CanSendHardware && !IsCanBatchRunning &&
+    public bool CanSendManualEcuCan => CanSendHardware && !IsCanBatchRunning &&
         !_hardware.IsManualCanBatchApproved;
     public bool CanOperateGpio => CanSendHardware && _hardware.HasV02GpioContract;
     public bool CanReadGpio => IsConnected && !IsBusy && _hardware.HasV02GpioContract;
@@ -394,7 +394,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         NotifyKeyCommands();
         NotifyCanRows();
         RaisePropertyChanged(nameof(CanSendHardware));
-        RaisePropertyChanged(nameof(CanSendManualCan1));
+        RaisePropertyChanged(nameof(CanSendManualEcuCan));
         RaisePropertyChanged(nameof(CanOperateGpio));
         RaisePropertyChanged(nameof(CanReadGpio));
         RaisePropertyChanged(nameof(CanSendClamp));
@@ -432,7 +432,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
 
     private async Task ToggleConnectionAsync() => await Execute("USB", async () =>
     {
-        if (IsCanBatchRunning) throw new InvalidOperationException("请先停止 CAN0 发送任务。");
+        if (IsCanBatchRunning) throw new InvalidOperationException("请先停止 ECU CAN 发送任务。");
         if (_hardware.IsConnected) await _hardware.DisconnectAsync();
         else
         {
@@ -639,7 +639,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             throw new InvalidDataException("所选 DBC 报文已被改变，禁止发送。");
     }
 
-    private async Task SendCanAsync() => await Execute("CAN0 单次发送", async () =>
+    private async Task SendCanAsync() => await Execute("ECU CAN 单次发送", async () =>
     {
         if (!_hardware.IsConnected) throw new IOException("USB 未连接");
         await VerifyDbcFreshAsync();
@@ -647,7 +647,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         await _hardware.SendCanOnceAsync(frame, ExpectedConsent(() => frame));
         CanConfirmation = "";
         Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-            "CAN0 DUT", "TX ACK", "0x" + frame.Id.ToString("X"),
+            "ECU CAN", "TX ACK", "0x" + frame.Id.ToString("X"),
             Convert.ToHexString(frame.Data.AsSpan()), "主控 ACK，不代表 DUT 接收"));
     });
 
@@ -663,18 +663,18 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         await VerifyControllerFreshAsync();
         var frame = TryBuildKeyFrame();
         await _hardware.SendCanOnceAsync(frame, ExpectedConsent(() => frame));
-        LastKeyAck = "CAN1 ACK · 请求掩码 0x" + DraftMask.ToString("X5") +
+        LastKeyAck = "KEY CAN ACK · 请求掩码 0x" + DraftMask.ToString("X5") +
             "（实际五路电压未测量）";
         KeyConfirmation = "";
         Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-            "CAN1 KEY_SIM", "TX ACK", "0x" + frame.Id.ToString("X"),
+            "KEY CAN", "TX ACK", "0x" + frame.Id.ToString("X"),
             Convert.ToHexString(frame.Data.AsSpan()), LastKeyAck));
     });
 
     private void ReleaseDraftKeys()
     {
         foreach (var key in Keys) key.Checked = false;
-        Status = "已清空 Key 选择；点击“应用 Key 组合”可向 CAN1 发送全断开请求（不会自动发送）。";
+        Status = "已清空 Key 选择；点击“应用 Key 组合”将向 KEY CAN 发送全断开请求。";
     }
 
     public async Task ApplyIgnSelectionAsync(bool on)
