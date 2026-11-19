@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private bool _inspectorManualLayout;
     private bool _bottomManualLayout;
     private bool _treeAutoNarrow;
+    private bool _initialProjectRestored;
     private TestEditorViewModel? _activeRunFacts;
 
     public MainWindow(MainWindowViewModel viewModel)
@@ -42,6 +43,8 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             await _viewModel.RestoreLastProjectAsync();
+            _initialProjectRestored = true;
+            PrimaryTabs.SelectedIndex = 0;
             _autosaveTimer.Start();
         };
         _autosaveTimer.Tick += OnAutosaveTick;
@@ -194,6 +197,12 @@ public partial class MainWindow : Window
         menu.IsOpen = true;
     }
 
+    private void ProjectRunCases_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is DataGrid { SelectedItem: TestProjectPackageRow row })
+            _viewModel.CurrentRunProject?.OpenPackage(row);
+    }
+
     private void ShowOverview_Click(object sender, RoutedEventArgs e) => _viewModel.ShowOverview();
 
     private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
@@ -244,6 +253,10 @@ public partial class MainWindow : Window
         if (current is not null)
             current.RunFacts.CollectionChanged += OnRunFactsChanged;
         OpenDockForRealEvents();
+        // Keep the startup focus on Run. Subsequent resource opens enter the
+        // formal editor; a tool window never changes the main task tab.
+        if (_initialProjectRestored && _viewModel.ActiveEditorTab is not null)
+            PrimaryTabs.SelectedIndex = 1;
         ApplyPanelLayout(); // no editor: do not reserve an empty 320 DIP Inspector
     }
 
