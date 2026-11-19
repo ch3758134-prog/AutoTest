@@ -207,7 +207,7 @@ public sealed class PublicFlowEditorView : UserControl
             item.Click += (_, _) => AddStep(selectedAction, chosenPlace);
             palette.Items.Add(item);
         }
-        palette.PlacementTarget = owner ?? _tree;
+        palette.PlacementTarget = (UIElement?)owner ?? _tree;
         palette.IsOpen = true;
     }
 
