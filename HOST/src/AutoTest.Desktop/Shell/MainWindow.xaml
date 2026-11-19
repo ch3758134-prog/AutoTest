@@ -109,6 +109,8 @@
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
      <MenuItem Header="文件">
+      <MenuItem Header="未归档测试用例编辑" Click="OpenUnboundTestEditor_Click"/>
+      <Separator/>
       <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N"/>
       <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O"/>
       <MenuItem Header="保存当前" Command="{Binding SaveActiveCommand}" InputGestureText="Ctrl+S"/>
