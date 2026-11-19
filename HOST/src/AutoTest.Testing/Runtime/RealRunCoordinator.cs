@@ -247,6 +247,7 @@ public sealed class RealRunCoordinator
                 if (events is not null) await events.StepStartedAsync(start, ct);
                 var firstFact = facts.Count;
                 TestSignalResult? observationForStep = null;
+                bool gapObserved = false;
                 Exception? stepFailure = null;
                 try
                 {
@@ -348,7 +349,11 @@ public sealed class RealRunCoordinator
                             TimeSpan.FromMilliseconds(Milliseconds(node, "timeoutMs")),
                             TimeSpan.FromMilliseconds(Milliseconds(node, "maxAgeMs")), ct);
                         observationForStep = result;
-                        if (result.Status == TestSignalStatus.LostFrames) incomplete = true;
+                        if (result.Status == TestSignalStatus.LostFrames)
+                        {
+                            incomplete = true;
+                            gapObserved = true;
+                        }
                         var value = result.HasUsableValue
                             ? result.Observation!.Value!.Value.ToString("R", CultureInfo.InvariantCulture)
                             : null;
@@ -386,8 +391,13 @@ public sealed class RealRunCoordinator
                             await foreach (var sample in _signals.ObserveAsync(match, timer.Token)
                                 .WithCancellation(timer.Token))
                             {
-                                observationForStep = sample;
-                                if (sample.Status == TestSignalStatus.LostFrames) incomplete = true;
+                                if (sample.HasUsableValue || observationForStep is null)
+                                    observationForStep = sample;
+                                if (sample.Status == TestSignalStatus.LostFrames)
+                                {
+                                    incomplete = true;
+                                    gapObserved = true;
+                                }
                                 if (sample.HasUsableValue)
                                 {
                                     sawValid = true;
@@ -445,8 +455,13 @@ public sealed class RealRunCoordinator
                             await foreach (var sample in _signals.ObserveAsync(target, timeoutStop.Token)
                                 .WithCancellation(timeoutStop.Token))
                             {
-                                observationForStep = sample;
-                                if (sample.Status == TestSignalStatus.LostFrames) incomplete = true;
+                                if (sample.HasUsableValue || observationForStep is null)
+                                    observationForStep = sample;
+                                if (sample.Status == TestSignalStatus.LostFrames)
+                                {
+                                    incomplete = true;
+                                    gapObserved = true;
+                                }
                                 if (!sample.HasUsableValue) continue;
                                 sawValid = true;
                                 actual = sample.Observation!.Value!.Value.ToString("R",
@@ -606,11 +621,14 @@ public sealed class RealRunCoordinator
 
                     var completed = original with
                     {
-                        Status = stepFailure is null ? original.Status :
-                            stepFailure is OperationCanceledException
+                        Status = stepFailure is null
+                            ? gapObserved && original.Status == RealStepStatus.Completed
+                                ? RealStepStatus.InvalidData : original.Status
+                            : stepFailure is OperationCanceledException
                                 ? RealStepStatus.Cancelled : RealStepStatus.DeviceError,
-                        Detail = stepFailure is null ? original.Detail :
-                            original.Detail + " | " + stepFailure.Message,
+                        Detail = original.Detail +
+                            (gapObserved ? " | SIGNAL_GAP: frame/record loss" : "") +
+                            (stepFailure is null ? "" : " | " + stepFailure.Message),
                         StepOccurrenceId = occurrence,
                         ParentOccurrenceId = parentOccurrenceId,
                         Phase = phase,
