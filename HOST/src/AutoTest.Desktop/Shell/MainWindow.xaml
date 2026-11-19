@@ -256,6 +256,8 @@
          Foreground="#294D79" Margin="0,0,0,9"/>
         <TextBlock Text="{Binding StartDescription}" FontSize="12" Foreground="#647A93"
          TextWrapping="Wrap" Margin="0,0,0,20"/>
+        <Button Content="直接编辑测试用例（无需工程）" Click="OpenUnboundTestEditor_Click"
+         HorizontalAlignment="Left" Style="{StaticResource AtPrimaryButton}" Padding="16,8" Margin="0,0,0,12"/>
         <StackPanel Orientation="Horizontal">
          <Button Content="{Binding StartPrimaryLabel}" Command="{Binding StartPrimaryCommand}"
           Style="{StaticResource AtPrimaryButton}" Padding="18,9" MinWidth="142" Margin="0,0,12,0"/>
