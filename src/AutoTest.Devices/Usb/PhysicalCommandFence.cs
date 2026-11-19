@@ -35,6 +35,189 @@ public sealed class PhysicalCommandFence
     private long _manualKeyGeneration;
     private DateTimeOffset _manualKeyExpiry;
 
+    // Programming is separate from F1 DID and physical TEST RUN authorization.
+    // Only a single, exact CAN1 frame is queued at a time. A matching authorized
+    // job fingerprint alone NEVER permits arbitrary CAN frames or output commands.
+    private sealed class ProgrammingGrant
+    {
+        public required Guid Token;
+        public required long Generation;
+        public required uint AppId, BootId;
+        public required DateTimeOffset Expires;
+        public required int FrameLimit;
+        public int Consumed;
+        public byte[]? NextExact;
+    }
+    private ProgrammingGrant? _programming;
+
+    public static string FlashConfirmation(string planSha256) =>
+        "AUTHORIZE ECU FLASH " + planSha256;
+
+    public Guid AuthorizeProgrammingJob(string planSha256,string typed,
+        uint appId,uint bootId,long generation,int frameLimit)
+    {
+        if(planSha256.Length!=64 || !planSha256.All(Uri.IsHexDigit) ||
+            !string.Equals(typed,FlashConfirmation(planSha256),StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("Exact frozen ECU flash SHA256 authorization required.");
+        if(generation<=0 || frameLimit is < 1 or > 500000 ||
+            appId>0x1FFFFFFF || bootId>0x1FFFFFFF || appId==0 || bootId==0)
+            throw new ArgumentException("Invalid physical flash grant scope.");
+        lock(_sync)
+        {
+            if(_programming is not null || _runFingerprint is not null || _didGrant is not null)
+                throw new InvalidOperationException("Another physical CAN scope is already active.");
+            var token=Guid.NewGuid();
+            _programming=new ProgrammingGrant
+            {
+                Token=token,Generation=generation,AppId=appId,BootId=bootId,
+                FrameLimit=frameLimit,Expires=DateTimeOffset.UtcNow.AddMinutes(40)
+            };
+            return token;
+        }
+    }
+
+    /// <summary>Queues one exact 15-byte CAN1 USB payload, consumed before native WritePipe.
+    /// This is NOT public arbitrary CAN authority: a live approved programming token
+    /// and one of the two frozen APP/BOOT TX IDs are required for every frame.</summary>
+    public void PrepareProgrammingCanFrame(Guid token,ReadOnlySpan<byte> payload,long generation)
+    {
+        lock(_sync)
+        {
+            var g=_programming;
+            if(g is null || token==Guid.Empty || g.Token!=token ||
+                g.Generation!=generation || DateTimeOffset.UtcNow>=g.Expires ||
+                g.Consumed>=g.FrameLimit || g.NextExact is not null)
+                throw new UnauthorizedAccessException("Missing or exhausted physical programming frame permit.");
+            if(payload.Length!=15 || payload[0]!=1 || payload[1]>1 || payload[6]>8 ||
+                payload[6]<1)
+                throw new ArgumentException("Programming transport must use classic CAN1.");
+            uint id=BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(2,4));
+            if((id!=g.AppId && id!=g.BootId) ||
+                payload[1]!=(id>0x7FFu?1:0))
+                throw new UnauthorizedAccessException("Programming CAN frame ID outside approved APP/BOOT TX scope.");
+            g.NextExact=payload.ToArray();
+        }
+    }
+    public void RevokeProgrammingJob(Guid token)
+    {
+        lock(_sync)
+            if(_programming?.Token==token) _programming=null;
+    }
+    private bool TryConsumeProgramming(UsbRequest request,long generation)
+    {
+        var g=_programming;
+        if(g is null || g.Generation!=generation || DateTimeOffset.UtcNow>=g.Expires ||
+            g.Consumed>=g.FrameLimit || g.NextExact is null ||
+            request.Command!=MainControllerCodec.CanSend ||
+            !request.Payload.AsSpan().SequenceEqual(g.NextExact)) return false;
+        g.NextExact=null;
+        g.Consumed++;
+        return true;
+    }
+
+    // Separate one-DID grant. Never piggyback on the broad physical test-run whitelist.
+    private sealed class DidGrant
+    {
+        public required uint TxId, RxId;
+        public required ushort Did;
+        public required long Generation;
+        public required DateTimeOffset Expires;
+        public bool RequestSent;
+        public bool ResponseStarted;
+        public bool FlowPending;
+        public int RemainingConsecutive;
+        public int SinceFlow;
+        public int ExpectedSequence = 1;
+        public int FlowCount;
+    }
+    private DidGrant? _didGrant;
+
+    public static string ReadDidConfirmation(uint txId, uint rxId, ushort did) =>
+        $"AUTHORIZE DID 0x{did:X4} TX 0x{txId:X} RX 0x{rxId:X} CAN1";
+
+    /// <summary>Single explicit 0x22 DID read on physical CAN1, one USB generation,
+    /// bounded to 30 seconds. Cannot authorize 0x10, 0x27 or any programming SID.</summary>
+    public void AuthorizeReadOnlyDid(uint txId, uint rxId, ushort did, string typedConfirmation, long generation)
+    {
+        if (generation <= 0 || txId > 0x1FFFFFFFu || rxId > 0x1FFFFFFFu ||
+            txId == rxId || (txId > 0x7FFu) != (rxId > 0x7FFu))
+            throw new ArgumentException("Invalid or mixed-size CAN1 UDS endpoint.");
+        if (!string.Equals(typedConfirmation, ReadDidConfirmation(txId,rxId,did), StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("Exact DID/ID/CAN1 physical consent is required.");
+        lock (_sync)
+        {
+            if (_didGrant is not null || _programming is not null)
+                throw new InvalidOperationException("A DID read or flash job already has a physical grant.");
+            _didGrant = new DidGrant { TxId=txId, RxId=rxId, Did=did,
+                Generation=generation, Expires=DateTimeOffset.UtcNow.AddSeconds(30) };
+        }
+    }
+    public void RevokeReadOnlyDid() { lock (_sync) _didGrant=null; }
+
+    /// <summary>Only UsbSessionService may feed decoded, CRC-checked 0x41 indications
+    /// from the connected WinUSB reader. UI/callers cannot manufacture an FF grant.</summary>
+    internal void ObserveAuthenticatedCanRx(ReadOnlySpan<byte> payload,long generation)
+    {
+        lock (_sync)
+        {
+            var d = _didGrant;
+            if (d is null || !d.RequestSent || d.Generation != generation ||
+                DateTimeOffset.UtcNow >= d.Expires || payload.Length != 15 ||
+                payload[0] != 1 || payload[1] != (d.RxId > 0x7FFu ? 1 : 0) ||
+                BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(2,4)) != d.RxId)
+                return;
+            int dlc=payload[6];
+            if (dlc is < 1 or > 8) { _didGrant=null; return; }
+            byte pci=payload[7];
+            if (!d.ResponseStarted)
+            {
+                // An ECU 0x7F 0x22 0x78 pending SF is permitted but grants no FC.
+                if ((pci & 0xF0) != 0x10) return;
+                if (dlc != 8) { _didGrant=null; return; }
+                int size=((pci&0x0F)<<8)|payload[8];
+                // FirstFrame must actually begin the positive response 0x62 + exact DID.
+                if (size is < 8 or > 4095 || payload[9] != 0x62 ||
+                    payload[10] != (byte)(d.Did>>8) || payload[11] != (byte)d.Did)
+                { _didGrant=null; return; }
+                d.ResponseStarted=true;
+                d.RemainingConsecutive=(size-6+6)/7;
+                d.FlowPending=true;
+                return;
+            }
+            if ((pci & 0xF0) != 0x20 || d.FlowPending || d.RemainingConsecutive <= 0 ||
+                (pci & 0x0F) != d.ExpectedSequence || dlc < 2)
+            { _didGrant=null; return; }
+            d.RemainingConsecutive--;
+            d.ExpectedSequence=(d.ExpectedSequence+1)&0xF;
+            d.SinceFlow++;
+            if (d.RemainingConsecutive>0 && d.SinceFlow==8)
+            { d.FlowPending=true; d.SinceFlow=0; }
+        }
+    }
+
+    private bool TryConsumeReadDid(UsbRequest request,long generation)
+    {
+        var d=_didGrant;
+        if (d is null || d.Generation!=generation || DateTimeOffset.UtcNow>=d.Expires ||
+            request.Command!=MainControllerCodec.CanSend || request.Payload.Length!=15)
+            return false;
+        var p=request.Payload;
+        if (p[0]!=1 || p[1]!=(d.TxId>0x7FFu?1:0) ||
+            BinaryPrimitives.ReadUInt32LittleEndian(p.AsSpan(2,4))!=d.TxId)
+            return false;
+        // No CAN padding tolerance: the exact ISO-TP bytes and DLC must match.
+        if (!d.RequestSent && p[6]==4 && p[7]==3 && p[8]==0x22 &&
+            p[9]==(byte)(d.Did>>8) && p[10]==(byte)d.Did &&
+            p.AsSpan(11,4).SequenceEqual(new byte[4]))
+        { d.RequestSent=true; return true; }
+        if (d.RequestSent && d.ResponseStarted && d.FlowPending &&
+            d.RemainingConsecutive>0 && d.FlowCount<75 && p[6]==3 &&
+            p[7]==0x30 && p[8]==8 && p[9]==0 &&
+            p.AsSpan(10,5).SequenceEqual(new byte[5]))
+        { d.FlowCount++; d.FlowPending=false; return true; }
+        return false;
+    }
+
     /// <summary>
     /// One deliberate physical-run authorization. Limited to the exact CAN arbitration
     /// IDs chosen at preparation, a single live USB generation and a bounded duration.
@@ -55,7 +238,8 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("Invalid allowed CAN frame.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null || _manualKeySteps is not null)
+            if (_runFingerprint is not null || _manualBatchCan is not null ||
+                _manualKeySteps is not null || _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException("Another physical run, CAN task or KEY action is active.");
             // Test authorization supersedes all pending manual one-shot grants.
             _singleCanPayload = null;
@@ -110,7 +294,8 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("ECU CAN 手动发送必须配置 1～32 条有效报文。");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null)
+            if (_runFingerprint is not null || _manualBatchCan is not null ||
+                _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException("Physical test or manual batch is already authorized.");
             _singleCanPayload = null;
             _oneIgnState = null;
@@ -148,7 +333,8 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("KEY CAN 动作序列必须包含 1～512 条有效的按键控制报文。");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualKeySteps is not null)
+            if (_runFingerprint is not null || _manualKeySteps is not null ||
+                _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException("Physical TEST or KEY action is already authorized.");
             _singleCanPayload = null;
             _manualKeySteps = frames.Select(x => x.ToArray()).ToArray();
@@ -195,7 +381,7 @@ public sealed class PhysicalCommandFence
         if (connectionGeneration <= 0) throw new InvalidOperationException("No live connection.");
         lock (_sync)
         {
-            if (_runFingerprint is not null ||
+            if (_runFingerprint is not null || _programming is not null || _didGrant is not null ||
                 (_manualKeySteps is not null && exact15Bytes[0] == StationCanWiring.KeypadPort) ||
                 (_manualBatchCan is not null && !IsDocumentedKeySimFrame(exact15Bytes)))
                 throw new InvalidOperationException("ECU CAN 发送任务运行中，仅允许已授权的单次 KEY CAN 按键命令。");
@@ -215,7 +401,7 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize IGN without a live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null)
+            if (_runFingerprint is not null || _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException("Manual IGN is blocked while an automatic test run is authorized.");
             _oneIgnState = on;
             _ignGeneration = connectionGeneration;
@@ -235,7 +421,7 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize a clamp without a live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null)
+            if (_runFingerprint is not null || _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException("Manual clamp is blocked while an automatic test run is authorized.");
             _singleClampPayload = new byte[] { clamp, press ? (byte)1 : (byte)0 };
             _clampGeneration = connectionGeneration;
@@ -255,7 +441,7 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize LED without live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null)
+            if (_runFingerprint is not null || _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException("Manual LED GPIO is blocked during automatic TEST.");
             _singleLedPayload = new byte[] { index, on ? (byte)1 : (byte)0 };
             _ledGeneration = connectionGeneration;
@@ -272,6 +458,13 @@ public sealed class PhysicalCommandFence
         if (IsReadOnly(request.Command, request.Payload)) return;
         lock (_sync)
         {
+            // During a programming/DID grant no other write can borrow a
+            // previously issued CAN/IGN/LED/clamp/manual-test authorization.
+            if (TryConsumeProgramming(request, connectionGeneration)) return;
+            if (TryConsumeReadDid(request, connectionGeneration)) return;
+            if (_programming is not null || _didGrant is not null)
+                throw new UnauthorizedAccessException(
+                    "USB write denied: another dedicated ECU flash/diagnostic scope is active.");
             if (request.Command == MainControllerCodec.CanSend &&
                 _manualKeySteps is not null && _manualKeyGeneration == connectionGeneration &&
                 DateTimeOffset.UtcNow < _manualKeyExpiry &&
@@ -358,6 +551,7 @@ public sealed class PhysicalCommandFence
             _oneIgnState = null; _ignExpiry = default; _ignGeneration = 0;
             _singleClampPayload = null; _clampExpiry = default; _clampGeneration = 0;
             _singleLedPayload = null; _ledExpiry = default; _ledGeneration = 0;
+            _programming = null; _didGrant = null;
             _runCan = null; _runIgn = false; _remainingWrites = 0;
             _runExpiry = default; _runGeneration = 0; _runFingerprint = null;
             _manualBatchCan = null; _manualBatchGeneration = 0;
