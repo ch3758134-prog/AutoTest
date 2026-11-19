@@ -98,7 +98,6 @@
         <MenuItem Header="ECU 烧录" Command="{Binding OpenFlashWorkbenchCommand}"/>
         <Separator/>
         <MenuItem Header="独立 UDS 工作台（未接入）" IsEnabled="False"/>
-        <MenuItem Header="CAN 诊断观察" Command="{Binding OpenCanMonitorCommand}"/>
        </ContextMenu>
       </ui:Button.ContextMenu>
      </ui:Button>
@@ -206,6 +205,15 @@
      CanUserAddRows="False" CanUserDeleteRows="False"
      IsReadOnly="False" RowHeaderWidth="0" HeadersVisibility="Column" BorderThickness="0"
      GridLinesVisibility="Horizontal" SelectionMode="Single">
+     <DataGrid.Style>
+      <Style TargetType="{x:Type DataGrid}">
+       <Style.Triggers>
+        <DataTrigger Binding="{Binding CurrentRunCase.IsBusy}" Value="True">
+         <Setter Property="IsEnabled" Value="False"/>
+        </DataTrigger>
+       </Style.Triggers>
+      </Style>
+     </DataGrid.Style>
      <DataGrid.Columns>
       <DataGridTemplateColumn Header="选" Width="42">
        <DataGridTemplateColumn.CellTemplate>
@@ -222,7 +230,7 @@
     <Border Grid.Row="2" Background="{StaticResource AT.SubtleSurface}"
      BorderBrush="{StaticResource AT.Border}" BorderThickness="0,1,0,0" Padding="14,12">
      <StackPanel>
-      <TextBlock Text="{Binding CurrentRunProject.SelectedCount,StringFormat=本次选择：{0} 个用例}"
+      <TextBlock Text="{Binding CurrentRunProject.SelectedCount}"
        FontWeight="SemiBold" FontSize="12"/>
       <TextBlock Text="双击用例进入正式编辑；项目级整组运行仍待 TEST 接线。"
        Style="{StaticResource AT.Caption}" Margin="0,6,0,0"/>
