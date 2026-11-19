@@ -1,10 +1,10 @@
 /**
  * @file    ASW_BusProxy.c
- * @brief   CAN 总线透明代理（CAN0 + CAN1）— 实现
+ * @brief   KEY / ECU 双 CAN 总线透明代理 — 实现
  *
  * 关键决策（grill 2026-08-10 定稿）：
- *   - 主控板对按键板/CAN0 = 100% 透传信道（不解析 ID、不等 ACK）
- *   - 主控板对 ECU/CAN1    = 同样 100% 透传
+ *   - KEY_CAN_PORT(J1 B11/B1) = 100% 透传信道（不解析 ID、不等 ACK）
+ *   - ECU_CAN_PORT(J1 A12/A1) = 同样 100% 透传
  *   - 心跳 0x1A0 由按键板发,主控板识别它没意义,只透传
  *
  * 调用链：ASW/BusProxy → EAL/CAN + CDD/USB
@@ -25,7 +25,9 @@ void ASW_BusProxy_HandleCanSendCmd(uint16_t seq,
     uint8_t           k;
 
     /* 字段格式校验 */
-    if (len != 15U || payload[0] > 1U || payload[6] > 8U)
+    if (len != 15U ||
+        (payload[0] != KEY_CAN_USB_CHANNEL && payload[0] != ECU_CAN_USB_CHANNEL) ||
+        payload[6] > 8U)
     {
         CDD_USB_SendFrame(seq, CDD_USB_CMD_CAN_SEND,
                           CDD_USB_STS_ERR_FMT, NULL, 0);
@@ -39,7 +41,7 @@ void ASW_BusProxy_HandleCanSendCmd(uint16_t seq,
     f.rtr = 0;
     for (k = 0; k < 8; k++) f.data[k] = payload[7 + k];
 
-    ret = EAL_CAN_Send((payload[0] == 0U) ? EAL_CAN0 : EAL_CAN1, &f);
+    ret = EAL_CAN_Send((payload[0] == KEY_CAN_USB_CHANNEL) ? KEY_CAN_PORT : ECU_CAN_PORT, &f);
     if (ret == EAL_CAN_OK)
         CDD_USB_SendFrame(seq, CDD_USB_CMD_CAN_SEND,
                           CDD_USB_STS_OK, NULL, 0);
@@ -62,7 +64,7 @@ void ASW_BusProxy_OnCanRx(EAL_CAN_PortType port,
     uint8_t p[15];
     uint8_t i;
 
-    p[0] = (uint8_t)port;                       /* 0=CAN0 按键板 / 1=CAN1 ECU */
+    p[0] = (uint8_t)port;                       /* KEY_CAN_USB_CHANNEL / ECU_CAN_USB_CHANNEL */
     p[1] = frame->ide;
     p[2] = (uint8_t)(frame->id & 0xFFU);
     p[3] = (uint8_t)((frame->id >> 8) & 0xFFU);

@@ -23,7 +23,7 @@ static void KeySim_SendFrame(Key_Cmd_t cmd, Key_Action_t action, uint16_t t_hold
     frame.dlc  = 8;
     for (uint8_t i = 0; i < 8; i++) frame.data[i] = raw[i];
 
-    (void)EAL_CAN_Send(EAL_CAN0, &frame);
+    (void)EAL_CAN_Send(KEY_CAN_PORT, &frame);
 }
 
 void KeySim_Execute(Key_Action_t action, uint16_t t_hold_ms)

@@ -3,14 +3,14 @@
  * @brief   板级 CAN 适配层 — 接口
  *
  * 封装内容：
- *   - 板级 CAN 通道名称（CAN0/CAN1 → 芯片 CAN0/CAN1）
+ *   - 业务 CAN 端口与 MCU 控制器的固定映射
  *   - 帧结构、波特率、过滤器配置
  *
  * 协议来源：docs/plan/模拟按键板规格文档.md v0.2
  *
  * CAN 参数：
- *   - CAN0: PTA12(TX) / PTA13(RX)  ← 板级接口 0
- *   - CAN1: PTC17(TX) / PTC16(RX)  ← 板级接口 1
+ *   - KEY_CAN_PORT: MCU CAN0 PTA12/PTA13 → U9 → J1 B11(H)/B1(L)
+ *   - ECU_CAN_PORT: MCU CAN1 PTC17/PTC16 → U10 → J1 A12(H)/A1(L)
  *   - 波特率：20K~1M（BusClock = 48MHz）
  *
  * MB 分配（芯片级，用户无感知）：
@@ -27,12 +27,18 @@ extern "C" {
 #endif
 
 /* ============================================
- * 板级 CAN 通道（直白对应板子上物理接口编号）
+ * MCU CAN 控制器编号（不是 PCB 原理图丝印编号）
  * ============================================ */
 typedef enum {
-    EAL_CAN0 = 0,   /* 板级 CAN0 → 芯片 CAN0 (PTA12/PTA13) */
-    EAL_CAN1 = 1    /* 板级 CAN1 → 芯片 CAN1 (PTC17/PTC16) */
+    EAL_CAN0 = 0,   /* 芯片 CAN0: PTA12/PTA13，板外 KEY J1 B11/B1 */
+    EAL_CAN1 = 1    /* 芯片 CAN1: PTC17/PTC16，板外 ECU J1 A12/A1 */
 } EAL_CAN_PortType;
+
+/* 业务代码一律使用角色名；底层 MCU 控制器枚举保留以适配硬件寄存器。 */
+#define ECU_CAN_PORT        EAL_CAN1  /* PCB J1 A12=CAN_H, A1=CAN_L */
+#define KEY_CAN_PORT        EAL_CAN0  /* PCB J1 B11=CAN_H, B1=CAN_L */
+#define ECU_CAN_USB_CHANNEL ((uint8_t)ECU_CAN_PORT)
+#define KEY_CAN_USB_CHANNEL ((uint8_t)KEY_CAN_PORT)
 
 /* ============================================
  * 波特率 (BusClock = 48MHz)

@@ -30,9 +30,9 @@ int main(void)
      * 已取消的ECU/按键板电源输出不再初始化。见EAL_GPIO.c。 */
     EAL_GPIO_Init();
 
-    /* CAN：CAN0=模拟按键板 / CAN1=ECU，500kbps；纯轮询（不使能 NVIC，不与 USB 冲突） */
-    EAL_CAN_Open(EAL_CAN0, EAL_CAN_BAUD_500K);
-    EAL_CAN_Open(EAL_CAN1, EAL_CAN_BAUD_500K);
+    /* 固定业务端口：KEY=J1 B11/B1，ECU=J1 A12/A1；均为 500kbps 轮询。 */
+    EAL_CAN_Open(KEY_CAN_PORT, EAL_CAN_BAUD_500K);
+    EAL_CAN_Open(ECU_CAN_PORT, EAL_CAN_BAUD_500K);
 
     /* USB：传输 + 枚举就绪（WCID WinUSB 免驱在 EAL_USB 内部）*/
     EAL_USB_Init();
@@ -42,8 +42,8 @@ int main(void)
 
     for (;;)
     {
-        EAL_CAN_Poll(EAL_CAN0);
-        EAL_CAN_Poll(EAL_CAN1);
+        EAL_CAN_Poll(KEY_CAN_PORT);
+        EAL_CAN_Poll(ECU_CAN_PORT);
         ASW_UsbSvc_Task();               /* CDD_USB_Task（收帧）+ 广播调度 */
     }
     return 0;

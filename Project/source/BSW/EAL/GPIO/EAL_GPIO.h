@@ -37,15 +37,55 @@ extern "C" {
 #define RL_DRV_PORT           MCAL_GPIO_C
 #define RL_DRV_PIN            0U
 
-/**
- * @brief  IGN 输出控制。
- * @details U7 P82/PTC10 → SOL11IN → U22 IN3(Pin7) / OUT3(Pin14)
- *          → HOUT5 → J1 C6。用户确认 J1 C6 作为现场 IGN 接线。
- * @note   C6 是 J1 连接器触点，不能误认为 MCU 的 PTC6。
- *          HIGH 请求高边导通，LOW 请求关断；需要 SOL24IN 供电。
+/* --------------------------------------------------------------------------
+ * 1a. HOUT1~HOUT7：从 MCU Pad 经 BTS724G 到 J1 的固定硬件映射
+ * 这些名称指实际板外端子，不代表 MCU 原生引脚。
+ * 所有 HOUT 共用 SOL24IN 功率母线；GPIO 状态不是输出电压反馈。
+ * -------------------------------------------------------------------------- */
+#define HOUT1_PORT MCAL_GPIO_C  /* PTC1  → SOL8IN  → U5 CH1  → J1 C10 */
+#define HOUT1_PIN  1U
+#define HOUT2_PORT MCAL_GPIO_B  /* PTB19 → SOL7IN  → U5 CH2  → J1 C11 */
+#define HOUT2_PIN  19U
+#define HOUT3_PORT MCAL_GPIO_B  /* PTB18 → SOL6IN  → U5 CH3  → J1 C25 */
+#define HOUT3_PIN  18U
+#define HOUT4_PORT MCAL_GPIO_C  /* PTC4  → SOL5IN  → U5 CH4  → J1 C26 */
+#define HOUT4_PIN  4U
+#define HOUT5_PORT MCAL_GPIO_C  /* PTC10 → SOL11IN → U22 CH3 → J1 C6 */
+#define HOUT5_PIN  10U
+#define HOUT6_PORT MCAL_GPIO_C  /* PTC9  → SOL10IN → U22 CH2 → J1 C7 */
+#define HOUT6_PIN  9U
+#define HOUT7_PORT MCAL_GPIO_C  /* PTC8  → SOL9IN  → U22 CH1 → J1 C8 */
+#define HOUT7_PIN  8U
+
+/* 业务分配：IGN→HOUT1；LED1~LED6→HOUT2~HOUT7。
+ * 只保留现有 IGN 命令的实际 GPIO 路由；LED 不初始化、不控制。
+ * HOUT5/PTC10 从此不再被 IGN 初始化或驱动。
  */
-#define IGN_PORT              MCAL_GPIO_C
-#define IGN_PIN               10U
+#define IGN_PORT   HOUT1_PORT
+#define IGN_PIN    HOUT1_PIN
+#define LED1_PORT  HOUT2_PORT
+#define LED1_PIN   HOUT2_PIN
+#define LED2_PORT  HOUT3_PORT
+#define LED2_PIN   HOUT3_PIN
+#define LED3_PORT  HOUT4_PORT
+#define LED3_PIN   HOUT4_PIN
+#define LED4_PORT  HOUT5_PORT
+#define LED4_PIN   HOUT5_PIN
+#define LED5_PORT  HOUT6_PORT
+#define LED5_PIN   HOUT6_PIN
+#define LED6_PORT  HOUT7_PORT
+#define LED6_PIN   HOUT7_PIN
+
+/* 外部 KEY1~KEY3 输入，经电阻分压/RC/钳位后接 MCU。
+ * 暂只定义物理绑定，不配置为 GPIO 输入，不启用 ADC/阈值判断。
+ * KEY1=J1 C17; KEY2=J1 C18; KEY3=J1 C16。
+ */
+#define KEY1_PORT MCAL_GPIO_C /* PTC7 / MCU_KEY1 */
+#define KEY1_PIN  7U
+#define KEY2_PORT MCAL_GPIO_C /* PTC6 / MCU_KEY2 */
+#define KEY2_PIN  6U
+#define KEY3_PORT MCAL_GPIO_C /* PTC5 / MCU_KEY3 */
+#define KEY3_PIN  5U
 
 /**
  * @brief  Air_ALVE1：气阀功率输出 1。
@@ -73,6 +113,7 @@ extern "C" {
  * 2. 统一操作宏（不再增加信号枚举或 Port/Pin 查表）
  *
  * 用法：EAL_GPIO_WRITE(IGN, 1U);  EAL_GPIO_READ(AIR_ALVE1);
+ * 现役输出只调用 IGN、AIR_ALVE1/2 和 RL_DRV；LED/KEY 仅预留。
  * signal 只能传上述已定义的板级名称；level 表示 MCU GPIO 的
  * 0/1 电平，不是 12V/24V 负载状态。单个 level 参数只求值一次。
  * -------------------------------------------------------------------------- */

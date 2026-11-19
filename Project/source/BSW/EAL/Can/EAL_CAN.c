@@ -13,8 +13,8 @@
  * EAL → MCAL 通道映射
  * ============================================ */
 static const MCAL_CAN_ChannelType s_chMap[] = {
-    MCAL_CAN_CH0,   /* EAL_CAN0 → 芯片 CAN0 */
-    MCAL_CAN_CH1,   /* EAL_CAN1 → 芯片 CAN1 */
+    MCAL_CAN_CH0,   /* KEY_CAN_PORT → MCU CAN0 → J1 B11/B1 */
+    MCAL_CAN_CH1,   /* ECU_CAN_PORT → MCU CAN1 → J1 A12/A1 */
 };
 
 /* ============================================

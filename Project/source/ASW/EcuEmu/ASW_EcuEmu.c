@@ -133,7 +133,7 @@ void ASW_EcuEmu_HandleCmd(uint16_t seq, uint8_t cmd,
 /* ============================================
  * 接口:周期任务
  *   1. USB 断开（enum=0）→ 静默 STOP（firmware-requirements.md §7.2）
- *   2. 各帧 now-last_tick >= period_ms → 发 CAN1,更新 last_tick
+ *   2. 各帧 now-last_tick >= period_ms → 发 ECU_CAN_PORT,更新 last_tick
  * ============================================ */
 void ASW_EcuEmu_Task(void)
 {
@@ -161,7 +161,7 @@ void ASW_EcuEmu_Task(void)
             f.rtr = 0;
             for (k = 0; k < 8; k++) f.data[k] = g_table[i].data[k];
             /* 发送成功才更新 last_tick —— BUSY 时本帧下轮再补,避免丢帧 */
-            if (EAL_CAN_Send(EAL_CAN1, &f) == EAL_CAN_OK)
+            if (EAL_CAN_Send(ECU_CAN_PORT, &f) == EAL_CAN_OK)
                 g_table[i].last_tick = now;
         }
     }

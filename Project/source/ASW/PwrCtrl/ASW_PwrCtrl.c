@@ -1,6 +1,6 @@
 /**
  * @file ASW_PwrCtrl.c
- * @brief USB 对外 IGN 与两个独立夹具控制。
+ * @brief USB 对外 IGN(HOUT1/J1 C10) 与两个独立夹具控制。
  *
  * 夹具1：PTB1 → U23 CH4 → Air_ALVE1 → J1 B5。
  * 夹具2：PTC2 → U23 CH3 → Air_ALVE2 → J1 B4。
