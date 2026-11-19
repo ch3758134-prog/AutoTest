@@ -223,4 +223,27 @@ public sealed class RealOccurrenceTests
         Assert.Equal(RealStepStatus.InvalidData, fact.Status);
         Assert.Contains("SIGNAL_GAP", fact.Detail);
     }
+    [Fact]
+    public async Task FailedReadCannotBeHiddenByAnUnrelatedPassingLiteralAssertion()
+    {
+        var target = new TestTargetMapping("MissingSignal", TestTargetKind.Signal,
+            AssetId.New(), 1, new string('a', 64), BusRole.DutCan, 0x123,
+            SignalName: "Missing", Unit: "count");
+        var read = StepNode.Create("Read").WithProperty("target", target.Name)
+            .WithProperty("variable", "response").WithProperty("mode", "Latest")
+            .WithProperty("timeoutMs", "100").WithProperty("maxAgeMs", "100");
+        var literal = StepNode.Create("Expect").WithProperty("left", "1")
+            .WithProperty("operator", "==").WithProperty("right", "1");
+        var plan = Prepare(WithTest(TestDocument.Create("MissingRead") with
+            { Mappings = ImmutableArray.Create(target) }, read, literal));
+        var result = await new RealRunCoordinator(new Signals(
+            new TestSignalResult(TestSignalStatus.NoFrame, null, "no CAN frames")),
+            new Actions(), new Waves()).StartAsync(plan);
+        Assert.Equal(RealTestVerdict.Inconclusive, result.Verdict);
+        Assert.Contains(result.Facts, x => x.Step == read.Id &&
+            x.Status == RealStepStatus.NoData);
+        Assert.Contains(result.Facts, x => x.Step == literal.Id &&
+            x.Status == RealStepStatus.Completed);
+    }
+
 }
