@@ -887,7 +887,7 @@ public partial class TestStepInspector : UserControl
                     {
                         // Empty 20-switch combination is the explicit all-off
                         // action, represented by the existing Release wire syntax.
-                        var value = operation == "Release" || _selectedMask == 0 ? "Release" :
+                        var value = operation == "Release" ? "Release" :
                             operation + ":0x" + _selectedMask.ToString("X5") +
                             ((operation == "Pulse" || !string.IsNullOrWhiteSpace(KeyDurationInput.Text))
                                 ? ":" + KeyDurationInput.Text.Trim() : "");
