@@ -1,5 +1,5 @@
 {
-  "schema": "autotest-firmware-baseline-v1",
+  "schema": "autotest-firmware-baseline-v2-three-peer-projects",
   "baseline_date": "2026-11-19",
   "source_refs": {
     "main_control": {
@@ -36,1500 +36,1502 @@
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/cachel1_armv7.h",
-      "target": "firmware/main-control/Project/.cmsis/include/cachel1_armv7.h",
+      "target": "Main_Control/Project/.cmsis/include/cachel1_armv7.h",
       "blob_sha": "abebc95f946029af684920d31314fbf8ce5b7b3f",
       "bytes": 12087
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/cmsis_armcc.h",
-      "target": "firmware/main-control/Project/.cmsis/include/cmsis_armcc.h",
+      "target": "Main_Control/Project/.cmsis/include/cmsis_armcc.h",
       "blob_sha": "a955d4713911e6e1ca711291c52f26ca8366d595",
       "bytes": 27999
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/cmsis_armclang.h",
-      "target": "firmware/main-control/Project/.cmsis/include/cmsis_armclang.h",
+      "target": "Main_Control/Project/.cmsis/include/cmsis_armclang.h",
       "blob_sha": "691141774773f5c92147909b4f90d720d1ed6f2b",
       "bytes": 48417
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/cmsis_armclang_ltm.h",
-      "target": "firmware/main-control/Project/.cmsis/include/cmsis_armclang_ltm.h",
+      "target": "Main_Control/Project/.cmsis/include/cmsis_armclang_ltm.h",
       "blob_sha": "1e255d5907f66949787589c1467d4d7ff61aa582",
       "bytes": 56021
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/cmsis_compiler.h",
-      "target": "firmware/main-control/Project/.cmsis/include/cmsis_compiler.h",
+      "target": "Main_Control/Project/.cmsis/include/cmsis_compiler.h",
       "blob_sha": "adbf296f15a47a93e5058abddad6742bb4b9854d",
       "bytes": 9481
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/cmsis_gcc.h",
-      "target": "firmware/main-control/Project/.cmsis/include/cmsis_gcc.h",
+      "target": "Main_Control/Project/.cmsis/include/cmsis_gcc.h",
       "blob_sha": "67bda4ef3c38dadc4471129d39eb4e870dc08fc7",
       "bytes": 63374
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/cmsis_iccarm.h",
-      "target": "firmware/main-control/Project/.cmsis/include/cmsis_iccarm.h",
+      "target": "Main_Control/Project/.cmsis/include/cmsis_iccarm.h",
       "blob_sha": "65b824b009caa14008b18314ef97c35060d04e88",
       "bytes": 29069
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/cmsis_version.h",
-      "target": "firmware/main-control/Project/.cmsis/include/cmsis_version.h",
+      "target": "Main_Control/Project/.cmsis/include/cmsis_version.h",
       "blob_sha": "8b4765f186efe577be5245b59c610056d3c54cbc",
       "bytes": 1680
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_armv81mml.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_armv81mml.h",
+      "target": "Main_Control/Project/.cmsis/include/core_armv81mml.h",
       "blob_sha": "94128a1a7095c4813764b213c0214bd149566fa7",
       "bytes": 276640
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_armv8mbl.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_armv8mbl.h",
+      "target": "Main_Control/Project/.cmsis/include/core_armv8mbl.h",
       "blob_sha": "932d3d188bfa0df0a5930c9df7fe1adb4bc0ce41",
       "bytes": 115004
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_armv8mml.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_armv8mml.h",
+      "target": "Main_Control/Project/.cmsis/include/core_armv8mml.h",
       "blob_sha": "c119fbf24246728c7a0e8163b564b0e27018a21e",
       "bytes": 183191
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm0.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm0.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm0.h",
       "blob_sha": "6441ff34190a97ff10abe39229705d0ac132efe7",
       "bytes": 41643
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm0plus.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm0plus.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm0plus.h",
       "blob_sha": "4e7179a6146cd573f32cb8d1d96546de43d92f97",
       "bytes": 49877
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm1.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm1.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm1.h",
       "blob_sha": "76b4569743a651d8c8188924c487c159ec3132a3",
       "bytes": 42626
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm23.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm23.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm23.h",
       "blob_sha": "55fff9950965312a23e68af03afd4db7825afdb6",
       "bytes": 121556
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm3.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm3.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm3.h",
       "blob_sha": "74fb87e5c561f39588388d3bf1d5a560ee1a63f4",
       "bytes": 109529
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm33.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm33.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm33.h",
       "blob_sha": "18a2e6fb0343abe4dcfc99ba89e46f845d485326",
       "bytes": 189524
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm35p.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm35p.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm35p.h",
       "blob_sha": "3843d9542c5ab15644c2d61f38afd31c6108f3ee",
       "bytes": 189539
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm4.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm4.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm4.h",
       "blob_sha": "e21cd149256038244e709070864c347136d5af2a",
       "bytes": 120975
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm55.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm55.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm55.h",
       "blob_sha": "faa30ce36a98b94a8a8243922544c980404b0af6",
       "bytes": 317450
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm7.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm7.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm7.h",
       "blob_sha": "010506e9fa430758fede292291be90722352f99b",
       "bytes": 138948
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_cm85.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_cm85.h",
+      "target": "Main_Control/Project/.cmsis/include/core_cm85.h",
       "blob_sha": "60463111897f832f1503a57ab029d8c00eb8daf6",
       "bytes": 308328
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_sc000.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_sc000.h",
+      "target": "Main_Control/Project/.cmsis/include/core_sc000.h",
       "blob_sha": "dbc755fff39b96852377304cbc0f9062bcd381ba",
       "bytes": 46562
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_sc300.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_sc300.h",
+      "target": "Main_Control/Project/.cmsis/include/core_sc300.h",
       "blob_sha": "d66621031e09b359269ef445a9126938639c93bd",
       "bytes": 108524
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/core_starmc1.h",
-      "target": "firmware/main-control/Project/.cmsis/include/core_starmc1.h",
+      "target": "Main_Control/Project/.cmsis/include/core_starmc1.h",
       "blob_sha": "d86c8d3857ff322a57ae7c0553ff03509e265350",
       "bytes": 193055
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/mpu_armv7.h",
-      "target": "firmware/main-control/Project/.cmsis/include/mpu_armv7.h",
+      "target": "Main_Control/Project/.cmsis/include/mpu_armv7.h",
       "blob_sha": "d9eedf81a64c381157c7cfff6f9acfb2309ddff5",
       "bytes": 11731
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/mpu_armv8.h",
-      "target": "firmware/main-control/Project/.cmsis/include/mpu_armv8.h",
+      "target": "Main_Control/Project/.cmsis/include/mpu_armv8.h",
       "blob_sha": "3de16efc86a6ff2cb269e7ef477158829d4e7351",
       "bytes": 11370
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/pac_armv81.h",
-      "target": "firmware/main-control/Project/.cmsis/include/pac_armv81.h",
+      "target": "Main_Control/Project/.cmsis/include/pac_armv81.h",
       "blob_sha": "854b60a204cc96f46b30fd90802497988032251c",
       "bytes": 6062
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/pmu_armv8.h",
-      "target": "firmware/main-control/Project/.cmsis/include/pmu_armv8.h",
+      "target": "Main_Control/Project/.cmsis/include/pmu_armv8.h",
       "blob_sha": "f8f3d8935b82467b9c1d09d2b91f4fc9f07ee9bf",
       "bytes": 22786
     },
     {
       "board": "main-control",
       "source": "Project/.cmsis/include/tz_context.h",
-      "target": "firmware/main-control/Project/.cmsis/include/tz_context.h",
+      "target": "Main_Control/Project/.cmsis/include/tz_context.h",
       "blob_sha": "0d09749f3a5066f0e061783a1e67972b72ab61a7",
       "bytes": 2687
     },
     {
       "board": "main-control",
       "source": "Project/.gitignore",
-      "target": "firmware/main-control/Project/.gitignore",
+      "target": "Main_Control/Project/.gitignore",
       "blob_sha": "7269ea69bac3471238693ab739629c89fac14e2c",
       "bytes": 1110
     },
     {
       "board": "main-control",
       "source": "Project/EventRecorderStub.scvd",
-      "target": "firmware/main-control/Project/EventRecorderStub.scvd",
+      "target": "Main_Control/Project/EventRecorderStub.scvd",
       "blob_sha": "0fb3ee58a621ab7a1ac0664f7bf9d51959574cde",
       "bytes": 339
     },
     {
       "board": "main-control",
       "source": "Project/MK20DN512xxx10_flash.scf",
-      "target": "firmware/main-control/Project/MK20DN512xxx10_flash.scf",
+      "target": "Main_Control/Project/MK20DN512xxx10_flash.scf",
       "blob_sha": "f71e07e7bd9fc4e8a85a1dac4fd3fc7afe7b7123",
       "bytes": 4532
     },
     {
       "board": "main-control",
       "source": "Project/Template.uvprojx",
-      "target": "firmware/main-control/Project/Template.uvprojx",
+      "target": "Main_Control/Project/Template.uvprojx",
       "blob_sha": "50795ed0025968048eb46653dfb84526a14ed7bd",
       "bytes": 53293
     },
     {
       "board": "main-control",
       "source": "Project/source/ASW/BusProxy/ASW_BusProxy.c",
-      "target": "firmware/main-control/Project/source/ASW/BusProxy/ASW_BusProxy.c",
+      "target": "Main_Control/Project/source/ASW/BusProxy/ASW_BusProxy.c",
       "blob_sha": "ba60f7679dd34e5cdb41693b2cc7e873211f0349",
       "bytes": 3185
     },
     {
       "board": "main-control",
       "source": "Project/source/ASW/BusProxy/ASW_BusProxy.h",
-      "target": "firmware/main-control/Project/source/ASW/BusProxy/ASW_BusProxy.h",
+      "target": "Main_Control/Project/source/ASW/BusProxy/ASW_BusProxy.h",
       "blob_sha": "50ee719f4e3c1109dc2fe6fe6c60e85a7c5b5ed4",
       "bytes": 1507
     },
     {
       "board": "main-control",
       "source": "Project/source/ASW/EcuEmu/ASW_EcuEmu.c",
-      "target": "firmware/main-control/Project/source/ASW/EcuEmu/ASW_EcuEmu.c",
+      "target": "Main_Control/Project/source/ASW/EcuEmu/ASW_EcuEmu.c",
       "blob_sha": "495b3b49dce74fadac80cfce93cf290f0d8aa48c",
       "bytes": 6011
     },
     {
       "board": "main-control",
       "source": "Project/source/ASW/EcuEmu/ASW_EcuEmu.h",
-      "target": "firmware/main-control/Project/source/ASW/EcuEmu/ASW_EcuEmu.h",
+      "target": "Main_Control/Project/source/ASW/EcuEmu/ASW_EcuEmu.h",
       "blob_sha": "ef7bd8334bf9a5310bc3c8d900798f77438ffb1a",
       "bytes": 1199
     },
     {
       "board": "main-control",
       "source": "Project/source/ASW/IoCtrl/ASW_IoCtrl.c",
-      "target": "firmware/main-control/Project/source/ASW/IoCtrl/ASW_IoCtrl.c",
+      "target": "Main_Control/Project/source/ASW/IoCtrl/ASW_IoCtrl.c",
       "blob_sha": "fac5906390aac843f2215d167927c705e6b1e71a",
       "bytes": 6569
     },
     {
       "board": "main-control",
       "source": "Project/source/ASW/IoCtrl/ASW_IoCtrl.h",
-      "target": "firmware/main-control/Project/source/ASW/IoCtrl/ASW_IoCtrl.h",
+      "target": "Main_Control/Project/source/ASW/IoCtrl/ASW_IoCtrl.h",
       "blob_sha": "d133efd317bd05198f2c5ff3ba1715ef95435dc8",
       "bytes": 792
     },
     {
       "board": "main-control",
       "source": "Project/source/ASW/UsbSvc/ASW_UsbSvc.c",
-      "target": "firmware/main-control/Project/source/ASW/UsbSvc/ASW_UsbSvc.c",
+      "target": "Main_Control/Project/source/ASW/UsbSvc/ASW_UsbSvc.c",
       "blob_sha": "bf295b3955f9f2ec6d1902e9d59dafd3f87903d8",
       "bytes": 3581
     },
     {
       "board": "main-control",
       "source": "Project/source/ASW/UsbSvc/ASW_UsbSvc.h",
-      "target": "firmware/main-control/Project/source/ASW/UsbSvc/ASW_UsbSvc.h",
+      "target": "Main_Control/Project/source/ASW/UsbSvc/ASW_UsbSvc.h",
       "blob_sha": "bb60be09796a6c8ff9d4b0f35505de4451f7627d",
       "bytes": 1079
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/CDD/KeySim/CDD_KeySim.c",
-      "target": "firmware/main-control/Project/source/BSW/CDD/KeySim/CDD_KeySim.c",
+      "target": "Main_Control/Project/source/BSW/CDD/KeySim/CDD_KeySim.c",
       "blob_sha": "c9384b7b64fd6c70854aec254e6d715ba0b2371d",
       "bytes": 989
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/CDD/KeySim/CDD_KeySim.h",
-      "target": "firmware/main-control/Project/source/BSW/CDD/KeySim/CDD_KeySim.h",
+      "target": "Main_Control/Project/source/BSW/CDD/KeySim/CDD_KeySim.h",
       "blob_sha": "de3492164776c65f856e82f81d06380767a1f2cc",
       "bytes": 1486
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/CDD/KeySim/KeySim_Protocol.c",
-      "target": "firmware/main-control/Project/source/BSW/CDD/KeySim/KeySim_Protocol.c",
+      "target": "Main_Control/Project/source/BSW/CDD/KeySim/KeySim_Protocol.c",
       "blob_sha": "4c231a650cce32ef94c247303d5f2f0613ed7fd9",
       "bytes": 760
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/CDD/KeySim/KeySim_Protocol.h",
-      "target": "firmware/main-control/Project/source/BSW/CDD/KeySim/KeySim_Protocol.h",
+      "target": "Main_Control/Project/source/BSW/CDD/KeySim/KeySim_Protocol.h",
       "blob_sha": "ab7951e4d15340a9629c41ac6422e2cb4febc608",
       "bytes": 1873
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/CDD/USB/CDD_USB.c",
-      "target": "firmware/main-control/Project/source/BSW/CDD/USB/CDD_USB.c",
+      "target": "Main_Control/Project/source/BSW/CDD/USB/CDD_USB.c",
       "blob_sha": "1bbfde92ed9e329cf862f60ef38c7453673eabe3",
       "bytes": 5657
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/CDD/USB/CDD_USB.h",
-      "target": "firmware/main-control/Project/source/BSW/CDD/USB/CDD_USB.h",
+      "target": "Main_Control/Project/source/BSW/CDD/USB/CDD_USB.h",
       "blob_sha": "64cc8c2253ee685d849e4507aaa40fccab5a25b5",
       "bytes": 4245
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/Can/EAL_CAN.c",
-      "target": "firmware/main-control/Project/source/BSW/EAL/Can/EAL_CAN.c",
+      "target": "Main_Control/Project/source/BSW/EAL/Can/EAL_CAN.c",
       "blob_sha": "d811da923329b5fae11a694f56f1918dac0458c2",
       "bytes": 4617
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/Can/EAL_CAN.h",
-      "target": "firmware/main-control/Project/source/BSW/EAL/Can/EAL_CAN.h",
+      "target": "Main_Control/Project/source/BSW/EAL/Can/EAL_CAN.h",
       "blob_sha": "5fb2ed1519c97318feda2163aa7245663a7d7fcd",
       "bytes": 4978
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/GPIO/EAL_GPIO.c",
-      "target": "firmware/main-control/Project/source/BSW/EAL/GPIO/EAL_GPIO.c",
+      "target": "Main_Control/Project/source/BSW/EAL/GPIO/EAL_GPIO.c",
       "blob_sha": "8763acedb72756ae012a99eb7219b057cedb43bc",
       "bytes": 2216
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/GPIO/EAL_GPIO.h",
-      "target": "firmware/main-control/Project/source/BSW/EAL/GPIO/EAL_GPIO.h",
+      "target": "Main_Control/Project/source/BSW/EAL/GPIO/EAL_GPIO.h",
       "blob_sha": "1b4d63fae5e746dedfb0d0804f7c84aec7f2ad91",
       "bytes": 6872
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/TEST/EAL_CAN_RxTest_Ref.c",
-      "target": "firmware/main-control/Project/source/BSW/EAL/TEST/EAL_CAN_RxTest_Ref.c",
+      "target": "Main_Control/Project/source/BSW/EAL/TEST/EAL_CAN_RxTest_Ref.c",
       "blob_sha": "c8453cd441ad0cf8d22e407d667fca83e5c53f48",
       "bytes": 4410
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/TEST/EAL_CAN_RxTest_Ref.h",
-      "target": "firmware/main-control/Project/source/BSW/EAL/TEST/EAL_CAN_RxTest_Ref.h",
+      "target": "Main_Control/Project/source/BSW/EAL/TEST/EAL_CAN_RxTest_Ref.h",
       "blob_sha": "5c52b9e66236fc4c930f7f544bf0b9b90966d8f8",
       "bytes": 397
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/TEST/EAL_CAN_Test_Ref.c",
-      "target": "firmware/main-control/Project/source/BSW/EAL/TEST/EAL_CAN_Test_Ref.c",
+      "target": "Main_Control/Project/source/BSW/EAL/TEST/EAL_CAN_Test_Ref.c",
       "blob_sha": "1060aa0972e08343e043864569e0a31f919ca9d2",
       "bytes": 3776
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/TEST/EAL_CAN_Test_Ref.h",
-      "target": "firmware/main-control/Project/source/BSW/EAL/TEST/EAL_CAN_Test_Ref.h",
+      "target": "Main_Control/Project/source/BSW/EAL/TEST/EAL_CAN_Test_Ref.h",
       "blob_sha": "00717cf0828b98e3618148e6dce64ff0a228b6db",
       "bytes": 532
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/TEST/KeySim_IntegrationTest_Ref.c",
-      "target": "firmware/main-control/Project/source/BSW/EAL/TEST/KeySim_IntegrationTest_Ref.c",
+      "target": "Main_Control/Project/source/BSW/EAL/TEST/KeySim_IntegrationTest_Ref.c",
       "blob_sha": "384db950f95df67dfbf5d59a1e7df20068d4899d",
       "bytes": 2936
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/TEST/KeySim_IntegrationTest_Ref.h",
-      "target": "firmware/main-control/Project/source/BSW/EAL/TEST/KeySim_IntegrationTest_Ref.h",
+      "target": "Main_Control/Project/source/BSW/EAL/TEST/KeySim_IntegrationTest_Ref.h",
       "blob_sha": "b6d8a3fa827111cc3c2950713968bcae4870f7c0",
       "bytes": 549
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/TEST/types_Ref.h",
-      "target": "firmware/main-control/Project/source/BSW/EAL/TEST/types_Ref.h",
+      "target": "Main_Control/Project/source/BSW/EAL/TEST/types_Ref.h",
       "blob_sha": "91f7c22a4667d53b04d707470cacad5140cf5c31",
       "bytes": 131
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/Time/EAL_TIME.c",
-      "target": "firmware/main-control/Project/source/BSW/EAL/Time/EAL_TIME.c",
+      "target": "Main_Control/Project/source/BSW/EAL/Time/EAL_TIME.c",
       "blob_sha": "4d977b55746c2c84363c28242a4633fc3e5df8e7",
       "bytes": 313
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/Time/EAL_TIME.h",
-      "target": "firmware/main-control/Project/source/BSW/EAL/Time/EAL_TIME.h",
+      "target": "Main_Control/Project/source/BSW/EAL/Time/EAL_TIME.h",
       "blob_sha": "f1f27aa268ea899ea91a64ef2a189ebad7188d9f",
       "bytes": 1042
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/USB/EAL_USB.c",
-      "target": "firmware/main-control/Project/source/BSW/EAL/USB/EAL_USB.c",
+      "target": "Main_Control/Project/source/BSW/EAL/USB/EAL_USB.c",
       "blob_sha": "99037ad4e71c4b0c87fab5db9a109ca6d5290065",
       "bytes": 16554
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/EAL/USB/EAL_USB.h",
-      "target": "firmware/main-control/Project/source/BSW/EAL/USB/EAL_USB.h",
+      "target": "Main_Control/Project/source/BSW/EAL/USB/EAL_USB.h",
       "blob_sha": "cee48c88c6cb444788a672489484cd57ebcfee25",
       "bytes": 2449
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/UTIL/fsl_debug_console.c",
-      "target": "firmware/main-control/Project/source/BSW/UTIL/fsl_debug_console.c",
+      "target": "Main_Control/Project/source/BSW/UTIL/fsl_debug_console.c",
       "blob_sha": "bd0b2412de9aeaefd5bae01fe2c3a7f6f32c1f6d",
       "bytes": 66153
     },
     {
       "board": "main-control",
       "source": "Project/source/BSW/UTIL/fsl_debug_console.h",
-      "target": "firmware/main-control/Project/source/BSW/UTIL/fsl_debug_console.h",
+      "target": "Main_Control/Project/source/BSW/UTIL/fsl_debug_console.h",
       "blob_sha": "6c50de58290f85fda07bf7faf245997387a7303b",
       "bytes": 7015
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/Can/MCAL_CAN.c",
-      "target": "firmware/main-control/Project/source/MCAL/Can/MCAL_CAN.c",
+      "target": "Main_Control/Project/source/MCAL/Can/MCAL_CAN.c",
       "blob_sha": "e075245768d28a90c53b10a5fca53453e0391b6a",
       "bytes": 11968
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/Can/MCAL_CAN.h",
-      "target": "firmware/main-control/Project/source/MCAL/Can/MCAL_CAN.h",
+      "target": "Main_Control/Project/source/MCAL/Can/MCAL_CAN.h",
       "blob_sha": "381c4d0f98ccd2e40019d61ad261431f4da1a053",
       "bytes": 4210
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/Dwt/MCAL_DWT.c",
-      "target": "firmware/main-control/Project/source/MCAL/Dwt/MCAL_DWT.c",
+      "target": "Main_Control/Project/source/MCAL/Dwt/MCAL_DWT.c",
       "blob_sha": "dd0e7ca83c1cdfa4766248e7a4368c998226ce52",
       "bytes": 1344
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/Dwt/MCAL_DWT.h",
-      "target": "firmware/main-control/Project/source/MCAL/Dwt/MCAL_DWT.h",
+      "target": "Main_Control/Project/source/MCAL/Dwt/MCAL_DWT.h",
       "blob_sha": "9690cf974700fbab2e2c4c37e2925f695e4611d3",
       "bytes": 1109
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/Gpio/MCAL_GPIO.c",
-      "target": "firmware/main-control/Project/source/MCAL/Gpio/MCAL_GPIO.c",
+      "target": "Main_Control/Project/source/MCAL/Gpio/MCAL_GPIO.c",
       "blob_sha": "ba30f9367ed37621a2cd4a860fde63cf05ad7003",
       "bytes": 2939
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/Gpio/MCAL_GPIO.h",
-      "target": "firmware/main-control/Project/source/MCAL/Gpio/MCAL_GPIO.h",
+      "target": "Main_Control/Project/source/MCAL/Gpio/MCAL_GPIO.h",
       "blob_sha": "fb6717b55b04b241933c2672c65eafaf0798042d",
       "bytes": 2094
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/Pit/MCAL_PIT.c",
-      "target": "firmware/main-control/Project/source/MCAL/Pit/MCAL_PIT.c",
+      "target": "Main_Control/Project/source/MCAL/Pit/MCAL_PIT.c",
       "blob_sha": "8241daa8d05121cde41490508283ffacbe1b6cc5",
       "bytes": 2955
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/Pit/MCAL_PIT.h",
-      "target": "firmware/main-control/Project/source/MCAL/Pit/MCAL_PIT.h",
+      "target": "Main_Control/Project/source/MCAL/Pit/MCAL_PIT.h",
       "blob_sha": "105c90741424d82d0667293c5cde951a74c7aea2",
       "bytes": 1738
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_adc16.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_adc16.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_adc16.c",
       "blob_sha": "ff0888f52fcbf157bc04844e3de5534b7d29b320",
       "bytes": 12522
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_adc16.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_adc16.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_adc16.h",
       "blob_sha": "ab4156063f1e5c76d08ca17398caa8557269f783",
       "bytes": 22721
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_clock.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_clock.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_clock.c",
       "blob_sha": "f6148c6d4b70afcb7b46d0e52799b019bfc0ee47",
       "bytes": 53700
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_clock.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_clock.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_clock.h",
       "blob_sha": "dfc64ad61c91601a0f46f1c946193eb4123cd174",
       "bytes": 55220
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_cmp.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_cmp.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_cmp.c",
       "blob_sha": "0d2555000b462f8e434ba0cd3df4326c8369985d",
       "bytes": 9288
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_cmp.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_cmp.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_cmp.h",
       "blob_sha": "bc24573d1a872b7e038aacb21449ba7ae8bbc74a",
       "bytes": 11658
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_cmt.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_cmt.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_cmt.c",
       "blob_sha": "edc21d58524ebbfe03d9e76364220509265e9376",
       "bytes": 8925
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_cmt.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_cmt.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_cmt.h",
       "blob_sha": "a0e853827e9a6bd604a6264263c4a9262da72ddd",
       "bytes": 16404
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_common.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_common.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_common.c",
       "blob_sha": "4dccdb6d98c728014f8ce5945abf17ebe0c1fbe1",
       "bytes": 5713
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_common.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_common.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_common.h",
       "blob_sha": "47d85e9663612a27e48f6d3c91c42e7f42e7364a",
       "bytes": 14791
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_crc.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_crc.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_crc.c",
       "blob_sha": "87fe1d90c1e6a669d37c0301d859960fb4621617",
       "bytes": 11272
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_crc.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_crc.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_crc.h",
       "blob_sha": "a7106e376a422e1abda310d1d6e652a225b2943e",
       "bytes": 7128
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_dac.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_dac.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_dac.c",
       "blob_sha": "db8ad75f5205d23cee2d76d55856d04cfc0da0f4",
       "bytes": 8041
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_dac.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_dac.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_dac.h",
       "blob_sha": "cf12914ed7ce996556a37397380968b964943b08",
       "bytes": 13808
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_dmamux.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_dmamux.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_dmamux.c",
       "blob_sha": "b13a92d1ec5fa0450727ef522ccd41b90762d72f",
       "bytes": 3867
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_dmamux.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_dmamux.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_dmamux.h",
       "blob_sha": "54c3ef67d32be799aff68133a784581ba7b6b045",
       "bytes": 6053
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_dspi.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_dspi.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_dspi.c",
       "blob_sha": "576b46a6b3cb7bc0ecb086afe51d1efb8645dd57",
       "bytes": 60539
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_dspi.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_dspi.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_dspi.h",
       "blob_sha": "c09401a1d518816afd38f0129d26b32e92c10f36",
       "bytes": 52618
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_dspi_edma.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_dspi_edma.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_dspi_edma.c",
       "blob_sha": "7787b0039b6472c4e629b6dcdcc21f32f574d74c",
       "bytes": 49589
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_dspi_edma.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_dspi_edma.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_dspi_edma.h",
       "blob_sha": "0f8b7b83e8b5e5aa34969db1dcfa3b533c63a760",
       "bytes": 13623
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_edma.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_edma.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_edma.c",
       "blob_sha": "a87738c2827a3a5d8c8862ba663bb4b0524f0285",
       "bytes": 53249
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_edma.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_edma.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_edma.h",
       "blob_sha": "d4b21997a37bbb8f11b2609fe41c201acdbb427b",
       "bytes": 39863
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_ewm.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_ewm.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_ewm.c",
       "blob_sha": "ac71aa865eeaffeb43da00efca74636bc8ff85ae",
       "bytes": 4385
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_ewm.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_ewm.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_ewm.h",
       "blob_sha": "883c726ff4c7ff8d59320ee855738e8f96b198d4",
       "bytes": 7899
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_flash.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_flash.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_flash.c",
       "blob_sha": "0fb4ebbdbbafddd6fd878610063867956162fcc2",
       "bytes": 130244
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_flash.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_flash.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_flash.h",
       "blob_sha": "e0f499482dcfcf58dea1205f982e38f829a1246c",
       "bytes": 65999
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_flexcan.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_flexcan.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_flexcan.c",
       "blob_sha": "a517756692076b55a75e306a94313ca7c911d4a3",
       "bytes": 45928
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_flexcan.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_flexcan.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_flexcan.h",
       "blob_sha": "8a3781ba671670103bebf9bf4f0b047b13876caf",
       "bytes": 46085
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_ftm.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_ftm.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_ftm.c",
       "blob_sha": "eb556201d477baab395331df84dd70478b24314d",
       "bytes": 32015
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_ftm.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_ftm.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_ftm.h",
       "blob_sha": "fadd22e3707015579b2b737b85a0e8f8be4e55d4",
       "bytes": 37800
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_gpio.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_gpio.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_gpio.c",
       "blob_sha": "ecca3b9c3fb1eb31007254c65e98c6314edbd4ca",
       "bytes": 6643
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_gpio.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_gpio.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_gpio.h",
       "blob_sha": "747e8ea34660e17308eb05e5d2b94a1b0ed09056",
       "bytes": 14868
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_i2c.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_i2c.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_i2c.c",
       "blob_sha": "fb7b072e7a208de0caa44c3cf2a6964ec289e3ce",
       "bytes": 54316
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_i2c.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_i2c.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_i2c.h",
       "blob_sha": "b673b971712d0b75e09837b61e590af170b7ac02",
       "bytes": 33339
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_i2c_edma.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_i2c_edma.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_i2c_edma.c",
       "blob_sha": "b51aac6c8b555c421ae2cb503b219013576b5523",
       "bytes": 18870
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_i2c_edma.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_i2c_edma.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_i2c_edma.h",
       "blob_sha": "5ec204519cc10577da76394956ae7ac1f392380f",
       "bytes": 5706
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_llwu.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_llwu.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_llwu.c",
       "blob_sha": "39bdb26871f734ed63ae7e9d005ac7d611b11a9b",
       "bytes": 13730
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_llwu.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_llwu.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_llwu.h",
       "blob_sha": "0ce0a623d106ed2abba7dd5409e60180da3f04e0",
       "bytes": 11656
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_lptmr.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_lptmr.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_lptmr.c",
       "blob_sha": "4178faa29e30e93cce248ce43f1eb73383acd23b",
       "bytes": 5581
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_lptmr.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_lptmr.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_lptmr.h",
       "blob_sha": "9aa20da2b2348be9ea555a51977712d53d9bf8b6",
       "bytes": 13062
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_pdb.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_pdb.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_pdb.c",
       "blob_sha": "da4f7b37736fc09a8123be7a00d1b1cc14f954ec",
       "bytes": 5289
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_pdb.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_pdb.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_pdb.h",
       "blob_sha": "26cc9ec5e83e4db8227993e78e0c542fefd3a168",
       "bytes": 20585
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_pit.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_pit.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_pit.c",
       "blob_sha": "99514477a6eaf4ceb633c4002d9f0613de18a320",
       "bytes": 4556
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_pit.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_pit.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_pit.h",
       "blob_sha": "23573128d2dce0e8bf1a70b0fc21032be53a3f32",
       "bytes": 11135
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_pmc.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_pmc.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_pmc.c",
       "blob_sha": "0151d59320e6f6471642caec63b4343bfbfcd194",
       "bytes": 4615
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_pmc.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_pmc.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_pmc.h",
       "blob_sha": "43e996f6f88f6c283e87be52331f0dff9e1aef43",
       "bytes": 15315
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_port.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_port.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_port.h",
       "blob_sha": "72c871a3343eff7beb2d6eaf8489b241b9fbbfa2",
       "bytes": 16737
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_rcm.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_rcm.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_rcm.c",
       "blob_sha": "891dc61d02efeb7e49dfc3b3a8f8a9a7af84c8fa",
       "bytes": 2816
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_rcm.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_rcm.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_rcm.h",
       "blob_sha": "1233a0e0eb006b7a8163972a310efd6e53256d7b",
       "bytes": 17209
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_rtc.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_rtc.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_rtc.c",
       "blob_sha": "ddea82fe8afa922716e177a6fa587a94b7985194",
       "bytes": 12569
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_rtc.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_rtc.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_rtc.h",
       "blob_sha": "e74b0110bc4e98987e68c757fbfc99fc77bc48d3",
       "bytes": 13689
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_sdhc.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_sdhc.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_sdhc.c",
       "blob_sha": "b6e2c3f0b80b8fa9d22b0eb14a1ec409a9ae456b",
       "bytes": 51837
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_sdhc.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_sdhc.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_sdhc.h",
       "blob_sha": "077dce2cdb59ee2e5c2f41d418a3ed5b35d91895",
       "bytes": 45789
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_sim.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_sim.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_sim.c",
       "blob_sha": "da592c14f9c7975c36ef18f8b9d06676d6147ca4",
       "bytes": 2411
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_sim.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_sim.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_sim.h",
       "blob_sha": "28dc85ee97207d7752396c9d598a29095391282d",
       "bytes": 4937
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_smc.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_smc.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_smc.c",
       "blob_sha": "e0174966012c8f5e43d24d70ebd105e8d23a8098",
       "bytes": 12640
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_smc.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_smc.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_smc.h",
       "blob_sha": "dab73e393f6c280d5d7491a3cd57bdeed11c89d9",
       "bytes": 17452
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_sysmpu.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_sysmpu.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_sysmpu.c",
       "blob_sha": "bd5bff0c8a995dc30f3ff4c23e2ff86eef3cd0c4",
       "bytes": 10426
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_sysmpu.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_sysmpu.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_sysmpu.h",
       "blob_sha": "04a7dd6812f0c61b15a2f59b1a6bf85b4f381b46",
       "bytes": 20166
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_tsi_v2.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_tsi_v2.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_tsi_v2.c",
       "blob_sha": "16e41f9c42f61c220cfee94f6348c019efe869c6",
       "bytes": 7162
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_tsi_v2.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_tsi_v2.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_tsi_v2.h",
       "blob_sha": "d0ff1a861b866e4873e39322694595f9ee53f340",
       "bytes": 31196
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_uart.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_uart.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_uart.c",
       "blob_sha": "3a962bd580f4a36b73943e88837eddb5250b7f8d",
       "bytes": 39520
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_uart.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_uart.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_uart.h",
       "blob_sha": "a26304ca22b81bd6e48802110bb80c5424d13d19",
       "bytes": 32414
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_uart_edma.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_uart_edma.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_uart_edma.c",
       "blob_sha": "a174f7d9ce7efb3688e96cb383968833fd34872c",
       "bytes": 12010
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_uart_edma.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_uart_edma.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_uart_edma.h",
       "blob_sha": "d3bd7a2cd8e1c47ad66510096a7dbf8ec3be7090",
       "bytes": 7423
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_vref.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_vref.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_vref.c",
       "blob_sha": "4c835408f9a209235430fe9b560a55e8206e2643",
       "bytes": 8919
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_vref.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_vref.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_vref.h",
       "blob_sha": "216d0522acc54ca018e79cc551a51ec1348ebaf8",
       "bytes": 9264
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_wdog.c",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_wdog.c",
+      "target": "Main_Control/Project/source/MCAL/fsl_wdog.c",
       "blob_sha": "fa105451136a3332066a9c500feebfb7333b3d9d",
       "bytes": 6059
     },
     {
       "board": "main-control",
       "source": "Project/source/MCAL/fsl_wdog.h",
-      "target": "firmware/main-control/Project/source/MCAL/fsl_wdog.h",
+      "target": "Main_Control/Project/source/MCAL/fsl_wdog.h",
       "blob_sha": "54c331af377242782c26d40eb4e42795483ac4bb",
       "bytes": 15310
     },
     {
       "board": "main-control",
       "source": "Project/source/PROJ_CFG/Clock_Config.c",
-      "target": "firmware/main-control/Project/source/PROJ_CFG/Clock_Config.c",
+      "target": "Main_Control/Project/source/PROJ_CFG/Clock_Config.c",
       "blob_sha": "0ab845461e3d4a73095ea425a39b3f32eb867898",
       "bytes": 2662
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/USB_App/USB_Config.h",
-      "target": "firmware/main-control/Project/source/USB/USB_App/USB_Config.h",
+      "target": "Main_Control/Project/source/USB/USB_App/USB_Config.h",
       "blob_sha": "06e8a8134fa04e514c2ccac7a623a1260eefd388",
       "bytes": 9333
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/USB_App/USB_Transmit_App.c",
-      "target": "firmware/main-control/Project/source/USB/USB_App/USB_Transmit_App.c",
+      "target": "Main_Control/Project/source/USB/USB_App/USB_Transmit_App.c",
       "blob_sha": "212b1c463a255e04a10ba4bfffe9903b459f26ce",
       "bytes": 15869
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/USB_App/USB_Transmit_App.h",
-      "target": "firmware/main-control/Project/source/USB/USB_App/USB_Transmit_App.h",
+      "target": "Main_Control/Project/source/USB/USB_App/USB_Transmit_App.h",
       "blob_sha": "25917eb8b0672d9e8ff235f2b06b197b1dcad952",
       "bytes": 5410
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/USB_App/usb_descriptor.c",
-      "target": "firmware/main-control/Project/source/USB/USB_App/usb_descriptor.c",
+      "target": "Main_Control/Project/source/USB/USB_App/usb_descriptor.c",
       "blob_sha": "266cfc3c031ebaff58981b37e1d9818f9730c160",
       "bytes": 30774
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/USB_App/usb_descriptor.h",
-      "target": "firmware/main-control/Project/source/USB/USB_App/usb_descriptor.h",
+      "target": "Main_Control/Project/source/USB/USB_App/usb_descriptor.h",
       "blob_sha": "e66eaeb36cb97c93f0b6ffd031408a296dcb1a72",
       "bytes": 11785
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/USB_App/user_config.h",
-      "target": "firmware/main-control/Project/source/USB/USB_App/user_config.h",
+      "target": "Main_Control/Project/source/USB/USB_App/user_config.h",
       "blob_sha": "aadb0a8e62a7d87be1d6c6847f8eeb2f2e4937b6",
       "bytes": 2179
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/class/usb_bulk.c",
-      "target": "firmware/main-control/Project/source/USB/class/usb_bulk.c",
+      "target": "Main_Control/Project/source/USB/class/usb_bulk.c",
       "blob_sha": "abf2640f7880ea8402ae5f7356858f1b34f42935",
       "bytes": 20930
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/class/usb_bulk.h",
-      "target": "firmware/main-control/Project/source/USB/class/usb_bulk.h",
+      "target": "Main_Control/Project/source/USB/class/usb_bulk.h",
       "blob_sha": "2249647634e0d3602c6a1dfc33dedb8986473d68",
       "bytes": 7997
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/common/hidef.h",
-      "target": "firmware/main-control/Project/source/USB/common/hidef.h",
+      "target": "Main_Control/Project/source/USB/common/hidef.h",
       "blob_sha": "60ba172f54cb6b3d74beb3572db30c30b356dfb9",
       "bytes": 1415
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/common/types.h",
-      "target": "firmware/main-control/Project/source/USB/common/types.h",
+      "target": "Main_Control/Project/source/USB/common/types.h",
       "blob_sha": "d6b121bc182d6d80fa5e41a7604c649c1316d365",
       "bytes": 4035
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/common/usb.c",
-      "target": "firmware/main-control/Project/source/USB/common/usb.c",
+      "target": "Main_Control/Project/source/USB/common/usb.c",
       "blob_sha": "986150d8331f8e49c1f201b91b6aecb8a6d92648",
       "bytes": 2363
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/common/usb.h",
-      "target": "firmware/main-control/Project/source/USB/common/usb.h",
+      "target": "Main_Control/Project/source/USB/common/usb.h",
       "blob_sha": "e496aef8d153f864111d9ae8faa81d9ff2884679",
       "bytes": 168
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/common/usb_class.c",
-      "target": "firmware/main-control/Project/source/USB/common/usb_class.c",
+      "target": "Main_Control/Project/source/USB/common/usb_class.c",
       "blob_sha": "ce0abc868e04f7876313b831f24e797e6354d03c",
       "bytes": 18105
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/common/usb_class.h",
-      "target": "firmware/main-control/Project/source/USB/common/usb_class.h",
+      "target": "Main_Control/Project/source/USB/common/usb_class.h",
       "blob_sha": "58a93c6c506d4a351b4937f187278f9187b3857d",
       "bytes": 6013
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/common/usb_framework.c",
-      "target": "firmware/main-control/Project/source/USB/common/usb_framework.c",
+      "target": "Main_Control/Project/source/USB/common/usb_framework.c",
       "blob_sha": "670d26749185e32a3699ee2fc94c3002b9a15dd6",
       "bytes": 44423
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/common/usb_framework.h",
-      "target": "firmware/main-control/Project/source/USB/common/usb_framework.h",
+      "target": "Main_Control/Project/source/USB/common/usb_framework.h",
       "blob_sha": "3e0911bfede39a44e35a1decb7197948d64cab53",
       "bytes": 5148
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/driver/usb_bdt_kinetis.h",
-      "target": "firmware/main-control/Project/source/USB/driver/usb_bdt_kinetis.h",
+      "target": "Main_Control/Project/source/USB/driver/usb_bdt_kinetis.h",
       "blob_sha": "f536c4b57c74fc4b72cb9ea8416c02040c32e7a2",
       "bytes": 5423
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/driver/usb_dci_kinetis.c",
-      "target": "firmware/main-control/Project/source/USB/driver/usb_dci_kinetis.c",
+      "target": "Main_Control/Project/source/USB/driver/usb_dci_kinetis.c",
       "blob_sha": "273be603ab5abda481776ee668f1e3f2badada7b",
       "bytes": 98003
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/driver/usb_dci_kinetis.h",
-      "target": "firmware/main-control/Project/source/USB/driver/usb_dci_kinetis.h",
+      "target": "Main_Control/Project/source/USB/driver/usb_dci_kinetis.h",
       "blob_sha": "2d97adf3f8380686accc90262be8e881e93c32eb",
       "bytes": 11993
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/driver/usb_dciapi.h",
-      "target": "firmware/main-control/Project/source/USB/driver/usb_dciapi.h",
+      "target": "Main_Control/Project/source/USB/driver/usb_dciapi.h",
       "blob_sha": "2245117afa82d396e975d6b88ac0befba2c8dd9b",
       "bytes": 8041
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/driver/usb_devapi.h",
-      "target": "firmware/main-control/Project/source/USB/driver/usb_devapi.h",
+      "target": "Main_Control/Project/source/USB/driver/usb_devapi.h",
       "blob_sha": "510083e3e808249854e2d13e58ad757acb3a7852",
       "bytes": 17095
     },
     {
       "board": "main-control",
       "source": "Project/source/USB/driver/usb_driver.c",
-      "target": "firmware/main-control/Project/source/USB/driver/usb_driver.c",
+      "target": "Main_Control/Project/source/USB/driver/usb_driver.c",
       "blob_sha": "7925ec8fe2d21f832d56e7aa507354f5e2fe7afe",
       "bytes": 22628
     },
     {
       "board": "main-control",
       "source": "Project/source/main.c",
-      "target": "firmware/main-control/Project/source/main.c",
+      "target": "Main_Control/Project/source/main.c",
       "blob_sha": "5cdce0b3104696c7051bcf33fb25dd1e4d09ec06",
       "bytes": 1720
     },
     {
       "board": "main-control",
       "source": "Project/source/utilities/fsl_debug_console.c",
-      "target": "firmware/main-control/Project/source/utilities/fsl_debug_console.c",
+      "target": "Main_Control/Project/source/utilities/fsl_debug_console.c",
       "blob_sha": "b431dec4742dcf0f47c856326c7ab426743a6074",
       "bytes": 68112
     },
     {
       "board": "main-control",
       "source": "Project/source/utilities/fsl_debug_console.h",
-      "target": "firmware/main-control/Project/source/utilities/fsl_debug_console.h",
+      "target": "Main_Control/Project/source/utilities/fsl_debug_console.h",
       "blob_sha": "fedea90baaf0c9003a7a9d827888795dcbfdf86c",
       "bytes": 7208
     },
     {
       "board": "main-control",
       "source": "Project/startup/MK20D10.h",
-      "target": "firmware/main-control/Project/startup/MK20D10.h",
+      "target": "Main_Control/Project/startup/MK20D10.h",
       "blob_sha": "cab35ebb226fc880ef303a879d375529d081b720",
       "bytes": 755936
     },
     {
       "board": "main-control",
       "source": "Project/startup/MK20D10_features.h",
-      "target": "firmware/main-control/Project/startup/MK20D10_features.h",
+      "target": "Main_Control/Project/startup/MK20D10_features.h",
       "blob_sha": "8db5325da7424819c9d1ac971e891bfd4e5562de",
       "bytes": 178428
     },
     {
       "board": "main-control",
       "source": "Project/startup/RTE_Device.h",
-      "target": "firmware/main-control/Project/startup/RTE_Device.h",
+      "target": "Main_Control/Project/startup/RTE_Device.h",
       "blob_sha": "eb2b374ddbb3379d00e2862c79827a09a1f899ab",
       "bytes": 7169
     },
     {
       "board": "main-control",
       "source": "Project/startup/derivative.h",
-      "target": "firmware/main-control/Project/startup/derivative.h",
+      "target": "Main_Control/Project/startup/derivative.h",
       "blob_sha": "d5dbfd927400eec0749bd7fe8d5c615000ff0310",
       "bytes": 437
     },
     {
       "board": "main-control",
       "source": "Project/startup/fsl_device_registers.h",
-      "target": "firmware/main-control/Project/startup/fsl_device_registers.h",
+      "target": "Main_Control/Project/startup/fsl_device_registers.h",
       "blob_sha": "57b2d1ff013732d6523a8e3be57b07569cdf131c",
       "bytes": 2664
     },
     {
       "board": "main-control",
       "source": "Project/startup/startup_MK20D10.s",
-      "target": "firmware/main-control/Project/startup/startup_MK20D10.s",
+      "target": "Main_Control/Project/startup/startup_MK20D10.s",
       "blob_sha": "7368ea56963bc1f1d4d569045771782b00279907",
       "bytes": 48269
     },
     {
       "board": "main-control",
       "source": "Project/startup/system_MK20D10.c",
-      "target": "firmware/main-control/Project/startup/system_MK20D10.c",
+      "target": "Main_Control/Project/startup/system_MK20D10.c",
       "blob_sha": "8f3b6d02bb617181e42355a0a41bcb369c7fc8ec",
       "bytes": 10354
     },
     {
       "board": "main-control",
       "source": "Project/startup/system_MK20D10.h",
-      "target": "firmware/main-control/Project/startup/system_MK20D10.h",
+      "target": "Main_Control/Project/startup/system_MK20D10.h",
       "blob_sha": "698a5befc88ef339d0afada0d6c5994c0d3d9532",
       "bytes": 7172
     },
     {
       "board": "main-control",
       "source": "docs/interfaces/BOARD_FIXED_IO_MAP.md",
-      "target": "firmware/main-control/docs/interfaces/BOARD_FIXED_IO_MAP.md",
+      "target": "Main_Control/docs/interfaces/BOARD_FIXED_IO_MAP.md",
       "blob_sha": "3e0cb4fda9a53d7c698142986241db8a9d49c99a",
       "bytes": 4832
     },
     {
       "board": "main-control",
       "source": "docs/interfaces/USB_HOST_CONTROL_INTERFACE.md",
-      "target": "firmware/main-control/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md",
+      "target": "Main_Control/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md",
       "blob_sha": "8f4f31514e7b39e5032fa37ef20ba22a29b72db2",
       "bytes": 19047
     },
     {
       "board": "main-control",
       "source": "docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/HW-PIN-REVIEW.html",
-      "target": "firmware/main-control/docs/hardware/HW-PIN-REVIEW.html",
+      "target": "Main_Control/docs/hardware/HW-PIN-REVIEW.html",
       "blob_sha": "a1e3521a05353b40eb8a6c8dc4f5141e0f5f8553",
       "bytes": 320339
     },
     {
       "board": "main-control",
       "source": "docs/reviews/EAL_GPIO_AIR_ALVE_REVIEW_20261117.md",
-      "target": "firmware/main-control/docs/reviews/EAL_GPIO_AIR_ALVE_REVIEW_20261117.md",
+      "target": "Main_Control/docs/reviews/EAL_GPIO_AIR_ALVE_REVIEW_20261117.md",
       "blob_sha": "1d0138e3dcca7e3f8c67e3596fc263f6cd6d03c3",
       "bytes": 3779
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/.cproject",
-      "target": "firmware/key-sim/EPB_EOL/.cproject",
+      "target": "Key_Sim/EPB_EOL/.cproject",
       "blob_sha": "980447376de93197db1db8ed0f3819229985eaf4",
       "bytes": 14405
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/.project",
-      "target": "firmware/key-sim/EPB_EOL/.project",
+      "target": "Key_Sim/EPB_EOL/.project",
       "blob_sha": "b6cc79f4fba4d4821fd7422279494ee2a6a468c9",
       "bytes": 736
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/.settings/com.freescale.core.ide.cdt.toolchain.prefs",
-      "target": "firmware/key-sim/EPB_EOL/.settings/com.freescale.core.ide.cdt.toolchain.prefs",
+      "target": "Key_Sim/EPB_EOL/.settings/com.freescale.core.ide.cdt.toolchain.prefs",
       "blob_sha": "4005e5ab3acf701bcef80cca861dcb477098bc55",
       "bytes": 1355
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/.settings/com.freescale.core.ide.newprojectwizard.prefs",
-      "target": "firmware/key-sim/EPB_EOL/.settings/com.freescale.core.ide.newprojectwizard.prefs",
+      "target": "Key_Sim/EPB_EOL/.settings/com.freescale.core.ide.newprojectwizard.prefs",
       "blob_sha": "84f1e69fdea8c8e8c9ce4d025855636bd158775a",
       "bytes": 85
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/.settings/org.eclipse.cdt.codan.core.prefs",
-      "target": "firmware/key-sim/EPB_EOL/.settings/org.eclipse.cdt.codan.core.prefs",
+      "target": "Key_Sim/EPB_EOL/.settings/org.eclipse.cdt.codan.core.prefs",
       "blob_sha": "c190fda32e7555eb45403b016618a76f4698f9a4",
       "bytes": 10423
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/.settings/org.eclipse.core.resources.prefs",
-      "target": "firmware/key-sim/EPB_EOL/.settings/org.eclipse.core.resources.prefs",
+      "target": "Key_Sim/EPB_EOL/.settings/org.eclipse.core.resources.prefs",
       "blob_sha": "4824b8026319a8fb303971008a7d59a816d58bd6",
       "bytes": 57
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Lib/mc9s08dz32.c",
-      "target": "firmware/key-sim/EPB_EOL/Lib/mc9s08dz32.c",
+      "target": "Key_Sim/EPB_EOL/Lib/mc9s08dz32.c",
       "blob_sha": "06ff5ee9c9826fb6cd5688b74a949852d33baa17",
       "bytes": 23322
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Project_Headers/derivative.h",
-      "target": "firmware/key-sim/EPB_EOL/Project_Headers/derivative.h",
+      "target": "Key_Sim/EPB_EOL/Project_Headers/derivative.h",
       "blob_sha": "15892cdd5970da4a470eaffd9025bd463000540a",
       "bytes": 408
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Project_Headers/mc9s08dz32.h",
-      "target": "firmware/key-sim/EPB_EOL/Project_Headers/mc9s08dz32.h",
+      "target": "Key_Sim/EPB_EOL/Project_Headers/mc9s08dz32.h",
       "blob_sha": "e5fd8ec4bf336716cd2c4e36d2efb60d4faab1d3",
       "bytes": 393018
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Project_Settings/Debugger/MC9S08DZ32.mem",
-      "target": "firmware/key-sim/EPB_EOL/Project_Settings/Debugger/MC9S08DZ32.mem",
+      "target": "Key_Sim/EPB_EOL/Project_Settings/Debugger/MC9S08DZ32.mem",
       "blob_sha": "c25b04895899f828295023903fad170f9ab785d7",
       "bytes": 13729
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Project_Settings/Debugger/MC9S08DZ32.tcl",
-      "target": "firmware/key-sim/EPB_EOL/Project_Settings/Debugger/MC9S08DZ32.tcl",
+      "target": "Key_Sim/EPB_EOL/Project_Settings/Debugger/MC9S08DZ32.tcl",
       "blob_sha": "770de72b864249ccb2a2262eeb7df74e6f62551c",
       "bytes": 35
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Project_Settings/Linker_Files/Project.prm",
-      "target": "firmware/key-sim/EPB_EOL/Project_Settings/Linker_Files/Project.prm",
+      "target": "Key_Sim/EPB_EOL/Project_Settings/Linker_Files/Project.prm",
       "blob_sha": "236a42ffc111a1f3bc237756d3ab0d0417e4168f",
       "bytes": 1578
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Project_Settings/Linker_Files/burner.bbl",
-      "target": "firmware/key-sim/EPB_EOL/Project_Settings/Linker_Files/burner.bbl",
+      "target": "Key_Sim/EPB_EOL/Project_Settings/Linker_Files/burner.bbl",
       "blob_sha": "fb22ff55c8ff75d67f1365fcaa5ce98ed3c982b4",
       "bytes": 140
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Project_Settings/Startup_Code/start08.c",
-      "target": "firmware/key-sim/EPB_EOL/Project_Settings/Startup_Code/start08.c",
+      "target": "Key_Sim/EPB_EOL/Project_Settings/Startup_Code/start08.c",
       "blob_sha": "53d94b7a4acff0cf9016010a65da7cd383536548",
       "bytes": 10805
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/APP/KeySim.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/APP/KeySim.c",
+      "target": "Key_Sim/EPB_EOL/Sources/APP/KeySim.c",
       "blob_sha": "a07db36a6902efb8f006732a282656302c2bee05",
       "bytes": 1902
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/APP/KeySim.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/APP/KeySim.h",
+      "target": "Key_Sim/EPB_EOL/Sources/APP/KeySim.h",
       "blob_sha": "166f07b6499eb393dd2792abc1a6a04f6d95a63d",
       "bytes": 113
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/APP/Timer.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/APP/Timer.c",
+      "target": "Key_Sim/EPB_EOL/Sources/APP/Timer.c",
       "blob_sha": "81145dc040a0ae4f5c8e921853e6f5648b93792a",
       "bytes": 1539
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/APP/Timer.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/APP/Timer.h",
+      "target": "Key_Sim/EPB_EOL/Sources/APP/Timer.h",
       "blob_sha": "2f778beb29e86809855a5e6088068731eeeb412c",
       "bytes": 330
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/APP/main.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/APP/main.c",
+      "target": "Key_Sim/EPB_EOL/Sources/APP/main.c",
       "blob_sha": "a00fcb54c59f7d717b2cacd6b00c69ce7419c006",
       "bytes": 339
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/CAN/Driver_CAN.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/CAN/Driver_CAN.c",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/CAN/Driver_CAN.c",
       "blob_sha": "9f99f9a2d82852328b09ba4d8674d4ad31c7c997",
       "bytes": 8114
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/CAN/Driver_CAN.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/CAN/Driver_CAN.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/CAN/Driver_CAN.h",
       "blob_sha": "9fcd126349a2609c6aec44b2563a430be23f7544",
       "bytes": 3396
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/CAN/EAL_CAN.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/CAN/EAL_CAN.c",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/CAN/EAL_CAN.c",
       "blob_sha": "358f2ac28ed4ce303897879e7942aa6330765cca",
       "bytes": 19676
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/CAN/EAL_CAN.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/CAN/EAL_CAN.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/CAN/EAL_CAN.h",
       "blob_sha": "acb8b5a340206fd24c4c088701642886a05cec85",
       "bytes": 5365
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/Cpu.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/Cpu.c",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/Cpu.c",
       "blob_sha": "cb257cd8e08b47b32a053330f998866f9be5a82f",
       "bytes": 8069
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/Cpu.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/Cpu.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/Cpu.h",
       "blob_sha": "88951981754adf8a2a6c69e919d1b6255e58f491",
       "bytes": 4251
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/IEE1.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/IEE1.c",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/IEE1.c",
       "blob_sha": "da29dff78a0350acde9323430654c695e7a26793",
       "bytes": 20276
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/IEE1.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/IEE1.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/IEE1.h",
       "blob_sha": "744cc0ffb5a09a29057adcfbf04e18111f178801",
       "bytes": 8432
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/IO/Driver_Gpio.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/IO/Driver_Gpio.c",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/IO/Driver_Gpio.c",
       "blob_sha": "e6cc488c68bb879a6865ef0df2575e71708510b1",
       "bytes": 1528
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/IO/Driver_Gpio.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/IO/Driver_Gpio.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/IO/Driver_Gpio.h",
       "blob_sha": "2f60aedb2980c596dc97c491ffa5367cfc9e5b65",
       "bytes": 2533
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/PE_Const.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/PE_Const.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/PE_Const.h",
       "blob_sha": "3029bf4dea9fe2bfee07c4f294febb7019e70e21",
       "bytes": 1998
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/PE_Error.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/PE_Error.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/PE_Error.h",
       "blob_sha": "ceaf89753412da7214d6fa6f184dbfb3c868d9ab",
       "bytes": 3082
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/PE_Types.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/PE_Types.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/PE_Types.h",
       "blob_sha": "d0cc848bb6c84201035e427cfe8fb6d5614bdcb0",
       "bytes": 16589
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/Vectors.c",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/Vectors.c",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/Vectors.c",
       "blob_sha": "0acbf8675b0caf1ae74e2b6ba1037487a6ca6dcc",
       "bytes": 3360
     },
     {
       "board": "key-sim",
       "source": "WS/EPB_EOL/Sources/BSW/sys_include.h",
-      "target": "firmware/key-sim/EPB_EOL/Sources/BSW/sys_include.h",
+      "target": "Key_Sim/EPB_EOL/Sources/BSW/sys_include.h",
       "blob_sha": "c1648bb4ffc64dda5f980d092a8fffb81aef3084",
       "bytes": 1408
     }
-  ]
+  ],
+  "layout_note": "Three peer projects at repository root: HOST, Main_Control, Key_Sim. All listed firmware file blob SHAs unchanged from the v1 snapshot; only paths were reorganized.",
+  "layout_date": "2026-11-19"
 }

@@ -3,7 +3,7 @@
 - 芯片：MK20DN512VLL10（工程 Device `MK20DN512xxx10`）
 - 源分支：[`Main_Control`](https://github.com/ch3758134-prog/AutoTest/tree/Main_Control)
 - 固定 HEAD：`356896e10ff95447395b7903d352f6db201fbe6c`
-- 本次保留：180 个原始 blob（详情见 [总清单](../BASELINE_MANIFEST.json)）
+- 本次保留：180 个原始 blob（详情见 [总清单](../docs/baselines/FIRMWARE_SOURCE_20261119.json)）
 - 开发工具：Keil µVision，项目文件 [`Project/Template.uvprojx`](Project/Template.uvprojx)，原配置要求 `Keil.Kinetis_K20_DFP.1.7.1`。
 
 `Project/` 内的 `source/`、`startup/`、`.cmsis/include/` 和链接脚本保持原工程相对路径，方便直接打开 Keil 工程。去掉旧编译产物、个人调试配置和未被当前工程引用的通用 ARM 模板。

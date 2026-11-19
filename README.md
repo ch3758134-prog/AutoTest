@@ -1,45 +1,39 @@
-# AutoTest｜ECU 测试系统源码基线
+# AutoTest · 系统开发基线
 
-**main 是整个 AutoTest 系统的固定集成基线**；上位机、主控板和按键板在这里保留相互可追溯的源码快照。它不再是 HOST 的日常开发分支，也不代表全部功能都通过实机验收。
-
-## 项目目录
+`main` 保存 **三个平级工程** 的受控源码快照；不是单独的上位机仓库，也不是把固件放到 HOST 里。各专业在对应分支研发，经过审查才更新 `main`。
 
 ```text
 AutoTest/
-├── src/                         # Windows HOST .NET / WPF 与业务模块
-├── tests/                       # HOST / 领域层自动化测试
-├── firmware/
-│   ├── README.md                # 固件目录索引及验证状态
-│   ├── BASELINE_MANIFEST.json   # 来自专业分支的逐文件 SHA 清单
-│   ├── main-control/
-│   │   ├── Project/             # Keil 工程（Template.uvprojx）及源代码
-│   │   └── docs/                # USB/引脚/硬件审查资料
-│   └── key-sim/
-│       └── EPB_EOL/             # CodeWarrior 工程、Sources 与 Project_Settings
-├── docs/                        # 总体研究、工程与设计资料
-├── samples/                     # 示例工程和配置
-├── tools/                       # 辅助工具
-└── AutoTest.sln                 # HOST Windows 解决方案
+├── HOST/                   Windows WPF 上位机工程
+│   ├── AutoTest.sln
+│   ├── src/
+│   ├── tests/
+│   ├── tools/
+│   ├── samples/
+│   └── scripts/
+├── Main_Control/           MK20 主控板 Keil 固件工程
+│   ├── Project/             Template.uvprojx、源码、启动文件
+│   └── docs/                USB / IO / 硬件技术资料
+├── Key_Sim/                MC9S08 按键板 CodeWarrior 固件工程
+│   └── EPB_EOL/            .project、.cproject、Sources
+├── docs/                   跨专业架构、历史研究及受控记录
+├── tools/project-control-v2/   系统级项目管理工具
+└── .github/                仓库配置
 ```
 
-## 代码来源和入口
+| 子工程 | 固定源码入口 | 日常研发分支 |
+|---|---|---|
+| 上位机 | [HOST/](HOST/) | [HOST 分支](https://github.com/ch3758134-prog/AutoTest/tree/HOST) |
+| 主控板 | [Main_Control/](Main_Control/) | [Main_Control 分支](https://github.com/ch3758134-prog/AutoTest/tree/Main_Control) |
+| 按键板 | [Key_Sim/](Key_Sim/) | [Key_Sim 分支](https://github.com/ch3758134-prog/AutoTest/tree/Key_Sim) |
 
-| 模块 | main 中的正式位置 | 后续研发分支 | 固定来源快照 |
-|---|---|---|---|
-| Windows HOST | [`src/`](src/) · [`AutoTest.sln`](AutoTest.sln) | [`HOST`](https://github.com/ch3758134-prog/AutoTest/tree/HOST) | G4 阶段代码经 PR #61 接收入 main |
-| 主控板固件 | [`firmware/main-control/`](firmware/main-control/) | [`Main_Control`](https://github.com/ch3758134-prog/AutoTest/tree/Main_Control) | `356896e10ff95447395b7903d352f6db201fbe6c` |
-| KEY_SIM 按键板固件 | [`firmware/key-sim/`](firmware/key-sim/) | [`Key_Sim`](https://github.com/ch3758134-prog/AutoTest/tree/Key_Sim) | `313ed34ecc8a6e01529998787c8c870cc2e4db4a` |
-| 项目管理 | [`docs/project-management/`](docs/project-management/) | [`Project_Management`](https://github.com/ch3758134-prog/AutoTest/tree/Project_Management) | 独立管理批准和版本记录 |
-| 新版 UI 设计 | [`docs/ui/`](docs/ui/) | [`ui/ide-design`](https://github.com/ch3758134-prog/AutoTest/tree/ui/ide-design) | 现代 Fluent Light 研究中 |
+**HOST 编译**：进入 `HOST/` 后使用 `dotnet restore AutoTest.sln`、`dotnet build AutoTest.sln -c Debug --no-restore`；启动 `HOST/src/AutoTest.Desktop`。根目录不再放上位机的解决方案或 `src/`。
 
-- 主控 Keil 入口：[`firmware/main-control/Project/Template.uvprojx`](firmware/main-control/Project/Template.uvprojx)。
-- 按键板 CodeWarrior 项目：[`firmware/key-sim/EPB_EOL/.project`](firmware/key-sim/EPB_EOL/.project) 与 [`.cproject`](firmware/key-sim/EPB_EOL/.cproject)。
-- 两套固件的详细文件筛选、原始文件 SHA 和排除说明：[固件基线说明](firmware/README.md)。
+**固件工程**：打开 [Keil 项目](Main_Control/Project/Template.uvprojx) 或 [CodeWarrior 项目](Key_Sim/EPB_EOL/.project)；两块板单独构建、烧录，不依附 HOST 解决方案。
 
-## 基线边界
+- [系统结构和迁移说明](docs/architecture/REPOSITORY_STRUCTURE_20261119.md)
+- [固件逐文件来源与 SHA 清单](docs/baselines/FIRMWARE_SOURCE_20261119.json)
+- [项目管理资料](docs/project-management/README.md)；实时管理审批以 `Project_Management` 分支为准
+- [Fluent 浅色 UI 专项设计](https://github.com/ch3758134-prog/AutoTest/tree/ui/ide-design)
 
-本次是**可追溯的源码/工程文件归档**：从各固件专业分支保留必要源代码、工程设置与技术文档，排除 Keil 编译产物、CodeWarrior 工作区缓存及用户本地临时文件。原专业分支的完整历史没有删除。
-
-Windows HOST 采用 .NET 10、WPF、Prism；G4 阶段成果已合并，但全链自动测试及现代 UI 仍需单独验收。**本次未进行 Keil、CodeWarrior 编译或实体板卡验证**。GPIO 初始状态、USB 命令、K19/K20 引脚以及 24V 按键电阻功耗等，必须以对应固件版本和现场证据检查，不能用源码存在代替实测。
-
-后续各模块在专业分支开发和实测，获批准后再将明确版本接入 `main`。避免直接在固定基线内进行未经验证的日常修改。
+**证据边界**：目录迁移只保证源码与 Git 对象可追溯，不能证明 Windows 构建、Keil/CodeWarrior 编译或实体 ECU 测试通过；G4、FLASH、UDS、IO 和 KEY 的未完成验收状态不变。

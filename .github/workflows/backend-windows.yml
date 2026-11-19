@@ -1,44 +1,6 @@
 name: Backend-only Windows validation
 
 on:
-  push:
-    branches:
-      - main
-      - recovery/backend-baseline-20261109
-    paths:
-      - 'AutoTest.Backend.slnf'
-      - 'tools/verify-backend-boundaries.ps1'
-      - '.github/workflows/backend-windows.yml'
-      - 'global.json'
-      - 'Directory.*.props'
-      - 'NuGet.Config'
-      - 'src/AutoTest.Core/**'
-      - 'src/AutoTest.Contracts/**'
-      - 'src/AutoTest.Devices/**'
-      - 'src/AutoTest.Projects/**'
-      - 'src/AutoTest.Testing/**'
-      - 'src/AutoTest.Specialists/**'
-      - 'src/AutoTest.Records/**'
-      - 'src/AutoTest.Application/**'
-      - 'tests/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'AutoTest.Backend.slnf'
-      - 'tools/verify-backend-boundaries.ps1'
-      - '.github/workflows/backend-windows.yml'
-      - 'global.json'
-      - 'Directory.*.props'
-      - 'NuGet.Config'
-      - 'src/AutoTest.Core/**'
-      - 'src/AutoTest.Contracts/**'
-      - 'src/AutoTest.Devices/**'
-      - 'src/AutoTest.Projects/**'
-      - 'src/AutoTest.Testing/**'
-      - 'src/AutoTest.Specialists/**'
-      - 'src/AutoTest.Records/**'
-      - 'src/AutoTest.Application/**'
-      - 'tests/**'
   workflow_dispatch:
 
 permissions:
@@ -63,28 +25,28 @@ jobs:
           git rev-parse HEAD
       - name: Verify backend does not depend on WPF presentation
         shell: pwsh
-        run: ./tools/verify-backend-boundaries.ps1
+        run: ./HOST/tools/verify-backend-boundaries.ps1
       - name: Restore backend solution only
         shell: pwsh
-        run: dotnet restore AutoTest.Backend.slnf
+        run: dotnet restore HOST/AutoTest.Backend.slnf
       - name: Restore compile-negative test fixture without compiling it
         shell: pwsh
-        run: dotnet restore tests/negative/StrongIdMisuse/StrongIdMisuse.csproj
+        run: dotnet restore HOST/tests/negative/StrongIdMisuse/StrongIdMisuse.csproj
       - name: Compile backend solution only
         shell: pwsh
-        run: dotnet build AutoTest.Backend.slnf -c Release --no-restore --verbosity minimal
+        run: dotnet build HOST/AutoTest.Backend.slnf -c Release --no-restore --verbosity minimal
       - name: Run all backend tests independently and preserve failure evidence
         shell: pwsh
         run: |
           New-Item -Force -ItemType Directory -Path "$env:GITHUB_WORKSPACE/backend-test-results" | Out-Null
           $projects = @(
-            'tests/AutoTest.Contracts.Tests/AutoTest.Contracts.Tests.csproj',
-            'tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj',
-            'tests/AutoTest.Projects.Tests/AutoTest.Projects.Tests.csproj',
-            'tests/AutoTest.Testing.Tests/AutoTest.Testing.Tests.csproj',
-            'tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj',
-            'tests/AutoTest.Records.Tests/AutoTest.Records.Tests.csproj',
-            'tests/AutoTest.Application.Tests/AutoTest.Application.Tests.csproj'
+            'HOST/tests/AutoTest.Contracts.Tests/AutoTest.Contracts.Tests.csproj',
+            'HOST/tests/AutoTest.Devices.Tests/AutoTest.Devices.Tests.csproj',
+            'HOST/tests/AutoTest.Projects.Tests/AutoTest.Projects.Tests.csproj',
+            'HOST/tests/AutoTest.Testing.Tests/AutoTest.Testing.Tests.csproj',
+            'HOST/tests/AutoTest.Specialists.Tests/AutoTest.Specialists.Tests.csproj',
+            'HOST/tests/AutoTest.Records.Tests/AutoTest.Records.Tests.csproj',
+            'HOST/tests/AutoTest.Application.Tests/AutoTest.Application.Tests.csproj'
           )
           $failed = @()
           foreach ($project in $projects) {

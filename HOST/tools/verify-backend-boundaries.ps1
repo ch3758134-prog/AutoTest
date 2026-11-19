@@ -1,5 +1,5 @@
-# Backend architecture boundary check. Run from repository root:
-# pwsh -NoProfile -File tools/verify-backend-boundaries.ps1
+# Backend architecture boundary check. Run from AutoTest repository root:
+# pwsh -NoProfile -File HOST/tools/verify-backend-boundaries.ps1
 # It intentionally checks compile-time ownership, not runtime feature readiness.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
