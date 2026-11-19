@@ -36,6 +36,9 @@ public sealed class UdsSession : IAsyncDisposable
     private readonly UdsEndpointProfile _endpoint;
     private int _disposed;
     public UdsClient Client { get; }
+    // Exact lease expiration is visible to the independent diagnostic workbench.
+    // This does not grant physical transmission permission or renew a lease.
+    public DateTimeOffset LeaseExpiresUtc => _token.ExpiresUtc;
     internal UdsSession(UdsClient client, CanHubIsoTpLink link, ITransmitLeaseService leases,
         LeaseToken token, UdsEndpointProfile endpoint)
     { Client = client; _link = link; _leases = leases; _token = token; _endpoint = endpoint; }

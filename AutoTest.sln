@@ -47,6 +47,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoTest.LabLinkGui", "tools\AutoTest.LabLinkGui\AutoTest.LabLinkGui.csproj", "{4EBB94BE-CC56-48EF-A6B6-ACA925B75454}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoTest.UdsLab", "src\AutoTest.UdsLab\AutoTest.UdsLab.csproj", "{5D4FAC4C-3EED-4393-A3F1-18B625119F19}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,18 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Debug|x64.Build.0 = Debug|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Debug|x86.Build.0 = Debug|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Release|x64.ActiveCfg = Release|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Release|x64.Build.0 = Release|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Release|x86.ActiveCfg = Release|Any CPU
+		{5D4FAC4C-3EED-4393-A3F1-18B625119F19}.Release|x86.Build.0 = Release|Any CPU
 		{A4F0B6F0-B08E-5525-9620-FA6A0775FD64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A4F0B6F0-B08E-5525-9620-FA6A0775FD64}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A4F0B6F0-B08E-5525-9620-FA6A0775FD64}.Debug|x64.ActiveCfg = Debug|Any CPU

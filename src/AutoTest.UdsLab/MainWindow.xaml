@@ -1,0 +1,368 @@
+<Window x:Class="AutoTest.UdsLab.MainWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="AutoTest · UDS 诊断" Width="1460" Height="880" MinWidth="1230" MinHeight="700"
+ WindowStartupLocation="CenterScreen" WindowState="Maximized"
+ Background="#F3F6FA" FontFamily="Microsoft YaHei UI" FontSize="13">
+ <Window.Resources>
+  <SolidColorBrush x:Key="Ink" Color="#1D334F"/>
+  <SolidColorBrush x:Key="Muted" Color="#63768F"/>
+  <SolidColorBrush x:Key="Line" Color="#DDE5EF"/>
+  <Style x:Key="Pane" TargetType="Border">
+   <Setter Property="Background" Value="White"/>
+   <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+   <Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="CornerRadius" Value="8"/>
+   <Setter Property="Padding" Value="15"/>
+  </Style>
+  <Style x:Key="Section" TargetType="TextBlock">
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="FontSize" Value="16"/>
+   <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+  </Style>
+  <Style x:Key="Field" TargetType="TextBlock">
+   <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+   <Setter Property="FontSize" Value="12"/>
+  </Style>
+  <Style x:Key="Primary" TargetType="Button">
+   <Setter Property="Background" Value="#2466AA"/>
+   <Setter Property="Foreground" Value="White"/>
+   <Setter Property="BorderBrush" Value="#2466AA"/>
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="Padding" Value="19,9"/>
+  </Style>
+ </Window.Resources>
+ <Grid Margin="15,12">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*" MinHeight="380"/>
+   <RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+  <Grid Grid.Row="0" Margin="1,0,1,10">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="*"/>
+    <ColumnDefinition Width="Auto"/>
+   </Grid.ColumnDefinitions>
+   <StackPanel>
+    <TextBlock Text="UDS 诊断" FontSize="23" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+    <TextBlock Text="编辑请求 → 发送 → 查看 ECU 响应 → 修改后重发"
+               Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,0"/>
+   </StackPanel>
+   <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+    <Button Content="打开配置" Click="Open_Click" Padding="10,7" Margin="0,0,7,0"/>
+    <Button Content="保存配置" Click="Save_Click" Padding="10,7" Margin="0,0,7,0"/>
+    <Button Content="导出记录" Click="Export_Click" Padding="10,7"/>
+   </StackPanel>
+  </Grid>
+  <Border Grid.Row="1" Style="{StaticResource Pane}" Padding="12,7" Margin="0,0,0,10">
+   <StackPanel>
+    <DockPanel LastChildFill="True">
+     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+      <Button x:Name="ConnectButton" Content="连接主控" Click="Connect_Click" Style="{StaticResource Primary}" Margin="0,0,6,0"/>
+      <Button x:Name="DisconnectButton" Content="断开" Click="Disconnect_Click" IsEnabled="False"/>
+     </StackPanel>
+     <StackPanel VerticalAlignment="Center">
+      <TextBlock x:Name="ConnectionStatus" Text="未连接 · 请填写目标 ECU 的请求/响应 CAN ID"
+                 FontWeight="SemiBold" Foreground="{StaticResource Ink}" TextTrimming="CharacterEllipsis"/>
+      <TextBlock x:Name="SessionStatus" Text="诊断会话未知 · 连接 USB 不代表 ECU 已响应"
+                 Foreground="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0"/>
+     </StackPanel>
+    </DockPanel>
+    <Expander x:Name="SettingsExpander" Header="通信参数（CAN ID / 超时）" Margin="0,6,0,0">
+     <WrapPanel Margin="3,8,0,0">
+      <TextBlock Text="请求 CAN ID (HEX)" VerticalAlignment="Center" Margin="0,0,6,4"/>
+      <TextBox x:Name="TxIdBox" Width="105" TextChanged="WorkspaceParameterChanged" Margin="0,0,14,4"/>
+      <TextBlock Text="响应 CAN ID (HEX)" VerticalAlignment="Center" Margin="0,0,6,4"/>
+      <TextBox x:Name="RxIdBox" Width="105" TextChanged="WorkspaceParameterChanged" Margin="0,0,14,4"/>
+      <TextBlock Text="P2 (ms)" VerticalAlignment="Center" Margin="0,0,6,4"/>
+      <TextBox x:Name="P2Box" Text="1000" Width="72" TextChanged="WorkspaceParameterChanged" Margin="0,0,14,4"/>
+      <TextBlock Text="P2* (ms)" VerticalAlignment="Center" Margin="0,0,6,4"/>
+      <TextBox x:Name="P2StarBox" Text="5000" Width="72" TextChanged="WorkspaceParameterChanged" Margin="0,0,14,4"/>
+      <TextBlock Text="DUT CAN · Normal ISO-TP" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+     </WrapPanel>
+    </Expander>
+   </StackPanel>
+  </Border>
+  <!-- Two working surfaces only: compose on left; real exchange facts on right. -->
+  <Grid Grid.Row="2">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="7*" MinWidth="690"/>
+    <ColumnDefinition Width="8"/>
+    <ColumnDefinition Width="5*" MinWidth="470"/>
+   </Grid.ColumnDefinitions>
+   <Border Grid.Column="0" Style="{StaticResource Pane}" Padding="10">
+    <Grid>
+     <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="229" MinWidth="205"/>
+      <ColumnDefinition Width="8"/>
+      <ColumnDefinition Width="*" MinWidth="375"/>
+     </Grid.ColumnDefinitions>
+     <Border Grid.Column="0" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0"
+             Padding="0,0,10,0">
+      <DockPanel LastChildFill="True">
+       <StackPanel DockPanel.Dock="Top">
+        <TextBlock Text="我的诊断操作" Style="{StaticResource Section}"/>
+        <TextBlock Text="保存、选择、修改并重复使用" Style="{StaticResource Field}" Margin="0,3,0,7"/>
+        <TextBox x:Name="OperationSearchBox" TextChanged="OperationSearchChanged"
+                 ToolTip="搜索已保存操作的名称、分组或 UDS 请求" Margin="0,0,0,8"
+                 Padding="7,5"/>
+        <Button Content="＋ 新建诊断操作" Click="NewOperation_Click" Padding="10,7"
+                HorizontalContentAlignment="Center" Margin="0,0,0,8"/>
+        <WrapPanel Margin="0,0,0,7">
+         <Button Content="保存修改" Click="SaveAction_Click" Padding="7,6" Margin="0,0,5,0"/>
+         <Button Content="另存为新操作" Click="SaveAsAction_Click" Padding="7,6"/>
+        </WrapPanel>
+        <WrapPanel Margin="0,0,0,10">
+         <Button Content="复制" Click="DuplicateAction_Click" Padding="7,5" Margin="0,0,5,0"/>
+         <Button Content="删除" Click="DeleteAction_Click" Padding="7,5" Margin="0,0,5,0"/>
+         <Button Content="上移" Click="MoveActionUp_Click" Padding="7,5" Margin="0,0,5,0"/>
+         <Button Content="下移" Click="MoveActionDown_Click" Padding="7,5"/>
+        </WrapPanel>
+        <TextBlock Text="单击一项即可在右侧编辑；发送不会改写原有响应。"
+                   Style="{StaticResource Field}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+       </StackPanel>
+       <StackPanel DockPanel.Dock="Bottom">
+        <Separator Margin="0,7,0,7"/>
+        <TextBlock x:Name="LibraryStatus" Text="0 个操作 · 尚未保存配置" Style="{StaticResource Field}"
+                   TextWrapping="Wrap" Margin="0,0,0,5"/>
+        <TextBlock Text="保存配置 → 写入文件；打开配置 → 恢复全部操作。" Style="{StaticResource Field}"
+                   TextWrapping="Wrap"/>
+       </StackPanel>
+       <ListBox x:Name="OperationsList" SelectionChanged="OperationSelected"
+                HorizontalContentAlignment="Stretch"
+                BorderThickness="0" FontSize="13"
+                ToolTip="选中后右侧编辑；操作修改保存在当前配置文件中">
+        <ListBox.ItemTemplate>
+         <DataTemplate>
+          <Border Background="#F3F7FC" CornerRadius="5" Margin="0,2,0,4" Padding="7,7">
+           <StackPanel>
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding Group}" Foreground="#8090A2" FontSize="11"
+                       TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+            <TextBlock Text="{Binding RequestHex}" FontFamily="Consolas" FontSize="11"
+                       Foreground="#617895" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+           </StackPanel>
+          </Border>
+         </DataTemplate>
+        </ListBox.ItemTemplate>
+       </ListBox>
+      </DockPanel>
+     </Border>
+     <GridSplitter Grid.Column="1" Background="Transparent" Width="8"/>
+     <Grid Grid.Column="2">
+     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*" MinHeight="210"/>
+      <RowDefinition Height="Auto"/>
+     </Grid.RowDefinitions>
+     <Grid Grid.Row="0" Margin="0,0,0,8">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <StackPanel>
+       <TextBlock Text="诊断操作编辑" Style="{StaticResource Section}"/>
+       <TextBlock Text="选中左侧操作即可修改；编辑后保存，随时发送调试" Style="{StaticResource Field}" Margin="0,3,0,0"/>
+      </StackPanel>
+      <TextBlock x:Name="DraftStatus" Grid.Column="1" VerticalAlignment="Center"
+                 Foreground="#547D63" FontSize="12" Text="当前请求可编辑"/>
+     </Grid>
+     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="1,0,8,4">
+       <Grid Margin="0,0,0,8">
+        <Grid.ColumnDefinitions>
+         <ColumnDefinition Width="2*"/>
+         <ColumnDefinition Width="9"/>
+         <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+         <TextBlock Text="操作名称" Style="{StaticResource Field}"/>
+         <TextBox x:Name="OperationNameBox" TextChanged="EditorDraftChanged" MinHeight="32"
+                  ToolTip="自行命名并保存，之后可以再次选择修改"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+         <TextBlock Text="分组（可选）" Style="{StaticResource Field}"/>
+         <TextBox x:Name="OperationGroupBox" TextChanged="EditorDraftChanged" MinHeight="32"/>
+        </StackPanel>
+       </Grid>
+       <Grid Margin="0,0,0,8">
+        <Grid.ColumnDefinitions>
+         <ColumnDefinition Width="*"/>
+         <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+         <TextBlock Text="UDS 服务" Style="{StaticResource Field}"/>
+         <ComboBox x:Name="ServiceCombo" DisplayMemberPath="Display"
+                   SelectionChanged="ServiceChanged" MinHeight="34"
+                   ToolTip="选择标准服务自动生成 SID；未知或 OEM 请求使用下面的原始 HEX 模式"/>
+        </StackPanel>
+        <CheckBox x:Name="RawModeCheck" Grid.Column="1" Content="原始 HEX" Margin="12,23,0,0"
+                  Checked="RawModeChanged" Unchecked="RawModeChanged"
+                  ToolTip="直接编辑实际 UDS PDU，编辑器不会自行修改该请求"/>
+       </Grid>
+       <TextBlock x:Name="ServiceHelp" TextWrapping="Wrap" Style="{StaticResource Field}"
+                  Margin="0,0,0,9"/>
+       <ComboBox x:Name="PresetCombo" DisplayMemberPath="Display" SelectionChanged="PresetChanged"
+                 Visibility="Collapsed" Margin="0,0,0,9" ToolTip="常用 UDS 子功能"/>
+       <Grid>
+        <Grid.ColumnDefinitions>
+         <ColumnDefinition Width="*"/>
+         <ColumnDefinition Width="9"/>
+         <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+         <TextBlock x:Name="PrimaryLabel" Text="DID / 子功能" Style="{StaticResource Field}"/>
+         <TextBox x:Name="PrimaryBox" FontFamily="Consolas" FontSize="15"
+                  TextChanged="ParametersChanged" Padding="8,5"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+         <TextBlock x:Name="AuxiliaryLabel" Text="附加参数" Style="{StaticResource Field}"/>
+         <TextBox x:Name="AuxiliaryBox" FontFamily="Consolas" FontSize="15"
+                  TextChanged="ParametersChanged" Padding="8,5"/>
+        </StackPanel>
+       </Grid>
+       <Border Background="#EEF4FB" CornerRadius="6" Padding="11,9" Margin="0,5,0,9">
+        <StackPanel>
+         <TextBlock Text="实际发送的 UDS PDU（HEX）" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+         <TextBox x:Name="RequestBox" FontFamily="Consolas" FontSize="17"
+                  TextChanged="RequestChanged" Padding="8,6" Margin="0,8,0,0"
+                  ToolTip="仅填写应用层 UDS PDU；不包含 CAN ID、ISO-TP PCI 或 USB 帧头"/>
+        </StackPanel>
+       </Border>
+       <TextBlock x:Name="ComposerStatus" TextWrapping="Wrap" Foreground="#9B6C30"
+                  FontSize="12" Margin="0,0,0,6"/>
+       <Expander Header="响应匹配与解码（可选）" IsExpanded="False">
+        <StackPanel Margin="0,9,0,0">
+         <TextBlock Text="期望响应前缀（HEX）" Style="{StaticResource Field}"/>
+         <TextBox x:Name="ExpectedBox" FontFamily="Consolas" TextChanged="DecoderChanged"/>
+         <Grid>
+          <Grid.ColumnDefinitions>
+           <ColumnDefinition Width="*"/>
+           <ColumnDefinition Width="9"/>
+           <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <StackPanel>
+           <TextBlock Text="解析方式" Style="{StaticResource Field}"/>
+           <ComboBox x:Name="DecodeBox" SelectionChanged="DecoderChanged">
+            <ComboBoxItem Content="原始 HEX" Tag="Hex"/>
+            <ComboBoxItem Content="ASCII 字符串" Tag="Ascii"/>
+            <ComboBoxItem Content="UInt8" Tag="UInt8"/>
+            <ComboBoxItem Content="UInt16 大端" Tag="UInt16BE"/>
+            <ComboBoxItem Content="UInt16 小端" Tag="UInt16LE"/>
+            <ComboBoxItem Content="DTC 记录（0x19/02）" Tag="Dtc"/>
+           </ComboBox>
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+           <TextBlock Text="数据起始偏移（响应 PDU 字节）" Style="{StaticResource Field}"/>
+           <TextBox x:Name="OffsetBox" Text="3" TextChanged="DecoderChanged"/>
+          </StackPanel>
+         </Grid>
+         <WrapPanel Margin="0,3,0,0">
+          <TextBlock Text="比例" VerticalAlignment="Center" Margin="0,0,6,0"/>
+          <TextBox x:Name="ScaleBox" Width="80" Text="1" TextChanged="DecoderChanged" Margin="0,0,12,0"/>
+          <TextBlock Text="单位" VerticalAlignment="Center" Margin="0,0,6,0"/>
+          <TextBox x:Name="UnitBox" Width="130" TextChanged="DecoderChanged"/>
+         </WrapPanel>
+        </StackPanel>
+       </Expander>
+      </StackPanel>
+     </ScrollViewer>
+     <Border Grid.Row="2" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0"
+             Padding="0,11,0,0">
+      <StackPanel>
+       <WrapPanel>
+        <Button x:Name="SendButton" Content="▶ 发送 / 重发" Click="Send_Click"
+                Style="{StaticResource Primary}" IsEnabled="False" Margin="0,0,8,0"/>
+        <Button x:Name="CancelButton" Content="停止等待" Click="Cancel_Click"
+                IsEnabled="False" Margin="0,0,8,0"/>
+        <Button Content="保存当前操作" Click="SaveAction_Click" Margin="0,0,8,0" Padding="12,8"
+                ToolTip="更新左侧选中的操作，或将当前草稿加入操作库"/>
+        <TextBlock x:Name="RequestState" Text="先连接主控，再发送请求"
+                   VerticalAlignment="Center" Foreground="{StaticResource Muted}" FontSize="12"/>
+       </WrapPanel>
+       <TextBlock Text="当前真实 CAN 发送仍需逐帧人工授权；主控 ACK 不代表 ECU 响应。"
+                  FontSize="11" Foreground="#956A3E" Margin="0,7,0,0" TextWrapping="Wrap"/>
+      </StackPanel>
+     </Border>
+
+     </Grid>
+    </Grid>
+   </Border>
+   <GridSplitter Grid.Column="1" Width="8" Background="Transparent"/>
+   <Border Grid.Column="2" Style="{StaticResource Pane}">
+    <Grid>
+     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="5*" MinHeight="160"/>
+      <RowDefinition Height="7"/>
+      <RowDefinition Height="4*" MinHeight="155"/>
+     </Grid.RowDefinitions>
+     <Grid Grid.Row="0" Margin="0,0,0,10">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <StackPanel>
+       <TextBlock Text="ECU 请求 / 响应" Style="{StaticResource Section}"/>
+       <TextBlock Text="每次实际执行都保留记录；选择历史可查看当时完整数据"
+                  Style="{StaticResource Field}" Margin="0,3,0,0"/>
+      </StackPanel>
+      <TextBlock x:Name="HistoryCount" Grid.Column="1" Text="0 条" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+     </Grid>
+     <Grid Grid.Row="1">
+      <ListView x:Name="HistoryList" SelectionChanged="HistorySelected"
+                BorderBrush="{StaticResource Line}" BorderThickness="1" FontSize="12"
+                ScrollViewer.HorizontalScrollBarVisibility="Auto">
+       <ListView.View>
+        <GridView>
+         <GridViewColumn Header="时间" Width="89" DisplayMemberBinding="{Binding Time}"/>
+         <GridViewColumn Header="请求 PDU" Width="175" DisplayMemberBinding="{Binding Request}"/>
+         <GridViewColumn Header="响应 PDU" Width="210" DisplayMemberBinding="{Binding Response}"/>
+         <GridViewColumn Header="结果" Width="188" DisplayMemberBinding="{Binding Status}"/>
+         <GridViewColumn Header="耗时" Width="78" DisplayMemberBinding="{Binding Elapsed}"/>
+        </GridView>
+       </ListView.View>
+      </ListView>
+      <TextBlock x:Name="EmptyHistory" Text="暂无真实诊断记录&#10;左边修改请求并发送，结果会逐条追加"
+                 Foreground="#8495AA" FontSize="13" TextAlignment="Center"
+                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                 IsHitTestVisible="False" TextWrapping="Wrap"/>
+     </Grid>
+     <GridSplitter Grid.Row="2" Background="#E4EAF2" Height="7"
+                   HorizontalAlignment="Stretch" ResizeDirection="Rows"
+                   ResizeBehavior="PreviousAndNext" ToolTip="拖动调整历史记录与解析结果高度"/>
+     <Grid Grid.Row="3" Margin="0,9,0,0">
+      <Grid.RowDefinitions>
+       <RowDefinition Height="Auto"/>
+       <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+      <Grid Grid.Row="0" Margin="0,0,0,7">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <TextBlock Text="选中记录的响应与解析" Style="{StaticResource Section}" VerticalAlignment="Center"/>
+       <Button Grid.Column="1" Content="将此请求回填到左侧" Click="Reuse_Click" Padding="9,5"/>
+      </Grid>
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+       <StackPanel>
+        <TextBlock x:Name="ResultStatus" Text="尚无 ECU 响应" Foreground="{StaticResource Ink}"
+                   FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,9"/>
+        <TextBlock Text="解析结果" Style="{StaticResource Field}"/>
+        <TextBox x:Name="DecodedResultBox" IsReadOnly="True" TextWrapping="Wrap"
+                 AcceptsReturn="True" MinHeight="54" VerticalContentAlignment="Top"/>
+        <TextBlock Text="发送的请求" Style="{StaticResource Field}"/>
+        <TextBox x:Name="RecordedRequestBox" IsReadOnly="True" FontFamily="Consolas" TextWrapping="Wrap"/>
+        <TextBlock Text="ECU 返回的 PDU" Style="{StaticResource Field}"/>
+        <TextBox x:Name="RecordedResponseBox" IsReadOnly="True" FontFamily="Consolas"
+                 TextWrapping="Wrap" MinHeight="40"/>
+        <TextBlock Text="诊断说明 / NRC / 原因" Style="{StaticResource Field}"/>
+        <TextBox x:Name="ResultDetailsBox" IsReadOnly="True" TextWrapping="Wrap"
+                 AcceptsReturn="True" MinHeight="55" VerticalContentAlignment="Top"/>
+       </StackPanel>
+      </ScrollViewer>
+     </Grid>
+    </Grid>
+   </Border>
+  </Grid>
+  <Expander Grid.Row="3" Header="原始通信日志 · USB / CAN / ISO-TP / UDS（需要时展开）"
+            Margin="0,10,0,0">
+   <TextBox x:Name="TraceBox" IsReadOnly="True" Height="195" AcceptsReturn="True"
+            FontFamily="Consolas" FontSize="12" TextWrapping="NoWrap"
+            VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+            Margin="0,7,0,0"/>
+  </Expander>
+ </Grid>
+</Window>
