@@ -1,25 +1,24 @@
-# AutoTest UDS 诊断工具 · L3 简化版
+# AutoTest · UDS 诊断工作台（L4 可编辑操作库）
 
-本程序用于同一真实 ECU 上：**编辑 UDS 请求 → 发送 → 查看真实响应 → 修改重发**，不是复杂的工程管理系统。
+目标不是堆积 UDS 服务按钮，而是让用户在真实 ECU 上编辑、保存、复用与逐次发送自己的诊断操作。
 
-## 使用方式
+## 用户主路径
 
-1. 展开顶部通信参数，填写目标 ECU 诊断请求/响应 CAN ID 和 P2/P2*，连接实际主控板。USB Ping 不证明 ECU 在线。
-2. 左侧始终是请求编辑器。选择 SID 服务并填写 DID/子功能/数据，自动生成实际 UDS PDU；切到“原始 HEX”时直接编辑请求字节，无需创建操作、命名或先保存。
-3. 点击发送/重发。右侧请求/响应记录逐条累积，点击旧记录查看 NRC、解析结果、耗时和原始 PDU；“回填到左侧”可继续修改重发。
-4. 可选收藏请求、保存/打开诊断配置 JSON、导出真实证据，底层 CAN/ISO-TP/USB 日志按需展开。
-5. Ctrl+Enter 发送，Ctrl+S 保存配置。不生成虚拟 ECU 响应或伪造成功。
+1. 顶部展开通信参数，填写目标 ECU 的请求/响应 CAN ID 和超时；连接真实主控板。连接 USB 不代表 ECU 已响应。
+2. 左侧「我的诊断操作」是可见的正式操作库，支持新建、选中、修改、保存修改、另存、复制、删除、搜索与排序；每项拥有稳定 ID、名称、可选分组、完整请求/响应规则。
+3. 中间编辑同一个操作的 SID、DID/子功能、附加数据、自由 HEX、期望前缀与解码规则。保存不要求已连接 ECU。未完成的空请求也允许以草稿保存，非法的非空 HEX 必须修正。
+4. 点击「发送/重发」按**当前编辑器内容的快照**发送，不会篡改之前的真实请求记录。右侧保留每次 ECU 响应、NRC、耗时与解析内容；选中历史可以回填新草稿并再次编辑/保存。
+5. 「保存修改」更新选中的操作，「另存为」产生新的操作 ID；顶部「保存配置」一次性把当前编辑及整个操作库写入 JSON。打开旧版工作台 JSON 的 Actions 可恢复为可编辑操作列表，保留现有配置 schema；切换操作、切换文件和关闭时提示未保存编辑，避免丢失。
+6. 通信配置、底层 CAN/ISO-TP/USB 日志按需展开。窗口为浅色 WPF，启动默认最大化但不使用强制覆盖系统任务栏的无边框模式。
 
-## 当前技术限制
+## 本轮明确不实现
 
-- 共享真实 UDS Client/DEVICE 通路仅开放 0x19、0x22、0x23、0x24 只读请求；0x10 会话切换、0x3E TesterPresent、清故障、复位、I/O 控制、写入、例程、烧录等尚未获实体发送许可。原始 HEX 不得越权。
-- WinUSB PhysicalCommandFence 仍要求对每一帧 CAN TX 单独人工准确输入授权文本，包括 ISO-TP 流控；此限制会阻碍无人值守连续通信与严格多帧时序。本次没有绕过或修改 DEVICE 门禁。受限事务授权方案见 docs/uds-lab/UDS-L12-CONTINUOUS-INTERACTION-DEVICE-REVIEW.md，待项目管理及 DEVICE 批准。
-- ECU 专有 DID、故障名称和参数格式需要 ECU 规范或用户定义；不能宣称自动发现全部诊断能力。
-- 超时、取消、失联或不确定结果后须重新建立链路。
-- 删除旧 L1/L2 诊断操作管理、序列、固定观察与旧 partial UI；JSON 中既有 Actions 可作为收藏导入。
+- 不用第二套 TEST DSL 或工作流执行器。用户可以持续人工选择操作并编辑再发，但自动多步骤循环、无限时会话维持不在当前已验证范围。
+- 不推断 ECU 私有 DID、例程或数据定义，也不自动填充未知的 ECU 响应。
+- 不绕过实体发送授权：真实 UDS Client/WinUSB 仍只允许 0x19、0x22、0x23、0x24 只读服务；0x10、0x3E、ECU reset、写入、清故障、例程和 FLASH 的实体发送没有在本分支开放。每个真实 CAN 发送帧仍受 PhysicalCommandFence 精确逐帧人工授权；多帧时序限制及事务级授权另见 docs/uds-lab/UDS-L12-CONTINUOUS-INTERACTION-DEVICE-REVIEW.md。
 
-## 本地验证分工
+## 当前验收状态
 
-分支 feature/uds-lab-20261118；工程 src/AutoTest.UdsLab/AutoTest.UdsLab.csproj。网页端专业 AI 负责 GitHub 代码，Codex 只负责拉取、Windows 编译和启动，真实 ECU 操作由用户实测。
+GitHub 上的 L4 源码候选，未宣称 Windows Build、WPF 启动或实机 FIELD PASS。本地 Codex 仅拉取、编译、启动并返回错误日志；真实 ECU 交互由用户现场确认，禁止引入 Mock 或未经批准修改 DEVICE、FLASH/G4/main。
 
-状态：SOURCE_CANDIDATE / WINDOWS_BUILD_PENDING / FIELD_PENDING。
+工程：src/AutoTest.UdsLab/AutoTest.UdsLab.csproj。

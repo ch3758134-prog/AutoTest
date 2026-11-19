@@ -45,7 +45,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        FavoriteCombo.ItemsSource = _favorites;
+        OperationsList.ItemsSource = _favorites;
         HistoryList.ItemsSource = _history;
         DecodeBox.SelectedIndex = 0;
         ServiceCombo.ItemsSource = UdsOperationTemplates.All;
@@ -63,6 +63,8 @@ public partial class MainWindow : Window
         finally { _settingEditor = false; }
         RefreshTemplate();
         RefreshButtons();
+        _editorDirty = false;
+        UpdateLibraryStatus();
         Closing += OnClosing;
         KeyDown += OnKeyDown;
         AppendAudit("START", "UDS 调试窗口启动。仅实际 ECU 返回的数据会出现在交互历史里。");
@@ -147,6 +149,7 @@ public partial class MainWindow : Window
             ComposerStatus.Text = "原始模式：直接修改请求 HEX，软件不会覆盖你的字节。实体发送仍由底层授权校验。";
             DraftStatus.Text = "自由 HEX";
             RefreshButtons();
+            MarkDraftEdited();
         }
     }
 
@@ -212,13 +215,14 @@ public partial class MainWindow : Window
             ComposerStatus.Text = "参数待补充：" + ex.Message;
             DraftStatus.Text = "参数不完整";
         }
-        finally { _settingEditor = false; RefreshButtons(); }
+        finally { _settingEditor = false; RefreshButtons(); MarkDraftEdited(); }
     }
 
     private void RequestChanged(object sender, TextChangedEventArgs e)
     {
         if (!_ready || _settingEditor) return;
         DraftStatus.Text = "已修改 · 可再次发送";
+        MarkDraftEdited();
         RefreshButtons();
     }
 
@@ -226,6 +230,7 @@ public partial class MainWindow : Window
     {
         if (!_ready || _settingEditor) return;
         DraftStatus.Text = "请求/解析配置已修改";
+        MarkDraftEdited();
     }
 
     private void SelectDecoder(string id)
@@ -235,9 +240,10 @@ public partial class MainWindow : Window
         if (item is not null) DecodeBox.SelectedItem = item;
     }
 
-    private DiagnosticAction CaptureEditor()
+    private DiagnosticAction CaptureEditor(bool allowEmpty = false)
     {
-        string request = UdsHex.Format(UdsHex.Parse(RequestBox.Text));
+        string request = allowEmpty && string.IsNullOrWhiteSpace(RequestBox.Text)
+            ? "" : UdsHex.Format(UdsHex.Parse(RequestBox.Text));
         string expected = string.IsNullOrWhiteSpace(ExpectedBox.Text)
             ? "" : UdsHex.Format(UdsHex.Parse(ExpectedBox.Text));
         if (!int.TryParse(OffsetBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var offset) ||
@@ -250,12 +256,14 @@ public partial class MainWindow : Window
             ? UdsOperationTemplates.Find(UdsHex.Parse(request)[0])
             : ServiceCombo.SelectedItem as UdsOperationTemplate;
         string name = template is null ? "自定义诊断请求" : template.Name;
-        if (template is not null)
-            name += " " + (RawModeCheck.IsChecked == true || PrimaryBox.Text.Trim().Length == 0
-                ? request : PrimaryBox.Text.Trim());
+        if (template is not null && !string.IsNullOrWhiteSpace(PrimaryBox.Text))
+            name += " " + PrimaryBox.Text.Trim();
+        if (!string.IsNullOrWhiteSpace(OperationNameBox.Text))
+            name = OperationNameBox.Text.Trim();
         return new DiagnosticAction
         {
-            Name = name, Group = "常用请求",
+            Name = name, Group = string.IsNullOrWhiteSpace(OperationGroupBox.Text)
+                ? "未分类" : OperationGroupBox.Text.Trim(),
             RequestHex = request, ExpectedPrefixHex = expected,
             ServiceSidHex = RawModeCheck.IsChecked == true ? "" : template?.Sid.ToString("X2") ?? "",
             PrimaryHex = PrimaryBox.Text, AuxiliaryHex = AuxiliaryBox.Text,
@@ -298,58 +306,33 @@ public partial class MainWindow : Window
             : "先设置 CAN ID 并连接主控";
     }
 
-    private void SaveFavorite_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var draft = CaptureEditor();
-            if (_favorites.Count >= 500) throw new InvalidOperationException("最多收藏 500 条请求。");
-            // A favorite is an immutable snapshot until explicitly selected,
-            // edited and re-saved. No name/group wizard before ordinary sending.
-            var existing = _favorites.Count(x => x.Name.StartsWith(draft.Name, StringComparison.Ordinal));
-            if (existing > 0) draft.Name += " (" + (existing + 1).ToString(CultureInfo.InvariantCulture) + ")";
-            _favorites.Add(draft);
-            FavoriteCombo.SelectedItem = draft;
-            AppendAudit("FAVORITE", "收藏请求 " + draft.Name + " · " + draft.RequestHex);
-            ComposerStatus.Text = "已添加常用请求；点击“保存配置”可写入 JSON 文件。";
-        }
-        catch (Exception ex) { ShowError("收藏失败", ex); }
-    }
-
-    private void DeleteFavorite_Click(object sender, RoutedEventArgs e)
-    {
-        if (FavoriteCombo.SelectedItem is not DiagnosticAction selected) return;
-        _favorites.Remove(selected);
-        FavoriteCombo.SelectedItem = null;
-        AppendAudit("FAVORITE", "删除收藏 " + selected.Name);
-    }
-
-    private void FavoriteSelected(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_ready || _settingEditor || FavoriteCombo.SelectedItem is not DiagnosticAction action) return;
-        LoadAction(action);
-    }
-
     private void LoadAction(DiagnosticAction action)
     {
         _settingEditor = true;
         try
         {
-            byte[] pdu = UdsHex.Parse(action.RequestHex);
-            var template = UdsOperationTemplates.Find(pdu[0]);
+            byte[] pdu = string.IsNullOrWhiteSpace(action.RequestHex)
+                ? [] : UdsHex.Parse(action.RequestHex);
+            var template = pdu.Length > 0 ? UdsOperationTemplates.Find(pdu[0])
+                : byte.TryParse(action.ServiceSidHex, NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture, out byte sid)
+                    ? UdsOperationTemplates.Find(sid) : null;
             ServiceCombo.SelectedItem = template;
-            var parts = template is null ? (Primary: "", Auxiliary: "")
+            var parts = pdu.Length == 0 || template is null
+                ? (Primary: action.PrimaryHex, Auxiliary: action.AuxiliaryHex)
                 : UdsOperationTemplates.SplitRequest(template, pdu);
             PrimaryBox.Text = parts.Primary;
             AuxiliaryBox.Text = parts.Auxiliary;
-            RawModeCheck.IsChecked = action.RawMode || template is null;
+            RawModeCheck.IsChecked = action.RawMode || (template is null && pdu.Length > 0);
             RequestBox.Text = action.RequestHex;
             ExpectedBox.Text = action.ExpectedPrefixHex;
             SelectDecoder(action.Decoder);
             OffsetBox.Text = action.DataOffset.ToString(CultureInfo.InvariantCulture);
             ScaleBox.Text = action.Scale.ToString("G", CultureInfo.InvariantCulture);
             UnitBox.Text = action.Unit;
-            DraftStatus.Text = "已回填请求 · 可以修改并重发";
+            OperationNameBox.Text = action.Name;
+            OperationGroupBox.Text = action.Group == "未分类" ? "" : action.Group;
+            DraftStatus.Text = "已加载 · 可编辑、保存并再次发送";
         }
         finally { _settingEditor = false; }
         RefreshTemplate();
@@ -359,6 +342,9 @@ public partial class MainWindow : Window
     private void Reuse_Click(object sender, RoutedEventArgs e)
     {
         if (HistoryList.SelectedItem is not DiagnosticHistoryRow row) return;
+        if (!ConfirmUnsavedBeforeLeave()) return;
+        _loadedOperation = null;
+        SelectOperationWithoutEvent(null);
         var action = new DiagnosticAction
         {
             Name = row.Name, RequestHex = row.Request,
@@ -367,6 +353,9 @@ public partial class MainWindow : Window
             Unit = row.Unit
         };
         LoadAction(action);
+        _editorDirty = true;
+        DraftStatus.Text = "历史请求已回填为草稿 · 保存后可加入操作库";
+        UpdateLibraryStatus();
         AppendAudit("REUSE", "回填历史请求 " + row.Request + "，尚未重新发送。");
     }
 
@@ -601,7 +590,14 @@ public partial class MainWindow : Window
     };
 
     private async void Save_Click(object sender, RoutedEventArgs e)
+        => await SaveWorkspaceCoreAsync();
+
+    private async Task<bool> SaveWorkspaceCoreAsync()
     {
+        // One Save command persists both the active edited operation and the
+        // complete operation library. No hidden second save stage.
+        if (_editorDirty && !SaveOperationCore(asNew: false, selectAfter: true))
+            return false;
         try
         {
             string? path = _workspacePath;
@@ -612,14 +608,21 @@ public partial class MainWindow : Window
                     Filter = "UDS 诊断配置 (*.uds-workspace.json)|*.uds-workspace.json|JSON (*.json)|*.json",
                     FileName = "UdsRequests.uds-workspace.json"
                 };
-                if (dlg.ShowDialog(this) != true) return;
+                if (dlg.ShowDialog(this) != true) return false;
                 path = dlg.FileName;
             }
             await DiagnosticWorkspace.SaveAsync(path, CaptureWorkspace());
             _workspacePath = path;
-            AppendAudit("FILE", "保存诊断配置 " + path);
+            _workspaceDirty = false;
+            UpdateLibraryStatus();
+            AppendAudit("FILE", "保存诊断操作库及通信配置 " + path);
+            return true;
         }
-        catch (Exception ex) { ShowError("保存配置失败", ex); }
+        catch (Exception ex)
+        {
+            ShowError("保存配置失败", ex);
+            return false;
+        }
     }
 
     private async void Open_Click(object sender, RoutedEventArgs e)
@@ -629,6 +632,14 @@ public partial class MainWindow : Window
             MessageBox.Show(this, "请先断开主控，再切换诊断配置。");
             return;
         }
+        if (_editorDirty || _workspaceDirty)
+        {
+            var answer = MessageBox.Show(this,
+                "当前操作或配置还没有写入文件。是否先保存？",
+                "切换诊断配置", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Cancel) return;
+            if (answer == MessageBoxResult.Yes && !await SaveWorkspaceCoreAsync()) return;
+        }
         var dlg = new OpenFileDialog
         {
             Filter = "UDS 诊断配置 (*.uds-workspace.json)|*.uds-workspace.json|JSON (*.json)|*.json"
@@ -637,15 +648,34 @@ public partial class MainWindow : Window
         try
         {
             var doc = await DiagnosticWorkspace.LoadAsync(dlg.FileName);
-            _favorites.Clear();
-            foreach (var a in doc.Actions) _favorites.Add(a);
-            TxIdBox.Text = doc.TxIdHex;
-            RxIdBox.Text = doc.RxIdHex;
-            P2Box.Text = doc.P2Ms.ToString(CultureInfo.InvariantCulture);
-            P2StarBox.Text = doc.P2StarMs.ToString(CultureInfo.InvariantCulture);
-            _workspacePath = dlg.FileName;
-            FavoriteCombo.SelectedItem = null;
-            AppendAudit("FILE", "加载诊断配置 " + dlg.FileName);
+            _loadingWorkspace = true;
+            _settingEditor = true;
+            try
+            {
+                SelectOperationWithoutEvent(null);
+                _loadedOperation = null;
+                _favorites.Clear();
+                foreach (var a in doc.Actions) _favorites.Add(a);
+                TxIdBox.Text = doc.TxIdHex;
+                RxIdBox.Text = doc.RxIdHex;
+                P2Box.Text = doc.P2Ms.ToString(CultureInfo.InvariantCulture);
+                P2StarBox.Text = doc.P2StarMs.ToString(CultureInfo.InvariantCulture);
+                _workspacePath = dlg.FileName;
+            }
+            finally { _settingEditor = false; _loadingWorkspace = false; }
+
+            if (_favorites.Count > 0)
+            {
+                var first = _favorites[0];
+                _loadedOperation = first;
+                SelectOperationWithoutEvent(first);
+                LoadAction(first);
+            }
+            else ResetNewOperationEditor();
+            _editorDirty = false;
+            _workspaceDirty = false;
+            UpdateLibraryStatus();
+            AppendAudit("FILE", "已加载操作库 " + dlg.FileName + "，操作数=" + _favorites.Count);
         }
         catch (Exception ex) { ShowError("打开配置失败", ex); }
     }
@@ -724,11 +754,19 @@ public partial class MainWindow : Window
 
     private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        if (_closing || _hardware is null) return;
+        if (_closing) return;
         e.Cancel = true;
+        if (_editorDirty || _workspaceDirty)
+        {
+            var answer = MessageBox.Show(this,
+                "诊断操作或配置有尚未保存的修改。关闭前保存吗？",
+                "保存诊断操作", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Cancel) return;
+            if (answer == MessageBoxResult.Yes && !await SaveWorkspaceCoreAsync()) return;
+        }
         _closing = true;
         IsEnabled = false;
-        try { await DisconnectAsync(); }
+        try { if (_hardware is not null) await DisconnectAsync(); }
         finally { Close(); }
     }
 }
