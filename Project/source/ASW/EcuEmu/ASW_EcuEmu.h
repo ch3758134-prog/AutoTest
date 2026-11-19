@@ -7,7 +7,7 @@
  *   - BROADCAST_START: 启动帧表（幂等）
  *   - BROADCAST_STOP:  停止帧表（幂等,保留帧表）
  *   - BROADCAST_STATUS: 查询 (running, count)
- *   - 所有帧统一从 CAN1 发出（通向 ECU）
+ *   - 所有帧统一从 ECU_CAN_PORT 发出（物理 J1 A12/A1）
  *   - USB 断开（enum=0）→ 静默 STOP（避免无人监控的持续输出）
  *
  * 调度（无 RTOS,无合作式调度器）：主循环按各帧 period_ms 检查 now-last_tick
