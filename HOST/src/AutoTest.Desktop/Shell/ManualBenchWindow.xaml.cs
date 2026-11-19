@@ -25,6 +25,11 @@ public partial class ManualBenchWindow : Window
         _model = model ?? throw new ArgumentNullException(nameof(model));
         DataContext = model;
         InitializeComponent();
+        var work = SystemParameters.WorkArea;
+        Width = Math.Min(1530, Math.Max(790, work.Width - 30));
+        Height = Math.Min(850, Math.Max(540, work.Height - 30));
+        MinWidth = Math.Min(1100, Width);
+        MinHeight = Math.Min(650, Height);
         Closing += OnClosing;
         _keyAutosaveTimer.Tick += OnKeyAutosaveTick;
         Loaded += (_, _) => _keyAutosaveTimer.Start();

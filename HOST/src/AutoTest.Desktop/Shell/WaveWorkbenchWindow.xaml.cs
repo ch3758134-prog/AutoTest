@@ -20,6 +20,11 @@ public partial class WaveWorkbenchWindow : Window
         _openConfiguration = openConfiguration;
         DataContext = model;
         InitializeComponent();
+        var work = SystemParameters.WorkArea;
+        Width = Math.Min(1300, Math.Max(700, work.Width - 30));
+        Height = Math.Min(800, Math.Max(500, work.Height - 30));
+        MinWidth = Math.Min(850, Width);
+        MinHeight = Math.Min(570, Height);
         _model.ChartChanged += OnChartChanged;
         Closed += (_, _) =>
         {
