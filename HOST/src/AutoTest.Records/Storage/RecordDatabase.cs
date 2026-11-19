@@ -484,6 +484,8 @@ public sealed class RecordDatabase
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? OccurrenceId { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Guid? CaseAttemptId { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? ParentOccurrenceId { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Phase { get; init; }
@@ -526,6 +528,7 @@ public sealed class RecordDatabase
             fact.Evidence.Select(e => e.Value).ToArray())
         {
             OccurrenceId = fact.StepOccurrenceId,
+            CaseAttemptId = fact.CaseAttemptId,
             ParentOccurrenceId = fact.ParentOccurrenceId,
             Phase = fact.Phase,
             ExecutionPath = fact.ExecutionPath,
@@ -552,6 +555,7 @@ public sealed class RecordDatabase
             Evidence.Select(e => new EvidenceRef(e)).ToImmutableArray())
         {
             StepOccurrenceId = OccurrenceId,
+            CaseAttemptId = CaseAttemptId,
             ParentOccurrenceId = ParentOccurrenceId,
             Phase = Phase,
             ExecutionPath = ExecutionPath,
