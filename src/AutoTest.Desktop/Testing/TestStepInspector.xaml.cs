@@ -505,6 +505,10 @@ public partial class TestStepInspector : UserControl
             _ => false
         };
         foreach (var item in _catalog.Where(x => Eligible(x.Mapping))) _allTargets.Add(item);
+        if (action.TargetCategory == "ign")
+            _allTargets.Add(new MappingChoice("台架 / IGN",
+                new TestTargetMapping("IGN", TestTargetKind.Ignition,
+                    default, 0, "")));
         if (action.TargetCategory == "can")
             _allTargets.Add(new MappingChoice("ECU CAN / 原始报文（无需 DBC）",
                 new TestTargetMapping("原始 ECU CAN", TestTargetKind.RawCan, default, 0, "",
