@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
+using AutoTest.Contracts;
 using System.Globalization;
 using AutoTest.Core;
 using AutoTest.Testing.Authoring;
@@ -10,7 +12,25 @@ public enum RealStepStatus { Completed, Skipped, ConditionFalse, NoData, Timeout
 public enum RealTestVerdict { Passed, Failed, Inconclusive, Error, Aborted }
 
 public sealed record RealStepFact(StepId Step, string Type, RealStepStatus Status,
-    string Expected, string Actual, string Detail, DateTimeOffset At, string? Evidence = null);
+    string Expected, string Actual, string Detail, DateTimeOffset At, string? Evidence = null)
+{
+    // Optional properties preserve legacy result readers without assigning fake occurrence IDs.
+    public Guid StepOccurrenceId { get; init; }
+    public Guid? ParentOccurrenceId { get; init; }
+    public TestPhase? Phase { get; init; }
+    public string ExecutionPath { get; init; } = "";
+    public int? LoopIteration { get; init; }
+    public DateTimeOffset? StartedUtc { get; init; }
+    public DateTimeOffset? CompletedUtc { get; init; }
+    public TimeSpan? Duration { get; init; }
+    public SignalObservation? Observation { get; init; }
+    public TestSignalStatus? ObservationStatus { get; init; }
+    public string? RequirementId { get; init; }
+    public string? ReportNote { get; init; }
+    public bool ShowEvidence { get; init; } = true;
+    public ImmutableDictionary<string, TestDatum> AdditionalResults { get; init; } =
+        ImmutableDictionary<string, TestDatum>.Empty;
+}
 
 public sealed record RealRunResult(RunId Run, string PlanFingerprint, RealTestVerdict Verdict,
     ImmutableArray<RealStepFact> Facts, IReadOnlyDictionary<string, TestDatum> Variables)
@@ -108,9 +128,15 @@ public sealed class RealRunCoordinator
         return value;
     }
 
-    public async Task<RealRunResult> StartAsync(PreparedTestPlan prepared,
-        CancellationToken external = default)
+    public Task<RealRunResult> StartAsync(PreparedTestPlan prepared,
+        CancellationToken external = default) =>
+        StartAsync(prepared, RunId.New(), null, external);
+
+    /// <summary>RunId must match an already begun RunRecord before any DUT write.</summary>
+    public async Task<RealRunResult> StartAsync(PreparedTestPlan prepared, RunId run,
+        IRealRunEventSink? events, CancellationToken external = default)
     {
+        if (run.Value == Guid.Empty) throw new ArgumentException("Invalid RunId.", nameof(run));
         if (!prepared.ValidateFingerprint() || !prepared.Diagnostics.IsEmpty)
             throw new InvalidOperationException("Real test plan must be compiled and valid.");
         var document = prepared.RestoreDocument();
@@ -127,7 +153,6 @@ public sealed class RealRunCoordinator
             _stop = cts; _pause = false; _singleStep = false; _resume = null;
         }
 
-        var run = RunId.New();
         var facts = ImmutableArray.CreateBuilder<RealStepFact>();
         var variables = new Dictionary<string, TestDatum>(StringComparer.OrdinalIgnoreCase);
         var verdict = RealTestVerdict.Inconclusive;
@@ -177,7 +202,9 @@ public sealed class RealRunCoordinator
             facts.Add(new RealStepFact(n.Id, n.Type, state, expected, actual,
                 detail, DateTimeOffset.UtcNow, evidence));
 
-        async Task Execute(ImmutableArray<StepNode> nodes, CancellationToken ct, bool cleanup = false)
+        async Task Execute(ImmutableArray<StepNode> nodes, CancellationToken ct, bool cleanup = false,
+            TestPhase phase = TestPhase.Test, Guid? parentOccurrenceId = null,
+            string parentPath = "", int? loopIteration = null)
         {
             foreach (var node in nodes)
             {
@@ -520,7 +547,7 @@ public sealed class RealRunCoordinator
             try
             {
                 preparing = true;
-                await Execute(document.Get(TestPhase.Prepare), cts.Token);
+                await Execute(document.Get(TestPhase.Prepare), cts.Token, phase: TestPhase.Prepare);
                 preparing = false;
                 if (failed || incomplete)
                 {
@@ -531,7 +558,7 @@ public sealed class RealRunCoordinator
                         "", "", "准备阶段未通过，未进入测试阶段；仍将执行清理。",
                         DateTimeOffset.UtcNow));
                 }
-                else await Execute(document.Get(TestPhase.Test), cts.Token);
+                else await Execute(document.Get(TestPhase.Test), cts.Token, phase: TestPhase.Test);
                 // An async CAN sender can fail after the last foreground TEST
                 // step. Do not publish a PASS without checking it.
                 await _actions.CheckHealthAsync(cts.Token);
@@ -555,7 +582,7 @@ public sealed class RealRunCoordinator
                     try
                     {
                         await Execute(document.Get(TestPhase.Cleanup), scriptedCleanup.Token,
-                            cleanup: true);
+                            cleanup: true, phase: TestPhase.Cleanup);
                     }
                     catch (Exception ex)
                     {
@@ -597,7 +624,10 @@ public sealed class RealRunCoordinator
             lock (_gate) { _stop = null; _resume = null; _pause = false; _singleStep = false; }
             cts.Dispose();
         }
-        return new RealRunResult(run, prepared.Fingerprint, verdict,
+        var completedRun = new RealRunResult(run, prepared.Fingerprint, verdict,
             facts.ToImmutable(), new Dictionary<string, TestDatum>(variables, StringComparer.OrdinalIgnoreCase));
+        if (events is not null)
+            await events.RunCompletedAsync(completedRun, CancellationToken.None);
+        return completedRun;
     }
 }
