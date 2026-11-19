@@ -195,4 +195,32 @@ public sealed class RealOccurrenceTests
         Assert.Equal(TestSignalStatus.Valid, fact.ObservationStatus!.Value);
         Assert.NotEqual(Guid.Empty, fact.StepOccurrenceId);
     }
+    [Fact]
+    public async Task LostFramesRemainVisibleAndCannotProduceDutPass()
+    {
+        var target = new TestTargetMapping("EcuStatus", TestTargetKind.Signal,
+            AssetId.New(), 1, new string('a', 64), BusRole.DutCan, 0x123,
+            SignalName: "Status", Unit: "count");
+        var reference = new SignalRef(new AssetRef(target.Asset,
+            AssetRevision.Create(target.AssetRevision),
+            RevisionFingerprint.FromSha256(target.AssetSha256)),
+            target.Role, target.CanId, target.SignalName, target.Unit);
+        var observed = new SignalObservation(reference, 2, "count",
+            TimePoint.FromHostArrival(DateTimeOffset.UtcNow, 10),
+            EvidenceQuality.HostObserved, EvidenceRef.New(), false);
+        var test = StepNode.Create("AssertSignal").WithProperty("target", target.Name)
+            .WithProperty("operator", "==").WithProperty("expected", "2")
+            .WithProperty("timeoutMs", "100");
+        var plan = Prepare(WithTest(TestDocument.Create("Gap") with
+            { Mappings = ImmutableArray.Create(target) }, test));
+        var result = await new RealRunCoordinator(
+            new Signals(new TestSignalResult(TestSignalStatus.LostFrames,
+                    observed with { HasGap = true }, "lost CAN frame"),
+                new TestSignalResult(TestSignalStatus.Valid, observed, "valid CAN frame")),
+            new Actions(), new Waves()).StartAsync(plan);
+        Assert.Equal(RealTestVerdict.Inconclusive, result.Verdict);
+        var fact = Assert.Single(result.Facts);
+        Assert.Equal(RealStepStatus.InvalidData, fact.Status);
+        Assert.Contains("SIGNAL_GAP", fact.Detail);
+    }
 }
