@@ -1724,14 +1724,19 @@ public sealed class MainWindowViewModel : BindableBase
     {
         var opened = await _workspace.OpenDbcEditorAsync(id);
         var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
+        // Constrain both the initial and minimum window size to the usable
+        // Windows work area (not the full monitor bounds) so the taskbar is
+        // never hidden by our own oversized modal minimums.
+        var availableWidth = Math.Max(480, SystemParameters.WorkArea.Width - 40);
+        var availableHeight = Math.Max(360, SystemParameters.WorkArea.Height - 40);
         var window = new Window
         {
             Title = "DBC 编辑器 · " + name,
             Content = new DbcWorkbenchView(editor),
-            Width = Math.Max(900, Math.Min(1260, SystemParameters.WorkArea.Width - 64)),
-            Height = Math.Max(560, Math.Min(800, SystemParameters.WorkArea.Height - 64)),
-            MinWidth = 820,
-            MinHeight = 520,
+            Width = Math.Min(1260, availableWidth),
+            Height = Math.Min(800, availableHeight),
+            MinWidth = Math.Min(820, availableWidth),
+            MinHeight = Math.Min(520, availableHeight),
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ShowInTaskbar = false
         };
