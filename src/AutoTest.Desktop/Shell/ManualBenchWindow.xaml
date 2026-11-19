@@ -1,9 +1,10 @@
 <Window x:Class="AutoTest.Desktop.Shell.ManualBenchWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
  xmlns:local="clr-namespace:AutoTest.Desktop.Shell"
- Title="AutoTest · 手动台架" Width="1700" Height="900" MinWidth="1500" MinHeight="750"
- WindowStartupLocation="CenterOwner" WindowState="Maximized" Background="#F4F7FC"
+ Title="AutoTest · 手动台架" Width="1440" Height="860" MinWidth="1090" MinHeight="680"
+ WindowStartupLocation="CenterOwner" WindowState="Maximized" Background="#F6F8FB"
  FontFamily="{StaticResource UiFont}" FontSize="13" Foreground="#223A57">
  <Window.Resources>
   <Style x:Key="BenchHeader" TargetType="TextBlock">
@@ -43,10 +44,10 @@
 
   <Border Grid.Row="0" Background="White" BorderBrush="#DCE5EF" BorderThickness="0,0,0,1">
    <DockPanel Margin="15,10" LastChildFill="True">
-    <Button DockPanel.Dock="Right" Content="连接 / 断开" Command="{Binding ConnectCommand}"
-     Style="{StaticResource AtPrimaryButton}" Padding="15,8" Margin="9,0,0,0"/>
-    <Button DockPanel.Dock="Right" Content="刷新资源" Command="{Binding ReloadProfilesCommand}"
-     Padding="12,7" Margin="9,0,0,0"/>
+    <ui:Button DockPanel.Dock="Right" Content="连接 / 断开" Command="{Binding ConnectCommand}"
+      Appearance="Primary" Padding="15,8" Margin="9,0,0,0"/>
+    <ui:Button DockPanel.Dock="Right" Content="刷新资源" Command="{Binding ReloadProfilesCommand}"
+      Padding="12,7" Margin="9,0,0,0"/>
     <StackPanel>
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
       <TextBlock Text="手动台架" Style="{StaticResource BenchHeader}" FontSize="17"
@@ -78,9 +79,9 @@
 
   <Grid Grid.Row="1" Margin="12,12,12,10">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="41*" MinWidth="610"/>
-    <ColumnDefinition Width="24*" MinWidth="355"/>
-    <ColumnDefinition Width="35*" MinWidth="515"/>
+    <ColumnDefinition Width="41*" MinWidth="345"/>
+     <ColumnDefinition Width="24*" MinWidth="315"/>
+     <ColumnDefinition Width="35*" MinWidth="340"/>
    </Grid.ColumnDefinitions>
 
    <!-- LEFT: SEND list is the one permanent complete raw-frame view;
@@ -98,14 +99,14 @@
         FontSize="11" Foreground="#65788F" Margin="8,0,0,0"/>
       </DockPanel>
       <WrapPanel>
-       <Button Content="+ 报文" Click="AddCanRow_Click" Padding="9,6" Margin="0,0,5,5"
+       <ui:Button Content="+ 报文" Click="AddCanRow_Click" Padding="9,6" Margin="0,0,5,5"
         ToolTip="新增一条报文并立即打开快捷编辑浮层"/>
        <Button Content="复制" Command="{Binding CopyCanRowCommand}" Padding="9,6" Margin="0,0,5,5"/>
        <Button Content="删除" Command="{Binding DeleteCanRowCommand}" Padding="9,6" Margin="0,0,5,5"/>
        <Button Content="↑" Command="{Binding MoveCanRowUpCommand}" Padding="8,6" Margin="0,0,4,5"/>
        <Button Content="↓" Command="{Binding MoveCanRowDownCommand}" Padding="8,6" Margin="0,0,9,5"/>
-       <Button Content="发送勾选" Command="{Binding StartCanRowsCommand}"
-        Style="{StaticResource AtPrimaryButton}" Padding="10,6" Margin="0,0,6,5"
+       <ui:Button Content="发送勾选" Command="{Binding StartCanRowsCommand}"
+         Appearance="Primary" Padding="10,6" Margin="0,0,6,5"
         ToolTip="对所有勾选报文各发送一次。ECU CAN 周期发送目前不可用。"/>
        <Button Content="停止" Command="{Binding StopCanRowsCommand}" Padding="9,6" Margin="0,0,5,5"/>
       </WrapPanel>
@@ -115,7 +116,7 @@
       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
       IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
       GridLinesVisibility="Horizontal" BorderBrush="#E2EAF3"
-      RowHeight="46" ColumnHeaderHeight="37" FontSize="13"
+      RowHeight="40" ColumnHeaderHeight="34" FontSize="12"
       EnableRowVirtualization="True" EnableColumnVirtualization="True"
       Background="White" AlternatingRowBackground="#F7FAFD"
       MouseDoubleClick="CanSendGrid_MouseDoubleClick"
@@ -138,7 +139,17 @@
           HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="110" MinWidth="90"/>
+       <!-- Inline name edit uses the same BenchCanRow as the Flyout and physical sender. -->
+        <DataGridTemplateColumn Header="报文" Width="118" MinWidth="100">
+         <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate>
+           <TextBox Text="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"
+            IsEnabled="{Binding CanEditFields}" MinHeight="28" Padding="5,2"
+            BorderThickness="0" Background="Transparent"
+            VerticalContentAlignment="Center" ToolTip="直接修改名称；修改不会发送 CAN 帧"/>
+          </DataTemplate>
+         </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
        <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="94"/>
        <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="40"/>
        <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="198">
@@ -167,7 +178,7 @@
      <Popup x:Name="CanQuickPopup" Placement="Right" StaysOpen="False"
       AllowsTransparency="True" PopupAnimation="Fade"
       DataContext="{Binding SelectedCanRow}">
-      <Border Width="440" MaxHeight="590" BorderBrush="#A8BBD1" BorderThickness="1"
+      <Border Width="410" MaxHeight="590" BorderBrush="#A8BBD1" BorderThickness="1"
        CornerRadius="9" Background="White" Padding="14">
        <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.18"/></Border.Effect>
        <DockPanel>
