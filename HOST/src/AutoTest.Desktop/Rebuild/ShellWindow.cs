@@ -153,11 +153,11 @@ public sealed class MainWindow : Window
         _route = route;
         _activeTest = null;
         _projectLabel.Text = _store.Current.ProjectName;
-        _routeLabel.Text = "工作环境  /  " + route switch
+        _routeLabel.Text = "工作环境  /  " + (route switch
         {
             "home" => "首页", "project" => "工程", "test" => "自动测试", "tools" => "专业工具",
             "production" => "生产", "records" => "历史", "device" => "设备", _ => route
-        };
+        });
         (_heading.Text, _subheading.Text) = route switch
         {
             "home" => ("开始工作", "选择当前任务并继续工作。这里不是旧 G4 界面的兼容入口。"),
