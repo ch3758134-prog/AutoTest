@@ -30,6 +30,9 @@ public sealed class StepDescriptorCatalog
         Add("TryCatch", false, ["try", "catch", "finally"]);
         Add("Subroutine", false, ["body"]);
         Add("CallSubroutine", false, [], ["target"]);
+        // G3-approved engineering resource call; runtime remains blocked until
+        // its exact transitive dependency closure is prepared and authorized.
+        Add("CallPublicFlow", false, [], ["flowAssetId", "flowRevision", "flowSha"]);
         Add("Parallel", false, ["branches"]);
         Add("SetVariable", true, [], ["variable", "value"]);
         Add("Wait", true, [], ["milliseconds"]);
