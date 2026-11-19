@@ -21,6 +21,21 @@
 | E15 | Microsoft Fluent/Windows Command Bar：主要命令按优先级、缩小窗口时次要命令进入溢出 | https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/command-bar | WinUI 控件级指导；具体 WPF 控件存在差异 |
 | E16 | VS 2026 产品团队说明 Hot Exit 是会话恢复而非显式提交 | https://devblogs.microsoft.com/visualstudio/keep-your-investigation-between-sessions/ | 厂商博客，说明功能动机和机制，非性能实验 |
 
+
+## R03 补充一手来源
+
+| ID | 一手来源 / 核实事实 | URL | 类型与限制 |
+|---|---|---|---|
+| E17 | Visual Studio 2026 IDE 启动窗的“无代码继续”、打开/新建/文件夹 | https://learn.microsoft.com/en-us/visualstudio/ide/quickstart-ide-orientation?view=visualstudio | 厂商文档；不等于所有专业文档无需工程 |
+| E18 | Visual Studio 启动行为可设置开始窗口/最近方案/空环境 | https://learn.microsoft.com/en-us/visualstudio/ide/customizing-the-start-page-for-visual-studio?view=visualstudio | 厂商文档，选项与版本相关 |
+| E19 | TIA Portal V20 允许恢复最后工程/编辑器，选择启动视图 | https://docs.tia.siemens.cloud/r/en-us/v20/introduction-to-the-tia-portal/setting-the-tia-portal/overview-of-the-program-settings | 厂商 V20 文档，不冒充 V21 全部选项 |
+| E20 | Photoshop 2026 Home 有最近文档、打开/新建、学习入口 | https://helpx.adobe.com/photoshop/desktop/get-started/learn-the-basics/homescreen-overview.html | 厂商文档；图形/云业务无需照搬 |
+| E21 | ecu.test 2026.2 Workspace 创建/最近 workspace/自动跳过选择/复制样例 | https://docs.tracetronic.com/help/ecu.test/2026.2/en/Workspace/Workspace-creation.html | 厂商文档；**ecu.test 确实先选择/建立 workspace**，不可错误称其完全无 workspace |
+| E22 | NN/g 专业软件中长时等待、中断恢复和外部化工作记忆 | https://www.nngroup.com/articles/designing-for-waits-and-interruptions/ | 用户研究与设计原则，不能当成性能基准 |
+| E23 | Microsoft WinUI LOB 设计：导航/文档/命令分层，窄窗口自适应 | https://learn.microsoft.com/en-us/windows/apps/get-started/line-of-business/design-for-lob | WinUI 官方参考；WPF 实施由 UI 团队设计 |
+| E24 | Windows 导航并无统一模式；层级不宜无限嵌套 | https://learn.microsoft.com/en-us/windows/apps/design/basics/navigation-basics | Microsoft 设计建议，不是必须采用 NavigationView |
+| E25 | NI TestStand Process Model 负责 UUT 识别、日志、报告与执行周边操作 | https://www.ni.com/docs/en-US/bundle/teststand/page/process-models.html | 厂商 2026-09 更新；不直接变更 AutoTest 运行合同 |
+
 ## 源与判断分离方式
 
 - `FACT-E##`：源明言软件具有何种机制（例如 Portal View 自动进入 Project View）。
