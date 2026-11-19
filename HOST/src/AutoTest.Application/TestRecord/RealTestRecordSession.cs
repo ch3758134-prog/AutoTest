@@ -142,18 +142,21 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             completed.StartedUtc is null || completed.CompletedUtc is null ||
             completed.Duration is null || completed.Phase is null)
             throw new InvalidDataException("A completed actual step requires occurrence, phase and time bounds.");
-        // Skipped/disabled steps intentionally have no StepStarted callback.
-        if (_active.TryGetValue(completed.StepOccurrenceId, out var opened) &&
-            (opened.Step != completed.Step || opened.Phase != completed.Phase ||
-             opened.StartedUtc != completed.StartedUtc))
-            throw new InvalidDataException("Step completion does not match its durable begin.");
+        // All occurrences, including skipped steps, must have a durably recorded START.
+        // A duplicate completion is rejected after the active entry is removed.
+        if (!_active.TryGetValue(completed.StepOccurrenceId, out var opened) ||
+            opened.Step != completed.Step || opened.Phase != completed.Phase ||
+            opened.StartedUtc != completed.StartedUtc)
+            throw new InvalidDataException("Step completion lacks a matching durable begin.");
 
         var attempt = _attempts.GetValueOrDefault(completed.Step) + 1;
         var observed = completed.Observation;
         var evidence = observed is { Evidence.Value: var id } && id != Guid.Empty
             ? ImmutableArray.Create(observed.Evidence) : ImmutableArray<EvidenceRef>.Empty;
         var quality = observed?.Quality ?? EvidenceQuality.Unknown;
-        var instant = TimePoint.FromHostArrival(completed.CompletedUtc.Value,
+        // The audit TimePoint describes persistence acceptance, whereas the
+        // step's CompletedUtc is the execution-time boundary recorded separately.
+        var instant = TimePoint.FromHostArrival(DateTimeOffset.UtcNow,
             Stopwatch.GetTimestamp());
         var step = new RunStepFact(run, Guid.NewGuid(), completed.Step, attempt,
             completed.Status.ToString(), completed.Expected, completed.Actual,
