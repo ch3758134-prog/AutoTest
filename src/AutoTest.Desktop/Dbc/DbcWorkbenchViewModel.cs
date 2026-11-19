@@ -111,6 +111,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private string _messageCommentText = "";
     private string _signalCommentText = "";
     private DbcSignalEditState? _signalDraft;
+    private bool _committingPendingSignal;
     private string _status = "就绪";
     private string _messageSearchText = "";
 
@@ -142,6 +143,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         get => _messageSearchText;
         set
         {
+            if (!TryCommitPendingSignal()) return;
             if (!SetProperty(ref _messageSearchText, value ?? "")) return;
             var keepMessage = SelectedMessage?.Message.Id;
             var keepSignal = SelectedSignal?.Name;
@@ -369,15 +371,51 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         private set => SetProperty(ref _status, value);
     }
 
+    /// <summary>
+    /// Avoid silently dropping a partially edited signal when the operator
+    /// selects a different signal, message or filter. Valid changes are
+    /// applied to the existing DBC document; invalid values keep selection.
+    /// </summary>
+    private bool TryCommitPendingSignal()
+    {
+        if (_committingPendingSignal || !HasPendingSignalDraft) return true;
+        if (!CanEdit)
+        {
+            StatusMessage = "当前 DBC 结构只读；请撤销尚未应用的参数修改。";
+            return false;
+        }
+        _committingPendingSignal = true;
+        try
+        {
+            ApplySignalParameters();
+            if (HasPendingSignalDraft)
+            {
+                StatusMessage = "当前信号参数无效：请修正后再切换对象，不能丢弃草稿。";
+                return false;
+            }
+            return true;
+        }
+        finally { _committingPendingSignal = false; }
+    }
+
     public DbcMessageRow? SelectedMessage
     {
         get => _selectedMessage;
         set
         {
+            var previousId = _selectedMessage?.Message.Id;
+            var requestedId = value?.Message.Id;
+            if (previousId != requestedId && !TryCommitPendingSignal())
+            {
+                RaisePropertyChanged(nameof(SelectedMessage));
+                return;
+            }
+            // Applying a draft may replace row instances; use the current row.
+            if (value is not null)
+                value = Messages.FirstOrDefault(row => row.Message.Id == requestedId) ?? value;
             if (!SetProperty(ref _selectedMessage, value)) return;
-            var signalName = _selectedMessage?.Message.Id == value?.Message.Id
-                ? _selectedSignal?.Name : null;
-            RefreshSignals(signalName);
+            var previousSignal = previousId == requestedId ? _selectedSignal?.Name : null;
+            RefreshSignals(previousSignal);
             RaisePropertyChanged(nameof(SignalCount));
             RaisePropertyChanged(nameof(SelectedValueDescriptions));
             RefreshAliasInputs();
@@ -386,19 +424,26 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             RefreshCommands();
         }
     }
+
     public DbcSignalRow? SelectedSignal
     {
         get => _selectedSignal;
         set
         {
-            if (SetProperty(ref _selectedSignal, value))
+            var requested = value?.Name;
+            if (_selectedSignal?.Name != requested && !TryCommitPendingSignal())
             {
-                RaisePropertyChanged(nameof(SelectedValueDescriptions));
-                RaisePropertyChanged(nameof(IsSignalSelected));
-                RaisePropertyChanged(nameof(IsMessageSelected));
-                RefreshAliasInputs();
-                RefreshCommands();
+                RaisePropertyChanged(nameof(SelectedSignal));
+                return;
             }
+            if (value is not null)
+                value = Signals.FirstOrDefault(row => row.Name == requested) ?? value;
+            if (!SetProperty(ref _selectedSignal, value)) return;
+            RaisePropertyChanged(nameof(SelectedValueDescriptions));
+            RaisePropertyChanged(nameof(IsSignalSelected));
+            RaisePropertyChanged(nameof(IsMessageSelected));
+            RefreshAliasInputs();
+            RefreshCommands();
         }
     }
 
