@@ -31,8 +31,8 @@ extern "C" {
  * @details U7 P70/PTC0 → RL_DRV → Q4(2N7002) → U2(BTS50055) → SOL24IN。
  *          PTC0=HIGH 使 Q4 导通，并拉低 U2 的低有效 IN；
  *          U2 正常且电源存在时，向 U5/U22/U23 提供共用 Vbb。
- * @warning 不是某一只 Air 气阀的独立电源；不要在关闭单路气阀时
- *          无条件关断整个 SOL24IN。
+ * @warning 内部公共母线启动默认 LOW；业务层在某路请求导通时先使能，
+ *          全部已管理输出请求关闭后才撤销公共使能。不可单独关闭某路时误关其它路。
  */
 #define RL_DRV_PORT           MCAL_GPIO_C
 #define RL_DRV_PIN            0U
@@ -58,7 +58,8 @@ extern "C" {
 #define HOUT7_PIN  8U
 
 /* 业务分配：IGN→HOUT1；LED1~LED6→HOUT2~HOUT7。
- * 保留 IGN 命令；LED 通过 USB 命令控制，上电默认 LOW。
+ * 全部高边输出请求及公共母线 RL_DRV 均在上电初始化为 LOW。
+ * 上电后只有合法 USB 开启请求会经 ASW_IoCtrl 激活公共母线。
  * HOUT5/PTC10 从此不再被 IGN 初始化或驱动。
  */
 #define IGN_PORT   HOUT1_PORT
@@ -75,6 +76,19 @@ extern "C" {
 #define LED5_PIN   HOUT6_PIN
 #define LED6_PORT  HOUT7_PORT
 #define LED6_PIN   HOUT7_PIN
+
+/* 其余 BTS724G 控制输入：不向 USB 暴露，明确保持默认 LOW。
+ * U23 CH1/CH2 外部输出分别为 HOUT10 / HOUT9；
+ * U22 CH4 的 MCU 控制网 SOL12IN 明确，但其板外输出暂未核实，
+ * 因此使用 SPARE 宏，不能凭此声明 HOUT8 真实存在。
+ * U23 的 SOL1IN/SOL3IN 还关联 H_SPEED1/H_SPEED2 支路。
+ */
+#define HOUT9_PORT            MCAL_GPIO_C /* PTC3  → SOL3IN → U23 CH2 */
+#define HOUT9_PIN             3U
+#define HOUT10_PORT           MCAL_GPIO_B /* PTB0  → SOL1IN → U23 CH1 */
+#define HOUT10_PIN            0U
+#define U22_CH4_SPARE_PORT    MCAL_GPIO_C /* PTC11 → SOL12IN → U22 CH4 */
+#define U22_CH4_SPARE_PIN     11U
 
 /* 外部 KEY1~KEY3 输入，经电阻分压/RC/钳位后接 MCU。
  * 暂只定义物理绑定，不配置为 GPIO 输入，不启用 ADC/阈值判断。
@@ -125,8 +139,9 @@ extern "C" {
 /**
  * @brief  初始化本文件列出的板级控制信号。
  * @details 在 Clock_Init() 之后、USB/CAN 业务开始前调用一次。
- * @note   初始化 Air1/2(LOW)、LED1~LED6(LOW)、RL_DRV(HIGH)、IGN(HIGH)；
- *          PTC8/PTC9 已作为 LED6/LED5 控制引脚，不作为旧供电控制。
+ * @note   RL_DRV 首先 LOW；其后 IGN、LED1~6、Air1/2、HOUT9/10 及
+ *          U22 CH4 未分配控制输入全部 LOW（不得在启动时通电）。
+ *          PTC8/PTC9 作为 LED6/LED5 控制引脚，不作为旧供电控制。
  * @warning 初始化态不是外部电压或机械到位反馈。
  */
 void EAL_GPIO_Init(void);
