@@ -54,3 +54,7 @@
 ## 2026-11-19 整机系统 main 固定基线
 
 - [HOST、Main_Control、KEY_SIM 三套源码归档到 main 的目录及版本清单](new-baseline-20261112/research/SYSTEM-SOURCE-BASELINE-FIRMWARE-20261119.md)：正式 `main@f00289f3e141f265211f6cf236b55ca435c01f44`，`HOST` 已快进至相同版本；原固件分支保留。Keil、CodeWarrior 与实体硬件验证仍分开进行。
+
+## 2026-11-19 系统基线目录修正：三工程平级
+
+- [HOST / Main_Control / Key_Sim 平级目录正式更正](new-baseline-20261112/research/PEER-PROJECT-DIRECTORY-BASELINE-20261119.md)：最新 `main@ffb23f8c05ec4a64b82cd781db6357685d082c04`，原 `firmware/` 不再存在，HOST 分支已同步。此前固件导入记录中的旧目录只是历史快照。
