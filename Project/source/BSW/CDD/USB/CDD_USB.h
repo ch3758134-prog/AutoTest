@@ -58,9 +58,9 @@ extern "C" {
 #define CDD_USB_CMD_SET_CLAMP       0x18U
 #define CDD_USB_CMD_GET_CLAMPS      0x19U
 /*
- * HOUT2~HOUT7 LED1~LED6：
+ * HOUT2~HOUT7 依次为 RED1、YELLOW1、GREEN1、RED2、YELLOW2、GREEN2：
  * SET_LED  0x1A: [index=1..6, level=0/1] 2B；仅控制指定一路。
- * GET_LEDS 0x1B: 无参数；响应1B位图 bit0..5 = LED1..LED6 GPIO电平。
+ * GET_LEDS 0x1B: 无参数；响应1B位图 bit0..5 依次为以上六路 GPIO 电平。
  * SET_LEDS 0x1C: [bitmap] 1B；必须 0x00..0x3F。
  * STATUS=OK仅表示MCU GPIO已更新，不证明负载电压/LED实际亮灭。
  */
