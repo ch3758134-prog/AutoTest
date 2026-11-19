@@ -64,8 +64,15 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("Invalid physical flash grant scope.");
         lock(_sync)
         {
-            if(_programming is not null || _runFingerprint is not null || _didGrant is not null)
+            if(_programming is not null || _runFingerprint is not null || _didGrant is not null ||
+                _manualBatchCan is not null || _manualKeySteps is not null)
                 throw new InvalidOperationException("Another physical CAN scope is already active.");
+            // Cancel residual one-shot permissions from the main station before
+            // transferring physical authority to a frozen programming job.
+            _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
+            _oneIgnState = null; _ignGeneration = 0; _ignExpiry = default;
+            _singleClampPayload = null; _clampGeneration = 0; _clampExpiry = default;
+            _singleLedPayload = null; _ledGeneration = 0; _ledExpiry = default;
             var token=Guid.NewGuid();
             _programming=new ProgrammingGrant
             {
@@ -146,8 +153,10 @@ public sealed class PhysicalCommandFence
             throw new UnauthorizedAccessException("Exact DID/ID/CAN1 physical consent is required.");
         lock (_sync)
         {
-            if (_didGrant is not null || _programming is not null)
-                throw new InvalidOperationException("A DID read or flash job already has a physical grant.");
+            if (_didGrant is not null || _programming is not null ||
+                _runFingerprint is not null || _manualBatchCan is not null ||
+                _manualKeySteps is not null)
+                throw new InvalidOperationException("A physical TEST, manual task, DID or flash job is already authorized.");
             _didGrant = new DidGrant { TxId=txId, RxId=rxId, Did=did,
                 Generation=generation, Expires=DateTimeOffset.UtcNow.AddSeconds(30) };
         }
