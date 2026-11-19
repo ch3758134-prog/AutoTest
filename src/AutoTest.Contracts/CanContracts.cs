@@ -23,8 +23,8 @@ public static class StationCanWiring
     public const string KeypadDisplayName = "KEY CAN";
     public const string DutConnectorPins = "A1/A12";
     public const string KeypadConnectorPins = "B1/B11";
-    public const byte DutPort = 0;
-    public const byte KeypadPort = 1;
+    public const byte DutPort = 1;
+    public const byte KeypadPort = 0;
     public static BusRoleMap Current { get; } = new(default, DutPort, KeypadPort);
     public static byte PortFor(BusRole role) => role switch
     {
