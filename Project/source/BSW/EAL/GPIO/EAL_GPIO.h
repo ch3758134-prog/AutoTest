@@ -137,7 +137,7 @@ extern "C" {
     MCAL_GPIO_Read(signal##_PORT, signal##_PIN)
 
 /**
- * @brief  初始化本文件列出的板级控制信号。
+ * @brief  初始化已识别的高边输出控制引脚及公共母线信号。
  * @details 在 Clock_Init() 之后、USB/CAN 业务开始前调用一次。
  * @note   RL_DRV 首先 LOW；其后 IGN、LED1~6、Air1/2、HOUT9/10 及
  *          U22 CH4 未分配控制输入全部 LOW（不得在启动时通电）。
