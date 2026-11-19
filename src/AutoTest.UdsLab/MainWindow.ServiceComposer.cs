@@ -74,7 +74,8 @@ public partial class MainWindow
         bool rawMode = action.RawMode || template is null;
         RawModeCheck.IsChecked = rawMode;
         RequestBox.IsReadOnly = !rawMode;
-        AdvancedEditExpander.IsExpanded = rawMode;
+        // Response expectations and decoding remain visible while tuning requests.
+        AdvancedEditExpander.IsExpanded = true;
         PrimaryBox.IsEnabled = AuxiliaryBox.IsEnabled = template is not null && !rawMode;
         RefreshSendButton();
     }
@@ -97,6 +98,8 @@ public partial class MainWindow
         SubfunctionPresetCombo.ItemsSource = choices;
         SubfunctionPresetCombo.Visibility = choices.Length == 0
             ? Visibility.Collapsed : Visibility.Visible;
+        NoSubfunctionHint.Visibility = choices.Length == 0
+            ? Visibility.Visible : Visibility.Collapsed;
         SubfunctionPresetCombo.SelectedItem = choices.FirstOrDefault(p =>
             string.Equals(p.PrimaryHex, primary, StringComparison.OrdinalIgnoreCase));
     }
@@ -135,7 +138,7 @@ public partial class MainWindow
             ServiceHelp.Text = template.Guidance;
             RawModeCheck.IsChecked = false;
             RequestBox.IsReadOnly = true;
-            AdvancedEditExpander.IsExpanded = false;
+            AdvancedEditExpander.IsExpanded = true;
             PrimaryBox.IsEnabled = AuxiliaryBox.IsEnabled = true;
         }
         finally { _loadingEditor = false; }
@@ -254,7 +257,7 @@ public partial class MainWindow
             try
             {
                 byte[] pdu = UdsHex.Parse(_editing.RequestHex);
-                maySend = pdu[0] is 0x19 or 0x22 or 0x23 or 0x24;
+                maySend = pdu.Length > 0 && pdu[0] is 0x19 or 0x22 or 0x23 or 0x24;
             }
             catch (FormatException) { }
         }

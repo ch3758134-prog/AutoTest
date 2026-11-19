@@ -38,8 +38,6 @@ public partial class MainWindow : Window
         // Do not present example ECU responses or require saving before interaction.
         // An unsaved editable request is ready in the quick console on startup.
         InitializeConsole();
-        NameBox.LostFocus += (_, _) => ActionsList.Items.Refresh();
-        GroupBox.LostFocus += (_, _) => ActionsList.Items.Refresh();
         Closing += OnClosing;
         Audit("WORKSPACE", "UDS 诊断控制台已启动。即时请求无需事先创建资源；所有 ECU 响应必须来自真实设备。");
         RefreshSendButton();
@@ -68,8 +66,13 @@ public partial class MainWindow : Window
             DecodeBox.SelectedItem = DecodeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(i => (string?)i.Tag == decoder) ?? DecodeBox.Items[0];
             LoadServiceEditor(a);
+            EditorContextStatus.Text = a is null ? "未选择请求" :
+                _actions.Contains(a)
+                ? "正在编辑已保存操作：" + a.Name + " · 可修改并直接重发"
+                : "当前：未保存的即时请求 · 修改后直接发送，无需先保存";
         }
         finally { _loadingEditor = false; }
+        EditorScroll.ScrollToTop();
     }
 
     private void EditorChanged(object sender, TextChangedEventArgs e) => UpdateActionFromEditor();
@@ -80,6 +83,9 @@ public partial class MainWindow : Window
         if (_loadingEditor || _editing is null) return;
         _editing.Name = NameBox.Text;
         _editing.Group = GroupBox.Text;
+        EditorContextStatus.Text = _actions.Contains(_editing)
+            ? "编辑：" + _editing.Name + " · 当前修改用于下一次发送，保存配置后才写盘"
+            : "未保存的即时请求 · 参数修改立即用于下一次发送";
         _editing.RequestHex = RequestBox.Text;
         _editing.ExpectedPrefixHex = ExpectedBox.Text;
         _editing.Decoder = (DecodeBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Hex";

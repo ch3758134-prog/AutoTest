@@ -1,4 +1,5 @@
 using System.IO;
+using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -7,11 +8,33 @@ using AutoTest.Specialists.Uds.Workbench;
 namespace AutoTest.UdsLab;
 
 /// <summary>One user-editable, reusable diagnostic operation. Not a TEST StepNode.</summary>
-public sealed class DiagnosticAction
+public sealed class DiagnosticAction : INotifyPropertyChanged
 {
+    private string _name = "新诊断操作";
+    private string _group = "未分类";
+
+    public event PropertyChangedEventHandler? PropertyChanged;
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string Name { get; set; } = "新诊断操作";
-    public string Group { get; set; } = "未分类";
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (_name == value) return;
+            _name = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Name)));
+        }
+    }
+    public string Group
+    {
+        get => _group;
+        set
+        {
+            if (_group == value) return;
+            _group = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Group)));
+        }
+    }
     public string RequestHex { get; set; } = "";
     public string ExpectedPrefixHex { get; set; } = "";
     // Human-facing service editor state. Optional for backward compatibility with L1 JSON.

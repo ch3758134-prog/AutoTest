@@ -138,3 +138,39 @@ The existing per-frame exact typed physical authorization remains, including
 ISO-TP flow-control CAN TX; automatic repeated sessions can block or time out.
 Review the dedicated DEVICE authorization proposal before claiming unattended
 continuous diagnostics or state-changing 0x10/0x3E services.
+
+## L2.1 — Live edit + repeat debug UI correction
+
+The prior L2 screenshot exposed a mismatch with the owner's workflow:
+the center was mostly an empty history table, with a small request composer
+at the bottom and editing/response parsing behind a collapsed Expander.
+
+L2.1 corrects that behavior:
+
+- The **editable request is permanently visible in the upper center** and
+  the chronological request/response history is directly below it. Drag the
+  horizontal splitter to allocate height to either panel.
+- One selected saved diagnostic action immediately loads into the same editor,
+  without modal dialogs or edit/saving prerequisites. Name, group, service,
+  DID/subfunction, extra bytes, HEX request, expected prefix, decoder, offset,
+  scale and unit are available in this editing workflow. Response
+  options are **expanded by default**, not hidden.
+- Structured service parameters automatically compose a UDS PDU; selecting
+  "direct HEX edit" permits changes to the actual PDU without the service
+  template silently overwriting it. Changes are reflected in the request
+  used for **the next** Send/Resend, not any immutable previous exchange.
+- Sending can be repeated from the pinned top toolbar while retaining the
+  underlying ECU/USB context and complete, immutable real exchange history.
+  A request snapshots the current action, so in-flight user edits are not
+  retroactively applied to that transmission.
+- Saved action names and groups update visibly on the left as they are typed
+  (WPF INotifyPropertyChanged), instead of only after a focus change.
+- Shortcuts: Ctrl+Enter to send the current request (subject to real-device
+  preflight and physical consent), Ctrl+S to save the configuration.
+- Existing per-frame, exact user typed CAN authorization and service SID
+  restrictions are unchanged. This change does **not** approve state-changing
+  UDS services or claim unattended continuous monitoring.
+
+**Status:** GitHub specialist source candidate; awaiting local Windows Build,
+WPF launch, screenshot review and owner-authorized live ECU verification.
+Do not use mock tests or call static checks a successful ECU run.

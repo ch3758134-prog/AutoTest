@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Data;
 using AutoTest.Specialists.Uds.Workbench;
 
@@ -40,6 +41,20 @@ public partial class MainWindow
     private readonly ObservableCollection<PinnedDiagnosticValue> _pinnedValues = [];
     private DiagnosticAction? _scratchAction;
 
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Enter)
+        {
+            if (SendButton.IsEnabled) Send_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S)
+        {
+            Save_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
+    }
+
     private void InitializeConsole()
     {
         WatchList.ItemsSource = _pinnedValues;
@@ -57,7 +72,8 @@ public partial class MainWindow
         LoadEditor();
         ComposeCurrent();
         ConnectionSettingsExpander.IsExpanded = false;
-        AdvancedEditExpander.IsExpanded = false;
+        AdvancedEditExpander.IsExpanded = true;
+        EditorContextStatus.Text = "当前：临时请求 · 无需保存即可反复发送";
         RefreshSendButton();
     }
 
@@ -77,7 +93,7 @@ public partial class MainWindow
         _editing = _scratchAction;
         LoadEditor();
         ComposeCurrent();
-        AdvancedEditExpander.IsExpanded = false;
+        AdvancedEditExpander.IsExpanded = true;
         Audit("QUICK_NEW", "已切换到未保存的即时诊断请求。");
     }
 
@@ -172,18 +188,6 @@ public partial class MainWindow
         ActionsList.SelectedItem = action;
         _editing = action;
         Delete_Click(sender, e);
-    }
-
-    private void EditSelected_Click(object sender, RoutedEventArgs e)
-    {
-        if (_editing is null || !_actions.Contains(_editing))
-        {
-            MessageBox.Show(this, "请先选择一条已保存的常用操作。");
-            return;
-        }
-        AdvancedEditExpander.IsExpanded = true;
-        NameBox.Focus();
-        NameBox.SelectAll();
     }
 
     private void OperationSearchChanged(object sender, TextChangedEventArgs e)
@@ -281,7 +285,7 @@ public partial class MainWindow
             };
             _editing = _scratchAction;
             LoadEditor();
-            AdvancedEditExpander.IsExpanded = template is null;
+            AdvancedEditExpander.IsExpanded = true;
             Audit("REUSE", "已将真实交互记录回填到即时请求，未发送任何 ECU 帧：" + row.RequestHex);
         }
         catch (Exception ex) { ShowFailure("回填请求失败", ex); }
