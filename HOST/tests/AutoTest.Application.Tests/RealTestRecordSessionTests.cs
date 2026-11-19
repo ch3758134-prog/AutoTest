@@ -597,7 +597,7 @@ public sealed class RealTestRecordSessionTests
             f.Evidence.IsEmpty && f.JudgementEvidenceKind is null);
         var json = await File.ReadAllTextAsync(done.Reports.JsonPath);
         Assert.Contains("EVIDENCE_GATE_NOT_MET", json);
-        Assert.DoesNotContain("\\"judgementEvidenceKind\\": \\"DirectDbcSignal\\"", json);
+        Assert.DoesNotContain("DirectDbcSignal", json);
     }
 
     [Fact]
