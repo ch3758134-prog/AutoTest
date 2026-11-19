@@ -65,6 +65,20 @@
        </Style>
       </TextBlock.Style>
      </TextBlock>
+     <TextBlock Text="{Binding ParkedInspectorNote}" FontSize="10"
+      Foreground="#A9621E" VerticalAlignment="Center" Margin="9,0,0,0"
+      MaxWidth="280" TextTrimming="CharacterEllipsis"
+      ToolTip="{Binding ParkedInspectorNote}">
+      <TextBlock.Style>
+       <Style TargetType="TextBlock">
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding ParkedInspectorCount}" Value="0">
+          <Setter Property="Visibility" Value="Collapsed"/>
+         </DataTrigger>
+        </Style.Triggers>
+       </Style>
+      </TextBlock.Style>
+     </TextBlock>
     </StackPanel>
    </DockPanel>
   </Border>
