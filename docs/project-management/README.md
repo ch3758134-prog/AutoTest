@@ -38,3 +38,7 @@
 ## 2026-11-18 主控 IO / USB 接口更新
 
 - [最新固件 GPIO 初始化、IGN 引脚修订、LED1～6 USB 0x1A～0x1C、RL_DRV 硬件内部化](new-baseline-20261112/research/MAIN-CONTROL-IO-USB-SOURCE-UPDATE-20261118.md)：已回读 `Main_Control@bf81a64e` 源码，Keil 编译和实物验收未完成；旧 IGN=PTC10/J1 C6 映射已废止。
+
+## 2026-11-19 G4 阶段成果接收与新 UI 职责
+
+- [G4 PR #61 源码受控接收、INTEGRATION Issue #62、Fluent UI 单一设计源](new-baseline-20261112/research/G4-PR61-BASELINE-ACCEPTANCE-20261119.md)：**最新用户决策优先**。G4 阶段源码认可但未正式合入 main；ui/ide-design 为唯一活动 UI 设计源，feature/ui-rebuild-20261119 暂停。
