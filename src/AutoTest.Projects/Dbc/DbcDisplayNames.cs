@@ -171,13 +171,13 @@ public sealed class DbcDisplayNames
     public string MessageLabel(DbcMessage message)
     {
         var chinese = MessageAlias(message.Id);
-        return string.IsNullOrWhiteSpace(chinese) ? message.Name : chinese + " · " + message.Name;
+        return string.IsNullOrWhiteSpace(chinese) ? message.Name : chinese;
     }
 
     public string SignalLabel(DbcMessage message, DbcSignal signal)
     {
         var chinese = SignalAlias(message.Id, signal.Name);
-        return string.IsNullOrWhiteSpace(chinese) ? signal.Name : chinese + " · " + signal.Name;
+        return string.IsNullOrWhiteSpace(chinese) ? signal.Name : chinese;
     }
 
     public void SetMessageAlias(uint messageId, string? alias)
