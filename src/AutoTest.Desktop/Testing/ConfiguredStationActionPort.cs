@@ -95,7 +95,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             {
                 if (target.Role != BusRole.DutCan)
                     throw new ProjectDataException("CAN_TX_ROLE",
-                        "自动测试发送的 DBC 报文必须绑定 ECU CAN0，不能向 KEY_SIM CAN1 发送：" + target.Name);
+                        "自动测试 DBC 报文必须绑定 ECU CAN，不能向 KEY CAN 发送：" + target.Name);
                 if (asset.Kind != ProjectWorkspaceService.DbcKind)
                     throw new ProjectDataException("CAN_MAPPING_KIND", target.Name);
                 var message = DbcSource.Load(bytes).Parse(asset.Name).FindMessage(target.CanId);
@@ -140,7 +140,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 if (period > 0 && target.Kind is not (TestTargetKind.RawCan or TestTargetKind.CanMessage))
                     throw new FormatException("只有 ECU CAN 报文可以进行周期发送。");
                 if (target.Kind == TestTargetKind.CanMessage && target.Role != BusRole.DutCan)
-                    throw new InvalidOperationException("DBC 发送目标必须在 ECU CAN0。");
+                    throw new InvalidOperationException("DBC 发送目标必须在 ECU CAN。");
                 if (period == 0 && duration > 0 &&
                     target.Kind is TestTargetKind.RawCan or TestTargetKind.CanMessage)
                     throw new FormatException("需要先设置 CAN 发送周期才能设置持续时间。");
@@ -195,7 +195,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     {
         ct.ThrowIfCancellationRequested();
         if (_periodicErrors.TryPeek(out var fault))
-            throw new IOException("CAN0 周期发送已经发生设备通信故障，已禁止继续执行其他步骤。", fault);
+            throw new IOException("ECU CAN 周期发送发生通信故障，已停止后续步骤。", fault);
         if (_unknown)
             throw new IOException("KEY_SIM 输出状态 UNKNOWN，停止其他真实硬件操作。");
         return ValueTask.CompletedTask;
@@ -251,7 +251,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             if (action.StartsWith("PERIODIC:", StringComparison.OrdinalIgnoreCase))
             {
                 if (target.Kind is not (TestTargetKind.CanMessage or TestTargetKind.RawCan))
-                    throw new InvalidOperationException("周期报文只能使用 ECU 的 CAN0 原始帧或 DBC 报文。");
+                    throw new InvalidOperationException("周期发送只能使用 ECU CAN 原始帧或 DBC 报文。");
                 var fields = action.Split(':', 4);
                 if (fields.Length != 4 ||
                     !int.TryParse(fields[1], NumberStyles.None, CultureInfo.InvariantCulture,
@@ -444,7 +444,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
         finally { _serial.Release(); }
     }
 
-    // Separate scheduler for each active DUT CAN0 frame. This uses host timing rather
+    // Separate scheduler for each active ECU CAN frame. This uses host timing rather
     // than pretending that the current host interface configures firmware 0x50.
     // All writes still traverse the same hardware authorization and ACK path.
     private async Task SendPeriodicAsync(CanFrame frame, int periodMs, int durationMs,
@@ -478,7 +478,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 throw new InvalidOperationException("真实自动测试尚未授权。");
             await StopPeriodicWorkersAsync();
             if (_periodicErrors.TryDequeue(out var failure))
-                throw new IOException("CAN0 周期发送发生设备通信错误。", failure);
+                throw new IOException("ECU CAN 周期发送发生设备通信错误。", failure);
         }
         finally { _serial.Release(); }
     }
@@ -518,7 +518,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 await _hardware.RevokeTestRunAsync();
             }
             if (_periodicErrors.TryDequeue(out var periodicFailure))
-                throw new IOException("CAN0 周期发送期间出现设备错误，测试不能判为通过。",
+                throw new IOException("ECU CAN 周期发送期间出现设备错误，测试不能判为通过。",
                     periodicFailure);
         }
         finally { _serial.Release(); }
