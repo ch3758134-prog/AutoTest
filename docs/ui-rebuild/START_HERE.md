@@ -1,3 +1,5 @@
+> **暂停通知／最新项目管理决策（2026-11-19）**：本分支是前一轮为 UI 实施准备的临时分支，**不是目前活动 UI 设计分支**。项目负责人随后明确优先通过 PR #61 受控接收 G4 源码到 main，现代 Fluent UI **设计归 ui/ide-design 专项**。本分支目前为 PAUSED / STALE_BASE，勿依据下文旧计划开始 WPF 实施或接线。待 UI 专项具体设计通过用户操作验收、INTEGRATION 接收 main 基线后再重新决定实施分支及起点。正式最新合同见 Project_Management/docs/project-management/new-baseline-20261112/research/G4-PR61-BASELINE-ACCEPTANCE-20261119.md。以下原文仅作历史准备记录。
+
 # AutoTest｜全界面 WPF 优先重建分支：执行入口
 
 **开发分支**：`feature/ui-rebuild-20261119`；起点 `main@1d6eeba8561a779640b20c5a3f384327a0018079`。  
