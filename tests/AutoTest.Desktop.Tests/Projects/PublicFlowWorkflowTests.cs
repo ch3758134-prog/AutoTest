@@ -48,7 +48,7 @@ public sealed class PublicFlowWorkflowTests
             var opened = await workspace.OpenPublicFlowEditorAsync(asset.Id);
             await File.AppendAllTextAsync(opened.FilePath, " ");
             var edited = opened.Document with { Name = "更名草稿" };
-            var error = await Assert.ThrowsAsync<AutoTest.Projects.Resources.ProjectDataException>(
+            var error = await Assert.ThrowsAsync<AutoTest.Projects.Project.ProjectDataException>(
                 () => workspace.SavePublicFlowEditorAsync(opened, edited));
             Assert.Equal("FLOW_FILE_CONFLICT", error.Code);
         }
