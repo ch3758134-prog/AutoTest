@@ -6,9 +6,6 @@
  * 夹具2：PTC2 → U23 CH3 → Air_ALVE2 → J1 B4。
  * 每一路的 0=释放、1=压紧；操作一路不改变另一路。
  * RL_DRV 是板内公共功率电路控制，不对 USB 暴露。
- * 启动时所有输出请求和 RL_DRV 均为 OFF；任何有效 ON 请求先使能
- * RL_DRV，再打开对应输出；最后一个 OFF 请求完成后关闭 RL_DRV。
- * HOUT9/HOUT10 与 U22 CH4 未分配通道始终维持上电默认 LOW。
  * @warning OK 仅表示 MCU 已执行 GPIO 命令，不代表外部阀位。
  */
 #include "ASW_IoCtrl.h"
@@ -18,35 +15,6 @@
 
 /* bit0/bit1：各夹具当前压紧请求，不是实际机械位置。 */
 static uint8_t s_clampRequestMask = 0U;
-
-/* 只跟踪此 ASW 模块有权管理的 9 路输出请求（不是机械/电压反馈）。
- * bit0 IGN; bit1..6 LED1..6; bit7/8 夹具1/2。
- * 未分配的 HOUT9/10、U22 CH4 始终保持 GPIO LOW。
- */
-#define IO_REQ_IGN       ((uint16_t)0x001U)
-#define IO_REQ_LEDS      ((uint16_t)0x07EU)
-#define IO_REQ_CLAMP1    ((uint16_t)0x080U)
-#define IO_REQ_CLAMP2    ((uint16_t)0x100U)
-static uint16_t s_outputRequestMask = 0U;
-
-/* 只在业务显式要求开启输出时使能共用母线，非 USB 自由控制项。 */
-static void PrepareOutputRequest(uint8_t level)
-{
-    if (level != 0U)
-        EAL_GPIO_WRITE(RL_DRV, 1U);
-}
-
-/* 先关闭指定通道，再决定是否可以关闭公共母线；不误断其它路。 */
-static void FinishOutputRequest(uint16_t bit, uint8_t level)
-{
-    if (level != 0U)
-        s_outputRequestMask |= bit;
-    else
-        s_outputRequestMask &= (uint16_t)~bit;
-
-    if (s_outputRequestMask == 0U)
-        EAL_GPIO_WRITE(RL_DRV, 0U);
-}
 
 static void ReplyStatus(uint16_t seq, uint8_t cmd, uint8_t status)
 {
@@ -63,7 +31,7 @@ static uint8_t ParseOnOff(const uint8_t *payload, uint8_t len, uint8_t *out)
 
 
 /* HIGH 请求对应 HOUT 通道导通，LOW 请求关断；只证明 GPIO 指令。 */
-static void WriteLedGpio(uint8_t index, uint8_t level)
+static void SetLed(uint8_t index, uint8_t level)
 {
     switch (index)
     {
@@ -87,42 +55,23 @@ static uint8_t ReadLedMask(void)
                      (EAL_GPIO_READ(LED6) << 5U));
 }
 
-static void SetLed(uint8_t index, uint8_t level)
-{
-    const uint16_t bit = (uint16_t)(1U << index); /* index 1..6 */
-    PrepareOutputRequest(level);
-    WriteLedGpio(index, level);
-    FinishOutputRequest(bit, level);
-}
-
 static void WriteLedMask(uint8_t mask)
 {
-    /* 组命令一次计算最终状态，避免逐路写入期间公共母线反复开关。
-     * GPIO 实际依次更新，不承诺跨 GPIOB/GPIOC 的硬件同时切换。
-     */
-    if (mask != 0U)
-        PrepareOutputRequest(1U);
-    WriteLedGpio(1U, (uint8_t)((mask >> 0U) & 1U));
-    WriteLedGpio(2U, (uint8_t)((mask >> 1U) & 1U));
-    WriteLedGpio(3U, (uint8_t)((mask >> 2U) & 1U));
-    WriteLedGpio(4U, (uint8_t)((mask >> 3U) & 1U));
-    WriteLedGpio(5U, (uint8_t)((mask >> 4U) & 1U));
-    WriteLedGpio(6U, (uint8_t)((mask >> 5U) & 1U));
-    s_outputRequestMask = (uint16_t)((s_outputRequestMask & (uint16_t)~IO_REQ_LEDS) |
-                                      ((uint16_t)mask << 1U));
-    if (s_outputRequestMask == 0U)
-        EAL_GPIO_WRITE(RL_DRV, 0U);
+    /* 六路依次写入：不承诺跨 GPIOB/GPIOC 的硬件同时切换。 */
+    SetLed(1U, (uint8_t)((mask >> 0U) & 1U));
+    SetLed(2U, (uint8_t)((mask >> 1U) & 1U));
+    SetLed(3U, (uint8_t)((mask >> 2U) & 1U));
+    SetLed(4U, (uint8_t)((mask >> 3U) & 1U));
+    SetLed(5U, (uint8_t)((mask >> 4U) & 1U));
+    SetLed(6U, (uint8_t)((mask >> 5U) & 1U));
 }
 
-/** @brief 两只夹具请求关闭；只有其它通道也关闭才关公共母线。 */
+/** @brief 两只夹具请求释放；不切断内部 SOL24IN 共用功率母线。 */
 static void ReleaseBothClamps(void)
 {
     EAL_GPIO_WRITE(AIR_ALVE1, 0U);
     EAL_GPIO_WRITE(AIR_ALVE2, 0U);
     s_clampRequestMask = 0U;
-    s_outputRequestMask &= (uint16_t)~(IO_REQ_CLAMP1 | IO_REQ_CLAMP2);
-    if (s_outputRequestMask == 0U)
-        EAL_GPIO_WRITE(RL_DRV, 0U);
 }
 
 /**
@@ -134,8 +83,6 @@ static void ReleaseBothClamps(void)
 static void SetClamp(uint8_t clamp, uint8_t state)
 {
     const uint8_t bit = (clamp == 1U) ? 0x01U : 0x02U;
-    const uint16_t reqBit = (clamp == 1U) ? IO_REQ_CLAMP1 : IO_REQ_CLAMP2;
-    PrepareOutputRequest(state);
     if (clamp == 1U)
         EAL_GPIO_WRITE(AIR_ALVE1, state);
     else
@@ -144,7 +91,6 @@ static void SetClamp(uint8_t clamp, uint8_t state)
         s_clampRequestMask |= bit;
     else
         s_clampRequestMask &= (uint8_t)~bit;
-    FinishOutputRequest(reqBit, state);
 }
 
 void ASW_IoCtrl_HandleCmd(uint16_t seq, uint8_t cmd,
@@ -159,9 +105,7 @@ void ASW_IoCtrl_HandleCmd(uint16_t seq, uint8_t cmd,
                 ReplyStatus(seq, cmd, CDD_USB_STS_ERR_FMT);
                 break;
             }
-            PrepareOutputRequest(value);
             EAL_GPIO_WRITE(IGN, value);
-            FinishOutputRequest(IO_REQ_IGN, value);
             ReplyStatus(seq, cmd, CDD_USB_STS_OK);
             break;
 
