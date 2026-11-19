@@ -265,6 +265,7 @@ public sealed class CanToolFlashWorkflow(
             if(final.Length<2 || final[1]!=0x01)
                 throw new InvalidDataException("Boot 51 01 复位正响应不完整。");
             resetAck=true;
+            log("S9 Boot ECUReset：已收到 51 01，复位命令确认完成。");
         }
         // The complete CanTool run in the supplied 31,441-line capture
         // stops after Boot 51 01. Do not inject any extra APP 10 03 request

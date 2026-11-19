@@ -87,6 +87,23 @@ public partial class FlashLabWindow : Window
 
     private void AdvanceStage(string line)
     {
+        // Stage 09 is completed ONLY after the ECU's positive 51 01 reply,
+        // not when the reset request is sent or when the next phase starts.
+        if(line.Contains("S9 Boot ECUReset：已收到 51 01",StringComparison.Ordinal))
+        {
+            _vm.MarkStage(8,"已完成");
+            _activeStage=8;
+            WorkflowStatusLabel.Text="ECU 已确认 Boot 51 01 复位；APP 启动尚未验证。";
+            return;
+        }
+        if(line.Contains("S10 参考 CanTool 烧录已结束",StringComparison.Ordinal))
+        {
+            _vm.MarkStage(8,"已完成");
+            _vm.MarkStage(9,"待核验");
+            _activeStage=9;
+            WorkflowStatusLabel.Text="参考烧录完成；APP 启动与版本待单独核验。";
+            return;
+        }
         int step=-1;
         if(line.Contains("S1 检查 Boot",StringComparison.Ordinal))step=0;
         else if(line.Contains("S1/S2 APP",StringComparison.Ordinal) ||
@@ -99,7 +116,6 @@ public partial class FlashLabWindow : Window
         else if(line.Contains("S8 校验",StringComparison.Ordinal) ||
                 line.Contains("UDS Verify FF01 请求",StringComparison.Ordinal))step=7;
         else if(line.Contains("S9 Boot",StringComparison.Ordinal))step=8;
-        else if(line.Contains("S10 复位后",StringComparison.Ordinal))step=9;
         if(step>=0)
         {
             _vm.MarkStage(step,"进行中");
@@ -583,6 +599,10 @@ public partial class FlashLabWindow : Window
                 $"逐块校验={outcome.VerifiedBytes:N0}B, "+
                 $"Boot复位确认={outcome.ResetAcknowledged}；"+
                 $"APP会话确认={outcome.AppSessionObserved}。";
+            // The reset row must not remain "进行中"/"已结束" after
+            // validated 51 01, even when the optional APP state is unknown.
+            _vm.MarkStage(8,"已完成");
+            _activeStage=9;
             if(outcome.AppSessionObserved)
             {
                 _vm.MarkStage(9,"已完成");

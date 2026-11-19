@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace AutoTest.Specialists.Uds;
@@ -45,6 +46,35 @@ public sealed class IsoTpConversation
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         { throw new TimeoutException("ISO-TP frame/flow-control timeout."); }
     }
+    // Windows Task.Delay(1ms) can take a full timer tick (~15.6ms).
+    // For short ISO-TP STmin values, compare Stopwatch elapsed time since
+    // the preceding CAN link SendAsync completion and wait only the remainder.
+    // A bounded short spin avoids repeatedly adding that timer tick.
+    // For longer STmin values, use cancellable asynchronous delay first.
+    // The link's physical device still owns arbitration and CAN transmission.
+    private static async ValueTask WaitForStMinAsync(
+        long previousSendCompletedTicks,TimeSpan stMin,CancellationToken ct)
+    {
+        if(stMin<=TimeSpan.Zero)return;
+        while(true)
+        {
+            ct.ThrowIfCancellationRequested();
+            var remaining=stMin-Stopwatch.GetElapsedTime(previousSendCompletedTicks);
+            if(remaining<=TimeSpan.Zero)return;
+            if(remaining>TimeSpan.FromMilliseconds(2))
+            {
+                await Task.Delay(remaining-TimeSpan.FromMilliseconds(1),ct)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // At 1ms, Task.Delay is slower than the whole intended interval.
+                // Spin only for the remaining <=2ms, with cancellation checks.
+                Thread.SpinWait(64);
+            }
+        }
+    }
+
     public async ValueTask SendPduAsync(ReadOnlyMemory<byte> pdu, CancellationToken ct = default)
     {
         if (pdu.Length is < 1 or > IsoTpFrameCodec.MaxClassicPdu) throw new ArgumentOutOfRangeException(nameof(pdu));
@@ -54,6 +84,7 @@ public sealed class IsoTpConversation
             return;
         }
         await _link.SendAsync(IsoTpFrameCodec.EncodeFirst(pdu.Length, pdu.Span), ct).ConfigureAwait(false);
+        long lastSendCompletedTicks=Stopwatch.GetTimestamp();
         int offset = 6, nextSeq = 1, waitFrames = 0;
         while (offset < pdu.Length)
         {
@@ -70,10 +101,12 @@ public sealed class IsoTpConversation
             int sent = 0;
             while (offset < pdu.Length && (flow.BlockSize == 0 || sent < flow.BlockSize))
             {
-                if (flow.StMin > TimeSpan.Zero) await Task.Delay(flow.StMin, ct).ConfigureAwait(false);
+                await WaitForStMinAsync(lastSendCompletedTicks,flow.StMin,ct)
+                    .ConfigureAwait(false);
                 var count = Math.Min(7, pdu.Length - offset);
                 await _link.SendAsync(IsoTpFrameCodec.EncodeConsecutive((byte)nextSeq,
                     pdu.Span.Slice(offset, count)), ct).ConfigureAwait(false);
+                lastSendCompletedTicks=Stopwatch.GetTimestamp();
                 nextSeq = (nextSeq + 1) & 0xF; offset += count; sent++;
             }
         }

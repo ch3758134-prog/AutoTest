@@ -48,7 +48,7 @@ public sealed class FlashLabViewModel : INotifyPropertyChanged
         new("07  退出传输 (0x37)"),
         new("08  ECU 校验"),
         new("09  ECU 复位"),
-        new("10  APP 应答复查")
+        new("10  APP 启动/版本（待单独核验）")
     ];
     public void ResetStages()
     {
