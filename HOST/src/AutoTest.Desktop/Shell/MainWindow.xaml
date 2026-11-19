@@ -92,7 +92,7 @@
         <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
         <Separator/>
         <MenuItem Header="DBC 编辑" Command="{Binding OpenDbcToolCommand}"/>
-        <MenuItem Header="输入模拟配置" Command="{Binding OpenControllerCommand}"/>
+        <MenuItem Header="输入配置（工程内编辑）" Command="{Binding OpenControllerCommand}"/>
         <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
         <MenuItem Header="波形配置" Command="{Binding OpenWaveConfigCommand}"/>
         <MenuItem Header="ECU 烧录" Command="{Binding OpenFlashWorkbenchCommand}"/>
@@ -477,19 +477,19 @@
   <Border Grid.Row="3" Background="White" BorderBrush="{StaticResource AT.Border}" BorderThickness="0,1,0,0">
    <DockPanel Margin="11,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="{Binding HardwareStatus}" Foreground="White"
+     <TextBlock Text="{Binding HardwareStatus}" Foreground="{StaticResource AT.Muted}"
       FontSize="10" VerticalAlignment="Center" Margin="0,0,13,0"/>
      <TextBlock Text="扫码" Foreground="{StaticResource AT.Muted}" FontSize="10"
       VerticalAlignment="Center" Margin="0,0,4,0"/>
-     <TextBox x:Name="ScannerEntry" Width="94" Height="20" MinHeight="0" Padding="4,0"
+     <TextBox x:Name="ScannerEntry" Width="125" Height="25" MinHeight="0" Padding="4,0"
       FontSize="10" VerticalContentAlignment="Center" Margin="0,0,8,0"
       ToolTip="扫码枪键盘输入；按 Enter 完成匹配，不自动触发生产执行"
       PreviewTextInput="ScannerEntry_TextInput" PreviewKeyDown="ScannerEntry_KeyDown"/>
-     <Button Content="观察" Click="ToggleBottom_Click"
-      Foreground="White" Background="Transparent" BorderThickness="0"
+     <Button Content="观察区" Click="ToggleBottom_Click"
+      Foreground="{StaticResource AT.Muted}" Background="Transparent" BorderThickness="0"
       MinWidth="38" MinHeight="20" Height="20" Padding="2,0" FontSize="10" Margin="0,0,3,0"/>
-     <Button Content="属性" Click="ToggleInspector_Click"
-      Foreground="White" Background="Transparent" BorderThickness="0"
+     <Button Content="属性区" Click="ToggleInspector_Click"
+      Foreground="{StaticResource AT.Muted}" Background="Transparent" BorderThickness="0"
       MinWidth="38" MinHeight="20" Height="20" Padding="2,0" FontSize="10" Margin="0"/>
     </StackPanel>
     <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AT.Muted}" FontSize="11"
