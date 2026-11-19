@@ -13,6 +13,11 @@ public sealed class DiagnosticAction
     public string Group { get; set; } = "未分类";
     public string RequestHex { get; set; } = "";
     public string ExpectedPrefixHex { get; set; } = "";
+    // Human-facing service editor state. Optional for backward compatibility with L1 JSON.
+    public string ServiceSidHex { get; set; } = "";
+    public string PrimaryHex { get; set; } = "";
+    public string AuxiliaryHex { get; set; } = "";
+    public bool RawMode { get; set; } = false;
     public string Decoder { get; set; } = "Hex";
     public int DataOffset { get; set; } = 3;
     public double Scale { get; set; } = 1;
@@ -21,7 +26,8 @@ public sealed class DiagnosticAction
     public DiagnosticAction Duplicate() => new()
     {
         Name = Name + " · 副本", Group = Group, RequestHex = RequestHex,
-        ExpectedPrefixHex = ExpectedPrefixHex, Decoder = Decoder,
+        ExpectedPrefixHex = ExpectedPrefixHex, ServiceSidHex = ServiceSidHex,
+        PrimaryHex = PrimaryHex, AuxiliaryHex = AuxiliaryHex, RawMode = RawMode, Decoder = Decoder,
         DataOffset = DataOffset, Scale = Scale, Unit = Unit
     };
 }
@@ -76,6 +82,8 @@ public static class DiagnosticWorkspace
             if (action is null || string.IsNullOrWhiteSpace(action.Name) ||
                 action.Name.Length > 200 || action.Group.Length > 200 ||
                 action.DataOffset is < 0 or > 4095 ||
+                action.ServiceSidHex.Length > 2 || action.PrimaryHex.Length > 8190 ||
+                action.AuxiliaryHex.Length > 8190 ||
                 !double.IsFinite(action.Scale) || Math.Abs(action.Scale) > 1e12 ||
                 action.Decoder is not ("Hex" or "Ascii" or "UInt16BE" or "UInt16LE" or "UInt8"))
                 throw new InvalidDataException("存在无效的诊断操作参数。");

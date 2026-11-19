@@ -31,6 +31,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitializeServiceComposer();
+        InitializeExchangeHistory();
         ActionsList.ItemsSource = _actions;
         _actions.Add(new DiagnosticAction
         {
@@ -69,6 +71,7 @@ public partial class MainWindow : Window
             string decoder = a?.Decoder ?? "Hex";
             DecodeBox.SelectedItem = DecodeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(i => (string?)i.Tag == decoder) ?? DecodeBox.Items[0];
+            LoadServiceEditor(a);
         }
         finally { _loadingEditor = false; }
     }
@@ -90,11 +93,12 @@ public partial class MainWindow : Window
         if (double.TryParse(ScaleBox.Text, NumberStyles.Float,
                 CultureInfo.InvariantCulture, out var scale))
             _editing.Scale = scale;
+        SaveServiceEditorState();
     }
 
     private void Add_Click(object sender, RoutedEventArgs e)
     {
-        var action = new DiagnosticAction();
+        var action = new DiagnosticAction { RawMode = true };
         _actions.Add(action);
         ActionsList.SelectedItem = action;
         NameBox.Focus();
@@ -355,6 +359,8 @@ public partial class MainWindow : Window
                     "。已收到正响应不代表 ECU 功能状态已产生实际变化。";
                 Audit(expectedMatches && didMatches ? "UDS_POSITIVE" : "UDS_MISMATCH",
                     correlation + " · " + ResultStatus.Text + " · " + elapsed + "ms");
+                RecordExchange(action.Name, request, LastResponseBox.Text, ParsedBox.Text,
+                    ResultStatus.Text, DetailBox.Text, started, correlation);
             }
             else if (result.NegativeResponseCode is byte nrc)
             {
@@ -363,6 +369,8 @@ public partial class MainWindow : Window
                 DetailBox.Text = NrcName(nrc) + " · " + elapsed +
                     " ms。否定响应不等于通信失败；请核对会话、权限、参数与 ECU 条件。";
                 Audit("UDS_NEGATIVE", correlation + " · " + DetailBox.Text);
+                RecordExchange(action.Name, request, LastResponseBox.Text, "",
+                    ResultStatus.Text, DetailBox.Text, started, correlation);
             }
             else
             {
@@ -371,6 +379,8 @@ public partial class MainWindow : Window
                 DetailBox.Text = "未收到完整有效的最终 ECU 响应。请检查 UDS 追踪、CAN/USB 原始记录。";
                 _requiresReconnect = true;
                 Audit("UDS_UNCERTAIN", correlation + " · " + DetailBox.Text);
+                RecordExchange(action.Name, request, LastResponseBox.Text, "",
+                    ResultStatus.Text, DetailBox.Text, started, correlation);
             }
         }
         catch (OperationCanceledException ex)
@@ -380,6 +390,8 @@ public partial class MainWindow : Window
             ResultStatus.Foreground = Brushes.DarkOrange;
             DetailBox.Text = ex.Message + "。ECU 是否已执行副作用未知；必须重新连接。";
             Audit("UDS_CANCEL", correlation + " · " + DetailBox.Text);
+            RecordExchange(action.Name, request, LastResponseBox.Text, "",
+                ResultStatus.Text, DetailBox.Text, started, correlation);
         }
         catch (Exception ex)
         {
@@ -389,6 +401,8 @@ public partial class MainWindow : Window
             DetailBox.Text = ex.GetType().Name + ": " + ex.Message +
                 "。请检查原始记录并重新连接。";
             Audit("UDS_ERROR", correlation + " · " + ex);
+            RecordExchange(action.Name, request, LastResponseBox.Text, "",
+                ResultStatus.Text, DetailBox.Text, started, correlation);
         }
     }
 
@@ -438,6 +452,7 @@ public partial class MainWindow : Window
                 Actions = CaptureWorkspace().Actions,
                 Audit = _audit.ToArray(),
                 PhysicalTrace = _rawLines.ToArray(),
+                Exchanges = _exchangeHistory.ToArray(),
                 Limitations = "USB ACK is not ECU response; not field-validated; exact-frame manual authorization required."
             };
             await File.WriteAllTextAsync(dialog.FileName,

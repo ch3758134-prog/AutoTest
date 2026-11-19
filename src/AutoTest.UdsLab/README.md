@@ -37,3 +37,38 @@ Requires the solution's .NET 10 SDK and a recognized real main-control board wit
 - No mock device success path, no duplicate CAN/ISO-TP/UDS interpreter, no G4 step edits, no FLASH image/programming.
 - Contract: `docs/uds-lab/START_HERE.md`, management branch `Project_Management` -> `UDS-DEDICATED-BRANCH-AND-REAL-LAB-20261118.md`.
 - Candidate status: **SOURCE_IMPLEMENTED / WINDOWS_BUILD_NOT_RUN / FIELD_NOT_VERIFIED**.
+
+## L1.1 — service-driven interaction and manual sequence candidate
+
+The first screenshot from field UI review exposed a usability defect: the L1 window
+required users to enter SID/DID/PDU by hand and did not offer an organized path
+for consecutive diagnostic operations. The revised *candidate* adds:
+
+- Create a named user operation directly from a built-in UDS service selection.
+  Currently includes DID read, DTC read, scaling read, memory read, session
+  control, TesterPresent, ECU reset, clear DTC, write DID, I/O control, routine,
+  security access, communication control, periodic identifier and DTC setting.
+- A structured editor with service-specific parameter labels and automatic
+  UDS PDU / expected-prefix construction. Advanced raw HEX editing is still
+  available, and raw requests do not silently get rewritten by the template.
+- A persistent (in-memory) manual sequence of user actions: add/remove actions,
+  invoke the next one, rotate the queue and keep the same connected ECU context.
+- A request/response history list that retains all attempted exchanges and lets
+  the user inspect a previous outcome without sending another request. Exchange
+  entries are included in the evidence JSON.
+- Diagnostic workspace JSON stores service-editor fields while remaining able
+  to load earlier L1 action documents. Still no proprietary DID database or
+  full DTC/ODX decoder.
+
+**This is not automatic continuous UDS communication.** The physical
+`PhysicalCommandFence` currently requires exact manual approval for **every**
+CAN frame, including flow-control frames. It cannot meet the timing and UX of
+automatic polling or multi-frame diagnostic sequences. The GUI is honest about
+this limitation; operation-level bounded authorization would require an explicit
+DEVICE/PM reviewed contract. No implicit token fabrication or fence bypass.
+
+Only the already approved read-only SID path is physically enabled. Templates
+for session control, write, routine, reset, security and other potentially
+state-changing services are **editing/inspection only**, not live ECU execution.
+The L1.1 source has not been Windows-built/ECU-validated until local Codex and
+the field user report results for this commit.
