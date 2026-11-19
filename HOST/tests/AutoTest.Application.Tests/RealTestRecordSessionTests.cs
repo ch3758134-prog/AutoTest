@@ -210,7 +210,18 @@ public sealed class RealTestRecordSessionTests
         Assert.Equal(terminal, history.TerminalState);
         Assert.Equal(verdict, history.Verdict?.ToString());
         Assert.Equal(RecordPersistenceState.Committed, history.Persistence);
-        Assert.NotEmpty(await fixture.Database.ReadStepFactsAsync(record.RunId));
+        var step = Assert.Single(await fixture.Database.ReadStepFactsAsync(record.RunId));
+        if (testOutcome == "Failed")
+        {
+            Assert.Equal("CONDITION_FALSE", step.FailureCode);
+            var events = await fixture.Database.ReadFactsAsync(new RecordQuery(record.RunId, 20));
+            Assert.Contains(events, f => f.Kind == RunFactKind.Judgement &&
+                f.Description.StartsWith("STEP_END", StringComparison.Ordinal));
+        }
+        else
+        {
+            Assert.Equal("NO_DATA", step.FailureCode);
+        }
         Assert.True(File.Exists(done.Reports.HtmlPath));
     }
 
