@@ -46,7 +46,7 @@ public sealed class DemoStep : INotifyPropertyChanged
     {
         "ign" or "sol" => "工位能力",
         "can" or "canwait" => "DBC",
-        "input" => "按键配置",
+        "input" => "KEY 动作",
         "wave" or "wavecheck" => "波形资源",
         "uds" => "UDS 服务",
         _ => "—"
