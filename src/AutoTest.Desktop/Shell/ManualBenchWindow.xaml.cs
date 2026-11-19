@@ -3,6 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using AutoTest.Desktop.Shell;
@@ -172,16 +175,90 @@ public partial class ManualBenchWindow : Window
         }
     }
 
-    private async void LedOn_Click(object sender, RoutedEventArgs e)
+    private static T? Ancestor<T>(DependencyObject? source) where T : DependencyObject
     {
-        if (sender is System.Windows.Controls.Button { Tag: byte index })
-            await _model.ApplyLedSelectionAsync(index, true);
+        while (source is not null)
+        {
+            if (source is T target) return target;
+            source = source is Visual || source is System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(source)
+                : LogicalTreeHelper.GetParent(source);
+        }
+        return null;
     }
 
-    private async void LedOff_Click(object sender, RoutedEventArgs e)
+    private void ShowQuickEditor(ManualBenchViewModel.BenchCanRow row, UIElement anchor)
     {
-        if (sender is System.Windows.Controls.Button { Tag: byte index })
-            await _model.ApplyLedSelectionAsync(index, false);
+        if (!_model.CanEditCanRows) return;
+        _model.SelectedCanRow = row;
+        CanQuickPopup.IsOpen = false;
+        CanQuickPopup.PlacementTarget = anchor;
+        CanQuickPopup.IsOpen = true;
+    }
+
+    private void OpenCanQuickEdit_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ManualBenchViewModel.BenchCanRow row } button)
+            ShowQuickEditor(row, button);
+    }
+
+    private void CloseCanQuickEdit_Click(object sender, RoutedEventArgs e) =>
+        CanQuickPopup.IsOpen = false;
+
+    private void CanSendGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Ancestor<DataGridRow>(e.OriginalSource as DependencyObject) is not
+            { Item: ManualBenchViewModel.BenchCanRow row } container)
+            return;
+        if (Ancestor<Button>(e.OriginalSource as DependencyObject) is not null) return;
+        ShowQuickEditor(row, container);
+        e.Handled = true;
+    }
+
+    private void CanSendGrid_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Ancestor<DataGridRow>(e.OriginalSource as DependencyObject) is
+            { Item: ManualBenchViewModel.BenchCanRow row })
+            _model.SelectedCanRow = row;
+    }
+
+    private void CanProperties_Click(object sender, RoutedEventArgs e)
+    {
+        CanQuickPopup.IsOpen = false;
+        if (_model.SelectedCanRow is null) return;
+        if (!_model.CanEditCanRows)
+        {
+            MessageBox.Show(this, "当前 CAN 任务尚未结束，不能修改发送配置。",
+                "CAN 编辑已锁定", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        new ManualBenchCanPropertiesWindow(_model) { Owner = this }.ShowDialog();
+    }
+
+    private void CanQuickEditMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (_model.SelectedCanRow is not { } row) return;
+        if (CanSendGrid.ItemContainerGenerator.ContainerFromItem(row) is DataGridRow target)
+            ShowQuickEditor(row, target);
+    }
+
+    private void MonitorGrid_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Ancestor<DataGridRow>(e.OriginalSource as DependencyObject) is
+            { Item: ManualBenchViewModel.MonitorEntry row })
+            CanMonitorGrid.SelectedItem = row;
+    }
+
+    private void CopyMonitorFrame_Click(object sender, RoutedEventArgs e)
+    {
+        if (CanMonitorGrid.SelectedItem is ManualBenchViewModel.MonitorEntry entry)
+            Clipboard.SetText(entry.FullFrame);
+    }
+
+    private void CopyMonitorData_Click(object sender, RoutedEventArgs e)
+    {
+        if (CanMonitorGrid.SelectedItem is ManualBenchViewModel.MonitorEntry entry)
+            Clipboard.SetText(entry.Data);
     }
 
     private async void Clamp1Press_Click(object sender, RoutedEventArgs e) =>
