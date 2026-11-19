@@ -1039,8 +1039,6 @@ public sealed class MainWindowViewModel : BindableBase
                     asset.Kind == ProjectWorkspaceService.TestProgramKind ||
                     lastKey.StartsWith("project|", StringComparison.Ordinal) &&
                     asset.Kind == ProjectWorkspaceService.TestProjectKind ||
-                    lastKey.StartsWith("dbc|", StringComparison.Ordinal) &&
-                    asset.Kind == ProjectWorkspaceService.DbcKind ||
                     lastKey.StartsWith("config|", StringComparison.Ordinal) &&
                     ProjectConfigurationCodec.IsConfiguration(asset.Kind);
         if (!valid || !ReferenceEquals(project, _workspace.Current)) return;
@@ -1500,11 +1498,8 @@ public sealed class MainWindowViewModel : BindableBase
         {
             var entry = await _workspace.ImportDbcAsync(path);
             SelectAsset(entry.Id);
-            var opened = await _workspace.OpenDbcEditorAsync(entry.Id);
-            var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
-            ActivateEditor("dbc|" + entry.Id, new DbcWorkbenchView(editor),
-                "DBC · " + entry.Name, editor.ConfirmClose);
-            StatusMessage = "DBC 已导入并打开：" + entry.Name;
+            await ShowDbcWindowAsync(entry.Id, entry.Name);
+            StatusMessage = "DBC 已导入：" + entry.Name;
         });
     }
 
@@ -1652,15 +1647,42 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenSelectedDbcAsync()
     {
         if (!SelectedResourceIsDbc || _selectedResource?.Asset is not { } asset) return;
-        if (IsAlreadyOpen("dbc|" + asset.Id)) return;
         await RunOperationAsync(async () =>
         {
-            var opened = await _workspace.OpenDbcEditorAsync(asset.Id);
-            var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
-            ActivateEditor("dbc|" + asset.Id, new DbcWorkbenchView(editor),
-                "DBC · " + asset.Name, editor.ConfirmClose);
-            StatusMessage = "已打开 DBC：" + asset.Name;
+            await ShowDbcWindowAsync(asset.Id, asset.Name);
+            StatusMessage = "DBC 编辑窗口已关闭：" + asset.Name;
         });
+    }
+
+    /// <summary>
+    /// DBC is a complete specialist workbench, not an IDE center tab. Use the
+    /// existing DbcWorkbenchView/VM and revision-checked workspace save path;
+    /// do not create a second DBC editor or a shadow document session.
+    /// A modal owned window also keeps the project identity fixed while editing.
+    /// </summary>
+    private async Task ShowDbcWindowAsync(AssetId id, string name)
+    {
+        var opened = await _workspace.OpenDbcEditorAsync(id);
+        var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
+        var window = new Window
+        {
+            Title = "DBC 编辑器 · " + name,
+            Content = new DbcWorkbenchView(editor),
+            Width = Math.Max(900, Math.Min(1260, SystemParameters.WorkArea.Width - 64)),
+            Height = Math.Max(560, Math.Min(800, SystemParameters.WorkArea.Height - 64)),
+            MinWidth = 820,
+            MinHeight = 520,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ShowInTaskbar = false
+        };
+        if (Application.Current?.MainWindow is { IsLoaded: true } owner)
+            window.Owner = owner;
+        else window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        window.Closing += (_, args) =>
+        {
+            if (!editor.ConfirmClose()) args.Cancel = true;
+        };
+        window.ShowDialog();
     }
 
     private async Task RenameResourceAsync()
