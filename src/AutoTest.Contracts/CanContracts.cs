@@ -17,6 +17,12 @@ public sealed record BusRoleMap(RevisionFingerprint Revision, int DutPort, int K
 /// </summary>
 public static class StationCanWiring
 {
+    // Operator-facing names must not expose the firmware/PCB bus numbering.
+    // Confirmed physical harness: ECU connector A1/A12, KEY connector B1/B11.
+    public const string DutDisplayName = "ECU CAN";
+    public const string KeypadDisplayName = "KEY CAN";
+    public const string DutConnectorPins = "A1/A12";
+    public const string KeypadConnectorPins = "B1/B11";
     public const byte DutPort = 0;
     public const byte KeypadPort = 1;
     public static BusRoleMap Current { get; } = new(default, DutPort, KeypadPort);
