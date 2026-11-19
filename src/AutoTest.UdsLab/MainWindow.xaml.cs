@@ -35,19 +35,13 @@ public partial class MainWindow : Window
         InitializeServiceComposer();
         InitializeExchangeHistory();
         ActionsList.ItemsSource = _actions;
-        _actions.Add(new DiagnosticAction
-        {
-            Name = "示例 · 读取 VIN（先核对 ECU 规范）",
-            Group = "ECU 信息",
-            RequestHex = "22 F1 90",
-            ExpectedPrefixHex = "62 F1 90",
-            Decoder = "Ascii", DataOffset = 3
-        });
-        ActionsList.SelectedIndex = 0;
+        // Do not present example ECU responses or require saving before interaction.
+        // An unsaved editable request is ready in the quick console on startup.
+        InitializeConsole();
         NameBox.LostFocus += (_, _) => ActionsList.Items.Refresh();
         GroupBox.LostFocus += (_, _) => ActionsList.Items.Refresh();
         Closing += OnClosing;
-        Audit("WORKSPACE", "UDS Lab 启动。预置操作仅为标准诊断示例，尚未经过本 ECU 实测。");
+        Audit("WORKSPACE", "UDS 诊断控制台已启动。即时请求无需事先创建资源；所有 ECU 响应必须来自真实设备。");
         RefreshSendButton();
     }
 
@@ -99,16 +93,6 @@ public partial class MainWindow : Window
         RefreshSendButton();
     }
 
-    private void Add_Click(object sender, RoutedEventArgs e)
-    {
-        var action = new DiagnosticAction { RawMode = true };
-        _actions.Add(action);
-        ActionsList.SelectedItem = action;
-        NameBox.Focus();
-        NameBox.SelectAll();
-        Audit("EDIT", "新建空白诊断操作。");
-    }
-
     private void Copy_Click(object sender, RoutedEventArgs e)
     {
         if (_editing is null) return;
@@ -128,8 +112,9 @@ public partial class MainWindow : Window
         int index = ActionsList.SelectedIndex;
         while (_manualQueue.Remove(_editing)) { }
         _actions.Remove(_editing);
+        RefreshActionsEmptyState();
         if (_actions.Count > 0) ActionsList.SelectedIndex = Math.Min(index, _actions.Count - 1);
-        else { _editing = null; LoadEditor(); }
+        else QuickNew_Click(sender, e);
         Audit("EDIT", "删除诊断操作：" + name);
     }
 
@@ -188,6 +173,7 @@ public partial class MainWindow : Window
             _manualQueue.Clear();
             _actions.Clear();
             foreach (var action in document.Actions) _actions.Add(action);
+            RefreshActionsEmptyState();
             var lookup = _actions.ToDictionary(a => a.Id);
             foreach (var id in document.ManualSequence)
                 if (lookup.TryGetValue(id, out var action)) _manualQueue.Add(action);
@@ -197,6 +183,7 @@ public partial class MainWindow : Window
             P2Box.Text = document.P2Ms.ToString(CultureInfo.InvariantCulture);
             P2StarBox.Text = document.P2StarMs.ToString(CultureInfo.InvariantCulture);
             ActionsList.SelectedIndex = _actions.Count > 0 ? 0 : -1;
+            if (_actions.Count == 0) QuickNew_Click(sender, e);
             _workspaceFile = open.FileName;
             RefreshSendButton();
             Audit("FILE", "已打开工作台：" + open.FileName);
@@ -229,6 +216,12 @@ public partial class MainWindow : Window
         ConnectButton.IsEnabled = false;
         try
         {
+            if (string.IsNullOrWhiteSpace(TxIdBox.Text) || string.IsNullOrWhiteSpace(RxIdBox.Text))
+            {
+                ConnectionSettingsExpander.IsExpanded = true;
+                TxIdBox.Focus();
+                throw new FormatException("请先展开连接参数，填写当前 ECU 的诊断请求与响应 CAN ID。");
+            }
             var endpoint = ParseEndpoint();
             _hardware = new UdsLabHardwareSession(endpoint, ConfirmFrameAsync, Trace);
             ConnectionStatus.Text = "正在连接真实 WinUSB 主控并初始化 ISO-TP 接收...";
@@ -237,6 +230,7 @@ public partial class MainWindow : Window
             TxIdBox.IsEnabled = RxIdBox.IsEnabled = P2Box.IsEnabled = P2StarBox.IsEnabled = false;
             DisconnectButton.IsEnabled = true;
             RefreshSendButton();
+            ConnectionSettingsExpander.IsExpanded = false;
             ConnectionStatus.Text = "主控已连接 · " + _hardware.DeviceIdentity +
                 " · UDS 接收已就绪；CAN 租约截止 " +
                 _hardware.LeaseExpiresUtc?.ToLocalTime().ToString("HH:mm:ss") + "。";

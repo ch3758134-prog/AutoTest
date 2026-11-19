@@ -98,3 +98,43 @@ dotnet run --project src/AutoTest.UdsLab/AutoTest.UdsLab.csproj -c Debug --no-bu
 ```
 
 Only user-authorized real ECU tests establish FIELD_PASS. Codex should first check WPF launch, service composition, DTC decoding, action JSON save/open, sequence controls, real connect/disconnect (if hardware available), and that unapproved SIDs still cannot physically send. Do not run mock ECU or external CI. The branch is a **candidate until Windows build and real ECU evidence are returned**.
+
+## L2 UI rebuild — diagnostic console (field screenshot review)
+
+The screenshot review found that L1/L1.2 remained a configuration form and made users
+create or edit a named operation before they could communicate with an ECU. L2
+replaces that daily-use workflow, **without** rewriting USB, CAN, ISO-TP or UDS:
+
+1. **Quick UDS request is ready on launch** as an unsaved scratch action. Choose
+   a service, edit the DID/subfunction/parameters and send immediately after
+   connecting. No save, operation name or test step is a precondition. Sample
+   F190 is a standard example **not** a claim that a connected ECU implements it.
+2. **Actual request/response timeline is the center workspace**, not a bottom
+   secondary tab. Every real request attempt retains UTC, correlation, request,
+   response, outcome, decode and elapsed time. Selecting an earlier row inspects
+   evidence without sending anything.
+3. **Named actions are shortcuts** on the left: direct run, search, context
+   menu execute/edit/copy/delete and optional promotion of a quick request to
+   a named saved action. Editing and raw HEX decoding are collapsed.
+4. **Pinned observations** on the right only contain confirmed real ECU positive
+   responses; their displayed value/time update on subsequent exchanges with
+   the same operation name and exact request PDU. Pinning does not silently
+   issue CAN requests or fabricate a signal stream.
+5. **CAN addresses, P2/P2*** are moved into expandable connection settings,
+   but still validated before a real USB connection. Detailed USB/CAN event
+   traces are expandable, never replaced by decoded values.
+6. The previously available bounded manual sequence and repeated DID remain
+   as optional tools in a collapsed section; they are not the main interaction
+   path and never bypass the DEVICE physical gate.
+
+Do not confuse **source UI rebuilt** with Windows Build PASS, real-ECU validation
+or unrestricted continuous interaction. The L2 code has not been Windows-built
+or started by this contributor; local Codex should build/start from the **exact
+specialist branch HEAD**, report full build/XAML errors, verify quick request
+creation/selection/save/open/history/pinning/context menu, then hand real ECU
+send tests to the field user. No mock device, CI or main-branch changes.
+
+The existing per-frame exact typed physical authorization remains, including
+ISO-TP flow-control CAN TX; automatic repeated sessions can block or time out.
+Review the dedicated DEVICE authorization proposal before claiming unattended
+continuous diagnostics or state-changing 0x10/0x3E services.

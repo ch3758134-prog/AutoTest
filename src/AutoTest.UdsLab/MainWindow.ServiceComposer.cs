@@ -13,9 +13,7 @@ public partial class MainWindow
 
     private void InitializeServiceComposer()
     {
-        NewServiceCombo.ItemsSource = UdsOperationTemplates.All;
         ServiceCombo.ItemsSource = UdsOperationTemplates.All;
-        NewServiceCombo.SelectedIndex = 0;
         QueueList.ItemsSource = _manualQueue;
         WatchIntervalBox.Text = "2000";
     }
@@ -213,28 +211,17 @@ public partial class MainWindow
         }
     }
 
-    private void CreateFromService_Click(object sender, RoutedEventArgs e)
-    {
-        if (NewServiceCombo.SelectedItem is not UdsOperationTemplate template) return;
-        var action = new DiagnosticAction
-        {
-            Name = template.Name,
-            Group = template.Group,
-            ServiceSidHex = template.Sid.ToString("X2"),
-            PrimaryHex = template.PrimaryDefault,
-            AuxiliaryHex = template.AuxiliaryDefault,
-            RawMode = false,
-            DataOffset = 3
-        };
-        _actions.Add(action);
-        ActionsList.SelectedItem = action;
-        ComposeCurrent();
-        Audit("EDIT", "从内置服务创建诊断操作：" + template.Display);
-    }
-
     private void QueueAdd_Click(object sender, RoutedEventArgs e)
     {
         if (_editing is null) return;
+        // A manual sequence can only reference persisted actions. When a quick
+        // request is added, first promote it to a named action so the saved
+        // workspace never contains dangling sequence IDs.
+        if (!_actions.Contains(_editing))
+        {
+            SaveCurrent_Click(sender, e);
+            if (_editing is null || !_actions.Contains(_editing)) return;
+        }
         if (_manualQueue.Count >= 100)
         {
             MessageBox.Show(this, "交互清单最多保存 100 项。");

@@ -26,6 +26,7 @@ public partial class MainWindow
             Convert.ToHexString(request), response, parsed, outcome, detail,
             (DateTimeOffset.UtcNow - started).TotalMilliseconds);
         _exchangeHistory.Add(row);
+        RefreshExchangeConsole(row);
         ExchangeList.SelectedItem = row;
         ExchangeList.ScrollIntoView(row);
     }
