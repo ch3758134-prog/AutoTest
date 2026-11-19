@@ -1,0 +1,32 @@
+# R02｜来源登记与证据边界（2026-11-19）
+
+以下均为本轮查询到的公开原始出处；URL 用于后续 AI 回查，不以搜索引擎摘要替代原文。来源类型“厂商文档”只能证明产品提供某种机制，不能证明该机制在目标用户中比其他方案更高效；研究推论由 R02 自行承担。
+
+| ID | 一手来源 / 核实事实 | URL | 类型与限制 |
+|---|---|---|---|
+| E01 | Siemens TIA Portal V21 Portal View，面向任务选择工具，必要时自动进入 Project View | https://docs.tia.siemens.cloud/r/en-us/v21/introduction-to-the-tia-portal/user-interface-and-operation/layout-of-the-user-interface/portal-view | 厂商 V21 文档；不是 AutoTest 必须双入口的证据 |
+| E02 | Siemens TIA Portal V21 Project View，项目树、工作区、编辑器栏、Inspector、任务卡、状态栏 | https://docs.tia.siemens.cloud/r/zh-cn/v21/tia-%E9%97%A8%E6%88%B7%E7%AE%80%E4%BB%8B/%E7%94%A8%E6%88%B7%E7%95%8C%E9%9D%A2%E5%92%8C%E6%93%8D%E4%BD%9C/%E7%94%A8%E6%88%B7%E7%95%8C%E9%9D%A2%E7%9A%84%E5%B8%83%E5%B1%80/%E9%A1%B9%E7%9B%AE%E8%A7%86%E5%9B%BE | 厂商文档；组件名称不等于布局强制要求 |
+| E03 | Siemens 保存/恢复窗口布局与键盘快捷键 | https://docs.tia.siemens.cloud/r/en-us/v20/introduction-to-the-tia-portal/user-interface-and-operation/keyboard-operation-in-the-tia-portal/arranging-windows | 官方 V20 文档，与 V21 版本分开标识 |
+| E04 | Microsoft Visual Studio 的文档窗口/工具窗口、布局、多显示器与 Ownership | https://learn.microsoft.com/en-us/visualstudio/ide/customizing-window-layouts-in-visual-studio?view=visualstudio | 微软官方；不能据此认定完全自由停靠必需 |
+| E05 | VS 2026 18.11 Hot Exit：未保存文档、编辑、撤销和布局恢复，与正式保存区分 | https://learn.microsoft.com/en-us/visualstudio/ide/autorecover-environment-options-dialog-box?view=visualstudio | 微软新版本特性，须启用；不等于所有应用默认能力 |
+| E06 | Ignition 8.3 Designer：资源类型决定工作区与面板，Design/Preview、搜索和冲突提示 | https://www.docs.inductiveautomation.com/docs/8.3/platform/designer | 厂商官方，涉及部分多用户功能不直接映射单机 AutoTest |
+| E07 | Ignition 8.3 Designer UI：树与画布选择联动、属性编辑、资源操作 | https://www.docs.inductiveautomation.com/docs/8.3/platform/designer/designer-user-interface | 厂商官方；只支持“因对象而变”设计推论 |
+| E08 | Autodesk Fusion：按目的划分 Workspaces，命令上下文 Tab | https://help.autodesk.com/cloudhelp/ENU/Fusion-GetStarted/files/GS-WORKSPACES.htm | 厂商官方；不是固定页面/工作区数量依据 |
+| E09 | NI TestStand：Sequence Editor 与 Operator Interface 的职责区别；共享引擎/API | https://www.ni.com/en/support/documentation/supplemental/06/guide-to-effective-test-software-development-with-teststand.html | 厂商官方；不能照搬并行执行行为 |
+| E10 | NI TestStand 正式调试：Trace、断点、单步、Watch、调用栈 | https://www.ni.com/docs/sw-UG/bundle/teststand/page/debugging-sequences.html | 厂商文档，更新标记 2026-09-15；不修改 AutoTest TEST 合同 |
+| E11 | ETAS INCA 实验环境，增加不同仪表/选择变量，调整专业测量布局 | https://docs.etas.com/inca/docs/V7.6/EN/Subsystems/exp/Content/Topics/EXP_Adding_Windows.htm | 厂商文档，部分页面为脚本渲染；证据主要来自可检索摘录，应避免过度推断 |
+| E12 | Microsoft Windows 命令组织：上下文菜单、命令一致性、快捷键 | https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/commanding | Windows/WinUI 官方设计建议，可借鉴但 WPF 需自行实现 |
+| E13 | NN/g：复杂应用中工作记录、任务恢复、专家功能和逐步呈现 | https://www.nngroup.com/articles/complex-application-design/ | UX 研究/建议，非行业强制规范 |
+| E14 | ISA-101 系列官方介绍：工业过程 HMI 中态势感知、错误减少与设计生命周期 | https://www.isa.org/standards-and-publications/isa-standards/isa-101-standards | 对工业监控/操作参考价值较高，不能直接强加全部工程编辑器 |
+| E15 | Microsoft Fluent/Windows Command Bar：主要命令按优先级、缩小窗口时次要命令进入溢出 | https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/command-bar | WinUI 控件级指导；具体 WPF 控件存在差异 |
+| E16 | VS 2026 产品团队说明 Hot Exit 是会话恢复而非显式提交 | https://devblogs.microsoft.com/visualstudio/keep-your-investigation-between-sessions/ | 厂商博客，说明功能动机和机制，非性能实验 |
+
+## 源与判断分离方式
+
+- `FACT-E##`：源明言软件具有何种机制（例如 Portal View 自动进入 Project View）。
+- `INFERENCE`：跨案例判断（例如 AutoTest 工程树不应等同全部软件入口）。
+- `REQUIREMENT`：仅来自用户明确决定/正式 PM 受控文件（例如单 PC 单 DUT、专业工具独立、实际硬件独占）。
+- `HYPOTHESIS`：尚未实际操作验收，不能标 USER_ACCEPTED。
+- `GAP`：资料不足，需重新检索或实际用户试验。
+
+来源可能随版本更新；下轮复查关键条目时记录日期与新旧差异，不无声替换 R02 历史依据。
