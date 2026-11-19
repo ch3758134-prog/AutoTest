@@ -63,7 +63,7 @@ public static class StepTreeValidator
                         errors.Add($"{location}: Write 目标类型 {mapping.Kind} 不支持真实硬件操作");
                     if (mapping.Kind == TestTargetKind.CanMessage &&
                         mapping.Role != AutoTest.Contracts.BusRole.DutCan)
-                        errors.Add($"{location}: DBC 发送报文必须绑定 ECU CAN0");
+                        errors.Add($"{location}: DBC 发送报文必须绑定 ECU CAN");
                 }
                 int period = 0;
                 if (n.Properties.TryGetValue("periodMs", out var periodText) &&
