@@ -5,14 +5,14 @@
  <DockPanel Margin="14">
    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
      <TextBlock Text="CAN 实时监视" FontSize="18" FontWeight="SemiBold"/>
-     <TextBlock Text="真实 USB 0x41 接收，CAN0 为 DUT、CAN1 为按键板。时间戳为主机到达时间；断线后记录保留。"
+     <TextBlock Text="USB 实时接收：ECU CAN（A1/A12）、KEY CAN（B1/B11）。断开连接后保留已收报文。"
                 Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,5,0,0"/>
    </StackPanel>
    <Border DockPanel.Dock="Top" Background="{StaticResource MutedSurface}"
            BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="10" Margin="0,0,0,10">
      <StackPanel>
        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-         <TextBlock Text="发送 CAN0 · 标准帧（单帧诊断）" FontWeight="SemiBold"
+         <TextBlock Text="发送 ECU CAN · 标准帧" FontWeight="SemiBold"
                     VerticalAlignment="Center" Margin="0,0,12,0"/>
          <TextBlock Text="ID (HEX)" VerticalAlignment="Center" Margin="0,0,5,0"/>
          <TextBox Text="{Binding CanId,UpdateSourceTrigger=PropertyChanged}" Width="85"
