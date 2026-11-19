@@ -704,4 +704,31 @@ public sealed class RealTestRecordSessionTests
     }
 
 
+    [Fact]
+    public async Task LostCanFramesCannotBeMarkedAsCausalJudgementOrFormalPass()
+    {
+        using var fixture = new Fixture();
+        var (mapping, valid) = Signal(2);
+        var lost = valid with
+        {
+            Status = TestSignalStatus.LostFrames,
+            Observation = valid.Observation! with { HasGap = true }
+        };
+        var plan = Plan(mapping, "2");
+        var record = fixture.Record(plan);
+        var finalizer = new EvidenceFinalizer(fixture.Writer, fixture.Artifacts,
+            lost.Observation!.Evidence);
+        var done = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports,
+            finalizer).ExecuteAsync(
+                new RealRunCoordinator(new Signals(lost), new Actions(), new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.NotEqual(RealTestVerdict.Passed, done.Result.Verdict);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.NotEqual(Verdict.Pass, history!.Verdict);
+        var row = Assert.Single(await fixture.Database.ReadStepFactsAsync(record.RunId));
+        Assert.Null(row.JudgementEvidenceKind);
+        Assert.Equal("LostFrames", row.SignalStatus);
+        Assert.True(row.Disposition is "InvalidData" or "NoData");
+    }
+
 }
