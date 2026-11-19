@@ -1,0 +1,102 @@
+<UserControl x:Class="AutoTest.Frontend.Tools.DbcView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+ Background="{StaticResource AT.Canvas}">
+ <Grid Margin="13">
+  <Grid.ColumnDefinitions>
+   <ColumnDefinition Width="265" MinWidth="210"/>
+   <ColumnDefinition Width="*" MinWidth="335"/>
+   <ColumnDefinition Width="315" MinWidth="275"/>
+  </Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Style="{StaticResource AT.Panel}" Padding="0"
+   Margin="0,0,10,0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="104"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <StackPanel Margin="15,12">
+     <TextBlock Text="DBC 报文" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="本窗口是 UI 字段编辑样例，不解析正式 .dbc 文件。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,11"/>
+     <WrapPanel>
+      <ui:Button Content="+ 报文" Appearance="Primary" Click="AddMessage_Click"
+       Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="删除" Click="RemoveMessage_Click"
+       Style="{StaticResource AT.ToolCommand}"/>
+     </WrapPanel>
+    </StackPanel>
+    <ListBox x:Name="MessageList" Grid.Row="1"
+     ItemsSource="{Binding DbcMessages}"
+     SelectedItem="{Binding SelectedDbcMessage,Mode=TwoWay}"
+     DisplayMemberPath="Name" Margin="9"/>
+   </Grid>
+  </Border>
+  <Border Grid.Column="1" Style="{StaticResource AT.Panel}" Padding="0"
+   Margin="0,0,10,0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="77"/><RowDefinition Height="*"/>
+     <RowDefinition Height="122"/></Grid.RowDefinitions>
+    <DockPanel Margin="14,12">
+     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+      <ui:Button Content="+ 信号" Appearance="Primary" Click="AddSignal_Click"
+       Margin="0,0,7,0"/>
+      <ui:Button Content="删除信号" Click="RemoveSignal_Click"/>
+     </StackPanel>
+     <StackPanel>
+      <TextBlock Text="信号定义" Style="{StaticResource AT.PanelTitle}"/>
+      <TextBlock Text="位段、比例、偏移与单位直接编辑。"
+       Style="{StaticResource AT.Caption}" Margin="0,5,0,0"/>
+     </StackPanel>
+    </DockPanel>
+    <DataGrid x:Name="SignalGrid" Grid.Row="1"
+     ItemsSource="{Binding SelectedDbcMessage.Signals}"
+     SelectedItem="{Binding SelectedDbcSignal,Mode=TwoWay}"
+     ScrollViewer.HorizontalScrollBarVisibility="Auto">
+     <DataGrid.Columns>
+      <DataGridTextColumn Header="信号名" Binding="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+       Width="*" MinWidth="115"/>
+      <DataGridTextColumn Header="起始位" Binding="{Binding StartBit,Mode=TwoWay}" Width="72"/>
+      <DataGridTextColumn Header="长度" Binding="{Binding BitLength,Mode=TwoWay}" Width="62"/>
+      <DataGridTextColumn Header="因子" Binding="{Binding Factor,Mode=TwoWay}" Width="66"/>
+      <DataGridTextColumn Header="偏移" Binding="{Binding Offset,Mode=TwoWay}" Width="66"/>
+      <DataGridTextColumn Header="单位" Binding="{Binding Unit,Mode=TwoWay}" Width="85"/>
+     </DataGrid.Columns>
+    </DataGrid>
+    <Border Grid.Row="2" Background="{StaticResource AT.SubtleSurface}"
+     BorderBrush="{StaticResource AT.Border}" BorderThickness="0,1,0,0"
+     Padding="15,10">
+     <StackPanel>
+      <TextBlock Text="信号位布局" Style="{StaticResource AT.PanelTitle}"/>
+      <TextBlock Text="Byte 0       Byte 1       Byte 2       Byte 3       Byte 4       Byte 5       Byte 6       Byte 7"
+       FontFamily="Consolas" FontSize="10" Foreground="{StaticResource AT.Muted}"
+       TextTrimming="CharacterEllipsis" Margin="0,11,0,0"/>
+      <TextBlock Text="此处不伪造位段占用图；正式版交由 DBC 编码器计算。"
+       Style="{StaticResource AT.Caption}" Margin="0,9,0,0"/>
+     </StackPanel>
+    </Border>
+   </Grid>
+  </Border>
+  <Border Grid.Column="2" Style="{StaticResource AT.Panel}" Padding="0">
+   <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="15,13">
+     <TextBlock Text="报文与信号属性" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="报文名" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedDbcMessage.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+     <TextBlock Text="仲裁 ID (HEX)" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedDbcMessage.IdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+     <TextBlock Text="报文长度 (byte)" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedDbcMessage.Length,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"/>
+     <Border Background="{StaticResource AT.AccentWash}" CornerRadius="8"
+      Padding="10" Margin="0,17,0,5">
+      <TextBlock Text="资源引用、标准/扩展帧、大小端、符号位及多路复用校验将在正式 DBC 引擎接入后完成。"
+       FontSize="11" Foreground="#2E6CA6" TextWrapping="Wrap"/>
+     </Border>
+     <TextBlock Text="当前信号说明" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedDbcSignal.Comment,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+      Height="98" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top"/>
+     <ui:Button Content="校验 / 写回真实 DBC（未接入）" IsEnabled="False"
+      Margin="0,17,0,0"/>
+    </StackPanel>
+   </ScrollViewer>
+  </Border>
+ </Grid>
+</UserControl>

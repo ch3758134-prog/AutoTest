@@ -1,0 +1,161 @@
+<UserControl x:Class="AutoTest.Frontend.Tools.UdsView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+ Background="{StaticResource AT.Canvas}">
+ <Grid Margin="13">
+  <Grid.ColumnDefinitions>
+   <ColumnDefinition Width="235" MinWidth="195"/>
+   <ColumnDefinition Width="*" MinWidth="360"/>
+   <ColumnDefinition Width="375" MinWidth="295"/>
+  </Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Style="{StaticResource AT.Panel}" Margin="0,0,10,0">
+   <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+     <TextBlock Text="UDS 服务库" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="点选服务可添加到请求序列；参数随后直接编辑。"
+      Style="{StaticResource AT.Caption}" Margin="0,7,0,0"/>
+    </StackPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+     <StackPanel>
+      <TextBlock Text="会话与连接" Style="{StaticResource AT.FieldLabel}"/>
+      <ui:Button Content="10 · 诊断会话控制" Tag="10" Click="AddService_Click"
+       HorizontalContentAlignment="Left" Margin="0,0,0,6"/>
+      <ui:Button Content="11 · ECU 复位" Tag="11" Click="AddService_Click"
+       HorizontalContentAlignment="Left" Margin="0,0,0,6"/>
+      <ui:Button Content="3E · Tester Present" Tag="3E" Click="AddService_Click"
+       HorizontalContentAlignment="Left" Margin="0,0,0,11"/>
+      <TextBlock Text="读取与写入" Style="{StaticResource AT.FieldLabel}"/>
+      <ui:Button Content="22 · 读取 DID" Tag="22" Click="AddService_Click"
+       HorizontalContentAlignment="Left" Margin="0,0,0,6"/>
+      <ui:Button Content="2E · 写入 DID" Tag="2E" Click="AddService_Click"
+       HorizontalContentAlignment="Left" Margin="0,0,0,11"/>
+      <TextBlock Text="安全与例程" Style="{StaticResource AT.FieldLabel}"/>
+      <ui:Button Content="27 · 安全访问" Tag="27" Click="AddService_Click"
+       HorizontalContentAlignment="Left" Margin="0,0,0,6"/>
+      <ui:Button Content="31 · 例程控制" Tag="31" Click="AddService_Click"
+       HorizontalContentAlignment="Left" Margin="0,0,0,6"/>
+      <Border Background="{StaticResource AT.AccentWash}" CornerRadius="8"
+       Padding="10" Margin="0,18,0,0">
+       <TextBlock Text="服务目录仅用于选择编辑器类型，不代表已配置诊断寻址或授权。"
+        Foreground="#326CA8" TextWrapping="Wrap" FontSize="11"/>
+      </Border>
+     </StackPanel>
+    </ScrollViewer>
+   </DockPanel>
+  </Border>
+  <Border Grid.Column="1" Style="{StaticResource AT.Panel}"
+   Padding="0" Margin="0,0,10,0">
+   <Grid>
+    <Grid.RowDefinitions>
+     <RowDefinition Height="104"/>
+     <RowDefinition Height="*" MinHeight="155"/>
+     <RowDefinition Height="245"/>
+    </Grid.RowDefinitions>
+    <StackPanel Margin="14,13">
+     <TextBlock Text="可编辑请求序列" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="添加 / 复制 / 调整顺序；草稿自动保存，关闭窗口后可恢复。"
+      Style="{StaticResource AT.Caption}" Margin="0,5,0,11"/>
+     <WrapPanel>
+      <ui:Button Content="+ 请求" Appearance="Primary" Click="Add_Click"
+       Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="复制" Click="Copy_Click" Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="上移" Click="Up_Click" Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="下移" Click="Down_Click" Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="删除" Click="Delete_Click" Style="{StaticResource AT.ToolCommand}"/>
+     </WrapPanel>
+    </StackPanel>
+    <DataGrid Grid.Row="1" x:Name="RequestGrid"
+     ItemsSource="{Binding UdsRequests}"
+     SelectedItem="{Binding SelectedUds,Mode=TwoWay}">
+     <DataGrid.Columns>
+      <DataGridTemplateColumn Header="启用" Width="45">
+       <DataGridTemplateColumn.CellTemplate><DataTemplate>
+        <CheckBox IsChecked="{Binding Enabled,Mode=TwoWay}"
+         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+       </DataTemplate></DataGridTemplateColumn.CellTemplate>
+      </DataGridTemplateColumn>
+      <DataGridTextColumn Header="请求名称"
+       Binding="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+       Width="*" MinWidth="150"/>
+      <DataGridTextColumn Header="SID" Binding="{Binding Service}" Width="57" IsReadOnly="True"/>
+      <DataGridTextColumn Header="参数 HEX" Binding="{Binding Payload}"
+       Width="145" IsReadOnly="True"/>
+     </DataGrid.Columns>
+    </DataGrid>
+    <Border Grid.Row="2" Background="{StaticResource AT.SubtleSurface}"
+     BorderBrush="{StaticResource AT.Border}" BorderThickness="0,1,0,0"
+     Padding="14,10">
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+       <TextBlock Text="当前请求参数" Style="{StaticResource AT.PanelTitle}"/>
+       <Grid Margin="0,7,0,0">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Margin="0,0,7,0">
+         <TextBlock Text="SID (HEX)" Style="{StaticResource AT.FieldLabel}"/>
+         <TextBox Text="{Binding SelectedUds.Service,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Margin="7,0,0,0">
+         <TextBlock Text="超时 (ms)" Style="{StaticResource AT.FieldLabel}"/>
+         <TextBox Text="{Binding SelectedUds.TimeoutMs,Mode=TwoWay,UpdateSourceTrigger=LostFocus}"/>
+        </StackPanel>
+       </Grid>
+       <TextBlock Text="请求参数 HEX" Style="{StaticResource AT.FieldLabel}"/>
+       <TextBox Text="{Binding SelectedUds.Payload,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+       <TextBlock Text="说明" Style="{StaticResource AT.FieldLabel}"/>
+       <TextBox Text="{Binding SelectedUds.Description,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+      </StackPanel>
+     </ScrollViewer>
+    </Border>
+   </Grid>
+  </Border>
+  <Border Grid.Column="2" Style="{StaticResource AT.Panel}" Padding="0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="112"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <StackPanel Margin="14,12">
+     <DockPanel>
+      <TextBlock Text="交互与响应" Style="{StaticResource AT.PanelTitle}"/>
+      <TextBlock DockPanel.Dock="Right" Text="未连接"
+       Foreground="{StaticResource AT.Warning}" FontSize="11"/>
+     </DockPanel>
+     <TextBlock Text="连续 UDS 交互以请求和响应为中心，不要求每条手动填完整底层帧。"
+      Style="{StaticResource AT.Caption}" Margin="0,7,0,11"/>
+     <WrapPanel>
+      <ui:Button Content="发送选中" IsEnabled="False"
+       Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="执行序列" IsEnabled="False"
+       Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="停止" IsEnabled="False"
+       Style="{StaticResource AT.ToolCommand}"/>
+     </WrapPanel>
+    </StackPanel>
+    <TabControl Grid.Row="1">
+     <TabItem Header="请求 / 响应">
+      <Grid Background="White">
+       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+        <TextBlock Text="暂无真实诊断请求与响应"
+         Foreground="{StaticResource AT.Muted}" FontSize="14"/>
+        <TextBlock Text="ISO-TP、NRC 和会话状态将在真实接线后显示。"
+         Style="{StaticResource AT.Caption}" Margin="0,9,0,0" TextAlignment="Center"/>
+       </StackPanel>
+      </Grid>
+     </TabItem>
+     <TabItem Header="原始 CAN">
+      <Grid Background="White">
+       <TextBlock Text="无真实 CAN 诊断帧"
+        Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center"
+        HorizontalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+     <TabItem Header="会话 / 错误">
+      <Grid Background="White">
+       <TextBlock Text="会话：未建立 · 错误：无可报告事件"
+        Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center"
+        HorizontalAlignment="Center" TextWrapping="Wrap"/>
+      </Grid>
+     </TabItem>
+    </TabControl>
+   </Grid>
+  </Border>
+ </Grid>
+</UserControl>
