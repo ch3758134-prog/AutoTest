@@ -437,87 +437,95 @@
     </DockPanel>
    </Border>
 
-   <!-- RIGHT: a dedicated CAN view and a separately scrollable operation log. -->
+   <!-- RIGHT: raw CAN data is the primary content. Logs are optional. -->
    <Border Grid.Column="2" Style="{StaticResource BenchCard}">
     <Grid>
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="3*"/>
-      <RowDefinition Height="6"/>
-      <RowDefinition Height="2*"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0" Margin="0,0,0,9">
-      <TextBlock Text="CAN 实时监控" Style="{StaticResource BenchHeader}" ToolTip="{Binding MonitorCountSummary}"/>
-      <TextBlock Text="{Binding CanRxReceiveStatus}" FontSize="10"
-       Foreground="#516983" TextWrapping="Wrap" Margin="0,3,0,7"
-       ToolTip="USB 0x41 为主控上报数量；CAN有效为通过帧校验数量；监视交付是派发给界面订阅者的次数。计数每秒更新，不代表 ECU 必然已经发报文。"/>
-      
-      <Grid>
-       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="86"/><ColumnDefinition Width="*"/>
-       </Grid.ColumnDefinitions>
-       <ComboBox Grid.Column="0" ItemsSource="{Binding MonitorChannelChoices}"
-        SelectedItem="{Binding MonitorChannel,Mode=TwoWay}" MinHeight="28"/>
-       <TextBox Grid.Column="1" Text="{Binding MonitorQuery,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-        MinHeight="28" Margin="7,0,0,0" Padding="7,5"
-        ToolTip="筛选 CAN ID、数据或格式"/>
-      </Grid>
-      <DockPanel Margin="0,8,0,0">
-       <Button DockPanel.Dock="Right" Content="清空监视" Command="{Binding ClearMonitorCommand}"
-        Padding="9,5" Margin="5,0,0,0"/>
+      <DockPanel Margin="0,0,0,6">
+       <TextBlock Text="CAN 接收监视" Style="{StaticResource BenchHeader}"/>
+       <TextBlock DockPanel.Dock="Right" Text="{Binding MonitorCountSummary}"
+        FontSize="11" Foreground="#647C95" Margin="8,0,0,0"
+        TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+      </DockPanel>
+      <DockPanel Margin="0,0,0,7">
+       <ComboBox DockPanel.Dock="Left" Width="92" ItemsSource="{Binding MonitorChannelChoices}"
+        SelectedItem="{Binding MonitorChannel,Mode=TwoWay}" MinHeight="32"/>
+       <TextBox Text="{Binding MonitorQuery,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+        MinHeight="32" Padding="8,6" Margin="8,0,0,0"
+        ToolTip="按 ID、完整/局部 HEX、通道筛选"/>
+      </DockPanel>
+      <DockPanel>
+       <Button DockPanel.Dock="Right" Content="清空" Command="{Binding ClearMonitorCommand}"
+        Padding="8,5" Margin="5,0,0,0"/>
        <Button DockPanel.Dock="Right" Content="{Binding MonitorPauseLabel}"
         Command="{Binding ToggleMonitorPauseCommand}" Padding="9,5" Margin="5,0,0,0"/>
-       <CheckBox Content="逐帧时间线" IsChecked="{Binding MonitorShowTimeline,Mode=TwoWay}"
-        VerticalAlignment="Center"/>
+       <CheckBox Content="逐帧模式（取消为最新值）" FontSize="11"
+        IsChecked="{Binding MonitorShowTimeline,Mode=TwoWay}" VerticalAlignment="Center"/>
       </DockPanel>
+      <TextBlock Text="{Binding CanRxReceiveStatus}" FontSize="11" Foreground="#61758A"
+       TextTrimming="CharacterEllipsis" Margin="0,8,0,0"
+       ToolTip="{Binding CanRxReceiveStatus}"/>
      </StackPanel>
-     <DataGrid Grid.Row="1" ItemsSource="{Binding MonitorDisplay}"
-      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
-      CanUserDeleteRows="False" HeadersVisibility="Column"
-      ColumnHeaderHeight="31" RowHeight="28" GridLinesVisibility="Horizontal"
-      BorderBrush="#E6EDF5" EnableRowVirtualization="True"
-      ScrollViewer.HorizontalScrollBarVisibility="Auto">
+     <DataGrid x:Name="CanMonitorGrid" Grid.Row="1"
+      ItemsSource="{Binding MonitorDisplay}" AutoGenerateColumns="False"
+      CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
+      HeadersVisibility="Column" SelectionMode="Single"
+      ColumnHeaderHeight="35" RowHeight="34" FontSize="12"
+      GridLinesVisibility="Horizontal" BorderBrush="#E6EDF5"
+      EnableRowVirtualization="True"
+      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+      PreviewMouseRightButtonDown="MonitorGrid_RightClick">
+      <DataGrid.ContextMenu>
+       <ContextMenu>
+        <MenuItem Header="复制完整 CAN 帧" Click="CopyMonitorFrame_Click"/>
+        <MenuItem Header="仅复制 HEX 数据" Click="CopyMonitorData_Click"/>
+       </ContextMenu>
+      </DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="90"/>
-       <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="55"/>
-       <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="79"/>
-       <DataGridTextColumn Header="数据" Binding="{Binding Data}" Width="*"/>
-       <DataGridTextColumn Header="次数" Binding="{Binding Count}" Width="50"/>
-       <DataGridTextColumn Header="质量" Binding="{Binding Status}" Width="68"/>
+       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="92"/>
+       <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="68"/>
+       <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="91"/>
+       <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="40"/>
+       <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="198">
+        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+         <TextBlock Text="{Binding Data}" FontFamily="Consolas" FontSize="12"
+          TextTrimming="None" VerticalAlignment="Center" ToolTip="{Binding FullFrame}"/>
+        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+       </DataGridTemplateColumn>
+       <DataGridTextColumn Header="次数" Binding="{Binding Count}" Width="48"/>
       </DataGrid.Columns>
      </DataGrid>
-     <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch"
-      ResizeDirection="Rows" Background="#EEF3F9"/>
-     <DockPanel Grid.Row="3" Margin="0,7,0,0">
-      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-       <Button DockPanel.Dock="Right" Content="导出真实记录" Click="ExportLog_Click"
-        Padding="9,5" Margin="4,0,0,0"/>
-       <Button DockPanel.Dock="Right" Content="清空显示" Command="{Binding ClearLogsCommand}"
-        Padding="9,5" Margin="4,0,0,0"/>
-       <TextBlock Text="USB / 操作 / 错误日志" FontSize="12" FontWeight="SemiBold"
-        Foreground="#28517E" VerticalAlignment="Center"/>
+     <Expander Grid.Row="2" Header="USB / 操作 / 错误日志（按需展开）"
+      IsExpanded="False" BorderBrush="#E5ECF4" BorderThickness="0,1,0,0"
+      Padding="3,8">
+      <DockPanel Height="250" Margin="3,8,3,2">
+       <DockPanel DockPanel.Dock="Top" Margin="0,0,0,7">
+        <Button DockPanel.Dock="Right" Content="导出真实记录" Click="ExportLog_Click"
+         Padding="8,5" Margin="5,0,0,0"/>
+        <Button DockPanel.Dock="Right" Content="清空日志" Command="{Binding ClearLogsCommand}"
+         Padding="8,5" Margin="5,0,0,0"/>
+        <TextBox Text="{Binding LogFilter,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+         MinHeight="29" Padding="7,5" ToolTip="筛选操作/错误内容"/>
+       </DockPanel>
+       <DataGrid ItemsSource="{Binding FilteredLogs}"
+        SelectedItem="{Binding SelectedLog,Mode=TwoWay}"
+        AutoGenerateColumns="False" IsReadOnly="True"
+        CanUserAddRows="False" CanUserDeleteRows="False"
+        HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+        ColumnHeaderHeight="30" RowHeight="28" EnableRowVirtualization="True">
+        <DataGrid.Columns>
+         <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="96"/>
+         <DataGridTextColumn Header="事件" Binding="{Binding Direction}" Width="75"/>
+         <DataGridTextColumn Header="详情" Binding="{Binding Detail}" Width="*"/>
+        </DataGrid.Columns>
+       </DataGrid>
       </DockPanel>
-      <TextBox DockPanel.Dock="Top"
-       Text="{Binding LogFilter,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-       MinHeight="27" Padding="7,5" Margin="0,0,0,6" ToolTip="按事件和内容过滤"/>
-      <Border DockPanel.Dock="Bottom" Margin="0,5,0,0" Padding="5,7"
-       BorderBrush="#E5ECF5" BorderThickness="0,1,0,0">
-       <TextBlock Text="{Binding SelectedLog.Detail}" Style="{StaticResource BenchHint}"
-        TextWrapping="Wrap" MinHeight="36"/>
-      </Border>
-      <DataGrid ItemsSource="{Binding FilteredLogs}" SelectedItem="{Binding SelectedLog,Mode=TwoWay}"
-       AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
-       CanUserDeleteRows="False" GridLinesVisibility="Horizontal"
-       HeadersVisibility="Column" EnableRowVirtualization="True"
-       ColumnHeaderHeight="29" RowHeight="27" BorderBrush="#E6EDF5">
-       <DataGrid.Columns>
-        <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="93"/>
-        <DataGridTextColumn Header="来源" Binding="{Binding Channel}" Width="81"/>
-        <DataGridTextColumn Header="事件" Binding="{Binding Direction}" Width="66"/>
-        <DataGridTextColumn Header="详情" Binding="{Binding Detail}" Width="*"/>
-       </DataGrid.Columns>
-      </DataGrid>
-     </DockPanel>
+     </Expander>
     </Grid>
    </Border>
   </Grid>
