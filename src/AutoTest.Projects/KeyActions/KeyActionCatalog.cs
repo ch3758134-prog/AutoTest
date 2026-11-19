@@ -46,7 +46,9 @@ public sealed record KeyActionDefinition(Guid ActionId, string Name, int Order,
     }
 }
 
-/// <summary>Optional pinned hardware resource; absent means editing is allowed, real execution is blocked.</summary>
+/// <summary>Optional legacy hardware restriction pin. Without a pin, exact 20-bit masks
+/// may execute through the separately authorized KEY CAN physical command fence.
+/// A present pin always requires revision- and policy-matched hardware validation.</summary>
 public sealed record KeyActionControllerPin(Guid AssetId, int Revision, string Sha256)
 {
     public KeyActionControllerPin Validate()
