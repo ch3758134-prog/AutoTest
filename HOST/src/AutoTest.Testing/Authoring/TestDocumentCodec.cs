@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AutoTest.Core;
 using AutoTest.Contracts;
 
@@ -15,6 +16,7 @@ public static class TestDocumentCodec
         Guid ControllerId, Guid StateId);
     private sealed record DocumentData(int FormatVersion, string Id, string Name,
         Dictionary<string, NodeData[]> Phases, MappingData[]? Mappings = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         TestReportSettings? ReportSettings = null);
     internal static MappingData EncodeMapping(TestTargetMapping x) => new(
         x.Name, x.Kind.ToString(), x.Asset.Value, x.AssetRevision, x.AssetSha256,
@@ -46,7 +48,7 @@ public static class TestDocumentCodec
         doc.FormatVersion, doc.Id.ToString(), doc.Name,
         Enum.GetValues<TestPhase>().ToDictionary(p => p.ToString(), p => doc.Get(p).Select(Encode).ToArray()),
         doc.Mappings.IsDefault ? [] : doc.Mappings.Select(EncodeMapping).ToArray(),
-        doc.ReportSettings),
+        doc.ReportSettings == TestReportSettings.Default ? null : doc.ReportSettings),
         new JsonSerializerOptions { WriteIndented = true });
     public static TestDocument Deserialize(string json)
     {
