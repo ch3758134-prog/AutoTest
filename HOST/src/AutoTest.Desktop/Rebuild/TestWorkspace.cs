@@ -83,7 +83,7 @@ public sealed class TestWorkspace : UserControl
         var editor = new TabItem { Header = "程序编辑", Padding = new Thickness(14, 6, 14, 6) };
         var run = new TabItem { Header = "运行准备 / 调试", Padding = new Thickness(14, 6, 14, 6) };
         tabs.Items.Add(editor); tabs.Items.Add(run); tabs.SelectedIndex = 0;
-        var editRoot = UiVisual.Stack();
+        var editRoot = new DockPanel { LastChildFill = true };
         var actions = UiVisual.Stack(true);
         actions.Margin = new Thickness(5, 3, 0, 4);
         _palette.ItemsSource = UiStepTypes.All.Select(x => new StepChoice(x.Type, x.Label)).ToList();
@@ -100,13 +100,15 @@ public sealed class TestWorkspace : UserControl
         actions.Children.Add(UiVisual.Button("重做", Redo));
         var scroller = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = actions };
+        DockPanel.SetDock(scroller, Dock.Top);
         editRoot.Children.Add(scroller);
 
         var split = UiVisual.Columns(UiVisual.Star(), new GridLength(5), new GridLength(306));
         split.Margin = new Thickness(0, 5, 0, 5);
-        var treeZone = UiVisual.Stack();
+        var treeZone = new DockPanel { LastChildFill = true };
         var caption = UiVisual.Note("单击定位 · 右键操作 · 当前选中决定插入位置");
         caption.Margin = new Thickness(10, 6, 0, 8);
+        DockPanel.SetDock(caption, Dock.Top);
         treeZone.Children.Add(caption);
         _steps.BorderThickness = new Thickness(0);
         _steps.Margin = new Thickness(7);
@@ -124,10 +126,11 @@ public sealed class TestWorkspace : UserControl
             HorizontalAlignment = HorizontalAlignment.Stretch, ResizeDirection = GridResizeDirection.Columns }, 1);
         var inspectorSurface = UiVisual.Scroll(_inspector);
         UiVisual.At(split, UiVisual.Box(inspectorSurface, new Thickness(10)), 2);
-        editRoot.Children.Add(split);
         var statusText = UiVisual.Box(_localStatus, new Thickness(8), UiVisual.Pale);
         statusText.Margin = new Thickness(2, 6, 2, 2);
+        DockPanel.SetDock(statusText, Dock.Bottom);
         editRoot.Children.Add(statusText);
+        editRoot.Children.Add(split);
         editor.Content = editRoot;
 
         run.Content = BuildRunView();
