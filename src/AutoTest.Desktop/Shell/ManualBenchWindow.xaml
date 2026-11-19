@@ -181,8 +181,7 @@
          Text="离开浮层即收起；有效编辑留在待发送草稿中，不会自动发往 ECU。右键报文 → 属性可编辑全部字段。"
          FontSize="11" Foreground="#617B94" TextWrapping="Wrap" Margin="0,10,0,0"/>
         <ScrollViewer MaxHeight="485" VerticalScrollBarVisibility="Auto">
-         <StackPanel IsEnabled="{Binding DataContext.CanEditCanRows,
-                    Source={x:Reference CanSendGrid}}">
+         <StackPanel IsEnabled="{Binding CanEditFields}">
           <TextBlock Text="名称" Style="{StaticResource FieldCaption}"/>
           <TextBox Text="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
            MinHeight="32" Padding="7,6"/>
