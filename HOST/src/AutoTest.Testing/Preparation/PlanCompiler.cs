@@ -35,6 +35,8 @@ public sealed class PlanCompiler
             foreach (var node in steps)
             {
                 if (!StepExecutionPolicy.IsEnabled(node)) continue;
+                try { _ = StepResultRecordingOptions.Read(node); }
+                catch (FormatException e) { errors.Add(node.Id + ": " + e.Message); }
                 if (_catalog.Lookup(node.Type) is { ExecutableV1: false } &&
                     !(allowRealOperations && RealTypes.Contains(node.Type)))
                     errors.Add($"{node.Id}: {node.Type} not executable in V1");
