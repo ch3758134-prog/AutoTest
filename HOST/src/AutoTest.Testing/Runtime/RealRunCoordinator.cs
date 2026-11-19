@@ -218,17 +218,44 @@ public sealed class RealRunCoordinator
                     await _actions.CheckHealthAsync(ct);
                 }
                 else ct.ThrowIfCancellationRequested();
+                var startedUtc = DateTimeOffset.UtcNow;
+                var startedTick = Stopwatch.GetTimestamp();
+                var occurrence = Guid.NewGuid();
+                var path = parentPath + "/" + node.Id.Value.ToString("N") +
+                    (loopIteration is { } iteration ? "[iteration=" + iteration + "]" : "");
                 if (!StepExecutionPolicy.IsEnabled(node))
                 {
-                    Fact(node, RealStepStatus.Skipped, detail: "步骤已关闭，本次未执行。");
+                    var skipped = new RealStepFact(node.Id, node.Type, RealStepStatus.Skipped,
+                        "", "", "步骤已关闭，本次未执行。", DateTimeOffset.UtcNow)
+                    {
+                        StepOccurrenceId = occurrence,
+                        ParentOccurrenceId = parentOccurrenceId,
+                        Phase = phase,
+                        ExecutionPath = path,
+                        LoopIteration = loopIteration,
+                        StartedUtc = startedUtc,
+                        CompletedUtc = DateTimeOffset.UtcNow,
+                        Duration = Stopwatch.GetElapsedTime(startedTick)
+                    };
+                    facts.Add(skipped);
+                    if (events is not null)
+                        await events.StepCompletedAsync(run, skipped, CancellationToken.None);
                     continue;
                 }
+                var start = new RealStepStarted(run, node.Id, occurrence, parentOccurrenceId,
+                    phase, node.Type, node.Name, path, loopIteration, startedUtc);
+                if (events is not null) await events.StepStartedAsync(start, ct);
+                var firstFact = facts.Count;
+                TestSignalResult? observationForStep = null;
+                Exception? stepFailure = null;
+                try
+                {
                 var kind = node.Type;
                 switch (kind)
                 {
                     case "Sequence":
                         Fact(node, RealStepStatus.Completed);
-                        await Execute(node.Slots["body"], ct, cleanup);
+                        await Execute(node.Slots["body"], ct, cleanup, phase, occurrence, path, loopIteration);
                         break;
                     case "If":
                     {
@@ -250,7 +277,8 @@ public sealed class RealRunCoordinator
                         }
                         var pass = Compare(actual, "==", expected);
                         Fact(node, RealStepStatus.Completed, expected, actual, "Branch: " + (pass ? "then" : "else"));
-                        await Execute(node.Slots[pass ? "then" : "else"], ct, cleanup);
+                        await Execute(node.Slots[pass ? "then" : "else"], ct, cleanup,
+                            phase, occurrence, path, loopIteration);
                         break;
                     }
                     case "Loop":
@@ -258,7 +286,8 @@ public sealed class RealRunCoordinator
                         var count = Milliseconds(node, "count", 1000);
                         Fact(node, RealStepStatus.Completed, count.ToString(CultureInfo.InvariantCulture));
                         for (var i = 0; i < count; i++)
-                            await Execute(node.Slots["body"], ct, cleanup);
+                            await Execute(node.Slots["body"], ct, cleanup,
+                                phase, occurrence, path, i + 1);
                         break;
                     }
                     case "Wait":
@@ -318,6 +347,8 @@ public sealed class RealRunCoordinator
                         var result = await _signals.ReadAsync(Target(node), mode,
                             TimeSpan.FromMilliseconds(Milliseconds(node, "timeoutMs")),
                             TimeSpan.FromMilliseconds(Milliseconds(node, "maxAgeMs")), ct);
+                        observationForStep = result;
+                        if (result.Status == TestSignalStatus.LostFrames) incomplete = true;
                         var value = result.HasUsableValue
                             ? result.Observation!.Value!.Value.ToString("R", CultureInfo.InvariantCulture)
                             : null;
@@ -355,6 +386,8 @@ public sealed class RealRunCoordinator
                             await foreach (var sample in _signals.ObserveAsync(match, timer.Token)
                                 .WithCancellation(timer.Token))
                             {
+                                observationForStep = sample;
+                                if (sample.Status == TestSignalStatus.LostFrames) incomplete = true;
                                 if (sample.HasUsableValue)
                                 {
                                     sawValid = true;
@@ -412,6 +445,8 @@ public sealed class RealRunCoordinator
                             await foreach (var sample in _signals.ObserveAsync(target, timeoutStop.Token)
                                 .WithCancellation(timeoutStop.Token))
                             {
+                                observationForStep = sample;
+                                if (sample.Status == TestSignalStatus.LostFrames) incomplete = true;
                                 if (!sample.HasUsableValue) continue;
                                 sawValid = true;
                                 actual = sample.Observation!.Value!.Value.ToString("R",
@@ -539,6 +574,62 @@ public sealed class RealRunCoordinator
                     }
                     default:
                         throw new NotSupportedException("Real runner cannot execute step " + kind);
+                }
+                }
+                catch (Exception ex)
+                {
+                    stepFailure = ex;
+                    throw;
+                }
+                finally
+                {
+                    var own = -1;
+                    for (var i = firstFact; i < facts.Count; i++)
+                        if (facts[i].Step == node.Id) { own = i; break; }
+                    if (own < 0)
+                    {
+                        Fact(node, stepFailure is OperationCanceledException
+                            ? RealStepStatus.Cancelled : RealStepStatus.DeviceError,
+                            detail: stepFailure?.Message ?? "Step exited without a result fact.");
+                        own = facts.Count - 1;
+                    }
+                    var original = facts[own];
+                    var recording = StepResultRecordingOptions.Read(node);
+                    var extra = ImmutableDictionary.CreateBuilder<string, TestDatum>(
+                        StringComparer.OrdinalIgnoreCase);
+                    if (recording.Capture == ExtraResultCapture.Always ||
+                        recording.Capture == ExtraResultCapture.NonPass &&
+                        original.Status != RealStepStatus.Completed)
+                        foreach (var name in recording.ExtraVariables)
+                            extra[name] = variables.TryGetValue(name, out var datum) ? datum :
+                                new TestDatum(null, TestSignalStatus.NoFrame, DateTimeOffset.UtcNow);
+
+                    var completed = original with
+                    {
+                        Status = stepFailure is null ? original.Status :
+                            stepFailure is OperationCanceledException
+                                ? RealStepStatus.Cancelled : RealStepStatus.DeviceError,
+                        Detail = stepFailure is null ? original.Detail :
+                            original.Detail + " | " + stepFailure.Message,
+                        StepOccurrenceId = occurrence,
+                        ParentOccurrenceId = parentOccurrenceId,
+                        Phase = phase,
+                        ExecutionPath = path,
+                        LoopIteration = loopIteration,
+                        StartedUtc = startedUtc,
+                        CompletedUtc = DateTimeOffset.UtcNow,
+                        Duration = Stopwatch.GetElapsedTime(startedTick),
+                        Observation = observationForStep?.Observation,
+                        ObservationStatus = observationForStep?.Status,
+                        RequirementId = recording.RequirementId,
+                        ReportNote = recording.ReportNote,
+                        ShowEvidence = recording.ShowEvidence,
+                        AdditionalResults = extra.ToImmutable()
+                    };
+                    facts[own] = completed;
+                    // Durable observers must finish before the next physical action.
+                    if (events is not null)
+                        await events.StepCompletedAsync(run, completed, CancellationToken.None);
                 }
             }
         }
