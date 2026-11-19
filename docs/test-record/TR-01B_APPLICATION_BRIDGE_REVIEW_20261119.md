@@ -52,12 +52,11 @@
 
 ## 五、Windows Codex 验证单（必须记录准确 SHA，不能把代码存在当 PASS）
 
-在 Windows 本地以 PR #65 当前精确 HEAD 拉取，不进行 CI 或模拟设备验收：
+在 Windows 专用、无未提交修改的工作树，以 PR #65 当前精确 HEAD 拉取，不覆盖任何本地开发分支，不进行 CI 或模拟设备验收：
 
 ```powershell
 git fetch origin feature/test-record-backend-20261119
-git switch feature/test-record-backend-20261119
-git reset --hard origin/feature/test-record-backend-20261119
+git switch --detach origin/feature/test-record-backend-20261119
 git rev-parse HEAD
 cd HOST
 dotnet restore AutoTest.sln
