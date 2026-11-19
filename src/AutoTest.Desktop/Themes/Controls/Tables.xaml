@@ -2,7 +2,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <Style TargetType="{x:Type DataGrid}">
   <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
-  <Setter Property="FontSize" Value="11"/>
+  <Setter Property="FontSize" Value="13"/>
   <Setter Property="Foreground" Value="#334963"/>
   <Setter Property="Background" Value="White"/>
   <Setter Property="RowBackground" Value="White"/>
@@ -13,8 +13,8 @@
   <Setter Property="BorderBrush" Value="#DBE3ED"/>
   <Setter Property="BorderThickness" Value="0"/>
   <Setter Property="RowHeaderWidth" Value="0"/>
-  <Setter Property="ColumnHeaderHeight" Value="29"/>
-  <Setter Property="RowHeight" Value="35"/>
+  <Setter Property="ColumnHeaderHeight" Value="36"/>
+  <Setter Property="RowHeight" Value="42"/>
   <Setter Property="HeadersVisibility" Value="Column"/>
   <Setter Property="EnableRowVirtualization" Value="True"/>
   <Setter Property="SelectionMode" Value="Single"/>
@@ -22,9 +22,9 @@
  <Style TargetType="{x:Type DataGridColumnHeader}">
   <Setter Property="Background" Value="#F3F6FA"/>
   <Setter Property="Foreground" Value="#647B96"/>
-  <Setter Property="FontSize" Value="11"/>
+  <Setter Property="FontSize" Value="12"/>
   <Setter Property="FontWeight" Value="SemiBold"/>
-  <Setter Property="Padding" Value="8,5"/>
+  <Setter Property="Padding" Value="10,7"/>
   <Setter Property="BorderBrush" Value="#E4EBF3"/>
   <Setter Property="BorderThickness" Value="0,0,0,1"/>
   <Setter Property="HorizontalContentAlignment" Value="Left"/>
