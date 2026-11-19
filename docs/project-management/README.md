@@ -22,3 +22,8 @@
 - [旧 WPF 真实 ECU 工程与 44 条历史来源用例调查](new-baseline-20261112/research/LEGACY-WPF-FACT-INTAKE-20261117.md)：40项源码细节、KEY/DBC/CAN/TEST/UI操作经验及待迁移事实。
 
 以上都是研究输入。已批准设计仍以 G3 补充合同为准，未完成实测的硬件约束与工程迁移不得自行宣称通过。
+
+## 2026-11-18 FLASH 专项阶段证据
+
+- [指定 HydEPB ECU 真实写入/FF01 校验/Boot 复位阶段结果与 APP 后验限制](new-baseline-20261112/research/FLASH-REFERENCE-VALIDATION-INTAKE-20261118.md)：已核对 FlashLab 源码和 PR #55，记录专项现场报告、确切 Profile、待补原始证据及 FLASH 责任范围；**不是 G4 总体验收或 PR 合并批准**。
+
