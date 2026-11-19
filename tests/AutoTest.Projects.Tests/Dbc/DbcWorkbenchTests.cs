@@ -77,6 +77,63 @@ public sealed class DbcWorkbenchTests
         Assert.Equal("Speed", reopened.Model.FindSignal(291, "Speed").Name);
     }
 
+
+    [Fact] public void NativeMessageAndSignalComments_CanEditMultilineAndRoundTrip()
+    {
+        var original = Basic +
+            "\nCM_ BO_ 291 \"原来的报文注释\";\n" +
+            "CM_ SG_ 291 Speed \"原来的信号注释\";\n" +
+            "BA_ \"GenMsgCycleTime\" BO_ 291 65;\n";
+        var doc = DbcWorkbenchDocument.Import("comments", original);
+        var messageComment = "用于调试时的电压采样说明。\n注意引用的单位、采样时间和失效条件。\n含引号：\"定义\"。";
+        var signalComment = "车速反馈值\n0 = 停止\n其他值依照实际 DBC 定义。";
+        doc.SetMessageComment(291, messageComment);
+        doc.SetSignalComment(291, "Speed", signalComment);
+        var text = doc.ExportText();
+        Assert.Contains("CM_ BO_ 291 \"", text);
+        Assert.Contains(@"注意引用的单位、采样时间和失效条件。\n", text);
+        Assert.Contains(@"含引号：\" + "\"" + "定义", text);
+        Assert.Contains("BA_ \"GenMsgCycleTime\" BO_ 291 65;", text);
+        Assert.DoesNotContain("AutoTestMessageSummary", text);
+        Assert.DoesNotContain("AutoTestSignalSummary", text);
+        var reopened = DbcWorkbenchDocument.Import("comments", text);
+        Assert.Equal(messageComment, reopened.DisplayNames.MessageDescription(291));
+        Assert.Equal(signalComment, reopened.DisplayNames.SignalDescription(291, "Speed"));
+        Assert.Equal(doc.Model.FindMessage(291).Signals, reopened.Model.FindMessage(291).Signals);
+    }
+
+    [Fact] public void AddingComment_DoesNotRewriteExistingSignalOrValueTable()
+    {
+        var source = Basic + "\nCM_ SG_ 291 Temp \"保留原温度定义\";\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        doc.SetMessageComment(291, "新报文说明：数值依据实际车辆标定。");
+        var result = doc.ExportText();
+        Assert.Contains("CM_ BO_ 291 \"新报文说明：数值依据实际车辆标定。\";", result);
+        Assert.Contains("CM_ SG_ 291 Temp \"保留原温度定义\";", result);
+        Assert.Contains("VAL_ 291 Speed 0 \"Stopped\" 100 \"Moving\" ;", result);
+        var reopened = DbcWorkbenchDocument.Import("example", result);
+        Assert.Equal("新报文说明：数值依据实际车辆标定。",
+            reopened.DisplayNames.MessageDescription(291));
+    }
+
+    [Fact] public void CommentEdit_RejectsDuplicateSourceDefinitionsRatherThanLosingOne()
+    {
+        var source = Basic + "\nCM_ BO_ 291 \"first\";\nCM_ BO_ 291 \"second\";\n";
+        var doc = DbcWorkbenchDocument.Import("duplicate", source);
+        doc.SetMessageComment(291, "edited");
+        var error = Assert.Throws<ProjectDataException>(() => doc.ExportText());
+        Assert.Equal("DBC_COMMENT_DUPLICATE", error.Code);
+    }
+
+    [Fact] public void CommentEdit_RejectsUnsupportedMultilineRawSource()
+    {
+        var source = Basic + "\nCM_ BO_ 291 \"raw\nline\";\n";
+        var doc = DbcWorkbenchDocument.Import("raw", source);
+        doc.SetMessageComment(291, "new definition");
+        var error = Assert.Throws<ProjectDataException>(() => doc.ExportText());
+        Assert.Equal("DBC_COMMENT_UNSUPPORTED", error.Code);
+    }
+
     [Fact] public void ShortSummaries_RoundTripIndependentlyFromNamesAndRawDefinitions()
     {
         var source = Basic + "\nCM_ SG_ 291 Speed \"原始定义包含单位、工况和计算依据；不应被摘要覆盖。\";\n";
