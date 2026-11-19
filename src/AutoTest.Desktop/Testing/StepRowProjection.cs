@@ -156,7 +156,7 @@ public sealed class StepRowProjection : BindableBase
             "Read" => "读取 " + Prop("target") + " → " + Prop("variable") +
                 " · " + (Prop("mode") == "Latest" ? "最新有效值" : "等待新数据"),
             "WaitUntil" => "信号 " + Prop("target") + " · 超时 " + Prop("timeoutMs") + " ms",
-            "CanStopPeriodic" => "停止本次测试的全部 CAN1 周期发送",
+            "CanStopPeriodic" => "停止本次测试的全部 ECU CAN 周期发送",
             "AssertSignal" => "判定 " + Prop("target") + " " +
                 Prop("operator") + " " + Prop("expected") + " · " +
                 Prop("timeoutMs") + " 毫秒",
