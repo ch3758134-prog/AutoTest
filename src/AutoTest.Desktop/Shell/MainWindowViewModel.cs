@@ -1558,7 +1558,6 @@ public sealed class MainWindowViewModel : BindableBase
 
     private static bool IsInlineConfiguration(string kind) =>
         kind is ProjectWorkspaceService.TestConfigurationKind or
-            ProjectWorkspaceService.ControllerKind or
             ProjectWorkspaceService.BenchConfigurationKind;
 
     private async Task CreateConfigurationAsync(string kind)
