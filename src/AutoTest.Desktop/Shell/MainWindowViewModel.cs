@@ -232,7 +232,7 @@ public sealed class MainWindowViewModel : BindableBase
                 var f = frame.Frame;
                 CanRecords.Add(new CanMonitorRow(
                     frame.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
-                    f.Role == BusRole.DutCan ? "CAN0 · DUT" : "CAN1 · 按键板",
+                    f.Role == BusRole.DutCan ? StationCanWiring.DutDisplayName : StationCanWiring.KeypadDisplayName,
                     "0x" + f.Id.ToString("X"), f.ExtendedId ? "扩展" : "标准",
                     f.Dlc, Convert.ToHexString(f.Data.ToArray()), frame.LostFrames));
                 if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
@@ -1309,7 +1309,7 @@ public sealed class MainWindowViewModel : BindableBase
         var categories = new[]
         {
             (ProjectWorkspaceService.DbcKind, "DBC 报文"),
-            (ProjectWorkspaceService.ControllerKind, "按键配置"),
+
             (ProjectWorkspaceService.WaveKind, "波形记录"),
             (ProjectWorkspaceService.WaveSettingsKind, "波形判定配置"),
             (ProjectWorkspaceService.TestConfigurationKind, "被测系统配置 · TCF"),
@@ -1331,7 +1331,7 @@ public sealed class MainWindowViewModel : BindableBase
             foreach (var entry in entries)
                 group.Children.Add(ToAssetNode(entry));
             if (entries.Length > 0 || kind is ProjectWorkspaceService.DbcKind or
-                ProjectWorkspaceService.ControllerKind or ProjectWorkspaceService.WaveKind)
+                ProjectWorkspaceService.WaveKind)
                 ResourceNodes.Add(group);
             else
                 advanced.Children.Add(group);
@@ -1340,6 +1340,7 @@ public sealed class MainWindowViewModel : BindableBase
         var defined = categories.Select(x => x.Item1)
             .Append(ProjectWorkspaceService.TestProjectKind)
             .Append(ProjectWorkspaceService.TestProgramKind)
+            .Append(ProjectWorkspaceService.ControllerKind)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var extras = assets.Where(x => !defined.Contains(x.Kind)).ToArray();
         if (extras.Length > 0)
