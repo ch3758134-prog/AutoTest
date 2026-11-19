@@ -17,7 +17,6 @@ namespace AutoTest.Desktop.Shell;
 /// </summary>
 public sealed class UnboundTestEditorWindow : Window
 {
-    private readonly StepEditTransaction _history = new(TestDocument.Create("未归档测试用例"));
     private StepEditTransaction _session;
     private TestDocument _exported;
     private readonly TreeView _tree = new();
@@ -34,7 +33,7 @@ public sealed class UnboundTestEditorWindow : Window
     private sealed record Selection(TestPhase Phase, StepId? Parent, string? Slot, StepId? Node, int Index);
     public UnboundTestEditorWindow()
     {
-        _session = _history;
+        _session = new StepEditTransaction(TestDocument.Create("未归档测试用例"));
         _exported = _session.Current;
         Title = "测试用例编辑 · 未归档 | AutoTest";
         Width = 1120;
@@ -42,7 +41,7 @@ public sealed class UnboundTestEditorWindow : Window
         MinWidth = 800;
         MinHeight = 520;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Background = Brush("#F5F8FC");
+        Background = ColorBrush("#F5F8FC");
         FontFamily = new FontFamily("Microsoft YaHei UI");
         FontSize = 13;
 
@@ -51,11 +50,11 @@ public sealed class UnboundTestEditorWindow : Window
         var header = new StackPanel { Margin = new Thickness(22, 16, 22, 10) };
         DockPanel.SetDock(header, Dock.Top);
         layout.Children.Add(header);
-        header.Children.Add(new TextBlock { Text = "未归档测试用例 · 正式 TEST 编辑器", FontSize = 19, FontWeight = FontWeights.SemiBold, Foreground = Brush("#203A5C") });
+        header.Children.Add(new TextBlock { Text = "未归档测试用例 · 正式 TEST 编辑器", FontSize = 19, FontWeight = FontWeights.SemiBold, Foreground = ColorBrush("#203A5C") });
         header.Children.Add(new TextBlock
         {
             Text = "使用正式 TestDocument / StepEditTransaction。可离线编辑与导出草稿；未加入工程前禁止实体运行。",
-            Foreground = Brush("#657A92"), Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap
+            Foreground = ColorBrush("#657A92"), Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap
         });
 
         var toolbar = new WrapPanel { Margin = new Thickness(18, 0, 18, 10) };
@@ -67,7 +66,7 @@ public sealed class UnboundTestEditorWindow : Window
         AddButton(toolbar, "撤销 Ctrl+Z", (_, _) => ChangeHistory(true));
         AddButton(toolbar, "重做 Ctrl+Y", (_, _) => ChangeHistory(false));
         _dirty.Margin = new Thickness(14, 8, 0, 0);
-        _dirty.Foreground = Brush("#9B6424");
+        _dirty.Foreground = ColorBrush("#9B6424");
         toolbar.Children.Add(_dirty);
 
         var body = new Grid { Margin = new Thickness(18, 0, 18, 12) };
@@ -75,7 +74,7 @@ public sealed class UnboundTestEditorWindow : Window
         body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(5) });
         body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         layout.Children.Add(body);
-        var splitter = new GridSplitter { Width = 5, Background = Brush("#E3EAF3"), HorizontalAlignment = HorizontalAlignment.Stretch };
+        var splitter = new GridSplitter { Width = 5, Background = ColorBrush("#E3EAF3"), HorizontalAlignment = HorizontalAlignment.Stretch };
         Grid.SetColumn(splitter, 1);
         body.Children.Add(splitter);
 
@@ -114,7 +113,7 @@ public sealed class UnboundTestEditorWindow : Window
         _heading.FontSize = 17;
         _heading.FontWeight = FontWeights.SemiBold;
         rightTop.Children.Add(_heading);
-        rightTop.Children.Add(new TextBlock { Text = "步骤名称", Margin = new Thickness(0, 18, 0, 5), Foreground = Brush("#617790") });
+        rightTop.Children.Add(new TextBlock { Text = "步骤名称", Margin = new Thickness(0, 18, 0, 5), Foreground = ColorBrush("#617790") });
         _name.Padding = new Thickness(8);
         rightTop.Children.Add(_name);
         var rightActions = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
@@ -123,7 +122,7 @@ public sealed class UnboundTestEditorWindow : Window
         AddButton(rightActions, "添加到当前分支", (_, _) => Insert(true));
         _status.Margin = new Thickness(0, 10, 0, 0);
         _status.TextWrapping = TextWrapping.Wrap;
-        _status.Foreground = Brush("#617790");
+        _status.Foreground = ColorBrush("#617790");
         rightTop.Children.Add(_status);
         var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         right.Children.Add(scroll);
@@ -136,7 +135,7 @@ public sealed class UnboundTestEditorWindow : Window
         SetStatus("选择准备 / 测试 / 清理阶段，选择操作类型后点击添加。");
     }
 
-    private static Brush Brush(string hex) => (Brush)new BrushConverter().ConvertFromString(hex)!;
+    private static Brush ColorBrush(string hex) => (Brush)new BrushConverter().ConvertFromString(hex)!;
     private static void AddButton(Panel parent, string caption, RoutedEventHandler handler)
     {
         var button = new Button { Content = caption, Padding = new Thickness(11, 6, 11, 6), Margin = new Thickness(0, 0, 7, 6), MinHeight = 32 };
@@ -190,7 +189,7 @@ public sealed class UnboundTestEditorWindow : Window
                 {
                     Header = StepUiCatalog.SlotLabel(pair.Key),
                     Tag = new Selection(phase, node.Id, pair.Key, null, 0),
-                    Foreground = Brush("#54759B"),
+                    Foreground = ColorBrush("#54759B"),
                     IsExpanded = true
                 };
                 item.Items.Add(branch);
@@ -198,12 +197,13 @@ public sealed class UnboundTestEditorWindow : Window
             }
         }
     }
-    private static bool SelectById(IEnumerable<TreeViewItem> items, StepId id)
+    private bool SelectById(IEnumerable<TreeViewItem> items, StepId id)
     {
         foreach (var item in items)
         {
             if (item.Tag is Selection { Node: { } node } && node == id)
             {
+                _selected = item.Tag as Selection;
                 item.IsSelected = true;
                 item.BringIntoView();
                 return true;
@@ -234,14 +234,14 @@ public sealed class UnboundTestEditorWindow : Window
         foreach (var prop in node.Properties.OrderBy(p => p.Key))
         {
             var label = new TextBlock { Text = StepUiCatalog.IsOperatorProperty(prop.Key) ? StepUiCatalog.PropertyLabel(prop.Key) : prop.Key,
-                Foreground = Brush("#617790"), Margin = new Thickness(0, 11, 0, 5) };
+                Foreground = ColorBrush("#617790"), Margin = new Thickness(0, 11, 0, 5) };
             var input = new TextBox { Text = prop.Value, Padding = new Thickness(8), Tag = prop.Key };
             _fields.Children.Add(label);
             _fields.Children.Add(input);
             _inputs.Add((prop.Key, input));
         }
         if (node.Properties.Count == 0)
-            _fields.Children.Add(new TextBlock { Text = "此步骤暂无参数。", Foreground = Brush("#71839A"), Margin = new Thickness(0, 14, 0, 0) });
+            _fields.Children.Add(new TextBlock { Text = "此步骤暂无参数。", Foreground = ColorBrush("#71839A"), Margin = new Thickness(0, 14, 0, 0) });
         SetStatus("编辑名称和参数后点击“应用”；修改属于正式 TEST 事务，可撤销。");
     }
     private bool CommitSelected(bool showMessage = false)
@@ -340,7 +340,7 @@ public sealed class UnboundTestEditorWindow : Window
     }
     private void NewDraft()
     {
-        if (!ConfirmDiscard() || !CommitSelected()) return;
+        if (!CommitSelected() || !ConfirmDiscard()) return;
         _session = new StepEditTransaction(TestDocument.Create("未归档测试用例"));
         _exported = _session.Current;
         _selected = null;
@@ -351,7 +351,7 @@ public sealed class UnboundTestEditorWindow : Window
         "未归档测试用例", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
     private void OpenDraft()
     {
-        if (!ConfirmDiscard()) return;
+        if (!CommitSelected() || !ConfirmDiscard()) return;
         var dialog = new OpenFileDialog { Filter = "TEST 草稿 JSON|*.json", Title = "打开未归档 TEST 草稿" };
         if (dialog.ShowDialog(this) != true) return;
         try
