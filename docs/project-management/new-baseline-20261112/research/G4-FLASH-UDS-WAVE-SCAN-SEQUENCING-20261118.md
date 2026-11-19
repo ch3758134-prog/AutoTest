@@ -91,3 +91,11 @@
 - 独立验收可执行目标 `AutoTest.UdsLab.exe`，通过现有真实 DEVICE/UDS/ISO-TP 服务做诊断实测，**不得以静态 UI 或 Mock 验收**。
 - UDS 研究和独立工具实现可先于 G4 自动测试整体现场通过；而 UDS 的正式自动 TEST 步骤接入仍要求遵守 G4 已批准运行合同及相应实测结果。
 - 详细正式合同：[UDS 专用分支和独立 WPF 实测验收](UDS-DEDICATED-BRANCH-AND-REAL-LAB-20261118.md)。本节是对原推进顺序的**补充与优先解释**，不重置 G4 或 WAVE/SCAN 的依赖。
+
+## 10. 2026-11-19 G4 受控源码接收与 Fluent UI 专项接管（最新决策优先）
+
+- 用户认可 G4 阶段成果、要求优先组织 PR #61 受控接入 HOST main；这不是 G4 实体全功能 PASS。PR 当前 dirty，正式 INTEGRATION 跟踪 [Issue #62](https://github.com/ch3758134-prog/AutoTest/issues/62)，冲突和 Windows 构建审查前不得合并。
+- 独立 UI/UX 活动设计分支为 ui/ide-design，采用现代 Windows Fluent Light，先在 UDS 交互中验证编辑模式与组件，再用于手动台架/自动 TEST；需用户操作验收后才派发正式 WPF 实施。
+- feature/ui-rebuild-20261119 只是较早创建的临时准备分支，现已暂停，不取代 ui/ide-design；未来若使用必须以获批设计与已接收 main 重建起点。
+- WAVE/SCAN 原“等待 G4 自动测试通过”现在解释为等待**新的 UI 与正式 TEST 真实执行主线集成并获用户实际验收**；独立 FLASH/UDS 继续按专项实测和交付边界推进。
+- 详见 [最新基线接收和 UI 专项合同](G4-PR61-BASELINE-ACCEPTANCE-20261119.md)。
