@@ -242,6 +242,9 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 RealStepStatus.NoData => "NO_DATA",
                 RealStepStatus.Timeout => "TIMEOUT",
                 RealStepStatus.InvalidData when
+                    completed.Detail.Contains("DBC_SNAPSHOT_MISMATCH", StringComparison.Ordinal)
+                    => "DBC_SNAPSHOT_MISMATCH",
+                RealStepStatus.InvalidData when
                     completed.Detail.Contains("SIGNAL_GAP", StringComparison.Ordinal) => "SIGNAL_GAP",
                 RealStepStatus.InvalidData => "INVALID_DATA",
                 RealStepStatus.ConditionFalse => "CONDITION_FALSE",
