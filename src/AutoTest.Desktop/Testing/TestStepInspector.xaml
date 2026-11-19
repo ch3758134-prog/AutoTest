@@ -13,10 +13,10 @@
       <TextBlock x:Name="TypeIcon" Text="▣" Foreground="#386EA9" FontSize="13"
        HorizontalAlignment="Center" VerticalAlignment="Center"/>
      </Border>
-     <TextBlock x:Name="StepCode" DockPanel.Dock="Right" Foreground="#8798AC"
+     <TextBlock x:Name="StepCode" DockPanel.Dock="Right" Visibility="Collapsed" Foreground="#8798AC"
       VerticalAlignment="Center" FontFamily="Consolas" FontSize="10"/>
      <StackPanel VerticalAlignment="Center">
-      <TextBlock x:Name="Heading" Text="步骤属性" Foreground="#26476D"
+      <TextBlock x:Name="Heading" Text="编辑步骤" Foreground="#26476D"
        FontWeight="SemiBold" FontSize="12"/>
       <TextBlock x:Name="TypeLabel" Foreground="#607992" FontSize="11"/>
      </StackPanel>
@@ -36,7 +36,7 @@
     <TextBlock Text="步骤名称" Foreground="#61738B" FontWeight="SemiBold"
      FontSize="11" Margin="0,0,0,5"/>
     <TextBox x:Name="NameInput" Margin="0,0,0,8"/>
-    <CheckBox x:Name="StepEnabledInput" Content="启用此步骤（取消勾选则运行时跳过）"
+    <CheckBox x:Name="StepEnabledInput" Content="启用步骤"
       Margin="0,0,0,12" IsChecked="True"
       ToolTip="关闭后步骤仍保存在测试程序里，但不执行，也不会发送任何硬件命令。"/>
     <!-- The formal TEST enabled flag is persisted and obeyed by the real runner. -->
@@ -44,20 +44,20 @@
 
 
     <StackPanel x:Name="TargetPanel" Margin="0,0,0,13">
-     <TextBlock Text="操作对象 / 正式资源" Foreground="#61738B"
+     <TextBlock Text="操作对象" Foreground="#61738B"
       FontWeight="SemiBold" FontSize="11" Margin="0,0,0,5"/>
      <TextBox x:Name="TargetSearch" TextChanged="TargetSearch_Changed"
-      ToolTip="搜索工程 DBC、报文 ID、信号、控制器按键"
+      ToolTip="搜索报文、信号或 KEY 动作"
       Margin="0,0,0,5"/>
      <ComboBox x:Name="TargetPicker" ItemsSource="{Binding AvailableTargets}"
       DisplayMemberPath="Label" MinHeight="28"
       SelectionChanged="TargetPicker_Changed"/>
-     <TextBlock x:Name="TargetHint" Foreground="#64758C" FontSize="11"
+     <TextBlock x:Name="TargetHint" Visibility="Collapsed" Foreground="#64758C" FontSize="11"
       TextWrapping="Wrap" Margin="0,6,0,0"/>
     </StackPanel>
 
     <StackPanel x:Name="RawCanPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="CAN0 原始帧" Foreground="#4B6382" FontWeight="SemiBold"
+     <TextBlock Text="ECU CAN · 原始帧" Foreground="#4B6382" FontWeight="SemiBold"
       FontSize="11" Margin="0,0,0,8"/>
      <TextBlock Text="CAN ID · 16 进制" Foreground="#61738B" FontSize="11" Margin="0,0,0,5"/>
      <TextBox x:Name="FrameIdInput" Margin="0,0,0,8" ToolTip="例如 0x123"/>
@@ -115,20 +115,18 @@
        </DataTemplate>
       </ItemsControl.ItemTemplate>
      </ItemsControl>
-     <CheckBox x:Name="DbcRawMode" Content="改用完整原始帧 HEX"
+     <CheckBox x:Name="DbcRawMode" Content="使用原始 HEX"
       Checked="DbcRawMode_Changed" Unchecked="DbcRawMode_Changed"
       Margin="0,9,0,6"/>
      <TextBox x:Name="DbcRawDataInput" Visibility="Collapsed" FontFamily="Consolas"
       ToolTip="需与当前 DBC DLC 匹配"/>
-     <TextBlock Text="按实际 DBC 定义编码。缺失物理值、复用帧和无效资源会被拒绝，不自动填零。"
-      TextWrapping="Wrap" Foreground="#64758C" FontSize="10" Margin="0,7,0,0"/>
+
     </StackPanel>
 
     <StackPanel x:Name="KeyPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="按键动作 · 已接入的控制协议" Foreground="#4B6382" FontWeight="SemiBold"
+     <TextBlock Text="KEY 动作" Foreground="#4B6382" FontWeight="SemiBold"
       FontSize="11" Margin="0,0,0,6"/>
-     <TextBlock Text="当前正式执行支持单次短按、保持、释放。任意数量 KEY 控制段须待 KEY-SEQ-01 审批接线，不在此假装支持。"
-      TextWrapping="Wrap" FontSize="10" Foreground="#957037" Margin="0,0,0,8"/>
+
      <ComboBox x:Name="KeyActionInput" SelectionChanged="KeyAction_Changed"
       MinHeight="28" Margin="0,0,0,8">
       <ComboBoxItem Content="按下后释放" Tag="Pulse"/>
@@ -138,13 +136,12 @@
      <StackPanel x:Name="RawKeyMaskPanel" Visibility="Collapsed">
       <TextBlock Text="KEY_SIM · 20 路电阻开关组合" Foreground="#61738B"
        FontSize="11" Margin="0,0,0,5"/>
-      <TextBox x:Name="RawKeyMaskInput" IsReadOnly="True" FontFamily="Consolas"
+      <TextBox x:Name="RawKeyMaskInput" IsReadOnly="True" Visibility="Collapsed" FontFamily="Consolas"
        Margin="0,0,0,8"/>
       <UniformGrid x:Name="RawKeyGrid" Columns="5" Rows="4" Margin="0,0,0,7"/>
       <Button Content="清空选择" Click="ClearRawKeys_Click"
        HorizontalAlignment="Left" Margin="0,0,0,8"/>
-      <TextBlock Text="这些是电阻组合开关，不是 20 路独立模拟电压源。"
-       FontSize="10" Foreground="#64758C" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
      </StackPanel>
      <StackPanel x:Name="KeyDurationPanel">
       <TextBlock Text="保持时间（ms）" Foreground="#61738B" FontSize="11"
@@ -202,24 +199,8 @@
      </ItemsControl.ItemTemplate>
     </ItemsControl>
     <Border BorderBrush="#E1E8F2" BorderThickness="0,1,0,0" Margin="0,12,0,8"/>
-    <StackPanel x:Name="StepActionsPanel" Margin="0,0,0,12" Visibility="Collapsed">
-     <Border BorderBrush="#E1E8F2" BorderThickness="0,0,0,1" Margin="0,0,0,9"/>
-     <WrapPanel Margin="0,0,0,6">
-      <Button Content="＋ 下方插入" Tag="after" Click="StepAction_Click"
-       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="复制" Tag="duplicate" Click="StepAction_Click"
-       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="↑ 上移" Tag="up" Click="StepAction_Click"
-       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="↓ 下移" Tag="down" Click="StepAction_Click"
-       FontSize="11" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="删除" Tag="delete" Click="StepAction_Click"
-       FontSize="11" Foreground="#BD4D5B" Margin="0,0,5,6" Padding="7,4"/>
-      <Button Content="● 断点（编辑标记）" Tag="breakpoint" Click="StepAction_Click"
-       FontSize="10" Margin="0,0,5,6" Padding="7,4"
-       ToolTip="标记此步骤位置；当前实测运行暂不能在断点处暂停"/>
-     </WrapPanel>
-    </StackPanel>
+    <StackPanel x:Name="StepActionsPanel" Visibility="Collapsed"/>
+
    </StackPanel>
   </ScrollViewer>
   <!-- Sticky apply/cancel at the bottom; edits stay transactional and cancellable. -->
