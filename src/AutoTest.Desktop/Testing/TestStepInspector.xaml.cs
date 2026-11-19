@@ -33,6 +33,11 @@ public sealed record TestActionOption(string Key, string Category, string Title,
 
 public sealed record TestStepFieldChoice(string Value, string Label);
 
+public sealed record PublicFlowChoice(Guid AssetId, int Revision, string Sha256, string Name)
+{
+    public string Label => Name + " · 修订 " + Revision;
+}
+
 public sealed class TestStepInputField : BindableBase
 {
     private string _value;
@@ -134,6 +139,8 @@ public partial class TestStepInspector : UserControl
             "异常处理树结构可编辑；执行未接线。"),
         new("subroutine", "流程控制", "子程序", "Subroutine", "",
             "具名子程序容器，执行未接线。"),
+        new("call-public-flow", "流程控制", "调用公共流程", "CallPublicFlow", "",
+            "从当前工程选择已保存的公共流程，引用固定修订；不自动跟随更新。"),
         new("call", "流程控制", "调用子程序", "CallSubroutine", "",
             "必须明确填写子程序引用，执行未接线。"),
         new("can-send", "外部操作", "旧版 CAN 发送（待转换）", "CanSend", "",
@@ -175,6 +182,7 @@ public partial class TestStepInspector : UserControl
 
      public ObservableCollection<MappingChoice> AvailableTargets { get; } = new();
     public ObservableCollection<TestStepInputField> ParameterFields { get; } = new();
+    public ObservableCollection<PublicFlowChoice> AvailableFlowChoices { get; } = new();
     public ObservableCollection<TestSignalInputField> SignalValues { get; } = new();
      public StepCompositionResult? Result { get; private set; }
     public Func<StepCompositionResult, bool>? ApplyRequested { get; set; }
@@ -212,7 +220,8 @@ public partial class TestStepInspector : UserControl
 
     public TestStepInspector(IReadOnlyList<MappingChoice> catalog,
         IReadOnlyList<TestTargetMapping> boundMappings, StepNode? editing = null,
-        string? initialActionKey = null, bool caseOnly = false)
+        string? initialActionKey = null, bool caseOnly = false,
+        IReadOnlyList<PublicFlowChoice>? publicFlows = null)
     {
          _catalog = catalog;
         _boundMappings = boundMappings;
@@ -290,6 +299,7 @@ public partial class TestStepInspector : UserControl
             NameInput.Text = editing.Name;
             BuildParameters(chosen);
             BuildTargets(chosen);
+            BuildPublicFlowPicker(chosen, editing, publicFlows ?? []);
         }
         AddHandler(TextBox.TextChangedEvent,
             new TextChangedEventHandler((sender, e) =>
@@ -337,6 +347,8 @@ public partial class TestStepInspector : UserControl
                   "；期望：" + node.Properties.GetValueOrDefault("expectation", "未提供") + "。";
         foreach (var item in node.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
         {
+            if (action.StepType == "CallPublicFlow" &&
+                item.Key is "flowAssetId" or "flowRevision" or "flowSha") continue;
             if (!StepUiCatalog.IsOperatorProperty(item.Key) ||
                 (item.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) ||
                 (item.Key == "value" && action.StepType == "Write") ||
@@ -371,6 +383,8 @@ public partial class TestStepInspector : UserControl
             if (descriptor is not null)
                 foreach (var key in descriptor.RequiredProperties)
                 {
+                    if (action.StepType == "CallPublicFlow" &&
+                        key is "flowAssetId" or "flowRevision" or "flowSha") continue;
                     if (key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) continue;
                     if (key == "value" && action.StepType == "Write") continue;
                     if (ParameterFields.Any(f => f.Key == key)) continue;
@@ -438,6 +452,29 @@ public partial class TestStepInspector : UserControl
         }
         id = 0;
         return false;
+    }
+
+    private void BuildPublicFlowPicker(TestActionOption action, StepNode node,
+        IReadOnlyList<PublicFlowChoice> publicFlows)
+    {
+        PublicFlowPanel.Visibility = action.StepType == "CallPublicFlow"
+            ? Visibility.Visible : Visibility.Collapsed;
+        AvailableFlowChoices.Clear();
+        if (action.StepType != "CallPublicFlow") return;
+        foreach (var flow in publicFlows.OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase))
+            AvailableFlowChoices.Add(flow);
+        var idText = node.Properties.GetValueOrDefault("flowAssetId", "");
+        var revisionText = node.Properties.GetValueOrDefault("flowRevision", "");
+        var sha = node.Properties.GetValueOrDefault("flowSha", "");
+        PublicFlowChoice? pinned = null;
+        if (Guid.TryParse(idText, out var guid) && int.TryParse(revisionText, out var revision))
+            pinned = AvailableFlowChoices.FirstOrDefault(f => f.AssetId == guid &&
+                f.Revision == revision && string.Equals(f.Sha256, sha,
+                    StringComparison.OrdinalIgnoreCase));
+        PublicFlowPicker.SelectedItem = pinned;
+        PublicFlowReferenceStatus.Text = pinned is not null || idText.Length == 0
+            ? "固定当前选中的公共流程修订；后续更新需显式重新选择。"
+            : "STALE_REFERENCE：原流程引用未匹配当前修订，不能自动替换。";
     }
 
     private void BuildTargets(TestActionOption action)
@@ -929,6 +966,14 @@ public partial class TestStepInspector : UserControl
                 }
                 else if (mapping is not null)
                     node = node.WithProperty("target", mapping.Name);
+            }
+            if (node.Type == "CallPublicFlow")
+            {
+                var flow = PublicFlowPicker.SelectedItem as PublicFlowChoice
+                    ?? throw new ArgumentException("请选择工程中已保存的公共流程；失效引用须显式更新。");
+                node = node.WithProperty("flowAssetId", flow.AssetId.ToString("D"))
+                    .WithProperty("flowRevision", flow.Revision.ToString(CultureInfo.InvariantCulture))
+                    .WithProperty("flowSha", flow.Sha256);
             }
             if (node.Type == "AssertSignal" && mapping?.Kind != TestTargetKind.Signal)
                 throw new ArgumentException("CAN 信号判定必须选择 DBC 信号。");
