@@ -30,6 +30,8 @@ public sealed class PlanCompiler
         bool allowRealOperations = false)
     {
         var errors = StepTreeValidator.ValidateTree(document, _catalog, availableAssets).ToBuilder();
+        try { _ = document.ReportSettings.Validate(); }
+        catch (FormatException e) { errors.Add("Test report: " + e.Message); }
         void CheckEnabledNodes(IEnumerable<StepNode> steps)
         {
             foreach (var node in steps)
