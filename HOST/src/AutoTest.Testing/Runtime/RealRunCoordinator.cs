@@ -145,6 +145,22 @@ public sealed class RealRunCoordinator
             mappings.TryGetValue(Property(node, "target"), out var found) ? found
             : throw new KeyNotFoundException("Unresolved test target: " + Property(node, "target"));
 
+        // Verify port observations against the version-pinned mapping, not only
+        // the decoded numeric value. A stale DBC signal must never satisfy an assertion.
+        static bool MatchesFrozenSignal(TestTargetMapping target, SignalObservation observation)
+        {
+            var source = observation.Signal;
+            return target.Kind == TestTargetKind.Signal &&
+                source.DbcAsset.Id == target.Asset &&
+                source.DbcAsset.Revision.Value == target.AssetRevision &&
+                string.Equals(source.DbcAsset.Fingerprint.Sha256, target.AssetSha256,
+                    StringComparison.OrdinalIgnoreCase) &&
+                source.Role == target.Role && source.FrameId == target.CanId &&
+                string.Equals(source.SignalName, target.SignalName, StringComparison.Ordinal) &&
+                string.Equals(source.Unit, target.Unit, StringComparison.Ordinal) &&
+                string.Equals(observation.Unit, target.Unit, StringComparison.Ordinal);
+        }
+
         CancellationTokenSource cts;
         lock (_gate)
         {
@@ -248,6 +264,7 @@ public sealed class RealRunCoordinator
                 var firstFact = facts.Count;
                 TestSignalResult? observationForStep = null;
                 bool gapObserved = false;
+                bool bindingInvalid = false;
                 Exception? stepFailure = null;
                 try
                 {
@@ -345,9 +362,17 @@ public sealed class RealRunCoordinator
                     case "Read":
                     {
                         var mode = Enum.Parse<TestReadMode>(Property(node, "mode"), true);
-                        var result = await _signals.ReadAsync(Target(node), mode,
+                        var target = Target(node);
+                        var result = await _signals.ReadAsync(target, mode,
                             TimeSpan.FromMilliseconds(Milliseconds(node, "timeoutMs")),
                             TimeSpan.FromMilliseconds(Milliseconds(node, "maxAgeMs")), ct);
+                        if (result.Observation is { } sample &&
+                            !MatchesFrozenSignal(target, sample))
+                        {
+                            bindingInvalid = true;
+                            result = new TestSignalResult(TestSignalStatus.DecodeError,
+                                sample, "DBC_SNAPSHOT_MISMATCH");
+                        }
                         observationForStep = result;
                         // A failed read is a real test-data gap. A later unrelated
                         // successful assertion must not make the overall run PASS.
@@ -391,9 +416,18 @@ public sealed class RealRunCoordinator
                         timer.CancelAfter(ms);
                         try
                         {
-                            await foreach (var sample in _signals.ObserveAsync(match, timer.Token)
+                            await foreach (var raw in _signals.ObserveAsync(match, timer.Token)
                                 .WithCancellation(timer.Token))
                             {
+                                var sample = raw;
+                                if (raw.Observation is { } signal &&
+                                    !MatchesFrozenSignal(match, signal))
+                                {
+                                    bindingInvalid = true;
+                                    incomplete = true;
+                                    sample = new TestSignalResult(TestSignalStatus.DecodeError,
+                                        signal, "DBC_SNAPSHOT_MISMATCH");
+                                }
                                 if (sample.HasUsableValue || observationForStep is null)
                                     observationForStep = sample;
                                 if (sample.Status == TestSignalStatus.LostFrames)
@@ -455,9 +489,18 @@ public sealed class RealRunCoordinator
                         timeoutStop.CancelAfter(timeout);
                         try
                         {
-                            await foreach (var sample in _signals.ObserveAsync(target, timeoutStop.Token)
+                            await foreach (var raw in _signals.ObserveAsync(target, timeoutStop.Token)
                                 .WithCancellation(timeoutStop.Token))
                             {
+                                var sample = raw;
+                                if (raw.Observation is { } signal &&
+                                    !MatchesFrozenSignal(target, signal))
+                                {
+                                    bindingInvalid = true;
+                                    incomplete = true;
+                                    sample = new TestSignalResult(TestSignalStatus.DecodeError,
+                                        signal, "DBC_SNAPSHOT_MISMATCH");
+                                }
                                 if (sample.HasUsableValue || observationForStep is null)
                                     observationForStep = sample;
                                 if (sample.Status == TestSignalStatus.LostFrames)
@@ -625,12 +668,14 @@ public sealed class RealRunCoordinator
                     var completed = original with
                     {
                         Status = stepFailure is null
-                            ? gapObserved && original.Status == RealStepStatus.Completed
+                            ? (gapObserved || bindingInvalid) &&
+                                original.Status == RealStepStatus.Completed
                                 ? RealStepStatus.InvalidData : original.Status
                             : stepFailure is OperationCanceledException
                                 ? RealStepStatus.Cancelled : RealStepStatus.DeviceError,
                         Detail = original.Detail +
                             (gapObserved ? " | SIGNAL_GAP: frame/record loss" : "") +
+                            (bindingInvalid ? " | DBC_SNAPSHOT_MISMATCH" : "") +
                             (stepFailure is null ? "" : " | " + stepFailure.Message),
                         StepOccurrenceId = occurrence,
                         ParentOccurrenceId = parentOccurrenceId,
