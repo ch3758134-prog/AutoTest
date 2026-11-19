@@ -84,38 +84,76 @@ public sealed partial class ManualBenchViewModel
         {
             get
             {
-                try
+                if (UseDbc)
                 {
-                    var frame = BuildFrame();
-                    return "0x" + frame.Id.ToString(frame.ExtendedId ? "X8" : "X3");
+                    var m = DbcMessage?.Message;
+                    return m is null ? "选择 DBC" :
+                        "0x" + m.ArbitrationId.ToString(m.IsExtended ? "X8" : "X3");
                 }
-                catch { return UseDbc ? "DBC 未就绪" : "ID 无效"; }
+                var value = IdHex.Trim().StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                    ? IdHex.Trim()[2..] : IdHex.Trim();
+                if (!uint.TryParse(value, NumberStyles.HexNumber,
+                        CultureInfo.InvariantCulture, out var id) ||
+                    id > (Extended ? 0x1FFFFFFFu : 0x7FFu))
+                    return "ID 无效";
+                return "0x" + id.ToString(Extended ? "X8" : "X3");
             }
         }
         public string PreviewDlc
         {
             get
             {
-                try { return BuildFrame().Data.Length.ToString(CultureInfo.InvariantCulture); }
-                catch { return "—"; }
+                if (UseDbc) return DbcMessage?.Message.Dlc.ToString(CultureInfo.InvariantCulture) ?? "—";
+                var hex = CleanDataHex();
+                return hex.Length <= 16 && hex.Length % 2 == 0 &&
+                    hex.All(Uri.IsHexDigit)
+                    ? (hex.Length / 2).ToString(CultureInfo.InvariantCulture) : "—";
             }
         }
+        private string CleanDataHex() =>
+            new(DataHex.Where(c => !char.IsWhiteSpace(c) && c is not '-' and not ',').ToArray());
+
         public string PreviewData
+        {
+            get
+            {
+                if (UseDbc)
+                {
+                    if (DbcMessage is null) return "未选择 DBC 报文";
+                    var completed = SignalValues.Count(x => !string.IsNullOrWhiteSpace(x.Value));
+                    if (completed != SignalValues.Count)
+                        return "尚未填完信号 " + completed + "/" + SignalValues.Count;
+                    try { return FormatHex(BuildFrame().Data.AsSpan().ToArray()); }
+                    catch { return "DBC 编码错误（悬停查看原因）"; }
+                }
+                var hex = CleanDataHex();
+                if (hex.Length > 16) return "超过 8 字节";
+                if (hex.Length % 2 != 0 || !hex.All(Uri.IsHexDigit))
+                    return "HEX 尚未输入完整";
+                return FormatHex(Convert.FromHexString(hex));
+            }
+        }
+        public string PreviewError
         {
             get
             {
                 try
                 {
-                    return string.Join(" ", BuildFrame().Data.Select(b =>
-                        b.ToString("X2", CultureInfo.InvariantCulture)));
+                    _ = BuildFrame();
+                    return "";
                 }
-                catch (Exception error)
+                catch (Exception e) when (e is ArgumentException or FormatException or
+                                            InvalidOperationException or ProjectDataException)
                 {
-                    return "数据无效：" + error.Message;
+                    return e.Message;
                 }
             }
         }
-        public string PreviewFull => PreviewId + " · DLC " + PreviewDlc + " · " + PreviewData;
+        public string PreviewFull => PreviewId + " · DLC " + PreviewDlc + " · " +
+            PreviewData + (string.IsNullOrWhiteSpace(PreviewError) ? "" :
+                " · " + PreviewError);
+        private static string FormatHex(byte[] data) =>
+            string.Join(" ", data.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
         public string DataSummary => UseDbc
             ? "DBC 信号 · " + (DbcMessage is null ? "尚未关联" :
                 DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message) + " · 已填 " +
@@ -132,6 +170,7 @@ public sealed partial class ManualBenchViewModel
             RaisePropertyChanged(nameof(PreviewId));
             RaisePropertyChanged(nameof(PreviewDlc));
             RaisePropertyChanged(nameof(PreviewData));
+            RaisePropertyChanged(nameof(PreviewError));
             RaisePropertyChanged(nameof(PreviewFull));
             RaisePropertyChanged(nameof(IsRaw));
             Edited?.Invoke();
