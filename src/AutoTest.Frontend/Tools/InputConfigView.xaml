@@ -1,0 +1,98 @@
+<UserControl x:Class="AutoTest.Frontend.Tools.InputConfigView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+ Background="{StaticResource AT.Canvas}">
+ <Grid Margin="13">
+  <Grid.ColumnDefinitions>
+   <ColumnDefinition Width="265" MinWidth="210"/>
+   <ColumnDefinition Width="*" MinWidth="360"/>
+   <ColumnDefinition Width="320" MinWidth="265"/>
+  </Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Style="{StaticResource AT.Panel}" Padding="0"
+   Margin="0,0,10,0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="115"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <StackPanel Margin="15,13">
+     <TextBlock Text="输入条件与状态" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="状态名称由 ECU 工程定义，不预设任何特定 ECU 功能。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,13"/>
+     <WrapPanel>
+      <ui:Button Content="+ 新增状态" Appearance="Primary"
+       Click="AddState_Click" Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="删除" Click="DeleteState_Click"
+       Style="{StaticResource AT.ToolCommand}"/>
+     </WrapPanel>
+    </StackPanel>
+    <ListBox x:Name="StatesList" Grid.Row="1"
+     ItemsSource="{Binding InputStates}"
+     SelectedItem="{Binding SelectedInputState,Mode=TwoWay}"
+     DisplayMemberPath="Name" Margin="10,0"/>
+   </Grid>
+  </Border>
+  <Border Grid.Column="1" Style="{StaticResource AT.Panel}" Padding="0"
+   Margin="0,0,10,0">
+   <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,13">
+    <StackPanel>
+     <TextBlock Text="工程输入状态编辑" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="用户操作的是工程配置的输入状态；下方 KEY 组合仅是当前硬件实现。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,8"/>
+     <TextBlock Text="输入状态名称" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedInputState.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+     <TextBlock Text="使用说明" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedInputState.Description,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+      Height="84" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top"/>
+     <Border Height="1" Background="{StaticResource AT.Border}" Margin="0,19,0,12"/>
+     <DockPanel>
+      <ui:Button DockPanel.Dock="Right" Content="清空组合"
+       Click="ClearKeys_Click"/>
+      <TextBlock Text="当前 KEY_SIM 组合" Style="{StaticResource AT.PanelTitle}"/>
+     </DockPanel>
+     <TextBlock Text="20 个电阻开关组合输出五路模拟条件；组合设置不等于已测得电压。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,12"/>
+     <Border Background="{StaticResource AT.SubtleSurface}" BorderBrush="{StaticResource AT.Border}"
+      BorderThickness="1" CornerRadius="8" Padding="12">
+      <ItemsControl ItemsSource="{Binding SelectedInputState.Keys}">
+       <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate>
+       </ItemsControl.ItemsPanel>
+       <ItemsControl.ItemTemplate>
+        <DataTemplate>
+         <CheckBox Content="{Binding Label}"
+          IsChecked="{Binding Checked,Mode=TwoWay}" Margin="5,11" FontSize="12"/>
+        </DataTemplate>
+       </ItemsControl.ItemTemplate>
+      </ItemsControl>
+     </Border>
+     <TextBlock Text="五路模拟电压目标 / 识别窗口备注" Style="{StaticResource AT.FieldLabel}"/>
+     <TextBox Text="{Binding SelectedInputState.VoltageNote,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+      Height="96" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top"
+      ToolTip="仅是 UI 编辑草稿，不生成真实的五路输出电压"/>
+    </StackPanel>
+   </ScrollViewer>
+  </Border>
+  <Border Grid.Column="2" Style="{StaticResource AT.Panel}" Padding="0">
+   <StackPanel Margin="15,13">
+    <TextBlock Text="输出与验证" Style="{StaticResource AT.PanelTitle}"/>
+    <TextBlock Text="模拟电压通道（无实测数据）" Style="{StaticResource AT.FieldLabel}"/>
+    <Border Background="{StaticResource AT.SubtleSurface}" CornerRadius="8"
+     BorderBrush="{StaticResource AT.Border}" BorderThickness="1" Padding="11">
+     <StackPanel>
+      <TextBlock Text="通道 1      未验证" Margin="0,6" Foreground="{StaticResource AT.Muted}"/>
+      <TextBlock Text="通道 2      未验证" Margin="0,6" Foreground="{StaticResource AT.Muted}"/>
+      <TextBlock Text="通道 3      未验证" Margin="0,6" Foreground="{StaticResource AT.Muted}"/>
+      <TextBlock Text="通道 4      未验证" Margin="0,6" Foreground="{StaticResource AT.Muted}"/>
+      <TextBlock Text="通道 5      未验证" Margin="0,6" Foreground="{StaticResource AT.Muted}"/>
+     </StackPanel>
+    </Border>
+    <Border Background="{StaticResource AT.AccentWash}" CornerRadius="8"
+     Padding="12" Margin="0,19,0,0">
+     <TextBlock Text="配置组合、主控 ACK、实际模拟电压及 ECU 识别结果是不同层次的事实；目前只支持前端配置交互。"
+      Foreground="#326CA8" FontSize="11" TextWrapping="Wrap"/>
+    </Border>
+    <ui:Button Content="校验并写回正式工程（未接入）"
+     IsEnabled="False" Margin="0,18,0,0"/>
+   </StackPanel>
+  </Border>
+ </Grid>
+</UserControl>

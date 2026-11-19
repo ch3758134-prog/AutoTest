@@ -1,0 +1,91 @@
+<UserControl x:Class="AutoTest.Frontend.Tools.DeviceView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+ Background="{StaticResource AT.Canvas}">
+ <Grid Margin="13">
+  <Grid.ColumnDefinitions>
+   <ColumnDefinition Width="350" MinWidth="280"/>
+   <ColumnDefinition Width="*" MinWidth="340"/>
+  </Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Style="{StaticResource AT.Panel}"
+   Margin="0,0,10,0">
+   <StackPanel>
+    <TextBlock Text="设备连接" Style="{StaticResource AT.PanelTitle}"/>
+    <Border Background="{StaticResource AT.SubtleSurface}"
+     BorderBrush="{StaticResource AT.Border}" BorderThickness="1"
+     CornerRadius="8" Padding="15" Margin="0,15,0,10">
+     <StackPanel>
+      <TextBlock Text="主控板" FontSize="15" FontWeight="SemiBold"/>
+      <TextBlock Text="未连接" Foreground="{StaticResource AT.Muted}"
+       FontSize="20" Margin="0,11,0,6"/>
+      <TextBlock Text="USB 枚举未接入 · 当前无法查询固件身份"
+       Style="{StaticResource AT.Caption}"/>
+     </StackPanel>
+    </Border>
+    <WrapPanel Margin="0,8,0,0">
+     <ui:Button Content="连接主控" Appearance="Primary" IsEnabled="False"
+      Style="{StaticResource AT.ToolCommand}"/>
+     <ui:Button Content="刷新身份" IsEnabled="False"
+      Style="{StaticResource AT.ToolCommand}"/>
+     <ui:Button Content="断开" IsEnabled="False"
+      Style="{StaticResource AT.ToolCommand}"/>
+    </WrapPanel>
+    <Border Height="1" Background="{StaticResource AT.Border}" Margin="0,20,0,12"/>
+    <TextBlock Text="设备信息" Style="{StaticResource AT.PanelTitle}"/>
+    <TextBlock Text="USB 设备             未枚举" Margin="0,15,0,6"/>
+    <TextBlock Text="主控固件版本      未读取" Margin="0,6"/>
+    <TextBlock Text="连接世代             —" Margin="0,6"/>
+    <TextBlock Text="固件接口合同      未确认" Margin="0,6"/>
+    <TextBlock Text="工位所有者          未获取" Margin="0,6"/>
+    <Border Background="{StaticResource AT.AccentWash}" CornerRadius="8"
+     Padding="10" Margin="0,17,0,0">
+     <TextBlock Text="USB 已发送和收到 ACK，不等于 ECU 外部物理动作已确认。"
+      FontSize="11" TextWrapping="Wrap" Foreground="#326CA8"/>
+    </Border>
+   </StackPanel>
+  </Border>
+  <Border Grid.Column="1" Style="{StaticResource AT.Panel}" Padding="0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="108"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <StackPanel Margin="16,13">
+     <TextBlock Text="通路与设备事件" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="通道按工程定义的物理角色显示，不在用户界面中用 CAN1/CAN2 混淆接线。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,8"/>
+     <WrapPanel>
+      <Border Background="{StaticResource AT.SubtleSurface}" CornerRadius="6"
+       Padding="9,5" Margin="0,0,8,0">
+       <TextBlock Text="ECU CAN · 未连接" FontSize="11"/>
+      </Border>
+      <Border Background="{StaticResource AT.SubtleSurface}" CornerRadius="6" Padding="9,5">
+       <TextBlock Text="KEY_SIM CAN · 未连接" FontSize="11"/>
+      </Border>
+     </WrapPanel>
+    </StackPanel>
+    <TabControl Grid.Row="1">
+     <TabItem Header="设备事件">
+      <Grid Background="White">
+       <TextBlock Text="没有真实连接、断开、超时或设备事件"
+        Foreground="{StaticResource AT.Muted}"
+        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+     <TabItem Header="USB / CAN 诊断">
+      <Grid Background="White">
+       <TextBlock Text="没有真实 USB 请求和 CAN 传输数据"
+        Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center"
+        HorizontalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+     <TabItem Header="故障证据">
+      <Grid Background="White">
+       <TextBlock Text="错误码与诊断导出等待真实 DEVICE 接入"
+        Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center"
+        HorizontalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+    </TabControl>
+   </Grid>
+  </Border>
+ </Grid>
+</UserControl>

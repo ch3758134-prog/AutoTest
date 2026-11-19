@@ -1,0 +1,70 @@
+<UserControl x:Class="AutoTest.Frontend.Tools.RecordsView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+ Background="{StaticResource AT.Canvas}">
+ <Grid Margin="13">
+  <Grid.ColumnDefinitions><ColumnDefinition Width="420" MinWidth="320"/>
+   <ColumnDefinition Width="*" MinWidth="440"/></Grid.ColumnDefinitions>
+  <Border Grid.Column="0" Style="{StaticResource AT.Panel}" Padding="0"
+   Margin="0,0,10,0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="152"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <StackPanel Margin="15,13">
+     <TextBlock Text="执行历史" Style="{StaticResource AT.PanelTitle}"/>
+     <TextBlock Text="检索真实 Run、DUT 编号、测试项目及复测记录。"
+      Style="{StaticResource AT.Caption}" Margin="0,6,0,10"/>
+     <TextBox IsEnabled="False" ToolTip="正式 RECORD 查询未接入"/>
+     <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+      <ui:Button Content="筛选" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+      <ui:Button Content="导出列表" IsEnabled="False" Style="{StaticResource AT.ToolCommand}"/>
+     </StackPanel>
+    </StackPanel>
+    <Grid Grid.Row="1">
+     <TextBlock Text="当前没有实际执行记录" FontSize="15"
+      Foreground="{StaticResource AT.Muted}" VerticalAlignment="Center"
+      HorizontalAlignment="Center"/>
+    </Grid>
+   </Grid>
+  </Border>
+  <Border Grid.Column="1" Style="{StaticResource AT.Panel}" Padding="0">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="75"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <DockPanel Grid.Row="0" Margin="15,0">
+     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+      <ui:Button Content="查看报告" IsEnabled="False" Margin="0,0,7,0"/>
+      <ui:Button Content="导出报告" IsEnabled="False"/>
+     </StackPanel>
+     <StackPanel VerticalAlignment="Center">
+      <TextBlock Text="运行记录与测试报告" Style="{StaticResource AT.PanelTitle}"/>
+      <TextBlock Text="不使用示例结果假冒实际测试报告。"
+       Style="{StaticResource AT.Caption}" Margin="0,5,0,0"/>
+     </StackPanel>
+    </DockPanel>
+    <TabControl Grid.Row="1">
+     <TabItem Header="测试报告">
+      <Grid Background="White">
+       <TextBlock Text="没有选择真实 Run 记录，暂无可展示报告"
+        FontSize="14" Foreground="{StaticResource AT.Muted}"
+        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+     <TabItem Header="步骤证据">
+      <Grid Background="White">
+       <TextBlock Text="步骤身份、实际值与证据仅从真实运行记录读取"
+        Foreground="{StaticResource AT.Muted}"
+        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+     <TabItem Header="统计">
+      <Grid Background="White">
+       <TextBlock Text="未连接 RECORD，无法计算真实生产数量和复测统计"
+        Foreground="{StaticResource AT.Muted}"
+        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Grid>
+     </TabItem>
+    </TabControl>
+   </Grid>
+  </Border>
+ </Grid>
+</UserControl>
