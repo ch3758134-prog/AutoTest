@@ -66,3 +66,7 @@
 ## 2026-11-19 TEST-RECORD PR #65 技术审查结论
 
 - [PR #65 TEST/RECORD 结果、证据门禁及正式报告代码审查](new-baseline-20261112/research/TEST-RECORD-PR65-TECHNICAL-REVIEW-20261119.md)：**TR-00/01 设计方向有条件认可，TR-02 `CHANGES_REQUIRED`，暂不合并 HOST/main**；P0 B-01 正式 PASS 与真实判定 observation/occurrence 未作因果绑定，且 Desktop 接线、Windows Build、原始连续采集与真机均未完成。Issue #64 继续开放。
+
+## 2026-11-19｜现代工业级 PC 软件 UI/UX 基础方法研究 v1.0 正式归档
+
+- [UX-FOUNDATION-RESEARCH-20261119-01｜研究归档入口](new-baseline-20261112/research/UI-UX-FOUNDATION-20261119/README.md)：HTML 阅读版、Markdown 原档、ZIP 来源 SHA-256、分类审查和权限边界均已收录；状态 `RESEARCH_COMPLETED / ARCHIVED / PRODUCT_UI_NOT_FROZEN`。这是一份**全产品 UI/UX 基础设计参考**，不是新的 UI 视觉或交互定版、G4/G5 技术合同或 HOST 源码修改授权。现行设计仍由 `ui/ide-design` 提交并经用户操作验收。
