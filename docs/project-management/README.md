@@ -70,3 +70,7 @@
 ## 2026-11-19｜现代工业级 PC 软件 UI/UX 基础方法研究 v1.0 正式归档
 
 - [UX-FOUNDATION-RESEARCH-20261119-01｜研究归档入口](new-baseline-20261112/research/UI-UX-FOUNDATION-20261119/README.md)：HTML 阅读版、Markdown 原档、ZIP 来源 SHA-256、分类审查和权限边界均已收录；状态 `RESEARCH_COMPLETED / ARCHIVED / PRODUCT_UI_NOT_FROZEN`。这是一份**全产品 UI/UX 基础设计参考**，不是新的 UI 视觉或交互定版、G4/G5 技术合同或 HOST 源码修改授权。现行设计仍由 `ui/ide-design` 提交并经用户操作验收。
+
+## 2026-11-19 TEST-RECORD PR #65 B-01 复审
+
+- [B-01 新因果证明源码审查及 C-01 编译语法阻断](new-baseline-20261112/research/TEST-RECORD-PR65-B01-REVIEW-20261119.md)：`5ade1bd9e94d3240e9d931d43005caac5778f515` 的 B-01 逻辑已获静态认可；回归测试中 JSON 字符串转义需要先修；PR 仍 Draft / `CHANGES_REQUIRED`，本地 Windows Build、HOST 接线与 ECU 现场测试各自保持独立门禁。
