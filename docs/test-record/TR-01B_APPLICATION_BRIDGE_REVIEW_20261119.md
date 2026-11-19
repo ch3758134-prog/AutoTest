@@ -20,9 +20,10 @@
 4. 对包括 Disabled/Skipped 的每个 occurrence 先 `RunFact STEP_BEGIN`，并等待持久化确认。非持久结果不能继续执行实际步骤。
 5. 完成步骤先追加 **原 Record DB 的 `RunStepFact`**，包含 per-Step Attempt、StepOccurrence/Parent/Phase/LoopPath/时间和完整实测信息，再添加 `RunFact STEP_END`。原生 SignalObservation 绑定 `EvidenceRef`、DBC AssetId/Revision/SHA、CAN role/id、信号名、单位、原始时间源/质量/单调计数器。
 6. `Write` 的设备 ACK、`Read` 的操作完成属于事实，不被标为 DUT 判断；明确的 `Expect/WaitUntil/AssertSignal` 成功或失败才是判断事实；无数据、失帧、异常另记不确定事实。
-7. TEST 完成后通过既有 `RunRecordWriter.CompleteAsync(RunCompletion)` 按 RealTestVerdict 提交；使用既有 `RunReportExporter.ExportFilesAsync` 生成 HTML/JSON/CSV。
-8. 解释器若在已 Begin 后意外抛错，尽可能持久化 `Unknown/Error` 与报告；如数据库也损坏/不可写，则不假装已提交，保留已落盘前缀并等待 exclusive startup `RecoverInterruptedRunsAsync`。
-9. 报告显示逐次失败代码、诊断、实际值/质量、DBC 来源、证据归档不完整提示。**只有 EvidenceRef 而无 ArtifactRepository 已验证的原始附件时，明确标为未归档，不声称原始 CAN 证据完整。**
+7. TEST 完成且仍处于 Writing 时，调用可选的 **`IRealRunEvidenceFinalizer.FinalizeEvidenceAsync`**，由未来 HOST 实现原始 CAN/DBC/DEVICE 证据流的实际落盘和原 `ArtifactRepository` 的附件关联。若归档回调抛错，不允许提交原判定 PASS；转入 Unknown/Error 异常恢复流程。此处只是**接口预留**，不是已经写好真实设备采集。
+8. 完成证据归档后，才通过既有 `RunRecordWriter.CompleteAsync(RunCompletion)` 按 RealTestVerdict 提交；使用既有 `RunReportExporter.ExportFilesAsync` 生成 HTML/JSON/CSV。
+9. 解释器若在已 Begin 后意外抛错，尽可能持久化 `Unknown/Error` 与报告；如数据库也损坏/不可写，则不假装已提交，保留已落盘前缀并等待 exclusive startup `RecoverInterruptedRunsAsync`。
+10. 报告显示逐次失败代码、诊断、实际值/质量、DBC 来源、证据归档不完整提示。**只有 EvidenceRef 而无 ArtifactRepository 已验证的原始附件时，明确标为未归档，不声称原始 CAN 证据完整。**
 
 ## 二、源码增量（本专项分支）
 
@@ -37,7 +38,7 @@
 
 - `HOST/tests/AutoTest.Testing.Tests/RealOccurrenceTests.cs`：Loop 多次 occurrence、冻结结果配置、丢帧禁止假 PASS、无持久化开始时拒绝物理写入、原生 DBC 质量/证据。
 - `HOST/tests/AutoTest.Records.Tests/StepOccurrenceReportTests.cs`：同一 StepId 两次存储/导出、旧记录兼容、非法时间范围拒绝。
-- `HOST/tests/AutoTest.Application.Tests/RealTestRecordSessionTests.cs`：**整个内部链**（以显式 UNIT-TEST 端口和 UNIT-TEST-DUT 为输入）验证 PASS/FAIL/NoData、真实 Record DB 内容、3种报告、DBC version/clock、raw evidence 未归档提示、指纹不匹配、意外异常终态、Read 非判断、Skipped 成对审计。
+- `HOST/tests/AutoTest.Application.Tests/RealTestRecordSessionTests.cs`：**整个内部链**（以显式 UNIT-TEST 端口和 UNIT-TEST-DUT 为输入）验证 PASS/FAIL/NoData、真实 Record DB 内容、3种报告、DBC version/clock、raw evidence 未归档提示、归档成功/失败先于最终提交、指纹不匹配、意外异常终态、Read 非判断、Skipped 成对审计。
 
 以上单元/集成**合同测试输入是假端口**，只证明代码路径与数据库/报告转换的正确性；绝不可作为真实 ECU 判定、接线、安全或物理控制的验收证据。
 
