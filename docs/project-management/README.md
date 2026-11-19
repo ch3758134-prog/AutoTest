@@ -74,3 +74,7 @@
 ## 2026-11-19 TEST-RECORD PR #65 B-01 复审
 
 - [B-01 新因果证明源码审查及 C-01 编译语法阻断](new-baseline-20261112/research/TEST-RECORD-PR65-B01-REVIEW-20261119.md)：`5ade1bd9e94d3240e9d931d43005caac5778f515` 的 B-01 逻辑已获静态认可；回归测试中 JSON 字符串转义需要先修；PR 仍 Draft / `CHANGES_REQUIRED`，本地 Windows Build、HOST 接线与 ECU 现场测试各自保持独立门禁。
+
+## 2026-11-19 TEST-RECORD PR #65 C-01 修复验收
+
+- [PR #65 C-01 单行修复静态验收与 Windows Codex 构建门禁移交](new-baseline-20261112/research/TEST-RECORD-PR65-C01-CLEARANCE-20261119.md)：专项提交 `655e1bfe0d95a4a885574450faa79fcf1cff49ef` 已回读，B-01 因果逻辑与 C-01 语法静态认可；**尚无 Windows Release Build/Test、HOST 接线和实体 ECU 证据，PR Draft 未获合并批准**。本条取代此前 C-01 当前仍阻断的状态描述，但保留其历史记录。
