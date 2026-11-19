@@ -14,7 +14,7 @@ Active project entry: `Project/Template.uvprojx`.
 
 - ECU CAN: J1 A12(H)/A1(L) = `ECU_CAN_PORT` (MCU FlexCAN1, USB channel 1); KEY CAN: J1 B11(H)/B1(L) = `KEY_CAN_PORT` (MCU FlexCAN0, USB channel 0). Both initialize at 500 kbit/s.
 - IGN: HOUT1 / PTC1 / J1 C10 (`0x12`/`0x13`); LED1–LED6: HOUT2–HOUT7 (`0x1A`/`0x1B`/`0x1C`); two independent clamps: J1 B5 and B4 (`0x18`/`0x19`).
-- **Approved reset behavior (2026-11-18): all high-side control GPIO outputs LOW**, including IGN, LEDs, clamps, HOUT9/10, U22 CH4 spare input and internal RL_DRV. Valid USB ON requests automatically enable RL_DRV first; turning off the last active managed output disables it. No new USB opcodes; physical reset transients and installed wiring require validation.
+- **Approved startup behavior (2026-11-18): all external high-side output controls LOW**, including IGN, LEDs, clamps, HOUT9/10 and the unallocated U22 CH4 input. **RL_DRV is strictly board-internal hardware enable**: EAL initializes it HIGH only after all controlled output GPIOs are LOW. USB/ASW never changes RL_DRV. No USB opcode changes; transient and wiring validation remains pending.
 - USB routing for those outputs is implemented by `ASW_IoCtrl.c/.h` (old PwrCtrl source removed). KEY1–KEY3 are reserved input pin definitions only.
 - See [`docs/interfaces/BOARD_FIXED_IO_MAP.md`](docs/interfaces/BOARD_FIXED_IO_MAP.md) and [`docs/interfaces/USB_HOST_CONTROL_INTERFACE.md`](docs/interfaces/USB_HOST_CONTROL_INTERFACE.md) for the current source contract.
 - Updated human-review HTML (historical schematic images with current firmware mapping): [`HW-PIN-REVIEW.html`](docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115/HW-PIN-REVIEW.html).
