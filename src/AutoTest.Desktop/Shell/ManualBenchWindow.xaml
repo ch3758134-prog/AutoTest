@@ -185,6 +185,13 @@
           <TextBlock Text="名称" Style="{StaticResource FieldCaption}"/>
           <TextBox Text="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
            MinHeight="32" Padding="7,6"/>
+          <CheckBox Content="使用工程 DBC" IsChecked="{Binding UseDbc,Mode=TwoWay}"
+           Margin="0,10,0,2"/>
+          <StackPanel Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
+           <TextBlock Text="DBC 报文" Style="{StaticResource FieldCaption}"/>
+           <ComboBox ItemsSource="{Binding DbcChoices}" SelectedItem="{Binding DbcMessage,Mode=TwoWay}"
+            DisplayMemberPath="Display" MinHeight="33"/>
+          </StackPanel>
           <StackPanel Visibility="{Binding IsRaw,Converter={StaticResource BoolToVisibility}}">
            <TextBlock Text="CAN ID (HEX)" Style="{StaticResource FieldCaption}"/>
            <TextBox Text="{Binding IdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
