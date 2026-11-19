@@ -58,7 +58,53 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         _begun = true;
         // The coordinator awaits each StepStarted/StepCompleted callback and always
         // attempts scripted/station cleanup after errors or operator stop.
-        var result = await runner.StartAsync(prepared, RunId, this, ct).ConfigureAwait(false);
+        RealRunResult result;
+        try
+        {
+            result = await runner.StartAsync(prepared, RunId, this, ct).ConfigureAwait(false);
+        }
+        catch (Exception runtimeException)
+        {
+            // The TEST interpreter normally converts step exceptions to Error and runs
+            // cleanup. For unexpected failures outside that boundary, fail closed:
+            // persist Unknown if RECORD is still available, never create a PASS.
+            // If SQLite itself failed, leave Writing for recovery at exclusive startup.
+            if (!_completed)
+            {
+                try
+                {
+                    await AppendAuditAsync(Guid.NewGuid(), RunFactKind.Uncertainty,
+                        "TEST_UNEXPECTED_TERMINATION " + runtimeException.GetType().Name,
+                        EvidenceQuality.Unknown, ImmutableArray<EvidenceRef>.Empty,
+                        CancellationToken.None).ConfigureAwait(false);
+                    var utc = DateTimeOffset.UtcNow;
+                    if (utc < _record.StartedUtc) utc = _record.StartedUtc;
+                    var receipt = await _writer.CompleteAsync(new RunCompletion(RunId, utc,
+                        RunState.Unknown, Verdict.Error, "TEST_UNEXPECTED_TERMINATION"),
+                        CancellationToken.None).ConfigureAwait(false);
+                    _completed = receipt.Durable && receipt.Run == RunId;
+                }
+                catch
+                {
+                    // The existing persisted prefix is still authoritative.
+                    // Uncommitted runs are marked Interrupted/Unknown on restart.
+                }
+            }
+            if (_completed)
+            {
+                try
+                {
+                    await _reports.ExportFilesAsync(RunId, reportDirectory, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Report export can be retried from the database by RunId.
+                }
+            }
+            throw new IOException("TEST ended unexpectedly. Inspect RECORD RunId=" + RunId,
+                runtimeException);
+        }
         if (!_completed)
             throw new IOException("TEST ended without a durable RECORD completion.");
         // Export is a separate derived view; database facts remain authoritative.
