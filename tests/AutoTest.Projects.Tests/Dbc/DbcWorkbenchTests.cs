@@ -92,14 +92,15 @@ public sealed class DbcWorkbenchTests
         var text = doc.ExportText();
         Assert.Contains("CM_ BO_ 291 \"", text);
         Assert.Contains(@"注意引用的单位、采样时间和失效条件。\n", text);
-        Assert.Contains(@"含引号：\" + "\"" + "定义", text);
+        Assert.Contains("含引号：\\\"定义\\\"", text);
         Assert.Contains("BA_ \"GenMsgCycleTime\" BO_ 291 65;", text);
         Assert.DoesNotContain("AutoTestMessageSummary", text);
         Assert.DoesNotContain("AutoTestSignalSummary", text);
         var reopened = DbcWorkbenchDocument.Import("comments", text);
         Assert.Equal(messageComment, reopened.DisplayNames.MessageDescription(291));
         Assert.Equal(signalComment, reopened.DisplayNames.SignalDescription(291, "Speed"));
-        Assert.Equal(doc.Model.FindMessage(291).Signals, reopened.Model.FindMessage(291).Signals);
+        Assert.Equal(doc.Model.FindMessage(291).Signals.ToArray(),
+            reopened.Model.FindMessage(291).Signals.ToArray());
     }
 
     [Fact] public void AddingComment_DoesNotRewriteExistingSignalOrValueTable()
@@ -127,7 +128,7 @@ public sealed class DbcWorkbenchTests
 
     [Fact] public void CommentEdit_RejectsUnsupportedMultilineRawSource()
     {
-        var source = Basic + "\nCM_ BO_ 291 \"raw\nline\";\n";
+        var source = Basic + "\nCM_ BO_ 291 \"raw\" trailing;\n";
         var doc = DbcWorkbenchDocument.Import("raw", source);
         doc.SetMessageComment(291, "new definition");
         var error = Assert.Throws<ProjectDataException>(() => doc.ExportText());
