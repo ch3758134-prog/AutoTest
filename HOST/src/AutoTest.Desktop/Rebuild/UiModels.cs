@@ -60,6 +60,7 @@ public sealed class UiStep
     public string Type { get; set; } = "Wait";
     public string Name { get; set; } = "等待";
     public bool Enabled { get; set; } = true;
+    public bool Breakpoint { get; set; }
     public Dictionary<string, string> Properties { get; set; } = new();
     public List<UiStep> Then { get; set; } = [];
     public List<UiStep> Else { get; set; } = [];
@@ -141,6 +142,8 @@ public static class UiStepTypes
         ("Wait","等待","固定时间等待",["milliseconds"]),
         ("If","IF / ELSE 条件","条件成立与否则分支",["condition"]),
         ("Switch","SWITCH 分派","按变量进行条件分派",["variable"]),
+        ("Case","CASE 分支","匹配值及子步骤",["match"]),
+        ("TryCatch","TRY / CATCH / FINALLY","异常处理结构",[]),
         ("When","WHEN 等待条件","带超时的条件等待",["condition","timeoutMs"]),
         ("Loop","循环","重复执行子步骤",["count"]),
         ("Sequence","步骤组","有序子步骤容器",[]),
@@ -164,6 +167,7 @@ public static class UiStepTypes
     public static string FieldName(string key) => key switch
     {
         "milliseconds" => "等待时间 (ms)", "condition" => "条件表达式",
+        "match" => "CASE 匹配值",
         "timeoutMs" => "超时时间 (ms)", "count" => "循环次数",
         "variable" => "变量", "value" => "值", "expression" => "表达式",
         "dbcMessage" => "DBC 报文", "signal" => "信号", "operator" => "关系运算符",
