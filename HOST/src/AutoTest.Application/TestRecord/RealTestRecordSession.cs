@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using AutoTest.Contracts;
 using AutoTest.Core;
@@ -245,10 +246,13 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         // Expect literal into a proved ECU judgement. Tag only the occurrence
         // that compared this exact frozen DBC signal and actually passed.
         var directJudgement = completed.Phase == TestPhase.Test &&
-            completed.Type is "AssertSignal" or "WaitUntil" &&
+            (completed.Type is "AssertSignal" or "WaitUntil") &&
             completed.Status == RealStepStatus.Completed &&
             completed.ObservationStatus == TestSignalStatus.Valid &&
-            observed is { Value: not null, HasGap: false } &&
+            observed is { Value: double measured, HasGap: false } &&
+            string.Equals(completed.Actual,
+                measured.ToString("R", CultureInfo.InvariantCulture),
+                StringComparison.Ordinal) &&
             observed.Evidence.Value != Guid.Empty &&
             (quality is EvidenceQuality.HostObserved or EvidenceQuality.DirectMeasured) &&
             !string.IsNullOrWhiteSpace(completed.Actual) &&
@@ -390,7 +394,10 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             if (executed.Type is not ("AssertSignal" or "WaitUntil") ||
                 executed.StepOccurrenceId == Guid.Empty ||
                 executed.ObservationStatus != TestSignalStatus.Valid ||
-                executed.Observation is not { Value: not null, HasGap: false } sample ||
+                executed.Observation is not { Value: double measured, HasGap: false } sample ||
+                !string.Equals(executed.Actual,
+                    measured.ToString("R", CultureInfo.InvariantCulture),
+                    StringComparison.Ordinal) ||
                 sample.Evidence.Value == Guid.Empty ||
                 !MatchesFrozenJudgement(executed, sample) ||
                 !verified.Contains(sample.Evidence.Value) ||
