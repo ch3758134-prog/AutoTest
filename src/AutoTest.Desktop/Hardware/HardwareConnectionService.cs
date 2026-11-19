@@ -26,6 +26,11 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     /// <summary>Discovery identity for the currently ping-confirmed USB session, not an ECU identity.</summary>
     public string? ConnectedDeviceIdentity { get; private set; }
     public string? ConnectedFirmwareVersion { get; private set; }
+    private long _ledCapabilityEpoch;
+    // Capability is confirmed by a successful GET_LEDS response, not by
+    // the unchanged v0.4-dev firmware version text.
+    public bool HasLedGpioContract => IsConnected && CurrentStationEpoch > 0 &&
+        Interlocked.Read(ref _ledCapabilityEpoch) == CurrentStationEpoch;
     /// <summary>Only source-reported v0.4-dev supports the independent clamp protocol.
     /// This string is not a physical firmware hash or wiring attestation.</summary>
     public bool HasV02GpioContract => IsConnected &&
@@ -107,6 +112,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             {
                 if (state != UsbSessionState.Faulted) return;
                 Interlocked.Exchange(ref _currentEpoch, 0);
+                Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
                 _link?.RevokePhysicalTestRun();
                 _link?.RevokeManualCanBatch();
                 _link?.RevokeManualKeySequence();
@@ -382,6 +388,60 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
+    /// <summary>Read six MCU LED GPIO levels through Main_Control 0x1B.
+    /// A valid response proves command compatibility, not external LED voltage.</summary>
+    public async Task<byte> ReadLedLevelsAsync(CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!IsConnected)
+                throw new IOException("USB 主控未连接，无法读取 LED GPIO。");
+            try
+            {
+                var response = await _usb!.RequestAsync(MainControllerCodec.GetLeds,
+                    ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
+                if (response.Payload.Length != 1 || (response.Payload[0] & 0xC0) != 0)
+                    throw new InvalidDataException("GET_LEDS must return 1 byte, bits 0..5 only.");
+                Interlocked.Exchange(ref _ledCapabilityEpoch, CurrentStationEpoch);
+                Record("GET_LEDS MCU GPIO 0x" + response.Payload[0].ToString("X2") +
+                    "（非高边输出电压或 LED 实际点亮证明）");
+                return response.Payload[0];
+            }
+            catch
+            {
+                Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
+                throw;
+            }
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Individual LED GPIO request: 0x1A [index=1..6, level=0/1].
+    /// Never writes the 0x1C group mask automatically or controls RL_DRV.</summary>
+    public async Task SendManualLedAsync(byte index, bool on, string exactConfirmation,
+        CancellationToken ct = default)
+    {
+        if (index is < 1 or > 6) throw new ArgumentOutOfRangeException(nameof(index));
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!HasLedGpioContract || _link is null || _usb is null)
+                throw new InvalidOperationException(
+                    "LED 控制尚未确认：请先在本次 USB 连接中读取六路 LED GPIO (0x1B)。");
+            if (_testRunApproved)
+                throw new InvalidOperationException("自动测试正在占用工位，禁止手动 LED 动作。");
+            _link.AuthorizeOneLedChange(index, on, exactConfirmation);
+            var payload = new byte[] { index, on ? (byte)1 : (byte)0 };
+            Record("LED" + index + " 请求" + (on ? "开启" : "关闭") +
+                " USB 0x1A " + Convert.ToHexString(payload));
+            await _usb.RequestAsync(MainControllerCodec.SetLed, payload,
+                TimeSpan.FromSeconds(3), ct);
+            Record("LED" + index + " 主控 USB ACK；实际端子电压、负载状态尚未验证。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
     /// <summary>0x18 [clamp=1/2, state=0/1]. Other clamp is unchanged.
     /// Transport authorization consumes one exact request before USB writing.</summary>
     public async Task SendManualClampAsync(byte clamp, bool press, string exactConfirmation,
@@ -512,6 +572,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         try
         {
             Interlocked.Exchange(ref _currentEpoch, 0);
+            Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
             try { ConnectionChanged?.Invoke(0); } catch { }
             _link?.RevokePhysicalTestRun();
             _link?.RevokeManualCanBatch();
