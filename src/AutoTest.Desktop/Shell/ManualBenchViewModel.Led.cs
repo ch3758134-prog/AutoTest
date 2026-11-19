@@ -113,7 +113,9 @@ public sealed partial class ManualBenchViewModel
                 }
                 catch (Exception error)
                 {
-                    channel.Update(null);
+                    // This read failed; all channel readbacks belong to an
+                    // invalidated capability epoch, never display stale levels.
+                    ResetLedReadback();
                     Status = channel.Label + " 请求已 ACK，但 GPIO 回读失败：" + error.Message;
                 }
             }
