@@ -92,6 +92,15 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         RealRunResult result;
         try
         {
+            await AppendAuditAsync(RunId.Value, RunFactKind.Request,
+                "RUN_BEGIN " + JsonSerializer.Serialize(new
+                {
+                    runId = RunId.ToString(),
+                    mode = _record.Mode.ToString(),
+                    planSha256 = prepared.Fingerprint,
+                    startedUtc = _record.StartedUtc
+                }), EvidenceQuality.HostObserved, ImmutableArray<EvidenceRef>.Empty,
+                ct).ConfigureAwait(false);
             var doc = prepared.RestoreDocument();
             var settings = doc.ReportSettings.Validate();
             await AppendAuditAsync(CaseAttemptId, RunFactKind.RecordWrite,
@@ -313,7 +322,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             x.Integrity != ArtifactIntegrity.Present);
         var trustedSignal = evidenceSnapshot.StepFacts.Any(x =>
             x.SignalProvenance is not null && x.SignalStatus == "Valid" &&
-            x.Quality is EvidenceQuality.HostObserved or EvidenceQuality.DirectMeasured &&
+            (x.Quality is EvidenceQuality.HostObserved or EvidenceQuality.DirectMeasured) &&
             x.Evidence.Any() && x.StepOccurrenceId is not null);
         var formalPassEligible = capture.RecordingComplete &&
             capture.DroppedEvents == 0 && orphaned.Length == 0 && !corrupt &&
