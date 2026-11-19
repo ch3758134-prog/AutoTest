@@ -132,6 +132,8 @@ public sealed class RunReportExporter
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         var report = await ExportSummaryAsync(run, ct).ConfigureAwait(false);
+        if (report.Header.Persistence == RecordPersistenceState.Writing)
+            throw new InvalidOperationException("A live Writing run cannot produce final report files.");
         var json = await ExportJsonAsync(run, ct).ConfigureAwait(false);
         var csv = await ExportStepFactsAsync(run, ct).ConfigureAwait(false);
         var root = Path.GetFullPath(directory);
@@ -206,7 +208,11 @@ public sealed class RunReportExporter
                     System.Globalization.CultureInfo.InvariantCulture))).Append(" ms</div></td><td>")
                 .Append(H(step.RequirementId)).Append("<div>")
                 .Append(H(step.ReportNote)).Append("</div><pre>")
-                .Append(H(step.AdditionalResultsJson)).Append("</pre></td></tr>");
+                .Append(H(step.AdditionalResultsJson)).Append("</pre>")
+                .Append(step.ShowEvidence == false ? "" :
+                    "<div>Evidence IDs: " + H(string.Join("; ",
+                        step.Evidence.Select(e => e.ToString()))) + "</div>")
+                .Append("</td></tr>");
         html.Append("</tbody></table><h2>证据附件</h2><table><thead><tr><th>类型</th><th>来源</th><th>完整性</th><th>SHA-256</th><th>相对路径</th></tr></thead><tbody>");
         foreach (var a in artifacts)
             html.Append("<tr><td>").Append(H(a.Kind)).Append("</td><td>").Append(H(a.Provenance))
