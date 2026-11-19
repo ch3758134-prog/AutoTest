@@ -98,7 +98,8 @@
         FontSize="11" Foreground="#65788F" Margin="8,0,0,0"/>
       </DockPanel>
       <WrapPanel>
-       <Button Content="+ 报文" Command="{Binding AddCanRowCommand}" Padding="9,6" Margin="0,0,5,5"/>
+       <Button Content="+ 报文" Click="AddCanRow_Click" Padding="9,6" Margin="0,0,5,5"
+        ToolTip="新增一条报文并立即打开快捷编辑浮层"/>
        <Button Content="复制" Command="{Binding CopyCanRowCommand}" Padding="9,6" Margin="0,0,5,5"/>
        <Button Content="删除" Command="{Binding DeleteCanRowCommand}" Padding="9,6" Margin="0,0,5,5"/>
        <Button Content="↑" Command="{Binding MoveCanRowUpCommand}" Padding="8,6" Margin="0,0,4,5"/>
