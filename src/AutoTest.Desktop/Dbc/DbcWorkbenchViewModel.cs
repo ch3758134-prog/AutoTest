@@ -73,6 +73,17 @@ public sealed class DbcSignalEditState : BindableBase
         Unit = signal.Unit, Receiver = signal.Receiver,
         Multiplexer = signal.Multiplexer ?? "", Intel = signal.Intel, Signed = signal.Signed
     };
+
+    public bool Matches(DbcSignal signal) =>
+        StartBit == signal.StartBit.ToString(CultureInfo.InvariantCulture) &&
+        BitLength == signal.BitLength.ToString(CultureInfo.InvariantCulture) &&
+        Factor == signal.Factor.ToString("R", CultureInfo.InvariantCulture) &&
+        Offset == signal.Offset.ToString("R", CultureInfo.InvariantCulture) &&
+        Minimum == signal.Minimum.ToString("R", CultureInfo.InvariantCulture) &&
+        Maximum == signal.Maximum.ToString("R", CultureInfo.InvariantCulture) &&
+        Unit == signal.Unit && Receiver == signal.Receiver &&
+        Multiplexer == (signal.Multiplexer ?? "") &&
+        Intel == signal.Intel && Signed == signal.Signed;
 }
 
 /// <summary>
@@ -165,7 +176,10 @@ public sealed class DbcWorkbenchViewModel : BindableBase
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
     public bool CanEdit => _session.Document.CanEdit;
     public bool CanSave => _session.Document.CanSave;
-    public bool IsDirty => _session.Document.IsDirty;
+    public bool HasPendingSignalDraft =>
+        SelectedSignal is { } selected && SignalDraft is { } draft &&
+        !draft.Matches(selected.Signal);
+    public bool IsDirty => _session.Document.IsDirty || HasPendingSignalDraft;
     public string MessageAliasText
     {
         get => _messageAliasText;
@@ -325,6 +339,12 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 ? _session.Document.DisplayNames.SignalDescription(m3.Message.Id, sg3.Name) : "";
             SignalDraft = SelectedSignal is { } selected
                 ? DbcSignalEditState.FromSignal(selected.Signal) : null;
+            if (SignalDraft is { } draft)
+                draft.PropertyChanged += (_, _) =>
+                {
+                    RaisePropertyChanged(nameof(HasPendingSignalDraft));
+                    RefreshCommands();
+                };
             RaisePropertyChanged(nameof(SelectedMessageDefinition));
             RaisePropertyChanged(nameof(SelectedSignalDefinition));
         }
@@ -479,6 +499,18 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private async Task SaveAsync()
     {
         if (!CanSave || !IsDirty || IsBusy) return;
+        // Ctrl+S must include parameters visible in the inspector, not discard
+        // an un-applied form while saving only CM_ or alias edits.
+        if (HasPendingSignalDraft)
+        {
+            ApplySignalParameters();
+            if (HasPendingSignalDraft)
+            {
+                _dialogs.ShowError("信号技术参数尚未通过校验，请先修正参数再保存。");
+                return;
+            }
+        }
+        if (!_session.Document.IsDirty) return;
         IsBusy = true;
         try
         {
@@ -586,6 +618,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private void RefreshCommands()
     {
         RaisePropertyChanged(nameof(IsDirty));
+        RaisePropertyChanged(nameof(HasPendingSignalDraft));
         EditMessageCommand?.RaiseCanExecuteChanged();
         EditSignalCommand?.RaiseCanExecuteChanged();
         ApplySignalParametersCommand?.RaiseCanExecuteChanged();
