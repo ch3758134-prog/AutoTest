@@ -42,3 +42,7 @@
 ## 2026-11-19 G4 阶段成果接收与新 UI 职责
 
 - [G4 PR #61 源码受控接收、INTEGRATION Issue #62、Fluent UI 单一设计源](new-baseline-20261112/research/G4-PR61-BASELINE-ACCEPTANCE-20261119.md)：**最新用户决策优先**。G4 阶段源码认可但未正式合入 main；ui/ide-design 为唯一活动 UI 设计源，feature/ui-rebuild-20261119 暂停。
+
+## 2026-11-19 PR #61 实际冲突解决进展
+
+- [G4 PR #61 冲突已消解，待 Windows Build 与正式 main 接收](new-baseline-20261112/research/G4-PR61-MERGE-RESOLVED-20261119.md)：受控 merge 候选 `92c6cb46a35ae11c1ffdefc0e0ece9339906d21a`，GitHub `mergeable=true`，主线尚未修改，实机 G4 Gate 未改变。
