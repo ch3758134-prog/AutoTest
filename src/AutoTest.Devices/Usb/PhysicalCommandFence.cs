@@ -15,6 +15,9 @@ public sealed class PhysicalCommandFence
     private byte[]? _singleClampPayload;
     private long _clampGeneration;
     private DateTimeOffset _clampExpiry;
+    private byte[]? _singleLedPayload;
+    private long _ledGeneration;
+    private DateTimeOffset _ledExpiry;
     private long _authorizedConnection;
     private HashSet<(byte Port, bool Extended, uint Id)>? _runCan;
     private bool _runIgn;
@@ -64,6 +67,9 @@ public sealed class PhysicalCommandFence
             _singleClampPayload = null;
             _clampGeneration = 0;
             _clampExpiry = default;
+            _singleLedPayload = null;
+            _ledGeneration = 0;
+            _ledExpiry = default;
             _runCan = entries;
             _runIgn = allowIgn;
             _remainingWrites = maxWrites;
@@ -163,7 +169,8 @@ public sealed class PhysicalCommandFence
 
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is MainControllerCodec.Ping or MainControllerCodec.GetVersion
-            or MainControllerCodec.GetIgn or MainControllerCodec.GetClamps or 0x53);
+            or MainControllerCodec.GetIgn or MainControllerCodec.GetClamps or
+               MainControllerCodec.GetLeds or 0x53);
 
     /// <summary>Requires an exact typed confirmation, one payload and a living connection.
     /// Not used by B0/B1/B2 and never called automatically on reconnect.</summary>
@@ -236,6 +243,26 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>Authorize one exact LED GPIO change on a single live USB generation.
+    /// Neither physical-run approval nor a CAN transmit lease grants this command.</summary>
+    public void AuthorizeSingleLed(byte index, bool on, string typedConfirmation,
+        long connectionGeneration)
+    {
+        if (index is < 1 or > 6) throw new ArgumentOutOfRangeException(nameof(index));
+        if (typedConfirmation != "AUTHORIZE LED " + index + (on ? " ON" : " OFF"))
+            throw new UnauthorizedAccessException("Exact LED/index/level consent required.");
+        if (connectionGeneration <= 0)
+            throw new InvalidOperationException("Cannot authorize LED without live USB generation.");
+        lock (_sync)
+        {
+            if (_runFingerprint is not null)
+                throw new InvalidOperationException("Manual LED GPIO is blocked during automatic TEST.");
+            _singleLedPayload = new byte[] { index, on ? (byte)1 : (byte)0 };
+            _ledGeneration = connectionGeneration;
+            _ledExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
+        }
+    }
+
     public void AssertAllowedAndConsume(ReadOnlySpan<byte> rawRequest, long connectionGeneration)
     {
         if (!UsbWireCodec.TryDecodeRequest(rawRequest, out var request))
@@ -262,6 +289,16 @@ public sealed class PhysicalCommandFence
             {
                 _oneIgnState = null; // consumes consent even when USB write fails
                 _ignGeneration = 0;
+                return;
+            }
+            if (request.Command == MainControllerCodec.SetLed &&
+                request.Payload.Length == 2 && _singleLedPayload is not null &&
+                _ledGeneration == connectionGeneration && DateTimeOffset.UtcNow < _ledExpiry &&
+                request.Payload.AsSpan().SequenceEqual(_singleLedPayload))
+            {
+                _singleLedPayload = null; // consume before USB write; not a blanket LED grant
+                _ledGeneration = 0;
+                _ledExpiry = default;
                 return;
             }
             if (request.Command == MainControllerCodec.SetClamp &&
@@ -320,6 +357,7 @@ public sealed class PhysicalCommandFence
             _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
             _oneIgnState = null; _ignExpiry = default; _ignGeneration = 0;
             _singleClampPayload = null; _clampExpiry = default; _clampGeneration = 0;
+            _singleLedPayload = null; _ledExpiry = default; _ledGeneration = 0;
             _runCan = null; _runIgn = false; _remainingWrites = 0;
             _runExpiry = default; _runGeneration = 0; _runFingerprint = null;
             _manualBatchCan = null; _manualBatchGeneration = 0;
