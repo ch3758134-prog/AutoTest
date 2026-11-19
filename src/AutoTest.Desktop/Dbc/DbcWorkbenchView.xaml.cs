@@ -18,7 +18,7 @@ public partial class DbcWorkbenchView : UserControl
 {
     private readonly DbcWorkbenchViewModel _viewModel;
     private TextBox? _inlineEditor;
-    private TextBlock? _inlineDisplay;
+    private FrameworkElement? _inlineDisplay;
     private bool _inlineIsMessage;
 
     public DbcWorkbenchView(DbcWorkbenchViewModel viewModel)
@@ -71,7 +71,7 @@ public partial class DbcWorkbenchView : UserControl
             !message && _viewModel.SelectedSignal is null) return;
         var textbox = FindDescendant<TextBox>(container,
             message ? "MessageInlineEditor" : "SignalInlineEditor");
-        var display = FindDescendant<TextBlock>(container,
+        var display = FindDescendant<FrameworkElement>(container,
             message ? "MessageInlineDisplay" : "SignalInlineDisplay");
         if (textbox is null || display is null) return;
         _inlineEditor = textbox;
@@ -204,67 +204,134 @@ public partial class DbcWorkbenchView : UserControl
     {
         if (BitGrid is null) return;
         BitGrid.Children.Clear();
-        AddBitCell("Byte", "#E7EDF5", false);
-        for (var bit = 7; bit >= 0; bit--) AddBitCell(bit.ToString(), "#E7EDF5", false);
-        if (_viewModel.SelectedMessage is not { } selected)
-        {
-            for (var i = 0; i < 8; i++)
+        BitGrid.RowDefinitions.Clear();
+        BitGrid.ColumnDefinitions.Clear();
+
+        // Physical bits are arranged by byte and bit index, not as a wall of
+        // repeated truncated signal names. The label at the right is shown once
+        // per byte, and individual bit cells carry exact, inspectable tooltips.
+        BitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(54) });
+        for (var bit = 0; bit < 8; bit++)
+            BitGrid.ColumnDefinitions.Add(new ColumnDefinition
             {
-                AddBitCell(i.ToString(), "#E7EDF5", false);
-                for (var j = 0; j < 8; j++) AddBitCell("—", "#F3F5F8", false);
-            }
-            return;
-        }
-        var message = selected.Message;
-        var occupied = message.Signals.ToDictionary(s => s.Name,
-            s => DbcSignalCodec.BitPositions(s).ToHashSet(), StringComparer.Ordinal);
-        for (var b = 0; b < 8; b++)
+                Width = new GridLength(1, GridUnitType.Star)
+            });
+        BitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
+        for (var row = 0; row <= 8; row++)
+            BitGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(26) });
+
+        AddBitLabel(0, 0, "字节", true);
+        for (var bit = 7; bit >= 0; bit--)
+            AddBitLabel(0, 8 - bit, bit.ToString(), true);
+        AddBitLabel(0, 9, "信号", true);
+
+        var message = _viewModel.SelectedMessage?.Message;
+        var occupied = message is null
+            ? new Dictionary<string, HashSet<int>>(StringComparer.Ordinal)
+            : message.Signals.ToDictionary(signal => signal.Name,
+                signal => DbcSignalCodec.BitPositions(signal).ToHashSet(),
+                StringComparer.Ordinal);
+
+        for (var byteIndex = 0; byteIndex < 8; byteIndex++)
         {
-            AddBitCell(b.ToString(), "#E7EDF5", false);
+            var row = byteIndex + 1;
+            AddBitLabel(row, 0, "Byte " + byteIndex, false);
+            var namesInByte = new HashSet<string>(StringComparer.Ordinal);
             for (var bit = 7; bit >= 0; bit--)
             {
-                var physical = b * 8 + bit;
-                var owners = message.Signals.Where(signal =>
-                    occupied[signal.Name].Contains(physical)).ToArray();
-                var selectedName = _viewModel.SelectedSignal?.Name;
-                var containsSelected = owners.Any(signal => signal.Name == selectedName);
-                var background = b >= message.Dlc ? "#EEF0F3" :
-                    containsSelected ? "#B8D7FA" :
-                    owners.Length > 1 ? "#F7DDB8" :
-                    owners.Length > 0 ? "#DCEBFA" : "#FFFFFF";
-                var label = owners.Length == 0 ? "" :
-                    owners.Length > 1 ? "×" :
-                    owners[0].Name.Length <= 6 ? owners[0].Name : owners[0].Name[..5] + "…";
-                var button = AddBitCell(label, background, owners.Length != 0);
-                button.ToolTip = "Byte " + b + " · bit " + bit + " · " +
-                    (owners.Length == 0 ? "未使用" :
-                    string.Join("、", owners.Select(signal => signal.Name)));
-                if (owners.Length == 1)
+                var physical = byteIndex * 8 + bit;
+                var matches = message is null ? [] : message.Signals
+                    .Where(signal => occupied[signal.Name].Contains(physical))
+                    .ToArray();
+                foreach (var owner in matches) namesInByte.Add(owner.Name);
+                var selected = matches.Any(signal =>
+                    signal.Name == _viewModel.SelectedSignal?.Name);
+                var color = message is null || byteIndex >= message.Dlc ? "#EFF2F6" :
+                    matches.Length > 1 ? "#F4CD96" :
+                    selected ? "#83B8EC" :
+                    matches.Length == 1 ? "#D4E6F8" : "#FFFFFF";
+                var cell = new Border
                 {
-                    var name = owners[0].Name;
-                    button.Click += (_, _) => _viewModel.SelectedSignal =
-                        _viewModel.Signals.FirstOrDefault(signal => signal.Name == name);
+                    Background = (Brush)new BrushConverter().ConvertFromString(color)!,
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(217, 226, 237)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(3),
+                    Margin = new Thickness(2, 2, 2, 2),
+                    ToolTip = "Byte " + byteIndex + " · bit " + bit + " · " +
+                        (matches.Length == 0 ? "未使用" :
+                            string.Join(" / ", matches.Select(signal => signal.Name)))
+                };
+                Grid.SetRow(cell, row);
+                Grid.SetColumn(cell, 8 - bit);
+                BitGrid.Children.Add(cell);
+                if (matches.Length == 1)
+                {
+                    var name = matches[0].Name;
+                    cell.Cursor = Cursors.Hand;
+                    cell.MouseLeftButtonUp += (_, _) => SelectBitSignal(name);
                 }
+                else if (matches.Length > 1)
+                {
+                    cell.Child = new TextBlock
+                    {
+                        Text = "×",
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Foreground = Brushes.SaddleBrown
+                    };
+                }
+            }
+            var signalNames = namesInByte.Select(name =>
+            {
+                var signal = _viewModel.Signals.FirstOrDefault(s => s.Name == name);
+                return signal?.NavTitle ?? name;
+            }).ToArray();
+            var label = signalNames.Length switch
+            {
+                0 => "未使用",
+                1 => signalNames[0],
+                _ => signalNames.Length + " 个信号"
+            };
+            var labelBlock = AddBitLabel(row, 9, label, false);
+            labelBlock.ToolTip = namesInByte.Count == 0 ? "未使用" :
+                string.Join("、", namesInByte);
+            if (namesInByte.Count == 1)
+            {
+                var name = namesInByte.First();
+                labelBlock.Cursor = Cursors.Hand;
+                labelBlock.MouseLeftButtonUp += (_, _) => SelectBitSignal(name);
             }
         }
     }
 
-    private Button AddBitCell(string caption, string background, bool active)
+    private TextBlock AddBitLabel(int row, int column, string text, bool heading)
     {
-        var cell = new Button
+        var label = new TextBlock
         {
-            Content = caption,
-            FontSize = 10,
-            MinHeight = 22,
-            Margin = new Thickness(1),
-            Padding = new Thickness(1, 0, 1, 0),
-            Background = (Brush)new BrushConverter().ConvertFromString(background)!,
-            Foreground = active ? Brushes.DarkSlateBlue : Brushes.SlateGray,
-            BorderBrush = new SolidColorBrush(Color.FromRgb(214, 222, 232)),
-            BorderThickness = new Thickness(1),
-            IsEnabled = active
+            Text = text,
+            FontSize = heading ? 11 : 12,
+            FontWeight = heading ? FontWeights.SemiBold : FontWeights.Normal,
+            Foreground = heading ? new SolidColorBrush(Color.FromRgb(80, 103, 131))
+                : new SolidColorBrush(Color.FromRgb(57, 73, 93)),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = column == 9 ? HorizontalAlignment.Left :
+                HorizontalAlignment.Center,
+            Margin = column == 9 ? new Thickness(10, 0, 2, 0) :
+                new Thickness(1, 0, 1, 0)
         };
-        BitGrid.Children.Add(cell);
-        return cell;
+        Grid.SetRow(label, row);
+        Grid.SetColumn(label, column);
+        BitGrid.Children.Add(label);
+        return label;
     }
+
+    private void SelectBitSignal(string signalName)
+    {
+        var signal = _viewModel.Signals.FirstOrDefault(s => s.Name == signalName);
+        if (signal is null) return;
+        _viewModel.SelectedSignal = signal;
+        SignalGrid.ScrollIntoView(signal);
+    }
+
 }
