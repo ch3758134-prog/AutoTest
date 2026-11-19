@@ -171,6 +171,14 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             CompletedUtc = completed.CompletedUtc,
             Duration = completed.Duration,
             ObservationUtc = observed?.Time.Utc,
+            SignalProvenance = observed is null ? null : new RunSignalProvenance(
+                observed.Signal.Role.ToString(), observed.Signal.FrameId,
+                observed.Signal.SignalName, observed.Unit,
+                observed.Signal.DbcAsset.Id.Value,
+                observed.Signal.DbcAsset.Revision.Value,
+                observed.Signal.DbcAsset.Fingerprint.Sha256,
+                observed.Time.Utc, observed.Time.MonotonicTicks,
+                observed.Time.Source.ToString(), observed.Time.Quality.ToString()),
             Unit = observed?.Unit,
             SignalStatus = completed.ObservationStatus?.ToString(),
             FailureCode = completed.Status switch
