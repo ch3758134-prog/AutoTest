@@ -86,7 +86,7 @@ public sealed class PhysicalCommandFence
         }
     }
 
-    /// <summary>Time- and write-limited allowlist of exact DUT CAN0 frames for the manual bench.
+    /// <summary>Time- and write-limited allowlist of exact ECU CAN frames for the manual bench.
     /// The operator approves a content-fingerprinted snapshot; subsequent UI edits never widen it.</summary>
     public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
         IEnumerable<byte[]> exactCanPayloads, long generation, int maxWrites = 3000)
@@ -101,7 +101,7 @@ public sealed class PhysicalCommandFence
             payload.Length != 15 || payload[0] != StationCanWiring.DutPort || payload[1] > 1 || payload[6] > 8 ||
             BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(2, 4)) >
                 (payload[1] == 1 ? 0x1FFFFFFFu : 0x7FFu)))
-            throw new ArgumentException("Manual CAN batch must use 1..32 valid exact DUT CAN0 payloads.");
+            throw new ArgumentException("ECU CAN 手动发送必须配置 1～32 条有效报文。");
         lock (_sync)
         {
             if (_runFingerprint is not null || _manualBatchCan is not null)
@@ -129,7 +129,7 @@ public sealed class PhysicalCommandFence
         }
     }
 
-    /// <summary>Ordered exact KEY_SIM CAN1 frames, at most 512 sends in one current USB generation.
+    /// <summary>Ordered exact KEY CAN frames, at most 512 sends in one current USB generation.
     /// No implicit KEY release at end or on cancel.</summary>
     public void AuthorizeManualKeySequence(string sha, string confirmation,
         IReadOnlyList<byte[]> frames, long generation)
@@ -139,7 +139,7 @@ public sealed class PhysicalCommandFence
             throw new UnauthorizedAccessException("Exact KEY action SHA consent required.");
         if (generation <= 0 || frames.Count is < 1 or > 512 ||
             frames.Any(frame => !IsDocumentedKeySimFrame(frame)))
-            throw new ArgumentException("KEY sequence requires 1..512 valid KEY_SIM CAN1 0x730 frames.");
+            throw new ArgumentException("KEY CAN 动作序列必须包含 1～512 条有效的按键控制报文。");
         lock (_sync)
         {
             if (_runFingerprint is not null || _manualKeySteps is not null)
@@ -191,7 +191,7 @@ public sealed class PhysicalCommandFence
             if (_runFingerprint is not null ||
                 (_manualKeySteps is not null && exact15Bytes[0] == StationCanWiring.KeypadPort) ||
                 (_manualBatchCan is not null && !IsDocumentedKeySimFrame(exact15Bytes)))
-                throw new InvalidOperationException("Active ECU CAN0 task only allows one-shot documented KEY_SIM on CAN1.");
+                throw new InvalidOperationException("ECU CAN 发送任务运行中，仅允许已授权的单次 KEY CAN 按键命令。");
             _singleCanPayload = exact15Bytes.ToArray();
             _authorizedConnection = connectionGeneration;
             _canExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
