@@ -56,6 +56,25 @@ public sealed class UsbSessionContractTests
 public sealed class StationControlContractTests
 {
     private static BusRoleMap Roles(int dut,int key)=>new(default,dut,key);
+    [Fact]
+    public void StationHarness_UsesFixedEcuAndKeyConnectorIdentities()
+    {
+        Assert.Equal("ECU CAN", StationCanWiring.DutDisplayName);
+        Assert.Equal("KEY CAN", StationCanWiring.KeypadDisplayName);
+        Assert.Equal("A1/A12", StationCanWiring.DutConnectorPins);
+        Assert.Equal("B1/B11", StationCanWiring.KeypadConnectorPins);
+        Assert.Equal(StationCanWiring.DutPort, StationCanWiring.PortFor(BusRole.DutCan));
+        Assert.Equal(StationCanWiring.KeypadPort, StationCanWiring.PortFor(BusRole.KeypadCan));
+        Assert.NotEqual(StationCanWiring.DutPort, StationCanWiring.KeypadPort);
+        var ecuFrame = CanFrame.Create(BusRole.DutCan, true, 0x18FF5027,
+            new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 });
+        var keyFrame = KeypadCommandCodec.EncodeMask(0x1000);
+        Assert.Equal(StationCanWiring.DutPort,
+            CanFrameCodec.ToUsbPayload(ecuFrame, StationCanWiring.Current)[0]);
+        Assert.Equal(StationCanWiring.KeypadPort,
+            CanFrameCodec.ToUsbPayload(keyFrame, StationCanWiring.Current)[0]);
+    }
+
     [Fact] public void Verify_A2_T01()
     {
         var frame=KeypadCommandCodec.EncodeMask(1);
