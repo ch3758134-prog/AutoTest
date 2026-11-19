@@ -120,15 +120,15 @@ public sealed class RealOccurrenceTests
         Assert.NotEqual(loops[0].StepOccurrenceId, loops[1].StepOccurrenceId);
         Assert.All(loops, f =>
         {
-            Assert.Equal(parent.StepOccurrenceId, f.ParentOccurrenceId);
-            Assert.Equal(TestPhase.Test, f.Phase);
+            Assert.Equal(parent.StepOccurrenceId, f.ParentOccurrenceId!.Value);
+            Assert.Equal(TestPhase.Test, f.Phase!.Value);
             Assert.Equal("REQ-CAN-01", f.RequirementId);
             Assert.Equal("2", f.AdditionalResults["measured"].Value);
             Assert.NotNull(f.StartedUtc);
             Assert.NotNull(f.CompletedUtc);
             Assert.True(f.Duration >= TimeSpan.Zero);
         });
-        Assert.Equal(new[] { 1, 2 }, loops.Select(f => f.LoopIteration));
+        Assert.Equal(new[] { 1, 2 }, loops.Select(f => f.LoopIteration!.Value));
         Assert.Equal(result.Facts.Length, collector.Ends.Count);
         Assert.EndsWith("run:Passed", collector.Order[^1]);
         Assert.Equal(result.Facts.Select(f => f.StepOccurrenceId).Distinct().Count(),
@@ -191,8 +191,8 @@ public sealed class RealOccurrenceTests
         Assert.Equal(RealTestVerdict.Passed, run.Verdict);
         var fact = Assert.Single(collected.Ends);
         Assert.Equal("count", fact.Observation?.Unit);
-        Assert.Equal(evidence, fact.Observation?.Evidence);
-        Assert.Equal(TestSignalStatus.Valid, fact.ObservationStatus);
+        Assert.Equal(evidence, fact.Observation!.Evidence);
+        Assert.Equal(TestSignalStatus.Valid, fact.ObservationStatus!.Value);
         Assert.NotEqual(Guid.Empty, fact.StepOccurrenceId);
     }
 }
