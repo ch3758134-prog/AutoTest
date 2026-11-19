@@ -259,17 +259,11 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-              <DataGridTextColumn Header="注释预览" Binding="{Binding Summary}" Width="175"/>
+              <DataGridTextColumn Header="定义预览" Binding="{Binding Summary}" Width="190"/>
               <DataGridTextColumn Header="起始位" Binding="{Binding StartBit}" Width="65"/>
               <DataGridTextColumn Header="位长" Binding="{Binding BitLength}" Width="55"/>
-              <DataGridTextColumn Header="字节序" Binding="{Binding Order}" Width="85"/>
-              <DataGridTextColumn Header="符号" Binding="{Binding Signed}" Width="78"/>
               <DataGridTextColumn Header="因子" Binding="{Binding Factor}" Width="85"/>
-              <DataGridTextColumn Header="偏移" Binding="{Binding Offset}" Width="85"/>
-              <DataGridTextColumn Header="范围" Binding="{Binding MinMax}" Width="145"/>
               <DataGridTextColumn Header="单位" Binding="{Binding Unit}" Width="85"/>
-              <DataGridTextColumn Header="接收节点" Binding="{Binding Receiver}" Width="105"/>
-              <DataGridTextColumn Header="复用" Binding="{Binding Multiplexer}" Width="70"/>
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>
