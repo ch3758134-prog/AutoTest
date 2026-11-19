@@ -1,0 +1,8 @@
+id,category,components,source_page,description,field_status
+KEY-POWER,电源及防护,U1 MP2451; D1 F1 L3 D3,p4,BATIN→VCC5V buck; external BAT_KEY is separate net,UNKNOWN
+KEY-CAN,CAN收发器,U2 TJA1042T/3; L2 R51 R52 D9,p1,TXCAN/RXCAN↔CANH/CANL; JP2 pins 5/6,UNKNOWN
+KEY-MCU,MCU/时钟/复位,U3 MC9S08DZ32; CY1; J1 BDM,p2,32 physical pins; 20 digital switch-control signals,UNKNOWN
+KEY-SWITCH,20通道模拟开关,U6 U7 U8 U9 U10 DG411DY,p3,20 switch control inputs; active-low GPIO from historical FW,UNKNOWN
+KEY-RESISTOR,五路电阻组合输出,R4-R32,p3,RELE_NC RELE_NO PARK_NC PARK_NO MODE_NO; K8/K13 label anomalies,UNKNOWN
+KEY-CONNECTOR,外部连接,JP1 JP2,p1,20 connector pins; unlabeled are not asserted NC,UNKNOWN
+KEY-BAUDRATE,BaudRate输入监测,resistor network,p1,JP2 p2 BaudRate measured via ADC input,UNKNOWN

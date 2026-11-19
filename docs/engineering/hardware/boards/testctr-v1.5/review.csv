@@ -1,0 +1,11 @@
+id,finding,status,evidence
+R01,IGN header PTB19 vs EAL_GPIO.c PTC10,SOURCE_MISMATCH,S1
+R02,Five GPIO init values 1U vs LOW comment,SOURCE_MISMATCH_SAFETY_REVIEW,S1
+R03,U22 IN4/OUT4 unlabeled; do not infer HOUT8,UNLABELED_NOT_FREE,D5
+R04,BTS724G ST signals not proven readable by MCU,NOT_PROVEN_OBSERVABLE,D3;D5
+R05,Full 100pin ALT/MUX truth table not audited,OPEN_RESEARCH,D3
+R06,J1 C6 field use IGN is user-reported not measured,USER_REPORTED,O1;D1
+R07,U23/HALL share SOL1IN..SOL4IN control nets,DESIGN_FACT,D5
+R08,PCUSB5V feeds U9 VDD2 and participates in board supply enable,DESIGN_FACT,D4
+R09,PCB/harness/installed HEX not authenticated,UNKNOWN,D1;D2;D3;D4;D5
+R10,U23 HOUT10/HOUT9 legacy mapping B3/B2 reversed; corrected to B2/B3,CORRECTED_SOURCE_INDEX,D1;D5

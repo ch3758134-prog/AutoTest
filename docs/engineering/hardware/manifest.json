@@ -1,0 +1,40 @@
+{
+  "schema_version": "2.0.0",
+  "authority": "DESIGN_REFERENCE_NOT_FIELD_RELEASE",
+  "revision": "2026-11-16",
+  "boards": [
+    {
+      "id": "MAIN",
+      "design": "TestCtr V1.5",
+      "original_pdf_sha256": "44633c2445da2409dfe683822f83c2003eeaa2cbbfa9b249fc5bf26495f55353",
+      "source_commit": "c830dbcd56b436688437b446d222473a88b85098",
+      "readme": "boards/testctr-v1.5/README.md",
+      "model": "boards/testctr-v1.5/design.json",
+      "counts": {
+        "mcu_pins": 100,
+        "j1_contacts": 64,
+        "high_side_paths": 11
+      },
+      "verified_field": false
+    },
+    {
+      "id": "KEY_SIM",
+      "design": "EPB_ODD V1.1",
+      "original_pdf_sha256": "2f642b559ddcb4c325e872a67b0d74e0472f0db5bcb9021c1cbb4ff8596a6b2d",
+      "source_commit": "313ed34ecc8a6e01529998787c8c870cc2e4db4a",
+      "readme": "boards/key-sim-v1.1/README.md",
+      "status": "UNCHANGED_IN_THIS_MAIN_BOARD_REORGANIZATION"
+    }
+  ],
+  "standards": {
+    "source_status": [
+      "SCHEMATIC",
+      "FIRMWARE_SOURCE",
+      "USER_REPORTED",
+      "INFERRED_CONDITIONAL",
+      "UNKNOWN"
+    ],
+    "independent_verification": "Board PCB netlist/installed harness/actual HEX not validated"
+  },
+  "retired": "Prior duplicate TestCtr appendices removed from this branch, not merged to main"
+}
