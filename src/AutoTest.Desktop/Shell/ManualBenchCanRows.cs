@@ -77,7 +77,45 @@ public sealed partial class ManualBenchViewModel
         public string Summary => UseDbc && DbcMessage is not null
             ? DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message) + " · 0x" + DbcMessage.Message.ArbitrationId.ToString("X")
             : "0x" + IdHex + (Extended ? " 扩展" : " 标准");
-        public string ModeLabel => IsPeriodic ? PeriodText + "ms 周期" : "单次";
+        public string ModeLabel => IsPeriodic ? "周期暂不可用" : "单发";
+        // The send table is the only persistent raw-data preview. DBC signal
+        // edits are encoded by the same production codec used when sending.
+        public string PreviewId
+        {
+            get
+            {
+                try
+                {
+                    var frame = BuildFrame();
+                    return "0x" + frame.Id.ToString(frame.ExtendedId ? "X8" : "X3");
+                }
+                catch { return UseDbc ? "DBC 未就绪" : "ID 无效"; }
+            }
+        }
+        public string PreviewDlc
+        {
+            get
+            {
+                try { return BuildFrame().Data.Length.ToString(CultureInfo.InvariantCulture); }
+                catch { return "—"; }
+            }
+        }
+        public string PreviewData
+        {
+            get
+            {
+                try
+                {
+                    return string.Join(" ", BuildFrame().Data.Select(b =>
+                        b.ToString("X2", CultureInfo.InvariantCulture)));
+                }
+                catch (Exception error)
+                {
+                    return "数据无效：" + error.Message;
+                }
+            }
+        }
+        public string PreviewFull => PreviewId + " · DLC " + PreviewDlc + " · " + PreviewData;
         public string DataSummary => UseDbc
             ? "DBC 信号 · " + (DbcMessage is null ? "尚未关联" :
                 DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message) + " · 已填 " +
@@ -91,6 +129,10 @@ public sealed partial class ManualBenchViewModel
             RaisePropertyChanged(nameof(Summary));
             RaisePropertyChanged(nameof(DataSummary));
             RaisePropertyChanged(nameof(ModeLabel));
+            RaisePropertyChanged(nameof(PreviewId));
+            RaisePropertyChanged(nameof(PreviewDlc));
+            RaisePropertyChanged(nameof(PreviewData));
+            RaisePropertyChanged(nameof(PreviewFull));
             RaisePropertyChanged(nameof(IsRaw));
             Edited?.Invoke();
         }
@@ -211,7 +253,7 @@ public sealed partial class ManualBenchViewModel
         row.Edited += OnCanRowEdited;
         CanSendRows.Add(row);
         SelectedCanRow = row;
-        IsCanEditorExpanded = true;
+        IsCanEditorExpanded = false;
         NotifyCanRows();
     }
 
@@ -229,7 +271,7 @@ public sealed partial class ManualBenchViewModel
         row.Edited += OnCanRowEdited;
         CanSendRows.Insert(CanSendRows.IndexOf(source) + 1, row);
         SelectedCanRow = row;
-        IsCanEditorExpanded = true;
+        IsCanEditorExpanded = false;
         NotifyCanRows();
     }
 
