@@ -451,6 +451,11 @@ public sealed class TestEditorViewModel : BindableBase
                 Array.Empty<MappingChoice>(), _transaction.Current.Mappings.ToArray(), false));
             return;
         }
+        // A freshly inserted Write node does not have its mapping yet. The
+        // chosen UI action is already known and must be considered BEFORE
+        // deciding whether any heavy DBC directory load is necessary.
+        if (original.Id == _newDraftId && initialActionKey is null)
+            initialActionKey = _newDraftActionKey;
         // The inspector must remain responsive when a user selects IGN, KEY,
         // Wait, a control-flow node or a public-flow call. Resolving all DBC
         // messages and signals for every click makes ordinary authoring look hung.
