@@ -202,6 +202,20 @@ public sealed class DbcWorkbenchDocument
         _displayNames.SetSignalAlias(messageId, signalName, alias);
         _dirty = true;
     }
+    public void SetMessageComment(uint id, string? comment)
+    {
+        Model.FindMessage(id);
+        _displayNames.SetMessageDescription(id, comment);
+        _dirty = true;
+    }
+
+    public void SetSignalComment(uint id, string name, string? comment)
+    {
+        Model.FindSignal(id, name);
+        _displayNames.SetSignalDescription(id, name, comment);
+        _dirty = true;
+    }
+
     public void SetMessageSummary(uint id, string? summary)
     {
         Model.FindMessage(id);
@@ -241,9 +255,10 @@ public sealed class DbcWorkbenchDocument
         if ((_dataDirty && !roundTrip.CanEdit) ||
             !Equivalent(Model, roundTrip.Model) ||
             !ValueTablesMatch(ValueTables, roundTrip.ValueTables) ||
-            !_displayNames.SameExplicitNames(roundTrip.DisplayNames))
+            !_displayNames.SameExplicitNames(roundTrip.DisplayNames) ||
+            !_displayNames.SameEditedComments(roundTrip.DisplayNames))
             throw new ProjectDataException("DBC_ROUNDTRIP",
-                "DBC 别名保存校验失败，原始报文、信号和原有属性均未覆盖。");
+                "DBC 注释或别名保存回读校验失败，原始报文、信号和原有属性均未覆盖。");
         return serialized;
     }
     private static bool ValueTablesMatch(IReadOnlyList<DbcValueTable> a, IReadOnlyList<DbcValueTable> b) =>
