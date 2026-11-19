@@ -56,10 +56,10 @@ public sealed class RealTestRecordSessionTests
     }
     private sealed class EvidenceFinalizer(
         RunRecordWriter writer, ArtifactRepository artifacts, EvidenceRef evidence,
-        bool reject = false) : IRealRunEvidenceFinalizer
+        bool reject = false, long dropped = 0) : IRealRunEvidenceFinalizer
     {
         public int Calls;
-        public async ValueTask FinalizeEvidenceAsync(RunId run, CancellationToken ct)
+        public async ValueTask<RunEvidenceCaptureResult> FinalizeEvidenceAsync(RunId run, CancellationToken ct)
         {
             Calls++;
             if (reject) throw new IOException("UNIT_TEST_ARTIFACT_FLUSH_FAILED");
@@ -68,6 +68,8 @@ public sealed class RealTestRecordSessionTests
             var artifact = await artifacts.PutAsync(bytes, "UnitTestCanBytes",
                 "application/octet-stream", "SYNTHETIC_UNIT_TEST", evidence, ct);
             await writer.AttachArtifactAsync(run, artifact, ct);
+            return new RunEvidenceCaptureResult(dropped == 0, dropped,
+                dropped == 0 ? null : "UNIT_TEST_CAPTURE_LOSS");
         }
     }
 
@@ -174,7 +176,11 @@ public sealed class RealTestRecordSessionTests
         Assert.NotNull(history);
         Assert.Equal(RecordRunMode.Development, history.Mode);
         Assert.Equal(RecordPersistenceState.Committed, history.Persistence);
-        Assert.Equal(Verdict.Pass, history.Verdict);
+        // TEST's assertion passed, but without a raw evidence finalizer this is
+        // not a formal ECU PASS in the RECORD database.
+        Assert.Equal("Unknown", history.TerminalState);
+        Assert.Equal(Verdict.Inconclusive, history.Verdict);
+        Assert.Equal("EVIDENCE_GATE_NOT_MET", history.FailureReason);
         var steps = await fixture.Database.ReadStepFactsAsync(record.RunId);
         var assertions = steps.Where(x => x.Disposition == nameof(RealStepStatus.Completed) &&
             x.StepOccurrenceId is not null && x.Unit == "count").ToArray();
@@ -418,5 +424,66 @@ public sealed class RealTestRecordSessionTests
         Assert.Contains(failure.ToString(), json);
     }
 
+
+    [Fact]
+    public async Task UnarchivedLiteralExpectCannotBePromotedToFormalEcuPass()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var doc = TestDocument.Create("LiteralOnly");
+        var onlyLiteral = StepNode.Create("Expect").WithProperty("left", "1")
+            .WithProperty("operator", "==").WithProperty("right", "1");
+        doc = doc with { Phases = doc.Phases.SetItem(TestPhase.Test,
+            ImmutableArray.Create(onlyLiteral)) };
+        var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        var record = fixture.Record(plan);
+        var run = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports)
+            .ExecuteAsync(new RealRunCoordinator(new Signals(sample), new Actions(), new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Passed, run.Result.Verdict);
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.Equal(RunState.Unknown.ToString(), history!.TerminalState);
+        Assert.Equal(Verdict.Inconclusive, history.Verdict);
+        Assert.Equal("EVIDENCE_GATE_NOT_MET", history.FailureReason);
+    }
+
+    [Fact]
+    public async Task DroppedRawEvidencePreventsFormalPassEvenWhenSourceSignalMatches()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var plan = Plan(mapping, "2");
+        var record = fixture.Record(plan);
+        var finalizer = new EvidenceFinalizer(fixture.Writer, fixture.Artifacts,
+            sample.Observation!.Evidence, dropped: 1);
+        var result = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports,
+            finalizer).ExecuteAsync(new RealRunCoordinator(new Signals(sample),
+                new Actions(), new Waves()), plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Passed, result.Result.Verdict);
+        var stored = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.Equal("Unknown", stored!.TerminalState);
+        Assert.Equal(Verdict.Inconclusive, stored.Verdict);
+        var facts = await fixture.Database.ReadFactsAsync(new RecordQuery(record.RunId, 100));
+        Assert.Contains(facts, fact =>
+            fact.Description.StartsWith("EVIDENCE_GATE_NOT_MET", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void FrozenTestCaseReportMetadataRoundTripsWithLegacyDefault()
+    {
+        var original = TestDocument.Create("Test-Case") with
+        {
+            ReportSettings = new TestReportSettings("电控测试报告", "EPB-01", "校验驻车状态")
+        };
+        var data = TestDocumentCodec.Serialize(original);
+        var restored = TestDocumentCodec.Deserialize(data);
+        Assert.Equal(original.ReportSettings, restored.ReportSettings);
+        var legacy = data.Replace(
+            ",\\n  \\"ReportSettings\\": {\\n    \\"Title\\": \\"电控测试报告\\",\\n    \\"CaseNumber\\": \\"EPB-01\\",\\n    \\"Description\\": \\"校验驻车状态\\"\\n  }", "");
+        // Nullable settings explicitly use defaults, rather than inventing metadata.
+        Assert.Equal(TestReportSettings.Default, TestDocumentCodec.Deserialize(
+            legacy.Replace("\\"ReportSettings\\": {", "\\"LegacyUnusedReportSettings\\": {")).ReportSettings);
+    }
 
 }
