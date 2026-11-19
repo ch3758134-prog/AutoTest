@@ -10,7 +10,7 @@ public partial class ToolWindow : Window
     {
         InitializeComponent();
         DataContext = state;
-        var (title, subtitle, content) = kind switch
+        (string title, string subtitle, UserControl content) presentation = kind switch
         {
             "bench" => ("手动台架", "CAN 发送 / 工位输入 / 实时 CAN 监控", new ManualBenchView()),
             "uds" => ("UDS 诊断", "可编辑请求序列 / 服务参数 / 请求与响应", new UdsView()),
@@ -23,6 +23,7 @@ public partial class ToolWindow : Window
             "production" => ("扫码生产", "生产工位 / 编号输入 / 结果与追溯", new ProductionView()),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "未知的 UI 工作区")
         };
+        var (title, subtitle, content) = presentation;
         Title = $"AutoTest · {title}";
         ToolTitle.Text = title;
         ToolSubtitle.Text = subtitle;
