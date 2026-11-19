@@ -56,7 +56,9 @@ public sealed class RunReportExporter
     public async Task<string> ExportStepFactsAsync(RunId run, CancellationToken ct = default)
     {
         var report = await ExportSummaryAsync(run, ct).ConfigureAwait(false);
-        var output = new StringBuilder("sequence,run_id,event_id,step_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json\r\n");
+        var archived = report.Artifacts.Where(a => a.Integrity == ArtifactIntegrity.Present)
+            .Select(a => a.ArtifactId).ToHashSet();
+        var output = new StringBuilder("sequence,run_id,event_id,step_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json,failure_code,detail,unarchived_evidence_ids\r\n");
         for (var i = 0; i < report.StepFacts.Count; i++)
         {
             var step = report.StepFacts[i];
@@ -75,7 +77,10 @@ public sealed class RunReportExporter
                         System.Globalization.CultureInfo.InvariantCulture) : "",
                 step.ObservationUtc?.ToString("O") ?? "", step.Unit ?? "",
                 step.SignalStatus ?? "", step.RequirementId ?? "",
-                step.ReportNote ?? "", step.AdditionalResultsJson ?? "" };
+                step.ReportNote ?? "", step.AdditionalResultsJson ?? "",
+                step.FailureCode ?? "", step.Detail ?? "",
+                string.Join(";", step.Evidence.Where(e => !archived.Contains(e.Value))
+                    .Select(e => e.ToString())) };
             output.Append(string.Join(',', cells.Select(Csv))).Append("\r\n");
         }
         return output.ToString();
@@ -85,6 +90,12 @@ public sealed class RunReportExporter
     {
         var report = await ExportSummaryAsync(run, ct).ConfigureAwait(false);
         using var snapshotDocument = JsonDocument.Parse(report.Header.SnapshotJson);
+        var archived = report.Artifacts.Where(a => a.Integrity == ArtifactIntegrity.Present)
+            .Select(a => a.ArtifactId).ToHashSet();
+        var missingArchive = report.StepFacts.SelectMany(f => f.Evidence)
+            .Concat(report.Facts.SelectMany(f => f.Evidence))
+            .Where(e => !archived.Contains(e.Value))
+            .Select(e => e.Value).Distinct().ToArray();
         return JsonSerializer.Serialize(new
         {
             schema = 1,
@@ -98,6 +109,8 @@ public sealed class RunReportExporter
             completed = report.Header.CompletedUtc,
             snapshotHash = report.Header.SnapshotSha256,
             snapshot = snapshotDocument.RootElement,
+            evidenceArchiveIncomplete = missingArchive.Length > 0,
+            unarchivedEvidenceIds = missingArchive,
             facts = report.Facts.Select((f, i) => new
             {
                 sequence = i + 1, eventId = f.EventId, operationId = f.OperationId,
@@ -114,6 +127,9 @@ public sealed class RunReportExporter
                 startedUtc = f.StartedUtc, completedUtc = f.CompletedUtc,
                 durationMilliseconds = f.Duration?.TotalMilliseconds,
                 observationUtc = f.ObservationUtc, unit = f.Unit, signalStatus = f.SignalStatus,
+                failureCode = f.FailureCode, detail = f.Detail,
+                unarchivedEvidenceIds = f.Evidence.Where(e => !archived.Contains(e.Value))
+                    .Select(e => e.Value),
                 requirementId = f.RequirementId, reportNote = f.ReportNote,
                 additionalResultsJson = f.AdditionalResultsJson, showEvidence = f.ShowEvidence,
                 timestamp = f.Time.Utc, timeQuality = f.Time.Quality.ToString(),
@@ -191,7 +207,18 @@ public sealed class RunReportExporter
                 .Append("<div>").Append(H(fact.EventId.ToString())).Append("</div></td><td>")
                 .Append(H(fact.Quality.ToString())).Append("</td></tr>");
         }
-        html.Append("</tbody></table><h2>逐步执行事实</h2><table><thead><tr><th>StepId / Occurrence</th><th>阶段 / 循环</th><th>结果 / 质量</th><th>预期</th><th>实测值 / 单位</th><th>时间范围 / 耗时</th><th>附加结果 / 备注</th></tr></thead><tbody>");
+        var archived = artifacts.Where(a => a.Integrity == ArtifactIntegrity.Present)
+            .Select(a => a.ArtifactId).ToHashSet();
+        var unresolved = stepFacts.SelectMany(step => step.Evidence)
+            .Concat(facts.SelectMany(f => f.Evidence))
+            .Where(e => !archived.Contains(e.Value))
+            .Select(e => e.Value).Distinct().ToArray();
+        html.Append("</tbody></table>");
+        if (unresolved.Length > 0)
+            html.Append("<p><strong>证据归档不完整：</strong>本次运行有 ")
+                .Append(unresolved.Length)
+                .Append(" 个证据 ID 未绑定可验证的归档附件；这些 ID 不能作为完整原始 CAN/DBC 证据。</p>");
+        html.Append("<h2>逐步执行事实</h2><table><thead><tr><th>StepId / Occurrence</th><th>阶段 / 循环</th><th>结果 / 质量</th><th>预期</th><th>实测值 / 单位</th><th>时间范围 / 耗时</th><th>附加结果 / 备注</th></tr></thead><tbody>");
         foreach (var step in stepFacts)
             html.Append("<tr><td>").Append(H(step.Step.ToString())).Append("<div>Occurrence: ")
                 .Append(H(step.StepOccurrenceId?.ToString("D") ?? "Legacy (not recorded)"))
@@ -200,7 +227,9 @@ public sealed class RunReportExporter
                 .Append(" / ").Append(H(step.LoopIteration?.ToString()))
                 .Append("<div>").Append(H(step.ExecutionPath)).Append("</div></td><td>")
                 .Append(H(step.Disposition)).Append(" / ").Append(H(step.Quality.ToString()))
-                .Append("<div>Signal: ").Append(H(step.SignalStatus)).Append("</div></td><td>")
+                .Append("<div>Signal: ").Append(H(step.SignalStatus)).Append("</div>")
+                .Append("<div>Failure: ").Append(H(step.FailureCode)).Append("</div>")
+                .Append("<div>").Append(H(step.Detail)).Append("</div></td><td>")
                 .Append(H(step.Expected)).Append("</td><td>").Append(H(step.Actual))
                 .Append(" ").Append(H(step.Unit)).Append("</td><td>")
                 .Append(H(step.StartedUtc?.ToString("O"))).Append(" — ")
@@ -215,6 +244,8 @@ public sealed class RunReportExporter
                 .Append(step.ShowEvidence == false ? "" :
                     "<div>Evidence IDs: " + H(string.Join("; ",
                         step.Evidence.Select(e => e.ToString()))) + "</div>")
+                .Append(step.Evidence.Any(e => !archived.Contains(e.Value))
+                    ? "<div>证据归档：未验证</div>" : "")
                 .Append("</td></tr>");
         html.Append("</tbody></table><h2>证据附件</h2><table><thead><tr><th>类型</th><th>来源</th><th>完整性</th><th>SHA-256</th><th>相对路径</th></tr></thead><tbody>");
         foreach (var a in artifacts)
