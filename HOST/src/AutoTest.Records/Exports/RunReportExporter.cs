@@ -58,7 +58,7 @@ public sealed class RunReportExporter
         var report = await ExportSummaryAsync(run, ct).ConfigureAwait(false);
         var archived = report.Artifacts.Where(a => a.Integrity == ArtifactIntegrity.Present)
             .Select(a => a.ArtifactId).ToHashSet();
-        var output = new StringBuilder("sequence,run_id,event_id,step_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json,failure_code,detail,unarchived_evidence_ids\r\n");
+        var output = new StringBuilder("sequence,run_id,event_id,step_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json,failure_code,detail,unarchived_evidence_ids,dbc_asset_id,dbc_revision,dbc_sha256,bus_role,frame_id,signal_name,source_ticks,source_clock,source_time_quality\r\n");
         for (var i = 0; i < report.StepFacts.Count; i++)
         {
             var step = report.StepFacts[i];
@@ -80,7 +80,16 @@ public sealed class RunReportExporter
                 step.ReportNote ?? "", step.AdditionalResultsJson ?? "",
                 step.FailureCode ?? "", step.Detail ?? "",
                 string.Join(";", step.Evidence.Where(e => !archived.Contains(e.Value))
-                    .Select(e => e.ToString())) };
+                    .Select(e => e.ToString())),
+                step.SignalProvenance?.DbcAssetId.ToString("D") ?? "",
+                step.SignalProvenance?.DbcRevision.ToString() ?? "",
+                step.SignalProvenance?.DbcSha256 ?? "",
+                step.SignalProvenance?.BusRole ?? "",
+                step.SignalProvenance is { } origin ? "0x" + origin.FrameId.ToString("X") : "",
+                step.SignalProvenance?.SignalName ?? "",
+                step.SignalProvenance?.SourceMonotonicTicks.ToString() ?? "",
+                step.SignalProvenance?.TimeSource ?? "",
+                step.SignalProvenance?.TimeQuality ?? "" };
             output.Append(string.Join(',', cells.Select(Csv))).Append("\r\n");
         }
         return output.ToString();
@@ -128,6 +137,7 @@ public sealed class RunReportExporter
                 durationMilliseconds = f.Duration?.TotalMilliseconds,
                 observationUtc = f.ObservationUtc, unit = f.Unit, signalStatus = f.SignalStatus,
                 failureCode = f.FailureCode, detail = f.Detail,
+                signalProvenance = f.SignalProvenance,
                 unarchivedEvidenceIds = f.Evidence.Where(e => !archived.Contains(e.Value))
                     .Select(e => e.Value),
                 requirementId = f.RequirementId, reportNote = f.ReportNote,
@@ -231,7 +241,17 @@ public sealed class RunReportExporter
                 .Append("<div>Failure: ").Append(H(step.FailureCode)).Append("</div>")
                 .Append("<div>").Append(H(step.Detail)).Append("</div></td><td>")
                 .Append(H(step.Expected)).Append("</td><td>").Append(H(step.Actual))
-                .Append(" ").Append(H(step.Unit)).Append("</td><td>")
+                .Append(" ").Append(H(step.Unit));
+            if (step.SignalProvenance is { } source)
+                html.Append("<div>DBC: ").Append(H(source.DbcAssetId.ToString("D")))
+                    .Append(" @ ").Append(source.DbcRevision)
+                    .Append(" / ").Append(H(source.DbcSha256))
+                    .Append("</div><div>CAN: ").Append(H(source.BusRole))
+                    .Append(" 0x").Append(source.FrameId.ToString("X"))
+                    .Append(" / ").Append(H(source.SignalName))
+                    .Append("</div><div>观测时钟: ").Append(H(source.TimeSource))
+                    .Append(" / ").Append(H(source.TimeQuality)).Append("</div>");
+            html.Append("</td><td>")
                 .Append(H(step.StartedUtc?.ToString("O"))).Append(" — ")
                 .Append(H(step.CompletedUtc?.ToString("O"))).Append("<div>")
                 .Append(H(step.Duration is { } duration
