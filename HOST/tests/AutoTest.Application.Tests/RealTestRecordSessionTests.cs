@@ -177,6 +177,9 @@ public sealed class RealTestRecordSessionTests
         var html = await File.ReadAllTextAsync(completed.Reports.HtmlPath);
         Assert.Contains(assertions[0].StepOccurrenceId!.Value.ToString("D"), html);
         Assert.Contains(assertions[1].StepOccurrenceId!.Value.ToString("D"), html);
+        Assert.Contains("证据归档不完整", html);
+        var json = await File.ReadAllTextAsync(completed.Reports.JsonPath);
+        Assert.Contains("\\"evidenceArchiveIncomplete\\": true", json);
     }
 
     [Theory]
@@ -220,4 +223,60 @@ public sealed class RealTestRecordSessionTests
         Assert.Equal(0, actions.Writes);
         Assert.Null(await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId));
     }
+    [Fact]
+    public async Task UnexpectedExceptionAfterBeginIsFinalizedUnknownAndReportRemainsReadable()
+    {
+        using var fixture = new Fixture();
+        var invalidJson = "{invalid-json";
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(invalidJson))).ToLowerInvariant();
+        // Valid fingerprint but malformed payload models a corrupted prepared plan
+        // discovered only after RECORD Begin. No hardware is touched.
+        var corrupt = new PreparedTestPlan(hash, invalidJson, ImmutableArray<string>.Empty);
+        var record = fixture.Record(corrupt);
+        var (_, sample) = Signal(1);
+        var actions = new Actions();
+        var session = new RealTestRecordSession(record, fixture.Writer, fixture.Reports);
+        var ex = await Assert.ThrowsAsync<IOException>(() =>
+            session.ExecuteAsync(new RealRunCoordinator(new Signals(sample), actions, new Waves()),
+                corrupt, fixture.ReportFolder));
+        Assert.Contains(record.RunId.ToString(), ex.Message);
+        Assert.Equal(0, actions.Writes);
+
+        var history = await new RunHistoryQuery(fixture.Database).FindByRunAsync(record.RunId);
+        Assert.NotNull(history);
+        Assert.Equal(RecordPersistenceState.Committed, history.Persistence);
+        Assert.Equal("Unknown", history.TerminalState);
+        Assert.Equal(Verdict.Error, history.Verdict);
+        Assert.Equal("TEST_UNEXPECTED_TERMINATION", history.FailureReason);
+        Assert.True(File.Exists(Path.Combine(fixture.ReportFolder,
+            record.RunId.Value.ToString("N") + ".html")));
+    }
+
+    [Fact]
+    public async Task CompletedNonAssertionDoesNotProduceDutJudgementFact()
+    {
+        using var fixture = new Fixture();
+        var (mapping, sample) = Signal(2);
+        var doc = TestDocument.Create("ReadOnly") with
+            { Mappings = ImmutableArray.Create(mapping) };
+        var read = StepNode.Create("Read").WithProperty("target", mapping.Name)
+            .WithProperty("mode", "Latest").WithProperty("timeoutMs", "30")
+            .WithProperty("maxAgeMs", "100").WithProperty("variable", "observation");
+        doc = doc with
+            { Phases = doc.Phases.SetItem(TestPhase.Test, ImmutableArray.Create(read)) };
+        var plan = new PlanCompiler().Prepare(doc, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        var record = fixture.Record(plan);
+        var outcome = await new RealTestRecordSession(record, fixture.Writer, fixture.Reports)
+            .ExecuteAsync(new RealRunCoordinator(new Signals(sample), new Actions(), new Waves()),
+                plan, fixture.ReportFolder);
+        Assert.Equal(RealTestVerdict.Inconclusive, outcome.Result.Verdict);
+        var rows = await fixture.Database.ReadFactsAsync(new RecordQuery(record.RunId, 100));
+        Assert.Contains(rows, f => f.Kind == RunFactKind.RecordWrite &&
+            f.Description.Contains("STEP_END", StringComparison.Ordinal));
+        Assert.DoesNotContain(rows, f => f.Kind == RunFactKind.Judgement &&
+            f.Description.Contains("STEP_END", StringComparison.Ordinal));
+    }
+
 }
