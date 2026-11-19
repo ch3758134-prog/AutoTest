@@ -19,6 +19,13 @@ public sealed class UsbSessionService : IAsyncDisposable
     private CancellationTokenSource? _stop;
     private Task? _reader;
     private long _generation;
+    private long _receivedCanIndications;
+    private long _badFrameCandidates;
+    private long _discardedRxBytes;
+    /// <summary>Decoded USB 0x41 indications, before validating CAN payloads.</summary>
+    public long ReceivedCanIndications => Interlocked.Read(ref _receivedCanIndications);
+    public long BadUsbFrameCandidates => Interlocked.Read(ref _badFrameCandidates);
+    public long DiscardedUsbRxBytes => Interlocked.Read(ref _discardedRxBytes);
     private UsbSessionState _state = UsbSessionState.Disconnected;
     public event Action<UsbResponse>? AsynchronousResponse;
     public event Action<UsbSessionState>? StateChanged;
@@ -83,7 +90,14 @@ public sealed class UsbSessionService : IAsyncDisposable
                 if (n <= 0) throw new IOException("USB link returned EOF (native idle timeouts must not return EOF).");
                 if (n > data.Length) throw new IOException("USB link returned excessive data.");
                 Trace("RX_BYTES", generation, Convert.ToHexString(data.AsSpan(0, n)));
-                foreach (var response in decoder.Feed(data.AsSpan(0, n)))
+                var beforeInvalid = decoder.InvalidCandidates;
+                var beforeDiscarded = decoder.DiscardedBytes;
+                var decoded = decoder.Feed(data.AsSpan(0, n));
+                if (decoder.InvalidCandidates != beforeInvalid)
+                    Interlocked.Add(ref _badFrameCandidates, decoder.InvalidCandidates - beforeInvalid);
+                if (decoder.DiscardedBytes != beforeDiscarded)
+                    Interlocked.Add(ref _discardedRxBytes, decoder.DiscardedBytes - beforeDiscarded);
+                foreach (var response in decoded)
                 {
                     if (generation != Generation) return;
                     Trace("RX_FRAME", generation,
@@ -91,6 +105,14 @@ public sealed class UsbSessionService : IAsyncDisposable
                             response.Status, response.Payload)), response.Sequence, response.Command, response.Status);
                     if (response.Sequence == 0)
                     {
+                        if (response.Command == MainControllerCodec.CanRxIndication)
+                        {
+                            Interlocked.Increment(ref _receivedCanIndications);
+                            // Only an actual, decoded and CRC-checked CAN RX may
+                            // enable a bounded DID flow-control response.
+                            if (response.Status == 0 && _link is WinUsbByteLink physical)
+                                physical.ObserveAuthenticatedCanIndication(response.Payload);
+                        }
                         foreach (Action<UsbResponse> subscriber in AsynchronousResponse?.GetInvocationList()
                                      .Cast<Action<UsbResponse>>() ?? Enumerable.Empty<Action<UsbResponse>>())
                         { try { subscriber(response); } catch (Exception e) { Trace("SUBSCRIBER_ERROR", generation, detail:e.Message); } }

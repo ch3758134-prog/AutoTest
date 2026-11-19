@@ -17,7 +17,29 @@ public static class StepUiCatalog
         new("Loop", "循环", "重复执行指定次数（0–1000）", true),
         new("Sequence", "步骤分组", "包含有顺序的子步骤", true),
         new("SetVariable", "设置变量", "设置测试程序变量", true),
-        new("When", "等待条件", "等待变量满足条件（仅编辑，运行能力未接入）", false)
+        new("Write", "写入 / 外部激励", "操作映射对象：按键、IGN 或 DBC CAN 报文", true),
+        new("Read", "读取信号", "读取 DBC 解析值保存到变量，读取本身不判定", true),
+        new("WaitUntil", "等待响应条件", "持续观察信号，将条件是否成立写入变量", true),
+        new("AssertSignal", "CAN 信号判定", "在规定时间内等待目标信号，满足判定才算通过", true),
+        new("CanStopPeriodic", "停止周期 CAN", "停止本次测试中的所有 ECU CAN 周期发送", true),
+        new("Calculate", "计算", "用变量和字面值计算新的测试数据", true),
+        new("Expect", "期望判定", "在指定位置用表达式作出测试判定", true),
+        new("WaveStart", "开始波形记录", "开始记录所选的实时 DBC 信号", true),
+        new("WaveStop", "结束波形记录", "结束采集并将样本数保存为数据", true),
+        new("WaveAnalyze", "波形分析", "独立分析已采集波形，将分析结果保存为数据", true),
+        new("Switch", "SWITCH 分支", "分派表达式与 Case 子分支；运行器尚未实现", false),
+        new("Case", "CASE / 默认分支", "SWITCH 子分支；运行器尚未实现", false),
+        new("When", "WHEN 条件等待", "条件与超时、嵌套步骤；运行器尚未实现", false),
+        new("TryCatch", "TRY / CATCH / FINALLY", "异常处理分支；运行器尚未实现", false),
+        new("Subroutine", "子程序", "有名子步骤容器；运行器尚未实现", false),
+        new("CallSubroutine", "调用子程序", "历史文档内部调用；运行器尚未实现", false),
+        new("CallPublicFlow", "调用公共流程", "从当前工程选择固定修订的公共流程", false),
+        new("CanSend", "CAN 发送", "需绑定正式 DBC / CAN 配置，执行未接线", false),
+        new("CanWait", "CAN 接收等待", "需绑定 CAN 目标和超时，执行未接线", false),
+        new("UdsRequest", "UDS 服务", "运行需实体诊断授权，执行未接线", false),
+        new("Flash", "ECU 烧录", "实体编程未获授权，执行禁用", false),
+        new("WaveCapture", "波形采集", "记录服务尚未完成该步骤适配", false),
+        new("WaveCompare", "波形判定", "需要真实参考资源与三态比较", false)
     ];
     public static string Label(string type) =>
         Choices.FirstOrDefault(c => c.Type == type)?.Label ?? type;
@@ -30,6 +52,8 @@ public static class StepUiCatalog
         "try" => "尝试执行",
         "catch" => "异常处理",
         "finally" => "清理",
+        "cases" => "CASE 分派",
+        "branches" => "分支",
         _ => slot
     };
 
@@ -41,6 +65,25 @@ public static class StepUiCatalog
         _ => p.ToString()
     };
 
+    // Only formal authoring parameters belong in the operator's step inspector.
+    // Legacy import fingerprints, runtime bookkeeping and unknown keys remain in
+    // the StepNode data so applying an edit never destroys imported evidence.
+    public static bool IsOperatorProperty(string key) => key switch
+    {
+        "milliseconds" or "count" or "variable" or "equals" or "value" or
+        "timeoutMs" or "target" or "mode" or "maxAgeMs" or "operator" or
+        "expected" or "left" or "right" or "captureKey" or "durationMs" or
+        "reference" or "dbcMessage" or "signals" or "requestHex" or
+        "service" or "programmingProfile" or "profile" or "tolerance" or
+        "coverage" or "periodMs" => true,
+        _ => false
+    };
+
+    public static bool RequiresLegacyReview(StepNode node) =>
+        node.Properties.Any(pair =>
+            pair.Key.Equals("legacy.importStatus", StringComparison.OrdinalIgnoreCase) &&
+            pair.Value.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase));
+
     public static string PropertyLabel(string key) => key switch
     {
         "milliseconds" => "等待时间（毫秒）",
@@ -49,10 +92,29 @@ public static class StepUiCatalog
         "equals" => "比较值",
         "value" => "变量值",
         "timeoutMs" => "超时（毫秒）",
-        _ => key
+        "target" => "已映射操作 / DBC 信号",
+        "mode" => "信号读取方式",
+        "maxAgeMs" => "数据有效时间（毫秒）",
+        "operator" => "比较或计算方式",
+        "expected" => "目标值或变量",
+        "left" => "左操作数（$变量 或数值）",
+        "right" => "右操作数（$变量 或数值）",
+        "captureKey" => "采集名称",
+        "durationMs" => "持续时间（毫秒；0 表示运行结束时停止）",
+        "periodMs" => "CAN 发送周期（毫秒；0 表示单次）",
+        "reference" => "已建立的参考波形名称（非普通证据）",
+        "dbcMessage" => "CAN 报文",
+        "signals" => "CAN 信号条件",
+        "requestHex" => "UDS 请求数据（HEX）",
+        "service" => "UDS 服务标识",
+        "programmingProfile" => "烧录配置",
+        "profile" => "波形分析配置（可选，来自工程 Mapping）",
+        "tolerance" => "比较绝对容差",
+        "coverage" => "最低有效覆盖率（0-1）",
+        _ => "内部参数"
     };
 
-    public static StepNode NewNode(string type)
+    public static StepNode NewNode(string type, string defaultTarget = "")
     {
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(type)
             ?? throw new ArgumentException("未知步骤类型：" + type);
@@ -67,14 +129,45 @@ public static class StepUiCatalog
             {
                 "milliseconds" => "500",
                 "count" => "2",
-                "variable" => "value",
+                "variable" => type == "Read" || type == "WaitUntil" ? "response" : "value",
                 "equals" => "1",
-                "value" => "1",
+                "value" => type == "Write" ? "Pulse" : "1",
                 "timeoutMs" => "1000",
+                "maxAgeMs" => "500",
+                "mode" => "Next",
+                "target" => defaultTarget,
+                "captureKey" => "capture1",
+                "durationMs" => "3000",
+                "reference" => "",
+                "tolerance" => "0.05",
+                "coverage" => "0.95",
+                "operator" => type == "Calculate" ? "+" : "==",
+                "expected" => "1",
+                "left" => "$response",
+                "right" => "1",
                 _ => "1"
             };
             node = node.WithProperty(property, value);
         }
+        if (type == "WaveAnalyze")
+            node = node.WithProperty("profile", "").WithProperty("reference", "");
+        // Editing schemas are deliberately not executable; invalid/absent resource
+        // references must be reported at preflight, not silently defaulted.
+        node = type switch
+        {
+            "Switch" => node.WithProperty("variable", ""),
+            "AssertSignal" => node.WithProperty("operator", "==")
+                .WithProperty("expected", "").WithProperty("timeoutMs", "5000"),
+            "When" => node.WithProperty("variable", "").WithProperty("equals", "")
+                .WithProperty("timeoutMs", "1000"),
+            "CanSend" => node.WithProperty("dbcMessage", "").WithProperty("signals", ""),
+            "CanWait" => node.WithProperty("dbcMessage", "").WithProperty("timeoutMs", "1000"),
+            "UdsRequest" => node.WithProperty("service", "").WithProperty("requestHex", ""),
+            "Flash" => node.WithProperty("programmingProfile", ""),
+            "WaveCapture" => node.WithProperty("captureKey", ""),
+            "WaveCompare" => node.WithProperty("reference", ""),
+            _ => node
+        };
         return node;
     }
 }

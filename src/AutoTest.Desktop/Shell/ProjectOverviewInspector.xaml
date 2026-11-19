@@ -1,0 +1,19 @@
+<UserControl x:Class="AutoTest.Desktop.Shell.ProjectOverviewInspector"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Background="#FBFCFF" FontFamily="{StaticResource UiFont}" FontSize="12">
+ <ScrollViewer VerticalScrollBarVisibility="Auto">
+  <StackPanel Margin="12">
+   <TextBlock Text="当前工程" Foreground="#64758C" FontSize="11" Margin="0,0,0,7"/>
+   <TextBlock Text="{Binding CurrentProjectName}" FontSize="14" FontWeight="SemiBold"
+    Foreground="#283A53" TextWrapping="Wrap" Margin="0,0,0,9"/>
+   <Border Height="1" Background="#E9EEF5" Margin="0,0,0,12"/>
+   <TextBlock Text="{Binding TestProgramCount,StringFormat='测试用例  {0} 个'}"
+    Foreground="#64758C" FontSize="11" Margin="0,0,0,8"/>
+   <TextBlock Text="{Binding ConfigurationCount,StringFormat='配置资源  {0} 项'}"
+    Foreground="#64758C" FontSize="11" Margin="0,0,0,10"/>
+   <TextBlock Text="{Binding SelectedConfigurationSummary}" Foreground="#64758C"
+    TextWrapping="Wrap" FontSize="11"/>
+  </StackPanel>
+ </ScrollViewer>
+</UserControl>

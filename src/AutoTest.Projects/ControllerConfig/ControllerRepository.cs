@@ -18,6 +18,29 @@ public static class ControllerRepository
     private const int Schema = 1;
     private const int MaxBytes = 2 * 1024 * 1024;
 
+    /// <summary>Canonical schema envelope for embedding a controller profile in an AutoTest project asset.</summary>
+    public static byte[] Encode(EcuControlProfile profile)
+    {
+        profile.Validate();
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new FileEnvelope(Schema, profile), Json);
+        if (bytes.Length > MaxBytes) throw new ProjectDataException("CTRL_FILE_SIZE", "Configuration exceeds the limit.");
+        return bytes;
+    }
+
+    public static EcuControlProfile Decode(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length is <= 0 or > MaxBytes)
+            throw new ProjectDataException("CTRL_FILE_SIZE", "Controller configuration size invalid.");
+        try
+        {
+            var data = JsonSerializer.Deserialize<FileEnvelope>(bytes, Json);
+            if (data is null || data.SchemaVersion != Schema || data.Profile is null)
+                throw new ProjectDataException("CTRL_SCHEMA", "Unsupported or malformed configuration format.");
+            return data.Profile.Validate();
+        }
+        catch (JsonException e) { throw new ProjectDataException("CTRL_JSON", e.Message); }
+    }
+
     public static async Task<(EcuControlProfile Profile, ControllerFileReceipt Receipt)> OpenAsync(
         string path, CancellationToken cancellationToken = default)
     {

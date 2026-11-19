@@ -20,13 +20,38 @@ public sealed record OpenProjectContext(ProjectDefinition Definition, string Man
     public string RootDirectory => Path.GetDirectoryName(ManifestPath)!;
 }
 
-public sealed class ProjectWorkspaceService
+public sealed partial class ProjectWorkspaceService
 {
     public const string ManifestFileName = "project.autotest-project.json";
     public const string TestProgramKind = "test-program";
+    public const string PublicFlowKind = "public-flow";
+    public const string TestProjectKind = "test-project";
     public const string DbcKind = "dbc";
     public const string FirmwareKind = "firmware";
     public const string WaveKind = "wave";
+    public const string ControllerKind = ProjectConfigurationCodec.ControllerKind;
+    public const string WaveSettingsKind = ProjectConfigurationCodec.WaveSettingsKind;
+    public const string FlashSettingsKind = ProjectConfigurationCodec.FlashSettingsKind;
+    public const string ScanSettingsKind = ProjectConfigurationCodec.ScanSettingsKind;
+    public const string TestConfigurationKind = ProjectConfigurationCodec.TestConfigurationKind;
+    public const string BenchConfigurationKind = ProjectConfigurationCodec.BenchConfigurationKind;
+    public const string KeyActionsKind = "bench-key-actions";
+    private AssetId? _selectedTestConfiguration;
+    private AssetId? _selectedBenchConfiguration;
+    private string? _configurationProjectPath;
+    public event EventHandler? SelectedConfigurationsChanged;
+    public AssetId? SelectedTestConfiguration =>
+        string.Equals(_configurationProjectPath, Current?.ManifestPath,
+            StringComparison.OrdinalIgnoreCase) ? _selectedTestConfiguration : null;
+    public AssetId? SelectedBenchConfiguration =>
+        string.Equals(_configurationProjectPath, Current?.ManifestPath,
+            StringComparison.OrdinalIgnoreCase) ? _selectedBenchConfiguration : null;
+    public string SelectedTestConfigurationName =>
+        Current?.Definition.Assets.FirstOrDefault(x => x.Id == SelectedTestConfiguration)?.Name
+            ?? "未选择 TCF";
+    public string SelectedBenchConfigurationName =>
+        Current?.Definition.Assets.FirstOrDefault(x => x.Id == SelectedBenchConfiguration)?.Name
+            ?? "固定台架（尚未选择 TBC）";
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     public string SuggestedDirectory => Current?.RootDirectory ?? AppContext.BaseDirectory;
     public OpenProjectContext? Current { get; private set; }
@@ -134,6 +159,8 @@ public sealed class ProjectWorkspaceService
         {
             var full = Path.GetFullPath(manifestPath);
             var definition = await ProjectRepository.OpenDefinitionAsync(full, ct).ConfigureAwait(false);
+            // An external project must be decodable, not merely a valid manifest.
+            await ProjectBundleContractAudit.ValidateAsync(definition, full, ct).ConfigureAwait(false);
             var hash = await HashFileAsync(full, ct).ConfigureAwait(false);
             return new OpenProjectContext(definition, full, hash);
         }, ct);
@@ -168,8 +195,9 @@ public sealed class ProjectWorkspaceService
     public async Task<DbcEditorSession> SaveDbcEditorAsync(
         DbcEditorSession opened, CancellationToken ct = default)
     {
-        if (!opened.Document.CanEdit)
-            throw new ProjectDataException("DBC_UNSUPPORTED_READONLY", "该 DBC 包含当前写入器不支持的结构，不能编辑保存。");
+        if (!opened.Document.CanSave)
+            throw new ProjectDataException("DBC_UNSUPPORTED_READONLY",
+                "该 DBC 的结构修改暂不支持安全保存。中文别名可独立修改，并保留原文件内容。");
         if (!opened.Document.IsDirty)
             return opened;
 
@@ -363,6 +391,109 @@ public sealed class ProjectWorkspaceService
         finally { _writeLock.Release(); }
     }
 
+    /// <summary>New formal execution Project, holding references to existing Packages only.</summary>
+    public Task<AssetEntry> CreateTestProjectAsync(string name, CancellationToken ct = default)
+    {
+        ValidateResourceName(name);
+        return AddAssetAsync(TestProjectKind, name, ".prj.json",
+            TestProjectCodec.Encode(TestProjectDocument.Create(name)), ct);
+    }
+
+    public async Task<TestProjectEditorSession> OpenTestProjectEditorAsync(
+        AssetId id, CancellationToken ct = default)
+    {
+        var current = Current ?? throw new InvalidOperationException("请先打开工作空间。");
+        var asset = current.Definition.Assets.SingleOrDefault(x => x.Id == id &&
+            x.Kind == TestProjectKind)
+            ?? throw new ProjectDataException("PROJECT_PLAN_MISSING", "测试项目资源不存在。");
+        var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+        var bytes = await File.ReadAllBytesAsync(path, ct);
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        if (!string.Equals(hash, asset.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new ProjectDataException("PROJECT_PLAN_STALE", "测试项目文件与资源清单不一致。");
+        return new TestProjectEditorSession(current.Definition.Id, current.ManifestPath,
+            asset.Id, asset.Revision, asset.Name, path, hash, TestProjectCodec.Decode(bytes));
+    }
+
+    /// <summary>Transactional, content-hashed project-plan save without executing packages.</summary>
+    public async Task<TestProjectEditorSession> SaveTestProjectEditorAsync(
+        TestProjectEditorSession opened, TestProjectDocument document,
+        CancellationToken ct = default)
+    {
+        var bytes = TestProjectCodec.Encode(document);
+        if (document.Id != opened.Document.Id)
+            throw new ProjectDataException("PROJECT_PLAN_ID", "测试项目持久身份不允许改变。");
+        if (string.Equals(opened.FileSha256,
+            Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+            return opened;
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("工作空间已关闭。");
+            if (current.Definition.Id != opened.ProjectId ||
+                !string.Equals(current.ManifestPath, opened.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("PROJECT_PLAN_SWITCH", "工作空间已切换。");
+            var index = Array.FindIndex(current.Definition.Assets.ToArray(), x => x.Id == opened.AssetId);
+            if (index < 0) throw new ProjectDataException("PROJECT_PLAN_MISSING", "测试项目已被移除。");
+            var asset = current.Definition.Assets[index];
+            if (asset.Kind != TestProjectKind || asset.Revision != opened.AssetRevision ||
+                !string.Equals(asset.Sha256, opened.FileSha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("PROJECT_PLAN_CONFLICT", "测试项目版本已变化，请重新打开。");
+            foreach (var reference in document.Packages)
+            {
+                if (!current.Definition.Assets.Any(x => x.Id.Value == reference.PackageAssetId &&
+                    x.Kind == TestProgramKind && x.Revision == reference.PackageRevision &&
+                    string.Equals(x.Sha256, reference.PackageSha256, StringComparison.OrdinalIgnoreCase)))
+                    throw new ProjectDataException("PROJECT_PACKAGE_STALE",
+                        "测试用例资源或修订发生变化，请重新确认：" + reference.DisplayName);
+            }
+            await EnsureManifestUnchangedAsync(current, ct);
+            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            if (!string.Equals(await HashFileAsync(path, ct), opened.FileSha256,
+                StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("PROJECT_PLAN_FILE_CHANGED", "测试项目文件已被外部修改。");
+            var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            var backup = path + ".bak";
+            var manifestAttempted = false;
+            try
+            {
+                await File.WriteAllBytesAsync(temp, bytes, ct);
+                _ = TestProjectCodec.Decode(await File.ReadAllBytesAsync(temp, ct));
+                if (!string.Equals(await HashFileAsync(path, ct), opened.FileSha256,
+                    StringComparison.OrdinalIgnoreCase))
+                    throw new ProjectDataException("PROJECT_PLAN_FILE_CHANGED", "写入前测试项目文件变化。");
+                File.Replace(temp, path, backup);
+                var hash = await HashFileAsync(path, ct);
+                var verifiedDocument = TestProjectCodec.Decode(await File.ReadAllBytesAsync(path, ct));
+                var updatedAsset = asset with { Revision = checked(asset.Revision + 1), Sha256 = hash };
+                var next = (current.Definition with
+                {
+                    Assets = current.Definition.Assets.SetItem(index, updatedAsset)
+                }).WithRevision().Validate();
+                await EnsureManifestUnchangedAsync(current, ct);
+                manifestAttempted = true;
+                await ProjectRepository.SaveDefinitionAsync(next, current.ManifestPath, ct);
+                var reread = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct);
+                var manifestSha = await HashFileAsync(current.ManifestPath, ct);
+                Current = new OpenProjectContext(reread, current.ManifestPath, manifestSha);
+                CurrentChanged?.Invoke(this, EventArgs.Empty);
+                return new TestProjectEditorSession(reread.Id, current.ManifestPath,
+                    asset.Id, updatedAsset.Revision, asset.Name, path, hash, verifiedDocument);
+            }
+            catch
+            {
+                if (!manifestAttempted && File.Exists(backup) && File.Exists(path) &&
+                    string.Equals(await HashFileAsync(path, CancellationToken.None),
+                        Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+                    File.Copy(backup, path, overwrite: true);
+                throw;
+            }
+            finally { if (File.Exists(temp)) File.Delete(temp); }
+        }
+        finally { _writeLock.Release(); }
+    }
+
     public async Task<AssetEntry> ImportDbcAsync(string sourcePath, CancellationToken ct = default)
     {
         if (!string.Equals(Path.GetExtension(sourcePath), ".dbc", StringComparison.OrdinalIgnoreCase))
@@ -426,6 +557,205 @@ public sealed class ProjectWorkspaceService
         return await AddAssetAsync(WaveKind, name, ".wave.json", bytes, ct);
     }
 
+    public Task<AssetEntry> CreateConfigurationAsync(string kind, string name,
+        CancellationToken ct = default)
+    {
+        if (!ProjectConfigurationCodec.IsConfiguration(kind))
+            throw new ArgumentException("不支持的配置资源类型：" + kind);
+        var extension = kind switch
+        {
+            TestConfigurationKind => ".tcf.json",
+            BenchConfigurationKind => ".tbc.json",
+            _ => ".settings.json"
+        };
+        return AddAssetAsync(kind, name, extension,
+            ProjectConfigurationCodec.Create(kind, name), ct);
+    }
+
+    public async Task<ProjectConfigurationSession> OpenConfigurationAsync(
+        AssetId id, CancellationToken ct = default)
+    {
+        var current = Current ?? throw new InvalidOperationException("请先打开工程。");
+        var asset = current.Definition.Assets.FirstOrDefault(x => x.Id == id)
+            ?? throw new ProjectDataException("CONFIG_NOT_FOUND", "工程配置资源不存在。");
+        if (!ProjectConfigurationCodec.IsConfiguration(asset.Kind))
+            throw new ArgumentException("当前资源不是可编辑配置。");
+        return await Task.Run(async () =>
+        {
+            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+            var sha = Convert.ToHexString(SHA256.HashData(bytes));
+            if (!sha.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("CONFIG_EXTERNAL_CHANGE",
+                    "工程配置文件被外部修改，已阻止打开以避免覆盖。");
+            var decoded = ProjectConfigurationCodec.Decode(asset.Kind, bytes);
+            return new ProjectConfigurationSession(current.Definition.Id, current.ManifestPath,
+                asset.Id, asset.Revision, asset.Name, asset.Kind, path, sha, decoded);
+        }, ct);
+    }
+
+    /// <summary>
+    /// Selection is a functional editing context. It does NOT connect USB, assert IGN,
+    /// change KEY_SIM outputs, or authorize a test. TBC always describes the fixed station.
+    /// </summary>
+    public async Task SelectConfigurationAsync(AssetId id, CancellationToken ct = default)
+    {
+        var session = await OpenConfigurationAsync(id, ct);
+        var project = Current ?? throw new InvalidOperationException("请先打开工程。");
+        ValidateConfigurationReferences(session.Kind, session.Document, project.Definition);
+        if (session.Kind is not (TestConfigurationKind or BenchConfigurationKind))
+            throw new ArgumentException("只能选择 TCF 被测系统或 TBC 台架配置。");
+        if (!string.Equals(_configurationProjectPath, project.ManifestPath,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            _selectedTestConfiguration = null;
+            _selectedBenchConfiguration = null;
+        }
+        _configurationProjectPath = project.ManifestPath;
+        if (session.Kind == TestConfigurationKind) _selectedTestConfiguration = id;
+        else _selectedBenchConfiguration = id;
+        SelectedConfigurationsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task<TestSystemConfigurationDocument?> ReadSelectedTestConfigurationAsync(
+        CancellationToken ct = default)
+    {
+        if (SelectedTestConfiguration is not { } id) return null;
+        var selected = await OpenConfigurationAsync(id, ct);
+        if (selected.Kind != TestConfigurationKind)
+            throw new ProjectDataException("TCF_SELECTION_INVALID", "当前 TCF 资源类型已变化。");
+        var document = (TestSystemConfigurationDocument)selected.Document;
+        ValidateConfigurationReferences(selected.Kind, document, Current!.Definition);
+        return document;
+    }
+
+    /// <summary>Prevent a config from silently following a different version of its referenced resource.</summary>
+    private static void ValidateConfigurationReferences(string kind, object document, ProjectDefinition project)
+    {
+        void Check(Guid? id, string expectedKind, int? revision, string? fingerprint)
+        {
+            if (!id.HasValue) return;
+            var asset = project.Assets.FirstOrDefault(x => x.Id.Value == id.Value &&
+                x.Kind.Equals(expectedKind, StringComparison.OrdinalIgnoreCase));
+            if (asset is null || asset.Revision != revision ||
+                !string.Equals(asset.Sha256, fingerprint, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("CONFIG_ASSET_STALE",
+                    "引用资源已不存在或发生版本变更，请重新选择并确认：" + expectedKind);
+        }
+
+        if (kind == TestConfigurationKind && document is TestSystemConfigurationDocument tcf)
+        {
+            Check(tcf.DbcAssetId, DbcKind, tcf.DbcRevision, tcf.DbcFingerprint);
+            Check(tcf.ButtonAssetId, ControllerKind, tcf.ButtonRevision, tcf.ButtonFingerprint);
+        }
+        else if (kind == WaveSettingsKind && document is WaveSettingsDocument wave)
+        {
+            Check(wave.DbcAssetId, DbcKind, wave.DbcAssetRevision, wave.DbcAssetFingerprint);
+            Check(wave.EvidenceAssetId, WaveKind, wave.EvidenceAssetRevision, wave.EvidenceAssetFingerprint);
+        }
+        else if (kind == FlashSettingsKind && document is FlashSettingsDocument flash)
+            Check(flash.FirmwareAssetId, FirmwareKind, flash.FirmwareRevision, flash.FirmwareFingerprint);
+        else if (kind == ScanSettingsKind && document is ScanMatchSettingsDocument scan && scan.Published)
+            foreach (var recipe in scan.Recipes.Where(x => x.Published))
+            {
+                Check(recipe.TestProgramAssetId, TestProgramKind,
+                    recipe.TestProgramRevision, recipe.TestProgramFingerprint);
+                Check(recipe.DbcAssetId, DbcKind, recipe.DbcRevision, recipe.DbcFingerprint);
+                Check(recipe.FirmwareAssetId, FirmwareKind,
+                    recipe.FirmwareRevision, recipe.FirmwareFingerprint);
+            }
+    }
+
+    /// <summary>Store validated typed configuration, then atomically advance project revision.</summary>
+    public async Task<ProjectConfigurationSession> SaveConfigurationAsync(
+        ProjectConfigurationSession opened, object document, CancellationToken ct = default)
+    {
+        var bytes = ProjectConfigurationCodec.Encode(opened.Kind, document);
+        if (string.Equals(Convert.ToHexString(SHA256.HashData(bytes)), opened.FileSha256,
+            StringComparison.OrdinalIgnoreCase))
+            return opened;
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("工程已关闭。");
+            if (current.Definition.Id != opened.ProjectId ||
+                !string.Equals(current.ManifestPath, opened.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("CONFIG_PROJECT_CHANGED", "工程已切换，不能保存旧配置。");
+            var index = -1;
+            for (var i = 0; i < current.Definition.Assets.Length; i++)
+                if (current.Definition.Assets[i].Id == opened.AssetId) { index = i; break; }
+            if (index < 0) throw new ProjectDataException("CONFIG_REMOVED", "工程配置已被移除。");
+            var asset = current.Definition.Assets[index];
+            if (!string.Equals(asset.Kind, opened.Kind, StringComparison.OrdinalIgnoreCase) ||
+                asset.Revision != opened.AssetRevision ||
+                !string.Equals(asset.Sha256, opened.FileSha256, StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("CONFIG_REVISION_CONFLICT",
+                    "工程配置已经更新，请重新打开再编辑。");
+            ValidateConfigurationReferences(opened.Kind, document, current.Definition);
+
+            var result = await Task.Run(async () =>
+            {
+                await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+                if (!string.Equals(await HashFileAsync(path, ct).ConfigureAwait(false),
+                    opened.FileSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new ProjectDataException("CONFIG_FILE_CONFLICT",
+                        "配置文件被外部修改，已拒绝覆盖。");
+                var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                var backup = path + ".bak";
+                var manifestAttempted = false;
+                try
+                {
+                    await File.WriteAllBytesAsync(temporary, bytes, ct).ConfigureAwait(false);
+                    _ = ProjectConfigurationCodec.Decode(opened.Kind,
+                        await File.ReadAllBytesAsync(temporary, ct).ConfigureAwait(false));
+                    ct.ThrowIfCancellationRequested();
+                    if (!File.Exists(path) || !string.Equals(
+                        await HashFileAsync(path, ct).ConfigureAwait(false),
+                        opened.FileSha256, StringComparison.OrdinalIgnoreCase))
+                        throw new ProjectDataException("CONFIG_FILE_CONFLICT", "保存前原配置文件变化。");
+                    File.Replace(temporary, path, backup);
+                    var hash = await HashFileAsync(path, ct).ConfigureAwait(false);
+                    var verifiedDocument = ProjectConfigurationCodec.Decode(opened.Kind,
+                        await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false));
+                    if (!hash.Equals(Convert.ToHexString(SHA256.HashData(bytes)),
+                        StringComparison.OrdinalIgnoreCase))
+                        throw new ProjectDataException("CONFIG_SAVE_VERIFY", "配置文件写入后校验失败。");
+
+                    var nextAsset = asset with { Revision = checked(asset.Revision + 1), Sha256 = hash };
+                    var nextProject = (current.Definition with
+                    { Assets = current.Definition.Assets.SetItem(index, nextAsset) }).WithRevision().Validate();
+                    await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                    manifestAttempted = true;
+                    await ProjectRepository.SaveDefinitionAsync(nextProject, current.ManifestPath, ct)
+                        .ConfigureAwait(false);
+                    var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct)
+                        .ConfigureAwait(false);
+                    var manifestSha = await HashFileAsync(current.ManifestPath, ct).ConfigureAwait(false);
+                    var context = new OpenProjectContext(verified, current.ManifestPath, manifestSha);
+                    var session = new ProjectConfigurationSession(verified.Id, current.ManifestPath,
+                        asset.Id, nextAsset.Revision, asset.Name, asset.Kind, path, hash,
+                        verifiedDocument);
+                    return (Context: context, Session: session);
+                }
+                catch
+                {
+                    if (!manifestAttempted && File.Exists(backup) && File.Exists(path) &&
+                        string.Equals(await HashFileAsync(path, CancellationToken.None).ConfigureAwait(false),
+                            Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+                        File.Copy(backup, path, overwrite: true);
+                    throw;
+                }
+                finally { if (File.Exists(temporary)) File.Delete(temporary); }
+            }, ct);
+            Current = result.Context;
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return result.Session;
+        }
+        finally { _writeLock.Release(); }
+    }
+
     public Task<AssetEntry> CreateTestProgramAsync(string name, CancellationToken ct = default)
     {
         ValidateResourceName(name);
@@ -453,8 +783,17 @@ public sealed class ProjectWorkspaceService
                 {
                     DbcKind => "dbc",
                     TestProgramKind => "tests",
+                    PublicFlowKind => "flows",
+                    TestProjectKind => "projects",
+                    TestConfigurationKind => "tcf",
+                    BenchConfigurationKind => "tbc",
                     FirmwareKind => "firmware",
                     WaveKind => "wave",
+                    ControllerKind => "controller",
+                    KeyActionsKind => "key-actions",
+                    WaveSettingsKind => "wave",
+                    FlashSettingsKind => "flash",
+                    ScanSettingsKind => "scan",
                     _ => throw new ArgumentException("不支持的工程资源类型：" + kind)
                 };
                 var relative = "assets/" + folder + "/" + Guid.NewGuid().ToString("N") + extension;

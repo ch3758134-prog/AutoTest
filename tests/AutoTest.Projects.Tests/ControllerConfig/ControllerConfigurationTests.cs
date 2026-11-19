@@ -64,6 +64,39 @@ public sealed class ControllerConfigurationTests
         Assert.Equal(ObservationOrigin.Manual, fact.Origin);
         Assert.Equal(2.5, editor.Current.Controllers[0].States[0].Windows[0].TargetVolts);
     }
+    [Fact] public void ControllerProfileRejectsConfiguredStateOutsideSupportedKeyMask()
+    {
+        var (profile, controller, stateId) = Profile();
+        var policy = new HardwareKeyPolicy(profile.HardwareProfileId, 0x2,
+            ImmutableArray<IncompatibleKeyPair>.Empty);
+        var error = Assert.Throws<ProjectDataException>(() =>
+            (profile with { KeyHardwarePolicy = policy }).Validate());
+        Assert.Equal("CTRL_STATE_UNSUPPORTED_KEY", error.Code);
+        // A draft without active hardware policy remains loadable and editable.
+        Assert.Null(profile.KeyHardwarePolicy);
+    }
+
+    [Fact] public void HardwarePolicy_RoundTripAndValidateIdentity()
+    {
+        var (profile, controller, state) = Profile();
+        var policy = new HardwareKeyPolicy(profile.HardwareProfileId, 0xFFFFF,
+            ImmutableArray.Create(new IncompatibleKeyPair(1, 2)));
+        var configured = profile with { KeyHardwarePolicy = policy };
+        var reopened = ControllerRepository.Decode(ControllerRepository.Encode(configured));
+        Assert.NotNull(reopened.KeyHardwarePolicy);
+        Assert.Equal(policy.SupportedMask, reopened.KeyHardwarePolicy.SupportedMask);
+        Assert.Equal(policy.HardwareProfileId, reopened.KeyHardwarePolicy.HardwareProfileId);
+        Assert.Single(reopened.KeyHardwarePolicy.ForbiddenPairs);
+        Assert.Equal(new IncompatibleKeyPair(1, 2),
+            reopened.KeyHardwarePolicy.ForbiddenPairs[0]);
+        var stalePolicy = configured with
+        {
+            KeyHardwarePolicy = policy with { HardwareProfileId = Guid.NewGuid() }
+        };
+        Assert.Throws<ProjectDataException>(() => stalePolicy.Validate());
+        Assert.Null(profile.KeyHardwarePolicy); // Existing files remain readable.
+    }
+
     [Fact] public void HardwarePolicy_RejectsUnsupportedAndIncompatibleKeys()
     {
         var (profile, controller, state) = Profile();
@@ -128,4 +161,113 @@ public sealed class ControllerConfigurationTests
         }
         finally { File.Delete(path); }
     }
+
+
+    [Fact] public void ButtonPressWithNoConfiguredResistorCombination_IsRejected()
+    {
+        var (profile, controller, stateId) = Profile();
+        var state = profile.Controllers[0].States[0] with { KeyMask = 0 };
+        profile = profile with
+        {
+            Controllers = ImmutableArray.Create(profile.Controllers[0] with
+            { States = ImmutableArray.Create(state) })
+        };
+        var reference = new StateReference(profile.ProfileId, controller, stateId, profile.Revision);
+        var policy = new HardwareKeyPolicy(profile.HardwareProfileId, 0xFFFFF,
+            ImmutableArray<IncompatibleKeyPair>.Empty);
+        var error = Assert.Throws<ProjectDataException>(() =>
+            ButtonActionPlanner.Resolve(profile, policy, [],
+                new ButtonActionRequest(reference, ButtonActuation.Pulse,
+                    new ButtonActionTiming(0, 200, 0))));
+        Assert.Equal("CTRL_ACTION_NO_STIMULUS", error.Code);
+    }
+
+    [Fact] public void ButtonTiming_StoredWithConfiguredStateAndRoundTrips()
+    {
+        var (profile, controller, stateId) = Profile();
+        var state = profile.Controllers[0].States[0] with
+        {
+            ActionTiming = new ButtonActionTiming(150, 350, 80)
+        };
+        profile = profile with
+        {
+            Controllers = ImmutableArray.Create(profile.Controllers[0] with
+            { States = ImmutableArray.Create(state) })
+        };
+        var reloaded = ControllerRepository.Decode(ControllerRepository.Encode(profile));
+        var actual = reloaded.ResolveState(controller, stateId, reloaded.Revision);
+        Assert.Equal(new ButtonActionTiming(150, 350, 80), actual.ActionTiming);
+        Assert.Throws<ProjectDataException>(() =>
+            (state with { ActionTiming = new ButtonActionTiming(-1, 0, 0) }).Validate());
+    }
+
+    [Fact] public void ButtonPulse_CombinesKeyStatesAndRestoresPriorActiveMask()
+    {
+        var (profile, controller, stateId) = Profile();
+        var editor = new ControllerEditSession(profile);
+        editor.AddState(controller, "Secondary", 0x2);
+        var updated = editor.Current;
+        var targetId = updated.Controllers[0].States.Single(x => x.Name == "Secondary").Id;
+        var initial = new StateReference(updated.ProfileId, controller, stateId, updated.Revision);
+        var target = new StateReference(updated.ProfileId, controller, targetId, updated.Revision);
+        var policy = new HardwareKeyPolicy(updated.HardwareProfileId, 0xFFFFF,
+            ImmutableArray<IncompatibleKeyPair>.Empty);
+        var plan = ButtonActionPlanner.Resolve(updated, policy, [initial],
+            new ButtonActionRequest(target, ButtonActuation.Pulse,
+                new ButtonActionTiming(120, 250, 60)));
+        Assert.Equal(1u, plan.MaskBefore);
+        Assert.Equal(3u, plan.MaskDuringOperation);
+        Assert.Equal(1u, plan.MaskAfterOperation);
+        Assert.Equal(120, plan.Timing.DelayBeforePressMs);
+        Assert.Equal(250, plan.Timing.DefaultPressDurationMs);
+        Assert.Single(plan.ActiveAfterOperation);
+        Assert.Equal(initial, plan.ActiveAfterOperation[0]);
+    }
+
+    [Fact] public void ButtonHoldAndRelease_PreserveUnrelatedActiveStates()
+    {
+        var (profile, controller, stateId) = Profile();
+        var editor = new ControllerEditSession(profile);
+        editor.AddState(controller, "Other", 0x4);
+        var updated = editor.Current;
+        var id = updated.Controllers[0].States.Single(x => x.Name == "Other").Id;
+        var first = new StateReference(updated.ProfileId, controller, stateId, updated.Revision);
+        var second = new StateReference(updated.ProfileId, controller, id, updated.Revision);
+        var hardware = new HardwareKeyPolicy(updated.HardwareProfileId, 0xFFFFF,
+            ImmutableArray<IncompatibleKeyPair>.Empty);
+        var hold = ButtonActionPlanner.Resolve(updated, hardware, [first],
+            new ButtonActionRequest(second, ButtonActuation.Hold,
+                new ButtonActionTiming(50, 0, 20)));
+        Assert.Equal(5u, hold.MaskAfterOperation);
+        Assert.Equal(0, hold.Timing.DelayAfterReleaseMs);
+        var release = ButtonActionPlanner.Resolve(updated, hardware, hold.ActiveAfterOperation,
+            new ButtonActionRequest(second, ButtonActuation.Release,
+                new ButtonActionTiming(50, 0, 20)));
+        Assert.Equal(1u, release.MaskAfterOperation);
+        Assert.Equal(0, release.Timing.DelayBeforePressMs);
+        Assert.Equal(20, release.Timing.DelayAfterReleaseMs);
+    }
+
+    [Fact] public void ButtonPlanning_RejectsConflictStaleMappingAndUntimedPulse()
+    {
+        var (profile, controller, stateId) = Profile();
+        var editor = new ControllerEditSession(profile);
+        editor.AddState(controller, "Other", 0x2);
+        var updated = editor.Current;
+        var targetId = updated.Controllers[0].States.Last().Id;
+        var first = new StateReference(updated.ProfileId, controller, stateId, updated.Revision);
+        var target = new StateReference(updated.ProfileId, controller, targetId, updated.Revision);
+        var blocked = new HardwareKeyPolicy(updated.HardwareProfileId, 0xFFFFF,
+            ImmutableArray.Create(new IncompatibleKeyPair(1, 2)));
+        Assert.Throws<ProjectDataException>(() => ButtonActionPlanner.Resolve(
+            updated, blocked, [first],
+            new ButtonActionRequest(target, ButtonActuation.Hold)));
+        var available = blocked with { ForbiddenPairs = ImmutableArray<IncompatibleKeyPair>.Empty };
+        Assert.Throws<ProjectDataException>(() => ButtonActionPlanner.Resolve(
+            updated, available, [], new ButtonActionRequest(target, ButtonActuation.Pulse)));
+        var stale = target with { Revision = profile.Revision };
+        Assert.Throws<ProjectDataException>(() => ButtonActionPlanner.Resolve(
+            updated, available, [], new ButtonActionRequest(stale, ButtonActuation.Hold)));
+    }
+
 }

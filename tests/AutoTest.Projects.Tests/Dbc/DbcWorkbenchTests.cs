@@ -58,6 +58,117 @@ public sealed class DbcWorkbenchTests
         Assert.Throws<ProjectDataException>(() => doc.AddSignal(291, new DbcSignal("Overflow", 63, 2,
             true, false, 1, 0, 0, 255, "", "Tester")));
     }
+    [Fact] public void ChineseAliases_RoundTripWithoutChangingCanIdentifiersOrExistingComments()
+    {
+        var source = Basic + "\nCM_ SG_ 291 Speed \"原来的车速说明\";\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        Assert.Equal("原来的车速说明", doc.DisplayNames.SignalAlias(291, "Speed"));
+        doc.SetMessageAlias(291, "车辆状态");
+        doc.SetSignalAlias(291, "Speed", "车速");
+        var edited = doc.ExportText();
+        Assert.Contains("CM_ SG_ 291 Speed \"原来的车速说明\";", edited);
+        Assert.Contains("AutoTestMessageAlias", edited);
+        Assert.Contains("AutoTestSignalAlias", edited);
+        var reopened = DbcWorkbenchDocument.Import("example", edited);
+        Assert.Equal("车辆状态", reopened.DisplayNames.MessageAlias(291));
+        Assert.Equal("车速", reopened.DisplayNames.SignalAlias(291, "Speed"));
+        Assert.Equal(doc.Model.FindMessage(291).Signals.ToArray(),
+            reopened.Model.FindMessage(291).Signals.ToArray());
+        Assert.Equal("Speed", reopened.Model.FindSignal(291, "Speed").Name);
+    }
+
+
+    [Fact] public void NativeMessageAndSignalComments_CanEditMultilineAndRoundTrip()
+    {
+        var original = Basic +
+            "\nCM_ BO_ 291 \"原来的报文注释\";\n" +
+            "CM_ SG_ 291 Speed \"原来的信号注释\";\n" +
+            "BA_ \"GenMsgCycleTime\" BO_ 291 65;\n";
+        var doc = DbcWorkbenchDocument.Import("comments", original);
+        var messageComment = "用于调试时的电压采样说明。\n注意引用的单位、采样时间和失效条件。\n含引号：\"定义\"。";
+        var signalComment = "车速反馈值\n0 = 停止\n其他值依照实际 DBC 定义。";
+        doc.SetMessageComment(291, messageComment);
+        doc.SetSignalComment(291, "Speed", signalComment);
+        var text = doc.ExportText();
+        Assert.Contains("CM_ BO_ 291 \"", text);
+        Assert.Contains(@"注意引用的单位、采样时间和失效条件。\n", text);
+        Assert.Contains("含引号：\\\"定义\\\"", text);
+        Assert.Contains("BA_ \"GenMsgCycleTime\" BO_ 291 65;", text);
+        Assert.DoesNotContain("AutoTestMessageSummary", text);
+        Assert.DoesNotContain("AutoTestSignalSummary", text);
+        var reopened = DbcWorkbenchDocument.Import("comments", text);
+        Assert.Equal(messageComment, reopened.DisplayNames.MessageDescription(291));
+        Assert.Equal(signalComment, reopened.DisplayNames.SignalDescription(291, "Speed"));
+        Assert.Equal(doc.Model.FindMessage(291).Signals.ToArray(),
+            reopened.Model.FindMessage(291).Signals.ToArray());
+    }
+
+    [Fact] public void AddingComment_DoesNotRewriteExistingSignalOrValueTable()
+    {
+        var source = Basic + "\nCM_ SG_ 291 Temp \"保留原温度定义\";\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        doc.SetMessageComment(291, "新报文说明：数值依据实际车辆标定。");
+        var result = doc.ExportText();
+        Assert.Contains("CM_ BO_ 291 \"新报文说明：数值依据实际车辆标定。\";", result);
+        Assert.Contains("CM_ SG_ 291 Temp \"保留原温度定义\";", result);
+        Assert.Contains("VAL_ 291 Speed 0 \"Stopped\" 100 \"Moving\" ;", result);
+        var reopened = DbcWorkbenchDocument.Import("example", result);
+        Assert.Equal("新报文说明：数值依据实际车辆标定。",
+            reopened.DisplayNames.MessageDescription(291));
+    }
+
+    [Fact] public void CommentEdit_RejectsDuplicateSourceDefinitionsRatherThanLosingOne()
+    {
+        var source = Basic + "\nCM_ BO_ 291 \"first\";\nCM_ BO_ 291 \"second\";\n";
+        var doc = DbcWorkbenchDocument.Import("duplicate", source);
+        doc.SetMessageComment(291, "edited");
+        var error = Assert.Throws<ProjectDataException>(() => doc.ExportText());
+        Assert.Equal("DBC_COMMENT_DUPLICATE", error.Code);
+    }
+
+    [Fact] public void CommentEdit_RejectsUnsupportedMultilineRawSource()
+    {
+        var source = Basic + "\nCM_ BO_ 291 \"raw\" trailing;\n";
+        var doc = DbcWorkbenchDocument.Import("raw", source);
+        doc.SetMessageComment(291, "new definition");
+        var error = Assert.Throws<ProjectDataException>(() => doc.ExportText());
+        Assert.Equal("DBC_COMMENT_UNSUPPORTED", error.Code);
+    }
+
+    [Fact] public void ShortSummaries_RoundTripIndependentlyFromNamesAndRawDefinitions()
+    {
+        var source = Basic + "\nCM_ SG_ 291 Speed \"原始定义包含单位、工况和计算依据；不应被摘要覆盖。\";\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        doc.SetMessageAlias(291, "车辆状态");
+        doc.SetMessageSummary(291, "车辆当前行驶反馈");
+        doc.SetSignalAlias(291, "Speed", "车速");
+        doc.SetSignalSummary(291, "Speed", "用于车速解析和判定");
+        var text = doc.ExportText();
+        Assert.Contains("AutoTestMessageSummary", text);
+        Assert.Contains("AutoTestSignalSummary", text);
+        Assert.Contains("CM_ SG_ 291 Speed \"原始定义包含单位、工况和计算依据；不应被摘要覆盖。\";", text);
+        var loaded = DbcWorkbenchDocument.Import("example", text);
+        Assert.Equal("车辆状态", loaded.DisplayNames.MessageAlias(291));
+        Assert.Equal("车辆当前行驶反馈", loaded.DisplayNames.MessageSummary(291));
+        Assert.Equal("用于车速解析和判定", loaded.DisplayNames.SignalSummary(291, "Speed"));
+        Assert.Contains("计算依据", loaded.DisplayNames.SignalDescription(291, "Speed"));
+        Assert.Equal(doc.Model.FindMessage(291).Signals.ToArray(),
+            loaded.Model.FindMessage(291).Signals.ToArray());
+    }
+
+    [Fact] public void AliasOnlyEdit_PreservesUnsupportedDBCContent()
+    {
+        var extra = "\nSG_MUL_VAL_ 291 Speed 0 1-2 ;\n";
+        var doc = DbcWorkbenchDocument.Import("example", Basic + extra);
+        Assert.False(doc.CanEdit);
+        doc.SetSignalAlias(291, "Speed", "车辆速度");
+        Assert.True(doc.CanSave);
+        var saved = doc.ExportText();
+        Assert.Contains("SG_MUL_VAL_ 291 Speed 0 1-2 ;", saved);
+        var reopened = DbcWorkbenchDocument.Import("example", saved);
+        Assert.Equal("车辆速度", reopened.DisplayNames.SignalAlias(291, "Speed"));
+    }
+
     [Fact] public void Replay_CanDecodeIntelAndMotorolaWithValueDescription()
     {
         var doc = DbcWorkbenchDocument.Import("example", Basic);

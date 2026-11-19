@@ -28,7 +28,7 @@ internal sealed class SystemWinUsbTransportNative : IWinUsbTransportNative
     public int LastError => Marshal.GetLastWin32Error();
     public SafeFileHandle Open(string path, uint flags) => WinUsbNative.CreateFileW(path,
         WinUsbNative.GenericRead | WinUsbNative.GenericWrite,
-        WinUsbNative.FileShareRead | WinUsbNative.FileShareWrite,
+        0, // FILE_SHARE_NONE: one physical controller owner across the host and FlashLab.
         IntPtr.Zero, WinUsbNative.OpenExisting, flags, IntPtr.Zero);
     public bool Initialize(SafeFileHandle file, out IntPtr handle) => WinUsbNative.WinUsb_Initialize(file, out handle);
     public bool QueryInterfaceSettings(IntPtr handle, out WinUsbNative.USB_INTERFACE_DESCRIPTOR descriptor) =>

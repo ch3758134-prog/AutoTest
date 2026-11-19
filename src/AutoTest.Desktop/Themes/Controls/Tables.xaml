@@ -1,0 +1,59 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Style TargetType="{x:Type DataGrid}">
+  <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+  <Setter Property="FontSize" Value="13"/>
+  <Setter Property="Foreground" Value="#334963"/>
+  <Setter Property="Background" Value="White"/>
+  <Setter Property="RowBackground" Value="White"/>
+  <Setter Property="AlternatingRowBackground" Value="#FCFDFF"/>
+  <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+  <Setter Property="HorizontalGridLinesBrush" Value="#EDF1F6"/>
+  <Setter Property="VerticalGridLinesBrush" Value="Transparent"/>
+  <Setter Property="BorderBrush" Value="#DBE3ED"/>
+  <Setter Property="BorderThickness" Value="0"/>
+  <Setter Property="RowHeaderWidth" Value="0"/>
+  <Setter Property="ColumnHeaderHeight" Value="36"/>
+  <Setter Property="RowHeight" Value="42"/>
+  <Setter Property="HeadersVisibility" Value="Column"/>
+  <Setter Property="EnableRowVirtualization" Value="True"/>
+  <Setter Property="SelectionMode" Value="Single"/>
+ </Style>
+ <Style TargetType="{x:Type DataGridColumnHeader}">
+  <Setter Property="Background" Value="#F3F6FA"/>
+  <Setter Property="Foreground" Value="#647B96"/>
+  <Setter Property="FontSize" Value="12"/>
+  <Setter Property="FontWeight" Value="SemiBold"/>
+  <Setter Property="Padding" Value="10,7"/>
+  <Setter Property="BorderBrush" Value="#E4EBF3"/>
+  <Setter Property="BorderThickness" Value="0,0,0,1"/>
+  <Setter Property="HorizontalContentAlignment" Value="Left"/>
+ </Style>
+ <Style TargetType="{x:Type DataGridRow}">
+  <Setter Property="Background" Value="White"/>
+  <Setter Property="BorderBrush" Value="#EDF1F6"/>
+  <Setter Property="BorderThickness" Value="0,0,0,1"/>
+  <Style.Triggers>
+   <Trigger Property="IsMouseOver" Value="True">
+    <Setter Property="Background" Value="#F6FAFF"/>
+   </Trigger>
+   <Trigger Property="IsSelected" Value="True">
+    <Setter Property="Background" Value="#EAF3FF"/>
+    <Setter Property="Foreground" Value="#1E2C41"/>
+   </Trigger>
+  </Style.Triggers>
+ </Style>
+ <Style TargetType="{x:Type DataGridCell}">
+  <Setter Property="BorderThickness" Value="0"/>
+  <Setter Property="Padding" Value="6,3"/>
+  <Setter Property="VerticalContentAlignment" Value="Center"/>
+  <Setter Property="Foreground" Value="#334963"/>
+  <Style.Triggers>
+   <Trigger Property="IsSelected" Value="True">
+    <Setter Property="Background" Value="#EAF3FF"/>
+    <Setter Property="Foreground" Value="#1E2C41"/>
+    <Setter Property="BorderThickness" Value="0"/>
+   </Trigger>
+  </Style.Triggers>
+ </Style>
+</ResourceDictionary>

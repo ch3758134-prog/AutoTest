@@ -32,7 +32,7 @@ public sealed class TestEditorWorkflowTests
             var condition = StepUiCatalog.NewNode("If");
             var loop = StepUiCatalog.NewNode("Loop");
             var wait = StepUiCatalog.NewNode("Wait");
-            var fallback = StepUiCatalog.NewNode("SetVariable");
+            var fallback = StepUiCatalog.NewNode("Expect");
 
             tx.Insert(TestPhase.Prepare, null, null, 0, setup);
             tx.Insert(TestPhase.Test, null, null, 0, condition);
@@ -56,7 +56,7 @@ public sealed class TestEditorWorkflowTests
             var checkProject = await ProjectRepository.OpenDefinitionAsync(project.ManifestPath);
             var updatedAsset = Assert.Single(checkProject.Assets);
             Assert.Equal(2, updatedAsset.Revision);
-            Assert.True(string.Equals(saved.FileHash, updatedAsset.Sha256, StringComparison.OrdinalIgnoreCase));
+            Assert.Equal(saved.FileHash, updatedAsset.Sha256, ignoreCase: true);
 
             var anotherWorkspace = new ProjectWorkspaceService();
             await anotherWorkspace.OpenAsync(project.ManifestPath);
@@ -67,6 +67,7 @@ public sealed class TestEditorWorkflowTests
             Assert.Equal("If", actualIf.Type);
             Assert.Single(actualIf.Slots["then"]);
             Assert.Single(actualIf.Slots["else"]);
+            Assert.Equal("Expect", actualIf.Slots["else"][0].Type);
             var savedLoop = Assert.Single(actualIf.Slots["then"]);
             Assert.Equal("Loop", savedLoop.Type);
             Assert.Equal("300", Assert.Single(savedLoop.Slots["body"]).Properties["milliseconds"]);

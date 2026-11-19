@@ -1,0 +1,35 @@
+<Window x:Class="AutoTest.Desktop.Configuration.WaveSignalPickerDialog"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="选择 DBC 信号" Width="760" Height="610" MinWidth="600" MinHeight="450"
+ WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+ Background="{StaticResource Panel}" Foreground="{StaticResource Ink}"
+ FontFamily="{StaticResource UiFont}" FontSize="13">
+ <Grid Margin="18">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+  <TextBlock Grid.Row="0" Text="选择要持续观察的 ECU 信号"
+     FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+  <StackPanel Grid.Row="1" Margin="0,0,0,10">
+   <TextBlock Text="搜索 DBC 资源、报文或信号名称" Margin="0,0,0,6"/>
+   <TextBox x:Name="SearchBox" TextChanged="Search_Changed"
+      ToolTip="可以输入 DBC 名称、报文 ID 或信号名称"/>
+  </StackPanel>
+  <ListBox x:Name="SignalList" Grid.Row="2" ItemsSource="{Binding Filtered}"
+    DisplayMemberPath="Label" MouseDoubleClick="SignalList_DoubleClick"
+    BorderBrush="{StaticResource Line}" BorderThickness="1"/>
+  <TextBlock x:Name="CountLabel" Grid.Row="3" Foreground="{StaticResource Subtle}"
+    Margin="0,10,0,0" TextWrapping="Wrap"/>
+  <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right"
+    Margin="0,12,0,0">
+   <Button Content="取消" IsCancel="True"/>
+   <Button Content="采用所选信号" IsDefault="True"
+     Style="{StaticResource AtPrimaryButton}" Click="Confirm_Click"/>
+  </StackPanel>
+ </Grid>
+</Window>

@@ -14,7 +14,7 @@ public static class WaveTimeQuality
         ArgumentNullException.ThrowIfNull(signal);
         if (signal.DbcAsset.Id.Value == Guid.Empty || signal.DbcAsset.Revision.Value < 1 ||
             string.IsNullOrEmpty(signal.DbcAsset.Fingerprint.Sha256) ||
-            string.IsNullOrWhiteSpace(signal.SignalName) || string.IsNullOrWhiteSpace(signal.Unit) ||
+            string.IsNullOrWhiteSpace(signal.SignalName) || signal.Unit is null ||
             signal.FrameId > 0x1FFFFFFF)
             throw new ArgumentException("A revision-pinned DBC SignalRef and unit are required.", nameof(signal));
     }

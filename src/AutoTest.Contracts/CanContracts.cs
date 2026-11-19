@@ -7,6 +7,33 @@ public enum BusRole { DutCan, KeypadCan }
 public enum CanBackpressurePolicy { DropWithLossFact, BlockProducer }
 public enum CanDirection { Rx, Tx }
 public sealed record BusRoleMap(RevisionFingerprint Revision, int DutPort, int KeypadPort);
+
+/// <summary>
+/// Actual AutoTest station harness, confirmed 2026-11-18:
+/// ECU connector A1/A12 -> DUT port, KEY connector B1/B11 -> keypad port.
+/// CAN controller register numbers and USB 0x40/0x41 physical port fields are
+/// unchanged; only the host's *role-to-physical-port* assignment changes.
+/// All real send, receive and safety allowlists must use this one mapping.
+/// </summary>
+public static class StationCanWiring
+{
+    // Operator-facing names must not expose the firmware/PCB bus numbering.
+    // Confirmed physical harness: ECU connector A1/A12, KEY connector B1/B11.
+    public const string DutDisplayName = "ECU CAN";
+    public const string KeypadDisplayName = "KEY CAN";
+    public const string DutConnectorPins = "A1/A12";
+    public const string KeypadConnectorPins = "B1/B11";
+    public const byte DutPort = 1;
+    public const byte KeypadPort = 0;
+    public static BusRoleMap Current { get; } = new(default, DutPort, KeypadPort);
+    public static byte PortFor(BusRole role) => role switch
+    {
+        BusRole.DutCan => DutPort,
+        BusRole.KeypadCan => KeypadPort,
+        _ => throw new ArgumentOutOfRangeException(nameof(role))
+    };
+}
+
 public sealed record StationProfile(StationId Station, BusRoleMap Roles,
     string VoltageProfile, RevisionFingerprint ProfileRevision);
 

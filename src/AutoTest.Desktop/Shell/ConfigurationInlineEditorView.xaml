@@ -1,0 +1,106 @@
+<UserControl x:Class="AutoTest.Desktop.Shell.ConfigurationInlineEditorView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ FontFamily="{StaticResource UiFont}" FontSize="12" Background="White">
+ <Grid>
+  <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <Border Grid.Row="0" Background="#FBFCFF" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
+   <DockPanel Margin="10,0">
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <Button Content="应用参数" Command="{Binding ApplyCommand}" Margin="0,0,5,0"/>
+     <Button Content="保存修订" Command="{Binding SaveCommand}" Style="{StaticResource AtPrimaryButton}"/>
+    </StackPanel>
+    <TextBlock Text="{Binding AssetName}" FontSize="12" FontWeight="SemiBold"
+     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+    <TextBlock DockPanel.Dock="Right" Text="{Binding Revision,StringFormat='修订 {0}'}"
+     FontSize="10" Foreground="#64758C" Margin="9,0" VerticalAlignment="Center"/>
+   </DockPanel>
+  </Border>
+  <Grid Grid.Row="1">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="185" MinWidth="120"/>
+    <ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <DockPanel Grid.Column="0" Background="#FBFCFF">
+    <WrapPanel DockPanel.Dock="Top" Margin="8,9,7,5">
+     <Button Content="＋ 输入动作" Command="{Binding AddButtonActionCommand}"
+      Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"
+      Margin="0,0,4,5"/>
+     <Button Content="＋ 输入状态" Command="{Binding AddStateCommand}"
+      Visibility="{Binding IsController,Converter={StaticResource BoolToVisibility}}"
+      Margin="0,0,4,5"/>
+     <Button Content="＋ 规则" Command="{Binding AddRuleCommand}"
+      Visibility="{Binding IsScan,Converter={StaticResource BoolToVisibility}}" Margin="0,0,4,5"/>
+    </WrapPanel>
+    <ListBox ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedNode,Mode=TwoWay}"
+     Background="Transparent" BorderThickness="0" Margin="8,0,7,9"
+     FontSize="11" ScrollViewer.CanContentScroll="True"/>
+   </DockPanel>
+   <GridSplitter Grid.Column="1" Width="4" Background="#EDF2F7" ResizeDirection="Columns"/>
+   <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Background="White">
+    <StackPanel Margin="13,12,16,16">
+     <TextBlock Text="{Binding TypeLabel}" FontSize="12" FontWeight="SemiBold"
+      Foreground="#4B6382" Margin="0,0,0,11"/>
+     <ItemsControl ItemsSource="{Binding Fields}">
+      <ItemsControl.ItemTemplate>
+       <DataTemplate>
+        <StackPanel Margin="0,0,0,11">
+         <TextBlock Text="{Binding Title}" FontSize="11" Foreground="#61738B"
+          FontWeight="SemiBold" Margin="0,0,0,5"/>
+         <Grid>
+          <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+           IsReadOnly="{Binding IsReadOnly}">
+           <TextBox.Style>
+            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+             <Style.Triggers><DataTrigger Binding="{Binding HasOptions}" Value="True">
+              <Setter Property="Visibility" Value="Collapsed"/>
+             </DataTrigger></Style.Triggers>
+            </Style>
+           </TextBox.Style>
+          </TextBox>
+          <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Value,Mode=TwoWay}">
+           <ComboBox.Style>
+            <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+             <Setter Property="Visibility" Value="Collapsed"/>
+             <Style.Triggers><DataTrigger Binding="{Binding HasOptions}" Value="True">
+              <Setter Property="Visibility" Value="Visible"/>
+             </DataTrigger></Style.Triggers>
+            </Style>
+           </ComboBox.Style>
+          </ComboBox>
+         </Grid>
+         <TextBlock Text="{Binding Hint}" FontSize="10" Foreground="#8798AD"
+          TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+       </DataTemplate>
+      </ItemsControl.ItemTemplate>
+     </ItemsControl>
+     <WrapPanel Margin="0,2,0,9">
+      <Button Content="设置 Key 组合" Command="{Binding PickKeyCombinationCommand}"
+       Visibility="{Binding IsControllerState,Converter={StaticResource BoolToVisibility}}"
+       Margin="0,0,6,5"/>
+      <Button Content="选择可用 Key" Command="{Binding PickSupportedKeysCommand}"
+       Visibility="{Binding IsControllerOverview,Converter={StaticResource BoolToVisibility}}"
+       Margin="0,0,6,5"/>
+      <Button Content="选择此 TCF/TBC" Command="{Binding SelectConfigurationCommand}"
+       Margin="0,0,6,5">
+       <Button.Style>
+        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">
+         <Setter Property="Visibility" Value="Collapsed"/>
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding IsTcf}" Value="True">
+           <Setter Property="Visibility" Value="Visible"/>
+          </DataTrigger>
+          <DataTrigger Binding="{Binding IsTbc}" Value="True">
+           <Setter Property="Visibility" Value="Visible"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style>
+       </Button.Style>
+      </Button>
+     </WrapPanel>
+     <TextBlock Text="{Binding StatusMessage}" FontSize="10" Foreground="#A96D20"
+      TextWrapping="Wrap"/>
+    </StackPanel>
+   </ScrollViewer>
+  </Grid>
+ </Grid>
+</UserControl>

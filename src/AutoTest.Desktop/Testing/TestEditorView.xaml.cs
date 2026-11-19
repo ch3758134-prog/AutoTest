@@ -1,54 +1,587 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace AutoTest.Desktop.Testing;
 
+/// <summary>Native high-density TEST rows; inspector is hosted in the ONE Shell right rail.</summary>
 public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
+    private TestStepInspector? _inspector;
+    private bool _inspectorInitialized;
+    private bool _restoringStepRow;
+    private IReadOnlyList<TestActionOption> _paletteActions = Array.Empty<TestActionOption>();
+    private bool _focusNameOnNextInspector;
+    private bool _committingQuickValue;
+    private StepRowProjection? _activeQuickRow;
+    private Point _dragStart;
+    private StepRowProjection? _dragSource;
+    public ContentControl InspectorHost { get; } = new()
+    {
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        VerticalContentAlignment = VerticalAlignment.Stretch
+    };
 
     public TestEditorView(TestEditorViewModel viewModel)
     {
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
+        _viewModel.InspectorRequested += ShowInspector;
+        _viewModel.InspectorLoading += ShowInspectorLoading;
+        _viewModel.ActionPaletteRequested += OpenActionPalette;
+        _viewModel.AllowEditorAction = TryLeaveInspector;
+        Loaded += (_, _) =>
+        {
+            // A document tab can be unloaded/reloaded whenever the user switches
+            // workspaces. Re-loading must NEVER reset an in-progress Inspector.
+            if (_inspectorInitialized) return;
+            _inspectorInitialized = true;
+            _viewModel.ResetInspector();
+        };
     }
 
+    public bool HasPendingInspectorDraft =>
+        _inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft;
 
-    private static T? FindAncestor<T>(DependencyObject? from) where T : DependencyObject
+    /// <summary>
+    /// Every navigation/command leaves this inspector only after its input is
+    /// validated and applied to the undoable TEST draft. Invalid input remains
+    /// visible and the previous step selection is preserved.
+    /// </summary>
+    public bool TryLeaveInspector()
     {
-        var item = from;
-        while (item is not null)
+        if (_viewModel.IsApplyingInspector) return true;
+        // An invalid inline value must block changing rows, tabs or searching;
+        // the edit remains visibly in place instead of silently disappearing.
+        if (!_committingQuickValue && _activeQuickRow is { IsInlineEditing: true } row &&
+            !CommitInlineQuickValue(row))
+            return false;
+        if (_viewModel.HasNewStepDraft || _inspector?.HasPendingEdits == true)
+            return _inspector?.TryApplyChanges() == true;
+        return true;
+    }
+
+    /// <summary>
+    /// Explicit save-on-close first validates/applies pending Inspector edits, then
+    /// awaits real TEST document persistence. On failure both drafts stay in place.
+    /// </summary>
+    public async Task<bool> SaveForCloseAsync()
+    {
+        try
         {
-            if (item is T match) return match;
-            item = item is Visual || item is System.Windows.Media.Media3D.Visual3D
-                ? VisualTreeHelper.GetParent(item) : LogicalTreeHelper.GetParent(item);
+            if (_activeQuickRow is { IsInlineEditing: true } row &&
+                !CommitInlineQuickValue(row))
+                return false;
+            if ((_inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft) &&
+                _inspector?.TryApplyChanges() != true)
+                return false;
+            return await _viewModel.SaveForCloseAsync();
         }
-        return null;
-    }
-
-    private void StepsTree_SelectedItemChanged(object sender,
-        RoutedPropertyChangedEventArgs<object> e) =>
-        _viewModel.SelectItem(e.NewValue as StepTreeItem);
-
-    private void StepsTree_RightClick(object sender, MouseButtonEventArgs e)
-    {
-        if (FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject) is { } item)
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
-            item.IsSelected = true;
-            item.Focus();
+            // An unexpected persistence or editor exception must never crash a
+            // WPF async-void Save button/keyboard handler or silently exit.
+            System.Diagnostics.Trace.TraceError("TEST SaveForClose failed: " + error);
+            MessageBox.Show(Window.GetWindow(this), "步骤或测试程序保存失败，草稿仍在本窗口中：\n" +
+                error.Message, "保存未完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
         }
     }
 
-    private void StepsTree_DoubleClick(object sender, MouseButtonEventArgs e)
+    private void ShowInspectorLoading(string selectedStepName)
     {
-        if (FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject) is not null &&
-            _viewModel.EditParametersCommand.CanExecute())
+        _inspector = null;
+        InspectorHost.Content = new TextBlock
         {
+            Text = selectedStepName + "\n\n正在载入这条步骤的工程参数…",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Color.FromRgb(91, 112, 138)),
+            Margin = new Thickness(14, 20, 14, 0)
+        };
+    }
+
+    private void ShowInspector(StepInspectorContext context)
+    {
+        if (_inspector?.HasPendingEdits == true && !_viewModel.IsApplyingInspector)
+            return; // stale async completion may not overwrite an active draft
+        if (context.Original is null)
+        {
+            _inspector = null;
+            InspectorHost.Content = BuildPhaseInspector();
+            return;
+        }
+        var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
+            context.Original, context.InitialActionKey, context.CaseOnly,
+            context.PublicFlows);
+        editor.ApplyRequested = _viewModel.ApplyInspector;
+        editor.StepActionRequested = action =>
+        {
+            if (action == "breakpoint")
+            {
+                _viewModel.ToggleBreakpoint();
+                return;
+            }
+            System.Windows.Input.ICommand? command = action switch
+            {
+                "after" => _viewModel.AddAfterCommand,
+                "duplicate" => _viewModel.DuplicateCommand,
+                "up" => _viewModel.MoveUpCommand,
+                "down" => _viewModel.MoveDownCommand,
+                "delete" => _viewModel.DeleteCommand,
+                _ => null
+            };
+            if (command?.CanExecute(null) == true) command.Execute(null);
+        };
+        editor.Cancelled += _viewModel.CancelInspectorEdit;
+        editor.AppliedSuccessfully += () =>
+        {
+            // The VM may have rebuilt the STEP tree during Apply. Its early
+            // request was correctly rejected while HasPendingEdits was true.
+            // Issue a fresh request NOW that the draft was accepted, ensuring
+            // the selected StepId and visible Inspector always agree.
+            if (ReferenceEquals(_inspector, editor))
+                _viewModel.ResetInspector();
+        };
+        _inspector = editor;
+        InspectorHost.Content = editor;
+        if (_focusNameOnNextInspector)
+        {
+            _focusNameOnNextInspector = false;
+            editor.Loaded += (_, _) => editor.FocusName();
+        }
+    }
+
+    private UIElement BuildPhaseInspector()
+    {
+        if (_viewModel.SelectedItem is null)
+        {
+            return new TextBlock
+            {
+                Text = "选中步骤后，在这里编辑参数。",
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(106, 126, 151)),
+                Margin = new Thickness(16, 18, 12, 0)
+            };
+        }
+        var phaseOrSlot = _viewModel.SelectedItem.Kind == StepTreeItemKind.Slot;
+        var name = _viewModel.SelectedItem.Label;
+        var panel = new StackPanel { Margin = new Thickness(14, 16, 14, 12) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = phaseOrSlot ? "流程分支" : "测试阶段",
+            Foreground = new SolidColorBrush(Color.FromRgb(76, 98, 127)),
+            FontSize = 11
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = name,
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 7, 0, 12),
+            TextWrapping = TextWrapping.Wrap
+        });
+        var add = new Button
+        {
+            Content = "＋ 在此处添加步骤",
+            Command = _viewModel.AddStepCommand,
+            Padding = new Thickness(10, 7, 10, 7),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            MinWidth = 110
+        };
+        panel.Children.Add(add);
+        return new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = panel };
+    }
+
+    private void OpenActionPalette(bool caseOnly)
+    {
+        var shell = Window.GetWindow(this);
+        var width = shell?.ActualWidth > 0 ? shell.ActualWidth : SystemParameters.WorkArea.Width;
+        var height = shell?.ActualHeight > 0 ? shell.ActualHeight : SystemParameters.WorkArea.Height;
+        // Four columns on a normal desktop; narrower windows can fall back to wrapping.
+        PaletteSurface.Width = Math.Min(1000, Math.Max(540, width - 120));
+        // Keep the picker inside the usable window even at 1366×768/high DPI.
+        PaletteSurface.MaxHeight = Math.Min(790, Math.Max(280, height - 90));
+        PaletteList.MaxHeight = Math.Max(120, PaletteSurface.MaxHeight - 165);
+        _paletteActions = TestStepInspector.PaletteActions(caseOnly);
+        var target = _viewModel.SelectedItem;
+        PaletteHint.Text = caseOnly
+            ? "插入位置：SWITCH / CASE 分支 · 仅允许插入 CASE"
+            : "插入位置：" + (target is null ? "未选择，需先选中阶段或分支" :
+                  StepUiCatalog.PhaseLabel(target.Phase) + " / " + target.Label) +
+              " · 单击即插入可撤销草稿，右侧立即编辑";
+        PaletteSearch.Text = "";
+        RefreshPaletteItems("");
+        PaletteList.SelectedItem = _paletteActions.FirstOrDefault();
+        ActionPalette.IsOpen = true;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            PaletteSearch.Focus();
+            PaletteSearch.SelectAll();
+        }), DispatcherPriority.Input);
+    }
+
+    private void PaletteSearch_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (PaletteList is null) return;
+        var query = PaletteSearch.Text.Trim();
+        RefreshPaletteItems(query);
+    }
+
+    private void RefreshPaletteItems(string query)
+    {
+        var filtered = _paletteActions
+            .Where(x => query.Length == 0 ||
+                (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
+                    .Contains(query, StringComparison.CurrentCultureIgnoreCase))
+            .OrderBy(x => x.Group switch
+            {
+                "CAN 与数据" => 0,
+                "工位操作" => 1,
+                "UDS 服务" => 2,
+                "波形分析" => 3,
+                _ => 4
+            }).ToArray();
+        var grouped = new ListCollectionView(filtered);
+        grouped.GroupDescriptions.Add(new PropertyGroupDescription(nameof(TestActionOption.Group)));
+        PaletteList.ItemsSource = grouped;
+        PaletteList.SelectedItem = filtered.FirstOrDefault();
+    }
+
+    // HTML palette selects a type in one click; the optional confirm button
+    // remains for keyboard users. Keyboard arrow selection does not insert.
+    private void PaletteList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var origin = e.OriginalSource as DependencyObject;
+        var item = origin is null ? null :
+            ItemsControl.ContainerFromElement(PaletteList, origin) as ListBoxItem;
+        if (item?.DataContext is not TestActionOption option) return;
+        PaletteList.SelectedItem = option;
+        if (TryChoosePaletteItem()) e.Handled = true;
+    }
+
+    private void PaletteSearch_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) { ActionPalette.IsOpen = false; e.Handled = true; }
+        else if (e.Key == Key.Enter && TryChoosePaletteItem()) e.Handled = true;
+        else if (e.Key == Key.Down) { PaletteList.Focus(); e.Handled = true; }
+    }
+
+    private void PaletteList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && TryChoosePaletteItem()) e.Handled = true;
+        else if (e.Key == Key.Escape) { ActionPalette.IsOpen = false; e.Handled = true; }
+    }
+
+    private void PaletteList_DoubleClick(object sender, MouseButtonEventArgs e) =>
+        TryChoosePaletteItem();
+
+    private void PaletteCancel_Click(object sender, RoutedEventArgs e) =>
+        ActionPalette.IsOpen = false;
+
+    private bool TryChoosePaletteItem()
+    {
+        if (PaletteList.SelectedItem is not TestActionOption chosen) return false;
+        // The Inspector can be published synchronously when resource choices
+        // are cached, so request focus BEFORE committing the selected type.
+        _focusNameOnNextInspector = true;
+        if (!_viewModel.ChooseNewStepAction(chosen.Key))
+        {
+            _focusNameOnNextInspector = false;
+            return false;
+        }
+        ActionPalette.IsOpen = false;
+        Dispatcher.BeginInvoke(new Action(() => _inspector?.FocusName()),
+            DispatcherPriority.Input);
+        return true;
+    }
+
+    private void StepSearch_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Return)) return;
+        e.Handled = true;
+        if (_viewModel.NavigateSearch(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) &&
+            _viewModel.SelectedRow is { } row)
+            StepsList.ScrollIntoView(row);
+        StepSearch.Focus();
+    }
+
+    private async void SaveEditor_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        await SaveForCloseAsync();
+    }
+
+    private void AddAtRow_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is not Button { Tag: StepRowProjection row } ||
+            !(row.IsPhase || row.IsSlot)) return;
+        var expected = StepSelectionKey.Of(row.Item);
+        _viewModel.SelectItem(row.Item);
+        if (StepSelectionKey.Of(_viewModel.SelectedItem) != expected) return;
+        if (_viewModel.AddChildCommand.CanExecute())
+            _viewModel.AddChildCommand.Execute();
+    }
+
+    private void StepsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_restoringStepRow || !ReferenceEquals(e.OriginalSource, StepsList)) return;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (ReferenceEquals(StepsList.SelectedItem, _viewModel.SelectedRow)) return;
+            _restoringStepRow = true;
+            try { StepsList.SelectedItem = _viewModel.SelectedRow; }
+            finally { _restoringStepRow = false; }
+        }), DispatcherPriority.Background);
+    }
+
+    private void StepExpand_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: StepRowProjection row } &&
+            row.ExpandMark.Length > 0)
+        {
+            _viewModel.ToggleExpansion(row);
+            e.Handled = true;
+        }
+    }
+
+    private void QuickSummary_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2 || sender is not TextBlock text ||
+            text.DataContext is not StepRowProjection row || !row.IsQuickEditable) return;
+        _viewModel.SelectItem(row.Item);
+        if (_viewModel.SelectedItem?.Step?.Id != row.Item.Step?.Id) return;
+        row.IsInlineEditing = true;
+        _activeQuickRow = row;
+        e.Handled = true;
+        if (VisualTreeHelper.GetParent(text) is Grid grid)
+        {
+            var box = grid.Children.OfType<TextBox>().FirstOrDefault();
+            if (box is not null)
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    box.Focus();
+                    box.SelectAll();
+                }), DispatcherPriority.Input);
+        }
+    }
+
+    private bool CommitInlineQuickValue(StepRowProjection row)
+    {
+        if (_committingQuickValue || !row.IsInlineEditing) return false;
+        _committingQuickValue = true;
+        try
+        {
+            if (!_viewModel.TryCommitQuickValue(row)) return false;
+            row.IsInlineEditing = false;
+            if (ReferenceEquals(_activeQuickRow, row)) _activeQuickRow = null;
+            return true;
+        }
+        finally { _committingQuickValue = false; }
+    }
+
+    private void QuickField_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: StepRowProjection row } &&
+            row.IsInlineEditing && !_committingQuickValue)
+            CommitInlineQuickValue(row);
+    }
+
+    private void QuickField_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox box || box.DataContext is not StepRowProjection row) return;
+        if (e.Key is Key.Enter or Key.Return)
+        {
+            if (CommitInlineQuickValue(row)) Keyboard.ClearFocus();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            row.CancelQuickEdit();
+            if (ReferenceEquals(_activeQuickRow, row)) _activeQuickRow = null;
+            Keyboard.ClearFocus();
+            e.Handled = true;
+        }
+    }
+
+    private static bool IsTextEditorHit(DependencyObject? start)
+    {
+        var parent = start;
+        while (parent is not null && parent is not ListBoxItem)
+        {
+            if (parent is TextBoxBase) return true;
+            parent = VisualTreeHelper.GetParent(parent);
+        }
+        return false;
+    }
+
+    private void StepsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragStart = e.GetPosition(StepsList);
+        var origin = e.OriginalSource as DependencyObject;
+        if (IsTextEditorHit(origin)) { _dragSource = null; return; }
+        var container = origin is null ? null :
+            ItemsControl.ContainerFromElement(StepsList, origin) as ListBoxItem;
+        if (container?.DataContext is StepRowProjection clicked &&
+            !ReferenceEquals(_viewModel.SelectedItem, clicked.Item) &&
+            !TryLeaveInspector())
+        {
+            _dragSource = null;
+            e.Handled = true; // stop WPF visually selecting a row that failed validation
+            return;
+        }
+        _dragSource = (container?.DataContext as StepRowProjection) is { IsStep: true } row
+            ? row : null;
+    }
+
+    private void StepsList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_dragSource is null || e.LeftButton != MouseButtonState.Pressed) return;
+        var now = e.GetPosition(StepsList);
+        if (Math.Abs(now.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(now.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        var source = _dragSource;
+        _dragSource = null;
+        DragDrop.DoDragDrop(StepsList, new DataObject("AutoTest.StepRow", source),
+            DragDropEffects.Move);
+    }
+
+    private void StepsList_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent("AutoTest.StepRow") ?
+            DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void StepsList_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData("AutoTest.StepRow") is not StepRowProjection moving) return;
+        var origin = e.OriginalSource as DependencyObject;
+        var container = origin is null ? null :
+            ItemsControl.ContainerFromElement(StepsList, origin) as ListBoxItem;
+        if (container?.DataContext is StepRowProjection target)
+        {
+            _viewModel.MoveStepAfter(moving, target);
+            e.Handled = true;
+        }
+    }
+
+    private void StepsList_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        var source = e.OriginalSource as DependencyObject;
+        var container = source is null ? null :
+            ItemsControl.ContainerFromElement(StepsList, source) as ListBoxItem;
+        if (container is null) return;
+        StepsList.SelectedItem = container.DataContext;
+        if (container.DataContext is not StepRowProjection clicked) return;
+        // If the previous Inspector contains invalid inputs, the selection is
+        // deliberately rejected. The context menu must never edit a stale row.
+        if (StepSelectionKey.Of(_viewModel.SelectedItem) !=
+            StepSelectionKey.Of(clicked.Item)) return;
+        var menu = new ContextMenu();
+        void Item(string title, ICommand command)
+        {
+            menu.Items.Add(new MenuItem { Header = title, Command = command });
+        }
+        var target = clicked.Item;
+        if (target.Kind is StepTreeItemKind.Phase or StepTreeItemKind.Slot)
+            Item("＋ 在此阶段／分支末尾添加", _viewModel.AddChildCommand);
+        if (target.Kind == StepTreeItemKind.Step)
+        {
+            Item("在当前步骤下方插入", _viewModel.AddAfterCommand);
+            if (target.Children.Count > 0)
+            {
+                menu.Items.Add(new Separator());
+                foreach (var branch in target.Children.Where(x => x.Kind == StepTreeItemKind.Slot))
+                {
+                    var slot = branch;
+                    var item = new MenuItem
+                    {
+                        Header = "＋ 在 " + StepUiCatalog.SlotLabel(slot.SlotName ?? "") + " 中添加"
+                    };
+                    item.Click += (_, _) => _viewModel.BeginInsertInto(slot);
+                    menu.Items.Add(item);
+                }
+            }
+        }
+        menu.Items.Add(new Separator());
+        Item("编辑步骤属性", _viewModel.EditParametersCommand);
+        Item("复制步骤及子分支", _viewModel.DuplicateCommand);
+        Item("复制到当前用例剪贴板（Ctrl+C）", _viewModel.CopyStepCommand);
+        Item("粘贴到当前位置（Ctrl+V）", _viewModel.PasteStepCommand);
+        Item("上移", _viewModel.MoveUpCommand);
+        Item("下移", _viewModel.MoveDownCommand);
+        Item("删除", _viewModel.DeleteCommand);
+        menu.Items.Add(new Separator());
+        Item("撤销", _viewModel.UndoCommand);
+        Item("重做", _viewModel.RedoCommand);
+        Item("保存", _viewModel.SaveCommand);
+        container.ContextMenu = menu;
+    }
+
+    private void StepsList_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_viewModel.SelectedRow?.IsStep != true || e.ChangedButton != MouseButton.Left) return;
+        if (_viewModel.EditParametersCommand.CanExecute())
+        {
+            _focusNameOnNextInspector = true;
             _viewModel.EditParametersCommand.Execute();
             e.Handled = true;
+        }
+    }
+
+    private async void Editor_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Handled) return;
+        if (e.Key == Key.S && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            e.Handled = true;
+            await SaveForCloseAsync(); // Ctrl+S applies the right-side Inspector first.
+            return;
+        }
+        var focused = Keyboard.FocusedElement;
+        bool typing = focused is TextBoxBase or PasswordBox or ComboBox;
+        bool ctrl = Keyboard.Modifiers == ModifierKeys.Control;
+        if (ctrl && e.Key == Key.F && !typing)
+        {
+            StepSearch.Focus(); StepSearch.SelectAll(); e.Handled = true; return;
+        }
+        if (typing) return; // text editing owns Delete and text Undo/Redo
+        ICommand? command = null;
+        if (ctrl && e.Key == Key.Z) command = _viewModel.UndoCommand;
+        else if (ctrl && e.Key == Key.Y) command = _viewModel.RedoCommand;
+        else if (ctrl && e.Key == Key.C) command = _viewModel.CopyStepCommand;
+        else if (ctrl && e.Key == Key.V) command = _viewModel.PasteStepCommand;
+        else if (ctrl && e.Key == Key.Space) command = _viewModel.AddChildCommand;
+        else if (e.Key == Key.Delete) command = _viewModel.DeleteCommand;
+        else if (e.Key == Key.F9)
+        {
+            _viewModel.ToggleBreakpoint(); e.Handled = true; return;
+        }
+        else if (e.Key == Key.F2)
+        {
+            if (_viewModel.EditParametersCommand.CanExecute())
+            {
+                _focusNameOnNextInspector = true;
+                _viewModel.EditParametersCommand.Execute();
+                e.Handled = true;
+            }
+            return;
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Up)
+            command = _viewModel.MoveUpCommand;
+        else if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Down)
+            command = _viewModel.MoveDownCommand;
+        if (command?.CanExecute(null) == true)
+        {
+            command.Execute(null); e.Handled = true;
         }
     }
 }

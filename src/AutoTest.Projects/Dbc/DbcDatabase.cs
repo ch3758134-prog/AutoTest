@@ -24,7 +24,7 @@ public sealed record DbcMessage(uint Id, string Name, int Dlc, string Transmitte
     public bool IsExtended => (Id & 0x80000000u) != 0 || Id > 0x7FF;
     public uint ArbitrationId => Id & 0x1FFFFFFFu;
 
-    public void Validate()
+    public void Validate(bool allowSignalOverlaps = false)
     {
         if ((Id & 0x60000000u) != 0)
             throw new ProjectDataException("DBC_MESSAGE_ID",
@@ -35,6 +35,9 @@ public sealed record DbcMessage(uint Id, string Name, int Dlc, string Transmitte
         foreach (var signal in Signals) signal.Validate(Dlc);
         if (Signals.GroupBy(s => s.Name, StringComparer.Ordinal).Any(g => g.Count() > 1))
             throw new ProjectDataException("DBC_SIGNAL_DUPLICATE", "Duplicate signal name.");
+        // The DBC repair workspace can display invalid overlapping fields.
+        // Real decode, real CAN encoding and export still use strict validation.
+        if (allowSignalOverlaps) return;
         // Overlap is legal only when both signals belong to distinct multiplexed branches.
         for (int i = 0; i < Signals.Length; i++)
         for (int j = 0; j < i; j++)
@@ -63,13 +66,13 @@ public sealed record DbcDatabase(string Name, int Revision, ImmutableArray<strin
     }
     public DbcSignal FindSignal(uint id, string signal) => FindMessage(id).Signals.FirstOrDefault(s => s.Name == signal) ??
         throw new ProjectDataException("DBC_SIGNAL_MISSING", $"Signal {signal} not found.");
-    public DbcDatabase Validate()
+    public DbcDatabase Validate(bool allowSignalOverlaps = false)
     {
         if (string.IsNullOrWhiteSpace(Name) || Revision < 1 || Messages.IsDefault || Nodes.IsDefault)
             throw new ProjectDataException("DBC_DATABASE", "Invalid DBC database.");
         if (Messages.GroupBy(m => m.Id).Any(g => g.Count() > 1))
             throw new ProjectDataException("DBC_MESSAGE_DUPLICATE", "Duplicate CAN frame id.");
-        foreach (var message in Messages) message.Validate();
+        foreach (var message in Messages) message.Validate(allowSignalOverlaps);
         return this;
     }
 }

@@ -11,7 +11,7 @@ public sealed record HardwareCanTrace(DateTimeOffset HostUtc, long HostMonotonic
     long SessionGeneration, string RawUsbPayloadHex, int PhysicalPort, BusRole? Role,
     bool Valid, string Detail);
 
-/// <summary>Physical CAN0=KeypadCan; CAN1=DutCan per frozen ASW_BusProxy.c/main.c.
+/// <summary>The MCU reports a numeric physical USB CAN port; its station role is assigned only by StationCanWiring.
 /// HostArrivalOnly timestamp; the firmware sends NO controller timestamp in 0x41.
 /// Does not transmit CAN or configure controller channels.</summary>
 public sealed class HardwareCanReceiveBridge : IAsyncDisposable
@@ -37,10 +37,11 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
         if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
         _usb = usb;
         _hub = hub;
-        // Source-proven mapping. Physical connector/harness still requires B0 check.
-        _map = map ?? new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
-        if (_map.DutPort != 1 || _map.KeypadPort != 0)
-            throw new InvalidOperationException("Real firmware mapping is CAN0=keypad, CAN1=DUT; no auto guessing.");
+        // The physical USB port bytes are unchanged; actual station harness is reversed.
+        _map = map ?? StationCanWiring.Current;
+        if (_map.DutPort != StationCanWiring.DutPort ||
+            _map.KeypadPort != StationCanWiring.KeypadPort)
+            throw new InvalidOperationException("台架接口角色不符：ECU CAN 接 A1/A12，KEY CAN 接 B1/B11；不自动猜测接口。");
         _queue = Channel.CreateBounded<Indication>(new BoundedChannelOptions(capacity)
         {
             SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait
@@ -70,6 +71,8 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
             {
                 if (item.Generation != _usb.Generation || _usb.State != UsbSessionState.Connected)
                     continue; // never publish an indication from a previous connection
+                try
+                {
                 var resp = item.Response;
                 int port = resp.Payload.Length > 0 ? resp.Payload[0] : -1;
                 CanFrame? frame = null;
@@ -90,6 +93,18 @@ public sealed class HardwareCanReceiveBridge : IAsyncDisposable
                 foreach (Action<HardwareCanTrace> handler in Trace?.GetInvocationList()
                              .Cast<Action<HardwareCanTrace>>() ?? Enumerable.Empty<Action<HardwareCanTrace>>())
                 { try { handler(line); } catch { /* user log must not block CAN hub */ } }
+                }
+                catch (Exception failure)
+                {
+                    Interlocked.Increment(ref _malformed);
+                    var bad = new HardwareCanTrace(item.Utc, item.Ticks, item.Generation,
+                        Convert.ToHexString(item.Response.Payload),
+                        item.Response.Payload.Length > 0 ? item.Response.Payload[0] : -1,
+                        null, false, "CAN RX bridge processing failed: " + failure.Message);
+                    foreach (Action<HardwareCanTrace> handler in Trace?.GetInvocationList()
+                                 .Cast<Action<HardwareCanTrace>>() ?? Enumerable.Empty<Action<HardwareCanTrace>>())
+                    { try { handler(bad); } catch { /* continue physical receive */ } }
+                }
             }
         }
         catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }

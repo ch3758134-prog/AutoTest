@@ -30,9 +30,25 @@ public sealed class StepDescriptorCatalog
         Add("TryCatch", false, ["try", "catch", "finally"]);
         Add("Subroutine", false, ["body"]);
         Add("CallSubroutine", false, [], ["target"]);
+        // G3-approved engineering resource call; runtime remains blocked until
+        // its exact transitive dependency closure is prepared and authorized.
+        Add("CallPublicFlow", false, [], ["flowAssetId", "flowRevision", "flowSha"]);
         Add("Parallel", false, ["branches"]);
         Add("SetVariable", true, [], ["variable", "value"]);
         Add("Wait", true, [], ["milliseconds"]);
+        // Real runtime actions use typed, version-pinned Mapping references.
+        // Only RealRunCoordinator executes these physical operations.
+        Add("Write", false, [], ["target", "value"]);
+        Add("Read", false, [], ["target", "variable", "mode", "timeoutMs", "maxAgeMs"]);
+        Add("WaitUntil", false, [], ["target", "variable", "operator", "expected", "timeoutMs"]);
+        // Formal CAN signal assertion: waits for matching data, then contributes to TEST verdict.
+        Add("AssertSignal", false, [], ["target", "operator", "expected", "timeoutMs"]);
+        Add("CanStopPeriodic", false);
+        Add("Calculate", false, [], ["variable", "left", "operator", "right"]);
+        Add("Expect", false, [], ["left", "operator", "right"]);
+        Add("WaveStart", false, [], ["target", "captureKey", "durationMs"]);
+        Add("WaveStop", false, [], ["captureKey", "variable"]);
+        Add("WaveAnalyze", false, [], ["captureKey", "variable", "tolerance", "coverage"]);
         // Explicitly modeled future capabilities; never claim V1 runtime support.
         foreach (var name in new[] { "PowerSet", "KeySet", "CanSend", "CanWait", "UdsRequest",
             "Flash", "WaveCapture", "WaveCompare", "Log", "Fail", "Skip" }) Add(name, false);

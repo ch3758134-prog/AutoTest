@@ -153,6 +153,19 @@ public sealed class WaveCaptureService : IWaveformService
         ReferenceRef reference, CompareProfile profile, RunId? run, StepId? step)
     {
         if (profile is null) throw new ArgumentNullException(nameof(profile));
+        return CompareWithConfigForRunAsync(evidence, reference,
+            WaveComparisonConfig.FromContract(profile), run, step);
+    }
+
+    /// <summary>
+    /// Use the complete authored waveform criteria (including time/coverage constraints)
+    /// instead of flattening a wave configuration down to a two-field CompareProfile.
+    /// The analysis and its criteria are persisted as separate evidence from the test verdict.
+    /// </summary>
+    public ValueTask<ComparisonResult> CompareWithConfigForRunAsync(WaveEvidenceRef evidence,
+        ReferenceRef reference, WaveComparisonConfig config, RunId? run = null, StepId? step = null)
+    {
+        ArgumentNullException.ThrowIfNull(config);
         WaveEvidenceDocument captured;
         WaveReference expected;
         try
@@ -175,7 +188,6 @@ public sealed class WaveCaptureService : IWaveformService
                 ImmutableArray.Create(evidence.Evidence)));
         }
 
-        var config = WaveComparisonConfig.FromContract(profile);
         var evaluation = WaveComparator.Compare(captured.Actual, expected.Series, config);
         var comparisonId = EvidenceRef.New();
         _evidence.Write(new WaveEvidenceDocument(comparisonId, "Comparison", captured.Actual,

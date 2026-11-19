@@ -21,7 +21,8 @@ internal static class DbcSourcePreservingExporter
 
     internal static string Rewrite(string original, DbcDatabase draft)
     {
-        var before = DbcParserAdapter.Parse(original, draft.Name);
+        var before = DbcParserAdapter.Parse(original, draft.Name,
+            allowSignalOverlaps: true);
         if (before.Messages.Length != draft.Messages.Length ||
             !before.Messages.Select(m => m.Id).Order().SequenceEqual(draft.Messages.Select(m => m.Id).Order()))
             throw Conflict("添加、删除或修改 CAN ID 不受保留原文模式支持。");

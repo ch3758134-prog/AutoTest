@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.IO;
+using System.Text;
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
 using AutoTest.Devices.Usb;
@@ -22,12 +23,72 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private Task[] _monitorTasks = Array.Empty<Task>();
     public bool IsConnected => _usb?.State == UsbSessionState.Connected;
     public bool HasSession => _usb is not null;
+    /// <summary>Discovery identity for the currently ping-confirmed USB session, not an ECU identity.</summary>
+    public string? ConnectedDeviceIdentity { get; private set; }
+    public string? ConnectedFirmwareVersion { get; private set; }
+    private long _ledCapabilityEpoch;
+    // Capability is confirmed by a successful GET_LEDS response, not by
+    // the unchanged v0.4-dev firmware version text.
+    public bool HasLedGpioContract => IsConnected && CurrentStationEpoch > 0 &&
+        Interlocked.Read(ref _ledCapabilityEpoch) == CurrentStationEpoch;
+    /// <summary>Only source-reported v0.4-dev supports the independent clamp protocol.
+    /// This string is not a physical firmware hash or wiring attestation.</summary>
+    public bool HasV02GpioContract => IsConnected &&
+        string.Equals(ConnectedFirmwareVersion, MainControllerCodec.ClampContractVersion,
+            StringComparison.Ordinal);
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;
+    private long _canMonitorDelivered;
+    private long _canMonitorObserverErrors;
+    /// <summary>Stage-by-stage live RX diagnostics, including before any DBC parsing.
+    /// USB 0x41 count is hardware notifications, not proof the DUT transmitted.</summary>
+    public string CanReceiveStatus => !IsConnected ? "USB 未连接；无实时接收" :
+        "USB 0x41=" + (_usb?.ReceivedCanIndications ?? 0) +
+        " / CAN有效=" + (_bridge?.Published ?? 0) +
+        " / 帧格式异常=" + (_bridge?.InvalidFrames ?? 0) +
+        " / 桥接队列溢出=" + (_bridge?.DroppedBeforeDecode ?? 0) +
+        " / USB解帧异常=" + (_usb?.BadUsbFrameCandidates ?? 0) +
+        " / 接收订阅=" + (_hub?.SubscriberCount ?? 0) +
+        " / 监视交付=" + Interlocked.Read(ref _canMonitorDelivered) +
+        " / 视图处理异常=" + Interlocked.Read(ref _canMonitorObserverErrors);
+    public long RawCanIndicationCount => _usb?.ReceivedCanIndications ?? 0;
+    private long _epochCounter;
+    private long _currentEpoch;
+    public long CurrentStationEpoch => Interlocked.Read(ref _currentEpoch);
+    public event Action<long>? ConnectionChanged;
+    private volatile bool _testRunApproved;
+    private string? _approvedPlan;
+    private volatile bool _manualCanBatchApproved;
+    private string? _manualBatchFingerprint;
+    private volatile bool _manualKeyActionApproved;
+    private string? _manualKeyActionFingerprint;
+    public bool IsManualKeyActionApproved => _manualKeyActionApproved;
+    public bool IsManualCanBatchApproved => _manualCanBatchApproved;
+    public event Action<bool>? ManualCanBatchChanged;
+    private void AnnounceManualBatch(bool active)
+    {
+        try { ManualCanBatchChanged?.Invoke(active); }
+        catch (Exception ex) { Record("手动 CAN 任务状态通知失败：" + ex.Message); }
+    }
+    public bool IsTestRunApproved => _testRunApproved;
+    public event Action<bool>? TestRunAuthorizationChanged;
+    private void PublishTestRunAuthorization(bool isApproved)
+    {
+        try { TestRunAuthorizationChanged?.Invoke(isApproved); }
+        catch (Exception ex) { Record("Test Run 授权状态通知失败：" + ex.Message); }
+    }
 
-    private void Record(string text) =>
-        EvidenceRecorded?.Invoke(DateTimeOffset.Now.ToString("HH:mm:ss.fff") + "  " + text);
+    private void Record(string text)
+    {
+        var entry = DateTimeOffset.Now.ToString("HH:mm:ss.fff") + "  " + text;
+        // An already-closed window must never bring down the USB or CAN receiver.
+        foreach (Action<string> sink in EvidenceRecorded?.GetInvocationList()
+                     .Cast<Action<string>>() ?? Enumerable.Empty<Action<string>>())
+        {
+            try { sink(entry); } catch { /* Diagnostic observers cannot stop the station. */ }
+        }
+    }
 
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
@@ -47,6 +108,25 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 Record("USB " + ev.Operation + "/" + ev.Stage + " " + ev.Outcome +
                     (ev.NativeErrorHex is null ? "" : " " + ev.NativeErrorHex));
             pending = new UsbSessionService(link);
+            pending.StateChanged += state =>
+            {
+                if (state != UsbSessionState.Faulted) return;
+                Interlocked.Exchange(ref _currentEpoch, 0);
+                Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
+                _link?.RevokePhysicalTestRun();
+                _link?.RevokeManualCanBatch();
+                _link?.RevokeManualKeySequence();
+                _manualKeyActionApproved = false;
+                _manualKeyActionFingerprint = null;
+                _manualCanBatchApproved = false;
+                _manualBatchFingerprint = null;
+                AnnounceManualBatch(false);
+                _testRunApproved = false;
+                _approvedPlan = null;
+                PublishTestRunAuthorization(false);
+                Record("USB RX 已故障；实体状态 UNKNOWN，需断开旧会话后重新连接。");
+                try { ConnectionChanged?.Invoke(0); } catch { }
+            };
             pending.TraceRecorded += trace =>
             {
                 if (trace.Kind is "CONNECT_ERROR" or "READ_FAULT" or "REQUEST_TIMEOUT" or
@@ -56,8 +136,19 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             };
             await pending.ConnectAsync(cancellationToken);
             // An acknowledged F0 ping confirms the protocol path, not CAN bus/ECU power.
-            await pending.RequestAsync(MainControllerCodec.Ping, ReadOnlyMemory<byte>.Empty,
+            var ping = await pending.RequestAsync(MainControllerCodec.Ping, ReadOnlyMemory<byte>.Empty,
                 TimeSpan.FromSeconds(2), cancellationToken);
+            if (!ping.Payload.AsSpan().SequenceEqual("PONG"u8))
+                throw new InvalidDataException("USB PING returned an unexpected payload.");
+            var version = await pending.RequestAsync(MainControllerCodec.GetVersion,
+                ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(2), cancellationToken);
+            if (version.Payload.Length is < 1 or > 80 ||
+                version.Payload.Any(value => value < 0x20 || value > 0x7E))
+                throw new InvalidDataException("GET_VERSION did not return printable ASCII.");
+            ConnectedFirmwareVersion = Encoding.ASCII.GetString(version.Payload);
+            Record("GET_VERSION：" + ConnectedFirmwareVersion +
+                "（设备自报版本，不是固件哈希或烧录内容证据）");
+            ConnectedDeviceIdentity = candidate.DisplayIdentity;
             _link = link;
             _usb = pending;
             _hub = new CanFrameHub();
@@ -72,7 +163,9 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 ObserveBusAsync(_hub, BusRole.DutCan, _monitorStop.Token),
                 ObserveBusAsync(_hub, BusRole.KeypadCan, _monitorStop.Token)
             };
-            Record("主控连接确认；CAN1=DUT，CAN0=按键板。CAN 接收监视已启动。");
+            Interlocked.Exchange(ref _currentEpoch, Interlocked.Increment(ref _epochCounter));
+            try { ConnectionChanged?.Invoke(CurrentStationEpoch); } catch { }
+            Record("主控连接确认；ECU CAN（A1/A12）、KEY CAN（B1/B11）；接收监视已启动。");
         }
         catch
         {
@@ -93,7 +186,21 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             var spec = new CanSubscriptionSpec(role, ImmutableArray<uint>.Empty,
                 CanBackpressurePolicy.DropWithLossFact, 1024);
             await foreach (var frame in hub.SubscribeAsync(spec, ct))
-                FrameObserved?.Invoke(frame);
+            {
+                // A closed window or bad UI observer must never terminate the
+                // long-lived CAN receiver for all tools and tests.
+                foreach (Action<CanObservation> observer in FrameObserved?.GetInvocationList()
+                             .Cast<Action<CanObservation>>() ?? Enumerable.Empty<Action<CanObservation>>())
+                {
+                    try { observer(frame); Interlocked.Increment(ref _canMonitorDelivered); }
+                    catch (Exception e)
+                    {
+                        var failures = Interlocked.Increment(ref _canMonitorObserverErrors);
+                        if (failures == 1 || (failures & (failures - 1)) == 0)
+                            Record("CAN 监视视图处理失败 #" + failures + "：" + e.Message);
+                    }
+                }
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception e) { Record("CAN 监视异常：" + e.Message); }
@@ -109,7 +216,10 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             if (_usb?.State != UsbSessionState.Connected || _link is null)
                 throw new IOException("USB 主控未连接，禁止 CAN 发送。");
-            var map = new BusRoleMap(default, DutPort: 1, KeypadPort: 0);
+            if (_testRunApproved || (_manualKeyActionApproved && frame.Role == BusRole.KeypadCan) ||
+                (_manualCanBatchApproved && frame.Role != BusRole.KeypadCan))
+                throw new InvalidOperationException("ECU CAN 周期任务运行期间，仅允许同一工位已授权的 KEY CAN 按键命令。");
+            var map = StationCanWiring.Current;
             var payload = CanFrameCodec.ToUsbPayload(frame, map);
             _link.AuthorizeOneCanTransmission(payload, exactConfirmation);
             Record("CAN TX 授权：" + frame.Role + " ID=0x" + frame.Id.ToString("X") +
@@ -121,11 +231,357 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
+    /// <summary>A complete KEY action is authorized once; writes are ordered at USB fence.</summary>
+    public async Task AuthorizeManualKeyActionAsync(string fingerprint, string confirmation,
+        IReadOnlyList<CanFrame> frames, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _link is null ||
+                _testRunApproved || _manualKeyActionApproved)
+                throw new InvalidOperationException("USB 未连接或 KEY/TEST 任务正在运行。");
+            if (frames.Count is < 1 or > 512 || frames.Any(frame => frame.Role != BusRole.KeypadCan))
+                throw new ArgumentException("KEY 动作只能使用 KEY CAN 发送帧。");
+            var map = StationCanWiring.Current;
+            var data = frames.Select(frame => CanFrameCodec.ToUsbPayload(frame, map)).ToArray();
+            _link.AuthorizeManualKeySequence(fingerprint, confirmation, data);
+            _manualKeyActionFingerprint = fingerprint;
+            _manualKeyActionApproved = true;
+            Record("KEY_SIM 序列授权，段数=" + frames.Count + " SHA=" + fingerprint);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SendManualKeyStepAsync(CanFrame frame, string fingerprint, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!_manualKeyActionApproved || _manualKeyActionFingerprint != fingerprint ||
+                _usb?.State != UsbSessionState.Connected || _testRunApproved ||
+                frame.Role != BusRole.KeypadCan)
+                throw new UnauthorizedAccessException("当前 USB 会话没有有效 KEY 序列授权。");
+            var payload = CanFrameCodec.ToUsbPayload(frame,
+                StationCanWiring.Current);
+            await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
+                TimeSpan.FromSeconds(3), ct);
+            Record("KEY CAN 主控 ACK：0x" + frame.Id.ToString("X") +
+                " DATA=" + Convert.ToHexString(frame.Data.AsSpan()) +
+                "（非五路电压或 ECU 识别确认）");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task RevokeManualKeyActionAsync()
+    {
+        await _lifecycle.WaitAsync();
+        try
+        {
+            _link?.RevokeManualKeySequence();
+            _manualKeyActionApproved = false;
+            _manualKeyActionFingerprint = null;
+            Record("KEY 序列授权撤销；没有自动释放 KEY，实体状态 UNKNOWN。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Authorize a bounded snapshot of ECU CAN frames, not an open-ended raw CAN route.</summary>
+    public async Task AuthorizeManualCanBatchAsync(string fingerprint, string confirmation,
+        IReadOnlyList<CanFrame> frames, int maxWrites = 3000, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _link is null ||
+                _testRunApproved || _manualCanBatchApproved)
+                throw new InvalidOperationException("USB 未连接或工位正在运行其他 CAN/TEST 任务。");
+            var map = StationCanWiring.Current;
+            var payloads = frames.Select(frame => CanFrameCodec.ToUsbPayload(frame, map)).ToArray();
+            _link.AuthorizeManualCanBatch(fingerprint, confirmation, payloads, maxWrites);
+            _manualBatchFingerprint = fingerprint;
+            _manualCanBatchApproved = true;
+            AnnounceManualBatch(true);
+            Record("手动 ECU CAN 任务已授权：报文数=" + frames.Count + " SHA=" + fingerprint +
+                "，最多 " + maxWrites + " 次写入 / 5 分钟 / 当前 USB 会话。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SendManualBatchCanAsync(CanFrame frame, string fingerprint, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!_manualCanBatchApproved || _manualBatchFingerprint != fingerprint ||
+                _usb?.State != UsbSessionState.Connected || _testRunApproved ||
+                frame.Role != BusRole.DutCan)
+                throw new UnauthorizedAccessException("没有当前有效的 ECU CAN 手动发送授权。");
+            var payload = CanFrameCodec.ToUsbPayload(frame,
+                StationCanWiring.Current);
+            await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
+                TimeSpan.FromSeconds(3), ct);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task RevokeManualCanBatchAsync()
+    {
+        await _lifecycle.WaitAsync();
+        try
+        {
+            _link?.RevokeManualCanBatch();
+            _link?.RevokeManualKeySequence();
+            _manualKeyActionApproved = false;
+            _manualKeyActionFingerprint = null;
+            _manualCanBatchApproved = false;
+            _manualBatchFingerprint = null;
+            AnnounceManualBatch(false);
+            Record("ECU CAN 任务已停止；不代表 ECU 电气状态发生改变。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    private void RequireV02GpioContract()
+    {
+        if (!HasV02GpioContract)
+            throw new InvalidOperationException(
+                "夹具命令协议尚未确认。此上位机按独立夹具两字节格式 0x18 [夹具号, 压紧/释放] 发令，" +
+                "Main_Control 源码候选自报 " + MainControllerCodec.ClampContractVersion +
+                "，而当前设备自报 " + (ConnectedFirmwareVersion ?? "未知") +
+                "。不能仅凭版本字符串判断是否兼容；为避免错误驱动夹具，本次未发送控制指令。");
+    }
+
+    /// <summary>Read MCU GPIO only; not J1 voltage or ECU ignition state.</summary>
+    public async Task<bool> ReadIgnLevelAsync(CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!IsConnected)
+                throw new IOException("USB 主控未连接，无法读取 IGN GPIO。");
+            var response = await _usb!.RequestAsync(MainControllerCodec.GetIgn,
+                ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
+            if (response.Payload.Length != 1 || response.Payload[0] > 1)
+                throw new InvalidDataException("GET_IGN must return a single GPIO bit.");
+            Record("GET_IGN MCU GPIO=" + response.Payload[0] + "（非 J1 实测电压）");
+            return response.Payload[0] == 1;
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Two independent clamp GPIO bits; never a mechanical sensor measurement.</summary>
+    public async Task<byte> ReadClampLevelsAsync(CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            RequireV02GpioContract();
+            var response = await _usb!.RequestAsync(MainControllerCodec.GetClamps,
+                ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
+            if (response.Payload.Length != 1 || (response.Payload[0] & 0xFC) != 0)
+                throw new InvalidDataException("GET_CLAMPS may contain only bit0/bit1.");
+            Record("GET_CLAMPS GPIO 0x" + response.Payload[0].ToString("X2") +
+                "（非气阀/机械位置测量）");
+            return response.Payload[0];
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Read six MCU LED GPIO levels through Main_Control 0x1B.
+    /// A valid response proves command compatibility, not external LED voltage.</summary>
+    public async Task<byte> ReadLedLevelsAsync(CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!IsConnected)
+                throw new IOException("USB 主控未连接，无法读取 LED GPIO。");
+            try
+            {
+                var response = await _usb!.RequestAsync(MainControllerCodec.GetLeds,
+                    ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
+                if (response.Payload.Length != 1 || (response.Payload[0] & 0xC0) != 0)
+                    throw new InvalidDataException("GET_LEDS must return 1 byte, bits 0..5 only.");
+                Interlocked.Exchange(ref _ledCapabilityEpoch, CurrentStationEpoch);
+                Record("GET_LEDS MCU GPIO 0x" + response.Payload[0].ToString("X2") +
+                    "（非高边输出电压或 LED 实际点亮证明）");
+                return response.Payload[0];
+            }
+            catch
+            {
+                Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
+                throw;
+            }
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Individual LED GPIO request: 0x1A [index=1..6, level=0/1].
+    /// Never writes the 0x1C group mask automatically or controls RL_DRV.</summary>
+    public async Task SendManualLedAsync(byte index, bool on, string exactConfirmation,
+        CancellationToken ct = default)
+    {
+        if (index is < 1 or > 6) throw new ArgumentOutOfRangeException(nameof(index));
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!HasLedGpioContract || _link is null || _usb is null)
+                throw new InvalidOperationException(
+                    "LED 控制尚未确认：请先在本次 USB 连接中读取六路 LED GPIO (0x1B)。");
+            if (_testRunApproved)
+                throw new InvalidOperationException("自动测试正在占用工位，禁止手动 LED 动作。");
+            _link.AuthorizeOneLedChange(index, on, exactConfirmation);
+            var payload = new byte[] { index, on ? (byte)1 : (byte)0 };
+            Record("LED" + index + " 请求" + (on ? "开启" : "关闭") +
+                " USB 0x1A " + Convert.ToHexString(payload));
+            await _usb.RequestAsync(MainControllerCodec.SetLed, payload,
+                TimeSpan.FromSeconds(3), ct);
+            Record("LED" + index + " 主控 USB ACK；实际端子电压、负载状态尚未验证。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>0x18 [clamp=1/2, state=0/1]. Other clamp is unchanged.
+    /// Transport authorization consumes one exact request before USB writing.</summary>
+    public async Task SendManualClampAsync(byte clamp, bool press, string exactConfirmation,
+        CancellationToken ct = default)
+    {
+        if (clamp is not (1 or 2)) throw new ArgumentOutOfRangeException(nameof(clamp));
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            RequireV02GpioContract();
+            if (_testRunApproved || _link is null)
+                throw new InvalidOperationException("自动测试占用工位或无实体连接；禁止手动夹具动作。");
+            _link.AuthorizeOneClampChange(clamp, press, exactConfirmation);
+            var data = new byte[] { clamp, press ? (byte)1 : (byte)0 };
+            Record("夹具" + clamp + " 请求" + (press ? "压紧" : "释放") +
+                "，原始请求=" + Convert.ToHexString(data));
+            await _usb!.RequestAsync(MainControllerCodec.SetClamp, data,
+                TimeSpan.FromSeconds(3), ct);
+            Record("夹具" + clamp + " 主控 USB ACK；实际夹具到位未测量。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>One explicit manual IGN request. Transport consumes the exact
+    /// confirmation before the USB write; ACK is not proof of ECU electrical state.</summary>
+    public async Task SendManualIgnAsync(bool on, string exactConfirmation,
+        CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _link is null)
+                throw new IOException("USB 主控未连接，禁止 IGN 操作。");
+            if (_testRunApproved)
+                throw new InvalidOperationException("自动 TEST 占用工位，手动 IGN 被锁定。");
+            // IGN 0x12 predates the experimental independent-clamp version string.
+            // Do not couple established IGN control to the newer clamp payload contract.
+            _link.AuthorizeOneIgnChange(on, exactConfirmation);
+            Record("IGN 单次授权：" + (on ? "ON" : "OFF"));
+            await _usb.RequestAsync(MainControllerCodec.SetIgn,
+                new byte[] { on ? (byte)1 : (byte)0 },
+                TimeSpan.FromSeconds(3), cancellationToken);
+            Record("IGN 设备 ACK：" + (on ? "ON" : "OFF") +
+                "；实际 ECU 引脚电压及点火状态未测量。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Explicit operator approval for a pinned run; never issued on USB connect.</summary>
+    public async Task AuthorizeTestRunAsync(string fingerprint, string confirmation,
+        IReadOnlyCollection<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn,
+        CancellationToken ct = default, int maxWrites = 1000)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_testRunApproved || _manualCanBatchApproved || _manualKeyActionApproved ||
+                _usb?.State != UsbSessionState.Connected || _link is null)
+                throw new InvalidOperationException("Test run requires an idle connected session.");
+            _link.AuthorizePhysicalTestRun(fingerprint, confirmation, allowedCan, allowIgn,
+                maxWrites);
+            _testRunApproved = true;
+            _approvedPlan = fingerprint;
+            PublishTestRunAuthorization(true);
+            Record("已人工批准物理测试运行 SHA=" + fingerprint +
+                "；最多 " + maxWrites + " 次授权写入 / 10 分钟 / 当前 USB 会话。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task RevokeTestRunAsync()
+    {
+        await _lifecycle.WaitAsync();
+        try
+        {
+            _link?.RevokePhysicalTestRun();
+            _testRunApproved = false;
+            _approvedPlan = null;
+            PublishTestRunAuthorization(false);
+            Record("物理测试运行授权已撤销。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Only a run with a previous explicit typed operator authorization can write.</summary>
+    public async Task SendTestCanAsync(CanFrame frame, string fingerprint,
+        CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!_testRunApproved || _approvedPlan != fingerprint ||
+                _usb?.State != UsbSessionState.Connected)
+                throw new UnauthorizedAccessException("No live approved test plan.");
+            var payload = CanFrameCodec.ToUsbPayload(frame,
+                StationCanWiring.Current);
+            await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
+                TimeSpan.FromSeconds(3), ct);
+            Record("测试 CAN 写入设备 ACK：CAN" + payload[0] + " 0x" +
+                frame.Id.ToString("X") + "；尚不能证明 DUT 已响应。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SendTestIgnAsync(bool on, string fingerprint,
+        CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (!_testRunApproved || _approvedPlan != fingerprint ||
+                _usb?.State != UsbSessionState.Connected)
+                throw new UnauthorizedAccessException("No live approved test plan.");
+            // Real TEST IGN uses the established 0x12 path; the clamp-only
+            // firmware identity check must not reject it.
+            await _usb.RequestAsync(MainControllerCodec.SetIgn,
+                new byte[] { on ? (byte)1 : (byte)0 },
+                TimeSpan.FromSeconds(3), ct);
+            Record("测试 IGN " + (on ? "ON" : "OFF") +
+                " 设备 ACK；实际 ECU 电气状态须另行观测。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
+            Interlocked.Exchange(ref _currentEpoch, 0);
+            Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
+            try { ConnectionChanged?.Invoke(0); } catch { }
+            _link?.RevokePhysicalTestRun();
+            _link?.RevokeManualCanBatch();
+            _manualCanBatchApproved = false;
+            _manualBatchFingerprint = null;
+            AnnounceManualBatch(false);
+            _testRunApproved = false;
+            _approvedPlan = null;
+            PublishTestRunAuthorization(false);
             _monitorStop?.Cancel();
             if (_bridge is not null) await _bridge.DisposeAsync();
             _bridge = null;
@@ -137,6 +593,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (_usb is not null) await _usb.DisposeAsync();
             _usb = null;
             _link = null;
+            ConnectedDeviceIdentity = null;
+            ConnectedFirmwareVersion = null;
             _hub?.Dispose();
             _hub = null;
             Record("主控已断开；旧连接 CAN 订阅已失效。");

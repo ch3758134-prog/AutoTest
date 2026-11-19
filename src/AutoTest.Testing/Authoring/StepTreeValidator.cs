@@ -6,9 +6,11 @@ namespace AutoTest.Testing.Authoring;
 public static class StepTreeValidator
 {
     public static ImmutableArray<string> ValidateTree(TestDocument document,
-        StepDescriptorCatalog catalog, ISet<string>? availableAssets = null)
+        StepDescriptorCatalog catalog, ISet<string>? availableAssets = null,
+        bool allowIncompleteSteps = false)
     {
         var errors = ImmutableArray.CreateBuilder<string>();
+        errors.AddRange(TestTargetMappings.Validate(document.Mappings));
         if (document.FormatVersion != TestDocument.CurrentFormat) errors.Add("Unsupported format version");
         if (document.Id.Value == Guid.Empty) errors.Add("Invalid document identity");
         var ids = new HashSet<StepId>();
@@ -17,6 +19,13 @@ public static class StepTreeValidator
         {
             if (!active.Add(n)) { errors.Add($"{location}: reference cycle"); return; }
             if (n.Id.Value == Guid.Empty || !ids.Add(n.Id)) errors.Add($"{location}: empty/duplicate StepId");
+            // A disabled legacy step is preserved for editing but cannot block
+            // or participate in a real run. Re-enabling requires full validation.
+            if (!StepExecutionPolicy.IsEnabled(n))
+            {
+                active.Remove(n);
+                return;
+            }
             var d = catalog.Lookup(n.Type);
             if (d is null) errors.Add($"{location}: unknown node {n.Type}");
             else
@@ -25,18 +34,110 @@ public static class StepTreeValidator
                     if (!n.Slots.ContainsKey(slot)) errors.Add($"{location}: missing slot {slot}");
                 foreach (var slot in n.Slots.Keys)
                     if (!d.RequiredSlots.Contains(slot)) errors.Add($"{location}: illegal slot {slot}");
-                foreach (var key in d.RequiredProperties)
-                    if (!n.Properties.TryGetValue(key, out var v) || string.IsNullOrWhiteSpace(v))
-                        errors.Add($"{location}: missing property {key}");
+                if (!allowIncompleteSteps)
+                    foreach (var key in d.RequiredProperties)
+                        if (!n.Properties.TryGetValue(key, out var v) || string.IsNullOrWhiteSpace(v))
+                            errors.Add($"{location}: missing property {key}");
             }
+            if (!allowIncompleteSteps &&
+                n.Properties.TryGetValue("legacy.importStatus", out var legacyStatus) &&
+                legacyStatus.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase))
+                errors.Add($"{location}: 旧版导入步骤“{n.Name}”尚未重新绑定并核对，不能参与真实测试。");
+            // CallSubroutine.target is a TEST subroutine identity, not an asset mapping.
+            // Only physical/signal operations use TestTargetMapping.
+            if (!allowIncompleteSteps &&
+                n.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or "WaveStart" &&
+                n.Properties.TryGetValue("target", out var targetName) &&
+                !document.Mappings.Any(m => string.Equals(m.Name, targetName,
+                    StringComparison.OrdinalIgnoreCase)))
+                errors.Add($"{location}: unmapped target {targetName}");
+            if (!allowIncompleteSteps && n.Type == "Write")
+            {
+                var writeTargetName = n.Properties.GetValueOrDefault("target", "");
+                var mapping = document.Mappings.FirstOrDefault(m =>
+                    string.Equals(m.Name, writeTargetName, StringComparison.OrdinalIgnoreCase));
+                if (mapping is not null)
+                {
+                    if (mapping.Kind is not (TestTargetKind.RawCan or TestTargetKind.CanMessage or
+                        TestTargetKind.RawKey or TestTargetKind.Button or TestTargetKind.Ignition))
+                        errors.Add($"{location}: Write 目标类型 {mapping.Kind} 不支持真实硬件操作");
+                    if (mapping.Kind == TestTargetKind.CanMessage &&
+                        mapping.Role != AutoTest.Contracts.BusRole.DutCan)
+                        errors.Add($"{location}: DBC 发送报文必须绑定 ECU CAN");
+                }
+                int period = 0;
+                if (n.Properties.TryGetValue("periodMs", out var periodText) &&
+                    (!int.TryParse(periodText, out period) || period != 0 && period is < 20 or > 600000))
+                    errors.Add($"{location}: CAN 周期必须是 0 或 20～600000ms");
+                if (n.Properties.TryGetValue("durationMs", out var durationText) &&
+                    (!int.TryParse(durationText, out var duration) || duration is < 0 or > 1800000))
+                    errors.Add($"{location}: 周期持续时间必须是 0～1800000ms");
+                if (period > 0 && mapping is not null &&
+                    mapping.Kind is not (TestTargetKind.RawCan or TestTargetKind.CanMessage))
+                    errors.Add($"{location}: 非 CAN 步骤不能设置 CAN 周期");
+            }
+            if (!allowIncompleteSteps && n.Type is "WaitUntil" or "Read")
+            {
+                var readTargetName = n.Properties.GetValueOrDefault("target", "");
+                var mapping = document.Mappings.FirstOrDefault(m =>
+                    string.Equals(m.Name, readTargetName, StringComparison.OrdinalIgnoreCase));
+                if (mapping is not null && mapping.Kind != TestTargetKind.Signal)
+                    errors.Add($"{location}: 信号读取/等待必须绑定 DBC Signal");
+                if (!int.TryParse(n.Properties.GetValueOrDefault("timeoutMs", ""), out var timeout) ||
+                    timeout is < 1 or > 600000)
+                    errors.Add($"{location}: 信号等待超时必须是 1～600000ms");
+                if (n.Type == "Read")
+                {
+                    if (n.Properties.GetValueOrDefault("mode", "") is not ("Next" or "Latest" or
+                        "next" or "latest"))
+                        errors.Add($"{location}: Read 模式只能为 Latest 或 Next");
+                    if (!int.TryParse(n.Properties.GetValueOrDefault("maxAgeMs", ""), out var age) ||
+                        age is < 0 or > 600000)
+                        errors.Add($"{location}: Read 最大数据年龄必须是 0～600000ms");
+                }
+            }
+            if (!allowIncompleteSteps && n.Type is "WaitUntil" or "Expect")
+            {
+                if (n.Properties.GetValueOrDefault("operator", "") is not
+                    ("==" or "!=" or "<" or "<=" or ">" or ">="))
+                    errors.Add($"{location}: 比较运算符无效");
+            }
+            if (!allowIncompleteSteps && n.Type == "Calculate" &&
+                n.Properties.GetValueOrDefault("operator", "") is not
+                    ("+" or "-" or "*" or "/"))
+                errors.Add($"{location}: 算术运算符无效");
+            if (!allowIncompleteSteps && n.Type == "AssertSignal")
+            {
+                var signalTarget = n.Properties.GetValueOrDefault("target", "");
+                var mapping = document.Mappings.FirstOrDefault(m =>
+                    string.Equals(m.Name, signalTarget, StringComparison.OrdinalIgnoreCase));
+                if (mapping is not null && mapping.Kind != TestTargetKind.Signal)
+                    errors.Add($"{location}: CAN 信号判定必须选择有效的 DBC 信号。");
+                var comparator = n.Properties.GetValueOrDefault("operator", "");
+                if (comparator is not ("==" or "!=" or "<" or "<=" or ">" or ">="))
+                    errors.Add($"{location}: CAN 信号判定的比较方式无效。");
+                if (!int.TryParse(n.Properties.GetValueOrDefault("timeoutMs", ""), out var timeout) ||
+                    timeout is < 1 or > 600000)
+                    errors.Add($"{location}: CAN 信号判定超时应在 1～600000 毫秒内。");
+            }
+            if (!allowIncompleteSteps && n.Type == "WaveAnalyze" &&
+                string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("profile", "")) &&
+                string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("reference", "")))
+                errors.Add($"{location}: wave analysis requires a named reference or mapped profile");
+            if (!allowIncompleteSteps && n.Type == "WaveAnalyze" &&
+                n.Properties.TryGetValue("profile", out var profileName) &&
+                !string.IsNullOrWhiteSpace(profileName) &&
+                !document.Mappings.Any(m => m.Kind == TestTargetKind.WaveProfile &&
+                    string.Equals(m.Name, profileName, StringComparison.OrdinalIgnoreCase)))
+                errors.Add($"{location}: unmapped wave analysis profile {profileName}");
             if (n.Type == "Case" && parent != "Switch") errors.Add($"{location}: Case outside Switch");
-            if (n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
+            if (!allowIncompleteSteps && n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
                 !int.TryParse(count, out var loops) || loops < 0 || loops > 1000))
                 errors.Add($"{location}: Loop count outside 0..1000");
-            if (n.Type == "Wait" && (!n.Properties.TryGetValue("milliseconds", out var ms) ||
+            if (!allowIncompleteSteps && n.Type == "Wait" && (!n.Properties.TryGetValue("milliseconds", out var ms) ||
                 !int.TryParse(ms, out var delay) || delay < 0 || delay > 60000))
                 errors.Add($"{location}: Wait outside 0..60000ms");
-            if (n.Properties.TryGetValue("asset", out var asset) &&
+            if (!allowIncompleteSteps && n.Properties.TryGetValue("asset", out var asset) &&
                 (availableAssets is null || !availableAssets.Contains(asset)))
                 errors.Add($"{location}: unresolved asset {asset}");
             foreach (var slot in n.Slots)

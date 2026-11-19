@@ -71,6 +71,134 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
+        IReadOnlyList<byte[]> exactPayloads, int maxWrites)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect before authorizing a manual CAN batch.");
+            _fence.AuthorizeManualCanBatch(fingerprint, confirmation, exactPayloads, _epoch, maxWrites);
+        }
+    }
+
+    public void RevokeManualCanBatch()
+    {
+        lock (_sync) _fence.RevokeManualCanBatch();
+    }
+
+    public void AuthorizeManualKeySequence(string sha, string confirmation, IReadOnlyList<byte[]> frames)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect before authorizing KEY action.");
+            _fence.AuthorizeManualKeySequence(sha, confirmation, frames, _epoch);
+        }
+    }
+
+    public void RevokeManualKeySequence()
+    {
+        lock (_sync) _fence.RevokeManualKeySequence();
+    }
+
+    public void AuthorizeOneIgnChange(bool on, string typedConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; IGN consent cannot survive reconnect.");
+            _fence.AuthorizeSingleIgn(on, typedConfirmation, _epoch);
+        }
+    }
+
+    public void AuthorizeOneLedChange(byte index, bool on, string exactConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; LED authorization cannot survive reconnect.");
+            _fence.AuthorizeSingleLed(index, on, exactConfirmation, _epoch);
+        }
+    }
+
+    public void AuthorizeOneClampChange(byte clamp, bool press, string typedConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; clamp consent cannot survive reconnect.");
+            _fence.AuthorizeSingleClamp(clamp, press, typedConfirmation, _epoch);
+        }
+    }
+
+    /// <summary>Grant one exact 0x22 DID operation after a separate, explicit
+    /// physical consent. This is not an unlock for any other UDS service.</summary>
+    public void AuthorizeReadOnlyDid(uint txId,uint rxId,ushort did,string exactConfirmation)
+    {
+        lock (_sync)
+        {
+            if (_state!=WinUsbLinkState.Connected)
+                throw new IOException("Connect first; DID permission cannot survive reconnect.");
+            _fence.AuthorizeReadOnlyDid(txId,rxId,did,exactConfirmation,_epoch);
+        }
+    }
+    public void RevokeReadOnlyDid() { lock (_sync) _fence.RevokeReadOnlyDid(); }
+
+    // Called exclusively by UsbSessionService's actual decoded USB receive loop.
+    internal void ObserveAuthenticatedCanIndication(ReadOnlySpan<byte> payload)
+    {
+        lock (_sync)
+        {
+            if (_state==WinUsbLinkState.Connected)
+                _fence.ObserveAuthenticatedCanRx(payload,_epoch);
+        }
+    }
+
+
+    /// <summary>F2 frozen-job consent. Unlike physical TEST RUN this grants no
+    /// arbitrary CAN ID stream; each actual on-wire frame must be prepared exactly.</summary>
+    public Guid AuthorizeFlashJob(string fingerprint,string typed,uint appId,uint bootId,int maxFrames)
+    {
+        lock(_sync)
+        {
+            if(_state!=WinUsbLinkState.Connected)
+                throw new IOException("Physical flash requires a connected controller.");
+            return _fence.AuthorizeProgrammingJob(fingerprint,typed,appId,bootId,_epoch,maxFrames);
+        }
+    }
+    public void PrepareExactFlashFrame(Guid token,ReadOnlySpan<byte> exactCan15)
+    {
+        lock(_sync)
+        {
+            if(_state!=WinUsbLinkState.Connected)
+                throw new IOException("Physical flash link is not connected.");
+            _fence.PrepareProgrammingCanFrame(token,exactCan15,_epoch);
+        }
+    }
+    public void RevokeFlashJob(Guid token)
+    {
+        lock(_sync) _fence.RevokeProgrammingJob(token);
+    }
+
+    public void AuthorizePhysicalTestRun(string fingerprint, string typedConfirmation,
+        IEnumerable<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn,
+        int maxWrites = 1000)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Physical run requires an existing connected USB session.");
+            _fence.AuthorizePhysicalRun(fingerprint, typedConfirmation, allowedCan,
+                allowIgn, _epoch, maxWrites);
+        }
+    }
+
+    public void RevokePhysicalTestRun()
+    {
+        lock (_sync) _fence.RevokePhysicalRun();
+    }
+
     public ValueTask OpenAsync(CancellationToken ct)
         => new(Task.Run(() => OpenCore(ct), ct));
 
@@ -106,7 +234,7 @@ public sealed class WinUsbByteLink : IUsbByteLink
 
             stage = "CreateFileW";
             Operation("CONNECT", stage, "BEGIN", selectedPath,
-                detail: $"access=GENERIC_READ|GENERIC_WRITE share=READ|WRITE disposition=OPEN_EXISTING flags=0x{OpenFileFlags:X8}");
+                detail: $"access=GENERIC_READ|GENERIC_WRITE share=NONE disposition=OPEN_EXISTING flags=0x{OpenFileFlags:X8}");
             openedFile = _native.Open(selectedPath, OpenFileFlags);
             if (openedFile.IsInvalid) throw NativeError(stage);
             Operation("CONNECT", stage, "OK", selectedPath);

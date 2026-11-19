@@ -98,8 +98,8 @@ public sealed class DeviceEvidenceArchiveWriterTests
     [Theory]
     [InlineData("USB", "SEQ=4 RAW=A501", "raw=a501", true)]
     [InlineData("NATIVE", "Win32 6", "win32 6", true)]
-    [InlineData("CAN", "CAN0 DUT", "PING", false)]
-    [InlineData("CAN", "CAN0 DUT", "  ", true)]
+    [InlineData("CAN", "ECU CAN", "PING", false)]
+    [InlineData("CAN", "ECU CAN", "  ", true)]
     public void Filter_is_case_insensitive_and_does_not_mutate_raw_trace(
         string source, string details, string filter, bool expected)
         => Assert.Equal(expected, DeviceEvidenceTextFilter.Matches(source, details, filter));

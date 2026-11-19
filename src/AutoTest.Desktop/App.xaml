@@ -1,7 +1,7 @@
 <prism:PrismApplication x:Class="AutoTest.Desktop.App"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:prism="http://prismlibrary.com/">
+ xmlns:prism="http://prismlibrary.com/" ShutdownMode="OnMainWindowClose">
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -12,6 +12,8 @@
         <ResourceDictionary Source="Themes/Controls/Inputs.xaml"/>
         <ResourceDictionary Source="Themes/Controls/Navigation.xaml"/>
         <ResourceDictionary Source="Themes/Controls/Panels.xaml"/>
+        <ResourceDictionary Source="Themes/Controls/Tables.xaml"/>
+        <ResourceDictionary Source="Themes/Controls/PreviewEditor.xaml"/>
       </ResourceDictionary.MergedDictionaries>
       <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     </ResourceDictionary>
