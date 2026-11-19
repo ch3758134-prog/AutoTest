@@ -1,0 +1,36 @@
+<Application x:Class="AutoTest.Frontend.App"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+ StartupUri="MainWindow.xaml">
+ <Application.Resources>
+  <ResourceDictionary>
+   <ResourceDictionary.MergedDictionaries>
+    <ui:ThemesDictionary Theme="Light"/>
+    <ui:ControlsDictionary/>
+   </ResourceDictionary.MergedDictionaries>
+   <SolidColorBrush x:Key="PageBackground" Color="#F4F7FB"/>
+   <SolidColorBrush x:Key="PanelBackground" Color="#FFFFFF"/>
+   <SolidColorBrush x:Key="PanelStroke" Color="#E0E7F0"/>
+   <SolidColorBrush x:Key="MainInk" Color="#213248"/>
+   <SolidColorBrush x:Key="SubInk" Color="#6D819A"/>
+   <Style x:Key="SurfaceCard" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource PanelBackground}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource PanelStroke}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="10"/>
+    <Setter Property="Padding" Value="14"/>
+   </Style>
+   <Style x:Key="SectionTitle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{StaticResource MainInk}"/>
+   </Style>
+   <Style x:Key="FieldLabel" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="Foreground" Value="{StaticResource SubInk}"/>
+    <Setter Property="Margin" Value="0,9,0,4"/>
+   </Style>
+  </ResourceDictionary>
+ </Application.Resources>
+</Application>
