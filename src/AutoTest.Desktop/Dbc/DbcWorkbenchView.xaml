@@ -198,80 +198,108 @@
                     ResizeDirection="Columns" Background="{StaticResource Line}"/>
 
       <Border Grid.Column="2" Style="{StaticResource AtPanel}">
-        <DockPanel>
-          <Border DockPanel.Dock="Top" Padding="12,11"
-                  Background="{StaticResource ToolbarSurface}"
+        <Grid Background="White">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="43"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*" MinHeight="160"/>
+          </Grid.RowDefinitions>
+          <Border Grid.Row="0" Padding="14,0" Background="{StaticResource ToolbarSurface}"
                   BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
-            <DockPanel>
-              <TextBlock Text="信号列表" Style="{StaticResource DbcSectionTitle}"/>
-              <TextBlock DockPanel.Dock="Right"
-                         Text="{Binding SignalCount,StringFormat='{}{0} 个'}"
-                         Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
+            <DockPanel VerticalAlignment="Center">
+              <TextBlock DockPanel.Dock="Right" Text="{Binding SignalCount,StringFormat='{}{0} 个信号'}"
+                Foreground="{StaticResource Subtle}" VerticalAlignment="Center"/>
+              <TextBlock Text="报文内容" Style="{StaticResource DbcSectionTitle}"
+                VerticalAlignment="Center"/>
             </DockPanel>
           </Border>
-          <Expander DockPanel.Dock="Bottom" Header="位布局 · Byte 0—7 / bit 7—0"
-                    IsExpanded="True" MinHeight="24" MaxHeight="285"
-                    BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
-            <Border Background="{StaticResource ToolbarSurface}" Padding="8,6">
-              <StackPanel>
-              <TextBlock Text="点击格子选择信号；字节序和复用关系按 DBC 实际位位置显示。"
-                Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,0,0,5"/>
-              <UniformGrid x:Name="BitGrid" Columns="9" Rows="9"/>
-              </StackPanel>
-            </Border>
-          </Expander>
-          <Border DockPanel.Dock="Top" Background="White" Padding="10,6"
-                  BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+          <Border Grid.Row="1" Padding="14,10" BorderBrush="{StaticResource Line}"
+                  BorderThickness="0,0,0,1">
             <StackPanel>
-              <TextBlock Text="{Binding SelectedMessage.DisplayName}" FontWeight="SemiBold"
-                         TextTrimming="CharacterEllipsis" FontSize="12"/>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding SelectedMessage.NavTitle}" FontSize="15"
+                  FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding SelectedMessage.HexId,StringFormat='  ·  {0}'}"
+                  Foreground="{StaticResource Subtle}" FontSize="12"
+                  VerticalAlignment="Center" Margin="8,0,0,0"/>
+              </StackPanel>
               <TextBlock Text="{Binding SelectedMessageDefinition}" FontSize="11"
-                         Foreground="{StaticResource Subtle}" TextWrapping="Wrap"
-                         MaxHeight="45" TextTrimming="CharacterEllipsis"
-                         ToolTip="{Binding SelectedMessageDefinition}"/>
+                Foreground="{StaticResource Subtle}" TextTrimming="CharacterEllipsis"
+                TextWrapping="NoWrap" Margin="0,5,0,0"
+                ToolTip="{Binding SelectedMessageDefinition}"/>
             </StackPanel>
           </Border>
-          <DataGrid x:Name="SignalGrid" ItemsSource="{Binding Signals}" SelectedItem="{Binding SelectedSignal}"
+          <DataGrid Grid.Row="2" x:Name="SignalGrid"
+                    ItemsSource="{Binding Signals}" SelectedItem="{Binding SelectedSignal}"
                     AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-                    CanUserSortColumns="True" IsReadOnly="True"
-                    HeadersVisibility="Column" RowHeaderWidth="0"
-                    GridLinesVisibility="Horizontal"
+                    CanUserSortColumns="True" IsReadOnly="True" HeadersVisibility="Column"
+                    RowHeaderWidth="0" GridLinesVisibility="Horizontal"
                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                    BorderThickness="0" Background="Transparent" AlternatingRowBackground="{StaticResource ToolbarSurface}"
-                    RowHeight="35" ColumnHeaderHeight="38"
+                    MaxHeight="375" BorderThickness="0" Background="White"
+                    AlternatingRowBackground="{StaticResource ToolbarSurface}"
+                    RowHeight="42" ColumnHeaderHeight="38"
                     EnableRowVirtualization="True" EnableColumnVirtualization="True"
                     MouseDoubleClick="SignalGrid_DoubleClick"
                     PreviewMouseRightButtonDown="SignalGrid_PreviewMouseRightButtonDown">
             <DataGrid.ContextMenu>
               <ContextMenu>
                 <MenuItem Header="重命名中文别名 (F2)" Click="RenameSignalMenu_Click"/>
-                <MenuItem Header="高级编辑原始信号…" Click="EditSignalMenu_Click"/>
+                <MenuItem Header="编辑原始信号参数…" Click="EditSignalMenu_Click"/>
               </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>
-              <DataGridTemplateColumn Header="信号名称（双击改别名）" Width="230">
+              <DataGridTemplateColumn Header="信号" Width="2.2*">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
                     <Grid>
-                      <TextBlock x:Name="SignalInlineDisplay" Text="{Binding DisplayName}"
-                        TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                        ToolTip="{Binding Summary}"/>
-                      <TextBox x:Name="SignalInlineEditor" Visibility="Collapsed" MinHeight="27"
-                        KeyDown="InlineEditor_KeyDown"
+                      <StackPanel x:Name="SignalInlineDisplay" Margin="0,2">
+                        <TextBlock Text="{Binding NavTitle}" FontSize="12"
+                          FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                          ToolTip="{Binding DisplayName}"/>
+                        <TextBlock Text="{Binding Name}" FontSize="10"
+                          Foreground="{StaticResource Subtle}" TextTrimming="CharacterEllipsis"/>
+                      </StackPanel>
+                      <TextBox x:Name="SignalInlineEditor" Visibility="Collapsed"
+                        MinHeight="29" KeyDown="InlineEditor_KeyDown"
                         LostKeyboardFocus="InlineEditor_LostKeyboardFocus"
-                        ToolTip="Enter 确认中文别名 · Esc 取消"/>
+                        ToolTip="Enter 确认别名 · Esc 取消"/>
                     </Grid>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-              <DataGridTextColumn Header="定义预览" Binding="{Binding Summary}" Width="190"/>
-              <DataGridTextColumn Header="起始位" Binding="{Binding StartBit}" Width="65"/>
-              <DataGridTextColumn Header="位长" Binding="{Binding BitLength}" Width="55"/>
-              <DataGridTextColumn Header="因子" Binding="{Binding Factor}" Width="85"/>
-              <DataGridTextColumn Header="单位" Binding="{Binding Unit}" Width="85"/>
+              <DataGridTextColumn Header="注释预览" Binding="{Binding Summary}" Width="2.1*"/>
+              <DataGridTextColumn Header="起始位" Binding="{Binding StartBit}" Width="64"/>
+              <DataGridTextColumn Header="位长" Binding="{Binding BitLength}" Width="52"/>
+              <DataGridTextColumn Header="因子" Binding="{Binding Factor}" Width="70"/>
+              <DataGridTextColumn Header="单位" Binding="{Binding Unit}" Width="65"/>
             </DataGrid.Columns>
           </DataGrid>
-        </DockPanel>
+          <Border Grid.Row="3" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0"
+                  Background="{StaticResource ToolbarSurface}">
+            <DockPanel>
+              <Border DockPanel.Dock="Top" Padding="14,11" Background="White"
+                      BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Text="蓝：信号占用    深蓝：当前信号    橙：位重叠"
+                    FontSize="11" Foreground="{StaticResource Subtle}"
+                    VerticalAlignment="Center"/>
+                  <TextBlock Text="位布局" Style="{StaticResource DbcSectionTitle}"/>
+                </DockPanel>
+              </Border>
+              <ScrollViewer VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="14,10,14,12">
+                  <TextBlock Text="一个色块代表 1 bit · 点击定位信号 · 悬停查看完整名称"
+                    Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,0,0,9"/>
+                  <Grid x:Name="BitGrid" MinHeight="220"/>
+                  <TextBlock Text="位布局按实际 DBC 编码显示，复用信号的重叠需结合复用条件理解。"
+                    Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,8,0,0"/>
+                </StackPanel>
+              </ScrollViewer>
+            </DockPanel>
+          </Border>
+        </Grid>
       </Border>
 
       <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch"
