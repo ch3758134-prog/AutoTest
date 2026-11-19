@@ -14,7 +14,8 @@ public static class TestDocumentCodec
         string Sha256, string Role, uint CanId, bool Extended, string SignalName, string Unit,
         Guid ControllerId, Guid StateId);
     private sealed record DocumentData(int FormatVersion, string Id, string Name,
-        Dictionary<string, NodeData[]> Phases, MappingData[]? Mappings = null);
+        Dictionary<string, NodeData[]> Phases, MappingData[]? Mappings = null,
+        TestReportSettings? ReportSettings = null);
     internal static MappingData EncodeMapping(TestTargetMapping x) => new(
         x.Name, x.Kind.ToString(), x.Asset.Value, x.AssetRevision, x.AssetSha256,
         x.Role.ToString(), x.CanId, x.Extended, x.SignalName, x.Unit,
@@ -44,7 +45,8 @@ public static class TestDocumentCodec
     public static string Serialize(TestDocument doc) => JsonSerializer.Serialize(new DocumentData(
         doc.FormatVersion, doc.Id.ToString(), doc.Name,
         Enum.GetValues<TestPhase>().ToDictionary(p => p.ToString(), p => doc.Get(p).Select(Encode).ToArray()),
-        doc.Mappings.IsDefault ? [] : doc.Mappings.Select(EncodeMapping).ToArray()),
+        doc.Mappings.IsDefault ? [] : doc.Mappings.Select(EncodeMapping).ToArray(),
+        doc.ReportSettings),
         new JsonSerializerOptions { WriteIndented = true });
     public static TestDocument Deserialize(string json)
     {
@@ -61,7 +63,8 @@ public static class TestDocumentCodec
                 : throw new FormatException($"Missing phase {p}"));
         var doc = new TestDocument(id, data.Name, data.FormatVersion, phases)
         {
-            Mappings = (data.Mappings ?? []).Select(DecodeMapping).ToImmutableArray()
+            Mappings = (data.Mappings ?? []).Select(DecodeMapping).ToImmutableArray(),
+            ReportSettings = (data.ReportSettings ?? TestReportSettings.Default).Validate()
         };
         // Loading and saving a TEST draft must not require every imported step to
         // be runnable. RealRunCoordinator / PlanCompiler still enforce every
