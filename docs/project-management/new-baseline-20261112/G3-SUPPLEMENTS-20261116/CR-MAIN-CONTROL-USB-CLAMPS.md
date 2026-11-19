@@ -1,19 +1,21 @@
 # AutoTest｜G3 补充变更：主控板 USB 与双夹具接口
 
-- 日期：2026-11-16（PT）；**2026-11-16 晚间追踪到固件源代码整改新提交**。
+- 最初登记：2026-11-16；**当前接口事实按 2026-11-18 最新主控提交同步修订**。旧合同版本可从 Git 历史追溯。
 - 批准：负责人已批准两路独立夹具、供电/旧 SOL 业务取消、RL_DRV 内部化和对外 USB 接口方向。
 - **状态：`SOURCE_UPDATED / KEIL_BUILD_UNVERIFIED / FIELD_UNVERIFIED`**。固件源代码已有新协议，**不代表当前真实板卡已烧录或实际能使用**。
-- 权威固件源快照：`Main_Control@16abba7fec94dc4b7fbdc05b91ee209b5c7efa12`，接口文档 v0.2（Blob `cb9765539d651be551c0e4771f22bca7a00eac1f`）。该分支此前的 `5d2ad5b7` 只是历史调查，已被当前代码证据更新。
+- **当前固件源码快照**：`Main_Control@bf81a64e465aa284155ee73ef44a16e39f739bce`，含外部 GPIO 默认 LOW、LED USB 0x1A～0x1C、IGN/HOUT1 映射修正，以及 RL_DRV 板级初始化 HIGH 且不受 USB 业务联动。早前 `16abba7f` 为历史源码，不再代表最新 GPIO/USB 接口全貌。
 - 相关：G1 REQ-13/19/21/23/24/26/29/31/43，G2 A-02/A-05，G3-DEVICE/TEST 与公共流程/KEY_SIM 设计。
 
 ## 1. 已确认的硬件和业务边界
 
 | 控制对象 | MCU GPIO | 外部连接 | 请求语义 |
 |---|---|---|---|
-| IGN | PTC10 | J1 C6 | 0=OFF，1=ON |
+| **IGN / HOUT1** | **PTC1** | **J1 C10** | 0=OFF，1=ON，软件初始化 LOW |
 | 夹具1 / Air_ALVE1 | PTB1 | J1 B5 | 0=释放，1=压紧 |
 | 夹具2 / Air_ALVE2 | PTC2 | J1 B4 | 0=释放，1=压紧 |
-| RL_DRV | PTC0 | PCB 内部功率控制 | **没有对外 USB/上位机操作对象** |
+| **LED1～6 / HOUT2～7** | PTB19/PTB18/PTC4/PTC10/PTC9/PTC8 | J1 C11/C25/C26/C6/C7/C8 | 0=OFF，1=ON；USB 0x1A～0x1C，软件初始化 LOW |
+| HOUT9/HOUT10、U22 CH4 预留 | PTC3/PTB0/PTC11 | 不提供外部控制业务 | 软件初始化 LOW，无 USB SET/GET |
+| RL_DRV | PTC0 | PCB 内部功率控制 | **在其它外部输出 GPIO LOW 后初始化 HIGH；没有对外 USB/上位机操作对象** |
 
 硬件 TestCtr V1.5，MCU MK20DN512VLL10；USB 至 Windows；CAN0 至 KEY_SIM、CAN1 至 DUT，现有固件两路 CAN 均初始化为 500 kbit/s。**两夹具独立，不互锁**；修改任一路不能连带强制改动另一路。外部 ECU 主电源及旧 KEY 供电、SOL 均不作为当前 HOST 可控功能。
 
@@ -29,7 +31,7 @@
 
 ## 3. 双夹具协议：现已写入固件源代码
 
-以下已在 `Main_Control@16abba7f` 的 `ASW_PwrCtrl.c`、`ASW_UsbSvc.c` 和 `CDD_USB.h` 交叉核对：
+以下已在 `Main_Control@bf81a64e` 的 `ASW_IoCtrl.c`、`ASW_UsbSvc.c` 和 `CDD_USB.h` 交叉核对。**注意 IGN 当前为 HOUT1/PTC1/J1 C10，不再是历史 HOUT5/PTC10/J1 C6；后者属于 LED4。**
 
 | 命令 | 请求 Payload | 成功响应 | 含义 |
 |---|---|---|---|
@@ -37,6 +39,9 @@
 | `0x13 GET_IGN` | 空 | Status=0、1B | 读取 IGN GPIO |
 | **`0x18 SET_CLAMP`** | **2B `[clamp=1或2, state=0或1]`** | Status=0、空 | 独立设置指定夹具，另一夹具输出不变 |
 | **`0x19 GET_CLAMPS`** | 空 | Status=0、1B | bit0=夹具1、bit1=夹具2 的 GPIO 电平 |
+| **`0x1A SET_LED`** | 2B `[index=1..6,level=0/1]` | Status=0、空 | 单独控制 LED1～LED6 对应 GPIO |
+| **`0x1B GET_LEDS`** | 空 | Status=0、1B | bit0～bit5 反映 LED1～LED6 GPIO 电平 |
+| **`0x1C SET_LEDS`** | 1B `[bitmap=0x00..0x3F]` | Status=0、空 | 设置六路目标 GPIO，逐个写入不保证硬件同时切换 |
 
 非法 Payload 长度、夹具号或状态值：`0x02 ERR_FMT`。未识别命令：`0x03 ERR_CMD`。正常的 GPIO 组合是 00、01、10、11，必须在真实板卡验证其中每个状态，特别确认只设置一个夹具不影响另一夹具。
 
@@ -46,9 +51,9 @@
 
 最新源码已从 `CDD_USB.h` 与 `ASW_UsbSvc.c` 移除旧 USB 业务定义/路由：`0x10/0x11` ECU 供电、`0x14/0x15` KEY 供电、`0x16/0x17` SOL、`0x1F` GET_ALL_PWR。对这些未知命令，新源码应返回 `ERR_CMD`；HOST 不得再有这些业务控件或调用。
 
-当前 `EAL_GPIO_Init`：Air1/2 LOW、IGN HIGH、RL_DRV HIGH；历史 PTC8/PTC9 不再配置为旧供电输出。**RL_DRV HIGH 是 PCB 公共功率链内部初始化，不是给 HOST 的 ECU 电源开关**。不能为删除旧业务功能而关闭 RL_DRV，旧 PTC8/PTC9 的物理复位态须实测核查。
+当前 `EAL_GPIO_Init`：IGN/HOUT1、LED1～LED6/HOUT2～7、Air1/2、HOUT9/HOUT10、U22 CH4 未分配控制脚先初始化 **LOW**，随后 **RL_DRV/PTC0 初始化 HIGH** 维持板级内部共用功率链。`ASW_IoCtrl` 不读写 RL_DRV，也不根据 USB 命令改变其电平。PTC8/PTC9 分别是 LED6/LED5，并非旧供电输出。MCU 复位至 GPIO 初始化前的端子瞬态、实装功率状态仍待测量。
 
-`ASW_PwrCtrl_Task` 在 USB **枚举丢失且曾压紧**时将两个夹具输出置 LOW。此行为仍保留在新源码，**并未获得新安全策略或真实气路验证**；不等于应用心跳超时也不等于机械到位反馈。上电、断线、重连和异常的最终安全策略仍须现场审查；HOST 不得自选默认释放、默认保持或声称恢复成功。
+`ASW_IoCtrl_Task` 在 USB **枚举丢失且曾有压紧请求**时将两夹具 GPIO 置 LOW。**不会因枚举丢失自动关闭 IGN 或 LED1～LED6，也不会改变 RL_DRV**。这些是当前源码行为，未完成真实气路/电气安全验证，不能当作通用工位急停或自动恢复合同。
 
 ## 5. 实施责任与验收边界
 
@@ -58,13 +63,14 @@
 
 **TEST / PROJECT**：支持两个独立夹具作为 TEST 可配置动作、公共流程中可调用动作、正式资源与运行证据；不编造另一套 DSL 或新设备执行器。
 
-**WPF / INTEGRATION**：手动台架与 Inspector 显示两个夹具独立控制及请求/ACK/UNKNOWN；移除旧供电/旧 SOL 用户入口；保留 USB、CAN0/1、IGN 真实能力。每个操作最终从唯一 DEVICE 端口发出。
+**WPF / INTEGRATION**：手动台架与 Inspector 显示两个夹具独立控制，按已批准的六路 LED/HOUT 功能研究接线及状态/审计；移除旧供电/旧 SOL 用户入口；保留 USB、CAN0/1、IGN 真实能力。每个操作最终从唯一 DEVICE 端口发出。LED 是否接入 TEST 步骤、是否启用实体操作仍须按具体 G4 合同与实机门禁核准。
 
 **分层验证**：源码提交 → Keil Build → 现场装板识别 → WinUSB/PING → 正式夹具命令 ACK → MCU GPIO/J1 实测 → 气动机械动作实测；任一缺失不得跨层宣称 PASS。
 
 ## 6. 精确来源
 
-- [固件接口 v0.2](https://github.com/ch3758134-prog/AutoTest/blob/16abba7fec94dc4b7fbdc05b91ee209b5c7efa12/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md)
-- [固件源 ASW_PwrCtrl](https://github.com/ch3758134-prog/AutoTest/blob/16abba7fec94dc4b7fbdc05b91ee209b5c7efa12/Project/source/ASW/PwrCtrl/ASW_PwrCtrl.c)
-- [固件协议头 CDD_USB.h](https://github.com/ch3758134-prog/AutoTest/blob/16abba7fec94dc4b7fbdc05b91ee209b5c7efa12/Project/source/BSW/CDD/USB/CDD_USB.h)
+- [现行固件 USB IO 接口](https://github.com/ch3758134-prog/AutoTest/blob/bf81a64e465aa284155ee73ef44a16e39f739bce/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md)
+- [本轮固件 GPIO/USB 变化和验收证据分层](../research/MAIN-CONTROL-IO-USB-SOURCE-UPDATE-20261118.md)
+- [现行固件源 ASW_IoCtrl](https://github.com/ch3758134-prog/AutoTest/blob/bf81a64e465aa284155ee73ef44a16e39f739bce/Project/source/ASW/IoCtrl/ASW_IoCtrl.c)
+- [现行固件协议头 CDD_USB.h](https://github.com/ch3758134-prog/AutoTest/blob/bf81a64e465aa284155ee73ef44a16e39f739bce/Project/source/BSW/CDD/USB/CDD_USB.h)
 - [原理图审查档案](https://github.com/ch3758134-prog/AutoTest/tree/main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115)
