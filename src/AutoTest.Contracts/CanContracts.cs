@@ -10,7 +10,7 @@ public sealed record BusRoleMap(RevisionFingerprint Revision, int DutPort, int K
 
 /// <summary>
 /// Actual AutoTest station harness, confirmed 2026-11-18:
-/// physical CAN0 -> ECU/DUT, physical CAN1 -> KEY_SIM.
+/// ECU connector A1/A12 -> DUT port, KEY connector B1/B11 -> keypad port.
 /// CAN controller register numbers and USB 0x40/0x41 physical port fields are
 /// unchanged; only the host's *role-to-physical-port* assignment changes.
 /// All real send, receive and safety allowlists must use this one mapping.
