@@ -34,3 +34,7 @@
 - [主控固件 USB v0.2 接口与整改代码](https://github.com/ch3758134-prog/AutoTest/blob/16abba7fec94dc4b7fbdc05b91ee209b5c7efa12/docs/interfaces/USB_HOST_CONTROL_INTERFACE.md)
 - [冻结自动测试 HTML](https://github.com/ch3758134-prog/AutoTest/blob/main/docs/ui/archive/auto-test-20261115-ec75a9fe/AutoTest_UI.html)
 - [主控/KEY_SIM 图纸审查档案](https://github.com/ch3758134-prog/AutoTest/tree/main/docs/project-management/new-baseline-20261112/HW-FW-BASELINE-20261115)（后续集中迁移到 PM 分支；目前不删除 main 原件）。
+
+## 当前主控源码增量（2026-11-18）
+
+- [Main_Control 最新外部 IO 默认 LOW、IGN/HOUT1 映射、六路 LED USB 控制及 RL_DRV 内部电路事实](../research/MAIN-CONTROL-IO-USB-SOURCE-UPDATE-20261118.md)。**旧档案 IGN=PTC10/J1 C6 已失效**：现 IGN=PTC1/J1 C10，PTC10/J1 C6 为 LED4。准确源码 HEAD `bf81a64e465aa284155ee73ef44a16e39f739bce`，Keil 与现场未验证。
