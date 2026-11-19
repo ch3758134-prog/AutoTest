@@ -81,7 +81,7 @@ public static class DeviceEvidenceArchiveWriter
                         Source = "PHYSICAL_READONLY_OBSERVATION_UNVERIFIED",
                         PhysicalTestPassed = false,
                         TimestampQuality = "HostArrivalOnly; no controller CAN hardware timestamps",
-                        BusMapping = "CAN0=KeypadCan; CAN1=DutCan",
+                        BusMapping = "ECU CAN=A1/A12; KEY CAN=B1/B11",
                         context.DeviceInstanceId,
                         context.DriverService,
                         context.SessionGeneration,
