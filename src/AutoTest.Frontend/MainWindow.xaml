@@ -8,7 +8,7 @@
  WindowStartupLocation="CenterScreen" WindowState="Maximized"
  Background="{StaticResource AT.Canvas}" Foreground="{StaticResource AT.Text}"
  FontFamily="Microsoft YaHei UI" FontSize="13" UseLayoutRounding="True"
- SnapsToDevicePixels="True">
+ SnapsToDevicePixels="True" PreviewKeyDown="Main_PreviewKeyDown">
  <Window.InputBindings>
   <KeyBinding Key="S" Modifiers="Control" Command="{x:Static ApplicationCommands.Save}"/>
  </Window.InputBindings>
@@ -131,6 +131,8 @@
       <TreeView.ContextMenu>
        <ContextMenu>
         <MenuItem Header="新建测试用例" Click="AddCase_Click"/>
+        <MenuItem Header="重命名选中用例" Click="RenameCase_Click"/>
+        <Separator/>
         <MenuItem Header="删除选中的测试用例" Click="DeleteCase_Click"/>
        </ContextMenu>
       </TreeView.ContextMenu>

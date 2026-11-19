@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace AutoTest.Frontend.Views;
 
@@ -8,6 +9,26 @@ public partial class EditorWorkspace : UserControl
     public event EventHandler? RequestRun;
     public EditorWorkspace() => InitializeComponent();
     private UiWorkbenchState State => (UiWorkbenchState)DataContext;
+
+    public void FocusCaseName()
+    {
+        CaseNameBox.Focus();
+        CaseNameBox.SelectAll();
+    }
+    private void StepsGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.OriginalSource is TextBox) return;
+        if (e.Key == Key.F9 && State.SelectedStep is not null)
+        {
+            State.SelectedStep.Breakpoint = !State.SelectedStep.Breakpoint;
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Delete)
+        {
+            Delete_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
+    }
 
     private void Run_Click(object sender, RoutedEventArgs e) =>
         RequestRun?.Invoke(this, EventArgs.Empty);

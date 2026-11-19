@@ -54,8 +54,10 @@ public sealed class UiWorkbenchState : INotifyPropertyChanged
     {
         static void Apply<T>(ObservableCollection<T> target, IEnumerable<T> source)
         {
+            var next = source.ToArray();
+            if (target.SequenceEqual(next)) return;
             target.Clear();
-            foreach (var entry in source) target.Add(entry);
+            foreach (var entry in next) target.Add(entry);
         }
         bool Match(string? name) => string.IsNullOrWhiteSpace(_resourceFilter) ||
             (name?.Contains(_resourceFilter, StringComparison.OrdinalIgnoreCase) ?? false);

@@ -101,6 +101,36 @@ public partial class MainWindow : Window
         _state.FilterResources(FileSearchBox.Text);
     }
 
+    private void RenameCase_Click(object sender, RoutedEventArgs e)
+    {
+        if (FileTree.SelectedItem is not CaseDraft row) return;
+        _state.SelectedCase = row;
+        WorkTabs.SelectedIndex = 1;
+        EditorWorkspaceView.FocusCaseName();
+    }
+
+    private void Main_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.F)
+        {
+            FileSearchBox.Focus();
+            FileSearchBox.SelectAll();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F2 && FileTree.IsKeyboardFocusWithin &&
+                 FileTree.SelectedItem is CaseDraft)
+        {
+            RenameCase_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Delete && FileTree.IsKeyboardFocusWithin &&
+                 e.OriginalSource is not TextBox)
+        {
+            DeleteCase_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
+    }
+
     private void DeleteCase_Click(object sender, RoutedEventArgs e)
     {
         if (FileTree.SelectedItem is not CaseDraft row) return;
