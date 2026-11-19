@@ -128,6 +128,7 @@ public static partial class UiToolBuilders
             head.Children.Add(UiVisual.Field("DLC", len));
             head.Children.Add(UiVisual.Field("周期 ms", cycle));
             detail.Children.Add(head);
+            DataGrid? signals = null;
             detail.Children.Add(UiVisual.Toolbar(
                 UiVisual.Button("应用报文属性", () =>
                 {
@@ -145,12 +146,12 @@ public static partial class UiToolBuilders
                 }),
                 UiVisual.Button("删除选中信号", () =>
                 {
-                    if (signals.SelectedItem is not UiDbcSignal signal) return;
+                    if (signals?.SelectedItem is not UiDbcSignal signal) return;
                     msg.Signals.Remove(signal); Save();
                     list.SelectedItem = null; list.SelectedItem = msg;
                 })
             ));
-            var signals = GridWith(msg.Signals, Save,
+            signals = GridWith(msg.Signals, Save,
                 TextColumn("Name","信号名",165), TextColumn("Alias","中文别名",150),
                 TextColumn("StartBit","起始位",80), TextColumn("Length","位长度",78),
                 TextColumn("ByteOrder","字节序",100), TextColumn("Factor","系数",82),
@@ -244,6 +245,7 @@ public static partial class UiToolBuilders
         keys.Margin = new Thickness(0, 10, 0, 10);
         mid.Children.Add(keys);
         var hold = UiVisual.Input("500", 100);
+        DataGrid? list = null;
         var row = UiVisual.Stack(true);
         row.Children.Add(UiVisual.Field("保持时长 ms", hold));
         row.Children.Add(UiVisual.Button("＋ 追加输入动作", () =>
@@ -255,7 +257,7 @@ public static partial class UiToolBuilders
             list.ItemsSource = null; list.ItemsSource = store.Current.KeySequences;
         }, true));
         mid.Children.Add(row);
-        var list = GridWith(store.Current.KeySequences, Save,
+        list = GridWith(store.Current.KeySequences, Save,
             TextColumn("Name","动作",140), TextColumn("MaskHex","20 Key 掩码",105),
             TextColumn("HoldMs","保持 ms",90));
         list.Height = 170;
@@ -263,7 +265,7 @@ public static partial class UiToolBuilders
         mid.Children.Add(UiVisual.Toolbar(
             UiVisual.Button("删除动作", () =>
             {
-                if (list.SelectedItem is not UiKeySequence action) return;
+                if (list?.SelectedItem is not UiKeySequence action) return;
                 store.Current.KeySequences.Remove(action); Save();
                 list.ItemsSource = null; list.ItemsSource = store.Current.KeySequences;
             }),
