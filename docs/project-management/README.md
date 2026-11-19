@@ -58,3 +58,7 @@
 ## 2026-11-19 系统基线目录修正：三工程平级
 
 - [HOST / Main_Control / Key_Sim 平级目录正式更正](new-baseline-20261112/research/PEER-PROJECT-DIRECTORY-BASELINE-20261119.md)：最新 `main@ffb23f8c05ec4a64b82cd781db6357685d082c04`，原 `firmware/` 不再存在，HOST 分支已同步。此前固件导入记录中的旧目录只是历史快照。
+
+## 2026-11-19 TEST / RECORD 真实结果与报告后端专项
+
+- [TEST-RECORD 独立专业 AI、结果采集和正式报告的 P0 实测闭环](new-baseline-20261112/research/TEST-RECORD-BACKEND-SPECIALIST-20261119.md)：Issue #64；`feature/test-record-backend-20261119`；后端研究和开发已派发，现有真实 TEST 到 RunRecord/Report 的缺口尚待实施与实体验证。
