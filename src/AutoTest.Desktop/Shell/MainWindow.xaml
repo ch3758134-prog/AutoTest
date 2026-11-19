@@ -144,7 +144,7 @@
       <MenuItem Header="波形配置" Command="{Binding OpenWaveConfigCommand}"/>
       <Separator/>
       <MenuItem Header="UDS 工作台（尚未接入）" IsEnabled="False"/>
-      <MenuItem Header="Flash 工作台（尚未接入）" IsEnabled="False"/>
+      <MenuItem Header="ECU 烧录工具" Command="{Binding OpenFlashWorkbenchCommand}" ToolTip="实测过的 CanTool 流程，独立专业窗口；切换 USB 所有权前先断开主工位连接"/>
       <MenuItem Header="生产运行（尚未接入）" IsEnabled="False"/>
      </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
@@ -159,6 +159,8 @@
       ToolTip="独立真实工位；离线可以编辑，向实体硬件发送命令需要连接 USB" Margin="0,0,5,0"/>
 
      <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" Margin="0,0,5,0"/>
+     <Button Content="烧录" Command="{Binding OpenFlashWorkbenchCommand}" Margin="0,0,5,0"
+      ToolTip="独立 FlashLab 专业工具，进入前释放主工位 USB 会话"/>
      <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
       ToolTip="查看实际波形证据、参考及双游标分析" Margin="0,0,5,0"/>
      <Button Content="波形配置" Command="{Binding OpenWaveConfigCommand}"
