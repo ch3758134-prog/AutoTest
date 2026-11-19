@@ -57,8 +57,8 @@ public sealed class ToolWindow : Window
             "uds" => UiToolBuilders.Uds(store, notify),
             "flash" => UiToolBuilders.Flash(store, notify),
             "wave" => UiToolBuilders.Wave(store, notify),
-            "device" => new DeviceWorkspace().Content as UIElement ?? UiVisual.Empty("设备诊断","当前设备未接入"),
-            "records" => new RecordsWorkspace(store).Content as UIElement ?? UiVisual.Empty("记录","尚无数据"),
+            "device" => new DeviceWorkspace(),
+            "records" => new RecordsWorkspace(store),
             _ => UiVisual.Empty("工具不可用", "工具键无效")
         };
         var content = new ContentControl { Content = view, Margin = new Thickness(16, 12, 16, 14) };
