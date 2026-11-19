@@ -467,7 +467,11 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             };
             if (updated == signal.Signal)
             {
+                // Different textual representations of the same value (e.g.
+                // 08 vs 8 or 0.0800 vs 0.08) are not unsaved semantic changes.
+                SignalDraft = DbcSignalEditState.FromSignal(signal.Signal);
                 StatusMessage = "参数未发生变化。";
+                RefreshCommands();
                 return;
             }
             if (updated.Unit.Contains('"') || updated.Unit.Contains('\n') ||
