@@ -13,6 +13,9 @@ public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
     private TestStepInspector? _inspector;
+    // Keep the actual WPF Inspector control alive for invalid parameters.
+    // This is UI-only draft state; canonical TEST data still lives in StepEditTransaction.
+    private readonly Dictionary<string, TestStepInspector> _parkedInspectors = new(StringComparer.Ordinal);
     private bool _inspectorInitialized;
     private bool _restoringStepRow;
     private IReadOnlyList<TestActionOption> _paletteActions = Array.Empty<TestActionOption>();
@@ -36,6 +39,9 @@ public partial class TestEditorView : UserControl
         _viewModel.InspectorLoading += ShowInspectorLoading;
         _viewModel.ActionPaletteRequested += OpenActionPalette;
         _viewModel.AllowEditorAction = TryLeaveInspector;
+        _viewModel.AllowStepNavigation = TryNavigateWithDraft;
+        _viewModel.HasPendingVisualDrafts =
+            () => _parkedInspectors.Count > 0 || _inspector?.HasPendingEdits == true;
         Loaded += (_, _) =>
         {
             // A document tab can be unloaded/reloaded whenever the user switches
@@ -47,23 +53,49 @@ public partial class TestEditorView : UserControl
     }
 
     public bool HasPendingInspectorDraft =>
-        _inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft;
+        _parkedInspectors.Count > 0 || _inspector?.HasPendingEdits == true ||
+        _viewModel.HasNewStepDraft;
 
     /// <summary>
-    /// Every navigation/command leaves this inspector only after its input is
-    /// validated and applied to the undoable TEST draft. Invalid input remains
-    /// visible and the previous step selection is preserved.
+    /// Structural changes, save and physical execution are strict: no step may
+    /// disappear, be saved or run with an unresolved in-memory Inspector draft.
     /// </summary>
     public bool TryLeaveInspector()
     {
         if (_viewModel.IsApplyingInspector) return true;
-        // An invalid inline value must block changing rows, tabs or searching;
-        // the edit remains visibly in place instead of silently disappearing.
+        if (_parkedInspectors.Count > 0) return false;
+        // Inline values still validate in place; their transient row cannot be discarded.
         if (!_committingQuickValue && _activeQuickRow is { IsInlineEditing: true } row &&
             !CommitInlineQuickValue(row))
             return false;
         if (_viewModel.HasNewStepDraft || _inspector?.HasPendingEdits == true)
             return _inspector?.TryApplyChanges() == true;
+        return true;
+    }
+
+    /// <summary>
+    /// Selection/search may leave an incomplete Inspector behind, but keep the
+    /// entire live control and its raw input, keyed by the canonical StepId.
+    /// Nothing from this cache is serialized or allowed into the executor.
+    /// </summary>
+    private bool TryNavigateWithDraft()
+    {
+        if (_viewModel.IsApplyingInspector) return true;
+        if (!_committingQuickValue && _activeQuickRow is { IsInlineEditing: true } row &&
+            !CommitInlineQuickValue(row))
+            return false;
+
+        if (_inspector is not null &&
+            (_inspector.HasPendingEdits || _viewModel.HasNewStepDraft))
+        {
+            if (_inspector.TryApplyChanges()) return true;
+            var selected = _viewModel.SelectedItem?.Step?.Id.ToString();
+            if (string.IsNullOrWhiteSpace(selected)) return false;
+            _parkedInspectors[selected] = _inspector;
+            _inspector = null;
+            InspectorHost.Content = null; // detach WPF parent before restoring later
+            _viewModel.UpdateParkedInspectorCount(_parkedInspectors.Count);
+        }
         return true;
     }
 
@@ -78,6 +110,19 @@ public partial class TestEditorView : UserControl
             if (_activeQuickRow is { IsInlineEditing: true } row &&
                 !CommitInlineQuickValue(row))
                 return false;
+            if (_parkedInspectors.Count > 0)
+            {
+                // Navigate to the first unfinished step instead of silently losing its controls.
+                var pending = _parkedInspectors.Keys.First();
+                var target = StepTreeItem.Walk(_viewModel.StepRoots).FirstOrDefault(item =>
+                    item.Step?.Id.ToString() == pending);
+                if (target is not null) _viewModel.SelectItem(target);
+                MessageBox.Show(Window.GetWindow(this),
+                    "还有 " + _parkedInspectors.Count +
+                    " 条步骤的参数未应用。已尝试定位到第一条，请修正或取消后再保存。",
+                    "仍有暂存的步骤参数", MessageBoxButton.OK, MessageBoxImage.Information);
+                return false;
+            }
             if ((_inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft) &&
                 _inspector?.TryApplyChanges() != true)
                 return false;
@@ -117,6 +162,16 @@ public partial class TestEditorView : UserControl
             InspectorHost.Content = BuildPhaseInspector();
             return;
         }
+        // Restore the exact Inspector instance, including unparseable text and
+        // changed selection controls. Rebuilding it would silently discard input.
+        var stepKey = context.Original.Id.ToString();
+        if (_parkedInspectors.Remove(stepKey, out var pendingEditor))
+        {
+            _inspector = pendingEditor;
+            InspectorHost.Content = pendingEditor;
+            _viewModel.UpdateParkedInspectorCount(_parkedInspectors.Count);
+            return;
+        }
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
             context.Original, context.InitialActionKey, context.CaseOnly,
             context.PublicFlows);
@@ -142,6 +197,8 @@ public partial class TestEditorView : UserControl
         editor.Cancelled += _viewModel.CancelInspectorEdit;
         editor.AppliedSuccessfully += () =>
         {
+            _parkedInspectors.Remove(stepKey);
+            _viewModel.UpdateParkedInspectorCount(_parkedInspectors.Count);
             // The VM may have rebuilt the STEP tree during Apply. Its early
             // request was correctly rejected while HasPendingEdits was true.
             // Issue a fresh request NOW that the draft was accepted, ensuring
