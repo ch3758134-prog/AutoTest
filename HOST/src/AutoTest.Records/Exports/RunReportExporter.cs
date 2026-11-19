@@ -16,6 +16,8 @@ public sealed record RunReportDocument(RunHistoryEntry Header,
     IReadOnlyList<RunFact> Facts, IReadOnlyList<RunStepFact> StepFacts,
     IReadOnlyList<ReportArtifact> Artifacts, string Html);
 
+public sealed record ExportedRunReportFiles(string HtmlPath, string JsonPath, string CsvPath);
+
 public sealed class RunReportExporter
 {
     private readonly RecordDatabase _db;
@@ -54,7 +56,7 @@ public sealed class RunReportExporter
     public async Task<string> ExportStepFactsAsync(RunId run, CancellationToken ct = default)
     {
         var report = await ExportSummaryAsync(run, ct).ConfigureAwait(false);
-        var output = new StringBuilder("sequence,run_id,event_id,step_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids\r\n");
+        var output = new StringBuilder("sequence,run_id,event_id,step_id,attempt,disposition,expected,actual,utc,time_source,time_quality,evidence_quality,evidence_ids,occurrence_id,parent_occurrence_id,phase,loop_iteration,path,started_utc,completed_utc,duration_ms,observation_utc,unit,signal_status,requirement_id,report_note,extra_results_json\r\n");
         for (var i = 0; i < report.StepFacts.Count; i++)
         {
             var step = report.StepFacts[i];
@@ -62,7 +64,17 @@ public sealed class RunReportExporter
                 step.EventId.ToString("D"), step.Step.ToString(), step.Attempt.ToString(),
                 step.Disposition, step.Expected ?? "", step.Actual ?? "", step.Time.Utc.ToString("O"),
                 step.Time.Source.ToString(), step.Time.Quality.ToString(), step.Quality.ToString(),
-                string.Join(";", step.Evidence.Select(e => e.ToString())) };
+                string.Join(";", step.Evidence.Select(e => e.ToString())),
+                step.StepOccurrenceId?.ToString("D") ?? "",
+                step.ParentOccurrenceId?.ToString("D") ?? "",
+                step.Phase ?? "", step.LoopIteration?.ToString() ?? "",
+                step.ExecutionPath ?? "", step.StartedUtc?.ToString("O") ?? "",
+                step.CompletedUtc?.ToString("O") ?? "",
+                step.Duration?.TotalMilliseconds.ToString("F3",
+                    System.Globalization.CultureInfo.InvariantCulture) ?? "",
+                step.ObservationUtc?.ToString("O") ?? "", step.Unit ?? "",
+                step.SignalStatus ?? "", step.RequirementId ?? "",
+                step.ReportNote ?? "", step.AdditionalResultsJson ?? "" };
             output.Append(string.Join(',', cells.Select(Csv))).Append("\r\n");
         }
         return output.ToString();
@@ -96,6 +108,13 @@ public sealed class RunReportExporter
             {
                 sequence = i + 1, eventId = f.EventId, stepId = f.Step.ToString(), attempt = f.Attempt,
                 disposition = f.Disposition, expected = f.Expected, actual = f.Actual,
+                occurrenceId = f.StepOccurrenceId, parentOccurrenceId = f.ParentOccurrenceId,
+                phase = f.Phase, loopIteration = f.LoopIteration, path = f.ExecutionPath,
+                startedUtc = f.StartedUtc, completedUtc = f.CompletedUtc,
+                durationMilliseconds = f.Duration?.TotalMilliseconds,
+                observationUtc = f.ObservationUtc, unit = f.Unit, signalStatus = f.SignalStatus,
+                requirementId = f.RequirementId, reportNote = f.ReportNote,
+                additionalResultsJson = f.AdditionalResultsJson, showEvidence = f.ShowEvidence,
                 timestamp = f.Time.Utc, timeQuality = f.Time.Quality.ToString(),
                 evidenceQuality = f.Quality.ToString(), evidenceIds = f.Evidence.Select(e => e.ToString())
             }),
@@ -105,6 +124,44 @@ public sealed class RunReportExporter
                 sha256 = a.Sha256, relativePath = a.RelativePath, integrity = a.Integrity.ToString()
             })
         }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>Writes all human-readable outputs from one committed source, atomically per file.</summary>
+    public async Task<ExportedRunReportFiles> ExportFilesAsync(RunId run, string directory,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        var report = await ExportSummaryAsync(run, ct).ConfigureAwait(false);
+        var json = await ExportJsonAsync(run, ct).ConfigureAwait(false);
+        var csv = await ExportStepFactsAsync(run, ct).ConfigureAwait(false);
+        var root = Path.GetFullPath(directory);
+        Directory.CreateDirectory(root);
+        var stem = run.Value.ToString("N");
+        var htmlPath = Path.Combine(root, stem + ".html");
+        var jsonPath = Path.Combine(root, stem + ".json");
+        var csvPath = Path.Combine(root, stem + "-steps.csv");
+        await AtomicWriteAsync(htmlPath, report.Html, ct).ConfigureAwait(false);
+        await AtomicWriteAsync(jsonPath, json, ct).ConfigureAwait(false);
+        await AtomicWriteAsync(csvPath, csv, ct).ConfigureAwait(false);
+        return new ExportedRunReportFiles(htmlPath, jsonPath, csvPath);
+    }
+
+    private static async Task AtomicWriteAsync(string path, string contents, CancellationToken ct)
+    {
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write,
+                FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                var bytes = Encoding.UTF8.GetBytes(contents);
+                await output.WriteAsync(bytes, ct).ConfigureAwait(false);
+                await output.FlushAsync(ct).ConfigureAwait(false);
+                output.Flush(true);
+            }
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
     private static string RenderHtml(RunHistoryEntry header, IReadOnlyList<RunFact> facts,
@@ -131,12 +188,25 @@ public sealed class RunReportExporter
                 .Append("<div>").Append(H(fact.EventId.ToString())).Append("</div></td><td>")
                 .Append(H(fact.Quality.ToString())).Append("</td></tr>");
         }
-        html.Append("</tbody></table><h2>逐步执行事实</h2><table><thead><tr><th>StepId</th><th>尝试</th><th>Disposition</th><th>预期</th><th>实际</th><th>证据等级</th></tr></thead><tbody>");
+        html.Append("</tbody></table><h2>逐步执行事实</h2><table><thead><tr><th>StepId / Occurrence</th><th>阶段 / 循环</th><th>结果 / 质量</th><th>预期</th><th>实测值 / 单位</th><th>时间范围 / 耗时</th><th>附加结果 / 备注</th></tr></thead><tbody>");
         foreach (var step in stepFacts)
-            html.Append("<tr><td>").Append(H(step.Step.ToString())).Append("</td><td>").Append(step.Attempt)
-                .Append("</td><td>").Append(H(step.Disposition)).Append("</td><td>")
+            html.Append("<tr><td>").Append(H(step.Step.ToString())).Append("<div>Occurrence: ")
+                .Append(H(step.StepOccurrenceId?.ToString("D") ?? "Legacy (not recorded)"))
+                .Append("</div><div>Parent: ").Append(H(step.ParentOccurrenceId?.ToString("D")))
+                .Append("</div></td><td>").Append(H(step.Phase))
+                .Append(" / ").Append(H(step.LoopIteration?.ToString()))
+                .Append("<div>").Append(H(step.ExecutionPath)).Append("</div></td><td>")
+                .Append(H(step.Disposition)).Append(" / ").Append(H(step.Quality.ToString()))
+                .Append("<div>Signal: ").Append(H(step.SignalStatus)).Append("</div></td><td>")
                 .Append(H(step.Expected)).Append("</td><td>").Append(H(step.Actual))
-                .Append("</td><td>").Append(H(step.Quality.ToString())).Append("</td></tr>");
+                .Append(" ").Append(H(step.Unit)).Append("</td><td>")
+                .Append(H(step.StartedUtc?.ToString("O"))).Append(" — ")
+                .Append(H(step.CompletedUtc?.ToString("O"))).Append("<div>")
+                .Append(H(step.Duration?.TotalMilliseconds.ToString("F3",
+                    System.Globalization.CultureInfo.InvariantCulture))).Append(" ms</div></td><td>")
+                .Append(H(step.RequirementId)).Append("<div>")
+                .Append(H(step.ReportNote)).Append("</div><pre>")
+                .Append(H(step.AdditionalResultsJson)).Append("</pre></td></tr>");
         html.Append("</tbody></table><h2>证据附件</h2><table><thead><tr><th>类型</th><th>来源</th><th>完整性</th><th>SHA-256</th><th>相对路径</th></tr></thead><tbody>");
         foreach (var a in artifacts)
             html.Append("<tr><td>").Append(H(a.Kind)).Append("</td><td>").Append(H(a.Provenance))
