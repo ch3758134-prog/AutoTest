@@ -70,7 +70,7 @@ extern "C" {
 /* CAN 发送 / 收帧回传 */
 #define CDD_USB_CMD_CAN_SEND        0x40U
 #define CDD_USB_CMD_CAN_RX_IND      0x41U
-/* 整车环境广播（0x50~0x53，经 CAN1 → ECU） */
+/* 整车环境广播（0x50~0x53，固定由 ECU_CAN_PORT 发往 ECU） */
 #define CDD_USB_CMD_SET_BROADCAST     0x50U
 #define CDD_USB_CMD_BROADCAST_START   0x51U
 #define CDD_USB_CMD_BROADCAST_STOP    0x52U
