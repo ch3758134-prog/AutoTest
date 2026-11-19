@@ -132,11 +132,6 @@ public sealed class TestEditorViewModel : BindableBase
         get => _stepFind;
         set
         {
-            if (!CanNavigate())
-            {
-                RaisePropertyChanged(nameof(StepFind));
-                return;
-            }
             if (SetProperty(ref _stepFind, value ?? ""))
             {
                 RefreshRows();
@@ -307,6 +302,7 @@ public sealed class TestEditorViewModel : BindableBase
     }
     public StepTreeItem? SelectedItem => _selectedItem;
     public event Action<StepInspectorContext>? InspectorRequested;
+    public event Action? DocumentRebuilt;
     public event Action<string>? InspectorLoading;
     public Func<bool>? AllowEditorAction { get; set; }
     // Navigation can park an invalid Inspector draft in memory.
@@ -828,7 +824,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void RemoveMapping()
     {
-        if (SelectedMapping is not { } choice || IsBusy) return;
+        if (SelectedMapping is not { } choice || IsBusy || !CanProceed()) return;
         try
         {
             _transaction.RemoveMapping(choice.Name);
@@ -971,6 +967,7 @@ public sealed class TestEditorViewModel : BindableBase
         finally { _syncingRowSelection = wasSyncing; }
         RaisePropertyChanged(nameof(ExpectedApproval));
         RefreshCommands();
+        DocumentRebuilt?.Invoke();
     }
 
     public void CommitQuickValue(StepRowProjection row) => TryCommitQuickValue(row);
