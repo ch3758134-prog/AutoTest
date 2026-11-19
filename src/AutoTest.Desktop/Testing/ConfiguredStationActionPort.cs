@@ -329,11 +329,17 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 try
                 {
                     rawKeyAttempted = true;
-                    if (request.Action == RawKeyOperation.Release)
+                    if (request.Action == RawKeyOperation.Release ||
+                        request.Action == RawKeyOperation.Hold && request.Mask == 0)
                     {
+                        // A zero-mask HOLD means all switches open for the
+                        // requested time. Unlike an immediate Release, the
+                        // duration is part of the executing TEST step.
                         await _hardware.SendTestCanAsync(
                             KeypadCommandCodec.EncodeReleaseAll(), _fingerprint, ct);
                         _rawMask = 0;
+                        if (request.Action == RawKeyOperation.Hold && request.DurationMs > 0)
+                            await Task.Delay(request.DurationMs, ct);
                     }
                     else
                     {
