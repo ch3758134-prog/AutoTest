@@ -23,8 +23,9 @@ public partial class MainWindow : Window
 
     private void ShowTools_Click(object sender, RoutedEventArgs e)
     {
-        ToolsMenu.PlacementTarget = ToolsButton;
-        ToolsMenu.IsOpen = true;
+        if (ToolsButton.ContextMenu is not { } menu) return;
+        menu.PlacementTarget = ToolsButton;
+        menu.IsOpen = true;
     }
 
     private void OpenTool_Click(object sender, RoutedEventArgs e)
