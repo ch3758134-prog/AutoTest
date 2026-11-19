@@ -45,6 +45,10 @@ public sealed class DbcDisplayNames
     private readonly Dictionary<uint, string> _explicitMessageSummaries = new();
     private readonly Dictionary<(uint Id, string Signal), string> _explicitSignalSummaries = new();
     private readonly Dictionary<uint, string> _messageDescriptions = new();
+    // Keep edits separate from imported CM_ statements: a save must touch
+    // only comments explicitly changed by the operator, never unrelated source.
+    private readonly Dictionary<uint, string> _editedMessageComments = new();
+    private readonly Dictionary<(uint Id, string Signal), string> _editedSignalComments = new();
     private readonly Dictionary<(uint Id, string Signal), string> _signalDescriptions = new();
 
     public static DbcDisplayNames Parse(string text)
@@ -56,17 +60,17 @@ public sealed class DbcDisplayNames
             var match = MessageComment.Match(line);
             if (match.Success && TryId(match.Groups[1].Value, out var id))
             {
-                var label = Decode(match.Groups[2].Value);
-                names._messageDescriptions[id] = label.Trim();
-                if (ContainsChinese(label)) names._commentMessages[id] = label.Trim();
+                var label = DecodeComment(match.Groups[2].Value);
+                names._messageDescriptions[id] = label;
+                if (LooksLikeAlias(label)) names._commentMessages[id] = label.Trim();
                 continue;
             }
             match = SignalComment.Match(line);
             if (match.Success && TryId(match.Groups[1].Value, out id))
             {
-                var label = Decode(match.Groups[3].Value);
-                names._signalDescriptions[(id, match.Groups[2].Value)] = label.Trim();
-                if (ContainsChinese(label))
+                var label = DecodeComment(match.Groups[3].Value);
+                names._signalDescriptions[(id, match.Groups[2].Value)] = label;
+                if (LooksLikeAlias(label))
                     names._commentSignals[(id, match.Groups[2].Value)] = label.Trim();
                 continue;
             }
@@ -105,6 +109,35 @@ public sealed class DbcDisplayNames
             .FirstOrDefault(part => part.Length > 0) ?? "";
         return first.Length <= 90 ? first : first[..90] + "…";
     }
+    public string MessageCommentPreview(uint id) =>
+        FirstSentence(MessageDescription(id)) is { Length: > 0 } preview
+            ? preview : MessageSummary(id);
+    public string SignalCommentPreview(uint id, string signalName) =>
+        FirstSentence(SignalDescription(id, signalName)) is { Length: > 0 } preview
+            ? preview : SignalSummary(id, signalName);
+
+    public void SetMessageDescription(uint id, string? comment)
+    {
+        var content = NormalizeComment(comment);
+        _messageDescriptions[id] = content;
+        _editedMessageComments[id] = content;
+    }
+
+    public void SetSignalDescription(uint id, string signalName, string? comment)
+    {
+        if (string.IsNullOrWhiteSpace(signalName))
+            throw new ArgumentException("请先选择信号。", nameof(signalName));
+        var content = NormalizeComment(comment);
+        _signalDescriptions[(id, signalName)] = content;
+        _editedSignalComments[(id, signalName)] = content;
+    }
+
+    public bool SameEditedComments(DbcDisplayNames other) =>
+        _editedMessageComments.All(edit =>
+            other.MessageDescription(edit.Key) == edit.Value) &&
+        _editedSignalComments.All(edit =>
+            other.SignalDescription(edit.Key.Id, edit.Key.Signal) == edit.Value);
+
     public string MessageSummary(uint id) =>
         _explicitMessageSummaries.TryGetValue(id, out var summary) ? summary :
             FirstSentence(MessageDescription(id));
@@ -175,6 +208,7 @@ public sealed class DbcDisplayNames
     /// all raw CM_, VAL_, BO_, SG_ and other unowned DBC content.</summary>
     public string Rewrite(string source)
     {
+        source = RewriteEditedComments(source);
         var output = new StringBuilder(source.Length + 256);
         // Preserve the byte-level newline convention and every unrelated line.
         // Removing an AutoTest-owned attribute never rewrites CM_, VAL_, BO_ or SG_.
@@ -231,6 +265,130 @@ public sealed class DbcDisplayNames
         }
         return output.ToString();
     }
+
+
+    // CM_ BO_/SG_ are native DBC documentation, unlike short AutoTest summaries.
+    // Rewrite exact recognised statements only. Unknown/multiline source forms
+    // are deliberately rejected for the edited object rather than damaged.
+    private string RewriteEditedComments(string source)
+    {
+        if (_editedMessageComments.Count == 0 && _editedSignalComments.Count == 0)
+            return source;
+        var newline = source.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var output = new StringBuilder(source.Length + 512);
+        var seenMessages = new HashSet<uint>();
+        var seenSignals = new HashSet<(uint Id, string Signal)>();
+
+        foreach (var segment in Regex.Split(source, @"(?<=\n)"))
+        {
+            if (segment.Length == 0) continue;
+            var content = segment.TrimEnd('\r', '\n');
+            var suffix = segment[content.Length..];
+            var match = MessageComment.Match(content);
+            if (match.Success && TryId(match.Groups[1].Value, out var msgId) &&
+                _editedMessageComments.TryGetValue(msgId, out var msgComment))
+            {
+                if (!seenMessages.Add(msgId))
+                    throw new ProjectDataException("DBC_COMMENT_DUPLICATE", "报文存在重复 CM_，不能自动覆盖：" + msgId);
+                if (msgComment.Length != 0)
+                    output.Append("CM_ BO_ ").Append(msgId.ToString(CultureInfo.InvariantCulture))
+                        .Append(" \"").Append(EncodeComment(msgComment)).Append("\";").Append(suffix);
+                continue;
+            }
+            match = SignalComment.Match(content);
+            if (match.Success && TryId(match.Groups[1].Value, out msgId))
+            {
+                var key = (msgId, match.Groups[2].Value);
+                if (_editedSignalComments.TryGetValue(key, out var sigComment))
+                {
+                    if (!seenSignals.Add(key))
+                        throw new ProjectDataException("DBC_COMMENT_DUPLICATE", "信号存在重复 CM_：" + key);
+                    if (sigComment.Length != 0)
+                        output.Append("CM_ SG_ ").Append(msgId.ToString(CultureInfo.InvariantCulture))
+                            .Append(' ').Append(key.Item2).Append(" \"")
+                            .Append(EncodeComment(sigComment)).Append("\";").Append(suffix);
+                    continue;
+                }
+            }
+            // Fail closed when the selected object's comment does not have a
+            // recognised single-statement form (e.g. raw embedded newlines).
+            if (content.TrimStart().StartsWith("CM_ BO_", StringComparison.Ordinal) ||
+                content.TrimStart().StartsWith("CM_ SG_", StringComparison.Ordinal))
+            {
+                var keyMatch = Regex.Match(content, @"^\s*CM_\s+BO_\s+(\d+)\b");
+                if (keyMatch.Success && TryId(keyMatch.Groups[1].Value, out var id) &&
+                    _editedMessageComments.ContainsKey(id) && !MessageComment.IsMatch(content))
+                    throw new ProjectDataException("DBC_COMMENT_UNSUPPORTED",
+                        "原报文注释使用了不支持的原始格式，未覆盖原文：" + id);
+                keyMatch = Regex.Match(content, @"^\s*CM_\s+SG_\s+(\d+)\s+(\w+)\b");
+                if (keyMatch.Success && TryId(keyMatch.Groups[1].Value, out id) &&
+                    _editedSignalComments.ContainsKey((id, keyMatch.Groups[2].Value)) &&
+                    !SignalComment.IsMatch(content))
+                    throw new ProjectDataException("DBC_COMMENT_UNSUPPORTED",
+                        "原信号注释使用了不支持的原始格式，未覆盖原文：" + keyMatch.Groups[2].Value);
+            }
+            output.Append(segment);
+        }
+        foreach (var edit in _editedMessageComments.OrderBy(x => x.Key))
+        {
+            if (seenMessages.Contains(edit.Key) || edit.Value.Length == 0) continue;
+            if (output.Length > 0 && output[^1] != '\n') output.Append(newline);
+            output.Append("CM_ BO_ ").Append(edit.Key.ToString(CultureInfo.InvariantCulture))
+                .Append(" \"").Append(EncodeComment(edit.Value)).Append("\";").Append(newline);
+        }
+        foreach (var edit in _editedSignalComments.OrderBy(x => x.Key.Id)
+                     .ThenBy(x => x.Key.Signal, StringComparer.Ordinal))
+        {
+            if (seenSignals.Contains(edit.Key) || edit.Value.Length == 0) continue;
+            if (output.Length > 0 && output[^1] != '\n') output.Append(newline);
+            output.Append("CM_ SG_ ").Append(edit.Key.Id.ToString(CultureInfo.InvariantCulture))
+                .Append(' ').Append(edit.Key.Signal).Append(" \"")
+                .Append(EncodeComment(edit.Value)).Append("\";").Append(newline);
+        }
+        return output.ToString();
+    }
+
+    private static string NormalizeComment(string? comment)
+    {
+        var normalized = (comment ?? "").Replace("\r\n", "\n").Replace('\r', '\n');
+        if (normalized.Length > 16000 || normalized.Any(c => char.IsControl(c) && c is not '\n' and not '\t'))
+            throw new ProjectDataException("DBC_COMMENT_INVALID",
+                "DBC 注释最长 16000 字，允许换行和制表符，不允许其他控制字符。");
+        return normalized;
+    }
+
+    private static string DecodeComment(string value)
+    {
+        var output = new StringBuilder(value.Length);
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (value[i] != '\\' || i + 1 >= value.Length)
+            {
+                output.Append(value[i]);
+                continue;
+            }
+            var next = value[++i];
+            output.Append(next switch
+            {
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                '"' => '"',
+                '\\' => '\\',
+                _ => '\\'
+            });
+            if (next is not ('n' or 'r' or 't' or '"' or '\\')) output.Append(next);
+        }
+        return output.ToString();
+    }
+
+    private static string EncodeComment(string value) =>
+        value.Replace("\\", "\\\\").Replace("\"", "\\\"")
+            .Replace("\n", "\\n").Replace("\t", "\\t");
+
+    private static bool LooksLikeAlias(string comment) =>
+        comment.Length is > 0 and <= 48 && !comment.Contains('\n') &&
+        !comment.Contains('。') && !comment.Contains('；') && ContainsChinese(comment);
 
     public bool SameExplicitNames(DbcDisplayNames other) =>
         _explicitMessages.Count == other._explicitMessages.Count &&
