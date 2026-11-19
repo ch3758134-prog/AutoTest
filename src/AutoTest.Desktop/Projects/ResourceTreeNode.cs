@@ -47,7 +47,8 @@ public sealed class ResourceTreeNode : INotifyPropertyChanged
         }
     }
     public bool IsCreatableCategory => Asset is null && !IsPlaceholder &&
-        Category is (ProjectWorkspaceService.TestProgramKind or ProjectWorkspaceService.TestProjectKind or
+        Category is (ProjectWorkspaceService.PublicFlowKind or
+        ProjectWorkspaceService.TestProgramKind or ProjectWorkspaceService.TestProjectKind or
         ProjectWorkspaceService.DbcKind or ProjectWorkspaceService.ControllerKind or
         ProjectWorkspaceService.WaveSettingsKind or ProjectWorkspaceService.WaveKind or
         ProjectWorkspaceService.FlashSettingsKind or ProjectWorkspaceService.FirmwareKind or
