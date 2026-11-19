@@ -227,6 +227,7 @@
                  <Style.Triggers><DataTrigger Binding="{Binding HasChoices}" Value="True">
                   <Setter Property="Visibility" Value="Visible"/>
                  </DataTrigger></Style.Triggers>
+                </Style>
                 </ComboBox.Style>
                </ComboBox>
               </Grid>
