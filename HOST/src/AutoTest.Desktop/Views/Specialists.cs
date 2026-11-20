@@ -327,12 +327,12 @@ public static class Specialists
     }
     public static UIElement Flash(UiStore state)
     {
-        var filename=UiKit.Text();filename.IsReadOnly=true;
-        var profile=UiKit.Text("新建烧录配置");
-        var request=UiKit.Text("18DA50F1");
-        var response=UiKit.Text("18DAF150");
-        var bootRequest=UiKit.Text("18DA50F1");
-        var bootResponse=UiKit.Text("18DAF150");
+        var filename=UiKit.BoundText(state.FlashProfile,nameof(UiFlashProfile.ImagePath),true);
+        var profile=UiKit.BoundText(state.FlashProfile,nameof(UiFlashProfile.Name));
+        var request=UiKit.BoundText(state.FlashProfile,nameof(UiFlashProfile.AppRequest));
+        var response=UiKit.BoundText(state.FlashProfile,nameof(UiFlashProfile.AppResponse));
+        var bootRequest=UiKit.BoundText(state.FlashProfile,nameof(UiFlashProfile.BootRequest));
+        var bootResponse=UiKit.BoundText(state.FlashProfile,nameof(UiFlashProfile.BootResponse));
         var status=UiKit.Note("尚未选择镜像。配置输入仅存在于当前 UI 工作会话。");
         var input=UiKit.Vertical(
             UiKit.Heading("镜像与烧录配置",15),
@@ -341,7 +341,7 @@ public static class Specialists
             UiKit.Button("选择 HEX / S19 文件",(_,_)=>{
                 var picker=new OpenFileDialog{Filter="固件文件|*.hex;*.s19;*.s28;*.s37|所有文件|*.*"};
                 if(picker.ShowDialog()!=true)return;
-                filename.Text=picker.FileName;state.Changed("选择烧录文件");
+                state.FlashProfile.ImagePath=picker.FileName;state.Changed("选择烧录文件");
             }),
             UiKit.Field("应用诊断请求 ID",request),UiKit.Field("应用诊断响应 ID",response),
             UiKit.Field("Boot 请求 ID",bootRequest),UiKit.Field("Boot 响应 ID",bootResponse),status);
@@ -465,9 +465,9 @@ public static class Specialists
         main.Children.Add(chartHost);
         var reference=UiKit.Vertical(UiKit.Heading("参考与判定",15),
             UiKit.Note("参考和容差需在后续绑定真实采样。此处只设计选择和编辑位置。"),
-            UiKit.Field("参考名称",UiKit.Text()),
-            UiKit.Field("判定容差",UiKit.Text("0.05")),
-            UiKit.Field("有效覆盖率",UiKit.Text("0.95")),
+            UiKit.Field("参考名称",UiKit.BoundText(state.WaveReference,nameof(UiWaveReference.Name))),
+            UiKit.Field("判定容差",UiKit.BoundText(state.WaveReference,nameof(UiWaveReference.Tolerance))),
+            UiKit.Field("有效覆盖率",UiKit.BoundText(state.WaveReference,nameof(UiWaveReference.Coverage))),
             UiKit.Empty("尚无参考数据","不能在缺少来源与采样质量证据时显示通过或失败。"));
         reference.Margin=new Thickness(12);
         return UiKit.Page("波形分析","曲线画布主导的专业交互：信号管理 / 绘图与游标 / 参考分析。不是通用表单界面。",
@@ -476,11 +476,11 @@ public static class Specialists
     }
     public static UIElement Scan(UiStore state)
     {
-        var serial=UiKit.Text();
+        var serial=UiKit.BoundText(state.ProductionDraft,nameof(UiProductionDraft.Serial));
         var pattern=UiKit.Text("长度 6–64；允许数字/字母/-/_");
         pattern.IsReadOnly=true;
         var status=UiKit.Note("等待扫码输入。没有连接到正式编号表、台架或实际执行。");
-        var batch=UiKit.Text("当前工位");
+        var batch=UiKit.BoundText(state.ProductionDraft,nameof(UiProductionDraft.Station));
         var entry=UiKit.Vertical(UiKit.Heading("本次检测对象",17),
             UiKit.Field("扫码枪 / 编号输入",serial),UiKit.Field("编号规则（UI 提示）",pattern),
             UiKit.Actions(UiKit.Button("检查编号格式",(_,_)=>{
