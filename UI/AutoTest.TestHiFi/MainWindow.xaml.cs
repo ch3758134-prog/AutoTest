@@ -29,6 +29,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void Raise(string name) => PropertyChanged?.Invoke(this, new(name));
     private bool _ready;
     private bool _issuesExpanded = true;
+    private int _issueFilter; // 0 all, 1 errors, 2 warnings
     private string _phase = "测试";
     private DemoCase? _selectedCase;
     private string _statusText = "高保真视觉预览 · 演示数据 · 无真实 ECU 运行结果";
@@ -242,6 +243,28 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (!_ready || IssueList.SelectedItem is not DemoIssue issue) return;
         Navigate(issue);
+    }
+
+    private void IssueFilter_Click(object sender,RoutedEventArgs e)
+    {
+        _issueFilter=(_issueFilter+1)%3;
+        IssueFilterButton.Content=_issueFilter switch
+        {
+            1 => "仅错误  ▾", 2 => "仅警告  ▾", _ => "全部  ▾"
+        };
+        ApplyIssueFilter();
+        StatusText="问题筛选：" + (_issueFilter==0?"全部":_issueFilter==1?"错误":"警告");
+    }
+    private void ApplyIssueFilter()
+    {
+        VisibleIssues.Clear();
+        if(SelectedCase?.Id=="TC-003")
+            foreach(var issue in Issues.Where(issue=>
+                _issueFilter==0 ||
+                (_issueFilter==1&&issue.Severity=="错误") ||
+                (_issueFilter==2&&issue.Severity=="警告")))
+                VisibleIssues.Add(issue);
+        IssueHeaderText="⌄ 问题与定位 ("+VisibleIssues.Count+") · 演示";
     }
 
     private void CollapseProblems_Click(object sender, RoutedEventArgs e)
