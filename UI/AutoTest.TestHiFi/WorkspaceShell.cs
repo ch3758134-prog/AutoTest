@@ -898,6 +898,9 @@ public partial class MainWindow
         }
         try
         {
+            if (_testProgram is not null && _testProgramRoot == _workFiles.Root &&
+                (_testProgramDocument?.Dirty == true || _modifiedFlowIds.Count > 0) &&
+                !SaveTestProgram()) return false;
             _workFiles.SaveAll();
             RefreshProjectTree();RefreshTabStrip();StoreSession();
             WorkspaceStatusText.Text="所有已修改文件已写入磁盘。";
@@ -1082,9 +1085,13 @@ public partial class MainWindow
         }
         else if(e.Key==Key.F2&&_selectedAsset is not null)
         {RenameAsset(_selectedAsset);e.Handled=true;}
-        else if(ctrl&&e.Key==Key.Z&&_currentDocument is not null)
+        else if(ctrl&&e.Key==Key.Z&&(_currentDocument is not null || _activeToolPage == "TEST"))
         {UndoDocument_Click(this,e);e.Handled=true;}
-        else if(ctrl&&e.Key==Key.Y&&_currentDocument is not null)
+        else if(ctrl&&e.Key==Key.Y&&(_currentDocument is not null || _activeToolPage == "TEST"))
         {RedoDocument_Click(this,e);e.Handled=true;}
+        else if(!ctrl&&_activeToolPage=="TEST"&&e.Key==Key.F5)
+        {PreflightTest("当前用例");e.Handled=true;}
+        else if(!ctrl&&_activeToolPage=="TEST"&&e.Key==Key.F10)
+        {PreflightTest("当前步骤");e.Handled=true;}
     }
 }
