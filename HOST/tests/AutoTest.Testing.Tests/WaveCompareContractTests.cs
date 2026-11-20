@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using AutoTest.Testing.Authoring;
+using AutoTest.Testing.Preparation;
 using Xunit;
 
 namespace AutoTest.Testing.Tests;
@@ -31,6 +32,15 @@ public sealed class WaveCompareContractTests
         var errors = StepTreeValidator.ValidateTree(Document("0.05", "0.95"),
             StepDescriptorCatalog.Builtins());
         Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void WaveCompare_CompilesInTheRealExecutorOnly()
+    {
+        var doc = Document("0.05", "0.95");
+        Assert.Empty(new PlanCompiler().Prepare(doc, allowRealOperations: true).Diagnostics);
+        Assert.Contains(new PlanCompiler().Prepare(doc).Diagnostics,
+            error => error.Contains("not executable in V1", StringComparison.Ordinal));
     }
 
     [Theory]
