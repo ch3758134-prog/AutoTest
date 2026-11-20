@@ -13,7 +13,7 @@
   </Style>
   <Style x:Key="BenchHint" TargetType="TextBlock">
    <Setter Property="FontSize" Value="11"/>
-   <Setter Property="Foreground" Value="#61758A"/>
+   <Setter Property="Foreground" Value="#687D74"/>
    <Setter Property="TextWrapping" Value="Wrap"/>
   </Style>
   <Style x:Key="BenchCard" TargetType="Border">
@@ -29,7 +29,7 @@
    <Setter Property="MinHeight" Value="36"/>
   </Style>
   <Style x:Key="FieldCaption" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#617B98"/>
+   <Setter Property="Foreground" Value="#6A8075"/>
    <Setter Property="FontSize" Value="11"/>
    <Setter Property="Margin" Value="0,9,0,4"/>
   </Style>
@@ -53,12 +53,12 @@
        VerticalAlignment="Center" Margin="0,0,12,0"/>
       <Border Background="#EFF3F2" Padding="10,5" CornerRadius="12" ToolTip="{Binding ConnectionStatus}">
        <StackPanel Orientation="Horizontal">
-        <TextBlock Text="●" Foreground="#72889F" Margin="0,0,6,0"/>
+        <TextBlock Text="●" Foreground="#798D82" Margin="0,0,6,0"/>
         <TextBlock>
          <TextBlock.Style>
           <Style TargetType="TextBlock">
            <Setter Property="Text" Value="USB 未连接"/>
-           <Setter Property="Foreground" Value="#4B6279"/>
+           <Setter Property="Foreground" Value="#536C60"/>
            <Setter Property="FontSize" Value="11"/>
            <Style.Triggers>
             <DataTrigger Binding="{Binding IsConnected}" Value="True">
@@ -95,7 +95,7 @@
       <DockPanel Margin="0,0,0,8">
        <TextBlock Text="ECU CAN 发送" Style="{StaticResource BenchHeader}"/>
        <TextBlock DockPanel.Dock="Right" Text="双击或右键 → 完整属性编辑"
-        FontSize="11" Foreground="#65788F" Margin="8,0,0,0"/>
+        FontSize="11" Foreground="#71847B" Margin="8,0,0,0"/>
       </DockPanel>
       <WrapPanel>
        <Button Content="+ 报文" Click="AddCanRow_Click" Padding="9,6" Margin="0,0,5,5"
@@ -179,29 +179,29 @@
         <ColumnDefinition Width="7"/>
         <ColumnDefinition Width="*"/>
        </Grid.ColumnDefinitions>
-       <Border Grid.Column="0" BorderBrush="#DCE6F2" BorderThickness="1"
-        Background="#F9FBFE" CornerRadius="6" Padding="7">
+       <Border Grid.Column="0" BorderBrush="#DEE8E1" BorderThickness="1"
+        Background="#F9FBF9" CornerRadius="6" Padding="7">
         <StackPanel>
-         <TextBlock Text="IGN" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
-          <TextBlock Text="{Binding IgnGpioLabel}" FontSize="10" Foreground="#60758C" Margin="0,0,0,6" ToolTip="{Binding LastIgnAck}"/>
+         <TextBlock Text="IGN" FontWeight="SemiBold" Foreground="#42685D" Margin="0,0,0,5"/>
+          <TextBlock Text="{Binding IgnGpioLabel}" FontSize="10" Foreground="#697E73" Margin="0,0,0,6" ToolTip="{Binding LastIgnAck}"/>
          <Button Content="ON" Click="IgnOn_Click" IsEnabled="{Binding CanInvokeManualIo}" Margin="0,0,0,4" MinHeight="30"/>
          <Button Content="OFF" Click="IgnOff_Click" IsEnabled="{Binding CanInvokeManualIo}" MinHeight="30"/>
         </StackPanel>
        </Border>
-       <Border Grid.Column="2" BorderBrush="#DCE6F2" BorderThickness="1"
-        Background="#F9FBFE" CornerRadius="6" Padding="7">
+       <Border Grid.Column="2" BorderBrush="#DEE8E1" BorderThickness="1"
+        Background="#F9FBF9" CornerRadius="6" Padding="7">
         <StackPanel>
-         <TextBlock Text="夹具 1 · B5" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
-          <TextBlock Text="{Binding Clamp1GpioLabel}" FontSize="10" Foreground="#60758C" Margin="0,0,0,6" ToolTip="{Binding LastClampStatus}"/>
+         <TextBlock Text="夹具 1 · B5" FontWeight="SemiBold" Foreground="#42685D" Margin="0,0,0,5"/>
+          <TextBlock Text="{Binding Clamp1GpioLabel}" FontSize="10" Foreground="#697E73" Margin="0,0,0,6" ToolTip="{Binding LastClampStatus}"/>
          <Button Content="压紧" Click="Clamp1Press_Click" IsEnabled="{Binding CanInvokeManualIo}" Margin="0,0,0,4" MinHeight="30"/>
          <Button Content="释放" Click="Clamp1Release_Click" IsEnabled="{Binding CanInvokeManualIo}" MinHeight="30"/>
         </StackPanel>
        </Border>
-       <Border Grid.Column="4" BorderBrush="#DCE6F2" BorderThickness="1"
-        Background="#F9FBFE" CornerRadius="6" Padding="7">
+       <Border Grid.Column="4" BorderBrush="#DEE8E1" BorderThickness="1"
+        Background="#F9FBF9" CornerRadius="6" Padding="7">
         <StackPanel>
-         <TextBlock Text="夹具 2 · B4" FontWeight="SemiBold" Foreground="#2C527D" Margin="0,0,0,5"/>
-          <TextBlock Text="{Binding Clamp2GpioLabel}" FontSize="10" Foreground="#60758C" Margin="0,0,0,6" ToolTip="{Binding LastClampStatus}"/>
+         <TextBlock Text="夹具 2 · B4" FontWeight="SemiBold" Foreground="#42685D" Margin="0,0,0,5"/>
+          <TextBlock Text="{Binding Clamp2GpioLabel}" FontSize="10" Foreground="#697E73" Margin="0,0,0,6" ToolTip="{Binding LastClampStatus}"/>
          <Button Content="压紧" Click="Clamp2Press_Click" IsEnabled="{Binding CanInvokeManualIo}" Margin="0,0,0,4" MinHeight="30"/>
          <Button Content="释放" Click="Clamp2Release_Click" IsEnabled="{Binding CanInvokeManualIo}" MinHeight="30"/>
         </StackPanel>
@@ -216,7 +216,7 @@
       </DockPanel>
       
       
-      <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
+      <Border BorderBrush="#E3EAE5" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
       <DockPanel Margin="0,0,0,8">
        <TextBlock DockPanel.Dock="Left" Text="KEY CAN · 按键动作" Style="{StaticResource BenchHeader}" FontSize="14"/>
        
@@ -244,7 +244,7 @@
        <StackPanel>
         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#244E74"
          TextTrimming="CharacterEllipsis" Margin="0,0,0,5"/>
-        <TextBlock Text="{Binding Summary}" Foreground="#60758C" FontSize="10"
+        <TextBlock Text="{Binding Summary}" Foreground="#697E73" FontSize="10"
          TextTrimming="CharacterEllipsis" Margin="0,0,0,7"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
          <Button Content="运行" Tag="{Binding}" Click="RunKeyAction_Click"
@@ -261,7 +261,7 @@
    
    <StackPanel x:Name="KeyEditorSection"
     Visibility="{Binding IsKeyEditorExpanded,Converter={StaticResource BoolToVisibility}}">
-   <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,8,0,10"/>
+   <Border BorderBrush="#E3EAE5" BorderThickness="0,1,0,0" Margin="0,8,0,10"/>
    <DockPanel Margin="0,0,0,8">
     <Button DockPanel.Dock="Right" Content="完成" Click="CloseKeyEditor_Click"
      Padding="8,5" Margin="4,0,0,0"/>
@@ -269,7 +269,7 @@
      Padding="8,5" Margin="4,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="删除动作" Command="{Binding DeleteKeyActionCommand}"
      Padding="8,5" Margin="4,0,0,0"/>
-    <TextBlock Text="动作编辑" Foreground="#2C527D" FontSize="13" FontWeight="SemiBold"
+    <TextBlock Text="动作编辑" Foreground="#42685D" FontSize="13" FontWeight="SemiBold"
      VerticalAlignment="Center"/>
    </DockPanel>
    <StackPanel Visibility="{Binding HasSelectedKeyAction,Converter={StaticResource BoolToVisibility}}">
@@ -345,7 +345,7 @@
      </StackPanel>
     </Border>
    </StackPanel>
-   <Border BorderBrush="#E5ECF4" BorderThickness="0,1,0,0" Margin="0,12,0,8"/>
+   <Border BorderBrush="#E3EAE5" BorderThickness="0,1,0,0" Margin="0,12,0,8"/>
    <DockPanel>
     <Button DockPanel.Dock="Right" Content="停止 KEY 动作"
      Command="{Binding StopKeyActionCommand}" Padding="9,6"/>
@@ -390,7 +390,7 @@
        <CheckBox Content="逐帧模式（取消为最新值）" FontSize="11"
         IsChecked="{Binding MonitorShowTimeline,Mode=TwoWay}" VerticalAlignment="Center"/>
       </DockPanel>
-      <TextBlock Text="{Binding CanRxReceiveStatus}" FontSize="11" Foreground="#61758A"
+      <TextBlock Text="{Binding CanRxReceiveStatus}" FontSize="11" Foreground="#687D74"
        TextTrimming="CharacterEllipsis" Margin="0,8,0,0"
        ToolTip="{Binding CanRxReceiveStatus}"/>
      </StackPanel>
@@ -424,7 +424,7 @@
       </DataGrid.Columns>
      </DataGrid>
      <Expander Grid.Row="2" Header="USB / 操作 / 错误日志（按需展开）"
-      IsExpanded="False" BorderBrush="#E5ECF4" BorderThickness="0,1,0,0"
+      IsExpanded="False" BorderBrush="#E3EAE5" BorderThickness="0,1,0,0"
       Padding="3,8">
       <DockPanel Height="250" Margin="3,8,3,2">
        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,7">

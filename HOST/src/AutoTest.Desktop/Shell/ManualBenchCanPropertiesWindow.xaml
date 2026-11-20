@@ -14,7 +14,7 @@
   <StackPanel Grid.Row="0" Margin="0,0,0,12">
    <TextBlock Text="CAN 报文 · 完整属性" FontSize="19" FontWeight="SemiBold"/>
    <TextBlock Text="编辑的是待发送配置，不会自动向 ECU 发送。关闭窗口保留修改。"
-    Foreground="#60758E" FontSize="12" Margin="0,5,0,0"/>
+    Foreground="#6F8076" FontSize="12" Margin="0,5,0,0"/>
   </StackPanel>
   <Border Grid.Row="1" Background="White" BorderBrush="#E0E5E5" BorderThickness="1"
    CornerRadius="8" Padding="14">
@@ -33,12 +33,12 @@
       </Grid.ColumnDefinitions>
       <StackPanel Grid.Column="0" Margin="0,0,10,0">
        <TextBlock Text="CAN ID (HEX)" FontSize="11"
-        Foreground="#6C819A" Margin="0,0,0,4"/>
+        Foreground="#77887D" Margin="0,0,0,4"/>
        <TextBox Text="{Binding IdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
         IsReadOnly="{Binding UseDbc}" FontFamily="Consolas" MinHeight="32"/>
       </StackPanel>
       <StackPanel Grid.Column="1">
-       <TextBlock Text="DLC" FontSize="11" Foreground="#6C819A" Margin="0,0,0,4"/>
+       <TextBlock Text="DLC" FontSize="11" Foreground="#77887D" Margin="0,0,0,4"/>
        <TextBox Text="{Binding PreviewDlc,Mode=OneWay}" IsReadOnly="True"
         Background="#F5F7F7" FontFamily="Consolas" MinHeight="32"/>
       </StackPanel>
@@ -58,7 +58,7 @@
      <CheckBox Content="关联工程 DBC，辅助解析或修改上述 DATA"
       IsChecked="{Binding UseDbc,Mode=TwoWay}" Margin="0,0,0,8"/>
      <StackPanel Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
-      <TextBlock Text="报文定义" Foreground="#6C819A" FontSize="11" Margin="0,0,0,5"/>
+      <TextBlock Text="报文定义" Foreground="#77887D" FontSize="11" Margin="0,0,0,5"/>
       <ComboBox ItemsSource="{Binding DataContext.DbcMessages,RelativeSource={RelativeSource AncestorType=Window}}"
        SelectedItem="{Binding DbcMessage,Mode=TwoWay}" DisplayMemberPath="Display"
        MinHeight="33" Margin="0,0,0,10" IsTextSearchEnabled="True"/>
@@ -73,7 +73,7 @@
           <StackPanel Grid.Column="0" VerticalAlignment="Center">
            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
             ToolTip="{Binding Definition}"/>
-           <TextBlock Text="{Binding Range}" Foreground="#6F829A" FontSize="10"/>
+           <TextBlock Text="{Binding Range}" Foreground="#74857C" FontSize="10"/>
           </StackPanel>
           <Grid Grid.Column="1" Margin="9,0,0,0">
            <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
@@ -104,10 +104,10 @@
        </ItemsControl.ItemTemplate>
       </ItemsControl>
      </StackPanel>
-     <Border Height="1" Background="#E1E9F2" Margin="0,7,0,14"/>
+     <Border Height="1" Background="#E5EBE7" Margin="0,7,0,14"/>
      <TextBlock Text="发送方式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
      <TextBlock Text="当前 ECU CAN 支持单次发送和勾选批量单次发送；周期发送尚未验证，不能开启。"
-      TextWrapping="Wrap" Foreground="#64788C" Margin="0,0,0,10"/>
+      TextWrapping="Wrap" Foreground="#728478" Margin="0,0,0,10"/>
      <Grid IsEnabled="False">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <CheckBox Content="周期发送（暂不可用）" IsChecked="{Binding IsPeriodic,Mode=TwoWay}"
@@ -121,7 +121,7 @@
   </Border>
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
    <TextBlock Text="真实发送请回到主列表点击“单发”。"
-    Foreground="#61758A" FontSize="12" VerticalAlignment="Center"/>
+    Foreground="#708278" FontSize="12" VerticalAlignment="Center"/>
    <Button DockPanel.Dock="Right" Content="关闭" Click="Close_Click"
     Padding="17,7" MinWidth="78" HorizontalAlignment="Right"/>
   </DockPanel>

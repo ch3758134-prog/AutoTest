@@ -41,7 +41,7 @@
        <Setter TargetName="TabSurface" Property="BorderThickness" Value="0,0,0,2"/>
       </Trigger>
       <Trigger Property="IsMouseOver" Value="True">
-       <Setter TargetName="TabSurface" Property="Background" Value="#F7FBFF"/>
+       <Setter TargetName="TabSurface" Property="Background" Value="#F8FBF9"/>
       </Trigger>
      </ControlTemplate.Triggers>
     </ControlTemplate></Setter.Value>
@@ -67,7 +67,7 @@
        <Setter TargetName="Line" Property="Background" Value="White"/>
       </Trigger>
       <Trigger Property="IsMouseOver" Value="True">
-       <Setter TargetName="Line" Property="Background" Value="#F2F7FE"/>
+       <Setter TargetName="Line" Property="Background" Value="#F2F8F5"/>
       </Trigger>
      </ControlTemplate.Triggers>
     </ControlTemplate></Setter.Value>
@@ -97,11 +97,11 @@
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="9,0,15,0"
      VerticalAlignment="Center" chrome:WindowChrome.IsHitTestVisibleInChrome="True">
      <Border Width="23" Height="23" CornerRadius="6" Background="#277B70">
-      <TextBlock Text="AT" Foreground="#35434D" FontSize="11" FontWeight="Bold"
+      <TextBlock Text="AT" Foreground="White" FontSize="11" FontWeight="Bold"
        VerticalAlignment="Center" HorizontalAlignment="Center"/>
      </Border>
      <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
-     <Border Margin="6,0,0,0" Background="#E8F1FD" BorderBrush="#C8DEF9"
+     <Border Margin="6,0,0,0" Background="#EAF4F0" BorderBrush="#CCE6DB"
       BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
       <TextBlock Text="IDE" Foreground="#277B70" FontSize="10"/>
      </Border>
