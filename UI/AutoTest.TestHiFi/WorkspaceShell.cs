@@ -898,11 +898,37 @@ public partial class MainWindow
         if(!ConfirmDiscardOpenFiles()){e.Cancel=true;return;}
         StoreSession();
     }
+    private void FindInDocument()
+    {
+        if (_currentDocument is null) return;
+        var query=AskName(this,"在当前文件中查找","");
+        if(string.IsNullOrWhiteSpace(query))return;
+        var text=DocumentTextEditor.Text;
+        int after=DocumentTextEditor.SelectionStart+DocumentTextEditor.SelectionLength;
+        int at=text.IndexOf(query,Math.Min(after,text.Length),StringComparison.OrdinalIgnoreCase);
+        if(at<0)at=text.IndexOf(query,StringComparison.OrdinalIgnoreCase);
+        if(at<0)
+        {
+            StatusText="当前文档未找到：“"+query+"”";
+            return;
+        }
+        DocumentTextEditor.Focus();
+        DocumentTextEditor.Select(at,query.Length);
+        DocumentTextEditor.ScrollToLine(DocumentTextEditor.GetLineIndexFromCharacterIndex(at));
+        StatusText="已找到当前文件中的 “"+query+"”";
+    }
+
     private void FileShortcut(KeyEventArgs e)
     {
         var ctrl=Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         var shift=Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
-        if(ctrl&&shift&&e.Key==Key.S){SaveAllDocuments();e.Handled=true;}
+        if(ctrl&&e.Key==Key.F&&_activeToolPage!="TEST")
+        {
+            if(_currentDocument is not null)FindInDocument();
+            else {CaseSearch.Focus();CaseSearch.SelectAll();}
+            e.Handled=true;
+        }
+        else if(ctrl&&shift&&e.Key==Key.S){SaveAllDocuments();e.Handled=true;}
         else if(ctrl&&e.Key==Key.S){SaveCurrentDocument();e.Handled=true;}
         else if(ctrl&&e.Key==Key.O){OpenProject_Click(this,e);e.Handled=true;}
         else if(ctrl&&e.Key==Key.W){CloseDocument_Click(this,e);e.Handled=true;}
