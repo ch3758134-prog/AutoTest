@@ -277,13 +277,69 @@ public sealed class CanToolFlashWorkflow(
             "REFERENCE_FLASH_ACKED_POST_RESET_APP_UNVERIFIED");
     }
 
-    public async Task<FlashExecutionResult> ExecuteAsync(CancellationToken ct)
+    // Explicitly requested by the R1 automatic TEST integration only.
+    // Uses the frozen APP endpoint and the SAME ISO-TP/CAN lease as programming;
+    // never retries erase, download or transfer after a reset.
+    private async Task<bool> VerifyAppAfterResetAsync(LeaseToken lease, CancellationToken ct)
+    {
+        const int attempts = 8;
+        for (int i = 1; i <= attempts; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            await Task.Delay(i == 1 ? 500 : 1200, ct).ConfigureAwait(false);
+            try
+            {
+                await using var app = await OpenAsync(plan.App, lease, ct).ConfigureAwait(false);
+                var response = await RequestAsync(app, [0x10, 0x03],
+                    "PostReset APP 10 03", TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
+                if (response.Length >= 2 && response[1] == 0x03)
+                {
+                    log("POST_RESET_APP_SESSION_CONFIRMED APP 50 03；已确认应用诊断会话，软件版本仍须独立判定。");
+                    return true;
+                }
+                // A positive response with unexpected sub-function is not valid proof.
+                log("POST_RESET_APP_UNEXPECTED_SESSION：APP 应答不匹配，拒绝确认。");
+                return false;
+            }
+            catch (TimeoutException) when (!ct.IsCancellationRequested)
+            {
+                log($"POST_RESET_APP_TIMEOUT {i}/{attempts}：APP 诊断会话尚未恢复。");
+            }
+        }
+        log("POST_RESET_APP_UNVERIFIED：APP 地址未提供有效的 50 03；不允许后续自动 TEST 写入。");
+        return false;
+    }
+
+    // Keep the independent FlashLab reference behavior unchanged: it stops at
+    // Boot 51 01 and does not assert APP recovery without a separate probe.
+    public Task<FlashExecutionResult> ExecuteAsync(CancellationToken ct) =>
+        ExecuteAsync(verifyApplicationSession: false, ct);
+
+    public async Task<FlashExecutionResult> ExecuteAsync(
+        bool verifyApplicationSession, CancellationToken ct)
     {
         var res=await leases.AcquireAsync(BusRole.DutCan,"FlashLab-F2-CanTool",
             TimeSpan.FromMinutes(40),ct).ConfigureAwait(false);
         if(res.Outcome!=Outcome.Accepted)
             throw new InvalidOperationException("CAN1 被占用；无法获取编程独占租约。");
-        try { return await ProgramCoreAsync(res.Value,ct).ConfigureAwait(false); }
+        try
+        {
+            var result = await ProgramCoreAsync(res.Value, ct).ConfigureAwait(false);
+            if (!verifyApplicationSession) return result;
+            if (!result.ResetAcknowledged ||
+                result.TransferAcknowledged != plan.PlannedBytes ||
+                result.VerifiedBytes != plan.PlannedBytes)
+                return result;
+            var appConfirmed = await VerifyAppAfterResetAsync(res.Value, ct)
+                .ConfigureAwait(false);
+            return result with
+            {
+                AppSessionObserved = appConfirmed,
+                Outcome = appConfirmed
+                    ? "REFERENCE_FLASH_ACKED_APP_SESSION_CONFIRMED"
+                    : "REFERENCE_FLASH_ACKED_POST_RESET_APP_UNVERIFIED"
+            };
+        }
         finally
         {
             var released=await leases.ReleaseAsync(res.Value,CancellationToken.None).ConfigureAwait(false);

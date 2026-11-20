@@ -638,9 +638,12 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                     Record(sensitive ? "FLASH_SECURITY_REDACTED_BEGIN" :
                         "FLASH_SECURITY_REDACTED_END");
                 });
-            var result = await workflow.ExecuteAsync(ct);
+            var result = await workflow.ExecuteAsync(
+                verifyApplicationSession: true, ct);
             Record("FLASH_TERMINAL " + result.Outcome +
-                "；APP 未自动核验，不能由 Boot ACK 放行。");
+                (result.AppSessionObserved
+                    ? "；APP 诊断会话已观察到，软件版本仍须通过 TEST 判据核对。"
+                    : "；APP 会话未确认，不允许后续 TEST 写入。"));
             return result;
         }
         catch (Exception ex)
