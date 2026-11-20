@@ -9,6 +9,8 @@
 | `ECU_CAN_PORT` | A12 CAN_H / A1 CAN_L | CAN1：PTC17 TX、PTC16 RX | U10 TJA1042 | 1 |
 | `KEY_CAN_PORT` | B11 CAN_H / B1 CAN_L | CAN0：PTA12 TX、PTA13 RX | U9 ADM3054 | 0 |
 
+**ECU CAN 码率控制（2026-11-20 新增）：** USB `0x42` 请求单字节 `baud_code`，0..7 对应 20k/50k/100k/125k/250k/500k/800k/1M；`0x43` 空请求查询 ECU CAN 已配置码率（返回同样的1B代码）。仅 FlexCAN1 / J1 A12/A1 可更改；KEY CAN / FlexCAN0 始终 500k。两个通道上电都为500k；设置仅本次运行有效，复位恢复默认。运行周期广播或 TX 邮箱占用返回 BUSY，不改码率。
+
 C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL`、`KEY_CAN_USB_CHANNEL`；硬件驱动 `MCAL_CAN_CH0/CH1` 继续代表 MCU 寄存器控制器。**不互换 USB 0/1 值，不修改 USB 驱动、协议、CRC、帧格式。**
 
 ## 2. HOUT 与业务名称
