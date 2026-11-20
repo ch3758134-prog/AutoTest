@@ -206,6 +206,32 @@ public partial class MainWindow
         WorkspaceStatusText.Text = name + " · UI 编辑状态（未执行真实设备操作）";
     }
 
+    private void ImportToolResource(string kind)
+    {
+        if (!_workFiles.HasProject)
+        {
+            MessageBox.Show(this, "请先创建或打开 UI 工作区。", "导入专业资源",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "导入" + kind,
+            Filter = kind == "DBC" ? "DBC 文件|*.dbc|所有文件|*.*"
+                : "波形文件|*.csv;*.txt|所有文件|*.*"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var asset = _workFiles.Import(dialog.FileName, kind);
+            RefreshProjectTree();
+            StoreSession();
+            OpenAsset(asset);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        { ShowFileError("导入资源失败", ex); }
+    }
+
     private void BuildDbcWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
     {
         ToolNote(center, "从当前工程选择真实 DBC 文件。文件内容可以打开、查看和保存；报文与信号的结构化解析在正式 DBC 专业接线阶段启用。");
@@ -217,7 +243,7 @@ public partial class MainWindow
             center.Children.Add(ToolButton("▤  " + asset.Name + "   ·   " + asset.RelativePath,
                 () => OpenAsset(current)));
         }
-        center.Children.Add(ToolButton("导入 DBC 文件…", () => ImportAsset_Click(this, new RoutedEventArgs())));
+        center.Children.Add(ToolButton("导入 DBC 文件…", () => ImportToolResource("DBC")));
         ToolField(inspector, draft, "显示别名方案", "中文信号名称");
         ToolField(inspector, draft, "信号筛选条件");
         ToolNote(inspector, "不会生成虚构报文、信号或 DBC 解析结果。");
