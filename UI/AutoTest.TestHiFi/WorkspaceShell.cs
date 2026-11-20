@@ -460,6 +460,11 @@ public partial class MainWindow
                 AddMenu(menu,"移动至分类…",()=>MoveAsset(a));
                 AddMenu(menu,"移入回收区",()=>DeleteAsset(a));
                 leaf.ContextMenu = menu;
+                leaf.PreviewMouseRightButtonDown += (_, _) =>
+                {
+                    leaf.IsSelected = true;
+                    _selectedAsset = a;
+                };
                 group.Items.Add(leaf);
             }
         }
@@ -681,7 +686,7 @@ public partial class MainWindow
         catch(Exception ex)when(ex is IOException or ArgumentException or UnauthorizedAccessException)
         {ShowFileError("导入资源失败",ex);}
     }
-    private UiAsset? TargetAsset() => _currentDocument?.Asset ?? _selectedAsset;
+    private UiAsset? TargetAsset() => _selectedAsset ?? _currentDocument?.Asset;
     private void RenameAsset_Click(object sender,RoutedEventArgs e)
     {
         var asset=TargetAsset();if(asset is null){NeedSelectAsset();return;}
@@ -763,14 +768,46 @@ public partial class MainWindow
     }
     private void DeleteAsset(UiAsset asset)
     {
+        var dirtyDocuments = _workFiles.OpenDocuments.Where(d => d.Asset.Id == asset.Id && d.Dirty).ToArray();
+        if (dirtyDocuments.Length > 0)
+        {
+            var choice = MessageBox.Show(this,
+                "资源 “" + asset.Name + "” 有未保存的更改。\n\n是：先保存再移入回收区\n否：放弃草稿并移入回收区\n取消：保留资源",
+                "未保存的资源", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+            if (choice == MessageBoxResult.Cancel) return;
+            if (choice == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    foreach (var document in dirtyDocuments) _workFiles.Save(document);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                    ShowFileError("保存资源失败，未执行删除", ex);
+                    return;
+                }
+            }
+        }
         if(MessageBox.Show(this,
           "资源将从工程清单移除，源文件移动至工程内 .ui-trash 回收目录，不会永久删除。\n\n其他文件中的引用不会自动清理。\n\n继续移除 “"+asset.Name+"” 吗？",
           "移除资源",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
         try
         {
             _workFiles.Delete(asset);
-            if(_currentDocument?.Asset.Id==asset.Id)_currentDocument=null;
-            _selectedAsset=null;RefreshProjectTree();ShowProjectWorkspace();StoreSession();
+            var removedCurrent = _currentDocument?.Asset.Id == asset.Id;
+            foreach (var document in _workFiles.OpenDocuments.Where(d => d.Asset.Id == asset.Id).ToArray())
+                _workFiles.OpenDocuments.Remove(document);
+            if (removedCurrent) _currentDocument = null;
+            _selectedAsset = null;
+            RefreshProjectTree();
+            if (removedCurrent)
+            {
+                var next = _workFiles.OpenDocuments.LastOrDefault();
+                if (next is not null) ActivateDocument(next);
+                else ShowProjectWorkspace();
+            }
+            else RefreshTabStrip();
+            StoreSession();
         }
         catch(Exception ex)when(ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {ShowFileError("移除资源失败",ex);}
@@ -827,6 +864,13 @@ public partial class MainWindow
             FileName=Path.GetFileName(_currentDocument.Asset.RelativePath),
             Filter="所有文件 (*.*)|*.*"};
         if(dialog.ShowDialog(this)!=true)return;
+        if (string.Equals(Path.GetFullPath(dialog.FileName),
+            Path.GetFullPath(_workFiles.FullPath(_currentDocument.Asset.RelativePath)),
+            StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText = "目标文件就是当前工程资源，请使用保存，而不是另存为副本。";
+            return;
+        }
         try
         {
             // Save As produces an external copy; the project still references the original.
