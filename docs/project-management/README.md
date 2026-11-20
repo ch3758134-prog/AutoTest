@@ -78,3 +78,7 @@
 ## 2026-11-19 TEST-RECORD PR #65 C-01 修复验收
 
 - [PR #65 C-01 单行修复静态验收与 Windows Codex 构建门禁移交](new-baseline-20261112/research/TEST-RECORD-PR65-C01-CLEARANCE-20261119.md)：专项提交 `655e1bfe0d95a4a885574450faa79fcf1cff49ef` 已回读，B-01 因果逻辑与 C-01 语法静态认可；**尚无 Windows Release Build/Test、HOST 接线和实体 ECU 证据，PR Draft 未获合并批准**。本条取代此前 C-01 当前仍阻断的状态描述，但保留其历史记录。
+
+## 2026-11-19｜R1 首版真实自动测试与烧录优先推进
+
+- [R1 独立分支、UI 研究并行、旧 G4 退役及 FLASH/RECORD 接线范围](new-baseline-20261112/research/R1-REAL-TEST-FLASH-PRIORITY-20261119.md)：从 `main@ffb23f8c05ec4a64b82cd781db6357685d082c04` 建立 `R1`；R1 专注自动测试全流程真实运行、CAN 烧录、执行日志/证据与正式报告，Issue #70；`ui/ide-design` 独立继续。旧 G4 代码已通过 PR #61 接收入 main，但旧开发分支远端 ref **尚未物理删除**（GitHub 连接暂无删除动作）。首版开发及真机验收均待继续。
