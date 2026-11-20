@@ -24,6 +24,7 @@ public static class Workspaces
         {
             "home"=>Home(state,app),
             "test-project"=>TestProjects(state,app),
+            "run"=>RunAndDebug(state,app),
             "flows"=>PublicFlows(state),
             "resources"=>Resources(state,app),
             "tools"=>Tools(state,app),
@@ -153,6 +154,79 @@ public static class Workspaces
         stack.Children.Add(lower);stack.Children.Add(list);
         return UiKit.Page("测试项目与用例","有序组织、选择、排序和编辑。双击用例直接打开连续编辑器。",stack);
     }
+    private static UIElement RunAndDebug(UiStore state,MainWindow app)
+    {
+        var selected=UiKit.Table(state.Cases,("测试用例",nameof(UiTestCase.Name),0,false));
+        selected.Columns.Insert(0,new DataGridCheckBoxColumn
+        {
+            Header="本次运行",Binding=new Binding(nameof(UiTestCase.SelectedForRun))
+            {Mode=BindingMode.TwoWay},Width=94
+        });
+        var preflight=UiKit.Note("尚未进行结构检查。实体工位预检、设备授权和执行器未连接。");
+        var current=UiKit.Note("本次运行：尚未开始。不存在 RunId、步骤事实或 PASS。");
+        var plan=new DockPanel{Margin=new Thickness(12)};
+        var planTop=UiKit.Vertical(
+            UiKit.Heading("本次用例选择",15),
+            UiKit.Note("本次选择独立于测试用例持久启用状态。勾选不会启动设备。"),
+            UiKit.Actions(
+                UiKit.Button("检查 UI 计划结构",(_,_)=>
+                {
+                    var cases=state.Cases.Where(c=>c.SelectedForRun).ToList();
+                    var count=cases.Sum(c=>Walk(c.Prepare).Count()+Walk(c.Test).Count()+Walk(c.Cleanup).Count());
+                    var problems=new List<string>();
+                    if(cases.Count==0)problems.Add("尚未选择用例");
+                    if(count==0)problems.Add("所选用例没有步骤");
+                    preflight.Text=problems.Count==0
+                        ?$"UI 结构检查：已选 {cases.Count} 个用例，共 {count} 步；未执行实体预检。"
+                        :"UI 结构检查发现问题："+string.Join("、",problems);
+                    state.Changed("检查本次测试 UI 计划");
+                },true),
+                UiKit.Button("编辑选中用例",(_,_)=>
+                {
+                    if(selected.SelectedItem is UiTestCase c)app.Open("test:"+c.Id,c.Name);
+                })),
+            preflight);
+        DockPanel.SetDock(planTop,Dock.Top);plan.Children.Add(planTop);plan.Children.Add(selected);
+        var steps=new ListBox{Margin=new Thickness(8,0,8,8)};
+        var stepInfo=UiKit.Note("选择用例查看步骤定义。断点属于 UI 编辑标记，不能启动单步执行。");
+        selected.SelectionChanged+=(_,_)=>
+        {
+            if(selected.SelectedItem is not UiTestCase test)return;
+            steps.ItemsSource=Walk(test.Prepare).Select(x=>"准备 · "+(x.Breakpoint?"● 断点 · ":"")+x.Name)
+                .Concat(Walk(test.Test).Select(x=>"测试 · "+(x.Breakpoint?"● 断点 · ":"")+x.Name))
+                .Concat(Walk(test.Cleanup).Select(x=>"清理 · "+(x.Breakpoint?"● 断点 · ":"")+x.Name)).ToArray();
+            stepInfo.Text="当前查看："+test.Name+"。此处是步骤定义，不是已执行事实。";
+        };
+        var editor=UiKit.Vertical(UiKit.Heading("步骤与调试目标",15),stepInfo,steps);
+        editor.Margin=new Thickness(12);
+        var execution=UiKit.Vertical(
+            UiKit.Heading("运行控制",15),
+            UiKit.Note("工程师执行视图强调当前运行范围、工位状态和错误证据，不能以编辑草稿代替正式 Run。"),
+            UiKit.Heading("工位状态：未接入",14,new Thickness(0,14,0,7)),
+            UiKit.Note("设备身份：未知 · 工位许可：无 · 当前执行：未开始"),
+            UiKit.Heading("实体运行与单步",14,new Thickness(0,16,0,7)),
+            new TextBlock{Text="开始运行 / 单步 / 运行到此 / 停止：等待真实 TEST 与 DEVICE 接线。",
+                Foreground=Brushes.IndianRed,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,4,0,16)},
+            current,
+            UiKit.Heading("步骤事实与证据",14,new Thickness(0,15,0,5)),
+            UiKit.Empty("没有执行时间线",
+                "执行事实、断点命中、异常、测量和报告只能来自真实后端；当前不能生成虚构记录。"));
+        execution.Margin=new Thickness(12);
+        return UiKit.Page("自动测试准备、运行与调试",
+            "同一测试任务的运行工作空间，选测计划、步骤定义、工位状态和真实执行事实分层。",
+            UiKit.ThreeColumns(UiKit.Side("运行选择",plan),
+                UiKit.Side("步骤定义",UiKit.Scroll(editor)),
+                UiKit.Side("运行控制与证据",UiKit.Scroll(execution)),350,365));
+    }
+    private static IEnumerable<UiStep> Walk(IEnumerable<UiStep> source)
+    {
+        foreach(var item in source)
+        {
+            yield return item;
+            foreach(var child in Walk(item.Children))yield return child;
+        }
+    }
+
     private static UIElement PublicFlows(UiStore state)
     {
         var draft=new UiTestCase{Name="公共流程（单一连续步骤树）",Test=state.PublicFlow};
@@ -249,6 +323,7 @@ public sealed class StepAuthoringView : UserControl
             UiKit.Button("删除",(_,_)=>Delete()),
             UiKit.Button("↑",(_,_)=>Move(-1)),
             UiKit.Button("↓",(_,_)=>Move(1)),
+            UiKit.Button("F9 断点",(_,_)=>ToggleBreakpoint()),
             UiKit.Button("撤销",(_,_)=>History(true)),
             UiKit.Button("重做",(_,_)=>History(false)));
         DockPanel.SetDock(top,Dock.Top);page.Children.Add(top);
@@ -288,6 +363,10 @@ public sealed class StepAuthoringView : UserControl
             if(Keyboard.Modifiers!=ModifierKeys.Control)return;
             if(e.Key==Key.Z){History(true);e.Handled=true;}
             if(e.Key==Key.Y){History(false);e.Handled=true;}
+        };
+        PreviewKeyDown+=(_,e)=>
+        {
+            if(e.Key==Key.F9){ToggleBreakpoint();e.Handled=true;}
         };
         Refresh();
     }
@@ -385,6 +464,14 @@ public sealed class StepAuthoringView : UserControl
         Checkpoint();_selectedList.Remove(_selected);
         _selected=null;_selectedList=null;_store.Changed("删除步骤");Refresh();
     }
+    private void ToggleBreakpoint()
+    {
+        if(_selected is null||!CommitInspector())return;
+        Checkpoint();
+        _selected.Breakpoint=!_selected.Breakpoint;
+        _store.Changed(_selected.Breakpoint?"设置步骤断点":"清除步骤断点");
+        Refresh(_selected.Id);
+    }
     private void Move(int direction)
     {
         if(_selected is null||_selectedList is null||!CommitInspector())return;
@@ -413,7 +500,7 @@ public sealed class StepAuthoringView : UserControl
     {
         foreach(var s in nodes)
         {
-            var item=new TreeViewItem{Header=(s.Enabled?"":"[禁用] ")+
+            var item=new TreeViewItem{Header=(s.Breakpoint?"● ":"")+(s.Enabled?"":"[禁用] ")+
                 (s.Branch.Length==0?"":s.Branch+" / ")+s.Name+" · "+s.Type,
                 Tag=s,IsExpanded=true,FontWeight=FontWeights.Normal};
             parent.Items.Add(item);
