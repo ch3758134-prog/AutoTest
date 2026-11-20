@@ -21,6 +21,7 @@ public sealed class ConfiguredRealTestFlashPort : ITestFlashPort
     private readonly string _root, _planFingerprint, _testConsent, _flashConsent;
     private readonly long _stationEpoch;
     private readonly bool _hadWrites;
+    private int _flashAttempted;
 
     public ConfiguredRealTestFlashPort(HardwareConnectionService hardware,
         ConfiguredStationActionPort actions, TestDocument document,
@@ -99,6 +100,13 @@ public sealed class ConfiguredRealTestFlashPort : ITestFlashPort
             !string.Equals(latest.Fingerprint, job.Fingerprint, StringComparison.Ordinal))
             throw new IOException("FLASH 资源预检后改变，拒绝擦除。");
 
+        // A single frozen FLASH step may still be reached more than once
+        // through Loop/sequence/call execution. One explicit consent authorizes
+        // exactly one physical attempt, regardless of success, failure or stop.
+        // Block a second destructive call before any cleanup or ECU action.
+        if (Interlocked.Exchange(ref _flashAttempted, 1) != 0)
+            throw new InvalidOperationException(
+                "当前 TEST 运行已经尝试过一次 FLASH；禁止循环或重复烧录。请重新预检并单独授权下一次。");
         // Physical fence cannot hold TEST and FLASH grants simultaneously.
         // First stop all periodic CAN and release held KEY masks.
         await _actions.CleanupAsync(ct);
