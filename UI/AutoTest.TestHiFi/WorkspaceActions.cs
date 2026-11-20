@@ -524,6 +524,8 @@ public partial class MainWindow
     {
         foreach(var item in OpenPages)item.Active=ReferenceEquals(item,page);
         _activePage=page;
+        InspectorSplitter.Visibility=page.IsTestPreview ? Visibility.Visible : Visibility.Collapsed;
+        IssuesSplitter.Visibility=page.IsTestPreview ? Visibility.Visible : Visibility.Collapsed;
         if(page.Kind=="TEST_PREVIEW")
         {
             ActiveFile=null;
