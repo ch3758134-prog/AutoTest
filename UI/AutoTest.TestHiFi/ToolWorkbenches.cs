@@ -1,0 +1,353 @@
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+
+namespace AutoTest.TestHiFi;
+
+// UI-05 workbenches are local, editable UI drafts. No physical device calls.
+public partial class MainWindow
+{
+    private sealed class ToolDraft
+    {
+        public string Name { get; set; } = "";
+        public Dictionary<string, string> Fields { get; set; } = new();
+        public List<string> Items { get; set; } = new();
+        public HashSet<int> HeldKeys { get; set; } = new();
+    }
+
+    private readonly Dictionary<string, ToolDraft> _toolDrafts = new();
+    private static readonly Brush ToolText = new SolidColorBrush(Color.FromRgb(38, 56, 76));
+    private static readonly Brush ToolMuted = new SolidColorBrush(Color.FromRgb(98, 115, 137));
+    private static readonly Brush ToolLine = new SolidColorBrush(Color.FromRgb(220, 230, 242));
+    private static readonly Brush ToolBlue = new SolidColorBrush(Color.FromRgb(37, 100, 181));
+
+    private ToolDraft Draft(string name)
+    {
+        if (_toolDrafts.TryGetValue(name, out var existing)) return existing;
+        var draft = new ToolDraft { Name = name };
+        _toolDrafts[name] = draft;
+        if (!_workFiles.HasProject) return draft;
+        var kind = DraftKind(name);
+        var asset = _workFiles.Workspace!.Assets.FirstOrDefault(a => a.Kind == kind &&
+            a.Name == DraftAssetName(name));
+        if (asset is null) return draft;
+        try
+        {
+            var data = JsonSerializer.Deserialize<ToolDraft>(File.ReadAllText(_workFiles.FullPath(asset.RelativePath)));
+            if (data is not null && data.Name == name)
+            {
+                data.Fields ??= new();
+                data.Items ??= new();
+                data.HeldKeys ??= new();
+                _toolDrafts[name] = data;
+                return data;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        { StatusText = "工作台配置读取失败：" + ex.Message; }
+        return draft;
+    }
+
+    private static string DraftKind(string name) => name switch
+    {
+        "UDS 调试" => "诊断配置",
+        "ECU 烧录" => "烧录配置",
+        "手动台架" => "输入配置",
+        "波形分析" => "参考波形",
+        "DBC 编辑器" => "其他配置",
+        _ => "其他配置"
+    };
+    private static string DraftAssetName(string name) => "UI05 " + name + "草稿";
+
+    private static TextBlock ToolLabel(string value, bool heading = false) => new()
+    {
+        Text = value, Foreground = heading ? ToolText : ToolMuted,
+        FontSize = heading ? 15 : 12, FontWeight = heading ? FontWeights.SemiBold : FontWeights.Normal,
+        Margin = new Thickness(0, heading ? 0 : 7, 0, heading ? 14 : 6),
+        TextWrapping = TextWrapping.Wrap
+    };
+    private static Border ToolCard(UIElement child, Thickness? margin = null) => new()
+    {
+        Child = child, Background = Brushes.White, BorderBrush = ToolLine,
+        BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6),
+        Padding = new Thickness(16), Margin = margin ?? new Thickness(0, 0, 9, 0)
+    };
+    private static Button ToolButton(string label, Action action, bool primary = false)
+    {
+        var button = new Button
+        {
+            Content = label, Height = 33, MinWidth = 82, Padding = new Thickness(10, 4, 10, 4),
+            Margin = new Thickness(0, 0, 8, 8), Background = primary ? ToolBlue : Brushes.White,
+            Foreground = primary ? Brushes.White : ToolText, BorderBrush = ToolLine,
+            BorderThickness = new Thickness(1), Cursor = System.Windows.Input.Cursors.Hand
+        };
+        button.Click += (_, _) => action();
+        return button;
+    }
+    private TextBox ToolField(StackPanel host, ToolDraft draft, string key, string fallback = "")
+    {
+        host.Children.Add(ToolLabel(key));
+        var field = new TextBox
+        {
+            Text = draft.Fields.TryGetValue(key, out var value) ? value : fallback,
+            MinHeight = 34, FontSize = 12.5, Padding = new Thickness(9, 7, 9, 7),
+            Foreground = ToolText, Background = Brushes.White, BorderBrush = ToolLine,
+            BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 0, 5)
+        };
+        draft.Fields[key] = field.Text;
+        field.TextChanged += (_, _) => draft.Fields[key] = field.Text;
+        host.Children.Add(field);
+        return field;
+    }
+    private static void ToolNote(StackPanel host, string message)
+    {
+        host.Children.Add(new TextBlock
+        {
+            Text = message, TextWrapping = TextWrapping.Wrap, Foreground = ToolMuted,
+            FontSize = 12, LineHeight = 21, Margin = new Thickness(0, 8, 0, 12)
+        });
+    }
+
+    private void SaveToolDraft(ToolDraft draft)
+    {
+        if (!_workFiles.HasProject)
+        {
+            MessageBox.Show(this, "先创建或打开 UI 工程，再保存此专业工具的本地配置。", "保存工作台",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            var kind = DraftKind(draft.Name);
+            var title = DraftAssetName(draft.Name);
+            var asset = _workFiles.Workspace!.Assets.FirstOrDefault(a => a.Kind == kind && a.Name == title)
+                ?? _workFiles.NewAsset(kind, title);
+            var doc = _workFiles.OpenAsset(asset);
+            doc.Content = JsonSerializer.Serialize(draft, new JsonSerializerOptions { WriteIndented = true });
+            _workFiles.Save(doc);
+            RefreshProjectTree();
+            RefreshTabStrip();
+            StoreSession();
+            StatusText = "已保存本地 UI 工作台草稿：" + asset.RelativePath + "。未向 ECU 发送命令。";
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException or InvalidOperationException)
+        { ShowFileError("保存工具草稿失败", ex); }
+    }
+
+    private void RenderToolWorkbench(string name)
+    {
+        if (name is not ("DBC 编辑器" or "UDS 调试" or "ECU 烧录" or "波形分析" or "手动台架"))
+        {
+            ToolWorkbenchHost.Content = null;
+            ToolWorkbenchHost.Visibility = Visibility.Collapsed;
+            ToolDescriptionPanel.Visibility = Visibility.Visible;
+            return;
+        }
+        var draft = Draft(name);
+        ToolDescriptionPanel.Visibility = Visibility.Collapsed;
+        ToolWorkbenchHost.Visibility = Visibility.Visible;
+        WorkspaceTitle.Text = name;
+        WorkspaceSubtitle.Text = "UI-05 · 专业工具界面与本地配置 · 未连接 ECU";
+        var root = new Grid { Background = new SolidColorBrush(Color.FromRgb(247, 249, 252)) };
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(270) });
+        var sidebar = new StackPanel();
+        sidebar.Children.Add(ToolLabel("专业工具", true));
+        foreach (var item in new[] { "DBC 编辑器", "UDS 调试", "ECU 烧录", "波形分析", "手动台架" })
+        {
+            var tool = item;
+            var itemButton = ToolButton((tool == name ? "●  " : "   ") + tool,
+                () => ShowToolWorkspace(tool), tool == name);
+            itemButton.HorizontalContentAlignment = HorizontalAlignment.Left;
+            itemButton.Width = 195;
+            sidebar.Children.Add(itemButton);
+        }
+        ToolNote(sidebar, "这些工具服务于 ECU 测试，也可以独立编辑配置。当前仅验证界面及真实本地文件保存，不执行硬件请求。");
+        var sideCard = ToolCard(sidebar);
+        Grid.SetColumn(sideCard, 0); root.Children.Add(sideCard);
+
+        var center = new StackPanel();
+        var centerScroll = new ScrollViewer
+        {
+            Content = center, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Padding = new Thickness(3, 3, 3, 12)
+        };
+        var centerCard = ToolCard(centerScroll);
+        Grid.SetColumn(centerCard, 1); root.Children.Add(centerCard);
+
+        var inspector = new StackPanel();
+        var inspectorScroll = new ScrollViewer
+        {
+            Content = inspector, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Padding = new Thickness(1)
+        };
+        var inspectorCard = ToolCard(inspectorScroll, new Thickness(0));
+        Grid.SetColumn(inspectorCard, 2); root.Children.Add(inspectorCard);
+
+        center.Children.Add(ToolLabel(name + " · 工作区", true));
+        inspector.Children.Add(ToolLabel("配置与操作", true));
+        switch (name)
+        {
+            case "DBC 编辑器": BuildDbcWorkbench(center, inspector, draft); break;
+            case "UDS 调试": BuildUdsWorkbench(center, inspector, draft); break;
+            case "ECU 烧录": BuildFlashWorkbench(center, inspector, draft); break;
+            case "波形分析": BuildWaveWorkbench(center, inspector, draft); break;
+            case "手动台架": BuildBenchWorkbench(center, inspector, draft); break;
+        }
+        inspector.Children.Add(ToolLabel("本地工作区", true));
+        inspector.Children.Add(ToolButton("保存工具配置", () => SaveToolDraft(draft), true));
+        ToolNote(inspector, "保存的是当前 UI 工作台草稿，并非正式 TEST、UDS、Flash 或 DBC 执行配置。硬件执行命令未启用。");
+        ToolWorkbenchHost.Content = root;
+        WorkspaceStatusText.Text = name + " · UI 编辑状态（未执行真实设备操作）";
+    }
+
+    private void BuildDbcWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
+    {
+        ToolNote(center, "从当前工程选择真实 DBC 文件。文件内容可以打开、查看和保存；报文与信号的结构化解析在正式 DBC 专业接线阶段启用。");
+        var files = _workFiles.Workspace?.Assets.Where(a => a.Kind == "DBC").ToArray() ?? [];
+        if (files.Length == 0) ToolNote(center, "当前工程没有 DBC 文件。可使用左侧工程树或顶部“导入文件”添加。");
+        foreach (var asset in files)
+        {
+            var current = asset;
+            center.Children.Add(ToolButton("▤  " + asset.Name + "   ·   " + asset.RelativePath,
+                () => OpenAsset(current)));
+        }
+        center.Children.Add(ToolButton("导入 DBC 文件…", () => ImportAsset_Click(this, new RoutedEventArgs())));
+        ToolField(inspector, draft, "显示别名方案", "中文信号名称");
+        ToolField(inspector, draft, "信号筛选条件");
+        ToolNote(inspector, "不会生成虚构报文、信号或 DBC 解析结果。");
+    }
+
+    private void BuildUdsWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
+    {
+        ToolNote(center, "编辑多条连续 UDS 请求及其顺序。仅建立可保存的请求草稿；当前未连接 ISO-TP/UDS 后端，不会发送请求或显示伪响应。");
+        var entries = new ListBox { MinHeight = 220, MaxHeight = 350, BorderBrush = ToolLine,
+            BorderThickness = new Thickness(1), FontSize = 13, Padding = new Thickness(6) };
+        void Refresh() => entries.ItemsSource = draft.Items.Select((v,i) => (i+1).ToString("00") + "   " + v).ToArray();
+        Refresh();
+        center.Children.Add(entries);
+        var bar = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
+        center.Children.Add(bar);
+        var service = ToolField(inspector, draft, "服务 / Payload (HEX)", "22 F1 90");
+        ToolField(inspector, draft, "请求 ID (HEX)", "18DA50F1");
+        ToolField(inspector, draft, "响应 ID (HEX)", "18DAF150");
+        ToolField(inspector, draft, "超时 (ms)", "1000");
+        bar.Children.Add(ToolButton("添加请求", () => { if (!string.IsNullOrWhiteSpace(service.Text)) {
+            draft.Items.Add(service.Text.Trim()); Refresh(); } }));
+        bar.Children.Add(ToolButton("移除选中", () => { if (entries.SelectedIndex >= 0) {
+            draft.Items.RemoveAt(entries.SelectedIndex); Refresh(); } }));
+        bar.Children.Add(ToolButton("上移", () => { var i = entries.SelectedIndex;
+            if (i > 0) { (draft.Items[i-1],draft.Items[i]) = (draft.Items[i],draft.Items[i-1]); Refresh(); entries.SelectedIndex = i-1; } }));
+        bar.Children.Add(ToolButton("下移", () => { var i = entries.SelectedIndex;
+            if (i >= 0 && i < draft.Items.Count - 1) { (draft.Items[i+1],draft.Items[i]) =
+                (draft.Items[i],draft.Items[i+1]); Refresh(); entries.SelectedIndex = i+1; } }));
+        ToolNote(inspector, "物理请求 / ISO-TP / NRC / 关联时间线：待正式后端接线，不提供模拟成功按钮。");
+    }
+
+    private void BuildFlashWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
+    {
+        ToolNote(center, "烧录工具分为文件与配置、前置检查、执行阶段和结果证据。本页只编辑烧录方案，不提供假进度和假成功结果。");
+        ToolField(center, draft, "固件文件路径");
+        center.Children.Add(ToolButton("选择固件文件…", () =>
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Title = "选择 ECU 固件",
+                Filter = "固件文件|*.hex;*.s19;*.mot;*.bin|所有文件|*.*" };
+            if (dlg.ShowDialog(this) == true)
+            {
+                draft.Fields["固件文件路径"] = dlg.FileName;
+                RenderToolWorkbench("ECU 烧录");
+            }
+        }));
+        ToolField(center, draft, "Seed / Key DLL 路径");
+        center.Children.Add(ToolButton("选择 Key DLL…", () =>
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Title = "选择 Seed / Key 算法库",
+                Filter = "DLL 文件|*.dll|所有文件|*.*" };
+            if (dlg.ShowDialog(this) == true)
+            {
+                draft.Fields["Seed / Key DLL 路径"] = dlg.FileName;
+                RenderToolWorkbench("ECU 烧录");
+            }
+        }));
+        center.Children.Add(ToolLabel("烧录阶段", true));
+        foreach (var phase in new[] { "前置检查", "编程会话", "安全访问", "擦除", "传输下载", "完整性检查", "ECU 复位", "结束归档" })
+            center.Children.Add(ToolLabel("○  " + phase));
+        ToolField(inspector, draft, "应用请求 ID (HEX)", "18DA50F1");
+        ToolField(inspector, draft, "Boot 请求 ID (HEX)", "18DA50F1");
+        ToolField(inspector, draft, "Boot 响应 ID (HEX)", "18DAF150");
+        ToolNote(inspector, "以上默认值仅为 UI 输入占位，必须由实际 ECU 配置确认；不可据此执行烧录。");
+    }
+
+    private void BuildWaveWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
+    {
+        ToolNote(center, "工程参考波形管理。当前不连接 CAN 原始帧或测量数据，不绘制虚假的采集曲线。");
+        var files = _workFiles.Workspace?.Assets.Where(a => a.Kind == "参考波形").ToArray() ?? [];
+        foreach (var asset in files)
+        {
+            var current = asset;
+            center.Children.Add(ToolButton("▤  " + asset.Name + "   ·   " + asset.RelativePath,
+                () => OpenAsset(current)));
+        }
+        if (files.Length == 0) ToolNote(center, "暂无工程参考波形，可从工程资源导入 CSV。");
+        center.Children.Add(ToolButton("导入参考波形…", () => ImportAsset_Click(this, new RoutedEventArgs())));
+        center.Children.Add(ToolLabel("测量画布 · 暂无真实数据", true));
+        var plot = new Border { MinHeight = 190, Background = new SolidColorBrush(Color.FromRgb(248,251,255)),
+            BorderBrush = ToolLine, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(5),
+            Child = new TextBlock { Text = "无采样数据 · 未连接数据源", FontSize = 13,
+                Foreground = ToolMuted, HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center } };
+        center.Children.Add(plot);
+        ToolField(inspector, draft, "波形名称");
+        ToolField(inspector, draft, "信号 / 通道");
+        ToolField(inspector, draft, "参考容差");
+        ToolNote(inspector, "游标、缩放和波形判定将在接入真实采集与 RECORD 证据模型后启用。");
+    }
+
+    private void BuildBenchWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
+    {
+        ToolNote(center, "20 路 Key 为电阻网络开关，组合生成 5 路模拟电压输出。此处仅编辑闭合 / 保持的目标状态；不推算虚构电压，不发送控制命令。");
+        center.Children.Add(ToolLabel("20 Key 开关目标状态", true));
+        var keys = new UniformGrid { Columns = 5, Rows = 4, Margin = new Thickness(0,0,0,14) };
+        void RebuildKeys()
+        {
+            keys.Children.Clear();
+            for (int i = 1; i <= 20; i++)
+            {
+                var id = i;
+                var active = draft.HeldKeys.Contains(id);
+                var button = ToolButton("Key " + id.ToString("00") + (active ? "  ●" : "  ○"), () =>
+                {
+                    if (!draft.HeldKeys.Add(id)) draft.HeldKeys.Remove(id);
+                    RebuildKeys();
+                }, active);
+                button.Margin = new Thickness(3);
+                keys.Children.Add(button);
+            }
+        }
+        RebuildKeys();
+        center.Children.Add(keys);
+        var controls = new WrapPanel();
+        controls.Children.Add(ToolButton("全部释放", () => { draft.HeldKeys.Clear(); RebuildKeys(); }));
+        controls.Children.Add(ToolButton("加入动作序列", () =>
+        {
+            draft.Items.Add("Key[" + string.Join(",", draft.HeldKeys.Order()) + "] · " +
+                draft.Fields.GetValueOrDefault("保持时间 (ms)", "500") + " ms");
+            RenderToolWorkbench("手动台架");
+        }));
+        center.Children.Add(controls);
+        center.Children.Add(ToolLabel("动作序列", true));
+        var list = new ListBox { ItemsSource = draft.Items, MinHeight = 120,
+            BorderThickness = new Thickness(1), BorderBrush = ToolLine };
+        center.Children.Add(list);
+        center.Children.Add(ToolButton("删除选中动作", () =>
+        {
+            if (list.SelectedIndex >= 0) { draft.Items.RemoveAt(list.SelectedIndex); RenderToolWorkbench("手动台架"); }
+        }));
+        ToolField(inspector, draft, "保持时间 (ms)", "500");
+        ToolNote(inspector, "IGN / 夹具电磁阀：正式 DEVICE 合同接入后提供实际开关与 ACK/超时状态。当前不得将按钮目标状态显示为物理反馈。");
+    }
+}
