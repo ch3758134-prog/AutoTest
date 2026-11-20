@@ -170,6 +170,93 @@ public partial class MainWindow
         }
     }
 
+    private sealed class QuickItem
+    {
+        public string Name { get; init; } = "";
+        public string Hint { get; init; } = "";
+        public Action Execute { get; init; } = null!;
+        public override string ToString() => Name + "    " + Hint;
+    }
+
+    private void QuickOpen_Click(object sender, RoutedEventArgs e) => OpenQuickPalette();
+
+    private void OpenQuickPalette()
+    {
+        var entries=new List<QuickItem>
+        {
+            new() {Name="自动测试 · 返回当前用例",Hint="工作模式",Execute=ShowTestWorkspace},
+            new() {Name="工程与文件",Hint="工作模式",Execute=()=>ShowProjectWorkspace()},
+            new() {Name="新建工程…",Hint="文件命令",Execute=()=>NewProject_Click(this,new RoutedEventArgs())},
+            new() {Name="打开工程…",Hint="文件命令",Execute=()=>OpenProject_Click(this,new RoutedEventArgs())},
+            new() {Name="保存当前文件",Hint="文件命令",Execute=()=>SaveCurrentDocument()},
+            new() {Name="保存所有文件",Hint="文件命令",Execute=()=>SaveAllDocuments()}
+        };
+        foreach(var c in Cases)
+        {
+            var current=c;
+            entries.Add(new QuickItem { Name=current.Name, Hint=current.Id+" · UI 研究用例",
+                Execute=()=>{ShowTestWorkspace();CaseList.SelectedItem=current;} });
+        }
+        foreach(var a in _workFiles.Workspace?.Assets ?? [])
+        {
+            var asset=a;
+            entries.Add(new QuickItem {Name=asset.Name,Hint=asset.Kind+" · "+asset.RelativePath,
+                Execute=()=>OpenAsset(asset)});
+        }
+        foreach(var name in new[]{"DBC 编辑器","CAN 工作台","手动台架","UDS 调试",
+                                  "ECU 烧录","波形分析","设备诊断","生产与记录"})
+        {
+            var tool=name;
+            entries.Add(new QuickItem{Name=tool,Hint="工作页面",Execute=()=>ShowToolWorkspace(tool)});
+        }
+        var win=new Window {Owner=this,Title="快速打开 · 搜索资源与命令",
+            Width=650,Height=455,MinWidth=540,MinHeight=330,
+            WindowStartupLocation=WindowStartupLocation.CenterOwner,
+            ResizeMode=ResizeMode.CanResize,Background=Brushes.White,
+            FontFamily=new FontFamily("Microsoft YaHei UI")};
+        var layout=new Grid {Margin=new Thickness(17)};
+        layout.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
+        layout.RowDefinitions.Add(new RowDefinition{Height=new GridLength(1,GridUnitType.Star)});
+        layout.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
+        var search=new TextBox {Height=40,FontSize=14,Padding=new Thickness(12,8,12,8),
+            ToolTip="输入文件名、命令或工具名称，回车打开",Margin=new Thickness(0,0,0,11)};
+        Grid.SetRow(search,0);layout.Children.Add(search);
+        var list=new ListBox {BorderBrush=new SolidColorBrush(Color.FromRgb(221,231,242)),
+            BorderThickness=new Thickness(1),FontSize=13,Padding=new Thickness(4)};
+        Grid.SetRow(list,1);layout.Children.Add(list);
+        var hint=new TextBlock {Text="↑↓ 选择   Enter 打开   Esc 取消 · 不会执行任何真实设备操作",
+            Foreground=new SolidColorBrush(Color.FromRgb(99,116,138)),
+            Margin=new Thickness(0,10,0,0),FontSize=11.5};
+        Grid.SetRow(hint,2);layout.Children.Add(hint);
+        void Filter()
+        {
+            var q=search.Text.Trim();
+            list.ItemsSource=entries.Where(x=>
+                q.Length==0 || x.Name.Contains(q,StringComparison.OrdinalIgnoreCase) ||
+                x.Hint.Contains(q,StringComparison.OrdinalIgnoreCase)).Take(100).ToArray();
+            if(list.Items.Count>0)list.SelectedIndex=0;
+        }
+        Filter();
+        search.TextChanged+=(_,_)=>Filter();
+        QuickItem? chosen=null;
+        void Select()
+        {
+            if(list.SelectedItem is not QuickItem item)return;
+            chosen=item;win.DialogResult=true;
+        }
+        list.MouseDoubleClick+=(_,_)=>Select();
+        win.PreviewKeyDown+=(_,ke)=>
+        {
+            if(ke.Key==Key.Escape){win.DialogResult=false;ke.Handled=true;return;}
+            if(ke.Key==Key.Enter){Select();ke.Handled=true;return;}
+            if(ke.Key==Key.Down&&search.IsKeyboardFocused)
+            {list.Focus();list.SelectedIndex=0;ke.Handled=true;}
+        };
+        win.Content=layout;
+        win.Loaded+=(_,_)=>search.Focus();
+        if(win.ShowDialog()==true&&chosen is not null)chosen.Execute();
+    }
+
     private void ShowTest_Click(object sender, RoutedEventArgs e) => ShowTestWorkspace();
     private void ShowProject_Click(object sender, RoutedEventArgs e) => ShowProjectWorkspace();
     private void ShowResources_Click(object sender, RoutedEventArgs e) =>
