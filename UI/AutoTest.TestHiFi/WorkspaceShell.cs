@@ -743,6 +743,10 @@ public partial class MainWindow
     {
         var kind=AskAssetKind(this);
         if(kind is null||kind==asset.Kind)return;
+        if (_workFiles.OpenDocuments.Any(d => d.Asset.Id == asset.Id && d.Dirty) &&
+            MessageBox.Show(this,
+                "此文件有未保存的修改。移动会保留当前编辑草稿；请注意工程内其他文本引用不会自动更新。继续？",
+                "移动未保存资源", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         if(MessageBox.Show(this,
             "此操作会移动实际资源文件并变更其分类。\n\n其他资源文件中的引用不会自动修复。继续？",
             "移动资源",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
@@ -750,7 +754,7 @@ public partial class MainWindow
         {
             _workFiles.MoveAssetToKind(asset,kind);RefreshProjectTree();
             if(_currentDocument?.Asset.Id==asset.Id)ActivateDocument(_currentDocument);
-            StoreSession();
+            RefreshTabStrip();StoreSession();
         }
         catch(Exception ex)when(ex is IOException or ArgumentException or UnauthorizedAccessException)
         {ShowFileError("移动资源失败",ex);}
@@ -800,6 +804,12 @@ public partial class MainWindow
           "移除资源",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
         try
         {
+            // The user explicitly chose to discard a draft: reset it only after
+            // the final confirmation, before the storage layer checks for dirty documents.
+            foreach (var document in _workFiles.OpenDocuments.Where(d => d.Asset.Id == asset.Id && d.Dirty))
+            {
+                document.Content = document.SavedText;
+            }
             _workFiles.Delete(asset);
             var removedCurrent = _currentDocument?.Asset.Id == asset.Id;
             foreach (var document in _workFiles.OpenDocuments.Where(d => d.Asset.Id == asset.Id).ToArray())
