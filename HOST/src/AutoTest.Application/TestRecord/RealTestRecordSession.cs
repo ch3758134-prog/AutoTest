@@ -409,7 +409,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         // so Expect is deliberately NOT eligible for formal ECU PASS.
         var successfulAssertions = completed.Facts.Where(f =>
             f.Phase == TestPhase.Test && f.Status == RealStepStatus.Completed &&
-            (f.Type is "AssertSignal" or "WaitUntil" or "Expect")).ToArray();
+            (f.Type is "AssertSignal" or "WaitUntil" or "Expect" or "WaveCompare")).ToArray();
         var byOccurrence = evidenceSnapshot.StepFacts
             .Where(x => x.StepOccurrenceId.HasValue)
             .GroupBy(x => x.StepOccurrenceId!.Value)
@@ -457,7 +457,42 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 origin.SignalName == sample.Signal.SignalName &&
                 origin.Unit == sample.Unit;
         }
-        var provenCount = successfulAssertions.Count(HasDirectJudgementProof);
+        bool HasArchivedWaveJudgementProof(RealStepFact executed)
+        {
+            if (executed.Type != "WaveCompare" ||
+                executed.StepOccurrenceId == Guid.Empty ||
+                executed.Status != RealStepStatus.Completed ||
+                executed.Actual != "Pass" || executed.Expected != "Pass" ||
+                !byOccurrence.TryGetValue(executed.StepOccurrenceId, out var rows) ||
+                rows.Length != 1)
+                return false;
+            var tokens = (executed.Evidence ?? "").Split(',',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (tokens.Length != 2 ||
+                !Guid.TryParse(tokens[0], out var captureId) ||
+                !Guid.TryParse(tokens[1], out var comparisonId) ||
+                captureId == Guid.Empty || comparisonId == Guid.Empty ||
+                captureId == comparisonId ||
+                !verified.Contains(captureId) || !verified.Contains(comparisonId))
+                return false;
+            // The physical finalizer already verified each immutable source
+            // file and recomputed a PASS comparison against this exact capture.
+            var persisted = rows[0];
+            return persisted.Step == executed.Step &&
+                persisted.CaseAttemptId == CaseAttemptId &&
+                persisted.Phase == "Test" &&
+                persisted.Disposition == nameof(RealStepStatus.Completed) &&
+                persisted.JudgementEvidenceKind == "WaveComparisonPendingArchive" &&
+                persisted.Quality == EvidenceQuality.HostObserved &&
+                persisted.Expected == executed.Expected &&
+                persisted.Actual == executed.Actual &&
+                persisted.Evidence.Length == 2 &&
+                persisted.Evidence[0].Value == captureId &&
+                persisted.Evidence[1].Value == comparisonId;
+        }
+
+        var provenCount = successfulAssertions.Count(f =>
+            HasDirectJudgementProof(f) || HasArchivedWaveJudgementProof(f));
         var unprovenCount = successfulAssertions.Length - provenCount;
         var formalPassEligible = capture.RecordingComplete &&
             capture.DroppedEvents == 0 && orphaned.Length == 0 && !corrupt &&
@@ -473,7 +508,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                     unarchivedEvidenceCount = orphaned.Length,
                     corruptArtifact = corrupt,
                     successfulAssertionCount = successfulAssertions.Length,
-                    provenDirectDbcAssertions = provenCount,
+                    provenDirectDbcOrVerifiedWaveAssertions = provenCount,
                     unprovenAssertions = unprovenCount
                 }), EvidenceQuality.Unknown, ImmutableArray<EvidenceRef>.Empty, ct)
                 .ConfigureAwait(false);
