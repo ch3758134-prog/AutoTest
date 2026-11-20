@@ -45,3 +45,13 @@ R01 为研究交接摘要，原始《现代复杂工业级 PC 软件的产品与
 - [研究—设计—验证追溯与 V02-03 交接](V02-02/REVIEW_TRACE_AND_HANDOFF_20261119.md)
 - 状态：RESEARCH_RECORDED / DESIGN_CANDIDATE / VISUAL_PROTOTYPE_NOT_RUN / NO_CODE_CHANGE / USER_BATCH_REVIEW_AVAILABLE。
 - **下一轮 V02-03**：以同一 40 步内容验证 A/B 两种不同可视方案及窄屏状态，防止在真实视觉未检查前直接实现 WPF。仅用 Markdown 归档，不制作 HTML。
+
+## V02-03｜TEST 完整视觉 A/B + 150% 紧凑场景（2026-11-19）
+
+- [A：右侧持续参数 · 宽屏 SVG](V02-03/A_RIGHT_INSPECTOR_WIDE.svg)
+- [B：下方参数工作台 · 宽屏 SVG](V02-03/B_BOTTOM_INSPECTOR_WIDE.svg)
+- [C：150% 缩放时步骤结构 SVG](V02-03/C_COMPACT_STRUCTURE_150PCT.svg)
+- [D：150% 缩放时步骤详情 SVG](V02-03/D_COMPACT_DETAILS_150PCT.svg)
+- [视觉与操作联合比较、设计风险、静态检查及 V02-04 交接](V02-03/VISUAL_COMPARISON_AND_UI_REVIEW_20261119.md)
+- 状态：SVG_VISUAL_CANDIDATES_COMMITTED / SOURCE_STRUCTURE_READBACK_PENDING / WINDOWS_RENDER_NOT_RUN / INTERACTION_NOT_RUN / **NO_WPF_CHANGE**。
+- 无 HTML。用户可直接查看图稿；不要求本批进行 Windows 实测。下一批进入受控的**可操作**纯 TEST 原型，准备好的时候再给用户精确版本和运行方式。
