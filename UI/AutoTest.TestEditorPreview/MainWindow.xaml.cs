@@ -865,24 +865,25 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         if (!_uiReady) return;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
-        if (ctrl && e.Key == Key.S) { Save_Click(sender, e); e.Handled = true; return; }
-        if (ctrl && e.Key == Key.O) { Open_Click(sender, e); e.Handled = true; return; }
-        if (ctrl && e.Key == Key.F) { StepSearch.Focus(); StepSearch.SelectAll(); e.Handled = true; return; }
+        if (ctrl && key == Key.S) { Save_Click(sender, e); e.Handled = true; return; }
+        if (ctrl && key == Key.O) { Open_Click(sender, e); e.Handled = true; return; }
+        if (ctrl && key == Key.F) { StepSearch.Focus(); StepSearch.SelectAll(); e.Handled = true; return; }
         // Native TextBox Undo and IME editing have priority over document-level history.
         if (Keyboard.FocusedElement is TextBox) return;
-        if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Up)
+        if (Keyboard.Modifiers == ModifierKeys.Alt && key == Key.Up)
         { MoveSibling(-1); e.Handled = true; return; }
-        if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Down)
+        if (Keyboard.Modifiers == ModifierKeys.Alt && key == Key.Down)
         { MoveSibling(1); e.Handled = true; return; }
-        if (ctrl && e.Key == Key.Z) { Undo(); e.Handled = true; }
-        else if (ctrl && e.Key == Key.Y) { Redo(); e.Handled = true; }
-        else if (ctrl && e.Key == Key.C) { CopyStep(); e.Handled = true; }
-        else if (ctrl && e.Key == Key.V) { PasteStep(); e.Handled = true; }
-        else if (ctrl && e.Key == Key.X) { CopyStep(); DeleteStep_Click(sender, e); e.Handled = true; }
-        else if (e.Key == Key.Insert) { OpenPalette_Click(sender, e); e.Handled = true; }
-        else if (e.Key == Key.F2) { RenameSelectedStep(); e.Handled = true; }
-        else if (e.Key == Key.Delete && Keyboard.FocusedElement is ListBoxItem) { DeleteStep_Click(sender, e); e.Handled = true; }
+        if (ctrl && key == Key.Z) { Undo(); e.Handled = true; }
+        else if (ctrl && key == Key.Y) { Redo(); e.Handled = true; }
+        else if (ctrl && key == Key.C) { CopyStep(); e.Handled = true; }
+        else if (ctrl && key == Key.V) { PasteStep(); e.Handled = true; }
+        else if (ctrl && key == Key.X) { CopyStep(); DeleteStep_Click(sender, e); e.Handled = true; }
+        else if (key == Key.Insert) { OpenPalette_Click(sender, e); e.Handled = true; }
+        else if (key == Key.F2) { RenameSelectedStep(); e.Handled = true; }
+        else if (key == Key.Delete && Keyboard.FocusedElement is ListBoxItem) { DeleteStep_Click(sender, e); e.Handled = true; }
     }
     private void RenameSelectedStep()
     {
