@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -51,6 +52,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private double _lastInspectorWidth = 380;
     private string? _fieldSnapshot;
     private string? _currentFile;
+    private string? _copiedStep;
     private readonly Stack<string> _undo = new();
     private readonly Stack<string> _redo = new();
 
@@ -406,6 +408,32 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         SelectNode(copy, scroll: true);
         Dirty("已复制当前步骤及其合法子结构；Ctrl+Z 可撤销。");
     }
+    private void CopyStep_Click(object sender, RoutedEventArgs e) => CopyStep();
+    private void PasteStep_Click(object sender, RoutedEventArgs e) => PasteStep();
+    private void CopyStep()
+    {
+        var node = SelectedEditable();
+        if (node is null) { SetStatus("请选择一个步骤或流程节点进行复制。"); return; }
+        _copiedStep = JsonSerializer.Serialize(node);
+        SetStatus("已复制 " + node.DisplayTitle + " 到本原型内部步骤缓冲（不包含硬件运行数据）。");
+    }
+    private void PasteStep()
+    {
+        if (_copiedStep is null || SelectedCase is null)
+        { SetStatus("内部步骤缓冲为空，请先复制一个步骤。"); return; }
+        var node = SelectedNode ?? SelectedCase.Phases[1];
+        if (node.Role == NodeRole.Container)
+        { SetStatus("请先选择具体分支后再粘贴，不能隐式插入 IF 或 SWITCH。"); return; }
+        var parent = node.Role is NodeRole.Phase or NodeRole.Branch ? node : node.Parent;
+        if (parent is null) return;
+        var index = node.Role is NodeRole.Phase or NodeRole.Branch
+            ? parent.Children.Count : parent.Children.IndexOf(node) + 1;
+        var copy = JsonSerializer.Deserialize<EditorNode>(_copiedStep)!.CloneWithFreshIds();
+        copy.Parent = parent; copy.Title += " 副本";
+        Checkpoint(); parent.Children.Insert(Math.Clamp(index, 0, parent.Children.Count), copy);
+        SelectNode(copy, scroll: true);
+        Dirty("已粘贴一份新步骤/子树，实体身份不同于原步骤，可撤销。");
+    }
     private void DeleteStep_Click(object sender, RoutedEventArgs e)
     {
         var node = SelectedEditable();
@@ -629,12 +657,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             ? "本地 UI 草稿没有检查到简单字段错误；不代表正式 TEST 工程验证通过。"
             : "本地 UI 草稿发现 " + Problems.Count + " 处字段问题。双击问题定位。");
     }
-    private void ProblemList_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
+    private void ProblemList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_uiReady || _syncing || e.AddedItems.Count == 0) return;
+        if (e.AddedItems[0] is EditorProblem problem) NavigateProblem(problem);
+    }
     private void ProblemList_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (ProblemList.SelectedItem is not EditorProblem p || SelectedCase is null) return;
-        var target = SelectedCase.Find(p.NodeId);
-        if (target is null) return;
+        if (ProblemList.SelectedItem is EditorProblem p) NavigateProblem(p);
+    }
+    private void NavigateProblem(EditorProblem p)
+    {
+        if (SelectedCase?.Find(p.NodeId) is not EditorNode target) return;
         SelectNode(target, scroll: true);
         if (_compactMode) ShowCompactDetails();
         SetStatus("已定位问题：" + p.Message + "；请修正对应字段。");
@@ -681,6 +715,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (!_uiReady) return;
         _compactMode = ActualWidth < 1170;
+        MainHeaderRow.Height = new GridLength(_compactMode ? 52 : 63);
+        TaskHeaderRow.Height = new GridLength(_compactMode ? 69 : 87);
+        FooterRow.Height = new GridLength(_compactMode ? 27 : 30);
+        StepToolbarRow.Height = new GridLength(_compactMode ? 91 : 104);
         if (_compactMode)
         {
             if (!_wasCompact)
@@ -749,8 +787,33 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (Keyboard.FocusedElement is TextBox) return;
         if (ctrl && e.Key == Key.Z) { Undo(); e.Handled = true; }
         else if (ctrl && e.Key == Key.Y) { Redo(); e.Handled = true; }
+        else if (ctrl && e.Key == Key.C) { CopyStep(); e.Handled = true; }
+        else if (ctrl && e.Key == Key.V) { PasteStep(); e.Handled = true; }
+        else if (ctrl && e.Key == Key.X) { CopyStep(); DeleteStep_Click(sender, e); e.Handled = true; }
         else if (e.Key == Key.Insert) { OpenPalette_Click(sender, e); e.Handled = true; }
+        else if (e.Key == Key.F2) { RenameSelectedStep(); e.Handled = true; }
         else if (e.Key == Key.Delete && Keyboard.FocusedElement is ListBoxItem) { DeleteStep_Click(sender, e); e.Handled = true; }
+    }
+    private void RenameSelectedStep()
+    {
+        if (SelectedEditable() is not EditorNode node) return;
+        if (_compactMode) ShowCompactDetails();
+        var root = _compactMode ? (DependencyObject)CompactInspector :
+            LayoutPicker.SelectedIndex == 1 ? BottomInspector : RightInspector;
+        var field = FindNameEditor(root, node);
+        if (field is not null) { field.Focus(); field.SelectAll(); }
+        else SetStatus("步骤名称可在当前详情面板直接编辑。");
+    }
+    private static TextBox? FindNameEditor(DependencyObject root, EditorNode node)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is TextBox tb && ReferenceEquals(tb.DataContext, node)) return tb;
+            var found = FindNameEditor(child, node);
+            if (found is not null) return found;
+        }
+        return null;
     }
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
