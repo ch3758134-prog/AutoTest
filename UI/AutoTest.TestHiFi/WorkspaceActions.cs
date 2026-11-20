@@ -248,7 +248,7 @@ public partial class MainWindow
             try { SaveManifest(); }
             catch { Assets.Remove(asset); if (File.Exists(target)) File.Delete(target); throw; }
             RecordProjectUndo("新建资源 " + name,
-                () => { MoveAssetToTrash(asset); Assets.Remove(asset); SaveManifest(); },
+                () => { EnsureAssetPageClosedForHistory(asset); MoveAssetToTrash(asset); Assets.Remove(asset); SaveManifest(); },
                 () => { RestoreAssetFromTrash(asset); Assets.Add(asset); SaveManifest(); });
             OpenAsset(asset);
             StatusText = "已创建文件：" + target;
@@ -285,6 +285,12 @@ public partial class MainWindow
     private void AssetList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (AssetList.SelectedItem is UiAsset asset) OpenAsset(asset);
+    }
+    private void AssetList_RightClickSelect(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source) return;
+        var container=ItemsControl.ContainerFromElement(AssetList,source) as ListBoxItem;
+        if(container?.DataContext is UiAsset asset) AssetList.SelectedItem=asset;
     }
     private void OpenSelectedAsset_Click(object sender, RoutedEventArgs e)
     {
@@ -435,6 +441,16 @@ public partial class MainWindow
         Directory.CreateDirectory(folder);
         return Path.Combine(folder,asset.Id+Path.GetExtension(asset.RelativePath));
     }
+    private void EnsureAssetPageClosedForHistory(UiAsset asset)
+    {
+        var page=OpenPages.FirstOrDefault(p=>p.Document?.Asset.Id==asset.Id);
+        if(page is null)return;
+        if(page.Document?.Changed==true)
+            throw new InvalidDataException("资源存在未保存编辑。请先保存或关闭该文件后再撤销此资源操作。");
+        DetachPage(page);
+        OpenPages.Remove(page);
+        if(ReferenceEquals(_activePage,page))ShowPage(_previewPage!);
+    }
     private void MoveAssetToTrash(UiAsset asset)
     {
         var source=WorkspaceStorage.Resolve(_workspacePath!,asset.RelativePath);
@@ -466,7 +482,7 @@ public partial class MainWindow
             MoveAssetToTrash(asset); Assets.Remove(asset);SaveManifest();
             RecordProjectUndo("删除资源",
                 ()=>{RestoreAssetFromTrash(asset);Assets.Insert(Math.Clamp(index,0,Assets.Count),asset);SaveManifest();},
-                ()=>{MoveAssetToTrash(asset);Assets.Remove(asset);SaveManifest();});
+                ()=>{EnsureAssetPageClosedForHistory(asset);MoveAssetToTrash(asset);Assets.Remove(asset);SaveManifest();});
             _selectedAsset=null;
             StatusText="已删除资源至工程 ui-trash，Ctrl+Z 可以撤销。";
         }
@@ -605,6 +621,8 @@ public partial class MainWindow
         FlowTab.Style=(Style)FindResource(mode=="FLOW"?"TopTabSelected":"TopTab");
         ResourceTab.Style=(Style)FindResource(mode=="resources"?"TopTabSelected":"TopTab");
         var view=CollectionViewSource.GetDefaultView(Assets);
+        if(view is ListCollectionView grouped && grouped.GroupDescriptions.Count==0)
+            grouped.GroupDescriptions.Add(new PropertyGroupDescription(nameof(UiAsset.KindLabel)));
         view.Filter=o=>o is UiAsset a && (mode!="FLOW" || a.Kind=="FLOW");
         view.Refresh();
         if(_workspace is null && !cases)
