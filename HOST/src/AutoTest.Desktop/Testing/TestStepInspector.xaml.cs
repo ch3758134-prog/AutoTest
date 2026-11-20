@@ -174,6 +174,7 @@ public partial class TestStepInspector : UserControl
     private readonly List<MappingChoice> _allTargets = [];
     private string _targetRevisionWarning = "";
     private bool _loadingCanData;
+    private bool _filteringTargets;
     private bool IsCanSend => _selected?.Key == "can";
     private ComboBox ActiveTargetPicker => IsCanSend ? CanTargetPicker : TargetPicker;
     private uint _selectedMask;
@@ -557,7 +558,7 @@ public partial class TestStepInspector : UserControl
 
     private void TargetSearch_Changed(object sender, TextChangedEventArgs e)
     {
-        if (!_ready || TargetPicker is null || _selected is null) return;
+        if (!_ready || _filteringTargets || TargetPicker is null || _selected is null) return;
         ApplyTargetFilter((IsCanSend ? CanTargetSearch.Text : TargetSearch.Text).Trim(),
             _selectedTarget?.Mapping);
     }
@@ -565,11 +566,21 @@ public partial class TestStepInspector : UserControl
     private void ApplyTargetFilter(string query, TestTargetMapping? preferredMapping,
         string? preferredName = null)
     {
-        AvailableTargets.Clear();
-        foreach (var item in _allTargets.Where(x =>
+        var matches = _allTargets.Where(x =>
             x.Label.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-            x.Mapping.Name.Contains(query, StringComparison.OrdinalIgnoreCase)))
-            AvailableTargets.Add(item);
+            x.Mapping.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        // Keep the currently edited CAN message as a pinned choice while
+        // filtering. Typing a search must not destroy unsaved signal values.
+        if (IsCanSend && _selectedTarget is { } pinned &&
+            !matches.Any(x => x.Mapping == pinned.Mapping))
+            matches.Insert(0, pinned);
+        _filteringTargets = true;
+        try
+        {
+            AvailableTargets.Clear();
+            foreach (var item in matches) AvailableTargets.Add(item);
+        }
+        finally { _filteringTargets = false; }
         var preferred = preferredMapping is null ? null :
             AvailableTargets.FirstOrDefault(x => x.Mapping == preferredMapping);
         preferred ??= AvailableTargets.FirstOrDefault(x => x.Mapping.Name == preferredName);
@@ -628,8 +639,13 @@ public partial class TestStepInspector : UserControl
                 preferred = matches.Length == 1 ? matches[0] : null;
             }
         }
-        ActiveTargetPicker.SelectedItem = preferred ??
-            (_convertedLegacy ? null : AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
+        _filteringTargets = true;
+        try
+        {
+            ActiveTargetPicker.SelectedItem = preferred ??
+                (_convertedLegacy ? null : AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
+        }
+        finally { _filteringTargets = false; }
         UpdateTarget();
         if (!IsCanSend)
         {
@@ -642,13 +658,18 @@ public partial class TestStepInspector : UserControl
 
     private void TargetPicker_Changed(object sender, SelectionChangedEventArgs e)
     {
-        if (!_ready) return;
+        if (!_ready || _filteringTargets) return;
         UpdateTarget();
     }
 
     private void UpdateTarget()
     {
-        _selectedTarget = ActiveTargetPicker.SelectedItem as MappingChoice;
+        var choice = ActiveTargetPicker.SelectedItem as MappingChoice;
+        if (IsCanSend && choice is not null && _selectedTarget is { } previous &&
+            choice.Mapping == previous.Mapping &&
+            (choice.Message is null) == (previous.Message is null))
+            return; // Search/refresh is not permission to overwrite unsaved editor fields.
+        _selectedTarget = choice;
         RawCanPanel.Visibility = DbcCanPanel.Visibility = KeyPanel.Visibility =
             IgnitionPanel.Visibility = Visibility.Collapsed;
         SignalValues.Clear();
@@ -692,6 +713,7 @@ public partial class TestStepInspector : UserControl
             RawCanDataInput.Text = (_editing?.Properties.GetValueOrDefault("value",
                 _editing.Properties.GetValueOrDefault("dataHex", "")) ?? "")
                 .Replace("HEX:", "", StringComparison.OrdinalIgnoreCase);
+            UpdateCanFramePreview();
         }
         else if (mapping.Kind == TestTargetKind.CanMessage)
         {
@@ -756,10 +778,16 @@ public partial class TestStepInspector : UserControl
                             current = "";
                         }
                     }
-                    SignalValues.Add(new TestSignalInputField(signal, current,
+                    var editor = new TestSignalInputField(signal, current,
                         string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
                         description, labels,
-                        _selectedTarget.DisplayNames?.SignalSummary(msg.Id, signal.Name)));
+                        _selectedTarget.DisplayNames?.SignalSummary(msg.Id, signal.Name));
+                    editor.PropertyChanged += (_, change) =>
+                    {
+                        if (change.PropertyName == nameof(TestSignalInputField.Value) &&
+                            !_loadingCanData) UpdateCanFramePreview();
+                    };
+                    SignalValues.Add(editor);
                 }
                 _loadingCanData = true;
                 try
@@ -875,8 +903,8 @@ public partial class TestStepInspector : UserControl
 
     private MappingChoice[] CurrentCanRebindCandidates()
     {
-        if (_selectedTarget?.Mapping is not { Kind: TestTargetKind.CanMessage } original)
-            return [];
+        var original = _selectedTarget?.Mapping;
+        if (original is null || original.Kind != TestTargetKind.CanMessage) return [];
         return _catalog.Where(x =>
             x.Mapping.Kind == TestTargetKind.CanMessage &&
             x.Mapping.Asset == original.Asset &&
@@ -896,8 +924,10 @@ public partial class TestStepInspector : UserControl
         }
         // This click, not an implicit same-name match, authorizes the new
         // revision to enter the TEST draft. Ctrl+S still saves the document.
-        CanTargetPicker.SelectedItem = AvailableTargets.FirstOrDefault(
-            x => x.Mapping == candidates[0].Mapping);
+        _filteringTargets = true;
+        try { CanTargetSearch.Text = ""; }
+        finally { _filteringTargets = false; }
+        ApplyTargetFilter("", candidates[0].Mapping);
         ErrorText.Text = "";
         MarkDraftChanged();
     }
@@ -920,13 +950,37 @@ public partial class TestStepInspector : UserControl
 
     private void UpdateCanFramePreview()
     {
-        if (!IsCanSend || CanFramePreview is null ||
-            _selectedTarget?.Mapping.Kind != TestTargetKind.CanMessage ||
-            _selectedTarget.Message is not { } message) return;
+        if (!IsCanSend || _loadingCanData || CanFramePreview is null) return;
+        var mapping = _selectedTarget?.Mapping;
+        if (mapping is null) return;
         try
         {
-            var bytes = EncodeSelectedCanData(message, DbcRawMode.IsChecked == true);
-            CanFramePreview.Text = "0x" + message.ArbitrationId.ToString("X") + " · " +
+            uint canId;
+            bool extended;
+            byte[] bytes;
+            if (mapping.Kind == TestTargetKind.RawCan)
+            {
+                var idText = FrameIdInput.Text.Trim();
+                if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    idText = idText[2..];
+                if (!uint.TryParse(idText, NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture, out canId))
+                    throw new ArgumentException("请填写有效的十六进制 CAN ID。");
+                extended = ExtendedFrame.IsChecked == true;
+                if (canId > (extended ? 0x1FFFFFFFu : 0x7FFu))
+                    throw new ArgumentException("CAN ID 超出帧格式范围。");
+                bytes = ParseHex(RawCanDataInput.Text, 8);
+            }
+            else if (mapping.Kind == TestTargetKind.CanMessage &&
+                _selectedTarget?.Message is { } message)
+            {
+                canId = message.ArbitrationId;
+                extended = message.IsExtended;
+                bytes = EncodeSelectedCanData(message, DbcRawMode.IsChecked == true);
+            }
+            else return;
+            CanFramePreview.Text = "0x" + canId.ToString("X") +
+                (extended ? " EXT" : " STD") + " · " + bytes.Length + "B · " +
                 string.Join(" ", bytes.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
             CanPreviewIssue.Text = "";
         }

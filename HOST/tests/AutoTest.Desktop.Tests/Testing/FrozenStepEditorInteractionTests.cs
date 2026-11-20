@@ -89,6 +89,28 @@ public sealed class FrozenStepEditorInteractionTests
     }
 
     [Fact]
+    public void CanSendStepSummaryShowsTargetPeriodAndStopCondition()
+    {
+        var phase = new StepTreeItem(StepTreeItemKind.Phase, TestPhase.Test, "测试");
+        var can = StepNode.Create("Write", "车辆环境")
+            .WithProperty("target", "DBC.VCU_1")
+            .WithProperty("value", "Mode=1;State=2")
+            .WithProperty("periodMs", "65")
+            .WithProperty("durationMs", "5000");
+        var row = new StepRowProjection(new StepTreeItem(StepTreeItemKind.Step,
+            TestPhase.Test, can.Name, phase, can), 0);
+        Assert.Contains("DBC.VCU_1", row.Summary);
+        Assert.Contains("65 ms", row.Summary);
+        Assert.Contains("5000 ms", row.Summary);
+        var raw = can.WithProperty("value", "HEX:0102030405060708")
+            .WithProperty("periodMs", "0").WithProperty("durationMs", "0");
+        var rawRow = new StepRowProjection(new StepTreeItem(StepTreeItemKind.Step,
+            TestPhase.Test, raw.Name, phase, raw), 0);
+        Assert.Contains("DBC.VCU_1", rawRow.Summary);
+        Assert.Contains("原始数据", rawRow.Summary);
+    }
+
+    [Fact]
     public void KnownStepsHaveConsistentTypedIconsWithoutFakeRunVerdicts()
     {
         var phase = new StepTreeItem(StepTreeItemKind.Phase, TestPhase.Test, "测试");

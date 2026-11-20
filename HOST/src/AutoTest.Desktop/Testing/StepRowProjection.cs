@@ -179,7 +179,12 @@ public sealed class StepRowProjection : BindableBase
         };
         if (step.Type == "Write" &&
             int.TryParse(Prop("periodMs"), out var interval) && interval > 0)
-            Summary += " · 每 " + interval + " ms 周期发送";
+        {
+            Summary += " · 周期 " + interval + " ms";
+            if (int.TryParse(Prop("durationMs"), out var duration) && duration > 0)
+                Summary += " · " + duration + " ms 后自动停止";
+            else Summary += " · 直到停止或测试清理";
+        }
         if (Summary.Length > 150) Summary = Summary[..150] + "…";
         Resource = step.Properties.GetValueOrDefault("target",
             step.Properties.GetValueOrDefault("profile", "—"));
@@ -224,11 +229,12 @@ public sealed class StepRowProjection : BindableBase
             return "按键 " + target + " · " + (value.Length > 0 ? value : "待配置");
         }
         if (value.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
-            return "原始 CAN 帧 · " + Math.Max(0, (value.Length - 4) / 2) + " 字节";
+            return "CAN " + target + " · 原始数据 " +
+                Math.Max(0, (value.Length - 4) / 2) + " 字节";
         if (value.Contains('='))
         {
             var fields = value.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            return "DBC 报文 " + target + " · " + fields.Length + " 个信号";
+            return "CAN " + target + " · 已配置 " + fields.Length + " 个信号";
         }
         return target.Length > 0 ? target + " · " + value : "未选择操作对象";
     }
