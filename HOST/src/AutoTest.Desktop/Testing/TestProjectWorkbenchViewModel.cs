@@ -423,10 +423,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 (flashConsent.Length == 0 ? " 可运行。" : " 运行前需手动输入唯一 FLASH 授权。");
             RaisePropertyChanged(nameof(IsPrepared));
         }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or
-            InvalidOperationException or ArgumentException or UnauthorizedAccessException or
-            AutoTest.Projects.Project.ProjectDataException)
+        catch (Exception ex)
         {
+            // UI preflight performs no physical writes. Format/profile/DLL/unknown
+            // resource errors must be reported inline instead of escaping an
+            // async WPF DelegateCommand and crashing the application.
             ResetFrozenSelection();
             StatusMessage = "BLOCKED_PREFLIGHT：" + ex.Message;
         }
