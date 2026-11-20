@@ -84,7 +84,7 @@
      <Button Content="▶ 运行当前用例" Command="{Binding RunCommand}"
       Style="{StaticResource AtPrimaryButton}" Foreground="White"
       Margin="0,0,6,0" Padding="11,5"
-      ToolTip="真实 USB/CAN/KEY/IGN 执行当前用例的准备、测试和清理阶段"/>
+      ToolTip="需要连接 USB 主控、填写 ECU 编号并确认当前用例；执行真实 USB/CAN/KEY/IGN，支持停止和安全清理"/>
      <Button Content="■ 停止" Command="{Binding StopRunCommand}"
       Margin="0,0,10,0" Padding="8,5"/>
     </StackPanel>

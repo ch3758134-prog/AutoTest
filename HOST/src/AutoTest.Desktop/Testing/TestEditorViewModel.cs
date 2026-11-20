@@ -35,6 +35,9 @@ public sealed class TestEditorViewModel : BindableBase
     private string _flashApproval = "";
     private string _dutIdentity = "";
     private string _expectedFlashApproval = "";
+    private long _preparedStationEpoch;
+    private string _preparedDutIdentity = "";
+    private CancellationTokenSource? _singleRunCancellation;
     private string _runSummary = "未运行真实测试";
     private readonly StepDescriptorCatalog _catalog = StepDescriptorCatalog.Builtins();
     private OpenProjectContext? _choiceContext;
@@ -98,8 +101,19 @@ public sealed class TestEditorViewModel : BindableBase
         PrepareRunApprovalCommand = new DelegateCommand(PrepareRealRunApproval,
             () => !IsBusy && !IsDirty && !HasNewStepDraft);
         RunCommand = new DelegateCommand(async () => await RunRealAsync(),
-            () => !IsBusy && !IsDirty && !HasNewStepDraft);
-        StopRunCommand = new DelegateCommand(() => _realTest.RequestStop(), () => IsBusy);
+            () => !IsBusy && !IsDirty && !HasNewStepDraft &&
+                _preparedStationEpoch > 0 &&
+                _realTest.IsHardwareConnected &&
+                _realTest.ConnectedStationEpoch == _preparedStationEpoch &&
+                _preparedDutIdentity == DutIdentity &&
+                RunApproval.Length > 0);
+        StopRunCommand = new DelegateCommand(() =>
+        {
+            // Stop must also cancel USB/DBC/RECORD preparation, before the
+            // step runner exists and can accept RequestStop().
+            _singleRunCancellation?.Cancel();
+            _realTest.RequestStop();
+        }, () => IsBusy);
         RefreshMappings();
         RefreshTree(null);
     }
@@ -258,7 +272,11 @@ public sealed class TestEditorViewModel : BindableBase
     public string DutIdentity
     {
         get => _dutIdentity;
-        set => SetProperty(ref _dutIdentity, value);
+        set
+        {
+            if (SetProperty(ref _dutIdentity, value))
+                RunCommand?.RaiseCanExecuteChanged();
+        }
     }
     public string FlashApproval
     {
@@ -273,7 +291,11 @@ public sealed class TestEditorViewModel : BindableBase
     public string RunApproval
     {
         get => _approval;
-        set => SetProperty(ref _approval, value);
+        set
+        {
+            if (SetProperty(ref _approval, value))
+                RunCommand?.RaiseCanExecuteChanged();
+        }
     }
     public string ExpectedApproval
     {
@@ -862,8 +884,28 @@ public sealed class TestEditorViewModel : BindableBase
     private void PrepareRealRunApproval()
     {
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        _preparedStationEpoch = 0;
+        _preparedDutIdentity = "";
+        RunApproval = "";
+        ExpectedFlashApproval = "";
+        FlashApproval = "";
+        if (!_realTest.IsHardwareConnected || _realTest.ConnectedStationEpoch <= 0)
+        {
+            StatusMessage = "USB 主控未连接：连接真实工位后，才能确认当前用例进行真实运行。";
+            RefreshCommands();
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(DutIdentity) ||
+            DutIdentity != DutIdentity.Trim() || DutIdentity.Length > 256 ||
+            DutIdentity.Any(char.IsControl))
+        {
+            StatusMessage = "请先输入或扫描真实 ECU 唯一编号，再确认运行；不会使用模拟编号。";
+            RefreshCommands();
+            return;
+        }
         try
         {
+            var approvedEpoch = _realTest.ConnectedStationEpoch;
             var plan = _realTest.Prepare(_transaction.Current);
             if (!plan.Diagnostics.IsEmpty)
             {
@@ -872,7 +914,13 @@ public sealed class TestEditorViewModel : BindableBase
             }
             ExpectedFlashApproval = _realTest.ExpectedFlashApproval(_transaction.Current);
             FlashApproval = "";
+            if (!_realTest.IsHardwareConnected ||
+                _realTest.ConnectedStationEpoch != approvedEpoch)
+                throw new IOException("准备运行期间 USB 主控会话变化，请重新确认。");
+            _preparedStationEpoch = approvedEpoch;
+            _preparedDutIdentity = DutIdentity;
             RunApproval = RealTestWorkbenchService.ExpectedApproval(plan);
+            RefreshCommands();
             StatusMessage = ExpectedFlashApproval.Length == 0 ?
                 "当前用例已确认，可以运行真实步骤。" :
                 "烧录资源已冻结。必须在下方手动输入完整 FLASH 授权文字；授权不写入工程。";
@@ -887,6 +935,17 @@ public sealed class TestEditorViewModel : BindableBase
     private async Task RunRealAsync()
     {
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (!_realTest.IsHardwareConnected || _preparedStationEpoch <= 0 ||
+            _realTest.ConnectedStationEpoch != _preparedStationEpoch ||
+            DutIdentity != _preparedDutIdentity)
+        {
+            RunApproval = "";
+            _preparedStationEpoch = 0;
+            _preparedDutIdentity = "";
+            StatusMessage = "主控 USB 会话或 DUT 身份已改变；请重新连接/核对并确认当前用例。";
+            RefreshCommands();
+            return;
+        }
         if (string.IsNullOrWhiteSpace(RunApproval) ||
             !string.Equals(RunApproval, ExpectedApproval, StringComparison.Ordinal))
         {
@@ -905,6 +964,7 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = "FLASH 授权不匹配：必须手动输入完整 AUTHORIZE ECU FLASH 指纹。";
             return;
         }
+        _singleRunCancellation = new CancellationTokenSource();
         IsBusy = true;
         RunFacts.Clear();
         RunFactRows.Clear();
@@ -930,7 +990,8 @@ public sealed class TestEditorViewModel : BindableBase
         _realTest.StepReported += OnPhysicalStep;
         try
         {
-            var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval, FlashApproval, DutIdentity);
+            var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval,
+                FlashApproval, DutIdentity, _singleRunCancellation!.Token);
             RunFacts.Clear();
             RunFactRows.Clear();
             foreach (var fact in result.Facts)
@@ -947,6 +1008,11 @@ public sealed class TestEditorViewModel : BindableBase
                 " · HTML 报告：" + result.EvidencePath);
             StatusMessage = RunSummary;
         }
+        catch (OperationCanceledException)
+        {
+            RunSummary = "操作员已请求停止：真实执行已取消，设备安全清理另行执行。";
+            StatusMessage = RunSummary;
+        }
         catch (Exception e)
         {
             RunSummary = "真实测试未完成：" + e.Message;
@@ -957,6 +1023,10 @@ public sealed class TestEditorViewModel : BindableBase
         finally
         {
             _realTest.StepReported -= OnPhysicalStep;
+            _singleRunCancellation?.Dispose();
+            _singleRunCancellation = null;
+            _preparedStationEpoch = 0;
+            _preparedDutIdentity = "";
             RunApproval = "";
             FlashApproval = "";
             IsBusy = false;
@@ -968,6 +1038,8 @@ public sealed class TestEditorViewModel : BindableBase
         // Any changed TEST revision makes previous-run StepId evidence stale.
         // Clear it before rebuilding; never display old PASS/error facts against
         // a newly edited document. Historical evidence remains in its own audit.
+        _preparedStationEpoch = 0;
+        _preparedDutIdentity = "";
         RunApproval = "";
         FlashApproval = "";
         ExpectedFlashApproval = "";

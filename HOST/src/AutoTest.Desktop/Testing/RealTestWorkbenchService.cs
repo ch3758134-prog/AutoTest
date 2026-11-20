@@ -38,6 +38,8 @@ public sealed class RealTestWorkbenchService
     }
 
     public bool IsRunning => _running?.IsRunning ?? false;
+    public bool IsHardwareConnected => _hardware.IsConnected;
+    public long ConnectedStationEpoch => _hardware.CurrentStationEpoch;
     public event Action<RealStepFact>? StepReported;
 
     public PreparedTestPlan Prepare(TestDocument document) =>
@@ -69,8 +71,9 @@ public sealed class RealTestWorkbenchService
         RealRunEvidenceRecorder? evidence = null;
         try
         {
-            if (!_hardware.IsConnected)
-                throw new InvalidOperationException("真实测试要求 USB 主控已经连接。");
+            var openingEpoch = _hardware.CurrentStationEpoch;
+            if (!_hardware.IsConnected || openingEpoch <= 0)
+                throw new InvalidOperationException("真实测试要求 USB 主控已经连接并建立有效会话。");
             var plan = Prepare(document);
             if (!plan.Diagnostics.IsEmpty)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Diagnostics));
@@ -115,9 +118,15 @@ public sealed class RealTestWorkbenchService
             // consent; avoid discovering malformed frames after earlier steps
             // have already changed the DUT.
             actions.ValidateRunSteps(document);
+            if (!_hardware.IsConnected ||
+                _hardware.CurrentStationEpoch != openingEpoch)
+                throw new IOException("测试预检期间主控会话已切换；拒绝使用旧授权执行。");
             if (HasPhysicalWrites(document))
                 await actions.AuthorizeAsync(plan.Fingerprint, confirmation, mappings,
                     document, ct);
+            if (!_hardware.IsConnected ||
+                _hardware.CurrentStationEpoch != openingEpoch)
+                throw new IOException("测试授权期间 USB 会话已改变；中止运行并清理。");
             var wave = new ConfiguredWavePort(_projects, _signals);
             // Subscribe to physical evidence before any FLASH workflow can run.
             evidence = new RealRunEvidenceRecorder(_hardware, _signals);
@@ -145,6 +154,9 @@ public sealed class RealTestWorkbenchService
             var capture = new RecordedRealRunEvidenceFinalizer(evidence, writer,
                 artifacts, project.RootDirectory);
             var session = new RealTestRecordSession(record, writer, reports, capture);
+            if (!_hardware.IsConnected ||
+                _hardware.CurrentStationEpoch != openingEpoch)
+                throw new IOException("RUN RECORD 建立前设备会话改变；拒绝启动 DUT 步骤。");
             var finished = await session.ExecuteAsync(run, plan,
                 Path.Combine(project.RootDirectory, "test-records", "reports"), ct);
             var summary = await reports.ExportSummaryAsync(finished.Result.Run, ct);
