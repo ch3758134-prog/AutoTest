@@ -53,6 +53,41 @@ public sealed class UsbSessionContractTests
         await newTask;
     }
 }
+public sealed class EcuCanBaudProtocolContractTests
+{
+    [Theory]
+    [InlineData(20, 0)]
+    [InlineData(50, 1)]
+    [InlineData(100, 2)]
+    [InlineData(125, 3)]
+    [InlineData(250, 4)]
+    [InlineData(500, 5)]
+    [InlineData(800, 6)]
+    [InlineData(1000, 7)]
+    public void Mapping_ExactlyMatchesFirmwareEalEnum(int kbps, byte code)
+    {
+        Assert.Equal(code, MainControllerCodec.EcuCanBaudCode(kbps));
+        Assert.Equal(kbps, MainControllerCodec.EcuCanBaudKbps(code));
+    }
+
+    [Fact]
+    public void EcuCanBaud_UsesFirmwarePublishedUsbCommands()
+    {
+        Assert.Equal((byte)0x42, MainControllerCodec.SetEcuCanBaud);
+        Assert.Equal((byte)0x43, MainControllerCodec.GetEcuCanBaud);
+        var set = UsbWireCodec.EncodeRequest(10, MainControllerCodec.SetEcuCanBaud,
+            new byte[] { MainControllerCodec.EcuCanBaudCode(250) });
+        Assert.Equal("A50A004201041C465A", Convert.ToHexString(set));
+        var get = UsbWireCodec.EncodeRequest(12, MainControllerCodec.GetEcuCanBaud,
+            ReadOnlySpan<byte>.Empty);
+        Assert.Equal("A50C00430032445A", Convert.ToHexString(get));
+        Assert.Equal(250, MainControllerCodec.ParseEcuCanBaud("250K"));
+        Assert.Equal(500, MainControllerCodec.ParseEcuCanBaud("500000"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => MainControllerCodec.EcuCanBaudCode(333));
+        Assert.Throws<InvalidDataException>(() => MainControllerCodec.EcuCanBaudKbps(8));
+    }
+}
+
 public sealed class StationControlContractTests
 {
     private static BusRoleMap Roles(int dut,int key)=>new(default,dut,key);
