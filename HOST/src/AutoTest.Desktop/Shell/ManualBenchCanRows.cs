@@ -224,6 +224,20 @@ public sealed partial class ManualBenchViewModel
                 return "0x" + id.ToString(extended ? "X8" : "X3");
             }
         }
+        public string PreviewFrameFormat
+        {
+            get
+            {
+                if (UseDbc && DbcMessage is { } bound)
+                    return bound.Message.IsExtended ? "扩展帧 · DBC" : "标准帧 · DBC";
+                var text = IdHex.Trim();
+                if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    text = text[2..];
+                return uint.TryParse(text, NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture, out var id) && (Extended || id > 0x7FFu)
+                    ? "扩展帧 · 自动" : "标准帧 · 默认";
+            }
+        }
         public string PreviewDlc
         {
             get
@@ -287,6 +301,7 @@ public sealed partial class ManualBenchViewModel
             RaisePropertyChanged(nameof(ModeLabel));
             RaisePropertyChanged(nameof(PreviewId));
             RaisePropertyChanged(nameof(PreviewDlc));
+            RaisePropertyChanged(nameof(PreviewFrameFormat));
             RaisePropertyChanged(nameof(PreviewData));
             RaisePropertyChanged(nameof(PreviewError));
             RaisePropertyChanged(nameof(PreviewFull));

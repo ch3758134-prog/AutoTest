@@ -30,8 +30,7 @@
     <ControlTemplate TargetType="{x:Type ComboBoxItem}">
      <Border x:Name="ItemSurface" Background="Transparent" CornerRadius="5"
       BorderThickness="1" BorderBrush="Transparent" Padding="{TemplateBinding Padding}">
-      <ContentPresenter Content="{TemplateBinding Content}"
-       ContentTemplate="{TemplateBinding ContentTemplate}"
+      <ContentPresenter ContentSource="Content"
        VerticalAlignment="Center" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
      </Border>
      <ControlTemplate.Triggers>

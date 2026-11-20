@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using AutoTest.Testing.Authoring;
+using AutoTest.Desktop.Shell;
 
 namespace AutoTest.Desktop.Testing;
 
@@ -16,14 +17,18 @@ namespace AutoTest.Desktop.Testing;
 /// </summary>
 public partial class DbcReferencePicker : UserControl
 {
-    public sealed record Option(MappingChoice Choice, string Title, string Detail,
-        string KindLabel, string SearchText, string FullDetail);
+    public sealed record Option(MappingChoice? Choice, string Title, string Detail,
+        string KindLabel, string SearchText, string FullDetail,
+        ManualBenchViewModel.DbcChoice? BenchChoice = null);
 
     private readonly List<Option> _all = [];
     private MappingChoice? _current;
+    private ManualBenchViewModel.DbcChoice? _benchCurrent;
+    private bool _benchMode;
     private bool _changing;
 
     public event EventHandler<DbcReferenceChosenEventArgs>? ChoiceCommitted;
+    public event EventHandler<BenchDbcReferenceChosenEventArgs>? BenchChoiceCommitted;
     public MappingChoice? SelectedChoice => _current;
 
     public DbcReferencePicker()
@@ -39,11 +44,49 @@ public partial class DbcReferencePicker : UserControl
         {
             _all.Clear();
             _all.AddRange(source.Select(ToOption));
+            _benchMode = false;
+            _benchCurrent = null;
             _current = selected;
             RenderSelection();
             ApplyFilter();
         }
         finally { _changing = false; }
+    }
+
+    // The Bench and TEST editors deliberately share the same selection
+    // component and visual interaction; only their resource contracts differ.
+    public void SetBenchChoices(
+        IEnumerable<ManualBenchViewModel.DbcChoice> source,
+        ManualBenchViewModel.DbcChoice? selected)
+    {
+        _changing = true;
+        try
+        {
+            _all.Clear();
+            _all.AddRange(source.Select(ToBenchOption));
+            _benchMode = true;
+            _current = null;
+            _benchCurrent = selected;
+            RenderSelection();
+            ApplyFilter();
+        }
+        finally { _changing = false; }
+    }
+
+    private static Option ToBenchOption(ManualBenchViewModel.DbcChoice choice)
+    {
+        var message = choice.Message;
+        var title = choice.DisplayNames.MessageLabel(message);
+        var id = "0x" + message.ArbitrationId.ToString("X", CultureInfo.InvariantCulture);
+        var detail = id + "  ·  " + (message.IsExtended ? "扩展帧" : "标准帧") +
+            "  ·  DLC " + message.Dlc + "  ·  " + choice.AssetName +
+            "  r" + choice.Revision;
+        var source = title + " " + message.Name + " " + detail + " " +
+            choice.AssetName + " " +
+            message.ArbitrationId.ToString(CultureInfo.InvariantCulture) + " " +
+            choice.Purpose;
+        return new Option(null, title, detail, "CAN 报文",
+            source, title + "\n" + detail + "\n" + choice.Purpose, choice);
     }
 
     public void OpenWithSearch(string query = "")
@@ -58,14 +101,19 @@ public partial class DbcReferencePicker : UserControl
 
     private void RenderSelection()
     {
-        if (_current is null)
+        Option? info = _benchMode
+            ? _benchCurrent is null ? null : ToBenchOption(_benchCurrent)
+            : _current is null ? null : ToOption(_current);
+        if (info is null)
         {
-            CurrentTitle.Text = "选择 DBC 资源";
-            CurrentDetail.Text = "点击搜索名称、中文别名、信号或 CAN ID";
+            CurrentTitle.Text = _benchMode
+                ? "未关联 DBC · 直接编辑 CAN DATA" : "选择 DBC 资源";
+            CurrentDetail.Text = _benchMode
+                ? "选择报文后可直接修改信号，不影响原始 DATA 编辑"
+                : "点击搜索名称、中文别名、信号或 CAN ID";
             SelectionButton.ToolTip = CurrentDetail.Text;
             return;
         }
-        var info = ToOption(_current);
         CurrentTitle.Text = info.Title;
         CurrentDetail.Text = info.Detail;
         SelectionButton.ToolTip = info.FullDetail;
@@ -200,10 +248,21 @@ public partial class DbcReferencePicker : UserControl
     private void Commit(Option option)
     {
         ChoicePanel.Visibility = Visibility.Collapsed;
-        if (_current?.Mapping == option.Choice.Mapping) return;
-        _current = option.Choice;
+        if (_benchMode)
+        {
+            if (option.BenchChoice is not { } bench ||
+                Equals(_benchCurrent, bench)) return;
+            _benchCurrent = bench;
+            RenderSelection();
+            BenchChoiceCommitted?.Invoke(this,
+                new BenchDbcReferenceChosenEventArgs(bench));
+            return;
+        }
+        if (option.Choice is not { } choice ||
+            _current?.Mapping == choice.Mapping) return;
+        _current = choice;
         RenderSelection();
-        ChoiceCommitted?.Invoke(this, new DbcReferenceChosenEventArgs(option.Choice));
+        ChoiceCommitted?.Invoke(this, new DbcReferenceChosenEventArgs(choice));
     }
 }
 
@@ -211,4 +270,10 @@ public sealed class DbcReferenceChosenEventArgs : EventArgs
 {
     public MappingChoice Choice { get; }
     public DbcReferenceChosenEventArgs(MappingChoice choice) => Choice = choice;
+}
+public sealed class BenchDbcReferenceChosenEventArgs : EventArgs
+{
+    public ManualBenchViewModel.DbcChoice Choice { get; }
+    public BenchDbcReferenceChosenEventArgs(ManualBenchViewModel.DbcChoice choice)
+        => Choice = choice;
 }
