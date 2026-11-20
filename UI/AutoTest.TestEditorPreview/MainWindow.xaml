@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:AutoTest.TestEditorPreview"
         Title="AutoTest · TEST 专业编辑器（V02-04 UI 研究原型）"
         WindowState="Maximized" Width="1580" Height="920"
-        MinWidth="730" MinHeight="540"
+        MinWidth="730" MinHeight="415"
         Background="#F4F7FA" Foreground="#1B2C41"
         FontFamily="Microsoft YaHei UI" FontSize="13"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
@@ -287,10 +287,10 @@
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="63"/>
-            <RowDefinition Height="87"/>
+            <RowDefinition x:Name="MainHeaderRow" Height="63"/>
+            <RowDefinition x:Name="TaskHeaderRow" Height="87"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="30"/>
+            <RowDefinition x:Name="FooterRow" Height="30"/>
         </Grid.RowDefinitions>
         <!-- Global product chrome: tasks and identity are separate from TEST editor commands. -->
         <Border Grid.Row="0" Background="White" BorderBrush="#DCE5EF" BorderThickness="0,0,0,1">
@@ -407,7 +407,7 @@
             <Border x:Name="StepsPane" Grid.Row="0" Grid.Column="2" Background="White"
                     CornerRadius="7" BorderThickness="1" BorderBrush="#DCE5EF">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="104"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition x:Name="StepToolbarRow" Height="104"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                     <Grid Grid.Row="0" Margin="16,11,16,5">
                         <Grid.RowDefinitions><RowDefinition Height="43"/><RowDefinition Height="45"/></Grid.RowDefinitions>
                         <Grid>
@@ -458,6 +458,8 @@
                                     <MenuItem Header="在选中项后插入…" Click="ContextAdd_Click"/>
                                     <Separator/>
                                     <MenuItem Header="复制步骤" Click="DuplicateStep_Click"/>
+                                    <MenuItem Header="复制到剪贴缓冲（Ctrl+C）" Click="CopyStep_Click"/>
+                                    <MenuItem Header="粘贴到当前位置（Ctrl+V）" Click="PasteStep_Click"/>
                                     <MenuItem Header="上移（同级）" Click="MoveUp_Click"/>
                                     <MenuItem Header="下移（同级）" Click="MoveDown_Click"/>
                                     <MenuItem Header="包裹为 IF / ELSE" Click="WrapIf_Click"/>
