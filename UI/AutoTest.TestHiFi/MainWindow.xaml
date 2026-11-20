@@ -1,0 +1,598 @@
+<Window x:Class="AutoTest.TestHiFi.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:AutoTest.TestHiFi"
+        Title="AutoTest · TEST 专业编辑器 · 高保真视觉预览"
+        WindowState="Maximized" Width="1650" Height="935"
+        MinWidth="1150" MinHeight="700"
+        WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="VisibleIfTrue"/>
+    <DataTemplate x:Key="CaseTemplate" DataType="{x:Type local:DemoCase}">
+      <Grid Height="30" Margin="10,0,10,0" ToolTip="{Binding Name}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="25"/><ColumnDefinition Width="*"/><ColumnDefinition Width="23"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="▣" Foreground="#58718F" FontFamily="Segoe UI Symbol"
+                   FontSize="14" VerticalAlignment="Center" TextAlignment="Center"/>
+        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.4" FontWeight="Medium"
+                   VerticalAlignment="Center" Margin="3,0,4,0"/>
+        <TextBlock Grid.Column="2" Text="{Binding StateSymbol}" Foreground="{Binding StateColor}"
+                   VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold"/>
+      </Grid>
+    </DataTemplate>
+    <DataTemplate x:Key="StepTemplate" DataType="{x:Type local:DemoStep}">
+      <Border x:Name="Fill" Background="White" Height="29">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="46"/>
+            <ColumnDefinition Width="1.2*" MinWidth="185"/>
+            <ColumnDefinition Width="1.5*" MinWidth="175"/>
+            <ColumnDefinition Width="48"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Text="{Binding Number}" HorizontalAlignment="Center"
+                     VerticalAlignment="Center" FontSize="12" Foreground="#56647A" FontWeight="Medium"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal"
+                      Margin="{Binding Indent}" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Chevron}" Width="19" FontSize="12.5"
+                       VerticalAlignment="Center" Foreground="#405B81" FontWeight="Bold"
+                       TextAlignment="Center"/>
+            <TextBlock x:Name="Glyph" Text="{Binding Icon}" Width="23"
+                       VerticalAlignment="Center" TextAlignment="Center"
+                       FontFamily="Segoe UI Symbol" FontWeight="Bold" FontSize="15"
+                       Foreground="{Binding IconColor}"/>
+            <Border x:Name="BranchBadge" Visibility="Collapsed" Background="#7B55D8"
+                    Padding="5,1" CornerRadius="3" Margin="0,0,6,0" VerticalAlignment="Center">
+              <TextBlock Text="{Binding BranchLabel}" Foreground="White" FontSize="10.5"
+                         FontWeight="SemiBold"/>
+            </Border>
+            <TextBlock x:Name="StepLabel" Text="{Binding RowName}"
+                       FontSize="12.1" FontWeight="Medium" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TextBlock Grid.Column="2" Text="{Binding Summary}" Foreground="#46576F"
+                     Margin="7,0,8,0" VerticalAlignment="Center" FontSize="11.7"/>
+          <Border Grid.Column="3" Height="20" Width="20" CornerRadius="10" Background="Transparent"
+                  VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock x:Name="StatusMark" Text="{Binding StatusText}"
+                       Foreground="{Binding StatusColor}" FontWeight="Bold" FontSize="13"
+                       TextAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+        </Grid>
+      </Border>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Kind}" Value="Group">
+          <Setter TargetName="Fill" Property="Background" Value="#F3F6FA"/>
+          <Setter TargetName="StepLabel" Property="FontWeight" Value="Bold"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Kind}" Value="Flow">
+          <Setter TargetName="Fill" Property="Background" Value="#F8FAFD"/>
+          <Setter TargetName="StepLabel" Property="FontWeight" Value="SemiBold"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Kind}" Value="Branch">
+          <Setter TargetName="BranchBadge" Property="Visibility" Value="Visible"/>
+          <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
+          <Setter TargetName="Fill" Property="Background" Value="#FAFBFE"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="Error">
+          <Setter TargetName="StatusMark" Property="Foreground" Value="#DA3543"/>
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+    <DataTemplate x:Key="IssueTemplate" DataType="{x:Type local:DemoIssue}">
+      <Border BorderBrush="#E9EDF4" BorderThickness="0,0,0,1" Background="White" MinHeight="29">
+        <Grid Margin="7,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="98"/><ColumnDefinition Width="102"/>
+            <ColumnDefinition Width="1.08*"/><ColumnDefinition Width="0.92*"/><ColumnDefinition Width="73"/>
+          </Grid.ColumnDefinitions>
+          <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+            <Border Background="{Binding Color}" Width="17" Height="17" CornerRadius="9"
+                    VerticalAlignment="Center">
+              <TextBlock Text="{Binding Symbol}" Foreground="White" TextAlignment="Center"
+                         VerticalAlignment="Center" FontWeight="Bold" FontSize="11"/>
+            </Border>
+            <TextBlock Text="{Binding Severity}" Foreground="{Binding Color}" Margin="7,0,0,0"
+                       VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11.8"/>
+          </StackPanel>
+          <TextBlock Grid.Column="1" Text="{Binding Location}" VerticalAlignment="Center" FontSize="11.7"/>
+          <TextBlock Grid.Column="2" Text="{Binding Description}" Margin="3,0,12,0"
+                     FontSize="11.6" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="3" Text="{Binding Advice}" Margin="3,0,8,0"
+                     FontSize="11.4" Foreground="#526077" VerticalAlignment="Center"/>
+          <Button Grid.Column="4" Tag="{Binding}" Content="定位  ›"
+                  Foreground="#1769D2" FontWeight="SemiBold"
+                  Style="{StaticResource ActionButton}" Click="LocateIssue_Click"
+                  Padding="5,3" Height="25" VerticalAlignment="Center"/>
+        </Grid>
+      </Border>
+    </DataTemplate>
+    <Style x:Key="HeaderIcon" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Foreground" Value="#50637E"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="Label" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="#506078"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="0,0,12,0"/>
+    </Style>
+    <Style x:Key="SectionTitle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12.7"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+  </Window.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="43"/>
+      <RowDefinition Height="45"/>
+      <RowDefinition Height="53"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="30"/>
+    </Grid.RowDefinitions>
+    <!-- Product identity; this is NOT the native Windows caption. -->
+    <Border Grid.Row="0" Background="#F7F9FD" BorderBrush="#E4EAF3" BorderThickness="0,0,0,1">
+      <DockPanel Margin="18,0">
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+          <Border Height="28" Width="28" CornerRadius="5" Background="#1769D2" VerticalAlignment="Center">
+            <TextBlock Text="AT" Foreground="White" FontSize="12" FontWeight="Bold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <TextBlock Text="AutoTest" Margin="12,0,20,0" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+          <TextBlock Text="自动测试平台" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <TextBlock Text="   |   " Foreground="#8897AA" VerticalAlignment="Center"/>
+          <TextBlock Text="TEST 专业编辑器" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <TextBlock Text="   –   车身电源管理.tst*" FontSize="12.5" VerticalAlignment="Center"/>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+          <Border CornerRadius="5" BorderBrush="#D3DFEF" BorderThickness="1"
+                  Background="White" Width="248" Height="27" VerticalAlignment="Center" Margin="0,0,19,0">
+            <DockPanel Margin="10,0">
+              <TextBlock Text="⌕" FontFamily="Segoe UI Symbol" VerticalAlignment="Center"
+                         Foreground="#718199" FontSize="17"/>
+              <TextBlock Text="  搜索 (Ctrl+Q)" Foreground="#8190A5" VerticalAlignment="Center" FontSize="11.5"/>
+            </DockPanel>
+          </Border>
+          <Button Content="♧" Style="{StaticResource ActionButton}" Width="35" FontSize="18"
+                  ToolTip="通知（视觉预览）" Click="PreviewCommand_Click"/>
+          <Button Content="⚙" Style="{StaticResource ActionButton}" Width="35" FontSize="17"
+                  ToolTip="设置（视觉预览）" Click="PreviewCommand_Click"/>
+          <Button Content="♙" Style="{StaticResource ActionButton}" Width="35" FontSize="18"
+                  ToolTip="个人（视觉预览）" Click="PreviewCommand_Click"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Main product navigation, thin active underline and restrained iconography. -->
+    <Border Grid.Row="1" Background="White" BorderBrush="#E0E7F0" BorderThickness="0,0,0,1">
+      <StackPanel Margin="24,0" Orientation="Horizontal">
+        <Button Content="▣ 项目" Style="{StaticResource TopTab}" Click="PreviewCommand_Click"/>
+        <Button Content="✎ 测试编辑" Style="{StaticResource TopTabSelected}"/>
+        <Button Content="▧ 资源管理" Style="{StaticResource TopTab}" Click="PreviewCommand_Click"/>
+        <Button Content="⚒ 执行与报告" Style="{StaticResource TopTab}" Click="PreviewCommand_Click"/>
+        <Button Content="⚙ 工具" Style="{StaticResource TopTab}" Click="PreviewCommand_Click"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Context-aware toolbar. The unimplemented actions explain preview-only state on click. -->
+    <Border Grid.Row="2" Background="White" BorderBrush="#E0E7F0" BorderThickness="0,0,0,1">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Margin="13,0">
+            <Button Content="▣ 新建" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="▤ 打开" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="▥ 保存" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="▣ 另存为" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
+            <Button Content="↶ 撤销" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="↷ 重做" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
+            <Button Content="⊕ 添加步骤" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="▣ 插入结构" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
+            <Button Content="▢ 复制" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="✂ 剪切" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="▧ 粘贴" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="▤ 删除" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
+            <Button Content="↑ 上移" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="↓ 下移" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
+            <Button Content="● 运行 (F5)" Foreground="#6B788A" IsEnabled="False"
+                    Style="{StaticResource ActionButton}" ToolTip="真实 TEST 运行器未接线"/>
+            <Button Content="单步 (F10)" IsEnabled="False" Style="{StaticResource ActionButton}"
+                    ToolTip="真实 TEST 运行器未接线"/>
+          </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="4,0,14,0" VerticalAlignment="Center">
+          <TextBlock Text="布局:" Foreground="#617086" VerticalAlignment="Center" Margin="0,0,7,0"/>
+          <Button Content="▣ 右侧参数" Style="{StaticResource SelectedButton}" Height="31" Margin="0,0,6,0"/>
+          <Button Content="▤ 下方参数" Style="{StaticResource OutlineButton}" Height="31"
+                  IsEnabled="False" ToolTip="第一批仅验证已认可的右侧参数布局"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="3" Margin="7,1,7,5">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="294"/>
+        <ColumnDefinition Width="7"/>
+        <ColumnDefinition Width="*" MinWidth="470"/>
+        <ColumnDefinition Width="7"/>
+        <ColumnDefinition Width="400"/>
+      </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="40"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="165"/>
+      </Grid.RowDefinitions>
+
+      <!-- Left: navigator with fixed content structure; no empty giant filler. -->
+      <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+              Background="White" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+              CornerRadius="7" Margin="0,0,0,4">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top">
+            <Grid Height="46">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Button x:Name="CaseTab" Grid.Column="0" Content="测试用例"
+                      Style="{StaticResource TopTabSelected}" Padding="6,4"/>
+              <Button Grid.Column="1" Content="公共流程" Style="{StaticResource TopTab}"
+                      Padding="6,4" Click="PreviewCommand_Click"/>
+              <Button Grid.Column="2" Content="资源引用" Style="{StaticResource TopTab}"
+                      Padding="6,4" Click="PreviewCommand_Click"/>
+            </Grid>
+            <Border Background="#E9EDF5" Height="1"/>
+            <Grid Height="50" Margin="10,0">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions>
+              <Border Grid.Column="0" Background="White" BorderBrush="#CBD9E9"
+                      BorderThickness="1" CornerRadius="5" Height="31" VerticalAlignment="Center">
+                <Grid>
+                  <TextBlock Text="⌕  筛选测试用例…" Foreground="#8290A3"
+                             VerticalAlignment="Center" Margin="9,0" FontSize="11.7"
+                             IsHitTestVisible="False"/>
+                  <TextBox x:Name="CaseSearch" Background="Transparent" BorderThickness="0"
+                           Padding="13,4" FontSize="12" TextChanged="CaseSearch_TextChanged"/>
+                </Grid>
+              </Border>
+              <Button Grid.Column="1" Content="☷" Style="{StaticResource ActionButton}"
+                      Width="29" HorizontalAlignment="Right" Click="PreviewCommand_Click"/>
+            </Grid>
+            <Border Background="#EDF1F6" Height="1"/>
+            <StackPanel Orientation="Horizontal" Height="36" Margin="17,0">
+              <TextBlock Text="⌄" FontFamily="Segoe UI Symbol" VerticalAlignment="Center"
+                         Foreground="#5D708D" Margin="0,0,8,0"/>
+              <TextBlock Text="▰" Foreground="#C18A2A" FontFamily="Segoe UI Symbol"
+                         VerticalAlignment="Center" Margin="0,0,7,0"/>
+              <TextBlock Text="整车功能测试 (12)" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12.3"/>
+            </StackPanel>
+          </StackPanel>
+          <ListBox x:Name="CaseList" ItemsSource="{Binding Cases}" ItemTemplate="{StaticResource CaseTemplate}"
+                   ItemContainerStyle="{StaticResource CaseItem}" Background="White" BorderThickness="0"
+                   SelectionChanged="CaseList_SelectionChanged"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto" SelectedIndex="2"/>
+        </DockPanel>
+      </Border>
+
+      <!-- Left bottom: compact object information, not a fake dashboard. -->
+      <Border Grid.Column="0" Grid.Row="2" Background="White"
+              BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="7" Margin="0,5,0,0">
+        <StackPanel Margin="14,7,13,6">
+          <TextBlock Text="⌄  用例信息" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,9"/>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="76"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="23"/><RowDefinition Height="21"/><RowDefinition Height="21"/><RowDefinition Height="21"/><RowDefinition Height="21"/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="名称" Foreground="#65758D" FontSize="11.5"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedCase.Name}" FontSize="11.7"/>
+            <TextBlock Grid.Row="1" Text="ID" Foreground="#65758D" FontSize="11.5"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedCase.Id}" FontSize="11.7"/>
+            <TextBlock Grid.Row="2" Text="状态" Foreground="#65758D" FontSize="11.5"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="编辑预览" FontSize="11.7"/>
+            <TextBlock Grid.Row="3" Text="步骤数量" Foreground="#65758D" FontSize="11.5"/>
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="准备 6  /  测试 29  /  清理 5" FontSize="11.2"/>
+            <TextBlock Grid.Row="4" Text="设计版本" Foreground="#65758D" FontSize="11.5"/>
+            <TextBlock Grid.Row="4" Grid.Column="1" Text="高保真 · v0.1" FontSize="11.7"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- Center: document tab and actual dense edited content. -->
+      <Border Grid.Column="2" Grid.Row="0" Background="#F2F5FA"
+              BorderBrush="{StaticResource Stroke}" BorderThickness="0,0,0,1">
+        <DockPanel LastChildFill="False">
+          <Border DockPanel.Dock="Left" Background="White" Width="273"
+                  BorderBrush="#E1E9F4" BorderThickness="0,0,1,0" CornerRadius="4,4,0,0">
+            <StackPanel Orientation="Horizontal" Margin="15,0" VerticalAlignment="Center">
+              <TextBlock Text="▣" Foreground="#1769D2" VerticalAlignment="Center" FontSize="14"/>
+              <TextBlock Text="  外部输入与状态响应  (TC-003)" FontSize="12"
+                         VerticalAlignment="Center" FontWeight="SemiBold"/>
+              <TextBlock Text="   ×" FontSize="16" Foreground="#72839A" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+        </DockPanel>
+      </Border>
+      <Border Grid.Column="2" Grid.Row="1" Background="White"
+              BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="7">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="86"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <!-- Current document and status summary. -->
+          <Grid Grid.Row="0" Margin="15,8,14,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="268"/></Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding SelectedCase.Name}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Border Background="#E5F6ED" CornerRadius="11" Padding="10,3" Margin="12,0,0,0"
+                        VerticalAlignment="Center">
+                  <TextBlock Text="编辑中" Foreground="#167A40" FontWeight="SemiBold" FontSize="10.5"/>
+                </Border>
+              </StackPanel>
+              <TextBlock Text="验证外部开关、按键等输入对 ECU 输出与 CAN 信号的响应是否符合要求。"
+                         FontSize="11.7" Foreground="#65758D" Margin="0,7,0,0"/>
+            </StackPanel>
+            <Grid Grid.Column="1" VerticalAlignment="Center" Height="49">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                <TextBlock Text="总步骤" FontSize="11" HorizontalAlignment="Center" Foreground="#617086"/>
+                <TextBlock Text="29" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                <TextBlock Text="○ 正常" FontSize="11" Foreground="#168B43" HorizontalAlignment="Center"/>
+                <TextBlock Text="26" FontSize="17" FontWeight="Bold" Foreground="#168B43"
+                           HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                <TextBlock Text="▲ 警告" FontSize="11" Foreground="#A66800" HorizontalAlignment="Center"/>
+                <TextBlock Text="1" FontSize="17" FontWeight="Bold" Foreground="#A66800"
+                           HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+              <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                <TextBlock Text="● 错误" FontSize="11" Foreground="#D9383E" HorizontalAlignment="Center"/>
+                <TextBlock Text="2" FontSize="17" FontWeight="Bold" Foreground="#D9383E"
+                           HorizontalAlignment="Center" Margin="0,3,0,0"/>
+              </StackPanel>
+            </Grid>
+          </Grid>
+
+          <!-- Phase selector and quick search. -->
+          <Grid Grid.Row="1" Margin="14,3,13,5">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="PrepareButton" Grid.Column="0" Content="准备 (6)" Tag="准备"
+                    Style="{StaticResource OutlineButton}" Click="Phase_Click" Height="31" Margin="0,0,5,0"/>
+            <Button x:Name="TestButton" Grid.Column="1" Content="测试 (29)" Tag="测试"
+                    Style="{StaticResource SelectedButton}" Click="Phase_Click" Height="31" Margin="0,0,5,0"/>
+            <Button x:Name="CleanupButton" Grid.Column="2" Content="清理 (5)" Tag="清理"
+                    Style="{StaticResource OutlineButton}" Click="Phase_Click" Height="31" Margin="0,0,8,0"/>
+            <Border Grid.Column="3" Background="White" CornerRadius="5"
+                    BorderBrush="#CEDAE9" BorderThickness="1" Height="31" Margin="8,0,8,0">
+              <Grid>
+                <TextBlock Text="⌕  搜索步骤 (Ctrl+F)" Foreground="#8593A6"
+                           VerticalAlignment="Center" Margin="10,0"
+                           IsHitTestVisible="False" FontSize="11.5"/>
+                <TextBox x:Name="StepSearch" Background="Transparent" BorderThickness="0"
+                         Padding="10,4" TextChanged="StepSearch_TextChanged" FontSize="12"/>
+              </Grid>
+            </Border>
+            <Button Grid.Column="4" Content="⊞ 展开全部" Click="PreviewCommand_Click"
+                    Style="{StaticResource ActionButton}" FontSize="11.5" Padding="5,4"/>
+            <Button Grid.Column="5" Content="⊟ 折叠全部" Click="PreviewCommand_Click"
+                    Style="{StaticResource ActionButton}" FontSize="11.5" Padding="5,4"/>
+          </Grid>
+
+          <Grid Grid.Row="2" Background="#F3F6FA" Margin="12,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="46"/>
+              <ColumnDefinition Width="1.2*" MinWidth="185"/>
+              <ColumnDefinition Width="1.5*" MinWidth="175"/>
+              <ColumnDefinition Width="48"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="#" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="11.5" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="1" Text="步骤 / 流程结构" Margin="10,0" VerticalAlignment="Center"
+                       FontSize="11.5" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="2" Text="摘要 / 关键参数" Margin="7,0" VerticalAlignment="Center"
+                       FontSize="11.5" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="3" Text="状态" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       FontSize="11.5" FontWeight="SemiBold"/>
+          </Grid>
+
+          <ListBox Grid.Row="3" x:Name="StepList"
+                   ItemsSource="{Binding VisibleSteps}" ItemTemplate="{StaticResource StepTemplate}"
+                   ItemContainerStyle="{StaticResource StepItem}" Background="White"
+                   BorderThickness="0" Margin="12,0,12,8" SelectedIndex="6"
+                   SelectionChanged="StepList_SelectionChanged"
+                   VirtualizingPanel.IsVirtualizing="True"
+                   VirtualizingPanel.VirtualizationMode="Recycling"
+                   ScrollViewer.CanContentScroll="True"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+        </Grid>
+      </Border>
+
+      <!-- Right: actual type-aware context inspector, all groups grounded in accepted mockup. -->
+      <Border Grid.Column="4" Grid.Row="0" Grid.RowSpan="2" Margin="0,0,0,4"
+              Background="White" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="7">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Grid Grid.Row="0" Background="#FAFCFF">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="步骤参数" Style="{StaticResource TopTabSelected}" Padding="7,4"/>
+            <Button Grid.Column="1" Content="说明文档" Style="{StaticResource TopTab}" Padding="7,4"
+                    Click="PreviewCommand_Click"/>
+            <Button Grid.Column="2" Content="变更历史" Style="{StaticResource TopTab}" Padding="7,4"
+                    Click="PreviewCommand_Click"/>
+          </Grid>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="16,13,17,20">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="▥" FontSize="23" Foreground="#1769D2"
+                           FontFamily="Segoe UI Symbol" VerticalAlignment="Center" Margin="1,0,11,0"/>
+                <StackPanel>
+                  <TextBlock Text="{Binding Inspector.Heading}" FontSize="17" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding Inspector.Description}" TextWrapping="Wrap"
+                             TextTrimming="None" Foreground="#66758B" FontSize="11.5" Margin="0,4,0,0"/>
+                </StackPanel>
+              </StackPanel>
+              <Border Background="#E6EDF5" Height="1" Margin="0,14,0,13"/>
+              <TextBlock Text="⌄  基本设置" Style="{StaticResource SectionTitle}"/>
+              <Grid Margin="12,0,3,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="38"/><RowDefinition Height="38"/><RowDefinition Height="38"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="名称" Style="{StaticResource Label}"/>
+                <TextBox Grid.Column="1" Grid.Row="0" Text="{Binding Inspector.Name}"
+                         Style="{StaticResource InputBox}" IsReadOnly="True"/>
+                <TextBlock Grid.Row="1" Text="总线通道" Style="{StaticResource Label}"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource DropDown}" SelectedIndex="0" IsHitTestVisible="False">
+                  <ComboBoxItem Content="{Binding Inspector.Channel}"/>
+                </ComboBox>
+                <TextBlock Grid.Row="2" Text="信号" Style="{StaticResource Label}"/>
+                <Grid Grid.Row="2" Grid.Column="1">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="34"/></Grid.ColumnDefinitions>
+                  <TextBox Text="{Binding Inspector.Signal}" Style="{StaticResource InputBox}" IsReadOnly="True"/>
+                  <Button Grid.Column="1" Content="…" FontWeight="Bold" Style="{StaticResource OutlineButton}"
+                          Padding="4,4" Height="29" Margin="4,0,0,0" Click="ShowSignalPicker_Click"
+                          ToolTip="打开 DBC 信号选择器视觉预览"/>
+                </Grid>
+              </Grid>
+              <TextBlock Text="{Binding Inspector.Dbc,StringFormat='DBC: {0}   ·   演示信号定义'}"
+                         Foreground="#1769D2" FontSize="11.2" Margin="102,4,0,2"/>
+              <Border Background="#E6EDF5" Height="1" Margin="0,15,0,13"/>
+
+              <TextBlock Text="⌄  判定条件" Style="{StaticResource SectionTitle}"/>
+              <Grid Margin="12,0,3,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="40"/><RowDefinition Height="40"/><RowDefinition Height="40"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="比较方式" Style="{StaticResource Label}"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Inspector.Operator}"
+                         Style="{StaticResource InputBox}" IsReadOnly="True"/>
+                <TextBlock Grid.Row="1" Text="期望值" Style="{StaticResource Label}"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Inspector.Expected}"
+                         Style="{StaticResource InputBox}" IsReadOnly="True"/>
+                <TextBlock Grid.Row="2" Text="超时时间" Style="{StaticResource Label}"/>
+                <Grid Grid.Row="2" Grid.Column="1">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="45"/></Grid.ColumnDefinitions>
+                  <TextBox Text="{Binding Inspector.Timeout}" Style="{StaticResource InputBox}" IsReadOnly="True"/>
+                  <TextBlock Grid.Column="1" Text="ms" Margin="7,0,0,0" VerticalAlignment="Center" Foreground="#526077"/>
+                </Grid>
+              </Grid>
+              <Border Background="#E6EDF5" Height="1" Margin="0,16,0,13"/>
+
+              <TextBlock Text="⌄  高级选项" Style="{StaticResource SectionTitle}"/>
+              <StackPanel Margin="16,0,0,0">
+                <CheckBox Content="超时判定为失败" IsChecked="{Binding Inspector.StopOnTimeout}"
+                          IsHitTestVisible="False" Margin="0,0,0,9" FontSize="12"/>
+                <CheckBox Content="记录实际值" IsChecked="{Binding Inspector.RecordValue}"
+                          IsHitTestVisible="False" Margin="0,0,0,9" FontSize="12"/>
+                <CheckBox Content="忽略信号无效 (Invalid)" IsChecked="{Binding Inspector.IgnoreInvalid}"
+                          IsHitTestVisible="False" Margin="0,0,0,13" FontSize="12"/>
+              </StackPanel>
+              <Grid Margin="12,0,3,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <TextBlock Text="采样周期" Style="{StaticResource Label}"/>
+                <TextBox Grid.Column="1" Text="{Binding Inspector.SampleInterval}"
+                         Style="{StaticResource InputBox}" IsReadOnly="True"/>
+              </Grid>
+              <Border Background="#E6EDF5" Height="1" Margin="0,16,0,12"/>
+              <Border Background="#FFF6EA" BorderBrush="#F0D7B6"
+                      BorderThickness="1" CornerRadius="6" Padding="11">
+                <StackPanel>
+                  <TextBlock Text="⚠  当前步骤诊断（演示）" FontSize="11.5"
+                             Foreground="#986000" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding Inspector.Warning}" TextWrapping="Wrap" TextTrimming="None"
+                             Foreground="#986000" FontSize="11.2" Margin="0,6,0,0"/>
+                </StackPanel>
+              </Border>
+              <TextBlock Text="当前为高保真视觉验证，不连接真实 DBC 或 ECU。"
+                         Foreground="#697990" FontSize="10.5" TextWrapping="Wrap"
+                         TextTrimming="None" Margin="0,11,0,0"/>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+
+      <!-- Bottom: 3 populated, individually locatable problems like the accepted reference. -->
+      <Border Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Background="White"
+              BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+              CornerRadius="7" Margin="0,5,0,0">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="39"/><RowDefinition Height="26"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Grid Grid.Row="0" Margin="13,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="⌄ 问题与定位 (3)" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Margin="0,0,19,0" FontSize="12.4"/>
+            <TextBlock Grid.Column="1" Text="● 错误 2" Foreground="#D9363E" FontSize="11.7"
+                       VerticalAlignment="Center" Margin="0,0,17,0"/>
+            <TextBlock Grid.Column="2" Text="▲ 警告 1" Foreground="#A66800"
+                       FontSize="11.7" VerticalAlignment="Center" Margin="0,0,17,0"/>
+            <Button Grid.Column="3" Content="全部   ▾" Style="{StaticResource OutlineButton}"
+                    Padding="8,3" Height="25" HorizontalAlignment="Left" VerticalAlignment="Center"
+                    Click="PreviewCommand_Click" FontSize="11.5"/>
+            <Button Grid.Column="4" Content="×" Foreground="#6C7B8F" FontSize="15"
+                    Style="{StaticResource ActionButton}" Width="30" Height="28"
+                    Click="CollapseProblems_Click" ToolTip="折叠问题列表"/>
+          </Grid>
+          <Grid Grid.Row="1" Background="#F5F7FA" Margin="12,0,12,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="98"/><ColumnDefinition Width="102"/><ColumnDefinition Width="1.08*"/><ColumnDefinition Width="0.92*"/><ColumnDefinition Width="73"/></Grid.ColumnDefinitions>
+            <TextBlock Text="级别" VerticalAlignment="Center" Margin="8,0" FontWeight="SemiBold" FontSize="11.4"/>
+            <TextBlock Grid.Column="1" Text="位置" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11.4"/>
+            <TextBlock Grid.Column="2" Text="问题描述" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11.4"/>
+            <TextBlock Grid.Column="3" Text="建议" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11.4"/>
+          </Grid>
+          <ListBox Grid.Row="2" x:Name="IssueList" ItemsSource="{Binding Issues}"
+                   ItemTemplate="{StaticResource IssueTemplate}" BorderThickness="0"
+                   Margin="12,0,12,2" Background="White"
+                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                   SelectionChanged="IssueList_SelectionChanged">
+            <ListBox.ItemContainerStyle>
+              <Style TargetType="ListBoxItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="Padding" Value="0"/><Setter Property="BorderThickness" Value="0"/>
+              </Style>
+            </ListBox.ItemContainerStyle>
+          </ListBox>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="4" Background="#FBFCFF" BorderBrush="{StaticResource Stroke}"
+            BorderThickness="0,1,0,0">
+      <DockPanel Margin="14,0">
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+          <Ellipse Width="10" Height="10" Fill="#14A050" Margin="0,0,7,0"/>
+          <TextBlock Text="就绪" VerticalAlignment="Center" FontSize="11.2" FontWeight="SemiBold"/>
+          <TextBlock Text="   │   当前项目：EVT_整车功能测试   │   环境：实验室   │   演示 DBC：3 个"
+                     Foreground="#617086" VerticalAlignment="Center" FontSize="11.2"/>
+        </StackPanel>
+        <TextBlock Text="{Binding StatusText}" Foreground="#506681" DockPanel.Dock="Right"
+                   VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="11.1"/>
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>
