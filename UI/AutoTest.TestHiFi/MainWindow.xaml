@@ -729,7 +729,8 @@
                    FontFamily="Consolas" FontSize="13" Foreground="#25364B" BorderThickness="0"
                    Background="White" AcceptsReturn="True" AcceptsTab="True"
                    VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                   TextWrapping="NoWrap" Padding="20,15" SpellCheck.IsEnabled="False"/>
+                   TextWrapping="NoWrap" Padding="20,15" SpellCheck.IsEnabled="False"
+                   IsUndoEnabled="False" PreviewKeyDown="FileBodyEditor_PreviewKeyDown"/>
           <Border Grid.Row="2" Background="#F7F9FC" BorderBrush="#E2E9F1" BorderThickness="0,1,0,0">
             <DockPanel Margin="15,0">
               <TextBlock DockPanel.Dock="Left" Text="实际文件编辑 · Ctrl+S 保存 · Ctrl+Z 撤销 · Ctrl+W 关闭"
