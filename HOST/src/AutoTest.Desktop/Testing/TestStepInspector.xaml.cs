@@ -102,7 +102,7 @@ public partial class TestStepInspector : UserControl
     private static readonly IReadOnlyList<TestActionOption> Options =
     [
         new("can", "外部操作", "发送 CAN 报文", "Write", "can",
-            "选择 DBC 报文并填写信号值；也可发送原始帧。"),
+            "直接编辑完整 CAN ID 与 DATA；选择 DBC 定义后，可用信号辅助解析和修改 DATA。"),
         new("key", "外部操作", "按键动作", "Write", "button",
             "选择 KEY 组合与保持时间。"),
         new("ign", "外部操作", "切换 IGN", "Write", "ign", "切换固定台架的 IGN 输出。"),
@@ -574,9 +574,50 @@ public partial class TestStepInspector : UserControl
 
     private void TargetSearch_Changed(object sender, TextChangedEventArgs e)
     {
-        if (!_ready || _filteringTargets || TargetPicker is null || _selected is null) return;
-        ApplyTargetFilter((IsCanSend ? CanTargetSearch.Text : TargetSearch.Text).Trim(),
-            _selectedTarget?.Mapping);
+        if (!_ready || _filteringTargets || _selected is null) return;
+        if (IsCanSend)
+        {
+            FilterCanTargetChoices(CanTargetSearch.Text.Trim());
+            return;
+        }
+        if (TargetPicker is null) return;
+        ApplyTargetFilter(TargetSearch.Text.Trim(), _selectedTarget?.Mapping);
+    }
+
+    // Filtering the DBC picker must not change the active frame being edited.
+    // The selected DBC mapping and DATA remain in the inspector until the user
+    // explicitly chooses a different result.
+    private void FilterCanTargetChoices(string query)
+    {
+        var idQuery = query.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+            ? query[2..] : query;
+        var matches = _allTargets.Where(item =>
+        {
+            if (query.Length == 0) return true;
+            bool Contains(string? value) => !string.IsNullOrEmpty(value) &&
+                value.Contains(query, StringComparison.OrdinalIgnoreCase);
+            var id = item.Mapping.CanId.ToString("X", CultureInfo.InvariantCulture);
+            return Contains(item.Label) || Contains(item.Mapping.Name) ||
+                Contains(item.Message?.Name) ||
+                idQuery.Length > 0 && id.Contains(idQuery, StringComparison.OrdinalIgnoreCase);
+        }).ToList();
+
+        _filteringTargets = true;
+        try
+        {
+            AvailableTargets.Clear();
+            foreach (var item in matches) AvailableTargets.Add(item);
+            // Keep the current selection only if it is actually in the filtered
+            // results. Never pin it into a non-matching search result.
+            CanTargetPicker.SelectedItem = _selectedTarget is null ? null :
+                matches.FirstOrDefault(x => x.Mapping == _selectedTarget.Mapping);
+        }
+        finally { _filteringTargets = false; }
+
+        CanSearchResultHint.Text = query.Length == 0 ? "" :
+            matches.Count == 0
+                ? "没有匹配的 DBC 报文；当前报文和 DATA 保持不变。"
+                : $"找到 {matches.Count} 条定义，选择下拉结果即可切换当前报文。";
     }
 
     private void ApplyTargetFilter(string query, TestTargetMapping? preferredMapping,
@@ -691,7 +732,7 @@ public partial class TestStepInspector : UserControl
         var previousTarget = _selectedTarget;
         var enteredBytes = IsCanSend ? RawCanDataInput.Text : "";
         var enteredId = IsCanSend ? FrameIdInput.Text : "";
-        var enteredExtended = IsCanSend && ExtendedFrame.IsChecked == true;
+        var enteredExtended = IsCanSend && GetCanFrameExtended();
         _selectedTarget = selected;
         DbcCanPanel.Visibility = KeyPanel.Visibility =
             IgnitionPanel.Visibility = Visibility.Collapsed;
@@ -707,10 +748,9 @@ public partial class TestStepInspector : UserControl
             try
             {
                 FrameIdInput.IsReadOnly = false;
-                ExtendedFrame.IsEnabled = true;
                 FrameIdInput.Text = "";
-                ExtendedFrame.IsChecked = false;
                 RawCanDataInput.Text = "";
+                CanFrameFormatLabel.Text = "等待 CAN ID";
                 CanDlcInput.Text = "8";
             }
             finally { _loadingCanData = false; }
@@ -748,7 +788,7 @@ public partial class TestStepInspector : UserControl
                 var sameFrame = compatible.Mapping.Kind == TestTargetKind.RawCan
                     ? uint.TryParse(previousIdText, NumberStyles.HexNumber,
                         CultureInfo.InvariantCulture, out var rawId) &&
-                        rawId == mapping.CanId && enteredExtended == mapping.Extended
+                        rawId == mapping.CanId
                     : compatible.Mapping.CanId == mapping.CanId &&
                         compatible.Mapping.Extended == mapping.Extended;
                 if (sameFrame)
@@ -797,13 +837,11 @@ public partial class TestStepInspector : UserControl
                 FrameIdInput.Text = mapping.Kind == TestTargetKind.RawCan && !sameSaved
                     ? previousTarget is not null ? enteredId : ""
                     : "0x" + mapping.CanId.ToString("X");
-                ExtendedFrame.IsChecked = mapping.Kind == TestTargetKind.RawCan && !sameSaved
-                    ? previousTarget is not null && enteredExtended : mapping.Extended;
                 FrameIdInput.IsReadOnly = isDbc;
-                ExtendedFrame.IsEnabled = !isDbc;
                 RawCanDataInput.Text = bytesText;
                 CanDlcInput.Text = (definition?.Dlc ?? 8)
                     .ToString(CultureInfo.InvariantCulture);
+                UpdateCanFrameFormatLabel();
             }
             finally { _loadingCanData = false; }
             if (isDbc)
@@ -1002,6 +1040,61 @@ public partial class TestStepInspector : UserControl
             CanDefinitionPickerPanel.Visibility == Visibility.Visible ? "收起" : "更换定义";
     }
 
+    private bool GetCanFrameExtended()
+    {
+        var mapping = _selectedTarget?.Mapping;
+        if (mapping?.Kind == TestTargetKind.CanMessage)
+            return mapping.Extended; // DBC is authoritative, including low-ID extended frames.
+
+        var idText = FrameIdInput.Text.Trim();
+        if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            idText = idText[2..];
+        if (!uint.TryParse(idText, NumberStyles.HexNumber,
+            CultureInfo.InvariantCulture, out var id)) return false;
+
+        // Preserve an explicitly saved raw frame format when editing that same ID.
+        if (mapping?.Kind == TestTargetKind.RawCan &&
+            mapping.Name.StartsWith("RAW-ECU-CAN-", StringComparison.OrdinalIgnoreCase) &&
+            mapping.CanId == id)
+            return mapping.Extended;
+
+        // For an unbound raw frame, the 29-bit range identifies extended frames.
+        // IDs within 11 bits default to standard; the numeric ID alone cannot
+        // distinguish a deliberately low-numbered extended frame.
+        return id > 0x7FFu;
+    }
+
+    private void UpdateCanFrameFormatLabel()
+    {
+        if (CanFrameFormatLabel is null) return;
+        var mapping = _selectedTarget?.Mapping;
+        if (mapping?.Kind == TestTargetKind.CanMessage)
+        {
+            CanFrameFormatLabel.Text = mapping.Extended
+                ? "扩展帧 · DBC 定义" : "标准帧 · DBC 定义";
+            return;
+        }
+        var idText = FrameIdInput.Text.Trim();
+        if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            idText = idText[2..];
+        if (!uint.TryParse(idText, NumberStyles.HexNumber,
+            CultureInfo.InvariantCulture, out var id))
+        {
+            CanFrameFormatLabel.Text = "等待 CAN ID";
+            return;
+        }
+        var extended = GetCanFrameExtended();
+        CanFrameFormatLabel.Text = extended
+            ? "扩展帧 · 自动识别" : "标准帧 · 默认";
+    }
+
+    private void CanId_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (!_ready || !IsCanSend || _loadingCanData) return;
+        UpdateCanFrameFormatLabel();
+        UpdateCanFramePreview();
+    }
+
     private void CanId_LostFocus(object sender, RoutedEventArgs e)
     {
         if (!IsCanSend || _loadingCanData ||
@@ -1010,13 +1103,32 @@ public partial class TestStepInspector : UserControl
         if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             idText = idText[2..];
         if (!uint.TryParse(idText, NumberStyles.HexNumber,
-            CultureInfo.InvariantCulture, out var id)) return;
-        var ext = ExtendedFrame.IsChecked == true;
+            CultureInfo.InvariantCulture, out var id))
+        {
+            UpdateCanFrameFormatLabel();
+            return;
+        }
+
+        // Match by numeric CAN ID first. A DBC definition supplies the IDE bit,
+        // so a low numeric ID can still correctly resolve to an extended frame.
         var found = _catalog.Where(x =>
             x.Mapping.Kind == TestTargetKind.CanMessage && x.Message is not null &&
-            x.Mapping.CanId == id && x.Mapping.Extended == ext).ToArray();
-        if (found.Length != 1) return; // Never guess between ambiguous DBCs.
-        ApplyTargetFilter("", found[0].Mapping);
+            x.Mapping.CanId == id).ToArray();
+        if (found.Length == 1)
+        {
+            ApplyTargetFilter("", found[0].Mapping);
+            return;
+        }
+        if (found.Length > 1)
+        {
+            CanDefinitionPickerPanel.Visibility = Visibility.Visible;
+            CanChangeDefinitionButton.Content = "收起";
+            FilterCanTargetChoices("0x" + id.ToString("X", CultureInfo.InvariantCulture));
+            CanSearchResultHint.Text = "该 ID 在 DBC 中有多个定义，请选择对应报文；帧格式将读取 DBC。";
+            return;
+        }
+        UpdateCanFrameFormatLabel();
+        UpdateCanFramePreview();
     }
 
     private void CanData_Changed(object sender, TextChangedEventArgs e)
@@ -1103,7 +1215,7 @@ public partial class TestStepInspector : UserControl
             if (!uint.TryParse(idText, NumberStyles.HexNumber,
                 CultureInfo.InvariantCulture, out var id))
                 throw new ArgumentException("需要填写有效的十六进制 CAN ID。");
-            var extended = ExtendedFrame.IsChecked == true;
+            var extended = GetCanFrameExtended();
             if (id > (extended ? 0x1FFFFFFFu : 0x7FFu))
                 throw new ArgumentException("CAN ID 不符合帧格式。");
             var bytes = ParseHex(RawCanDataInput.Text, 8);
@@ -1265,7 +1377,7 @@ public partial class TestStepInspector : UserControl
                     if (!uint.TryParse(hex, NumberStyles.HexNumber,
                         CultureInfo.InvariantCulture, out var id))
                         throw new ArgumentException("请填写合法 CAN ID（十六进制）。");
-                    var ext = ExtendedFrame.IsChecked == true;
+                    var ext = GetCanFrameExtended();
                     if (id > (ext ? 0x1FFFFFFFu : 0x7FFu))
                         throw new ArgumentException("CAN ID 超出所选标准/扩展帧范围。");
                     var bytes = ParseHex(RawCanDataInput.Text, 8);

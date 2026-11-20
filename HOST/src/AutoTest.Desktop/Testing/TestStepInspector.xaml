@@ -34,9 +34,9 @@
      HorizontalAlignment="Left" Margin="0,0,0,12" Padding="10,6"
      ToolTip="只转换当前旧版 CAN 判定；必须选择 CAN ID 匹配的真实 DBC 信号，并核对原位长、字节序、判定值和超时。转换后此步骤参与执行。"/>
     <DockPanel Margin="0,0,0,12" LastChildFill="True">
-      <CheckBox x:Name="StepEnabledInput" DockPanel.Dock="Right" Content="启用"
+      <CheckBox x:Name="StepEnabledInput" DockPanel.Dock="Right" Content="执行此步骤"
        Margin="10,14,0,0" VerticalAlignment="Top" IsChecked="True"
-       ToolTip="关闭后运行时跳过；步骤仍保留。"/>
+       ToolTip="取消后，本步骤不参与测试；如果是流程容器，其子步骤也会跳过。步骤配置仍保留。"/>
       <StackPanel>
        <TextBlock Text="名称" Foreground="#61738B" FontWeight="SemiBold"
         FontSize="11" Margin="0,0,0,4"/>
@@ -77,7 +77,8 @@
          <TextBlock Text="CAN ID" FontSize="11" Foreground="#65788F"
           Margin="0,0,0,3"/>
          <TextBox x:Name="FrameIdInput" Width="126" Height="29"
-          FontFamily="Consolas" LostFocus="CanId_LostFocus"/>
+          FontFamily="Consolas" TextChanged="CanId_Changed"
+          LostFocus="CanId_LostFocus"/>
         </StackPanel>
         <StackPanel Margin="0,0,10,0">
          <TextBlock Text="DLC" FontSize="11" Foreground="#65788F"
@@ -89,8 +90,9 @@
         <StackPanel>
          <TextBlock Text="帧格式" FontSize="11" Foreground="#65788F"
           Margin="0,0,0,3"/>
-         <CheckBox x:Name="ExtendedFrame" Content="扩展帧"
-          Margin="0,5,0,0" FontSize="11"/>
+         <TextBlock x:Name="CanFrameFormatLabel" Text="根据 CAN ID 自动识别"
+          Margin="0,5,0,0" FontSize="11" Foreground="#64758C"
+          ToolTip="DBC 定义优先；无 DBC 时，ID 大于 0x7FF 自动识别为扩展帧，否则默认为标准帧。"/>
         </StackPanel>
        </StackPanel>
        <TextBlock Text="DATA（HEX）" FontWeight="SemiBold"
@@ -117,13 +119,17 @@
       </DockPanel>
       <StackPanel x:Name="CanDefinitionPickerPanel" Visibility="Collapsed"
        Margin="0,0,0,6">
-       <TextBox x:Name="CanTargetSearch" TextChanged="TargetSearch_Changed"
+       <TextBlock Text="搜索报文名称、中文别名或 CAN ID"
+       FontSize="10" Foreground="#7A8DA3" Margin="0,0,0,4"/>
+      <TextBox x:Name="CanTargetSearch" TextChanged="TargetSearch_Changed"
         MinHeight="29" Margin="0,0,0,5"
-        ToolTip="搜索中文别名、报文名称、CAN ID"/>
+        ToolTip="输入报文名称、中文别名或 CAN ID，实时筛选下方定义"/>
        <ComboBox x:Name="CanTargetPicker"
         ItemsSource="{Binding AvailableTargets}" DisplayMemberPath="Label"
         MinHeight="30" MaxDropDownHeight="350"
         SelectionChanged="TargetPicker_Changed"/>
+       <TextBlock x:Name="CanSearchResultHint" FontSize="10"
+        Foreground="#7B8EA4" TextWrapping="Wrap" Margin="0,4,0,0"/>
       </StackPanel>
       <TextBlock x:Name="CanTargetHint" Foreground="#627D97"
        TextWrapping="Wrap" FontSize="11" Margin="0,1,0,5"/>
