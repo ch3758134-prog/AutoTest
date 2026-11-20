@@ -171,7 +171,7 @@ public static class WorkspaceStorage
     {
         "TEST" => "# " + asset.Name + "\n# TEST 文档 UI 草稿。正式步骤执行模型将在 UI-03 接入。\n准备:\n测试:\n清理:\n",
         "FLOW" => "# " + asset.Name + "\n# 公共流程 UI 草稿，当前不做正式 StepId 与 Revision 解析。\n",
-        "DBC" => "VERSION \"\\"\nNS_ :\nBS_: \nBU_: DUT\n\nCM_ \"UI 研究示例，不应作为真实 DBC 使用\";\n",
+        "DBC" => "VERSION \"\"\\nNS_ :\\nBS_: \\nBU_: DUT\\n\\nCM_ \"UI design example, NOT production data\";\\n",
         "WAVE" => "time_ms,value\n0,0\n10,0\n",
         "INPUT" => "# 输入配置 UI 草稿\n# 20 Key 是组合电阻网络；五路模拟输出另行正式映射。\n",
         "UDS" => "# UDS 配置 UI 草稿\n",
