@@ -29,6 +29,7 @@ public sealed partial class ManualBenchViewModel
         private int _sent;
         private bool _synchronizingCanSignals;
         private string _signalEditError = "";
+        private bool _explicitRawCan;
         public event Action? Edited;
 
         public BenchCanRow(string name) : this(name, new ObservableCollection<DbcChoice>()) { }
@@ -95,8 +96,12 @@ public sealed partial class ManualBenchViewModel
                         previousId = previousId[2..];
                     var sameFrame = uint.TryParse(previousId, NumberStyles.HexNumber,
                             CultureInfo.InvariantCulture, out var oldId) &&
-                        oldId == value.Message.ArbitrationId && Extended == value.Message.IsExtended &&
-                        CleanDataHex().Length == value.Message.Dlc * 2;
+                        oldId == value.Message.ArbitrationId &&
+                        CleanDataHex().Length == value.Message.Dlc * 2 &&
+                        CleanDataHex().All(Uri.IsHexDigit);
+                    // The DBC owns the IDE bit. Preserve valid DATA for the
+                    // same numeric ID even for a low-numbered extended frame.
+                    _explicitRawCan = false;
                     _useDbc = true;
                     RaisePropertyChanged(nameof(UseDbc));
                     AdoptDbcIdentity(value);
@@ -129,6 +134,29 @@ public sealed partial class ManualBenchViewModel
                 }
                 Notify();
             }
+        }
+
+        public void ClearDbcAssistance()
+        {
+            _explicitRawCan = true;
+            DbcMessage = null;
+        }
+
+        public void AttachUniqueMatchingDbc()
+        {
+            if (_explicitRawCan || DbcMessage is not null) return;
+            var rawId = IdHex.Trim();
+            if (rawId.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                rawId = rawId[2..];
+            if (!uint.TryParse(rawId, NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture, out var id)) return;
+            var matches = DbcChoices.Where(x => x.Message.ArbitrationId == id).ToArray();
+            // Never guess when multiple DBC definitions share an arbitration ID.
+            if (matches.Length != 1) return;
+            var data = CleanDataHex();
+            if (data.Length == matches[0].Message.Dlc * 2 &&
+                data.All(Uri.IsHexDigit))
+                DbcMessage = matches[0];
         }
 
         private void AdoptDbcIdentity(DbcChoice choice)

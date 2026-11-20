@@ -14,6 +14,7 @@ public partial class ManualBenchCanPropertiesWindow : Window
         _model = model;
         DataContext = model;
         InitializeComponent();
+        model.SelectedCanRow.AttachUniqueMatchingDbc();
         BenchDbcPicker.SetBenchChoices(model.DbcMessages, model.SelectedCanRow.DbcMessage);
     }
 
@@ -28,7 +29,7 @@ public partial class ManualBenchCanPropertiesWindow : Window
     private void ClearDbc_Click(object sender, RoutedEventArgs e)
     {
         if (_model.SelectedCanRow is not { } row || !row.CanEditFields) return;
-        row.DbcMessage = null;
+        row.ClearDbcAssistance();
         BenchDbcPicker.SetBenchChoices(_model.DbcMessages, null);
     }
 
