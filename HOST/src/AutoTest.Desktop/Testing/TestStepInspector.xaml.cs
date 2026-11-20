@@ -540,6 +540,19 @@ public partial class TestStepInspector : UserControl
         // display name but a newer asset revision.
         var originallyBound = _boundMappings.FirstOrDefault(x =>
             string.Equals(x.Name, oldTargetName, StringComparison.OrdinalIgnoreCase));
+        if (IsCanSend && originallyBound is { Kind: TestTargetKind.CanMessage } saved &&
+            !_catalog.Any(x => x.Mapping == saved))
+        {
+            // Prefer the unique matching current DBC at edit time. The old
+            // persisted reference remains unchanged until the operator applies
+            // and saves the edited TEST step.
+            var current = _catalog.Where(x =>
+                x.Mapping.Kind == TestTargetKind.CanMessage && x.Message is not null &&
+                x.Mapping.CanId == saved.CanId &&
+                x.Mapping.Extended == saved.Extended &&
+                x.Mapping.Asset == saved.Asset).ToArray();
+            if (current.Length == 1) originallyBound = current[0].Mapping;
+        }
         ApplyTargetFilter("", originallyBound, oldTargetName);
         if (originallyBound is not null &&
             !_catalog.Any(x => x.Mapping == originallyBound) &&
@@ -698,7 +711,7 @@ public partial class TestStepInspector : UserControl
                 FrameIdInput.Text = "";
                 ExtendedFrame.IsChecked = false;
                 RawCanDataInput.Text = "";
-                CanDlcInput.Text = "—";
+                CanDlcInput.Text = "8";
             }
             finally { _loadingCanData = false; }
         }
@@ -756,10 +769,14 @@ public partial class TestStepInspector : UserControl
                     FormatException or OverflowException or
                     AutoTest.Projects.Project.ProjectDataException)
                 {
-                    warning = "旧数据无法转为实际 DATA：" + error.Message +
-                        "。请核对并重新填写，禁止将未解析内容直接发送。";
+                    warning = "旧 DATA 未能解析，已按当前报文长度填充 00，请核对后应用。";
                 }
             }
+            // A CAN frame is immediately editable: new frames default to
+            // 8 zero bytes; a DBC frame defaults to exactly its declared DLC.
+            // Never require the operator to populate every byte manually.
+            if (bytesText.Length == 0)
+                bytesText = FormatCanBytes(new byte[definition?.Dlc ?? 8]);
             _loadingCanData = true;
             try
             {
@@ -771,8 +788,8 @@ public partial class TestStepInspector : UserControl
                 FrameIdInput.IsReadOnly = isDbc;
                 ExtendedFrame.IsEnabled = !isDbc;
                 RawCanDataInput.Text = bytesText;
-                CanDlcInput.Text = definition is null ? "—" :
-                    definition.Dlc.ToString(CultureInfo.InvariantCulture);
+                CanDlcInput.Text = (definition?.Dlc ?? 8)
+                    .ToString(CultureInfo.InvariantCulture);
             }
             finally { _loadingCanData = false; }
             if (isDbc)
@@ -793,8 +810,9 @@ public partial class TestStepInspector : UserControl
                     var safeToEdit = !HasOverlappingCanSignals(definition) &&
                         !definition.Signals.Any(sig => !string.IsNullOrEmpty(sig.Multiplexer));
                     CanTargetHint.Text = safeToEdit
-                        ? "按信号修改只影响该信号定义的数据位，其他 DATA 位原样保留。"
-                        : "复用或重叠信号仅供观察，避免误覆盖；仍可编辑完整 DATA。";
+                        ? "已关联 " + (selected.DisplayNames?.MessageLabel(definition) ??
+                            definition.Name) + " · 修改信号直接更新 DATA"
+                        : "DBC 含复用或重叠信号，仅解析查看；DATA 仍可直接编辑。";
                     foreach (var signal in definition.Signals)
                     {
                         var alias = selected.DisplayNames?.SignalAlias(definition.Id, signal.Name);
@@ -816,7 +834,7 @@ public partial class TestStepInspector : UserControl
                     SynchronizeCanSignals();
                 }
             }
-            else CanTargetHint.Text = "当前未绑定 DBC。上方就是实际发送的完整 CAN 数据。";
+            else CanTargetHint.Text = "当前没有 DBC 辅助；若有匹配定义，可直接选择。";
             UpdateCanFramePreview();
             if (warning.Length > 0) CanPreviewIssue.Text = warning;
             return;
@@ -959,6 +977,32 @@ public partial class TestStepInspector : UserControl
             foreach (var bit in DbcSignalCodec.BitPositions(signal))
                 if (!bits.Add(bit)) return true;
         return false;
+    }
+
+    private void CanChangeDefinition_Click(object sender, RoutedEventArgs e)
+    {
+        CanDefinitionPickerPanel.Visibility =
+            CanDefinitionPickerPanel.Visibility == Visibility.Visible
+                ? Visibility.Collapsed : Visibility.Visible;
+        CanChangeDefinitionButton.Content =
+            CanDefinitionPickerPanel.Visibility == Visibility.Visible ? "收起" : "更换定义";
+    }
+
+    private void CanId_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (!IsCanSend || _loadingCanData ||
+            _selectedTarget?.Mapping.Kind != TestTargetKind.RawCan) return;
+        var idText = FrameIdInput.Text.Trim();
+        if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            idText = idText[2..];
+        if (!uint.TryParse(idText, NumberStyles.HexNumber,
+            CultureInfo.InvariantCulture, out var id)) return;
+        var ext = ExtendedFrame.IsChecked == true;
+        var found = _catalog.Where(x =>
+            x.Mapping.Kind == TestTargetKind.CanMessage && x.Message is not null &&
+            x.Mapping.CanId == id && x.Mapping.Extended == ext).ToArray();
+        if (found.Length != 1) return; // Never guess between ambiguous DBCs.
+        ApplyTargetFilter("", found[0].Mapping);
     }
 
     private void CanData_Changed(object sender, TextChangedEventArgs e)

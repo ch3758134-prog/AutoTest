@@ -64,132 +64,157 @@
       TextWrapping="Wrap" Margin="0,6,0,0"/>
     </StackPanel>
 
-    <!-- Complete CAN frame is primary; the DBC signal editor is always
-         present below it as an optional, non-destructive assistant. -->
-    <StackPanel x:Name="CanSendPanel" Visibility="Collapsed" Margin="0,0,0,14">
-     <Border x:Name="CanDataCard" Background="White" BorderBrush="#D9E3EE"
-      BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,0,0,13">
+    <!-- CAN remains an exact byte editor; DBC is an automatically attached
+         helper, with a compact optional picker for changing definitions. -->
+    <StackPanel x:Name="CanSendPanel" Visibility="Collapsed" Margin="0,0,0,12">
+     <Border x:Name="CanDataCard" Background="White" BorderBrush="#E0E7EF"
+      BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,11">
       <StackPanel>
-       <TextBlock Text="CAN 报文" FontWeight="SemiBold" Foreground="#254565"
-        Margin="0,0,0,10"/>
-       <Grid Margin="0,0,0,6">
-        <Grid.ColumnDefinitions>
-         <ColumnDefinition Width="*"/>
-         <ColumnDefinition Width="70"/>
-        </Grid.ColumnDefinitions>
-        <StackPanel Margin="0,0,9,0">
-         <TextBlock Text="CAN ID（HEX）" FontSize="11" Foreground="#64758C" Margin="0,0,0,4"/>
-         <TextBox x:Name="FrameIdInput" MinHeight="30" FontFamily="Consolas"/>
+       <TextBlock Text="发送报文" FontWeight="SemiBold" Foreground="#244665"
+        Margin="0,0,0,8"/>
+       <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+        <StackPanel Margin="0,0,10,0">
+         <TextBlock Text="CAN ID" FontSize="11" Foreground="#65788F"
+          Margin="0,0,0,3"/>
+         <TextBox x:Name="FrameIdInput" Width="126" Height="29"
+          FontFamily="Consolas" LostFocus="CanId_LostFocus"/>
         </StackPanel>
-        <StackPanel Grid.Column="1">
-         <TextBlock Text="DLC" FontSize="11" Foreground="#64758C" Margin="0,0,0,4"/>
-         <TextBox x:Name="CanDlcInput" MinHeight="30" IsReadOnly="True"
-          Background="#F2F6FA" FontFamily="Consolas"
-          ToolTip="无 DBC 时由实际 DATA 字节数决定"/>
+        <StackPanel Margin="0,0,10,0">
+         <TextBlock Text="DLC" FontSize="11" Foreground="#65788F"
+          Margin="0,0,0,3"/>
+         <TextBox x:Name="CanDlcInput" Width="43" Height="29"
+          IsReadOnly="True" Background="#F2F5F9"
+          FontFamily="Consolas"/>
         </StackPanel>
-       </Grid>
-       <CheckBox x:Name="ExtendedFrame" Content="29 位扩展帧" FontSize="11"
-        Margin="0,0,0,11"/>
-       <TextBlock Text="DATA · 实际发送字节" FontWeight="SemiBold"
-        Foreground="#2D4D6D" FontSize="12" Margin="0,0,0,5"/>
+        <StackPanel>
+         <TextBlock Text="帧格式" FontSize="11" Foreground="#65788F"
+          Margin="0,0,0,3"/>
+         <CheckBox x:Name="ExtendedFrame" Content="扩展帧"
+          Margin="0,5,0,0" FontSize="11"/>
+        </StackPanel>
+       </StackPanel>
+       <TextBlock Text="DATA（HEX）" FontWeight="SemiBold"
+        Foreground="#2C4D70" FontSize="11" Margin="0,3,0,4"/>
        <TextBox x:Name="RawCanDataInput" TextChanged="CanData_Changed"
-        MinHeight="54" TextWrapping="Wrap" Padding="7"
-        FontFamily="Consolas" FontSize="13"
-        ToolTip="完整 HEX 字节，例如 01 02 03 04 05 06 07 08"/>
-       <TextBlock x:Name="CanFramePreview" Foreground="#476987"
-        Margin="0,7,0,0" FontSize="11" TextWrapping="Wrap"
-        Text="填写 CAN ID 和完整 DATA"/>
-       <TextBlock x:Name="CanPreviewIssue" Foreground="#B25143"
-        Margin="0,4,0,0" FontSize="11" TextWrapping="Wrap"/>
+        Width="244" Height="31" Padding="7,4"
+        HorizontalAlignment="Left" FontFamily="Consolas" FontSize="12"
+        ToolTip="直接编辑完整报文字节，例如 00 00 00 00 00 00 00 00"/>
+       <TextBlock x:Name="CanFramePreview" FontSize="10"
+        Foreground="#5F7991" Margin="0,6,0,0" TextWrapping="Wrap"/>
+       <TextBlock x:Name="CanPreviewIssue" FontSize="10" Foreground="#AF533D"
+        Margin="0,3,0,0" TextWrapping="Wrap"/>
       </StackPanel>
      </Border>
-     <StackPanel Margin="0,0,0,13">
-      <TextBlock Text="DBC 辅助编辑" FontWeight="SemiBold" Foreground="#254565"
-       Margin="0,0,0,4"/>
-      <TextBlock Text="DBC 负责解析和辅助修改 DATA，不是另一种发送模式。"
-       FontSize="10" Foreground="#697C91" TextWrapping="Wrap"
-       Margin="0,0,0,8"/>
-      <TextBox x:Name="CanTargetSearch" TextChanged="TargetSearch_Changed"
-       MinHeight="29" Margin="0,0,0,5"
-       ToolTip="按中文名称、报文名或 CAN ID 搜索"/>
-      <ComboBox x:Name="CanTargetPicker" ItemsSource="{Binding AvailableTargets}"
-       DisplayMemberPath="Label" MinHeight="32" MaxDropDownHeight="350"
-       SelectionChanged="TargetPicker_Changed"/>
-      <TextBlock x:Name="CanTargetHint" Foreground="#647993"
-       TextWrapping="Wrap" FontSize="11" Margin="0,7,0,0"/>
-      <Button x:Name="CanRebindButton" Content="按当前 DBC 重新绑定"
-       Click="CanRebind_Click" Visibility="Collapsed" HorizontalAlignment="Left"
-       Margin="0,7,0,0" Padding="8,5"/>
-      <StackPanel x:Name="DbcCanPanel" Visibility="Collapsed" Margin="0,10,0,0">
-       <Border Background="#F3F7FC" Padding="7" CornerRadius="5"
-        Margin="0,0,0,8">
-        <TextBlock x:Name="DbcMessageInfo" FontSize="11" Foreground="#57728E"
-         TextWrapping="Wrap"/>
-       </Border>
+
+     <StackPanel Margin="0,0,0,10">
+      <DockPanel Margin="0,0,0,6" LastChildFill="True">
+       <Button x:Name="CanChangeDefinitionButton" DockPanel.Dock="Right"
+        Content="更换定义" Click="CanChangeDefinition_Click"
+        Padding="7,3" FontSize="11" MinWidth="64"
+        ToolTip="只有需要更换 DBC 时才打开资源选择器"/>
+       <TextBlock Text="DBC 信号辅助" FontWeight="SemiBold"
+        Foreground="#244665" VerticalAlignment="Center"/>
+      </DockPanel>
+      <StackPanel x:Name="CanDefinitionPickerPanel" Visibility="Collapsed"
+       Margin="0,0,0,6">
+       <TextBox x:Name="CanTargetSearch" TextChanged="TargetSearch_Changed"
+        MinHeight="29" Margin="0,0,0,5"
+        ToolTip="搜索中文别名、报文名称、CAN ID"/>
+       <ComboBox x:Name="CanTargetPicker"
+        ItemsSource="{Binding AvailableTargets}" DisplayMemberPath="Label"
+        MinHeight="30" MaxDropDownHeight="350"
+        SelectionChanged="TargetPicker_Changed"/>
+      </StackPanel>
+      <TextBlock x:Name="CanTargetHint" Foreground="#627D97"
+       TextWrapping="Wrap" FontSize="11" Margin="0,1,0,5"/>
+      <Button x:Name="CanRebindButton" Content="重新绑定 DBC"
+       Click="CanRebind_Click" Visibility="Collapsed"
+       HorizontalAlignment="Left" Padding="7,4" Margin="0,3,0,5"/>
+      <StackPanel x:Name="DbcCanPanel" Visibility="Collapsed">
+       <TextBlock x:Name="DbcMessageInfo" FontSize="10" Foreground="#7B90A7"
+        Margin="0,0,0,7" TextWrapping="Wrap"/>
        <ItemsControl x:Name="SignalGrid" ItemsSource="{Binding SignalValues}">
         <ItemsControl.ItemTemplate>
          <DataTemplate>
-          <StackPanel Margin="0,0,0,10">
-           <TextBlock Text="{Binding DisplayName}" Foreground="#315477"
-            FontWeight="SemiBold" FontSize="11" TextTrimming="CharacterEllipsis"
-            ToolTip="{Binding Definition}"/>
-           <Grid Margin="0,4,0,0" IsEnabled="{Binding IsEditable}">
+          <Grid Margin="0,0,0,5" IsEnabled="{Binding IsEditable}">
+           <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="125"/>
+           </Grid.ColumnDefinitions>
+           <TextBlock Text="{Binding DisplayName}" FontSize="11"
+            Foreground="#31506F" VerticalAlignment="Center"
+            TextTrimming="CharacterEllipsis" ToolTip="{Binding Definition}"
+            Margin="0,0,8,0"/>
+           <Grid Grid.Column="1">
             <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-             MinHeight="28" FontFamily="Consolas" ToolTip="{Binding Range}">
+             FontFamily="Consolas" MinHeight="27"
+             ToolTip="{Binding Range}">
              <TextBox.Style><Style TargetType="TextBox">
               <Setter Property="Visibility" Value="Visible"/>
-              <Style.Triggers><DataTrigger Binding="{Binding HasChoices}" Value="True">
-               <Setter Property="Visibility" Value="Collapsed"/>
-              </DataTrigger></Style.Triggers>
+              <Style.Triggers>
+               <DataTrigger Binding="{Binding HasChoices}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed"/>
+               </DataTrigger>
+              </Style.Triggers>
              </Style></TextBox.Style>
             </TextBox>
             <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Label"
              SelectedValuePath="Value"
              SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-             MinHeight="28" ToolTip="{Binding Definition}">
+             MinHeight="27" ToolTip="{Binding Range}">
              <ComboBox.Style><Style TargetType="ComboBox">
               <Setter Property="Visibility" Value="Collapsed"/>
-              <Style.Triggers><DataTrigger Binding="{Binding HasChoices}" Value="True">
-               <Setter Property="Visibility" Value="Visible"/>
-              </DataTrigger></Style.Triggers>
+              <Style.Triggers>
+               <DataTrigger Binding="{Binding HasChoices}" Value="True">
+                <Setter Property="Visibility" Value="Visible"/>
+               </DataTrigger>
+              </Style.Triggers>
              </Style></ComboBox.Style>
             </ComboBox>
            </Grid>
-           <TextBlock Text="{Binding Range,StringFormat='范围：{0}'}"
-            FontSize="10" Foreground="#8797A8" Margin="0,3,0,0"/>
-          </StackPanel>
+          </Grid>
          </DataTemplate>
         </ItemsControl.ItemTemplate>
        </ItemsControl>
       </StackPanel>
      </StackPanel>
-     <Border BorderBrush="#DEE5ED" BorderThickness="0,1,0,0" Padding="0,10,0,0">
+
+     <Border BorderBrush="#E2E8EF" BorderThickness="0,1,0,0"
+      Padding="0,9,0,0">
       <StackPanel>
-       <TextBlock Text="发送控制" FontWeight="SemiBold" Foreground="#254565"
-        Margin="0,0,0,8"/>
-       <StackPanel Orientation="Horizontal" Margin="0,0,0,9">
-        <RadioButton x:Name="CanOnceMode" Content="发送一次"
+       <TextBlock Text="发送方式" FontWeight="SemiBold"
+        Foreground="#244665" Margin="0,0,0,8"/>
+       <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+        <RadioButton x:Name="CanOnceMode" Content="单次"
          GroupName="CanSendMode" Checked="CanSendMode_Changed"
-         Margin="0,0,19,0"/>
-        <RadioButton x:Name="CanPeriodicMode" Content="周期发送"
+         Margin="0,0,15,0"/>
+        <RadioButton x:Name="CanPeriodicMode" Content="周期"
          GroupName="CanSendMode" Checked="CanSendMode_Changed"/>
        </StackPanel>
        <StackPanel x:Name="CanPeriodicPanel" Visibility="Collapsed">
-        <TextBlock Text="周期（毫秒）" FontSize="11" Foreground="#64758C" Margin="0,0,0,4"/>
-        <TextBox x:Name="CanPeriodInput" MinHeight="29" Margin="0,0,0,8"/>
-        <RadioButton x:Name="CanTimedStop" Content="发送指定时长后停止"
-         GroupName="CanSendStop" Checked="CanStopMode_Changed" Margin="0,0,0,6"/>
-        <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed"
-         Margin="12,0,0,8">
-         <TextBlock Text="持续时间（毫秒）" FontSize="11" Foreground="#64758C"
-          Margin="0,0,0,4"/>
-         <TextBox x:Name="CanDurationInput" MinHeight="29"/>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+         <StackPanel>
+          <TextBlock Text="周期 ms" FontSize="11" Foreground="#64758C"
+           Margin="0,0,0,3"/>
+          <TextBox x:Name="CanPeriodInput" Width="94" MinHeight="28"/>
+         </StackPanel>
+         <StackPanel Margin="12,0,0,0">
+          <TextBlock Text="持续 ms" FontSize="11" Foreground="#64758C"
+           Margin="0,0,0,3"/>
+          <TextBox x:Name="CanDurationInput" Width="94" MinHeight="28"/>
+         </StackPanel>
         </StackPanel>
-        <RadioButton x:Name="CanUntilStopped" Content="直到停止步骤或测试清理"
-         GroupName="CanSendStop" Checked="CanStopMode_Changed"/>
-        <TextBlock Text="周期任务在后台发送，后续测试步骤继续执行。"
-         TextWrapping="Wrap" FontSize="10" Foreground="#73859C"
-         Margin="0,8,0,0"/>
+        <StackPanel Orientation="Horizontal">
+         <RadioButton x:Name="CanTimedStop" Content="定时停止"
+          GroupName="CanSendStop" Checked="CanStopMode_Changed"
+          Margin="0,0,12,0"/>
+         <RadioButton x:Name="CanUntilStopped" Content="直到停止"
+          GroupName="CanSendStop" Checked="CanStopMode_Changed"/>
+        </StackPanel>
+        <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed"/>
+        <TextBlock Text="后台周期发送；后续测试步骤继续执行"
+         FontSize="10" Foreground="#8293A4" Margin="0,6,0,0"
+         TextWrapping="Wrap"/>
        </StackPanel>
       </StackPanel>
      </Border>
