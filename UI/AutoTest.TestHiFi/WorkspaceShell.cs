@@ -497,6 +497,11 @@ public partial class MainWindow
     private void SaveDocument_Click(object sender,RoutedEventArgs e)=>SaveCurrentDocument();
     private bool SaveCurrentDocument()
     {
+        if (_activeToolPage == "TEST")
+        {
+            StatusText = "TEST 页面仍是高保真视觉样本，不能作为正式测试程序保存。请从工程树打开实际资源文件。";
+            return false;
+        }
         if(_currentDocument is null)
         {
             StatusText="当前是视觉 TEST 或工具工作区，没有可保存的文件。请在工程树中打开真实文件。";
@@ -530,6 +535,7 @@ public partial class MainWindow
     }
     private void SaveAs_Click(object sender,RoutedEventArgs e)
     {
+        if (_activeToolPage == "TEST") { StatusText = "视觉样本不能另存为正式 TEST 工程。"; return; }
         if(_currentDocument is null){StatusText="请先打开一个工程资源文件。";return;}
         var dialog=new SaveFileDialog {Title="将当前内容另存为独立文件副本",
             FileName=Path.GetFileName(_currentDocument.Asset.RelativePath),
