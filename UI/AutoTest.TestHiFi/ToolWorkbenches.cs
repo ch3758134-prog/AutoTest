@@ -250,7 +250,17 @@ public partial class MainWindow
             var asset = _workFiles.Import(dialog.FileName, kind);
             RefreshProjectTree();
             StoreSession();
-            OpenAsset(asset);
+            if (kind == "DBC")
+            {
+                Draft("DBC 编辑器").Fields["DBC SelectedId"] = asset.Id;
+                RenderToolWorkbench("DBC 编辑器");
+            }
+            else if (kind == "参考波形")
+            {
+                Draft("波形分析").Fields["波形资源 ID"] = asset.Id;
+                RenderToolWorkbench("波形分析");
+            }
+            else OpenAsset(asset);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         { ShowFileError("导入资源失败", ex); }
@@ -408,27 +418,64 @@ public partial class MainWindow
 
     private void BuildWaveWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
     {
-        ToolNote(center, "工程参考波形管理。当前不连接 CAN 原始帧或测量数据，不绘制虚假的采集曲线。");
-        var files = _workFiles.Workspace?.Assets.Where(a => a.Kind == "参考波形").ToArray() ?? [];
-        foreach (var asset in files)
+        ToolNote(center, "本窗口仅显示从工程真实 CSV 文件读出的波形。鼠标点击曲线区域交替定位 A/B 游标，可放大、缩小、复位查看；没有文件时不显示虚假采集结果。");
+        var toolbar = new WrapPanel();
+        toolbar.Children.Add(ToolButton("导入参考波形…", () => ImportToolResource("参考波形")));
+        center.Children.Add(toolbar);
+        var files = _workFiles.Workspace?.Assets.Where(a => a.Kind == "参考波形")
+            .OrderBy(a => a.Name).ToArray() ?? [];
+        var selection = new ComboBox
         {
-            var current = asset;
-            center.Children.Add(ToolButton("▤  " + asset.Name + "   ·   " + asset.RelativePath,
-                () => OpenAsset(current)));
+            ItemsSource = files, DisplayMemberPath = "Name",
+            Height = 34, Margin = new Thickness(0, 8, 0, 12), BorderBrush = ToolLine
+        };
+        center.Children.Add(selection);
+        var savedId = draft.Fields.GetValueOrDefault("波形资源 ID", "");
+        var selected = files.FirstOrDefault(a => a.Id == savedId) ?? files.FirstOrDefault();
+        selection.SelectedItem = selected;
+        selection.SelectionChanged += (_, _) =>
+        {
+            if (selection.SelectedItem is UiAsset choice)
+            {
+                draft.Fields["波形资源 ID"] = choice.Id;
+                RenderToolWorkbench("波形分析");
+            }
+        };
+        center.Children.Add(ToolLabel("波形画布 · 文件样本", true));
+        var chart = new UiWavePlot();
+        var info = ToolLabel("游标 A / B 尚未定位");
+        chart.CursorChanged += () => info.Text = chart.CursorInfo;
+        var chartBorder = new Border
+        {
+            Child = chart, MinHeight = 285, BorderBrush = ToolLine,
+            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(5),
+            Background = new SolidColorBrush(Color.FromRgb(249,251,254))
+        };
+        center.Children.Add(chartBorder);
+        var controls = new WrapPanel { Margin = new Thickness(0, 12, 0, 4) };
+        controls.Children.Add(ToolButton("放大 2×", chart.ZoomIn));
+        controls.Children.Add(ToolButton("缩小 2×", chart.ZoomOut));
+        controls.Children.Add(ToolButton("适应全幅", chart.ResetZoom));
+        center.Children.Add(controls);
+        center.Children.Add(info);
+        if (selected is null)
+            ToolNote(center, "当前没有参考 CSV。导入格式为 time_ms,value，支持首行标题。");
+        else
+        {
+            try
+            {
+                chart.LoadCsv(_workFiles.FullPath(selected.RelativePath));
+                center.Children.Add(ToolLabel(selected.RelativePath + " · 有效样本：" + chart.Count));
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                ToolNote(center, "波形加载失败：" + ex.Message);
+            }
         }
-        if (files.Length == 0) ToolNote(center, "暂无工程参考波形，可从工程资源导入 CSV。");
-        center.Children.Add(ToolButton("导入参考波形…", () => ImportToolResource("参考波形")));
-        center.Children.Add(ToolLabel("测量画布 · 暂无真实数据", true));
-        var plot = new Border { MinHeight = 190, Background = new SolidColorBrush(Color.FromRgb(248,251,255)),
-            BorderBrush = ToolLine, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(5),
-            Child = new TextBlock { Text = "无采样数据 · 未连接数据源", FontSize = 13,
-                Foreground = ToolMuted, HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center } };
-        center.Children.Add(plot);
         ToolField(inspector, draft, "波形名称");
         ToolField(inspector, draft, "信号 / 通道");
         ToolField(inspector, draft, "参考容差");
-        ToolNote(inspector, "游标、缩放和波形判定将在接入真实采集与 RECORD 证据模型后启用。");
+        ToolNote(inspector, "A/B 游标仅对现有样本定位。自动采样和阈值判定须接入正式 RECORD/TEST 后端，当前不生成判定结论。");
     }
 
     private void BuildBenchWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
