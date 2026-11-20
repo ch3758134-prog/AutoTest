@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using AutoTest.UI.Design;
 using AutoTest.UI.Model;
 
