@@ -86,3 +86,7 @@
 ## 2026-11-20｜Main_Control 固件 ECU CAN 动态波特率 USB 控制 0x42/0x43
 
 - [ECU CAN 运行时波特率、硬件/USB 映射、固件静态审查及 R1 交接](new-baseline-20261112/research/MAIN-CONTROL-ECU-CAN-BAUD-20261120.md)：固件来源 `Main_Control@e06a820e0d54dc7719cc75af1ecae005f05e164f`；源码与 USB CRC 示例已回读验证，Keil/实体 CAN 未验收；固定 `main` 尚无该 CMD，需后续仅同步到 `Main_Control/`，不得把旧式独立固件分支整个合并进多工程整机基线。R1 见 Issue #70。
+
+## 2026-11-20｜R1 两专项研究启动：WAVE 波形判定、SCAN 扫码测试配置
+
+- [WAVE #71 与 SCAN #72 双专业研究成立、R1 接线责任及初期源码能力](new-baseline-20261112/research/R1-WAVE-SCAN-SPECIALISTS-20261120.md)：WAVE 专注真实 DBC 信号波形参考/判定/证据；SCAN 专注编号与工程测试配置、用例/DBC/烧录配置映射。两个研究分支独立，R1 首版继续开发不等待全面 UI；本次只立项及归档，尚未通过现场实测。
