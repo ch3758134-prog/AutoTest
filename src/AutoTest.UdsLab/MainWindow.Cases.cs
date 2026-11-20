@@ -28,22 +28,11 @@ public partial class MainWindow
     private bool _caseRunning;
     private int _nextStepIndex;
 
-    private static DiagnosticCaseStep NewStepDefinition() => new()
-    {
-        Name = "读取数据标识符",
-        Action = new DiagnosticAction
-        {
-            Name = "读取数据标识符", Group = "诊断用例",
-            ServiceSidHex = "22", RequestHex = "", Decoder = "Hex", DataOffset = 3
-        }
-    };
-
     private void InitializeCases()
     {
         CasesList.ItemsSource = _cases;
         StepsList.ItemsSource = _steps;
-        var diagnosticCase = new DiagnosticCase { Name = "新建诊断用例" };
-        diagnosticCase.Steps.Add(NewStepDefinition());
+        var diagnosticCase = DiagnosticStepPresets.CreateWelcomeCase();
         _cases.Add(diagnosticCase);
         LoadCase(diagnosticCase);
         _editorDirty = false;
@@ -115,6 +104,7 @@ public partial class MainWindow
             ? action.Name : OperationNameBox.Text.Trim();
         action.Id = _loadedStep.Action.Id;
         candidate.Action = action;
+        candidate.Purpose = PurposeBox.Text.Trim();
         candidate.PauseBefore = PauseBeforeCheck.IsChecked == true;
         candidate.RequestTemplate = RequestTemplateBox.Text.Trim();
         candidate.CaptureAs = CaptureNameBox.Text.Trim();
@@ -137,6 +127,7 @@ public partial class MainWindow
             DiagnosticCaseStep candidate = CaptureCurrentStepDraft();
             _loadedStep.Name = candidate.Name;
             _loadedStep.Action = candidate.Action;
+            _loadedStep.Purpose = candidate.Purpose;
             _loadedStep.PauseBefore = candidate.PauseBefore;
             _loadedStep.RequestTemplate = candidate.RequestTemplate;
             _loadedStep.CaptureAs = candidate.CaptureAs;
@@ -165,15 +156,9 @@ public partial class MainWindow
 
     private bool ConfirmUnsavedBeforeLeave()
     {
-        if (!_editorDirty) return true;
-        var answer = MessageBox.Show(this,
-            "当前服务步骤有未保存的修改。\n是：保存到用例\n否：丢弃当前编辑\n取消：继续编辑",
-            "诊断步骤未保存", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-        if (answer == MessageBoxResult.Cancel) return false;
-        if (answer == MessageBoxResult.Yes && !SaveCurrentStepCore()) return false;
-        _editorDirty = false;
-        UpdateLibraryStatus();
-        return true;
+        // Switching services applies edits in the in-memory document; only
+        // Ctrl+S / 保存用例文件 writes to disk.
+        return !_editorDirty || SaveCurrentStepCore();
     }
 
     private void SelectCaseQuietly(DiagnosticCase? item)
@@ -238,6 +223,7 @@ public partial class MainWindow
         try
         {
             OperationNameBox.Text = step.Name;
+            PurposeBox.Text = step.Purpose;
             RequestTemplateBox.Text = step.RequestTemplate;
             PauseBeforeCheck.IsChecked = step.PauseBefore;
             CaptureNameBox.Text = step.CaptureAs;
@@ -259,6 +245,7 @@ public partial class MainWindow
         {
             OperationNameBox.Text = "";
             OperationGroupBox.Text = "";
+            PurposeBox.Text = "";
             RawModeCheck.IsChecked = false;
             ServiceCombo.SelectedItem = UdsOperationTemplates.Find(0x22);
             PrimaryBox.Text = AuxiliaryBox.Text = RequestBox.Text = ExpectedBox.Text = "";
@@ -311,8 +298,7 @@ public partial class MainWindow
         if (_caseRunning || !ConfirmUnsavedBeforeLeave()) return;
         SyncCaseSteps();
         if (_cases.Count >= 100) { MessageBox.Show(this, "最多 100 个诊断用例。"); return; }
-        var c = new DiagnosticCase { Name = "新建诊断用例 " + (_cases.Count + 1) };
-        c.Steps.Add(NewStepDefinition());
+        var c = new DiagnosticCase { Name = "未命名诊断用例 " + (_cases.Count + 1) };
         _cases.Add(c);
         CaseSearchBox.Text = "";
         LoadCase(c);
@@ -343,25 +329,44 @@ public partial class MainWindow
         _workspaceDirty = true;
         if (_cases.Count == 0)
         {
-            var empty = new DiagnosticCase { Name = "新建诊断用例" };
-            empty.Steps.Add(NewStepDefinition());
+            var empty = new DiagnosticCase { Name = "未命名诊断用例" };
             _cases.Add(empty);
         }
         LoadCase(_cases[0]);
     }
 
+    // The user chooses WHAT to diagnose before editing SID/DID/PDU parameters.
     private void AddStep_Click(object sender, RoutedEventArgs e)
     {
+        if (_caseRunning || _loadedCase is null) return;
+        if (AddServiceButton.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = AddServiceButton;
+            menu.IsOpen = true;
+        }
+    }
+
+    private void AddStepChoice_Click(object sender, RoutedEventArgs e)
+    {
         if (_caseRunning || _loadedCase is null || !ConfirmUnsavedBeforeLeave()) return;
-        if (_steps.Count >= 150) { MessageBox.Show(this, "每个诊断用例最多 150 个步骤。"); return; }
-        var step = NewStepDefinition();
-        step.Name = "步骤 " + (_steps.Count + 1) + " · 读取数据";
-        int index = Math.Clamp(StepsList.SelectedIndex + 1, 0, _steps.Count);
+        if (sender is not MenuItem { Tag: string key }) return;
+        if (_steps.Count >= 150)
+        {
+            MessageBox.Show(this, "每个诊断用例最多 150 个诊断动作。");
+            return;
+        }
+        DiagnosticCaseStep step;
+        try { step = DiagnosticStepPresets.Create(key); }
+        catch (Exception ex) { ShowError("添加诊断动作失败", ex); return; }
+        int selectedIndex = StepsList.SelectedIndex;
+        int index = selectedIndex < 0 ? _steps.Count :
+            Math.Clamp(selectedIndex + 1, 0, _steps.Count);
         _steps.Insert(index, step);
         SyncCaseSteps();
         LoadStep(step);
         _workspaceDirty = true;
         UpdateLibraryStatus();
+        AppendAudit("CASE_STEP_ADD", (_loadedCase?.Name ?? "") + " · " + step.Name);
     }
 
     private void CopyStep_Click(object sender, RoutedEventArgs e)
@@ -436,8 +441,11 @@ public partial class MainWindow
         if (!_ready || CasesList is null) return;
         CasesList.IsEnabled = !_caseRunning;
         StepsList.IsEnabled = !_caseRunning;
-        RunStepButton.IsEnabled = !_caseRunning && _loadedStep is not null &&
-            !_needsReconnect && _pendingCancel is null && _hardware?.IsReady == true;
+        // No editing inputs should appear usable until the user has selected
+        // an actual diagnosis action from the steps list.
+        // Keep the editor surface active during a running request so STOP
+        // remains clickable. In-flight request parameters are already frozen.
+        StepEditorPanel.IsEnabled = _loadedStep is not null;
         RunNextButton.IsEnabled = !_caseRunning && _steps.Count > 0 &&
             !_needsReconnect && _pendingCancel is null && _hardware?.IsReady == true;
         RunFromButton.IsEnabled = RunNextButton.IsEnabled;

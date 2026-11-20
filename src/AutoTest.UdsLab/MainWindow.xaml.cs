@@ -278,7 +278,8 @@ public partial class MainWindow : Window
     private void RefreshButtons()
     {
         if (!_ready) return;
-        bool canSend = !_needsReconnect && _hardware?.IsReady == true && _pendingCancel is null;
+        bool canSend = _loadedStep is not null && !_caseRunning &&
+            !_needsReconnect && _hardware?.IsReady == true && _pendingCancel is null;
         try
         {
             var pdu = UdsHex.Parse(RequestBox.Text);
@@ -434,33 +435,13 @@ public partial class MainWindow : Window
 
     private async void Send_Click(object sender, RoutedEventArgs e)
     {
-        if (_pendingCancel is not null || _pendingSend is not null) return;
-        if (_hardware?.IsReady != true || _needsReconnect)
-        {
-            MessageBox.Show(this, _needsReconnect ? "上次请求状态不确定，请断开重连后再试。"
-                : "请先连接真实主控板。", "无法发送");
-            return;
-        }
-        DiagnosticAction draft;
-        byte[] pdu;
-        try
-        {
-            draft = CaptureEditor();
-            pdu = ValidateReadPdu(draft);
-        }
-        catch (Exception ex) { ShowError("请求检查失败", ex); return; }
-
-        _pendingCancel = new CancellationTokenSource();
-        RefreshButtons();
-        _pendingSend = SendCurrentAsync(draft, pdu, _pendingCancel.Token);
-        try { await _pendingSend; }
-        finally
-        {
-            _pendingSend = null;
-            _pendingCancel?.Dispose();
-            _pendingCancel = null;
-            RefreshButtons();
-        }
+        // A direct Send is always associated with the selected diagnosis
+        // case and step. It uses the current unsaved editor draft, records
+        // the real step identity and retains exchange history.
+        if (_loadedStep is null) return;
+        int index = _steps.IndexOf(_loadedStep);
+        if (index < 0) return;
+        await RunCaseStepsAsync(index, oneStep: true, restartVariables: false);
     }
 
     private async Task<DiagnosticHistoryRow> SendCurrentAsync(DiagnosticAction draft, byte[] pdu,

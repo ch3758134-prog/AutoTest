@@ -54,6 +54,7 @@ public sealed class DiagnosticCase : INotifyPropertyChanged
 public sealed class DiagnosticCaseStep : INotifyPropertyChanged
 {
     private string _name = "读取数据";
+    private string _purpose = "";
     private bool _enabled = true;
     private string _lastState = "未运行";
 
@@ -66,6 +67,16 @@ public sealed class DiagnosticCaseStep : INotifyPropertyChanged
             if (_name == value) return;
             _name = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Name)));
+        }
+    }
+    public string Purpose
+    {
+        get => _purpose;
+        set
+        {
+            if (_purpose == value) return;
+            _purpose = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Purpose)));
         }
     }
     public bool PauseBefore { get; set; }
@@ -109,7 +120,7 @@ public sealed class DiagnosticCaseStep : INotifyPropertyChanged
         var cloned = new DiagnosticCaseStep
         {
             Id = newIdentity ? Guid.NewGuid() : Id,
-            Name = Name, Enabled = Enabled, PauseBefore = PauseBefore,
+            Name = Name, Purpose = Purpose, Enabled = Enabled, PauseBefore = PauseBefore,
             Action = new DiagnosticAction
             {
                 Id = newIdentity ? Guid.NewGuid() : Action.Id,

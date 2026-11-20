@@ -155,6 +155,8 @@ public static class DiagnosticWorkspace
                 if (step is null || !stepIds.Add(step.Id))
                     throw new InvalidDataException("诊断步骤 ID 重复或为空。");
                 DiagnosticCaseVariables.Validate(step);
+                if (step.Purpose is null || step.Purpose.Length > 1500)
+                    throw new InvalidDataException("诊断步骤说明超过 1500 字或为空对象。");
                 var action = step.Action;
                 if (action.Id == Guid.Empty || action.Name.Length > 200 ||
                     action.Group.Length > 200 || action.DataOffset is < 0 or > 4095 ||

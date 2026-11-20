@@ -73,8 +73,8 @@
                Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,0"/>
    </StackPanel>
    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-    <Button Content="打开配置" Click="Open_Click" Padding="10,7" Margin="0,0,7,0"/>
-    <Button Content="保存配置" Click="Save_Click" Padding="10,7" Margin="0,0,7,0"/>
+    <Button Content="打开用例文件" Click="Open_Click" Padding="10,7" Margin="0,0,7,0"/>
+    <Button Content="保存用例文件" Click="Save_Click" Padding="10,7" Margin="0,0,7,0"/>
     <Button Content="导出记录" Click="Export_Click" Padding="10,7"/>
    </StackPanel>
   </Grid>
@@ -176,15 +176,29 @@
       <DockPanel>
        <StackPanel DockPanel.Dock="Top">
         <TextBlock Text="用例步骤" Style="{StaticResource Section}"/>
-        <TextBlock Text="服务依次执行；选中即可编辑" Style="{StaticResource Field}" Margin="0,3,0,7" TextWrapping="Wrap"/>
-        <Button Content="＋ 添加服务步骤" Click="AddStep_Click" Margin="0,0,0,7"/>
+        <TextBlock Text="选择要做的诊断动作，再修改它的参数" Style="{StaticResource Field}" Margin="0,3,0,7" TextWrapping="Wrap"/>
+        <Button x:Name="AddServiceButton" Content="＋ 添加诊断动作 ▾" Click="AddStep_Click" Margin="0,0,0,7">
+         <Button.ContextMenu>
+          <ContextMenu Placement="Bottom">
+           <MenuItem Header="读取 VIN（示例 · 22 F1 90）" Tag="vin" Click="AddStepChoice_Click"/>
+           <MenuItem Header="读取故障码列表（19 02 FF）" Tag="dtc" Click="AddStepChoice_Click"/>
+           <MenuItem Header="查询故障码数量（19 01 FF）" Tag="dtc-count" Click="AddStepChoice_Click"/>
+           <Separator/>
+           <MenuItem Header="读取 ECU 自定义 DID（填写 DID）" Tag="did" Click="AddStepChoice_Click"/>
+           <MenuItem Header="自定义 UDS HEX 请求" Tag="custom" Click="AddStepChoice_Click"/>
+           <MenuItem Header="选择其他 UDS 标准服务" Tag="service" Click="AddStepChoice_Click"/>
+           <Separator/>
+           <MenuItem Header="切换扩展诊断会话（仅编辑，实体未授权）" Tag="session" Click="AddStepChoice_Click"/>
+          </ContextMenu>
+         </Button.ContextMenu>
+        </Button>
         <WrapPanel Margin="0,0,0,8">
          <Button Content="复制" Click="CopyStep_Click" Padding="6,5" Margin="0,0,4,0"/>
          <Button Content="删除" Click="DeleteStep_Click" Padding="6,5" Margin="0,0,4,0"/>
          <Button Content="↑" Click="MoveStepUp_Click" Padding="7,5" Margin="0,0,4,0"/>
          <Button Content="↓" Click="MoveStepDown_Click" Padding="7,5"/>
         </WrapPanel>
-        <TextBlock Text="勾选参与顺序执行；每个步骤有独立请求、响应解析和变量。"
+        <TextBlock Text="点选某项，在右侧修改。勾选表示参与整份用例的运行。"
                    Style="{StaticResource Field}" TextWrapping="Wrap" Margin="0,0,0,7"/>
        </StackPanel>
        <StackPanel DockPanel.Dock="Bottom">
@@ -212,6 +226,8 @@
                        Checked="StepEnabledChanged" Unchecked="StepEnabledChanged" Margin="0,0,7,0"/>
              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
             </DockPanel>
+            <TextBlock Text="{Binding Purpose}" FontSize="11" Foreground="#637993"
+                       TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
             <TextBlock Text="{Binding Action.RequestHex}" FontFamily="Consolas" FontSize="11"
                        Foreground="#7086A1" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
             <TextBlock Text="{Binding LastState}" FontSize="11" Foreground="#3E8461"
@@ -224,7 +240,7 @@
       </DockPanel>
      </Border>
      <GridSplitter Grid.Column="3" Background="Transparent" Width="7"/>
-     <Grid Grid.Column="4">
+     <Grid x:Name="StepEditorPanel" Grid.Column="4">
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*" MinHeight="210"/>
@@ -233,8 +249,8 @@
      <Grid Grid.Row="0" Margin="0,0,0,8">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <StackPanel>
-       <TextBlock Text="当前服务步骤" Style="{StaticResource Section}"/>
-       <TextBlock Text="选中步骤编辑 · 当前参数立即可以调试发送" Style="{StaticResource Field}" Margin="0,3,0,0"/>
+       <TextBlock Text="正在编辑的诊断动作" Style="{StaticResource Section}"/>
+       <TextBlock Text="选中中间的动作，修改名称、参数或原始 HEX；无需先连接 ECU" Style="{StaticResource Field}" Margin="0,3,0,0"/>
       </StackPanel>
       <TextBlock x:Name="DraftStatus" Grid.Column="1" VerticalAlignment="Center"
                  Foreground="#547D63" FontSize="12" Text="当前请求可编辑"/>
@@ -248,7 +264,7 @@
          <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <StackPanel>
-         <TextBlock Text="步骤名称" Style="{StaticResource Field}"/>
+         <TextBlock Text="你要执行的诊断动作" Style="{StaticResource Field}"/>
          <TextBox x:Name="OperationNameBox" TextChanged="EditorDraftChanged" MinHeight="32"
                   ToolTip="自行命名并保存，之后可以再次选择修改"/>
         </StackPanel>
@@ -257,6 +273,10 @@
          <TextBox x:Name="OperationGroupBox" TextChanged="EditorDraftChanged" MinHeight="32"/>
         </StackPanel>
        </Grid>
+       <TextBlock Text="这项诊断是做什么的（可修改）" Style="{StaticResource Field}"/>
+       <TextBox x:Name="PurposeBox" TextChanged="CaseStepDraftChanged"
+                TextWrapping="Wrap" AcceptsReturn="True" Height="58"
+                VerticalContentAlignment="Top" Margin="0,3,5,10"/>
        <Grid Margin="0,0,0,8">
         <Grid.ColumnDefinitions>
          <ColumnDefinition Width="*"/>
@@ -376,19 +396,17 @@
              Padding="0,11,0,0">
       <StackPanel>
        <WrapPanel>
-        <Button x:Name="SendButton" Content="▶ 发送 / 重发" Click="Send_Click"
+        <Button x:Name="SendButton" Content="▶ 发送当前动作" Click="Send_Click"
                 Style="{StaticResource Primary}" IsEnabled="False" Margin="0,0,8,0"/>
-        <Button x:Name="CancelButton" Content="停止等待" Click="Cancel_Click"
+        <Button x:Name="CancelButton" Content="停止" Click="Cancel_Click"
                 IsEnabled="False" Margin="0,0,8,0"/>
-        <Button Content="保存步骤" Click="SaveStep_Click" Margin="0,0,7,0" Padding="10,8"/>
-        <Button x:Name="RunStepButton" Content="运行当前步" Click="RunStep_Click" Margin="0,0,7,0" Padding="10,8"/>
         <Button x:Name="RunNextButton" Content="执行下一步" Click="RunNext_Click" Margin="0,0,7,0" Padding="10,8"/>
-        <Button x:Name="RunFromButton" Content="从此步连续执行" Click="RunFrom_Click" Margin="0,0,7,0" Padding="10,8"/>
-        <Button x:Name="RunCaseButton" Content="运行全部步骤" Click="RunCase_Click" Margin="0,0,7,0" Padding="10,8"/>
-        <TextBlock x:Name="RequestState" Text="先连接主控，再发送请求"
+        <Button x:Name="RunFromButton" Content="从此步继续运行" Click="RunFrom_Click" Margin="0,0,7,0" Padding="10,8"/>
+        <Button x:Name="RunCaseButton" Content="▶ 运行整个用例" Click="RunCase_Click" Margin="0,0,7,0" Padding="10,8"/>
+        <TextBlock x:Name="RequestState" Text="连接 ECU 后可运行；未连接仍可编辑和保存"
                    VerticalAlignment="Center" Foreground="{StaticResource Muted}" FontSize="12"/>
        </WrapPanel>
-       <TextBlock x:Name="CaseRunStatus" Text="等待运行 · 默认失败即停止，不会自动越过 NRC" Style="{StaticResource Field}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+       <TextBlock x:Name="CaseRunStatus" Text="编辑阶段可添加、删除和调整顺序；运行阶段失败会停止后续步骤" Style="{StaticResource Field}" TextWrapping="Wrap" Margin="0,5,0,0"/>
        <TextBlock Text="当前真实 CAN 发送仍需逐帧人工授权；主控 ACK 不代表 ECU 响应。"
                   FontSize="11" Foreground="#956A3E" Margin="0,7,0,0" TextWrapping="Wrap"/>
       </StackPanel>
