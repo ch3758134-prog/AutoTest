@@ -41,7 +41,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _status = "选中步骤即可在详情区直接编辑；实体执行功能未接线。";
     public string Status { get => _status; private set { _status = value; Notify(); } }
     private bool _modified;
-    public string SaveStateText => _modified ? "● 未保存 UI 草稿" : "UI 草稿已保存 / 样本初始状态";
+    public string SaveStateText => _modified ? "● 未保存 UI 草稿" :
+        _currentFile is null ? "研究样本 · 尚未保存到文件" : "研究草稿已保存";
     public int ProblemCount => Problems.Count;
     private bool _uiReady;
     private bool _syncing;
@@ -54,6 +55,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private EditorNode? _editingNodeAtFocus;
     private string? _currentFile;
     private string? _copiedStep;
+    private string? _editCaseBeforeRunToggle;
     private readonly Stack<string> _undo = new();
     private readonly Stack<string> _redo = new();
 
@@ -247,15 +249,36 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_syncing || !_uiReady) return;
         SelectCase(CompactCasePicker.SelectedItem as EditorCase);
     }
-    private void RunSelect_PreviewMouseDown(object sender, MouseButtonEventArgs e) => Checkpoint();
+    private void RunSelect_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _editCaseBeforeRunToggle = SelectedCase?.Id;
+        Checkpoint();
+    }
     private void RunSelect_PreviewKey(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Space) Checkpoint();
+        if (e.Key == Key.Space)
+        {
+            _editCaseBeforeRunToggle = SelectedCase?.Id;
+            Checkpoint();
+        }
     }
     private void RunSelect_Click(object sender, RoutedEventArgs e)
     {
         if (!_uiReady || _syncing) return;
-        Dirty("已改变本次运行勾选草稿；没有启动任何 TEST 任务。");
+        // Clicking the checkbox must never change the current *editor* case.
+        var keep = Document.Cases.FirstOrDefault(c => c.Id == _editCaseBeforeRunToggle);
+        _editCaseBeforeRunToggle = null;
+        if (keep is not null && !ReferenceEquals(keep, SelectedCase))
+        {
+            _syncing = true;
+            SelectedCase = keep;
+            Document.ActiveCaseId = keep.Id;
+            try { CaseList.SelectedItem = keep; CompactCasePicker.SelectedItem = keep; }
+            finally { _syncing = false; }
+            SelectedNode = keep.Find(Document.ActiveNodeId) ?? keep.Phases.ElementAtOrDefault(1);
+            UpdateRows();
+        }
+        Dirty("本次运行勾选已变更；编辑中的用例和步骤保持不变。");
     }
     private void CaseSearch_TextChanged(object sender, TextChangedEventArgs e)
     {
