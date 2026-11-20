@@ -90,7 +90,14 @@ public static class TestRunStepScope
             var isolated = Enum.GetValues<TestPhase>().ToImmutableDictionary(
                 p => p, p => p == phase
                     ? ImmutableArray.Create(matched) : ImmutableArray<StepNode>.Empty);
-            return source with { Phases = isolated };
+            // Do not let unused mappings from unrelated case steps widen the
+            // physical write lease or reject an otherwise independent
+            // diagnostic because an unrelated asset revision is stale.
+            var oneStepDocument = source with { Phases = isolated };
+            return oneStepDocument with
+            {
+                Mappings = RequiredMappings(oneStepDocument).ToImmutableArray()
+            };
         }
         throw new KeyNotFoundException("选中的 TEST 步骤已经不存在，请重新选择。");
     }
