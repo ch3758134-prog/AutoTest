@@ -47,6 +47,19 @@
      Style="{StaticResource AtPrimaryButton}" Padding="15,8" Margin="9,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="刷新资源" Command="{Binding ReloadProfilesCommand}"
      Padding="12,7" Margin="9,0,0,0"/>
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+     VerticalAlignment="Center" Margin="12,0,12,0">
+     <TextBlock Text="ECU CAN 波特率" VerticalAlignment="Center"
+      Foreground="#334252" Margin="0,0,8,0" FontWeight="SemiBold"/>
+     <ComboBox Width="148" MinHeight="30"
+      ItemsSource="{Binding EcuCanRateChoices}" DisplayMemberPath="Label"
+      SelectedValuePath="Kbps"
+      SelectedValue="{Binding RequestedEcuCanBitrateKbps,Mode=TwoWay}"
+      ToolTip="目前主控固件只固定支持 500 kbit/s。选择其他目标速率不会修改硬件，将禁止实际 ECU CAN 发送。"/>
+     <TextBlock Text="{Binding EcuCanBitrateStatus}"
+      Foreground="#A45B36" VerticalAlignment="Center" FontSize="10"
+      Margin="8,0,0,0" MaxWidth="215" TextWrapping="Wrap"/>
+    </StackPanel>
     <StackPanel>
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
       <TextBlock Text="手动台架" Style="{StaticResource BenchHeader}" FontSize="17"

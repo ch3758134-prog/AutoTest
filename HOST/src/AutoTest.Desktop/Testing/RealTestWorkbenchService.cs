@@ -75,6 +75,7 @@ public sealed class RealTestWorkbenchService
             var openingEpoch = _hardware.CurrentStationEpoch;
             if (!_hardware.IsConnected || openingEpoch <= 0)
                 throw new InvalidOperationException("真实测试要求 USB 主控已经连接并建立有效会话。");
+            _hardware.RequireConfiguredEcuCanBitrate();
             var plan = Prepare(document);
             if (!plan.Diagnostics.IsEmpty)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Diagnostics));

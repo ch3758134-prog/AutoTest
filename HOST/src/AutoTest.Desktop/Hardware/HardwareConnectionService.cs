@@ -20,6 +20,34 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private int _flashSecuritySensitive;
     public bool IsFlashSecuritySensitive => Volatile.Read(ref _flashSecuritySensitive) != 0;
+
+    // Current firmware always initializes ECU_CAN_PORT to 500 kbit/s and
+    // exposes NO USB set/get bitrate command. This is a requested configuration
+    // only: unsupported choices must NEVER be treated as applied to the bus.
+    private int _requestedEcuCanBitrateKbps = 500;
+    public int RequestedEcuCanBitrateKbps => Volatile.Read(ref _requestedEcuCanBitrateKbps);
+    public const int FirmwareFixedEcuCanBitrateKbps = 500;
+
+    public void SelectRequestedEcuCanBitrate(int kbps)
+    {
+        if (kbps is not (20 or 50 or 100 or 125 or 250 or 500 or 800 or 1000))
+            throw new ArgumentOutOfRangeException(nameof(kbps), "不是主控 CAN 驱动已定义的码率。");
+        if (_testRunApproved || _manualCanBatchApproved ||
+            _manualKeyActionApproved || IsFlashSecuritySensitive)
+            throw new InvalidOperationException("工位有正在运行的 TEST/CAN/KEY/FLASH 任务，禁止改变波特率设置。");
+        Volatile.Write(ref _requestedEcuCanBitrateKbps, kbps);
+        Record("ECU CAN 期望码率选择 " + kbps +
+            " kbit/s；当前固件 USB 不支持设置/读取，未执行硬件修改。");
+    }
+
+    public void RequireConfiguredEcuCanBitrate()
+    {
+        if (RequestedEcuCanBitrateKbps != FirmwareFixedEcuCanBitrateKbps)
+            throw new NotSupportedException("已选择 ECU CAN " +
+                RequestedEcuCanBitrateKbps +
+                " kbit/s，但主控固件当前仅固定 500 kbit/s，且没有 USB 改速指令。" +
+                "目标波特率未生效，已禁止 ECU CAN 实际发送/测试/烧录。");
+    }
     private WinUsbByteLink? _link;
     private UsbSessionService? _usb;
     private CanFrameHub? _hub;
@@ -222,6 +250,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             if (_usb?.State != UsbSessionState.Connected || _link is null)
                 throw new IOException("USB 主控未连接，禁止 CAN 发送。");
+            if (frame.Role == BusRole.DutCan) RequireConfiguredEcuCanBitrate();
             if (_testRunApproved || (_manualKeyActionApproved && frame.Role == BusRole.KeypadCan) ||
                 (_manualCanBatchApproved && frame.Role != BusRole.KeypadCan))
                 throw new InvalidOperationException("ECU CAN 周期任务运行期间，仅允许同一工位已授权的 KEY CAN 按键命令。");
@@ -302,6 +331,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (_usb?.State != UsbSessionState.Connected || _link is null ||
                 _testRunApproved || _manualCanBatchApproved)
                 throw new InvalidOperationException("USB 未连接或工位正在运行其他 CAN/TEST 任务。");
+            RequireConfiguredEcuCanBitrate();
             var map = StationCanWiring.Current;
             var payloads = frames.Select(frame => CanFrameCodec.ToUsbPayload(frame, map)).ToArray();
             _link.AuthorizeManualCanBatch(fingerprint, confirmation, payloads, maxWrites);
@@ -323,6 +353,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 _usb?.State != UsbSessionState.Connected || _testRunApproved ||
                 frame.Role != BusRole.DutCan)
                 throw new UnauthorizedAccessException("没有当前有效的 ECU CAN 手动发送授权。");
+            RequireConfiguredEcuCanBitrate();
             var payload = CanFrameCodec.ToUsbPayload(frame,
                 StationCanWiring.Current);
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
@@ -542,6 +573,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (!_testRunApproved || _approvedPlan != fingerprint ||
                 _usb?.State != UsbSessionState.Connected)
                 throw new UnauthorizedAccessException("No live approved test plan.");
+            if (frame.Role == BusRole.DutCan) RequireConfiguredEcuCanBitrate();
             var payload = CanFrameCodec.ToUsbPayload(frame,
                 StationCanWiring.Current);
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
@@ -590,6 +622,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 _manualKeyActionApproved || CurrentStationEpoch <= 0)
                 throw new InvalidOperationException(
                     "FLASH 需要空闲的已连接主控；先撤销 TEST/CAN/KEY 实体授权。");
+            RequireConfiguredEcuCanBitrate();
             if (job.ConfiguredBitrate is not ("500K" or "500000"))
                 throw new NotSupportedException("当前主控只确认 500K，拒绝自动切换波特率。");
             if (!string.Equals(typedConsent, job.Consent, StringComparison.Ordinal))

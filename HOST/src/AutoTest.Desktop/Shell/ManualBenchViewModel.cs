@@ -138,6 +138,42 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             entry.Detail.Contains(term, StringComparison.OrdinalIgnoreCase);
     }
 
+    public sealed record EcuCanRateChoice(int Kbps, string Label);
+    public IReadOnlyList<EcuCanRateChoice> EcuCanRateChoices { get; } =
+    [
+        new(20, "20 kbit/s"), new(50, "50 kbit/s"),
+        new(100, "100 kbit/s"), new(125, "125 kbit/s"),
+        new(250, "250 kbit/s"), new(500, "500 kbit/s · 当前固件"),
+        new(800, "800 kbit/s"), new(1000, "1 Mbit/s")
+    ];
+    public int RequestedEcuCanBitrateKbps
+    {
+        get => _hardware.RequestedEcuCanBitrateKbps;
+        set
+        {
+            if (value == _hardware.RequestedEcuCanBitrateKbps) return;
+            try
+            {
+                _hardware.SelectRequestedEcuCanBitrate(value);
+                RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
+                RaisePropertyChanged(nameof(EcuCanBitrateStatus));
+                Status = value == 500
+                    ? "ECU CAN 目标已恢复为固件默认 500 kbit/s；仍需现场检查总线实测通信。"
+                    : "ECU CAN " + value + " kbit/s 尚未生效：当前主控 USB 没有改速命令；实体发送已保护性阻止。";
+                RaiseCommands();
+            }
+            catch (Exception error) when (error is InvalidOperationException or
+                ArgumentOutOfRangeException)
+            {
+                Status = "更改 ECU CAN 期望码率失败：" + error.Message;
+                RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
+            }
+        }
+    }
+    public string EcuCanBitrateStatus =>
+        RequestedEcuCanBitrateKbps == 500
+            ? "固件默认 500k · 无运行时切换接口"
+            : "未生效 · 禁止 ECU CAN 发送（待固件升级）";
     public bool IsConnected => _hardware.IsConnected;
     public string ConnectionStatus => IsConnected
         ? "USB 已连接 · G" + _hardware.CurrentStationEpoch + " · " +
