@@ -125,7 +125,7 @@ public partial class MainWindow
     {
         if (!_workFiles.HasProject)
         {
-            MessageBox.Show(this, "先创建或打开 UI 工程，再保存此专业工具的本地配置。", "保存工作台",
+            MessageBox.Show(this, "先创建或打开 UI 工程，再保存此工具的本地配置。", "保存工作台",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return false;
         }
@@ -159,7 +159,7 @@ public partial class MainWindow
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(315) });
         var sidebar = new StackPanel();
-        sidebar.Children.Add(ToolLabel("专业工具", true));
+        sidebar.Children.Add(ToolLabel("工具", true));
         foreach (var item in new[] { "DBC 编辑器", "UDS 调试", "ECU 烧录", "波形分析", "手动台架" })
         {
             var tool = item;
