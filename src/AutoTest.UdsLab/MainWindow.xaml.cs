@@ -21,7 +21,8 @@ namespace AutoTest.UdsLab;
 public sealed record DiagnosticHistoryRow(
     DateTimeOffset At, Guid CorrelationId, string Name, string Request,
     string Response, string Status, string Decoded, string Detail, long Milliseconds,
-    string Decoder, int DataOffset, double Scale, string Unit, string ExpectedPrefix)
+    string Decoder, int DataOffset, double Scale, string Unit, string ExpectedPrefix,
+    Guid? CaseId = null, Guid? StepId = null, string CaseName = "")
 {
     public string Time => At.ToLocalTime().ToString("HH:mm:ss.fff");
     public string Elapsed => Milliseconds.ToString(CultureInfo.InvariantCulture) + " ms";
@@ -29,7 +30,6 @@ public sealed record DiagnosticHistoryRow(
 
 public partial class MainWindow : Window
 {
-    private readonly ObservableCollection<DiagnosticAction> _favorites = [];
     private readonly ObservableCollection<DiagnosticHistoryRow> _history = [];
     private readonly List<AuditRecord> _audit = [];
     private readonly List<string> _traceLines = [];
@@ -45,26 +45,12 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        OperationsList.ItemsSource = _favorites;
         HistoryList.ItemsSource = _history;
         DecodeBox.SelectedIndex = 0;
         ServiceCombo.ItemsSource = UdsOperationTemplates.All;
         _ready = true;
-        _settingEditor = true;
-        try
-        {
-            ServiceCombo.SelectedItem = UdsOperationTemplates.Find(0x22);
-            PrimaryBox.Text = "";
-            AuxiliaryBox.Text = "";
-            ServiceHelp.Text = "填写目标 ECU 的两字节 DID；软件会自动组成 0x22 请求。没有 ECU 诊断定义时不猜测 DID。";
-            RequestBox.Text = "";
-            ExpectedBox.Text = "";
-        }
-        finally { _settingEditor = false; }
-        RefreshTemplate();
+        InitializeCases();
         RefreshButtons();
-        _editorDirty = false;
-        UpdateLibraryStatus();
         Closing += OnClosing;
         KeyDown += OnKeyDown;
         AppendAudit("START", "UDS 调试窗口启动。仅实际 ECU 返回的数据会出现在交互历史里。");
@@ -253,7 +239,8 @@ public partial class MainWindow : Window
             !double.IsFinite(scale) || Math.Abs(scale) > 1e12)
             throw new FormatException("比例必须为有效数字。");
         var template = RawModeCheck.IsChecked == true
-            ? UdsOperationTemplates.Find(UdsHex.Parse(request)[0])
+            ? string.IsNullOrWhiteSpace(request) ? null
+                : UdsOperationTemplates.Find(UdsHex.Parse(request)[0])
             : ServiceCombo.SelectedItem as UdsOperationTemplate;
         string name = template is null ? "自定义诊断请求" : template.Name;
         if (template is not null && !string.IsNullOrWhiteSpace(PrimaryBox.Text))
@@ -302,8 +289,9 @@ public partial class MainWindow : Window
         CancelButton.IsEnabled = _pendingCancel is not null;
         RequestState.Text = _pendingCancel is not null ? "等待真实 ECU 最终响应…"
             : _needsReconnect ? "链路状态不确定，请断开重连"
-            : _hardware?.IsReady == true ? "选择参数后发送；可修改再发"
+            : _hardware?.IsReady == true ? "可以调试当前步骤 · 运行全部会依次等待每一步 ECU 应答"
             : "先设置 CAN ID 并连接主控";
+        RefreshCaseControls();
     }
 
     private void LoadAction(DiagnosticAction action)
@@ -341,22 +329,24 @@ public partial class MainWindow : Window
 
     private void Reuse_Click(object sender, RoutedEventArgs e)
     {
-        if (HistoryList.SelectedItem is not DiagnosticHistoryRow row) return;
-        if (!ConfirmUnsavedBeforeLeave()) return;
-        _loadedOperation = null;
-        SelectOperationWithoutEvent(null);
+        if (HistoryList.SelectedItem is not DiagnosticHistoryRow row || _caseRunning) return;
+        if (_loadedStep is null || !ConfirmUnsavedBeforeLeave())
+        {
+            MessageBox.Show(this, "请先选择需要回填的诊断步骤。");
+            return;
+        }
         var action = new DiagnosticAction
         {
-            Name = row.Name, RequestHex = row.Request,
+            Name = _loadedStep.Name, RequestHex = row.Request,
             ExpectedPrefixHex = row.ExpectedPrefix, RawMode = false,
-            Decoder = row.Decoder, DataOffset = row.DataOffset, Scale = row.Scale,
-            Unit = row.Unit
+            Decoder = row.Decoder, DataOffset = row.DataOffset,
+            Scale = row.Scale, Unit = row.Unit
         };
         LoadAction(action);
         _editorDirty = true;
-        DraftStatus.Text = "历史请求已回填为草稿 · 保存后可加入操作库";
+        DraftStatus.Text = "历史请求已回填到当前步骤草稿 · 修改后可再次发送或保存";
         UpdateLibraryStatus();
-        AppendAudit("REUSE", "回填历史请求 " + row.Request + "，尚未重新发送。");
+        AppendAudit("REUSE", "回填实际历史请求 " + row.Request + "，尚未发送。");
     }
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
@@ -432,6 +422,7 @@ public partial class MainWindow : Window
             _hardware = null;
         }
         _needsReconnect = false;
+        ResetCaseVariables();
         TxIdBox.IsEnabled = RxIdBox.IsEnabled = P2Box.IsEnabled = P2StarBox.IsEnabled = true;
         DisconnectButton.IsEnabled = false;
         ConnectButton.IsEnabled = true;
@@ -472,7 +463,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task SendCurrentAsync(DiagnosticAction draft, byte[] pdu, CancellationToken ct)
+    private async Task<DiagnosticHistoryRow> SendCurrentAsync(DiagnosticAction draft, byte[] pdu,
+        CancellationToken ct, Guid? caseId = null, Guid? stepId = null, string caseName = "")
     {
         var began = DateTimeOffset.UtcNow;
         Guid correlation = Guid.NewGuid();
@@ -532,7 +524,8 @@ public partial class MainWindow : Window
         long ms = (long)Math.Max(0, (DateTimeOffset.UtcNow - began).TotalMilliseconds);
         var row = new DiagnosticHistoryRow(began, correlation, draft.Name,
             UdsHex.Format(pdu), responseHex, status, decoded, detail, ms,
-            draft.Decoder, draft.DataOffset, draft.Scale, draft.Unit, draft.ExpectedPrefixHex);
+            draft.Decoder, draft.DataOffset, draft.Scale, draft.Unit, draft.ExpectedPrefixHex,
+            caseId, stepId, caseName);
         _history.Add(row);
         EmptyHistory.Visibility = Visibility.Collapsed;
         HistoryCount.Text = _history.Count.ToString(CultureInfo.InvariantCulture) + " 条";
@@ -540,6 +533,7 @@ public partial class MainWindow : Window
         HistoryList.ScrollIntoView(row);
         AppendAudit("UDS_RESULT", correlation + " " + status + " " + ms + "ms");
         if (_needsReconnect) SessionStatus.Text = "诊断链路状态未知 · 断开并重新连接";
+        return row;
     }
 
     private static string NrcDescription(byte nrc) => nrc switch
@@ -586,7 +580,8 @@ public partial class MainWindow : Window
         TxIdHex = TxIdBox.Text.Trim(), RxIdHex = RxIdBox.Text.Trim(),
         P2Ms = int.TryParse(P2Box.Text, out int p2) ? p2 : 1000,
         P2StarMs = int.TryParse(P2StarBox.Text, out int p2Star) ? p2Star : 5000,
-        Actions = _favorites.ToList(), ManualSequence = [], PollIntervalMs = 2000
+        Actions = [], Cases = _cases.ToList(),
+        ManualSequence = [], PollIntervalMs = 2000
     };
 
     private async void Save_Click(object sender, RoutedEventArgs e)
@@ -596,8 +591,8 @@ public partial class MainWindow : Window
     {
         // One Save command persists both the active edited operation and the
         // complete operation library. No hidden second save stage.
-        if (_editorDirty && !SaveOperationCore(asNew: false, selectAfter: true))
-            return false;
+        if (_editorDirty && !SaveCurrentStepCore()) return false;
+        SyncCaseSteps();
         try
         {
             string? path = _workspacePath;
@@ -635,7 +630,7 @@ public partial class MainWindow : Window
         if (_editorDirty || _workspaceDirty)
         {
             var answer = MessageBox.Show(this,
-                "当前操作或配置还没有写入文件。是否先保存？",
+                "当前诊断用例或通信配置尚未写入文件。是否先保存？",
                 "切换诊断配置", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (answer == MessageBoxResult.Cancel) return;
             if (answer == MessageBoxResult.Yes && !await SaveWorkspaceCoreAsync()) return;
@@ -649,33 +644,50 @@ public partial class MainWindow : Window
         {
             var doc = await DiagnosticWorkspace.LoadAsync(dlg.FileName);
             _loadingWorkspace = true;
-            _settingEditor = true;
+            _suppressCaseSelection = true;
+            _suppressStepSelection = true;
             try
             {
-                SelectOperationWithoutEvent(null);
-                _loadedOperation = null;
-                _favorites.Clear();
-                foreach (var a in doc.Actions) _favorites.Add(a);
+                _loadedCase = null;
+                _loadedStep = null;
+                _cases.Clear();
+                foreach (var c in doc.Cases) _cases.Add(c);
+                // Migration of v1 user's real saved requests: each old saved
+                // operation becomes a single-step editable case, never discarded.
+                if (doc.Cases.Count == 0)
+                    foreach (var old in doc.Actions)
+                    {
+                        var migrated = new DiagnosticCase { Name = old.Name };
+                        migrated.Steps.Add(new DiagnosticCaseStep
+                        {
+                            Name = old.Name, Action = old
+                        });
+                        _cases.Add(migrated);
+                    }
+                if (_cases.Count == 0)
+                {
+                    var empty = new DiagnosticCase { Name = "新建诊断用例" };
+                    empty.Steps.Add(NewStepDefinition());
+                    _cases.Add(empty);
+                }
                 TxIdBox.Text = doc.TxIdHex;
                 RxIdBox.Text = doc.RxIdHex;
                 P2Box.Text = doc.P2Ms.ToString(CultureInfo.InvariantCulture);
                 P2StarBox.Text = doc.P2StarMs.ToString(CultureInfo.InvariantCulture);
                 _workspacePath = dlg.FileName;
             }
-            finally { _settingEditor = false; _loadingWorkspace = false; }
-
-            if (_favorites.Count > 0)
+            finally
             {
-                var first = _favorites[0];
-                _loadedOperation = first;
-                SelectOperationWithoutEvent(first);
-                LoadAction(first);
+                _suppressStepSelection = false;
+                _suppressCaseSelection = false;
+                _loadingWorkspace = false;
             }
-            else ResetNewOperationEditor();
+            LoadCase(_cases[0]);
             _editorDirty = false;
-            _workspaceDirty = false;
+            _workspaceDirty = doc.Cases.Count == 0 && doc.Actions.Count > 0;
             UpdateLibraryStatus();
-            AppendAudit("FILE", "已加载操作库 " + dlg.FileName + "，操作数=" + _favorites.Count);
+            AppendAudit("FILE", "加载诊断用例 " + dlg.FileName +
+                "，用例数=" + _cases.Count + "（旧操作已自动迁移为单步骤用例）");
         }
         catch (Exception ex) { ShowError("打开配置失败", ex); }
     }
@@ -697,6 +709,10 @@ public partial class MainWindow : Window
                 DeviceIdentity = _hardware?.DeviceIdentity,
                 Endpoint = new { RequestId = TxIdBox.Text, ResponseId = RxIdBox.Text, P2 = P2Box.Text, P2Star = P2StarBox.Text },
                 RealExchanges = _history.ToArray(),
+                CaseDefinitions = _cases.Select(c => new { c.Id, c.Name, c.Revision,
+                    Steps = c.Steps.Select(t => new { t.Id, t.Name, t.Enabled,
+                        t.Action.RequestHex, t.RequestTemplate, t.CaptureAs }).ToArray()
+                }).ToArray(),
                 Audit = _audit.ToArray(),
                 UsbCanIsoTpTrace = _traceLines.ToArray(),
                 Note = "USB ACK is not a final ECU response. Physical CAN frames require exact human consent."

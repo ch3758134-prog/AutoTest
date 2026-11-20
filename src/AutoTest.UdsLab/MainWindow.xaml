@@ -1,7 +1,7 @@
 <Window x:Class="AutoTest.UdsLab.MainWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="AutoTest · UDS 诊断" Width="1460" Height="880" MinWidth="1230" MinHeight="700"
+ Title="AutoTest · UDS 诊断" Width="1460" Height="880" MinWidth="1350" MinHeight="730"
  WindowStartupLocation="CenterScreen" WindowState="Maximized"
  Background="#F3F6FA" FontFamily="Microsoft YaHei UI" FontSize="13">
  <Window.Resources>
@@ -23,6 +23,29 @@
   <Style x:Key="Field" TargetType="TextBlock">
    <Setter Property="Foreground" Value="{StaticResource Muted}"/>
    <Setter Property="FontSize" Value="12"/>
+  </Style>
+  <Style TargetType="Button">
+   <Setter Property="MinHeight" Value="32"/>
+   <Setter Property="Padding" Value="10,6"/>
+   <Setter Property="Background" Value="#F4F8FD"/>
+   <Setter Property="BorderBrush" Value="#CFDBEB"/>
+   <Setter Property="Foreground" Value="#304D6D"/>
+   <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <Style TargetType="TextBox">
+   <Setter Property="MinHeight" Value="30"/>
+   <Setter Property="Padding" Value="8,5"/>
+   <Setter Property="Background" Value="#FFFFFF"/>
+   <Setter Property="Foreground" Value="#1D334F"/>
+   <Setter Property="BorderBrush" Value="#CBD8E8"/>
+   <Setter Property="Margin" Value="0,3,7,6"/>
+  </Style>
+  <Style TargetType="ComboBox">
+   <Setter Property="MinHeight" Value="32"/>
+   <Setter Property="Background" Value="#FFFFFF"/>
+   <Setter Property="Foreground" Value="#1D334F"/>
+   <Setter Property="BorderBrush" Value="#CBD8E8"/>
+   <Setter Property="Margin" Value="0,3,7,6"/>
   </Style>
   <Style x:Key="Primary" TargetType="Button">
    <Setter Property="Background" Value="#2466AA"/>
@@ -46,7 +69,7 @@
    </Grid.ColumnDefinitions>
    <StackPanel>
     <TextBlock Text="UDS 诊断" FontSize="23" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
-    <TextBlock Text="编辑请求 → 发送 → 查看 ECU 响应 → 修改后重发"
+    <TextBlock Text="编辑一个包含多个 UDS 服务的诊断用例 · 单步调试与顺序执行 · 保存复用"
                Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,0"/>
    </StackPanel>
    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -87,61 +110,60 @@
   <!-- Two working surfaces only: compose on left; real exchange facts on right. -->
   <Grid Grid.Row="2">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="7*" MinWidth="690"/>
+    <ColumnDefinition Width="8*" MinWidth="790"/>
     <ColumnDefinition Width="8"/>
-    <ColumnDefinition Width="5*" MinWidth="470"/>
+    <ColumnDefinition Width="5*" MinWidth="440"/>
    </Grid.ColumnDefinitions>
    <Border Grid.Column="0" Style="{StaticResource Pane}" Padding="10">
     <Grid>
      <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="229" MinWidth="205"/>
-      <ColumnDefinition Width="8"/>
-      <ColumnDefinition Width="*" MinWidth="375"/>
+      <ColumnDefinition Width="190" MinWidth="170"/>
+      <ColumnDefinition Width="7"/>
+      <ColumnDefinition Width="215" MinWidth="190"/>
+      <ColumnDefinition Width="7"/>
+      <ColumnDefinition Width="*" MinWidth="355"/>
      </Grid.ColumnDefinitions>
-     <Border Grid.Column="0" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0"
-             Padding="0,0,10,0">
-      <DockPanel LastChildFill="True">
+     <Border Grid.Column="0" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0" Padding="0,2,8,0">
+      <DockPanel>
        <StackPanel DockPanel.Dock="Top">
-        <TextBlock Text="我的诊断操作" Style="{StaticResource Section}"/>
-        <TextBlock Text="保存、选择、修改并重复使用" Style="{StaticResource Field}" Margin="0,3,0,7"/>
-        <TextBox x:Name="OperationSearchBox" TextChanged="OperationSearchChanged"
-                 ToolTip="搜索已保存操作的名称、分组或 UDS 请求" Margin="0,0,0,8"
-                 Padding="7,5"/>
-        <Button Content="＋ 新建诊断操作" Click="NewOperation_Click" Padding="10,7"
-                HorizontalContentAlignment="Center" Margin="0,0,0,8"/>
-        <WrapPanel Margin="0,0,0,7">
-         <Button Content="保存修改" Click="SaveAction_Click" Padding="7,6" Margin="0,0,5,0"/>
-         <Button Content="另存为新操作" Click="SaveAsAction_Click" Padding="7,6"/>
+        <TextBlock Text="诊断用例" Style="{StaticResource Section}"/>
+        <TextBlock Text="一个用例可调用多个 UDS 服务" Style="{StaticResource Field}" TextWrapping="Wrap" Margin="0,3,0,7"/>
+        <Button Content="＋ 新建用例" Click="NewCase_Click" Margin="0,0,0,7"/>
+        <WrapPanel Margin="0,0,0,9">
+         <Button Content="复制" Click="CopyCase_Click" Padding="7,5" Margin="0,0,4,0"/>
+         <Button Content="删除" Click="DeleteCase_Click" Padding="7,5"/>
         </WrapPanel>
-        <WrapPanel Margin="0,0,0,10">
-         <Button Content="复制" Click="DuplicateAction_Click" Padding="7,5" Margin="0,0,5,0"/>
-         <Button Content="删除" Click="DeleteAction_Click" Padding="7,5" Margin="0,0,5,0"/>
-         <Button Content="上移" Click="MoveActionUp_Click" Padding="7,5" Margin="0,0,5,0"/>
-         <Button Content="下移" Click="MoveActionDown_Click" Padding="7,5"/>
-        </WrapPanel>
-        <TextBlock Text="单击一项即可在右侧编辑；发送不会改写原有响应。"
-                   Style="{StaticResource Field}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <TextBlock Text="用例名称" Style="{StaticResource Field}"/>
+        <TextBox x:Name="CaseNameBox" TextChanged="CaseMetadataChanged"/>
+        <TextBlock Text="备注" Style="{StaticResource Field}"/>
+        <TextBox x:Name="CaseDescriptionBox" TextChanged="CaseMetadataChanged"
+                 AcceptsReturn="True" TextWrapping="Wrap" Height="55" VerticalContentAlignment="Top"/>
+        <TextBlock Text="搜索用例" Style="{StaticResource Field}"/>
+        <TextBox x:Name="CaseSearchBox" TextChanged="CaseSearchChanged"/>
        </StackPanel>
        <StackPanel DockPanel.Dock="Bottom">
-        <Separator Margin="0,7,0,7"/>
-        <TextBlock x:Name="LibraryStatus" Text="0 个操作 · 尚未保存配置" Style="{StaticResource Field}"
-                   TextWrapping="Wrap" Margin="0,0,0,5"/>
-        <TextBlock Text="保存配置 → 写入文件；打开配置 → 恢复全部操作。" Style="{StaticResource Field}"
-                   TextWrapping="Wrap"/>
+        <Separator Margin="0,7,0,6"/>
+        <TextBlock x:Name="LibraryStatus" Text="未保存" Style="{StaticResource Field}" TextWrapping="Wrap"/>
        </StackPanel>
-       <ListBox x:Name="OperationsList" SelectionChanged="OperationSelected"
-                HorizontalContentAlignment="Stretch"
-                BorderThickness="0" FontSize="13"
-                ToolTip="选中后右侧编辑；操作修改保存在当前配置文件中">
+       <ListBox x:Name="CasesList" SelectionChanged="CaseSelected" BorderThickness="0"
+                HorizontalContentAlignment="Stretch">
         <ListBox.ItemTemplate>
          <DataTemplate>
-          <Border Background="#F3F7FC" CornerRadius="5" Margin="0,2,0,4" Padding="7,7">
+          <Border CornerRadius="5" Margin="0,2,0,3" Padding="7,7">
+           <Border.Style>
+            <Style TargetType="Border">
+             <Setter Property="Background" Value="#F1F6FC"/>
+             <Style.Triggers>
+              <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+               <Setter Property="Background" Value="#DCECFD"/>
+              </DataTrigger>
+             </Style.Triggers>
+            </Style>
+           </Border.Style>
            <StackPanel>
-            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-            <TextBlock Text="{Binding Group}" Foreground="#8090A2" FontSize="11"
-                       TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
-            <TextBlock Text="{Binding RequestHex}" FontFamily="Consolas" FontSize="11"
-                       Foreground="#617895" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#72849B"
+                       TextTrimming="CharacterEllipsis"/>
            </StackPanel>
           </Border>
          </DataTemplate>
@@ -149,8 +171,60 @@
        </ListBox>
       </DockPanel>
      </Border>
-     <GridSplitter Grid.Column="1" Background="Transparent" Width="8"/>
-     <Grid Grid.Column="2">
+     <GridSplitter Grid.Column="1" Background="Transparent" Width="7"/>
+     <Border Grid.Column="2" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0" Padding="0,2,8,0">
+      <DockPanel>
+       <StackPanel DockPanel.Dock="Top">
+        <TextBlock Text="用例步骤" Style="{StaticResource Section}"/>
+        <TextBlock Text="服务依次执行；选中即可编辑" Style="{StaticResource Field}" Margin="0,3,0,7" TextWrapping="Wrap"/>
+        <Button Content="＋ 添加服务步骤" Click="AddStep_Click" Margin="0,0,0,7"/>
+        <WrapPanel Margin="0,0,0,8">
+         <Button Content="复制" Click="CopyStep_Click" Padding="6,5" Margin="0,0,4,0"/>
+         <Button Content="删除" Click="DeleteStep_Click" Padding="6,5" Margin="0,0,4,0"/>
+         <Button Content="↑" Click="MoveStepUp_Click" Padding="7,5" Margin="0,0,4,0"/>
+         <Button Content="↓" Click="MoveStepDown_Click" Padding="7,5"/>
+        </WrapPanel>
+        <TextBlock Text="勾选参与顺序执行；每个步骤有独立请求、响应解析和变量。"
+                   Style="{StaticResource Field}" TextWrapping="Wrap" Margin="0,0,0,7"/>
+       </StackPanel>
+       <StackPanel DockPanel.Dock="Bottom">
+        <Separator Margin="0,7,0,6"/>
+        <TextBlock x:Name="StepCountStatus" Text="0 个步骤" Style="{StaticResource Field}"/>
+       </StackPanel>
+       <ListBox x:Name="StepsList" SelectionChanged="CaseStepSelected" BorderThickness="0"
+                HorizontalContentAlignment="Stretch">
+        <ListBox.ItemTemplate>
+         <DataTemplate>
+          <Border CornerRadius="5" Margin="0,2,0,3" Padding="7,7">
+           <Border.Style>
+            <Style TargetType="Border">
+             <Setter Property="Background" Value="#F1F6FC"/>
+             <Style.Triggers>
+              <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+               <Setter Property="Background" Value="#DCECFD"/>
+              </DataTrigger>
+             </Style.Triggers>
+            </Style>
+           </Border.Style>
+           <StackPanel>
+            <DockPanel>
+             <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                       Checked="StepEnabledChanged" Unchecked="StepEnabledChanged" Margin="0,0,7,0"/>
+             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            </DockPanel>
+            <TextBlock Text="{Binding Action.RequestHex}" FontFamily="Consolas" FontSize="11"
+                       Foreground="#7086A1" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+            <TextBlock Text="{Binding LastState}" FontSize="11" Foreground="#3E8461"
+                       TextWrapping="Wrap" Margin="0,2,0,0"/>
+           </StackPanel>
+          </Border>
+         </DataTemplate>
+        </ListBox.ItemTemplate>
+       </ListBox>
+      </DockPanel>
+     </Border>
+     <GridSplitter Grid.Column="3" Background="Transparent" Width="7"/>
+     <Grid Grid.Column="4">
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*" MinHeight="210"/>
@@ -159,8 +233,8 @@
      <Grid Grid.Row="0" Margin="0,0,0,8">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <StackPanel>
-       <TextBlock Text="诊断操作编辑" Style="{StaticResource Section}"/>
-       <TextBlock Text="选中左侧操作即可修改；编辑后保存，随时发送调试" Style="{StaticResource Field}" Margin="0,3,0,0"/>
+       <TextBlock Text="当前服务步骤" Style="{StaticResource Section}"/>
+       <TextBlock Text="选中步骤编辑 · 当前参数立即可以调试发送" Style="{StaticResource Field}" Margin="0,3,0,0"/>
       </StackPanel>
       <TextBlock x:Name="DraftStatus" Grid.Column="1" VerticalAlignment="Center"
                  Foreground="#547D63" FontSize="12" Text="当前请求可编辑"/>
@@ -174,12 +248,12 @@
          <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <StackPanel>
-         <TextBlock Text="操作名称" Style="{StaticResource Field}"/>
+         <TextBlock Text="步骤名称" Style="{StaticResource Field}"/>
          <TextBox x:Name="OperationNameBox" TextChanged="EditorDraftChanged" MinHeight="32"
                   ToolTip="自行命名并保存，之后可以再次选择修改"/>
         </StackPanel>
         <StackPanel Grid.Column="2">
-         <TextBlock Text="分组（可选）" Style="{StaticResource Field}"/>
+         <TextBlock Text="备注分类（可选）" Style="{StaticResource Field}"/>
          <TextBox x:Name="OperationGroupBox" TextChanged="EditorDraftChanged" MinHeight="32"/>
         </StackPanel>
        </Grid>
@@ -229,6 +303,39 @@
        </Border>
        <TextBlock x:Name="ComposerStatus" TextWrapping="Wrap" Foreground="#9B6C30"
                   FontSize="12" Margin="0,0,0,6"/>
+       <CheckBox x:Name="PauseBeforeCheck" Content="连续运行到本步骤前暂停，等待人工检查/继续"
+                 Checked="CaseStepFlagChanged" Unchecked="CaseStepFlagChanged" Margin="0,4,0,8"/>
+       <Expander Header="跨步骤信息传递（可选）" Margin="0,6,0,0" IsExpanded="False">
+        <StackPanel Margin="0,7,0,0">
+         <TextBlock Text="动态请求模板（完整 PDU，可引用 {{变量名}}；留空则使用上方请求）" Style="{StaticResource Field}"/>
+         <TextBox x:Name="RequestTemplateBox" FontFamily="Consolas" TextChanged="CaseStepDraftChanged"/>
+         <Grid>
+          <Grid.ColumnDefinitions>
+           <ColumnDefinition Width="*"/>
+           <ColumnDefinition Width="7"/>
+           <ColumnDefinition Width="62"/>
+           <ColumnDefinition Width="7"/>
+           <ColumnDefinition Width="62"/>
+          </Grid.ColumnDefinitions>
+          <StackPanel>
+           <TextBlock Text="本步正响应保存到变量" Style="{StaticResource Field}"/>
+           <TextBox x:Name="CaptureNameBox" TextChanged="CaseStepDraftChanged"/>
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+           <TextBlock Text="偏移" Style="{StaticResource Field}"/>
+           <TextBox x:Name="CaptureOffsetBox" Text="3" TextChanged="CaseStepDraftChanged"/>
+          </StackPanel>
+          <StackPanel Grid.Column="4">
+           <TextBlock Text="字节数" Style="{StaticResource Field}"/>
+           <TextBox x:Name="CaptureLengthBox" Text="0" TextChanged="CaseStepDraftChanged"/>
+          </StackPanel>
+         </Grid>
+         <TextBlock Text="响应偏移从完整 ECU PDU 首字节起算；变量只来自本次执行中的有效正响应。"
+                    Style="{StaticResource Field}" TextWrapping="Wrap"/>
+         <TextBlock x:Name="CaseVariableStatus" Text="当前变量：无" Style="{StaticResource Field}"
+                    TextWrapping="Wrap" Margin="0,5,0,0"/>
+        </StackPanel>
+       </Expander>
        <Expander Header="响应匹配与解码（可选）" IsExpanded="False">
         <StackPanel Margin="0,9,0,0">
          <TextBlock Text="期望响应前缀（HEX）" Style="{StaticResource Field}"/>
@@ -273,11 +380,15 @@
                 Style="{StaticResource Primary}" IsEnabled="False" Margin="0,0,8,0"/>
         <Button x:Name="CancelButton" Content="停止等待" Click="Cancel_Click"
                 IsEnabled="False" Margin="0,0,8,0"/>
-        <Button Content="保存当前操作" Click="SaveAction_Click" Margin="0,0,8,0" Padding="12,8"
-                ToolTip="更新左侧选中的操作，或将当前草稿加入操作库"/>
+        <Button Content="保存步骤" Click="SaveStep_Click" Margin="0,0,7,0" Padding="10,8"/>
+        <Button x:Name="RunStepButton" Content="运行当前步" Click="RunStep_Click" Margin="0,0,7,0" Padding="10,8"/>
+        <Button x:Name="RunNextButton" Content="执行下一步" Click="RunNext_Click" Margin="0,0,7,0" Padding="10,8"/>
+        <Button x:Name="RunFromButton" Content="从此步连续执行" Click="RunFrom_Click" Margin="0,0,7,0" Padding="10,8"/>
+        <Button x:Name="RunCaseButton" Content="运行全部步骤" Click="RunCase_Click" Margin="0,0,7,0" Padding="10,8"/>
         <TextBlock x:Name="RequestState" Text="先连接主控，再发送请求"
                    VerticalAlignment="Center" Foreground="{StaticResource Muted}" FontSize="12"/>
        </WrapPanel>
+       <TextBlock x:Name="CaseRunStatus" Text="等待运行 · 默认失败即停止，不会自动越过 NRC" Style="{StaticResource Field}" TextWrapping="Wrap" Margin="0,5,0,0"/>
        <TextBlock Text="当前真实 CAN 发送仍需逐帧人工授权；主控 ACK 不代表 ECU 响应。"
                   FontSize="11" Foreground="#956A3E" Margin="0,7,0,0" TextWrapping="Wrap"/>
       </StackPanel>
@@ -311,6 +422,8 @@
        <ListView.View>
         <GridView>
          <GridViewColumn Header="时间" Width="89" DisplayMemberBinding="{Binding Time}"/>
+         <GridViewColumn Header="用例" Width="150" DisplayMemberBinding="{Binding CaseName}"/>
+         <GridViewColumn Header="服务步骤" Width="130" DisplayMemberBinding="{Binding Name}"/>
          <GridViewColumn Header="请求 PDU" Width="175" DisplayMemberBinding="{Binding Request}"/>
          <GridViewColumn Header="响应 PDU" Width="210" DisplayMemberBinding="{Binding Response}"/>
          <GridViewColumn Header="结果" Width="188" DisplayMemberBinding="{Binding Status}"/>
