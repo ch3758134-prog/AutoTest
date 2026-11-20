@@ -80,6 +80,17 @@ public sealed class PreviewInspector : ViewState
     private string _timeout = "1,000";
     private string _sampleInterval = "10 ms";
     private string _warning = "演示问题：该信号尚未在当前 DBC 中确认。";
+    private bool _isCanSignal = true;
+    public bool IsCanSignal { get => _isCanSignal; private set { _isCanSignal=value;Change();Change(nameof(IsOtherType)); } }
+    public bool IsOtherType => !IsCanSignal;
+    private string _otherHeading = "步骤配置";
+    public string OtherHeading { get => _otherHeading; private set { _otherHeading=value;Change(); } }
+    private string _otherLabel = "关键参数";
+    public string OtherLabel { get => _otherLabel; private set { _otherLabel=value;Change(); } }
+    private string _otherValue = "";
+    public string OtherValue { get => _otherValue; private set { _otherValue=value;Change(); } }
+    private string _otherGuidance = "";
+    public string OtherGuidance { get => _otherGuidance; private set { _otherGuidance=value;Change(); } }
     private bool _stopOnTimeout = true;
     private bool _recordValue;
     private bool _ignoreInvalid;
@@ -100,6 +111,28 @@ public sealed class PreviewInspector : ViewState
     public void Show(DemoStep step)
     {
         Heading = step.Title;
+        IsCanSignal = step.Title == "CAN 信号判定";
+        OtherHeading = step.Kind is "Group" or "Flow" or "Branch" ? "流程结构" : "步骤配置";
+        OtherLabel = step.Title switch
+        {
+            "日志记录" => "日志内容",
+            "等待" or "延时" => "等待时间",
+            "UDS 请求" => "UDS 请求负载",
+            "波形判定" => "波形判定条件",
+            "发送 CAN 报文" => "报文与数据",
+            "模拟外部输入" => "按键组合及保持时间",
+            "IF 条件" or "SWITCH" => "条件表达式",
+            "ELSE" or "THEN" => "分支说明",
+            _ => "参数摘要"
+        };
+        OtherValue = step.Summary;
+        OtherGuidance = step.Kind switch
+        {
+            "Branch" => "此行是条件分支，不是 CAN 信号判定步骤。应在分支下选择实际步骤进行参数编辑。",
+            "Flow" => "此行是流程控制容器，请检查分支关系和条件；完整流程参数编辑属于 UI-03。",
+            "Group" => "此行是流程分组标题。选择其子步骤查看具体参数。",
+            _ => "当前为 UI 高保真样本，具体参数的真实编辑与保存由 UI-03 的正式 TEST 模型接入。"
+        };
         Description = step.Title switch
         {
             "CAN 信号判定" => "读取 CAN 信号并判断其值是否满足预期条件。",
