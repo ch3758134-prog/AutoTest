@@ -295,13 +295,21 @@ public sealed class StepAuthoringView : UserControl
     private bool _refreshing;
     private TextBox? _stepName;
     private readonly Dictionary<string,TextBox> _editors=new();
-    private sealed record InspectorDraft(string Name,Dictionary<string,string> Values);
-    private readonly Dictionary<string,InspectorDraft> _buffers=new();
+    private readonly Dictionary<string,UiInspectorBuffer> _buffers;
     private void CaptureInspectorBuffer()
     {
         if(_selected is null||_stepName is null)return;
-        _buffers[_selected.Id]=new InspectorDraft(_stepName.Text,
-            _editors.ToDictionary(p=>p.Key,p=>p.Value.Text,StringComparer.Ordinal));
+        var candidate=new UiInspectorBuffer
+        {
+            Name=_stepName.Text,
+            Values=_editors.ToDictionary(p=>p.Key,p=>p.Value.Text,StringComparer.Ordinal)
+        };
+        if(_buffers.TryGetValue(_selected.Id,out var previous) &&
+            previous.Name==candidate.Name &&
+            previous.Values.Count==candidate.Values.Count &&
+            candidate.Values.All(p=>previous.Values.TryGetValue(p.Key,out var value)&&value==p.Value))return;
+        _buffers[_selected.Id]=candidate;
+        _store.Changed("暂存未完成步骤输入");
     }
     private readonly List<(string Label,string Type)> _allTypes=
     [
@@ -318,6 +326,7 @@ public sealed class StepAuthoringView : UserControl
     public StepAuthoringView(UiStore store,UiTestCase testCase,bool flow=false)
     {
         _store=store;_case=testCase;_flow=flow;
+        _buffers=_store.InspectorBuffers;
         var page=new DockPanel{Margin=new Thickness(16,12,16,13)};
         Content=page;
         var header=UiKit.Vertical(UiKit.Heading(flow?"公共流程编辑":"测试程序编辑",19),
@@ -582,6 +591,9 @@ public sealed class StepAuthoringView : UserControl
                 else _stepDetails.Children.Add(UiKit.Note("当前没有可用对象。请先在对应专业工作区创建 UI 资源。", 11));
             }
         }
+        _stepName.TextChanged+=(_,_)=>CaptureInspectorBuffer();
+        foreach(var editor in _editors.Values)
+            editor.TextChanged+=(_,_)=>CaptureInspectorBuffer();
         _stepDetails.Children.Add(UiKit.Actions(
             UiKit.Button("应用参数",(_,_)=>{if(CommitInspector())Refresh(_selected?.Id);},true),
             UiKit.Button("撤销本次字段输入",(_,_)=>{
