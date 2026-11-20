@@ -627,9 +627,9 @@
                        VerticalAlignment="Center" Margin="0,0,17,0"/>
             <TextBlock Grid.Column="2" Text="▲ 演示警告 1" Foreground="#A66800"
                        FontSize="11.7" VerticalAlignment="Center" Margin="0,0,17,0"/>
-            <Button Grid.Column="3" Content="全部   ▾" Style="{StaticResource OutlineButton}"
+            <Button x:Name="IssueFilterButton" Grid.Column="3" Content="全部   ▾" Style="{StaticResource OutlineButton}"
                     Padding="8,3" Height="25" HorizontalAlignment="Left" VerticalAlignment="Center"
-                    Click="PreviewCommand_Click" FontSize="11.5"/>
+                    Click="IssueFilter_Click" FontSize="11.5"/>
             <Button x:Name="IssueToggleButton" Grid.Column="4" Content="×" Foreground="#6C7B8F" FontSize="15"
                     Style="{StaticResource ActionButton}" Width="30" Height="28"
                     Click="CollapseProblems_Click" ToolTip="折叠问题列表"/>
