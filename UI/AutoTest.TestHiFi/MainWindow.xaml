@@ -247,10 +247,16 @@
 
     <Border Grid.Row="2" Background="White" BorderBrush="#E0E7F0" BorderThickness="0,0,0,1">
       <DockPanel Margin="12,0">
-        <Button x:Name="CompactInspectorButton" DockPanel.Dock="Right" Content="步骤参数 →"
-                Visibility="Collapsed" Style="{StaticResource OutlineButton}" Height="30"
-                Click="ToggleCompactInspector_Click" Margin="8,0,0,0"
-                ToolTip="窄屏：在步骤与详情间切换，不打开新窗口"/>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="CompactProblemsButton" Content="问题列表"
+                  Visibility="Collapsed" Style="{StaticResource OutlineButton}" Height="30"
+                  Click="ToggleCompactProblems_Click" Margin="5,0,0,0"
+                  ToolTip="窄屏：在同一工作区切换问题与定位"/>
+          <Button x:Name="CompactInspectorButton" Content="步骤参数 →"
+                  Visibility="Collapsed" Style="{StaticResource OutlineButton}" Height="30"
+                  Click="ToggleCompactInspector_Click" Margin="5,0,0,0"
+                  ToolTip="窄屏：在步骤与详情间切换"/>
+        </StackPanel>
         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
                       VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal">
