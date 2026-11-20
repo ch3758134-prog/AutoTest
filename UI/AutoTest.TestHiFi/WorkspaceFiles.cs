@@ -49,6 +49,10 @@ public sealed class UiSession
     public bool ProblemsExpanded { get; set; } = true;
     public bool RestoreOnStartup { get; set; } = true;
     public List<string> RecentProjects { get; set; } = [];
+    public string LastMode { get; set; } = "工程与文件";
+    public string? LastTestCaseId { get; set; }
+    public string LastTestPhase { get; set; } = "测试";
+    public bool DebugPane { get; set; }
 }
 
 public sealed class UiWorkspaceFiles
