@@ -418,28 +418,83 @@ public partial class MainWindow
 
     private void BuildUdsWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
     {
-        ToolNote(center, "编辑多条连续 UDS 请求及其顺序。仅建立可保存的请求草稿；当前未连接 ISO-TP/UDS 后端，不会发送请求或显示伪响应。");
-        var entries = new ListBox { MinHeight = 220, MaxHeight = 350, BorderBrush = ToolLine,
+        ToolNote(center, "参考现有 UDS Lab 的“诊断用例→多服务步骤→参数→请求/响应证据”结构。当前独立工具窗口可编辑保存诊断用例草稿；没有真实 ISO-TP 会话时不生成请求记录或正响应。");
+        center.Children.Add(ToolLabel("诊断服务步骤 · 按顺序执行的请求序列", true));
+        var entries = new ListBox { MinHeight = 180, MaxHeight = 350, BorderBrush = ToolLine,
             BorderThickness = new Thickness(1), FontSize = 13, Padding = new Thickness(6) };
         void Refresh() => entries.ItemsSource = draft.Items.Select((v,i) => (i+1).ToString("00") + "   " + v).ToArray();
         Refresh();
         center.Children.Add(entries);
         var bar = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
         center.Children.Add(bar);
-        var service = ToolField(inspector, draft, "服务 / Payload (HEX)", "22 F1 90");
-        ToolField(inspector, draft, "请求 ID (HEX)", "18DA50F1");
-        ToolField(inspector, draft, "响应 ID (HEX)", "18DAF150");
+        var service = ToolField(inspector, draft, "当前 UDS 请求 Payload（HEX）", "22 F1 90");
+        var standards = new ComboBox { Height = 33, Margin = new Thickness(0, 0, 0, 10),
+            ItemsSource = new[] { "按标准服务选择", "10 诊断会话控制", "11 ECU 复位", "22 读取数据标识",
+                "2E 写入数据标识", "27 安全访问", "19 读取故障码", "31 例程控制", "3E TesterPresent" },
+            SelectedIndex = 0, BorderBrush = ToolLine };
+        standards.SelectionChanged += (_, _) =>
+        {
+            if (standards.SelectedItem is string item && item.Length >= 2 &&
+                System.Text.RegularExpressions.Regex.IsMatch(item[..2], "^[0-9A-F]{2}$"))
+                service.Text = item[..2] + " ";
+        };
+        inspector.Children.Add(ToolLabel("UDS 标准服务快速选择"));
+        inspector.Children.Add(standards);
+        ToolField(inspector, draft, "ECU 请求 CAN ID（HEX）");
+        ToolField(inspector, draft, "ECU 响应 CAN ID（HEX）");
         ToolField(inspector, draft, "超时 (ms)", "1000");
-        bar.Children.Add(ToolButton("添加请求", () => { if (!string.IsNullOrWhiteSpace(service.Text)) {
-            draft.Items.Add(service.Text.Trim()); Refresh(); } }));
-        bar.Children.Add(ToolButton("移除选中", () => { if (entries.SelectedIndex >= 0) {
-            draft.Items.RemoveAt(entries.SelectedIndex); Refresh(); } }));
-        bar.Children.Add(ToolButton("上移", () => { var i = entries.SelectedIndex;
-            if (i > 0) { (draft.Items[i-1],draft.Items[i]) = (draft.Items[i],draft.Items[i-1]); Refresh(); entries.SelectedIndex = i-1; } }));
-        bar.Children.Add(ToolButton("下移", () => { var i = entries.SelectedIndex;
-            if (i >= 0 && i < draft.Items.Count - 1) { (draft.Items[i+1],draft.Items[i]) =
-                (draft.Items[i],draft.Items[i+1]); Refresh(); entries.SelectedIndex = i+1; } }));
-        ToolNote(inspector, "物理请求 / ISO-TP / NRC / 关联时间线：待正式后端接线，不提供模拟成功按钮。");
+        ToolField(inspector, draft, "期望正响应前缀（HEX）");
+        ToolField(inspector, draft, "响应解析方式", "HEX");
+        ToolField(inspector, draft, "数据起始偏移", "0");
+        ToolField(inspector, draft, "保存响应到变量");
+        entries.SelectionChanged += (_, _) =>
+        {
+            if (entries.SelectedIndex >= 0 && entries.SelectedIndex < draft.Items.Count)
+                service.Text = draft.Items[entries.SelectedIndex];
+        };
+        bar.Children.Add(ToolButton("＋ 添加服务", () =>
+        {
+            if (string.IsNullOrWhiteSpace(service.Text)) return;
+            draft.Items.Add(service.Text.Trim().ToUpperInvariant()); Refresh();
+            entries.SelectedIndex = draft.Items.Count - 1;
+        }, true));
+        bar.Children.Add(ToolButton("修改选中", () =>
+        {
+            if (entries.SelectedIndex < 0) return;
+            var index = entries.SelectedIndex;
+            draft.Items[index] = service.Text.Trim().ToUpperInvariant(); Refresh(); entries.SelectedIndex = index;
+        }));
+        bar.Children.Add(ToolButton("删除选中", () =>
+        {
+            if (entries.SelectedIndex < 0) return;
+            draft.Items.RemoveAt(entries.SelectedIndex); Refresh();
+        }));
+        bar.Children.Add(ToolButton("上移", () =>
+        {
+            var i = entries.SelectedIndex;
+            if (i > 0) { (draft.Items[i-1],draft.Items[i]) = (draft.Items[i],draft.Items[i-1]);
+                Refresh(); entries.SelectedIndex = i-1; }
+        }));
+        bar.Children.Add(ToolButton("下移", () =>
+        {
+            var i = entries.SelectedIndex;
+            if (i >= 0 && i < draft.Items.Count - 1)
+            { (draft.Items[i+1],draft.Items[i]) = (draft.Items[i],draft.Items[i+1]);
+                Refresh(); entries.SelectedIndex = i+1; }
+        }));
+        center.Children.Add(ToolLabel("ECU 请求 / 响应及解析", true));
+        center.Children.Add(new Border
+        {
+            MinHeight = 130, Background = new SolidColorBrush(Color.FromRgb(249, 251, 254)),
+            BorderBrush = ToolLine, BorderThickness = new Thickness(1),
+            Child = new TextBlock
+            {
+                Text = "暂无实际诊断记录。\\nUSB / CAN / ISO-TP / UDS 执行必须交由正式 UDS 后端。\\n主控 ACK 不代表 ECU 已响应。",
+                TextWrapping = TextWrapping.Wrap, Foreground = ToolMuted,
+                Padding = new Thickness(15), VerticalAlignment = VerticalAlignment.Center
+            }
+        });
+        ToolNote(inspector, "真实发送、NRC 0x78、超时、取消、时间线、变量提取及解析证据必须复用 UDS Lab 后端；当前仅保存编辑草稿，不发送物理请求。");
     }
 
     private void BuildFlashWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
