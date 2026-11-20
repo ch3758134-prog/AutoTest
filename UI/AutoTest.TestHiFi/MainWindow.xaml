@@ -127,9 +127,9 @@
 
   <Grid>
     <Grid.RowDefinitions>
+      <RowDefinition Height="37"/>
       <RowDefinition Height="43"/>
-      <RowDefinition Height="45"/>
-      <RowDefinition Height="53"/>
+      <RowDefinition Height="50"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="30"/>
     </Grid.RowDefinitions>
