@@ -39,7 +39,7 @@ public static class StepUiCatalog
         new("UdsRequest", "UDS 服务", "运行需实体诊断授权，执行未接线", false),
         new("Flash", "ECU 烧录", "引用固件与 CanTool 配置；实体运行需要独立授权和 APP 后验", false),
         new("WaveCapture", "波形采集", "记录服务尚未完成该步骤适配", false),
-        new("WaveCompare", "波形判定", "需要真实参考资源与三态比较", false)
+        new("WaveCompare", "波形判定", "对比已完成的真实波形与冻结的参考，产生有证据的 PASS/FAIL/无法判定", true)
     ];
     public static string Label(string type) =>
         Choices.FirstOrDefault(c => c.Type == type)?.Label ?? type;
@@ -136,7 +136,8 @@ public static class StepUiCatalog
             {
                 "milliseconds" => "500",
                 "count" => "2",
-                "variable" => type == "Read" || type == "WaitUntil" ? "response" : "value",
+                "variable" => type == "Read" || type == "WaitUntil" ? "response" :
+                    type == "WaveCompare" ? "waveVerdict" : "value",
                 "equals" => "1",
                 "value" => type == "Write" ? "Pulse" : "1",
                 "timeoutMs" => "1000",
@@ -156,7 +157,7 @@ public static class StepUiCatalog
             };
             node = node.WithProperty(property, value);
         }
-        if (type == "WaveAnalyze")
+        if (type is "WaveAnalyze" or "WaveCompare")
             node = node.WithProperty("profile", "").WithProperty("reference", "");
         // Editing schemas are deliberately not executable; invalid/absent resource
         // references must be reported at preflight, not silently defaulted.
@@ -177,7 +178,8 @@ public static class StepUiCatalog
                 .WithProperty("settingsPath", "")
                 .WithProperty("binBaseAddress", ""),
             "WaveCapture" => node.WithProperty("captureKey", ""),
-            "WaveCompare" => node.WithProperty("reference", ""),
+            "WaveCompare" => node.WithProperty("reference", "")
+                .WithProperty("profile", ""),
             _ => node
         };
         return node;
