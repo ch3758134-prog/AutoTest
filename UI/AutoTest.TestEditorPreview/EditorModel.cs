@@ -39,6 +39,7 @@ public sealed class EditorField : Notifying
         _ => ""
     };
     [JsonIgnore] public bool IsInvalid => Error.Length > 0;
+    [JsonIgnore] public bool IsResource => Kind == FieldKind.RequiredResource;
     private static bool IsHex(string text)
     {
         var normalized = text.Replace(" ", "").Replace("-", "").Replace(",", "");
@@ -114,6 +115,7 @@ public sealed class EditorCase : Notifying
     public EditorNode? Find(string id) => Phases.Select(p => p.Find(id)).FirstOrDefault(p => p is not null);
     public void RepairParents() { foreach (var phase in Phases) phase.RepairParents(); }
     public int CountSteps => Phases.Sum(x => Count(x));
+    public void UpdateCount() => Notify(nameof(CountSteps));
     private static int Count(EditorNode node) => (node.IsMovable ? 1 : 0) + node.Children.Sum(Count);
 }
 
