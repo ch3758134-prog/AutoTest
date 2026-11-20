@@ -82,3 +82,7 @@
 ## 2026-11-19｜R1 首版真实自动测试与烧录优先推进
 
 - [R1 独立分支、UI 研究并行、旧 G4 退役及 FLASH/RECORD 接线范围](new-baseline-20261112/research/R1-REAL-TEST-FLASH-PRIORITY-20261119.md)：从 `main@ffb23f8c05ec4a64b82cd781db6357685d082c04` 建立 `R1`；R1 专注自动测试全流程真实运行、CAN 烧录、执行日志/证据与正式报告，Issue #70；`ui/ide-design` 独立继续。旧 G4 代码已通过 PR #61 接收入 main，但旧开发分支远端 ref **尚未物理删除**（GitHub 连接暂无删除动作）。首版开发及真机验收均待继续。
+
+## 2026-11-20｜Main_Control 固件 ECU CAN 动态波特率 USB 控制 0x42/0x43
+
+- [ECU CAN 运行时波特率、硬件/USB 映射、固件静态审查及 R1 交接](new-baseline-20261112/research/MAIN-CONTROL-ECU-CAN-BAUD-20261120.md)：固件来源 `Main_Control@e06a820e0d54dc7719cc75af1ecae005f05e164f`；源码与 USB CRC 示例已回读验证，Keil/实体 CAN 未验收；固定 `main` 尚无该 CMD，需后续仅同步到 `Main_Control/`，不得把旧式独立固件分支整个合并进多工程整机基线。R1 见 Issue #70。
