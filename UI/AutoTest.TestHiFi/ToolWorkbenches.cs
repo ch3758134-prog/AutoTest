@@ -258,39 +258,83 @@ public partial class MainWindow
 
     private void BuildDbcWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
     {
-        ToolNote(center, "从当前工程选择真实 DBC 文件。文件内容可以打开、查看和保存；报文与信号的结构化解析在正式 DBC 专业接线阶段启用。");
-        var files = _workFiles.Workspace?.Assets.Where(a => a.Kind == "DBC").ToArray() ?? [];
-        if (files.Length == 0) ToolNote(center, "当前工程没有 DBC 文件。可使用左侧工程树或顶部“导入文件”添加。");
-        foreach (var asset in files)
+        ToolNote(center, "可直接创建、打开并编辑实际 DBC 文本文件，无需先导入。报文/信号的结构化编辑与校验仍由正式 DBC 模块负责。");
+        if (!_workFiles.HasProject)
         {
-            var current = asset;
-            center.Children.Add(ToolButton("▤  " + asset.Name + "   ·   " + asset.RelativePath,
-                () => OpenAsset(current)));
+            ToolNote(center, "先从主窗口建立或打开工程，才能创建 DBC 资源。");
+            return;
         }
-        center.Children.Add(ToolButton("新建 DBC 文件…", () =>
+        var toolbar = new WrapPanel();
+        toolbar.Children.Add(ToolButton("＋ 新建 DBC", () =>
         {
-            if (!_workFiles.HasProject)
-            {
-                MessageBox.Show(this, "请先创建或打开一个工程，以便保存新建的 DBC 文件。", "新建 DBC");
-                return;
-            }
-            var name = AskName(this, "新建 DBC 文件", "新建DBC");
+            var name = AskName(this, "新建 DBC", "新建DBC");
             if (name is null) return;
             try
             {
                 var asset = _workFiles.NewAsset("DBC", name);
+                draft.Fields["DBC SelectedId"] = asset.Id;
                 RefreshProjectTree();
-                OpenAsset(asset);
-                StoreSession();
-                StatusText = "已创建可直接编辑的 DBC 文件：" + asset.Name;
+                RenderToolWorkbench("DBC 编辑器");
             }
-            catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
             { ShowFileError("新建 DBC 失败", ex); }
         }, true));
-        center.Children.Add(ToolButton("导入现有 DBC…", () => ImportToolResource("DBC")));
+        toolbar.Children.Add(ToolButton("导入 DBC…", () => ImportToolResource("DBC")));
+        center.Children.Add(toolbar);
+        var assets = _workFiles.Workspace!.Assets.Where(a => a.Kind == "DBC").OrderBy(a => a.Name).ToArray();
+        var assetList = new ComboBox
+        {
+            ItemsSource = assets, DisplayMemberPath = "Name", Margin = new Thickness(0, 10, 0, 12),
+            Height = 35, Padding = new Thickness(7), BorderBrush = ToolLine
+        };
+        center.Children.Add(assetList);
+        var assetId = draft.Fields.GetValueOrDefault("DBC SelectedId");
+        var selected = assets.FirstOrDefault(a => a.Id == assetId) ?? assets.FirstOrDefault();
+        if (selected is null)
+        {
+            ToolNote(center, "工程尚无 DBC。点击“新建 DBC”即可开始编写。");
+            return;
+        }
+        assetList.SelectedItem = selected;
+        assetList.SelectionChanged += (_, _) =>
+        {
+            if (assetList.SelectedItem is UiAsset item)
+            {
+                draft.Fields["DBC SelectedId"] = item.Id;
+                RenderToolWorkbench("DBC 编辑器");
+            }
+        };
+        UiDocument document;
+        try { document = _workFiles.OpenAsset(selected); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        { ShowFileError("打开 DBC 失败", ex); return; }
+        center.Children.Add(ToolLabel("DBC 文本编辑 · " + selected.RelativePath, true));
+        var editor = new TextBox
+        {
+            Text = document.Content, AcceptsReturn = true, AcceptsTab = true,
+            FontFamily = new FontFamily("Consolas"), FontSize = 13,
+            MinHeight = 300, MaxHeight = 580, TextWrapping = TextWrapping.NoWrap,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Foreground = ToolText, Background = Brushes.White, BorderBrush = ToolLine,
+            BorderThickness = new Thickness(1), Padding = new Thickness(12)
+        };
+        editor.TextChanged += (_, _) => document.Content = editor.Text;
+        center.Children.Add(editor);
+        center.Children.Add(ToolButton("保存 DBC 文件", () =>
+        {
+            try
+            {
+                _workFiles.Save(document);
+                RefreshProjectTree(); RefreshTabStrip(); StoreSession();
+                StatusText = "DBC 文件已保存：" + selected.RelativePath;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            { ShowFileError("保存 DBC 失败", ex); }
+        }, true));
         ToolField(inspector, draft, "显示别名方案", "中文信号名称");
         ToolField(inspector, draft, "信号筛选条件");
-        ToolNote(inspector, "不会生成虚构报文、信号或 DBC 解析结果。");
+        ToolNote(inspector, "本窗口直接编辑 DBC 实际文件。不存在假报文与信号记录；结构化 DBC 校验尚未集成。");
     }
 
     private void BuildUdsWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
