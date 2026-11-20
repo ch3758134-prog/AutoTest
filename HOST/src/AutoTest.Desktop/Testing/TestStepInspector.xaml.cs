@@ -599,9 +599,9 @@ public partial class TestStepInspector : UserControl
             if (rawId.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) rawId = rawId[2..];
             if (uint.TryParse(rawId, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var id))
             {
-                var matches = AvailableTargets.Where(x =>
+                var legacySignalMatches = AvailableTargets.Where(x =>
                     x.Mapping.Kind == TestTargetKind.Signal && x.Mapping.CanId == id).ToArray();
-                preferred = matches.Length == 1 ? matches[0] : null;
+                preferred = legacySignalMatches.Length == 1 ? legacySignalMatches[0] : null;
             }
             else preferred = null;
         }
@@ -631,12 +631,12 @@ public partial class TestStepInspector : UserControl
             {
                 var signalName = old.Properties.GetValueOrDefault("signalName",
                     old.Properties.GetValueOrDefault("databaseSignalName", ""));
-                var matches = AvailableTargets.Where(x =>
+                var legacyAssertionMatches = AvailableTargets.Where(x =>
                     x.Mapping.Kind == TestTargetKind.Signal && x.Mapping.CanId == frameId &&
                     (signalName.Length == 0 ||
                      string.Equals(x.Mapping.SignalName, signalName,
                          StringComparison.OrdinalIgnoreCase))).ToArray();
-                preferred = matches.Length == 1 ? matches[0] : null;
+                preferred = legacyAssertionMatches.Length == 1 ? legacyAssertionMatches[0] : null;
             }
         }
         _filteringTargets = true;
@@ -740,13 +740,13 @@ public partial class TestStepInspector : UserControl
             {
                 var old = _editing?.Properties.GetValueOrDefault("value",
                     _editing.Properties.GetValueOrDefault("dataHex", "")) ?? "";
-                var previous = _boundMappings.FirstOrDefault(x =>
+                var previousBinding = _boundMappings.FirstOrDefault(x =>
                     string.Equals(x.Name, _editing?.Properties.GetValueOrDefault("target", ""),
                         StringComparison.OrdinalIgnoreCase));
-                if (_legacySourceType != "CanSend" && (previous is null ||
-                    previous.Kind != TestTargetKind.CanMessage ||
-                    previous.Asset != mapping.Asset || previous.CanId != mapping.CanId ||
-                    previous.Extended != mapping.Extended))
+                if (_legacySourceType != "CanSend" && (previousBinding is null ||
+                    previousBinding.Kind != TestTargetKind.CanMessage ||
+                    previousBinding.Asset != mapping.Asset || previousBinding.CanId != mapping.CanId ||
+                    previousBinding.Extended != mapping.Extended))
                     old = ""; // New/different CAN frames must not inherit a KEY "Pulse" value or unrelated frame bytes.
                 var dict = new Dictionary<string, string>(StringComparer.Ordinal);
                 if (old.Contains('='))
