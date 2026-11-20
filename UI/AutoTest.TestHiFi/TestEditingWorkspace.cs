@@ -116,6 +116,9 @@ public partial class MainWindow
         _testUndo.Clear(); _testRedo.Clear(); _modifiedFlowIds.Clear();
         _testProgramRoot = _workFiles.Root;
         _testProgram = new UiTestProgram();
+        // A new project opens with one editable case, as in a mature TEST IDE.
+        // No invented ECU steps or execution result are preloaded.
+        _testProgram.Cases.Add(new UiTestCase { Name = "测试用例 01" });
         _testProgramDocument = null;
         var asset = _workFiles.Workspace!.Assets.FirstOrDefault(a =>
             a.Kind == "测试程序" && a.Name == "UI 测试编辑器");
