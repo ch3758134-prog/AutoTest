@@ -140,8 +140,10 @@ public partial class MainWindow
         {
             StatusText = "测试编辑器文件读取失败：" + ex.Message;
         }
-        _testCaseId = _testProgram.Cases.FirstOrDefault()?.Id ??
-            _testProgram.Flows.FirstOrDefault()?.Id;
+        var restoredId = _testCaseId;
+        _testCaseId = _testProgram.Cases.Concat(_testProgram.Flows)
+            .Any(x => x.Id == restoredId) ? restoredId
+            : _testProgram.Cases.FirstOrDefault()?.Id ?? _testProgram.Flows.FirstOrDefault()?.Id;
         _testStepId = null;
     }
     private void CaptureTestChange()
