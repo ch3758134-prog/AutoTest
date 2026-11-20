@@ -227,7 +227,9 @@ public sealed class TestWorkspace : Grid
     private void ApplyStep(bool announce)
     {
         if (_selected is null) return;
-        if (string.IsNullOrWhiteSpace(_stepName.Text)) { _status("步骤名称不能为空。"); return; }
+        // Incomplete input is retained in UI draft state instead of silently lost on navigation.
+        if (string.IsNullOrWhiteSpace(_stepName.Text))
+            _status("步骤名称尚未填写（仅 UI 草稿）；后续正式资源保存应进行合法性校验。");
         if (_selected.Name == _stepName.Text && _selected.Target == _target.Text &&
             _selected.Value == _value.Text && _selected.Condition == _condition.Text &&
             _selected.Note == _note.Text) return;
