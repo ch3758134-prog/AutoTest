@@ -19,6 +19,16 @@ public partial class MainWindow
     }
 
     private readonly Dictionary<string, ToolDraft> _toolDrafts = new();
+    private readonly Dictionary<string, Window> _toolWindows = new();
+
+    private static bool IsToolName(string name) =>
+        name is "DBC 编辑器" or "UDS 调试" or "ECU 烧录" or "波形分析" or "手动台架";
+
+    private void CloseToolWindows()
+    {
+        foreach (var window in _toolWindows.Values.ToArray()) window.Close();
+        _toolWindows.Clear();
+    }
     private static readonly Brush ToolText = new SolidColorBrush(Color.FromRgb(38, 56, 76));
     private static readonly Brush ToolMuted = new SolidColorBrush(Color.FromRgb(98, 115, 137));
     private static readonly Brush ToolLine = new SolidColorBrush(Color.FromRgb(220, 230, 242));
@@ -140,18 +150,8 @@ public partial class MainWindow
 
     private void RenderToolWorkbench(string name)
     {
-        if (name is not ("DBC 编辑器" or "UDS 调试" or "ECU 烧录" or "波形分析" or "手动台架"))
-        {
-            ToolWorkbenchHost.Content = null;
-            ToolWorkbenchHost.Visibility = Visibility.Collapsed;
-            ToolDescriptionPanel.Visibility = Visibility.Visible;
-            return;
-        }
+        if (!IsToolName(name)) return;
         var draft = Draft(name);
-        ToolDescriptionPanel.Visibility = Visibility.Collapsed;
-        ToolWorkbenchHost.Visibility = Visibility.Visible;
-        WorkspaceTitle.Text = name;
-        WorkspaceSubtitle.Text = "UI-05 · 专业工具界面与本地配置 · 未连接 ECU";
         var root = new Grid { Background = new SolidColorBrush(Color.FromRgb(247, 249, 252)) };
         var compact = ActualWidth < 1270;
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(compact ? 0 : 216) });
@@ -205,8 +205,29 @@ public partial class MainWindow
         inspector.Children.Add(ToolLabel("本地工作区", true));
         inspector.Children.Add(ToolButton("保存工具配置", () => SaveToolDraft(draft), true));
         ToolNote(inspector, "保存的是当前 UI 工作台草稿，并非正式 TEST、UDS、Flash 或 DBC 执行配置。硬件执行命令未启用。");
-        ToolWorkbenchHost.Content = root;
-        WorkspaceStatusText.Text = name + " · UI 编辑状态（未执行真实设备操作）";
+        if (!_toolWindows.TryGetValue(name, out var window))
+        {
+            window = new Window
+            {
+                Owner = this, Title = "AutoTest · " + name,
+                Width = 1280, Height = 820, MinWidth = 850, MinHeight = 560,
+                Background = Brushes.White, WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                FontFamily = new FontFamily("Microsoft YaHei UI"), FontSize = 13,
+                ShowInTaskbar = false
+            };
+            _toolWindows[name] = window;
+            window.Closed += (_, _) => _toolWindows.Remove(name);
+            window.Content = root;
+            window.Show();
+        }
+        else
+        {
+            window.Content = null;
+            window.Content = root;
+            if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+            window.Activate();
+        }
+        StatusText = name + " · 独立工具窗口与主界面属于同一个进程；硬件未连接。";
     }
 
     private void ImportToolResource(string kind)
@@ -246,7 +267,27 @@ public partial class MainWindow
             center.Children.Add(ToolButton("▤  " + asset.Name + "   ·   " + asset.RelativePath,
                 () => OpenAsset(current)));
         }
-        center.Children.Add(ToolButton("导入 DBC 文件…", () => ImportToolResource("DBC")));
+        center.Children.Add(ToolButton("新建 DBC 文件…", () =>
+        {
+            if (!_workFiles.HasProject)
+            {
+                MessageBox.Show(this, "请先创建或打开一个工程，以便保存新建的 DBC 文件。", "新建 DBC");
+                return;
+            }
+            var name = AskName(this, "新建 DBC 文件", "新建DBC");
+            if (name is null) return;
+            try
+            {
+                var asset = _workFiles.NewAsset("DBC", name);
+                RefreshProjectTree();
+                OpenAsset(asset);
+                StoreSession();
+                StatusText = "已创建可直接编辑的 DBC 文件：" + asset.Name;
+            }
+            catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+            { ShowFileError("新建 DBC 失败", ex); }
+        }, true));
+        center.Children.Add(ToolButton("导入现有 DBC…", () => ImportToolResource("DBC")));
         ToolField(inspector, draft, "显示别名方案", "中文信号名称");
         ToolField(inspector, draft, "信号筛选条件");
         ToolNote(inspector, "不会生成虚构报文、信号或 DBC 解析结果。");
