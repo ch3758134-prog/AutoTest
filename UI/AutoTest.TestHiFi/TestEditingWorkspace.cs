@@ -269,6 +269,13 @@ public partial class MainWindow
             _debugEvents.Add("未就绪：没有打开的测试工程或当前用例。");
         else
         {
+            if (scope == "已启用用例")
+            {
+                var enabled = _testProgram!.Cases.Where(x => x.Enabled).ToArray();
+                _debugEvents.Add("勾选/启用运行范围：" + enabled.Length + " 个用例。");
+                foreach (var item in enabled)
+                    _debugEvents.Add("· " + item.Name + "：" + item.Steps.Count(x => x.Enabled) + " 个已启用步骤");
+            }
             var selected = scope == "当前步骤" ? ActiveTestStep : null;
             _debugEvents.Add("检查范围：" + scope + " · " + c.Name);
             if (scope == "当前步骤" && selected is null)
@@ -409,6 +416,20 @@ public partial class MainWindow
         if (_debugPane)
         {
             mid.Children.Add(EditorText("运行与调试 · 执行前检查", true));
+            mid.Children.Add(EditorText("执行状态：未启动｜设备会话：未连接｜结果：无｜模式：真实执行前置检查"));
+            var breakpointRows = ActiveTestCase?.Steps.Where(x => x.Breakpoint)
+                .Select(x => x.Phase + " · " + x.Name).ToArray() ?? [];
+            mid.Children.Add(EditorText("断点列表（" + breakpointRows.Length + "）", true));
+            foreach (var breakpoint in breakpointRows) mid.Children.Add(EditorText("●  " + breakpoint));
+            if (breakpointRows.Length == 0) mid.Children.Add(EditorText("当前用例未设置断点。"));
+            mid.Children.Add(EditorText("变量监视", true));
+            var variables = ActiveTestCase?.Steps.Where(x => x.Type == "设置变量")
+                .Select(x => x.Parameters.GetValueOrDefault("变量名称", "未命名变量") +
+                    " = " + x.Parameters.GetValueOrDefault("表达式", "尚未配置"))
+                .ToArray() ?? [];
+            foreach (var variable in variables) mid.Children.Add(EditorText(variable));
+            if (variables.Length == 0) mid.Children.Add(EditorText("尚无变量定义；运行期变量值需由实际执行器提供。"));
+            mid.Children.Add(EditorText("诊断与操作时间线", true));
             var text = new TextBox
             {
                 IsReadOnly = true, MinHeight = 95, MaxHeight = 200,
