@@ -36,6 +36,25 @@ internal static class UiDbcEditing
         return result;
     }
 
+    public static IReadOnlyList<string> SignalNames(string dbc, uint encodedMessageId)
+    {
+        var signals = new List<string>();
+        uint? current = null;
+        foreach (var line in dbc.Replace("\r\n", "\n").Split('\n'))
+        {
+            var message = MessagePattern.Match(line);
+            if (message.Success)
+            {
+                current = uint.TryParse(message.Groups[1].Value, out var id) ? id : null;
+                continue;
+            }
+            if (current != encodedMessageId) continue;
+            var signal = SignalPattern.Match(line);
+            if (signal.Success) signals.Add(signal.Groups[1].Value);
+        }
+        return signals;
+    }
+
     private static string RequiredName(string input, string field)
     {
         var name = input.Trim();
