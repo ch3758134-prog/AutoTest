@@ -56,6 +56,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string? _currentFile;
     private string? _copiedStep;
     private string? _editCaseBeforeRunToggle;
+    private string? _editNodeBeforeRunToggle;
     private readonly Stack<string> _undo = new();
     private readonly Stack<string> _redo = new();
 
@@ -252,6 +253,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void RunSelect_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         _editCaseBeforeRunToggle = SelectedCase?.Id;
+        _editNodeBeforeRunToggle = SelectedNode?.Id;
         Checkpoint();
     }
     private void RunSelect_PreviewKey(object sender, KeyEventArgs e)
@@ -259,6 +261,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (e.Key == Key.Space)
         {
             _editCaseBeforeRunToggle = SelectedCase?.Id;
+            _editNodeBeforeRunToggle = SelectedNode?.Id;
             Checkpoint();
         }
     }
@@ -268,6 +271,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         // Clicking the checkbox must never change the current *editor* case.
         var keep = Document.Cases.FirstOrDefault(c => c.Id == _editCaseBeforeRunToggle);
         _editCaseBeforeRunToggle = null;
+        var savedEditorNodeId = _editNodeBeforeRunToggle;
+        _editNodeBeforeRunToggle = null;
         if (keep is not null && !ReferenceEquals(keep, SelectedCase))
         {
             _syncing = true;
@@ -275,7 +280,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             Document.ActiveCaseId = keep.Id;
             try { CaseList.SelectedItem = keep; CompactCasePicker.SelectedItem = keep; }
             finally { _syncing = false; }
-            SelectedNode = keep.Find(Document.ActiveNodeId) ?? keep.Phases.ElementAtOrDefault(1);
+            SelectedNode = keep.Find(savedEditorNodeId ?? "") ?? keep.Phases.ElementAtOrDefault(1);
+            Document.ActiveNodeId = SelectedNode?.Id ?? "";
             UpdateRows();
         }
         Dirty("本次运行勾选已变更；编辑中的用例和步骤保持不变。");
@@ -888,6 +894,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private bool SaveDraft()
     {
+        CommitCaseRename();
         CapturePendingEdit();
         var path = _currentFile;
         if (string.IsNullOrEmpty(path))
@@ -942,6 +949,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        CommitCaseRename();
         CapturePendingEdit();
         if (!_modified) return;
         var choice = MessageBox.Show(this, "当前有未保存的 UI 草稿。\n“是”保存，“否”放弃，“取消”返回编辑器。",
