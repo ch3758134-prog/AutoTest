@@ -161,10 +161,13 @@ public static class Specialists
         for(var i=0;i<20;i++)
         {
             var n=i;
-            var k=new CheckBox{Content="K"+(i+1).ToString("00"),Margin=new Thickness(6,8,0,8),
-                IsChecked=state.KeyStates[i]};
-            k.Checked+=(_,_)=>{state.KeyStates[n]=true;state.Changed("KEY_SIM 输入选择");};
-            k.Unchecked+=(_,_)=>{state.KeyStates[n]=false;state.Changed("KEY_SIM 输入选择");};
+            var k=new CheckBox{Margin=new Thickness(6,8,0,8)};
+            k.SetBinding(ContentControl.ContentProperty,new Binding(nameof(UiKeySwitch.Label))
+                {Source=state.KeySwitches[i]});
+            k.SetBinding(ToggleButton.IsCheckedProperty,new Binding(nameof(UiKeySwitch.Closed))
+                {Source=state.KeySwitches[i],Mode=BindingMode.TwoWay});
+            k.Checked+=(_,_)=>state.SetKeyState(n,true);
+            k.Unchecked+=(_,_)=>state.SetKeyState(n,false);
             mini.Children.Add(k);
         }
         keyMini.Children.Add(mini);
@@ -181,12 +184,25 @@ public static class Specialists
         for(var i=0;i<20;i++)
         {
             var n=i;
-            var button=new ToggleButton{Content="K"+(i+1).ToString("00"),Height=40,
-                Margin=new Thickness(4),IsChecked=state.KeyStates[i],
-                ToolTip="KEY_SIM 内部电阻网络开关 "+(i+1)+
-                    "；当前仅记录 UI 选择。不是独立功能按键。"};
-            button.Checked+=(_,_)=>{state.KeyStates[n]=true;state.Changed("勾选内部开关 K"+(n+1));};
-            button.Unchecked+=(_,_)=>{state.KeyStates[n]=false;state.Changed("释放内部开关 K"+(n+1));};
+            var button=new ToggleButton{Height=40,Margin=new Thickness(4),
+                ToolTip="KEY_SIM 内部电阻网络开关 "+(i+1)+"；右键重命名。仅改变 UI 会话状态。"};
+            button.SetBinding(ContentControl.ContentProperty,new Binding(nameof(UiKeySwitch.Label))
+                {Source=state.KeySwitches[i]});
+            button.SetBinding(ToggleButton.IsCheckedProperty,new Binding(nameof(UiKeySwitch.Closed))
+                {Source=state.KeySwitches[i],Mode=BindingMode.TwoWay});
+            button.Checked+=(_,_)=>state.SetKeyState(n,true);
+            button.Unchecked+=(_,_)=>state.SetKeyState(n,false);
+            var context=new ContextMenu();
+            var rename=new MenuItem{Header="重命名当前开关（UI 标签）"};
+            rename.Click+=(_,_)=>{
+                var name=UiKit.AskText(Application.Current.MainWindow,"修改 KEY_SIM 标签",
+                    "K"+(n+1).ToString("00")+" 的显示名称",state.KeySwitches[n].Label);
+                if(name is null)return;
+                state.KeySwitches[n].Label=name;
+                state.Changed("重命名 KEY_SIM 开关");
+            };
+            context.Items.Add(rename);
+            button.ContextMenu=context;
             panel.Children.Add(button);
         }
         return panel;
