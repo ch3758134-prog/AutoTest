@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -23,6 +24,11 @@ public sealed class MainWindow : Window
     private readonly TextBlock _heading = UiKit.Text("自动测试", 16, true);
     private readonly StackPanel _nav = new();
     private readonly Dictionary<string, Window> _tools = [];
+    private readonly Dictionary<string, UIElement> _workspaces = [];
+    private static string LastSessionMarker => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "AutoTest", "ui-last-session.txt");
+    private string _startupMessage = "独立纯 UI 体验：没有连接真实设备或任何业务执行器。";
     private string _active = "自动测试";
     private bool _modified;
     private bool _closing;
@@ -41,9 +47,10 @@ public sealed class MainWindow : Window
         FontSize = 13;
         UseLayoutRounding = true;
         SnapsToDevicePixels = true;
+        TryRestoreLastSession();
         Content = BuildChrome();
-        ShowWorkspace("自动测试");
-        SetStatus("独立纯 UI 体验：没有连接真实设备或任何业务执行器。");
+        ShowWorkspace(_session.LastWorkspace);
+        SetStatus(_startupMessage);
         Closing += OnClosing;
         PreviewKeyDown += OnKeyDown;
     }
@@ -150,17 +157,23 @@ public sealed class MainWindow : Window
     private void ShowWorkspace(string name)
     {
         _active = name;
+        _session.LastWorkspace = name; // UI navigation state, not a formal project mutation.
         _heading.Text = name;
         _contextName.Text = _session.ProjectName + (_modified ? " ●" : "");
         RebuildNav();
-        _center.Child = name switch
+        if (!_workspaces.TryGetValue(name, out var content))
         {
-            "自动测试" => new TestWorkspace(_session, Changed, SetStatus),
-            "工程资源" => new ProjectWorkspace(_session, Changed, SetStatus),
-            "生产扫码" => new ProductionWorkspace(_session, Changed, SetStatus),
-            "报告与历史" => new HistoryWorkspace(_session, Changed, SetStatus),
-            _ => new StartWorkspace(_session, Changed, SetStatus, ShowWorkspace, OpenTool)
-        };
+            content = name switch
+            {
+                "自动测试" => new TestWorkspace(_session, Changed, SetStatus),
+                "工程资源" => new ProjectWorkspace(_session, Changed, SetStatus),
+                "生产扫码" => new ProductionWorkspace(_session, Changed, SetStatus),
+                "报告与历史" => new HistoryWorkspace(_session, Changed, SetStatus),
+                _ => new StartWorkspace(_session, Changed, SetStatus, ShowWorkspace, OpenTool)
+            };
+            _workspaces[name] = content;
+        }
+        _center.Child = content; // Keep step undo history, field focus and selection across navigation.
     }
     private void OpenTool(string name)
     {
@@ -201,12 +214,44 @@ public sealed class MainWindow : Window
             "未保存的 UI 会话", MessageBoxButton.YesNo, MessageBoxImage.Warning,
             MessageBoxResult.No) == MessageBoxResult.Yes;
     }
+    private void TryRestoreLastSession()
+    {
+        try
+        {
+            if (!File.Exists(LastSessionMarker)) return;
+            var path = File.ReadAllText(LastSessionMarker).Trim();
+            if (!File.Exists(path))
+            {
+                _startupMessage = "上次 UI 会话文件已移动；请使用“打开 UI 会话”重新定位。";
+                return;
+            }
+            _session = UiSession.Load(path);
+            _startupMessage = "已恢复上次保存的 UI 会话；未保存草稿和实体设备状态不会被伪造。";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            _startupMessage = "上次 UI 会话恢复失败：" + error.Message;
+        }
+    }
+    private void RememberLastSession(string path)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(LastSessionMarker)!);
+            File.WriteAllText(LastSessionMarker, Path.GetFullPath(path));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            SetStatus("UI 会话已保存，但最近打开记录未能更新：" + error.Message);
+        }
+    }
     private void NewSession()
     {
         if (!ConfirmDiscard()) return;
         foreach (var w in _tools.Values.ToArray()) w.Close();
         _session = UiSession.New();
         _modified = false;
+        _workspaces.Clear();
         ShowWorkspace("自动测试");
         SetStatus("已新建独立 UI 会话，不代表已创建正式 TEST 工程。");
     }
@@ -222,7 +267,9 @@ public sealed class MainWindow : Window
             foreach (var w in _tools.Values.ToArray()) w.Close();
             _session = restored;
             _modified = false;
-            ShowWorkspace("自动测试");
+            _workspaces.Clear();
+            ShowWorkspace(_session.LastWorkspace);
+            RememberLastSession(dialog.FileName);
             SetStatus("已打开 UI 会话：" + dialog.FileName);
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "打开失败", MessageBoxButton.OK, MessageBoxImage.Warning); }
@@ -244,6 +291,7 @@ public sealed class MainWindow : Window
         try
         {
             _session.Save(path!);
+            RememberLastSession(path!);
             _modified = false;
             _contextName.Text = _session.ProjectName;
             SetStatus("UI 会话已保存。这不是正式工程或 ECU 测试结果。");
