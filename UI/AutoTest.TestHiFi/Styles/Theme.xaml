@@ -14,7 +14,7 @@
     <SolidColorBrush x:Key="Success" Color="#159447"/>
     <SolidColorBrush x:Key="Warning" Color="#A66800"/>
     <SolidColorBrush x:Key="Danger" Color="#D9383E"/>
-    <SolidColorBrush x:Key="Violet" Color="#7B55D8"/>
+    <SolidColorBrush x:Key="FlowStructure" Color="#536982"/>
     <FontFamily x:Key="UiFont">Microsoft YaHei UI</FontFamily>
     <FontFamily x:Key="IconFont">Segoe Fluent Icons</FontFamily>
 
