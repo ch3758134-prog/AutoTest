@@ -334,7 +334,8 @@ public partial class MainWindow
         if(e.PropertyName is nameof(UiFileDocument.Changed) or nameof(UiFileDocument.DisplayName))
         {
             OpenPages.FirstOrDefault(p=>ReferenceEquals(p.Document,doc))?.NotifyLabel();
-            Raise(nameof(ActiveFile));
+            // The document object itself raises Content/DisplayName. Re-notifying
+            // ActiveFile on every keypress would rebuild the editor binding and jump the caret.
             RefreshSideInfo();
         }
         if(e.PropertyName is nameof(UiFileDocument.Content) or nameof(UiFileDocument.Changed))
