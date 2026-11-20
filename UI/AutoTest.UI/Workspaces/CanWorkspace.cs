@@ -25,6 +25,13 @@ public sealed class CanWorkspace : Grid
         var table = UiKit.Table(state.CanTx,
             ("名称", "Name", 130), ("CAN ID", "CanId", 95),
             ("数据 HEX", "Data", 245), ("周期 ms", "PeriodMs", 82), ("状态", "State", 100));
+        table.Columns.Insert(0, new DataGridCheckBoxColumn
+        {
+            Header = "选择",
+            Binding = new System.Windows.Data.Binding(nameof(UiCanMessage.Enabled))
+            { Mode = System.Windows.Data.BindingMode.TwoWay },
+            Width = new DataGridLength(55)
+        });
         table.CellEditEnding += (_, _) => changed();
         var sendOne = UiKit.Button("发送选中", () => { }, true);
         var start = UiKit.Button("启动选中周期", () => { });
@@ -60,6 +67,13 @@ public sealed class CanWorkspace : Grid
             UiKit.Button("移除", () =>
             {
                 if (table.SelectedItem is UiCanMessage msg) { state.CanTx.Remove(msg); changed(); }
+            }),
+            UiKit.Button("设为周期草稿", () =>
+            {
+                if (table.SelectedItem is not UiCanMessage msg) return;
+                if (msg.PeriodMs <= 0) msg.PeriodMs = 100;
+                msg.Enabled = true; table.Items.Refresh(); changed();
+                status("已设置待发周期草稿，未实际发送 CAN。");
             })));
         top.Children.Add(UiKit.Actions(sendOne, start, stop));
         tx.Children.Add(table);
