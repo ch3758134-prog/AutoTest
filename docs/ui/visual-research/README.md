@@ -36,3 +36,12 @@ R01 为研究交接摘要，原始《现代复杂工业级 PC 软件的产品与
 - [设计候选：中央步骤 + 右侧属性 / 宽步骤表 + 下方参数的比较](V02-01/DESIGN_COMPARISON_TEST_EDITOR_20261119.md)
 - 状态：研究与方案比较已留档；两种完整可操作视觉方案尚未完成；**无 HTML、无 WPF 修改、未冻结页面**。
 - 用户允许按批次验收；后续继续以真实内容与相同任务脚本检查版式，不用空白页面决定视觉。
+
+## V02-02｜TEST 步骤结构、键鼠命令、字体层级与复杂内容（2026-11-19）
+
+- [研究证据：阶段/分支/叶节点、快捷键、对象选择与视觉对应](V02-02/RESEARCH_STEP_HIERARCHY_COMMANDS_VISUAL_20261119.md)
+- [统一高密度样本：12 用例、40 步、X01～X16 操作脚本](V02-02/TEST_TASK_AND_DENSE_CONTENT_FIXTURE_20261119.md)
+- [详细设计候选：对象结构、Inspector、移动/插入/Undo、响应式布局、文字/颜色层级](V02-02/DESIGN_STEP_EDITOR_VISUAL_INTERACTION_SPEC_20261119.md)
+- [研究—设计—验证追溯与 V02-03 交接](V02-02/REVIEW_TRACE_AND_HANDOFF_20261119.md)
+- 状态：RESEARCH_RECORDED / DESIGN_CANDIDATE / VISUAL_PROTOTYPE_NOT_RUN / NO_CODE_CHANGE / USER_BATCH_REVIEW_AVAILABLE。
+- **下一轮 V02-03**：以同一 40 步内容验证 A/B 两种不同可视方案及窄屏状态，防止在真实视觉未检查前直接实现 WPF。仅用 Markdown 归档，不制作 HTML。
