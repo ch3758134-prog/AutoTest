@@ -109,6 +109,14 @@ public sealed class UiUdsRequest : Notify
     public string Payload { get => _payload; set => Change(ref _payload, value); }
     public string Expected { get => _expected; set => Change(ref _expected, value); }
 }
+public sealed class UiKeySwitch : Notify
+{
+    public int Number { get; set; }
+    private string _label = "";
+    private bool _closed;
+    public string Label { get => _label; set => Change(ref _label, value); }
+    public bool Closed { get => _closed; set => Change(ref _closed, value); }
+}
 public sealed class UiKeyAction : Notify
 {
     private string _name = "按键动作";
@@ -149,6 +157,16 @@ public sealed class UiStore : Notify
     public ObservableCollection<UiWaveSignal> WaveSignals { get; } = [];
     public ObservableCollection<string> OperatorNotes { get; } = [];
     public bool[] KeyStates { get; } = new bool[20];
+    public ObservableCollection<UiKeySwitch> KeySwitches { get; } =
+        new(Enumerable.Range(1, 20).Select(i => new UiKeySwitch
+        { Number = i, Label = "K" + i.ToString("00") }));
+    public void SetKeyState(int zeroBased, bool closed)
+    {
+        if (zeroBased is < 0 or >= 20) return;
+        KeyStates[zeroBased] = closed;
+        KeySwitches[zeroBased].Closed = closed;
+        Changed((closed ? "勾选" : "释放") + " KEY_SIM " + KeySwitches[zeroBased].Label);
+    }
     public int HoldMs { get; set; } = 500;
     public bool IgnOn { get; set; }
     public bool FixtureEngaged { get; set; }
@@ -225,13 +243,13 @@ public sealed class UiStore : Notify
     private sealed record Session(string Kind, string Workspace, List<UiTestCase> Cases,
         List<UiCanMessage> Can, List<UiDbcMessage> Dbc, List<UiUdsRequest> Uds,
         List<UiKeyAction> Keys, List<UiWaveSignal> Wave, List<UiStep> PublicFlow,
-        List<UiResource> Resources, bool[] KeyStates, int HoldMs, bool IgnOn, bool FixtureEngaged);
+        List<UiResource> Resources, List<UiKeySwitch> Switches, bool[] KeyStates, int HoldMs, bool IgnOn, bool FixtureEngaged);
     public void SaveUiSession(string path)
     {
         var data = new Session("AutoTest.PURE_UI_SESSION.v1", Workspace, Cases.ToList(),
             CanMessages.ToList(), DbcMessages.ToList(), UdsRequests.ToList(),
             KeyActions.ToList(), WaveSignals.ToList(), PublicFlow.ToList(), Resources.ToList(),
-            KeyStates.ToArray(), HoldMs, IgnOn, FixtureEngaged);
+            KeySwitches.ToList(), KeyStates.ToArray(), HoldMs, IgnOn, FixtureEngaged);
         var serialized = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(path, serialized);
         Dirty = false;
@@ -256,7 +274,12 @@ public sealed class UiStore : Notify
         foreach (var x in data.PublicFlow ?? []) PublicFlow.Add(x);
         foreach (var x in data.Resources ?? []) Resources.Add(x);
         for (var i = 0; i < KeyStates.Length; i++)
+        {
             KeyStates[i] = i < (data.KeyStates?.Length ?? 0) && data.KeyStates[i];
+            KeySwitches[i].Closed = KeyStates[i];
+            if (i < (data.Switches?.Count ?? 0) && !string.IsNullOrWhiteSpace(data.Switches[i].Label))
+                KeySwitches[i].Label = data.Switches[i].Label;
+        }
         HoldMs = data.HoldMs;
         IgnOn = data.IgnOn;
         FixtureEngaged = data.FixtureEngaged;
