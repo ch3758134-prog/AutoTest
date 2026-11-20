@@ -183,12 +183,35 @@ public sealed class TestWorkspace : Grid
         _value.Text = _selected.Value;
         _condition.Text = _selected.Condition;
         _note.Text = _selected.Note;
-        _inspector.Children.Add(UiKit.Text(_selected.Type, 14, true, UiKit.Accent));
-        _inspector.Children.Add(UiKit.Field("名称", _stepName));
-        _inspector.Children.Add(UiKit.Field("操作对象 / 引用", _target));
-        _inspector.Children.Add(UiKit.Field("操作值 / 参数", _value));
-        _inspector.Children.Add(UiKit.Field("条件 / 表达式", _condition));
-        _inspector.Children.Add(UiKit.Field("备注与说明", _note));
+        var definition = StepInspectorCatalog.For(_selected.Type);
+        _inspector.Children.Add(UiKit.Text(definition.Title, 14, true, UiKit.Accent));
+        _inspector.Children.Add(UiKit.Text(definition.Help, 12, false, UiKit.Muted));
+        _inspector.Children.Add(UiKit.Field("步骤名称", _stepName));
+        if (definition.TargetLabel != "—")
+            _inspector.Children.Add(UiKit.Field(definition.TargetLabel, _target));
+        if (definition.ValueLabel != "—")
+            _inspector.Children.Add(UiKit.Field(definition.ValueLabel, _value));
+        if (definition.ConditionLabel != "—")
+            _inspector.Children.Add(UiKit.Field(definition.ConditionLabel, _condition));
+        _inspector.Children.Add(UiKit.Field("备注", _note));
+        var enabled = new CheckBox { Content = "此步骤启用", IsChecked = _selected.Enabled,
+            Margin = new Thickness(0, 0, 0, 12) };
+        var currentStep = _selected;
+        enabled.Checked += (_, _) => { currentStep.Enabled = true; _changed(); };
+        enabled.Unchecked += (_, _) => { currentStep.Enabled = false; _changed(); };
+        _inspector.Children.Add(enabled);
+        if (definition.Branches is { Length: > 0 } branches)
+        {
+            _inspector.Children.Add(UiKit.Text("子分支编辑", 13, true));
+            var branchPicker = new ComboBox { ItemsSource = branches, SelectedIndex = 0,
+                MinHeight = 32, Margin = new Thickness(0, 8, 0, 8) };
+            _inspector.Children.Add(branchPicker);
+            _inspector.Children.Add(UiKit.Button("加入选中分支", () =>
+            {
+                if (branchPicker.SelectedItem is string selectedBranch)
+                    InsertIntoBranch(currentStep, selectedBranch);
+            }));
+        }
         var references = new ComboBox { ItemsSource = _state.Messages.Select(x => x.Name).ToArray(),
             Margin = new Thickness(0, 0, 0, 9), MinHeight = 32 };
         references.SelectionChanged += (_, _) =>
@@ -286,7 +309,9 @@ public sealed class TestWorkspace : Grid
         foreach (var step in steps)
         {
             var line = new TreeViewItem { Tag = step, IsExpanded = true,
-                Header = (step.Enabled ? "" : "〔停用〕") + step.Type + " · " + step.Name };
+                Header = (step.Enabled ? "" : "〔停用〕") +
+                    (string.IsNullOrWhiteSpace(step.Branch) ? "" : "〔" + step.Branch + "〕 ") +
+                    step.Type + " · " + step.Name };
             parent.Items.Add(line);
             if (step.Id == preferId) { _selected = step; line.IsSelected = true; }
             if (step.Children.Count > 0) BuildNodes(line, step.Children, preferId);
@@ -333,14 +358,30 @@ public sealed class TestWorkspace : Grid
                 ? list.IndexOf(last) + 1 : pos;
         }
         Snapshot();
-        var node = new UiStep { Phase = phase, Type = kind, Name = kind };
-        if (child) node.Branch = "子流程";
+        var node = StepInspectorCatalog.New(kind, phase, child ? "BODY" : "");
         list.Insert(Math.Clamp(pos, 0, list.Count), node);
         _selected = node;
         RebuildSteps(node.Id);
         _changed();
         _status("已插入 " + kind + "，现在可在右侧直接编辑参数。");
     }
+    private void InsertIntoBranch(UiStep parent, string branch)
+    {
+        if (_currentCase is null) return;
+        ApplyStep(false);
+        var kind = _type.SelectedItem as string ?? "等待";
+        Snapshot();
+        var node = StepInspectorCatalog.New(kind, parent.Phase, branch);
+        // Keep each branch's children together without changing the parent node identity.
+        var last = parent.Children.Select((step, index) => (step, index))
+            .Where(x => x.step.Branch == branch).Select(x => x.index).LastOrDefault(-1);
+        parent.Children.Insert(last < 0 ? parent.Children.Count : last + 1, node);
+        _selected = node;
+        RebuildSteps(node.Id);
+        _changed();
+        _status("已将步骤加入 " + branch + " 分支，可在右侧继续编辑。");
+    }
+
     private void DuplicateStep()
     {
         if (_selected is null || _currentCase is null) return;
