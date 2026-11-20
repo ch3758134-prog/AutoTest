@@ -152,7 +152,7 @@ public partial class TestStepInspector : UserControl
         new("uds", "外部操作", "UDS 服务", "UdsRequest", "",
             "编辑服务和请求，实体诊断执行必须独立授权。"),
         new("flash", "外部操作", "Flash 烧录", "Flash", "",
-            "仅编辑配置引用，当前禁止真实刷写。"),
+            "选择经核对的配置及固件。真正运行需要连接设备、冻结资源指纹、独立授权和 APP 诊断恢复确认。"),
         new("wave-capture", "读取与观察", "波形采集（扩展步骤）", "WaveCapture", "",
             "编辑采集资源，运行前需要真实采集服务。"),
         new("wave-compare", "分析与判断", "波形判定", "WaveCompare", "wave",
