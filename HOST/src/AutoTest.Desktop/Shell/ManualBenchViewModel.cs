@@ -330,7 +330,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     }
 
     private void TestRunAuthorizationChanged(bool approved) =>
-        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+        global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (_disposed) return;
             if (approved) { _canBatchStop?.Cancel(); _keyActionStop?.Cancel(); Status = "自动测试已占用工位：手动发送、IGN 和断连操作被锁定。"; }
@@ -340,7 +340,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
 
     private void ConnectionChanged(long epoch)
     {
-        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+        global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (_disposed) return;
             _connected = epoch != 0;
@@ -363,7 +363,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     }
 
     private void ProjectChanged(object? sender, EventArgs e) =>
-        Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
+        global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
         {
             _canBatchStop?.Cancel();
             _keyActionStop?.Cancel();
@@ -376,7 +376,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     }
 
     private void EvidenceRecorded(string text) =>
-        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+        global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (!_disposed) Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
                 "USB", "事件", "", "", text));

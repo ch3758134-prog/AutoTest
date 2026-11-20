@@ -17,7 +17,7 @@ public sealed class ProjectFileDialogService(RecentProjectStore recent)
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException or ArgumentException)
         { System.Diagnostics.Trace.TraceWarning("Recent browse directory not saved: " + e.Message); }
     }
-    private static Window? Owner => Application.Current?.MainWindow;
+    private static Window? Owner => global::System.Windows.Application.Current?.MainWindow;
 
     public string? PickProjectManifest()
     {

@@ -218,13 +218,13 @@ public sealed class MainWindowViewModel : BindableBase
                 "\n烧录专业工具已接入但本版仍需 Windows 和台架验收；尚未接入自动测试步骤，不得将结构检查视为 ECU PASS。",
                 "AutoTest · 编辑帮助", MessageBoxButton.OK, MessageBoxImage.Information));
         _hardware.EvidenceRecorded += line =>
-            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
                 HardwareStatus = line;
                 StatusMessage = line;
             }));
         _liveSignals.SignalReceived += (name, value) =>
-            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
                 var time = value.Observation?.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff") ?? "";
                 var reading = value.Observation?.Value?.ToString("R", CultureInfo.InvariantCulture) ?? "";
@@ -233,7 +233,7 @@ public sealed class MainWindowViewModel : BindableBase
                 if (DecodedCanRecords.Count > 500) DecodedCanRecords.RemoveAt(0);
             }));
         _hardware.FrameObserved += frame =>
-            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
                 var f = frame.Frame;
                 CanRecords.Add(new CanMonitorRow(
@@ -353,7 +353,7 @@ public sealed class MainWindowViewModel : BindableBase
         var window = new Window
         {
             Title = "工程信息 · " + CurrentProjectName,
-            Owner = Application.Current.MainWindow,
+            Owner = global::System.Windows.Application.Current.MainWindow,
             Content = panel,
             Width = Math.Max(640, Math.Min(980, SystemParameters.WorkArea.Width - 36)),
             Height = Math.Max(440, Math.Min(640, SystemParameters.WorkArea.Height - 36)),
@@ -398,7 +398,7 @@ public sealed class MainWindowViewModel : BindableBase
         var view = new WaveWorkbenchWindow(new WaveWorkbenchViewModel(_workspace),
             () => OpenWaveConfigCommand.Execute());
         _waveWorkbenchWindow = view;
-        view.Owner = Application.Current.MainWindow;
+        view.Owner = global::System.Windows.Application.Current.MainWindow;
         view.Closed += (_, _) => _waveWorkbenchWindow = null;
         view.Show();
     }
@@ -413,7 +413,7 @@ public sealed class MainWindowViewModel : BindableBase
         var view = new ManualBenchWindow(new ManualBenchViewModel(_workspace, _hardware));
         _manualBenchWindow = view;
         view.Closed += (_, _) => _manualBenchWindow = null;
-        view.Owner = Application.Current.MainWindow;
+        view.Owner = global::System.Windows.Application.Current.MainWindow;
         view.Show();
     }
 
@@ -456,7 +456,7 @@ public sealed class MainWindowViewModel : BindableBase
             // FlashLab specialist owns the exclusive native WinUSB handle.
             var window = new FlashLabWindow
             {
-                Owner = Application.Current.MainWindow,
+                Owner = global::System.Windows.Application.Current.MainWindow,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
             window.ShowDialog();
@@ -926,7 +926,7 @@ public sealed class MainWindowViewModel : BindableBase
     {
         var lines = string.Join("\n", names.Take(8).Select(x => "  • " + x));
         if (names.Count > 8) lines += "\n  …及另外 " + (names.Count - 8) + " 个文档";
-        var answer = MessageBox.Show(Application.Current.MainWindow,
+        var answer = MessageBox.Show(global::System.Windows.Application.Current.MainWindow,
             "以下内容尚未保存（包括右侧尚未应用的步骤属性）：\n\n" + lines +
             "\n\n【是】应用并保存全部修改，再继续关闭" +
             "\n【否】放弃这些草稿，直接继续关闭" +
@@ -945,7 +945,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void ReportCloseBlocked(string message)
     {
         StatusMessage = message;
-        MessageBox.Show(Application.Current.MainWindow, message, "关闭已取消",
+        MessageBox.Show(global::System.Windows.Application.Current.MainWindow, message, "关闭已取消",
             MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
@@ -1808,7 +1808,7 @@ public sealed class MainWindowViewModel : BindableBase
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ShowInTaskbar = false
         };
-        if (Application.Current?.MainWindow is { IsLoaded: true } owner)
+        if (global::System.Windows.Application.Current?.MainWindow is { IsLoaded: true } owner)
             window.Owner = owner;
         else window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         window.Closing += (_, args) =>

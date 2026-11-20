@@ -6,8 +6,8 @@ namespace AutoTest.Desktop.Testing;
 public sealed class TestEditorDialogs
 {
     private static Window? ActiveOwner =>
-        Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
-        ?? Application.Current.MainWindow;
+        global::System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+        ?? global::System.Windows.Application.Current.MainWindow;
 
     public bool Confirm(string message)
     {

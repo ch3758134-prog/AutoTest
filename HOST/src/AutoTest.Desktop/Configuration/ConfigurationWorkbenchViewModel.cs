@@ -867,8 +867,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 return;
             }
             var dialog = new WaveReferencePickerDialog(options);
-            var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
-                ?? Application.Current.MainWindow;
+            var owner = global::System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                ?? global::System.Windows.Application.Current.MainWindow;
             if (owner is { IsLoaded: true }) dialog.Owner = owner;
             if (dialog.ShowDialog() != true || dialog.SelectedEvidence is not Guid id) return;
             var name = dialog.ReferenceName;
@@ -903,8 +903,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 ? 0u : ParseCan(field.Value);
             var dialog = new KeyMaskPickerDialog(initial,
                 fieldKey == "supportedKeys" ? "选择硬件已确认可用的 Key" : "选择模拟状态的电阻组合");
-            var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
-                ?? Application.Current.MainWindow;
+            var owner = global::System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                ?? global::System.Windows.Application.Current.MainWindow;
             if (owner is { IsLoaded: true }) dialog.Owner = owner;
             if (dialog.ShowDialog() != true) return;
             field.Value = "0x" + dialog.SelectedMask.ToString("X5");
@@ -956,8 +956,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 return;
             }
             var dialog = new WaveSignalPickerDialog(available);
-            var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
-                ?? Application.Current.MainWindow;
+            var owner = global::System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                ?? global::System.Windows.Application.Current.MainWindow;
             if (owner is { IsLoaded: true }) dialog.Owner = owner;
             if (dialog.ShowDialog() != true || dialog.Selected is not { } mapping) return;
             var asset = _workspace.Current?.Definition.Assets.SingleOrDefault(a => a.Id == mapping.Asset)
@@ -1080,7 +1080,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     }
 
     public bool ConfirmClose() =>
-        !IsBusy && (!IsDirty || MessageBox.Show(Application.Current.MainWindow,
+        !IsBusy && (!IsDirty || MessageBox.Show(global::System.Windows.Application.Current.MainWindow,
             "工程配置还有未保存的修改。确定放弃并切换吗？", "未保存配置",
             MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes);
 

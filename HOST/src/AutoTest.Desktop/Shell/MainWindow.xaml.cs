@@ -157,7 +157,7 @@ public partial class MainWindow : Window
             finally
             {
                 _shutdownComplete = true;
-                Application.Current.Shutdown(0);
+                global::System.Windows.Application.Current.Shutdown(0);
             }
         }
         catch (Exception error) when (error is not OutOfMemoryException)

@@ -8,7 +8,7 @@ public sealed class NewProjectDialogService(ProjectWorkspaceService workspace, R
     public bool ShowDialog()
     {
         var dialog = new NewProjectDialog(workspace, recent);
-        var owner = Application.Current?.MainWindow;
+        var owner = global::System.Windows.Application.Current?.MainWindow;
         if (owner is not null && owner.IsLoaded) dialog.Owner = owner;
         return dialog.ShowDialog() == true;
     }

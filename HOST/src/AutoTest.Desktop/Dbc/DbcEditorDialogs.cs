@@ -7,8 +7,8 @@ namespace AutoTest.Desktop.Dbc;
 public sealed class DbcEditorDialogs
 {
     private static Window? ActiveOwner =>
-        Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
-        ?? Application.Current.MainWindow;
+        global::System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+        ?? global::System.Windows.Application.Current.MainWindow;
 
     public DbcMessage? EditMessage(DbcMessage existing)
     {
