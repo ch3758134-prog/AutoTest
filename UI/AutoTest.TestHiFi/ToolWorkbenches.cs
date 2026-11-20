@@ -319,7 +319,26 @@ public partial class MainWindow
         try { document = _workFiles.OpenAsset(selected); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         { ShowFileError("打开 DBC 失败", ex); return; }
-        center.Children.Add(ToolLabel("DBC 文本编辑 · " + selected.RelativePath, true));
+        var messages = UiDbcEditing.Messages(document.Content);
+        var messageChooser = new ComboBox
+        {
+            ItemsSource = messages, DisplayMemberPath = "Label",
+            Height = 33, Margin = new Thickness(0, 0, 0, 12), BorderBrush = ToolLine
+        };
+        var messageId = draft.Fields.GetValueOrDefault("DBC MessageId", "");
+        var message = messages.FirstOrDefault(m => m.EncodedId.ToString() == messageId)
+            ?? messages.FirstOrDefault();
+        messageChooser.SelectedItem = message;
+        messageChooser.SelectionChanged += (_, _) =>
+        {
+            if (messageChooser.SelectedItem is UiDbcEditing.Message row)
+                draft.Fields["DBC MessageId"] = row.EncodedId.ToString();
+        };
+        center.Children.Add(ToolLabel("报文与信号 · 已有真实 DBC 定义（" + messages.Count + " 条报文）", true));
+        center.Children.Add(messageChooser);
+        foreach (var msg in messages.Take(40))
+            center.Children.Add(ToolLabel("▤ " + msg.Label));
+        center.Children.Add(ToolLabel("DBC 源文件（可直接编辑）", true));
         var editor = new TextBox
         {
             Text = document.Content, AcceptsReturn = true, AcceptsTab = true,
@@ -343,9 +362,58 @@ public partial class MainWindow
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
             { ShowFileError("保存 DBC 失败", ex); }
         }, true));
+        inspector.Children.Add(ToolLabel("新增报文", true));
+        var idInput = ToolField(inspector, draft, "报文 ID（十进制或 0x）", "0x100");
+        var nameInput = ToolField(inspector, draft, "报文名称", "NewMessage");
+        var dlcInput = ToolField(inspector, draft, "数据长度 DLC", "8");
+        var senderInput = ToolField(inspector, draft, "发送节点", "ECU");
+        inspector.Children.Add(ToolButton("添加报文到 DBC", () =>
+        {
+            try
+            {
+                document.Content = UiDbcEditing.AddMessage(document.Content, idInput.Text,
+                    nameInput.Text, dlcInput.Text, senderInput.Text);
+                editor.Text = document.Content;
+                var last = UiDbcEditing.Messages(document.Content).Last();
+                draft.Fields["DBC MessageId"] = last.EncodedId.ToString();
+                RenderToolWorkbench("DBC 编辑器");
+            }
+            catch (ArgumentException ex) { ShowFileError("报文参数无效", ex); }
+        }, true));
+        inspector.Children.Add(ToolLabel("向选中报文添加信号", true));
+        var signalName = ToolField(inspector, draft, "信号名称", "NewSignal");
+        var signalStart = ToolField(inspector, draft, "起始位", "0");
+        var signalLength = ToolField(inspector, draft, "位长度", "8");
+        var signalEndian = ToolField(inspector, draft, "字节序 (Intel / Motorola)", "Intel");
+        var signalSign = ToolField(inspector, draft, "符号 (+ / -)", "+");
+        var factor = ToolField(inspector, draft, "缩放", "1");
+        var offset = ToolField(inspector, draft, "偏移", "0");
+        var lower = ToolField(inspector, draft, "物理最小值", "0");
+        var upper = ToolField(inspector, draft, "物理最大值", "255");
+        var unit = ToolField(inspector, draft, "单位");
+        var receiver = ToolField(inspector, draft, "接收节点", "Vector__XXX");
+        inspector.Children.Add(ToolButton("添加信号到选中报文", () =>
+        {
+            if (messageChooser.SelectedItem is not UiDbcEditing.Message chosen)
+            {
+                MessageBox.Show(this, "请先选择已有报文，或新建一条报文。", "信号归属");
+                return;
+            }
+            try
+            {
+                document.Content = UiDbcEditing.AddSignal(document.Content, chosen.EncodedId,
+                    signalName.Text, signalStart.Text, signalLength.Text,
+                    signalEndian.Text, signalSign.Text, factor.Text, offset.Text,
+                    lower.Text, upper.Text, unit.Text, receiver.Text);
+                editor.Text = document.Content;
+                RenderToolWorkbench("DBC 编辑器");
+            }
+            catch (ArgumentException ex) { ShowFileError("信号参数无效", ex); }
+        }, true));
+        inspector.Children.Add(ToolLabel("显示与筛选", true));
         ToolField(inspector, draft, "显示别名方案", "中文信号名称");
         ToolField(inspector, draft, "信号筛选条件");
-        ToolNote(inspector, "本窗口直接编辑 DBC 实际文件。不存在假报文与信号记录；结构化 DBC 校验尚未集成。");
+        ToolNote(inspector, "基础 BO_/SG_ 编辑结果直接写入当前 DBC 草稿。请点击“保存 DBC 文件”提交真实文件；完整语法、跨报文引用和信号重叠检查待正式 DBC 后端校验。");
     }
 
     private void BuildUdsWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
