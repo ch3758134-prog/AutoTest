@@ -25,11 +25,11 @@ public sealed class TestWorkspace : Grid
     private readonly Stack<string> _redo = new();
     private readonly ComboBox _type = new();
     private readonly TextBox _caseName = UiKit.Input();
-    private readonly TextBox _stepName = UiKit.Input();
-    private readonly TextBox _target = UiKit.Input();
-    private readonly TextBox _value = UiKit.Input();
-    private readonly TextBox _condition = UiKit.Input();
-    private readonly TextBox _note = UiKit.Input("", true);
+    private TextBox _stepName = UiKit.Input();
+    private TextBox _target = UiKit.Input();
+    private TextBox _value = UiKit.Input();
+    private TextBox _condition = UiKit.Input();
+    private TextBox _note = UiKit.Input("", true);
     private readonly TextBlock _count = UiKit.Text("0 步", 12, false, UiKit.Muted);
     private UiTestCase? _currentCase;
     private UiStep? _selected;
@@ -164,6 +164,13 @@ public sealed class TestWorkspace : Grid
     private void ShowInspector()
     {
         _inspector.Children.Clear();
+        // A WPF input can belong to only one logical parent. Fresh controls preserve
+        // each editor's focus/selection lifecycle without stale parent references.
+        _stepName = UiKit.Input();
+        _target = UiKit.Input();
+        _value = UiKit.Input();
+        _condition = UiKit.Input();
+        _note = UiKit.Input("", true);
         _inspector.Children.Add(UiKit.Text("步骤详情", 17, true));
         _inspector.Children.Add(UiKit.Note("此处修改属于 UI 体验草稿；不会更改真实 TEST 程序或触发设备动作。"));
         if (_selected is null)
