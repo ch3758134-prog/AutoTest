@@ -164,11 +164,11 @@
                   Style="{StaticResource OutlineButton}" Click="QuickOpen_Click"
                   ToolTip="搜索测试用例、当前工程资源和专业工作页"/>
           <Button Content="♧" Style="{StaticResource ActionButton}" Width="35" FontSize="18"
-                  ToolTip="通知（视觉预览）" Click="PreviewCommand_Click"/>
+                  ToolTip="通知中心尚未接入" IsEnabled="False"/>
           <Button Content="⚙" Style="{StaticResource ActionButton}" Width="35" FontSize="17"
-                  ToolTip="设置（视觉预览）" Click="PreviewCommand_Click"/>
+                  ToolTip="系统设置工作页将在后续版本接入" IsEnabled="False"/>
           <Button Content="♙" Style="{StaticResource ActionButton}" Width="35" FontSize="18"
-                  ToolTip="个人（视觉预览）" Click="PreviewCommand_Click"/>
+                  ToolTip="此离线工作环境没有账户登录功能" IsEnabled="False"/>
         </StackPanel>
       </DockPanel>
     </Border>
@@ -301,7 +301,7 @@
                 </Grid>
               </Border>
               <Button Grid.Column="1" Content="☷" Style="{StaticResource ActionButton}"
-                      Width="29" HorizontalAlignment="Right" Click="PreviewCommand_Click"/>
+                      Width="29" HorizontalAlignment="Right" IsEnabled="False" ToolTip="树视图设置待专业工程浏览器接入"/>
             </Grid>
             <Border Background="#EDF1F6" Height="1"/>
             <StackPanel Orientation="Horizontal" Height="36" Margin="17,0">
@@ -455,9 +455,9 @@
                          Padding="10,4" TextChanged="StepSearch_TextChanged" FontSize="12"/>
               </Grid>
             </Border>
-            <Button Grid.Column="4" Content="⊞ 展开全部" Click="PreviewCommand_Click"
+            <Button Grid.Column="4" Content="⊞ 展开全部" Click="ExpandAll_Click"
                     Style="{StaticResource ActionButton}" FontSize="11.5" Padding="5,4"/>
-            <Button Grid.Column="5" Content="⊟ 折叠全部" Click="PreviewCommand_Click"
+            <Button Grid.Column="5" Content="⊟ 折叠全部" Click="CollapseAll_Click"
                     Style="{StaticResource ActionButton}" FontSize="11.5" Padding="5,4"/>
           </Grid>
 
@@ -481,7 +481,7 @@
                    ItemsSource="{Binding VisibleSteps}" ItemTemplate="{StaticResource StepTemplate}"
                    ItemContainerStyle="{StaticResource StepItem}" Background="White"
                    BorderThickness="0" Margin="12,0,12,8"
-                   SelectionChanged="StepList_SelectionChanged"
+                   SelectionChanged="StepList_SelectionChanged" MouseDoubleClick="StepList_DoubleClick"
                    VirtualizingPanel.IsVirtualizing="True"
                    VirtualizingPanel.VirtualizationMode="Recycling"
                    ScrollViewer.CanContentScroll="True"
@@ -498,9 +498,9 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Button Grid.Column="0" Content="步骤参数" Style="{StaticResource TopTabSelected}" Padding="7,4"/>
             <Button Grid.Column="1" Content="说明文档" Style="{StaticResource TopTab}" Padding="7,4"
-                    Click="PreviewCommand_Click"/>
+                    IsEnabled="False" ToolTip="步骤帮助文档将在 UI-03 接入"/>
             <Button Grid.Column="2" Content="变更历史" Style="{StaticResource TopTab}" Padding="7,4"
-                    Click="PreviewCommand_Click"/>
+                    IsEnabled="False" ToolTip="正式资源变更追踪将在 UI-03 接入"/>
           </Grid>
           <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                         HorizontalScrollBarVisibility="Disabled">
