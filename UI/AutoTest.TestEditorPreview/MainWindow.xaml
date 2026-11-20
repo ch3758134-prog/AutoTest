@@ -289,7 +289,7 @@
                     <TextBlock Text="AutoTest" FontSize="17" FontWeight="Bold"/>
                     <TextBlock Text="TEST 专业工作环境" Foreground="#63748A" FontSize="10.5"/>
                 </StackPanel>
-                <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
+                <StackPanel x:Name="BreadcrumbBar" Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
                     <TextBlock Text="自动测试" Foreground="#2167B4" FontWeight="SemiBold"/>
                     <TextBlock Text="   /   " Foreground="#8090A4"/>
                     <TextBlock Text="测试程序编辑" Foreground="#63748A"/>
@@ -322,7 +322,7 @@
                 </StackPanel>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="工作布局" VerticalAlignment="Center" Foreground="#63748A" Margin="0,0,9,0"/>
+                <TextBlock x:Name="LayoutLabel" Text="工作布局" VerticalAlignment="Center" Foreground="#63748A" Margin="0,0,9,0"/>
                 <ComboBox x:Name="CompactCasePicker" Width="178" Height="34" DisplayMemberPath="Name"
                           Visibility="Collapsed" Margin="0,0,8,0" SelectionChanged="CompactCasePicker_SelectionChanged"/>
                 <ComboBox x:Name="LayoutPicker" Width="167" Height="34" SelectedIndex="0" SelectionChanged="LayoutPicker_SelectionChanged" Margin="0,0,8,0">
@@ -332,7 +332,7 @@
                 <Button x:Name="CompactDetailsButton" Content="编辑详情 →" Click="CompactDetails_Click"
                         Style="{StaticResource BaseButton}" Visibility="Collapsed" Margin="0,0,8,0"/>
                 <Button Content="问题列表" Click="Problems_Click" Style="{StaticResource BaseButton}" Margin="0,0,8,0"/>
-                <Button Content="检查草稿" Click="Validate_Click" Style="{StaticResource BaseButton}"/>
+                <Button x:Name="ValidateButton" Content="检查草稿" Click="Validate_Click" Style="{StaticResource BaseButton}"/>
             </StackPanel>
         </Grid>
         <Grid x:Name="EditorArea" Grid.Row="2" Margin="18,0,18,11">
