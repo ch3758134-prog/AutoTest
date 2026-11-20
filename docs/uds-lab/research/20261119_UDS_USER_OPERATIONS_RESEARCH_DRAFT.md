@@ -78,3 +78,39 @@ C：DEVICE 与 PM 单独审查操作级实体授权、ISO-TP 时序、会话和�
 D：WPF 正式实现、Codex Windows 编译启动、用户真实 ECU 实测；适时引入 ODX 与正式 TEST 资源引用。
 
 当前不可宣称商业工具完整复刻、真实 ECU FIELD_PASS、完整 ODX 支持或连续免干预通信。此文件为独立研究阶段留档，尚未冻结 UI，也不授权改动协议与实体发送限制。
+
+
+## 七、追加研究：一个用例连续调用多个 UDS 服务（用户 2026-11-19 澄清）
+
+**修正首要可编辑对象**：用户编辑和长期保存的“用例”不只是一条 SID 请求，也不是多条独立收藏，而是一组能连续执行、获取信息并与 ECU 交互的有序步骤。单个 UDS 服务调用只是用例中的一项操作。
+
+### 候选对象合同（尚未批准）
+
+- DiagnosticCase：稳定用例 ID、名称、修订、排序的步骤树、所属 ECU 诊断配置。
+- DiagnosticStep：一次 UDS 请求、等待、提取/赋值、判断、人工确认或相关子流程调用。
+- ServiceDefinition：SID、子功能、参数编码、响应解码以及 ECU 专有定义。
+- DiagnosticExecution / StepOccurrence：具体运行中每步实际发送的 PDU、最终响应/NRC、时间、变量、证据。修改用例不能篡改旧运行证据。
+
+### 用户实际应能进行的操作
+
+创建用例并连续添加多个服务步骤；逐步编辑 DID、子功能、请求 HEX、期望响应、数据解析；插入/复制/移动/删除、撤销、保存、重新打开。连接 ECU 后可运行当前一步、执行下一步、从选中步骤继续、运行整个用例；执行中查看每步真实反馈，必要时暂停编辑尚未执行的步骤、重试或终止。响应提取的变量可以作为后续步骤的参数，但必须具有类型、来源和有效期，不能默默沿用旧连接中的数据。人工连续诊断、受限自动顺序执行和有人机暂停的半自动执行都应能够从同一个用例定义派生，但执行方式与权限不能混为一谈。
+
+示例：读取 ECU 身份（0x22）→ 读取 DTC（0x19）→ 根据实测结果确定下一步 → 按明确授权切换扩展会话（0x10）→ 读取扩展会话的 DID（0x22）。当前 UDS Lab 实体通路尚未允许 0x10，示例仅为未来目标能力，不表示已实现或能直接对真实 ECU 执行。
+
+### 成熟产品证据
+
+- Vehicle Spy Function Block：按顺序执行命令、等待条件、变量控制与诊断 Job 调用。
+  https://docs.intrepidcs.com/vspy-3-documentation/vehicle-spy-main-menus/main-menu-scripting-and-automation/function-blocks/function-blocks-types/script-type-function-block
+  https://docs.intrepidcs.com/vspy-3-documentation/vehicle-spy-main-menus/main-menu-scripting-and-automation/function-blocks/function-blocks-types/script-type-function-block-commands/script-type-function-block-command-diag-job-action
+- Softing DTS.monaco：OTX 支持在工作区集成交互式、部分自动化诊断序列。
+  https://automotive.softing.com/service/blog/design-options-in-softing-dtsmonaco-interactively-and-individually-designable-user-interfaces.html
+- PEAK PCAN-Explorer 7.2：UDS Downloader 可以依据 ECU 响应串行执行多个 UDS 请求。
+  https://www.peak-system.com/products/software/pcan-explorer-7/pcan-explorer-7-highlights/
+- ecu.test：诊断步骤归入正式可执行测试包，与原始协议服务定义分离。
+  https://docs.tracetronic.com/help/ecu.test/2026.2/en/Main-program/Action-window/Diagnostics-tab.html
+
+### AutoTest 的架构边界
+
+UDS 工具应该提供面向诊断的轻量用例编辑与执行/调试操作，但不可由此引入与正式 TEST DSL 并存且不一致的第二套测试执行器。多服务用例最终应复用现有 TEST 公共步骤/执行合同、共享 UDS/ISO-TP/DEVICE 通路和可审计的运行证据；如当前 TEST 尚未接入 UDS，应先把差异列为研究任务，不冒充已有真实执行能力。DEVICE 逐帧人工实体授权会阻碍多帧及自动连续操作，且 0x10/0x3E/写入/例程等仍受审批限制，必须单独研究真实硬件事务授权与会话状态。
+
+**结论更新**：由“单条可编辑诊断请求”提升为“多 UDS 服务、可保存、可持续调试的诊断用例”。下一轮先研究用例编辑、服务调用、运行模式、变量传递与证据模型，再考虑 UI 布局。未批准改动 WPF 或实体协议门禁。
