@@ -33,6 +33,9 @@ public sealed class UiDocument
     public string Content { get; set; } = "";
     public string SavedText { get; set; } = "";
     public Encoding OriginalEncoding { get; init; } = new UTF8Encoding(false, true);
+    // UI-only text editing history, retained when switching between document tabs.
+    public Stack<string> UndoHistory { get; } = new();
+    public Stack<string> RedoHistory { get; } = new();
     public bool Dirty => !string.Equals(Content, SavedText, StringComparison.Ordinal);
     public string Caption => Asset.Name + (Dirty ? " *" : "");
 }
