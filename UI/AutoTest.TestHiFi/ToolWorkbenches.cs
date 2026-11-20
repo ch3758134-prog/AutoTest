@@ -111,13 +111,13 @@ public partial class MainWindow
         });
     }
 
-    private void SaveToolDraft(ToolDraft draft)
+    private bool SaveToolDraft(ToolDraft draft)
     {
         if (!_workFiles.HasProject)
         {
             MessageBox.Show(this, "先创建或打开 UI 工程，再保存此专业工具的本地配置。", "保存工作台",
                 MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            return false;
         }
         try
         {
@@ -132,9 +132,10 @@ public partial class MainWindow
             RefreshTabStrip();
             StoreSession();
             StatusText = "已保存本地 UI 工作台草稿：" + asset.RelativePath + "。未向 ECU 发送命令。";
+            return true;
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException or InvalidOperationException)
-        { ShowFileError("保存工具草稿失败", ex); }
+        { ShowFileError("保存工具草稿失败", ex); return false; }
     }
 
     private void RenderToolWorkbench(string name)
