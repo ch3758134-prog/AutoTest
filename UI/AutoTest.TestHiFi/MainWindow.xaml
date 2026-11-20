@@ -41,9 +41,9 @@
                        VerticalAlignment="Center" TextAlignment="Center"
                        FontFamily="Segoe UI Symbol" FontWeight="Bold" FontSize="15"
                        Foreground="{Binding IconColor}"/>
-            <Border x:Name="BranchBadge" Visibility="Collapsed" Background="#7B55D8"
+            <Border x:Name="BranchBadge" Visibility="Collapsed" Background="#E8EEF5"
                     Padding="5,1" CornerRadius="3" Margin="0,0,6,0" VerticalAlignment="Center">
-              <TextBlock Text="{Binding BranchLabel}" Foreground="White" FontSize="10.5"
+              <TextBlock Text="{Binding BranchLabel}" Foreground="#344C68" FontSize="10.5"
                          FontWeight="SemiBold"/>
             </Border>
             <TextBlock x:Name="StepLabel" Text="{Binding RowName}"
@@ -155,6 +155,9 @@
           <TextBlock Text="   –   车身电源管理.tst*" FontSize="12.5" VerticalAlignment="Center"/>
         </StackPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button Content="主控板 · 未连接  ▾" Style="{StaticResource OutlineButton}" Height="27"
+                  Margin="0,0,9,0" Click="DeviceStatus_Click"
+                  ToolTip="当前纯 UI 工程没有真实 USB 连接能力；查看设备诊断入口"/>
           <Border CornerRadius="5" BorderBrush="#D3DFEF" BorderThickness="1"
                   Background="White" Width="248" Height="27" VerticalAlignment="Center" Margin="0,0,19,0">
             <DockPanel Margin="10,0">
@@ -176,11 +179,11 @@
     <!-- Main product navigation, thin active underline and restrained iconography. -->
     <Border Grid.Row="1" Background="White" BorderBrush="#E0E7F0" BorderThickness="0,0,0,1">
       <StackPanel Margin="24,0" Orientation="Horizontal">
-        <Button Content="▣ 项目" Style="{StaticResource TopTab}" Click="PreviewCommand_Click"/>
-        <Button Content="✎ 测试编辑" Style="{StaticResource TopTabSelected}"/>
-        <Button Content="▧ 资源管理" Style="{StaticResource TopTab}" Click="PreviewCommand_Click"/>
-        <Button Content="⚒ 执行与报告" Style="{StaticResource TopTab}" Click="PreviewCommand_Click"/>
-        <Button Content="⚙ 工具" Style="{StaticResource TopTab}" Click="PreviewCommand_Click"/>
+        <Button x:Name="ProjectNavButton" Content="▣ 工程与文件" Style="{StaticResource TopTab}" Click="ShowProject_Click"/>
+        <Button x:Name="TestNavButton" Content="✎ 自动测试" Style="{StaticResource TopTabSelected}" Click="ShowTest_Click"/>
+        <Button x:Name="ResourcesNavButton" Content="▧ 资源管理" Style="{StaticResource TopTab}" Click="ShowResources_Click"/>
+        <Button x:Name="ReportsNavButton" Content="⚒ 生产与记录" Style="{StaticResource TopTab}" Click="ShowReports_Click"/>
+        <Button x:Name="ToolsNavButton" Content="⚙ 专业工具 ▾" Style="{StaticResource TopTab}" Click="ShowTools_Click"/>
       </StackPanel>
     </Border>
 
@@ -191,24 +194,49 @@
         <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" Margin="13,0">
-            <Button Content="▣ 新建" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="▤ 打开" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="▥ 保存" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="▣ 另存为" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,5,0">
+              <MenuItem Header="文件" Padding="10,7">
+                <MenuItem Header="新建工程…" Click="NewProject_Click"/>
+                <MenuItem Header="打开工程…" Click="OpenProject_Click"/>
+                <Separator/>
+                <MenuItem Header="新建资源…" Click="NewAsset_Click"/>
+                <MenuItem Header="导入资源…" Click="ImportAsset_Click"/>
+                <Separator/>
+                <MenuItem Header="保存当前（Ctrl+S）" Click="SaveDocument_Click"/>
+                <MenuItem Header="保存全部（Ctrl+Shift+S）" Click="SaveAll_Click"/>
+                <MenuItem Header="另存副本…" Click="SaveAs_Click"/>
+                <Separator/>
+                <MenuItem Header="关闭当前文档（Ctrl+W）" Click="CloseDocument_Click"/>
+                <MenuItem Header="关闭工程…" Click="CloseProject_Click"/>
+                <MenuItem Header="最近工程…" Click="OpenRecent_Click"/>
+              </MenuItem>
+              <MenuItem Header="编辑" Padding="10,7">
+                <MenuItem Header="撤销（Ctrl+Z）" Click="UndoDocument_Click"/>
+                <MenuItem Header="重做（Ctrl+Y）" Click="RedoDocument_Click"/>
+                <Separator/>
+                <MenuItem Header="重命名资源（F2）" Click="RenameAsset_Click"/>
+                <MenuItem Header="复制资源" Click="DuplicateAsset_Click"/>
+                <MenuItem Header="移入工程回收区" Click="DeleteAsset_Click"/>
+              </MenuItem>
+            </Menu>
+            <Button Content="▣ 新建工程" Style="{StaticResource ActionButton}" Click="NewProject_Click"/>
+            <Button Content="▤ 打开工程" Style="{StaticResource ActionButton}" Click="OpenProject_Click"/>
+            <Button Content="▥ 保存" Style="{StaticResource ActionButton}" Click="SaveDocument_Click"/>
+            <Button Content="▣ 另存为" Style="{StaticResource ActionButton}" Click="SaveAs_Click"/>
             <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
-            <Button Content="↶ 撤销" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="↷ 重做" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="↶ 撤销" Style="{StaticResource ActionButton}" Click="UndoDocument_Click"/>
+            <Button Content="↷ 重做" Style="{StaticResource ActionButton}" Click="RedoDocument_Click"/>
             <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
-            <Button Content="⊕ 添加步骤" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="▣ 插入结构" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="⊕ 新建资源" Style="{StaticResource ActionButton}" Click="NewAsset_Click"/>
+            <Button Content="▣ 导入文件" Style="{StaticResource ActionButton}" Click="ImportAsset_Click"/>
             <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
-            <Button Content="▢ 复制" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="✂ 剪切" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="▧ 粘贴" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="▤ 删除" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="▢ 复制" Style="{StaticResource ActionButton}" Click="DuplicateAsset_Click"/>
+            <Button Content="✂ 剪切" Style="{StaticResource ActionButton}" IsEnabled="False" ToolTip="跨资源剪切将在 UI-03 实现"/>
+            <Button Content="▧ 粘贴" Style="{StaticResource ActionButton}" IsEnabled="False" ToolTip="跨资源粘贴将在 UI-03 实现"/>
+            <Button Content="▤ 删除" Style="{StaticResource ActionButton}" Click="DeleteAsset_Click"/>
             <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
-            <Button Content="↑ 上移" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
-            <Button Content="↓ 下移" Style="{StaticResource ActionButton}" Click="PreviewCommand_Click"/>
+            <Button Content="F2 重命名" Style="{StaticResource ActionButton}" Click="RenameAsset_Click"/>
+            <Button Content="▤ 保存全部" Style="{StaticResource ActionButton}" Click="SaveAll_Click"/>
             <Border Width="1" Background="#DFE6EF" Height="25" Margin="7,0" VerticalAlignment="Center"/>
             <Button Content="● 运行 (F5)" Foreground="#6B788A" IsEnabled="False"
                     Style="{StaticResource ActionButton}" ToolTip="真实 TEST 运行器未接线"/>
@@ -249,12 +277,12 @@
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
               </Grid.ColumnDefinitions>
-              <Button x:Name="CaseTab" Grid.Column="0" Content="测试用例"
+              <Button x:Name="CaseTab" Grid.Column="0" Content="测试用例" Click="ShowTest_Click"
                       Style="{StaticResource TopTabSelected}" Padding="6,4"/>
-              <Button Grid.Column="1" Content="公共流程" Style="{StaticResource TopTab}"
-                      Padding="6,4" Click="PreviewCommand_Click"/>
+              <Button Grid.Column="1" Content="工程文件" Style="{StaticResource TopTab}"
+                      Padding="6,4" Click="ShowProject_Click"/>
               <Button Grid.Column="2" Content="资源引用" Style="{StaticResource TopTab}"
-                      Padding="6,4" Click="PreviewCommand_Click"/>
+                      Padding="6,4" Click="ShowResources_Click"/>
             </Grid>
             <Border Background="#E9EDF5" Height="1"/>
             <Grid Height="50" Margin="10,0">
@@ -281,10 +309,22 @@
               <TextBlock Text="整车功能测试 (12)" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12.3"/>
             </StackPanel>
           </StackPanel>
+          <Grid>
           <ListBox x:Name="CaseList" ItemsSource="{Binding Cases}" ItemTemplate="{StaticResource CaseTemplate}"
                    ItemContainerStyle="{StaticResource CaseItem}" Background="White" BorderThickness="0"
                    SelectionChanged="CaseList_SelectionChanged"
                    ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+          <DockPanel x:Name="ProjectNavigator" Visibility="Collapsed" Background="White">
+            <StackPanel DockPanel.Dock="Top" Margin="12,8,12,9">
+              <TextBlock x:Name="ProjectNameText" Text="尚未打开 UI 工作区"
+                         FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8"/>
+              <Button Content="＋ 新建资源…" Click="NewAsset_Click" Style="{StaticResource OutlineButton}"/>
+            </StackPanel>
+            <TreeView x:Name="ProjectTree" SelectedItemChanged="ProjectTree_SelectedItemChanged"
+                      MouseDoubleClick="ProjectTree_DoubleClick" BorderThickness="0"
+                      Background="White" Margin="6,0" FontSize="12"/>
+          </DockPanel>
+        </Grid>
         </DockPanel>
       </Border>
 
@@ -313,6 +353,12 @@
       </Border>
 
       <!-- Center: document tab and actual dense edited content. -->
+      <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="3"
+                    Background="Transparent" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                    Width="7" HorizontalAlignment="Stretch" ShowsPreview="True"/>
+      <GridSplitter Grid.Column="3" Grid.Row="0" Grid.RowSpan="2"
+                    Background="Transparent" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                    Width="7" HorizontalAlignment="Stretch" ShowsPreview="True"/>
       <Border Grid.Column="2" Grid.Row="0" Background="#F2F5FA"
               BorderBrush="{StaticResource Stroke}" BorderThickness="0,0,0,1">
         <DockPanel LastChildFill="False">
@@ -588,15 +634,97 @@
           </ListBox>
         </Grid>
       </Border>
+      <!-- UI-01/02: full work document surface. TEST tab stays instantiated beneath it,
+           preserving its selected case, selected step and scroll when switching away. -->
+      <Border x:Name="WorkspaceOverlay" Grid.Row="0" Grid.RowSpan="3"
+              Grid.Column="2" Grid.ColumnSpan="3" Panel.ZIndex="8"
+              Background="White" BorderBrush="{StaticResource Stroke}"
+              BorderThickness="1" CornerRadius="7" Visibility="Collapsed" Margin="0,0,0,4">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="44"/><RowDefinition Height="54"/><RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+          </Grid.RowDefinitions>
+          <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                        Background="#F4F7FC">
+            <StackPanel x:Name="DocumentTabStrip" Orientation="Horizontal" Margin="6,4"/>
+          </ScrollViewer>
+          <Grid Grid.Row="1" Margin="18,8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock x:Name="WorkspaceTitle" Text="工程与文件" FontSize="17" FontWeight="SemiBold"/>
+              <TextBlock x:Name="WorkspaceSubtitle" Text="创建或打开本地 UI 工作区" Foreground="#617086"
+                         FontSize="11.5" Margin="0,5,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+              <Button Content="＋ 新建" Click="NewAsset_Click" Style="{StaticResource OutlineButton}" Margin="0,0,8,0"/>
+              <Button Content="导入…" Click="ImportAsset_Click" Style="{StaticResource OutlineButton}" Margin="0,0,8,0"/>
+              <Button Content="保存" Click="SaveDocument_Click" Style="{StaticResource SolidButton}"/>
+            </StackPanel>
+          </Grid>
+          <Grid Grid.Row="2" Margin="18,5,18,5">
+            <Border x:Name="ToolDescriptionPanel" Background="#F7F9FC" BorderBrush="#E2EAF4"
+                    BorderThickness="1" CornerRadius="7" Padding="18" Visibility="Visible">
+              <StackPanel VerticalAlignment="Top" MaxWidth="720" HorizontalAlignment="Left">
+                <TextBlock x:Name="ToolHeading" Text="打开本地工程或工作台" FontSize="19"
+                           FontWeight="SemiBold" Margin="0,0,0,13"/>
+                <TextBlock x:Name="ToolBody" TextWrapping="Wrap" TextTrimming="None"
+                           Foreground="#52637B" FontSize="13" LineHeight="24"
+                           Text="通过顶部“新建工程”或“打开工程”使用文件工作区。专业工具在 UI-05 接入，不会伪造真实设备响应。"/>
+                <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                  <Button Content="新建工程…" Click="NewProject_Click" Style="{StaticResource SolidButton}" Margin="0,0,9,0"/>
+                  <Button Content="打开工程…" Click="OpenProject_Click" Style="{StaticResource OutlineButton}"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+            <Grid x:Name="DocumentEditorPanel" Visibility="Collapsed">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="260"/><ColumnDefinition Width="250"/></Grid.ColumnDefinitions>
+              <Border Grid.Column="0" BorderBrush="#DCE5F0" BorderThickness="1" CornerRadius="5">
+                <TextBox x:Name="DocumentTextEditor" AcceptsReturn="True" AcceptsTab="True"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Consolas" FontSize="13.5" Foreground="#26384C"
+                         Background="White" BorderThickness="0" Padding="15" TextWrapping="NoWrap"
+                         SpellCheck.IsEnabled="False" TextChanged="DocumentTextEditor_TextChanged"/>
+              </Border>
+              <Border Grid.Column="1" Margin="9,0,0,0" Background="#FAFCFF"
+                      BorderThickness="1" BorderBrush="#DFE8F2" CornerRadius="5" Padding="13">
+                <StackPanel>
+                  <TextBlock Text="文件信息" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                  <TextBlock Text="资源名称" Foreground="#63748A" FontSize="11.5"/>
+                  <TextBlock x:Name="FileNameLabel" FontWeight="Medium" TextWrapping="Wrap"
+                             TextTrimming="None" Margin="0,4,0,13"/>
+                  <TextBlock Text="资源类型" Foreground="#63748A" FontSize="11.5"/>
+                  <TextBlock x:Name="FileKindLabel" Margin="0,4,0,13"/>
+                  <TextBlock Text="工程内路径" Foreground="#63748A" FontSize="11.5"/>
+                  <TextBlock x:Name="FilePathLabel" FontSize="11.5" TextWrapping="Wrap"
+                             TextTrimming="None" Margin="0,4,0,13"/>
+                  <TextBlock Text="修订" Foreground="#63748A" FontSize="11.5"/>
+                  <TextBlock x:Name="FileRevisionLabel" Margin="0,4,0,20"/>
+                  <Button Content="重命名…" Click="RenameAsset_Click" Style="{StaticResource OutlineButton}" Margin="0,0,0,7"/>
+                  <Button Content="复制文件" Click="DuplicateAsset_Click" Style="{StaticResource OutlineButton}" Margin="0,0,0,7"/>
+                  <Button Content="移至工程回收区" Click="DeleteAsset_Click" Style="{StaticResource OutlineButton}"/>
+                  <TextBlock Text="此处是真实磁盘文件编辑。UI 工作区格式与正式 AutoTest 测试工程不同。"
+                             TextWrapping="Wrap" TextTrimming="None" FontSize="10.8"
+                             Foreground="#65768C" Margin="0,19,0,0"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Grid>
+          <Border Grid.Row="3" Background="#FAFCFF" BorderBrush="#DFE7F0" BorderThickness="0,1,0,0">
+            <TextBlock x:Name="WorkspaceStatusText" Text="未打开工程" Foreground="#62748A"
+                       FontSize="11" VerticalAlignment="Center" Margin="12,0"/>
+          </Border>
+        </Grid>
+      </Border>
     </Grid>
 
     <Border Grid.Row="4" Background="#FBFCFF" BorderBrush="{StaticResource Stroke}"
             BorderThickness="0,1,0,0">
       <DockPanel Margin="14,0">
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
-          <Ellipse Width="10" Height="10" Fill="#14A050" Margin="0,0,7,0"/>
-          <TextBlock Text="就绪" VerticalAlignment="Center" FontSize="11.2" FontWeight="SemiBold"/>
-          <TextBlock Text="   │   当前项目：EVT_整车功能测试   │   环境：实验室   │   演示 DBC：3 个"
+          <Ellipse Width="10" Height="10" Fill="#9AA7B8" Margin="0,0,7,0"/>
+          <TextBlock Text="UI 就绪 · 设备未连接" VerticalAlignment="Center" FontSize="11.2" FontWeight="SemiBold"/>
+          <TextBlock Text="   │   研究模式：无真实 CAN / UDS / IO   │   UI-01/02"
                      Foreground="#617086" VerticalAlignment="Center" FontSize="11.2"/>
         </StackPanel>
         <TextBlock Text="{Binding StatusText}" Foreground="#506681" DockPanel.Dock="Right"
