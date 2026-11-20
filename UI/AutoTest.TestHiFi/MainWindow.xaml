@@ -192,25 +192,25 @@
             <MenuItem Header="打开 UI 工程…   Ctrl+O" Click="OpenProject_Click"/>
             <MenuItem Header="最近工程" x:Name="RecentProjectsMenu"/>
             <Separator/>
-            <MenuItem Header="新建工程资源…   Ctrl+N" Click="NewResource_Click"/>
-            <MenuItem Header="导入文本资源…" Click="ImportResource_Click"/>
+            <MenuItem Header="新建工程资源…   Ctrl+N" IsEnabled="{Binding HasProject}" Click="NewResource_Click"/>
+            <MenuItem Header="导入文本资源…" IsEnabled="{Binding HasProject}" Click="ImportResource_Click"/>
             <Separator/>
-            <MenuItem Header="保存当前文档   Ctrl+S" Click="SaveCurrent_Click"/>
-            <MenuItem Header="保存全部   Ctrl+Shift+S" Click="SaveAll_Click"/>
-            <MenuItem Header="另存资源副本…" Click="SaveAs_Click"/>
+            <MenuItem Header="保存当前文档   Ctrl+S" IsEnabled="{Binding CanSaveActiveFile}" Click="SaveCurrent_Click"/>
+            <MenuItem Header="保存全部   Ctrl+Shift+S" IsEnabled="{Binding HasProject}" Click="SaveAll_Click"/>
+            <MenuItem Header="另存资源副本…" IsEnabled="{Binding CanSaveActiveFile}" Click="SaveAs_Click"/>
             <Separator/>
             <MenuItem Header="关闭当前文档   Ctrl+W" Click="CloseActivePage_Click"/>
-            <MenuItem Header="关闭工程" Click="CloseProject_Click"/>
+            <MenuItem Header="关闭工程" IsEnabled="{Binding HasProject}" Click="CloseProject_Click"/>
             <MenuItem Header="退出" Click="Exit_Click"/>
           </MenuItem>
           <MenuItem Header="编辑">
             <MenuItem Header="撤销   Ctrl+Z" Click="UndoDocument_Click"/>
             <MenuItem Header="重做   Ctrl+Y" Click="RedoDocument_Click"/>
             <Separator/>
-            <MenuItem Header="复制所选资源" Click="CopyResource_Click"/>
+            <MenuItem Header="复制所选资源" IsEnabled="{Binding HasAssetSelection}" Click="CopyResource_Click"/>
             <MenuItem Header="粘贴为新资源" Click="PasteResource_Click"/>
-            <MenuItem Header="重命名资源   F2" Click="RenameResource_Click"/>
-            <MenuItem Header="删除资源   Delete" Click="DeleteResource_Click"/>
+            <MenuItem Header="重命名资源   F2" IsEnabled="{Binding HasAssetSelection}" Click="RenameResource_Click"/>
+            <MenuItem Header="删除资源   Delete" IsEnabled="{Binding HasAssetSelection}" Click="DeleteResource_Click"/>
           </MenuItem>
           <MenuItem Header="视图">
             <MenuItem Header="TEST 编辑器" Click="ShowTest_Click"/>
@@ -263,15 +263,15 @@
             <Button Content="新建工程" Style="{StaticResource ActionButton}" Click="NewProject_Click"/>
             <Button Content="打开工程" Style="{StaticResource ActionButton}" Click="OpenProject_Click"/>
             <Border Width="1" Height="23" Margin="6,0" Background="#DFE6EF"/>
-            <Button Content="＋ 新建资源" Style="{StaticResource ActionButton}" Click="NewResource_Click"/>
-            <Button Content="导入" Style="{StaticResource ActionButton}" Click="ImportResource_Click"/>
-            <Button Content="保存" Style="{StaticResource ActionButton}" Click="SaveCurrent_Click"/>
-            <Button Content="保存全部" Style="{StaticResource ActionButton}" Click="SaveAll_Click"/>
+            <Button Content="＋ 新建资源" IsEnabled="{Binding HasProject}" Style="{StaticResource ActionButton}" Click="NewResource_Click"/>
+            <Button Content="导入" IsEnabled="{Binding HasProject}" Style="{StaticResource ActionButton}" Click="ImportResource_Click"/>
+            <Button Content="保存" IsEnabled="{Binding CanSaveActiveFile}" Style="{StaticResource ActionButton}" Click="SaveCurrent_Click"/>
+            <Button Content="保存全部" IsEnabled="{Binding HasProject}" Style="{StaticResource ActionButton}" Click="SaveAll_Click"/>
             <Border Width="1" Height="23" Margin="6,0" Background="#DFE6EF"/>
             <Button Content="↶ 撤销" Style="{StaticResource ActionButton}" Click="UndoDocument_Click"/>
             <Button Content="↷ 重做" Style="{StaticResource ActionButton}" Click="RedoDocument_Click"/>
-            <Button Content="重命名" Style="{StaticResource ActionButton}" Click="RenameResource_Click"/>
-            <Button Content="删除资源" Style="{StaticResource ActionButton}" Click="DeleteResource_Click"/>
+            <Button Content="重命名" IsEnabled="{Binding HasAssetSelection}" Style="{StaticResource ActionButton}" Click="RenameResource_Click"/>
+            <Button Content="删除资源" IsEnabled="{Binding HasAssetSelection}" Style="{StaticResource ActionButton}" Click="DeleteResource_Click"/>
             <Border Width="1" Height="23" Margin="6,0" Background="#DFE6EF"/>
             <Button Content="添加步骤" IsEnabled="False" Style="{StaticResource ActionButton}"
                     ToolTip="TEST 真实步骤编辑在 UI-03 接入，本批不伪造编辑成功"/>
