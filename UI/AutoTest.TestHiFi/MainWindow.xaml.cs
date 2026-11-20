@@ -14,6 +14,19 @@ namespace AutoTest.TestHiFi;
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
     private readonly ObservableCollection<DemoStep> _allSteps = DemoContent.Steps();
+    private ObservableCollection<DemoStep> _caseSteps = [];
+    private string _currentDescription = "验证外部开关、按键等输入对 ECU 输出与 CAN 信号的响应是否符合要求。";
+    public string CurrentDescription { get => _currentDescription; private set { _currentDescription = value; Raise(nameof(CurrentDescription)); } }
+    private string _summaryTotal = "29", _summaryNormal = "26", _summaryWarning = "1", _summaryError = "2";
+    public string SummaryTotal { get => _summaryTotal; private set { _summaryTotal = value; Raise(nameof(SummaryTotal)); } }
+    public string SummaryNormal { get => _summaryNormal; private set { _summaryNormal = value; Raise(nameof(SummaryNormal)); } }
+    public string SummaryWarning { get => _summaryWarning; private set { _summaryWarning = value; Raise(nameof(SummaryWarning)); } }
+    public string SummaryError { get => _summaryError; private set { _summaryError = value; Raise(nameof(SummaryError)); } }
+    private string _phaseCountText = "准备 6 / 测试 29 / 清理 5";
+    public string PhaseCountText { get => _phaseCountText; private set { _phaseCountText = value; Raise(nameof(PhaseCountText)); } }
+    private string _issueHeaderText = "⌄ 问题与定位 (3)";
+    public string IssueHeaderText { get => _issueHeaderText; private set { _issueHeaderText = value; Raise(nameof(IssueHeaderText)); } }
+    private void Raise(string name) => PropertyChanged?.Invoke(this, new(name));
     private bool _ready;
     private bool _issuesExpanded = true;
     private string _phase = "测试";
@@ -24,6 +37,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<DemoCase> Cases { get; } = DemoContent.Cases();
     public ObservableCollection<DemoStep> VisibleSteps { get; } = [];
     public ObservableCollection<DemoIssue> Issues { get; } = DemoContent.Issues();
+    public ObservableCollection<DemoIssue> VisibleIssues { get; } = [];
     public PreviewInspector Inspector { get; } = new();
     public DemoCase? SelectedCase
     {
@@ -74,18 +88,45 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (!_ready || CaseList.SelectedItem is not DemoCase c) return;
         SelectedCase = c;
-        if (c.Id != "TC-003")
-        {
-            VisibleSteps.Clear();
-            Inspector.Heading = "选择步骤查看参数";
-            Inspector.Description = "其他用例仅提供导航外观。完整高保真步骤样本位于 TC-003。";
-            StatusText = c.Name + " · 此处为导航状态预览。选择 TC-003 可返回完整示例。";
-            return;
-        }
+        UpdateCaseContext(c);
         ShowPhase(_phase, initial: true);
-        var row = VisibleSteps.FirstOrDefault(s => s.Number == 16) ??
-                  VisibleSteps.FirstOrDefault();
+        var row = VisibleSteps.FirstOrDefault(s => s.Number == 16 && c.Id == "TC-003")
+                  ?? VisibleSteps.FirstOrDefault();
         if (row is not null) StepList.SelectedItem = row;
+        StatusText = c.Id == "TC-003"
+            ? "高保真视觉基线 · TC-003 · 29 步 / 3 项演示问题"
+            : c.Name + " · 已切换独立的用例视觉样本（无真实执行）。";
+    }
+
+    private void UpdateCaseContext(DemoCase selected)
+    {
+        _caseSteps = selected.Id == "TC-003" ? _allSteps : DemoContent.StepsForCase(selected.Id);
+        var prepare = _caseSteps.Count(x => x.Phase == "准备");
+        var test = _caseSteps.Count(x => x.Phase == "测试");
+        var cleanup = _caseSteps.Count(x => x.Phase == "清理");
+        PrepareButton.Content = $"准备 ({prepare})";
+        TestButton.Content = $"测试 ({test})";
+        CleanupButton.Content = $"清理 ({cleanup})";
+        PhaseCountText = $"准备 {prepare}  /  测试 {test}  /  清理 {cleanup}";
+        CurrentDescription = selected.Id == "TC-003"
+            ? "验证外部开关、按键等输入对 ECU 输出与 CAN 信号的响应是否符合要求。"
+            : selected.Name + " · 研究用例操作与视觉展示，不包含真实 ECU 执行。";
+        SummaryTotal = test.ToString();
+        if (selected.Id == "TC-003")
+        {
+            // The approved image uses a representative design-only status summary.
+            SummaryNormal = "26"; SummaryWarning = "1"; SummaryError = "2";
+        }
+        else
+        {
+            SummaryError = _caseSteps.Count(x => x.Phase == "测试" && x.Status == "Error").ToString();
+            SummaryWarning = _caseSteps.Count(x => x.Phase == "测试" && x.Status == "Warning").ToString();
+            SummaryNormal = (test-int.Parse(SummaryWarning)-int.Parse(SummaryError)).ToString();
+        }
+        VisibleIssues.Clear();
+        if (selected.Id == "TC-003")
+            foreach (var issue in Issues) VisibleIssues.Add(issue);
+        IssueHeaderText = $"⌄ 问题与定位 ({VisibleIssues.Count})";
     }
 
     private void Phase_Click(object sender, RoutedEventArgs e)
@@ -117,8 +158,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var previous = StepList.SelectedItem as DemoStep;
         var query = StepSearch.Text.Trim();
         VisibleSteps.Clear();
-        if (SelectedCase?.Id != "TC-003") return;
-        foreach (var step in _allSteps.Where(s => s.Phase == _phase &&
+        if (SelectedCase is null) return;
+        foreach (var step in _caseSteps.Where(s => s.Phase == _phase &&
                  (query.Length == 0 ||
                   s.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                   s.Summary.Contains(query, StringComparison.OrdinalIgnoreCase) ||
