@@ -83,7 +83,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (CaseSearchHint is not null)
             CaseSearchHint.Visibility = string.IsNullOrWhiteSpace(CaseSearch.Text)
                 ? Visibility.Visible : Visibility.Collapsed;
-        FilterCases();
+        if (_navigatorMode == "cases") FilterCases();
+        else SearchResources();
     }
 
     private void CaseList_SelectionChanged(object sender, SelectionChangedEventArgs e)
