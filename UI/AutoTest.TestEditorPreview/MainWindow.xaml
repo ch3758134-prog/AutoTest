@@ -414,8 +414,11 @@
                     CornerRadius="7" BorderThickness="1" BorderBrush="#DCE5EF">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition x:Name="StepToolbarRow" Height="104"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                    <Grid Grid.Row="0" Margin="16,11,16,5">
-                        <Grid.RowDefinitions><RowDefinition Height="43"/><RowDefinition Height="45"/></Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="16,7,16,5">
+                        <Grid.RowDefinitions>
+                          <RowDefinition x:Name="StepMainCommandRow" Height="43"/>
+                          <RowDefinition x:Name="StepSecondaryCommandRow" Height="45"/>
+                        </Grid.RowDefinitions>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
