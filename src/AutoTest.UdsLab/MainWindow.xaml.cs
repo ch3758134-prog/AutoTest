@@ -647,8 +647,9 @@ public partial class MainWindow : Window
                     }
                 if (_cases.Count == 0)
                 {
-                    var empty = new DiagnosticCase { Name = "新建诊断用例" };
-                    empty.Steps.Add(NewStepDefinition());
+                    // An empty imported workspace starts with a genuine
+                    // empty case. Users choose a diagnostic action explicitly.
+                    var empty = new DiagnosticCase { Name = "未命名诊断用例" };
                     _cases.Add(empty);
                 }
                 TxIdBox.Text = doc.TxIdHex;
