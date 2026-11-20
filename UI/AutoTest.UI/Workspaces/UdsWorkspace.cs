@@ -53,6 +53,12 @@ public sealed class UdsWorkspace : Grid
         var table = UiKit.Table(state.UdsRequests,
             ("服务", "Service", 220), ("请求 HEX", "Request", 190),
             ("描述", "Note", 210), ("状态", "LastResponse", 120));
+        table.Columns.Insert(0, new DataGridCheckBoxColumn
+        {
+            Header = "选择", Binding = new System.Windows.Data.Binding(nameof(UiUdsRequest.Enabled))
+            { Mode = System.Windows.Data.BindingMode.TwoWay },
+            Width = new DataGridLength(60)
+        });
         table.CellEditEnding += (_, _) => changed();
         table.Columns[^1].IsReadOnly = true;
         mh.Children.Add(UiKit.Actions(
@@ -95,7 +101,9 @@ public sealed class UdsWorkspace : Grid
         Grid.SetColumn(right, 2); body.Children.Add(UiKit.Card(UiKit.Scroll(right)));
         right.Children.Add(UiKit.Text("请求与响应", 17, true));
         right.Children.Add(UiKit.Note("不发送真实请求时，不显示成功响应、NRC 或耗时数据。ISO-TP/UDS 实际会话由后端接线阶段处理。", true));
-        right.Children.Add(UiKit.Field("诊断目标地址（UI 备注）", UiKit.Input(state.DiagnosticAddress)));
+        var address = UiKit.Input(state.DiagnosticAddress);
+        address.LostFocus += (_, _) => { state.DiagnosticAddress = address.Text; changed(); };
+        right.Children.Add(UiKit.Field("诊断目标地址（UI 备注）", address));
         right.Children.Add(UiKit.Text("执行控制", 14, true));
         var send = UiKit.Button("发送选中", () => { }, true);
         var execute = UiKit.Button("连续执行序列", () => { });
