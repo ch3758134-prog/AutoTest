@@ -255,7 +255,10 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 measured.ToString("R", CultureInfo.InvariantCulture),
                 StringComparison.Ordinal) &&
             observed.Evidence.Value != Guid.Empty &&
-            (quality is EvidenceQuality.HostObserved or EvidenceQuality.DirectMeasured) &&
+            (quality is EvidenceQuality.HostObserved or EvidenceQuality.DirectMeasured ||
+                quality == EvidenceQuality.Derived &&
+                observed.Time.Source == TimeSource.HostArrival &&
+                observed.Time.Quality == TimeQuality.HostArrivalOnly) &&
             !string.IsNullOrWhiteSpace(completed.Actual) &&
             MatchesFrozenJudgement(completed, observed);
         // The audit TimePoint describes persistence acceptance, whereas the
@@ -402,6 +405,9 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                     StringComparison.Ordinal) ||
                 sample.Evidence.Value == Guid.Empty ||
                 !MatchesFrozenJudgement(executed, sample) ||
+                (sample.Quality == EvidenceQuality.Derived &&
+                    (sample.Time.Source != TimeSource.HostArrival ||
+                     sample.Time.Quality != TimeQuality.HostArrivalOnly)) ||
                 !verified.Contains(sample.Evidence.Value) ||
                 !byOccurrence.TryGetValue(executed.StepOccurrenceId, out var rows) ||
                 rows.Length != 1)

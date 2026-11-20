@@ -96,7 +96,11 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
              SignalStatus != "Valid" || SignalProvenance is null ||
              Evidence.IsDefaultOrEmpty ||
              (Quality is not (AutoTest.Core.EvidenceQuality.HostObserved or
-                 AutoTest.Core.EvidenceQuality.DirectMeasured))))
+                 AutoTest.Core.EvidenceQuality.DirectMeasured or
+                 AutoTest.Core.EvidenceQuality.Derived) ||
+              (Quality == AutoTest.Core.EvidenceQuality.Derived &&
+                  (SignalProvenance.TimeSource != "HostArrival" ||
+                   SignalProvenance.TimeQuality != "HostArrivalOnly"))))
             throw new InvalidDataException("A direct ECU judgement requires its own valid, evidenced DBC occurrence.");
         if (StepOccurrenceId is not null &&
             (StartedUtc is null || CompletedUtc is null || Duration is null ||
