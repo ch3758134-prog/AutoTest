@@ -277,7 +277,7 @@
           <ListBox x:Name="CaseList" ItemsSource="{Binding Cases}" ItemTemplate="{StaticResource CaseTemplate}"
                    ItemContainerStyle="{StaticResource CaseItem}" Background="White" BorderThickness="0"
                    SelectionChanged="CaseList_SelectionChanged"
-                   ScrollViewer.VerticalScrollBarVisibility="Auto" SelectedIndex="2"/>
+                   ScrollViewer.VerticalScrollBarVisibility="Auto"/>
         </DockPanel>
       </Border>
 
@@ -424,7 +424,7 @@
           <ListBox Grid.Row="3" x:Name="StepList"
                    ItemsSource="{Binding VisibleSteps}" ItemTemplate="{StaticResource StepTemplate}"
                    ItemContainerStyle="{StaticResource StepItem}" Background="White"
-                   BorderThickness="0" Margin="12,0,12,8" SelectedIndex="6"
+                   BorderThickness="0" Margin="12,0,12,8"
                    SelectionChanged="StepList_SelectionChanged"
                    VirtualizingPanel.IsVirtualizing="True"
                    VirtualizingPanel.VirtualizationMode="Recycling"
