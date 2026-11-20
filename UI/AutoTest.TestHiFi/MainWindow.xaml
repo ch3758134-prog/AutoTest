@@ -385,22 +385,22 @@
       <Border Grid.Column="0" Grid.Row="2" Background="White"
               BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="7" Margin="0,5,0,0">
         <StackPanel Margin="14,7,13,6">
-          <TextBlock Text="⌄  用例信息" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,9"/>
+          <TextBlock Text="{Binding SideInfoTitle}" FontWeight="SemiBold" FontSize="12.5" Margin="0,0,0,9"/>
           <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="76"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
               <RowDefinition Height="23"/><RowDefinition Height="21"/><RowDefinition Height="21"/><RowDefinition Height="21"/><RowDefinition Height="21"/>
             </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Text="名称" Foreground="#65758D" FontSize="11.5"/>
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedCase.Name}" FontSize="11.7"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SideName}" FontSize="11.7"/>
             <TextBlock Grid.Row="1" Text="ID" Foreground="#65758D" FontSize="11.5"/>
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedCase.Id}" FontSize="11.7"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SideId}" FontSize="11.7"/>
             <TextBlock Grid.Row="2" Text="状态" Foreground="#65758D" FontSize="11.5"/>
-            <TextBlock Grid.Row="2" Grid.Column="1" Text="编辑预览" FontSize="11.7"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SideStatus}" FontSize="11.7"/>
             <TextBlock Grid.Row="3" Text="步骤数量" Foreground="#65758D" FontSize="11.5"/>
-            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding PhaseCountText}" FontSize="11.2"/>
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SideCount}" FontSize="11.2"/>
             <TextBlock Grid.Row="4" Text="设计版本" Foreground="#65758D" FontSize="11.5"/>
-            <TextBlock Grid.Row="4" Grid.Column="1" Text="高保真 · v0.1" FontSize="11.7"/>
+            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SideVersion}" FontSize="11.7"/>
           </Grid>
         </StackPanel>
       </Border>
@@ -681,9 +681,9 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock Text="{Binding IssueHeaderText}" FontWeight="SemiBold" VerticalAlignment="Center"
                        Margin="0,0,19,0" FontSize="12.4"/>
-            <TextBlock Grid.Column="1" Text="● 错误 2" Foreground="#D9363E" FontSize="11.7"
+            <TextBlock Grid.Column="1" Text="{Binding IssueErrorText}" Foreground="#D9363E" FontSize="11.7"
                        VerticalAlignment="Center" Margin="0,0,17,0"/>
-            <TextBlock Grid.Column="2" Text="▲ 警告 1" Foreground="#A66800"
+            <TextBlock Grid.Column="2" Text="{Binding IssueWarningText}" Foreground="#A66800"
                        FontSize="11.7" VerticalAlignment="Center" Margin="0,0,17,0"/>
             <Button Grid.Column="3" Content="全部   ▾" Style="{StaticResource OutlineButton}"
                     Padding="8,3" Height="25" HorizontalAlignment="Left" VerticalAlignment="Center"
