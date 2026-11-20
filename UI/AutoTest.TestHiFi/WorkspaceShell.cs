@@ -299,6 +299,7 @@ public partial class MainWindow
         DocumentEditorPanel.Visibility = Visibility.Visible;
         _switchingEditor = true;
         DocumentTextEditor.Text = document.Content;
+        DocumentTextEditor.ClearUndo(); // Prevent cross-document undo transactions.
         _switchingEditor = false;
         WorkspaceStatusText.Text = _workFiles.FullPath(document.Asset.RelativePath);
         RefreshTabStrip();
@@ -451,7 +452,7 @@ public partial class MainWindow
         catch(Exception ex)when(ex is IOException or ArgumentException or UnauthorizedAccessException)
         {ShowFileError("导入资源失败",ex);}
     }
-    private UiAsset? TargetAsset() => _selectedAsset ?? _currentDocument?.Asset;
+    private UiAsset? TargetAsset() => _currentDocument?.Asset ?? _selectedAsset;
     private void RenameAsset_Click(object sender,RoutedEventArgs e)
     {
         var asset=TargetAsset();if(asset is null){NeedSelectAsset();return;}
