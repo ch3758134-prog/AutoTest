@@ -70,6 +70,15 @@ extern "C" {
 /* CAN 发送 / 收帧回传 */
 #define CDD_USB_CMD_CAN_SEND        0x40U
 #define CDD_USB_CMD_CAN_RX_IND      0x41U
+/*
+ * 仅 ECU CAN（FlexCAN1 / J1 A12 H + A1 L）的运行时码率控制：
+ * SET_ECU_CAN_BAUD 0x42：[baud_code] 1B（见 EAL_CAN_BaudType 0..7）;
+ * GET_ECU_CAN_BAUD 0x43：空请求，成功返回 [baud_code] 1B。
+ * code: 0=20k,1=50k,2=100k,3=125k,4=250k,5=500k,6=800k,7=1M。
+ * 复位默认 500k；更改不影响 KEY CAN，不持久化。
+ */
+#define CDD_USB_CMD_SET_ECU_CAN_BAUD 0x42U
+#define CDD_USB_CMD_GET_ECU_CAN_BAUD 0x43U
 /* 整车环境广播（0x50~0x53，固定由 ECU_CAN_PORT 发往 ECU） */
 #define CDD_USB_CMD_SET_BROADCAST     0x50U
 #define CDD_USB_CMD_BROADCAST_START   0x51U
