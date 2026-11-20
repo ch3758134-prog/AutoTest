@@ -4,7 +4,7 @@
  FontFamily="{StaticResource UiFont}" FontSize="13" Background="White" Foreground="#1E2C41"
  PreviewKeyDown="Editor_KeyDown">
  <Grid>
-  <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="46"/>
+  <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="82"/>
    <RowDefinition Height="47"/><RowDefinition Height="*"/>
    <RowDefinition Height="24"/></Grid.RowDefinitions>
   <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
@@ -71,7 +71,9 @@
   <!-- Real test execution of the currently open TEST case. -->
   <Border Grid.Row="1" Background="#F4F8FF" BorderBrush="#C8D9EB"
    BorderThickness="0,0,0,1">
-   <DockPanel Margin="12,4" LastChildFill="True">
+   <Grid Margin="12,4">
+    <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="34"/></Grid.RowDefinitions>
+   <DockPanel Grid.Row="0" LastChildFill="True">
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="真实自动测试" FontWeight="SemiBold" Foreground="#28558A"
       VerticalAlignment="Center" Margin="0,0,11,0"/>
@@ -88,6 +90,23 @@
      VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
      ToolTip="{Binding RunSummary}"/>
    </DockPanel>
+   <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
+    <StackPanel.Style><Style TargetType="StackPanel">
+     <Style.Triggers><DataTrigger Binding="{Binding ExpectedFlashApproval}" Value="">
+      <Setter Property="Visibility" Value="Collapsed"/>
+     </DataTrigger></Style.Triggers>
+    </Style></StackPanel.Style>
+    <TextBlock Text="FLASH 实体授权：" FontWeight="SemiBold"
+     Margin="0,0,7,0" VerticalAlignment="Center"/>
+    <TextBox Width="370" Height="28" VerticalContentAlignment="Center"
+     Text="{Binding FlashApproval,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+     ToolTip="现场人员手动输入完整 AUTHORIZE ECU FLASH + SHA256；不会保存到工程"/>
+    <TextBlock Text="请完整输入：" Margin="10,0,5,0" VerticalAlignment="Center"/>
+    <TextBlock Text="{Binding ExpectedFlashApproval}" MaxWidth="280"
+     ToolTip="{Binding ExpectedFlashApproval}" TextTrimming="CharacterEllipsis"
+     Foreground="#385F88" VerticalAlignment="Center"/>
+   </StackPanel>
+   </Grid>
   </Border>
 
   <Border Grid.Row="2" Background="#F3F7FB" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">

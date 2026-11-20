@@ -32,6 +32,8 @@ public sealed class TestEditorViewModel : BindableBase
     private readonly RealTestWorkbenchService _realTest;
     private TestTargetMapping? _selectedMapping;
     private string _approval = "";
+    private string _flashApproval = "";
+    private string _expectedFlashApproval = "";
     private string _runSummary = "未运行真实测试";
     private readonly StepDescriptorCatalog _catalog = StepDescriptorCatalog.Builtins();
     private OpenProjectContext? _choiceContext;
@@ -249,6 +251,17 @@ public sealed class TestEditorViewModel : BindableBase
             if (SetProperty(ref _selectedMapping, value))
                 RemoveMappingCommand?.RaiseCanExecuteChanged();
         }
+    }
+    /// <summary>Volatile operator consent; never part of the persisted TestDocument.</summary>
+    public string FlashApproval
+    {
+        get => _flashApproval;
+        set => SetProperty(ref _flashApproval, value);
+    }
+    public string ExpectedFlashApproval
+    {
+        get => _expectedFlashApproval;
+        private set => SetProperty(ref _expectedFlashApproval, value);
     }
     public string RunApproval
     {
@@ -846,8 +859,12 @@ public sealed class TestEditorViewModel : BindableBase
                 StatusMessage = "无法准备真实运行：" + plan.Diagnostics[0];
                 return;
             }
+            ExpectedFlashApproval = _realTest.ExpectedFlashApproval(_transaction.Current);
+            FlashApproval = "";
             RunApproval = RealTestWorkbenchService.ExpectedApproval(plan);
-            StatusMessage = "当前用例已确认。点击“运行当前用例”后将按准备、测试、清理顺序对真实硬件执行。";
+            StatusMessage = ExpectedFlashApproval.Length == 0 ?
+                "当前用例已确认，可以运行真实步骤。" :
+                "烧录资源已冻结。必须在下方手动输入完整 FLASH 授权文字；授权不写入工程。";
             RunSummary = "已确认当前测试用例 · 尚未执行";
         }
         catch (Exception error) when (IsEditorError(error))
@@ -865,6 +882,12 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = "请先点击“确认当前用例”，再运行真实测试。";
             return;
         }
+        if (ExpectedFlashApproval.Length > 0 &&
+            !string.Equals(FlashApproval, ExpectedFlashApproval, StringComparison.Ordinal))
+        {
+            StatusMessage = "FLASH 授权不匹配：必须手动输入完整 AUTHORIZE ECU FLASH 指纹。";
+            return;
+        }
         IsBusy = true;
         RunFacts.Clear();
         RunFactRows.Clear();
@@ -873,7 +896,7 @@ public sealed class TestEditorViewModel : BindableBase
         StopRunCommand.RaiseCanExecuteChanged();
         try
         {
-            var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval);
+            var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval, FlashApproval);
             foreach (var fact in result.Facts)
             {
                 RunFacts.Add(fact);
@@ -898,6 +921,7 @@ public sealed class TestEditorViewModel : BindableBase
         finally
         {
             RunApproval = "";
+            FlashApproval = "";
             IsBusy = false;
         }
     }
@@ -908,6 +932,8 @@ public sealed class TestEditorViewModel : BindableBase
         // Clear it before rebuilding; never display old PASS/error facts against
         // a newly edited document. Historical evidence remains in its own audit.
         RunApproval = "";
+        FlashApproval = "";
+        ExpectedFlashApproval = "";
         if (RunFacts.Count > 0)
         {
             RunFacts.Clear();

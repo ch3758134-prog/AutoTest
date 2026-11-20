@@ -47,6 +47,9 @@ public sealed class RealTestWorkbenchService
     public static string ExpectedApproval(PreparedTestPlan plan) =>
         "AUTHORIZE TEST RUN " + plan.Fingerprint;
 
+    public Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
+        CancellationToken ct) => ExecuteAsync(document, confirmation, "", ct);
+
     public async Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
         string flashConfirmation = "", CancellationToken ct = default)
     {
