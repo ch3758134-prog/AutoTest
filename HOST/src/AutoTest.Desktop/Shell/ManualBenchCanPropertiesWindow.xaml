@@ -39,7 +39,7 @@
       </StackPanel>
       <StackPanel Grid.Column="1">
        <TextBlock Text="DLC" FontSize="11" Foreground="#6C819A" Margin="0,0,0,4"/>
-       <TextBox Text="{Binding PreviewDlc}" IsReadOnly="True"
+       <TextBox Text="{Binding PreviewDlc,Mode=OneWay}" IsReadOnly="True"
         Background="#F4F8FC" FontFamily="Consolas" MinHeight="32"/>
       </StackPanel>
       <CheckBox Grid.Column="2" Content="扩展帧（无 DBC 时）"

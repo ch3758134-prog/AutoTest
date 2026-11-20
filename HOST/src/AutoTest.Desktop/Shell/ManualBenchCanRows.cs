@@ -218,9 +218,10 @@ public sealed partial class ManualBenchViewModel
                     ? IdHex.Trim()[2..] : IdHex.Trim();
                 if (!uint.TryParse(value, NumberStyles.HexNumber,
                         CultureInfo.InvariantCulture, out var id) ||
-                    id > (Extended ? 0x1FFFFFFFu : 0x7FFu))
+                    id > 0x1FFFFFFFu)
                     return "ID 无效";
-                return "0x" + id.ToString(Extended ? "X8" : "X3");
+                var extended = Extended || id > 0x7FFu;
+                return "0x" + id.ToString(extended ? "X8" : "X3");
             }
         }
         public string PreviewDlc

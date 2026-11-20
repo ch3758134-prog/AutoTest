@@ -196,7 +196,7 @@
            </StackPanel>
            <StackPanel Grid.Column="1" Margin="9,0,0,0">
             <TextBlock Text="DLC" Style="{StaticResource FieldCaption}"/>
-            <TextBox Text="{Binding PreviewDlc}" FontFamily="Consolas"
+            <TextBox Text="{Binding PreviewDlc,Mode=OneWay}" FontFamily="Consolas"
              IsReadOnly="True" Background="#F4F8FC" MinHeight="30"/>
            </StackPanel>
           </Grid>
