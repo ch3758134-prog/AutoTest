@@ -93,7 +93,7 @@ public sealed class DbcWorkspace : Grid
             {
                 Header = title, Binding = new System.Windows.Data.Binding(prop)
                 { Mode = System.Windows.Data.BindingMode.TwoWay },
-                Width = width
+                Width = new DataGridLength(width)
             });
         }
         _signals.CellEditEnding += (_, _) => { changed(); Dispatcher.BeginInvoke(new Action(DrawBits)); };
