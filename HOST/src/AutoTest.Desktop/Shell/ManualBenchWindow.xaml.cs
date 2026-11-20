@@ -123,30 +123,36 @@ public partial class ManualBenchWindow : Window
     private async void IgnOff_Click(object sender, RoutedEventArgs e) =>
         await _model.ApplyIgnSelectionAsync(false);
 
-    private void SelectKeyAction_Click(object sender, RoutedEventArgs e)
+    private void OpenKeyActionEditor(ManualBenchViewModel.KeyActionEditor action)
     {
-        if (sender is System.Windows.Controls.Button
-            { Tag: ManualBenchViewModel.KeyActionEditor action })
+        if (!_model.CanEditKeyActions)
         {
-            _model.SelectedKeyAction = action;
-            _model.IsKeyEditorExpanded = true;
-            Dispatcher.BeginInvoke(new Action(() => KeyEditorSection.BringIntoView()),
-                System.Windows.Threading.DispatcherPriority.Background);
+            MessageBox.Show(this, "请先打开工程并停止正在运行的 KEY 动作。",
+                "KEY 编辑不可用", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
         }
+        _model.SelectedKeyAction = action;
+        new ManualBenchKeyActionWindow(_model) { Owner = this }.ShowDialog();
     }
 
-    private void CloseKeyEditor_Click(object sender, RoutedEventArgs e) =>
-        _model.IsKeyEditorExpanded = false;
-
-    private void EditKeyAction_RightClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void AddKeyAction_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is System.Windows.Controls.Button
-            { Tag: ManualBenchViewModel.KeyActionEditor action })
+        if (!_model.AddKeyActionCommand.CanExecute()) return;
+        _model.AddKeyActionCommand.Execute();
+        if (_model.SelectedKeyAction is { } action) OpenKeyActionEditor(action);
+    }
+
+    private void SelectKeyAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ManualBenchViewModel.KeyActionEditor action })
+            OpenKeyActionEditor(action);
+    }
+
+    private void EditKeyAction_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button { Tag: ManualBenchViewModel.KeyActionEditor action })
         {
-            _model.SelectedKeyAction = action;
-            _model.IsKeyEditorExpanded = true;
-            Dispatcher.BeginInvoke(new Action(() => KeyEditorSection.BringIntoView()),
-                System.Windows.Threading.DispatcherPriority.Background);
+            OpenKeyActionEditor(action);
             e.Handled = true;
         }
     }
