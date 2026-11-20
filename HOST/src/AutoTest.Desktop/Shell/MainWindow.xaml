@@ -182,7 +182,8 @@
      <Button Content="↷" Command="{Binding RedoActiveCommand}" Width="28" MinWidth="0"
       ToolTip="重做 Ctrl+Y" Margin="0,0,6,0"/>
      <Button Content="▷ 所选用例检查" Command="{Binding CheckActiveCommand}"
-      Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"/>
+      Style="{StaticResource AtPrimaryButton}" Foreground="#FFFFFF"
+      Margin="0,0,6,0"/>
      <Button Content="运行记录" IsEnabled="False"
       ToolTip="真实项目级运行记录尚未产生，不展示演示记录" Margin="0"/>
     </StackPanel>

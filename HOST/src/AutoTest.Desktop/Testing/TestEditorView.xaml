@@ -23,7 +23,8 @@
       </Style></TextBlock.Style>
      </TextBlock>
      <Button Content="＋ 添加步骤" Command="{Binding AddStepCommand}"
-      Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"
+      Style="{StaticResource AtPrimaryButton}" Foreground="#FFFFFF"
+      Margin="0,0,6,0"
       ToolTip="选中阶段/分支：追加；选中步骤：插入其下方"/>
      <Menu Background="Transparent" Height="28" Margin="0,0,6,0">
       <MenuItem Header="常用步骤 ▾" Padding="7,3" FontSize="11"

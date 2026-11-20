@@ -51,18 +51,28 @@
  <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}"/>
  <Style x:Key="AtPrimaryButton" TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">
   <Setter Property="Background" Value="#3478D6"/>
-  <Setter Property="Foreground" Value="White"/>
+  <Setter Property="Foreground" Value="#FFFFFF"/>
   <Setter Property="BorderBrush" Value="#3478D6"/>
+  <!-- Explicit data-template TextBlock eliminates implicit dark TextBlock
+       styles when ContentPresenter creates text from Button.Content. -->
+  <Setter Property="ContentTemplate">
+   <Setter.Value>
+    <DataTemplate>
+     <TextBlock Text="{Binding}" Foreground="#FFFFFF" FontWeight="SemiBold"
+      VerticalAlignment="Center" TextAlignment="Center"/>
+    </DataTemplate>
+   </Setter.Value>
+  </Setter>
   <Setter Property="Template">
    <Setter.Value>
     <ControlTemplate TargetType="{x:Type Button}">
      <Border x:Name="Surface" Background="{TemplateBinding Background}"
       BorderBrush="{TemplateBinding BorderBrush}"
       BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5"
-      TextElement.Foreground="{TemplateBinding Foreground}"
+      TextElement.Foreground="#FFFFFF"
       SnapsToDevicePixels="True">
       <ContentPresenter Margin="{TemplateBinding Padding}"
-       TextElement.Foreground="{TemplateBinding Foreground}"
+       TextElement.Foreground="#FFFFFF"
        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
        VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
        RecognizesAccessKey="True"/>
