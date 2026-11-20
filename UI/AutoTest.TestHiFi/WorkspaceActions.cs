@@ -497,16 +497,37 @@ public partial class MainWindow
         var open=OpenPages.FirstOrDefault(p=>p.Document?.Asset.Id==asset.Id);
         if(open is not null && !ClosePage(open))return;
         var index=Assets.IndexOf(asset);
+        var moved=false;var removed=false;
         try
         {
-            MoveAssetToTrash(asset); Assets.Remove(asset);SaveManifest();
+            var source=WorkspaceStorage.Resolve(_workspacePath!,asset.RelativePath);
+            if(!File.Exists(source))
+                throw new FileNotFoundException("原资源文件已丢失，删除操作已取消。",source);
+            MoveAssetToTrash(asset);moved=true;
+            Assets.Remove(asset);removed=true;
+            SaveManifest();
             RecordProjectUndo("删除资源",
                 ()=>{RestoreAssetFromTrash(asset);Assets.Insert(Math.Clamp(index,0,Assets.Count),asset);SaveManifest();},
                 ()=>{EnsureAssetPageClosedForHistory(asset);MoveAssetToTrash(asset);Assets.Remove(asset);SaveManifest();});
             _selectedAsset=null;
+            RefreshCommandStates();
             StatusText="已删除资源至工程 ui-trash，Ctrl+Z 可以撤销。";
         }
-        catch(Exception ex)when(IsFileError(ex)){FileFailure("删除资源",ex);}
+        catch(Exception ex)when(IsFileError(ex))
+        {
+            // File and manifest must not silently diverge if a manifest save fails.
+            try
+            {
+                if(removed)Assets.Insert(Math.Clamp(index,0,Assets.Count),asset);
+                if(moved)RestoreAssetFromTrash(asset);
+            }
+            catch(Exception rollback)when(IsFileError(rollback))
+            {
+                MessageBox.Show(this,"删除失败且自动恢复未完成，请人工检查资源与 ui-trash："+
+                    rollback.Message,"资源恢复警告",MessageBoxButton.OK,MessageBoxImage.Error);
+            }
+            FileFailure("删除资源",ex);
+        }
     }
 
     private void RecordProjectUndo(string title,Action undo,Action redo)
