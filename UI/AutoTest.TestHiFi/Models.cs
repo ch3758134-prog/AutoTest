@@ -94,11 +94,39 @@ public sealed class PreviewInspector : ViewState
     public string Timeout { get => _timeout; set { _timeout = value; Change(); } }
     public string SampleInterval { get => _sampleInterval; set { _sampleInterval = value; Change(); } }
     public string Warning { get => _warning; set { _warning = value; Change(); } }
+    private bool _isCanAssertion = true;
+    private string _detailLabel = "CAN 信号";
+    private string _detailValue = "BCM.DoorSts";
+    private string _context = "测试阶段 · 步骤 16";
+    public bool IsCanAssertion
+    {
+        get => _isCanAssertion;
+        private set { _isCanAssertion = value; Change(); Change(nameof(IsOtherStep)); }
+    }
+    public bool IsOtherStep => !IsCanAssertion;
+    public string DetailLabel { get => _detailLabel; private set { _detailLabel=value; Change(); } }
+    public string DetailValue { get => _detailValue; private set { _detailValue=value; Change(); } }
+    public string Context { get => _context; private set { _context=value; Change(); } }
     public bool StopOnTimeout { get => _stopOnTimeout; set { _stopOnTimeout = value; Change(); } }
     public bool RecordValue { get => _recordValue; set { _recordValue = value; Change(); } }
     public bool IgnoreInvalid { get => _ignoreInvalid; set { _ignoreInvalid = value; Change(); } }
     public void Show(DemoStep step)
     {
+        IsCanAssertion = step.Title == "CAN 信号判定";
+        Context = step.Phase + "阶段 · 步骤 " + step.Number + " · " +
+                  (step.Kind is "Branch" or "Flow" ? "流程结构" : "动作步骤");
+        DetailLabel = step.Title switch
+        {
+            "日志记录" => "日志文本",
+            "等待" or "延时" => "持续时间",
+            "UDS 请求" => "UDS 请求",
+            "IF 条件" or "WHEN" or "SWITCH" => "判定表达式",
+            "发送 CAN 报文" => "发送数据",
+            "波形判定" => "参考与条件",
+            "模拟外部输入" => "输入状态",
+            _ => "步骤概要"
+        };
+        DetailValue = step.Summary;
         Heading = step.Title;
         Description = step.Title switch
         {
