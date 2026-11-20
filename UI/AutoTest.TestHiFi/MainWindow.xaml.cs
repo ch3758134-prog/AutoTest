@@ -161,13 +161,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var query = StepSearch.Text.Trim();
         VisibleSteps.Clear();
         if (SelectedCase is null) return;
-        foreach (var step in _caseSteps.Where(s => s.Phase == _phase &&
-                 (query.Length == 0 ||
-                  s.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                  s.Summary.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                  s.Number.ToString().Contains(query, StringComparison.OrdinalIgnoreCase))))
+        var ancestors = new Stack<(int Depth, bool Collapsed)>();
+        foreach (var step in _caseSteps.Where(s => s.Phase == _phase))
         {
-            VisibleSteps.Add(step);
+            while (ancestors.Count > 0 && ancestors.Peek().Depth >= step.Depth)
+                ancestors.Pop();
+            var hiddenByFlow = ancestors.Any(a => a.Collapsed);
+            var matches = query.Length == 0 ||
+                step.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                step.Summary.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                step.Number.ToString().Contains(query, StringComparison.OrdinalIgnoreCase);
+            // During search, reveal matches even if a parent branch is folded.
+            if (matches && (!hiddenByFlow || query.Length > 0)) VisibleSteps.Add(step);
+            if (step.Kind == "Flow")
+                ancestors.Push((step.Depth, !step.IsExpanded));
         }
         var chosen = VisibleSteps.FirstOrDefault(s => s.Number == selectNumber && selectNumber.HasValue)
             ?? VisibleSteps.FirstOrDefault(s => ReferenceEquals(s, previous))
@@ -175,6 +182,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (chosen is not null) StepList.SelectedItem = chosen;
     }
 
+    private void ExpandAll_Click(object sender,RoutedEventArgs e)
+    {
+        foreach(var step in _caseSteps.Where(x=>x.Kind is "Flow" or "Group"))
+            step.IsExpanded=true;
+        RebuildSteps(null);
+        StatusText="已展开当前阶段所有流程结构。";
+    }
+    private void CollapseAll_Click(object sender,RoutedEventArgs e)
+    {
+        foreach(var step in _caseSteps.Where(x=>x.Kind is "Flow" or "Group"))
+            step.IsExpanded=false;
+        RebuildSteps(null);
+        StatusText="已折叠当前阶段的嵌套流程。";
+    }
+    private void StepList_DoubleClick(object sender,MouseButtonEventArgs e)
+    {
+        if(StepList.SelectedItem is not DemoStep { Kind: "Flow" or "Group" } node) return;
+        node.IsExpanded=!node.IsExpanded;
+        RebuildSteps(null);
+        StatusText=node.Title+(node.IsExpanded?" 已展开":" 已折叠");
+    }
     private void StepList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_ready || StepList.SelectedItem is not DemoStep step) return;
