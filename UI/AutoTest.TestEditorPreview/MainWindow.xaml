@@ -149,7 +149,7 @@
                         <ColumnDefinition Width="110"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Content="{Binding Arrow}" Tag="{Binding Node}"
-                            IsEnabled="True"
+                            IsEnabled="{Binding HasChildren}"
                             Style="{StaticResource QuietButton}" BorderThickness="0" Padding="0"
                             FontSize="15" Click="ExpandNode_Click"
                             ToolTip="展开或折叠当前结构，不改变步骤选择"/>
@@ -191,6 +191,11 @@
                 <DataTrigger Binding="{Binding Node.IsEnabled}" Value="False">
                     <Setter TargetName="NodeTitle" Property="Foreground" Value="#63748A"/>
                 </DataTrigger>
+                <DataTrigger Binding="{Binding IsSelected,RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                    <Setter TargetName="RowSurface" Property="Background" Value="#E9F2FC"/>
+                    <Setter TargetName="RowSurface" Property="BorderBrush" Value="#2167B4"/>
+                    <Setter TargetName="RowSurface" Property="BorderThickness" Value="3,0,0,1"/>
+                </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
         <DataTemplate x:Key="FieldTemplate" DataType="{x:Type local:EditorField}">
@@ -211,7 +216,7 @@
                             <Style TargetType="TextBox" BasedOn="{StaticResource FieldBox}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsInvalid}" Value="True">
-                                        <Setter Property="BorderBrush" Value="#B96B18"/>
+                                        <Setter Property="BorderBrush" Value="#935114"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -243,7 +248,16 @@
                              LostKeyboardFocus="EditorText_LostKeyboardFocus"
                              Margin="0,0,0,15"/>
                     <CheckBox Content="启用此步骤" IsChecked="{Binding IsEnabled,Mode=TwoWay}"
+                              Visibility="{Binding IsMovable,Converter={StaticResource BoolVisibility}}"
                               Margin="0,1,0,15" Click="Enabled_Click"/>
+                    <Border Background="#E9F2FC" Padding="12" CornerRadius="6" Margin="0,0,0,15"
+                            Visibility="{Binding IsStructuralSlot,Converter={StaticResource BoolVisibility}}">
+                      <StackPanel>
+                        <TextBlock Text="这里是阶段或分支容器，不是一个普通执行步骤。" FontSize="12" Foreground="#164C91" TextWrapping="Wrap"/>
+                        <Button Content="＋ 在此阶段 / 分支添加步骤" Click="OpenPalette_Click"
+                                Style="{StaticResource PrimaryButton}" Margin="0,10,0,0"/>
+                      </StackPanel>
+                    </Border>
                     <Border Background="#FFF4E6" Padding="11" CornerRadius="5" Margin="0,0,0,15">
                         <Border.Style>
                             <Style TargetType="Border">
@@ -316,8 +330,8 @@
             <StackPanel VerticalAlignment="Center">
                 <TextBlock Text="{Binding SelectedCase.Name}" FontSize="22" FontWeight="SemiBold"/>
                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                    <TextBlock Text="{Binding SelectedCase.CountSteps,StringFormat=步骤 {0} · }" Foreground="#63748A" FontSize="12"/>
-                    <TextBlock Text="{Binding ProblemCount,StringFormat=待修正 {0} 处 · }" Foreground="#935114" FontSize="12"/>
+                    <TextBlock Text="{Binding SelectedCase.CountSteps,StringFormat='步骤 {0} · '}" Foreground="#63748A" FontSize="12"/>
+                    <TextBlock Text="{Binding ProblemCount,StringFormat='待修正 {0} 处 · '}" Foreground="#935114" FontSize="12"/>
                     <TextBlock Text="{Binding SaveStateText}" Foreground="#63748A" FontSize="12"/>
                 </StackPanel>
             </StackPanel>
@@ -400,7 +414,7 @@
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="步骤结构" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding SelectedCase.CountSteps,StringFormat=   {0} 步}" FontSize="12" Foreground="#63748A" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedCase.CountSteps,StringFormat='   {0} 步'}" FontSize="12" Foreground="#63748A" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Button x:Name="AddButton" Grid.Column="1" Content="＋ 添加步骤"
                                     Click="OpenPalette_Click" Style="{StaticResource PrimaryButton}" MinWidth="122" Height="35"/>
@@ -487,7 +501,7 @@
                 <DockPanel Margin="12,9">
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,0,7">
                         <TextBlock Text="问题与定位" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding ProblemCount,StringFormat=  ·  {0} 条}" Foreground="#935114" Margin="8,1,0,0"/>
+                        <TextBlock Text="{Binding ProblemCount,StringFormat='  ·  {0} 条'}" Foreground="#935114" Margin="8,1,0,0"/>
                     </StackPanel>
                     <ListBox x:Name="ProblemList" ItemsSource="{Binding Problems}"
                              BorderThickness="0" Background="White" FontSize="12.5"
