@@ -714,15 +714,15 @@
         </Grid>
       </Border>
       <!-- Two adjustable navigator and inspector splits, plus the problem panel. -->
-      <GridSplitter Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Width="6"
+      <GridSplitter x:Name="NavigatorSplitter" Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Width="6"
                     HorizontalAlignment="Stretch" ResizeDirection="Columns"
                     ResizeBehavior="PreviousAndNext" ShowsPreview="True" Background="#E0E7F0"
                     Panel.ZIndex="10"/>
-      <GridSplitter Grid.Row="0" Grid.RowSpan="3" Grid.Column="3" Width="6"
+      <GridSplitter x:Name="InspectorSplitter" Grid.Row="0" Grid.RowSpan="3" Grid.Column="3" Width="6"
                     HorizontalAlignment="Stretch" ResizeDirection="Columns"
                     ResizeBehavior="PreviousAndNext" ShowsPreview="True" Background="#E0E7F0"
                     Panel.ZIndex="10"/>
-      <GridSplitter Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Height="6"
+      <GridSplitter x:Name="IssuesSplitter" Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Height="6"
                     VerticalAlignment="Top" HorizontalAlignment="Stretch"
                     ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
                     ShowsPreview="True" Background="#E0E7F0" Panel.ZIndex="10"/>
