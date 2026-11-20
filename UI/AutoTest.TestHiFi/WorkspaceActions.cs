@@ -496,6 +496,12 @@ public partial class MainWindow
         _projectRedo.Clear();
     }
     private void RefreshPageLabels(){foreach(var page in OpenPages)page.NotifyLabel();}
+    private void FileBodyEditor_PreviewKeyDown(object sender,KeyEventArgs e)
+    {
+        var ctrl=Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        if(ctrl && e.Key == Key.Z) {UndoDocument_Click(sender,e);e.Handled=true;}
+        else if(ctrl && e.Key == Key.Y) {RedoDocument_Click(sender,e);e.Handled=true;}
+    }
     private void UndoDocument_Click(object sender,RoutedEventArgs e)
     {
         if(ActiveFile is {CanUndo:true} doc) { doc.Undo(); StatusText="已撤销文档文字编辑。"; return; }
