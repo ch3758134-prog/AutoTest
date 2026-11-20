@@ -4,8 +4,8 @@
         xmlns:local="clr-namespace:AutoTest.TestHiFi"
         Title="AutoTest · 工程测试工作环境 · UI-01/02 预览"
         WindowState="Maximized" Width="1650" Height="935"
-        MinWidth="1230" MinHeight="700"
-        WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown" Closing="Window_Closing" Loaded="Window_Loaded">
+        MinWidth="830" MinHeight="440"
+        WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown" Closing="Window_Closing" Loaded="Window_Loaded" SizeChanged="Window_SizeChanged">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="VisibleIfTrue"/>
     <DataTemplate x:Key="CaseTemplate" DataType="{x:Type local:DemoCase}">
@@ -247,6 +247,10 @@
 
     <Border Grid.Row="2" Background="White" BorderBrush="#E0E7F0" BorderThickness="0,0,0,1">
       <DockPanel Margin="12,0">
+        <Button x:Name="CompactInspectorButton" DockPanel.Dock="Right" Content="步骤参数 →"
+                Visibility="Collapsed" Style="{StaticResource OutlineButton}" Height="30"
+                Click="ToggleCompactInspector_Click" Margin="8,0,0,0"
+                ToolTip="窄屏：在步骤与详情间切换，不打开新窗口"/>
         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
                       VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal">
@@ -278,7 +282,7 @@
         <ColumnDefinition Width="7"/>
         <ColumnDefinition Width="*" MinWidth="350"/>
         <ColumnDefinition Width="7"/>
-        <ColumnDefinition x:Name="InspectorColumn" Width="400" MinWidth="315"/>
+        <ColumnDefinition x:Name="InspectorColumn" Width="400"/>
       </Grid.ColumnDefinitions>
       <Grid.RowDefinitions>
         <RowDefinition Height="40"/>
@@ -441,7 +445,7 @@
           </ItemsControl>
         </ScrollViewer>
       </Border>
-      <Border Grid.Column="2" Grid.Row="1" Background="White"
+      <Border x:Name="TestStepSurface" Grid.Column="2" Grid.Row="1" Background="White"
               BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="7">
         <Grid>
           <Grid.RowDefinitions>
@@ -553,7 +557,7 @@
       </Border>
 
       <!-- Right: actual type-aware context inspector, all groups grounded in accepted mockup. -->
-      <Border Grid.Column="4" Grid.Row="0" Grid.RowSpan="2" Margin="0,0,0,4"
+      <Border x:Name="InspectorSurface" Grid.Column="4" Grid.Row="0" Grid.RowSpan="2" Margin="0,0,0,4"
               Background="White" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="7">
         <Grid>
           <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -672,7 +676,7 @@
       </Border>
 
       <!-- Bottom: 3 populated, individually locatable problems like the accepted reference. -->
-      <Border Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Background="White"
+      <Border x:Name="ProblemsSurface" Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Background="White"
               BorderBrush="{StaticResource Stroke}" BorderThickness="1"
               CornerRadius="7" Margin="0,5,0,0">
         <Grid>
