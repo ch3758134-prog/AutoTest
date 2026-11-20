@@ -697,7 +697,7 @@ public partial class TestStepInspector : UserControl
             }
             CanTargetHint.Text = mapping.Kind == TestTargetKind.CanMessage
                 ? "来自当前工程 DBC 的真实报文定义；修改信号后由现有编码器生成 CAN 数据。"
-                : "没有 DBC 也能发送。直接填写 CAN ID、帧格式和原始数据。";
+                : "无需 DBC。请填写 CAN ID、帧格式与数据；最终发送字节在下方预览。";
             CanDataCard.Visibility = Visibility.Visible;
         }
         if (mapping.Kind == TestTargetKind.RawCan)
@@ -710,9 +710,19 @@ public partial class TestStepInspector : UserControl
                 _editing.Properties.GetValueOrDefault("target", "")
                 ? "0x" + mapping.CanId.ToString("X") : "";
             ExtendedFrame.IsChecked = mapping.Extended;
-            RawCanDataInput.Text = (_editing?.Properties.GetValueOrDefault("value",
-                _editing.Properties.GetValueOrDefault("dataHex", "")) ?? "")
-                .Replace("HEX:", "", StringComparison.OrdinalIgnoreCase);
+            var previousRaw = _boundMappings.FirstOrDefault(x =>
+                string.Equals(x.Name, _editing?.Properties.GetValueOrDefault("target", ""),
+                    StringComparison.OrdinalIgnoreCase));
+            var sameRaw = previousRaw?.Kind == TestTargetKind.RawCan &&
+                previousRaw.Name == mapping.Name;
+            var originalHex = _legacySourceType == "CanSend"
+                ? _editing?.Properties.GetValueOrDefault("dataHex",
+                    _editing.Properties.GetValueOrDefault("value", "")) ?? ""
+                : sameRaw
+                    ? _editing?.Properties.GetValueOrDefault("value", "") ?? ""
+                    : "";
+            RawCanDataInput.Text = originalHex.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
+                ? originalHex[4..] : originalHex;
             UpdateCanFramePreview();
         }
         else if (mapping.Kind == TestTargetKind.CanMessage)
@@ -792,10 +802,15 @@ public partial class TestStepInspector : UserControl
                 _loadingCanData = true;
                 try
                 {
-                    DbcRawMode.IsChecked = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
+                    var rawOnly = msg.Signals.IsDefaultOrEmpty ||
+                        msg.Signals.Any(signal => !string.IsNullOrEmpty(signal.Multiplexer));
+                    DbcRawMode.IsChecked = rawOnly ||
+                        old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
                         (!old.Contains('=') && old.Length > 0);
                     DbcRawDataInput.Text = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
-                        ? old[4..] : DbcRawMode.IsChecked == true ? old : "";
+                        ? old[4..] : old.Length == 0
+                            ? Convert.ToHexString(new byte[msg.Dlc]) :
+                              DbcRawMode.IsChecked == true ? old : "";
                     SignalGrid.Visibility = DbcRawMode.IsChecked == true
                         ? Visibility.Collapsed : Visibility.Visible;
                     DbcRawDataInput.Visibility = DbcRawMode.IsChecked == true
@@ -1008,6 +1023,10 @@ public partial class TestStepInspector : UserControl
                 }
                 else
                 {
+                    if (message.Signals.IsDefaultOrEmpty ||
+                        message.Signals.Any(signal => !string.IsNullOrEmpty(signal.Multiplexer)))
+                        throw new ArgumentException(
+                            "此 DBC 报文没有可安全编码的完整普通信号集合，请使用原始数据字节。");
                     var original = ParseHex(DbcRawDataInput.Text, message.Dlc);
                     if (original.Length != message.Dlc)
                         throw new ArgumentException("原始数据字节数必须与 DBC DLC 相同。");
