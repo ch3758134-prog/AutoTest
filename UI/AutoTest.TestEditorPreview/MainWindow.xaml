@@ -136,7 +136,7 @@
                            Text="{Binding Name}" FontSize="12.5"/>
                 <CheckBox Grid.Column="1" VerticalAlignment="Center"
                           HorizontalAlignment="Center" IsChecked="{Binding RunSelected,Mode=TwoWay}"
-                          ToolTip="仅选择本次运行的用例；不会改变当前编辑选择"/>
+                          ToolTip="仅选择本次运行的用例；不会改变当前编辑选择" Click="RunSelect_Click"/>
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="StepTemplate" DataType="{x:Type local:StepRow}">
@@ -249,7 +249,7 @@
                             <Style TargetType="Border">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding LocalIssues}" Value="1">
+                                    <DataTrigger Binding="{Binding HasLocalIssues}" Value="True">
                                         <Setter Property="Visibility" Value="Visible"/>
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -300,9 +300,14 @@
                     <Border Background="#F2F4F7" CornerRadius="4" Padding="10,6" Margin="0,0,10,0">
                         <TextBlock Text="UI 研究样本 · 非真实工程" FontSize="11" Foreground="#63748A"/>
                     </Border>
+                    <StackPanel x:Name="HeaderActions" Orientation="Horizontal">
                     <Button Content="重置样本" Style="{StaticResource BaseButton}" Click="Reset_Click" Margin="0,0,8,0"/>
                     <Button Content="打开草稿" Style="{StaticResource BaseButton}" Click="Open_Click" Margin="0,0,8,0"/>
                     <Button Content="保存草稿" Style="{StaticResource PrimaryButton}" Click="Save_Click"/>
+                    </StackPanel>
+                    <Menu x:Name="CompactFileMenu" Visibility="Collapsed" Background="White" Margin="0" FontSize="12">
+                      <MenuItem Header="文件与草稿"><MenuItem Header="重置研究样本" Click="Reset_Click"/><MenuItem Header="打开草稿" Click="Open_Click"/><MenuItem Header="保存草稿" Click="Save_Click"/></MenuItem>
+                    </Menu>
                 </StackPanel>
             </Grid>
         </Border>
@@ -318,6 +323,8 @@
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="工作布局" VerticalAlignment="Center" Foreground="#63748A" Margin="0,0,9,0"/>
+                <ComboBox x:Name="CompactCasePicker" Width="178" Height="34" DisplayMemberPath="Name"
+                          Visibility="Collapsed" Margin="0,0,8,0" SelectionChanged="CompactCasePicker_SelectionChanged"/>
                 <ComboBox x:Name="LayoutPicker" Width="167" Height="34" SelectedIndex="0" SelectionChanged="LayoutPicker_SelectionChanged" Margin="0,0,8,0">
                     <ComboBoxItem Content="A · 右侧持续参数"/>
                     <ComboBoxItem Content="B · 下方参数工作台"/>
@@ -367,6 +374,9 @@
                             <Button Content="删除" Click="DeleteCase_Click" Style="{StaticResource QuietButton}" Margin="0,0,4,0"/>
                             <Button Content="重命名" Click="RenameCase_Click" Style="{StaticResource QuietButton}"/>
                         </WrapPanel>
+                        <TextBox x:Name="CaseRenameBox" Style="{StaticResource FieldBox}"
+                                 Visibility="Collapsed" Height="36" Margin="0,7,0,0"
+                                 KeyDown="CaseRenameBox_KeyDown" LostKeyboardFocus="CaseRenameBox_LostKeyboardFocus"/>
                         <TextBlock Text="编辑选中与本次运行勾选相互独立" Foreground="#63748A"
                                    TextWrapping="Wrap" FontSize="10.5" Margin="6,6,0,0"/>
                     </StackPanel>
