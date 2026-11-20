@@ -788,6 +788,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         TaskHeaderRow.Height = new GridLength(_compactMode ? 69 : 87);
         FooterRow.Height = new GridLength(_compactMode ? 27 : 30);
         StepToolbarRow.Height = new GridLength(_compactMode ? 91 : 104);
+        StepMainCommandRow.Height = new GridLength(_compactMode ? 36 : 43);
+        StepSecondaryCommandRow.Height = new GridLength(_compactMode ? 39 : 45);
         if (_compactMode)
         {
             if (!_wasCompact)
