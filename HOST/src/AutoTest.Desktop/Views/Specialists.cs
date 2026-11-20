@@ -118,10 +118,14 @@ public static class Specialists
             Width=76
         });
         var toggle=new CheckBox{Content="当前选中报文采用周期发送（仅 UI 计划）",Margin=new Thickness(12)};
-        toggle.Checked+=(_,_)=>{if(grid.SelectedItem is UiCanMessage m){m.Periodic=true;state.Changed("修改 CAN 发送模式");}};
-        toggle.Unchecked+=(_,_)=>{if(grid.SelectedItem is UiCanMessage m){m.Periodic=false;state.Changed("修改 CAN 发送模式");}};
+        var syncingPeriodic=false;
+        toggle.Checked+=(_,_)=>{if(!syncingPeriodic&&grid.SelectedItem is UiCanMessage m){m.Periodic=true;state.Changed("修改 CAN 发送模式");}};
+        toggle.Unchecked+=(_,_)=>{if(!syncingPeriodic&&grid.SelectedItem is UiCanMessage m){m.Periodic=false;state.Changed("修改 CAN 发送模式");}};
         grid.SelectionChanged+=(_,_)=>{
-            if(grid.SelectedItem is UiCanMessage m)toggle.IsChecked=m.Periodic;
+            if(grid.SelectedItem is not UiCanMessage m)return;
+            syncingPeriodic=true;
+            try{toggle.IsChecked=m.Periodic;}
+            finally{syncingPeriodic=false;}
         };
         var issue=UiKit.Note("编辑报文不会执行发送。真实 CAN RX/TX 与设备 ACK 尚未接线。",12);
         var rows=new DockPanel();
@@ -393,7 +397,7 @@ public static class Specialists
         manual.LostKeyboardFocus+=(_,_)=>
         {
             if(signals.SelectedItem is UiWaveSignal selected)
-            {selected.Points=manual.Text;state.Changed("修改手工绘图数据");}
+            {if(selected.Points!=manual.Text){selected.Points=manual.Text;state.Changed("修改手工绘图数据");}}
         };
         var add=UiKit.Actions(
             UiKit.Button("＋ 信号",(_,_)=>{
@@ -456,7 +460,7 @@ public static class Specialists
         }
         chart.SizeChanged+=(_,_)=>Draw();
         manual.TextChanged+=(_,_)=>{ if(signals.SelectedItem is UiWaveSignal selected)
-            {selected.Points=manual.Text;Draw();} };
+            {if(selected.Points!=manual.Text){selected.Points=manual.Text;state.Changed("修改手工曲线");}Draw();} };
         state.WaveSignals.CollectionChanged+=(_,_)=>Draw();
         chart.MouseLeftButtonDown+=(_,e)=>
         {
