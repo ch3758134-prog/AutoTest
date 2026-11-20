@@ -222,7 +222,11 @@ public sealed class StepRow : Notifying
     public string Arrow => Node.Children.Count == 0 ? "" : Node.IsExpanded ? "▾" : "▸";
     public bool HasChildren => Node.Children.Count > 0;
     public string Title => Node.DisplayTitle;
-    public string Summary => Node.Summary;
+    public string Summary => Node.Role is NodeRole.Phase or NodeRole.Branch
+        ? $"{CountMovable(Node)} 步" + (Node.DescendantIssues > 0 ? $" · ⚠ {Node.DescendantIssues} 处问题" : "")
+        : Node.Summary;
+    private static int CountMovable(EditorNode n) =>
+        (n.IsMovable ? 1 : 0) + n.Children.Sum(CountMovable);
     public string Category => Node.Role switch
     {
         NodeRole.Phase => "阶段",
