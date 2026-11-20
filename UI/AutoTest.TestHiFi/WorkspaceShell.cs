@@ -206,7 +206,7 @@ public partial class MainWindow
             entries.Add(new QuickItem {Name=asset.Name,Hint=asset.Kind+" · "+asset.RelativePath,
                 Execute=()=>OpenAsset(asset)});
         }
-        foreach(var name in new[]{"DBC 编辑器","CAN 工作台","手动台架","UDS 调试",
+        foreach(var name in new[]{"DBC 编辑器","手动台架","UDS 调试",
                                   "ECU 烧录","波形分析","设备诊断","生产与记录"})
         {
             var tool=name;
@@ -312,7 +312,7 @@ public partial class MainWindow
     {
         if (sender is not Button button) return;
         var menu = new ContextMenu();
-        foreach (var name in new[] { "CAN 工作台", "DBC 编辑器", "手动台架",
+        foreach (var name in new[] { "DBC 编辑器", "手动台架",
                                      "UDS 调试", "ECU 烧录", "波形分析", "设备诊断" })
         {
             var item = new MenuItem { Header = name, Padding = new Thickness(12,7,30,7) };
@@ -336,7 +336,6 @@ public partial class MainWindow
         var explanation = name switch
         {
             "设备诊断" => "USB 主控板状态：未连接。\nECU 通信通路：未接线。\n按键板通信通路：未接线。\n\n本版没有可用的设备驱动，不能点击连接后伪造在线状态。此处保留设备状态与诊断入口；真实连接和 ACK/超时证据将在 DEVICE 集成时接入。",
-            "CAN 工作台" => "独立 CAN 工具工作页已进入文档导航体系。\n\n后续专业页按“左侧发送报文编辑、中间按键/输入动作（综合台架模式）、右侧 CAN 日志”布局实现。真实发送/周期启停当前不可用，避免假日志与假数据。",
             "UDS 调试" => "独立 UDS 工作页导航已建立。\n\n后续支持可保存的多服务连续请求序列、请求参数、解析结果和关联时间线。当前未接 ISO-TP/UDS 后端，不能执行请求。",
             "ECU 烧录" => "烧录配置、固件文件、阶段进度和诊断证据将在专业页与已有烧录后端对接。\n\n当前不加载固件或触发物理烧录。",
             "DBC 编辑器" => "在左侧工程文件浏览器中导入或打开 DBC，可先完成真实文本文件保存与路径管理。\n\n专业 DBC 报文/信号表格、中文别名、位编辑和完整 DBC 校验将在专业编辑批次提供。",
