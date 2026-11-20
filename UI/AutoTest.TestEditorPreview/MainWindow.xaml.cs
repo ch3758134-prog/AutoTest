@@ -51,6 +51,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private double _lastCaseWidth = 255;
     private double _lastInspectorWidth = 380;
     private string? _fieldSnapshot;
+    private EditorNode? _editingNodeAtFocus;
     private string? _currentFile;
     private string? _copiedStep;
     private readonly Stack<string> _undo = new();
@@ -582,21 +583,45 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (!_uiReady || _syncing) return;
         _fieldSnapshot = Document.Serialize();
+        _editingNodeAtFocus = SelectedNode;
+    }
+    private void EditorText_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_uiReady && !_syncing && _fieldSnapshot is not null)
+            Dirty(); // Prevent losing a mid-typing draft on Ctrl+S or window close.
+    }
+    private void CapturePendingEdit()
+    {
+        if (_fieldSnapshot is null) return;
+        var before = _fieldSnapshot;
+        _fieldSnapshot = null;
+        if (before == Document.Serialize()) return;
+        _undo.Push(before); _redo.Clear();
+        _editingNodeAtFocus?.RefreshValidation();
+        _editingNodeAtFocus = null;
+        RefreshProblems();
+        foreach (var row in Rows) row.Update();
+        Dirty();
     }
     private void EditorText_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (!_uiReady || _syncing || _fieldSnapshot is null) return;
         var before = _fieldSnapshot; _fieldSnapshot = null;
+        var editedNode = _editingNodeAtFocus;
+        _editingNodeAtFocus = null;
         if (before == Document.Serialize()) return;
         _undo.Push(before); _redo.Clear();
-        if (SelectedNode is not null)
+        if (editedNode is not null)
         {
-            SelectedNode.RefreshValidation();
+            editedNode.RefreshValidation();
             if (sender is TextBox { DataContext: EditorField field })
-                SelectedNode.Summary = SummaryFor(SelectedNode, field);
+                editedNode.Summary = SummaryFor(editedNode, field);
         }
-        UpdateRows();
-        Dirty("已更新当前步骤的 UI 参数草稿，可返回继续修改。");
+        // Never rebuild the ListBox during LostKeyboardFocus: that would destroy the
+        // row which the user's current mouse click is attempting to select.
+        RefreshProblems();
+        foreach (var row in Rows) row.Update();
+        Dirty("已更新参数草稿；切换到其他步骤也不会丢失未完成输入。");
     }
     private static string SummaryFor(EditorNode node, EditorField changed)
     {
@@ -825,6 +850,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private bool SaveDraft()
     {
+        CapturePendingEdit();
         var path = _currentFile;
         if (string.IsNullOrEmpty(path))
         {
@@ -878,6 +904,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        CapturePendingEdit();
         if (!_modified) return;
         var choice = MessageBox.Show(this, "当前有未保存的 UI 草稿。\n“是”保存，“否”放弃，“取消”返回编辑器。",
             "关闭研究原型", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
