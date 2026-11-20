@@ -20,6 +20,7 @@ public sealed class UiSession
     public ObservableCollection<UiUdsRequest> UdsRequests { get; set; } = [];
     public ObservableCollection<UiInputAction> Inputs { get; set; } = [];
     public ObservableCollection<UiInputKey> Keys { get; set; } = [];
+    public ObservableCollection<UiAnalogChannel> AnalogChannels { get; set; } = [];
     public ObservableCollection<UiWaveSignal> WaveSignals { get; set; } = [];
     public ObservableCollection<UiWavePoint> WavePoints { get; set; } = [];
     public string WaveSourceFile { get; set; } = "";
@@ -36,6 +37,7 @@ public sealed class UiSession
         var s = new UiSession();
         s.Cases.Add(new UiTestCase { Name = "未命名测试用例" });
         for (var i = 1; i <= 20; i++) s.Keys.Add(new UiInputKey { Index = i, Name = "KEY " + i.ToString("00") });
+        for (var i = 1; i <= 5; i++) s.AnalogChannels.Add(new UiAnalogChannel { Index = i, Name = "模拟输出 " + i });
         return s;
     }
     public static UiSession Load(string path)
@@ -132,6 +134,15 @@ public sealed class UiInputKey
     public int Index { get; set; }
     public string Name { get; set; } = "";
     public bool Pressed { get; set; }
+}
+public sealed class UiAnalogChannel
+{
+    public int Index { get; set; }
+    public string Name { get; set; } = "";
+    public string EcuFunction { get; set; } = "";
+    public string MinVoltage { get; set; } = "";
+    public string MaxVoltage { get; set; } = "";
+    public string Comment { get; set; } = "";
 }
 public sealed class UiInputAction
 {
