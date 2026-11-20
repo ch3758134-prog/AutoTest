@@ -15,6 +15,15 @@ namespace AutoTest.TestHiFi;
 public partial class MainWindow
 {
     public ObservableCollection<UiAsset> Assets { get; } = [];
+    public bool HasProject => _workspace is not null;
+    public bool CanSaveActiveFile => ActiveFile is not null;
+    public bool HasAssetSelection => HasProject && GetAsset() is not null;
+    private void RefreshCommandStates()
+    {
+        Raise(nameof(HasProject));
+        Raise(nameof(CanSaveActiveFile));
+        Raise(nameof(HasAssetSelection));
+    }
     public ObservableCollection<WorkspacePage> OpenPages { get; } = [];
     public ObservableCollection<string> ToolTasks { get; } = [];
     private UiWorkspaceManifest? _workspace;
@@ -181,6 +190,7 @@ public partial class MainWindow
         Assets.Clear();
         foreach (var asset in manifest.Assets) Assets.Add(asset);
         ProjectBreadcrumb = manifest.Name;
+        RefreshCommandStates();
         ProjectStatusText = "   │   UI 工程：" + manifest.Name + "   │   文件 " + Assets.Count + " 项";
         _session.ProjectPath = _workspacePath;
         RememberProject(_workspacePath);
@@ -220,6 +230,7 @@ public partial class MainWindow
         }
         Assets.Clear(); _projectUndo.Clear(); _projectRedo.Clear(); _copiedAsset=null;
         ProjectBreadcrumb = "未打开 UI 工程";
+        RefreshCommandStates();
         ProjectStatusText = "   │   UI 工程未打开   │   TEST 视觉样本";
         ShowPage(_previewPage!); ShowNavigator("cases"); SaveSessionState();
         StatusText = "已关闭 UI 工程。";
@@ -286,6 +297,7 @@ public partial class MainWindow
     private void AssetList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (AssetList.SelectedItem is UiAsset asset) _selectedAsset=asset;
+        RefreshCommandStates();
     }
     private void AssetList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -556,6 +568,7 @@ public partial class MainWindow
             foreach(var task in ToolTasksFor(page.Title))ToolTasks.Add(task);
         }
         RefreshSideInfo();
+        RefreshCommandStates();
         UpdateCompactLayout();
         if(!_restoringSession)SaveSessionState();
     }
@@ -643,6 +656,7 @@ public partial class MainWindow
             grouped.GroupDescriptions.Add(new PropertyGroupDescription(nameof(UiAsset.KindLabel)));
         view.Filter=o=>o is UiAsset a && (mode!="FLOW" || a.Kind=="FLOW");
         view.Refresh();
+        RefreshCommandStates();
         if(_workspace is null && !cases)
             StatusText="请先通过文件菜单创建 UI 工程；此处将显示实际磁盘资源。";
     }
