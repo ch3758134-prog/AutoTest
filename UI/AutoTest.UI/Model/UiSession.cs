@@ -11,6 +11,7 @@ namespace AutoTest.UI.Model;
 public sealed class UiSession
 {
     public string ProjectName { get; set; } = "未命名工作区";
+    public string LastWorkspace { get; set; } = "自动测试";
     public ObservableCollection<UiResource> Resources { get; set; } = [];
     public ObservableCollection<UiTestCase> Cases { get; set; } = [];
     public ObservableCollection<UiStep> CommonFlows { get; set; } = [];
