@@ -255,9 +255,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             StepSearch.SelectAll();
             e.Handled = true;
         }
-        else if (ctrl && e.Key == Key.Q)
+        else if (ctrl && (e.Key == Key.Q || e.Key == Key.P))
         {
-            CaseSearch.Focus();
+            OpenQuickPalette();
             e.Handled = true;
         }
     }
