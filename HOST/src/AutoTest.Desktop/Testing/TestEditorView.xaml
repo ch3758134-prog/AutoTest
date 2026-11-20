@@ -4,7 +4,7 @@
  FontFamily="{StaticResource UiFont}" FontSize="13" Background="White" Foreground="#1E2C41"
  PreviewKeyDown="Editor_KeyDown">
  <Grid>
-  <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="82"/>
+  <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="108"/>
    <RowDefinition Height="47"/><RowDefinition Height="*"/>
    <RowDefinition Height="24"/></Grid.RowDefinitions>
   <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
@@ -72,7 +72,7 @@
   <Border Grid.Row="1" Background="#F4F8FF" BorderBrush="#C8D9EB"
    BorderThickness="0,0,0,1">
    <Grid Margin="12,4">
-    <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="34"/></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="34"/><RowDefinition Height="34"/></Grid.RowDefinitions>
    <DockPanel Grid.Row="0" LastChildFill="True">
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="真实自动测试" FontWeight="SemiBold" Foreground="#28558A"
@@ -91,6 +91,15 @@
      ToolTip="{Binding RunSummary}"/>
    </DockPanel>
    <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
+    <TextBlock Text="ECU 编号（扫码输入）：" FontWeight="SemiBold"
+     Margin="0,0,7,0" VerticalAlignment="Center"/>
+    <TextBox Width="315" Height="28" VerticalContentAlignment="Center"
+     Text="{Binding DutIdentity,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+     ToolTip="扫码枪键盘输入或现场人工输入实际 ECU 唯一编号，绝不自动生成"/>
+    <TextBlock Text="本入口归档为开发运行，不计入出厂统计"
+     Foreground="#7A664B" Margin="10,0,0,0" VerticalAlignment="Center"/>
+   </StackPanel>
+   <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center">
     <StackPanel.Style><Style TargetType="StackPanel">
      <Style.Triggers><DataTrigger Binding="{Binding ExpectedFlashApproval}" Value="">
       <Setter Property="Visibility" Value="Collapsed"/>

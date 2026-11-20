@@ -1,5 +1,14 @@
 using AutoTest.Desktop.Hardware;
 using System.IO;
+using System.Collections.Immutable;
+using System.Security.Cryptography;
+using System.Text;
+using AutoTest.Contracts;
+using AutoTest.Core;
+using AutoTest.Application.TestRecord;
+using AutoTest.Records.Exports;
+using AutoTest.Records.Model;
+using AutoTest.Records.Storage;
 using AutoTest.Desktop.Projects;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Preparation;
@@ -48,10 +57,10 @@ public sealed class RealTestWorkbenchService
         "AUTHORIZE TEST RUN " + plan.Fingerprint;
 
     public Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
-        CancellationToken ct) => ExecuteAsync(document, confirmation, "", ct);
+        CancellationToken ct) => ExecuteAsync(document, confirmation, "", "", ct);
 
     public async Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
-        string flashConfirmation = "", CancellationToken ct = default)
+        string flashConfirmation = "", string dutIdentity = "", CancellationToken ct = default)
     {
         if (!await _station.WaitAsync(0, ct))
             throw new InvalidOperationException("Another test is already running.");
@@ -94,6 +103,10 @@ public sealed class RealTestWorkbenchService
                 !string.Equals(flashConfirmation, jobs.Values.Single().Consent,
                     StringComparison.Ordinal))
                 throw new UnauthorizedAccessException("实体 FLASH 授权不匹配；必须输入完整指纹。");
+            if (string.IsNullOrWhiteSpace(dutIdentity) ||
+                dutIdentity != dutIdentity.Trim() || dutIdentity.Length > 256 ||
+                dutIdentity.Any(char.IsControl))
+                throw new InvalidDataException("正式记录要求扫码枪或操作员输入有效 ECU 唯一编号；当前不能生成假编号。");
             await _signals.BindAsync(mappings, ct);
             actions = new ConfiguredStationActionPort(_hardware, _projects);
             await actions.PrepareAsync(mappings, ct);
@@ -112,9 +125,34 @@ public sealed class RealTestWorkbenchService
             var run = new RealRunCoordinator(_signals, actions, wave, flash);
             evidence = new RealRunEvidenceRecorder(_hardware, _signals);
             _running = run;
-            var result = await run.StartAsync(plan, ct);
-            var path = await evidence.SaveAsync(project.RootDirectory, result, CancellationToken.None);
-            return result with { EvidencePath = path };
+            // The reviewed RECORD service starts a durable RunRecord before TEST
+            // steps; only it can publish a final PASS after checking raw archives.
+            var db = new RecordDatabase(Path.Combine(project.RootDirectory,
+                "test-records", "r1-records.sqlite"));
+            await db.MigrateAsync(ct);
+            var writer = new RunRecordWriter(db);
+            var artifacts = new ArtifactRepository(Path.Combine(project.RootDirectory,
+                "test-records", "artifacts"));
+            var reports = new RunReportExporter(db, artifacts);
+            var record = FreezeActualRunIdentity(project, plan.Fingerprint, dutIdentity);
+            var capture = new RecordedRealRunEvidenceFinalizer(evidence, writer,
+                artifacts, project.RootDirectory);
+            var session = new RealTestRecordSession(record, writer, reports, capture);
+            var finished = await session.ExecuteAsync(run, plan,
+                Path.Combine(project.RootDirectory, "test-records", "reports"), ct);
+            var summary = await reports.ExportSummaryAsync(finished.Result.Run, ct);
+            var formalVerdict = summary.Header.Verdict switch
+            {
+                Verdict.Pass => RealTestVerdict.Passed,
+                Verdict.Fail => RealTestVerdict.Failed,
+                Verdict.Error => RealTestVerdict.Error,
+                _ => RealTestVerdict.Inconclusive
+            };
+            return finished.Result with
+            {
+                Verdict = formalVerdict,
+                EvidencePath = finished.Reports.HtmlPath
+            };
         }
         finally
         {
@@ -129,6 +167,46 @@ public sealed class RealTestWorkbenchService
             }
             _station.Release();
         }
+    }
+
+    private RunRecord FreezeActualRunIdentity(OpenProjectContext project,
+        string planFingerprint, string dutIdentity)
+    {
+        var assets = project.Definition.Assets.Select(a => a.ToReference())
+            .ToImmutableArray();
+        var projectSnapshot = new ProjectSnapshot(project.Definition.Id,
+            new ProjectRevision(project.Definition.Revision),
+            RevisionFingerprint.FromSha256(project.ManifestSha256),
+            assets, project.Definition.SchemaVersion);
+
+        // Fingerprint the CONFIGURED pin mapping, not an invented CAN channel.
+        var wiring = RevisionFingerprint.FromBytes(Encoding.UTF8.GetBytes(
+            "R1_STATION_ECU=" + StationCanWiring.DutConnectorPins + ":PORT" +
+            StationCanWiring.DutPort + "_KEY=" + StationCanWiring.KeypadConnectorPins +
+            ":PORT" + StationCanWiring.KeypadPort));
+        var selectedBench = _projects.SelectedBenchConfiguration;
+        var bench = project.Definition.Assets.FirstOrDefault(a => a.Id == selectedBench);
+        var benchRevision = bench is null
+            ? RevisionFingerprint.FromBytes("BENCH_NOT_SELECTED"u8)
+            : RevisionFingerprint.FromSha256(bench.Sha256);
+        var station = new StationProfile(
+            StationId.Create(_hardware.ConnectedDeviceIdentity ??
+                throw new InvalidOperationException("主控身份未确认，不能归档运行。")),
+            new BusRoleMap(wiring, StationCanWiring.DutPort, StationCanWiring.KeypadPort),
+            bench?.Name ?? "未选择工位配置（开发模式）", benchRevision);
+        var snapshot = new RunSnapshot(RunId.New(), projectSnapshot, station,
+            RevisionFingerprint.FromSha256(planFingerprint), assets);
+        // Manual/keyboard-wedge entry has NOT passed a published scan rule.
+        // Explicitly use Development, never classify as production output.
+        var identity = new SessionIdentity(dutIdentity,
+            RevisionFingerprint.FromBytes("R1_DEV_TYPED_IDENTITY_RULE_V1"u8).Sha256,
+            "OPERATOR_OR_KEYBOARD_WEDGE_UNVERIFIED");
+        var location = typeof(RealTestWorkbenchService).Assembly.Location;
+        var build = File.Exists(location)
+            ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(location)))
+            : typeof(RealTestWorkbenchService).Assembly.FullName ?? "HOST_BUILD_UNKNOWN";
+        return RunRecord.CreateFromSnapshot(snapshot, identity,
+            RecordRunMode.Development, DateTimeOffset.UtcNow, build);
     }
 
     public void RequestStop() => _running?.RequestStop();
