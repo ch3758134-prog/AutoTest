@@ -37,6 +37,7 @@ public interface IRealRunEvidenceFinalizer
     /// EvidenceRef via ArtifactRepository before the run is committed.
     /// Do not claim complete unless the capture was active for the entire run.
     /// </summary>
+    void ObserveCompletedRun(RealRunResult completed) { }
     ValueTask<RunEvidenceCaptureResult> FinalizeEvidenceAsync(RunId run, CancellationToken ct);
 }
 
@@ -352,6 +353,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         // ArtifactRepository links are immutable and may be attached only while
         // the run header is Writing. A failed flush/attach aborts normal completion.
         // The host supplies real capture; this backend never invents evidence bytes.
+        _evidenceFinalizer?.ObserveCompletedRun(completed);
         var capture = _evidenceFinalizer is null
             ? new RunEvidenceCaptureResult(false, 0, "RAW_CAPTURE_FINALIZER_NOT_CONNECTED")
             : await _evidenceFinalizer.FinalizeEvidenceAsync(RunId, ct)

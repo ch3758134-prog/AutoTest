@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using AutoTest.Contracts;
+using AutoTest.Core;
 using AutoTest.Desktop.Hardware;
 using AutoTest.Testing.Runtime;
 
@@ -20,6 +21,8 @@ public sealed class RealRunEvidenceRecorder : IDisposable
     private readonly object _gate = new();
     private readonly List<Line> _records = new();
     private long _dropped;
+    private long _sourceLost;
+    private long _observedFrames;
     private const int MaximumEvents = 100000;
 
     public RealRunEvidenceRecorder(HardwareConnectionService hardware, LiveDbcSignalService signals)
@@ -39,6 +42,8 @@ public sealed class RealRunEvidenceRecorder : IDisposable
     }
     private void OnFrame(CanObservation observed)
     {
+        Interlocked.Increment(ref _observedFrames);
+        if (observed.LostFrames != 0) Interlocked.Exchange(ref _sourceLost, observed.LostFrames);
         var f = observed.Frame;
         Append(new Line(observed.Time.Utc, "CAN_RX",
             f.Role + " " + (f.ExtendedId ? "EXT" : "STD") +
@@ -57,6 +62,25 @@ public sealed class RealRunEvidenceRecorder : IDisposable
     }
     private void OnHardware(string eventText) =>
         Append(new Line(DateTimeOffset.UtcNow, "DEVICE", eventText));
+
+    public (long DroppedEvents, long ObservedFrames) CaptureHealth()
+    {
+        lock (_gate) return (_dropped + Interlocked.Read(ref _sourceLost),
+            Interlocked.Read(ref _observedFrames));
+    }
+
+    public byte[]? FindRawFrameEvidence(EvidenceRef evidence)
+    {
+        if (evidence.Value == Guid.Empty) return null;
+        Line[] found;
+        lock (_gate) found = _records.Where(l => l.Evidence == evidence.ToString()).ToArray();
+        if (!found.Any(l => l.Kind == "CAN_RX")) return null;
+        return JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            EvidenceId = evidence.Value, Source = "REAL_USB_CAN_RX",
+            Observations = found
+        });
+    }
 
     public async Task<string> SaveAsync(string root, RealRunResult report, CancellationToken ct)
     {
@@ -82,7 +106,14 @@ public sealed class RealRunEvidenceRecorder : IDisposable
                 DroppedEvents = dropped,
                 Events = lines
             }, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllBytesAsync(temp, bytes, ct);
+            await using (var stream = new FileStream(temp, FileMode.CreateNew,
+                FileAccess.Write, FileShare.None, 65536,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                await stream.WriteAsync(bytes, ct);
+                await stream.FlushAsync(ct);
+                stream.Flush(true);
+            }
             File.Move(temp, path);
             return path;
         }
