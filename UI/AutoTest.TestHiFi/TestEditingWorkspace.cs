@@ -493,6 +493,9 @@ public partial class MainWindow
                 () => ChangeTest(() => stepSelected.Breakpoint = !stepSelected.Breakpoint)));
             inspector.Children.Add(EditorButton("增加缩进", () => ChangeTest(() => stepSelected.Depth = Math.Min(7, stepSelected.Depth + 1))));
             inspector.Children.Add(EditorButton("减少缩进", () => ChangeTest(() => stepSelected.Depth = Math.Max(0, stepSelected.Depth - 1))));
+            if (stepSelected.Type.StartsWith("CAN ", StringComparison.Ordinal))
+                inspector.Children.Add(EditorButton("从工程 DBC 选择报文 / 信号…",
+                    () => OpenStepDbcPicker(stepSelected)));
             foreach (var key in ParameterKeys(stepSelected.Type))
             {
                 var parameter = key;
@@ -512,6 +515,88 @@ public partial class MainWindow
         WorkspaceStatusText.Text = "TEST 编辑 · " + (_testProgramDocument?.Dirty == true ? "● 未保存更改" : "UI 文件可保存") +
             " · 执行器未接线";
     }
+    private void OpenStepDbcPicker(UiTestStep step)
+    {
+        var files = _workFiles.Workspace?.Assets.Where(a => a.Kind == "DBC").OrderBy(a => a.Name).ToArray() ?? [];
+        if (files.Length == 0)
+        {
+            MessageBox.Show(this,
+                "工程还没有 DBC 文件。可先从“工具 → DBC 编辑器”直接创建并定义报文/信号，再回来选择。",
+                "选择 DBC 资源", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = new Window
+        {
+            Owner = this, Title = "选择工程 DBC 报文与信号", Width = 870, Height = 560,
+            MinWidth = 670, MinHeight = 440, WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = Brushes.White, FontFamily = new FontFamily("Microsoft YaHei UI")
+        };
+        var shell = new Grid { Margin = new Thickness(15) };
+        shell.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        shell.RowDefinitions.Add(new RowDefinition { Height = new GridLength(48) });
+        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(190) });
+        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var fileList = new ListBox { ItemsSource = files, DisplayMemberPath = "Name",
+            Margin = new Thickness(0, 0, 10, 0) };
+        var messageList = new ListBox { DisplayMemberPath = "Label", Margin = new Thickness(0, 0, 10, 0) };
+        var signalList = new ListBox();
+        Grid.SetColumn(fileList, 0); Grid.SetColumn(messageList, 1); Grid.SetColumn(signalList, 2);
+        shell.Children.Add(fileList); shell.Children.Add(messageList); shell.Children.Add(signalList);
+        UiDocument? selectedDoc = null;
+        fileList.SelectionChanged += (_, _) =>
+        {
+            messageList.ItemsSource = null; signalList.ItemsSource = null;
+            if (fileList.SelectedItem is not UiAsset asset) return;
+            try
+            {
+                selectedDoc = _workFiles.OpenAsset(asset);
+                messageList.ItemsSource = UiDbcEditing.Messages(selectedDoc.Content);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            { ShowFileError("读取 DBC 文件失败", ex); }
+        };
+        messageList.SelectionChanged += (_, _) =>
+        {
+            signalList.ItemsSource = null;
+            if (selectedDoc is not null && messageList.SelectedItem is UiDbcEditing.Message message)
+                signalList.ItemsSource = UiDbcEditing.SignalNames(selectedDoc.Content, message.EncodedId);
+        };
+        var actions = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 10, 0, 0) };
+        actions.Children.Add(EditorButton("取消", () => dialog.Close()));
+        actions.Children.Add(EditorButton("引用选中报文 / 信号", () =>
+        {
+            if (fileList.SelectedItem is not UiAsset asset ||
+                messageList.SelectedItem is not UiDbcEditing.Message message)
+            {
+                MessageBox.Show(dialog, "请至少选择一个 DBC 文件及报文。", "引用 DBC");
+                return;
+            }
+            var signal = signalList.SelectedItem as string;
+            if (step.Type is "CAN 信号判定" or "等待 CAN 信号" && signal is null)
+            {
+                MessageBox.Show(dialog, "当前步骤需要选择一个真实 DBC 信号。", "引用 DBC");
+                return;
+            }
+            ChangeTest(() =>
+            {
+                step.Parameters["DBC 文件"] = asset.RelativePath;
+                step.Parameters["DBC 报文引用"] = message.Name;
+                step.Parameters["报文"] = message.Name;
+                step.Parameters["报文 ID"] = "0x" +
+                    (message.EncodedId & 0x1FFFFFFFu).ToString("X");
+                if (signal is not null) step.Parameters["信号"] = signal;
+            });
+            dialog.Close();
+        }));
+        Grid.SetRow(actions, 1); Grid.SetColumnSpan(actions, 3); shell.Children.Add(actions);
+        dialog.Content = shell;
+        fileList.SelectedItem = files.FirstOrDefault(a =>
+            a.RelativePath == step.Parameters.GetValueOrDefault("DBC 文件")) ?? files[0];
+        dialog.ShowDialog();
+    }
+
     private static string[] ParameterKeys(string type) => type switch
     {
         "CAN 单次发送" or "CAN 周期发送" => ["报文 ID", "数据 HEX", "DBC 报文引用", "周期 ms"],
