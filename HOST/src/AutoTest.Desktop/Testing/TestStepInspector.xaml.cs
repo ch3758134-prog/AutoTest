@@ -743,9 +743,11 @@ public partial class TestStepInspector : UserControl
                 var previous = _boundMappings.FirstOrDefault(x =>
                     string.Equals(x.Name, _editing?.Properties.GetValueOrDefault("target", ""),
                         StringComparison.OrdinalIgnoreCase));
-                if (previous is not null && (previous.Kind != TestTargetKind.CanMessage ||
-                    previous.CanId != mapping.CanId || previous.Extended != mapping.Extended))
-                    old = ""; // Choosing a different frame never transfers the old frame's bytes.
+                if (_legacySourceType != "CanSend" && (previous is null ||
+                    previous.Kind != TestTargetKind.CanMessage ||
+                    previous.Asset != mapping.Asset || previous.CanId != mapping.CanId ||
+                    previous.Extended != mapping.Extended))
+                    old = ""; // New/different CAN frames must not inherit a KEY "Pulse" value or unrelated frame bytes.
                 var dict = new Dictionary<string, string>(StringComparer.Ordinal);
                 if (old.Contains('='))
                     foreach (var segment in old.Split(';',
