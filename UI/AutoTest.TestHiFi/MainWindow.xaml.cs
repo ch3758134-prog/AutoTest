@@ -218,6 +218,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             StepList.SelectedItem = step;
             StepList.ScrollIntoView(step);
         }
+        if (_compactLayout)
+        {
+            _compactProblems=false;
+            _compactInspector=true;
+            UpdateCompactLayout();
+        }
         StatusText = "已定位演示问题：步骤 " + issue.StepNumber + " · " + issue.Description;
     }
 
@@ -238,6 +244,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void CollapseProblems_Click(object sender, RoutedEventArgs e)
     {
+        if(_compactLayout)
+        {
+            ToggleCompactProblems_Click(sender,e);
+            return;
+        }
         _issuesExpanded = !_issuesExpanded;
         IssuesRow.Height = _issuesExpanded ? new GridLength(165) : new GridLength(38);
         IssueHeadersRow.Height = _issuesExpanded ? new GridLength(26) : new GridLength(0);
