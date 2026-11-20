@@ -32,6 +32,7 @@ public sealed class UiDocument
     public UiAsset Asset { get; init; } = null!;
     public string Content { get; set; } = "";
     public string SavedText { get; set; } = "";
+    public Encoding OriginalEncoding { get; init; } = new UTF8Encoding(false, true);
     public bool Dirty => !string.Equals(Content, SavedText, StringComparison.Ordinal);
     public string Caption => Asset.Name + (Dirty ? " *" : "");
 }
@@ -151,8 +152,11 @@ public sealed class UiWorkspaceFiles
         RequireMember(asset);
         var old = OpenDocuments.FirstOrDefault(d => d.Asset.Id == asset.Id);
         if (old is not null) return old;
-        string text = File.ReadAllText(FullPath(asset.RelativePath), Encoding.UTF8);
-        var d = new UiDocument { Asset=asset, Content=text, SavedText=text };
+        var filePath = FullPath(asset.RelativePath);
+        var bytes = File.ReadAllBytes(filePath);
+        var (text, encoding) = ReadLossless(bytes);
+        var d = new UiDocument { Asset=asset, Content=text, SavedText=text,
+                                 OriginalEncoding=encoding };
         OpenDocuments.Add(d);
         return d;
     }
@@ -161,7 +165,7 @@ public sealed class UiWorkspaceFiles
     {
         RequireMember(doc.Asset);
         var path = FullPath(doc.Asset.RelativePath);
-        SaveAtomic(path, doc.Content);
+        SaveAtomic(path, doc.Content, doc.OriginalEncoding);
         doc.SavedText = doc.Content;
         doc.Asset.Revision++;
         SaveManifest();
@@ -325,14 +329,38 @@ public sealed class UiWorkspaceFiles
         if (!Workspace!.Assets.Any(a => a.Id == asset.Id))
             throw new InvalidOperationException("当前资源不属于打开的工程。");
     }
-    private static void SaveAtomic(string path, string text)
+    private static (string Text, Encoding Encoding) ReadLossless(byte[] bytes)
+    {
+        if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            return (Encoding.Unicode.GetString(bytes,2,bytes.Length-2), Encoding.Unicode);
+        if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+            return (Encoding.BigEndianUnicode.GetString(bytes,2,bytes.Length-2), Encoding.BigEndianUnicode);
+        var hasBom = bytes.Length >= 3 && bytes[0] == 0xEF &&
+                     bytes[1] == 0xBB && bytes[2] == 0xBF;
+        var encoding = new UTF8Encoding(hasBom,true);
+        try { return (encoding.GetString(bytes,hasBom?3:0,bytes.Length-(hasBom?3:0)),encoding); }
+        catch (DecoderFallbackException e)
+        {
+            throw new InvalidDataException(
+                "此文件不是可无损读取的 UTF-8/UTF-16 文本。为避免破坏旧 DBC/配置编码，本版拒绝将它当作文本编辑；请使用支持原编码的专业编辑器。",e);
+        }
+    }
+    private static void SaveAtomic(string path, string text, Encoding? targetEncoding = null)
     {
         var parent = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(parent);
         var tmp = Path.Combine(parent, "." + Path.GetFileName(path) + "." + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
-            File.WriteAllText(tmp, text, new UTF8Encoding(false));
+            var encoding = targetEncoding ?? new UTF8Encoding(false,true);
+            using (var stream = new FileStream(tmp, FileMode.CreateNew, FileAccess.Write))
+            {
+                var preamble = encoding.GetPreamble();
+                if (preamble.Length > 0) stream.Write(preamble);
+                var data = encoding.GetBytes(text);
+                stream.Write(data);
+                stream.Flush(true);
+            }
             File.Move(tmp, path, overwrite:true);
         }
         finally { if (File.Exists(tmp)) File.Delete(tmp); }
