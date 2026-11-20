@@ -125,6 +125,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Open(recent.LastProjectManifest);
+            _toolDrafts.Clear();
             RememberRecentProject(_workFiles.Manifest);
             RefreshProjectTree();
             foreach (var id in recent.OpenAssetIds.Distinct())
@@ -609,6 +610,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Create(dlg.FolderName,name);
+            _toolDrafts.Clear();
             RememberRecentProject(_workFiles.Manifest);
             _currentDocument=null; _selectedAsset=null;
             RefreshProjectTree();ShowProjectWorkspace();StoreSession();
@@ -626,6 +628,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Open(dlg.FileName);
+            _toolDrafts.Clear();
             RememberRecentProject(_workFiles.Manifest);
             _currentDocument=null; _selectedAsset=null;
             RefreshProjectTree();ShowProjectWorkspace();StoreSession();
@@ -664,6 +667,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Open(path);
+            _toolDrafts.Clear();
             RememberRecentProject(_workFiles.Manifest);
             _currentDocument=null;_selectedAsset=null;RefreshProjectTree();ShowProjectWorkspace();StoreSession();
         }
@@ -845,6 +849,16 @@ public partial class MainWindow
     private void SaveDocument_Click(object sender,RoutedEventArgs e)=>SaveCurrentDocument();
     private bool SaveCurrentDocument()
     {
+        if (_activeToolPage is "DBC 编辑器" or "UDS 调试" or "ECU 烧录" or "波形分析" or "手动台架")
+        {
+            if (!_workFiles.HasProject)
+            {
+                StatusText = "请先打开 UI 工程，然后保存专业工具配置。";
+                return false;
+            }
+            SaveToolDraft(Draft(_activeToolPage));
+            return true;
+        }
         if (_activeToolPage == "TEST")
         {
             StatusText = "TEST 页面仍是高保真视觉样本，不能作为正式测试程序保存。请从工程树打开实际资源文件。";
@@ -992,6 +1006,7 @@ public partial class MainWindow
     {
         if(!ConfirmDiscardOpenFiles())return;
         _workFiles.Close();
+        _toolDrafts.Clear();
         _restoreOnStartup=false;
         _currentDocument=null;_selectedAsset=null;
         RefreshProjectTree(); ShowTestWorkspace(); StoreSession();
