@@ -131,6 +131,38 @@ public sealed class RecordedRealRunEvidenceFinalizer : IRealRunEvidenceFinalizer
             await _writer.AttachArtifactAsync(run, linked, ct);
         }
 
+        // A successful wave assertion must be backed by *both* the captured
+        // input and a recomputed comparison referencing that exact input.
+        foreach (var fact in result.Facts.Where(f =>
+                     f.Type == "WaveCompare" && f.Status == RealStepStatus.Completed))
+        {
+            var tokens = (fact.Evidence ?? "").Split(',',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            try
+            {
+                if (tokens.Length != 2 ||
+                    !Guid.TryParse(tokens[0], out var captureId) ||
+                    !Guid.TryParse(tokens[1], out var comparisonId) ||
+                    captureId == comparisonId)
+                {
+                    missing++;
+                    continue;
+                }
+                var capture = waveStore.Read(new EvidenceRef(captureId));
+                var comparison = waveStore.Read(new EvidenceRef(comparisonId));
+                if (capture.Kind != "Capture" || comparison.Kind != "Comparison" ||
+                    comparison.CaptureEvidence?.Value.Value != captureId ||
+                    comparison.Result?.Verdict != Verdict.Pass)
+                    missing++;
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or
+                                       UnauthorizedAccessException or ArgumentException or
+                                       System.Text.Json.JsonException)
+            {
+                missing++;
+            }
+        }
+
         var health = _raw.CaptureHealth();
         bool complete = health.DroppedEvents == 0 &&
             health.ObservedFrames > 0 && missing == 0;
