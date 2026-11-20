@@ -340,6 +340,13 @@ public sealed class UiWorkspaceFiles
             name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
             name.Contains('/') || name.Contains('\\'))
             throw new ArgumentException("名称不能为空、过长或含有不允许的文件字符。");
+        var stem = name.Split('.')[0].ToUpperInvariant();
+        if (stem is "CON" or "PRN" or "AUX" or "NUL" ||
+            (stem.Length == 4 &&
+             (stem.StartsWith("COM", StringComparison.Ordinal) ||
+              stem.StartsWith("LPT", StringComparison.Ordinal)) &&
+             stem[3] is >= '1' and <= '9'))
+            throw new ArgumentException("不能使用 Windows 保留设备名作为资源名称。");
         return name;
     }
     private void Require() { if (!HasProject) throw new InvalidOperationException("请先新建或打开 UI 工作区。"); }
