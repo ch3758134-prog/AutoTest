@@ -635,6 +635,7 @@ public sealed class RealRunCoordinator
                         break;
                     }
                     case "WaveAnalyze":
+                    case "WaveCompare":
                     {
                         var profileName = Property(node, "profile");
                         TestWaveResult analysis;
@@ -657,10 +658,37 @@ public sealed class RealRunCoordinator
                         variables[Property(node, "variable")] = new TestDatum(analysis.Value,
                             analysis.Available ? TestSignalStatus.Valid : TestSignalStatus.DecodeError,
                             DateTimeOffset.UtcNow, analysis.Evidence);
-                        if (!analysis.Available) incomplete = true;
-                        Fact(node, analysis.Available ? RealStepStatus.Completed : RealStepStatus.InvalidData,
-                            actual: analysis.Value ?? "", detail: analysis.Code + ": " + analysis.Detail,
-                            evidence: analysis.Evidence);
+                        if (kind == "WaveCompare")
+                        {
+                            // Only a completed, quality-checked real waveform comparison
+                            // can produce an assertion. Missing/reference-incompatible
+                            // evidence stays inconclusive; it is never a PASS.
+                            var status = analysis.Available && analysis.Code == "Pass"
+                                ? RealStepStatus.Completed
+                                : analysis.Available && analysis.Code == "Fail"
+                                    ? RealStepStatus.ConditionFalse
+                                    : analysis.Available && analysis.Code == "Inconclusive"
+                                        ? RealStepStatus.NoData : RealStepStatus.InvalidData;
+                            if (status is RealStepStatus.Completed or RealStepStatus.ConditionFalse)
+                                asserted = true;
+                            if (status == RealStepStatus.ConditionFalse)
+                                failed = true;
+                            if (status is RealStepStatus.NoData or RealStepStatus.InvalidData)
+                                incomplete = true;
+                            Fact(node, status, expected: "Pass",
+                                actual: analysis.Value ?? analysis.Code,
+                                detail: "Waveform judgement " + analysis.Code + ": " + analysis.Detail,
+                                evidence: analysis.Evidence);
+                        }
+                        else
+                        {
+                            // Analysis only produces data; never an implicit verdict.
+                            if (!analysis.Available) incomplete = true;
+                            Fact(node, analysis.Available ? RealStepStatus.Completed :
+                                RealStepStatus.InvalidData, actual: analysis.Value ?? "",
+                                detail: analysis.Code + ": " + analysis.Detail,
+                                evidence: analysis.Evidence);
+                        }
                         break;
                     }
                     default:
