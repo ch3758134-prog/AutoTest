@@ -442,6 +442,7 @@
                       </Button.Style>
                     </Button>
                     <Button Content="×" Tag="{Binding}" Click="ClosePage_Click"
+                            Visibility="{Binding CanClose,Converter={StaticResource VisibleIfTrue}}"
                             Style="{StaticResource ActionButton}" Width="28" Padding="3,2"
                             ToolTip="关闭文档（未保存时先确认）"/>
                   </StackPanel>
