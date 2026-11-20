@@ -120,16 +120,29 @@ public static class StepTreeValidator
                     timeout is < 1 or > 600000)
                     errors.Add($"{location}: CAN 信号判定超时应在 1～600000 毫秒内。");
             }
-            if (!allowIncompleteSteps && n.Type == "WaveAnalyze" &&
+            if (!allowIncompleteSteps && n.Type is ("WaveAnalyze" or "WaveCompare") &&
                 string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("profile", "")) &&
                 string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("reference", "")))
                 errors.Add($"{location}: wave analysis requires a named reference or mapped profile");
-            if (!allowIncompleteSteps && n.Type == "WaveAnalyze" &&
+            if (!allowIncompleteSteps && n.Type is ("WaveAnalyze" or "WaveCompare") &&
                 n.Properties.TryGetValue("profile", out var profileName) &&
                 !string.IsNullOrWhiteSpace(profileName) &&
                 !document.Mappings.Any(m => m.Kind == TestTargetKind.WaveProfile &&
                     string.Equals(m.Name, profileName, StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped wave analysis profile {profileName}");
+            if (!allowIncompleteSteps && n.Type is ("WaveAnalyze" or "WaveCompare"))
+            {
+                var toleranceText = n.Properties.GetValueOrDefault("tolerance", "");
+                var coverageText = n.Properties.GetValueOrDefault("coverage", "");
+                if (!double.TryParse(toleranceText, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var tolerance) ||
+                    !double.IsFinite(tolerance) || tolerance < 0)
+                    errors.Add($"{location}: waveform absolute tolerance must be finite and nonnegative");
+                if (!double.TryParse(coverageText, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var coverage) ||
+                    !double.IsFinite(coverage) || coverage is < 0 or > 1)
+                    errors.Add($"{location}: waveform coverage must be within 0..1");
+            }
             if (n.Type == "Case" && parent != "Switch") errors.Add($"{location}: Case outside Switch");
             if (!allowIncompleteSteps && n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
                 !int.TryParse(count, out var loops) || loops < 0 || loops > 1000))
