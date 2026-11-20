@@ -23,6 +23,7 @@ public partial class MainWindow
     private UiFileDocument? _activeFile;
     private WorkspacePage? _activePage;
     private UiAsset? _copiedAsset;
+    private string _navigatorMode = "cases";
     private bool _restoringSession;
     private LocalSession _session = new();
     private Dictionary<string,string> _recovery = [];
@@ -594,6 +595,9 @@ public partial class MainWindow
     }
     private void ShowNavigator(string mode)
     {
+        _navigatorMode=mode;
+        CaseSearch.Text = "";
+        CaseSearchHint.Text = mode=="cases" ? "⌕  筛选测试用例…" : "⌕  筛选工程资源…";
         bool cases=mode=="cases";
         CaseList.Visibility=cases?Visibility.Visible:Visibility.Collapsed;
         ResourceExplorer.Visibility=cases?Visibility.Collapsed:Visibility.Visible;
@@ -601,12 +605,22 @@ public partial class MainWindow
         FlowTab.Style=(Style)FindResource(mode=="FLOW"?"TopTabSelected":"TopTab");
         ResourceTab.Style=(Style)FindResource(mode=="resources"?"TopTabSelected":"TopTab");
         var view=CollectionViewSource.GetDefaultView(Assets);
-        view.Filter=mode=="FLOW"?o=>o is UiAsset a && a.Kind=="FLOW":null;
+        view.Filter=o=>o is UiAsset a && (mode!="FLOW" || a.Kind=="FLOW");
         view.Refresh();
         if(_workspace is null && !cases)
             StatusText="请先通过文件菜单创建 UI 工程；此处将显示实际磁盘资源。";
     }
 
+    private void SearchResources()
+    {
+        if (_navigatorMode=="cases") return;
+        var q=CaseSearch.Text.Trim();
+        var v=CollectionViewSource.GetDefaultView(Assets);
+        v.Filter=o=>o is UiAsset a && (_navigatorMode!="FLOW" || a.Kind=="FLOW") &&
+            (q.Length==0 || a.Name.Contains(q,StringComparison.OrdinalIgnoreCase) ||
+             a.KindLabel.Contains(q,StringComparison.OrdinalIgnoreCase));
+        v.Refresh();
+    }
     private void ResetLayout_Click(object sender,RoutedEventArgs e)
     {
         NavigatorColumn.Width=new GridLength(294);
@@ -627,6 +641,10 @@ public partial class MainWindow
         _session.InspectorWidth=InspectorColumn.Width.Value;
         _session.IssuesHeight=IssuesRow.Height.Value;
         _session.IssuesExpanded=_issuesExpanded;
+        _session.SelectedPreviewCaseId=SelectedCase?.Id;
+        _session.SelectedPreviewPhase=_phase;
+        _session.SelectedPreviewStep=(StepList.SelectedItem as DemoStep)?.Number ?? 16;
+        _session.NavigatorMode=_navigatorMode;
         try {WorkspaceStorage.SaveSession(_session);}
         catch(Exception ex) when(IsFileError(ex)){StatusText="会话布局保存失败："+ex.Message;}
     }
@@ -643,6 +661,14 @@ public partial class MainWindow
             if(!_session.IssuesExpanded)CollapseProblems_Click(sender,e);
             if(_session.IssuesHeight>=80 && _session.IssuesHeight<=380 && _session.IssuesExpanded)
                 IssuesRow.Height=new GridLength(_session.IssuesHeight);
+            var restoredCase=Cases.FirstOrDefault(c=>c.Id==_session.SelectedPreviewCaseId);
+            if(restoredCase is not null)CaseList.SelectedItem=restoredCase;
+            if(_session.SelectedPreviewPhase is "准备" or "测试" or "清理")
+            {
+                ShowPhase(_session.SelectedPreviewPhase);
+                var restoredStep=VisibleSteps.FirstOrDefault(x=>x.Number==_session.SelectedPreviewStep);
+                if(restoredStep is not null)StepList.SelectedItem=restoredStep;
+            }
             if(_session.ProjectPath is { } path && File.Exists(path))
             {
                 var manifest=WorkspaceStorage.OpenManifest(path);
@@ -662,6 +688,7 @@ public partial class MainWindow
                 }
                 var selected=OpenPages.FirstOrDefault(p=>p.Key==_session.ActivePageKey);
                 ShowPage(selected??_previewPage!);
+                ShowNavigator(_session.NavigatorMode is "cases" or "resources" or "FLOW" ? _session.NavigatorMode : "cases");
             }
         }
         catch(Exception ex)when(IsFileError(ex))
