@@ -229,7 +229,7 @@ public sealed partial class ManualBenchViewModel
         public string Summary => UseDbc && DbcMessage is not null
             ? DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message) + " · 0x" + DbcMessage.Message.ArbitrationId.ToString("X")
             : "0x" + IdHex + (Extended ? " 扩展" : " 标准");
-        public string ModeLabel => IsPeriodic ? "周期暂不可用" : "单发";
+        public string ModeLabel => IsPeriodic ? "周期 " + PeriodText + "ms" : "单发";
         // The send table is the only persistent raw-data preview. DBC signal
         // edits are encoded by the same production codec used when sending.
         public string PreviewId
@@ -487,15 +487,9 @@ public sealed partial class ManualBenchViewModel
             throw new InvalidOperationException("请选择 1～32 条 ECU CAN 报文。");
         var entries = chosen.Select(row =>
         {
-            // Firmware's existing 0x50/51/52/53 scheduler is hard-wired to
-            // KEY CAN (not ECU CAN). Never enable it
-            // for DUT traffic just because host USB 0x40 and 0x41 are remapped.
-            // Manual periodic mode remains blocked until a separately verified
-            // ECU CAN scheduling contract is available.
-            if (row.IsPeriodic && single is null)
-                throw new InvalidOperationException(
-                    "手动台架周期发送暂不可用：固件 0x50 广播功能连接 KEY CAN（B1/B11），" +
-                    "不能用于 ECU CAN（A1/A12）。");
+            // Host-timed ECU CAN USB 0x40 only. Firmware 0x50 scheduling is KEY CAN.
+            // Every ECU CAN cycle uses the real physical fence, per-write ACK,
+            // cancellation, bounded session and maximum authorized writes.
             var frame = row.BuildFrame();
             int period = 0;
             if (row.IsPeriodic && single is null && (!int.TryParse(row.PeriodText, NumberStyles.None,
