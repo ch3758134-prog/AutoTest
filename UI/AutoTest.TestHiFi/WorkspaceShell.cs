@@ -11,6 +11,10 @@ namespace AutoTest.TestHiFi;
 public partial class MainWindow
 {
     private readonly UiWorkspaceFiles _workFiles = new();
+    private bool _isCompact;
+    private bool _showCompactInspector;
+    private double _wideNavWidth = 294;
+    private double _wideInspectorWidth = 400;
     private UiDocument? _currentDocument;
     private UiAsset? _selectedAsset;
     private string _activeToolPage = "工程与文件";
@@ -21,6 +25,59 @@ public partial class MainWindow
         Path.GetExtension(asset.RelativePath).ToLowerInvariant() is
             ".hex" or ".bin" or ".dll" or ".exe" or ".elf" or ".mot" or ".s19" or ".zip" or ".xlsx" or ".pdf";
 
+    private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        ApplyResponsiveLayout();
+
+    private void CompactInspectorToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isCompact) return;
+        _showCompactInspector = !_showCompactInspector;
+        ApplyResponsiveLayout();
+    }
+
+    private void ApplyResponsiveLayout()
+    {
+        if (!_ready || WorkRootGrid is null) return;
+        bool compact = ActualWidth < 1310;
+        if (compact && !_isCompact)
+        {
+            if (NavWidth.ActualWidth > 100) _wideNavWidth = NavWidth.ActualWidth;
+            if (InspectorWidth.ActualWidth > 150) _wideInspectorWidth = InspectorWidth.ActualWidth;
+        }
+        _isCompact = compact;
+        CompactInspectorToggle.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
+        if (compact)
+        {
+            NavWidth.Width = new GridLength(220);
+            NavDividerWidth.Width = new GridLength(6);
+            CenterWidth.Width = new GridLength(1, GridUnitType.Star);
+            InspectorDividerWidth.Width = new GridLength(0);
+            InspectorWidth.Width = new GridLength(0);
+            Grid.SetColumn(TestInspectorPane, 2);
+            Grid.SetColumnSpan(TestInspectorPane, 3);
+            TestInspectorPane.Visibility = _showCompactInspector ? Visibility.Visible : Visibility.Collapsed;
+            TestDocumentHeader.Visibility = _showCompactInspector ? Visibility.Collapsed : Visibility.Visible;
+            TestStepsPane.Visibility = _showCompactInspector ? Visibility.Collapsed : Visibility.Visible;
+            CompactInspectorToggle.Content = _showCompactInspector
+                ? "← 返回步骤结构" : "查看步骤参数 →";
+            IssuesRow.Height = new GridLength(_issuesExpanded ? 116 : 38);
+        }
+        else
+        {
+            NavWidth.Width = new GridLength(Math.Clamp(_wideNavWidth, 220, 350));
+            NavDividerWidth.Width = new GridLength(7);
+            CenterWidth.Width = new GridLength(1,GridUnitType.Star);
+            InspectorDividerWidth.Width = new GridLength(7);
+            InspectorWidth.Width = new GridLength(Math.Clamp(_wideInspectorWidth, 330, 460));
+            Grid.SetColumn(TestInspectorPane,4);
+            Grid.SetColumnSpan(TestInspectorPane,1);
+            TestInspectorPane.Visibility = Visibility.Visible;
+            TestDocumentHeader.Visibility = Visibility.Visible;
+            TestStepsPane.Visibility = Visibility.Visible;
+            IssuesRow.Height = new GridLength(_issuesExpanded ? 165 : 38);
+        }
+    }
+
     private void InitializeWorkspaceShell()
     {
         // The high fidelity TC-003 TEST editor remains alive below the workspace
@@ -28,6 +85,7 @@ public partial class MainWindow
         RefreshProjectTree();
         RefreshTabStrip();
         ShowTestWorkspace();
+        ApplyResponsiveLayout();
         Dispatcher.BeginInvoke(new Action(RestoreLastSession));
     }
 
