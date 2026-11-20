@@ -377,7 +377,7 @@
   <!-- Wide grouped palette: common actions visible together, one click inserts a formal TEST draft. -->
   <Popup x:Name="ActionPalette" Placement="Center"
    PlacementTarget="{Binding ElementName=StepsList}" StaysOpen="False" AllowsTransparency="True">
-   <Border x:Name="PaletteSurface" Width="740" MaxHeight="630" Background="White"
+   <Border x:Name="PaletteSurface" Width="720" MaxHeight="580" Background="White"
     CornerRadius="10" BorderBrush="#DFE5E4" BorderThickness="1" Padding="16,13">
     <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.24"/></Border.Effect>
     <DockPanel LastChildFill="True">
@@ -408,58 +408,71 @@
       <TextBlock Text="单击即添加  ·  Enter 添加所选  ·  Esc 关闭"
        Foreground="#7A8EA6" FontSize="11" VerticalAlignment="Center"/>
      </DockPanel>
-     <ListBox x:Name="PaletteList" MaxHeight="430" MinHeight="160"
-      MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
-      PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"
-      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-      ScrollViewer.VerticalScrollBarVisibility="Auto"
-      Background="#FAFBFB" BorderBrush="#E1E7E5" BorderThickness="1"
-      FontSize="12">
-      <ListBox.GroupStyle>
-       <GroupStyle>
-        <GroupStyle.HeaderTemplate>
-         <DataTemplate>
-          <Border Background="#F6F8FB" CornerRadius="5" Padding="10,7"
-           Margin="5,10,5,4">
-           <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
-            Foreground="#455263"/>
-          </Border>
-         </DataTemplate>
-        </GroupStyle.HeaderTemplate>
-        <GroupStyle.Panel>
-         <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
-        </GroupStyle.Panel>
-       </GroupStyle>
-      </ListBox.GroupStyle>
-      <ListBox.ItemContainerStyle>
-       <Style TargetType="{x:Type ListBoxItem}">
-        <Setter Property="MinWidth" Value="270"/>
-        <Setter Property="MinHeight" Value="38"/>
-        <Setter Property="Margin" Value="5,3"/>
-        <Setter Property="Padding" Value="10,7"/>
-        <Setter Property="Background" Value="White"/>
-        <Setter Property="BorderBrush" Value="#DEE6E3"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Style.Triggers>
-         <Trigger Property="IsMouseOver" Value="True">
-          <Setter Property="Background" Value="#EDF6F3"/>
-          <Setter Property="BorderBrush" Value="#9EBCE8"/>
-         </Trigger>
-         <Trigger Property="IsSelected" Value="True">
-          <Setter Property="Background" Value="#E8F5F1"/>
-          <Setter Property="BorderBrush" Value="#89B0E9"/>
-         </Trigger>
-        </Style.Triggers>
-       </Style>
-      </ListBox.ItemContainerStyle>
-      <ListBox.ItemTemplate>
-       <DataTemplate>
-        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12"
-         ToolTip="{Binding Description}" TextTrimming="CharacterEllipsis"/>
-       </DataTemplate>
-      </ListBox.ItemTemplate>
-     </ListBox>
+     <Grid>
+      <Grid.ColumnDefinitions>
+       <ColumnDefinition Width="148"/>
+       <ColumnDefinition Width="10"/>
+       <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <ListBox x:Name="PaletteCategories" Grid.Column="0"
+       SelectionChanged="PaletteCategory_Changed" Background="#F6F8FA"
+       BorderBrush="#E1E7E5" BorderThickness="1" FontSize="12">
+       <ListBox.ItemContainerStyle>
+        <Style TargetType="{x:Type ListBoxItem}">
+         <Setter Property="Padding" Value="10,10"/>
+         <Setter Property="Margin" Value="4,3"/>
+         <Setter Property="Foreground" Value="#334252"/>
+         <Style.Triggers>
+          <Trigger Property="IsSelected" Value="True">
+           <Setter Property="Background" Value="#E8F0FC"/>
+           <Setter Property="Foreground" Value="#1C5DA6"/>
+          </Trigger>
+         </Style.Triggers>
+        </Style>
+       </ListBox.ItemContainerStyle>
+      </ListBox>
+      <ListBox x:Name="PaletteList" Grid.Column="2" MaxHeight="410" MinHeight="230"
+       MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
+       PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"
+       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+       ScrollViewer.VerticalScrollBarVisibility="Auto"
+       Background="#FFFFFF" BorderBrush="#E1E7E5" BorderThickness="1" FontSize="12">
+       <ListBox.ItemsPanel>
+        <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+       </ListBox.ItemsPanel>
+       <ListBox.ItemContainerStyle>
+        <Style TargetType="{x:Type ListBoxItem}">
+         <Setter Property="MinHeight" Value="49"/>
+         <Setter Property="Margin" Value="5,4"/>
+         <Setter Property="Padding" Value="10,8"/>
+         <Setter Property="Background" Value="#FBFCFD"/>
+         <Setter Property="BorderBrush" Value="#DEE6E8"/>
+         <Setter Property="BorderThickness" Value="1"/>
+         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+         <Style.Triggers>
+          <Trigger Property="IsMouseOver" Value="True">
+           <Setter Property="Background" Value="#F0F5FC"/>
+           <Setter Property="BorderBrush" Value="#9EBCE8"/>
+          </Trigger>
+          <Trigger Property="IsSelected" Value="True">
+           <Setter Property="Background" Value="#E7F0FF"/>
+           <Setter Property="BorderBrush" Value="#89B0E9"/>
+          </Trigger>
+         </Style.Triggers>
+        </Style>
+       </ListBox.ItemContainerStyle>
+       <ListBox.ItemTemplate>
+        <DataTemplate>
+         <StackPanel ToolTip="{Binding Description}">
+          <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+           Foreground="#273B50" FontSize="12" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="{Binding Category}" FontSize="10"
+           Foreground="#6B7F94" Margin="0,4,0,0"/>
+         </StackPanel>
+        </DataTemplate>
+       </ListBox.ItemTemplate>
+      </ListBox>
+     </Grid>
     </DockPanel>
    </Border>
   </Popup>
