@@ -172,7 +172,7 @@ public partial class MainWindow
             DetachPage(page);
             OpenPages.Remove(page);
         }
-        _projectUndo.Clear(); _projectRedo.Clear();
+        _projectUndo.Clear(); _projectRedo.Clear(); _copiedAsset=null;
         Assets.Clear();
         foreach (var asset in manifest.Assets) Assets.Add(asset);
         ProjectBreadcrumb = manifest.Name;
@@ -213,7 +213,7 @@ public partial class MainWindow
         {
             DetachPage(page); OpenPages.Remove(page);
         }
-        Assets.Clear(); _projectUndo.Clear(); _projectRedo.Clear();
+        Assets.Clear(); _projectUndo.Clear(); _projectRedo.Clear(); _copiedAsset=null;
         ProjectBreadcrumb = "未打开 UI 工程";
         ProjectStatusText = "   │   UI 工程未打开   │   TEST 视觉样本";
         ShowPage(_previewPage!); ShowNavigator("cases"); SaveSessionState();
@@ -296,8 +296,9 @@ public partial class MainWindow
     {
         if (GetAsset() is UiAsset asset) OpenAsset(asset);
     }
-    private UiAsset? GetAsset() => AssetList.SelectedItem as UiAsset ?? _selectedAsset ??
-        (OpenPages.FirstOrDefault(p=>ReferenceEquals(p,_activePage))?.Document?.Asset);
+    private UiAsset? GetAsset() => ResourceExplorer.Visibility==Visibility.Visible
+        ? AssetList.SelectedItem as UiAsset
+        : ActiveFile?.Asset;
 
     private void OpenAsset(UiAsset asset, bool activate=true)
     {
