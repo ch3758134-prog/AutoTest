@@ -543,19 +543,10 @@ public partial class TestStepInspector : UserControl
         // display name but a newer asset revision.
         var originallyBound = _boundMappings.FirstOrDefault(x =>
             string.Equals(x.Name, oldTargetName, StringComparison.OrdinalIgnoreCase));
-        if (IsCanSend && originallyBound is { Kind: TestTargetKind.CanMessage } saved &&
-            !_catalog.Any(x => x.Mapping == saved))
-        {
-            // Prefer the unique matching current DBC at edit time. The old
-            // persisted reference remains unchanged until the operator applies
-            // and saves the edited TEST step.
-            var current = _catalog.Where(x =>
-                x.Mapping.Kind == TestTargetKind.CanMessage && x.Message is not null &&
-                x.Mapping.CanId == saved.CanId &&
-                x.Mapping.Extended == saved.Extended &&
-                x.Mapping.Asset == saved.Asset).ToArray();
-            if (current.Length == 1) originallyBound = current[0].Mapping;
-        }
+        // Keep the exact pinned revision while authoring. A new DBC revision
+        // is never adopted merely because the CAN ID matches: bit layout,
+        // scaling and enum values may have changed. The operator must choose
+        // a new result or use the explicit rebind action.
         ApplyTargetFilter("", originallyBound, oldTargetName);
         if (originallyBound is not null &&
             !_catalog.Any(x => x.Mapping == originallyBound) &&
