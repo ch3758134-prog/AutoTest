@@ -21,12 +21,14 @@ public sealed partial class ManualBenchViewModel
     public sealed class BenchCanRow : BindableBase
     {
         private string _name;
-        private string _idHex = "701", _dataHex = "", _periodText = "100", _result = "待发送";
+        private string _idHex = "701", _dataHex = "00 00 00 00 00 00 00 00", _periodText = "100", _result = "待发送";
         private bool _included = true, _extended, _periodic, _useDbc;
         private bool _lockedToAuthorizedBatch;
         private bool _batchInProgress;
         private DbcChoice? _dbcChoice;
         private int _sent;
+        private bool _synchronizingCanSignals;
+        private string _signalEditError = "";
         public event Action? Edited;
 
         public BenchCanRow(string name) : this(name, new ObservableCollection<DbcChoice>()) { }
@@ -40,7 +42,17 @@ public sealed partial class ManualBenchViewModel
         public ObservableCollection<DbcChoice> DbcChoices { get; }
         public string Name { get => _name; set { if (SetProperty(ref _name, value ?? "")) Notify(); } }
         public string IdHex { get => _idHex; set { if (SetProperty(ref _idHex, value ?? "")) Notify(); } }
-        public string DataHex { get => _dataHex; set { if (SetProperty(ref _dataHex, value ?? "")) Notify(); } }
+        public string DataHex
+        {
+            get => _dataHex;
+            set
+            {
+                if (!SetProperty(ref _dataHex, value ?? "")) return;
+                _signalEditError = "";
+                SynchronizeCanSignals();
+                Notify();
+            }
+        }
         public string PeriodText { get => _periodText; set { if (SetProperty(ref _periodText, value ?? "")) Notify(); } }
         public bool Included { get => _included; set { if (SetProperty(ref _included, value)) Notify(); } }
         public bool CanToggleIncluded => !_batchInProgress || _lockedToAuthorizedBatch;
@@ -54,7 +66,18 @@ public sealed partial class ManualBenchViewModel
         }
         public bool Extended { get => _extended; set { if (SetProperty(ref _extended, value)) Notify(); } }
         public bool IsPeriodic { get => _periodic; set { if (SetProperty(ref _periodic, value)) Notify(); } }
-        public bool UseDbc { get => _useDbc; set { if (SetProperty(ref _useDbc, value)) Notify(); } }
+        public bool UseDbc
+        {
+            get => _useDbc;
+            set
+            {
+                if (!SetProperty(ref _useDbc, value)) return;
+                if (value && _dbcChoice is not null)
+                    AdoptDbcIdentity(_dbcChoice);
+                SynchronizeCanSignals();
+                Notify();
+            }
+        }
         public bool IsRaw => !UseDbc;
         public DbcChoice? DbcMessage
         {
@@ -64,7 +87,26 @@ public sealed partial class ManualBenchViewModel
                 if (!SetProperty(ref _dbcChoice, value)) return;
                 foreach (var signal in SignalValues) signal.PropertyChanged -= OnSignalChanged;
                 SignalValues.Clear();
+                _signalEditError = "";
                 if (value is not null)
+                {
+                    var previousId = IdHex.Trim();
+                    if (previousId.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                        previousId = previousId[2..];
+                    var sameFrame = uint.TryParse(previousId, NumberStyles.HexNumber,
+                            CultureInfo.InvariantCulture, out var oldId) &&
+                        oldId == value.Message.ArbitrationId && Extended == value.Message.IsExtended &&
+                        CleanDataHex().Length == value.Message.Dlc * 2;
+                    _useDbc = true;
+                    RaisePropertyChanged(nameof(UseDbc));
+                    AdoptDbcIdentity(value);
+                    if (!sameFrame)
+                        DataHex = FormatHex(new byte[value.Message.Dlc]);
+
+                    var overlapping = new HashSet<int>();
+                    var editingSafe = !value.Message.Signals.Any(signal =>
+                        !string.IsNullOrEmpty(signal.Multiplexer) ||
+                        DbcSignalCodec.BitPositions(signal).Any(bit => !overlapping.Add(bit)));
                     foreach (var signal in value.Message.Signals)
                     {
                         var alias = value.DisplayNames.SignalAlias(value.Message.Id, signal.Name);
@@ -73,16 +115,87 @@ public sealed partial class ManualBenchViewModel
                         var entry = new DbcSignalValue(signal,
                             string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
                             value.DisplayNames.SignalDescription(value.Message.Id, signal.Name),
-                            labels, summary: value.DisplayNames.SignalSummary(value.Message.Id, signal.Name));
+                            labels, summary: value.DisplayNames.SignalSummary(value.Message.Id, signal.Name),
+                            isEditable: editingSafe);
                         entry.PropertyChanged += OnSignalChanged;
                         SignalValues.Add(entry);
                     }
+                    SynchronizeCanSignals();
+                }
+                else
+                {
+                    _useDbc = false;
+                    RaisePropertyChanged(nameof(UseDbc));
+                }
                 Notify();
             }
         }
+
+        private void AdoptDbcIdentity(DbcChoice choice)
+        {
+            IdHex = "0x" + choice.Message.ArbitrationId.ToString("X", CultureInfo.InvariantCulture);
+            Extended = choice.Message.IsExtended;
+        }
+
+        private void SynchronizeCanSignals()
+        {
+            if (_synchronizingCanSignals || !UseDbc || DbcMessage is null) return;
+            byte[]? data = null;
+            try
+            {
+                var bytes = ReadDataBytes();
+                if (bytes.Length == DbcMessage.Message.Dlc) data = bytes;
+            }
+            catch (ArgumentException) { /* DATA can be incomplete while typing. */ }
+
+            _synchronizingCanSignals = true;
+            try
+            {
+                foreach (var field in SignalValues)
+                {
+                    var decoded = "";
+                    if (data is not null)
+                    {
+                        try
+                        {
+                            decoded = DbcSignalCodec.DecodePhysical(field.Signal, data)
+                                .ToString("G17", CultureInfo.InvariantCulture);
+                        }
+                        catch (Exception error) when (error is ArgumentException or
+                            IndexOutOfRangeException or ProjectDataException) { }
+                    }
+                    field.Value = decoded;
+                }
+            }
+            finally { _synchronizingCanSignals = false; }
+        }
+
         private void OnSignalChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(DbcSignalValue.Value)) Notify();
+            if (e.PropertyName != nameof(DbcSignalValue.Value) ||
+                _synchronizingCanSignals || !UseDbc ||
+                sender is not DbcSignalValue signal || !signal.IsEditable) return;
+            try
+            {
+                if (!double.TryParse(signal.Value, NumberStyles.Float,
+                        CultureInfo.InvariantCulture, out var physical) ||
+                    !double.IsFinite(physical))
+                    throw new ArgumentException("信号必须是有效物理数值。");
+                if (physical < signal.Signal.Minimum || physical > signal.Signal.Maximum)
+                    throw new ArgumentException("信号值超出 DBC 范围。");
+                var data = ReadDataBytes();
+                if (data.Length != DbcMessage?.Message.Dlc)
+                    throw new ArgumentException("请先填写完整 CAN DATA。");
+                DbcSignalCodec.EncodePhysical(signal.Signal, physical, data);
+                _signalEditError = "";
+                DataHex = FormatHex(data);
+            }
+            catch (Exception error) when (error is ArgumentException or FormatException or
+                OverflowException or ProjectDataException)
+            {
+                _signalEditError = signal.DisplayName + "：" + error.Message;
+                Notify();
+            }
         }
         public ObservableCollection<DbcSignalValue> SignalValues { get; } = new();
         public string Summary => UseDbc && DbcMessage is not null
@@ -128,26 +241,22 @@ public sealed partial class ManualBenchViewModel
         {
             get
             {
-                if (UseDbc)
-                {
-                    if (DbcMessage is null) return "未选择 DBC 报文";
-                    var completed = SignalValues.Count(x => !string.IsNullOrWhiteSpace(x.Value));
-                    if (completed != SignalValues.Count)
-                        return "尚未填完信号 " + completed + "/" + SignalValues.Count;
-                    try { return FormatHex(BuildFrame().Data.AsSpan().ToArray()); }
-                    catch { return "DBC 编码错误（悬停查看原因）"; }
-                }
-                var hex = CleanDataHex();
-                if (hex.Length > 16) return "超过 8 字节";
-                if (hex.Length % 2 != 0 || !hex.All(Uri.IsHexDigit))
-                    return "HEX 尚未输入完整";
-                return FormatHex(Convert.FromHexString(hex));
+                try { return FormatHex(ReadDataBytes()); }
+                catch (ArgumentException) { return "HEX 尚未输入完整"; }
             }
+        }
+        private byte[] ReadDataBytes()
+        {
+            var hex = CleanDataHex();
+            if (hex.Length > 16 || hex.Length % 2 != 0 || !hex.All(Uri.IsHexDigit))
+                throw new ArgumentException("CAN DATA 必须是最多 8 个完整十六进制字节。");
+            return Convert.FromHexString(hex);
         }
         public string PreviewError
         {
             get
             {
+                if (_signalEditError.Length > 0) return _signalEditError;
                 try
                 {
                     _ = BuildFrame();
@@ -165,12 +274,9 @@ public sealed partial class ManualBenchViewModel
                 " · " + PreviewError);
         private static string FormatHex(byte[] data) =>
             string.Join(" ", data.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
-        public string DataSummary => UseDbc
-            ? "DBC 信号 · " + (DbcMessage is null ? "尚未关联" :
-                DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message) + " · 已填 " +
-                SignalValues.Count(x => !string.IsNullOrWhiteSpace(x.Value)) + "/" +
-                SignalValues.Count)
-            : string.IsNullOrWhiteSpace(DataHex) ? "DATA 空" : "DATA " + DataHex.Trim();
+        public string DataSummary => "DATA " + DataHex.Trim() +
+            (UseDbc && DbcMessage is not null
+                ? " · DBC " + DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message) : "");
         public string Result { get => _result; set => SetProperty(ref _result, value); }
         public int Sent { get => _sent; set => SetProperty(ref _sent, value); }
         private void Notify()
@@ -188,20 +294,21 @@ public sealed partial class ManualBenchViewModel
         }
         public CanFrame BuildFrame()
         {
+            if (_signalEditError.Length > 0)
+                throw new ArgumentException(_signalEditError);
+            var bytes = ReadDataBytes();
             if (UseDbc)
             {
                 var dbc = DbcMessage ?? throw new InvalidOperationException("请先选择 DBC 报文。");
-                var spec = string.Join(";", SignalValues.Select(x => x.Signal.Name + "=" + x.Value.Trim()));
-                var bytes = DbcCanMessageEncoder.Encode(dbc.Message, spec);
+                if (bytes.Length != dbc.Message.Dlc)
+                    throw new ArgumentException("CAN DATA 字节数必须与 DBC DLC 一致。");
                 return CanFrame.Create(BusRole.DutCan, dbc.Message.IsExtended,
                     dbc.Message.ArbitrationId, bytes);
             }
             var rawId = IdHex.Trim();
             if (rawId.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) rawId = rawId[2..];
             var canId = uint.Parse(rawId, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-            var rawHex = new string(DataHex.Where(c => !char.IsWhiteSpace(c) && c is not '-' and not ',').ToArray());
-            return CanFrame.Create(BusRole.DutCan, Extended, canId,
-                rawHex.Length == 0 ? Array.Empty<byte>() : Convert.FromHexString(rawHex));
+            return CanFrame.Create(BusRole.DutCan, Extended || canId > 0x7FFu, canId, bytes);
         }
     }
 
@@ -294,12 +401,12 @@ public sealed partial class ManualBenchViewModel
         if (SelectedCanRow is not { } source) return;
         var row = new BenchCanRow(source.Name + " 副本", DbcMessages)
         {
-            IdHex = source.IdHex, DataHex = source.DataHex, Extended = source.Extended,
+            IdHex = source.IdHex, Extended = source.Extended,
             PeriodText = source.PeriodText, IsPeriodic = source.IsPeriodic,
-            Included = source.Included, UseDbc = source.UseDbc, DbcMessage = source.DbcMessage
+            Included = source.Included, DbcMessage = source.UseDbc ? source.DbcMessage : null
         };
-        for (var i = 0; i < row.SignalValues.Count && i < source.SignalValues.Count; i++)
-            row.SignalValues[i].Value = source.SignalValues[i].Value;
+        row.DataHex = source.DataHex; // Preserve all bytes, including reserved bits.
+        if (!source.UseDbc) row.UseDbc = false;
         row.Edited += OnCanRowEdited;
         CanSendRows.Insert(CanSendRows.IndexOf(source) + 1, row);
         SelectedCanRow = row;

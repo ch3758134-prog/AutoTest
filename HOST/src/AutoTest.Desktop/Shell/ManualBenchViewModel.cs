@@ -54,10 +54,12 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     }
     public sealed class DbcSignalValue : DbcEditableSignal
     {
+        public bool IsEditable { get; }
         public DbcSignalValue(DbcSignal signal, string? label = null,
             string? description = null, IReadOnlyDictionary<long, string>? rawLabels = null,
-            string value = "", string? summary = null)
-            : base(signal, label, description, rawLabels, value, summary) { }
+            string value = "", string? summary = null, bool isEditable = true)
+            : base(signal, label, description, rawLabels, value, summary)
+            => IsEditable = isEditable;
     }
 
     public sealed record BenchLogEntry(string Time, string Channel, string Direction,
