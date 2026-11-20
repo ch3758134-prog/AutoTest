@@ -473,8 +473,9 @@ public partial class MainWindow
         ToolDescriptionPanel.Visibility = Visibility.Collapsed;
         DocumentEditorPanel.Visibility = Visibility.Visible;
         _switchingEditor = true;
+        DocumentTextEditor.IsUndoEnabled = false;
         DocumentTextEditor.Text = document.Content;
-        DocumentTextEditor.ClearUndo(); // Prevent cross-document undo transactions.
+        DocumentTextEditor.IsUndoEnabled = true; // Separate undo stack per displayed document.
         _switchingEditor = false;
         WorkspaceStatusText.Text = _workFiles.FullPath(document.Asset.RelativePath);
         RefreshTabStrip();
