@@ -71,6 +71,28 @@ public sealed class EcuCanBaudProtocolContractTests
     }
 
     [Fact]
+    public void BaudSetter_RequiresExactOneShotPhysicalFence()
+    {
+        var fence = new PhysicalCommandFence();
+        var set = UsbWireCodec.EncodeRequest(21, MainControllerCodec.SetEcuCanBaud,
+            new byte[] { 4 });
+        var wrong = UsbWireCodec.EncodeRequest(22, MainControllerCodec.SetEcuCanBaud,
+            new byte[] { 3 });
+        var read = UsbWireCodec.EncodeRequest(23, MainControllerCodec.GetEcuCanBaud,
+            ReadOnlySpan<byte>.Empty);
+        fence.AssertAllowedAndConsume(read, 51);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(set, 51));
+        fence.AuthorizeSingleEcuCanBaud(4, 51);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(set, 52));
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(wrong, 51));
+        fence.AssertAllowedAndConsume(set, 51);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(set, 51));
+        fence.AuthorizeSingleEcuCanBaud(4, 51);
+        fence.Reset();
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(set, 51));
+    }
+
+    [Fact]
     public void EcuCanBaud_UsesFirmwarePublishedUsbCommands()
     {
         Assert.Equal((byte)0x42, MainControllerCodec.SetEcuCanBaud);

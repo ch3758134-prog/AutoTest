@@ -19,6 +19,9 @@ public sealed class PhysicalCommandFence
     private long _ledGeneration;
     private DateTimeOffset _ledExpiry;
     private long _authorizedConnection;
+    private byte? _baudPermit;
+    private long _baudPermitEpoch;
+    private DateTimeOffset _baudPermitExpires;
     private HashSet<(byte Port, bool Extended, uint Id)>? _runCan;
     private bool _runIgn;
     private int _remainingWrites;
@@ -73,6 +76,7 @@ public sealed class PhysicalCommandFence
             _oneIgnState = null; _ignGeneration = 0; _ignExpiry = default;
             _singleClampPayload = null; _clampGeneration = 0; _clampExpiry = default;
             _singleLedPayload = null; _ledGeneration = 0; _ledExpiry = default;
+            _baudPermit = null; _baudPermitEpoch = 0; _baudPermitExpires = default;
             var token=Guid.NewGuid();
             _programming=new ProgrammingGrant
             {
@@ -260,6 +264,9 @@ public sealed class PhysicalCommandFence
             _singleClampPayload = null;
             _clampGeneration = 0;
             _clampExpiry = default;
+            _baudPermit = null;
+            _baudPermitEpoch = 0;
+            _baudPermitExpires = default;
             _singleLedPayload = null;
             _ledGeneration = 0;
             _ledExpiry = default;
@@ -365,7 +372,28 @@ public sealed class PhysicalCommandFence
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is MainControllerCodec.Ping or MainControllerCodec.GetVersion
             or MainControllerCodec.GetIgn or MainControllerCodec.GetClamps or
-               MainControllerCodec.GetLeds or 0x53);
+               MainControllerCodec.GetLeds or MainControllerCodec.GetEcuCanBaud or 0x53);
+
+    /// <summary>Explicit operator Apply / consented FLASH only. Exactly one
+    /// 0x42 payload, one USB generation, five seconds, consumed before I/O.</summary>
+    public void AuthorizeSingleEcuCanBaud(byte code, long epoch)
+    {
+        if (code > 7 || epoch <= 0) throw new ArgumentOutOfRangeException(nameof(code));
+        lock (_sync)
+        {
+            if (_runFingerprint is not null || _manualBatchCan is not null ||
+                _manualKeySteps is not null || _programming is not null || _didGrant is not null)
+                throw new InvalidOperationException(
+                    "ECU CAN 码率切换要求空闲的 TEST、CAN、KEY、UDS、FLASH 会话。");
+            _singleCanPayload = null; _authorizedConnection = 0;
+            _oneIgnState = null; _ignGeneration = 0;
+            _singleClampPayload = null; _clampGeneration = 0;
+            _singleLedPayload = null; _ledGeneration = 0;
+            _baudPermit = code;
+            _baudPermitEpoch = epoch;
+            _baudPermitExpires = DateTimeOffset.UtcNow.AddSeconds(5);
+        }
+    }
 
     /// <summary>Requires an exact typed confirmation, one payload and a living connection.
     /// Not used by B0/B1/B2 and never called automatically on reconnect.</summary>
@@ -474,6 +502,17 @@ public sealed class PhysicalCommandFence
             if (_programming is not null || _didGrant is not null)
                 throw new UnauthorizedAccessException(
                     "USB write denied: another dedicated ECU flash/diagnostic scope is active.");
+            if (request.Command == MainControllerCodec.SetEcuCanBaud &&
+                request.Payload.Length == 1 && request.Payload[0] <= 7 &&
+                _baudPermit == request.Payload[0] &&
+                _baudPermitEpoch == connectionGeneration &&
+                DateTimeOffset.UtcNow < _baudPermitExpires &&
+                _runFingerprint is null && _manualBatchCan is null &&
+                _manualKeySteps is null)
+            {
+                _baudPermit = null; _baudPermitEpoch = 0; _baudPermitExpires = default;
+                return;
+            }
             if (request.Command == MainControllerCodec.CanSend &&
                 _manualKeySteps is not null && _manualKeyGeneration == connectionGeneration &&
                 DateTimeOffset.UtcNow < _manualKeyExpiry &&
@@ -557,6 +596,7 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
+            _baudPermit = null; _baudPermitEpoch = 0; _baudPermitExpires = default;
             _oneIgnState = null; _ignExpiry = default; _ignGeneration = 0;
             _singleClampPayload = null; _clampExpiry = default; _clampGeneration = 0;
             _singleLedPayload = null; _ledExpiry = default; _ledGeneration = 0;

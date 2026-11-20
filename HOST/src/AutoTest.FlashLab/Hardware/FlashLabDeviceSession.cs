@@ -261,6 +261,8 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                     recorder.RecordMessage("ECU_CAN_BAUD_REQUEST",
                         "USB 0x42 SET=" + configuredBitrateKbps +
                         "k, previously read=" + before + "k.");
+                    _link.AuthorizeOneEcuCanBaudChange(
+                        MainControllerCodec.EcuCanBaudCode(configuredBitrateKbps));
                     confirmedRate = await MainControllerCodec.SetAndVerifyEcuCanBaudAsync(
                         _usb, configuredBitrateKbps, ct).ConfigureAwait(false);
                 }

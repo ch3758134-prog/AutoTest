@@ -71,6 +71,17 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    /// <summary>One exact ECU CAN 0x42 command only, scoped to this WinUSB generation.</summary>
+    public void AuthorizeOneEcuCanBaudChange(byte code)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("Connect first; ECU CAN baud permit cannot survive reconnect.");
+            _fence.AuthorizeSingleEcuCanBaud(code, _epoch);
+        }
+    }
+
     public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
         IReadOnlyList<byte[]> exactPayloads, int maxWrites)
     {

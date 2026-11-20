@@ -132,6 +132,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                     SetObservedEcuCanBaud(0, 0, legacy: false);
                     Record("ECU CAN USB 0x42 申请 " + target +
                         "k；修改前主控 0x43=" + before + "k。");
+                    _link!.AuthorizeOneEcuCanBaudChange(MainControllerCodec.EcuCanBaudCode(target));
                     await MainControllerCodec.SetAndVerifyEcuCanBaudAsync(_usb,
                         target, ct);
                 }
