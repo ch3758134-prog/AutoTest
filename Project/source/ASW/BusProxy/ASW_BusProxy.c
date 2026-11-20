@@ -11,7 +11,57 @@
  */
 
 #include "ASW_BusProxy.h"
+#include "ASW_EcuEmu.h"
 #include <stddef.h>     /* NULL */
+
+/* ============================================
+ * ECU CAN 码率控制（0x42 SET / 0x43 GET）
+ * USB 只传 1 字节枚举，不接受任意不受支持的波特率。
+ * 控制固定 ECU_CAN_PORT：不接触 KEY_CAN_PORT / CAN0。
+ * ============================================ */
+void ASW_BusProxy_HandleEcuBaudCmd(uint16_t seq, uint8_t cmd,
+                                   const uint8_t *payload, uint8_t len)
+{
+    if (cmd == CDD_USB_CMD_GET_ECU_CAN_BAUD)
+    {
+        uint8_t current;
+        if (len != 0U)
+        {
+            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_FMT, NULL, 0U);
+            return;
+        }
+        current = (uint8_t)EAL_CAN_GetBaudrate(ECU_CAN_PORT);
+        CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, &current, 1U);
+        return;
+    }
+
+    if (cmd == CDD_USB_CMD_SET_ECU_CAN_BAUD)
+    {
+        EAL_CAN_RetType ret;
+        if (len != 1U || payload == NULL || payload[0] > (uint8_t)EAL_CAN_BAUD_1M)
+        {
+            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_FMT, NULL, 0U);
+            return;
+        }
+
+        /* 周期发送不停止就禁止改速率；主机需先发 0x52 STOP。 */
+        if (ASW_EcuEmu_IsRunning() != 0U)
+        {
+            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_BUSY, NULL, 0U);
+            return;
+        }
+
+        ret = EAL_CAN_SetBaudrate(ECU_CAN_PORT, (EAL_CAN_BaudType)payload[0]);
+        CDD_USB_SendFrame(seq, cmd,
+                          (ret == EAL_CAN_OK) ? CDD_USB_STS_OK :
+                          (ret == EAL_CAN_BUSY) ? CDD_USB_STS_ERR_BUSY :
+                                                  CDD_USB_STS_ERR_HW,
+                          NULL, 0U);
+        return;
+    }
+
+    CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_CMD, NULL, 0U);
+}
 
 /* ============================================
  * CAN_SEND (0x40) 处理
