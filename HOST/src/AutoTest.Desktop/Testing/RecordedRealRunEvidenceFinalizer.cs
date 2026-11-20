@@ -119,10 +119,11 @@ public sealed class RecordedRealRunEvidenceFinalizer : IRealRunEvidenceFinalizer
                 var sidecar = (await File.ReadAllTextAsync(wavePath + ".sha256", ct)).Trim();
                 var actualHash = Convert.ToHexString(
                     System.Security.Cryptography.SHA256.HashData(contents));
-                if (!string.Equals(sidecar, actualHash, StringComparison.OrdinalIgnoreCase) ||
-                    WaveEvidenceCodec.Read(contents).Id != waveId ||
-                    !WaveEvidenceCodec.Verify(WaveEvidenceCodec.Read(contents)))
-                    throw new InvalidDataException("Wave artifact content changed after validation.");
+                if (!string.Equals(sidecar, actualHash, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Wave source SHA-256 changed after validation.");
+                var archivedWave = WaveEvidenceCodec.Read(contents);
+                if (archivedWave.Id != waveId || !WaveEvidenceCodec.Verify(archivedWave))
+                    throw new InvalidDataException("Wave archive bytes failed content verification.");
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException or
                                        UnauthorizedAccessException or ArgumentException or
