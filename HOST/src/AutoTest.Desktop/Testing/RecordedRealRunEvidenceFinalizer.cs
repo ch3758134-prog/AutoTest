@@ -111,8 +111,18 @@ public sealed class RecordedRealRunEvidenceFinalizer : IRealRunEvidenceFinalizer
             try
             {
                 verifiedWave = waveStore.Read(waveId);
-                contents = await File.ReadAllBytesAsync(Path.Combine(waveDirectory,
-                    waveId.Value.ToString("N") + ".wave.json"), ct);
+                var wavePath = Path.Combine(waveDirectory,
+                    waveId.Value.ToString("N") + ".wave.json");
+                contents = await File.ReadAllBytesAsync(wavePath, ct);
+                // Recheck the *exact bytes being archived*. Do not verify one
+                // buffer and then persist another after an external file change.
+                var sidecar = (await File.ReadAllTextAsync(wavePath + ".sha256", ct)).Trim();
+                var actualHash = Convert.ToHexString(
+                    System.Security.Cryptography.SHA256.HashData(contents));
+                if (!string.Equals(sidecar, actualHash, StringComparison.OrdinalIgnoreCase) ||
+                    WaveEvidenceCodec.Read(contents).Id != waveId ||
+                    !WaveEvidenceCodec.Verify(WaveEvidenceCodec.Read(contents)))
+                    throw new InvalidDataException("Wave artifact content changed after validation.");
             }
             catch (Exception ex) when (ex is IOException or InvalidDataException or
                                        UnauthorizedAccessException or ArgumentException or
