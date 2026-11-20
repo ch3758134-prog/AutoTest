@@ -152,9 +152,10 @@ public partial class MainWindow
         WorkspaceTitle.Text = name;
         WorkspaceSubtitle.Text = "UI-05 · 专业工具界面与本地配置 · 未连接 ECU";
         var root = new Grid { Background = new SolidColorBrush(Color.FromRgb(247, 249, 252)) };
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
+        var compact = ActualWidth < 1270;
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(compact ? 0 : 216) });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(270) });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(compact ? 220 : 260) });
         var sidebar = new StackPanel();
         sidebar.Children.Add(ToolLabel("专业工具", true));
         foreach (var item in new[] { "DBC 编辑器", "UDS 调试", "ECU 烧录", "波形分析", "手动台架" })
@@ -168,6 +169,7 @@ public partial class MainWindow
         }
         ToolNote(sidebar, "这些工具服务于 ECU 测试，也可以独立编辑配置。当前仅验证界面及真实本地文件保存，不执行硬件请求。");
         var sideCard = ToolCard(sidebar);
+        sideCard.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         Grid.SetColumn(sideCard, 0); root.Children.Add(sideCard);
 
         var center = new StackPanel();
