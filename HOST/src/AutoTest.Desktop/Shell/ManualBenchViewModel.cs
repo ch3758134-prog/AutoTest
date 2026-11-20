@@ -138,14 +138,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             entry.Detail.Contains(term, StringComparison.OrdinalIgnoreCase);
     }
 
-    public sealed record EcuCanRateChoice(int Kbps, string Label);
-    public IReadOnlyList<EcuCanRateChoice> EcuCanRateChoices { get; } =
-    [
-        new(20, "20 kbit/s"), new(50, "50 kbit/s"),
-        new(100, "100 kbit/s"), new(125, "125 kbit/s"),
-        new(250, "250 kbit/s"), new(500, "500 kbit/s · 当前固件"),
-        new(800, "800 kbit/s"), new(1000, "1 Mbit/s")
-    ];
+    public IReadOnlyList<HardwareConnectionService.EcuCanRateChoice> EcuCanRateChoices =>
+        HardwareConnectionService.EcuCanRateChoices;
     public int RequestedEcuCanBitrateKbps
     {
         get => _hardware.RequestedEcuCanBitrateKbps;
@@ -174,6 +168,21 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         RequestedEcuCanBitrateKbps == 500
             ? "固件默认 500k · 无运行时切换接口"
             : "未生效 · 禁止 ECU CAN 发送（待固件升级）";
+    private void OnSelectedEcuCanRateChanged(int kbps)
+    {
+        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null || _disposed) return;
+        void NotifyRate()
+        {
+            if (_disposed) return;
+            RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
+            RaisePropertyChanged(nameof(EcuCanBitrateStatus));
+            RaiseCommands();
+        }
+        if (dispatcher.CheckAccess()) NotifyRate();
+        else dispatcher.BeginInvoke(new Action(NotifyRate));
+    }
+
     public bool IsConnected => _hardware.IsConnected;
     public string ConnectionStatus => IsConnected
         ? "USB 已连接 · G" + _hardware.CurrentStationEpoch + " · " +
@@ -334,6 +343,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         _hardware.FrameObserved += FrameObserved;
         _hardware.EvidenceRecorded += EvidenceRecorded;
         _hardware.ConnectionChanged += ConnectionChanged;
+        _hardware.EcuCanBitrateSelectionChanged += OnSelectedEcuCanRateChanged;
         _hardware.TestRunAuthorizationChanged += TestRunAuthorizationChanged;
         _projects.CurrentChanged += ProjectChanged;
         ConnectCommand = new DelegateCommand(async () => await ToggleConnectionAsync(),

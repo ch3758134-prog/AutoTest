@@ -166,6 +166,13 @@
      <Button Content="波形配置" Command="{Binding OpenWaveConfigCommand}"
       ToolTip="绑定 DBC 信号、编辑判定条件及建立参考" Margin="0,0,5,0"/>
      <Border Background="#E1E5E9" Width="1" Height="18" Margin="0,0,8,0"/>
+     <TextBlock Text="ECU CAN" VerticalAlignment="Center" Foreground="#526172"
+      Margin="0,0,5,0" ToolTip="{Binding EcuCanRateStatus}"/>
+     <ComboBox Width="137" MinHeight="28" VerticalAlignment="Center" Margin="0,0,8,0"
+      ItemsSource="{Binding EcuCanRateChoices}" DisplayMemberPath="Label"
+      SelectedValuePath="Kbps"
+      SelectedValue="{Binding RequestedEcuCanBitrateKbps,Mode=TwoWay}"
+      ToolTip="当前固件仅有固定 500 kbit/s，其他选择属于未生效目标配置，并会阻止实体 ECU CAN 发送。"/>
      <Button Content="{Binding ConnectionButtonText}" Command="{Binding ConnectHardwareCommand}"
       ToolTip="{Binding HardwareStatus}" Margin="0,0,5,0"/>
      <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"/>

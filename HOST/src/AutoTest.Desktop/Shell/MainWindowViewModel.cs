@@ -108,6 +108,7 @@ public sealed class MainWindowViewModel : BindableBase
         _workspace = workspace;
         _runSelections.Changed += RefreshProjectCounts;
         _hardware = hardware;
+        _hardware.EcuCanBitrateSelectionChanged += OnSelectedEcuCanRateChanged;
         _realTest = realTest;
         _liveSignals = liveSignals;
         var router = new BarcodeInputRouter();
@@ -299,6 +300,47 @@ public sealed class MainWindowViewModel : BindableBase
         get => _scanStatus;
         private set => SetProperty(ref _scanStatus, value);
     }
+    public IReadOnlyList<HardwareConnectionService.EcuCanRateChoice> EcuCanRateChoices =>
+        HardwareConnectionService.EcuCanRateChoices;
+    public int RequestedEcuCanBitrateKbps
+    {
+        get => _hardware.RequestedEcuCanBitrateKbps;
+        set
+        {
+            if (value == _hardware.RequestedEcuCanBitrateKbps) return;
+            try
+            {
+                _hardware.SelectRequestedEcuCanBitrate(value);
+                StatusMessage = value == 500
+                    ? "ECU CAN 已选择固件默认 500 kbit/s。"
+                    : "所选 ECU CAN " + value + " kbit/s 尚未生效：主控 USB 未提供改速指令，已阻止实体发送。";
+            }
+            catch (Exception error) when (error is InvalidOperationException or
+                ArgumentOutOfRangeException)
+            {
+                StatusMessage = "ECU CAN 波特率未改变：" + error.Message;
+                RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
+            }
+        }
+    }
+
+    public string EcuCanRateStatus =>
+        RequestedEcuCanBitrateKbps == 500
+            ? "固件固定 500k" : "未生效 · 已阻止实体 ECU CAN";
+
+    private void OnSelectedEcuCanRateChanged(int kbps)
+    {
+        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        void NotifyRate()
+        {
+            RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
+            RaisePropertyChanged(nameof(EcuCanRateStatus));
+        }
+        if (dispatcher.CheckAccess()) NotifyRate();
+        else dispatcher.BeginInvoke(new Action(NotifyRate));
+    }
+
     public string ConnectionButtonText => _hardwareBusy ? "正在操作…" :
         _hardware.HasSession ? "断开" : "连接";
     public DelegateCommand ConnectHardwareCommand { get; }

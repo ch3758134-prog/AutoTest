@@ -24,7 +24,16 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     // Current firmware always initializes ECU_CAN_PORT to 500 kbit/s and
     // exposes NO USB set/get bitrate command. This is a requested configuration
     // only: unsupported choices must NEVER be treated as applied to the bus.
+    public sealed record EcuCanRateChoice(int Kbps, string Label);
+    public static IReadOnlyList<EcuCanRateChoice> EcuCanRateChoices { get; } =
+    [
+        new(20, "20 kbit/s"), new(50, "50 kbit/s"),
+        new(100, "100 kbit/s"), new(125, "125 kbit/s"),
+        new(250, "250 kbit/s"), new(500, "500 kbit/s · 当前固件"),
+        new(800, "800 kbit/s"), new(1000, "1 Mbit/s")
+    ];
     private int _requestedEcuCanBitrateKbps = 500;
+    public event Action<int>? EcuCanBitrateSelectionChanged;
     public int RequestedEcuCanBitrateKbps => Volatile.Read(ref _requestedEcuCanBitrateKbps);
     public const int FirmwareFixedEcuCanBitrateKbps = 500;
 
@@ -33,11 +42,14 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         if (kbps is not (20 or 50 or 100 or 125 or 250 or 500 or 800 or 1000))
             throw new ArgumentOutOfRangeException(nameof(kbps), "不是主控 CAN 驱动已定义的码率。");
         if (_testRunApproved || _manualCanBatchApproved ||
-            _manualKeyActionApproved || IsFlashSecuritySensitive)
-            throw new InvalidOperationException("工位有正在运行的 TEST/CAN/KEY/FLASH 任务，禁止改变波特率设置。");
+            _manualKeyActionApproved || IsFlashSecuritySensitive ||
+            _lifecycle.CurrentCount == 0)
+            throw new InvalidOperationException("工位正在执行硬件操作，禁止改变 ECU CAN 波特率设置。");
         Volatile.Write(ref _requestedEcuCanBitrateKbps, kbps);
         Record("ECU CAN 期望码率选择 " + kbps +
             " kbit/s；当前固件 USB 不支持设置/读取，未执行硬件修改。");
+        try { EcuCanBitrateSelectionChanged?.Invoke(kbps); }
+        catch { /* UI observation cannot change the physical rate contract. */ }
     }
 
     public void RequireConfiguredEcuCanBitrate()

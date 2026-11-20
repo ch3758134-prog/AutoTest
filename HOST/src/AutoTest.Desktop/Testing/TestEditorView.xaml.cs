@@ -512,6 +512,9 @@ public partial class TestEditorView : UserControl
             }
         }
         menu.Items.Add(new Separator());
+        Item("确认当前用例", _viewModel.PrepareRunApprovalCommand);
+        Item("▶ 运行当前用例", _viewModel.RunCommand);
+        menu.Items.Add(new Separator());
         Item("编辑步骤属性", _viewModel.EditParametersCommand);
         Item("复制步骤及子分支", _viewModel.DuplicateCommand);
         Item("复制到当前用例剪贴板（Ctrl+C）", _viewModel.CopyStepCommand);
