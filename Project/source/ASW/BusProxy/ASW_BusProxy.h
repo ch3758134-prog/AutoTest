@@ -24,6 +24,10 @@
 void ASW_BusProxy_HandleCanSendCmd(uint16_t seq,
                                    const uint8_t *payload, uint8_t len);
 
+/** @brief  仅 ECU CAN 的 USB 码率配置/查询（0x42/0x43）。 */
+void ASW_BusProxy_HandleEcuBaudCmd(uint16_t seq, uint8_t cmd,
+                                   const uint8_t *payload, uint8_t len);
+
 /**
  * @brief  CAN 收帧回调（由 EAL_CAN_RegisterRxCallback 注册,主循环上下文）
  * @note   收啥帧 → 原样打包成 0x41 上报（不解析 ID,不区分 port 业务含义）
