@@ -856,8 +856,7 @@ public partial class MainWindow
                 StatusText = "请先打开 UI 工程，然后保存专业工具配置。";
                 return false;
             }
-            SaveToolDraft(Draft(_activeToolPage));
-            return true;
+            return SaveToolDraft(Draft(_activeToolPage));
         }
         if (_activeToolPage == "TEST")
         {
