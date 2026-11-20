@@ -17,6 +17,7 @@ public sealed class UiWorkspace
     public string ProjectId { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "";
     public List<UiAsset> Assets { get; set; } = [];
+    public List<UiAsset> DeletedAssets { get; set; } = [];
 }
 public sealed class UiAsset
 {
@@ -76,7 +77,7 @@ public sealed class UiWorkspaceFiles
         if (!string.Equals(Path.GetFileName(path), ManifestName, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("只能打开本 UI 版本创建的 .autotest-ui-workspace.json，不能冒充正式 AutoTest 工程。");
         var data = JsonSerializer.Deserialize<UiWorkspace>(File.ReadAllText(path, Encoding.UTF8));
-        if (data is null || data.Version != 1 || string.IsNullOrWhiteSpace(data.Name) || data.Assets is null)
+        if (data is null || data.Version != 1 || string.IsNullOrWhiteSpace(data.Name) || data.Assets is null || data.DeletedAssets is null)
             throw new InvalidDataException("UI 工作区清单结构无效或版本不受支持。");
         if (data.Assets.Count > 5000 ||
             data.Assets.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != data.Assets.Count ||
@@ -215,12 +216,69 @@ public sealed class UiWorkspaceFiles
         var dest = Path.Combine(trash, asset.Id + "_" + Path.GetFileName(source));
         if (File.Exists(source)) File.Move(source, dest);
         Workspace!.Assets.Remove(asset);
+        Workspace.DeletedAssets.Add(asset);
         foreach (var doc in OpenDocuments.Where(d => d.Asset.Id == asset.Id).ToArray()) OpenDocuments.Remove(doc);
         try { SaveManifest(); }
         catch
         {
+            Workspace.DeletedAssets.Remove(asset);
             Workspace.Assets.Add(asset);
             if (File.Exists(dest)) File.Move(dest, source);
+            throw;
+        }
+    }
+
+    public UiAsset? RestoreLastDeleted()
+    {
+        Require();
+        if (Workspace!.DeletedAssets.Count == 0) return null;
+        var asset = Workspace.DeletedAssets[^1];
+        var path = FullPath(asset.RelativePath);
+        var from = Path.Combine(Root!, ".ui-trash",
+                    asset.Id + "_" + Path.GetFileName(path));
+        if (File.Exists(path))
+            throw new IOException("原位置存在同名文件，无法恢复。");
+        if (!File.Exists(from))
+            throw new IOException("工程回收区中的文件已被外部移动，无法恢复：" + from);
+        File.Move(from, path);
+        Workspace.DeletedAssets.Remove(asset);
+        Workspace.Assets.Add(asset);
+        try { SaveManifest(); }
+        catch
+        {
+            Workspace.Assets.Remove(asset);
+            Workspace.DeletedAssets.Add(asset);
+            File.Move(path, from);
+            throw;
+        }
+        return asset;
+    }
+
+    public void MoveAssetToKind(UiAsset asset, string kind)
+    {
+        RequireMember(asset);
+        if (asset.Kind == kind) return;
+        var folder = kind switch
+        {
+            "测试程序" => "tests", "公共流程" => "flows",
+            "DBC" => "dbc", "参考波形" => "waves",
+            "烧录配置" => "flash", _ => "config"
+        };
+        var relative = Path.Combine(folder, Path.GetFileName(asset.RelativePath)).Replace('\\','/');
+        var original = FullPath(asset.RelativePath);
+        var target = FullPath(relative);
+        if (File.Exists(target))
+            throw new IOException("目标目录中已有同名文件，未移动。");
+        File.Move(original, target);
+        var oldPath = asset.RelativePath;
+        var oldKind = asset.Kind;
+        asset.RelativePath = relative;
+        asset.Kind = kind;
+        try { SaveManifest(); }
+        catch
+        {
+            asset.RelativePath = oldPath; asset.Kind = oldKind;
+            File.Move(target, original);
             throw;
         }
     }
