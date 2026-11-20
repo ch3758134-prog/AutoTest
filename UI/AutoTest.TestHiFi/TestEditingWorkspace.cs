@@ -45,6 +45,7 @@ public partial class MainWindow
     private string? _testStepId;
     private string _testPhase = "测试";
     private bool _debugPane;
+    private readonly HashSet<string> _modifiedFlowIds = new();
     private readonly Stack<string> _testUndo = new();
     private readonly Stack<string> _testRedo = new();
     private readonly List<string> _debugEvents = [];
@@ -112,7 +113,7 @@ public partial class MainWindow
             return;
         }
         if (_testProgram is not null && _testProgramRoot == _workFiles.Root) return;
-        _testUndo.Clear(); _testRedo.Clear();
+        _testUndo.Clear(); _testRedo.Clear(); _modifiedFlowIds.Clear();
         _testProgramRoot = _workFiles.Root;
         _testProgram = new UiTestProgram();
         _testProgramDocument = null;
@@ -182,8 +183,11 @@ public partial class MainWindow
                 return;
             }
         }
+        var editingFlowId = ActiveIsFlow ? _testCaseId : null;
         CaptureTestChange();
         mutation();
+        if (editingFlowId is not null && _testProgram?.Flows.Any(x => x.Id == editingFlowId) == true)
+            _modifiedFlowIds.Add(editingFlowId);
         WriteTestContent();
         if (render) RenderTestEditor();
     }
@@ -212,8 +216,21 @@ public partial class MainWindow
                 var asset = _workFiles.NewAsset("测试程序", "UI 测试编辑器");
                 _testProgramDocument = _workFiles.OpenAsset(asset);
             }
+            var previousRevisions = _testProgram.Flows
+                .Where(x => _modifiedFlowIds.Contains(x.Id))
+                .ToDictionary(x => x.Id, x => x.Revision);
+            foreach (var flow in _testProgram.Flows.Where(x => previousRevisions.ContainsKey(x.Id)))
+                flow.Revision++;
             WriteTestContent();
-            _workFiles.Save(_testProgramDocument);
+            try { _workFiles.Save(_testProgramDocument); }
+            catch
+            {
+                foreach (var flow in _testProgram.Flows.Where(x => previousRevisions.ContainsKey(x.Id)))
+                    flow.Revision = previousRevisions[flow.Id];
+                WriteTestContent();
+                throw;
+            }
+            _modifiedFlowIds.Clear();
             RefreshProjectTree(); RefreshTabStrip(); StoreSession();
             StatusText = "测试编辑器文件已保存（UI-only 文档，不是正式 TEST DSL）："+
                 _testProgramDocument.Asset.RelativePath;
