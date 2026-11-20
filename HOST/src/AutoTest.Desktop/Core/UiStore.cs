@@ -34,8 +34,10 @@ public sealed class UiStep : Notify
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     private string _name = "";
     private bool _enabled = true;
+    private bool _breakpoint;
     public string Name { get => _name; set => Change(ref _name, value); }
     public string Type { get; set; } = "Wait";
+    public bool Breakpoint { get => _breakpoint; set => Change(ref _breakpoint, value); }
     public string Phase { get; set; } = "测试";
     public string Branch { get; set; } = "";
     public bool Enabled { get => _enabled; set => Change(ref _enabled, value); }
@@ -224,7 +226,7 @@ public sealed class UiStore : Notify
     }
     public static UiStep CloneStep(UiStep step)
     {
-        var copy = new UiStep { Name = step.Name + " - 副本", Type = step.Type, Phase = step.Phase, Branch = step.Branch, Enabled = step.Enabled };
+        var copy = new UiStep { Name = step.Name + " - 副本", Type = step.Type, Phase = step.Phase, Branch = step.Branch, Enabled = step.Enabled, Breakpoint = step.Breakpoint };
         foreach (var p in step.Parameters)
             copy.Parameters.Add(new UiStepProperty { Key = p.Key, Label = p.Label, Value = p.Value });
         foreach (var c in step.Children) copy.Children.Add(CloneStep(c));
