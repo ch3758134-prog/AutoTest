@@ -763,6 +763,12 @@ public partial class MainWindow
     {
         if(!_workspaceLoaded || ActualWidth<=0)return;
         var compact=ActualWidth<1160;
+        if(!compact && !_compactLayout)
+        {
+            _normalNavigatorWidth=Math.Max(215,NavigatorColumn.Width.Value);
+            _normalInspectorWidth=Math.Max(315,InspectorColumn.Width.Value);
+            _normalIssuesHeight=IssuesRow.Height.Value;
+        }
         if(compact && !_compactLayout)
         {
             _normalNavigatorWidth=Math.Max(215,NavigatorColumn.ActualWidth);
