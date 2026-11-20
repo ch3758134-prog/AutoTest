@@ -505,6 +505,11 @@
                 <ContentControl Content="{Binding SelectedNode}"
                                 ContentTemplate="{StaticResource InspectorTemplate}"/>
             </Border>
+            <GridSplitter x:Name="BottomSplitter" Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3"
+                          Height="7" VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                          ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
+                          ShowsPreview="True" Background="#DCE5EF"
+                          Panel.ZIndex="3" Visibility="Collapsed"/>
             <Border x:Name="BottomInspector" Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3"
                     Background="White" Visibility="Collapsed" Margin="0,8,0,0"
                     BorderThickness="1" BorderBrush="#DCE5EF" CornerRadius="7">
