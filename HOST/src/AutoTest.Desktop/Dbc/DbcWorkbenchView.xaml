@@ -130,11 +130,11 @@
 
     <Grid Grid.Row="2" Margin="10,10,10,9">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="285" MinWidth="250"/>
+        <ColumnDefinition Width="258" MinWidth="226"/>
         <ColumnDefinition Width="5"/>
         <ColumnDefinition Width="*" MinWidth="380"/>
         <ColumnDefinition Width="5"/>
-        <ColumnDefinition Width="390" MinWidth="335"/>
+        <ColumnDefinition Width="338" MinWidth="295"/>
       </Grid.ColumnDefinitions>
 
       <Border Grid.Column="0" Style="{StaticResource AtPanel}">
@@ -150,9 +150,9 @@
             </DockPanel>
           </Border>
           <Border DockPanel.Dock="Top" Padding="9,8" Background="White"
-           BorderBrush="#E3EAF3" BorderThickness="0,0,0,1">
+           BorderBrush="#E4EAE7" BorderThickness="0,0,0,1">
            <StackPanel>
-            <TextBlock Text="查找报文或信号" Foreground="#607891" FontSize="10" Margin="0,0,0,4"/>
+            <TextBlock Text="查找报文或信号" Foreground="#72817C" FontSize="10" Margin="0,0,0,4"/>
             <TextBox Text="{Binding MessageSearchText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
              MinHeight="29" Padding="7,4"
              ToolTip="支持中文名称、功能摘要、原始标识、CAN ID 和信号名称；搜索结果不修改 DBC。"/>
