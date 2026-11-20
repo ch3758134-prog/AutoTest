@@ -14,6 +14,11 @@ try
     service.Create(root,"Sample Project");
     Ensure(File.Exists(service.Manifest!), "manifest created");
 
+    bool reservedRejected=false;
+    try { service.NewAsset("测试程序","CON"); }
+    catch (ArgumentException) { reservedRejected=true; }
+    Ensure(reservedRejected,"Windows reserved resource names rejected");
+
     var test = service.NewAsset("测试程序","Test One");
     Ensure(File.Exists(service.FullPath(test.RelativePath)), "test asset written");
     var doc = service.OpenAsset(test);
