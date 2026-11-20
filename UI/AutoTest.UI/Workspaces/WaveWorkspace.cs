@@ -1,4 +1,7 @@
 using System.Windows;
+using System.Globalization;
+using System.IO;
+using Microsoft.Win32;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -69,6 +72,8 @@ public sealed class WaveWorkspace : Grid
         display.Child = canvas;
         var text = UiKit.Text("暂无实际采样数据", 17, true, UiKit.Muted);
         canvas.Children.Add(text);
+        var trace = new Polyline { Stroke = UiKit.Accent, StrokeThickness = 1.6 };
+        canvas.Children.Add(trace);
         var cursorA = new Line { Stroke = UiKit.Brush("#D48A37"), StrokeThickness = 2, StrokeDashArray = [4, 3] };
         var cursorB = new Line { Stroke = UiKit.Accent, StrokeThickness = 2, StrokeDashArray = [4, 3] };
         canvas.Children.Add(cursorA); canvas.Children.Add(cursorB);
@@ -79,21 +84,94 @@ public sealed class WaveWorkspace : Grid
             cursorB.X1 = cursorB.X2 = w * b.Value / 100;
             cursorA.Y1 = cursorB.Y1 = 0;
             cursorA.Y2 = cursorB.Y2 = h;
+            text.Visibility = state.WavePoints.Count >= 2 ? Visibility.Collapsed : Visibility.Visible;
             Canvas.SetLeft(text, Math.Max(12, (w - 190) / 2));
             Canvas.SetTop(text, Math.Max(15, (h - 30) / 2));
+            trace.Points.Clear();
+            if (state.WavePoints.Count < 2 || w <= 1 || h <= 1) return;
+            var timeMin = state.WavePoints.Min(p => p.Time);
+            var timeMax = state.WavePoints.Max(p => p.Time);
+            var windowSpan = Math.Max((timeMax - timeMin) / zoom.Value, 1e-12);
+            var windowStart = (timeMin + timeMax - windowSpan) / 2;
+            var windowEnd = windowStart + windowSpan;
+            var visible = state.WavePoints.Where(p => p.Time >= windowStart && p.Time <= windowEnd).ToArray();
+            if (visible.Length < 2) return;
+            var min = visible.Min(p => p.Value);
+            var max = visible.Max(p => p.Value);
+            var range = Math.Max(max - min, 1e-12);
+            foreach (var point in visible)
+            {
+                var px = (point.Time - windowStart) / windowSpan * w;
+                var py = h - ((point.Value - min) / range * (h - 24) + 12);
+                trace.Points.Add(new Point(px, py));
+            }
         }
         canvas.SizeChanged += (_, _) => Draw();
         a.ValueChanged += (_, _) => Draw();
         b.ValueChanged += (_, _) => Draw();
-        zoom.ValueChanged += (_, _) => status("UI 时间轴缩放比例：" + zoom.Value.ToString("F1") + "x（无真实波形）");
+        zoom.ValueChanged += (_, _) =>
+        {
+            Draw();
+            status("时间轴缩放：" + zoom.Value.ToString("F1") + "x；仅使用已导入 CSV 数据。");
+        };
         var foot = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
         Grid.SetRow(foot, 2); right.Children.Add(foot);
         var measurement = UiKit.Text("游标 Δ：仅 UI 相对位置；无采样时间单位", 12, false, UiKit.Muted);
         foot.Children.Add(measurement);
-        a.ValueChanged += (_, _) => measurement.Text =
-            "游标相对间距：" + Math.Abs(a.Value - b.Value).ToString("F1") + "%（无实际时间轴）";
-        b.ValueChanged += (_, _) => measurement.Text =
-            "游标相对间距：" + Math.Abs(a.Value - b.Value).ToString("F1") + "%（无实际时间轴）";
+        void UpdateCursorDelta()
+        {
+            if (state.WavePoints.Count < 2)
+            {
+                measurement.Text = "游标相对间距：" +
+                    Math.Abs(a.Value - b.Value).ToString("F1") + "%（无实际时间轴）";
+                return;
+            }
+            var span = state.WavePoints.Max(p => p.Time) - state.WavePoints.Min(p => p.Time);
+            measurement.Text = "游标 ΔX：" + (span / zoom.Value *
+                Math.Abs(a.Value - b.Value) / 100).ToString("G6", CultureInfo.InvariantCulture) +
+                "（单位以导入 CSV 第一列为准）";
+        }
+        a.ValueChanged += (_, _) => UpdateCursorDelta();
+        b.ValueChanged += (_, _) => UpdateCursorDelta();
+        zoom.ValueChanged += (_, _) => UpdateCursorDelta();
+        var import = UiKit.Button("导入本地 CSV 曲线", () =>
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "导入两列数值型 CSV（第一列 X，第二列 Y）",
+                Filter = "CSV 文件 (*.csv)|*.csv|文本文件 (*.txt)|*.txt"
+            };
+            if (dialog.ShowDialog() != true) return;
+            try
+            {
+                var rows = new List<UiWavePoint>();
+                foreach (var line in File.ReadLines(dialog.FileName).Take(10001))
+                {
+                    var values = line.Split(new[] { ',', ';', '\t' }, StringSplitOptions.TrimEntries);
+                    if (values.Length < 2) continue;
+                    if (!double.TryParse(values[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var time) ||
+                        !double.TryParse(values[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ||
+                        !double.IsFinite(time) || !double.IsFinite(value)) continue;
+                    rows.Add(new UiWavePoint { Time = time, Value = value });
+                }
+                if (rows.Count < 2)
+                    throw new InvalidDataException("文件没有至少两条合法的 X,Y 数值行。");
+                var ordered = rows.OrderBy(x => x.Time).ToArray();
+                state.WavePoints.Clear();
+                foreach (var point in ordered) state.WavePoints.Add(point);
+                state.WaveSourceFile = dialog.FileName;
+                if (state.WaveSignals.Count == 0)
+                    state.WaveSignals.Add(new UiWaveSignal { Name = Path.GetFileNameWithoutExtension(dialog.FileName) });
+                Draw();
+                changed();
+                status("已导入 " + ordered.Length + " 个 CSV 点；X 轴单位按源文件定义，不代表真实设备采集。");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                MessageBox.Show("导入失败：" + ex.Message, "CSV 波形", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }, true);
+        top.Children.Add(import);
         var measure = UiKit.Button("真实参考判定", () => { }, true);
         UiKit.Disabled(measure, "尚未接入真实采样、参考资源及波形判定服务");
         foot.Children.Add(UiKit.Actions(measure));
