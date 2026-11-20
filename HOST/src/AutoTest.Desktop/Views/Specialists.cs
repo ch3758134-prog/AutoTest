@@ -147,7 +147,8 @@ public static class Specialists
                     Data=m.Data,Enabled=m.Enabled,Periodic=m.Periodic,PeriodMs=m.PeriodMs};
                     messages.Add(copy);grid.SelectedItem=copy;state.Changed("复制待发报文");}
             }),
-            UiKit.Button("移除",(_,_)=>{if(grid.SelectedItem is UiCanMessage m){messages.Remove(m);state.Changed("移除报文");}})),
+            UiKit.Button("移除",(_,_)=>{if(grid.SelectedItem is UiCanMessage m){messages.Remove(m);state.Changed("移除报文");}}),
+            new Button{Content="▷ 实体发送",IsEnabled=false,ToolTip="USB/CAN 未接入；只允许编辑发送计划。"}),
             toggle,issue);
         DockPanel.SetDock(head,Dock.Top);rows.Children.Add(head);
         rows.Children.Add(grid);
@@ -221,6 +222,8 @@ public static class Specialists
         fixture.Unchecked+=(_,_)=>{state.FixtureEngaged=false;state.Changed("清除夹具计划");};
         left.Children.Add(ign);left.Children.Add(fixture);
         left.Children.Add(UiKit.Note("上方是计划输入，不会控制主控板、继电器或夹具。"));
+        left.Children.Add(new Button{Content="发送当前外部输入",IsEnabled=false,
+            ToolTip="实体外部输入需要真实 DEVICE 授权；纯 UI 阶段不会产生物理输出。"});
         var actions=new DockPanel{Margin=new Thickness(12)};
         var table=UiKit.Table(state.KeyActions,("动作名称",nameof(UiKeyAction.Name),0,true),
             ("保持 ms",nameof(UiKeyAction.HoldMs),90,true),("开关组合",nameof(UiKeyAction.Summary),195,false));
@@ -307,7 +310,8 @@ public static class Specialists
             }),
             UiKit.Button("移除",(_,_)=>{
                 if(grid.SelectedItem is UiUdsRequest x){state.UdsRequests.Remove(x);state.Changed("移除诊断请求");}
-            })),
+            }),
+            new Button{Content="▷ 实体发送",IsEnabled=false,ToolTip="UDS/ISO-TP 与设备未接入，无法发送。"}),
             UiKit.Field("服务模板",services),
             UiKit.Note("请求序列为可编辑 UI 内容，尚不进行 ISO-TP 发送或会话切换。"));
         left.Margin=new Thickness(12);
@@ -363,7 +367,10 @@ public static class Specialists
                     string.Join("；",issues);
                 state.Changed("检查烧录 UI 配置");
             },true)),check,
-            UiKit.Heading("正式烧录阶段",14,new Thickness(0,15,0,5)),stages);
+            UiKit.Heading("正式烧录阶段",14,new Thickness(0,15,0,5)),
+            new Button{Content="▷ 开始实体烧录",IsEnabled=false,
+                ToolTip="需要真实 FlashLab、工位独占许可与严格的编程预检。"},
+            stages);
         center.Margin=new Thickness(13);
         var evidence=UiKit.Vertical(UiKit.Heading("进度与审计",15),
             UiKit.Note("未接入实体 FlashLab：进度未知、确认字节 0（未执行）、不存在 ECU 复位反馈。"),
@@ -460,7 +467,9 @@ public static class Specialists
         var main=new DockPanel{Margin=new Thickness(12)};
         var chartToolbar=UiKit.Vertical(UiKit.Heading("波形画布与时间轴",15),
             UiKit.Note("滚动/缩放/游标是 UI 交互；没有真实采样数据，不绘制合成的电压或电流曲线。"),
-            UiKit.Field("视图缩放",zoom),zoomLabel,cursor);
+            UiKit.Field("视图缩放",zoom),zoomLabel,cursor,
+            new Button{Content="开始实时采集",IsEnabled=false,
+                ToolTip="真实 CAN 信号采样未接线。手工数值可以编辑并绘制。"});
         DockPanel.SetDock(chartToolbar,Dock.Top);main.Children.Add(chartToolbar);
         main.Children.Add(chartHost);
         var reference=UiKit.Vertical(UiKit.Heading("参考与判定",15),
@@ -490,7 +499,9 @@ public static class Specialists
                 status.Foreground=valid?UiKit.Green:Brushes.IndianRed;
                 state.Changed("校验扫码编号格式");
             },true),UiKit.Button("清空",(_,_)=>{serial.Clear();status.Text="等待扫码输入。";})),
-            status,UiKit.Field("工位标签",batch));
+            status,UiKit.Field("工位标签",batch),
+            new Button{Content="▷ 开始正式生产检测",IsEnabled=false,
+                ToolTip="需要真实编号匹配、工位许可、TEST 和 RECORD 后端。"});
         entry.Margin=new Thickness(20);
         var steps=UiKit.Vertical(UiKit.Heading("受控检测任务",16),
             UiKit.Note("1 识别编号 → 2 查找真实匹配 → 3 工位预检 → 4 真实执行 → 5 归档报告"),
@@ -512,6 +523,7 @@ public static class Specialists
             UiKit.Field("运行状态",filter),UiKit.Note("真实运行记录尚未接线；筛选操作不生成历史数据。"));
         DockPanel.SetDock(top,Dock.Top);left.Children.Add(top);left.Children.Add(listing);
         var detail=UiKit.Vertical(UiKit.Heading("运行详情和证据",16),
+            new Button{Content="导出正式报告",IsEnabled=false,ToolTip="没有真实 RunRecord 和报告文件。"},
             UiKit.Empty("当前没有真实运行记录","后续通过 RunId、StepOccurrence 与附件关联浏览证据；不会根据 UI 草稿推断运行通过。"));
         detail.Margin=new Thickness(17);
         return UiKit.Page("报告与历史","历史索引、可筛选记录、运行快照、步骤证据和报告浏览的独立工作环境。",
@@ -520,6 +532,7 @@ public static class Specialists
     public static UIElement Device(UiStore state)
     {
         var left=UiKit.Vertical(UiKit.Heading("当前工位",16),
+            new Button{Content="连接主控",IsEnabled=false,ToolTip="当前纯 UI 产品不拥有 USB 主控连接。"},
             UiKit.Note("主控连接：未接入（纯 UI）"),UiKit.Note("主控身份：未知"),
             UiKit.Note("ECU CAN：未连接"),UiKit.Note("KEY_SIM CAN：未连接"),
             UiKit.Note("硬件请求 / ACK：无真实事实"),
