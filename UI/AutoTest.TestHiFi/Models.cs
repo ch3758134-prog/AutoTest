@@ -33,6 +33,7 @@ public sealed class DemoStep
     public string Title { get; init; } = "";
     public string Summary { get; init; } = "";
     public string Kind { get; init; } = "Step";
+    public bool IsExpanded { get; set; } = true;
     public int Depth { get; init; }
     public string Icon { get; init; } = "◈";
     public string IconColor { get; init; } = "#1769D2";
@@ -49,7 +50,7 @@ public sealed class DemoStep
     };
     public Thickness Indent => new(4 + Depth * 22, 0, 0, 0);
     public bool HasIssue => Status is "Warning" or "Error";
-    public string Chevron => Kind is "Group" or "Flow" ? "⌄" : Kind == "Branch" ? "└" : "";
+    public string Chevron => Kind is "Group" or "Flow" ? IsExpanded ? "▾" : "▸" : Kind == "Branch" ? "└" : "";
     public bool IsBranch => Kind == "Branch";
     public string BranchLabel => IsBranch ? Title : "";
     public string RowName => IsBranch ? "" : Title;
