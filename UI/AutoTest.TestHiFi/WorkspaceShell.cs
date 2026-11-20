@@ -94,6 +94,12 @@ public partial class MainWindow
         if (_sessionRestored) return;
         _sessionRestored = true;
         var recent = UiWorkspaceFiles.ReadSession();
+        _wideNavWidth = Math.Clamp(recent.NavWidth, 220, 350);
+        _wideInspectorWidth = Math.Clamp(recent.InspectorWidth, 330, 460);
+        _issuesExpanded = recent.ProblemsExpanded;
+        IssueToggleButton.Content = _issuesExpanded ? "×" : "▢";
+        IssueToggleButton.ToolTip = _issuesExpanded ? "收起问题列表" : "展开问题列表";
+        ApplyResponsiveLayout();
         if (string.IsNullOrWhiteSpace(recent.LastProjectManifest) ||
             !File.Exists(recent.LastProjectManifest)) return;
         if (MessageBox.Show(this,
@@ -128,8 +134,16 @@ public partial class MainWindow
     {
         try
         {
+            if (!_isCompact)
+            {
+                if (NavWidth.ActualWidth > 100) _wideNavWidth = NavWidth.ActualWidth;
+                if (InspectorWidth.ActualWidth > 150) _wideInspectorWidth = InspectorWidth.ActualWidth;
+            }
             UiWorkspaceFiles.SaveSession(new UiSession
             {
+                NavWidth = _wideNavWidth,
+                InspectorWidth = _wideInspectorWidth,
+                ProblemsExpanded = _issuesExpanded,
                 LastProjectManifest = _workFiles.Manifest,
                 LastOpenAssetId = _currentDocument?.Asset.Id,
                 OpenAssetIds = _workFiles.OpenDocuments.Select(d => d.Asset.Id).ToList()
