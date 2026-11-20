@@ -169,6 +169,7 @@ public sealed class UiWorkspaceFiles
     public void Save(UiDocument doc)
     {
         RequireMember(doc.Asset);
+        if (!doc.Dirty) return;
         var path = FullPath(doc.Asset.RelativePath);
         SaveAtomic(path, doc.Content, doc.OriginalEncoding);
         doc.SavedText = doc.Content;
@@ -190,10 +191,21 @@ public sealed class UiWorkspaceFiles
                         name + Path.GetExtension(asset.RelativePath)).Replace('\\','/');
         var oldPath = FullPath(asset.RelativePath);
         var newPath = FullPath(relative);
-        if (File.Exists(newPath) || Workspace!.Assets.Any(a => a.Id != asset.Id &&
+        if ((!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && File.Exists(newPath)) ||
+            Workspace!.Assets.Any(a => a.Id != asset.Id &&
               string.Equals(a.RelativePath, relative, StringComparison.OrdinalIgnoreCase)))
             throw new IOException("同名资源已经存在，重命名已取消。");
-        File.Move(oldPath, newPath);
+        if (string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(oldPath, newPath, StringComparison.Ordinal))
+        {
+            // Windows handles case-only renames reliably through a unique intermediate path.
+            var intermediate = Path.Combine(Path.GetDirectoryName(oldPath)!,
+                "." + Guid.NewGuid().ToString("N") + ".rename");
+            File.Move(oldPath, intermediate);
+            try { File.Move(intermediate, newPath); }
+            catch { File.Move(intermediate, oldPath); throw; }
+        }
+        else File.Move(oldPath, newPath);
         var oldRelative = asset.RelativePath;
         var oldName = asset.Name;
         asset.Name = name; asset.RelativePath = relative;
@@ -206,11 +218,16 @@ public sealed class UiWorkspaceFiles
     {
         RequireMember(asset);
         var originalBase = asset.Name.Length > 52 ? asset.Name[..52] : asset.Name;
-        string candidate = originalBase + " 副本";
-        int i = 2;
-        while (Workspace!.Assets.Any(a => a.Kind == asset.Kind &&
-               a.Name.Equals(candidate, StringComparison.OrdinalIgnoreCase)))
-            candidate = originalBase + " 副本 " + i++;
+        string candidate = "";
+        for (int i = 1; i <= 10000; i++)
+        {
+            candidate = originalBase + " 副本" + (i == 1 ? "" : " " + i);
+            var path = Path.Combine(Path.GetDirectoryName(asset.RelativePath) ?? "",
+                candidate + Path.GetExtension(asset.RelativePath)).Replace('\\', '/');
+            if (!Workspace!.Assets.Any(a => string.Equals(a.RelativePath, path, StringComparison.OrdinalIgnoreCase))
+                && !File.Exists(FullPath(path))) break;
+            if (i == 10000) throw new IOException("无法分配不重复的文件副本名称。");
+        }
         var name = CleanName(candidate);
         var relative = Path.Combine(Path.GetDirectoryName(asset.RelativePath) ?? "",
                         name + Path.GetExtension(asset.RelativePath)).Replace('\\','/');
