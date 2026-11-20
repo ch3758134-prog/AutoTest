@@ -38,7 +38,7 @@
 | V Windows 视觉检查 | 1366×768@150%、1920×1080@100% 尚未截图/实测 | NOT_RUN |
 | C WPF 修改 | 未改 UI 或后端源代码 | NO_CODE_CHANGE |
 | U 用户体验 | 未交付运行版本供用户操作 | NOT_RUN |
-| F 档案 | 独立文件写入 GitHub，可回读 | READBACK_PENDING（工具回读后更新） |
+| F 档案 | 独立文件写入 GitHub，可回读 | READBACK_CONFIRMED（四份文件回读，样本 40/40 唯一，P6/T29/C5） |
 
 ## 4. 研究结论可能被推翻的证据
 
