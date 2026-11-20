@@ -298,7 +298,7 @@
             <TextBlock Grid.Row="2" Text="状态" Foreground="#65758D" FontSize="11.5"/>
             <TextBlock Grid.Row="2" Grid.Column="1" Text="编辑预览" FontSize="11.7"/>
             <TextBlock Grid.Row="3" Text="步骤数量" Foreground="#65758D" FontSize="11.5"/>
-            <TextBlock Grid.Row="3" Grid.Column="1" Text="准备 6  /  测试 29  /  清理 5" FontSize="11.2"/>
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding PhaseCountText}" FontSize="11.2"/>
             <TextBlock Grid.Row="4" Text="设计版本" Foreground="#65758D" FontSize="11.5"/>
             <TextBlock Grid.Row="4" Grid.Column="1" Text="高保真 · v0.1" FontSize="11.7"/>
           </Grid>
@@ -343,7 +343,7 @@
                   <TextBlock Text="编辑中" Foreground="#167A40" FontWeight="SemiBold" FontSize="10.5"/>
                 </Border>
               </StackPanel>
-              <TextBlock Text="验证外部开关、按键等输入对 ECU 输出与 CAN 信号的响应是否符合要求。"
+              <TextBlock Text="{Binding CurrentDescription}"
                          FontSize="11.7" Foreground="#65758D" Margin="0,7,0,0"/>
             </StackPanel>
             <Grid Grid.Column="1" VerticalAlignment="Center" Height="49">
@@ -353,21 +353,21 @@
               </Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                 <TextBlock Text="总步骤" FontSize="11" HorizontalAlignment="Center" Foreground="#617086"/>
-                <TextBlock Text="29" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                <TextBlock Text="{Binding SummaryTotal}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/>
               </StackPanel>
               <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                 <TextBlock Text="○ 正常" FontSize="11" Foreground="#168B43" HorizontalAlignment="Center"/>
-                <TextBlock Text="26" FontSize="17" FontWeight="Bold" Foreground="#168B43"
+                <TextBlock Text="{Binding SummaryNormal}" FontSize="17" FontWeight="Bold" Foreground="#168B43"
                            HorizontalAlignment="Center" Margin="0,3,0,0"/>
               </StackPanel>
               <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                 <TextBlock Text="▲ 警告" FontSize="11" Foreground="#A66800" HorizontalAlignment="Center"/>
-                <TextBlock Text="1" FontSize="17" FontWeight="Bold" Foreground="#A66800"
+                <TextBlock Text="{Binding SummaryWarning}" FontSize="17" FontWeight="Bold" Foreground="#A66800"
                            HorizontalAlignment="Center" Margin="0,3,0,0"/>
               </StackPanel>
               <StackPanel Grid.Column="3" HorizontalAlignment="Center">
                 <TextBlock Text="● 错误" FontSize="11" Foreground="#D9383E" HorizontalAlignment="Center"/>
-                <TextBlock Text="2" FontSize="17" FontWeight="Bold" Foreground="#D9383E"
+                <TextBlock Text="{Binding SummaryError}" FontSize="17" FontWeight="Bold" Foreground="#D9383E"
                            HorizontalAlignment="Center" Margin="0,3,0,0"/>
               </StackPanel>
             </Grid>
@@ -547,7 +547,7 @@
           <Grid.RowDefinitions><RowDefinition Height="39"/><RowDefinition x:Name="IssueHeadersRow" Height="26"/><RowDefinition x:Name="IssueItemsRow" Height="*"/></Grid.RowDefinitions>
           <Grid Grid.Row="0" Margin="13,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBlock Text="⌄ 问题与定位 (3)" FontWeight="SemiBold" VerticalAlignment="Center"
+            <TextBlock Text="{Binding IssueHeaderText}" FontWeight="SemiBold" VerticalAlignment="Center"
                        Margin="0,0,19,0" FontSize="12.4"/>
             <TextBlock Grid.Column="1" Text="● 错误 2" Foreground="#D9363E" FontSize="11.7"
                        VerticalAlignment="Center" Margin="0,0,17,0"/>
@@ -567,7 +567,7 @@
             <TextBlock Grid.Column="2" Text="问题描述" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11.4"/>
             <TextBlock Grid.Column="3" Text="建议" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11.4"/>
           </Grid>
-          <ListBox Grid.Row="2" x:Name="IssueList" ItemsSource="{Binding Issues}"
+          <ListBox Grid.Row="2" x:Name="IssueList" ItemsSource="{Binding VisibleIssues}"
                    ItemTemplate="{StaticResource IssueTemplate}" BorderThickness="0"
                    Margin="12,0,12,2" Background="White"
                    ScrollViewer.VerticalScrollBarVisibility="Disabled"
