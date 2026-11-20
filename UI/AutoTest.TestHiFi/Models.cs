@@ -99,7 +99,7 @@ public sealed class PreviewInspector : ViewState
     public bool IgnoreInvalid { get => _ignoreInvalid; set { _ignoreInvalid = value; Change(); } }
     public void Show(DemoStep step)
     {
-        Heading = step.Title is "IF 条件" or "SWITCH" ? step.Title : step.Title;
+        Heading = step.Title;
         Description = step.Title switch
         {
             "CAN 信号判定" => "读取 CAN 信号并判断其值是否满足预期条件。",
