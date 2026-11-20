@@ -525,7 +525,7 @@ public partial class MainWindow
             BorderBrush = ToolLine, BorderThickness = new Thickness(1),
             Child = new TextBlock
             {
-                Text = "暂无实际诊断记录。\\nUSB / CAN / ISO-TP / UDS 执行必须交由正式 UDS 后端。\\n主控 ACK 不代表 ECU 已响应。",
+                Text = "暂无实际诊断记录。\nUSB / CAN / ISO-TP / UDS 执行必须交由正式 UDS 后端。\n主控 ACK 不代表 ECU 已响应。",
                 TextWrapping = TextWrapping.Wrap, Foreground = ToolMuted,
                 Padding = new Thickness(15), VerticalAlignment = VerticalAlignment.Center
             }
