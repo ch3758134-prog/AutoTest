@@ -21,44 +21,146 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private int _flashSecuritySensitive;
     public bool IsFlashSecuritySensitive => Volatile.Read(ref _flashSecuritySensitive) != 0;
 
-    // Current firmware always initializes ECU_CAN_PORT to 500 kbit/s and
-    // exposes NO USB set/get bitrate command. This is a requested configuration
-    // only: unsupported choices must NEVER be treated as applied to the bus.
+    // The active firmware exposes ECU-only USB 0x42 SET / 0x43 GET.
+    // Never infer the feature from unchanged GET_VERSION text: probe 0x43
+    // in the actual USB session and bind every readback to station epoch.
     public sealed record EcuCanRateChoice(int Kbps, string Label);
     public static IReadOnlyList<EcuCanRateChoice> EcuCanRateChoices { get; } =
     [
         new(20, "20 kbit/s"), new(50, "50 kbit/s"),
         new(100, "100 kbit/s"), new(125, "125 kbit/s"),
-        new(250, "250 kbit/s"), new(500, "500 kbit/s · 当前固件"),
+        new(250, "250 kbit/s"), new(500, "500 kbit/s"),
         new(800, "800 kbit/s"), new(1000, "1 Mbit/s")
     ];
     private int _requestedEcuCanBitrateKbps = 500;
+    private int _confirmedEcuCanBitrateKbps;
+    private long _confirmedEcuCanBitrateEpoch;
+    private int _legacyFixed500;
     public event Action<int>? EcuCanBitrateSelectionChanged;
     public int RequestedEcuCanBitrateKbps => Volatile.Read(ref _requestedEcuCanBitrateKbps);
-    public const int FirmwareFixedEcuCanBitrateKbps = 500;
+    public int ConfirmedEcuCanBitrateKbps =>
+        IsConnected && Interlocked.Read(ref _confirmedEcuCanBitrateEpoch) == CurrentStationEpoch
+            ? Volatile.Read(ref _confirmedEcuCanBitrateKbps) : 0;
+    public bool IsEcuCanBitrateApplied =>
+        ConfirmedEcuCanBitrateKbps == RequestedEcuCanBitrateKbps;
+    public string EcuCanBitrateStatus
+    {
+        get
+        {
+            var target = RequestedEcuCanBitrateKbps;
+            if (!IsConnected) return "未连接 · 目标 " + target + "k";
+            int actual = ConfirmedEcuCanBitrateKbps;
+            if (actual == 0) return "状态未知 · 请点击应用/读回";
+            if (actual != target)
+                return "未生效 · 当前 " + actual + "k / 目标 " + target + "k";
+            return Volatile.Read(ref _legacyFixed500) != 0
+                ? "旧固件固定 500k · 无 0x43 读回"
+                : "已确认 " + actual + "k · USB 0x43 读回";
+        }
+    }
+
+    private void PublishEcuCanBaudState()
+    {
+        foreach (Action<int> subscriber in EcuCanBitrateSelectionChanged?.GetInvocationList()
+                     .Cast<Action<int>>() ?? Enumerable.Empty<Action<int>>())
+            try { subscriber(RequestedEcuCanBitrateKbps); }
+            catch { /* UI notifications must not affect hardware authorization. */ }
+    }
+
+    private void SetObservedEcuCanBaud(int kbps, long epoch, bool legacy)
+    {
+        Volatile.Write(ref _confirmedEcuCanBitrateKbps, kbps);
+        Volatile.Write(ref _legacyFixed500, legacy ? 1 : 0);
+        Interlocked.Exchange(ref _confirmedEcuCanBitrateEpoch, epoch);
+        PublishEcuCanBaudState();
+    }
 
     public void SelectRequestedEcuCanBitrate(int kbps)
     {
-        if (kbps is not (20 or 50 or 100 or 125 or 250 or 500 or 800 or 1000))
-            throw new ArgumentOutOfRangeException(nameof(kbps), "不是主控 CAN 驱动已定义的码率。");
+        _ = MainControllerCodec.EcuCanBaudCode(kbps);
         if (_testRunApproved || _manualCanBatchApproved ||
             _manualKeyActionApproved || IsFlashSecuritySensitive ||
             _lifecycle.CurrentCount == 0)
             throw new InvalidOperationException("工位正在执行硬件操作，禁止改变 ECU CAN 波特率设置。");
         Volatile.Write(ref _requestedEcuCanBitrateKbps, kbps);
-        Record("ECU CAN 期望码率选择 " + kbps +
-            " kbit/s；当前固件 USB 不支持设置/读取，未执行硬件修改。");
-        try { EcuCanBitrateSelectionChanged?.Invoke(kbps); }
-        catch { /* UI observation cannot change the physical rate contract. */ }
+        Record("ECU CAN 目标码率 " + kbps +
+            " kbit/s；选择仅修改目标值，必须核对 USB 0x43，必要时点击应用。");
+        PublishEcuCanBaudState();
+    }
+
+    /// <summary>Explicitly set ECU CAN on an idle, connected real controller.
+    /// Successful 0x42 ACK is not sufficient; 0x43 must confirm the target in
+    /// the same USB session. Firmware 0x05 busy propagates without retrying.</summary>
+    public async Task<int> ApplyRequestedEcuCanBitrateAsync(CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected ||
+                CurrentStationEpoch <= 0)
+                throw new IOException("先连接真实 USB 主控再应用 ECU CAN 波特率。");
+            if (_testRunApproved || _manualCanBatchApproved ||
+                _manualKeyActionApproved || IsFlashSecuritySensitive)
+                throw new InvalidOperationException(
+                    "TEST、CAN、KEY、FLASH 占用工位期间禁止切换 ECU CAN 波特率。");
+            var epoch = CurrentStationEpoch;
+            var target = RequestedEcuCanBitrateKbps;
+            try
+            {
+                // Always re-read first, even if the UI previously confirmed a
+                // value, to avoid configuring a different live controller.
+                int before;
+                try
+                {
+                    before = await MainControllerCodec.ReadEcuCanBaudAsync(_usb, ct);
+                }
+                catch (UsbDeviceStatusException error)
+                    when (error.Command == MainControllerCodec.GetEcuCanBaud &&
+                          error.Status == 0x03)
+                {
+                    if (target != 500)
+                        throw new NotSupportedException(
+                            "连接的主控固件不支持 ECU CAN 0x42/0x43；只能使用旧固件固定 500k。",
+                            error);
+                    SetObservedEcuCanBaud(500, epoch, legacy: true);
+                    Record("主控不支持 USB 0x43；按旧固件启动固定 500k 使用，未作实际总线测速。");
+                    return 500;
+                }
+                if (before != target)
+                {
+                    // Any unknown 0x42 outcome must revoke previous confidence.
+                    SetObservedEcuCanBaud(0, 0, legacy: false);
+                    Record("ECU CAN USB 0x42 申请 " + target +
+                        "k；修改前主控 0x43=" + before + "k。");
+                    await MainControllerCodec.SetAndVerifyEcuCanBaudAsync(_usb,
+                        target, ct);
+                }
+                if (!_usb.State.Equals(UsbSessionState.Connected) ||
+                    CurrentStationEpoch != epoch)
+                    throw new IOException("设置 ECU CAN 速率时 USB 会话已变化，状态未知。");
+                SetObservedEcuCanBaud(target, epoch, legacy: false);
+                Record("ECU CAN 波特率已由主控 USB 0x43 确认 " + target +
+                    "k；这不是总线分析仪测得的物理速率。KEY CAN 未修改。");
+                return target;
+            }
+            catch (Exception error)
+            {
+                SetObservedEcuCanBaud(0, 0, legacy: false);
+                Record("ECU CAN 设置/读回失败，已撤销确认，禁止 DUT CAN 发送：" +
+                    error.Message);
+                throw;
+            }
+        }
+        finally { _lifecycle.Release(); }
     }
 
     public void RequireConfiguredEcuCanBitrate()
     {
-        if (RequestedEcuCanBitrateKbps != FirmwareFixedEcuCanBitrateKbps)
-            throw new NotSupportedException("已选择 ECU CAN " +
-                RequestedEcuCanBitrateKbps +
-                " kbit/s，但主控固件当前仅固定 500 kbit/s，且没有 USB 改速指令。" +
-                "目标波特率未生效，已禁止 ECU CAN 实际发送/测试/烧录。");
+        if (!IsConnected || CurrentStationEpoch <= 0 ||
+            !IsEcuCanBitrateApplied)
+            throw new InvalidOperationException(
+                "ECU CAN 目标码率尚未确认应用：" + EcuCanBitrateStatus +
+                "；请停止工位任务，点击“应用/读回”并核实状态后再进行真实 DUT CAN/TEST/FLASH。");
     }
     private WinUsbByteLink? _link;
     private UsbSessionService? _usb;
@@ -158,6 +260,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 if (state != UsbSessionState.Faulted) return;
                 Interlocked.Exchange(ref _currentEpoch, 0);
                 Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
+                SetObservedEcuCanBaud(0, 0, legacy: false);
                 _link?.RevokePhysicalTestRun();
                 _link?.RevokeManualCanBatch();
                 _link?.RevokeManualKeySequence();
@@ -193,6 +296,31 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             ConnectedFirmwareVersion = Encoding.ASCII.GetString(version.Payload);
             Record("GET_VERSION：" + ConnectedFirmwareVersion +
                 "（设备自报版本，不是固件哈希或烧录内容证据）");
+            // Probe the actual firmware. GET_VERSION is NOT a capability
+            // discriminator; the old and new firmware use the same label.
+            int observedRate = 0;
+            bool legacy500 = false;
+            try
+            {
+                observedRate = await MainControllerCodec.ReadEcuCanBaudAsync(
+                    pending, cancellationToken);
+                Record("ECU CAN 0x43 实际配置读回：" + observedRate + "k。");
+            }
+            catch (UsbDeviceStatusException error)
+                when (error.Command == MainControllerCodec.GetEcuCanBaud &&
+                      error.Status == 0x03)
+            {
+                // Only a proven command-not-supported response permits
+                // compatibility with the pre-0x42 firmware's fixed 500k.
+                observedRate = 500;
+                legacy500 = true;
+                Record("主控返回 ECU CAN 0x43 ERR_CMD：按旧版固定 500k 兼容。");
+            }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                Record("ECU CAN 0x43 查询失败：" + error.Message +
+                    "；状态未知，需重试应用/读回才能发送 DUT CAN。");
+            }
             ConnectedDeviceIdentity = candidate.DisplayIdentity;
             _link = link;
             _usb = pending;
@@ -209,6 +337,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 ObserveBusAsync(_hub, BusRole.KeypadCan, _monitorStop.Token)
             };
             Interlocked.Exchange(ref _currentEpoch, Interlocked.Increment(ref _epochCounter));
+            SetObservedEcuCanBaud(observedRate,
+                observedRate == 0 ? 0 : CurrentStationEpoch, legacy500);
             try { ConnectionChanged?.Invoke(CurrentStationEpoch); } catch { }
             Record("主控连接确认；ECU CAN（A1/A12）、KEY CAN（B1/B11）；接收监视已启动。");
         }
@@ -714,6 +844,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             Interlocked.Exchange(ref _currentEpoch, 0);
             Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
+            SetObservedEcuCanBaud(0, 0, legacy: false);
             try { ConnectionChanged?.Invoke(0); } catch { }
             _link?.RevokePhysicalTestRun();
             _link?.RevokeManualCanBatch();
