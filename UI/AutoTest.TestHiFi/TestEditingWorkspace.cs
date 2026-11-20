@@ -168,6 +168,9 @@ public partial class MainWindow
             {
                 var asset = _workFiles.NewAsset("测试程序", "UI 测试编辑器");
                 _testProgramDocument = _workFiles.OpenAsset(asset);
+                _testProgramDocument.Content = JsonSerializer.Serialize(
+                    _testProgram, new JsonSerializerOptions { WriteIndented = true });
+                _workFiles.Save(_testProgramDocument);
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or ArgumentException)
             {
