@@ -18,6 +18,9 @@ public partial class MainWindow
     private UiDocument? _currentDocument;
     private UiAsset? _selectedAsset;
     private string _activeToolPage = "工程与文件";
+    private string? _recentManifest;
+    private bool _restoreOnStartup = true;
+    private readonly List<string> _recentProjects = [];
     private bool _switchingEditor;
     private bool _sessionRestored;
 
@@ -94,13 +97,22 @@ public partial class MainWindow
         if (_sessionRestored) return;
         _sessionRestored = true;
         var recent = UiWorkspaceFiles.ReadSession();
+        _recentManifest = recent.LastProjectManifest;
+        _restoreOnStartup = recent.RestoreOnStartup;
+        _recentProjects.Clear();
+        _recentProjects.AddRange((recent.RecentProjects ?? []).Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).Take(8));
         _wideNavWidth = Math.Clamp(recent.NavWidth, 220, 350);
         _wideInspectorWidth = Math.Clamp(recent.InspectorWidth, 330, 460);
         _issuesExpanded = recent.ProblemsExpanded;
         IssueToggleButton.Content = _issuesExpanded ? "×" : "▢";
         IssueToggleButton.ToolTip = _issuesExpanded ? "收起问题列表" : "展开问题列表";
         ApplyResponsiveLayout();
-        if (string.IsNullOrWhiteSpace(recent.LastProjectManifest) ||
+        if (!_issuesExpanded)
+        {
+            IssueHeadersRow.Height = new GridLength(0);
+            IssueItemsRow.Height = new GridLength(0);
+        }
+        if (!_restoreOnStartup || string.IsNullOrWhiteSpace(recent.LastProjectManifest) ||
             !File.Exists(recent.LastProjectManifest)) return;
         if (MessageBox.Show(this,
               "发现上次打开的本地 UI 工作区。是否恢复工程及已打开的文件？\n\n" +
@@ -110,6 +122,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Open(recent.LastProjectManifest);
+            RememberRecentProject(_workFiles.Manifest);
             RefreshProjectTree();
             foreach (var id in recent.OpenAssetIds.Distinct())
             {
@@ -144,7 +157,9 @@ public partial class MainWindow
                 NavWidth = _wideNavWidth,
                 InspectorWidth = _wideInspectorWidth,
                 ProblemsExpanded = _issuesExpanded,
-                LastProjectManifest = _workFiles.Manifest,
+                LastProjectManifest = _workFiles.Manifest ?? _recentManifest,
+                RestoreOnStartup = _restoreOnStartup && _workFiles.HasProject,
+                RecentProjects = _recentProjects.ToList(),
                 LastOpenAssetId = _currentDocument?.Asset.Id,
                 OpenAssetIds = _workFiles.OpenDocuments.Select(d => d.Asset.Id).ToList()
             });
@@ -438,6 +453,16 @@ public partial class MainWindow
         panel.Children.Add(ok);w.Content=panel;
         return w.ShowDialog()==true?combo.SelectedItem?.ToString():null;
     }
+    private void RememberRecentProject(string? manifest)
+    {
+        if (string.IsNullOrWhiteSpace(manifest)) return;
+        _recentManifest=manifest;
+        _restoreOnStartup=true;
+        _recentProjects.RemoveAll(s=>string.Equals(s,manifest,StringComparison.OrdinalIgnoreCase));
+        _recentProjects.Insert(0,manifest);
+        if (_recentProjects.Count>8) _recentProjects.RemoveRange(8,_recentProjects.Count-8);
+    }
+
     private void NewProject_Click(object sender, RoutedEventArgs e)
     {
         if (!ConfirmDiscardOpenFiles()) return;
@@ -448,6 +473,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Create(dlg.FolderName,name);
+            RememberRecentProject(_workFiles.Manifest);
             _currentDocument=null; _selectedAsset=null;
             RefreshProjectTree();ShowProjectWorkspace();StoreSession();
             WorkspaceStatusText.Text="工程创建完成：" + _workFiles.Root;
@@ -464,6 +490,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Open(dlg.FileName);
+            RememberRecentProject(_workFiles.Manifest);
             _currentDocument=null; _selectedAsset=null;
             RefreshProjectTree();ShowProjectWorkspace();StoreSession();
             StatusText="已打开 UI 工程：" + _workFiles.Workspace!.Name;
@@ -474,17 +501,35 @@ public partial class MainWindow
     }
     private void OpenRecent_Click(object sender, RoutedEventArgs e)
     {
-        var session=UiWorkspaceFiles.ReadSession();
-        if(string.IsNullOrWhiteSpace(session.LastProjectManifest)||!File.Exists(session.LastProjectManifest))
+        var items=_recentProjects.Where(File.Exists).ToArray();
+        if(items.Length==0)
         {
             MessageBox.Show(this,"没有可用的最近工程。","最近工程",
                             MessageBoxButton.OK,MessageBoxImage.Information);return;
         }
+        if(sender is not FrameworkElement anchor)
+            anchor=ProjectNavButton;
+        var menu=new ContextMenu();
+        foreach(var path in items)
+        {
+            var manifest=path;
+            var item=new MenuItem {Header=Path.GetDirectoryName(manifest) ?? manifest,
+                                    ToolTip=manifest};
+            item.Click+=(_,_)=>OpenRecentPath(manifest);
+            menu.Items.Add(item);
+        }
+        menu.PlacementTarget=anchor;
+        menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen=true;
+    }
+    private void OpenRecentPath(string path)
+    {
         if(!ConfirmDiscardOpenFiles())return;
         try
         {
-            _workFiles.Open(session.LastProjectManifest);
-            _currentDocument=null; RefreshProjectTree(); ShowProjectWorkspace(); StoreSession();
+            _workFiles.Open(path);
+            RememberRecentProject(_workFiles.Manifest);
+            _currentDocument=null;RefreshProjectTree();ShowProjectWorkspace();StoreSession();
         }
         catch(Exception ex)when(ex is IOException or InvalidDataException or UnauthorizedAccessException or
                                   System.Text.Json.JsonException)
@@ -713,6 +758,7 @@ public partial class MainWindow
     {
         if(!ConfirmDiscardOpenFiles())return;
         _workFiles.Close();
+        _restoreOnStartup=false;
         _currentDocument=null;_selectedAsset=null;
         RefreshProjectTree(); ShowTestWorkspace(); StoreSession();
         StatusText="已关闭本地 UI 工作区。可从文件菜单创建或打开其他工程。";
