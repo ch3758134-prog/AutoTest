@@ -225,6 +225,13 @@ public sealed class UiWorkspaceFiles
         }
     }
 
+    public void Close()
+    {
+        OpenDocuments.Clear();
+        Workspace = null;
+        Root = null;
+    }
+
     public void SaveManifest()
     {
         Require();
