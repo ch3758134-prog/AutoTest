@@ -70,3 +70,14 @@
 - 研究完原型、完成真实操作验收，再由 PM 审查 UI 设计版本及集成界面合同。
 
 **本记录不授权 HOST 代码修改、不改变主控硬件、无任何 CI/实体测试结果。**
+
+## 2026-11-19 用户明确更新：纯 UI 完整重建与统一验收（优先于旧 UX-I01）
+
+| ID | 决策 | 来源 | 状态 | 约束 |
+|---|---|---|---|---|
+| UX-H031 | 旧 G4 UI 表现层完全废弃；新 UI 不继承旧 Shell、旧编辑器、旧导航或风格 | 用户在本对话多次明确要求全部删除、重新设计 | USER_CONFIRMED | 仅在独立 feature 分支删旧 UI；`main` 暂不合并 |
+| UX-H032 | 当前只完成独立纯 UI，不保留接真实 TEST/PROJECT/DEVICE 的实施依赖；真实服务接线由后续阶段安排 | 用户否定“保留真实业务服务再重建”路线 | USER_CONFIRMED | UI 会话是交互验证资料，不是第二套可执行领域模型 |
+| UX-H033 | 所有 P/A/B/C/D/E 研究、设计与代码批次内部连续推进和逐批留档，用户只在全部 UI 完成后统一 Windows 实际验收 | 2026-11-19 用户明确改变审批节奏 | USER_CONFIRMED | 不要求每批停下请用户批准；仍须写准确的 Gate 与未验证项 |
+| UX-H034 | 保留软硬件真实事实层级，UI 不接后端时不能伪造 USB ACK、ECU 响应、波形采样、运行结果或 PASS | R01~R06 / 用户禁止假运行 | HARD_BOUNDARY | 纯 UI 可以展示用户手工曲线和状态结构，但必须标注非实测 |
+
+旧 `UX_I01_WPF_IMPLEMENTATION_START_CONTRACT_20261119.md` 的“首批真实模型适配与 PROJECT/TEST 接线优先”安排已由 UX-H032 **SUPERSEDED**；文档原文保留为历史，不得当作当前实施指令。当前实施候选：Draft PR #69，`feature/ui-product-rebuild-20261119`。Windows Build、UI 实际验收尚未执行。
