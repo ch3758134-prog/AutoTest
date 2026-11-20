@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
+using AutoTest.Contracts;
 using System.Globalization;
 using AutoTest.Core;
 using AutoTest.Testing.Authoring;
@@ -10,7 +12,25 @@ public enum RealStepStatus { Completed, Skipped, ConditionFalse, NoData, Timeout
 public enum RealTestVerdict { Passed, Failed, Inconclusive, Error, Aborted }
 
 public sealed record RealStepFact(StepId Step, string Type, RealStepStatus Status,
-    string Expected, string Actual, string Detail, DateTimeOffset At, string? Evidence = null);
+    string Expected, string Actual, string Detail, DateTimeOffset At, string? Evidence = null)
+{
+    // Optional properties preserve legacy result readers without assigning fake occurrence IDs.
+    public Guid StepOccurrenceId { get; init; }
+    public Guid? ParentOccurrenceId { get; init; }
+    public TestPhase? Phase { get; init; }
+    public string ExecutionPath { get; init; } = "";
+    public int? LoopIteration { get; init; }
+    public DateTimeOffset? StartedUtc { get; init; }
+    public DateTimeOffset? CompletedUtc { get; init; }
+    public TimeSpan? Duration { get; init; }
+    public SignalObservation? Observation { get; init; }
+    public TestSignalStatus? ObservationStatus { get; init; }
+    public string? RequirementId { get; init; }
+    public string? ReportNote { get; init; }
+    public bool ShowEvidence { get; init; } = true;
+    public ImmutableDictionary<string, TestDatum> AdditionalResults { get; init; } =
+        ImmutableDictionary<string, TestDatum>.Empty;
+}
 
 public sealed record RealRunResult(RunId Run, string PlanFingerprint, RealTestVerdict Verdict,
     ImmutableArray<RealStepFact> Facts, IReadOnlyDictionary<string, TestDatum> Variables)
@@ -111,9 +131,15 @@ public sealed class RealRunCoordinator
         return value;
     }
 
-    public async Task<RealRunResult> StartAsync(PreparedTestPlan prepared,
-        CancellationToken external = default)
+    public Task<RealRunResult> StartAsync(PreparedTestPlan prepared,
+        CancellationToken external = default) =>
+        StartAsync(prepared, RunId.New(), null, external);
+
+    /// <summary>RunId must match an already begun RunRecord before any DUT write.</summary>
+    public async Task<RealRunResult> StartAsync(PreparedTestPlan prepared, RunId run,
+        IRealRunEventSink? events, CancellationToken external = default)
     {
+        if (run.Value == Guid.Empty) throw new ArgumentException("Invalid RunId.", nameof(run));
         if (!prepared.ValidateFingerprint() || !prepared.Diagnostics.IsEmpty)
             throw new InvalidOperationException("Real test plan must be compiled and valid.");
         var document = prepared.RestoreDocument();
@@ -121,6 +147,22 @@ public sealed class RealRunCoordinator
         TestTargetMapping Target(StepNode node) =>
             mappings.TryGetValue(Property(node, "target"), out var found) ? found
             : throw new KeyNotFoundException("Unresolved test target: " + Property(node, "target"));
+
+        // Verify port observations against the version-pinned mapping, not only
+        // the decoded numeric value. A stale DBC signal must never satisfy an assertion.
+        static bool MatchesFrozenSignal(TestTargetMapping target, SignalObservation observation)
+        {
+            var source = observation.Signal;
+            return target.Kind == TestTargetKind.Signal &&
+                source.DbcAsset.Id == target.Asset &&
+                source.DbcAsset.Revision.Value == target.AssetRevision &&
+                string.Equals(source.DbcAsset.Fingerprint.Sha256, target.AssetSha256,
+                    StringComparison.OrdinalIgnoreCase) &&
+                source.Role == target.Role && source.FrameId == target.CanId &&
+                string.Equals(source.SignalName, target.SignalName, StringComparison.Ordinal) &&
+                string.Equals(source.Unit, target.Unit, StringComparison.Ordinal) &&
+                string.Equals(observation.Unit, target.Unit, StringComparison.Ordinal);
+        }
 
         CancellationTokenSource cts;
         lock (_gate)
@@ -130,7 +172,6 @@ public sealed class RealRunCoordinator
             _stop = cts; _pause = false; _singleStep = false; _resume = null;
         }
 
-        var run = RunId.New();
         var facts = ImmutableArray.CreateBuilder<RealStepFact>();
         var variables = new Dictionary<string, TestDatum>(StringComparer.OrdinalIgnoreCase);
         var verdict = RealTestVerdict.Inconclusive;
@@ -180,7 +221,9 @@ public sealed class RealRunCoordinator
             facts.Add(new RealStepFact(n.Id, n.Type, state, expected, actual,
                 detail, DateTimeOffset.UtcNow, evidence));
 
-        async Task Execute(ImmutableArray<StepNode> nodes, CancellationToken ct, bool cleanup = false)
+        async Task Execute(ImmutableArray<StepNode> nodes, CancellationToken ct, bool cleanup = false,
+            TestPhase phase = TestPhase.Test, Guid? parentOccurrenceId = null,
+            string parentPath = "", int? loopIteration = null)
         {
             foreach (var node in nodes)
             {
@@ -194,17 +237,46 @@ public sealed class RealRunCoordinator
                     await _actions.CheckHealthAsync(ct);
                 }
                 else ct.ThrowIfCancellationRequested();
+                var startedUtc = DateTimeOffset.UtcNow;
+                var startedTick = Stopwatch.GetTimestamp();
+                var occurrence = Guid.NewGuid();
+                var path = parentPath + "/" + node.Id.Value.ToString("N") +
+                    (loopIteration is { } iteration ? "[iteration=" + iteration + "]" : "");
+                var start = new RealStepStarted(run, node.Id, occurrence, parentOccurrenceId,
+                    phase, node.Type, node.Name, path, loopIteration, startedUtc);
+                if (events is not null) await events.StepStartedAsync(start, ct);
                 if (!StepExecutionPolicy.IsEnabled(node))
                 {
-                    Fact(node, RealStepStatus.Skipped, detail: "步骤已关闭，本次未执行。");
+                    var skipped = new RealStepFact(node.Id, node.Type, RealStepStatus.Skipped,
+                        "", "", "步骤已关闭，本次未执行。", DateTimeOffset.UtcNow)
+                    {
+                        StepOccurrenceId = occurrence,
+                        ParentOccurrenceId = parentOccurrenceId,
+                        Phase = phase,
+                        ExecutionPath = path,
+                        LoopIteration = loopIteration,
+                        StartedUtc = startedUtc,
+                        CompletedUtc = DateTimeOffset.UtcNow,
+                        Duration = Stopwatch.GetElapsedTime(startedTick)
+                    };
+                    facts.Add(skipped);
+                    if (events is not null)
+                        await events.StepCompletedAsync(run, skipped, CancellationToken.None);
                     continue;
                 }
+                var firstFact = facts.Count;
+                TestSignalResult? observationForStep = null;
+                bool gapObserved = false;
+                bool bindingInvalid = false;
+                Exception? stepFailure = null;
+                try
+                {
                 var kind = node.Type;
                 switch (kind)
                 {
                     case "Sequence":
                         Fact(node, RealStepStatus.Completed);
-                        await Execute(node.Slots["body"], ct, cleanup);
+                        await Execute(node.Slots["body"], ct, cleanup, phase, occurrence, path, loopIteration);
                         break;
                     case "If":
                     {
@@ -226,7 +298,8 @@ public sealed class RealRunCoordinator
                         }
                         var pass = Compare(actual, "==", expected);
                         Fact(node, RealStepStatus.Completed, expected, actual, "Branch: " + (pass ? "then" : "else"));
-                        await Execute(node.Slots[pass ? "then" : "else"], ct, cleanup);
+                        await Execute(node.Slots[pass ? "then" : "else"], ct, cleanup,
+                            phase, occurrence, path, loopIteration);
                         break;
                     }
                     case "Loop":
@@ -234,7 +307,8 @@ public sealed class RealRunCoordinator
                         var count = Milliseconds(node, "count", 1000);
                         Fact(node, RealStepStatus.Completed, count.ToString(CultureInfo.InvariantCulture));
                         for (var i = 0; i < count; i++)
-                            await Execute(node.Slots["body"], ct, cleanup);
+                            await Execute(node.Slots["body"], ct, cleanup,
+                                phase, occurrence, path, i + 1);
                         break;
                     }
                     case "Wait":
@@ -285,7 +359,7 @@ public sealed class RealRunCoordinator
                     case "Flash":
                     {
                         var port = _flash ?? throw new NotSupportedException(
-                            "FLASH 未接入真实 TEST 工位；不得跳过或模拟成功。");
+                            "FLASH 未接入真实硬件会话；禁止模拟成功。");
                         var flash = await port.ExecuteAsync(node, ct);
                         var status = !flash.ProtocolCompleted ? RealStepStatus.DeviceError :
                             flash.AppVerified ? RealStepStatus.Completed : RealStepStatus.NoData;
@@ -293,9 +367,8 @@ public sealed class RealRunCoordinator
                             flash.Code + " ACK=" + flash.TransferAcknowledged +
                             " VERIFIED=" + flash.VerifiedBytes, flash.Diagnostic, flash.Evidence);
                         if (!flash.ProtocolCompleted)
-                            throw new IOException("烧录协议未完成：" + flash.Code);
-                        if (!flash.AppVerified)
-                            incomplete = true; // Boot reset ACK is not proof of running APP.
+                            throw new IOException("真实烧录协议未完成：" + flash.Code);
+                        if (!flash.AppVerified) incomplete = true;
                         break;
                     }
                     case "CanStopPeriodic":
@@ -307,9 +380,26 @@ public sealed class RealRunCoordinator
                     case "Read":
                     {
                         var mode = Enum.Parse<TestReadMode>(Property(node, "mode"), true);
-                        var result = await _signals.ReadAsync(Target(node), mode,
+                        var target = Target(node);
+                        var result = await _signals.ReadAsync(target, mode,
                             TimeSpan.FromMilliseconds(Milliseconds(node, "timeoutMs")),
                             TimeSpan.FromMilliseconds(Milliseconds(node, "maxAgeMs")), ct);
+                        if (result.Observation is { } sample &&
+                            !MatchesFrozenSignal(target, sample))
+                        {
+                            bindingInvalid = true;
+                            result = new TestSignalResult(TestSignalStatus.DecodeError,
+                                sample, "DBC_SNAPSHOT_MISMATCH");
+                        }
+                        observationForStep = result;
+                        // A failed read is a real test-data gap. A later unrelated
+                        // successful assertion must not make the overall run PASS.
+                        if (!result.HasUsableValue) incomplete = true;
+                        if (result.Status == TestSignalStatus.LostFrames)
+                        {
+                            incomplete = true;
+                            gapObserved = true;
+                        }
                         var value = result.HasUsableValue
                             ? result.Observation!.Value!.Value.ToString("R", CultureInfo.InvariantCulture)
                             : null;
@@ -344,9 +434,25 @@ public sealed class RealRunCoordinator
                         timer.CancelAfter(ms);
                         try
                         {
-                            await foreach (var sample in _signals.ObserveAsync(match, timer.Token)
+                            await foreach (var raw in _signals.ObserveAsync(match, timer.Token)
                                 .WithCancellation(timer.Token))
                             {
+                                var sample = raw;
+                                if (raw.Observation is { } signal &&
+                                    !MatchesFrozenSignal(match, signal))
+                                {
+                                    bindingInvalid = true;
+                                    incomplete = true;
+                                    sample = new TestSignalResult(TestSignalStatus.DecodeError,
+                                        signal, "DBC_SNAPSHOT_MISMATCH");
+                                }
+                                if (sample.HasUsableValue || observationForStep is null)
+                                    observationForStep = sample;
+                                if (sample.Status == TestSignalStatus.LostFrames)
+                                {
+                                    incomplete = true;
+                                    gapObserved = true;
+                                }
                                 if (sample.HasUsableValue)
                                 {
                                     sawValid = true;
@@ -401,9 +507,25 @@ public sealed class RealRunCoordinator
                         timeoutStop.CancelAfter(timeout);
                         try
                         {
-                            await foreach (var sample in _signals.ObserveAsync(target, timeoutStop.Token)
+                            await foreach (var raw in _signals.ObserveAsync(target, timeoutStop.Token)
                                 .WithCancellation(timeoutStop.Token))
                             {
+                                var sample = raw;
+                                if (raw.Observation is { } signal &&
+                                    !MatchesFrozenSignal(target, signal))
+                                {
+                                    bindingInvalid = true;
+                                    incomplete = true;
+                                    sample = new TestSignalResult(TestSignalStatus.DecodeError,
+                                        signal, "DBC_SNAPSHOT_MISMATCH");
+                                }
+                                if (sample.HasUsableValue || observationForStep is null)
+                                    observationForStep = sample;
+                                if (sample.Status == TestSignalStatus.LostFrames)
+                                {
+                                    incomplete = true;
+                                    gapObserved = true;
+                                }
                                 if (!sample.HasUsableValue) continue;
                                 sawValid = true;
                                 actual = sample.Observation!.Value!.Value.ToString("R",
@@ -532,6 +654,67 @@ public sealed class RealRunCoordinator
                     default:
                         throw new NotSupportedException("Real runner cannot execute step " + kind);
                 }
+                }
+                catch (Exception ex)
+                {
+                    stepFailure = ex;
+                    throw;
+                }
+                finally
+                {
+                    var own = -1;
+                    for (var i = firstFact; i < facts.Count; i++)
+                        if (facts[i].Step == node.Id) { own = i; break; }
+                    if (own < 0)
+                    {
+                        Fact(node, stepFailure is OperationCanceledException
+                            ? RealStepStatus.Cancelled : RealStepStatus.DeviceError,
+                            detail: stepFailure?.Message ?? "Step exited without a result fact.");
+                        own = facts.Count - 1;
+                    }
+                    var original = facts[own];
+                    var recording = StepResultRecordingOptions.Read(node);
+                    var extra = ImmutableDictionary.CreateBuilder<string, TestDatum>(
+                        StringComparer.OrdinalIgnoreCase);
+                    if (recording.Capture == ExtraResultCapture.Always ||
+                        recording.Capture == ExtraResultCapture.NonPass &&
+                        original.Status != RealStepStatus.Completed)
+                        foreach (var name in recording.ExtraVariables)
+                            extra[name] = variables.TryGetValue(name, out var datum) ? datum :
+                                new TestDatum(null, TestSignalStatus.NoFrame, DateTimeOffset.UtcNow);
+
+                    var completed = original with
+                    {
+                        Status = stepFailure is null
+                            ? (gapObserved || bindingInvalid) &&
+                                original.Status == RealStepStatus.Completed
+                                ? RealStepStatus.InvalidData : original.Status
+                            : stepFailure is OperationCanceledException
+                                ? RealStepStatus.Cancelled : RealStepStatus.DeviceError,
+                        Detail = original.Detail +
+                            (gapObserved ? " | SIGNAL_GAP: frame/record loss" : "") +
+                            (bindingInvalid ? " | DBC_SNAPSHOT_MISMATCH" : "") +
+                            (stepFailure is null ? "" : " | " + stepFailure.Message),
+                        StepOccurrenceId = occurrence,
+                        ParentOccurrenceId = parentOccurrenceId,
+                        Phase = phase,
+                        ExecutionPath = path,
+                        LoopIteration = loopIteration,
+                        StartedUtc = startedUtc,
+                        CompletedUtc = DateTimeOffset.UtcNow,
+                        Duration = Stopwatch.GetElapsedTime(startedTick),
+                        Observation = observationForStep?.Observation,
+                        ObservationStatus = observationForStep?.Status,
+                        RequirementId = recording.RequirementId,
+                        ReportNote = recording.ReportNote,
+                        ShowEvidence = recording.ShowEvidence,
+                        AdditionalResults = extra.ToImmutable()
+                    };
+                    facts[own] = completed;
+                    // Durable observers must finish before the next physical action.
+                    if (events is not null)
+                        await events.StepCompletedAsync(run, completed, CancellationToken.None);
+                }
             }
         }
         try
@@ -539,7 +722,7 @@ public sealed class RealRunCoordinator
             try
             {
                 preparing = true;
-                await Execute(document.Get(TestPhase.Prepare), cts.Token);
+                await Execute(document.Get(TestPhase.Prepare), cts.Token, phase: TestPhase.Prepare);
                 preparing = false;
                 if (failed || incomplete)
                 {
@@ -550,7 +733,7 @@ public sealed class RealRunCoordinator
                         "", "", "准备阶段未通过，未进入测试阶段；仍将执行清理。",
                         DateTimeOffset.UtcNow));
                 }
-                else await Execute(document.Get(TestPhase.Test), cts.Token);
+                else await Execute(document.Get(TestPhase.Test), cts.Token, phase: TestPhase.Test);
                 // An async CAN sender can fail after the last foreground TEST
                 // step. Do not publish a PASS without checking it.
                 await _actions.CheckHealthAsync(cts.Token);
@@ -574,7 +757,7 @@ public sealed class RealRunCoordinator
                     try
                     {
                         await Execute(document.Get(TestPhase.Cleanup), scriptedCleanup.Token,
-                            cleanup: true);
+                            cleanup: true, phase: TestPhase.Cleanup);
                     }
                     catch (Exception ex)
                     {
@@ -616,7 +799,10 @@ public sealed class RealRunCoordinator
             lock (_gate) { _stop = null; _resume = null; _pause = false; _singleStep = false; }
             cts.Dispose();
         }
-        return new RealRunResult(run, prepared.Fingerprint, verdict,
+        var completedRun = new RealRunResult(run, prepared.Fingerprint, verdict,
             facts.ToImmutable(), new Dictionary<string, TestDatum>(variables, StringComparer.OrdinalIgnoreCase));
+        if (events is not null)
+            await events.RunCompletedAsync(completedRun, CancellationToken.None);
+        return completedRun;
     }
 }

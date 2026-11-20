@@ -43,6 +43,8 @@ public sealed record TestDocument(TestDocumentId Id, string Name, int FormatVers
 {
     public ImmutableArray<TestTargetMapping> Mappings { get; init; } =
         ImmutableArray<TestTargetMapping>.Empty;
+    /// <summary>Optional case-level report metadata; not a second TEST program model.</summary>
+    public TestReportSettings ReportSettings { get; init; } = TestReportSettings.Default;
     public const int CurrentFormat = 1;
     public static TestDocument Create(string name) => new(TestDocumentId.New(), name, CurrentFormat,
         Enum.GetValues<TestPhase>().ToImmutableDictionary(p => p,

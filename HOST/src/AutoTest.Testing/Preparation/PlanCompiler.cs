@@ -30,11 +30,15 @@ public sealed class PlanCompiler
         bool allowRealOperations = false)
     {
         var errors = StepTreeValidator.ValidateTree(document, _catalog, availableAssets).ToBuilder();
+        try { _ = document.ReportSettings.Validate(); }
+        catch (FormatException e) { errors.Add("Test report: " + e.Message); }
         void CheckEnabledNodes(IEnumerable<StepNode> steps)
         {
             foreach (var node in steps)
             {
                 if (!StepExecutionPolicy.IsEnabled(node)) continue;
+                try { _ = StepResultRecordingOptions.Read(node); }
+                catch (FormatException e) { errors.Add(node.Id + ": " + e.Message); }
                 if (_catalog.Lookup(node.Type) is { ExecutableV1: false } &&
                     !(allowRealOperations && RealTypes.Contains(node.Type)))
                     errors.Add($"{node.Id}: {node.Type} not executable in V1");
