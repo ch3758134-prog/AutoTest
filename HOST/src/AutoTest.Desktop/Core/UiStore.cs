@@ -335,7 +335,7 @@ public sealed class UiStore : Notify
         if (data.WaveReference is { } wave)
         { WaveReference.Name=wave.Name;WaveReference.Tolerance=wave.Tolerance;WaveReference.Coverage=wave.Coverage; }
         InspectorBuffers.Clear();
-        foreach(var item in data.InspectorBuffers ?? [])
+        foreach(var item in data.InspectorBuffers ?? new Dictionary<string,UiInspectorBuffer>())
             InspectorBuffers[item.Key]=item.Value;
         _workspace = data.Workspace;
         Touch(nameof(Workspace));
