@@ -265,6 +265,16 @@ public sealed class TestEditorViewModel : BindableBase
         _ => "结果待核查"
     };
 
+    private static string OperatorExecutionStatus(RealStepFact fact) =>
+        fact.Type != "WaveCompare" ? OperatorExecutionStatus(fact.Status) :
+        fact.Status switch
+        {
+            RealStepStatus.Completed => "波形通过",
+            RealStepStatus.ConditionFalse => "波形失败",
+            RealStepStatus.NoData or RealStepStatus.InvalidData => "波形无法判定",
+            _ => OperatorExecutionStatus(fact.Status)
+        };
+
     public TestTargetMapping? SelectedMapping
     {
         get => _selectedMapping;
@@ -1062,7 +1072,7 @@ public sealed class TestEditorViewModel : BindableBase
             {
                 RunFacts.Add(fact);
                 RunFactRows.Add(new OperatorStepRunRow(
-                    OperatorStepType(fact.Type), OperatorExecutionStatus(fact.Status),
+                    OperatorStepType(fact.Type), OperatorExecutionStatus(fact),
                     fact.Actual, OperatorExecutionDetail(fact.Detail)));
                 RunSummary = "真实运行中 · 已归档 " + RunFacts.Count + " 条步骤记录";
                 RefreshRows();
@@ -1083,7 +1093,7 @@ public sealed class TestEditorViewModel : BindableBase
                 RunFacts.Add(fact);
                 RunFactRows.Add(new OperatorStepRunRow(
                     OperatorStepType(fact.Type),
-                    OperatorExecutionStatus(fact.Status),
+                    OperatorExecutionStatus(fact),
                     fact.Actual, OperatorExecutionDetail(fact.Detail)));
             }
             RefreshRows(); // Apply only actual backend StepId evidence.
