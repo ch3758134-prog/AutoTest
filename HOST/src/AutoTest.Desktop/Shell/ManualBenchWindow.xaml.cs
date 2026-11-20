@@ -191,9 +191,7 @@ public partial class ManualBenchWindow : Window
     {
         if (!_model.CanEditCanRows) return;
         _model.SelectedCanRow = row;
-        CanQuickPopup.IsOpen = false;
-        CanQuickPopup.PlacementTarget = anchor;
-        CanQuickPopup.IsOpen = true;
+        CanQuickEditorPanel.Visibility = Visibility.Visible;
     }
 
     private void AddCanRow_Click(object sender, RoutedEventArgs e)
@@ -212,7 +210,7 @@ public partial class ManualBenchWindow : Window
     }
 
     private void CloseCanQuickEdit_Click(object sender, RoutedEventArgs e) =>
-        CanQuickPopup.IsOpen = false;
+        CanQuickEditorPanel.Visibility = Visibility.Collapsed;
 
     private void CanSendGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -233,7 +231,7 @@ public partial class ManualBenchWindow : Window
 
     private void CanProperties_Click(object sender, RoutedEventArgs e)
     {
-        CanQuickPopup.IsOpen = false;
+        CanQuickEditorPanel.Visibility = Visibility.Collapsed;
         if (_model.SelectedCanRow is null) return;
         if (!_model.CanEditCanRows)
         {

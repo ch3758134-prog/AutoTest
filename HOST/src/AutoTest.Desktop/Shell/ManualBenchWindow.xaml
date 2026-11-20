@@ -89,6 +89,7 @@
     <Grid>
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0" Margin="0,0,0,9">
@@ -110,7 +111,7 @@
        <Button Content="停止" Command="{Binding StopCanRowsCommand}" Padding="9,6" Margin="0,0,5,5"/>
       </WrapPanel>
      </StackPanel>
-     <DataGrid x:Name="CanSendGrid" Grid.Row="1"
+     <DataGrid x:Name="CanSendGrid" Grid.Row="2"
       ItemsSource="{Binding CanSendRows}" SelectedItem="{Binding SelectedCanRow,Mode=TwoWay}"
       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
       IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
@@ -156,56 +157,68 @@
            Command="{Binding DataContext.SendCanRowOnceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
            CommandParameter="{Binding}" ToolTip="发送该行当前完整帧，USB ACK 写入操作日志"/>
           <Button Content="改值" Padding="6,5" Tag="{Binding}" Click="OpenCanQuickEdit_Click"
-           ToolTip="在报文旁临时打开编辑浮层，点外部自动收起"/>
+           ToolTip="在发送列表上方展开稳定的报文编辑区"/>
          </StackPanel>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
       </DataGrid.Columns>
      </DataGrid>
-     <!-- A WPF Popup has no layout footprint and closes when clicking outside.
-          The raw data appears ONCE in the persistent table; this edits fields. -->
-     <Popup x:Name="CanQuickPopup" Placement="Right" StaysOpen="False"
-      AllowsTransparency="True" PopupAnimation="Fade"
-      DataContext="{Binding SelectedCanRow}">
-      <Border Width="440" MaxHeight="590" BorderBrush="#A8BBD1" BorderThickness="1"
-       CornerRadius="9" Background="White" Padding="14">
-       <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.18"/></Border.Effect>
+     <!-- Stable in-window edit panel; stays anchored while a combo box is open. -->
+     <Border x:Name="CanQuickEditorPanel" Grid.Row="1"
+      Visibility="Collapsed" DataContext="{Binding SelectedCanRow}"
+      Background="White" BorderBrush="#CBDDEA" BorderThickness="1"
+      CornerRadius="7" Padding="11" Margin="0,0,0,8" MaxHeight="365">
        <DockPanel>
         <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0,0,0,10">
          <Button DockPanel.Dock="Right" Content="×" Width="27" Height="27"
           Click="CloseCanQuickEdit_Click" ToolTip="关闭快速编辑"/>
-         <TextBlock Text="快速编辑 CAN 报文" FontSize="16" FontWeight="SemiBold"
+         <TextBlock Text="CAN 报文编辑" FontSize="14" FontWeight="SemiBold"
           Foreground="#24496C" VerticalAlignment="Center"/>
         </DockPanel>
         <TextBlock DockPanel.Dock="Bottom"
-         Text="离开浮层即收起；有效编辑留在待发送草稿中，不会自动发往 ECU。右键报文 → 属性可编辑全部字段。"
+         Text="修改留在当前报文草稿中；点击右上角收起，不会自动发往 ECU。"
          FontSize="11" Foreground="#617B94" TextWrapping="Wrap" Margin="0,10,0,0"/>
-        <ScrollViewer MaxHeight="485" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer MaxHeight="255" VerticalScrollBarVisibility="Auto">
          <StackPanel IsEnabled="{Binding CanEditFields}">
           <TextBlock Text="名称" Style="{StaticResource FieldCaption}"/>
           <TextBox Text="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
            MinHeight="32" Padding="7,6"/>
-          <CheckBox Content="使用工程 DBC" IsChecked="{Binding UseDbc,Mode=TwoWay}"
-           Margin="0,10,0,2"/>
+          <Grid Margin="0,8,0,0">
+           <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="170"/>
+            <ColumnDefinition Width="65"/>
+            <ColumnDefinition Width="*"/>
+           </Grid.ColumnDefinitions>
+           <StackPanel Grid.Column="0">
+            <TextBlock Text="CAN ID（HEX）" Style="{StaticResource FieldCaption}"/>
+            <TextBox Text="{Binding IdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+             IsReadOnly="{Binding UseDbc}" FontFamily="Consolas" MinHeight="30"/>
+           </StackPanel>
+           <StackPanel Grid.Column="1" Margin="9,0,0,0">
+            <TextBlock Text="DLC" Style="{StaticResource FieldCaption}"/>
+            <TextBox Text="{Binding PreviewDlc}" FontFamily="Consolas"
+             IsReadOnly="True" Background="#F4F8FC" MinHeight="30"/>
+           </StackPanel>
+          </Grid>
+          <TextBlock Text="DATA · 实际发送字节（HEX）" Style="{StaticResource FieldCaption}"/>
+          <TextBox Text="{Binding DataHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+           FontFamily="Consolas" FontSize="13" Padding="8,6"
+           MinHeight="32" HorizontalAlignment="Left" Width="265"
+           ToolTip="最多 8 个字节；DBC 编辑信号后只更新对应 DATA 位"/>
+          <TextBlock Text="{Binding PreviewError}" Foreground="#B24C3C"
+           FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0"/>
+          <CheckBox Content="DBC 信号辅助（可选）" IsChecked="{Binding UseDbc,Mode=TwoWay}"
+           Margin="0,10,0,1"/>
           <StackPanel Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
-           <TextBlock Text="DBC 报文" Style="{StaticResource FieldCaption}"/>
+           <TextBlock Text="关联的 DBC 报文" Style="{StaticResource FieldCaption}"/>
            <ComboBox ItemsSource="{Binding DbcChoices}" SelectedItem="{Binding DbcMessage,Mode=TwoWay}"
-            DisplayMemberPath="Display" MinHeight="33"/>
-          </StackPanel>
-          <StackPanel Visibility="{Binding IsRaw,Converter={StaticResource BoolToVisibility}}">
-           <TextBlock Text="CAN ID (HEX)" Style="{StaticResource FieldCaption}"/>
-           <TextBox Text="{Binding IdHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-             Padding="7,6" MinHeight="32"/>
-           <TextBlock Text="Data (HEX，0～8 字节)" Style="{StaticResource FieldCaption}"/>
-           <TextBox Text="{Binding DataHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-             FontFamily="Consolas" FontSize="14" Padding="8,7" MinHeight="35"
-             ToolTip="例如 01 02 03 04 05 06 07 08。完整编码结果同步显示在发送主列表。"/>
+            DisplayMemberPath="Display" MinHeight="32" IsTextSearchEnabled="True"/>
           </StackPanel>
           <StackPanel Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
-           <TextBlock Text="DBC 信号值（编辑后实时编码至主列表）" Style="{StaticResource FieldCaption}"/>
+           <TextBlock Text="DBC 信号辅助修改（自动写回上方 DATA）" Style="{StaticResource FieldCaption}"/>
            <ItemsControl ItemsSource="{Binding SignalValues}">
             <ItemsControl.ItemTemplate><DataTemplate>
-             <Grid Margin="0,0,0,8">
+             <Grid Margin="0,0,0,8" IsEnabled="{Binding IsEditable}">
               <Grid.ColumnDefinitions>
                <ColumnDefinition Width="*"/>
                <ColumnDefinition Width="155"/>
@@ -245,8 +258,7 @@
          </StackPanel>
         </ScrollViewer>
        </DockPanel>
-      </Border>
-     </Popup>
+     </Border>
     </Grid>
    </Border>
 
