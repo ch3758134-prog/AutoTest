@@ -12,6 +12,7 @@ public partial class MainWindow
 {
     private sealed class ToolDraft
     {
+        public ToolDraft() { }
         public string Name { get; set; } = "";
         public Dictionary<string, string> Fields { get; set; } = new();
         public List<string> Items { get; set; } = new();
@@ -148,6 +149,32 @@ public partial class MainWindow
         { ShowFileError("保存工具草稿失败", ex); return false; }
     }
 
+    private void SaveActiveToolWindow(string name)
+    {
+        if (name == "DBC 编辑器" && _workFiles.HasProject)
+        {
+            var id = Draft(name).Fields.GetValueOrDefault("DBC SelectedId");
+            var asset = _workFiles.Workspace!.Assets.FirstOrDefault(a => a.Id == id && a.Kind == "DBC");
+            if (asset is not null)
+            {
+                try
+                {
+                    var document = _workFiles.OpenAsset(asset);
+                    _workFiles.Save(document);
+                    RefreshProjectTree();
+                    RefreshTabStrip();
+                    StoreSession();
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
+                {
+                    ShowFileError("保存 DBC 失败", ex);
+                    return;
+                }
+            }
+        }
+        SaveToolDraft(Draft(name));
+    }
+
     private void RenderToolWorkbench(string name)
     {
         if (!IsToolName(name)) return;
@@ -217,6 +244,14 @@ public partial class MainWindow
                 ShowInTaskbar = false
             };
             _toolWindows[name] = window;
+            window.PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key == Key.S && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                {
+                    SaveActiveToolWindow(name);
+                    e.Handled = true;
+                }
+            };
             window.Closed += (_, _) => _toolWindows.Remove(name);
             window.Content = root;
             window.Show();
