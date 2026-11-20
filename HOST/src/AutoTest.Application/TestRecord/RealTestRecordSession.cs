@@ -245,12 +245,22 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         var flashEvidence = completed.Type == "Flash" &&
             Guid.TryParse(completed.Evidence, out var flashId) && flashId != Guid.Empty
                 ? (EvidenceRef?)new EvidenceRef(flashId) : null;
+        // Wave steps return evidence IDs from the immutable, checksum-verified
+        // WaveEvidenceStore. They are archived by the Desktop finalizer; no
+        // synthetic CAN observation or direct DBC claim is created here.
+        var waveRefs = ImmutableArray.CreateBuilder<EvidenceRef>();
+        if (completed.Type is "WaveStop" or "WaveAnalyze" or "WaveCompare")
+            foreach (var token in (completed.Evidence ?? "").Split(',',
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                if (Guid.TryParse(token, out var waveId) && waveId != Guid.Empty)
+                    waveRefs.Add(new EvidenceRef(waveId));
         var evidence = observed is not null && observed.Evidence.Value != Guid.Empty
             ? ImmutableArray.Create(observed.Evidence)
             : flashEvidence is { } physicalFlash
-                ? ImmutableArray.Create(physicalFlash) : ImmutableArray<EvidenceRef>.Empty;
+                ? ImmutableArray.Create(physicalFlash) : waveRefs.ToImmutable();
         var quality = observed?.Quality ??
-            (flashEvidence is not null ? EvidenceQuality.HostObserved : EvidenceQuality.Unknown);
+            (flashEvidence is not null || waveRefs.Count > 0
+                ? EvidenceQuality.HostObserved : EvidenceQuality.Unknown);
         // An observation in a Read (or an unrelated earlier step) cannot turn an
         // Expect literal into a proved ECU judgement. Tag only the occurrence
         // that compared this exact frozen DBC signal and actually passed.
@@ -297,7 +307,10 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 observed.Time.Source.ToString(), observed.Time.Quality.ToString()),
             Unit = observed?.Unit,
             SignalStatus = completed.ObservationStatus?.ToString(),
-            JudgementEvidenceKind = directJudgement ? "DirectDbcSignal" : null,
+            JudgementEvidenceKind = directJudgement ? "DirectDbcSignal" :
+                completed.Type == "WaveCompare" &&
+                completed.Status == RealStepStatus.Completed &&
+                waveRefs.Count == 2 ? "WaveComparisonPendingArchive" : null,
             FailureCode = completed.Status switch
             {
                 RealStepStatus.NoData when
@@ -327,7 +340,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
         await _writer.AppendStepAsync(step, ct).ConfigureAwait(false);
         _attempts[completed.Step] = attempt;
         // Device acknowledgement, read completion and delay are NOT DUT verdicts.
-        var isAssertion = completed.Type is "Expect" or "WaitUntil" or "AssertSignal";
+        var isAssertion = completed.Type is "Expect" or "WaitUntil" or "AssertSignal" or "WaveCompare";
         var eventKind = completed.Status switch
         {
             RealStepStatus.Completed or RealStepStatus.ConditionFalse when isAssertion
