@@ -135,6 +135,7 @@ public sealed class WorkspacePage : INotifyPropertyChanged
     public string Title { get; set; } = "";
     public UiFileDocument? Document { get; init; }
     public bool IsTestPreview => Kind == "TEST_PREVIEW";
+    public bool CanClose => !IsTestPreview;
     private bool _active;
     public bool Active
     {
