@@ -598,11 +598,10 @@ public partial class MainWindow
     private void CloseProject_Click(object sender,RoutedEventArgs e)
     {
         if(!ConfirmDiscardOpenFiles())return;
-        _workFiles.OpenDocuments.Clear();
+        _workFiles.Close();
         _currentDocument=null;_selectedAsset=null;
-        // UI-only: loading a fresh local workspace replaces the previous root.
-        ShowTestWorkspace();
-        StatusText="已关闭文件标签。可从文件菜单打开其他工程。";
+        RefreshProjectTree(); ShowTestWorkspace(); StoreSession();
+        StatusText="已关闭本地 UI 工作区。可从文件菜单创建或打开其他工程。";
     }
     private void NeedSelectAsset()=>
         MessageBox.Show(this,"请先从左侧工程树选择一个实际文件资源。","选择资源",
