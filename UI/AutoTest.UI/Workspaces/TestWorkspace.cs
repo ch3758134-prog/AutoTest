@@ -212,13 +212,18 @@ public sealed class TestWorkspace : Grid
                     InsertIntoBranch(currentStep, selectedBranch);
             }));
         }
-        var references = new ComboBox { ItemsSource = _state.Messages.Select(x => x.Name).ToArray(),
+        var references = new ComboBox
+        {
+            ItemsSource = _selected.Type == "调用公共流程"
+                ? _state.CommonFlows.Select(x => x.Name).ToArray()
+                : _state.Messages.Select(x => x.Name).ToArray(),
             Margin = new Thickness(0, 0, 0, 9), MinHeight = 32 };
         references.SelectionChanged += (_, _) =>
         {
             if (references.SelectedItem is string name) _target.Text = name;
         };
-        _inspector.Children.Add(UiKit.Field("从本 UI DBC 报文列表选择", references));
+        _inspector.Children.Add(UiKit.Field(_selected.Type == "调用公共流程" ?
+            "选择公共流程" : "从本 UI DBC 报文列表选择", references));
         _inspector.Children.Add(UiKit.Actions(
             UiKit.Button("应用修改", () => ApplyStep(true), true),
             UiKit.Button("复制步骤", DuplicateStep)));
@@ -485,34 +490,5 @@ public sealed class TestWorkspace : Grid
         right.Children.Add(UiKit.Empty("暂无真实运行事件", "UI 不会产生虚假的测试成功、失败、设备响应或报告。"));
         return g;
     }
-    private UIElement BuildFlows()
-    {
-        var root = new DockPanel { Margin = new Thickness(16) };
-        var top = new StackPanel();
-        DockPanel.SetDock(top, Dock.Top); root.Children.Add(top);
-        top.Children.Add(UiKit.Text("公共流程库", 18, true));
-        top.Children.Add(UiKit.Note("公共流程是独立 UI 设计对象，正式 TEST 依赖和版本调用将在后续集成，不在本版伪造。"));
-        var table = UiKit.Table(_state.CommonFlows,
-            ("名称", "Name", 230), ("类型", "Type", 160), ("描述", "Note", 0));
-        table.CellEditEnding += (_, _) => _changed();
-        top.Children.Add(UiKit.Actions(
-            UiKit.Button("新建公共流程", () =>
-            {
-                _state.CommonFlows.Add(new UiStep { Type = "公共流程", Name = "新建公共流程" });
-                _changed();
-            }, true),
-            UiKit.Button("复制流程", () =>
-            {
-                if (table.SelectedItem is not UiStep item) return;
-                var clone = JsonSerializer.Deserialize<UiStep>(JsonSerializer.Serialize(item))!;
-                RenewIds(clone); clone.Name += " - 副本";
-                _state.CommonFlows.Add(clone); _changed();
-            }),
-            UiKit.Button("删除流程", () =>
-            {
-                if (table.SelectedItem is UiStep item) { _state.CommonFlows.Remove(item); _changed(); }
-            })));
-        root.Children.Add(table);
-        return root;
-    }
+    private UIElement BuildFlows() => new CommonFlowWorkspace(_state, _changed, _status);
 }
