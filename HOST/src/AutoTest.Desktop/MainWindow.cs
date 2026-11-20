@@ -91,6 +91,7 @@ public sealed class MainWindow : Window
         action.Children.Add(quick);
         quick.Children.Add(UiKit.Button("新建测试用例", (_, _) => { var c = _state.NewCase(); Open("test:" + c.Id, c.Name); }));
         quick.Children.Add(UiKit.Button("测试项目", (_, _) => Open("test-project", "测试项目")));
+        quick.Children.Add(UiKit.Button("运行与调试", (_, _) => Open("run", "运行与调试")));
         quick.Children.Add(UiKit.Button("打开工具", (_, _) => Open("tools", "专业工具")));
         var mode = UiKit.Note("设计验证环境  ·  UI 会话数据不构成正式测试工程", 11);
         DockPanel.SetDock(mode, Dock.Right);
@@ -113,6 +114,7 @@ public sealed class MainWindow : Window
         Nav(navStack, "home", "⌂  开始工作");
         Nav(navStack, "test-project", "▤  测试项目");
         Nav(navStack, "test-editor", "▣  测试程序");
+        Nav(navStack, "run", "▷  运行与调试");
         Nav(navStack, "flows", "↳  公共流程");
         NavSection(navStack, "工程开发");
         Nav(navStack, "resources", "▦  工程资源");
