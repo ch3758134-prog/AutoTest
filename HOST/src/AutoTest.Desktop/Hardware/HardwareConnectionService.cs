@@ -1,6 +1,9 @@
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
+using System.Security.Cryptography;
+using AutoTest.FlashLab.Hardware;
+using AutoTest.FlashLab.Programming;
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
 using AutoTest.Devices.Usb;
@@ -15,6 +18,8 @@ namespace AutoTest.Desktop.Hardware;
 public sealed class HardwareConnectionService : IAsyncDisposable
 {
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
+    private int _flashSecuritySensitive;
+    public bool IsFlashSecuritySensitive => Volatile.Read(ref _flashSecuritySensitive) != 0;
     private WinUsbByteLink? _link;
     private UsbSessionService? _usb;
     private CanFrameHub? _hub;
@@ -187,6 +192,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 CanBackpressurePolicy.DropWithLossFact, 1024);
             await foreach (var frame in hub.SubscribeAsync(spec, ct))
             {
+                if (IsFlashSecuritySensitive) continue; // Do not publish raw Seed/Key frames.
                 // A closed window or bad UI observer must never terminate the
                 // long-lived CAN receiver for all tools and tests.
                 foreach (Action<CanObservation> observer in FrameObserved?.GetInvocationList()
@@ -564,6 +570,93 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 " 设备 ACK；实际 ECU 电气状态须另行观测。");
         }
         finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>R1 Flash uses this exact connected WinUSB session and the existing
+    /// CanTool/ISO-TP backend; it never creates a second USB connection.</summary>
+    public async Task<FlashExecutionResult> ProgramTestFlashAsync(
+        CanToolFlashJob job, string typedConsent, CancellationToken ct)
+    {
+        await _lifecycle.WaitAsync(ct);
+        Guid permit = Guid.Empty;
+        CanFrameHub? flashHub = null;
+        HardwareCanReceiveBridge? flashBridge = null;
+        try
+        {
+            var usb = _usb;
+            var link = _link;
+            if (usb?.State != UsbSessionState.Connected || link is null ||
+                _hub is null || _testRunApproved || _manualCanBatchApproved ||
+                _manualKeyActionApproved || CurrentStationEpoch <= 0)
+                throw new InvalidOperationException(
+                    "FLASH 需要空闲的已连接主控；先撤销 TEST/CAN/KEY 实体授权。");
+            if (job.ConfiguredBitrate is not ("500K" or "500000"))
+                throw new NotSupportedException("当前主控只确认 500K，拒绝自动切换波特率。");
+            if (!string.Equals(typedConsent, job.Consent, StringComparison.Ordinal))
+                throw new UnauthorizedAccessException("必须输入准确 ECU FLASH SHA256 授权。");
+            if (!string.Equals(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(job.FirmwarePath))),
+                    job.FirmwareSha256, StringComparison.OrdinalIgnoreCase))
+                throw new IOException("固件内容变化，禁止烧录。");
+            var security = CanToolSecurityProvider.Inspect(job.SecurityLibraryPath);
+            if (!string.Equals(security.Sha256, job.SecuritySha256,
+                    StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(security.Kind.ToString(), job.SecurityProviderKind,
+                    StringComparison.Ordinal))
+                throw new IOException("安全算法与冻结计划不一致。");
+            long frames = (job.PlannedBytes / 6L) * 3L + 5000L + job.Blocks.Length * 50L;
+            if (frames is < 1 or > 500000L)
+                throw new FormatException("FLASH 帧预算超出安全上限。");
+            var gate = new CanTransmitGate(usb.Generation);
+            var transmitter = new CanToolCan1Transport(usb, link, gate,
+                () => permit, (direction, frame, outcome) =>
+                {
+                    Record("FLASH CAN " + direction + " 0x" +
+                        frame.Id.ToString("X") + " DLC=" + frame.Dlc + " " +
+                        (IsFlashSecuritySensitive ? "[SECURITY_REDACTED]" :
+                            Convert.ToHexString(frame.Data.AsSpan())) + " " + outcome);
+                });
+            flashHub = new CanFrameHub(transmitter.TransmitAsync);
+            flashBridge = new HardwareCanReceiveBridge(usb, flashHub);
+            flashBridge.Trace += trace =>
+            {
+                if (IsFlashSecuritySensitive) return;
+                if (!trace.Valid) Record("FLASH RX 异常：" + trace.Detail);
+                else if (trace.Role == BusRole.DutCan)
+                    Record("FLASH CAN RX USB0x41 " + trace.RawUsbPayloadHex);
+            };
+            permit = link.AuthorizeFlashJob(job.Fingerprint, typedConsent,
+                job.App.RequestCanId, job.Boot.RequestCanId, checked((int)frames));
+            Record("FLASH_PLAN_APPROVED SHA=" + job.Fingerprint +
+                " ECU=" + job.TargetLabel + " IMAGE=" + job.FirmwareSha256);
+            var workflow = new CanToolFlashWorkflow(flashHub, gate, job,
+                line => Record("FLASH_STAGE " + line),
+                (ack, verified) => Record("FLASH_PROGRESS ACK=" + ack +
+                    " CHECKSUM_OK=" + verified + " TOTAL=" + job.PlannedBytes),
+                sensitive =>
+                {
+                    Interlocked.Exchange(ref _flashSecuritySensitive, sensitive ? 1 : 0);
+                    Record(sensitive ? "FLASH_SECURITY_REDACTED_BEGIN" :
+                        "FLASH_SECURITY_REDACTED_END");
+                });
+            var result = await workflow.ExecuteAsync(ct);
+            Record("FLASH_TERMINAL " + result.Outcome +
+                "；APP 未自动核验，不能由 Boot ACK 放行。");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Record("FLASH_UNCERTAIN " + ex.GetType().Name + " " + ex.Message +
+                "；ECU 擦写可能已发生，不会自动重试。");
+            throw;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _flashSecuritySensitive, 0);
+            if (permit != Guid.Empty) _link?.RevokeFlashJob(permit);
+            if (flashBridge is not null) await flashBridge.DisposeAsync();
+            flashHub?.Dispose();
+            _lifecycle.Release();
+        }
     }
 
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)

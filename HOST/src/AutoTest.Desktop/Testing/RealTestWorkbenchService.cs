@@ -33,6 +33,14 @@ public sealed class RealTestWorkbenchService
     public PreparedTestPlan Prepare(TestDocument document) =>
         new PlanCompiler().Prepare(document, allowRealOperations: true);
 
+    public string ExpectedFlashApproval(TestDocument document)
+    {
+        var root = _projects.Current?.RootDirectory ??
+            throw new InvalidOperationException("请先打开 ECU 工程。");
+        var jobs = ConfiguredRealTestFlashPort.FreezeJobs(document, root);
+        return jobs.Count == 0 ? "" : jobs.Values.Single().Consent;
+    }
+
     public static bool HasPhysicalWrites(TestDocument document) =>
         TestRunStepScope.RequiresPhysicalWrite(document);
 
@@ -40,7 +48,7 @@ public sealed class RealTestWorkbenchService
         "AUTHORIZE TEST RUN " + plan.Fingerprint;
 
     public async Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
-        CancellationToken ct = default)
+        string flashConfirmation = "", CancellationToken ct = default)
     {
         if (!await _station.WaitAsync(0, ct))
             throw new InvalidOperationException("Another test is already running.");
@@ -75,6 +83,14 @@ public sealed class RealTestWorkbenchService
                         throw new InvalidOperationException(
                             "测试步骤引用的 ECU 功能按键不属于当前 TCF：" + mapping.Name);
                 }
+            // Freeze all destructive resources before the first hardware write.
+            var project = _projects.Current ??
+                throw new InvalidOperationException("请先打开 ECU 工程。");
+            var jobs = ConfiguredRealTestFlashPort.FreezeJobs(document, project.RootDirectory);
+            if (jobs.Count > 0 &&
+                !string.Equals(flashConfirmation, jobs.Values.Single().Consent,
+                    StringComparison.Ordinal))
+                throw new UnauthorizedAccessException("实体 FLASH 授权不匹配；必须输入完整指纹。");
             await _signals.BindAsync(mappings, ct);
             actions = new ConfiguredStationActionPort(_hardware, _projects);
             await actions.PrepareAsync(mappings, ct);
@@ -86,12 +102,14 @@ public sealed class RealTestWorkbenchService
                 await actions.AuthorizeAsync(plan.Fingerprint, confirmation, mappings,
                     document, ct);
             var wave = new ConfiguredWavePort(_projects, _signals);
-            var run = new RealRunCoordinator(_signals, actions, wave);
+            ITestFlashPort? flash = jobs.Count == 0 ? null :
+                new ConfiguredRealTestFlashPort(_hardware, actions, document,
+                    mappings, jobs, project.RootDirectory, plan.Fingerprint,
+                    confirmation, flashConfirmation);
+            var run = new RealRunCoordinator(_signals, actions, wave, flash);
             evidence = new RealRunEvidenceRecorder(_hardware, _signals);
             _running = run;
             var result = await run.StartAsync(plan, ct);
-            var project = _projects.Current ??
-                throw new InvalidOperationException("工程在运行期间已关闭。");
             var path = await evidence.SaveAsync(project.RootDirectory, result, CancellationToken.None);
             return result with { EvidencePath = path };
         }

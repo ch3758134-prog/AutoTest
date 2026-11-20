@@ -23,7 +23,7 @@ public sealed class PlanCompiler
     private static readonly HashSet<string> RealTypes = new(StringComparer.Ordinal)
     {
         "Write", "Read", "WaitUntil", "AssertSignal", "CanStopPeriodic", "Calculate", "Expect",
-        "WaveStart", "WaveStop", "WaveAnalyze"
+        "WaveStart", "WaveStop", "WaveAnalyze", "Flash"
     };
 
     public PreparedTestPlan Prepare(TestDocument document, ISet<string>? availableAssets = null,

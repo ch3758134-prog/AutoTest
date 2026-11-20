@@ -48,6 +48,7 @@ public sealed class RealRunEvidenceRecorder : IDisposable
     }
     private void OnSignal(string name, TestSignalResult value)
     {
+        if (_hardware.IsFlashSecuritySensitive) return; // Never archive security-related values.
         Append(new Line(value.Observation?.Time.Utc ?? DateTimeOffset.UtcNow,
             "DBC_SIGNAL", name + " status=" + value.Status +
             " actual=" + (value.Observation?.Value?.ToString("R") ?? "NULL") +
