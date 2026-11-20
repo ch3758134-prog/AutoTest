@@ -112,7 +112,6 @@ public partial class MainWindow
 
     private void NewProject_Click(object sender, RoutedEventArgs e)
     {
-        if (!CanLeaveCurrentProject()) return;
         var name = new NameDialog(this, "新建 UI 工程", "输入 UI 工程名称（与正式 AutoTest 工程文件完全分离）",
                                   "新建测试工作区");
         if (name.ShowDialog() != true) return;
@@ -132,6 +131,7 @@ public partial class MainWindow
                     "文件已存在", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            if (!CanLeaveCurrentProject()) return;
             var created = WorkspaceStorage.New(name.Value);
             WorkspaceStorage.SaveManifest(pick.FileName, created);
             LoadProject(created, pick.FileName);
@@ -142,22 +142,22 @@ public partial class MainWindow
 
     private void OpenProject_Click(object sender, RoutedEventArgs e)
     {
-        if (!CanLeaveCurrentProject()) return;
         var pick = new OpenFileDialog
         {
             Title = "打开 AutoTest UI 工作区",
             Filter = "AutoTest UI 工程 (*.atui-project.json)|*.atui-project.json",
             CheckFileExists = true
         };
-        if (pick.ShowDialog(this) == true) OpenProjectAt(pick.FileName, alreadyConfirmed:true);
+        if (pick.ShowDialog(this) == true) OpenProjectAt(pick.FileName);
     }
 
-    private void OpenProjectAt(string path, bool alreadyConfirmed = false)
+    private void OpenProjectAt(string path)
     {
-        if (!alreadyConfirmed && !CanLeaveCurrentProject()) return;
         try
         {
+            // Validate incoming file before asking the user to discard any working edits.
             var manifest = WorkspaceStorage.OpenManifest(path);
+            if (!CanLeaveCurrentProject()) return;
             LoadProject(manifest,path);
             StatusText = "已从磁盘打开 UI 工程：" + path;
         }
