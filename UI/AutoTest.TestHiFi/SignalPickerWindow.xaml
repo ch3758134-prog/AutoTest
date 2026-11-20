@@ -1,0 +1,150 @@
+<Window x:Class="AutoTest.TestHiFi.SignalPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="选择 DBC 信号 · 高保真 UI 预览"
+        Width="1020" Height="650" MinWidth="850" MinHeight="540"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
+        Background="#F7F9FD">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="80"/><RowDefinition Height="64"/>
+      <RowDefinition Height="*"/><RowDefinition Height="58"/>
+    </Grid.RowDefinitions>
+    <Border Grid.Row="0" Background="White" BorderBrush="#E1E9F3" BorderThickness="0,0,0,1">
+      <Grid Margin="23,0">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="▤" Foreground="#1769D2" FontFamily="Segoe UI Symbol" FontSize="23"
+                       VerticalAlignment="Center" Margin="0,0,11,0"/>
+            <TextBlock Text="选择 DBC 信号" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TextBlock Text="从演示 DBC 文件中选择一个信号，检查其类型、位长、单位和说明。"
+                     Foreground="#63748A" FontSize="12" Margin="31,7,0,0"/>
+        </StackPanel>
+        <Border Grid.Column="1" Background="#EFF5FD" CornerRadius="12" Padding="11,5"
+                VerticalAlignment="Center">
+          <TextBlock Text="仅用于视觉演示" Foreground="#1769D2" FontSize="11.5"/>
+        </Border>
+      </Grid>
+    </Border>
+    <Grid Grid.Row="1" Margin="22,12,22,8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="78"/><ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock Text="DBC 文件" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12.5"/>
+      <ComboBox Grid.Column="1" Style="{StaticResource DropDown}" SelectedIndex="0" Height="34">
+        <ComboBoxItem Content="BCM.dbc（演示数据）"/>
+      </ComboBox>
+      <TextBlock Grid.Column="2" Text="报文 32 个   ·   信号 186 个（示意）"
+                 Foreground="#63748A" VerticalAlignment="Center" Margin="17,0,0,0"
+                 FontSize="11.5"/>
+    </Grid>
+    <Grid Grid.Row="2" Margin="22,0,22,11">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="255"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="53"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Grid Grid.Row="0" Grid.Column="0">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="126"/><ColumnDefinition Width="96"/></Grid.ColumnDefinitions>
+        <TextBox x:Name="Search" Grid.Column="0" Height="35"
+                 Style="{StaticResource InputBox}" VerticalAlignment="Center"
+                 TextChanged="Search_TextChanged" ToolTip="搜索报文或信号名称"/>
+        <ComboBox Grid.Column="1" SelectedIndex="0" Style="{StaticResource DropDown}" Height="35" Margin="8,0,0,0">
+          <ComboBoxItem Content="报文：全部"/>
+        </ComboBox>
+        <ComboBox Grid.Column="2" SelectedIndex="0" Style="{StaticResource DropDown}" Height="35" Margin="8,0,0,0">
+          <ComboBoxItem Content="单位：全部"/>
+        </ComboBox>
+      </Grid>
+      <Border Grid.Row="1" Grid.Column="0" Background="White" BorderBrush="#DBE5F1"
+              BorderThickness="1" CornerRadius="7" Margin="0,0,9,0">
+        <DataGrid x:Name="Signals" AutoGenerateColumns="False" CanUserAddRows="False"
+                  CanUserDeleteRows="False" CanUserResizeRows="False"
+                  IsReadOnly="True" SelectionUnit="FullRow" SelectionMode="Single"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                  HorizontalGridLinesBrush="#EDF1F6"
+                  ColumnHeaderHeight="36" RowHeight="38"
+                  Background="White" BorderThickness="0"
+                  Foreground="#1E2C42" FontFamily="Microsoft YaHei UI" FontSize="12"
+                  SelectionChanged="Signals_SelectionChanged">
+          <DataGrid.Resources>
+            <Style TargetType="DataGridColumnHeader">
+              <Setter Property="Background" Value="#F4F7FB"/>
+              <Setter Property="BorderBrush" Value="#E3EBF4"/>
+              <Setter Property="BorderThickness" Value="0,0,0,1"/>
+              <Setter Property="Padding" Value="10,5"/>
+              <Setter Property="FontWeight" Value="SemiBold"/>
+              <Setter Property="FontSize" Value="11.5"/>
+            </Style>
+            <Style TargetType="DataGridCell">
+              <Setter Property="BorderThickness" Value="0"/>
+              <Setter Property="Padding" Value="10,0"/>
+              <Setter Property="VerticalContentAlignment" Value="Center"/>
+            </Style>
+            <Style TargetType="DataGridRow">
+              <Setter Property="Background" Value="White"/>
+              <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                  <Setter Property="Background" Value="#E4EFFD"/>
+                  <Setter Property="Foreground" Value="#164E94"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter Property="Background" Value="#F0F6FE"/>
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </DataGrid.Resources>
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="报文" Binding="{Binding Message}" Width="126"/>
+            <DataGridTextColumn Header="信号" Binding="{Binding Name}" Width="158"/>
+            <DataGridTextColumn Header="类型" Binding="{Binding Type}" Width="93"/>
+            <DataGridTextColumn Header="位长" Binding="{Binding Bits}" Width="54"/>
+            <DataGridTextColumn Header="单位" Binding="{Binding Unit}" Width="54"/>
+            <DataGridTextColumn Header="说明" Binding="{Binding Description}" Width="*"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </Border>
+      <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Background="White" CornerRadius="7"
+              BorderBrush="#DBE5F1" BorderThickness="1" Padding="15">
+        <StackPanel>
+          <TextBlock Text="▣  信号详情" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,15"/>
+          <TextBlock Text="{Binding ElementName=Signals,Path=SelectedItem.Name}"
+                     TextWrapping="Wrap" FontSize="14" FontWeight="SemiBold"
+                     Foreground="#1769D2" Margin="0,0,0,12"/>
+          <Border Height="1" Background="#E6ECF4" Margin="0,0,0,15"/>
+          <TextBlock Text="所属报文" Foreground="#63748A" FontSize="11.5"/>
+          <TextBlock Text="{Binding ElementName=Signals,Path=SelectedItem.Message}"
+                     FontSize="12.2" FontWeight="Medium" Margin="0,4,0,15"/>
+          <TextBlock Text="起始位 / 长度" Foreground="#63748A" FontSize="11.5"/>
+          <StackPanel Orientation="Horizontal" Margin="0,4,0,15">
+            <TextBlock Text="{Binding ElementName=Signals,Path=SelectedItem.StartBit}" FontSize="12.2"/>
+            <TextBlock Text="  /  " Foreground="#63748A"/>
+            <TextBlock Text="{Binding ElementName=Signals,Path=SelectedItem.Bits}" FontSize="12.2"/>
+            <TextBlock Text=" bit" Foreground="#63748A"/>
+          </StackPanel>
+          <TextBlock Text="缩放 / 偏移" Foreground="#63748A" FontSize="11.5"/>
+          <TextBlock Text="1.000  /  0.000" Margin="0,4,0,15" FontSize="12.2"/>
+          <TextBlock Text="信号说明" Foreground="#63748A" FontSize="11.5"/>
+          <TextBlock Text="{Binding ElementName=Signals,Path=SelectedItem.Description}"
+                     TextWrapping="Wrap" TextTrimming="None"
+                     FontSize="12" Margin="0,5,0,14"/>
+          <Border Background="#F0F6FD" CornerRadius="5" Padding="10">
+            <TextBlock Text="本窗口展示的是研究样本数据，不是已导入或验证的真实 ECU DBC。"
+                       Foreground="#486F9F" FontSize="11.2" TextWrapping="Wrap" TextTrimming="None"/>
+          </Border>
+        </StackPanel>
+      </Border>
+    </Grid>
+    <Border Grid.Row="3" Background="White" BorderBrush="#E1E9F3" BorderThickness="0,1,0,0">
+      <Grid Margin="22,0">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock Text="已选择信号后可回填至界面预览；不修改正式 DBC 文件。"
+                   VerticalAlignment="Center" Foreground="#63748A" FontSize="11.2"/>
+        <Button Grid.Column="1" Content="取消" Style="{StaticResource OutlineButton}"
+                Width="85" Height="33" Margin="0,0,9,0" Click="Cancel_Click" VerticalAlignment="Center"/>
+        <Button Grid.Column="2" Content="确定" Style="{StaticResource SolidButton}"
+                Width="90" Height="33" Click="Accept_Click" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
