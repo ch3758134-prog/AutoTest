@@ -187,11 +187,16 @@ public partial class ManualBenchWindow : Window
         return null;
     }
 
-    private void ShowQuickEditor(ManualBenchViewModel.BenchCanRow row, UIElement anchor)
+    private void ShowCanProperties(ManualBenchViewModel.BenchCanRow row)
     {
-        if (!_model.CanEditCanRows) return;
+        if (!_model.CanEditCanRows)
+        {
+            MessageBox.Show(this, "当前 CAN 发送任务尚未结束，不能修改配置。",
+                "CAN 编辑已锁定", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         _model.SelectedCanRow = row;
-        CanQuickEditorPanel.Visibility = Visibility.Visible;
+        new ManualBenchCanPropertiesWindow(_model) { Owner = this }.ShowDialog();
     }
 
     private void AddCanRow_Click(object sender, RoutedEventArgs e)
@@ -199,18 +204,15 @@ public partial class ManualBenchWindow : Window
         var add = (ICommand)_model.AddCanRowCommand;
         if (!add.CanExecute(null)) return;
         add.Execute(null);
-        if (_model.SelectedCanRow is { } row && sender is Button button)
-            ShowQuickEditor(row, button);
+        if (_model.SelectedCanRow is { } row)
+            ShowCanProperties(row);
     }
 
     private void OpenCanQuickEdit_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: ManualBenchViewModel.BenchCanRow row } button)
-            ShowQuickEditor(row, button);
+        if (sender is Button { Tag: ManualBenchViewModel.BenchCanRow row })
+            ShowCanProperties(row);
     }
-
-    private void CloseCanQuickEdit_Click(object sender, RoutedEventArgs e) =>
-        CanQuickEditorPanel.Visibility = Visibility.Collapsed;
 
     private void CanSendGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -218,7 +220,7 @@ public partial class ManualBenchWindow : Window
             { Item: ManualBenchViewModel.BenchCanRow row } container)
             return;
         if (Ancestor<ButtonBase>(e.OriginalSource as DependencyObject) is not null) return;
-        ShowQuickEditor(row, container);
+        ShowCanProperties(row);
         e.Handled = true;
     }
 
@@ -231,22 +233,14 @@ public partial class ManualBenchWindow : Window
 
     private void CanProperties_Click(object sender, RoutedEventArgs e)
     {
-        CanQuickEditorPanel.Visibility = Visibility.Collapsed;
-        if (_model.SelectedCanRow is null) return;
-        if (!_model.CanEditCanRows)
-        {
-            MessageBox.Show(this, "当前 CAN 任务尚未结束，不能修改发送配置。",
-                "CAN 编辑已锁定", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-        new ManualBenchCanPropertiesWindow(_model) { Owner = this }.ShowDialog();
+        if (_model.SelectedCanRow is { } row)
+            ShowCanProperties(row);
     }
 
     private void CanQuickEditMenu_Click(object sender, RoutedEventArgs e)
     {
-        if (_model.SelectedCanRow is not { } row) return;
-        if (CanSendGrid.ItemContainerGenerator.ContainerFromItem(row) is DataGridRow target)
-            ShowQuickEditor(row, target);
+        if (_model.SelectedCanRow is { } row)
+            ShowCanProperties(row);
     }
 
     private void MonitorGrid_RightClick(object sender, MouseButtonEventArgs e)

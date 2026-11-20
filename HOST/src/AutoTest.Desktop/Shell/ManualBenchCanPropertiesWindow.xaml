@@ -2,7 +2,7 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="CAN 报文属性" Width="690" Height="680" MinWidth="560" MinHeight="480"
- Background="#F4F7FC" Foreground="#283E57" FontSize="13"
+ Background="#F7F8F8" Foreground="#303941" FontSize="13"
  FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterOwner"
  ResizeMode="CanResizeWithGrip">
  <Grid Margin="16">
@@ -16,7 +16,7 @@
    <TextBlock Text="编辑的是待发送配置，不会自动向 ECU 发送。关闭窗口保留修改。"
     Foreground="#60758E" FontSize="12" Margin="0,5,0,0"/>
   </StackPanel>
-  <Border Grid.Row="1" Background="White" BorderBrush="#DCE5EF" BorderThickness="1"
+  <Border Grid.Row="1" Background="White" BorderBrush="#E0E5E5" BorderThickness="1"
    CornerRadius="8" Padding="14">
    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel DataContext="{Binding SelectedCanRow}">
@@ -24,7 +24,7 @@
      <TextBox Text="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       Padding="8,6" MinHeight="33" Margin="0,0,0,13"/>
      <TextBlock Text="CAN 报文" FontSize="14" FontWeight="SemiBold"
-      Foreground="#28507B" Margin="0,0,0,9"/>
+      Foreground="#356C61" Margin="0,0,0,9"/>
      <Grid Margin="0,0,0,9">
       <Grid.ColumnDefinitions>
        <ColumnDefinition Width="160"/>
@@ -40,21 +40,21 @@
       <StackPanel Grid.Column="1">
        <TextBlock Text="DLC" FontSize="11" Foreground="#6C819A" Margin="0,0,0,4"/>
        <TextBox Text="{Binding PreviewDlc,Mode=OneWay}" IsReadOnly="True"
-        Background="#F4F8FC" FontFamily="Consolas" MinHeight="32"/>
+        Background="#F5F7F7" FontFamily="Consolas" MinHeight="32"/>
       </StackPanel>
       <CheckBox Grid.Column="2" Content="扩展帧（无 DBC 时）"
        Margin="14,10,0,0" IsEnabled="{Binding IsRaw}"
        IsChecked="{Binding Extended,Mode=TwoWay}" VerticalAlignment="Center"/>
      </Grid>
      <TextBlock Text="DATA · 实际发送字节（HEX，最多 8 字节）"
-      FontWeight="SemiBold" Foreground="#2B527B" Margin="0,0,0,6"/>
+      FontWeight="SemiBold" Foreground="#39796C" Margin="0,0,0,6"/>
      <TextBox Text="{Binding DataHex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       FontFamily="Consolas" FontSize="14" Padding="9,6" MinHeight="34"
       Margin="0,0,0,5"/>
      <TextBlock Text="{Binding PreviewError}" Foreground="#B64E3D"
       TextWrapping="Wrap" FontSize="11" Margin="0,0,0,11"/>
      <TextBlock Text="DBC 信号辅助" FontWeight="SemiBold" FontSize="14"
-      Foreground="#28507B" Margin="0,0,0,6"/>
+      Foreground="#356C61" Margin="0,0,0,6"/>
      <CheckBox Content="关联工程 DBC，辅助解析或修改上述 DATA"
       IsChecked="{Binding UseDbc,Mode=TwoWay}" Margin="0,0,0,8"/>
      <StackPanel Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
