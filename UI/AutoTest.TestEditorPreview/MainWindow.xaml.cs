@@ -856,6 +856,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (ctrl && e.Key == Key.F) { StepSearch.Focus(); StepSearch.SelectAll(); e.Handled = true; return; }
         // Native TextBox Undo and IME editing have priority over document-level history.
         if (Keyboard.FocusedElement is TextBox) return;
+        if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Up)
+        { MoveSibling(-1); e.Handled = true; return; }
+        if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Down)
+        { MoveSibling(1); e.Handled = true; return; }
         if (ctrl && e.Key == Key.Z) { Undo(); e.Handled = true; }
         else if (ctrl && e.Key == Key.Y) { Redo(); e.Handled = true; }
         else if (ctrl && e.Key == Key.C) { CopyStep(); e.Handled = true; }
