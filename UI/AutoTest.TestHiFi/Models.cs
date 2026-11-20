@@ -203,6 +203,98 @@ public static class DemoContent
         S(5,"清理","日志记录","关闭当前样本测试用例",status:"Ok",icon:"▤")
     ];
 
+
+    // Secondary cases contain distinct short, populated design samples. They do not
+    // claim any real ECU behavior and do not replace the 40-step TC-003 baseline.
+    public static ObservableCollection<DemoStep> StepsForCase(string id)
+    {
+        if (id == "TC-003") return Steps();
+        var specifics = new Dictionary<string, (string Name, string Summary)[]>
+        {
+            ["TC-001"] = [
+                ("连接设备", "检查 USB 通道（演示）"),
+                ("读取设备标识", "设备身份字段与版本摘要（演示）"),
+                ("检查通信状态", "连接状态就绪（配置示意）"),
+                ("记录身份信息", "保存演示设备信息到 UI 草稿")
+            ],
+            ["TC-002"] = [
+                ("设置 IGN", "设置 IGN → ON（演示）"),
+                ("等待电压稳定", "300 ms"),
+                ("电源条件判定", "供电状态满足测试前置条件"),
+                ("记录当前状态", "写入示例测量状态")
+            ],
+            ["TC-004"] = [
+                ("配置 CAN 发送", "BCM_Ctrl，周期 100 ms（演示）"),
+                ("发送 CAN 报文", "02 01 00 00 00 00 00 00"),
+                ("等待", "500 ms"),
+                ("停止周期发送", "停止演示周期任务")
+            ],
+            ["TC-005"] = [
+                ("读取 CAN 信号", "BCM.Status.Counter → counter"),
+                ("等待", "200 ms"),
+                ("CAN 信号判定", "counter 变化符合表达式"),
+                ("日志记录", "记录信号趋势（演示）")
+            ],
+            ["TC-006"] = [
+                ("UDS 请求", "10 03 切换扩展诊断会话"),
+                ("等待", "100 ms"),
+                ("UDS 请求", "3E 00 TesterPresent"),
+                ("期望判定", "服务响应满足演示预期")
+            ],
+            ["TC-007"] = [
+                ("UDS 请求", "22 F1 90 读取示例标识"),
+                ("解析响应", "提取演示标识字符串"),
+                ("设置变量", "identifier → UI 变量"),
+                ("日志记录", "打印演示读取结果")
+            ],
+            ["TC-008"] = [
+                ("模拟外部输入", "20 Key 组合动作：驻车"),
+                ("等待", "300 ms"),
+                ("模拟外部输入", "恢复无操作"),
+                ("CAN 信号判定", "演示状态响应检查")
+            ],
+            ["TC-009"] = [
+                ("波形开始", "MotorCurrent · CH1"),
+                ("等待", "500 ms"),
+                ("波形停止", "停止演示采样"),
+                ("日志记录", "记录参考采集摘要")
+            ],
+            ["TC-010"] = [
+                ("选择波形参考", "Demo_CurrentReference（未连接）"),
+                ("波形判定", "上升时间 ≤ 50 ms"),
+                ("波形判定", "峰值幅度处于演示范围"),
+                ("日志记录", "登记演示判定问题")
+            ],
+            ["TC-011"] = [
+                ("TRY / CATCH", "诊断通信异常示例流程"),
+                ("日志记录", "记录异常信息"),
+                ("等待", "200 ms"),
+                ("调用公共流程", "Demo_Recovery")
+            ],
+            ["TC-012"] = [
+                ("停止周期发送", "停止所有示例发送任务"),
+                ("设置 IGN", "IGN → OFF"),
+                ("模拟外部输入", "恢复 20 Key 无操作"),
+                ("日志记录", "清理结束")
+            ]
+        };
+        if (!specifics.TryGetValue(id, out var named)) return [];
+        var rows = new ObservableCollection<DemoStep>
+        {
+            S(1,"准备","加载测试配置","选择当前用例的 UI 样本配置",status:"Ok",icon:"▣"),
+            S(2,"准备","等待","100 ms",status:"Ok",icon:"◷")
+        };
+        for (var i = 0; i < named.Length; i++)
+        {
+            var item = named[i];
+            rows.Add(S(i+1,"测试",item.Name,item.Summary,status:id=="TC-010"&&i==1?"Warning":"Ok",
+                icon:item.Name.Contains("CAN")?"▥":item.Name.Contains("波形")?"∿":"◈"));
+        }
+        rows.Add(S(1,"清理","恢复默认状态","停止预览样本相关操作",status:"Ok",icon:"■"));
+        rows.Add(S(2,"清理","日志记录","结束 UI 样本用例",status:"Ok",icon:"▤"));
+        return rows;
+    }
+
     public static ObservableCollection<DemoIssue> Issues() =>
     [
         new() { Index=1,StepNumber=16,Severity="错误",Description="演示 DBC 信号“BCM.DoorSts”尚未建立有效映射。",Advice="检查演示 DBC 文件，或重新选择信号。" },
