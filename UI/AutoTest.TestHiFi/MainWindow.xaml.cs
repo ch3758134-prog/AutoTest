@@ -91,6 +91,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (!_ready || CaseList.SelectedItem is not DemoCase c) return;
         SelectedCase = c;
+        if (_activePage is { IsTestPreview: false } && _previewPage is not null)
+            ShowPage(_previewPage); // One-click navigation is always visible, not hidden behind tools.
         UpdateCaseContext(c);
         ShowPhase(_phase, initial: true);
         var row = VisibleSteps.FirstOrDefault(s => s.Number == 16 && c.Id == "TC-003")
