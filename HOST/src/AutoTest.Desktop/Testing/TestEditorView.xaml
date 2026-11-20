@@ -81,7 +81,8 @@
       Margin="0,0,6,0" Padding="11,5"
       ToolTip="先检查步骤和资源版本；确认后仍需点击运行，无需手输长串授权码"/>
      <Button Content="▶ 运行当前用例" Command="{Binding RunCommand}"
-      Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0" Padding="11,5"
+      Style="{StaticResource AtPrimaryButton}" Foreground="White"
+      Margin="0,0,6,0" Padding="11,5"
       ToolTip="真实 USB/CAN/KEY/IGN 执行当前用例的准备、测试和清理阶段"/>
      <Button Content="■ 停止" Command="{Binding StopRunCommand}"
       Margin="0,0,10,0" Padding="8,5"/>
