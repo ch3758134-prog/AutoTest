@@ -242,9 +242,11 @@
                     <TextBlock Text="{Binding DisplayTitle}" FontSize="17" FontWeight="SemiBold"
                                TextWrapping="Wrap" TextTrimming="None"/>
                     <TextBlock Text="{Binding Kind}" FontSize="12" Foreground="#63748A" Margin="0,8,0,16"/>
-                    <TextBlock Text="步骤名称" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBlock Text="步骤名称" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,5"
+                               Visibility="{Binding IsMovable,Converter={StaticResource BoolVisibility}}"/>
                     <TextBox Text="{Binding Title,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource FieldBox}"
+                             Visibility="{Binding IsMovable,Converter={StaticResource BoolVisibility}}"
                              GotKeyboardFocus="EditorText_GotKeyboardFocus"
                              LostKeyboardFocus="EditorText_LostKeyboardFocus"
                              TextChanged="EditorText_TextChanged"
