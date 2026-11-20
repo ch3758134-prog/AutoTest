@@ -160,6 +160,21 @@ public partial class MainWindow
     }
     private void ChangeTest(Action mutation, bool render = true)
     {
+        // Create an on-disk draft immediately on first edit so the existing
+        // dirty-file confirmation protects edits on project switch and shutdown.
+        if (_workFiles.HasProject && _testProgramDocument is null)
+        {
+            try
+            {
+                var asset = _workFiles.NewAsset("测试程序", "UI 测试编辑器");
+                _testProgramDocument = _workFiles.OpenAsset(asset);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or ArgumentException)
+            {
+                ShowFileError("创建测试编辑文档失败", ex);
+                return;
+            }
+        }
         CaptureTestChange();
         mutation();
         WriteTestContent();
