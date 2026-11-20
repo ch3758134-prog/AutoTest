@@ -365,7 +365,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
 
                 var opened = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
                 if (opened.AssetRevision != row.Revision ||
-                    !opened.FileSha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))
+                    !opened.FileHash.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("用例文件发生变化：" + row.Name);
                 var plan = _realTest.Prepare(opened.Document);
                 if (!plan.Diagnostics.IsEmpty)
@@ -492,7 +492,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                     throw new IOException("批次中途工程、TCF/TBC、DUT 或 USB 主控会话已变化。");
                 var latest = await _workspace.OpenTestEditorAsync(AssetId.Create(item.Entry.PackageAssetId), token);
                 if (latest.AssetRevision != item.Entry.PackageRevision ||
-                    !latest.FileSha256.Equals(item.Entry.PackageSha256, StringComparison.OrdinalIgnoreCase) ||
+                    !latest.FileHash.Equals(item.Entry.PackageSha256, StringComparison.OrdinalIgnoreCase) ||
                     _realTest.Prepare(latest.Document).Fingerprint != item.PlanSha256)
                     throw new IOException("运行前 TEST 资源指纹已变动：" + item.Entry.DisplayName);
 
