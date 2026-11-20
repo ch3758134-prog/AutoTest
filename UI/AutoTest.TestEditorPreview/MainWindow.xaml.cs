@@ -63,7 +63,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DataContext = this;
         PaletteTypes.ItemsSource = StepCatalog.Types;
         _uiReady = true;
-        ReplaceDocument(SampleData.Create(), clearHistory: true, markSaved: true);
+        var fixture = SampleData.Create();
+        PreviewSelfCheck.Verify(fixture); // explicit model integrity check, NOT a Windows UX test.
+        ReplaceDocument(fixture, clearHistory: true, markSaved: true);
         UpdateResponsive();
     }
 
