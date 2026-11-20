@@ -196,7 +196,7 @@ public static class StepCatalog
             "SWITCH" => new[] {"CASE 0","CASE 1","DEFAULT"},
             "循环 LOOP" => new[] {"BODY"},
             "TRY / CATCH" => new[] {"TRY","CATCH","FINALLY"},
-            _ => []
+            _ => Array.Empty<string>()
         };
         foreach (var label in branches)
         {
@@ -232,10 +232,18 @@ public sealed class StepRow : Notifying
     public bool IsStructural => Node.Role != NodeRole.Step;
     public bool HasIssue => Node.DescendantIssues > 0;
     public string IssueText => Node.DescendantIssues > 0 ? "⚠ " + Node.DescendantIssues : "";
-    public string StateText =>
-        Node.HasSelectedChild && !Node.IsExpanded ? "含当前选择" :
-        Node.DescendantIssues > 0 ? "需修正" :
-        !Node.IsEnabled ? "已禁用" : Node.Breakpoint ? "● 断点" : "";
+    public string StateText
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (Node.HasSelectedChild && !Node.IsExpanded) parts.Add("含选中");
+            if (Node.DescendantIssues > 0) parts.Add("⚠" + Node.DescendantIssues);
+            if (!Node.IsEnabled) parts.Add("停用");
+            if (Node.Breakpoint) parts.Add("●断点");
+            return string.Join(" · ", parts);
+        }
+    }
     public void Update() { Notify(nameof(Arrow)); Notify(nameof(Summary)); Notify(nameof(HasIssue)); Notify(nameof(IssueText)); Notify(nameof(StateText)); }
 }
 
