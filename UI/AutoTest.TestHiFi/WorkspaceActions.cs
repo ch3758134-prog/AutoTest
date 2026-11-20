@@ -16,11 +16,13 @@ public partial class MainWindow
 {
     public ObservableCollection<UiAsset> Assets { get; } = [];
     public bool HasProject => _workspace is not null;
+    public bool HasNoResources => HasProject && Assets.Count==0;
     public bool CanSaveActiveFile => ActiveFile is not null;
     public bool HasAssetSelection => HasProject && GetAsset() is not null;
     private void RefreshCommandStates()
     {
         Raise(nameof(HasProject));
+        Raise(nameof(HasNoResources));
         Raise(nameof(CanSaveActiveFile));
         Raise(nameof(HasAssetSelection));
     }
@@ -72,6 +74,7 @@ public partial class MainWindow
 
     private void SetupWorkspace()
     {
+        Assets.CollectionChanged+=(_,_)=>RefreshCommandStates();
         _previewPage = new WorkspacePage { Key = "TEST", Kind = "TEST_PREVIEW", Title = "测试程序 · 视觉基线" };
         OpenPages.Add(_previewPage);
         _recoveryTimer.Tick += (_, _) => { _recoveryTimer.Stop(); UpdateRecovery(); };
