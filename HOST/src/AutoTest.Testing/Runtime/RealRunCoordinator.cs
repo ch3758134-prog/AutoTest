@@ -372,7 +372,15 @@ public sealed class RealRunCoordinator
                             " VERIFIED=" + flash.VerifiedBytes, flash.Diagnostic, flash.Evidence);
                         if (!flash.ProtocolCompleted)
                             throw new IOException("真实烧录协议未完成：" + flash.Code);
-                        if (!flash.AppVerified) incomplete = true;
+                        if (!flash.AppVerified)
+                        {
+                            // An ACKed download/reset is not evidence that the ECU
+                            // returned to its application. Do not run subsequent TEST
+                            // actions on a potentially bootloader-only ECU.
+                            incomplete = true;
+                            throw new IOException(
+                                "FLASH 传输后未确认 ECU APP 恢复；已终止正常测试步骤并进入安全清理。");
+                        }
                         break;
                     }
                     case "CanStopPeriodic":
