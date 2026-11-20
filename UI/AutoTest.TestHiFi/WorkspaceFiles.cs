@@ -41,6 +41,9 @@ public sealed class UiSession
     public string? LastProjectManifest { get; set; }
     public string? LastOpenAssetId { get; set; }
     public List<string> OpenAssetIds { get; set; } = [];
+    public double NavWidth { get; set; } = 294;
+    public double InspectorWidth { get; set; } = 400;
+    public bool ProblemsExpanded { get; set; } = true;
 }
 
 public sealed class UiWorkspaceFiles
