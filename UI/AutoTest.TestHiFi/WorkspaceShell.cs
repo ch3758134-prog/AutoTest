@@ -508,9 +508,8 @@ public partial class MainWindow
         ToolDescriptionPanel.Visibility = Visibility.Collapsed;
         DocumentEditorPanel.Visibility = Visibility.Visible;
         _switchingEditor = true;
-        DocumentTextEditor.IsUndoEnabled = false;
+        DocumentTextEditor.IsUndoEnabled = false; // History is stored on each UiDocument, not the shared TextBox.
         DocumentTextEditor.Text = document.Content;
-        DocumentTextEditor.IsUndoEnabled = true; // Separate undo stack per displayed document.
         _switchingEditor = false;
         WorkspaceStatusText.Text = _workFiles.FullPath(document.Asset.RelativePath);
         RefreshTabStrip();
@@ -533,6 +532,16 @@ public partial class MainWindow
     private void DocumentTextEditor_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_switchingEditor || _currentDocument is null) return;
+        if (string.Equals(_currentDocument.Content, DocumentTextEditor.Text, StringComparison.Ordinal)) return;
+        _currentDocument.UndoHistory.Push(_currentDocument.Content);
+        if (_currentDocument.UndoHistory.Count > 500)
+        {
+            // Bound long editing sessions without losing the most recent undo entries.
+            var recent = _currentDocument.UndoHistory.Take(400).Reverse().ToArray();
+            _currentDocument.UndoHistory.Clear();
+            foreach (var entry in recent) _currentDocument.UndoHistory.Push(entry);
+        }
+        _currentDocument.RedoHistory.Clear();
         _currentDocument.Content = DocumentTextEditor.Text;
         WorkspaceStatusText.Text = _currentDocument.Dirty ? "● 未保存更改  ·  Ctrl+S 保存"
                                                       : "已保存到磁盘";
@@ -899,13 +908,40 @@ public partial class MainWindow
     }
     private void UndoDocument_Click(object sender,RoutedEventArgs e)
     {
-        if(_currentDocument is not null&&DocumentTextEditor.CanUndo)DocumentTextEditor.Undo();
-        else StatusText="当前文档没有可撤销的文本编辑。TEST 结构编辑将在 UI-04 接入。";
+        if (_currentDocument is null || _currentDocument.UndoHistory.Count == 0)
+        {
+            StatusText = "当前文档没有可撤销的编辑。TEST 结构编辑将在 UI-04 接入。";
+            return;
+        }
+        _currentDocument.RedoHistory.Push(_currentDocument.Content);
+        ApplyDocumentHistory(_currentDocument.UndoHistory.Pop());
     }
     private void RedoDocument_Click(object sender,RoutedEventArgs e)
     {
-        if(_currentDocument is not null&&DocumentTextEditor.CanRedo)DocumentTextEditor.Redo();
-        else StatusText="当前文档没有可重做的文本编辑。";
+        if (_currentDocument is null || _currentDocument.RedoHistory.Count == 0)
+        {
+            StatusText = "当前文档没有可重做的编辑。";
+            return;
+        }
+        _currentDocument.UndoHistory.Push(_currentDocument.Content);
+        ApplyDocumentHistory(_currentDocument.RedoHistory.Pop());
+    }
+    private void ApplyDocumentHistory(string text)
+    {
+        var document = _currentDocument;
+        if (document is null) return;
+        var cursor = DocumentTextEditor.SelectionStart;
+        _switchingEditor = true;
+        try
+        {
+            document.Content = text;
+            DocumentTextEditor.Text = text;
+            DocumentTextEditor.SelectionStart = Math.Min(cursor, text.Length);
+        }
+        finally { _switchingEditor = false; }
+        WorkspaceStatusText.Text = document.Dirty
+            ? "● 未保存更改  ·  Ctrl+S 保存" : "已保存到磁盘";
+        RefreshTabStrip();
     }
     private void CloseDocument_Click(object sender,RoutedEventArgs e)
     {
