@@ -54,6 +54,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         PreviewInvariants.Assert(Cases, _allSteps, Issues);
         InitializeComponent();
         DataContext = this;
+        SetupWorkspace();
         _ready = true;
         // Do not open an empty case. The accepted visual baseline is the
         // populated TC-003 / TEST / CAN assertion state.
@@ -245,16 +246,36 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
-        if (ctrl && e.Key == Key.F)
+        var shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        if (ctrl && e.Key == Key.S) { if (shift) SaveAll_Click(sender,e); else SaveCurrent_Click(sender,e); e.Handled=true; }
+        else if (ctrl && e.Key == Key.O) { OpenProject_Click(sender,e); e.Handled=true; }
+        else if (ctrl && e.Key == Key.N) { NewResource_Click(sender,e); e.Handled=true; }
+        else if (ctrl && e.Key == Key.W) { CloseActivePage_Click(sender,e); e.Handled=true; }
+        else if (ctrl && e.Key == Key.Tab)
         {
-            StepSearch.Focus();
-            StepSearch.SelectAll();
+            if (OpenPages.Count > 1)
+            {
+                var index = OpenPages.IndexOf(_activePage!);
+                ShowPage(OpenPages[(index+1)%OpenPages.Count]);
+            }
+            e.Handled=true;
+        }
+        else if (ctrl && e.Key == Key.F)
+        {
+            if (ActiveFile is not null) FileBodyEditor.Focus();
+            else { StepSearch.Focus(); StepSearch.SelectAll(); }
             e.Handled = true;
         }
         else if (ctrl && e.Key == Key.Q)
-        {
-            CaseSearch.Focus();
-            e.Handled = true;
-        }
+        { CaseSearch.Focus(); CaseSearch.SelectAll(); e.Handled = true; }
+        else if (ctrl && e.Key == Key.Z && !(Keyboard.FocusedElement is TextBox))
+        { UndoDocument_Click(sender,e);e.Handled=true; }
+        else if (ctrl && e.Key == Key.Y && !(Keyboard.FocusedElement is TextBox))
+        { RedoDocument_Click(sender,e);e.Handled=true; }
+        else if (e.Key == Key.F2 && Keyboard.FocusedElement is not TextBox)
+        { RenameResource_Click(sender,e);e.Handled=true; }
+        else if (e.Key == Key.Delete && Keyboard.FocusedElement is ListBoxItem &&
+                 ResourceExplorer.Visibility == Visibility.Visible)
+        { DeleteResource_Click(sender,e);e.Handled=true; }
     }
 }
