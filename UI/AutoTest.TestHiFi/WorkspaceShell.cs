@@ -286,12 +286,17 @@ public partial class MainWindow
     private void ShowTestWorkspace()
     {
         _activeToolPage = "TEST";
-        SwitchNavigationSearch(true);
-        WorkspaceOverlay.Visibility = Visibility.Collapsed;
-        ProjectNavigator.Visibility = Visibility.Collapsed;
-        CaseList.Visibility = Visibility.Visible;
+        _currentDocument = null;
+        SwitchNavigationSearch(false);
+        WorkspaceOverlay.Visibility = Visibility.Visible;
+        ProjectNavigator.Visibility = Visibility.Visible;
+        CaseList.Visibility = Visibility.Collapsed;
         HighlightNavigation(TestNavButton);
-        StatusText = "TEST 视觉样本：原有用例、阶段与步骤状态保留。设备未连接；示例结果不是实测结果。";
+        ToolDescriptionPanel.Visibility = Visibility.Collapsed;
+        TestEditorHost.Visibility = Visibility.Visible;
+        RenderTestEditor();
+        RefreshTabStrip();
+        StatusText = "自动测试编辑器 · 本地 UI 工程可保存 · 执行器未接线。";
     }
 
     private void ShowProjectWorkspace(string? header = null)
@@ -358,6 +363,7 @@ public partial class MainWindow
 
     private void ShowWorkspaceWelcome(string heading, string body)
     {
+        TestEditorHost.Visibility = Visibility.Collapsed;
         WorkspaceTitle.Text = heading;
         WorkspaceSubtitle.Text = _workFiles.HasProject
             ? "UI 工作区：" + _workFiles.Workspace!.Name
@@ -512,6 +518,7 @@ public partial class MainWindow
         FilePathLabel.Text = document.Asset.RelativePath;
         FileRevisionLabel.Text = "Revision " + document.Asset.Revision;
         ToolDescriptionPanel.Visibility = Visibility.Collapsed;
+        TestEditorHost.Visibility = Visibility.Collapsed;
         DocumentEditorPanel.Visibility = Visibility.Visible;
         _switchingEditor = true;
         DocumentTextEditor.IsUndoEnabled = false; // History is stored on each UiDocument, not the shared TextBox.
@@ -853,6 +860,7 @@ public partial class MainWindow
     private void SaveDocument_Click(object sender,RoutedEventArgs e)=>SaveCurrentDocument();
     private bool SaveCurrentDocument()
     {
+        if (_activeToolPage == "TEST") return SaveTestProgram();
         if (_activeToolPage is "DBC 编辑器" or "UDS 调试" or "ECU 烧录" or "波形分析" or "手动台架")
         {
             if (!_workFiles.HasProject)
@@ -862,11 +870,7 @@ public partial class MainWindow
             }
             return SaveToolDraft(Draft(_activeToolPage));
         }
-        if (_activeToolPage == "TEST")
-        {
-            StatusText = "TEST 页面仍是高保真视觉样本，不能作为正式测试程序保存。请从工程树打开实际资源文件。";
-            return false;
-        }
+ 
         if(_currentDocument is null)
         {
             StatusText="当前是视觉 TEST 或工具工作区，没有可保存的文件。请在工程树中打开真实文件。";
@@ -929,6 +933,7 @@ public partial class MainWindow
     }
     private void UndoDocument_Click(object sender,RoutedEventArgs e)
     {
+        if (_activeToolPage == "TEST") { UndoTest(false); return; }
         if (_currentDocument is null || _currentDocument.UndoHistory.Count == 0)
         {
             StatusText = "当前文档没有可撤销的编辑。TEST 结构编辑将在 UI-04 接入。";
@@ -939,6 +944,7 @@ public partial class MainWindow
     }
     private void RedoDocument_Click(object sender,RoutedEventArgs e)
     {
+        if (_activeToolPage == "TEST") { UndoTest(true); return; }
         if (_currentDocument is null || _currentDocument.RedoHistory.Count == 0)
         {
             StatusText = "当前文档没有可重做的编辑。";
