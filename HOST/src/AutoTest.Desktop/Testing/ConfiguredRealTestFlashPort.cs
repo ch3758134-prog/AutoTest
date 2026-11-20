@@ -106,7 +106,8 @@ public sealed class ConfiguredRealTestFlashPort : ITestFlashPort
             result.VerifiedBytes == job.PlannedBytes;
         // Restore the exact previously approved TEST only on same real epoch
         // after protocol completion; no new writes after uncertain erase/write.
-        if (protocolComplete && _hadWrites && !ct.IsCancellationRequested &&
+        if (protocolComplete && result.AppSessionObserved && _hadWrites &&
+            !ct.IsCancellationRequested &&
             _hardware.IsConnected && _hardware.CurrentStationEpoch == _stationEpoch)
             await _actions.AuthorizeAsync(_planFingerprint, _testConsent,
                 _mappings, _document, ct);
