@@ -61,7 +61,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         view.Refresh();
     }
 
-    private void CaseSearch_TextChanged(object sender, TextChangedEventArgs e) => FilterCases();
+    private void CaseSearch_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (CaseSearchHint is not null)
+            CaseSearchHint.Visibility = string.IsNullOrWhiteSpace(CaseSearch.Text)
+                ? Visibility.Visible : Visibility.Collapsed;
+        FilterCases();
+    }
 
     private void CaseList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -98,6 +104,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void StepSearch_TextChanged(object sender, TextChangedEventArgs e)
     {
+        if (StepSearchHint is not null)
+            StepSearchHint.Visibility = string.IsNullOrWhiteSpace(StepSearch.Text)
+                ? Visibility.Visible : Visibility.Collapsed;
         if (_ready) RebuildSteps(null);
     }
 
