@@ -64,6 +64,7 @@ public sealed class EditorNode : Notifying
     public ObservableCollection<EditorNode> Children { get; set; } = [];
     [JsonIgnore] public EditorNode? Parent { get; set; }
     [JsonIgnore] public bool IsMovable => Role is NodeRole.Step or NodeRole.Container;
+    [JsonIgnore] public bool IsStructuralSlot => Role is NodeRole.Phase or NodeRole.Branch;
     [JsonIgnore] public int LocalIssues => Fields.Count(f => f.IsInvalid);
     [JsonIgnore] public bool HasLocalIssues => LocalIssues > 0;
     public void RefreshValidation() { Notify(nameof(LocalIssues)); Notify(nameof(HasLocalIssues)); Notify(nameof(DisplayTitle)); }
@@ -218,6 +219,7 @@ public sealed class StepRow : Notifying
     public int Depth { get; init; }
     public Thickness Indent => new(Depth * 20 + 9, 0, 0, 0);
     public string Arrow => Node.Children.Count == 0 ? "" : Node.IsExpanded ? "▾" : "▸";
+    public bool HasChildren => Node.Children.Count > 0;
     public string Title => Node.DisplayTitle;
     public string Summary => Node.Summary;
     public string Category => Node.Role switch
@@ -231,6 +233,7 @@ public sealed class StepRow : Notifying
     public bool HasIssue => Node.DescendantIssues > 0;
     public string IssueText => Node.DescendantIssues > 0 ? "⚠ " + Node.DescendantIssues : "";
     public string StateText =>
+        Node.HasSelectedChild && !Node.IsExpanded ? "含当前选择" :
         Node.DescendantIssues > 0 ? "需修正" :
         !Node.IsEnabled ? "已禁用" : Node.Breakpoint ? "● 断点" : "";
     public void Update() { Notify(nameof(Arrow)); Notify(nameof(Summary)); Notify(nameof(HasIssue)); Notify(nameof(IssueText)); Notify(nameof(StateText)); }
