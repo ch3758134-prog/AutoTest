@@ -83,10 +83,12 @@ public sealed class TestStepInputField : BindableBase
 }
 public sealed class TestSignalInputField : DbcEditableSignal
 {
+    public bool IsEditable { get; }
     public TestSignalInputField(DbcSignal signal, string value, string? displayName = null,
         string? description = null, IReadOnlyDictionary<long, string>? rawLabels = null,
-        string? summary = null)
-        : base(signal, displayName, description, rawLabels, value, summary) { }
+        string? summary = null, bool isEditable = true)
+        : base(signal, displayName, description, rawLabels, value, summary)
+        => IsEditable = isEditable;
 }
 
 public sealed record StepCompositionResult(StepNode Step, TestTargetMapping? Mapping);
@@ -174,6 +176,7 @@ public partial class TestStepInspector : UserControl
     private readonly List<MappingChoice> _allTargets = [];
     private string _targetRevisionWarning = "";
     private bool _loadingCanData;
+    private string _canSignalError = "";
     private bool _filteringTargets;
     private bool IsCanSend => _selected?.Key == "can";
     private ComboBox ActiveTargetPicker => IsCanSend ? CanTargetPicker : TargetPicker;
@@ -494,8 +497,8 @@ public partial class TestStepInspector : UserControl
         CanSendPanel.Visibility = IsCanSend ? Visibility.Visible : Visibility.Collapsed;
         TargetPanel.Visibility = !IsCanSend && !string.IsNullOrEmpty(action.TargetCategory)
             ? Visibility.Visible : Visibility.Collapsed;
-        RawCanPanel.Visibility = DbcCanPanel.Visibility =
-            KeyPanel.Visibility = IgnitionPanel.Visibility = Visibility.Collapsed;
+        DbcCanPanel.Visibility = KeyPanel.Visibility =
+            IgnitionPanel.Visibility = Visibility.Collapsed;
         if (IsCanSend) ConfigureCanSending();
         if (TargetPanel.Visibility == Visibility.Collapsed && !IsCanSend) return;
 
@@ -519,7 +522,7 @@ public partial class TestStepInspector : UserControl
                 new TestTargetMapping("IGN", TestTargetKind.Ignition,
                     default, 0, "")));
         if (action.TargetCategory == "can")
-            _allTargets.Add(new MappingChoice("ECU CAN / 原始报文（无需 DBC）",
+            _allTargets.Add(new MappingChoice("不绑定 DBC · 直接编辑 CAN 报文",
                 new TestTargetMapping("原始 ECU CAN", TestTargetKind.RawCan, default, 0, "",
                     BusRole.DutCan, 0)));
         else if (action.TargetCategory == "button")
@@ -584,6 +587,9 @@ public partial class TestStepInspector : UserControl
         var preferred = preferredMapping is null ? null :
             AvailableTargets.FirstOrDefault(x => x.Mapping == preferredMapping);
         preferred ??= AvailableTargets.FirstOrDefault(x => x.Mapping.Name == preferredName);
+        if (preferred is null && IsCanSend && string.IsNullOrWhiteSpace(preferredName))
+            preferred = AvailableTargets.FirstOrDefault(x =>
+                x.Mapping.Kind == TestTargetKind.RawCan);
         // For a new KEY step, prefer direct 20-switch control; legacy
         // asset-backed button mappings remain available to existing files.
         if (preferred is null && _selected?.TargetCategory == "button" &&
@@ -664,164 +670,158 @@ public partial class TestStepInspector : UserControl
 
     private void UpdateTarget()
     {
-        var choice = ActiveTargetPicker.SelectedItem as MappingChoice;
-        if (IsCanSend && choice is not null && _selectedTarget is { } previous &&
-            choice.Mapping == previous.Mapping &&
-            (choice.Message is null) == (previous.Message is null))
-            return; // Search/refresh is not permission to overwrite unsaved editor fields.
-        _selectedTarget = choice;
-        RawCanPanel.Visibility = DbcCanPanel.Visibility = KeyPanel.Visibility =
+        var selected = ActiveTargetPicker.SelectedItem as MappingChoice;
+        if (IsCanSend && selected is not null && _selectedTarget is { } prior &&
+            selected.Mapping == prior.Mapping &&
+            (selected.Message is null) == (prior.Message is null))
+            return;
+        var previousTarget = _selectedTarget;
+        var enteredBytes = IsCanSend ? RawCanDataInput.Text : "";
+        var enteredId = IsCanSend ? FrameIdInput.Text : "";
+        var enteredExtended = IsCanSend && ExtendedFrame.IsChecked == true;
+        _selectedTarget = selected;
+        DbcCanPanel.Visibility = KeyPanel.Visibility =
             IgnitionPanel.Visibility = Visibility.Collapsed;
         SignalValues.Clear();
         if (IsCanSend)
         {
-            CanDataCard.Visibility = Visibility.Collapsed;
+            _canSignalError = "";
             CanRebindButton.Visibility = Visibility.Collapsed;
-            CanTargetHint.Text = AvailableTargets.Count == 0
-                ? "当前没有可用报文。请检查搜索条件或导入 DBC；也可直接填写原始 CAN。"
-                : "请选择一条 DBC 报文，或选择无 DBC 原始报文。";
-            CanFramePreview.Text = "待选择报文";
+            CanTargetHint.Text = "可选择 DBC 辅助解析，或直接编辑完整 CAN 数据。";
             CanPreviewIssue.Text = "";
-        }
-        if (_selectedTarget is null) return;
-        var mapping = _selectedTarget.Mapping;
-        if (IsCanSend)
-        {
-            if (mapping.Kind == TestTargetKind.CanMessage && _selectedTarget.Message is null)
+            CanFramePreview.Text = "填写 CAN ID 和 DATA";
+            _loadingCanData = true;
+            try
             {
-                CanTargetHint.Text = "旧 DBC 版本绑定已失效。不能使用旧定义编辑或发送，请重新选择当前报文。";
-                var matches = CurrentCanRebindCandidates();
-                CanRebindButton.Visibility = matches.Length == 1
-                    ? Visibility.Visible : Visibility.Collapsed;
-                return;
+                FrameIdInput.IsReadOnly = false;
+                ExtendedFrame.IsEnabled = true;
+                FrameIdInput.Text = "";
+                ExtendedFrame.IsChecked = false;
+                RawCanDataInput.Text = "";
+                CanDlcInput.Text = "—";
             }
-            CanTargetHint.Text = mapping.Kind == TestTargetKind.CanMessage
-                ? "来自当前工程 DBC 的真实报文定义；修改信号后由现有编码器生成 CAN 数据。"
-                : "无需 DBC。请填写 CAN ID、帧格式与数据；最终发送字节在下方预览。";
-            CanDataCard.Visibility = Visibility.Visible;
+            finally { _loadingCanData = false; }
         }
-        if (mapping.Kind == TestTargetKind.RawCan)
+        if (selected is null) return;
+        var mapping = selected.Mapping;
+        if (IsCanSend && mapping.Kind is (TestTargetKind.CanMessage or TestTargetKind.RawCan))
         {
-            RawCanPanel.Visibility = Visibility.Visible;
-            FrameIdInput.Text = _legacySourceType == "CanSend" && _editing is { } old &&
-                TryLegacyCanId(old, out var oldId)
-                ? "0x" + oldId.ToString("X") :
-                _editing is not null && mapping.Name ==
-                _editing.Properties.GetValueOrDefault("target", "")
-                ? "0x" + mapping.CanId.ToString("X") : "";
-            ExtendedFrame.IsChecked = mapping.Extended;
-            var previousRaw = _boundMappings.FirstOrDefault(x =>
-                string.Equals(x.Name, _editing?.Properties.GetValueOrDefault("target", ""),
-                    StringComparison.OrdinalIgnoreCase));
-            var sameRaw = previousRaw?.Kind == TestTargetKind.RawCan &&
-                previousRaw.Name == mapping.Name;
-            var originalHex = _legacySourceType == "CanSend"
-                ? _editing?.Properties.GetValueOrDefault("dataHex",
-                    _editing.Properties.GetValueOrDefault("value", "")) ?? ""
-                : sameRaw
-                    ? _editing?.Properties.GetValueOrDefault("value", "") ?? ""
-                    : "";
-            RawCanDataInput.Text = originalHex.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
-                ? originalHex[4..] : originalHex;
-            UpdateCanFramePreview();
-        }
-        else if (mapping.Kind == TestTargetKind.CanMessage)
-        {
-            DbcCanPanel.Visibility = Visibility.Visible;
-            var msg = _selectedTarget.Message;
-            DbcMessageInfo.Text = msg is null
-                ? "DBC 资源已变更或未加载。请重新选择当前工程的报文。"
-                : (_selectedTarget.DisplayNames?.MessageLabel(msg) ?? msg.Name) +
-                  " · 0x" + msg.ArbitrationId.ToString("X") +
-                  " · DLC " + msg.Dlc + " · " + (msg.IsExtended ? "扩展帧" : "标准帧") +
-                  (string.IsNullOrWhiteSpace(_selectedTarget.DisplayNames?.MessageSummary(msg.Id))
-                      ? "" : " · " + _selectedTarget.DisplayNames!.MessageSummary(msg.Id));
-            if (msg is not null)
+            var definition = selected.Message;
+            var isDbc = mapping.Kind == TestTargetKind.CanMessage;
+            var savedTarget = _editing?.Properties.GetValueOrDefault("target", "") ?? "";
+            var sameSaved = string.Equals(mapping.Name, savedTarget, StringComparison.OrdinalIgnoreCase);
+            var stored = sameSaved
+                ? _editing?.Properties.GetValueOrDefault("value", "") ?? "" : "";
+            if (_legacySourceType == "CanSend" && sameSaved && _editing is { } legacy)
+                stored = legacy.Properties.GetValueOrDefault("dataHex", stored);
+            var bytesText = "";
+            var warning = "";
+
+            if (!sameSaved && previousTarget is { } earlier &&
+                mapping.Kind == TestTargetKind.RawCan)
             {
-                var old = _editing?.Properties.GetValueOrDefault("value",
-                    _editing.Properties.GetValueOrDefault("dataHex", "")) ?? "";
-                var previousBinding = _boundMappings.FirstOrDefault(x =>
-                    string.Equals(x.Name, _editing?.Properties.GetValueOrDefault("target", ""),
-                        StringComparison.OrdinalIgnoreCase));
-                if (_legacySourceType != "CanSend" && (previousBinding is null ||
-                    previousBinding.Kind != TestTargetKind.CanMessage ||
-                    previousBinding.Asset != mapping.Asset || previousBinding.CanId != mapping.CanId ||
-                    previousBinding.Extended != mapping.Extended))
-                    old = ""; // New/different CAN frames must not inherit a KEY "Pulse" value or unrelated frame bytes.
-                var dict = new Dictionary<string, string>(StringComparer.Ordinal);
-                if (old.Contains('='))
-                    foreach (var segment in old.Split(';',
-                        StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                    {
-                        var pos = segment.IndexOf('=');
-                        if (pos > 0) dict[segment[..pos].Trim()] = segment[(pos + 1)..].Trim();
-                    }
-                byte[]? originalBytes = old.Length == 0 ? new byte[msg.Dlc] : null;
-                if (old.Length > 0 && !old.Contains('='))
-                {
-                    try
-                    {
-                        var hex = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
-                            ? old[4..] : old;
-                        var bytes = Convert.FromHexString(new string(hex.Where(
-                            x => !char.IsWhiteSpace(x) && x != '-').ToArray()));
-                        if (bytes.Length == msg.Dlc) originalBytes = bytes;
-                    }
-                    catch (FormatException) { /* Keep original HEX and require review. */ }
-                }
-                foreach (var signal in msg.Signals)
-                {
-                    var alias = _selectedTarget.DisplayNames?.SignalAlias(msg.Id, signal.Name);
-                    var description = _selectedTarget.DisplayNames?.SignalDescription(msg.Id, signal.Name);
-                    var labels = _selectedTarget.MessageValueLabels is not null &&
-                        _selectedTarget.MessageValueLabels.TryGetValue(signal.Name, out var entries)
-                            ? entries : null;
-                    var current = dict.GetValueOrDefault(signal.Name, "");
-                    if (current.Length == 0 && originalBytes is not null)
-                    {
-                        try
-                        {
-                            current = DbcSignalCodec.DecodePhysical(signal, originalBytes)
-                                .ToString("G17", CultureInfo.InvariantCulture);
-                        }
-                        catch (Exception error) when (error is ArgumentException or
-                            IndexOutOfRangeException or AutoTest.Projects.Project.ProjectDataException)
-                        {
-                            current = "";
-                        }
-                    }
-                    var editor = new TestSignalInputField(signal, current,
-                        string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
-                        description, labels,
-                        _selectedTarget.DisplayNames?.SignalSummary(msg.Id, signal.Name));
-                    editor.PropertyChanged += (_, change) =>
-                    {
-                        if (change.PropertyName == nameof(TestSignalInputField.Value) &&
-                            !_loadingCanData) UpdateCanFramePreview();
-                    };
-                    SignalValues.Add(editor);
-                }
-                _loadingCanData = true;
+                // Explicitly removing the DBC must not throw away the actual bytes.
+                bytesText = enteredBytes;
+            }
+            else if (!sameSaved && previousTarget is { } compatible &&
+                compatible.Mapping.CanId == mapping.CanId &&
+                compatible.Mapping.Extended == mapping.Extended && definition is not null)
+            {
                 try
                 {
-                    var rawOnly = msg.Signals.IsDefaultOrEmpty ||
-                        msg.Signals.Any(signal => !string.IsNullOrEmpty(signal.Multiplexer));
-                    DbcRawMode.IsChecked = rawOnly ||
-                        old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
-                        (!old.Contains('=') && old.Length > 0);
-                    DbcRawDataInput.Text = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
-                        ? old[4..] : old.Length == 0
-                            ? Convert.ToHexString(new byte[msg.Dlc]) :
-                              DbcRawMode.IsChecked == true ? old : "";
-                    SignalGrid.Visibility = DbcRawMode.IsChecked == true
-                        ? Visibility.Collapsed : Visibility.Visible;
-                    DbcRawDataInput.Visibility = DbcRawMode.IsChecked == true
-                        ? Visibility.Visible : Visibility.Collapsed;
+                    var preserved = ParseHex(enteredBytes, 8);
+                    if (preserved.Length == definition.Dlc)
+                        bytesText = FormatCanBytes(preserved);
                 }
-                finally { _loadingCanData = false; }
-                UpdateCanFramePreview();
+                catch (ArgumentException) { /* Still requires explicit valid bytes. */ }
             }
+            if (bytesText.Length == 0 && stored.Length > 0)
+            {
+                try
+                {
+                    byte[] loaded;
+                    if (stored.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
+                        loaded = ParseHex(stored[4..], 8);
+                    else if (stored.Contains('=') && definition is not null)
+                        loaded = DbcCanMessageEncoder.Encode(definition, stored);
+                    else if (stored.All(ch => char.IsAsciiHexDigit(ch) ||
+                                                 char.IsWhiteSpace(ch) || ch == '-'))
+                        loaded = ParseHex(stored.Replace("-", ""), 8);
+                    else throw new ArgumentException("不是有效的 HEX 或 DBC 信号赋值。");
+                    if (definition is not null && loaded.Length != definition.Dlc)
+                        throw new ArgumentException("字节长度与当前 DBC 不一致。");
+                    bytesText = FormatCanBytes(loaded);
+                }
+                catch (Exception error) when (error is ArgumentException or
+                    FormatException or OverflowException or
+                    AutoTest.Projects.Project.ProjectDataException)
+                {
+                    warning = "旧数据无法转为实际 DATA：" + error.Message +
+                        "。请核对并重新填写，禁止将未解析内容直接发送。";
+                }
+            }
+            _loadingCanData = true;
+            try
+            {
+                FrameIdInput.Text = mapping.Kind == TestTargetKind.RawCan && !sameSaved
+                    ? previousTarget is not null ? enteredId : ""
+                    : "0x" + mapping.CanId.ToString("X");
+                ExtendedFrame.IsChecked = mapping.Kind == TestTargetKind.RawCan && !sameSaved
+                    ? previousTarget is not null && enteredExtended : mapping.Extended;
+                FrameIdInput.IsReadOnly = isDbc;
+                ExtendedFrame.IsEnabled = !isDbc;
+                RawCanDataInput.Text = bytesText;
+                CanDlcInput.Text = definition is null ? "—" :
+                    definition.Dlc.ToString(CultureInfo.InvariantCulture);
+            }
+            finally { _loadingCanData = false; }
+            if (isDbc)
+            {
+                if (definition is null)
+                {
+                    CanTargetHint.Text = "原 DBC 版本失效；重新关联有效定义，或主动选择无 DBC 编辑。";
+                    var candidates = CurrentCanRebindCandidates();
+                    CanRebindButton.Visibility = candidates.Length == 1 ?
+                        Visibility.Visible : Visibility.Collapsed;
+                }
+                else
+                {
+                    DbcCanPanel.Visibility = Visibility.Visible;
+                    DbcMessageInfo.Text = (selected.DisplayNames?.MessageLabel(definition) ??
+                        definition.Name) + " · 0x" + definition.ArbitrationId.ToString("X") +
+                        " · DLC " + definition.Dlc;
+                    var safeToEdit = !HasOverlappingCanSignals(definition) &&
+                        !definition.Signals.Any(sig => !string.IsNullOrEmpty(sig.Multiplexer));
+                    CanTargetHint.Text = safeToEdit
+                        ? "按信号修改只影响该信号定义的数据位，其他 DATA 位原样保留。"
+                        : "复用或重叠信号仅供观察，避免误覆盖；仍可编辑完整 DATA。";
+                    foreach (var signal in definition.Signals)
+                    {
+                        var alias = selected.DisplayNames?.SignalAlias(definition.Id, signal.Name);
+                        var labels = selected.MessageValueLabels is not null &&
+                            selected.MessageValueLabels.TryGetValue(signal.Name, out var valueLabels)
+                            ? valueLabels : null;
+                        var field = new TestSignalInputField(signal, "",
+                            string.IsNullOrWhiteSpace(alias) ? signal.Name : alias,
+                            selected.DisplayNames?.SignalDescription(definition.Id, signal.Name),
+                            labels, selected.DisplayNames?.SignalSummary(definition.Id, signal.Name),
+                            safeToEdit);
+                        field.PropertyChanged += (_, e) =>
+                        {
+                            if (e.PropertyName == nameof(TestSignalInputField.Value) &&
+                                !_loadingCanData) PatchCanSignal(field);
+                        };
+                        SignalValues.Add(field);
+                    }
+                    SynchronizeCanSignals();
+                }
+            }
+            else CanTargetHint.Text = "当前未绑定 DBC。上方就是实际发送的完整 CAN 数据。";
+            UpdateCanFramePreview();
+            if (warning.Length > 0) CanPreviewIssue.Text = warning;
+            return;
         }
+        // Non-CAN editors use their existing inputs and semantics.
         else if (mapping.Kind is TestTargetKind.Button or TestTargetKind.RawKey)
         {
             KeyPanel.Visibility = Visibility.Visible;
@@ -949,111 +949,128 @@ public partial class TestStepInspector : UserControl
         MarkDraftChanged();
     }
 
-    private byte[] EncodeSelectedCanData(DbcMessage message, bool fromRaw)
+    private static string FormatCanBytes(byte[] data) =>
+        string.Join(" ", data.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
+
+    private static bool HasOverlappingCanSignals(DbcMessage message)
     {
-        if (fromRaw)
+        var bits = new HashSet<int>();
+        foreach (var signal in message.Signals)
+            foreach (var bit in DbcSignalCodec.BitPositions(signal))
+                if (!bits.Add(bit)) return true;
+        return false;
+    }
+
+    private void CanData_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (!_ready || !IsCanSend || _loadingCanData) return;
+        _canSignalError = "";
+        SynchronizeCanSignals();
+        UpdateCanFramePreview();
+    }
+
+    private void SynchronizeCanSignals()
+    {
+        if (!IsCanSend || _loadingCanData || _selectedTarget?.Message is not { } message)
+            return;
+        byte[]? data = null;
+        try
         {
-            var bytes = ParseHex(DbcRawDataInput.Text, message.Dlc);
-            if (bytes.Length != message.Dlc)
-                throw new ArgumentException("发送字节数与 DBC DLC 不一致。");
-            return bytes;
+            var candidate = ParseHex(RawCanDataInput.Text, 8);
+            if (candidate.Length == message.Dlc) data = candidate;
         }
-        if (SignalValues.Any(x => string.IsNullOrWhiteSpace(x.Value)))
-            throw new ArgumentException("还有未填写的信号值，请先完成或使用原始数据模式。");
-        var specification = string.Join(";", SignalValues.Select(x =>
-            x.Name + "=" + x.Value.Trim()));
-        return DbcCanMessageEncoder.Encode(message, specification);
+        catch (ArgumentException) { /* An unfinished HEX input is not an ECU value. */ }
+        _loadingCanData = true;
+        try
+        {
+            foreach (var item in SignalValues)
+            {
+                var display = "";
+                if (data is not null)
+                {
+                    try
+                    {
+                        display = DbcSignalCodec.DecodePhysical(item.Signal, data)
+                            .ToString("G17", CultureInfo.InvariantCulture);
+                    }
+                    catch (Exception ex) when (ex is ArgumentException or
+                        IndexOutOfRangeException or AutoTest.Projects.Project.ProjectDataException)
+                    { /* Unsupported decoding must not fabricate a value. */ }
+                }
+                item.Value = display;
+            }
+        }
+        finally { _loadingCanData = false; }
+    }
+
+    private void PatchCanSignal(TestSignalInputField item)
+    {
+        if (!IsCanSend || _loadingCanData || !item.IsEditable ||
+            _selectedTarget?.Message is not { } message) return;
+        try
+        {
+            if (!double.TryParse(item.Value, NumberStyles.Float,
+                CultureInfo.InvariantCulture, out var physical) ||
+                !double.IsFinite(physical))
+                throw new ArgumentException("必须填写有效的信号物理值。");
+            if (physical < item.Signal.Minimum || physical > item.Signal.Maximum)
+                throw new ArgumentException("超过 DBC 允许的物理值范围。");
+            var bytes = ParseHex(RawCanDataInput.Text, 8);
+            if (bytes.Length != message.Dlc)
+                throw new ArgumentException("请先填写完整 " + message.Dlc +
+                    " 字节 DATA，再通过 DBC 修改信号。");
+            DbcSignalCodec.EncodePhysical(item.Signal, physical, bytes);
+            _canSignalError = "";
+            _loadingCanData = true;
+            try { RawCanDataInput.Text = FormatCanBytes(bytes); }
+            finally { _loadingCanData = false; }
+            SynchronizeCanSignals();
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException or
+            OverflowException or AutoTest.Projects.Project.ProjectDataException)
+        {
+            _canSignalError = item.DisplayName + "：" + ex.Message;
+        }
+        UpdateCanFramePreview();
     }
 
     private void UpdateCanFramePreview()
     {
         if (!IsCanSend || _loadingCanData || CanFramePreview is null) return;
-        var mapping = _selectedTarget?.Mapping;
-        if (mapping is null) return;
         try
         {
-            uint canId;
-            bool extended;
-            byte[] bytes;
-            if (mapping.Kind == TestTargetKind.RawCan)
-            {
-                var idText = FrameIdInput.Text.Trim();
-                if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-                    idText = idText[2..];
-                if (!uint.TryParse(idText, NumberStyles.HexNumber,
-                    CultureInfo.InvariantCulture, out canId))
-                    throw new ArgumentException("请填写有效的十六进制 CAN ID。");
-                extended = ExtendedFrame.IsChecked == true;
-                if (canId > (extended ? 0x1FFFFFFFu : 0x7FFu))
-                    throw new ArgumentException("CAN ID 超出帧格式范围。");
-                bytes = ParseHex(RawCanDataInput.Text, 8);
-            }
-            else if (mapping.Kind == TestTargetKind.CanMessage &&
-                _selectedTarget?.Message is { } message)
-            {
-                canId = message.ArbitrationId;
-                extended = message.IsExtended;
-                bytes = EncodeSelectedCanData(message, DbcRawMode.IsChecked == true);
-            }
-            else return;
-            CanFramePreview.Text = "0x" + canId.ToString("X") +
-                (extended ? " EXT" : " STD") + " · " + bytes.Length + "B · " +
-                string.Join(" ", bytes.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
-            CanPreviewIssue.Text = "";
+            var idText = FrameIdInput.Text.Trim();
+            if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                idText = idText[2..];
+            if (!uint.TryParse(idText, NumberStyles.HexNumber,
+                CultureInfo.InvariantCulture, out var id))
+                throw new ArgumentException("需要填写有效的十六进制 CAN ID。");
+            var extended = ExtendedFrame.IsChecked == true;
+            if (id > (extended ? 0x1FFFFFFFu : 0x7FFu))
+                throw new ArgumentException("CAN ID 不符合帧格式。");
+            var bytes = ParseHex(RawCanDataInput.Text, 8);
+            var definition = _selectedTarget?.Message;
+            if (definition is not null && bytes.Length != definition.Dlc)
+                throw new ArgumentException("当前 DATA 为 " + bytes.Length +
+                    " 字节，DBC 定义为 " + definition.Dlc + " 字节。");
+            if (_selectedTarget?.Mapping.Kind == TestTargetKind.CanMessage &&
+                (definition is null || id != _selectedTarget.Mapping.CanId ||
+                 extended != _selectedTarget.Mapping.Extended))
+                throw new ArgumentException("DBC 旧绑定失效，或 CAN ID 与定义不一致。");
+            CanDlcInput.Text = (definition?.Dlc ?? bytes.Length)
+                .ToString(CultureInfo.InvariantCulture);
+            CanFramePreview.Text = (extended ? "扩展帧" : "标准帧") +
+                " · " + bytes.Length + " 字节 · 数据完整";
+            CanPreviewIssue.Text = _canSignalError;
         }
-        catch (Exception error) when (error is ArgumentException or FormatException or
-                                      OverflowException or AutoTest.Projects.Project.ProjectDataException)
+        catch (Exception ex) when (ex is ArgumentException or FormatException or
+            OverflowException or AutoTest.Projects.Project.ProjectDataException)
         {
-            CanFramePreview.Text = "待完成";
-            CanPreviewIssue.Text = error.Message;
+            if (_selectedTarget?.Message is null) CanDlcInput.Text = "—";
+            CanFramePreview.Text = "报文待完成";
+            CanPreviewIssue.Text = _canSignalError.Length > 0
+                ? _canSignalError : ex.Message;
         }
-    }
-
-    private void DbcRawMode_Changed(object sender, RoutedEventArgs e)
-    {
-        if (!_ready || _loadingCanData || SignalGrid is null) return;
-        // Switching editing modes is an explicit user action; convert the
-        // current payload so edits do not disappear silently.
-        if (_selectedTarget?.Message is { } message)
-        {
-            try
-            {
-                if (DbcRawMode.IsChecked == true)
-                {
-                    var encoded = EncodeSelectedCanData(message, fromRaw: false);
-                    DbcRawDataInput.Text = Convert.ToHexString(encoded);
-                }
-                else
-                {
-                    if (message.Signals.IsDefaultOrEmpty ||
-                        message.Signals.Any(signal => !string.IsNullOrEmpty(signal.Multiplexer)))
-                        throw new ArgumentException(
-                            "此 DBC 报文没有可安全编码的完整普通信号集合，请使用原始数据字节。");
-                    var original = ParseHex(DbcRawDataInput.Text, message.Dlc);
-                    if (original.Length != message.Dlc)
-                        throw new ArgumentException("原始数据字节数必须与 DBC DLC 相同。");
-                    foreach (var field in SignalValues)
-                        field.Value = DbcSignalCodec.DecodePhysical(field.Signal, original)
-                            .ToString("G17", CultureInfo.InvariantCulture);
-                }
-                ErrorText.Text = "";
-            }
-            catch (Exception error) when (error is ArgumentException or FormatException or
-                                          OverflowException or AutoTest.Projects.Project.ProjectDataException)
-            {
-                // A failed conversion must leave the edited source visible.
-                _loadingCanData = true;
-                DbcRawMode.IsChecked = DbcRawMode.IsChecked != true;
-                _loadingCanData = false;
-                ErrorText.Text = "切换报文编辑方式失败：" + error.Message;
-                return;
-            }
-        }
-        SignalGrid.Visibility = DbcRawMode.IsChecked == true
-            ? Visibility.Collapsed : Visibility.Visible;
-        DbcRawDataInput.Visibility = DbcRawMode.IsChecked == true
-            ? Visibility.Visible : Visibility.Collapsed;
-        UpdateCanFramePreview();
     }
 
     private void KeyAction_Changed(object sender, SelectionChangedEventArgs e)
@@ -1156,6 +1173,8 @@ public partial class TestStepInspector : UserControl
                 node = node.WithProperty(field.Key, field.Value.Trim());
             if (IsCanSend)
             {
+                if (_canSignalError.Length > 0)
+                    throw new ArgumentException("DBC 信号修改未应用：" + _canSignalError);
                 var periodic = CanPeriodicMode.IsChecked == true;
                 var period = 0;
                 if (periodic && (!int.TryParse(CanPeriodInput.Text.Trim(),
@@ -1199,20 +1218,15 @@ public partial class TestStepInspector : UserControl
                 else if (mapping?.Kind == TestTargetKind.CanMessage)
                 {
                     var message = _selectedTarget?.Message ??
-                        throw new ArgumentException("所选 DBC 报文定义不可读取，请重新选择。");
-                    string specification;
-                    if (DbcRawMode.IsChecked == true)
-                        specification = "HEX:" + Convert.ToHexString(
-                            ParseHex(DbcRawDataInput.Text, message.Dlc));
-                    else
-                    {
-                        if (SignalValues.Any(x => string.IsNullOrWhiteSpace(x.Value)))
-                            throw new ArgumentException("按 DBC 编辑时必须填写所有信号的物理值；或切换为整帧 HEX。");
-                        specification = string.Join(";", SignalValues.Select(x =>
-                            x.Name + "=" + x.Value.Trim()));
-                    }
-                    _ = DbcCanMessageEncoder.Encode(message, specification);
-                    node = node.WithProperty("value", specification);
+                        throw new ArgumentException("DBC 资源失效，必须重新关联。");
+                    var data = ParseHex(RawCanDataInput.Text, 8);
+                    if (data.Length != message.Dlc)
+                        throw new ArgumentException("DATA 必须填写 DBC 规定的 " +
+                            message.Dlc + " 字节。");
+                    var payload = "HEX:" + Convert.ToHexString(data);
+                    // DBC is a helper: execution persists the exact visible bytes.
+                    _ = DbcCanMessageEncoder.Encode(message, payload);
+                    node = node.WithProperty("value", payload);
                 }
                 else if (mapping?.Kind is TestTargetKind.Button or TestTargetKind.RawKey)
                 {

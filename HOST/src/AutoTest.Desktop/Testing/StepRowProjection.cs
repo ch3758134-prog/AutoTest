@@ -229,8 +229,9 @@ public sealed class StepRowProjection : BindableBase
             return "按键 " + target + " · " + (value.Length > 0 ? value : "待配置");
         }
         if (value.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
-            return "CAN " + target + " · 原始数据 " +
-                Math.Max(0, (value.Length - 4) / 2) + " 字节";
+            return "CAN " + target + " · DATA " +
+                string.Join(" ", Enumerable.Range(0, Math.Max(0, (value.Length - 4) / 2))
+                    .Select(i => value.Substring(4 + i * 2, 2)));
         if (value.Contains('='))
         {
             var fields = value.Split(';', StringSplitOptions.RemoveEmptyEntries);
