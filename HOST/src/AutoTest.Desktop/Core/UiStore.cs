@@ -147,8 +147,8 @@ public sealed class UiInspectorBuffer
 }
 public sealed class UiFlashProfile : Notify
 {
-    private string _name="新建烧录配置", _imagePath="", _appRequest="18DA50F1",
-        _appResponse="18DAF150", _bootRequest="18DA50F1", _bootResponse="18DAF150";
+    private string _name="新建烧录配置", _imagePath="", _appRequest="",
+        _appResponse="", _bootRequest="", _bootResponse="";
     public string Name { get=>_name; set=>Change(ref _name,value); }
     public string ImagePath { get=>_imagePath; set=>Change(ref _imagePath,value); }
     public string AppRequest { get=>_appRequest; set=>Change(ref _appRequest,value); }
