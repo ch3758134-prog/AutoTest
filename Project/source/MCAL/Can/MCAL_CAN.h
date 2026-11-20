@@ -99,7 +99,7 @@ void MCAL_CAN_EnableIRQ(MCAL_CAN_ChannelType channel);
 /**
  * @brief  运行时重配置波特率（不停机）
  */
-void MCAL_CAN_SetBaudrate(MCAL_CAN_ChannelType channel, MCAL_CAN_BaudrateType baud);
+MCAL_CAN_RetType MCAL_CAN_SetBaudrate(MCAL_CAN_ChannelType channel, MCAL_CAN_BaudrateType baud);
 
 /**
  * @brief  发送一帧（写入空闲 TX MB，立即返回）
