@@ -639,7 +639,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                         "FLASH_SECURITY_REDACTED_END");
                 });
             var result = await workflow.ExecuteAsync(
-                verifyApplicationSession: true, ct);
+                verifyApplicationSession: true, ct: ct);
             Record("FLASH_TERMINAL " + result.Outcome +
                 (result.AppSessionObserved
                     ? "；APP 诊断会话已观察到，软件版本仍须通过 TEST 判据核对。"

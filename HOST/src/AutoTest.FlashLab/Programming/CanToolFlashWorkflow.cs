@@ -313,7 +313,7 @@ public sealed class CanToolFlashWorkflow(
     // Keep the independent FlashLab reference behavior unchanged: it stops at
     // Boot 51 01 and does not assert APP recovery without a separate probe.
     public Task<FlashExecutionResult> ExecuteAsync(CancellationToken ct) =>
-        ExecuteAsync(verifyApplicationSession: false, ct);
+        ExecuteAsync(verifyApplicationSession: false, ct: ct);
 
     public async Task<FlashExecutionResult> ExecuteAsync(
         bool verifyApplicationSession, CancellationToken ct)

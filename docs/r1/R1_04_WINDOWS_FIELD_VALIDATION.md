@@ -3,14 +3,14 @@
 状态：**SOURCE_COMMITTED / WINDOWS_RELEASE_BUILD_PENDING / TESTS_PENDING / WPF_START_PENDING / ECU_FIELD_PENDING**  
 正式任务：[Issue #70](https://github.com/ch3758134-prog/AutoTest/issues/70)  
 分支：`R1`（禁止本轮修改 `main`）  
-本交接对应源码 HEAD（落档前）：`6e6ca28e0ca3e7c1fa82456f258919c20de30df7`。使用 R1 最新 HEAD 作为 Codex 的唯一构建输入。
+本轮最终源码修补基线（本次归档提交前）：`df032f4bde38b287091d90b7077866673ba77271`。使用 R1 最新 HEAD 作为 Codex 的唯一构建输入。
 
 ## 1. 本轮已写入 R1 的真实源代码
 
 - **R1-01**：TEST 项目选择从仅校验资源升级为顺序执行。所有勾选用例先确认项目、用例 Revision/SHA、TCF、DBC/KEY、步骤计划和单个 FLASH 资源；同一次 USB epoch、同一 DUT 输入；每个用例复用 `RealTestWorkbenchService.ExecuteAsync`（唯一 `RealRunCoordinator` 和正式 `RealTestRecordSession`），获得独立的 RunId、SQLite 事实和报告。非 PASS/取消/设备或资产变化即停止后续条目。首版限制：**每批最多一个启用的 FLASH**，不把批次临时勾选覆盖项目默认 Enabled。
 - **R1-02**：原 `CanToolFlashWorkflow.ExecuteAsync(ct)` 的独立烧录终点保持 Boot 51 01；只有自动 TEST 经现有 `HardwareConnectionService.ProgramTestFlashAsync` 的显式调用，会在同一闪存任务 CAN/ISO-TP 租约下探测冻结 APP 端点的 `10 03 → 50 03`。探测最多 8 次，未通过则 `AppSessionObserved=false`，不恢复 TEST 写入授权，停止正常测试并尝试清理；不盲目重试擦除/下载。**APP 诊断会话并不等于固件版本、功能或生产 PASS**。
 - **R1-03**：`RealRunEvidenceRecorder` 增加真实 FLASH 观察窗口和证据身份；`ConfiguredRealTestFlashPort` 将观察范围关联到该 FLASH 步骤（异常路径仍保留关联）；`RecordedRealRunEvidenceFinalizer` 用已有 `ArtifactRepository` 持久化真实 FLASH 设备/UDS/CAN 轨迹，`RealTestRecordSession` 通过 `StepOccurrence` 保存证据引用。采集缺失、丢帧、损坏仍阻止正式 PASS；原始 Seed/Key 安全数据仍遵从敏感窗口脱敏。
-- 前一轮修复：`RunFact.cs` 括号，以及 Desktop 8 文件 28 处 `Application.Current` 命名空间冲突。**后续未重新 Windows 编译。**
+- 前一轮修复：`RunFact.cs` 括号，以及 Desktop 8 文件 28 处 `Application.Current` 命名空间冲突；本轮修复批量预检的异常提示，避免 profile/文件格式错误从 WPF async 命令逸出。**后续未重新 Windows 编译。**
 
 ## 2. 本地 Codex 的唯一机械工作
 
