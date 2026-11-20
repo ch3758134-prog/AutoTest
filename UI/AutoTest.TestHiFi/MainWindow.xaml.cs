@@ -57,8 +57,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _ready = true;
         // Do not open an empty case. The accepted visual baseline is the
         // populated TC-003 / TEST / CAN assertion state.
-        CaseList.SelectedItem = Cases.Single(c => c.Id == "TC-003");
         SelectedCase = Cases.Single(c => c.Id == "TC-003");
+        UpdateCaseContext(SelectedCase);
+        CaseList.SelectedItem = SelectedCase;
         ShowPhase("测试", initial: true);
         var selected = VisibleSteps.FirstOrDefault(s => s.Number == 16);
         if (selected is not null) StepList.SelectedItem = selected;
