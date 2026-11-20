@@ -205,13 +205,28 @@ public sealed class UiWorkspaceFiles
     public UiAsset Duplicate(UiAsset asset)
     {
         RequireMember(asset);
-        string candidate = asset.Name + " 副本";
+        var originalBase = asset.Name.Length > 52 ? asset.Name[..52] : asset.Name;
+        string candidate = originalBase + " 副本";
         int i = 2;
-        while (Workspace!.Assets.Any(a => a.Kind == asset.Kind && a.Name == candidate))
-            candidate = asset.Name + " 副本 " + i++;
-        var target = NewAsset(asset.Kind, candidate);
-        File.Copy(FullPath(asset.RelativePath), FullPath(target.RelativePath), overwrite:true);
-        return target;
+        while (Workspace!.Assets.Any(a => a.Kind == asset.Kind &&
+               a.Name.Equals(candidate, StringComparison.OrdinalIgnoreCase)))
+            candidate = originalBase + " 副本 " + i++;
+        var name = CleanName(candidate);
+        var relative = Path.Combine(Path.GetDirectoryName(asset.RelativePath) ?? "",
+                        name + Path.GetExtension(asset.RelativePath)).Replace('\\','/');
+        var target = FullPath(relative);
+        if (File.Exists(target)) throw new IOException("目标文件已存在，不能覆盖。");
+        File.Copy(FullPath(asset.RelativePath), target, overwrite:false);
+        var copy = new UiAsset { Name = name, Kind = asset.Kind, RelativePath = relative };
+        Workspace!.Assets.Add(copy);
+        try { SaveManifest(); }
+        catch
+        {
+            Workspace.Assets.Remove(copy);
+            if (File.Exists(target)) File.Delete(target);
+            throw;
+        }
+        return copy;
     }
 
     public void Delete(UiAsset asset)
