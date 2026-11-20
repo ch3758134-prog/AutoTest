@@ -406,7 +406,18 @@
                         Margin="0,0,1,0" Height="39">
                   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="{Binding Label}" Tag="{Binding}" Click="ActivatePage_Click"
-                            Style="{StaticResource ActionButton}" Padding="13,5" FontWeight="SemiBold"/>
+                            Padding="13,5" FontWeight="SemiBold">
+                      <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ActionButton}">
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding Active}" Value="True">
+                              <Setter Property="Foreground" Value="#1769D2"/>
+                              <Setter Property="Background" Value="#EAF2FE"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Button.Style>
+                    </Button>
                     <Button Content="×" Tag="{Binding}" Click="ClosePage_Click"
                             Style="{StaticResource ActionButton}" Width="28" Padding="3,2"
                             ToolTip="关闭文档（未保存时先确认）"/>
@@ -451,7 +462,7 @@
                 <TextBlock Text="{Binding SummaryTotal}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/>
               </StackPanel>
               <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                <TextBlock Text="○ 正常" FontSize="11" Foreground="#168B43" HorizontalAlignment="Center"/>
+                <TextBlock Text="○ 配置项" FontSize="11" Foreground="#536982" HorizontalAlignment="Center"/>
                 <TextBlock Text="{Binding SummaryNormal}" FontSize="17" FontWeight="Bold" Foreground="#168B43"
                            HorizontalAlignment="Center" Margin="0,3,0,0"/>
               </StackPanel>
@@ -676,6 +687,19 @@
           </ListBox>
         </Grid>
       </Border>
+      <!-- Two adjustable navigator and inspector splits, plus the problem panel. -->
+      <GridSplitter Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Width="6"
+                    HorizontalAlignment="Stretch" ResizeDirection="Columns"
+                    ResizeBehavior="PreviousAndNext" ShowsPreview="True" Background="#E0E7F0"
+                    Panel.ZIndex="10"/>
+      <GridSplitter Grid.Row="0" Grid.RowSpan="3" Grid.Column="3" Width="6"
+                    HorizontalAlignment="Stretch" ResizeDirection="Columns"
+                    ResizeBehavior="PreviousAndNext" ShowsPreview="True" Background="#E0E7F0"
+                    Panel.ZIndex="10"/>
+      <GridSplitter Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" Height="6"
+                    VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                    ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
+                    ShowsPreview="True" Background="#E0E7F0" Panel.ZIndex="10"/>
       <Grid x:Name="DocumentOverlay" Grid.Row="1" Grid.RowSpan="2" Grid.Column="2"
             Grid.ColumnSpan="3" Background="White" Visibility="Collapsed"
             Panel.ZIndex="8" Margin="0,0,0,0">
