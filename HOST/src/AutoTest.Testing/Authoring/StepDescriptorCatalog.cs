@@ -50,8 +50,11 @@ public sealed class StepDescriptorCatalog
         Add("WaveStop", false, [], ["captureKey", "variable"]);
         Add("WaveAnalyze", false, [], ["captureKey", "variable", "tolerance", "coverage"]);
         // Explicitly modeled future capabilities; never claim V1 runtime support.
+        // FLASH uses the same TEST DSL. Physical execution remains disabled until wired.
+        Add("Flash", false, [], ["programmingProfile", "firmwarePath",
+            "securityLibraryPath", "targetLabel"]);
         foreach (var name in new[] { "PowerSet", "KeySet", "CanSend", "CanWait", "UdsRequest",
-            "Flash", "WaveCapture", "WaveCompare", "Log", "Fail", "Skip" }) Add(name, false);
+            "WaveCapture", "WaveCompare", "Log", "Fail", "Skip" }) Add(name, false);
         return c;
     }
 }

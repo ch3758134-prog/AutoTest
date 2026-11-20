@@ -148,6 +148,19 @@ public static class StepTreeValidator
             }
             active.Remove(n);
         }
+        var enabledFlash = TestRunStepScope.EnabledSteps(document)
+            .Where(n => n.Type == "Flash").ToArray();
+        if (enabledFlash.Length > 1)
+            errors.Add("首版测试用例只允许一条 Flash 步骤，防止重复擦写。");
+        var topLevelTestSteps = document.Get(TestPhase.Test).Select(n => n.Id).ToHashSet();
+        foreach (var flash in enabledFlash)
+        {
+            if (!topLevelTestSteps.Contains(flash.Id))
+                errors.Add($"{flash.Id}: Flash 仅能在测试阶段顶层运行，禁止置于循环、分支或清理。");
+            if (flash.Properties.ContainsKey("flashConsent") ||
+                flash.Properties.ContainsKey("typedConsent"))
+                errors.Add($"{flash.Id}: 实体 FLASH 授权不得保存在 TEST 文件。");
+        }
         foreach (var phase in Enum.GetValues<TestPhase>())
             foreach (var n in document.Get(phase)) Visit(n, $"{phase}/{n.Id}");
         return errors.ToImmutable();

@@ -37,7 +37,7 @@ public static class StepUiCatalog
         new("CanSend", "CAN 发送", "需绑定正式 DBC / CAN 配置，执行未接线", false),
         new("CanWait", "CAN 接收等待", "需绑定 CAN 目标和超时，执行未接线", false),
         new("UdsRequest", "UDS 服务", "运行需实体诊断授权，执行未接线", false),
-        new("Flash", "ECU 烧录", "实体编程未获授权，执行禁用", false),
+        new("Flash", "ECU 烧录", "引用固件与 CanTool 配置；实体运行需要独立授权和 APP 后验", false),
         new("WaveCapture", "波形采集", "记录服务尚未完成该步骤适配", false),
         new("WaveCompare", "波形判定", "需要真实参考资源与三态比较", false)
     ];
@@ -74,7 +74,9 @@ public static class StepUiCatalog
         "timeoutMs" or "target" or "mode" or "maxAgeMs" or "operator" or
         "expected" or "left" or "right" or "captureKey" or "durationMs" or
         "reference" or "dbcMessage" or "signals" or "requestHex" or
-        "service" or "programmingProfile" or "profile" or "tolerance" or
+        "service" or "programmingProfile" or "firmwarePath" or
+        "securityLibraryPath" or "targetLabel" or "settingsPath" or
+        "binBaseAddress" or "profile" or "tolerance" or
         "coverage" or "periodMs" => true,
         _ => false
     };
@@ -107,7 +109,12 @@ public static class StepUiCatalog
         "signals" => "CAN 信号条件",
         "requestHex" => "UDS 请求数据（HEX）",
         "service" => "UDS 服务标识",
-        "programmingProfile" => "烧录配置",
+        "programmingProfile" => "CanTool 配置 XML 文件",
+        "firmwarePath" => "固件文件 HEX / S19 / BIN",
+        "securityLibraryPath" => "经核验安全算法 DLL 文件",
+        "targetLabel" => "目标 ECU 型号 / 身份",
+        "settingsPath" => "可选 settings.json 文件",
+        "binBaseAddress" => "BIN 起始地址（仅 BIN）",
         "profile" => "波形分析配置（可选，来自工程 Mapping）",
         "tolerance" => "比较绝对容差",
         "coverage" => "最低有效覆盖率（0-1）",
@@ -163,7 +170,12 @@ public static class StepUiCatalog
             "CanSend" => node.WithProperty("dbcMessage", "").WithProperty("signals", ""),
             "CanWait" => node.WithProperty("dbcMessage", "").WithProperty("timeoutMs", "1000"),
             "UdsRequest" => node.WithProperty("service", "").WithProperty("requestHex", ""),
-            "Flash" => node.WithProperty("programmingProfile", ""),
+            "Flash" => node.WithProperty("programmingProfile", "")
+                .WithProperty("firmwarePath", "")
+                .WithProperty("securityLibraryPath", "")
+                .WithProperty("targetLabel", "")
+                .WithProperty("settingsPath", "")
+                .WithProperty("binBaseAddress", ""),
             "WaveCapture" => node.WithProperty("captureKey", ""),
             "WaveCompare" => node.WithProperty("reference", ""),
             _ => node

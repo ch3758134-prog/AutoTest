@@ -54,17 +54,20 @@ public sealed class RealRunCoordinator
     private readonly ITestSignalPort _signals;
     private readonly ITestActuationPort _actions;
     private readonly ITestWavePort _waves;
+    private readonly ITestFlashPort? _flash;
     private readonly object _gate = new();
     private CancellationTokenSource? _stop;
     private TaskCompletionSource<bool>? _resume;
     private bool _pause, _singleStep;
     public bool IsRunning { get { lock (_gate) return _stop is not null; } }
 
-    public RealRunCoordinator(ITestSignalPort signals, ITestActuationPort actions, ITestWavePort waves)
+    public RealRunCoordinator(ITestSignalPort signals, ITestActuationPort actions, ITestWavePort waves,
+        ITestFlashPort? flash = null)
     {
         _signals = signals ?? throw new ArgumentNullException(nameof(signals));
         _actions = actions ?? throw new ArgumentNullException(nameof(actions));
         _waves = waves ?? throw new ArgumentNullException(nameof(waves));
+        _flash = flash;
     }
 
     public void RequestStop()
@@ -277,6 +280,22 @@ public sealed class RealRunCoordinator
                         Fact(node, result.Acknowledged ? RealStepStatus.Completed : RealStepStatus.DeviceError,
                             Property(node, "value"), result.Code, result.Diagnostic, result.Evidence);
                         if (!result.Acknowledged) throw new IOException("Device did not acknowledge: " + result.Code);
+                        break;
+                    }
+                    case "Flash":
+                    {
+                        var port = _flash ?? throw new NotSupportedException(
+                            "FLASH 未接入真实 TEST 工位；不得跳过或模拟成功。");
+                        var flash = await port.ExecuteAsync(node, ct);
+                        var status = !flash.ProtocolCompleted ? RealStepStatus.DeviceError :
+                            flash.AppVerified ? RealStepStatus.Completed : RealStepStatus.NoData;
+                        Fact(node, status, Property(node, "flashJobFingerprint"),
+                            flash.Code + " ACK=" + flash.TransferAcknowledged +
+                            " VERIFIED=" + flash.VerifiedBytes, flash.Diagnostic, flash.Evidence);
+                        if (!flash.ProtocolCompleted)
+                            throw new IOException("烧录协议未完成：" + flash.Code);
+                        if (!flash.AppVerified)
+                            incomplete = true; // Boot reset ACK is not proof of running APP.
                         break;
                     }
                     case "CanStopPeriodic":
