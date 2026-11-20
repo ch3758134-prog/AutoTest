@@ -610,7 +610,7 @@ public sealed class StepAuthoringView : UserControl
         foreach (var p in _selected.Parameters)
         {
             if (_editors.TryGetValue(p.Key, out var editor) &&
-                p.Key is "milliseconds" or "timeoutMs" or "periodMs" or "count" &&
+                (p.Key is "milliseconds" or "timeoutMs" or "periodMs" or "count") &&
                 (!int.TryParse(editor.Text, out var number) || number < 0))
             {
                 _message.Text = p.Label + " 必须是非负整数。";
