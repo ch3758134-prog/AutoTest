@@ -59,6 +59,25 @@ public sealed class RecordedRealRunEvidenceFinalizer : IRealRunEvidenceFinalizer
             await _writer.AttachArtifactAsync(run, linked, ct);
         }
 
+        // A FLASH step must point to actual captured USB/UDS/DEVICE bytes.
+        // Neither a synthesized GUID nor a Boot reset ACK may imply APP success.
+        var flashRefs = new HashSet<EvidenceRef>();
+        foreach (var fact in result.Facts.Where(f => f.Type == "Flash"))
+            if (Guid.TryParse(fact.Evidence, out var id) && id != Guid.Empty)
+                flashRefs.Add(new EvidenceRef(id));
+        foreach (var evidence in flashRefs)
+        {
+            var bytes = _raw.FindFlashEvidence(evidence);
+            if (bytes is null) { missing++; continue; }
+            await using var stream = new MemoryStream(bytes, writable: false);
+            var linked = await _artifacts.PutAsync(stream, "ECU_FLASH_REAL_TRACE",
+                "application/json", "Actual FLASH CAN/UDS/device trace " + run,
+                evidence, ct);
+            if (linked.ArtifactId != evidence.Value)
+                throw new IOException("FLASH EvidenceRef mismatch.");
+            await _writer.AttachArtifactAsync(run, linked, ct);
+        }
+
         var health = _raw.CaptureHealth();
         bool complete = health.DroppedEvents == 0 &&
             health.ObservedFrames > 0 && missing == 0;

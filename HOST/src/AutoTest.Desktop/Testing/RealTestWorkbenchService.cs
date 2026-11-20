@@ -119,17 +119,18 @@ public sealed class RealTestWorkbenchService
                 await actions.AuthorizeAsync(plan.Fingerprint, confirmation, mappings,
                     document, ct);
             var wave = new ConfiguredWavePort(_projects, _signals);
+            // Subscribe to physical evidence before any FLASH workflow can run.
+            evidence = new RealRunEvidenceRecorder(_hardware, _signals);
             ITestFlashPort? flash = jobs.Count == 0 ? null :
                 new ConfiguredRealTestFlashPort(_hardware, actions, document,
                     mappings, jobs, project.RootDirectory, plan.Fingerprint,
-                    confirmation, flashConfirmation);
+                    confirmation, flashConfirmation, evidence);
             var run = new RealRunCoordinator(_signals, actions, wave, flash);
             run.StepCompleted += fact =>
             {
                 try { StepReported?.Invoke(fact); }
                 catch { /* Operator visualization must never break evidence or hardware cleanup. */ }
             };
-            evidence = new RealRunEvidenceRecorder(_hardware, _signals);
             _running = run;
             // The reviewed RECORD service starts a durable RunRecord before TEST
             // steps; only it can publish a final PASS after checking raw archives.

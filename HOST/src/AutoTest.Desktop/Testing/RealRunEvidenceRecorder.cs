@@ -15,7 +15,7 @@ namespace AutoTest.Desktop.Testing;
 public sealed class RealRunEvidenceRecorder : IDisposable
 {
     private sealed record Line(DateTimeOffset Utc, string Kind, string Description,
-        string? Evidence = null);
+        string? Evidence = null, string? FlashEvidence = null);
     private readonly HardwareConnectionService _hardware;
     private readonly LiveDbcSignalService _signals;
     private readonly object _gate = new();
@@ -23,6 +23,7 @@ public sealed class RealRunEvidenceRecorder : IDisposable
     private long _dropped;
     private long _sourceLost;
     private long _observedFrames;
+    private EvidenceRef? _activeFlash;
     private const int MaximumEvents = 100000;
 
     public RealRunEvidenceRecorder(HardwareConnectionService hardware, LiveDbcSignalService signals)
@@ -37,6 +38,8 @@ public sealed class RealRunEvidenceRecorder : IDisposable
         lock (_gate)
         {
             if (_records.Count == MaximumEvents) { _dropped++; return; }
+            if (_activeFlash is { } flash && (line.Kind is "DEVICE" or "CAN_RX"))
+                line = line with { FlashEvidence = flash.ToString() };
             _records.Add(line);
         }
     }
@@ -62,6 +65,49 @@ public sealed class RealRunEvidenceRecorder : IDisposable
     }
     private void OnHardware(string eventText) =>
         Append(new Line(DateTimeOffset.UtcNow, "DEVICE", eventText));
+
+    /// <summary>Begin a real physical FLASH observation window, not a fabricated
+    /// success fact. Only the actual USB/CAN/UDS/device events in this window
+    /// can later back a FLASH StepOccurrence artifact.</summary>
+    public EvidenceRef BeginFlashCapture()
+    {
+        lock (_gate)
+        {
+            if (_activeFlash is not null)
+                throw new InvalidOperationException("FLASH evidence window already active.");
+            _activeFlash = EvidenceRef.New();
+            Append(new Line(DateTimeOffset.UtcNow, "FLASH_CAPTURE", "FLASH_CAPTURE_START"));
+            return _activeFlash.Value;
+        }
+    }
+
+    public void EndFlashCapture(EvidenceRef reference)
+    {
+        lock (_gate)
+        {
+            if (_activeFlash != reference)
+                throw new InvalidOperationException("FLASH evidence window mismatch.");
+            Append(new Line(DateTimeOffset.UtcNow, "FLASH_CAPTURE", "FLASH_CAPTURE_END"));
+            _activeFlash = null;
+        }
+    }
+
+    public byte[]? FindFlashEvidence(EvidenceRef evidence)
+    {
+        if (evidence.Value == Guid.Empty) return null;
+        Line[] observed;
+        lock (_gate)
+            observed = _records.Where(l => l.FlashEvidence == evidence.ToString()).ToArray();
+        // A capture window alone is not evidence that programming actually started.
+        if (!observed.Any(l => l.Kind == "DEVICE" &&
+            l.Description.StartsWith("FLASH", StringComparison.Ordinal))) return null;
+        return JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            EvidenceId = evidence.Value,
+            Source = "R1_REAL_FLASH_DEVICE_AND_CAN_TRACE",
+            Observations = observed
+        });
+    }
 
     public (long DroppedEvents, long ObservedFrames) CaptureHealth()
     {

@@ -240,9 +240,17 @@ public sealed class RealTestRecordSession : IRealRunEventSink
 
         var attempt = _attempts.GetValueOrDefault(completed.Step) + 1;
         var observed = completed.Observation;
+        // Only a real FLASH capture reference (created at the hardware boundary)
+        // may identify a FLASH artifact; a raw Boot ACK never makes a verdict.
+        var flashEvidence = completed.Type == "Flash" &&
+            Guid.TryParse(completed.Evidence, out var flashId) && flashId != Guid.Empty
+                ? (EvidenceRef?)new EvidenceRef(flashId) : null;
         var evidence = observed is not null && observed.Evidence.Value != Guid.Empty
-            ? ImmutableArray.Create(observed.Evidence) : ImmutableArray<EvidenceRef>.Empty;
-        var quality = observed?.Quality ?? EvidenceQuality.Unknown;
+            ? ImmutableArray.Create(observed.Evidence)
+            : flashEvidence is { } physicalFlash
+                ? ImmutableArray.Create(physicalFlash) : ImmutableArray<EvidenceRef>.Empty;
+        var quality = observed?.Quality ??
+            (flashEvidence is not null ? EvidenceQuality.HostObserved : EvidenceQuality.Unknown);
         // An observation in a Read (or an unrelated earlier step) cannot turn an
         // Expect literal into a proved ECU judgement. Tag only the occurrence
         // that compared this exact frozen DBC signal and actually passed.

@@ -707,6 +707,9 @@ public sealed class RealRunCoordinator
                             (gapObserved ? " | SIGNAL_GAP: frame/record loss" : "") +
                             (bindingInvalid ? " | DBC_SNAPSHOT_MISMATCH" : "") +
                             (stepFailure is null ? "" : " | " + stepFailure.Message),
+                        Evidence = original.Evidence ??
+                            (stepFailure is TestFlashExecutionException flashFailure
+                                ? flashFailure.EvidenceId : null),
                         StepOccurrenceId = occurrence,
                         ParentOccurrenceId = parentOccurrenceId,
                         Phase = phase,

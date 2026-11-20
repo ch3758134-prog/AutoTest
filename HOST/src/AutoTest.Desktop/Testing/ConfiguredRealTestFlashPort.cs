@@ -14,6 +14,7 @@ public sealed class ConfiguredRealTestFlashPort : ITestFlashPort
 {
     private readonly HardwareConnectionService _hardware;
     private readonly ConfiguredStationActionPort _actions;
+    private readonly RealRunEvidenceRecorder _evidence;
     private readonly TestDocument _document;
     private readonly IReadOnlyList<TestTargetMapping> _mappings;
     private readonly IReadOnlyDictionary<StepId, CanToolFlashJob> _jobs;
@@ -26,10 +27,11 @@ public sealed class ConfiguredRealTestFlashPort : ITestFlashPort
         IReadOnlyList<TestTargetMapping> mappings,
         IReadOnlyDictionary<StepId, CanToolFlashJob> frozenJobs,
         string projectRoot, string planFingerprint, string testConsent,
-        string flashConsent)
+        string flashConsent, RealRunEvidenceRecorder evidence)
     {
         _hardware = hardware;
         _actions = actions;
+        _evidence = evidence ?? throw new ArgumentNullException(nameof(evidence));
         _document = document;
         _mappings = mappings;
         _jobs = frozenJobs;
@@ -100,20 +102,30 @@ public sealed class ConfiguredRealTestFlashPort : ITestFlashPort
         // Physical fence cannot hold TEST and FLASH grants simultaneously.
         // First stop all periodic CAN and release held KEY masks.
         await _actions.CleanupAsync(ct);
-        var result = await _hardware.ProgramTestFlashAsync(job, _flashConsent, ct);
-        bool protocolComplete = result.ResetAcknowledged &&
-            result.TransferAcknowledged == job.PlannedBytes &&
-            result.VerifiedBytes == job.PlannedBytes;
-        // Restore the exact previously approved TEST only on same real epoch
-        // after protocol completion; no new writes after uncertain erase/write.
-        if (protocolComplete && result.AppSessionObserved && _hadWrites &&
-            !ct.IsCancellationRequested &&
-            _hardware.IsConnected && _hardware.CurrentStationEpoch == _stationEpoch)
-            await _actions.AuthorizeAsync(_planFingerprint, _testConsent,
-                _mappings, _document, ct);
-        return new TestFlashResult(protocolComplete, result.AppSessionObserved,
-            result.TransferAcknowledged, result.VerifiedBytes, result.Outcome,
-            "真实 CAN FLASH；块校验和 Boot 复位 ACK 不证明 APP 启动。" +
-            " 固件SHA256=" + job.FirmwareSha256 + " 任务SHA256=" + job.Fingerprint);
+        var flashEvidence = _evidence.BeginFlashCapture();
+        try
+        {
+            var result = await _hardware.ProgramTestFlashAsync(job, _flashConsent, ct);
+            bool protocolComplete = result.ResetAcknowledged &&
+                result.TransferAcknowledged == job.PlannedBytes &&
+                result.VerifiedBytes == job.PlannedBytes;
+            // Only a proven APP diagnostic session may reauthorize TEST writes.
+            if (protocolComplete && result.AppSessionObserved && _hadWrites &&
+                !ct.IsCancellationRequested &&
+                _hardware.IsConnected && _hardware.CurrentStationEpoch == _stationEpoch)
+                await _actions.AuthorizeAsync(_planFingerprint, _testConsent,
+                    _mappings, _document, ct);
+            return new TestFlashResult(protocolComplete, result.AppSessionObserved,
+                result.TransferAcknowledged, result.VerifiedBytes, result.Outcome,
+                "真实 CAN FLASH；APP 诊断会话并不证明固件版本或生产放行。" +
+                " 固件SHA256=" + job.FirmwareSha256 + " 任务SHA256=" + job.Fingerprint,
+                flashEvidence.ToString());
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            throw new TestFlashExecutionException("FLASH 执行失败，ECU 状态可能未知。",
+                flashEvidence.ToString(), error);
+        }
+        finally { _evidence.EndFlashCapture(flashEvidence); }
     }
 }

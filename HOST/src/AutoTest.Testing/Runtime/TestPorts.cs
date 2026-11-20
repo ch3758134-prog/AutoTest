@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.Contracts;
 using AutoTest.Testing.Authoring;
 
@@ -33,6 +34,15 @@ public sealed record TestOperationResult(bool Acknowledged, bool StateKnown,
 public sealed record TestFlashResult(bool ProtocolCompleted, bool AppVerified,
     long TransferAcknowledged, long VerifiedBytes, string Code, string Diagnostic,
     string? Evidence = null);
+
+/// <summary>Preserves the actual physical FLASH trace identity even when the
+/// existing programming workflow throws before returning a normal result.</summary>
+public sealed class TestFlashExecutionException : IOException
+{
+    public string EvidenceId { get; }
+    public TestFlashExecutionException(string message, string evidenceId, Exception inner)
+        : base(message, inner) => EvidenceId = evidenceId;
+}
 
 /// <summary>Uses the already connected physical station; not a second flash engine.</summary>
 public interface ITestFlashPort
