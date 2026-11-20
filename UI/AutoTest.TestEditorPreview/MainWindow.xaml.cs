@@ -245,6 +245,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_syncing || !_uiReady) return;
         SelectCase(CompactCasePicker.SelectedItem as EditorCase);
     }
+    private void RunSelect_PreviewMouseDown(object sender, MouseButtonEventArgs e) => Checkpoint();
+    private void RunSelect_PreviewKey(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space) Checkpoint();
+    }
     private void RunSelect_Click(object sender, RoutedEventArgs e)
     {
         if (!_uiReady || _syncing) return;
@@ -556,10 +561,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         node.Breakpoint = !node.Breakpoint;
         UpdateRows(); Dirty(node.Breakpoint ? "已设置编辑器断点草稿（无真实单步执行）。" : "已清除断点。");
     }
+    private void Enabled_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_uiReady && !_syncing) Checkpoint();
+    }
+    private void Enabled_PreviewKey(object sender, KeyEventArgs e)
+    {
+        if (_uiReady && !_syncing && e.Key == Key.Space) Checkpoint();
+    }
     private void Enabled_Click(object sender, RoutedEventArgs e)
     {
         if (!_uiReady || _syncing) return;
-        UpdateRows();
+        foreach (var row in Rows) row.Update();
         Dirty("已更新当前步骤的启用状态；不会执行实体控制。");
     }
     private void Undo_Click(object sender, RoutedEventArgs e) => Undo();
