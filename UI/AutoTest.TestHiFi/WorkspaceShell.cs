@@ -449,7 +449,7 @@ public partial class MainWindow
     }
     private void ProjectTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
-        if (e.NewValue is TreeViewItem { Tag: UiAsset asset }) _selectedAsset = asset;
+        _selectedAsset = e.NewValue is TreeViewItem { Tag: UiAsset asset } ? asset : null;
     }
     private void ProjectTree_DoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -678,6 +678,11 @@ public partial class MainWindow
     private void DuplicateAsset_Click(object sender,RoutedEventArgs e)
     {
         var asset=TargetAsset();if(asset is null){NeedSelectAsset();return;}
+        if (_workFiles.OpenDocuments.Any(d => d.Asset.Id == asset.Id && d.Dirty) &&
+            MessageBox.Show(this,
+              "此资源有未保存更改。复制将使用已保存的磁盘版本，不包含当前草稿。\n\n继续复制？",
+              "复制与未保存内容",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)
+            return;
         try
         {
             var copy=_workFiles.Duplicate(asset);
@@ -763,6 +768,11 @@ public partial class MainWindow
     private void SaveAll_Click(object sender,RoutedEventArgs e)=>SaveAllDocuments();
     private bool SaveAllDocuments()
     {
+        if (!_workFiles.HasProject)
+        {
+            StatusText = "没有可保存的 UI 工程。当前 TEST 页面只是视觉样本。";
+            return false;
+        }
         try
         {
             _workFiles.SaveAll();
