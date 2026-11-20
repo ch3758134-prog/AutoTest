@@ -765,8 +765,12 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 throw new InvalidOperationException(
                     "FLASH 需要空闲的已连接主控；先撤销 TEST/CAN/KEY 实体授权。");
             RequireConfiguredEcuCanBitrate();
-            if (job.ConfiguredBitrate is not ("500K" or "500000"))
-                throw new NotSupportedException("当前主控只确认 500K，拒绝自动切换波特率。");
+            var jobKbps = MainControllerCodec.ParseEcuCanBaud(job.ConfiguredBitrate);
+            if (jobKbps != RequestedEcuCanBitrateKbps)
+                throw new InvalidOperationException(
+                    "TEST 烧录 XML 要求 ECU CAN " + jobKbps +
+                    "k，但本次工位确认速率为 " + ConfirmedEcuCanBitrateKbps +
+                    "k。请先结束 TEST，在主界面应用/读回匹配的波特率。");
             if (!string.Equals(typedConsent, job.Consent, StringComparison.Ordinal))
                 throw new UnauthorizedAccessException("必须输入准确 ECU FLASH SHA256 授权。");
             if (!string.Equals(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(job.FirmwarePath))),

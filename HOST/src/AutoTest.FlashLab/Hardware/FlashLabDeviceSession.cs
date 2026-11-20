@@ -215,18 +215,12 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
                 throw new IOException("必须先建立独占 WinUSB/CAN1 主控会话。");
             // Keep a non-null recorder reference across awaits for mandatory F2 audit.
             var recorder=_recorder ?? throw new IOException("烧录审计记录器不存在。");
-            // EPB_Test_Keil/Project/source/main.c initializes CAN1 at 500K.
-            // Without a proven USB CAN baud-rate setter, refuse 250K profiles.
-            if(job.ConfiguredBitrate is not ("500K" or "500000"))
-                throw new NotSupportedException("当前主控固件 CAN1 初始化固定500K；250K 尚无已验证切换协议。");
-            // Firmware release text is not a USB/CAN capability handshake.
-            // A working WinUSB/PING session is sufficient to connect; do NOT
-            // require F1 GET_VERSION or compare its text before programming.
-            // The 500K-only CAN1 physical assumption is checked independently.
-            recorder.RecordMessage("CAN1_BUS_SETTINGS",
-                $"XML bitrate={job.ConfiguredBitrate}; "+
-                "controller CAN1 source default=500K; actual physical bitrate not independently measured; "+
-                "firmware version not queried or used as a gate");
+            // The XML is frozen in the job fingerprint; SET happens only
+            // after exact typed FLASH consent and file/security revalidation.
+            // No rate assumption is made from GET_VERSION.
+            var configuredBitrateKbps =
+                MainControllerCodec.ParseEcuCanBaud(job.ConfiguredBitrate);
+            _ = MainControllerCodec.EcuCanBaudCode(configuredBitrateKbps);
 
             if(!string.Equals(typedConsent,job.Consent,StringComparison.Ordinal))
                 throw new UnauthorizedAccessException(
@@ -242,6 +236,51 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             long frames=(job.PlannedBytes/6L)*3L+5000L+job.Blocks.Length*50L;
             if(frames is < 1 or > 500000L)
                 throw new FormatException("计划 CAN 帧预算超限；需拆分镜像和重新审批。");
+            // Real ECU CAN hardware setup: read before changing, SET only
+            // if necessary, then mandatory GET readback before authorizing
+            // any destructive UDS/FLASH CAN transmission.
+            int confirmedRate;
+            try
+            {
+                int before;
+                try
+                {
+                    before = await MainControllerCodec.ReadEcuCanBaudAsync(
+                        _usb, ct).ConfigureAwait(false);
+                }
+                catch (UsbDeviceStatusException error)
+                    when (error.Command == MainControllerCodec.GetEcuCanBaud &&
+                          error.Status == 0x03 && configuredBitrateKbps == 500)
+                {
+                    before = 500; // Legacy firmware: fixed 500k only.
+                    recorder.RecordMessage("ECU_CAN_BAUD_LEGACY",
+                        "USB 0x43 not supported; legacy firmware fixed to 500k.");
+                }
+                if (before != configuredBitrateKbps)
+                {
+                    recorder.RecordMessage("ECU_CAN_BAUD_REQUEST",
+                        "USB 0x42 SET=" + configuredBitrateKbps +
+                        "k, previously read=" + before + "k.");
+                    confirmedRate = await MainControllerCodec.SetAndVerifyEcuCanBaudAsync(
+                        _usb, configuredBitrateKbps, ct).ConfigureAwait(false);
+                }
+                else confirmedRate = before;
+
+                // Never treat USB readback as independently measured CAN
+                // waveform timing. KEY_CAN_PORT is not affected.
+                recorder.RecordMessage("ECU_CAN_BAUD_CONFIRMED",
+                    "XML target=" + configuredBitrateKbps + "k; controller 0x43=" +
+                    confirmedRate + "k (or legacy fixed 500k); not a physical bus measurement.");
+                Emit("ECU CAN 已核对：" + confirmedRate +
+                    " kbit/s；KEY CAN 不变，开始真实烧录前授权。");
+            }
+            catch (Exception error)
+            {
+                recorder.RecordMessage("ECU_CAN_BAUD_REJECTED",
+                    "ECU CAN 配置/读回失败：" + error.Message +
+                    "；没有发出 ECU FLASH 许可。");
+                throw;
+            }
             permit=_link.AuthorizeFlashJob(job.Fingerprint,typedConsent,
                 job.App.RequestCanId,job.Boot.RequestCanId,checked((int)frames));
             _activeFlashPermit=permit;
@@ -249,7 +288,8 @@ public sealed class FlashLabDeviceSession : IAsyncDisposable
             recorder.RecordMessage("FLASH_PLAN_APPROVED",
                 $"SHA={job.Fingerprint} target={job.TargetLabel} image={job.FirmwareSha256} "+
                 $"securitySource={job.SecurityProviderKind} refFileSha={job.SecuritySha256} "+
-                "CAN1 bitrate=firmware_expected_500K_unmeasured "+
+                "ECU CAN bitrate=" + confirmedRate +
+                "k (device readback or legacy fixed 500k; unmeasured bus) " +
                 $"erase=0x{job.FlashStart:X8}..0x{job.FlashEndInclusive:X8}");
             Emit($"真实烧录许可已生效 SHA={job.Fingerprint}；CAN1；禁自动副作用重试。");
             try

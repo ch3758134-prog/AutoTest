@@ -48,9 +48,9 @@ public sealed record CanToolFlashJob(
         string baud=config.Get("BaudRate").Trim().ToUpperInvariant();
         if(baud is not ("250K" or "500K" or "250000" or "500000"))
             throw new FormatException("原始 CanTool 波特率仅支持250K或500K；主控实际波特率需另行核对。");
-        if(baud is "250K" or "250000")
-            throw new NotSupportedException(
-                "当前上传的主控固件 source/main.c 将 CAN1 初始化为500K；没有已确认可用的 USB 动态切换命令。禁止按250K配置擦写。");
+        // Current Main_Control firmware supports ECU-only 0x42/0x43.
+        // Actual device capability is checked at execution, never inferred
+        // just from this XML or the controller version string.
 
         string rawBlock=config.Get("BlockLength");
         uint blockLength=string.IsNullOrWhiteSpace(rawBlock) ? 0x200u :
