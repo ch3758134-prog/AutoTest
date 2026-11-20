@@ -386,6 +386,17 @@
                   </ContextMenu>
                 </ListBox.ContextMenu>
               </ListBox>
+              <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Margin="14" Visibility="{Binding HasNoResources,Converter={StaticResource VisibleIfTrue}}">
+                <TextBlock Text="这个工程还没有资源" FontWeight="SemiBold" FontSize="13"
+                           TextAlignment="Center"/>
+                <TextBlock Text="可创建测试程序、公共流程或导入 DBC 等文件。"
+                           TextWrapping="Wrap" TextTrimming="None" FontSize="11.5"
+                           Foreground="#63748A" TextAlignment="Center" Margin="0,9,0,12"/>
+                <Button Content="＋ 新建资源" Click="NewResource_Click"
+                        Style="{StaticResource OutlineButton}" Width="115"
+                        HorizontalAlignment="Center"/>
+              </StackPanel>
             </Grid>
           </Grid>
         </DockPanel>
