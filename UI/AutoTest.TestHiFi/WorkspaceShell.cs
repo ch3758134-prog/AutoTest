@@ -23,6 +23,9 @@ public partial class MainWindow
     private readonly List<string> _recentProjects = [];
     private bool _switchingEditor;
     private bool _sessionRestored;
+    private bool _syncingNavigationSearch;
+    private string _testCaseSearch = "";
+    private string _projectResourceSearch = "";
 
     private static bool IsBinary(UiAsset asset) =>
         Path.GetExtension(asset.RelativePath).ToLowerInvariant() is
@@ -266,9 +269,22 @@ public partial class MainWindow
     private void DeviceStatus_Click(object sender, RoutedEventArgs e) =>
         ShowToolWorkspace("设备诊断");
 
+    private void SwitchNavigationSearch(bool testMode)
+    {
+        _syncingNavigationSearch = true;
+        CaseSearch.Text = testMode ? _testCaseSearch : _projectResourceSearch;
+        CaseSearchHint.Text = testMode ? "⌕  筛选测试用例…" : "⌕  筛选工程资源…";
+        CaseSearchHint.Visibility = string.IsNullOrWhiteSpace(CaseSearch.Text)
+            ? Visibility.Visible : Visibility.Collapsed;
+        _syncingNavigationSearch = false;
+        if (testMode) FilterCases();
+        else RefreshProjectTree();
+    }
+
     private void ShowTestWorkspace()
     {
         _activeToolPage = "TEST";
+        SwitchNavigationSearch(true);
         WorkspaceOverlay.Visibility = Visibility.Collapsed;
         ProjectNavigator.Visibility = Visibility.Collapsed;
         CaseList.Visibility = Visibility.Visible;
@@ -283,6 +299,7 @@ public partial class MainWindow
         WorkspaceOverlay.Visibility = Visibility.Visible;
         ProjectNavigator.Visibility = Visibility.Visible;
         CaseList.Visibility = Visibility.Collapsed;
+        SwitchNavigationSearch(false);
         HighlightNavigation(header == "工程资源" ? ResourcesNavButton : ProjectNavButton);
         ShowWorkspaceWelcome(header ?? "工程与文件",
             _workFiles.HasProject
@@ -314,6 +331,7 @@ public partial class MainWindow
         WorkspaceOverlay.Visibility = Visibility.Visible;
         ProjectNavigator.Visibility = Visibility.Visible;
         CaseList.Visibility = Visibility.Collapsed;
+        SwitchNavigationSearch(false);
         HighlightNavigation(name == "生产与记录" ? ReportsNavButton : ToolsNavButton);
         var explanation = name switch
         {
@@ -403,6 +421,7 @@ public partial class MainWindow
     private void RefreshProjectTree()
     {
         ProjectTree.Items.Clear();
+        var query = _activeToolPage == "TEST" ? "" : _projectResourceSearch.Trim();
         ProjectNameText.Text = _workFiles.Workspace is null
             ? "尚未打开 UI 工作区" : _workFiles.Workspace.Name;
         if (_workFiles.Workspace is null) return;
@@ -414,7 +433,11 @@ public partial class MainWindow
         ProjectTree.Items.Add(root);
         foreach (var category in new[] { "测试程序", "公共流程", "DBC", "参考波形", "输入配置", "诊断配置", "烧录配置", "生产配置", "其他配置" })
         {
-            var assets = _workFiles.Workspace.Assets.Where(a => a.Kind == category).OrderBy(a=>a.Name).ToArray();
+            var assets = _workFiles.Workspace.Assets.Where(a => a.Kind == category &&
+                (query.Length == 0 || a.Name.Contains(query,StringComparison.OrdinalIgnoreCase) ||
+                 a.RelativePath.Contains(query,StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(a=>a.Name).ToArray();
+            if (query.Length > 0 && assets.Length == 0) continue;
             var group = new TreeViewItem
             {
                 Header = category + " (" + assets.Length + ")",
