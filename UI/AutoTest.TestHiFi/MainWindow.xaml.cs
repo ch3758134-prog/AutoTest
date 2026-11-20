@@ -224,6 +224,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         IssueItemsRow.Height = _issuesExpanded ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
         IssueToggleButton.Content = _issuesExpanded ? "×" : "▢";
         IssueToggleButton.ToolTip = _issuesExpanded ? "收起问题列表" : "展开问题列表";
+        ApplyResponsiveLayout();
     }
 
     private void ShowSignalPicker_Click(object sender, RoutedEventArgs e)
