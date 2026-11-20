@@ -50,6 +50,68 @@ public sealed class TestProjectPlanWorkflowTests
     }
 
     [Fact]
+    public async Task EditedTestWithOlderProjectPin_CanReopenAndExplicitlyRepair()
+    {
+        var parent = Path.Combine(Path.GetTempPath(), "at-project-pin-repair-" +
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(parent);
+        try
+        {
+            var workspace = new ProjectWorkspaceService();
+            var root = await workspace.CreateAsync("Suite", parent);
+            var program = await workspace.CreateTestProgramAsync("驻车动作");
+            var project = await workspace.CreateTestProjectAsync("绿通测试项目");
+            var opened = await workspace.OpenTestProjectEditorAsync(project.Id);
+            var pinned = new TestProjectEntry(Guid.NewGuid(), program.Id.Value,
+                program.Revision, program.Sha256, "驻车动作", true);
+            await workspace.SaveTestProjectEditorAsync(opened,
+                opened.Document with { Packages = [pinned] });
+
+            // This exact action is common in TEST editing. It advances the
+            // asset revision, but cannot silently rewrite project references.
+            var editor = await workspace.OpenTestEditorAsync(program.Id);
+            var savedTest = await workspace.SaveTestEditorAsync(editor,
+                editor.Document with { Name = "驻车动作 - 已编辑" });
+            Assert.True(savedTest.AssetRevision > pinned.PackageRevision);
+
+            // The workspace must remain accessible for an engineer to repair
+            // the now-stale project pin. No TEST execution is involved.
+            var reopenedWorkspace = new ProjectWorkspaceService();
+            await reopenedWorkspace.OpenAsync(root.ManifestPath);
+            var staleProject = await reopenedWorkspace.OpenTestProjectEditorAsync(project.Id);
+            var oldReference = Assert.Single(staleProject.Document.Packages);
+            Assert.Equal(pinned.PackageRevision, oldReference.PackageRevision);
+            Assert.Equal(pinned.PackageSha256, oldReference.PackageSha256);
+
+            // Editing unrelated plan metadata must NOT make an outdated pin
+            // eligible for saving or running.
+            var invalid = staleProject.Document with { Name = "尚未修复的项目" };
+            var error = await Assert.ThrowsAsync<ProjectDataException>(
+                () => reopenedWorkspace.SaveTestProjectEditorAsync(staleProject, invalid));
+            Assert.Equal("PROJECT_PACKAGE_STALE", error.Code);
+
+            // Explicit adopt-and-save is the only way to advance the pin.
+            var updated = staleProject.Document with
+            {
+                Packages =
+                [
+                    oldReference with
+                    {
+                        PackageRevision = savedTest.AssetRevision,
+                        PackageSha256 = savedTest.FileHash
+                    }
+                ]
+            };
+            var repaired = await reopenedWorkspace.SaveTestProjectEditorAsync(staleProject, updated);
+            Assert.Equal(savedTest.AssetRevision,
+                Assert.Single(repaired.Document.Packages).PackageRevision);
+            var reopenedAgain = new ProjectWorkspaceService();
+            await reopenedAgain.OpenAsync(root.ManifestPath);
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
+
+    [Fact]
     public async Task StalePackageRevisionCannotBeSilentlyAddedToProject()
     {
         var parent = Path.Combine(Path.GetTempPath(), "at-package-stale-" + Guid.NewGuid().ToString("N"));

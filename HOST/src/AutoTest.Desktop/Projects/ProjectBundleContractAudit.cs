@@ -62,11 +62,14 @@ public static class ProjectBundleContractAudit
                                 target.Kind != ProjectWorkspaceService.TestProgramKind)
                                 throw new InvalidDataException("项目用例 " + package.DisplayName +
                                     " 未绑定存在的 TEST 程序资产。");
-                            if (package.PackageRevision != target.Revision ||
-                                !package.PackageSha256.Equals(target.Sha256,
-                                    StringComparison.OrdinalIgnoreCase))
-                                throw new InvalidDataException("项目用例 " + package.DisplayName +
-                                    " 的固定版本与当前 TEST 资源不一致。");
+                            // An edited TEST advances its asset revision while the
+                            // project intentionally keeps the previously pinned revision.
+                            // This is a repairable edit-time state, not a corrupt project:
+                            // do not lock the operator out of opening the workspace.
+                            // The project editor must explicitly adopt and save the current
+                            // revision. SaveTestProjectEditorAsync and real-run preflight
+                            // still reject unresolved revision/SHA mismatches.
+                            // Never rewrite the pinned reference during project OPEN.
                         }
                         break;
                 }
