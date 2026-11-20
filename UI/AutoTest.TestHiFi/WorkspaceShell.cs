@@ -102,6 +102,10 @@ public partial class MainWindow
         var recent = UiWorkspaceFiles.ReadSession();
         _recentManifest = recent.LastProjectManifest;
         _restoreOnStartup = recent.RestoreOnStartup;
+        _testCaseId = recent.LastTestCaseId;
+        _testPhase = recent.LastTestPhase is "准备" or "测试" or "清理"
+            ? recent.LastTestPhase : "测试";
+        _debugPane = recent.DebugPane;
         _recentProjects.Clear();
         _recentProjects.AddRange((recent.RecentProjects ?? []).Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).Take(8));
         _wideNavWidth = Math.Clamp(recent.NavWidth, 220, 350);
@@ -137,7 +141,8 @@ public partial class MainWindow
             }
             var current = _workFiles.OpenDocuments.FirstOrDefault(d => d.Asset.Id == recent.LastOpenAssetId)
                           ?? _workFiles.OpenDocuments.LastOrDefault();
-            if (current is not null) ActivateDocument(current);
+            if (recent.LastMode == "TEST") ShowTestWorkspace();
+            else if (current is not null) ActivateDocument(current);
             else ShowProjectWorkspace();
             StatusText = "已恢复本地 UI 工作区与文件标签。此应用未连接真实 ECU。";
         }
@@ -166,7 +171,11 @@ public partial class MainWindow
                 RestoreOnStartup = _restoreOnStartup && _workFiles.HasProject,
                 RecentProjects = _recentProjects.ToList(),
                 LastOpenAssetId = _currentDocument?.Asset.Id,
-                OpenAssetIds = _workFiles.OpenDocuments.Select(d => d.Asset.Id).ToList()
+                OpenAssetIds = _workFiles.OpenDocuments.Select(d => d.Asset.Id).ToList(),
+                LastMode = _activeToolPage,
+                LastTestCaseId = _testCaseId,
+                LastTestPhase = _testPhase,
+                DebugPane = _debugPane
             });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
