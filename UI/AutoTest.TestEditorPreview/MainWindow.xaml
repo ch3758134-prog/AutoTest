@@ -469,14 +469,18 @@
                                     <MenuItem Header="复制步骤" Click="DuplicateStep_Click"/>
                                     <MenuItem Header="复制到剪贴缓冲（Ctrl+C）" Click="CopyStep_Click"/>
                                     <MenuItem Header="粘贴到当前位置（Ctrl+V）" Click="PasteStep_Click"/>
-                                    <MenuItem Header="上移（同级）" Click="MoveUp_Click"/>
-                                    <MenuItem Header="下移（同级）" Click="MoveDown_Click"/>
+                                    <MenuItem Header="上移（Alt+↑，仅同级）" Click="MoveUp_Click"/>
+                                    <MenuItem Header="下移（Alt+↓，仅同级）" Click="MoveDown_Click"/>
                                     <MenuItem Header="包裹为 IF / ELSE" Click="WrapIf_Click"/>
                                     <MenuItem Header="包裹为循环" Click="WrapLoop_Click"/>
                                     <Separator/>
                                     <MenuItem Header="启用 / 停用" Click="ToggleEnabled_Click"/>
                                     <MenuItem Header="设置 / 清除断点" Click="ToggleBreakpoint_Click"/>
                                     <MenuItem Header="删除（可撤销）" Click="DeleteStep_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="单步执行（真实执行器未接线）" IsEnabled="False"/>
+                                    <MenuItem Header="运行到此步（真实执行器未接线）" IsEnabled="False"/>
+                                    <MenuItem Header="跳过此步（真实执行器未接线）" IsEnabled="False"/>
                                 </ContextMenu>
                             </ListBox.ContextMenu>
                         </ListBox>
