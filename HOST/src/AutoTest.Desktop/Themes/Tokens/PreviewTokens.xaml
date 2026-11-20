@@ -1,21 +1,21 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
- <!-- G4 frozen light IDE palette. Values intentionally preserve approved preview appearance. -->
+ <!-- R1 neutral light IDE tokens shared by the modern TEST workspace. -->
  <SolidColorBrush x:Key="AtUiSurface" Color="#FFFFFF"/>
- <SolidColorBrush x:Key="AtUiInk" Color="#1E2C41"/>
- <SolidColorBrush x:Key="AtUiButtonForeground" Color="#25415F"/>
- <SolidColorBrush x:Key="AtUiBorder" Color="#D4DFED"/>
- <SolidColorBrush x:Key="AtUiHoverSurface" Color="#F1F6FD"/>
- <SolidColorBrush x:Key="AtUiHoverBorder" Color="#A8C6E8"/>
- <SolidColorBrush x:Key="AtUiPressedSurface" Color="#DEEAF9"/>
- <SolidColorBrush x:Key="AtUiAccent" Color="#2368BD"/>
- <SolidColorBrush x:Key="AtUiAccentHover" Color="#1F5BA7"/>
- <SolidColorBrush x:Key="AtUiAccentPressed" Color="#17477F"/>
- <SolidColorBrush x:Key="AtUiStepTitle" Color="#263D5C"/>
- <SolidColorBrush x:Key="AtUiStepSummary" Color="#587795"/>
- <SolidColorBrush x:Key="AtUiStepResource" Color="#8498B0"/>
- <SolidColorBrush x:Key="AtUiStepStatus" Color="#8293A9"/>
+ <SolidColorBrush x:Key="AtUiInk" Color="#2B3435"/>
+ <SolidColorBrush x:Key="AtUiButtonForeground" Color="#374A43"/>
+ <SolidColorBrush x:Key="AtUiBorder" Color="#DCE5DF"/>
+ <SolidColorBrush x:Key="AtUiHoverSurface" Color="#F3F7F4"/>
+ <SolidColorBrush x:Key="AtUiHoverBorder" Color="#A2C7B6"/>
+ <SolidColorBrush x:Key="AtUiPressedSurface" Color="#E0EFE7"/>
+ <SolidColorBrush x:Key="AtUiAccent" Color="#277B70"/>
+ <SolidColorBrush x:Key="AtUiAccentHover" Color="#226C60"/>
+ <SolidColorBrush x:Key="AtUiAccentPressed" Color="#1D5D53"/>
+ <SolidColorBrush x:Key="AtUiStepTitle" Color="#354944"/>
+ <SolidColorBrush x:Key="AtUiStepSummary" Color="#63796F"/>
+ <SolidColorBrush x:Key="AtUiStepResource" Color="#85968D"/>
+ <SolidColorBrush x:Key="AtUiStepStatus" Color="#84948C"/>
  <FontFamily x:Key="AtUiFont">Segoe UI, Microsoft YaHei UI</FontFamily>
  <sys:Double x:Key="AtUiBodySize">12</sys:Double>
  <sys:Double x:Key="AtUiCaptionSize">11</sys:Double>

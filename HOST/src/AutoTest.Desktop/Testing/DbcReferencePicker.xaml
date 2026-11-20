@@ -2,11 +2,11 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  FontFamily="{StaticResource UiFont}" FontSize="12"
- Background="Transparent" Foreground="#223C58">
+ Background="Transparent" Foreground="#2B3937">
  <StackPanel>
   <Button x:Name="SelectionButton" Click="SelectionButton_Click"
-   Background="White" BorderBrush="#CEDAE8" BorderThickness="1"
-   HorizontalContentAlignment="Stretch" MinHeight="56" ToolTip="点击打开资源搜索和选择">
+   Background="White" BorderBrush="#DCE6E0" BorderThickness="1"
+   HorizontalContentAlignment="Stretch" MinHeight="49" ToolTip="点击展开 DBC 资源搜索和选择">
    <Button.Template>
     <ControlTemplate TargetType="Button">
      <Border x:Name="PickerChrome" Background="{TemplateBinding Background}"
@@ -16,11 +16,11 @@
      </Border>
      <ControlTemplate.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
-       <Setter TargetName="PickerChrome" Property="BorderBrush" Value="#71A1D6"/>
-       <Setter TargetName="PickerChrome" Property="Background" Value="#F8FBFF"/>
+       <Setter TargetName="PickerChrome" Property="BorderBrush" Value="#95C3B3"/>
+       <Setter TargetName="PickerChrome" Property="Background" Value="#F8FBF9"/>
       </Trigger>
       <Trigger Property="IsKeyboardFocused" Value="True">
-       <Setter TargetName="PickerChrome" Property="BorderBrush" Value="#327DD0"/>
+       <Setter TargetName="PickerChrome" Property="BorderBrush" Value="#308774"/>
       </Trigger>
       <Trigger Property="IsEnabled" Value="False">
        <Setter TargetName="PickerChrome" Property="Opacity" Value="0.55"/>
@@ -32,29 +32,29 @@
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="20"/></Grid.ColumnDefinitions>
     <StackPanel Grid.Column="0">
      <TextBlock x:Name="CurrentTitle" FontSize="12" FontWeight="SemiBold"
-      Foreground="#254766" TextTrimming="CharacterEllipsis" Text="选择 DBC 对象"/>
-     <TextBlock x:Name="CurrentDetail" FontSize="10" Foreground="#75889E"
+      Foreground="#35584E" TextTrimming="CharacterEllipsis" Text="选择 DBC 对象"/>
+     <TextBlock x:Name="CurrentDetail" FontSize="10" Foreground="#798B82"
       TextTrimming="CharacterEllipsis" Margin="0,3,0,0" Text="搜索名称、信号或 CAN ID"/>
     </StackPanel>
-    <TextBlock Grid.Column="1" Text="⌄" FontSize="16" Foreground="#65809C"
+    <TextBlock Grid.Column="1" Text="⌄" FontSize="16" Foreground="#6B897A"
       VerticalAlignment="Center" HorizontalAlignment="Right"/>
    </Grid>
   </Button>
   <!-- Inline expansion avoids a detached OS popup whose focus and position
        can drift when the inspector scrolls or the app changes window size. -->
   <Border x:Name="ChoicePanel" Visibility="Collapsed" MaxHeight="344"
-   Background="White" BorderBrush="#D4E1EF" BorderThickness="1"
+   Background="White" BorderBrush="#DAE6E0" BorderThickness="1"
    CornerRadius="7" Padding="9" Margin="0,5,0,2">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-     <Border Grid.Row="0" BorderBrush="#CFDBE9" Background="#F8FBFE"
+     <Border Grid.Row="0" BorderBrush="#D4E1D9" Background="#F8FAF9"
       BorderThickness="1" CornerRadius="6" Margin="0,0,0,7">
       <DockPanel Margin="9,0,7,0">
        <Button DockPanel.Dock="Right" Content="清除" Click="ClearSearch_Click"
-        Background="Transparent" BorderThickness="0" Foreground="#5F819E"
+        Background="Transparent" BorderThickness="0" Foreground="#688778"
         FontSize="11" Padding="5,4" ToolTip="清除搜索文本"/>
-       <TextBlock DockPanel.Dock="Left" Text="⌕" FontSize="18" Foreground="#6A8BAA"
+       <TextBlock DockPanel.Dock="Left" Text="⌕" FontSize="18" Foreground="#769589"
         VerticalAlignment="Center" Margin="0,0,6,0"/>
        <Grid>
         <TextBox x:Name="SearchBox" TextChanged="SearchBox_TextChanged"
@@ -62,13 +62,13 @@
          BorderThickness="0" Background="Transparent" Padding="0,4"
          ToolTip="输入中文别名、信号名、报文名或 CAN ID"/>
         <TextBlock x:Name="SearchPlaceholder" IsHitTestVisible="False"
-         Text="搜索 DBC 报文或信号、CAN ID…" Foreground="#9BAABC"
+         Text="搜索 DBC 报文或信号、CAN ID…" Foreground="#9DAFA6"
          VerticalAlignment="Center" Margin="2,0,0,0"/>
        </Grid>
       </DockPanel>
      </Border>
      <TextBlock Grid.Row="1" x:Name="ResultCount" FontSize="10"
-      Foreground="#768A9F" Margin="3,0,0,7"/>
+      Foreground="#7D8E85" Margin="3,0,0,7"/>
      <ListBox Grid.Row="2" x:Name="ResultsList" MaxHeight="260"
       BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
       ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -84,11 +84,11 @@
         <EventSetter Event="PreviewMouseLeftButtonUp" Handler="Result_MouseUp"/>
         <Style.Triggers>
          <Trigger Property="IsMouseOver" Value="True">
-          <Setter Property="Background" Value="#F0F6FD"/>
+          <Setter Property="Background" Value="#EFF7F2"/>
          </Trigger>
          <Trigger Property="IsSelected" Value="True">
-          <Setter Property="Background" Value="#E8F2FF"/>
-          <Setter Property="BorderBrush" Value="#C5DFF9"/>
+          <Setter Property="Background" Value="#E7F4EC"/>
+          <Setter Property="BorderBrush" Value="#BDE1D1"/>
          </Trigger>
         </Style.Triggers>
        </Style>
@@ -98,17 +98,17 @@
         <StackPanel ToolTip="{Binding FullDetail}">
          <DockPanel>
           <TextBlock Text="{Binding KindLabel}" DockPanel.Dock="Right"
-           FontSize="10" Foreground="#7D8FA3" Margin="6,1,0,0"/>
+           FontSize="10" Foreground="#7B8D84" Margin="6,1,0,0"/>
           <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
-           FontSize="12" Foreground="#274B70" TextTrimming="CharacterEllipsis"/>
+           FontSize="12" Foreground="#385E50" TextTrimming="CharacterEllipsis"/>
          </DockPanel>
-         <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="#6B8097"
+         <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="#72887B"
           TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
         </StackPanel>
        </DataTemplate>
       </ListBox.ItemTemplate>
      </ListBox>
-     <TextBlock Grid.Row="3" FontSize="10" Foreground="#8394A6"
+     <TextBlock Grid.Row="3" FontSize="10" Foreground="#85948D"
       Text="↑↓ 选择  ·  Enter 确认  ·  Esc 取消"
       Margin="3,7,0,1"/>
     </Grid>

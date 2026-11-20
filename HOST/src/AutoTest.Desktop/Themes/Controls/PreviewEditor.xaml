@@ -5,14 +5,14 @@
   <ResourceDictionary Source="../Tokens/PreviewTokens.xaml"/>
  </ResourceDictionary.MergedDictionaries>
  <BooleanToVisibilityConverter x:Key="B2V"/>
- <SolidColorBrush x:Key="AtPreviewSelected" Color="#EAF3FF"/>
- <SolidColorBrush x:Key="AtPreviewTreeCaseSelected" Color="#E2EEFE"/>
- <SolidColorBrush x:Key="AtPreviewTreeGroupSelected" Color="#E8F1FD"/>
- <SolidColorBrush x:Key="AtPreviewTreeText" Color="#29496E"/>
+ <SolidColorBrush x:Key="AtPreviewSelected" Color="#E9F4EE"/>
+ <SolidColorBrush x:Key="AtPreviewTreeCaseSelected" Color="#E5F1EC"/>
+ <SolidColorBrush x:Key="AtPreviewTreeGroupSelected" Color="#EAF3EF"/>
+ <SolidColorBrush x:Key="AtPreviewTreeText" Color="#405D51"/>
  <SolidColorBrush x:Key="AtPreviewBreakpoint" Color="#C04A57"/>
- <SolidColorBrush x:Key="AtPreviewStatusDisabled" Color="#A0ADBE"/>
- <SolidColorBrush x:Key="AtPreviewBranchSurface" Color="#F5EEFB"/>
- <SolidColorBrush x:Key="AtPreviewBranchBorder" Color="#DECEF3"/>
+ <SolidColorBrush x:Key="AtPreviewStatusDisabled" Color="#9DA9A2"/>
+ <SolidColorBrush x:Key="AtPreviewBranchSurface" Color="#F1F3F3"/>
+ <SolidColorBrush x:Key="AtPreviewBranchBorder" Color="#DBE2DD"/>
 <Style x:Key="Btn" TargetType="Button">
    <Setter Property="Background" Value="{StaticResource AtUiSurface}"/>
    <Setter Property="Foreground" Value="{StaticResource AtUiButtonForeground}"/>
@@ -47,9 +47,9 @@
    </Setter>
   </Style>
   <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
-   <Setter Property="Background" Value="#2368BD"/>
+   <Setter Property="Background" Value="#277B70"/>
    <Setter Property="Foreground" Value="White"/>
-   <Setter Property="BorderBrush" Value="#2368BD"/>
+   <Setter Property="BorderBrush" Value="#277B70"/>
    <Setter Property="Template">
     <Setter.Value>
      <ControlTemplate TargetType="Button">
@@ -60,10 +60,10 @@
       </Border>
       <ControlTemplate.Triggers>
        <Trigger Property="IsMouseOver" Value="True">
-        <Setter TargetName="PrimaryBorder" Property="Background" Value="#1F5BA7"/>
+        <Setter TargetName="PrimaryBorder" Property="Background" Value="#226C60"/>
        </Trigger>
        <Trigger Property="IsPressed" Value="True">
-        <Setter TargetName="PrimaryBorder" Property="Background" Value="#17477F"/>
+        <Setter TargetName="PrimaryBorder" Property="Background" Value="#1D5D53"/>
        </Trigger>
       </ControlTemplate.Triggers>
      </ControlTemplate>
@@ -77,7 +77,7 @@
   </Style>
   <Style x:Key="UiInput" TargetType="TextBox">
    <Setter Property="Background" Value="White"/>
-   <Setter Property="BorderBrush" Value="#CED9E6"/>
+   <Setter Property="BorderBrush" Value="#DCE5DF"/>
    <Setter Property="BorderThickness" Value="1"/>
    <Setter Property="Padding" Value="7,5"/>
    <Setter Property="FontSize" Value="11"/>
@@ -86,18 +86,18 @@
   </Style>
   <Style x:Key="UiCombo" TargetType="ComboBox">
    <Setter Property="Background" Value="White"/>
-   <Setter Property="BorderBrush" Value="#CFD9E6"/>
+   <Setter Property="BorderBrush" Value="#DEE6E0"/>
    <Setter Property="BorderThickness" Value="1"/>
    <Setter Property="MinHeight" Value="26"/>
    <Setter Property="FontSize" Value="11"/>
   </Style>
   <Style x:Key="FieldLabel" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#607891"/>
+   <Setter Property="Foreground" Value="#6A8074"/>
    <Setter Property="FontSize" Value="11"/>
    <Setter Property="Margin" Value="0,0,0,5"/>
   </Style>
   <Style x:Key="BottomTab" TargetType="Button" BasedOn="{StaticResource BareBtn}">
-   <Setter Property="Foreground" Value="#536983"/>
+   <Setter Property="Foreground" Value="#697F73"/>
    <Setter Property="FontSize" Value="11"/>
    <Setter Property="Margin" Value="3,0,8,0"/>
   </Style>
@@ -105,7 +105,7 @@
    <Setter Property="HorizontalContentAlignment" Value="Left"/>
    <Setter Property="HorizontalAlignment" Value="Stretch"/>
    <Setter Property="FontSize" Value="11"/>
-   <Setter Property="Foreground" Value="#29496E"/>
+   <Setter Property="Foreground" Value="#405D51"/>
   </Style>
   <Style x:Key="PreviewListBoxItemStyle" TargetType="ListBoxItem">
    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -117,13 +117,13 @@
    <Setter Property="Template">
     <Setter.Value><ControlTemplate TargetType="ListBoxItem">
      <Border x:Name="Container" Background="{TemplateBinding Background}"
-      BorderBrush="#E9EEF5" BorderThickness="0,0,0,1">
+      BorderBrush="#ECF2EF" BorderThickness="0,0,0,1">
       <ContentPresenter HorizontalAlignment="Stretch"/>
      </Border>
      <ControlTemplate.Triggers>
-      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Container" Property="Background" Value="#F4F8FD"/></Trigger>
+      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Container" Property="Background" Value="#F7FAF8"/></Trigger>
       <DataTrigger Binding="{Binding IsMatch}" Value="True"><Setter TargetName="Container" Property="Background" Value="#FFF4DC"/></DataTrigger>
-      <Trigger Property="IsSelected" Value="True"><Setter TargetName="Container" Property="Background" Value="#EAF3FF"/><Setter TargetName="Container" Property="BorderBrush" Value="#91B9E9"/></Trigger>
+      <Trigger Property="IsSelected" Value="True"><Setter TargetName="Container" Property="Background" Value="#E9F4EE"/><Setter TargetName="Container" Property="BorderBrush" Value="#A3C8B3"/></Trigger>
      </ControlTemplate.Triggers>
     </ControlTemplate></Setter.Value>
    </Setter>
@@ -179,34 +179,34 @@
   <Setter Property="MinHeight" Value="27"/>
   <Setter Property="Margin" Value="0,0,0,10"/>
   <Setter Property="Padding" Value="7,4,7,4"/>
-  <Setter Property="BorderBrush" Value="#CDD9E8"/>
+  <Setter Property="BorderBrush" Value="#DCE5DF"/>
  </Style>
  <Style x:Key="AtPreviewDynamicChoice" TargetType="ComboBox" BasedOn="{StaticResource UiCombo}">
   <Setter Property="Height" Value="27"/>
   <Setter Property="Margin" Value="0,0,0,10"/>
-  <Setter Property="BorderBrush" Value="#CDD9E8"/>
+  <Setter Property="BorderBrush" Value="#DCE5DF"/>
  </Style>
  <!-- Search match / selection rail style for test step rows. -->
  <Style x:Key="AtPreviewMatchRail" TargetType="Border">
             <Setter Property="Visibility" Value="Collapsed"/>
-            <Setter Property="Background" Value="#277BD1"/>
+            <Setter Property="Background" Value="#30866D"/>
             <Style.Triggers>
              <DataTrigger Binding="{Binding IsMatch}" Value="True">
               <Setter Property="Visibility" Value="Visible"/>
-              <Setter Property="Background" Value="#E2A43B"/>
+              <Setter Property="Background" Value="#BD9546"/>
              </DataTrigger>
              <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem},Path=IsSelected}" Value="True">
               <Setter Property="Visibility" Value="Visible"/>
-              <Setter Property="Background" Value="#2675CF"/>
+              <Setter Property="Background" Value="#2D8A70"/>
              </DataTrigger>
             </Style.Triggers>
            </Style>
 
  <!-- Explorer rows share interaction chrome across resource types and test cases. -->
  <Style x:Key="AtPreviewTreeRoot" TargetType="Border">
-  <Setter Property="BorderBrush" Value="#D4E2F0"/>
+  <Setter Property="BorderBrush" Value="#DEE9E0"/>
   <Setter Property="BorderThickness" Value="1"/>
-  <Setter Property="Background" Value="#F1F6FC"/>
+  <Setter Property="Background" Value="#F5F8F6"/>
   <Setter Property="CornerRadius" Value="5"/>
   <Setter Property="Padding" Value="10,10"/>
   <Setter Property="Margin" Value="0,0,0,12"/>
@@ -251,7 +251,7 @@
            Height="24" MinHeight="0" Padding="8,2" Margin="4,0,0,0"
            Style="{StaticResource Btn}"/>
           <TextBlock DockPanel.Dock="Right" Text="{Binding CountLabel}"
-           Foreground="#8A9AB0" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+           Foreground="#8C9D94" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
            <Button Content="{Binding ExpandMark}" Command="{Binding DataContext.TogglePhaseCommand,RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}"
             Style="{StaticResource BareBtn}" Width="24" FontSize="11"/>
@@ -263,9 +263,9 @@
         <Border Style="{StaticResource AtPreviewBranchRow}" Visibility="{Binding IsBranch,Converter={StaticResource B2V}}">
          <DockPanel>
           <Button DockPanel.Dock="Right" Content="＋ 插入" Command="{Binding DataContext.AddRowCommand,RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}"
-           Style="{StaticResource BareBtn}" Foreground="#7854A3"/>
+           Style="{StaticResource BareBtn}" Foreground="#687E76"/>
           <TextBlock Text="{Binding Name}" Margin="{Binding Indent}" VerticalAlignment="Center"
-           FontSize="11" Foreground="#7653A5" FontWeight="SemiBold"/>
+           FontSize="11" Foreground="#657B72" FontWeight="SemiBold"/>
          </DockPanel>
         </Border>
         <Grid Visibility="{Binding IsStep,Converter={StaticResource B2V}}" Margin="0">
@@ -278,7 +278,7 @@
          </Grid.ColumnDefinitions>
          <Border Width="3" HorizontalAlignment="Left" Panel.ZIndex="1" Style="{StaticResource AtPreviewMatchRail}"/>
          <TextBlock Grid.Column="0" Text="{Binding Number}" HorizontalAlignment="Right"
-          VerticalAlignment="Center" Margin="0,0,10,0" FontSize="10" Foreground="#8A99AD"
+          VerticalAlignment="Center" Margin="0,0,10,0" FontSize="10" Foreground="#899990"
           FontFamily="Consolas"/>
          <StackPanel Grid.Column="1" Margin="{Binding Indent}" Orientation="Horizontal"
           VerticalAlignment="Center" ClipToBounds="True">
@@ -299,7 +299,7 @@
  </DataTemplate>
  <!-- Step palette shares the same button and typography system as the editor. -->
  <Style x:Key="AtPreviewPaletteGroup" TargetType="TextBlock">
-  <Setter Property="Foreground" Value="#547089"/>
+  <Setter Property="Foreground" Value="#647B6D"/>
   <Setter Property="FontWeight" Value="SemiBold"/>
   <Setter Property="FontSize" Value="{StaticResource AtUiCaptionSize}"/>
   <Setter Property="Margin" Value="0,10,0,6"/>
@@ -310,9 +310,9 @@
   <Setter Property="Margin" Value="0,0,7,6"/>
   <Setter Property="Padding" Value="8,6,8,6"/>
   <Setter Property="HorizontalContentAlignment" Value="Left"/>
-  <Setter Property="Foreground" Value="#28486D"/>
+  <Setter Property="Foreground" Value="#3D5A4E"/>
   <Setter Property="Background" Value="{StaticResource AtUiSurface}"/>
-  <Setter Property="BorderBrush" Value="#D8E3EF"/>
+  <Setter Property="BorderBrush" Value="#E0E8E2"/>
  </Style>
  
  <!-- Right-side attribute editor: static template with two-way field binding. -->
@@ -370,7 +370,7 @@
  </Style>
  <!-- Shared signal-value editor for a DBC-backed CAN send step. -->
  <DataTemplate x:Key="AtPreviewCanSignalTemplate">
-  <Border BorderBrush="#E5ECF5" BorderThickness="0,0,0,1" Padding="0,4,0,4">
+  <Border BorderBrush="#E8EDE9" BorderThickness="0,0,0,1" Padding="0,4,0,4">
    <StackPanel>
     <Grid>
      <Grid.ColumnDefinitions>
@@ -380,7 +380,7 @@
      <CheckBox Content="{Binding Signal.DisplayName}" VerticalAlignment="Center"
       IsChecked="{Binding IsSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       ToolTip="{Binding Signal.RangeLabel}"
-      Foreground="#29496E" FontSize="11" Margin="0,0,4,0"/>
+      Foreground="#405D51" FontSize="11" Margin="0,0,4,0"/>
      <TextBox Grid.Column="1" Height="26" Padding="5,3" FontSize="11"
       Text="{Binding PhysicalValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       Style="{StaticResource AtPreviewDynamicInput}"
@@ -407,14 +407,14 @@
   <Setter Property="Background" Value="Transparent"/>
   <Setter Property="BorderThickness" Value="0"/>
   <Setter Property="FontSize" Value="{StaticResource AtUiCaptionSize}"/>
-  <Setter Property="Foreground" Value="#29496E"/>
+  <Setter Property="Foreground" Value="#405D51"/>
  </Style>
  <Style x:Key="AtTestPhaseHeader" TargetType="{x:Type Border}">
   <Setter Property="Height" Value="44"/>
   <Setter Property="Margin" Value="11,11,11,5"/>
   <Setter Property="CornerRadius" Value="6"/>
-  <Setter Property="Background" Value="#F3F8FE"/>
-  <Setter Property="BorderBrush" Value="#D3E3F4"/>
+  <Setter Property="Background" Value="#F5F9F6"/>
+  <Setter Property="BorderBrush" Value="#DCEADF"/>
   <Setter Property="BorderThickness" Value="1"/>
   <Setter Property="SnapsToDevicePixels" Value="True"/>
   <Style.Triggers>
@@ -434,8 +434,8 @@
  <Style x:Key="AtTestPhaseAddButton" TargetType="{x:Type Button}"
   BasedOn="{StaticResource Btn}">
   <Setter Property="Background" Value="White"/>
-  <Setter Property="Foreground" Value="#2368BD"/>
-  <Setter Property="BorderBrush" Value="#D0DEEE"/>
+  <Setter Property="Foreground" Value="#277B70"/>
+  <Setter Property="BorderBrush" Value="#DFE8E1"/>
   <Setter Property="Height" Value="27"/>
   <Setter Property="MinHeight" Value="27"/>
   <Setter Property="Padding" Value="9,3"/>
