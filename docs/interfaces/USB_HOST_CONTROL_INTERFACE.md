@@ -1,8 +1,8 @@
 # AutoTest 主控板 ↔ Windows 上位机 USB 外部接口说明
 
 > **文档类型：主控板对外通信接口 / 上位机开发交接**  
-> **接口修订：2026-11-18（外部受控高边 GPIO 默认关闭；RL_DRV 为内部硬件初始化，不受 USB 控制；待 Keil 编译和真实台架验证）**  
-> **源码基线：ch3758134-prog/AutoTest，Main_Control 当前 LED 控制候选**  
+> **接口修订：2026-11-20（新增 ECU CAN 码率 USB 设置/查询；保留 GPIO、CAN 透传与 KEY CAN 既有协议；待 Keil 编译和真实台架验证）**  
+> **源码基线：ch3758134-prog/AutoTest，Main_Control ECU CAN 波特率配置候选**  
 > **约束：本文描述源码当前行为，不等同于实物验证通过；“目标需求/建议”不得冒充已实现协议。**
 
 ## 1. 对外边界与状态
@@ -12,7 +12,7 @@
 | 项目 | 当前固件源码 | 说明 |
 | --- | --- | --- |
 | USB PING/版本查询 | 已实现 | 上电设备识别仍需实测 |
-| KEY CAN / ECU CAN 透传 | 已实现，均初始化为500kbit/s | KEY CAN=J1 B11/B1（MCU CAN0）；ECU CAN=J1 A12/A1（MCU CAN1） |
+| KEY CAN / ECU CAN 透传 | 已实现，两路启动均为500kbit/s | KEY CAN=J1 B11/B1（MCU CAN0），固定500k；ECU CAN=J1 A12/A1（MCU CAN1），支持 USB 0x42 调码率/0x43 查询 |
 | ECU CAN 周期广播 | 旧功能仍存在 0x50~0x53 | 是否长期保留作为业务功能未另行批准 |
 | IGN/HOUT1/PTC1/J1 C10 | 0x12/0x13设置/查询 | 保留，查询为MCU GPIO电平 |
 | LED1~LED6/HOUT2~HOUT7 | 0x1A单路设置、0x1B六路查询、0x1C位图设置 | 新增；GPIO上电默认LOW |
@@ -102,6 +102,8 @@
 | 0xF1 GET_VERSION | 主机→板 | 空 | ASCII "EPB_TEST_CTRL v0.4-dev" | 固件当前常量，并非 Keil 构建自动版本 |
 | 0x40 CAN_SEND | 主机→板 | 固定15字节，见下 | 空 | OK 表示驱动接受发送请求，**不代表 DUT 已收到/应答** |
 | 0x41 CAN_RX_IND | 板→主机（主动） | 无请求 | 固定15字节，见下 | SEQ=0；可随时与普通应答交错 |
+| 0x42 SET_ECU_CAN_BAUD | 主机→板 | 1字节 baud_code，0..7 | 空 | 仅 ECU CAN 运行时切换；忙时拒绝 |
+| 0x43 GET_ECU_CAN_BAUD | 主机→板 | 空 | 1字节 baud_code | 查询最近一次成功配置的 ECU CAN 码率 |
 | 0x50 SET_BROADCAST | 主机→板 | 1+16*N 字节，见下 | 空 | 装填 ECU CAN 周期发送表 |
 | 0x51 BROADCAST_START | 主机→板 | 空 | 空 | 启动发送表；无帧表时当前实现也可能返回 OK |
 | 0x52 BROADCAST_STOP | 主机→板 | 空 | 空 | 停止发送，保留帧表 |
@@ -119,11 +121,44 @@
 | 6 | dlc | 1 | 0~8 |
 | 7~14 | data | 8 | 固定占8字节，不足 DLC 的尾部由上位机补零 |
 
-固件 main.c 当前初始化两路 CAN 均为 500 kbit/s；**当前 USB 命令集没有对外 CAN 码率设置命令**。主控板仅按通道转发 CAN，不解析按键板动作、ACK、DBC 或 UDS；这些属于上位机或远端设备的协议。USB 的 CAN0/1 是 **EAL 软件通道名**，与原理图上标为 CAN1/CAN2 的物理网名不能直接按数字等同。
+固件 main.c 初始化两路 CAN 均为 500 kbit/s；**只允许通过 USB 0x42 修改 ECU CAN 的运行时码率，KEY CAN 固定为 500 kbit/s。** 主控板仍按通道透传 CAN，不解析按键板动作、ACK、DBC 或 UDS。USB 的 CAN0/1 是 EAL 软件通道名，不能与原理图 CAN1/CAN2 按数字等同。
 
 当前 CAN_SEND 校验 channel、DLC、长度，但未在 ASW_BusProxy 层完整检查 ide、ID 取值；上位机仍应主动校验。CAN 接收上报为低优先级，队列拥堵时存在丢弃风险，不能把 USB 日志当作无损总线记录。
 
-### 4.2 ECU CAN 周期广播（0x50~0x53）
+### 4.2 ECU CAN 波特率设置与查询（0x42 / 0x43）
+
+本指令**固定只控制** `ECU_CAN_PORT`（MK20 FlexCAN1 / J1 A12 CAN_H、A1 CAN_L；在 `0x40/0x41` 中为 `channel=1`），Payload **不包含 channel 字节**，绝不更改 KEY CAN（FlexCAN0 / J1 B11/B1）。
+
+| CMD | 请求 Payload | 成功应答 Payload | 说明 |
+|---|---|---|---|
+| `0x42 SET_ECU_CAN_BAUD` | `[baud_code]`，1字节 | 空，STATUS=0x00 | 修改 ECU CAN 时序，成功后立即生效 |
+| `0x43 GET_ECU_CAN_BAUD` | 空 | `[baud_code]`，1字节 | 返回固件最近一次成功配置的速率，不是总线测速 |
+
+`baud_code` 与现行 `EAL_CAN_BaudType` 枚举完全一致：
+
+| code (hex) | 波特率 |
+|---|---|
+| `00` | 20 kbit/s |
+| `01` | 50 kbit/s |
+| `02` | 100 kbit/s |
+| `03` | 125 kbit/s |
+| `04` | 250 kbit/s |
+| `05` | 500 kbit/s |
+| `06` | 800 kbit/s |
+| `07` | 1 Mbit/s |
+
+**参数及状态：**
+
+- `0x42` 请求长度必须为1，代码范围0..7；`0x43` 必须为空。否则返回 `0x02 ERR_FMT`，不修改波特率。
+- 如果 ECU CAN 的 `0x50~0x53` 周期广播仍在运行，返回 `0x05 ERR_BUSY`；上位机需先 `0x52 BROADCAST_STOP`。
+- 如果 ECU CAN 硬件 TX 邮箱尚有待发帧，返回 `0x05 ERR_BUSY`，上位机应停止发送并重试；不强制清除/丢弃该 TX 邮箱。
+- 读回 CAN 时序寄存器与请求值不匹配时返回 `0x06 ERR_HW`；即使返回 OK，也只证明软件时序参数已写入，**不证明 ECU 与主控板已经通信成功**。
+- 相同的 `baud_code` 重复设置是幂等操作，但仍需先停止本固件的周期广播。
+- 更改仅在本次主控板运行期间有效；MCU 复位恢复 ECU CAN=500 kbit/s，KEY CAN 始终初始化500 kbit/s。不写 Flash，不修改 USB 帧格式。
+- 推荐上位机启动测试前按 DUT 工程配置执行 `0x42`，再用 `0x43` 确认，并在重启/重连后重新读取、按需设置。正在进行 UDS/烧录/周期发送时不应修改码率。
+- 底层利用现有 `FLEXCAN_SetTimingConfig` 的 Freeze→寄存器更新→退出流程，不重新初始化整个 CAN 模块；Keil 编译和不同速率的实际通讯/忙状态仍需实测。
+
+### 4.3 ECU CAN 周期广播（0x50~0x53）
 
 0x50 请求：
 - PAYLOAD[0] = count，范围 1~8。
@@ -232,7 +267,7 @@
 1. 设备发现：使用WinUSB GUID、VID/PID复核、检查0x03/0x82管道。
 2. 字节流解析：后台持续读取，按SOF、LEN、EOF、CRC组合完整帧，容忍拆包/连包/0x00填充。
 3. 请求事务：非零SEQ分配与超时，响应按SEQ+CMD配对；0x41/SEQ0走CAN异步事件。
-4. CAN服务：0x40发送、0x41收帧；USB OK不代表CAN对端确认。
+4. CAN服务：0x40发送、0x41收帧；0x42 设置 ECU CAN 波特率、0x43 查询。KEY CAN 固定500k；USB OK不代表CAN对端确认。
 5. GPIO服务：IGN使用0x12/0x13；夹具使用0x18/0x19；LED使用0x1A单路、0x1B读回、0x1C整组位图。RL_DRV 严格是 EAL 内部硬件初始化，不受 USB 直接或间接控制。
 6. 新旧固件区分：当前 GET_VERSION 在源码中硬编码为 EPB_TEST_CTRL v0.4-dev，并非构建自动版本号或在机固件校验证据。上位机不得仅按VID/PID判断夹具协议版本。
 
@@ -247,12 +282,16 @@
 - R07：USB BUS_RESET只显式清EAL_USB RX缓冲，CDD_USB半帧累积缓存复位处理仍需联调审查。
 - R08：CAN_SEND目前未在ASW层完整校验ide/id范围，需Host主动校验。
 - R09：WinUSB WCID免驱枚举在Windows各机型上仍需现场确认，识别到EPB_Host不表示PING成功。
+- R10：0x42/0x43 ECU CAN 码率指令已写入源码，尚未完成 Keil 编译、125k/250k/500k/1M 现场收发、广播忙拒绝、TX 邮箱忙拒绝、复位回默认速率等验证；SDK Freeze 期间可能短暂停止 CAN 接收。
 
 ## 9. 上位机与固件双方最小联调清单
 
 - [ ] Keil编译并确认实际烧录了本次固件，GET_VERSION返回EPB_TEST_CTRL v0.4-dev。
 - [ ] WinUSB按GUID枚举、打开0x03/0x82、PING和CRC响应验证。
 - [ ] CAN0/CAN1双通道各发送/接收一帧，检查500kbit/s和通道实际线束。
+- [ ] ECU CAN 下发 0x42=03(125k)、04(250k)、05(500k)、07(1M)，0x43 读回一致；验证 KEY CAN 始终 500k。
+- [ ] 非法码率/长度返回 ERR_FMT；广播运行中和 TX 邮箱未空时返回 ERR_BUSY，停止/发送完成后可再次设置。
+- [ ] MCU 复位后 ECU CAN 0x43 回 05；检查发送、收帧、UDS、波特率切换前后过滤器状态。
 - [ ] CAN_RX_IND(SEQ=0)与正常响应交错、USB拆包/连包及64B尾填充。
 - [ ] 首先确认上电无 USB 指令时外部高边输出请求 GPIO 均为 LOW（含 HOUT9/10、U22 CH4），内部 RL_DRV 初始化为 HIGH；检查 J1 的上电瞬态和实际负载。
 - [ ] IGN=0/1 和 GET，核对 J1 C10 真实电平；确认所有 USB IO 命令均不改变 RL_DRV。
@@ -268,7 +307,8 @@
 - WinUSB WCID / 端点收发 / 队列：Project/source/BSW/EAL/USB/EAL_USB.c、EAL_USB.h
 - 0xA5 帧、CRC、序号、应答：Project/source/BSW/CDD/USB/CDD_USB.c、CDD_USB.h
 - 命令路由：Project/source/ASW/UsbSvc/ASW_UsbSvc.c
-- CAN 透传：Project/source/ASW/BusProxy/ASW_BusProxy.c
+- CAN 透传与 ECU CAN 码率控制：Project/source/ASW/BusProxy/ASW_BusProxy.c
+- CAN 码率底层：Project/source/BSW/EAL/Can/EAL_CAN.c、Project/source/MCAL/Can/MCAL_CAN.c
 - CAN1 广播：Project/source/ASW/EcuEmu/ASW_EcuEmu.c
 - IGN、夹具与六路 LED：Project/source/ASW/IoCtrl/ASW_IoCtrl.c
 - 真实 GPIO 宏及初始化：Project/source/BSW/EAL/GPIO/EAL_GPIO.h、EAL_GPIO.c
