@@ -342,7 +342,20 @@
               </DockPanel>
               <ListBox Grid.Row="1" x:Name="AssetList" ItemsSource="{Binding Assets}" BorderThickness="0"
                        Background="White" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                       SelectionChanged="AssetList_SelectionChanged" MouseDoubleClick="AssetList_MouseDoubleClick">
+                       SelectionChanged="AssetList_SelectionChanged" MouseDoubleClick="AssetList_MouseDoubleClick"
+                       PreviewMouseRightButtonDown="AssetList_RightClickSelect">
+                <ListBox.GroupStyle>
+                  <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                      <DataTemplate>
+                        <Border Background="#F3F6FA" Padding="12,7" Margin="0,2,0,0">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11.5"
+                                     Foreground="#50647F"/>
+                        </Border>
+                      </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                  </GroupStyle>
+                </ListBox.GroupStyle>
                 <ListBox.ItemTemplate>
                   <DataTemplate>
                     <StackPanel Orientation="Horizontal" Margin="12,8">
