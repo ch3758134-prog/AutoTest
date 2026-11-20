@@ -65,6 +65,8 @@ public sealed class EditorNode : Notifying
     [JsonIgnore] public EditorNode? Parent { get; set; }
     [JsonIgnore] public bool IsMovable => Role is NodeRole.Step or NodeRole.Container;
     [JsonIgnore] public int LocalIssues => Fields.Count(f => f.IsInvalid);
+    [JsonIgnore] public bool HasLocalIssues => LocalIssues > 0;
+    public void RefreshValidation() { Notify(nameof(LocalIssues)); Notify(nameof(HasLocalIssues)); Notify(nameof(DisplayTitle)); }
     [JsonIgnore] public int DescendantIssues => LocalIssues + Children.Sum(c => c.DescendantIssues);
     [JsonIgnore] public bool HasSelectedChild { get; set; }
     [JsonIgnore] public string DisplayTitle => Role switch
