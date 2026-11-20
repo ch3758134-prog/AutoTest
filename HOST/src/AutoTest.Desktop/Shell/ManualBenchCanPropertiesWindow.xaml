@@ -117,7 +117,7 @@
      <TextBlock Text="发送方式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
      <TextBlock Text="单发仅发送一次；周期由上位机使用 ECU CAN USB 0x40 定时发送，不调用 KEY CAN 固件广播。实际周期抖动需现场测量。"
       TextWrapping="Wrap" Foreground="#627C9D" Margin="0,0,0,10"/>
-     <Grid IsEnabled="{Binding IsEditable}">
+     <Grid IsEnabled="{Binding CanEditFields}">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <CheckBox Content="周期发送" IsChecked="{Binding IsPeriodic,Mode=TwoWay}"
        VerticalAlignment="Center" Margin="0,0,18,0"/>
