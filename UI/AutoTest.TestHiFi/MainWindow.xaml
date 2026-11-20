@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:AutoTest.TestHiFi"
-        Title="AutoTest · 工程工作环境 · UI-05 专业工具交互验证"
+        Title="AutoTest · 工程工作环境 · UI 交互验证"
         WindowState="Maximized" Width="1650" Height="935"
         MinWidth="800" MinHeight="540"
         WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown" Closing="MainWindow_Closing" SizeChanged="MainWindow_SizeChanged">
@@ -180,7 +180,7 @@
         <Button x:Name="TestNavButton" Content="✎ 自动测试" Style="{StaticResource TopTabSelected}" Click="ShowTest_Click"/>
         <Button x:Name="ResourcesNavButton" Content="▧ 资源管理" Style="{StaticResource TopTab}" Click="ShowResources_Click"/>
         <Button x:Name="ReportsNavButton" Content="⚒ 生产与记录" Style="{StaticResource TopTab}" Click="ShowReports_Click"/>
-        <Button x:Name="ToolsNavButton" Content="⚙ 专业工具 ▾" Style="{StaticResource TopTab}" Click="ShowTools_Click"/>
+        <Button x:Name="ToolsNavButton" Content="⚙ 工具 ▾" Style="{StaticResource TopTab}" Click="ShowTools_Click"/>
       </StackPanel>
     </Border>
 
@@ -691,14 +691,13 @@
                            FontWeight="SemiBold" Margin="0,0,0,13"/>
                 <TextBlock x:Name="ToolBody" TextWrapping="Wrap" TextTrimming="None"
                            Foreground="#52637B" FontSize="13" LineHeight="24"
-                           Text="通过顶部“新建工程”或“打开工程”使用文件工作区。专业工具在 UI-05 接入，不会伪造真实设备响应。"/>
+                           Text="通过顶部“新建工程”或“打开工程”使用文件工作区。工具窗口在 UI-05 接入，不会伪造真实设备响应。"/>
                 <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
                   <Button Content="新建工程…" Click="NewProject_Click" Style="{StaticResource SolidButton}" Margin="0,0,9,0"/>
                   <Button Content="打开工程…" Click="OpenProject_Click" Style="{StaticResource OutlineButton}"/>
                 </StackPanel>
               </StackPanel>
             </Border>
-            <ContentControl x:Name="ToolWorkbenchHost" Visibility="Collapsed" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
             <Grid x:Name="DocumentEditorPanel" Visibility="Collapsed">
               <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="260"/><ColumnDefinition Width="250"/></Grid.ColumnDefinitions>
               <Border Grid.Column="0" BorderBrush="#DCE5F0" BorderThickness="1" CornerRadius="5">
