@@ -737,16 +737,30 @@ public partial class TestStepInspector : UserControl
                 bytesText = enteredBytes;
             }
             else if (!sameSaved && previousTarget is { } compatible &&
-                compatible.Mapping.CanId == mapping.CanId &&
-                compatible.Mapping.Extended == mapping.Extended && definition is not null)
+                definition is not null)
             {
-                try
+                // A raw CAN ID entered by the engineer may resolve to a DBC
+                // definition on focus loss. Keep exactly those existing bytes
+                // if their ID, frame format and DLC match; do not reset to 00.
+                var previousIdText = enteredId.Trim();
+                if (previousIdText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                    previousIdText = previousIdText[2..];
+                var sameFrame = compatible.Mapping.Kind == TestTargetKind.RawCan
+                    ? uint.TryParse(previousIdText, NumberStyles.HexNumber,
+                        CultureInfo.InvariantCulture, out var rawId) &&
+                        rawId == mapping.CanId && enteredExtended == mapping.Extended
+                    : compatible.Mapping.CanId == mapping.CanId &&
+                        compatible.Mapping.Extended == mapping.Extended;
+                if (sameFrame)
                 {
-                    var preserved = ParseHex(enteredBytes, 8);
-                    if (preserved.Length == definition.Dlc)
-                        bytesText = FormatCanBytes(preserved);
+                    try
+                    {
+                        var preserved = ParseHex(enteredBytes, 8);
+                        if (preserved.Length == definition.Dlc)
+                            bytesText = FormatCanBytes(preserved);
+                    }
+                    catch (ArgumentException) { /* Incomplete bytes still need explicit review. */ }
                 }
-                catch (ArgumentException) { /* Still requires explicit valid bytes. */ }
             }
             if (bytesText.Length == 0 && stored.Length > 0)
             {
