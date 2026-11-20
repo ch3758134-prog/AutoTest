@@ -710,6 +710,7 @@ public partial class MainWindow : Window
 
     private void AppendTrace(string message)
     {
+        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
         if (!Dispatcher.CheckAccess())
         {
             Dispatcher.BeginInvoke(new Action(() => AppendTrace(message)));
@@ -724,6 +725,7 @@ public partial class MainWindow : Window
 
     private void AppendAudit(string kind, string message)
     {
+        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
         if (!Dispatcher.CheckAccess())
         {
             Dispatcher.BeginInvoke(new Action(() => AppendAudit(kind, message)));
@@ -768,9 +770,53 @@ public partial class MainWindow : Window
             if (answer == MessageBoxResult.Cancel) return;
             if (answer == MessageBoxResult.Yes && !await SaveWorkspaceCoreAsync()) return;
         }
+
         _closing = true;
         IsEnabled = false;
-        try { if (_hardware is not null) await DisconnectAsync(); }
-        finally { Close(); }
+        _pendingCancel?.Cancel();
+        if (_hardware is not null || _pendingSend is not null)
+        {
+            // The WinUSB native reader and the UDS request are normally canceled
+            // promptly, but neither is allowed to keep this dedicated app's only
+            // window alive indefinitely. The OS closes any residual USB handles
+            // when the standalone process exits; this does NOT confirm an ECU
+            // operation was canceled.
+            ConnectionStatus.Text = "正在取消诊断请求并释放 USB / CAN / UDS 资源…";
+            AppendAudit("CLOSE_BEGIN", "退出窗口：取消本地等待并尝试正常断开设备。");
+            try
+            {
+                Task cleanup = DisconnectAsync();
+                if (await Task.WhenAny(cleanup, Task.Delay(TimeSpan.FromSeconds(2))) == cleanup)
+                {
+                    await cleanup;
+                }
+                else
+                {
+                    AppendAudit("CLOSE_TIMEOUT",
+                        "资源清理超过 2 秒，结束独立 UDS Lab 窗口；ECU 操作结果未知。");
+                    System.Diagnostics.Trace.WriteLine(
+                        "AutoTest.UdsLab: shutdown cleanup exceeded 2 seconds; ECU state UNKNOWN.");
+                    // Observe failures if cleanup finishes late, without keeping
+                    // the WPF shutdown dispatcher blocked or accessing its UI.
+                    _ = cleanup.ContinueWith(t =>
+                    {
+                        System.Diagnostics.Trace.WriteLine(
+                            "AutoTest.UdsLab: late cleanup fault: " + t.Exception);
+                        _ = t.Exception;
+                    }, CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendAudit("CLOSE_ERROR", ex.ToString());
+                System.Diagnostics.Trace.WriteLine(
+                    "AutoTest.UdsLab: close cleanup failure: " + ex);
+            }
+        }
+
+        // Closing again is permitted because _closing is already true.
+        // This is the standalone process's last WPF window.
+        Close();
     }
 }
