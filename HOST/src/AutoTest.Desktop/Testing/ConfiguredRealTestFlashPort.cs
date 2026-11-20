@@ -53,7 +53,16 @@ public sealed class ConfiguredRealTestFlashPort : ITestFlashPort
         TestDocument document, string projectRoot)
     {
         var jobs = new Dictionary<StepId, CanToolFlashJob>();
-        foreach (var step in TestRunStepScope.EnabledSteps(document).Where(s => s.Type == "Flash"))
+        // R1's physical FLASH authorization accepts exactly one immutable job
+        // per TEST run. Reject multiple enabled FLASH steps during preflight,
+        // rather than failing later with an opaque Single() exception or
+        // accidentally reusing one destructive-write consent for another job.
+        var flashSteps = TestRunStepScope.EnabledSteps(document)
+            .Where(s => s.Type == "Flash").ToArray();
+        if (flashSteps.Length > 1)
+            throw new NotSupportedException(
+                "R1 首版一次真实测试只允许一个启用的 FLASH 步骤；请拆分成独立用例，分别预检并授权烧录。");
+        foreach (var step in flashSteps)
         {
             string Get(string key) => step.Properties.GetValueOrDefault(key, "").Trim();
             var xml = ResolveFile(projectRoot, Get("programmingProfile"));
