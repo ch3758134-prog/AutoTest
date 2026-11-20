@@ -1553,7 +1553,7 @@ public sealed class MainWindowViewModel : BindableBase
             projectSession = await _workspace.SaveTestProjectEditorAsync(projectSession, linked);
 
             var projectEditor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs,
-                projectSession, _runSelections);
+                projectSession, _runSelections, _realTest, _hardware);
             BindProjectNavigation(projectAsset, projectEditor);
             ActivateEditor("project|" + projectAsset.Id, new TestProjectWorkbenchView(projectEditor),
                 "测试项目 · " + projectAsset.Name, projectEditor.ConfirmClose);
@@ -1577,7 +1577,7 @@ public sealed class MainWindowViewModel : BindableBase
             var entry = await _workspace.CreateTestProjectAsync(name);
             SelectAsset(entry.Id);
             var session = await _workspace.OpenTestProjectEditorAsync(entry.Id);
-            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections);
+            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections, _realTest, _hardware);
             BindProjectNavigation(entry, editor);
             ActivateEditor("project|" + entry.Id, new TestProjectWorkbenchView(editor),
                 "测试项目 · " + entry.Name, editor.ConfirmClose);
@@ -1719,7 +1719,7 @@ public sealed class MainWindowViewModel : BindableBase
         await RunOperationAsync(async () =>
         {
             var session = await _workspace.OpenTestProjectEditorAsync(asset.Id);
-            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections);
+            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections, _realTest, _hardware);
             BindProjectNavigation(asset, editor);
             ActivateEditor("project|" + asset.Id, new TestProjectWorkbenchView(editor),
                 asset.Name, editor.ConfirmClose);

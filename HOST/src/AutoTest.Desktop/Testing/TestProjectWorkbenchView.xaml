@@ -55,6 +55,46 @@
       </StackPanel>
      </DockPanel>
     </Border>
+    <Border Background="#F7F9FC" BorderBrush="#DCE5EF" BorderThickness="1"
+     CornerRadius="6" Padding="10" Margin="0,0,0,12">
+     <StackPanel>
+      <StackPanel Orientation="Horizontal">
+       <TextBlock Text="ECU 唯一编号" FontWeight="SemiBold" VerticalAlignment="Center"
+        Margin="0,0,9,0"/>
+       <TextBox Width="240" Height="28" VerticalContentAlignment="Center"
+        Text="{Binding DutIdentity,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+        ToolTip="真实扫码枪或人工输入，Development 记录，不计出厂数量"/>
+       <Button Content="确认所选用例" Command="{Binding PreflightSelectedCommand}"
+        Margin="10,0,5,0"/>
+       <Button Content="▶ 运行所选" Command="{Binding RunSelectedCommand}"
+        Style="{StaticResource AtPrimaryButton}" Margin="0,0,5,0"/>
+       <Button Content="■ 停止" Command="{Binding StopSelectedCommand}"/>
+      </StackPanel>
+      <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+       <StackPanel.Style><Style TargetType="StackPanel">
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding ExpectedFlashApproval}" Value="">
+          <Setter Property="Visibility" Value="Collapsed"/>
+         </DataTrigger>
+        </Style.Triggers>
+       </Style></StackPanel.Style>
+       <TextBlock Text="FLASH 实体授权" VerticalAlignment="Center" Margin="0,0,9,0"/>
+       <TextBox Width="390" Height="27" VerticalContentAlignment="Center"
+        Text="{Binding FlashApproval,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+        ToolTip="{Binding ExpectedFlashApproval}"/>
+       <TextBlock Text="需输入完整授权指纹，授权不保存" Margin="8,0,0,0"
+        Foreground="#64758C" VerticalAlignment="Center"/>
+      </StackPanel>
+      <ItemsControl ItemsSource="{Binding BatchResults}" Margin="0,6,0,0">
+       <ItemsControl.ItemTemplate><DataTemplate>
+        <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="#455E76" FontSize="11"
+         Margin="0,2,0,0"/>
+       </DataTemplate></ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Text="按顺序执行选中用例；每个用例单独生成真实 RunId/报告，遇非 PASS 即停止后续用例。"
+       FontSize="10" Foreground="#64758C" Margin="0,6,0,0"/>
+     </StackPanel>
+    </Border>
     <Border BorderBrush="#DBE3ED" BorderThickness="1" CornerRadius="7"
      Background="White" ClipToBounds="True">
      <Grid>
@@ -98,7 +138,7 @@
          <DataGridTemplateColumn.CellTemplate>
           <DataTemplate>
            <CheckBox IsChecked="{Binding RunSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-            HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="只影响本次执行选择">
+            HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="只影响本次实际运行选择">
             <CheckBox.Content>
              <TextBlock FontSize="11" Foreground="#245F9D">
               <TextBlock.Style>

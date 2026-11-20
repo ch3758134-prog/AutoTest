@@ -13,7 +13,7 @@
     <StackPanel>
      <TextBlock Text="{Binding SelectionSummary}" Foreground="#2368BD"
       FontSize="15" FontWeight="Bold" Margin="0,0,0,7"/>
-     <TextBlock Text="仅用于工程师本次预检；不修改工程默认 Enabled、生产工序或真实设备状态。"
+     <TextBlock Text="仅影响本次实际运行范围，不修改工程默认 Enabled 或生产计数。"
       Foreground="#64758C" TextWrapping="Wrap" FontSize="11"/>
     </StackPanel>
    </Border>
@@ -21,7 +21,7 @@
     Style="{StaticResource AtPrimaryButton}" Margin="0,12,0,7"/>
    <TextBlock Text="{Binding StatusMessage}" Foreground="#A96D20"
     TextWrapping="Wrap" FontSize="11" Margin="0,0,0,7"/>
-   <TextBlock Text="项目级 Run/Station Lease 尚未接线，检查不产生 ECU 测试 PASS。"
+   <TextBlock Text="真实项目运行会按顺序调用唯一 TEST 执行器；每个用例独立生成 RunId、证据与报告。"
     Foreground="#64758C" FontSize="11" TextWrapping="Wrap"/>
   </StackPanel>
  </ScrollViewer>

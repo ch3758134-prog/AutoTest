@@ -3,6 +3,9 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using AutoTest.Desktop.Projects;
+using AutoTest.Desktop.Hardware;
+using AutoTest.Testing.Preparation;
+using AutoTest.Testing.Runtime;
 using AutoTest.Core;
 using AutoTest.Projects.Resources;
 using AutoTest.Testing.Authoring;
@@ -97,6 +100,32 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly TestEditorDialogs _dialogs;
     private readonly ProjectRunSelectionState? _selection;
+    private readonly RealTestWorkbenchService? _realTest;
+    private readonly HardwareConnectionService? _hardware;
+    private sealed record FrozenSelectedCase(TestProjectEntry Entry, TestDocument Document,
+        string PlanSha256, string TestConsent, string FlashConsent);
+    private readonly List<FrozenSelectedCase> _frozen = new();
+    private long _frozenStationEpoch;
+    private string? _frozenManifestSha;
+    private AssetId? _frozenTcf, _frozenTbc;
+    private string _frozenDut = "";
+    private string _dutIdentity = "";
+    private string _flashApproval = "";
+    private string _expectedFlashApproval = "";
+    private CancellationTokenSource? _batchCancellation;
+    public ObservableCollection<string> BatchResults { get; } = new();
+    public string DutIdentity
+    {
+        get => _dutIdentity;
+        set { if (SetProperty(ref _dutIdentity, value) && !IsBusy) ResetFrozenSelection(); }
+    }
+    public string FlashApproval { get => _flashApproval; set => SetProperty(ref _flashApproval, value); }
+    public string ExpectedFlashApproval
+    {
+        get => _expectedFlashApproval;
+        private set => SetProperty(ref _expectedFlashApproval, value);
+    }
+    public bool IsPrepared => _frozen.Count > 0;
     private TestProjectEditorSession _session;
     private bool _busy;
     private string _name;
@@ -129,10 +158,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
 
     public TestProjectWorkbenchViewModel(ProjectWorkspaceService workspace,
         TestEditorDialogs dialogs, TestProjectEditorSession session,
-        ProjectRunSelectionState? selection = null)
+        ProjectRunSelectionState? selection = null,
+        RealTestWorkbenchService? realTest = null, HardwareConnectionService? hardware = null)
     {
         _workspace = workspace; _dialogs = dialogs; _session = session;
-        _selection = selection;
+        _selection = selection; _realTest = realTest; _hardware = hardware;
         if (_selection is not null) _selection.Changed += OnNavigationSelectionChanged;
         _name = session.Document.Name;
         AddCommand = new DelegateCommand(Add, () => SelectedAvailable is not null && !IsBusy);
@@ -147,7 +177,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
         SelectAllCommand = new DelegateCommand(() => SetSelection(true));
         ClearSelectionCommand = new DelegateCommand(() => SetSelection(false));
-        PreflightSelectedCommand = new DelegateCommand(PreflightSelected);
+        PreflightSelectedCommand = new DelegateCommand(async () => await PrepareSelectedAsync(),
+            () => !IsBusy);
+        RunSelectedCommand = new DelegateCommand(async () => await RunSelectedAsync(),
+            () => !IsBusy && IsPrepared && !IsDirty);
+        StopSelectedCommand = new DelegateCommand(StopSelected,
+            () => _batchCancellation is not null);
         LoadRows(session.Document);
         RefreshAvailable();
         RefreshReferences();
@@ -194,9 +229,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     public DelegateCommand SelectAllCommand { get; }
     public DelegateCommand ClearSelectionCommand { get; }
     public DelegateCommand PreflightSelectedCommand { get; }
+    public DelegateCommand RunSelectedCommand { get; }
+    public DelegateCommand StopSelectedCommand { get; }
     public int SelectedCount => Packages.Count(x => x.RunSelected);
     public int TotalCount => Packages.Count;
-    public string SelectionSummary => SelectedCount + " / " + TotalCount + " 个用例（只作用于本次检查）";
+    public string SelectionSummary => SelectedCount + " / " + TotalCount + " 个用例（本次实际运行范围）";
 
     private void Renumber()
     {
@@ -225,6 +262,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             Packages.Add(row);
         }
         Renumber();
+        ResetFrozenSelection();
         SelectedPackage = null;
         RaisePropertyChanged(nameof(SelectedCount));
         RaisePropertyChanged(nameof(TotalCount));
@@ -235,6 +273,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
     private void RowChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (!IsBusy) ResetFrozenSelection();
         if (e.PropertyName == nameof(TestProjectPackageRow.RunSelected))
         {
             if (sender is TestProjectPackageRow row && _selection is not null)
@@ -252,25 +291,261 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             "已清空本次检查选择；工程默认未修改。";
         PackageRowsChanged?.Invoke();
     }
-    private void PreflightSelected()
+    private void ResetFrozenSelection()
     {
+        if (_batchCancellation is not null) return;
+        _frozen.Clear();
+        _frozenManifestSha = null;
+        _frozenDut = "";
+        ExpectedFlashApproval = "";
+        FlashApproval = "";
+        RaisePropertyChanged(nameof(IsPrepared));
+        RunSelectedCommand?.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>Freeze every selected and revision-pinned package before ANY
+    /// physical TEST authorization. There is no second TEST executor here.</summary>
+    private async Task PrepareSelectedAsync()
+    {
+        if (IsBusy) return;
+        ResetFrozenSelection();
+        if (_realTest is null || _hardware is null)
+        {
+            StatusMessage = "BLOCKED_BY_BACKEND：项目批量真实执行服务尚未注入。";
+            return;
+        }
+        if (IsDirty)
+        {
+            StatusMessage = "请先保存测试项目的顺序、默认配置和修订，再确认本次运行。";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(DutIdentity) || DutIdentity != DutIdentity.Trim() ||
+            DutIdentity.Length > 256 || DutIdentity.Any(char.IsControl))
+        {
+            StatusMessage = "请扫描或输入实际 ECU 唯一编号；项目运行只按 Development 归档。";
+            return;
+        }
         var selected = Packages.Where(x => x.RunSelected).ToArray();
         if (selected.Length == 0)
         {
-            StatusMessage = "无法检查：请先勾选至少一个测试用例。";
+            StatusMessage = "至少勾选一个测试用例。";
             return;
         }
-        RefreshReferences();
-        var current = _workspace.Current;
-        if (current is null) { StatusMessage = "无法检查：未打开真实工程。"; return; }
-        var assets = current.Definition.Assets;
-        var missing = selected.Where(row => !assets.Any(a =>
-            a.Id.Value == row.AssetId && a.Revision == row.Revision &&
-            a.Sha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))).ToArray();
-        StatusMessage = missing.Length > 0
-            ? "BLOCKED_RESOURCE: " + missing.Length +
-                " 条用例的固定修订或 SHA 已失效。请逐条审阅并选择“采用当前修订”，然后保存项目。"
-            : "BLOCKED_BY_BACKEND: 当前只有真实资源身份检查，尚无项目级 Run/设备租约预检；未启动 ECU，未生成测试结论。";
+        if (!_hardware.IsConnected || _hardware.CurrentStationEpoch <= 0)
+        {
+            StatusMessage = "BLOCKED_BY_HW：先连接真实 USB 主控，不能使用模拟设备。";
+            return;
+        }
+        IsBusy = true;
+        try
+        {
+            var context = _workspace.Current ??
+                throw new InvalidOperationException("工程已经关闭。");
+            var projectAsset = context.Definition.Assets.SingleOrDefault(a =>
+                a.Id == _session.AssetId && a.Kind == ProjectWorkspaceService.TestProjectKind);
+            if (projectAsset is null || projectAsset.Revision != _session.AssetRevision ||
+                !projectAsset.Sha256.Equals(_session.FileSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("测试项目自身修订已变化；请重新打开并确认。");
+
+            var fixedManifest = context.ManifestSha256;
+            var fixedEpoch = _hardware.CurrentStationEpoch;
+            var fixedTcf = _workspace.SelectedTestConfiguration;
+            var fixedTbc = _workspace.SelectedBenchConfiguration;
+            var tcf = await _workspace.ReadSelectedTestConfigurationAsync();
+            var prepared = new List<FrozenSelectedCase>();
+            string flashConsent = "";
+            foreach (var row in selected)
+            {
+                var asset = context.Definition.Assets.FirstOrDefault(a =>
+                    a.Id.Value == row.AssetId && a.Kind == ProjectWorkspaceService.TestProgramKind);
+                if (asset is null || asset.Revision != row.Revision ||
+                    !asset.Sha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("引用失效：" + row.Name +
+                        "。需采用修订后保存测试项目。");
+
+                var opened = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
+                if (opened.AssetRevision != row.Revision ||
+                    !opened.FileSha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("用例文件发生变化：" + row.Name);
+                var plan = _realTest.Prepare(opened.Document);
+                if (!plan.Diagnostics.IsEmpty)
+                    throw new InvalidDataException(row.Name + " 步骤预检：" +
+                        string.Join("; ", plan.Diagnostics));
+                var mappings = TestRunStepScope.RequiredMappings(opened.Document);
+                if (tcf is not null)
+                    foreach (var mapping in mappings)
+                    {
+                        if (mapping.Kind is TestTargetKind.Signal or TestTargetKind.CanMessage &&
+                            (tcf.DbcAssetId != mapping.Asset.Value ||
+                             tcf.DbcRevision != mapping.AssetRevision ||
+                             !string.Equals(tcf.DbcFingerprint, mapping.AssetSha256,
+                                StringComparison.OrdinalIgnoreCase)))
+                            throw new InvalidDataException(row.Name + " DBC 不属于当前 TCF：" + mapping.Name);
+                        if (mapping.Kind == TestTargetKind.Button &&
+                            (tcf.ButtonAssetId != mapping.Asset.Value ||
+                             tcf.ButtonRevision != mapping.AssetRevision ||
+                             !string.Equals(tcf.ButtonFingerprint, mapping.AssetSha256,
+                                StringComparison.OrdinalIgnoreCase)))
+                            throw new InvalidDataException(row.Name + " 按键不属于当前 TCF：" + mapping.Name);
+                    }
+                var actionCheck = new ConfiguredStationActionPort(_hardware, _workspace);
+                await actionCheck.PrepareAsync(mappings, CancellationToken.None);
+                actionCheck.ValidateRunSteps(opened.Document);
+
+                var jobs = ConfiguredRealTestFlashPort.FreezeJobs(opened.Document, context.RootDirectory);
+                var caseFlash = jobs.Count == 0 ? "" : jobs.Values.Single().Consent;
+                if (caseFlash.Length > 0)
+                {
+                    if (flashConsent.Length > 0)
+                        throw new NotSupportedException(
+                            "R1 首版一个批次只允许一个 FLASH；请拆为独立批次分别授权。");
+                    flashConsent = caseFlash;
+                }
+                prepared.Add(new FrozenSelectedCase(row.ToEntry(), plan.RestoreDocument(),
+                    plan.Fingerprint, RealTestWorkbenchService.ExpectedApproval(plan), caseFlash));
+            }
+            if (!ReferenceEquals(context, _workspace.Current) ||
+                context.ManifestSha256 != fixedManifest ||
+                _hardware.CurrentStationEpoch != fixedEpoch ||
+                !_hardware.IsConnected)
+                throw new IOException("准备期间工程或设备会话已变化，必须重新确认。");
+
+            _frozen.AddRange(prepared);
+            _frozenManifestSha = fixedManifest;
+            _frozenStationEpoch = fixedEpoch;
+            _frozenTcf = fixedTcf;
+            _frozenTbc = fixedTbc;
+            _frozenDut = DutIdentity;
+            ExpectedFlashApproval = flashConsent;
+            FlashApproval = "";
+            BatchResults.Clear();
+            StatusMessage = "已冻结 " + _frozen.Count + " 条选中用例的修订、DBC/KEY 和实际步骤资源。" +
+                (flashConsent.Length == 0 ? " 可运行。" : " 运行前需手动输入唯一 FLASH 授权。");
+            RaisePropertyChanged(nameof(IsPrepared));
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or
+            InvalidOperationException or ArgumentException or UnauthorizedAccessException or
+            AutoTest.Projects.Project.ProjectDataException)
+        {
+            ResetFrozenSelection();
+            StatusMessage = "BLOCKED_PREFLIGHT：" + ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+            RunSelectedCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void StopSelected()
+    {
+        _batchCancellation?.Cancel();
+        _realTest?.RequestStop();
+        StatusMessage = "已请求停止；当前真实步骤将中止并尝试工位清理。";
+    }
+
+    /// <summary>Run each frozen package through the existing physical TEST/RECORD
+    /// service. Each package has its own durable RunId and artifact report.</summary>
+    private async Task RunSelectedAsync()
+    {
+        if (IsBusy || IsDirty || _realTest is null || _hardware is null ||
+            _frozen.Count == 0 || _frozenManifestSha is null) return;
+        if (DutIdentity != _frozenDut ||
+            _hardware.CurrentStationEpoch != _frozenStationEpoch || !_hardware.IsConnected ||
+            _workspace.Current?.ManifestSha256 != _frozenManifestSha ||
+            _workspace.SelectedTestConfiguration != _frozenTcf ||
+            _workspace.SelectedBenchConfiguration != _frozenTbc ||
+            !Packages.Where(x => x.RunSelected).Select(x => x.ItemId)
+                .SequenceEqual(_frozen.Select(x => x.Entry.ItemId)))
+        {
+            ResetFrozenSelection();
+            StatusMessage = "工程、用例选择、DUT、TCF/TBC 或设备会话已变化，必须重新确认。";
+            return;
+        }
+        if (ExpectedFlashApproval.Length > 0 &&
+            !string.Equals(FlashApproval, ExpectedFlashApproval, StringComparison.Ordinal))
+        {
+            StatusMessage = "FLASH 未授权；必须手动输入完整的 AUTHORIZE ECU FLASH + SHA256。";
+            return;
+        }
+
+        var batch = _frozen.ToArray();
+        var fixedFlashApproval = FlashApproval;
+        _batchCancellation = new CancellationTokenSource();
+        var token = _batchCancellation.Token;
+        IsBusy = true;
+        StopSelectedCommand.RaiseCanExecuteChanged();
+        BatchResults.Clear();
+        var index = 0;
+        try
+        {
+            foreach (var item in batch)
+            {
+                token.ThrowIfCancellationRequested();
+                index++;
+                if (!_hardware.IsConnected || _hardware.CurrentStationEpoch != _frozenStationEpoch ||
+                    _workspace.Current?.ManifestSha256 != _frozenManifestSha ||
+                    _workspace.SelectedTestConfiguration != _frozenTcf ||
+                    _workspace.SelectedBenchConfiguration != _frozenTbc ||
+                    DutIdentity != _frozenDut)
+                    throw new IOException("批次中途工程、TCF/TBC、DUT 或 USB 主控会话已变化。");
+                var latest = await _workspace.OpenTestEditorAsync(AssetId.Create(item.Entry.PackageAssetId), token);
+                if (latest.AssetRevision != item.Entry.PackageRevision ||
+                    !latest.FileSha256.Equals(item.Entry.PackageSha256, StringComparison.OrdinalIgnoreCase) ||
+                    _realTest.Prepare(latest.Document).Fingerprint != item.PlanSha256)
+                    throw new IOException("运行前 TEST 资源指纹已变动：" + item.Entry.DisplayName);
+
+                StatusMessage = "正在执行 " + index + "/" + batch.Length + "：" +
+                    item.Entry.DisplayName + "；真实步骤持续写入 RECORD。";
+                void OnStep(RealStepFact fact)
+                {
+                    var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
+                    dispatcher?.BeginInvoke(new Action(() =>
+                    {
+                        if (_batchCancellation is not null)
+                            StatusMessage = "用例 " + index + "/" + batch.Length + " · " +
+                                fact.Type + "：" + fact.Status + " · " + fact.Detail;
+                    }));
+                }
+                _realTest.StepReported += OnStep;
+                RealRunResult result;
+                try
+                {
+                    result = await _realTest.ExecuteAsync(item.Document, item.TestConsent,
+                        item.FlashConsent.Length > 0 ? fixedFlashApproval : "",
+                        _frozenDut, token);
+                }
+                finally { _realTest.StepReported -= OnStep; }
+                BatchResults.Add(index + ". " + item.Entry.DisplayName + " · " +
+                    result.Verdict + " · RunId=" + result.Run.Value +
+                    (result.EvidencePath is null ? "" : " · HTML=" + result.EvidencePath));
+                if (result.Verdict != RealTestVerdict.Passed)
+                {
+                    StatusMessage = "批次停止：" + item.Entry.DisplayName + " 的正式记录为 " +
+                        result.Verdict + "，后续用例未执行。";
+                    return;
+                }
+            }
+            StatusMessage = "批次结束：" + batch.Length +
+                " 个用例均已生成各自的正式开发记录；未计入生产数量。";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "批次已取消。已运行的用例报告保留，剩余用例未执行。";
+        }
+        catch (Exception error)
+        {
+            BatchResults.Add("中止于第 " + index + " 个用例：" + error.Message);
+            StatusMessage = "批次异常；已停止后续用例，请检查最后一个 RunId、设备与报告。";
+        }
+        finally
+        {
+            _batchCancellation?.Dispose();
+            _batchCancellation = null;
+            IsBusy = false;
+            ResetFrozenSelection();
+            StopSelectedCommand.RaiseCanExecuteChanged();
+        }
     }
 
     /// <summary>
@@ -429,6 +704,9 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         RemoveCommand?.RaiseCanExecuteChanged();
         UpCommand?.RaiseCanExecuteChanged(); DownCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged(); ReloadCommand?.RaiseCanExecuteChanged();
+        PreflightSelectedCommand?.RaiseCanExecuteChanged();
+        RunSelectedCommand?.RaiseCanExecuteChanged();
+        StopSelectedCommand?.RaiseCanExecuteChanged();
     }
     public bool ConfirmClose() =>
         !IsBusy && (!IsDirty || _dialogs.Confirm("测试项目有未保存的用例顺序修改。确定放弃吗？"));
@@ -444,6 +722,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
 
     private async Task SaveAsync()
     {
+        ResetFrozenSelection();
         if (IsBusy) return;
         IsBusy = true;
         try
@@ -472,6 +751,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
     private async Task ReloadAsync()
     {
+        ResetFrozenSelection();
         if (IsBusy || !ConfirmClose()) return;
         IsBusy = true;
         try
