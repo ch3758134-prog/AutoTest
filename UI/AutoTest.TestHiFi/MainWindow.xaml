@@ -578,6 +578,7 @@
                 </StackPanel>
               </StackPanel>
               <Border Background="#E6EDF5" Height="1" Margin="0,14,0,13"/>
+              <StackPanel Visibility="{Binding Inspector.IsCanSignal,Converter={StaticResource VisibleIfTrue}}">
               <TextBlock Text="⌄  基本设置" Style="{StaticResource SectionTitle}"/>
               <Grid Margin="12,0,3,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -641,6 +642,18 @@
                          Style="{StaticResource InputBox}" IsReadOnly="True"/>
               </Grid>
               <Border Background="#E6EDF5" Height="1" Margin="0,16,0,12"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding Inspector.IsOtherType,Converter={StaticResource VisibleIfTrue}}">
+                <TextBlock Text="{Binding Inspector.OtherHeading}" Style="{StaticResource SectionTitle}"/>
+                <TextBlock Text="{Binding Inspector.OtherLabel}" Foreground="#617086" FontSize="12"
+                           Margin="4,3,0,7"/>
+                <TextBox Text="{Binding Inspector.OtherValue}" Style="{StaticResource InputBox}"
+                         IsReadOnly="True" Margin="4,0,0,15" MinHeight="35"/>
+                <Border Background="#F3F6FA" CornerRadius="5" Padding="12" Margin="4,0,0,12">
+                  <TextBlock Text="{Binding Inspector.OtherGuidance}" Foreground="#51657E"
+                             TextWrapping="Wrap" TextTrimming="None" FontSize="11.8"/>
+                </Border>
+              </StackPanel>
               <Border Background="#FFF6EA" BorderBrush="#F0D7B6"
                       BorderThickness="1" CornerRadius="6" Padding="11">
                 <StackPanel>
