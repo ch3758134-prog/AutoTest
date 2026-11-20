@@ -907,9 +907,28 @@ public sealed class TestEditorViewModel : BindableBase
         RefreshRows(); // Remove previous-run statuses before starting real execution.
         RunSummary = "正在执行真实测试…";
         StopRunCommand.RaiseCanExecuteChanged();
+        void OnPhysicalStep(RealStepFact fact)
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher is null) return;
+            void ShowStep()
+            {
+                RunFacts.Add(fact);
+                RunFactRows.Add(new OperatorStepRunRow(
+                    OperatorStepType(fact.Type), OperatorExecutionStatus(fact.Status),
+                    fact.Actual, OperatorExecutionDetail(fact.Detail)));
+                RunSummary = "真实运行中 · 已归档 " + RunFacts.Count + " 条步骤记录";
+                RefreshRows();
+            }
+            if (dispatcher.CheckAccess()) ShowStep();
+            else dispatcher.Invoke(ShowStep);
+        }
+        _realTest.StepReported += OnPhysicalStep;
         try
         {
             var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval, FlashApproval, DutIdentity);
+            RunFacts.Clear();
+            RunFactRows.Clear();
             foreach (var fact in result.Facts)
             {
                 RunFacts.Add(fact);
@@ -933,6 +952,7 @@ public sealed class TestEditorViewModel : BindableBase
         }
         finally
         {
+            _realTest.StepReported -= OnPhysicalStep;
             RunApproval = "";
             FlashApproval = "";
             IsBusy = false;

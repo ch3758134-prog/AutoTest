@@ -80,6 +80,9 @@ public sealed class RealRunCoordinator
     private TaskCompletionSource<bool>? _resume;
     private bool _pause, _singleStep;
     public bool IsRunning { get { lock (_gate) return _stop is not null; } }
+    /// <summary>Emitted only after the corresponding reviewed RECORD sink has
+    /// accepted step completion, so UI feedback follows durable step evidence.</summary>
+    public event Action<RealStepFact>? StepCompleted;
 
     public RealRunCoordinator(ITestSignalPort signals, ITestActuationPort actions, ITestWavePort waves,
         ITestFlashPort? flash = null)
@@ -262,6 +265,7 @@ public sealed class RealRunCoordinator
                     facts.Add(skipped);
                     if (events is not null)
                         await events.StepCompletedAsync(run, skipped, CancellationToken.None);
+                    try { StepCompleted?.Invoke(skipped); } catch { /* UI cannot stop DUT cleanup */ }
                     continue;
                 }
                 var firstFact = facts.Count;
@@ -714,6 +718,7 @@ public sealed class RealRunCoordinator
                     // Durable observers must finish before the next physical action.
                     if (events is not null)
                         await events.StepCompletedAsync(run, completed, CancellationToken.None);
+                    try { StepCompleted?.Invoke(completed); } catch { /* UI cannot interrupt physical run */ }
                 }
             }
         }

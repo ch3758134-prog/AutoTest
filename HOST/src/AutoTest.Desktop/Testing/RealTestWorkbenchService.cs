@@ -38,6 +38,7 @@ public sealed class RealTestWorkbenchService
     }
 
     public bool IsRunning => _running?.IsRunning ?? false;
+    public event Action<RealStepFact>? StepReported;
 
     public PreparedTestPlan Prepare(TestDocument document) =>
         new PlanCompiler().Prepare(document, allowRealOperations: true);
@@ -123,6 +124,11 @@ public sealed class RealTestWorkbenchService
                     mappings, jobs, project.RootDirectory, plan.Fingerprint,
                     confirmation, flashConfirmation);
             var run = new RealRunCoordinator(_signals, actions, wave, flash);
+            run.StepCompleted += fact =>
+            {
+                try { StepReported?.Invoke(fact); }
+                catch { /* Operator visualization must never break evidence or hardware cleanup. */ }
+            };
             evidence = new RealRunEvidenceRecorder(_hardware, _signals);
             _running = run;
             // The reviewed RECORD service starts a durable RunRecord before TEST
