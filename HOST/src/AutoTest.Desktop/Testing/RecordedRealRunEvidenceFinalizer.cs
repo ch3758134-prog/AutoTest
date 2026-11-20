@@ -3,6 +3,7 @@ using AutoTest.Application.TestRecord;
 using AutoTest.Core;
 using AutoTest.Records.Storage;
 using AutoTest.Testing.Runtime;
+using AutoTest.Specialists.Wave;
 
 namespace AutoTest.Desktop.Testing;
 
@@ -75,6 +76,58 @@ public sealed class RecordedRealRunEvidenceFinalizer : IRealRunEvidenceFinalizer
                 evidence, ct);
             if (linked.ArtifactId != evidence.Value)
                 throw new IOException("FLASH EvidenceRef mismatch.");
+            await _writer.AttachArtifactAsync(run, linked, ct);
+        }
+
+        // Wave references are never invented from a TEST property. Each actual
+        // capture/comparison ID comes from a completed real runtime step, and
+        // each immutable source file must pass WaveEvidenceStore's SHA, signal,
+        // captured-source, reference-fingerprint and recomputed-verdict checks.
+        var waveIds = new HashSet<EvidenceRef>();
+        foreach (var fact in result.Facts.Where(f =>
+                     f.Type is "WaveStop" or "WaveAnalyze" or "WaveCompare"))
+        {
+            foreach (var token in (fact.Evidence ?? "").Split(',',
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (!Guid.TryParse(token, out var id) || id == Guid.Empty)
+                {
+                    missing++;
+                    continue;
+                }
+                waveIds.Add(new EvidenceRef(id));
+            }
+            if (fact.Type == "WaveCompare" && fact.Status == RealStepStatus.Completed &&
+                (fact.Evidence ?? "").Split(',',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length != 2)
+                missing++;
+        }
+        var waveDirectory = Path.Combine(_root, "wave-records", "evidence");
+        var waveStore = new WaveEvidenceStore(waveDirectory);
+        foreach (var waveId in waveIds)
+        {
+            WaveEvidenceDocument verifiedWave;
+            byte[] contents;
+            try
+            {
+                verifiedWave = waveStore.Read(waveId);
+                contents = await File.ReadAllBytesAsync(Path.Combine(waveDirectory,
+                    waveId.Value.ToString("N") + ".wave.json"), ct);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or
+                                       UnauthorizedAccessException or ArgumentException or
+                                       System.Text.Json.JsonException)
+            {
+                missing++;
+                continue;
+            }
+            await using var stream = new MemoryStream(contents, writable: false);
+            var linked = await _artifacts.PutAsync(stream, "ECU_WAVE_VERIFIED_EVIDENCE",
+                WaveEvidenceCodec.MediaType,
+                "Verified " + verifiedWave.Kind + " waveform for run " + run,
+                waveId, ct);
+            if (linked.ArtifactId != waveId.Value)
+                throw new IOException("Wave EvidenceRef mismatch.");
             await _writer.AttachArtifactAsync(run, linked, ct);
         }
 
