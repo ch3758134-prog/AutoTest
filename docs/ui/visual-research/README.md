@@ -78,3 +78,11 @@ R01 为研究交接摘要，原始《现代复杂工业级 PC 软件的产品与
 - 覆盖工程创建/打开/保存/文件管理、资源引用、文档标签、工具/模式导航、连接状态、各专业工作台、生产检测、记录/报告、操作键鼠/右键/快捷键、视觉微调、异常恢复与验收脚本。
 - 当前用户已认可白色 TEST UI 的主视觉方向；本计划**不推翻当前高保真布局**，优先 UI-01 Shell/状态/微调、UI-02 真实工程文件生命周期，再实施 TEST 专业编辑和其他工作区。
 - 状态：DESIGN PLAN ONLY / NO WPF CODE CHANGE / WINDOWS BUILD NOT RUN。本批不要求用户编译；实施版需有明确分支、真实截图和操作验收。
+
+## V03-03｜UI-01 / UI-02 工作空间与真实文件交互候选（2026-11-19）
+
+- 代码专用分支：[`ui/workspace-files-v01`](https://github.com/ch3758134-prog/AutoTest/tree/ui/workspace-files-v01)
+- 实施留档：[UI-01/02 范围、代码、静态检查及 Windows 验收脚本](https://github.com/ch3758134-prog/AutoTest/blob/ui/workspace-files-v01/docs/ui/visual-research/V03-03/UI01_UI02_IMPLEMENTATION_ACCEPTANCE_20261119.md)
+- 修改范围：保留白色 TEST 基线，去除紫色结构标记；新增主控未连接态、全局导航/文件菜单、多文档/工具工作页、布局、工程资源导航；`*.atui-project.json` 本地 UI 工程的创建/打开/文件修改保存/重命名/删除与恢复。
+- UI-01/02 的实际磁盘操作当前**仅适用于明确命名的 UI 工作区格式**，不声称可打开或修改正式 `project.autotest-project.json` / TEST DSL；真实后端及业务专用编辑留待后续 Gate。
+- 实施状态：**COMMITTED / SOURCE_CHECKED / WINDOWS_BUILD_NOT_RUN / USER_ACCEPTANCE_PENDING / MAIN_UNCHANGED**。不生成 HTML。
