@@ -47,6 +47,7 @@ public sealed class UiFileDocument : INotifyPropertyChanged
     private readonly Stack<string> _undo = new();
     private readonly Stack<string> _redo = new();
     private bool _loading;
+    private long _lastTypingAt;
     public UiAsset Asset { get; init; } = new();
     public string FilePath { get; init; } = "";
     public string Content
@@ -57,7 +58,12 @@ public sealed class UiFileDocument : INotifyPropertyChanged
             if (_content == value) return;
             if (!_loading)
             {
-                _undo.Push(_content);
+                var now=Environment.TickCount64;
+                // Group continuous typing into one undo operation. Paste/large edits remain separate.
+                if (_undo.Count==0 || now-_lastTypingAt > 700 ||
+                    Math.Abs(value.Length-_content.Length) > 1)
+                    _undo.Push(_content);
+                _lastTypingAt=now;
                 if (_undo.Count > 1000) TrimUndo();
                 _redo.Clear();
             }
@@ -90,7 +96,7 @@ public sealed class UiFileDocument : INotifyPropertyChanged
     {
         _loading = true;
         _content = text; LastSavedContent = text;
-        _undo.Clear(); _redo.Clear();
+        _undo.Clear(); _redo.Clear(); _lastTypingAt=0;
         Changed = false; _loading = false;
         PropertyChanged?.Invoke(this,new(nameof(Content)));
     }
@@ -113,7 +119,8 @@ public sealed class UiFileDocument : INotifyPropertyChanged
     }
     private void SetWithoutHistory(string value)
     {
-        _content = value; Changed = _content != LastSavedContent;
+        _content = value; _lastTypingAt=0;
+        Changed = _content != LastSavedContent;
         PropertyChanged?.Invoke(this,new(nameof(Content)));
     }
     public bool CanUndo => _undo.Count != 0;
