@@ -147,6 +147,10 @@ public sealed class LocalSession
     public double InspectorWidth { get; set; } = 400;
     public double IssuesHeight { get; set; } = 165;
     public bool IssuesExpanded { get; set; } = true;
+    public string? SelectedPreviewCaseId { get; set; }
+    public string SelectedPreviewPhase { get; set; } = "测试";
+    public int SelectedPreviewStep { get; set; } = 16;
+    public string NavigatorMode { get; set; } = "cases";
     public List<string> RecentProjects { get; set; } = [];
 }
 
