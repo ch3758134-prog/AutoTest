@@ -494,6 +494,7 @@ public partial class TestEditorView : UserControl
             Item("＋ 在此阶段／分支末尾添加", _viewModel.AddChildCommand);
         if (target.Kind == StepTreeItemKind.Step)
         {
+            Item("▶ 运行此步骤（真实 ECU 诊断）", _viewModel.RunSelectedStepCommand);
             Item("在当前步骤下方插入", _viewModel.AddAfterCommand);
             if (target.Children.Count > 0)
             {

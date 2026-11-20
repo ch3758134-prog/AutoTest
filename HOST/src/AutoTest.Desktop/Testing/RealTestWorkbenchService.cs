@@ -63,7 +63,8 @@ public sealed class RealTestWorkbenchService
         CancellationToken ct) => ExecuteAsync(document, confirmation, "", "", ct);
 
     public async Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
-        string flashConfirmation = "", string dutIdentity = "", CancellationToken ct = default)
+        string flashConfirmation = "", string dutIdentity = "", CancellationToken ct = default,
+        bool isolatedStep = false)
     {
         if (!await _station.WaitAsync(0, ct))
             throw new InvalidOperationException("Another test is already running.");
@@ -151,7 +152,8 @@ public sealed class RealTestWorkbenchService
             var artifacts = new ArtifactRepository(Path.Combine(project.RootDirectory,
                 "test-records", "artifacts"));
             var reports = new RunReportExporter(db, artifacts);
-            var record = FreezeActualRunIdentity(project, plan.Fingerprint, dutIdentity);
+            var record = FreezeActualRunIdentity(project, plan.Fingerprint, dutIdentity,
+                isolatedStep);
             var capture = new RecordedRealRunEvidenceFinalizer(evidence, writer,
                 artifacts, project.RootDirectory);
             var session = new RealTestRecordSession(record, writer, reports, capture);
@@ -190,7 +192,7 @@ public sealed class RealTestWorkbenchService
     }
 
     private RunRecord FreezeActualRunIdentity(OpenProjectContext project,
-        string planFingerprint, string dutIdentity)
+        string planFingerprint, string dutIdentity, bool isolatedStep)
     {
         var assets = project.Definition.Assets.Select(a => a.ToReference())
             .ToImmutableArray();
@@ -232,7 +234,7 @@ public sealed class RealTestWorkbenchService
             ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(location)))
             : typeof(RealTestWorkbenchService).Assembly.FullName ?? "HOST_BUILD_UNKNOWN";
         return RunRecord.CreateFromSnapshot(snapshot, identity,
-            unboundDut ? RecordRunMode.Diagnostic : RecordRunMode.Development,
+            unboundDut || isolatedStep ? RecordRunMode.Diagnostic : RecordRunMode.Development,
             DateTimeOffset.UtcNow, build);
     }
 

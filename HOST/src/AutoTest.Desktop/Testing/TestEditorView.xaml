@@ -85,6 +85,9 @@
       Style="{StaticResource AtPrimaryButton}" Foreground="White"
       Margin="0,0,6,0" Padding="11,5"
       ToolTip="需要 USB 主控连接并确认真实运行；开发诊断 ECU 编号可留空，不计出厂；支持真实 CAN/KEY/IGN 与安全停止"/>
+     <Button Content="▶ 运行此步骤" Command="{Binding RunSelectedStepCommand}"
+      Margin="0,0,6,0" Padding="10,5"
+      ToolTip="选中某个步骤；确认后仅执行该步骤及其子步骤，保留实体安全清理与独立诊断记录"/>
      <Button Content="■ 停止" Command="{Binding StopRunCommand}"
       Margin="0,0,10,0" Padding="8,5"/>
     </StackPanel>

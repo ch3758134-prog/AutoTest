@@ -37,6 +37,8 @@ public sealed class TestEditorViewModel : BindableBase
     private string _expectedFlashApproval = "";
     private long _preparedStationEpoch;
     private string _preparedDutIdentity = "";
+    private StepId? _preparedStepId;
+    private TestDocument? _preparedRunDocument;
     private CancellationTokenSource? _singleRunCancellation;
     private string _runSummary = "未运行真实测试";
     private readonly StepDescriptorCatalog _catalog = StepDescriptorCatalog.Builtins();
@@ -102,11 +104,16 @@ public sealed class TestEditorViewModel : BindableBase
             () => !IsBusy && !IsDirty && !HasNewStepDraft);
         RunCommand = new DelegateCommand(async () => await RunRealAsync(),
             () => !IsBusy && !IsDirty && !HasNewStepDraft &&
+                _preparedStepId is null && _preparedRunDocument is not null &&
                 _preparedStationEpoch > 0 &&
                 _realTest.IsHardwareConnected &&
                 _realTest.ConnectedStationEpoch == _preparedStationEpoch &&
                 _preparedDutIdentity == DutIdentity &&
                 RunApproval.Length > 0);
+        RunSelectedStepCommand = new DelegateCommand(
+            async () => await RunSelectedStepInteractiveAsync(),
+            () => !IsBusy && !IsDirty && !HasNewStepDraft &&
+                SelectedItem?.Kind == StepTreeItemKind.Step);
         StopRunCommand = new DelegateCommand(() =>
         {
             // Stop must also cancel USB/DBC/RECORD preparation, before the
@@ -301,7 +308,11 @@ public sealed class TestEditorViewModel : BindableBase
     {
         get
         {
-            try { return RealTestWorkbenchService.ExpectedApproval(_realTest.Prepare(_transaction.Current)); }
+            try
+            {
+                return RealTestWorkbenchService.ExpectedApproval(
+                    _realTest.Prepare(_preparedRunDocument ?? _transaction.Current));
+            }
             catch { return ""; }
         }
     }
@@ -637,6 +648,7 @@ public sealed class TestEditorViewModel : BindableBase
     public DelegateCommand RemoveMappingCommand { get; }
     public DelegateCommand PrepareRunApprovalCommand { get; }
     public DelegateCommand RunCommand { get; }
+    public DelegateCommand RunSelectedStepCommand { get; }
     public DelegateCommand StopRunCommand { get; }
 
     /// <summary>
@@ -881,11 +893,15 @@ public sealed class TestEditorViewModel : BindableBase
         }
     }
 
-    private void PrepareRealRunApproval()
+    private void PrepareRealRunApproval() => PrepareRunApproval(null);
+
+    private void PrepareRunApproval(StepId? singleStep)
     {
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
         _preparedStationEpoch = 0;
         _preparedDutIdentity = "";
+        _preparedStepId = null;
+        _preparedRunDocument = null;
         RunApproval = "";
         ExpectedFlashApproval = "";
         FlashApproval = "";
@@ -907,19 +923,24 @@ public sealed class TestEditorViewModel : BindableBase
         try
         {
             var approvedEpoch = _realTest.ConnectedStationEpoch;
-            var plan = _realTest.Prepare(_transaction.Current);
+            var runDocument = singleStep is { } id
+                ? TestRunStepScope.ForSingleStep(_transaction.Current, id)
+                : _transaction.Current;
+            var plan = _realTest.Prepare(runDocument);
             if (!plan.Diagnostics.IsEmpty)
             {
                 StatusMessage = "无法准备真实运行：" + plan.Diagnostics[0];
                 return;
             }
-            ExpectedFlashApproval = _realTest.ExpectedFlashApproval(_transaction.Current);
+            ExpectedFlashApproval = _realTest.ExpectedFlashApproval(runDocument);
             FlashApproval = "";
             if (!_realTest.IsHardwareConnected ||
                 _realTest.ConnectedStationEpoch != approvedEpoch)
                 throw new IOException("准备运行期间 USB 主控会话变化，请重新确认。");
             _preparedStationEpoch = approvedEpoch;
             _preparedDutIdentity = DutIdentity;
+            _preparedStepId = singleStep;
+            _preparedRunDocument = runDocument;
             RunApproval = RealTestWorkbenchService.ExpectedApproval(plan);
             RefreshCommands();
             StatusMessage = ExpectedFlashApproval.Length == 0 ?
@@ -927,7 +948,9 @@ public sealed class TestEditorViewModel : BindableBase
                     ? "未填写 ECU 编号：可执行真实开发诊断，记录标记为未绑定 DUT，不能计入出厂。"
                     : "当前用例已确认，可以运行真实步骤；编号尚未经扫码规则验证。") :
                 "烧录资源已冻结。必须在下方手动输入完整 FLASH 授权文字；授权不写入工程。";
-            RunSummary = "已确认当前测试用例 · 尚未执行";
+            RunSummary = singleStep is null
+                ? "已确认当前测试用例 · 尚未执行"
+                : "已确认单步骤诊断 · 尚未执行";
         }
         catch (Exception error) when (IsEditorError(error))
         {
@@ -935,9 +958,62 @@ public sealed class TestEditorViewModel : BindableBase
         }
     }
 
-    private async Task RunRealAsync()
+    private async Task RunSelectedStepInteractiveAsync()
     {
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (SelectedItem?.Step is not { } step) return;
+        if (!_realTest.IsHardwareConnected || _realTest.ConnectedStationEpoch <= 0)
+        {
+            StatusMessage = "运行此步骤要求 USB 主控已连接；不能模拟发送。";
+            return;
+        }
+        if (!_dialogs.Confirm("将对真实 ECU 执行选中步骤及其子步骤：\n" +
+                step.Name + "（" + step.Type + "）\n\n" +
+                "只运行此步骤，不运行其余准备、测试和脚本清理步骤；" +
+                "结束后仍执行硬件安全清理。依赖前置变量或 ECU 状态的步骤可能失败。\n\n继续？"))
+            return;
+        if (_preparedRunDocument is null || _preparedStepId != step.Id ||
+            _preparedStationEpoch != _realTest.ConnectedStationEpoch ||
+            _preparedDutIdentity != DutIdentity)
+            PrepareRunApproval(step.Id);
+        if (_preparedRunDocument is null || _preparedStepId != step.Id) return;
+        if (ExpectedFlashApproval.Length > 0 &&
+            !string.Equals(FlashApproval, ExpectedFlashApproval, StringComparison.Ordinal))
+        {
+            StatusMessage = "单步 FLASH 需要手动填写下方完整实体烧录授权，然后再次点击运行此步骤。";
+            return;
+        }
+        await RunRealAsync(singleStep: true);
+    }
+
+    private async Task RunRealAsync(bool singleStep = false)
+    {
+        if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (_preparedRunDocument is null ||
+            (singleStep ? _preparedStepId != SelectedItem?.Step?.Id
+                : _preparedStepId is not null))
+        {
+            StatusMessage = singleStep
+                ? "请重新选中并确认要运行的步骤。"
+                : "请先确认当前完整测试用例。";
+            return;
+        }
+        TestDocument candidate;
+        try
+        {
+            candidate = singleStep && _preparedStepId is { } id
+                ? TestRunStepScope.ForSingleStep(_transaction.Current, id)
+                : _transaction.Current;
+            if (_realTest.Prepare(candidate).Fingerprint !=
+                _realTest.Prepare(_preparedRunDocument).Fingerprint)
+                throw new InvalidOperationException("运行快照已变化。");
+        }
+        catch (Exception error) when (IsEditorError(error))
+        {
+            StatusMessage = "当前步骤/用例已改变，请重新确认：" + error.Message;
+            RunApproval = "";
+            return;
+        }
         if (!_realTest.IsHardwareConnected || _preparedStationEpoch <= 0 ||
             _realTest.ConnectedStationEpoch != _preparedStationEpoch ||
             DutIdentity != _preparedDutIdentity)
@@ -974,7 +1050,9 @@ public sealed class TestEditorViewModel : BindableBase
         RunFacts.Clear();
         RunFactRows.Clear();
         RefreshRows(); // Remove previous-run statuses before starting real execution.
-        RunSummary = "正在执行真实测试…";
+        RunSummary = singleStep
+            ? "正在执行选中步骤（独立诊断）…"
+            : "正在执行真实测试用例…";
         StopRunCommand.RaiseCanExecuteChanged();
         void OnPhysicalStep(RealStepFact fact)
         {
@@ -995,8 +1073,9 @@ public sealed class TestEditorViewModel : BindableBase
         _realTest.StepReported += OnPhysicalStep;
         try
         {
-            var result = await _realTest.ExecuteAsync(_transaction.Current, RunApproval,
-                FlashApproval, DutIdentity, _singleRunCancellation!.Token);
+            var result = await _realTest.ExecuteAsync(candidate, RunApproval,
+                FlashApproval, DutIdentity, _singleRunCancellation!.Token,
+                isolatedStep: singleStep);
             RunFacts.Clear();
             RunFactRows.Clear();
             foreach (var fact in result.Facts)
@@ -1008,7 +1087,9 @@ public sealed class TestEditorViewModel : BindableBase
                     fact.Actual, OperatorExecutionDetail(fact.Detail)));
             }
             RefreshRows(); // Apply only actual backend StepId evidence.
-            RunSummary = "正式记录（开发模式） · " + OperatorVerdict(result.Verdict) + " · " + result.Facts.Length +
+            RunSummary = (singleStep ? "独立步骤诊断记录" :
+                DutIdentity.Length == 0 ? "未绑定 ECU 诊断记录" : "正式记录（开发模式）") +
+                " · " + OperatorVerdict(result.Verdict) + " · " + result.Facts.Length +
                 " 条步骤记录" + (result.EvidencePath is null ? "" :
                 " · HTML 报告：" + result.EvidencePath);
             StatusMessage = RunSummary;
@@ -1032,6 +1113,8 @@ public sealed class TestEditorViewModel : BindableBase
             _singleRunCancellation = null;
             _preparedStationEpoch = 0;
             _preparedDutIdentity = "";
+            _preparedStepId = null;
+            _preparedRunDocument = null;
             RunApproval = "";
             FlashApproval = "";
             IsBusy = false;
@@ -1045,6 +1128,8 @@ public sealed class TestEditorViewModel : BindableBase
         // a newly edited document. Historical evidence remains in its own audit.
         _preparedStationEpoch = 0;
         _preparedDutIdentity = "";
+        _preparedStepId = null;
+        _preparedRunDocument = null;
         RunApproval = "";
         FlashApproval = "";
         ExpectedFlashApproval = "";
@@ -1319,6 +1404,7 @@ public sealed class TestEditorViewModel : BindableBase
         RemoveMappingCommand?.RaiseCanExecuteChanged();
         PrepareRunApprovalCommand?.RaiseCanExecuteChanged();
         RunCommand?.RaiseCanExecuteChanged();
+        RunSelectedStepCommand?.RaiseCanExecuteChanged();
         StopRunCommand?.RaiseCanExecuteChanged();
     }
 

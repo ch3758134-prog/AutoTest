@@ -1,3 +1,6 @@
+using System.Collections.Immutable;
+using AutoTest.Core;
+
 namespace AutoTest.Testing.Authoring;
 
 /// <summary>
@@ -47,4 +50,48 @@ public static class TestRunStepScope
 
     public static bool RequiresPhysicalWrite(TestDocument document) =>
         EnabledSteps(document).Any(node => node.Type == "Write");
+
+    /// <summary>
+    /// A one-step diagnostic uses the same immutable TEST model, PlanCompiler,
+    /// real hardware ports and RECORD executor as a full case. It does not
+    /// replay unrelated preparation/cleanup scripts. Station fail-safe cleanup
+    /// still runs in RealRunCoordinator and RealTestWorkbenchService.
+    /// </summary>
+    public static TestDocument ForSingleStep(TestDocument source, StepId selectedId)
+    {
+        static bool Find(IEnumerable<StepNode> nodes, StepId target,
+            bool parentEnabled, out StepNode? matched, out bool enabled)
+        {
+            foreach (var node in nodes)
+            {
+                var currentEnabled = parentEnabled && StepExecutionPolicy.IsEnabled(node);
+                if (node.Id == target)
+                {
+                    matched = node;
+                    enabled = currentEnabled;
+                    return true;
+                }
+                foreach (var slot in node.Slots.Values)
+                    if (Find(slot, target, currentEnabled, out matched, out enabled))
+                        return true;
+            }
+            matched = null;
+            enabled = false;
+            return false;
+        }
+
+        foreach (var phase in Enum.GetValues<TestPhase>())
+        {
+            if (!Find(source.Get(phase), selectedId, true, out var matched,
+                    out var enabled)) continue;
+            if (!enabled || matched is null)
+                throw new InvalidOperationException(
+                    "选中步骤或其所属流程已关闭，不能单独执行。");
+            var isolated = Enum.GetValues<TestPhase>().ToImmutableDictionary(
+                p => p, p => p == phase
+                    ? ImmutableArray.Create(matched) : ImmutableArray<StepNode>.Empty);
+            return source with { Phases = isolated };
+        }
+        throw new KeyNotFoundException("选中的 TEST 步骤已经不存在，请重新选择。");
+    }
 }
