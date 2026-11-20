@@ -36,6 +36,7 @@ public partial class MainWindow
     private bool _workspaceLoaded;
     private bool _compactLayout;
     private bool _compactInspector;
+    private bool _compactProblems;
     private double _normalNavigatorWidth=294, _normalInspectorWidth=400, _normalIssuesHeight=165;
 
     public UiFileDocument? ActiveFile
@@ -757,6 +758,14 @@ public partial class MainWindow
     {
         if(!_compactLayout || _activePage?.IsTestPreview != true)return;
         _compactInspector=!_compactInspector;
+        _compactProblems=false;
+        UpdateCompactLayout();
+    }
+    private void ToggleCompactProblems_Click(object sender,RoutedEventArgs e)
+    {
+        if(!_compactLayout || _activePage?.IsTestPreview != true)return;
+        _compactProblems=!_compactProblems;
+        _compactInspector=false;
         UpdateCompactLayout();
     }
     private void UpdateCompactLayout()
@@ -783,10 +792,25 @@ public partial class MainWindow
             InspectorSplitter.Visibility=Visibility.Collapsed;
             IssuesSplitter.Visibility=Visibility.Collapsed;
             IssuesRow.Height=new GridLength(0);
+            Grid.SetRow(ProblemsSurface,2);
+            Grid.SetRowSpan(ProblemsSurface,1);
             ProblemsSurface.Visibility=Visibility.Collapsed;
-            CompactInspectorButton.Visibility=_activePage?.IsTestPreview==true
-                ? Visibility.Visible : Visibility.Collapsed;
-            if(_compactInspector && _activePage?.IsTestPreview==true)
+            var isTest=_activePage?.IsTestPreview==true;
+            CompactInspectorButton.Visibility=isTest?Visibility.Visible:Visibility.Collapsed;
+            CompactProblemsButton.Visibility=isTest?Visibility.Visible:Visibility.Collapsed;
+            CompactProblemsButton.Content="问题列表";
+            if(_compactProblems && isTest)
+            {
+                Grid.SetRow(ProblemsSurface,1);
+                Grid.SetRowSpan(ProblemsSurface,2);
+                Panel.SetZIndex(ProblemsSurface,7);
+                ProblemsSurface.Visibility=Visibility.Visible;
+                TestStepSurface.Visibility=Visibility.Collapsed;
+                InspectorSurface.Visibility=Visibility.Collapsed;
+                CompactProblemsButton.Content="← 步骤结构";
+                CompactInspectorButton.Content="步骤参数 →";
+            }
+            else if(_compactInspector && isTest)
             {
                 Grid.SetColumn(InspectorSurface,2);
                 Grid.SetColumnSpan(InspectorSurface,3);
@@ -815,12 +839,17 @@ public partial class MainWindow
             Panel.SetZIndex(InspectorSurface,0);
             InspectorSurface.Visibility=Visibility.Visible;
             TestStepSurface.Visibility=Visibility.Visible;
+            Grid.SetRow(ProblemsSurface,2);
+            Grid.SetRowSpan(ProblemsSurface,1);
+            Panel.SetZIndex(ProblemsSurface,0);
             ProblemsSurface.Visibility=Visibility.Visible;
             InspectorSplitter.Visibility=_activePage?.IsTestPreview==true ? Visibility.Visible : Visibility.Collapsed;
             IssuesSplitter.Visibility=_activePage?.IsTestPreview==true ? Visibility.Visible : Visibility.Collapsed;
             IssuesRow.Height=new GridLength(_normalIssuesHeight<=0?165:_normalIssuesHeight);
             CompactInspectorButton.Visibility=Visibility.Collapsed;
+            CompactProblemsButton.Visibility=Visibility.Collapsed;
             _compactInspector=false;
+            _compactProblems=false;
         }
     }
 
