@@ -136,7 +136,7 @@
                            Text="{Binding Name}" FontSize="12.5"/>
                 <CheckBox Grid.Column="1" VerticalAlignment="Center"
                           HorizontalAlignment="Center" IsChecked="{Binding RunSelected,Mode=TwoWay}"
-                          ToolTip="仅选择本次运行的用例；不会改变当前编辑选择" Click="RunSelect_Click"/>
+                          ToolTip="仅选择本次运行的用例；不会改变当前编辑选择" Click="RunSelect_Click" PreviewMouseLeftButtonDown="RunSelect_PreviewMouseDown" PreviewKeyDown="RunSelect_PreviewKey"/>
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="StepTemplate" DataType="{x:Type local:StepRow}">
@@ -211,7 +211,8 @@
                     <TextBox Grid.Column="0" Text="{Binding Text,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
                              Tag="{Binding}"
                              GotKeyboardFocus="EditorText_GotKeyboardFocus"
-                             LostKeyboardFocus="EditorText_LostKeyboardFocus">
+                             LostKeyboardFocus="EditorText_LostKeyboardFocus"
+                             TextChanged="EditorText_TextChanged">
                         <TextBox.Style>
                             <Style TargetType="TextBox" BasedOn="{StaticResource FieldBox}">
                                 <Style.Triggers>
@@ -246,10 +247,13 @@
                              Style="{StaticResource FieldBox}"
                              GotKeyboardFocus="EditorText_GotKeyboardFocus"
                              LostKeyboardFocus="EditorText_LostKeyboardFocus"
+                             TextChanged="EditorText_TextChanged"
                              Margin="0,0,0,15"/>
                     <CheckBox Content="启用此步骤" IsChecked="{Binding IsEnabled,Mode=TwoWay}"
                               Visibility="{Binding IsMovable,Converter={StaticResource BoolVisibility}}"
-                              Margin="0,1,0,15" Click="Enabled_Click"/>
+                              Margin="0,1,0,15" Click="Enabled_Click"
+                              PreviewMouseLeftButtonDown="Enabled_PreviewMouseDown"
+                              PreviewKeyDown="Enabled_PreviewKey"/>
                     <Border Background="#E9F2FC" Padding="12" CornerRadius="6" Margin="0,0,0,15"
                             Visibility="{Binding IsStructuralSlot,Converter={StaticResource BoolVisibility}}">
                       <StackPanel>
