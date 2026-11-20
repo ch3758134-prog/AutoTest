@@ -37,6 +37,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     public MainWindow()
     {
+        PreviewInvariants.Assert(Cases, _allSteps, Issues);
         InitializeComponent();
         DataContext = this;
         _ready = true;
