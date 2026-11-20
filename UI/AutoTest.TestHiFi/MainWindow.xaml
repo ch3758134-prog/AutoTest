@@ -4,8 +4,8 @@
         xmlns:local="clr-namespace:AutoTest.TestHiFi"
         Title="AutoTest · 工程工作环境 · UI-01/02 交互验证"
         WindowState="Maximized" Width="1650" Height="935"
-        MinWidth="1230" MinHeight="700"
-        WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown" Closing="MainWindow_Closing">
+        MinWidth="800" MinHeight="540"
+        WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown" Closing="MainWindow_Closing" SizeChanged="MainWindow_SizeChanged">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="VisibleIfTrue"/>
     <DataTemplate x:Key="CaseTemplate" DataType="{x:Type local:DemoCase}">
@@ -248,6 +248,9 @@
           </StackPanel>
         </ScrollViewer>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="4,0,14,0" VerticalAlignment="Center">
+          <Button x:Name="CompactInspectorToggle" Content="查看步骤参数 →" Visibility="Collapsed"
+                  Click="CompactInspectorToggle_Click" Style="{StaticResource OutlineButton}"
+                  Height="31" Margin="0,0,8,0"/>
           <TextBlock Text="布局:" Foreground="#617086" VerticalAlignment="Center" Margin="0,0,7,0"/>
           <Button Content="▣ 右侧参数" Style="{StaticResource SelectedButton}" Height="31" Margin="0,0,6,0"/>
           <Button Content="▤ 下方参数" Style="{StaticResource OutlineButton}" Height="31"
@@ -256,13 +259,13 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="3" Margin="7,1,7,5">
+    <Grid x:Name="WorkRootGrid" Grid.Row="3" Margin="7,1,7,5">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="294"/>
-        <ColumnDefinition Width="7"/>
-        <ColumnDefinition Width="*" MinWidth="470"/>
-        <ColumnDefinition Width="7"/>
-        <ColumnDefinition Width="400"/>
+        <ColumnDefinition x:Name="NavWidth" Width="294"/>
+        <ColumnDefinition x:Name="NavDividerWidth" Width="7"/>
+        <ColumnDefinition x:Name="CenterWidth" Width="*" MinWidth="390"/>
+        <ColumnDefinition x:Name="InspectorDividerWidth" Width="7"/>
+        <ColumnDefinition x:Name="InspectorWidth" Width="400"/>
       </Grid.ColumnDefinitions>
       <Grid.RowDefinitions>
         <RowDefinition Height="40"/>
@@ -362,7 +365,7 @@
       <GridSplitter Grid.Column="3" Grid.Row="0" Grid.RowSpan="2"
                     Background="Transparent" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
                     Width="7" HorizontalAlignment="Stretch" ShowsPreview="True"/>
-      <Border Grid.Column="2" Grid.Row="0" Background="#F2F5FA"
+      <Border x:Name="TestDocumentHeader" Grid.Column="2" Grid.Row="0" Background="#F2F5FA"
               BorderBrush="{StaticResource Stroke}" BorderThickness="0,0,0,1">
         <DockPanel LastChildFill="False">
           <Border DockPanel.Dock="Left" Background="White" Width="273"
@@ -378,7 +381,7 @@
           </Border>
         </DockPanel>
       </Border>
-      <Border Grid.Column="2" Grid.Row="1" Background="White"
+      <Border x:Name="TestStepsPane" Grid.Column="2" Grid.Row="1" Background="White"
               BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="7">
         <Grid>
           <Grid.RowDefinitions>
@@ -490,7 +493,7 @@
       </Border>
 
       <!-- Right: actual type-aware context inspector, all groups grounded in accepted mockup. -->
-      <Border Grid.Column="4" Grid.Row="0" Grid.RowSpan="2" Margin="0,0,0,4"
+      <Border x:Name="TestInspectorPane" Grid.Column="4" Grid.Row="0" Grid.RowSpan="2" Margin="0,0,0,4"
               Background="White" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="7">
         <Grid>
           <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="*"/></Grid.RowDefinitions>
