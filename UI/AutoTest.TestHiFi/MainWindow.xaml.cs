@@ -126,10 +126,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             SummaryWarning = _caseSteps.Count(x => x.Phase == "测试" && x.Status == "Warning").ToString();
             SummaryNormal = (test-int.Parse(SummaryWarning)-int.Parse(SummaryError)).ToString();
         }
-        VisibleIssues.Clear();
-        if (selected.Id == "TC-003")
-            foreach (var issue in Issues) VisibleIssues.Add(issue);
-        IssueHeaderText = $"⌄ 问题与定位 ({VisibleIssues.Count})";
+        ApplyIssueFilter();
     }
 
     private void Phase_Click(object sender, RoutedEventArgs e)
