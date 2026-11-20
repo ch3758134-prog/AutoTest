@@ -546,7 +546,9 @@ public partial class MainWindow : Window
         DecodedResultBox.Text = row.Decoded;
         RecordedRequestBox.Text = row.Request;
         RecordedResponseBox.Text = row.Response;
-        ResultDetailsBox.Text = row.Detail + Environment.NewLine +
+        ResultDetailsBox.Text = (row.CaseName.Length > 0
+            ? "用例：" + row.CaseName + " · 步骤：" + row.Name + Environment.NewLine
+            : "") + row.Detail + Environment.NewLine +
             "关联 ID：" + row.CorrelationId;
     }
 
@@ -746,6 +748,10 @@ public partial class MainWindow : Window
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S)
         {
             Save_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (HandleEditingShortcut(e))
+        {
             e.Handled = true;
         }
     }

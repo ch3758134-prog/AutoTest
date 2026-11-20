@@ -82,6 +82,7 @@ public partial class MainWindow
         _nextStepIndex = start;
 
         _pendingCancel = new CancellationTokenSource();
+        CaseProgressText.Text = "正在执行用例：" + executionCase.Name;
         _caseRunning = true;
         RefreshButtons();
         int planned = oneStep ? 1 : snapshot.Length - start;
@@ -111,6 +112,7 @@ public partial class MainWindow
         DiagnosticCaseStep[] snapshot, int start, bool oneStep, CancellationToken ct)
     {
         int attempted = 0, completed = 0;
+        bool pausedForUser = false;
         for (int index = start; index < snapshot.Length; index++)
         {
             var step = snapshot[index];
@@ -137,12 +139,14 @@ public partial class MainWindow
                 CaseRunStatus.Text = "已暂停在步骤 " + (index + 1) + " · " + step.Name +
                     "。检查/编辑后，可点击“执行下一步”。";
                 AppendAudit("CASE_PAUSE", "case=" + diagnosticCase.Id + " step=" + step.Id);
+                pausedForUser = true;
                 break;
             }
             attempted++;
             string header = "步骤 " + (index + 1).ToString(CultureInfo.InvariantCulture) +
                 "/" + snapshot.Length + " · " + step.Name;
             if (original is not null) original.LastState = "正在请求 ECU…";
+            CaseProgressText.Text = "进行中 · " + header;
             CaseRunStatus.Text = header + " · 正在执行（每帧仍需授权）";
             DiagnosticAction actual = step.Action.Duplicate();
             actual.Name = step.Name; // duplicate creates a new immutable action snapshot
@@ -202,6 +206,13 @@ public partial class MainWindow
         else if (_nextStepIndex >= snapshot.Length && attempted == completed)
             CaseRunStatus.Text = "本次诊断用例结束 · " + completed +
                 " 个服务步骤获得 ECU 正响应（未自动执行未勾选步骤）。";
+        string summary = ct.IsCancellationRequested ? "已取消"
+            : pausedForUser ? "等待人工继续"
+            : oneStep && attempted == completed ? "单步完成"
+            : _nextStepIndex >= snapshot.Length && attempted == completed ? "用例执行结束"
+            : "中途停止";
+        CaseProgressText.Text = summary + " · " +
+            completed + "/" + attempted + " 次服务得到有效正响应";
         AppendAudit("CASE_RUN_END", diagnosticCase.Id +
             " attempted=" + attempted + " confirmed=" + completed +
             " nextIndex=" + _nextStepIndex);

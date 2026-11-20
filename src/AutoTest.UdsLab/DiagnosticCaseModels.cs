@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.IO;
+using System.Windows.Media;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using AutoTest.Specialists.Uds.Workbench;
@@ -111,8 +112,18 @@ public sealed class DiagnosticCaseStep : INotifyPropertyChanged
             if (_lastState == value) return;
             _lastState = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastState)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RunStateBrush)));
         }
     }
+    [JsonIgnore]
+    public Brush RunStateBrush => _lastState switch
+    {
+        "未运行" or "已跳过（未勾选）" => Brushes.SlateGray,
+        "正在请求 ECU…" => Brushes.RoyalBlue,
+        "ECU 正响应" => Brushes.ForestGreen,
+        "等待人工继续" => Brushes.DarkOrange,
+        _ => Brushes.Firebrick
+    };
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public DiagnosticCaseStep Clone(bool newIdentity)

@@ -125,6 +125,7 @@ public partial class MainWindow
         try
         {
             DiagnosticCaseStep candidate = CaptureCurrentStepDraft();
+            if (_editorDirty) RememberStepUndo();
             _loadedStep.Name = candidate.Name;
             _loadedStep.Action = candidate.Action;
             _loadedStep.Purpose = candidate.Purpose;
@@ -183,6 +184,7 @@ public partial class MainWindow
 
     private void LoadCase(DiagnosticCase diagnosticCase)
     {
+        ClearCaseUndoHistory();
         _loadedCase = diagnosticCase;
         SelectCaseQuietly(diagnosticCase);
         _suppressCaseSelection = true;
@@ -321,7 +323,7 @@ public partial class MainWindow
 
     private void DeleteCase_Click(object sender, RoutedEventArgs e)
     {
-        if (_caseRunning || _loadedCase is null) return;
+        if (_caseRunning || _loadedCase is null || !ConfirmUnsavedBeforeLeave()) return;
         if (MessageBox.Show(this, "删除用例“" + _loadedCase.Name + "”及其全部步骤？",
                 "删除用例", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
@@ -361,6 +363,7 @@ public partial class MainWindow
         int selectedIndex = StepsList.SelectedIndex;
         int index = selectedIndex < 0 ? _steps.Count :
             Math.Clamp(selectedIndex + 1, 0, _steps.Count);
+        RememberStepUndo();
         _steps.Insert(index, step);
         SyncCaseSteps();
         LoadStep(step);
@@ -369,46 +372,8 @@ public partial class MainWindow
         AppendAudit("CASE_STEP_ADD", (_loadedCase?.Name ?? "") + " · " + step.Name);
     }
 
-    private void CopyStep_Click(object sender, RoutedEventArgs e)
-    {
-        if (_caseRunning || _loadedStep is null || !ConfirmUnsavedBeforeLeave()) return;
-        if (_steps.Count >= 150) { MessageBox.Show(this, "每个用例最多 150 个步骤。"); return; }
-        int index = _steps.IndexOf(_loadedStep);
-        var copy = _loadedStep.Clone(newIdentity: true);
-        copy.Name += " · 副本";
-        _steps.Insert(index + 1, copy);
-        SyncCaseSteps();
-        LoadStep(copy);
-        _workspaceDirty = true;
-        UpdateLibraryStatus();
-    }
-
-    private void DeleteStep_Click(object sender, RoutedEventArgs e)
-    {
-        if (_caseRunning || _loadedStep is null) return;
-        int index = _steps.IndexOf(_loadedStep);
-        if (index < 0) return;
-        _steps.RemoveAt(index);
-        SyncCaseSteps();
-        if (_steps.Count > 0) LoadStep(_steps[Math.Min(index, _steps.Count - 1)]);
-        else ClearStepEditor();
-        _workspaceDirty = true;
-        UpdateLibraryStatus();
-    }
-
     private void MoveStepUp_Click(object sender, RoutedEventArgs e) => MoveStep(-1);
     private void MoveStepDown_Click(object sender, RoutedEventArgs e) => MoveStep(1);
-    private void MoveStep(int delta)
-    {
-        if (_caseRunning || _loadedStep is null || !ConfirmUnsavedBeforeLeave()) return;
-        int oldIndex = _steps.IndexOf(_loadedStep), newIndex = oldIndex + delta;
-        if (newIndex < 0 || newIndex >= _steps.Count) return;
-        _steps.Move(oldIndex, newIndex);
-        SyncCaseSteps();
-        _workspaceDirty = true;
-        UpdateLibraryStatus();
-    }
-
     private void StepEnabledChanged(object sender, RoutedEventArgs e)
     {
         if (!_ready || _loadingWorkspace || _suppressStepSelection || _caseRunning) return;
