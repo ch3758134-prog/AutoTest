@@ -51,11 +51,12 @@
           </StackPanel>
           <TextBlock Grid.Column="2" Text="{Binding Summary}" Foreground="#46576F"
                      Margin="7,0,8,0" VerticalAlignment="Center" FontSize="11.7"/>
-          <Border Grid.Column="3" Height="20" Width="20" CornerRadius="10" Background="Transparent"
-                  VerticalAlignment="Center" HorizontalAlignment="Center">
-            <TextBlock x:Name="StatusMark" Text="{Binding StatusText}"
-                       Foreground="{Binding StatusColor}" FontWeight="Bold" FontSize="13"
-                       TextAlignment="Center" VerticalAlignment="Center"/>
+          <Border x:Name="StatusCircle" Grid.Column="3" Height="17" Width="17"
+                  CornerRadius="9" Background="Transparent" VerticalAlignment="Center"
+                  HorizontalAlignment="Center">
+            <TextBlock x:Name="StatusMark" Text="{Binding StatusText}" Foreground="White"
+                       FontWeight="Bold" FontSize="11" TextAlignment="Center"
+                       VerticalAlignment="Center"/>
           </Border>
         </Grid>
       </Border>
@@ -73,8 +74,14 @@
           <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
           <Setter TargetName="Fill" Property="Background" Value="#FAFBFE"/>
         </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="Ok">
+          <Setter TargetName="StatusCircle" Property="Background" Value="#138B40"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="Warning">
+          <Setter TargetName="StatusCircle" Property="Background" Value="#D49A16"/>
+        </DataTrigger>
         <DataTrigger Binding="{Binding Status}" Value="Error">
-          <Setter TargetName="StatusMark" Property="Foreground" Value="#DA3543"/>
+          <Setter TargetName="StatusCircle" Property="Background" Value="#DA3543"/>
         </DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
