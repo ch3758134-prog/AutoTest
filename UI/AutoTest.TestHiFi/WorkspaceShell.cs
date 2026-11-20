@@ -125,6 +125,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Open(recent.LastProjectManifest);
+            CloseToolWindows();
             _toolDrafts.Clear();
             RememberRecentProject(_workFiles.Manifest);
             RefreshProjectTree();
@@ -327,6 +328,11 @@ public partial class MainWindow
 
     private void ShowToolWorkspace(string name)
     {
+        if (IsToolName(name))
+        {
+            RenderToolWorkbench(name);
+            return;
+        }
         _activeToolPage = name;
         _currentDocument = null;
         WorkspaceOverlay.Visibility = Visibility.Visible;
@@ -346,15 +352,12 @@ public partial class MainWindow
             _ => "此工作页尚未连接专业功能。"
         };
         ShowWorkspaceWelcome(name, explanation);
-        RenderToolWorkbench(name);
         RefreshTabStrip();
         StatusText = name + " · 已保留 TEST 工作对象和文件会话；业务连接未接线。";
     }
 
     private void ShowWorkspaceWelcome(string heading, string body)
     {
-        ToolWorkbenchHost.Visibility = Visibility.Collapsed;
-        ToolWorkbenchHost.Content = null;
         WorkspaceTitle.Text = heading;
         WorkspaceSubtitle.Text = _workFiles.HasProject
             ? "UI 工作区：" + _workFiles.Workspace!.Name
@@ -509,8 +512,6 @@ public partial class MainWindow
         FilePathLabel.Text = document.Asset.RelativePath;
         FileRevisionLabel.Text = "Revision " + document.Asset.Revision;
         ToolDescriptionPanel.Visibility = Visibility.Collapsed;
-        ToolWorkbenchHost.Visibility = Visibility.Collapsed;
-        ToolWorkbenchHost.Content = null;
         DocumentEditorPanel.Visibility = Visibility.Visible;
         _switchingEditor = true;
         DocumentTextEditor.IsUndoEnabled = false; // History is stored on each UiDocument, not the shared TextBox.
@@ -610,6 +611,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Create(dlg.FolderName,name);
+            CloseToolWindows();
             _toolDrafts.Clear();
             RememberRecentProject(_workFiles.Manifest);
             _currentDocument=null; _selectedAsset=null;
@@ -628,6 +630,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Open(dlg.FileName);
+            CloseToolWindows();
             _toolDrafts.Clear();
             RememberRecentProject(_workFiles.Manifest);
             _currentDocument=null; _selectedAsset=null;
@@ -667,6 +670,7 @@ public partial class MainWindow
         try
         {
             _workFiles.Open(path);
+            CloseToolWindows();
             _toolDrafts.Clear();
             RememberRecentProject(_workFiles.Manifest);
             _currentDocument=null;_selectedAsset=null;RefreshProjectTree();ShowProjectWorkspace();StoreSession();
@@ -1004,6 +1008,7 @@ public partial class MainWindow
     private void CloseProject_Click(object sender,RoutedEventArgs e)
     {
         if(!ConfirmDiscardOpenFiles())return;
+        CloseToolWindows();
         _workFiles.Close();
         _toolDrafts.Clear();
         _restoreOnStartup=false;
@@ -1023,6 +1028,7 @@ public partial class MainWindow
     private void MainWindow_Closing(object? sender,System.ComponentModel.CancelEventArgs e)
     {
         if(!ConfirmDiscardOpenFiles()){e.Cancel=true;return;}
+        CloseToolWindows();
         StoreSession();
     }
     private void FindInDocument()
