@@ -320,7 +320,7 @@ public partial class MainWindow
                 () => OpenAsset(current)));
         }
         if (files.Length == 0) ToolNote(center, "暂无工程参考波形，可从工程资源导入 CSV。");
-        center.Children.Add(ToolButton("导入参考波形…", () => ImportAsset_Click(this, new RoutedEventArgs())));
+        center.Children.Add(ToolButton("导入参考波形…", () => ImportToolResource("参考波形")));
         center.Children.Add(ToolLabel("测量画布 · 暂无真实数据", true));
         var plot = new Border { MinHeight = 190, Background = new SolidColorBrush(Color.FromRgb(248,251,255)),
             BorderBrush = ToolLine, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(5),
