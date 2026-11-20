@@ -16,6 +16,8 @@ public partial class TestEditorView : UserControl
     private bool _inspectorInitialized;
     private bool _restoringStepRow;
     private IReadOnlyList<TestActionOption> _paletteActions = Array.Empty<TestActionOption>();
+    private static readonly string[] PaletteGroups =
+        ["常用步骤", "CAN 与数据", "工位操作", "UDS 服务", "波形分析", "流程与计算"];
     private bool _focusNameOnNextInspector;
     private bool _committingQuickValue;
     private StepRowProjection? _activeQuickRow;
@@ -30,6 +32,7 @@ public partial class TestEditorView : UserControl
     public TestEditorView(TestEditorViewModel viewModel)
     {
         InitializeComponent();
+        PaletteCategories.ItemsSource = PaletteGroups;
         _viewModel = viewModel;
         DataContext = viewModel;
         _viewModel.InspectorRequested += ShowInspector;
@@ -205,10 +208,11 @@ public partial class TestEditorView : UserControl
         var width = shell?.ActualWidth > 0 ? shell.ActualWidth : SystemParameters.WorkArea.Width;
         var height = shell?.ActualHeight > 0 ? shell.ActualHeight : SystemParameters.WorkArea.Height;
         // Compact two-column operation picker, not a near-fullscreen legacy grid.
-        PaletteSurface.Width = Math.Min(740, Math.Max(510, width - 100));
-        PaletteSurface.MaxHeight = Math.Min(630, Math.Max(310, height - 100));
-        PaletteList.MaxHeight = Math.Max(150, PaletteSurface.MaxHeight - 160);
+        PaletteSurface.Width = Math.Min(760, Math.Max(510, width - 80));
+        PaletteSurface.MaxHeight = Math.Min(580, Math.Max(310, height - 100));
+        PaletteList.MaxHeight = Math.Max(150, PaletteSurface.MaxHeight - 170);
         _paletteActions = TestStepInspector.PaletteActions(caseOnly);
+        PaletteCategories.SelectedIndex = caseOnly ? 5 : 0;
         var target = _viewModel.SelectedItem;
         PaletteHint.Text = caseOnly
             ? "插入位置：SWITCH / CASE 分支 · 仅允许插入 CASE"
@@ -233,23 +237,32 @@ public partial class TestEditorView : UserControl
         RefreshPaletteItems(query);
     }
 
+    private void PaletteCategory_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (PaletteCategories?.SelectedItem is not string) return;
+        if (PaletteSearch is not null && PaletteSearch.Text.Length > 0)
+            PaletteSearch.Clear();
+        else if (PaletteList is not null)
+            RefreshPaletteItems("");
+    }
+
     private void RefreshPaletteItems(string query)
     {
+        var category = PaletteCategories?.SelectedItem as string ?? "常用步骤";
+        string[] favorites =
+            ["can", "read", "wait-signal", "assert-signal", "key", "ign",
+             "wait", "if", "wave-start", "wave-analyze"];
         var filtered = _paletteActions
-            .Where(x => query.Length == 0 ||
-                (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
-                    .Contains(query, StringComparison.CurrentCultureIgnoreCase))
-            .OrderBy(x => x.Group switch
-            {
-                "CAN 与数据" => 0,
-                "工位操作" => 1,
-                "UDS 服务" => 2,
-                "波形分析" => 3,
-                _ => 4
-            }).ToArray();
-        var grouped = new ListCollectionView(filtered);
-        grouped.GroupDescriptions.Add(new PropertyGroupDescription(nameof(TestActionOption.Group)));
-        PaletteList.ItemsSource = grouped;
+            .Where(x => query.Length > 0
+                ? (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
+                    .Contains(query, StringComparison.CurrentCultureIgnoreCase)
+                : category == "常用步骤" ? favorites.Contains(x.Key)
+                : category == x.Group)
+            .OrderBy(x => query.Length == 0 && category == "常用步骤"
+                ? Array.IndexOf(favorites, x.Key) : 0)
+            .ThenBy(x => x.Title, StringComparer.CurrentCulture)
+            .ToArray();
+        PaletteList.ItemsSource = filtered;
         PaletteList.SelectedItem = filtered.FirstOrDefault();
     }
 
