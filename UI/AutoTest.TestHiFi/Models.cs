@@ -22,7 +22,7 @@ public sealed class DemoCase
     public string StateSymbol => State switch { "Ok" => "●", "Issue" => "●", _ => "○" };
     public string StateColor => State switch
     {
-        "Ok" => "#168B43", "Issue" => "#D9363E", _ => "#8796AD"
+        "Ok" => "#647B98", "Issue" => "#D9363E", _ => "#8796AD"
     };
 }
 
@@ -39,12 +39,12 @@ public sealed class DemoStep
     public string Status { get; init; } = "";
     public string StatusText => Status switch
     {
-        "Ok" => "✓", "Warning" => "▲", "Error" => "!",
+        "Ok" => "·", "Warning" => "▲", "Error" => "!",
         _ => ""
     };
     public string StatusColor => Status switch
     {
-        "Ok" => "#138B40", "Warning" => "#B87A00", "Error" => "#DA3543",
+        "Ok" => "#647B98", "Warning" => "#B87A00", "Error" => "#DA3543",
         _ => "#76849A"
     };
     public Thickness Indent => new(4 + Depth * 22, 0, 0, 0);
