@@ -260,6 +260,7 @@ public partial class MainWindow
                 AddMenu(menu,"打开",()=>OpenAsset(a));
                 AddMenu(menu,"重命名",()=>RenameAsset(a));
                 AddMenu(menu,"复制文件",()=>DuplicateAsset(a));
+                AddMenu(menu,"移动至分类…",()=>MoveAsset(a));
                 AddMenu(menu,"移入回收区",()=>DeleteAsset(a));
                 leaf.ContextMenu = menu;
                 group.Items.Add(leaf);
@@ -479,6 +480,40 @@ public partial class MainWindow
         }
         catch(Exception ex)when(ex is IOException or ArgumentException or UnauthorizedAccessException)
         {ShowFileError("复制失败",ex);}
+    }
+    private void MoveAsset_Click(object sender,RoutedEventArgs e)
+    {
+        var asset=TargetAsset();if(asset is null){NeedSelectAsset();return;}
+        MoveAsset(asset);
+    }
+    private void MoveAsset(UiAsset asset)
+    {
+        var kind=AskAssetKind(this);
+        if(kind is null||kind==asset.Kind)return;
+        if(MessageBox.Show(this,
+            "此操作会移动实际资源文件并变更其分类。\n\n其他资源文件中的引用不会自动修复。继续？",
+            "移动资源",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+        try
+        {
+            _workFiles.MoveAssetToKind(asset,kind);RefreshProjectTree();
+            if(_currentDocument?.Asset.Id==asset.Id)ActivateDocument(_currentDocument);
+            StoreSession();
+        }
+        catch(Exception ex)when(ex is IOException or ArgumentException or UnauthorizedAccessException)
+        {ShowFileError("移动资源失败",ex);}
+    }
+    private void RestoreDeleted_Click(object sender,RoutedEventArgs e)
+    {
+        if(!_workFiles.HasProject){StatusText="请先打开本地 UI 工作区。";return;}
+        try
+        {
+            var restored=_workFiles.RestoreLastDeleted();
+            if(restored is null){StatusText="工程回收区中没有可恢复资源。";return;}
+            RefreshProjectTree();OpenAsset(restored);StoreSession();
+            StatusText="已恢复资源："+restored.Name;
+        }
+        catch(Exception ex)when(ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {ShowFileError("恢复资源失败",ex);}
     }
     private void DeleteAsset_Click(object sender,RoutedEventArgs e)
     {
