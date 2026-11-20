@@ -140,6 +140,30 @@ public sealed class UiWaveSignal : Notify
     public string Source { get => _source; set => Change(ref _source, value); }
     public string Points { get => _points; set => Change(ref _points, value); }
 }
+public sealed class UiFlashProfile : Notify
+{
+    private string _name="新建烧录配置", _imagePath="", _appRequest="18DA50F1",
+        _appResponse="18DAF150", _bootRequest="18DA50F1", _bootResponse="18DAF150";
+    public string Name { get=>_name; set=>Change(ref _name,value); }
+    public string ImagePath { get=>_imagePath; set=>Change(ref _imagePath,value); }
+    public string AppRequest { get=>_appRequest; set=>Change(ref _appRequest,value); }
+    public string AppResponse { get=>_appResponse; set=>Change(ref _appResponse,value); }
+    public string BootRequest { get=>_bootRequest; set=>Change(ref _bootRequest,value); }
+    public string BootResponse { get=>_bootResponse; set=>Change(ref _bootResponse,value); }
+}
+public sealed class UiProductionDraft : Notify
+{
+    private string _serial="", _station="当前工位";
+    public string Serial { get=>_serial; set=>Change(ref _serial,value); }
+    public string Station { get=>_station; set=>Change(ref _station,value); }
+}
+public sealed class UiWaveReference : Notify
+{
+    private string _name="", _tolerance="0.05", _coverage="0.95";
+    public string Name { get=>_name; set=>Change(ref _name,value); }
+    public string Tolerance { get=>_tolerance; set=>Change(ref _tolerance,value); }
+    public string Coverage { get=>_coverage; set=>Change(ref _coverage,value); }
+}
 public sealed class UiStore : Notify
 {
     private string _workspace = "未命名工作环境";
@@ -157,6 +181,9 @@ public sealed class UiStore : Notify
     public ObservableCollection<UiUdsRequest> UdsRequests { get; } = [];
     public ObservableCollection<UiKeyAction> KeyActions { get; } = [];
     public ObservableCollection<UiWaveSignal> WaveSignals { get; } = [];
+    public UiFlashProfile FlashProfile { get; } = new();
+    public UiProductionDraft ProductionDraft { get; } = new();
+    public UiWaveReference WaveReference { get; } = new();
     public ObservableCollection<string> OperatorNotes { get; } = [];
     public bool[] KeyStates { get; } = new bool[20];
     public ObservableCollection<UiKeySwitch> KeySwitches { get; } =
@@ -180,6 +207,9 @@ public sealed class UiStore : Notify
         var project = new UiTestProject();
         project.Cases.Add(current);
         Projects.Add(project);
+        FlashProfile.PropertyChanged += (_, _) => Changed("修改烧录配置 UI");
+        ProductionDraft.PropertyChanged += (_, _) => Changed("修改生产输入 UI");
+        WaveReference.PropertyChanged += (_, _) => Changed("修改参考配置 UI");
     }
     public void Changed(string action)
     {
@@ -245,13 +275,15 @@ public sealed class UiStore : Notify
     private sealed record Session(string Kind, string Workspace, List<UiTestCase> Cases,
         List<UiCanMessage> Can, List<UiDbcMessage> Dbc, List<UiUdsRequest> Uds,
         List<UiKeyAction> Keys, List<UiWaveSignal> Wave, List<UiStep> PublicFlow,
-        List<UiResource> Resources, List<UiKeySwitch> Switches, bool[] KeyStates, int HoldMs, bool IgnOn, bool FixtureEngaged);
+        List<UiResource> Resources, List<UiKeySwitch> Switches, bool[] KeyStates, int HoldMs, bool IgnOn,
+        bool FixtureEngaged, UiFlashProfile FlashProfile, UiProductionDraft ProductionDraft, UiWaveReference WaveReference);
     public void SaveUiSession(string path)
     {
         var data = new Session("AutoTest.PURE_UI_SESSION.v1", Workspace, Cases.ToList(),
             CanMessages.ToList(), DbcMessages.ToList(), UdsRequests.ToList(),
             KeyActions.ToList(), WaveSignals.ToList(), PublicFlow.ToList(), Resources.ToList(),
-            KeySwitches.ToList(), KeyStates.ToArray(), HoldMs, IgnOn, FixtureEngaged);
+            KeySwitches.ToList(), KeyStates.ToArray(), HoldMs, IgnOn, FixtureEngaged,
+            FlashProfile, ProductionDraft, WaveReference);
         var serialized = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(path, serialized);
         Dirty = false;
@@ -285,6 +317,16 @@ public sealed class UiStore : Notify
         HoldMs = data.HoldMs;
         IgnOn = data.IgnOn;
         FixtureEngaged = data.FixtureEngaged;
+        if (data.FlashProfile is { } flash)
+        {
+            FlashProfile.Name=flash.Name;FlashProfile.ImagePath=flash.ImagePath;
+            FlashProfile.AppRequest=flash.AppRequest;FlashProfile.AppResponse=flash.AppResponse;
+            FlashProfile.BootRequest=flash.BootRequest;FlashProfile.BootResponse=flash.BootResponse;
+        }
+        if (data.ProductionDraft is { } scan)
+        { ProductionDraft.Serial=scan.Serial;ProductionDraft.Station=scan.Station; }
+        if (data.WaveReference is { } wave)
+        { WaveReference.Name=wave.Name;WaveReference.Tolerance=wave.Tolerance;WaveReference.Coverage=wave.Coverage; }
         _workspace = data.Workspace;
         Touch(nameof(Workspace));
         Dirty = false;
