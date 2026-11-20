@@ -3,14 +3,7 @@
     <OutputType>WinExe</OutputType>
     <UseWPF>true</UseWPF>
     <AssemblyName>AutoTest.Desktop</AssemblyName>
+    <RootNamespace>AutoTest.Desktop</RootNamespace>
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Prism.DryIoc" />
-    <ProjectReference Include="../AutoTest.Projects/AutoTest.Projects.csproj" />
-    <ProjectReference Include="../AutoTest.Testing/AutoTest.Testing.csproj" />
-    <ProjectReference Include="../AutoTest.Devices/AutoTest.Devices.csproj" />
-    <ProjectReference Include="../AutoTest.Specialists/AutoTest.Specialists.csproj" />
-    <ProjectReference Include="../AutoTest.FlashLab/AutoTest.FlashLab.csproj" />
-    <ProjectReference Include="../AutoTest.Contracts/AutoTest.Contracts.csproj" />
-  </ItemGroup>
+  <ItemGroup><PackageReference Include="Prism.DryIoc" /></ItemGroup>
 </Project>
