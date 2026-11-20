@@ -4,8 +4,8 @@
         xmlns:local="clr-namespace:AutoTest.TestHiFi"
         Title="AutoTest · TEST 专业编辑器 · 高保真视觉预览"
         WindowState="Maximized" Width="1650" Height="935"
-        MinWidth="1150" MinHeight="700"
-        WindowStartupLocation="CenterScreen">
+        MinWidth="1230" MinHeight="700"
+        WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="VisibleIfTrue"/>
     <DataTemplate x:Key="CaseTemplate" DataType="{x:Type local:DemoCase}">
@@ -229,7 +229,7 @@
       <Grid.RowDefinitions>
         <RowDefinition Height="40"/>
         <RowDefinition Height="*"/>
-        <RowDefinition Height="165"/>
+        <RowDefinition x:Name="IssuesRow" Height="165"/>
       </Grid.RowDefinitions>
 
       <!-- Left: navigator with fixed content structure; no empty giant filler. -->
@@ -255,7 +255,7 @@
               <Border Grid.Column="0" Background="White" BorderBrush="#CBD9E9"
                       BorderThickness="1" CornerRadius="5" Height="31" VerticalAlignment="Center">
                 <Grid>
-                  <TextBlock Text="⌕  筛选测试用例…" Foreground="#8290A3"
+                  <TextBlock x:Name="CaseSearchHint" Text="⌕  筛选测试用例…" Foreground="#8290A3"
                              VerticalAlignment="Center" Margin="9,0" FontSize="11.7"
                              IsHitTestVisible="False"/>
                   <TextBox x:Name="CaseSearch" Background="Transparent" BorderThickness="0"
@@ -313,8 +313,10 @@
                   BorderBrush="#E1E9F4" BorderThickness="0,0,1,0" CornerRadius="4,4,0,0">
             <StackPanel Orientation="Horizontal" Margin="15,0" VerticalAlignment="Center">
               <TextBlock Text="▣" Foreground="#1769D2" VerticalAlignment="Center" FontSize="14"/>
-              <TextBlock Text="  外部输入与状态响应  (TC-003)" FontSize="12"
+              <TextBlock Text="{Binding SelectedCase.Name}" FontSize="12" Margin="9,0,0,0"
                          VerticalAlignment="Center" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding SelectedCase.Id,StringFormat='  ({0})'}" FontSize="11.5"
+                         VerticalAlignment="Center" Foreground="#63748A"/>
               <TextBlock Text="   ×" FontSize="16" Foreground="#72839A" VerticalAlignment="Center"/>
             </StackPanel>
           </Border>
@@ -390,7 +392,7 @@
             <Border Grid.Column="3" Background="White" CornerRadius="5"
                     BorderBrush="#CEDAE9" BorderThickness="1" Height="31" Margin="8,0,8,0">
               <Grid>
-                <TextBlock Text="⌕  搜索步骤 (Ctrl+F)" Foreground="#8593A6"
+                <TextBlock x:Name="StepSearchHint" Text="⌕  搜索步骤 (Ctrl+F)" Foreground="#8593A6"
                            VerticalAlignment="Center" Margin="10,0"
                            IsHitTestVisible="False" FontSize="11.5"/>
                 <TextBox x:Name="StepSearch" Background="Transparent" BorderThickness="0"
@@ -542,7 +544,7 @@
               BorderBrush="{StaticResource Stroke}" BorderThickness="1"
               CornerRadius="7" Margin="0,5,0,0">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition Height="39"/><RowDefinition Height="26"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="39"/><RowDefinition x:Name="IssueHeadersRow" Height="26"/><RowDefinition x:Name="IssueItemsRow" Height="*"/></Grid.RowDefinitions>
           <Grid Grid.Row="0" Margin="13,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock Text="⌄ 问题与定位 (3)" FontWeight="SemiBold" VerticalAlignment="Center"
@@ -554,7 +556,7 @@
             <Button Grid.Column="3" Content="全部   ▾" Style="{StaticResource OutlineButton}"
                     Padding="8,3" Height="25" HorizontalAlignment="Left" VerticalAlignment="Center"
                     Click="PreviewCommand_Click" FontSize="11.5"/>
-            <Button Grid.Column="4" Content="×" Foreground="#6C7B8F" FontSize="15"
+            <Button x:Name="IssueToggleButton" Grid.Column="4" Content="×" Foreground="#6C7B8F" FontSize="15"
                     Style="{StaticResource ActionButton}" Width="30" Height="28"
                     Click="CollapseProblems_Click" ToolTip="折叠问题列表"/>
           </Grid>
