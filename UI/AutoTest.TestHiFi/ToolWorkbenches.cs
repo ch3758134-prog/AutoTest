@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 
 namespace AutoTest.TestHiFi;
@@ -55,7 +56,7 @@ public partial class MainWindow
         "UDS 调试" => "诊断配置",
         "ECU 烧录" => "烧录配置",
         "手动台架" => "输入配置",
-        "波形分析" => "参考波形",
+        "波形分析" => "其他配置",
         "DBC 编辑器" => "其他配置",
         _ => "其他配置"
     };
@@ -276,10 +277,10 @@ public partial class MainWindow
         center.Children.Add(ToolLabel("烧录阶段", true));
         foreach (var phase in new[] { "前置检查", "编程会话", "安全访问", "擦除", "传输下载", "完整性检查", "ECU 复位", "结束归档" })
             center.Children.Add(ToolLabel("○  " + phase));
-        ToolField(inspector, draft, "应用请求 ID (HEX)", "18DA50F1");
-        ToolField(inspector, draft, "Boot 请求 ID (HEX)", "18DA50F1");
-        ToolField(inspector, draft, "Boot 响应 ID (HEX)", "18DAF150");
-        ToolNote(inspector, "以上默认值仅为 UI 输入占位，必须由实际 ECU 配置确认；不可据此执行烧录。");
+        ToolField(inspector, draft, "应用请求 ID (HEX)");
+        ToolField(inspector, draft, "Boot 请求 ID (HEX)");
+        ToolField(inspector, draft, "Boot 响应 ID (HEX)");
+        ToolNote(inspector, "所有报文 ID 必须由目标 ECU 的烧录配置确认；当前不执行烧录。");
     }
 
     private void BuildWaveWorkbench(StackPanel center, StackPanel inspector, ToolDraft draft)
