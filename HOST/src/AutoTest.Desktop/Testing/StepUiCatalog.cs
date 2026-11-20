@@ -37,7 +37,7 @@ public static class StepUiCatalog
         new("CanSend", "CAN 发送", "需绑定正式 DBC / CAN 配置，执行未接线", false),
         new("CanWait", "CAN 接收等待", "需绑定 CAN 目标和超时，执行未接线", false),
         new("UdsRequest", "UDS 服务", "运行需实体诊断授权，执行未接线", false),
-        new("Flash", "ECU 烧录", "引用固件与 CanTool 配置；实体运行需要独立授权和 APP 后验", false),
+        new("Flash", "ECU 烧录", "引用冻结 CanTool/HEX/Key；单次实体授权、USB/CAN 会话检查与 APP 后验", true),
         new("WaveCapture", "波形采集", "记录服务尚未完成该步骤适配", false),
         new("WaveCompare", "波形判定", "对比已完成的真实波形与冻结的参考，产生有证据的 PASS/FAIL/无法判定", true)
     ];
