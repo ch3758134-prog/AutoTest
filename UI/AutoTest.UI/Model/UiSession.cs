@@ -20,6 +20,8 @@ public sealed class UiSession
     public ObservableCollection<UiInputAction> Inputs { get; set; } = [];
     public ObservableCollection<UiInputKey> Keys { get; set; } = [];
     public ObservableCollection<UiWaveSignal> WaveSignals { get; set; } = [];
+    public ObservableCollection<UiWavePoint> WavePoints { get; set; } = [];
+    public string WaveSourceFile { get; set; } = "";
     public ObservableCollection<UiScanEntry> ScanEntries { get; set; } = [];
     public ObservableCollection<UiRunRecord> History { get; set; } = [];
     public string FlashFile { get; set; } = "";
@@ -143,6 +145,11 @@ public sealed class UiWaveSignal
     public string Name { get; set; } = "信号";
     public string Unit { get; set; } = "";
     public string Reference { get; set; } = "";
+}
+public sealed class UiWavePoint
+{
+    public double Time { get; set; }
+    public double Value { get; set; }
 }
 public sealed class UiScanEntry
 {
