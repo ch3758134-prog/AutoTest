@@ -55,3 +55,12 @@ R01 为研究交接摘要，原始《现代复杂工业级 PC 软件的产品与
 - [视觉与操作联合比较、设计风险、静态检查及 V02-04 交接](V02-03/VISUAL_COMPARISON_AND_UI_REVIEW_20261119.md)
 - 状态：SVG_VISUAL_CANDIDATES_COMMITTED / SOURCE_STRUCTURE_READBACK_CONFIRMED / WINDOWS_RENDER_NOT_RUN / INTERACTION_NOT_RUN / **NO_WPF_CHANGE**。
 - 无 HTML。用户可直接查看图稿；不要求本批进行 Windows 实测。下一批进入受控的**可操作**纯 TEST 原型，准备好的时候再给用户精确版本和运行方式。
+
+## V02-04｜独立可操作 TEST 编辑器 WPF 原型（2026-11-19）
+
+- 源码实施分支：[`ui/test-editor-v02-04`](https://github.com/ch3758134-prog/AutoTest/tree/ui/test-editor-v02-04)
+- 独立运行工程：`UI/AutoTest.TestEditorPreview/AutoTest.TestEditorPreview.csproj`
+- [实施映射、静态审查、待验收问题](https://github.com/ch3758134-prog/AutoTest/blob/ui/test-editor-v02-04/docs/ui/visual-research/V02-04/IMPLEMENTATION_AND_ACCEPTANCE_20261119.md)
+- 产出：基于同一 12 用例/40 步样本的 A/B WPF 布局、真实嵌套树、类型化字段、结构命令、问题定位、字段缓冲、保存恢复及紧凑视图。
+- 状态：**PROTOTYPE_IMPLEMENTED / SOURCE_STATIC_AUDIT_PASS / WINDOWS_BUILD_NOT_RUN / USER_UX_NOT_VERIFIED**。源代码分支不修改 `main` 和旧 WPF 应用入口。
+- 下一门禁：Windows 用户一次性编译、启动及核心操作体验反馈。不能在用户实测前自称完成视觉准出。
