@@ -1,0 +1,85 @@
+using System;
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Threading;
+
+namespace AutoTest.Desktop.Shell;
+
+/// <summary>
+/// Edits the same project-backed KEY action model as the manual bench.
+/// This is an editor only: it does not issue any device writes.
+/// </summary>
+public partial class ManualBenchKeyActionWindow : Window
+{
+    private readonly ManualBenchViewModel _model;
+    private readonly DispatcherTimer _autosaveTimer = new()
+        { Interval = TimeSpan.FromSeconds(7) };
+    private DateTime _lastInteractionUtc = DateTime.UtcNow;
+    private bool _autosaveBusy;
+    private bool _closingForSave;
+    private bool _closeApproved;
+
+    public ManualBenchKeyActionWindow(ManualBenchViewModel model)
+    {
+        _model = model ?? throw new ArgumentNullException(nameof(model));
+        DataContext = model;
+        InitializeComponent();
+        _model.IsKeyEditorExpanded = true;
+        PreviewMouseDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
+        PreviewKeyDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
+        PreviewTextInput += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
+        _autosaveTimer.Tick += OnAutosaveTick;
+        Loaded += (_, _) => _autosaveTimer.Start();
+        Closed += (_, _) =>
+        {
+            _autosaveTimer.Stop();
+            _model.IsKeyEditorExpanded = false;
+        };
+        Closing += OnClosing;
+    }
+
+    private async void OnAutosaveTick(object? sender, EventArgs e)
+    {
+        if (_autosaveBusy || _closingForSave || !IsActive || !IsEnabled ||
+            !_model.CanSaveKeyActions ||
+            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4) ||
+            Keyboard.FocusedElement is TextBoxBase) return;
+        _autosaveBusy = true;
+        try { await _model.SaveKeyActionsForCloseAsync(); }
+        catch (Exception error)
+        { System.Diagnostics.Trace.TraceWarning("KEY editor autosave failed: " + error); }
+        finally { _autosaveBusy = false; }
+    }
+
+    private void SaveAndClose_Click(object sender, RoutedEventArgs e) => Close();
+    private void CloseKeyEditor_Click(object sender, RoutedEventArgs e) => Close();
+
+    private async void OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (_closeApproved || !_model.KeyActionsDirty) return;
+        e.Cancel = true;
+        if (_closingForSave) return;
+        _closingForSave = true;
+        IsEnabled = false;
+        try
+        {
+            await _model.SaveKeyActionsForCloseAsync();
+            if (_model.KeyActionsDirty)
+                throw new InvalidOperationException("动作库仍有未保存修改，请先修正无效字段。");
+            _closeApproved = true;
+            Close();
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show(this, "KEY 动作保存未完成，编辑内容仍保留：\n" +
+                error.Message, "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _closingForSave = false;
+            if (!_closeApproved) IsEnabled = true;
+        }
+    }
+}
