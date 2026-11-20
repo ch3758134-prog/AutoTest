@@ -64,6 +64,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var selected = VisibleSteps.FirstOrDefault(s => s.Number == 16);
         if (selected is not null) StepList.SelectedItem = selected;
         StatusText = "视觉预览 · TC-003 · 测试 29 步 · 3 条演示问题（无实际执行）";
+        InitializeWorkspaceShell();
     }
 
     private void FilterCases()
@@ -244,6 +245,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        FileShortcut(e);
+        if (e.Handled) return;
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         if (ctrl && e.Key == Key.F)
         {
