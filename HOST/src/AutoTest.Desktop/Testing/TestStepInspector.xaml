@@ -64,8 +64,46 @@
       TextWrapping="Wrap" Margin="0,6,0,0"/>
     </StackPanel>
 
+    <!-- CAN-only authoring: one report, one data payload, one send schedule.
+         Normal step types retain their existing TargetPanel and ParameterList. -->
+    <StackPanel x:Name="CanSendPanel" Visibility="Collapsed" Margin="0,2,0,15">
+     <Border Background="White" BorderBrush="#DCE5EF" BorderThickness="1"
+       CornerRadius="8" Padding="11" Margin="0,0,0,9">
+      <StackPanel>
+       <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+        <Border Background="#EAF3FE" CornerRadius="4" Padding="6,3" Margin="0,0,8,0">
+         <TextBlock Text="01" FontWeight="SemiBold" Foreground="#2B6CA9" FontSize="11"/>
+        </Border>
+        <TextBlock Text="选择发送报文" FontWeight="SemiBold" Foreground="#243F5E"
+          FontSize="13" VerticalAlignment="Center"/>
+       </StackPanel>
+       <TextBox x:Name="CanTargetSearch" TextChanged="TargetSearch_Changed"
+         ToolTip="搜索 DBC 中文名称、原始名称或 CAN ID"
+         MinHeight="30" Margin="0,0,0,6"/>
+       <ComboBox x:Name="CanTargetPicker" ItemsSource="{Binding AvailableTargets}"
+          DisplayMemberPath="Label" MinHeight="32" MaxDropDownHeight="350"
+          SelectionChanged="TargetPicker_Changed"
+          ToolTip="选择当前 DBC 的报文，也可以选择无 DBC 原始报文"/>
+       <TextBlock x:Name="CanTargetHint" TextWrapping="Wrap"
+          Foreground="#6B7E94" FontSize="11" Margin="0,7,0,0"/>
+       <Button x:Name="CanRebindButton" Content="使用当前 DBC 版本重新绑定"
+         Click="CanRebind_Click" Visibility="Collapsed" HorizontalAlignment="Left"
+         Margin="0,7,0,0" Padding="8,5" ToolTip="仅在明确点击后替换旧资源修订"/>
+      </StackPanel>
+     </Border>
+
+     <Border x:Name="CanDataCard" Background="White" BorderBrush="#DCE5EF"
+       BorderThickness="1" CornerRadius="8" Padding="11" Margin="0,0,0,9">
+      <StackPanel>
+       <StackPanel Orientation="Horizontal" Margin="0,0,0,9">
+        <Border Background="#EAF3FE" CornerRadius="4" Padding="6,3" Margin="0,0,8,0">
+         <TextBlock Text="02" FontWeight="SemiBold" Foreground="#2B6CA9" FontSize="11"/>
+        </Border>
+        <TextBlock Text="编辑报文内容" FontWeight="SemiBold" Foreground="#243F5E"
+          FontSize="13" VerticalAlignment="Center"/>
+       </StackPanel>
     <StackPanel x:Name="RawCanPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="ECU CAN · 原始帧" Foreground="#4B6382" FontWeight="SemiBold"
+     <TextBlock Text="自行指定 CAN ID 和数据" Foreground="#4B6382" FontWeight="SemiBold"
       FontSize="11" Margin="0,0,0,8"/>
      <TextBlock Text="CAN ID · 16 进制" Foreground="#61738B" FontSize="11" Margin="0,0,0,5"/>
      <TextBox x:Name="FrameIdInput" Margin="0,0,0,8" ToolTip="例如 0x123"/>
@@ -77,7 +115,7 @@
     </StackPanel>
 
     <StackPanel x:Name="DbcCanPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="按 DBC 信号编辑发送内容" FontSize="11"
+     <TextBlock Text="填写报文信号值" FontSize="11"
       FontWeight="SemiBold" Foreground="#285F9D" Margin="0,0,0,7"/>
      <Border Background="#F5F8FC" CornerRadius="5" BorderBrush="#E6ECF4"
       BorderThickness="1" Padding="7" Margin="0,0,0,10">
@@ -124,12 +162,73 @@
        </DataTemplate>
       </ItemsControl.ItemTemplate>
      </ItemsControl>
-     <CheckBox x:Name="DbcRawMode" Content="使用原始 HEX"
+     <CheckBox x:Name="DbcRawMode" Content="直接编辑数据字节（HEX）"
       Checked="DbcRawMode_Changed" Unchecked="DbcRawMode_Changed"
       Margin="0,9,0,6"/>
      <TextBox x:Name="DbcRawDataInput" Visibility="Collapsed" FontFamily="Consolas"
       ToolTip="需与当前 DBC DLC 匹配"/>
 
+    </StackPanel>
+
+
+       <Border Background="#F5F8FC" BorderBrush="#E3EAF3"
+         BorderThickness="1" CornerRadius="5" Padding="8" Margin="0,2,0,0">
+        <StackPanel>
+         <TextBlock Text="当前发送数据预览" Foreground="#5A6F88" FontSize="10"
+           Margin="0,0,0,4"/>
+         <TextBlock x:Name="CanFramePreview" FontFamily="Consolas" FontSize="12"
+           Foreground="#213F64" TextWrapping="Wrap" Text="待选择报文"/>
+         <TextBlock x:Name="CanPreviewIssue" Foreground="#AC5639" FontSize="10"
+           TextWrapping="Wrap" Margin="0,3,0,0"/>
+        </StackPanel>
+       </Border>
+      </StackPanel>
+     </Border>
+
+     <Border Background="White" BorderBrush="#DCE5EF" BorderThickness="1"
+       CornerRadius="8" Padding="11">
+      <StackPanel>
+       <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+        <Border Background="#EAF3FE" CornerRadius="4" Padding="6,3" Margin="0,0,8,0">
+         <TextBlock Text="03" FontWeight="SemiBold" Foreground="#2B6CA9" FontSize="11"/>
+        </Border>
+        <TextBlock Text="发送方式" FontWeight="SemiBold" Foreground="#243F5E"
+         FontSize="13" VerticalAlignment="Center"/>
+       </StackPanel>
+       <RadioButton x:Name="CanOnceMode" GroupName="CanSendMode"
+         Content="发送一次" Checked="CanSendMode_Changed"
+         Margin="0,0,0,8"/>
+       <RadioButton x:Name="CanPeriodicMode" GroupName="CanSendMode"
+         Content="周期发送" Checked="CanSendMode_Changed" Margin="0,0,0,6"/>
+       <StackPanel x:Name="CanPeriodicPanel" Visibility="Collapsed"
+         Margin="12,2,0,0">
+        <TextBlock Text="发送周期（毫秒）" Foreground="#5C6D85" FontSize="11"
+          Margin="0,0,0,4"/>
+        <TextBox x:Name="CanPeriodInput" MinHeight="30" Margin="0,0,0,10"
+          ToolTip="20～600000 ms"/>
+        <TextBlock Text="结束条件" Foreground="#5C6D85" FontSize="11"
+         Margin="0,0,0,6"/>
+        <RadioButton x:Name="CanTimedStop" GroupName="CanSendStop"
+         Content="发送指定时长后自动停止" Checked="CanStopMode_Changed"
+         Margin="0,0,0,6"/>
+        <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed"
+          Margin="14,0,0,9">
+         <TextBlock Text="持续时间（毫秒）" FontSize="11" Foreground="#5C6D85"
+            Margin="0,0,0,4"/>
+         <TextBox x:Name="CanDurationInput" MinHeight="29"
+           ToolTip="1～1800000 ms"/>
+        </StackPanel>
+        <RadioButton x:Name="CanUntilStopped" GroupName="CanSendStop"
+         Checked="CanStopMode_Changed" Margin="0,0,0,6">
+         <TextBlock Text="持续发送，直到停止步骤或测试清理"
+           TextWrapping="Wrap"/>
+        </RadioButton>
+        <TextBlock Text="周期任务在后台继续，下一测试步骤不会等待其自动结束。"
+         FontSize="10" Foreground="#697C93" TextWrapping="Wrap"
+         Margin="0,7,0,0"/>
+       </StackPanel>
+      </StackPanel>
+     </Border>
     </StackPanel>
 
     <StackPanel x:Name="KeyPanel" Visibility="Collapsed" Margin="0,0,0,13">

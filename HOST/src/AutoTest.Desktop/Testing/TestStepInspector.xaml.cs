@@ -173,6 +173,9 @@ public partial class TestStepInspector : UserControl
     private MappingChoice? _selectedTarget;
     private readonly List<MappingChoice> _allTargets = [];
     private string _targetRevisionWarning = "";
+    private bool _loadingCanData;
+    private bool IsCanSend => _selected?.Key == "can";
+    private ComboBox ActiveTargetPicker => IsCanSend ? CanTargetPicker : TargetPicker;
     private uint _selectedMask;
     private readonly CheckBox[] _rawKeys = new CheckBox[20];
     private bool _updatingRawKeys;
@@ -306,9 +309,16 @@ public partial class TestStepInspector : UserControl
             {
                 if (ReferenceEquals(e.OriginalSource, TargetSearch)) return;
                 MarkDraftChanged();
+                if (IsCanSend && !_loadingCanData && CanDataCard is not null)
+                    UpdateCanFramePreview();
             }), true);
         AddHandler(Selector.SelectionChangedEvent,
-            new SelectionChangedEventHandler((sender, e) => MarkDraftChanged()), true);
+            new SelectionChangedEventHandler((sender, e) =>
+            {
+                MarkDraftChanged();
+                if (IsCanSend && !_loadingCanData && CanDataCard is not null)
+                    UpdateCanFramePreview();
+            }), true);
         AddHandler(ToggleButton.CheckedEvent,
             new RoutedEventHandler((sender, e) => MarkDraftChanged()), true);
         AddHandler(ToggleButton.UncheckedEvent,
@@ -393,16 +403,11 @@ public partial class TestStepInspector : UserControl
                     ParameterFields.Add(new TestStepInputField(key, defaultValue,
                         stepType: action.StepType));
                 }
+            // CAN sending has a dedicated, task-oriented editor. Keep the
+            // canonical periodMs/durationMs properties but never expose them
+            // as opaque generic fields in the narrow inspector.
             if (action.Key == "can")
-            {
                 ParameterFields.Clear();
-                ParameterFields.Add(new TestStepInputField("periodMs",
-                    node.Properties.GetValueOrDefault("periodMs", "0"),
-                    "发送周期（毫秒；0 = 单次发送）"));
-                ParameterFields.Add(new TestStepInputField("durationMs",
-                    node.Properties.GetValueOrDefault("durationMs", "0"),
-                    "持续发送（毫秒；0 = 直到测试清理）"));
-            }
         }
     }
 
@@ -484,11 +489,14 @@ public partial class TestStepInspector : UserControl
         _selectedTarget = null;
         _targetRevisionWarning = "";
         TargetSearch.Text = "";
-        TargetPanel.Visibility = string.IsNullOrEmpty(action.TargetCategory)
-            ? Visibility.Collapsed : Visibility.Visible;
+        CanTargetSearch.Text = "";
+        CanSendPanel.Visibility = IsCanSend ? Visibility.Visible : Visibility.Collapsed;
+        TargetPanel.Visibility = !IsCanSend && !string.IsNullOrEmpty(action.TargetCategory)
+            ? Visibility.Visible : Visibility.Collapsed;
         RawCanPanel.Visibility = DbcCanPanel.Visibility =
             KeyPanel.Visibility = IgnitionPanel.Visibility = Visibility.Collapsed;
-        if (TargetPanel.Visibility == Visibility.Collapsed) return;
+        if (IsCanSend) ConfigureCanSending();
+        if (TargetPanel.Visibility == Visibility.Collapsed && !IsCanSend) return;
 
         bool Eligible(TestTargetMapping mapping) => action.TargetCategory switch
         {
@@ -535,8 +543,11 @@ public partial class TestStepInspector : UserControl
                 TestTargetKind.Ignition))
             _targetRevisionWarning = "  注意：原步骤绑定的资源版本不在当前 TCF/DBC 中，"
                 + "软件不会自动换版本。请确认并显式重新选择有效对象。";
-        TargetHint.Text = _targetRevisionWarning.Trim();
-        TargetHint.Visibility = TargetHint.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        if (!IsCanSend)
+        {
+            TargetHint.Text = _targetRevisionWarning.Trim();
+            TargetHint.Visibility = TargetHint.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        }
         // No pointless resource picker for the single built-in IGN or direct
         // 20-Key action. Hardware/DBC-backed choices retain their picker.
         if (_allTargets.Count == 1 &&
@@ -547,7 +558,8 @@ public partial class TestStepInspector : UserControl
     private void TargetSearch_Changed(object sender, TextChangedEventArgs e)
     {
         if (!_ready || TargetPicker is null || _selected is null) return;
-        ApplyTargetFilter(TargetSearch.Text.Trim(), _selectedTarget?.Mapping);
+        ApplyTargetFilter((IsCanSend ? CanTargetSearch.Text : TargetSearch.Text).Trim(),
+            _selectedTarget?.Mapping);
     }
 
     private void ApplyTargetFilter(string query, TestTargetMapping? preferredMapping,
@@ -616,13 +628,16 @@ public partial class TestStepInspector : UserControl
                 preferred = matches.Length == 1 ? matches[0] : null;
             }
         }
-        TargetPicker.SelectedItem = preferred ??
+        ActiveTargetPicker.SelectedItem = preferred ??
             (_convertedLegacy ? null : AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
         UpdateTarget();
-        TargetHint.Text = AvailableTargets.Count == 0
-            ? "没有可用对象：请检查搜索内容或导入 DBC。"
-            : _targetRevisionWarning.Trim();
-        TargetHint.Visibility = TargetHint.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        if (!IsCanSend)
+        {
+            TargetHint.Text = AvailableTargets.Count == 0
+                ? "没有可用对象：请检查搜索内容或导入 DBC。"
+                : _targetRevisionWarning.Trim();
+            TargetHint.Visibility = TargetHint.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        }
     }
 
     private void TargetPicker_Changed(object sender, SelectionChangedEventArgs e)
@@ -633,12 +648,37 @@ public partial class TestStepInspector : UserControl
 
     private void UpdateTarget()
     {
-        _selectedTarget = TargetPicker.SelectedItem as MappingChoice;
+        _selectedTarget = ActiveTargetPicker.SelectedItem as MappingChoice;
         RawCanPanel.Visibility = DbcCanPanel.Visibility = KeyPanel.Visibility =
             IgnitionPanel.Visibility = Visibility.Collapsed;
         SignalValues.Clear();
+        if (IsCanSend)
+        {
+            CanDataCard.Visibility = Visibility.Collapsed;
+            CanRebindButton.Visibility = Visibility.Collapsed;
+            CanTargetHint.Text = AvailableTargets.Count == 0
+                ? "当前没有可用报文。请检查搜索条件或导入 DBC；也可直接填写原始 CAN。"
+                : "请选择一条 DBC 报文，或选择无 DBC 原始报文。";
+            CanFramePreview.Text = "待选择报文";
+            CanPreviewIssue.Text = "";
+        }
         if (_selectedTarget is null) return;
         var mapping = _selectedTarget.Mapping;
+        if (IsCanSend)
+        {
+            if (mapping.Kind == TestTargetKind.CanMessage && _selectedTarget.Message is null)
+            {
+                CanTargetHint.Text = "旧 DBC 版本绑定已失效。不能使用旧定义编辑或发送，请重新选择当前报文。";
+                var matches = CurrentCanRebindCandidates();
+                CanRebindButton.Visibility = matches.Length == 1
+                    ? Visibility.Visible : Visibility.Collapsed;
+                return;
+            }
+            CanTargetHint.Text = mapping.Kind == TestTargetKind.CanMessage
+                ? "来自当前工程 DBC 的真实报文定义；修改信号后由现有编码器生成 CAN 数据。"
+                : "没有 DBC 也能发送。直接填写 CAN ID、帧格式和原始数据。";
+            CanDataCard.Visibility = Visibility.Visible;
+        }
         if (mapping.Kind == TestTargetKind.RawCan)
         {
             RawCanPanel.Visibility = Visibility.Visible;
@@ -668,6 +708,12 @@ public partial class TestStepInspector : UserControl
             {
                 var old = _editing?.Properties.GetValueOrDefault("value",
                     _editing.Properties.GetValueOrDefault("dataHex", "")) ?? "";
+                var previous = _boundMappings.FirstOrDefault(x =>
+                    string.Equals(x.Name, _editing?.Properties.GetValueOrDefault("target", ""),
+                        StringComparison.OrdinalIgnoreCase));
+                if (previous is not null && (previous.Kind != TestTargetKind.CanMessage ||
+                    previous.CanId != mapping.CanId || previous.Extended != mapping.Extended))
+                    old = ""; // Choosing a different frame never transfers the old frame's bytes.
                 var dict = new Dictionary<string, string>(StringComparer.Ordinal);
                 if (old.Contains('='))
                     foreach (var segment in old.Split(';',
@@ -676,8 +722,8 @@ public partial class TestStepInspector : UserControl
                         var pos = segment.IndexOf('=');
                         if (pos > 0) dict[segment[..pos].Trim()] = segment[(pos + 1)..].Trim();
                     }
-                byte[]? originalBytes = null;
-                if (!old.Contains('='))
+                byte[]? originalBytes = old.Length == 0 ? new byte[msg.Dlc] : null;
+                if (old.Length > 0 && !old.Contains('='))
                 {
                     try
                     {
@@ -715,10 +761,20 @@ public partial class TestStepInspector : UserControl
                         description, labels,
                         _selectedTarget.DisplayNames?.SignalSummary(msg.Id, signal.Name)));
                 }
-                DbcRawMode.IsChecked = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
-                    (!old.Contains('=') && old.Length > 0);
-                DbcRawDataInput.Text = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
-                    ? old[4..] : DbcRawMode.IsChecked == true ? old : "";
+                _loadingCanData = true;
+                try
+                {
+                    DbcRawMode.IsChecked = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
+                        (!old.Contains('=') && old.Length > 0);
+                    DbcRawDataInput.Text = old.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase)
+                        ? old[4..] : DbcRawMode.IsChecked == true ? old : "";
+                    SignalGrid.Visibility = DbcRawMode.IsChecked == true
+                        ? Visibility.Collapsed : Visibility.Visible;
+                    DbcRawDataInput.Visibility = DbcRawMode.IsChecked == true
+                        ? Visibility.Visible : Visibility.Collapsed;
+                }
+                finally { _loadingCanData = false; }
+                UpdateCanFramePreview();
             }
         }
         else if (mapping.Kind is TestTargetKind.Button or TestTargetKind.RawKey)
@@ -780,13 +836,149 @@ public partial class TestStepInspector : UserControl
         }
     }
 
+    private void ConfigureCanSending()
+    {
+        var periodText = _editing?.Properties.GetValueOrDefault("periodMs", "0") ?? "0";
+        var durationText = _editing?.Properties.GetValueOrDefault("durationMs", "0") ?? "0";
+        var hasPeriod = int.TryParse(periodText, NumberStyles.None,
+            CultureInfo.InvariantCulture, out var period) && period > 0;
+        var hasDuration = int.TryParse(durationText, NumberStyles.None,
+            CultureInfo.InvariantCulture, out var duration) && duration > 0;
+        CanOnceMode.IsChecked = !hasPeriod;
+        CanPeriodicMode.IsChecked = hasPeriod;
+        CanPeriodInput.Text = hasPeriod ? period.ToString(CultureInfo.InvariantCulture) : "100";
+        CanTimedStop.IsChecked = hasDuration;
+        CanUntilStopped.IsChecked = !hasDuration;
+        CanDurationInput.Text = hasDuration ? duration.ToString(CultureInfo.InvariantCulture) : "5000";
+        UpdateCanSendingMode();
+    }
+
+    private void CanSendMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || CanPeriodicPanel is null) return;
+        UpdateCanSendingMode();
+    }
+
+    private void CanStopMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || CanTimedDurationPanel is null) return;
+        UpdateCanSendingMode();
+    }
+
+    private void UpdateCanSendingMode()
+    {
+        CanPeriodicPanel.Visibility = CanPeriodicMode.IsChecked == true
+            ? Visibility.Visible : Visibility.Collapsed;
+        CanTimedDurationPanel.Visibility = CanPeriodicMode.IsChecked == true &&
+            CanTimedStop.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private MappingChoice[] CurrentCanRebindCandidates()
+    {
+        if (_selectedTarget?.Mapping is not { Kind: TestTargetKind.CanMessage } original)
+            return [];
+        return _catalog.Where(x =>
+            x.Mapping.Kind == TestTargetKind.CanMessage &&
+            x.Mapping.Asset == original.Asset &&
+            x.Mapping.CanId == original.CanId &&
+            x.Mapping.Extended == original.Extended &&
+            x.Message is not null).ToArray();
+    }
+
+    private void CanRebind_Click(object sender, RoutedEventArgs e)
+    {
+        if (!IsCanSend) return;
+        var candidates = CurrentCanRebindCandidates();
+        if (candidates.Length != 1)
+        {
+            ErrorText.Text = "当前 DBC 中没有唯一匹配的报文，请手动重新选择并核对 CAN ID。";
+            return;
+        }
+        // This click, not an implicit same-name match, authorizes the new
+        // revision to enter the TEST draft. Ctrl+S still saves the document.
+        CanTargetPicker.SelectedItem = AvailableTargets.FirstOrDefault(
+            x => x.Mapping == candidates[0].Mapping);
+        ErrorText.Text = "";
+        MarkDraftChanged();
+    }
+
+    private byte[] EncodeSelectedCanData(DbcMessage message, bool fromRaw)
+    {
+        if (fromRaw)
+        {
+            var bytes = ParseHex(DbcRawDataInput.Text, message.Dlc);
+            if (bytes.Length != message.Dlc)
+                throw new ArgumentException("发送字节数与 DBC DLC 不一致。");
+            return bytes;
+        }
+        if (SignalValues.Any(x => string.IsNullOrWhiteSpace(x.Value)))
+            throw new ArgumentException("还有未填写的信号值，请先完成或使用原始数据模式。");
+        var specification = string.Join(";", SignalValues.Select(x =>
+            x.Name + "=" + x.Value.Trim()));
+        return DbcCanMessageEncoder.Encode(message, specification);
+    }
+
+    private void UpdateCanFramePreview()
+    {
+        if (!IsCanSend || CanFramePreview is null ||
+            _selectedTarget?.Mapping.Kind != TestTargetKind.CanMessage ||
+            _selectedTarget.Message is not { } message) return;
+        try
+        {
+            var bytes = EncodeSelectedCanData(message, DbcRawMode.IsChecked == true);
+            CanFramePreview.Text = "0x" + message.ArbitrationId.ToString("X") + " · " +
+                string.Join(" ", bytes.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
+            CanPreviewIssue.Text = "";
+        }
+        catch (Exception error) when (error is ArgumentException or FormatException or
+                                      OverflowException or AutoTest.Projects.Project.ProjectDataException)
+        {
+            CanFramePreview.Text = "待完成";
+            CanPreviewIssue.Text = error.Message;
+        }
+    }
+
     private void DbcRawMode_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_ready || SignalGrid is null) return;
+        if (!_ready || _loadingCanData || SignalGrid is null) return;
+        // Switching editing modes is an explicit user action; convert the
+        // current payload so edits do not disappear silently.
+        if (_selectedTarget?.Message is { } message)
+        {
+            try
+            {
+                if (DbcRawMode.IsChecked == true)
+                {
+                    var encoded = EncodeSelectedCanData(message, fromRaw: false);
+                    DbcRawDataInput.Text = Convert.ToHexString(encoded);
+                }
+                else
+                {
+                    var original = ParseHex(DbcRawDataInput.Text, message.Dlc);
+                    if (original.Length != message.Dlc)
+                        throw new ArgumentException("原始数据字节数必须与 DBC DLC 相同。");
+                    foreach (var field in SignalValues)
+                        field.Value = DbcSignalCodec.DecodePhysical(field.Signal, original)
+                            .ToString("G17", CultureInfo.InvariantCulture);
+                }
+                ErrorText.Text = "";
+            }
+            catch (Exception error) when (error is ArgumentException or FormatException or
+                                          OverflowException or AutoTest.Projects.Project.ProjectDataException)
+            {
+                // A failed conversion must leave the edited source visible.
+                _loadingCanData = true;
+                DbcRawMode.IsChecked = DbcRawMode.IsChecked != true;
+                _loadingCanData = false;
+                ErrorText.Text = "切换报文编辑方式失败：" + error.Message;
+                return;
+            }
+        }
         SignalGrid.Visibility = DbcRawMode.IsChecked == true
             ? Visibility.Collapsed : Visibility.Visible;
         DbcRawDataInput.Visibility = DbcRawMode.IsChecked == true
             ? Visibility.Visible : Visibility.Collapsed;
+        UpdateCanFramePreview();
     }
 
     private void KeyAction_Changed(object sender, SelectionChangedEventArgs e)
@@ -887,6 +1079,23 @@ public partial class TestStepInspector : UserControl
             };
             foreach (var field in ParameterFields)
                 node = node.WithProperty(field.Key, field.Value.Trim());
+            if (IsCanSend)
+            {
+                var periodic = CanPeriodicMode.IsChecked == true;
+                var period = 0;
+                if (periodic && (!int.TryParse(CanPeriodInput.Text.Trim(),
+                        NumberStyles.None, CultureInfo.InvariantCulture, out period) ||
+                    period is < 20 or > 600000))
+                    throw new ArgumentException("周期必须是 20～600000 毫秒的整数。");
+                var duration = 0;
+                if (periodic && CanTimedStop.IsChecked == true &&
+                    (!int.TryParse(CanDurationInput.Text.Trim(), NumberStyles.None,
+                        CultureInfo.InvariantCulture, out duration) ||
+                     duration is < 1 or > 1800000))
+                    throw new ArgumentException("持续时间必须是 1～1800000 毫秒的整数。");
+                node = node.WithProperty("periodMs", period.ToString(CultureInfo.InvariantCulture))
+                    .WithProperty("durationMs", duration.ToString(CultureInfo.InvariantCulture));
+            }
             node = node.WithProperty("enabled",
                 StepEnabledInput.IsChecked == true ? "true" : "false");
 
