@@ -161,7 +161,7 @@ public sealed class WaveWorkspace : Grid
                 foreach (var point in ordered) state.WavePoints.Add(point);
                 state.WaveSourceFile = dialog.FileName;
                 if (state.WaveSignals.Count == 0)
-                    state.WaveSignals.Add(new UiWaveSignal { Name = Path.GetFileNameWithoutExtension(dialog.FileName) });
+                    state.WaveSignals.Add(new UiWaveSignal { Name = System.IO.Path.GetFileNameWithoutExtension(dialog.FileName) });
                 Draw();
                 changed();
                 status("已导入 " + ordered.Length + " 个 CSV 点；X 轴单位按源文件定义，不代表真实设备采集。");
