@@ -179,6 +179,7 @@ public partial class TestStepInspector : UserControl
     private string _canSignalError = "";
     private bool _filteringTargets;
     private bool IsCanSend => _selected?.Key == "can";
+    private bool IsDbcSignal => _selected?.TargetCategory == "signal";
     private ComboBox ActiveTargetPicker => IsCanSend ? CanTargetPicker : TargetPicker;
     private uint _selectedMask;
     private readonly CheckBox[] _rawKeys = new CheckBox[20];
@@ -497,6 +498,8 @@ public partial class TestStepInspector : UserControl
         CanSendPanel.Visibility = IsCanSend ? Visibility.Visible : Visibility.Collapsed;
         TargetPanel.Visibility = !IsCanSend && !string.IsNullOrEmpty(action.TargetCategory)
             ? Visibility.Visible : Visibility.Collapsed;
+        DbcSignalPickerPanel.Visibility = IsDbcSignal ? Visibility.Visible : Visibility.Collapsed;
+        LegacyTargetPanel.Visibility = IsDbcSignal ? Visibility.Collapsed : Visibility.Visible;
         DbcCanPanel.Visibility = KeyPanel.Visibility =
             IgnitionPanel.Visibility = Visibility.Collapsed;
         if (IsCanSend) ConfigureCanSending();
@@ -574,50 +577,37 @@ public partial class TestStepInspector : UserControl
 
     private void TargetSearch_Changed(object sender, TextChangedEventArgs e)
     {
-        if (!_ready || _filteringTargets || _selected is null) return;
-        if (IsCanSend)
-        {
-            FilterCanTargetChoices(CanTargetSearch.Text.Trim());
-            return;
-        }
-        if (TargetPicker is null) return;
+        // DBC pickers search their own popup results and never mutate the draft
+        // just because a query changed. This legacy path remains for KEY/IGN/wave.
+        if (!_ready || _filteringTargets || _selected is null ||
+            IsCanSend || IsDbcSignal) return;
         ApplyTargetFilter(TargetSearch.Text.Trim(), _selectedTarget?.Mapping);
     }
 
-    // Filtering the DBC picker must not change the active frame being edited.
-    // The selected DBC mapping and DATA remain in the inspector until the user
-    // explicitly chooses a different result.
-    private void FilterCanTargetChoices(string query)
+    private void DbcReference_ChoiceCommitted(object? sender, DbcReferenceChosenEventArgs e)
     {
-        var idQuery = query.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
-            ? query[2..] : query;
-        var matches = _allTargets.Where(item =>
+        if (!_ready || _filteringTargets || (!IsCanSend && !IsDbcSignal)) return;
+        var match = AvailableTargets.FirstOrDefault(x => x.Mapping == e.Choice.Mapping);
+        if (match is null)
         {
-            if (query.Length == 0) return true;
-            bool Contains(string? value) => !string.IsNullOrEmpty(value) &&
-                value.Contains(query, StringComparison.OrdinalIgnoreCase);
-            var id = item.Mapping.CanId.ToString("X", CultureInfo.InvariantCulture);
-            return Contains(item.Label) || Contains(item.Mapping.Name) ||
-                Contains(item.Message?.Name) ||
-                idQuery.Length > 0 && id.Contains(idQuery, StringComparison.OrdinalIgnoreCase);
-        }).ToList();
-
-        _filteringTargets = true;
-        try
-        {
-            AvailableTargets.Clear();
-            foreach (var item in matches) AvailableTargets.Add(item);
-            // Keep the current selection only if it is actually in the filtered
-            // results. Never pin it into a non-matching search result.
-            CanTargetPicker.SelectedItem = _selectedTarget is null ? null :
-                matches.FirstOrDefault(x => x.Mapping == _selectedTarget.Mapping);
+            ErrorText.Text = "所选 DBC 已不在当前工程资源列表；请刷新工程后重新选择。";
+            RefreshDbcPickers();
+            return;
         }
+        if (_selectedTarget?.Mapping == match.Mapping) return;
+        _filteringTargets = true;
+        try { ActiveTargetPicker.SelectedItem = match; }
         finally { _filteringTargets = false; }
+        UpdateTarget();
+        MarkDraftChanged();
+    }
 
-        CanSearchResultHint.Text = query.Length == 0 ? "" :
-            matches.Count == 0
-                ? "没有匹配的 DBC 报文；当前报文和 DATA 保持不变。"
-                : $"找到 {matches.Count} 条定义，选择下拉结果即可切换当前报文。";
+    private void RefreshDbcPickers()
+    {
+        if (IsCanSend)
+            CanDbcPicker.SetChoices(_allTargets, _selectedTarget);
+        else if (IsDbcSignal)
+            SignalDbcPicker.SetChoices(_allTargets, _selectedTarget);
     }
 
     private void ApplyTargetFilter(string query, TestTargetMapping? preferredMapping,
@@ -707,6 +697,7 @@ public partial class TestStepInspector : UserControl
         }
         finally { _filteringTargets = false; }
         UpdateTarget();
+        RefreshDbcPickers();
         if (!IsCanSend)
         {
             TargetHint.Text = AvailableTargets.Count == 0
@@ -720,6 +711,7 @@ public partial class TestStepInspector : UserControl
     {
         if (!_ready || _filteringTargets) return;
         UpdateTarget();
+        RefreshDbcPickers();
     }
 
     private void UpdateTarget()
@@ -1006,14 +998,11 @@ public partial class TestStepInspector : UserControl
         var candidates = CurrentCanRebindCandidates();
         if (candidates.Length != 1)
         {
-            ErrorText.Text = "当前 DBC 中没有唯一匹配的报文，请手动重新选择并核对 CAN ID。";
+            ErrorText.Text = "当前 DBC 中没有唯一匹配的报文，请打开资源选择器核对报文。";
+            CanDbcPicker.OpenWithSearch();
             return;
         }
-        // This click, not an implicit same-name match, authorizes the new
-        // revision to enter the TEST draft. Ctrl+S still saves the document.
-        _filteringTargets = true;
-        try { CanTargetSearch.Text = ""; }
-        finally { _filteringTargets = false; }
+        // A deliberate action is still required to update a pinned revision.
         ApplyTargetFilter("", candidates[0].Mapping);
         ErrorText.Text = "";
         MarkDraftChanged();
@@ -1029,15 +1018,6 @@ public partial class TestStepInspector : UserControl
             foreach (var bit in DbcSignalCodec.BitPositions(signal))
                 if (!bits.Add(bit)) return true;
         return false;
-    }
-
-    private void CanChangeDefinition_Click(object sender, RoutedEventArgs e)
-    {
-        CanDefinitionPickerPanel.Visibility =
-            CanDefinitionPickerPanel.Visibility == Visibility.Visible
-                ? Visibility.Collapsed : Visibility.Visible;
-        CanChangeDefinitionButton.Content =
-            CanDefinitionPickerPanel.Visibility == Visibility.Visible ? "收起" : "更换定义";
     }
 
     private bool GetCanFrameExtended()
@@ -1121,10 +1101,10 @@ public partial class TestStepInspector : UserControl
         }
         if (found.Length > 1)
         {
-            CanDefinitionPickerPanel.Visibility = Visibility.Visible;
-            CanChangeDefinitionButton.Content = "收起";
-            FilterCanTargetChoices("0x" + id.ToString("X", CultureInfo.InvariantCulture));
-            CanSearchResultHint.Text = "该 ID 在 DBC 中有多个定义，请选择对应报文；帧格式将读取 DBC。";
+            // Multiple definitions exist for the same numeric ID (perhaps
+            // different frame formats). Ask the user rather than guessing.
+            CanDbcPicker.OpenWithSearch("0x" + id.ToString("X", CultureInfo.InvariantCulture));
+            CanTargetHint.Text = "该 CAN ID 匹配多个 DBC 报文，请在候选中确认目标。";
             return;
         }
         UpdateCanFrameFormatLabel();

@@ -1,6 +1,7 @@
 <UserControl x:Class="AutoTest.Desktop.Testing.TestStepInspector"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:testing="clr-namespace:AutoTest.Desktop.Testing"
  Background="#FBFCFF" Foreground="#1E2C41" FontFamily="{StaticResource UiFont}"
  FontSize="13" UseLayoutRounding="True">
  <Grid>
@@ -52,16 +53,26 @@
       Foreground="#A96D20" FontSize="10" Margin="0,5,0,0"/>
     </StackPanel>
     <StackPanel x:Name="TargetPanel" Margin="0,0,0,13">
-     <TextBlock Text="选择报文、信号或资源" Foreground="#61738B"
-      FontWeight="SemiBold" FontSize="11" Margin="0,0,0,5"/>
-     <TextBox x:Name="TargetSearch" TextChanged="TargetSearch_Changed"
-      ToolTip="搜索报文、信号或 KEY 动作"
-      Margin="0,0,0,5"/>
-     <ComboBox x:Name="TargetPicker" ItemsSource="{Binding AvailableTargets}"
-      DisplayMemberPath="Label" MinHeight="34"
-      SelectionChanged="TargetPicker_Changed"/>
-     <TextBlock x:Name="TargetHint" Visibility="Collapsed" Foreground="#64758C" FontSize="11"
-      TextWrapping="Wrap" Margin="0,6,0,0"/>
+     <!-- All TEST DBC signals share the same search-first picker as CAN sending. -->
+     <StackPanel x:Name="DbcSignalPickerPanel" Visibility="Collapsed">
+      <TextBlock Text="DBC 信号" FontWeight="SemiBold" Foreground="#244665"
+       FontSize="12" Margin="0,0,0,6"/>
+      <testing:DbcReferencePicker x:Name="SignalDbcPicker"
+       ChoiceCommitted="DbcReference_ChoiceCommitted"/>
+     </StackPanel>
+     <!-- Keep existing non-DBC KEY, IGN and wave resource edit contracts. -->
+     <StackPanel x:Name="LegacyTargetPanel">
+      <TextBlock Text="选择资源" Foreground="#61738B"
+       FontWeight="SemiBold" FontSize="11" Margin="0,0,0,5"/>
+      <TextBox x:Name="TargetSearch" TextChanged="TargetSearch_Changed"
+       ToolTip="搜索 KEY、IGN 或波形资源"
+       Margin="0,0,0,5"/>
+      <ComboBox x:Name="TargetPicker" ItemsSource="{Binding AvailableTargets}"
+       DisplayMemberPath="Label" MinHeight="34"
+       SelectionChanged="TargetPicker_Changed"/>
+     </StackPanel>
+     <TextBlock x:Name="TargetHint" Visibility="Collapsed" Foreground="#64758C"
+      FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
     </StackPanel>
 
     <!-- CAN remains an exact byte editor; DBC is an automatically attached
@@ -109,27 +120,16 @@
      </Border>
 
      <StackPanel Margin="0,0,0,10">
-      <DockPanel Margin="0,0,0,6" LastChildFill="True">
-       <Button x:Name="CanChangeDefinitionButton" DockPanel.Dock="Right"
-        Content="更换定义" Click="CanChangeDefinition_Click"
-        Padding="7,3" FontSize="11" MinWidth="64"
-        ToolTip="只有需要更换 DBC 时才打开资源选择器"/>
-       <TextBlock Text="DBC 信号辅助" FontWeight="SemiBold"
-        Foreground="#244665" VerticalAlignment="Center"/>
-      </DockPanel>
-      <StackPanel x:Name="CanDefinitionPickerPanel" Visibility="Collapsed"
-       Margin="0,0,0,6">
-       <TextBlock Text="搜索报文名称、中文别名或 CAN ID"
-       FontSize="10" Foreground="#7A8DA3" Margin="0,0,0,4"/>
-      <TextBox x:Name="CanTargetSearch" TextChanged="TargetSearch_Changed"
-        MinHeight="29" Margin="0,0,0,5"
-        ToolTip="输入报文名称、中文别名或 CAN ID，实时筛选下方定义"/>
-       <ComboBox x:Name="CanTargetPicker"
-        ItemsSource="{Binding AvailableTargets}" DisplayMemberPath="Label"
-        MinHeight="30" MaxDropDownHeight="350"
-        SelectionChanged="TargetPicker_Changed"/>
-       <TextBlock x:Name="CanSearchResultHint" FontSize="10"
-        Foreground="#7B8EA4" TextWrapping="Wrap" Margin="0,4,0,0"/>
+      <TextBlock Text="DBC 信号辅助" FontWeight="SemiBold" Foreground="#244665"
+       Margin="0,0,0,6"/>
+      <testing:DbcReferencePicker x:Name="CanDbcPicker" Margin="0,0,0,6"
+       ChoiceCommitted="DbcReference_ChoiceCommitted"/>
+      <!-- Hidden compatibility selection state for existing StepNode transactions.
+           The operator sees only the unified DBC picker above. -->
+      <StackPanel Visibility="Collapsed">
+       <TextBox x:Name="CanTargetSearch" TextChanged="TargetSearch_Changed"/>
+       <ComboBox x:Name="CanTargetPicker" ItemsSource="{Binding AvailableTargets}"
+        DisplayMemberPath="Label" SelectionChanged="TargetPicker_Changed"/>
       </StackPanel>
       <TextBlock x:Name="CanTargetHint" Foreground="#627D97"
        TextWrapping="Wrap" FontSize="11" Margin="0,1,0,5"/>
