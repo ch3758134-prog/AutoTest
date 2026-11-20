@@ -26,6 +26,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public string PhaseCountText { get => _phaseCountText; private set { _phaseCountText = value; Raise(nameof(PhaseCountText)); } }
     private string _issueHeaderText = "⌄ 问题与定位 (3)";
     public string IssueHeaderText { get => _issueHeaderText; private set { _issueHeaderText = value; Raise(nameof(IssueHeaderText)); } }
+    public string IssueErrorText => "● 错误 " + VisibleIssues.Count(x=>x.Severity=="错误");
+    public string IssueWarningText => "▲ 警告 " + VisibleIssues.Count(x=>x.Severity=="警告");
+    private void RefreshSideInfo()
+    {
+        Raise(nameof(SideInfoTitle));Raise(nameof(SideName));Raise(nameof(SideId));
+        Raise(nameof(SideStatus));Raise(nameof(SideCount));Raise(nameof(SideVersion));
+    }
+    public string SideInfoTitle => ActiveFile is null ? "⌄  用例信息" : "⌄  当前工程文件";
+    public string SideName => ActiveFile?.Asset.Name ?? SelectedCase?.Name ?? "无";
+    public string SideId => ActiveFile?.Asset.Id[..8] ?? SelectedCase?.Id ?? "—";
+    public string SideStatus => ActiveFile is null ? "研究样本" : ActiveFile.Changed ? "● 未保存" : "已保存";
+    public string SideCount => ActiveFile?.KindLabel ?? PhaseCountText;
+    public string SideVersion => ActiveFile is null ? "高保真 · v0.1" : "UI 工作区格式 v1";
+
     private void Raise(string name) => PropertyChanged?.Invoke(this, new(name));
     private bool _ready;
     private bool _issuesExpanded = true;
@@ -91,6 +105,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (!_ready || CaseList.SelectedItem is not DemoCase c) return;
         SelectedCase = c;
+        RefreshSideInfo();
         if (_activePage is { IsTestPreview: false } && _previewPage is not null)
             ShowPage(_previewPage); // One-click navigation is always visible, not hidden behind tools.
         UpdateCaseContext(c);
@@ -113,6 +128,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         TestButton.Content = $"测试 ({test})";
         CleanupButton.Content = $"清理 ({cleanup})";
         PhaseCountText = $"准备 {prepare}  /  测试 {test}  /  清理 {cleanup}";
+        Raise(nameof(SideCount));
         CurrentDescription = selected.Id == "TC-003"
             ? "验证外部开关、按键等输入对 ECU 输出与 CAN 信号的响应是否符合要求。"
             : selected.Name + " · 研究用例操作与视觉展示，不包含真实 ECU 执行。";
@@ -132,6 +148,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (selected.Id == "TC-003")
             foreach (var issue in Issues) VisibleIssues.Add(issue);
         IssueHeaderText = $"⌄ 问题与定位 ({VisibleIssues.Count})";
+        Raise(nameof(IssueErrorText));Raise(nameof(IssueWarningText));
     }
 
     private void Phase_Click(object sender, RoutedEventArgs e)
