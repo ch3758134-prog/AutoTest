@@ -120,7 +120,7 @@ public sealed class UiWorkspaceFiles
         if (Workspace!.Assets.Any(a => string.Equals(a.RelativePath, relative, StringComparison.OrdinalIgnoreCase)) ||
             File.Exists(FullPath(relative))) throw new IOException("该名称已存在，请更换资源名称。");
         var asset = new UiAsset { Name = name, Kind = kind, RelativePath = relative };
-        string initial = kind == "DBC" ? "VERSION \"UI WORKSPACE - NOT A REAL ECU DBC\"\n" :
+        string initial = kind == "DBC" ? "VERSION \"\"\\n\\nNS_ :\\n\\tNS_DESC_\\n\\tCM_\\n\\tBA_DEF_\\n\\tBA_\\n\\tVAL_\\n\\tCAT_DEF_\\n\\tCAT_\\n\\tFILTER\\n\\tBA_DEF_DEF_\\n\\tEV_DATA_\\n\\tENVVAR_DATA_\\n\\tSGTYPE_\\n\\tSGTYPE_VAL_\\n\\tBA_DEF_SGTYPE_\\n\\tBA_SGTYPE_\\n\\tSIG_TYPE_REF_\\n\\tVAL_TABLE_\\n\\tSIG_GROUP_\\n\\tSIG_VALTYPE_\\n\\tSIGTYPE_VALTYPE_\\n\\tBO_TX_BU_\\n\\tBA_DEF_REL_\\n\\tBA_REL_\\n\\tBA_DEF_DEF_REL_\\n\\tBU_SG_REL_\\n\\tBU_EV_REL_\\n\\tBU_BO_REL_\\n\\tSG_MUL_VAL_\\n\\nBS_:\\n\\nBU_: ECU Vector__XXX\\n" :
             kind == "参考波形" ? "time_ms,value\n" :
             "{\n  \"uiOnly\": true,\n  \"name\": " + JsonSerializer.Serialize(name) + ",\n  \"notes\": \"\"\n}\n";
         SaveAtomic(FullPath(relative), initial);
