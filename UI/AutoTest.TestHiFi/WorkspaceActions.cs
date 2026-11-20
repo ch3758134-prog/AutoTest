@@ -60,6 +60,7 @@ public partial class MainWindow
         _previewPage = new WorkspacePage { Key = "TEST", Kind = "TEST_PREVIEW", Title = "测试程序 · 视觉基线" };
         OpenPages.Add(_previewPage);
         _recoveryTimer.Tick += (_, _) => { _recoveryTimer.Stop(); UpdateRecovery(); };
+        _restoringSession = true; // Do not overwrite the stored session before Loaded restores it.
         ShowPage(_previewPage);
     }
 
@@ -193,7 +194,11 @@ public partial class MainWindow
         if (choice == MessageBoxResult.Yes) return SaveAllDocuments();
         // Explicit discard: no recovered copy should later pretend to be an intended edit.
         foreach (var page in dirty)
-            if (page.Document is { } d) _recovery.Remove(d.FilePath);
+            if (page.Document is { } d)
+            {
+                _recovery.Remove(d.FilePath);
+                d.LoadContent(d.LastSavedContent); // Explicit discard must not later resurrect a draft.
+            }
         try { WorkspaceStorage.SaveRecovery(_recovery); }
         catch (Exception ex) when(IsFileError(ex)) { FileFailure("清理恢复记录", ex); return false; }
         return true;
