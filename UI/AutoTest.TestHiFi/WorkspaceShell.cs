@@ -345,12 +345,15 @@ public partial class MainWindow
             _ => "此工作页尚未连接专业功能。"
         };
         ShowWorkspaceWelcome(name, explanation);
+        RenderToolWorkbench(name);
         RefreshTabStrip();
         StatusText = name + " · 已保留 TEST 工作对象和文件会话；业务连接未接线。";
     }
 
     private void ShowWorkspaceWelcome(string heading, string body)
     {
+        ToolWorkbenchHost.Visibility = Visibility.Collapsed;
+        ToolWorkbenchHost.Content = null;
         WorkspaceTitle.Text = heading;
         WorkspaceSubtitle.Text = _workFiles.HasProject
             ? "UI 工作区：" + _workFiles.Workspace!.Name
@@ -505,6 +508,8 @@ public partial class MainWindow
         FilePathLabel.Text = document.Asset.RelativePath;
         FileRevisionLabel.Text = "Revision " + document.Asset.Revision;
         ToolDescriptionPanel.Visibility = Visibility.Collapsed;
+        ToolWorkbenchHost.Visibility = Visibility.Collapsed;
+        ToolWorkbenchHost.Content = null;
         DocumentEditorPanel.Visibility = Visibility.Visible;
         _switchingEditor = true;
         DocumentTextEditor.IsUndoEnabled = false; // History is stored on each UiDocument, not the shared TextBox.
