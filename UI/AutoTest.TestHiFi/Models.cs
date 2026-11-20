@@ -19,10 +19,10 @@ public sealed class DemoCase
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
     public string State { get; init; } = "Idle";
-    public string StateSymbol => State switch { "Ok" => "●", "Issue" => "●", _ => "○" };
+    public string StateSymbol => State switch { "Ok" => "○", "Issue" => "●", _ => "○" };
     public string StateColor => State switch
     {
-        "Ok" => "#168B43", "Issue" => "#D9363E", _ => "#8796AD"
+        "Ok" => "#8392A5", "Issue" => "#D9363E", _ => "#8796AD"
     };
 }
 
@@ -39,12 +39,12 @@ public sealed class DemoStep
     public string Status { get; init; } = "";
     public string StatusText => Status switch
     {
-        "Ok" => "✓", "Warning" => "▲", "Error" => "!",
+        "Ok" => "·", "Warning" => "▲", "Error" => "!",
         _ => ""
     };
     public string StatusColor => Status switch
     {
-        "Ok" => "#138B40", "Warning" => "#B87A00", "Error" => "#DA3543",
+        "Ok" => "#8594A7", "Warning" => "#B87A00", "Error" => "#DA3543",
         _ => "#76849A"
     };
     public Thickness Indent => new(4 + Depth * 22, 0, 0, 0);
@@ -171,22 +171,22 @@ public static class DemoContent
         S(11,"测试","循环","执行 2 次","Flow",0,"Ok","⟳"),
         S(12,"测试","发送 CAN 报文","BCM_Ctrl (0x3A0)  Data: 02 01 00 00 00 00 00 00","Step",1,"Ok","✉"),
         S(13,"测试","等待","500 ms","Step",1,"Ok","◷"),
-        S(14,"测试","IF 条件","Signal: DoorSts = Open   ·   判断车门状态","Flow",1,"Warning","◇","#7B55D8"),
-        S(15,"测试","THEN","条件满足时执行","Branch",2,"","", "#7B55D8"),
+        S(14,"测试","IF 条件","Signal: DoorSts = Open   ·   判断车门状态","Flow",1,"Warning","◇","#516882"),
+        S(15,"测试","THEN","条件满足时执行","Branch",2,"","", "#516882"),
         S(16,"测试","CAN 信号判定","BCM.DoorSts = Open  （超时 1,000 ms）","Step",3,"Error","▥"),
         S(17,"测试","波形判定","CH1 电平：高 > 4.5 V，持续 ≥ 100 ms","Step",3,"Ok","∿"),
-        S(18,"测试","ELSE","条件不满足时执行","Branch",2,"","", "#7B55D8"),
+        S(18,"测试","ELSE","条件不满足时执行","Branch",2,"","", "#516882"),
         S(19,"测试","日志记录","车门未打开，记录当前状态","Step",3,"Ok","▤"),
         S(20,"测试","延时","2,000 ms","Step",1,"Ok","◷"),
-        S(21,"测试","SWITCH","Signal: LightMode   ·   根据灯光模式执行检查","Flow",0,"","⌘","#7B55D8"),
-        S(22,"测试","CASE 0（关闭）","检查关闭状态","Branch",1,"","", "#7B55D8"),
+        S(21,"测试","SWITCH","Signal: LightMode   ·   根据灯光模式执行检查","Flow",0,"","⌘","#516882"),
+        S(22,"测试","CASE 0（关闭）","检查关闭状态","Branch",1,"","", "#516882"),
         S(23,"测试","CAN 信号判定","BCM.LightSts = Off","Step",2,"Ok","▥"),
-        S(24,"测试","CASE 1（近光）","检查近光状态","Branch",1,"","", "#7B55D8"),
+        S(24,"测试","CASE 1（近光）","检查近光状态","Branch",1,"","", "#516882"),
         S(25,"测试","CAN 信号判定","BCM.LightSts = LowBeam","Step",2,"Warning","▥"),
-        S(26,"测试","CASE 2（远光）","检查远光状态","Branch",1,"","", "#7B55D8"),
+        S(26,"测试","CASE 2（远光）","检查远光状态","Branch",1,"","", "#516882"),
         S(27,"测试","CAN 信号判定","BCM.LightSts = HighBeam","Step",2,"Ok","▥"),
         S(28,"测试","波形判定","CH3 波形通道：缺少有效参考资源","Step",1,"Error","∿"),
-        S(29,"测试","TRY / CATCH","出现设备通信异常时进行处理","Flow",0,"","⌘","#7B55D8"),
+        S(29,"测试","TRY / CATCH","出现设备通信异常时进行处理","Flow",0,"","⌘","#516882"),
         S(30,"测试","UDS 请求","19 02 FF 读取故障信息","Step",1,"Ok","⇄"),
         S(31,"测试","WHEN","等待故障信息响应 ≤ 2,000 ms","Flow",1,"Ok","◷"),
         S(32,"测试","日志记录","记录故障状态与响应摘要","Step",2,"Ok","▤"),
