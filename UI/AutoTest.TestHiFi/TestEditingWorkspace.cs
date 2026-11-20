@@ -293,6 +293,33 @@ public partial class MainWindow
         if (index < 0 || target < 0 || target >= c.Steps.Count) return;
         ChangeTest(() => (c.Steps[index], c.Steps[target]) = (c.Steps[target], c.Steps[index]));
     }
+    private void CheckFlowReferences(UiTestCase source, HashSet<string>? visiting = null)
+    {
+        if (_testProgram is null) return;
+        visiting ??= new HashSet<string>();
+        if (!visiting.Add(source.Id))
+        {
+            _debugEvents.Add("阻断：公共流程检测到循环调用：" + source.Name);
+            return;
+        }
+        foreach (var step in source.Steps.Where(x => x.Enabled && x.Type == "调用公共流程"))
+        {
+            var referencedId = step.Parameters.GetValueOrDefault("公共流程资源 ID", "");
+            var revisionText = step.Parameters.GetValueOrDefault("固定修订", "");
+            var target = _testProgram.Flows.FirstOrDefault(x => x.Id == referencedId);
+            if (target is null)
+            {
+                _debugEvents.Add("阻断：调用公共流程找不到资源：" + step.Name);
+                continue;
+            }
+            if (!int.TryParse(revisionText, out var revision) || revision != target.Revision)
+                _debugEvents.Add("阻断：公共流程引用版本不匹配：" + target.Name +
+                    "，引用 " + revisionText + "，当前 Rev " + target.Revision + "。需显式更新引用。");
+            CheckFlowReferences(target, visiting);
+        }
+        visiting.Remove(source.Id);
+    }
+
     private void PreflightTest(string scope)
     {
         _debugPane = true;
@@ -315,9 +342,27 @@ public partial class MainWindow
                 _debugEvents.Add("阻断：未选择可执行步骤。");
             if (scope != "当前步骤" && !c.Steps.Any(s => s.Enabled))
                 _debugEvents.Add("阻断：当前用例没有启用的步骤。");
-            foreach (var step in c.Steps.Where(s => s.Enabled && (selected is null || s.Id == selected.Id)))
+            var checkedSteps = c.Steps.Where(s => s.Enabled && (selected is null || s.Id == selected.Id)).ToArray();
+            foreach (var step in checkedSteps)
+            {
                 if (step.Parameters.Count == 0 && step.Type != "备注")
                     _debugEvents.Add("待配置：" + step.Phase + " / " + step.Name + "（未填写步骤参数）");
+                if (step.Type == "Key 组合动作" &&
+                    (!step.Parameters.ContainsKey("KeyMask (20位)") || !step.Parameters.ContainsKey("保持时间 ms")))
+                    _debugEvents.Add("阻断：Key 动作缺少 20 位掩码或保持时间：" + step.Name);
+                if (step.Type == "UDS 请求" && string.IsNullOrWhiteSpace(
+                    step.Parameters.GetValueOrDefault("服务与数据 HEX")))
+                    _debugEvents.Add("阻断：UDS 服务 Payload 未配置：" + step.Name);
+                if (step.Type is "CAN 信号判定" or "等待 CAN 信号" &&
+                    string.IsNullOrWhiteSpace(step.Parameters.GetValueOrDefault("信号")))
+                    _debugEvents.Add("阻断：未关联真实 DBC 信号：" + step.Name);
+            }
+            if (scope == "已启用用例")
+            {
+                foreach (var enabled in _testProgram!.Cases.Where(x => x.Enabled))
+                    CheckFlowReferences(enabled);
+            }
+            else CheckFlowReferences(c);
             _debugEvents.Add("执行阻断：UI 独立验证工程尚未接入正式 TEST 执行器、真实设备会话和证据链。");
             _debugEvents.Add("没有启动硬件，也没有产生 PASS/FAIL 或任何模拟反馈。");
         }
