@@ -335,6 +335,7 @@ public partial class MainWindow
         {
             OpenPages.FirstOrDefault(p=>ReferenceEquals(p.Document,doc))?.NotifyLabel();
             Raise(nameof(ActiveFile));
+            RefreshSideInfo();
         }
         if(e.PropertyName is nameof(UiFileDocument.Content) or nameof(UiFileDocument.Changed))
         {
@@ -546,6 +547,7 @@ public partial class MainWindow
             ToolTasks.Clear();
             foreach(var task in ToolTasksFor(page.Title))ToolTasks.Add(task);
         }
+        RefreshSideInfo();
         if(!_restoringSession)SaveSessionState();
     }
     private static IEnumerable<string> ToolTasksFor(string title) => title switch
