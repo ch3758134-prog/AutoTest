@@ -295,6 +295,14 @@ public sealed class StepAuthoringView : UserControl
     private bool _refreshing;
     private TextBox? _stepName;
     private readonly Dictionary<string,TextBox> _editors=new();
+    private sealed record InspectorDraft(string Name,Dictionary<string,string> Values);
+    private readonly Dictionary<string,InspectorDraft> _buffers=new();
+    private void CaptureInspectorBuffer()
+    {
+        if(_selected is null||_stepName is null)return;
+        _buffers[_selected.Id]=new InspectorDraft(_stepName.Text,
+            _editors.ToDictionary(p=>p.Key,p=>p.Value.Text,StringComparer.Ordinal));
+    }
     private readonly List<(string Label,string Type)> _allTypes=
     [
         ("等待","Wait"),("条件 IF / ELSE","If"),("SWITCH 分支","Switch"),
@@ -345,7 +353,8 @@ public sealed class StepAuthoringView : UserControl
         structure.Children.Add(_tree);
         _tree.SelectedItemChanged+=(_,_)=>{
             if(_refreshing)return;
-            if(!CommitInspector())return;
+            // Preserve unfinished/invalid input per object; never lock tree navigation.
+            CaptureInspectorBuffer();
             _selected=(_tree.SelectedItem as TreeViewItem)?.Tag as UiStep;
             _selectedList=FindOwnerList(_selected);
             ShowInspector();
@@ -461,7 +470,7 @@ public sealed class StepAuthoringView : UserControl
     private void Delete()
     {
         if(_selected is null||_selectedList is null)return;
-        Checkpoint();_selectedList.Remove(_selected);
+        Checkpoint();_buffers.Remove(_selected.Id);_selectedList.Remove(_selected);
         _selected=null;_selectedList=null;_store.Changed("删除步骤");Refresh();
     }
     private void ToggleBreakpoint()
@@ -518,7 +527,8 @@ public sealed class StepAuthoringView : UserControl
             return;
         }
         _message.Text="所选类型："+_selected.Type+" · 关联实体硬件的操作不会在 UI 阶段触发。";
-        _stepName=UiKit.Text(_selected.Name);
+        _buffers.TryGetValue(_selected.Id,out var buffered);
+        _stepName=UiKit.Text(buffered?.Name??_selected.Name);
         _stepDetails.Children.Add(UiKit.Field("步骤名称",_stepName));
         var enabled=UiKit.BoundCheck(_selected,nameof(UiStep.Enabled),"包含在测试程序中");
         enabled.Click+=(_,_)=>_store.Changed("调整步骤启用状态");
@@ -544,7 +554,9 @@ public sealed class StepAuthoringView : UserControl
         }
         foreach(var parameter in _selected.Parameters)
         {
-            var field=UiKit.Text(parameter.Value,parameter.Key);
+            var value=buffered is not null&&buffered.Values.TryGetValue(parameter.Key,out var prior)
+                ?prior:parameter.Value;
+            var field=UiKit.Text(value,parameter.Key);
             _editors[parameter.Key]=field;
             _stepDetails.Children.Add(UiKit.Field(parameter.Label,field));
             if(parameter.Key is "target" or "signal" or "message" or "reference" or "flow")
@@ -572,13 +584,17 @@ public sealed class StepAuthoringView : UserControl
         }
         _stepDetails.Children.Add(UiKit.Actions(
             UiKit.Button("应用参数",(_,_)=>{if(CommitInspector())Refresh(_selected?.Id);},true),
-            UiKit.Button("撤销本次字段输入",(_,_)=>ShowInspector())));
+            UiKit.Button("撤销本次字段输入",(_,_)=>{
+                if(_selected is not null)_buffers.Remove(_selected.Id);
+                ShowInspector();
+            })));
     }
     private bool CommitInspector()
     {
         if(_selected is null||_stepName is null)return true;
+        CaptureInspectorBuffer();
         if(string.IsNullOrWhiteSpace(_stepName.Text))
-        { _message.Text="步骤名称不能为空。";return false; }
+        { _message.Text="步骤名称不能为空。修改已留在当前对象的 UI 输入缓冲。";return false; }
         foreach (var p in _selected.Parameters)
         {
             if (_editors.TryGetValue(p.Key, out var editor) &&
@@ -591,11 +607,12 @@ public sealed class StepAuthoringView : UserControl
         }
         var changes=_selected.Name!=_stepName.Text||
             _selected.Parameters.Any(p=>_editors.TryGetValue(p.Key,out var editor)&&p.Value!=editor.Text);
-        if(!changes)return true;
+        if(!changes){_buffers.Remove(_selected.Id);return true;}
         Checkpoint();_selected.Name=_stepName.Text.Trim();
         foreach(var p in _selected.Parameters)
             if(_editors.TryGetValue(p.Key,out var editor))p.Value=editor.Text;
         _store.Changed("应用步骤参数");
+        _buffers.Remove(_selected.Id);
         return true;
     }
 }
