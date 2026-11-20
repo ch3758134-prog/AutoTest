@@ -44,6 +44,8 @@ public sealed class UiSession
     public double NavWidth { get; set; } = 294;
     public double InspectorWidth { get; set; } = 400;
     public bool ProblemsExpanded { get; set; } = true;
+    public bool RestoreOnStartup { get; set; } = true;
+    public List<string> RecentProjects { get; set; } = [];
 }
 
 public sealed class UiWorkspaceFiles
