@@ -149,7 +149,7 @@
                         <ColumnDefinition Width="110"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Content="{Binding Arrow}" Tag="{Binding Node}"
-                            IsEnabled="{Binding Node.Children.Count,Converter={x:Null}}"
+                            IsEnabled="True"
                             Style="{StaticResource QuietButton}" BorderThickness="0" Padding="0"
                             FontSize="15" Click="ExpandNode_Click"
                             ToolTip="展开或折叠当前结构，不改变步骤选择"/>
@@ -204,7 +204,7 @@
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{Binding Text,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                             Tag="{Binding}" Style="{StaticResource FieldBox}"
+                             Tag="{Binding}"
                              GotKeyboardFocus="EditorText_GotKeyboardFocus"
                              LostKeyboardFocus="EditorText_LostKeyboardFocus">
                         <TextBox.Style>
