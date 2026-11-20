@@ -78,6 +78,8 @@ public sealed class MainWindowViewModel : BindableBase
     private string _hardwareStatus = "USB 未连接";
     private string _scanStatus = "扫码未开始";
     private bool _hardwareBusy;
+    private bool _ecuCanBaudApplying;
+    public DelegateCommand ApplyEcuCanBitrateCommand { get; }
     private string _canId = "";
     private string _canData = "";
     private string _canConfirmation = "";
@@ -175,7 +177,10 @@ public sealed class MainWindowViewModel : BindableBase
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
         ConnectHardwareCommand = new DelegateCommand(async () => await ToggleHardwareAsync(),
-            () => !_hardwareBusy);
+            () => !_hardwareBusy && !_ecuCanBaudApplying);
+        ApplyEcuCanBitrateCommand = new DelegateCommand(
+            async () => await ApplyEcuCanBitrateAsync(),
+            () => !_hardwareBusy && !_ecuCanBaudApplying);
         OpenCanMonitorCommand = new DelegateCommand(async () => await OpenCanMonitorAsync());
         TransmitCanCommand = new DelegateCommand(async () => await TransmitCanAsync(), () => !_hardwareBusy);
         SaveActiveCommand = new DelegateCommand(async () => await SaveActiveAsync());
@@ -311,9 +316,9 @@ public sealed class MainWindowViewModel : BindableBase
             try
             {
                 _hardware.SelectRequestedEcuCanBitrate(value);
-                StatusMessage = value == 500
-                    ? "ECU CAN 已选择固件默认 500 kbit/s。"
-                    : "所选 ECU CAN " + value + " kbit/s 尚未生效：主控 USB 未提供改速指令，已阻止实体发送。";
+                StatusMessage = "ECU CAN 目标已选 " + value +
+                    "k；" + _hardware.EcuCanBitrateStatus +
+                    "。必要时点击“应用/读回”执行 USB 0x42/0x43。";
             }
             catch (Exception error) when (error is InvalidOperationException or
                 ArgumentOutOfRangeException)
@@ -324,9 +329,32 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    public string EcuCanRateStatus =>
-        RequestedEcuCanBitrateKbps == 500
-            ? "固件固定 500k" : "未生效 · 已阻止实体 ECU CAN";
+    public string EcuCanRateStatus => _hardware.EcuCanBitrateStatus;
+
+    private async Task ApplyEcuCanBitrateAsync()
+    {
+        if (_hardwareBusy || _ecuCanBaudApplying) return;
+        _ecuCanBaudApplying = true;
+        ApplyEcuCanBitrateCommand.RaiseCanExecuteChanged();
+        ConnectHardwareCommand.RaiseCanExecuteChanged();
+        try
+        {
+            var confirmed = await _hardware.ApplyRequestedEcuCanBitrateAsync();
+            StatusMessage = "ECU CAN 已由主控 USB 确认 " + confirmed +
+                " kbit/s；KEY CAN 未修改，物理总线速率仍需现场验证。";
+        }
+        catch (Exception error)
+        {
+            StatusMessage = "ECU CAN 波特率应用失败：" + error.Message;
+        }
+        finally
+        {
+            _ecuCanBaudApplying = false;
+            RaisePropertyChanged(nameof(EcuCanRateStatus));
+            ApplyEcuCanBitrateCommand.RaiseCanExecuteChanged();
+            ConnectHardwareCommand.RaiseCanExecuteChanged();
+        }
+    }
 
     private void OnSelectedEcuCanRateChanged(int kbps)
     {
@@ -841,6 +869,7 @@ public sealed class MainWindowViewModel : BindableBase
             _hardwareBusy = false;
             RaisePropertyChanged(nameof(ConnectionButtonText));
             ConnectHardwareCommand.RaiseCanExecuteChanged();
+            ApplyEcuCanBitrateCommand.RaiseCanExecuteChanged();
         }
     }
     public async Task ShutdownAsync()

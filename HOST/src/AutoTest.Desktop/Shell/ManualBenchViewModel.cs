@@ -151,9 +151,9 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
                 _hardware.SelectRequestedEcuCanBitrate(value);
                 RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
                 RaisePropertyChanged(nameof(EcuCanBitrateStatus));
-                Status = value == 500
-                    ? "ECU CAN 目标已恢复为固件默认 500 kbit/s；仍需现场检查总线实测通信。"
-                    : "ECU CAN " + value + " kbit/s 尚未生效：当前主控 USB 没有改速命令；实体发送已保护性阻止。";
+                Status = "ECU CAN 目标已选择 " + value +
+                    "k；" + _hardware.EcuCanBitrateStatus +
+                    "。按“应用”后才执行设备设置/读回。";
                 RaiseCommands();
             }
             catch (Exception error) when (error is InvalidOperationException or
@@ -164,10 +164,31 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             }
         }
     }
-    public string EcuCanBitrateStatus =>
-        RequestedEcuCanBitrateKbps == 500
-            ? "固件默认 500k · 无运行时切换接口"
-            : "未生效 · 禁止 ECU CAN 发送（待固件升级）";
+    public string EcuCanBitrateStatus => _hardware.EcuCanBitrateStatus;
+
+    public DelegateCommand ApplyEcuCanBitrateCommand { get; private set; } = null!;
+    private async Task ApplyEcuCanBitrateAsync()
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        ApplyEcuCanBitrateCommand.RaiseCanExecuteChanged();
+        try
+        {
+            int actual = await _hardware.ApplyRequestedEcuCanBitrateAsync();
+            Status = "ECU CAN 设备已读回确认 " + actual +
+                " kbit/s；KEY CAN 未改。实际总线波特率仍待现场仪器验证。";
+        }
+        catch (Exception error)
+        {
+            Status = "ECU CAN 码率应用失败：" + error.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+            RaisePropertyChanged(nameof(EcuCanBitrateStatus));
+            ApplyEcuCanBitrateCommand.RaiseCanExecuteChanged();
+        }
+    }
     private void OnSelectedEcuCanRateChanged(int kbps)
     {
         var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
@@ -346,6 +367,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         _hardware.EcuCanBitrateSelectionChanged += OnSelectedEcuCanRateChanged;
         _hardware.TestRunAuthorizationChanged += TestRunAuthorizationChanged;
         _projects.CurrentChanged += ProjectChanged;
+        ApplyEcuCanBitrateCommand = new DelegateCommand(
+            async () => await ApplyEcuCanBitrateAsync(), () => !IsBusy);
         ConnectCommand = new DelegateCommand(async () => await ToggleConnectionAsync(),
             () => !IsBusy && !IsCanBatchRunning && !_hardware.IsTestRunApproved);
         ReloadProfilesCommand = new DelegateCommand(async () => await ReloadResourcesAsync(), () => !IsBusy);
