@@ -49,7 +49,7 @@ public partial class DbcReferencePicker : UserControl
     public void OpenWithSearch(string query = "")
     {
         if (!IsEnabled) return;
-        ChoicePopup.IsOpen = true;
+        ChoicePanel.Visibility = Visibility.Visible;
         SearchBox.Text = query;
         ApplyFilter();
         SearchBox.Focus();
@@ -143,7 +143,8 @@ public partial class DbcReferencePicker : UserControl
 
     private void SelectionButton_Click(object sender, RoutedEventArgs e)
     {
-        if (ChoicePopup.IsOpen) ChoicePopup.IsOpen = false;
+        if (ChoicePanel.Visibility == Visibility.Visible)
+            ChoicePanel.Visibility = Visibility.Collapsed;
         else OpenWithSearch();
     }
 
@@ -162,7 +163,7 @@ public partial class DbcReferencePicker : UserControl
     {
         if (e.Key == Key.Escape)
         {
-            ChoicePopup.IsOpen = false;
+            ChoicePanel.Visibility = Visibility.Collapsed;
             e.Handled = true;
         }
         else if (e.Key == Key.Down && ResultsList.Items.Count > 0)
@@ -198,7 +199,7 @@ public partial class DbcReferencePicker : UserControl
 
     private void Commit(Option option)
     {
-        ChoicePopup.IsOpen = false;
+        ChoicePanel.Visibility = Visibility.Collapsed;
         if (_current?.Mapping == option.Choice.Mapping) return;
         _current = option.Choice;
         RenderSelection();

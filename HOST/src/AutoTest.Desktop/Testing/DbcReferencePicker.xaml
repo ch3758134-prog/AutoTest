@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  FontFamily="{StaticResource UiFont}" FontSize="12"
  Background="Transparent" Foreground="#223C58">
- <Grid>
+ <StackPanel>
   <Button x:Name="SelectionButton" Click="SelectionButton_Click"
    Background="White" BorderBrush="#CEDAE8" BorderThickness="1"
    HorizontalContentAlignment="Stretch" MinHeight="56" ToolTip="点击打开资源搜索和选择">
@@ -40,14 +40,11 @@
       VerticalAlignment="Center" HorizontalAlignment="Right"/>
    </Grid>
   </Button>
-  <Popup x:Name="ChoicePopup" Placement="Bottom" PlacementTarget="{Binding ElementName=SelectionButton}"
-   AllowsTransparency="True" StaysOpen="False" PopupAnimation="Fade"
-   VerticalOffset="5" Focusable="False">
-   <Border Width="440" MaxHeight="365" Background="White" BorderBrush="#D4E1EF"
-    BorderThickness="1" CornerRadius="9" Padding="10">
-    <Border.Effect>
-     <DropShadowEffect BlurRadius="17" ShadowDepth="5" Opacity="0.15" Color="#4A6582"/>
-    </Border.Effect>
+  <!-- Inline expansion avoids a detached OS popup whose focus and position
+       can drift when the inspector scrolls or the app changes window size. -->
+  <Border x:Name="ChoicePanel" Visibility="Collapsed" MaxHeight="344"
+   Background="White" BorderBrush="#D4E1EF" BorderThickness="1"
+   CornerRadius="7" Padding="9" Margin="0,5,0,2">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -115,7 +112,6 @@
       Text="↑↓ 选择  ·  Enter 确认  ·  Esc 取消"
       Margin="3,7,0,1"/>
     </Grid>
-   </Border>
-  </Popup>
- </Grid>
+  </Border>
+ </StackPanel>
 </UserControl>
