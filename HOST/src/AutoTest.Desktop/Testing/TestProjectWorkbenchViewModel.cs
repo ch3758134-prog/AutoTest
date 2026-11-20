@@ -319,10 +319,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             StatusMessage = "请先保存测试项目的顺序、默认配置和修订，再确认本次运行。";
             return;
         }
-        if (string.IsNullOrWhiteSpace(DutIdentity) || DutIdentity != DutIdentity.Trim() ||
-            DutIdentity.Length > 256 || DutIdentity.Any(char.IsControl))
+        if (DutIdentity.Length > 0 &&
+            (string.IsNullOrWhiteSpace(DutIdentity) || DutIdentity != DutIdentity.Trim() ||
+             DutIdentity.Length > 256 || DutIdentity.Any(char.IsControl)))
         {
-            StatusMessage = "请扫描或输入实际 ECU 唯一编号；项目运行只按 Development 归档。";
+            StatusMessage = "ECU 编号格式不合法；开发批次允许留空，按未绑定 DUT 诊断记录归档。";
             return;
         }
         var selected = Packages.Where(x => x.RunSelected).ToArray();

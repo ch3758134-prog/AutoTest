@@ -104,9 +104,9 @@
        <Button Content="删除" Command="{Binding DeleteCanRowCommand}" Padding="9,6" Margin="0,0,5,5"/>
        <Button Content="↑" Command="{Binding MoveCanRowUpCommand}" Padding="8,6" Margin="0,0,4,5"/>
        <Button Content="↓" Command="{Binding MoveCanRowDownCommand}" Padding="8,6" Margin="0,0,9,5"/>
-       <Button Content="发送勾选" Command="{Binding StartCanRowsCommand}"
+       <Button Content="批量单次发送" Command="{Binding StartCanRowsCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="10,6" Margin="0,0,6,5"
-        ToolTip="对所有勾选报文各发送一次。ECU CAN 周期发送目前不可用。"/>
+        ToolTip="仅向 ECU CAN 对所有勾选报文分别发送一次；不影响右侧单发，不启用周期发送。"/>
        <Button Content="停止" Command="{Binding StopCanRowsCommand}" Padding="9,6" Margin="0,0,5,5"/>
       </WrapPanel>
      </StackPanel>
@@ -132,9 +132,10 @@
        </ContextMenu>
       </DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTemplateColumn Header="选" Width="32">
+       <DataGridTemplateColumn Header="批量" Width="46">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <CheckBox IsChecked="{Binding Included,Mode=TwoWay}" IsEnabled="{Binding CanToggleIncluded}"
+          ToolTip="仅控制这条报文是否参加“批量单次发送”；右侧单发始终独立"
           HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>

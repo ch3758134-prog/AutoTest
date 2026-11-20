@@ -107,10 +107,11 @@ public sealed class RealTestWorkbenchService
                 !string.Equals(flashConfirmation, jobs.Values.Single().Consent,
                     StringComparison.Ordinal))
                 throw new UnauthorizedAccessException("实体 FLASH 授权不匹配；必须输入完整指纹。");
-            if (string.IsNullOrWhiteSpace(dutIdentity) ||
-                dutIdentity != dutIdentity.Trim() || dutIdentity.Length > 256 ||
-                dutIdentity.Any(char.IsControl))
-                throw new InvalidDataException("正式记录要求扫码枪或操作员输入有效 ECU 唯一编号；当前不能生成假编号。");
+            if (dutIdentity.Length > 0 &&
+                (string.IsNullOrWhiteSpace(dutIdentity) ||
+                 dutIdentity != dutIdentity.Trim() || dutIdentity.Length > 256 ||
+                 dutIdentity.Any(char.IsControl)))
+                throw new InvalidDataException("ECU 编号如填写，必须是不含控制字符且无首尾空格的真实编号。");
             await _signals.BindAsync(mappings, ct);
             actions = new ConfiguredStationActionPort(_hardware, _projects);
             await actions.PrepareAsync(mappings, ct);
@@ -215,17 +216,24 @@ public sealed class RealTestWorkbenchService
             bench?.Name ?? "未选择工位配置（开发模式）", benchRevision);
         var snapshot = new RunSnapshot(RunId.New(), projectSnapshot, station,
             RevisionFingerprint.FromSha256(planFingerprint), assets);
-        // Manual/keyboard-wedge entry has NOT passed a published scan rule.
-        // Explicitly use Development, never classify as production output.
-        var identity = new SessionIdentity(dutIdentity,
-            RevisionFingerprint.FromBytes("R1_DEV_TYPED_IDENTITY_RULE_V1"u8).Sha256,
-            "OPERATOR_OR_KEYBOARD_WEDGE_UNVERIFIED");
+        // Diagnostic runs with no DUT serial are deliberately tagged as
+        // unbound; the reserved token is NOT an ECU ID and must never appear
+        // as a verified scanner result or enter production statistics.
+        var unboundDut = dutIdentity.Length == 0;
+        var identity = unboundDut
+            ? new SessionIdentity("DUT_NOT_IDENTIFIED_DIAGNOSTIC_ONLY",
+                RevisionFingerprint.FromBytes("R1_DIAGNOSTIC_NO_DUT_BINDING"u8).Sha256,
+                "UNBOUND_DIAGNOSTIC_NOT_A_REAL_DUT_ID")
+            : new SessionIdentity(dutIdentity,
+                RevisionFingerprint.FromBytes("R1_DEV_TYPED_IDENTITY_RULE_V1"u8).Sha256,
+                "OPERATOR_OR_KEYBOARD_WEDGE_UNVERIFIED");
         var location = typeof(RealTestWorkbenchService).Assembly.Location;
         var build = File.Exists(location)
             ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(location)))
             : typeof(RealTestWorkbenchService).Assembly.FullName ?? "HOST_BUILD_UNKNOWN";
         return RunRecord.CreateFromSnapshot(snapshot, identity,
-            RecordRunMode.Development, DateTimeOffset.UtcNow, build);
+            unboundDut ? RecordRunMode.Diagnostic : RecordRunMode.Development,
+            DateTimeOffset.UtcNow, build);
     }
 
     public void RequestStop() => _running?.RequestStop();

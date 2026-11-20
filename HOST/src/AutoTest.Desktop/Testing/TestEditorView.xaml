@@ -84,7 +84,7 @@
      <Button Content="▶ 运行当前用例" Command="{Binding RunCommand}"
       Style="{StaticResource AtPrimaryButton}" Foreground="White"
       Margin="0,0,6,0" Padding="11,5"
-      ToolTip="需要连接 USB 主控、填写 ECU 编号并确认当前用例；执行真实 USB/CAN/KEY/IGN，支持停止和安全清理"/>
+      ToolTip="需要 USB 主控连接并确认真实运行；开发诊断 ECU 编号可留空，不计出厂；支持真实 CAN/KEY/IGN 与安全停止"/>
      <Button Content="■ 停止" Command="{Binding StopRunCommand}"
       Margin="0,0,10,0" Padding="8,5"/>
     </StackPanel>
@@ -93,12 +93,12 @@
      ToolTip="{Binding RunSummary}"/>
    </DockPanel>
    <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,5,0,0">
-    <TextBlock Text="ECU 编号（扫码输入）：" FontWeight="SemiBold"
+    <TextBlock Text="ECU 编号（开发可留空）：" FontWeight="SemiBold"
      Margin="0,0,7,0" VerticalAlignment="Center"/>
     <TextBox Width="315" Height="28" VerticalContentAlignment="Center"
      Text="{Binding DutIdentity,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-     ToolTip="扫码枪键盘输入或现场人工输入实际 ECU 唯一编号，绝不自动生成"/>
-    <TextBlock Text="本入口归档为开发运行，不计入出厂统计"
+     ToolTip="可直接手工输入真实 ECU 编号；不需要已完成扫码匹配规则。留空时仅作为未绑定 DUT 的诊断运行"/>
+    <TextBlock Text="留空仅诊断运行；无需扫码配置，不计入出厂统计"
      Foreground="#7A664B" Margin="10,0,0,0" VerticalAlignment="Center"/>
    </StackPanel>
    <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,5,0,0">

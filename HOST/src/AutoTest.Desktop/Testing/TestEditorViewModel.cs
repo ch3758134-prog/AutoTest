@@ -895,11 +895,12 @@ public sealed class TestEditorViewModel : BindableBase
             RefreshCommands();
             return;
         }
-        if (string.IsNullOrWhiteSpace(DutIdentity) ||
-            DutIdentity != DutIdentity.Trim() || DutIdentity.Length > 256 ||
-            DutIdentity.Any(char.IsControl))
+        if (DutIdentity.Length > 0 &&
+            (string.IsNullOrWhiteSpace(DutIdentity) ||
+             DutIdentity != DutIdentity.Trim() || DutIdentity.Length > 256 ||
+             DutIdentity.Any(char.IsControl)))
         {
-            StatusMessage = "请先输入或扫描真实 ECU 唯一编号，再确认运行；不会使用模拟编号。";
+            StatusMessage = "ECU 编号可以留空进行开发诊断；如填写，必须是真实且格式合法的编号。";
             RefreshCommands();
             return;
         }
@@ -922,7 +923,9 @@ public sealed class TestEditorViewModel : BindableBase
             RunApproval = RealTestWorkbenchService.ExpectedApproval(plan);
             RefreshCommands();
             StatusMessage = ExpectedFlashApproval.Length == 0 ?
-                "当前用例已确认，可以运行真实步骤。" :
+                (DutIdentity.Length == 0
+                    ? "未填写 ECU 编号：可执行真实开发诊断，记录标记为未绑定 DUT，不能计入出厂。"
+                    : "当前用例已确认，可以运行真实步骤；编号尚未经扫码规则验证。") :
                 "烧录资源已冻结。必须在下方手动输入完整 FLASH 授权文字；授权不写入工程。";
             RunSummary = "已确认当前测试用例 · 尚未执行";
         }
@@ -952,10 +955,12 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = "请先点击“确认当前用例”，再运行真实测试。";
             return;
         }
-        if (string.IsNullOrWhiteSpace(DutIdentity) || DutIdentity != DutIdentity.Trim() ||
-            DutIdentity.Any(char.IsControl))
+        if (DutIdentity.Length > 0 &&
+            (string.IsNullOrWhiteSpace(DutIdentity) ||
+             DutIdentity != DutIdentity.Trim() || DutIdentity.Length > 256 ||
+             DutIdentity.Any(char.IsControl)))
         {
-            StatusMessage = "请先扫描或输入真实 ECU 唯一编号；R1 当前以开发运行归档，不计出厂数量。";
+            StatusMessage = "ECU 编号格式不合法；开发联调时可以留空，记录为未绑定 DUT 诊断。";
             return;
         }
         if (ExpectedFlashApproval.Length > 0 &&
