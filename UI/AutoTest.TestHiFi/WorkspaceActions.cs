@@ -749,6 +749,75 @@ public partial class MainWindow
             RecentProjectsMenu.Items.Add(item);
         }
     }
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if(_workspaceLoaded)UpdateCompactLayout();
+    }
+    private void ToggleCompactInspector_Click(object sender,RoutedEventArgs e)
+    {
+        if(!_compactLayout || _activePage?.IsTestPreview != true)return;
+        _compactInspector=!_compactInspector;
+        UpdateCompactLayout();
+    }
+    private void UpdateCompactLayout()
+    {
+        if(!_workspaceLoaded || ActualWidth<=0)return;
+        var compact=ActualWidth<1160;
+        if(compact && !_compactLayout)
+        {
+            _normalNavigatorWidth=Math.Max(215,NavigatorColumn.ActualWidth);
+            _normalInspectorWidth=Math.Max(315,InspectorColumn.ActualWidth);
+            _normalIssuesHeight=IssuesRow.Height.Value;
+        }
+        _compactLayout=compact;
+        if(compact)
+        {
+            NavigatorColumn.Width=new GridLength(225);
+            InspectorColumn.Width=new GridLength(0);
+            InspectorSplitter.Visibility=Visibility.Collapsed;
+            IssuesSplitter.Visibility=Visibility.Collapsed;
+            IssuesRow.Height=new GridLength(0);
+            ProblemsSurface.Visibility=Visibility.Collapsed;
+            CompactInspectorButton.Visibility=_activePage?.IsTestPreview==true
+                ? Visibility.Visible : Visibility.Collapsed;
+            if(_compactInspector && _activePage?.IsTestPreview==true)
+            {
+                Grid.SetColumn(InspectorSurface,2);
+                Grid.SetColumnSpan(InspectorSurface,3);
+                Grid.SetRow(InspectorSurface,1);
+                Grid.SetRowSpan(InspectorSurface,2);
+                Panel.SetZIndex(InspectorSurface,7);
+                InspectorSurface.Visibility=Visibility.Visible;
+                TestStepSurface.Visibility=Visibility.Collapsed;
+                CompactInspectorButton.Content="← 步骤结构";
+            }
+            else
+            {
+                InspectorSurface.Visibility=Visibility.Collapsed;
+                TestStepSurface.Visibility=Visibility.Visible;
+                CompactInspectorButton.Content="步骤参数 →";
+            }
+        }
+        else
+        {
+            NavigatorColumn.Width=new GridLength(Math.Clamp(_normalNavigatorWidth,215,370));
+            InspectorColumn.Width=new GridLength(Math.Clamp(_normalInspectorWidth,315,520));
+            Grid.SetColumn(InspectorSurface,4);
+            Grid.SetColumnSpan(InspectorSurface,1);
+            Grid.SetRow(InspectorSurface,0);
+            Grid.SetRowSpan(InspectorSurface,2);
+            Panel.SetZIndex(InspectorSurface,0);
+            InspectorSurface.Visibility=Visibility.Visible;
+            TestStepSurface.Visibility=Visibility.Visible;
+            ProblemsSurface.Visibility=Visibility.Visible;
+            InspectorSplitter.Visibility=_activePage?.IsTestPreview==true ? Visibility.Visible : Visibility.Collapsed;
+            IssuesSplitter.Visibility=_activePage?.IsTestPreview==true ? Visibility.Visible : Visibility.Collapsed;
+            IssuesRow.Height=new GridLength(_normalIssuesHeight<=0?165:_normalIssuesHeight);
+            CompactInspectorButton.Visibility=Visibility.Collapsed;
+            _compactInspector=false;
+        }
+    }
+
     private void Window_Closing(object? sender,CancelEventArgs e)
     {
         if(!CanLeaveCurrentProject()){e.Cancel=true;return;}
