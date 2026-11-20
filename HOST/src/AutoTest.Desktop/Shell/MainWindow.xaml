@@ -3,10 +3,10 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:chrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
  xmlns:navigation="clr-namespace:AutoTest.Desktop.Shell.Navigation"
- Title="AutoTest · ECU 测试 IDE" Width="1440" Height="900" MinWidth="1180" MinHeight="650"
+ Title="AutoTest · ECU 测试 IDE" Width="1530" Height="880" MinWidth="1220" MinHeight="680"
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
  PreviewKeyDown="Window_PreviewKeyDown"
- ResizeMode="CanResize" Background="#EEF2F8" Foreground="#1E2C41"
+ ResizeMode="CanResize" Background="#F6F7F8" Foreground="#252C34"
  FontFamily="{StaticResource UiFont}" FontSize="13"
  UseLayoutRounding="True" SnapsToDevicePixels="True">
  <chrome:WindowChrome.WindowChrome>
@@ -31,13 +31,13 @@
    <Setter Property="Template">
     <Setter.Value><ControlTemplate TargetType="{x:Type TabItem}">
      <Border x:Name="TabSurface" Height="34" Background="{TemplateBinding Background}"
-      BorderBrush="#DBE3ED" BorderThickness="0,0,1,0" Padding="9,0">
+      BorderBrush="#E1E5E9" BorderThickness="0,0,1,0" Padding="9,0">
       <ContentPresenter ContentSource="Header" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
      </Border>
      <ControlTemplate.Triggers>
       <Trigger Property="IsSelected" Value="True">
        <Setter TargetName="TabSurface" Property="Background" Value="White"/>
-       <Setter TargetName="TabSurface" Property="BorderBrush" Value="#2368BD"/>
+       <Setter TargetName="TabSurface" Property="BorderBrush" Value="#277B70"/>
        <Setter TargetName="TabSurface" Property="BorderThickness" Value="0,0,0,2"/>
       </Trigger>
       <Trigger Property="IsMouseOver" Value="True">
@@ -61,8 +61,8 @@
      </Border>
      <ControlTemplate.Triggers>
       <Trigger Property="IsSelected" Value="True">
-       <Setter TargetName="Line" Property="BorderBrush" Value="#2368BD"/>
-       <Setter Property="Foreground" Value="#2368BD"/>
+       <Setter TargetName="Line" Property="BorderBrush" Value="#277B70"/>
+       <Setter Property="Foreground" Value="#277B70"/>
        <Setter Property="FontWeight" Value="SemiBold"/>
        <Setter TargetName="Line" Property="Background" Value="White"/>
       </Trigger>
@@ -74,12 +74,12 @@
    </Setter>
   </Style>
  </Window.Resources>
- <Grid Background="#EEF2F8">
+ <Grid Background="#F6F7F8">
   <Grid.RowDefinitions><RowDefinition Height="41"/><RowDefinition Height="44"/>
    <RowDefinition Height="*"/><RowDefinition Height="27"/></Grid.RowDefinitions>
 
   <!-- A single desktop-native 38px caption and IDE menu; no second OS titlebar. -->
-  <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
+  <Border Grid.Row="0" Background="White" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
@@ -96,14 +96,14 @@
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="9,0,15,0"
      VerticalAlignment="Center" chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <Border Width="23" Height="23" CornerRadius="6" Background="#2368BD">
-      <TextBlock Text="AT" Foreground="White" FontSize="11" FontWeight="Bold"
+     <Border Width="23" Height="23" CornerRadius="6" Background="#277B70">
+      <TextBlock Text="AT" Foreground="#35434D" FontSize="11" FontWeight="Bold"
        VerticalAlignment="Center" HorizontalAlignment="Center"/>
      </Border>
      <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
      <Border Margin="6,0,0,0" Background="#E8F1FD" BorderBrush="#C8DEF9"
       BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
-      <TextBlock Text="IDE" Foreground="#2368BD" FontSize="10"/>
+      <TextBlock Text="IDE" Foreground="#277B70" FontSize="10"/>
      </Border>
     </StackPanel>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
@@ -152,7 +152,7 @@
    </DockPanel>
   </Border>
 
-  <Border Grid.Row="1" Background="#FBFCFF" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
+  <Border Grid.Row="1" Background="#FAFBFB" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
    <DockPanel Margin="10,0" LastChildFill="False">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="手动台架" Command="{Binding OpenManualBenchCommand}"
@@ -165,7 +165,7 @@
       ToolTip="查看实际波形证据、参考及双游标分析" Margin="0,0,5,0"/>
      <Button Content="波形配置" Command="{Binding OpenWaveConfigCommand}"
       ToolTip="绑定 DBC 信号、编辑判定条件及建立参考" Margin="0,0,5,0"/>
-     <Border Background="#DBE3ED" Width="1" Height="18" Margin="0,0,8,0"/>
+     <Border Background="#E1E5E9" Width="1" Height="18" Margin="0,0,8,0"/>
      <Button Content="{Binding ConnectionButtonText}" Command="{Binding ConnectHardwareCommand}"
       ToolTip="{Binding HardwareStatus}" Margin="0,0,5,0"/>
      <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"/>
@@ -175,7 +175,7 @@
      <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
       VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis"
       ToolTip="{Binding CurrentProjectPath}"/>
-     <Border Background="#DBE3ED" Width="1" Height="18" Margin="10,0"/>
+     <Border Background="#E1E5E9" Width="1" Height="18" Margin="10,0"/>
      <Button Content="▣ 保存" Command="{Binding SaveActiveCommand}" Margin="0,0,5,0"/>
      <Button Content="↶" Command="{Binding UndoActiveCommand}" Width="28" MinWidth="0"
       ToolTip="撤销 Ctrl+Z" Margin="0,0,4,0"/>
@@ -189,9 +189,9 @@
    </DockPanel>
   </Border>
 
-  <Grid Grid.Row="2" Background="#F9FBFD">
+  <Grid Grid.Row="2" Background="#FFFFFF">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="TreeColumn" Width="322" MinWidth="280" MaxWidth="510"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="286" MinWidth="250" MaxWidth="420"/>
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*" MinWidth="520"/>
    </Grid.ColumnDefinitions>
@@ -200,8 +200,8 @@
     HorizontalAlignment="Stretch" ShowsPreview="True"/>
    <Grid Grid.Column="2">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border Grid.Row="0" Height="35" Background="#EDF2F8"
-     BorderBrush="#DBE3ED" BorderThickness="0,0,0,1"
+    <Border Grid.Row="0" Height="35" Background="#F3F5F5"
+     BorderBrush="#E1E5E9" BorderThickness="0,0,0,1"
      Visibility="{Binding HasActiveEditor,Converter={StaticResource BoolToVisibility}}">
      <DockPanel LastChildFill="True">
       <TabControl x:Name="DocumentTabs" ItemsSource="{Binding OpenEditors}"
@@ -220,7 +220,7 @@
         <DataTemplate>
          <StackPanel Orientation="Horizontal">
           <TextBlock Text="{Binding Title}" MaxWidth="190" TextTrimming="CharacterEllipsis"
-           VerticalAlignment="Center" Foreground="#2C5F99" FontSize="11"/>
+           VerticalAlignment="Center" Foreground="#3D635E" FontSize="11"/>
           <Button Content="×" Tag="{Binding}" Click="CloseEditorTab_Click"
            Width="19" Height="19" MinWidth="0" MinHeight="0"
            Padding="0" Margin="4,0,0,0" Focusable="False"
@@ -235,13 +235,13 @@
      <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*" MinWidth="330"/>
       <ColumnDefinition x:Name="InspectorSplitterColumn" Width="4"/>
-      <ColumnDefinition x:Name="InspectorColumn" Width="390" MinWidth="0" MaxWidth="560"/>
+      <ColumnDefinition x:Name="InspectorColumn" Width="366" MinWidth="0" MaxWidth="520"/>
      </Grid.ColumnDefinitions>
      <Grid Grid.Column="0">
       <Grid.RowDefinitions>
        <RowDefinition Height="*" MinHeight="180"/>
        <RowDefinition x:Name="BottomSplitterRow" Height="4"/>
-       <RowDefinition x:Name="BottomRow" Height="158" MinHeight="0"/>
+       <RowDefinition x:Name="BottomRow" Height="145" MinHeight="0"/>
       </Grid.RowDefinitions>
       <Grid Grid.Row="0" Background="White">
        <ContentControl Content="{Binding ActiveEditorView}"
@@ -251,7 +251,7 @@
         MaxWidth="510" Margin="30,22"
         Visibility="{Binding NoOpenEditors,Converter={StaticResource BoolToVisibility}}">
         <TextBlock Text="{Binding StartTitle}" FontWeight="SemiBold" FontSize="18"
-         Foreground="#294D79" Margin="0,0,0,9"/>
+         Foreground="#3E5155" Margin="0,0,0,9"/>
         <TextBlock Text="{Binding StartDescription}" FontSize="12" Foreground="#647A93"
          TextWrapping="Wrap" Margin="0,0,0,20"/>
         <StackPanel Orientation="Horizontal">
@@ -263,17 +263,17 @@
         </StackPanel>
        </StackPanel>
       </Grid>
-      <GridSplitter Grid.Row="1" Background="#E5ECF5" HorizontalAlignment="Stretch"
+      <GridSplitter Grid.Row="1" Background="#E4E8E9" HorizontalAlignment="Stretch"
        ResizeDirection="Rows" ShowsPreview="True"/>
       <!-- HTML: bottom dock contains its tabs on the first line, not a nested native tab row. -->
-      <Grid Grid.Row="2" Background="#FBFCFF">
-       <TabControl BorderThickness="0" Background="#FBFCFF" FontSize="11"
+      <Grid Grid.Row="2" Background="#FAFBFB">
+       <TabControl BorderThickness="0" Background="#FAFBFB" FontSize="11"
         ItemContainerStyle="{StaticResource ObservationTabItem}">
         <TabControl.Template>
          <ControlTemplate TargetType="{x:Type TabControl}">
           <Grid>
            <Grid.RowDefinitions><RowDefinition Height="30"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-           <Border Grid.Row="0" Background="#FBFCFF" BorderBrush="#DBE3ED"
+           <Border Grid.Row="0" Background="#FAFBFB" BorderBrush="#E1E5E9"
             BorderThickness="0,0,0,1">
             <TabPanel IsItemsHost="True" HorizontalAlignment="Left"/>
            </Border>
@@ -330,9 +330,9 @@
      </Grid>
      <GridSplitter Grid.Column="1" ResizeDirection="Columns"
       Background="#EDF2F7" HorizontalAlignment="Stretch" ShowsPreview="True"/>
-     <Grid Grid.Column="2" Background="#FBFCFF">
+     <Grid Grid.Column="2" Background="#FAFBFB">
       <Grid.RowDefinitions><RowDefinition Height="35"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-      <Border Grid.Row="0" Background="#FBFCFF" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
+      <Border Grid.Row="0" Background="#FAFBFB" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
        <DockPanel Margin="12,0">
         <Button DockPanel.Dock="Right" Content="×" Click="ToggleInspector_Click"
          Width="24" Height="24" MinWidth="0" MinHeight="0" Style="{StaticResource AtQuietButton}"
@@ -348,25 +348,25 @@
    </Grid>
   </Grid>
 
-  <Border Grid.Row="3" Background="#2364A6">
+  <Border Grid.Row="3" Background="#F8FAFA" BorderBrush="#E1E6E8" BorderThickness="0,1,0,0">
    <DockPanel Margin="11,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="{Binding HardwareStatus}" Foreground="White"
+     <TextBlock Text="{Binding HardwareStatus}" Foreground="#35434D"
       FontSize="10" VerticalAlignment="Center" Margin="0,0,13,0"/>
-     <TextBlock Text="扫码" Foreground="#E3F1FF" FontSize="10"
+     <TextBlock Text="扫码" Foreground="#75828D" FontSize="10"
       VerticalAlignment="Center" Margin="0,0,4,0"/>
      <TextBox x:Name="ScannerEntry" Width="94" Height="20" MinHeight="0" Padding="4,0"
       FontSize="10" VerticalContentAlignment="Center" Margin="0,0,8,0"
       ToolTip="扫码枪键盘输入；按 Enter 完成匹配，不自动触发生产执行"
       PreviewTextInput="ScannerEntry_TextInput" PreviewKeyDown="ScannerEntry_KeyDown"/>
      <Button Content="观察" Click="ToggleBottom_Click"
-      Foreground="White" Background="Transparent" BorderThickness="0"
+      Foreground="#35434D" Background="Transparent" BorderThickness="0"
       MinWidth="38" MinHeight="20" Height="20" Padding="2,0" FontSize="10" Margin="0,0,3,0"/>
      <Button Content="属性" Click="ToggleInspector_Click"
-      Foreground="White" Background="Transparent" BorderThickness="0"
+      Foreground="#35434D" Background="Transparent" BorderThickness="0"
       MinWidth="38" MinHeight="20" Height="20" Padding="2,0" FontSize="10" Margin="0"/>
     </StackPanel>
-    <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="11"
+    <TextBlock Text="{Binding StatusMessage}" Foreground="#35434D" FontSize="11"
      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
