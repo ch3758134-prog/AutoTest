@@ -35,7 +35,7 @@
      </Border>
      <ControlTemplate.Triggers>
       <Trigger Property="IsHighlighted" Value="True">
-       <Setter TargetName="ItemSurface" Property="Background" Value="#EEF5FD"/>
+       <Setter TargetName="ItemSurface" Property="Background" Value="#F1F6FF"/>
       </Trigger>
       <Trigger Property="IsSelected" Value="True">
        <Setter TargetName="ItemSurface" Property="Background" Value="#E6F1FD"/>

@@ -3,7 +3,7 @@
  <!-- One compact border/button chrome for the approved G3 12px IDE. -->
  <Style x:Key="AtButton" TargetType="{x:Type Button}">
   <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
-  <Setter Property="FontSize" Value="11"/>
+  <Setter Property="FontSize" Value="12"/>
   <Setter Property="FontWeight" Value="Normal"/>
   <Setter Property="Foreground" Value="{StaticResource Ink}"/>
   <Setter Property="Background" Value="White"/>
@@ -30,18 +30,18 @@
      </Border>
      <ControlTemplate.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
-       <Setter TargetName="Surface" Property="Background" Value="#F1F5F4"/>
-       <Setter TargetName="Surface" Property="BorderBrush" Value="#96BCB3"/>
+       <Setter TargetName="Surface" Property="Background" Value="#F6F8FB"/>
+       <Setter TargetName="Surface" Property="BorderBrush" Value="#9DBCEB"/>
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
-       <Setter TargetName="Surface" Property="Background" Value="#DBEBE6"/>
+       <Setter TargetName="Surface" Property="Background" Value="#E5EFFF"/>
       </Trigger>
       <Trigger Property="IsEnabled" Value="False">
        <Setter Property="Cursor" Value="Arrow"/>
        <Setter TargetName="Surface" Property="Opacity" Value="0.45"/>
       </Trigger>
       <Trigger Property="IsKeyboardFocused" Value="True">
-       <Setter TargetName="Surface" Property="BorderBrush" Value="#277B70"/>
+       <Setter TargetName="Surface" Property="BorderBrush" Value="#3478D6"/>
       </Trigger>
      </ControlTemplate.Triggers>
     </ControlTemplate>
@@ -50,9 +50,9 @@
  </Style>
  <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}"/>
  <Style x:Key="AtPrimaryButton" TargetType="{x:Type Button}" BasedOn="{StaticResource AtButton}">
-  <Setter Property="Background" Value="#277B70"/>
+  <Setter Property="Background" Value="#3478D6"/>
   <Setter Property="Foreground" Value="White"/>
-  <Setter Property="BorderBrush" Value="#277B70"/>
+  <Setter Property="BorderBrush" Value="#3478D6"/>
   <Setter Property="Template">
    <Setter.Value>
     <ControlTemplate TargetType="{x:Type Button}">
@@ -67,18 +67,18 @@
      </Border>
      <ControlTemplate.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
-       <Setter TargetName="Surface" Property="Background" Value="#226B61"/>
-       <Setter TargetName="Surface" Property="BorderBrush" Value="#226B61"/>
+       <Setter TargetName="Surface" Property="Background" Value="#2868C3"/>
+       <Setter TargetName="Surface" Property="BorderBrush" Value="#2868C3"/>
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
-       <Setter TargetName="Surface" Property="Background" Value="#1D5F56"/>
+       <Setter TargetName="Surface" Property="Background" Value="#235BAB"/>
       </Trigger>
       <Trigger Property="IsEnabled" Value="False">
        <Setter Property="Cursor" Value="Arrow"/>
        <Setter TargetName="Surface" Property="Opacity" Value="0.45"/>
       </Trigger>
       <Trigger Property="IsKeyboardFocused" Value="True">
-       <Setter TargetName="Surface" Property="BorderBrush" Value="#8BC8B8"/>
+       <Setter TargetName="Surface" Property="BorderBrush" Value="#A7C8F6"/>
       </Trigger>
      </ControlTemplate.Triggers>
     </ControlTemplate>

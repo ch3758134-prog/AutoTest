@@ -57,8 +57,8 @@
         <Setter TargetName="RowChrome" Property="Background" Value="#F1F6F4"/>
        </Trigger>
        <Trigger Property="IsSelected" Value="True">
-        <Setter TargetName="RowChrome" Property="Background" Value="#E7F3EE"/>
-        <Setter TargetName="RowChrome" Property="BorderBrush" Value="#CDE2D8"/>
+        <Setter TargetName="RowChrome" Property="Background" Value="#EEF5FF"/>
+        <Setter TargetName="RowChrome" Property="BorderBrush" Value="#E7EFFB"/>
        </Trigger>
        <DataTrigger Binding="{Binding Role}" Value="Root">
         <Setter TargetName="RowChrome" Property="Height" Value="44"/>
@@ -105,17 +105,17 @@
     <Viewbox x:Name="NodeIcon" Grid.Column="1" Width="16" Height="16"
      VerticalAlignment="Center" Stretch="Uniform" Margin="0,0,4,0">
      <Canvas Width="24" Height="24">
-      <Path Data="{Binding IconPath}" Stroke="#7F9088" StrokeThickness="1.65"
+      <Path Data="{Binding IconPath}" Stroke="#97B6DE" StrokeThickness="1.65"
        StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="Transparent"/>
      </Canvas>
     </Viewbox>
     <TextBlock x:Name="NodeText" Grid.Column="2" Text="{Binding Label}"
-     FontSize="13" Foreground="#354A41" TextTrimming="CharacterEllipsis"
+     FontSize="13" Foreground="#3B4B5A" TextTrimming="CharacterEllipsis"
      VerticalAlignment="Center" Margin="5,0,3,0" Cursor="Hand"
      PreviewMouseLeftButtonDown="NodeText_PreviewMouseLeftButtonDown"
      ToolTip="单击选择 · 双击打开 · F2 重命名 · 右键更多操作"/>
     <TextBlock x:Name="NodeCount" Grid.Column="3" Text="{Binding CountLabel}"
-     FontSize="10" FontWeight="SemiBold" Foreground="#6F8478" VerticalAlignment="Center"
+     FontSize="10" FontWeight="SemiBold" Foreground="#627C9D" VerticalAlignment="Center"
      Margin="0,0,5,0"/>
     <Button x:Name="AddResource" Grid.Column="4" Content="＋"
      Click="AddResource_Click" Focusable="False" Height="24" Width="24"
@@ -145,18 +145,18 @@
     <DataTrigger Binding="{Binding Role}" Value="Section">
      <Setter TargetName="NodeText" Property="FontSize" Value="12"/>
      <Setter TargetName="NodeText" Property="FontWeight" Value="Bold"/>
-     <Setter TargetName="NodeText" Property="Foreground" Value="#62746E"/>
+     <Setter TargetName="NodeText" Property="Foreground" Value="#627C9D"/>
      <Setter TargetName="NodeIcon" Property="Visibility" Value="Collapsed"/>
     </DataTrigger>
     <DataTrigger Binding="{Binding Role}" Value="Project">
      <Setter TargetName="NodeText" Property="FontWeight" Value="SemiBold"/>
-     <Setter TargetName="NodeCount" Property="Foreground" Value="#277B70"/>
+     <Setter TargetName="NodeCount" Property="Foreground" Value="#3478D6"/>
     </DataTrigger>
     <DataTrigger Binding="{Binding Role}" Value="Case">
      <Setter TargetName="NodeText" Property="FontSize" Value="12"/>
     </DataTrigger>
     <DataTrigger Binding="{Binding Role}" Value="Placeholder">
-     <Setter TargetName="NodeText" Property="Foreground" Value="#82938C"/>
+     <Setter TargetName="NodeText" Property="Foreground" Value="#97B6DE"/>
      <Setter TargetName="NodeIcon" Property="Visibility" Value="Collapsed"/>
     </DataTrigger>
    </HierarchicalDataTemplate.Triggers>

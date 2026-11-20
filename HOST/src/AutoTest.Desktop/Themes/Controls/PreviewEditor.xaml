@@ -5,10 +5,10 @@
   <ResourceDictionary Source="../Tokens/PreviewTokens.xaml"/>
  </ResourceDictionary.MergedDictionaries>
  <BooleanToVisibilityConverter x:Key="B2V"/>
- <SolidColorBrush x:Key="AtPreviewSelected" Color="#E9F4EE"/>
- <SolidColorBrush x:Key="AtPreviewTreeCaseSelected" Color="#E5F1EC"/>
+ <SolidColorBrush x:Key="AtPreviewSelected" Color="#ECF4FF"/>
+ <SolidColorBrush x:Key="AtPreviewTreeCaseSelected" Color="#EAF2FF"/>
  <SolidColorBrush x:Key="AtPreviewTreeGroupSelected" Color="#EAF3EF"/>
- <SolidColorBrush x:Key="AtPreviewTreeText" Color="#405D51"/>
+ <SolidColorBrush x:Key="AtPreviewTreeText" Color="#425263"/>
  <SolidColorBrush x:Key="AtPreviewBreakpoint" Color="#C04A57"/>
  <SolidColorBrush x:Key="AtPreviewStatusDisabled" Color="#9DA9A2"/>
  <SolidColorBrush x:Key="AtPreviewBranchSurface" Color="#F1F3F3"/>
@@ -47,9 +47,9 @@
    </Setter>
   </Style>
   <Style x:Key="PrimaryBtn" TargetType="Button" BasedOn="{StaticResource Btn}">
-   <Setter Property="Background" Value="#277B70"/>
+   <Setter Property="Background" Value="#3478D6"/>
    <Setter Property="Foreground" Value="White"/>
-   <Setter Property="BorderBrush" Value="#277B70"/>
+   <Setter Property="BorderBrush" Value="#3478D6"/>
    <Setter Property="Template">
     <Setter.Value>
      <ControlTemplate TargetType="Button">
@@ -60,10 +60,10 @@
       </Border>
       <ControlTemplate.Triggers>
        <Trigger Property="IsMouseOver" Value="True">
-        <Setter TargetName="PrimaryBorder" Property="Background" Value="#226C60"/>
+        <Setter TargetName="PrimaryBorder" Property="Background" Value="#475668"/>
        </Trigger>
        <Trigger Property="IsPressed" Value="True">
-        <Setter TargetName="PrimaryBorder" Property="Background" Value="#1D5D53"/>
+        <Setter TargetName="PrimaryBorder" Property="Background" Value="#475668"/>
        </Trigger>
       </ControlTemplate.Triggers>
      </ControlTemplate>
@@ -92,12 +92,12 @@
    <Setter Property="FontSize" Value="11"/>
   </Style>
   <Style x:Key="FieldLabel" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#6A8074"/>
+   <Setter Property="Foreground" Value="#627C9D"/>
    <Setter Property="FontSize" Value="11"/>
    <Setter Property="Margin" Value="0,0,0,5"/>
   </Style>
   <Style x:Key="BottomTab" TargetType="Button" BasedOn="{StaticResource BareBtn}">
-   <Setter Property="Foreground" Value="#697F73"/>
+   <Setter Property="Foreground" Value="#627C9D"/>
    <Setter Property="FontSize" Value="11"/>
    <Setter Property="Margin" Value="3,0,8,0"/>
   </Style>
@@ -105,7 +105,7 @@
    <Setter Property="HorizontalContentAlignment" Value="Left"/>
    <Setter Property="HorizontalAlignment" Value="Stretch"/>
    <Setter Property="FontSize" Value="11"/>
-   <Setter Property="Foreground" Value="#405D51"/>
+   <Setter Property="Foreground" Value="#425263"/>
   </Style>
   <Style x:Key="PreviewListBoxItemStyle" TargetType="ListBoxItem">
    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -123,7 +123,7 @@
      <ControlTemplate.Triggers>
       <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Container" Property="Background" Value="#F7FAF8"/></Trigger>
       <DataTrigger Binding="{Binding IsMatch}" Value="True"><Setter TargetName="Container" Property="Background" Value="#FFF4DC"/></DataTrigger>
-      <Trigger Property="IsSelected" Value="True"><Setter TargetName="Container" Property="Background" Value="#E9F4EE"/><Setter TargetName="Container" Property="BorderBrush" Value="#A3C8B3"/></Trigger>
+      <Trigger Property="IsSelected" Value="True"><Setter TargetName="Container" Property="Background" Value="#ECF4FF"/><Setter TargetName="Container" Property="BorderBrush" Value="#B8D2F5"/></Trigger>
      </ControlTemplate.Triggers>
     </ControlTemplate></Setter.Value>
    </Setter>
@@ -189,7 +189,7 @@
  <!-- Search match / selection rail style for test step rows. -->
  <Style x:Key="AtPreviewMatchRail" TargetType="Border">
             <Setter Property="Visibility" Value="Collapsed"/>
-            <Setter Property="Background" Value="#30866D"/>
+            <Setter Property="Background" Value="#3478D6"/>
             <Style.Triggers>
              <DataTrigger Binding="{Binding IsMatch}" Value="True">
               <Setter Property="Visibility" Value="Visible"/>
@@ -197,7 +197,7 @@
              </DataTrigger>
              <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem},Path=IsSelected}" Value="True">
               <Setter Property="Visibility" Value="Visible"/>
-              <Setter Property="Background" Value="#2D8A70"/>
+              <Setter Property="Background" Value="#3478D6"/>
              </DataTrigger>
             </Style.Triggers>
            </Style>
@@ -251,7 +251,7 @@
            Height="24" MinHeight="0" Padding="8,2" Margin="4,0,0,0"
            Style="{StaticResource Btn}"/>
           <TextBlock DockPanel.Dock="Right" Text="{Binding CountLabel}"
-           Foreground="#8C9D94" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+           Foreground="#97B6DE" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
            <Button Content="{Binding ExpandMark}" Command="{Binding DataContext.TogglePhaseCommand,RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}"
             Style="{StaticResource BareBtn}" Width="24" FontSize="11"/>
@@ -263,9 +263,9 @@
         <Border Style="{StaticResource AtPreviewBranchRow}" Visibility="{Binding IsBranch,Converter={StaticResource B2V}}">
          <DockPanel>
           <Button DockPanel.Dock="Right" Content="＋ 插入" Command="{Binding DataContext.AddRowCommand,RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}"
-           Style="{StaticResource BareBtn}" Foreground="#687E76"/>
+           Style="{StaticResource BareBtn}" Foreground="#627C9D"/>
           <TextBlock Text="{Binding Name}" Margin="{Binding Indent}" VerticalAlignment="Center"
-           FontSize="11" Foreground="#657B72" FontWeight="SemiBold"/>
+           FontSize="11" Foreground="#627C9D" FontWeight="SemiBold"/>
          </DockPanel>
         </Border>
         <Grid Visibility="{Binding IsStep,Converter={StaticResource B2V}}" Margin="0">
@@ -278,7 +278,7 @@
          </Grid.ColumnDefinitions>
          <Border Width="3" HorizontalAlignment="Left" Panel.ZIndex="1" Style="{StaticResource AtPreviewMatchRail}"/>
          <TextBlock Grid.Column="0" Text="{Binding Number}" HorizontalAlignment="Right"
-          VerticalAlignment="Center" Margin="0,0,10,0" FontSize="10" Foreground="#899990"
+          VerticalAlignment="Center" Margin="0,0,10,0" FontSize="10" Foreground="#97B6DE"
           FontFamily="Consolas"/>
          <StackPanel Grid.Column="1" Margin="{Binding Indent}" Orientation="Horizontal"
           VerticalAlignment="Center" ClipToBounds="True">
@@ -299,7 +299,7 @@
  </DataTemplate>
  <!-- Step palette shares the same button and typography system as the editor. -->
  <Style x:Key="AtPreviewPaletteGroup" TargetType="TextBlock">
-  <Setter Property="Foreground" Value="#647B6D"/>
+  <Setter Property="Foreground" Value="#627C9D"/>
   <Setter Property="FontWeight" Value="SemiBold"/>
   <Setter Property="FontSize" Value="{StaticResource AtUiCaptionSize}"/>
   <Setter Property="Margin" Value="0,10,0,6"/>
@@ -310,7 +310,7 @@
   <Setter Property="Margin" Value="0,0,7,6"/>
   <Setter Property="Padding" Value="8,6,8,6"/>
   <Setter Property="HorizontalContentAlignment" Value="Left"/>
-  <Setter Property="Foreground" Value="#3D5A4E"/>
+  <Setter Property="Foreground" Value="#475668"/>
   <Setter Property="Background" Value="{StaticResource AtUiSurface}"/>
   <Setter Property="BorderBrush" Value="#E0E8E2"/>
  </Style>
@@ -380,7 +380,7 @@
      <CheckBox Content="{Binding Signal.DisplayName}" VerticalAlignment="Center"
       IsChecked="{Binding IsSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       ToolTip="{Binding Signal.RangeLabel}"
-      Foreground="#405D51" FontSize="11" Margin="0,0,4,0"/>
+      Foreground="#425263" FontSize="11" Margin="0,0,4,0"/>
      <TextBox Grid.Column="1" Height="26" Padding="5,3" FontSize="11"
       Text="{Binding PhysicalValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       Style="{StaticResource AtPreviewDynamicInput}"
@@ -407,7 +407,7 @@
   <Setter Property="Background" Value="Transparent"/>
   <Setter Property="BorderThickness" Value="0"/>
   <Setter Property="FontSize" Value="{StaticResource AtUiCaptionSize}"/>
-  <Setter Property="Foreground" Value="#405D51"/>
+  <Setter Property="Foreground" Value="#425263"/>
  </Style>
  <Style x:Key="AtTestPhaseHeader" TargetType="{x:Type Border}">
   <Setter Property="Height" Value="44"/>
@@ -423,7 +423,7 @@
    </DataTrigger>
    <DataTrigger Binding="{Binding PhaseKind}" Value="Test">
     <Setter Property="Background" Value="#F0F9F6"/>
-    <Setter Property="BorderBrush" Value="#CDE9E1"/>
+    <Setter Property="BorderBrush" Value="#E3EEFD"/>
    </DataTrigger>
    <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup">
     <Setter Property="Background" Value="#FFFAF2"/>
@@ -434,7 +434,7 @@
  <Style x:Key="AtTestPhaseAddButton" TargetType="{x:Type Button}"
   BasedOn="{StaticResource Btn}">
   <Setter Property="Background" Value="White"/>
-  <Setter Property="Foreground" Value="#277B70"/>
+  <Setter Property="Foreground" Value="#3478D6"/>
   <Setter Property="BorderBrush" Value="#DFE8E1"/>
   <Setter Property="Height" Value="27"/>
   <Setter Property="MinHeight" Value="27"/>

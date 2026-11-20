@@ -36,7 +36,7 @@
         <Border DockPanel.Dock="Top" Background="#F8FAF9" Padding="14,10"
          BorderBrush="#E6EBE8" BorderThickness="0,0,0,1">
          <ContentPresenter ContentSource="Header" TextElement.FontSize="13"
-          TextElement.FontWeight="SemiBold" TextElement.Foreground="#364D46"/>
+          TextElement.FontWeight="SemiBold" TextElement.Foreground="#475668"/>
         </Border>
         <ContentPresenter ContentSource="Content" Margin="9"/>
        </DockPanel>
@@ -54,7 +54,7 @@
   </Style>
   <Style TargetType="DataGridColumnHeader">
    <Setter Property="Background" Value="#F4F7F5"/>
-   <Setter Property="Foreground" Value="#505F58"/>
+   <Setter Property="Foreground" Value="#475668"/>
    <Setter Property="Padding" Value="8,7"/>
   </Style>
   <Style TargetType="TextBlock">
@@ -74,7 +74,7 @@
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="ECU 烧录" FontSize="19" FontWeight="SemiBold" Foreground="#303D37"/>
      <TextBlock Text="  ·  主控 USB → ECU CAN (A1/A12)" FontSize="12"
-       Foreground="#697B72" VerticalAlignment="Bottom" Margin="10,0,0,2"/>
+       Foreground="#627C9D" VerticalAlignment="Bottom" Margin="10,0,0,2"/>
     </StackPanel>
     <TextBlock Text="配置  /  烧录进度  /  ECU CAN 记录"
       HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12" Foreground="#6D7A76"/>
@@ -87,7 +87,7 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
      <Button x:Name="RefreshButton" Content="刷新设备" Click="Refresh_Click"/>
      <Button x:Name="ConnectButton" Content="连接 USB" Click="Connect_Click"
-       Background="#E5F3EC" BorderBrush="#9FC8B4" Foreground="#2D6B52"
+       Background="#E5F3EC" BorderBrush="#CADAF1" Foreground="#3478D6"
        FontWeight="SemiBold"/>
      <Button x:Name="DisconnectButton" Content="断开" Click="Disconnect_Click"/>
     </StackPanel>
@@ -119,7 +119,7 @@
       HorizontalScrollBarVisibility="Disabled">
      <StackPanel Margin="1">
       <Button Content="导入烧录配置目录…" Click="ImportThreeFiles_Click"
-        Background="#E7F4EF" BorderBrush="#C0DECF" Foreground="#2F6855" FontWeight="SemiBold" Margin="3,3,3,8"
+        Background="#E7F4EF" BorderBrush="#E7EFFB" Foreground="#3478D6" FontWeight="SemiBold" Margin="3,3,3,8"
         ToolTip="选择包含 Configuration.xml、HEX/S19/BIN 固件、SafetyFile.dll 的文件夹（包括常见子目录）。只读取并验证文件，不连接或擦写 ECU。"
         HorizontalAlignment="Stretch"/>
       <TextBlock Text="CanTool 配置文件" FontWeight="SemiBold" Margin="4,4,4,2"/>
@@ -157,7 +157,7 @@
         FontSize="11" Foreground="#62768B"/>
 
       <TextBlock Text="Seed/Key 使用 CanTool 参考内部算法；SafetyFile 会从配置目录自动识别。"
-        TextWrapping="Wrap" Margin="7,5,7,5" FontSize="11" Foreground="#687A70"/>
+        TextWrapping="Wrap" Margin="7,5,7,5" FontSize="11" Foreground="#627C9D"/>
 
       <Separator Margin="5,5"/>
       <Expander Header="详细参数 · CAN ID / 地址 / 镜像"
@@ -210,18 +210,18 @@
      <StackPanel Grid.Row="0">
       <TextBlock x:Name="WorkflowStatusLabel"
         Text="连接 USB、导入文件后直接开始烧录" TextWrapping="Wrap"
-        Margin="5,3,5,6" FontWeight="SemiBold" Foreground="#2D7160"/>
+        Margin="5,3,5,6" FontWeight="SemiBold" Foreground="#3478D6"/>
       <TextBlock x:Name="FlashPlanSummary" Text="开始时自动检查 CAN 地址、固件、算法和 Flash 范围"
         TextWrapping="Wrap" FontSize="11" Margin="7,2,7,6"
-        Foreground="#62716A" MaxHeight="105"/>
+        Foreground="#627C9D" MaxHeight="105"/>
       <StackPanel Orientation="Horizontal" Margin="0,1,0,2">
        <Button x:Name="StartFlashButton" Content="开始烧录" Click="StartFlash_Click"
-         Background="#277B70" Foreground="White" BorderBrush="#277B70"
+         Background="#3478D6" Foreground="White" BorderBrush="#3478D6"
          FontWeight="SemiBold" Padding="19,8"/>
        <Button x:Name="AbortFlashButton" Content="停止烧录" Click="AbortFlash_Click"
          IsEnabled="False" Padding="20,7"/>
       </StackPanel>
-      <ProgressBar x:Name="FlashProgressBar" Foreground="#389C83"
+      <ProgressBar x:Name="FlashProgressBar" Foreground="#3478D6"
         Background="#E7EFEB" Height="9"
         Minimum="0" Maximum="100" Value="0" Margin="5,4,5,2"/>
       <TextBlock x:Name="FlashStageLabel" Text="待命" TextWrapping="Wrap"
@@ -229,7 +229,7 @@
      </StackPanel>
 
      <TextBlock Grid.Row="1" Text="执行阶段" FontWeight="SemiBold"
-       Foreground="#4C6057" Margin="7,5,0,3"/>
+       Foreground="#475668" Margin="7,5,0,3"/>
      <DataGrid Grid.Row="2" ItemsSource="{Binding Stages}"
        AutoGenerateColumns="False" CanUserAddRows="False"
        CanUserDeleteRows="False" IsReadOnly="True" Margin="4,0,4,4"
@@ -241,7 +241,7 @@
       </DataGrid.Columns>
      </DataGrid>
      <TextBlock Grid.Row="3" Text="UDS 请求 / 响应 / NRC 与失败原因"
-       FontWeight="SemiBold" Margin="7,5,2,4" Foreground="#4C6057"/>
+       FontWeight="SemiBold" Margin="7,5,2,4" Foreground="#475668"/>
      <ListBox Grid.Row="4" x:Name="LogList" ItemsSource="{Binding Logs}"
        FontFamily="Consolas" FontSize="11" Margin="4,0,4,3"
        ScrollViewer.HorizontalScrollBarVisibility="Auto"
@@ -291,7 +291,7 @@
   </Grid>
   <Border Grid.Row="3" Background="#F7F8F8" BorderBrush="#E0E5E2"
     BorderThickness="0,1,0,0" Padding="7" Margin="4,3,4,0">
-   <TextBlock Text="{Binding Status}" FontWeight="SemiBold" Foreground="#3C6254"
+   <TextBlock Text="{Binding Status}" FontWeight="SemiBold" Foreground="#475668"
      TextTrimming="CharacterEllipsis"/>
   </Border>
  </Grid>

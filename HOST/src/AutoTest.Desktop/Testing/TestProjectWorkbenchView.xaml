@@ -34,7 +34,7 @@
    HorizontalScrollBarVisibility="Disabled">
    <StackPanel Margin="15,12,15,15">
     <!-- Blue-tinted temporary engineer selection bar; not persisted Enabled. -->
-    <Border Background="#EDF7F2" BorderBrush="#CBE5D9" BorderThickness="1"
+    <Border Background="#EDF7F2" BorderBrush="#E7EFFB" BorderThickness="1"
      CornerRadius="7" Padding="11,8" Margin="0,0,0,12">
      <DockPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -46,10 +46,10 @@
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
        <TextBlock Text="本次执行" FontSize="13" FontWeight="SemiBold" Margin="0,0,14,0"
         VerticalAlignment="Center"/>
-       <TextBlock Text="{Binding SelectedCount}" Foreground="#277B70" FontSize="19"
+       <TextBlock Text="{Binding SelectedCount}" Foreground="#3478D6" FontSize="19"
         FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,2,0"/>
        <TextBlock Text="{Binding TotalCount,StringFormat=' / {0} 个用例'}" FontSize="12"
-        Foreground="#688277" VerticalAlignment="Center">
+        Foreground="#627C9D" VerticalAlignment="Center">
         <TextBlock.LayoutTransform><ScaleTransform ScaleX="1" ScaleY="1"/></TextBlock.LayoutTransform>
        </TextBlock>
       </StackPanel>
@@ -140,7 +140,7 @@
            <CheckBox IsChecked="{Binding RunSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
             HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="只影响本次实际运行选择">
             <CheckBox.Content>
-             <TextBlock FontSize="11" Foreground="#347467">
+             <TextBlock FontSize="11" Foreground="#475668">
               <TextBlock.Style>
                <Style TargetType="{x:Type TextBlock}">
                 <Setter Property="Text" Value="已选"/>
@@ -165,13 +165,13 @@
           <DataTemplate>
           <StackPanel Orientation="Vertical" VerticalAlignment="Center">
            <Button Content="{Binding Name}" Tag="{Binding}" Click="OpenPackage_Click"
-            FontSize="11" FontWeight="SemiBold" Foreground="#3E6257"
+            FontSize="11" FontWeight="SemiBold" Foreground="#475668"
             HorizontalAlignment="Left" Height="21" MinHeight="0"
             Background="Transparent" BorderThickness="0"
             Padding="2,0" ToolTip="打开此用例编辑步骤"
             Style="{StaticResource AtQuietButton}"/>
            <StackPanel Orientation="Horizontal" Height="17" ToolTip="{Binding PinDetail}">
-            <TextBlock Text="{Binding PinStatus}" FontSize="10" Foreground="#7A8E84"
+            <TextBlock Text="{Binding PinStatus}" FontSize="10" Foreground="#627C9D"
              TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             <Button Content="采用当前修订" Tag="{Binding}" Click="AdoptCurrentRevision_Click"
              FontSize="10" Margin="6,0,0,0" Padding="3,0" MinHeight="0" Height="17"
@@ -182,7 +182,7 @@
                <Style.Triggers>
                 <DataTrigger Binding="{Binding CanAdoptLatest}" Value="True">
                  <Setter Property="Visibility" Value="Visible"/>
-                 <Setter Property="Foreground" Value="#2C8B76"/>
+                 <Setter Property="Foreground" Value="#3478D6"/>
                 </DataTrigger>
                </Style.Triggers>
               </Style>
@@ -197,7 +197,7 @@
          <DataGridTemplateColumn.CellTemplate>
           <DataTemplate>
            <CheckBox Content="默认启用" IsChecked="{Binding Enabled,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-            FontSize="10" Foreground="#7E9088"
+            FontSize="10" Foreground="#97B6DE"
             VerticalAlignment="Center" HorizontalAlignment="Center"
             ToolTip="保存至正式项目；不等于本次选择"/>
           </DataTemplate>

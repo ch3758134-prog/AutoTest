@@ -37,7 +37,7 @@
      <ControlTemplate.Triggers>
       <Trigger Property="IsSelected" Value="True">
        <Setter TargetName="TabSurface" Property="Background" Value="White"/>
-       <Setter TargetName="TabSurface" Property="BorderBrush" Value="#277B70"/>
+       <Setter TargetName="TabSurface" Property="BorderBrush" Value="#3478D6"/>
        <Setter TargetName="TabSurface" Property="BorderThickness" Value="0,0,0,2"/>
       </Trigger>
       <Trigger Property="IsMouseOver" Value="True">
@@ -61,8 +61,8 @@
      </Border>
      <ControlTemplate.Triggers>
       <Trigger Property="IsSelected" Value="True">
-       <Setter TargetName="Line" Property="BorderBrush" Value="#277B70"/>
-       <Setter Property="Foreground" Value="#277B70"/>
+       <Setter TargetName="Line" Property="BorderBrush" Value="#3478D6"/>
+       <Setter Property="Foreground" Value="#3478D6"/>
        <Setter Property="FontWeight" Value="SemiBold"/>
        <Setter TargetName="Line" Property="Background" Value="White"/>
       </Trigger>
@@ -83,7 +83,7 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <TextBlock Text="{Binding HardwareStatus}" FontSize="10" Foreground="#A96D20"
+     <TextBlock Text="{Binding HardwareStatus}" FontSize="10" Foreground="#9B6A22"
       VerticalAlignment="Center" MaxWidth="165" TextTrimming="CharacterEllipsis"
       Margin="0,0,10,0"/>
      <Button Content="─" Style="{StaticResource ChromeButton}" ToolTip="最小化"
@@ -96,14 +96,14 @@
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="9,0,15,0"
      VerticalAlignment="Center" chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <Border Width="23" Height="23" CornerRadius="6" Background="#277B70">
+     <Border Width="23" Height="23" CornerRadius="6" Background="#3478D6">
       <TextBlock Text="AT" Foreground="White" FontSize="11" FontWeight="Bold"
        VerticalAlignment="Center" HorizontalAlignment="Center"/>
      </Border>
      <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
-     <Border Margin="6,0,0,0" Background="#EAF4F0" BorderBrush="#CCE6DB"
+     <Border Margin="6,0,0,0" Background="#EAF4F0" BorderBrush="#E7EFFB"
       BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
-      <TextBlock Text="IDE" Foreground="#277B70" FontSize="10"/>
+      <TextBlock Text="IDE" Foreground="#3478D6" FontSize="10"/>
      </Border>
     </StackPanel>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
@@ -220,7 +220,7 @@
         <DataTemplate>
          <StackPanel Orientation="Horizontal">
           <TextBlock Text="{Binding Title}" MaxWidth="190" TextTrimming="CharacterEllipsis"
-           VerticalAlignment="Center" Foreground="#3D635E" FontSize="11"/>
+           VerticalAlignment="Center" Foreground="#475668" FontSize="11"/>
           <Button Content="×" Tag="{Binding}" Click="CloseEditorTab_Click"
            Width="19" Height="19" MinWidth="0" MinHeight="0"
            Padding="0" Margin="4,0,0,0" Focusable="False"
@@ -311,12 +311,12 @@
           Text="暂无真实项目级变量观察事实；仅显示运行器实际发布的数据。"/>
         </TabItem>
         <TabItem Header="问题列表">
-         <TextBlock Margin="13" Foreground="#A96D20" TextWrapping="Wrap"
+         <TextBlock Margin="13" Foreground="#9B6A22" TextWrapping="Wrap"
           Text="{Binding ActiveEditorTab.Editor.StatusMessage}"/>
         </TabItem>
         <TabItem Header="设备状态">
          <StackPanel Margin="13">
-          <TextBlock Text="{Binding HardwareStatus}" Foreground="#A96D20" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding HardwareStatus}" Foreground="#9B6A22" TextWrapping="Wrap"/>
           <TextBlock Text="{Binding ScanStatus}" Foreground="#64758C"
            TextWrapping="Wrap" Margin="0,7,0,0"/>
          </StackPanel>

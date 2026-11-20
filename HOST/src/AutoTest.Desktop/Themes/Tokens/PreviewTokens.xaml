@@ -4,18 +4,18 @@
  <!-- R1 neutral light IDE tokens shared by the modern TEST workspace. -->
  <SolidColorBrush x:Key="AtUiSurface" Color="#FFFFFF"/>
  <SolidColorBrush x:Key="AtUiInk" Color="#2B3435"/>
- <SolidColorBrush x:Key="AtUiButtonForeground" Color="#374A43"/>
+ <SolidColorBrush x:Key="AtUiButtonForeground" Color="#475668"/>
  <SolidColorBrush x:Key="AtUiBorder" Color="#DCE5DF"/>
  <SolidColorBrush x:Key="AtUiHoverSurface" Color="#F3F7F4"/>
- <SolidColorBrush x:Key="AtUiHoverBorder" Color="#A2C7B6"/>
- <SolidColorBrush x:Key="AtUiPressedSurface" Color="#E0EFE7"/>
- <SolidColorBrush x:Key="AtUiAccent" Color="#277B70"/>
- <SolidColorBrush x:Key="AtUiAccentHover" Color="#226C60"/>
- <SolidColorBrush x:Key="AtUiAccentPressed" Color="#1D5D53"/>
- <SolidColorBrush x:Key="AtUiStepTitle" Color="#354944"/>
- <SolidColorBrush x:Key="AtUiStepSummary" Color="#63796F"/>
- <SolidColorBrush x:Key="AtUiStepResource" Color="#85968D"/>
- <SolidColorBrush x:Key="AtUiStepStatus" Color="#84948C"/>
+ <SolidColorBrush x:Key="AtUiHoverBorder" Color="#CADAF1"/>
+ <SolidColorBrush x:Key="AtUiPressedSurface" Color="#E7EFFB"/>
+ <SolidColorBrush x:Key="AtUiAccent" Color="#3478D6"/>
+ <SolidColorBrush x:Key="AtUiAccentHover" Color="#475668"/>
+ <SolidColorBrush x:Key="AtUiAccentPressed" Color="#475668"/>
+ <SolidColorBrush x:Key="AtUiStepTitle" Color="#475668"/>
+ <SolidColorBrush x:Key="AtUiStepSummary" Color="#627C9D"/>
+ <SolidColorBrush x:Key="AtUiStepResource" Color="#97B6DE"/>
+ <SolidColorBrush x:Key="AtUiStepStatus" Color="#97B6DE"/>
  <FontFamily x:Key="AtUiFont">Segoe UI, Microsoft YaHei UI</FontFamily>
  <sys:Double x:Key="AtUiBodySize">12</sys:Double>
  <sys:Double x:Key="AtUiCaptionSize">11</sys:Double>
