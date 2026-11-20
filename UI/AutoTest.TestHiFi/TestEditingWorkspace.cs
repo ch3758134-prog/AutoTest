@@ -14,12 +14,14 @@ public sealed class UiTestProgram
     public int Version { get; set; } = 1;
     public string Name { get; set; } = "自动测试项目";
     public List<UiTestCase> Cases { get; set; } = [];
+    public List<UiTestCase> Flows { get; set; } = [];
 }
 public sealed class UiTestCase
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "新建测试用例";
     public bool Enabled { get; set; } = true;
+    public int Revision { get; set; } = 1;
     public List<UiTestStep> Steps { get; set; } = [];
 }
 public sealed class UiTestStep
@@ -55,7 +57,8 @@ public partial class MainWindow
     ];
 
     private UiTestCase? ActiveTestCase =>
-        _testProgram?.Cases.FirstOrDefault(c => c.Id == _testCaseId);
+        _testProgram?.Cases.Concat(_testProgram.Flows).FirstOrDefault(c => c.Id == _testCaseId);
+    private bool ActiveIsFlow => _testProgram?.Flows.Any(c => c.Id == _testCaseId) == true;
     private UiTestStep? ActiveTestStep =>
         ActiveTestCase?.Steps.FirstOrDefault(s => s.Id == _testStepId);
 
@@ -124,7 +127,7 @@ public partial class MainWindow
         {
             var doc = _workFiles.OpenAsset(asset);
             var program = JsonSerializer.Deserialize<UiTestProgram>(doc.Content);
-            if (program?.Version != 1 || program.Cases is null)
+            if (program?.Version != 1 || program.Cases is null || program.Flows is null)
                 throw new InvalidDataException("测试编辑器文档结构无效。");
             _testProgram = program;
             _testProgramDocument = doc;
@@ -133,7 +136,8 @@ public partial class MainWindow
         {
             StatusText = "测试编辑器文件读取失败：" + ex.Message;
         }
-        _testCaseId = _testProgram.Cases.FirstOrDefault()?.Id;
+        _testCaseId = _testProgram.Cases.FirstOrDefault()?.Id ??
+            _testProgram.Flows.FirstOrDefault()?.Id;
         _testStepId = null;
     }
     private void CaptureTestChange()
@@ -227,6 +231,18 @@ public partial class MainWindow
         {
             var c = new UiTestCase { Name = name };
             _testProgram.Cases.Add(c); _testCaseId = c.Id; _testStepId = null;
+        });
+    }
+    private void CreatePublicFlow()
+    {
+        if (_testProgram is null) return;
+        var name = AskName(this, "新建公共流程", "新建公共流程");
+        if (name is null) return;
+        ChangeTest(() =>
+        {
+            var flow = new UiTestCase { Name = name };
+            _testProgram.Flows.Add(flow);
+            _testCaseId = flow.Id; _testStepId = null; _testPhase = "测试";
         });
     }
     private void AddTestStep()
@@ -328,6 +344,18 @@ public partial class MainWindow
             btn.Width = 174;
             cases.Children.Add(btn);
         }
+        cases.Children.Add(EditorText("公共流程 · 单一连续步骤树", true));
+        cases.Children.Add(EditorButton("＋ 新建公共流程", CreatePublicFlow));
+        foreach (var flow in _testProgram.Flows)
+        {
+            var selectedFlow = flow;
+            var btn = EditorButton((flow.Id == _testCaseId ? "●  " : "    ") + flow.Name,
+                () => { _testCaseId = selectedFlow.Id; _testStepId = null;
+                    _testPhase = "测试"; RenderTestEditor(); });
+            btn.HorizontalContentAlignment = HorizontalAlignment.Left;
+            btn.Width = 174;
+            cases.Children.Add(btn);
+        }
         var left = EditorCard(new ScrollViewer { Content = cases, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
             new Thickness(0, 0, 8, 0));
         Grid.SetColumn(left, 0); root.Children.Add(left);
@@ -361,14 +389,15 @@ public partial class MainWindow
         bar.Children.Add(EditorButton("保存", () => SaveTestProgram()));
         mid.Children.Add(bar);
         var phaseBar = new WrapPanel();
-        foreach (var phase in new[] { "准备", "测试", "清理" })
+        if (ActiveIsFlow) _testPhase = "测试";
+        foreach (var phase in (ActiveIsFlow ? new[] { "测试" } : new[] { "准备", "测试", "清理" }))
         {
             var selectedPhase = phase;
             phaseBar.Children.Add(EditorButton((_testPhase == phase ? "● " : "") + phase,
                 () => { _testPhase = selectedPhase; _testStepId = null; RenderTestEditor(); }));
         }
         mid.Children.Add(phaseBar);
-        mid.Children.Add(EditorText("步骤结构 · " + _testPhase, true));
+        mid.Children.Add(EditorText("步骤结构 · " + (ActiveIsFlow ? "公共流程连续步骤" : _testPhase), true));
         var stepList = new ListBox
         {
             MinHeight = 200, MaxHeight = 440, BorderThickness = new Thickness(1),
@@ -455,16 +484,18 @@ public partial class MainWindow
                 if (testCase.Name == value) return;
                 ChangeTest(() => testCase.Name = value, false);
             });
-            inspector.Children.Add(EditorButton(testCase.Enabled ? "用例已启用" : "用例已禁用",
+            inspector.Children.Add(EditorButton(testCase.Enabled ? "已启用" : "已禁用",
                 () => ChangeTest(() => testCase.Enabled = !testCase.Enabled)));
-            inspector.Children.Add(EditorButton("删除当前用例", () =>
+            inspector.Children.Add(EditorButton(ActiveIsFlow ? "删除当前公共流程" : "删除当前用例", () =>
             {
                 if (MessageBox.Show(this, "将当前用例从 UI 文件中移除？", "删除用例",
                     MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
                 ChangeTest(() =>
                 {
-                    _testProgram.Cases.Remove(testCase);
-                    _testCaseId = _testProgram.Cases.FirstOrDefault()?.Id;
+                    if (ActiveIsFlow) _testProgram.Flows.Remove(testCase);
+                    else _testProgram.Cases.Remove(testCase);
+                    _testCaseId = _testProgram.Cases.FirstOrDefault()?.Id ??
+                        _testProgram.Flows.FirstOrDefault()?.Id;
                     _testStepId = null;
                 });
             }));
@@ -496,6 +527,20 @@ public partial class MainWindow
             if (stepSelected.Type.StartsWith("CAN ", StringComparison.Ordinal))
                 inspector.Children.Add(EditorButton("从工程 DBC 选择报文 / 信号…",
                     () => OpenStepDbcPicker(stepSelected)));
+            if (stepSelected.Type == "调用公共流程")
+            {
+                inspector.Children.Add(EditorText("选择公共流程资源", true));
+                foreach (var flow in _testProgram.Flows)
+                {
+                    var target = flow;
+                    inspector.Children.Add(EditorButton("引用 · " + flow.Name + " (Rev " + flow.Revision + ")", () =>
+                        ChangeTest(() =>
+                        {
+                            stepSelected.Parameters["公共流程资源 ID"] = target.Id;
+                            stepSelected.Parameters["固定修订"] = target.Revision.ToString();
+                        })));
+                }
+            }
             foreach (var key in ParameterKeys(stepSelected.Type))
             {
                 var parameter = key;
