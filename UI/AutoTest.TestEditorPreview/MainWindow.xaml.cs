@@ -815,6 +815,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             CasePane.Visibility = Visibility.Collapsed; CaseSplitter.Visibility = Visibility.Collapsed;
             InspectorSplitter.Visibility = Visibility.Collapsed; RightInspector.Visibility = Visibility.Collapsed;
             BottomRow.Height = new GridLength(0); BottomInspector.Visibility = Visibility.Collapsed;
+            BottomSplitter.Visibility = Visibility.Collapsed;
             StepsPane.Visibility = _compactDetails ? Visibility.Collapsed : Visibility.Visible;
             CompactInspector.Visibility = _compactDetails ? Visibility.Visible : Visibility.Collapsed;
             CompactDetailsButton.Content = _compactDetails ? "← 步骤结构" : "编辑详情 →";
@@ -848,6 +849,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 RightInspector.Visibility = Visibility.Collapsed;
                 BottomRow.Height = new GridLength(265);
                 BottomInspector.Visibility = Visibility.Visible;
+                BottomSplitter.Visibility = Visibility.Visible;
             }
             else
             {
@@ -856,6 +858,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 RightInspector.Visibility = Visibility.Visible;
                 BottomRow.Height = new GridLength(0);
                 BottomInspector.Visibility = Visibility.Collapsed;
+                BottomSplitter.Visibility = Visibility.Collapsed;
             }
         }
     }
