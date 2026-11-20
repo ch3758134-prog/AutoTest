@@ -155,8 +155,8 @@ public partial class TestStepInspector : UserControl
             "仅编辑配置引用，当前禁止真实刷写。"),
         new("wave-capture", "读取与观察", "波形采集（扩展步骤）", "WaveCapture", "",
             "编辑采集资源，运行前需要真实采集服务。"),
-        new("wave-compare", "分析与判断", "波形判定（扩展步骤）", "WaveCompare", "",
-            "编辑参考资源，真实比较须三态证据。")
+        new("wave-compare", "分析与判断", "波形判定", "WaveCompare", "wave",
+            "比较本次已采集的真实 DBC 波形与冻结参考；PASS / FAIL / 无法判定均保留证据。")
     ];
 
     public static IReadOnlyList<TestActionOption> PaletteActions(bool caseOnly) =>
@@ -367,7 +367,8 @@ public partial class TestStepInspector : UserControl
             if (!StepUiCatalog.IsOperatorProperty(item.Key) ||
                 (item.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) ||
                 (item.Key == "value" && action.StepType == "Write") ||
-                (item.Key == "profile" && action.StepType == "WaveAnalyze")) continue;
+                (item.Key == "profile" && (action.StepType == "WaveAnalyze" ||
+                    action.StepType == "WaveCompare"))) continue;
             var label = item.Key == "target" && action.StepType == "CallSubroutine"
                 ? "要调用的子程序" : null;
             ParameterFields.Add(new TestStepInputField(item.Key, item.Value, label, action.StepType));
