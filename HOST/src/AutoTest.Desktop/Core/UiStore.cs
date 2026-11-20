@@ -140,6 +140,11 @@ public sealed class UiWaveSignal : Notify
     public string Source { get => _source; set => Change(ref _source, value); }
     public string Points { get => _points; set => Change(ref _points, value); }
 }
+public sealed class UiInspectorBuffer
+{
+    public string Name { get; set; } = "";
+    public Dictionary<string,string> Values { get; set; } = new(StringComparer.Ordinal);
+}
 public sealed class UiFlashProfile : Notify
 {
     private string _name="新建烧录配置", _imagePath="", _appRequest="18DA50F1",
@@ -184,6 +189,7 @@ public sealed class UiStore : Notify
     public UiFlashProfile FlashProfile { get; } = new();
     public UiProductionDraft ProductionDraft { get; } = new();
     public UiWaveReference WaveReference { get; } = new();
+    public Dictionary<string,UiInspectorBuffer> InspectorBuffers { get; } = new(StringComparer.Ordinal);
     public ObservableCollection<string> OperatorNotes { get; } = [];
     public bool[] KeyStates { get; } = new bool[20];
     public ObservableCollection<UiKeySwitch> KeySwitches { get; } =
@@ -276,14 +282,15 @@ public sealed class UiStore : Notify
         List<UiCanMessage> Can, List<UiDbcMessage> Dbc, List<UiUdsRequest> Uds,
         List<UiKeyAction> Keys, List<UiWaveSignal> Wave, List<UiStep> PublicFlow,
         List<UiResource> Resources, List<UiKeySwitch> Switches, bool[] KeyStates, int HoldMs, bool IgnOn,
-        bool FixtureEngaged, UiFlashProfile FlashProfile, UiProductionDraft ProductionDraft, UiWaveReference WaveReference);
+        bool FixtureEngaged, UiFlashProfile FlashProfile, UiProductionDraft ProductionDraft, UiWaveReference WaveReference,
+        Dictionary<string,UiInspectorBuffer> InspectorBuffers);
     public void SaveUiSession(string path)
     {
         var data = new Session("AutoTest.PURE_UI_SESSION.v1", Workspace, Cases.ToList(),
             CanMessages.ToList(), DbcMessages.ToList(), UdsRequests.ToList(),
             KeyActions.ToList(), WaveSignals.ToList(), PublicFlow.ToList(), Resources.ToList(),
             KeySwitches.ToList(), KeyStates.ToArray(), HoldMs, IgnOn, FixtureEngaged,
-            FlashProfile, ProductionDraft, WaveReference);
+            FlashProfile, ProductionDraft, WaveReference, InspectorBuffers);
         var serialized = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(path, serialized);
         Dirty = false;
@@ -327,6 +334,9 @@ public sealed class UiStore : Notify
         { ProductionDraft.Serial=scan.Serial;ProductionDraft.Station=scan.Station; }
         if (data.WaveReference is { } wave)
         { WaveReference.Name=wave.Name;WaveReference.Tolerance=wave.Tolerance;WaveReference.Coverage=wave.Coverage; }
+        InspectorBuffers.Clear();
+        foreach(var item in data.InspectorBuffers ?? [])
+            InspectorBuffers[item.Key]=item.Value;
         _workspace = data.Workspace;
         Touch(nameof(Workspace));
         Dirty = false;
