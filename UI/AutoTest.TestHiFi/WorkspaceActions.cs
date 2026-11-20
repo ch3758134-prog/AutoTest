@@ -33,6 +33,10 @@ public partial class MainWindow
     private readonly Stack<WorkspaceUndo> _projectUndo = new();
     private readonly Stack<WorkspaceUndo> _projectRedo = new();
     private WorkspacePage? _previewPage;
+    private bool _workspaceLoaded;
+    private bool _compactLayout;
+    private bool _compactInspector;
+    private double _normalNavigatorWidth=294, _normalInspectorWidth=400, _normalIssuesHeight=165;
 
     public UiFileDocument? ActiveFile
     {
@@ -551,6 +555,7 @@ public partial class MainWindow
             foreach(var task in ToolTasksFor(page.Title))ToolTasks.Add(task);
         }
         RefreshSideInfo();
+        UpdateCompactLayout();
         if(!_restoringSession)SaveSessionState();
     }
     private static IEnumerable<string> ToolTasksFor(string title) => title switch
@@ -653,9 +658,11 @@ public partial class MainWindow
     }
     private void ResetLayout_Click(object sender,RoutedEventArgs e)
     {
+        _normalNavigatorWidth=294;_normalInspectorWidth=400;_normalIssuesHeight=165;
         NavigatorColumn.Width=new GridLength(294);
         InspectorColumn.Width=new GridLength(400);
         IssuesRow.Height=new GridLength(165);
+        UpdateCompactLayout();
         if(!_issuesExpanded)CollapseProblems_Click(sender,e);
         SaveSessionState();
         StatusText="已恢复默认工作空间尺寸。";
@@ -667,9 +674,9 @@ public partial class MainWindow
         _session.ProjectPath=_workspacePath;
         _session.OpenPageKeys=OpenPages.Where(p=>p.Kind!="TEST_PREVIEW").Select(p=>p.Key).ToList();
         _session.ActivePageKey=_activePage?.Key;
-        _session.NavigatorWidth=NavigatorColumn.Width.Value;
-        _session.InspectorWidth=InspectorColumn.Width.Value;
-        _session.IssuesHeight=IssuesRow.Height.Value;
+        _session.NavigatorWidth=_compactLayout?_normalNavigatorWidth:NavigatorColumn.Width.Value;
+        _session.InspectorWidth=_compactLayout?_normalInspectorWidth:InspectorColumn.Width.Value;
+        _session.IssuesHeight=_compactLayout?_normalIssuesHeight:IssuesRow.Height.Value;
         _session.IssuesExpanded=_issuesExpanded;
         _session.SelectedPreviewCaseId=SelectedCase?.Id;
         _session.SelectedPreviewPhase=_phase;
@@ -691,6 +698,9 @@ public partial class MainWindow
             if(!_session.IssuesExpanded)CollapseProblems_Click(sender,e);
             if(_session.IssuesHeight>=80 && _session.IssuesHeight<=380 && _session.IssuesExpanded)
                 IssuesRow.Height=new GridLength(_session.IssuesHeight);
+            _normalNavigatorWidth=NavigatorColumn.Width.Value;
+            _normalInspectorWidth=InspectorColumn.Width.Value;
+            _normalIssuesHeight=IssuesRow.Height.Value;
             var restoredCase=Cases.FirstOrDefault(c=>c.Id==_session.SelectedPreviewCaseId);
             if(restoredCase is not null)CaseList.SelectedItem=restoredCase;
             if(_session.SelectedPreviewPhase is "准备" or "测试" or "清理")
@@ -725,7 +735,7 @@ public partial class MainWindow
         {
             StatusText="上次 UI 会话未能恢复："+ex.Message;
         }
-        finally{_restoringSession=false;}
+        finally{_restoringSession=false;_workspaceLoaded=true;UpdateCompactLayout();}
     }
 
     private void RememberProjectEntries()
