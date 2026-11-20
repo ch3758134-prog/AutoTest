@@ -9,6 +9,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Win32;
 
 namespace AutoTest.TestEditorPreview;
@@ -740,7 +741,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (SelectedCase?.Find(p.NodeId) is not EditorNode target) return;
         SelectNode(target, scroll: true);
         if (_compactMode) ShowCompactDetails();
-        SetStatus("已定位问题：" + p.Message + "；请修正对应字段。");
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            var active = ActiveInspectorRoot();
+            var field = target.Field(p.FieldKey);
+            if (field is null) return;
+            var input = FindFieldEditor(active, field);
+            if (input is null) return;
+            input.Focus();
+            input.SelectAll();
+            input.BringIntoView();
+        }), DispatcherPriority.Loaded);
+        SetStatus("已定位问题：" + p.Message + "；已准备聚焦对应字段。");
     }
     private void StepList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -873,11 +885,23 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (SelectedEditable() is not EditorNode node) return;
         if (_compactMode) ShowCompactDetails();
-        var root = _compactMode ? (DependencyObject)CompactInspector :
-            LayoutPicker.SelectedIndex == 1 ? BottomInspector : RightInspector;
-        var field = FindNameEditor(root, node);
+        var field = FindNameEditor(ActiveInspectorRoot(), node);
         if (field is not null) { field.Focus(); field.SelectAll(); }
         else SetStatus("步骤名称可在当前详情面板直接编辑。");
+    }
+    private DependencyObject ActiveInspectorRoot() =>
+        _compactMode ? CompactInspector :
+        LayoutPicker.SelectedIndex == 1 ? BottomInspector : RightInspector;
+    private static TextBox? FindFieldEditor(DependencyObject root, EditorField field)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is TextBox tb && ReferenceEquals(tb.DataContext, field)) return tb;
+            var found = FindFieldEditor(child, field);
+            if (found is not null) return found;
+        }
+        return null;
     }
     private static TextBox? FindNameEditor(DependencyObject root, EditorNode node)
     {
