@@ -249,7 +249,7 @@ public sealed class StepRow : Notifying
             return string.Join(" · ", parts);
         }
     }
-    public void Update() { Notify(nameof(Arrow)); Notify(nameof(Summary)); Notify(nameof(HasIssue)); Notify(nameof(IssueText)); Notify(nameof(StateText)); }
+    public void Update() { Notify(nameof(Title)); Notify(nameof(Arrow)); Notify(nameof(Summary)); Notify(nameof(HasIssue)); Notify(nameof(IssueText)); Notify(nameof(StateText)); }
 }
 
 public sealed class EditorProblem
