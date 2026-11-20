@@ -33,4 +33,7 @@ void ASW_EcuEmu_HandleCmd(uint16_t seq, uint8_t cmd,
  */
 void ASW_EcuEmu_Task(void);
 
+/** @brief  当前 ECU CAN 周期发送任务是否已启动（避免运行中改码率）。 */
+uint8_t ASW_EcuEmu_IsRunning(void);
+
 #endif /* ASW_ECUEMU_H */
