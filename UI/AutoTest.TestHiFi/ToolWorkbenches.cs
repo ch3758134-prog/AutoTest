@@ -300,6 +300,15 @@ public partial class MainWindow
                 RenderToolWorkbench("ECU 烧录");
             }
         }));
+        center.Children.Add(ToolButton("检查本地文件", () =>
+        {
+            var firmware = draft.Fields.GetValueOrDefault("固件文件路径", "");
+            var keyDll = draft.Fields.GetValueOrDefault("Seed / Key DLL 路径", "");
+            var report = "固件文件：" + (File.Exists(firmware) ? "存在" : "不存在或未选择") +
+                         "\n算法库：" + (File.Exists(keyDll) ? "存在" : "不存在或未选择") +
+                         "\n\n仅检查本地文件是否存在，不代表固件格式、算法兼容性或 ECU 烧录前置检查通过。";
+            MessageBox.Show(this, report, "本地文件检查", MessageBoxButton.OK, MessageBoxImage.Information);
+        }));
         center.Children.Add(ToolLabel("烧录阶段", true));
         foreach (var phase in new[] { "前置检查", "编程会话", "安全访问", "擦除", "传输下载", "完整性检查", "ECU 复位", "结束归档" })
             center.Children.Add(ToolLabel("○  " + phase));
@@ -346,12 +355,28 @@ public partial class MainWindow
             {
                 var id = i;
                 var active = draft.HeldKeys.Contains(id);
-                var button = ToolButton("Key " + id.ToString("00") + (active ? "  ●" : "  ○"), () =>
+                var aliasKey = "KeyName." + id.ToString("00");
+                var alias = draft.Fields.GetValueOrDefault(aliasKey, "Key " + id.ToString("00"));
+                var button = ToolButton(alias + (active ? "  ●" : "  ○"), () =>
                 {
                     if (!draft.HeldKeys.Add(id)) draft.HeldKeys.Remove(id);
                     RebuildKeys();
                 }, active);
                 button.Margin = new Thickness(3);
+                button.ToolTip = "左键切换组合目标状态；右键修改按键显示名称";
+                var rename = new ContextMenu();
+                var editName = new MenuItem { Header = "重命名按键…" };
+                editName.Click += (_, _) =>
+                {
+                    var renamed = AskName(this, "按键 " + id.ToString("00") + " 显示名称", alias);
+                    if (renamed is not null)
+                    {
+                        draft.Fields[aliasKey] = renamed;
+                        RebuildKeys();
+                    }
+                };
+                rename.Items.Add(editName);
+                button.ContextMenu = rename;
                 keys.Children.Add(button);
             }
         }
@@ -375,6 +400,18 @@ public partial class MainWindow
             if (list.SelectedIndex >= 0) { draft.Items.RemoveAt(list.SelectedIndex); RenderToolWorkbench("手动台架"); }
         }));
         ToolField(inspector, draft, "保持时间 (ms)", "500");
-        ToolNote(inspector, "IGN / 夹具电磁阀：正式 DEVICE 合同接入后提供实际开关与 ACK/超时状态。当前不得将按钮目标状态显示为物理反馈。");
+        inspector.Children.Add(ToolLabel("工位控制目标（仅草稿）", true));
+        var ign = ToolButton("IGN 目标：" + draft.Fields.GetValueOrDefault("IGN 目标", "关闭"), () =>
+        {
+            draft.Fields["IGN 目标"] = draft.Fields.GetValueOrDefault("IGN 目标", "关闭") == "关闭" ? "开启" : "关闭";
+            RenderToolWorkbench("手动台架");
+        });
+        inspector.Children.Add(ign);
+        inspector.Children.Add(ToolButton("夹具目标：" + draft.Fields.GetValueOrDefault("夹具目标", "释放"), () =>
+        {
+            draft.Fields["夹具目标"] = draft.Fields.GetValueOrDefault("夹具目标", "释放") == "释放" ? "压紧" : "释放";
+            RenderToolWorkbench("手动台架");
+        }));
+        ToolNote(inspector, "这些开关只是待执行目标，绝不代表实际 IO 或 ACK 状态。待 DEVICE 合同接入后才能操作实物。");
     }
 }
