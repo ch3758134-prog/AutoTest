@@ -420,6 +420,8 @@ public partial class MainWindow
 
     private void RefreshProjectTree()
     {
+        var selectedAssetId = _selectedAsset?.Id;
+        TreeViewItem? selectedLeaf = null;
         ProjectTree.Items.Clear();
         var query = _activeToolPage == "TEST" ? "" : _projectResourceSearch.Trim();
         ProjectNameText.Text = _workFiles.Workspace is null
@@ -460,6 +462,7 @@ public partial class MainWindow
                 AddMenu(menu,"移动至分类…",()=>MoveAsset(a));
                 AddMenu(menu,"移入回收区",()=>DeleteAsset(a));
                 leaf.ContextMenu = menu;
+                if (a.Id == selectedAssetId) selectedLeaf = leaf;
                 leaf.PreviewMouseRightButtonDown += (_, _) =>
                 {
                     leaf.IsSelected = true;
@@ -468,6 +471,10 @@ public partial class MainWindow
                 group.Items.Add(leaf);
             }
         }
+        if (selectedLeaf is not null)
+            selectedLeaf.IsSelected = true;
+        else
+            _selectedAsset = null;
     }
     private static void AddMenu(ContextMenu menu, string title, Action perform)
     {
@@ -645,7 +652,7 @@ public partial class MainWindow
         {
             _workFiles.Open(path);
             RememberRecentProject(_workFiles.Manifest);
-            _currentDocument=null;RefreshProjectTree();ShowProjectWorkspace();StoreSession();
+            _currentDocument=null;_selectedAsset=null;RefreshProjectTree();ShowProjectWorkspace();StoreSession();
         }
         catch(Exception ex)when(ex is IOException or InvalidDataException or UnauthorizedAccessException or
                                   System.Text.Json.JsonException)
@@ -883,7 +890,7 @@ public partial class MainWindow
     private void UndoDocument_Click(object sender,RoutedEventArgs e)
     {
         if(_currentDocument is not null&&DocumentTextEditor.CanUndo)DocumentTextEditor.Undo();
-        else StatusText="当前文档没有可撤销的文本编辑。TEST 结构编辑将在 UI-03 接入。";
+        else StatusText="当前文档没有可撤销的文本编辑。TEST 结构编辑将在 UI-04 接入。";
     }
     private void RedoDocument_Click(object sender,RoutedEventArgs e)
     {
