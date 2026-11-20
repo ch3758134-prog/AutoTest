@@ -209,6 +209,7 @@
                 <MenuItem Header="关闭当前文档（Ctrl+W）" Click="CloseDocument_Click"/>
                 <MenuItem Header="关闭工程…" Click="CloseProject_Click"/>
                 <MenuItem Header="最近工程…" Click="OpenRecent_Click"/>
+                <MenuItem Header="恢复最近删除的资源" Click="RestoreDeleted_Click"/>
               </MenuItem>
               <MenuItem Header="编辑" Padding="10,7">
                 <MenuItem Header="撤销（Ctrl+Z）" Click="UndoDocument_Click"/>
@@ -216,6 +217,8 @@
                 <Separator/>
                 <MenuItem Header="重命名资源（F2）" Click="RenameAsset_Click"/>
                 <MenuItem Header="复制资源" Click="DuplicateAsset_Click"/>
+                <MenuItem Header="移动至分类…" Click="MoveAsset_Click"/>
+                <MenuItem Header="恢复最近删除" Click="RestoreDeleted_Click"/>
                 <MenuItem Header="移入工程回收区" Click="DeleteAsset_Click"/>
               </MenuItem>
             </Menu>
@@ -720,6 +723,7 @@
                   <TextBlock x:Name="FileRevisionLabel" Margin="0,4,0,20"/>
                   <Button Content="重命名…" Click="RenameAsset_Click" Style="{StaticResource OutlineButton}" Margin="0,0,0,7"/>
                   <Button Content="复制文件" Click="DuplicateAsset_Click" Style="{StaticResource OutlineButton}" Margin="0,0,0,7"/>
+                  <Button Content="移动至分类…" Click="MoveAsset_Click" Style="{StaticResource OutlineButton}" Margin="0,0,0,7"/>
                   <Button Content="移至工程回收区" Click="DeleteAsset_Click" Style="{StaticResource OutlineButton}"/>
                   <TextBlock Text="此处是真实磁盘文件编辑。UI 工作区格式与正式 AutoTest 测试工程不同。"
                              TextWrapping="Wrap" TextTrimming="None" FontSize="10.8"
