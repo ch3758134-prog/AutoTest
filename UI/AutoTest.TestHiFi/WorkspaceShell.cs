@@ -685,6 +685,10 @@ public partial class MainWindow
     private void RenameAsset_Click(object sender,RoutedEventArgs e)
     {
         var asset=TargetAsset();if(asset is null){NeedSelectAsset();return;}
+        RenameAsset(asset);
+    }
+    private void RenameAsset(UiAsset asset)
+    {
         var name=AskName(this,"重命名资源",asset.Name);if(name is null||name==asset.Name)return;
         if(MessageBox.Show(this,
           "将同时重命名实际文件。\n\n当前 UI-02 不自动修复其他文件内部的文本引用，请确认没有相关引用需要同步修改。\n\n继续？",
@@ -701,6 +705,10 @@ public partial class MainWindow
     private void DuplicateAsset_Click(object sender,RoutedEventArgs e)
     {
         var asset=TargetAsset();if(asset is null){NeedSelectAsset();return;}
+        DuplicateAsset(asset);
+    }
+    private void DuplicateAsset(UiAsset asset)
+    {
         if (_workFiles.OpenDocuments.Any(d => d.Asset.Id == asset.Id && d.Dirty) &&
             MessageBox.Show(this,
               "此资源有未保存更改。复制将使用已保存的磁盘版本，不包含当前草稿。\n\n继续复制？",
@@ -751,6 +759,10 @@ public partial class MainWindow
     private void DeleteAsset_Click(object sender,RoutedEventArgs e)
     {
         var asset=TargetAsset();if(asset is null){NeedSelectAsset();return;}
+        DeleteAsset(asset);
+    }
+    private void DeleteAsset(UiAsset asset)
+    {
         if(MessageBox.Show(this,
           "资源将从工程清单移除，源文件移动至工程内 .ui-trash 回收目录，不会永久删除。\n\n其他文件中的引用不会自动清理。\n\n继续移除 “"+asset.Name+"” 吗？",
           "移除资源",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
