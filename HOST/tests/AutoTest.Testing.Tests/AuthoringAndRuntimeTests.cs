@@ -111,6 +111,42 @@ public sealed class AuthoringAndRuntimeTests
     }
 
     [Fact]
+    public void SelectedStepDiagnostic_IsolatesStepAndPreservesItsId()
+    {
+        var fullCase = Sample();
+        var selected = fullCase.Walk().First(node => node.Type == "Wait");
+        var isolated = TestRunStepScope.ForSingleStep(fullCase, selected.Id);
+
+        Assert.Equal(fullCase.Id, isolated.Id);
+        Assert.Empty(isolated.Get(TestPhase.Prepare));
+        Assert.Empty(isolated.Get(TestPhase.Cleanup));
+        Assert.Equal(selected.Id, Assert.Single(isolated.Get(TestPhase.Test)).Id);
+        Assert.Equal("50", Assert.Single(isolated.Get(TestPhase.Test))
+            .Properties["milliseconds"]);
+        Assert.NotEqual(new PlanCompiler().Prepare(fullCase).Fingerprint,
+            new PlanCompiler().Prepare(isolated).Fingerprint);
+        Assert.Empty(new PlanCompiler().Prepare(isolated).Diagnostics);
+        // No persisted TEST program mutation or second executor is involved.
+        Assert.Equal(3, fullCase.Get(TestPhase.Cleanup).Length +
+            fullCase.Get(TestPhase.Prepare).Length +
+            fullCase.Get(TestPhase.Test).Length);
+    }
+
+    [Fact]
+    public void SelectedStepDiagnostic_RejectsDisabledAncestorsAndUnknownIds()
+    {
+        var fullCase = Sample();
+        var parent = fullCase.Walk().First(node => node.Type == "If");
+        var nested = fullCase.Walk().First(node => node.Type == "Wait");
+        var tx = new StepEditTransaction(fullCase);
+        tx.SetProperty(parent.Id, "enabled", "false");
+        Assert.Throws<InvalidOperationException>(() =>
+            TestRunStepScope.ForSingleStep(tx.Current, nested.Id));
+        Assert.Throws<KeyNotFoundException>(() =>
+            TestRunStepScope.ForSingleStep(tx.Current, StepNode.Create("Wait").Id));
+    }
+
+    [Fact]
     public void UnsupportedExecutionNodesCannotClaimToBeRunnable()
     {
         var tx = new StepEditTransaction(TestDocument.Create("unsupported"));

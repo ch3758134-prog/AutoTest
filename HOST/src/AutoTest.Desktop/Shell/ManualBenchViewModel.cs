@@ -835,6 +835,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         _hardware.FrameObserved -= FrameObserved;
         _hardware.EvidenceRecorded -= EvidenceRecorded;
         _hardware.ConnectionChanged -= ConnectionChanged;
+        _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
         _hardware.TestRunAuthorizationChanged -= TestRunAuthorizationChanged;
         _projects.CurrentChanged -= ProjectChanged;
         foreach (var key in Keys) key.PropertyChanged -= KeyChanged;

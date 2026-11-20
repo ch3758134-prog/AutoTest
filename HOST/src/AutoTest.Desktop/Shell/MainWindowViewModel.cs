@@ -845,6 +845,7 @@ public sealed class MainWindowViewModel : BindableBase
     }
     public async Task ShutdownAsync()
     {
+        _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
         _scanStop.Cancel();
         try { await _scanReader; }
         catch (OperationCanceledException) { }
