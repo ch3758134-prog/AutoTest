@@ -137,8 +137,9 @@ public partial class ManualBenchWindow : Window
 
     private void AddKeyAction_Click(object sender, RoutedEventArgs e)
     {
-        if (!_model.AddKeyActionCommand.CanExecute()) return;
-        _model.AddKeyActionCommand.Execute();
+        var add = (ICommand)_model.AddKeyActionCommand;
+        if (!add.CanExecute(null)) return;
+        add.Execute(null);
         if (_model.SelectedKeyAction is { } action) OpenKeyActionEditor(action);
     }
 
