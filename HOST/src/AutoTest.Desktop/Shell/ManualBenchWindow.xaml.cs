@@ -49,12 +49,14 @@ public partial class ManualBenchWindow : Window
         finally { _keyAutosaveBusy = false; }
     }
 
-    private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    /// <summary>
+    /// Parent IDE closes this owned tool before disposing WinUSB. Real KEY and
+    /// periodic CAN tasks are stopped and pending KEY edits are durably saved.
+    /// Failure retains the bench so the operator can correct it.
+    /// </summary>
+    public async Task<bool> PrepareForParentShutdownAsync()
     {
-        if (_closeAfterCanStopped ||
-            (!_model.IsCanBatchRunning && !_model.IsKeyActionRunning && !_model.KeyActionsDirty)) return;
-        e.Cancel = true;
-        if (_benchClosePending) return;
+        if (_benchClosePending) return false;
         _benchClosePending = true;
         IsEnabled = false;
         try
@@ -63,29 +65,43 @@ public partial class ManualBenchWindow : Window
             await _model.StopCanBatchForCloseAsync();
             if (_model.KeyActionsDirty)
             {
-                // Exiting is an auto-save operation, not a Save/Discard prompt.
-                // Invalid input or persistence failure must block exit.
                 await _model.SaveKeyActionsForCloseAsync();
                 if (_model.KeyActionsDirty)
-                    throw new InvalidOperationException("KEY 动作仍有未保存修改，已阻止退出。");
+                    throw new InvalidOperationException(
+                        "KEY 动作仍有未保存修改，已阻止主界面退出。");
             }
+            _model.IsKeyEditorExpanded = false;
             _closeAfterCanStopped = true;
             Close();
+            return true;
         }
-        catch (Exception ex)
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
-            MessageBox.Show(this, "关闭前收尾失败：" + ex.Message +
-                "\n请核对主控真实输出，未确认时视为 UNKNOWN。",
-                "手动台架状态未知", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Diagnostics.Trace.TraceError("Manual bench safe shutdown failed: " + error);
+            MessageBox.Show(this, "手动台架无法安全退出：\\n" + error.Message +
+                "\\n请核对主控真实输出，状态未确认时视为 UNKNOWN。",
+                "手动台架收尾失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
         }
         finally
         {
             if (!_closeAfterCanStopped)
             {
-                IsEnabled = true;
                 _benchClosePending = false;
+                IsEnabled = true;
             }
         }
+    }
+
+    private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_closeAfterCanStopped || (_model.IsCanBatchRunning == false &&
+            _model.IsKeyActionRunning == false && !_model.KeyActionsDirty))
+            return;
+        // Await real hardware cleanup instead of allowing WPF to destroy the
+        // Window while pending USB transmissions are still active.
+        e.Cancel = true;
+        if (!_benchClosePending) await PrepareForParentShutdownAsync();
     }
 
     private void ExportLog_Click(object sender, RoutedEventArgs e)
