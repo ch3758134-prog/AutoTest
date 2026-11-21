@@ -119,6 +119,8 @@
         <TextBlock Text="{Binding ScanStatus}" Foreground="{StaticResource Ink}"
                    TextWrapping="Wrap" Margin="0,7,0,10"/>
         <WrapPanel>
+         <Button Content="应用匹配到本次 TEST 选择"
+                 Command="{Binding ApplyScannedRecipeCommand}" Margin="0,0,8,0"/>
          <Button Content="打开测试项目" Command="{Binding OpenFirstTestProjectCommand}" Margin="0,0,8,0"/>
          <Button Content="打开独立烧录工具" Command="{Binding OpenFlashWorkbenchCommand}"/>
         </WrapPanel>

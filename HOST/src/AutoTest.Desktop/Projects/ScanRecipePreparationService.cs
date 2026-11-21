@@ -17,7 +17,9 @@ public static class ScanRecipePreparationService
     public sealed record Preview(
         string RecipeId, string TestScope, IReadOnlyList<string> Cases,
         string FlashPolicy, string? FirmwareReleaseLabel, string? FirmwareName,
-        string? FlashSettingsName, int? TargetEcuCanKbps, string? FlashJobFingerprint)
+        string? FlashSettingsName, int? TargetEcuCanKbps, string? FlashJobFingerprint,
+        Guid? TestProjectAssetId = null, Guid? TestProgramAssetId = null,
+        IReadOnlyList<Guid>? CaseEntryIds = null)
     {
         public string Summary =>
             "TEST: " + TestScope + " · " + Cases.Count + " 个已启用用例" +
@@ -82,6 +84,7 @@ public static class ScanRecipePreparationService
         }
         CheckProject();
         var cases = new List<(Guid AssetId, string Name, TestDocument Program)>();
+        var selectedEntryIds = new List<Guid>();
         string scope;
         if (recipe.TestProjectAssetId is Guid projectId)
         {
@@ -98,6 +101,7 @@ public static class ScanRecipePreparationService
                     AssetId.Create(entry.PackageAssetId), ct);
                 CheckProject();
                 cases.Add((entry.PackageAssetId, entry.DisplayName, package.Document));
+                selectedEntryIds.Add(entry.ItemId);
             }
             if (recipe.TestProgramAssetId is Guid specificId)
                 CheckPin(specificId, recipe.TestProgramRevision,
@@ -143,7 +147,8 @@ public static class ScanRecipePreparationService
                     "配方选了“不烧录”，但运行范围仍包含启用的 Flash 步骤；请修改用例或改为必须烧录。");
             return new(recipe.RecipeId, scope, cases.Select(c => c.Name).ToArray(),
                 policy, recipe.FirmwareReleaseLabel, null, null,
-                recipe.TargetEcuCanKbps, null);
+                recipe.TargetEcuCanKbps, null, recipe.TestProjectAssetId,
+                recipe.TestProgramAssetId, selectedEntryIds.ToArray());
         }
 
         if (policy != ScanFlashPolicy.FlashRequired || enabledFlash.Length != 1)
@@ -209,6 +214,7 @@ public static class ScanRecipePreparationService
 
         return new(recipe.RecipeId, scope, cases.Select(c => c.Name).ToArray(),
             policy, recipe.FirmwareReleaseLabel, firmware.Name,
-            flashEntry.Name, rate, job.Fingerprint);
+            flashEntry.Name, rate, job.Fingerprint,
+            recipe.TestProjectAssetId, recipe.TestProgramAssetId, selectedEntryIds.ToArray());
     }
 }
