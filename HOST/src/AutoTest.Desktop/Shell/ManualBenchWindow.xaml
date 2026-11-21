@@ -381,5 +381,19 @@
   <Border Grid.Row="2" Background="#286DAE" Padding="14,8">
    <TextBlock Text="{Binding Status}" Foreground="White" TextTrimming="CharacterEllipsis"/>
   </Border>
+  <!-- Property edits remain in the single bench surface. Click the dimmed
+       empty space to finish; permanent tool workbenches stay separate windows. -->
+  <Grid x:Name="PropertyOverlay" Grid.RowSpan="3" Panel.ZIndex="100"
+        Background="#72000000" Visibility="Collapsed"
+        MouseLeftButtonDown="PropertyOverlay_MouseLeftButtonDown">
+   <Border Width="820" Height="600" HorizontalAlignment="Center"
+           VerticalAlignment="Center" Background="#FFFFFF"
+           BorderBrush="#DDE6ED" BorderThickness="1" CornerRadius="10"
+           Padding="4">
+    <ContentControl x:Name="PropertyOverlayContent"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalContentAlignment="Stretch"/>
+   </Border>
+  </Grid>
  </Grid>
 </Window>
