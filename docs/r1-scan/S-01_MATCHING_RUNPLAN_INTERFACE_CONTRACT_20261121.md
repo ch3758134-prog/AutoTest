@@ -1,5 +1,8 @@
 # AutoTest R1-SCAN S-01｜编号绑定→冻结运行计划→真实 TEST / RECORD 数据与接口合同 v0.1
 
+
+> **2026-11-21 NI 对标修订提醒**：本文件的“R1 P0 逐外部编号精确绑定”只是第一轮**候审草案**，**不再作为通用 P0 默认模式**。依据 [S-04 NI 系统对标](S-04_NI_TESTSTAND_SYSTEM_RESEARCH_20261121.md) 与 [S-05 产品配置 v0.2](S-05_SCANNER_CONFIGURATION_AND_PRODUCT_UX_V02_20261121.md)，绑定关系可以基于当前工位任务、条码产品码、生产工单或逐个编号的权威档案，并明确各自验证级别。规则/关联/Recipe 分离、冻结版本、研发无需扫码等原则不变；**不得把本文件自行作为已批准出厂放行合同**。
+
 **设计来源**：S-00 对 `R1@fa3b18e948043a9d1960adddb627658fd40c8159` 的静态回读；Issue #72。**状态：DESIGN_PROPOSED / REVIEW_REQUIRED / NOT_IMPLEMENTED**。本合同不把既有 `ScanRecipeDraft` 错当完整生产配方，不允许 SCAN 替换现有 `RealRunCoordinator`。
 
 ## 0. 决策与原则
