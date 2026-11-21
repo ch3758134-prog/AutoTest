@@ -21,7 +21,7 @@
 | WAVE | [#71](https://github.com/ch3758134-prog/AutoTest/issues/71)、[WAVE 研究分支](https://github.com/ch3758134-prog/AutoTest/tree/research/r1-wave-judgement-20261120) | 波形真实采样、比较准确性、RECORD 证据问题仍待审查 |
 | TEST/RECORD | [PR #65](https://github.com/ch3758134-prog/AutoTest/pull/65)、[R1](https://github.com/ch3758134-prog/AutoTest/tree/R1) | 静态修复/候选源码不等于 Windows/真机通过 |
 | 历史 UI/G4/FLASH/UDS | [PR #61](https://github.com/ch3758134-prog/AutoTest/pull/61)、[#55](https://github.com/ch3758134-prog/AutoTest/pull/55)、[#60](https://github.com/ch3758134-prog/AutoTest/pull/60) | 分别按原现场、PR、集成状态，不一口气吞并分支 |
-| Project Control 系统 | [tools/project-control-v2/README.md](../../tools/project-control-v2/README.md) | 独立通用管理工具，其研发与 AutoTest 产品不能混用 |
+| Project Control 系统 | [tools/project-control-v2/README.md](../../../tools/project-control-v2/README.md) | 独立通用管理工具，其研发与 AutoTest 产品不能混用 |
 
 ## 3. 仓库状态快照（不要视为实时看板）
 `main@ffb23f8c05ec4a64b82cd781db6357685d082c04`；`R1@5f7a2cf42c1a30434431af18e2fb26741075ad2f`；此轮整理开始前 `Project_Management@4bc86df5e03a6e1cd251098e82d1f57255cfc98f`；`Main_Control@e06a820e0d54dc7719cc75af1ecae005f05e164f`；`Key_Sim@313ed34ecc8a6e01529998787c8c870cc2e4db4a`。**任何后续实际提交/审批都需重新读取最新 HEAD**，不能将这些快照当作现行唯一 SHA。

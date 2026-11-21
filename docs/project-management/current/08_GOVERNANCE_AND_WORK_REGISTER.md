@@ -48,7 +48,7 @@
 **当前最大不确定项**：R1 首版准出具体是否包含完整生产工位，用户尚未批准新的里程碑。以上是一份连续任务矩阵，不擅自把它变成新的 R0/R1/R2 强制版本分工。
 
 ## 4. 管理系统本体与 AutoTest 产品必须隔离
-`tools/project-control-v2/` 是通用 GitHub 项目管理/证据管理工具，不是 AutoTest HOST 的业务模块。它可以管理决策、模块责任、变更、Gate、交接和来源追溯，但**不能把管理软件自己的数据 Schema、演示工位 UI 或内部审批流程塞到 AutoTest 产品里**。当前本轮重整只修改 AutoTest 的 PM 业务记录，尚未证明 Project Control 本地 Web/Windows 工具已验收；工具自身的研发仍遵循 [Project Control 原规则](../../tools/project-control-v2/README.md)。
+`tools/project-control-v2/` 是通用 GitHub 项目管理/证据管理工具，不是 AutoTest HOST 的业务模块。它可以管理决策、模块责任、变更、Gate、交接和来源追溯，但**不能把管理软件自己的数据 Schema、演示工位 UI 或内部审批流程塞到 AutoTest 产品里**。当前本轮重整只修改 AutoTest 的 PM 业务记录，尚未证明 Project Control 本地 Web/Windows 工具已验收；工具自身的研发仍遵循 [Project Control 原规则](../../../tools/project-control-v2/README.md)。
 
 ## 5. 给后续 AI 的最低交接合同
 1. 先读现行 PM README/00/01~04 和与任务有关的 05/06/07，再回读**当天**的专业 Git SHA，不仅仅看早期概要。

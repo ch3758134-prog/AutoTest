@@ -1,120 +1,26 @@
-# AutoTest｜项目管理正式入口（已更新：2026-11-21）
+# AutoTest｜项目管理正式入口
 
-**唯一现行产品/研发管理基线： [current/README.md](current/README.md)**。
+**当前唯一管理基线：[现行系统总入口](current/README.md)**（2026-11-21 依据负责人本轮逐项确认的产品要求重新全面整理并直接落档）。
 
-本轮负责人根据新研究和实测经验逐项确认了新的产品模型；前一份 [current-20261121 基线](current-20261121/README.md) 现作为历史快照保存。其“生产 Flash 插在 TEST 步骤”“复杂扫码 Recipe/NoFlash”“扫码后用户点击开始”“所有工具依赖工程”等说法已由 [现行取代台账](current/00_DECISIONS_AND_SUPERSESSION.md) 修订。**旧源码/历史验证证据仍保留，不代表新业务已经在 R1 实现。**
+## 当前应阅读什么
+- [00 负责人已确认决策与旧要求取代](current/00_DECISIONS_AND_SUPERSESSION.md)
+- [01 产品、独立工具、通用资源](current/01_PRODUCT_SYSTEM.md)
+- [02 一个 ECU 型号一个工程、TEST 目录树、模板和自动保存](current/02_ECU_PROJECT_TEST.md)
+- [03 扫码、夹具、实体启动、每次必烧录、生产自动执行](current/03_PRODUCTION_STATION_AND_SCAN.md)
+- [04 完整 CAN 底本、测试日志、单台报告、批量报告](current/04_RECORD_LOG_REPORT.md)
+- [05 主控、CAN、IGN、KEY、固件真实物理事实](current/05_HARDWARE_AND_RESOURCES.md)
+- [06 R1 源码差异、交付门禁与真机证据](current/06_R1_GAP_AND_ACCEPTANCE.md)
+- [07 SCAN×REPORT、FLASH、TEST、WAVE、UI、DEVICE 专项交接](current/07_SPECIALIST_WORKPACKAGES.md)
+- [08 项目治理、分支/PR、工作台账](current/08_GOVERNANCE_AND_WORK_REGISTER.md)
+- [09 原始证据、历史资料和未决事项](current/09_SOURCE_TRACEABILITY_AND_OPEN_DECISIONS.md)
 
-请从 [现行目录](current/README.md) 进入各领域合同、R1 源码差异、专项任务与待验收问题。
+**重要**：旧 P0～G4、R1/SCAN 研究和历史管理基线的原文继续保留；与上述新决策冲突的旧要求仅作为历史证据。管理文档更新不等于 R1 源码改完、Windows/Keil 构建成功或真实 ECU/扫码枪/夹具通过实测。固件与物理接口真值不得被新的业务设想替代。
 
----
+## 历史档案（供溯源，不再作为现行合同）
+- [旧项目管理首页及历史时间线完整快照](archive/HISTORIC_README_BEFORE_20261121_REBASE.md)
+- [2026-11-21 上一次全系统管理基线](current-20261121/README.md)
+- [2026-11-12 P0/G0/G1/G3 与专项原档](new-baseline-20261112/)
+- [已批准的旧 P 阶段文档](approved-20261113/)
+- [现行 Project Control 通用管理工具说明](../../tools/project-control-v2/README.md)
 
-## 历史档案导航（以下保留当时版本，仅供追溯；不再是现行要求）
-
-
-## 当前唯一优先阅读入口：2026-11-21 全系统现行基线
-
-> **负责人已批准整体基线重整。** 必须先读 [现行系统基线与决策总纲](current-20261121/README.md)，再按业务领域查找原批准合同/源码；不要按下面的旧时间线摘取孤立的“当前状态”并当作最新事实。
-
-- [现行状态、责任与精确 Git SHA](current-20261121/01_AUTHORITY_AND_CURRENT_STATE.md)
-- [已批准、已取代、候审研究、未验证的决策对照表](current-20261121/02_DECISION_SUPERSESSION_LEDGER.md)
-- [全系统业务与技术领域合同](current-20261121/03_SYSTEM_PRODUCT_AND_DOMAIN_CONTRACT.md)
-- [固件、CAN、IGN、KEY/IO 最新实体映射](current-20261121/04_HARDWARE_FIRMWARE_BASELINE.md)
-- [R1 一次性交付与真机验收门禁](current-20261121/05_R1_RELEASE_AND_ACCEPTANCE.md)
-- [UI 双轨、WAVE/SCAN 最新研究的使用边界](current-20261121/06_UI_UX_CURRENT_FRAMEWORK.md) · [WAVE/SCAN](current-20261121/07_WAVE_SCAN_RECONCILIATION.md)
-- [旧分支/PR 清理、归档与下一步决策](current-20261121/08_GOVERNANCE_MIGRATION_AND_OPEN_ITEMS.md)
-- [原始证据和历史被取代结论索引](current-20261121/09_SOURCE_TRACEABILITY.md)
-
-**以下为按原发布日期保留的历史档案索引**。其“最新、当前、未合并、尚未实施”等措辞仅代表原记录当时状态；与上面的 2026-11-21 现行基线不同步，不能覆盖后续有效事实。历史资料及其批准文件不删除、不在整理时暗改。
-
----
-
-**管理唯一写入分支：`Project_Management`。** 当前仓库 `main` 属于 HOST 软件正式集成，不用于新增正式项目管理工作产品。
-
-## 现行新基线资料
-
-- [2026-11-12 新基线 P0/G0/G1 已归档材料](new-baseline-20261112/)
-- [2026-11-16 G3 增量变更、公共流程/KEY_SIM 与主控 USB/双夹具交接](new-baseline-20261112/G3-SUPPLEMENTS-20261116/README.md)
-- [已批准 P 阶段汇总和审批记录](approved-20261113/)
-
-## 正在整理的缺口
-
-`main` 当前还保留 G2/G3 正式批准文件、冻结 UI HTML 与新版硬件档案，这些尚未全部集中迁移到 `Project_Management`。**本导航不假装资料已经完整迁移**；各项事实以精确 Git SHA 和相应审批记录为准。历史 SAEF 仍在 `SAEF/`，不能与新基线 Gate 状态混写。
-
-## 治理
-
-管理工具本体位于 `tools/project-control-v2/`；普通管理系统源码直接在本分支更新，正式工程成果在对话提交供负责人批准后再写入本分支，无 PM 交付分支或管理 PR。角色、资料与决策/实测证据分开登记。
-
-## 2026-11-17 硬件与历史实测研究事实（不构成设计审批）
-
-- [KEY_SIM V1.1 硬件、WS 固件和供电/引脚风险接收](new-baseline-20261112/research/KEY-SIM-HARDWARE-FACT-INTAKE-20261117.md)：K19/K20 GPIO/封装冲突、24V 理论功耗、三路电源、五路电压及分层实测条件。
-- [旧 WPF 真实 ECU 工程与 44 条历史来源用例调查](new-baseline-20261112/research/LEGACY-WPF-FACT-INTAKE-20261117.md)：40项源码细节、KEY/DBC/CAN/TEST/UI操作经验及待迁移事实。
-
-以上都是研究输入。已批准设计仍以 G3 补充合同为准，未完成实测的硬件约束与工程迁移不得自行宣称通过。
-
-## 2026-11-18 FLASH 专项阶段证据
-
-- [指定 HydEPB ECU 真实写入/FF01 校验/Boot 复位阶段结果与 APP 后验限制](new-baseline-20261112/research/FLASH-REFERENCE-VALIDATION-INTAKE-20261118.md)：已核对 FlashLab 源码和 PR #55，记录专项现场报告、确切 Profile、待补原始证据及 FLASH 责任范围；**不是 G4 总体验收或 PR 合并批准**。
-
-## 2026-11-18 下一阶段研发顺序
-
-- [G4 自动测试优先、FLASH 独立工作台接入、UDS 即刻研究，WAVE/SCAN 待自动测试基线实测后完整集成](new-baseline-20261112/research/G4-FLASH-UDS-WAVE-SCAN-SEQUENCING-20261118.md)：负责人已确定的推进依赖，不表示 G4 Gate 或 FLASH APP 后验完成。
-
-## 2026-11-18 UDS 独立实测专项
-
-- [UDS 专用研发分支与独立 WPF 实测上位机及分层验收合同](new-baseline-20261112/research/UDS-DEDICATED-BRANCH-AND-REAL-LAB-20261118.md)：开发分支 `feature/uds-lab-20261118`；独立 EXE 的真实 ECU 验收与 G4 TEST 集成分开管理。
-
-## 2026-11-18 主控 IO / USB 接口更新
-
-- [最新固件 GPIO 初始化、IGN 引脚修订、LED1～6 USB 0x1A～0x1C、RL_DRV 硬件内部化](new-baseline-20261112/research/MAIN-CONTROL-IO-USB-SOURCE-UPDATE-20261118.md)：已回读 `Main_Control@bf81a64e` 源码，Keil 编译和实物验收未完成；旧 IGN=PTC10/J1 C6 映射已废止。
-
-## 2026-11-19 G4 阶段成果接收与新 UI 职责
-
-- [G4 PR #61 源码受控接收、INTEGRATION Issue #62、Fluent UI 单一设计源](new-baseline-20261112/research/G4-PR61-BASELINE-ACCEPTANCE-20261119.md)：**最新用户决策优先**。G4 阶段源码认可但未正式合入 main；ui/ide-design 为唯一活动 UI 设计源，feature/ui-rebuild-20261119 暂停。
-
-## 2026-11-19 PR #61 实际冲突解决进展
-
-- [G4 PR #61 冲突已消解，待 Windows Build 与正式 main 接收](new-baseline-20261112/research/G4-PR61-MERGE-RESOLVED-20261119.md)：受控 merge 候选 `92c6cb46a35ae11c1ffdefc0e0ece9339906d21a`，GitHub `mergeable=true`，主线尚未修改，实机 G4 Gate 未改变。
-
-## 2026-11-19 G4 已合入正式 HOST main
-
-- [PR #61 正式合并及 main 基线验证记录](new-baseline-20261112/research/G4-PR61-MAIN-MERGED-20261119.md)：`main@eb1b74a3d7eeb6dcbb582d9c04c72f97f5e1204e`；Git 冲突解决，后续仅在 main 上做 Windows 构建和现场实测，G4 整体真实准出仍未判 PASS。
-
-## 2026-11-19 整机系统 main 固定基线
-
-- [HOST、Main_Control、KEY_SIM 三套源码归档到 main 的目录及版本清单](new-baseline-20261112/research/SYSTEM-SOURCE-BASELINE-FIRMWARE-20261119.md)：正式 `main@f00289f3e141f265211f6cf236b55ca435c01f44`，`HOST` 已快进至相同版本；原固件分支保留。Keil、CodeWarrior 与实体硬件验证仍分开进行。
-
-## 2026-11-19 系统基线目录修正：三工程平级
-
-- [HOST / Main_Control / Key_Sim 平级目录正式更正](new-baseline-20261112/research/PEER-PROJECT-DIRECTORY-BASELINE-20261119.md)：最新 `main@ffb23f8c05ec4a64b82cd781db6357685d082c04`，原 `firmware/` 不再存在，HOST 分支已同步。此前固件导入记录中的旧目录只是历史快照。
-
-## 2026-11-19 TEST / RECORD 真实结果与报告后端专项
-
-- [TEST-RECORD 独立专业 AI、结果采集和正式报告的 P0 实测闭环](new-baseline-20261112/research/TEST-RECORD-BACKEND-SPECIALIST-20261119.md)：Issue #64；`feature/test-record-backend-20261119`；后端研究和开发已派发，现有真实 TEST 到 RunRecord/Report 的缺口尚待实施与实体验证。
-
-## 2026-11-19 TEST-RECORD PR #65 技术审查结论
-
-- [PR #65 TEST/RECORD 结果、证据门禁及正式报告代码审查](new-baseline-20261112/research/TEST-RECORD-PR65-TECHNICAL-REVIEW-20261119.md)：**TR-00/01 设计方向有条件认可，TR-02 `CHANGES_REQUIRED`，暂不合并 HOST/main**；P0 B-01 正式 PASS 与真实判定 observation/occurrence 未作因果绑定，且 Desktop 接线、Windows Build、原始连续采集与真机均未完成。Issue #64 继续开放。
-
-## 2026-11-19｜现代工业级 PC 软件 UI/UX 基础方法研究 v1.0 正式归档
-
-- [UX-FOUNDATION-RESEARCH-20261119-01｜研究归档入口](new-baseline-20261112/research/UI-UX-FOUNDATION-20261119/README.md)：HTML 阅读版、Markdown 原档、ZIP 来源 SHA-256、分类审查和权限边界均已收录；状态 `RESEARCH_COMPLETED / ARCHIVED / PRODUCT_UI_NOT_FROZEN`。这是一份**全产品 UI/UX 基础设计参考**，不是新的 UI 视觉或交互定版、G4/G5 技术合同或 HOST 源码修改授权。现行设计仍由 `ui/ide-design` 提交并经用户操作验收。
-
-## 2026-11-19 TEST-RECORD PR #65 B-01 复审
-
-- [B-01 新因果证明源码审查及 C-01 编译语法阻断](new-baseline-20261112/research/TEST-RECORD-PR65-B01-REVIEW-20261119.md)：`5ade1bd9e94d3240e9d931d43005caac5778f515` 的 B-01 逻辑已获静态认可；回归测试中 JSON 字符串转义需要先修；PR 仍 Draft / `CHANGES_REQUIRED`，本地 Windows Build、HOST 接线与 ECU 现场测试各自保持独立门禁。
-
-## 2026-11-19 TEST-RECORD PR #65 C-01 修复验收
-
-- [PR #65 C-01 单行修复静态验收与 Windows Codex 构建门禁移交](new-baseline-20261112/research/TEST-RECORD-PR65-C01-CLEARANCE-20261119.md)：专项提交 `655e1bfe0d95a4a885574450faa79fcf1cff49ef` 已回读，B-01 因果逻辑与 C-01 语法静态认可；**尚无 Windows Release Build/Test、HOST 接线和实体 ECU 证据，PR Draft 未获合并批准**。本条取代此前 C-01 当前仍阻断的状态描述，但保留其历史记录。
-
-## 2026-11-19｜R1 首版真实自动测试与烧录优先推进
-
-- [R1 独立分支、UI 研究并行、旧 G4 退役及 FLASH/RECORD 接线范围](new-baseline-20261112/research/R1-REAL-TEST-FLASH-PRIORITY-20261119.md)：从 `main@ffb23f8c05ec4a64b82cd781db6357685d082c04` 建立 `R1`；R1 专注自动测试全流程真实运行、CAN 烧录、执行日志/证据与正式报告，Issue #70；`ui/ide-design` 独立继续。旧 G4 代码已通过 PR #61 接收入 main，但旧开发分支远端 ref **尚未物理删除**（GitHub 连接暂无删除动作）。首版开发及真机验收均待继续。
-
-## 2026-11-20｜Main_Control 固件 ECU CAN 动态波特率 USB 控制 0x42/0x43
-
-- [ECU CAN 运行时波特率、硬件/USB 映射、固件静态审查及 R1 交接](new-baseline-20261112/research/MAIN-CONTROL-ECU-CAN-BAUD-20261120.md)：固件来源 `Main_Control@e06a820e0d54dc7719cc75af1ecae005f05e164f`；源码与 USB CRC 示例已回读验证，Keil/实体 CAN 未验收；固定 `main` 尚无该 CMD，需后续仅同步到 `Main_Control/`，不得把旧式独立固件分支整个合并进多工程整机基线。R1 见 Issue #70。
-
-## 2026-11-20｜R1 两专项研究启动：WAVE 波形判定、SCAN 扫码测试配置
-
-- [WAVE #71 与 SCAN #72 双专业研究成立、R1 接线责任及初期源码能力](new-baseline-20261112/research/R1-WAVE-SCAN-SPECIALISTS-20261120.md)：WAVE 专注真实 DBC 信号波形参考/判定/证据；SCAN 专注编号与工程测试配置、用例/DBC/烧录配置映射。两个研究分支独立，R1 首版继续开发不等待全面 UI；本次只立项及归档，尚未通过现场实测。
+**分支权属**：本轮只更新 `Project_Management` 的管理文档与已更新的相关 Issue 说明；`main`、`R1`、固件及研究源码不会因为业务整理而被自动修改或合并。
