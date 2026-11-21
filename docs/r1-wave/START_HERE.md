@@ -3,7 +3,7 @@
 **身份**：WAVE 真实采样、参考波形与 TEST 判定算法专业 AI。  
 **正式任务**：[Issue #71](https://github.com/ch3758134-prog/AutoTest/issues/71)。  
 **研究分支**：`research/r1-wave-judgement-20261120`；初始基于 `R1@94e82eddb03e69b428fd4c63c2093a570d979c4e`。  
-**状态**：`W-00~08 RESEARCHED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新二轮回读 `R1@e5a9e13ad522ddaf9092f44099f2ef26bdf1e19b`。
+**状态**：`W-00~10 RESEARCHED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新二轮回读 `R1@e5a9e13ad522ddaf9092f44099f2ef26bdf1e19b`。
 
 ## 必须先完成的源码调查
 
@@ -40,3 +40,9 @@
 ## 2026-11-21｜W-08 容差标定研究补充
 
 - [W-08｜容差来源、测量系统重复性与参考资格研究](W-08_WAVE_LIMITS_MSA_AND_REFERENCE_QUALIFICATION_20261121.md)：成熟产品不能简单拿一台合格 ECU 的一次采样曲线和任意 ±5% 容差作为正式生产标准。应区分产品规格、合格样本间差异、重复测量波动、设备/时间采样不确定度；通过受控重复采集、适用型号核对、安全负例与阈值批准形成生产规则。此为候审方法论，`FIELD_NOT_VERIFIED / NO_CALIBRATION_DATA`，R1 不必先重建统计平台。
+
+## 2026-11-21｜第三轮：独立波形工具与准确度保证
+
+- [W-09｜独立波形专业工具与实时采集工作台](W-09_LIVE_WAVE_TOOL_CAPTURE_WORKBENCH_20261121.md)：明确当前 WAVE WPF 仅是读取已存证据的浏览器；需要独立真实 CAN/DBC 信号选择、LiveMonitor/采集/停止/触发/预采、质量可见、离散阶梯图、参考叠加、已存证据、UI 与记录优先级分离、主窗生命周期绑定。工具不能建立第二套 CAN/TEST 或代替正式执行器。
+- [W-10｜波形准确度保障与现场资格验收合同](W-10_ACCURACY_ASSURANCE_AND_FIELD_QUALIFICATION_20261121.md)：以数值解码正确、采集完整、时间可信、判定可复算为四种不同准确度；八类验证事实、时间误差边界、现场校准策略、受条件限制的生产准出等级、18 个故障向量。实际 USB 0x41 为 HostArrivalOnly，不能宣称 ECU 物理高速信号精度。
+- 本次新增研究仍为 `DOC_ONLY / DESIGN_PENDING_REVIEW / WINDOWS_NOT_RUN / FIELD_NOT_VERIFIED`，最近源码静态比较 `R1@8e6aaa556e70ce025a18c20abeb331fa812b055d`；不得未经审查改 R1/main/固件。同期旧 W-04~08 不取代此二份专门合同。
