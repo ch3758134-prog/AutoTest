@@ -67,11 +67,11 @@ public partial class TestProjectWorkbenchView : UserControl
             sender is Button { Tag: TestProjectPackageRow row })
             vm.MoveRow(row, direction);
     }
-    private void RemoveRow_Click(object sender, RoutedEventArgs e)
+    private async void RemoveRow_Click(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
         if (DataContext is TestProjectWorkbenchViewModel vm &&
             sender is Button { Tag: TestProjectPackageRow row })
-            vm.RemoveRow(row);
+            await vm.RemoveRowAsync(row);
     }
 }
