@@ -183,7 +183,7 @@
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="▦ 工程" Command="{Binding OpenProjectCommand}" Margin="0,0,8,0"/>
-     <Button Content="创建验收工程" Command="{Binding CreateAcceptanceSampleCommand}"
+     <Button Content="验收工程" Command="{Binding CreateAcceptanceSampleCommand}"
       ToolTip="自动生成正式测试项目和3个真实可编辑用例；主窗口直接打开，不启动独立测试编辑程序"
       Margin="0,0,8,0"/>
      <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
