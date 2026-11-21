@@ -1910,7 +1910,27 @@ public sealed class MainWindowViewModel : BindableBase
         if (asset is null) return;
         var editorsUsingAsset = OpenEditors.Where(tab =>
             tab.Key.EndsWith("|" + asset.Id, StringComparison.Ordinal)).ToArray();
-        if (!await PrepareEditorsForCloseAsync(editorsUsingAsset)) return;
+        // Save every pending TEST/project draft first; a stale in-memory
+        // project reference must never be silently orphaned by deleting its asset.
+        if (!await PrepareEditorsForCloseAsync()) return;
+        if (asset.Kind == ProjectWorkspaceService.TestProgramKind &&
+            _workspace.Current is { } activeProject)
+        {
+            foreach (var projectAsset in activeProject.Definition.Assets.Where(x =>
+                         x.Kind == ProjectWorkspaceService.TestProjectKind))
+            {
+                // Open through the revision-checked workspace codec. If one
+                // project cannot be read, fail closed rather than risk dangling refs.
+                var projectSession = await _workspace.OpenTestProjectEditorAsync(projectAsset.Id);
+                if (projectSession.Document.Packages.Any(x => x.AssetId == asset.Id.Value))
+                {
+                    _fileDialogs.ShowError("测试用例“" + asset.Name + "”仍被测试项目“" +
+                        projectAsset.Name + "”引用。\\n请先在该项目中点“移除”，" +
+                        "再从工程树移除该资源。源文件会保留以便恢复。");
+                    return;
+                }
+            }
+        }
         if (!_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
         await RunOperationAsync(async () =>
         {
