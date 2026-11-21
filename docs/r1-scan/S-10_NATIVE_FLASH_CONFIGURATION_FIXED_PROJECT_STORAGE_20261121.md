@@ -98,7 +98,7 @@ SecurityAccess 子功能、Seed/Key 受支持 Provider 标识、安全库 SHA、
 ## 6. 扫码、正式方案和烧录怎样绑定（新修订）
 
 ```text
-外部实体条码（UTF1/legacy）
+外部实体条码（UT1/legacy）
   -> DutSerial + 产品代码 + HW [标签声明]
   -> 当前已批准 ProductionTask
   -> 绑定到该 ECU 工程唯一已发布 ProductionRecipe
