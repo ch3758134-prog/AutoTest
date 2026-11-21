@@ -27,6 +27,40 @@ public sealed class ManualBenchCanDraftStoreTests
     }
 
     [Fact]
+    public void ExpiredDbcPinCannotBeSilentlyIgnoredWhenSendingRawBytes()
+    {
+        var row = new ManualBenchViewModel.BenchCanRow("过期 DBC 报文");
+        row.MarkUnresolvedDbc(new ManualBenchCanDraftStore.DbcPin(
+            Guid.NewGuid(), 3, new string('A', 64), 0x701u));
+        row.AttachUniqueMatchingDbc();
+        var rejection = Assert.Throws<InvalidOperationException>(() => row.BuildFrame());
+        Assert.Contains("DBC", rejection.Message);
+
+        // Operator must explicitly clear the obsolete assistance. This action
+        // retains the exact raw DATA; it never sends the frame on its own.
+        var savedBytes = row.DataHex;
+        row.ClearDbcAssistance();
+        Assert.Equal(savedBytes, row.DataHex);
+        Assert.Equal((uint)0x701, row.BuildFrame().Id);
+    }
+
+    [Fact]
+    public async Task CorruptProjectDraftIsRejectedWithoutOverwritingItsBytes()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "autotest-can-bad-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var path = ManualBenchCanDraftStore.DocumentPath(root);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllTextAsync(path, "{ broken json");
+            await Assert.ThrowsAsync<System.Text.Json.JsonException>(
+                () => ManualBenchCanDraftStore.LoadAsync(root));
+            Assert.Equal("{ broken json", await File.ReadAllTextAsync(path));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
     public void RefusesUnexpectedSchemaAndOversizedConfiguration()
     {
         Assert.Throws<InvalidDataException>(() =>
