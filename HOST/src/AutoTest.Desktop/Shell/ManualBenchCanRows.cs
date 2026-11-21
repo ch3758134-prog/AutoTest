@@ -187,7 +187,7 @@ public sealed partial class ManualBenchViewModel
                         try
                         {
                             decoded = DbcSignalCodec.DecodePhysical(field.Signal, data)
-                                .ToString("G17", CultureInfo.InvariantCulture);
+                                .ToString("G12", CultureInfo.InvariantCulture);
                         }
                         catch (Exception error) when (error is ArgumentException or
                             IndexOutOfRangeException or ProjectDataException) { }
