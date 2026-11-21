@@ -157,8 +157,8 @@ public partial class MainWindow : Window
             {
                 Trace.TraceError("AutoTest shutdown still pending after six seconds: " + error);
                 MessageBox.Show(this,
-                    "设备和日志清理尚未完成，不能确认 USB 已安全释放。\\n" +
-                    "主程序将保持打开，不会强制退出或冒称设备已经断开。\\n" +
+                    "设备和日志清理尚未完成，不能确认 USB 已安全释放。\n" +
+                    "主程序将保持打开，不会强制退出或冒称设备已经断开。\n" +
                     "请检查工位实际状态后，再点击关闭以继续等待同一收尾任务。",
                     "退出等待设备收尾", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -167,8 +167,8 @@ public partial class MainWindow : Window
             {
                 Trace.TraceError("AutoTest cleanup failed; exit blocked: " + error);
                 MessageBox.Show(this,
-                    "主控或日志收尾失败，设备状态 UNKNOWN；没有强制结束进程。\\n" +
-                    error.Message + "\\n请先确认现场安全，保留错误日志供诊断。",
+                    "主控或日志收尾失败，设备状态 UNKNOWN；没有强制结束进程。\n" +
+                    error.Message + "\n请先确认现场安全，保留错误日志供诊断。",
                     "无法确认安全退出", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
@@ -178,7 +178,7 @@ public partial class MainWindow : Window
         catch (Exception error) when (error is not OutOfMemoryException)
         {
             Trace.TraceError("AutoTest exit guard failure: " + error);
-            MessageBox.Show(this, "退出检查发生异常，窗口未关闭：\\n" + error.Message,
+            MessageBox.Show(this, "退出检查发生异常，窗口未关闭：\n" + error.Message,
                 "退出失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally { _closeAttemptPending = false; }

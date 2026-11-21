@@ -86,8 +86,8 @@ public partial class ManualBenchWindow : Window
         catch (Exception error) when (error is not OutOfMemoryException)
         {
             System.Diagnostics.Trace.TraceError("Manual bench safe shutdown failed: " + error);
-            MessageBox.Show(this, "手动台架无法安全退出：\\n" + error.Message +
-                "\\n请核对主控真实输出，状态未确认时视为 UNKNOWN。",
+            MessageBox.Show(this, "手动台架无法安全退出：\n" + error.Message +
+                "\n请核对主控真实输出，状态未确认时视为 UNKNOWN。",
                 "手动台架收尾失败", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }

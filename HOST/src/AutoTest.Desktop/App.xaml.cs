@@ -26,8 +26,14 @@ public partial class App : PrismApplication
             var message = "界面操作发生异常：" + e.Exception.Message +
                 (log is null ? "\n未能写入错误日志。" :
                     "\n已记录完整异常堆栈：" + log);
-            MessageBox.Show(message, "AutoTest · 界面错误",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            var answer = MessageBox.Show(message +
+                "\n\n是否将异常类型、完整调用堆栈和日志路径复制到剪贴板？" +
+                "\n复制后可以直接粘贴给研发人员，无需自行翻找日志。",
+                "AutoTest · 界面错误", MessageBoxButton.YesNo, MessageBoxImage.Error);
+            if (answer == MessageBoxResult.Yes)
+                Clipboard.SetText("AutoTest · UI 诊断\n" +
+                    DateTimeOffset.Now.ToString("O") + "\n" +
+                    e.Exception + (log is null ? "" : "\n日志：" + log));
         }
         catch (Exception displayError)
         {
