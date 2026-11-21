@@ -23,9 +23,6 @@ public partial class TestEditorView : UserControl
     private StepRowProjection? _activeQuickRow;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
-    private readonly DispatcherTimer _autosaveTimer = new() { Interval = TimeSpan.FromSeconds(3) };
-    private DateTime _lastEditInteractionUtc = DateTime.UtcNow;
-    private bool _autosaveBusy;
     public ContentControl InspectorHost { get; } = new()
     {
         HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -36,12 +33,6 @@ public partial class TestEditorView : UserControl
     {
         InitializeComponent();
         PaletteCategories.ItemsSource = PaletteGroups;
-        _autosaveTimer.Tick += AutosaveTick;
-        PreviewMouseDown += (_, _) => _lastEditInteractionUtc = DateTime.UtcNow;
-        PreviewKeyDown += (_, _) => _lastEditInteractionUtc = DateTime.UtcNow;
-        PreviewTextInput += (_, _) => _lastEditInteractionUtc = DateTime.UtcNow;
-        Loaded += (_, _) => _autosaveTimer.Start();
-        Unloaded += (_, _) => _autosaveTimer.Stop();
         _viewModel = viewModel;
         DataContext = viewModel;
         _viewModel.InspectorRequested += ShowInspector;
@@ -56,21 +47,6 @@ public partial class TestEditorView : UserControl
             _inspectorInitialized = true;
             _viewModel.ResetInspector();
         };
-    }
-
-    private async void AutosaveTick(object? sender, EventArgs e)
-    {
-        // Save only committed TEST edits after a short idle period. Never persist
-        // half-typed Inspector or quick-edit values; these remain explicitly editable.
-        if (_autosaveBusy || !IsVisible || _viewModel.IsBusy || !_viewModel.IsDirty ||
-            HasPendingInspectorDraft || _activeQuickRow is { IsInlineEditing: true } ||
-            Keyboard.FocusedElement is TextBoxBase ||
-            DateTime.UtcNow - _lastEditInteractionUtc < TimeSpan.FromSeconds(3))
-            return;
-        _autosaveBusy = true;
-        try { await SaveForCloseAsync(); }
-        catch (Exception error) { System.Diagnostics.Trace.TraceWarning("TEST autosave failed: " + error); }
-        finally { _autosaveBusy = false; }
     }
 
     public bool HasPendingInspectorDraft =>
