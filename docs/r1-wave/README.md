@@ -5,7 +5,7 @@
 - 最新回读的活跃 R1：`e5a9e13ad522ddaf9092f44099f2ef26bdf1e19b`（2026-11-21 研究快照；R1 如继续推进，集成前必须重新比对）
 - 接管原始 R1：`94e82eddb03e69b428fd4c63c2093a570d979c4e`
 - 任务入口： [START_HERE.md](START_HERE.md)
-- 研究状态：`W-00~08 RESEARCH_CANDIDATE / PENDING_REVIEW`；`FIELD_NOT_VERIFIED`；`NO_SOURCE_CHANGE`
+- 研究状态：`W-00~10 RESEARCH_CANDIDATE / PENDING_REVIEW`；`FIELD_NOT_VERIFIED`；`NO_SOURCE_CHANGE`
 
 ## 研究交付
 
@@ -21,6 +21,9 @@
 | **W-07** | [产品级最小实施与现场验收门禁](W-07_PRODUCT_MVP_ROLLOUT_AND_ACCEPTANCE_GATE_20261121.md) | P0-A~F 实施顺序、12 个现场场景、质量与 RECORD 测试、Gate 与 NOT_RUN 模板 |
 
 | **W-08** | [W-08｜容差来源、测量系统重复性与参考资格研究](W-08_WAVE_LIMITS_MSA_AND_REFERENCE_QUALIFICATION_20261121.md) | 以 NIST 量测系统研究方法区分产品规格、采样不确定度、样件/工位重复性与误判风险；不允许默认统一 5% 容差 |
+
+| **W-09** | [W-09｜独立波形专业工具与实时采集工作台](W-09_LIVE_WAVE_TOOL_CAPTURE_WORKBENCH_20261121.md) | 实时监视/手动或触发录制/专业图形/参考审核/优先保存原始数据、UI 不影响记录及 15 个工具验收用例 |
+| **W-10** | [W-10｜波形准确度保障与现场资格验收合同](W-10_ACCURACY_ASSURANCE_AND_FIELD_QUALIFICATION_20261121.md) | 从 CAN 字节、DBC、时间、丢帧、参考、算法到 RECORD 的 8 层准确性证明，18 个准确性故障向量和现场资格等级 |
 
 ## 管理边界
 
