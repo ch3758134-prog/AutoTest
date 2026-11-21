@@ -114,4 +114,47 @@ public sealed class CloseDraftGuardTests
         ], _ => throw new Exception("Should not prompt"),
         _ => throw new Exception("Should not report")));
     }
+
+    [Fact]
+    public async Task AutomaticExitSavesAllEditedDocumentsWithoutPrompt()
+    {
+        var firstDirty = true;
+        var secondDirty = true;
+        var order = new List<string>();
+        var documents = new[]
+        {
+            Document("TEST", () => false, () => firstDirty,
+                () => { order.Add("TEST"); firstDirty = false; return Task.FromResult(true); }),
+            Document("PROJECT", () => false, () => secondDirty,
+                () => { order.Add("PROJECT"); secondDirty = false; return Task.FromResult(true); })
+        };
+        Assert.True(await CloseDraftGuard.PrepareWithAutoSaveAsync(documents,
+            _ => throw new Exception("Unexpected save failure")));
+        Assert.Equal(["TEST", "PROJECT"], order);
+    }
+
+    [Fact]
+    public async Task AutomaticExitRefusesToDiscardInvalidDraft()
+    {
+        var message = "";
+        var dirty = true;
+        Assert.False(await CloseDraftGuard.PrepareWithAutoSaveAsync([
+            Document("右侧步骤属性", () => false, () => dirty,
+                () => Task.FromResult(false))
+        ], error => message = error));
+        Assert.True(dirty);
+        Assert.Contains("右侧步骤属性", message);
+    }
+
+    [Fact]
+    public async Task AutomaticExitWaitsForPersistenceRatherThanFireAndForget()
+    {
+        var dirty = true;
+        var item = Document("DBC", () => false, () => dirty,
+            async () => { await Task.Yield(); dirty = false; return true; });
+        Assert.True(await CloseDraftGuard.PrepareWithAutoSaveAsync([item],
+            _ => throw new Exception("Should not report")));
+        Assert.False(dirty);
+    }
+
 }
