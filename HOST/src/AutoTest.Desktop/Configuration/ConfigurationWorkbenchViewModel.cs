@@ -89,6 +89,12 @@ public sealed class ConfigurationField : BindableBase
                 _ => "其他 CAN 通道：" + x
             },
             "published" or "extended" or "requiresFlash" or "sync" => x,
+            "flashPolicy" => x switch
+            {
+                "NoFlash" => "不烧录 · 只运行已选测试",
+                "FlashRequired" => "必须烧录 · 使用 TEST 内的唯一 Flash 步骤",
+                _ => "未确定"
+            },
             _ => x
         })).ToArray();
     public bool HasOptions => Options.Count > 0;
@@ -601,14 +607,35 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 AddField("id", "配方编号", r.RecipeId);
                 AddField("model", "车型标识", r.Model);
                 AddField("customer", "客户标识", r.Customer);
-                AddField("test", "关联测试程序", AssetNameFor(r.TestProgramAssetId),
-                    "仅允许已保存的 TEST 资源", AssetNames(ProjectWorkspaceService.TestProgramKind));
+                AddField("testProject", "运行的测试项目（有序用例）", AssetNameFor(r.TestProjectAssetId),
+                    "推荐选择已有测试项目，按工程中固定的用例顺序执行；不会因扫码立刻运行。",
+                    AssetNames(ProjectWorkspaceService.TestProjectKind));
+                AddField("test", "关联单个 TEST 程序（可选）", AssetNameFor(r.TestProgramAssetId),
+                    "不使用测试项目时选择单个 TEST；也可用于核对项目中的目标用例。",
+                    AssetNames(ProjectWorkspaceService.TestProgramKind));
                 AddField("dbc", "关联 DBC", AssetNameFor(r.DbcAssetId),
                     "可选。引用当前工程 DBC 版本", AssetNames(ProjectWorkspaceService.DbcKind));
-                AddField("flash", "关联固件", AssetNameFor(r.FirmwareAssetId),
-                    "可选。需要烧录时才要求", AssetNames(ProjectWorkspaceService.FirmwareKind));
-                AddField("requiresFlash", "要求烧录", r.RequiresFlash ? "是" : "否", "", YesNo);
-                AddField("published", "发布此配方", r.Published ? "是" : "否", "", YesNo);
+                AddField("flashPolicy", "本次烧录策略",
+                    r.EffectiveFlashPolicy == "LegacyFlashUnbound" ? "" : r.EffectiveFlashPolicy,
+                    "首版仅支持不烧录和必须烧录；不会按条码自动跳过或执行 FLASH。",
+                    ["", ScanFlashPolicy.NoFlash, ScanFlashPolicy.FlashRequired]);
+                AddField("flash", "软件目标 · 工程 HEX/S19 资源", AssetNameFor(r.FirmwareAssetId),
+                    "引用工程固件的版本和 SHA；不按文件修改时间自动选最新。",
+                    AssetNames(ProjectWorkspaceService.FirmwareKind));
+                AddField("firmwareRelease", "软件发布名称／目标版本", r.FirmwareReleaseLabel ?? "",
+                    "例如 EPB-R5；这是人类可读标识，软件实际版本仍需 ECU 专门验收。");
+                AddField("flashSettings", "烧录工艺配置（元数据）", AssetNameFor(r.FlashSettingsAssetId),
+                    "引用项目中已有烧录配置；真正执行仍使用 TEST Flash 步骤里的 CanTool XML/HEX/SafetyFile。",
+                    AssetNames(ProjectWorkspaceService.FlashSettingsKind));
+                AddField("ecuCanBaud", "目标 ECU CAN 波特率 kbit/s",
+                    r.TargetEcuCanKbps?.ToString(CultureInfo.InvariantCulture) ?? "",
+                    "必须与主控 0x43 读回和 CanTool XML 一致；仅烧录支持 250k/500k。",
+                    new[] { "" }.Concat(ScanFlashPolicy.SupportedEcuCanKbps.Select(
+                        x => x.ToString(CultureInfo.InvariantCulture))).ToArray());
+                AddField("flashJob", "已冻结的 CanTool 任务 SHA256", r.FlashJobFingerprint ?? "",
+                    "发布前自动校验并冻结；内容变化须重新发布。", readOnly: true);
+                AddField("published", "发布此配方", r.Published ? "是" : "否",
+                    "自动保存草稿不等于批准生产配方；扫码仅做配置识别，不自动烧录。", YesNo);
             }
         }
         RefreshControllerDesigner();
@@ -800,13 +827,31 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 {
                     var recipes = scan.Recipes.ToList();
                     var test = ResolvePinnedAsset(F("test"), ProjectWorkspaceService.TestProgramKind);
+                    var testProject = ResolvePinnedAsset(F("testProject"), ProjectWorkspaceService.TestProjectKind);
                     var firmware = ResolvePinnedAsset(F("flash"), ProjectWorkspaceService.FirmwareKind);
+                    var flashSettings = ResolvePinnedAsset(F("flashSettings"), ProjectWorkspaceService.FlashSettingsKind);
                     var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
+                    var policy = F("flashPolicy");
+                    if (policy.Length == 0)
+                        throw new ProjectDataException("SCAN_FLASH_POLICY",
+                            "请明确选择“不烧录”或“必须烧录”，不要沿用旧的单个烧录勾选。");
+                    int? rate = F("ecuCanBaud").Length == 0 ? null :
+                        int.Parse(F("ecuCanBaud"), CultureInfo.InvariantCulture);
+                    var old = scan.Recipes[ParseIndex(key)];
                     recipes[ParseIndex(key)] = new ScanRecipeDraft(F("id"), F("model"),
                         F("customer"), test.Id, firmware.Id, dbc.Id,
-                        Yes(F("requiresFlash")), Yes(F("published")),
+                        policy == ScanFlashPolicy.FlashRequired, Yes(F("published")),
                         test.Revision, test.Sha256,
-                        firmware.Revision, firmware.Sha256, dbc.Revision, dbc.Sha256);
+                        firmware.Revision, firmware.Sha256, dbc.Revision, dbc.Sha256,
+                        testProject.Id, testProject.Revision, testProject.Sha256,
+                        flashSettings.Id, flashSettings.Revision, flashSettings.Sha256,
+                        policy, rate, F("firmwareRelease"),
+                        // Any change to selected resources invalidates the old
+                        // approval; the publish step recomputes from real files.
+                        null);
+                    if (!recipes[ParseIndex(key)].Published &&
+                        old.FlashJobFingerprint is not null)
+                        StatusMessage = "新草稿已解除原 Flash Job 冻结；再次发布时重新读取文件。";
                     next = scan with { Recipes = recipes };
                 }
             }

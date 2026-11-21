@@ -82,7 +82,29 @@ public sealed record ScanRecipeDraft(string RecipeId, string Model, string Custo
     bool RequiresFlash, bool Published,
     int? TestProgramRevision = null, string? TestProgramFingerprint = null,
     int? FirmwareRevision = null, string? FirmwareFingerprint = null,
-    int? DbcRevision = null, string? DbcFingerprint = null);
+    int? DbcRevision = null, string? DbcFingerprint = null,
+    Guid? TestProjectAssetId = null, int? TestProjectRevision = null,
+    string? TestProjectFingerprint = null,
+    Guid? FlashSettingsAssetId = null, int? FlashSettingsRevision = null,
+    string? FlashSettingsFingerprint = null,
+    string? FlashPolicy = null, int? TargetEcuCanKbps = null,
+    string? FirmwareReleaseLabel = null, string? FlashJobFingerprint = null)
+{
+    /// <summary>Legacy scan profiles are readable; legacy "requiresFlash" is
+    /// NOT a verified CanTool production bundle.</summary>
+    public string EffectiveFlashPolicy =>
+        FlashPolicy is "NoFlash" or "FlashRequired" ? FlashPolicy :
+        RequiresFlash ? "LegacyFlashUnbound" : "NoFlash";
+}
+
+public static class ScanFlashPolicy
+{
+    public const string NoFlash = "NoFlash";
+    public const string FlashRequired = "FlashRequired";
+    public static readonly int[] SupportedEcuCanKbps =
+        [20, 50, 100, 125, 250, 500, 800, 1000];
+}
+
 
 public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, bool Published,
     List<ScanRuleDraft> Rules, List<ScanRecipeDraft> Recipes)
@@ -108,15 +130,41 @@ public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, b
         if (!Recipes.Any(r => r.Published))
             throw new ProjectDataException("SCAN_RECIPE_MISSING", "正式发布前必须指定至少一个配方。");
         foreach (var recipe in Recipes.Where(r => r.Published))
-            if (string.IsNullOrWhiteSpace(recipe.RecipeId) || recipe.TestProgramAssetId is null ||
-                (recipe.RequiresFlash && recipe.FirmwareAssetId is null) ||
-                !ProjectConfigurationCodec.ValidPin(recipe.TestProgramRevision, recipe.TestProgramFingerprint) ||
+        {
+            if (string.IsNullOrWhiteSpace(recipe.RecipeId) ||
+                (recipe.TestProgramAssetId is null && recipe.TestProjectAssetId is null) ||
+                (recipe.TestProgramAssetId.HasValue &&
+                 !ProjectConfigurationCodec.ValidPin(recipe.TestProgramRevision, recipe.TestProgramFingerprint)) ||
+                (recipe.TestProjectAssetId.HasValue &&
+                 !ProjectConfigurationCodec.ValidPin(recipe.TestProjectRevision, recipe.TestProjectFingerprint)) ||
                 (recipe.FirmwareAssetId.HasValue &&
                  !ProjectConfigurationCodec.ValidPin(recipe.FirmwareRevision, recipe.FirmwareFingerprint)) ||
                 (recipe.DbcAssetId.HasValue &&
-                 !ProjectConfigurationCodec.ValidPin(recipe.DbcRevision, recipe.DbcFingerprint)))
+                 !ProjectConfigurationCodec.ValidPin(recipe.DbcRevision, recipe.DbcFingerprint)) ||
+                (recipe.FlashSettingsAssetId.HasValue &&
+                 !ProjectConfigurationCodec.ValidPin(recipe.FlashSettingsRevision, recipe.FlashSettingsFingerprint)))
                 throw new ProjectDataException("SCAN_RECIPE_INVALID",
-                    "已发布配方必须保存测试程序和其他引用资源的修订/哈希，避免静默换版本。");
+                    "发布配方必须引用已保存的测试项目或测试程序，以及所选资源的确定修订与 SHA。");
+            if (recipe.FlashPolicy is not null and not ("NoFlash" or "FlashRequired"))
+                throw new ProjectDataException("SCAN_FLASH_POLICY", "烧录策略只能选不烧录或必须烧录。");
+            if (recipe.TargetEcuCanKbps is int rate &&
+                !ScanFlashPolicy.SupportedEcuCanKbps.Contains(rate))
+                throw new ProjectDataException("SCAN_ECU_CAN_BAUD", "目标 ECU CAN 波特率不在主控支持列表中。");
+            if (recipe.FlashPolicy == ScanFlashPolicy.NoFlash && recipe.RequiresFlash ||
+                recipe.FlashPolicy == ScanFlashPolicy.FlashRequired && !recipe.RequiresFlash)
+                throw new ProjectDataException("SCAN_FLASH_POLICY",
+                    "已发布配方的烧录策略和是否烧录标记不一致。");
+            if (recipe.FlashPolicy == ScanFlashPolicy.FlashRequired &&
+                (recipe.FirmwareAssetId is null || recipe.FlashSettingsAssetId is null ||
+                 recipe.TargetEcuCanKbps is not (250 or 500) ||
+                 string.IsNullOrWhiteSpace(recipe.FirmwareReleaseLabel)))
+                throw new ProjectDataException("SCAN_FLASH_BUNDLE",
+                    "必须烧录：请选择目标固件、已有烧录配置、250/500k 码率和软件发布名称；TEST 中仍需唯一 Flash 步骤。");
+            if (recipe.FlashJobFingerprint is { Length: > 0 } sha &&
+                (sha.Length != 64 || !sha.All(Uri.IsHexDigit)))
+                throw new ProjectDataException("SCAN_FLASH_SHA",
+                    "冻结烧录任务 SHA256 无效。");
+        }
     }
 
     public IdentityRuleSet ToRules()
