@@ -45,6 +45,35 @@ public sealed class ManualBenchCanDraftStoreTests
     }
 
     [Fact]
+    public void DuplicatedExpiredDbcFrameStaysBlockedUntilExplicitOperatorAction()
+    {
+        var original = new ManualBenchViewModel.BenchCanRow("过期工程帧")
+        {
+            IdHex = "701",
+            DataHex = "AA 00 00 00 00 00 00 01",
+            IsPeriodic = true,
+            PeriodText = "65",
+            Included = true
+        };
+        var pin = new ManualBenchCanDraftStore.DbcPin(
+            Guid.NewGuid(), 7, new string('B', 64), 0x701u);
+        original.MarkUnresolvedDbc(pin);
+        var copied = original.DuplicateForEditing("副本");
+        Assert.Equal(original.DataHex, copied.DataHex);
+        Assert.Equal(pin, copied.BoundDbcPin);
+        Assert.Contains("DBC", Assert.Throws<InvalidOperationException>(
+            () => copied.BuildFrame()).Message);
+        copied.DataHex = "BB 00 00 00 00 00 00 01";
+        copied.AttachUniqueMatchingDbc();
+        Assert.Throws<InvalidOperationException>(() => copied.BuildFrame());
+        // Explicit operator choice clears only the stale link, never the data.
+        copied.ClearDbcAssistance();
+        Assert.Null(copied.BoundDbcPin);
+        Assert.Equal("BB 00 00 00 00 00 00 01", copied.DataHex);
+        Assert.Equal((uint)0x701, copied.BuildFrame().Id);
+    }
+
+    [Fact]
     public async Task CorruptProjectDraftIsRejectedWithoutOverwritingItsBytes()
     {
         var root = Path.Combine(Path.GetTempPath(), "autotest-can-bad-" + Guid.NewGuid().ToString("N"));

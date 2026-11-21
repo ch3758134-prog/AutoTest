@@ -37,8 +37,28 @@ public sealed partial class ManualBenchViewModel
                 : _staleDbcPin;
         public void MarkUnresolvedDbc(ManualBenchCanDraftStore.DbcPin pin)
         {
+            // A stale resource is a safety restriction, not a presentation hint.
+            // Even a copy, raw-data edit, or automatic DBC lookup cannot bypass it.
+            if (_dbcChoice is not null) DbcMessage = null;
             _staleDbcPin = pin;
             Notify();
+        }
+        public BenchCanRow DuplicateForEditing(string name)
+        {
+            var row = new BenchCanRow(name, DbcChoices)
+            {
+                IdHex = IdHex,
+                Extended = Extended,
+                PeriodText = PeriodText,
+                IsPeriodic = IsPeriodic,
+                Included = Included,
+                DbcMessage = UseDbc ? DbcMessage : null
+            };
+            row.DataHex = DataHex;
+            if (!UseDbc) row.UseDbc = false;
+            row._explicitRawCan = _explicitRawCan;
+            if (_staleDbcPin is { } pin) row.MarkUnresolvedDbc(pin);
+            return row;
         }
         public event Action? Edited;
 
@@ -474,14 +494,9 @@ public sealed partial class ManualBenchViewModel
     private void CopyCanRow()
     {
         if (SelectedCanRow is not { } source) return;
-        var row = new BenchCanRow(source.Name + " 副本", DbcMessages)
-        {
-            IdHex = source.IdHex, Extended = source.Extended,
-            PeriodText = source.PeriodText, IsPeriodic = source.IsPeriodic,
-            Included = source.Included, DbcMessage = source.UseDbc ? source.DbcMessage : null
-        };
-        row.DataHex = source.DataHex; // Preserve all bytes, including reserved bits.
-        if (!source.UseDbc) row.UseDbc = false;
+        // Duplicate through the row's domain operation, not a partial list
+        // of visible fields: expired DBC pins and explicit raw intent are safety state.
+        var row = source.DuplicateForEditing(source.Name + " 副本");
         row.Edited += OnCanRowEdited;
         CanSendRows.Insert(CanSendRows.IndexOf(source) + 1, row);
         SelectedCanRow = row;

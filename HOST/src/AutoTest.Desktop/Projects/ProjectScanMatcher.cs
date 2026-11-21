@@ -17,6 +17,17 @@ public sealed record ProjectScanMatchResult(string Code, string? RecipeId, strin
 /// Matching only; never starts TEST, physical outputs or flashing.</summary>
 public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
 {
+    /// <summary>
+    /// All identity dimensions matter. Two unrelated projects often have the
+    /// same initial Revision, so revision alone cannot authorize a match.
+    /// </summary>
+    public static bool SameProjectSnapshot(OpenProjectContext expected, OpenProjectContext? current) =>
+        current is not null &&
+        current.Definition.Id == expected.Definition.Id &&
+        current.Definition.Revision == expected.Definition.Revision &&
+        string.Equals(current.ManifestPath, expected.ManifestPath, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(current.ManifestSha256, expected.ManifestSha256, StringComparison.OrdinalIgnoreCase);
+
     public async Task<ProjectScanMatchResult> MatchAsync(BarcodeScanEvent scan,
         CancellationToken ct = default)
     {
@@ -32,6 +43,9 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
         foreach (var asset in candidates)
         {
             var session = await workspace.OpenConfigurationAsync(asset.Id, ct).ConfigureAwait(false);
+            if (!SameProjectSnapshot(snapshot, workspace.Current))
+                return new("SCAN_PROJECT_CHANGED", null, null,
+                    "读取扫码配置期间工程身份或文件指纹变化；必须重新扫码。");
             var doc = (ScanMatchSettingsDocument)session.Document;
             if (doc.Published) published.Add(doc);
         }
@@ -39,8 +53,9 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
             return new("SCAN_RULES_NOT_PUBLISHED", null, null, "扫码已采集；没有已发布的匹配配置。");
         if (published.Count > 1)
             return new("SCAN_CONFIG_AMBIGUOUS", null, null, "发现多个已发布扫码配置，无法自动选择。");
-        if (workspace.Current?.Definition.Revision != snapshot.Definition.Revision)
-            return new("SCAN_PROJECT_CHANGED", null, null, "扫码期间工程修订变化，请重新扫描。");
+        if (!SameProjectSnapshot(snapshot, workspace.Current))
+            return new("SCAN_PROJECT_CHANGED", null, null,
+                "扫码期间工程身份、修订或文件指纹变化，请重新扫描。");
 
         var document = published[0];
         document.Validate();
@@ -80,6 +95,10 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
         var revision = new ProjectRevision(snapshot.Definition.Revision);
         var matching = new ConfigMatchService(rules, revision, recipes);
         var result = matching.Evaluate(scan.Scan, new RuleRevision(rules.Fingerprint), revision);
+        ct.ThrowIfCancellationRequested();
+        if (!SameProjectSnapshot(snapshot, workspace.Current))
+            return new("SCAN_PROJECT_CHANGED", null, null,
+                "扫码匹配完成前工程已切换或资源已修改，旧结果作废。");
         return result.Decision.Allowed
             ? new("CONFIG_MATCHED", result.RecipeId, result.Decision.DutIdentity,
                 "条码匹配到已发布配置和当前工程资源修订；未启动任何真实测试或烧录。")
