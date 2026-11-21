@@ -27,6 +27,27 @@ public sealed class ManualBenchCanDraftStoreTests
     }
 
     [Fact]
+    public async Task ReplacingSendTableRetainsValidatedPreviousRevision()
+    {
+        var root = Path.Combine(Path.GetTempPath(),
+            "autotest-can-backup-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var first = new ManualBenchCanDraftStore.Document(1,
+                [new("原配置", "701", "00 00", false, false, "100", true, null)]);
+            var next = new ManualBenchCanDraftStore.Document(1,
+                [new("新配置", "702", "AA BB", false, true, "65", true, null)]);
+            await ManualBenchCanDraftStore.SaveAsync(root, first);
+            await ManualBenchCanDraftStore.SaveAsync(root, next);
+            Assert.Equal("新配置",
+                (await ManualBenchCanDraftStore.LoadAsync(root))!.Rows[0].Name);
+            Assert.Equal("原配置",
+                (await ManualBenchCanDraftStore.LoadBackupAsync(root))!.Rows[0].Name);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public void ExpiredDbcPinCannotBeSilentlyIgnoredWhenSendingRawBytes()
     {
         var row = new ManualBenchViewModel.BenchCanRow("过期 DBC 报文");

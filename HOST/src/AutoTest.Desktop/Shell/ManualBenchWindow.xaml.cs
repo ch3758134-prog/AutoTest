@@ -66,6 +66,13 @@ public partial class ManualBenchWindow : Window
         IsEnabled = false;
         try
         {
+            // A timer-triggered asynchronous save can still be persisting even
+            // when Dirty has just been cleared. Do not dispose its ViewModel.
+            var pendingSaveDeadline = DateTime.UtcNow.AddSeconds(8);
+            while (_keyAutosaveBusy && DateTime.UtcNow < pendingSaveDeadline)
+                await Task.Delay(40);
+            if (_keyAutosaveBusy)
+                throw new TimeoutException("等待后台自动保存超时，已保留工作台窗口和草稿。");
             await _model.StopKeyActionAsync();
             await _model.StopCanBatchForCloseAsync();
             await _model.SaveCanRowsForCloseAsync();
@@ -103,12 +110,9 @@ public partial class ManualBenchWindow : Window
 
     private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        if (_closeAfterCanStopped || (_model.IsCanBatchRunning == false &&
-            _model.IsKeyActionRunning == false && !_model.KeyActionsDirty &&
-            !_model.CanRowsDirty))
-            return;
-        // Await real hardware cleanup instead of allowing WPF to destroy the
-        // Window while pending USB transmissions are still active.
+        if (_closeAfterCanStopped) return;
+        // Always await the same close/save gate, even when the UI looks clean:
+        // a background save may still be writing to disk.
         e.Cancel = true;
         if (!_benchClosePending) await PrepareForParentShutdownAsync();
     }

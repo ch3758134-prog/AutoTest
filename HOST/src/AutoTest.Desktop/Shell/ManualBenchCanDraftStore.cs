@@ -55,9 +55,34 @@ public static class ManualBenchCanDraftStore
                 await stream.FlushAsync(ct);
                 stream.Flush(true);
             }
-            File.Move(temp, path, overwrite: true);
+            // Preserve the preceding valid file for explicit recovery. Windows
+            // File.Replace atomically swaps the two files on the same volume.
+            // A corrupt current file is never silently accepted as new state.
+            if (File.Exists(path))
+                File.Replace(temp, path, path + ".bak", ignoreMetadataErrors: true);
+            else
+                File.Move(temp, path);
         }
         finally { if (File.Exists(temp)) File.Delete(temp); }
+    }
+
+    /// <summary>Offer a separately verified last-known-good version when an
+    /// interrupted edit damages the current JSON. Calling this does not
+    /// overwrite or silently replace the current project draft.</summary>
+    public static async Task<Document?> LoadBackupAsync(string projectRoot,
+        CancellationToken ct = default)
+    {
+        var path = DocumentPath(projectRoot) + ".bak";
+        if (!File.Exists(path)) return null;
+        if (new FileInfo(path).Length > MaximumBytes)
+            throw new InvalidDataException("CAN backup draft is too large.");
+        var bytes = await File.ReadAllBytesAsync(path, ct);
+        if (bytes.Length > MaximumBytes)
+            throw new InvalidDataException("CAN backup draft is too large.");
+        var document = JsonSerializer.Deserialize<Document>(bytes) ??
+            throw new InvalidDataException("CAN backup draft is empty.");
+        Validate(document);
+        return document;
     }
 
     public static void Validate(Document document)
