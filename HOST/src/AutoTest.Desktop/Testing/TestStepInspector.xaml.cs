@@ -1133,7 +1133,7 @@ public partial class TestStepInspector : UserControl
                     try
                     {
                         display = DbcSignalCodec.DecodePhysical(item.Signal, data)
-                            .ToString("G17", CultureInfo.InvariantCulture);
+                            .ToString("G12", CultureInfo.InvariantCulture);
                     }
                     catch (Exception ex) when (ex is ArgumentException or
                         IndexOutOfRangeException or AutoTest.Projects.Project.ProjectDataException)
