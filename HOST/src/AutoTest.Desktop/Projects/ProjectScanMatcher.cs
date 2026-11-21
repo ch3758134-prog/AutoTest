@@ -59,7 +59,17 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
 
         var document = published[0];
         document.Validate();
+        Ut1BarcodeCodec.Label? ut1 = null;
+        if (scan.Scan.Text.StartsWith("UT1-", StringComparison.Ordinal))
+        {
+            if (!Ut1BarcodeCodec.TryParse(scan.Scan.Text, out ut1, out var reason))
+                return new(reason, null, null,
+                    "条码格式或 CRC 校验失败：" + reason + "。未选择任何测试/烧录配置。");
+        }
         var rules = document.ToRules();
+        var identity = rules.Match(scan.Scan);
+        var hardwareCode = identity.Identity?.Fields.TryGetValue("hardware", out var detectedHw) == true
+            ? detectedHw : null;
         var available = snapshot.Definition.Assets;
         AssetRef RequireAsset(Guid id, string kind, int? expectedRevision, string? expectedSha256)
         {
@@ -71,7 +81,9 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
                     "发布配方引用的工程资源版本不一致，请回到配置编辑器重新确认资源：" + kind);
             return asset.ToReference();
         }
-        var recipes = document.Recipes.Where(x => x.Published).Select(x =>
+        var recipes = document.Recipes.Where(x => x.Published &&
+            (string.IsNullOrWhiteSpace(x.HardwareCode) ||
+             string.Equals(x.HardwareCode, hardwareCode, StringComparison.Ordinal))).Select(x =>
         {
             if (x.TestProgramAssetId is null && x.TestProjectAssetId is null)
                 throw new ProjectDataException("SCAN_RECIPE_INVALID",
@@ -120,7 +132,8 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
             if (!SameProjectSnapshot(snapshot, workspace.Current))
                 return new("SCAN_PROJECT_CHANGED", null, null,
                     "扫码准备期间工程发生变化，请重新扫码。");
-            return new("CONFIG_MATCHED", selected.RecipeId, result.Decision.DutIdentity,
+            return new("CONFIG_MATCHED", selected.RecipeId,
+                ut1?.Serial ?? result.Decision.DutIdentity,
                 ready.Summary, ready);
         }
         catch (Exception error) when (error is ProjectDataException or IOException or

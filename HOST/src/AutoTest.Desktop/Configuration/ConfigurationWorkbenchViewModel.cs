@@ -605,7 +605,10 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             {
                 var r = scan.Recipes[ParseIndex(key)];
                 AddField("id", "配方编号", r.RecipeId);
-                AddField("model", "车型标识", r.Model);
+                AddField("model", "产品代码（UT1 的 ProductCode）", r.Model,
+                    "例如 EPBA；仅当扫码规则确实解析出 model 字段时才用于配方路由。");
+                AddField("hardware", "硬件版号（UT1 的 HardwareCode）", r.HardwareCode ?? "",
+                    "例如 H02；此值必须与条码中独立解析出的硬件版本相同。");
                 AddField("customer", "客户标识", r.Customer);
                 AddField("testProject", "运行的测试项目（有序用例）", AssetNameFor(r.TestProjectAssetId),
                     "推荐选择已有测试项目，按工程中固定的用例顺序执行；不会因扫码立刻运行。",
@@ -848,7 +851,7 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                         policy, rate, F("firmwareRelease"),
                         // Any change to selected resources invalidates the old
                         // approval; the publish step recomputes from real files.
-                        null);
+                        null, F("hardware"));
                     if (!recipes[ParseIndex(key)].Published &&
                         old.FlashJobFingerprint is not null)
                         StatusMessage = "新草稿已解除原 Flash Job 冻结；再次发布时重新读取文件。";
@@ -1073,7 +1076,14 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         var scan = (ScanMatchSettingsDocument)_working;
         if (scan.Published) { StatusMessage = "请先取消总发布状态，再添加未配置规则。"; return; }
         var ruleId = "Rule" + Guid.NewGuid().ToString("N")[..6];
-        _working = scan with { Rules = scan.Rules.Append(new ScanRuleDraft(ruleId, "", "", false)).ToList() };
+        // A usable but unpublished starter for the optional UT1 label.
+        // Change the pattern to keep existing externally-issued legacy SN.
+        var ut1Pattern = scan.Rules.Count == 0
+            ? @"^UT1-(?<model>[A-Z0-9]{4,8})-(?<hardware>H[0-9]{2})-(?<serial>[A-Z0-9]{8,20})-(?<crc>[0-9A-F]{4})$"
+            : "";
+        var identity = scan.Rules.Count == 0 ? "serial" : "";
+        _working = scan with { Rules = scan.Rules.Append(
+            new ScanRuleDraft(ruleId, ut1Pattern, identity, false)).ToList() };
         RebuildNodes("rule|" + scan.Rules.Count);
         RaisePropertyChanged(nameof(IsDirty));
     }

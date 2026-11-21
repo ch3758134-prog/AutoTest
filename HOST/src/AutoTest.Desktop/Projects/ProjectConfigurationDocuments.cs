@@ -88,7 +88,8 @@ public sealed record ScanRecipeDraft(string RecipeId, string Model, string Custo
     Guid? FlashSettingsAssetId = null, int? FlashSettingsRevision = null,
     string? FlashSettingsFingerprint = null,
     string? FlashPolicy = null, int? TargetEcuCanKbps = null,
-    string? FirmwareReleaseLabel = null, string? FlashJobFingerprint = null)
+    string? FirmwareReleaseLabel = null, string? FlashJobFingerprint = null,
+    string? HardwareCode = null)
 {
     /// <summary>Legacy scan profiles are readable; legacy "requiresFlash" is
     /// NOT a verified CanTool production bundle.</summary>
@@ -145,6 +146,12 @@ public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, b
                  !ProjectConfigurationCodec.ValidPin(recipe.FlashSettingsRevision, recipe.FlashSettingsFingerprint)))
                 throw new ProjectDataException("SCAN_RECIPE_INVALID",
                     "发布配方必须引用已保存的测试项目或测试程序，以及所选资源的确定修订与 SHA。");
+            if (!string.IsNullOrWhiteSpace(recipe.HardwareCode) &&
+                (recipe.HardwareCode.Length != 3 || recipe.HardwareCode[0] != 'H' ||
+                 !char.IsAsciiDigit(recipe.HardwareCode[1]) ||
+                 !char.IsAsciiDigit(recipe.HardwareCode[2])))
+                throw new ProjectDataException("SCAN_HARDWARE",
+                    "UT1 产品硬件版号应为 H00～H99；旧无版本条码可以不填。");
             if (recipe.FlashPolicy is not null and not ("NoFlash" or "FlashRequired"))
                 throw new ProjectDataException("SCAN_FLASH_POLICY", "烧录策略只能选不烧录或必须烧录。");
             if (recipe.TargetEcuCanKbps is int rate &&
