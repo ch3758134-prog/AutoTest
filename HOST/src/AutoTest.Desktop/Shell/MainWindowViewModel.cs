@@ -64,7 +64,7 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
 }
 
 /// <summary>Only presentation state and UX commands. Project data remains in ProjectWorkspaceService.</summary>
-public sealed class MainWindowViewModel : BindableBase
+public sealed partial class MainWindowViewModel : BindableBase
 {
     private readonly ProjectWorkspaceService _workspace;
     private readonly HardwareConnectionService _hardware;
@@ -135,6 +135,8 @@ public sealed class MainWindowViewModel : BindableBase
         StartPrimaryCommand = new DelegateCommand(async () => await StartPrimaryAsync());
         StartSecondaryCommand = new DelegateCommand(async () => await StartSecondaryAsync());
         NewProjectCommand = new DelegateCommand(async () => await OpenNewProjectAsync(), () => !IsBusy);
+        CreateAcceptanceSampleCommand = new DelegateCommand(async () => await CreateAcceptanceSampleAsync(),
+            () => !IsBusy && !_realTest.IsRunning);
         OpenProjectCommand = new DelegateCommand(async () => await OpenProjectAsync(), () => !IsBusy);
         NewTestProgramCommand = new DelegateCommand(async () => await CreateTestProgramAsync(),
             () => HasProject && !IsBusy);
@@ -1111,6 +1113,7 @@ public sealed class MainWindowViewModel : BindableBase
     }
 
     public DelegateCommand NewProjectCommand { get; }
+    public DelegateCommand CreateAcceptanceSampleCommand { get; }
     public DelegateCommand OpenProjectCommand { get; }
     public DelegateCommand NewTestProgramCommand { get; }
     public DelegateCommand NewTestProjectCommand { get; }
@@ -1954,6 +1957,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void RefreshCommands()
     {
         NewProjectCommand?.RaiseCanExecuteChanged();
+        CreateAcceptanceSampleCommand?.RaiseCanExecuteChanged();
         OpenProjectCommand?.RaiseCanExecuteChanged();
         NewTestProgramCommand?.RaiseCanExecuteChanged();
         NewTestProjectCommand?.RaiseCanExecuteChanged();
