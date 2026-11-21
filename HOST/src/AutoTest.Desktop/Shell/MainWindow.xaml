@@ -124,7 +124,7 @@
       <MenuItem Header="重做" Command="{Binding RedoActiveCommand}" InputGestureText="Ctrl+Y"/>
       <Separator/>
       <MenuItem Header="重命名选中资源" Command="{Binding RenameResourceCommand}" InputGestureText="F2"/>
-      <MenuItem Header="移除资源引用" Command="{Binding RemoveReferenceCommand}"/>
+      <MenuItem Header="从工程移除选中资源（保留源文件）" Command="{Binding RemoveReferenceCommand}"/>
      </MenuItem>
      <MenuItem Header="视图">
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
