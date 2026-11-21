@@ -93,6 +93,8 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _savingActive;
     private bool _autosaveActive;
     private readonly SemaphoreSlim _editorSaveGate = new(1, 1);
+    private readonly Dictionary<Guid, (Window Window, DbcWorkbenchViewModel Editor)>
+        _dbcToolWindows = new();
     public ObservableCollection<EditorTabModel> OpenEditors => _documents.Tabs;
     private readonly RecentProjectStore _recentProjects;
     private readonly RecentEditorDocumentStore _recentEditors = new();
@@ -879,6 +881,7 @@ public sealed class MainWindowViewModel : BindableBase
     /// before the shared hardware service is disposed.</summary>
     public async Task<bool> PrepareToolWindowsForCloseAsync()
     {
+        if (!await PrepareDbcWindowsForCloseAsync()) return false;
         if (_manualBenchWindow is { IsVisible: true } bench &&
             !await bench.PrepareForParentShutdownAsync())
             return false;
@@ -1550,7 +1553,8 @@ public sealed class MainWindowViewModel : BindableBase
 
     private async Task OpenNewProjectAsync()
     {
-        if (IsBusy || !await PrepareEditorsForCloseAsync()) return;
+        if (IsBusy || !await PrepareEditorsForCloseAsync() ||
+            !await PrepareDbcWindowsForCloseAsync()) return;
         IsBusy = true;
         try { _newDialog.ShowDialog(); }
         catch (Exception e) { StatusMessage = "新建工程窗口打开失败：" + e.Message; }
@@ -1560,7 +1564,8 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenProjectAsync()
     {
         var path = _fileDialogs.PickProjectManifest();
-        if (path is null || !await PrepareEditorsForCloseAsync()) return;
+        if (path is null || !await PrepareEditorsForCloseAsync() ||
+            !await PrepareDbcWindowsForCloseAsync()) return;
         var opened = false;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         StatusMessage = "正在读取工程清单：" + Path.GetFileName(path);
@@ -1878,23 +1883,23 @@ public sealed class MainWindowViewModel : BindableBase
         await RunOperationAsync(async () =>
         {
             await ShowDbcWindowAsync(asset.Id, asset.Name);
-            StatusMessage = "DBC 编辑窗口已关闭：" + asset.Name;
+            StatusMessage = "DBC 编辑器已打开，可直接切回自动测试：" + asset.Name;
         });
     }
 
     /// <summary>
-    /// DBC is a complete specialist workbench, not an IDE center tab. Use the
-    /// existing DbcWorkbenchView/VM and revision-checked workspace save path;
-    /// do not create a second DBC editor or a shadow document session.
-    /// A modal owned window also keeps the project identity fixed while editing.
+    /// DBC is an owned nonmodal specialist tool. The same asset gets one window
+    /// and one revision-checked editor session. Save before project switch/exit.
     /// </summary>
     private async Task ShowDbcWindowAsync(AssetId id, string name)
     {
+        if (_dbcToolWindows.TryGetValue(id.Value, out var existing))
+        {
+            if (existing.Window.IsVisible) { existing.Window.Activate(); return; }
+            _dbcToolWindows.Remove(id.Value);
+        }
         var opened = await _workspace.OpenDbcEditorAsync(id);
         var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
-        // Constrain both the initial and minimum window size to the usable
-        // Windows work area (not the full monitor bounds) so the taskbar is
-        // never hidden by our own oversized modal minimums.
         var availableWidth = Math.Max(480, SystemParameters.WorkArea.Width - 40);
         var availableHeight = Math.Max(360, SystemParameters.WorkArea.Height - 40);
         var window = new Window
@@ -1911,11 +1916,77 @@ public sealed class MainWindowViewModel : BindableBase
         if (global::System.Windows.Application.Current?.MainWindow is { IsLoaded: true } owner)
             window.Owner = owner;
         else window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        window.Closing += (_, args) =>
+        var timer = new System.Windows.Threading.DispatcherTimer
         {
-            if (!editor.ConfirmClose()) args.Cancel = true;
+            Interval = TimeSpan.FromSeconds(4)
         };
-        window.ShowDialog();
+        var lastEdit = DateTime.UtcNow;
+        bool saving = false, closing = false, closeApproved = false;
+        window.PreviewMouseDown += (_, _) => lastEdit = DateTime.UtcNow;
+        window.PreviewKeyDown += (_, _) => lastEdit = DateTime.UtcNow;
+        window.PreviewTextInput += (_, _) => lastEdit = DateTime.UtcNow;
+        timer.Tick += async (_, _) =>
+        {
+            if (saving || closing || !window.IsActive || !editor.IsDirty || editor.IsBusy ||
+                DateTime.UtcNow - lastEdit < TimeSpan.FromSeconds(3)) return;
+            saving = true;
+            try { await editor.SaveForCloseAsync(); }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                StatusMessage = "DBC 自动保存失败：" + error.Message;
+            }
+            finally { saving = false; }
+        };
+        window.Closing += async (_, args) =>
+        {
+            if (closeApproved) return;
+            args.Cancel = true;
+            if (closing) return;
+            closing = true;
+            try
+            {
+                if (saving || !await editor.SaveForCloseAsync())
+                {
+                    StatusMessage = "DBC 仍在保存或参数尚未通过校验，窗口保持打开：" + name;
+                    return;
+                }
+                closeApproved = true;
+                window.Close();
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                StatusMessage = "DBC 关闭时自动保存失败：" + error.Message;
+                _fileDialogs.ShowError(StatusMessage);
+            }
+            finally { closing = false; }
+        };
+        window.Loaded += (_, _) => timer.Start();
+        window.Closed += (_, _) =>
+        {
+            timer.Stop();
+            _dbcToolWindows.Remove(id.Value);
+        };
+        _dbcToolWindows[id.Value] = (window, editor);
+        window.Show();
+    }
+
+    private async Task<bool> PrepareDbcWindowsForCloseAsync()
+    {
+        foreach (var (window, editor) in _dbcToolWindows.Values.ToArray())
+        {
+            if (editor.IsBusy || !await editor.SaveForCloseAsync())
+            {
+                StatusMessage = "DBC 尚未完成保存，禁止关闭或切换工程：" + window.Title;
+                return false;
+            }
+            window.Close();
+            if (window.IsVisible)
+            {
+                StatusMessage = "DBC 仍未安全关闭：" + window.Title;
+                return false;
+            }
+        }
+        return true;
     }
 
     private async Task RenameResourceAsync()
@@ -1969,6 +2040,17 @@ public sealed class MainWindowViewModel : BindableBase
             return;
         }
         if (!_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
+        if (asset.Kind == ProjectWorkspaceService.DbcKind &&
+            _dbcToolWindows.TryGetValue(asset.Id.Value, out var dbcWindow))
+        {
+            if (dbcWindow.Editor.IsBusy || !await dbcWindow.Editor.SaveForCloseAsync())
+            {
+                StatusMessage = "DBC 修改尚未保存，禁止移除工程资源：" + asset.Name;
+                return;
+            }
+            dbcWindow.Window.Close();
+            if (dbcWindow.Window.IsVisible) return;
+        }
         await RunOperationAsync(async () =>
         {
             await _workspace.RemoveAssetReferenceAsync(asset.Id);
