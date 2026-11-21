@@ -18,9 +18,8 @@ public sealed partial class MainWindowViewModel
         return enabled ? node : node.WithProperty("enabled", "false");
     }
 
-    private static TestDocument AcceptanceCase(string name, int number)
+    private static TestDocument AcceptanceCase(TestDocument doc, int number)
     {
-        var doc = TestDocument.Create(name);
         var prepare = new List<StepNode>();
         var steps = new List<StepNode>();
         var cleanup = new List<StepNode>();
@@ -117,7 +116,7 @@ public sealed partial class MainWindowViewModel
                 var asset = await _workspace.CreateTestProgramAsync(caseSpecs[i]);
                 var session = await _workspace.OpenTestEditorAsync(asset.Id);
                 session = await _workspace.SaveTestEditorAsync(
-                    session, AcceptanceCase(caseSpecs[i], i + 1));
+                    session, AcceptanceCase(session.Document, i + 1));
                 var updated = _workspace.Current!.Definition.Assets
                     .Single(x => x.Id == asset.Id);
                 // Initially unchecked: no sample selects itself for physical execution.
