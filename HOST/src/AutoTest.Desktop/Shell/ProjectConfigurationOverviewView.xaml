@@ -81,6 +81,54 @@
       HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
     </Grid>
    </TabItem>
+   <TabItem Header="扫码与烧录">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+     <StackPanel Margin="18,15,18,20" MaxWidth="940">
+      <TextBlock Text="扫码 → 方案 → TEST / 烧录" FontSize="15"
+                 Foreground="{StaticResource Ink}" FontWeight="SemiBold"/>
+      <TextBlock Text="扫码只提供 DUT 编号和标签信息；已发布的工程配方明确测试范围、固件、烧录工艺。扫码不自动执行测试或烧录。"
+                 Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,6,0,15"/>
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <Border Grid.Column="0" Background="White" CornerRadius="8"
+               BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="14">
+        <StackPanel>
+         <TextBlock Text="1 · 编号、产品与测试方案" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="配置 UT1/旧编号规则、产品硬件版本、TEST 项目和资源修订。"
+                    Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,7,0,10"/>
+         <Button Content="打开／新建扫码配方" HorizontalAlignment="Left"
+                 Command="{Binding OpenScanConfigCommand}"/>
+        </StackPanel>
+       </Border>
+       <Border Grid.Column="2" Background="White" CornerRadius="8"
+               BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="14">
+        <StackPanel>
+         <TextBlock Text="2 · 软件与烧录方法" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="引用固件发布和烧录配置；实际 CanTool XML/HEX/SafetyFile 由 TEST Flash 步骤执行。"
+                    Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,7,0,10"/>
+         <Button Content="打开／新建烧录配置" HorizontalAlignment="Left"
+                 Command="{Binding OpenFlashConfigCommand}"/>
+        </StackPanel>
+       </Border>
+      </Grid>
+      <Border Background="{StaticResource ToolbarSurface}" CornerRadius="8"
+              BorderBrush="{StaticResource Line}" BorderThickness="1"
+              Padding="13" Margin="0,14,0,0">
+       <StackPanel>
+        <TextBlock Text="3 · 扫码配置准备结果" FontWeight="SemiBold" FontSize="13"/>
+        <TextBlock Text="{Binding ScanStatus}" Foreground="{StaticResource Ink}"
+                   TextWrapping="Wrap" Margin="0,7,0,10"/>
+        <WrapPanel>
+         <Button Content="打开测试项目" Command="{Binding OpenFirstTestProjectCommand}" Margin="0,0,8,0"/>
+         <Button Content="打开独立烧录工具" Command="{Binding OpenFlashWorkbenchCommand}"/>
+        </WrapPanel>
+        <TextBlock Text="工程师调试无需扫码；烧录任务必须来自已保存的 TEST Flash 步骤，不会由扫码另建一套刷写流程。"
+                   Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+       </StackPanel>
+      </Border>
+     </StackPanel>
+    </ScrollViewer>
+   </TabItem>
    <TabItem Header="运行前检查">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel Margin="16,16,16,12">

@@ -202,6 +202,10 @@ public sealed class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.ControllerKind));
         OpenWaveConfigCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.WaveSettingsKind));
+        OpenScanConfigCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
+            ProjectWorkspaceService.ScanSettingsKind));
+        OpenFlashConfigCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
+            ProjectWorkspaceService.FlashSettingsKind));
         OpenWaveWorkbenchCommand = new DelegateCommand(OpenWaveWorkbench);
         OpenManualBenchCommand = new DelegateCommand(OpenManualBench);
         OpenFlashWorkbenchCommand = new DelegateCommand(async () => await OpenFlashWorkbenchAsync(),
@@ -391,6 +395,8 @@ public sealed class MainWindowViewModel : BindableBase
     public DelegateCommand OpenTcfCommand { get; }
     public DelegateCommand OpenControllerCommand { get; }
     public DelegateCommand OpenWaveConfigCommand { get; }
+    public DelegateCommand OpenScanConfigCommand { get; }
+    public DelegateCommand OpenFlashConfigCommand { get; }
     public DelegateCommand OpenWaveWorkbenchCommand { get; }
     public DelegateCommand OpenManualBenchCommand { get; }
     public DelegateCommand OpenFlashWorkbenchCommand { get; }
@@ -852,6 +858,9 @@ public sealed class MainWindowViewModel : BindableBase
                 ? "编号 " + matched.Identity + " 匹配配方 " + matched.RecipeId +
                     "：" + matched.Explanation
                 : matched.Explanation;
+            StatusMessage = matched.Accepted
+                ? "扫码已准备配置（未执行）：" + matched.RecipeId
+                : "扫码配置待处理：" + matched.Explanation;
         }
         catch (Exception error) when (error is ProjectDataException or IOException or
                                       UnauthorizedAccessException or ArgumentException or
