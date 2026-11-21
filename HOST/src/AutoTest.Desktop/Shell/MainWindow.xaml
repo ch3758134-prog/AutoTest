@@ -113,6 +113,8 @@
       <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O"/>
       <MenuItem Header="保存当前" Command="{Binding SaveActiveCommand}" InputGestureText="Ctrl+S"/>
       <Separator/>
+      <MenuItem Header="创建 UI 验收工程（自动生成）" Command="{Binding CreateAcceptanceSampleCommand}"
+       ToolTip="在文档目录自动生成正式 PROJECT 和 3 份 TEST 用例，直接在主窗口编辑"/>
       <MenuItem Header="新建测试项目" Command="{Binding NewTestProjectCommand}"/>
       <MenuItem Header="新建测试用例" Command="{Binding NewTestProgramCommand}"/>
       <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
@@ -181,6 +183,9 @@
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="▦ 工程" Command="{Binding OpenProjectCommand}" Margin="0,0,8,0"/>
+     <Button Content="创建验收工程" Command="{Binding CreateAcceptanceSampleCommand}"
+      ToolTip="自动生成正式测试项目和3个真实可编辑用例；主窗口直接打开，不启动独立测试编辑程序"
+      Margin="0,0,8,0"/>
      <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
       VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis"
       ToolTip="{Binding CurrentProjectPath}"/>
