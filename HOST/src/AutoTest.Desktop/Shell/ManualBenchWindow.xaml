@@ -378,8 +378,8 @@
     </Grid>
    </Border>
   </Grid>
-  <Border Grid.Row="2" Background="#286DAE" Padding="14,8">
-   <TextBlock Text="{Binding Status}" Foreground="White" TextTrimming="CharacterEllipsis"/>
+  <Border Grid.Row="2" Background="{StaticResource ToolbarSurface}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="14,8">
+   <TextBlock Text="{Binding Status}" Foreground="{StaticResource Ink}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
   </Border>
   <!-- Property edits remain in the single bench surface. Click the dimmed
        empty space to finish; permanent tool workbenches stay separate windows. -->
