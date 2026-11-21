@@ -30,6 +30,16 @@ public sealed partial class ManualBenchViewModel
         private bool _synchronizingCanSignals;
         private string _signalEditError = "";
         private bool _explicitRawCan;
+        private ManualBenchCanDraftStore.DbcPin? _staleDbcPin;
+        public ManualBenchCanDraftStore.DbcPin? BoundDbcPin =>
+            UseDbc && DbcMessage is { } dbc
+                ? new(dbc.AssetId, dbc.Revision, dbc.Sha256, dbc.Message.Id)
+                : _staleDbcPin;
+        public void MarkUnresolvedDbc(ManualBenchCanDraftStore.DbcPin pin)
+        {
+            _staleDbcPin = pin;
+            Notify();
+        }
         public event Action? Edited;
 
         public BenchCanRow(string name) : this(name, new ObservableCollection<DbcChoice>()) { }
@@ -91,6 +101,7 @@ public sealed partial class ManualBenchViewModel
                 _signalEditError = "";
                 if (value is not null)
                 {
+                    _staleDbcPin = null;
                     var previousId = IdHex.Trim();
                     if (previousId.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                         previousId = previousId[2..];
@@ -139,7 +150,9 @@ public sealed partial class ManualBenchViewModel
         public void ClearDbcAssistance()
         {
             _explicitRawCan = true;
+            _staleDbcPin = null;
             DbcMessage = null;
+            Notify();
         }
 
         public void AttachUniqueMatchingDbc()
@@ -338,6 +351,9 @@ public sealed partial class ManualBenchViewModel
         }
         public CanFrame BuildFrame()
         {
+            if (_staleDbcPin is not null)
+                throw new InvalidOperationException(
+                    "已保存的 DBC 修订/报文不再匹配。请显式重新绑定最新 DBC，或清除辅助后核对原始 DATA。");
             if (_signalEditError.Length > 0)
                 throw new ArgumentException(_signalEditError);
             var bytes = ReadDataBytes();
@@ -363,6 +379,18 @@ public sealed partial class ManualBenchViewModel
     private bool _canBatchRunning;
     private int _newCanRowNumber;
     private BenchCanRow? _selectedCanRow;
+    private string? _canDraftRoot;
+    private bool _canRowsLoading;
+    private long _canEditGeneration, _canSavedGeneration;
+    private readonly SemaphoreSlim _canDraftWriteGate = new(1, 1);
+    public bool CanRowsDirty => _canDraftRoot is not null &&
+        _canEditGeneration != _canSavedGeneration;
+    private void MarkCanRowsDirty()
+    {
+        if (_canRowsLoading || _canDraftRoot is null) return;
+        _canEditGeneration++;
+        RaisePropertyChanged(nameof(CanRowsDirty));
+    }
     public ObservableCollection<BenchCanRow> CanSendRows { get; } = new();
     public BenchCanRow? SelectedCanRow
     {
@@ -428,7 +456,9 @@ public sealed partial class ManualBenchViewModel
 
     private void OnCanRowEdited()
     {
-        if (!_disposed) NotifyCanRows();
+        if (_disposed) return;
+        MarkCanRowsDirty();
+        NotifyCanRows();
     }
 
     private void AddCanRow()
@@ -437,6 +467,7 @@ public sealed partial class ManualBenchViewModel
         row.Edited += OnCanRowEdited;
         CanSendRows.Add(row);
         SelectedCanRow = row;
+        MarkCanRowsDirty();
         NotifyCanRows();
     }
 
@@ -454,6 +485,7 @@ public sealed partial class ManualBenchViewModel
         row.Edited += OnCanRowEdited;
         CanSendRows.Insert(CanSendRows.IndexOf(source) + 1, row);
         SelectedCanRow = row;
+        MarkCanRowsDirty();
         NotifyCanRows();
     }
 
@@ -465,6 +497,7 @@ public sealed partial class ManualBenchViewModel
         CanSendRows.Remove(selected);
         SelectedCanRow = CanSendRows.Count == 0 ? null :
             CanSendRows[Math.Min(index, CanSendRows.Count - 1)];
+        MarkCanRowsDirty();
         NotifyCanRows();
     }
 
@@ -476,7 +509,101 @@ public sealed partial class ManualBenchViewModel
         if (target < 0 || target >= CanSendRows.Count) return;
         CanSendRows.Move(current, target);
         SelectedCanRow = selected;
+        MarkCanRowsDirty();
         NotifyCanRows();
+    }
+
+    /// <summary>
+    /// Save only the editable CAN configuration in the project, never an active
+    /// physical USB grant or a runnable task. Validates the saved JSON envelope
+    /// and writes atomically; incomplete HEX remains a visible draft on reopening.
+    /// </summary>
+    public async Task SaveCanRowsForCloseAsync()
+    {
+        if (_canDraftRoot is not { } root || !CanRowsDirty) return;
+        var version = _canEditGeneration;
+        var document = new ManualBenchCanDraftStore.Document(1, CanSendRows.Select(row =>
+            new ManualBenchCanDraftStore.Row(row.Name, row.IdHex, row.DataHex,
+                row.Extended, row.IsPeriodic, row.PeriodText, row.Included,
+                row.BoundDbcPin)).ToList());
+        await _canDraftWriteGate.WaitAsync();
+        try
+        {
+            // An older queued save may not overwrite a newer saved snapshot.
+            if (version <= _canSavedGeneration) return;
+            await ManualBenchCanDraftStore.SaveAsync(root, document);
+            _canSavedGeneration = version;
+            RaisePropertyChanged(nameof(CanRowsDirty));
+        }
+        finally { _canDraftWriteGate.Release(); }
+    }
+
+    private async Task RestoreCanRowsForProjectAsync()
+    {
+        var root = _projects.Current?.RootDirectory;
+        if (string.Equals(_canDraftRoot, root, StringComparison.OrdinalIgnoreCase))
+            return;
+        // Keep the previous engineering project's edits before switching scope.
+        await SaveCanRowsForCloseAsync();
+        if (!string.Equals(root, _projects.Current?.RootDirectory,
+                StringComparison.OrdinalIgnoreCase)) return;
+
+        ManualBenchCanDraftStore.Document? document;
+        try
+        {
+            document = root is null ? null : await ManualBenchCanDraftStore.LoadAsync(root);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                       System.Text.Json.JsonException or InvalidDataException)
+        {
+            // No valid rows => no accidental physical transmit from a broken draft.
+            foreach (var row in CanSendRows) row.Edited -= OnCanRowEdited;
+            CanSendRows.Clear();
+            SelectedCanRow = null;
+            _canDraftRoot = null;
+            Status = "CAN 工作配置损坏，已禁止发送并保留原文件：" + error.Message;
+            NotifyCanRows();
+            return;
+        }
+
+        _canRowsLoading = true;
+        try
+        {
+            foreach (var row in CanSendRows) row.Edited -= OnCanRowEdited;
+            CanSendRows.Clear();
+            _newCanRowNumber = 0;
+            _canDraftRoot = root;
+            _canEditGeneration = _canSavedGeneration = 0;
+            if (document is { } loaded)
+            {
+                foreach (var entry in loaded.Rows)
+                {
+                    var row = new BenchCanRow(entry.Name, DbcMessages)
+                    {
+                        IdHex = entry.IdHex, DataHex = entry.DataHex,
+                        Extended = entry.Extended, IsPeriodic = entry.IsPeriodic,
+                        PeriodText = entry.PeriodText, Included = entry.Included
+                    };
+                    if (entry.Dbc is { } pin)
+                    {
+                        var match = DbcMessages.FirstOrDefault(choice =>
+                            choice.AssetId == pin.AssetId && choice.Revision == pin.Revision &&
+                            string.Equals(choice.Sha256, pin.Sha256,
+                                StringComparison.OrdinalIgnoreCase) &&
+                            choice.Message.Id == pin.MessageId);
+                        if (match is null) row.MarkUnresolvedDbc(pin);
+                        else row.DbcMessage = match;
+                    }
+                    row.Edited += OnCanRowEdited;
+                    CanSendRows.Add(row);
+                }
+            }
+            else AddCanRow(); // First use: a harmless unsent editable default.
+            SelectedCanRow = CanSendRows.FirstOrDefault();
+            RaisePropertyChanged(nameof(CanRowsDirty));
+            NotifyCanRows();
+        }
+        finally { _canRowsLoading = false; }
     }
 
     private PreparedCanRow[] PrepareCanRows(BenchCanRow? single = null)
