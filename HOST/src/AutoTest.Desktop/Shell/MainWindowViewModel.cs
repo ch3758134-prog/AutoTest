@@ -895,7 +895,11 @@ public sealed class MainWindowViewModel : BindableBase
         catch (OperationCanceledException) { }
         _scanStop.Dispose();
         try { await _hardware.DisposeAsync(); }
-        catch (Exception error) { StatusMessage = "程序关闭期间主控断开失败：" + error.Message; }
+        catch (Exception error)
+        {
+            StatusMessage = "程序关闭期间主控断开失败，设备状态 UNKNOWN：" + error.Message;
+            throw new IOException(StatusMessage, error);
+        }
     }
 
     private async Task OpenCanMonitorAsync()

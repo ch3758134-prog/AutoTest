@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private bool _autosaveTickActive;
     private bool _shutdownStarted;
     private bool _shutdownComplete;
+    private Task? _shutdownTask;
     private bool _closeAttemptPending;
     private bool _bottomVisible; // On entry: no real event rows => dock closed, tab remains recoverable.
     private bool _inspectorVisible = true;
@@ -131,45 +132,56 @@ public partial class MainWindow : Window
     private async void OnWindowClosing(object? sender, CancelEventArgs e)
     {
         if (_shutdownComplete) return;
-        // WPF's Closing event is synchronous; cancel this attempt until explicit
-        // draft decisions and real async saves are complete. A second click cannot
-        // race the first prompt or start another hardware shutdown.
+        // Closing is synchronous in WPF. Do not destroy the window, USB session,
+        // or evidence state while an async physical cleanup is still pending.
         e.Cancel = true;
-        if (_shutdownStarted || _closeAttemptPending) return;
+        if (_closeAttemptPending) return;
         _closeAttemptPending = true;
         try
         {
-            if (!await _viewModel.PrepareEditorsForCloseAsync()) return;
-            if (!await _viewModel.PrepareToolWindowsForCloseAsync()) return;
-            _shutdownStarted = true;
+            if (_shutdownTask is null)
+            {
+                if (!await _viewModel.PrepareEditorsForCloseAsync()) return;
+                if (!await _viewModel.PrepareToolWindowsForCloseAsync()) return;
+                _shutdownStarted = true;
+                _autosaveTimer.Stop();
+                // Keep ONE task. On a timeout a second click observes this same
+                // shutdown, rather than trying to dispose the USB twice.
+                _shutdownTask = _viewModel.ShutdownAsync();
+            }
             try
             {
-                await _viewModel.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(6));
+                await _shutdownTask.WaitAsync(TimeSpan.FromSeconds(6));
             }
             catch (TimeoutException error)
             {
-                Trace.TraceError("AutoTest shutdown exceeded the bounded wait: " + error);
+                Trace.TraceError("AutoTest shutdown still pending after six seconds: " + error);
+                MessageBox.Show(this,
+                    "设备和日志清理尚未完成，不能确认 USB 已安全释放。\\n" +
+                    "主程序将保持打开，不会强制退出或冒称设备已经断开。\\n" +
+                    "请检查工位实际状态后，再点击关闭以继续等待同一收尾任务。",
+                    "退出等待设备收尾", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            catch (Exception error)
+            catch (Exception error) when (error is not OutOfMemoryException)
             {
-                Trace.TraceError("AutoTest shutdown encountered a cleanup error: " + error);
+                Trace.TraceError("AutoTest cleanup failed; exit blocked: " + error);
+                MessageBox.Show(this,
+                    "主控或日志收尾失败，设备状态 UNKNOWN；没有强制结束进程。\\n" +
+                    error.Message + "\\n请先确认现场安全，保留错误日志供诊断。",
+                    "无法确认安全退出", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
-            finally
-            {
-                _shutdownComplete = true;
-                global::System.Windows.Application.Current.Shutdown(0);
-            }
+            _shutdownComplete = true;
+            global::System.Windows.Application.Current.Shutdown(0);
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
             Trace.TraceError("AutoTest exit guard failure: " + error);
-            MessageBox.Show(this, "退出检查发生异常，窗口未关闭：\n" + error.Message,
+            MessageBox.Show(this, "退出检查发生异常，窗口未关闭：\\n" + error.Message,
                 "退出失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        finally
-        {
-            if (!_shutdownStarted) _closeAttemptPending = false;
-        }
+        finally { _closeAttemptPending = false; }
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
