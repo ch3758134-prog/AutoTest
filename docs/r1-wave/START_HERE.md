@@ -3,7 +3,7 @@
 **身份**：WAVE 真实采样、参考波形与 TEST 判定算法专业 AI。  
 **正式任务**：[Issue #71](https://github.com/ch3758134-prog/AutoTest/issues/71)。  
 **研究分支**：`research/r1-wave-judgement-20261120`；初始基于 `R1@94e82eddb03e69b428fd4c63c2093a570d979c4e`。  
-**状态**：`W-00~07 RESEARCHED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新二轮回读 `R1@e5a9e13ad522ddaf9092f44099f2ef26bdf1e19b`。
+**状态**：`W-00~08 RESEARCHED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新二轮回读 `R1@e5a9e13ad522ddaf9092f44099f2ef26bdf1e19b`。
 
 ## 必须先完成的源码调查
 
@@ -36,3 +36,7 @@
 **实测边界**：现有 MCU/USB ECU CAN 接收采用 HostArrivalOnly；R1 没有 ECU 物理事件级同步时戳，也没有独立高速模拟传感器输入。Production WAVE PASS 需要真实源、正式已批准参考或明确功能规则、无未解释缺测、同一次 Run/Occurrence/raw CAN 关联以及 RECORD 正式完成，不能用算法 Replay PASS 或仅有漂亮曲线冒充。
 
 **与本轮活跃 R1 的相容性**：最新 `R1@e5a9e13...` 比首轮 `fa3b18e...` 多 54 提交，新增了证据/绘图非阻塞等性能改动及 IDE/USB 安全维护，但 WAVE 主比较器和 WAVE 判定 RECORD 的核心合同问题仍然存在。合入之前必须重新看活跃 R1、完成 Windows Build/Test 与真实 ECU 验收，未授权前不改 R1/main/固件。
+
+## 2026-11-21｜W-08 容差标定研究补充
+
+- [W-08｜容差来源、测量系统重复性与参考资格研究](W-08_WAVE_LIMITS_MSA_AND_REFERENCE_QUALIFICATION_20261121.md)：成熟产品不能简单拿一台合格 ECU 的一次采样曲线和任意 ±5% 容差作为正式生产标准。应区分产品规格、合格样本间差异、重复测量波动、设备/时间采样不确定度；通过受控重复采集、适用型号核对、安全负例与阈值批准形成生产规则。此为候审方法论，`FIELD_NOT_VERIFIED / NO_CALIBRATION_DATA`，R1 不必先重建统计平台。
