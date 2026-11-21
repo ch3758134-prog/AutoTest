@@ -149,11 +149,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         SelectedPackage = row;
         Move(direction);
     }
-    public void RemoveRow(TestProjectPackageRow row)
+    public async Task RemoveRowAsync(TestProjectPackageRow row)
     {
         if (!Packages.Contains(row)) return;
         SelectedPackage = row;
-        Remove();
+        await RemoveSelectedPackageAsync();
     }
 
     public TestProjectWorkbenchViewModel(ProjectWorkspaceService workspace,
@@ -170,7 +170,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         {
             if (!IsBusy && CreateNewPackageRequested is { } create) await create();
         }, () => !IsBusy);
-        RemoveCommand = new DelegateCommand(Remove, () => SelectedPackage is not null && !IsBusy);
+        RemoveCommand = new DelegateCommand(async () => await RemoveSelectedPackageAsync(),
+            () => SelectedPackage is not null && !IsBusy);
         UpCommand = new DelegateCommand(() => Move(-1), () => CanMove(-1));
         DownCommand = new DelegateCommand(() => Move(1), () => CanMove(1));
         SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => !IsBusy && IsDirty);
@@ -669,6 +670,17 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         SelectedAvailable = AvailablePackages.FirstOrDefault(x => x.Asset.Id == asset.Id)
             ?? throw new InvalidOperationException("新 TEST 资产尚未登记在当前工程。");
         Add();
+    }
+
+    private async Task RemoveSelectedPackageAsync()
+    {
+        if (IsBusy || SelectedPackage is not { } row) return;
+        if (!_dialogs.Confirm("从当前测试项目移除用例“" + row.Name + "”？" +
+            "\\n此操作不会删除源 TEST 文件，也不会影响其他项目引用。")) return;
+        Remove();
+        // This is a deliberate destructive edit: persist it immediately rather
+        // than waiting for an idle timer or expecting the operator to press Save.
+        await SaveAsync();
     }
 
     private void Remove()
