@@ -7,6 +7,26 @@ namespace AutoTest.Devices.Usb;
 public sealed class PhysicalCommandFence
 {
     private readonly object _sync = new();
+    private bool _emergencyInterlocked;
+    public bool IsEmergencyInterlocked
+    {
+        get { lock (_sync) return _emergencyInterlocked; }
+    }
+    /// <summary>
+    /// Irreversible for this transport instance: a WPF fault invalidates every
+    /// existing write grant, including FLASH/diagnostic, one-shot and periodic
+    /// commands. Physical output state is UNKNOWN, not electrically released.
+    /// A *new verified WinUSB connection* owns a new fence.
+    /// </summary>
+    public void EmergencyInterlock()
+    {
+        lock (_sync)
+        {
+            _emergencyInterlocked = true;
+            ResetGrantsNoLock();
+        }
+    }
+
     private byte[]? _singleCanPayload;
     private DateTimeOffset _canExpiry;
     private bool? _oneIgnState;
@@ -495,6 +515,9 @@ public sealed class PhysicalCommandFence
         if (IsReadOnly(request.Command, request.Payload)) return;
         lock (_sync)
         {
+            if (_emergencyInterlocked)
+                throw new UnauthorizedAccessException(
+                    "Unexpected UI error interlocked this USB session. Disconnect and reconnect; physical state UNKNOWN.");
             // During a programming/DID grant no other write can borrow a
             // previously issued CAN/IGN/LED/clamp/manual-test authorization.
             if (TryConsumeProgramming(request, connectionGeneration)) return;
@@ -593,8 +616,11 @@ public sealed class PhysicalCommandFence
 
     public void Reset()
     {
-        lock (_sync)
-        {
+        lock (_sync) ResetGrantsNoLock();
+    }
+
+    private void ResetGrantsNoLock()
+    {
             _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
             _baudPermit = null; _baudPermitEpoch = 0; _baudPermitExpires = default;
             _oneIgnState = null; _ignExpiry = default; _ignGeneration = 0;
@@ -608,6 +634,5 @@ public sealed class PhysicalCommandFence
             _manualBatchFingerprint = null;
             _manualKeySteps = null; _manualKeyIndex = 0;
             _manualKeyGeneration = 0; _manualKeyExpiry = default;
-        }
     }
 }

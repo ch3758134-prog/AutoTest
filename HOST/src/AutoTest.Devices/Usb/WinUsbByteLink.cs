@@ -210,6 +210,11 @@ public sealed class WinUsbByteLink : IUsbByteLink
         lock (_sync) _fence.RevokePhysicalRun();
     }
 
+    public void EmergencyInterlock()
+    {
+        lock (_sync) _fence.EmergencyInterlock();
+    }
+
     public ValueTask OpenAsync(CancellationToken ct)
         => new(Task.Run(() => OpenCore(ct), ct));
 
