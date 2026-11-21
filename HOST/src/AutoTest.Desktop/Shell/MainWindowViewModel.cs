@@ -872,6 +872,19 @@ public sealed class MainWindowViewModel : BindableBase
             ApplyEcuCanBitrateCommand.RaiseCanExecuteChanged();
         }
     }
+    /// <summary>Owned tool windows are closed as part of the IDE exit, not
+    /// one-by-one by the operator. The bench must finish physical writes
+    /// before the shared hardware service is disposed.</summary>
+    public async Task<bool> PrepareToolWindowsForCloseAsync()
+    {
+        if (_manualBenchWindow is { IsVisible: true } bench &&
+            !await bench.PrepareForParentShutdownAsync())
+            return false;
+        if (_waveWorkbenchWindow is { IsVisible: true } wave)
+            wave.Close();
+        return true;
+    }
+
     public async Task ShutdownAsync()
     {
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
