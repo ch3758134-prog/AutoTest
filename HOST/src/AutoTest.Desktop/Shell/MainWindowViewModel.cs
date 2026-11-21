@@ -1913,10 +1913,12 @@ public sealed class MainWindowViewModel : BindableBase
         // Save every pending TEST/project draft first; a stale in-memory
         // project reference must never be silently orphaned by deleting its asset.
         if (!await PrepareEditorsForCloseAsync()) return;
-        if (asset.Kind == ProjectWorkspaceService.TestProgramKind &&
-            _workspace.Current is { } activeProject)
+        try
         {
-            foreach (var projectAsset in activeProject.Definition.Assets.Where(x =>
+            if (asset.Kind == ProjectWorkspaceService.TestProgramKind &&
+                _workspace.Current is { } activeProject)
+            {
+                foreach (var projectAsset in activeProject.Definition.Assets.Where(x =>
                          x.Kind == ProjectWorkspaceService.TestProjectKind))
             {
                 // Open through the revision-checked workspace codec. If one
@@ -1929,7 +1931,14 @@ public sealed class MainWindowViewModel : BindableBase
                         "再从工程树移除该资源。源文件会保留以便恢复。");
                     return;
                 }
+                }
             }
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            _fileDialogs.ShowError("无法核实工程中其他测试项目的引用，因此没有移除该测试用例：\\n"
+                + error.Message);
+            return;
         }
         if (!_fileDialogs.ConfirmRemoveReference(asset.Name)) return;
         await RunOperationAsync(async () =>
