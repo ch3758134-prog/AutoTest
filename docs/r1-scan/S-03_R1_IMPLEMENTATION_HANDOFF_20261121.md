@@ -1,5 +1,8 @@
 # AutoTest R1-SCAN S-03｜R1 最小真实扫码→配置准备→执行集成交接与验收合同 v0.1
 
+
+> **后续修订（2026-11-21）**：NI 对标形成的 [S-04](S-04_NI_TESTSTAND_SYSTEM_RESEARCH_20261121.md) 和 [S-05](S-05_SCANNER_CONFIGURATION_AND_PRODUCT_UX_V02_20261121.md) 对本文件最小实施顺序作了调整：**优先“已批准当前任务→Recipe + 真实扫码编号→预检→R1 TEST”**，不再默认要求每只 SN 先录入逐编号绑定表；逐号档案为严格模式之一。原 P0-A“逐编号绑定表必需”与之冲突时按 S-05 研究建议评审，不能直接编码。生产/复检正式政策仍候审。
+
 > Issue #72；2026-11-21；基于显式回读 `R1@fa3b18e948043a9d1960adddb627658fd40c8159`。配套：`S-00_SOURCE_AUDIT_20261121.md`、`S-01_MATCHING_RUNPLAN_INTERFACE_CONTRACT_20261121.md`、`S-02_PRODUCTION_DEVELOPMENT_OPERATOR_FLOWS_20261121.md`。
 >
 > **状态：RESEARCH_AND_HANDOFF_DELIVERED / PRODUCTION_CODE_NOT_IMPLEMENTED / WINDOWS_AND_PHYSICAL_NOT_VERIFIED。** 任何生产功能须经 R1 负责人代码评审后进入 `R1`；本研究不修改 `R1`、`main`、固件和独立 UI 分支。
