@@ -3,7 +3,7 @@
 **身份**：SCAN 扫码/编号/配置匹配与 R1 自动测试启动准备专业 AI。  
 **正式任务**：[Issue #72](https://github.com/ch3758134-prog/AutoTest/issues/72)。  
 **研究分支**：`research/r1-scan-configuration-20261120`；初始基于 `R1@94e82eddb03e69b428fd4c63c2093a570d979c4e`。  
-**状态**：`SOURCE_INVESTIGATED / MATCHING_CONTRACT_DOCUMENTED / R1_INTEGRATION_PENDING / FIELD_NOT_VERIFIED`（2026-11-21 第一阶段研究落档；最新 R1 回读基线 `fa3b18e948043a9d1960adddb627658fd40c8159`）。
+**状态**：`NI_BENCHMARKED / MULTI_MODE_DESIGN_PROPOSED / R1_INTEGRATION_PENDING / FIELD_NOT_VERIFIED`（2026-11-21 第一阶段研究落档；最新 R1 回读基线 `fa3b18e948043a9d1960adddb627658fd40c8159`）。
 
 ## 必须先调查的实际后端
 
@@ -49,3 +49,14 @@
 - **新增路线选项（待审查）**：在原“混线逐编号精确绑定”之外，提出“已批准单工位固定生产任务 + 扫码只绑定 DUT 身份”的轻量首版方式；两个模式必须显式单选，禁止精确绑定失败时静默回退，亦不把固定任务误称“扫码自动识别型号”。
 - **重要硬件差异**：用户此前实际 USB/COM 串口扫码枪，不应只按原 R1 KeyboardWedge 入口推进；现有 `SerialBarcodeCapture` 只有 `IVerifiedBarcodeLineSource` 接口，正式 Windows COM 枚举、设备绑定、分帧、异常恢复尚需现场验证。软件层允许将 HID 作为另一个支持模式，但不能取代现有真实枪类型。
 - 新回读活跃 R1：`02f18c65e5ba6038da10067c6285450de6cce911`；比先前 S-00 快照前进 28 提交，比较结果未显示 SCAN/Production/R1 真实服务接线源变更。**所有新增决策为研究候选，尚未改 HOST 或通过真实扫描/ECU 验收。**
+
+## 2026-11-21｜第二轮 NI TestStand 系统对标与产品方案修正
+
+- [S-04｜NI TestStand/SystemLink 与 SCAN 全面系统对标](S-04_NI_TESTSTAND_SYSTEM_RESEARCH_20261121.md)：真实 `Process Model / PreUUT / Test UUTs / Single Pass / UUT_RESULT` 架构；区别 NI 前缀选序列的**示例**和产品默认行为；研究四种配置来源——当前任务、产品编码、工单、逐号档案。
+- [S-05｜扫码枪设备设置 + 业务配置 + 测试方案的实际操作设计 v0.2](S-05_SCANNER_CONFIGURATION_AND_PRODUCT_UX_V02_20261121.md)：系统设置/编号规则/Recipe/独立绑定/当前工位任务、真实枪验收、模式选择、UI 必需状态、两种入口和 R1 最小切片。
+
+**重要取代关系**：S-01/S-03 的“P0 每只 DUT 必须逐号精确绑定”的提议属于未审批假设，现被第二轮 NI 研究**修正为四种候审绑定依据**；仍遵守用户已确认的“外部唯一 DUT 编号、编号与配置映射独立、重复不计新增、Development 无扫码可运行”。最先建议在用户当前单工位做 `ActiveTask→Recipe` 的**显式任务关联**并扫码验证编号；不以该模式证明 DUT 实体型号，正式出厂放行/复检规则需另行审批，严禁静默烧录。
+
+**同步决策源**：项目管理 [07_WAVE_SCAN_RECONCILIATION.md](https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current-20261121/07_WAVE_SCAN_RECONCILIATION.md) 和 [02_DECISION_SUPERSESSION_LEDGER.md](https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current-20261121/02_DECISION_SUPERSESSION_LEDGER.md) 已将第一轮 S-00～03 标为**候审而非生产已批准**。第二轮亦保持候审；不得将研究结论当作现有 R1 实现/Windows/真实扫码枪验收。
+
+**第二轮调研基线**：`R1@02f18c65e5ba6038da10067c6285450de6cce911`（2026-11-21 调研时读取；后续实施需重新回读最新 HEAD）。研究分支文档提交未修改 R1/main/固件；未修改 TEST/Flash/Record 执行源码。
