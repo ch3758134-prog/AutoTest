@@ -22,6 +22,9 @@ public sealed class WaveWorkbenchViewModel : BindableBase
     }
 
     private readonly ProjectWorkspaceService _project;
+    private CancellationTokenSource? _refreshStop;
+    private int _selectionGeneration;
+    private bool _closed;
     private WaveItem? _selected;
     private WaveSeries? _series;
     private IReadOnlyList<WaveChartPoint> _points = Array.Empty<WaveChartPoint>();
@@ -52,8 +55,15 @@ public sealed class WaveWorkbenchViewModel : BindableBase
     private void ProjectChanged(object? sender, EventArgs e) =>
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(Refresh));
 
-    public void Refresh()
+    public void Refresh() => _ = RefreshAsync();
+
+    private async Task RefreshAsync()
     {
+        if (_closed) return;
+        _refreshStop?.Cancel();
+        var stop = new CancellationTokenSource();
+        _refreshStop = stop;
+        _selectionGeneration++; // invalidate any pending selection projection
         Items.Clear();
         _selected = null;
         _series = null;
@@ -61,64 +71,107 @@ public sealed class WaveWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(Selected));
         ChartChanged?.Invoke();
         Info = "";
+
         if (_project.Current is not { } project)
         {
             Status = "未打开工程；不会加载其他目录的波形记录。";
             return;
         }
+        var root = Path.Combine(project.RootDirectory, "wave-records");
+        var manifest = project.ManifestPath;
+        Status = "正在后台校验真实波形证据与参考资源…";
         try
         {
-            var root = Path.Combine(project.RootDirectory, "wave-records");
-            var evidencePath = Path.Combine(root, "evidence");
-            if (Directory.Exists(evidencePath))
+            // Evidence store verifies immutable files. Only pure filesystem and
+            // codec work runs off the dispatcher; ObservableCollection stays UI.
+            var collected = await Task.Run(() =>
             {
-                var store = new WaveEvidenceStore(evidencePath);
-                foreach (var file in Directory.EnumerateFiles(evidencePath, "*.wave.json")
-                             .OrderByDescending(File.GetLastWriteTimeUtc).Take(500))
+                var items = new List<WaveItem>();
+                var evidencePath = Path.Combine(root, "evidence");
+                if (Directory.Exists(evidencePath))
                 {
-                    var prefix = Path.GetFileName(file).Split('.')[0];
-                    if (!Guid.TryParseExact(prefix, "N", out var id)) continue;
-                    try
+                    var store = new WaveEvidenceStore(evidencePath);
+                    foreach (var file in Directory.EnumerateFiles(evidencePath, "*.wave.json")
+                                 .OrderByDescending(File.GetLastWriteTimeUtc).Take(500))
                     {
-                        var actual = store.Read(new EvidenceRef(id));
-                        Items.Add(new WaveItem(actual.Actual.Signal.SignalName,
-                            actual.Kind + " · " + actual.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") +
-                            " · " + actual.Actual.Samples.Length + " 点",
-                            id, false, null));
-                    }
-                    catch (Exception error) when (error is IOException or InvalidDataException or ArgumentException)
-                    {
-                        // A broken evidence file never becomes a selectable waveform.
+                        stop.Token.ThrowIfCancellationRequested();
+                        var prefix = Path.GetFileName(file).Split('.')[0];
+                        if (!Guid.TryParseExact(prefix, "N", out var id)) continue;
+                        try
+                        {
+                            var actual = store.Read(new EvidenceRef(id));
+                            items.Add(new WaveItem(actual.Actual.Signal.SignalName,
+                                actual.Kind + " · " + actual.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") +
+                                " · " + actual.Actual.Samples.Length + " 点",
+                                id, false, null));
+                        }
+                        catch (Exception error) when (error is IOException or InvalidDataException or
+                                                       ArgumentException or UnauthorizedAccessException)
+                        {
+                            // Damaged capture is never offered as verified evidence.
+                        }
                     }
                 }
-            }
-            var catalog = new WaveReferenceCatalog(Path.Combine(root, "references"));
-            foreach (var reference in catalog.List())
-                Items.Add(new WaveItem(reference.Name,
-                    "参考 · " + reference.Signal.SignalName + " · " +
-                    reference.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
-                    reference.Reference.Asset.Id.Value, true, reference));
+                stop.Token.ThrowIfCancellationRequested();
+                var catalog = new WaveReferenceCatalog(Path.Combine(root, "references"));
+                foreach (var reference in catalog.List())
+                {
+                    stop.Token.ThrowIfCancellationRequested();
+                    items.Add(new WaveItem(reference.Name,
+                        "参考 · " + reference.Signal.SignalName + " · " +
+                        reference.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+                        reference.Reference.Asset.Id.Value, true, reference));
+                }
+                return items;
+            }, stop.Token);
+            if (_closed || stop.IsCancellationRequested || !ReferenceEquals(_refreshStop, stop) ||
+                _project.Current?.ManifestPath != manifest) return;
+            foreach (var item in collected) Items.Add(item);
             Status = "已载入 " + Items.Count + " 条已验证的波形记录；请选择一条查看。";
             if (Items.Count > 0) Selected = Items[0];
         }
-        catch (Exception ex) { Status = "读取真实波形记录失败：" + ex.Message; }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            if (!_closed && ReferenceEquals(_refreshStop, stop))
+                Status = "读取真实波形记录失败：" + error.Message;
+        }
+        finally
+        {
+            if (ReferenceEquals(_refreshStop, stop)) _refreshStop = null;
+            stop.Dispose();
+        }
     }
 
-    private void LoadSelected()
+    private void LoadSelected() => _ = LoadSelectedAsync();
+
+    private async Task LoadSelectedAsync()
     {
+        var generation = ++_selectionGeneration;
         _series = null;
         _points = Array.Empty<WaveChartPoint>();
         Info = "";
+        ChartChanged?.Invoke();
+        if (_closed || Selected is not { } selected || _project.Current is not { } project)
+            return;
+        var root = Path.Combine(project.RootDirectory, "wave-records");
+        var manifest = project.ManifestPath;
+        Status = "正在后台读取和投影真实波形…";
         try
         {
-            if (Selected is null || _project.Current is not { } project) return;
-            var root = Path.Combine(project.RootDirectory, "wave-records");
-            _series = Selected.IsReference
-                ? new WaveReferenceCatalog(Path.Combine(root, "references"))
-                    .Load(Selected.Reference!.Reference).Series
-                : new WaveEvidenceStore(Path.Combine(root, "evidence"))
-                    .Read(new EvidenceRef(Selected.Id)).Actual;
-            _points = WaveChartAnalysis.FromSeries(_series);
+            var projected = await Task.Run(() =>
+            {
+                var series = selected.IsReference
+                    ? new WaveReferenceCatalog(Path.Combine(root, "references"))
+                        .Load(selected.Reference!.Reference).Series
+                    : new WaveEvidenceStore(Path.Combine(root, "evidence"))
+                        .Read(new EvidenceRef(selected.Id)).Actual;
+                return (Series: series, Points: WaveChartAnalysis.FromSeries(series));
+            });
+            if (_closed || generation != _selectionGeneration ||
+                Selected != selected || _project.Current?.ManifestPath != manifest) return;
+            _series = projected.Series;
+            _points = projected.Points;
             var values = _series.Samples.Select(x => x.Sample.Value).ToArray();
             var min = values.Length == 0 ? "" : values.Min().ToString("G6");
             var max = values.Length == 0 ? "" : values.Max().ToString("G6");
@@ -130,14 +183,19 @@ public sealed class WaveWorkbenchViewModel : BindableBase
             CursorInfo = "点击曲线两次，查看区间时间差、幅值差与极值。";
             Status = "显示真实样本；降采样仅用于绘图，不用于判定。";
         }
-        catch (Exception ex)
+        catch (Exception error)
         {
+            if (_closed || generation != _selectionGeneration) return;
             _points = Array.Empty<WaveChartPoint>();
             _series = null;
             Info = "";
-            Status = "波形证据无法读取：" + ex.Message;
+            Status = "波形证据无法读取：" + error.Message;
         }
-        finally { ChartChanged?.Invoke(); }
+        finally
+        {
+            if (!_closed && generation == _selectionGeneration)
+                ChartChanged?.Invoke();
+        }
     }
 
     public void SetCursorMeasure(double first, double second)
@@ -155,5 +213,11 @@ public sealed class WaveWorkbenchViewModel : BindableBase
         catch (Exception ex) { CursorInfo = "无法计算游标：" + ex.Message; }
     }
 
-    public void Close() => _project.CurrentChanged -= ProjectChanged;
+    public void Close()
+    {
+        _closed = true;
+        _selectionGeneration++;
+        _refreshStop?.Cancel();
+        _project.CurrentChanged -= ProjectChanged;
+    }
 }
