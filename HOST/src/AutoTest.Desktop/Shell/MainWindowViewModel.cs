@@ -700,10 +700,15 @@ public sealed class MainWindowViewModel : BindableBase
 
     private async Task SaveActiveAsync()
     {
-        if (_savingActive) return;
+        if (_savingActive || _closeGuardActive) return;
         _savingActive = true;
+        var gateEntered = false;
         try
         {
+            // One revision-checked file writer for explicit save, idle autosave
+            // and close. No concurrent SaveAsync may overwrite another snapshot.
+            await _editorSaveGate.WaitAsync();
+            gateEntered = true;
             bool saved = ActiveEditorTab?.View switch
             {
                 TestEditorView editor => await editor.SaveForCloseAsync(),
@@ -725,7 +730,11 @@ public sealed class MainWindowViewModel : BindableBase
             StatusMessage = "保存异常，草稿已保留：" + error.Message;
             _fileDialogs.ShowError(StatusMessage);
         }
-        finally { _savingActive = false; }
+        finally
+        {
+            if (gateEntered) _editorSaveGate.Release();
+            _savingActive = false;
+        }
     }
     private void UndoActive()
     {
