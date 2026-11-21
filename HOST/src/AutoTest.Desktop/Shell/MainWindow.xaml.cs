@@ -18,7 +18,7 @@ namespace AutoTest.Desktop.Shell;
 public partial class MainWindow : Window
 {
     private readonly MainWindowViewModel _viewModel;
-    private readonly DispatcherTimer _autosaveTimer = new() { Interval = TimeSpan.FromSeconds(8) };
+    private readonly DispatcherTimer _autosaveTimer = new() { Interval = TimeSpan.FromSeconds(3) };
     private DateTime _lastInteractionUtc = DateTime.UtcNow;
     private bool _autosaveTickActive;
     private bool _shutdownStarted;
@@ -62,8 +62,7 @@ public partial class MainWindow : Window
     private async void OnAutosaveTick(object? sender, EventArgs e)
     {
         if (_autosaveTickActive || _shutdownStarted || _closeAttemptPending || !IsActive ||
-            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4) ||
-            Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(3))
             return;
         _autosaveTickActive = true;
         try { await _viewModel.AutoSaveOpenEditorsAsync(); }
