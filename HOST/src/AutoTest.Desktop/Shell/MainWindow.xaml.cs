@@ -140,6 +140,7 @@ public partial class MainWindow : Window
         try
         {
             if (!await _viewModel.PrepareEditorsForCloseAsync()) return;
+            if (!await _viewModel.PrepareToolWindowsForCloseAsync()) return;
             _shutdownStarted = true;
             try
             {
