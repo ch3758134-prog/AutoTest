@@ -157,7 +157,7 @@ public sealed partial class ManualBenchViewModel
 
         public void AttachUniqueMatchingDbc()
         {
-            if (_explicitRawCan || DbcMessage is not null) return;
+            if (_explicitRawCan || _staleDbcPin is not null || DbcMessage is not null) return;
             var rawId = IdHex.Trim();
             if (rawId.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 rawId = rawId[2..];
