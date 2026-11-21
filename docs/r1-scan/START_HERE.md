@@ -90,3 +90,10 @@
 - **候审结构**：UT1 产品/HW + 当前任务→唯一发布 Recipe，Recipe 独立引用 `FirmwareRelease`、`FlashProfile`、`FlashPolicy`、软件版本读回规则，检查与 TEST 内**唯一启用 Flash 步骤**的冻结 Job/Consent 完全一致；码率需与 XML 和 0x43 实际读回一致，FLASH 仍沿 R1 的 CanTool 和独立授权。
 - **已证实的实际限制**：当前 CanTool XML 只允许 250k/500k，安全算法提供器对真机仅启用核验过的资料；一次项目运行范围最多一次 Flash，尝试后不自动重试。APP 50 03 恢复并不证明目标软件版本；协议、软件版、功能 TEST、正式放行分开判。
 - **生产政策未批准**：NoFlash/FlashRequired 建议先作为显式模式；依据 DID 识别后条件跳过、一次任务授权连续烧多台以及 Release/复检政策需要先由 R1/FLASH/RECORD 与用户共同批准。研究不修改 R1/main/固件，未物理测试。
+
+## 2026-11-21｜用户正式明确：FLASH 原生配置，不导入外部 XML（S-10）
+
+- [S-10｜原生烧录参数直接编辑 + 当前 ECU 工程固定位置保存 + 运行时无外部配置依赖](S-10_NATIVE_FLASH_CONFIGURATION_FIXED_PROJECT_STORAGE_20261121.md)：用户明确指出 CanTool 的“配置文件+固件+安全算法”只作阶段性研究参考；正式 AutoTest 烧录设置**手动在软件内编辑、自动保存到工程固定位置**，不要求导入 Configuration.xml，不长期引用外部配置路径。固件与安全算法本身仍可作为受控工程资源。
+- **严格修订关系**：S-09 内的“FlashProfile 继续以外部 CanTool XML/JSON 包作为正式执行配置”被本次用户要求**明确取代**；但其配方/固件发布/FLASH 策略/真实安全授权/烧录后核验结论保持有效。S-07、S-08 的扫码产品/任务选方案不变。
+- **最新 R1 实际断点**：`ProjectWorkspaceService` 当前 flash-settings 虽在工程内部保存却使用 GUID 文件名而非唯一固定文件；`FlashSettingsDocument` 不是可执行 Flash Job；`ConfiguredRealTestFlashPort.FreezeJobs` 必须读取 XML；近期新增 `ScanRecipePreparationService` 也沿旧路径读取。这些均需代码级改造，不能仅删除 XML 选择按钮。初步建议草稿固定 `assets/flash/profile.json`、发布不可变 snapshots、固件/必要算法复制为工程内部受控资源；保存路径/Schema 需 PROJECT/FLASH 复审。
+- **研究状态**：用户要求明确；研究分支已归档设计。未修改 R1/main/固件；未做 Windows 编译或真机 FLASH 验收。后续提交必须以最新 R1 HEAD 对比。
