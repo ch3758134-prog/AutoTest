@@ -33,9 +33,6 @@ public partial class MainWindow : Window
     private bool _treeAutoNarrow;
     private TestEditorViewModel? _activeRunFacts;
 
-    public void EnterUnhandledUiFaultState(Exception error) =>
-        _viewModel.EnterUnhandledUiFaultState(error);
-
     public MainWindow(MainWindowViewModel viewModel)
     {
         InitializeComponent();

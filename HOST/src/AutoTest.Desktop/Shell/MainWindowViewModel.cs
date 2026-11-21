@@ -899,17 +899,6 @@ public sealed class MainWindowViewModel : BindableBase
         return true;
     }
 
-    /// <summary>Does not guess whether an unhandled UI exception was benign.
-    /// Fail closed at the physical WinUSB fence and request any TEST to stop.
-    /// Reconnection is a new explicit operator action, never automatic.</summary>
-    public void EnterUnhandledUiFaultState(Exception error)
-    {
-        _realTest.RequestStop();
-        _hardware.InterlockUnexpectedUiFailure(error.GetType().Name);
-        HardwareStatus = "异常联锁：主控物理输出状态 UNKNOWN，已封锁本会话新的 USB 写入";
-        StatusMessage = "已禁止新的实体操作。请确认工位安全后断开并重新连接主控。";
-    }
-
     public async Task ShutdownAsync()
     {
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;

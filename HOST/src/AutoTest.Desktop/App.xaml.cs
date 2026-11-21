@@ -21,21 +21,9 @@ public partial class App : PrismApplication
     private static void OnUiDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         var log = UiExceptionReporter.Record("WPF dispatcher (unhandled)", e.Exception);
-        // A presentation exception may have interrupted an equipment write or
-        // left a live task in an unknown state. Interlock before showing UI.
-        try
-        {
-            if (Application.Current?.MainWindow is MainWindow shell)
-                shell.EnterUnhandledUiFaultState(e.Exception);
-        }
-        catch (Exception interlockError)
-        {
-            UiExceptionReporter.Record("Emergency physical interlock failed", interlockError);
-        }
         try
         {
             var message = "界面操作发生异常：" + e.Exception.Message +
-                "\n主控写入已请求异常联锁；若实体动作不确定，请按 UNKNOWN 处理。" +
                 (log is null ? "\n未能写入错误日志。" :
                     "\n已记录完整异常堆栈：" + log);
             var answer = MessageBox.Show(message +
