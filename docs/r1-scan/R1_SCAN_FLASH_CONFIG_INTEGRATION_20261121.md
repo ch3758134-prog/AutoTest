@@ -41,7 +41,7 @@
 
 ### 2.3 自定义 UT1（可选）
 
-新 `Ut1BarcodeCodec` 实现 S-07 的候选规则：`UT1-ProductCode-HardwareCode-外部唯一Serial-CRC16`；CRC-16/CCITT-FALSE，含首段原样 ASCII，算法向量 `UT1-EPBA-H02-000000123456-4372`。Serial 保留所有前导零；不将 Product/HW 拼进 Serial 造成重复注册。有效 UT1 数据还必须与已发布 Regex 中的 model/hardware/serial 提取一致；校验失败无 legacy 自动回退。历史条码可继续使用现有 `IdentityRuleSet` 发布规则。
+新 `Ut1BarcodeCodec` 实现 S-07 的候选规则：`UT1-ProductCode-HardwareCode-外部唯一Serial-CRC16`；CRC-16/CCITT-FALSE，含首段原样 ASCII，算法向量 `UT1-EPBA-H02-000000123456-4372`。Serial 保留所有前导零；不将 Product/HW 拼进 Serial 造成重复注册。有效 UT1 数据还必须与已发布 Regex 中的 model/hardware/serial 提取一致；**UT1 必须命中精确产品代码 + 硬件版号的已发布配方**，找不到时不允许降级到没有 Product/HW 的旧通用配方；校验失败无 legacy 自动回退。历史条码可继续使用现有 `IdentityRuleSet` 发布规则。
 
 ## 3. 当前未做、不应宣称已交付的部分
 
