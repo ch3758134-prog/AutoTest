@@ -17,6 +17,9 @@
       ToolTip="创建空白真实 TEST，加入当前项目并打开步骤编辑器"/>
      <Button Content="添加已有用例" Command="{Binding AddCommand}" Margin="0,0,6,0"
       ToolTip="从现有工程 TEST 资产中添加到本测试项目"/>
+     <Button Content="移除所选用例" Command="{Binding RemoveCommand}"
+      Margin="0,0,6,0" Foreground="#B94949"
+      ToolTip="从当前测试项目移除选中的用例并立即保存；源 TEST 文件仍保留"/>
      <Button Content="保存" Command="{Binding SaveCommand}" Margin="0"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -205,7 +208,7 @@
         </DataGridTemplateColumn>
         <DataGridTextColumn Header="步骤" Binding="{Binding StepCountLabel}"
          IsReadOnly="True" Width="66"/>
-        <DataGridTemplateColumn Header="调整" Width="118">
+        <DataGridTemplateColumn Header="调整" Width="143">
          <DataGridTemplateColumn.CellTemplate>
           <DataTemplate>
            <StackPanel Orientation="Horizontal">
@@ -215,9 +218,9 @@
             <Button Content="↓" Tag="{Binding}" Click="MoveRowDown_Click" Width="26"
              MinWidth="0" Height="23" MinHeight="0" Margin="0,0,4,0"
              ToolTip="下移此用例"/>
-            <Button Content="×" Tag="{Binding}" Click="RemoveRow_Click" Width="26"
+            <Button Content="移除" Tag="{Binding}" Click="RemoveRow_Click" Width="46"
              MinWidth="0" Height="23" MinHeight="0" Foreground="#C04A57"
-             ToolTip="移除项目引用，不删除原始 TEST 文件"/>
+             ToolTip="从测试项目移除此条用例并立即保存；原 TEST 文件仍保留"/>
            </StackPanel>
           </DataTemplate>
          </DataGridTemplateColumn.CellTemplate>
