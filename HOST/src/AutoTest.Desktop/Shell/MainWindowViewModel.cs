@@ -1554,7 +1554,7 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OpenNewProjectAsync()
     {
         if (IsBusy || !await PrepareEditorsForCloseAsync() ||
-            !await PrepareDbcWindowsForCloseAsync()) return;
+            !await PrepareToolWindowsForCloseAsync()) return;
         IsBusy = true;
         try { _newDialog.ShowDialog(); }
         catch (Exception e) { StatusMessage = "新建工程窗口打开失败：" + e.Message; }
@@ -1565,7 +1565,7 @@ public sealed class MainWindowViewModel : BindableBase
     {
         var path = _fileDialogs.PickProjectManifest();
         if (path is null || !await PrepareEditorsForCloseAsync() ||
-            !await PrepareDbcWindowsForCloseAsync()) return;
+            !await PrepareToolWindowsForCloseAsync()) return;
         var opened = false;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         StatusMessage = "正在读取工程清单：" + Path.GetFileName(path);
@@ -2007,6 +2007,12 @@ public sealed class MainWindowViewModel : BindableBase
     {
         var asset = _selectedResource?.Asset;
         if (asset is null) return;
+        if (_realTest.IsRunning || _hardware.IsTestRunApproved ||
+            _hardware.IsManualCanBatchApproved || _hardware.IsManualKeyActionApproved)
+        {
+            StatusMessage = "真实测试、手动 CAN 或 KEY 正在占用工位，不能更改工程资源。请先停止实体操作。";
+            return;
+        }
         var editorsUsingAsset = OpenEditors.Where(tab =>
             tab.Key.EndsWith("|" + asset.Id, StringComparison.Ordinal)).ToArray();
         // Save every pending TEST/project draft first; a stale in-memory
