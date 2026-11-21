@@ -18,6 +18,7 @@
 | [06｜UI/UX 当前约束与后续研究](06_UI_UX_CURRENT_FRAMEWORK.md) | UX 基础研究的地位、R1 临时运行 UI 与长期全产品 UI 的区别 |
 | [07｜WAVE/SCAN 新研究如何影响 R1](07_WAVE_SCAN_RECONCILIATION.md) | 2026-11-21 新草案价值、与 R1 冲突、哪些待评审/实施 |
 | [08｜执行管理、清理与变更规则](08_GOVERNANCE_MIGRATION_AND_OPEN_ITEMS.md) | 怎样避免历史文件/PR/分支/研究结论混入现行合同 |
+| [09｜来源与被覆盖档案索引](09_SOURCE_TRACEABILITY.md) | 回溯对应的原批准文件、专业设计、Git 分支 SHA 与历史错误状态 |
 
 ## 本次整理实际覆盖范围
 
