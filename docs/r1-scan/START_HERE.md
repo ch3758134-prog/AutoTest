@@ -83,3 +83,10 @@
 - **架构建议**：新标签使用 S-07 的 UT1 候选编码（Protocol + Product + HW + 全局 Serial + CRC）；在已批准任务的产品范围内，用正式 `ProductVariant(+TaskScope)→RecipePin` 选择已保存 TestProject、TCF/DBC/KEY/TBC、ECU CAN、Flash/报告；保留旧纯 SN+任务、严格逐号档案和工单模式，不允许匹配失败静默 fallback。
 - **源码差距**：最新复查 `R1@8812847cd814a344e4c7ed4791fa59bf02304238`：`IdentityRuleSet` 是纯 Regex、`ProjectScanMatcher` 只返回 RecipeId、`SerialBarcodeCapture` 没有真实 COM 连接、`TestProjectWorkbenchViewModel` 的有序用例是真执行但没有生产计划输入、`RealTestWorkbenchService` 有 DUT 编号仍记录 Development。不能声称扫码生产已接线。
 - **候审**：编码发行归属、扫码枪真实 USB 枚举/读码器符号、当前产品是否混线、ECU DID 实物校核、正式出厂首次放行政策；本轮没有修改 HOST/R1/main/硬件，也没有真实枪/ECU 物理验收。
+
+## 2026-11-21｜烧录配置和扫码的一体化研究（S-09）
+
+- [S-09｜扫码 + 固件发布 + 烧录方法 + 烧录策略 + TEST/RECORD 全闭环](S-09_SCAN_FLASH_PRODUCTION_RECIPE_INTEGRATION_20261121.md)：用户明确要求**烧录配置与扫码方案一起考虑**。报告回读 R1 `ConfiguredRealTestFlashPort`、`CanToolFlashJob`、`CanToolFlashWorkflow`、`HardwareConnectionService`、`RealTestWorkbenchService`；指出旧 `FlashSettingsDocument` 只是元数据，不会自动成为真实 CanTool Job，老 `ProgrammingProfile` 仍是 MockOnly 且真机不支持。
+- **候审结构**：UT1 产品/HW + 当前任务→唯一发布 Recipe，Recipe 独立引用 `FirmwareRelease`、`FlashProfile`、`FlashPolicy`、软件版本读回规则，检查与 TEST 内**唯一启用 Flash 步骤**的冻结 Job/Consent 完全一致；码率需与 XML 和 0x43 实际读回一致，FLASH 仍沿 R1 的 CanTool 和独立授权。
+- **已证实的实际限制**：当前 CanTool XML 只允许 250k/500k，安全算法提供器对真机仅启用核验过的资料；一次项目运行范围最多一次 Flash，尝试后不自动重试。APP 50 03 恢复并不证明目标软件版本；协议、软件版、功能 TEST、正式放行分开判。
+- **生产政策未批准**：NoFlash/FlashRequired 建议先作为显式模式；依据 DID 识别后条件跳过、一次任务授权连续烧多台以及 Release/复检政策需要先由 R1/FLASH/RECORD 与用户共同批准。研究不修改 R1/main/固件，未物理测试。
