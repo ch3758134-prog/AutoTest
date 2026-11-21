@@ -67,14 +67,28 @@ public sealed class DbcSignalEditState : BindableBase
     public bool Intel { get => _intel; set => SetProperty(ref _intel, value); }
     private bool _signed = false;
     public bool Signed { get => _signed; set => SetProperty(ref _signed, value); }
+    /// <summary>Human-readable decimal; the unchanged original double is kept
+    /// verbatim when a different DBC field is edited.</summary>
+    public static string DisplayDouble(double value) =>
+        value.ToString("G12", CultureInfo.InvariantCulture);
+
+    public static double ResolveEditedNumber(string text, double original, string label)
+    {
+        if (text == DisplayDouble(original)) return original;
+        if (!double.TryParse(text, NumberStyles.Float,
+                CultureInfo.InvariantCulture, out var parsed) || !double.IsFinite(parsed))
+            throw new FormatException(label + "须是有效有限数值（英文小数点）。");
+        return parsed;
+    }
+
     public static DbcSignalEditState FromSignal(DbcSignal signal) => new()
     {
         StartBit = signal.StartBit.ToString(CultureInfo.InvariantCulture),
         BitLength = signal.BitLength.ToString(CultureInfo.InvariantCulture),
-        Factor = signal.Factor.ToString("R", CultureInfo.InvariantCulture),
-        Offset = signal.Offset.ToString("R", CultureInfo.InvariantCulture),
-        Minimum = signal.Minimum.ToString("R", CultureInfo.InvariantCulture),
-        Maximum = signal.Maximum.ToString("R", CultureInfo.InvariantCulture),
+        Factor = DisplayDouble(signal.Factor),
+        Offset = DisplayDouble(signal.Offset),
+        Minimum = DisplayDouble(signal.Minimum),
+        Maximum = DisplayDouble(signal.Maximum),
         Unit = signal.Unit, Receiver = signal.Receiver,
         Multiplexer = signal.Multiplexer ?? "", Intel = signal.Intel, Signed = signal.Signed
     };
@@ -82,10 +96,10 @@ public sealed class DbcSignalEditState : BindableBase
     public bool Matches(DbcSignal signal) =>
         StartBit == signal.StartBit.ToString(CultureInfo.InvariantCulture) &&
         BitLength == signal.BitLength.ToString(CultureInfo.InvariantCulture) &&
-        Factor == signal.Factor.ToString("R", CultureInfo.InvariantCulture) &&
-        Offset == signal.Offset.ToString("R", CultureInfo.InvariantCulture) &&
-        Minimum == signal.Minimum.ToString("R", CultureInfo.InvariantCulture) &&
-        Maximum == signal.Maximum.ToString("R", CultureInfo.InvariantCulture) &&
+        Factor == DisplayDouble(signal.Factor) &&
+        Offset == DisplayDouble(signal.Offset) &&
+        Minimum == DisplayDouble(signal.Minimum) &&
+        Maximum == DisplayDouble(signal.Maximum) &&
         Unit == signal.Unit && Receiver == signal.Receiver &&
         Multiplexer == (signal.Multiplexer ?? "") &&
         Intel == signal.Intel && Signed == signal.Signed;
@@ -496,19 +510,19 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             static int Integer(string input, string label) =>
                 int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
                     ? value : throw new FormatException(label + "须是有效整数。");
-            static double Number(string input, string label) =>
-                double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) &&
-                double.IsFinite(value)
-                    ? value : throw new FormatException(label + "须是有效有限数值（英文小数点）。");
             var updated = signal.Signal with
             {
                 StartBit = Integer(draft.StartBit, "起始位"),
                 BitLength = Integer(draft.BitLength, "位长"),
                 Intel = draft.Intel, Signed = draft.Signed,
-                Factor = Number(draft.Factor, "因子"),
-                Offset = Number(draft.Offset, "偏移"),
-                Minimum = Number(draft.Minimum, "最小值"),
-                Maximum = Number(draft.Maximum, "最大值"),
+                Factor = DbcSignalEditState.ResolveEditedNumber(
+                    draft.Factor, signal.Signal.Factor, "因子"),
+                Offset = DbcSignalEditState.ResolveEditedNumber(
+                    draft.Offset, signal.Signal.Offset, "偏移"),
+                Minimum = DbcSignalEditState.ResolveEditedNumber(
+                    draft.Minimum, signal.Signal.Minimum, "最小值"),
+                Maximum = DbcSignalEditState.ResolveEditedNumber(
+                    draft.Maximum, signal.Signal.Maximum, "最大值"),
                 Unit = draft.Unit, Receiver = draft.Receiver,
                 Multiplexer = string.IsNullOrWhiteSpace(draft.Multiplexer) ?
                     null : draft.Multiplexer.Trim()
