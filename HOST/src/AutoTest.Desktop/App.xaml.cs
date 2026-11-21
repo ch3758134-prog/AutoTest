@@ -35,7 +35,7 @@ public partial class App : PrismApplication
         try
         {
             var message = "界面操作发生异常：" + e.Exception.Message +
-                "\n主控写入已请求异常联锁；若实体动作不确定，请按 UNKNOWN 处理。";
+                "\n主控写入已请求异常联锁；若实体动作不确定，请按 UNKNOWN 处理。" +
                 (log is null ? "\n未能写入错误日志。" :
                     "\n已记录完整异常堆栈：" + log);
             var answer = MessageBox.Show(message +
