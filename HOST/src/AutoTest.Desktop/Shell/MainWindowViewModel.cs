@@ -989,7 +989,7 @@ public sealed class MainWindowViewModel : BindableBase
             documents.Insert(0, new CloseDraftDocument("当前工程/设备操作",
                 () => IsBusy || _savingActive || _hardwareBusy || _realTest.IsRunning,
                 () => false, () => Task.FromResult(true)));
-            return await CloseDraftGuard.PrepareAsync(documents, PromptDraftClose, ReportCloseBlocked);
+            return await CloseDraftGuard.PrepareWithAutoSaveAsync(documents, ReportCloseBlocked);
         }
         finally { _closeGuardActive = false; }
     }
