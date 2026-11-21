@@ -14,6 +14,41 @@ public sealed record CloseDraftDocument(
 
 public static class CloseDraftGuard
 {
+    /// <summary>
+    /// Default IDE close path: save all valid editor changes without asking for
+    /// Save/Discard/Cancel. A failed validation or persistence blocks closing;
+    /// it never silently discards the user's work.
+    /// </summary>
+    public static async Task<bool> PrepareWithAutoSaveAsync(
+        IReadOnlyList<CloseDraftDocument> documents, Action<string> reportError)
+    {
+        try
+        {
+            var busy = documents.FirstOrDefault(x => x.IsBusy());
+            if (busy is not null)
+            {
+                reportError("“" + busy.Title + "”仍在执行操作；停止后才能退出。");
+                return false;
+            }
+            foreach (var document in documents)
+            {
+                if (!document.IsDirty()) continue;
+                if (!await document.SaveAsync() || document.IsDirty())
+                {
+                    reportError("“" + document.Title + "”无法自动保存。"
+                        + "请检查当前属性的校验提示；已阻止退出且保留所有草稿。");
+                    return false;
+                }
+            }
+            return true;
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            reportError("自动保存失败，已阻止退出并保留草稿：" + error.Message);
+            return false;
+        }
+    }
+
     public static async Task<bool> PrepareAsync(
         IReadOnlyList<CloseDraftDocument> documents,
         Func<IReadOnlyList<string>, CloseDraftDecision> prompt,
