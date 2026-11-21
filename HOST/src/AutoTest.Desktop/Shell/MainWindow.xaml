@@ -76,7 +76,7 @@
  </Window.Resources>
  <Grid Background="#F6F7F8">
   <Grid.RowDefinitions><RowDefinition Height="41"/><RowDefinition Height="44"/>
-   <RowDefinition Height="*"/><RowDefinition Height="27"/></Grid.RowDefinitions>
+   <RowDefinition Height="*"/><RowDefinition Height="35"/></Grid.RowDefinitions>
 
   <!-- A single desktop-native 38px caption and IDE menu; no second OS titlebar. -->
   <Border Grid.Row="0" Background="White" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
@@ -361,22 +361,22 @@
   <Border Grid.Row="3" Background="#F8FAFA" BorderBrush="#E1E6E8" BorderThickness="0,1,0,0">
    <DockPanel Margin="11,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="{Binding HardwareStatus}" Foreground="#35434D"
-      FontSize="10" VerticalAlignment="Center" Margin="0,0,13,0"/>
-     <TextBlock Text="扫码" Foreground="#75828D" FontSize="10"
+     <TextBlock Text="{Binding HardwareStatus}" Foreground="{StaticResource Ink}"
+      FontSize="12" VerticalAlignment="Center" Margin="0,0,13,0"/>
+     <TextBlock Text="扫码" Foreground="#75828D" FontSize="12"
       VerticalAlignment="Center" Margin="0,0,4,0"/>
-     <TextBox x:Name="ScannerEntry" Width="94" Height="20" MinHeight="0" Padding="4,0"
-      FontSize="10" VerticalContentAlignment="Center" Margin="0,0,8,0"
+     <TextBox x:Name="ScannerEntry" Width="120" Height="26" MinHeight="0" Padding="4,0"
+      FontSize="12" VerticalContentAlignment="Center" Margin="0,0,8,0"
       ToolTip="扫码枪键盘输入；按 Enter 完成匹配，不自动触发生产执行"
       PreviewTextInput="ScannerEntry_TextInput" PreviewKeyDown="ScannerEntry_KeyDown"/>
      <Button Content="观察" Click="ToggleBottom_Click"
-      Foreground="#35434D" Background="Transparent" BorderThickness="0"
-      MinWidth="38" MinHeight="20" Height="20" Padding="2,0" FontSize="10" Margin="0,0,3,0"/>
+      Foreground="{StaticResource Ink}" Background="Transparent" BorderThickness="0"
+      MinWidth="44" MinHeight="26" Height="26" Padding="2,0" FontSize="12" Margin="0,0,3,0"/>
      <Button Content="属性" Click="ToggleInspector_Click"
-      Foreground="#35434D" Background="Transparent" BorderThickness="0"
-      MinWidth="38" MinHeight="20" Height="20" Padding="2,0" FontSize="10" Margin="0"/>
+      Foreground="{StaticResource Ink}" Background="Transparent" BorderThickness="0"
+      MinWidth="44" MinHeight="26" Height="26" Padding="2,0" FontSize="12" Margin="0"/>
     </StackPanel>
-    <TextBlock Text="{Binding StatusMessage}" Foreground="#35434D" FontSize="11"
+    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource Ink}" FontSize="12"
      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
