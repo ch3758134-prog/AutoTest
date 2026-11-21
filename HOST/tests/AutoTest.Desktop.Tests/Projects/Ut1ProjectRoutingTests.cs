@@ -55,6 +55,18 @@ public sealed class Ut1ProjectRoutingTests
                 Event("UT1-EPBA-H03-000000123458-D9DD"));
             Assert.Equal("CONFIG_NO_MATCH", differentHardware.Code);
             Assert.False(differentHardware.Accepted);
+
+            // Explicit UT1 labels cannot silently fall back to a generic
+            // legacy recipe that does not bind an exact Product/HW variant.
+            var currentConfig = await workspace.OpenConfigurationAsync(scan.Id);
+            await workspace.SaveConfigurationAsync(currentConfig, config with
+            {
+                Recipes = [config.Recipes[0] with { Model = "", HardwareCode = null }]
+            });
+            var genericFallback = await matcher.MatchAsync(
+                Event("UT1-EPBA-H02-000000123456-4372"));
+            Assert.Equal("CONFIG_NO_MATCH", genericFallback.Code);
+            Assert.False(genericFallback.Accepted);
         }
         finally { Directory.Delete(parent, recursive: true); }
     }
