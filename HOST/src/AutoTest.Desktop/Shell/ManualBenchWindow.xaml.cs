@@ -19,6 +19,7 @@ public partial class ManualBenchWindow : Window
     private readonly DispatcherTimer _keyAutosaveTimer = new() { Interval = TimeSpan.FromSeconds(7) };
     private DateTime _lastInteractionUtc = DateTime.UtcNow;
     private bool _keyAutosaveBusy;
+    private bool _propertyOverlayClosing;
 
     public ManualBenchWindow(ManualBenchViewModel model)
     {
@@ -59,17 +60,11 @@ public partial class ManualBenchWindow : Window
             await _model.StopCanBatchForCloseAsync();
             if (_model.KeyActionsDirty)
             {
-                var choice = MessageBox.Show(this,
-                    "按键动作有未保存的修改。\n是：保存并关闭；否：放弃草稿；取消：返回编辑。",
-                    "保存 KEY 动作库", MessageBoxButton.YesNoCancel, MessageBoxImage.Question,
-                    MessageBoxResult.Cancel);
-                if (choice == MessageBoxResult.Cancel) { IsEnabled = true; return; }
-                if (choice == MessageBoxResult.Yes)
-                {
-                    await _model.SaveKeyActionsForCloseAsync();
-                    if (_model.KeyActionsDirty)
-                        throw new InvalidOperationException("工程动作库仍未保存，请查看工位日志。");
-                }
+                // Exiting is an auto-save operation, not a Save/Discard prompt.
+                // Invalid input or persistence failure must block exit.
+                await _model.SaveKeyActionsForCloseAsync();
+                if (_model.KeyActionsDirty)
+                    throw new InvalidOperationException("KEY 动作仍有未保存修改，已阻止退出。");
             }
             _closeAfterCanStopped = true;
             Close();
@@ -123,6 +118,52 @@ public partial class ManualBenchWindow : Window
     private async void IgnOff_Click(object sender, RoutedEventArgs e) =>
         await _model.ApplyIgnSelectionAsync(false);
 
+    private void OpenPropertyOverlay(UserControl content)
+    {
+        PropertyOverlayContent.Content = content;
+        PropertyOverlay.Visibility = Visibility.Visible;
+        content.Focus();
+    }
+
+    private void PropertyOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Only the dimmed empty area dismisses the editor. Clicking inside the
+        // form does not close it or lose focus.
+        if (!ReferenceEquals(e.OriginalSource, PropertyOverlay)) return;
+        e.Handled = true;
+        _ = ClosePropertyOverlayAsync();
+    }
+
+    private async Task ClosePropertyOverlayAsync()
+    {
+        if (_propertyOverlayClosing || PropertyOverlay.Visibility != Visibility.Visible)
+            return;
+        _propertyOverlayClosing = true;
+        try
+        {
+            if (PropertyOverlayContent.Content is ManualBenchKeyActionView)
+            {
+                if (_model.KeyActionsDirty)
+                {
+                    await _model.SaveKeyActionsForCloseAsync();
+                    if (_model.KeyActionsDirty)
+                        throw new InvalidOperationException(
+                            "KEY 动作包含未通过校验的修改，无法关闭编辑区。");
+                }
+                _model.IsKeyEditorExpanded = false;
+            }
+            PropertyOverlay.Visibility = Visibility.Collapsed;
+            PropertyOverlayContent.Content = null;
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            System.Diagnostics.Trace.TraceWarning("Bench property overlay save failed: " + error);
+            MessageBox.Show(this, "保存属性失败，内容仍保留在编辑区：\n" + error.Message,
+                "属性未保存", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally { _propertyOverlayClosing = false; }
+    }
+
     private void OpenKeyActionEditor(ManualBenchViewModel.KeyActionEditor action)
     {
         if (!_model.CanEditKeyActions)
@@ -132,7 +173,10 @@ public partial class ManualBenchWindow : Window
             return;
         }
         _model.SelectedKeyAction = action;
-        new ManualBenchKeyActionWindow(_model) { Owner = this }.ShowDialog();
+        _model.IsKeyEditorExpanded = true;
+        var view = new ManualBenchKeyActionView(_model);
+        view.CloseRequested += async (_, _) => await ClosePropertyOverlayAsync();
+        OpenPropertyOverlay(view);
     }
 
     private void AddKeyAction_Click(object sender, RoutedEventArgs e)
@@ -203,7 +247,9 @@ public partial class ManualBenchWindow : Window
             return;
         }
         _model.SelectedCanRow = row;
-        new ManualBenchCanPropertiesWindow(_model) { Owner = this }.ShowDialog();
+        var view = new ManualBenchCanPropertiesView(_model);
+        view.CloseRequested += async (_, _) => await ClosePropertyOverlayAsync();
+        OpenPropertyOverlay(view);
     }
 
     private void AddCanRow_Click(object sender, RoutedEventArgs e)
