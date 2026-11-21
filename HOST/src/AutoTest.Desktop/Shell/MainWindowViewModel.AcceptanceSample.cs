@@ -128,7 +128,7 @@ public sealed partial class MainWindowViewModel
             var projectSession = await _workspace.OpenTestProjectEditorAsync(projectAsset.Id);
             var linked = new TestProjectDocument(projectSession.Document.SchemaVersion,
                 projectSession.Document.Id, projectSession.Document.Name,
-                entries.ToImmutableArray());
+                entries);
             await _workspace.SaveTestProjectEditorAsync(projectSession, linked);
 
             var latestProject = _workspace.Current!.Definition.Assets
