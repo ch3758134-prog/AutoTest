@@ -76,3 +76,10 @@
 - **重要新路由建议（候审）**：对采用新 UT1 的产品，优先研究 `ProductCode+HwCode→发布 Recipe` 的显式映射；已批准工位任务仍应限定允许产品并提示版本，逐 SN/工单仍作为明确可选严格模式，不自动 fallback。
 - **不能改变**：条码文本和 CRC 不证明实物 ECU 身份；版本/工程资产冻结与原 R1 测试执行器/Flash 授权保持不变；研发不扫码可以操作；同一 Serial 不因产品字段更换而计第二个新 DUT。
 - 本次 S-07 是**编码设计建议、未实施、未实物验证、未审批正式出厂政策**；旧 S-04/S-05/S-06 是旧业务输入前提下的调查，阅读时先看 S-07 的新条件。
+
+## 2026-11-21｜第三轮全系统研究与最新 R1 差距（S-08）
+
+- [S-08｜扫码枪、唯一编号、产品配置、生产任务与测试/记录的全链路系统研究 v0.3](S-08_END_TO_END_SCAN_PRODUCT_SYSTEM_RESEARCH_20261121.md)：在用户确认“编码可以自己设计”后，将 NI TestStand、GS1、ISA-95、Microsoft/Zebra 设备模式与 R1 **实际代码**统一复核；特别明确 ProductVariant、Recipe、Task/Route、FrozenRunPlan、InspectionSession/CaseRun/Release 独立语义及跨工程 StationCatalog 的未来边界。
+- **架构建议**：新标签使用 S-07 的 UT1 候选编码（Protocol + Product + HW + 全局 Serial + CRC）；在已批准任务的产品范围内，用正式 `ProductVariant(+TaskScope)→RecipePin` 选择已保存 TestProject、TCF/DBC/KEY/TBC、ECU CAN、Flash/报告；保留旧纯 SN+任务、严格逐号档案和工单模式，不允许匹配失败静默 fallback。
+- **源码差距**：最新复查 `R1@8812847cd814a344e4c7ed4791fa59bf02304238`：`IdentityRuleSet` 是纯 Regex、`ProjectScanMatcher` 只返回 RecipeId、`SerialBarcodeCapture` 没有真实 COM 连接、`TestProjectWorkbenchViewModel` 的有序用例是真执行但没有生产计划输入、`RealTestWorkbenchService` 有 DUT 编号仍记录 Development。不能声称扫码生产已接线。
+- **候审**：编码发行归属、扫码枪真实 USB 枚举/读码器符号、当前产品是否混线、ECU DID 实物校核、正式出厂首次放行政策；本轮没有修改 HOST/R1/main/硬件，也没有真实枪/ECU 物理验收。
