@@ -386,8 +386,8 @@
   <Grid x:Name="PropertyOverlay" Grid.RowSpan="3" Panel.ZIndex="100"
         Background="#B2F5F7FB" Visibility="Collapsed"
         MouseLeftButtonDown="PropertyOverlay_MouseLeftButtonDown">
-   <Border Width="820" Height="600" HorizontalAlignment="Center"
-           VerticalAlignment="Center" Background="#FFFFFF"
+   <Border MaxWidth="820" MaxHeight="760" Margin="20"
+           HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#FFFFFF"
            BorderBrush="#DDE6ED" BorderThickness="1" CornerRadius="10"
            Padding="4">
     <ContentControl x:Name="PropertyOverlayContent"
