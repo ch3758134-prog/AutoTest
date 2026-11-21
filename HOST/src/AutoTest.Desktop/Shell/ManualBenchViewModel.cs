@@ -519,6 +519,14 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         if (IsCanBatchRunning || IsKeyActionRunning) return;
         await ReloadProfilesAsync();
         await ReloadDbcAsync();
+        try { await RestoreCanRowsForProjectAsync(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                       InvalidDataException)
+        {
+            // An unsaved old-project draft must not silently become the new
+            // project's CAN send table after a failed disk write.
+            Status = "CAN 工作配置切换被阻止：" + error.Message;
+        }
         await ReloadKeyActionsAsync();
     }
 

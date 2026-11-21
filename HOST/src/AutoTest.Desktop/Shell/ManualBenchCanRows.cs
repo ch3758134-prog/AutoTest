@@ -608,6 +608,10 @@ public sealed partial class ManualBenchViewModel
 
     private PreparedCanRow[] PrepareCanRows(BenchCanRow? single = null)
     {
+        if (!string.Equals(_canDraftRoot, _projects.Current?.RootDirectory,
+                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                "当前工程已切换，但 CAN 工作配置还没有完成保存/载入，禁止发送旧工程报文。");
         var chosen = single is null ? CanSendRows.Where(row => row.Included).ToArray() :
             CanSendRows.Contains(single) ? new[] { single } : Array.Empty<BenchCanRow>();
         if (chosen.Length is < 1 or > 32)

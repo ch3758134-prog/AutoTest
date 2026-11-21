@@ -39,13 +39,18 @@ public partial class ManualBenchWindow : Window
     private async void OnKeyAutosaveTick(object? sender, EventArgs e)
     {
         if (_keyAutosaveBusy || !IsActive || !IsEnabled || _closeAfterCanStopped ||
-            _model.IsKeyActionRunning || !_model.CanSaveKeyActions ||
-            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4) ||
-            Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
+            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4)) return;
+        if (!_model.CanRowsDirty && !_model.CanSaveKeyActions) return;
         _keyAutosaveBusy = true;
-        try { await _model.SaveKeyActionsForCloseAsync(); }
+        try
+        {
+            if (_model.CanRowsDirty && !_model.IsCanBatchRunning)
+                await _model.SaveCanRowsForCloseAsync();
+            if (_model.CanSaveKeyActions && !_model.IsKeyActionRunning)
+                await _model.SaveKeyActionsForCloseAsync();
+        }
         catch (Exception error)
-        { System.Diagnostics.Trace.TraceWarning("KEY catalog autosave error: " + error); }
+        { System.Diagnostics.Trace.TraceWarning("Manual bench draft autosave error: " + error); }
         finally { _keyAutosaveBusy = false; }
     }
 
@@ -63,6 +68,9 @@ public partial class ManualBenchWindow : Window
         {
             await _model.StopKeyActionAsync();
             await _model.StopCanBatchForCloseAsync();
+            await _model.SaveCanRowsForCloseAsync();
+            if (_model.CanRowsDirty)
+                throw new InvalidOperationException("CAN 报文配置未能持久化，已阻止退出。");
             if (_model.KeyActionsDirty)
             {
                 await _model.SaveKeyActionsForCloseAsync();
@@ -96,7 +104,8 @@ public partial class ManualBenchWindow : Window
     private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         if (_closeAfterCanStopped || (_model.IsCanBatchRunning == false &&
-            _model.IsKeyActionRunning == false && !_model.KeyActionsDirty))
+            _model.IsKeyActionRunning == false && !_model.KeyActionsDirty &&
+            !_model.CanRowsDirty))
             return;
         // Await real hardware cleanup instead of allowing WPF to destroy the
         // Window while pending USB transmissions are still active.
