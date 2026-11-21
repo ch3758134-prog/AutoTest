@@ -92,6 +92,7 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _closeGuardActive;
     private bool _savingActive;
     private bool _autosaveActive;
+    private readonly SemaphoreSlim _editorSaveGate = new(1, 1);
     public ObservableCollection<EditorTabModel> OpenEditors => _documents.Tabs;
     private readonly RecentProjectStore _recentProjects;
     private readonly RecentEditorDocumentStore _recentEditors = new();
@@ -669,6 +670,7 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (_autosaveActive || _savingActive || _closeGuardActive || IsBusy ||
             _workspace.Current is null || _hardware.IsTestRunApproved) return;
+        if (!await _editorSaveGate.WaitAsync(0)) return;
         _autosaveActive = true;
         try
         {
@@ -691,7 +693,7 @@ public sealed class MainWindowViewModel : BindableBase
             StatusMessage = "自动保存失败，草稿仍保留：" + error.Message;
             System.Diagnostics.Trace.TraceWarning("AutoSave failed: " + error);
         }
-        finally { _autosaveActive = false; }
+        finally { _autosaveActive = false; _editorSaveGate.Release(); }
     }
 
     private async Task SaveActiveAsync()
@@ -998,11 +1000,20 @@ public sealed class MainWindowViewModel : BindableBase
         _closeGuardActive = true;
         try
         {
-            var documents = (subset ?? OpenEditors).Select(x => x.CloseDraft).ToList();
+            if (!await _editorSaveGate.WaitAsync(TimeSpan.FromSeconds(8)))
+            {
+                ReportCloseBlocked("其他文档自动保存尚未结束，已保护草稿，请稍后重试关闭。");
+                return false;
+            }
+            try
+            {
+                var documents = (subset ?? OpenEditors).Select(x => x.CloseDraft).ToList();
             documents.Insert(0, new CloseDraftDocument("当前工程/设备操作",
                 () => IsBusy || _savingActive || _hardwareBusy || _realTest.IsRunning,
                 () => false, () => Task.FromResult(true)));
-            return await CloseDraftGuard.PrepareWithAutoSaveAsync(documents, ReportCloseBlocked);
+                return await CloseDraftGuard.PrepareWithAutoSaveAsync(documents, ReportCloseBlocked);
+            }
+            finally { _editorSaveGate.Release(); }
         }
         finally { _closeGuardActive = false; }
     }
