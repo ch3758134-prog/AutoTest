@@ -38,6 +38,11 @@
 19. **P2-05 人机术语和动作分类不统一（GAP）。** `Remove`、`Delete`、`Disable`、`Included`、`RunSelected`、`Enable` 等不同域交错，部分中文按钮不同操作共享词。应统一“从项目移除/移除工程资产/删除磁盘文件（另行审批）”、“默认启用/本次选中”、“单次发送/周期任务/启动/停止”，同时定义状态文案表。
 20. **P2-06 专业模块仍各自构建弹窗、筛选、保存调度（CONFIRMED）。** `MainWindowViewModel` 2000+ 行、`TestStepInspector.xaml.cs` 1500+ 行，且 TEST/CAN/KEY/DBC 各有编辑与保存流程。应收敛成应用级统一资源编辑与保存契约、状态/事务通知，以及可复用的 Inspector 和工具窗口管理器，而不是把所有操作继续加进 Shell ViewModel。
 
+### P1 追加｜全局菜单与双生产流程（第二轮横向审查）
+21. **P1-12 关键工具在主产品中仍明确禁用（CONFIRMED）。** `HOST/src/AutoTest.Desktop/Shell/MainWindow.xaml:139-149` 的“UDS 工作台（尚未接入）”和“生产运行（尚未接入）”均 `IsEnabled="False"`。这不是截图反馈，而是整体导航盘点发现的真实功能缺口。专业 UDS/Production 后端已有源码并不意味着可以在当前 HOST 中独立运行。交付清单要分开写“后端存在”“正式入口已接线”“Windows 可启动”“真机通过”。
+22. **P1-13 两条生产编排合同可能并存、尚未统一（RISK / 静态已证实两套源码）。** `AutoTest.Application/Production/ProductionWorkflow.cs` 使用 `IProductionStageExecutor`、`RunFactKind.MockObservation` / `SimulationOnly` 等阶段合同；当前 HOST 手动扫码与 R1 TEST 运行入口主要由 `ProjectScanMatcher` / `RealTestWorkbenchService` 接线。应明确究竟何者是唯一真实生产入口，检查调用图和数据流，禁止把旧逻辑或测试 Mock 直接拼到生产工位。
+23. **P1-14 正式产品功能信息架构和实际可用状态不一致（CONFIRMED）。** 菜单已占用 UDS/生产的位置却没有可操作的工作流，TEST/UDS/波形/FLASH 的同一操作可能出现在主界面、专业工具、属性面板三个位置；需形成用户可理解的“工程 / 运行 / 工具 / 历史报告”信息架构，把尚未接线和不可执行功能作为产品范围明确展示，而非让用户点击才发现“待接入”。
+
 ## 3. 已确认应该保留的能力
 - **不能为了 UI 改掉真实硬件链路**：ECU=外部 A1/A12，KEY=B1/B11，主控 WinUSB 确认、物理权限 Fence、运行任务互斥与失败安全状态。
 - **不能放松项目不可变性**：TEST 及 DBC Revision/SHA 固定、明确采纳最新、RUN 前设备/资源指纹冻结。
