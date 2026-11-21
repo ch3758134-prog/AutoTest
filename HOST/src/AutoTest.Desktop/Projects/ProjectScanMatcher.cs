@@ -100,8 +100,11 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
             return asset.ToReference();
         }
         var recipes = document.Recipes.Where(x => x.Published &&
-            (string.IsNullOrWhiteSpace(x.HardwareCode) ||
-             string.Equals(x.HardwareCode, hardwareCode, StringComparison.Ordinal))).Select(x =>
+            (ut1 is null
+                ? string.IsNullOrWhiteSpace(x.HardwareCode) ||
+                  string.Equals(x.HardwareCode, hardwareCode, StringComparison.Ordinal)
+                : string.Equals(x.Model, ut1.ProductCode, StringComparison.Ordinal) &&
+                  string.Equals(x.HardwareCode, ut1.HardwareCode, StringComparison.Ordinal))).Select(x =>
         {
             if (x.TestProgramAssetId is null && x.TestProjectAssetId is null)
                 throw new ProjectDataException("SCAN_RECIPE_INVALID",
