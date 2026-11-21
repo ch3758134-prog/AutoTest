@@ -3,7 +3,7 @@
 **身份**：WAVE 真实采样、参考波形与 TEST 判定算法专业 AI。  
 **正式任务**：[Issue #71](https://github.com/ch3758134-prog/AutoTest/issues/71)。  
 **研究分支**：`research/r1-wave-judgement-20261120`；初始基于 `R1@94e82eddb03e69b428fd4c63c2093a570d979c4e`。  
-**状态**：`SPECIALIST_CREATED / SOURCE_INVESTIGATION_PENDING / DESIGN_NOT_APPROVED / FIELD_NOT_VERIFIED`。
+**状态**：`W-00~07 RESEARCHED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新二轮回读 `R1@e5a9e13ad522ddaf9092f44099f2ef26bdf1e19b`。
 
 ## 必须先完成的源码调查
 
@@ -25,3 +25,14 @@
 4. 只在明确审查通过后开发最小纵向闭环候选，提交精确差异与测试证据；不修改 main/R1/固件。
 
 **边界**：不重写 DBC、TEST 执行器和 RECORD；UI/UX 研究持续独立，R1 接受通过审查的波形运行/报告接口。原始数据回放只能作为算法测试，**不能冒充真实 ECU 波形验收**。
+
+## 2026-11-21｜第二轮成熟产品深度研究（已经落档，未实施）
+
+- [W-04｜成熟工业产品对标与产品架构](W-04_INDUSTRIAL_PRODUCT_MODEL_AND_UX_RESEARCH_20261121.md)：NI TestStand、TraceTronic ecu.test trace.check、MathWorks Simulink Data Inspector、Vector CANalyzer、ASAM MDF，区分 CaptureAndInspect、StateTransition、NumericEnvelope、ReferenceSimilarity 四种用途，并给出 TEST Inspector、独立工具工作台及报告真实操作流程。
+- [W-05｜时间可观测性、判定数学与 28 组对抗向量](W-05_TIME_QUALITY_AND_JUDGEMENT_SEMANTICS_20261121.md)：主机接收时间不能当作 ECU 事件时间，触发前订阅/源帧时窗证明、不同信号的 ZOH/线性策略、时间误差上界及 fail-closed 分类；修正自动 shift、离散线性插值、点覆盖率、尾端越差错误。
+- [W-06｜参考波形治理与 TEST-RECORD 证据门禁](W-06_REFERENCE_LIFECYCLE_AND_EVIDENCE_CONTRACT_20261121.md)：Capture 候选→审核→发布/修订→撤销，明确 ReferenceId/Revision/SHA，联通 RunId/CaseAttemptId/Start/Stop/Compare 各个 StepOccurrence、raw CAN 与一致性报告；再次核对 WaveCompare 的 `WaveComparisonPendingArchive`/ `RunStepFact.Validate` 类型冲突。
+- [W-07｜首版实施顺序与真机验收](W-07_PRODUCT_MVP_ROLLOUT_AND_ACCEPTANCE_GATE_20261121.md)：P0-A～F 切片、12 个现场 W-FIELD 场景、NOT_RUN 证据模板与 G-WAVE 准入门槛。
+
+**实测边界**：现有 MCU/USB ECU CAN 接收采用 HostArrivalOnly；R1 没有 ECU 物理事件级同步时戳，也没有独立高速模拟传感器输入。Production WAVE PASS 需要真实源、正式已批准参考或明确功能规则、无未解释缺测、同一次 Run/Occurrence/raw CAN 关联以及 RECORD 正式完成，不能用算法 Replay PASS 或仅有漂亮曲线冒充。
+
+**与本轮活跃 R1 的相容性**：最新 `R1@e5a9e13...` 比首轮 `fa3b18e...` 多 54 提交，新增了证据/绘图非阻塞等性能改动及 IDE/USB 安全维护，但 WAVE 主比较器和 WAVE 判定 RECORD 的核心合同问题仍然存在。合入之前必须重新看活跃 R1、完成 Windows Build/Test 与真实 ECU 验收，未授权前不改 R1/main/固件。
