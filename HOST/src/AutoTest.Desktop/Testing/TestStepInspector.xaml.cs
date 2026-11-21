@@ -906,7 +906,7 @@ public partial class TestStepInspector : UserControl
             UpdateKeyTimingVisibility();
         }
         else if (mapping.Kind == TestTargetKind.Signal &&
-            _selected?.StepType == "AssertSignal" && _selectedTarget.ValueLabels is { Count: > 0 } labels)
+            _selected?.StepType == "AssertSignal" && _selectedTarget?.ValueLabels is { Count: > 0 } labels)
         {
             var index = Array.FindIndex(ParameterFields.ToArray(), x => x.Key == "expected");
             if (index >= 0)

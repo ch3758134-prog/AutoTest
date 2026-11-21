@@ -162,7 +162,7 @@ public sealed class RecordedRealRunEvidenceFinalizer : IRealRunEvidenceFinalizer
                 var capture = waveStore.Read(new EvidenceRef(captureId));
                 var comparison = waveStore.Read(new EvidenceRef(comparisonId));
                 if (capture.Kind != "Capture" || comparison.Kind != "Comparison" ||
-                    comparison.CaptureEvidence?.Value.Value != captureId ||
+                    comparison.CaptureEvidence?.Value != captureId ||
                     comparison.Result?.Verdict != Verdict.Pass)
                     missing++;
             }
