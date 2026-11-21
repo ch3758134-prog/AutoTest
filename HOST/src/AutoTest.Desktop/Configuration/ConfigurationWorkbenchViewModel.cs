@@ -1167,6 +1167,14 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         IsBusy = true;
         try
         {
+            if (_working is ScanMatchSettingsDocument scan && scan.Published)
+            {
+                // Auto-freeze the SAME CanTool job that the real TEST Flash
+                // step will execute; no scanner or file metadata can trigger
+                // an extra physical programming path.
+                _working = await ScanRecipePreparationService.FreezePublishedAsync(
+                    _workspace, scan);
+            }
             _session = await _workspace.SaveConfigurationAsync(_session, _working);
             _working = _session.Document;
             RebuildNodes();

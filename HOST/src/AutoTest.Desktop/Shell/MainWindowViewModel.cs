@@ -849,8 +849,8 @@ public sealed class MainWindowViewModel : BindableBase
         {
             var matched = await _scanMatcher.MatchAsync(result.Event);
             ScanStatus = matched.Accepted
-                ? "匹配成功：" + matched.RecipeId + " · " + matched.Identity +
-                    "（仅匹配，未执行测试）"
+                ? "编号 " + matched.Identity + " 匹配配方 " + matched.RecipeId +
+                    "：" + matched.Explanation
                 : matched.Explanation;
         }
         catch (Exception error) when (error is ProjectDataException or IOException or

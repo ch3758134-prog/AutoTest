@@ -99,8 +99,11 @@ public static class ScanRecipePreparationService
                 CheckProject();
                 cases.Add((entry.PackageAssetId, entry.DisplayName, package.Document));
             }
-            if (recipe.TestProgramAssetId is Guid specificId &&
-                !cases.Any(item => item.AssetId == specificId))
+            if (recipe.TestProgramAssetId is Guid specificId)
+                CheckPin(specificId, recipe.TestProgramRevision,
+                    recipe.TestProgramFingerprint, ProjectWorkspaceService.TestProgramKind);
+            if (recipe.TestProgramAssetId is Guid selectedId &&
+                !cases.Any(item => item.AssetId == selectedId))
                 throw new ProjectDataException("SCAN_TEST_SCOPE",
                     "配方关联的单用例不在当前测试项目的已启用范围内。");
         }
@@ -188,7 +191,7 @@ public static class ScanRecipePreparationService
         if (recipe.TargetEcuCanKbps != rate)
             throw new ProjectDataException("SCAN_FLASH_BAUD",
                 "扫码配方目标 ECU CAN 码率与 TEST CanTool XML 不相同。");
-        if (settings.RequestCanId is uint tx || settings.ResponseCanId is uint rx)
+        if (settings.RequestCanId.HasValue || settings.ResponseCanId.HasValue)
         {
             var matchesApp = settings.RequestCanId == job.App.RequestCanId &&
                              settings.ResponseCanId == job.App.ResponseCanId;

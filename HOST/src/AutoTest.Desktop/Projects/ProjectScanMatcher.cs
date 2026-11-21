@@ -8,7 +8,7 @@ using AutoTest.Specialists.Scan;
 namespace AutoTest.Desktop.Projects;
 
 public sealed record ProjectScanMatchResult(string Code, string? RecipeId, string? Identity,
-    string Explanation)
+    string Explanation, ScanRecipePreparationService.Preview? Preview = null)
 {
     public bool Accepted => Code == "CONFIG_MATCHED";
 }
@@ -73,11 +73,19 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
         }
         var recipes = document.Recipes.Where(x => x.Published).Select(x =>
         {
-            if (x.TestProgramAssetId is not Guid testId)
-                throw new ProjectDataException("SCAN_RECIPE_INVALID", "发布配方未关联测试程序。");
+            if (x.TestProgramAssetId is null && x.TestProjectAssetId is null)
+                throw new ProjectDataException("SCAN_RECIPE_INVALID",
+                    "发布配方没有选择测试项目或测试程序。");
             var assets = ImmutableArray.CreateBuilder<AssetRef>();
-            assets.Add(RequireAsset(testId, ProjectWorkspaceService.TestProgramKind,
-                x.TestProgramRevision, x.TestProgramFingerprint));
+            if (x.TestProgramAssetId is Guid testId)
+                assets.Add(RequireAsset(testId, ProjectWorkspaceService.TestProgramKind,
+                    x.TestProgramRevision, x.TestProgramFingerprint));
+            if (x.TestProjectAssetId is Guid projectId)
+                assets.Add(RequireAsset(projectId, ProjectWorkspaceService.TestProjectKind,
+                    x.TestProjectRevision, x.TestProjectFingerprint));
+            if (x.FlashSettingsAssetId is Guid settingsId)
+                assets.Add(RequireAsset(settingsId, ProjectWorkspaceService.FlashSettingsKind,
+                    x.FlashSettingsRevision, x.FlashSettingsFingerprint));
             if (x.DbcAssetId is Guid dbcId)
                 assets.Add(RequireAsset(dbcId, ProjectWorkspaceService.DbcKind,
                     x.DbcRevision, x.DbcFingerprint));
@@ -99,11 +107,29 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
         if (!SameProjectSnapshot(snapshot, workspace.Current))
             return new("SCAN_PROJECT_CHANGED", null, null,
                 "扫码匹配完成前工程已切换或资源已修改，旧结果作废。");
-        return result.Decision.Allowed
-            ? new("CONFIG_MATCHED", result.RecipeId, result.Decision.DutIdentity,
-                "条码匹配到已发布配置和当前工程资源修订；未启动任何真实测试或烧录。")
-            : new(result.Decision.RejectionCode ?? "CONFIG_REJECTED", null, null,
-                "扫码输入已采集，但规则或工程资源条件不符合：" +
+        if (!result.Decision.Allowed)
+            return new(result.Decision.RejectionCode ?? "CONFIG_REJECTED", null, null,
+                "扫码已采集，但规则或工程资源条件不符合：" +
                 (result.Decision.RejectionCode ?? "未知原因"));
+        var selected = document.Recipes.Single(r => r.Published &&
+            string.Equals(r.RecipeId, result.RecipeId, StringComparison.OrdinalIgnoreCase));
+        try
+        {
+            var ready = await ScanRecipePreparationService.InspectAsync(
+                workspace, snapshot, selected, requireFrozenJob: true, ct);
+            if (!SameProjectSnapshot(snapshot, workspace.Current))
+                return new("SCAN_PROJECT_CHANGED", null, null,
+                    "扫码准备期间工程发生变化，请重新扫码。");
+            return new("CONFIG_MATCHED", selected.RecipeId, result.Decision.DutIdentity,
+                ready.Summary, ready);
+        }
+        catch (Exception error) when (error is ProjectDataException or IOException or
+                                       InvalidDataException or FormatException or
+                                       NotSupportedException or UnauthorizedAccessException)
+        {
+            return new("SCAN_RECIPE_PRECHECK", selected.RecipeId,
+                result.Decision.DutIdentity,
+                "已识别编号，但配置还不能用于生产准备：" + error.Message);
+        }
     }
 }
