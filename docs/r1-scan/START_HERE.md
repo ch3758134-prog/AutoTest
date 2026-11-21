@@ -60,3 +60,10 @@
 **同步决策源**：项目管理 [07_WAVE_SCAN_RECONCILIATION.md](https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current-20261121/07_WAVE_SCAN_RECONCILIATION.md) 和 [02_DECISION_SUPERSESSION_LEDGER.md](https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current-20261121/02_DECISION_SUPERSESSION_LEDGER.md) 已将第一轮 S-00～03 标为**候审而非生产已批准**。第二轮亦保持候审；不得将研究结论当作现有 R1 实现/Windows/真实扫码枪验收。
 
 **第二轮调研基线**：`R1@02f18c65e5ba6038da10067c6285450de6cce911`（2026-11-21 调研时读取；后续实施需重新回读最新 HEAD）。研究分支文档提交未修改 R1/main/固件；未修改 TEST/Flash/Record 执行源码。
+
+## 2026-11-21｜并行 S-04 文档交叉审查
+
+- [另一份 S-04｜产品路由、GS1/ISA-95 与设备真实接口研究](S-04_PRODUCT_ROUTING_AND_SCANNER_SYSTEM_RESEARCH_20261121.md)：同分支同期研究，对固定任务/逐号/工单/标签属性四种路由提出佐证；其中“设备实际是否 USB/COM”属于**未验证的现场事实**。
+- [S-06｜两份 S-04 交叉审查与冲突收敛](S-06_NI_PRODUCT_RESEARCH_RECONCILIATION_20261121.md)：统一模式术语、标明研究/审批边界，避免把未经确认的 USB/COM 推测写死在 R1；明确 NI 对标中哪些原则可复用，哪些是演示而非生产门禁。
+
+**审查提示**：本分支存在两份名称以 S-04 开头的研究报告，分别聚焦 NI 框架与产品配置路由；请以 S-06 交叉审查确认共同结论/开放问题。实施时须对照 R1 最新源码，不使用旧分支覆盖持续迭代成果。
