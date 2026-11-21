@@ -19,12 +19,14 @@ public sealed class HardwareConnectionService : IAsyncDisposable
 {
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private volatile bool _unexpectedUiFaultInterlocked;
+    private long _unexpectedUiFaultGeneration;
     public bool IsUnexpectedUiFaultInterlocked => _unexpectedUiFaultInterlocked;
     /// <summary>Immediate fail-closed host response to an unhandled WPF exception.
     /// Cancels future native physical writes, not an assertion that ECU/KEY/IGN
     /// returned to a safe electrical state. New USB connection required.</summary>
     public void InterlockUnexpectedUiFailure(string reason)
     {
+        Interlocked.Increment(ref _unexpectedUiFaultGeneration);
         _unexpectedUiFaultInterlocked = true;
         Interlocked.Exchange(ref _currentEpoch, 0);
         _link?.EmergencyInterlock();
@@ -261,6 +263,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     {
         await _lifecycle.WaitAsync(cancellationToken);
         UsbSessionService? pending = null;
+        var faultGenerationAtStart = Interlocked.Read(ref _unexpectedUiFaultGeneration);
         try
         {
             if (_usb is not null) throw new InvalidOperationException("请先断开现有连接。");
@@ -356,6 +359,13 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 ObserveBusAsync(_hub, BusRole.DutCan, _monitorStop.Token),
                 ObserveBusAsync(_hub, BusRole.KeypadCan, _monitorStop.Token)
             };
+            // An exception during the asynchronous connection handshake must
+            // never be cleared by the later 'connected' continuation.
+            if (Interlocked.Read(ref _unexpectedUiFaultGeneration) != faultGenerationAtStart)
+            {
+                _link?.EmergencyInterlock();
+                throw new IOException("连接期间出现未处理的界面故障，必须断开后重新建立新的 USB 会话。");
+            }
             _unexpectedUiFaultInterlocked = false;
             Interlocked.Exchange(ref _currentEpoch, Interlocked.Increment(ref _epochCounter));
             SetObservedEcuCanBaud(observedRate,
