@@ -41,3 +41,11 @@
 **研判中最重要的工程事实**：R1 最新实测入口 `RealTestWorkbenchService` 目前将有 DUT 编号的运行写为 `Development`（无编号/单步为 `Diagnostic`），并且测试项目中各用例有独立实际 `RunId`。新的扫码生产流程必须用 `BatchId/AttemptId` 关联这些实际 RunId，不能让旧 `ProductionSession` 预造的 RunId 或 `COUNT(DISTINCT dut_id)` 充当出厂批次/新增放行事实。
 
 **下一步（需 R1 审查后开展）**：按 S-03 的 P0-A→E 接入，优先给出真实扫码→版本绑定→冻结两个用例→预检的可操作候选，然后受控调用唯一 R1 TEST + Flash/RECORD。此阶段**未实现生产接线、未运行 Windows Release Build/Tests、未完成真实扫码枪/ECU 实测**，不得宣布生产功能 PASS；研究与源代码交付不写入 `main`、`R1` 或固件。
+
+
+## 2026-11-21｜第二轮产品层系统研究（S-04）
+
+- [S-04｜扫码设备、外部唯一编号与生产方案路由的系统研究 v0.2](S-04_PRODUCT_ROUTING_AND_SCANNER_SYSTEM_RESEARCH_20261121.md)：对照 NI TestStand、GS1、ISA-95 和 Zebra CDC/HID 厂商文档，说明为何扫码的原始 ID 不能凭空推导型号/DBC/TEST/烧录，明确将设备接入、编号规则、业务绑定/路由、生产 Recipe、冻结 RunPlan 与 RECORD 拆为不同对象。
+- **新增路线选项（待审查）**：在原“混线逐编号精确绑定”之外，提出“已批准单工位固定生产任务 + 扫码只绑定 DUT 身份”的轻量首版方式；两个模式必须显式单选，禁止精确绑定失败时静默回退，亦不把固定任务误称“扫码自动识别型号”。
+- **重要硬件差异**：用户此前实际 USB/COM 串口扫码枪，不应只按原 R1 KeyboardWedge 入口推进；现有 `SerialBarcodeCapture` 只有 `IVerifiedBarcodeLineSource` 接口，正式 Windows COM 枚举、设备绑定、分帧、异常恢复尚需现场验证。软件层允许将 HID 作为另一个支持模式，但不能取代现有真实枪类型。
+- 新回读活跃 R1：`02f18c65e5ba6038da10067c6285450de6cce911`；比先前 S-00 快照前进 28 提交，比较结果未显示 SCAN/Production/R1 真实服务接线源变更。**所有新增决策为研究候选，尚未改 HOST 或通过真实扫描/ECU 验收。**
