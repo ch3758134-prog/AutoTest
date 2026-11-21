@@ -1,5 +1,22 @@
 # AutoTest｜项目管理档案导航
 
+## 当前唯一优先阅读入口：2026-11-21 全系统现行基线
+
+> **负责人已批准整体基线重整。** 必须先读 [现行系统基线与决策总纲](current-20261121/README.md)，再按业务领域查找原批准合同/源码；不要按下面的旧时间线摘取孤立的“当前状态”并当作最新事实。
+
+- [现行状态、责任与精确 Git SHA](current-20261121/01_AUTHORITY_AND_CURRENT_STATE.md)
+- [已批准、已取代、候审研究、未验证的决策对照表](current-20261121/02_DECISION_SUPERSESSION_LEDGER.md)
+- [全系统业务与技术领域合同](current-20261121/03_SYSTEM_PRODUCT_AND_DOMAIN_CONTRACT.md)
+- [固件、CAN、IGN、KEY/IO 最新实体映射](current-20261121/04_HARDWARE_FIRMWARE_BASELINE.md)
+- [R1 一次性交付与真机验收门禁](current-20261121/05_R1_RELEASE_AND_ACCEPTANCE.md)
+- [UI 双轨、WAVE/SCAN 最新研究的使用边界](current-20261121/06_UI_UX_CURRENT_FRAMEWORK.md) · [WAVE/SCAN](current-20261121/07_WAVE_SCAN_RECONCILIATION.md)
+- [旧分支/PR 清理、归档与下一步决策](current-20261121/08_GOVERNANCE_MIGRATION_AND_OPEN_ITEMS.md)
+- [原始证据和历史被取代结论索引](current-20261121/09_SOURCE_TRACEABILITY.md)
+
+**以下为按原发布日期保留的历史档案索引**。其“最新、当前、未合并、尚未实施”等措辞仅代表原记录当时状态；与上面的 2026-11-21 现行基线不同步，不能覆盖后续有效事实。历史资料及其批准文件不删除、不在整理时暗改。
+
+---
+
 **管理唯一写入分支：`Project_Management`。** 当前仓库 `main` 属于 HOST 软件正式集成，不用于新增正式项目管理工作产品。
 
 ## 现行新基线资料
