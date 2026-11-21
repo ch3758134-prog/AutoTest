@@ -559,12 +559,21 @@ public sealed partial class ManualBenchViewModel
         {
             await Task.WhenAll(plan.Select(async entry =>
             {
+                // A monotonic deadline avoids adding the WinUSB ACK duration
+                // to every requested period. Missed deadlines are skipped, never
+                // compensated by a burst of unapproved catch-up CAN writes.
+                var scheduled = System.Diagnostics.Stopwatch.GetTimestamp();
+                var periodTicks = entry.PeriodMs == 0 ? 0L : Math.Max(1L,
+                    (long)Math.Round(entry.PeriodMs *
+                        (double)System.Diagnostics.Stopwatch.Frequency / 1000d));
+                long skipped = 0;
                 while (!stop.IsCancellationRequested)
                 {
                     if (!entry.Row.Included)
                     {
                         entry.Row.Result = "已暂停 · 本轮不发送";
                         await Task.Delay(90, stop.Token);
+                        scheduled = System.Diagnostics.Stopwatch.GetTimestamp();
                         continue;
                     }
                     try
@@ -580,7 +589,8 @@ public sealed partial class ManualBenchViewModel
                     entry.Row.Sent++;
                     if (entry.Row.Sent == 1 || entry.Row.Sent % 10 == 0)
                     {
-                        entry.Row.Result = "已发送 " + entry.Row.Sent + " 次 · USB ACK";
+                        entry.Row.Result = "已发送 " + entry.Row.Sent +
+                            " 次 · USB ACK" + (skipped > 0 ? " · 跳过逾期周期 " + skipped : "");
                         if (entry.Row.Sent == 1)
                             Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
                                 "ECU CAN", "TX ACK", "0x" + entry.Frame.Id.ToString("X"),
@@ -588,7 +598,16 @@ public sealed partial class ManualBenchViewModel
                                 entry.Row.Name + "：主控 ACK 并非 DUT 应答"));
                     }
                     if (entry.PeriodMs == 0) break;
-                    await Task.Delay(entry.PeriodMs, stop.Token);
+                    var now = System.Diagnostics.Stopwatch.GetTimestamp();
+                    var deadline = PeriodicCanDeadline.Advance(scheduled, now, periodTicks);
+                    scheduled = deadline.NextTicks;
+                    skipped += deadline.SkippedPeriods;
+                    if (deadline.SkippedPeriods > 0)
+                        entry.Row.Result = "已发送 " + entry.Row.Sent +
+                            " 次 · USB ACK · 跳过逾期周期 " + skipped;
+                    var untilDue = System.Diagnostics.Stopwatch.GetElapsedTime(now, scheduled);
+                    if (untilDue > TimeSpan.Zero)
+                        await Task.Delay(untilDue, stop.Token);
                 }
             }));
         }
