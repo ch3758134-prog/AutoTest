@@ -461,9 +461,19 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(stop, limited.Token);
         try
         {
+            var scheduled = System.Diagnostics.Stopwatch.GetTimestamp();
+            var periodTicks = Math.Max(1L, (long)Math.Round(periodMs *
+                (double)System.Diagnostics.Stopwatch.Frequency / 1000d));
             while (true)
             {
-                await Task.Delay(periodMs, linked.Token);
+                linked.Token.ThrowIfCancellationRequested();
+                var now = System.Diagnostics.Stopwatch.GetTimestamp();
+                var deadline = MonotonicDeadline.Advance(scheduled, now, periodTicks);
+                scheduled = deadline.NextTicks;
+                // A missed deadline is skipped, not compensated with a CAN burst.
+                var untilDue = System.Diagnostics.Stopwatch.GetElapsedTime(now, scheduled);
+                if (untilDue > TimeSpan.Zero)
+                    await Task.Delay(untilDue, linked.Token);
                 await _hardware.SendTestCanAsync(frame, fingerprint, linked.Token);
             }
         }

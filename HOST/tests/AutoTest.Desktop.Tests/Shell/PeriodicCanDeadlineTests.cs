@@ -1,4 +1,5 @@
 using AutoTest.Desktop.Shell;
+using AutoTest.Core;
 using Xunit;
 
 namespace AutoTest.Desktop.Tests.Shell;
@@ -17,6 +18,18 @@ public sealed class PeriodicCanDeadlineTests
         var next = PeriodicCanDeadline.Advance(scheduled, now, period);
         Assert.Equal(expectedNext, next.NextTicks);
         Assert.Equal(expectedSkipped, next.SkippedPeriods);
+    }
+
+    [Fact]
+    public void ManualAndTestWorkersShareIdenticalDeadlinePolicy()
+    {
+        for (long now = 0; now <= 1000; now += 13)
+        {
+            var manual = PeriodicCanDeadline.Advance(0, now, 65);
+            var automated = MonotonicDeadline.Advance(0, now, 65);
+            Assert.Equal(manual.NextTicks, automated.NextTicks);
+            Assert.Equal(manual.SkippedPeriods, automated.SkippedPeriods);
+        }
     }
 
     [Fact]

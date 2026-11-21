@@ -10,15 +10,8 @@ public static class PeriodicCanDeadline
 
     public static Deadline Advance(long previousScheduledTicks, long nowTicks, long periodTicks)
     {
-        if (periodTicks <= 0)
-            throw new ArgumentOutOfRangeException(nameof(periodTicks));
-        if (nowTicks < previousScheduledTicks)
-            throw new ArgumentOutOfRangeException(nameof(nowTicks));
-
-        var next = checked(previousScheduledTicks + periodTicks);
-        if (nowTicks <= next) return new(next, 0);
-
-        var skipped = (nowTicks - next) / periodTicks + 1;
-        return new(checked(next + checked(skipped * periodTicks)), skipped);
+        var deadline = AutoTest.Core.MonotonicDeadline.Advance(
+            previousScheduledTicks, nowTicks, periodTicks);
+        return new(deadline.NextTicks, deadline.SkippedPeriods);
     }
 }
