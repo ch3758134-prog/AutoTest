@@ -77,10 +77,18 @@ P0=丢数据、错误设备终态或潜在危险操作；P1=真实任务无法�
 | P2-03 诊断难反馈 | WPF 异常弹窗增加“复制完整异常堆栈/日志路径”，便于用户直接粘贴；不伪称过去的数组越界已修复 | `08095454` |
 | 回归覆盖 | CAN 草稿 JSON 往返、异常文件拒绝、失效 DBC 禁止静默发送、周期 deadline 计算纯逻辑单元测试 | `966bb8c9`, `6e13fd7b`, `91e4288b` |
 
-**仍未完成：** P0-03 全局 UI 例外下设备状态安全门禁；P1-03 波形工作台独立采集/参考/判定任务闭环；P1-05 全系统数值精度与单位；P1-06 TEST 修订采用向导；P1-07 批次非 PASS 策略与用户引导；P1-08 USB FLASH 独占交接完整自动化；P1-10 全套 UI Token/DPI；P1-11 插入步骤前配置可用性；P1-12 UDS 独立工具和 Production 入口；P1-13 两套生产编排整合；P2-01 大型正式报告分页；P2-02 旧窗口/Mock 资产的审查后清理；P2-04 WPF 自动化及真机故障注入；P2-05 操作术语；P2-06 统一编辑事务和命令架构。
+**仍未完成：** P0-03 全局 UI 例外下设备状态安全门禁；P1-03 波形工作台独立采集/参考/判定任务闭环；P1-05 更多工具之间的单位与显示规范整合；P1-06 TEST 修订采用向导；P1-07 批次非 PASS 策略与用户引导；P1-08 USB FLASH 独占交接完整自动化；P1-10 全套 UI Token/DPI；P1-11 插入步骤前配置可用性；P1-12 UDS 独立工具和 Production 入口；P1-13 两套生产编排整合；P2-01 大型正式报告分页；P2-02 旧窗口/Mock 资产的审查后清理；P2-04 WPF 自动化及真机故障注入；P2-05 操作术语；P2-06 统一编辑事务和命令架构。
 
 **新增 Gate：**
 - `BUILD_PENDING`：必须由 Windows Codex 在当前 R1 SHA 真实执行 Debug/Release Restore/Build/Test，并上传完整失败项和首个编译错误；
 - `WINDOWS_UI_PENDING`：验证 DBC Modeless、主窗口/工具关闭、CAN 草稿恢复、浮层缩放和波形多记录异步切换；
 - `HARDWARE_PENDING`：只有现场 CAN 物理抓包能确认调度实际周期/抖动，只有现场断连/正常停止才能确认物理收尾；
 - `FORMAL_GATE_PENDING`：未完成的产品项不能因为已有 GitHub Commit 就计 PASS，不准合并 main。
+
+## 6. 第二批代码交付事实（静态验证仍待 Windows Gate）
+
+- `9a4cebed`：DBC 数字编辑由用户可读的 G12 显示和原始 double 数据分离；用户仅修改其它字段时保持未更改的因子、偏移及范围参数原值，不做无意精度量化。对应纯逻辑回归 `eca5639b`。
+- `fe701365`：加入 Windows 一键 Gate 脚本 `HOST/scripts/r1-verify.ps1`，依次 Restore、Build、Test；不自动连接 USB，不动真实 ECU；日志写至 `HOST/validation-logs/`，仅 Windows Codex 实际运行后才能报告结果。
+- `91e4288b`：扩充 CAN 草稿回归，验证过期 DBC Pin 不允许暗中放行、原始 DATA 不被清除，损坏 JSON 文件拒绝覆盖。
+- 审查仍持续：当前尚未获得本批源码在 Windows 的 Restore/Debug Build/Release Build/Test/完整 WPF 启动/真实 ECU 的验证结果；任何一项未被实测不能写 PASS。用户要求最终集中验收，不应将每个修复分散要求现场实测。
+
