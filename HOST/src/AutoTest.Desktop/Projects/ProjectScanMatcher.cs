@@ -68,8 +68,26 @@ public sealed class ProjectScanMatcher(ProjectWorkspaceService workspace)
         }
         var rules = document.ToRules();
         var identity = rules.Match(scan.Scan);
-        var hardwareCode = identity.Identity?.Fields.TryGetValue("hardware", out var detectedHw) == true
-            ? detectedHw : null;
+        string? hardwareCode = null;
+        if (ut1 is not null && identity.Identity is { } parsed)
+        {
+            // No arbitrary Regex rule may reinterpret a CRC-checked UT1
+            // model, hardware or global serial into a different recipe.
+            if (!parsed.Fields.TryGetValue("model", out var product) ||
+                !string.Equals(product, ut1.ProductCode, StringComparison.Ordinal) ||
+                !parsed.Fields.TryGetValue("hardware", out var hardware) ||
+                !string.Equals(hardware, ut1.HardwareCode, StringComparison.Ordinal) ||
+                !parsed.Fields.TryGetValue("serial", out var serial) ||
+                !string.Equals(serial, ut1.Serial, StringComparison.Ordinal))
+                return new("BARCODE_RULE_CONFLICT", null, null,
+                    "UT1 内容与已发布的扫码规则字段不一致，请校正规则后重新扫码。");
+            hardwareCode = hardware;
+        }
+        else if (identity.Identity is { } legacy &&
+                 legacy.Fields.TryGetValue("hardware", out var legacyHardware))
+        {
+            hardwareCode = legacyHardware;
+        }
         var available = snapshot.Definition.Assets;
         AssetRef RequireAsset(Guid id, string kind, int? expectedRevision, string? expectedSha256)
         {
