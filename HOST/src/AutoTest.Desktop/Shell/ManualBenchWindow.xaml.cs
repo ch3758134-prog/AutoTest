@@ -20,6 +20,7 @@ public partial class ManualBenchWindow : Window
     private DateTime _lastInteractionUtc = DateTime.UtcNow;
     private bool _keyAutosaveBusy;
     private bool _propertyOverlayClosing;
+    private bool _benchClosePending;
 
     public ManualBenchWindow(ManualBenchViewModel model)
     {
@@ -53,6 +54,8 @@ public partial class ManualBenchWindow : Window
         if (_closeAfterCanStopped ||
             (!_model.IsCanBatchRunning && !_model.IsKeyActionRunning && !_model.KeyActionsDirty)) return;
         e.Cancel = true;
+        if (_benchClosePending) return;
+        _benchClosePending = true;
         IsEnabled = false;
         try
         {
@@ -71,10 +74,17 @@ public partial class ManualBenchWindow : Window
         }
         catch (Exception ex)
         {
-            IsEnabled = true;
             MessageBox.Show(this, "关闭前收尾失败：" + ex.Message +
                 "\n请核对主控真实输出，未确认时视为 UNKNOWN。",
                 "手动台架状态未知", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            if (!_closeAfterCanStopped)
+            {
+                IsEnabled = true;
+                _benchClosePending = false;
+            }
         }
     }
 
