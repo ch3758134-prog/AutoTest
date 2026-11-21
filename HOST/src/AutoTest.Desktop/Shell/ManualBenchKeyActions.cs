@@ -113,6 +113,7 @@ public sealed partial class ManualBenchViewModel
     private string? _keyCatalogProject;
     private bool _loadingKeyActions;
     private bool _savingKeyActions;
+    private long _keyEditGeneration;
     private bool _keyActionsDirty;
     private bool _syncingActionKeys;
     private KeyActionEditor? _selectedKeyAction;
@@ -164,7 +165,7 @@ public sealed partial class ManualBenchViewModel
         get => _keyActionRunning;
         private set { if (SetProperty(ref _keyActionRunning, value)) { NotifyKeyCommands(); RaiseCommands(); } }
     }
-    public bool CanEditKeyActions => !IsBusy && !IsKeyActionRunning && _projects.Current is not null;
+    public bool CanEditKeyActions => !IsBusy && !_savingKeyActions && !IsKeyActionRunning && _projects.Current is not null;
     public bool ControllerBindingNeedsSave => _loadedControllerAsset != Guid.Empty &&
         _loadedControllerSha is not null &&
         (_keyCatalogSession?.Document.Controller is not { } pin ||
@@ -261,7 +262,8 @@ public sealed partial class ManualBenchViewModel
 
     private void MarkKeyDirty()
     {
-        if (_loadingKeyActions || _savingKeyActions) return;
+        if (_loadingKeyActions) return;
+        _keyEditGeneration++;
         KeyActionsDirty = true;
         SelectedKeyAction?.NotifySummary();
         NotifyKeyCommands();
@@ -461,7 +463,9 @@ public sealed partial class ManualBenchViewModel
             Actions = KeyActions.Select((action, index) => action.Export(index)).ToImmutableArray()
         };
         catalog.Validate();
+        var generationBeingSaved = _keyEditGeneration;
         _savingKeyActions = true;
+        NotifyKeyCommands();
         try
         {
             if (_keyCatalogSession is null)
@@ -470,8 +474,12 @@ public sealed partial class ManualBenchViewModel
                 catalog = catalog with { CatalogId = _keyCatalogSession.Document.CatalogId };
             }
             _keyCatalogSession = await _projects.SaveKeyActionsAsync(_keyCatalogSession, catalog);
-            KeyActionsDirty = false;
-            KeyActionRunStatus = "动作库已保存、回读校验通过；没有执行任何硬件动作。";
+            // Input could change while async file persistence is pending.
+            // A successful write must not clear edits made after its snapshot.
+            KeyActionsDirty = _keyEditGeneration != generationBeingSaved;
+            KeyActionRunStatus = KeyActionsDirty
+                ? "保存了上一个动作库修订；保存期间出现新修改，仍需再次保存。"
+                : "动作库已保存、回读校验通过；没有执行任何硬件动作。";
             Status = "按键动作库已保存至工程（Revision " + _keyCatalogSession.AssetRevision + "）。";
         }
         finally { _savingKeyActions = false; NotifyKeyCommands(); }
