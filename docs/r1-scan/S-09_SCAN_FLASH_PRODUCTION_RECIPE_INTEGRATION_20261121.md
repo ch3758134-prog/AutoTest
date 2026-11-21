@@ -1,5 +1,8 @@
 # AutoTest R1 SCAN S-09｜扫码 × 自动烧录 × 自动 TEST 一体化配置与执行研究 v0.1
 
+
+> **2026-11-21 用户明确变更／本 S-09 相关部分已被新要求取代**：正式 AutoTest 不采用“导入 CanTool Configuration.xml 作为烧录配置”的产品操作方式；必须在上位机原生编辑烧录参数并持久保存在当前 ECU 工程内的固定位置，正式执行不能引用/生成外部 XML；固件镜像和必要安全算法仍作为可受控复制到工程内部的资源。有关存储方案、源码接线、向后兼容和验收要求请以 [S-10｜原生烧录配置与工程固定保存位置](S-10_NATIVE_FLASH_CONFIGURATION_FIXED_PROJECT_STORAGE_20261121.md) 为新约束。S-09 关于“FLASH 作为 Recipe 一部分、独立授权、软件版本验证、真实 CanTool 后端不重写”的结论仍有效。
+
 > 2026-11-21 / Issue #72 / 研究分支 `research/r1-scan-configuration-20261120`
 > 
 > 用户提出：**烧录配置如何与扫码方案配合，必须一起考虑**。本报告是对 S-07、S-08 的正式研究补充，单独考察真实 `ConfiguredRealTestFlashPort`、`CanToolFlashJob`、`CanToolFlashWorkflow`、`HardwareConnectionService.ProgramTestFlashAsync`、`RealTestWorkbenchService`、`TestProjectWorkbenchViewModel` 和 `FlashSettingsDocument`；本轮最新 `R1@8e6aaa556e70ce025a18c20abeb331fa812b055d`（各文件 SHA 详见最终回读）。**候审方案，没有更改 R1/主线/固件；未验证用户的实物设备或 ECU 结果**。
