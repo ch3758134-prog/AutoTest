@@ -130,7 +130,7 @@ public sealed class CloseDraftGuardTests
         };
         Assert.True(await CloseDraftGuard.PrepareWithAutoSaveAsync(documents,
             _ => throw new Exception("Unexpected save failure")));
-        Assert.Equal(["TEST", "PROJECT"], order);
+        Assert.Equal(new[] { "TEST", "PROJECT" }, order);
     }
 
     [Fact]
