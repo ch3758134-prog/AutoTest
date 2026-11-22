@@ -103,10 +103,23 @@ public static class NativeFlashProfileStore
             try
             {
                 await File.WriteAllBytesAsync(temporary, bytes, ct).ConfigureAwait(false);
-                if (File.Exists(path))
+                if (old is not null)
+                {
+                    if (!File.Exists(path))
+                        throw new IOException("原生 Profile 在提交前被外部删除。");
+                    var current = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+                    var currentHash = Convert.ToHexString(SHA256.HashData(current));
+                    if (!currentHash.Equals(old.ProfileSha256,
+                            StringComparison.OrdinalIgnoreCase))
+                        throw new IOException("原生 Profile 在保存过程中被外部修改，拒绝覆盖。");
                     File.Replace(temporary, path, path + ".bak");
+                }
                 else
+                {
+                    if (File.Exists(path))
+                        throw new IOException("新原生 Profile 创建前已有其他写入者，拒绝覆盖。");
                     File.Move(temporary, path);
+                }
                 return new(next, Convert.ToHexString(SHA256.HashData(bytes)), path);
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
