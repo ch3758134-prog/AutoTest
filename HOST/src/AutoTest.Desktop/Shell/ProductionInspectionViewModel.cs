@@ -1,0 +1,456 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using AutoTest.Core;
+using AutoTest.Desktop.Projects;
+using AutoTest.Desktop.Testing;
+using AutoTest.Projects.Project;
+using AutoTest.Projects.Resources;
+using AutoTest.Testing.Authoring;
+using AutoTest.Testing.Runtime;
+using Prism.Commands;
+using Prism.Mvvm;
+
+namespace AutoTest.Desktop.Shell;
+
+/// <summary>Read-only presentation of one real TEST resource or an executed occurrence.</summary>
+public sealed class ProductionInspectionNode : BindableBase
+{
+    private string _state = "未执行";
+    private string _actual = "";
+    private string _expected = "";
+    private string _detail = "";
+    private string _when = "";
+
+    public ProductionInspectionNode(string name, string kind,
+        StepId? step = null, TestDocumentId? document = null)
+    {
+        Name = name;
+        Kind = kind;
+        Step = step;
+        Document = document;
+    }
+
+    public string Name { get; }
+    public string Kind { get; }
+    public StepId? Step { get; }
+    public TestDocumentId? Document { get; }
+    public ObservableCollection<ProductionInspectionNode> Children { get; } = new();
+    public string State { get => _state; set => SetProperty(ref _state, value); }
+    public string Actual { get => _actual; set => SetProperty(ref _actual, value); }
+    public string Expected { get => _expected; set => SetProperty(ref _expected, value); }
+    public string Detail { get => _detail; set => SetProperty(ref _detail, value); }
+    public string When { get => _when; set => SetProperty(ref _when, value); }
+}
+
+public sealed record ProductionInspectionLog(string Time, string Source, string Event,
+    string Detail);
+
+/// <summary>
+/// Production VIEW is an observer, not a second TEST engine. It displays only
+/// verified project assets, the scanner's accepted real input, and durable
+/// TEST events. Developer runs are labeled as developer runs; no observed
+/// step can ever upgrade the formal production state to PASS.
+/// </summary>
+public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
+{
+    private readonly ProjectWorkspaceService _workspace;
+    private readonly SerialScannerWorkbenchViewModel _scanner;
+    private readonly RealTestWorkbenchService _realTest;
+    private readonly Action _openScanner;
+    private readonly Dictionary<StepId, List<ProductionInspectionNode>> _stepIndex = new();
+    private readonly Dictionary<TestDocumentId, List<ProductionInspectionNode>> _caseIndex = new();
+    private int _refreshGeneration;
+    private int _scanGeneration;
+    private string _projectName = "未打开 ECU 工程";
+    private string _modelCode = "—";
+    private string _dutSerial = "等待扫码";
+    private string _phase = "等待工程及扫码";
+    private string _productionReadiness = "尚未完成正式生产配置预检";
+    private string _flashState = "未开始正式生产烧录";
+    private string _testState = "未开始正式生产 TEST";
+    private string _monitorMode = "未收到运行事实";
+    private string _latestRunId = "—";
+    private string _reportPath = "";
+    private int _observedStepCount;
+    private ProductionInspectionNode? _selected;
+
+    public ProductionInspectionViewModel(ProjectWorkspaceService workspace,
+        SerialScannerWorkbenchViewModel scanner,
+        RealTestWorkbenchService realTest,
+        ObservableCollection<MainWindowViewModel.CanMonitorRow> canRecords,
+        Action openScanner)
+    {
+        _workspace = workspace;
+        _scanner = scanner;
+        _realTest = realTest;
+        _openScanner = openScanner;
+        CanRecords = canRecords;
+        OpenScannerCommand = new DelegateCommand(_openScanner);
+        RefreshCommand = new DelegateCommand(async () => await RefreshAsync());
+        _workspace.CurrentChanged += OnProjectChanged;
+        _scanner.PropertyChanged += OnScannerPropertyChanged;
+        _realTest.StepBegan += OnStepBegan;
+        _realTest.StepReported += OnStepReported;
+        _realTest.DevelopmentRunStarted += OnDevelopmentRunStarted;
+        _realTest.DevelopmentRunCompleted += OnDevelopmentRunCompleted;
+        _realTest.DevelopmentRunFailed += OnDevelopmentRunFailed;
+        _ = RefreshAsync();
+    }
+
+    public ObservableCollection<ProductionInspectionNode> Cases { get; } = new();
+    public ObservableCollection<ProductionInspectionLog> Logs { get; } = new();
+    public ObservableCollection<MainWindowViewModel.CanMonitorRow> CanRecords { get; }
+    public DelegateCommand RefreshCommand { get; }
+    public DelegateCommand OpenScannerCommand { get; }
+    public string ProjectName { get => _projectName; private set => SetProperty(ref _projectName, value); }
+    public string ModelCode { get => _modelCode; private set => SetProperty(ref _modelCode, value); }
+    public string DutSerial { get => _dutSerial; private set => SetProperty(ref _dutSerial, value); }
+    public string Phase { get => _phase; private set => SetProperty(ref _phase, value); }
+    public string ProductionReadiness { get => _productionReadiness; private set => SetProperty(ref _productionReadiness, value); }
+    public string FlashState { get => _flashState; private set => SetProperty(ref _flashState, value); }
+    public string TestState { get => _testState; private set => SetProperty(ref _testState, value); }
+    public string MonitorMode { get => _monitorMode; private set => SetProperty(ref _monitorMode, value); }
+    public string LatestRunId { get => _latestRunId; private set => SetProperty(ref _latestRunId, value); }
+    public string ReportPath { get => _reportPath; private set => SetProperty(ref _reportPath, value); }
+    public int ObservedStepCount { get => _observedStepCount; private set => SetProperty(ref _observedStepCount, value); }
+    public int EnabledCaseCount => Cases.Count;
+
+    public ProductionInspectionNode? Selected
+    {
+        get => _selected;
+        set
+        {
+            if (SetProperty(ref _selected, value))
+            {
+                RaisePropertyChanged(nameof(SelectedName));
+                RaisePropertyChanged(nameof(SelectedKind));
+                RaisePropertyChanged(nameof(SelectedState));
+                RaisePropertyChanged(nameof(SelectedExpected));
+                RaisePropertyChanged(nameof(SelectedActual));
+                RaisePropertyChanged(nameof(SelectedDetail));
+                RaisePropertyChanged(nameof(SelectedTime));
+            }
+        }
+    }
+    public string SelectedName => Selected?.Name ?? "选择用例或步骤查看";
+    public string SelectedKind => Selected?.Kind ?? "工程测试树";
+    public string SelectedState => Selected?.State ?? "未选择";
+    public string SelectedExpected => string.IsNullOrWhiteSpace(Selected?.Expected) ? "—" : Selected.Expected;
+    public string SelectedActual => string.IsNullOrWhiteSpace(Selected?.Actual) ? "—" : Selected.Actual;
+    public string SelectedDetail => string.IsNullOrWhiteSpace(Selected?.Detail) ? "暂无本次真实执行记录" : Selected.Detail;
+    public string SelectedTime => string.IsNullOrWhiteSpace(Selected?.When) ? "—" : Selected.When;
+
+    private static void OnUi(Action action)
+    {
+        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess()) action();
+        else dispatcher.BeginInvoke(action);
+    }
+
+    private void OnProjectChanged(object? sender, EventArgs e) => OnUi(() =>
+    {
+        Interlocked.Increment(ref _scanGeneration);
+        DutSerial = "等待扫码";
+        Phase = "等待扫码";
+        ProductionReadiness = "尚未完成正式生产配置预检";
+        FlashState = "未开始正式生产烧录";
+        TestState = "未开始正式生产 TEST";
+        MonitorMode = "未收到运行事实";
+        LatestRunId = "—";
+        ReportPath = "";
+        ObservedStepCount = 0;
+        Logs.Clear();
+        _ = RefreshAsync();
+    });
+
+    private async Task RefreshAsync()
+    {
+        var version = Interlocked.Increment(ref _refreshGeneration);
+        var opened = _workspace.Current;
+        if (opened is null)
+        {
+            OnUi(() =>
+            {
+                if (version != _refreshGeneration) return;
+                Cases.Clear();
+                _stepIndex.Clear();
+                _caseIndex.Clear();
+                Selected = null;
+                ProjectName = "未打开 ECU 工程";
+                ModelCode = "—";
+                RaisePropertyChanged(nameof(EnabledCaseCount));
+                ProductionReadiness = "请打开对应 ECU 型号的工程";
+            });
+            return;
+        }
+
+        try
+        {
+            var sources = await LoadVerifiedCasesAsync(opened);
+            OnUi(() =>
+            {
+                if (version != _refreshGeneration ||
+                    _workspace.Current?.ManifestPath != opened.ManifestPath) return;
+                Cases.Clear();
+                _stepIndex.Clear();
+                _caseIndex.Clear();
+                Selected = null;
+                ProjectName = opened.Definition.Name;
+                ModelCode = opened.Definition.EcuModelCode;
+                foreach (var source in sources)
+                {
+                    var root = new ProductionInspectionNode(source.Name, "TEST 用例",
+                        document: source.Document.Id);
+                    foreach (var phase in Enum.GetValues<TestPhase>())
+                    {
+                        var phaseNode = new ProductionInspectionNode(phase switch
+                        {
+                            TestPhase.Prepare => "准备",
+                            TestPhase.Test => "测试",
+                            _ => "清理"
+                        }, "执行阶段");
+                        foreach (var step in source.Document.Get(phase))
+                            phaseNode.Children.Add(ConvertStep(step));
+                        root.Children.Add(phaseNode);
+                    }
+                    Cases.Add(root);
+                    if (!_caseIndex.TryGetValue(source.Document.Id, out var roots))
+                        _caseIndex[source.Document.Id] = roots = new();
+                    roots.Add(root);
+                }
+                RaisePropertyChanged(nameof(EnabledCaseCount));
+                AddLog("工程", "用例树已核对", "读取 " + Cases.Count +
+                    " 个 Enabled 用例；未执行任何设备动作");
+            });
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+                                      UnauthorizedAccessException or ArgumentException or
+                                      ProjectDataException)
+        {
+            OnUi(() =>
+            {
+                if (version != _refreshGeneration) return;
+                Cases.Clear();
+                _stepIndex.Clear();
+                _caseIndex.Clear();
+                Selected = null;
+                ProjectName = opened.Definition.Name;
+                ModelCode = opened.Definition.EcuModelCode;
+                ProductionReadiness = "当前工程测试树不可用：" + error.Message;
+                RaisePropertyChanged(nameof(EnabledCaseCount));
+                AddLog("工程", "读取失败", error.Message);
+            });
+        }
+    }
+
+    private ProductionInspectionNode ConvertStep(StepNode step)
+    {
+        var item = new ProductionInspectionNode(step.Name, step.Type, step.Id);
+        if (!StepExecutionPolicy.IsEnabled(step)) item.State = "已禁用";
+        if (!_stepIndex.TryGetValue(step.Id, out var indexed))
+            _stepIndex[step.Id] = indexed = new();
+        indexed.Add(item);
+        foreach (var slot in step.Slots.OrderBy(s => s.Key, StringComparer.Ordinal))
+        {
+            var slotNode = new ProductionInspectionNode(slot.Key, "流程分支");
+            foreach (var child in slot.Value)
+                slotNode.Children.Add(ConvertStep(child));
+            item.Children.Add(slotNode);
+        }
+        return item;
+    }
+
+    internal sealed record VerifiedCase(string Name, TestDocument Document);
+
+    /// <summary>Identities are taken from the current immutable asset references, never sample cases.</summary>
+    internal static async Task<IReadOnlyList<VerifiedCase>> LoadVerifiedCasesAsync(
+        OpenProjectContext opened, CancellationToken ct = default)
+    {
+        var assets = opened.Definition.Assets;
+        var projects = assets.Where(a =>
+            a.Kind == ProjectWorkspaceService.TestProjectKind).ToArray();
+        if (projects.Length != 1)
+            throw new InvalidDataException("工程须有且只有一个当前 TEST 项目，才能显示生产顺序。");
+        var projectAsset = projects[0];
+        var bytes = await ReadPinnedAssetAsync(opened.RootDirectory,
+            projectAsset.RelativePath, projectAsset.Sha256, ct);
+        var testProject = TestProjectCodec.Decode(bytes);
+        var result = new List<VerifiedCase>();
+        foreach (var entry in testProject.Packages.Where(p => p.Enabled))
+        {
+            var asset = assets.SingleOrDefault(a =>
+                a.Id.Value == entry.PackageAssetId &&
+                a.Kind == ProjectWorkspaceService.TestProgramKind)
+                ?? throw new InvalidDataException("Enabled 用例引用不存在：" + entry.DisplayName);
+            if (entry.PackageRevision != asset.Revision ||
+                !entry.PackageSha256.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("用例引用修订已过期：" + entry.DisplayName);
+            var data = await ReadPinnedAssetAsync(opened.RootDirectory,
+                asset.RelativePath, asset.Sha256, ct);
+            result.Add(new(entry.DisplayName,
+                TestDocumentCodec.Deserialize(Encoding.UTF8.GetString(data))));
+        }
+        return result;
+    }
+
+    private static async Task<byte[]> ReadPinnedAssetAsync(string root, string relative,
+        string expectedSha, CancellationToken ct)
+    {
+        var path = ProjectPathPolicy.Normalize(root, relative);
+        var bytes = await File.ReadAllBytesAsync(path, ct);
+        if (!Convert.ToHexString(SHA256.HashData(bytes))
+                .Equals(expectedSha, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("工程资源 SHA 不匹配：" + relative);
+        return bytes;
+    }
+
+    private void OnScannerPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SerialScannerWorkbenchViewModel.LastDecision)) return;
+        OnUi(() =>
+        {
+            var decision = _scanner.LastDecision;
+            var serial = _scanner.LastSerial;
+            var model = _scanner.LastModel;
+            DutSerial = string.IsNullOrWhiteSpace(serial) ? "编号未识别" : serial;
+            if (decision != "SCAN_MODEL_MATCHED" || string.IsNullOrWhiteSpace(serial))
+            {
+                Phase = "扫码待处理";
+                ProductionReadiness = "本次扫码未匹配当前工程：" + decision;
+                AddLog("扫码", decision, model + " · " + serial);
+                return;
+            }
+            if (_realTest.IsRunning)
+            {
+                AddLog("扫码", "已忽略", "当前研发 TEST 正在运行；不能切换本次 ECU");
+                return;
+            }
+            Phase = "已识别 ECU，核验生产配置";
+            ProductionReadiness = "正在校验已发布烧录参数、固件与全部 Enabled 用例";
+            AddLog("扫码", "型号与工程匹配", model + " · " + serial);
+            _ = InspectProductionConfigurationAsync(_workspace.Current, model, serial,
+                Interlocked.Increment(ref _scanGeneration));
+        });
+    }
+
+    private async Task InspectProductionConfigurationAsync(OpenProjectContext? opened,
+        string model, string serial, int generation)
+    {
+        if (opened is null) return;
+        var result = await ProductionPreparationService.PrepareAsync(opened, model, serial);
+        OnUi(() =>
+        {
+            if (generation != _scanGeneration ||
+                _workspace.Current?.ManifestPath != opened.ManifestPath) return;
+            if (result.ConfigurationReady)
+            {
+                ProductionReadiness = "配置预检通过 · " +
+                    result.Preparation!.OrderedEnabledCases.Count +
+                    " 个 Enabled 用例 · 烧录参数已冻结";
+                Phase = "待正式生产启动接线";
+                FlashState = "前置烧录尚未执行 · " +
+                    result.Preparation.EcuCanKbps + " kbit/s · Job " +
+                    result.Preparation.JobFingerprint[..12];
+                AddLog("生产配置", "只读预检通过",
+                    "配置指纹 " + result.Preparation.PreparationFingerprint[..12] +
+                    "；没有获得物理启动授权");
+            }
+            else
+            {
+                ProductionReadiness = result.Explanation;
+                Phase = "配置预检未通过";
+                AddLog("生产配置", "预检拒绝", result.Explanation);
+            }
+        });
+    }
+
+    private void OnDevelopmentRunStarted(TestDocumentId id, string name) => OnUi(() =>
+    {
+        MonitorMode = "研发 TEST 实时观察 · 不作为生产检测";
+        TestState = "开发 TEST 已开始：" + name;
+        Phase = "观察研发 TEST";
+        if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
+        {
+            matches[0].State = "研发执行中";
+            Selected = matches[0];
+        }
+        else AddLog("TEST", "用例关联不可唯一确定",
+            name + "；运行事实仍显示，但不归属具体生产用例");
+        AddLog("TEST", "研发执行开始", name);
+    });
+
+    private void OnStepBegan(StepId step, string name, TestPhase phase) => OnUi(() =>
+    {
+        if (!_stepIndex.TryGetValue(step, out var matches) || matches.Count != 1)
+        {
+            AddLog("步骤", "开始", name + "；当前工程中无法唯一对应步骤");
+            return;
+        }
+        var node = matches[0];
+        node.State = "执行中";
+        node.Detail = "真实 TEST 步骤已开始；等待实际结果及 RECORD 证据";
+        Selected = node;
+        TestState = phase + " · " + name;
+        AddLog("步骤", "执行中", name + " · " + phase);
+    });
+
+    private void OnStepReported(RealStepFact fact) => OnUi(() =>
+    {
+        ObservedStepCount++;
+        if (_stepIndex.TryGetValue(fact.Step, out var nodes) && nodes.Count == 1)
+        {
+            var node = nodes[0];
+            node.State = fact.Status.ToString();
+            node.Actual = fact.Actual;
+            node.Expected = fact.Expected;
+            node.Detail = fact.Detail;
+            node.When = fact.At.ToLocalTime().ToString("HH:mm:ss.fff");
+            Selected = node;
+        }
+        AddLog("步骤", fact.Type + " · " + fact.Status,
+            fact.Actual + (fact.Detail.Length == 0 ? "" : " · " + fact.Detail));
+    });
+
+    private void OnDevelopmentRunCompleted(TestDocumentId id, RealRunResult result) => OnUi(() =>
+    {
+        if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
+            matches[0].State = "研发 " + result.Verdict;
+        MonitorMode = "研发 TEST 完成 · 非生产放行";
+        LatestRunId = result.Run.Value.ToString("D");
+        ReportPath = result.EvidencePath ?? "";
+        TestState = "研发 TEST 结束：" + result.Verdict;
+        Phase = "等待正式生产流程";
+        AddLog("TEST", "研发运行完成",
+            "RunId " + LatestRunId + " · " + result.Verdict);
+    });
+
+    private void OnDevelopmentRunFailed(TestDocumentId id, string error) => OnUi(() =>
+    {
+        if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
+            matches[0].State = "研发执行异常";
+        MonitorMode = "研发 TEST 异常 · 非生产放行";
+        TestState = "研发 TEST 异常：" + error;
+        Phase = "运行异常";
+        AddLog("TEST", "研发执行异常", error);
+    });
+
+    private void AddLog(string source, string name, string detail)
+    {
+        Logs.Add(new(DateTime.Now.ToString("HH:mm:ss.fff"), source, name, detail));
+        while (Logs.Count > 600) Logs.RemoveAt(0);
+    }
+
+    public void Dispose()
+    {
+        _workspace.CurrentChanged -= OnProjectChanged;
+        _scanner.PropertyChanged -= OnScannerPropertyChanged;
+        _realTest.StepBegan -= OnStepBegan;
+        _realTest.StepReported -= OnStepReported;
+        _realTest.DevelopmentRunStarted -= OnDevelopmentRunStarted;
+        _realTest.DevelopmentRunCompleted -= OnDevelopmentRunCompleted;
+        _realTest.DevelopmentRunFailed -= OnDevelopmentRunFailed;
+    }
+}
