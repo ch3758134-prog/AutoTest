@@ -142,6 +142,8 @@
         TextTrimming="CharacterEllipsis" Margin="7,1,7,5" FontSize="11"
         Foreground="#62768B"/>
 
+       </StackPanel>
+      </Expander>
       <Separator Margin="5,3"/>
       <DockPanel LastChildFill="True" Margin="2,4,2,1">
        <Button DockPanel.Dock="Right" Content="选择..." Click="ChooseImage_Click"
