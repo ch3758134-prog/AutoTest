@@ -21,6 +21,11 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private readonly ProjectWorkspaceService _workspace;
     private readonly Action<string> _reportToShell;
     private readonly Func<bool> _mayAcceptScan;
+    private readonly Func<string, Task<bool>> _switchRegisteredProject;
+    private readonly StationModelCatalog _catalog = new();
+    private string? _resolvedManifestPath;
+    private string _matchedProjectName = "";
+    private string _productionPreview = "";
     private readonly BarcodeInputRouter _router = new();
     private readonly SerialBarcodeCapture _capture;
     private readonly CancellationTokenSource _routerStop = new();
@@ -48,11 +53,13 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         "AutoTest", "scanner-com.json");
 
     public SerialScannerWorkbenchViewModel(ProjectWorkspaceService workspace,
-        Action<string> reportToShell, Func<bool> mayAcceptScan)
+        Action<string> reportToShell, Func<bool> mayAcceptScan,
+        Func<string, Task<bool>> switchRegisteredProject)
     {
         _workspace = workspace;
         _reportToShell = reportToShell;
         _mayAcceptScan = mayAcceptScan;
+        _switchRegisteredProject = switchRegisteredProject;
         _router.SetAdmissionGate(() => _mayAcceptScan() && Volatile.Read(ref _handling) == 0);
         _capture = new SerialBarcodeCapture(_router);
         _drainTask = Task.Run(async () =>
@@ -68,6 +75,10 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         ConnectCommand = new DelegateCommand(async () => await ConnectAsync());
         DisconnectCommand = new DelegateCommand(async () => await DisconnectAsync());
         SaveModelCodeCommand = new DelegateCommand(async () => await SaveModelCodeAsync());
+        RegisterModelCommand = new DelegateCommand(async () => await RegisterModelAsync());
+        SwitchProjectCommand = new DelegateCommand(async () => await SwitchProjectAsync(),
+            () => CanSwitchProject);
+        PrepareProductionCommand = new DelegateCommand(async () => await PrepareProductionAsync());
         _workspace.CurrentChanged += OnProjectChanged;
         OnProjectChanged(this, EventArgs.Empty);
         try
@@ -158,17 +169,37 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         private set => SetProperty(ref _lastDecision, value);
     }
     public string ProjectName => _workspace.Current?.Definition.Name ?? "未打开工程";
+    public string MatchedProjectName
+    {
+        get => _matchedProjectName;
+        private set => SetProperty(ref _matchedProjectName, value);
+    }
+    public string ProductionPreview
+    {
+        get => _productionPreview;
+        private set => SetProperty(ref _productionPreview, value);
+    }
+    public bool CanSwitchProject =>
+        !string.IsNullOrWhiteSpace(_resolvedManifestPath) &&
+        !string.Equals(_resolvedManifestPath, _workspace.Current?.ManifestPath,
+            StringComparison.OrdinalIgnoreCase);
+
 
     public DelegateCommand RefreshPortsCommand { get; }
     public DelegateCommand ConnectCommand { get; }
     public DelegateCommand DisconnectCommand { get; }
     public DelegateCommand SaveModelCodeCommand { get; }
+    public DelegateCommand RegisterModelCommand { get; }
+    public DelegateCommand SwitchProjectCommand { get; }
+    public DelegateCommand PrepareProductionCommand { get; }
 
     private void OnProjectChanged(object? sender, EventArgs e) => OnUi(() =>
     {
         ModelCode = _workspace.Current?.Definition.EcuModelCode ?? "";
         RaisePropertyChanged(nameof(ProjectName));
         LastDecision = "";
+        ProductionPreview = "";
+        SwitchProjectCommand?.RaiseCanExecuteChanged();
     });
 
     private static void OnUi(Action action)
@@ -267,6 +298,19 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             }
             var captured = result.Event;
             var capturedHex = _source?.LastFrameHex ?? "";
+            // Cross-project lookup is read-only, from an explicitly registered
+            // model index. It does not switch the live project on scan arrival.
+            StationModelCatalog.ResolveResult? station = null;
+            try
+            {
+                if (Ut1BarcodeCodec.TryParse(captured.Scan.Text,
+                        out var parsed, out _) && parsed is not null)
+                    station = await _catalog.ResolveAsync(parsed.ProductCode, ct);
+            }
+            catch (Exception error) when (error is IOException or InvalidDataException or
+                                          UnauthorizedAccessException or JsonException)
+            { SetStatus("工位型号索引不可用：" + error.Message); }
+            var resolvedStation = station;
             OnUi(() =>
             {
                 try
@@ -278,7 +322,17 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                     LastModel = preview.ModelCode ?? "";
                     LastSerial = preview.DutSerial ?? "";
                     LastDecision = preview.Code;
-                    Status = preview.Explanation;
+                    ProductionPreview = "";
+                    _resolvedManifestPath = resolvedStation?.Matched == true
+                        ? resolvedStation.Entry?.ManifestPath : null;
+                    MatchedProjectName = resolvedStation?.Matched == true
+                        ? resolvedStation.Definition?.Name ?? "" : "";
+                    SwitchProjectCommand.RaiseCanExecuteChanged();
+                    Status = resolvedStation?.Matched == true
+                        ? preview.Explanation + " · 已登记工程：" + MatchedProjectName +
+                            "（不自动切换、夹紧或启动）"
+                        : preview.Explanation + (resolvedStation is null ? "" :
+                            " · " + resolvedStation.Explanation);
                 }
                 finally { Interlocked.Exchange(ref _handling, 0); }
             });
@@ -302,6 +356,74 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                                       InvalidOperationException or UnauthorizedAccessException or
                                       AutoTest.Projects.Project.ProjectDataException)
         { SetStatus("工程型号未保存：" + error.Message); }
+    }
+
+    private async Task RegisterModelAsync()
+    {
+        var current = _workspace.Current;
+        if (current is null || !_mayAcceptScan())
+        {
+            SetStatus("请先打开并配置当前工程，确保工位空闲。");
+            return;
+        }
+        try
+        {
+            await _catalog.RegisterAsync(current);
+            SetStatus("当前 ECU 型号已明确登记到本工位：" + current.Definition.EcuModelCode);
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+                                      ArgumentException or UnauthorizedAccessException)
+        { SetStatus("型号登记失败：" + error.Message); }
+    }
+
+    private async Task SwitchProjectAsync()
+    {
+        var path = _resolvedManifestPath;
+        if (string.IsNullOrWhiteSpace(path) || !_mayAcceptScan())
+        {
+            SetStatus("扫码型号未匹配可切换工程，或工位仍在运行。");
+            return;
+        }
+        var confirm = MessageBox.Show(
+            "将切换至扫码型号 " + LastModel + " 的工程：" +
+            "\\n" + MatchedProjectName +
+            "\\n\\n将保存当前编辑内容，检查设备状态后切换。不启动 TEST 或烧录。继续？",
+            "切换 ECU 工程", MessageBoxButton.YesNo,
+            MessageBoxImage.Question, MessageBoxResult.No);
+        if (confirm != MessageBoxResult.Yes) return;
+        var resolved = await _catalog.ResolveAsync(LastModel);
+        if (!resolved.Matched || !string.Equals(path, resolved.Entry?.ManifestPath,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            SetStatus("型号映射已变化，拒绝使用旧扫码结果。");
+            return;
+        }
+        if (await _switchRegisteredProject(path))
+            SetStatus("工程已切换：" + MatchedProjectName +
+                "；请在生产预检中重新确认当前资源。");
+    }
+
+    private async Task PrepareProductionAsync()
+    {
+        var current = _workspace.Current;
+        if (!_mayAcceptScan() || current is null || string.IsNullOrEmpty(LastSerial) ||
+            !string.Equals(current.Definition.EcuModelCode, LastModel, StringComparison.Ordinal))
+        {
+            SetStatus("尚未打开扫码型号对应工程，或当前运行状态不允许预检。");
+            return;
+        }
+        var snapshotModel = LastModel;
+        var snapshotSerial = LastSerial;
+        var result = await ProductionPreparationService.PrepareAsync(
+            current, snapshotModel, snapshotSerial);
+        ProductionPreview = result.ConfigurationReady
+            ? "本次配置预检完成｜生产前置必烧录｜" +
+              result.Preparation!.OrderedEnabledCases.Count + " 个 Enabled 用例｜" +
+              result.Preparation.EcuCanKbps + " kbit/s｜" +
+              "原生 Job " + result.Preparation.JobFingerprint[..12] +
+              "…；等待真实夹具及实体 START，尚未执行"
+            : result.Explanation;
+        SetStatus(result.Explanation);
     }
 
     private async Task DisconnectAsync()
