@@ -212,7 +212,7 @@ function renderProdDevice(){
   <section class="page-card maintenance-card"><div class="row spread"><h3>串口扫码枪</h3><span class="chip warn">未连接</span></div>
    <div class="device-overview"><span class="device-overview-icon">⌁</span><div><strong>COM 串口设备</strong><span>固定通信方式 · 无 HID / POS 切换</span></div></div>
    <div class="sep"></div>
-   <div class="input-pair">${field('COM 端口','scanner.port',s.port)}${field('串口波特率','scanner.baud',s.baud,{options:[['','待设置'],'9600','19200','38400','57600','115200']})}</div>
+   <div class="input-pair">${field('COM 端口','scanner.port',s.port)}${field('串口波特率','scanner.baud',s.baud,{type:'number',min:1})}</div>
    <div class="input-pair">${field('数据位','scanner.dataBits',s.dataBits,{options:['7','8']})}${field('校验位','scanner.parity',s.parity,{options:[['none','无'],['even','偶校验'],['odd','奇校验']]})}</div>
    <div class="input-pair">${field('停止位','scanner.stopBits',s.stopBits,{options:['1','2']})}${field('结束符','scanner.terminator',s.terminator,{options:['CR','LF','CRLF',['NONE','无（长度/超时分帧）']]})}</div>
    ${field('文本编码','scanner.encoding',s.encoding,{options:['UTF-8','ASCII','GBK']})}
@@ -246,7 +246,7 @@ function parseScannerCandidate(raw){
 function validateScannerSettings(){
  const s=scannerConfig();const issues=[];
  if(!/^COM[1-9][0-9]{0,2}$/i.test(s.port.trim()))issues.push('请选择或填写有效 COM 口（如 COM3）');
- if(!['9600','19200','38400','57600','115200'].includes(String(s.baud)))issues.push('请按扫码枪手册设置串口波特率');
+ if(!/^[0-9]+$/.test(String(s.baud))||Number(s.baud)<1||!Number.isSafeInteger(Number(s.baud)))issues.push('请按扫码枪手册填写有效串口波特率');
  if(!['7','8'].includes(s.dataBits))issues.push('数据位无效');
  if(!['none','even','odd'].includes(s.parity))issues.push('校验位无效');
  if(!['1','2'].includes(s.stopBits))issues.push('停止位无效');
