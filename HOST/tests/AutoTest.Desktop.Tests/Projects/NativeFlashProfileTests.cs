@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.FlashLab.Configuration;
 using AutoTest.FlashLab.Programming;
 using Xunit;
