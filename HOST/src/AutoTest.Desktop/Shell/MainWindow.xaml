@@ -127,6 +127,9 @@
       <MenuItem Header="从工程移除选中资源（保留源文件）" Command="{Binding RemoveReferenceCommand}"/>
      </MenuItem>
      <MenuItem Header="视图">
+      <MenuItem Header="工程师工作区" Command="{Binding ShowEngineerWorkspaceCommand}"/>
+      <MenuItem Header="生产检测工作区" Command="{Binding ShowProductionWorkspaceCommand}"/>
+      <Separator/>
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
       <Separator/>
@@ -146,7 +149,7 @@
       <Separator/>
       <MenuItem Header="UDS 工作台（尚未接入）" IsEnabled="False"/>
       <MenuItem Header="ECU 烧录工具" Command="{Binding OpenFlashWorkbenchCommand}" ToolTip="实测过的 CanTool 流程，独立专业窗口；切换 USB 所有权前先断开主工位连接"/>
-      <MenuItem Header="生产运行（尚未接入）" IsEnabled="False"/>
+      <MenuItem Header="生产检测 · 执行监视" Command="{Binding ShowProductionWorkspaceCommand}"/>
      </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
     </Menu>
@@ -181,6 +184,10 @@
      <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+     <Button Content="工程师" Command="{Binding ShowEngineerWorkspaceCommand}" Margin="0,0,4,0"
+      ToolTip="工程编辑与自动 TEST 调试"/>
+     <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}" Margin="0,0,12,0"
+      Style="{StaticResource AtPrimaryButton}" ToolTip="显示实际 ECU 用例树及执行监视，不自动启动烧录"/>
      <Button Content="▦ 工程" Command="{Binding OpenProjectCommand}" Margin="0,0,8,0"/>
      <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
       VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis"
@@ -200,7 +207,8 @@
    </DockPanel>
   </Border>
 
-  <Grid Grid.Row="2" Background="#FFFFFF">
+  <Grid Grid.Row="2" Background="#FFFFFF"
+   Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <Grid.ColumnDefinitions>
     <ColumnDefinition x:Name="TreeColumn" Width="286" MinWidth="250" MaxWidth="420"/>
     <ColumnDefinition Width="4"/>
@@ -358,6 +366,10 @@
     </Grid>
    </Grid>
   </Grid>
+
+  <ContentControl Grid.Row="2" Content="{Binding ProductionView}"
+   HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+   Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"/>
 
   <Border Grid.Row="3" Background="#F8FAFA" BorderBrush="#E1E6E8" BorderThickness="0,1,0,0">
    <DockPanel Margin="11,0">
