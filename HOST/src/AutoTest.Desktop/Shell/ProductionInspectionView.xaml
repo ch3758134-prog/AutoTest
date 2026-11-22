@@ -153,6 +153,22 @@
        <TextBlock Text="真实步骤详情" Foreground="#778697" FontSize="11" Margin="0,16,0,3"/>
        <TextBlock Text="{Binding SelectedDetail}" Foreground="#42556A"
         TextWrapping="Wrap"/>
+       <Grid Margin="0,13,0,0">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0">
+         <TextBlock Text="观测质量" Foreground="#778697" FontSize="11"/>
+         <TextBlock Text="{Binding SelectedQuality}" Foreground="#42556A"
+          TextWrapping="Wrap" Margin="0,3,0,0"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1">
+         <TextBlock Text="步骤执行实例" Foreground="#778697" FontSize="11"/>
+         <TextBlock Text="{Binding SelectedOccurrence}" Foreground="#42556A"
+          TextWrapping="Wrap" Margin="0,3,0,0" FontSize="10"/>
+        </StackPanel>
+       </Grid>
+       <TextBlock Text="证据引用" Foreground="#778697" FontSize="11" Margin="0,13,0,3"/>
+       <TextBlock Text="{Binding SelectedEvidence}" Foreground="#42556A"
+        TextWrapping="Wrap" FontSize="11"/>
        <Border Height="1" Background="#E8EDF1" Margin="0,14,0,11"/>
        <TextBlock Text="生产前置烧录" FontWeight="SemiBold" Foreground="#263644"/>
        <TextBlock Text="{Binding FlashState}" TextWrapping="Wrap" Foreground="#657A90"
@@ -184,6 +200,7 @@
        <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="95"/>
        <DataGridTextColumn Header="事件" Binding="{Binding Event}" Width="160"/>
        <DataGridTextColumn Header="真实信息" Binding="{Binding Detail}" Width="*"/>
+       <DataGridTextColumn Header="步骤实例 ID" Binding="{Binding Occurrence}" Width="185"/>
       </DataGrid.Columns>
      </DataGrid>
     </TabItem>
