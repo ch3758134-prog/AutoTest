@@ -3,9 +3,10 @@ using System.Text;
 namespace AutoTest.Specialists.Scan;
 
 /// <summary>
-/// Exact byte framing for a USB virtual COM barcode scanner. A callback/read is
-/// not a barcode. CR, LF and CRLF delimit one barcode; invalid frames are never
-/// silently truncated into a valid serial number.
+/// Streaming byte framing for a physical USB COM barcode scanner.
+/// CR, LF and CRLF end one scan; an incomplete read is never a barcode.
+/// A CR is held until the following byte or read-idle boundary so the recorded
+/// raw HEX contains the ACTUAL CRLF pair instead of silently dropping LF.
 /// </summary>
 public sealed record SerialBarcodeFrame(string? Text, string Code, string RawHex = "")
 {
@@ -20,14 +21,16 @@ public sealed class SerialBarcodeFrameDecoder
     private readonly TimeSpan _maximumGap;
     private DateTimeOffset? _lastByte;
     private string? _reject;
-    private bool _skipLf;
+    private bool _pendingCr;
 
     public SerialBarcodeFrameDecoder(int maximumLength = 512, TimeSpan? maximumInterByteGap = null)
     {
-        if (maximumLength is < 1 or > 8192) throw new ArgumentOutOfRangeException(nameof(maximumLength));
+        if (maximumLength is < 1 or > 8192)
+            throw new ArgumentOutOfRangeException(nameof(maximumLength));
         _maximumLength = maximumLength;
         _maximumGap = maximumInterByteGap ?? TimeSpan.FromSeconds(2);
-        if (_maximumGap <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(maximumInterByteGap));
+        if (_maximumGap <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(maximumInterByteGap));
     }
 
     public void Reset()
@@ -36,30 +39,46 @@ public sealed class SerialBarcodeFrameDecoder
         _rawBytes.Clear();
         _lastByte = null;
         _reject = null;
-        _skipLf = false;
+        _pendingCr = false;
     }
 
     public SerialBarcodeFrame? Push(byte value, DateTimeOffset time)
     {
-        if (_skipLf && value == (byte)'\n') { _skipLf = false; return null; }
-        _skipLf = false;
-        if (_rawBytes.Count < 8192) _rawBytes.Add(value);
-        if (value == (byte)'\r' || value == (byte)'\n')
+        if (_pendingCr)
         {
-            var rejected = _reject;
-            var text = _buffer.ToString();
-            var rawHex = Convert.ToHexString(_rawBytes.ToArray());
-            _rawBytes.Clear();
-            _buffer.Clear();
-            _lastByte = null;
-            _reject = null;
-            _skipLf = value == (byte)'\r';
-            if (rejected is not null) return new(null, rejected, rawHex);
-            return text.Length == 0 ? null : new(text, "SERIAL_FRAME_OK", rawHex);
+            // A paired LF belongs to the same raw physical frame.
+            if (value == (byte)'\n')
+            {
+                AddRaw(value);
+                return Complete();
+            }
+            // CR alone ended the previous frame. Preserve the next byte as the
+            // beginning of the next frame rather than dropping or merging it.
+            var prior = Complete();
+            _ = Consume(value, time);
+            return prior;
         }
-        if (_lastByte is { } previous && time - previous > _maximumGap && _buffer.Length > 0)
+        return Consume(value, time);
+    }
+
+    /// <summary>Call after a bounded idle SerialPort.ReadByte timeout.</summary>
+    public SerialBarcodeFrame? FlushIdle() => _pendingCr ? Complete() : null;
+
+    private SerialBarcodeFrame? Consume(byte value, DateTimeOffset time)
+    {
+        AddRaw(value);
+        if (value == (byte)'\r')
         {
-            // Discard through the delimiter; accepting the remaining suffix is unsafe.
+            _pendingCr = true;
+            return null;
+        }
+        if (value == (byte)'\n') return Complete();
+
+        if (_lastByte is { } previous &&
+            time - previous > _maximumGap && _buffer.Length > 0)
+        {
+            // Keep rejecting through the next delimiter, otherwise a suffix
+            // from a truncated scan could be mistaken for another serial.
             _buffer.Clear();
             _reject = "SERIAL_FRAME_GAP";
         }
@@ -79,5 +98,22 @@ public sealed class SerialBarcodeFrameDecoder
         }
         _buffer.Append((char)value);
         return null;
+    }
+
+    private void AddRaw(byte value)
+    {
+        // Bounded diagnostic evidence. Invalid/overlong frames never cause
+        // unbounded buffering and do not become truncated accepted identities.
+        if (_rawBytes.Count < 8192) _rawBytes.Add(value);
+    }
+
+    private SerialBarcodeFrame? Complete()
+    {
+        var code = _reject;
+        var text = _buffer.ToString();
+        var hex = Convert.ToHexString(_rawBytes.ToArray());
+        Reset();
+        if (code is not null) return new(null, code, hex);
+        return text.Length == 0 ? null : new(text, "SERIAL_FRAME_OK", hex);
     }
 }
