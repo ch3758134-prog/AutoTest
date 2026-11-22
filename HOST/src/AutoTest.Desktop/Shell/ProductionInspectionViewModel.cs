@@ -26,6 +26,8 @@ public sealed class ProductionInspectionNode : BindableBase
     private string _occurrence = "";
     private string _evidence = "";
     private string _quality = "";
+    private bool _isExpanded;
+    private bool _isSelected;
 
     public ProductionInspectionNode(string name, string kind,
         StepId? step = null, TestDocumentId? document = null)
@@ -41,6 +43,14 @@ public sealed class ProductionInspectionNode : BindableBase
     public StepId? Step { get; }
     public TestDocumentId? Document { get; }
     public ObservableCollection<ProductionInspectionNode> Children { get; } = new();
+    public ProductionInspectionNode? Parent { get; private set; }
+    public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }
+    public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
+    public void AddChild(ProductionInspectionNode child)
+    {
+        child.Parent = this;
+        Children.Add(child);
+    }
     public string State { get => _state; set => SetProperty(ref _state, value); }
     public string Actual { get => _actual; set => SetProperty(ref _actual, value); }
     public string Expected { get => _expected; set => SetProperty(ref _expected, value); }
@@ -130,8 +140,16 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         get => _selected;
         set
         {
-            if (SetProperty(ref _selected, value))
-                NotifySelectedReadout();
+            var previous = _selected;
+            if (!SetProperty(ref _selected, value)) return;
+            if (previous is not null) previous.IsSelected = false;
+            if (value is not null)
+            {
+                for (var parent = value.Parent; parent is not null; parent = parent.Parent)
+                    parent.IsExpanded = true;
+                value.IsSelected = true;
+            }
+            NotifySelectedReadout();
         }
     }
     public string SelectedName => Selected?.Name ?? "选择用例或步骤查看";
@@ -226,7 +244,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 foreach (var source in sources)
                 {
                     var root = new ProductionInspectionNode(source.Name, "TEST 用例",
-                        document: source.Document.Id);
+                        document: source.Document.Id) { IsExpanded = true };
                     foreach (var phase in Enum.GetValues<TestPhase>())
                     {
                         var phaseNode = new ProductionInspectionNode(phase switch
@@ -235,9 +253,10 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                             TestPhase.Test => "测试",
                             _ => "清理"
                         }, "执行阶段");
+                        phaseNode.IsExpanded = phase == TestPhase.Test;
                         foreach (var step in source.Document.Get(phase))
-                            phaseNode.Children.Add(ConvertStep(step));
-                        root.Children.Add(phaseNode);
+                            phaseNode.AddChild(ConvertStep(step));
+                        root.AddChild(phaseNode);
                     }
                     Cases.Add(root);
                     if (!_caseIndex.TryGetValue(source.Document.Id, out var roots))
@@ -280,8 +299,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         {
             var slotNode = new ProductionInspectionNode(slot.Key, "流程分支");
             foreach (var child in slot.Value)
-                slotNode.Children.Add(ConvertStep(child));
-            item.Children.Add(slotNode);
+                slotNode.AddChild(ConvertStep(child));
+            item.AddChild(slotNode);
         }
         return item;
     }
