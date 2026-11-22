@@ -48,7 +48,7 @@ public sealed class LedUsbContractTests
     {
         var fence = new PhysicalCommandFence();
         var led = MainControllerCodec.EncodeLed(1, 1, true);
-        var mask = UsbWireCodec.EncodeRequest(2, MainControllerCodec.SetLeds, [0x3Fu]);
+        var mask = UsbWireCodec.EncodeRequest(2, MainControllerCodec.SetLeds, [(byte)0x3F]);
         var sha = new string('b', 64);
         fence.AuthorizePhysicalRun(sha, "AUTHORIZE TEST RUN " + sha,
             Array.Empty<(byte Port, bool Extended, uint Id)>(), false, 5);
