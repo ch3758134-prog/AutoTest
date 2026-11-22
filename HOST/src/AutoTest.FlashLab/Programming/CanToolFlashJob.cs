@@ -27,7 +27,7 @@ public sealed record CanToolFlashJob(
     public string Consent => "AUTHORIZE ECU FLASH "+Fingerprint;
     public ulong EraseLength => (ulong)FlashEndInclusive-FlashStart+1UL;
 
-    public static CanToolFlashJob Freeze(CanToolXmlProfileReader config,
+    public static CanToolFlashJob Freeze(IFlashParameterSource config,
         string firmwarePath,string? binBase,string keyDll,string targetLabel,
         bool legacyTailSignature=false)
     {
@@ -143,7 +143,7 @@ public sealed record CanToolFlashJob(
                 "当前 CanTool 实测资料尚不能证明该安全库的 ECU 算法身份。"+
                 "只对已静态核实 SHA256 的原始 SafetyFile.dll 开放参考内置算法；"+
                 "不加载演示 DLL 或猜测其他算法。");
-        string effective=string.Join("\n",config.Parameters.Select(p=>p.Name+"="+p.Value.Trim()));
+        string effective=string.Join("\n",config.FingerprintEntries().Select(p=>p.Key+"="+p.Value.Trim()));
         string bound=$"CANTOOL-FLASH-F2-v1\nCAN1\n{targetLabel.Trim()}\n"+
             $"APP {appTx:X8} {appRx:X8}\nBOOT {bootTx:X8} {bootRx:X8}\n"+
             $"FLASH {first:X8}-{last:X8} BLOCK {blockLength:X8} BAUD {baud}\n"+
