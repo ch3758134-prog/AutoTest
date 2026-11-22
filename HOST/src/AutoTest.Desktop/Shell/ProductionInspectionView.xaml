@@ -110,7 +110,14 @@
       SelectedItemChanged="Cases_SelectedItemChanged"
       VirtualizingStackPanel.IsVirtualizing="True"
       ScrollViewer.HorizontalScrollBarVisibility="Auto"
-      ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+      ScrollViewer.VerticalScrollBarVisibility="Auto">
+      <TreeView.Resources>
+       <Style TargetType="{x:Type TreeViewItem}">
+        <Setter Property="IsExpanded" Value="{Binding IsExpanded,Mode=TwoWay}"/>
+        <Setter Property="IsSelected" Value="{Binding IsSelected,Mode=TwoWay}"/>
+       </Style>
+      </TreeView.Resources>
+     </TreeView>
     </Grid>
    </Border>
    <Border Grid.Column="2" CornerRadius="9" Background="White"
