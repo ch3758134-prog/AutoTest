@@ -89,19 +89,38 @@ public sealed record RunStepFact(AutoTest.Core.RunId Run, Guid EventId, AutoTest
     public void Validate()
     {
         SignalProvenance?.Validate();
-        if (JudgementEvidenceKind is not null &&
-            (JudgementEvidenceKind != "DirectDbcSignal" ||
-             StepOccurrenceId is null || CaseAttemptId is null ||
-             Phase != "Test" || Disposition != "Completed" ||
-             SignalStatus != "Valid" || SignalProvenance is null ||
-             Evidence.IsDefaultOrEmpty ||
-             (Quality is not (AutoTest.Core.EvidenceQuality.HostObserved or
-                 AutoTest.Core.EvidenceQuality.DirectMeasured or
-                 AutoTest.Core.EvidenceQuality.Derived) ||
-              (Quality == AutoTest.Core.EvidenceQuality.Derived &&
-                  (SignalProvenance.TimeSource != "HostArrival" ||
-                   SignalProvenance.TimeQuality != "HostArrivalOnly")))))
-            throw new InvalidDataException("A direct ECU judgement requires its own valid, evidenced DBC occurrence.");
+        if (JudgementEvidenceKind is not null)
+        {
+            // Direct DBC proof is an observed ECU signal in the same occurrence.
+            // Do not weaken this contract for waveform or any derived value.
+            var directDbc = JudgementEvidenceKind == "DirectDbcSignal" &&
+                StepOccurrenceId is not null && CaseAttemptId is not null &&
+                Phase == "Test" && Disposition == "Completed" &&
+                SignalStatus == "Valid" && SignalProvenance is not null &&
+                !Evidence.IsDefaultOrEmpty &&
+                (Quality is AutoTest.Core.EvidenceQuality.HostObserved or
+                    AutoTest.Core.EvidenceQuality.DirectMeasured ||
+                 Quality == AutoTest.Core.EvidenceQuality.Derived &&
+                 SignalProvenance.TimeSource == "HostArrival" &&
+                 SignalProvenance.TimeQuality == "HostArrivalOnly");
+
+            // This is NOT verified waveform proof. It is an explicit PENDING
+            // claim with two immutable evidence identities. The finalizer must
+            // archive both real wave files, recompute the passing comparison
+            // and attach them to this exact StepOccurrence before FORMAL PASS.
+            var pendingWave = JudgementEvidenceKind == "WaveComparisonPendingArchive" &&
+                StepOccurrenceId is not null && CaseAttemptId is not null &&
+                Phase == "Test" && Disposition == "Completed" &&
+                Expected == "Pass" && Actual == "Pass" &&
+                Quality == AutoTest.Core.EvidenceQuality.HostObserved &&
+                SignalProvenance is null && Evidence.Length == 2 &&
+                Evidence[0].Value != Guid.Empty && Evidence[1].Value != Guid.Empty &&
+                Evidence[0] != Evidence[1];
+
+            if (!directDbc && !pendingWave)
+                throw new InvalidDataException(
+                    "Judgement needs its own valid DBC occurrence or a two-file pending waveform archive.");
+        }
         if (StepOccurrenceId is not null &&
             (StartedUtc is null || CompletedUtc is null || Duration is null ||
                 Phase is null || string.IsNullOrWhiteSpace(ExecutionPath)))
