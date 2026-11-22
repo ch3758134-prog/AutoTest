@@ -16,7 +16,7 @@ public static class FirmwareSelectionService
 {
     /// <summary>Offline-only, strict image parsing. No flash commands or implicit EEPROM writes.</summary>
     public static FirmwareSelection Load(string filename,string? binBaseAddress,
-        CanToolXmlProfileReader configuration)
+        IFlashParameterSource configuration)
     {
         var path=Path.GetFullPath(filename);
         var info=new FileInfo(path);
