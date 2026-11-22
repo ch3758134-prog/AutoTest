@@ -3,7 +3,16 @@
 **身份**：WAVE 真实采样、参考波形与 TEST 判定算法专业 AI。  
 **正式任务**：[Issue #71](https://github.com/ch3758134-prog/AutoTest/issues/71)。  
 **研究分支**：`research/r1-wave-judgement-20261120`；初始基于 `R1@94e82eddb03e69b428fd4c63c2093a570d979c4e`。  
-**状态**：`W-00~12 RESEARCHED / LATEST_PM_RECONCILED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新源码回读 `R1@5f7a2cf42c1a30434431af18e2fb26741075ad2f`。
+**状态**：`W-00~14 RESEARCHED / LATEST_PM_RECONCILED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新源码回读 `R1@5f7a2cf42c1a30434431af18e2fb26741075ad2f`。
+
+## 本次最高优先级｜波形判定稳定性、算法、USB串口扫码证据归属（2026-11-21）
+
+按用户最新补充，首先阅读：
+
+- **[W-13 判定算法稳定性与实测资格](W-13_JUDGEMENT_STABILITY_ALGORITHM_QUALIFICATION_20261121.md)**：5 种稳定性，现有自动 50ms shift/状态插值/点覆盖的误判风险，状态/数值/参考独立算法，完整性先于 PASS，18 个反例与真实多轮正负/负载研究。
+- **[W-14 串口扫码→Inspection→Flash→TEST→Wave 的身份证据合同](W-14_SCAN_TO_WAVE_TRACEABILITY_AND_RACE_PROTECTION_20261121.md)**：用户已明确实际扫码枪为 USB 虚拟串口/COM，非键盘模拟；SCANNER 负责真实 COM 输入/型号+唯一 SN/工程选择，WAVE 负责不拿旧 ECU/上次 Run/旧 Latest 波形给新 DUT 判定。扫码不是波形触发，正式波形采集在本次 Flash 成功的真实 TEST 动作之前预先就绪。
+
+扫描的完整编码、USB 串口参数、设备状态机、跨工程检索由 SCAN 专项负责；本 WAVE 专项聚焦**采集/判定时序与身份来源完整性**，不建立第二扫码模块。现有 R1 `SerialBarcodeCapture` 只支持 `IVerifiedBarcodeLineSource` 抽象，未证明真 COM 接通。算法、串口与实 ECU 全部现场验收仍 `NOT_RUN`。
 
 ## 首先阅读｜现行产品合同已变更（2026-11-21 晚）
 
