@@ -70,10 +70,19 @@ public sealed class SerialPortBarcodeLineSource : IVerifiedBarcodeLineSource, IA
         {
             ct.ThrowIfCancellationRequested();
             int value;
-            try { value = _port.ReadByte(); }
-            catch (TimeoutException) { continue; }
-            if (value < 0) throw new IOException("扫码枪串口已经结束输入。");
-            var frame = _decoder.Push((byte)value, DateTimeOffset.UtcNow);
+            SerialBarcodeFrame? frame;
+            try
+            {
+                value = _port.ReadByte();
+                if (value < 0) throw new IOException("扫码枪串口已经结束输入。");
+                frame = _decoder.Push((byte)value, DateTimeOffset.UtcNow);
+            }
+            catch (TimeoutException)
+            {
+                // A CR-only scanner finishes its frame on idle. For CRLF,
+                // the LF arrives first and both delimiter bytes are retained.
+                frame = _decoder.FlushIdle();
+            }
             if (frame is null) continue;
             LastFrameHex = frame.RawHex;
             if (!frame.Accepted)
