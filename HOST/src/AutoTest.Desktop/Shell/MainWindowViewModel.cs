@@ -64,16 +64,12 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
 }
 
 /// <summary>Only presentation state and UX commands. Project data remains in ProjectWorkspaceService.</summary>
-public sealed class MainWindowViewModel : BindableBase
+public sealed partial class MainWindowViewModel : BindableBase
 {
     private readonly ProjectWorkspaceService _workspace;
     private readonly HardwareConnectionService _hardware;
     private readonly RealTestWorkbenchService _realTest;
     private readonly LiveDbcSignalService _liveSignals;
-    private readonly KeyboardWedgeCapture _scanCapture;
-    private readonly ProjectScanMatcher _scanMatcher;
-    private readonly CancellationTokenSource _scanStop = new();
-    private readonly Task _scanReader;
     private string? _activeEditorProjectPath;
     private string _hardwareStatus = "USB 未连接";
     private string _scanStatus = "扫码未开始";
@@ -118,20 +114,7 @@ public sealed class MainWindowViewModel : BindableBase
         _hardware.EcuCanBitrateSelectionChanged += OnSelectedEcuCanRateChanged;
         _realTest = realTest;
         _liveSignals = liveSignals;
-        var router = new BarcodeInputRouter();
-        router.AttachMode(ScannerCaptureMode.KeyboardWedge, new InputPolicy(true, 512, "keyboard"));
-        router.SetAdmissionGate(() => !_hardwareBusy);
-        _scanCapture = new KeyboardWedgeCapture(router);
-        _scanMatcher = new ProjectScanMatcher(_workspace);
-        _scanReader = Task.Run(async () =>
-        {
-            try
-            {
-                await foreach (var _ in router.ObserveAsync(new InputPolicy(true, 512, "keyboard"),
-                                   _scanStop.Token)) { /* Drain accepted ingress; UI updates from capture results. */ }
-            }
-            catch (OperationCanceledException) when (_scanStop.IsCancellationRequested) { }
-        });
+        InitializeScannerWorkbench();
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
         _dbcDialogs = dbcDialogs;
@@ -841,50 +824,6 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    public void CaptureScannerText(string text)
-    {
-        foreach (var character in text)
-        {
-            var result = _scanCapture.OnKeyInput(character, scannerFieldHasFocus: true);
-            if (result is { Accepted: false }) ScanStatus = "扫码拒绝：" + result.Code;
-        }
-    }
-    public async Task FinishScannerInputAsync()
-    {
-        _preparedScanMatch = null;
-        _preparedScanProject = null;
-        ApplyScannedRecipeCommand.RaiseCanExecuteChanged();
-        var result = _scanCapture.CompleteScan();
-        if (!result.Accepted || result.Event is null)
-        {
-            ScanStatus = "扫码拒绝：" + result.Code;
-            return;
-        }
-        ScanStatus = "已采集：" + result.Event.Scan.Text + "，正在匹配工程配置…";
-        try
-        {
-            var matched = await _scanMatcher.MatchAsync(result.Event);
-            if (matched.Accepted)
-            {
-                _preparedScanMatch = matched;
-                _preparedScanProject = _workspace.Current;
-                ApplyScannedRecipeCommand.RaiseCanExecuteChanged();
-            }
-            ScanStatus = matched.Accepted
-                ? "编号 " + matched.Identity + " 匹配配方 " + matched.RecipeId +
-                    "：" + matched.Explanation
-                : matched.Explanation;
-            StatusMessage = matched.Accepted
-                ? "扫码已准备配置（未执行）：" + matched.RecipeId
-                : "扫码配置待处理：" + matched.Explanation;
-        }
-        catch (Exception error) when (error is ProjectDataException or IOException or
-                                      UnauthorizedAccessException or ArgumentException or
-                                      InvalidDataException or FormatException)
-        {
-            ScanStatus = "匹配拒绝：" + error.Message;
-        }
-    }
     /// <summary>
     /// A scan chooses an existing TEST scope only. It does not execute, grant
     /// USB authority, or convert a Development run into production release.
@@ -979,16 +918,14 @@ public sealed class MainWindowViewModel : BindableBase
             return false;
         if (_waveWorkbenchWindow is { IsVisible: true } wave)
             wave.Close();
+        CloseSerialScannerWindow();
         return true;
     }
 
     public async Task ShutdownAsync()
     {
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
-        _scanStop.Cancel();
-        try { await _scanReader; }
-        catch (OperationCanceledException) { }
-        _scanStop.Dispose();
+        await _scannerWorkbench.DisposeAsync();
         try { await _hardware.DisposeAsync(); }
         catch (Exception error)
         {
