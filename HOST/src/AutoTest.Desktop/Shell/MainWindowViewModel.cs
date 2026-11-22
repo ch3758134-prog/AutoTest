@@ -2060,7 +2060,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 // Open through the revision-checked workspace codec. If one
                 // project cannot be read, fail closed rather than risk dangling refs.
                 var projectSession = await _workspace.OpenTestProjectEditorAsync(projectAsset.Id);
-                if (projectSession.Document.Packages.Any(x => x.AssetId == asset.Id.Value))
+                if (projectSession.Document.Packages.Any(x => x.PackageAssetId == asset.Id.Value))
                 {
                     _fileDialogs.ShowError("测试用例“" + asset.Name + "”仍被测试项目“" +
                         projectAsset.Name + "”引用。\\n请先在该项目中点“移除”，" +
