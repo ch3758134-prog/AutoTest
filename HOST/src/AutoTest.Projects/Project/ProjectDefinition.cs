@@ -4,7 +4,8 @@ using AutoTest.Core;
 namespace AutoTest.Projects.Project;
 
 public sealed record ProjectDefinition(ProjectId Id, int SchemaVersion, int Revision,
-    string Name, ImmutableArray<Resources.AssetEntry> Assets, ImmutableArray<Resources.AssetDependency> Dependencies)
+    string Name, ImmutableArray<Resources.AssetEntry> Assets, ImmutableArray<Resources.AssetDependency> Dependencies,
+    string? EcuModelCode = null)
 {
     public const int CurrentSchema = 1;
     public static ProjectDefinition Create(string name) => new ProjectDefinition(ProjectId.New(), CurrentSchema, 1,
@@ -13,6 +14,12 @@ public sealed record ProjectDefinition(ProjectId Id, int SchemaVersion, int Revi
     {
         if (Id.Value == Guid.Empty || SchemaVersion != CurrentSchema || Revision < 1 || string.IsNullOrWhiteSpace(Name))
             throw new ProjectDataException("PROJECT_SCHEMA", "Invalid project identity, name, revision or schema version.");
+        if (EcuModelCode is not null &&
+            !System.Text.RegularExpressions.Regex.IsMatch(EcuModelCode,
+                @"^[A-Z0-9]{2,16}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100)))
+            throw new ProjectDataException("PROJECT_MODEL_CODE",
+                "工程 ECU 型号代码仅允许 2～16 位大写字母和数字。");
         if (Assets.IsDefault || Dependencies.IsDefault || Assets.Any(a => a is null))
             throw new ProjectDataException("PROJECT_SCHEMA", "Project collections are absent or malformed.");
         foreach (var asset in Assets) asset.Validate();
