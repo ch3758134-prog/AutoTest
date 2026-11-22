@@ -186,7 +186,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             if (ports.Length == 0) SetStatus("未发现 COM 端口；请检查扫码枪 USB 串口驱动");
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
-                                      InvalidOperationException)
+                                      InvalidOperationException or System.ComponentModel.Win32Exception)
         { SetStatus("枚举串口失败：" + error.Message); }
     }
 
@@ -206,7 +206,8 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             _readStop = new CancellationTokenSource();
             ConnectedPort = settings.PortName;
             IsConnected = true;
-            _readTask = Task.Run(() => ReadLoopAsync(_readStop.Token));
+            var readerToken = _readStop.Token;
+            _readTask = Task.Run(() => ReadLoopAsync(readerToken));
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
