@@ -1,7 +1,7 @@
 # AutoTest｜S-11 扫码枪、型号工程匹配与生产站点的独立系统研究（按最新业务基线重做）
 
-**2026-11-21｜研究分支** \`research/r1-scan-configuration-20261120\`｜**状态** \`USER_CONFIRMED_BASIS / RESEARCH_PROPOSED_DESIGN / R1_SOURCE_GAP / FIELD_NOT_VERIFIED\`  
-**当前产品依据**：\`Project_Management@6d2a476de8eba752a227a02dc77b0fc5d30296aa\` 中的 \`docs/project-management/current/README.md\`、\`00_DECISIONS_AND_SUPERSESSION.md\`、\`01_PRODUCT_SYSTEM.md\`、\`02_ECU_PROJECT_TEST.md\`、\`03_PRODUCTION_STATION_AND_SCAN.md\`、\`07_SPECIALIST_WORKPACKAGES.md\`。**现行 R1 源码审查**：\`R1@5f7a2cf42c1a30434431af18e2fb26741075ad2f\`，不是完整 Windows/实物验证。
+**2026-11-21｜研究分支** `research/r1-scan-configuration-20261120`｜**状态** `USER_CONFIRMED_BASIS / RESEARCH_PROPOSED_DESIGN / R1_SOURCE_GAP / FIELD_NOT_VERIFIED`  
+**当前产品依据**：`Project_Management@6d2a476de8eba752a227a02dc77b0fc5d30296aa` 中的 `docs/project-management/current/README.md`、`00_DECISIONS_AND_SUPERSESSION.md`、`01_PRODUCT_SYSTEM.md`、`02_ECU_PROJECT_TEST.md`、`03_PRODUCTION_STATION_AND_SCAN.md`、`07_SPECIALIST_WORKPACKAGES.md`。**现行 R1 源码审查**：`R1@5f7a2cf42c1a30434431af18e2fb26741075ad2f`，不是完整 Windows/实物验证。
 
 ## 0. 关键纠错：从现行产品任务出发，不再从旧 Recipe 类出发
 
@@ -22,7 +22,7 @@
 |---|---|---|---|
 | ScannerDevice | Windows 实际设备事件/USB HID 或串口流 | 可验证的设备身份、原始字符/字节、边界、连接/断线 | 认 ECU 型号、挑固件、执行设备 IO |
 | BarcodeFormat | 完整原始标签 | 语法、型号代码、唯一序列号、校验码、编码版本及错误原因 | 工程路径/本次生产软件版本 |
-| InstalledModelCatalog | 已批准安装/登记的多个 ECU 工程 | 唯一 \`ModelCode→ProjectId/ManifestPath\` 映射、路径/工程本身有效性 | 把未知型号猜成相似工程 |
+| InstalledModelCatalog | 已批准安装/登记的多个 ECU 工程 | 唯一 `ModelCode→ProjectId/ManifestPath` 映射、路径/工程本身有效性 | 把未知型号猜成相似工程 |
 | ProductionStation | 合法码/当前工程/实体按钮与夹具事件 | 从扫码进入完整工位状态机，串行单 DUT 处理 | 自己实现 CAN/UDS/烧录/TEST 底层 |
 | InspectionIdentity | 实体唯一编号、原始 ScanEvent、时间 | 同一实体跨多次检测保持同一身份，与实际 Run/Report 关联 | 把扫码次数、运行次数和唯一合格件数混为一谈 |
 
@@ -32,9 +32,9 @@
 
 ### 2.1 当前代码是怎样的？
 
-- \`AutoTest.Specialists/Scan/KeyboardWedgeCapture\` + \`BarcodeInputRouter\` + \`IdentityRuleSet\` + \`ProjectScanMatcher\` 存在。
-- WPF \`MainWindow.xaml.cs\` 的 \`ScannerEntry_TextInput\`、\`ScannerEntry_KeyDown\` 依赖**输入框焦点**并对 Enter 完成采集；\`MainWindowViewModel\` 调用 \`MatchAsync\`。它不自动证明字符来自特定扫描枪。
-- \`SerialBarcodeCapture.cs\` 只有 \`IVerifiedBarcodeLineSource\` 的抽象读取，源码明确没有打开 Windows SerialPort，**不构成真实 COM 枪完成**。
+- `AutoTest.Specialists/Scan/KeyboardWedgeCapture` + `BarcodeInputRouter` + `IdentityRuleSet` + `ProjectScanMatcher` 存在。
+- WPF `MainWindow.xaml.cs` 的 `ScannerEntry_TextInput`、`ScannerEntry_KeyDown` 依赖**输入框焦点**并对 Enter 完成采集；`MainWindowViewModel` 调用 `MatchAsync`。它不自动证明字符来自特定扫描枪。
+- `SerialBarcodeCapture.cs` 只有 `IVerifiedBarcodeLineSource` 的抽象读取，源码明确没有打开 Windows SerialPort，**不构成真实 COM 枪完成**。
 - 过去研究同时出现“必为键盘枪”和“必为 USB/COM 枪”的判断，都未见当前设备枚举/型号实测；不可武断指定一个。
 
 ### 2.2 可执行的设备适配设计（研究建议）
@@ -43,12 +43,12 @@
 |---|---|---|---|
 | USB HID Keyboard Wedge | 键盘字符经过正常焦点进入 WPF；必要时经 Win32 Raw Input 区分设备来源 | 原始字符流、终止键、超时和最大长度 | 普通 TextBox 无法证实设备身份，尤其人工键盘/粘贴/编辑焦点误入；不能全局 Hook 抢走工程师键盘 |
 | USB HID POS Scanner | Windows POS BarcodeScanner API 枚举/Claim/Enable/DataReceived | 设备报出完整扫码数据及可用 symbology 字段 | 必须真实设备支持并配置为 POS 模式；不是所有 HID 枪都兼容 |
-| USB CDC / 虚拟 COM 或传统串口 | Windows 枚举 COM 与绑定稳定设备实例，\`SerialPort\`/BaseStream | 增量字节缓冲、CR/LF/CRLF 或厂商协议分帧 | DataReceived 不是“每字节一个事件”；背压、断线、重连、重复尾缀、防止粘包/半包 |
+| USB CDC / 虚拟 COM 或传统串口 | Windows 枚举 COM 与绑定稳定设备实例，`SerialPort`/BaseStream | 增量字节缓冲、CR/LF/CRLF 或厂商协议分帧 | DataReceived 不是“每字节一个事件”；背压、断线、重连、重复尾缀、防止粘包/半包 |
 | 已有未知/厂商模式 | 现场设备说明 + PnP/USB 实际枚举 | 先取得原始样本再设计 | 不为未有的设备写假驱动 |
 
 **建议界面**：“设置 → 生产设备 → 扫码枪”只需：设备类型（自动识别候选/手选）、实例或 COM、串口速率/参数（仅在真实串口模式）、终止符、预览原始扫码、连接状态、测试一次。编码及型号工程绑定**另在生产配置**。HID POS/COM 作为实际支持的不同适配器，不在同一时刻抢占多个物理输入源。
 
-**输入处理约束**：每次 ScanEvent 有 \`RawText\`、\`Origin/DeviceIdentity\`（真实可证明时）、\`CapturedAt\`、\`Terminator\`、\`DecodeStatus\`、\`BarcodeVersion\`、\`ModelCode\`、\`DutSerial\`。只删除已明确配置的传输结束符，**不对 serial 做 Trim/大小写转换/数值转换或去前导零**。键盘、粘贴和工程师调试录入可作为明确标记的 \`Manual\` 来源，但只有真实可验证设备和政策满足时才用于无人值守生产。输入长度有界；禁止控制字符混入业务编号；CRLF 不应产生两次扫描。
+**输入处理约束**：每次 ScanEvent 有 `RawText`、`Origin/DeviceIdentity`（真实可证明时）、`CapturedAt`、`Terminator`、`DecodeStatus`、`BarcodeVersion`、`ModelCode`、`DutSerial`。只删除已明确配置的传输结束符，**不对 serial 做 Trim/大小写转换/数值转换或去前导零**。键盘、粘贴和工程师调试录入可作为明确标记的 `Manual` 来源，但只有真实可验证设备和政策满足时才用于无人值守生产。输入长度有界；禁止控制字符混入业务编号；CRLF 不应产生两次扫描。
 
 ### 2.3 成熟产品的实际异常处理
 
@@ -66,23 +66,23 @@
 
 ## 3. 条码编码：用户确认的是“型号 + 唯一编号”，不是强制 UT1 细节
 
-**业务必须有**：\`ModelCode\` 与不会因软件/硬件升级变化的 \`DutSerial\`。用户允许自主定义编码，但未批准特定长度、符号、CRC、H02 版字段和打印设备。
+**业务必须有**：`ModelCode` 与不会因软件/硬件升级变化的 `DutSerial`。用户允许自主定义编码，但未批准特定长度、符号、CRC、H02 版字段和打印设备。
 
-**当前候选可沿用并精简** \`UT1-EPBA-H02-000000123456-4372\`：
-- \`UT1\` 是版本，\`EPBA\` 是工程型号编码，\`H02\` 是可选的有业务依据的 HW 版，\`000000123456\` 是序列号，末尾 CRC16 只检错；
-- 如果真实生产不需要按硬件版本分工程，\`H02\` 不应迫使用户再建独立 ProductVariant 配方层。一个 ECU 工程可以定义允许或需警告的硬件修订范围，但实际只绑定**型号工程**。
-- 如果客户标签已有其他格式，则在其实际合法定义里提取 \`ModelCode\` 与 \`DutSerial\`，不要通过任意 Regex 把旧 SN 解释为新型号。若旧码不携带型号，正式全自动跨工程就需要人工明确工程上下文；不能声称“扫码自动识别型号”。
+**当前候选可沿用并精简** `UT1-EPBA-H02-000000123456-4372`：
+- `UT1` 是版本，`EPBA` 是工程型号编码，`H02` 是可选的有业务依据的 HW 版，`000000123456` 是序列号，末尾 CRC16 只检错；
+- 如果真实生产不需要按硬件版本分工程，`H02` 不应迫使用户再建独立 ProductVariant 配方层。一个 ECU 工程可以定义允许或需警告的硬件修订范围，但实际只绑定**型号工程**。
+- 如果客户标签已有其他格式，则在其实际合法定义里提取 `ModelCode` 与 `DutSerial`，不要通过任意 Regex 把旧 SN 解释为新型号。若旧码不携带型号，正式全自动跨工程就需要人工明确工程上下文；不能声称“扫码自动识别型号”。
 - CRC 只能发现传输错误，**不能证明贴在板子上的 ECU 就是这个型号**。是否需要 ECU DID 二次核对，必须依据真实支持与生产策略确定。
 
-**推荐下一步做法**：保留已实现 UT1 解析器作为试验候选，但不把它硬编码为唯一生产标签格式；以已知示例真实扫出结果、标签机器可读能力和编号发行规则，最终定 \`ModelCode/SN\` 取值、是否需要 HW、长度/校验。
+**推荐下一步做法**：保留已实现 UT1 解析器作为试验候选，但不把它硬编码为唯一生产标签格式；以已知示例真实扫出结果、标签机器可读能力和编号发行规则，最终定 `ModelCode/SN` 取值、是否需要 HW、长度/校验。
 
 ## 4. 一个型号一个工程：生产扫码不再进行文件级配方选择
 
 ### 4.1 站点工程目录（研究最小方案）
 
-\`InstalledModelProject\`：\`ModelCode\`、\`ProjectId\`、\`CanonicalManifestPath\`、\`ModelDeclaredInProject\`、\`LastVerifiedRevision/SHA\`、\`Enabled\`。由工程师安装/打开时注册和显式更新，不能从外部目录扫到类似文件就自动授权当成产品工程。
+`InstalledModelProject`：`ModelCode`、`ProjectId`、`CanonicalManifestPath`、`ModelDeclaredInProject`、`LastVerifiedRevision/SHA`、`Enabled`。由工程师安装/打开时注册和显式更新，不能从外部目录扫到类似文件就自动授权当成产品工程。
 
-- \`ModelCode\` 全站点唯一对应一个当前有效工程，重复绑定必须先处理；
+- `ModelCode` 全站点唯一对应一个当前有效工程，重复绑定必须先处理；
 - 每次跨工程先核对目标路径、工程 ID/型号、文件 SHA、当前无运行、保存已完成/草稿可恢复；
 - **当前同型号**：不弹窗，只准备当前工程；**已知异型号**：一次确认后切换并读取该工程固有的 DBC/TEST/固件/Flash/生产配置；**未知**：拒绝并指向工程安装/型号登记；
 - 不做任意 Model+HW+WorkOrder+Recipe 的必填多级路由，不因当前测试者临时勾选了几个用例就改变生产执行范围；
@@ -102,7 +102,7 @@
 
 ## 5. 生产状态机：已确认业务顺序与未证实硬件边界分开
 
-\`\`\`text
+```text
 WAIT_SCAN
   -> SCAN_COMPLETE/VALIDATE_MODEL_AND_SERIAL
       -> SAME_MODEL | OTHER_KNOWN_MODEL_CONFIRM_AND_SWITCH | REJECT
@@ -118,9 +118,9 @@ WAIT_SCAN
   -> RECORD_FINALIZING / REPORT_PERSISTED
   -> CONFIGURED_FINISH / RELEASE_CLAMP_IF_CONDITIONS_MET
   -> RESULT_DISPLAYED / WAIT_SCAN [上一台结果保留至下一有效扫码]
-\`\`\`
+```
 
-**物理验证缺口必须明确写给 DEVICE/FW**：真实启动键/停止键究竟接在哪个主控引脚、USB 如何上报？夹具 0x18/0x19 是动作请求还是有真实机械位置反馈？如果没有传感器，能够证明夹紧到位的是什么？上电已按住的启动键是否会误发？实体停止在 Flash 擦除过程中怎样传入 CancellationToken？用户没有授权 AI 假设存在 GPIO/USB 输入，故所有这些节点在软件设计中必须标记 \`HARDWARE_INPUT_NOT_VERIFIED\`，不能默认自动 PASS。
+**物理验证缺口必须明确写给 DEVICE/FW**：真实启动键/停止键究竟接在哪个主控引脚、USB 如何上报？夹具 0x18/0x19 是动作请求还是有真实机械位置反馈？如果没有传感器，能够证明夹紧到位的是什么？上电已按住的启动键是否会误发？实体停止在 Flash 擦除过程中怎样传入 CancellationToken？用户没有授权 AI 假设存在 GPIO/USB 输入，故所有这些节点在软件设计中必须标记 `HARDWARE_INPUT_NOT_VERIFIED`，不能默认自动 PASS。
 
 **故障原则**：普通 UI 编辑错误不等于设备危险电气状态；实际 FLASH 中断后 ECU 软件状态是否可运行是独立技术事实，不能无证据自动恢复或重复写入。FAIL 后夹具保持/释放尚未批准，不将脚本中的继续/清理语义替换成硬编码。
 
@@ -129,13 +129,13 @@ WAIT_SCAN
 ## 6. 批次/重复扫描/检验历史：严谨但不过度配置
 
 至少定义：
-- \`ScanEventId\`：一次真实扫描输入，有效/无效皆有设备事件结果；
-- \`DutSerial\`：全局唯一实体号（需发行方确认唯一范围），不同次检测同一个 ID；
-- \`InspectionId\`：扫码被站点接受后，本次单台检查身份；如果后续夹具/烧录失败，也应有本次记录；
-- \`FlashAttemptId\`：本次烧录尝试，独立保存 JobSHA、阶段与结果（每次正式检测有一次新的尝试，不自动重试）；
-- \`CaseAttemptId/RunId/StepOccurrenceId\`：实际 TEST 用例执行事实；多个用例归于同一 Inspection；
-- \`ReportId\`：一次 Inspection 的单台报告/证据；
-- \`ReleaseDecision\`：若存在正式出厂放行策略，另于 TEST PASS 与 Flash ACK，需明确质量规则。
+- `ScanEventId`：一次真实扫描输入，有效/无效皆有设备事件结果；
+- `DutSerial`：全局唯一实体号（需发行方确认唯一范围），不同次检测同一个 ID；
+- `InspectionId`：扫码被站点接受后，本次单台检查身份；如果后续夹具/烧录失败，也应有本次记录；
+- `FlashAttemptId`：本次烧录尝试，独立保存 JobSHA、阶段与结果（每次正式检测有一次新的尝试，不自动重试）；
+- `CaseAttemptId/RunId/StepOccurrenceId`：实际 TEST 用例执行事实；多个用例归于同一 Inspection；
+- `ReportId`：一次 Inspection 的单台报告/证据；
+- `ReleaseDecision`：若存在正式出厂放行策略，另于 TEST PASS 与 Flash ACK，需明确质量规则。
 
 **立即有效的用户原则**：同一 Serial 不因重复扫描/不同 HW 标签而变为新的实体；再次正式检测必须重新烧录；所有尝试独立报告，旧 PASS/FAIL 不被覆盖。  
 **仍是研究而非政策**：首次合格、最终合格、复检统计、批次起止、首次已 PASS 再扫是否提示/限制、硬件身份 DID 是否必须通过，避免擅定为新工位弹窗。
@@ -156,13 +156,13 @@ WAIT_SCAN
 
 | 精确代码 | 当前 R1 能力 | 按新基线整改 |
 |---|---|---|
-| \`MainWindow.ScannerEntry_*\` / \`KeyboardWedgeCapture\` | 需要编辑框焦点的键盘文本+Enter | 真设备识别适配器 + 生产页面接收，单一可验证完整 ScanEvent |
-| \`SerialBarcodeCapture\` | 无实际 COM 打开，接口抽象 | 由实物类型确认后实现 COM/USB POS/HID，半包/双尾缀/断连验证 |
-| \`Ut1BarcodeCodec\` | CRC + Product/HW/SN 候选 | 编码格式仍候审；按工程 ModelCode 识别，不强迫 ProductVariant/配方层 |
-| \`ProjectScanMatcher\` / \`ScanRecipePreparationService\` | 依当前工程扫描、多层 Recipe，冻结 TEST 内 CanTool XML Job，结果可应用人工 TEST 选择 | 迁移成 \`ModelCode→InstalledProject\` 查找/切工程 + 该工程**当前生产资源**检查，不再对生产扫描选择 TEST 子集 |
-| \`ProjectRunSelectionState\` | 开发临时勾选用例 | 生产忽略临时勾选，读取工程有序 Enabled 树 |
-| \`ProductionWorkflow\` | FLASH→TEST 的接口雏形，但未接真实现场且 Flash 阶段会记 \`RunFactKind.MockObservation\` | 接真正 \`ProductionStageExecutor\`、Flash/TEST 原始证据事实，绝不把 MockObservation 用作正式检验通过 |
-| \`RealTestWorkbenchService\` | TEST Development/Diagnostic 执行与 RECORD 后端 | 需要统一 Production Inspection/CaseAttempt 映射，不复制一个新真实 TEST 执行器 |
+| `MainWindow.ScannerEntry_*` / `KeyboardWedgeCapture` | 需要编辑框焦点的键盘文本+Enter | 真设备识别适配器 + 生产页面接收，单一可验证完整 ScanEvent |
+| `SerialBarcodeCapture` | 无实际 COM 打开，接口抽象 | 由实物类型确认后实现 COM/USB POS/HID，半包/双尾缀/断连验证 |
+| `Ut1BarcodeCodec` | CRC + Product/HW/SN 候选 | 编码格式仍候审；按工程 ModelCode 识别，不强迫 ProductVariant/配方层 |
+| `ProjectScanMatcher` / `ScanRecipePreparationService` | 依当前工程扫描、多层 Recipe，冻结 TEST 内 CanTool XML Job，结果可应用人工 TEST 选择 | 迁移成 `ModelCode→InstalledProject` 查找/切工程 + 该工程**当前生产资源**检查，不再对生产扫描选择 TEST 子集 |
+| `ProjectRunSelectionState` | 开发临时勾选用例 | 生产忽略临时勾选，读取工程有序 Enabled 树 |
+| `ProductionWorkflow` | FLASH→TEST 的接口雏形，但未接真实现场且 Flash 阶段会记 `RunFactKind.MockObservation` | 接真正 `ProductionStageExecutor`、Flash/TEST 原始证据事实，绝不把 MockObservation 用作正式检验通过 |
+| `RealTestWorkbenchService` | TEST Development/Diagnostic 执行与 RECORD 后端 | 需要统一 Production Inspection/CaseAttempt 映射，不复制一个新真实 TEST 执行器 |
 
 ## 9. 最低验证矩阵
 
