@@ -42,7 +42,12 @@ public static class NativeFlashProfileStore
         if (!full.StartsWith(fullRoot + Path.DirectorySeparatorChar,
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("资源路径越过工程根目录。");
-        // Junctions and symlinks must not redirect trusted project assets.
+        // Reject both directory junctions and symlinked target files. Otherwise
+        // a manifest-local path could resolve to a mutable file outside the ECU
+        // project without its change being visible in the relative path.
+        if (File.Exists(full) &&
+            (File.GetAttributes(full) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("工程受控文件不能是链接。");
         var parent = Path.GetDirectoryName(full)!;
         for (var probe = parent; probe.Length >= fullRoot.Length;
              probe = Path.GetDirectoryName(probe) ?? "")
