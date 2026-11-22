@@ -273,8 +273,17 @@ public partial class NativeFlashProfileWindow : Window
         {
             if (!await SaveAsync())
             {
-                StatusLabel.Text += "。窗口保留，防止未保存内容丢失。";
-                return;
+                // A malformed draft or damaged on-disk profile must not trap
+                // an engineer in a window that can never close. This warning
+                // is displayed ONLY for exceptional invalid/failed saves.
+                var choice = MessageBox.Show(this,
+                    "当前原生烧录草稿没有成功保存。\\n" +
+                    StatusLabel.Text + "\\n\\n" +
+                    "选择“是”将放弃本次未保存的编辑并关闭窗口；磁盘上原文件和备份不受影响。\\n" +
+                    "选择“否”返回编辑继续修正。",
+                    "存在未保存的无效配置", MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning, MessageBoxResult.No);
+                if (choice != MessageBoxResult.Yes) return;
             }
             _closeApproved = true;
             Close();
