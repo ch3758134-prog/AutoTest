@@ -1,0 +1,42 @@
+name: R1 candidate Windows build and unit gates
+
+on:
+  push:
+    branches:
+      - feature/r1-usb-com-scan-preflight-20261122
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gates:
+    name: Windows .NET 10 WPF build and regression tests
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@v4
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.400'
+      - name: Report candidate SHA
+        shell: pwsh
+        run: |
+          git rev-parse HEAD
+          dotnet --info
+      - name: Debug solution source gate
+        shell: pwsh
+        run: ./HOST/scripts/r1-verify.ps1 -Configuration Debug
+      - name: Release solution source gate
+        shell: pwsh
+        run: ./HOST/scripts/r1-verify.ps1 -Configuration Release
+      - name: Retain exact build and test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r1-windows-build-test-logs
+          path: HOST/validation-logs/
+          if-no-files-found: warn
+          retention-days: 14
