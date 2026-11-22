@@ -188,6 +188,8 @@
       ToolTip="工程编辑与自动 TEST 调试"/>
      <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}" Margin="0,0,12,0"
       Style="{StaticResource AtPrimaryButton}" ToolTip="显示实际 ECU 用例树及执行监视，不自动启动烧录"/>
+     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
      <Button Content="▦ 工程" Command="{Binding OpenProjectCommand}" Margin="0,0,8,0"/>
      <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
       VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis"
@@ -201,8 +203,7 @@
      <Button Content="▷ 所选用例检查" Command="{Binding CheckActiveCommand}"
       Style="{StaticResource AtPrimaryButton}" Foreground="#FFFFFF"
       Margin="0,0,6,0"/>
-     <Button Content="运行记录" IsEnabled="False"
-      ToolTip="真实项目级运行记录尚未产生，不展示演示记录" Margin="0"/>
+     </StackPanel>
     </StackPanel>
    </DockPanel>
   </Border>
