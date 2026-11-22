@@ -41,6 +41,11 @@ public sealed class RealTestWorkbenchService
     public bool IsHardwareConnected => _hardware.IsConnected;
     public long ConnectedStationEpoch => _hardware.CurrentStationEpoch;
     public event Action<RealStepFact>? StepReported;
+    public event Action<StepId, string, TestPhase>? StepBegan;
+    /// <summary>Developer TEST observations, never formal production release results.</summary>
+    public event Action<TestDocumentId, string>? DevelopmentRunStarted;
+    public event Action<TestDocumentId, RealRunResult>? DevelopmentRunCompleted;
+    public event Action<TestDocumentId, string>? DevelopmentRunFailed;
 
     public PreparedTestPlan Prepare(TestDocument document) =>
         new PlanCompiler().Prepare(document, allowRealOperations: true);
@@ -70,6 +75,7 @@ public sealed class RealTestWorkbenchService
             throw new InvalidOperationException("Another test is already running.");
         ConfiguredStationActionPort? actions = null;
         RealRunEvidenceRecorder? evidence = null;
+        var startedReporting = false;
         try
         {
             var openingEpoch = _hardware.CurrentStationEpoch;
@@ -138,6 +144,11 @@ public sealed class RealTestWorkbenchService
                     mappings, jobs, project.RootDirectory, plan.Fingerprint,
                     confirmation, flashConfirmation, evidence);
             var run = new RealRunCoordinator(_signals, actions, wave, flash);
+            run.StepStarted += (step, name, phase) =>
+            {
+                try { StepBegan?.Invoke(step, name, phase); }
+                catch { /* Observer errors must never stop physical TEST. */ }
+            };
             run.StepCompleted += fact =>
             {
                 try { StepReported?.Invoke(fact); }
@@ -161,6 +172,9 @@ public sealed class RealTestWorkbenchService
             if (!_hardware.IsConnected ||
                 _hardware.CurrentStationEpoch != openingEpoch)
                 throw new IOException("RUN RECORD 建立前设备会话改变；拒绝启动 DUT 步骤。");
+            startedReporting = true;
+            try { DevelopmentRunStarted?.Invoke(document.Id, document.Name); }
+            catch { /* UI observer cannot veto execution after authorization. */ }
             var finished = await session.ExecuteAsync(run, plan,
                 Path.Combine(project.RootDirectory, "test-records", "reports"), ct);
             var summary = await reports.ExportSummaryAsync(finished.Result.Run, ct);
@@ -171,11 +185,23 @@ public sealed class RealTestWorkbenchService
                 Verdict.Error => RealTestVerdict.Error,
                 _ => RealTestVerdict.Inconclusive
             };
-            return finished.Result with
+            var reported = finished.Result with
             {
                 Verdict = formalVerdict,
                 EvidencePath = finished.Reports.HtmlPath
             };
+            try { DevelopmentRunCompleted?.Invoke(document.Id, reported); }
+            catch { /* Production workbench is an observer, not a RECORD sink. */ }
+            return reported;
+        }
+        catch (Exception error)
+        {
+            if (startedReporting)
+            {
+                try { DevelopmentRunFailed?.Invoke(document.Id, error.Message); }
+                catch { /* Original TEST failure must be preserved. */ }
+            }
+            throw;
         }
         finally
         {
