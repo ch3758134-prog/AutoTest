@@ -1,5 +1,10 @@
 # AutoTest｜R1 SCAN 扫码枪与自动 TEST 配置匹配研究接管入口
 
+> **2026-11-21 晚间独立复审补充（优先读）：** [S-14｜按现行产品决策逐项审查 SCAN/FLASH/TEST/RECORD 及 R1 真实缺口](S-14_LATEST_SYSTEM_CLARIFICATION_INDEPENDENT_REVIEW_20261121.md)。包括新发现的 `ProjectDefinition` 无正式 `ModelCode` 字段、产线旧 TEST Flash Step 可能造成**双烧录**、实体 START 与机械夹具反馈未实测、20 项正式验收矩阵。与 S-11～S-13 并用；不另起多层 Recipe。
+>
+> **历史区阅读警示：** 本页下方「关键业务约束」「第一阶段必须提交」「S-01～S-10」均是过去研究原文及当时假设；凡出现 **“不允许扫码触发夹具”/“扫码后必须由 PC 确认开始”/“生产可 NoFlash”/“用 TEST Flash 步骤触发每次生产烧录”/“逐号或多级 Recipe 配置作为常规入口”/“独立工具强制共用工程烧录 Profile”**，已经明确被当前 `Project_Management/docs/project-management/current/00~03` 决策取代。**当前任务绝不能照抄历史候选段落实施**。
+>
+
 > **2026-11-21 最新现行业务基线已取代原 S-01～S-10 中部分生产设计。** 当前产品合同以 `Project_Management/docs/project-management/current/README.md` 和 `00_DECISIONS_AND_SUPERSESSION.md` 为先。**一个型号一个工程、扫码后夹紧等待实体 START、每次完整出厂必烧录、生产 Flash 在 TEST 之前、原生工程内固定烧录配置、独立工具无工程可用**已获用户确认。先前“复杂 Recipe+NoFlash/TEST Flash Step+PC 开始确认”不得继续当正式默认生产合同。该变更不删除旧研究原文，也不表示当前 R1 已实现。
 >
 > **本分支最新独立全量复核（先读这三份）：**
