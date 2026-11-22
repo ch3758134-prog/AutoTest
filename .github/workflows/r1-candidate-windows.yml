@@ -17,7 +17,7 @@ jobs:
   source-gates:
     name: Windows .NET 10 WPF build and regression tests
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 35
     steps:
       - name: Checkout exact candidate SHA
         uses: actions/checkout@v4
@@ -25,22 +25,23 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.400'
-      - name: Report candidate SHA
+      - name: Report candidate SHA and SDK
         shell: pwsh
         run: |
           git rev-parse HEAD
           dotnet --info
-      - name: Debug solution source gate
+      - name: Restore entire Windows solution
         shell: pwsh
-        run: ./HOST/scripts/r1-verify.ps1 -Configuration Debug
-      - name: Release solution source gate
+        run: dotnet restore HOST/AutoTest.sln
+      - name: Debug WPF and backend build
         shell: pwsh
-        run: ./HOST/scripts/r1-verify.ps1 -Configuration Release
-      - name: Retain exact build and test logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: r1-windows-build-test-logs
-          path: HOST/validation-logs/
-          if-no-files-found: warn
-          retention-days: 14
+        run: dotnet build HOST/AutoTest.sln -c Debug --no-restore
+      - name: Release WPF and backend build
+        shell: pwsh
+        run: dotnet build HOST/AutoTest.sln -c Release --no-restore
+      - name: Debug regression tests with hang diagnosis
+        shell: pwsh
+        run: dotnet test HOST/AutoTest.sln -c Debug --no-build --no-restore --blame-hang-timeout 180s
+      - name: Release regression tests with hang diagnosis
+        shell: pwsh
+        run: dotnet test HOST/AutoTest.sln -c Release --no-build --no-restore --blame-hang-timeout 180s
