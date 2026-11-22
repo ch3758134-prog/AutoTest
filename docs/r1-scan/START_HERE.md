@@ -1,5 +1,15 @@
 # AutoTest｜R1 SCAN 扫码枪与自动 TEST 配置匹配研究接管入口
 
+> **2026-11-21 最新现行业务基线已取代原 S-01～S-10 中部分生产设计。** 当前产品合同以 `Project_Management/docs/project-management/current/README.md` 和 `00_DECISIONS_AND_SUPERSESSION.md` 为先。**一个型号一个工程、扫码后夹紧等待实体 START、每次完整出厂必烧录、生产 Flash 在 TEST 之前、原生工程内固定烧录配置、独立工具无工程可用**已获用户确认。先前“复杂 Recipe+NoFlash/TEST Flash Step+PC 开始确认”不得继续当正式默认生产合同。该变更不删除旧研究原文，也不表示当前 R1 已实现。
+>
+> **本分支最新独立全量复核（先读这三份）：**
+> - [S-11｜真实扫码设备、编码、型号工程路由与生产工位](S-11_CURRENT_PRODUCT_SCAN_HARDWARE_ROUTE_AND_PRODUCTION_RESEARCH_20261121.md)
+> - [S-12｜烧录配置字段逐项接线、原生 Profile 与 CanTool 真实后端迁移](S-12_NATIVE_FLASH_CONFIGURATION_EXECUTION_AND_MIGRATION_RESEARCH_20261121.md)
+> - [S-13｜SCAN×FLASH×TEST×RECORD 系统合同、R1 源码差异及验收门禁](S-13_SCAN_FLASH_PRODUCTION_INTEGRATION_CONTRACT_AND_GAPS_20261121.md)
+>
+> **状态：`RESEARCH_COMPLETE_FOR_THIS_ROUND / R1_SOURCE_NOT_MIGRATED / WINDOWS_AND_FIELD_NOT_VERIFIED`**。S-07 的 UT1 编码/CRC 可作候审技术资产；S-09/S-10 的参数追踪与原生配置研究保留，但多层生产 Recipe、NoFlash、TEST Flash 步骤强绑定、独立工具与生产配置强共享等假设按现行 PM 被取代。
+
+
 **身份**：SCAN 扫码/编号/配置匹配与 R1 自动测试启动准备专业 AI。  
 **正式任务**：[Issue #72](https://github.com/ch3758134-prog/AutoTest/issues/72)。  
 **研究分支**：`research/r1-scan-configuration-20261120`；初始基于 `R1@94e82eddb03e69b428fd4c63c2093a570d979c4e`。  
