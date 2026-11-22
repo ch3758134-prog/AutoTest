@@ -125,15 +125,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         set
         {
             if (SetProperty(ref _selected, value))
-            {
-                RaisePropertyChanged(nameof(SelectedName));
-                RaisePropertyChanged(nameof(SelectedKind));
-                RaisePropertyChanged(nameof(SelectedState));
-                RaisePropertyChanged(nameof(SelectedExpected));
-                RaisePropertyChanged(nameof(SelectedActual));
-                RaisePropertyChanged(nameof(SelectedDetail));
-                RaisePropertyChanged(nameof(SelectedTime));
-            }
+                NotifySelectedReadout();
         }
     }
     public string SelectedName => Selected?.Name ?? "选择用例或步骤查看";
@@ -143,6 +135,17 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     public string SelectedActual => string.IsNullOrWhiteSpace(Selected?.Actual) ? "—" : Selected.Actual;
     public string SelectedDetail => string.IsNullOrWhiteSpace(Selected?.Detail) ? "暂无本次真实执行记录" : Selected.Detail;
     public string SelectedTime => string.IsNullOrWhiteSpace(Selected?.When) ? "—" : Selected.When;
+
+    private void NotifySelectedReadout()
+    {
+        RaisePropertyChanged(nameof(SelectedName));
+        RaisePropertyChanged(nameof(SelectedKind));
+        RaisePropertyChanged(nameof(SelectedState));
+        RaisePropertyChanged(nameof(SelectedExpected));
+        RaisePropertyChanged(nameof(SelectedActual));
+        RaisePropertyChanged(nameof(SelectedDetail));
+        RaisePropertyChanged(nameof(SelectedTime));
+    }
 
     private static void OnUi(Action action)
     {
@@ -425,6 +428,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
             node.Detail = fact.Detail;
             node.When = fact.At.ToLocalTime().ToString("HH:mm:ss.fff");
             Selected = node;
+            NotifySelectedReadout();
         }
         AddLog("步骤", fact.Type + " · " + fact.Status,
             fact.Actual + (fact.Detail.Length == 0 ? "" : " · " + fact.Detail));
@@ -434,6 +438,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     {
         if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
             matches[0].State = "研发 " + result.Verdict;
+        NotifySelectedReadout();
         MonitorMode = "研发 TEST 完成 · 非生产放行";
         LatestRunId = result.Run.Value.ToString("D");
         ReportPath = result.EvidencePath ?? "";
