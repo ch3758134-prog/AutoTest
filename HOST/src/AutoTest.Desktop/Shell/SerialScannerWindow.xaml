@@ -60,6 +60,9 @@
      <TextBlock Text="原始条码" Foreground="#697986"/>
      <TextBox Text="{Binding LastRaw}" IsReadOnly="True" TextWrapping="Wrap"
               MinHeight="50" Padding="6,4" Margin="0,4,0,10"/>
+     <TextBlock Text="串口原始 HEX" Foreground="#697986"/>
+     <TextBox Text="{Binding LastHex}" IsReadOnly="True" TextWrapping="Wrap"
+              FontSize="11" MaxHeight="52" Padding="6,4" Margin="0,4,0,8"/>
      <TextBlock Text="型号" Foreground="#697986"/>
      <TextBlock Text="{Binding LastModel}" Margin="0,2,0,8"/>
      <TextBlock Text="唯一编号" Foreground="#697986"/>
