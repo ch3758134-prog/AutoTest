@@ -30,6 +30,7 @@ public sealed class SerialPortBarcodeLineSource : IVerifiedBarcodeLineSource, IA
     private readonly SerialPort _port;
     private readonly SerialBarcodeFrameDecoder _decoder = new();
     private bool _disposed;
+    public string LastFrameHex { get; private set; } = "";
 
     private SerialPortBarcodeLineSource(SerialPort port) => _port = port;
 
@@ -74,6 +75,7 @@ public sealed class SerialPortBarcodeLineSource : IVerifiedBarcodeLineSource, IA
             if (value < 0) throw new IOException("扫码枪串口已经结束输入。");
             var frame = _decoder.Push((byte)value, DateTimeOffset.UtcNow);
             if (frame is null) continue;
+            LastFrameHex = frame.RawHex;
             if (!frame.Accepted)
                 throw new InvalidDataException("扫码枪数据帧无效：" + frame.Code);
             return frame.Text;
