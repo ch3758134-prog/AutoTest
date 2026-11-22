@@ -41,7 +41,7 @@ public sealed class SerialBarcodeFrameDecoder
     {
         if (_skipLf && value == (byte)'\n') { _skipLf = false; return null; }
         _skipLf = false;
-        if (value is (byte)'\r' or (byte)'\n')
+        if (value == (byte)'\r' || value == (byte)'\n')
         {
             var rejected = _reject;
             var text = _buffer.ToString();
