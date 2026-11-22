@@ -525,6 +525,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             // FlashLab specialist owns the exclusive native WinUSB handle.
             var window = new FlashLabWindow
             {
+                NativeProjectRoot = _workspace.Current?.RootDirectory,
+                NativeProjectModelCode = _workspace.Current?.Definition.EcuModelCode,
                 Owner = global::System.Windows.Application.Current.MainWindow,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
