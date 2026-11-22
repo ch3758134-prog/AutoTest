@@ -440,9 +440,17 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
             return;
         }
         var node = matches[0];
+        // A new occurrence must never show an earlier run's value as current.
         node.State = "执行中";
+        node.Actual = "";
+        node.Expected = "";
+        node.Quality = "";
+        node.Evidence = "";
+        node.Occurrence = "";
+        node.When = "";
         node.Detail = "真实 TEST 步骤已开始；等待实际结果及 RECORD 证据";
         Selected = node;
+        NotifySelectedReadout();
         TestState = PhaseLabel(phase) + " · " + name;
         AddLog("步骤", "执行中", name + " · " + PhaseLabel(phase));
     });
