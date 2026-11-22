@@ -118,6 +118,16 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
       HorizontalScrollBarVisibility="Disabled">
      <StackPanel Margin="1">
+      <Button Content="工程原生烧录配置…" Click="OpenNativeProfile_Click"
+        Background="#E7F4EF" BorderBrush="#D9E9E1" Foreground="#225845"
+        FontWeight="SemiBold" Margin="3,3,3,8"
+        ToolTip="手动编辑、自动保存到工程固定位置；独立工具可使用本地专属原生配置"
+        HorizontalAlignment="Stretch"/>
+      <TextBlock x:Name="NativeProfileLabel" Margin="7,0,7,5" Foreground="#375B73"
+        TextWrapping="Wrap" FontSize="11" Text="原生配置尚未载入"/>
+      <Expander Header="兼容历史 CanTool XML / JSON 导入" IsExpanded="False"
+        Margin="3,0,3,6">
+       <StackPanel>
       <Button Content="导入烧录配置目录…" Click="ImportThreeFiles_Click"
         Background="#E7F4EF" BorderBrush="#E7EFFB" Foreground="#3478D6" FontWeight="SemiBold" Margin="3,3,3,8"
         ToolTip="选择包含 Configuration.xml、HEX/S19/BIN 固件、SafetyFile.dll 的文件夹（包括常见子目录）。只读取并验证文件，不连接或擦写 ECU。"
