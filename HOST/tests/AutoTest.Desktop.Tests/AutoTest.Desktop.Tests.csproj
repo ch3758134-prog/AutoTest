@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><UseWPF>true</UseWPF></PropertyGroup>
   <ItemGroup>
+    <Using Include="System.IO" />
     <ProjectReference Include="../../src/AutoTest.Desktop/AutoTest.Desktop.csproj" />
     <ProjectReference Include="../../tools/AutoTest.LabLinkGui/AutoTest.LabLinkGui.csproj" />
   </ItemGroup>
