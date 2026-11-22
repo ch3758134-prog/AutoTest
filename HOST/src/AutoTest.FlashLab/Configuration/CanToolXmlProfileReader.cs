@@ -28,7 +28,7 @@ public sealed class CanToolParameter(string name, string description) : INotifyP
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-public sealed class CanToolXmlProfileReader
+public sealed class CanToolXmlProfileReader : IFlashParameterSource
 {
     private readonly XDocument? _document;
     private static readonly (string Name,string Description)[] Known =
@@ -121,6 +121,8 @@ public sealed class CanToolXmlProfileReader
         return new(document,Path.GetFullPath(path));
     }
     public string Get(string name) => Parameters.First(p=>p.Name==name).Value.Trim();
+    public IEnumerable<KeyValuePair<string,string>> FingerprintEntries() =>
+        Parameters.Select(p=>new KeyValuePair<string,string>(p.Name,p.Value.Trim()));
     public void Set(string name,string value) => Parameters.First(p=>p.Name==name).Value=value;
 
     public void LoadRelatedJson(string path)
