@@ -266,12 +266,13 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 continue;
             }
             var captured = result.Event;
+            var capturedHex = _source?.LastFrameHex ?? "";
             OnUi(() =>
             {
                 try
                 {
                     LastRaw = captured.Scan.Text;
-                    LastHex = _source?.LastFrameHex ?? "";
+                    LastHex = capturedHex;
                     var preview = ProductionBarcodePreflight.Inspect(
                         captured.Scan.Text, _workspace.Current?.Definition);
                     LastModel = preview.ModelCode ?? "";
