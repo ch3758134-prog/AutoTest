@@ -5,7 +5,7 @@
 - 最新回读的活跃 R1：`e5a9e13ad522ddaf9092f44099f2ef26bdf1e19b`（2026-11-21 研究快照；R1 如继续推进，集成前必须重新比对）
 - 接管原始 R1：`94e82eddb03e69b428fd4c63c2093a570d979c4e`
 - 任务入口： [START_HERE.md](START_HERE.md)
-- 研究状态：`W-00~10 RESEARCH_CANDIDATE / PENDING_REVIEW`；`FIELD_NOT_VERIFIED`；`NO_SOURCE_CHANGE`
+- 研究状态：`W-00~12 RESEARCH_CANDIDATE / PENDING_REVIEW`；`FIELD_NOT_VERIFIED`；`NO_SOURCE_CHANGE`
 
 ## 研究交付
 
@@ -24,6 +24,8 @@
 
 | **W-09** | [W-09｜独立波形专业工具与实时采集工作台](W-09_LIVE_WAVE_TOOL_CAPTURE_WORKBENCH_20261121.md) | 实时监视/手动或触发录制/专业图形/参考审核/优先保存原始数据、UI 不影响记录及 15 个工具验收用例 |
 | **W-10** | [W-10｜波形准确度保障与现场资格验收合同](W-10_ACCURACY_ASSURANCE_AND_FIELD_QUALIFICATION_20261121.md) | 从 CAN 字节、DBC、时间、丢帧、参考、算法到 RECORD 的 8 层准确性证明，18 个准确性故障向量和现场资格等级 |
+| **W-11（最新业务校准）** | [W-11｜现行项目管理澄清与旧研究取代台账](W-11_LATEST_PRODUCT_BASELINE_RECONCILIATION_20261121.md) | 以 Project_Management/current 为权威，明确无工程独立工具、资源共享、生产使用 TEST、修正旧研究的工程依赖 |
+| **W-12（最新架构方案）** | [W-12｜无工程多轨实时采集、参考与 TEST 判定合同](W-12_INDEPENDENT_MULTITRACK_CAPTURE_AND_TEST_JUDGEMENT_CONTRACT_20261121.md) | 统一真实 CAN/DBC/采集源、多信号共享时窗而不伪同步、独立资源→工程、质量/算法/正式记录及18场景验收 |
 
 ## 管理边界
 
@@ -40,3 +42,8 @@
 - **R1 实体验收**：使用实际 ECU/主控板/DBC、真采集、可控异常，对照通过/失败/不可判定/错误，所有 Run/Occurrence/原始 CAN/参考/算法版本/报告可追溯。
 
 研究记录：2026-11-21 首轮 W-00~03 完整源码与工业方法调查；同日第二轮 W-04~07 完成成熟产品、时序数学、参考治理与正式验收深研，全部仅是候审研究。最新 R1 与首轮 `fa3b18e...` 相比多 54 提交，主要涉及 WAVE 证据图性能、UI、硬件安全等；核心 comparator 与跨层 RECORD 缺口仍未消除。后续实施前必须再次回读最新 R1；当前无 Windows 编译/实 ECU 现场 PASS 证据。
+## 当前唯一有效产品澄清（2026-11-21 晚）
+
+**先读 [Project_Management 现行产品基线](https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/README.md) 与 W-11/W-12。** 专业波形工具可以**无工程**打开并在自己的 DBC/资源上下文中观察多条真实信号；选择当前工程资源是明确可选操作；工程里一套当前有效 DBC，正式 TEST 通过已冻结引用获取参考/判据。生产直接执行工程全部 Enabled 用例，不另加“波形生产配方”。旧 W-04/W-09 默认要求当前工程、旧 W-03/W-07 的单信号最终交付表述，已被新的产品约束修正；单信号仍可用于后端首个纵向算法验收，不是用户多轨工具终态。
+
+**现行状态**：研究文档已提交，R1/正式产品/USB 固件未在本轮修改，Windows/真 ECU 验收 NOT_RUN；WAVE-RECORD 判定证据型别冲突仍为源码阻断。最新 WAVE 核对 R1@5f7a2cf42c1a30434431af18e2fb26741075ad2f，研究分支独立推进，集成时再次比对 HEAD。
