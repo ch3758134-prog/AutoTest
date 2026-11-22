@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -71,7 +72,7 @@ public partial class NativeFlashProfileWindow : Window
                 : "已读取工程内配置 · 修订 " + _saved.Profile.Revision;
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
-                                     or UnauthorizedAccessException or NotSupportedException)
+                                     or UnauthorizedAccessException or NotSupportedException or JsonException)
         {
             StatusLabel.Text = "读取原生配置失败：" + error.Message;
             // The editor remains open, but subsequent save must not overwrite a bad file.
@@ -151,7 +152,7 @@ public partial class NativeFlashProfileWindow : Window
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
                                       FormatException or ArgumentException or NotSupportedException or
-                                      UnauthorizedAccessException)
+                                      UnauthorizedAccessException or JsonException)
         {
             StatusLabel.Text = "配置未保存：" + error.Message;
             return false;
@@ -185,7 +186,7 @@ public partial class NativeFlashProfileWindow : Window
             await SaveAsync();
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
-                                      or NotSupportedException or UnauthorizedAccessException)
+                                      or NotSupportedException or UnauthorizedAccessException or JsonException)
         { StatusLabel.Text = "固件导入失败：" + error.Message; }
     }
 
@@ -211,7 +212,7 @@ public partial class NativeFlashProfileWindow : Window
             await SaveAsync();
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
-                                      or NotSupportedException or UnauthorizedAccessException)
+                                      or NotSupportedException or UnauthorizedAccessException or JsonException)
         { StatusLabel.Text = "安全文件导入失败：" + error.Message; }
     }
 
@@ -226,7 +227,7 @@ public partial class NativeFlashProfileWindow : Window
                 $"计划 {job.PlannedBytes:N0} 字节，任务 SHA {job.Fingerprint[..12]}…；没有发送任何 CAN。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
-                                      or NotSupportedException or UnauthorizedAccessException)
+                                      or NotSupportedException or UnauthorizedAccessException or JsonException)
         { StatusLabel.Text = "原生烧录预检拒绝：" + error.Message; }
     }
 
@@ -255,7 +256,7 @@ public partial class NativeFlashProfileWindow : Window
         }
         catch (Exception error) when (error is IOException or FormatException or
                                       InvalidDataException or NotSupportedException or
-                                      UnauthorizedAccessException)
+                                      UnauthorizedAccessException or JsonException)
         { StatusLabel.Text = "生产配置未发布：" + error.Message; }
     }
 
