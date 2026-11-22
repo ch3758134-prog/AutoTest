@@ -23,6 +23,9 @@ public sealed class ProductionInspectionNode : BindableBase
     private string _expected = "";
     private string _detail = "";
     private string _when = "";
+    private string _occurrence = "";
+    private string _evidence = "";
+    private string _quality = "";
 
     public ProductionInspectionNode(string name, string kind,
         StepId? step = null, TestDocumentId? document = null)
@@ -43,10 +46,13 @@ public sealed class ProductionInspectionNode : BindableBase
     public string Expected { get => _expected; set => SetProperty(ref _expected, value); }
     public string Detail { get => _detail; set => SetProperty(ref _detail, value); }
     public string When { get => _when; set => SetProperty(ref _when, value); }
+    public string Occurrence { get => _occurrence; set => SetProperty(ref _occurrence, value); }
+    public string Evidence { get => _evidence; set => SetProperty(ref _evidence, value); }
+    public string Quality { get => _quality; set => SetProperty(ref _quality, value); }
 }
 
 public sealed record ProductionInspectionLog(string Time, string Source, string Event,
-    string Detail);
+    string Detail, string Occurrence = "");
 
 /// <summary>
 /// Production VIEW is an observer, not a second TEST engine. It displays only
@@ -135,6 +141,9 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     public string SelectedActual => string.IsNullOrWhiteSpace(Selected?.Actual) ? "—" : Selected.Actual;
     public string SelectedDetail => string.IsNullOrWhiteSpace(Selected?.Detail) ? "暂无本次真实执行记录" : Selected.Detail;
     public string SelectedTime => string.IsNullOrWhiteSpace(Selected?.When) ? "—" : Selected.When;
+    public string SelectedOccurrence => string.IsNullOrWhiteSpace(Selected?.Occurrence) ? "—" : Selected.Occurrence;
+    public string SelectedEvidence => string.IsNullOrWhiteSpace(Selected?.Evidence) ? "—" : Selected.Evidence;
+    public string SelectedQuality => string.IsNullOrWhiteSpace(Selected?.Quality) ? "—" : Selected.Quality;
 
     private void NotifySelectedReadout()
     {
@@ -145,6 +154,9 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         RaisePropertyChanged(nameof(SelectedActual));
         RaisePropertyChanged(nameof(SelectedDetail));
         RaisePropertyChanged(nameof(SelectedTime));
+        RaisePropertyChanged(nameof(SelectedOccurrence));
+        RaisePropertyChanged(nameof(SelectedEvidence));
+        RaisePropertyChanged(nameof(SelectedQuality));
     }
 
     private static void OnUi(Action action)
@@ -412,8 +424,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         node.State = "执行中";
         node.Detail = "真实 TEST 步骤已开始；等待实际结果及 RECORD 证据";
         Selected = node;
-        TestState = phase + " · " + name;
-        AddLog("步骤", "执行中", name + " · " + phase);
+        TestState = PhaseLabel(phase) + " · " + name;
+        AddLog("步骤", "执行中", name + " · " + PhaseLabel(phase));
     });
 
     private void OnStepReported(RealStepFact fact) => OnUi(() =>
@@ -422,30 +434,36 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         if (_stepIndex.TryGetValue(fact.Step, out var nodes) && nodes.Count == 1)
         {
             var node = nodes[0];
-            node.State = fact.Status.ToString();
+            node.State = StepStatusLabel(fact.Status);
             node.Actual = fact.Actual;
             node.Expected = fact.Expected;
             node.Detail = fact.Detail;
             node.When = fact.At.ToLocalTime().ToString("HH:mm:ss.fff");
+            node.Occurrence = fact.StepOccurrenceId == Guid.Empty ? "" :
+                fact.StepOccurrenceId.ToString("D");
+            node.Evidence = fact.Evidence ?? "";
+            node.Quality = fact.ObservationStatus?.ToString() ?? "";
             Selected = node;
             NotifySelectedReadout();
         }
-        AddLog("步骤", fact.Type + " · " + fact.Status,
-            fact.Actual + (fact.Detail.Length == 0 ? "" : " · " + fact.Detail));
+        AddLog("步骤", fact.Type + " · " + StepStatusLabel(fact.Status),
+            fact.Actual + (fact.Detail.Length == 0 ? "" : " · " + fact.Detail) +
+            (fact.LoopIteration is null ? "" : " · 循环第 " + fact.LoopIteration + " 次"),
+            fact.StepOccurrenceId);
     });
 
     private void OnDevelopmentRunCompleted(TestDocumentId id, RealRunResult result) => OnUi(() =>
     {
         if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
-            matches[0].State = "研发 " + result.Verdict;
+            matches[0].State = "研发" + VerdictLabel(result.Verdict);
         NotifySelectedReadout();
         MonitorMode = "研发 TEST 完成 · 非生产放行";
         LatestRunId = result.Run.Value.ToString("D");
         ReportPath = result.EvidencePath ?? "";
-        TestState = "研发 TEST 结束：" + result.Verdict;
+        TestState = "研发 TEST 结束：" + VerdictLabel(result.Verdict);
         Phase = "等待正式生产流程";
         AddLog("TEST", "研发运行完成",
-            "RunId " + LatestRunId + " · " + result.Verdict);
+            "RunId " + LatestRunId + " · " + VerdictLabel(result.Verdict));
     });
 
     private void OnDevelopmentRunFailed(TestDocumentId id, string error) => OnUi(() =>
@@ -458,9 +476,39 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         AddLog("TEST", "研发执行异常", error);
     });
 
-    private void AddLog(string source, string name, string detail)
+    private static string PhaseLabel(TestPhase phase) => phase switch
     {
-        Logs.Add(new(DateTime.Now.ToString("HH:mm:ss.fff"), source, name, detail));
+        TestPhase.Prepare => "准备",
+        TestPhase.Test => "测试",
+        _ => "清理"
+    };
+
+    private static string StepStatusLabel(RealStepStatus status) => status switch
+    {
+        RealStepStatus.Completed => "已完成",
+        RealStepStatus.Skipped => "跳过",
+        RealStepStatus.ConditionFalse => "条件不成立",
+        RealStepStatus.NoData => "无数据",
+        RealStepStatus.Timeout => "超时",
+        RealStepStatus.InvalidData => "数据无效",
+        RealStepStatus.DeviceError => "设备异常",
+        RealStepStatus.Cancelled => "已取消",
+        _ => status.ToString()
+    };
+
+    private static string VerdictLabel(RealTestVerdict verdict) => verdict switch
+    {
+        RealTestVerdict.Passed => "通过",
+        RealTestVerdict.Failed => "失败",
+        RealTestVerdict.Inconclusive => "结论不足",
+        RealTestVerdict.Aborted => "已中止",
+        _ => "异常"
+    };
+
+    private void AddLog(string source, string name, string detail, Guid? occurrence = null)
+    {
+        Logs.Add(new(DateTime.Now.ToString("HH:mm:ss.fff"), source, name, detail,
+            occurrence is { } id && id != Guid.Empty ? id.ToString("D") : ""));
         while (Logs.Count > 600) Logs.RemoveAt(0);
     }
 
