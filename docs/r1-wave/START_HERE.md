@@ -3,7 +3,16 @@
 **身份**：WAVE 真实采样、参考波形与 TEST 判定算法专业 AI。  
 **正式任务**：[Issue #71](https://github.com/ch3758134-prog/AutoTest/issues/71)。  
 **研究分支**：`research/r1-wave-judgement-20261120`；初始基于 `R1@94e82eddb03e69b428fd4c63c2093a570d979c4e`。  
-**状态**：`W-00~10 RESEARCHED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新二轮回读 `R1@e5a9e13ad522ddaf9092f44099f2ef26bdf1e19b`。
+**状态**：`W-00~12 RESEARCHED / LATEST_PM_RECONCILED / DESIGN_PENDING_REVIEW / IMPLEMENTATION_NOT_STARTED / FIELD_NOT_VERIFIED`；最新源码回读 `R1@5f7a2cf42c1a30434431af18e2fb26741075ad2f`。
+
+## 首先阅读｜现行产品合同已变更（2026-11-21 晚）
+
+**现行权威**：[Project_Management/current 产品基线](https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/README.md)。其中 **专业工具、资源、TEST、Production 独立定位且共享底层**，WAVE 必须在**无工程时可打开并实时采集/分析多个真实 DBC 信号**。工程允许纳入参考，TEST 通过工程已冻结引用正式判定，生产直接调用全套 Enabled TEST。此前 W-03/W-04/W-07/W-09 有“当前工程是工具入口”和“单信号可作最终工具验收”的旧倾向，此部分被最新业务规则取代。
+
+- **[W-11｜重新裁决旧研究与当前源码差异](W-11_LATEST_PRODUCT_BASELINE_RECONCILIATION_20261121.md)**：全量确认、保留、修订和旧设计取代。产品确认≠WAVE Schema 已批准。
+- **[W-12｜真正独立的多轨工具、共享后端、正式判定与验收](W-12_INDEPENDENT_MULTITRACK_CAPTURE_AND_TEST_JUDGEMENT_CONTRACT_20261121.md)**：无工程工具/工具可选工程 DBC/多信号同屏与录制/参考纳入工程/TEST+RECORD 证据/现场负例。
+
+**状态**：研究文件已落档；没有改 HOST/R1/main/固件；没有 Windows Build 或真实 ECU 数据准确度验收。现有 `WaveComparisonPendingArchive` 与 `RunStepFact.Validate` 仍存在合同阻断。
 
 ## 必须先完成的源码调查
 
