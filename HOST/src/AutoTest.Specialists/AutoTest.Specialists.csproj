@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <PackageReference Include="System.IO.Ports" />
     <ProjectReference Include="../AutoTest.Contracts/AutoTest.Contracts.csproj" />
   </ItemGroup>
 </Project>
