@@ -37,6 +37,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private string _modelCode = "";
     private string _status = "选择真实 USB 串口并连接";
     private string _lastRaw = "";
+    private string _lastHex = "";
     private string _lastModel = "";
     private string _lastSerial = "";
     private string _lastDecision = "";
@@ -135,6 +136,11 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     {
         get => _lastRaw;
         private set => SetProperty(ref _lastRaw, value);
+    }
+    public string LastHex
+    {
+        get => _lastHex;
+        private set => SetProperty(ref _lastHex, value);
     }
     public string LastModel
     {
@@ -238,6 +244,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
             catch (InvalidDataException error)
             {
+                OnUi(() => LastHex = _source?.LastFrameHex ?? "");
                 SetStatus(error.Message + "；已丢弃该帧");
                 continue;
             }
@@ -264,6 +271,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 try
                 {
                     LastRaw = captured.Scan.Text;
+                    LastHex = _source?.LastFrameHex ?? "";
                     var preview = ProductionBarcodePreflight.Inspect(
                         captured.Scan.Text, _workspace.Current?.Definition);
                     LastModel = preview.ModelCode ?? "";
