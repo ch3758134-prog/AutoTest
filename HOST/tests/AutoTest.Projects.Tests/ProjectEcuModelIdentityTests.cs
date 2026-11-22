@@ -1,3 +1,4 @@
+using System.IO;
 using AutoTest.Projects.Project;
 using Xunit;
 
