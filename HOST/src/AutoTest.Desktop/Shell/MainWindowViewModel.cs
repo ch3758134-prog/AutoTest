@@ -115,6 +115,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         _realTest = realTest;
         _liveSignals = liveSignals;
         InitializeScannerWorkbench();
+        InitializeProductionWorkspace();
         _newDialog = newDialog;
         _fileDialogs = fileDialogs;
         _dbcDialogs = dbcDialogs;
@@ -927,6 +928,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public async Task ShutdownAsync()
     {
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
+        _productionInspection.Dispose();
         await _scannerWorkbench.DisposeAsync();
         try { await _hardware.DisposeAsync(); }
         catch (Exception error)
