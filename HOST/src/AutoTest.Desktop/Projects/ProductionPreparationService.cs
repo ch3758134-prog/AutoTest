@@ -117,13 +117,15 @@ public static class ProductionPreparationService
                 caseAsset.Revision, caseAsset.Sha256));
         }
 
-        var native = await NativeFlashProfileStore.LoadAsync(opened.RootDirectory, ct)
-            .ConfigureAwait(false)
-            ?? throw new InvalidDataException("未配置型号工程当前原生烧录 Profile。");
+        // Never promote an autosaved engineering draft into production.
+        var native = await NativeFlashPublicationStore.LoadPublishedAsync(
+            opened.RootDirectory, ct).ConfigureAwait(false)
+            ?? throw new InvalidDataException("该型号工程尚未发布当前有效烧录配置。");
         if (native.Profile.EcuModelCode != modelCode)
-            throw new InvalidDataException("原生 Flash Profile 与扫描型号不一致。");
-        var frozenJob = await Task.Run(() => NativeFlashJobBuilder.Freeze(
-            native.Profile, opened.RootDirectory), ct).ConfigureAwait(false);
+            throw new InvalidDataException("已发布 Flash Profile 与扫描型号不一致。");
+        var frozenJob = await Task.Run(() =>
+            NativeFlashPublicationStore.FreezePublished(opened.RootDirectory, native),
+            ct).ConfigureAwait(false);
         var pinned = string.Join("\n",
             "AUTOTEST-PRODUCTION-PREPARE-V1",
             modelCode, dutSerial, actual.Id.Value.ToString("D"), manifestSha,
