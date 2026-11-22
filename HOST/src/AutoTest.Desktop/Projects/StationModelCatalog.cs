@@ -124,15 +124,20 @@ public sealed class StationModelCatalog
                 "登记的型号工程不在原路径；没有执行任何工位动作。");
         try
         {
+            var before = await File.ReadAllBytesAsync(selected.ManifestPath, ct)
+                .ConfigureAwait(false);
             var definition = await ProjectRepository.OpenDefinitionAsync(
                 selected.ManifestPath, ct).ConfigureAwait(false);
+            var after = await File.ReadAllBytesAsync(selected.ManifestPath, ct)
+                .ConfigureAwait(false);
+            if (!SHA256.HashData(before).AsSpan().SequenceEqual(SHA256.HashData(after)))
+                return new("STATION_PROJECT_CHANGED_DURING_LOOKUP", selected,
+                    null, null, "工程清单在型号匹配过程中发生修改，请重新扫码。");
             if (definition.Id.Value.ToString("D") != selected.ProjectId ||
                 definition.EcuModelCode != modelCode)
                 return new("STATION_MODEL_CHANGED", selected, definition, null,
                     "登记工程已改变正式型号或身份，必须重新登记。");
-            var bytes = await File.ReadAllBytesAsync(selected.ManifestPath, ct)
-                .ConfigureAwait(false);
-            var currentHash = Convert.ToHexString(SHA256.HashData(bytes));
+            var currentHash = Convert.ToHexString(SHA256.HashData(after));
             return new("STATION_MODEL_RESOLVED", selected, definition, currentHash,
                 "已找到唯一对应型号工程；资源 SHA、原生 Flash Job 与实体工位仍须预检。");
         }
