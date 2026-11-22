@@ -7,7 +7,7 @@ namespace AutoTest.Specialists.Scan;
 /// not a barcode. CR, LF and CRLF delimit one barcode; invalid frames are never
 /// silently truncated into a valid serial number.
 /// </summary>
-public sealed record SerialBarcodeFrame(string? Text, string Code)
+public sealed record SerialBarcodeFrame(string? Text, string Code, string RawHex = "")
 {
     public bool Accepted => Code == "SERIAL_FRAME_OK" && Text is not null;
 }
@@ -15,6 +15,7 @@ public sealed record SerialBarcodeFrame(string? Text, string Code)
 public sealed class SerialBarcodeFrameDecoder
 {
     private readonly StringBuilder _buffer = new();
+    private readonly List<byte> _rawBytes = new();
     private readonly int _maximumLength;
     private readonly TimeSpan _maximumGap;
     private DateTimeOffset? _lastByte;
@@ -32,6 +33,7 @@ public sealed class SerialBarcodeFrameDecoder
     public void Reset()
     {
         _buffer.Clear();
+        _rawBytes.Clear();
         _lastByte = null;
         _reject = null;
         _skipLf = false;
@@ -41,16 +43,19 @@ public sealed class SerialBarcodeFrameDecoder
     {
         if (_skipLf && value == (byte)'\n') { _skipLf = false; return null; }
         _skipLf = false;
+        if (_rawBytes.Count < 8192) _rawBytes.Add(value);
         if (value == (byte)'\r' || value == (byte)'\n')
         {
             var rejected = _reject;
             var text = _buffer.ToString();
+            var rawHex = Convert.ToHexString(_rawBytes.ToArray());
+            _rawBytes.Clear();
             _buffer.Clear();
             _lastByte = null;
             _reject = null;
             _skipLf = value == (byte)'\r';
-            if (rejected is not null) return new(null, rejected);
-            return text.Length == 0 ? null : new(text, "SERIAL_FRAME_OK");
+            if (rejected is not null) return new(null, rejected, rawHex);
+            return text.Length == 0 ? null : new(text, "SERIAL_FRAME_OK", rawHex);
         }
         if (_lastByte is { } previous && time - previous > _maximumGap && _buffer.Length > 0)
         {
