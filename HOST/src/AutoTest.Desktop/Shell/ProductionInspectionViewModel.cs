@@ -64,6 +64,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     private readonly Dictionary<TestDocumentId, List<ProductionInspectionNode>> _caseIndex = new();
     private int _refreshGeneration;
     private int _scanGeneration;
+    private string? _lastProjectPath;
     private string _projectName = "未打开 ECU 工程";
     private string _modelCode = "—";
     private string _dutSerial = "等待扫码";
@@ -152,17 +153,24 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
 
     private void OnProjectChanged(object? sender, EventArgs e) => OnUi(() =>
     {
-        Interlocked.Increment(ref _scanGeneration);
-        DutSerial = "等待扫码";
-        Phase = "等待扫码";
-        ProductionReadiness = "尚未完成正式生产配置预检";
-        FlashState = "未开始正式生产烧录";
-        TestState = "未开始正式生产 TEST";
-        MonitorMode = "未收到运行事实";
-        LatestRunId = "—";
-        ReportPath = "";
-        ObservedStepCount = 0;
-        Logs.Clear();
+        // ProjectWorkspaceService also fires CurrentChanged after autosaves.
+        // A revision update must not erase the scanner identity or active run.
+        var path = _workspace.Current?.ManifestPath;
+        if (!string.Equals(path, _lastProjectPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _lastProjectPath = path;
+            Interlocked.Increment(ref _scanGeneration);
+            DutSerial = "等待扫码";
+            Phase = "等待扫码";
+            ProductionReadiness = "尚未完成正式生产配置预检";
+            FlashState = "未开始正式生产烧录";
+            TestState = "未开始正式生产 TEST";
+            MonitorMode = "未收到运行事实";
+            LatestRunId = "—";
+            ReportPath = "";
+            ObservedStepCount = 0;
+            Logs.Clear();
+        }
         _ = RefreshAsync();
     });
 
@@ -313,14 +321,13 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         OnUi(() =>
         {
             var decision = _scanner.LastDecision;
+            if (string.IsNullOrWhiteSpace(decision)) return;
             var serial = _scanner.LastSerial;
             var model = _scanner.LastModel;
-            DutSerial = string.IsNullOrWhiteSpace(serial) ? "编号未识别" : serial;
             if (decision != "SCAN_MODEL_MATCHED" || string.IsNullOrWhiteSpace(serial))
             {
-                Phase = "扫码待处理";
-                ProductionReadiness = "本次扫码未匹配当前工程：" + decision;
-                AddLog("扫码", decision, model + " · " + serial);
+                // Rejected input does not replace the previously displayed DUT/result.
+                AddLog("扫码", "输入未接受：" + decision, model + " · " + serial);
                 return;
             }
             if (_realTest.IsRunning)
@@ -328,8 +335,17 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 AddLog("扫码", "已忽略", "当前研发 TEST 正在运行；不能切换本次 ECU");
                 return;
             }
+            DutSerial = serial;
             Phase = "已识别 ECU，核验生产配置";
             ProductionReadiness = "正在校验已发布烧录参数、固件与全部 Enabled 用例";
+            FlashState = "本次前置烧录尚未开始";
+            TestState = "本次正式生产 TEST 尚未开始";
+            MonitorMode = "未收到本次正式生产执行事实";
+            LatestRunId = "—";
+            ReportPath = "";
+            ObservedStepCount = 0;
+            Logs.Clear();
+            _ = RefreshAsync();
             AddLog("扫码", "型号与工程匹配", model + " · " + serial);
             _ = InspectProductionConfigurationAsync(_workspace.Current, model, serial,
                 Interlocked.Increment(ref _scanGeneration));
