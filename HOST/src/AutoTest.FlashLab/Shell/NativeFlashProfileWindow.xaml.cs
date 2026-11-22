@@ -230,6 +230,35 @@ public partial class NativeFlashProfileWindow : Window
         { StatusLabel.Text = "原生烧录预检拒绝：" + error.Message; }
     }
 
+    private async void Publish_Click(object sender, RoutedEventArgs e)
+    {
+        if (!await SaveAsync()) return;
+        try
+        {
+            var draft = (await NativeFlashProfileStore.LoadAsync(_root))!;
+            var preview = await Task.Run(() =>
+                NativeFlashJobBuilder.Freeze(draft.Profile, _root));
+            var confirm = MessageBox.Show(this,
+                "工程型号：" + draft.Profile.EcuModelCode + "\\n" +
+                "固件 SHA256：" + preview.FirmwareSha256 + "\\n" +
+                "真实编程任务 SHA256：" + preview.Fingerprint + "\\n\\n" +
+                "发布后生产预检将冻结此版本；后续草稿修改不影响已发布版本。" +
+                "\\n本操作不连接设备，也不代表已授权对 ECU 擦写。\\n\\n确认发布？",
+                "发布当前烧录配置", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No);
+            if (confirm != MessageBoxResult.Yes) return;
+            var published = await NativeFlashPublicationStore.PublishAsync(_root,
+                draft.ProfileSha256);
+            StatusLabel.Text = "已发布当前生产配置 · " +
+                published.PublishedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") +
+                " · Job " + published.JobFingerprint[..12] + "…";
+        }
+        catch (Exception error) when (error is IOException or FormatException or
+                                      InvalidDataException or NotSupportedException or
+                                      UnauthorizedAccessException)
+        { StatusLabel.Text = "生产配置未发布：" + error.Message; }
+    }
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private async void OnClosing(object? sender, CancelEventArgs e)
