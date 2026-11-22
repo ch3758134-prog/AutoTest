@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoTest · 全产品 UI 独立研究 R6</title>
+<style>
+:root{--bg:#f6f8fc;--surface:#fff;--border:#e3e9f1;--text:#223247;--muted:#667790;--accent:#1d69cb;--accent-wash:#eaf3ff;--warm:#b46a29;--ok:#177d5b}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.72 'Microsoft YaHei UI','Segoe UI',sans-serif}
+.top{height:62px;position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:0 24px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--border);backdrop-filter:blur(10px)}
+.logo{background:#226ed0;color:white;border-radius:8px;padding:5px 9px;font-weight:800;letter-spacing:.3px}
+.top strong{font-size:17px}.top .minor{font-size:13px;color:var(--muted)}.spacer{flex:1}.top a{font-size:13px;text-decoration:none;color:var(--accent);font-weight:600}.top button{border:1px solid #cdddf2;background:#fff;border-radius:7px;color:var(--text);padding:8px 12px;cursor:pointer}
+.layout{display:grid;grid-template-columns:246px minmax(0,1fr);max-width:1600px;margin:auto;min-height:calc(100vh - 62px)}
+aside{position:sticky;top:62px;height:calc(100vh - 62px);overflow:auto;border-right:1px solid var(--border);padding:24px 13px 24px 19px;background:#fff}
+aside .part{color:#8491a3;text-transform:uppercase;font-size:11px;font-weight:750;letter-spacing:.1em;margin:14px 10px 10px}
+aside a{display:flex;align-items:flex-start;gap:9px;text-decoration:none;color:#42526a;font-size:13px;line-height:1.42;border-radius:8px;padding:10px 9px;margin:3px 0}
+aside a:hover{background:var(--accent-wash);color:var(--accent)}aside a span{font-size:10px;color:#8da0b9;padding-top:2px}
+main{padding:28px clamp(20px,4vw,72px) 100px;min-width:0;max-width:1280px}
+.hero{background:#fff;border:1px solid var(--border);padding:30px 36px;border-radius:13px;box-shadow:0 3px 18px #273b5910;margin-bottom:24px}
+.kicker{color:#1e6ed1;font-size:12px;font-weight:700;letter-spacing:.14em}.hero h1{font-size:28px;line-height:1.35;margin:12px 0 7px}.hero p{color:#5f7189;line-height:1.8;margin:0}.pillrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:17px}.pill{padding:6px 10px;background:#eff5ff;color:#365b88;border-radius:99px;font-size:12px;font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}.card{background:#fff;padding:18px;border-radius:10px;border:1px solid var(--border);min-height:135px}.card b{display:block;margin:4px 0;font-size:16px}.card p{margin:0;color:#65758a;font-size:13px}.card .mark{color:#1b66be;font-size:12px;font-weight:800}
+.doc{background:white;border:1px solid var(--border);border-radius:13px;overflow:hidden;padding:26px 36px 50px}.doc>h1{display:none}h2{font-size:22px;margin:40px 0 18px;padding-top:10px;border-top:1px solid #e7edf5;scroll-margin-top:75px}h2:first-of-type{margin-top:4px;border-top:0}h3{font-size:17px;margin:26px 0 11px;color:#294a6a}h4{font-size:15px}p{margin:8px 0 15px}ul,ol{padding-left:25px}li{margin:5px 0}a{color:var(--accent)}blockquote{border-left:3px solid #2c77ce;margin:17px 0;padding:12px 18px;background:#f3f8ff;border-radius:0 8px 8px 0}blockquote p{margin:2px 0}pre{max-width:100%;overflow:auto;white-space:pre;padding:16px 20px;background:#f2f5f9;border:1px solid #e2e9f3;border-radius:8px;font-size:13px;line-height:1.6}code{font-family:Consolas,'Cascadia Code',monospace;color:#345a7e;font-size:.91em}pre code{color:#284560}table{width:100%;border-collapse:collapse;margin:17px 0 25px;font-size:13.5px;table-layout:auto}th,td{border-bottom:1px solid #e4ebf5;text-align:left;padding:11px 12px;vertical-align:top;min-width:85px;overflow-wrap:anywhere}th{background:#f1f5fb;color:#3e5875;font-weight:700}tr:nth-child(even) td{background:#fbfcfe}strong{color:#16334f}hr{border:0;border-top:1px solid var(--border);margin:30px 0}
+footer{color:#718098;font-size:12px;padding:28px 4px}
+@media(max-width:980px){.layout{display:block}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--border);padding:8px;display:flex;overflow:auto;gap:8px}aside .part{display:none}aside a{min-width:190px}.cards{grid-template-columns:1fr 1fr}main{padding:16px}.doc,.hero{padding:22px}}
+@media(max-width:600px){.cards{grid-template-columns:1fr}.top .minor{display:none}h2{font-size:19px}table{display:block;overflow:auto;white-space:normal}.doc{padding:17px}}
+@media print{.top,aside,.cards{display:none!important}.layout{display:block}main{max-width:none;padding:0}.doc,.hero{border:0;box-shadow:none}}
+</style></head>
+<body><header class="top"><span class="logo">AT</span><strong>AutoTest 产品研究</strong><span class="minor">全系统澄清后的 UI/UX 独立设计 · R6</span><div class="spacer"></div><a href="#section-8">查看 V5 差异</a><button onclick="window.print()">打印 / 保存为 PDF</button></header>
+<div class="layout"><aside><div class="part">章节导航</div><a href="#section-1"><span>01</span>0. 事实来源、效力与研究方法</a>
+<a href="#section-2"><span>02</span>1. 全系统产品边界：六块能力、三种使用场景</a>
+<a href="#section-3"><span>03</span>2. 全产品信息架构与主窗口</a>
+<a href="#section-4"><span>04</span>3. 工程与自动测试的完整交互研究</a>
+<a href="#section-5"><span>05</span>4. 五个独立工具的成熟产品设计</a>
+<a href="#section-6"><span>06</span>5. 生产检测：一屏完成，不靠操作员鼠标</a>
+<a href="#section-7"><span>07</span>6. RECORD 与报告：四层证据与真实计数</a>
+<a href="#section-8"><span>08</span>7. 实体与平台限制：不可因 UI 需要而编造功能</a>
+<a href="#section-9"><span>09</span>8. 对 V5 HTML 的逐项差异审查与处置</a>
+<a href="#section-10"><span>10</span>9. 统一组件、数据流与接口责任（WPF 实施边界）</a>
+<a href="#section-11"><span>11</span>10. 设计验收用的端到端任务场景（不只是页面清单）</a>
+<a href="#section-12"><span>12</span>11. 未决事项与不应自动引入的产品策略</a>
+<a href="#section-13"><span>13</span>12. 下一轮研发安排与客观交付门槛</a>
+<a href="#section-14"><span>14</span>最终研究判断</a></aside>
+<main><section class="hero"><div class="kicker">独立研究 · 现行业务基线</div><h1>从真实任务重新设计 AutoTest</h1><p>以最新项目管理决策为事实基线，重新划分开发测试、生产检测、独立工具和共享资源。研究结论不是旧 R1 界面翻新，也不是对 V5 原型的补丁。</p><div class="pillrow"><span class="pill">已回读 Project_Management 现行合同</span><span class="pill">30 项验收场景</span><span class="pill">11 项未决边界</span><span class="pill">设计候选 · 未实施 WPF</span></div></section>
+<div class="cards"><section class="card"><div class="mark">01 · 工程师</div><b>一套正式 TEST</b><p>一个型号一个工程；目录树、自动保存、真实调试、步骤证据连续一致。</p></section><section class="card"><div class="mark">02 · 工具</div><b>五种独立能力</b><p>手动台架、DBC、UDS、烧录、波形，无工程也能使用，资源按需关联。</p></section><section class="card"><div class="mark">03 · 生产</div><b>无人为鼠标启动</b><p>扫码、夹紧、实体键、每次烧录、全部启用测试、报告、结果保持。</p></section></div>
+<article class="doc"><h1>AutoTest｜全产品 UI/UX 独立研究与设计基线 R6</h1>
+<p><strong>研究日期</strong>：2026-11-21（按现行 GitHub 管理基线复核）<br />
+<strong>研究性质</strong>：完整产品研究与交互设计候选（DESIGN_PROPOSED），<strong>不是已批准的 UI 冻结稿，也不是正式 WPF/ECU 实测交付</strong>。<br />
+<strong>适用对象</strong>：AutoTest Windows 离线单工位 ECU 开发、自动测试、生产检测及独立工具体系。<br />
+<strong>研究主线</strong>：用户已确认的业务事实 → 真实工作任务 → 界面/状态/资源关系 → 交互和异常 → 对接真实 R1 后端 → 有证据的验收。</p>
+<blockquote>
+<p><strong>本轮首要纠偏</strong>：不是把 R1 的旧界面重新画好，也不是继续在 V5 HTML 上加功能，而是按最新 <code>Project_Management/docs/project-management/current/</code> 的全系统澄清重构 UI 领域认识。该目录明确取代 <code>current-20261121/</code> 在产品需求方面的优先权。旧 SCAN S-09 和 V4/V5 的默认多层 Recipe/可选烧录/PC 确认开始已被更新决定取代，不能继续作为 AutoTest 日常操作链。</p>
+</blockquote>
+<h2 id="section-1">0. 事实来源、效力与研究方法</h2>
+<h3>0.1 本轮实际回读的权威资料</h3>
+<ul>
+<li><a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/README.md">现行管理 README</a> 与 <a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/00_DECISIONS_AND_SUPERSESSION.md">00 决策取代表</a>；</li>
+<li>现行 <a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/01_PRODUCT_SYSTEM.md">01 产品/工具/资源</a>、<a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/02_ECU_PROJECT_TEST.md">02 工程/TEST</a>、<a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/03_PRODUCTION_STATION_AND_SCAN.md">03 生产/扫码</a>、<a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/04_RECORD_LOG_REPORT.md">04 记录/报告</a>、<a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/05_HARDWARE_AND_RESOURCES.md">05 硬件</a>、<a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/06_R1_GAP_AND_ACCEPTANCE.md">06 R1 差异</a>、<a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/07_SPECIALIST_WORKPACKAGES.md">07 专项任务</a>、<a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/08_GOVERNANCE_AND_WORK_REGISTER.md">08 治理</a>、<a href="https://github.com/ch3758134-prog/AutoTest/blob/Project_Management/docs/project-management/current/09_SOURCE_TRACEABILITY_AND_OPEN_DECISIONS.md">09 来源和未决事项</a>。</li>
+<li>历史 R1/FLASH/SCAN/WAVE 研究只用于验证技术事实及识别已被取代的旧业务设定，不把未经批准的研究建议升格为正式产品要求。</li>
+<li>UI 原型源：<code>UI/prototypes/AutoTest_HydEPB_product_ui_v5_20261121.html</code>；在本次环境实际读取 HTML，并检查生产页、波形页及手动台架的 JS 逻辑。</li>
+<li>本次读到的项目快照：<code>Project_Management@6d2a476de8eba752a227a02dc77b0fc5d30296aa</code>；<code>R1@5f7a2cf42c1a30434431af18e2fb26741075ad2f</code>。SHA 仅代表本轮快照，<strong>不得作为未来动态 HEAD</strong>。</li>
+</ul>
+<h3>0.2 状态标签约定</h3>
+<p><code>[已确认]</code> 用户最新明确业务决策；<code>[源码存在]</code> 对应候选代码已出现，但不证明验收；<code>[研究建议]</code> 本报告的产品设计推论，等待 UI 设计验收；<code>[待现场]</code> 必须依赖设备或真实 ECU 证据；<code>[待业务决策]</code> 不得替用户拍板。任何页面不得将这几类状态混成一个“完成”。</p>
+<h3>0.3 成熟产品参考，借鉴而非复制</h3>
+<table>
+<thead>
+<tr>
+  <th>来源</th>
+  <th>可取的经验</th>
+  <th>AutoTest 必须做的取舍</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="https://www.ni.com/en/support/documentation/supplemental/08/teststand-user-interface-development-best-practices.html">NI TestStand 运营界面最佳实践</a></td>
+  <td>开发编辑器与产线操作员界面可共享同一测试能力，而操作密度不同</td>
+  <td>AutoTest <strong>同一程序、同一后端</strong>，工程师和生产工作区分离；不要求另一个独立 EXE</td>
+</tr>
+<tr>
+  <td><a href="https://www.ni.com/docs/en-US/bundle/teststand/page/process-models.html">NI TestStand Process Models</a></td>
+  <td>产品身份、共同的生产执行流程、报告属于系统流程，不应塞进每个测试步骤</td>
+  <td>将扫码、夹具、实体启动、生产前置烧录放在 Production 编排，功能判定留给 TEST</td>
+</tr>
+<tr>
+  <td><a href="https://docs.tracetronic.com/help/ecu.test/en/Main-program/Editor/index.html">tracetronic ecu.test 编辑器</a></td>
+  <td>工程/测试步骤和配置/引用组织清楚，编辑与交互执行存在连续上下文</td>
+  <td>不额外强迫多层 TestProject 选择；当前型号工程只有一棵有序用例树</td>
+</tr>
+<tr>
+  <td><a href="https://www.vector.com/en/product/canape/">Vector CANape</a></td>
+  <td>多信号选择、测量、记录、分析和独立测量窗口</td>
+  <td>CAN/DBC 观测与真实波形采集须同一源，显示可抽稀，证据不可凭图像生成</td>
+</tr>
+<tr>
+  <td><a href="https://docs.etas.com/inca/docs/V7.6/EN/Subsystems/exp/Content/Topics/Experiment_Environment__Ove.htm">ETAS INCA 测量记录</a></td>
+  <td>多变量示波/图形窗口、录波、数据选择</td>
+  <td>波形分轨、同单位叠加、统一时间轴、逐信号质量与采集来源</td>
+</tr>
+<tr>
+  <td><a href="https://learn.microsoft.com/en-us/dotnet/desktop/wpf/windows/">Microsoft WPF Owned Windows</a></td>
+  <td>独立工具窗口由主窗口拥有，关闭/最小化生命周期关联</td>
+  <td>不开发多个工具 EXE；子窗口并存不等于拥有并发物理发送权限</td>
+</tr>
+<tr>
+  <td><a href="https://learn.microsoft.com/en-us/dotnet/api/system.windows.data.binding.validatesonnotifydataerrors">WPF 数据验证</a></td>
+  <td>字段错误可以就地显示，且不破坏编辑体验</td>
+  <td>自动保存原始草稿、可恢复；语义合法后才纳入生产运行快照</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="section-2">1. 全系统产品边界：六块能力、三种使用场景</h2>
+<h3>1.1 六块能力的平等关系（不是 TEST 包含一切）</h3>
+<pre><code>                                  AutoTest 桌面应用
+              ┌──────────────────────────────────────────────┐
+              │   工程师工作区   │   生产检测工作区   │  工具入口 │
+              └────────┬──────────────┬──────────────┬───────┘
+                       │              │              │
+       ┌───────────────┴──────────────┴──────────────┴───────────────┐
+       │ 独立工具 │ 通用资源 │ ECU 工程与 TEST │ 生产编排 │ 记录报告 │
+       └───────────────────────────┬─────────────────────────────────┘
+                                   │
+                       统一真实设备与数据服务
+                      USB / ECU CAN / KEY CAN /
+                         UDS / FLASH / WAVE
+</code></pre>
+<ul>
+<li><strong>独立工具</strong>：[已确认] 手动台架、DBC、UDS、烧录、波形，无工程照样打开和完成独立任务；按需引用工程资源，不能默默改工程当前生效配置。</li>
+<li><strong>通用资源</strong>：[已确认] DBC、固件/安全算法、烧录参数、参考波形、诊断服务序列可被多个体系使用；资源的所有权不是由“谁先使用”决定。</li>
+<li><strong>ECU 工程/自动测试</strong>：[已确认] 一个型号一个工程、一套当前有效资源/TEST 树；开发可单步/单用例/勾选范围调试，不需要扫码或生产前置烧录。</li>
+<li><strong>生产检测</strong>：[已确认] 独立工位操作流程，扫码→型号校验→夹具→等待实体启动→每次真实烧录→全部启用用例→自动记录和收尾；正常不要求鼠标。</li>
+<li><strong>日志/报告</strong>：[已确认] 原始 CAN/附件、步骤测试日志、简洁单台报告、批量报告四层，跨工具和场景共用真实证据与身份。</li>
+<li><strong>设备/协议</strong>：[已确认] 实际只有一套单工位 USB/CAN/UDS/Flash/记录服务，所有前端均不能重做硬件执行器。</li>
+</ul>
+<h3>1.2 三种任务，从同一应用进入</h3>
+<p><strong>工程师开发测试</strong>：打开型号工程 → 选用例/步骤 → 编辑 CAN、KEY、UDS、判定 → 使用独立工具检查资源/手动操作 → 保存草稿与校验 → 运行步骤/用例/勾选范围 → 实际日志与证据 → 继续编辑。</p>
+<p><strong>专业工具独立操作</strong>：从工具菜单打开对应窗口，即使没有工程也可新建或载入独立文件；设备连接、互斥操作状态在工具窗口有清晰反馈；选“使用当前工程资源”后才产生显式的工程关联。</p>
+<p><strong>生产连续检测</strong>：进入生产工作区等待扫码 → 按型号定位已安装工程 → 合法同型号直接处理/已知异型号才确认切换 → 发夹紧请求并获得合格的到位条件 → 等实体键 → 编程前检查与本次烧录 → 用例树全量自动执行 → 归档报告 → 显示本台结果直到下一次有效扫码。</p>
+<h3>1.3 不要设计成以下结构</h3>
+<ul>
+<li>工具 = TEST 步骤的另一页；工具打开强制要求选工程。</li>
+<li>SCAN = 复杂的 ProductVariant→WorkOrder→Recipe→FlashPolicy→TestProject 多级管理员向导。</li>
+<li>每个型号一堆当班候选 DBC、固件和 TestProject，扫码后再让操作员选。</li>
+<li>生产烧录必须人工往用例里插 FLASH 步骤，或者用户每台扫码后在电脑点开始。</li>
+<li>每轮测试都由 UI 另造执行器或以读取到最后一帧判定 PASS。</li>
+</ul>
+<hr />
+<h2 id="section-3">2. 全产品信息架构与主窗口</h2>
+<h3>2.1 全局信息架构（研究建议）</h3>
+<pre><code>顶部：AutoTest | 工程 | 编辑 | 运行 | 工具 | 生产 | 视图 | 帮助
+      当前工程：HydEPB       当前工位：USB / ECU CAN / KEY CAN 状态
+
+[工程师工作区]  [生产检测工作区]           （两种上下文，非两套程序）
+
+工程师工作区：
+  左：型号工程资源树 / 搜索 / TEST 有序用例树
+  中：文档标签 + TEST 编辑与运行共享上下文
+  右：当前步骤参数 / 资源选择 / 校验原因
+  下：问题 / 变量 / 步骤证据 / CAN 日志（可折叠）
+
+生产工作区：
+  全宽：当前型号 | 设备/夹具/实体键状态 | 当前 DUT
+        当前大阶段：待扫码 / 压紧 / 等键 / 烧录 / TEST / 归档
+        进度、最终结果、失败原因、上次结果
+        次要入口：工位/型号配置、历史记录、异常恢复
+
+工具：独立 WPF Owner 窗口，最多同时打开多个；不占用主工作区。
+</code></pre>
+<p>[研究建议] 主窗口采用两种模式及可切换文件文档，而不是永久在左侧挤进七八个功能导航。工程师工作区保留单击工程树切换文档；生产工作区无需看 TEST Inspector 和工具文件树。</p>
+<h3>2.2 窗口与生命周期</h3>
+<table>
+<thead>
+<tr>
+  <th>窗口</th>
+  <th>层级</th>
+  <th>允许无工程</th>
+  <th>是否能影响实体</th>
+  <th>关闭时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>AutoTest 主窗口</td>
+  <td>唯一应用主窗口</td>
+  <td>是</td>
+  <td>通过受控后端</td>
+  <td>结束/保留任务需依设备状态和授权流程，关闭所有 owned 工具窗</td>
+</tr>
+<tr>
+  <td>TEST 编辑/运行</td>
+  <td>主窗口内文档</td>
+  <td>否（需要工程）</td>
+  <td>调试运行才可申请</td>
+  <td>不弹第二套编辑器；选择与视图恢复</td>
+</tr>
+<tr>
+  <td>DBC 编辑器</td>
+  <td>独立 owned 窗口</td>
+  <td>是</td>
+  <td>否（资源编辑）</td>
+  <td>保存/恢复当前草稿，回收焦点</td>
+</tr>
+<tr>
+  <td>UDS / FLASH / 手动台架</td>
+  <td>独立 owned 窗口</td>
+  <td>是</td>
+  <td>真实会话允许时申请</td>
+  <td>不可因关闭 UI 自动假定设备已安全停止</td>
+</tr>
+<tr>
+  <td>WAVE</td>
+  <td>独立 owned 窗口</td>
+  <td>是</td>
+  <td>接收/采集，不擅自发送刺激</td>
+  <td>实际录波安全终止、保存不完整状态</td>
+</tr>
+<tr>
+  <td>生产检测</td>
+  <td>主窗口模式</td>
+  <td>是，但任务未就绪不得生产</td>
+  <td>由实体状态机发请求</td>
+  <td>运行中禁破坏式切换</td>
+</tr>
+</tbody>
+</table>
+<p>工具窗可同时打开观察；真实写入互斥需要下层调度，不能用“一个窗口独占整个应用”替代设备合同。窗口与任务归属必须分别显示。</p>
+<h3>2.3 视觉与交互系统</h3>
+<ul>
+<li>浅色、白底为主，信息密度可调；避免深蓝底/低对比文字、工具窗大片空白与“这只是原型/未来会接线”的大段说明。</li>
+<li>使用真实产品语言：<code>等待实体启动键</code>、<code>CAN 周期发送 2 条</code>、<code>DBC 引用失效</code>、<code>本次报告尚未归档</code>；技术诊断留展开详情，不使操作员读堆栈异常。</li>
+<li>按钮只做真实语义动作：<code>运行此步骤</code>、<code>启用周期发送</code>、<code>停止</code>、<code>采集标准波形</code>、<code>建立参考候选</code>。不把“目标状态”画成实际到位状态。</li>
+<li>所有常规编辑自动保存；脏草稿可恢复、非法编辑有明确就地错误；运行仅使用最后冻结的有效快照。</li>
+<li>工具资源有来源标记：<code>独立文件</code> / <code>当前工程资源</code>，只在改变所有权时必要确认；当前无工程不显示无意义错误墙。</li>
+<li>搜索不打断测试树结构，命中高亮并支持定位；新增步骤先在列表插入并选中，右侧 Inspector 即可编辑；右键提供运行、禁用、断点、复制、删除和流程控制。</li>
+</ul>
+<hr />
+<h2 id="section-4">3. 工程与自动测试的完整交互研究</h2>
+<h3>3.1 工程树的领域结构</h3>
+<pre><code class="language-text">HydEPB（某 ECU 型号的唯一工程）
+├── 自动测试
+│   ├── 功能测试/            ← 分类目录：只组织、无执行步骤
+│   │   ├── 静态驻车         ← 用例：准备/测试/清理
+│   │   └── 静态释放
+│   ├── 故障测试/
+│   │   └── 通信故障
+│   └── 公共流程             ← 同一 DSL，供用例调用，本身不计入出厂用例
+├── DBC（当前生效：绿通通信矩阵）
+├── 参考波形
+├── 固件（当前生产目标）
+├── 生产配置（型号识别、原生烧录参数、工位条件）
+└── 历史记录/报告
+</code></pre>
+<p><strong>不是</strong>默认同时摆三个 TestProject，或让用例树分类目录自身持有步骤。目录内顺序确定出厂执行顺序，<code>Enabled</code> 是工程永久生效，<code>Selected</code> 是工程师本轮临时范围；生产<strong>不使用</strong> Selected。</p>
+<h3>3.2 核心测试编辑器结构</h3>
+<ul>
+<li><strong>用例首部</strong>：名称、状态、阶段数量、失败/结果及当前运行范围；菜单与常用命令可从具体对象触发，不放一排几十个按钮。</li>
+<li><strong>列表</strong>：准备 / 测试 / 清理是清晰的阶段分组；行内含执行状态、断点、禁用、动作摘要、引用/诊断；行高足以鼠标操作，仍保持多步骤密度。</li>
+<li><strong>步骤选择器</strong>：按 CAN、KEY/IGN/夹具、UDS、WAVE、判断、控制、变量、流程调用分类；输入关键词立即过滤；插入后不弹另外的属性窗口。</li>
+<li><strong>右侧常驻 Inspector</strong>：参数按“本步骤必须/可选辅助/记录提取”分组；所有修改立即写草稿并进行诊断。标准流程块（IF/ELSE、SWITCH、WHEN、循环、异常）展示有语义的嵌套子树，不只靠缩进数值伪装。</li>
+<li><strong>运行与调试</strong>：编辑与运行共享选中用例、步骤、断点及变量；运行此步骤、此用例、勾选范围、单步/运行到、停止/异常原因；下一轮执行不能偷偷改变当前冻结内容。</li>
+<li><strong>失败控制</strong>：用例可执行诊断/继续/终止/清理；出现历史 FAIL 仍累计为本次不合格，不能被后续 PASS 消除。底层 Flash 失败、设备未知状态及停止命令不可由 TEST 脚本绕过。</li>
+</ul>
+<h3>3.3 高频步骤的实际编辑体验</h3>
+<p><strong>CAN 发送</strong>：完整 DATA 在界面核心区域直接显示；经典 CAN 根据当前硬件真实能力为 0–8 字节，ID 自动判标准/扩展，允许显式修改；支持单发/周期，明确是否已启用及运行所有权。DBC 只提供可选信号写入/编码，不成为发送前置条件。现有硬件没有 CAN FD 64 字节的现场依据，不应默认出现可执行 64B 选项。未来若支持 CAN FD 再做能力协商和解锁。</p>
+<p><strong>KEY_SIM 动作</strong>：20 Key 对应组合开关和保持时间；可保存可命名动作供 TEST 与手动台架引用；支持纯等待、多个 Key 同时闭合，不默认执行 <code>ReleaseAll</code>；当前真实高边和波特率按 DEVICE 合同。</p>
+<p><strong>DBC 判定与关键测量提取</strong>：搜索工程当前生效 DBC 中实际报文/信号；展示数值、单位、质量/失效原因、时间窗和条件；勾选需要进入结构化日志/报告的关键测量值，必须绑定同一次 <code>StepOccurrenceId</code> 和原始证据。</p>
+<p><strong>公共流程</strong>：与用例共享 StepNode/执行语义，允许流程互调、固定修订、依赖环检查；不是新建一个并行小语言。</p>
+<h3>3.4 自动保存、资源正确性与运行冻结</h3>
+<table>
+<thead>
+<tr>
+  <th>场景</th>
+  <th>交互建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>改步骤名称、参数、拖动、粘贴</td>
+  <td>自动保存草稿，状态栏只有真实存盘失败时提示；无需反复关闭确认</td>
+</tr>
+<tr>
+  <td>参数不合法</td>
+  <td>保留可恢复草稿，右侧就地错误，标记<code>不能运行/不能发布</code>；不是删掉用户输入</td>
+</tr>
+<tr>
+  <td>编辑 DBC 影响 TEST 信号</td>
+  <td>显示受影响引用、重新校验；正在执行的老 DBC/SHA 快照不受影响</td>
+</tr>
+<tr>
+  <td>运行中工程师修改步骤</td>
+  <td>影响<strong>下一次</strong>运行的草稿，不修改本轮冻结执行快照；明确“新编辑待下轮生效”</td>
+</tr>
+<tr>
+  <td>关闭/切工程</td>
+  <td>自动保存与恢复；若实际保存失败则提示无法安全切换，不能静默丢内容</td>
+</tr>
+<tr>
+  <td>新建型号工程</td>
+  <td>根据通用模板预生成基本 TEST 和清理结构，供用户自由编辑；模板本身不跟随修改</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="section-5">4. 五个独立工具的成熟产品设计</h2>
+<h3>4.1 手动台架</h3>
+<p><strong>推荐工作区</strong>：左侧工位控制与按键动作按钮，中部多个 CAN 发送任务与完整报文，右侧实时 CAN 监视/日志；不嵌入 TEST 主工作区。按键动作按钮单击即发起一次真实目标操作，旁边独立的编辑/右键入口。编辑浮窗只展示 <strong>20 Key + 保持时间</strong>，不额外强迫用户设置一堆动作类型。</p>
+<p>CAN 发送任务每条卡片可看见 CAN ID、标准/扩展、8 字节完整 HEX、DLC、单次/周期、周期 ms、启停及最近主控反馈；同一设备上多个周期发送允许明确启动/停止，左侧工位控制 IGN 与夹具目标分开显示“请求”和“已知实际反馈”。当无工程，仍可以不载入 DBC 直接填写字节；若有工程，DBC 可按需辅助。</p>
+<h3>4.2 DBC 编辑器</h3>
+<p>无工程可新建/打开独立 DBC；打开工程资源时明确为“当前生效 DBC”。三大操作区：左侧报文列表/搜索，中部可连续批量修改的信号表格，右侧当前报文/信号详细参数与位图。保证 Intel/Motorola、起始位/位长、符号、比例、偏移、最小最大/单位/枚举/复用等规范字段受校验；支持中文显示别名而不把不规范汉字硬写入 DBC 名称。修改自动保存对应资源，只有显式“纳入工程”才更换工程 DBC。</p>
+<h3>4.3 UDS 工具</h3>
+<p>连续服务序列＋当前服务 Inspector＋请求/响应时间线，保留边调试边编辑的流畅性；会话切换、TesterPresent、NRC、Timeout、Cancel、接收解析、变量与序列存储独立完成。不从生产扫码里获取必须配置，不需要预先创建 TestProject。复用已有 ISO-TP/UDS 实现；真实 ACK、ECU 正响应、否定响应和服务结果须分别可见。</p>
+<h3>4.4 独立烧录工具与生产 Flash 配置（不能混为一页）</h3>
+<p><strong>独立烧录工具</strong>无工程运行，允许临时配置 APP/Boot 端点、Seed-Key Provider、Firmware、分块大小、诊断超时等真实支持字段；可显式选工程固件但不能反向静默覆写生产配置。布局：左侧文件与配置、中部十个真实阶段＋总体/分段进度、右侧 CAN/UDS 原始报文及阶段错误与证据。没有真实执行就保持未开始/0%，不可播放假进度。</p>
+<p><strong>生产烧录配置</strong>属于 ECU 工程的集中配置，固件当前唯一，原 CanTool XML 表达的有效字段在 AutoTest <strong>原生可视化编辑</strong>，保存固定工程位置，自动保存。创建项目时有合理默认但必须真实检查有效性。用户不需要平时选 XML 文件；技术专项需对照 XML 原字段与实际读写范围完成 schema、迁移和兼容。每次生产扫描后不重新挑 HEX/安全 DLL/编程参数。生产烧录是<strong>实体启动后、TEST 前的工位阶段</strong>，不要求在 TEST 步骤中放 Flash。</p>
+<p><strong>进度与结果必须分层</strong>：准备、Boot/App、会话、Seed/Key、擦除、数据传输、退出、校验、复位、App 恢复、必要软件版本后验与完整记录，是不同性质状态。实际软件版号若无支持的 DID，就显示“未核验”，不能用 APP 50 03 替代版本正确。Flash 中断后可能处于 Boot/内容不完整状态，不能默认宣称成功释放或立即允许下一台。</p>
+<h3>4.5 波形工具与“采集标准参考”</h3>
+<p>必须支持<strong>多信号同屏</strong>，共享时间轴；离散状态阶梯显示、数值信号独立单位轴，同单位可以叠加；多轨同步放缩/游标，支持多组采集与参考叠加和事件锚点。</p>
+<p><strong>真正的入口链</strong>：选择实时 DBC 信号 → 实时监控 → 配置采集（录制时窗、触发源、时间源/设备、合格样件标识） → 确认订阅就绪 → 真实采集开始/停止 → 审查 CAN 原始事实及时间质量/缺口 → 保存采集 → 建立标准参考<strong>候选</strong> → 审核/冻结版本 → TEST 从工程资源选引用与判定规则。工具无需工程也能采集并保存独立录波；关联当前型号工程时才获得工程参考身份。</p>
+<p><strong>不能用曲线漂亮代替准确</strong>：时序时间来源是主机接收时刻，不等于 ECU 内部物理事件；多路 CAN 上报并非硬件同步采样。画图抽稀不删除原始事实；高风险时间条件若被算法自由平移 50ms，就可能隐瞒响应超时。PASS/FAIL/INCONCLUSIVE/ERROR 四类判定与采样缺口/信号过期、参考批准状态、真实源证据关联。任何未验证的“+/-5% 默认容差”应为空而非写死。</p>
+<hr />
+<h2 id="section-6">5. 生产检测：一屏完成，不靠操作员鼠标</h2>
+<h3>5.1 唯一业务状态机（已确认顺序 + 待硬件验证条件）</h3>
+<pre><code>待扫码 ──扫码完整校验──&gt; 型号/工程核对
+   ├─ 同型号：无需弹窗 ─┐
+   ├─ 已知异型号：确认切工程 ├─&gt; 请求夹具压紧 ─&gt; 确认真实就绪* 
+   └─ 未知/歧义：拒绝 ─┘                         │
+                                            等待实体 START*
+                                                 │
+                                        生产预检/配置冻结
+                                                 │
+                                   每次执行本台完整 FLASH
+                                     ├─ 失败：不进入 TEST
+                                     └─ 成功：版本后验状态
+                                                 │
+                                   按树顺序运行全部 Enabled 用例
+                                                 │
+                                   归档原始 CAN/TEST/Flash 证据
+                                                 │
+                                  工位收尾/在安全条件下释放夹具*
+                                                 │
+                                   显示本台 PASS/FAIL/中止
+                                   等下一次有效扫码才覆盖结果
+</code></pre>
+<p><code>*</code> <strong>待现场</strong>：夹具实际到位、实体 START/STOP 的输入和 USB 协议、机械异常收尾未形成正式电气/时序事实；UI 不能伪造“已夹紧”或自行创造 USB 命令。正式流程接入前必须以真实检测证据建立门禁。</p>
+<h3>5.2 生产工作区界面方案</h3>
+<ul>
+<li>最上方：<code>当前型号/工程</code>、<code>ECU CAN 速率</code>、<code>主控 USB</code>、<code>工位就绪</code>、<code>当前实体按钮状态</code>。</li>
+<li>大面积中心信息：当前 DUT 型号、唯一编号、阶段、进度、故障原因；等待启动键时突出 <code>等待台架启动键</code>，<strong>不显示“点击电脑开始”主按钮</strong>。</li>
+<li>阶段轨：扫码、压紧、等键、Flash、TEST、报告、结束，正在执行与未知态区别。</li>
+<li>右侧/下方摘要：本台关键结果、最近 CAN/UDS 事件入口、单台报告与历史记录；不始终占三分之一空间展示未用的配置表。</li>
+<li>结束后：最终结果大字显示，若前一台不合格展示失败阶段和原因；新有效扫码才进入下一台。正常同型号批量生产不用对话框/鼠标。</li>
+<li>配置员入口（非每台生产入口）：型号识别字段、当前有效固件及原生 Profile、工位条件、报告固定配置，不出现必须配置 WorkOrder/Recipe 的繁复页；型号跨工程的确认仅作为例外。</li>
+</ul>
+<h3>5.3 真正需要展示的状态词</h3>
+<table>
+<thead>
+<tr>
+  <th>事件</th>
+  <th>UI 可宣称</th>
+  <th>UI 绝不可宣称</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>USB 写出 IGN/夹具请求</td>
+  <td>“已发送请求”或“主控已受理”</td>
+  <td>“机械夹紧已到位”</td>
+</tr>
+<tr>
+  <td>主控设置 ECU CAN 码率并读回</td>
+  <td>“主控报告 500kbit/s”</td>
+  <td>“ECU 已经有正确通信”</td>
+</tr>
+<tr>
+  <td>扫码 CRC/型号匹配</td>
+  <td>“编号格式与型号匹配”</td>
+  <td>“ECU 硬件身份已真实核验”</td>
+</tr>
+<tr>
+  <td>Flash 数据传输正常</td>
+  <td>“传输阶段完成”</td>
+  <td>“目标软件已正确安装/产品已放行”</td>
+</tr>
+<tr>
+  <td>UDS 收到 50 03</td>
+  <td>“应用会话恢复有响应”</td>
+  <td>“读回目标软件版本成功”</td>
+</tr>
+<tr>
+  <td>CAN 波形两条曲线相似</td>
+  <td>“观察到数据/比较结果候选”</td>
+  <td>“无缺帧且满足物理响应时间”</td>
+</tr>
+</tbody>
+</table>
+<h3>5.4 异常、暂停及后续处理</h3>
+<ul>
+<li>扫码时未就绪/运行中：不接受、不排队、不切换当前 DUT。</li>
+<li>已知异型号：只有工程存在且当前可安全切换时才要求确认；工程自动加载其唯一当前资源、TEST、Flash。</li>
+<li>夹具请求后没有可靠到位信息：<code>夹具状态未验证</code> 阻断继续，不能无条件倒计时视作到位。</li>
+<li>START 重复、按键长按、STOP、USB 中断、Flash 擦除中断：由待现场确认的设备语义决定可执行恢复，必须先有记录和“未知/需处理”状态，不能默认允许下一台。</li>
+<li>正常 TEST 断言失败：交由当前用例或公共流程的可编辑逻辑继续/诊断/收尾，累积 FAIL 不得被后续 PASS 覆盖；底层 STOP/设备未知态仍不可越过。</li>
+<li>同号复检保留独立历史记录，每次仍完整烧录；是否做额外人工复核/统计口径 <strong>待业务决策</strong>，不增加默认弹窗。</li>
+</ul>
+<hr />
+<h2 id="section-7">6. RECORD 与报告：四层证据与真实计数</h2>
+<table>
+<thead>
+<tr>
+  <th>层级</th>
+  <th>记录内容</th>
+  <th>交互入口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>原始 CAN/设备附件</td>
+  <td>时间/方向/角色/ID/DLC/全部 DATA、USB/UDS/Flash/WAVE、丢帧/截断/完整性</td>
+  <td>CAN 监视、步骤证据、历史附件</td>
+</tr>
+<tr>
+  <td>TEST 日志</td>
+  <td>实际 StepOccurrence、动作、读到的值、判据、异常、允许继续情况</td>
+  <td>运行/调试底栏、失败定位</td>
+</tr>
+<tr>
+  <td>单台报告</td>
+  <td>某次完整检测 DUT 身份、固件/版本、Flash/功能结果、失败步骤/核心测量、最终结论</td>
+  <td>生产结束面板、历史记录</td>
+</tr>
+<tr>
+  <td>批量报告</td>
+  <td>独立 ECU 数、检测次数、结果、重复编号/复检等固定统计</td>
+  <td>记录/报告工作区，不混原始帧入正文</td>
+</tr>
+</tbody>
+</table>
+<p>研发/生产来源必须可识别；工具单独 UDS/Flash 的诊断结果不能未经授权自动变为生产 PASS。<code>ScanEvent</code> 不等于 <code>InspectionSession</code>，一次检测可以包含一次 FlashAttempt 和多个 CaseAttempt；每个 Case 里的 StepOccurrence 再关联原始证据。<strong>批次边界、首次/最终合格率、正式放行策略仍待 SCAN/REPORT 联合确认</strong>，研发版可以展示简单事实计数而不能把候选统计当定稿。</p>
+<p><strong>重点 UI 优化</strong>：单台报告正文简洁，但每条关键观测可以“查看原始证据”；失败/停止/断线报告也存在，不用用户手动点保存；原始 CAN 日志完整性无法证明时明确标注采集不完整。</p>
+<hr />
+<h2 id="section-8">7. 实体与平台限制：不可因 UI 需要而编造功能</h2>
+<ul>
+<li>单 PC/单工位/同时一台 DUT；主控 MCU MK20DN512VLL10，ECU CAN 为 FlexCAN1 / A12(H)、A1(L) / USB 通道1；KEY CAN 为 FlexCAN0 / B11(H)、B1(L) / USB 通道0，固定 500kbit/s。</li>
+<li>当前主控实物为<strong>经典 CAN 最多 8 字节数据</strong>；<strong>不具备已验证的 64B CAN FD</strong>，新 UI 先按真实 8B 设计。</li>
+<li>Main_Control 已归档新 IGN=HOUT1/PTC1/J1 C10；不得继续按旧 PTC10/C6 映射设计。夹具两路、电磁阀请求与机械到位是不同事实；RL_DRV 是内部电路控制，不作为业务 USB IO 按钮。</li>
+<li>KEY_SIM 20 Key 通过五路电阻网络输出；20 Key 不等于 20 路模拟电压采样；测试与台架同一个完整 mask 概念，允许 0 Key 纯等待。</li>
+<li>ECU CAN <code>0x42/0x43</code> 动态速率仅为固件候选并需真实设备/EEPROM/运行时验证；Boot Flash 支持的目标速率不能直接从 MCU 可选速率推断。</li>
+<li>生产实体启动/停止按钮、夹具到位、电源断电后的物理状态均需现场和原理图核对，UI 只能显示真实可观测状态。</li>
+</ul>
+<hr />
+<h2 id="section-9">8. 对 V5 HTML 的逐项差异审查与处置</h2>
+<table>
+<thead>
+<tr>
+  <th>V5 现象或设计假设（已读 HTML）</th>
+  <th>与新产品合同的冲突</th>
+  <th>R6 研究处置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>生产 <code>prodConfig</code> 带 <code>taskId/recipe/flashPolicy/caseIds</code></td>
+  <td>型号工程应唯一；常规生产不让操作员配置 Recipe/用例子集；每次必烧录</td>
+  <td><strong>移除主流程与主页面</strong>中的多配方、多策略、勾选出厂用例；仅保留内部运行计划冻结/资源 SHA</td>
+</tr>
+<tr>
+  <td><code>flashPolicy:'不烧录'</code> 为默认</td>
+  <td>D12 每次正式完整检测前置烧录（含复检）</td>
+  <td>生产工作区不能有<code>不烧录</code>选项；研发工具可单独烧录或不烧录，两个场景分离</td>
+</tr>
+<tr>
+  <td>生产页含扫描后 <code>检查计划/电脑确认</code> 动作</td>
+  <td>D11 实体键启动、日常不操作鼠标</td>
+  <td>主流程改为扫码→自动夹紧→等待实体启动键；异常时才有人机确认</td>
+</tr>
+<tr>
+  <td><code>data-prod-case</code> 与 <code>caseIds</code></td>
+  <td>正式生产用整个 TEST 树所有 Enabled 用例</td>
+  <td>生产不显示本次用例勾选；工程师调试仍保留 Select 范围</td>
+</tr>
+<tr>
+  <td>默认 UT1 硬编码 CRC 作为主要业务入口</td>
+  <td>具体客户条码与枪设备尚未冻结</td>
+  <td>UT1 仅是可选择格式示例，不把它定义成所有生产用户的唯一可用条码</td>
+</tr>
+<tr>
+  <td><code>stepCatalog</code> 把 <code>flash</code> 作为 TEST 类型</td>
+  <td>生产 Flash 改为独立前置阶段</td>
+  <td>旧 TEST Flash 节点的研发兼容另审；<strong>不再指导用户在用例里配置生产 Flash</strong></td>
+</tr>
+<tr>
+  <td>CAN 编辑展示 <code>8/64</code>、<code>Math.min(64, ...)</code></td>
+  <td>真实硬件 classic CAN 8B；无 CAN FD 证据</td>
+  <td>物理启用状态只允许 0..8B；64B 仅未来能力扩展提案</td>
+</tr>
+<tr>
+  <td>独立工具标签虽存在，但大量数据来自 <code>state</code> 当前工程</td>
+  <td>无工程必须能打开工具和使用独立资源</td>
+  <td>将工具上下文分为<code>独立文件/会话</code>与<code>工程资源</code>，可显式导入/关联</td>
+</tr>
+<tr>
+  <td>波形多轨/游标已有</td>
+  <td>真实订阅/质量/标准参考批准未证明</td>
+  <td>保留多波形设计；增加与工具/工程相互独立的真实采集/审核/冻结逻辑</td>
+</tr>
+<tr>
+  <td>生产页面与工程右侧 Inspector 有并存/遗留</td>
+  <td>生产不应被开发编辑面板挤压</td>
+  <td>生产模式为整页站点界面，开发 Inspector 不参与</td>
+</tr>
+<tr>
+  <td>HTML 内存数据/假设备空态</td>
+  <td>不能当正式产品可运行性证据</td>
+  <td>保留只作为 UI 交互验证，但显式标注设计档案，绝不宣称生产环节已通过</td>
+</tr>
+</tbody>
+</table>
+<p><strong>技术上可保留的 V5 成果</strong>：浅色视觉/控件方向、工程师编辑三栏密度、添加步骤/参数体验、工具 WPF owner 的产品边界、手动台架按钮与完整 CAN 数据、波形多轨与候选标准参考、DBC 连续编辑的方向。需要更换的是其<strong>领域模型与生产任务组织</strong>，不是仅换页面标题。</p>
+<hr />
+<h2 id="section-10">9. 统一组件、数据流与接口责任（WPF 实施边界）</h2>
+<h3>9.1 只保留一套领域真相</h3>
+<pre><code>MainShell / WorkspaceContext / ToolWindowManager
+    │                   │                   │
+    │ [工程师]           │ [生产]             │ [工具]
+    │                   │                   │
+    ├────── PROJECT 资源/文件管理 ────────────────┤
+    ├────── TEST StepNode/编译/RealRunCoordinator ─┤
+    ├────── DEVICE session + Physical-role CAN ────┤
+    ├────── UDS/CanTool FLASH 共享真实协议后端 ────┤
+    ├────── WAVE capture/references/comparison ────┤
+    └────── RECORD Raw CAN/StepOccurrence/Reports ─┘
+</code></pre>
+<p>[研究建议] UI 的每个控件只有一个明确命令/数据源；不自行复制 <code>UiTestProgram</code>、<code>UiWorkspaceFiles</code>、Flash Job 构造、波形判定器、扫码统计库。生产是状态机<strong>编排现有真实后端</strong>，不是新增第二 TEST 解释器；<code>工程资产自动保存</code>与<code>运行时不可变快照</code>需要隔离。实际接口签名、事件订阅时序和工位 ownership 由 R1/专业源码映射后再写 WPF。</p>
+<h3>9.2 命令、设备状态与证据的三段反馈</h3>
+<ul>
+<li><strong>Intent</strong>：用户/自动工位请求发送、启动周期 CAN、压紧、开始本次烧录。</li>
+<li><strong>Acceptance</strong>：本机/主控/后端是否接受指令，并给出当前所有者、忙、非法参数、设备断线等错误。</li>
+<li><strong>Observation/Outcome</strong>：真实 ECU CAN/UDS 反馈、夹具传感/真实执行结果、波形测量/测试 Verdict 和报告归档；后两类必须具有原始证据关联。</li>
+</ul>
+<p>不把 Intent 成功直接画成 Outcome 成功。不出现“安全电气状态”之类缺乏实际可观测依据的抽象标签。</p>
+<hr />
+<h2 id="section-11">10. 设计验收用的端到端任务场景（不只是页面清单）</h2>
+<table>
+<thead>
+<tr>
+  <th>ID</th>
+  <th>场景</th>
+  <th>必须可以证明的用户操作与结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>UX-01</td>
+  <td>首次启动，无工程</td>
+  <td>TEST 给出创建/打开；五种工具无需工程仍可使用本工具功能</td>
+</tr>
+<tr>
+  <td>UX-02</td>
+  <td>打开上次工程</td>
+  <td>自动恢复工程/文档/用例与参数，不弹无谓保存确认</td>
+</tr>
+<tr>
+  <td>UX-03</td>
+  <td>从空工程开始</td>
+  <td>通用模板已经填入并可修改；一个型号一个工程</td>
+</tr>
+<tr>
+  <td>UX-04</td>
+  <td>测试树操作</td>
+  <td>分类目录只管理组织，具体用例才有三个阶段，拖动排序稳定</td>
+</tr>
+<tr>
+  <td>UX-05</td>
+  <td>新增步骤</td>
+  <td>新增后立刻出现在列表并选中，右侧直接编辑，无重复属性弹窗</td>
+</tr>
+<tr>
+  <td>UX-06</td>
+  <td>CAN 步骤</td>
+  <td>0~8 字节原始 DATA、标准/扩展、单发/周期、DBC 辅助，可自动保存</td>
+</tr>
+<tr>
+  <td>UX-07</td>
+  <td>KEY 步骤</td>
+  <td>20 Key + 保持时间，纯等待，未默认释放，重复执行不串状态</td>
+</tr>
+<tr>
+  <td>UX-08</td>
+  <td>流程</td>
+  <td>IF/ELSE/WHEN/SWITCH/循环/异常/公共流程，合法 DSL，右键调试</td>
+</tr>
+<tr>
+  <td>UX-09</td>
+  <td>失败处理</td>
+  <td>假设或真实 FAIL 的分支编辑有效，已有 FAIL 不被后续 PASS 擦除</td>
+</tr>
+<tr>
+  <td>UX-10</td>
+  <td>自动保存与恢复</td>
+  <td>不合法草稿可找回；执行仅用已校验冻结版本；磁盘错误显性提示</td>
+</tr>
+<tr>
+  <td>UX-11</td>
+  <td>无工程 DBC</td>
+  <td>新建独立 DBC 并编辑报文信号；不自动覆盖工程有效 DBC</td>
+</tr>
+<tr>
+  <td>UX-12</td>
+  <td>无工程手动台架</td>
+  <td>点击驻车/释放动作按钮，完整 CAN 发送/周期启停，日志在右侧</td>
+</tr>
+<tr>
+  <td>UX-13</td>
+  <td>无工程 UDS</td>
+  <td>连续请求序列、NRC/超时/日志，退出再进入保留本工具草稿</td>
+</tr>
+<tr>
+  <td>UX-14</td>
+  <td>无工程 FLASH</td>
+  <td>独立参数与三资源，真实十阶段进度、CAN 原帧，取消路径真实反馈</td>
+</tr>
+<tr>
+  <td>UX-15</td>
+  <td>生产工程 Flash 参数</td>
+  <td>原生编辑而非每次导入 XML；当前固件唯一，工程内固定保存</td>
+</tr>
+<tr>
+  <td>UX-16</td>
+  <td>WAVE 4路同屏</td>
+  <td>Debug_702.KeyStat、Debug_705.ctl_epb_stat、左右电机电流共享时间轴</td>
+</tr>
+<tr>
+  <td>UX-17</td>
+  <td>WAVE 采集标准</td>
+  <td>真实采集/停止/质量/候选/审核/冻结/引用链与独立文件区分</td>
+</tr>
+<tr>
+  <td>UX-18</td>
+  <td>生产同型号扫码</td>
+  <td>校验后继续夹紧流程，无 PC 确认弹窗；未到位不谎称就绪</td>
+</tr>
+<tr>
+  <td>UX-19</td>
+  <td>生产跨型号扫码</td>
+  <td>已知型号且空闲才确认切工程；未知不猜，不碰设备</td>
+</tr>
+<tr>
+  <td>UX-20</td>
+  <td>生产实体启动</td>
+  <td>夹具真实条件达标后等待实体 START；UI 鼠标不能替代不存在的硬件键</td>
+</tr>
+<tr>
+  <td>UX-21</td>
+  <td>每次生产 Flash</td>
+  <td>首检与复检均先烧录；Flash 失败禁止下一步 TEST</td>
+</tr>
+<tr>
+  <td>UX-22</td>
+  <td>TEST 全范围</td>
+  <td>按树序运行全部 Enabled，与研发本次 Selected 无关</td>
+</tr>
+<tr>
+  <td>UX-23</td>
+  <td>正常 FAIL</td>
+  <td>按 TEST 流程处理，但累计失败如实反映，记录与原始 CAN 不丢</td>
+</tr>
+<tr>
+  <td>UX-24</td>
+  <td>USB 断线/STOP</td>
+  <td>正确表示未知或未完成，不假报夹具安全和烧录成功</td>
+</tr>
+<tr>
+  <td>UX-25</td>
+  <td>正式单台报告</td>
+  <td>正常、FAIL、Flash 失败、STOP 均生成独立记录或明确不完整状态</td>
+</tr>
+<tr>
+  <td>UX-26</td>
+  <td>同号多次检测</td>
+  <td>历史不覆盖；扫码事件数不自动加到唯一 ECU 数</td>
+</tr>
+<tr>
+  <td>UX-27</td>
+  <td>生产结果保持</td>
+  <td>完成后无需点清屏，直至下一有效扫码，正常无需鼠标</td>
+</tr>
+<tr>
+  <td>UX-28</td>
+  <td>工具窗口生命周期</td>
+  <td>主窗关闭统一关闭 owned 窗口，断线/录波/Flash 的物理任务另遵守专门退出策略</td>
+</tr>
+<tr>
+  <td>UX-29</td>
+  <td>DBC 改变</td>
+  <td>TEST/WAVE 资源引用诊断，历史证据仍指向原资源 SHA</td>
+</tr>
+<tr>
+  <td>UX-30</td>
+  <td>全链真实准出</td>
+  <td>同一 R1 SHA 的 Windows 构建、真实 ECU/工位事件、原始报文、报告路径与 Run/Attempt ID 连贯</td>
+</tr>
+</tbody>
+</table>
+<p><strong>验收分层</strong>：UX-01～17 和 UX-27～29 可先做设计/无硬件交互验收；UX-18～26 的扫码/夹具/实体键/Flash/报告真实行为需要正式设备、R1 和记录证据；UX-30 是系统级 Gate，不能由 HTML 自动化测试“模拟通过”。</p>
+<hr />
+<h2 id="section-12">11. 未决事项与不应自动引入的产品策略</h2>
+<p>以下均未被管理文档批准细化，不在本次研究强行定值：</p>
+<ul>
+<li><strong>U01</strong> R1 首版准出是工程师完整 TEST/Flash/Record 还是包含完整生产工位；不自定 R1 Release 承诺。</li>
+<li><strong>U02</strong> 扫码枪 HID/COM/POS、客户实际标签字段/CRC 与型号编码；UT1 是研究候选，不是客户通用事实。</li>
+<li><strong>U03</strong> 实体 START/STOP 的真实 IO/USB 事件及夹具到位判据；不新增虚构硬件控制。</li>
+<li><strong>U04</strong> 普通 FAIL 后是否保持夹具/IGN 硬件现场，安全收尾要实测/确认。</li>
+<li><strong>U05</strong> 重复扫码后按上次 PASS/FAIL 如何提示与分流；不默认追加弹窗。</li>
+<li><strong>U06</strong> 批次起止、唯一数量/首次良率/最终良率、正式放行政策和复检统计。</li>
+<li><strong>U07</strong> 简洁单台与批量报告固定字段/版式；建议先研究实际有代表性的记录。</li>
+<li><strong>U08</strong> 原生 Flash Profile Schema 与固定文件位置、从 XML 迁移方案、工具与生产资源可选复用的接口。</li>
+<li><strong>U09</strong> Flash 中止/STOP/断电后 ECU Boot 与夹具状态的物理恢复。</li>
+<li><strong>U10</strong> WAVE 采样质量、离散判定、参考审批与现有 RECORD 证据类型冲突的正式解决。</li>
+<li><strong>U11</strong> 不同工位夹具差异的配置边界；首版避免为假想工厂做多层级方案设计。</li>
+</ul>
+<p>[研究建议] 对这些问题保留明确接口/错误空态，不将未获批准的选择塞进日常页面；需要真实现场事实才能确定的先由对应 FLASH、SCAN、DEVICE、REPORT、WAVE 专业形成证据再决策。</p>
+<hr />
+<h2 id="section-13">12. 下一轮研发安排与客观交付门槛</h2>
+<h3>R6-D1：研究闭环（本报告）</h3>
+<ul>
+<li>交付：现行权威基线追溯、V5 差异矩阵、独立产品信息架构、五工具详细交互、工程师/生产双工作流、30 项验收场景、未决产品/实体接口。</li>
+<li>状态：<strong>DESIGN_PROPOSED</strong>，不等于所有详细布局已经由负责人冻结，也不等于 R1 源码/真机实现。</li>
+</ul>
+<h3>R6-D2：完整可点击交互设计</h3>
+<p>按照本报告重做工作流，不在旧 V5 上改名：必须一次性贯通<code>无工程打开工具</code>、<code>单型号工程与 TEST 树</code>、<code>生产完整状态机</code>、<code>原生 Flash 配置</code>、<code>多波形参考采集</code>、<code>记录/报告</code>。支持必要的“合法/非法/中止/未连接”状态，而不是满屏说明字。交付设计源和 UI 回归证据。</p>
+<h3>R6-I1：正式 WPF 转换</h3>
+<p>以新 UI 控件树接正式 PROJECT/TEST/DEVICE 等后端，保留单一真实模型；不直接拿 R1 旧 <code>TestEditorView</code> 当成 UI 验收成果，不把 HTML 内存对象移植成并行正式 DSL。</p>
+<h3>R6-I2：系统级真机与生产现场验证</h3>
+<p>在固定 HEAD 上做 Windows Build/启动、工程自动保存/恢复、真正 CAN/KEY/UDS/Flash/Wave 和失败用例/报告测试；实体按键/夹具未证条件的生产自动化保持阻断；没有实测日志不写 FIELD PASS。</p>
+<p><strong>真正的 Gate</strong>：必须由用户审查设计工作方式、由 Codex/Windows 验证实现、由真实 ECU/工位证明执行，三种验收不能相互代替。</p>
+<hr />
+<h2 id="section-14">最终研究判断</h2>
+<p>AutoTest 的成熟，不取决于在主窗口塞进多少工具栏，而是三种使用场景都能成立：</p>
+<ol>
+<li>工程师能持续编辑和调试<strong>真正的测试程序</strong>，资源、步骤、测量和记录保持同一个事实链；</li>
+<li>工具脱离工程也能独立完成专业任务，资源共享是显式、可追踪的，而不是依赖 TEST 的附属页；</li>
+<li>生产操作者在真实工位上<strong>不需要每台鼠标操作</strong>，扫码正确匹配型号工程，经夹具与实体键确认后每次完成烧录、全部启用测试、保存证据，并保留结果等待下台。</li>
+</ol>
+<p>本研究支持这三条已确认的方向，同时对 UI 设计细节保留候选性质；任何真实硬件不可观测的条件，都不能通过一个看起来已经完成的界面伪造出来。</p>
+</article><footer>研究范围：产品架构与交互设计；任何 USB/ECU/Flash/波形实测仍需独立证据。资料基线：Project_Management / current（2026-11-21）。</footer></main></div></body></html>
