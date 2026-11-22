@@ -44,7 +44,8 @@ public sealed class SerialBarcodeFrameDecoderTests
     public void OversizeAndNonAsciiAreDiscardedUntilNextTerminator()
     {
         var decoder = new SerialBarcodeFrameDecoder(8);
-        Assert.Equal("SERIAL_FRAME_TOO_LONG", Assert.Single(Feed(decoder, "0123456789\r")).Code);
+        Assert.Empty(Feed(decoder, "0123456789\r"));
+        Assert.Equal("SERIAL_FRAME_TOO_LONG", decoder.FlushIdle()!.Code);
         Assert.True(Assert.Single(Feed(decoder, "0000001\n")).Accepted);
         decoder.Push(0xff, DateTimeOffset.UtcNow);
         Assert.Equal("SERIAL_FRAME_NON_ASCII", Assert.Single(Feed(decoder, "123\n")).Code);
@@ -83,6 +84,7 @@ public sealed class SerialBarcodeFrameDecoderTests
         decoder.Push((byte)'B', time.AddMilliseconds(200));
         var result = decoder.Push((byte)'\n', time.AddMilliseconds(210));
         Assert.Equal("SERIAL_FRAME_GAP", result!.Code);
-        Assert.Equal("OK", Assert.Single(Feed(decoder, "OK\r")).Text);
+        Assert.Empty(Feed(decoder, "OK\r"));
+        Assert.Equal("OK", decoder.FlushIdle()!.Text);
     }
 }
