@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
 using AutoTest.FlashLab.Programming;
@@ -48,7 +49,7 @@ public static class ProductionPreparationService
         catch (Exception error) when (error is IOException or ArgumentException or
                                       FormatException or InvalidDataException or
                                       NotSupportedException or ProjectDataException or
-                                      UnauthorizedAccessException)
+                                      UnauthorizedAccessException or JsonException)
         {
             return new("PRODUCTION_PREFLIGHT_REJECTED", null,
                 "生产配置预检未通过：" + error.Message);
