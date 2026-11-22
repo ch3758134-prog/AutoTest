@@ -50,12 +50,13 @@ public sealed record NativeFlashProfileDocument(
             throw new NotSupportedException("参考 CanTool Flash Job 仅支持 ECU CAN 250k/500k。");
         if (BlockLength is < 64 or > 4096 || (BlockLength & (BlockLength - 1)) != 0)
             throw new FormatException("块长应为 64～4096 字节的 2 次幂。");
-        if (AppRequestCanId != 0 || AppResponseCanId != 0 ||
-            BootRequestCanId != 0 || BootResponseCanId != 0)
-        {
+        // Drafts must persist while the engineer fills one ID at a time.
+        // A non-empty pair is checked immediately; the complete pairs remain
+        // mandatory in ValidateForFreeze before any physical request.
+        if (AppRequestCanId != 0 && AppResponseCanId != 0)
             CheckEndpoint(AppRequestCanId, AppResponseCanId, "APP");
+        if (BootRequestCanId != 0 && BootResponseCanId != 0)
             CheckEndpoint(BootRequestCanId, BootResponseCanId, "Boot");
-        }
         if ((FlashStart != 0 || FlashEndInclusive != 0) && FlashStart >= FlashEndInclusive)
             throw new FormatException("擦除地址区间无效。");
         ValidatePin(FirmwareRelativePath, FirmwareSha256, "固件");
