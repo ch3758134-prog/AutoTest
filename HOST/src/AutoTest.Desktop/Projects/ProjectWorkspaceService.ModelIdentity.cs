@@ -12,18 +12,18 @@ public sealed partial class ProjectWorkspaceService
     public async Task SetEcuModelCodeAsync(string modelCode, CancellationToken ct = default)
     {
         modelCode = modelCode?.Trim() ?? "";
-        await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+        await _writeLock.WaitAsync(ct);
         try
         {
             var current = Current ?? throw new InvalidOperationException("请先打开 ECU 工程。");
             var candidate = (current.Definition with { EcuModelCode = modelCode })
                 .WithRevision().Validate();
-            await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+            await EnsureManifestUnchangedAsync(current, ct);
             await ProjectRepository.SaveDefinitionAsync(candidate, current.ManifestPath, ct)
-                .ConfigureAwait(false);
+                ;
             var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct)
-                .ConfigureAwait(false);
-            var hash = await HashFileAsync(current.ManifestPath, ct).ConfigureAwait(false);
+                ;
+            var hash = await HashFileAsync(current.ManifestPath, ct);
             Current = new OpenProjectContext(verified, current.ManifestPath, hash);
             CurrentChanged?.Invoke(this, EventArgs.Empty);
         }
