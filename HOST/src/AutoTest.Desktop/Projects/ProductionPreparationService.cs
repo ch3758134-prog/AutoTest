@@ -85,8 +85,12 @@ public static class ProductionPreparationService
         var testAsset = testProjects[0];
         var testProjectPath = ProjectPathPolicy.Normalize(opened.RootDirectory,
             testAsset.RelativePath);
-        var testProject = TestProjectCodec.Decode(
-            await File.ReadAllBytesAsync(testProjectPath, ct).ConfigureAwait(false));
+        var projectFileBytes = await File.ReadAllBytesAsync(testProjectPath, ct)
+            .ConfigureAwait(false);
+        if (!string.Equals(Convert.ToHexString(SHA256.HashData(projectFileBytes)),
+                testAsset.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new IOException("TEST 项目文件在冻结期间发生变化，拒绝生产预检。");
+        var testProject = TestProjectCodec.Decode(projectFileBytes);
         var enabled = testProject.Packages.Where(x => x.Enabled).ToArray();
         if (enabled.Length == 0)
             throw new InvalidDataException("当前 TEST 项目没有已启用用例。");
@@ -106,9 +110,14 @@ public static class ProductionPreparationService
                                                entry.DisplayName);
             var casePath = ProjectPathPolicy.Normalize(opened.RootDirectory,
                 caseAsset.RelativePath);
+            var testBytes = await File.ReadAllBytesAsync(casePath, ct)
+                .ConfigureAwait(false);
+            if (!string.Equals(Convert.ToHexString(SHA256.HashData(testBytes)),
+                    caseAsset.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new IOException("TEST 用例“" + entry.DisplayName +
+                                      "”在冻结时发生资源 SHA 冲突。");
             var document = TestDocumentCodec.Deserialize(
-                Encoding.UTF8.GetString(await File.ReadAllBytesAsync(casePath, ct)
-                    .ConfigureAwait(false)));
+                Encoding.UTF8.GetString(testBytes));
             if (TestRunStepScope.EnabledSteps(document)
                 .Any(node => node.Type == "Flash"))
                 throw new InvalidDataException("TEST 用例“" + entry.DisplayName +
