@@ -28,6 +28,10 @@ public partial class FlashLabWindow : Window
     private int _flushRunning;
     private int _activeStage=-1;
     private CanToolFlashJob? _previewFlash;
+    private string? _nativeProfileRoot;
+    private string? _nativeProfileSha;
+    public string? NativeProjectRoot { get; set; }
+    public string? NativeProjectModelCode { get; set; }
     private bool _closingApproved;
     private bool _closingInProgress;
 
@@ -240,6 +244,7 @@ public partial class FlashLabWindow : Window
             Multiselect=false
         };
         if(dialog.ShowDialog(this)!=true)return;
+        UseLegacyConfiguration();
         string selectedFolder=dialog.FolderName;
         string binBase=BinBaseBox.Text; // Capture WPF value on UI thread.
         Busy(true);
@@ -280,6 +285,7 @@ public partial class FlashLabWindow : Window
         var dialog=new OpenFileDialog
         { Title="选择 CanTool Configuration.xml",Filter="CanTool XML (*.xml)|*.xml|全部文件 (*.*)|*.*" };
         if(dialog.ShowDialog(this)!=true)return;
+        UseLegacyConfiguration();
         try
         {
             var cfg=CanToolXmlProfileReader.Load(dialog.FileName);
@@ -299,6 +305,7 @@ public partial class FlashLabWindow : Window
         { Title="导入 CanTool settings.json（不会覆盖 XML 字段）",
           Filter="JSON (*.json)|*.json|全部文件 (*.*)|*.*" };
         if(dialog.ShowDialog(this)!=true)return;
+        UseLegacyConfiguration();
         try
         {
             _vm.Configuration.LoadRelatedJson(dialog.FileName);
@@ -331,6 +338,7 @@ public partial class FlashLabWindow : Window
         { Title="选择固件镜像（离线，只验证文件）",
           Filter="支持的固件|*.hex;*.h86;*.s19;*.s28;*.s37;*.sx;*.mot;*.bin|HEX|*.hex;*.h86|S19|*.s19;*.s28;*.s37;*.sx;*.mot|BIN|*.bin|全部文件|*.*" };
         if(dialog.ShowDialog(this)!=true)return;
+        UseLegacyConfiguration();
         try
         {
             var result=FirmwareSelectionService.Load(dialog.FileName,BinBaseBox.Text,_vm.Configuration);
@@ -466,6 +474,7 @@ public partial class FlashLabWindow : Window
             Filter="安全文件 (*.dll)|*.dll|全部文件 (*.*)|*.*"
         };
         if(dialog.ShowDialog(this)!=true)return;
+        UseLegacyConfiguration();
         try
         {
             var info=CanToolSecurityProvider.Inspect(dialog.FileName);
@@ -481,8 +490,83 @@ public partial class FlashLabWindow : Window
         catch(Exception ex){Error("导入烧录安全文件",ex);}
     }
 
+    private string NativeStorageRoot => NativeProjectRoot ??
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AutoTest", "FlashLabStandalone");
+
+    private async void OpenNativeProfile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.IsBusy || _closingInProgress) return;
+        try
+        {
+            var root = NativeStorageRoot;
+            var window = new NativeFlashProfileWindow(root, NativeProjectModelCode) { Owner = this };
+            window.ShowDialog();
+            var current = await NativeFlashProfileStore.LoadAsync(root);
+            if (current is null)
+            {
+                _vm.Status = "尚未保存原生烧录配置，不会改变当前执行源。";
+                return;
+            }
+            if (!string.IsNullOrWhiteSpace(NativeProjectModelCode) &&
+                !string.Equals(NativeProjectModelCode, current.Profile.EcuModelCode,
+                    StringComparison.Ordinal))
+                throw new InvalidDataException("工程型号已改变；原生烧录配置必须重新审核。");
+            _nativeProfileRoot = root;
+            _nativeProfileSha = current.ProfileSha256;
+            NativeProfileLabel.Text = "当前执行配置：原生 " +
+                current.Profile.EcuModelCode + " · 修订 " + current.Profile.Revision;
+            _vm.Status = "已启用工程内原生配置；烧录时直接冻结强类型参数，不加载 XML。";
+            InvalidateFlashPreview();
+            AddLog("原生 Profile 已载入：" + current.FullPath +
+                "；当前只是离线配置，不执行 ECU 操作。");
+        }
+        catch (Exception error)
+        {
+            Error("原生烧录配置", error);
+        }
+    }
+
+    private void UseLegacyConfiguration()
+    {
+        _nativeProfileRoot = null;
+        _nativeProfileSha = null;
+        NativeProfileLabel.Text = "当前执行配置：兼容 CanTool XML（原生配置未载入）";
+    }
+
+    private CanToolFlashJob BuildNativeJob()
+    {
+        var root = _nativeProfileRoot ??
+            throw new InvalidOperationException("没有选中的原生烧录配置。");
+        var latest = NativeFlashProfileStore.LoadAsync(root).GetAwaiter().GetResult()
+            ?? throw new IOException("原生 Profile 文件已删除，请重新载入。");
+        if (!string.Equals(latest.ProfileSha256, _nativeProfileSha,
+                StringComparison.OrdinalIgnoreCase))
+            throw new IOException("原生 Profile 保存后发生修改，请重新载入确认。");
+        var job = NativeFlashJobBuilder.Freeze(latest.Profile, root);
+        _previewFlash = job;
+        _vm.ResetStages();
+        _activeStage = -1;
+        FlashProgressBar.Value = 0;
+        FlashPlanSummary.Text =
+            $"工程原生配置：{latest.Profile.EcuModelCode} (rev {latest.Profile.Revision})\n" +
+            $"APP TX/RX=0x{job.App.RequestCanId:X}/0x{job.App.ResponseCanId:X}\n" +
+            $"BOOT TX/RX=0x{job.Boot.RequestCanId:X}/0x{job.Boot.ResponseCanId:X}\n" +
+            $"ECU CAN 目标={job.ConfiguredBitrate}（真实烧录前 USB 0x42/0x43 核验）\n" +
+            $"擦除范围=0x{job.FlashStart:X8}..0x{job.FlashEndInclusive:X8}\n" +
+            $"下载={job.Blocks.Length} 块 / {job.PlannedBytes:N0} 字节\n" +
+            $"镜像 SHA={job.FirmwareSha256}\n安全算法 SHA={job.SecuritySha256}\n" +
+            $"任务 SHA={job.Fingerprint}";
+        FlashStageLabel.Text = "已从原生配置冻结真实 CanTool Job；尚未发送 CAN。";
+        WorkflowStatusLabel.Text = "请核对实际 ECU 供电、固件及擦除地址，再单独授权开始。";
+        _vm.Status = "原生配置验证通过；等待实体烧录操作员确认。";
+        return job;
+    }
+
     private CanToolFlashJob BuildFlashJob()
     {
+        if (_nativeProfileRoot is not null)
+            return BuildNativeJob();
             if(_vm.Image is null || string.IsNullOrWhiteSpace(_vm.FirmwarePath))
                 throw new InvalidOperationException("请先选择并离线校验 HEX/S19/BIN 镜像。");
             // Always reload both visible configuration file paths before freezing.
@@ -542,11 +626,25 @@ public partial class FlashLabWindow : Window
             // BuildFlashJob already validated the SafetyFile.dll path.
             // Repeat the non-null guard at the actual freeze call, rather than
             // silently passing an empty DLL path or suppressing a null warning.
-            var verifiedSecurityFile=_safetyFilePath ??
-                throw new InvalidOperationException("安全文件未就绪，请重新选择并校验 SafetyFile.dll。");
-            var fresh=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,verifiedSecurityFile,"",
-                LegacyTailSignatureCheck.IsChecked==true);
+            CanToolFlashJob fresh;
+            if (_nativeProfileRoot is not null)
+            {
+                var latest = NativeFlashProfileStore.LoadAsync(_nativeProfileRoot)
+                    .GetAwaiter().GetResult()
+                    ?? throw new IOException("原生烧录配置已删除，拒绝执行。");
+                if (!string.Equals(latest.ProfileSha256, _nativeProfileSha,
+                        StringComparison.OrdinalIgnoreCase))
+                    throw new IOException("原生烧录 Profile 已变化，请重新载入后重新授权。");
+                fresh = NativeFlashJobBuilder.Freeze(latest.Profile, _nativeProfileRoot);
+            }
+            else
+            {
+                var verifiedSecurityFile = _safetyFilePath ??
+                    throw new InvalidOperationException("未找到已核查的 SafetyFile.dll。");
+                fresh = CanToolFlashJob.Freeze(_vm.Configuration,
+                    _vm.FirmwarePath, BinBaseBox.Text, verifiedSecurityFile, "",
+                    LegacyTailSignatureCheck.IsChecked == true);
+            }
             if(!string.Equals(frozen.Fingerprint,fresh.Fingerprint,StringComparison.Ordinal))
                 throw new InvalidOperationException("配置、固件或安全文件已改变；请重新点击开始烧录。");
             // The operator needs a decision, not a technical audit printout.
