@@ -199,6 +199,8 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         RaisePropertyChanged(nameof(ProjectName));
         LastDecision = "";
         ProductionPreview = "";
+        _resolvedManifestPath = null;
+        MatchedProjectName = "";
         SwitchProjectCommand?.RaiseCanExecuteChanged();
     });
 
