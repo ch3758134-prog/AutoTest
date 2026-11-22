@@ -83,6 +83,8 @@ public sealed class RealRunCoordinator
     /// <summary>Emitted only after the corresponding reviewed RECORD sink has
     /// accepted step completion, so UI feedback follows durable step evidence.</summary>
     public event Action<RealStepFact>? StepCompleted;
+    /// <summary>Real step opening, emitted only after the durable RECORD sink accepts it.</summary>
+    public event Action<StepId, string, TestPhase>? StepStarted;
 
     public RealRunCoordinator(ITestSignalPort signals, ITestActuationPort actions, ITestWavePort waves,
         ITestFlashPort? flash = null)
@@ -248,6 +250,8 @@ public sealed class RealRunCoordinator
                 var start = new RealStepStarted(run, node.Id, occurrence, parentOccurrenceId,
                     phase, node.Type, node.Name, path, loopIteration, startedUtc);
                 if (events is not null) await events.StepStartedAsync(start, ct);
+                try { StepStarted?.Invoke(node.Id, node.Name, phase); }
+                catch { /* Read-only presentation cannot interrupt DUT execution. */ }
                 if (!StepExecutionPolicy.IsEnabled(node))
                 {
                     var skipped = new RealStepFact(node.Id, node.Type, RealStepStatus.Skipped,
