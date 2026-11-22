@@ -201,21 +201,6 @@ public partial class MainWindow : Window
 
     private void ShowOverview_Click(object sender, RoutedEventArgs e) => _viewModel.ShowOverview();
 
-    private void ScannerEntry_TextInput(object sender, TextCompositionEventArgs e)
-    {
-        _viewModel.CaptureScannerText(e.Text);
-        ScannerEntry.Text += e.Text;
-        ScannerEntry.CaretIndex = ScannerEntry.Text.Length;
-        e.Handled = true;
-    }
-    private async void ScannerEntry_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key is not (Key.Enter or Key.Return)) return;
-        e.Handled = true;
-        ScannerEntry.Clear();
-        await _viewModel.FinishScannerInputAsync();
-    }
-
     private void DocumentTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_restoringDocumentTab || !ReferenceEquals(e.OriginalSource, DocumentTabs)) return;
