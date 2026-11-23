@@ -43,6 +43,7 @@ public sealed class InspectionStationProcedureEditorViewModel : BindableBase
     private bool _dirty;
     private bool _saving;
     private bool _closed;
+    private long _editGeneration;
     public ObservableCollection<ActionEdit> BeforeStart { get; } = new();
     public ObservableCollection<ActionEdit> AfterFinish { get; } = new();
     public sealed record ActionChoice(string Kind, string Label);
@@ -103,6 +104,7 @@ public sealed class InspectionStationProcedureEditorViewModel : BindableBase
     {
         if (_closed) return;
         _dirty = true;
+        _editGeneration++;
         RaisePropertyChanged(nameof(IsDirty));
         SaveStatus = "草稿已修改，等待自动保存…";
         _saveTimer.Stop();
@@ -143,12 +145,23 @@ public sealed class InspectionStationProcedureEditorViewModel : BindableBase
         _saving = true;
         try
         {
+            var savedGeneration = _editGeneration;
             var draft = new InspectionStationProcedureDocument(1, _session.AssetName,
                 BeforeStart.Select(x => x.ToDefinition()).ToList(),
                 AfterFinish.Select(x => x.ToDefinition()).ToList());
             draft.Validate();
             var before = _session;
             _session = await _workspace.SaveConfigurationAsync(before, draft);
+            if (savedGeneration != _editGeneration)
+            {
+                // The user edited a field while disk I/O was in progress.
+                // Never dismiss that newer draft or claim it was persisted.
+                _dirty = true;
+                _saveTimer.Stop();
+                _saveTimer.Start();
+                SaveStatus = "上一修订已保存；有更新的草稿，正在继续保存。";
+                return false;
+            }
             _dirty = false;
             RaisePropertyChanged(nameof(IsDirty));
             SaveStatus = "已保存到当前工程（资源版本 " +
