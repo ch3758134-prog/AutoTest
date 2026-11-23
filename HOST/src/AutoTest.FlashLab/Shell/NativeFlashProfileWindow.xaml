@@ -1,130 +1,149 @@
 <Window x:Class="AutoTest.FlashLab.Shell.NativeFlashProfileWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="原生 ECU 烧录配置" Width="880" Height="690"
-        MinWidth="750" MinHeight="510" Background="#FAFBFC"
+        Title="ECU 烧录配置" Width="925" Height="710"
+        MinWidth="790" MinHeight="560" Background="#F7F9FC"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
- <Grid Margin="18">
+ <Grid Margin="20">
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="*"/>
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
-  <DockPanel Grid.Row="0" Margin="0,0,0,12">
-   <Button DockPanel.Dock="Right" Content="填入 HydEPB 已核对参数" Click="LoadHydEpbPreset_Click" Padding="10,6" Margin="12,0,0,0" VerticalAlignment="Center" ToolTip="仅填入已核实的诊断端点和地址范围，不导入固件、不发布、不连接设备"/>
-   <StackPanel>
-    <TextBlock Text="ECU 原生烧录配置" FontSize="20" FontWeight="SemiBold"
-               Foreground="#172F43"/>
-    <TextBlock Text="参数保存在固定工程位置，不需要 CanTool XML；仅支持已核验的 HydEPB 编程方法"
-               Foreground="#6B7D8B" FontSize="12" Margin="0,5,0,0"/>
+  <StackPanel Grid.Row="0" Margin="0,0,0,14">
+   <TextBlock Text="ECU 烧录配置" FontSize="22" FontWeight="SemiBold" Foreground="#20364A"/>
+   <TextBlock Text="工程内统一维护固件、安全文件和原生参数；无需再次导入 CanTool XML"
+              FontSize="12" Foreground="#62798D" Margin="0,5,0,0"/>
+   <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+    <TextBlock Text="当前工程型号：" Foreground="#5D7184" VerticalAlignment="Center"/>
+    <TextBox x:Name="ModelBox" Width="150" Padding="6,4" IsReadOnly="True"
+             Background="#EEF3F7" BorderThickness="0" TextChanged="EditorChanged"/>
+    <TextBlock Text="烧录方法：CanTool-HydEPB-v1（内部固定）" Margin="20,0,0,0"
+               Foreground="#5D7184" VerticalAlignment="Center"/>
    </StackPanel>
-  </DockPanel>
-  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+  </StackPanel>
+  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Disabled">
    <StackPanel>
-    <Border Padding="14" Background="White" CornerRadius="8"
-            BorderBrush="#DFE6EB" BorderThickness="1" Margin="0,0,0,10">
+    <Border Padding="16" Background="White" CornerRadius="9"
+            BorderBrush="#DFE7EF" BorderThickness="1" Margin="0,0,0,12">
      <StackPanel>
-      <TextBlock Text="目标工程与编程方法" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
-      <WrapPanel>
-       <StackPanel Width="280" Margin="0,0,15,8">
-        <TextBlock Text="ECU 型号代码" Foreground="#617280"/>
-        <TextBox x:Name="ModelBox" Margin="0,4,0,0" Padding="8,6" IsReadOnly="True" ToolTip="正式 ECU 型号只在工程维护，原生烧录配置直接引用，不允许重新输入。" TextChanged="EditorChanged"/>
+      <TextBlock Text="一、固件 HEX" FontSize="15" FontWeight="SemiBold"
+                 Foreground="#20364A" Margin="0,0,0,10"/>
+      <DockPanel>
+       <Button DockPanel.Dock="Right" Content="选择 HEX" Click="ImportFirmware_Click"
+               Padding="16,8" Margin="12,0,0,0" MinWidth="110"/>
+       <StackPanel VerticalAlignment="Center">
+        <TextBlock x:Name="FirmwareLabel" Text="尚未导入固件"
+                   TextTrimming="CharacterEllipsis" Foreground="#325574"
+                   ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
+        <TextBlock Text="导入后复制到工程内部并校验 SHA256；更换固件后需要重新校验和发布"
+                   Foreground="#75889B" FontSize="11" Margin="0,5,0,0"/>
        </StackPanel>
-       <StackPanel Width="400" Margin="0,0,15,8">
-        <TextBlock Text="当前编程方法" Foreground="#617280"/>
-        <TextBox Text="CanTool-HydEPB-v1" IsReadOnly="True" Padding="8,6" Margin="0,4,0,0"/>
-       </StackPanel>
-      </WrapPanel>
+      </DockPanel>
      </StackPanel>
     </Border>
-    <Border Padding="14" Background="White" CornerRadius="8"
-            BorderBrush="#DFE6EB" BorderThickness="1" Margin="0,0,0,10">
+    <Border Padding="16" Background="White" CornerRadius="9"
+            BorderBrush="#DFE7EF" BorderThickness="1" Margin="0,0,0,12">
      <StackPanel>
-      <TextBlock Text="CAN 诊断端点" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
-      <WrapPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="APP 请求 ID (HEX)"/>
-        <TextBox x:Name="AppTxBox" Padding="8,6" TextChanged="EditorChanged"/>
+      <TextBlock Text="二、安全文件" FontSize="15" FontWeight="SemiBold"
+                 Foreground="#20364A" Margin="0,0,0,10"/>
+      <DockPanel>
+       <Button DockPanel.Dock="Right" Content="选择安全 DLL" Click="ImportSecurity_Click"
+               Padding="14,8" Margin="12,0,0,0" MinWidth="110"/>
+       <StackPanel VerticalAlignment="Center">
+        <TextBlock x:Name="SecurityLabel" Text="尚未导入安全算法"
+                   TextTrimming="CharacterEllipsis" Foreground="#325574"
+                   ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
+        <TextBlock Text="仅接受现有已校验的 SafetyFile；与本工程固件一同固定引用"
+                   Foreground="#75889B" FontSize="11" Margin="0,5,0,0"/>
        </StackPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="APP 应答 ID (HEX)"/>
-        <TextBox x:Name="AppRxBox" Padding="8,6" TextChanged="EditorChanged"/>
+      </DockPanel>
+     </StackPanel>
+    </Border>
+    <Border Padding="16" Background="White" CornerRadius="9"
+            BorderBrush="#DFE7EF" BorderThickness="1" Margin="0,0,0,12">
+     <StackPanel>
+      <TextBlock Text="三、烧录参数" FontSize="15" FontWeight="SemiBold"
+                 Foreground="#20364A" Margin="0,0,0,4"/>
+      <TextBlock Text="严格对应先前提供的 Configuration(3).xml；已知 HydEPB 参数直接带入工程草稿"
+                 Foreground="#65798C" FontSize="11" Margin="0,0,0,13"/>
+      <TextBlock Text="诊断 CAN ID（十六进制）" FontWeight="SemiBold"
+                 Foreground="#354E66" Margin="0,0,0,7"/>
+      <UniformGrid Columns="4">
+       <StackPanel Margin="0,0,10,12">
+        <TextBlock Text="APPPhyID · APP 请求" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="AppTxBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
        </StackPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="Boot 请求 ID (HEX)"/>
-        <TextBox x:Name="BootTxBox" Padding="8,6" TextChanged="EditorChanged"/>
+       <StackPanel Margin="0,0,10,12">
+        <TextBlock Text="APPRespond · APP 应答" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="AppRxBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
        </StackPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="Boot 应答 ID (HEX)"/>
-        <TextBox x:Name="BootRxBox" Padding="8,6" TextChanged="EditorChanged"/>
+       <StackPanel Margin="0,0,10,12">
+        <TextBlock Text="BootloadPhyID · Boot 请求" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="BootTxBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
        </StackPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="ECU CAN 波特率 (kbit/s)"/>
-        <ComboBox x:Name="BaudBox" Width="160" SelectedIndex="1"
+       <StackPanel Margin="0,0,0,12">
+        <TextBlock Text="BootRespond · Boot 应答" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="BootRxBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
+       </StackPanel>
+      </UniformGrid>
+      <TextBlock Text="原始参考字段（保留 XML 原义；当前不额外触发 UDS 操作）"
+                 FontWeight="SemiBold" Foreground="#354E66" Margin="0,2,0,7"/>
+      <UniformGrid Columns="4">
+       <StackPanel Margin="0,0,10,12">
+        <TextBlock Text="VersionID" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="VersionIdBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
+       </StackPanel>
+       <StackPanel Margin="0,0,10,12">
+        <TextBlock Text="DiagnosticsID" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="DiagnosticsIdBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
+       </StackPanel>
+       <StackPanel Margin="0,0,10,12">
+        <TextBlock Text="BootFeature / item" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="BootFeatureBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
+       </StackPanel>
+       <StackPanel Margin="0,0,0,12">
+        <TextBlock Text="APPFeature / item" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="AppFeatureBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
+       </StackPanel>
+      </UniformGrid>
+      <TextBlock Text="FLASH 范围与 CAN 波特率" FontWeight="SemiBold"
+                 Foreground="#354E66" Margin="0,0,0,7"/>
+      <UniformGrid Columns="3">
+       <StackPanel Margin="0,0,10,4">
+        <TextBlock Text="FLASH 起始地址（HEX）" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="StartBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
+       </StackPanel>
+       <StackPanel Margin="0,0,10,4">
+        <TextBlock Text="FLASH 结束地址（含，HEX）" FontSize="11" Foreground="#667B8F"/>
+        <TextBox x:Name="EndBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
+       </StackPanel>
+       <StackPanel Margin="0,0,0,4">
+        <TextBlock Text="波特率（kbit/s）" FontSize="11" Foreground="#667B8F"/>
+        <ComboBox x:Name="BaudBox" Margin="0,5,0,0" Padding="7,4"
                   SelectionChanged="EditorSelectionChanged">
          <ComboBoxItem Content="250"/>
          <ComboBoxItem Content="500"/>
         </ComboBox>
        </StackPanel>
-      </WrapPanel>
-     </StackPanel>
-    </Border>
-    <Border Padding="14" Background="White" CornerRadius="8"
-            BorderBrush="#DFE6EB" BorderThickness="1" Margin="0,0,0,10">
-     <StackPanel>
-      <TextBlock Text="烧录空间与下载参数" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
-      <WrapPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="起始地址 (HEX)"/>
-        <TextBox x:Name="StartBox" Padding="8,6" TextChanged="EditorChanged"/>
-       </StackPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="结束地址（含）(HEX)"/>
-        <TextBox x:Name="EndBox" Padding="8,6" TextChanged="EditorChanged"/>
-       </StackPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="对齐块长 (字节)"/>
-        <TextBox x:Name="BlockBox" Padding="8,6" TextChanged="EditorChanged"/>
-       </StackPanel>
-       <StackPanel Width="180" Margin="0,0,14,8">
-        <TextBlock Text="BIN 基址（可选 HEX）"/>
-        <TextBox x:Name="BinBaseBox" Padding="8,6" TextChanged="EditorChanged"/>
-       </StackPanel>
-      </WrapPanel>
-      <TextBlock Text="P2、擦除/校验例程和尾块行为由已核实的 CanTool-HydEPB-v1 方法管理，当前不能任意改写。"
-                 Foreground="#627484" TextWrapping="Wrap"/>
-     </StackPanel>
-    </Border>
-    <Border Padding="14" Background="White" CornerRadius="8"
-            BorderBrush="#DFE6EB" BorderThickness="1" Margin="0,0,0,10">
-     <StackPanel>
-      <TextBlock Text="当前受控资源" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,9"/>
-      <WrapPanel Margin="0,0,0,5">
-       <Button Content="导入 HEX / S19 / BIN 固件" Click="ImportFirmware_Click" Padding="13,7"/>
-       <TextBlock x:Name="FirmwareLabel" VerticalAlignment="Center"
-                  Text="尚未导入固件" Margin="12,0,0,0" TextTrimming="CharacterEllipsis"/>
-      </WrapPanel>
-      <WrapPanel>
-       <Button Content="导入受审安全算法 DLL" Click="ImportSecurity_Click" Padding="13,7"/>
-       <TextBlock x:Name="SecurityLabel" VerticalAlignment="Center"
-                  Text="尚未导入安全算法" Margin="12,0,0,0" TextTrimming="CharacterEllipsis"/>
-      </WrapPanel>
-      <TextBlock Text="导入会复制到工程内部并按 SHA256 固定；源文件删除不会影响工程。当前仅接受已核实的参考安全算法。"
-                 Foreground="#627484" TextWrapping="Wrap" Margin="0,10,0,0"/>
+      </UniformGrid>
+      <TextBlock Text="块长、UDS 服务及擦除实现由既有 HydEPB 方法内部管理，不在此配置文件中增设字段。"
+                 Foreground="#73879A" TextWrapping="Wrap" FontSize="11" Margin="0,11,0,0"/>
      </StackPanel>
     </Border>
    </StackPanel>
   </ScrollViewer>
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-    <Button Content="发布为当前生产配置" Click="Publish_Click" Padding="12,8" Margin="0,0,8,0"/>
-    <Button Content="校验并预览真实 Job" Click="Preview_Click" Padding="12,8" Margin="0,0,8,0"/>
+    <Button Content="校验配置" Click="Preview_Click" Padding="12,8" Margin="0,0,8,0"/>
+    <Button Content="发布为生产版本" Click="Publish_Click" Padding="12,8" Margin="0,0,8,0"/>
     <Button Content="保存" Click="Save_Click" Padding="15,8" Margin="0,0,8,0"/>
     <Button Content="关闭" Click="Close_Click" Padding="15,8"/>
    </StackPanel>
-   <TextBlock x:Name="StatusLabel" Text="配置草稿尚未保存"
-              TextWrapping="Wrap" VerticalAlignment="Center" Foreground="#375B73"
-              Margin="0,0,10,0" FontSize="12"/>
+   <TextBlock x:Name="StatusLabel" Text="工程配置待读取" Foreground="#375B73"
+              TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,14,0"
+              FontSize="12"/>
   </DockPanel>
  </Grid>
 </Window>
