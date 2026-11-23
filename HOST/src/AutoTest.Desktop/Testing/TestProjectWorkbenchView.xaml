@@ -94,7 +94,7 @@
          Margin="0,2,0,0"/>
        </DataTemplate></ItemsControl.ItemTemplate>
       </ItemsControl>
-      <TextBlock Text="按顺序执行选中用例；每个用例单独生成真实 RunId/报告，遇非 PASS 即停止后续用例。"
+      <TextBlock Text="本次勾选只影响开发调试；正式生产按工程中全部有序用例执行，不存在额外的生产启用配置。"
        FontSize="10" Foreground="#64758C" Margin="0,6,0,0"/>
      </StackPanel>
     </Border>
@@ -191,22 +191,28 @@
               </Style>
              </Button.Style>
             </Button>
+            <Button Content="恢复历史排除" Tag="{Binding}" Click="RestoreLegacyInclusion_Click"
+             FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17"
+             MinHeight="0" Foreground="#94651F"
+             ToolTip="旧工程存在被排除的实例；恢复并保存后才可以进行完整正式检测">
+             <Button.Style>
+              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
+               <Setter Property="Visibility" Value="Collapsed"/>
+               <Style.Triggers>
+                <DataTrigger Binding="{Binding Enabled}" Value="False">
+                 <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+               </Style.Triggers>
+              </Style>
+             </Button.Style>
+            </Button>
            </StackPanel>
           </StackPanel>
          </DataTemplate>
          </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="特殊设置" Width="112">
-         <DataGridTemplateColumn.CellTemplate>
-          <DataTemplate>
-           <CheckBox Content="排除自动测试"
-            IsChecked="{Binding ExcludedFromAutomaticTest,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-            FontSize="10" Foreground="#677C93"
-            VerticalAlignment="Center" HorizontalAlignment="Center"
-            ToolTip="仅在特殊情况下排除该项目实例；新加入的用例默认参与完整自动测试。与本次调试勾选无关。"/>
-          </DataTemplate>
-         </DataGridTemplateColumn.CellTemplate>
-        </DataGridTemplateColumn>
+        <!-- Presence in the ordered project is production participation.
+             Only the engineer's temporary run selection remains editable. -->
         <DataGridTextColumn Header="步骤" Binding="{Binding StepCountLabel}"
          IsReadOnly="True" Width="66"/>
         <DataGridTemplateColumn Header="调整" Width="143">
