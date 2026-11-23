@@ -928,7 +928,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public async Task ShutdownAsync()
     {
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
-        _productionInspection.Dispose();
+        _automaticTestHome.Dispose();
         await _scannerWorkbench.DisposeAsync();
         try { await _hardware.DisposeAsync(); }
         catch (Exception error)
