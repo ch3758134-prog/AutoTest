@@ -303,9 +303,9 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
 
     private async Task SaveIdentityPolicyAsync()
     {
-        if (!_mayAcceptScan() || Volatile.Read(ref _handling) != 0)
+        if (!_mayAcceptScan() || IsConnected || Volatile.Read(ref _handling) != 0)
         {
-            IdentityPolicyStatus = "工位仍在执行任务或处理扫码，禁止修改解码规则。";
+            IdentityPolicyStatus = "请先断开扫码枪并停止正在进行的任务，再更改条码解析规则。";
             return;
         }
         try
@@ -361,11 +361,9 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     {
         ModelCode = _workspace.Current?.Definition.EcuModelCode ?? "";
         RaisePropertyChanged(nameof(ProjectName));
-        LastDecision = "";
-        ProductionPreview = "";
-        _resolvedManifestPath = null;
-        MatchedProjectName = "";
-        SwitchProjectCommand?.RaiseCanExecuteChanged();
+        // A project switch or version update invalidates a previously scanned
+        // identity; old labels may not authorize a different ECU model.
+        InvalidateScanIdentity();
     });
 
     private static void OnUi(Action action)
@@ -587,6 +585,14 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         }
         var snapshotModel = LastModel;
         var snapshotSerial = LastSerial;
+        var resolved = await _catalog.ResolveAsync(snapshotModel);
+        if (!resolved.Matched || !string.Equals(resolved.Entry?.ManifestPath,
+            current.ManifestPath, StringComparison.OrdinalIgnoreCase))
+        {
+            SetStatus("生产准备拒绝：扫码型号尚未匹配当前工位唯一登记的工程。");
+            ProductionPreview = "需在当前工程登记型号，并重新扫码。";
+            return;
+        }
         var result = await ProductionPreparationService.PrepareAsync(
             current, snapshotModel, snapshotSerial);
         ProductionPreview = result.ConfigurationReady
