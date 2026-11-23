@@ -48,6 +48,9 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private string _lastDecision = "";
     private string _connectedPort = "";
     private StationScannerDeviceBinding.Saved? _boundDevice;
+    private readonly System.Windows.Threading.DispatcherTimer _deviceWatch =
+        new() { Interval = TimeSpan.FromSeconds(4) };
+    private int _autoConnecting;
     private string _deviceStatus = "尚未绑定实体扫码枪。请先人工选择 COM、读取一次真实条码，再绑定该设备。";
     private ScanIdentityPolicy? _activeIdentityPolicy;
     private string _identityFormat = ScanIdentityPolicy.SerialOnly;
@@ -125,6 +128,12 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         }
         RefreshPorts();
         // Only an explicitly bound, unique USB PnP instance may auto-connect.
+        _deviceWatch.Tick += async (_, _) =>
+        {
+            if (_boundDevice is not null && !IsConnected && !_disposed)
+                await TryAutoConnectAsync();
+        };
+        _deviceWatch.Start();
         if (_boundDevice is not null) _ = TryAutoConnectAsync();
     }
 
@@ -473,10 +482,11 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
 
     private async Task TryAutoConnectAsync()
     {
-        await Task.Yield();
-        if (_boundDevice is null || IsConnected || _disposed) return;
+        if (System.Threading.Interlocked.Exchange(ref _autoConnecting, 1) != 0) return;
         try
         {
+            await Task.Yield();
+            if (_boundDevice is null || IsConnected || _disposed) return;
             var device = StationScannerDeviceBinding.Match(_boundDevice);
             if (device is null)
             {
@@ -491,6 +501,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         {
             DeviceStatus = "自动查找扫码枪失败：" + error.Message;
         }
+        finally { System.Threading.Interlocked.Exchange(ref _autoConnecting, 0); }
     }
 
     private async Task ConnectAsync()
@@ -765,6 +776,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         {
             if (_disposed) return;
             _disposed = true;
+            _deviceWatch.Stop();
             _workspace.CurrentChanged -= OnProjectChanged;
             await StopPortInsideGateAsync();
             _routerStop.Cancel();
