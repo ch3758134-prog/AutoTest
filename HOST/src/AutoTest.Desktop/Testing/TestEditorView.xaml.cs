@@ -208,9 +208,9 @@ public partial class TestEditorView : UserControl
         var width = shell?.ActualWidth > 0 ? shell.ActualWidth : SystemParameters.WorkArea.Width;
         var height = shell?.ActualHeight > 0 ? shell.ActualHeight : SystemParameters.WorkArea.Height;
         // Compact two-column operation picker, not a near-fullscreen legacy grid.
-        PaletteSurface.Width = Math.Min(760, Math.Max(510, width - 80));
-        PaletteSurface.MaxHeight = Math.Min(580, Math.Max(310, height - 100));
-        PaletteList.MaxHeight = Math.Max(150, PaletteSurface.MaxHeight - 170);
+        PaletteSurface.Width = Math.Min(840, Math.Max(550, width - 68));
+        PaletteSurface.MaxHeight = Math.Min(520, Math.Max(310, height - 100));
+        PaletteList.MaxHeight = Math.Max(140, PaletteSurface.MaxHeight - 190);
         _paletteActions = TestStepInspector.PaletteActions(caseOnly);
         PaletteCategories.SelectedIndex = caseOnly ? 5 : 0;
         var target = _viewModel.SelectedItem;
