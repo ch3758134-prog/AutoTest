@@ -88,25 +88,8 @@ public sealed class RealTestWorkbenchService
             // An unused or disabled mapping must not widen a physical CAN lease
             // or break the run because its unrelated historical asset is stale.
             var mappings = TestRunStepScope.RequiredMappings(document);
-            var tcf = await _projects.ReadSelectedTestConfigurationAsync(ct);
-            if (tcf is not null)
-                foreach (var mapping in mappings)
-                {
-                    if (mapping.Kind is TestTargetKind.Signal or TestTargetKind.CanMessage &&
-                        (tcf.DbcAssetId != mapping.Asset.Value ||
-                         tcf.DbcRevision != mapping.AssetRevision ||
-                         !string.Equals(tcf.DbcFingerprint, mapping.AssetSha256,
-                             StringComparison.OrdinalIgnoreCase)))
-                        throw new InvalidOperationException(
-                            "测试步骤引用的 DBC 不属于当前选定 TCF，需重新确认：" + mapping.Name);
-                    if (mapping.Kind == TestTargetKind.Button &&
-                        (tcf.ButtonAssetId != mapping.Asset.Value ||
-                         tcf.ButtonRevision != mapping.AssetRevision ||
-                         !string.Equals(tcf.ButtonFingerprint, mapping.AssetSha256,
-                             StringComparison.OrdinalIgnoreCase)))
-                        throw new InvalidOperationException(
-                            "测试步骤引用的 ECU 功能按键不属于当前 TCF：" + mapping.Name);
-                }
+            // TEST step mappings bind directly to pinned project resources.
+            // No selected TCF or second DUT-system profile is consulted.
             // Freeze all destructive resources before the first hardware write.
             var project = _projects.Current ??
                 throw new InvalidOperationException("请先打开 ECU 工程。");
@@ -236,16 +219,14 @@ public sealed class RealTestWorkbenchService
             "R1_STATION_ECU=" + StationCanWiring.DutConnectorPins + ":PORT" +
             StationCanWiring.DutPort + "_KEY=" + StationCanWiring.KeypadConnectorPins +
             ":PORT" + StationCanWiring.KeypadPort));
-        var selectedBench = _projects.SelectedBenchConfiguration;
-        var bench = project.Definition.Assets.FirstOrDefault(a => a.Id == selectedBench);
-        var benchRevision = bench is null
-            ? RevisionFingerprint.FromBytes("BENCH_NOT_SELECTED"u8)
-            : RevisionFingerprint.FromSha256(bench.Sha256);
+        // One fixed station hardware mapping; never depend on a TBC asset
+        // selected in a different document or a previous project session.
+        var benchRevision = wiring;
         var station = new StationProfile(
             StationId.Create(_hardware.ConnectedDeviceIdentity ??
                 throw new InvalidOperationException("主控身份未确认，不能归档运行。")),
             new BusRoleMap(wiring, StationCanWiring.DutPort, StationCanWiring.KeypadPort),
-            bench?.Name ?? "未选择工位配置（开发模式）", benchRevision);
+            "AutoTest 固定工位", benchRevision);
         var snapshot = new RunSnapshot(RunId.New(), projectSnapshot, station,
             RevisionFingerprint.FromSha256(planFingerprint), assets);
         // Diagnostic runs with no DUT serial are deliberately tagged as
