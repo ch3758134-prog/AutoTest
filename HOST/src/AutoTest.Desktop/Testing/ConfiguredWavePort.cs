@@ -23,6 +23,46 @@ public sealed class ConfiguredWavePort : ITestWavePort
     private readonly WaveReferenceCatalog _catalog;
     private readonly Dictionary<string, WaveCaptureId> _active = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, WaveEvidenceRef> _completed = new(StringComparer.OrdinalIgnoreCase);
+    // A named wave reference is resolved ONCE before TEST can touch the ECU.
+    // It cannot silently drift to a different reference between Start and Compare.
+    private readonly Dictionary<string, WaveReferenceEntry> _frozenReferences =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public async Task FreezeProfileReferencesAsync(
+        IReadOnlyList<TestTargetMapping> required, CancellationToken ct)
+    {
+        var project = _projects.Current ?? throw new InvalidOperationException("工程尚未打开。");
+        foreach (var mapping in required.Where(x => x.Kind == TestTargetKind.WaveProfile))
+        {
+            ct.ThrowIfCancellationRequested();
+            mapping.Validate();
+            var asset = project.Definition.Assets.SingleOrDefault(x => x.Id == mapping.Asset)
+                ?? throw new InvalidDataException("波形映射资源缺失：" + mapping.Name);
+            if (asset.Kind != ProjectWorkspaceService.WaveSettingsKind ||
+                asset.Revision != mapping.AssetRevision ||
+                !string.Equals(asset.Sha256, mapping.AssetSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("波形配置引用已失效：" + mapping.Name);
+            var path = ProjectPathPolicy.Normalize(project.RootDirectory, asset.RelativePath);
+            var bytes = await File.ReadAllBytesAsync(path, ct);
+            if (!asset.VerifyHash(bytes))
+                throw new InvalidDataException("波形配置文件与保存的指纹不一致：" + mapping.Name);
+            var cfg = (WaveSettingsDocument)ProjectConfigurationCodec.Decode(asset.Kind, bytes);
+            if (string.IsNullOrWhiteSpace(cfg.ReferenceName) || !cfg.DbcAssetId.HasValue)
+                throw new InvalidDataException("波形判定缺少已确认的参考波形或 DBC：" + mapping.Name);
+            var matches = _catalog.List().Where(x =>
+                x.Name == cfg.ReferenceName &&
+                x.Signal.DbcAsset.Id.Value == cfg.DbcAssetId.Value &&
+                x.Signal.DbcAsset.Revision.Value == cfg.DbcAssetRevision &&
+                string.Equals(x.Signal.DbcAsset.Fingerprint.Sha256,
+                    cfg.DbcAssetFingerprint, StringComparison.OrdinalIgnoreCase) &&
+                x.Signal.Role == cfg.Bus && x.Signal.FrameId == cfg.CanId &&
+                x.Signal.SignalName == cfg.SignalName && x.Signal.Unit == cfg.Unit).ToArray();
+            if (matches.Length != 1)
+                throw new InvalidDataException("标准波形没有唯一有效的资源版本：" + mapping.Name);
+            _ = _catalog.Load(matches[0].Reference);
+            _frozenReferences.Add(mapping.Name, matches[0]);
+        }
+    }
 
     public ConfiguredWavePort(ProjectWorkspaceService projects, LiveDbcSignalService signals)
     {
@@ -134,19 +174,17 @@ public sealed class ConfiguredWavePort : ITestWavePort
                 "Wave profile must refer to the exact captured DBC signal, revision, bus and unit.");
         if (_projects.Current?.ManifestPath != project.ManifestPath)
             throw new InvalidOperationException("Project changed during waveform analysis.");
-        var effectiveReference = string.IsNullOrWhiteSpace(referenceKey)
-            ? settings.ReferenceName : referenceKey;
-        if (string.IsNullOrWhiteSpace(effectiveReference))
-            return new(false, "REFERENCE_NOT_SELECTED", null, evidence.Evidence.ToString(),
-                "Select an approved named reference in the waveform configuration or analysis step.");
-        var matches = _catalog.List().Where(x =>
-            x.Name == effectiveReference && x.Signal == signal).ToArray();
-        if (matches.Length != 1)
-            return new(false, "REFERENCE_NOT_UNIQUE", null, evidence.Evidence.ToString(),
-                "Select one explicitly approved named reference for this DBC signal revision.");
+        // The configured reference is frozen before run. A per-step name is
+        // permitted only when it is the SAME approved reference.
+        if (!_frozenReferences.TryGetValue(profile.Name, out var pinned) ||
+            pinned.Name != settings.ReferenceName ||
+            (referenceKey.Length > 0 && referenceKey != pinned.Name) ||
+            pinned.Signal != signal)
+            return new(false, "REFERENCE_PIN_MISMATCH", null, evidence.Evidence.ToString(),
+                "运行中参考波形或信号与冻结的批准版本不一致。");
 
         var evaluated = await _capture.CompareWithConfigForRunAsync(
-            evidence, matches[0].Reference, settings.Comparison);
+            evidence, pinned.Reference, settings.Comparison);
         var usable = evaluated.Verdict is Verdict.Pass or Verdict.Fail or Verdict.Inconclusive;
         return new(usable, evaluated.Verdict.ToString(), evaluated.Verdict.ToString(),
             string.Join(",", evaluated.Evidence.Select(x => x.ToString())),
