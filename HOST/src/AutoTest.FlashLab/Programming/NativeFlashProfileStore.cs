@@ -77,6 +77,59 @@ public static class NativeFlashProfileStore
     }
 
     /// <summary>
+    /// One-time project-local migration of the user's HydEPB Configuration(2).xml
+    /// reference values. No external XML is ever read at runtime. Existing
+    /// intentional nonzero settings and pinned firmware/security resources stay
+    /// untouched; a published immutable FLASH release is never modified.
+    /// Called on engineering project open and again when its editor is opened.
+    /// </summary>
+    public static async Task<Snapshot?> EnsureHydEpbReferenceAsync(
+        string root, string? modelCode, CancellationToken ct = default)
+    {
+        if (!string.Equals(modelCode, "HYDEPB", StringComparison.Ordinal))
+            return await LoadAsync(root, ct).ConfigureAwait(false);
+
+        // Retrying a concurrent revision change is safe: SaveDraftAsync checks
+        // the exact last-read SHA, so this cannot override user edits.
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var existing = await LoadAsync(root, ct).ConfigureAwait(false);
+            if (existing is null)
+            {
+                try
+                {
+                    return await SaveDraftAsync(root,
+                        NativeFlashProfileDocument.CreateHydEpbReferenceDraft(),
+                        expectedSha256: null, ct).ConfigureAwait(false);
+                }
+                catch (IOException) when (attempt == 0 && File.Exists(FullProfilePath(root)))
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                if (!string.Equals(existing.Profile.EcuModelCode, "HYDEPB",
+                        StringComparison.Ordinal))
+                    throw new InvalidDataException(
+                        "工程原生烧录配置的型号与 HYDEPB 不同，已拒绝自动替换。");
+                var filled = existing.Profile.WithMissingHydEpbReference();
+                if (Equals(filled, existing.Profile)) return existing;
+                try
+                {
+                    return await SaveDraftAsync(root, filled,
+                        existing.ProfileSha256, ct).ConfigureAwait(false);
+                }
+                catch (IOException) when (attempt == 0)
+                {
+                    continue;
+                }
+            }
+        }
+        throw new IOException("工程原生烧录草稿发生并发修改；请重新打开配置。");
+    }
+
+    /// <summary>
     /// Caller supplies last loaded SHA (or null when creating). Does not publish,
     /// authorize USB, or modify the active immutable Flash job.
     /// </summary>
