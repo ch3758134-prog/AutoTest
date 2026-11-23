@@ -3,6 +3,8 @@ using System.IO;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Specialists.Wave;
+using AutoTest.Desktop.Hardware;
+using AutoTest.Desktop.Testing;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -13,7 +15,7 @@ namespace AutoTest.Desktop.Shell;
 /// codec, verified sidecars and waveform chart projection; no invented samples,
 /// CAN subscriptions, UI-created reference files or simulated captures.
 /// </summary>
-public sealed class WaveWorkbenchViewModel : BindableBase
+public sealed partial class WaveWorkbenchViewModel : BindableBase
 {
     public sealed record WaveItem(string Title, string Detail, Guid Id, bool IsReference,
         WaveReferenceEntry? Reference)
@@ -25,6 +27,8 @@ public sealed class WaveWorkbenchViewModel : BindableBase
     private CancellationTokenSource? _refreshStop;
     private int _selectionGeneration;
     private bool _closed;
+    private string? _lastManifestPath;
+    private string _emptyListMessage = "";
     private WaveItem? _selected;
     private WaveSeries? _series;
     private IReadOnlyList<WaveChartPoint> _points = Array.Empty<WaveChartPoint>();
@@ -33,10 +37,13 @@ public sealed class WaveWorkbenchViewModel : BindableBase
     private string _cursorInfo = "点击曲线两次测量时间差、数值差与区间极值。";
     public ObservableCollection<WaveItem> Items { get; } = new();
     public DelegateCommand RefreshCommand { get; }
-    public WaveWorkbenchViewModel(ProjectWorkspaceService project)
+    public WaveWorkbenchViewModel(ProjectWorkspaceService project,
+        LiveDbcSignalService signals, HardwareConnectionService hardware,
+        RealTestWorkbenchService realTest)
     {
         _project = project;
         RefreshCommand = new DelegateCommand(Refresh);
+        InitializeCapture(signals, hardware, realTest);
         _project.CurrentChanged += ProjectChanged;
         Refresh();
     }
@@ -51,9 +58,29 @@ public sealed class WaveWorkbenchViewModel : BindableBase
     public string CursorInfo { get => _cursorInfo; set => SetProperty(ref _cursorInfo, value); }
     public IReadOnlyList<WaveChartPoint> Points => _points;
     public WaveSeries? Series => _series;
+    public string EmptyWaveMessage => _points.Count > 0 ? "" :
+        "暂无可绘制的真实波形。\n\n连接主控 USB，选择工程 DBC 信号，\n点击“开始采集”获取真实数据。";
+    public string EmptyListMessage { get => _emptyListMessage; private set => SetProperty(ref _emptyListMessage, value); }
+    private void NotifyChartChanged()
+    {
+        RaisePropertyChanged(nameof(EmptyWaveMessage));
+        SaveReferenceCommand?.RaiseCanExecuteChanged();
+        ChartChanged?.Invoke();
+    }
 
     private void ProjectChanged(object? sender, EventArgs e) =>
-        System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(Refresh));
+        System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            // Project autosave emits CurrentChanged: do not clear the plot on
+            // a manifest update in the same opened project.
+            var nextPath = _project.Current?.ManifestPath;
+            if (string.Equals(nextPath, _lastManifestPath, StringComparison.OrdinalIgnoreCase))
+                return;
+            _lastManifestPath = nextPath;
+            AbortCaptureForProjectChange();
+            ReloadAvailableSignals();
+            Refresh();
+        }));
 
     public void Refresh() => _ = RefreshAsync();
 
@@ -69,7 +96,7 @@ public sealed class WaveWorkbenchViewModel : BindableBase
         _series = null;
         _points = Array.Empty<WaveChartPoint>();
         RaisePropertyChanged(nameof(Selected));
-        ChartChanged?.Invoke();
+        NotifyChartChanged();
         Info = "";
 
         if (_project.Current is not { } project)
@@ -77,6 +104,7 @@ public sealed class WaveWorkbenchViewModel : BindableBase
             Status = "未打开工程；不会加载其他目录的波形记录。";
             return;
         }
+        _lastManifestPath = project.ManifestPath;
         var root = Path.Combine(project.RootDirectory, "wave-records");
         var manifest = project.ManifestPath;
         Status = "正在后台校验真实波形证据与参考资源…";
@@ -127,7 +155,11 @@ public sealed class WaveWorkbenchViewModel : BindableBase
             if (_closed || stop.IsCancellationRequested || !ReferenceEquals(_refreshStop, stop) ||
                 _project.Current?.ManifestPath != manifest) return;
             foreach (var item in collected) Items.Add(item);
-            Status = "已载入 " + Items.Count + " 条已验证的波形记录；请选择一条查看。";
+            EmptyListMessage = Items.Count == 0
+                ? "此工程尚无已归档波形。\n使用上方真实采集入口获取数据。" : "";
+            Status = Items.Count == 0
+                ? "本工程暂无真实波形证据；连接设备并采集后可在此查看。"
+                : "已载入 " + Items.Count + " 条已验证的波形记录；请选择一条查看。";
             if (Items.Count > 0) Selected = Items[0];
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
@@ -151,7 +183,7 @@ public sealed class WaveWorkbenchViewModel : BindableBase
         _series = null;
         _points = Array.Empty<WaveChartPoint>();
         Info = "";
-        ChartChanged?.Invoke();
+        NotifyChartChanged();
         if (_closed || Selected is not { } selected || _project.Current is not { } project)
             return;
         var root = Path.Combine(project.RootDirectory, "wave-records");
@@ -194,7 +226,7 @@ public sealed class WaveWorkbenchViewModel : BindableBase
         finally
         {
             if (!_closed && generation == _selectionGeneration)
-                ChartChanged?.Invoke();
+                NotifyChartChanged();
         }
     }
 
@@ -215,6 +247,7 @@ public sealed class WaveWorkbenchViewModel : BindableBase
 
     public void Close()
     {
+        AbortCaptureForWindowClose();
         _closed = true;
         _selectionGeneration++;
         _refreshStop?.Cancel();
