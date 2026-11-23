@@ -156,11 +156,37 @@ void MCAL_CAN_EnableIRQ(MCAL_CAN_ChannelType channel)
 /* ============================================
  * 波特率重配置
  * ============================================ */
-void MCAL_CAN_SetBaudrate(MCAL_CAN_ChannelType channel, MCAL_CAN_BaudrateType baud)
+MCAL_CAN_RetType MCAL_CAN_SetBaudrate(MCAL_CAN_ChannelType channel, MCAL_CAN_BaudrateType baud)
 {
-    if ((uint32_t)channel >= (uint32_t)MCAL_CAN_CH_COUNT) return;
-    if ((uint32_t)baud >= (uint32_t)MCAL_CAN_BAUD_COUNT) return;
-    FLEXCAN_SetTimingConfig(s_canBase[channel], &s_timing[baud]);
+    CAN_Type *base;
+    const flexcan_timing_config_t *timing;
+    uint32_t expected;
+    const uint32_t timingMask = CAN_CTRL1_PRESDIV_MASK | CAN_CTRL1_RJW_MASK |
+                                CAN_CTRL1_PSEG1_MASK | CAN_CTRL1_PSEG2_MASK |
+                                CAN_CTRL1_PROPSEG_MASK;
+    uint8_t i;
+
+    if ((uint32_t)channel >= (uint32_t)MCAL_CAN_CH_COUNT ||
+        (uint32_t)baud >= (uint32_t)MCAL_CAN_BAUD_COUNT)
+        return MCAL_CAN_ERR;
+
+    base = s_canBase[channel];
+
+    /* 不在仍有待发 CAN 帧时进入 Freeze；不重置 MB、滤波器、CAN0。 */
+    for (i = 0U; i < s_txMbCount[channel]; i++)
+    {
+        if ((base->MB[s_txMb[channel][i]].CS & CAN_CS_CODE_MASK) ==
+            CAN_CS_CODE(kFLEXCAN_TxMbDataOrRemote))
+            return MCAL_CAN_BUSY;
+    }
+
+    /* SDK 在本接口内部进入/退出 Freeze 模式，仅调整 CTRL1 时序字段。 */
+    timing = &s_timing[baud];
+    expected = CAN_CTRL1_PRESDIV(timing->preDivider) | CAN_CTRL1_RJW(timing->rJumpwidth) |
+               CAN_CTRL1_PSEG1(timing->phaseSeg1) | CAN_CTRL1_PSEG2(timing->phaseSeg2) |
+               CAN_CTRL1_PROPSEG(timing->propSeg);
+    FLEXCAN_SetTimingConfig(base, timing);
+    return ((base->CTRL1 & timingMask) == expected) ? MCAL_CAN_OK : MCAL_CAN_ERR;
 }
 
 /* ============================================
