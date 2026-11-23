@@ -87,10 +87,24 @@ public sealed class TestProjectPackageRow : BindableBase
         get => _runSelected;
         set => SetProperty(ref _runSelected, value);
     }
+    /// <summary>
+    /// Persisted project scope: newly added entries are included by default.
+    /// Exclusion is an exceptional engineer decision, not a second enable step.
+    /// It is unrelated to temporary RunSelected debug choices.
+    /// </summary>
+    public bool ExcludedFromAutomaticTest
+    {
+        get => !_enabled;
+        set => Enabled = !value;
+    }
     public bool Enabled
     {
         get => _enabled;
-        set => SetProperty(ref _enabled, value);
+        set
+        {
+            if (SetProperty(ref _enabled, value))
+                RaisePropertyChanged(nameof(ExcludedFromAutomaticTest));
+        }
     }
     public TestProjectEntry ToEntry() => new(ItemId, AssetId, Revision, Sha256, Name, Enabled);
 }
