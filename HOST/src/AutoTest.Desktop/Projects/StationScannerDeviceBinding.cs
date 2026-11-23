@@ -80,6 +80,11 @@ public static class StationScannerDeviceBinding
         return bound;
     }
 
+    public static void Unbind()
+    {
+        if (File.Exists(FilePath)) File.Delete(FilePath);
+    }
+
     public static Saved Bind(string selectedPort)
     {
         var matches = DetectUsbSerialDevices()
