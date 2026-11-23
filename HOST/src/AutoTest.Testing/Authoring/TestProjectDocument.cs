@@ -4,8 +4,15 @@ using System.Text.Json;
 namespace AutoTest.Testing.Authoring;
 
 /// <summary>
-/// ecu.test Project analogue: an ordered list of PACKAGE references, not an alternative
-/// executable test tree. A package may intentionally be referenced more than once.
+/// Ordered project-specific instances of reusable TEST definitions, not an
+/// alternative TEST language. Each entry has its own stable ItemId and can
+/// reference a shared TEST definition more than once.
+///
+//// Legacy Enabled=true means the entry participates in the complete automatic
+//// test; false means it was explicitly excluded by persisted project data.
+/// The *temporary* engineer RunSelected checkbox is not this property.
+/// New entries participate immediately (Enabled=true), requiring no second
+/// enable action. Never auto-reactivate old excluded entries during migration.
 /// </summary>
 public sealed record TestProjectEntry(Guid ItemId, Guid PackageAssetId,
     int PackageRevision, string PackageSha256, string DisplayName, bool Enabled);
@@ -14,6 +21,15 @@ public sealed record TestProjectDocument(int SchemaVersion, Guid Id, string Name
     List<TestProjectEntry> Packages)
 {
     public static TestProjectDocument Create(string name) => new(1, Guid.NewGuid(), name, []);
+
+    /// <summary>
+    /// The ONE ordered authoritative scope for complete automatic TEST.
+    /// Operator displays, production preparation and scan preparation must
+    /// project the same persisted entry list. Engineer RunSelected is separate.
+    /// Preserve legacy exclusions rather than silently energizing real hardware.
+    /// </summary>
+    public IReadOnlyList<TestProjectEntry> AutomaticRunEntries() =>
+        Packages.Where(item => item.Enabled).ToArray();
 
     public void Validate()
     {
