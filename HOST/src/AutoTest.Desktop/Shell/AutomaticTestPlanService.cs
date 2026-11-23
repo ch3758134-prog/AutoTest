@@ -14,7 +14,11 @@ public sealed record AutomaticTestCase(string Index, string Name, TestDocumentId
     string State = "未执行");
 
 public sealed record AutomaticTestPlan(OpenProjectContext Project,
-    IReadOnlyList<AutomaticTestCase> Cases);
+    IReadOnlyList<AutomaticTestCase> Cases)
+{
+    public IReadOnlyList<string> ResourceIssues { get; init; } = [];
+    public bool ResourceReady => Cases.Count > 0 && ResourceIssues.Count == 0;
+}
 
 /// <summary>
 /// The AUTOMATIC TEST plan is NOT the active project in the developer workbench.
@@ -53,7 +57,7 @@ public sealed class AutomaticTestPlanService
                 throw new InvalidDataException("自动测试方案设置格式无效");
             ConfiguredPath = settings.ManifestPath;
             Current = await VerifyAsync(settings.ManifestPath, ct);
-            Issue = "";
+            Issue = string.Join("；", Current.ResourceIssues);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
@@ -92,7 +96,7 @@ public sealed class AutomaticTestPlanService
             }
             ConfiguredPath = full;
             Current = verified;
-            Issue = "";
+            Issue = string.Join("；", verified.ResourceIssues);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
@@ -114,55 +118,19 @@ public sealed class AutomaticTestPlanService
         if (!File.Exists(full))
             throw new FileNotFoundException("测试方案文件不存在", full);
         var definition = await ProjectRepository.OpenDefinitionAsync(full, ct);
-        await ProjectBundleContractAudit.ValidateAsync(definition, full, ct);
         var manifestSha = Convert.ToHexString(SHA256.HashData(
             await File.ReadAllBytesAsync(full, ct)));
         var project = new OpenProjectContext(definition, full, manifestSha);
-        var testAssets = definition.Assets
-            .Where(a => a.Kind == ProjectWorkspaceService.TestProjectKind).ToArray();
-        if (testAssets.Length == 0)
-            throw new InvalidDataException("方案没有测试项目，请选择含测试用例的真实工程");
-        if (testAssets.Length > 1)
-            throw new InvalidDataException("方案含多个测试项目，尚未确定唯一执行集合");
-        var testBytes = await ReadAssetAsync(project, testAssets[0], ct);
-        var testProject = TestProjectCodec.Decode(testBytes);
-        if (testProject.Packages.Count == 0)
-            throw new InvalidDataException("测试项目没有关联用例");
-        // The complete operator list and the real production execution plan
-        // MUST use the same entry projection. RunSelected is debug-only; the
-        // persisted legacy Enabled=false means explicitly excluded, not
-        // "missing another enable click" after adding a new case.
-        var included = testProject.AutomaticRunEntries();
-        if (included.Count == 0)
-            throw new InvalidDataException(
-                "工程已有测试用例，但全部被旧项目配置排除在自动测试外。"
-                + "需要一次性核对原有排除设置，不会自动恢复真实硬件操作。");
-        var cases = new List<AutomaticTestCase>(included.Count);
-        foreach (var entry in included)
+        // Open incomplete projects for review, but do not authorize execution.
+        // The production preflight uses the same exact TEST resource closure.
+        var resolved = await AutomaticTestResourceContract.ResolveAsync(project, ct);
+        var cases = resolved.Cases.Select((item, i) =>
+            new AutomaticTestCase((i + 1).ToString("D2"),
+                item.Entry.DisplayName, item.Program.Id)).ToArray();
+        return new AutomaticTestPlan(project, cases)
         {
-            var matches = definition.Assets.Where(a =>
-                a.Id.Value == entry.PackageAssetId &&
-                a.Kind == ProjectWorkspaceService.TestProgramKind).ToArray();
-            if (matches.Length != 1)
-                throw new InvalidDataException("测试用例资源缺失或重复：" + entry.DisplayName);
-            var asset = matches[0];
-            if (asset.Revision != entry.PackageRevision ||
-                !asset.Sha256.Equals(entry.PackageSha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("测试用例资源版本不一致：" + entry.DisplayName);
-            var content = await ReadAssetAsync(project, asset, ct);
-            var document = TestDocumentCodec.Deserialize(new UTF8Encoding(false, true).GetString(content));
-            cases.Add(new((cases.Count + 1).ToString("D2"), entry.DisplayName, document.Id));
-        }
-        return new AutomaticTestPlan(project, cases.AsReadOnly());
+            ResourceIssues = resolved.Issues
+        };
     }
 
-    private static async Task<byte[]> ReadAssetAsync(OpenProjectContext context,
-        AutoTest.Projects.Resources.AssetEntry asset, CancellationToken ct)
-    {
-        var file = ProjectPathPolicy.Normalize(context.RootDirectory, asset.RelativePath);
-        var content = await File.ReadAllBytesAsync(file, ct);
-        if (!asset.VerifyHash(content))
-            throw new InvalidDataException("测试资源完整性校验失败：" + asset.RelativePath);
-        return content;
-    }
 }
